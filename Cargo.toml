@@ -1,0 +1,22 @@
+[package]
+name = "tower-web"
+version = "0.1.0"
+authors = ["David Pedersen <david.pdrsn@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+async-trait = "0.1"
+bytes = "1.0"
+http = "0.2"
+http-body = "0.4"
+hyper = "0.14"
+serde = "1.0"
+serde_urlencoded = "0.7"
+serde_json = "1.0"
+futures-util = "0.3"
+tower = { version = "0.4", features = ["util"] }
+thiserror = "1.0"
+
+[dev-dependencies]
+tokio = { version = "1.6.1", features = ["macros", "rt"] }
+serde = { version = "1.0", features = ["derive"] }
