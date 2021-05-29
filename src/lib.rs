@@ -31,10 +31,12 @@ use async_trait::async_trait;
 use bytes::Bytes;
 use futures_util::{future, ready};
 use http::{Method, Request, Response, StatusCode};
+use pin_project::pin_project;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::{
     future::Future,
     marker::PhantomData,
+    pin::Pin,
     task::{Context, Poll},
 };
 use tower::{Service, ServiceExt};
@@ -155,21 +157,20 @@ pub enum Error {
     DeserializeQueryString(#[from] serde_urlencoded::de::Error),
 }
 
+// TODO(david): make this trait sealed
 #[async_trait]
 pub trait Handler<Out> {
     async fn call(self, req: Request<Body>) -> Result<Response<Body>, Error>;
 }
 
 #[async_trait]
-#[allow(non_snake_case)]
 impl<F, Fut> Handler<()> for F
 where
     F: Fn(Request<Body>) -> Fut + Send + Sync,
     Fut: Future<Output = Result<Response<Body>, Error>> + Send,
 {
     async fn call(self, req: Request<Body>) -> Result<Response<Body>, Error> {
-        let res = self(req).await?;
-        Ok(res)
+        self(req).await
     }
 }
 
@@ -253,18 +254,35 @@ where
     }
 }
 
-#[async_trait]
 pub trait FromRequest: Sized {
-    async fn from_request(req: &mut Request<Body>) -> Result<Self, Error>;
+    type Future: Future<Output = Result<Self, Error>> + Send;
+
+    fn from_request(req: &mut Request<Body>) -> Self::Future;
 }
 
-#[async_trait]
 impl<T> FromRequest for Option<T>
 where
     T: FromRequest,
 {
-    async fn from_request(req: &mut Request<Body>) -> Result<Self, Error> {
-        Ok(T::from_request(req).await.ok())
+    type Future = OptionFromRequestFuture<T::Future>;
+
+    fn from_request(req: &mut Request<Body>) -> Self::Future {
+        OptionFromRequestFuture(T::from_request(req))
+    }
+}
+
+#[pin_project]
+pub struct OptionFromRequestFuture<F>(#[pin] F);
+
+impl<F, T> Future for OptionFromRequestFuture<F>
+where
+    F: Future<Output = Result<T, Error>>,
+{
+    type Output = Result<Option<T>, Error>;
+
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        let value = ready!(self.project().0.poll(cx));
+        Poll::Ready(Ok(value.ok()))
     }
 }
 
@@ -277,15 +295,20 @@ impl<T> Query<T> {
     }
 }
 
-#[async_trait]
 impl<T> FromRequest for Query<T>
 where
-    T: DeserializeOwned,
+    T: DeserializeOwned + Send,
 {
-    async fn from_request(req: &mut Request<Body>) -> Result<Self, Error> {
-        let query = req.uri().query().ok_or(Error::QueryStringMissing)?;
-        let value = serde_urlencoded::from_str(query)?;
-        Ok(Query(value))
+    type Future = future::Ready<Result<Self, Error>>;
+
+    fn from_request(req: &mut Request<Body>) -> Self::Future {
+        let result = (|| {
+            let query = req.uri().query().ok_or(Error::QueryStringMissing)?;
+            let value = serde_urlencoded::from_str(query)?;
+            Ok(Query(value))
+        })();
+
+        future::ready(result)
     }
 }
 
@@ -298,21 +321,24 @@ impl<T> Json<T> {
     }
 }
 
-#[async_trait]
 impl<T> FromRequest for Json<T>
 where
     T: DeserializeOwned,
 {
-    async fn from_request(req: &mut Request<Body>) -> Result<Self, Error> {
+    type Future = future::BoxFuture<'static, Result<Self, Error>>;
+
+    fn from_request(req: &mut Request<Body>) -> Self::Future {
         // TODO(david): require the body to have `content-type: application/json`
 
         let body = std::mem::take(req.body_mut());
 
-        let bytes = hyper::body::to_bytes(body)
-            .await
-            .map_err(Error::ConsumeBody)?;
-        let value = serde_json::from_slice(&bytes).map_err(Error::DeserializeRequestBody)?;
-        Ok(Json(value))
+        Box::pin(async move {
+            let bytes = hyper::body::to_bytes(body)
+                .await
+                .map_err(Error::ConsumeBody)?;
+            let value = serde_json::from_slice(&bytes).map_err(Error::DeserializeRequestBody)?;
+            Ok(Json(value))
+        })
     }
 }
 
@@ -331,17 +357,33 @@ impl<R> Service<R> for EmptyRouter {
     fn call(&mut self, _req: R) -> Self::Future {
         let mut res = Response::new(Body::empty());
         *res.status_mut() = StatusCode::NOT_FOUND;
-        future::ready(Ok(res))
+        future::ok(res)
     }
 }
 
-#[derive(Clone)]
 pub struct Route<H, F> {
     handler: H,
     route_spec: RouteSpec,
     fallback: F,
     handler_ready: bool,
     fallback_ready: bool,
+}
+
+impl<H, F> Clone for Route<H, F>
+where
+    H: Clone,
+    F: Clone,
+{
+    fn clone(&self) -> Self {
+        Self {
+            handler: self.handler.clone(),
+            fallback: self.fallback.clone(),
+            route_spec: self.route_spec.clone(),
+            // important to reset readiness when cloning
+            handler_ready: false,
+            fallback_ready: false,
+        }
+    }
 }
 
 #[derive(Clone)]
@@ -367,24 +409,36 @@ where
     type Future = future::Either<H::Future, F::Future>;
 
     fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        if !self.handler_ready {
-            ready!(self.handler.poll_ready(cx))?;
-            self.handler_ready = true;
-        }
+        loop {
+            if !self.handler_ready {
+                ready!(self.handler.poll_ready(cx))?;
+                self.handler_ready = true;
+            }
 
-        if !self.fallback_ready {
-            ready!(self.fallback.poll_ready(cx))?;
-            self.fallback_ready = true;
-        }
+            if !self.fallback_ready {
+                ready!(self.fallback.poll_ready(cx))?;
+                self.fallback_ready = true;
+            }
 
-        Poll::Ready(Ok(()))
+            if self.handler_ready && self.fallback_ready {
+                return Poll::Ready(Ok(()));
+            }
+        }
     }
 
     fn call(&mut self, req: Request<Body>) -> Self::Future {
         if self.route_spec.matches(&req) {
+            assert!(
+                self.handler_ready,
+                "handler not ready. Did you forget to call `poll_ready`?"
+            );
             self.handler_ready = false;
             future::Either::Left(self.handler.call(req))
         } else {
+            assert!(
+                self.fallback_ready,
+                "fallback not ready. Did you forget to call `poll_ready`?"
+            );
             self.fallback_ready = false;
             future::Either::Right(self.fallback.call(req))
         }

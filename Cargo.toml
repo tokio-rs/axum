@@ -7,15 +7,16 @@ edition = "2018"
 [dependencies]
 async-trait = "0.1"
 bytes = "1.0"
+futures-util = "0.3"
 http = "0.2"
 http-body = "0.4"
 hyper = "0.14"
+pin-project = "1.0"
 serde = "1.0"
-serde_urlencoded = "0.7"
 serde_json = "1.0"
-futures-util = "0.3"
-tower = { version = "0.4", features = ["util"] }
+serde_urlencoded = "0.7"
 thiserror = "1.0"
+tower = { version = "0.4", features = ["util"] }
 
 [dev-dependencies]
 tokio = { version = "1.6.1", features = ["macros", "rt"] }
