@@ -21,3 +21,6 @@ tower = { version = "0.4", features = ["util"] }
 [dev-dependencies]
 tokio = { version = "1.6.1", features = ["macros", "rt"] }
 serde = { version = "1.0", features = ["derive"] }
+tower = { version = "0.4", features = ["util", "make"] }
+tower-http = { version = "0.1", features = ["trace"] }
+hyper = { version = "0.14", features = ["full"] }
