@@ -160,16 +160,20 @@ pub enum Error {
 // TODO(david): make this trait sealed
 #[async_trait]
 pub trait Handler<Out> {
-    async fn call(self, req: Request<Body>) -> Result<Response<Body>, Error>;
+    type ResponseBody;
+
+    async fn call(self, req: Request<Body>) -> Result<Response<Self::ResponseBody>, Error>;
 }
 
 #[async_trait]
-impl<F, Fut> Handler<()> for F
+impl<F, Fut, B> Handler<()> for F
 where
     F: Fn(Request<Body>) -> Fut + Send + Sync,
-    Fut: Future<Output = Result<Response<Body>, Error>> + Send,
+    Fut: Future<Output = Result<Response<B>, Error>> + Send,
 {
-    async fn call(self, req: Request<Body>) -> Result<Response<Body>, Error> {
+    type ResponseBody = B;
+
+    async fn call(self, req: Request<Body>) -> Result<Response<Self::ResponseBody>, Error> {
         self(req).await
     }
 }
@@ -178,13 +182,15 @@ macro_rules! impl_handler {
     ( $head:ident $(,)? ) => {
         #[async_trait]
         #[allow(non_snake_case)]
-        impl<F, Fut, $head> Handler<($head,)> for F
+        impl<F, Fut, B, $head> Handler<($head,)> for F
         where
             F: Fn(Request<Body>, $head) -> Fut + Send + Sync,
-            Fut: Future<Output = Result<Response<Body>, Error>> + Send,
+            Fut: Future<Output = Result<Response<B>, Error>> + Send,
             $head: FromRequest + Send,
         {
-            async fn call(self, mut req: Request<Body>) -> Result<Response<Body>, Error> {
+            type ResponseBody = B;
+
+            async fn call(self, mut req: Request<Body>) -> Result<Response<Self::ResponseBody>, Error> {
                 let $head = $head::from_request(&mut req).await?;
                 let res = self(req, $head).await?;
                 Ok(res)
@@ -195,14 +201,16 @@ macro_rules! impl_handler {
     ( $head:ident, $($tail:ident),* $(,)? ) => {
         #[async_trait]
         #[allow(non_snake_case)]
-        impl<F, Fut, $head, $($tail,)*> Handler<($head, $($tail,)*)> for F
+        impl<F, Fut, B, $head, $($tail,)*> Handler<($head, $($tail,)*)> for F
         where
             F: Fn(Request<Body>, $head, $($tail,)*) -> Fut + Send + Sync,
-            Fut: Future<Output = Result<Response<Body>, Error>> + Send,
+            Fut: Future<Output = Result<Response<B>, Error>> + Send,
             $head: FromRequest + Send,
             $( $tail: FromRequest + Send, )*
         {
-            async fn call(self, mut req: Request<Body>) -> Result<Response<Body>, Error> {
+            type ResponseBody = B;
+
+            async fn call(self, mut req: Request<Body>) -> Result<Response<Self::ResponseBody>, Error> {
                 let $head = $head::from_request(&mut req).await?;
                 $(
                     let $tail = $tail::from_request(&mut req).await?;
@@ -238,8 +246,9 @@ where
 impl<H, T> Service<Request<Body>> for HandlerSvc<H, T>
 where
     H: Handler<T> + Clone + 'static,
+    H::ResponseBody: 'static,
 {
-    type Response = Response<Body>;
+    type Response = Response<H::ResponseBody>;
     type Error = Error;
     type Future = future::BoxFuture<'static, Result<Self::Response, Self::Error>>;
 
