@@ -35,6 +35,7 @@ use http_body::{combinators::BoxBody, Body as _};
 use pin_project::pin_project;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::{
+    convert::Infallible,
     future::Future,
     marker::PhantomData,
     pin::Pin,
@@ -159,6 +160,12 @@ pub enum Error {
 
     #[error("failed generating the response body")]
     ResponseBody(#[source] BoxError),
+}
+
+impl From<Infallible> for Error {
+    fn from(err: Infallible) -> Self {
+        match err {}
+    }
 }
 
 // TODO(david): make this trait sealed
@@ -360,7 +367,7 @@ pub struct EmptyRouter(());
 
 impl<R> Service<R> for EmptyRouter {
     type Response = Response<Body>;
-    type Error = Error;
+    type Error = Infallible;
     type Future = future::Ready<Result<Self::Response, Self::Error>>;
 
     fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
@@ -414,27 +421,29 @@ impl RouteSpec {
 
 impl<H, F, HB, FB> Service<Request<Body>> for Route<H, F>
 where
-    H: Service<Request<Body>, Response = Response<HB>, Error = Error>,
-    F: Service<Request<Body>, Response = Response<FB>, Error = Error>,
+    H: Service<Request<Body>, Response = Response<HB>>,
+    H::Error: Into<Error>,
     HB: http_body::Body + Send + Sync + 'static,
     HB::Error: Into<BoxError>,
+
+    F: Service<Request<Body>, Response = Response<FB>>,
+    F::Error: Into<Error>,
     FB: http_body::Body<Data = HB::Data> + Send + Sync + 'static,
     FB::Error: Into<BoxError>,
 {
     type Response = Response<BoxBody<HB::Data, Error>>;
     type Error = Error;
-    // type Future = future::BoxFuture<'static, Result<Self::Response, Self::Error>>;
     type Future = future::Either<BoxResponseBody<H::Future>, BoxResponseBody<F::Future>>;
 
     fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         loop {
             if !self.handler_ready {
-                ready!(self.handler.poll_ready(cx))?;
+                ready!(self.handler.poll_ready(cx)).map_err(Into::into)?;
                 self.handler_ready = true;
             }
 
             if !self.fallback_ready {
-                ready!(self.fallback.poll_ready(cx))?;
+                ready!(self.fallback.poll_ready(cx)).map_err(Into::into)?;
                 self.fallback_ready = true;
             }
 
@@ -467,16 +476,17 @@ where
 #[pin_project]
 pub struct BoxResponseBody<F>(#[pin] F);
 
-impl<F, B> Future for BoxResponseBody<F>
+impl<F, B, E> Future for BoxResponseBody<F>
 where
-    F: Future<Output = Result<Response<B>, Error>>,
+    F: Future<Output = Result<Response<B>, E>>,
+    E: Into<Error>,
     B: http_body::Body + Send + Sync + 'static,
     B::Error: Into<BoxError>,
 {
     type Output = Result<Response<BoxBody<B::Data, Error>>, Error>;
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        let response: Response<B> = ready!(self.project().0.poll(cx))?;
+        let response: Response<B> = ready!(self.project().0.poll(cx)).map_err(Into::into)?;
         let response =
             response.map(|body| body.map_err(|err| Error::ResponseBody(err.into())).boxed());
         Poll::Ready(Ok(response))
@@ -486,6 +496,7 @@ where
 impl<R, T> Service<T> for App<R>
 where
     R: Service<T>,
+    R::Error: Into<Error>,
 {
     type Response = R::Response;
     type Error = R::Error;
@@ -493,11 +504,13 @@ where
 
     #[inline]
     fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        // TODO(david): map error to response
         self.router.poll_ready(cx)
     }
 
     #[inline]
     fn call(&mut self, req: T) -> Self::Future {
+        // TODO(david): map error to response
         self.router.call(req)
     }
 }
@@ -505,6 +518,7 @@ where
 impl<R, T> Service<T> for RouteBuilder<R>
 where
     App<R>: Service<T>,
+    <App<R> as Service<T>>::Error: Into<Error>,
 {
     type Response = <App<R> as Service<T>>::Response;
     type Error = <App<R> as Service<T>>::Error;
@@ -512,11 +526,13 @@ where
 
     #[inline]
     fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        // TODO(david): map error to response
         self.app.poll_ready(cx)
     }
 
     #[inline]
     fn call(&mut self, req: T) -> Self::Future {
+        // TODO(david): map error to response
         self.app.call(req)
     }
 }
@@ -532,41 +548,84 @@ mod tests {
 
     #[tokio::test]
     async fn basic() {
+        #[derive(Debug, Deserialize)]
+        struct Pagination {
+            page: usize,
+            per_page: usize,
+        }
+
+        #[derive(Debug, Deserialize)]
+        struct UsersCreate {
+            username: String,
+        }
+
         let mut app = app()
             .at("/")
-            .get(root)
+            .get(|_: Request<Body>| async {
+                Ok::<_, Error>(Response::new(Body::from("Hello, World!")))
+            })
             .at("/users")
-            .get(users_index)
-            .post(users_create);
+            .get(|_: Request<Body>, pagination: Query<Pagination>| async {
+                let pagination = pagination.into_inner();
+                assert_eq!(pagination.page, 1);
+                assert_eq!(pagination.per_page, 30);
 
-        let req = Request::builder()
-            .method(Method::POST)
-            .uri("/users")
-            .body(Body::from(r#"{ "username": "bob" }"#))
+                Ok::<_, Error>(Response::new(Body::from("users#index")))
+            })
+            .post(|_: Request<Body>, payload: Json<UsersCreate>| async {
+                let payload = payload.into_inner();
+                assert_eq!(payload.username, "bob");
+
+                Ok::<_, Error>(Response::new(Body::from("users#create")))
+            });
+
+        let res = app
+            .ready()
+            .await
+            .unwrap()
+            .call(
+                Request::builder()
+                    .method(Method::GET)
+                    .uri("/")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
             .unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(body_to_string(res).await, "Hello, World!");
 
-        let res = app.ready().await.unwrap().call(req).await.unwrap();
-        let body = body_to_string(res).await;
-        dbg!(&body);
-    }
+        let res = app
+            .ready()
+            .await
+            .unwrap()
+            .call(
+                Request::builder()
+                    .method(Method::GET)
+                    .uri("/users?page=1&per_page=30")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(body_to_string(res).await, "users#index");
 
-    #[allow(dead_code)]
-    // this should just compile
-    async fn compatible_with_hyper_and_tower_http() {
-        let app = app()
-            .at("/")
-            .get(root)
-            .at("/users")
-            .get(users_index)
-            .post(users_create);
-
-        let app = ServiceBuilder::new()
-            .layer(TraceLayer::new_for_http())
-            .service(app);
-
-        let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
-        let server = Server::bind(&addr).serve(Shared::new(app));
-        server.await.unwrap();
+        let res = app
+            .ready()
+            .await
+            .unwrap()
+            .call(
+                Request::builder()
+                    .method(Method::POST)
+                    .uri("/users")
+                    .body(Body::from(r#"{ "username": "bob" }"#))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(body_to_string(res).await, "users#create");
     }
 
     async fn body_to_string<B>(res: Response<B>) -> String
@@ -578,34 +637,19 @@ mod tests {
         String::from_utf8(bytes.to_vec()).unwrap()
     }
 
-    async fn root(req: Request<Body>) -> Result<Response<Body>, Error> {
-        Ok(Response::new(Body::from("Hello, World!")))
-    }
+    #[allow(dead_code)]
+    // this should just compile
+    async fn compatible_with_hyper_and_tower_http() {
+        let app = app().at("/").get(|_: Request<Body>| async {
+            Ok::<_, Error>(Response::new(Body::from("Hello, World!")))
+        });
 
-    async fn users_index(
-        req: Request<Body>,
-        pagination: Query<Pagination>,
-    ) -> Result<Response<Body>, Error> {
-        dbg!(pagination.into_inner());
-        Ok(Response::new(Body::from("users#index")))
-    }
+        let app = ServiceBuilder::new()
+            .layer(TraceLayer::new_for_http())
+            .service(app);
 
-    #[derive(Debug, Deserialize)]
-    struct Pagination {
-        page: usize,
-        per_page: usize,
-    }
-
-    async fn users_create(
-        req: Request<Body>,
-        payload: Json<UsersCreate>,
-    ) -> Result<Response<Body>, Error> {
-        dbg!(payload.into_inner());
-        Ok(Response::new(Body::from("users#create")))
-    }
-
-    #[derive(Debug, Deserialize)]
-    struct UsersCreate {
-        username: String,
+        let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
+        let server = Server::bind(&addr).serve(Shared::new(app));
+        server.await.unwrap();
     }
 }
