@@ -210,7 +210,7 @@ pub enum Error {
     #[error("handler service returned an error")]
     Service(#[source] BoxError),
 
-    #[error("request extension was not set")]
+    #[error("request extension of type `{type_name}` was not set")]
     MissingExtension { type_name: &'static str },
 }
 
@@ -604,6 +604,7 @@ where
 }
 
 // TODO(david): rename this to Bytes when its in another module
+// TODO(david): can we add a length limit somehow? Maybe a const generic?
 #[derive(Debug, Clone)]
 pub struct BytesBody(Bytes);
 
@@ -754,6 +755,7 @@ where
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let response: Response<B> = ready!(self.project().0.poll(cx)).map_err(Into::into)?;
         let response = response.map(|body| {
+            // TODO(david): attempt to downcast this into `Error`
             let body = body.map_err(|err| Error::ResponseBody(err.into()));
             BoxBody::new(body)
         });
