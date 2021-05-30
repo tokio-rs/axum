@@ -226,14 +226,14 @@ mod sealed {
 
 #[async_trait]
 pub trait Handler<In>: Sized {
-    type ResponseBody;
+    type Response: IntoResponse;
 
     // This seals the trait. We cannot use the regular "sealed super trait" approach
     // due to coherence.
     #[doc(hidden)]
     type Sealed: sealed::HiddentTrait;
 
-    async fn call(self, req: Request<Body>) -> Result<Response<Self::ResponseBody>, Error>;
+    async fn call(self, req: Request<Body>) -> Result<Self::Response, Error>;
 
     fn layer<L>(self, layer: L) -> Layered<L::Service, In>
     where
@@ -243,17 +243,37 @@ pub trait Handler<In>: Sized {
     }
 }
 
+pub trait IntoResponse {
+    fn into_response(self) -> Response<Body>;
+}
+
+impl<B> IntoResponse for Response<B>
+where
+    B: Into<Body>,
+{
+    fn into_response(self) -> Response<Body> {
+        self.map(Into::into)
+    }
+}
+
+impl IntoResponse for String {
+    fn into_response(self) -> Response<Body> {
+        Response::new(Body::from(self))
+    }
+}
+
 #[async_trait]
-impl<F, Fut, B> Handler<()> for F
+impl<F, Fut, Res> Handler<()> for F
 where
     F: Fn(Request<Body>) -> Fut + Send + Sync,
-    Fut: Future<Output = Result<Response<B>, Error>> + Send,
+    Fut: Future<Output = Result<Res, Error>> + Send,
+    Res: IntoResponse,
 {
-    type ResponseBody = B;
+    type Response = Res;
 
     type Sealed = sealed::Hidden;
 
-    async fn call(self, req: Request<Body>) -> Result<Response<Self::ResponseBody>, Error> {
+    async fn call(self, req: Request<Body>) -> Result<Self::Response, Error> {
         self(req).await
     }
 }
@@ -262,17 +282,18 @@ macro_rules! impl_handler {
     ( $head:ident $(,)? ) => {
         #[async_trait]
         #[allow(non_snake_case)]
-        impl<F, Fut, B, $head> Handler<($head,)> for F
+        impl<F, Fut, Res, $head> Handler<($head,)> for F
         where
             F: Fn(Request<Body>, $head) -> Fut + Send + Sync,
-            Fut: Future<Output = Result<Response<B>, Error>> + Send,
+            Fut: Future<Output = Result<Res, Error>> + Send,
+            Res: IntoResponse,
             $head: FromRequest + Send,
         {
-            type ResponseBody = B;
+            type Response = Res;
 
             type Sealed = sealed::Hidden;
 
-            async fn call(self, mut req: Request<Body>) -> Result<Response<Self::ResponseBody>, Error> {
+            async fn call(self, mut req: Request<Body>) -> Result<Self::Response, Error> {
                 let $head = $head::from_request(&mut req).await?;
                 let res = self(req, $head).await?;
                 Ok(res)
@@ -283,18 +304,19 @@ macro_rules! impl_handler {
     ( $head:ident, $($tail:ident),* $(,)? ) => {
         #[async_trait]
         #[allow(non_snake_case)]
-        impl<F, Fut, B, $head, $($tail,)*> Handler<($head, $($tail,)*)> for F
+        impl<F, Fut, Res, $head, $($tail,)*> Handler<($head, $($tail,)*)> for F
         where
             F: Fn(Request<Body>, $head, $($tail,)*) -> Fut + Send + Sync,
-            Fut: Future<Output = Result<Response<B>, Error>> + Send,
+            Fut: Future<Output = Result<Res, Error>> + Send,
+            Res: IntoResponse,
             $head: FromRequest + Send,
             $( $tail: FromRequest + Send, )*
         {
-            type ResponseBody = B;
+            type Response = Res;
 
             type Sealed = sealed::Hidden;
 
-            async fn call(self, mut req: Request<Body>) -> Result<Response<Self::ResponseBody>, Error> {
+            async fn call(self, mut req: Request<Body>) -> Result<Self::Response, Error> {
                 let $head = $head::from_request(&mut req).await?;
                 $(
                     let $tail = $tail::from_request(&mut req).await?;
@@ -325,17 +347,18 @@ where
 }
 
 #[async_trait]
-impl<S, T, B> Handler<T> for Layered<S, T>
+impl<S, T> Handler<T> for Layered<S, T>
 where
-    S: Service<Request<Body>, Response = Response<B>> + Send,
+    S: Service<Request<Body>> + Send,
+    S::Response: IntoResponse,
     S::Error: Into<BoxError>,
     S::Future: Send,
 {
-    type ResponseBody = B;
+    type Response = S::Response;
 
     type Sealed = sealed::Hidden;
 
-    async fn call(self, req: Request<Body>) -> Result<Response<Self::ResponseBody>, Error> {
+    async fn call(self, req: Request<Body>) -> Result<Self::Response, Error> {
         self.svc
             .oneshot(req)
             .await
@@ -380,10 +403,10 @@ where
 
 impl<H, T> Service<Request<Body>> for HandlerSvc<H, T>
 where
-    H: Handler<T> + Clone + 'static,
-    H::ResponseBody: 'static,
+    H: Handler<T> + Clone + Send + 'static,
+    H::Response: 'static,
 {
-    type Response = Response<H::ResponseBody>;
+    type Response = Response<Body>;
     type Error = Error;
     type Future = future::BoxFuture<'static, Result<Self::Response, Self::Error>>;
 
@@ -394,7 +417,10 @@ where
 
     fn call(&mut self, req: Request<Body>) -> Self::Future {
         let handler = self.handler.clone();
-        Box::pin(Handler::call(handler, req))
+        Box::pin(async move {
+            let res = Handler::call(handler, req).await?;
+            Ok(res.into_response())
+        })
     }
 }
 
@@ -794,44 +820,46 @@ mod tests {
             Ok(Response::new(Body::empty()))
         }
 
-        let app =
-            app()
-                // routes with functions
-                .at("/")
-                .get(root)
-                // routes with closures
-                .at("/users")
-                .get(|_: Request<Body>, pagination: Query<Pagination>| async {
-                    let pagination = pagination.into_inner();
-                    assert_eq!(pagination.page, 1);
-                    assert_eq!(pagination.per_page, 30);
+        async fn users_index(
+            _: Request<Body>,
+            pagination: Query<Pagination>,
+        ) -> Result<String, Error> {
+            let pagination = pagination.into_inner();
+            assert_eq!(pagination.page, 1);
+            assert_eq!(pagination.per_page, 30);
+            Ok::<_, Error>("users#index".to_string())
+        }
 
-                    Ok::<_, Error>(Response::new(Body::from("users#index")))
-                })
-                .post(
-                    |_: Request<Body>,
-                     payload: Json<UsersCreate>,
-                     _state: Extension<Arc<State>>| async {
-                        let payload = payload.into_inner();
-                        assert_eq!(payload.username, "bob");
-
-                        Ok::<_, Error>(Response::new(Body::from("users#create")))
-                    },
-                )
-                // routes with a service
-                .at("/service")
-                .get_service(service_fn(root))
-                // routes with layers applied
-                .at("/large-static-file")
-                .get(
-                    large_static_file.layer(
-                        ServiceBuilder::new()
-                            .layer(TimeoutLayer::new(Duration::from_secs(30)))
-                            .layer(CompressionLayer::new())
-                            .into_inner(),
-                    ),
-                )
-                .into_service();
+        let app = app()
+            // routes with functions
+            .at("/")
+            .get(root)
+            // routes with closures
+            .at("/users")
+            .get(users_index)
+            .post(
+                |_: Request<Body>,
+                 payload: Json<UsersCreate>,
+                 _state: Extension<Arc<State>>| async {
+                    let payload = payload.into_inner();
+                    assert_eq!(payload.username, "bob");
+                    Ok::<_, Error>(Response::new(Body::from("users#create")))
+                },
+            )
+            // routes with a service
+            .at("/service")
+            .get_service(service_fn(root))
+            // routes with layers applied
+            .at("/large-static-file")
+            .get(
+                large_static_file.layer(
+                    ServiceBuilder::new()
+                        .layer(TimeoutLayer::new(Duration::from_secs(30)))
+                        .layer(CompressionLayer::new())
+                        .into_inner(),
+                ),
+            )
+            .into_service();
 
         // state shared by all routes, could hold db connection etc
         struct State {}
