@@ -216,10 +216,20 @@ impl From<Infallible> for Error {
     }
 }
 
-// TODO(david): make this trait sealed
+mod sealed {
+    pub trait HiddentTrait {}
+    pub struct Hidden;
+    impl HiddentTrait for Hidden {}
+}
+
 #[async_trait]
 pub trait Handler<In>: Sized {
     type ResponseBody;
+
+    // This seals the trait. We cannot use the regular "sealed super trait" approach
+    // due to coherence.
+    #[doc(hidden)]
+    type Sealed: sealed::HiddentTrait;
 
     async fn call(self, req: Request<Body>) -> Result<Response<Self::ResponseBody>, Error>;
 
@@ -239,6 +249,8 @@ where
 {
     type ResponseBody = B;
 
+    type Sealed = sealed::Hidden;
+
     async fn call(self, req: Request<Body>) -> Result<Response<Self::ResponseBody>, Error> {
         self(req).await
     }
@@ -255,6 +267,8 @@ macro_rules! impl_handler {
             $head: FromRequest + Send,
         {
             type ResponseBody = B;
+
+            type Sealed = sealed::Hidden;
 
             async fn call(self, mut req: Request<Body>) -> Result<Response<Self::ResponseBody>, Error> {
                 let $head = $head::from_request(&mut req).await?;
@@ -275,6 +289,8 @@ macro_rules! impl_handler {
             $( $tail: FromRequest + Send, )*
         {
             type ResponseBody = B;
+
+            type Sealed = sealed::Hidden;
 
             async fn call(self, mut req: Request<Body>) -> Result<Response<Self::ResponseBody>, Error> {
                 let $head = $head::from_request(&mut req).await?;
@@ -314,6 +330,8 @@ where
     S::Future: Send,
 {
     type ResponseBody = B;
+
+    type Sealed = sealed::Hidden;
 
     async fn call(self, req: Request<Body>) -> Result<Response<Self::ResponseBody>, Error> {
         self.svc
