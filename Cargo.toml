@@ -19,8 +19,10 @@ thiserror = "1.0"
 tower = { version = "0.4", features = ["util"] }
 
 [dev-dependencies]
-tokio = { version = "1.6.1", features = ["macros", "rt"] }
+tokio = { version = "1.6.1", features = ["macros", "rt", "rt-multi-thread"] }
 serde = { version = "1.0", features = ["derive"] }
 tower = { version = "0.4", features = ["util", "make", "timeout"] }
 tower-http = { version = "0.1", features = ["trace", "compression", "add-extension"] }
 hyper = { version = "0.14", features = ["full"] }
+tracing = "0.1"
+tracing-subscriber = "0.2"

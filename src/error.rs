@@ -29,6 +29,15 @@ pub enum Error {
 
     #[error("request extension of type `{type_name}` was not set")]
     MissingExtension { type_name: &'static str },
+
+    #[error("`Content-Length` header is missing but was required")]
+    LengthRequired,
+
+    #[error("response body was too large")]
+    PayloadTooLarge,
+
+    #[error("response failed with status {0}")]
+    WithStatus(StatusCode),
 }
 
 impl From<Infallible> for Error {
@@ -54,6 +63,11 @@ where
         Error::DeserializeRequestBody(_)
         | Error::QueryStringMissing
         | Error::DeserializeQueryString(_) => make_response(StatusCode::BAD_REQUEST),
+
+        Error::WithStatus(status) => make_response(status),
+
+        Error::LengthRequired => make_response(StatusCode::LENGTH_REQUIRED),
+        Error::PayloadTooLarge => make_response(StatusCode::PAYLOAD_TOO_LARGE),
 
         Error::MissingExtension { .. } | Error::SerializeResponseBody(_) => {
             make_response(StatusCode::INTERNAL_SERVER_ERROR)

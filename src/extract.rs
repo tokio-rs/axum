@@ -1,6 +1,8 @@
 use crate::{body::Body, Error};
+use bytes::Bytes;
 use futures_util::{future, ready};
 use http::Request;
+use http_body::Body as _;
 use pin_project::pin_project;
 use serde::de::DeserializeOwned;
 use std::{
@@ -128,16 +130,6 @@ where
     }
 }
 
-// TODO(david): can we add a length limit somehow? Maybe a const generic?
-#[derive(Debug, Clone)]
-pub struct Bytes(bytes::Bytes);
-
-impl Bytes {
-    pub fn into_inner(self) -> bytes::Bytes {
-        self.0
-    }
-}
-
 impl FromRequest for Bytes {
     type Future = future::BoxFuture<'static, Result<Self, Error>>;
 
@@ -148,7 +140,44 @@ impl FromRequest for Bytes {
             let bytes = hyper::body::to_bytes(body)
                 .await
                 .map_err(Error::ConsumeRequestBody)?;
-            Ok(Bytes(bytes))
+            Ok(bytes)
+        })
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct BytesMaxLength<const N: u64>(Bytes);
+
+impl<const N: u64> BytesMaxLength<N> {
+    pub fn into_inner(self) -> Bytes {
+        self.0
+    }
+}
+
+impl<const N: u64> FromRequest for BytesMaxLength<N> {
+    type Future = future::BoxFuture<'static, Result<Self, Error>>;
+
+    fn from_request(req: &mut Request<Body>) -> Self::Future {
+        let content_length = req.headers().get(http::header::CONTENT_LENGTH).cloned();
+        let body = std::mem::take(req.body_mut());
+
+        Box::pin(async move {
+            let content_length =
+                content_length.and_then(|value| value.to_str().ok()?.parse::<u64>().ok());
+
+            if let Some(length) = content_length {
+                if length > N {
+                    return Err(Error::PayloadTooLarge);
+                }
+            } else {
+                return Err(Error::LengthRequired);
+            };
+
+            let bytes = hyper::body::to_bytes(body)
+                .await
+                .map_err(Error::ConsumeRequestBody)?;
+
+            Ok(BytesMaxLength(bytes))
         })
     }
 }

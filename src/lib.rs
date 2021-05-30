@@ -6,6 +6,10 @@ Improvements to make:
 
 Support extracting headers, perhaps via `headers::Header`?
 
+Actual routing
+
+Improve compile times with lots of routes, can we box and combine routers?
+
 Tests
 
 */
@@ -181,7 +185,10 @@ mod tests {
             Ok(Response::new(Body::from("Hello, World!")))
         }
 
-        async fn large_static_file(_: Request<Body>) -> Result<Response<Body>, Error> {
+        async fn large_static_file(
+            _: Request<Body>,
+            body: extract::BytesMaxLength<{ 1024 * 500 }>,
+        ) -> Result<Response<Body>, Error> {
             Ok(Response::new(Body::empty()))
         }
 
@@ -308,25 +315,5 @@ mod tests {
     {
         let bytes = hyper::body::to_bytes(res.into_body()).await.unwrap();
         String::from_utf8(bytes.to_vec()).unwrap()
-    }
-
-    #[allow(dead_code)]
-    // this should just compile
-    async fn compatible_with_hyper_and_tower_http() {
-        let app = app()
-            .at("/")
-            .get(|_: Request<Body>| async {
-                Ok::<_, Error>(Response::new(Body::from("Hello, World!")))
-            })
-            .into_service();
-
-        let app = ServiceBuilder::new()
-            .layer(TraceLayer::new_for_http())
-            .layer(CompressionLayer::new())
-            .service(app);
-
-        let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
-        let server = Server::bind(&addr).serve(Shared::new(app));
-        server.await.unwrap();
     }
 }
