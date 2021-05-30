@@ -9,6 +9,8 @@ create hyper::Body for everything
 
 Support extracting headers, perhaps via `headers::Header`?
 
+Body to bytes extractor
+
 Implement `FromRequest` for more functions, with macro
 
 Tests
