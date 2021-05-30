@@ -39,6 +39,9 @@ pub enum Error {
     #[error("response failed with status {0}")]
     Status(StatusCode),
 
+    #[error("invalid URL param. Expected something of type `{type_name}`")]
+    InvalidUrlParam { type_name: &'static str },
+
     #[error("unknown URL param `{0}`")]
     UnknownUrlParam(String),
 }
@@ -65,7 +68,8 @@ where
     match error {
         Error::DeserializeRequestBody(_)
         | Error::QueryStringMissing
-        | Error::DeserializeQueryString(_) => make_response(StatusCode::BAD_REQUEST),
+        | Error::DeserializeQueryString(_)
+        | Error::InvalidUrlParam { .. } => make_response(StatusCode::BAD_REQUEST),
 
         Error::Status(status) => make_response(status),
 

@@ -52,7 +52,7 @@ struct State {
 
 async fn get(
     _req: Request<Body>,
-    params: extract::UrlParams,
+    params: extract::UrlParamsMap,
     state: extract::Extension<SharedState>,
 ) -> Result<Bytes, Error> {
     let state = state.into_inner();
@@ -69,7 +69,7 @@ async fn get(
 
 async fn set(
     _req: Request<Body>,
-    params: extract::UrlParams,
+    params: extract::UrlParamsMap,
     value: extract::BytesMaxLength<{ 1024 * 5_000 }>, // ~5mb
     state: extract::Extension<SharedState>,
 ) -> Result<response::Empty, Error> {

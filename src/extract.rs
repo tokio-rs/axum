@@ -184,9 +184,9 @@ impl<const N: u64> FromRequest for BytesMaxLength<N> {
     }
 }
 
-pub struct UrlParams(HashMap<String, String>);
+pub struct UrlParamsMap(HashMap<String, String>);
 
-impl UrlParams {
+impl UrlParamsMap {
     pub fn get(&self, key: &str) -> Result<&str, Error> {
         if let Some(value) = self.0.get(key) {
             Ok(value)
@@ -194,9 +194,18 @@ impl UrlParams {
             Err(Error::UnknownUrlParam(key.to_string()))
         }
     }
+
+    pub fn get_typed<T>(&self, key: &str) -> Result<T, Error>
+    where
+        T: std::str::FromStr,
+    {
+        self.get(key)?.parse().map_err(|_| Error::InvalidUrlParam {
+            type_name: std::any::type_name::<T>(),
+        })
+    }
 }
 
-impl FromRequest for UrlParams {
+impl FromRequest for UrlParamsMap {
     type Future = future::Ready<Result<Self, Error>>;
 
     fn from_request(req: &mut Request<Body>) -> Self::Future {
