@@ -1,21 +1,23 @@
 use bytes::Buf;
-use http_body::{Body, Empty};
+use http_body::{Body as _, Empty};
 use std::{
     fmt,
     pin::Pin,
     task::{Context, Poll},
 };
 
+pub use hyper::body::Body;
+
 /// A boxed [`Body`] trait object.
 pub struct BoxBody<D, E> {
-    inner: Pin<Box<dyn Body<Data = D, Error = E> + Send + Sync + 'static>>,
+    inner: Pin<Box<dyn http_body::Body<Data = D, Error = E> + Send + Sync + 'static>>,
 }
 
 impl<D, E> BoxBody<D, E> {
     /// Create a new `BoxBody`.
     pub fn new<B>(body: B) -> Self
     where
-        B: Body<Data = D, Error = E> + Send + Sync + 'static,
+        B: http_body::Body<Data = D, Error = E> + Send + Sync + 'static,
         D: Buf,
     {
         Self {
@@ -40,7 +42,7 @@ impl<D, E> fmt::Debug for BoxBody<D, E> {
     }
 }
 
-impl<D, E> Body for BoxBody<D, E>
+impl<D, E> http_body::Body for BoxBody<D, E>
 where
     D: Buf,
 {
