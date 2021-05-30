@@ -51,27 +51,7 @@ where
 }
 
 macro_rules! impl_handler {
-    ( $head:ident $(,)? ) => {
-        #[async_trait]
-        #[allow(non_snake_case)]
-        impl<F, Fut, B, Res, $head> Handler<B, ($head,)> for F
-        where
-            F: Fn(Request<Body>, $head) -> Fut + Send + Sync,
-            Fut: Future<Output = Result<Res, Error>> + Send,
-            Res: IntoResponse<B>,
-            $head: FromRequest + Send,
-        {
-            type Response = Res;
-
-            type Sealed = sealed::Hidden;
-
-            async fn call(self, mut req: Request<Body>) -> Result<Self::Response, Error> {
-                let $head = $head::from_request(&mut req).await?;
-                let res = self(req, $head).await?;
-                Ok(res)
-            }
-        }
-    };
+    () => {};
 
     ( $head:ident, $($tail:ident),* $(,)? ) => {
         #[async_trait]

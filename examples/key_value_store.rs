@@ -52,15 +52,15 @@ struct State {
 
 async fn get(
     _req: Request<Body>,
-    params: extract::UrlParamsMap,
+    params: extract::UrlParams<(String,)>,
     state: extract::Extension<SharedState>,
 ) -> Result<Bytes, Error> {
     let state = state.into_inner();
     let db = &state.lock().unwrap().db;
 
-    let key = params.get("key")?;
+    let (key,) = params.into_inner();
 
-    if let Some(value) = db.get(key) {
+    if let Some(value) = db.get(&key) {
         Ok(value.clone())
     } else {
         Err(Error::Status(StatusCode::NOT_FOUND))
@@ -69,14 +69,14 @@ async fn get(
 
 async fn set(
     _req: Request<Body>,
-    params: extract::UrlParamsMap,
+    params: extract::UrlParams<(String,)>,
     value: extract::BytesMaxLength<{ 1024 * 5_000 }>, // ~5mb
     state: extract::Extension<SharedState>,
 ) -> Result<response::Empty, Error> {
     let state = state.into_inner();
     let db = &mut state.lock().unwrap().db;
 
-    let key = params.get("key")?;
+    let (key,) = params.into_inner();
     let value = value.into_inner();
 
     db.insert(key.to_string(), value);

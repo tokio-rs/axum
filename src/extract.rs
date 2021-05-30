@@ -197,7 +197,7 @@ impl UrlParamsMap {
 
     pub fn get_typed<T>(&self, key: &str) -> Result<T, Error>
     where
-        T: std::str::FromStr,
+        T: FromStr,
     {
         self.get(key)?.parse().map_err(|_| Error::InvalidUrlParam {
             type_name: std::any::type_name::<T>(),
@@ -220,3 +220,65 @@ impl FromRequest for UrlParamsMap {
         }
     }
 }
+
+pub struct UrlParams<T>(T);
+
+impl<T> UrlParams<T> {
+    pub fn into_inner(self) -> T {
+        self.0
+    }
+}
+
+macro_rules! impl_parse_url {
+    () => {};
+
+    ( $head:ident, $($tail:ident),* $(,)? ) => {
+        impl<$head, $($tail,)*> FromRequest for UrlParams<($head, $($tail,)*)>
+        where
+            $head: FromStr + Send,
+            $( $tail: FromStr + Send, )*
+        {
+            type Future = future::Ready<Result<Self, Error>>;
+
+            #[allow(non_snake_case)]
+            fn from_request(req: &mut Request<Body>) -> Self::Future {
+                let params = if let Some(params) = req
+                    .extensions_mut()
+                    .get_mut::<Option<crate::routing::UrlParams>>()
+                {
+                    params.take().expect("params already taken").0
+                } else {
+                    panic!("no url params found for matched route. This is a bug in tower-web")
+                };
+
+                if let [(_, $head), $((_, $tail),)*] = &*params {
+                    let $head = if let Ok(x) = $head.parse::<$head>() {
+                       x
+                    } else {
+                        return future::err(Error::InvalidUrlParam {
+                            type_name: std::any::type_name::<$head>(),
+                        });
+                    };
+
+                    $(
+                        let $tail = if let Ok(x) = $tail.parse::<$tail>() {
+                           x
+                        } else {
+                            return future::err(Error::InvalidUrlParam {
+                                type_name: std::any::type_name::<$tail>(),
+                            });
+                        };
+                    )*
+
+                    future::ok(UrlParams(($head, $($tail,)*)))
+                } else {
+                    panic!("wrong number of url params found for matched route. This is a bug in tower-web")
+                }
+            }
+        }
+
+        impl_parse_url!($($tail,)*);
+    };
+}
+
+impl_parse_url!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16);
