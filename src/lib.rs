@@ -6,8 +6,6 @@ Improvements to make:
 
 Support extracting headers, perhaps via `headers::Header`?
 
-Actual routing
-
 Improve compile times with lots of routes, can we box and combine routers?
 
 Tests

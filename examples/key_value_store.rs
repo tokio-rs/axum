@@ -1,3 +1,5 @@
+#![allow(warnings)]
+
 use bytes::Bytes;
 use http::{Request, StatusCode};
 use hyper::Server;
@@ -20,9 +22,8 @@ async fn main() {
 
     // build our application with some routes
     let app = tower_web::app()
-        .at("/get")
+        .at("/:key")
         .get(get)
-        .at("/set")
         .post(set)
         // convert it into a `Service`
         .into_service();
@@ -49,41 +50,36 @@ struct State {
     db: HashMap<String, Bytes>,
 }
 
-#[derive(Deserialize)]
-struct GetSetQueryString {
-    key: String,
-}
-
 async fn get(
     _req: Request<Body>,
-    query: extract::Query<GetSetQueryString>,
+    params: extract::UrlParams,
     state: extract::Extension<SharedState>,
 ) -> Result<Bytes, Error> {
     let state = state.into_inner();
     let db = &state.lock().unwrap().db;
 
-    let key = query.into_inner().key;
+    let key = params.get("key")?;
 
-    if let Some(value) = db.get(&key) {
+    if let Some(value) = db.get(key) {
         Ok(value.clone())
     } else {
-        Err(Error::WithStatus(StatusCode::NOT_FOUND))
+        Err(Error::Status(StatusCode::NOT_FOUND))
     }
 }
 
 async fn set(
     _req: Request<Body>,
-    query: extract::Query<GetSetQueryString>,
+    params: extract::UrlParams,
     value: extract::BytesMaxLength<{ 1024 * 5_000 }>, // ~5mb
     state: extract::Extension<SharedState>,
 ) -> Result<response::Empty, Error> {
     let state = state.into_inner();
     let db = &mut state.lock().unwrap().db;
 
-    let key = query.into_inner().key;
+    let key = params.get("key")?;
     let value = value.into_inner();
 
-    db.insert(key, value);
+    db.insert(key.to_string(), value);
 
     Ok(response::Empty)
 }

@@ -37,7 +37,10 @@ pub enum Error {
     PayloadTooLarge,
 
     #[error("response failed with status {0}")]
-    WithStatus(StatusCode),
+    Status(StatusCode),
+
+    #[error("unknown URL param `{0}`")]
+    UnknownUrlParam(String),
 }
 
 impl From<Infallible> for Error {
@@ -64,14 +67,14 @@ where
         | Error::QueryStringMissing
         | Error::DeserializeQueryString(_) => make_response(StatusCode::BAD_REQUEST),
 
-        Error::WithStatus(status) => make_response(status),
+        Error::Status(status) => make_response(status),
 
         Error::LengthRequired => make_response(StatusCode::LENGTH_REQUIRED),
         Error::PayloadTooLarge => make_response(StatusCode::PAYLOAD_TOO_LARGE),
 
-        Error::MissingExtension { .. } | Error::SerializeResponseBody(_) => {
-            make_response(StatusCode::INTERNAL_SERVER_ERROR)
-        }
+        Error::MissingExtension { .. }
+        | Error::SerializeResponseBody(_)
+        | Error::UnknownUrlParam(_) => make_response(StatusCode::INTERNAL_SERVER_ERROR),
 
         Error::Service(err) => match err.downcast::<Error>() {
             Ok(err) => Err(*err),

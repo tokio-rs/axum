@@ -6,8 +6,10 @@ use http_body::Body as _;
 use pin_project::pin_project;
 use serde::de::DeserializeOwned;
 use std::{
+    collections::HashMap,
     future::Future,
     pin::Pin,
+    str::FromStr,
     task::{Context, Poll},
 };
 
@@ -179,5 +181,33 @@ impl<const N: u64> FromRequest for BytesMaxLength<N> {
 
             Ok(BytesMaxLength(bytes))
         })
+    }
+}
+
+pub struct UrlParams(HashMap<String, String>);
+
+impl UrlParams {
+    pub fn get(&self, key: &str) -> Result<&str, Error> {
+        if let Some(value) = self.0.get(key) {
+            Ok(value)
+        } else {
+            Err(Error::UnknownUrlParam(key.to_string()))
+        }
+    }
+}
+
+impl FromRequest for UrlParams {
+    type Future = future::Ready<Result<Self, Error>>;
+
+    fn from_request(req: &mut Request<Body>) -> Self::Future {
+        if let Some(params) = req
+            .extensions_mut()
+            .get_mut::<Option<crate::routing::UrlParams>>()
+        {
+            let params = params.take().expect("params already taken").0;
+            future::ok(Self(params.into_iter().collect()))
+        } else {
+            panic!("no url params found for matched route. This is a bug in tower-web")
+        }
     }
 }

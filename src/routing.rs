@@ -84,13 +84,15 @@ impl<R> RouteAt<R> {
     }
 
     fn add_route_service<S>(self, service: S, method: Method) -> RouteBuilder<Route<S, R>> {
+        assert!(
+            self.route_spec.starts_with(b"/"),
+            "route spec must start with a slash (`/`)"
+        );
+
         let new_app = App {
             router: Route {
                 service,
-                route_spec: RouteSpec {
-                    method,
-                    spec: self.route_spec.clone(),
-                },
+                route_spec: RouteSpec::new(method, self.route_spec.clone()),
                 fallback: self.app.router,
                 handler_ready: false,
                 fallback_ready: false,
@@ -196,9 +198,47 @@ struct RouteSpec {
 }
 
 impl RouteSpec {
-    fn matches<B>(&self, req: &Request<B>) -> bool {
-        // TODO(david): support dynamic placeholders like `/users/:id`
-        req.method() == self.method && req.uri().path().as_bytes() == self.spec
+    fn new(method: Method, spec: impl Into<Bytes>) -> Self {
+        Self {
+            method,
+            spec: spec.into(),
+        }
+    }
+}
+
+impl RouteSpec {
+    fn matches<B>(&self, req: &Request<B>) -> Option<Vec<(String, String)>> {
+        if req.method() != self.method {
+            return None;
+        }
+
+        let path = req.uri().path().as_bytes();
+        let path_parts = path.split(|b| *b == b'/');
+
+        let spec_parts = self.spec.split(|b| *b == b'/');
+
+        if spec_parts.clone().count() != path_parts.clone().count() {
+            return None;
+        }
+
+        let mut params = Vec::new();
+
+        spec_parts
+            .zip(path_parts)
+            .all(|(spec, path)| {
+                if let Some(key) = spec.strip_prefix(b":") {
+                    let key = std::str::from_utf8(key).unwrap().to_string();
+                    if let Ok(value) = std::str::from_utf8(path) {
+                        params.push((key, value.to_string()));
+                        true
+                    } else {
+                        false
+                    }
+                } else {
+                    spec == path
+                }
+            })
+            .then(|| params)
     }
 }
 
@@ -236,14 +276,16 @@ where
         }
     }
 
-    fn call(&mut self, req: Request<Body>) -> Self::Future {
-        if self.route_spec.matches(&req) {
+    fn call(&mut self, mut req: Request<Body>) -> Self::Future {
+        if let Some(params) = self.route_spec.matches(&req) {
             assert!(
                 self.handler_ready,
                 "handler not ready. Did you forget to call `poll_ready`?"
             );
 
             self.handler_ready = false;
+
+            req.extensions_mut().insert(Some(UrlParams(params)));
 
             future::Either::Left(BoxResponseBody(self.service.call(req)))
         } else {
@@ -259,6 +301,8 @@ where
         }
     }
 }
+
+pub(crate) struct UrlParams(pub(crate) Vec<(String, String)>);
 
 #[pin_project]
 pub struct BoxResponseBody<F>(#[pin] F);
@@ -280,5 +324,86 @@ where
             BoxBody::new(body)
         });
         Poll::Ready(Ok(response))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[allow(unused_imports)]
+    use super::*;
+
+    #[test]
+    fn test_routing() {
+        assert_match((Method::GET, "/"), (Method::GET, "/"));
+        refute_match((Method::GET, "/"), (Method::POST, "/"));
+        refute_match((Method::POST, "/"), (Method::GET, "/"));
+
+        assert_match((Method::GET, "/foo"), (Method::GET, "/foo"));
+        assert_match((Method::GET, "/foo/"), (Method::GET, "/foo/"));
+        refute_match((Method::GET, "/foo"), (Method::GET, "/foo/"));
+        refute_match((Method::GET, "/foo/"), (Method::GET, "/foo"));
+
+        assert_match((Method::GET, "/foo/bar"), (Method::GET, "/foo/bar"));
+        refute_match((Method::GET, "/foo/bar/"), (Method::GET, "/foo/bar"));
+        refute_match((Method::GET, "/foo/bar"), (Method::GET, "/foo/bar/"));
+
+        assert_match((Method::GET, "/:value"), (Method::GET, "/foo"));
+        assert_match((Method::GET, "/users/:id"), (Method::GET, "/users/1"));
+        assert_match(
+            (Method::GET, "/users/:id/action"),
+            (Method::GET, "/users/42/action"),
+        );
+        refute_match(
+            (Method::GET, "/users/:id/action"),
+            (Method::GET, "/users/42"),
+        );
+        refute_match(
+            (Method::GET, "/users/:id"),
+            (Method::GET, "/users/42/action"),
+        );
+    }
+
+    fn assert_match(route_spec: (Method, &'static str), req_spec: (Method, &'static str)) {
+        let route = RouteSpec::new(route_spec.0.clone(), route_spec.1);
+        let req = Request::builder()
+            .method(req_spec.0.clone())
+            .uri(req_spec.1)
+            .body(())
+            .unwrap();
+
+        assert!(
+            route.matches(&req).is_some(),
+            "`{} {}` doesn't match `{} {}`",
+            req.method(),
+            req.uri().path(),
+            route.method,
+            std::str::from_utf8(&route.spec).unwrap(),
+        );
+    }
+
+    fn refute_match(route_spec: (Method, &'static str), req_spec: (Method, &'static str)) {
+        let route = RouteSpec::new(route_spec.0.clone(), route_spec.1);
+        let req = Request::builder()
+            .method(req_spec.0.clone())
+            .uri(req_spec.1)
+            .body(())
+            .unwrap();
+
+        assert!(
+            route.matches(&req).is_none(),
+            "`{} {}` shouldn't match `{} {}`",
+            req.method(),
+            req.uri().path(),
+            route.method,
+            std::str::from_utf8(&route.spec).unwrap(),
+        );
+    }
+
+    fn route(method: Method, uri: &'static str) -> RouteSpec {
+        RouteSpec::new(method, uri)
+    }
+
+    fn req(method: Method, uri: &str) -> Request<()> {
+        Request::builder().uri(uri).method(method).body(()).unwrap()
     }
 }
