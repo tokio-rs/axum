@@ -32,6 +32,9 @@ with. Will probably change the name to something else.
 
 # Example usage
 
+NOTE: Error handling has changed quite a bit and these examples are slightly out
+of date. See the examples for working examples.
+
 Defining a single route looks like this:
 
 ```rust
