@@ -125,6 +125,8 @@ pub trait FromRequest: Sized {
 }
 ```
 
+This "extractor" pattern is inspired by Bevy's ECS.
+
 You can also return different response types:
 
 ```rust
