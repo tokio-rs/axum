@@ -26,7 +26,7 @@ impl<D, E> BoxBody<D, E> {
     }
 }
 
-// TODO(david): upstream this to http-body?
+// TODO: upstream this to http-body?
 impl<D, E> Default for BoxBody<D, E>
 where
     D: bytes::Buf + 'static,

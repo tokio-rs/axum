@@ -1,6 +1,6 @@
 use self::{
     body::Body,
-    routing::{EmptyRouter, RouteAt},
+    routing::{AlwaysNotFound, RouteAt},
 };
 use bytes::Bytes;
 use futures_util::ready;
@@ -26,15 +26,15 @@ mod tests;
 
 pub use self::error::Error;
 
-pub fn app() -> App<EmptyRouter> {
+pub fn app() -> App<AlwaysNotFound> {
     App {
-        router: EmptyRouter(()),
+        service_tree: AlwaysNotFound(()),
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct App<R> {
-    router: R,
+    service_tree: R,
 }
 
 impl<R> App<R> {
@@ -79,7 +79,7 @@ where
 
     #[inline]
     fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        if let Err(err) = ready!(self.app.router.poll_ready(cx)).map_err(Into::into) {
+        if let Err(err) = ready!(self.app.service_tree.poll_ready(cx)).map_err(Into::into) {
             self.poll_ready_error = Some(err);
         }
 
@@ -97,7 +97,7 @@ where
                 }
             }
         }
-        HandleErrorFuture(Kind::Future(self.app.router.call(req)))
+        HandleErrorFuture(Kind::Future(self.app.service_tree.call(req)))
     }
 }
 

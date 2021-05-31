@@ -250,7 +250,35 @@ async fn extracting_url_params() {
     assert_eq!(res.status(), StatusCode::OK);
 }
 
-// TODO(david): lots of routes and boxing, shouldn't take forever to compile
+#[tokio::test]
+async fn boxing() {
+    let app = app()
+        .at("/")
+        .get(|_: Request<Body>| async { Ok("hi from GET") })
+        .boxed()
+        .post(|_: Request<Body>| async { Ok("hi from POST") })
+        .into_service();
+
+    let addr = run_in_background(app).await;
+
+    let client = reqwest::Client::new();
+
+    let res = client
+        .get(format!("http://{}", addr))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.text().await.unwrap(), "hi from GET");
+
+    let res = client
+        .post(format!("http://{}", addr))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.text().await.unwrap(), "hi from POST");
+}
 
 /// Run a `tower::Service` in the background and get a URI for it.
 pub async fn run_in_background<S, ResBody>(svc: S) -> SocketAddr

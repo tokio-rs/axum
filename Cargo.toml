@@ -16,7 +16,7 @@ serde = "1.0"
 serde_json = "1.0"
 serde_urlencoded = "0.7"
 thiserror = "1.0"
-tower = { version = "0.4", features = ["util"] }
+tower = { version = "0.4", features = ["util", "buffer"] }
 
 [dev-dependencies]
 hyper = { version = "0.14", features = ["full"] }

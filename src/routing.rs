@@ -10,16 +10,21 @@ use http::{Method, Request, Response, StatusCode};
 use pin_project::pin_project;
 use std::{
     convert::Infallible,
+    fmt,
     future::Future,
     pin::Pin,
     task::{Context, Poll},
 };
-use tower::{BoxError, Service};
+use tower::{
+    buffer::{Buffer, BufferLayer},
+    util::BoxService,
+    BoxError, Service, ServiceBuilder,
+};
 
 #[derive(Clone, Copy)]
-pub struct EmptyRouter(pub(crate) ());
+pub struct AlwaysNotFound(pub(crate) ());
 
-impl<R> Service<R> for EmptyRouter {
+impl<R> Service<R> for AlwaysNotFound {
     type Response = Response<Body>;
     type Error = Infallible;
     type Future = future::Ready<Result<Self::Response, Self::Error>>;
@@ -42,14 +47,14 @@ pub struct RouteAt<R> {
 }
 
 impl<R> RouteAt<R> {
-    pub fn get<F, B, T>(self, handler_fn: F) -> RouteBuilder<Route<HandlerSvc<F, B, T>, R>>
+    pub fn get<F, B, T>(self, handler_fn: F) -> RouteBuilder<Or<HandlerSvc<F, B, T>, R>>
     where
         F: Handler<B, T>,
     {
         self.add_route(handler_fn, Method::GET)
     }
 
-    pub fn get_service<S, B>(self, service: S) -> RouteBuilder<Route<S, R>>
+    pub fn get_service<S, B>(self, service: S) -> RouteBuilder<Or<S, R>>
     where
         S: Service<Request<Body>, Response = Response<B>> + Clone,
         S::Error: Into<BoxError>,
@@ -57,14 +62,14 @@ impl<R> RouteAt<R> {
         self.add_route_service(service, Method::GET)
     }
 
-    pub fn post<F, B, T>(self, handler_fn: F) -> RouteBuilder<Route<HandlerSvc<F, B, T>, R>>
+    pub fn post<F, B, T>(self, handler_fn: F) -> RouteBuilder<Or<HandlerSvc<F, B, T>, R>>
     where
         F: Handler<B, T>,
     {
         self.add_route(handler_fn, Method::POST)
     }
 
-    pub fn post_service<S, B>(self, service: S) -> RouteBuilder<Route<S, R>>
+    pub fn post_service<S, B>(self, service: S) -> RouteBuilder<Or<S, R>>
     where
         S: Service<Request<Body>, Response = Response<B>> + Clone,
         S::Error: Into<BoxError>,
@@ -76,24 +81,24 @@ impl<R> RouteAt<R> {
         self,
         handler: H,
         method: Method,
-    ) -> RouteBuilder<Route<HandlerSvc<H, B, T>, R>>
+    ) -> RouteBuilder<Or<HandlerSvc<H, B, T>, R>>
     where
         H: Handler<B, T>,
     {
         self.add_route_service(HandlerSvc::new(handler), method)
     }
 
-    fn add_route_service<S>(self, service: S, method: Method) -> RouteBuilder<Route<S, R>> {
+    fn add_route_service<S>(self, service: S, method: Method) -> RouteBuilder<Or<S, R>> {
         assert!(
             self.route_spec.starts_with(b"/"),
             "route spec must start with a slash (`/`)"
         );
 
         let new_app = App {
-            router: Route {
+            service_tree: Or {
                 service,
                 route_spec: RouteSpec::new(method, self.route_spec.clone()),
-                fallback: self.app.router,
+                fallback: self.app.service_tree,
                 handler_ready: false,
                 fallback_ready: false,
             },
@@ -128,14 +133,14 @@ impl<R> RouteBuilder<R> {
         self.app.at(route_spec)
     }
 
-    pub fn get<F, B, T>(self, handler_fn: F) -> RouteBuilder<Route<HandlerSvc<F, B, T>, R>>
+    pub fn get<F, B, T>(self, handler_fn: F) -> RouteBuilder<Or<HandlerSvc<F, B, T>, R>>
     where
         F: Handler<B, T>,
     {
         self.app.at_bytes(self.route_spec).get(handler_fn)
     }
 
-    pub fn get_service<S, B>(self, service: S) -> RouteBuilder<Route<S, R>>
+    pub fn get_service<S, B>(self, service: S) -> RouteBuilder<Or<S, R>>
     where
         S: Service<Request<Body>, Response = Response<B>> + Clone,
         S::Error: Into<BoxError>,
@@ -143,14 +148,14 @@ impl<R> RouteBuilder<R> {
         self.app.at_bytes(self.route_spec).get_service(service)
     }
 
-    pub fn post<F, B, T>(self, handler_fn: F) -> RouteBuilder<Route<HandlerSvc<F, B, T>, R>>
+    pub fn post<F, B, T>(self, handler_fn: F) -> RouteBuilder<Or<HandlerSvc<F, B, T>, R>>
     where
         F: Handler<B, T>,
     {
         self.app.at_bytes(self.route_spec).post(handler_fn)
     }
 
-    pub fn post_service<S, B>(self, service: S) -> RouteBuilder<Route<S, R>>
+    pub fn post_service<S, B>(self, service: S) -> RouteBuilder<Or<S, R>>
     where
         S: Service<Request<Body>, Response = Response<B>> + Clone,
         S::Error: Into<BoxError>,
@@ -164,9 +169,30 @@ impl<R> RouteBuilder<R> {
             poll_ready_error: None,
         }
     }
+
+    pub fn boxed<B>(self) -> RouteBuilder<BoxServiceTree<B>>
+    where
+        R: Service<Request<Body>, Response = Response<B>, Error = Error> + Send + 'static,
+        R::Future: Send,
+        B: Default + 'static,
+    {
+        let svc = ServiceBuilder::new()
+            .layer(BufferLayer::new(1024))
+            .layer(BoxService::layer())
+            .service(self.app.service_tree);
+
+        let app = App {
+            service_tree: BoxServiceTree { inner: svc },
+        };
+
+        RouteBuilder {
+            app,
+            route_spec: self.route_spec,
+        }
+    }
 }
 
-pub struct Route<H, F> {
+pub struct Or<H, F> {
     service: H,
     route_spec: RouteSpec,
     fallback: F,
@@ -174,7 +200,7 @@ pub struct Route<H, F> {
     fallback_ready: bool,
 }
 
-impl<H, F> Clone for Route<H, F>
+impl<H, F> Clone for Or<H, F>
 where
     H: Clone,
     F: Clone,
@@ -242,7 +268,7 @@ impl RouteSpec {
     }
 }
 
-impl<H, F, HB, FB> Service<Request<Body>> for Route<H, F>
+impl<H, F, HB, FB> Service<Request<Body>> for Or<H, F>
 where
     H: Service<Request<Body>, Response = Response<HB>>,
     H::Error: Into<Error>,
@@ -324,6 +350,66 @@ where
             BoxBody::new(body)
         });
         Poll::Ready(Ok(response))
+    }
+}
+
+pub struct BoxServiceTree<B> {
+    inner: Buffer<BoxService<Request<Body>, Response<B>, Error>, Request<Body>>,
+}
+
+impl<B> Clone for BoxServiceTree<B> {
+    fn clone(&self) -> Self {
+        Self {
+            inner: self.inner.clone(),
+        }
+    }
+}
+
+impl<B> fmt::Debug for BoxServiceTree<B> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("BoxServiceTree").finish()
+    }
+}
+
+impl<B> Service<Request<Body>> for BoxServiceTree<B>
+where
+    B: 'static,
+{
+    type Response = Response<B>;
+    type Error = Error;
+    type Future = BoxServiceTreeResponseFuture<B>;
+
+    #[inline]
+    fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        self.inner.poll_ready(cx).map_err(Error::from_service_error)
+    }
+
+    #[inline]
+    fn call(&mut self, req: Request<Body>) -> Self::Future {
+        BoxServiceTreeResponseFuture {
+            inner: self.inner.call(req),
+        }
+    }
+}
+
+#[pin_project]
+pub struct BoxServiceTreeResponseFuture<B> {
+    #[pin]
+    inner: InnerFuture<B>,
+}
+
+type InnerFuture<B> = tower::buffer::future::ResponseFuture<
+    Pin<Box<dyn Future<Output = Result<Response<B>, Error>> + Send + 'static>>,
+>;
+
+impl<B> Future for BoxServiceTreeResponseFuture<B> {
+    type Output = Result<Response<B>, Error>;
+
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        self.project()
+            .inner
+            .poll(cx)
+            .map_err(Error::from_service_error)
     }
 }
 

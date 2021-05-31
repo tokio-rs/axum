@@ -49,6 +49,16 @@ pub enum Error {
     InvalidUtf8,
 }
 
+impl Error {
+    /// Create an `Error` from a `BoxError` coming from a `Service`
+    pub(crate) fn from_service_error(error: BoxError) -> Error {
+        match error.downcast::<Error>() {
+            Ok(err) => *err,
+            Err(err) => Error::Service(err),
+        }
+    }
+}
+
 impl From<Infallible> for Error {
     fn from(err: Infallible) -> Self {
         match err {}
