@@ -1,5 +1,3 @@
-#![allow(unused_imports, dead_code)]
-
 /*
 
 Improvements to make:
@@ -13,27 +11,19 @@ Tests
 */
 
 use self::{
-    body::{Body, BoxBody},
-    extract::FromRequest,
-    handler::{Handler, HandlerSvc},
-    response::IntoResponse,
+    body::Body,
     routing::{EmptyRouter, RouteAt},
 };
-use async_trait::async_trait;
 use bytes::Bytes;
-use futures_util::{future, ready};
-use http::{header, HeaderValue, Method, Request, Response, StatusCode};
-use http_body::Body as _;
+use futures_util::ready;
+use http::Response;
 use pin_project::pin_project;
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::{
-    convert::Infallible,
     future::Future,
-    marker::PhantomData,
     pin::Pin,
     task::{Context, Poll},
 };
-use tower::{BoxError, Layer, Service, ServiceExt};
+use tower::Service;
 
 pub mod body;
 pub mod extract;
@@ -154,11 +144,15 @@ where
 mod tests {
     #![allow(warnings)]
     use super::*;
+    use crate::handler::Handler;
+    use http::{Method, Request, StatusCode};
     use hyper::Server;
+    use serde::Deserialize;
     use std::time::Duration;
     use std::{fmt, net::SocketAddr, sync::Arc};
     use tower::{
         layer::util::Identity, make::Shared, service_fn, timeout::TimeoutLayer, ServiceBuilder,
+        ServiceExt,
     };
     use tower_http::{
         add_extension::AddExtensionLayer,

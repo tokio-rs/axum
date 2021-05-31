@@ -92,6 +92,21 @@ where
     }
 }
 
+pub struct Html<T>(pub T);
+
+impl<T> IntoResponse<Body> for Html<T>
+where
+    T: Into<Bytes>,
+{
+    fn into_response(self) -> Result<Response<Body>, Error> {
+        let bytes = self.0.into();
+        let mut res = Response::new(Body::from(bytes));
+        res.headers_mut()
+            .insert(header::CONTENT_TYPE, HeaderValue::from_static("text/html"));
+        Ok(res)
+    }
+}
+
 #[derive(Debug, Copy, Clone)]
 pub struct Empty;
 

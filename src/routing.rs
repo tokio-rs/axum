@@ -14,7 +14,7 @@ use std::{
     pin::Pin,
     task::{Context, Poll},
 };
-use tower::{BoxError, Layer, Service};
+use tower::{BoxError, Service};
 
 #[derive(Clone, Copy)]
 pub struct EmptyRouter(pub(crate) ());
@@ -397,13 +397,5 @@ mod tests {
             route.method,
             std::str::from_utf8(&route.spec).unwrap(),
         );
-    }
-
-    fn route(method: Method, uri: &'static str) -> RouteSpec {
-        RouteSpec::new(method, uri)
-    }
-
-    fn req(method: Method, uri: &str) -> Request<()> {
-        Request::builder().uri(uri).method(method).body(()).unwrap()
     }
 }

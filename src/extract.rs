@@ -2,7 +2,6 @@ use crate::{body::Body, Error};
 use bytes::Bytes;
 use futures_util::{future, ready};
 use http::Request;
-use http_body::Body as _;
 use pin_project::pin_project;
 use serde::de::DeserializeOwned;
 use std::{
