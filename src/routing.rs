@@ -381,7 +381,7 @@ where
 
     #[inline]
     fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        self.inner.poll_ready(cx).map_err(Error::from_service_error)
+        self.inner.poll_ready(cx).map_err(Error::from)
     }
 
     #[inline]
@@ -409,7 +409,7 @@ impl<B> Future for BoxServiceTreeResponseFuture<B> {
         self.project()
             .inner
             .poll(cx)
-            .map_err(Error::from_service_error)
+            .map_err(Error::from)
     }
 }
 

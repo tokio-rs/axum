@@ -24,8 +24,8 @@ pub enum Error {
     #[error("failed generating the response body")]
     ResponseBody(#[source] BoxError),
 
-    #[error("handler service returned an error")]
-    Service(#[source] BoxError),
+    #[error("some dynamic error happened")]
+    Dynamic(#[source] BoxError),
 
     #[error("request extension of type `{type_name}` was not set")]
     MissingExtension { type_name: &'static str },
@@ -49,12 +49,11 @@ pub enum Error {
     InvalidUtf8,
 }
 
-impl Error {
-    /// Create an `Error` from a `BoxError` coming from a `Service`
-    pub(crate) fn from_service_error(error: BoxError) -> Error {
-        match error.downcast::<Error>() {
+impl From<BoxError> for Error {
+    fn from(err: BoxError) -> Self {
+        match err.downcast::<Error>() {
             Ok(err) => *err,
-            Err(err) => Error::Service(err),
+            Err(err) => Error::Dynamic(err),
         }
     }
 }
@@ -94,9 +93,9 @@ where
         | Error::SerializeResponseBody(_)
         | Error::UnknownUrlParam(_) => make_response(StatusCode::INTERNAL_SERVER_ERROR),
 
-        Error::Service(err) => match err.downcast::<Error>() {
+        Error::Dynamic(err) => match err.downcast::<Error>() {
             Ok(err) => Err(*err),
-            Err(err) => Err(Error::Service(err)),
+            Err(err) => Err(Error::Dynamic(err)),
         },
 
         err @ Error::ConsumeRequestBody(_) => Err(err),

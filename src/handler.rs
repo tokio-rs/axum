@@ -113,7 +113,7 @@ where
         self.svc
             .oneshot(req)
             .await
-            .map_err(|err| Error::Service(err.into()))
+            .map_err(|err| Error::Dynamic(err.into()))
     }
 }
 
