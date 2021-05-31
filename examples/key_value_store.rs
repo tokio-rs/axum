@@ -1,9 +1,6 @@
-#![allow(warnings)]
-
 use bytes::Bytes;
-use http::{Request, Response, StatusCode};
+use http::{Request, StatusCode};
 use hyper::Server;
-use serde::Deserialize;
 use std::{
     collections::HashMap,
     net::SocketAddr,
@@ -14,12 +11,7 @@ use tower::{make::Shared, ServiceBuilder};
 use tower_http::{
     add_extension::AddExtensionLayer, compression::CompressionLayer, trace::TraceLayer,
 };
-use tower_web::{
-    body::Body,
-    extract,
-    response::{self, IntoResponse},
-    Error,
-};
+use tower_web::{body::Body, extract};
 
 #[tokio::main]
 async fn main() {
@@ -59,7 +51,11 @@ async fn get(
     _req: Request<Body>,
     params: extract::UrlParams<(String,)>,
     state: extract::Extension<SharedState>,
-) -> Result<Bytes, NotFound> {
+    // Anything that implements `IntoResponse` can be used a response
+    //
+    // Handlers cannot return errors. Everything will be converted
+    // into a response. `BoxError` becomes `500 Internal server error`
+) -> Result<Bytes, StatusCode> {
     let state = state.into_inner();
     let db = &state.lock().unwrap().db;
 
@@ -68,7 +64,7 @@ async fn get(
     if let Some(value) = db.get(&key) {
         Ok(value.clone())
     } else {
-        Err(NotFound)
+        Err(StatusCode::NOT_FOUND)
     }
 }
 
@@ -77,6 +73,8 @@ async fn set(
     params: extract::UrlParams<(String,)>,
     value: extract::BytesMaxLength<{ 1024 * 5_000 }>, // ~5mb
     state: extract::Extension<SharedState>,
+    // `()` also implements `IntoResponse` so we can use that to return
+    // an empty response
 ) {
     let state = state.into_inner();
     let db = &mut state.lock().unwrap().db;
@@ -84,16 +82,5 @@ async fn set(
     let key = params.into_inner();
     let value = value.into_inner();
 
-    db.insert(key.to_string(), value);
-}
-
-struct NotFound;
-
-impl IntoResponse<Body> for NotFound {
-    fn into_response(self) -> Response<Body> {
-        Response::builder()
-            .status(StatusCode::NOT_FOUND)
-            .body(Body::empty())
-            .unwrap()
-    }
+    db.insert(key, value);
 }

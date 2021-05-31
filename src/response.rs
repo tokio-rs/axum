@@ -1,6 +1,6 @@
 use crate::Body;
 use bytes::Bytes;
-use http::{header, HeaderValue, Response, StatusCode};
+use http::{HeaderMap, HeaderValue, Response, StatusCode, header};
 use serde::Serialize;
 use std::convert::Infallible;
 use tower::{util::Either, BoxError};
@@ -176,9 +176,45 @@ impl<B> IntoResponse<B> for BoxIntoResponse<B> {
 
 impl IntoResponse<Body> for BoxError {
     fn into_response(self) -> Response<Body> {
+        // TODO(david): test for know error types like std::io::Error
+        // or common errors types from tower and map those more appropriately
+
         Response::builder()
             .status(StatusCode::INTERNAL_SERVER_ERROR)
             .body(Body::from(self.to_string()))
             .unwrap()
+    }
+}
+
+impl<B> IntoResponse<B> for StatusCode
+where
+    B: Default,
+{
+    fn into_response(self) -> Response<B> {
+        Response::builder().status(self).body(B::default()).unwrap()
+    }
+}
+
+impl<T> IntoResponse<Body> for (StatusCode, T)
+where
+    T: Into<Body>,
+{
+    fn into_response(self) -> Response<Body> {
+        Response::builder()
+            .status(self.0)
+            .body(self.1.into())
+            .unwrap()
+    }
+}
+
+impl<T> IntoResponse<Body> for (StatusCode, HeaderMap, T)
+where
+    T: Into<Body>,
+{
+    fn into_response(self) -> Response<Body> {
+        let mut res = Response::new(self.2.into());
+        *res.status_mut() = self.0;
+        *res.headers_mut() = self.1;
+        res
     }
 }

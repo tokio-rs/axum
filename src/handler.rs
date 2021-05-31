@@ -1,4 +1,4 @@
-use crate::{body::Body, error::Error, extract::FromRequest, response::IntoResponse};
+use crate::{body::Body, extract::FromRequest, response::IntoResponse};
 use async_trait::async_trait;
 use futures_util::future;
 use http::{Request, Response};
@@ -8,7 +8,7 @@ use std::{
     marker::PhantomData,
     task::{Context, Poll},
 };
-use tower::{BoxError, Layer, Service, ServiceExt};
+use tower::{Layer, Service, ServiceExt};
 
 mod sealed {
     pub trait HiddentTrait {}
@@ -30,6 +30,8 @@ pub trait Handler<B, In>: Sized {
     fn layer<L>(self, layer: L) -> Layered<L::Service, In>
     where
         L: Layer<HandlerSvc<Self, B, In>>,
+        <L as Layer<HandlerSvc<Self, B, In>>>::Service: Service<Request<Body>>,
+        <<L as Layer<HandlerSvc<Self, B, In>>>::Service as Service<Request<Body>>>::Error: IntoResponse<B>,
     {
         Layered::new(layer.layer(HandlerSvc::new(self)))
     }

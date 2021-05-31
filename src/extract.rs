@@ -1,7 +1,6 @@
 use crate::{
     body::Body,
     response::{BoxIntoResponse, IntoResponse},
-    Error,
 };
 use async_trait::async_trait;
 use bytes::Bytes;
@@ -315,21 +314,15 @@ define_rejection! {
 pub struct UrlParamsMap(HashMap<String, String>);
 
 impl UrlParamsMap {
-    pub fn get(&self, key: &str) -> Result<&str, Error> {
-        if let Some(value) = self.0.get(key) {
-            Ok(value)
-        } else {
-            Err(Error::UnknownUrlParam(key.to_string()))
-        }
+    pub fn get(&self, key: &str) -> Option<&str> {
+        self.0.get(key).map(|s| &**s)
     }
 
-    pub fn get_typed<T>(&self, key: &str) -> Result<T, Error>
+    pub fn get_typed<T>(&self, key: &str) -> Option<T>
     where
         T: FromStr,
     {
-        self.get(key)?.parse().map_err(|_| Error::InvalidUrlParam {
-            type_name: std::any::type_name::<T>(),
-        })
+        self.get(key)?.parse().ok()
     }
 }
 

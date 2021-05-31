@@ -7,6 +7,7 @@ use futures_util::ready;
 use http::Response;
 use pin_project::pin_project;
 use std::{
+    convert::Infallible,
     future::Future,
     pin::Pin,
     task::{Context, Poll},
@@ -19,12 +20,8 @@ pub mod handler;
 pub mod response;
 pub mod routing;
 
-mod error;
-
 #[cfg(test)]
 mod tests;
-
-pub use self::error::Error;
 
 pub fn app() -> App<AlwaysNotFound> {
     App {
@@ -52,7 +49,6 @@ impl<R> App<R> {
 
 pub struct IntoService<R> {
     app: App<R>,
-    poll_ready_error: Option<Error>,
 }
 
 impl<R> Clone for IntoService<R>
@@ -62,71 +58,67 @@ where
     fn clone(&self) -> Self {
         Self {
             app: self.app.clone(),
-            poll_ready_error: None,
         }
     }
 }
 
 impl<R, B, T> Service<T> for IntoService<R>
 where
-    R: Service<T, Response = Response<B>>,
-    R::Error: Into<Error>,
+    R: Service<T, Response = Response<B>, Error = Infallible>,
     B: Default,
 {
     type Response = Response<B>;
-    type Error = Error;
-    type Future = HandleErrorFuture<R::Future, B>;
+    type Error = Infallible;
+    type Future = HandleErrorFuture<R::Future>;
 
-    #[inline]
     fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        if let Err(err) = ready!(self.app.service_tree.poll_ready(cx)).map_err(Into::into) {
-            self.poll_ready_error = Some(err);
+        match ready!(self.app.service_tree.poll_ready(cx)) {
+            Ok(_) => Poll::Ready(Ok(())),
+            Err(err) => match err {},
         }
-
-        Poll::Ready(Ok(()))
     }
 
     fn call(&mut self, req: T) -> Self::Future {
-        if let Some(poll_ready_error) = self.poll_ready_error.take() {
-            match error::handle_error::<B>(poll_ready_error) {
-                Ok(res) => {
-                    return HandleErrorFuture(Kind::Response(Some(res)));
-                }
-                Err(err) => {
-                    return HandleErrorFuture(Kind::Error(Some(err)));
-                }
-            }
-        }
-        HandleErrorFuture(Kind::Future(self.app.service_tree.call(req)))
+        HandleErrorFuture(self.app.service_tree.call(req))
     }
 }
 
 #[pin_project]
-pub struct HandleErrorFuture<F, B>(#[pin] Kind<F, B>);
+pub struct HandleErrorFuture<F>(#[pin] F);
 
-#[pin_project(project = KindProj)]
-enum Kind<F, B> {
-    Response(Option<Response<B>>),
-    Error(Option<Error>),
-    Future(#[pin] F),
-}
-
-impl<F, B, E> Future for HandleErrorFuture<F, B>
+impl<F, B> Future for HandleErrorFuture<F>
 where
-    F: Future<Output = Result<Response<B>, E>>,
-    E: Into<Error>,
+    F: Future<Output = Result<Response<B>, Infallible>>,
     B: Default,
 {
-    type Output = Result<Response<B>, Error>;
+    type Output = Result<Response<B>, Infallible>;
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        match self.project().0.project() {
-            KindProj::Response(res) => Poll::Ready(Ok(res.take().unwrap())),
-            KindProj::Error(err) => Poll::Ready(Err(err.take().unwrap())),
-            KindProj::Future(fut) => match ready!(fut.poll(cx)) {
-                Ok(res) => Poll::Ready(Ok(res)),
-                Err(err) => Poll::Ready(error::handle_error(err.into())),
-            },
+        self.project().0.poll(cx)
+    }
+}
+
+pub(crate) trait ResultExt<T> {
+    fn unwrap_infallible(self) -> T;
+}
+
+impl<T> ResultExt<T> for Result<T, Infallible> {
+    fn unwrap_infallible(self) -> T {
+        match self {
+            Ok(value) => value,
+            Err(err) => match err {},
         }
     }
 }
+
+// work around for `BoxError` not implementing `std::error::Error`
+//
+// This is currently required since tower-http's Compression middleware's body type's
+// error only implements error when the inner error type does:
+// https://github.com/tower-rs/tower-http/blob/master/tower-http/src/lib.rs#L310
+//
+// Fixing that is a breaking change to tower-http so we should wait a bit, but should
+// totally fix it at some point.
+#[derive(Debug, thiserror::Error)]
+#[error("{0}")]
+pub struct BoxStdError(#[source] tower::BoxError);

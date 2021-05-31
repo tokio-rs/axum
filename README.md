@@ -2,7 +2,7 @@
 
 This is *not* https://github.com/carllerche/tower-web even though the name is
 the same. Its just a prototype of a minimal HTTP framework I've been toying
-with.
+with. Will probably change the name to something else.
 
 # What is this?
 

@@ -1,8 +1,7 @@
 use crate::{
     body::{Body, BoxBody},
-    error::Error,
     handler::{Handler, HandlerSvc},
-    App, IntoService,
+    App, IntoService, ResultExt,
 };
 use bytes::Bytes;
 use futures_util::{future, ready};
@@ -164,17 +163,18 @@ impl<R> RouteBuilder<R> {
     }
 
     pub fn into_service(self) -> IntoService<R> {
-        IntoService {
-            app: self.app,
-            poll_ready_error: None,
-        }
+        IntoService { app: self.app }
     }
+
+    // TODO(david): Add `layer` method here that applies a `tower::Layer` inside the service tree
+    // that way we get to map errors
 
     pub fn boxed<B>(self) -> RouteBuilder<BoxServiceTree<B>>
     where
-        R: Service<Request<Body>, Response = Response<B>, Error = Error> + Send + 'static,
+        R: Service<Request<Body>, Response = Response<B>, Error = Infallible> + Send + 'static,
         R::Future: Send,
-        B: Default + 'static,
+        // TODO(david): do we still need default here
+        B: Default + From<String> + 'static,
     {
         let svc = ServiceBuilder::new()
             .layer(BufferLayer::new(1024))
@@ -182,7 +182,10 @@ impl<R> RouteBuilder<R> {
             .service(self.app.service_tree);
 
         let app = App {
-            service_tree: BoxServiceTree { inner: svc },
+            service_tree: BoxServiceTree {
+                inner: svc,
+                poll_ready_error: None,
+            },
         };
 
         RouteBuilder {
@@ -270,29 +273,27 @@ impl RouteSpec {
 
 impl<H, F, HB, FB> Service<Request<Body>> for Or<H, F>
 where
-    H: Service<Request<Body>, Response = Response<HB>>,
-    H::Error: Into<Error>,
+    H: Service<Request<Body>, Response = Response<HB>, Error = Infallible>,
     HB: http_body::Body + Send + Sync + 'static,
     HB::Error: Into<BoxError>,
 
-    F: Service<Request<Body>, Response = Response<FB>>,
-    F::Error: Into<Error>,
+    F: Service<Request<Body>, Response = Response<FB>, Error = Infallible>,
     FB: http_body::Body<Data = HB::Data> + Send + Sync + 'static,
     FB::Error: Into<BoxError>,
 {
-    type Response = Response<BoxBody<HB::Data, Error>>;
-    type Error = Error;
+    type Response = Response<BoxBody<HB::Data, BoxError>>;
+    type Error = Infallible;
     type Future = future::Either<BoxResponseBody<H::Future>, BoxResponseBody<F::Future>>;
 
     fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         loop {
             if !self.handler_ready {
-                ready!(self.service.poll_ready(cx)).map_err(Into::into)?;
+                ready!(self.service.poll_ready(cx)).unwrap_infallible();
                 self.handler_ready = true;
             }
 
             if !self.fallback_ready {
-                ready!(self.fallback.poll_ready(cx)).map_err(Into::into)?;
+                ready!(self.fallback.poll_ready(cx)).unwrap_infallible();
                 self.fallback_ready = true;
             }
 
@@ -333,20 +334,18 @@ pub(crate) struct UrlParams(pub(crate) Vec<(String, String)>);
 #[pin_project]
 pub struct BoxResponseBody<F>(#[pin] F);
 
-impl<F, B, E> Future for BoxResponseBody<F>
+impl<F, B> Future for BoxResponseBody<F>
 where
-    F: Future<Output = Result<Response<B>, E>>,
-    E: Into<Error>,
+    F: Future<Output = Result<Response<B>, Infallible>>,
     B: http_body::Body + Send + Sync + 'static,
     B::Error: Into<BoxError>,
 {
-    type Output = Result<Response<BoxBody<B::Data, Error>>, Error>;
+    type Output = Result<Response<BoxBody<B::Data, BoxError>>, Infallible>;
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        let response: Response<B> = ready!(self.project().0.poll(cx)).map_err(Into::into)?;
+        let response: Response<B> = ready!(self.project().0.poll(cx)).unwrap_infallible();
         let response = response.map(|body| {
-            // TODO(david): attempt to downcast this into `Error`
-            let body = body.map_err(|err| Error::ResponseBody(err.into()));
+            let body = body.map_err(Into::into);
             BoxBody::new(body)
         });
         Poll::Ready(Ok(response))
@@ -354,13 +353,15 @@ where
 }
 
 pub struct BoxServiceTree<B> {
-    inner: Buffer<BoxService<Request<Body>, Response<B>, Error>, Request<Body>>,
+    inner: Buffer<BoxService<Request<Body>, Response<B>, Infallible>, Request<Body>>,
+    poll_ready_error: Option<BoxError>,
 }
 
 impl<B> Clone for BoxServiceTree<B> {
     fn clone(&self) -> Self {
         Self {
             inner: self.inner.clone(),
+            poll_ready_error: None,
         }
     }
 }
@@ -373,21 +374,36 @@ impl<B> fmt::Debug for BoxServiceTree<B> {
 
 impl<B> Service<Request<Body>> for BoxServiceTree<B>
 where
-    B: 'static,
+    B: From<String> + 'static,
 {
     type Response = Response<B>;
-    type Error = Error;
+    type Error = Infallible;
     type Future = BoxServiceTreeResponseFuture<B>;
 
     #[inline]
     fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        self.inner.poll_ready(cx).map_err(Error::from)
+        // TODO(david): downcast this into one of the cases in `tower::buffer::error`
+        // and convert the error into a response. `ServiceError` should never be able to happen
+        // since all inner services use `Infallible` as the error type.
+        match ready!(self.inner.poll_ready(cx)) {
+            Ok(_) => Poll::Ready(Ok(())),
+            Err(err) => {
+                self.poll_ready_error = Some(err);
+                Poll::Ready(Ok(()))
+            }
+        }
     }
 
     #[inline]
     fn call(&mut self, req: Request<Body>) -> Self::Future {
+        if let Some(err) = self.poll_ready_error.take() {
+            return BoxServiceTreeResponseFuture {
+                kind: Kind::Response(Some(handle_buffer_error(err))),
+            };
+        }
+
         BoxServiceTreeResponseFuture {
-            inner: self.inner.call(req),
+            kind: Kind::Future(self.inner.call(req)),
         }
     }
 }
@@ -395,22 +411,69 @@ where
 #[pin_project]
 pub struct BoxServiceTreeResponseFuture<B> {
     #[pin]
-    inner: InnerFuture<B>,
+    kind: Kind<B>,
+}
+
+#[pin_project(project = KindProj)]
+enum Kind<B> {
+    Response(Option<Response<B>>),
+    Future(#[pin] InnerFuture<B>),
 }
 
 type InnerFuture<B> = tower::buffer::future::ResponseFuture<
-    Pin<Box<dyn Future<Output = Result<Response<B>, Error>> + Send + 'static>>,
+    Pin<Box<dyn Future<Output = Result<Response<B>, Infallible>> + Send + 'static>>,
 >;
 
-impl<B> Future for BoxServiceTreeResponseFuture<B> {
-    type Output = Result<Response<B>, Error>;
+impl<B> Future for BoxServiceTreeResponseFuture<B>
+where
+    B: From<String>,
+{
+    type Output = Result<Response<B>, Infallible>;
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        self.project()
-            .inner
-            .poll(cx)
-            .map_err(Error::from)
+        match self.project().kind.project() {
+            KindProj::Response(res) => Poll::Ready(Ok(res.take().unwrap())),
+            KindProj::Future(future) => match ready!(future.poll(cx)) {
+                Ok(res) => Poll::Ready(Ok(res)),
+                Err(err) => Poll::Ready(Ok(handle_buffer_error(err))),
+            },
+        }
     }
+}
+
+fn handle_buffer_error<B>(error: BoxError) -> Response<B>
+where
+    B: From<String>,
+{
+    use tower::buffer::error::{Closed, ServiceError};
+
+    let error = match error.downcast::<Closed>() {
+        Ok(closed) => {
+            return Response::builder()
+                .status(StatusCode::INTERNAL_SERVER_ERROR)
+                .body(B::from(closed.to_string()))
+                .unwrap();
+        }
+        Err(e) => e,
+    };
+
+    let error = match error.downcast::<ServiceError>() {
+        Ok(service_error) => {
+            return Response::builder()
+                .status(StatusCode::INTERNAL_SERVER_ERROR)
+                .body(B::from(format!("Service error: {}. This is a bug in tower-web. All inner services should be infallible. Please file an issue", service_error)))
+                .unwrap();
+        }
+        Err(e) => e,
+    };
+
+    Response::builder()
+        .status(StatusCode::INTERNAL_SERVER_ERROR)
+        .body(B::from(format!(
+            "Uncountered an unknown error: {}. This should never happen. Please file an issue",
+            error
+        )))
+        .unwrap()
 }
 
 #[cfg(test)]

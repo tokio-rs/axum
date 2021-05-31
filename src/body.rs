@@ -1,4 +1,5 @@
 use bytes::Buf;
+use futures_util::ready;
 use http_body::{Body as _, Empty};
 use std::{
     fmt,
@@ -7,6 +8,8 @@ use std::{
 };
 
 pub use hyper::body::Body;
+
+use crate::BoxStdError;
 
 /// A boxed [`Body`] trait object.
 pub struct BoxBody<D, E> {
@@ -42,25 +45,34 @@ impl<D, E> fmt::Debug for BoxBody<D, E> {
     }
 }
 
+// when we've gotten rid of `BoxStdError` then we can remove this
 impl<D, E> http_body::Body for BoxBody<D, E>
 where
     D: Buf,
+    E: Into<tower::BoxError>,
 {
     type Data = D;
-    type Error = E;
+    type Error = BoxStdError;
 
     fn poll_data(
         mut self: Pin<&mut Self>,
         cx: &mut Context<'_>,
     ) -> Poll<Option<Result<Self::Data, Self::Error>>> {
-        self.inner.as_mut().poll_data(cx)
+        match ready!(self.inner.as_mut().poll_data(cx)) {
+            Some(Ok(chunk)) => Some(Ok(chunk)).into(),
+            Some(Err(err)) => Some(Err(BoxStdError(err.into()))).into(),
+            None => None.into(),
+        }
     }
 
     fn poll_trailers(
         mut self: Pin<&mut Self>,
         cx: &mut Context<'_>,
     ) -> Poll<Result<Option<http::HeaderMap>, Self::Error>> {
-        self.inner.as_mut().poll_trailers(cx)
+        match ready!(self.inner.as_mut().poll_trailers(cx)) {
+            Ok(trailers) => Ok(trailers).into(),
+            Err(err) => Err(BoxStdError(err.into())).into(),
+        }
     }
 
     fn is_end_stream(&self) -> bool {
@@ -69,5 +81,16 @@ where
 
     fn size_hint(&self) -> http_body::SizeHint {
         self.inner.size_hint()
+    }
+}
+
+impl From<String> for BoxBody<bytes::Bytes, tower::BoxError> {
+    fn from(s: String) -> Self {
+        let body = hyper::Body::from(s);
+        let body = body.map_err(Into::<tower::BoxError>::into);
+
+        BoxBody {
+            inner: Box::pin(body),
+        }
     }
 }

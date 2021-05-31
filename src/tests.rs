@@ -273,6 +273,8 @@ async fn boxing() {
     assert_eq!(res.text().await.unwrap(), "hi from POST");
 }
 
+// TODO(david): tests for adding middleware to single services
+
 /// Run a `tower::Service` in the background and get a URI for it.
 pub async fn run_in_background<S, ResBody>(svc: S) -> SocketAddr
 where
