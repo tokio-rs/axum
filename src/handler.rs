@@ -3,6 +3,7 @@ use async_trait::async_trait;
 use futures_util::future;
 use http::{Request, Response};
 use std::{
+    convert::Infallible,
     future::Future,
     marker::PhantomData,
     task::{Context, Poll},
@@ -24,7 +25,7 @@ pub trait Handler<B, In>: Sized {
     #[doc(hidden)]
     type Sealed: sealed::HiddentTrait;
 
-    async fn call(self, req: Request<Body>) -> Result<Response<B>, Error>;
+    async fn call(self, req: Request<Body>) -> Response<B>;
 
     fn layer<L>(self, layer: L) -> Layered<L::Service, In>
     where
@@ -45,7 +46,7 @@ where
 
     type Sealed = sealed::Hidden;
 
-    async fn call(self, req: Request<Body>) -> Result<Response<B>, Error> {
+    async fn call(self, req: Request<Body>) -> Response<B> {
         self(req).await.into_response()
     }
 }
@@ -61,19 +62,28 @@ macro_rules! impl_handler {
             F: Fn(Request<Body>, $head, $($tail,)*) -> Fut + Send + Sync,
             Fut: Future<Output = Res> + Send,
             Res: IntoResponse<B>,
-            $head: FromRequest + Send,
-            $( $tail: FromRequest + Send, )*
+            $head: FromRequest<B> + Send,
+            $( $tail: FromRequest<B> + Send, )*
         {
             type Response = Res;
 
             type Sealed = sealed::Hidden;
 
-            async fn call(self, mut req: Request<Body>) -> Result<Response<B>, Error> {
-                let $head = $head::from_request(&mut req).await?;
+            async fn call(self, mut req: Request<Body>) -> Response<B> {
+                let $head = match $head::from_request(&mut req).await {
+                    Ok(value) => value,
+                    Err(rejection) => return rejection.into_response(),
+                };
+
                 $(
-                    let $tail = $tail::from_request(&mut req).await?;
+                    let $tail = match $tail::from_request(&mut req).await {
+                        Ok(value) => value,
+                        Err(rejection) => return rejection.into_response(),
+                    };
                 )*
+
                 let res = self(req, $head, $($tail,)*).await;
+
                 res.into_response()
             }
         }
@@ -102,18 +112,25 @@ where
 impl<S, B, T> Handler<B, T> for Layered<S, T>
 where
     S: Service<Request<Body>, Response = Response<B>> + Send,
-    S::Error: Into<BoxError>,
+    S::Error: IntoResponse<B>,
+    S::Response: IntoResponse<B>,
     S::Future: Send,
 {
     type Response = S::Response;
 
     type Sealed = sealed::Hidden;
 
-    async fn call(self, req: Request<Body>) -> Result<Self::Response, Error> {
-        self.svc
+    async fn call(self, req: Request<Body>) -> Self::Response {
+        // TODO(david): add tests for nesting services
+        match self
+            .svc
             .oneshot(req)
             .await
-            .map_err(|err| Error::Dynamic(err.into()))
+            .map_err(IntoResponse::into_response)
+        {
+            Ok(res) => res,
+            Err(res) => res,
+        }
     }
 }
 
@@ -158,7 +175,7 @@ where
     H::Response: 'static,
 {
     type Response = Response<B>;
-    type Error = Error;
+    type Error = Infallible;
     type Future = future::BoxFuture<'static, Result<Self::Response, Self::Error>>;
 
     fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
@@ -170,9 +187,6 @@ where
 
     fn call(&mut self, req: Request<Body>) -> Self::Future {
         let handler = self.handler.clone();
-        Box::pin(async move {
-            let res = Handler::call(handler, req).await?.into_response()?;
-            Ok(res)
-        })
+        Box::pin(async move { Ok(Handler::call(handler, req).await) })
     }
 }

@@ -1,7 +1,7 @@
 #![allow(warnings)]
 
 use bytes::Bytes;
-use http::{Request, StatusCode};
+use http::{Request, Response, StatusCode};
 use hyper::Server;
 use serde::Deserialize;
 use std::{
@@ -14,7 +14,12 @@ use tower::{make::Shared, ServiceBuilder};
 use tower_http::{
     add_extension::AddExtensionLayer, compression::CompressionLayer, trace::TraceLayer,
 };
-use tower_web::{body::Body, extract, response, Error};
+use tower_web::{
+    body::Body,
+    extract,
+    response::{self, IntoResponse},
+    Error,
+};
 
 #[tokio::main]
 async fn main() {
@@ -54,16 +59,16 @@ async fn get(
     _req: Request<Body>,
     params: extract::UrlParams<(String,)>,
     state: extract::Extension<SharedState>,
-) -> Result<Bytes, Error> {
+) -> Result<Bytes, NotFound> {
     let state = state.into_inner();
     let db = &state.lock().unwrap().db;
 
-    let (key,) = params.into_inner();
+    let key = params.into_inner();
 
     if let Some(value) = db.get(&key) {
         Ok(value.clone())
     } else {
-        Err(Error::Status(StatusCode::NOT_FOUND))
+        Err(NotFound)
     }
 }
 
@@ -72,14 +77,23 @@ async fn set(
     params: extract::UrlParams<(String,)>,
     value: extract::BytesMaxLength<{ 1024 * 5_000 }>, // ~5mb
     state: extract::Extension<SharedState>,
-) -> response::Empty {
+) {
     let state = state.into_inner();
     let db = &mut state.lock().unwrap().db;
 
-    let (key,) = params.into_inner();
+    let key = params.into_inner();
     let value = value.into_inner();
 
     db.insert(key.to_string(), value);
+}
 
-    response::Empty
+struct NotFound;
+
+impl IntoResponse<Body> for NotFound {
+    fn into_response(self) -> Response<Body> {
+        Response::builder()
+            .status(StatusCode::NOT_FOUND)
+            .body(Body::empty())
+            .unwrap()
+    }
 }

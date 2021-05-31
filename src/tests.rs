@@ -1,4 +1,4 @@
-use crate::{app, extract, response};
+use crate::{app, extract};
 use http::{Request, Response, StatusCode};
 use hyper::{Body, Server};
 use serde::Deserialize;
@@ -10,7 +10,7 @@ use tower::{make::Shared, BoxError, Service};
 async fn hello_world() {
     let app = app()
         .at("/")
-        .get(|_: Request<Body>| async { Ok("Hello, World!") })
+        .get(|_: Request<Body>| async { "Hello, World!" })
         .into_service();
 
     let addr = run_in_background(app).await;
@@ -25,7 +25,7 @@ async fn hello_world() {
 async fn consume_body() {
     let app = app()
         .at("/")
-        .get(|_: Request<Body>, body: String| async { Ok(body) })
+        .get(|_: Request<Body>, body: String| async { body })
         .into_service();
 
     let addr = run_in_background(app).await;
@@ -51,7 +51,7 @@ async fn deserialize_body() {
 
     let app = app()
         .at("/")
-        .post(|_: Request<Body>, input: extract::Json<Input>| async { Ok(input.into_inner().foo) })
+        .post(|_: Request<Body>, input: extract::Json<Input>| async { input.into_inner().foo })
         .into_service();
 
     let addr = run_in_background(app).await;
@@ -79,7 +79,7 @@ async fn consume_body_to_json_requires_json_content_type() {
         .at("/")
         .post(|_: Request<Body>, input: extract::Json<Input>| async {
             let input = input.into_inner();
-            Ok(input.foo)
+            input.foo
         })
         .into_service();
 
@@ -93,8 +93,10 @@ async fn consume_body_to_json_requires_json_content_type() {
         .await
         .unwrap();
 
-    // TODO(david): is this the most appropriate response code?
-    assert_eq!(res.status(), StatusCode::BAD_REQUEST);
+    let status = res.status();
+    dbg!(res.text().await.unwrap());
+
+    assert_eq!(status, StatusCode::BAD_REQUEST);
 }
 
 #[tokio::test]
@@ -113,7 +115,6 @@ async fn body_with_length_limit() {
         .post(
             |req: Request<Body>, _body: extract::BytesMaxLength<LIMIT>| async move {
                 dbg!(&req);
-                Ok(response::Empty)
             },
         )
         .into_service();
@@ -161,12 +162,12 @@ async fn body_with_length_limit() {
 async fn routing() {
     let app = app()
         .at("/users")
-        .get(|_: Request<Body>| async { Ok("users#index") })
-        .post(|_: Request<Body>| async { Ok("users#create") })
+        .get(|_: Request<Body>| async { "users#index" })
+        .post(|_: Request<Body>| async { "users#create" })
         .at("/users/:id")
-        .get(|_: Request<Body>| async { Ok("users#show") })
+        .get(|_: Request<Body>| async { "users#show" })
         .at("/users/:id/action")
-        .get(|_: Request<Body>| async { Ok("users#action") })
+        .get(|_: Request<Body>| async { "users#action" })
         .into_service();
 
     let addr = run_in_background(app).await;
@@ -215,18 +216,14 @@ async fn extracting_url_params() {
         .at("/users/:id")
         .get(
             |_: Request<Body>, params: extract::UrlParams<(i32,)>| async move {
-                let (id,) = params.into_inner();
+                let id = params.into_inner();
                 assert_eq!(id, 42);
-
-                Ok(response::Empty)
             },
         )
         .post(
             |_: Request<Body>, params_map: extract::UrlParamsMap| async move {
                 assert_eq!(params_map.get("id").unwrap(), "1337");
                 assert_eq!(params_map.get_typed::<i32>("id").unwrap(), 1337);
-
-                Ok(response::Empty)
             },
         )
         .into_service();
@@ -254,9 +251,9 @@ async fn extracting_url_params() {
 async fn boxing() {
     let app = app()
         .at("/")
-        .get(|_: Request<Body>| async { Ok("hi from GET") })
+        .get(|_: Request<Body>| async { "hi from GET" })
         .boxed()
-        .post(|_: Request<Body>| async { Ok("hi from POST") })
+        .post(|_: Request<Body>| async { "hi from POST" })
         .into_service();
 
     let addr = run_in_background(app).await;
