@@ -1,7 +1,7 @@
 use crate::{body::Body, Error};
 use bytes::Bytes;
 use futures_util::{future, ready};
-use http::Request;
+use http::{header, Request, StatusCode};
 use pin_project::pin_project;
 use serde::de::DeserializeOwned;
 use std::{
@@ -86,18 +86,37 @@ where
     type Future = future::BoxFuture<'static, Result<Self, Error>>;
 
     fn from_request(req: &mut Request<Body>) -> Self::Future {
-        // TODO(david): require the body to have `content-type: application/json`
+        if has_content_type(&req, "application/json") {
+            let body = std::mem::take(req.body_mut());
 
-        let body = std::mem::take(req.body_mut());
-
-        Box::pin(async move {
-            let bytes = hyper::body::to_bytes(body)
-                .await
-                .map_err(Error::ConsumeRequestBody)?;
-            let value = serde_json::from_slice(&bytes).map_err(Error::DeserializeRequestBody)?;
-            Ok(Json(value))
-        })
+            Box::pin(async move {
+                let bytes = hyper::body::to_bytes(body)
+                    .await
+                    .map_err(Error::ConsumeRequestBody)?;
+                let value =
+                    serde_json::from_slice(&bytes).map_err(Error::DeserializeRequestBody)?;
+                Ok(Json(value))
+            })
+        } else {
+            Box::pin(async { Err(Error::Status(StatusCode::BAD_REQUEST)) })
+        }
     }
+}
+
+fn has_content_type<B>(req: &Request<B>, expected_content_type: &str) -> bool {
+    let content_type = if let Some(content_type) = req.headers().get(header::CONTENT_TYPE) {
+        content_type
+    } else {
+        return false;
+    };
+
+    let content_type = if let Ok(content_type) = content_type.to_str() {
+        content_type
+    } else {
+        return false;
+    };
+
+    content_type.starts_with(expected_content_type)
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -143,6 +162,32 @@ impl FromRequest for Bytes {
                 .map_err(Error::ConsumeRequestBody)?;
             Ok(bytes)
         })
+    }
+}
+
+impl FromRequest for String {
+    type Future = future::BoxFuture<'static, Result<Self, Error>>;
+
+    fn from_request(req: &mut Request<Body>) -> Self::Future {
+        let body = std::mem::take(req.body_mut());
+
+        Box::pin(async move {
+            let bytes = hyper::body::to_bytes(body)
+                .await
+                .map_err(Error::ConsumeRequestBody)?
+                .to_vec();
+            let string = String::from_utf8(bytes).map_err(|_| Error::InvalidUtf8)?;
+            Ok(string)
+        })
+    }
+}
+
+impl FromRequest for Body {
+    type Future = future::Ready<Result<Self, Error>>;
+
+    fn from_request(req: &mut Request<Body>) -> Self::Future {
+        let body = std::mem::take(req.body_mut());
+        future::ok(body)
     }
 }
 

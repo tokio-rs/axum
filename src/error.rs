@@ -44,6 +44,9 @@ pub enum Error {
 
     #[error("unknown URL param `{0}`")]
     UnknownUrlParam(String),
+
+    #[error("response body didn't contain valid UTF-8")]
+    InvalidUtf8,
 }
 
 impl From<Infallible> for Error {
@@ -69,7 +72,8 @@ where
         Error::DeserializeRequestBody(_)
         | Error::QueryStringMissing
         | Error::DeserializeQueryString(_)
-        | Error::InvalidUrlParam { .. } => make_response(StatusCode::BAD_REQUEST),
+        | Error::InvalidUrlParam { .. }
+        | Error::InvalidUtf8 => make_response(StatusCode::BAD_REQUEST),
 
         Error::Status(status) => make_response(status),
 
