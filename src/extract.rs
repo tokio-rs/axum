@@ -10,6 +10,17 @@ pub trait FromRequest: Sized {
     async fn from_request(req: &mut Request<Body>) -> Result<Self, Error>;
 }
 
+fn take_body(req: &mut Request<Body>) -> Body {
+    struct BodyAlreadyTaken;
+
+    if req.extensions_mut().insert(BodyAlreadyTaken).is_some() {
+        panic!("Cannot have two request body on extractors")
+    } else {
+        let body = std::mem::take(req.body_mut());
+        body
+    }
+}
+
 #[async_trait]
 impl<T> FromRequest for Option<T>
 where
@@ -57,7 +68,7 @@ where
 {
     async fn from_request(req: &mut Request<Body>) -> Result<Self, Error> {
         if has_content_type(&req, "application/json") {
-            let body = std::mem::take(req.body_mut());
+            let body = take_body(req);
 
             let bytes = hyper::body::to_bytes(body)
                 .await
@@ -116,7 +127,7 @@ where
 #[async_trait]
 impl FromRequest for Bytes {
     async fn from_request(req: &mut Request<Body>) -> Result<Self, Error> {
-        let body = std::mem::take(req.body_mut());
+        let body = take_body(req);
 
         let bytes = hyper::body::to_bytes(body)
             .await
@@ -129,7 +140,7 @@ impl FromRequest for Bytes {
 #[async_trait]
 impl FromRequest for String {
     async fn from_request(req: &mut Request<Body>) -> Result<Self, Error> {
-        let body = std::mem::take(req.body_mut());
+        let body = take_body(req);
 
         let bytes = hyper::body::to_bytes(body)
             .await
@@ -145,7 +156,7 @@ impl FromRequest for String {
 #[async_trait]
 impl FromRequest for Body {
     async fn from_request(req: &mut Request<Body>) -> Result<Self, Error> {
-        let body = std::mem::take(req.body_mut());
+        let body = take_body(req);
         Ok(body)
     }
 }
@@ -163,7 +174,7 @@ impl<const N: u64> BytesMaxLength<N> {
 impl<const N: u64> FromRequest for BytesMaxLength<N> {
     async fn from_request(req: &mut Request<Body>) -> Result<Self, Error> {
         let content_length = req.headers().get(http::header::CONTENT_LENGTH).cloned();
-        let body = std::mem::take(req.body_mut());
+        let body = take_body(req);
 
         let content_length =
             content_length.and_then(|value| value.to_str().ok()?.parse::<u64>().ok());

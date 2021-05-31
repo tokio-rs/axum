@@ -157,10 +157,98 @@ async fn body_with_length_limit() {
     assert_eq!(res.status(), StatusCode::LENGTH_REQUIRED);
 }
 
-// TODO(david): can extractors change the request type?
-// TODO(david): should FromRequest be an async-trait?
+#[tokio::test]
+async fn routing() {
+    let app = app()
+        .at("/users")
+        .get(|_: Request<Body>| async { Ok("users#index") })
+        .post(|_: Request<Body>| async { Ok("users#create") })
+        .at("/users/:id")
+        .get(|_: Request<Body>| async { Ok("users#show") })
+        .at("/users/:id/action")
+        .get(|_: Request<Body>| async { Ok("users#action") })
+        .into_service();
 
-// TODO(david): routing
+    let addr = run_in_background(app).await;
+
+    let client = reqwest::Client::new();
+
+    let res = client.get(format!("http://{}", addr)).send().await.unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+
+    let res = client
+        .get(format!("http://{}/users", addr))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.text().await.unwrap(), "users#index");
+
+    let res = client
+        .post(format!("http://{}/users", addr))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.text().await.unwrap(), "users#create");
+
+    let res = client
+        .get(format!("http://{}/users/1", addr))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.text().await.unwrap(), "users#show");
+
+    let res = client
+        .get(format!("http://{}/users/1/action", addr))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.text().await.unwrap(), "users#action");
+}
+
+#[tokio::test]
+async fn extracting_url_params() {
+    let app = app()
+        .at("/users/:id")
+        .get(
+            |_: Request<Body>, params: extract::UrlParams<(i32,)>| async move {
+                let (id,) = params.into_inner();
+                assert_eq!(id, 42);
+
+                Ok(response::Empty)
+            },
+        )
+        .post(
+            |_: Request<Body>, params_map: extract::UrlParamsMap| async move {
+                assert_eq!(params_map.get("id").unwrap(), "1337");
+                assert_eq!(params_map.get_typed::<i32>("id").unwrap(), 1337);
+
+                Ok(response::Empty)
+            },
+        )
+        .into_service();
+
+    let addr = run_in_background(app).await;
+
+    let client = reqwest::Client::new();
+
+    let res = client
+        .get(format!("http://{}/users/42", addr))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+
+    let res = client
+        .post(format!("http://{}/users/1337", addr))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+}
 
 // TODO(david): lots of routes and boxing, shouldn't take forever to compile
 
