@@ -91,6 +91,17 @@ async fn handler(
 }
 ```
 
+The inputs can also be optional:
+
+```rust
+async fn handler(
+    req: Request<Body>,
+    user: Option<extract::Json<UserPayload>>,
+) -> Result<&'static str, Error> {
+    // ...
+}
+```
+
 You can also get the raw response body:
 
 ```rust
@@ -125,7 +136,11 @@ pub trait FromRequest: Sized {
 }
 ```
 
-This "extractor" pattern is inspired by Bevy's ECS.
+This "extractor" pattern is inspired by Bevy's ECS. The idea is that it should
+be easy to parse pick apart the request without having to repeat yourself a lot
+or use macros.
+
+Dynamic routes like `GET /users/:id` is also supported.
 
 You can also return different response types:
 
