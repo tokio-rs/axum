@@ -24,7 +24,7 @@ pub trait Handler<B, In>: Sized {
     #[doc(hidden)]
     type Sealed: sealed::HiddentTrait;
 
-    async fn call(self, req: Request<Body>) -> Result<Self::Response, Error>;
+    async fn call(self, req: Request<Body>) -> Result<Response<B>, Error>;
 
     fn layer<L>(self, layer: L) -> Layered<L::Service, In>
     where
@@ -38,15 +38,15 @@ pub trait Handler<B, In>: Sized {
 impl<F, Fut, B, Res> Handler<B, ()> for F
 where
     F: Fn(Request<Body>) -> Fut + Send + Sync,
-    Fut: Future<Output = Result<Res, Error>> + Send,
+    Fut: Future<Output = Res> + Send,
     Res: IntoResponse<B>,
 {
     type Response = Res;
 
     type Sealed = sealed::Hidden;
 
-    async fn call(self, req: Request<Body>) -> Result<Self::Response, Error> {
-        self(req).await
+    async fn call(self, req: Request<Body>) -> Result<Response<B>, Error> {
+        self(req).await.into_response()
     }
 }
 
@@ -59,7 +59,7 @@ macro_rules! impl_handler {
         impl<F, Fut, B, Res, $head, $($tail,)*> Handler<B, ($head, $($tail,)*)> for F
         where
             F: Fn(Request<Body>, $head, $($tail,)*) -> Fut + Send + Sync,
-            Fut: Future<Output = Result<Res, Error>> + Send,
+            Fut: Future<Output = Res> + Send,
             Res: IntoResponse<B>,
             $head: FromRequest + Send,
             $( $tail: FromRequest + Send, )*
@@ -68,13 +68,13 @@ macro_rules! impl_handler {
 
             type Sealed = sealed::Hidden;
 
-            async fn call(self, mut req: Request<Body>) -> Result<Self::Response, Error> {
+            async fn call(self, mut req: Request<Body>) -> Result<Response<B>, Error> {
                 let $head = $head::from_request(&mut req).await?;
                 $(
                     let $tail = $tail::from_request(&mut req).await?;
                 )*
-                let res = self(req, $head, $($tail,)*).await?;
-                Ok(res)
+                let res = self(req, $head, $($tail,)*).await;
+                res.into_response()
             }
         }
 

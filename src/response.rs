@@ -7,6 +7,15 @@ pub trait IntoResponse<B> {
     fn into_response(self) -> Result<Response<B>, Error>;
 }
 
+impl<B, T> IntoResponse<B> for Result<T, Error>
+where
+    T: IntoResponse<B>,
+{
+    fn into_response(self) -> Result<Response<B>, Error> {
+        self.and_then(IntoResponse::into_response)
+    }
+}
+
 impl<B> IntoResponse<B> for Response<B> {
     fn into_response(self) -> Result<Response<B>, Error> {
         Ok(self)

@@ -2,7 +2,7 @@ use http::Request;
 use hyper::Server;
 use std::net::SocketAddr;
 use tower::make::Shared;
-use tower_web::{body::Body, Error};
+use tower_web::body::Body;
 
 #[tokio::main]
 async fn main() {
@@ -227,6 +227,6 @@ async fn main() {
     server.await.unwrap();
 }
 
-async fn handler(_req: Request<Body>) -> Result<&'static str, Error> {
-    Ok("Hello, World!")
+async fn handler(_req: Request<Body>) -> &'static str {
+    "Hello, World!"
 }

@@ -3,7 +3,7 @@ use hyper::Server;
 use std::net::SocketAddr;
 use tower::{make::Shared, ServiceBuilder};
 use tower_http::trace::TraceLayer;
-use tower_web::{body::Body, response::Html, Error};
+use tower_web::{body::Body, response::Html};
 
 #[tokio::main]
 async fn main() {
@@ -28,6 +28,6 @@ async fn main() {
     server.await.unwrap();
 }
 
-async fn handler(_req: Request<Body>) -> Result<Html<&'static str>, Error> {
-    Ok(Html("<h1>Hello, World!</h1>"))
+async fn handler(_req: Request<Body>) -> Html<&'static str> {
+    Html("<h1>Hello, World!</h1>")
 }

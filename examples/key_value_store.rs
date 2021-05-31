@@ -72,7 +72,7 @@ async fn set(
     params: extract::UrlParams<(String,)>,
     value: extract::BytesMaxLength<{ 1024 * 5_000 }>, // ~5mb
     state: extract::Extension<SharedState>,
-) -> Result<response::Empty, Error> {
+) -> response::Empty {
     let state = state.into_inner();
     let db = &mut state.lock().unwrap().db;
 
@@ -81,5 +81,5 @@ async fn set(
 
     db.insert(key.to_string(), value);
 
-    Ok(response::Empty)
+    response::Empty
 }

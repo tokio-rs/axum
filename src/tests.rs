@@ -263,11 +263,7 @@ async fn boxing() {
 
     let client = reqwest::Client::new();
 
-    let res = client
-        .get(format!("http://{}", addr))
-        .send()
-        .await
-        .unwrap();
+    let res = client.get(format!("http://{}", addr)).send().await.unwrap();
     assert_eq!(res.status(), StatusCode::OK);
     assert_eq!(res.text().await.unwrap(), "hi from GET");
 
