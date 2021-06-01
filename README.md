@@ -87,8 +87,8 @@ async fn handler(
     // deserialize query string into a `Pagination`
     pagination: extract::Query<Pagination>,
 ) -> &'static str {
-    let user: UserPayload = user.into_inner();
-    let pagination: Pagination = pagination.into_inner();
+    let user: UserPayload = user.0;
+    let pagination: Pagination = pagination.0;
 
     // ...
 }
@@ -148,8 +148,20 @@ async fn handle(
     // or get a tuple with each param
     params: extract::UrlParams<(i32, String)>,
 ) -> &'static str {
-    let (id, name) = params.into_inner();
+    let (id, name) = params.0;
 
+    // ...
+}
+```
+
+If you wanna go all out you can even deconstruct the extractor directly in the
+function signature:
+
+```rust
+async fn handle(
+    req: Request<Body>,
+    UrlParams((id, name)): UrlParams<(i32, String)>,
+) -> &'static str {
     // ...
 }
 ```
