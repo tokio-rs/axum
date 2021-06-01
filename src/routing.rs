@@ -45,34 +45,60 @@ pub struct RouteAt<R> {
     pub(crate) route_spec: Bytes,
 }
 
+macro_rules! define_route_at_methods {
+    (
+        RouteAt:
+        $name:ident,
+        $svc_method_name:ident,
+        $method:ident
+    ) => {
+        pub fn $name<F, B, T>(self, handler_fn: F) -> RouteBuilder<Or<HandlerSvc<F, B, T>, R>>
+        where
+            F: Handler<B, T>,
+        {
+            self.add_route(handler_fn, Method::$method)
+        }
+
+        pub fn $svc_method_name<S, B>(self, service: S) -> RouteBuilder<Or<S, R>>
+        where
+            S: Service<Request<Body>, Response = Response<B>, Error = Infallible> + Clone,
+        {
+            self.add_route_service(service, Method::$method)
+        }
+    };
+
+    (
+        RouteBuilder:
+        $name:ident,
+        $svc_method_name:ident,
+        $method:ident
+    ) => {
+        pub fn $name<F, B, T>(self, handler_fn: F) -> RouteBuilder<Or<HandlerSvc<F, B, T>, R>>
+        where
+            F: Handler<B, T>,
+        {
+            self.app.at_bytes(self.route_spec).$name(handler_fn)
+        }
+
+        pub fn $svc_method_name<S, B>(self, service: S) -> RouteBuilder<Or<S, R>>
+        where
+            S: Service<Request<Body>, Response = Response<B>, Error = Infallible> + Clone,
+        {
+            self.app.at_bytes(self.route_spec).$svc_method_name(service)
+        }
+    };
+}
+
 impl<R> RouteAt<R> {
-    pub fn get<F, B, T>(self, handler_fn: F) -> RouteBuilder<Or<HandlerSvc<F, B, T>, R>>
-    where
-        F: Handler<B, T>,
-    {
-        self.add_route(handler_fn, Method::GET)
-    }
-
-    pub fn get_service<S, B>(self, service: S) -> RouteBuilder<Or<S, R>>
-    where
-        S: Service<Request<Body>, Response = Response<B>, Error = Infallible> + Clone,
-    {
-        self.add_route_service(service, Method::GET)
-    }
-
-    pub fn post<F, B, T>(self, handler_fn: F) -> RouteBuilder<Or<HandlerSvc<F, B, T>, R>>
-    where
-        F: Handler<B, T>,
-    {
-        self.add_route(handler_fn, Method::POST)
-    }
-
-    pub fn post_service<S, B>(self, service: S) -> RouteBuilder<Or<S, R>>
-    where
-        S: Service<Request<Body>, Response = Response<B>, Error = Infallible> + Clone,
-    {
-        self.add_route_service(service, Method::POST)
-    }
+    define_route_at_methods!(RouteAt: get, get_service, GET);
+    define_route_at_methods!(RouteAt: post, post_service, POST);
+    define_route_at_methods!(RouteAt: put, put_service, PUT);
+    define_route_at_methods!(RouteAt: patch, patch_service, PATCH);
+    define_route_at_methods!(RouteAt: delete, delete_service, DELETE);
+    define_route_at_methods!(RouteAt: head, head_service, HEAD);
+    define_route_at_methods!(RouteAt: options, options_service, OPTIONS);
+    define_route_at_methods!(RouteAt: connect, connect_service, CONNECT);
+    define_route_at_methods!(RouteAt: trace, trace_service, TRACE);
 
     fn add_route<H, B, T>(
         self,
@@ -130,33 +156,15 @@ impl<R> RouteBuilder<R> {
         self.app.at(route_spec)
     }
 
-    pub fn get<F, B, T>(self, handler_fn: F) -> RouteBuilder<Or<HandlerSvc<F, B, T>, R>>
-    where
-        F: Handler<B, T>,
-    {
-        self.app.at_bytes(self.route_spec).get(handler_fn)
-    }
-
-    pub fn get_service<S, B>(self, service: S) -> RouteBuilder<Or<S, R>>
-    where
-        S: Service<Request<Body>, Response = Response<B>, Error = Infallible> + Clone,
-    {
-        self.app.at_bytes(self.route_spec).get_service(service)
-    }
-
-    pub fn post<F, B, T>(self, handler_fn: F) -> RouteBuilder<Or<HandlerSvc<F, B, T>, R>>
-    where
-        F: Handler<B, T>,
-    {
-        self.app.at_bytes(self.route_spec).post(handler_fn)
-    }
-
-    pub fn post_service<S, B>(self, service: S) -> RouteBuilder<Or<S, R>>
-    where
-        S: Service<Request<Body>, Response = Response<B>, Error = Infallible> + Clone,
-    {
-        self.app.at_bytes(self.route_spec).post_service(service)
-    }
+    define_route_at_methods!(RouteBuilder: get, get_service, GET);
+    define_route_at_methods!(RouteBuilder: post, post_service, POST);
+    define_route_at_methods!(RouteBuilder: put, put_service, PUT);
+    define_route_at_methods!(RouteBuilder: patch, patch_service, PATCH);
+    define_route_at_methods!(RouteBuilder: delete, delete_service, DELETE);
+    define_route_at_methods!(RouteBuilder: head, head_service, HEAD);
+    define_route_at_methods!(RouteBuilder: options, options_service, OPTIONS);
+    define_route_at_methods!(RouteBuilder: connect, connect_service, CONNECT);
+    define_route_at_methods!(RouteBuilder: trace, trace_service, TRACE);
 
     pub fn into_service(self) -> IntoService<R> {
         IntoService { app: self.app }
