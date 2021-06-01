@@ -73,7 +73,10 @@ impl IntoResponse<Body> for &'static str {
 
 impl IntoResponse<Body> for String {
     fn into_response(self) -> Response<Body> {
-        Response::new(Body::from(self))
+        let mut res = Response::new(Body::from(self));
+        res.headers_mut()
+            .insert(header::CONTENT_TYPE, HeaderValue::from_static("text/plain"));
+        res
     }
 }
 

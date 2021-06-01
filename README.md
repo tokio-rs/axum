@@ -10,7 +10,7 @@ with. Will probably change the name to something else.
 
 - As easy to use as tide. I don't really consider warp easy to use due to type
   tricks it uses. `fn route() -> impl Filter<...>` also isn't very ergonomic.
-  Just `async fn(Request) -> Result<Response, Error>` would be nicer.
+  Just `async fn(Request) -> Response` would be nicer.
 - Deep integration with Tower meaning you can
     - Apply middleware to the entire application.
     - Apply middleware to a single route.
@@ -40,8 +40,8 @@ Defining a single route looks like this:
 ```rust
 let app = tower_web::app().at("/").get(root);
 
-async fn root(req: Request<Body>) -> Result<&'static str, Error> {
-    Ok("Hello, World!")
+async fn root(req: Request<Body>) -> &'static str {
+    "Hello, World!"
 }
 ```
 
@@ -59,14 +59,14 @@ let app = tower_web::app()
 Handler functions are just async functions like:
 
 ```rust
-async fn handler(req: Request<Body>) -> Result<&'static str, Error> {
-    Ok("Hello, World!")
+async fn handler(req: Request<Body>) -> &'static str {
+    "Hello, World!"
 }
 ```
 
-They most take the request as the first argument but all arguments following
+They must take the request as the first argument but all arguments following
 are called "extractors" and are used to extract data from the request (similar
-to rocket but no macros):
+to rocket but without macros):
 
 ```rust
 #[derive(Deserialize)]
@@ -86,7 +86,7 @@ async fn handler(
     user: extract::Json<UserPayload>,
     // deserialize query string into a `Pagination`
     pagination: extract::Query<Pagination>,
-) -> Result<&'static str, Error> {
+) -> &'static str {
     let user: UserPayload = user.into_inner();
     let pagination: Pagination = pagination.into_inner();
 
@@ -100,7 +100,7 @@ The inputs can also be optional:
 async fn handler(
     req: Request<Body>,
     user: Option<extract::Json<UserPayload>>,
-) -> Result<&'static str, Error> {
+) -> &'static str {
     // ...
 }
 ```
@@ -112,7 +112,7 @@ async fn handler(
     req: Request<Body>,
     // buffer the whole request body
     body: Bytes,
-) -> Result<&'static str, Error> {
+) -> &'static str {
     // ...
 }
 ```
@@ -124,56 +124,96 @@ async fn handler(
     req: Request<Body>,
     // max body size in bytes
     body: extract::BytesMaxLength<1024>,
-) -> Result<&'static str, Error> {
-    Ok("Hello, World!")
+) -> &'static str {
+    // ...
+}
+```
+
+Params from dynamic routes like `GET /users/:id` can be extracted like so
+
+```rust
+async fn handle(
+    req: Request<Body>,
+    // get a map of key value pairs
+    map: extract::UrlParamsMap,
+) -> &'static str {
+    let raw_id: Option<&str> = map.get("id");
+    let parsed_id: Option<i32> = map.get_typed::<i32>("id");
+
+    // ...
+}
+
+async fn handle(
+    req: Request<Body>,
+    // or get a tuple with each param
+    params: extract::UrlParams<(i32, String)>,
+) -> &'static str {
+    let (id, name) = params.into_inner();
+
+    // ...
 }
 ```
 
 Anything that implements `FromRequest` can work as an extractor where
-`FromRequest` is a simple async trait:
+`FromRequest` is an async trait:
 
 ```rust
 #[async_trait]
 pub trait FromRequest: Sized {
-    async fn from_request(req: &mut Request<Body>) -> Result<Self, Error>;
+    type Rejection: IntoResponse<B>;
+
+    async fn from_request(req: &mut Request<Body>) -> Result<Self, Self::Rejection>;
 }
 ```
 
 This "extractor" pattern is inspired by Bevy's ECS. The idea is that it should
-be easy to parse pick apart the request without having to repeat yourself a lot
-or use macros.
+be easy to pick apart the request without having to repeat yourself a lot or use
+macros.
 
-Dynamic routes like `GET /users/:id` is also supported.
-
-You can also return different response types:
+The return type must implement `IntoResponse`:
 
 ```rust
-async fn string_response(req: Request<Body>) -> Result<String, Error> {
+async fn empty_response(req: Request<Body>) {
+    // ...
+}
+
+// gets `content-type: text/plain`
+async fn string_response(req: Request<Body>) -> String {
     // ...
 }
 
 // gets `content-type: appliation/json`. `Json` can contain any `T: Serialize`
-async fn json_response(req: Request<Body>) -> Result<response::Json<User>, Error> {
+async fn json_response(req: Request<Body>) -> response::Json<User> {
     // ...
 }
 
 // gets `content-type: text/html`. `Html` can contain any `T: Into<Bytes>`
-async fn html_response(req: Request<Body>) -> Result<response::Html<String>, Error> {
+async fn html_response(req: Request<Body>) -> response::Html<String> {
     // ...
 }
 
 // or for full control
-async fn response(req: Request<Body>) -> Result<Response<Body>, Error> {
+async fn response(req: Request<Body>) -> Response<Body> {
+    // ...
+}
+
+// Result is supported if each type implements `IntoResponse`
+async fn response(req: Request<Body>) -> Result<Html<String>, StatusCode> {
     // ...
 }
 ```
+
+This makes error handling quite simple. Basically handlers are not allowed to
+fail and must always produce a response. This also means users are in charge of
+how their errors are mapped to responses rather than a framework providing some
+opaque catch all error type.
 
 You can also apply Tower middleware to single routes:
 
 ```rust
 let app = tower_web::app()
     .at("/")
-    .get(send_some_large_file.layer(tower_http::compression::CompressionLayer::new()))
+    .get(send_some_large_file.layer(CompressionLayer::new()))
 ```
 
 Or to the whole app:
@@ -222,12 +262,6 @@ See the examples directory for more examples.
 
 # TODO
 
-- Error handling should probably be redone. Not quite sure if its bad the
-  `Error` is just an enum where everything is public.
-- Audit which error codes we return for each kind of error. This will probably
-  be changed when error handling is re-done.
-- Probably don't want to require `hyper::Body` for request bodies. Should
-  have our own so hyper isn't required.
 - `RouteBuilder` should have an `async fn serve(self) -> Result<(),
   hyper::Error>` for users who just wanna create a hyper server and not care
   about the lower level details. Should be gated by a `hyper` feature.
