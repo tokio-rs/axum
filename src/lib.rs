@@ -41,6 +41,10 @@ pub struct App<R> {
 }
 
 impl<R> App<R> {
+    fn new(service_tree: R) -> Self {
+        Self { service_tree }
+    }
+
     pub fn at(self, route_spec: &str) -> RouteAt<R> {
         self.at_bytes(Bytes::copy_from_slice(route_spec.as_bytes()))
     }
@@ -53,19 +57,9 @@ impl<R> App<R> {
     }
 }
 
+#[derive(Clone)]
 pub struct IntoService<R> {
-    app: App<R>,
-}
-
-impl<R> Clone for IntoService<R>
-where
-    R: Clone,
-{
-    fn clone(&self) -> Self {
-        Self {
-            app: self.app.clone(),
-        }
-    }
+    service_tree: R
 }
 
 impl<R, B, T> Service<T> for IntoService<R>
@@ -78,14 +72,14 @@ where
     type Future = R::Future;
 
     fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        match ready!(self.app.service_tree.poll_ready(cx)) {
+        match ready!(self.service_tree.poll_ready(cx)) {
             Ok(_) => Poll::Ready(Ok(())),
             Err(err) => match err {},
         }
     }
 
     fn call(&mut self, req: T) -> Self::Future {
-        self.app.service_tree.call(req)
+        self.service_tree.call(req)
     }
 }
 

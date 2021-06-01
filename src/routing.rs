@@ -1,7 +1,8 @@
 use crate::{
     body::{Body, BoxBody},
     handler::{Handler, HandlerSvc},
-    App, IntoService, ResultExt,
+    response::IntoResponse,
+    App, HandleError, IntoService, ResultExt,
 };
 use bytes::Bytes;
 use futures_util::{future, ready};
@@ -17,7 +18,7 @@ use std::{
 use tower::{
     buffer::{Buffer, BufferLayer},
     util::BoxService,
-    BoxError, Service, ServiceBuilder,
+    BoxError, Layer, Service, ServiceBuilder,
 };
 
 #[derive(Clone, Copy)]
@@ -152,6 +153,13 @@ where
 }
 
 impl<R> RouteBuilder<R> {
+    fn new(app: App<R>, route_spec: impl Into<Bytes>) -> Self {
+        Self {
+            app,
+            route_spec: route_spec.into(),
+        }
+    }
+
     pub fn at(self, route_spec: &str) -> RouteAt<R> {
         self.app.at(route_spec)
     }
@@ -167,11 +175,32 @@ impl<R> RouteBuilder<R> {
     define_route_at_methods!(RouteBuilder: trace, trace_service, TRACE);
 
     pub fn into_service(self) -> IntoService<R> {
-        IntoService { app: self.app }
+        IntoService {
+            service_tree: self.app.service_tree,
+        }
     }
 
-    // TODO(david): Add `layer` method here that applies a `tower::Layer` inside the service tree
-    // that way we get to map errors
+    pub fn layer<L>(self, layer: L) -> RouteBuilder<L::Service>
+    where
+        L: Layer<R>,
+    {
+        let layered = layer.layer(self.app.service_tree);
+        let app = App::new(layered);
+        RouteBuilder::new(app, self.route_spec)
+    }
+
+    pub fn handle_error<F, B, Res>(self, f: F) -> RouteBuilder<HandleError<R, F, R::Error>>
+    where
+        R: Service<Request<Body>, Response = Response<B>>,
+        F: FnOnce(R::Error) -> Res,
+        Res: IntoResponse<Body>,
+        B: http_body::Body<Data = Bytes> + Send + Sync + 'static,
+        B::Error: Into<BoxError> + Send + Sync + 'static,
+    {
+        let svc = HandleError::new(self.app.service_tree, f);
+        let app = App::new(svc);
+        RouteBuilder::new(app, self.route_spec)
+    }
 
     pub fn boxed<B>(self) -> RouteBuilder<BoxServiceTree<B>>
     where
@@ -184,17 +213,11 @@ impl<R> RouteBuilder<R> {
             .layer(BoxService::layer())
             .service(self.app.service_tree);
 
-        let app = App {
-            service_tree: BoxServiceTree {
-                inner: svc,
-                poll_ready_error: None,
-            },
-        };
-
-        RouteBuilder {
-            app,
-            route_spec: self.route_spec,
-        }
+        let app = App::new(BoxServiceTree {
+            inner: svc,
+            poll_ready_error: None,
+        });
+        RouteBuilder::new(app, self.route_spec)
     }
 }
 

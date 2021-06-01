@@ -375,7 +375,28 @@ async fn handling_errors_from_layered_single_routes() {
     assert_eq!(res.status(), StatusCode::INTERNAL_SERVER_ERROR);
 }
 
-// TODO(david): .layer() on RouteBuilder
+#[tokio::test]
+async fn layer_on_whole_router() {
+    use tower::timeout::TimeoutLayer;
+
+    async fn handle(_req: Request<Body>) -> &'static str {
+        tokio::time::sleep(Duration::from_secs(10)).await;
+        ""
+    }
+
+    let app = app()
+        .at("/")
+        .get(handle)
+        .layer(TimeoutLayer::new(Duration::from_millis(100)))
+        .handle_error(|_err: BoxError| StatusCode::INTERNAL_SERVER_ERROR)
+        .into_service();
+
+    let addr = run_in_background(app).await;
+
+    let res = reqwest::get(format!("http://{}", addr)).await.unwrap();
+    assert_eq!(res.status(), StatusCode::INTERNAL_SERVER_ERROR);
+}
+
 // TODO(david): composing two apps
 // TODO(david): composing two apps with one at a "sub path"
 // TODO(david): composing two boxed apps
