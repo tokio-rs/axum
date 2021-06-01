@@ -5,17 +5,9 @@ use serde::Serialize;
 use std::convert::Infallible;
 use tower::util::Either;
 
+// TODO(david): can we change this to not be generic over the body and just use hyper::Body?
 pub trait IntoResponse<B> {
     fn into_response(self) -> Response<B>;
-
-    // TODO(david): remove this an return return `Response<B>` instead. That is what this method
-    // does anyway.
-    fn boxed(self) -> BoxIntoResponse<B>
-    where
-        Self: Sized + 'static,
-    {
-        BoxIntoResponse(self.into_response())
-    }
 }
 
 impl<B> IntoResponse<B> for ()
@@ -168,14 +160,6 @@ where
         res.headers_mut()
             .insert(header::CONTENT_TYPE, HeaderValue::from_static("text/html"));
         res
-    }
-}
-
-pub struct BoxIntoResponse<B>(Response<B>);
-
-impl<B> IntoResponse<B> for BoxIntoResponse<B> {
-    fn into_response(self) -> Response<B> {
-        self.0
     }
 }
 

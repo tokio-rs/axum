@@ -51,10 +51,10 @@ async fn get(
     params: extract::UrlParams<(String,)>,
     state: extract::Extension<SharedState>,
 ) -> Result<Bytes, StatusCode> {
-    let state = state.into_inner();
+    let state = state.0;
     let db = &state.lock().unwrap().db;
 
-    let key = params.into_inner();
+    let (key,) = params.0;
 
     if let Some(value) = db.get(&key) {
         Ok(value.clone())
@@ -69,11 +69,11 @@ async fn set(
     value: extract::BytesMaxLength<{ 1024 * 5_000 }>, // ~5mb
     state: extract::Extension<SharedState>,
 ) {
-    let state = state.into_inner();
+    let state = state.0;
     let db = &mut state.lock().unwrap().db;
 
-    let key = params.into_inner();
-    let value = value.into_inner();
+    let (key,) = params.0;
+    let value = value.0;
 
     db.insert(key, value);
 }

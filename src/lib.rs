@@ -22,6 +22,9 @@ pub mod handler;
 pub mod response;
 pub mod routing;
 
+pub use tower_http::add_extension::{AddExtension, AddExtensionLayer};
+pub use async_trait::async_trait;
+
 #[cfg(test)]
 mod tests;
 

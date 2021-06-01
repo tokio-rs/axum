@@ -1,10 +1,7 @@
-use crate::{
-    body::Body,
-    response::{BoxIntoResponse, IntoResponse},
-};
+use crate::{body::Body, response::IntoResponse};
 use async_trait::async_trait;
 use bytes::Bytes;
-use http::{header, Request};
+use http::{header, Response, Request};
 use serde::de::DeserializeOwned;
 use std::{collections::HashMap, convert::Infallible, str::FromStr};
 
@@ -80,13 +77,7 @@ define_rejection! {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct Query<T>(T);
-
-impl<T> Query<T> {
-    pub fn into_inner(self) -> T {
-        self.0
-    }
-}
+pub struct Query<T>(pub T);
 
 #[async_trait]
 impl<T> FromRequest<Body> for Query<T>
@@ -103,13 +94,7 @@ where
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct Json<T>(T);
-
-impl<T> Json<T> {
-    pub fn into_inner(self) -> T {
-        self.0
-    }
-}
+pub struct Json<T>(pub T);
 
 define_rejection! {
     #[status = BAD_REQUEST]
@@ -128,24 +113,24 @@ impl<T> FromRequest<Body> for Json<T>
 where
     T: DeserializeOwned,
 {
-    type Rejection = BoxIntoResponse<Body>;
+    type Rejection = Response<Body>;
 
     async fn from_request(req: &mut Request<Body>) -> Result<Self, Self::Rejection> {
         if has_content_type(&req, "application/json") {
-            let body = take_body(req).map_err(IntoResponse::boxed)?;
+            let body = take_body(req).map_err(IntoResponse::into_response)?;
 
             let bytes = hyper::body::to_bytes(body)
                 .await
                 .map_err(InvalidJsonBody::from_err)
-                .map_err(IntoResponse::boxed)?;
+                .map_err(IntoResponse::into_response)?;
 
             let value = serde_json::from_slice(&bytes)
                 .map_err(InvalidJsonBody::from_err)
-                .map_err(IntoResponse::boxed)?;
+                .map_err(IntoResponse::into_response)?;
 
             Ok(Json(value))
         } else {
-            Err(MissingJsonContentType(()).boxed())
+            Err(MissingJsonContentType(()).into_response())
         }
     }
 }
@@ -173,13 +158,7 @@ define_rejection! {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct Extension<T>(T);
-
-impl<T> Extension<T> {
-    pub fn into_inner(self) -> T {
-        self.0
-    }
-}
+pub struct Extension<T>(pub T);
 
 #[async_trait]
 impl<T> FromRequest<Body> for Extension<T>
@@ -207,15 +186,15 @@ define_rejection! {
 
 #[async_trait]
 impl FromRequest<Body> for Bytes {
-    type Rejection = BoxIntoResponse<Body>;
+    type Rejection = Response<Body>;
 
     async fn from_request(req: &mut Request<Body>) -> Result<Self, Self::Rejection> {
-        let body = take_body(req).map_err(IntoResponse::boxed)?;
+        let body = take_body(req).map_err(IntoResponse::into_response)?;
 
         let bytes = hyper::body::to_bytes(body)
             .await
             .map_err(FailedToBufferBody::from_err)
-            .map_err(IntoResponse::boxed)?;
+            .map_err(IntoResponse::into_response)?;
 
         Ok(bytes)
     }
@@ -229,20 +208,20 @@ define_rejection! {
 
 #[async_trait]
 impl FromRequest<Body> for String {
-    type Rejection = BoxIntoResponse<Body>;
+    type Rejection = Response<Body>;
 
     async fn from_request(req: &mut Request<Body>) -> Result<Self, Self::Rejection> {
-        let body = take_body(req).map_err(IntoResponse::boxed)?;
+        let body = take_body(req).map_err(IntoResponse::into_response)?;
 
         let bytes = hyper::body::to_bytes(body)
             .await
             .map_err(FailedToBufferBody::from_err)
-            .map_err(IntoResponse::boxed)?
+            .map_err(IntoResponse::into_response)?
             .to_vec();
 
         let string = String::from_utf8(bytes)
             .map_err(InvalidUtf8::from_err)
-            .map_err(IntoResponse::boxed)?;
+            .map_err(IntoResponse::into_response)?;
 
         Ok(string)
     }
@@ -270,36 +249,30 @@ define_rejection! {
 }
 
 #[derive(Debug, Clone)]
-pub struct BytesMaxLength<const N: u64>(Bytes);
-
-impl<const N: u64> BytesMaxLength<N> {
-    pub fn into_inner(self) -> Bytes {
-        self.0
-    }
-}
+pub struct BytesMaxLength<const N: u64>(pub Bytes);
 
 #[async_trait]
 impl<const N: u64> FromRequest<Body> for BytesMaxLength<N> {
-    type Rejection = BoxIntoResponse<Body>;
+    type Rejection = Response<Body>;
 
     async fn from_request(req: &mut Request<Body>) -> Result<Self, Self::Rejection> {
         let content_length = req.headers().get(http::header::CONTENT_LENGTH).cloned();
-        let body = take_body(req).map_err(|reject| reject.boxed())?;
+        let body = take_body(req).map_err(|reject| reject.into_response())?;
 
         let content_length =
             content_length.and_then(|value| value.to_str().ok()?.parse::<u64>().ok());
 
         if let Some(length) = content_length {
             if length > N {
-                return Err(PayloadTooLarge(()).boxed());
+                return Err(PayloadTooLarge(()).into_response());
             }
         } else {
-            return Err(LengthRequired(()).boxed());
+            return Err(LengthRequired(()).into_response());
         };
 
         let bytes = hyper::body::to_bytes(body)
             .await
-            .map_err(|e| FailedToBufferBody::from_err(e).boxed())?;
+            .map_err(|e| FailedToBufferBody::from_err(e).into_response())?;
 
         Ok(BytesMaxLength(bytes))
     }
@@ -367,7 +340,7 @@ impl IntoResponse<Body> for InvalidUrlParam {
     }
 }
 
-pub struct UrlParams<T>(T);
+pub struct UrlParams<T>(pub T);
 
 macro_rules! impl_parse_url {
     () => {};
@@ -379,7 +352,7 @@ macro_rules! impl_parse_url {
             $head: FromStr + Send,
             $( $tail: FromStr + Send, )*
         {
-            type Rejection = BoxIntoResponse<Body>;
+            type Rejection = Response<Body>;
 
             #[allow(non_snake_case)]
             async fn from_request(req: &mut Request<Body>) -> Result<Self, Self::Rejection> {
@@ -389,27 +362,27 @@ macro_rules! impl_parse_url {
                 {
                     params.take().expect("params already taken").0
                 } else {
-                    return Err(MissingRouteParams(()).boxed())
+                    return Err(MissingRouteParams(()).into_response())
                 };
 
                 if let [(_, $head), $((_, $tail),)*] = &*params {
                     let $head = if let Ok(x) = $head.parse::<$head>() {
                        x
                     } else {
-                        return Err(InvalidUrlParam::new::<$head>().boxed());
+                        return Err(InvalidUrlParam::new::<$head>().into_response());
                     };
 
                     $(
                         let $tail = if let Ok(x) = $tail.parse::<$tail>() {
                            x
                         } else {
-                            return Err(InvalidUrlParam::new::<$tail>().boxed());
+                            return Err(InvalidUrlParam::new::<$tail>().into_response());
                         };
                     )*
 
                     Ok(UrlParams(($head, $($tail,)*)))
                 } else {
-                    return Err(MissingRouteParams(()).boxed())
+                    return Err(MissingRouteParams(()).into_response())
                 }
             }
         }
@@ -419,49 +392,6 @@ macro_rules! impl_parse_url {
 }
 
 impl_parse_url!(T1, T2, T3, T4, T5, T6);
-
-impl<T1> UrlParams<(T1,)> {
-    pub fn into_inner(self) -> T1 {
-        (self.0).0
-    }
-}
-
-impl<T1, T2> UrlParams<(T1, T2)> {
-    pub fn into_inner(self) -> (T1, T2) {
-        ((self.0).0, (self.0).1)
-    }
-}
-
-impl<T1, T2, T3> UrlParams<(T1, T2, T3)> {
-    pub fn into_inner(self) -> (T1, T2, T3) {
-        ((self.0).0, (self.0).1, (self.0).2)
-    }
-}
-
-impl<T1, T2, T3, T4> UrlParams<(T1, T2, T3, T4)> {
-    pub fn into_inner(self) -> (T1, T2, T3, T4) {
-        ((self.0).0, (self.0).1, (self.0).2, (self.0).3)
-    }
-}
-
-impl<T1, T2, T3, T4, T5> UrlParams<(T1, T2, T3, T4, T5)> {
-    pub fn into_inner(self) -> (T1, T2, T3, T4, T5) {
-        ((self.0).0, (self.0).1, (self.0).2, (self.0).3, (self.0).4)
-    }
-}
-
-impl<T1, T2, T3, T4, T5, T6> UrlParams<(T1, T2, T3, T4, T5, T6)> {
-    pub fn into_inner(self) -> (T1, T2, T3, T4, T5, T6) {
-        (
-            (self.0).0,
-            (self.0).1,
-            (self.0).2,
-            (self.0).3,
-            (self.0).4,
-            (self.0).5,
-        )
-    }
-}
 
 define_rejection! {
     #[status = INTERNAL_SERVER_ERROR]

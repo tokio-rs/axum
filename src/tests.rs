@@ -51,7 +51,7 @@ async fn deserialize_body() {
 
     let app = app()
         .at("/")
-        .post(|_: Request<Body>, input: extract::Json<Input>| async { input.into_inner().foo })
+        .post(|_: Request<Body>, input: extract::Json<Input>| async { input.0.foo })
         .into_service();
 
     let addr = run_in_background(app).await;
@@ -78,8 +78,7 @@ async fn consume_body_to_json_requires_json_content_type() {
     let app = app()
         .at("/")
         .post(|_: Request<Body>, input: extract::Json<Input>| async {
-            let input = input.into_inner();
-            input.foo
+            input.0.foo
         })
         .into_service();
 
@@ -216,7 +215,7 @@ async fn extracting_url_params() {
         .at("/users/:id")
         .get(
             |_: Request<Body>, params: extract::UrlParams<(i32,)>| async move {
-                let id = params.into_inner();
+                let (id,) = params.0;
                 assert_eq!(id, 42);
             },
         )
