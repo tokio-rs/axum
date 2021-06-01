@@ -8,6 +8,8 @@ use tower::util::Either;
 pub trait IntoResponse<B> {
     fn into_response(self) -> Response<B>;
 
+    // TODO(david): remove this an return return `Response<B>` instead. That is what this method
+    // does anyway.
     fn boxed(self) -> BoxIntoResponse<B>
     where
         Self: Sized + 'static,

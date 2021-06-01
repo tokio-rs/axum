@@ -11,7 +11,7 @@ use tower::{make::Shared, ServiceBuilder};
 use tower_http::{
     add_extension::AddExtensionLayer, compression::CompressionLayer, trace::TraceLayer,
 };
-use tower_web::{body::Body, extract};
+use tower_web::{body::Body, extract, handler::Handler};
 
 #[tokio::main]
 async fn main() {
@@ -20,7 +20,7 @@ async fn main() {
     // build our application with some routes
     let app = tower_web::app()
         .at("/:key")
-        .get(get)
+        .get(get.layer(CompressionLayer::new()))
         .post(set)
         // convert it into a `Service`
         .into_service();
@@ -29,7 +29,6 @@ async fn main() {
     let app = ServiceBuilder::new()
         .timeout(Duration::from_secs(10))
         .layer(TraceLayer::new_for_http())
-        .layer(CompressionLayer::new())
         .layer(AddExtensionLayer::new(SharedState::default()))
         .service(app);
 
@@ -51,10 +50,6 @@ async fn get(
     _req: Request<Body>,
     params: extract::UrlParams<(String,)>,
     state: extract::Extension<SharedState>,
-    // Anything that implements `IntoResponse` can be used a response
-    //
-    // Handlers cannot return errors. Everything will be converted
-    // into a response. `BoxError` becomes `500 Internal server error`
 ) -> Result<Bytes, StatusCode> {
     let state = state.into_inner();
     let db = &state.lock().unwrap().db;
@@ -73,8 +68,6 @@ async fn set(
     params: extract::UrlParams<(String,)>,
     value: extract::BytesMaxLength<{ 1024 * 5_000 }>, // ~5mb
     state: extract::Extension<SharedState>,
-    // `()` also implements `IntoResponse` so we can use that to return
-    // an empty response
 ) {
     let state = state.into_inner();
     let db = &mut state.lock().unwrap().db;

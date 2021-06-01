@@ -1,4 +1,4 @@
-use crate::{app, extract};
+use crate::{app, extract, handler::Handler};
 use http::{Request, Response, StatusCode};
 use hyper::{Body, Server};
 use serde::Deserialize;
@@ -273,9 +273,89 @@ async fn boxing() {
     assert_eq!(res.text().await.unwrap(), "hi from POST");
 }
 
-// TODO(david): tests for adding middleware to single services
+#[tokio::test]
+async fn service_handlers() {
+    use crate::{body::BoxBody, ServiceExt as _};
+    use std::convert::Infallible;
+    use tower::service_fn;
+    use tower_http::services::ServeFile;
 
-// TODO(david): tests for nesting services
+    let app = app()
+        .at("/echo")
+        .post_service(service_fn(|req: Request<Body>| async move {
+            Ok::<_, Infallible>(Response::new(req.into_body()))
+        }))
+        // calling boxed isn't necessary here but done so
+        // we're sure it compiles
+        .boxed()
+        .at("/static/Cargo.toml")
+        .get_service(
+            ServeFile::new("Cargo.toml").handle_error(|error: std::io::Error| {
+                // `ServeFile` internally maps some errors to `404` so we don't have
+                // to handle those here
+                let body = BoxBody::from(error.to_string());
+                Response::builder()
+                    .status(StatusCode::INTERNAL_SERVER_ERROR)
+                    .body(body)
+                    .unwrap()
+            }),
+        )
+        // calling boxed isn't necessary here but done so
+        // we're sure it compiles
+        .boxed()
+        .into_service();
+
+    let addr = run_in_background(app).await;
+
+    let client = reqwest::Client::new();
+
+    let res = client
+        .post(format!("http://{}/echo", addr))
+        .body("foobar")
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.text().await.unwrap(), "foobar");
+
+    let res = client
+        .get(format!("http://{}/static/Cargo.toml", addr))
+        .body("foobar")
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert!(res.text().await.unwrap().contains("edition ="));
+}
+
+#[tokio::test]
+async fn middleware_on_single_route() {
+    use tower::ServiceBuilder;
+    use tower_http::{compression::CompressionLayer, trace::TraceLayer};
+
+    async fn handle(_: Request<Body>) -> &'static str {
+        "Hello, World!"
+    }
+
+    let app = app()
+        .at("/")
+        .get(
+            handle.layer(
+                ServiceBuilder::new()
+                    .layer(TraceLayer::new_for_http())
+                    .layer(CompressionLayer::new())
+                    .into_inner(),
+            ),
+        )
+        .into_service();
+
+    let addr = run_in_background(app).await;
+
+    let res = reqwest::get(format!("http://{}", addr)).await.unwrap();
+    let body = res.text().await.unwrap();
+
+    assert_eq!(body, "Hello, World!");
+}
 
 /// Run a `tower::Service` in the background and get a URI for it.
 pub async fn run_in_background<S, ResBody>(svc: S) -> SocketAddr

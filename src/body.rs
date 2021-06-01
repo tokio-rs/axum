@@ -1,78 +1,64 @@
-use bytes::Buf;
-use futures_util::ready;
-use http_body::{Body as _, Empty};
+use bytes::Bytes;
+use http_body::{Empty, Full};
 use std::{
     fmt,
     pin::Pin,
     task::{Context, Poll},
 };
+use tower::BoxError;
 
 pub use hyper::body::Body;
 
 use crate::BoxStdError;
 
 /// A boxed [`Body`] trait object.
-pub struct BoxBody<D, E> {
-    inner: Pin<Box<dyn http_body::Body<Data = D, Error = E> + Send + Sync + 'static>>,
+pub struct BoxBody {
+    // when we've gotten rid of `BoxStdError` we should be able to change the error type to
+    // `BoxError`
+    inner: Pin<Box<dyn http_body::Body<Data = Bytes, Error = BoxStdError> + Send + Sync + 'static>>,
 }
 
-impl<D, E> BoxBody<D, E> {
+impl BoxBody {
     /// Create a new `BoxBody`.
     pub fn new<B>(body: B) -> Self
     where
-        B: http_body::Body<Data = D, Error = E> + Send + Sync + 'static,
-        D: Buf,
+        B: http_body::Body<Data = Bytes> + Send + Sync + 'static,
+        B::Error: Into<BoxError> + Send + Sync + 'static,
     {
         Self {
-            inner: Box::pin(body),
+            inner: Box::pin(body.map_err(|error| BoxStdError(error.into()))),
         }
     }
 }
 
-// TODO: upstream this to http-body?
-impl<D, E> Default for BoxBody<D, E>
-where
-    D: bytes::Buf + 'static,
-{
+impl Default for BoxBody {
     fn default() -> Self {
-        BoxBody::new(Empty::<D>::new().map_err(|err| match err {}))
+        BoxBody::new(Empty::<Bytes>::new())
     }
 }
 
-impl<D, E> fmt::Debug for BoxBody<D, E> {
+impl fmt::Debug for BoxBody {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("BoxBody").finish()
     }
 }
 
-// when we've gotten rid of `BoxStdError` then we can remove this
-impl<D, E> http_body::Body for BoxBody<D, E>
-where
-    D: Buf,
-    E: Into<tower::BoxError>,
-{
-    type Data = D;
+impl http_body::Body for BoxBody {
+    type Data = Bytes;
     type Error = BoxStdError;
 
     fn poll_data(
         mut self: Pin<&mut Self>,
         cx: &mut Context<'_>,
     ) -> Poll<Option<Result<Self::Data, Self::Error>>> {
-        match ready!(self.inner.as_mut().poll_data(cx)) {
-            Some(Ok(chunk)) => Some(Ok(chunk)).into(),
-            Some(Err(err)) => Some(Err(BoxStdError(err.into()))).into(),
-            None => None.into(),
-        }
+        self.inner.as_mut().poll_data(cx)
     }
 
     fn poll_trailers(
         mut self: Pin<&mut Self>,
         cx: &mut Context<'_>,
     ) -> Poll<Result<Option<http::HeaderMap>, Self::Error>> {
-        match ready!(self.inner.as_mut().poll_trailers(cx)) {
-            Ok(trailers) => Ok(trailers).into(),
-            Err(err) => Err(BoxStdError(err.into())).into(),
-        }
+        self.inner.as_mut().poll_trailers(cx)
     }
 
     fn is_end_stream(&self) -> bool {
@@ -84,13 +70,11 @@ where
     }
 }
 
-impl From<String> for BoxBody<bytes::Bytes, tower::BoxError> {
-    fn from(s: String) -> Self {
-        let body = hyper::Body::from(s);
-        let body = body.map_err(Into::<tower::BoxError>::into);
-
-        BoxBody {
-            inner: Box::pin(body),
-        }
+impl<B> From<B> for BoxBody
+where
+    B: Into<Bytes>,
+{
+    fn from(s: B) -> Self {
+        BoxBody::new(Full::from(s.into()))
     }
 }

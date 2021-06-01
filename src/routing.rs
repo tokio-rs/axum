@@ -55,8 +55,7 @@ impl<R> RouteAt<R> {
 
     pub fn get_service<S, B>(self, service: S) -> RouteBuilder<Or<S, R>>
     where
-        S: Service<Request<Body>, Response = Response<B>> + Clone,
-        S::Error: Into<BoxError>,
+        S: Service<Request<Body>, Response = Response<B>, Error = Infallible> + Clone,
     {
         self.add_route_service(service, Method::GET)
     }
@@ -70,8 +69,7 @@ impl<R> RouteAt<R> {
 
     pub fn post_service<S, B>(self, service: S) -> RouteBuilder<Or<S, R>>
     where
-        S: Service<Request<Body>, Response = Response<B>> + Clone,
-        S::Error: Into<BoxError>,
+        S: Service<Request<Body>, Response = Response<B>, Error = Infallible> + Clone,
     {
         self.add_route_service(service, Method::POST)
     }
@@ -141,8 +139,7 @@ impl<R> RouteBuilder<R> {
 
     pub fn get_service<S, B>(self, service: S) -> RouteBuilder<Or<S, R>>
     where
-        S: Service<Request<Body>, Response = Response<B>> + Clone,
-        S::Error: Into<BoxError>,
+        S: Service<Request<Body>, Response = Response<B>, Error = Infallible> + Clone,
     {
         self.app.at_bytes(self.route_spec).get_service(service)
     }
@@ -156,8 +153,7 @@ impl<R> RouteBuilder<R> {
 
     pub fn post_service<S, B>(self, service: S) -> RouteBuilder<Or<S, R>>
     where
-        S: Service<Request<Body>, Response = Response<B>> + Clone,
-        S::Error: Into<BoxError>,
+        S: Service<Request<Body>, Response = Response<B>, Error = Infallible> + Clone,
     {
         self.app.at_bytes(self.route_spec).post_service(service)
     }
@@ -173,7 +169,6 @@ impl<R> RouteBuilder<R> {
     where
         R: Service<Request<Body>, Response = Response<B>, Error = Infallible> + Send + 'static,
         R::Future: Send,
-        // TODO(david): do we still need default here
         B: From<String> + 'static,
     {
         let svc = ServiceBuilder::new()
@@ -274,14 +269,14 @@ impl RouteSpec {
 impl<H, F, HB, FB> Service<Request<Body>> for Or<H, F>
 where
     H: Service<Request<Body>, Response = Response<HB>, Error = Infallible>,
-    HB: http_body::Body + Send + Sync + 'static,
+    HB: http_body::Body<Data = Bytes> + Send + Sync + 'static,
     HB::Error: Into<BoxError>,
 
     F: Service<Request<Body>, Response = Response<FB>, Error = Infallible>,
-    FB: http_body::Body<Data = HB::Data> + Send + Sync + 'static,
+    FB: http_body::Body<Data = Bytes> + Send + Sync + 'static,
     FB::Error: Into<BoxError>,
 {
-    type Response = Response<BoxBody<HB::Data, BoxError>>;
+    type Response = Response<BoxBody>;
     type Error = Infallible;
     type Future = future::Either<BoxResponseBody<H::Future>, BoxResponseBody<F::Future>>;
 
@@ -337,10 +332,10 @@ pub struct BoxResponseBody<F>(#[pin] F);
 impl<F, B> Future for BoxResponseBody<F>
 where
     F: Future<Output = Result<Response<B>, Infallible>>,
-    B: http_body::Body + Send + Sync + 'static,
+    B: http_body::Body<Data = Bytes> + Send + Sync + 'static,
     B::Error: Into<BoxError>,
 {
-    type Output = Result<Response<BoxBody<B::Data, BoxError>>, Infallible>;
+    type Output = Result<Response<BoxBody>, Infallible>;
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let response: Response<B> = ready!(self.project().0.poll(cx)).unwrap_infallible();
