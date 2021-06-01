@@ -1,9 +1,9 @@
 use crate::Body;
 use bytes::Bytes;
-use http::{HeaderMap, HeaderValue, Response, StatusCode, header};
+use http::{header, HeaderMap, HeaderValue, Response, StatusCode};
 use serde::Serialize;
 use std::convert::Infallible;
-use tower::{util::Either, BoxError};
+use tower::util::Either;
 
 pub trait IntoResponse<B> {
     fn into_response(self) -> Response<B>;
@@ -171,18 +171,6 @@ pub struct BoxIntoResponse<B>(Response<B>);
 impl<B> IntoResponse<B> for BoxIntoResponse<B> {
     fn into_response(self) -> Response<B> {
         self.0
-    }
-}
-
-impl IntoResponse<Body> for BoxError {
-    fn into_response(self) -> Response<Body> {
-        // TODO(david): test for know error types like std::io::Error
-        // or common errors types from tower and map those more appropriately
-
-        Response::builder()
-            .status(StatusCode::INTERNAL_SERVER_ERROR)
-            .body(Body::from(self.to_string()))
-            .unwrap()
     }
 }
 

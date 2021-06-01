@@ -174,7 +174,7 @@ impl<R> RouteBuilder<R> {
         R: Service<Request<Body>, Response = Response<B>, Error = Infallible> + Send + 'static,
         R::Future: Send,
         // TODO(david): do we still need default here
-        B: Default + From<String> + 'static,
+        B: From<String> + 'static,
     {
         let svc = ServiceBuilder::new()
             .layer(BufferLayer::new(1024))

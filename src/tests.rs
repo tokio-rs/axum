@@ -275,6 +275,8 @@ async fn boxing() {
 
 // TODO(david): tests for adding middleware to single services
 
+// TODO(david): tests for nesting services
+
 /// Run a `tower::Service` in the background and get a URI for it.
 pub async fn run_in_background<S, ResBody>(svc: S) -> SocketAddr
 where

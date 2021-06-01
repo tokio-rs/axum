@@ -30,8 +30,6 @@ pub trait Handler<B, In>: Sized {
     fn layer<L>(self, layer: L) -> Layered<L::Service, In>
     where
         L: Layer<HandlerSvc<Self, B, In>>,
-        <L as Layer<HandlerSvc<Self, B, In>>>::Service: Service<Request<Body>>,
-        <<L as Layer<HandlerSvc<Self, B, In>>>::Service as Service<Request<Body>>>::Error: IntoResponse<B>,
     {
         Layered::new(layer.layer(HandlerSvc::new(self)))
     }
@@ -40,7 +38,7 @@ pub trait Handler<B, In>: Sized {
 #[async_trait]
 impl<F, Fut, B, Res> Handler<B, ()> for F
 where
-    F: Fn(Request<Body>) -> Fut + Send + Sync,
+    F: FnOnce(Request<Body>) -> Fut + Send + Sync,
     Fut: Future<Output = Res> + Send,
     Res: IntoResponse<B>,
 {
@@ -61,7 +59,7 @@ macro_rules! impl_handler {
         #[allow(non_snake_case)]
         impl<F, Fut, B, Res, $head, $($tail,)*> Handler<B, ($head, $($tail,)*)> for F
         where
-            F: Fn(Request<Body>, $head, $($tail,)*) -> Fut + Send + Sync,
+            F: FnOnce(Request<Body>, $head, $($tail,)*) -> Fut + Send + Sync,
             Fut: Future<Output = Res> + Send,
             Res: IntoResponse<B>,
             $head: FromRequest<B> + Send,
