@@ -11,7 +11,11 @@ use tower::{make::Shared, ServiceBuilder};
 use tower_http::{
     add_extension::AddExtensionLayer, compression::CompressionLayer, trace::TraceLayer,
 };
-use tower_web::{body::Body, extract, handler::Handler};
+use tower_web::{
+    body::Body,
+    extract::{BytesMaxLength, Extension, UrlParams},
+    handler::Handler,
+};
 
 #[tokio::main]
 async fn main() {
@@ -48,13 +52,10 @@ struct State {
 
 async fn get(
     _req: Request<Body>,
-    params: extract::UrlParams<(String,)>,
-    state: extract::Extension<SharedState>,
+    UrlParams((key,)): UrlParams<(String,)>,
+    Extension(state): Extension<SharedState>,
 ) -> Result<Bytes, StatusCode> {
-    let state = state.0;
     let db = &state.lock().unwrap().db;
-
-    let (key,) = params.0;
 
     if let Some(value) = db.get(&key) {
         Ok(value.clone())
@@ -65,15 +66,9 @@ async fn get(
 
 async fn set(
     _req: Request<Body>,
-    params: extract::UrlParams<(String,)>,
-    value: extract::BytesMaxLength<{ 1024 * 5_000 }>, // ~5mb
-    state: extract::Extension<SharedState>,
+    UrlParams((key,)): UrlParams<(String,)>,
+    BytesMaxLength(value): BytesMaxLength<{ 1024 * 5_000 }>, // ~5mb
+    Extension(state): Extension<SharedState>,
 ) {
-    let state = state.0;
-    let db = &mut state.lock().unwrap().db;
-
-    let (key,) = params.0;
-    let value = value.0;
-
-    db.insert(key, value);
+    state.lock().unwrap().db.insert(key, value);
 }
