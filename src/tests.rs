@@ -3,7 +3,10 @@ use http::{Request, Response, StatusCode};
 use hyper::{Body, Server};
 use serde::Deserialize;
 use serde_json::json;
-use std::net::{SocketAddr, TcpListener};
+use std::{
+    net::{SocketAddr, TcpListener},
+    time::Duration,
+};
 use tower::{make::Shared, BoxError, Service};
 
 #[tokio::test]
@@ -77,9 +80,7 @@ async fn consume_body_to_json_requires_json_content_type() {
 
     let app = app()
         .at("/")
-        .post(|_: Request<Body>, input: extract::Json<Input>| async {
-            input.0.foo
-        })
+        .post(|_: Request<Body>, input: extract::Json<Input>| async { input.0.foo })
         .into_service();
 
     let addr = run_in_background(app).await;
@@ -274,7 +275,7 @@ async fn boxing() {
 
 #[tokio::test]
 async fn service_handlers() {
-    use crate::{body::BoxBody, ServiceExt as _};
+    use crate::ServiceExt as _;
     use std::convert::Infallible;
     use tower::service_fn;
     use tower_http::services::ServeFile;
@@ -290,13 +291,7 @@ async fn service_handlers() {
         .at("/static/Cargo.toml")
         .get_service(
             ServeFile::new("Cargo.toml").handle_error(|error: std::io::Error| {
-                // `ServeFile` internally maps some errors to `404` so we don't have
-                // to handle those here
-                let body = BoxBody::from(error.to_string());
-                Response::builder()
-                    .status(StatusCode::INTERNAL_SERVER_ERROR)
-                    .body(body)
-                    .unwrap()
+                (StatusCode::INTERNAL_SERVER_ERROR, error.to_string())
             }),
         )
         // calling boxed isn't necessary here but done so
@@ -355,6 +350,36 @@ async fn middleware_on_single_route() {
 
     assert_eq!(body, "Hello, World!");
 }
+
+#[tokio::test]
+async fn handling_errors_from_layered_single_routes() {
+    use tower::timeout::TimeoutLayer;
+
+    async fn handle(_req: Request<Body>) -> &'static str {
+        tokio::time::sleep(Duration::from_secs(10)).await;
+        ""
+    }
+
+    let app = app()
+        .at("/")
+        .get(
+            handle
+                .layer(TimeoutLayer::new(Duration::from_millis(100)))
+                .handle_error(|_error: BoxError| StatusCode::INTERNAL_SERVER_ERROR),
+        )
+        .into_service();
+
+    let addr = run_in_background(app).await;
+
+    let res = reqwest::get(format!("http://{}", addr)).await.unwrap();
+    assert_eq!(res.status(), StatusCode::INTERNAL_SERVER_ERROR);
+}
+
+// TODO(david): .layer() on RouteBuilder
+// TODO(david): composing two apps
+// TODO(david): composing two apps with one at a "sub path"
+// TODO(david): composing two boxed apps
+// TODO(david): composing two apps that have had layers applied
 
 /// Run a `tower::Service` in the background and get a URI for it.
 pub async fn run_in_background<S, ResBody>(svc: S) -> SocketAddr

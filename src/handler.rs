@@ -1,5 +1,6 @@
-use crate::{body::Body, extract::FromRequest, response::IntoResponse};
+use crate::{body::Body, HandleError, extract::FromRequest, response::IntoResponse};
 use async_trait::async_trait;
+use bytes::Bytes;
 use futures_util::future;
 use http::{Request, Response};
 use std::{
@@ -8,7 +9,7 @@ use std::{
     marker::PhantomData,
     task::{Context, Poll},
 };
-use tower::{Layer, Service, ServiceExt};
+use tower::{Layer, BoxError, Service, ServiceExt};
 
 mod sealed {
     pub trait HiddentTrait {}
@@ -140,6 +141,18 @@ impl<S, T> Layered<S, T> {
             svc,
             _input: PhantomData,
         }
+    }
+
+    pub fn handle_error<F, B, Res>(self, f: F) -> Layered<HandleError<S, F, S::Error>, T>
+    where
+        S: Service<Request<Body>, Response = Response<B>>,
+        F: FnOnce(S::Error) -> Res,
+        Res: IntoResponse<Body>,
+        B: http_body::Body<Data = Bytes> + Send + Sync + 'static,
+        B::Error: Into<BoxError> + Send + Sync + 'static,
+    {
+        let svc = HandleError::new(self.svc, f);
+        Layered::new(svc)
     }
 }
 

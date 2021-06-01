@@ -7,6 +7,7 @@ use bytes::Bytes;
 use futures_util::ready;
 use http::{Request, Response};
 use pin_project::pin_project;
+use response::IntoResponse;
 use std::{
     convert::Infallible,
     fmt,
@@ -22,8 +23,8 @@ pub mod handler;
 pub mod response;
 pub mod routing;
 
-pub use tower_http::add_extension::{AddExtension, AddExtensionLayer};
 pub use async_trait::async_trait;
+pub use tower_http::add_extension::{AddExtension, AddExtensionLayer};
 
 #[cfg(test)]
 mod tests;
@@ -114,20 +115,15 @@ impl<T> ResultExt<T> for Result<T, Infallible> {
 pub struct BoxStdError(#[source] pub(crate) tower::BoxError);
 
 pub trait ServiceExt<B>: Service<Request<Body>, Response = Response<B>> {
-    fn handle_error<F, NewBody>(self, f: F) -> HandleError<Self, F, Self::Error>
+    fn handle_error<F, Res>(self, f: F) -> HandleError<Self, F, Self::Error>
     where
         Self: Sized,
-        F: FnOnce(Self::Error) -> Response<NewBody>,
+        F: FnOnce(Self::Error) -> Res,
+        Res: IntoResponse<Body>,
         B: http_body::Body<Data = Bytes> + Send + Sync + 'static,
         B::Error: Into<BoxError> + Send + Sync + 'static,
-        NewBody: http_body::Body<Data = Bytes> + Send + Sync + 'static,
-        NewBody::Error: Into<BoxError> + Send + Sync + 'static,
     {
-        HandleError {
-            inner: self,
-            f,
-            poll_ready_error: None,
-        }
+        HandleError::new(self, f)
     }
 }
 
@@ -137,6 +133,16 @@ pub struct HandleError<S, F, E> {
     inner: S,
     f: F,
     poll_ready_error: Option<E>,
+}
+
+impl<S, F, E> HandleError<S, F, E> {
+    pub(crate) fn new(inner: S, f: F) -> Self {
+        Self {
+            inner,
+            f,
+            poll_ready_error: None,
+        }
+    }
 }
 
 impl<S, F, E> fmt::Debug for HandleError<S, F, E>
@@ -167,14 +173,13 @@ where
     }
 }
 
-impl<S, F, B, NewBody> Service<Request<Body>> for HandleError<S, F, S::Error>
+impl<S, F, B, Res> Service<Request<Body>> for HandleError<S, F, S::Error>
 where
     S: Service<Request<Body>, Response = Response<B>>,
-    F: FnOnce(S::Error) -> Response<NewBody> + Clone,
+    F: FnOnce(S::Error) -> Res + Clone,
+    Res: IntoResponse<Body>,
     B: http_body::Body<Data = Bytes> + Send + Sync + 'static,
     B::Error: Into<BoxError> + Send + Sync + 'static,
-    NewBody: http_body::Body<Data = Bytes> + Send + Sync + 'static,
-    NewBody::Error: Into<BoxError> + Send + Sync + 'static,
 {
     type Response = Response<BoxBody>;
     type Error = Infallible;
@@ -218,14 +223,13 @@ enum Kind<Fut, E> {
     Error(Option<E>),
 }
 
-impl<Fut, F, E, B, NewBody> Future for HandleErrorFuture<Fut, F, E>
+impl<Fut, F, E, B, Res> Future for HandleErrorFuture<Fut, F, E>
 where
     Fut: Future<Output = Result<Response<B>, E>>,
-    F: FnOnce(E) -> Response<NewBody>,
+    F: FnOnce(E) -> Res,
+    Res: IntoResponse<Body>,
     B: http_body::Body<Data = Bytes> + Send + Sync + 'static,
     B::Error: Into<BoxError> + Send + Sync + 'static,
-    NewBody: http_body::Body<Data = Bytes> + Send + Sync + 'static,
-    NewBody::Error: Into<BoxError> + Send + Sync + 'static,
 {
     type Output = Result<Response<BoxBody>, Infallible>;
 
@@ -237,13 +241,13 @@ where
                 Ok(res) => Ok(res.map(BoxBody::new)).into(),
                 Err(err) => {
                     let f = this.f.take().unwrap();
-                    let res = f(err);
+                    let res = f(err).into_response();
                     Ok(res.map(BoxBody::new)).into()
                 }
             },
             KindProj::Error(err) => {
                 let f = this.f.take().unwrap();
-                let res = f(err.take().unwrap());
+                let res = f(err.take().unwrap()).into_response();
                 Ok(res.map(BoxBody::new)).into()
             }
         }
