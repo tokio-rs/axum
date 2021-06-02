@@ -11,6 +11,7 @@ futures-util = "0.3"
 http = "0.2"
 http-body = "0.4"
 hyper = "0.14"
+itertools = "0.10"
 pin-project = "1.0"
 serde = "1.0"
 serde_json = "1.0"
@@ -31,9 +32,9 @@ tracing-subscriber = "0.2"
 [dev-dependencies.tower-http]
 version = "0.1"
 features = [
-    "trace",
+    "add-extension",
     "compression",
     "compression-full",
-    "add-extension",
     "fs",
+    "trace",
 ]
