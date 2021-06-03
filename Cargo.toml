@@ -19,6 +19,7 @@ serde_urlencoded = "0.7"
 thiserror = "1.0"
 tower = { version = "0.4", features = ["util", "buffer"] }
 tower-http = { version = "0.1", features = ["add-extension"] }
+regex = "1.5"
 
 [dev-dependencies]
 hyper = { version = "0.14", features = ["full"] }

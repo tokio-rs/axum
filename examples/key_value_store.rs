@@ -14,7 +14,7 @@ use tower_http::{
 use tower_web::{
     body::Body,
     extract::{BytesMaxLength, Extension, UrlParams},
-    handler::Handler,
+    get, route, Handler,
 };
 
 #[tokio::main]
@@ -22,12 +22,10 @@ async fn main() {
     tracing_subscriber::fmt::init();
 
     // build our application with some routes
-    let app = tower_web::app()
-        .at("/:key")
-        .get(get.layer(CompressionLayer::new()))
-        .post(set)
-        // convert it into a `Service`
-        .into_service();
+    let app = route(
+        "/:key",
+        get(kv_get.layer(CompressionLayer::new())).post(kv_set),
+    );
 
     // add some middleware
     let app = ServiceBuilder::new()
@@ -50,7 +48,7 @@ struct State {
     db: HashMap<String, Bytes>,
 }
 
-async fn get(
+async fn kv_get(
     _req: Request<Body>,
     UrlParams((key,)): UrlParams<(String,)>,
     Extension(state): Extension<SharedState>,
@@ -64,7 +62,7 @@ async fn get(
     }
 }
 
-async fn set(
+async fn kv_set(
     _req: Request<Body>,
     UrlParams((key,)): UrlParams<(String,)>,
     BytesMaxLength(value): BytesMaxLength<{ 1024 * 5_000 }>, // ~5mb

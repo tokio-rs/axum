@@ -1,13 +1,12 @@
-use self::{
-    body::Body,
-    routing::{AlwaysNotFound, RouteAt},
-};
+use self::body::Body;
 use body::BoxBody;
 use bytes::Bytes;
 use futures_util::ready;
-use http::{Request, Response};
+use handler::HandlerSvc;
+use http::{Method, Request, Response};
 use pin_project::pin_project;
 use response::IntoResponse;
+use routing::{EmptyRouter, OnMethod, Route};
 use std::{
     convert::Infallible,
     fmt,
@@ -15,7 +14,7 @@ use std::{
     pin::Pin,
     task::{Context, Poll},
 };
-use tower::{BoxError, Service};
+use tower::{util::Oneshot, BoxError, Service, ServiceExt as _};
 
 pub mod body;
 pub mod extract;
@@ -23,65 +22,80 @@ pub mod handler;
 pub mod response;
 pub mod routing;
 
+#[doc(inline)]
+pub use self::handler::Handler;
+#[doc(inline)]
+pub use self::routing::AddRoute;
+
 pub use async_trait::async_trait;
 pub use tower_http::add_extension::{AddExtension, AddExtensionLayer};
 
+#[derive(Debug, Copy, Clone)]
+pub enum MethodFilter {
+    Any,
+    Connect,
+    Delete,
+    Get,
+    Head,
+    Options,
+    Patch,
+    Post,
+    Put,
+    Trace,
+}
+
+impl MethodFilter {
+    #[allow(clippy::match_like_matches_macro)]
+    fn matches(self, method: &Method) -> bool {
+        use MethodFilter::*;
+
+        match (self, method) {
+            (Any, _)
+            | (Connect, &Method::CONNECT)
+            | (Delete, &Method::DELETE)
+            | (Get, &Method::GET)
+            | (Head, &Method::HEAD)
+            | (Options, &Method::OPTIONS)
+            | (Patch, &Method::PATCH)
+            | (Post, &Method::POST)
+            | (Put, &Method::PUT)
+            | (Trace, &Method::TRACE) => true,
+            _ => false,
+        }
+    }
+}
+
+pub fn route<S>(spec: &str, svc: S) -> Route<S, EmptyRouter>
+where
+    S: Service<Request<Body>, Error = Infallible> + Clone,
+{
+    routing::EmptyRouter.route(spec, svc)
+}
+
+pub fn get<H, B, T>(handler: H) -> OnMethod<HandlerSvc<H, B, T>, EmptyRouter>
+where
+    H: Handler<B, T>,
+{
+    on_method(MethodFilter::Get, HandlerSvc::new(handler))
+}
+
+pub fn post<H, B, T>(handler: H) -> OnMethod<HandlerSvc<H, B, T>, EmptyRouter>
+where
+    H: Handler<B, T>,
+{
+    on_method(MethodFilter::Post, HandlerSvc::new(handler))
+}
+
+pub fn on_method<S>(method: MethodFilter, svc: S) -> OnMethod<S, EmptyRouter> {
+    OnMethod {
+        method,
+        svc,
+        fallback: EmptyRouter,
+    }
+}
+
 #[cfg(test)]
 mod tests;
-
-pub fn app() -> App<AlwaysNotFound> {
-    App {
-        service_tree: AlwaysNotFound(()),
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct App<R> {
-    service_tree: R,
-}
-
-impl<R> App<R> {
-    fn new(service_tree: R) -> Self {
-        Self { service_tree }
-    }
-
-    pub fn at(self, route_spec: &str) -> RouteAt<R> {
-        self.at_bytes(Bytes::copy_from_slice(route_spec.as_bytes()))
-    }
-
-    fn at_bytes(self, route_spec: Bytes) -> RouteAt<R> {
-        RouteAt {
-            app: self,
-            route_spec,
-        }
-    }
-}
-
-#[derive(Clone)]
-pub struct IntoService<R> {
-    service_tree: R
-}
-
-impl<R, B, T> Service<T> for IntoService<R>
-where
-    R: Service<T, Response = Response<B>, Error = Infallible>,
-    B: Default,
-{
-    type Response = Response<B>;
-    type Error = Infallible;
-    type Future = R::Future;
-
-    fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        match ready!(self.service_tree.poll_ready(cx)) {
-            Ok(_) => Poll::Ready(Ok(())),
-            Err(err) => match err {},
-        }
-    }
-
-    fn call(&mut self, req: T) -> Self::Future {
-        self.service_tree.call(req)
-    }
-}
 
 pub(crate) trait ResultExt<T> {
     fn unwrap_infallible(self) -> T;
@@ -105,11 +119,11 @@ impl<T> ResultExt<T> for Result<T, Infallible> {
 // Fixing that is a breaking change to tower-http so we should wait a bit, but should
 // totally fix it at some point.
 #[derive(Debug, thiserror::Error)]
-#[error("{0}")]
-pub struct BoxStdError(#[source] pub(crate) tower::BoxError);
+#[error(transparent)]
+pub struct BoxStdError(#[from] pub(crate) tower::BoxError);
 
 pub trait ServiceExt<B>: Service<Request<Body>, Response = Response<B>> {
-    fn handle_error<F, Res>(self, f: F) -> HandleError<Self, F, Self::Error>
+    fn handle_error<F, Res>(self, f: F) -> HandleError<Self, F>
     where
         Self: Sized,
         F: FnOnce(Self::Error) -> Res,
@@ -123,53 +137,33 @@ pub trait ServiceExt<B>: Service<Request<Body>, Response = Response<B>> {
 
 impl<S, B> ServiceExt<B> for S where S: Service<Request<Body>, Response = Response<B>> {}
 
-pub struct HandleError<S, F, E> {
+#[derive(Clone)]
+pub struct HandleError<S, F> {
     inner: S,
     f: F,
-    poll_ready_error: Option<E>,
 }
 
-impl<S, F, E> HandleError<S, F, E> {
+impl<S, F> HandleError<S, F> {
     pub(crate) fn new(inner: S, f: F) -> Self {
-        Self {
-            inner,
-            f,
-            poll_ready_error: None,
-        }
+        Self { inner, f }
     }
 }
 
-impl<S, F, E> fmt::Debug for HandleError<S, F, E>
+impl<S, F> fmt::Debug for HandleError<S, F>
 where
     S: fmt::Debug,
-    E: fmt::Debug,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("HandleError")
             .field("inner", &self.inner)
             .field("f", &format_args!("{}", std::any::type_name::<F>()))
-            .field("poll_ready_error", &self.poll_ready_error)
             .finish()
     }
 }
 
-impl<S, F, E> Clone for HandleError<S, F, E>
+impl<S, F, B, Res> Service<Request<Body>> for HandleError<S, F>
 where
-    S: Clone,
-    F: Clone,
-{
-    fn clone(&self) -> Self {
-        Self {
-            inner: self.inner.clone(),
-            f: self.f.clone(),
-            poll_ready_error: None,
-        }
-    }
-}
-
-impl<S, F, B, Res> Service<Request<Body>> for HandleError<S, F, S::Error>
-where
-    S: Service<Request<Body>, Response = Response<B>>,
+    S: Service<Request<Body>, Response = Response<B>> + Clone,
     F: FnOnce(S::Error) -> Res + Clone,
     Res: IntoResponse<Body>,
     B: http_body::Body<Data = Bytes> + Send + Sync + 'static,
@@ -177,47 +171,28 @@ where
 {
     type Response = Response<BoxBody>;
     type Error = Infallible;
-    type Future = HandleErrorFuture<S::Future, F, S::Error>;
+    type Future = HandleErrorFuture<Oneshot<S, Request<Body>>, F>;
 
-    fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        match ready!(self.inner.poll_ready(cx)) {
-            Ok(_) => Poll::Ready(Ok(())),
-            Err(err) => {
-                self.poll_ready_error = Some(err);
-                Poll::Ready(Ok(()))
-            }
-        }
+    fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        Poll::Ready(Ok(()))
     }
 
     fn call(&mut self, req: Request<Body>) -> Self::Future {
-        if let Some(err) = self.poll_ready_error.take() {
-            return HandleErrorFuture {
-                f: Some(self.f.clone()),
-                kind: Kind::Error(Some(err)),
-            };
-        }
-
         HandleErrorFuture {
             f: Some(self.f.clone()),
-            kind: Kind::Future(self.inner.call(req)),
+            inner: self.inner.clone().oneshot(req),
         }
     }
 }
 
 #[pin_project]
-pub struct HandleErrorFuture<Fut, F, E> {
+pub struct HandleErrorFuture<Fut, F> {
     #[pin]
-    kind: Kind<Fut, E>,
+    inner: Fut,
     f: Option<F>,
 }
 
-#[pin_project(project = KindProj)]
-enum Kind<Fut, E> {
-    Future(#[pin] Fut),
-    Error(Option<E>),
-}
-
-impl<Fut, F, E, B, Res> Future for HandleErrorFuture<Fut, F, E>
+impl<Fut, F, E, B, Res> Future for HandleErrorFuture<Fut, F>
 where
     Fut: Future<Output = Result<Response<B>, E>>,
     F: FnOnce(E) -> Res,
@@ -230,18 +205,11 @@ where
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let this = self.project();
 
-        match this.kind.project() {
-            KindProj::Future(future) => match ready!(future.poll(cx)) {
-                Ok(res) => Ok(res.map(BoxBody::new)).into(),
-                Err(err) => {
-                    let f = this.f.take().unwrap();
-                    let res = f(err).into_response();
-                    Ok(res.map(BoxBody::new)).into()
-                }
-            },
-            KindProj::Error(err) => {
+        match ready!(this.inner.poll(cx)) {
+            Ok(res) => Ok(res.map(BoxBody::new)).into(),
+            Err(err) => {
                 let f = this.f.take().unwrap();
-                let res = f(err.take().unwrap()).into_response();
+                let res = f(err).into_response();
                 Ok(res.map(BoxBody::new)).into()
             }
         }

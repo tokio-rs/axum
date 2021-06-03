@@ -1,4 +1,4 @@
-use crate::{app, extract, handler::Handler};
+use crate::{extract, get, on_method, post, route, AddRoute, Handler, MethodFilter};
 use http::{Request, Response, StatusCode};
 use hyper::{Body, Server};
 use serde::Deserialize;
@@ -7,29 +7,53 @@ use std::{
     net::{SocketAddr, TcpListener},
     time::Duration,
 };
-use tower::{make::Shared, BoxError, Service};
+use tower::{make::Shared, BoxError, Service, ServiceBuilder};
+use tower_http::compression::CompressionLayer;
 
 #[tokio::test]
 async fn hello_world() {
-    let app = app()
-        .at("/")
-        .get(|_: Request<Body>| async { "Hello, World!" })
-        .into_service();
+    async fn root(_: Request<Body>) -> &'static str {
+        "Hello, World!"
+    }
+
+    async fn foo(_: Request<Body>) -> &'static str {
+        "foo"
+    }
+
+    async fn users_create(_: Request<Body>) -> &'static str {
+        "users#create"
+    }
+
+    let app = route("/", get(root).post(foo)).route("/users", post(users_create));
 
     let addr = run_in_background(app).await;
 
-    let res = reqwest::get(format!("http://{}", addr)).await.unwrap();
-    let body = res.text().await.unwrap();
+    let client = reqwest::Client::new();
 
+    let res = client.get(format!("http://{}", addr)).send().await.unwrap();
+    let body = res.text().await.unwrap();
     assert_eq!(body, "Hello, World!");
+
+    let res = client
+        .post(format!("http://{}", addr))
+        .send()
+        .await
+        .unwrap();
+    let body = res.text().await.unwrap();
+    assert_eq!(body, "foo");
+
+    let res = client
+        .post(format!("http://{}/users", addr))
+        .send()
+        .await
+        .unwrap();
+    let body = res.text().await.unwrap();
+    assert_eq!(body, "users#create");
 }
 
 #[tokio::test]
 async fn consume_body() {
-    let app = app()
-        .at("/")
-        .get(|_: Request<Body>, body: String| async { body })
-        .into_service();
+    let app = route("/", get(|_: Request<Body>, body: String| async { body }));
 
     let addr = run_in_background(app).await;
 
@@ -52,10 +76,10 @@ async fn deserialize_body() {
         foo: String,
     }
 
-    let app = app()
-        .at("/")
-        .post(|_: Request<Body>, input: extract::Json<Input>| async { input.0.foo })
-        .into_service();
+    let app = route(
+        "/",
+        post(|_: Request<Body>, input: extract::Json<Input>| async { input.0.foo }),
+    );
 
     let addr = run_in_background(app).await;
 
@@ -78,10 +102,10 @@ async fn consume_body_to_json_requires_json_content_type() {
         foo: String,
     }
 
-    let app = app()
-        .at("/")
-        .post(|_: Request<Body>, input: extract::Json<Input>| async { input.0.foo })
-        .into_service();
+    let app = route(
+        "/",
+        post(|_: Request<Body>, input: extract::Json<Input>| async { input.0.foo }),
+    );
 
     let addr = run_in_background(app).await;
 
@@ -110,14 +134,14 @@ async fn body_with_length_limit() {
 
     const LIMIT: u64 = 8;
 
-    let app = app()
-        .at("/")
-        .post(
+    let app = route(
+        "/",
+        post(
             |req: Request<Body>, _body: extract::BytesMaxLength<LIMIT>| async move {
                 dbg!(&req);
             },
-        )
-        .into_service();
+        ),
+    );
 
     let addr = run_in_background(app).await;
 
@@ -160,15 +184,16 @@ async fn body_with_length_limit() {
 
 #[tokio::test]
 async fn routing() {
-    let app = app()
-        .at("/users")
-        .get(|_: Request<Body>| async { "users#index" })
-        .post(|_: Request<Body>| async { "users#create" })
-        .at("/users/:id")
-        .get(|_: Request<Body>| async { "users#show" })
-        .at("/users/:id/action")
-        .get(|_: Request<Body>| async { "users#action" })
-        .into_service();
+    let app = route(
+        "/users",
+        get(|_: Request<Body>| async { "users#index" })
+            .post(|_: Request<Body>| async { "users#create" }),
+    )
+    .route("/users/:id", get(|_: Request<Body>| async { "users#show" }))
+    .route(
+        "/users/:id/action",
+        get(|_: Request<Body>| async { "users#action" }),
+    );
 
     let addr = run_in_background(app).await;
 
@@ -212,9 +237,9 @@ async fn routing() {
 
 #[tokio::test]
 async fn extracting_url_params() {
-    let app = app()
-        .at("/users/:id")
-        .get(
+    let app = route(
+        "/users/:id",
+        get(
             |_: Request<Body>, params: extract::UrlParams<(i32,)>| async move {
                 let (id,) = params.0;
                 assert_eq!(id, 42);
@@ -225,8 +250,8 @@ async fn extracting_url_params() {
                 assert_eq!(params_map.get("id").unwrap(), "1337");
                 assert_eq!(params_map.get_typed::<i32>("id").unwrap(), 1337);
             },
-        )
-        .into_service();
+        ),
+    );
 
     let addr = run_in_background(app).await;
 
@@ -249,12 +274,12 @@ async fn extracting_url_params() {
 
 #[tokio::test]
 async fn boxing() {
-    let app = app()
-        .at("/")
-        .get(|_: Request<Body>| async { "hi from GET" })
-        .boxed()
-        .post(|_: Request<Body>| async { "hi from POST" })
-        .into_service();
+    let app = route(
+        "/",
+        get(|_: Request<Body>| async { "hi from GET" })
+            .post(|_: Request<Body>| async { "hi from POST" }),
+    )
+    .boxed();
 
     let addr = run_in_background(app).await;
 
@@ -280,24 +305,24 @@ async fn service_handlers() {
     use tower::service_fn;
     use tower_http::services::ServeFile;
 
-    let app = app()
-        .at("/echo")
-        .post_service(service_fn(|req: Request<Body>| async move {
-            Ok::<_, Infallible>(Response::new(req.into_body()))
-        }))
-        // calling boxed isn't necessary here but done so
-        // we're sure it compiles
-        .boxed()
-        .at("/static/Cargo.toml")
-        .get_service(
+    let app = route(
+        "/echo",
+        on_method(
+            MethodFilter::Post,
+            service_fn(|req: Request<Body>| async move {
+                Ok::<_, Infallible>(Response::new(req.into_body()))
+            }),
+        ),
+    )
+    .route(
+        "/static/Cargo.toml",
+        on_method(
+            MethodFilter::Get,
             ServeFile::new("Cargo.toml").handle_error(|error: std::io::Error| {
                 (StatusCode::INTERNAL_SERVER_ERROR, error.to_string())
             }),
-        )
-        // calling boxed isn't necessary here but done so
-        // we're sure it compiles
-        .boxed()
-        .into_service();
+        ),
+    );
 
     let addr = run_in_background(app).await;
 
@@ -331,17 +356,15 @@ async fn middleware_on_single_route() {
         "Hello, World!"
     }
 
-    let app = app()
-        .at("/")
-        .get(
-            handle.layer(
-                ServiceBuilder::new()
-                    .layer(TraceLayer::new_for_http())
-                    .layer(CompressionLayer::new())
-                    .into_inner(),
-            ),
-        )
-        .into_service();
+    let app = route(
+        "/",
+        get(handle.layer(
+            ServiceBuilder::new()
+                .layer(TraceLayer::new_for_http())
+                .layer(CompressionLayer::new())
+                .into_inner(),
+        )),
+    );
 
     let addr = run_in_background(app).await;
 
@@ -360,14 +383,12 @@ async fn handling_errors_from_layered_single_routes() {
         ""
     }
 
-    let app = app()
-        .at("/")
-        .get(
-            handle
-                .layer(TimeoutLayer::new(Duration::from_millis(100)))
-                .handle_error(|_error: BoxError| StatusCode::INTERNAL_SERVER_ERROR),
-        )
-        .into_service();
+    let app = route(
+        "/",
+        get(handle
+            .layer(TimeoutLayer::new(Duration::from_millis(100)))
+            .handle_error(|_error: BoxError| StatusCode::INTERNAL_SERVER_ERROR)),
+    );
 
     let addr = run_in_background(app).await;
 
@@ -377,19 +398,19 @@ async fn handling_errors_from_layered_single_routes() {
 
 #[tokio::test]
 async fn layer_on_whole_router() {
-    use tower::timeout::TimeoutLayer;
-
     async fn handle(_req: Request<Body>) -> &'static str {
         tokio::time::sleep(Duration::from_secs(10)).await;
         ""
     }
 
-    let app = app()
-        .at("/")
-        .get(handle)
-        .layer(TimeoutLayer::new(Duration::from_millis(100)))
-        .handle_error(|_err: BoxError| StatusCode::INTERNAL_SERVER_ERROR)
-        .into_service();
+    let app = route("/", get(handle))
+        .layer(
+            ServiceBuilder::new()
+                .layer(CompressionLayer::new())
+                .timeout(Duration::from_millis(100))
+                .into_inner(),
+        )
+        .handle_error(|_err: BoxError| StatusCode::INTERNAL_SERVER_ERROR);
 
     let addr = run_in_background(app).await;
 
@@ -397,148 +418,150 @@ async fn layer_on_whole_router() {
     assert_eq!(res.status(), StatusCode::INTERNAL_SERVER_ERROR);
 }
 
-// #[tokio::test]
-// async fn nesting() {
-//     let api = app()
-//         .at("/users")
-//         .get(|_: Request<Body>| async { "users#index" })
-//         .post(|_: Request<Body>| async { "users#create" })
-//         .at("/users/:id")
-//         .get(
-//             |_: Request<Body>, params: extract::UrlParams<(i32,)>| async move {
-//                 let (id,) = params.0;
-//                 format!("users#show {}", id)
-//             },
-//         );
+// TODO(david): layer that changes the response body type to have a different error
 
-//     let app = app()
-//         .at("/foo")
-//         .get(|_: Request<Body>| async { "foo" })
-//         .at("/api")
-//         .nest(api)
-//         .at("/bar")
-//         .get(|_: Request<Body>| async { "bar" })
-//         .into_service();
+// // #[tokio::test]
+// // async fn nesting() {
+// //     let api = app()
+// //         .at("/users")
+// //         .get(|_: Request<Body>| async { "users#index" })
+// //         .post(|_: Request<Body>| async { "users#create" })
+// //         .at("/users/:id")
+// //         .get(
+// //             |_: Request<Body>, params: extract::UrlParams<(i32,)>| async move {
+// //                 let (id,) = params.0;
+// //                 format!("users#show {}", id)
+// //             },
+// //         );
 
-//     let addr = run_in_background(app).await;
+// //     let app = app()
+// //         .at("/foo")
+// //         .get(|_: Request<Body>| async { "foo" })
+// //         .at("/api")
+// //         .nest(api)
+// //         .at("/bar")
+// //         .get(|_: Request<Body>| async { "bar" })
+// //         .into_service();
 
-//     let client = reqwest::Client::new();
+// //     let addr = run_in_background(app).await;
 
-//     let res = client
-//         .get(format!("http://{}/api/users", addr))
-//         .send()
-//         .await
-//         .unwrap();
-//     assert_eq!(res.text().await.unwrap(), "users#index");
+// //     let client = reqwest::Client::new();
 
-//     let res = client
-//         .post(format!("http://{}/api/users", addr))
-//         .send()
-//         .await
-//         .unwrap();
-//     assert_eq!(res.text().await.unwrap(), "users#create");
+// //     let res = client
+// //         .get(format!("http://{}/api/users", addr))
+// //         .send()
+// //         .await
+// //         .unwrap();
+// //     assert_eq!(res.text().await.unwrap(), "users#index");
 
-//     let res = client
-//         .get(format!("http://{}/api/users/42", addr))
-//         .send()
-//         .await
-//         .unwrap();
-//     assert_eq!(res.text().await.unwrap(), "users#show 42");
+// //     let res = client
+// //         .post(format!("http://{}/api/users", addr))
+// //         .send()
+// //         .await
+// //         .unwrap();
+// //     assert_eq!(res.text().await.unwrap(), "users#create");
 
-//     let res = client
-//         .get(format!("http://{}/foo", addr))
-//         .send()
-//         .await
-//         .unwrap();
-//     assert_eq!(res.text().await.unwrap(), "foo");
+// //     let res = client
+// //         .get(format!("http://{}/api/users/42", addr))
+// //         .send()
+// //         .await
+// //         .unwrap();
+// //     assert_eq!(res.text().await.unwrap(), "users#show 42");
 
-//     let res = client
-//         .get(format!("http://{}/bar", addr))
-//         .send()
-//         .await
-//         .unwrap();
-//     assert_eq!(res.text().await.unwrap(), "bar");
-// }
+// //     let res = client
+// //         .get(format!("http://{}/foo", addr))
+// //         .send()
+// //         .await
+// //         .unwrap();
+// //     assert_eq!(res.text().await.unwrap(), "foo");
 
-// #[tokio::test]
-// async fn nesting_with_dynamic_part() {
-//     let api = app().at("/users/:id").get(
-//         |_: Request<Body>, params: extract::UrlParamsMap| async move {
-//             // let (version, id) = params.0;
-//             dbg!(&params);
-//             let version = params.get("version").unwrap();
-//             let id = params.get("id").unwrap();
-//             format!("users#show {} {}", version, id)
-//         },
-//     );
+// //     let res = client
+// //         .get(format!("http://{}/bar", addr))
+// //         .send()
+// //         .await
+// //         .unwrap();
+// //     assert_eq!(res.text().await.unwrap(), "bar");
+// // }
 
-//     let app = app().at("/:version/api").nest(api).into_service();
+// // #[tokio::test]
+// // async fn nesting_with_dynamic_part() {
+// //     let api = app().at("/users/:id").get(
+// //         |_: Request<Body>, params: extract::UrlParamsMap| async move {
+// //             // let (version, id) = params.0;
+// //             dbg!(&params);
+// //             let version = params.get("version").unwrap();
+// //             let id = params.get("id").unwrap();
+// //             format!("users#show {} {}", version, id)
+// //         },
+// //     );
 
-//     let addr = run_in_background(app).await;
+// //     let app = app().at("/:version/api").nest(api).into_service();
 
-//     let client = reqwest::Client::new();
+// //     let addr = run_in_background(app).await;
 
-//     let res = client
-//         .get(format!("http://{}/v0/api/users/123", addr))
-//         .send()
-//         .await
-//         .unwrap();
-//     let status = res.status();
-//     assert_eq!(res.text().await.unwrap(), "users#show v0 123");
-//     assert_eq!(status, StatusCode::OK);
-// }
+// //     let client = reqwest::Client::new();
 
-// #[tokio::test]
-// async fn nesting_more_deeply() {
-//     let users_api = app()
-//         .at("/:id")
-//         .get(|req: Request<Body>| async move {
-//             dbg!(&req.uri().path());
-//             "users#show"
-//         });
+// //     let res = client
+// //         .get(format!("http://{}/v0/api/users/123", addr))
+// //         .send()
+// //         .await
+// //         .unwrap();
+// //     let status = res.status();
+// //     assert_eq!(res.text().await.unwrap(), "users#show v0 123");
+// //     assert_eq!(status, StatusCode::OK);
+// // }
 
-//     let games_api = app()
-//         .at("/")
-//         .post(|req: Request<Body>| async move {
-//             dbg!(&req.uri().path());
-//             "games#create"
-//         });
+// // #[tokio::test]
+// // async fn nesting_more_deeply() {
+// //     let users_api = app()
+// //         .at("/:id")
+// //         .get(|req: Request<Body>| async move {
+// //             dbg!(&req.uri().path());
+// //             "users#show"
+// //         });
 
-//     let api = app()
-//         .at("/users")
-//         .nest(users_api)
-//         .at("/games")
-//         .nest(games_api);
+// //     let games_api = app()
+// //         .at("/")
+// //         .post(|req: Request<Body>| async move {
+// //             dbg!(&req.uri().path());
+// //             "games#create"
+// //         });
 
-//     let app = app().at("/:version/api").nest(api).into_service();
+// //     let api = app()
+// //         .at("/users")
+// //         .nest(users_api)
+// //         .at("/games")
+// //         .nest(games_api);
 
-//     let addr = run_in_background(app).await;
+// //     let app = app().at("/:version/api").nest(api).into_service();
 
-//     let client = reqwest::Client::new();
+// //     let addr = run_in_background(app).await;
 
-//     // let res = client
-//     //     .get(format!("http://{}/v0/api/users/123", addr))
-//     //     .send()
-//     //     .await
-//     //     .unwrap();
-//     // assert_eq!(res.status(), StatusCode::OK);
+// //     let client = reqwest::Client::new();
 
-//     println!("============================");
+// //     // let res = client
+// //     //     .get(format!("http://{}/v0/api/users/123", addr))
+// //     //     .send()
+// //     //     .await
+// //     //     .unwrap();
+// //     // assert_eq!(res.status(), StatusCode::OK);
 
-//     let res = client
-//         .post(format!("http://{}/v0/api/games", addr))
-//         .send()
-//         .await
-//         .unwrap();
-//     assert_eq!(res.status(), StatusCode::OK);
-// }
+// //     println!("============================");
 
-// TODO(david): nesting more deeply
+// //     let res = client
+// //         .post(format!("http://{}/v0/api/games", addr))
+// //         .send()
+// //         .await
+// //         .unwrap();
+// //     assert_eq!(res.status(), StatusCode::OK);
+// // }
 
-// TODO(david): composing two apps
-// TODO(david): composing two apps with one at a "sub path"
-// TODO(david): composing two boxed apps
-// TODO(david): composing two apps that have had layers applied
+// // TODO(david): nesting more deeply
+
+// // TODO(david): composing two apps
+// // TODO(david): composing two apps with one at a "sub path"
+// // TODO(david): composing two boxed apps
+// // TODO(david): composing two apps that have had layers applied
 
 /// Run a `tower::Service` in the background and get a URI for it.
 pub async fn run_in_background<S, ResBody>(svc: S) -> SocketAddr
@@ -547,8 +570,8 @@ where
     ResBody: http_body::Body + Send + 'static,
     ResBody::Data: Send,
     ResBody::Error: Into<BoxError>,
-    S::Error: Into<BoxError>,
     S::Future: Send,
+    S::Error: Into<BoxError>,
 {
     let listener = TcpListener::bind("127.0.0.1:0").expect("Could not bind ephemeral socket");
     let addr = listener.local_addr().unwrap();

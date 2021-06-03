@@ -143,11 +143,11 @@ impl<S, T> Layered<S, T> {
         }
     }
 
-    pub fn handle_error<F, B, Res>(self, f: F) -> Layered<HandleError<S, F, S::Error>, T>
+    pub fn handle_error<F, B, Res>(self, f: F) -> Layered<HandleError<S, F>, T>
     where
         S: Service<Request<Body>, Response = Response<B>>,
         F: FnOnce(S::Error) -> Res,
-        Res: IntoResponse<Body>,
+        Res: IntoResponse<B>,
         B: http_body::Body<Data = Bytes> + Send + Sync + 'static,
         B::Error: Into<BoxError> + Send + Sync + 'static,
     {
