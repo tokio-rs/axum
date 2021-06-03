@@ -397,92 +397,141 @@ async fn layer_on_whole_router() {
     assert_eq!(res.status(), StatusCode::INTERNAL_SERVER_ERROR);
 }
 
-#[tokio::test]
-async fn nesting() {
-    let api = app()
-        .at("/users")
-        .get(|_: Request<Body>| async { "users#index" })
-        .post(|_: Request<Body>| async { "users#create" })
-        .at("/users/:id")
-        .get(
-            |_: Request<Body>, params: extract::UrlParams<(i32,)>| async move {
-                let (id,) = params.0;
-                format!("users#show {}", id)
-            },
-        );
+// #[tokio::test]
+// async fn nesting() {
+//     let api = app()
+//         .at("/users")
+//         .get(|_: Request<Body>| async { "users#index" })
+//         .post(|_: Request<Body>| async { "users#create" })
+//         .at("/users/:id")
+//         .get(
+//             |_: Request<Body>, params: extract::UrlParams<(i32,)>| async move {
+//                 let (id,) = params.0;
+//                 format!("users#show {}", id)
+//             },
+//         );
 
-    let app = app()
-        .at("/foo")
-        .get(|_: Request<Body>| async { "foo" })
-        .at("/api")
-        .nest(api)
-        .at("/bar")
-        .get(|_: Request<Body>| async { "bar" })
-        .into_service();
+//     let app = app()
+//         .at("/foo")
+//         .get(|_: Request<Body>| async { "foo" })
+//         .at("/api")
+//         .nest(api)
+//         .at("/bar")
+//         .get(|_: Request<Body>| async { "bar" })
+//         .into_service();
 
-    let addr = run_in_background(app).await;
+//     let addr = run_in_background(app).await;
 
-    let client = reqwest::Client::new();
+//     let client = reqwest::Client::new();
 
-    let res = client
-        .get(format!("http://{}/api/users", addr))
-        .send()
-        .await
-        .unwrap();
-    assert_eq!(res.text().await.unwrap(), "users#index");
+//     let res = client
+//         .get(format!("http://{}/api/users", addr))
+//         .send()
+//         .await
+//         .unwrap();
+//     assert_eq!(res.text().await.unwrap(), "users#index");
 
-    let res = client
-        .post(format!("http://{}/api/users", addr))
-        .send()
-        .await
-        .unwrap();
-    assert_eq!(res.text().await.unwrap(), "users#create");
+//     let res = client
+//         .post(format!("http://{}/api/users", addr))
+//         .send()
+//         .await
+//         .unwrap();
+//     assert_eq!(res.text().await.unwrap(), "users#create");
 
-    let res = client
-        .get(format!("http://{}/api/users/42", addr))
-        .send()
-        .await
-        .unwrap();
-    assert_eq!(res.text().await.unwrap(), "users#show 42");
+//     let res = client
+//         .get(format!("http://{}/api/users/42", addr))
+//         .send()
+//         .await
+//         .unwrap();
+//     assert_eq!(res.text().await.unwrap(), "users#show 42");
 
-    let res = client
-        .get(format!("http://{}/foo", addr))
-        .send()
-        .await
-        .unwrap();
-    assert_eq!(res.text().await.unwrap(), "foo");
+//     let res = client
+//         .get(format!("http://{}/foo", addr))
+//         .send()
+//         .await
+//         .unwrap();
+//     assert_eq!(res.text().await.unwrap(), "foo");
 
-    let res = client
-        .get(format!("http://{}/bar", addr))
-        .send()
-        .await
-        .unwrap();
-    assert_eq!(res.text().await.unwrap(), "bar");
-}
+//     let res = client
+//         .get(format!("http://{}/bar", addr))
+//         .send()
+//         .await
+//         .unwrap();
+//     assert_eq!(res.text().await.unwrap(), "bar");
+// }
 
-#[tokio::test]
-async fn nesting_with_dynamic_part() {
-    let api = app().at("/users/:id").get(
-        |_: Request<Body>, params: extract::UrlParams<(String, i32)>| async move {
-            let (version, id) = params.0;
-            format!("users#show {} {}", version, id)
-        },
-    );
+// #[tokio::test]
+// async fn nesting_with_dynamic_part() {
+//     let api = app().at("/users/:id").get(
+//         |_: Request<Body>, params: extract::UrlParamsMap| async move {
+//             // let (version, id) = params.0;
+//             dbg!(&params);
+//             let version = params.get("version").unwrap();
+//             let id = params.get("id").unwrap();
+//             format!("users#show {} {}", version, id)
+//         },
+//     );
 
-    let app = app().at("/:version/api").nest(api).into_service();
+//     let app = app().at("/:version/api").nest(api).into_service();
 
-    let addr = run_in_background(app).await;
+//     let addr = run_in_background(app).await;
 
-    let client = reqwest::Client::new();
+//     let client = reqwest::Client::new();
 
-    let res = client
-        .get(format!("http://{}/v0/api/users/123", addr))
-        .send()
-        .await
-        .unwrap();
-    assert_eq!(res.status(), StatusCode::OK);
-    assert_eq!(res.text().await.unwrap(), "users#show v0 123");
-}
+//     let res = client
+//         .get(format!("http://{}/v0/api/users/123", addr))
+//         .send()
+//         .await
+//         .unwrap();
+//     let status = res.status();
+//     assert_eq!(res.text().await.unwrap(), "users#show v0 123");
+//     assert_eq!(status, StatusCode::OK);
+// }
+
+// #[tokio::test]
+// async fn nesting_more_deeply() {
+//     let users_api = app()
+//         .at("/:id")
+//         .get(|req: Request<Body>| async move {
+//             dbg!(&req.uri().path());
+//             "users#show"
+//         });
+
+//     let games_api = app()
+//         .at("/")
+//         .post(|req: Request<Body>| async move {
+//             dbg!(&req.uri().path());
+//             "games#create"
+//         });
+
+//     let api = app()
+//         .at("/users")
+//         .nest(users_api)
+//         .at("/games")
+//         .nest(games_api);
+
+//     let app = app().at("/:version/api").nest(api).into_service();
+
+//     let addr = run_in_background(app).await;
+
+//     let client = reqwest::Client::new();
+
+//     // let res = client
+//     //     .get(format!("http://{}/v0/api/users/123", addr))
+//     //     .send()
+//     //     .await
+//     //     .unwrap();
+//     // assert_eq!(res.status(), StatusCode::OK);
+
+//     println!("============================");
+
+//     let res = client
+//         .post(format!("http://{}/v0/api/games", addr))
+//         .send()
+//         .await
+//         .unwrap();
+//     assert_eq!(res.status(), StatusCode::OK);
+// }
 
 // TODO(david): nesting more deeply
 

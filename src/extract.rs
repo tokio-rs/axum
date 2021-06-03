@@ -284,6 +284,7 @@ define_rejection! {
     pub struct MissingRouteParams(());
 }
 
+#[derive(Debug)]
 pub struct UrlParamsMap(HashMap<String, String>);
 
 impl UrlParamsMap {
