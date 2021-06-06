@@ -5,7 +5,7 @@ ergonimics and modularity.
 
 ### Goals
 
-- Ease of use. Build web apps in Rust should be as easy as `async fn
+- Ease of use. Building web apps in Rust should be as easy as `async fn
 handle(Request) -> Response`.
 - Solid foundation. tower-web is built on top of tower and makes it easy to
 plug in any middleware from the [tower] and [tower-http] ecosystem.
@@ -13,13 +13,6 @@ plug in any middleware from the [tower] and [tower-http] ecosystem.
 tower middleware can handle the rest.
 - Macro free core. Macro frameworks have their place but tower-web focuses
 on providing a core that is macro free.
-
-### Non-goals
-
-- Runtime independent. tower-web is designed to work with tokio and hyper
-and focused on bringing a good to experience to that stack.
-- Speed. tower-web is a of course a fast framework, and wont be the
-bottleneck in your app, but the goal is not to top the benchmarks.
 
 ## Example
 
@@ -454,7 +447,22 @@ See the [`service`] module for more details.
 
 ## Nesting applications
 
-TODO
+Applications can be nested by calling `nest`:
+
+```rust
+use tower_web::{prelude::*, routing::BoxRoute, body::BoxBody};
+use tower_http::services::ServeFile;
+use http::Response;
+use std::convert::Infallible;
+use tower::{service_fn, BoxError};
+
+fn api_routes() -> BoxRoute<BoxBody> {
+    route("/users", get(|_: Request<Body>| async { /* ... */ })).boxed()
+}
+
+let app = route("/", get(|_: Request<Body>| async { /* ... */ }))
+    .nest("/api", api_routes());
+```
 
 [tower]: https://crates.io/crates/tower
 [tower-http]: https://crates.io/crates/tower-http
