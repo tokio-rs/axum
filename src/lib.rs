@@ -637,7 +637,7 @@ pub trait ServiceExt<B>: Service<Request<Body>, Response = Response<B>> {
     where
         Self: Sized,
         F: FnOnce(Self::Error) -> Res,
-        Res: IntoResponse<Body>,
+        Res: IntoResponse,
         B: http_body::Body<Data = Bytes> + Send + Sync + 'static,
         B::Error: Into<BoxError> + Send + Sync + 'static,
     {

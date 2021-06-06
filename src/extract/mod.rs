@@ -3,8 +3,8 @@ use async_trait::async_trait;
 use bytes::Bytes;
 use http::{header, Request, Response};
 use rejection::{
-    BodyAlreadyTaken, FailedToBufferBody, InvalidJsonBody, InvalidUtf8, LengthRequired,
-    MissingExtension, MissingJsonContentType, MissingRouteParams, PayloadTooLarge,
+    BodyAlreadyTaken, FailedToBufferBody, InvalidJsonBody, InvalidUrlParam, InvalidUtf8,
+    LengthRequired, MissingExtension, MissingJsonContentType, MissingRouteParams, PayloadTooLarge,
     QueryStringMissing,
 };
 use serde::de::DeserializeOwned;
@@ -13,16 +13,16 @@ use std::{collections::HashMap, convert::Infallible, str::FromStr};
 pub mod rejection;
 
 #[async_trait]
-pub trait FromRequest<B>: Sized {
-    type Rejection: IntoResponse<B>;
+pub trait FromRequest: Sized {
+    type Rejection: IntoResponse;
 
     async fn from_request(req: &mut Request<Body>) -> Result<Self, Self::Rejection>;
 }
 
 #[async_trait]
-impl<T, B> FromRequest<B> for Option<T>
+impl<T> FromRequest for Option<T>
 where
-    T: FromRequest<B>,
+    T: FromRequest,
 {
     type Rejection = Infallible;
 
@@ -35,7 +35,7 @@ where
 pub struct Query<T>(pub T);
 
 #[async_trait]
-impl<T> FromRequest<Body> for Query<T>
+impl<T> FromRequest for Query<T>
 where
     T: DeserializeOwned,
 {
@@ -52,7 +52,7 @@ where
 pub struct Json<T>(pub T);
 
 #[async_trait]
-impl<T> FromRequest<Body> for Json<T>
+impl<T> FromRequest for Json<T>
 where
     T: DeserializeOwned,
 {
@@ -98,7 +98,7 @@ fn has_content_type<B>(req: &Request<B>, expected_content_type: &str) -> bool {
 pub struct Extension<T>(pub T);
 
 #[async_trait]
-impl<T> FromRequest<Body> for Extension<T>
+impl<T> FromRequest for Extension<T>
 where
     T: Clone + Send + Sync + 'static,
 {
@@ -116,7 +116,7 @@ where
 }
 
 #[async_trait]
-impl FromRequest<Body> for Bytes {
+impl FromRequest for Bytes {
     type Rejection = Response<Body>;
 
     async fn from_request(req: &mut Request<Body>) -> Result<Self, Self::Rejection> {
@@ -132,7 +132,7 @@ impl FromRequest<Body> for Bytes {
 }
 
 #[async_trait]
-impl FromRequest<Body> for String {
+impl FromRequest for String {
     type Rejection = Response<Body>;
 
     async fn from_request(req: &mut Request<Body>) -> Result<Self, Self::Rejection> {
@@ -153,7 +153,7 @@ impl FromRequest<Body> for String {
 }
 
 #[async_trait]
-impl FromRequest<Body> for Body {
+impl FromRequest for Body {
     type Rejection = BodyAlreadyTaken;
 
     async fn from_request(req: &mut Request<Body>) -> Result<Self, Self::Rejection> {
@@ -165,7 +165,7 @@ impl FromRequest<Body> for Body {
 pub struct BytesMaxLength<const N: u64>(pub Bytes);
 
 #[async_trait]
-impl<const N: u64> FromRequest<Body> for BytesMaxLength<N> {
+impl<const N: u64> FromRequest for BytesMaxLength<N> {
     type Rejection = Response<Body>;
 
     async fn from_request(req: &mut Request<Body>) -> Result<Self, Self::Rejection> {
@@ -208,7 +208,7 @@ impl UrlParamsMap {
 }
 
 #[async_trait]
-impl FromRequest<Body> for UrlParamsMap {
+impl FromRequest for UrlParamsMap {
     type Rejection = MissingRouteParams;
 
     async fn from_request(req: &mut Request<Body>) -> Result<Self, Self::Rejection> {
@@ -224,30 +224,6 @@ impl FromRequest<Body> for UrlParamsMap {
     }
 }
 
-#[derive(Debug)]
-pub struct InvalidUrlParam {
-    type_name: &'static str,
-}
-
-impl InvalidUrlParam {
-    fn new<T>() -> Self {
-        InvalidUrlParam {
-            type_name: std::any::type_name::<T>(),
-        }
-    }
-}
-
-impl IntoResponse<Body> for InvalidUrlParam {
-    fn into_response(self) -> http::Response<Body> {
-        let mut res = http::Response::new(Body::from(format!(
-            "Invalid URL param. Expected something of type `{}`",
-            self.type_name
-        )));
-        *res.status_mut() = http::StatusCode::BAD_REQUEST;
-        res
-    }
-}
-
 pub struct UrlParams<T>(pub T);
 
 macro_rules! impl_parse_url {
@@ -255,7 +231,7 @@ macro_rules! impl_parse_url {
 
     ( $head:ident, $($tail:ident),* $(,)? ) => {
         #[async_trait]
-        impl<$head, $($tail,)*> FromRequest<Body> for UrlParams<($head, $($tail,)*)>
+        impl<$head, $($tail,)*> FromRequest for UrlParams<($head, $($tail,)*)>
         where
             $head: FromStr + Send,
             $( $tail: FromStr + Send, )*

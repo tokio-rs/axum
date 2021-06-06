@@ -105,9 +105,11 @@ where
 
 #[derive(Clone)]
 pub struct HandleError<S, F> {
-    inner: S,
-    f: F,
+    pub(crate) inner: S,
+    pub(crate) f: F,
 }
+
+impl<S, F> crate::routing::RoutingDsl for HandleError<S, F> {}
 
 impl<S, F> HandleError<S, F> {
     pub(crate) fn new(inner: S, f: F) -> Self {
@@ -131,7 +133,7 @@ impl<S, F, B, Res> Service<Request<Body>> for HandleError<S, F>
 where
     S: Service<Request<Body>, Response = Response<B>> + Clone,
     F: FnOnce(S::Error) -> Res + Clone,
-    Res: IntoResponse<Body>,
+    Res: IntoResponse,
     B: http_body::Body<Data = Bytes> + Send + Sync + 'static,
     B::Error: Into<BoxError> + Send + Sync + 'static,
 {
@@ -162,7 +164,7 @@ impl<Fut, F, E, B, Res> Future for HandleErrorFuture<Fut, F>
 where
     Fut: Future<Output = Result<Response<B>, E>>,
     F: FnOnce(E) -> Res,
-    Res: IntoResponse<Body>,
+    Res: IntoResponse,
     B: http_body::Body<Data = Bytes> + Send + Sync + 'static,
     B::Error: Into<BoxError> + Send + Sync + 'static,
 {

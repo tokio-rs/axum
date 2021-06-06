@@ -8,7 +8,7 @@ use std::{
     time::Duration,
 };
 use tower::{make::Shared, BoxError, Service, ServiceBuilder};
-use tower_http::compression::CompressionLayer;
+use tower_http::{compression::CompressionLayer, trace::TraceLayer};
 
 #[tokio::test]
 async fn hello_world() {
@@ -444,8 +444,6 @@ async fn middleware_on_single_route() {
 
 #[tokio::test]
 async fn handling_errors_from_layered_single_routes() {
-    use tower::timeout::TimeoutLayer;
-
     async fn handle(_req: Request<Body>) -> &'static str {
         tokio::time::sleep(Duration::from_secs(10)).await;
         ""
@@ -454,7 +452,12 @@ async fn handling_errors_from_layered_single_routes() {
     let app = route(
         "/",
         get(handle
-            .layer(TimeoutLayer::new(Duration::from_millis(100)))
+            .layer(
+                ServiceBuilder::new()
+                    .timeout(Duration::from_secs(30))
+                    .layer(TraceLayer::new_for_http())
+                    .into_inner(),
+            )
             .handle_error(|_error: BoxError| StatusCode::INTERNAL_SERVER_ERROR)),
     );
 

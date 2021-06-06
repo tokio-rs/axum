@@ -5,29 +5,28 @@ use serde::Serialize;
 use std::{borrow::Cow, convert::Infallible};
 use tower::util::Either;
 
-// TODO(david): can we change this to not be generic over the body and just use hyper::Body?
-pub trait IntoResponse<B> {
-    fn into_response(self) -> Response<B>;
+pub trait IntoResponse {
+    fn into_response(self) -> Response<Body>;
 }
 
-impl IntoResponse<Body> for () {
+impl IntoResponse for () {
     fn into_response(self) -> Response<Body> {
         Response::new(Body::empty())
     }
 }
 
-impl<B> IntoResponse<B> for Infallible {
-    fn into_response(self) -> Response<B> {
+impl IntoResponse for Infallible {
+    fn into_response(self) -> Response<Body> {
         match self {}
     }
 }
 
-impl<T, K, B> IntoResponse<B> for Either<T, K>
+impl<T, K> IntoResponse for Either<T, K>
 where
-    T: IntoResponse<B>,
-    K: IntoResponse<B>,
+    T: IntoResponse,
+    K: IntoResponse,
 {
-    fn into_response(self) -> Response<B> {
+    fn into_response(self) -> Response<Body> {
         match self {
             Either::A(inner) => inner.into_response(),
             Either::B(inner) => inner.into_response(),
@@ -35,12 +34,12 @@ where
     }
 }
 
-impl<B, T, E> IntoResponse<B> for Result<T, E>
+impl<T, E> IntoResponse for Result<T, E>
 where
-    T: IntoResponse<B>,
-    E: IntoResponse<B>,
+    T: IntoResponse,
+    E: IntoResponse,
 {
-    fn into_response(self) -> Response<B> {
+    fn into_response(self) -> Response<Body> {
         match self {
             Ok(value) => value.into_response(),
             Err(err) => err.into_response(),
@@ -48,27 +47,27 @@ where
     }
 }
 
-impl<B> IntoResponse<B> for Response<B> {
+impl IntoResponse for Response<Body> {
     fn into_response(self) -> Self {
         self
     }
 }
 
-impl IntoResponse<Body> for &'static str {
+impl IntoResponse for &'static str {
     #[inline]
     fn into_response(self) -> Response<Body> {
         Cow::Borrowed(self).into_response()
     }
 }
 
-impl IntoResponse<Body> for String {
+impl IntoResponse for String {
     #[inline]
     fn into_response(self) -> Response<Body> {
         Cow::<'static, str>::Owned(self).into_response()
     }
 }
 
-impl IntoResponse<Body> for std::borrow::Cow<'static, str> {
+impl IntoResponse for std::borrow::Cow<'static, str> {
     fn into_response(self) -> Response<Body> {
         let mut res = Response::new(Body::from(self));
         res.headers_mut()
@@ -77,7 +76,7 @@ impl IntoResponse<Body> for std::borrow::Cow<'static, str> {
     }
 }
 
-impl IntoResponse<Body> for Bytes {
+impl IntoResponse for Bytes {
     fn into_response(self) -> Response<Body> {
         let mut res = Response::new(Body::from(self));
         res.headers_mut().insert(
@@ -88,7 +87,7 @@ impl IntoResponse<Body> for Bytes {
     }
 }
 
-impl IntoResponse<Body> for &'static [u8] {
+impl IntoResponse for &'static [u8] {
     fn into_response(self) -> Response<Body> {
         let mut res = Response::new(Body::from(self));
         res.headers_mut().insert(
@@ -99,7 +98,7 @@ impl IntoResponse<Body> for &'static [u8] {
     }
 }
 
-impl IntoResponse<Body> for Vec<u8> {
+impl IntoResponse for Vec<u8> {
     fn into_response(self) -> Response<Body> {
         let mut res = Response::new(Body::from(self));
         res.headers_mut().insert(
@@ -110,7 +109,7 @@ impl IntoResponse<Body> for Vec<u8> {
     }
 }
 
-impl IntoResponse<Body> for std::borrow::Cow<'static, [u8]> {
+impl IntoResponse for std::borrow::Cow<'static, [u8]> {
     fn into_response(self) -> Response<Body> {
         let mut res = Response::new(Body::from(self));
         res.headers_mut().insert(
@@ -121,7 +120,7 @@ impl IntoResponse<Body> for std::borrow::Cow<'static, [u8]> {
     }
 }
 
-impl IntoResponse<Body> for StatusCode {
+impl IntoResponse for StatusCode {
     fn into_response(self) -> Response<Body> {
         Response::builder()
             .status(self)
@@ -130,7 +129,7 @@ impl IntoResponse<Body> for StatusCode {
     }
 }
 
-impl<T> IntoResponse<Body> for (StatusCode, T)
+impl<T> IntoResponse for (StatusCode, T)
 where
     T: Into<Body>,
 {
@@ -142,7 +141,7 @@ where
     }
 }
 
-impl<T> IntoResponse<Body> for (StatusCode, HeaderMap, T)
+impl<T> IntoResponse for (StatusCode, HeaderMap, T)
 where
     T: Into<Body>,
 {
@@ -156,7 +155,7 @@ where
 
 pub struct Html<T>(pub T);
 
-impl<T> IntoResponse<Body> for Html<T>
+impl<T> IntoResponse for Html<T>
 where
     T: Into<Body>,
 {
@@ -170,7 +169,7 @@ where
 
 pub struct Json<T>(pub T);
 
-impl<T> IntoResponse<Body> for Json<T>
+impl<T> IntoResponse for Json<T>
 where
     T: Serialize,
 {

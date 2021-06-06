@@ -10,7 +10,7 @@ macro_rules! define_rejection {
         #[derive(Debug)]
         pub struct $name(pub(super) ());
 
-        impl IntoResponse<Body> for $name {
+        impl IntoResponse for $name {
             fn into_response(self) -> http::Response<Body> {
                 let mut res = http::Response::new(Body::from($body));
                 *res.status_mut() = http::StatusCode::$status;
@@ -36,7 +36,7 @@ macro_rules! define_rejection {
             }
         }
 
-        impl IntoResponse<Body> for $name {
+        impl IntoResponse for $name {
             fn into_response(self) -> http::Response<Body> {
                 let mut res =
                     http::Response::new(Body::from(format!(concat!($body, ": {}"), self.0)));
@@ -105,4 +105,28 @@ define_rejection! {
     #[status = INTERNAL_SERVER_ERROR]
     #[body = "Cannot have two request body extractors for a single handler"]
     pub struct BodyAlreadyTaken(());
+}
+
+#[derive(Debug)]
+pub struct InvalidUrlParam {
+    type_name: &'static str,
+}
+
+impl InvalidUrlParam {
+    pub(super) fn new<T>() -> Self {
+        InvalidUrlParam {
+            type_name: std::any::type_name::<T>(),
+        }
+    }
+}
+
+impl IntoResponse for InvalidUrlParam {
+    fn into_response(self) -> http::Response<Body> {
+        let mut res = http::Response::new(Body::from(format!(
+            "Invalid URL param. Expected something of type `{}`",
+            self.type_name
+        )));
+        *res.status_mut() = http::StatusCode::BAD_REQUEST;
+        res
+    }
 }

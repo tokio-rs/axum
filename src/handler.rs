@@ -17,23 +17,23 @@ use std::{
 };
 use tower::{util::Oneshot, BoxError, Layer, Service, ServiceExt};
 
-pub fn get<H, B, T>(handler: H) -> OnMethod<IntoService<H, B, T>, EmptyRouter>
+pub fn get<H, T>(handler: H) -> OnMethod<IntoService<H, T>, EmptyRouter>
 where
-    H: Handler<B, T>,
+    H: Handler<T>,
 {
     on(MethodFilter::Get, handler)
 }
 
-pub fn post<H, B, T>(handler: H) -> OnMethod<IntoService<H, B, T>, EmptyRouter>
+pub fn post<H, T>(handler: H) -> OnMethod<IntoService<H, T>, EmptyRouter>
 where
-    H: Handler<B, T>,
+    H: Handler<T>,
 {
     on(MethodFilter::Post, handler)
 }
 
-pub fn on<H, B, T>(method: MethodFilter, handler: H) -> OnMethod<IntoService<H, B, T>, EmptyRouter>
+pub fn on<H, T>(method: MethodFilter, handler: H) -> OnMethod<IntoService<H, T>, EmptyRouter>
 where
-    H: Handler<B, T>,
+    H: Handler<T>,
 {
     OnMethod {
         method,
@@ -51,41 +51,37 @@ mod sealed {
 }
 
 #[async_trait]
-pub trait Handler<B, In>: Sized {
-    type Response: IntoResponse<B>;
-
+pub trait Handler<In>: Sized {
     // This seals the trait. We cannot use the regular "sealed super trait" approach
     // due to coherence.
     #[doc(hidden)]
     type Sealed: sealed::HiddentTrait;
 
-    async fn call(self, req: Request<Body>) -> Response<B>;
+    async fn call(self, req: Request<Body>) -> Response<BoxBody>;
 
     fn layer<L>(self, layer: L) -> Layered<L::Service, In>
     where
-        L: Layer<IntoService<Self, B, In>>,
+        L: Layer<IntoService<Self, In>>,
     {
         Layered::new(layer.layer(IntoService::new(self)))
     }
 
-    fn into_service(self) -> IntoService<Self, B, In> {
+    fn into_service(self) -> IntoService<Self, In> {
         IntoService::new(self)
     }
 }
 
 #[async_trait]
-impl<F, Fut, B, Res> Handler<B, ()> for F
+impl<F, Fut, Res> Handler<()> for F
 where
     F: FnOnce(Request<Body>) -> Fut + Send + Sync,
     Fut: Future<Output = Res> + Send,
-    Res: IntoResponse<B>,
+    Res: IntoResponse,
 {
-    type Response = Res;
-
     type Sealed = sealed::Hidden;
 
-    async fn call(self, req: Request<Body>) -> Response<B> {
-        self(req).await.into_response()
+    async fn call(self, req: Request<Body>) -> Response<BoxBody> {
+        self(req).await.into_response().map(BoxBody::new)
     }
 }
 
@@ -95,34 +91,32 @@ macro_rules! impl_handler {
     ( $head:ident, $($tail:ident),* $(,)? ) => {
         #[async_trait]
         #[allow(non_snake_case)]
-        impl<F, Fut, B, Res, $head, $($tail,)*> Handler<B, ($head, $($tail,)*)> for F
+        impl<F, Fut, Res, $head, $($tail,)*> Handler<($head, $($tail,)*)> for F
         where
             F: FnOnce(Request<Body>, $head, $($tail,)*) -> Fut + Send + Sync,
             Fut: Future<Output = Res> + Send,
-            Res: IntoResponse<B>,
-            $head: FromRequest<B> + Send,
-            $( $tail: FromRequest<B> + Send, )*
+            Res: IntoResponse,
+            $head: FromRequest + Send,
+            $( $tail: FromRequest + Send, )*
         {
-            type Response = Res;
-
             type Sealed = sealed::Hidden;
 
-            async fn call(self, mut req: Request<Body>) -> Response<B> {
+            async fn call(self, mut req: Request<Body>) -> Response<BoxBody> {
                 let $head = match $head::from_request(&mut req).await {
                     Ok(value) => value,
-                    Err(rejection) => return rejection.into_response(),
+                    Err(rejection) => return rejection.into_response().map(BoxBody::new),
                 };
 
                 $(
                     let $tail = match $tail::from_request(&mut req).await {
                         Ok(value) => value,
-                        Err(rejection) => return rejection.into_response(),
+                        Err(rejection) => return rejection.into_response().map(BoxBody::new),
                     };
                 )*
 
                 let res = self(req, $head, $($tail,)*).await;
 
-                res.into_response()
+                res.into_response().map(BoxBody::new)
             }
         }
 
@@ -147,27 +141,26 @@ where
 }
 
 #[async_trait]
-impl<S, B, T> Handler<B, T> for Layered<S, T>
+impl<S, T, B> Handler<T> for Layered<S, T>
 where
     S: Service<Request<Body>, Response = Response<B>> + Send,
-    S::Error: IntoResponse<B>,
-    S::Response: IntoResponse<B>,
+    // S::Response: IntoResponse,
+    S::Error: IntoResponse,
     S::Future: Send,
+    B: http_body::Body<Data = Bytes> + Send + Sync + 'static,
+    B::Error: Into<BoxError> + Send + Sync + 'static,
 {
-    type Response = S::Response;
-
     type Sealed = sealed::Hidden;
 
-    async fn call(self, req: Request<Body>) -> Self::Response {
-        // TODO(david): add tests for nesting services
+    async fn call(self, req: Request<Body>) -> Response<BoxBody> {
         match self
             .svc
             .oneshot(req)
             .await
             .map_err(IntoResponse::into_response)
         {
-            Ok(res) => res,
-            Err(res) => res,
+            Ok(res) => res.map(BoxBody::new),
+            Err(res) => res.map(BoxBody::new),
         }
     }
 }
@@ -184,21 +177,19 @@ impl<S, T> Layered<S, T> {
     where
         S: Service<Request<Body>, Response = Response<B>>,
         F: FnOnce(S::Error) -> Res,
-        Res: IntoResponse<B>,
-        B: http_body::Body<Data = Bytes> + Send + Sync + 'static,
-        B::Error: Into<BoxError> + Send + Sync + 'static,
+        Res: IntoResponse,
     {
         let svc = HandleError::new(self.svc, f);
         Layered::new(svc)
     }
 }
 
-pub struct IntoService<H, B, T> {
+pub struct IntoService<H, T> {
     handler: H,
-    _marker: PhantomData<fn() -> (B, T)>,
+    _marker: PhantomData<fn() -> T>,
 }
 
-impl<H, B, T> IntoService<H, B, T> {
+impl<H, T> IntoService<H, T> {
     fn new(handler: H) -> Self {
         Self {
             handler,
@@ -207,7 +198,7 @@ impl<H, B, T> IntoService<H, B, T> {
     }
 }
 
-impl<H, B, T> Clone for IntoService<H, B, T>
+impl<H, T> Clone for IntoService<H, T>
 where
     H: Clone,
 {
@@ -219,12 +210,11 @@ where
     }
 }
 
-impl<H, B, T> Service<Request<Body>> for IntoService<H, B, T>
+impl<H, T> Service<Request<Body>> for IntoService<H, T>
 where
-    H: Handler<B, T> + Clone + Send + 'static,
-    H::Response: 'static,
+    H: Handler<T> + Clone + Send + 'static,
 {
-    type Response = Response<B>;
+    type Response = Response<BoxBody>;
     type Error = Infallible;
     type Future = future::BoxFuture<'static, Result<Self::Response, Self::Error>>;
 
@@ -237,7 +227,10 @@ where
 
     fn call(&mut self, req: Request<Body>) -> Self::Future {
         let handler = self.handler.clone();
-        Box::pin(async move { Ok(Handler::call(handler, req).await) })
+        Box::pin(async move {
+            let res = Handler::call(handler, req).await;
+            Ok(res)
+        })
     }
 }
 
@@ -249,27 +242,23 @@ pub struct OnMethod<S, F> {
 }
 
 impl<S, F> OnMethod<S, F> {
-    pub fn get<H, B, T>(self, handler: H) -> OnMethod<IntoService<H, B, T>, Self>
+    pub fn get<H, T>(self, handler: H) -> OnMethod<IntoService<H, T>, Self>
     where
-        H: Handler<B, T>,
+        H: Handler<T>,
     {
         self.on(MethodFilter::Get, handler)
     }
 
-    pub fn post<H, B, T>(self, handler: H) -> OnMethod<IntoService<H, B, T>, Self>
+    pub fn post<H, T>(self, handler: H) -> OnMethod<IntoService<H, T>, Self>
     where
-        H: Handler<B, T>,
+        H: Handler<T>,
     {
         self.on(MethodFilter::Post, handler)
     }
 
-    pub fn on<H, B, T>(
-        self,
-        method: MethodFilter,
-        handler: H,
-    ) -> OnMethod<IntoService<H, B, T>, Self>
+    pub fn on<H, T>(self, method: MethodFilter, handler: H) -> OnMethod<IntoService<H, T>, Self>
     where
-        H: Handler<B, T>,
+        H: Handler<T>,
     {
         OnMethod {
             method,
