@@ -34,16 +34,14 @@ use tower::make::Shared;
 #[tokio::main]
 async fn main() {
     // build our application with a single route
-    let app = route("/", get(handler));
+    let app = route("/", get(|request: Request<Body>| async {
+        "Hello, World!"
+    }));
 
     // run it with hyper on localhost:3000
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
     let server = Server::bind(&addr).serve(Shared::new(app));
     server.await.unwrap();
-}
-
-async fn handler(req: Request<Body>) -> &'static str {
-    "Hello, World!"
 }
 ```
 
