@@ -514,6 +514,27 @@
 //! # };
 //! ```
 //!
+//! `nest` can also be used to serve static files from a directory:
+//!
+//! ```rust,no_run
+//! use tower_web::{prelude::*, ServiceExt, routing::nest};
+//! use tower_http::services::ServeDir;
+//! use http::Response;
+//! use std::convert::Infallible;
+//! use tower::{service_fn, BoxError};
+//!
+//! let app = nest(
+//!     "/images",
+//!     ServeDir::new("public/images").handle_error(|error: std::io::Error| {
+//!         // ...
+//!     })
+//! );
+//! #
+//! # async {
+//! # hyper::Server::bind(&"".parse().unwrap()).serve(tower::make::Shared::new(app)).await;
+//! # };
+//! ```
+//!
 //! [tower]: https://crates.io/crates/tower
 //! [tower-http]: https://crates.io/crates/tower-http
 
