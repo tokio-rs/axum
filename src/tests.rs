@@ -454,7 +454,7 @@ async fn handling_errors_from_layered_single_routes() {
         get(handle
             .layer(
                 ServiceBuilder::new()
-                    .timeout(Duration::from_secs(30))
+                    .timeout(Duration::from_millis(100))
                     .layer(TraceLayer::new_for_http())
                     .into_inner(),
             )

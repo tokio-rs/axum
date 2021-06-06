@@ -385,7 +385,7 @@ pub struct Layered<S>(S);
 impl<S> RoutingDsl for Layered<S> {}
 
 impl<S> Layered<S> {
-    pub fn handle_error<F, B, Res>(self, f: F) -> HandleError<S, F>
+    pub fn handle_error<F, B, Res>(self, f: F) -> crate::service::HandleError<S, F>
     where
         S: Service<Request<Body>, Response = Response<B>> + Clone,
         F: FnOnce(S::Error) -> Res,
@@ -393,7 +393,7 @@ impl<S> Layered<S> {
         B: http_body::Body<Data = Bytes> + Send + Sync + 'static,
         B::Error: Into<BoxError> + Send + Sync + 'static,
     {
-        HandleError { inner: self.0, f }
+        crate::service::HandleError { inner: self.0, f }
     }
 }
 
@@ -413,68 +413,6 @@ where
     #[inline]
     fn call(&mut self, req: Request<Body>) -> Self::Future {
         self.0.call(req)
-    }
-}
-
-#[derive(Clone, Copy)]
-pub struct HandleError<S, F> {
-    inner: S,
-    f: F,
-}
-
-impl<S, F> RoutingDsl for HandleError<S, F> {}
-
-impl<S, F, B, Res> Service<Request<Body>> for HandleError<S, F>
-where
-    S: Service<Request<Body>, Response = Response<B>> + Clone,
-    F: FnOnce(S::Error) -> Res + Clone,
-    Res: IntoResponse,
-    B: http_body::Body<Data = Bytes> + Send + Sync + 'static,
-    B::Error: Into<BoxError> + Send + Sync + 'static,
-{
-    type Response = Response<BoxBody>;
-    type Error = Infallible;
-    type Future = HandleErrorFuture<Oneshot<S, Request<Body>>, F>;
-
-    fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        Poll::Ready(Ok(()))
-    }
-
-    fn call(&mut self, req: Request<Body>) -> Self::Future {
-        HandleErrorFuture {
-            inner: self.inner.clone().oneshot(req),
-            f: Some(self.f.clone()),
-        }
-    }
-}
-
-#[pin_project]
-pub struct HandleErrorFuture<Fut, F> {
-    #[pin]
-    inner: Fut,
-    f: Option<F>,
-}
-
-impl<Fut, F, B, E, Res> Future for HandleErrorFuture<Fut, F>
-where
-    Fut: Future<Output = Result<Response<B>, E>>,
-    F: FnOnce(E) -> Res,
-    Res: IntoResponse,
-    B: http_body::Body<Data = Bytes> + Send + Sync + 'static,
-    B::Error: Into<BoxError> + Send + Sync + 'static,
-{
-    type Output = Result<Response<BoxBody>, Infallible>;
-
-    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        let this = self.project();
-        match ready!(this.inner.poll(cx)) {
-            Ok(res) => Ok(res.map(BoxBody::new)).into(),
-            Err(err) => {
-                let f = this.f.take().unwrap();
-                let res = f(err).into_response();
-                Ok(res.map(BoxBody::new)).into()
-            }
-        }
     }
 }
 
