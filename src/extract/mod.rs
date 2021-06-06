@@ -31,7 +31,7 @@ where
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Default)]
 pub struct Query<T>(pub T);
 
 #[async_trait]
@@ -48,7 +48,7 @@ where
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Default)]
 pub struct Json<T>(pub T);
 
 #[async_trait]

@@ -1,9 +1,4 @@
-use crate::{
-    body::BoxBody,
-    handler::{self, Handler},
-    response::IntoResponse,
-    ResultExt,
-};
+use crate::{body::BoxBody, response::IntoResponse, ResultExt};
 use bytes::Bytes;
 use futures_util::{future, ready};
 use http::{Method, Request, Response, StatusCode};
@@ -43,7 +38,7 @@ pub enum MethodFilter {
 
 impl MethodFilter {
     #[allow(clippy::match_like_matches_macro)]
-    fn matches(self, method: &Method) -> bool {
+    pub(crate) fn matches(self, method: &Method) -> bool {
         match (self, method) {
             (MethodFilter::Any, _)
             | (MethodFilter::Connect, &Method::CONNECT)
@@ -63,13 +58,6 @@ impl MethodFilter {
 #[derive(Clone)]
 pub struct Route<S, F> {
     pub(crate) pattern: PathPattern,
-    pub(crate) svc: S,
-    pub(crate) fallback: F,
-}
-
-#[derive(Clone)]
-pub struct OnMethod<S, F> {
-    pub(crate) method: MethodFilter,
     pub(crate) svc: S,
     pub(crate) fallback: F,
 }
@@ -110,30 +98,6 @@ impl<S, F> AddRoute for Route<S, F> {
     {
         Route {
             pattern: PathPattern::new(spec),
-            svc,
-            fallback: self,
-        }
-    }
-}
-
-impl<S, F> OnMethod<S, F> {
-    pub fn get<H, B, T>(self, handler: H) -> OnMethod<handler::IntoService<H, B, T>, Self>
-    where
-        H: Handler<B, T>,
-    {
-        self.on_method(MethodFilter::Get, handler.into_service())
-    }
-
-    pub fn post<H, B, T>(self, handler: H) -> OnMethod<handler::IntoService<H, B, T>, Self>
-    where
-        H: Handler<B, T>,
-    {
-        self.on_method(MethodFilter::Post, handler.into_service())
-    }
-
-    pub fn on_method<T>(self, method: MethodFilter, svc: T) -> OnMethod<T, Self> {
-        OnMethod {
-            method,
             svc,
             fallback: self,
         }
@@ -190,42 +154,8 @@ fn insert_url_params<B>(req: &mut Request<B>, params: Vec<(String, String)>) {
     }
 }
 
-impl<S, F, SB, FB> Service<Request<Body>> for OnMethod<S, F>
-where
-    S: Service<Request<Body>, Response = Response<SB>, Error = Infallible> + Clone,
-    SB: http_body::Body<Data = Bytes> + Send + Sync + 'static,
-    SB::Error: Into<BoxError>,
-
-    F: Service<Request<Body>, Response = Response<FB>, Error = Infallible> + Clone,
-    FB: http_body::Body<Data = Bytes> + Send + Sync + 'static,
-    FB::Error: Into<BoxError>,
-{
-    type Response = Response<BoxBody>;
-    type Error = Infallible;
-
-    #[allow(clippy::type_complexity)]
-    type Future = future::Either<
-        BoxResponseBody<Oneshot<S, Request<Body>>>,
-        BoxResponseBody<Oneshot<F, Request<Body>>>,
-    >;
-
-    fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        Poll::Ready(Ok(()))
-    }
-
-    fn call(&mut self, req: Request<Body>) -> Self::Future {
-        if self.method.matches(req.method()) {
-            let response_future = self.svc.clone().oneshot(req);
-            future::Either::Left(BoxResponseBody(response_future))
-        } else {
-            let response_future = self.fallback.clone().oneshot(req);
-            future::Either::Right(BoxResponseBody(response_future))
-        }
-    }
-}
-
 #[pin_project]
-pub struct BoxResponseBody<F>(#[pin] F);
+pub struct BoxResponseBody<F>(#[pin] pub(crate) F);
 
 impl<F, B> Future for BoxResponseBody<F>
 where
@@ -453,7 +383,7 @@ impl<S> AddRoute for Layered<S> {
 }
 
 impl<S> Layered<S> {
-    pub fn handle_error<F, B, Res>(self, f: F) -> HandleError<Self, F>
+    pub fn handle_error<F, B, Res>(self, f: F) -> HandleError<S, F>
     where
         S: Service<Request<Body>, Response = Response<B>> + Clone,
         F: FnOnce(S::Error) -> Res,
@@ -461,16 +391,16 @@ impl<S> Layered<S> {
         B: http_body::Body<Data = Bytes> + Send + Sync + 'static,
         B::Error: Into<BoxError> + Send + Sync + 'static,
     {
-        HandleError { inner: self, f }
+        HandleError { inner: self.0, f }
     }
 }
 
 impl<S, B> Service<Request<Body>> for Layered<S>
 where
-    S: Service<Request<Body>, Response = Response<B>>,
+    S: Service<Request<Body>, Response = Response<B>, Error = Infallible>,
 {
     type Response = S::Response;
-    type Error = S::Error;
+    type Error = Infallible;
     type Future = S::Future;
 
     #[inline]

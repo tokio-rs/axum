@@ -1,9 +1,9 @@
 use crate::{
-    body::Body,
+    body::{Body, BoxBody},
     extract::FromRequest,
     response::IntoResponse,
-    routing::{EmptyRouter, MethodFilter, OnMethod},
-    service::{self, HandleError},
+    routing::{BoxResponseBody, EmptyRouter, MethodFilter},
+    service::HandleError,
 };
 use async_trait::async_trait;
 use bytes::Bytes;
@@ -15,7 +15,7 @@ use std::{
     marker::PhantomData,
     task::{Context, Poll},
 };
-use tower::{BoxError, Layer, Service, ServiceExt};
+use tower::{util::Oneshot, BoxError, Layer, Service, ServiceExt};
 
 pub fn get<H, B, T>(handler: H) -> OnMethod<IntoService<H, B, T>, EmptyRouter>
 where
@@ -35,7 +35,11 @@ pub fn on<H, B, T>(method: MethodFilter, handler: H) -> OnMethod<IntoService<H, 
 where
     H: Handler<B, T>,
 {
-    service::on(method, handler.into_service())
+    OnMethod {
+        method,
+        svc: handler.into_service(),
+        fallback: EmptyRouter,
+    }
 }
 
 mod sealed {
@@ -234,5 +238,79 @@ where
     fn call(&mut self, req: Request<Body>) -> Self::Future {
         let handler = self.handler.clone();
         Box::pin(async move { Ok(Handler::call(handler, req).await) })
+    }
+}
+
+#[derive(Clone)]
+pub struct OnMethod<S, F> {
+    pub(crate) method: MethodFilter,
+    pub(crate) svc: S,
+    pub(crate) fallback: F,
+}
+
+impl<S, F> OnMethod<S, F> {
+    pub fn get<H, B, T>(self, handler: H) -> OnMethod<IntoService<H, B, T>, Self>
+    where
+        H: Handler<B, T>,
+    {
+        self.on(MethodFilter::Get, handler)
+    }
+
+    pub fn post<H, B, T>(self, handler: H) -> OnMethod<IntoService<H, B, T>, Self>
+    where
+        H: Handler<B, T>,
+    {
+        self.on(MethodFilter::Post, handler)
+    }
+
+    pub fn on<H, B, T>(
+        self,
+        method: MethodFilter,
+        handler: H,
+    ) -> OnMethod<IntoService<H, B, T>, Self>
+    where
+        H: Handler<B, T>,
+    {
+        OnMethod {
+            method,
+            svc: handler.into_service(),
+            fallback: self,
+        }
+    }
+}
+
+// this is identical to `routing::OnMethod`'s implementation. Would be nice to find a way to clean
+// that up, but not sure its possible.
+impl<S, F, SB, FB> Service<Request<Body>> for OnMethod<S, F>
+where
+    S: Service<Request<Body>, Response = Response<SB>, Error = Infallible> + Clone,
+    SB: http_body::Body<Data = Bytes> + Send + Sync + 'static,
+    SB::Error: Into<BoxError>,
+
+    F: Service<Request<Body>, Response = Response<FB>, Error = Infallible> + Clone,
+    FB: http_body::Body<Data = Bytes> + Send + Sync + 'static,
+    FB::Error: Into<BoxError>,
+{
+    type Response = Response<BoxBody>;
+    type Error = Infallible;
+
+    #[allow(clippy::type_complexity)]
+    type Future = future::Either<
+        BoxResponseBody<Oneshot<S, Request<Body>>>,
+        BoxResponseBody<Oneshot<F, Request<Body>>>,
+    >;
+
+    fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        Poll::Ready(Ok(()))
+    }
+
+    fn call(&mut self, req: Request<Body>) -> Self::Future {
+        if self.method.matches(req.method()) {
+            let response_future = self.svc.clone().oneshot(req);
+            future::Either::Left(BoxResponseBody(response_future))
+        } else {
+            let response_future = self.fallback.clone().oneshot(req);
+            future::Either::Right(BoxResponseBody(response_future))
+        }
     }
 }

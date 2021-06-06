@@ -1,9 +1,10 @@
 use crate::{
     body::{Body, BoxBody},
     response::IntoResponse,
-    routing::{EmptyRouter, MethodFilter, OnMethod},
+    routing::{BoxResponseBody, EmptyRouter, MethodFilter},
 };
 use bytes::Bytes;
+use futures_util::future;
 use futures_util::ready;
 use http::{Request, Response};
 use pin_project::pin_project;
@@ -29,6 +30,76 @@ pub fn on<S>(method: MethodFilter, svc: S) -> OnMethod<S, EmptyRouter> {
         method,
         svc,
         fallback: EmptyRouter,
+    }
+}
+
+#[derive(Clone)]
+pub struct OnMethod<S, F> {
+    pub(crate) method: MethodFilter,
+    pub(crate) svc: S,
+    pub(crate) fallback: F,
+}
+
+impl<S, F> OnMethod<S, F> {
+    pub fn get<T>(self, svc: T) -> OnMethod<T, Self>
+    where
+        T: Service<Request<Body>> + Clone,
+    {
+        self.on(MethodFilter::Get, svc)
+    }
+
+    pub fn post<T>(self, svc: T) -> OnMethod<T, Self>
+    where
+        T: Service<Request<Body>> + Clone,
+    {
+        self.on(MethodFilter::Post, svc)
+    }
+
+    pub fn on<T>(self, method: MethodFilter, svc: T) -> OnMethod<T, Self>
+    where
+        T: Service<Request<Body>> + Clone,
+    {
+        OnMethod {
+            method,
+            svc,
+            fallback: self,
+        }
+    }
+}
+
+// this is identical to `routing::OnMethod`'s implementation. Would be nice to find a way to clean
+// that up, but not sure its possible.
+impl<S, F, SB, FB> Service<Request<Body>> for OnMethod<S, F>
+where
+    S: Service<Request<Body>, Response = Response<SB>, Error = Infallible> + Clone,
+    SB: http_body::Body<Data = Bytes> + Send + Sync + 'static,
+    SB::Error: Into<BoxError>,
+
+    F: Service<Request<Body>, Response = Response<FB>, Error = Infallible> + Clone,
+    FB: http_body::Body<Data = Bytes> + Send + Sync + 'static,
+    FB::Error: Into<BoxError>,
+{
+    type Response = Response<BoxBody>;
+    type Error = Infallible;
+
+    #[allow(clippy::type_complexity)]
+    type Future = future::Either<
+        BoxResponseBody<Oneshot<S, Request<Body>>>,
+        BoxResponseBody<Oneshot<F, Request<Body>>>,
+    >;
+
+    fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        Poll::Ready(Ok(()))
+    }
+
+    fn call(&mut self, req: Request<Body>) -> Self::Future {
+        if self.method.matches(req.method()) {
+            let response_future = self.svc.clone().oneshot(req);
+            future::Either::Left(BoxResponseBody(response_future))
+        } else {
+            let response_future = self.fallback.clone().oneshot(req);
+            future::Either::Right(BoxResponseBody(response_future))
+        }
     }
 }
 

@@ -1,4 +1,4 @@
-use crate::{extract, get, post, route, routing::MethodFilter, service, AddRoute, Handler};
+use crate::{extract, get, on, post, route, routing::MethodFilter, service, AddRoute, Handler};
 use http::{Request, Response, StatusCode};
 use hyper::{Body, Server};
 use serde::Deserialize;
@@ -276,8 +276,12 @@ async fn extracting_url_params() {
 async fn boxing() {
     let app = route(
         "/",
-        get(|_: Request<Body>| async { "hi from GET" })
-            .post(|_: Request<Body>| async { "hi from POST" }),
+        on(MethodFilter::Get, |_: Request<Body>| async {
+            "hi from GET"
+        })
+        .on(MethodFilter::Post, |_: Request<Body>| async {
+            "hi from POST"
+        }),
     )
     .boxed();
 
@@ -307,12 +311,9 @@ async fn service_handlers() {
 
     let app = route(
         "/echo",
-        service::on(
-            MethodFilter::Post,
-            service_fn(|req: Request<Body>| async move {
-                Ok::<_, Infallible>(Response::new(req.into_body()))
-            }),
-        ),
+        service::post(service_fn(|req: Request<Body>| async move {
+            Ok::<_, Infallible>(Response::new(req.into_body()))
+        })),
     )
     .route(
         "/static/Cargo.toml",
@@ -345,6 +346,72 @@ async fn service_handlers() {
         .unwrap();
     assert_eq!(res.status(), StatusCode::OK);
     assert!(res.text().await.unwrap().contains("edition ="));
+}
+
+#[tokio::test]
+async fn routing_between_services() {
+    use std::convert::Infallible;
+    use tower::service_fn;
+
+    async fn handle(_: Request<Body>) -> &'static str {
+        "handler"
+    }
+
+    let app = route(
+        "/one",
+        service::get(service_fn(|_: Request<Body>| async {
+            Ok::<_, Infallible>(Response::new(Body::from("one get")))
+        }))
+        .post(service_fn(|_: Request<Body>| async {
+            Ok::<_, Infallible>(Response::new(Body::from("one post")))
+        }))
+        .on(
+            MethodFilter::Put,
+            service_fn(|_: Request<Body>| async {
+                Ok::<_, Infallible>(Response::new(Body::from("one put")))
+            }),
+        ),
+    )
+    .route(
+        "/two",
+        service::on(MethodFilter::Get, handle.into_service()),
+    );
+
+    let addr = run_in_background(app).await;
+
+    let client = reqwest::Client::new();
+
+    let res = client
+        .get(format!("http://{}/one", addr))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.text().await.unwrap(), "one get");
+
+    let res = client
+        .post(format!("http://{}/one", addr))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.text().await.unwrap(), "one post");
+
+    let res = client
+        .put(format!("http://{}/one", addr))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.text().await.unwrap(), "one put");
+
+    let res = client
+        .get(format!("http://{}/two", addr))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.text().await.unwrap(), "handler");
 }
 
 #[tokio::test]

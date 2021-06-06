@@ -2,7 +2,7 @@ use crate::Body;
 use bytes::Bytes;
 use http::{header, HeaderMap, HeaderValue, Response, StatusCode};
 use serde::Serialize;
-use std::convert::Infallible;
+use std::{borrow::Cow, convert::Infallible};
 use tower::util::Either;
 
 // TODO(david): can we change this to not be generic over the body and just use hyper::Body?
@@ -10,12 +10,9 @@ pub trait IntoResponse<B> {
     fn into_response(self) -> Response<B>;
 }
 
-impl<B> IntoResponse<B> for ()
-where
-    B: Default,
-{
-    fn into_response(self) -> Response<B> {
-        Response::new(B::default())
+impl IntoResponse<Body> for () {
+    fn into_response(self) -> Response<Body> {
+        Response::new(Body::empty())
     }
 }
 
@@ -58,23 +55,25 @@ impl<B> IntoResponse<B> for Response<B> {
 }
 
 impl IntoResponse<Body> for &'static str {
+    #[inline]
     fn into_response(self) -> Response<Body> {
-        Response::new(Body::from(self))
+        Cow::Borrowed(self).into_response()
     }
 }
 
 impl IntoResponse<Body> for String {
+    #[inline]
     fn into_response(self) -> Response<Body> {
-        let mut res = Response::new(Body::from(self));
-        res.headers_mut()
-            .insert(header::CONTENT_TYPE, HeaderValue::from_static("text/plain"));
-        res
+        Cow::<'static, str>::Owned(self).into_response()
     }
 }
 
 impl IntoResponse<Body> for std::borrow::Cow<'static, str> {
     fn into_response(self) -> Response<Body> {
-        Response::new(Body::from(self))
+        let mut res = Response::new(Body::from(self));
+        res.headers_mut()
+            .insert(header::CONTENT_TYPE, HeaderValue::from_static("text/plain"));
+        res
     }
 }
 
@@ -122,12 +121,12 @@ impl IntoResponse<Body> for std::borrow::Cow<'static, [u8]> {
     }
 }
 
-impl<B> IntoResponse<B> for StatusCode
-where
-    B: Default,
-{
-    fn into_response(self) -> Response<B> {
-        Response::builder().status(self).body(B::default()).unwrap()
+impl IntoResponse<Body> for StatusCode {
+    fn into_response(self) -> Response<Body> {
+        Response::builder()
+            .status(self)
+            .body(Body::empty())
+            .unwrap()
     }
 }
 
@@ -191,20 +190,6 @@ where
             header::CONTENT_TYPE,
             HeaderValue::from_static("application/json"),
         );
-        res
-    }
-}
-
-pub struct Text<T>(pub T);
-
-impl<T> IntoResponse<Body> for Text<T>
-where
-    T: Into<Body>,
-{
-    fn into_response(self) -> Response<Body> {
-        let mut res = Response::new(self.0.into());
-        res.headers_mut()
-            .insert(header::CONTENT_TYPE, HeaderValue::from_static("text/plain"));
         res
     }
 }
