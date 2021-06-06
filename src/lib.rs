@@ -68,6 +68,16 @@ pub use self::{
 pub use async_trait::async_trait;
 pub use tower_http::add_extension::{AddExtension, AddExtensionLayer};
 
+pub mod prelude {
+    pub use crate::{
+        body::Body,
+        extract,
+        handler::{get, on, post, Handler},
+        response, route,
+        routing::AddRoute,
+    };
+}
+
 pub fn route<S>(spec: &str, svc: S) -> Route<S, EmptyRouter>
 where
     S: Service<Request<Body>, Error = Infallible> + Clone,
