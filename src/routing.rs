@@ -1,12 +1,12 @@
 use crate::{
     body::BoxBody,
-    handler::{Handler, HandlerSvc},
+    handler::{self, Handler},
     response::IntoResponse,
-    MethodFilter, ResultExt,
+    ResultExt,
 };
 use bytes::Bytes;
 use futures_util::{future, ready};
-use http::{Request, Response, StatusCode};
+use http::{Method, Request, Response, StatusCode};
 use hyper::Body;
 use itertools::Itertools;
 use pin_project::pin_project;
@@ -26,6 +26,39 @@ use tower::{
 };
 
 // ===== DSL =====
+
+#[derive(Debug, Copy, Clone)]
+pub enum MethodFilter {
+    Any,
+    Connect,
+    Delete,
+    Get,
+    Head,
+    Options,
+    Patch,
+    Post,
+    Put,
+    Trace,
+}
+
+impl MethodFilter {
+    #[allow(clippy::match_like_matches_macro)]
+    fn matches(self, method: &Method) -> bool {
+        match (self, method) {
+            (MethodFilter::Any, _)
+            | (MethodFilter::Connect, &Method::CONNECT)
+            | (MethodFilter::Delete, &Method::DELETE)
+            | (MethodFilter::Get, &Method::GET)
+            | (MethodFilter::Head, &Method::HEAD)
+            | (MethodFilter::Options, &Method::OPTIONS)
+            | (MethodFilter::Patch, &Method::PATCH)
+            | (MethodFilter::Post, &Method::POST)
+            | (MethodFilter::Put, &Method::PUT)
+            | (MethodFilter::Trace, &Method::TRACE) => true,
+            _ => false,
+        }
+    }
+}
 
 #[derive(Clone)]
 pub struct Route<S, F> {
@@ -84,21 +117,21 @@ impl<S, F> AddRoute for Route<S, F> {
 }
 
 impl<S, F> OnMethod<S, F> {
-    pub fn get<H, B, T>(self, handler: H) -> OnMethod<HandlerSvc<H, B, T>, Self>
+    pub fn get<H, B, T>(self, handler: H) -> OnMethod<handler::IntoService<H, B, T>, Self>
     where
         H: Handler<B, T>,
     {
-        self.with_method(MethodFilter::Get, HandlerSvc::new(handler))
+        self.on_method(MethodFilter::Get, handler.into_service())
     }
 
-    pub fn post<H, B, T>(self, handler: H) -> OnMethod<HandlerSvc<H, B, T>, Self>
+    pub fn post<H, B, T>(self, handler: H) -> OnMethod<handler::IntoService<H, B, T>, Self>
     where
         H: Handler<B, T>,
     {
-        self.with_method(MethodFilter::Post, HandlerSvc::new(handler))
+        self.on_method(MethodFilter::Post, handler.into_service())
     }
 
-    pub fn with_method<T>(self, method: MethodFilter, svc: T) -> OnMethod<T, Self> {
+    pub fn on_method<T>(self, method: MethodFilter, svc: T) -> OnMethod<T, Self> {
         OnMethod {
             method,
             svc,
@@ -551,7 +584,7 @@ mod tests {
     fn assert_match(route_spec: &'static str, path: &'static str) {
         let route = PathPattern::new(route_spec);
         assert!(
-            route.matches(&path).is_some(),
+            route.matches(path).is_some(),
             "`{}` doesn't match `{}`",
             path,
             route_spec
@@ -561,7 +594,7 @@ mod tests {
     fn refute_match(route_spec: &'static str, path: &'static str) {
         let route = PathPattern::new(route_spec);
         assert!(
-            route.matches(&path).is_none(),
+            route.matches(path).is_none(),
             "`{}` did match `{}` (but shouldn't)",
             path,
             route_spec

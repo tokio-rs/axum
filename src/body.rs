@@ -9,8 +9,6 @@ use tower::BoxError;
 
 pub use hyper::body::Body;
 
-use crate::BoxStdError;
-
 /// A boxed [`Body`] trait object.
 pub struct BoxBody {
     // when we've gotten rid of `BoxStdError` we should be able to change the error type to
@@ -78,3 +76,15 @@ where
         BoxBody::new(Full::from(s.into()))
     }
 }
+
+// work around for `BoxError` not implementing `std::error::Error`
+//
+// This is currently required since tower-http's Compression middleware's body type's
+// error only implements error when the inner error type does:
+// https://github.com/tower-rs/tower-http/blob/master/tower-http/src/lib.rs#L310
+//
+// Fixing that is a breaking change to tower-http so we should wait a bit, but should
+// totally fix it at some point.
+#[derive(Debug, thiserror::Error)]
+#[error(transparent)]
+pub struct BoxStdError(#[from] pub(crate) tower::BoxError);

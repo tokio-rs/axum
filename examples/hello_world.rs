@@ -2,7 +2,7 @@ use http::{Request, StatusCode};
 use hyper::Server;
 use std::net::SocketAddr;
 use tower::make::Shared;
-use tower_web::{body::Body, response, get, route, AddRoute, extract};
+use tower_web::{body::Body, extract, get, response, route, AddRoute};
 
 #[tokio::main]
 async fn main() {

@@ -122,47 +122,6 @@ impl IntoResponse<Body> for std::borrow::Cow<'static, [u8]> {
     }
 }
 
-pub struct Json<T>(pub T);
-
-impl<T> IntoResponse<Body> for Json<T>
-where
-    T: Serialize,
-{
-    fn into_response(self) -> Response<Body> {
-        let bytes = match serde_json::to_vec(&self.0) {
-            Ok(res) => res,
-            Err(err) => {
-                return Response::builder()
-                    .header(header::CONTENT_TYPE, "text/plain")
-                    .body(Body::from(err.to_string()))
-                    .unwrap();
-            }
-        };
-
-        let mut res = Response::new(Body::from(bytes));
-        res.headers_mut().insert(
-            header::CONTENT_TYPE,
-            HeaderValue::from_static("application/json"),
-        );
-        res
-    }
-}
-
-pub struct Html<T>(pub T);
-
-impl<T> IntoResponse<Body> for Html<T>
-where
-    T: Into<Bytes>,
-{
-    fn into_response(self) -> Response<Body> {
-        let bytes = self.0.into();
-        let mut res = Response::new(Body::from(bytes));
-        res.headers_mut()
-            .insert(header::CONTENT_TYPE, HeaderValue::from_static("text/html"));
-        res
-    }
-}
-
 impl<B> IntoResponse<B> for StatusCode
 where
     B: Default,
@@ -192,6 +151,60 @@ where
         let mut res = Response::new(self.2.into());
         *res.status_mut() = self.0;
         *res.headers_mut() = self.1;
+        res
+    }
+}
+
+pub struct Html<T>(pub T);
+
+impl<T> IntoResponse<Body> for Html<T>
+where
+    T: Into<Body>,
+{
+    fn into_response(self) -> Response<Body> {
+        let mut res = Response::new(self.0.into());
+        res.headers_mut()
+            .insert(header::CONTENT_TYPE, HeaderValue::from_static("text/html"));
+        res
+    }
+}
+
+pub struct Json<T>(pub T);
+
+impl<T> IntoResponse<Body> for Json<T>
+where
+    T: Serialize,
+{
+    fn into_response(self) -> Response<Body> {
+        let bytes = match serde_json::to_vec(&self.0) {
+            Ok(res) => res,
+            Err(err) => {
+                return Response::builder()
+                    .header(header::CONTENT_TYPE, "text/plain")
+                    .body(Body::from(err.to_string()))
+                    .unwrap();
+            }
+        };
+
+        let mut res = Response::new(Body::from(bytes));
+        res.headers_mut().insert(
+            header::CONTENT_TYPE,
+            HeaderValue::from_static("application/json"),
+        );
+        res
+    }
+}
+
+pub struct Text<T>(pub T);
+
+impl<T> IntoResponse<Body> for Text<T>
+where
+    T: Into<Body>,
+{
+    fn into_response(self) -> Response<Body> {
+        let mut res = Response::new(self.0.into());
+        res.headers_mut()
+            .insert(header::CONTENT_TYPE, HeaderValue::from_static("text/plain"));
         res
     }
 }

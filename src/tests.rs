@@ -1,4 +1,4 @@
-use crate::{extract, get, on_method, post, route, AddRoute, Handler, MethodFilter};
+use crate::{extract, get, post, route, routing::MethodFilter, service, AddRoute, Handler};
 use http::{Request, Response, StatusCode};
 use hyper::{Body, Server};
 use serde::Deserialize;
@@ -307,7 +307,7 @@ async fn service_handlers() {
 
     let app = route(
         "/echo",
-        on_method(
+        service::on(
             MethodFilter::Post,
             service_fn(|req: Request<Body>| async move {
                 Ok::<_, Infallible>(Response::new(req.into_body()))
@@ -316,7 +316,7 @@ async fn service_handlers() {
     )
     .route(
         "/static/Cargo.toml",
-        on_method(
+        service::on(
             MethodFilter::Get,
             ServeFile::new("Cargo.toml").handle_error(|error: std::io::Error| {
                 (StatusCode::INTERNAL_SERVER_ERROR, error.to_string())
@@ -564,7 +564,7 @@ async fn layer_on_whole_router() {
 // // TODO(david): composing two apps that have had layers applied
 
 /// Run a `tower::Service` in the background and get a URI for it.
-pub async fn run_in_background<S, ResBody>(svc: S) -> SocketAddr
+async fn run_in_background<S, ResBody>(svc: S) -> SocketAddr
 where
     S: Service<Request<Body>, Response = Response<ResBody>> + Clone + Send + 'static,
     ResBody: http_body::Body + Send + 'static,

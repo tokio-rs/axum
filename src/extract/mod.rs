@@ -1,9 +1,16 @@
 use crate::{body::Body, response::IntoResponse};
 use async_trait::async_trait;
 use bytes::Bytes;
-use http::{header, Response, Request};
+use http::{header, Request, Response};
+use rejection::{
+    BodyAlreadyTaken, FailedToBufferBody, InvalidJsonBody, InvalidUtf8, LengthRequired,
+    MissingExtension, MissingJsonContentType, MissingRouteParams, PayloadTooLarge,
+    QueryStringMissing,
+};
 use serde::de::DeserializeOwned;
 use std::{collections::HashMap, convert::Infallible, str::FromStr};
+
+pub mod rejection;
 
 #[async_trait]
 pub trait FromRequest<B>: Sized {
@@ -22,58 +29,6 @@ where
     async fn from_request(req: &mut Request<Body>) -> Result<Option<T>, Self::Rejection> {
         Ok(T::from_request(req).await.ok())
     }
-}
-
-macro_rules! define_rejection {
-    (
-        #[status = $status:ident]
-        #[body = $body:expr]
-        pub struct $name:ident (());
-    ) => {
-        #[derive(Debug)]
-        pub struct $name(());
-
-        impl IntoResponse<Body> for $name {
-            fn into_response(self) -> http::Response<Body> {
-                let mut res = http::Response::new(Body::from($body));
-                *res.status_mut() = http::StatusCode::$status;
-                res
-            }
-        }
-    };
-
-    (
-        #[status = $status:ident]
-        #[body = $body:expr]
-        pub struct $name:ident (BoxError);
-    ) => {
-        #[derive(Debug)]
-        pub struct $name(tower::BoxError);
-
-        impl $name {
-            fn from_err<E>(err: E) -> Self
-            where
-                E: Into<tower::BoxError>,
-            {
-                Self(err.into())
-            }
-        }
-
-        impl IntoResponse<Body> for $name {
-            fn into_response(self) -> http::Response<Body> {
-                let mut res =
-                    http::Response::new(Body::from(format!(concat!($body, ": {}"), self.0)));
-                *res.status_mut() = http::StatusCode::$status;
-                res
-            }
-        }
-    };
-}
-
-define_rejection! {
-    #[status = BAD_REQUEST]
-    #[body = "Query string was invalid or missing"]
-    pub struct QueryStringMissing(());
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -96,18 +51,6 @@ where
 #[derive(Debug, Clone, Copy)]
 pub struct Json<T>(pub T);
 
-define_rejection! {
-    #[status = BAD_REQUEST]
-    #[body = "Failed to parse the response body as JSON"]
-    pub struct InvalidJsonBody(BoxError);
-}
-
-define_rejection! {
-    #[status = BAD_REQUEST]
-    #[body = "Expected request with `Content-Type: application/json`"]
-    pub struct MissingJsonContentType(());
-}
-
 #[async_trait]
 impl<T> FromRequest<Body> for Json<T>
 where
@@ -116,7 +59,7 @@ where
     type Rejection = Response<Body>;
 
     async fn from_request(req: &mut Request<Body>) -> Result<Self, Self::Rejection> {
-        if has_content_type(&req, "application/json") {
+        if has_content_type(req, "application/json") {
             let body = take_body(req).map_err(IntoResponse::into_response)?;
 
             let bytes = hyper::body::to_bytes(body)
@@ -151,12 +94,6 @@ fn has_content_type<B>(req: &Request<B>, expected_content_type: &str) -> bool {
     content_type.starts_with(expected_content_type)
 }
 
-define_rejection! {
-    #[status = INTERNAL_SERVER_ERROR]
-    #[body = "Missing request extension"]
-    pub struct MissingExtension(());
-}
-
 #[derive(Debug, Clone, Copy)]
 pub struct Extension<T>(pub T);
 
@@ -178,12 +115,6 @@ where
     }
 }
 
-define_rejection! {
-    #[status = BAD_REQUEST]
-    #[body = "Failed to buffer the request body"]
-    pub struct FailedToBufferBody(BoxError);
-}
-
 #[async_trait]
 impl FromRequest<Body> for Bytes {
     type Rejection = Response<Body>;
@@ -198,12 +129,6 @@ impl FromRequest<Body> for Bytes {
 
         Ok(bytes)
     }
-}
-
-define_rejection! {
-    #[status = BAD_REQUEST]
-    #[body = "Response body didn't contain valid UTF-8"]
-    pub struct InvalidUtf8(BoxError);
 }
 
 #[async_trait]
@@ -236,18 +161,6 @@ impl FromRequest<Body> for Body {
     }
 }
 
-define_rejection! {
-    #[status = PAYLOAD_TOO_LARGE]
-    #[body = "Request payload is too large"]
-    pub struct PayloadTooLarge(());
-}
-
-define_rejection! {
-    #[status = LENGTH_REQUIRED]
-    #[body = "Content length header is required"]
-    pub struct LengthRequired(());
-}
-
 #[derive(Debug, Clone)]
 pub struct BytesMaxLength<const N: u64>(pub Bytes);
 
@@ -276,12 +189,6 @@ impl<const N: u64> FromRequest<Body> for BytesMaxLength<N> {
 
         Ok(BytesMaxLength(bytes))
     }
-}
-
-define_rejection! {
-    #[status = INTERNAL_SERVER_ERROR]
-    #[body = "No url params found for matched route. This is a bug in tower-web. Please open an issue"]
-    pub struct MissingRouteParams(());
 }
 
 #[derive(Debug)]
@@ -393,12 +300,6 @@ macro_rules! impl_parse_url {
 }
 
 impl_parse_url!(T1, T2, T3, T4, T5, T6);
-
-define_rejection! {
-    #[status = INTERNAL_SERVER_ERROR]
-    #[body = "Cannot have two request body extractors for a single handler"]
-    pub struct BodyAlreadyTaken(());
-}
 
 fn take_body(req: &mut Request<Body>) -> Result<Body, BodyAlreadyTaken> {
     struct BodyAlreadyTakenExt;

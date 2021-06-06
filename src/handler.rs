@@ -1,4 +1,10 @@
-use crate::{body::Body, HandleError, extract::FromRequest, response::IntoResponse};
+use crate::{
+    body::Body,
+    extract::FromRequest,
+    response::IntoResponse,
+    routing::{EmptyRouter, MethodFilter, OnMethod},
+    service::{self, HandleError},
+};
 use async_trait::async_trait;
 use bytes::Bytes;
 use futures_util::future;
@@ -9,9 +15,32 @@ use std::{
     marker::PhantomData,
     task::{Context, Poll},
 };
-use tower::{Layer, BoxError, Service, ServiceExt};
+use tower::{BoxError, Layer, Service, ServiceExt};
+
+pub fn get<H, B, T>(handler: H) -> OnMethod<IntoService<H, B, T>, EmptyRouter>
+where
+    H: Handler<B, T>,
+{
+    on(MethodFilter::Get, handler)
+}
+
+pub fn post<H, B, T>(handler: H) -> OnMethod<IntoService<H, B, T>, EmptyRouter>
+where
+    H: Handler<B, T>,
+{
+    on(MethodFilter::Post, handler)
+}
+
+pub fn on<H, B, T>(method: MethodFilter, handler: H) -> OnMethod<IntoService<H, B, T>, EmptyRouter>
+where
+    H: Handler<B, T>,
+{
+    service::on(method, handler.into_service())
+}
 
 mod sealed {
+    #![allow(unreachable_pub)]
+
     pub trait HiddentTrait {}
     pub struct Hidden;
     impl HiddentTrait for Hidden {}
@@ -30,9 +59,13 @@ pub trait Handler<B, In>: Sized {
 
     fn layer<L>(self, layer: L) -> Layered<L::Service, In>
     where
-        L: Layer<HandlerSvc<Self, B, In>>,
+        L: Layer<IntoService<Self, B, In>>,
     {
-        Layered::new(layer.layer(HandlerSvc::new(self)))
+        Layered::new(layer.layer(IntoService::new(self)))
+    }
+
+    fn into_service(self) -> IntoService<Self, B, In> {
+        IntoService::new(self)
     }
 }
 
@@ -156,33 +189,33 @@ impl<S, T> Layered<S, T> {
     }
 }
 
-pub struct HandlerSvc<H, B, T> {
+pub struct IntoService<H, B, T> {
     handler: H,
-    _input: PhantomData<fn() -> (B, T)>,
+    _marker: PhantomData<fn() -> (B, T)>,
 }
 
-impl<H, B, T> HandlerSvc<H, B, T> {
-    pub(crate) fn new(handler: H) -> Self {
+impl<H, B, T> IntoService<H, B, T> {
+    fn new(handler: H) -> Self {
         Self {
             handler,
-            _input: PhantomData,
+            _marker: PhantomData,
         }
     }
 }
 
-impl<H, B, T> Clone for HandlerSvc<H, B, T>
+impl<H, B, T> Clone for IntoService<H, B, T>
 where
     H: Clone,
 {
     fn clone(&self) -> Self {
         Self {
             handler: self.handler.clone(),
-            _input: PhantomData,
+            _marker: PhantomData,
         }
     }
 }
 
-impl<H, B, T> Service<Request<Body>> for HandlerSvc<H, B, T>
+impl<H, B, T> Service<Request<Body>> for IntoService<H, B, T>
 where
     H: Handler<B, T> + Clone + Send + 'static,
     H::Response: 'static,
@@ -192,7 +225,7 @@ where
     type Future = future::BoxFuture<'static, Result<Self::Response, Self::Error>>;
 
     fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        // HandlerSvc can only be constructed from async functions which are always ready, or from
+        // `IntoService` can only be constructed from async functions which are always ready, or from
         // `Layered` which bufferes in `<Layered as Handler>::call` and is therefore also always
         // ready.
         Poll::Ready(Ok(()))
