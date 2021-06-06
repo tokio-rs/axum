@@ -569,7 +569,7 @@ pub mod service;
 #[doc(inline)]
 pub use self::{
     handler::{get, on, post, Handler},
-    routing::AddRoute,
+    routing::RoutingDsl,
 };
 
 pub use async_trait::async_trait;
@@ -581,7 +581,7 @@ pub mod prelude {
         extract,
         handler::{get, on, post, Handler},
         response, route,
-        routing::AddRoute,
+        routing::RoutingDsl,
     };
     pub use http::Request;
 }

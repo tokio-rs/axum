@@ -1,7 +1,8 @@
 use crate::{body::BoxBody, response::IntoResponse, ResultExt};
 use bytes::Bytes;
 use futures_util::{future, ready};
-use http::{Method, Request, Response, StatusCode};
+use http::{Method, Request, Response, StatusCode, Uri};
+use http_body::Full;
 use hyper::Body;
 use itertools::Itertools;
 use pin_project::pin_project;
@@ -62,36 +63,7 @@ pub struct Route<S, F> {
     pub(crate) fallback: F,
 }
 
-pub trait AddRoute: Sized {
-    fn route<T>(self, spec: &str, svc: T) -> Route<T, Self>
-    where
-        T: Service<Request<Body>, Error = Infallible> + Clone;
-}
-
-impl<S, F> Route<S, F> {
-    pub fn boxed<B>(self) -> BoxRoute<B>
-    where
-        Self: Service<Request<Body>, Response = Response<B>, Error = Infallible> + Send + 'static,
-        <Self as Service<Request<Body>>>::Future: Send,
-        B: From<String> + 'static,
-    {
-        ServiceBuilder::new()
-            .layer_fn(BoxRoute)
-            .buffer(1024)
-            .layer(BoxService::layer())
-            .service(self)
-    }
-
-    pub fn layer<L>(self, layer: L) -> Layered<L::Service>
-    where
-        L: Layer<Self>,
-        L::Service: Service<Request<Body>> + Clone,
-    {
-        Layered(layer.layer(self))
-    }
-}
-
-impl<S, F> AddRoute for Route<S, F> {
+pub trait RoutingDsl: Sized {
     fn route<T>(self, spec: &str, svc: T) -> Route<T, Self>
     where
         T: Service<Request<Body>, Error = Infallible> + Clone,
@@ -102,7 +74,42 @@ impl<S, F> AddRoute for Route<S, F> {
             fallback: self,
         }
     }
+
+    fn nest<T>(self, spec: &str, svc: T) -> Nested<T, Self>
+    where
+        T: Service<Request<Body>, Error = Infallible> + Clone,
+    {
+        Nested {
+            pattern: PathPattern::new(spec),
+            svc,
+            fallback: self,
+        }
+    }
+
+    fn boxed<B>(self) -> BoxRoute<B>
+    where
+        Self: Service<Request<Body>, Response = Response<B>, Error = Infallible> + Send + 'static,
+        <Self as Service<Request<Body>>>::Future: Send,
+        B: http_body::Body<Data = Bytes> + Send + Sync + 'static,
+        B::Error: Into<BoxError> + Send + Sync + 'static,
+    {
+        ServiceBuilder::new()
+            .layer_fn(BoxRoute)
+            .buffer(1024)
+            .layer(BoxService::layer())
+            .service(self)
+    }
+
+    fn layer<L>(self, layer: L) -> Layered<L::Service>
+    where
+        L: Layer<Self>,
+        L::Service: Service<Request<Body>> + Clone,
+    {
+        Layered(layer.layer(self))
+    }
 }
+
+impl<S, F> RoutingDsl for Route<S, F> {}
 
 // ===== Routing service impls =====
 
@@ -130,7 +137,7 @@ where
     }
 
     fn call(&mut self, mut req: Request<Body>) -> Self::Future {
-        if let Some(captures) = self.pattern.matches(req.uri().path()) {
+        if let Some(captures) = self.pattern.full_match(req.uri().path()) {
             insert_url_params(&mut req, captures);
             let response_future = self.svc.clone().oneshot(req);
             future::Either::Left(BoxResponseBody(response_future))
@@ -178,18 +185,7 @@ where
 #[derive(Clone, Copy)]
 pub struct EmptyRouter;
 
-impl AddRoute for EmptyRouter {
-    fn route<S>(self, spec: &str, svc: S) -> Route<S, Self>
-    where
-        S: Service<Request<Body>, Error = Infallible> + Clone,
-    {
-        Route {
-            pattern: PathPattern::new(spec),
-            svc,
-            fallback: self,
-        }
-    }
-}
+impl RoutingDsl for EmptyRouter {}
 
 impl<R> Service<R> for EmptyRouter {
     type Response = Response<Body>;
@@ -236,7 +232,7 @@ impl PathPattern {
             .join("/");
 
         let full_path_regex =
-            Regex::new(&format!("^{}$", pattern)).expect("invalid regex generated from route");
+            Regex::new(&format!("^{}", pattern)).expect("invalid regex generated from route");
 
         Self(Arc::new(Inner {
             full_path_regex,
@@ -244,8 +240,26 @@ impl PathPattern {
         }))
     }
 
-    pub(crate) fn matches(&self, path: &str) -> Option<Captures> {
+    pub(crate) fn full_match(&self, path: &str) -> Option<Captures> {
+        self.do_match(path).and_then(|match_| {
+            if match_.full_match {
+                Some(match_.captures)
+            } else {
+                None
+            }
+        })
+    }
+
+    pub(crate) fn prefix_match<'a>(&self, path: &'a str) -> Option<(&'a str, Captures)> {
+        self.do_match(path)
+            .map(|match_| (match_.matched, match_.captures))
+    }
+
+    fn do_match<'a>(&self, path: &'a str) -> Option<Match<'a>> {
         self.0.full_path_regex.captures(path).map(|captures| {
+            let matched = captures.get(0).unwrap();
+            let full_match = matched.as_str() == path;
+
             let captures = self
                 .0
                 .capture_group_names
@@ -258,9 +272,20 @@ impl PathPattern {
                 .map(|(key, value)| (key.to_string(), value.to_string()))
                 .collect::<Vec<_>>();
 
-            captures
+            Match {
+                captures,
+                full_match,
+                matched: matched.as_str(),
+            }
         })
     }
+}
+
+struct Match<'a> {
+    captures: Captures,
+    // true if regex matched whole path, false if it only matched a prefix
+    full_match: bool,
+    matched: &'a str,
 }
 
 type Captures = Vec<(String, String)>;
@@ -275,24 +300,14 @@ impl<B> Clone for BoxRoute<B> {
     }
 }
 
-impl<B> AddRoute for BoxRoute<B> {
-    fn route<S>(self, spec: &str, svc: S) -> Route<S, Self>
-    where
-        S: Service<Request<Body>, Error = Infallible> + Clone,
-    {
-        Route {
-            pattern: PathPattern::new(spec),
-            svc,
-            fallback: self,
-        }
-    }
-}
+impl<B> RoutingDsl for BoxRoute<B> {}
 
 impl<B> Service<Request<Body>> for BoxRoute<B>
 where
-    B: From<String> + 'static,
+    B: http_body::Body<Data = Bytes> + Send + Sync + 'static,
+    B::Error: Into<BoxError> + Send + Sync + 'static,
 {
-    type Response = Response<B>;
+    type Response = Response<BoxBody>;
     type Error = Infallible;
     type Future = BoxRouteResponseFuture<B>;
 
@@ -317,29 +332,27 @@ type InnerFuture<B> = Oneshot<
 
 impl<B> Future for BoxRouteResponseFuture<B>
 where
-    B: From<String>,
+    B: http_body::Body<Data = Bytes> + Send + Sync + 'static,
+    B::Error: Into<BoxError> + Send + Sync + 'static,
 {
-    type Output = Result<Response<B>, Infallible>;
+    type Output = Result<Response<BoxBody>, Infallible>;
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         match ready!(self.project().0.poll(cx)) {
-            Ok(res) => Poll::Ready(Ok(res)),
+            Ok(res) => Poll::Ready(Ok(res.map(BoxBody::new))),
             Err(err) => Poll::Ready(Ok(handle_buffer_error(err))),
         }
     }
 }
 
-fn handle_buffer_error<B>(error: BoxError) -> Response<B>
-where
-    B: From<String>,
-{
+fn handle_buffer_error(error: BoxError) -> Response<BoxBody> {
     use tower::buffer::error::{Closed, ServiceError};
 
     let error = match error.downcast::<Closed>() {
         Ok(closed) => {
             return Response::builder()
                 .status(StatusCode::INTERNAL_SERVER_ERROR)
-                .body(B::from(closed.to_string()))
+                .body(BoxBody::new(Full::from(closed.to_string())))
                 .unwrap();
         }
         Err(e) => e,
@@ -349,7 +362,7 @@ where
         Ok(service_error) => {
             return Response::builder()
                 .status(StatusCode::INTERNAL_SERVER_ERROR)
-                .body(B::from(format!("Service error: {}. This is a bug in tower-web. All inner services should be infallible. Please file an issue", service_error)))
+                .body(BoxBody::new(Full::from(format!("Service error: {}. This is a bug in tower-web. All inner services should be infallible. Please file an issue", service_error))))
                 .unwrap();
         }
         Err(e) => e,
@@ -357,10 +370,10 @@ where
 
     Response::builder()
         .status(StatusCode::INTERNAL_SERVER_ERROR)
-        .body(B::from(format!(
+        .body(BoxBody::new(Full::from(format!(
             "Uncountered an unknown error: {}. This should never happen. Please file an issue",
             error
-        )))
+        ))))
         .unwrap()
 }
 
@@ -369,18 +382,7 @@ where
 #[derive(Clone, Debug)]
 pub struct Layered<S>(S);
 
-impl<S> AddRoute for Layered<S> {
-    fn route<T>(self, spec: &str, svc: T) -> Route<T, Self>
-    where
-        T: Service<Request<Body>, Error = Infallible> + Clone,
-    {
-        Route {
-            pattern: PathPattern::new(spec),
-            svc,
-            fallback: self,
-        }
-    }
-}
+impl<S> RoutingDsl for Layered<S> {}
 
 impl<S> Layered<S> {
     pub fn handle_error<F, B, Res>(self, f: F) -> HandleError<S, F>
@@ -420,18 +422,7 @@ pub struct HandleError<S, F> {
     f: F,
 }
 
-impl<S, F> AddRoute for HandleError<S, F> {
-    fn route<T>(self, spec: &str, svc: T) -> Route<T, Self>
-    where
-        T: Service<Request<Body>, Error = Infallible> + Clone,
-    {
-        Route {
-            pattern: PathPattern::new(spec),
-            svc,
-            fallback: self,
-        }
-    }
-}
+impl<S, F> RoutingDsl for HandleError<S, F> {}
 
 impl<S, F, B, Res> Service<Request<Body>> for HandleError<S, F>
 where
@@ -487,6 +478,95 @@ where
     }
 }
 
+// ===== nesting =====
+
+pub fn nest<S>(spec: &str, svc: S) -> Nested<S, EmptyRouter>
+where
+    S: Service<Request<Body>, Error = Infallible> + Clone,
+{
+    Nested {
+        pattern: PathPattern::new(spec),
+        svc,
+        fallback: EmptyRouter,
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct Nested<S, F> {
+    pattern: PathPattern,
+    svc: S,
+    fallback: F,
+}
+
+impl<S, F> RoutingDsl for Nested<S, F> {}
+
+impl<S, F, SB, FB> Service<Request<Body>> for Nested<S, F>
+where
+    S: Service<Request<Body>, Response = Response<SB>, Error = Infallible> + Clone,
+    SB: http_body::Body<Data = Bytes> + Send + Sync + 'static,
+    SB::Error: Into<BoxError>,
+
+    F: Service<Request<Body>, Response = Response<FB>, Error = Infallible> + Clone,
+    FB: http_body::Body<Data = Bytes> + Send + Sync + 'static,
+    FB::Error: Into<BoxError>,
+{
+    type Response = Response<BoxBody>;
+    type Error = Infallible;
+
+    #[allow(clippy::type_complexity)]
+    type Future = future::Either<
+        BoxResponseBody<Oneshot<S, Request<Body>>>,
+        BoxResponseBody<Oneshot<F, Request<Body>>>,
+    >;
+
+    fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        Poll::Ready(Ok(()))
+    }
+
+    fn call(&mut self, mut req: Request<Body>) -> Self::Future {
+        if let Some((prefix, captures)) = self.pattern.prefix_match(req.uri().path()) {
+            let without_prefix = strip_prefix(req.uri(), prefix);
+            *req.uri_mut() = without_prefix;
+
+            insert_url_params(&mut req, captures);
+            let response_future = self.svc.clone().oneshot(req);
+            future::Either::Left(BoxResponseBody(response_future))
+        } else {
+            let response_future = self.fallback.clone().oneshot(req);
+            future::Either::Right(BoxResponseBody(response_future))
+        }
+    }
+}
+
+fn strip_prefix(uri: &Uri, prefix: &str) -> Uri {
+    let path_and_query = if let Some(path_and_query) = uri.path_and_query() {
+        let new_path = if let Some(path) = path_and_query.path().strip_prefix(prefix) {
+            path
+        } else {
+            path_and_query.path()
+        };
+
+        if let Some(query) = path_and_query.query() {
+            Some(
+                format!("{}?{}", new_path, query)
+                    .parse::<http::uri::PathAndQuery>()
+                    .unwrap(),
+            )
+        } else {
+            Some(new_path.parse().unwrap())
+        }
+    } else {
+        None
+    };
+
+    let mut parts = http::uri::Parts::default();
+    parts.scheme = uri.scheme().cloned();
+    parts.authority = uri.authority().cloned();
+    parts.path_and_query = path_and_query;
+
+    Uri::from_parts(parts).unwrap()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -514,7 +594,7 @@ mod tests {
     fn assert_match(route_spec: &'static str, path: &'static str) {
         let route = PathPattern::new(route_spec);
         assert!(
-            route.matches(path).is_some(),
+            route.full_match(path).is_some(),
             "`{}` doesn't match `{}`",
             path,
             route_spec
@@ -524,7 +604,7 @@ mod tests {
     fn refute_match(route_spec: &'static str, path: &'static str) {
         let route = PathPattern::new(route_spec);
         assert!(
-            route.matches(path).is_none(),
+            route.full_match(path).is_none(),
             "`{}` did match `{}` (but shouldn't)",
             path,
             route_spec
