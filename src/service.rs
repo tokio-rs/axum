@@ -1,7 +1,7 @@
 use crate::{
     body::{Body, BoxBody},
     response::IntoResponse,
-    routing::{BoxResponseBody, EmptyRouter, MethodFilter},
+    routing::{BoxResponseBody, EmptyRouter, MethodFilter, RouteFuture},
 };
 use bytes::Bytes;
 use futures_util::future;
@@ -17,12 +17,44 @@ use std::{
 };
 use tower::{util::Oneshot, BoxError, Service, ServiceExt as _};
 
+pub fn any<S>(svc: S) -> OnMethod<S, EmptyRouter> {
+    on(MethodFilter::Any, svc)
+}
+
+pub fn connect<S>(svc: S) -> OnMethod<S, EmptyRouter> {
+    on(MethodFilter::Connect, svc)
+}
+
+pub fn delete<S>(svc: S) -> OnMethod<S, EmptyRouter> {
+    on(MethodFilter::Delete, svc)
+}
+
 pub fn get<S>(svc: S) -> OnMethod<S, EmptyRouter> {
     on(MethodFilter::Get, svc)
 }
 
+pub fn head<S>(svc: S) -> OnMethod<S, EmptyRouter> {
+    on(MethodFilter::Head, svc)
+}
+
+pub fn options<S>(svc: S) -> OnMethod<S, EmptyRouter> {
+    on(MethodFilter::Options, svc)
+}
+
+pub fn patch<S>(svc: S) -> OnMethod<S, EmptyRouter> {
+    on(MethodFilter::Patch, svc)
+}
+
 pub fn post<S>(svc: S) -> OnMethod<S, EmptyRouter> {
     on(MethodFilter::Post, svc)
+}
+
+pub fn put<S>(svc: S) -> OnMethod<S, EmptyRouter> {
+    on(MethodFilter::Put, svc)
+}
+
+pub fn trace<S>(svc: S) -> OnMethod<S, EmptyRouter> {
+    on(MethodFilter::Trace, svc)
 }
 
 pub fn on<S>(method: MethodFilter, svc: S) -> OnMethod<S, EmptyRouter> {
@@ -41,6 +73,27 @@ pub struct OnMethod<S, F> {
 }
 
 impl<S, F> OnMethod<S, F> {
+    pub fn any<T>(self, svc: T) -> OnMethod<T, Self>
+    where
+        T: Service<Request<Body>> + Clone,
+    {
+        self.on(MethodFilter::Any, svc)
+    }
+
+    pub fn connect<T>(self, svc: T) -> OnMethod<T, Self>
+    where
+        T: Service<Request<Body>> + Clone,
+    {
+        self.on(MethodFilter::Connect, svc)
+    }
+
+    pub fn delete<T>(self, svc: T) -> OnMethod<T, Self>
+    where
+        T: Service<Request<Body>> + Clone,
+    {
+        self.on(MethodFilter::Delete, svc)
+    }
+
     pub fn get<T>(self, svc: T) -> OnMethod<T, Self>
     where
         T: Service<Request<Body>> + Clone,
@@ -48,11 +101,46 @@ impl<S, F> OnMethod<S, F> {
         self.on(MethodFilter::Get, svc)
     }
 
+    pub fn head<T>(self, svc: T) -> OnMethod<T, Self>
+    where
+        T: Service<Request<Body>> + Clone,
+    {
+        self.on(MethodFilter::Head, svc)
+    }
+
+    pub fn options<T>(self, svc: T) -> OnMethod<T, Self>
+    where
+        T: Service<Request<Body>> + Clone,
+    {
+        self.on(MethodFilter::Options, svc)
+    }
+
+    pub fn patch<T>(self, svc: T) -> OnMethod<T, Self>
+    where
+        T: Service<Request<Body>> + Clone,
+    {
+        self.on(MethodFilter::Patch, svc)
+    }
+
     pub fn post<T>(self, svc: T) -> OnMethod<T, Self>
     where
         T: Service<Request<Body>> + Clone,
     {
         self.on(MethodFilter::Post, svc)
+    }
+
+    pub fn put<T>(self, svc: T) -> OnMethod<T, Self>
+    where
+        T: Service<Request<Body>> + Clone,
+    {
+        self.on(MethodFilter::Put, svc)
+    }
+
+    pub fn trace<T>(self, svc: T) -> OnMethod<T, Self>
+    where
+        T: Service<Request<Body>> + Clone,
+    {
+        self.on(MethodFilter::Trace, svc)
     }
 
     pub fn on<T>(self, method: MethodFilter, svc: T) -> OnMethod<T, Self>
@@ -81,25 +169,21 @@ where
 {
     type Response = Response<BoxBody>;
     type Error = Infallible;
-
-    #[allow(clippy::type_complexity)]
-    type Future = future::Either<
-        BoxResponseBody<Oneshot<S, Request<Body>>>,
-        BoxResponseBody<Oneshot<F, Request<Body>>>,
-    >;
+    type Future = RouteFuture<S, F>;
 
     fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         Poll::Ready(Ok(()))
     }
 
     fn call(&mut self, req: Request<Body>) -> Self::Future {
-        if self.method.matches(req.method()) {
+        let f = if self.method.matches(req.method()) {
             let response_future = self.svc.clone().oneshot(req);
             future::Either::Left(BoxResponseBody(response_future))
         } else {
             let response_future = self.fallback.clone().oneshot(req);
             future::Either::Right(BoxResponseBody(response_future))
-        }
+        };
+        RouteFuture(f)
     }
 }
 

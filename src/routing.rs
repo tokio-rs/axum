@@ -64,23 +64,23 @@ pub struct Route<S, F> {
 }
 
 pub trait RoutingDsl: Sized {
-    fn route<T>(self, spec: &str, svc: T) -> Route<T, Self>
+    fn route<T>(self, description: &str, svc: T) -> Route<T, Self>
     where
         T: Service<Request<Body>, Error = Infallible> + Clone,
     {
         Route {
-            pattern: PathPattern::new(spec),
+            pattern: PathPattern::new(description),
             svc,
             fallback: self,
         }
     }
 
-    fn nest<T>(self, spec: &str, svc: T) -> Nested<T, Self>
+    fn nest<T>(self, description: &str, svc: T) -> Nested<T, Self>
     where
         T: Service<Request<Body>, Error = Infallible> + Clone,
     {
         Nested {
-            pattern: PathPattern::new(spec),
+            pattern: PathPattern::new(description),
             svc,
             fallback: self,
         }
@@ -125,26 +125,50 @@ where
 {
     type Response = Response<BoxBody>;
     type Error = Infallible;
-
-    #[allow(clippy::type_complexity)]
-    type Future = future::Either<
-        BoxResponseBody<Oneshot<S, Request<Body>>>,
-        BoxResponseBody<Oneshot<F, Request<Body>>>,
-    >;
+    type Future = RouteFuture<S, F>;
 
     fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         Poll::Ready(Ok(()))
     }
 
     fn call(&mut self, mut req: Request<Body>) -> Self::Future {
-        if let Some(captures) = self.pattern.full_match(req.uri().path()) {
+        let f = if let Some(captures) = self.pattern.full_match(req.uri().path()) {
             insert_url_params(&mut req, captures);
             let response_future = self.svc.clone().oneshot(req);
             future::Either::Left(BoxResponseBody(response_future))
         } else {
             let response_future = self.fallback.clone().oneshot(req);
             future::Either::Right(BoxResponseBody(response_future))
-        }
+        };
+        RouteFuture(f)
+    }
+}
+
+#[pin_project]
+pub struct RouteFuture<S, F>(
+    #[pin]
+    pub(crate)  future::Either<
+        BoxResponseBody<Oneshot<S, Request<Body>>>,
+        BoxResponseBody<Oneshot<F, Request<Body>>>,
+    >,
+)
+where
+    S: Service<Request<Body>>,
+    F: Service<Request<Body>>;
+
+impl<S, F, SB, FB> Future for RouteFuture<S, F>
+where
+    S: Service<Request<Body>, Response = Response<SB>, Error = Infallible>,
+    SB: http_body::Body<Data = Bytes> + Send + Sync + 'static,
+    SB::Error: Into<BoxError>,
+    F: Service<Request<Body>, Response = Response<FB>, Error = Infallible>,
+    FB: http_body::Body<Data = Bytes> + Send + Sync + 'static,
+    FB::Error: Into<BoxError>,
+{
+    type Output = Result<Response<BoxBody>, Infallible>;
+
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        self.project().0.poll(cx)
     }
 }
 
@@ -187,20 +211,25 @@ pub struct EmptyRouter;
 
 impl RoutingDsl for EmptyRouter {}
 
-impl<R> Service<R> for EmptyRouter {
+impl Service<Request<Body>> for EmptyRouter {
     type Response = Response<Body>;
     type Error = Infallible;
-    type Future = future::Ready<Result<Self::Response, Self::Error>>;
+    type Future = EmptyRouterFuture;
 
     fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         Poll::Ready(Ok(()))
     }
 
-    fn call(&mut self, _req: R) -> Self::Future {
+    fn call(&mut self, _req: Request<Body>) -> Self::Future {
         let mut res = Response::new(Body::empty());
         *res.status_mut() = StatusCode::NOT_FOUND;
-        future::ok(res)
+        EmptyRouterFuture(future::ok(res))
     }
+}
+
+opaque_future! {
+    pub type EmptyRouterFuture =
+        future::Ready<Result<Response<Body>, Infallible>>;
 }
 
 // ===== PathPattern =====
@@ -216,6 +245,11 @@ struct Inner {
 
 impl PathPattern {
     pub(crate) fn new(pattern: &str) -> Self {
+        assert!(
+            pattern.starts_with('/'),
+            "Route description must start with a `/`"
+        );
+
         let mut capture_group_names = Vec::new();
 
         let pattern = pattern
@@ -309,7 +343,7 @@ where
 {
     type Response = Response<BoxBody>;
     type Error = Infallible;
-    type Future = BoxRouteResponseFuture<B>;
+    type Future = BoxRouteFuture<B>;
 
     #[inline]
     fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
@@ -318,19 +352,19 @@ where
 
     #[inline]
     fn call(&mut self, req: Request<Body>) -> Self::Future {
-        BoxRouteResponseFuture(self.0.clone().oneshot(req))
+        BoxRouteFuture(self.0.clone().oneshot(req))
     }
 }
 
 #[pin_project]
-pub struct BoxRouteResponseFuture<B>(#[pin] InnerFuture<B>);
+pub struct BoxRouteFuture<B>(#[pin] InnerFuture<B>);
 
 type InnerFuture<B> = Oneshot<
     Buffer<BoxService<Request<Body>, Response<B>, Infallible>, Request<Body>>,
     Request<Body>,
 >;
 
-impl<B> Future for BoxRouteResponseFuture<B>
+impl<B> Future for BoxRouteFuture<B>
 where
     B: http_body::Body<Data = Bytes> + Send + Sync + 'static,
     B::Error: Into<BoxError> + Send + Sync + 'static,
@@ -418,12 +452,12 @@ where
 
 // ===== nesting =====
 
-pub fn nest<S>(spec: &str, svc: S) -> Nested<S, EmptyRouter>
+pub fn nest<S>(description: &str, svc: S) -> Nested<S, EmptyRouter>
 where
     S: Service<Request<Body>, Error = Infallible> + Clone,
 {
     Nested {
-        pattern: PathPattern::new(spec),
+        pattern: PathPattern::new(description),
         svc,
         fallback: EmptyRouter,
     }
@@ -450,19 +484,14 @@ where
 {
     type Response = Response<BoxBody>;
     type Error = Infallible;
-
-    #[allow(clippy::type_complexity)]
-    type Future = future::Either<
-        BoxResponseBody<Oneshot<S, Request<Body>>>,
-        BoxResponseBody<Oneshot<F, Request<Body>>>,
-    >;
+    type Future = RouteFuture<S, F>;
 
     fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         Poll::Ready(Ok(()))
     }
 
     fn call(&mut self, mut req: Request<Body>) -> Self::Future {
-        if let Some((prefix, captures)) = self.pattern.prefix_match(req.uri().path()) {
+        let f = if let Some((prefix, captures)) = self.pattern.prefix_match(req.uri().path()) {
             let without_prefix = strip_prefix(req.uri(), prefix);
             *req.uri_mut() = without_prefix;
 
@@ -472,7 +501,8 @@ where
         } else {
             let response_future = self.fallback.clone().oneshot(req);
             future::Either::Right(BoxResponseBody(response_future))
-        }
+        };
+        RouteFuture(f)
     }
 }
 

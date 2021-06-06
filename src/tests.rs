@@ -1,4 +1,4 @@
-use crate::{extract, get, on, post, route, routing::MethodFilter, service, Handler, RoutingDsl};
+use crate::{handler::on, prelude::*, routing::MethodFilter, service};
 use http::{Request, Response, StatusCode};
 use hyper::{Body, Server};
 use serde::Deserialize;

@@ -2,7 +2,7 @@ use crate::{
     body::{Body, BoxBody},
     extract::FromRequest,
     response::IntoResponse,
-    routing::{BoxResponseBody, EmptyRouter, MethodFilter},
+    routing::{BoxResponseBody, EmptyRouter, MethodFilter, RouteFuture},
     service::HandleError,
 };
 use async_trait::async_trait;
@@ -15,7 +15,28 @@ use std::{
     marker::PhantomData,
     task::{Context, Poll},
 };
-use tower::{util::Oneshot, BoxError, Layer, Service, ServiceExt};
+use tower::{BoxError, Layer, Service, ServiceExt};
+
+pub fn any<H, T>(handler: H) -> OnMethod<IntoService<H, T>, EmptyRouter>
+where
+    H: Handler<T>,
+{
+    on(MethodFilter::Any, handler)
+}
+
+pub fn connect<H, T>(handler: H) -> OnMethod<IntoService<H, T>, EmptyRouter>
+where
+    H: Handler<T>,
+{
+    on(MethodFilter::Connect, handler)
+}
+
+pub fn delete<H, T>(handler: H) -> OnMethod<IntoService<H, T>, EmptyRouter>
+where
+    H: Handler<T>,
+{
+    on(MethodFilter::Delete, handler)
+}
 
 pub fn get<H, T>(handler: H) -> OnMethod<IntoService<H, T>, EmptyRouter>
 where
@@ -24,11 +45,46 @@ where
     on(MethodFilter::Get, handler)
 }
 
+pub fn head<H, T>(handler: H) -> OnMethod<IntoService<H, T>, EmptyRouter>
+where
+    H: Handler<T>,
+{
+    on(MethodFilter::Head, handler)
+}
+
+pub fn options<H, T>(handler: H) -> OnMethod<IntoService<H, T>, EmptyRouter>
+where
+    H: Handler<T>,
+{
+    on(MethodFilter::Options, handler)
+}
+
+pub fn patch<H, T>(handler: H) -> OnMethod<IntoService<H, T>, EmptyRouter>
+where
+    H: Handler<T>,
+{
+    on(MethodFilter::Patch, handler)
+}
+
 pub fn post<H, T>(handler: H) -> OnMethod<IntoService<H, T>, EmptyRouter>
 where
     H: Handler<T>,
 {
     on(MethodFilter::Post, handler)
+}
+
+pub fn put<H, T>(handler: H) -> OnMethod<IntoService<H, T>, EmptyRouter>
+where
+    H: Handler<T>,
+{
+    on(MethodFilter::Put, handler)
+}
+
+pub fn trace<H, T>(handler: H) -> OnMethod<IntoService<H, T>, EmptyRouter>
+where
+    H: Handler<T>,
+{
+    on(MethodFilter::Trace, handler)
 }
 
 pub fn on<H, T>(method: MethodFilter, handler: H) -> OnMethod<IntoService<H, T>, EmptyRouter>
@@ -216,7 +272,7 @@ where
 {
     type Response = Response<BoxBody>;
     type Error = Infallible;
-    type Future = future::BoxFuture<'static, Result<Self::Response, Self::Error>>;
+    type Future = IntoServiceFuture;
 
     fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         // `IntoService` can only be constructed from async functions which are always ready, or from
@@ -227,11 +283,17 @@ where
 
     fn call(&mut self, req: Request<Body>) -> Self::Future {
         let handler = self.handler.clone();
-        Box::pin(async move {
+        let future = Box::pin(async move {
             let res = Handler::call(handler, req).await;
             Ok(res)
-        })
+        });
+        IntoServiceFuture(future)
     }
+}
+
+opaque_future! {
+    pub type IntoServiceFuture =
+        future::BoxFuture<'static, Result<Response<BoxBody>, Infallible>>;
 }
 
 #[derive(Clone)]
@@ -242,6 +304,27 @@ pub struct OnMethod<S, F> {
 }
 
 impl<S, F> OnMethod<S, F> {
+    pub fn any<H, T>(self, handler: H) -> OnMethod<IntoService<H, T>, Self>
+    where
+        H: Handler<T>,
+    {
+        self.on(MethodFilter::Any, handler)
+    }
+
+    pub fn connect<H, T>(self, handler: H) -> OnMethod<IntoService<H, T>, Self>
+    where
+        H: Handler<T>,
+    {
+        self.on(MethodFilter::Connect, handler)
+    }
+
+    pub fn delete<H, T>(self, handler: H) -> OnMethod<IntoService<H, T>, Self>
+    where
+        H: Handler<T>,
+    {
+        self.on(MethodFilter::Delete, handler)
+    }
+
     pub fn get<H, T>(self, handler: H) -> OnMethod<IntoService<H, T>, Self>
     where
         H: Handler<T>,
@@ -249,11 +332,46 @@ impl<S, F> OnMethod<S, F> {
         self.on(MethodFilter::Get, handler)
     }
 
+    pub fn head<H, T>(self, handler: H) -> OnMethod<IntoService<H, T>, Self>
+    where
+        H: Handler<T>,
+    {
+        self.on(MethodFilter::Head, handler)
+    }
+
+    pub fn options<H, T>(self, handler: H) -> OnMethod<IntoService<H, T>, Self>
+    where
+        H: Handler<T>,
+    {
+        self.on(MethodFilter::Options, handler)
+    }
+
+    pub fn patch<H, T>(self, handler: H) -> OnMethod<IntoService<H, T>, Self>
+    where
+        H: Handler<T>,
+    {
+        self.on(MethodFilter::Patch, handler)
+    }
+
     pub fn post<H, T>(self, handler: H) -> OnMethod<IntoService<H, T>, Self>
     where
         H: Handler<T>,
     {
         self.on(MethodFilter::Post, handler)
+    }
+
+    pub fn put<H, T>(self, handler: H) -> OnMethod<IntoService<H, T>, Self>
+    where
+        H: Handler<T>,
+    {
+        self.on(MethodFilter::Put, handler)
+    }
+
+    pub fn trace<H, T>(self, handler: H) -> OnMethod<IntoService<H, T>, Self>
+    where
+        H: Handler<T>,
+    {
+        self.on(MethodFilter::Trace, handler)
     }
 
     pub fn on<H, T>(self, method: MethodFilter, handler: H) -> OnMethod<IntoService<H, T>, Self>
@@ -268,8 +386,6 @@ impl<S, F> OnMethod<S, F> {
     }
 }
 
-// this is identical to `routing::OnMethod`'s implementation. Would be nice to find a way to clean
-// that up, but not sure its possible.
 impl<S, F, SB, FB> Service<Request<Body>> for OnMethod<S, F>
 where
     S: Service<Request<Body>, Response = Response<SB>, Error = Infallible> + Clone,
@@ -282,24 +398,20 @@ where
 {
     type Response = Response<BoxBody>;
     type Error = Infallible;
-
-    #[allow(clippy::type_complexity)]
-    type Future = future::Either<
-        BoxResponseBody<Oneshot<S, Request<Body>>>,
-        BoxResponseBody<Oneshot<F, Request<Body>>>,
-    >;
+    type Future = RouteFuture<S, F>;
 
     fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         Poll::Ready(Ok(()))
     }
 
     fn call(&mut self, req: Request<Body>) -> Self::Future {
-        if self.method.matches(req.method()) {
+        let f = if self.method.matches(req.method()) {
             let response_future = self.svc.clone().oneshot(req);
             future::Either::Left(BoxResponseBody(response_future))
         } else {
             let response_future = self.fallback.clone().oneshot(req);
             future::Either::Right(BoxResponseBody(response_future))
-        }
+        };
+        RouteFuture(f)
     }
 }

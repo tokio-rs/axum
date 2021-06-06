@@ -77,6 +77,10 @@ where
     }
 }
 
+/// A boxed error trait object that implements [`std::error::Error`].
+///
+/// This is necessary for compatibility with middleware that changes the error
+/// type of the response body.
 // work around for `BoxError` not implementing `std::error::Error`
 //
 // This is currently required since tower-http's Compression middleware's body type's

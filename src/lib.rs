@@ -500,7 +500,6 @@
 //! use tower_http::services::ServeFile;
 //! use http::Response;
 //! use std::convert::Infallible;
-//! use tower::{service_fn, BoxError};
 //!
 //! fn api_routes() -> BoxRoute<BoxBody> {
 //!     route("/users", get(|_: Request<Body>| async { /* ... */ })).boxed()
@@ -571,7 +570,7 @@
     rust_2018_idioms,
     future_incompatible,
     nonstandard_style,
-    // missing_docs
+    missing_docs
 )]
 #![deny(unreachable_pub, broken_intra_doc_links, private_in_public)]
 #![allow(
@@ -592,6 +591,9 @@ use routing::{EmptyRouter, Route};
 use std::convert::Infallible;
 use tower::{BoxError, Service};
 
+#[macro_use]
+pub(crate) mod macros;
+
 pub mod body;
 pub mod extract;
 pub mod handler;
@@ -602,12 +604,6 @@ pub mod service;
 #[cfg(test)]
 mod tests;
 
-#[doc(inline)]
-pub use self::{
-    handler::{get, on, post, Handler},
-    routing::RoutingDsl,
-};
-
 pub use async_trait::async_trait;
 pub use tower_http::add_extension::{AddExtension, AddExtensionLayer};
 
@@ -615,24 +611,102 @@ pub mod prelude {
     //! Re-exports of important traits, types, and functions used with tower-web. Meant to be glob
     //! imported.
 
-    pub use crate::{
-        body::Body,
-        extract,
-        handler::{get, on, post, Handler},
-        response, route,
-        routing::RoutingDsl,
+    pub use crate::body::Body;
+    pub use crate::extract;
+    pub use crate::handler::{
+        any, connect, delete, get, head, options, patch, post, put, trace, Handler,
     };
+    pub use crate::response;
+    pub use crate::route;
+    pub use crate::routing::RoutingDsl;
     pub use http::Request;
 }
 
-pub fn route<S>(spec: &str, svc: S) -> Route<S, EmptyRouter>
+/// Create a route.
+///
+/// `description` is a string of path segments separated by `/`. Each segment
+/// can be either concrete or a capture:
+///
+/// - `/foo/bar/baz` will only match requests where the path is `/foo/bar/bar`.
+/// - `/:foo` will match any route with exactly one segment _and_ it will
+/// capture the first segment and store it only the key `foo`.
+///
+/// `service` is the [`Service`] that should receive the request if the path
+/// matches `description`.
+///
+/// Note that `service`'s error type must be [`Infallible`] meaning you must
+/// handle all errors. If you're creating handlers from async functions that is
+/// handled automatically but if you're routing to some other [`Service`] you
+/// might need to use [`handle_error`](ServiceExt::handle_error) to map errors
+/// into responses.
+///
+/// # Examples
+///
+/// ```rust
+/// use tower_web::prelude::*;
+/// # use std::convert::Infallible;
+/// # use http::Response;
+/// # let service = tower::service_fn(|_: Request<Body>| async {
+/// #     Ok::<Response<Body>, Infallible>(Response::new(Body::empty()))
+/// # });
+///
+/// route("/", service);
+/// route("/users", service);
+/// route("/users/:id", service);
+/// route("/api/:version/users/:id/action", service);
+/// ```
+///
+/// # Panics
+///
+/// Panics if `description` doesn't start with `/`.
+pub fn route<S>(description: &str, service: S) -> Route<S, EmptyRouter>
 where
     S: Service<Request<Body>, Error = Infallible> + Clone,
 {
-    routing::EmptyRouter.route(spec, svc)
+    use routing::RoutingDsl;
+
+    routing::EmptyRouter.route(description, service)
 }
 
+/// Extension trait that adds additional methods to [`Service`].
 pub trait ServiceExt<B>: Service<Request<Body>, Response = Response<B>> {
+    /// Handle errors from a service.
+    ///
+    /// tower-web requires all handles to never return errors. If you route to
+    /// [`Service`], not created by tower-web, who's error isn't `Infallible`
+    /// you can use this combinator to handle the error.
+    ///
+    /// `handle_error` takes a closure that will map errors from the service
+    /// into responses. The closure's return type must implement
+    /// [`IntoResponse`].
+    ///
+    /// # Example
+    ///
+    /// ```rust,no_run
+    /// use tower_web::{
+    ///     service, prelude::*,
+    ///     ServiceExt,
+    /// };
+    /// use http::Response;
+    /// use tower::{service_fn, BoxError};
+    ///
+    /// // A service that might fail with `std::io::Error`
+    /// let service = service_fn(|_: Request<Body>| async {
+    ///     let res = Response::new(Body::empty());
+    ///     Ok::<_, std::io::Error>(res)
+    /// });
+    ///
+    /// let app = route(
+    ///     "/",
+    ///     service.handle_error(|error: std::io::Error| {
+    ///         // Handle error by returning something that implements `IntoResponse`
+    ///     }),
+    /// );
+    /// #
+    /// # async {
+    /// # hyper::Server::bind(&"".parse().unwrap()).serve(tower::make::Shared::new(app)).await;
+    /// # };
+    /// ```
     fn handle_error<F, Res>(self, f: F) -> service::HandleError<Self, F>
     where
         Self: Sized,

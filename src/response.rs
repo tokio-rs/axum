@@ -5,7 +5,11 @@ use serde::Serialize;
 use std::{borrow::Cow, convert::Infallible};
 use tower::util::Either;
 
+/// Trait for generating responses.
+///
+/// Types that implement `IntoResponse` can be returned from handlers.
 pub trait IntoResponse {
+    /// Create a response.
     fn into_response(self) -> Response<Body>;
 }
 
@@ -153,6 +157,9 @@ where
     }
 }
 
+/// An HTML response.
+///
+/// Will automatically get `Content-Type: text/html`.
 pub struct Html<T>(pub T);
 
 impl<T> IntoResponse for Html<T>
@@ -167,6 +174,30 @@ where
     }
 }
 
+/// A JSON response.
+///
+/// Can be created from any type that implements [`serde::Serialize`].
+///
+/// Will automatically get `Content-Type: application/json`.
+///
+/// # Example
+///
+/// ```
+/// use serde_json::json;
+/// use tower_web::{body::Body, response::{Json, IntoResponse}};
+/// use http::{Response, header::CONTENT_TYPE};
+///
+/// let json = json!({
+///     "data": 42,
+/// });
+///
+/// let response: Response<Body> = Json(json).into_response();
+///
+/// assert_eq!(
+///     response.headers().get(CONTENT_TYPE).unwrap(),
+///     "application/json",
+/// );
+/// ```
 pub struct Json<T>(pub T);
 
 impl<T> IntoResponse for Json<T>

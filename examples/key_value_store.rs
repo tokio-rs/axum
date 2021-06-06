@@ -14,7 +14,7 @@ use tower_http::{
 use tower_web::{
     body::Body,
     extract::{BytesMaxLength, Extension, UrlParams},
-    get, route, Handler,
+    prelude::*,
 };
 
 #[tokio::main]
