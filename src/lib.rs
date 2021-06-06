@@ -599,6 +599,9 @@ pub mod response;
 pub mod routing;
 pub mod service;
 
+#[cfg(test)]
+mod tests;
+
 #[doc(inline)]
 pub use self::{
     handler::{get, on, post, Handler},
@@ -609,6 +612,9 @@ pub use async_trait::async_trait;
 pub use tower_http::add_extension::{AddExtension, AddExtensionLayer};
 
 pub mod prelude {
+    //! Re-exports of important traits, types, and functions used with tower-web. Meant to be glob
+    //! imported.
+
     pub use crate::{
         body::Body,
         extract,
@@ -626,26 +632,7 @@ where
     routing::EmptyRouter.route(spec, svc)
 }
 
-#[cfg(test)]
-mod tests;
-
-pub(crate) trait ResultExt<T> {
-    fn unwrap_infallible(self) -> T;
-}
-
-impl<T> ResultExt<T> for Result<T, Infallible> {
-    fn unwrap_infallible(self) -> T {
-        match self {
-            Ok(value) => value,
-            Err(err) => match err {},
-        }
-    }
-}
-
 pub trait ServiceExt<B>: Service<Request<Body>, Response = Response<B>> {
-    // TODO(david): routing methods like get, post, etc like whats on OnMethod
-    // so you can do `route("...", service::get(svc).post(svc))`
-
     fn handle_error<F, Res>(self, f: F) -> service::HandleError<Self, F>
     where
         Self: Sized,
@@ -659,3 +646,16 @@ pub trait ServiceExt<B>: Service<Request<Body>, Response = Response<B>> {
 }
 
 impl<S, B> ServiceExt<B> for S where S: Service<Request<Body>, Response = Response<B>> {}
+
+pub(crate) trait ResultExt<T> {
+    fn unwrap_infallible(self) -> T;
+}
+
+impl<T> ResultExt<T> for Result<T, Infallible> {
+    fn unwrap_infallible(self) -> T {
+        match self {
+            Ok(value) => value,
+            Err(err) => match err {},
+        }
+    }
+}
