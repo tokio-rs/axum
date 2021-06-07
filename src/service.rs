@@ -187,6 +187,11 @@ where
     }
 }
 
+/// A [`Service`] adapter that handles errors with a closure.
+///
+/// Create with [`handler::Layered::handle_error`](crate::handler::Layered::handle_error) or
+/// [`routing::Layered::handle_error`](crate::routing::Layered::handle_error). See those methods
+/// for more details.
 #[derive(Clone)]
 pub struct HandleError<S, F> {
     pub(crate) inner: S,

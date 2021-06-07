@@ -1,3 +1,5 @@
+//! HTTP body utilities.
+
 use bytes::Bytes;
 use http_body::{Empty, Full};
 use std::{

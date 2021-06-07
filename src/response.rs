@@ -160,6 +160,7 @@ where
 /// An HTML response.
 ///
 /// Will automatically get `Content-Type: text/html`.
+#[derive(Clone, Copy, Debug)]
 pub struct Html<T>(pub T);
 
 impl<T> IntoResponse for Html<T>
@@ -198,6 +199,7 @@ where
 ///     "application/json",
 /// );
 /// ```
+#[derive(Clone, Copy, Debug)]
 pub struct Json<T>(pub T);
 
 impl<T> IntoResponse for Json<T>

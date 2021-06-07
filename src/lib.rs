@@ -570,6 +570,7 @@
     rust_2018_idioms,
     future_incompatible,
     nonstandard_style,
+    missing_debug_implementations,
     missing_docs
 )]
 #![deny(unreachable_pub, broken_intra_doc_links, private_in_public)]
@@ -629,7 +630,7 @@ pub mod prelude {
 ///
 /// - `/foo/bar/baz` will only match requests where the path is `/foo/bar/bar`.
 /// - `/:foo` will match any route with exactly one segment _and_ it will
-/// capture the first segment and store it only the key `foo`.
+/// capture the first segment and store it at the key `foo`.
 ///
 /// `service` is the [`Service`] that should receive the request if the path
 /// matches `description`.

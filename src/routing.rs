@@ -21,19 +21,28 @@ use tower::{
     BoxError, Layer, Service, ServiceBuilder,
 };
 
-// ===== DSL =====
-
+/// A filter that matches one or more HTTP method.
 #[derive(Debug, Copy, Clone)]
 pub enum MethodFilter {
+    /// Match any method.
     Any,
+    /// Match `CONNECT` requests.
     Connect,
+    /// Match `DELETE` requests.
     Delete,
+    /// Match `GET` requests.
     Get,
+    /// Match `HEAD` requests.
     Head,
+    /// Match `OPTIONS` requests.
     Options,
+    /// Match `PATCH` requests.
     Patch,
+    /// Match `POST` requests.
     Post,
+    /// Match `PUT` requests.
     Put,
+    /// Match `TRACE` requests.
     Trace,
 }
 
@@ -56,7 +65,11 @@ impl MethodFilter {
     }
 }
 
-#[derive(Clone)]
+/// A route that sends requests to one of two [`Service`]s depending on the
+/// path.
+///
+/// Created with [`route`](crate::route). See that function for more details.
+#[derive(Debug, Clone)]
 pub struct Route<S, F> {
     pub(crate) pattern: PathPattern,
     pub(crate) svc: S,
@@ -111,8 +124,6 @@ pub trait RoutingDsl: Sized {
 
 impl<S, F> RoutingDsl for Route<S, F> {}
 
-// ===== Routing service impls =====
-
 impl<S, F, SB, FB> Service<Request<Body>> for Route<S, F>
 where
     S: Service<Request<Body>, Response = Response<SB>, Error = Infallible> + Clone,
@@ -144,7 +155,9 @@ where
     }
 }
 
+/// The response future for [`Route`].
 #[pin_project]
+#[derive(Debug)]
 pub struct RouteFuture<S, F>(
     #[pin]
     pub(crate)  future::Either<
@@ -185,7 +198,9 @@ fn insert_url_params<B>(req: &mut Request<B>, params: Vec<(String, String)>) {
     }
 }
 
+/// A response future that boxes the response body with [`BoxBody`].
 #[pin_project]
+#[derive(Debug)]
 pub struct BoxResponseBody<F>(#[pin] pub(crate) F);
 
 impl<F, B> Future for BoxResponseBody<F>
@@ -206,7 +221,11 @@ where
     }
 }
 
-#[derive(Clone, Copy)]
+/// A [`Service`] that responds with `404 Not Found` to all requests.
+///
+/// This is used as the bottom service in a router stack. You shouldn't have to
+/// use to manually.
+#[derive(Debug, Clone, Copy)]
 pub struct EmptyRouter;
 
 impl RoutingDsl for EmptyRouter {}
@@ -228,11 +247,10 @@ impl Service<Request<Body>> for EmptyRouter {
 }
 
 opaque_future! {
+    /// Response future for [`EmptyRouter`].
     pub type EmptyRouterFuture =
         future::Ready<Result<Response<Body>, Infallible>>;
 }
-
-// ===== PathPattern =====
 
 #[derive(Debug, Clone)]
 pub(crate) struct PathPattern(Arc<Inner>);
@@ -324,8 +342,6 @@ struct Match<'a> {
 
 type Captures = Vec<(String, String)>;
 
-// ===== BoxRoute =====
-
 pub struct BoxRoute<B>(Buffer<BoxService<Request<Body>, Response<B>, Infallible>, Request<Body>>);
 
 impl<B> Clone for BoxRoute<B> {
@@ -356,6 +372,7 @@ where
     }
 }
 
+/// The response future for [`BoxRoute`].
 #[pin_project]
 pub struct BoxRouteFuture<B>(#[pin] InnerFuture<B>);
 
@@ -411,8 +428,6 @@ fn handle_buffer_error(error: BoxError) -> Response<BoxBody> {
         .unwrap()
 }
 
-// ===== Layered =====
-
 #[derive(Clone, Debug)]
 pub struct Layered<S>(S);
 
@@ -450,8 +465,76 @@ where
     }
 }
 
-// ===== nesting =====
-
+/// Nest a group of routes (or [`Service`]) at some path.
+///
+/// This allows you to break your application into smaller pieces and compose
+/// them together. This will strip the matching prefix from the URL so the
+/// nested route will only see the part of URL:
+///
+/// ```
+/// use tower_web::{routing::nest, prelude::*};
+///
+/// async fn users_get(request: Request<Body>) {
+///     // `users_get` doesn't see the whole URL. `nest` will strip the matching
+///     // `/api` prefix.
+///     assert_eq!(request.uri().path(), "/users");
+/// }
+///
+/// async fn users_post(request: Request<Body>) {}
+///
+/// async fn careers(request: Request<Body>) {}
+///
+/// let users_api = route("/users", get(users_get).post(users_post));
+///
+/// let app = nest("/api", users_api).route("/careers", get(careers));
+/// # async {
+/// # hyper::Server::bind(&"".parse().unwrap()).serve(tower::make::Shared::new(app)).await;
+/// # };
+/// ```
+///
+/// Take care when using `nest` together with dynamic routes as nesting also
+/// captures from the outer routes:
+///
+/// ```
+/// use tower_web::{routing::nest, prelude::*};
+///
+/// async fn users_get(request: Request<Body>, params: extract::UrlParamsMap) {
+///     // Both `version` and `id` were captured even though `users_api` only
+///     // explicitly captures `id`.
+///     let version = params.get("version");
+///     let id = params.get("id");
+/// }
+///
+/// let users_api = route("/users/:id", get(users_get));
+///
+/// let app = nest("/:version/api", users_api);
+/// # async {
+/// # hyper::Server::bind(&"".parse().unwrap()).serve(tower::make::Shared::new(app)).await;
+/// # };
+/// ```
+///
+/// `nest` also accepts any [`Service`]. This can for example be used with
+/// [`tower_http::services::ServeDir`] to serve static files from a directory:
+///
+/// ```
+/// use tower_web::{
+///     routing::nest, service::get, ServiceExt, prelude::*,
+/// };
+/// use tower_http::services::ServeDir;
+///
+/// // Serves files inside the `public` directory at `GET /public/*`
+/// let serve_dir_service = ServeDir::new("public")
+///     .handle_error(|error: std::io::Error| { /* ... */ });
+///
+/// let app = nest("/public", get(serve_dir_service));
+/// # async {
+/// # hyper::Server::bind(&"".parse().unwrap()).serve(tower::make::Shared::new(app)).await;
+/// # };
+/// ```
+///
+/// If necessary you can use [`RoutingDsl::boxed`] to box a group of routes
+/// making the type easier to name. This is sometimes useful when working with
+/// `nest`.
 pub fn nest<S>(description: &str, svc: S) -> Nested<S, EmptyRouter>
 where
     S: Service<Request<Body>, Error = Infallible> + Clone,
@@ -463,6 +546,9 @@ where
     }
 }
 
+/// A [`Service`] that has been nested inside a router at some path.
+///
+/// Created with [`nest`] or [`RoutingDsl::nest`].
 #[derive(Debug, Clone)]
 pub struct Nested<S, F> {
     pattern: PathPattern,

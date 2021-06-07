@@ -11,12 +11,12 @@ async fn main() {
 
     let app = tower_web::routing::nest(
         "/static",
-        ServeDir::new(".").handle_error(|error: std::io::Error| {
+        tower_web::service::get(ServeDir::new(".").handle_error(|error: std::io::Error| {
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 format!("Unhandled interal error: {}", error),
             )
-        }),
+        })),
     )
     .layer(TraceLayer::new_for_http());
 
