@@ -1,3 +1,5 @@
+//! Rejection response types.
+
 use super::IntoResponse;
 use crate::body::Body;
 
@@ -5,8 +7,10 @@ macro_rules! define_rejection {
     (
         #[status = $status:ident]
         #[body = $body:expr]
+        $(#[$m:meta])*
         pub struct $name:ident (());
     ) => {
+        $(#[$m])*
         #[derive(Debug)]
         pub struct $name(pub(super) ());
 
@@ -22,8 +26,10 @@ macro_rules! define_rejection {
     (
         #[status = $status:ident]
         #[body = $body:expr]
+        $(#[$m:meta])*
         pub struct $name:ident (BoxError);
     ) => {
+        $(#[$m])*
         #[derive(Debug)]
         pub struct $name(pub(super) tower::BoxError);
 
@@ -50,63 +56,84 @@ macro_rules! define_rejection {
 define_rejection! {
     #[status = BAD_REQUEST]
     #[body = "Query string was invalid or missing"]
+    /// Rejection type for [`Query`](super::Query).
     pub struct QueryStringMissing(());
 }
 
 define_rejection! {
     #[status = BAD_REQUEST]
     #[body = "Failed to parse the response body as JSON"]
+    /// Rejection type for [`Json`](super::Json).
     pub struct InvalidJsonBody(BoxError);
 }
 
 define_rejection! {
     #[status = BAD_REQUEST]
     #[body = "Expected request with `Content-Type: application/json`"]
+    /// Rejection type for [`Json`](super::Json) used if the `Content-Type`
+    /// header is missing.
     pub struct MissingJsonContentType(());
 }
 
 define_rejection! {
     #[status = INTERNAL_SERVER_ERROR]
     #[body = "Missing request extension"]
+    /// Rejection type for [`Extension`](super::Extension) if an expected
+    /// request extension was not found.
     pub struct MissingExtension(());
 }
 
 define_rejection! {
     #[status = BAD_REQUEST]
     #[body = "Failed to buffer the request body"]
+    /// Rejection type for extractors that buffer the request body. Used if the
+    /// request body cannot be buffered due to an error.
     pub struct FailedToBufferBody(BoxError);
 }
 
 define_rejection! {
     #[status = BAD_REQUEST]
     #[body = "Response body didn't contain valid UTF-8"]
+    /// Rejection type used when buffering the request into a [`String`] if the
+    /// body doesn't contain valid UTF-8.
     pub struct InvalidUtf8(BoxError);
 }
 
 define_rejection! {
     #[status = PAYLOAD_TOO_LARGE]
     #[body = "Request payload is too large"]
+    /// Rejection type for [`BytesMaxLength`](super::BytesMaxLength) if the
+    /// request body is too large.
     pub struct PayloadTooLarge(());
 }
 
 define_rejection! {
     #[status = LENGTH_REQUIRED]
     #[body = "Content length header is required"]
+    /// Rejection type for [`BytesMaxLength`](super::BytesMaxLength) if the
+    /// request is missing the `Content-Length` header or it is invalid.
     pub struct LengthRequired(());
 }
 
 define_rejection! {
     #[status = INTERNAL_SERVER_ERROR]
     #[body = "No url params found for matched route. This is a bug in tower-web. Please open an issue"]
+    /// Rejection type for [`UrlParamsMap`](super::UrlParamsMap) and
+    /// [`UrlParams`](super::UrlParams) if you try and extract the URL params
+    /// more than once.
     pub struct MissingRouteParams(());
 }
 
 define_rejection! {
     #[status = INTERNAL_SERVER_ERROR]
     #[body = "Cannot have two request body extractors for a single handler"]
+    /// Rejection type used if you try and extract the request body more than
+    /// once.
     pub struct BodyAlreadyTaken(());
 }
 
+/// Rejection type for [`UrlParams`](super::UrlParams) if the capture route
+/// param didn't have the expected type.
 #[derive(Debug)]
 pub struct InvalidUrlParam {
     type_name: &'static str,

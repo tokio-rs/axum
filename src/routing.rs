@@ -1,3 +1,5 @@
+//! Routing between [`Service`]s.
+
 use crate::{body::BoxBody, response::IntoResponse, ResultExt};
 use bytes::Bytes;
 use futures_util::{future, ready};
@@ -465,7 +467,7 @@ where
     }
 }
 
-/// Nest a group of routes (or [`Service`]) at some path.
+/// Nest a group of routes (or a [`Service`]) at some path.
 ///
 /// This allows you to break your application into smaller pieces and compose
 /// them together. This will strip the matching prefix from the URL so the

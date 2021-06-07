@@ -1,3 +1,5 @@
+//! Types and traits for extracting data from requests.
+
 use crate::{body::Body, response::IntoResponse};
 use async_trait::async_trait;
 use bytes::Bytes;
@@ -275,7 +277,7 @@ macro_rules! impl_parse_url {
     };
 }
 
-impl_parse_url!(T1, T2, T3, T4, T5, T6);
+impl_parse_url!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16);
 
 fn take_body(req: &mut Request<Body>) -> Result<Body, BodyAlreadyTaken> {
     struct BodyAlreadyTakenExt;
@@ -287,3 +289,30 @@ fn take_body(req: &mut Request<Body>) -> Result<Body, BodyAlreadyTaken> {
         Ok(body)
     }
 }
+
+macro_rules! impl_from_request_tuple {
+    () => {};
+
+    ( $head:ident, $($tail:ident),* $(,)? ) => {
+        #[allow(non_snake_case)]
+        #[async_trait]
+        impl<R, $head, $($tail,)*> FromRequest for ($head, $($tail,)*)
+        where
+            R: IntoResponse,
+            $head: FromRequest<Rejection = R> + Send,
+            $( $tail: FromRequest<Rejection = R> + Send, )*
+        {
+            type Rejection = R;
+
+            async fn from_request(req: &mut Request<Body>) -> Result<Self, Self::Rejection> {
+                let $head = FromRequest::from_request(req).await?;
+                $( let $tail = FromRequest::from_request(req).await?; )*
+                Ok(($head, $($tail,)*))
+            }
+        }
+
+        impl_from_request_tuple!($($tail,)*);
+    };
+}
+
+impl_from_request_tuple!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16);

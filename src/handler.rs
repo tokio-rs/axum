@@ -1,3 +1,5 @@
+//! Async functions that can be used to handle requests.
+
 use crate::{
     body::{Body, BoxBody},
     extract::FromRequest,

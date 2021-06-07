@@ -7,7 +7,7 @@
 //! handle(Request) -> Response`.
 //! - Solid foundation. tower-web is built on top of tower and makes it easy to
 //! plug in any middleware from the [tower] and [tower-http] ecosystem.
-//! - Focus on routing, extracing data from requests, and generating responses.
+//! - Focus on routing, extracting data from requests, and generating responses.
 //! tower middleware can handle the rest.
 //! - Macro free core. Macro frameworks have their place but tower-web focuses
 //! on providing a core that is macro free.

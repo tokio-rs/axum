@@ -1,3 +1,5 @@
+//! Types and traits for generating responses.
+
 use crate::Body;
 use bytes::Bytes;
 use http::{header, HeaderMap, HeaderValue, Response, StatusCode};
