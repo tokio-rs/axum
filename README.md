@@ -1,7 +1,7 @@
 # tower-web
 
 tower-web (name pending) is a tiny web application framework that focuses on
-ergonimics and modularity.
+ergonomics and modularity.
 
 ### Goals
 
@@ -9,7 +9,7 @@ ergonimics and modularity.
 handle(Request) -> Response`.
 - Solid foundation. tower-web is built on top of tower and makes it easy to
 plug in any middleware from the [tower] and [tower-http] ecosystem.
-- Focus on routing, extracing data from requests, and generating responses.
+- Focus on routing, extracting data from requests, and generating responses.
 tower middleware can handle the rest.
 - Macro free core. Macro frameworks have their place but tower-web focuses
 on providing a core that is macro free.
@@ -454,7 +454,6 @@ use tower_web::{prelude::*, routing::BoxRoute, body::BoxBody};
 use tower_http::services::ServeFile;
 use http::Response;
 use std::convert::Infallible;
-use tower::{service_fn, BoxError};
 
 fn api_routes() -> BoxRoute<BoxBody> {
     route("/users", get(|_: Request<Body>| async { /* ... */ })).boxed()
@@ -462,6 +461,23 @@ fn api_routes() -> BoxRoute<BoxBody> {
 
 let app = route("/", get(|_: Request<Body>| async { /* ... */ }))
     .nest("/api", api_routes());
+```
+
+`nest` can also be used to serve static files from a directory:
+
+```rust
+use tower_web::{prelude::*, ServiceExt, routing::nest};
+use tower_http::services::ServeDir;
+use http::Response;
+use std::convert::Infallible;
+use tower::{service_fn, BoxError};
+
+let app = nest(
+    "/images",
+    ServeDir::new("public/images").handle_error(|error: std::io::Error| {
+        // ...
+    })
+);
 ```
 
 [tower]: https://crates.io/crates/tower

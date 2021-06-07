@@ -1,5 +1,5 @@
 //! tower-web (name pending) is a tiny web application framework that focuses on
-//! ergonimics and modularity.
+//! ergonomics and modularity.
 //!
 //! ## Goals
 //!
@@ -57,7 +57,6 @@
 //! async fn get_foo(req: Request<Body>) {
 //!     // `GET /foo` called
 //! }
-//! #
 //! # async {
 //! # hyper::Server::bind(&"".parse().unwrap()).serve(tower::make::Shared::new(app)).await;
 //! # };
@@ -136,7 +135,6 @@
 //!     .route("/json", get(json))
 //!     .route("/result", get(result))
 //!     .route("/response", get(response));
-//! #
 //! # async {
 //! # hyper::Server::bind(&"".parse().unwrap()).serve(tower::make::Shared::new(app)).await;
 //! # };
@@ -171,7 +169,6 @@
 //!
 //!     // ...
 //! }
-//! #
 //! # async {
 //! # hyper::Server::bind(&"".parse().unwrap()).serve(tower::make::Shared::new(app)).await;
 //! # };
@@ -192,7 +189,6 @@
 //!
 //!     // ...
 //! }
-//! #
 //! # async {
 //! # hyper::Server::bind(&"".parse().unwrap()).serve(tower::make::Shared::new(app)).await;
 //! # };
@@ -232,7 +228,6 @@
 //!
 //!     // ...
 //! }
-//! #
 //! # async {
 //! # hyper::Server::bind(&"".parse().unwrap()).serve(tower::make::Shared::new(app)).await;
 //! # };
@@ -261,7 +256,6 @@
 //! );
 //!
 //! async fn handler(req: Request<Body>) {}
-//! #
 //! # async {
 //! # hyper::Server::bind(&"".parse().unwrap()).serve(tower::make::Shared::new(app)).await;
 //! # };
@@ -282,7 +276,6 @@
 //! async fn get_slash(req: Request<Body>) {}
 //!
 //! async fn post_foo(req: Request<Body>) {}
-//! #
 //! # async {
 //! # hyper::Server::bind(&"".parse().unwrap()).serve(tower::make::Shared::new(app)).await;
 //! # };
@@ -332,7 +325,6 @@
 //! );
 //!
 //! async fn handle(req: Request<Body>) {}
-//! #
 //! # async {
 //! # hyper::Server::bind(&"".parse().unwrap()).serve(tower::make::Shared::new(app)).await;
 //! # };
@@ -359,7 +351,6 @@
 //!     });
 //!
 //! async fn handle(req: Request<Body>) {}
-//! #
 //! # async {
 //! # hyper::Server::bind(&"".parse().unwrap()).serve(tower::make::Shared::new(app)).await;
 //! # };
@@ -413,7 +404,6 @@
 //!             Cow::from(format!("Unhandled internal error: {}", error)),
 //!         );
 //!     });
-//! #
 //! # async {
 //! # hyper::Server::bind(&"".parse().unwrap()).serve(tower::make::Shared::new(app)).await;
 //! # };
@@ -446,7 +436,6 @@
 //!
 //!     // ...
 //! }
-//! #
 //! # async {
 //! # hyper::Server::bind(&"".parse().unwrap()).serve(tower::make::Shared::new(app)).await;
 //! # };
@@ -483,7 +472,6 @@
 //!             .handle_error(|error: std::io::Error| { /* ... */ })
 //!     )
 //! );
-//! #
 //! # async {
 //! # hyper::Server::bind(&"".parse().unwrap()).serve(tower::make::Shared::new(app)).await;
 //! # };
@@ -507,7 +495,6 @@
 //!
 //! let app = route("/", get(|_: Request<Body>| async { /* ... */ }))
 //!     .nest("/api", api_routes());
-//! #
 //! # async {
 //! # hyper::Server::bind(&"".parse().unwrap()).serve(tower::make::Shared::new(app)).await;
 //! # };
@@ -528,7 +515,6 @@
 //!         // ...
 //!     })
 //! );
-//! #
 //! # async {
 //! # hyper::Server::bind(&"".parse().unwrap()).serve(tower::make::Shared::new(app)).await;
 //! # };
