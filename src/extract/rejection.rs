@@ -8,11 +8,12 @@ macro_rules! define_rejection {
         #[status = $status:ident]
         #[body = $body:expr]
         $(#[$m:meta])*
-        pub struct $name:ident (());
+        pub struct $name:ident;
     ) => {
         $(#[$m])*
         #[derive(Debug)]
-        pub struct $name(pub(super) ());
+        #[non_exhaustive]
+        pub struct $name;
 
         impl IntoResponse for $name {
             fn into_response(self) -> http::Response<Body> {
@@ -57,7 +58,7 @@ define_rejection! {
     #[status = BAD_REQUEST]
     #[body = "Query string was invalid or missing"]
     /// Rejection type for [`Query`](super::Query).
-    pub struct QueryStringMissing(());
+    pub struct QueryStringMissing;
 }
 
 define_rejection! {
@@ -72,7 +73,7 @@ define_rejection! {
     #[body = "Expected request with `Content-Type: application/json`"]
     /// Rejection type for [`Json`](super::Json) used if the `Content-Type`
     /// header is missing.
-    pub struct MissingJsonContentType(());
+    pub struct MissingJsonContentType;
 }
 
 define_rejection! {
@@ -80,7 +81,7 @@ define_rejection! {
     #[body = "Missing request extension"]
     /// Rejection type for [`Extension`](super::Extension) if an expected
     /// request extension was not found.
-    pub struct MissingExtension(());
+    pub struct MissingExtension;
 }
 
 define_rejection! {
@@ -104,7 +105,7 @@ define_rejection! {
     #[body = "Request payload is too large"]
     /// Rejection type for [`BytesMaxLength`](super::BytesMaxLength) if the
     /// request body is too large.
-    pub struct PayloadTooLarge(());
+    pub struct PayloadTooLarge;
 }
 
 define_rejection! {
@@ -112,7 +113,7 @@ define_rejection! {
     #[body = "Content length header is required"]
     /// Rejection type for [`BytesMaxLength`](super::BytesMaxLength) if the
     /// request is missing the `Content-Length` header or it is invalid.
-    pub struct LengthRequired(());
+    pub struct LengthRequired;
 }
 
 define_rejection! {
@@ -121,7 +122,7 @@ define_rejection! {
     /// Rejection type for [`UrlParamsMap`](super::UrlParamsMap) and
     /// [`UrlParams`](super::UrlParams) if you try and extract the URL params
     /// more than once.
-    pub struct MissingRouteParams(());
+    pub struct MissingRouteParams;
 }
 
 define_rejection! {
@@ -129,7 +130,7 @@ define_rejection! {
     #[body = "Cannot have two request body extractors for a single handler"]
     /// Rejection type used if you try and extract the request body more than
     /// once.
-    pub struct BodyAlreadyTaken(());
+    pub struct BodyAlreadyTaken;
 }
 
 /// Rejection type for [`UrlParams`](super::UrlParams) if the capture route

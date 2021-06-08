@@ -44,8 +44,8 @@ where
     type Rejection = QueryStringMissing;
 
     async fn from_request(req: &mut Request<Body>) -> Result<Self, Self::Rejection> {
-        let query = req.uri().query().ok_or(QueryStringMissing(()))?;
-        let value = serde_urlencoded::from_str(query).map_err(|_| QueryStringMissing(()))?;
+        let query = req.uri().query().ok_or(QueryStringMissing)?;
+        let value = serde_urlencoded::from_str(query).map_err(|_| QueryStringMissing)?;
         Ok(Query(value))
     }
 }
@@ -75,7 +75,7 @@ where
 
             Ok(Json(value))
         } else {
-            Err(MissingJsonContentType(()).into_response())
+            Err(MissingJsonContentType.into_response())
         }
     }
 }
@@ -110,7 +110,7 @@ where
         let value = req
             .extensions()
             .get::<T>()
-            .ok_or(MissingExtension(()))
+            .ok_or(MissingExtension)
             .map(|x| x.clone())?;
 
         Ok(Extension(value))
@@ -179,10 +179,10 @@ impl<const N: u64> FromRequest for BytesMaxLength<N> {
 
         if let Some(length) = content_length {
             if length > N {
-                return Err(PayloadTooLarge(()).into_response());
+                return Err(PayloadTooLarge.into_response());
             }
         } else {
-            return Err(LengthRequired(()).into_response());
+            return Err(LengthRequired.into_response());
         };
 
         let bytes = hyper::body::to_bytes(body)
@@ -221,7 +221,7 @@ impl FromRequest for UrlParamsMap {
             let params = params.take().expect("params already taken").0;
             Ok(Self(params.into_iter().collect()))
         } else {
-            Err(MissingRouteParams(()))
+            Err(MissingRouteParams)
         }
     }
 }
@@ -248,7 +248,7 @@ macro_rules! impl_parse_url {
                 {
                     params.take().expect("params already taken").0
                 } else {
-                    return Err(MissingRouteParams(()).into_response())
+                    return Err(MissingRouteParams.into_response())
                 };
 
                 if let [(_, $head), $((_, $tail),)*] = &*params {
@@ -268,7 +268,7 @@ macro_rules! impl_parse_url {
 
                     Ok(UrlParams(($head, $($tail,)*)))
                 } else {
-                    return Err(MissingRouteParams(()).into_response())
+                    return Err(MissingRouteParams.into_response())
                 }
             }
         }
@@ -283,7 +283,7 @@ fn take_body(req: &mut Request<Body>) -> Result<Body, BodyAlreadyTaken> {
     struct BodyAlreadyTakenExt;
 
     if req.extensions_mut().insert(BodyAlreadyTakenExt).is_some() {
-        Err(BodyAlreadyTaken(()))
+        Err(BodyAlreadyTaken)
     } else {
         let body = std::mem::take(req.body_mut());
         Ok(body)

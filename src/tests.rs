@@ -305,16 +305,18 @@ async fn boxing() {
 
 #[tokio::test]
 async fn service_handlers() {
-    use crate::ServiceExt as _;
-    use std::convert::Infallible;
+    use crate::service::ServiceExt as _;
     use tower::service_fn;
     use tower_http::services::ServeFile;
 
     let app = route(
         "/echo",
-        service::post(service_fn(|req: Request<Body>| async move {
-            Ok::<_, Infallible>(Response::new(req.into_body()))
-        })),
+        service::post(
+            service_fn(|req: Request<Body>| async move {
+                Ok::<_, BoxError>(Response::new(req.into_body()))
+            })
+            .handle_error(|_error: BoxError| StatusCode::INTERNAL_SERVER_ERROR),
+        ),
     )
     .route(
         "/static/Cargo.toml",

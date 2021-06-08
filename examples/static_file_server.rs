@@ -3,7 +3,7 @@ use hyper::Server;
 use std::net::SocketAddr;
 use tower::make::Shared;
 use tower_http::{services::ServeDir, trace::TraceLayer};
-use tower_web::{prelude::*, ServiceExt};
+use tower_web::{prelude::*, service::ServiceExt};
 
 #[tokio::main]
 async fn main() {

@@ -12,6 +12,7 @@ use regex::Regex;
 use std::{
     borrow::Cow,
     convert::Infallible,
+    fmt,
     future::Future,
     pin::Pin,
     sync::Arc,
@@ -78,7 +79,27 @@ pub struct Route<S, F> {
     pub(crate) fallback: F,
 }
 
-pub trait RoutingDsl: Sized {
+/// Trait for building routers.
+// TODO(david): this name isn't great
+pub trait RoutingDsl: crate::sealed::Sealed + Sized {
+    /// Add another route to the router.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use tower_web::prelude::*;
+    ///
+    /// async fn first_handler(request: Request<Body>) { /* ... */ }
+    ///
+    /// async fn second_handler(request: Request<Body>) { /* ... */ }
+    ///
+    /// async fn third_handler(request: Request<Body>) { /* ... */ }
+    ///
+    /// // `GET /` goes to `first_handler`, `POST /` goes to `second_handler`,
+    /// // and `GET /foo` goes to third_handler.
+    /// let app = route("/", get(first_handler).post(second_handler))
+    ///     .route("/foo", get(third_handler));
+    /// ```
     fn route<T>(self, description: &str, svc: T) -> Route<T, Self>
     where
         T: Service<Request<Body>, Error = Infallible> + Clone,
@@ -90,6 +111,9 @@ pub trait RoutingDsl: Sized {
         }
     }
 
+    /// Nest another service inside this router at the given path.
+    ///
+    /// See [`nest`] for more details.
     fn nest<T>(self, description: &str, svc: T) -> Nested<T, Self>
     where
         T: Service<Request<Body>, Error = Infallible> + Clone,
@@ -101,6 +125,29 @@ pub trait RoutingDsl: Sized {
         }
     }
 
+    /// Create a boxed route trait object.
+    ///
+    /// This makes it easier to name the types of routers to, for example,
+    /// return them from functions:
+    ///
+    /// ```rust
+    /// use tower_web::{body::BoxBody, routing::BoxRoute, prelude::*};
+    ///
+    /// async fn first_handler(request: Request<Body>) { /* ... */ }
+    ///
+    /// async fn second_handler(request: Request<Body>) { /* ... */ }
+    ///
+    /// async fn third_handler(request: Request<Body>) { /* ... */ }
+    ///
+    /// fn app() -> BoxRoute<BoxBody> {
+    ///     route("/", get(first_handler).post(second_handler))
+    ///         .route("/foo", get(third_handler))
+    ///         .boxed()
+    /// }
+    /// ```
+    ///
+    /// It also helps with compile times when you have a very large number of
+    /// routes.
     fn boxed<B>(self) -> BoxRoute<B>
     where
         Self: Service<Request<Body>, Response = Response<B>, Error = Infallible> + Send + 'static,
@@ -115,6 +162,66 @@ pub trait RoutingDsl: Sized {
             .service(self)
     }
 
+    /// Apply a [`tower::Layer`] to the router.
+    ///
+    /// All requests to the router will be processed by the layer's
+    /// corresponding middleware.
+    ///
+    /// This can be used to add additional processing to a request for a group
+    /// of routes.
+    ///
+    /// Note this differes from [`handler::Layered`](crate::handler::Layered)
+    /// which adds a middleware to a single handler.
+    ///
+    /// # Example
+    ///
+    /// Adding the [`tower::limit::ConcurrencyLimit`] middleware to a group of
+    /// routes can be done like so:
+    ///
+    /// ```rust
+    /// use tower_web::prelude::*;
+    /// use tower::limit::{ConcurrencyLimitLayer, ConcurrencyLimit};
+    ///
+    /// async fn first_handler(request: Request<Body>) { /* ... */ }
+    ///
+    /// async fn second_handler(request: Request<Body>) { /* ... */ }
+    ///
+    /// async fn third_handler(request: Request<Body>) { /* ... */ }
+    ///
+    /// // All requests to `handler` and `other_handler` will be sent through
+    /// // `ConcurrencyLimit`
+    /// let app = route("/", get(first_handler))
+    ///     .route("/foo", get(second_handler))
+    ///     .layer(ConcurrencyLimitLayer::new(64))
+    ///     // Request to `GET /bar` will go directly to `third_handler` and
+    ///     // wont be sent through `ConcurrencyLimit`
+    ///     .route("/bar", get(third_handler));
+    /// # async {
+    /// # hyper::Server::bind(&"".parse().unwrap()).serve(tower::make::Shared::new(app)).await;
+    /// # };
+    /// ```
+    ///
+    /// This is commonly used to add middleware such as tracing/logging to your
+    /// entire app:
+    ///
+    /// ```rust
+    /// use tower_web::prelude::*;
+    /// use tower_http::trace::TraceLayer;
+    ///
+    /// async fn first_handler(request: Request<Body>) { /* ... */ }
+    ///
+    /// async fn second_handler(request: Request<Body>) { /* ... */ }
+    ///
+    /// async fn third_handler(request: Request<Body>) { /* ... */ }
+    ///
+    /// let app = route("/", get(first_handler))
+    ///     .route("/foo", get(second_handler))
+    ///     .route("/bar", get(third_handler))
+    ///     .layer(TraceLayer::new_for_http());
+    /// ```
+    ///
+    /// When adding middleware that might fail its required to handle those
+    /// errors. See [`Layered::handle_error`] for more details.
     fn layer<L>(self, layer: L) -> Layered<L::Service>
     where
         L: Layer<Self>,
@@ -125,6 +232,8 @@ pub trait RoutingDsl: Sized {
 }
 
 impl<S, F> RoutingDsl for Route<S, F> {}
+
+impl<S, F> crate::sealed::Sealed for Route<S, F> {}
 
 impl<S, F, SB, FB> Service<Request<Body>> for Route<S, F>
 where
@@ -231,6 +340,8 @@ where
 pub struct EmptyRouter;
 
 impl RoutingDsl for EmptyRouter {}
+
+impl crate::sealed::Sealed for EmptyRouter {}
 
 impl Service<Request<Body>> for EmptyRouter {
     type Response = Response<Body>;
@@ -344,7 +455,16 @@ struct Match<'a> {
 
 type Captures = Vec<(String, String)>;
 
+/// A boxed route trait object.
+///
+/// See [`RoutingDsl::boxed`] for more details.
 pub struct BoxRoute<B>(Buffer<BoxService<Request<Body>, Response<B>, Infallible>, Request<Body>>);
+
+impl<B> fmt::Debug for BoxRoute<B> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("BoxRoute").finish()
+    }
+}
 
 impl<B> Clone for BoxRoute<B> {
     fn clone(&self) -> Self {
@@ -353,6 +473,8 @@ impl<B> Clone for BoxRoute<B> {
 }
 
 impl<B> RoutingDsl for BoxRoute<B> {}
+
+impl<B> crate::sealed::Sealed for BoxRoute<B> {}
 
 impl<B> Service<Request<Body>> for BoxRoute<B>
 where
@@ -382,6 +504,12 @@ type InnerFuture<B> = Oneshot<
     Buffer<BoxService<Request<Body>, Response<B>, Infallible>, Request<Body>>,
     Request<Body>,
 >;
+
+impl<B> fmt::Debug for BoxRouteFuture<B> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("BoxRouteFuture").finish()
+    }
+}
 
 impl<B> Future for BoxRouteFuture<B>
 where
@@ -430,12 +558,55 @@ fn handle_buffer_error(error: BoxError) -> Response<BoxBody> {
         .unwrap()
 }
 
+/// A [`Service`] created from a router by applying a Tower middleware.
+///
+/// Created with [`RoutingDsl::layer`]. See that method for more details.
 #[derive(Clone, Debug)]
 pub struct Layered<S>(S);
 
 impl<S> RoutingDsl for Layered<S> {}
 
+impl<B> crate::sealed::Sealed for Layered<B> {}
+
 impl<S> Layered<S> {
+    /// Create a new [`Layered`] service where errors will be handled using the
+    /// given closure.
+    ///
+    /// tower-web requires that services gracefully handles all errors. That
+    /// means when you apply a Tower middleware that adds a new failure
+    /// condition you have to handle that as well.
+    ///
+    /// That can be done using `handle_error` like so:
+    ///
+    /// ```rust
+    /// use tower_web::prelude::*;
+    /// use http::StatusCode;
+    /// use tower::{BoxError, timeout::TimeoutLayer};
+    /// use std::time::Duration;
+    ///
+    /// async fn handler(request: Request<Body>) { /* ... */ }
+    ///
+    /// // `Timeout` will fail with `BoxError` if the timeout elapses...
+    /// let layered_handler = route("/", get(handler))
+    ///     .layer(TimeoutLayer::new(Duration::from_secs(30)));
+    ///
+    /// // ...so we must handle that error
+    /// let layered_handler = layered_handler.handle_error(|error: BoxError| {
+    ///     if error.is::<tower::timeout::error::Elapsed>() {
+    ///         (
+    ///             StatusCode::REQUEST_TIMEOUT,
+    ///             "request took too long".to_string(),
+    ///         )
+    ///     } else {
+    ///         (
+    ///             StatusCode::INTERNAL_SERVER_ERROR,
+    ///             format!("Unhandled internal error: {}", error),
+    ///         )
+    ///     }
+    /// });
+    /// ```
+    ///
+    /// The closure can return any type that implements [`IntoResponse`].
     pub fn handle_error<F, B, Res>(self, f: F) -> crate::service::HandleError<S, F>
     where
         S: Service<Request<Body>, Response = Response<B>> + Clone,
@@ -520,7 +691,7 @@ where
 ///
 /// ```
 /// use tower_web::{
-///     routing::nest, service::get, ServiceExt, prelude::*,
+///     routing::nest, service::{get, ServiceExt}, prelude::*,
 /// };
 /// use tower_http::services::ServeDir;
 ///
@@ -559,6 +730,8 @@ pub struct Nested<S, F> {
 }
 
 impl<S, F> RoutingDsl for Nested<S, F> {}
+
+impl<S, F> crate::sealed::Sealed for Nested<S, F> {}
 
 impl<S, F, SB, FB> Service<Request<Body>> for Nested<S, F>
 where

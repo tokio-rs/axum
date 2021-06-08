@@ -1,4 +1,46 @@
 //! Async functions that can be used to handle requests.
+//!
+//! # What is a handler?
+//!
+//! In tower-web a "handler" is an async function that accepts a request and
+//! produces a response. Handler functions must take
+//! `http::Request<tower_web::body::Body>` as they first argument and return
+//! something that implements [`IntoResponse`].
+//!
+//! Additionally handlers can use ["extractors"](crate::extract) to extract data
+//! from incoming requests.
+//!
+//! # Example
+//!
+//! Some examples of handlers:
+//!
+//! ```rust
+//! use tower_web::prelude::*;
+//! use bytes::Bytes;
+//! use http::StatusCode;
+//!
+//! // Handlers must take `Request<Body>` as the first argument and must return
+//! // something that implements `IntoResponse`, which `()` does
+//! async fn unit_handler(request: Request<Body>) {}
+//!
+//! // `String` also implements `IntoResponse`
+//! async fn string_handler(request: Request<Body>) -> String {
+//!     "Hello, World!".to_string()
+//! }
+//!
+//! // Handler that buffers the request body and returns it if it is valid UTF-8
+//! async fn buffer_body(request: Request<Body>, body: Bytes) -> Result<String, StatusCode> {
+//!     if let Ok(string) = String::from_utf8(body.to_vec()) {
+//!         Ok(string)
+//!     } else {
+//!         Err(StatusCode::BAD_REQUEST)
+//!     }
+//! }
+//! ```
+//!
+//! For more details on generating responses see the
+//! [`response`](crate::response) module and for more details on extractors see
+//! the [`extract`](crate::extract) module.
 
 use crate::{
     body::{Body, BoxBody},
@@ -8,8 +50,8 @@ use crate::{
     service::HandleError,
 };
 use async_trait::async_trait;
+use futures_util::future::Either;
 use bytes::Bytes;
-use futures_util::future;
 use http::{Request, Response};
 use std::{
     convert::Infallible,
@@ -19,6 +61,8 @@ use std::{
     task::{Context, Poll},
 };
 use tower::{BoxError, Layer, Service, ServiceExt};
+
+pub mod future;
 
 /// Route requests to the given handler regardless of the HTTP method of the
 /// request.
@@ -175,37 +219,7 @@ mod sealed {
 /// You shouldn't need to depend on this trait directly. It is automatically
 /// implemented to closures of the right types.
 ///
-/// # Example
-///
-/// Some examples of handlers:
-///
-/// ```rust
-/// use tower_web::prelude::*;
-/// use bytes::Bytes;
-/// use http::StatusCode;
-///
-/// // Handlers must take `Request<Body>` as the first argument and must return
-/// // something that implements `IntoResponse`, which `()` does
-/// async fn unit_handler(request: Request<Body>) {}
-///
-/// // `String` also implements `IntoResponse`
-/// async fn string_handler(request: Request<Body>) -> String {
-///     "Hello, World!".to_string()
-/// }
-///
-/// // Handler the buffers the request body and returns it if it is valid UTF-8
-/// async fn buffer_body(request: Request<Body>, body: Bytes) -> Result<String, StatusCode> {
-///     if let Ok(string) = String::from_utf8(body.to_vec()) {
-///         Ok(string)
-///     } else {
-///         Err(StatusCode::BAD_REQUEST)
-///     }
-/// }
-/// ```
-///
-/// For more details on generating responses see the
-/// [`response`](crate::response) module and for more details on extractors see
-/// the [`extract`](crate::extract) module.
+/// See the [module docs](crate::handler) for more details.
 #[async_trait]
 pub trait Handler<In>: Sized {
     // This seals the trait. We cannot use the regular "sealed super trait" approach
@@ -218,10 +232,19 @@ pub trait Handler<In>: Sized {
 
     /// Apply a [`tower::Layer`] to the handler.
     ///
+    /// All requests to the handler will be processed by the layer's
+    /// corresponding middleware.
+    ///
+    /// This can be used to add additional processing to a request for a single
+    /// handler.
+    ///
+    /// Note this differes from [`routing::Layered`](crate::routing::Layered)
+    /// which adds a middleware to a group of routes.
+    ///
     /// # Example
     ///
     /// Adding the [`tower::limit::ConcurrencyLimit`] middleware to a handler
-    /// can be done with [`tower::limit::ConcurrencyLimitLayer`]:
+    /// can be done like so:
     ///
     /// ```rust
     /// use tower_web::prelude::*;
@@ -304,7 +327,7 @@ impl_handler!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, 
 
 /// A [`Service`] created from a [`Handler`] by applying a Tower middleware.
 ///
-/// Created with [`Handler::layer`].
+/// Created with [`Handler::layer`]. See that method for more details.
 pub struct Layered<S, T> {
     svc: S,
     _input: PhantomData<fn() -> T>,
@@ -332,7 +355,6 @@ where
 impl<S, T, B> Handler<T> for Layered<S, T>
 where
     S: Service<Request<Body>, Response = Response<B>> + Send,
-    // S::Response: IntoResponse,
     S::Error: IntoResponse,
     S::Future: Send,
     B: http_body::Body<Data = Bytes> + Send + Sync + 'static,
@@ -456,7 +478,7 @@ where
 {
     type Response = Response<BoxBody>;
     type Error = Infallible;
-    type Future = IntoServiceFuture;
+    type Future = future::IntoServiceFuture;
 
     fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         // `IntoService` can only be constructed from async functions which are always ready, or from
@@ -471,17 +493,12 @@ where
             let res = Handler::call(handler, req).await;
             Ok(res)
         });
-        IntoServiceFuture(future)
+        future::IntoServiceFuture(future)
     }
 }
 
-opaque_future! {
-    /// The response future for [`IntoService`].
-    pub type IntoServiceFuture =
-        future::BoxFuture<'static, Result<Response<BoxBody>, Infallible>>;
-}
-
-/// A handler [`Service`] that accepts requests based on a [`MethodFilter`].
+/// A handler [`Service`] that accepts requests based on a [`MethodFilter`] and
+/// allows chaining additional handlers.
 #[derive(Debug, Clone, Copy)]
 pub struct OnMethod<S, F> {
     pub(crate) method: MethodFilter,
@@ -652,10 +669,10 @@ where
     fn call(&mut self, req: Request<Body>) -> Self::Future {
         let f = if self.method.matches(req.method()) {
             let response_future = self.svc.clone().oneshot(req);
-            future::Either::Left(BoxResponseBody(response_future))
+            Either::Left(BoxResponseBody(response_future))
         } else {
             let response_future = self.fallback.clone().oneshot(req);
-            future::Either::Right(BoxResponseBody(response_future))
+            Either::Right(BoxResponseBody(response_future))
         };
         RouteFuture(f)
     }

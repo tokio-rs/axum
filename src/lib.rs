@@ -8,7 +8,7 @@
 //! - Solid foundation. tower-web is built on top of tower and makes it easy to
 //! plug in any middleware from the [tower] and [tower-http] ecosystem.
 //! - Focus on routing, extracting data from requests, and generating responses.
-//! tower middleware can handle the rest.
+//! Tower middleware can handle the rest.
 //! - Macro free core. Macro frameworks have their place but tower-web focuses
 //! on providing a core that is macro free.
 //!
@@ -67,7 +67,8 @@
 //!
 //! # Responses
 //!
-//! Anything that implements [`IntoResponse`] can be returned from a handler:
+//! Anything that implements [`IntoResponse`](response::IntoResponse) can be
+//! returned from a handler:
 //!
 //! ```rust,no_run
 //! use tower_web::{body::Body, response::{Html, Json}, prelude::*};
@@ -288,8 +289,8 @@
 //! implementations.
 //!
 //! For handlers created from async functions this is works automatically since
-//! handlers must return something that implements [`IntoResponse`], even if its
-//! a `Result`.
+//! handlers must return something that implements
+//! [`IntoResponse`](response::IntoResponse), even if its a `Result`.
 //!
 //! However middleware might add new failure cases that has to be handled. For
 //! that tower-web provides a `handle_error` combinator:
@@ -447,9 +448,8 @@
 //!
 //! ```rust,no_run
 //! use tower_web::{
-//!     service, prelude::*,
 //!     // `ServiceExt` adds `handle_error` to any `Service`
-//!     ServiceExt,
+//!     service::{self, ServiceExt}, prelude::*,
 //! };
 //! use tower_http::services::ServeFile;
 //! use http::Response;
@@ -503,7 +503,7 @@
 //! `nest` can also be used to serve static files from a directory:
 //!
 //! ```rust,no_run
-//! use tower_web::{prelude::*, ServiceExt, routing::nest};
+//! use tower_web::{prelude::*, service::ServiceExt, routing::nest};
 //! use tower_http::services::ServeDir;
 //! use http::Response;
 //! use std::convert::Infallible;
@@ -571,12 +571,10 @@
 #![cfg_attr(test, allow(clippy::float_cmp))]
 
 use self::body::Body;
-use bytes::Bytes;
-use http::{Request, Response};
-use response::IntoResponse;
+use http::Request;
 use routing::{EmptyRouter, Route};
 use std::convert::Infallible;
-use tower::{BoxError, Service};
+use tower::Service;
 
 #[macro_use]
 pub(crate) mod macros;
@@ -624,8 +622,8 @@ pub mod prelude {
 /// Note that `service`'s error type must be [`Infallible`] meaning you must
 /// handle all errors. If you're creating handlers from async functions that is
 /// handled automatically but if you're routing to some other [`Service`] you
-/// might need to use [`handle_error`](ServiceExt::handle_error) to map errors
-/// into responses.
+/// might need to use [`handle_error`](service::ServiceExt::handle_error) to map
+/// errors into responses.
 ///
 /// # Examples
 ///
@@ -655,59 +653,6 @@ where
     routing::EmptyRouter.route(description, service)
 }
 
-/// Extension trait that adds additional methods to [`Service`].
-pub trait ServiceExt<B>: Service<Request<Body>, Response = Response<B>> {
-    /// Handle errors from a service.
-    ///
-    /// tower-web requires all handles to never return errors. If you route to
-    /// [`Service`], not created by tower-web, who's error isn't `Infallible`
-    /// you can use this combinator to handle the error.
-    ///
-    /// `handle_error` takes a closure that will map errors from the service
-    /// into responses. The closure's return type must implement
-    /// [`IntoResponse`].
-    ///
-    /// # Example
-    ///
-    /// ```rust,no_run
-    /// use tower_web::{
-    ///     service, prelude::*,
-    ///     ServiceExt,
-    /// };
-    /// use http::Response;
-    /// use tower::{service_fn, BoxError};
-    ///
-    /// // A service that might fail with `std::io::Error`
-    /// let service = service_fn(|_: Request<Body>| async {
-    ///     let res = Response::new(Body::empty());
-    ///     Ok::<_, std::io::Error>(res)
-    /// });
-    ///
-    /// let app = route(
-    ///     "/",
-    ///     service.handle_error(|error: std::io::Error| {
-    ///         // Handle error by returning something that implements `IntoResponse`
-    ///     }),
-    /// );
-    /// #
-    /// # async {
-    /// # hyper::Server::bind(&"".parse().unwrap()).serve(tower::make::Shared::new(app)).await;
-    /// # };
-    /// ```
-    fn handle_error<F, Res>(self, f: F) -> service::HandleError<Self, F>
-    where
-        Self: Sized,
-        F: FnOnce(Self::Error) -> Res,
-        Res: IntoResponse,
-        B: http_body::Body<Data = Bytes> + Send + Sync + 'static,
-        B::Error: Into<BoxError> + Send + Sync + 'static,
-    {
-        service::HandleError::new(self, f)
-    }
-}
-
-impl<S, B> ServiceExt<B> for S where S: Service<Request<Body>, Response = Response<B>> {}
-
 pub(crate) trait ResultExt<T> {
     fn unwrap_infallible(self) -> T;
 }
@@ -719,4 +664,10 @@ impl<T> ResultExt<T> for Result<T, Infallible> {
             Err(err) => match err {},
         }
     }
+}
+
+mod sealed {
+    #![allow(unreachable_pub, missing_docs)]
+
+    pub trait Sealed {}
 }
