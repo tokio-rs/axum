@@ -6,7 +6,6 @@ use futures_util::{future, ready};
 use http::{Method, Request, Response, StatusCode, Uri};
 use http_body::Full;
 use hyper::Body;
-use itertools::Itertools;
 use pin_project::pin_project;
 use regex::Regex;
 use std::{
@@ -394,6 +393,7 @@ impl PathPattern {
                     Cow::Borrowed(part)
                 }
             })
+            .collect::<Vec<_>>()
             .join("/");
 
         let full_path_regex =

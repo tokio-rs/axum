@@ -3,6 +3,7 @@
 use bytes::Bytes;
 use http_body::{Empty, Full};
 use std::{
+    error::Error as StdError,
     fmt,
     pin::Pin,
     task::{Context, Poll},
@@ -86,14 +87,17 @@ where
 ///
 /// This is necessary for compatibility with middleware that changes the error
 /// type of the response body.
-// work around for `BoxError` not implementing `std::error::Error`
-//
-// This is currently required since tower-http's Compression middleware's body type's
-// error only implements error when the inner error type does:
-// https://github.com/tower-rs/tower-http/blob/master/tower-http/src/lib.rs#L310
-//
-// Fixing that is a breaking change to tower-http so we should wait a bit, but should
-// totally fix it at some point.
-#[derive(Debug, thiserror::Error)]
-#[error(transparent)]
-pub struct BoxStdError(#[from] pub(crate) tower::BoxError);
+#[derive(Debug)]
+pub struct BoxStdError(pub(crate) tower::BoxError);
+
+impl StdError for BoxStdError {
+    fn source(&self) -> std::option::Option<&(dyn StdError + 'static)> {
+        self.0.source()
+    }
+}
+
+impl fmt::Display for BoxStdError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.0.fmt(f)
+    }
+}
