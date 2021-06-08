@@ -24,7 +24,56 @@
 //! # };
 //! ```
 //!
+//! # Regarding backpressure and `Service::poll_ready`
+//!
+//! Generally routing to one of multiple services and backpressure doesn't mix
+//! well. Ideally you would want ensure a service is ready to receive a request
+//! before calling the service. However in order to know which service to call
+//! you need the request...
+//!
+//! One approach is to not consider the router service itself ready until all
+//! destination services are ready. That is the approach used by
+//! [`tower::steer::Steer`].
+//!
+//! Another approach is to always consider all services ready (always return
+//! `Poll::Ready(Ok(()))`) from `Service::poll_ready` and then actually drive
+//! readiness inside the response future. This works well when your services
+//! don't care about backpressure and are always ready anyway.
+//!
+//! tower-web expects that most services used in your app wont care about
+//! backpressure and so it uses the latter strategy. However that means you
+//! should avoid routing to a service (or using a middleware) that _does_ care
+//! about backpressure. At the very least you should [load shed] so requests are
+//! dropped quickly and don't keep piling up.
+//!
+//! One possible approach is to only apply backpressure sensitive middleware
+//! around your entire app. This is possible because tower-web applications are
+//! themselves services:
+//!
+//! ```rust
+//! use tower_web::prelude::*;
+//! use tower::ServiceBuilder;
+//! # let some_backpressure_sensitive_middleware =
+//! #     tower::layer::util::Identity::new();
+//!
+//! async fn handler(request: Request<Body>) { /* ... */ }
+//!
+//! let app = route("/", get(handler));
+//!
+//! let app = ServiceBuilder::new()
+//!     .layer(some_backpressure_sensitive_middleware)
+//!     .service(app);
+//! ```
+//!
+//! However when applying middleware around your whole application in this way
+//! you have to take care that errors are still being dealt with appropriately.
+//!
+//! Also note that handlers created from async functions don't care about
+//! backpressure and are always ready. So if you're not using any Tower
+//! middleware you don't have to worry about backpressure.
+//!
 //! [`Redirect`]: tower_http::services::Redirect
+//! [load shed]: tower::load_shed
 
 use crate::{
     body::{Body, BoxBody},
