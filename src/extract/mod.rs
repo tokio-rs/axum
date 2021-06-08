@@ -1,4 +1,142 @@
 //! Types and traits for extracting data from requests.
+//!
+//! A handler function must always take `Request<Body>` as its first argument
+//! but any arguments following are called "extractors". Any type that
+//! implements [`FromRequest`](FromRequest) can be used as an extractor.
+//!
+//! For example, [`Json`] is an extractor that consumes the request body and
+//! deserializes it as JSON into some target type:
+//!
+//! ```rust,no_run
+//! use tower_web::prelude::*;
+//! use serde::Deserialize;
+//!
+//! #[derive(Deserialize)]
+//! struct CreateUser {
+//!     email: String,
+//!     password: String,
+//! }
+//!
+//! async fn create_user(req: Request<Body>, payload: extract::Json<CreateUser>) {
+//!     let payload: CreateUser = payload.0;
+//!
+//!     // ...
+//! }
+//!
+//! let app = route("/users", post(create_user));
+//! # async {
+//! # hyper::Server::bind(&"".parse().unwrap()).serve(tower::make::Shared::new(app)).await;
+//! # };
+//! ```
+//!
+//! Technically extractors can also be used as "guards", for example to require
+//! that requests are authorized. However the recommended way to do that is
+//! using Tower middleware, such as [`tower_http::auth::RequireAuthorization`].
+//! Extractors have to be applied to each handler, whereas middleware can be
+//! applied to a whole stack at once, which is typically what you want for
+//! authorization.
+//!
+//! # Defining custom extractors
+//!
+//! You can also define your own extractors by implementing [`FromRequest`]:
+//!
+//! ```rust,no_run
+//! use tower_web::{async_trait, extract::FromRequest, prelude::*};
+//! use http::{StatusCode, header::{HeaderValue, USER_AGENT}};
+//!
+//! struct ExtractUserAgent(HeaderValue);
+//!
+//! #[async_trait]
+//! impl FromRequest for ExtractUserAgent {
+//!     type Rejection = (StatusCode, &'static str);
+//!
+//!     async fn from_request(req: &mut Request<Body>) -> Result<Self, Self::Rejection> {
+//!         if let Some(user_agent) = req.headers().get(USER_AGENT) {
+//!             Ok(ExtractUserAgent(user_agent.clone()))
+//!         } else {
+//!             Err((StatusCode::BAD_REQUEST, "`User-Agent` header is missing"))
+//!         }
+//!     }
+//! }
+//!
+//! async fn handler(req: Request<Body>, user_agent: ExtractUserAgent) {
+//!     let user_agent: HeaderValue = user_agent.0;
+//!
+//!     // ...
+//! }
+//!
+//! let app = route("/foo", get(handler));
+//! # async {
+//! # hyper::Server::bind(&"".parse().unwrap()).serve(tower::make::Shared::new(app)).await;
+//! # };
+//! ```
+//!
+//! # Multiple extractors
+//!
+//! Handlers can also contain multiple extractors:
+//!
+//! ```rust,no_run
+//! use tower_web::prelude::*;
+//! use std::collections::HashMap;
+//!
+//! async fn handler(
+//!     req: Request<Body>,
+//!     // Extract captured parameters from the URL
+//!     params: extract::UrlParamsMap,
+//!     // Parse query string into a `HashMap`
+//!     query_params: extract::Query<HashMap<String, String>>,
+//!     // Buffer the request body into a `Bytes`
+//!     bytes: bytes::Bytes,
+//! ) {
+//!     // ...
+//! }
+//!
+//! let app = route("/foo", get(handler));
+//! # async {
+//! # hyper::Server::bind(&"".parse().unwrap()).serve(tower::make::Shared::new(app)).await;
+//! # };
+//! ```
+//!
+//! # Optional extractors
+//!
+//! Wrapping extractors in `Option` will make them optional:
+//!
+//! ```rust,no_run
+//! use tower_web::{extract::Json, prelude::*};
+//! use serde_json::Value;
+//!
+//! async fn create_user(req: Request<Body>, payload: Option<Json<Value>>) {
+//!     if let Some(payload) = payload {
+//!         // We got a valid JSON payload
+//!     } else {
+//!         // Payload wasn't valid JSON
+//!     }
+//! }
+//!
+//! let app = route("/users", post(create_user));
+//! # async {
+//! # hyper::Server::bind(&"".parse().unwrap()).serve(tower::make::Shared::new(app)).await;
+//! # };
+//! ```
+//!
+//! # Reducing boilerplate
+//!
+//! If you're feeling adventorous you can even deconstruct the extractors
+//! directly on the function signature:
+//!
+//! ```rust,no_run
+//! use tower_web::{extract::Json, prelude::*};
+//! use serde_json::Value;
+//!
+//! async fn create_user(req: Request<Body>, Json(value): Json<Value>) {
+//!     // `value` is of type `Value`
+//! }
+//!
+//! let app = route("/users", post(create_user));
+//! # async {
+//! # hyper::Server::bind(&"".parse().unwrap()).serve(tower::make::Shared::new(app)).await;
+//! # };
+//! ```
 
 use crate::{body::Body, response::IntoResponse};
 use async_trait::async_trait;
@@ -7,17 +145,23 @@ use http::{header, Request, Response};
 use rejection::{
     BodyAlreadyTaken, FailedToBufferBody, InvalidJsonBody, InvalidUrlParam, InvalidUtf8,
     LengthRequired, MissingExtension, MissingJsonContentType, MissingRouteParams, PayloadTooLarge,
-    QueryStringMissing,
+    QueryStringMissing, UrlParamsAlreadyTaken,
 };
 use serde::de::DeserializeOwned;
 use std::{collections::HashMap, convert::Infallible, str::FromStr};
 
 pub mod rejection;
 
+/// Types that can be created from requests.
+///
+/// See the [module docs](crate::extract) for more details.
 #[async_trait]
 pub trait FromRequest: Sized {
+    /// If the extractor fails it'll use this "rejection" type. A rejection is
+    /// a kind of error that can be converted into a response.
     type Rejection: IntoResponse;
 
+    /// Perform the extraction.
     async fn from_request(req: &mut Request<Body>) -> Result<Self, Self::Rejection>;
 }
 
@@ -33,6 +177,34 @@ where
     }
 }
 
+/// Extractor that deserializes query strings into some type.
+///
+/// `T` is expected to implement [`serde::Deserialize`].
+///
+/// # Example
+///
+/// ```rust,no_run
+/// use tower_web::prelude::*;
+/// use serde::Deserialize;
+///
+/// #[derive(Deserialize)]
+/// struct Pagination {
+///     page: usize,
+///     per_page: usize,
+/// }
+///
+/// // This will parse query strings like `?page=2&per_page=30` into `Pagination`
+/// // structs.
+/// async fn list_things(req: Request<Body>, pagination: extract::Query<Pagination>) {
+///     let pagination: Pagination = pagination.0;
+///
+///     // ...
+/// }
+/// let app = route("/list_things", get(list_things));
+/// ```
+///
+/// If the query string cannot be parsed it will reject the request with a `404
+/// Bad Request` response.
 #[derive(Debug, Clone, Copy, Default)]
 pub struct Query<T>(pub T);
 
@@ -50,6 +222,35 @@ where
     }
 }
 
+/// Extractor that deserializes request bodies into some type.
+///
+/// `T` is expected to implement [`serde::Deserialize`].
+///
+/// # Example
+///
+/// ```rust,no_run
+/// use tower_web::prelude::*;
+/// use serde::Deserialize;
+///
+/// #[derive(Deserialize)]
+/// struct CreateUser {
+///     email: String,
+///     password: String,
+/// }
+///
+/// async fn create_user(req: Request<Body>, payload: extract::Json<CreateUser>) {
+///     let payload: CreateUser = payload.0;
+///
+///     // ...
+/// }
+///
+/// let app = route("/users", post(create_user));
+/// ```
+///
+/// If the query string cannot be parsed it will reject the request with a `404
+/// Bad Request` response.
+///
+/// The request is required to have a `Content-Type: application/json` header.
 #[derive(Debug, Clone, Copy, Default)]
 pub struct Json<T>(pub T);
 
@@ -61,15 +262,17 @@ where
     type Rejection = Response<Body>;
 
     async fn from_request(req: &mut Request<Body>) -> Result<Self, Self::Rejection> {
+        use bytes::Buf;
+
         if has_content_type(req, "application/json") {
             let body = take_body(req).map_err(IntoResponse::into_response)?;
 
-            let bytes = hyper::body::to_bytes(body)
+            let buf = hyper::body::aggregate(body)
                 .await
                 .map_err(InvalidJsonBody::from_err)
                 .map_err(IntoResponse::into_response)?;
 
-            let value = serde_json::from_slice(&bytes)
+            let value = serde_json::from_reader(buf.reader())
                 .map_err(InvalidJsonBody::from_err)
                 .map_err(IntoResponse::into_response)?;
 
@@ -96,6 +299,35 @@ fn has_content_type<B>(req: &Request<B>, expected_content_type: &str) -> bool {
     content_type.starts_with(expected_content_type)
 }
 
+/// Extractor that gets a value from request extensions.
+///
+/// This is commonly used to share state across handlers.
+///
+/// # Example
+///
+/// ```rust,no_run
+/// use tower_web::{AddExtensionLayer, prelude::*};
+/// use std::sync::Arc;
+///
+/// // Some shared state used throughout our application
+/// struct State {
+///     // ...
+/// }
+///
+/// async fn handler(req: Request<Body>, state: extract::Extension<Arc<State>>) {
+///     // ...
+/// }
+///
+/// let state = Arc::new(State { /* ... */ });
+///
+/// let app = route("/", get(handler))
+///     // Add middleware that inserts the state into all incoming request's
+///     // extensions.
+///     .layer(AddExtensionLayer::new(state));
+/// ```
+///
+/// If the extension is missing it will reject the request with a `500 Interal
+/// Server Error` response.
 #[derive(Debug, Clone, Copy)]
 pub struct Extension<T>(pub T);
 
@@ -163,6 +395,21 @@ impl FromRequest for Body {
     }
 }
 
+/// Extractor that will buffer request bodies up to a certain size.
+///
+/// # Example
+///
+/// ```rust,no_run
+/// use tower_web::prelude::*;
+///
+/// async fn handler(req: Request<Body>, body: extract::BytesMaxLength<1024>) {
+///     // ...
+/// }
+///
+/// let app = route("/", post(handler));
+/// ```
+///
+/// This requires the request to have a `Content-Length` header.
 #[derive(Debug, Clone)]
 pub struct BytesMaxLength<const N: u64>(pub Bytes);
 
@@ -193,39 +440,86 @@ impl<const N: u64> FromRequest for BytesMaxLength<N> {
     }
 }
 
+/// Extractor that will get captures from the URL.
+///
+/// # Example
+///
+/// ```rust,no_run
+/// use tower_web::prelude::*;
+///
+/// async fn users_show(req: Request<Body>, params: extract::UrlParamsMap) {
+///     let id: Option<&str> = params.get("id");
+///
+///     // ...
+/// }
+///
+/// let app = route("/users/:id", get(users_show));
+/// ```
+///
+/// Note that you can only have one URL params extractor per handler. If you
+/// have multiple it'll response with `500 Internal Server Error`.
 #[derive(Debug)]
 pub struct UrlParamsMap(HashMap<String, String>);
 
 impl UrlParamsMap {
+    /// Look up the value for a key.
     pub fn get(&self, key: &str) -> Option<&str> {
         self.0.get(key).map(|s| &**s)
     }
 
-    pub fn get_typed<T>(&self, key: &str) -> Option<T>
+    /// Look up the value for a key and parse it into a value of type `T`.
+    pub fn get_typed<T>(&self, key: &str) -> Option<Result<T, T::Err>>
     where
         T: FromStr,
     {
-        self.get(key)?.parse().ok()
+        self.get(key).map(str::parse)
     }
 }
 
 #[async_trait]
 impl FromRequest for UrlParamsMap {
-    type Rejection = MissingRouteParams;
+    type Rejection = Response<Body>;
 
     async fn from_request(req: &mut Request<Body>) -> Result<Self, Self::Rejection> {
         if let Some(params) = req
             .extensions_mut()
             .get_mut::<Option<crate::routing::UrlParams>>()
         {
-            let params = params.take().expect("params already taken").0;
-            Ok(Self(params.into_iter().collect()))
+            if let Some(params) = params.take() {
+                Ok(Self(params.0.into_iter().collect()))
+            } else {
+                Err(UrlParamsAlreadyTaken.into_response())
+            }
         } else {
-            Err(MissingRouteParams)
+            Err(MissingRouteParams.into_response())
         }
     }
 }
 
+/// Extractor that will get captures from the URL and parse them.
+///
+/// # Example
+///
+/// ```rust,no_run
+/// use tower_web::{extract::UrlParams, prelude::*};
+/// use uuid::Uuid;
+///
+/// async fn users_teams_show(
+///     req: Request<Body>,
+///     UrlParams(params): UrlParams<(Uuid, Uuid)>,
+/// ) {
+///     let user_id: Uuid = params.0;
+///     let team_id: Uuid = params.1;
+///
+///     // ...
+/// }
+///
+/// let app = route("/users/:user_id/team/:team_id", get(users_teams_show));
+/// ```
+///
+/// Note that you can only have one URL params extractor per handler. If you
+/// have multiple it'll response with `500 Internal Server Error`.
+#[derive(Debug)]
 pub struct UrlParams<T>(pub T);
 
 macro_rules! impl_parse_url {
@@ -246,7 +540,11 @@ macro_rules! impl_parse_url {
                     .extensions_mut()
                     .get_mut::<Option<crate::routing::UrlParams>>()
                 {
-                    params.take().expect("params already taken").0
+                    if let Some(params) = params.take() {
+                        params.0
+                    } else {
+                        return Err(UrlParamsAlreadyTaken.into_response());
+                    }
                 } else {
                     return Err(MissingRouteParams.into_response())
                 };

@@ -127,6 +127,13 @@ define_rejection! {
 
 define_rejection! {
     #[status = INTERNAL_SERVER_ERROR]
+    #[body = "Cannot have two URL capture extractors for a single handler"]
+    /// Rejection type used if you try and extract the URL params more than once.
+    pub struct UrlParamsAlreadyTaken;
+}
+
+define_rejection! {
+    #[status = INTERNAL_SERVER_ERROR]
     #[body = "Cannot have two request body extractors for a single handler"]
     /// Rejection type used if you try and extract the request body more than
     /// once.

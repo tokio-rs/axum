@@ -10,9 +10,14 @@ handle(Request) -> Response`.
 - Solid foundation. tower-web is built on top of tower and makes it easy to
 plug in any middleware from the [tower] and [tower-http] ecosystem.
 - Focus on routing, extracting data from requests, and generating responses.
-tower middleware can handle the rest.
+Tower middleware can handle the rest.
 - Macro free core. Macro frameworks have their place but tower-web focuses
 on providing a core that is macro free.
+
+## Compatibility
+
+tower-web is designed to work with [tokio] and [hyper]. Runtime and
+transport layer independence is not a goal, at least for the time being.
 
 ## Example
 
@@ -33,8 +38,10 @@ async fn main() {
 
     // run it with hyper on localhost:3000
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
-    let server = Server::bind(&addr).serve(Shared::new(app));
-    server.await.unwrap();
+    Server::bind(&addr)
+        .serve(Shared::new(app))
+        .await
+        .unwrap();
 }
 ```
 
@@ -66,7 +73,8 @@ requests"](#extracting-data-from-requests) for more details on that.
 
 ## Responses
 
-Anything that implements [`IntoResponse`] can be returned from a handler:
+Anything that implements [`IntoResponse`](response::IntoResponse) can be
+returned from a handler:
 
 ```rust
 use tower_web::{body::Body, response::{Html, Json}, prelude::*};
@@ -107,7 +115,7 @@ async fn html(req: Request<Body>) -> Html<&'static str> {
     Html("<h1>Hello, World!</h1>")
 }
 
-// `Json` gives a content-type of `application/json` and works with my type
+// `Json` gives a content-type of `application/json` and works with any type
 // that implements `serde::Serialize`
 async fn json(req: Request<Body>) -> Json<Value> {
     Json(json!({ "data": 42 }))
@@ -145,8 +153,8 @@ but any arguments following are called "extractors". Any type that
 implements [`FromRequest`](crate::extract::FromRequest) can be used as an
 extractor.
 
-[`extract::Json`] is an extractor that consumes the request body and
-deserializes as as JSON into some target type:
+For example, [`extract::Json`] is an extractor that consumes the request body and
+deserializes it as JSON into some target type:
 
 ```rust
 use tower_web::prelude::*;
@@ -178,7 +186,7 @@ use uuid::Uuid;
 let app = route("/users/:id", post(create_user));
 
 async fn create_user(req: Request<Body>, params: extract::UrlParams<(Uuid,)>) {
-    let (user_id,) = params.0;
+    let user_id: Uuid = (params.0).0;
 
     // ...
 }
@@ -229,7 +237,7 @@ See the [`extract`] module for more details.
 tower-web is designed to take full advantage of the tower and tower-http
 ecosystem of middleware:
 
-### To individual handlers
+### Applying middleware to individual handlers
 
 A middleware can be applied to a single handler like so:
 
@@ -245,7 +253,7 @@ let app = route(
 async fn handler(req: Request<Body>) {}
 ```
 
-### To groups of routes
+### Applying middleware to groups of routes
 
 Middleware can also be applied to a group of routes like so:
 
@@ -269,11 +277,12 @@ tower-web requires all errors to be handled. That is done by using
 implementations.
 
 For handlers created from async functions this is works automatically since
-handlers must return something that implements [`IntoResponse`], even if its
-a `Result`.
+handlers must return something that implements
+[`IntoResponse`](response::IntoResponse), even if its a `Result`.
 
 However middleware might add new failure cases that has to be handled. For
-that tower-web provides a `handle_error` combinator:
+that tower-web provides a [`handle_error`](handler::Layered::handle_error)
+combinator:
 
 ```rust
 use tower_web::prelude::*;
@@ -308,27 +317,27 @@ let app = route(
 async fn handle(req: Request<Body>) {}
 ```
 
-The closure passed to `handle_error` must return something that implements
-`IntoResponse`.
+The closure passed to [`handle_error`](handler::Layered::handle_error) must
+return something that implements [`IntoResponse`](response::IntoResponse).
 
-`handle_error` is also available on a group of routes with middleware
-applied:
+[`handle_error`](routing::Layered::handle_error) is also available on a
+group of routes with middleware applied:
 
 ```rust
 use tower_web::prelude::*;
-use tower::{
-    BoxError, timeout::{TimeoutLayer, error::Elapsed},
-};
-use std::{borrow::Cow, time::Duration};
-use http::StatusCode;
+use tower::{BoxError, timeout::TimeoutLayer};
+use std::time::Duration;
 
 let app = route("/", get(handle))
+    .route("/foo", post(other_handle))
     .layer(TimeoutLayer::new(Duration::from_secs(30)))
     .handle_error(|error: BoxError| {
         // ...
     });
 
 async fn handle(req: Request<Body>) {}
+
+async fn other_handle(req: Request<Body>) {}
 ```
 
 ### Applying multiple middleware
@@ -416,9 +425,8 @@ tower-web also supports routing to general [`Service`]s:
 
 ```rust
 use tower_web::{
-    service, prelude::*,
     // `ServiceExt` adds `handle_error` to any `Service`
-    ServiceExt,
+    service::{self, ServiceExt}, prelude::*,
 };
 use tower_http::services::ServeFile;
 use http::Response;
@@ -447,7 +455,7 @@ See the [`service`] module for more details.
 
 ## Nesting applications
 
-Applications can be nested by calling `nest`:
+Applications can be nested by calling [`nest`](routing::nest):
 
 ```rust
 use tower_web::{prelude::*, routing::BoxRoute, body::BoxBody};
@@ -463,10 +471,10 @@ let app = route("/", get(|_: Request<Body>| async { /* ... */ }))
     .nest("/api", api_routes());
 ```
 
-`nest` can also be used to serve static files from a directory:
+[`nest`](routing::nest) can also be used to serve static files from a directory:
 
 ```rust
-use tower_web::{prelude::*, ServiceExt, routing::nest};
+use tower_web::{prelude::*, service::ServiceExt, routing::nest};
 use tower_http::services::ServeDir;
 use http::Response;
 use std::convert::Infallible;
@@ -482,3 +490,5 @@ let app = nest(
 
 [tower]: https://crates.io/crates/tower
 [tower-http]: https://crates.io/crates/tower-http
+[tokio]: http://crates.io/crates/tokio
+[hyper]: http://crates.io/crates/hyper

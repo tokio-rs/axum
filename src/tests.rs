@@ -248,7 +248,13 @@ async fn extracting_url_params() {
         .post(
             |_: Request<Body>, params_map: extract::UrlParamsMap| async move {
                 assert_eq!(params_map.get("id").unwrap(), "1337");
-                assert_eq!(params_map.get_typed::<i32>("id").unwrap(), 1337);
+                assert_eq!(
+                    params_map
+                        .get_typed::<i32>("id")
+                        .expect("missing")
+                        .expect("failed to parse"),
+                    1337
+                );
             },
         ),
     );
