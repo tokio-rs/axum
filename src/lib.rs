@@ -30,9 +30,7 @@
 //! #[tokio::main]
 //! async fn main() {
 //!     // build our application with a single route
-//!     let app = route("/", get(|request: Request<Body>| async {
-//!         "Hello, World!"
-//!     }));
+//!     let app = route("/", get(|| async { "Hello, World!" }));
 //!
 //!     // run it with hyper on localhost:3000
 //!     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
@@ -53,15 +51,15 @@
 //! let app = route("/", get(get_slash).post(post_slash))
 //!     .route("/foo", get(get_foo));
 //!
-//! async fn get_slash(req: Request<Body>) {
+//! async fn get_slash() {
 //!     // `GET /` called
 //! }
 //!
-//! async fn post_slash(req: Request<Body>) {
+//! async fn post_slash() {
 //!     // `POST /` called
 //! }
 //!
-//! async fn get_foo(req: Request<Body>) {
+//! async fn get_foo() {
 //!     // `GET /foo` called
 //! }
 //! # async {
@@ -79,57 +77,57 @@
 //!
 //! ```rust,no_run
 //! use tower_web::{body::Body, response::{Html, Json}, prelude::*};
-//! use http::{StatusCode, Response};
+//! use http::{StatusCode, Response, Uri};
 //! use serde_json::{Value, json};
 //!
 //! // We've already seen returning &'static str
-//! async fn plain_text(req: Request<Body>) -> &'static str {
+//! async fn plain_text() -> &'static str {
 //!     "foo"
 //! }
 //!
 //! // String works too and will get a text/plain content-type
-//! async fn plain_text_string(req: Request<Body>) -> String {
-//!     format!("Hi from {}", req.uri().path())
+//! async fn plain_text_string(uri: Uri) -> String {
+//!     format!("Hi from {}", uri.path())
 //! }
 //!
 //! // Bytes will get a `application/octet-stream` content-type
-//! async fn bytes(req: Request<Body>) -> Vec<u8> {
+//! async fn bytes() -> Vec<u8> {
 //!     vec![1, 2, 3, 4]
 //! }
 //!
 //! // `()` gives an empty response
-//! async fn empty(req: Request<Body>) {}
+//! async fn empty() {}
 //!
 //! // `StatusCode` gives an empty response with that status code
-//! async fn empty_with_status(req: Request<Body>) -> StatusCode {
+//! async fn empty_with_status() -> StatusCode {
 //!     StatusCode::NOT_FOUND
 //! }
 //!
 //! // A tuple of `StatusCode` and something that implements `IntoResponse` can
 //! // be used to override the status code
-//! async fn with_status(req: Request<Body>) -> (StatusCode, &'static str) {
+//! async fn with_status() -> (StatusCode, &'static str) {
 //!     (StatusCode::INTERNAL_SERVER_ERROR, "Something went wrong")
 //! }
 //!
 //! // `Html` gives a content-type of `text/html`
-//! async fn html(req: Request<Body>) -> Html<&'static str> {
+//! async fn html() -> Html<&'static str> {
 //!     Html("<h1>Hello, World!</h1>")
 //! }
 //!
 //! // `Json` gives a content-type of `application/json` and works with any type
 //! // that implements `serde::Serialize`
-//! async fn json(req: Request<Body>) -> Json<Value> {
+//! async fn json() -> Json<Value> {
 //!     Json(json!({ "data": 42 }))
 //! }
 //!
 //! // `Result<T, E>` where `T` and `E` implement `IntoResponse` is useful for
 //! // returning errors
-//! async fn result(req: Request<Body>) -> Result<&'static str, StatusCode> {
+//! async fn result() -> Result<&'static str, StatusCode> {
 //!     Ok("all good")
 //! }
 //!
 //! // `Response` gives full control
-//! async fn response(req: Request<Body>) -> Response<Body> {
+//! async fn response() -> Response<Body> {
 //!     Response::builder().body(Body::empty()).unwrap()
 //! }
 //!
@@ -152,13 +150,12 @@
 //!
 //! # Extracting data from requests
 //!
-//! A handler function must always take `Request<Body>` as its first argument
-//! but any arguments following are called "extractors". Any type that
-//! implements [`FromRequest`](crate::extract::FromRequest) can be used as an
-//! extractor.
+//! A handler function is an async function take takes any number of
+//! "extractors" as arguments. An extractor is a type that implements
+//! [`FromRequest`](crate::extract::FromRequest).
 //!
-//! For example, [`extract::Json`] is an extractor that consumes the request body and
-//! deserializes it as JSON into some target type:
+//! For example, [`extract::Json`] is an extractor that consumes the request
+//! body and deserializes it as JSON into some target type:
 //!
 //! ```rust,no_run
 //! use tower_web::prelude::*;
@@ -172,7 +169,7 @@
 //!     password: String,
 //! }
 //!
-//! async fn create_user(req: Request<Body>, payload: extract::Json<CreateUser>) {
+//! async fn create_user(payload: extract::Json<CreateUser>) {
 //!     let payload: CreateUser = payload.0;
 //!
 //!     // ...
@@ -192,7 +189,7 @@
 //!
 //! let app = route("/users/:id", post(create_user));
 //!
-//! async fn create_user(req: Request<Body>, params: extract::UrlParams<(Uuid,)>) {
+//! async fn create_user(params: extract::UrlParams<(Uuid,)>) {
 //!     let user_id: Uuid = (params.0).0;
 //!
 //!     // ...
@@ -227,7 +224,6 @@
 //! }
 //!
 //! async fn get_user_things(
-//!     req: Request<Body>,
 //!     params: extract::UrlParams<(Uuid,)>,
 //!     pagination: Option<extract::Query<Pagination>>,
 //! ) {
@@ -240,6 +236,24 @@
 //! # hyper::Server::bind(&"".parse().unwrap()).serve(tower::make::Shared::new(app)).await;
 //! # };
 //! ```
+//!
+//! Additionally `Request<Body>` is itself an extractor:
+//!
+//! ```rust,no_run
+//! use tower_web::prelude::*;
+//!
+//! let app = route("/users/:id", post(handler));
+//!
+//! async fn handler(req: Request<Body>) {
+//!     // ...
+//! }
+//! # async {
+//! # hyper::Server::bind(&"".parse().unwrap()).serve(tower::make::Shared::new(app)).await;
+//! # };
+//! ```
+//!
+//! However it cannot be combined with other extractors since it consumes the
+//! entire request.
 //!
 //! See the [`extract`] module for more details.
 //!
@@ -263,7 +277,7 @@
 //!     get(handler.layer(ConcurrencyLimitLayer::new(100))),
 //! );
 //!
-//! async fn handler(req: Request<Body>) {}
+//! async fn handler() {}
 //! # async {
 //! # hyper::Server::bind(&"".parse().unwrap()).serve(tower::make::Shared::new(app)).await;
 //! # };
@@ -281,9 +295,9 @@
 //!     .route("/foo", post(post_foo))
 //!     .layer(ConcurrencyLimitLayer::new(100));
 //!
-//! async fn get_slash(req: Request<Body>) {}
+//! async fn get_slash() {}
 //!
-//! async fn post_foo(req: Request<Body>) {}
+//! async fn post_foo() {}
 //! # async {
 //! # hyper::Server::bind(&"".parse().unwrap()).serve(tower::make::Shared::new(app)).await;
 //! # };
@@ -333,7 +347,7 @@
 //!         })),
 //! );
 //!
-//! async fn handle(req: Request<Body>) {}
+//! async fn handle() {}
 //! # async {
 //! # hyper::Server::bind(&"".parse().unwrap()).serve(tower::make::Shared::new(app)).await;
 //! # };
@@ -357,9 +371,9 @@
 //!         // ...
 //!     });
 //!
-//! async fn handle(req: Request<Body>) {}
+//! async fn handle() {}
 //!
-//! async fn other_handle(req: Request<Body>) {}
+//! async fn other_handle() {}
 //! # async {
 //! # hyper::Server::bind(&"".parse().unwrap()).serve(tower::make::Shared::new(app)).await;
 //! # };
@@ -438,7 +452,6 @@
 //! let app = route("/", get(handler)).layer(AddExtensionLayer::new(shared_state));
 //!
 //! async fn handler(
-//!     req: Request<Body>,
 //!     state: extract::Extension<Arc<State>>,
 //! ) {
 //!     let state: Arc<State> = state.0;

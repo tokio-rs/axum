@@ -1,8 +1,8 @@
 //! Types and traits for extracting data from requests.
 //!
-//! A handler function must always take `Request<Body>` as its first argument
-//! but any arguments following are called "extractors". Any type that
-//! implements [`FromRequest`](FromRequest) can be used as an extractor.
+//! A handler function is an async function take takes any number of
+//! "extractors" as arguments. An extractor is a type that implements
+//! [`FromRequest`](crate::extract::FromRequest).
 //!
 //! For example, [`Json`] is an extractor that consumes the request body and
 //! deserializes it as JSON into some target type:
@@ -17,7 +17,7 @@
 //!     password: String,
 //! }
 //!
-//! async fn create_user(req: Request<Body>, payload: extract::Json<CreateUser>) {
+//! async fn create_user(payload: extract::Json<CreateUser>) {
 //!     let payload: CreateUser = payload.0;
 //!
 //!     // ...
@@ -52,7 +52,7 @@
 //!     }
 //! }
 //!
-//! async fn handler(req: Request<Body>, user_agent: ExtractUserAgent) {
+//! async fn handler(user_agent: ExtractUserAgent) {
 //!     let user_agent: HeaderValue = user_agent.0;
 //!
 //!     // ...
@@ -73,7 +73,6 @@
 //! use std::collections::HashMap;
 //!
 //! async fn handler(
-//!     req: Request<Body>,
 //!     // Extract captured parameters from the URL
 //!     params: extract::UrlParamsMap,
 //!     // Parse query string into a `HashMap`
@@ -98,7 +97,7 @@
 //! use tower_web::{extract::Json, prelude::*};
 //! use serde_json::Value;
 //!
-//! async fn create_user(req: Request<Body>, payload: Option<Json<Value>>) {
+//! async fn create_user(payload: Option<Json<Value>>) {
 //!     if let Some(payload) = payload {
 //!         // We got a valid JSON payload
 //!     } else {
@@ -121,7 +120,7 @@
 //! use tower_web::{extract::Json, prelude::*};
 //! use serde_json::Value;
 //!
-//! async fn create_user(req: Request<Body>, Json(value): Json<Value>) {
+//! async fn create_user(Json(value): Json<Value>) {
 //!     // `value` is of type `Value`
 //! }
 //!
@@ -134,14 +133,14 @@
 use crate::{body::Body, response::IntoResponse};
 use async_trait::async_trait;
 use bytes::Bytes;
-use http::{header, Request, Response};
+use http::{HeaderMap, Method, Request, Response, Uri, Version, header};
 use rejection::{
-    BodyAlreadyTaken, FailedToBufferBody, InvalidJsonBody, InvalidUrlParam, InvalidUtf8,
+    BodyAlreadyExtracted, FailedToBufferBody, InvalidJsonBody, InvalidUrlParam, InvalidUtf8,
     LengthRequired, MissingExtension, MissingJsonContentType, MissingRouteParams, PayloadTooLarge,
-    QueryStringMissing, UrlParamsAlreadyTaken,
+    QueryStringMissing, RequestAlreadyExtracted, UrlParamsAlreadyExtracted,
 };
 use serde::de::DeserializeOwned;
-use std::{collections::HashMap, convert::Infallible, str::FromStr};
+use std::{collections::HashMap, mem, convert::Infallible, str::FromStr};
 
 pub mod rejection;
 
@@ -188,7 +187,7 @@ where
 ///
 /// // This will parse query strings like `?page=2&per_page=30` into `Pagination`
 /// // structs.
-/// async fn list_things(req: Request<Body>, pagination: extract::Query<Pagination>) {
+/// async fn list_things(pagination: extract::Query<Pagination>) {
 ///     let pagination: Pagination = pagination.0;
 ///
 ///     // ...
@@ -231,7 +230,7 @@ where
 ///     password: String,
 /// }
 ///
-/// async fn create_user(req: Request<Body>, payload: extract::Json<CreateUser>) {
+/// async fn create_user(payload: extract::Json<CreateUser>) {
 ///     let payload: CreateUser = payload.0;
 ///
 ///     // ...
@@ -307,7 +306,7 @@ fn has_content_type<B>(req: &Request<B>, expected_content_type: &str) -> bool {
 ///     // ...
 /// }
 ///
-/// async fn handler(req: Request<Body>, state: extract::Extension<Arc<State>>) {
+/// async fn handler(state: extract::Extension<Arc<State>>) {
 ///     // ...
 /// }
 ///
@@ -381,10 +380,65 @@ impl FromRequest for String {
 
 #[async_trait]
 impl FromRequest for Body {
-    type Rejection = BodyAlreadyTaken;
+    type Rejection = BodyAlreadyExtracted;
 
     async fn from_request(req: &mut Request<Body>) -> Result<Self, Self::Rejection> {
         take_body(req)
+    }
+}
+
+#[async_trait]
+impl FromRequest for Request<Body> {
+    type Rejection = RequestAlreadyExtracted;
+
+    async fn from_request(req: &mut Request<Body>) -> Result<Self, Self::Rejection> {
+        struct RequestAlreadyExtractedExt;
+
+        if req
+            .extensions_mut()
+            .insert(RequestAlreadyExtractedExt)
+            .is_some()
+        {
+            Err(RequestAlreadyExtracted)
+        } else {
+            Ok(mem::take(req))
+        }
+    }
+}
+
+#[async_trait]
+impl FromRequest for Method {
+    type Rejection = Infallible;
+
+    async fn from_request(req: &mut Request<Body>) -> Result<Self, Self::Rejection> {
+        Ok(req.method().clone())
+    }
+}
+
+#[async_trait]
+impl FromRequest for Uri {
+    type Rejection = Infallible;
+
+    async fn from_request(req: &mut Request<Body>) -> Result<Self, Self::Rejection> {
+        Ok(req.uri().clone())
+    }
+}
+
+#[async_trait]
+impl FromRequest for Version {
+    type Rejection = Infallible;
+
+    async fn from_request(req: &mut Request<Body>) -> Result<Self, Self::Rejection> {
+        Ok(req.version())
+    }
+}
+
+#[async_trait]
+impl FromRequest for HeaderMap {
+    type Rejection = Infallible;
+
+    async fn from_request(req: &mut Request<Body>) -> Result<Self, Self::Rejection> {
+        Ok(mem::take(req.headers_mut()))
     }
 }
 
@@ -395,7 +449,7 @@ impl FromRequest for Body {
 /// ```rust,no_run
 /// use tower_web::prelude::*;
 ///
-/// async fn handler(req: Request<Body>, body: extract::ContentLengthLimit<String, 1024>) {
+/// async fn handler(body: extract::ContentLengthLimit<String, 1024>) {
 ///     // ...
 /// }
 ///
@@ -442,7 +496,7 @@ where
 /// ```rust,no_run
 /// use tower_web::prelude::*;
 ///
-/// async fn users_show(req: Request<Body>, params: extract::UrlParamsMap) {
+/// async fn users_show(params: extract::UrlParamsMap) {
 ///     let id: Option<&str> = params.get("id");
 ///
 ///     // ...
@@ -483,7 +537,7 @@ impl FromRequest for UrlParamsMap {
             if let Some(params) = params.take() {
                 Ok(Self(params.0.into_iter().collect()))
             } else {
-                Err(UrlParamsAlreadyTaken.into_response())
+                Err(UrlParamsAlreadyExtracted.into_response())
             }
         } else {
             Err(MissingRouteParams.into_response())
@@ -500,7 +554,6 @@ impl FromRequest for UrlParamsMap {
 /// use uuid::Uuid;
 ///
 /// async fn users_teams_show(
-///     req: Request<Body>,
 ///     UrlParams(params): UrlParams<(Uuid, Uuid)>,
 /// ) {
 ///     let user_id: Uuid = params.0;
@@ -538,7 +591,7 @@ macro_rules! impl_parse_url {
                     if let Some(params) = params.take() {
                         params.0
                     } else {
-                        return Err(UrlParamsAlreadyTaken.into_response());
+                        return Err(UrlParamsAlreadyExtracted.into_response());
                     }
                 } else {
                     return Err(MissingRouteParams.into_response())
@@ -572,14 +625,17 @@ macro_rules! impl_parse_url {
 
 impl_parse_url!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16);
 
-fn take_body(req: &mut Request<Body>) -> Result<Body, BodyAlreadyTaken> {
-    struct BodyAlreadyTakenExt;
+fn take_body(req: &mut Request<Body>) -> Result<Body, BodyAlreadyExtracted> {
+    struct BodyAlreadyExtractedExt;
 
-    if req.extensions_mut().insert(BodyAlreadyTakenExt).is_some() {
-        Err(BodyAlreadyTaken)
+    if req
+        .extensions_mut()
+        .insert(BodyAlreadyExtractedExt)
+        .is_some()
+    {
+        Err(BodyAlreadyExtracted)
     } else {
-        let body = std::mem::take(req.body_mut());
-        Ok(body)
+        Ok(mem::take(req.body_mut()))
     }
 }
 

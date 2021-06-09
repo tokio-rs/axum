@@ -1,4 +1,4 @@
-use http::{Request, StatusCode};
+use http::StatusCode;
 use hyper::Server;
 use std::net::SocketAddr;
 use tower::make::Shared;
@@ -18,11 +18,11 @@ async fn main() {
     server.await.unwrap();
 }
 
-async fn handler(_req: Request<Body>) -> response::Html<&'static str> {
+async fn handler() -> response::Html<&'static str> {
     response::Html("<h1>Hello, World!</h1>")
 }
 
-async fn greet(_req: Request<Body>, params: extract::UrlParamsMap) -> Result<String, StatusCode> {
+async fn greet(params: extract::UrlParamsMap) -> Result<String, StatusCode> {
     if let Some(name) = params.get("name") {
         Ok(format!("Hello {}!", name))
     } else {

@@ -54,7 +54,7 @@ async fn hello_world() {
 
 #[tokio::test]
 async fn consume_body() {
-    let app = route("/", get(|_: Request<Body>, body: String| async { body }));
+    let app = route("/", get(|body: String| async { body }));
 
     let addr = run_in_background(app).await;
 
@@ -79,7 +79,7 @@ async fn deserialize_body() {
 
     let app = route(
         "/",
-        post(|_: Request<Body>, input: extract::Json<Input>| async { input.0.foo }),
+        post(|input: extract::Json<Input>| async { input.0.foo }),
     );
 
     let addr = run_in_background(app).await;
@@ -137,11 +137,7 @@ async fn body_with_length_limit() {
 
     let app = route(
         "/",
-        post(
-            |req: Request<Body>, _body: extract::ContentLengthLimit<Bytes, LIMIT>| async move {
-                dbg!(&req);
-            },
-        ),
+        post(|_body: extract::ContentLengthLimit<Bytes, LIMIT>| async {}),
     );
 
     let addr = run_in_background(app).await;
@@ -240,24 +236,20 @@ async fn routing() {
 async fn extracting_url_params() {
     let app = route(
         "/users/:id",
-        get(
-            |_: Request<Body>, params: extract::UrlParams<(i32,)>| async move {
-                let (id,) = params.0;
-                assert_eq!(id, 42);
-            },
-        )
-        .post(
-            |_: Request<Body>, params_map: extract::UrlParamsMap| async move {
-                assert_eq!(params_map.get("id").unwrap(), "1337");
-                assert_eq!(
-                    params_map
-                        .get_typed::<i32>("id")
-                        .expect("missing")
-                        .expect("failed to parse"),
-                    1337
-                );
-            },
-        ),
+        get(|params: extract::UrlParams<(i32,)>| async move {
+            let (id,) = params.0;
+            assert_eq!(id, 42);
+        })
+        .post(|params_map: extract::UrlParamsMap| async move {
+            assert_eq!(params_map.get("id").unwrap(), "1337");
+            assert_eq!(
+                params_map
+                    .get_typed::<i32>("id")
+                    .expect("missing")
+                    .expect("failed to parse"),
+                1337
+            );
+        }),
     );
 
     let addr = run_in_background(app).await;
@@ -502,35 +494,30 @@ async fn layer_on_whole_router() {
 async fn disjunction() {
     let api_routes = route(
         "/users",
-        get(|_: Request<Body>| async { "users#index" })
-            .post(|_: Request<Body>| async { "users#create" }),
+        get(|| async { "users#index" }).post(|| async { "users#create" }),
     )
     .route(
         "/users/:id",
-        get(
-            |_: Request<Body>, params: extract::UrlParamsMap| async move {
-                format!(
-                    "{}: users#show ({})",
-                    params.get("version").unwrap(),
-                    params.get("id").unwrap()
-                )
-            },
-        ),
+        get(|params: extract::UrlParamsMap| async move {
+            format!(
+                "{}: users#show ({})",
+                params.get("version").unwrap(),
+                params.get("id").unwrap()
+            )
+        }),
     )
     .route(
         "/games/:id",
-        get(
-            |_: Request<Body>, params: extract::UrlParamsMap| async move {
-                format!(
-                    "{}: games#show ({})",
-                    params.get("version").unwrap(),
-                    params.get("id").unwrap()
-                )
-            },
-        ),
+        get(|params: extract::UrlParamsMap| async move {
+            format!(
+                "{}: games#show ({})",
+                params.get("version").unwrap(),
+                params.get("id").unwrap()
+            )
+        }),
     );
 
-    let app = route("/", get(|_: Request<Body>| async { "hi" })).nest("/:version/api", api_routes);
+    let app = route("/", get(|| async { "hi" })).nest("/:version/api", api_routes);
 
     let addr = run_in_background(app).await;
 

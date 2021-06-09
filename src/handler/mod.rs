@@ -2,13 +2,9 @@
 //!
 //! # What is a handler?
 //!
-//! In tower-web a "handler" is an async function that accepts a request and
-//! produces a response. Handler functions must take
-//! `http::Request<tower_web::body::Body>` as they first argument and return
-//! something that implements [`IntoResponse`].
-//!
-//! Additionally handlers can use ["extractors"](crate::extract) to extract data
-//! from incoming requests.
+//! In tower-web a "handler" is an async function that accepts zero or more
+//! ["extractors"](crate::extract) as arguments and returns something that
+//! implements [`IntoResponse`].
 //!
 //! # Example
 //!
@@ -19,17 +15,17 @@
 //! use bytes::Bytes;
 //! use http::StatusCode;
 //!
-//! // Handlers must take `Request<Body>` as the first argument and must return
-//! // something that implements `IntoResponse`, which `()` does
-//! async fn unit_handler(request: Request<Body>) {}
+//! // Handler that immediately returns an empty `200 OK` response.
+//! async fn unit_handler() {}
 //!
-//! // `String` also implements `IntoResponse`
-//! async fn string_handler(request: Request<Body>) -> String {
+//! // Handler that immediately returns an empty `200 Ok` response with a plain
+//! /// text body.
+//! async fn string_handler() -> String {
 //!     "Hello, World!".to_string()
 //! }
 //!
 //! // Handler that buffers the request body and returns it if it is valid UTF-8
-//! async fn buffer_body(request: Request<Body>, body: Bytes) -> Result<String, StatusCode> {
+//! async fn buffer_body(body: Bytes) -> Result<String, StatusCode> {
 //!     if let Ok(string) = String::from_utf8(body.to_vec()) {
 //!         Ok(string)
 //!     } else {
@@ -72,7 +68,7 @@ pub mod future;
 /// ```rust
 /// use tower_web::prelude::*;
 ///
-/// async fn handler(request: Request<Body>) {}
+/// async fn handler() {}
 ///
 /// // All requests to `/` will go to `handler` regardless of the HTTP method.
 /// let app = route("/", any(handler));
@@ -111,7 +107,7 @@ where
 /// ```rust
 /// use tower_web::prelude::*;
 ///
-/// async fn handler(request: Request<Body>) {}
+/// async fn handler() {}
 ///
 /// // Requests to `GET /` will go to `handler`.
 /// let app = route("/", get(handler));
@@ -190,7 +186,7 @@ where
 /// ```rust
 /// use tower_web::{handler::on, routing::MethodFilter, prelude::*};
 ///
-/// async fn handler(request: Request<Body>) {}
+/// async fn handler() {}
 ///
 /// // Requests to `POST /` will go to `handler`.
 /// let app = route("/", on(MethodFilter::Post, handler));
@@ -250,7 +246,7 @@ pub trait Handler<In>: Sized {
     /// use tower_web::prelude::*;
     /// use tower::limit::{ConcurrencyLimitLayer, ConcurrencyLimit};
     ///
-    /// async fn handler(request: Request<Body>) { /* ... */ }
+    /// async fn handler() { /* ... */ }
     ///
     /// let layered_handler = handler.layer(ConcurrencyLimitLayer::new(64));
     /// ```
@@ -273,14 +269,14 @@ pub trait Handler<In>: Sized {
 #[async_trait]
 impl<F, Fut, Res> Handler<()> for F
 where
-    F: FnOnce(Request<Body>) -> Fut + Send + Sync,
+    F: FnOnce() -> Fut + Send + Sync,
     Fut: Future<Output = Res> + Send,
     Res: IntoResponse,
 {
     type Sealed = sealed::Hidden;
 
-    async fn call(self, req: Request<Body>) -> Response<BoxBody> {
-        self(req).await.into_response().map(BoxBody::new)
+    async fn call(self, _req: Request<Body>) -> Response<BoxBody> {
+        self().await.into_response().map(BoxBody::new)
     }
 }
 
@@ -292,7 +288,7 @@ macro_rules! impl_handler {
         #[allow(non_snake_case)]
         impl<F, Fut, Res, $head, $($tail,)*> Handler<($head, $($tail,)*)> for F
         where
-            F: FnOnce(Request<Body>, $head, $($tail,)*) -> Fut + Send + Sync,
+            F: FnOnce($head, $($tail,)*) -> Fut + Send + Sync,
             Fut: Future<Output = Res> + Send,
             Res: IntoResponse,
             $head: FromRequest + Send,
@@ -313,7 +309,7 @@ macro_rules! impl_handler {
                     };
                 )*
 
-                let res = self(req, $head, $($tail,)*).await;
+                let res = self($head, $($tail,)*).await;
 
                 res.into_response().map(BoxBody::new)
             }
@@ -398,7 +394,7 @@ impl<S, T> Layered<S, T> {
     /// use tower::{BoxError, timeout::TimeoutLayer};
     /// use std::time::Duration;
     ///
-    /// async fn handler(request: Request<Body>) { /* ... */ }
+    /// async fn handler() { /* ... */ }
     ///
     /// // `Timeout` will fail with `BoxError` if the timeout elapses...
     /// let layered_handler = handler
@@ -545,9 +541,9 @@ impl<S, F> OnMethod<S, F> {
     /// ```rust
     /// use tower_web::prelude::*;
     ///
-    /// async fn handler(request: Request<Body>) {}
+    /// async fn handler() {}
     ///
-    /// async fn other_handler(request: Request<Body>) {}
+    /// async fn other_handler() {}
     ///
     /// // Requests to `GET /` will go to `handler` and `POST /` will go to
     /// // `other_handler`.
@@ -628,9 +624,9 @@ impl<S, F> OnMethod<S, F> {
     /// ```rust
     /// use tower_web::{routing::MethodFilter, prelude::*};
     ///
-    /// async fn handler(request: Request<Body>) {}
+    /// async fn handler() {}
     ///
-    /// async fn other_handler(request: Request<Body>) {}
+    /// async fn other_handler() {}
     ///
     /// // Requests to `GET /` will go to `handler` and `DELETE /` will go to
     /// // `other_handler`

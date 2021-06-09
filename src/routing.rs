@@ -88,11 +88,11 @@ pub trait RoutingDsl: crate::sealed::Sealed + Sized {
     /// ```rust
     /// use tower_web::prelude::*;
     ///
-    /// async fn first_handler(request: Request<Body>) { /* ... */ }
+    /// async fn first_handler() { /* ... */ }
     ///
-    /// async fn second_handler(request: Request<Body>) { /* ... */ }
+    /// async fn second_handler() { /* ... */ }
     ///
-    /// async fn third_handler(request: Request<Body>) { /* ... */ }
+    /// async fn third_handler() { /* ... */ }
     ///
     /// // `GET /` goes to `first_handler`, `POST /` goes to `second_handler`,
     /// // and `GET /foo` goes to third_handler.
@@ -132,11 +132,11 @@ pub trait RoutingDsl: crate::sealed::Sealed + Sized {
     /// ```rust
     /// use tower_web::{body::BoxBody, routing::BoxRoute, prelude::*};
     ///
-    /// async fn first_handler(request: Request<Body>) { /* ... */ }
+    /// async fn first_handler() { /* ... */ }
     ///
-    /// async fn second_handler(request: Request<Body>) { /* ... */ }
+    /// async fn second_handler() { /* ... */ }
     ///
-    /// async fn third_handler(request: Request<Body>) { /* ... */ }
+    /// async fn third_handler() { /* ... */ }
     ///
     /// fn app() -> BoxRoute<BoxBody> {
     ///     route("/", get(first_handler).post(second_handler))
@@ -181,11 +181,11 @@ pub trait RoutingDsl: crate::sealed::Sealed + Sized {
     /// use tower_web::prelude::*;
     /// use tower::limit::{ConcurrencyLimitLayer, ConcurrencyLimit};
     ///
-    /// async fn first_handler(request: Request<Body>) { /* ... */ }
+    /// async fn first_handler() { /* ... */ }
     ///
-    /// async fn second_handler(request: Request<Body>) { /* ... */ }
+    /// async fn second_handler() { /* ... */ }
     ///
-    /// async fn third_handler(request: Request<Body>) { /* ... */ }
+    /// async fn third_handler() { /* ... */ }
     ///
     /// // All requests to `handler` and `other_handler` will be sent through
     /// // `ConcurrencyLimit`
@@ -207,11 +207,11 @@ pub trait RoutingDsl: crate::sealed::Sealed + Sized {
     /// use tower_web::prelude::*;
     /// use tower_http::trace::TraceLayer;
     ///
-    /// async fn first_handler(request: Request<Body>) { /* ... */ }
+    /// async fn first_handler() { /* ... */ }
     ///
-    /// async fn second_handler(request: Request<Body>) { /* ... */ }
+    /// async fn second_handler() { /* ... */ }
     ///
-    /// async fn third_handler(request: Request<Body>) { /* ... */ }
+    /// async fn third_handler() { /* ... */ }
     ///
     /// let app = route("/", get(first_handler))
     ///     .route("/foo", get(second_handler))
@@ -584,7 +584,7 @@ impl<S> Layered<S> {
     /// use tower::{BoxError, timeout::TimeoutLayer};
     /// use std::time::Duration;
     ///
-    /// async fn handler(request: Request<Body>) { /* ... */ }
+    /// async fn handler() { /* ... */ }
     ///
     /// // `Timeout` will fail with `BoxError` if the timeout elapses...
     /// let layered_handler = route("/", get(handler))
@@ -646,16 +646,17 @@ where
 ///
 /// ```
 /// use tower_web::{routing::nest, prelude::*};
+/// use http::Uri;
 ///
-/// async fn users_get(request: Request<Body>) {
+/// async fn users_get(uri: Uri) {
 ///     // `users_get` doesn't see the whole URL. `nest` will strip the matching
 ///     // `/api` prefix.
-///     assert_eq!(request.uri().path(), "/users");
+///     assert_eq!(uri.path(), "/users");
 /// }
 ///
-/// async fn users_post(request: Request<Body>) {}
+/// async fn users_post() {}
 ///
-/// async fn careers(request: Request<Body>) {}
+/// async fn careers() {}
 ///
 /// let users_api = route("/users", get(users_get).post(users_post));
 ///
@@ -671,7 +672,7 @@ where
 /// ```
 /// use tower_web::{routing::nest, prelude::*};
 ///
-/// async fn users_get(request: Request<Body>, params: extract::UrlParamsMap) {
+/// async fn users_get(params: extract::UrlParamsMap) {
 ///     // Both `version` and `id` were captured even though `users_api` only
 ///     // explicitly captures `id`.
 ///     let version = params.get("version");

@@ -63,7 +63,7 @@
 //! # let some_backpressure_sensitive_middleware =
 //! #     tower::layer::util::Identity::new();
 //!
-//! async fn handler(request: Request<Body>) { /* ... */ }
+//! async fn handler() { /* ... */ }
 //!
 //! let app = route("/", get(handler));
 //!

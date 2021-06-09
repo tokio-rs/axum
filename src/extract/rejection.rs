@@ -129,7 +129,7 @@ define_rejection! {
     #[status = INTERNAL_SERVER_ERROR]
     #[body = "Cannot have two URL capture extractors for a single handler"]
     /// Rejection type used if you try and extract the URL params more than once.
-    pub struct UrlParamsAlreadyTaken;
+    pub struct UrlParamsAlreadyExtracted;
 }
 
 define_rejection! {
@@ -137,7 +137,14 @@ define_rejection! {
     #[body = "Cannot have two request body extractors for a single handler"]
     /// Rejection type used if you try and extract the request body more than
     /// once.
-    pub struct BodyAlreadyTaken;
+    pub struct BodyAlreadyExtracted;
+}
+
+define_rejection! {
+    #[status = INTERNAL_SERVER_ERROR]
+    #[body = "Cannot have two `Request<Body>` extractors for a single handler"]
+    /// Rejection type used if you try and extract the request more than once.
+    pub struct RequestAlreadyExtracted;
 }
 
 /// Rejection type for [`UrlParams`](super::UrlParams) if the capture route

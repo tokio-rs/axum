@@ -7,7 +7,7 @@
 //! ```
 
 use bytes::Bytes;
-use http::{Request, StatusCode};
+use http::StatusCode;
 use hyper::Server;
 use std::{
     borrow::Cow,
@@ -22,7 +22,7 @@ use tower_http::{
     compression::CompressionLayer, trace::TraceLayer,
 };
 use tower_web::{
-    body::{Body, BoxBody},
+    body::BoxBody,
     extract::{ContentLengthLimit, Extension, UrlParams},
     prelude::*,
     response::IntoResponse,
@@ -72,7 +72,6 @@ struct State {
 }
 
 async fn kv_get(
-    _req: Request<Body>,
     UrlParams((key,)): UrlParams<(String,)>,
     Extension(state): Extension<SharedState>,
 ) -> Result<Bytes, StatusCode> {
@@ -86,7 +85,6 @@ async fn kv_get(
 }
 
 async fn kv_set(
-    _req: Request<Body>,
     UrlParams((key,)): UrlParams<(String,)>,
     ContentLengthLimit(bytes): ContentLengthLimit<Bytes, { 1024 * 5_000 }>, // ~5mb
     Extension(state): Extension<SharedState>,
@@ -94,7 +92,7 @@ async fn kv_set(
     state.write().unwrap().db.insert(key, bytes);
 }
 
-async fn list_keys(_req: Request<Body>, Extension(state): Extension<SharedState>) -> String {
+async fn list_keys(Extension(state): Extension<SharedState>) -> String {
     let db = &state.read().unwrap().db;
 
     db.keys()
@@ -104,12 +102,11 @@ async fn list_keys(_req: Request<Body>, Extension(state): Extension<SharedState>
 }
 
 fn admin_routes() -> BoxRoute<BoxBody> {
-    async fn delete_all_keys(_req: Request<Body>, Extension(state): Extension<SharedState>) {
+    async fn delete_all_keys(Extension(state): Extension<SharedState>) {
         state.write().unwrap().db.clear();
     }
 
     async fn remove_key(
-        _req: Request<Body>,
         UrlParams((key,)): UrlParams<(String,)>,
         Extension(state): Extension<SharedState>,
     ) {
