@@ -485,7 +485,8 @@
 //! # };
 //! ```
 //!
-//! See the [`service`] module for more details.
+//! Routing to arbitrary services in this way has complications for backpressure
+//! ([`Service::poll_ready`]). See the [`service`] module for more details.
 //!
 //! # Nesting applications
 //!

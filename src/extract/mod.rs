@@ -29,13 +29,6 @@
 //! # };
 //! ```
 //!
-//! Technically extractors can also be used as "guards", for example to require
-//! that requests are authorized. However the recommended way to do that is
-//! using Tower middleware, such as [`tower_http::auth::RequireAuthorization`].
-//! Extractors have to be applied to each handler, whereas middleware can be
-//! applied to a whole stack at once, which is typically what you want for
-//! authorization.
-//!
 //! # Defining custom extractors
 //!
 //! You can also define your own extractors by implementing [`FromRequest`]:

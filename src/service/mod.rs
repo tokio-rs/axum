@@ -28,8 +28,8 @@
 //!
 //! Generally routing to one of multiple services and backpressure doesn't mix
 //! well. Ideally you would want ensure a service is ready to receive a request
-//! before calling the service. However in order to know which service to call
-//! you need the request...
+//! before calling the it. However in order to know which service to call you
+//! need the request...
 //!
 //! One approach is to not consider the router service itself ready until all
 //! destination services are ready. That is the approach used by
@@ -37,14 +37,21 @@
 //!
 //! Another approach is to always consider all services ready (always return
 //! `Poll::Ready(Ok(()))`) from `Service::poll_ready` and then actually drive
-//! readiness inside the response future. This works well when your services
-//! don't care about backpressure and are always ready anyway.
+//! readiness inside the response future returned by `Service::call`. This works
+//! well when your services don't care about backpressure and are always ready
+//! anyway.
 //!
-//! tower-web expects that most services used in your app wont care about
+//! tower-web expects that all services used in your app wont care about
 //! backpressure and so it uses the latter strategy. However that means you
 //! should avoid routing to a service (or using a middleware) that _does_ care
 //! about backpressure. At the very least you should [load shed] so requests are
 //! dropped quickly and don't keep piling up.
+//!
+//! It also means if `poll_ready` returns an error that error will be returned
+//! in the response future from `call`, and _not_ from `poll_ready`. In that
+//! case the underlying service will _not_ be discarded and will continue to be
+//! used for future requests. Services that expect to be discarded if
+//! `poll_ready` fails should _not_ be used with tower-web.
 //!
 //! One possible approach is to only apply backpressure sensitive middleware
 //! around your entire app. This is possible because tower-web applications are
@@ -66,11 +73,12 @@
 //! ```
 //!
 //! However when applying middleware around your whole application in this way
-//! you have to take care that errors are still being dealt with appropriately.
+//! you have to take care that errors are still being handled with
+//! appropriately.
 //!
 //! Also note that handlers created from async functions don't care about
 //! backpressure and are always ready. So if you're not using any Tower
-//! middleware you don't have to worry about backpressure.
+//! middleware you don't have to worry about any of this.
 //!
 //! [`Redirect`]: tower_http::services::Redirect
 //! [load shed]: tower::load_shed
