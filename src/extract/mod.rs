@@ -388,14 +388,14 @@ impl FromRequest for Body {
     }
 }
 
-/// Extractor that will buffer request bodies up to a certain size.
+/// Extractor that will reject requests with a body larger than some size.
 ///
 /// # Example
 ///
 /// ```rust,no_run
 /// use tower_web::prelude::*;
 ///
-/// async fn handler(req: Request<Body>, body: extract::BytesMaxLength<1024>) {
+/// async fn handler(req: Request<Body>, body: extract::ContentLengthLimit<String, 1024>) {
 ///     // ...
 /// }
 ///
@@ -404,15 +404,17 @@ impl FromRequest for Body {
 ///
 /// This requires the request to have a `Content-Length` header.
 #[derive(Debug, Clone)]
-pub struct BytesMaxLength<const N: u64>(pub Bytes);
+pub struct ContentLengthLimit<T, const N: u64>(pub T);
 
 #[async_trait]
-impl<const N: u64> FromRequest for BytesMaxLength<N> {
+impl<T, const N: u64> FromRequest for ContentLengthLimit<T, N>
+where
+    T: FromRequest,
+{
     type Rejection = Response<Body>;
 
     async fn from_request(req: &mut Request<Body>) -> Result<Self, Self::Rejection> {
         let content_length = req.headers().get(http::header::CONTENT_LENGTH).cloned();
-        let body = take_body(req).map_err(|reject| reject.into_response())?;
 
         let content_length =
             content_length.and_then(|value| value.to_str().ok()?.parse::<u64>().ok());
@@ -425,11 +427,11 @@ impl<const N: u64> FromRequest for BytesMaxLength<N> {
             return Err(LengthRequired.into_response());
         };
 
-        let bytes = hyper::body::to_bytes(body)
+        let value = T::from_request(req)
             .await
-            .map_err(|e| FailedToBufferBody::from_err(e).into_response())?;
+            .map_err(IntoResponse::into_response)?;
 
-        Ok(BytesMaxLength(bytes))
+        Ok(Self(value))
     }
 }
 

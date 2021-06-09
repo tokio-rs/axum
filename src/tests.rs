@@ -1,4 +1,5 @@
 use crate::{handler::on, prelude::*, routing::MethodFilter, service};
+use bytes::Bytes;
 use http::{Request, Response, StatusCode};
 use hyper::{Body, Server};
 use serde::Deserialize;
@@ -137,7 +138,7 @@ async fn body_with_length_limit() {
     let app = route(
         "/",
         post(
-            |req: Request<Body>, _body: extract::BytesMaxLength<LIMIT>| async move {
+            |req: Request<Body>, _body: extract::ContentLengthLimit<Bytes, LIMIT>| async move {
                 dbg!(&req);
             },
         ),

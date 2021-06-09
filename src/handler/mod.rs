@@ -50,8 +50,8 @@ use crate::{
     service::HandleError,
 };
 use async_trait::async_trait;
-use futures_util::future::Either;
 use bytes::Bytes;
+use futures_util::future::Either;
 use http::{Request, Response};
 use std::{
     convert::Infallible,

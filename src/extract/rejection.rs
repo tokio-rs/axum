@@ -103,16 +103,16 @@ define_rejection! {
 define_rejection! {
     #[status = PAYLOAD_TOO_LARGE]
     #[body = "Request payload is too large"]
-    /// Rejection type for [`BytesMaxLength`](super::BytesMaxLength) if the
-    /// request body is too large.
+    /// Rejection type for [`ContentLengthLimit`](super::ContentLengthLimit) if
+    /// the request body is too large.
     pub struct PayloadTooLarge;
 }
 
 define_rejection! {
     #[status = LENGTH_REQUIRED]
     #[body = "Content length header is required"]
-    /// Rejection type for [`BytesMaxLength`](super::BytesMaxLength) if the
-    /// request is missing the `Content-Length` header or it is invalid.
+    /// Rejection type for [`ContentLengthLimit`](super::ContentLengthLimit) if
+    /// the request is missing the `Content-Length` header or it is invalid.
     pub struct LengthRequired;
 }
 

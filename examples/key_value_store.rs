@@ -23,7 +23,7 @@ use tower_http::{
 };
 use tower_web::{
     body::{Body, BoxBody},
-    extract::{BytesMaxLength, Extension, UrlParams},
+    extract::{ContentLengthLimit, Extension, UrlParams},
     prelude::*,
     response::IntoResponse,
     routing::BoxRoute,
@@ -88,10 +88,10 @@ async fn kv_get(
 async fn kv_set(
     _req: Request<Body>,
     UrlParams((key,)): UrlParams<(String,)>,
-    BytesMaxLength(value): BytesMaxLength<{ 1024 * 5_000 }>, // ~5mb
+    ContentLengthLimit(bytes): ContentLengthLimit<Bytes, { 1024 * 5_000 }>, // ~5mb
     Extension(state): Extension<SharedState>,
 ) {
-    state.write().unwrap().db.insert(key, value);
+    state.write().unwrap().db.insert(key, bytes);
 }
 
 async fn list_keys(_req: Request<Body>, Extension(state): Extension<SharedState>) -> String {
