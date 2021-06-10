@@ -12,6 +12,9 @@ readme = "README.md"
 repository = "https://github.com/davidpdrsn/tower-web"
 version = "0.1.0"
 
+[features]
+ws = ["tokio-tungstenite", "sha-1", "base64"]
+
 [dependencies]
 async-trait = "0.1"
 bytes = "1.0"
@@ -27,6 +30,11 @@ serde_urlencoded = "0.7"
 tokio = { version = "1", features = ["time"] }
 tower = { version = "0.4", features = ["util", "buffer"] }
 tower-http = { version = "0.1", features = ["add-extension"] }
+
+# optional dependencies
+tokio-tungstenite = { optional = true, version = "0.14" }
+sha-1 = { optional = true, version = "0.9.6" }
+base64 = { optional = true, version = "0.13" }
 
 [dev-dependencies]
 hyper = { version = "0.14", features = ["full"] }

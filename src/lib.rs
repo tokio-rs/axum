@@ -610,6 +610,10 @@ pub mod response;
 pub mod routing;
 pub mod service;
 
+#[cfg(feature = "ws")]
+#[cfg_attr(docsrs, doc(cfg(feature = "ws")))]
+pub mod ws;
+
 #[cfg(test)]
 mod tests;
 
