@@ -7,9 +7,11 @@ tower-web (name pending) is a tiny web application framework that focuses on
 ergonomics and modularity.
 
 [![Build status](https://github.com/davidpdrsn/tower-web/workflows/CI/badge.svg)](https://github.com/davidpdrsn/tower-web/actions)
+<!--
 [![Crates.io](https://img.shields.io/crates/v/tower-web)](https://crates.io/crates/tower-web)
 [![Documentation](https://docs.rs/tower-web/badge.svg)](https://docs.rs/tower-web)
 [![Crates.io](https://img.shields.io/crates/l/tower-web)](LICENSE)
+-->
 
 More information about this crate can be found in the [crate documentation][docs].
 
@@ -61,8 +63,8 @@ You're also welcome to ask in the [`#tower` Discord channel][chat] or open an
 ## Contributing
 
 :balloon: Thanks for your help improving the project! We are so happy to have
-you! We have a [contributing guide][guide] to help you get involved in the Tower
-HTTP project.
+you! We have a [contributing guide][guide] to help you get involved in the
+tower-web project.
 
 ## License
 
