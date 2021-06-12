@@ -147,6 +147,17 @@ where
     }
 }
 
+impl<T> IntoResponse for (HeaderMap, T)
+where
+    T: Into<Body>,
+{
+    fn into_response(self) -> Response<Body> {
+        let mut res = Response::new(self.1.into());
+        *res.headers_mut() = self.0;
+        res
+    }
+}
+
 impl<T> IntoResponse for (StatusCode, HeaderMap, T)
 where
     T: Into<Body>,
