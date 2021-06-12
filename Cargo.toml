@@ -13,7 +13,10 @@ repository = "https://github.com/davidpdrsn/tower-web"
 version = "0.1.0"
 
 [features]
+default = ["hyper-h1"]
 ws = ["tokio-tungstenite", "sha-1", "base64"]
+hyper-h1 = ["hyper/http1"]
+hyper-h2 = ["hyper/http2"]
 
 [dependencies]
 async-trait = "0.1"
@@ -21,7 +24,7 @@ bytes = "1.0"
 futures-util = "0.3"
 http = "0.2"
 http-body = "0.4"
-hyper = "0.14"
+hyper = { version = "0.14", features = ["server", "tcp"] }
 pin-project = "1.0"
 regex = "1.5"
 serde = "1.0"

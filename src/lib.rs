@@ -541,10 +541,22 @@
 //! # };
 //! ```
 //!
+//! # Features
+//!
+//! tower-web uses a set of [feature flags] to reduce the amount of compiled and
+//! optional dependencies.
+//!
+//! The following optional features are available:
+//!
+//! - `ws`: Enables WebSockets support.
+//! - `hyper-h1`: Enables hyper's `http1` feature. On by default.
+//! - `hyper-h2`: Enables hyper's `http2` feature.
+//!
 //! [tower]: https://crates.io/crates/tower
 //! [tower-http]: https://crates.io/crates/tower-http
 //! [tokio]: http://crates.io/crates/tokio
 //! [hyper]: http://crates.io/crates/hyper
+//! [feature flags]: https://doc.rust-lang.org/cargo/reference/features.html#the-features-section
 
 #![doc(html_root_url = "https://docs.rs/tower-http/0.1.0")]
 #![warn(

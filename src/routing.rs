@@ -267,6 +267,8 @@ pub trait RoutingDsl: crate::sealed::Sealed + Sized {
     ///
     /// [hyper]: http://crates.io/crates/hyper
     /// [`into_make_service`]: RoutingDsl::into_make_service
+    #[cfg(any(feature = "hyper-h1", feature = "hyper-h2"))]
+    #[cfg_attr(docsrs, doc(cfg(any(feature = "hyper-h1", feature = "hyper-h2"))))]
     async fn serve<B>(self, addr: &std::net::SocketAddr) -> Result<(), hyper::Error>
     where
         Self: Service<Request<Body>, Response = Response<B>, Error = Infallible>
@@ -277,7 +279,7 @@ pub trait RoutingDsl: crate::sealed::Sealed + Sized {
         B: http_body::Body<Data = Bytes> + Send + Sync + 'static,
         B::Error: Into<BoxError> + Send + Sync + 'static,
     {
-        hyper::Server::bind(addr)
+        hyper::server::Server::bind(addr)
             .serve(self.into_make_service())
             .await
     }
