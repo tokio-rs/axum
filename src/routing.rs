@@ -770,11 +770,15 @@ where
 
 fn strip_prefix(uri: &Uri, prefix: &str) -> Uri {
     let path_and_query = if let Some(path_and_query) = uri.path_and_query() {
-        let new_path = if let Some(path) = path_and_query.path().strip_prefix(prefix) {
+        let mut new_path = if let Some(path) = path_and_query.path().strip_prefix(prefix) {
             path
         } else {
             path_and_query.path()
         };
+
+        if new_path.is_empty() {
+            new_path = "/";
+        }
 
         if let Some(query) = path_and_query.query() {
             Some(
