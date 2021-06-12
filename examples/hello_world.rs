@@ -1,7 +1,5 @@
 use http::StatusCode;
-use hyper::Server;
 use std::net::SocketAddr;
-use tower::make::Shared;
 use tower_web::prelude::*;
 
 #[tokio::main]
@@ -11,11 +9,10 @@ async fn main() {
     // build our application with some routes
     let app = route("/", get(handler)).route("/greet/:name", get(greet));
 
-    // run it with hyper
+    // run it
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
     tracing::debug!("listening on {}", addr);
-    let server = Server::bind(&addr).serve(Shared::new(app));
-    server.await.unwrap();
+    app.serve(&addr).await.unwrap();
 }
 
 async fn handler() -> response::Html<&'static str> {

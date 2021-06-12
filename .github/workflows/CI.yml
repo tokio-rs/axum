@@ -30,6 +30,18 @@ jobs:
         command: fmt
         args: --all -- --check
 
+  check-docs:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@master
+    - uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        profile: minimal
+    - name: cargo doc
+      working-directory: ${{ matrix.subcrate }}
+      run: cargo doc --all-features --no-deps
+
   cargo-hack:
     runs-on: ubuntu-latest
     steps:

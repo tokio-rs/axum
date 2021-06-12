@@ -1,7 +1,5 @@
 use http::StatusCode;
-use hyper::Server;
 use std::net::SocketAddr;
-use tower::make::Shared;
 use tower_http::{services::ServeDir, trace::TraceLayer};
 use tower_web::{prelude::*, service::ServiceExt};
 
@@ -22,6 +20,5 @@ async fn main() {
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
     tracing::debug!("listening on {}", addr);
-    let server = Server::bind(&addr).serve(Shared::new(app));
-    server.await.unwrap();
+    app.serve(&addr).await.unwrap();
 }

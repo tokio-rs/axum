@@ -1,6 +1,7 @@
 //! Routing between [`Service`]s.
 
 use crate::{body::BoxBody, response::IntoResponse, ResultExt};
+use async_trait::async_trait;
 use bytes::Bytes;
 use futures_util::{future, ready};
 use http::{Method, Request, Response, StatusCode, Uri};
@@ -80,6 +81,7 @@ pub struct Route<S, F> {
 
 /// Trait for building routers.
 // TODO(david): this name isn't great
+#[async_trait]
 pub trait RoutingDsl: crate::sealed::Sealed + Sized {
     /// Add another route to the router.
     ///
@@ -196,7 +198,7 @@ pub trait RoutingDsl: crate::sealed::Sealed + Sized {
     ///     // wont be sent through `ConcurrencyLimit`
     ///     .route("/bar", get(third_handler));
     /// # async {
-    /// # hyper::Server::bind(&"".parse().unwrap()).serve(tower::make::Shared::new(app)).await;
+    /// # app.serve(&"".parse().unwrap()).await.unwrap();
     /// # };
     /// ```
     ///
@@ -227,6 +229,59 @@ pub trait RoutingDsl: crate::sealed::Sealed + Sized {
         L::Service: Service<Request<Body>> + Clone,
     {
         Layered(layer.layer(self))
+    }
+
+    /// Convert this router into a [`MakeService`], that is a [`Service`] who's
+    /// response is another service.
+    ///
+    /// This is useful when running your application with hyper's
+    /// [`Server`](hyper::server::Server):
+    ///
+    /// ```
+    /// use tower_web::prelude::*;
+    ///
+    /// let app = route("/", get(|| async { "Hi!" }));
+    ///
+    /// # async {
+    /// hyper::Server::bind(&"0.0.0.0:3000".parse().unwrap())
+    ///     .serve(app.into_make_service())
+    ///     .await
+    ///     .expect("server failed");
+    /// # };
+    /// ```
+    ///
+    /// [`MakeService`]: tower::make::MakeService
+    fn into_make_service(self) -> tower::make::Shared<Self>
+    where
+        Self: Clone,
+    {
+        tower::make::Shared::new(self)
+    }
+
+    /// Serve this router with [hyper] on the given address.
+    ///
+    /// Uses [`hyper::server::Server`]'s default configuration. Creating a
+    /// [`hyper::server::Server`] manually is recommended if different
+    /// configuration is needed. In that case [`into_make_service`] can be used
+    /// to easily serve this router.
+    ///
+    /// [hyper]: http://crates.io/crates/hyper
+    /// [`into_make_service`]: RoutingDsl::into_make_service
+    #[cfg(any(feature = "hyper-h1", feature = "hyper-h2"))]
+    #[cfg_attr(docsrs, doc(cfg(any(feature = "hyper-h1", feature = "hyper-h2"))))]
+    async fn serve<B>(self, addr: &std::net::SocketAddr) -> Result<(), hyper::Error>
+    where
+        Self: Service<Request<Body>, Response = Response<B>, Error = Infallible>
+            + Clone
+            + Send
+            + 'static,
+        Self::Future: Send,
+        B: http_body::Body<Data = Bytes> + Send + Sync + 'static,
+        B::Error: Into<BoxError> + Send + Sync + 'static,
+    {
+        hyper::server::Server::bind(addr)
+            .serve(self.into_make_service())
+            .await
     }
 }
 
@@ -662,7 +717,7 @@ where
 ///
 /// let app = nest("/api", users_api).route("/careers", get(careers));
 /// # async {
-/// # hyper::Server::bind(&"".parse().unwrap()).serve(tower::make::Shared::new(app)).await;
+/// # app.serve(&"".parse().unwrap()).await.unwrap();
 /// # };
 /// ```
 ///
@@ -683,7 +738,7 @@ where
 ///
 /// let app = nest("/:version/api", users_api);
 /// # async {
-/// # hyper::Server::bind(&"".parse().unwrap()).serve(tower::make::Shared::new(app)).await;
+/// # app.serve(&"".parse().unwrap()).await.unwrap();
 /// # };
 /// ```
 ///
@@ -702,7 +757,7 @@ where
 ///
 /// let app = nest("/public", get(serve_dir_service));
 /// # async {
-/// # hyper::Server::bind(&"".parse().unwrap()).serve(tower::make::Shared::new(app)).await;
+/// # app.serve(&"".parse().unwrap()).await.unwrap();
 /// # };
 /// ```
 ///

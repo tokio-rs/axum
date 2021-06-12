@@ -13,7 +13,10 @@ repository = "https://github.com/davidpdrsn/tower-web"
 version = "0.1.0"
 
 [features]
+default = ["hyper-h1"]
 ws = ["tokio-tungstenite", "sha-1", "base64"]
+hyper-h1 = ["hyper/http1"]
+hyper-h2 = ["hyper/http2"]
 
 [dependencies]
 async-trait = "0.1"
@@ -21,14 +24,14 @@ bytes = "1.0"
 futures-util = "0.3"
 http = "0.2"
 http-body = "0.4"
-hyper = "0.14"
+hyper = { version = "0.14", features = ["server", "tcp"] }
 pin-project = "1.0"
 regex = "1.5"
 serde = "1.0"
 serde_json = "1.0"
 serde_urlencoded = "0.7"
 tokio = { version = "1", features = ["time"] }
-tower = { version = "0.4", features = ["util", "buffer"] }
+tower = { version = "0.4", features = ["util", "buffer", "make"] }
 tower-http = { version = "0.1", features = ["add-extension"] }
 
 # optional dependencies
@@ -49,7 +52,6 @@ uuid = "0.8"
 version = "0.4"
 features = [
     "util",
-    "make",
     "timeout",
     "limit",
     "load-shed",
