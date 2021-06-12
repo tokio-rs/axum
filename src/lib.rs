@@ -33,9 +33,8 @@
 //!     let app = route("/", get(|| async { "Hello, World!" }));
 //!
 //!     // run it with hyper on localhost:3000
-//!     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
-//!     Server::bind(&addr)
-//!         .serve(Shared::new(app))
+//!     app
+//!         .serve(&"0.0.0.0:3000".parse().unwrap())
 //!         .await
 //!         .unwrap();
 //! }
@@ -63,7 +62,7 @@
 //!     // `GET /foo` called
 //! }
 //! # async {
-//! # hyper::Server::bind(&"".parse().unwrap()).serve(tower::make::Shared::new(app)).await;
+//! # app.serve(&"".parse().unwrap()).await.unwrap();
 //! # };
 //! ```
 //!
@@ -142,7 +141,7 @@
 //!     .route("/result", get(result))
 //!     .route("/response", get(response));
 //! # async {
-//! # hyper::Server::bind(&"".parse().unwrap()).serve(tower::make::Shared::new(app)).await;
+//! # app.serve(&"".parse().unwrap()).await.unwrap();
 //! # };
 //! ```
 //!
@@ -175,7 +174,7 @@
 //!     // ...
 //! }
 //! # async {
-//! # hyper::Server::bind(&"".parse().unwrap()).serve(tower::make::Shared::new(app)).await;
+//! # app.serve(&"".parse().unwrap()).await.unwrap();
 //! # };
 //! ```
 //!
@@ -195,7 +194,7 @@
 //!     // ...
 //! }
 //! # async {
-//! # hyper::Server::bind(&"".parse().unwrap()).serve(tower::make::Shared::new(app)).await;
+//! # app.serve(&"".parse().unwrap()).await.unwrap();
 //! # };
 //! ```
 //!
@@ -233,7 +232,7 @@
 //!     // ...
 //! }
 //! # async {
-//! # hyper::Server::bind(&"".parse().unwrap()).serve(tower::make::Shared::new(app)).await;
+//! # app.serve(&"".parse().unwrap()).await.unwrap();
 //! # };
 //! ```
 //!
@@ -248,7 +247,7 @@
 //!     // ...
 //! }
 //! # async {
-//! # hyper::Server::bind(&"".parse().unwrap()).serve(tower::make::Shared::new(app)).await;
+//! # app.serve(&"".parse().unwrap()).await.unwrap();
 //! # };
 //! ```
 //!
@@ -279,7 +278,7 @@
 //!
 //! async fn handler() {}
 //! # async {
-//! # hyper::Server::bind(&"".parse().unwrap()).serve(tower::make::Shared::new(app)).await;
+//! # app.serve(&"".parse().unwrap()).await.unwrap();
 //! # };
 //! ```
 //!
@@ -299,7 +298,7 @@
 //!
 //! async fn post_foo() {}
 //! # async {
-//! # hyper::Server::bind(&"".parse().unwrap()).serve(tower::make::Shared::new(app)).await;
+//! # app.serve(&"".parse().unwrap()).await.unwrap();
 //! # };
 //! ```
 //!
@@ -349,7 +348,7 @@
 //!
 //! async fn handle() {}
 //! # async {
-//! # hyper::Server::bind(&"".parse().unwrap()).serve(tower::make::Shared::new(app)).await;
+//! # app.serve(&"".parse().unwrap()).await.unwrap();
 //! # };
 //! ```
 //!
@@ -375,7 +374,7 @@
 //!
 //! async fn other_handle() {}
 //! # async {
-//! # hyper::Server::bind(&"".parse().unwrap()).serve(tower::make::Shared::new(app)).await;
+//! # app.serve(&"".parse().unwrap()).await.unwrap();
 //! # };
 //! ```
 //!
@@ -428,7 +427,7 @@
 //!         );
 //!     });
 //! # async {
-//! # hyper::Server::bind(&"".parse().unwrap()).serve(tower::make::Shared::new(app)).await;
+//! # app.serve(&"".parse().unwrap()).await.unwrap();
 //! # };
 //! ```
 //!
@@ -459,7 +458,7 @@
 //!     // ...
 //! }
 //! # async {
-//! # hyper::Server::bind(&"".parse().unwrap()).serve(tower::make::Shared::new(app)).await;
+//! # app.serve(&"".parse().unwrap()).await.unwrap();
 //! # };
 //! ```
 //!
@@ -494,7 +493,7 @@
 //!     )
 //! );
 //! # async {
-//! # hyper::Server::bind(&"".parse().unwrap()).serve(tower::make::Shared::new(app)).await;
+//! # app.serve(&"".parse().unwrap()).await.unwrap();
 //! # };
 //! ```
 //!
@@ -518,7 +517,7 @@
 //! let app = route("/", get(|_: Request<Body>| async { /* ... */ }))
 //!     .nest("/api", api_routes());
 //! # async {
-//! # hyper::Server::bind(&"".parse().unwrap()).serve(tower::make::Shared::new(app)).await;
+//! # app.serve(&"".parse().unwrap()).await.unwrap();
 //! # };
 //! ```
 //!
@@ -538,7 +537,7 @@
 //!     })
 //! );
 //! # async {
-//! # hyper::Server::bind(&"".parse().unwrap()).serve(tower::make::Shared::new(app)).await;
+//! # app.serve(&"".parse().unwrap()).await.unwrap();
 //! # };
 //! ```
 //!

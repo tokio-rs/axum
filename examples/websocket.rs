@@ -10,9 +10,7 @@
 //! ```
 
 use http::StatusCode;
-use hyper::Server;
 use std::net::SocketAddr;
-use tower::make::Shared;
 use tower_http::{
     services::ServeDir,
     trace::{DefaultMakeSpan, TraceLayer},
@@ -46,8 +44,7 @@ async fn main() {
     // run it with hyper
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
     tracing::debug!("listening on {}", addr);
-    let server = Server::bind(&addr).serve(Shared::new(app));
-    server.await.unwrap();
+    app.serve(&addr).await.unwrap();
 }
 
 async fn handle_socket(mut socket: WebSocket) {

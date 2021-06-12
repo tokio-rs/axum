@@ -20,7 +20,7 @@
 //! let app = route("/old", service::get(redirect_service))
 //!     .route("/new", handler::get(handler));
 //! # async {
-//! # hyper::Server::bind(&"".parse().unwrap()).serve(tower::make::Shared::new(app)).await;
+//! # app.serve(&"".parse().unwrap()).await.unwrap();
 //! # };
 //! ```
 //!
@@ -527,7 +527,7 @@ pub trait ServiceExt<B>: Service<Request<Body>, Response = Response<B>> {
     /// );
     /// #
     /// # async {
-    /// # hyper::Server::bind(&"".parse().unwrap()).serve(tower::make::Shared::new(app)).await;
+    /// # app.serve(&"".parse().unwrap()).await.unwrap();
     /// # };
     /// ```
     fn handle_error<F, Res>(self, f: F) -> HandleError<Self, F>

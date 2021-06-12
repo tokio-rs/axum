@@ -12,7 +12,7 @@ async fn main() {
     // run it
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
     tracing::debug!("listening on {}", addr);
-    app.serve(addr).await.unwrap();
+    app.serve(&addr).await.unwrap();
 }
 
 async fn handler() -> response::Html<&'static str> {

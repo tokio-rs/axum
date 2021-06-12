@@ -25,7 +25,7 @@
 //!
 //! let app = route("/users", post(create_user));
 //! # async {
-//! # hyper::Server::bind(&"".parse().unwrap()).serve(tower::make::Shared::new(app)).await;
+//! # app.serve(&"".parse().unwrap()).await.unwrap();
 //! # };
 //! ```
 //!
@@ -60,7 +60,7 @@
 //!
 //! let app = route("/foo", get(handler));
 //! # async {
-//! # hyper::Server::bind(&"".parse().unwrap()).serve(tower::make::Shared::new(app)).await;
+//! # app.serve(&"".parse().unwrap()).await.unwrap();
 //! # };
 //! ```
 //!
@@ -85,7 +85,7 @@
 //!
 //! let app = route("/foo", get(handler));
 //! # async {
-//! # hyper::Server::bind(&"".parse().unwrap()).serve(tower::make::Shared::new(app)).await;
+//! # app.serve(&"".parse().unwrap()).await.unwrap();
 //! # };
 //! ```
 //!
@@ -107,7 +107,7 @@
 //!
 //! let app = route("/users", post(create_user));
 //! # async {
-//! # hyper::Server::bind(&"".parse().unwrap()).serve(tower::make::Shared::new(app)).await;
+//! # app.serve(&"".parse().unwrap()).await.unwrap();
 //! # };
 //! ```
 //!
@@ -126,7 +126,7 @@
 //!
 //! let app = route("/users", post(create_user));
 //! # async {
-//! # hyper::Server::bind(&"".parse().unwrap()).serve(tower::make::Shared::new(app)).await;
+//! # app.serve(&"".parse().unwrap()).await.unwrap();
 //! # };
 //! ```
 

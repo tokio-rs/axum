@@ -8,7 +8,6 @@
 
 use bytes::Bytes;
 use http::StatusCode;
-use hyper::Server;
 use std::{
     borrow::Cow,
     collections::HashMap,
@@ -16,7 +15,7 @@ use std::{
     sync::{Arc, RwLock},
     time::Duration,
 };
-use tower::{make::Shared, BoxError, ServiceBuilder};
+use tower::{BoxError, ServiceBuilder};
 use tower_http::{
     add_extension::AddExtensionLayer, auth::RequireAuthorizationLayer,
     compression::CompressionLayer, trace::TraceLayer,
@@ -60,8 +59,7 @@ async fn main() {
     // Run our app with hyper
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
     tracing::debug!("listening on {}", addr);
-    let server = Server::bind(&addr).serve(Shared::new(app));
-    server.await.unwrap();
+    app.serve(&addr).await.unwrap();
 }
 
 type SharedState = Arc<RwLock<State>>;
