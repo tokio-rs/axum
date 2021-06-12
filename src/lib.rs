@@ -510,7 +510,7 @@
 //! use http::Response;
 //! use std::convert::Infallible;
 //!
-//! fn api_routes() -> BoxRoute<BoxBody> {
+//! fn api_routes() -> BoxRoute {
 //!     route("/users", get(|_: Request<Body>| async { /* ... */ })).boxed()
 //! }
 //!
@@ -690,19 +690,6 @@ where
     use routing::RoutingDsl;
 
     routing::EmptyRouter.route(description, service)
-}
-
-pub(crate) trait ResultExt<T> {
-    fn unwrap_infallible(self) -> T;
-}
-
-impl<T> ResultExt<T> for Result<T, Infallible> {
-    fn unwrap_infallible(self) -> T {
-        match self {
-            Ok(value) => value,
-            Err(err) => match err {},
-        }
-    }
 }
 
 mod sealed {

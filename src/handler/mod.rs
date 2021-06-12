@@ -39,15 +39,14 @@
 //! the [`extract`](crate::extract) module.
 
 use crate::{
-    body::{Body, BoxBody},
+    body::{self, Body, BoxBody},
     extract::FromRequest,
     response::IntoResponse,
-    routing::{BoxResponseBody, EmptyRouter, MethodFilter, RouteFuture},
+    routing::{EmptyRouter, MethodFilter, RouteFuture},
     service::HandleError,
 };
 use async_trait::async_trait;
 use bytes::Bytes;
-use futures_util::future::Either;
 use http::{Request, Response};
 use std::{
     convert::Infallible,
@@ -647,14 +646,14 @@ impl<S, F> OnMethod<S, F> {
 impl<S, F, SB, FB> Service<Request<Body>> for OnMethod<S, F>
 where
     S: Service<Request<Body>, Response = Response<SB>, Error = Infallible> + Clone,
-    SB: http_body::Body<Data = Bytes> + Send + Sync + 'static,
-    SB::Error: Into<BoxError>,
-
     F: Service<Request<Body>, Response = Response<FB>, Error = Infallible> + Clone,
-    FB: http_body::Body<Data = Bytes> + Send + Sync + 'static,
+
+    SB: http_body::Body<Data = Bytes>,
+    SB::Error: Into<BoxError>,
+    FB: http_body::Body<Data = Bytes>,
     FB::Error: Into<BoxError>,
 {
-    type Response = Response<BoxBody>;
+    type Response = Response<body::Or<SB, FB>>;
     type Error = Infallible;
     type Future = RouteFuture<S, F>;
 
@@ -663,13 +662,12 @@ where
     }
 
     fn call(&mut self, req: Request<Body>) -> Self::Future {
-        let f = if self.method.matches(req.method()) {
-            let response_future = self.svc.clone().oneshot(req);
-            Either::Left(BoxResponseBody(response_future))
+        if self.method.matches(req.method()) {
+            let fut = self.svc.clone().oneshot(req);
+            RouteFuture::a(fut)
         } else {
-            let response_future = self.fallback.clone().oneshot(req);
-            Either::Right(BoxResponseBody(response_future))
-        };
-        RouteFuture(f)
+            let fut = self.fallback.clone().oneshot(req);
+            RouteFuture::b(fut)
+        }
     }
 }

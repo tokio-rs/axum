@@ -1,6 +1,9 @@
 //! Routing between [`Service`]s.
 
-use crate::{body::BoxBody, response::IntoResponse, ResultExt};
+use crate::{
+    body::{self, BoxBody},
+    response::IntoResponse,
+};
 use async_trait::async_trait;
 use bytes::Bytes;
 use futures_util::{future, ready};
@@ -23,6 +26,7 @@ use tower::{
     util::{BoxService, Oneshot, ServiceExt},
     BoxError, Layer, Service, ServiceBuilder,
 };
+use tower_http::map_response_body::MapResponseBodyLayer;
 
 /// A filter that matches one or more HTTP method.
 #[derive(Debug, Copy, Clone)]
@@ -132,7 +136,7 @@ pub trait RoutingDsl: crate::sealed::Sealed + Sized {
     /// return them from functions:
     ///
     /// ```rust
-    /// use tower_web::{body::BoxBody, routing::BoxRoute, prelude::*};
+    /// use tower_web::{routing::BoxRoute, prelude::*};
     ///
     /// async fn first_handler() { /* ... */ }
     ///
@@ -140,7 +144,7 @@ pub trait RoutingDsl: crate::sealed::Sealed + Sized {
     ///
     /// async fn third_handler() { /* ... */ }
     ///
-    /// fn app() -> BoxRoute<BoxBody> {
+    /// fn app() -> BoxRoute {
     ///     route("/", get(first_handler).post(second_handler))
     ///         .route("/foo", get(third_handler))
     ///         .boxed()
@@ -149,7 +153,7 @@ pub trait RoutingDsl: crate::sealed::Sealed + Sized {
     ///
     /// It also helps with compile times when you have a very large number of
     /// routes.
-    fn boxed<B>(self) -> BoxRoute<B>
+    fn boxed<B>(self) -> BoxRoute
     where
         Self: Service<Request<Body>, Response = Response<B>, Error = Infallible> + Send + 'static,
         <Self as Service<Request<Body>>>::Future: Send,
@@ -160,6 +164,7 @@ pub trait RoutingDsl: crate::sealed::Sealed + Sized {
             .layer_fn(BoxRoute)
             .buffer(1024)
             .layer(BoxService::layer())
+            .layer(MapResponseBodyLayer::new(BoxBody::new))
             .service(self)
     }
 
@@ -292,14 +297,14 @@ impl<S, F> crate::sealed::Sealed for Route<S, F> {}
 impl<S, F, SB, FB> Service<Request<Body>> for Route<S, F>
 where
     S: Service<Request<Body>, Response = Response<SB>, Error = Infallible> + Clone,
-    SB: http_body::Body<Data = Bytes> + Send + Sync + 'static,
-    SB::Error: Into<BoxError>,
-
     F: Service<Request<Body>, Response = Response<FB>, Error = Infallible> + Clone,
-    FB: http_body::Body<Data = Bytes> + Send + Sync + 'static,
+
+    SB: http_body::Body<Data = Bytes>,
+    SB::Error: Into<BoxError>,
+    FB: http_body::Body<Data = Bytes>,
     FB::Error: Into<BoxError>,
 {
-    type Response = Response<BoxBody>;
+    type Response = Response<body::Or<SB, FB>>;
     type Error = Infallible;
     type Future = RouteFuture<S, F>;
 
@@ -308,45 +313,71 @@ where
     }
 
     fn call(&mut self, mut req: Request<Body>) -> Self::Future {
-        let f = if let Some(captures) = self.pattern.full_match(req.uri().path()) {
+        if let Some(captures) = self.pattern.full_match(req.uri().path()) {
             insert_url_params(&mut req, captures);
-            let response_future = self.svc.clone().oneshot(req);
-            future::Either::Left(BoxResponseBody(response_future))
+            let fut = self.svc.clone().oneshot(req);
+            RouteFuture::a(fut)
         } else {
-            let response_future = self.fallback.clone().oneshot(req);
-            future::Either::Right(BoxResponseBody(response_future))
-        };
-        RouteFuture(f)
+            let fut = self.fallback.clone().oneshot(req);
+            RouteFuture::b(fut)
+        }
     }
 }
 
 /// The response future for [`Route`].
 #[pin_project]
 #[derive(Debug)]
-pub struct RouteFuture<S, F>(
-    #[pin]
-    pub(crate)  future::Either<
-        BoxResponseBody<Oneshot<S, Request<Body>>>,
-        BoxResponseBody<Oneshot<F, Request<Body>>>,
-    >,
-)
+pub struct RouteFuture<S, F>(#[pin] RouteFutureInner<S, F>)
 where
     S: Service<Request<Body>>,
     F: Service<Request<Body>>;
 
+impl<S, F> RouteFuture<S, F>
+where
+    S: Service<Request<Body>>,
+    F: Service<Request<Body>>,
+{
+    pub(crate) fn a(a: Oneshot<S, Request<Body>>) -> Self {
+        RouteFuture(RouteFutureInner::A(a))
+    }
+
+    pub(crate) fn b(b: Oneshot<F, Request<Body>>) -> Self {
+        RouteFuture(RouteFutureInner::B(b))
+    }
+}
+
+#[pin_project(project = RouteFutureInnerProj)]
+#[derive(Debug)]
+enum RouteFutureInner<S, F>
+where
+    S: Service<Request<Body>>,
+    F: Service<Request<Body>>,
+{
+    A(#[pin] Oneshot<S, Request<Body>>),
+    B(#[pin] Oneshot<F, Request<Body>>),
+}
+
 impl<S, F, SB, FB> Future for RouteFuture<S, F>
 where
     S: Service<Request<Body>, Response = Response<SB>, Error = Infallible>,
-    SB: http_body::Body<Data = Bytes> + Send + Sync + 'static,
-    SB::Error: Into<BoxError>,
     F: Service<Request<Body>, Response = Response<FB>, Error = Infallible>,
-    FB: http_body::Body<Data = Bytes> + Send + Sync + 'static,
+
+    SB: http_body::Body<Data = Bytes>,
+    SB::Error: Into<BoxError>,
+    FB: http_body::Body<Data = Bytes>,
     FB::Error: Into<BoxError>,
 {
-    type Output = Result<Response<BoxBody>, Infallible>;
+    type Output = Result<Response<body::Or<SB, FB>>, Infallible>;
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        self.project().0.poll(cx)
+        match self.project().0.project() {
+            RouteFutureInnerProj::A(inner) => inner
+                .poll(cx)
+                .map(|result| result.map(|res| res.map(body::Or::a))),
+            RouteFutureInnerProj::B(inner) => inner
+                .poll(cx)
+                .map(|result| result.map(|res| res.map(body::Or::b))),
+        }
     }
 }
 
@@ -360,29 +391,6 @@ fn insert_url_params<B>(req: &mut Request<B>, params: Vec<(String, String)>) {
         req.extensions_mut().insert(Some(current));
     } else {
         req.extensions_mut().insert(Some(UrlParams(params)));
-    }
-}
-
-/// A response future that boxes the response body with [`BoxBody`].
-#[pin_project]
-#[derive(Debug)]
-pub struct BoxResponseBody<F>(#[pin] pub(crate) F);
-
-impl<F, B> Future for BoxResponseBody<F>
-where
-    F: Future<Output = Result<Response<B>, Infallible>>,
-    B: http_body::Body<Data = Bytes> + Send + Sync + 'static,
-    B::Error: Into<BoxError>,
-{
-    type Output = Result<Response<BoxBody>, Infallible>;
-
-    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        let response: Response<B> = ready!(self.project().0.poll(cx)).unwrap_infallible();
-        let response = response.map(|body| {
-            let body = body.map_err(Into::into);
-            BoxBody::new(body)
-        });
-        Poll::Ready(Ok(response))
     }
 }
 
@@ -513,32 +521,25 @@ type Captures = Vec<(String, String)>;
 /// A boxed route trait object.
 ///
 /// See [`RoutingDsl::boxed`] for more details.
-pub struct BoxRoute<B>(Buffer<BoxService<Request<Body>, Response<B>, Infallible>, Request<Body>>);
+#[derive(Clone)]
+pub struct BoxRoute(
+    Buffer<BoxService<Request<Body>, Response<BoxBody>, Infallible>, Request<Body>>,
+);
 
-impl<B> fmt::Debug for BoxRoute<B> {
+impl fmt::Debug for BoxRoute {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("BoxRoute").finish()
     }
 }
 
-impl<B> Clone for BoxRoute<B> {
-    fn clone(&self) -> Self {
-        Self(self.0.clone())
-    }
-}
+impl RoutingDsl for BoxRoute {}
 
-impl<B> RoutingDsl for BoxRoute<B> {}
+impl crate::sealed::Sealed for BoxRoute {}
 
-impl<B> crate::sealed::Sealed for BoxRoute<B> {}
-
-impl<B> Service<Request<Body>> for BoxRoute<B>
-where
-    B: http_body::Body<Data = Bytes> + Send + Sync + 'static,
-    B::Error: Into<BoxError> + Send + Sync + 'static,
-{
+impl Service<Request<Body>> for BoxRoute {
     type Response = Response<BoxBody>;
     type Error = Infallible;
-    type Future = BoxRouteFuture<B>;
+    type Future = BoxRouteFuture;
 
     #[inline]
     fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
@@ -553,29 +554,25 @@ where
 
 /// The response future for [`BoxRoute`].
 #[pin_project]
-pub struct BoxRouteFuture<B>(#[pin] InnerFuture<B>);
+pub struct BoxRouteFuture(#[pin] InnerFuture);
 
-type InnerFuture<B> = Oneshot<
-    Buffer<BoxService<Request<Body>, Response<B>, Infallible>, Request<Body>>,
+type InnerFuture = Oneshot<
+    Buffer<BoxService<Request<Body>, Response<BoxBody>, Infallible>, Request<Body>>,
     Request<Body>,
 >;
 
-impl<B> fmt::Debug for BoxRouteFuture<B> {
+impl fmt::Debug for BoxRouteFuture {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("BoxRouteFuture").finish()
     }
 }
 
-impl<B> Future for BoxRouteFuture<B>
-where
-    B: http_body::Body<Data = Bytes> + Send + Sync + 'static,
-    B::Error: Into<BoxError> + Send + Sync + 'static,
-{
+impl Future for BoxRouteFuture {
     type Output = Result<Response<BoxBody>, Infallible>;
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         match ready!(self.project().0.poll(cx)) {
-            Ok(res) => Poll::Ready(Ok(res.map(BoxBody::new))),
+            Ok(res) => Poll::Ready(Ok(res)),
             Err(err) => Poll::Ready(Ok(handle_buffer_error(err))),
         }
     }
@@ -792,14 +789,14 @@ impl<S, F> crate::sealed::Sealed for Nested<S, F> {}
 impl<S, F, SB, FB> Service<Request<Body>> for Nested<S, F>
 where
     S: Service<Request<Body>, Response = Response<SB>, Error = Infallible> + Clone,
-    SB: http_body::Body<Data = Bytes> + Send + Sync + 'static,
-    SB::Error: Into<BoxError>,
-
     F: Service<Request<Body>, Response = Response<FB>, Error = Infallible> + Clone,
-    FB: http_body::Body<Data = Bytes> + Send + Sync + 'static,
+
+    SB: http_body::Body<Data = Bytes>,
+    SB::Error: Into<BoxError>,
+    FB: http_body::Body<Data = Bytes>,
     FB::Error: Into<BoxError>,
 {
-    type Response = Response<BoxBody>;
+    type Response = Response<body::Or<SB, FB>>;
     type Error = Infallible;
     type Future = RouteFuture<S, F>;
 
@@ -808,18 +805,17 @@ where
     }
 
     fn call(&mut self, mut req: Request<Body>) -> Self::Future {
-        let f = if let Some((prefix, captures)) = self.pattern.prefix_match(req.uri().path()) {
+        if let Some((prefix, captures)) = self.pattern.prefix_match(req.uri().path()) {
             let without_prefix = strip_prefix(req.uri(), prefix);
             *req.uri_mut() = without_prefix;
 
             insert_url_params(&mut req, captures);
-            let response_future = self.svc.clone().oneshot(req);
-            future::Either::Left(BoxResponseBody(response_future))
+            let fut = self.svc.clone().oneshot(req);
+            RouteFuture::a(fut)
         } else {
-            let response_future = self.fallback.clone().oneshot(req);
-            future::Either::Right(BoxResponseBody(response_future))
-        };
-        RouteFuture(f)
+            let fut = self.fallback.clone().oneshot(req);
+            RouteFuture::b(fut)
+        }
     }
 }
 
