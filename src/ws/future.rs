@@ -3,7 +3,7 @@
 use bytes::Bytes;
 use http::{HeaderValue, Response, StatusCode};
 use http_body::Full;
-use sha1::{Sha1, Digest};
+use sha1::{Digest, Sha1};
 use std::{
     convert::Infallible,
     future::Future,
