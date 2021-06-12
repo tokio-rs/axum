@@ -234,6 +234,38 @@ impl<S, F> RoutingDsl for Route<S, F> {}
 
 impl<S, F> crate::sealed::Sealed for Route<S, F> {}
 
+impl<S, F> Route<S, F> {
+    /// TODO
+    pub fn into_make_service(self) -> tower::make::Shared<Self>
+    where
+        S: Clone,
+        F: Clone,
+    {
+        tower::make::Shared::new(self)
+    }
+
+    /// TODO
+    pub async fn serve<B>(self, addr: std::net::SocketAddr) -> Result<(), hyper::Error>
+    where
+        S: Service<Request<Body>, Response = Response<B>, Error = Infallible>
+            + Clone
+            + Send
+            + 'static,
+        S::Future: Send,
+        F: Service<Request<Body>, Response = Response<B>, Error = Infallible>
+            + Clone
+            + Send
+            + 'static,
+        F::Future: Send,
+        B: http_body::Body<Data = Bytes> + Send + Sync + 'static,
+        B::Error: Into<BoxError> + Send + Sync + 'static,
+    {
+        hyper::Server::bind(&addr)
+            .serve(self.into_make_service())
+            .await
+    }
+}
+
 impl<S, F, SB, FB> Service<Request<Body>> for Route<S, F>
 where
     S: Service<Request<Body>, Response = Response<SB>, Error = Infallible> + Clone,
