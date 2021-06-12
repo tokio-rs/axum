@@ -71,9 +71,13 @@ This project is licensed under the [MIT license](LICENSE).
 ### Contribution
 
 Unless you explicitly state otherwise, any contribution intentionally submitted
-for inclusion in Tower HTTP by you, shall be licensed as MIT, without any
+for inclusion in tower-web by you, shall be licensed as MIT, without any
 additional terms or conditions.
 
 [examples]: https://github.com/davidpdrsn/tower-web/tree/master/examples
 [docs]: https://docs.rs/tower-http/0.1.0
+[tower]: https://crates.io/crates/tower
+[tower-http]: https://crates.io/crates/tower-http
 [guide]: CONTRIBUTING.md
+[chat]: https://discord.gg/tokio
+[issue]: https://github.com/davidpdrsn/tower-web/issues/new
