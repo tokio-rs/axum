@@ -547,7 +547,7 @@
 //! [tokio]: http://crates.io/crates/tokio
 //! [hyper]: http://crates.io/crates/hyper
 
-// #![doc(html_root_url = "https://docs.rs/tower-http/0.1.0")]
+#![doc(html_root_url = "https://docs.rs/tower-http/0.1.0")]
 #![warn(
     clippy::all,
     clippy::dbg_macro,

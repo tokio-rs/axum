@@ -1,8 +1,16 @@
 [package]
-name = "tower-web"
-version = "0.1.0"
 authors = ["David Pedersen <david.pdrsn@gmail.com>"]
+categories = []
+description = "Web framework that focuses on ergonomics and modularity"
+documentation = "https://docs.rs/tower-http/0.1.0"
 edition = "2018"
+homepage = "https://github.com/davidpdrsn/tower-web"
+keywords = ["http", "web", "framework"]
+license = "MIT"
+name = "tower-web"
+readme = "README.md"
+repository = "https://github.com/davidpdrsn/tower-web"
+version = "0.1.0"
 
 [dependencies]
 async-trait = "0.1"
@@ -41,3 +49,10 @@ features = [
     "redirect",
     "trace",
 ]
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
+[package.metadata.playground]
+features = ["ws"]

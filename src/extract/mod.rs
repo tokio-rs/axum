@@ -133,14 +133,14 @@
 use crate::{body::Body, response::IntoResponse};
 use async_trait::async_trait;
 use bytes::Bytes;
-use http::{HeaderMap, Method, Request, Response, Uri, Version, header};
+use http::{header, HeaderMap, Method, Request, Response, Uri, Version};
 use rejection::{
     BodyAlreadyExtracted, FailedToBufferBody, InvalidJsonBody, InvalidUrlParam, InvalidUtf8,
     LengthRequired, MissingExtension, MissingJsonContentType, MissingRouteParams, PayloadTooLarge,
     QueryStringMissing, RequestAlreadyExtracted, UrlParamsAlreadyExtracted,
 };
 use serde::de::DeserializeOwned;
-use std::{collections::HashMap, mem, convert::Infallible, str::FromStr};
+use std::{collections::HashMap, convert::Infallible, mem, str::FromStr};
 
 pub mod rejection;
 

@@ -1,0 +1,72 @@
+name: CI
+
+on:
+  push:
+    branches:
+    - master
+  pull_request: {}
+
+jobs:
+  check:
+    # Run `cargo check` first to ensure that the pushed code at least compiles.
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        rust: [stable, 1.40.0]
+    steps:
+    - uses: actions/checkout@master
+    - uses: actions-rs/toolchain@v1
+      with:
+        toolchain: ${{ matrix.rust }}
+        profile: minimal
+    - name: Check
+      uses: actions-rs/cargo@v1
+      with:
+        command: clippy
+        args: --all --all-targets --all-features
+    - name: rustfmt
+      uses: actions-rs/cargo@v1
+      with:
+        command: fmt
+        args: --all -- --check
+
+  cargo-hack:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@master
+    - uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        profile: minimal
+    - name: Install cargo-hack
+      run: |
+        curl -LsSf https://github.com/taiki-e/cargo-hack/releases/latest/download/cargo-hack-x86_64-unknown-linux-gnu.tar.gz | tar xzf - -C ~/.cargo/bin
+    - name: cargo hack check
+      working-directory: ${{ matrix.subcrate }}
+      run: cargo hack check --each-feature --no-dev-deps --all
+
+  test-versions:
+    # Test against the stable, beta, and nightly Rust toolchains on ubuntu-latest.
+    needs: check
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        rust: [stable, beta, nightly, 1.40.0]
+    steps:
+    - uses: actions/checkout@master
+    - uses: actions-rs/toolchain@v1
+      with:
+        toolchain: ${{ matrix.rust }}
+        profile: minimal
+    - name: Run tests
+      uses: actions-rs/cargo@v1
+      with:
+        command: test
+        args: --all --all-features
+
+  deny-check:
+    name: cargo-deny check
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v1
+    - uses: EmbarkStudios/cargo-deny-action@v1
