@@ -29,9 +29,16 @@ async fn main() {
     // build our application with some routes
     let app = nest(
         "/",
-        ServeDir::new("examples/websocket")
-            .append_index_html_on_directories(true)
-            .handle_error(|error| (StatusCode::INTERNAL_SERVER_ERROR, error.to_string())),
+        tower_web::service::get(
+            ServeDir::new("examples/websocket")
+                .append_index_html_on_directories(true)
+                .handle_error(|error: std::io::Error| {
+                    (
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        format!("Unhandled interal error: {}", error),
+                    )
+                }),
+        ),
     )
     // routes are matched from bottom to top, so we have to put `nest` at the
     // top since it matches all routes
