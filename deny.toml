@@ -1,0 +1,24 @@
+[advisories]
+vulnerability = "deny"
+unmaintained = "warn"
+notice = "warn"
+ignore = []
+
+[licenses]
+unlicensed = "deny"
+allow = []
+deny = []
+copyleft = "warn"
+allow-osi-fsf-free = "either"
+confidence-threshold = 0.8
+
+[bans]
+multiple-versions = "deny"
+highlight = "all"
+skip-tree = []
+skip = []
+
+[sources]
+unknown-registry = "warn"
+unknown-git = "warn"
+allow-git = []
