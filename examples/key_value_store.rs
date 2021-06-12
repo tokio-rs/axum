@@ -21,7 +21,6 @@ use tower_http::{
     compression::CompressionLayer, trace::TraceLayer,
 };
 use tower_web::{
-    body::BoxBody,
     extract::{ContentLengthLimit, Extension, UrlParams},
     prelude::*,
     response::IntoResponse,
@@ -99,7 +98,7 @@ async fn list_keys(Extension(state): Extension<SharedState>) -> String {
         .join("\n")
 }
 
-fn admin_routes() -> BoxRoute<BoxBody> {
+fn admin_routes() -> BoxRoute {
     async fn delete_all_keys(Extension(state): Extension<SharedState>) {
         state.write().unwrap().db.clear();
     }
