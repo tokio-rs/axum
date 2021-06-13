@@ -272,6 +272,30 @@ async fn extracting_url_params() {
 }
 
 #[tokio::test]
+async fn extracting_url_params_multiple_times() {
+    let app = route(
+        "/users/:id",
+        get(
+            |_: extract::UrlParams<(i32,)>,
+             _: extract::UrlParamsMap,
+             _: extract::UrlParams<(i32,)>,
+             _: extract::UrlParamsMap| async {},
+        ),
+    );
+
+    let addr = run_in_background(app).await;
+
+    let client = reqwest::Client::new();
+
+    let res = client
+        .get(format!("http://{}/users/42", addr))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+}
+
+#[tokio::test]
 async fn boxing() {
     let app = route(
         "/",

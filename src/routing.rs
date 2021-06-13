@@ -1,6 +1,6 @@
 //! Routing between [`Service`]s.
 
-use crate::{body::BoxBody, response::IntoResponse};
+use crate::{body::BoxBody, response::IntoResponse, util::ByteStr};
 use async_trait::async_trait;
 use bytes::Bytes;
 use futures_util::{future, ready};
@@ -365,15 +365,20 @@ where
 }
 
 #[derive(Debug)]
-pub(crate) struct UrlParams(pub(crate) Vec<(String, String)>);
+pub(crate) struct UrlParams(pub(crate) Vec<(ByteStr, ByteStr)>);
 
 fn insert_url_params<B>(req: &mut Request<B>, params: Vec<(String, String)>) {
+    let params = params
+        .into_iter()
+        .map(|(k, v)| (ByteStr::new(k), ByteStr::new(v)));
+
     if let Some(current) = req.extensions_mut().get_mut::<Option<UrlParams>>() {
         let mut current = current.take().unwrap();
         current.0.extend(params);
         req.extensions_mut().insert(Some(current));
     } else {
-        req.extensions_mut().insert(Some(UrlParams(params)));
+        req.extensions_mut()
+            .insert(Some(UrlParams(params.collect())));
     }
 }
 
