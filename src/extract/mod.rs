@@ -132,11 +132,12 @@
 
 use crate::{body::Body, response::IntoResponse};
 use async_trait::async_trait;
-use bytes::Bytes;
+use bytes::{Buf, Bytes};
 use http::{header, HeaderMap, Method, Request, Response, Uri, Version};
 use rejection::{
-    BodyAlreadyExtracted, FailedToBufferBody, InvalidJsonBody, InvalidUrlParam, InvalidUtf8,
-    LengthRequired, MissingExtension, MissingJsonContentType, MissingRouteParams, PayloadTooLarge,
+    BodyAlreadyExtracted, FailedToBufferBody, FailedToDeserializeQueryString,
+    InvalidFormContentType, InvalidJsonBody, InvalidUrlParam, InvalidUtf8, LengthRequired,
+    MissingExtension, MissingJsonContentType, MissingRouteParams, PayloadTooLarge,
     QueryStringMissing, RequestAlreadyExtracted, UrlParamsAlreadyExtracted,
 };
 use serde::de::DeserializeOwned;
@@ -192,10 +193,11 @@ where
 ///
 ///     // ...
 /// }
+///
 /// let app = route("/list_things", get(list_things));
 /// ```
 ///
-/// If the query string cannot be parsed it will reject the request with a `404
+/// If the query string cannot be parsed it will reject the request with a `400
 /// Bad Request` response.
 #[derive(Debug, Clone, Copy, Default)]
 pub struct Query<T>(pub T);
@@ -205,12 +207,86 @@ impl<T> FromRequest for Query<T>
 where
     T: DeserializeOwned,
 {
-    type Rejection = QueryStringMissing;
+    type Rejection = Response<Body>;
 
     async fn from_request(req: &mut Request<Body>) -> Result<Self, Self::Rejection> {
-        let query = req.uri().query().ok_or(QueryStringMissing)?;
-        let value = serde_urlencoded::from_str(query).map_err(|_| QueryStringMissing)?;
+        let query = req
+            .uri()
+            .query()
+            .ok_or(QueryStringMissing)
+            .map_err(IntoResponse::into_response)?;
+        let value = serde_urlencoded::from_str(query)
+            .map_err(FailedToDeserializeQueryString::new::<T, _>)
+            .map_err(IntoResponse::into_response)?;
         Ok(Query(value))
+    }
+}
+
+/// Extractor that deserializes `application/x-www-form-urlencoded` requests
+/// into some type.
+///
+/// `T` is expected to implement [`serde::Deserialize`].
+///
+/// # Example
+///
+/// ```rust,no_run
+/// use tower_web::prelude::*;
+/// use serde::Deserialize;
+///
+/// #[derive(Deserialize)]
+/// struct SignUp {
+///     username: String,
+///     password: String,
+/// }
+///
+/// async fn accept_form(form: extract::Form<SignUp>) {
+///     let sign_up: SignUp = form.0;
+///
+///     // ...
+/// }
+///
+/// let app = route("/sign_up", post(accept_form));
+/// ```
+///
+/// Note that `Content-Type: multipart/form-data` requests are not supported.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct Form<T>(pub T);
+
+#[async_trait]
+impl<T> FromRequest for Form<T>
+where
+    T: DeserializeOwned,
+{
+    type Rejection = Response<Body>;
+
+    #[allow(warnings)]
+    async fn from_request(req: &mut Request<Body>) -> Result<Self, Self::Rejection> {
+        if !has_content_type(&req, "application/x-www-form-urlencoded") {
+            return Err(InvalidFormContentType.into_response());
+        }
+
+        if req.method() == Method::GET {
+            let query = req
+                .uri()
+                .query()
+                .ok_or(QueryStringMissing)
+                .map_err(IntoResponse::into_response)?;
+            let value = serde_urlencoded::from_str(query)
+                .map_err(FailedToDeserializeQueryString::new::<T, _>)
+                .map_err(IntoResponse::into_response)?;
+            Ok(Form(value))
+        } else {
+            let body = take_body(req).map_err(IntoResponse::into_response)?;
+            let chunks = hyper::body::aggregate(body)
+                .await
+                .map_err(FailedToBufferBody::from_err)
+                .map_err(IntoResponse::into_response)?;
+            let value = serde_urlencoded::from_reader(chunks.reader())
+                .map_err(FailedToDeserializeQueryString::new::<T, _>)
+                .map_err(IntoResponse::into_response)?;
+
+            Ok(Form(value))
+        }
     }
 }
 
@@ -239,7 +315,7 @@ where
 /// let app = route("/users", post(create_user));
 /// ```
 ///
-/// If the query string cannot be parsed it will reject the request with a `404
+/// If the query string cannot be parsed it will reject the request with a `400
 /// Bad Request` response.
 ///
 /// The request is required to have a `Content-Type: application/json` header.
