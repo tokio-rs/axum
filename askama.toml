@@ -1,0 +1,4 @@
+# used to configure askama used in some examples
+
+[general]
+dirs = ["examples/templates"]
