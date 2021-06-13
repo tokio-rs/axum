@@ -2,7 +2,7 @@
 //!
 //! # What is a handler?
 //!
-//! In tower-web a "handler" is an async function that accepts zero or more
+//! In awebframework a "handler" is an async function that accepts zero or more
 //! ["extractors"](crate::extract) as arguments and returns something that
 //! implements [`IntoResponse`].
 //!
@@ -11,7 +11,7 @@
 //! Some examples of handlers:
 //!
 //! ```rust
-//! use tower_web::prelude::*;
+//! use awebframework::prelude::*;
 //! use bytes::Bytes;
 //! use http::StatusCode;
 //!
@@ -65,7 +65,7 @@ pub mod future;
 /// # Example
 ///
 /// ```rust
-/// use tower_web::prelude::*;
+/// use awebframework::prelude::*;
 ///
 /// async fn handler() {}
 ///
@@ -104,7 +104,7 @@ where
 /// # Example
 ///
 /// ```rust
-/// use tower_web::prelude::*;
+/// use awebframework::prelude::*;
 ///
 /// async fn handler() {}
 ///
@@ -183,7 +183,7 @@ where
 /// # Example
 ///
 /// ```rust
-/// use tower_web::{handler::on, routing::MethodFilter, prelude::*};
+/// use awebframework::{handler::on, routing::MethodFilter, prelude::*};
 ///
 /// async fn handler() {}
 ///
@@ -242,7 +242,7 @@ pub trait Handler<In>: Sized {
     /// can be done like so:
     ///
     /// ```rust
-    /// use tower_web::prelude::*;
+    /// use awebframework::prelude::*;
     /// use tower::limit::{ConcurrencyLimitLayer, ConcurrencyLimit};
     ///
     /// async fn handler() { /* ... */ }
@@ -381,14 +381,14 @@ impl<S, T> Layered<S, T> {
     /// Create a new [`Layered`] handler where errors will be handled using the
     /// given closure.
     ///
-    /// tower-web requires that services gracefully handles all errors. That
+    /// awebframework requires that services gracefully handles all errors. That
     /// means when you apply a Tower middleware that adds a new failure
     /// condition you have to handle that as well.
     ///
     /// That can be done using `handle_error` like so:
     ///
     /// ```rust
-    /// use tower_web::prelude::*;
+    /// use awebframework::prelude::*;
     /// use http::StatusCode;
     /// use tower::{BoxError, timeout::TimeoutLayer};
     /// use std::time::Duration;
@@ -538,7 +538,7 @@ impl<S, F> OnMethod<S, F> {
     /// # Example
     ///
     /// ```rust
-    /// use tower_web::prelude::*;
+    /// use awebframework::prelude::*;
     ///
     /// async fn handler() {}
     ///
@@ -621,7 +621,7 @@ impl<S, F> OnMethod<S, F> {
     /// # Example
     ///
     /// ```rust
-    /// use tower_web::{routing::MethodFilter, prelude::*};
+    /// use awebframework::{routing::MethodFilter, prelude::*};
     ///
     /// async fn handler() {}
     ///

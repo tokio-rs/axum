@@ -89,7 +89,7 @@ pub trait RoutingDsl: crate::sealed::Sealed + Sized {
     /// # Example
     ///
     /// ```rust
-    /// use tower_web::prelude::*;
+    /// use awebframework::prelude::*;
     ///
     /// async fn first_handler() { /* ... */ }
     ///
@@ -133,7 +133,7 @@ pub trait RoutingDsl: crate::sealed::Sealed + Sized {
     /// return them from functions:
     ///
     /// ```rust
-    /// use tower_web::{routing::BoxRoute, prelude::*};
+    /// use awebframework::{routing::BoxRoute, prelude::*};
     ///
     /// async fn first_handler() { /* ... */ }
     ///
@@ -182,7 +182,7 @@ pub trait RoutingDsl: crate::sealed::Sealed + Sized {
     /// routes can be done like so:
     ///
     /// ```rust
-    /// use tower_web::prelude::*;
+    /// use awebframework::prelude::*;
     /// use tower::limit::{ConcurrencyLimitLayer, ConcurrencyLimit};
     ///
     /// async fn first_handler() { /* ... */ }
@@ -208,7 +208,7 @@ pub trait RoutingDsl: crate::sealed::Sealed + Sized {
     /// entire app:
     ///
     /// ```rust
-    /// use tower_web::prelude::*;
+    /// use awebframework::prelude::*;
     /// use tower_http::trace::TraceLayer;
     ///
     /// async fn first_handler() { /* ... */ }
@@ -240,7 +240,7 @@ pub trait RoutingDsl: crate::sealed::Sealed + Sized {
     /// [`Server`](hyper::server::Server):
     ///
     /// ```
-    /// use tower_web::prelude::*;
+    /// use awebframework::prelude::*;
     ///
     /// let app = route("/", get(|| async { "Hi!" }));
     ///
@@ -578,7 +578,7 @@ fn handle_buffer_error(error: BoxError) -> Response<BoxBody> {
         Ok(service_error) => {
             return Response::builder()
                 .status(StatusCode::INTERNAL_SERVER_ERROR)
-                .body(BoxBody::new(Full::from(format!("Service error: {}. This is a bug in tower-web. All inner services should be infallible. Please file an issue", service_error))))
+                .body(BoxBody::new(Full::from(format!("Service error: {}. This is a bug in awebframework. All inner services should be infallible. Please file an issue", service_error))))
                 .unwrap();
         }
         Err(e) => e,
@@ -607,14 +607,14 @@ impl<S> Layered<S> {
     /// Create a new [`Layered`] service where errors will be handled using the
     /// given closure.
     ///
-    /// tower-web requires that services gracefully handles all errors. That
+    /// awebframework requires that services gracefully handles all errors. That
     /// means when you apply a Tower middleware that adds a new failure
     /// condition you have to handle that as well.
     ///
     /// That can be done using `handle_error` like so:
     ///
     /// ```rust
-    /// use tower_web::prelude::*;
+    /// use awebframework::prelude::*;
     /// use http::StatusCode;
     /// use tower::{BoxError, timeout::TimeoutLayer};
     /// use std::time::Duration;
@@ -680,7 +680,7 @@ where
 /// nested route will only see the part of URL:
 ///
 /// ```
-/// use tower_web::{routing::nest, prelude::*};
+/// use awebframework::{routing::nest, prelude::*};
 /// use http::Uri;
 ///
 /// async fn users_get(uri: Uri) {
@@ -705,7 +705,7 @@ where
 /// captures from the outer routes:
 ///
 /// ```
-/// use tower_web::{routing::nest, prelude::*};
+/// use awebframework::{routing::nest, prelude::*};
 ///
 /// async fn users_get(params: extract::UrlParamsMap) {
 ///     // Both `version` and `id` were captured even though `users_api` only
@@ -726,7 +726,7 @@ where
 /// [`tower_http::services::ServeDir`] to serve static files from a directory:
 ///
 /// ```
-/// use tower_web::{
+/// use awebframework::{
 ///     routing::nest, service::{get, ServiceExt}, prelude::*,
 /// };
 /// use tower_http::services::ServeDir;

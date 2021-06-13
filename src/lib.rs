@@ -1,28 +1,28 @@
-//! tower-web (name pending) is a tiny web application framework that focuses on
+//! awebframework (name pending) is a tiny web application framework that focuses on
 //! ergonomics and modularity.
 //!
 //! ## Goals
 //!
 //! - Ease of use. Building web apps in Rust should be as easy as `async fn
 //! handle(Request) -> Response`.
-//! - Solid foundation. tower-web is built on top of tower and makes it easy to
+//! - Solid foundation. awebframework is built on top of tower and makes it easy to
 //! plug in any middleware from the [tower] and [tower-http] ecosystem.
 //! - Focus on routing, extracting data from requests, and generating responses.
 //! Tower middleware can handle the rest.
-//! - Macro free core. Macro frameworks have their place but tower-web focuses
+//! - Macro free core. Macro frameworks have their place but awebframework focuses
 //! on providing a core that is macro free.
 //!
 //! # Compatibility
 //!
-//! tower-web is designed to work with [tokio] and [hyper]. Runtime and
+//! awebframework is designed to work with [tokio] and [hyper]. Runtime and
 //! transport layer independence is not a goal, at least for the time being.
 //!
 //! # Example
 //!
-//! The "Hello, World!" of tower-web is:
+//! The "Hello, World!" of awebframework is:
 //!
 //! ```rust,no_run
-//! use tower_web::prelude::*;
+//! use awebframework::prelude::*;
 //! use hyper::Server;
 //! use std::net::SocketAddr;
 //! use tower::make::Shared;
@@ -45,7 +45,7 @@
 //! Routing between handlers looks like this:
 //!
 //! ```rust,no_run
-//! use tower_web::prelude::*;
+//! use awebframework::prelude::*;
 //!
 //! let app = route("/", get(get_slash).post(post_slash))
 //!     .route("/foo", get(get_foo));
@@ -75,7 +75,7 @@
 //! returned from a handler:
 //!
 //! ```rust,no_run
-//! use tower_web::{body::Body, response::{Html, Json}, prelude::*};
+//! use awebframework::{body::Body, response::{Html, Json}, prelude::*};
 //! use http::{StatusCode, Response, Uri};
 //! use serde_json::{Value, json};
 //!
@@ -157,7 +157,7 @@
 //! body and deserializes it as JSON into some target type:
 //!
 //! ```rust,no_run
-//! use tower_web::prelude::*;
+//! use awebframework::prelude::*;
 //! use serde::Deserialize;
 //!
 //! let app = route("/users", post(create_user));
@@ -183,7 +183,7 @@
 //! [`Uuid`]:
 //!
 //! ```rust,no_run
-//! use tower_web::prelude::*;
+//! use awebframework::prelude::*;
 //! use uuid::Uuid;
 //!
 //! let app = route("/users/:id", post(create_user));
@@ -204,7 +204,7 @@
 //! You can also apply multiple extractors:
 //!
 //! ```rust,no_run
-//! use tower_web::prelude::*;
+//! use awebframework::prelude::*;
 //! use uuid::Uuid;
 //! use serde::Deserialize;
 //!
@@ -239,7 +239,7 @@
 //! Additionally `Request<Body>` is itself an extractor:
 //!
 //! ```rust,no_run
-//! use tower_web::prelude::*;
+//! use awebframework::prelude::*;
 //!
 //! let app = route("/users/:id", post(handler));
 //!
@@ -260,7 +260,7 @@
 //!
 //! # Applying middleware
 //!
-//! tower-web is designed to take full advantage of the tower and tower-http
+//! awebframework is designed to take full advantage of the tower and tower-http
 //! ecosystem of middleware:
 //!
 //! ## Applying middleware to individual handlers
@@ -268,7 +268,7 @@
 //! A middleware can be applied to a single handler like so:
 //!
 //! ```rust,no_run
-//! use tower_web::prelude::*;
+//! use awebframework::prelude::*;
 //! use tower::limit::ConcurrencyLimitLayer;
 //!
 //! let app = route(
@@ -287,7 +287,7 @@
 //! Middleware can also be applied to a group of routes like so:
 //!
 //! ```rust,no_run
-//! use tower_web::prelude::*;
+//! use awebframework::prelude::*;
 //! use tower::limit::ConcurrencyLimitLayer;
 //!
 //! let app = route("/", get(get_slash))
@@ -304,7 +304,7 @@
 //!
 //! ## Error handling
 //!
-//! tower-web requires all errors to be handled. That is done by using
+//! awebframework requires all errors to be handled. That is done by using
 //! [`std::convert::Infallible`] as the error type in all its [`Service`]
 //! implementations.
 //!
@@ -313,11 +313,11 @@
 //! [`IntoResponse`](response::IntoResponse), even if its a `Result`.
 //!
 //! However middleware might add new failure cases that has to be handled. For
-//! that tower-web provides a [`handle_error`](handler::Layered::handle_error)
+//! that awebframework provides a [`handle_error`](handler::Layered::handle_error)
 //! combinator:
 //!
 //! ```rust,no_run
-//! use tower_web::prelude::*;
+//! use awebframework::prelude::*;
 //! use tower::{
 //!     BoxError, timeout::{TimeoutLayer, error::Elapsed},
 //! };
@@ -359,7 +359,7 @@
 //! group of routes with middleware applied:
 //!
 //! ```rust,no_run
-//! use tower_web::prelude::*;
+//! use awebframework::prelude::*;
 //! use tower::{BoxError, timeout::TimeoutLayer};
 //! use std::time::Duration;
 //!
@@ -383,7 +383,7 @@
 //! [`tower::ServiceBuilder`] can be used to combine multiple middleware:
 //!
 //! ```rust,no_run
-//! use tower_web::prelude::*;
+//! use awebframework::prelude::*;
 //! use tower::{
 //!     ServiceBuilder, BoxError,
 //!     load_shed::error::Overloaded,
@@ -439,7 +439,7 @@
 //! and the [`extract::Extension`] extractor:
 //!
 //! ```rust,no_run
-//! use tower_web::{AddExtensionLayer, prelude::*};
+//! use awebframework::{AddExtensionLayer, prelude::*};
 //! use std::sync::Arc;
 //!
 //! struct State {
@@ -464,10 +464,10 @@
 //!
 //! # Routing to any [`Service`]
 //!
-//! tower-web also supports routing to general [`Service`]s:
+//! awebframework also supports routing to general [`Service`]s:
 //!
 //! ```rust,no_run
-//! use tower_web::{
+//! use awebframework::{
 //!     // `ServiceExt` adds `handle_error` to any `Service`
 //!     service::{self, ServiceExt}, prelude::*,
 //! };
@@ -505,7 +505,7 @@
 //! Applications can be nested by calling [`nest`](routing::nest):
 //!
 //! ```rust,no_run
-//! use tower_web::{prelude::*, routing::BoxRoute, body::BoxBody};
+//! use awebframework::{prelude::*, routing::BoxRoute, body::BoxBody};
 //! use tower_http::services::ServeFile;
 //! use http::Response;
 //! use std::convert::Infallible;
@@ -524,7 +524,7 @@
 //! [`nest`](routing::nest) can also be used to serve static files from a directory:
 //!
 //! ```rust,no_run
-//! use tower_web::{prelude::*, service::ServiceExt, routing::nest};
+//! use awebframework::{prelude::*, service::ServiceExt, routing::nest};
 //! use tower_http::services::ServeDir;
 //! use http::Response;
 //! use std::convert::Infallible;
@@ -543,7 +543,7 @@
 //!
 //! # Features
 //!
-//! tower-web uses a set of [feature flags] to reduce the amount of compiled and
+//! awebframework uses a set of [feature flags] to reduce the amount of compiled and
 //! optional dependencies.
 //!
 //! The following optional features are available:
@@ -632,7 +632,7 @@ pub use async_trait::async_trait;
 pub use tower_http::add_extension::{AddExtension, AddExtensionLayer};
 
 pub mod prelude {
-    //! Re-exports of important traits, types, and functions used with tower-web. Meant to be glob
+    //! Re-exports of important traits, types, and functions used with awebframework. Meant to be glob
     //! imported.
 
     pub use crate::body::Body;
@@ -667,7 +667,7 @@ pub mod prelude {
 /// # Examples
 ///
 /// ```rust
-/// use tower_web::prelude::*;
+/// use awebframework::prelude::*;
 /// # use std::convert::Infallible;
 /// # use http::Response;
 /// # let service = tower::service_fn(|_: Request<Body>| async {

@@ -1,15 +1,15 @@
+use awebframework::{prelude::*, service::ServiceExt};
 use http::StatusCode;
 use std::net::SocketAddr;
 use tower_http::{services::ServeDir, trace::TraceLayer};
-use tower_web::{prelude::*, service::ServiceExt};
 
 #[tokio::main]
 async fn main() {
     tracing_subscriber::fmt::init();
 
-    let app = tower_web::routing::nest(
+    let app = awebframework::routing::nest(
         "/static",
-        tower_web::service::get(ServeDir::new(".").handle_error(|error: std::io::Error| {
+        awebframework::service::get(ServeDir::new(".").handle_error(|error: std::io::Error| {
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 format!("Unhandled interal error: {}", error),

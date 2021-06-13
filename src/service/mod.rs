@@ -11,7 +11,7 @@
 //!
 //! ```
 //! use tower_http::services::Redirect;
-//! use tower_web::{service, handler, prelude::*};
+//! use awebframework::{service, handler, prelude::*};
 //!
 //! async fn handler(request: Request<Body>) { /* ... */ }
 //!
@@ -41,7 +41,7 @@
 //! well when your services don't care about backpressure and are always ready
 //! anyway.
 //!
-//! tower-web expects that all services used in your app wont care about
+//! awebframework expects that all services used in your app wont care about
 //! backpressure and so it uses the latter strategy. However that means you
 //! should avoid routing to a service (or using a middleware) that _does_ care
 //! about backpressure. At the very least you should [load shed] so requests are
@@ -51,14 +51,14 @@
 //! in the response future from `call`, and _not_ from `poll_ready`. In that
 //! case the underlying service will _not_ be discarded and will continue to be
 //! used for future requests. Services that expect to be discarded if
-//! `poll_ready` fails should _not_ be used with tower-web.
+//! `poll_ready` fails should _not_ be used with awebframework.
 //!
 //! One possible approach is to only apply backpressure sensitive middleware
-//! around your entire app. This is possible because tower-web applications are
+//! around your entire app. This is possible because awebframework applications are
 //! themselves services:
 //!
 //! ```rust
-//! use tower_web::prelude::*;
+//! use awebframework::prelude::*;
 //! use tower::ServiceBuilder;
 //! # let some_backpressure_sensitive_middleware =
 //! #     tower::layer::util::Identity::new();
@@ -137,7 +137,7 @@ where
 /// # Example
 ///
 /// ```rust
-/// use tower_web::{service, prelude::*};
+/// use awebframework::{service, prelude::*};
 /// use http::Response;
 /// use std::convert::Infallible;
 /// use hyper::Body;
@@ -224,7 +224,7 @@ where
 /// # Example
 ///
 /// ```rust
-/// use tower_web::{handler::on, service, routing::MethodFilter, prelude::*};
+/// use awebframework::{handler::on, service, routing::MethodFilter, prelude::*};
 /// use http::Response;
 /// use std::convert::Infallible;
 /// use hyper::Body;
@@ -293,7 +293,7 @@ impl<S, F> OnMethod<S, F> {
     /// # Example
     ///
     /// ```rust
-    /// use tower_web::{handler::on, service, routing::MethodFilter, prelude::*};
+    /// use awebframework::{handler::on, service, routing::MethodFilter, prelude::*};
     /// use http::Response;
     /// use std::convert::Infallible;
     /// use hyper::Body;
@@ -387,7 +387,7 @@ impl<S, F> OnMethod<S, F> {
     /// # Example
     ///
     /// ```rust
-    /// use tower_web::{handler::on, service, routing::MethodFilter, prelude::*};
+    /// use awebframework::{handler::on, service, routing::MethodFilter, prelude::*};
     /// use http::Response;
     /// use std::convert::Infallible;
     /// use hyper::Body;
@@ -503,9 +503,9 @@ where
 pub trait ServiceExt<B>: Service<Request<Body>, Response = Response<B>> {
     /// Handle errors from a service.
     ///
-    /// tower-web requires all handlers and services, that are part of the
+    /// awebframework requires all handlers and services, that are part of the
     /// router, to never return errors. If you route to [`Service`], not created
-    /// by tower-web, who's error isn't `Infallible` you can use this combinator
+    /// by awebframework, who's error isn't `Infallible` you can use this combinator
     /// to handle the error.
     ///
     /// `handle_error` takes a closure that will map errors from the service
@@ -515,7 +515,7 @@ pub trait ServiceExt<B>: Service<Request<Body>, Response = Response<B>> {
     /// # Example
     ///
     /// ```rust,no_run
-    /// use tower_web::{service::{self, ServiceExt}, prelude::*};
+    /// use awebframework::{service::{self, ServiceExt}, prelude::*};
     /// use http::Response;
     /// use tower::{service_fn, BoxError};
     ///

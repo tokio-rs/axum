@@ -120,7 +120,7 @@ define_rejection! {
 
 define_rejection! {
     #[status = INTERNAL_SERVER_ERROR]
-    #[body = "No url params found for matched route. This is a bug in tower-web. Please open an issue"]
+    #[body = "No url params found for matched route. This is a bug in awebframework. Please open an issue"]
     /// Rejection type for [`UrlParamsMap`](super::UrlParamsMap) and
     /// [`UrlParams`](super::UrlParams) if you try and extract the URL params
     /// more than once.

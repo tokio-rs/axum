@@ -1,4 +1,4 @@
-//! Simple in-memory key/value store showing features of tower-web.
+//! Simple in-memory key/value store showing features of awebframework.
 //!
 //! Run with:
 //!
@@ -6,6 +6,12 @@
 //! RUST_LOG=tower_http=debug,key_value_store=trace cargo run --example key_value_store
 //! ```
 
+use awebframework::{
+    extract::{ContentLengthLimit, Extension, UrlParams},
+    prelude::*,
+    response::IntoResponse,
+    routing::BoxRoute,
+};
 use bytes::Bytes;
 use http::StatusCode;
 use std::{
@@ -19,12 +25,6 @@ use tower::{BoxError, ServiceBuilder};
 use tower_http::{
     add_extension::AddExtensionLayer, auth::RequireAuthorizationLayer,
     compression::CompressionLayer, trace::TraceLayer,
-};
-use tower_web::{
-    extract::{ContentLengthLimit, Extension, UrlParams},
-    prelude::*,
-    response::IntoResponse,
-    routing::BoxRoute,
 };
 
 #[tokio::main]
