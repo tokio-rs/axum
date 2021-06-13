@@ -15,7 +15,10 @@
 //! }
 //! ```
 
-use crate::{routing::EmptyRouter, service::OnMethod};
+use crate::{
+    routing::EmptyRouter,
+    service::{BoxResponseBody, OnMethod},
+};
 use bytes::Bytes;
 use future::ResponseFuture;
 use futures_util::{sink::SinkExt, stream::StreamExt};
@@ -38,7 +41,7 @@ pub mod future;
 /// each connection.
 ///
 /// See the [module docs](crate::ws) for more details.
-pub fn ws<F, Fut>(callback: F) -> OnMethod<WebSocketUpgrade<F>, EmptyRouter>
+pub fn ws<F, Fut>(callback: F) -> OnMethod<BoxResponseBody<WebSocketUpgrade<F>>, EmptyRouter>
 where
     F: FnOnce(WebSocket) -> Fut + Clone + Send + 'static,
     Fut: Future<Output = ()> + Send + 'static,
