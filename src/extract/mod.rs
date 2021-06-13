@@ -165,7 +165,7 @@
 //! # };
 //! ```
 
-use crate::{body::Body, response::IntoResponse};
+use crate::{body::Body, response::IntoResponse, util::ByteStr};
 use async_trait::async_trait;
 use bytes::{Buf, Bytes};
 use http::{header, HeaderMap, Method, Request, Uri, Version};
@@ -609,12 +609,12 @@ where
 /// Note that you can only have one URL params extractor per handler. If you
 /// have multiple it'll response with `500 Internal Server Error`.
 #[derive(Debug)]
-pub struct UrlParamsMap(HashMap<String, String>);
+pub struct UrlParamsMap(HashMap<ByteStr, ByteStr>);
 
 impl UrlParamsMap {
     /// Look up the value for a key.
     pub fn get(&self, key: &str) -> Option<&str> {
-        self.0.get(key).map(|s| &**s)
+        self.0.get(&ByteStr::new(key)).map(|s| s.as_str())
     }
 
     /// Look up the value for a key and parse it into a value of type `T`.
@@ -628,20 +628,20 @@ impl UrlParamsMap {
 
 #[async_trait]
 impl FromRequest for UrlParamsMap {
-    type Rejection = UrlParamsMapRejection;
+    type Rejection = MissingRouteParams;
 
     async fn from_request(req: &mut Request<Body>) -> Result<Self, Self::Rejection> {
         if let Some(params) = req
             .extensions_mut()
             .get_mut::<Option<crate::routing::UrlParams>>()
         {
-            if let Some(params) = params.take() {
-                Ok(Self(params.0.into_iter().collect()))
+            if let Some(params) = params {
+                Ok(Self(params.0.iter().cloned().collect()))
             } else {
-                Err(UrlParamsAlreadyExtracted.into())
+                Ok(Self(Default::default()))
             }
         } else {
-            Err(MissingRouteParams.into())
+            Err(MissingRouteParams)
         }
     }
 }
@@ -689,24 +689,24 @@ macro_rules! impl_parse_url {
                     .extensions_mut()
                     .get_mut::<Option<crate::routing::UrlParams>>()
                 {
-                    if let Some(params) = params.take() {
-                        params.0
+                    if let Some(params) = params {
+                        params.0.clone()
                     } else {
-                        return Err(UrlParamsAlreadyExtracted.into());
+                        Default::default()
                     }
                 } else {
                     return Err(MissingRouteParams.into())
                 };
 
                 if let [(_, $head), $((_, $tail),)*] = &*params {
-                    let $head = if let Ok(x) = $head.parse::<$head>() {
+                    let $head = if let Ok(x) = $head.as_str().parse::<$head>() {
                        x
                     } else {
                         return Err(InvalidUrlParam::new::<$head>().into());
                     };
 
                     $(
-                        let $tail = if let Ok(x) = $tail.parse::<$tail>() {
+                        let $tail = if let Ok(x) = $tail.as_str().parse::<$tail>() {
                            x
                         } else {
                             return Err(InvalidUrlParam::new::<$tail>().into());

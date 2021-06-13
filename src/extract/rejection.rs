@@ -129,13 +129,6 @@ define_rejection! {
 
 define_rejection! {
     #[status = INTERNAL_SERVER_ERROR]
-    #[body = "Cannot have two URL capture extractors for a single handler"]
-    /// Rejection type used if you try and extract the URL params more than once.
-    pub struct UrlParamsAlreadyExtracted;
-}
-
-define_rejection! {
-    #[status = INTERNAL_SERVER_ERROR]
     #[body = "Cannot have two request body extractors for a single handler"]
     /// Rejection type used if you try and extract the request body more than
     /// once.
@@ -289,24 +282,12 @@ composite_rejection! {
 }
 
 composite_rejection! {
-    /// Rejection used for [`UrlParamsMap`](super::UrlParamsMap).
-    ///
-    /// Contains one variant for each way the [`UrlParamsMap`](super::UrlParamsMap) extractor
-    /// can fail.
-    pub enum UrlParamsMapRejection {
-        UrlParamsAlreadyExtracted,
-        MissingRouteParams,
-    }
-}
-
-composite_rejection! {
     /// Rejection used for [`UrlParams`](super::UrlParams).
     ///
     /// Contains one variant for each way the [`UrlParams`](super::UrlParams) extractor
     /// can fail.
     pub enum UrlParamsRejection {
         InvalidUrlParam,
-        UrlParamsAlreadyExtracted,
         MissingRouteParams,
     }
 }
