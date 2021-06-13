@@ -77,7 +77,7 @@ for inclusion in awebframework by you, shall be licensed as MIT, without any
 additional terms or conditions.
 
 [examples]: https://github.com/davidpdrsn/awebframework/tree/master/examples
-[docs]: https://docs.rs/tower-http/0.1.0
+[docs]: https://docs.rs/awebframework/0.1.0
 [tower]: https://crates.io/crates/tower
 [tower-http]: https://crates.io/crates/tower-http
 [guide]: CONTRIBUTING.md
