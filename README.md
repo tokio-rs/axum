@@ -32,7 +32,6 @@ on providing a core that is macro free.
 use awebframework::prelude::*;
 use hyper::Server;
 use std::net::SocketAddr;
-use tower::make::Shared;
 
 #[tokio::main]
 async fn main() {
@@ -42,11 +41,13 @@ async fn main() {
     // run it with hyper on localhost:3000
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
     Server::bind(&addr)
-        .serve(Shared::new(app))
+        .serve(app.into_make_service())
         .await
         .unwrap();
 }
 ```
+
+See the [crate documentation][docs] for way more examples.
 
 ## Examples
 
