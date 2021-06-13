@@ -1,5 +1,7 @@
 //! Rejection response types.
 
+use tower::BoxError;
+
 use super::IntoResponse;
 use crate::body::Body;
 
@@ -147,6 +149,13 @@ define_rejection! {
     pub struct RequestAlreadyExtracted;
 }
 
+define_rejection! {
+    #[status = BAD_REQUEST]
+    #[body = "Form requests must have `Content-Type: x-www-form-urlencoded`"]
+    /// Rejection type used if you try and extract the request more than once.
+    pub struct InvalidFormContentType;
+}
+
 /// Rejection type for [`UrlParams`](super::UrlParams) if the capture route
 /// param didn't have the expected type.
 #[derive(Debug)]
@@ -167,6 +176,37 @@ impl IntoResponse for InvalidUrlParam {
         let mut res = http::Response::new(Body::from(format!(
             "Invalid URL param. Expected something of type `{}`",
             self.type_name
+        )));
+        *res.status_mut() = http::StatusCode::BAD_REQUEST;
+        res
+    }
+}
+
+/// Rejection type for extractors that deserialize query strings if the input
+/// couldn't be deserialized into the target type.
+#[derive(Debug)]
+pub struct FailedToDeserializeQueryString {
+    error: BoxError,
+    type_name: &'static str,
+}
+
+impl FailedToDeserializeQueryString {
+    pub(super) fn new<T, E>(error: E) -> Self
+    where
+        E: Into<BoxError>,
+    {
+        FailedToDeserializeQueryString {
+            error: error.into(),
+            type_name: std::any::type_name::<T>(),
+        }
+    }
+}
+
+impl IntoResponse for FailedToDeserializeQueryString {
+    fn into_response(self) -> http::Response<Body> {
+        let mut res = http::Response::new(Body::from(format!(
+            "Failed to deserialize query string. Expected something of type `{}`. Error: {}",
+            self.type_name, self.error,
         )));
         *res.status_mut() = http::StatusCode::BAD_REQUEST;
         res
