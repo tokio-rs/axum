@@ -84,25 +84,38 @@
 //! [load shed]: tower::load_shed
 
 use crate::{
-    body::{self, Body, BoxBody},
+    body::{Body, BoxBody},
     response::IntoResponse,
     routing::{EmptyRouter, MethodFilter, RouteFuture},
 };
 use bytes::Bytes;
+use futures_util::ready;
 use http::{Request, Response};
+use pin_project::pin_project;
 use std::{
     convert::Infallible,
     fmt,
+    future::Future,
     task::{Context, Poll},
 };
 use tower::{util::Oneshot, BoxError, Service, ServiceExt as _};
 
 pub mod future;
 
+/// Route requests to the given service regardless of the HTTP method.
+///
+/// See [`get`] for an example.
+pub fn any<S>(svc: S) -> OnMethod<BoxResponseBody<S>, EmptyRouter>
+where
+    S: Service<Request<Body>, Error = Infallible> + Clone,
+{
+    on(MethodFilter::Any, svc)
+}
+
 /// Route `CONNECT` requests to the given service.
 ///
 /// See [`get`] for an example.
-pub fn connect<S>(svc: S) -> OnMethod<S, EmptyRouter>
+pub fn connect<S>(svc: S) -> OnMethod<BoxResponseBody<S>, EmptyRouter>
 where
     S: Service<Request<Body>, Error = Infallible> + Clone,
 {
@@ -112,7 +125,7 @@ where
 /// Route `DELETE` requests to the given service.
 ///
 /// See [`get`] for an example.
-pub fn delete<S>(svc: S) -> OnMethod<S, EmptyRouter>
+pub fn delete<S>(svc: S) -> OnMethod<BoxResponseBody<S>, EmptyRouter>
 where
     S: Service<Request<Body>, Error = Infallible> + Clone,
 {
@@ -139,7 +152,7 @@ where
 ///
 /// You can only add services who cannot fail (their error type must be
 /// [`Infallible`]). To gracefully handle errors see [`ServiceExt::handle_error`].
-pub fn get<S>(svc: S) -> OnMethod<S, EmptyRouter>
+pub fn get<S>(svc: S) -> OnMethod<BoxResponseBody<S>, EmptyRouter>
 where
     S: Service<Request<Body>, Error = Infallible> + Clone,
 {
@@ -149,7 +162,7 @@ where
 /// Route `HEAD` requests to the given service.
 ///
 /// See [`get`] for an example.
-pub fn head<S>(svc: S) -> OnMethod<S, EmptyRouter>
+pub fn head<S>(svc: S) -> OnMethod<BoxResponseBody<S>, EmptyRouter>
 where
     S: Service<Request<Body>, Error = Infallible> + Clone,
 {
@@ -159,7 +172,7 @@ where
 /// Route `OPTIONS` requests to the given service.
 ///
 /// See [`get`] for an example.
-pub fn options<S>(svc: S) -> OnMethod<S, EmptyRouter>
+pub fn options<S>(svc: S) -> OnMethod<BoxResponseBody<S>, EmptyRouter>
 where
     S: Service<Request<Body>, Error = Infallible> + Clone,
 {
@@ -169,7 +182,7 @@ where
 /// Route `PATCH` requests to the given service.
 ///
 /// See [`get`] for an example.
-pub fn patch<S>(svc: S) -> OnMethod<S, EmptyRouter>
+pub fn patch<S>(svc: S) -> OnMethod<BoxResponseBody<S>, EmptyRouter>
 where
     S: Service<Request<Body>, Error = Infallible> + Clone,
 {
@@ -179,7 +192,7 @@ where
 /// Route `POST` requests to the given service.
 ///
 /// See [`get`] for an example.
-pub fn post<S>(svc: S) -> OnMethod<S, EmptyRouter>
+pub fn post<S>(svc: S) -> OnMethod<BoxResponseBody<S>, EmptyRouter>
 where
     S: Service<Request<Body>, Error = Infallible> + Clone,
 {
@@ -189,7 +202,7 @@ where
 /// Route `PUT` requests to the given service.
 ///
 /// See [`get`] for an example.
-pub fn put<S>(svc: S) -> OnMethod<S, EmptyRouter>
+pub fn put<S>(svc: S) -> OnMethod<BoxResponseBody<S>, EmptyRouter>
 where
     S: Service<Request<Body>, Error = Infallible> + Clone,
 {
@@ -199,7 +212,7 @@ where
 /// Route `TRACE` requests to the given service.
 ///
 /// See [`get`] for an example.
-pub fn trace<S>(svc: S) -> OnMethod<S, EmptyRouter>
+pub fn trace<S>(svc: S) -> OnMethod<BoxResponseBody<S>, EmptyRouter>
 where
     S: Service<Request<Body>, Error = Infallible> + Clone,
 {
@@ -223,13 +236,13 @@ where
 /// // Requests to `POST /` will go to `service`.
 /// let app = route("/", service::on(MethodFilter::Post, service));
 /// ```
-pub fn on<S>(method: MethodFilter, svc: S) -> OnMethod<S, EmptyRouter>
+pub fn on<S>(method: MethodFilter, svc: S) -> OnMethod<BoxResponseBody<S>, EmptyRouter>
 where
     S: Service<Request<Body>, Error = Infallible> + Clone,
 {
     OnMethod {
         method,
-        svc,
+        svc: BoxResponseBody(svc),
         fallback: EmptyRouter,
     }
 }
@@ -248,7 +261,7 @@ impl<S, F> OnMethod<S, F> {
     /// its HTTP method.
     ///
     /// See [`OnMethod::get`] for an example.
-    pub fn any<T>(self, svc: T) -> OnMethod<T, Self>
+    pub fn any<T>(self, svc: T) -> OnMethod<BoxResponseBody<T>, Self>
     where
         T: Service<Request<Body>, Error = Infallible> + Clone,
     {
@@ -258,7 +271,7 @@ impl<S, F> OnMethod<S, F> {
     /// Chain an additional service that will only accept `CONNECT` requests.
     ///
     /// See [`OnMethod::get`] for an example.
-    pub fn connect<T>(self, svc: T) -> OnMethod<T, Self>
+    pub fn connect<T>(self, svc: T) -> OnMethod<BoxResponseBody<T>, Self>
     where
         T: Service<Request<Body>, Error = Infallible> + Clone,
     {
@@ -268,7 +281,7 @@ impl<S, F> OnMethod<S, F> {
     /// Chain an additional service that will only accept `DELETE` requests.
     ///
     /// See [`OnMethod::get`] for an example.
-    pub fn delete<T>(self, svc: T) -> OnMethod<T, Self>
+    pub fn delete<T>(self, svc: T) -> OnMethod<BoxResponseBody<T>, Self>
     where
         T: Service<Request<Body>, Error = Infallible> + Clone,
     {
@@ -301,7 +314,7 @@ impl<S, F> OnMethod<S, F> {
     /// You can only add services who cannot fail (their error type must be
     /// [`Infallible`]). To gracefully handle errors see
     /// [`ServiceExt::handle_error`].
-    pub fn get<T>(self, svc: T) -> OnMethod<T, Self>
+    pub fn get<T>(self, svc: T) -> OnMethod<BoxResponseBody<T>, Self>
     where
         T: Service<Request<Body>, Error = Infallible> + Clone,
     {
@@ -311,7 +324,7 @@ impl<S, F> OnMethod<S, F> {
     /// Chain an additional service that will only accept `HEAD` requests.
     ///
     /// See [`OnMethod::get`] for an example.
-    pub fn head<T>(self, svc: T) -> OnMethod<T, Self>
+    pub fn head<T>(self, svc: T) -> OnMethod<BoxResponseBody<T>, Self>
     where
         T: Service<Request<Body>, Error = Infallible> + Clone,
     {
@@ -321,7 +334,7 @@ impl<S, F> OnMethod<S, F> {
     /// Chain an additional service that will only accept `OPTIONS` requests.
     ///
     /// See [`OnMethod::get`] for an example.
-    pub fn options<T>(self, svc: T) -> OnMethod<T, Self>
+    pub fn options<T>(self, svc: T) -> OnMethod<BoxResponseBody<T>, Self>
     where
         T: Service<Request<Body>, Error = Infallible> + Clone,
     {
@@ -331,7 +344,7 @@ impl<S, F> OnMethod<S, F> {
     /// Chain an additional service that will only accept `PATCH` requests.
     ///
     /// See [`OnMethod::get`] for an example.
-    pub fn patch<T>(self, svc: T) -> OnMethod<T, Self>
+    pub fn patch<T>(self, svc: T) -> OnMethod<BoxResponseBody<T>, Self>
     where
         T: Service<Request<Body>, Error = Infallible> + Clone,
     {
@@ -341,7 +354,7 @@ impl<S, F> OnMethod<S, F> {
     /// Chain an additional service that will only accept `POST` requests.
     ///
     /// See [`OnMethod::get`] for an example.
-    pub fn post<T>(self, svc: T) -> OnMethod<T, Self>
+    pub fn post<T>(self, svc: T) -> OnMethod<BoxResponseBody<T>, Self>
     where
         T: Service<Request<Body>, Error = Infallible> + Clone,
     {
@@ -351,7 +364,7 @@ impl<S, F> OnMethod<S, F> {
     /// Chain an additional service that will only accept `PUT` requests.
     ///
     /// See [`OnMethod::get`] for an example.
-    pub fn put<T>(self, svc: T) -> OnMethod<T, Self>
+    pub fn put<T>(self, svc: T) -> OnMethod<BoxResponseBody<T>, Self>
     where
         T: Service<Request<Body>, Error = Infallible> + Clone,
     {
@@ -361,7 +374,7 @@ impl<S, F> OnMethod<S, F> {
     /// Chain an additional service that will only accept `TRACE` requests.
     ///
     /// See [`OnMethod::get`] for an example.
-    pub fn trace<T>(self, svc: T) -> OnMethod<T, Self>
+    pub fn trace<T>(self, svc: T) -> OnMethod<BoxResponseBody<T>, Self>
     where
         T: Service<Request<Body>, Error = Infallible> + Clone,
     {
@@ -390,13 +403,13 @@ impl<S, F> OnMethod<S, F> {
     /// // Requests to `DELETE /` will go to `service`
     /// let app = route("/", service::on(MethodFilter::Delete, service));
     /// ```
-    pub fn on<T>(self, method: MethodFilter, svc: T) -> OnMethod<T, Self>
+    pub fn on<T>(self, method: MethodFilter, svc: T) -> OnMethod<BoxResponseBody<T>, Self>
     where
         T: Service<Request<Body>, Error = Infallible> + Clone,
     {
         OnMethod {
             method,
-            svc,
+            svc: BoxResponseBody(svc),
             fallback: self,
         }
     }
@@ -404,17 +417,12 @@ impl<S, F> OnMethod<S, F> {
 
 // this is identical to `routing::OnMethod`'s implementation. Would be nice to find a way to clean
 // that up, but not sure its possible.
-impl<S, F, SB, FB> Service<Request<Body>> for OnMethod<S, F>
+impl<S, F> Service<Request<Body>> for OnMethod<S, F>
 where
-    S: Service<Request<Body>, Response = Response<SB>, Error = Infallible> + Clone,
-    F: Service<Request<Body>, Response = Response<FB>, Error = Infallible> + Clone,
-
-    SB: http_body::Body<Data = Bytes>,
-    SB::Error: Into<BoxError>,
-    FB: http_body::Body<Data = Bytes>,
-    FB::Error: Into<BoxError>,
+    S: Service<Request<Body>, Response = Response<BoxBody>, Error = Infallible> + Clone,
+    F: Service<Request<Body>, Response = Response<BoxBody>, Error = Infallible> + Clone,
 {
-    type Response = Response<body::Or<SB, FB>>;
+    type Response = Response<BoxBody>;
     type Error = Infallible;
     type Future = RouteFuture<S, F>;
 
@@ -541,3 +549,47 @@ pub trait ServiceExt<B>: Service<Request<Body>, Response = Response<B>> {
 }
 
 impl<S, B> ServiceExt<B> for S where S: Service<Request<Body>, Response = Response<B>> {}
+
+/// A [`Service`] that boxes response bodies.
+#[derive(Debug, Clone)]
+pub struct BoxResponseBody<S>(S);
+
+impl<S, B> Service<Request<Body>> for BoxResponseBody<S>
+where
+    S: Service<Request<Body>, Response = Response<B>, Error = Infallible> + Clone,
+    B: http_body::Body<Data = Bytes> + Send + Sync + 'static,
+    B::Error: Into<BoxError> + Send + Sync + 'static,
+{
+    type Response = Response<BoxBody>;
+    type Error = Infallible;
+    type Future = BoxResponseBodyFuture<Oneshot<S, Request<Body>>>;
+
+    fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        Poll::Ready(Ok(()))
+    }
+
+    fn call(&mut self, req: Request<Body>) -> Self::Future {
+        let fut = self.0.clone().oneshot(req);
+        BoxResponseBodyFuture(fut)
+    }
+}
+
+/// Response future for [`BoxResponseBody`].
+#[pin_project]
+#[derive(Debug)]
+pub struct BoxResponseBodyFuture<F>(#[pin] F);
+
+impl<F, B> Future for BoxResponseBodyFuture<F>
+where
+    F: Future<Output = Result<Response<B>, Infallible>>,
+    B: http_body::Body<Data = Bytes> + Send + Sync + 'static,
+    B::Error: Into<BoxError> + Send + Sync + 'static,
+{
+    type Output = Result<Response<BoxBody>, Infallible>;
+
+    fn poll(self: std::pin::Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        let res = ready!(self.project().0.poll(cx))?;
+        let res = res.map(BoxBody::new);
+        Poll::Ready(Ok(res))
+    }
+}

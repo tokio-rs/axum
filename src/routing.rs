@@ -1,9 +1,6 @@
 //! Routing between [`Service`]s.
 
-use crate::{
-    body::{self, BoxBody},
-    response::IntoResponse,
-};
+use crate::{body::BoxBody, response::IntoResponse};
 use async_trait::async_trait;
 use bytes::Bytes;
 use futures_util::{future, ready};
@@ -294,17 +291,12 @@ impl<S, F> RoutingDsl for Route<S, F> {}
 
 impl<S, F> crate::sealed::Sealed for Route<S, F> {}
 
-impl<S, F, SB, FB> Service<Request<Body>> for Route<S, F>
+impl<S, F> Service<Request<Body>> for Route<S, F>
 where
-    S: Service<Request<Body>, Response = Response<SB>, Error = Infallible> + Clone,
-    F: Service<Request<Body>, Response = Response<FB>, Error = Infallible> + Clone,
-
-    SB: http_body::Body<Data = Bytes>,
-    SB::Error: Into<BoxError>,
-    FB: http_body::Body<Data = Bytes>,
-    FB::Error: Into<BoxError>,
+    S: Service<Request<Body>, Response = Response<BoxBody>, Error = Infallible> + Clone,
+    F: Service<Request<Body>, Response = Response<BoxBody>, Error = Infallible> + Clone,
 {
-    type Response = Response<body::Or<SB, FB>>;
+    type Response = Response<BoxBody>;
     type Error = Infallible;
     type Future = RouteFuture<S, F>;
 
@@ -357,26 +349,17 @@ where
     B(#[pin] Oneshot<F, Request<Body>>),
 }
 
-impl<S, F, SB, FB> Future for RouteFuture<S, F>
+impl<S, F> Future for RouteFuture<S, F>
 where
-    S: Service<Request<Body>, Response = Response<SB>, Error = Infallible>,
-    F: Service<Request<Body>, Response = Response<FB>, Error = Infallible>,
-
-    SB: http_body::Body<Data = Bytes>,
-    SB::Error: Into<BoxError>,
-    FB: http_body::Body<Data = Bytes>,
-    FB::Error: Into<BoxError>,
+    S: Service<Request<Body>, Response = Response<BoxBody>, Error = Infallible>,
+    F: Service<Request<Body>, Response = Response<BoxBody>, Error = Infallible>,
 {
-    type Output = Result<Response<body::Or<SB, FB>>, Infallible>;
+    type Output = Result<Response<BoxBody>, Infallible>;
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         match self.project().0.project() {
-            RouteFutureInnerProj::A(inner) => inner
-                .poll(cx)
-                .map(|result| result.map(|res| res.map(body::Or::a))),
-            RouteFutureInnerProj::B(inner) => inner
-                .poll(cx)
-                .map(|result| result.map(|res| res.map(body::Or::b))),
+            RouteFutureInnerProj::A(inner) => inner.poll(cx),
+            RouteFutureInnerProj::B(inner) => inner.poll(cx),
         }
     }
 }
@@ -406,7 +389,7 @@ impl RoutingDsl for EmptyRouter {}
 impl crate::sealed::Sealed for EmptyRouter {}
 
 impl Service<Request<Body>> for EmptyRouter {
-    type Response = Response<Body>;
+    type Response = Response<BoxBody>;
     type Error = Infallible;
     type Future = EmptyRouterFuture;
 
@@ -415,7 +398,7 @@ impl Service<Request<Body>> for EmptyRouter {
     }
 
     fn call(&mut self, _req: Request<Body>) -> Self::Future {
-        let mut res = Response::new(Body::empty());
+        let mut res = Response::new(BoxBody::empty());
         *res.status_mut() = StatusCode::NOT_FOUND;
         EmptyRouterFuture(future::ok(res))
     }
@@ -424,7 +407,7 @@ impl Service<Request<Body>> for EmptyRouter {
 opaque_future! {
     /// Response future for [`EmptyRouter`].
     pub type EmptyRouterFuture =
-        future::Ready<Result<Response<Body>, Infallible>>;
+        future::Ready<Result<Response<BoxBody>, Infallible>>;
 }
 
 #[derive(Debug, Clone)]
@@ -786,17 +769,12 @@ impl<S, F> RoutingDsl for Nested<S, F> {}
 
 impl<S, F> crate::sealed::Sealed for Nested<S, F> {}
 
-impl<S, F, SB, FB> Service<Request<Body>> for Nested<S, F>
+impl<S, F> Service<Request<Body>> for Nested<S, F>
 where
-    S: Service<Request<Body>, Response = Response<SB>, Error = Infallible> + Clone,
-    F: Service<Request<Body>, Response = Response<FB>, Error = Infallible> + Clone,
-
-    SB: http_body::Body<Data = Bytes>,
-    SB::Error: Into<BoxError>,
-    FB: http_body::Body<Data = Bytes>,
-    FB::Error: Into<BoxError>,
+    S: Service<Request<Body>, Response = Response<BoxBody>, Error = Infallible> + Clone,
+    F: Service<Request<Body>, Response = Response<BoxBody>, Error = Infallible> + Clone,
 {
-    type Response = Response<body::Or<SB, FB>>;
+    type Response = Response<BoxBody>;
     type Error = Infallible;
     type Future = RouteFuture<S, F>;
 

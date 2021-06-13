@@ -1,8 +1,7 @@
 //! HTTP body utilities.
 
 use bytes::Bytes;
-use http_body::{Empty, Full, SizeHint};
-use pin_project::pin_project;
+use http_body::{Empty, Full};
 use std::{
     error::Error as StdError,
     fmt,
@@ -33,6 +32,16 @@ impl BoxBody {
         Self {
             inner: Box::pin(body.map_err(|error| BoxStdError(error.into()))),
         }
+    }
+
+    pub(crate) fn empty() -> Self {
+        Self::new(Empty::new())
+    }
+}
+
+impl Default for BoxBody {
+    fn default() -> Self {
+        BoxBody::empty()
     }
 }
 
@@ -95,104 +104,4 @@ impl fmt::Display for BoxStdError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.0.fmt(f)
     }
-}
-
-/// Type that combines two body types into one.
-#[pin_project]
-#[derive(Debug)]
-pub struct Or<A, B>(#[pin] Either<A, B>);
-
-impl<A, B> Or<A, B> {
-    #[inline]
-    pub(crate) fn a(a: A) -> Self {
-        Or(Either::A(a))
-    }
-
-    #[inline]
-    pub(crate) fn b(b: B) -> Self {
-        Or(Either::B(b))
-    }
-}
-
-impl<A, B> Default for Or<A, B> {
-    fn default() -> Self {
-        Self(Either::Empty(Empty::new()))
-    }
-}
-
-#[pin_project(project = EitherProj)]
-#[derive(Debug)]
-enum Either<A, B> {
-    Empty(Empty<Bytes>), // required for `Default`
-    A(#[pin] A),
-    B(#[pin] B),
-}
-
-impl<A, B> http_body::Body for Or<A, B>
-where
-    A: http_body::Body<Data = Bytes>,
-    A::Error: Into<BoxError>,
-    B: http_body::Body<Data = Bytes>,
-    B::Error: Into<BoxError>,
-{
-    type Data = Bytes;
-    type Error = BoxStdError;
-
-    #[inline]
-    fn poll_data(
-        self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-    ) -> Poll<Option<Result<Self::Data, Self::Error>>> {
-        match self.project().0.project() {
-            EitherProj::Empty(inner) => Pin::new(inner).poll_data(cx).map(map_option_error),
-            EitherProj::A(inner) => inner.poll_data(cx).map(map_option_error),
-            EitherProj::B(inner) => inner.poll_data(cx).map(map_option_error),
-        }
-    }
-
-    #[inline]
-    fn poll_trailers(
-        self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-    ) -> Poll<Result<Option<http::HeaderMap>, Self::Error>> {
-        match self.project().0.project() {
-            EitherProj::Empty(inner) => Pin::new(inner)
-                .poll_trailers(cx)
-                .map_err(Into::into)
-                .map_err(BoxStdError),
-            EitherProj::A(inner) => inner
-                .poll_trailers(cx)
-                .map_err(Into::into)
-                .map_err(BoxStdError),
-            EitherProj::B(inner) => inner
-                .poll_trailers(cx)
-                .map_err(Into::into)
-                .map_err(BoxStdError),
-        }
-    }
-
-    #[inline]
-    fn size_hint(&self) -> SizeHint {
-        match &self.0 {
-            Either::Empty(inner) => inner.size_hint(),
-            Either::A(inner) => inner.size_hint(),
-            Either::B(inner) => inner.size_hint(),
-        }
-    }
-
-    #[inline]
-    fn is_end_stream(&self) -> bool {
-        match &self.0 {
-            Either::Empty(inner) => inner.is_end_stream(),
-            Either::A(inner) => inner.is_end_stream(),
-            Either::B(inner) => inner.is_end_stream(),
-        }
-    }
-}
-
-fn map_option_error<T, E>(opt: Option<Result<T, E>>) -> Option<Result<T, BoxStdError>>
-where
-    E: Into<BoxError>,
-{
-    opt.map(|result| result.map_err(Into::<BoxError>::into).map_err(BoxStdError))
 }

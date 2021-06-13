@@ -39,7 +39,7 @@
 //! the [`extract`](crate::extract) module.
 
 use crate::{
-    body::{self, Body, BoxBody},
+    body::{Body, BoxBody},
     extract::FromRequest,
     response::IntoResponse,
     routing::{EmptyRouter, MethodFilter, RouteFuture},
@@ -643,17 +643,12 @@ impl<S, F> OnMethod<S, F> {
     }
 }
 
-impl<S, F, SB, FB> Service<Request<Body>> for OnMethod<S, F>
+impl<S, F> Service<Request<Body>> for OnMethod<S, F>
 where
-    S: Service<Request<Body>, Response = Response<SB>, Error = Infallible> + Clone,
-    F: Service<Request<Body>, Response = Response<FB>, Error = Infallible> + Clone,
-
-    SB: http_body::Body<Data = Bytes>,
-    SB::Error: Into<BoxError>,
-    FB: http_body::Body<Data = Bytes>,
-    FB::Error: Into<BoxError>,
+    S: Service<Request<Body>, Response = Response<BoxBody>, Error = Infallible> + Clone,
+    F: Service<Request<Body>, Response = Response<BoxBody>, Error = Infallible> + Clone,
 {
-    type Response = Response<body::Or<SB, FB>>;
+    type Response = Response<BoxBody>;
     type Error = Infallible;
     type Future = RouteFuture<S, F>;
 
