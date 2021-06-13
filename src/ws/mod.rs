@@ -3,7 +3,7 @@
 //! # Example
 //!
 //! ```
-//! use tower_web::{prelude::*, ws::{ws, WebSocket}};
+//! use awebframework::{prelude::*, ws::{ws, WebSocket}};
 //!
 //! let app = route("/ws", ws(handle_socket));
 //!

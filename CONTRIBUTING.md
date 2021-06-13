@@ -1,9 +1,9 @@
-# Contributing to Tower HTTP
+# Contributing to awebframework
 
 :balloon: Thanks for your help improving the project! We are so happy to have
 you!
 
-There are opportunities to contribute to `tower-web` at any level. It doesn't
+There are opportunities to contribute to `awebframework` at any level. It doesn't
 matter if you are just getting started with Rust or are the most weathered
 expert, we can use your help.
 
@@ -12,7 +12,7 @@ expert, we can use your help.
 This guide will help you get started. **Do not let this guide intimidate you**.
 It should be considered a map to help you navigate the process.
 
-Don't know where to start? Check [issues labeled with "E-help-wanted"](https://github.com/davidpdrsn/tower-web/issues?q=is%3Aopen+is%3Aissue+label%3AE-help-wanted) or ["E-easy"](https://github.com/davidpdrsn/tower-web/issues?q=is%3Aopen+is%3Aissue+label%3AE-easy).
+Don't know where to start? Check [issues labeled with "E-help-wanted"](https://github.com/davidpdrsn/awebframework/issues?q=is%3Aopen+is%3Aissue+label%3AE-help-wanted) or ["E-easy"](https://github.com/davidpdrsn/awebframework/issues?q=is%3Aopen+is%3Aissue+label%3AE-easy).
 
 You may also get help with contributing in the [`tower` Discord
 channel][discord], please join us!
@@ -21,7 +21,7 @@ channel][discord], please join us!
 
 ## Conduct
 
-The `tower-web` project adheres to the [Rust Code of Conduct][coc]. This
+The `awebframework` project adheres to the [Rust Code of Conduct][coc]. This
 describes the _minimum_ behavior expected from all contributors.
 
 [coc]: https://github.com/rust-lang/rust/blob/master/CODE_OF_CONDUCT.md
@@ -31,8 +31,8 @@ describes the _minimum_ behavior expected from all contributors.
 For any issue, there are fundamentally three ways an individual can contribute:
 
 1. By opening the issue for discussion: For instance, if you believe that you
-   have uncovered a bug in a `tower-web` crate, creating a new issue in the
-   davidpdrsn/tower-web [issue tracker][issues] is the way to report it.
+   have uncovered a bug in a `awebframework` crate, creating a new issue in the
+   davidpdrsn/awebframework [issue tracker][issues] is the way to report it.
 
 2. By helping to triage the issue: This can be done by providing
    supporting details (a test case that demonstrates a bug), providing
@@ -42,12 +42,12 @@ For any issue, there are fundamentally three ways an individual can contribute:
 3. By helping to resolve the issue: Typically this is done either in the form of
    demonstrating that the issue reported is not a problem after all, or more
    often, by opening a Pull Request that changes some bit of something in
-   tower-web in a concrete and reviewable manner.
+   awebframework in a concrete and reviewable manner.
 
 **Anybody can participate in any stage of contribution**. We urge you to
 participate in the discussion around bugs and participate in reviewing PRs.
 
-[issues]: https://github.com/davidpdrsn/tower-web/issues
+[issues]: https://github.com/davidpdrsn/awebframework/issues
 
 ### Asking for General Help
 
@@ -59,7 +59,7 @@ PR that helps others avoid the problems that you encountered.
 
 ### Submitting a Bug Report
 
-When opening a new issue in the `tower-web` issue tracker, users will
+When opening a new issue in the `awebframework` issue tracker, users will
 be presented with a [basic template][template] that should be filled in. If you
 believe that you have uncovered a bug, please fill out this form, following the
 template to the best of your ability. Do not worry if you cannot answer every
@@ -104,7 +104,7 @@ workflow that ensures that the proposed changes meet the minimal quality.
 ## Pull Requests
 
 Pull Requests are the way concrete changes are made to the code, documentation,
-and dependencies in the `tower-web` repository.
+and dependencies in the `awebframework` repository.
 
 Even tiny pull requests (e.g., one character pull request fixing a typo in API
 documentation) are greatly appreciated. Before making a large change, it is
@@ -225,8 +225,8 @@ perfect grammar, or exact style matches. Do not succumb to that temptation.
 
 Focus first on the most significant aspects of the change:
 
-1. Does this change make sense for tower-web?
-2. Does this change make tower-web better, even if only incrementally?
+1. Does this change make sense for awebframework?
+2. Does this change make awebframework better, even if only incrementally?
 3. Are there clear bugs or larger scale issues that need attending to?
 4. Is the commit message readable and correct? If it contains a breaking change
    is it clear enough?
@@ -257,8 +257,8 @@ with the appropriate reason to keep the conversation flow concise and relevant.
 
 Be aware that *how* you communicate requests and reviews in your feedback can
 have a significant impact on the success of the Pull Request. Yes, we may land a
-particular change that makes `tower-web` better, but the individual might just
-not want to have anything to do with `tower-web` ever again. The goal is not
+particular change that makes `awebframework` better, but the individual might just
+not want to have anything to do with `awebframework` ever again. The goal is not
 just having good code.
 
 ### Abandoned or Stalled Pull Requests

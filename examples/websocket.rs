@@ -9,17 +9,17 @@
 //!     --example websocket
 //! ```
 
+use awebframework::{
+    prelude::*,
+    routing::nest,
+    service::ServiceExt,
+    ws::{ws, Message, WebSocket},
+};
 use http::StatusCode;
 use std::net::SocketAddr;
 use tower_http::{
     services::ServeDir,
     trace::{DefaultMakeSpan, TraceLayer},
-};
-use tower_web::{
-    prelude::*,
-    routing::nest,
-    service::ServiceExt,
-    ws::{ws, Message, WebSocket},
 };
 
 #[tokio::main]
@@ -29,7 +29,7 @@ async fn main() {
     // build our application with some routes
     let app = nest(
         "/",
-        tower_web::service::get(
+        awebframework::service::get(
             ServeDir::new("examples/websocket")
                 .append_index_html_on_directories(true)
                 .handle_error(|error: std::io::Error| {

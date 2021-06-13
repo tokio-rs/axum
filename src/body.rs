@@ -14,7 +14,7 @@ pub use hyper::body::Body;
 
 /// A boxed [`Body`] trait object.
 ///
-/// This is used in tower-web as the response body type for applications. Its necessary to unify
+/// This is used in awebframework as the response body type for applications. Its necessary to unify
 /// multiple response bodies types into one.
 pub struct BoxBody {
     // when we've gotten rid of `BoxStdError` we should be able to change the error type to

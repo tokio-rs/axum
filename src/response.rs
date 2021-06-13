@@ -198,7 +198,7 @@ where
 ///
 /// ```
 /// use serde_json::json;
-/// use tower_web::{body::Body, response::{Json, IntoResponse}};
+/// use awebframework::{body::Body, response::{Json, IntoResponse}};
 /// use http::{Response, header::CONTENT_TYPE};
 ///
 /// let json = json!({
