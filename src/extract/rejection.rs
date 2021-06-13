@@ -212,3 +212,151 @@ impl IntoResponse for FailedToDeserializeQueryString {
         res
     }
 }
+
+macro_rules! composite_rejection {
+    (
+        $(#[$m:meta])*
+        pub enum $name:ident {
+            $($variant:ident),+
+            $(,)?
+        }
+    ) => {
+        $(#[$m])*
+        #[derive(Debug)]
+        #[non_exhaustive]
+        pub enum $name {
+            $(
+                #[allow(missing_docs)]
+                $variant($variant)
+            ),+
+        }
+
+        impl IntoResponse for $name {
+            fn into_response(self) -> http::Response<Body> {
+                match self {
+                    $(
+                        Self::$variant(inner) => inner.into_response(),
+                    )+
+                }
+            }
+        }
+
+        $(
+            impl From<$variant> for $name {
+                fn from(inner: $variant) -> Self {
+                    Self::$variant(inner)
+                }
+            }
+        )+
+    };
+}
+
+composite_rejection! {
+    /// Rejection used for [`Query`](super::Query).
+    ///
+    /// Contains one variant for each way the [`Query`](super::Query) extractor
+    /// can fail.
+    pub enum QueryRejection {
+        QueryStringMissing,
+        FailedToDeserializeQueryString,
+    }
+}
+
+composite_rejection! {
+    /// Rejection used for [`Form`](super::Form).
+    ///
+    /// Contains one variant for each way the [`Form`](super::Form) extractor
+    /// can fail.
+    pub enum FormRejection {
+        InvalidFormContentType,
+        QueryStringMissing,
+        FailedToDeserializeQueryString,
+        FailedToBufferBody,
+        BodyAlreadyExtracted,
+    }
+}
+
+composite_rejection! {
+    /// Rejection used for [`Json`](super::Json).
+    ///
+    /// Contains one variant for each way the [`Json`](super::Json) extractor
+    /// can fail.
+    pub enum JsonRejection {
+        InvalidJsonBody,
+        MissingJsonContentType,
+        BodyAlreadyExtracted,
+    }
+}
+
+composite_rejection! {
+    /// Rejection used for [`UrlParamsMap`](super::UrlParamsMap).
+    ///
+    /// Contains one variant for each way the [`UrlParamsMap`](super::UrlParamsMap) extractor
+    /// can fail.
+    pub enum UrlParamsMapRejection {
+        UrlParamsAlreadyExtracted,
+        MissingRouteParams,
+    }
+}
+
+composite_rejection! {
+    /// Rejection used for [`UrlParams`](super::UrlParams).
+    ///
+    /// Contains one variant for each way the [`UrlParams`](super::UrlParams) extractor
+    /// can fail.
+    pub enum UrlParamsRejection {
+        InvalidUrlParam,
+        UrlParamsAlreadyExtracted,
+        MissingRouteParams,
+    }
+}
+
+composite_rejection! {
+    /// Rejection used for [`Bytes`](bytes::Bytes).
+    ///
+    /// Contains one variant for each way the [`Bytes`](bytes::Bytes) extractor
+    /// can fail.
+    pub enum BytesRejection {
+        BodyAlreadyExtracted,
+        FailedToBufferBody,
+    }
+}
+
+composite_rejection! {
+    /// Rejection used for [`String`].
+    ///
+    /// Contains one variant for each way the [`String`] extractor can fail.
+    pub enum StringRejection {
+        BodyAlreadyExtracted,
+        FailedToBufferBody,
+        InvalidUtf8,
+    }
+}
+
+/// Rejection used for [`ContentLengthLimit`](super::ContentLengthLimit).
+///
+/// Contains one variant for each way the
+/// [`ContentLengthLimit`](super::ContentLengthLimit) extractor can fail.
+#[derive(Debug)]
+#[non_exhaustive]
+pub enum ContentLengthLimitRejection<T> {
+    #[allow(missing_docs)]
+    PayloadTooLarge(PayloadTooLarge),
+    #[allow(missing_docs)]
+    LengthRequired(LengthRequired),
+    #[allow(missing_docs)]
+    Inner(T),
+}
+
+impl<T> IntoResponse for ContentLengthLimitRejection<T>
+where
+    T: IntoResponse,
+{
+    fn into_response(self) -> http::Response<Body> {
+        match self {
+            Self::PayloadTooLarge(inner) => inner.into_response(),
+            Self::LengthRequired(inner) => inner.into_response(),
+            Self::Inner(inner) => inner.into_response(),
+        }
+    }
+}
