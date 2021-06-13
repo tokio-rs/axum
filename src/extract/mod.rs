@@ -170,6 +170,18 @@ where
     }
 }
 
+#[async_trait]
+impl<T> FromRequest for Result<T, T::Rejection>
+where
+    T: FromRequest,
+{
+    type Rejection = Infallible;
+
+    async fn from_request(req: &mut Request<Body>) -> Result<Self, Self::Rejection> {
+        Ok(T::from_request(req).await)
+    }
+}
+
 /// Extractor that deserializes query strings into some type.
 ///
 /// `T` is expected to implement [`serde::Deserialize`].
