@@ -1,5 +1,6 @@
 //! Rejection response types.
 
+use http::StatusCode;
 use tower::BoxError;
 
 use super::IntoResponse;
@@ -339,5 +340,24 @@ where
             Self::LengthRequired(inner) => inner.into_response(),
             Self::Inner(inner) => inner.into_response(),
         }
+    }
+}
+
+/// Rejection used for [`TypedHeader`](super::TypedHeader).
+#[cfg(feature = "headers")]
+#[cfg_attr(docsrs, doc(cfg(feature = "headers")))]
+#[derive(Debug)]
+pub struct TypedHeaderRejection {
+    pub(super) name: &'static http::header::HeaderName,
+    pub(super) err: headers::Error,
+}
+
+#[cfg(feature = "headers")]
+#[cfg_attr(docsrs, doc(cfg(feature = "headers")))]
+impl IntoResponse for TypedHeaderRejection {
+    fn into_response(self) -> http::Response<Body> {
+        let mut res = format!("{} ({})", self.err, self.name).into_response();
+        *res.status_mut() = StatusCode::BAD_REQUEST;
+        res
     }
 }
