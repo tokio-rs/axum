@@ -602,7 +602,7 @@
     clippy::match_like_matches_macro,
     clippy::type_complexity
 )]
-#![deny(unsafe_code)]
+#![forbid(unsafe_code)]
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![cfg_attr(test, allow(clippy::float_cmp))]
 
