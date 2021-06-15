@@ -12,10 +12,9 @@ impl ByteStr {
         Self(Bytes::copy_from_slice(s.as_ref().as_bytes()))
     }
 
-    #[allow(unsafe_code)]
     pub(crate) fn as_str(&self) -> &str {
-        // SAFETY: `ByteStr` can only be constructed from strings which are
-        // always valid utf-8.
-        unsafe { std::str::from_utf8_unchecked(&self.0) }
+        // `ByteStr` can only be constructed from strings which are always valid
+        // utf-8 so this wont panic.
+        std::str::from_utf8(&self.0).unwrap()
     }
 }
