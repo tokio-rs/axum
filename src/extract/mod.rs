@@ -766,3 +766,44 @@ macro_rules! impl_from_request_tuple {
 }
 
 impl_from_request_tuple!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16);
+
+/// Extractor that extracts a typed header value from [`headers`].
+///
+/// # Example
+///
+/// ```rust,no_run
+/// use awebframework::{extract::TypedHeader, prelude::*};
+/// use headers::UserAgent;
+///
+/// async fn users_teams_show(
+///     TypedHeader(user_agent): TypedHeader<UserAgent>,
+/// ) {
+///     // ...
+/// }
+///
+/// let app = route("/users/:user_id/team/:team_id", get(users_teams_show));
+/// ```
+#[cfg(feature = "headers")]
+#[cfg_attr(docsrs, doc(cfg(feature = "headers")))]
+#[derive(Debug, Clone, Copy)]
+pub struct TypedHeader<T>(pub T);
+
+#[cfg(feature = "headers")]
+#[cfg_attr(docsrs, doc(cfg(feature = "headers")))]
+#[async_trait]
+impl<T> FromRequest for TypedHeader<T>
+where
+    T: headers::Header,
+{
+    type Rejection = rejection::TypedHeaderRejection;
+
+    async fn from_request(req: &mut Request<Body>) -> Result<Self, Self::Rejection> {
+        let header_values = req.headers().get_all(T::name());
+        T::decode(&mut header_values.iter())
+            .map(Self)
+            .map_err(|err| rejection::TypedHeaderRejection {
+                err,
+                name: T::name(),
+            })
+    }
+}

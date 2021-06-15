@@ -551,6 +551,7 @@
 //! - `ws`: Enables WebSockets support.
 //! - `hyper-h1`: Enables hyper's `http1` feature. On by default.
 //! - `hyper-h2`: Enables hyper's `http2` feature.
+//! - `headers`: Enables extracing typed headers via [`extract::TypedHeader`].
 //!
 //! [tower]: https://crates.io/crates/tower
 //! [tower-http]: https://crates.io/crates/tower-http

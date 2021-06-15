@@ -1,4 +1,4 @@
-use crate::{handler::on, prelude::*, routing::MethodFilter, service};
+use crate::{handler::on, prelude::*, response::IntoResponse, routing::MethodFilter, service};
 use bytes::Bytes;
 use http::{Request, Response, StatusCode};
 use hyper::{Body, Server};
@@ -578,6 +578,33 @@ async fn disjunction() {
         .unwrap();
     assert_eq!(res.status(), StatusCode::OK);
     assert_eq!(res.text().await.unwrap(), "v0: games#show (123)");
+}
+
+#[tokio::test]
+async fn typed_header() {
+    use extract::TypedHeader;
+    async fn handle(TypedHeader(user_agent): TypedHeader<headers::UserAgent>) -> impl IntoResponse {
+        user_agent.to_string()
+    }
+
+    let app = route("/", get(handle));
+
+    let addr = run_in_background(app).await;
+
+    let client = reqwest::Client::new();
+
+    let res = client
+        .get(format!("http://{}", addr))
+        .header("user-agent", "foobar")
+        .send()
+        .await
+        .unwrap();
+    let body = res.text().await.unwrap();
+    assert_eq!(body, "foobar");
+
+    let res = client.get(format!("http://{}", addr)).send().await.unwrap();
+    let body = res.text().await.unwrap();
+    assert_eq!(body, "invalid HTTP header (user-agent)");
 }
 
 /// Run a `tower::Service` in the background and get a URI for it.

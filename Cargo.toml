@@ -38,6 +38,7 @@ tower-http = { version = "0.1", features = ["add-extension", "map-response-body"
 tokio-tungstenite = { optional = true, version = "0.14" }
 sha-1 = { optional = true, version = "0.9.6" }
 base64 = { optional = true, version = "0.13" }
+headers = { optional = true, version = "0.3" }
 
 [dev-dependencies]
 askama = "0.10.5"
