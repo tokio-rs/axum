@@ -67,15 +67,7 @@ features = [
 
 [dev-dependencies.tower-http]
 version = "0.1"
-features = [
-    "add-extension",
-    "auth",
-    "compression",
-    "compression-full",
-    "fs",
-    "redirect",
-    "trace",
-]
+features = ["full"]
 
 [package.metadata.docs.rs]
 all-features = true
