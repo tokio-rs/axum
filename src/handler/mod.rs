@@ -416,7 +416,7 @@ impl<S, T> Layered<S, T> {
     /// ```
     ///
     /// The closure can return any type that implements [`IntoResponse`].
-    pub fn handle_error<F, B, Res>(self, f: F) -> Layered<HandleError<S, F>, T>
+    pub fn handle_error<F, B, Res>(self, f: F) -> Layered<HandleError<S, F, Body>, T>
     where
         S: Service<Request<Body>, Response = Response<B>>,
         F: FnOnce(S::Error) -> Res,
@@ -650,7 +650,7 @@ where
 {
     type Response = Response<BoxBody>;
     type Error = Infallible;
-    type Future = RouteFuture<S, F>;
+    type Future = RouteFuture<S, F, Body>;
 
     fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         Poll::Ready(Ok(()))

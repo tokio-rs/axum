@@ -33,8 +33,8 @@
 //!     let app = route("/", get(|| async { "Hello, World!" }));
 //!
 //!     // run it with hyper on localhost:3000
-//!     app
-//!         .serve(&"0.0.0.0:3000".parse().unwrap())
+//!     hyper::Server::bind(&"0.0.0.0:3000".parse().unwrap())
+//!         .serve(app.into_make_service())
 //!         .await
 //!         .unwrap();
 //! }
@@ -62,7 +62,7 @@
 //!     // `GET /foo` called
 //! }
 //! # async {
-//! # app.serve(&"".parse().unwrap()).await.unwrap();
+//! # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 //! # };
 //! ```
 //!
@@ -141,7 +141,7 @@
 //!     .route("/result", get(result))
 //!     .route("/response", get(response));
 //! # async {
-//! # app.serve(&"".parse().unwrap()).await.unwrap();
+//! # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 //! # };
 //! ```
 //!
@@ -174,7 +174,7 @@
 //!     // ...
 //! }
 //! # async {
-//! # app.serve(&"".parse().unwrap()).await.unwrap();
+//! # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 //! # };
 //! ```
 //!
@@ -194,7 +194,7 @@
 //!     // ...
 //! }
 //! # async {
-//! # app.serve(&"".parse().unwrap()).await.unwrap();
+//! # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 //! # };
 //! ```
 //!
@@ -232,7 +232,7 @@
 //!     // ...
 //! }
 //! # async {
-//! # app.serve(&"".parse().unwrap()).await.unwrap();
+//! # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 //! # };
 //! ```
 //!
@@ -247,7 +247,7 @@
 //!     // ...
 //! }
 //! # async {
-//! # app.serve(&"".parse().unwrap()).await.unwrap();
+//! # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 //! # };
 //! ```
 //!
@@ -278,7 +278,7 @@
 //!
 //! async fn handler() {}
 //! # async {
-//! # app.serve(&"".parse().unwrap()).await.unwrap();
+//! # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 //! # };
 //! ```
 //!
@@ -298,7 +298,7 @@
 //!
 //! async fn post_foo() {}
 //! # async {
-//! # app.serve(&"".parse().unwrap()).await.unwrap();
+//! # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 //! # };
 //! ```
 //!
@@ -348,7 +348,7 @@
 //!
 //! async fn handle() {}
 //! # async {
-//! # app.serve(&"".parse().unwrap()).await.unwrap();
+//! # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 //! # };
 //! ```
 //!
@@ -374,7 +374,7 @@
 //!
 //! async fn other_handle() {}
 //! # async {
-//! # app.serve(&"".parse().unwrap()).await.unwrap();
+//! # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 //! # };
 //! ```
 //!
@@ -427,7 +427,7 @@
 //!         );
 //!     });
 //! # async {
-//! # app.serve(&"".parse().unwrap()).await.unwrap();
+//! # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 //! # };
 //! ```
 //!
@@ -458,7 +458,7 @@
 //!     // ...
 //! }
 //! # async {
-//! # app.serve(&"".parse().unwrap()).await.unwrap();
+//! # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 //! # };
 //! ```
 //!
@@ -493,7 +493,7 @@
 //!     )
 //! );
 //! # async {
-//! # app.serve(&"".parse().unwrap()).await.unwrap();
+//! # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 //! # };
 //! ```
 //!
@@ -505,19 +505,19 @@
 //! Applications can be nested by calling [`nest`](routing::nest):
 //!
 //! ```rust,no_run
-//! use awebframework::{prelude::*, routing::BoxRoute, body::BoxBody};
+//! use awebframework::{prelude::*, routing::BoxRoute, body::{Body, BoxBody}};
 //! use tower_http::services::ServeFile;
 //! use http::Response;
 //! use std::convert::Infallible;
 //!
-//! fn api_routes() -> BoxRoute {
+//! fn api_routes() -> BoxRoute<Body> {
 //!     route("/users", get(|_: Request<Body>| async { /* ... */ })).boxed()
 //! }
 //!
 //! let app = route("/", get(|_: Request<Body>| async { /* ... */ }))
 //!     .nest("/api", api_routes());
 //! # async {
-//! # app.serve(&"".parse().unwrap()).await.unwrap();
+//! # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 //! # };
 //! ```
 //!
@@ -537,7 +537,7 @@
 //!     })
 //! );
 //! # async {
-//! # app.serve(&"".parse().unwrap()).await.unwrap();
+//! # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 //! # };
 //! ```
 //!
@@ -686,9 +686,9 @@ pub mod prelude {
 /// # Panics
 ///
 /// Panics if `description` doesn't start with `/`.
-pub fn route<S>(description: &str, service: S) -> Route<S, EmptyRouter>
+pub fn route<S, B>(description: &str, service: S) -> Route<S, EmptyRouter>
 where
-    S: Service<Request<Body>, Error = Infallible> + Clone,
+    S: Service<Request<B>, Error = Infallible> + Clone,
 {
     use routing::RoutingDsl;
 

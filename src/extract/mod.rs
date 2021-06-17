@@ -25,7 +25,7 @@
 //!
 //! let app = route("/users", post(create_user));
 //! # async {
-//! # app.serve(&"".parse().unwrap()).await.unwrap();
+//! # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 //! # };
 //! ```
 //!
@@ -60,7 +60,7 @@
 //!
 //! let app = route("/foo", get(handler));
 //! # async {
-//! # app.serve(&"".parse().unwrap()).await.unwrap();
+//! # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 //! # };
 //! ```
 //!
@@ -85,7 +85,7 @@
 //!
 //! let app = route("/foo", get(handler));
 //! # async {
-//! # app.serve(&"".parse().unwrap()).await.unwrap();
+//! # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 //! # };
 //! ```
 //!
@@ -107,7 +107,7 @@
 //!
 //! let app = route("/users", post(create_user));
 //! # async {
-//! # app.serve(&"".parse().unwrap()).await.unwrap();
+//! # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 //! # };
 //! ```
 //!
@@ -142,7 +142,7 @@
 //!
 //! let app = route("/users", post(create_user));
 //! # async {
-//! # app.serve(&"".parse().unwrap()).await.unwrap();
+//! # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 //! # };
 //! ```
 //!
@@ -161,7 +161,7 @@
 //!
 //! let app = route("/users", post(create_user));
 //! # async {
-//! # app.serve(&"".parse().unwrap()).await.unwrap();
+//! # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 //! # };
 //! ```
 

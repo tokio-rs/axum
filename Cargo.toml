@@ -32,7 +32,7 @@ serde_json = "1.0"
 serde_urlencoded = "0.7"
 tokio = { version = "1", features = ["time"] }
 tower = { version = "0.4", features = ["util", "buffer", "make"] }
-tower-http = { version = "0.1", features = ["add-extension", "map-response-body"] }
+tower-http = { version = "0.1", features = ["add-extension", "map-response-body", "timeout"] }
 
 # optional dependencies
 tokio-tungstenite = { optional = true, version = "0.14" }
@@ -82,3 +82,6 @@ rustdoc-args = ["--cfg", "docsrs"]
 
 [package.metadata.playground]
 features = ["ws"]
+
+[patch.crates-io]
+tower-http = { path = "/Users/davidpdrsn/dev/major/tower-http/tower-http" }

@@ -13,6 +13,9 @@
 //!         socket.send(msg).await.unwrap();
 //!     }
 //! }
+//! # async {
+//! # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+//! # };
 //! ```
 
 use crate::{
@@ -41,7 +44,7 @@ pub mod future;
 /// each connection.
 ///
 /// See the [module docs](crate::ws) for more details.
-pub fn ws<F, Fut>(callback: F) -> OnMethod<BoxResponseBody<WebSocketUpgrade<F>>, EmptyRouter>
+pub fn ws<F, Fut, B>(callback: F) -> OnMethod<BoxResponseBody<WebSocketUpgrade<F>, B>, EmptyRouter>
 where
     F: FnOnce(WebSocket) -> Fut + Clone + Send + 'static,
     Fut: Future<Output = ()> + Send + 'static,
@@ -50,7 +53,7 @@ where
         callback,
         config: WebSocketConfig::default(),
     };
-    crate::service::get(svc)
+    crate::service::get::<_, B>(svc)
 }
 
 /// [`Service`] that ugprades connections to websockets and spawns a task to

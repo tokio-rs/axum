@@ -5,10 +5,11 @@ use hyper::{Body, Server};
 use serde::Deserialize;
 use serde_json::json;
 use std::{
+    convert::Infallible,
     net::{SocketAddr, TcpListener},
     time::Duration,
 };
-use tower::{make::Shared, BoxError, Service, ServiceBuilder};
+use tower::{make::Shared, service_fn, BoxError, Service, ServiceBuilder};
 use tower_http::{compression::CompressionLayer, trace::TraceLayer};
 
 #[tokio::test]
@@ -329,7 +330,6 @@ async fn boxing() {
 #[tokio::test]
 async fn service_handlers() {
     use crate::service::ServiceExt as _;
-    use tower::service_fn;
     use tower_http::services::ServeFile;
 
     let app = route(
@@ -605,6 +605,22 @@ async fn typed_header() {
     let res = client.get(format!("http://{}", addr)).send().await.unwrap();
     let body = res.text().await.unwrap();
     assert_eq!(body, "invalid HTTP header (user-agent)");
+}
+
+#[tokio::test]
+async fn request_timeout_body() {
+    use tower_http::timeout::RequestBodyTimeoutLayer;
+
+    async fn svc_handler<B>(_: Request<B>) -> Result<Response<Body>, Infallible> {
+        Ok(Response::new(Body::empty()))
+    }
+
+    let timeout = Duration::from_secs(1);
+    let layer = RequestBodyTimeoutLayer::new(timeout);
+
+    let app = route("/", service::get(service_fn(svc_handler))).layer(layer);
+
+    run_in_background(app).await;
 }
 
 /// Run a `tower::Service` in the background and get a URI for it.
