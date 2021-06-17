@@ -27,7 +27,7 @@ impl BoxBody {
     pub fn new<B>(body: B) -> Self
     where
         B: http_body::Body<Data = Bytes> + Send + Sync + 'static,
-        B::Error: Into<BoxError> + Send + Sync + 'static,
+        B::Error: Into<BoxError>,
     {
         Self {
             inner: Box::pin(body.map_err(|error| BoxStdError(error.into()))),

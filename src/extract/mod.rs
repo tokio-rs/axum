@@ -168,13 +168,26 @@
 //! # };
 //! ```
 
-use crate::{response::IntoResponse, util::ByteStr};
+use crate::{
+    body::{BoxBody, BoxStdError},
+    response::IntoResponse,
+    util::ByteStr,
+};
 use async_trait::async_trait;
 use bytes::{Buf, Bytes};
+use futures_util::stream::Stream;
 use http::{header, HeaderMap, Method, Request, Uri, Version};
+use http_body::Body;
 use rejection::*;
 use serde::de::DeserializeOwned;
-use std::{collections::HashMap, convert::Infallible, mem, str::FromStr};
+use std::{
+    collections::HashMap,
+    convert::Infallible,
+    mem,
+    pin::Pin,
+    str::FromStr,
+    task::{Context, Poll},
+};
 
 pub mod rejection;
 
@@ -512,7 +525,51 @@ where
     }
 }
 
-// TODO(david): some sort of body stream extractor
+/// Extractor that extracts the request body as a [`Stream`].
+///
+/// # Example
+///
+/// ```rust,no_run
+/// use awebframework::prelude::*;
+/// use futures::StreamExt;
+///
+/// async fn handler(mut stream: extract::BodyStream) {
+///     while let Some(chunk) = stream.next().await {
+///         // ...
+///     }
+/// }
+///
+/// let app = route("/users", get(handler));
+/// # async {
+/// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+/// # };
+/// ```
+#[derive(Debug)]
+pub struct BodyStream(BoxBody);
+
+impl Stream for BodyStream {
+    type Item = Result<Bytes, BoxStdError>;
+
+    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        Pin::new(&mut self.0).poll_data(cx)
+    }
+}
+
+#[async_trait]
+impl<B> FromRequest<B> for BodyStream
+where
+    B: http_body::Body<Data = Bytes> + Default + Send + Sync + 'static,
+    B::Data: Send,
+    B::Error: Into<tower::BoxError>,
+{
+    type Rejection = BodyAlreadyExtracted;
+
+    async fn from_request(req: &mut Request<B>) -> Result<Self, Self::Rejection> {
+        let body = take_body(req)?;
+        let stream = BodyStream(BoxBody::new(body));
+        Ok(stream)
+    }
+}
 
 #[async_trait]
 impl<B> FromRequest<B> for Request<B>
