@@ -5,7 +5,6 @@ use hyper::{Body, Server};
 use serde::Deserialize;
 use serde_json::json;
 use std::{
-    convert::Infallible,
     net::{SocketAddr, TcpListener},
     time::Duration,
 };
@@ -607,25 +606,26 @@ async fn typed_header() {
     assert_eq!(body, "invalid HTTP header (user-agent)");
 }
 
-#[tokio::test]
-async fn request_timeout_body() {
-    use tower_http::timeout::RequestBodyTimeoutLayer;
+// TODO: bring this back when https://github.com/tower-rs/tower-http/pull/109 is merged
+// #[tokio::test]
+// async fn request_timeout_body() {
+//     use tower_http::timeout::RequestBodyTimeoutLayer;
 
-    async fn handler(_body: String) {}
+//     async fn handler(_body: String) {}
 
-    async fn svc_handler<B>(_req: Request<B>) -> Result<Response<Body>, Infallible> {
-        Ok(Response::new(Body::empty()))
-    }
+//     async fn svc_handler<B>(_req: Request<B>) -> Result<Response<Body>, Infallible> {
+//         Ok(Response::new(Body::empty()))
+//     }
 
-    let timeout = Duration::from_secs(1);
-    let layer = RequestBodyTimeoutLayer::new(timeout);
+//     let timeout = Duration::from_secs(1);
+//     let layer = RequestBodyTimeoutLayer::new(timeout);
 
-    let app = route("/", service::get(service_fn(svc_handler)))
-        .route("/foo", get(handler))
-        .layer(layer);
+//     let app = route("/", service::get(service_fn(svc_handler)))
+//         .route("/foo", get(handler))
+//         .layer(layer);
 
-    run_in_background(app).await;
-}
+//     run_in_background(app).await;
+// }
 
 /// Run a `tower::Service` in the background and get a URI for it.
 async fn run_in_background<S, ResBody>(svc: S) -> SocketAddr
