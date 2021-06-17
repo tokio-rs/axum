@@ -70,6 +70,9 @@
 //! let app = ServiceBuilder::new()
 //!     .layer(some_backpressure_sensitive_middleware)
 //!     .service(app);
+//! # async {
+//! # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+//! # };
 //! ```
 //!
 //! However when applying middleware around your whole application in this way
@@ -149,6 +152,9 @@ where
 ///
 /// // Requests to `GET /` will go to `service`.
 /// let app = route("/", service::get(service));
+/// # async {
+/// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+/// # };
 /// ```
 ///
 /// You can only add services who cannot fail (their error type must be
@@ -236,6 +242,9 @@ where
 ///
 /// // Requests to `POST /` will go to `service`.
 /// let app = route("/", service::on(MethodFilter::Post, service));
+/// # async {
+/// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+/// # };
 /// ```
 pub fn on<S, B>(method: MethodFilter, svc: S) -> OnMethod<BoxResponseBody<S, B>, EmptyRouter>
 where
@@ -313,6 +322,9 @@ impl<S, F> OnMethod<S, F> {
     /// // Requests to `GET /` will go to `service` and `POST /` will go to
     /// // `other_service`.
     /// let app = route("/", service::post(service).get(other_service));
+    /// # async {
+    /// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+    /// # };
     /// ```
     ///
     /// You can only add services who cannot fail (their error type must be
@@ -406,6 +418,9 @@ impl<S, F> OnMethod<S, F> {
     ///
     /// // Requests to `DELETE /` will go to `service`
     /// let app = route("/", service::on(MethodFilter::Delete, service));
+    /// # async {
+    /// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+    /// # };
     /// ```
     pub fn on<T, B>(self, method: MethodFilter, svc: T) -> OnMethod<BoxResponseBody<T, B>, Self>
     where

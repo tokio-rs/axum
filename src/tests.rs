@@ -611,14 +611,18 @@ async fn typed_header() {
 async fn request_timeout_body() {
     use tower_http::timeout::RequestBodyTimeoutLayer;
 
-    async fn svc_handler<B>(_: Request<B>) -> Result<Response<Body>, Infallible> {
+    async fn handler(_body: String) {}
+
+    async fn svc_handler<B>(_req: Request<B>) -> Result<Response<Body>, Infallible> {
         Ok(Response::new(Body::empty()))
     }
 
     let timeout = Duration::from_secs(1);
     let layer = RequestBodyTimeoutLayer::new(timeout);
 
-    let app = route("/", service::get(service_fn(svc_handler))).layer(layer);
+    let app = route("/", service::get(service_fn(svc_handler)))
+        .route("/foo", get(handler))
+        .layer(layer);
 
     run_in_background(app).await;
 }

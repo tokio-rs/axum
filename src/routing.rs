@@ -100,6 +100,9 @@ pub trait RoutingDsl: crate::sealed::Sealed + Sized {
     /// // and `GET /foo` goes to third_handler.
     /// let app = route("/", get(first_handler).post(second_handler))
     ///     .route("/foo", get(third_handler));
+    /// # async {
+    /// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+    /// # };
     /// ```
     fn route<T, B>(self, description: &str, svc: T) -> Route<T, Self>
     where
@@ -224,6 +227,9 @@ pub trait RoutingDsl: crate::sealed::Sealed + Sized {
     ///     .route("/foo", get(second_handler))
     ///     .route("/bar", get(third_handler))
     ///     .layer(TraceLayer::new_for_http());
+    /// # async {
+    /// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+    /// # };
     /// ```
     ///
     /// When adding middleware that might fail its required to handle those
@@ -631,11 +637,11 @@ impl<S> Layered<S> {
     /// async fn handler() { /* ... */ }
     ///
     /// // `Timeout` will fail with `BoxError` if the timeout elapses...
-    /// let layered_handler = route("/", get(handler))
+    /// let layered_app = route("/", get(handler))
     ///     .layer(TimeoutLayer::new(Duration::from_secs(30)));
     ///
     /// // ...so we must handle that error
-    /// let layered_handler = layered_handler.handle_error(|error: BoxError| {
+    /// let with_errors_handled = layered_app.handle_error(|error: BoxError| {
     ///     if error.is::<tower::timeout::error::Elapsed>() {
     ///         (
     ///             StatusCode::REQUEST_TIMEOUT,
@@ -648,6 +654,13 @@ impl<S> Layered<S> {
     ///         )
     ///     }
     /// });
+    ///
+    /// # async {
+    /// # hyper::Server::bind(&"".parse().unwrap())
+    /// #     .serve(with_errors_handled.into_make_service())
+    /// #     .await
+    /// #     .unwrap();
+    /// # };
     /// ```
     ///
     /// The closure can return any type that implements [`IntoResponse`].

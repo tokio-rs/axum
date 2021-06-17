@@ -40,10 +40,13 @@
 //! struct ExtractUserAgent(HeaderValue);
 //!
 //! #[async_trait]
-//! impl FromRequest for ExtractUserAgent {
+//! impl<B> FromRequest<B> for ExtractUserAgent
+//! where
+//!     B: Send,
+//! {
 //!     type Rejection = (StatusCode, &'static str);
 //!
-//!     async fn from_request(req: &mut Request<Body>) -> Result<Self, Self::Rejection> {
+//!     async fn from_request(req: &mut Request<B>) -> Result<Self, Self::Rejection> {
 //!         if let Some(user_agent) = req.headers().get(USER_AGENT) {
 //!             Ok(ExtractUserAgent(user_agent.clone()))
 //!         } else {
@@ -165,7 +168,7 @@
 //! # };
 //! ```
 
-use crate::{body::Body, response::IntoResponse, util::ByteStr};
+use crate::{response::IntoResponse, util::ByteStr};
 use async_trait::async_trait;
 use bytes::{Buf, Bytes};
 use http::{header, HeaderMap, Method, Request, Uri, Version};
@@ -179,35 +182,37 @@ pub mod rejection;
 ///
 /// See the [module docs](crate::extract) for more details.
 #[async_trait]
-pub trait FromRequest: Sized {
+pub trait FromRequest<B>: Sized {
     /// If the extractor fails it'll use this "rejection" type. A rejection is
     /// a kind of error that can be converted into a response.
     type Rejection: IntoResponse;
 
     /// Perform the extraction.
-    async fn from_request(req: &mut Request<Body>) -> Result<Self, Self::Rejection>;
+    async fn from_request(req: &mut Request<B>) -> Result<Self, Self::Rejection>;
 }
 
 #[async_trait]
-impl<T> FromRequest for Option<T>
+impl<T, B> FromRequest<B> for Option<T>
 where
-    T: FromRequest,
+    T: FromRequest<B>,
+    B: Send,
 {
     type Rejection = Infallible;
 
-    async fn from_request(req: &mut Request<Body>) -> Result<Option<T>, Self::Rejection> {
+    async fn from_request(req: &mut Request<B>) -> Result<Option<T>, Self::Rejection> {
         Ok(T::from_request(req).await.ok())
     }
 }
 
 #[async_trait]
-impl<T> FromRequest for Result<T, T::Rejection>
+impl<T, B> FromRequest<B> for Result<T, T::Rejection>
 where
-    T: FromRequest,
+    T: FromRequest<B>,
+    B: Send,
 {
     type Rejection = Infallible;
 
-    async fn from_request(req: &mut Request<Body>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut Request<B>) -> Result<Self, Self::Rejection> {
         Ok(T::from_request(req).await)
     }
 }
@@ -237,6 +242,9 @@ where
 /// }
 ///
 /// let app = route("/list_things", get(list_things));
+/// # async {
+/// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+/// # };
 /// ```
 ///
 /// If the query string cannot be parsed it will reject the request with a `400
@@ -245,13 +253,14 @@ where
 pub struct Query<T>(pub T);
 
 #[async_trait]
-impl<T> FromRequest for Query<T>
+impl<T, B> FromRequest<B> for Query<T>
 where
     T: DeserializeOwned,
+    B: Send,
 {
     type Rejection = QueryRejection;
 
-    async fn from_request(req: &mut Request<Body>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut Request<B>) -> Result<Self, Self::Rejection> {
         let query = req.uri().query().ok_or(QueryStringMissing)?;
         let value = serde_urlencoded::from_str(query)
             .map_err(FailedToDeserializeQueryString::new::<T, _>)?;
@@ -283,6 +292,9 @@ where
 /// }
 ///
 /// let app = route("/sign_up", post(accept_form));
+/// # async {
+/// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+/// # };
 /// ```
 ///
 /// Note that `Content-Type: multipart/form-data` requests are not supported.
@@ -290,14 +302,17 @@ where
 pub struct Form<T>(pub T);
 
 #[async_trait]
-impl<T> FromRequest for Form<T>
+impl<T, B> FromRequest<B> for Form<T>
 where
     T: DeserializeOwned,
+    B: http_body::Body + Default + Send,
+    B::Data: Send,
+    B::Error: Into<tower::BoxError>,
 {
     type Rejection = FormRejection;
 
     #[allow(warnings)]
-    async fn from_request(req: &mut Request<Body>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut Request<B>) -> Result<Self, Self::Rejection> {
         if !has_content_type(&req, "application/x-www-form-urlencoded") {
             Err(InvalidFormContentType)?;
         }
@@ -343,6 +358,9 @@ where
 /// }
 ///
 /// let app = route("/users", post(create_user));
+/// # async {
+/// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+/// # };
 /// ```
 ///
 /// If the query string cannot be parsed it will reject the request with a `400
@@ -353,13 +371,16 @@ where
 pub struct Json<T>(pub T);
 
 #[async_trait]
-impl<T> FromRequest for Json<T>
+impl<T, B> FromRequest<B> for Json<T>
 where
     T: DeserializeOwned,
+    B: http_body::Body + Default + Send,
+    B::Data: Send,
+    B::Error: Into<tower::BoxError>,
 {
     type Rejection = JsonRejection;
 
-    async fn from_request(req: &mut Request<Body>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut Request<B>) -> Result<Self, Self::Rejection> {
         use bytes::Buf;
 
         if has_content_type(req, "application/json") {
@@ -419,6 +440,9 @@ fn has_content_type<B>(req: &Request<B>, expected_content_type: &str) -> bool {
 ///     // Add middleware that inserts the state into all incoming request's
 ///     // extensions.
 ///     .layer(AddExtensionLayer::new(state));
+/// # async {
+/// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+/// # };
 /// ```
 ///
 /// If the extension is missing it will reject the request with a `500 Interal
@@ -427,13 +451,14 @@ fn has_content_type<B>(req: &Request<B>, expected_content_type: &str) -> bool {
 pub struct Extension<T>(pub T);
 
 #[async_trait]
-impl<T> FromRequest for Extension<T>
+impl<T, B> FromRequest<B> for Extension<T>
 where
     T: Clone + Send + Sync + 'static,
+    B: Send,
 {
     type Rejection = MissingExtension;
 
-    async fn from_request(req: &mut Request<Body>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut Request<B>) -> Result<Self, Self::Rejection> {
         let value = req
             .extensions()
             .get::<T>()
@@ -445,10 +470,15 @@ where
 }
 
 #[async_trait]
-impl FromRequest for Bytes {
+impl<B> FromRequest<B> for Bytes
+where
+    B: http_body::Body + Default + Send,
+    B::Data: Send,
+    B::Error: Into<tower::BoxError>,
+{
     type Rejection = BytesRejection;
 
-    async fn from_request(req: &mut Request<Body>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut Request<B>) -> Result<Self, Self::Rejection> {
         let body = take_body(req)?;
 
         let bytes = hyper::body::to_bytes(body)
@@ -460,10 +490,15 @@ impl FromRequest for Bytes {
 }
 
 #[async_trait]
-impl FromRequest for String {
+impl<B> FromRequest<B> for String
+where
+    B: http_body::Body + Default + Send,
+    B::Data: Send,
+    B::Error: Into<tower::BoxError>,
+{
     type Rejection = StringRejection;
 
-    async fn from_request(req: &mut Request<Body>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut Request<B>) -> Result<Self, Self::Rejection> {
         let body = take_body(req)?;
 
         let bytes = hyper::body::to_bytes(body)
@@ -477,20 +512,16 @@ impl FromRequest for String {
     }
 }
 
-#[async_trait]
-impl FromRequest for Body {
-    type Rejection = BodyAlreadyExtracted;
-
-    async fn from_request(req: &mut Request<Body>) -> Result<Self, Self::Rejection> {
-        take_body(req)
-    }
-}
+// TODO(david): some sort of body stream extractor
 
 #[async_trait]
-impl FromRequest for Request<Body> {
+impl<B> FromRequest<B> for Request<B>
+where
+    B: Default + Send,
+{
     type Rejection = RequestAlreadyExtracted;
 
-    async fn from_request(req: &mut Request<Body>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut Request<B>) -> Result<Self, Self::Rejection> {
         struct RequestAlreadyExtractedExt;
 
         if req
@@ -506,37 +537,49 @@ impl FromRequest for Request<Body> {
 }
 
 #[async_trait]
-impl FromRequest for Method {
+impl<B> FromRequest<B> for Method
+where
+    B: Send,
+{
     type Rejection = Infallible;
 
-    async fn from_request(req: &mut Request<Body>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut Request<B>) -> Result<Self, Self::Rejection> {
         Ok(req.method().clone())
     }
 }
 
 #[async_trait]
-impl FromRequest for Uri {
+impl<B> FromRequest<B> for Uri
+where
+    B: Send,
+{
     type Rejection = Infallible;
 
-    async fn from_request(req: &mut Request<Body>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut Request<B>) -> Result<Self, Self::Rejection> {
         Ok(req.uri().clone())
     }
 }
 
 #[async_trait]
-impl FromRequest for Version {
+impl<B> FromRequest<B> for Version
+where
+    B: Send,
+{
     type Rejection = Infallible;
 
-    async fn from_request(req: &mut Request<Body>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut Request<B>) -> Result<Self, Self::Rejection> {
         Ok(req.version())
     }
 }
 
 #[async_trait]
-impl FromRequest for HeaderMap {
+impl<B> FromRequest<B> for HeaderMap
+where
+    B: Send,
+{
     type Rejection = Infallible;
 
-    async fn from_request(req: &mut Request<Body>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut Request<B>) -> Result<Self, Self::Rejection> {
         Ok(mem::take(req.headers_mut()))
     }
 }
@@ -553,6 +596,9 @@ impl FromRequest for HeaderMap {
 /// }
 ///
 /// let app = route("/", post(handler));
+/// # async {
+/// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+/// # };
 /// ```
 ///
 /// This requires the request to have a `Content-Length` header.
@@ -560,13 +606,14 @@ impl FromRequest for HeaderMap {
 pub struct ContentLengthLimit<T, const N: u64>(pub T);
 
 #[async_trait]
-impl<T, const N: u64> FromRequest for ContentLengthLimit<T, N>
+impl<T, B, const N: u64> FromRequest<B> for ContentLengthLimit<T, N>
 where
-    T: FromRequest,
+    T: FromRequest<B>,
+    B: Send,
 {
     type Rejection = ContentLengthLimitRejection<T::Rejection>;
 
-    async fn from_request(req: &mut Request<Body>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut Request<B>) -> Result<Self, Self::Rejection> {
         let content_length = req.headers().get(http::header::CONTENT_LENGTH).cloned();
 
         let content_length =
@@ -604,6 +651,9 @@ where
 /// }
 ///
 /// let app = route("/users/:id", get(users_show));
+/// # async {
+/// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+/// # };
 /// ```
 ///
 /// Note that you can only have one URL params extractor per handler. If you
@@ -627,10 +677,13 @@ impl UrlParamsMap {
 }
 
 #[async_trait]
-impl FromRequest for UrlParamsMap {
+impl<B> FromRequest<B> for UrlParamsMap
+where
+    B: Send,
+{
     type Rejection = MissingRouteParams;
 
-    async fn from_request(req: &mut Request<Body>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut Request<B>) -> Result<Self, Self::Rejection> {
         if let Some(params) = req
             .extensions_mut()
             .get_mut::<Option<crate::routing::UrlParams>>()
@@ -664,6 +717,9 @@ impl FromRequest for UrlParamsMap {
 /// }
 ///
 /// let app = route("/users/:user_id/team/:team_id", get(users_teams_show));
+/// # async {
+/// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+/// # };
 /// ```
 ///
 /// Note that you can only have one URL params extractor per handler. If you
@@ -676,15 +732,16 @@ macro_rules! impl_parse_url {
 
     ( $head:ident, $($tail:ident),* $(,)? ) => {
         #[async_trait]
-        impl<$head, $($tail,)*> FromRequest for UrlParams<($head, $($tail,)*)>
+        impl<B, $head, $($tail,)*> FromRequest<B> for UrlParams<($head, $($tail,)*)>
         where
             $head: FromStr + Send,
             $( $tail: FromStr + Send, )*
+            B: Send,
         {
             type Rejection = UrlParamsRejection;
 
             #[allow(non_snake_case)]
-            async fn from_request(req: &mut Request<Body>) -> Result<Self, Self::Rejection> {
+            async fn from_request(req: &mut Request<B>) -> Result<Self, Self::Rejection> {
                 let params = if let Some(params) = req
                     .extensions_mut()
                     .get_mut::<Option<crate::routing::UrlParams>>()
@@ -726,7 +783,10 @@ macro_rules! impl_parse_url {
 
 impl_parse_url!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16);
 
-fn take_body(req: &mut Request<Body>) -> Result<Body, BodyAlreadyExtracted> {
+fn take_body<B>(req: &mut Request<B>) -> Result<B, BodyAlreadyExtracted>
+where
+    B: Default,
+{
     struct BodyAlreadyExtractedExt;
 
     if req
@@ -739,33 +799,6 @@ fn take_body(req: &mut Request<Body>) -> Result<Body, BodyAlreadyExtracted> {
         Ok(mem::take(req.body_mut()))
     }
 }
-
-macro_rules! impl_from_request_tuple {
-    () => {};
-
-    ( $head:ident, $($tail:ident),* $(,)? ) => {
-        #[allow(non_snake_case)]
-        #[async_trait]
-        impl<R, $head, $($tail,)*> FromRequest for ($head, $($tail,)*)
-        where
-            R: IntoResponse,
-            $head: FromRequest<Rejection = R> + Send,
-            $( $tail: FromRequest<Rejection = R> + Send, )*
-        {
-            type Rejection = R;
-
-            async fn from_request(req: &mut Request<Body>) -> Result<Self, Self::Rejection> {
-                let $head = FromRequest::from_request(req).await?;
-                $( let $tail = FromRequest::from_request(req).await?; )*
-                Ok(($head, $($tail,)*))
-            }
-        }
-
-        impl_from_request_tuple!($($tail,)*);
-    };
-}
-
-impl_from_request_tuple!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16);
 
 /// Extractor that extracts a typed header value from [`headers`].
 ///
@@ -782,6 +815,9 @@ impl_from_request_tuple!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13,
 /// }
 ///
 /// let app = route("/users/:user_id/team/:team_id", get(users_teams_show));
+/// # async {
+/// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+/// # };
 /// ```
 #[cfg(feature = "headers")]
 #[cfg_attr(docsrs, doc(cfg(feature = "headers")))]
@@ -791,13 +827,14 @@ pub struct TypedHeader<T>(pub T);
 #[cfg(feature = "headers")]
 #[cfg_attr(docsrs, doc(cfg(feature = "headers")))]
 #[async_trait]
-impl<T> FromRequest for TypedHeader<T>
+impl<T, B> FromRequest<B> for TypedHeader<T>
 where
     T: headers::Header,
+    B: Send,
 {
     type Rejection = rejection::TypedHeaderRejection;
 
-    async fn from_request(req: &mut Request<Body>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut Request<B>) -> Result<Self, Self::Rejection> {
         let header_values = req.headers().get_all(T::name());
         T::decode(&mut header_values.iter())
             .map(Self)

@@ -32,10 +32,13 @@ enum Version {
 }
 
 #[async_trait]
-impl FromRequest for Version {
+impl<B> FromRequest<B> for Version
+where
+    B: Send,
+{
     type Rejection = Response<Body>;
 
-    async fn from_request(req: &mut Request<Body>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut Request<B>) -> Result<Self, Self::Rejection> {
         let params = extract::UrlParamsMap::from_request(req)
             .await
             .map_err(IntoResponse::into_response)?;
