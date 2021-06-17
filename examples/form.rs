@@ -1,5 +1,4 @@
 use awebframework::prelude::*;
-use http::Request;
 use serde::Deserialize;
 use std::net::SocketAddr;
 
@@ -20,7 +19,7 @@ async fn main() {
         .unwrap();
 }
 
-async fn show_form(_req: Request<Body>) -> response::Html<&'static str> {
+async fn show_form() -> response::Html<&'static str> {
     response::Html(
         r#"
         <!doctype html>
