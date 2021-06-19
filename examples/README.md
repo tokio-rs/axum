@@ -9,4 +9,4 @@
 - [`versioning`](../examples/versioning.rs) - How one might version an API.
 - [`websocket`](../examples/websocket.rs) - How to build an app that handles WebSocket connections.
 - [`error_handling_and_dependency_injection`](../examples/error_handling_and_dependency_injection.rs) - How to handle errors and dependency injection using trait objects.
-- [`bb8_connection_pool`](../examples/bb8_connection_pool.rs) - How to use a bb8 and tokio-postgres to query a database.
+- [`tokio_postgres`](../examples/tokio_postgres.rs) - How to use a tokio-postgres and bb8 to query a database.
