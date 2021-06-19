@@ -1,0 +1,12 @@
+# Examples
+
+- [`hello_world`](../examples/hello_world.rs) - Very small getting started app.
+- [`key_value_store`](../examples/key_value_store.rs) - Slightly larger app with an in-memory key/value store.
+- [`form`](../examples/form.rs) - Receiving data from an HTML `<form>`.
+- [`static_file_server`](../examples/static_file_server.rs) - Serving static files from a directory. Could for example be the baseline for a single page app.
+- [`templates`](../examples/templates.rs) - Rending HTML templates using [askama](https://crates.io/crates/askama).
+- [`testing`](../examples/testing.rs) - How to test awebframework apps.
+- [`versioning`](../examples/versioning.rs) - How one might version an API.
+- [`websocket`](../examples/websocket.rs) - How to build an app that handles WebSocket connections.
+- [`error_handling_and_dependency_injection`](../examples/error_handling_and_dependency_injection.rs) - How to handle errors and dependency injection using trait objects.
+- [`bb8_connection_pool`](../examples/bb8_connection_pool.rs) - How to use a bb8 and tokio-postgres to query a database.
