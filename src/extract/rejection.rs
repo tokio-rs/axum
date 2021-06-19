@@ -1,10 +1,8 @@
 //! Rejection response types.
 
-use http::StatusCode;
-use tower::BoxError;
-
 use super::IntoResponse;
 use crate::body::Body;
+use tower::BoxError;
 
 macro_rules! define_rejection {
     (
@@ -355,9 +353,9 @@ pub struct TypedHeaderRejection {
 #[cfg(feature = "headers")]
 #[cfg_attr(docsrs, doc(cfg(feature = "headers")))]
 impl IntoResponse for TypedHeaderRejection {
-    fn into_response(self) -> http::Response<Body> {
+    fn into_response(self) -> http::Response<crate::Body> {
         let mut res = format!("{} ({})", self.err, self.name).into_response();
-        *res.status_mut() = StatusCode::BAD_REQUEST;
+        *res.status_mut() = http::StatusCode::BAD_REQUEST;
         res
     }
 }

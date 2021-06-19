@@ -74,7 +74,7 @@ jobs:
       uses: actions-rs/cargo@v1
       with:
         command: test
-        args: --all --all-features
+        args: --all --all-features --all-targets
 
   deny-check:
     name: cargo-deny check
