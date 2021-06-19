@@ -14,13 +14,10 @@ use http::StatusCode;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::{net::SocketAddr, sync::Arc};
-use tower_http::trace::TraceLayer;
 use uuid::Uuid;
 
 #[tokio::main]
 async fn main() {
-    tracing_subscriber::fmt::init();
-
     // Inject a `UserRepo` into our handlers via a trait object. This could be
     // the live implementation or just a mock for testing.
     let user_repo = Arc::new(ExampleUserRepo) as DynUserRepo;
@@ -30,9 +27,7 @@ async fn main() {
         .route("/users", post(users_create))
         // Add our `user_repo` to all request's extensions so handlers can access
         // it.
-        .layer(AddExtensionLayer::new(user_repo))
-        // Add tracing because why not.
-        .layer(TraceLayer::new_for_http());
+        .layer(AddExtensionLayer::new(user_repo));
 
     // Run our application
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));

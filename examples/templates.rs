@@ -5,8 +5,6 @@ use std::net::SocketAddr;
 
 #[tokio::main]
 async fn main() {
-    tracing_subscriber::fmt::init();
-
     // build our application with some routes
     let app = route("/greet/:name", get(greet));
 
