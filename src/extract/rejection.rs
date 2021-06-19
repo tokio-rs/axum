@@ -138,7 +138,7 @@ define_rejection! {
 
 define_rejection! {
     #[status = INTERNAL_SERVER_ERROR]
-    #[body = "Cannot have two `Request<Body>` extractors for a single handler"]
+    #[body = "Cannot have two `Request<_>` extractors for a single handler"]
     /// Rejection type used if you try and extract the request more than once.
     pub struct RequestAlreadyExtracted;
 }

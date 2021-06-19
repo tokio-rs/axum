@@ -44,6 +44,7 @@ headers = { optional = true, version = "0.3" }
 askama = "0.10.5"
 bb8 = "0.7.0"
 bb8-postgres = "0.7.0"
+futures = "0.3"
 hyper = { version = "0.14", features = ["full"] }
 reqwest = { version = "0.11", features = ["json", "stream"] }
 serde = { version = "1.0", features = ["derive"] }
@@ -66,15 +67,7 @@ features = [
 
 [dev-dependencies.tower-http]
 version = "0.1"
-features = [
-    "add-extension",
-    "auth",
-    "compression",
-    "compression-full",
-    "fs",
-    "redirect",
-    "trace",
-]
+features = ["full"]
 
 [package.metadata.docs.rs]
 all-features = true

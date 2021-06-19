@@ -1,5 +1,4 @@
 use awebframework::prelude::*;
-use http::Request;
 use serde::Deserialize;
 use std::net::SocketAddr;
 
@@ -14,10 +13,13 @@ async fn main() {
     // run it with hyper
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
     tracing::debug!("listening on {}", addr);
-    app.serve(&addr).await.unwrap();
+    hyper::Server::bind(&addr)
+        .serve(app.into_make_service())
+        .await
+        .unwrap();
 }
 
-async fn show_form(_req: Request<Body>) -> response::Html<&'static str> {
+async fn show_form() -> response::Html<&'static str> {
     response::Html(
         r#"
         <!doctype html>

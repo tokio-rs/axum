@@ -14,7 +14,10 @@ async fn main() {
     // run it
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
     tracing::debug!("listening on {}", addr);
-    app.serve(&addr).await.unwrap();
+    hyper::Server::bind(&addr)
+        .serve(app.into_make_service())
+        .await
+        .unwrap();
 }
 
 async fn handler(version: Version) {
@@ -29,10 +32,13 @@ enum Version {
 }
 
 #[async_trait]
-impl FromRequest for Version {
+impl<B> FromRequest<B> for Version
+where
+    B: Send,
+{
     type Rejection = Response<Body>;
 
-    async fn from_request(req: &mut Request<Body>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut Request<B>) -> Result<Self, Self::Rejection> {
         let params = extract::UrlParamsMap::from_request(req)
             .await
             .map_err(IntoResponse::into_response)?;
