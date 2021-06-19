@@ -37,7 +37,10 @@ async fn main() {
     // Run our application
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
     tracing::debug!("listening on {}", addr);
-    app.serve(&addr).await.unwrap();
+    hyper::Server::bind(&addr)
+        .serve(app.into_make_service())
+        .await
+        .unwrap();
 }
 
 /// Handler for `GET /users/:id`.
