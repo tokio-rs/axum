@@ -16,7 +16,12 @@ confidence-threshold = 0.8
 multiple-versions = "deny"
 highlight = "all"
 skip-tree = []
-skip = []
+skip = [
+    # iri-string uses old version
+    # iri-string pulled in by tower-http
+    # PR to update tower-http is https://github.com/tower-rs/tower-http/pull/110
+    { name = "nom", version = "=5.1.2" },
+]
 
 [sources]
 unknown-registry = "warn"
