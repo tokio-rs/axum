@@ -188,6 +188,12 @@ where
     }
 }
 
+impl<T> From<T> for Html<T> {
+    fn from(inner: T) -> Self {
+        Self(inner)
+    }
+}
+
 /// A JSON response.
 ///
 /// Can be created from any type that implements [`serde::Serialize`].
@@ -236,5 +242,11 @@ where
             HeaderValue::from_static("application/json"),
         );
         res
+    }
+}
+
+impl<T> From<T> for Json<T> {
+    fn from(inner: T) -> Self {
+        Self(inner)
     }
 }

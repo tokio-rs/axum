@@ -51,7 +51,7 @@ tokio = { version = "1.6.1", features = ["macros", "rt", "rt-multi-thread"] }
 tokio-postgres = "0.7.2"
 tracing = "0.1"
 tracing-subscriber = "0.2"
-uuid = "0.8"
+uuid = { version = "0.8", features = ["serde"] }
 
 [dev-dependencies.tower]
 version = "0.4"
