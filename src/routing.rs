@@ -1,11 +1,10 @@
 //! Routing between [`Service`]s.
 
-use crate::{body::BoxBody, response::IntoResponse, util::ByteStr};
+use crate::{body::BoxBody, buffer::MpscBuffer, response::IntoResponse, util::ByteStr};
 use async_trait::async_trait;
 use bytes::Bytes;
-use futures_util::{future, ready};
+use futures_util::future;
 use http::{Method, Request, Response, StatusCode, Uri};
-use http_body::Full;
 use pin_project::pin_project;
 use regex::Regex;
 use std::{
@@ -18,7 +17,6 @@ use std::{
     task::{Context, Poll},
 };
 use tower::{
-    buffer::Buffer,
     util::{BoxService, Oneshot, ServiceExt},
     BoxError, Layer, Service, ServiceBuilder,
 };
@@ -106,7 +104,7 @@ pub trait RoutingDsl: crate::sealed::Sealed + Sized {
     /// ```
     fn route<T, B>(self, description: &str, svc: T) -> Route<T, Self>
     where
-        T: Service<Request<B>, Error = Infallible> + Clone,
+        T: Service<Request<B>> + Clone,
     {
         Route {
             pattern: PathPattern::new(description),
@@ -120,7 +118,7 @@ pub trait RoutingDsl: crate::sealed::Sealed + Sized {
     /// See [`nest`] for more details.
     fn nest<T, B>(self, description: &str, svc: T) -> Nested<T, Self>
     where
-        T: Service<Request<B>, Error = Infallible> + Clone,
+        T: Service<Request<B>> + Clone,
     {
         Nested {
             pattern: PathPattern::new(description),
@@ -152,11 +150,10 @@ pub trait RoutingDsl: crate::sealed::Sealed + Sized {
     ///
     /// It also helps with compile times when you have a very large number of
     /// routes.
-    fn boxed<ReqBody, ResBody>(self) -> BoxRoute<ReqBody>
+    fn boxed<ReqBody, ResBody>(self) -> BoxRoute<ReqBody, Self::Error>
     where
-        Self: Service<Request<ReqBody>, Response = Response<ResBody>, Error = Infallible>
-            + Send
-            + 'static,
+        Self: Service<Request<ReqBody>, Response = Response<ResBody>> + Send + 'static,
+        <Self as Service<Request<ReqBody>>>::Error: Into<BoxError> + Send + Sync,
         <Self as Service<Request<ReqBody>>>::Future: Send,
         ReqBody: http_body::Body<Data = Bytes> + Send + Sync + 'static,
         ReqBody::Error: Into<BoxError> + Send + Sync + 'static,
@@ -165,7 +162,7 @@ pub trait RoutingDsl: crate::sealed::Sealed + Sized {
     {
         ServiceBuilder::new()
             .layer_fn(BoxRoute)
-            .buffer(1024)
+            .layer_fn(MpscBuffer::new)
             .layer(BoxService::layer())
             .layer(MapResponseBodyLayer::new(BoxBody::new))
             .service(self)
@@ -231,9 +228,6 @@ pub trait RoutingDsl: crate::sealed::Sealed + Sized {
     /// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
     /// # };
     /// ```
-    ///
-    /// When adding middleware that might fail its required to handle those
-    /// errors. See [`Layered::handle_error`] for more details.
     fn layer<L>(self, layer: L) -> Layered<L::Service>
     where
         L: Layer<Self>,
@@ -275,11 +269,11 @@ impl<S, F> crate::sealed::Sealed for Route<S, F> {}
 
 impl<S, F, B> Service<Request<B>> for Route<S, F>
 where
-    S: Service<Request<B>, Response = Response<BoxBody>, Error = Infallible> + Clone,
-    F: Service<Request<B>, Response = Response<BoxBody>, Error = Infallible> + Clone,
+    S: Service<Request<B>, Response = Response<BoxBody>> + Clone,
+    F: Service<Request<B>, Response = Response<BoxBody>, Error = S::Error> + Clone,
 {
     type Response = Response<BoxBody>;
-    type Error = Infallible;
+    type Error = S::Error;
     type Future = RouteFuture<S, F, B>;
 
     fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
@@ -333,10 +327,10 @@ where
 
 impl<S, F, B> Future for RouteFuture<S, F, B>
 where
-    S: Service<Request<B>, Response = Response<BoxBody>, Error = Infallible>,
-    F: Service<Request<B>, Response = Response<BoxBody>, Error = Infallible>,
+    S: Service<Request<B>, Response = Response<BoxBody>>,
+    F: Service<Request<B>, Response = Response<BoxBody>, Error = S::Error>,
 {
-    type Output = Result<Response<BoxBody>, Infallible>;
+    type Output = Result<Response<BoxBody>, S::Error>;
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         match self.project().0.project() {
@@ -491,28 +485,33 @@ type Captures = Vec<(String, String)>;
 /// A boxed route trait object.
 ///
 /// See [`RoutingDsl::boxed`] for more details.
-pub struct BoxRoute<B>(Buffer<BoxService<Request<B>, Response<BoxBody>, Infallible>, Request<B>>);
+pub struct BoxRoute<B, E = Infallible>(
+    MpscBuffer<BoxService<Request<B>, Response<BoxBody>, E>, Request<B>>,
+);
 
-impl<B> Clone for BoxRoute<B> {
+impl<B, E> Clone for BoxRoute<B, E> {
     fn clone(&self) -> Self {
         Self(self.0.clone())
     }
 }
 
-impl<B> fmt::Debug for BoxRoute<B> {
+impl<B, E> fmt::Debug for BoxRoute<B, E> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("BoxRoute").finish()
     }
 }
 
-impl<B> RoutingDsl for BoxRoute<B> {}
+impl<B, E> RoutingDsl for BoxRoute<B, E> {}
 
-impl<B> crate::sealed::Sealed for BoxRoute<B> {}
+impl<B, E> crate::sealed::Sealed for BoxRoute<B, E> {}
 
-impl<B> Service<Request<B>> for BoxRoute<B> {
+impl<B, E> Service<Request<B>> for BoxRoute<B, E>
+where
+    E: Into<BoxError>,
+{
     type Response = Response<BoxBody>;
-    type Error = Infallible;
-    type Future = BoxRouteFuture<B>;
+    type Error = E;
+    type Future = BoxRouteFuture<B, E>;
 
     #[inline]
     fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
@@ -521,64 +520,41 @@ impl<B> Service<Request<B>> for BoxRoute<B> {
 
     #[inline]
     fn call(&mut self, req: Request<B>) -> Self::Future {
-        BoxRouteFuture(self.0.clone().oneshot(req))
+        BoxRouteFuture {
+            inner: self.0.clone().oneshot(req),
+        }
     }
 }
 
 /// The response future for [`BoxRoute`].
 #[pin_project]
-pub struct BoxRouteFuture<B>(#[pin] InnerFuture<B>);
+pub struct BoxRouteFuture<B, E>
+where
+    E: Into<BoxError>,
+{
+    #[pin]
+    inner:
+        Oneshot<MpscBuffer<BoxService<Request<B>, Response<BoxBody>, E>, Request<B>>, Request<B>>,
+}
 
-type InnerFuture<B> =
-    Oneshot<Buffer<BoxService<Request<B>, Response<BoxBody>, Infallible>, Request<B>>, Request<B>>;
+impl<B, E> Future for BoxRouteFuture<B, E>
+where
+    E: Into<BoxError>,
+{
+    type Output = Result<Response<BoxBody>, E>;
 
-impl<B> fmt::Debug for BoxRouteFuture<B> {
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        self.project().inner.poll(cx)
+    }
+}
+
+impl<B, E> fmt::Debug for BoxRouteFuture<B, E>
+where
+    E: Into<BoxError>,
+{
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("BoxRouteFuture").finish()
     }
-}
-
-impl<B> Future for BoxRouteFuture<B> {
-    type Output = Result<Response<BoxBody>, Infallible>;
-
-    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        match ready!(self.project().0.poll(cx)) {
-            Ok(res) => Poll::Ready(Ok(res)),
-            Err(err) => Poll::Ready(Ok(handle_buffer_error(err))),
-        }
-    }
-}
-
-fn handle_buffer_error(error: BoxError) -> Response<BoxBody> {
-    use tower::buffer::error::{Closed, ServiceError};
-
-    let error = match error.downcast::<Closed>() {
-        Ok(closed) => {
-            return Response::builder()
-                .status(StatusCode::INTERNAL_SERVER_ERROR)
-                .body(BoxBody::new(Full::from(closed.to_string())))
-                .unwrap();
-        }
-        Err(e) => e,
-    };
-
-    let error = match error.downcast::<ServiceError>() {
-        Ok(service_error) => {
-            return Response::builder()
-                .status(StatusCode::INTERNAL_SERVER_ERROR)
-                .body(BoxBody::new(Full::from(format!("Service error: {}. This is a bug in awebframework. All inner services should be infallible. Please file an issue", service_error))))
-                .unwrap();
-        }
-        Err(e) => e,
-    };
-
-    Response::builder()
-        .status(StatusCode::INTERNAL_SERVER_ERROR)
-        .body(BoxBody::new(Full::from(format!(
-            "Uncountered an unknown error: {}. This should never happen. Please file an issue",
-            error
-        ))))
-        .unwrap()
 }
 
 /// A [`Service`] created from a router by applying a Tower middleware.
@@ -622,9 +598,8 @@ impl<S> Layered<S> {
     /// Create a new [`Layered`] service where errors will be handled using the
     /// given closure.
     ///
-    /// awebframework requires that services gracefully handles all errors. That
-    /// means when you apply a Tower middleware that adds a new failure
-    /// condition you have to handle that as well.
+    /// This is used to convert errors to responses rather than simply
+    /// terminating the connection.
     ///
     /// That can be done using `handle_error` like so:
     ///
@@ -640,7 +615,7 @@ impl<S> Layered<S> {
     /// let layered_app = route("/", get(handler))
     ///     .layer(TimeoutLayer::new(Duration::from_secs(30)));
     ///
-    /// // ...so we must handle that error
+    /// // ...so we should handle that error
     /// let with_errors_handled = layered_app.handle_error(|error: BoxError| {
     ///     if error.is::<tower::timeout::error::Elapsed>() {
     ///         (
@@ -771,7 +746,7 @@ where
 /// `nest`.
 pub fn nest<S, B>(description: &str, svc: S) -> Nested<S, EmptyRouter>
 where
-    S: Service<Request<B>, Error = Infallible> + Clone,
+    S: Service<Request<B>> + Clone,
 {
     Nested {
         pattern: PathPattern::new(description),
@@ -796,11 +771,11 @@ impl<S, F> crate::sealed::Sealed for Nested<S, F> {}
 
 impl<S, F, B> Service<Request<B>> for Nested<S, F>
 where
-    S: Service<Request<B>, Response = Response<BoxBody>, Error = Infallible> + Clone,
-    F: Service<Request<B>, Response = Response<BoxBody>, Error = Infallible> + Clone,
+    S: Service<Request<B>, Response = Response<BoxBody>> + Clone,
+    F: Service<Request<B>, Response = Response<BoxBody>, Error = S::Error> + Clone,
 {
     type Response = Response<BoxBody>;
-    type Error = Infallible;
+    type Error = S::Error;
     type Future = RouteFuture<S, F, B>;
 
     fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {

@@ -111,7 +111,7 @@ pub mod future;
 /// See [`get`] for an example.
 pub fn any<S, B>(svc: S) -> OnMethod<BoxResponseBody<S, B>, EmptyRouter>
 where
-    S: Service<Request<B>, Error = Infallible> + Clone,
+    S: Service<Request<B>> + Clone,
 {
     on(MethodFilter::Any, svc)
 }
@@ -121,7 +121,7 @@ where
 /// See [`get`] for an example.
 pub fn connect<S, B>(svc: S) -> OnMethod<BoxResponseBody<S, B>, EmptyRouter>
 where
-    S: Service<Request<B>, Error = Infallible> + Clone,
+    S: Service<Request<B>> + Clone,
 {
     on(MethodFilter::Connect, svc)
 }
@@ -131,7 +131,7 @@ where
 /// See [`get`] for an example.
 pub fn delete<S, B>(svc: S) -> OnMethod<BoxResponseBody<S, B>, EmptyRouter>
 where
-    S: Service<Request<B>, Error = Infallible> + Clone,
+    S: Service<Request<B>> + Clone,
 {
     on(MethodFilter::Delete, svc)
 }
@@ -156,12 +156,9 @@ where
 /// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 /// # };
 /// ```
-///
-/// You can only add services who cannot fail (their error type must be
-/// [`Infallible`]). To gracefully handle errors see [`ServiceExt::handle_error`].
 pub fn get<S, B>(svc: S) -> OnMethod<BoxResponseBody<S, B>, EmptyRouter>
 where
-    S: Service<Request<B>, Error = Infallible> + Clone,
+    S: Service<Request<B>> + Clone,
 {
     on(MethodFilter::Get, svc)
 }
@@ -171,7 +168,7 @@ where
 /// See [`get`] for an example.
 pub fn head<S, B>(svc: S) -> OnMethod<BoxResponseBody<S, B>, EmptyRouter>
 where
-    S: Service<Request<B>, Error = Infallible> + Clone,
+    S: Service<Request<B>> + Clone,
 {
     on(MethodFilter::Head, svc)
 }
@@ -181,7 +178,7 @@ where
 /// See [`get`] for an example.
 pub fn options<S, B>(svc: S) -> OnMethod<BoxResponseBody<S, B>, EmptyRouter>
 where
-    S: Service<Request<B>, Error = Infallible> + Clone,
+    S: Service<Request<B>> + Clone,
 {
     on(MethodFilter::Options, svc)
 }
@@ -191,7 +188,7 @@ where
 /// See [`get`] for an example.
 pub fn patch<S, B>(svc: S) -> OnMethod<BoxResponseBody<S, B>, EmptyRouter>
 where
-    S: Service<Request<B>, Error = Infallible> + Clone,
+    S: Service<Request<B>> + Clone,
 {
     on(MethodFilter::Patch, svc)
 }
@@ -201,7 +198,7 @@ where
 /// See [`get`] for an example.
 pub fn post<S, B>(svc: S) -> OnMethod<BoxResponseBody<S, B>, EmptyRouter>
 where
-    S: Service<Request<B>, Error = Infallible> + Clone,
+    S: Service<Request<B>> + Clone,
 {
     on(MethodFilter::Post, svc)
 }
@@ -211,7 +208,7 @@ where
 /// See [`get`] for an example.
 pub fn put<S, B>(svc: S) -> OnMethod<BoxResponseBody<S, B>, EmptyRouter>
 where
-    S: Service<Request<B>, Error = Infallible> + Clone,
+    S: Service<Request<B>> + Clone,
 {
     on(MethodFilter::Put, svc)
 }
@@ -221,7 +218,7 @@ where
 /// See [`get`] for an example.
 pub fn trace<S, B>(svc: S) -> OnMethod<BoxResponseBody<S, B>, EmptyRouter>
 where
-    S: Service<Request<B>, Error = Infallible> + Clone,
+    S: Service<Request<B>> + Clone,
 {
     on(MethodFilter::Trace, svc)
 }
@@ -248,7 +245,7 @@ where
 /// ```
 pub fn on<S, B>(method: MethodFilter, svc: S) -> OnMethod<BoxResponseBody<S, B>, EmptyRouter>
 where
-    S: Service<Request<B>, Error = Infallible> + Clone,
+    S: Service<Request<B>> + Clone,
 {
     OnMethod {
         method,
@@ -276,7 +273,7 @@ impl<S, F> OnMethod<S, F> {
     /// See [`OnMethod::get`] for an example.
     pub fn any<T, B>(self, svc: T) -> OnMethod<BoxResponseBody<T, B>, Self>
     where
-        T: Service<Request<B>, Error = Infallible> + Clone,
+        T: Service<Request<B>> + Clone,
     {
         self.on(MethodFilter::Any, svc)
     }
@@ -286,7 +283,7 @@ impl<S, F> OnMethod<S, F> {
     /// See [`OnMethod::get`] for an example.
     pub fn connect<T, B>(self, svc: T) -> OnMethod<BoxResponseBody<T, B>, Self>
     where
-        T: Service<Request<B>, Error = Infallible> + Clone,
+        T: Service<Request<B>> + Clone,
     {
         self.on(MethodFilter::Connect, svc)
     }
@@ -296,7 +293,7 @@ impl<S, F> OnMethod<S, F> {
     /// See [`OnMethod::get`] for an example.
     pub fn delete<T, B>(self, svc: T) -> OnMethod<BoxResponseBody<T, B>, Self>
     where
-        T: Service<Request<B>, Error = Infallible> + Clone,
+        T: Service<Request<B>> + Clone,
     {
         self.on(MethodFilter::Delete, svc)
     }
@@ -326,13 +323,9 @@ impl<S, F> OnMethod<S, F> {
     /// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
     /// # };
     /// ```
-    ///
-    /// You can only add services who cannot fail (their error type must be
-    /// [`Infallible`]). To gracefully handle errors see
-    /// [`ServiceExt::handle_error`].
     pub fn get<T, B>(self, svc: T) -> OnMethod<BoxResponseBody<T, B>, Self>
     where
-        T: Service<Request<B>, Error = Infallible> + Clone,
+        T: Service<Request<B>> + Clone,
     {
         self.on(MethodFilter::Get, svc)
     }
@@ -342,7 +335,7 @@ impl<S, F> OnMethod<S, F> {
     /// See [`OnMethod::get`] for an example.
     pub fn head<T, B>(self, svc: T) -> OnMethod<BoxResponseBody<T, B>, Self>
     where
-        T: Service<Request<B>, Error = Infallible> + Clone,
+        T: Service<Request<B>> + Clone,
     {
         self.on(MethodFilter::Head, svc)
     }
@@ -352,7 +345,7 @@ impl<S, F> OnMethod<S, F> {
     /// See [`OnMethod::get`] for an example.
     pub fn options<T, B>(self, svc: T) -> OnMethod<BoxResponseBody<T, B>, Self>
     where
-        T: Service<Request<B>, Error = Infallible> + Clone,
+        T: Service<Request<B>> + Clone,
     {
         self.on(MethodFilter::Options, svc)
     }
@@ -362,7 +355,7 @@ impl<S, F> OnMethod<S, F> {
     /// See [`OnMethod::get`] for an example.
     pub fn patch<T, B>(self, svc: T) -> OnMethod<BoxResponseBody<T, B>, Self>
     where
-        T: Service<Request<B>, Error = Infallible> + Clone,
+        T: Service<Request<B>> + Clone,
     {
         self.on(MethodFilter::Patch, svc)
     }
@@ -372,7 +365,7 @@ impl<S, F> OnMethod<S, F> {
     /// See [`OnMethod::get`] for an example.
     pub fn post<T, B>(self, svc: T) -> OnMethod<BoxResponseBody<T, B>, Self>
     where
-        T: Service<Request<B>, Error = Infallible> + Clone,
+        T: Service<Request<B>> + Clone,
     {
         self.on(MethodFilter::Post, svc)
     }
@@ -382,7 +375,7 @@ impl<S, F> OnMethod<S, F> {
     /// See [`OnMethod::get`] for an example.
     pub fn put<T, B>(self, svc: T) -> OnMethod<BoxResponseBody<T, B>, Self>
     where
-        T: Service<Request<B>, Error = Infallible> + Clone,
+        T: Service<Request<B>> + Clone,
     {
         self.on(MethodFilter::Put, svc)
     }
@@ -392,7 +385,7 @@ impl<S, F> OnMethod<S, F> {
     /// See [`OnMethod::get`] for an example.
     pub fn trace<T, B>(self, svc: T) -> OnMethod<BoxResponseBody<T, B>, Self>
     where
-        T: Service<Request<B>, Error = Infallible> + Clone,
+        T: Service<Request<B>> + Clone,
     {
         self.on(MethodFilter::Trace, svc)
     }
@@ -424,7 +417,7 @@ impl<S, F> OnMethod<S, F> {
     /// ```
     pub fn on<T, B>(self, method: MethodFilter, svc: T) -> OnMethod<BoxResponseBody<T, B>, Self>
     where
-        T: Service<Request<B>, Error = Infallible> + Clone,
+        T: Service<Request<B>> + Clone,
     {
         OnMethod {
             method,
@@ -441,11 +434,11 @@ impl<S, F> OnMethod<S, F> {
 // that up, but not sure its possible.
 impl<S, F, B> Service<Request<B>> for OnMethod<S, F>
 where
-    S: Service<Request<B>, Response = Response<BoxBody>, Error = Infallible> + Clone,
-    F: Service<Request<B>, Response = Response<BoxBody>, Error = Infallible> + Clone,
+    S: Service<Request<B>, Response = Response<BoxBody>> + Clone,
+    F: Service<Request<B>, Response = Response<BoxBody>, Error = S::Error> + Clone,
 {
     type Response = Response<BoxBody>;
-    type Error = Infallible;
+    type Error = S::Error;
     type Future = RouteFuture<S, F, B>;
 
     fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
@@ -541,11 +534,6 @@ pub trait ServiceExt<ReqBody, ResBody>:
 {
     /// Handle errors from a service.
     ///
-    /// awebframework requires all handlers and services, that are part of the
-    /// router, to never return errors. If you route to [`Service`], not created
-    /// by awebframework, who's error isn't `Infallible` you can use this combinator
-    /// to handle the error.
-    ///
     /// `handle_error` takes a closure that will map errors from the service
     /// into responses. The closure's return type must implement
     /// [`IntoResponse`].
@@ -583,6 +571,16 @@ pub trait ServiceExt<ReqBody, ResBody>:
         ResBody::Error: Into<BoxError> + Send + Sync + 'static,
     {
         HandleError::new(self, f)
+    }
+
+    /// Check that your service cannot fail.
+    ///
+    /// That is its error type is [`Infallible`].
+    fn check_infallible(self) -> Self
+    where
+        Self: Service<Request<ReqBody>, Response = Response<ResBody>, Error = Infallible> + Sized,
+    {
+        self
     }
 }
 
@@ -622,12 +620,12 @@ where
 
 impl<S, ReqBody, ResBody> Service<Request<ReqBody>> for BoxResponseBody<S, ReqBody>
 where
-    S: Service<Request<ReqBody>, Response = Response<ResBody>, Error = Infallible> + Clone,
+    S: Service<Request<ReqBody>, Response = Response<ResBody>> + Clone,
     ResBody: http_body::Body<Data = Bytes> + Send + Sync + 'static,
     ResBody::Error: Into<BoxError> + Send + Sync + 'static,
 {
     type Response = Response<BoxBody>;
-    type Error = Infallible;
+    type Error = S::Error;
     type Future = BoxResponseBodyFuture<Oneshot<S, Request<ReqBody>>>;
 
     fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
@@ -645,13 +643,13 @@ where
 #[derive(Debug)]
 pub struct BoxResponseBodyFuture<F>(#[pin] F);
 
-impl<F, B> Future for BoxResponseBodyFuture<F>
+impl<F, B, E> Future for BoxResponseBodyFuture<F>
 where
-    F: Future<Output = Result<Response<B>, Infallible>>,
+    F: Future<Output = Result<Response<B>, E>>,
     B: http_body::Body<Data = Bytes> + Send + Sync + 'static,
     B::Error: Into<BoxError> + Send + Sync + 'static,
 {
-    type Output = Result<Response<BoxBody>, Infallible>;
+    type Output = Result<Response<BoxBody>, E>;
 
     fn poll(self: std::pin::Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let res = ready!(self.project().0.poll(cx))?;
