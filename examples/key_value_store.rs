@@ -11,6 +11,7 @@ use awebframework::{
     prelude::*,
     response::IntoResponse,
     routing::BoxRoute,
+    service::ServiceExt,
 };
 use bytes::Bytes;
 use http::StatusCode;
@@ -53,7 +54,8 @@ async fn main() {
             .into_inner(),
     )
     // Handle errors from middleware
-    .handle_error(handle_error);
+    .handle_error(handle_error)
+    .check_infallible();
 
     // Run our app with hyper
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));

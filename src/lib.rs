@@ -304,17 +304,17 @@
 //!
 //! ## Error handling
 //!
-//! awebframework requires all errors to be handled. That is done by using
-//! [`std::convert::Infallible`] as the error type in all its [`Service`]
-//! implementations.
+//! Handlers created from async functions must always produce a response, even
+//! when returning a `Result<T, E>` the error type must implement
+//! [`IntoResponse`]. In practice this makes error handling very perdictable and
+//! easier to reason about.
 //!
-//! For handlers created from async functions this is works automatically since
-//! handlers must return something that implements
-//! [`IntoResponse`](response::IntoResponse), even if its a `Result`.
-//!
-//! However middleware might add new failure cases that has to be handled. For
-//! that awebframework provides a [`handle_error`](handler::Layered::handle_error)
-//! combinator:
+//! However when applying middleware, or embedding other tower services, errors
+//! might happen. For example [`Timeout`] will return an error if the timeout
+//! elapses. By default these errors will be propagated all the way up to hyper
+//! where the connection will be closed. If that isn't desireable you can call
+//! [`handle_error`](handler::Layered::handle_error) to handle errors from
+//! adding a middleware to a handler:
 //!
 //! ```rust,no_run
 //! use awebframework::prelude::*;
@@ -488,7 +488,6 @@
 //!     "/static/Cargo.toml",
 //!     service::get(
 //!         ServeFile::new("Cargo.toml")
-//!             // Errors must be handled
 //!             .handle_error(|error: std::io::Error| { /* ... */ })
 //!     )
 //! );
@@ -508,7 +507,6 @@
 //! use awebframework::{prelude::*, routing::BoxRoute, body::{Body, BoxBody}};
 //! use tower_http::services::ServeFile;
 //! use http::Response;
-//! use std::convert::Infallible;
 //!
 //! fn api_routes() -> BoxRoute<Body> {
 //!     route("/users", get(|_: Request<Body>| async { /* ... */ })).boxed()
@@ -527,7 +525,6 @@
 //! use awebframework::{prelude::*, service::ServiceExt, routing::nest};
 //! use tower_http::services::ServeDir;
 //! use http::Response;
-//! use std::convert::Infallible;
 //! use tower::{service_fn, BoxError};
 //!
 //! let app = nest(
@@ -558,6 +555,8 @@
 //! [tokio]: http://crates.io/crates/tokio
 //! [hyper]: http://crates.io/crates/hyper
 //! [feature flags]: https://doc.rust-lang.org/cargo/reference/features.html#the-features-section
+//! [`IntoResponse`]: crate::response::IntoResponse
+//! [`Timeout`]: tower::timeout::Timeout
 
 #![doc(html_root_url = "https://docs.rs/tower-http/0.1.0")]
 #![warn(
@@ -609,12 +608,12 @@
 use self::body::Body;
 use http::Request;
 use routing::{EmptyRouter, Route};
-use std::convert::Infallible;
 use tower::Service;
 
 #[macro_use]
 pub(crate) mod macros;
 
+mod buffer;
 mod util;
 
 pub mod body;
@@ -661,12 +660,6 @@ pub mod prelude {
 /// `service` is the [`Service`] that should receive the request if the path
 /// matches `description`.
 ///
-/// Note that `service`'s error type must be [`Infallible`] meaning you must
-/// handle all errors. If you're creating handlers from async functions that is
-/// handled automatically but if you're routing to some other [`Service`] you
-/// might need to use [`handle_error`](service::ServiceExt::handle_error) to map
-/// errors into responses.
-///
 /// # Examples
 ///
 /// ```rust
@@ -688,7 +681,7 @@ pub mod prelude {
 /// Panics if `description` doesn't start with `/`.
 pub fn route<S, B>(description: &str, service: S) -> Route<S, EmptyRouter>
 where
-    S: Service<Request<B>, Error = Infallible> + Clone,
+    S: Service<Request<B>> + Clone,
 {
     use routing::RoutingDsl;
 

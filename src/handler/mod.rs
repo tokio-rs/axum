@@ -263,7 +263,7 @@ pub trait Handler<B, In>: Sized {
     /// # };
     /// ```
     ///
-    /// When adding middleware that might fail its required to handle those
+    /// When adding middleware that might fail its recommended to handle those
     /// errors. See [`Layered::handle_error`] for more details.
     fn layer<L>(self, layer: L) -> Layered<L::Service, In>
     where
@@ -397,11 +397,10 @@ impl<S, T> Layered<S, T> {
     /// Create a new [`Layered`] handler where errors will be handled using the
     /// given closure.
     ///
-    /// awebframework requires that services gracefully handles all errors. That
-    /// means when you apply a Tower middleware that adds a new failure
-    /// condition you have to handle that as well.
+    /// This is used to convert errors to responses rather than simply
+    /// terminating the connection.
     ///
-    /// That can be done using `handle_error` like so:
+    /// `handle_error` can be used like so:
     ///
     /// ```rust
     /// use awebframework::prelude::*;
@@ -415,7 +414,7 @@ impl<S, T> Layered<S, T> {
     /// let layered_handler = handler
     ///     .layer(TimeoutLayer::new(Duration::from_secs(30)));
     ///
-    /// // ...so we must handle that error
+    /// // ...so we should handle that error
     /// let layered_handler = layered_handler.handle_error(|error: BoxError| {
     ///     if error.is::<tower::timeout::error::Elapsed>() {
     ///         (
