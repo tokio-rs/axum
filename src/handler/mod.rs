@@ -206,7 +206,7 @@ where
     OnMethod {
         method,
         svc: handler.into_service(),
-        fallback: EmptyRouter,
+        fallback: EmptyRouter::new(),
     }
 }
 

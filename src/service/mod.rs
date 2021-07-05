@@ -109,7 +109,7 @@ pub mod future;
 /// Route requests to the given service regardless of the HTTP method.
 ///
 /// See [`get`] for an example.
-pub fn any<S, B>(svc: S) -> OnMethod<BoxResponseBody<S, B>, EmptyRouter>
+pub fn any<S, B>(svc: S) -> OnMethod<BoxResponseBody<S, B>, EmptyRouter<S::Error>>
 where
     S: Service<Request<B>> + Clone,
 {
@@ -119,7 +119,7 @@ where
 /// Route `CONNECT` requests to the given service.
 ///
 /// See [`get`] for an example.
-pub fn connect<S, B>(svc: S) -> OnMethod<BoxResponseBody<S, B>, EmptyRouter>
+pub fn connect<S, B>(svc: S) -> OnMethod<BoxResponseBody<S, B>, EmptyRouter<S::Error>>
 where
     S: Service<Request<B>> + Clone,
 {
@@ -129,7 +129,7 @@ where
 /// Route `DELETE` requests to the given service.
 ///
 /// See [`get`] for an example.
-pub fn delete<S, B>(svc: S) -> OnMethod<BoxResponseBody<S, B>, EmptyRouter>
+pub fn delete<S, B>(svc: S) -> OnMethod<BoxResponseBody<S, B>, EmptyRouter<S::Error>>
 where
     S: Service<Request<B>> + Clone,
 {
@@ -156,7 +156,7 @@ where
 /// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 /// # };
 /// ```
-pub fn get<S, B>(svc: S) -> OnMethod<BoxResponseBody<S, B>, EmptyRouter>
+pub fn get<S, B>(svc: S) -> OnMethod<BoxResponseBody<S, B>, EmptyRouter<S::Error>>
 where
     S: Service<Request<B>> + Clone,
 {
@@ -166,7 +166,7 @@ where
 /// Route `HEAD` requests to the given service.
 ///
 /// See [`get`] for an example.
-pub fn head<S, B>(svc: S) -> OnMethod<BoxResponseBody<S, B>, EmptyRouter>
+pub fn head<S, B>(svc: S) -> OnMethod<BoxResponseBody<S, B>, EmptyRouter<S::Error>>
 where
     S: Service<Request<B>> + Clone,
 {
@@ -176,7 +176,7 @@ where
 /// Route `OPTIONS` requests to the given service.
 ///
 /// See [`get`] for an example.
-pub fn options<S, B>(svc: S) -> OnMethod<BoxResponseBody<S, B>, EmptyRouter>
+pub fn options<S, B>(svc: S) -> OnMethod<BoxResponseBody<S, B>, EmptyRouter<S::Error>>
 where
     S: Service<Request<B>> + Clone,
 {
@@ -186,7 +186,7 @@ where
 /// Route `PATCH` requests to the given service.
 ///
 /// See [`get`] for an example.
-pub fn patch<S, B>(svc: S) -> OnMethod<BoxResponseBody<S, B>, EmptyRouter>
+pub fn patch<S, B>(svc: S) -> OnMethod<BoxResponseBody<S, B>, EmptyRouter<S::Error>>
 where
     S: Service<Request<B>> + Clone,
 {
@@ -196,7 +196,7 @@ where
 /// Route `POST` requests to the given service.
 ///
 /// See [`get`] for an example.
-pub fn post<S, B>(svc: S) -> OnMethod<BoxResponseBody<S, B>, EmptyRouter>
+pub fn post<S, B>(svc: S) -> OnMethod<BoxResponseBody<S, B>, EmptyRouter<S::Error>>
 where
     S: Service<Request<B>> + Clone,
 {
@@ -206,7 +206,7 @@ where
 /// Route `PUT` requests to the given service.
 ///
 /// See [`get`] for an example.
-pub fn put<S, B>(svc: S) -> OnMethod<BoxResponseBody<S, B>, EmptyRouter>
+pub fn put<S, B>(svc: S) -> OnMethod<BoxResponseBody<S, B>, EmptyRouter<S::Error>>
 where
     S: Service<Request<B>> + Clone,
 {
@@ -216,7 +216,7 @@ where
 /// Route `TRACE` requests to the given service.
 ///
 /// See [`get`] for an example.
-pub fn trace<S, B>(svc: S) -> OnMethod<BoxResponseBody<S, B>, EmptyRouter>
+pub fn trace<S, B>(svc: S) -> OnMethod<BoxResponseBody<S, B>, EmptyRouter<S::Error>>
 where
     S: Service<Request<B>> + Clone,
 {
@@ -243,7 +243,10 @@ where
 /// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 /// # };
 /// ```
-pub fn on<S, B>(method: MethodFilter, svc: S) -> OnMethod<BoxResponseBody<S, B>, EmptyRouter>
+pub fn on<S, B>(
+    method: MethodFilter,
+    svc: S,
+) -> OnMethod<BoxResponseBody<S, B>, EmptyRouter<S::Error>>
 where
     S: Service<Request<B>> + Clone,
 {
@@ -253,7 +256,7 @@ where
             inner: svc,
             _request_body: PhantomData,
         },
-        fallback: EmptyRouter,
+        fallback: EmptyRouter::new(),
     }
 }
 

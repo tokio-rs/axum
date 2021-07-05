@@ -12,6 +12,7 @@ use std::{
     convert::Infallible,
     fmt,
     future::Future,
+    marker::PhantomData,
     pin::Pin,
     sync::Arc,
     task::{Context, Poll},
@@ -362,17 +363,36 @@ fn insert_url_params<B>(req: &mut Request<B>, params: Vec<(String, String)>) {
 ///
 /// This is used as the bottom service in a router stack. You shouldn't have to
 /// use to manually.
-#[derive(Debug, Clone, Copy)]
-pub struct EmptyRouter;
+pub struct EmptyRouter<E = Infallible>(PhantomData<fn() -> E>);
 
-impl RoutingDsl for EmptyRouter {}
+impl<E> EmptyRouter<E> {
+    pub(crate) fn new() -> Self {
+        Self(PhantomData)
+    }
+}
 
-impl crate::sealed::Sealed for EmptyRouter {}
+impl<E> Clone for EmptyRouter<E> {
+    fn clone(&self) -> Self {
+        Self(PhantomData)
+    }
+}
 
-impl<B> Service<Request<B>> for EmptyRouter {
+impl<E> Copy for EmptyRouter<E> {}
+
+impl<E> fmt::Debug for EmptyRouter<E> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_tuple("EmptyRouter").finish()
+    }
+}
+
+impl<E> RoutingDsl for EmptyRouter<E> {}
+
+impl<E> crate::sealed::Sealed for EmptyRouter<E> {}
+
+impl<B, E> Service<Request<B>> for EmptyRouter<E> {
     type Response = Response<BoxBody>;
-    type Error = Infallible;
-    type Future = EmptyRouterFuture;
+    type Error = E;
+    type Future = EmptyRouterFuture<E>;
 
     fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         Poll::Ready(Ok(()))
@@ -387,8 +407,8 @@ impl<B> Service<Request<B>> for EmptyRouter {
 
 opaque_future! {
     /// Response future for [`EmptyRouter`].
-    pub type EmptyRouterFuture =
-        future::Ready<Result<Response<BoxBody>, Infallible>>;
+    pub type EmptyRouterFuture<E> =
+        future::Ready<Result<Response<BoxBody>, E>>;
 }
 
 #[derive(Debug, Clone)]
@@ -744,14 +764,14 @@ where
 /// If necessary you can use [`RoutingDsl::boxed`] to box a group of routes
 /// making the type easier to name. This is sometimes useful when working with
 /// `nest`.
-pub fn nest<S, B>(description: &str, svc: S) -> Nested<S, EmptyRouter>
+pub fn nest<S, B>(description: &str, svc: S) -> Nested<S, EmptyRouter<S::Error>>
 where
     S: Service<Request<B>> + Clone,
 {
     Nested {
         pattern: PathPattern::new(description),
         svc,
-        fallback: EmptyRouter,
+        fallback: EmptyRouter::new(),
     }
 }
 
