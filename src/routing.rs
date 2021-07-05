@@ -598,9 +598,8 @@ impl<S> Layered<S> {
     /// Create a new [`Layered`] service where errors will be handled using the
     /// given closure.
     ///
-    /// awebframework requires that services gracefully handles all errors. That
-    /// means when you apply a Tower middleware that adds a new failure
-    /// condition you have to handle that as well.
+    /// This is used to convert errors to responses rather than simply
+    /// terminating the connection.
     ///
     /// That can be done using `handle_error` like so:
     ///
@@ -616,7 +615,7 @@ impl<S> Layered<S> {
     /// let layered_app = route("/", get(handler))
     ///     .layer(TimeoutLayer::new(Duration::from_secs(30)));
     ///
-    /// // ...so we must handle that error
+    /// // ...so we should handle that error
     /// let with_errors_handled = layered_app.handle_error(|error: BoxError| {
     ///     if error.is::<tower::timeout::error::Elapsed>() {
     ///         (
