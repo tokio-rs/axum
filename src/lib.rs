@@ -679,13 +679,13 @@ pub mod prelude {
 /// # Panics
 ///
 /// Panics if `description` doesn't start with `/`.
-pub fn route<S, B>(description: &str, service: S) -> Route<S, EmptyRouter>
+pub fn route<S, B>(description: &str, service: S) -> Route<S, EmptyRouter<S::Error>>
 where
     S: Service<Request<B>> + Clone,
 {
     use routing::RoutingDsl;
 
-    routing::EmptyRouter.route(description, service)
+    routing::EmptyRouter::new().route(description, service)
 }
 
 mod sealed {

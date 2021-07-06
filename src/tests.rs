@@ -653,6 +653,17 @@ async fn different_request_body_types() {
     assert_eq!(body, "foo");
 }
 
+#[tokio::test]
+async fn service_in_bottom() {
+    async fn handler(_req: Request<hyper::Body>) -> Result<Response<hyper::Body>, hyper::Error> {
+        Ok(Response::new(hyper::Body::empty()))
+    }
+
+    let app = route("/", service::get(service_fn(handler)));
+
+    run_in_background(app).await;
+}
+
 /// Run a `tower::Service` in the background and get a URI for it.
 async fn run_in_background<S, ResBody>(svc: S) -> SocketAddr
 where
