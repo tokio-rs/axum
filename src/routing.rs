@@ -87,7 +87,7 @@ pub trait RoutingDsl: crate::sealed::Sealed + Sized {
     /// # Example
     ///
     /// ```rust
-    /// use awebframework::prelude::*;
+    /// use axum::prelude::*;
     ///
     /// async fn first_handler() { /* ... */ }
     ///
@@ -134,7 +134,7 @@ pub trait RoutingDsl: crate::sealed::Sealed + Sized {
     /// return them from functions:
     ///
     /// ```rust
-    /// use awebframework::{routing::BoxRoute, body::Body, prelude::*};
+    /// use axum::{routing::BoxRoute, body::Body, prelude::*};
     ///
     /// async fn first_handler() { /* ... */ }
     ///
@@ -186,7 +186,7 @@ pub trait RoutingDsl: crate::sealed::Sealed + Sized {
     /// routes can be done like so:
     ///
     /// ```rust
-    /// use awebframework::prelude::*;
+    /// use axum::prelude::*;
     /// use tower::limit::{ConcurrencyLimitLayer, ConcurrencyLimit};
     ///
     /// async fn first_handler() { /* ... */ }
@@ -212,7 +212,7 @@ pub trait RoutingDsl: crate::sealed::Sealed + Sized {
     /// entire app:
     ///
     /// ```rust
-    /// use awebframework::prelude::*;
+    /// use axum::prelude::*;
     /// use tower_http::trace::TraceLayer;
     ///
     /// async fn first_handler() { /* ... */ }
@@ -243,7 +243,7 @@ pub trait RoutingDsl: crate::sealed::Sealed + Sized {
     /// [`Server`](hyper::server::Server):
     ///
     /// ```
-    /// use awebframework::prelude::*;
+    /// use axum::prelude::*;
     ///
     /// let app = route("/", get(|| async { "Hi!" }));
     ///
@@ -624,7 +624,7 @@ impl<S> Layered<S> {
     /// That can be done using `handle_error` like so:
     ///
     /// ```rust
-    /// use awebframework::prelude::*;
+    /// use axum::prelude::*;
     /// use http::StatusCode;
     /// use tower::{BoxError, timeout::TimeoutLayer};
     /// use std::time::Duration;
@@ -700,7 +700,7 @@ where
 /// nested route will only see the part of URL:
 ///
 /// ```
-/// use awebframework::{routing::nest, prelude::*};
+/// use axum::{routing::nest, prelude::*};
 /// use http::Uri;
 ///
 /// async fn users_get(uri: Uri) {
@@ -725,7 +725,7 @@ where
 /// captures from the outer routes:
 ///
 /// ```
-/// use awebframework::{routing::nest, prelude::*};
+/// use axum::{routing::nest, prelude::*};
 ///
 /// async fn users_get(params: extract::UrlParamsMap) {
 ///     // Both `version` and `id` were captured even though `users_api` only
@@ -746,7 +746,7 @@ where
 /// [`tower_http::services::ServeDir`] to serve static files from a directory:
 ///
 /// ```
-/// use awebframework::{
+/// use axum::{
 ///     routing::nest, service::{get, ServiceExt}, prelude::*,
 /// };
 /// use tower_http::services::ServeDir;

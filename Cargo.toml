@@ -4,12 +4,12 @@ categories = [] # TODO
 description = "Web framework that focuses on ergonomics and modularity"
 documentation = "https://docs.rs/tower-http/0.1.0"
 edition = "2018"
-homepage = "https://github.com/davidpdrsn/awebframework"
+homepage = "https://github.com/davidpdrsn/axum"
 keywords = ["http", "web", "framework"]
 license = "MIT"
-name = "awebframework"
+name = "axum"
 readme = "README.md"
-repository = "https://github.com/davidpdrsn/awebframework"
+repository = "https://github.com/davidpdrsn/axum"
 version = "0.1.0"
 
 [features]

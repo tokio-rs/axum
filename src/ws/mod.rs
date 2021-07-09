@@ -3,7 +3,7 @@
 //! # Example
 //!
 //! ```
-//! use awebframework::{prelude::*, ws::{ws, WebSocket}};
+//! use axum::{prelude::*, ws::{ws, WebSocket}};
 //!
 //! let app = route("/ws", ws(handle_socket));
 //!

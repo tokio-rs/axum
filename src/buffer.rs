@@ -99,7 +99,7 @@ where
         }
 
         let permit = ready!(self.semaphore.poll_acquire(cx))
-            .expect("buffer semaphore closed. This is a bug in awebframework and should never happen. Please file an issue");
+            .expect("buffer semaphore closed. This is a bug in axum and should never happen. Please file an issue");
 
         self.permit = Some(permit);
 
@@ -115,7 +115,7 @@ where
         let (reply_tx, reply_rx) = oneshot::channel::<WorkerReply<S::Future, S::Error>>();
 
         self.tx.send((req, reply_tx)).unwrap_or_else(|_| {
-            panic!("buffer worker not running. This is a bug in awebframework and should never happen. Please file an issue")
+            panic!("buffer worker not running. This is a bug in axum and should never happen. Please file an issue")
         });
 
         ResponseFuture {
@@ -151,7 +151,7 @@ where
             let new_state = match this.state.as_mut().project() {
                 StateProj::Channel(reply_rx) => {
                     let msg = ready!(Pin::new(reply_rx).poll(cx))
-                        .expect("buffer worker not running. This is a bug in awebframework and should never happen. Please file an issue");
+                        .expect("buffer worker not running. This is a bug in axum and should never happen. Please file an issue");
 
                     match msg {
                         WorkerReply::Future(future) => State::Future(future),

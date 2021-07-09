@@ -11,7 +11,7 @@
 //!
 //! ```
 //! use tower_http::services::Redirect;
-//! use awebframework::{service, handler, prelude::*};
+//! use axum::{service, handler, prelude::*};
 //!
 //! async fn handler(request: Request<Body>) { /* ... */ }
 //!
@@ -41,7 +41,7 @@
 //! well when your services don't care about backpressure and are always ready
 //! anyway.
 //!
-//! awebframework expects that all services used in your app wont care about
+//! axum expects that all services used in your app wont care about
 //! backpressure and so it uses the latter strategy. However that means you
 //! should avoid routing to a service (or using a middleware) that _does_ care
 //! about backpressure. At the very least you should [load shed] so requests are
@@ -51,14 +51,14 @@
 //! in the response future from `call`, and _not_ from `poll_ready`. In that
 //! case the underlying service will _not_ be discarded and will continue to be
 //! used for future requests. Services that expect to be discarded if
-//! `poll_ready` fails should _not_ be used with awebframework.
+//! `poll_ready` fails should _not_ be used with axum.
 //!
 //! One possible approach is to only apply backpressure sensitive middleware
-//! around your entire app. This is possible because awebframework applications are
+//! around your entire app. This is possible because axum applications are
 //! themselves services:
 //!
 //! ```rust
-//! use awebframework::prelude::*;
+//! use axum::prelude::*;
 //! use tower::ServiceBuilder;
 //! # let some_backpressure_sensitive_middleware =
 //! #     tower::layer::util::Identity::new();
@@ -141,7 +141,7 @@ where
 /// # Example
 ///
 /// ```rust
-/// use awebframework::{service, prelude::*};
+/// use axum::{service, prelude::*};
 /// use http::Response;
 /// use std::convert::Infallible;
 /// use hyper::Body;
@@ -228,7 +228,7 @@ where
 /// # Example
 ///
 /// ```rust
-/// use awebframework::{handler::on, service, routing::MethodFilter, prelude::*};
+/// use axum::{handler::on, service, routing::MethodFilter, prelude::*};
 /// use http::Response;
 /// use std::convert::Infallible;
 /// use hyper::Body;
@@ -306,7 +306,7 @@ impl<S, F> OnMethod<S, F> {
     /// # Example
     ///
     /// ```rust
-    /// use awebframework::{handler::on, service, routing::MethodFilter, prelude::*};
+    /// use axum::{handler::on, service, routing::MethodFilter, prelude::*};
     /// use http::Response;
     /// use std::convert::Infallible;
     /// use hyper::Body;
@@ -399,7 +399,7 @@ impl<S, F> OnMethod<S, F> {
     /// # Example
     ///
     /// ```rust
-    /// use awebframework::{handler::on, service, routing::MethodFilter, prelude::*};
+    /// use axum::{handler::on, service, routing::MethodFilter, prelude::*};
     /// use http::Response;
     /// use std::convert::Infallible;
     /// use hyper::Body;
@@ -544,7 +544,7 @@ pub trait ServiceExt<ReqBody, ResBody>:
     /// # Example
     ///
     /// ```rust,no_run
-    /// use awebframework::{service::{self, ServiceExt}, prelude::*};
+    /// use axum::{service::{self, ServiceExt}, prelude::*};
     /// use http::Response;
     /// use tower::{service_fn, BoxError};
     ///

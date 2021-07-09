@@ -204,7 +204,7 @@ impl<T> From<T> for Html<T> {
 ///
 /// ```
 /// use serde_json::json;
-/// use awebframework::{body::Body, response::{Json, IntoResponse}};
+/// use axum::{body::Body, response::{Json, IntoResponse}};
 /// use http::{Response, header::CONTENT_TYPE};
 ///
 /// let json = json!({

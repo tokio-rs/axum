@@ -9,7 +9,7 @@
 //!     --example websocket
 //! ```
 
-use awebframework::{
+use axum::{
     prelude::*,
     routing::nest,
     service::ServiceExt,
@@ -29,7 +29,7 @@ async fn main() {
     // build our application with some routes
     let app = nest(
         "/",
-        awebframework::service::get(
+        axum::service::get(
             ServeDir::new("examples/websocket")
                 .append_index_html_on_directories(true)
                 .handle_error(|error: std::io::Error| {

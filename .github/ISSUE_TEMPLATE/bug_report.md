@@ -15,10 +15,10 @@ Please fill in as much of the template below as you're able.
 ### Version
 
 <!--
-List the versions of all `awebframework` crates you are using. The easiest way to get
+List the versions of all `axum` crates you are using. The easiest way to get
 this information is using `cargo tree`:
 
-`cargo tree | grep awebframework`
+`cargo tree | grep axum`
 -->
 
 ### Platform
@@ -30,7 +30,7 @@ Output of `uname -a` (UNIX), or version and 32 or 64-bit (Windows)
 ### Crates
 
 <!--
-If known, please specify the affected awebframework crates. Otherwise, delete this
+If known, please specify the affected axum crates. Otherwise, delete this
 section.
 -->
 
