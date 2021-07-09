@@ -189,7 +189,11 @@ use std::{
     task::{Context, Poll},
 };
 
+pub mod extractor_middleware;
 pub mod rejection;
+
+#[doc(inline)]
+pub use self::extractor_middleware::extractor_middleware;
 
 /// Types that can be created from requests.
 ///
@@ -840,12 +844,14 @@ macro_rules! impl_parse_url {
 
 impl_parse_url!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16);
 
+/// Request extension used to indicate that body has been extracted and `Default` has been left in
+/// its place.
+struct BodyAlreadyExtractedExt;
+
 fn take_body<B>(req: &mut Request<B>) -> Result<B, BodyAlreadyExtracted>
 where
     B: Default,
 {
-    struct BodyAlreadyExtractedExt;
-
     if req
         .extensions_mut()
         .insert(BodyAlreadyExtractedExt)

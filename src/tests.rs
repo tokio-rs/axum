@@ -1,6 +1,6 @@
 use crate::{handler::on, prelude::*, response::IntoResponse, routing::MethodFilter, service};
 use bytes::Bytes;
-use http::{Request, Response, StatusCode};
+use http::{header::AUTHORIZATION, Request, Response, StatusCode};
 use hyper::{Body, Server};
 use serde::Deserialize;
 use serde_json::json;
@@ -662,6 +662,71 @@ async fn service_in_bottom() {
     let app = route("/", service::get(service_fn(handler)));
 
     run_in_background(app).await;
+}
+
+#[tokio::test]
+async fn test_extractor_middleware() {
+    struct RequireAuth;
+
+    #[async_trait::async_trait]
+    impl<B> extract::FromRequest<B> for RequireAuth
+    where
+        B: Send,
+    {
+        type Rejection = StatusCode;
+
+        async fn from_request(req: &mut Request<B>) -> Result<Self, Self::Rejection> {
+            if let Some(auth) = req
+                .headers()
+                .get("authorization")
+                .and_then(|v| v.to_str().ok())
+            {
+                if auth == "secret" {
+                    return Ok(Self);
+                }
+            }
+
+            Err(StatusCode::UNAUTHORIZED)
+        }
+    }
+
+    async fn handler() {}
+
+    let app = route(
+        "/",
+        get(handler.layer(extract::extractor_middleware::<RequireAuth>())),
+    )
+    .route(
+        "/take-body-error",
+        post(handler.layer(extract::extractor_middleware::<Bytes>())),
+    );
+
+    let addr = run_in_background(app).await;
+
+    let client = reqwest::Client::new();
+
+    let res = client
+        .get(format!("http://{}/", addr))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+
+    let res = client
+        .get(format!("http://{}/", addr))
+        .header(AUTHORIZATION, "secret")
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+
+    let res = client
+        .post(format!("http://{}/take-body-error", addr))
+        .body("foobar")
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::INTERNAL_SERVER_ERROR);
 }
 
 /// Run a `tower::Service` in the background and get a URI for it.
