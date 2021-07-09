@@ -19,7 +19,7 @@ More information about this crate can be found in the [crate documentation][docs
 - Ease of use. Building web apps in Rust should be as easy as `async fn
 handle(Request) -> Response`.
 - Solid foundation. axum is built on top of [tower] and [hyper] and makes it
-easy to plug in any middleware from the tower and [tower-http] ecosystem.
+easy to plug in any middleware from the [tower] and [tower-http] ecosystem.
 - Focus on routing, extracting data from requests, and generating responses.
 tower middleware can handle the rest.
 - Macro free core. Macro frameworks have their place but axum focuses
