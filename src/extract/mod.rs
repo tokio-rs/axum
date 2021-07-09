@@ -8,7 +8,7 @@
 //! deserializes it as JSON into some target type:
 //!
 //! ```rust,no_run
-//! use awebframework::prelude::*;
+//! use axum::prelude::*;
 //! use serde::Deserialize;
 //!
 //! #[derive(Deserialize)]
@@ -34,7 +34,7 @@
 //! You can also define your own extractors by implementing [`FromRequest`]:
 //!
 //! ```rust,no_run
-//! use awebframework::{async_trait, extract::FromRequest, prelude::*};
+//! use axum::{async_trait, extract::FromRequest, prelude::*};
 //! use http::{StatusCode, header::{HeaderValue, USER_AGENT}};
 //!
 //! struct ExtractUserAgent(HeaderValue);
@@ -72,7 +72,7 @@
 //! Handlers can also contain multiple extractors:
 //!
 //! ```rust,no_run
-//! use awebframework::prelude::*;
+//! use axum::prelude::*;
 //! use std::collections::HashMap;
 //!
 //! async fn handler(
@@ -97,7 +97,7 @@
 //! Wrapping extractors in `Option` will make them optional:
 //!
 //! ```rust,no_run
-//! use awebframework::{extract::Json, prelude::*};
+//! use axum::{extract::Json, prelude::*};
 //! use serde_json::Value;
 //!
 //! async fn create_user(payload: Option<Json<Value>>) {
@@ -118,7 +118,7 @@
 //! the extraction failed:
 //!
 //! ```rust,no_run
-//! use awebframework::{extract::{Json, rejection::JsonRejection}, prelude::*};
+//! use axum::{extract::{Json, rejection::JsonRejection}, prelude::*};
 //! use serde_json::Value;
 //!
 //! async fn create_user(payload: Result<Json<Value>, JsonRejection>) {
@@ -155,7 +155,7 @@
 //! directly on the function signature:
 //!
 //! ```rust,no_run
-//! use awebframework::{extract::Json, prelude::*};
+//! use axum::{extract::Json, prelude::*};
 //! use serde_json::Value;
 //!
 //! async fn create_user(Json(value): Json<Value>) {
@@ -237,7 +237,7 @@ where
 /// # Example
 ///
 /// ```rust,no_run
-/// use awebframework::prelude::*;
+/// use axum::prelude::*;
 /// use serde::Deserialize;
 ///
 /// #[derive(Deserialize)]
@@ -289,7 +289,7 @@ where
 /// # Example
 ///
 /// ```rust,no_run
-/// use awebframework::prelude::*;
+/// use axum::prelude::*;
 /// use serde::Deserialize;
 ///
 /// #[derive(Deserialize)]
@@ -355,7 +355,7 @@ where
 /// # Example
 ///
 /// ```rust,no_run
-/// use awebframework::prelude::*;
+/// use axum::prelude::*;
 /// use serde::Deserialize;
 ///
 /// #[derive(Deserialize)]
@@ -435,7 +435,7 @@ fn has_content_type<B>(req: &Request<B>, expected_content_type: &str) -> bool {
 /// # Example
 ///
 /// ```rust,no_run
-/// use awebframework::{AddExtensionLayer, prelude::*};
+/// use axum::{AddExtensionLayer, prelude::*};
 /// use std::sync::Arc;
 ///
 /// // Some shared state used throughout our application
@@ -530,7 +530,7 @@ where
 /// # Example
 ///
 /// ```rust,no_run
-/// use awebframework::prelude::*;
+/// use axum::prelude::*;
 /// use futures::StreamExt;
 ///
 /// async fn handler(mut stream: extract::BodyStream) {
@@ -646,7 +646,7 @@ where
 /// # Example
 ///
 /// ```rust,no_run
-/// use awebframework::prelude::*;
+/// use axum::prelude::*;
 ///
 /// async fn handler(body: extract::ContentLengthLimit<String, 1024>) {
 ///     // ...
@@ -699,7 +699,7 @@ where
 /// # Example
 ///
 /// ```rust,no_run
-/// use awebframework::prelude::*;
+/// use axum::prelude::*;
 ///
 /// async fn users_show(params: extract::UrlParamsMap) {
 ///     let id: Option<&str> = params.get("id");
@@ -761,7 +761,7 @@ where
 /// # Example
 ///
 /// ```rust,no_run
-/// use awebframework::{extract::UrlParams, prelude::*};
+/// use axum::{extract::UrlParams, prelude::*};
 /// use uuid::Uuid;
 ///
 /// async fn users_teams_show(
@@ -862,7 +862,7 @@ where
 /// # Example
 ///
 /// ```rust,no_run
-/// use awebframework::{extract::TypedHeader, prelude::*};
+/// use axum::{extract::TypedHeader, prelude::*};
 /// use headers::UserAgent;
 ///
 /// async fn users_teams_show(

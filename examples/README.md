@@ -5,7 +5,7 @@
 - [`form`](../examples/form.rs) - Receiving data from an HTML `<form>`.
 - [`static_file_server`](../examples/static_file_server.rs) - Serving static files from a directory. Could for example be the baseline for a single page app.
 - [`templates`](../examples/templates.rs) - Rending HTML templates using [askama](https://crates.io/crates/askama).
-- [`testing`](../examples/testing.rs) - How to test awebframework apps.
+- [`testing`](../examples/testing.rs) - How to test axum apps.
 - [`versioning`](../examples/versioning.rs) - How one might version an API.
 - [`websocket`](../examples/websocket.rs) - How to build an app that handles WebSocket connections.
 - [`error_handling_and_dependency_injection`](../examples/error_handling_and_dependency_injection.rs) - How to handle errors and dependency injection using trait objects.

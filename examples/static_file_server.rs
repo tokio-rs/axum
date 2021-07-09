@@ -1,4 +1,4 @@
-use awebframework::{prelude::*, service::ServiceExt};
+use axum::{prelude::*, service::ServiceExt};
 use http::StatusCode;
 use std::net::SocketAddr;
 use tower_http::{services::ServeDir, trace::TraceLayer};
@@ -7,9 +7,9 @@ use tower_http::{services::ServeDir, trace::TraceLayer};
 async fn main() {
     tracing_subscriber::fmt::init();
 
-    let app = awebframework::routing::nest(
+    let app = axum::routing::nest(
         "/static",
-        awebframework::service::get(ServeDir::new(".").handle_error(|error: std::io::Error| {
+        axum::service::get(ServeDir::new(".").handle_error(|error: std::io::Error| {
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 format!("Unhandled interal error: {}", error),

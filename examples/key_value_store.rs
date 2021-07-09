@@ -1,4 +1,4 @@
-//! Simple in-memory key/value store showing features of awebframework.
+//! Simple in-memory key/value store showing features of axum.
 //!
 //! Run with:
 //!
@@ -6,7 +6,7 @@
 //! RUST_LOG=tower_http=debug,key_value_store=trace cargo run --example key_value_store
 //! ```
 
-use awebframework::{
+use axum::{
     extract::{ContentLengthLimit, Extension, UrlParams},
     prelude::*,
     response::IntoResponse,

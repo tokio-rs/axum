@@ -2,7 +2,7 @@
 //!
 //! # What is a handler?
 //!
-//! In awebframework a "handler" is an async function that accepts zero or more
+//! In axum a "handler" is an async function that accepts zero or more
 //! ["extractors"](crate::extract) as arguments and returns something that
 //! implements [`IntoResponse`].
 //!
@@ -11,7 +11,7 @@
 //! Some examples of handlers:
 //!
 //! ```rust
-//! use awebframework::prelude::*;
+//! use axum::prelude::*;
 //! use bytes::Bytes;
 //! use http::StatusCode;
 //!
@@ -65,7 +65,7 @@ pub mod future;
 /// # Example
 ///
 /// ```rust
-/// use awebframework::prelude::*;
+/// use axum::prelude::*;
 ///
 /// async fn handler() {}
 ///
@@ -107,7 +107,7 @@ where
 /// # Example
 ///
 /// ```rust
-/// use awebframework::prelude::*;
+/// use axum::prelude::*;
 ///
 /// async fn handler() {}
 ///
@@ -189,7 +189,7 @@ where
 /// # Example
 ///
 /// ```rust
-/// use awebframework::{handler::on, routing::MethodFilter, prelude::*};
+/// use axum::{handler::on, routing::MethodFilter, prelude::*};
 ///
 /// async fn handler() {}
 ///
@@ -251,7 +251,7 @@ pub trait Handler<B, In>: Sized {
     /// can be done like so:
     ///
     /// ```rust
-    /// use awebframework::prelude::*;
+    /// use axum::prelude::*;
     /// use tower::limit::{ConcurrencyLimitLayer, ConcurrencyLimit};
     ///
     /// async fn handler() { /* ... */ }
@@ -403,7 +403,7 @@ impl<S, T> Layered<S, T> {
     /// `handle_error` can be used like so:
     ///
     /// ```rust
-    /// use awebframework::prelude::*;
+    /// use axum::prelude::*;
     /// use http::StatusCode;
     /// use tower::{BoxError, timeout::TimeoutLayer};
     /// use std::time::Duration;
@@ -562,7 +562,7 @@ impl<S, F> OnMethod<S, F> {
     /// # Example
     ///
     /// ```rust
-    /// use awebframework::prelude::*;
+    /// use axum::prelude::*;
     ///
     /// async fn handler() {}
     ///
@@ -648,7 +648,7 @@ impl<S, F> OnMethod<S, F> {
     /// # Example
     ///
     /// ```rust
-    /// use awebframework::{routing::MethodFilter, prelude::*};
+    /// use axum::{routing::MethodFilter, prelude::*};
     ///
     /// async fn handler() {}
     ///
