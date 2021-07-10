@@ -695,10 +695,6 @@ async fn test_extractor_middleware() {
     let app = route(
         "/",
         get(handler.layer(extract::extractor_middleware::<RequireAuth>())),
-    )
-    .route(
-        "/take-body-error",
-        post(handler.layer(extract::extractor_middleware::<Bytes>())),
     );
 
     let addr = run_in_background(app).await;
@@ -719,14 +715,6 @@ async fn test_extractor_middleware() {
         .await
         .unwrap();
     assert_eq!(res.status(), StatusCode::OK);
-
-    let res = client
-        .post(format!("http://{}/take-body-error", addr))
-        .body("foobar")
-        .send()
-        .await
-        .unwrap();
-    assert_eq!(res.status(), StatusCode::INTERNAL_SERVER_ERROR);
 }
 
 /// Run a `tower::Service` in the background and get a URI for it.

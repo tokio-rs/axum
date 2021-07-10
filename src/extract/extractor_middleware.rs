@@ -2,7 +2,7 @@
 //!
 //! See [`extractor_middleware`] for more details.
 
-use super::{rejection::BodyAlreadyExtracted, BodyAlreadyExtractedExt, FromRequest};
+use super::FromRequest;
 use crate::{body::BoxBody, response::IntoResponse};
 use bytes::Bytes;
 use futures_util::{future::BoxFuture, ready};
@@ -220,11 +220,6 @@ where
 
                     match extracted {
                         Ok(_) => {
-                            if req.extensions().get::<BodyAlreadyExtractedExt>().is_some() {
-                                let res = BodyAlreadyExtracted.into_response().map(BoxBody::new);
-                                return Poll::Ready(Ok(res));
-                            }
-
                             let mut svc = this.svc.take().expect("future polled after completion");
                             let future = svc.call(req);
                             State::Call(future)
