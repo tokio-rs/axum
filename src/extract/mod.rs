@@ -92,6 +92,9 @@
 //! # };
 //! ```
 //!
+//! Note that only one extractor can consume the request body. If multiple body extractors are
+//! applied a `500 Internal Server Error` response will be returned.
+//!
 //! # Optional extractors
 //!
 //! Wrapping extractors in `Option` will make them optional:

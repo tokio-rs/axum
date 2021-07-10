@@ -27,6 +27,10 @@ use tower::{BoxError, Layer, Service};
 /// produce any useful output, and run the extractor for several handlers
 /// without repeating it in the function signature.
 ///
+/// Note that if the extractor consumes the request body, as `String` or
+/// [`Bytes`] does, an empty body will be left in its place. Thus wont be
+/// accessible to subsequent extractors or handlers.
+///
 /// # Example
 ///
 /// ```rust
