@@ -593,7 +593,12 @@
     missing_debug_implementations,
     missing_docs
 )]
-#![deny(unreachable_pub, broken_intra_doc_links, private_in_public)]
+#![deny(
+    unreachable_pub,
+    broken_intra_doc_links,
+    private_in_public,
+    mutable_borrow_reservation_conflict
+)]
 #![allow(
     elided_lifetimes_in_paths,
     // TODO: Remove this once the MSRV bumps to 1.42.0 or above.

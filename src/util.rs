@@ -1,7 +1,8 @@
 use bytes::Bytes;
+use std::fmt;
 
 /// A string like type backed by `Bytes` making it cheap to clone.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub(crate) struct ByteStr(Bytes);
 
 impl ByteStr {
@@ -16,5 +17,17 @@ impl ByteStr {
         // `ByteStr` can only be constructed from strings which are always valid
         // utf-8 so this wont panic.
         std::str::from_utf8(&self.0).unwrap()
+    }
+}
+
+impl fmt::Debug for ByteStr {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", self.as_str())
+    }
+}
+
+impl fmt::Display for ByteStr {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.as_str())
     }
 }

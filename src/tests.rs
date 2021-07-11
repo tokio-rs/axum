@@ -582,6 +582,7 @@ async fn disjunction() {
 #[tokio::test]
 async fn typed_header() {
     use extract::TypedHeader;
+
     async fn handle(TypedHeader(user_agent): TypedHeader<headers::UserAgent>) -> impl IntoResponse {
         user_agent.to_string()
     }

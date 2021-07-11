@@ -78,6 +78,22 @@ define_rejection! {
 }
 
 define_rejection! {
+    #[status = BAD_REQUEST]
+    #[body = "Invalid `Content-Type: multipart/form-data` header"]
+    /// Rejection type for [`Multipart`](super::Multipart) used if the
+    /// `Content-Type` header is invalid or missing.
+    pub struct InvalidMultipartContentType(BoxError);
+}
+
+define_rejection! {
+    #[status = BAD_REQUEST]
+    #[body = "HTTP method must be `POST`"]
+    /// Rejection type for [`Multipart`](super::Multipart) used if the
+    /// request method wasn't `POST`
+    pub struct MethodMustBePost;
+}
+
+define_rejection! {
     #[status = INTERNAL_SERVER_ERROR]
     #[body = "Missing request extension"]
     /// Rejection type for [`Extension`](super::Extension) if an expected
@@ -310,6 +326,19 @@ composite_rejection! {
         BodyAlreadyExtracted,
         FailedToBufferBody,
         InvalidUtf8,
+    }
+}
+
+composite_rejection! {
+    /// Rejection used for [`Multipart`].
+    ///
+    /// Contains one variant for each way the [`Multipart`] extractor can fail.
+    ///
+    /// [`Multipart`]: super::Multipart
+    pub enum MultipartRejection {
+        BodyAlreadyExtracted,
+        InvalidMultipartContentType,
+        MethodMustBePost,
     }
 }
 

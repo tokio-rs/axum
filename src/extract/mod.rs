@@ -193,10 +193,11 @@ use std::{
 };
 
 pub mod extractor_middleware;
+pub mod multipart;
 pub mod rejection;
 
 #[doc(inline)]
-pub use self::extractor_middleware::extractor_middleware;
+pub use self::{extractor_middleware::extractor_middleware, multipart::Multipart};
 
 /// Types that can be created from requests.
 ///

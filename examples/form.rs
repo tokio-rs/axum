@@ -24,7 +24,7 @@ async fn show_form() -> response::Html<&'static str> {
             <head></head>
             <body>
                 <form action="/" method="post">
-                    <label for="name">
+                    <label>
                         Enter your name:
                         <input type="text" name="name">
                     </label>
