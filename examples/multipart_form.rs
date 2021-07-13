@@ -48,13 +48,9 @@ async fn accept_form(
     while let Some(part) = multipart.next_part().await {
         let mut part = part.map_err(|err| bad_request(err.to_string()))?;
 
-        println!(
-            "input field name = {}",
-            std::str::from_utf8(part.name()).map_err(|err| bad_request(err.to_string()))?
-        );
+        println!("input field name = {}", part.name(),);
 
-        if let Some(filename) = part.filename().map(std::str::from_utf8) {
-            let filename = filename.map_err(|_| bad_request("filename is not invalid utf-8"))?;
+        if let Some(filename) = part.filename() {
             println!("filename = {}", filename);
         }
 

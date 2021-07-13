@@ -19,6 +19,8 @@ use tower::BoxError;
 
 /// Extractor that parses `multipart/form-data` requests commonly used with file upload forms.
 ///
+/// Implementation is based on [RFC 7578](https://datatracker.ietf.org/doc/html/rfc7578).
+///
 /// # Example
 ///
 /// ```rust,no_run
@@ -338,12 +340,12 @@ pub struct Part<'a, B = crate::body::Body> {
 
 impl<'a, B> Part<'a, B> {
     /// The "name" of the input field in the form this part is associated with.
-    pub fn name(&self) -> &[u8] {
+    pub fn name(&self) -> &str {
         &self.content_disposition.name
     }
 
     /// The filename of this part, if any.
-    pub fn filename(&self) -> Option<&[u8]> {
+    pub fn filename(&self) -> Option<&str> {
         self.content_disposition.filename.as_deref()
     }
 
@@ -404,6 +406,7 @@ enum ErrorKind {
     ParseError(String),
     BodyError(BoxError),
     ParseMime(BoxError),
+    UnsupportedMime(Mime),
 }
 
 impl MultipartError {
@@ -438,6 +441,7 @@ impl fmt::Display for MultipartError {
             ErrorKind::ParseError(inner) => write!(f, "Parse error: {}", inner),
             ErrorKind::BodyError(inner) => write!(f, "Body error: {}", inner),
             ErrorKind::ParseMime(inner) => write!(f, "Error parsing mime type: {}", inner),
+            ErrorKind::UnsupportedMime(mime) => write!(f, "Mime type `{}` is not supported", mime),
         }
     }
 }
@@ -448,97 +452,54 @@ impl std::error::Error for MultipartError {
             ErrorKind::ParseError(_) => None,
             ErrorKind::BodyError(inner) => Some(&**inner),
             ErrorKind::ParseMime(inner) => Some(&**inner),
+            ErrorKind::UnsupportedMime(_) => None,
         }
     }
 }
 
-fn parse_content_disposition(
-    mut header_value: &[u8],
-) -> Result<ContentDisposition, MultipartError> {
-    consume(b"form-data", &mut header_value)?;
+fn parse_content_disposition(header_value: &[u8]) -> Result<ContentDisposition, MultipartError> {
+    let header_value = std::str::from_utf8(header_value).unwrap();
+    let header_value = format!("multipart/{}", header_value);
 
-    let mut name = None::<&[u8]>;
-    let mut filename = None::<&[u8]>;
+    let mime = if let Ok(mime) = header_value.parse::<Mime>() {
+        mime
+    } else {
+        return Err(MultipartError::parse_error(
+            "Failed to parse `Content-Disposition` header",
+        ));
+    };
 
-    loop {
-        let _ = consume(b";", &mut header_value);
-        let _ = consume(b" ", &mut header_value);
+    let name = mime
+        .get_param("name")
+        .map(|name| name.as_str().to_string())
+        .ok_or_else(|| {
+            MultipartError::parse_error("Missing `name` parameter in `Content-Disposition` header")
+        })?;
 
-        if header_value.is_empty() {
-            break;
-        }
-
-        if consume(b"name=", &mut header_value).is_ok() {
-            let value = consume_field(&mut header_value)?;
-            name = Some(value);
-            continue;
-        }
-
-        if consume(b"filename=", &mut header_value).is_ok() {
-            let value = consume_field(&mut header_value)?;
-            filename = Some(value);
-            continue;
-        }
-
-        return Err(MultipartError::parse_error("Unexpect header attribute"));
-    }
-
-    let name =
-        Bytes::copy_from_slice(name.ok_or_else(|| {
-            MultipartError::parse_error("Missing `name` attribute in header value")
-        })?);
-    let filename = filename.map(Bytes::copy_from_slice);
+    let filename = mime
+        .get_param("filename")
+        .map(|name| name.as_str().to_string());
 
     Ok(ContentDisposition { name, filename })
 }
 
 fn parse_content_type(header_value: &[u8]) -> Result<Mime, MultipartError> {
     let s = str::from_utf8(header_value).map_err(MultipartError::parse_mime)?;
-    let mime = s.parse().map_err(MultipartError::parse_mime)?;
-    Ok(mime)
-}
+    let mime = s.parse::<Mime>().map_err(MultipartError::parse_mime)?;
 
-fn consume(needle: &[u8], bytes: &mut &[u8]) -> Result<(), MultipartError> {
-    if let Some(rest) = bytes.strip_prefix(needle) {
-        *bytes = rest;
-        Ok(())
+    if mime.subtype() == "multipart/mixed" {
+        Err(MultipartError {
+            kind: ErrorKind::UnsupportedMime(mime),
+        })
     } else {
-        Err(MultipartError::parse_error(&format!(
-            "Expected: {}",
-            String::from_utf8_lossy(needle)
-        )))
+        Ok(mime)
     }
-}
-
-fn consume_field<'a>(bytes: &mut &'a [u8]) -> Result<&'a [u8], MultipartError> {
-    consume(b"\"", bytes)?;
-
-    let mut idx = 0;
-    let value = loop {
-        let slice = &bytes[idx..];
-
-        if slice.is_empty() {
-            return Err(MultipartError::parse_error("Unexpected end-of-buffer"));
-        }
-
-        if slice.strip_prefix(b"\"").is_some() {
-            let value = &bytes[..idx];
-            *bytes = &bytes[idx..];
-            break value;
-        } else {
-            idx += 1;
-        }
-    };
-
-    consume(b"\"", bytes)?;
-
-    Ok(value)
 }
 
 #[derive(Debug)]
 struct ContentDisposition {
-    name: Bytes,
-    filename: Option<Bytes>,
+    name: String,
+    filename: Option<String>,
 }
 
 #[async_trait]
@@ -646,7 +607,7 @@ mod tests {
         // first part
         let mut first_name_part = multipart.next_part().await.unwrap().unwrap();
 
-        assert_eq!(first_name_part.name_str(), "first name");
+        assert_eq!(first_name_part.name(), "first name");
         assert!(first_name_part.filename().is_none());
 
         let mut data = BytesMut::new();
@@ -657,8 +618,8 @@ mod tests {
 
         // second part
         let mut file_part = multipart.next_part().await.unwrap().unwrap();
-        assert_eq!(file_part.name_str(), "file");
-        assert_eq!(file_part.filename_str().unwrap(), "small-file");
+        assert_eq!(file_part.name(), "file");
+        assert_eq!(file_part.filename().unwrap(), "small-file");
         assert_eq!(
             file_part.content_type().unwrap(),
             &"application/octet-stream"
@@ -705,13 +666,13 @@ mod tests {
         // first part
         let first_name_part = multipart.next_part().await.unwrap().unwrap();
 
-        assert_eq!(first_name_part.name_str(), "first name");
+        assert_eq!(first_name_part.name(), "first name");
         assert!(first_name_part.filename().is_none());
 
         // second part
         let file_part = multipart.next_part().await.unwrap().unwrap();
-        assert_eq!(file_part.name_str(), "file");
-        assert_eq!(file_part.filename_str().unwrap(), "small-file");
+        assert_eq!(file_part.name(), "file");
+        assert_eq!(file_part.filename().unwrap(), "small-file");
 
         // no more parts left
         let file_part = multipart.next_part().await;
@@ -751,7 +712,7 @@ mod tests {
         // first part
         let mut first_name_part = multipart.next_part().await.unwrap().unwrap();
 
-        assert_eq!(first_name_part.name_str(), "first name");
+        assert_eq!(first_name_part.name(), "first name");
         assert!(first_name_part.filename().is_none());
 
         let mut data = BytesMut::new();
@@ -762,8 +723,8 @@ mod tests {
 
         // second part
         let mut file_part = multipart.next_part().await.unwrap().unwrap();
-        assert_eq!(file_part.name_str(), "file");
-        assert_eq!(file_part.filename_str().unwrap(), "small-file");
+        assert_eq!(file_part.name(), "file");
+        assert_eq!(file_part.filename().unwrap(), "small-file");
         assert_eq!(
             file_part.content_type().unwrap(),
             &"application/octet-stream"
@@ -806,7 +767,7 @@ mod tests {
         // first part
         let mut first_name_part = multipart.next_part().await.unwrap().unwrap();
 
-        assert_eq!(first_name_part.name_str(), "first name");
+        assert_eq!(first_name_part.name(), "first name");
         assert!(first_name_part.filename().is_none());
 
         let mut data = BytesMut::new();
@@ -840,7 +801,7 @@ mod tests {
         let cd = parse_content_disposition(header_value).unwrap();
 
         assert_eq!(cd.name, "file");
-        assert_eq!(&cd.filename.unwrap()[..], b"small-file");
+        assert_eq!(cd.filename.unwrap(), "small-file");
     }
 
     #[test]
@@ -852,7 +813,7 @@ mod tests {
                 .unwrap_err()
                 .kind
                 .into_parse_error(),
-            "Unexpect header attribute",
+            "Failed to parse `Content-Disposition` header",
         );
     }
 
@@ -864,7 +825,7 @@ mod tests {
                 .unwrap_err()
                 .kind
                 .into_parse_error(),
-            "Missing `name` attribute in header value",
+            "Missing `name` parameter in `Content-Disposition` header",
         );
     }
 
@@ -876,22 +837,11 @@ mod tests {
                 .unwrap_err()
                 .kind
                 .into_parse_error(),
-            "Expected: form-data",
+            "Failed to parse `Content-Disposition` header",
         );
     }
 
     // some test helpers
-    impl<'a, B> Part<'a, B> {
-        fn name_str(&self) -> &str {
-            std::str::from_utf8(self.name()).unwrap()
-        }
-
-        fn filename_str(&self) -> Option<&str> {
-            self.filename()
-                .map(|name| std::str::from_utf8(name).unwrap())
-        }
-    }
-
     impl ErrorKind {
         fn into_parse_error(self) -> String {
             if let ErrorKind::ParseError(s) = self {
