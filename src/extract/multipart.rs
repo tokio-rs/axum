@@ -17,6 +17,20 @@ use std::{
 };
 use tower::BoxError;
 
+/// Like `?` but return `Option<Result<_, E>>`
+macro_rules! t {
+    ($expr:expr) => {
+        match $expr {
+            Ok(value) => value,
+            Err(err) => {
+                // calling `.into()` will convert the result
+                // into a `Poll` if necessary
+                return Some(Err(err)).into();
+            }
+        }
+    };
+}
+
 /// Extractor that parses `multipart/form-data` requests commonly used with file upload forms.
 ///
 /// Implementation is based on [RFC 7578](https://datatracker.ietf.org/doc/html/rfc7578).
@@ -122,10 +136,7 @@ where
                 return None;
             }
 
-            match poll_fn(|cx| self.poll_body(cx)).await {
-                Ok(()) => {}
-                Err(err) => return Some(Err(err)),
-            }
+            t!(self.read_body().await);
 
             match self.decode_part() {
                 None => {}
@@ -156,7 +167,7 @@ where
     }
 
     /// Get the next chunk from `self.body` and append it to `self.buf`.
-    fn poll_body(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), MultipartError>> {
+    fn poll_read_body(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), MultipartError>> {
         assert!(
             !self.end_of_stream,
             "`poll_data` was called after hitting end-of-stream"
@@ -179,16 +190,11 @@ where
         }
     }
 
-    fn decode_part(&mut self) -> Option<Result<(), MultipartError>> {
-        macro_rules! t {
-            ($expr:expr) => {
-                match $expr {
-                    Ok(value) => value,
-                    Err(err) => return Some(Err(err)),
-                }
-            };
-        }
+    async fn read_body(&mut self) -> Result<(), MultipartError> {
+        poll_fn(|cx| self.poll_read_body(cx)).await
+    }
 
+    fn decode_part(&mut self) -> Option<Result<(), MultipartError>> {
         loop {
             match self.state {
                 DecodeState::Boundary => {
@@ -277,10 +283,7 @@ where
                     // no more data coming and we've consumed everything that we buffered
                     return Poll::Ready(None);
                 } else {
-                    match ready!(self.poll_body(cx)) {
-                        Ok(()) => {}
-                        Err(err) => return Poll::Ready(Some(Err(err))),
-                    }
+                    t!(ready!(self.poll_read_body(cx)));
                     continue;
                 }
             }
@@ -299,10 +302,7 @@ where
                 // we don't know if this is the end of the part or just a chunk
                 // that happends to end with `\r\n` so we have to buffer more data
                 // to see if we hit the boundary
-                match ready!(self.poll_body(cx)) {
-                    Ok(()) => {}
-                    Err(err) => return Poll::Ready(Some(Err(err))),
-                }
+                t!(ready!(self.poll_read_body(cx)));
                 continue;
             }
 
