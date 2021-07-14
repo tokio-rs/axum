@@ -679,10 +679,7 @@ where
     type Rejection = ContentLengthLimitRejection<T::Rejection>;
 
     async fn from_request(req: &mut Request<B>) -> Result<Self, Self::Rejection> {
-        let content_length = req.headers().get(http::header::CONTENT_LENGTH).cloned();
-
-        let content_length =
-            content_length.and_then(|value| value.to_str().ok()?.parse::<u64>().ok());
+        let content_length = content_length::<u64>(req.headers());
 
         if let Some(length) = content_length {
             if length > N {
@@ -700,6 +697,16 @@ where
 
         Ok(Self(value))
     }
+}
+
+fn content_length<T>(headers: &http::HeaderMap) -> Option<T>
+where
+    T: std::str::FromStr,
+{
+    let value = headers.get(http::header::CONTENT_LENGTH).cloned()?;
+    let value = value.to_str().ok()?;
+    let value = value.parse().ok()?;
+    Some(value)
 }
 
 /// Extractor that will get captures from the URL.

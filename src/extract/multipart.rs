@@ -477,6 +477,12 @@ fn parse_content_disposition(header_value: &[u8]) -> Result<ContentDisposition, 
         ));
     };
 
+    if mime.subtype() != "form-data" {
+        return Err(MultipartError::parse_error(
+            "Invalid `Content-Disposition` header",
+        ));
+    }
+
     let name = mime
         .get_param("name")
         .map(|name| name.as_str().to_string())
@@ -801,6 +807,19 @@ mod tests {
 
         assert_eq!(cd.name, "first name");
         assert_eq!(cd.filename, None);
+    }
+
+    #[test]
+    fn test_parse_content_disposition_not_form_data() {
+        let header_value: &[u8] = b"foobar; name=\"first name\"";
+
+        assert_eq!(
+            parse_content_disposition(header_value)
+                .unwrap_err()
+                .kind
+                .into_parse_error(),
+            "Invalid `Content-Disposition` header",
+        );
     }
 
     #[test]
