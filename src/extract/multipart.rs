@@ -128,7 +128,8 @@ where
             }
 
             match self.decode_part() {
-                Ok(true) => {
+                None => {}
+                Some(Ok(())) => {
                     let content_disposition = if let Some(cd) = self.content_disposition.take() {
                         cd
                     } else {
@@ -145,8 +146,7 @@ where
 
                     return Some(Ok(part));
                 }
-                Ok(false) => {}
-                Err(err) => {
+                Some(Err(err)) => {
                     self.end_of_stream = true;
                     self.buf.clear();
                     return Some(Err(err));
@@ -179,22 +179,30 @@ where
         }
     }
 
-    // TODO(david): the return signature here is kinda weird
-    fn decode_part(&mut self) -> Result<bool, MultipartError> {
+    fn decode_part(&mut self) -> Option<Result<(), MultipartError>> {
+        macro_rules! t {
+            ($expr:expr) => {
+                match $expr {
+                    Ok(value) => value,
+                    Err(err) => return Some(Err(err)),
+                }
+            };
+        }
+
         loop {
             match self.state {
                 DecodeState::Boundary => {
                     if self.buf.len() < self.middle_part_boundary.len() {
-                        return Ok(false);
+                        return None;
                     }
 
                     if let Some(pos) = self.seek_middle_boundary() {
                         self.buf.advance(pos + self.middle_part_boundary.len());
                         self.state = DecodeState::Headers;
                     } else if self.end_of_stream {
-                        return Err(MultipartError::parse_error("Invalid boundary"));
+                        return Some(Err(MultipartError::parse_error("Invalid boundary")));
                     } else {
-                        return Ok(false);
+                        return None;
                     }
                 }
                 DecodeState::Headers => {
@@ -205,7 +213,7 @@ where
                         .windows(end_of_headers.len())
                         .any(|window| window == end_of_headers.as_bytes())
                     {
-                        return Ok(false);
+                        return None;
                     }
 
                     let mut headers = [httparse::EMPTY_HEADER; 4];
@@ -217,7 +225,7 @@ where
                             let new_headers = owned_headers_from_httparse_headers(&headers);
                             self.headers.extend(new_headers);
                             self.buf.clear();
-                            return Ok(false);
+                            return None;
                         }
                         Ok(httparse::Status::Complete((read, headers))) => {
                             let new_headers = owned_headers_from_httparse_headers(headers);
@@ -226,29 +234,29 @@ where
                             self.take_headers()
                         }
                         Err(err) => {
-                            return Err(MultipartError::parse_error(&format!(
+                            return Some(Err(MultipartError::parse_error(&format!(
                                 "Failed to parse a header: {}",
                                 err
-                            )))
+                            ))))
                         }
                     };
 
                     for header in headers {
                         if header.name.eq_ignore_ascii_case("content-disposition") {
                             self.content_disposition =
-                                Some(parse_content_disposition(&header.value)?);
+                                Some(t!(parse_content_disposition(&header.value)));
                         } else if header.name.eq_ignore_ascii_case("content-type") {
-                            self.content_type = Some(parse_content_type(&header.value)?);
+                            self.content_type = Some(t!(parse_content_type(&header.value)));
                         } else {
-                            return Err(MultipartError::parse_error(&format!(
+                            return Some(Err(MultipartError::parse_error(&format!(
                                 "Unknown header in part: {}",
                                 header.name
-                            )));
+                            ))));
                         }
                     }
 
                     self.state = DecodeState::Data;
-                    return Ok(true);
+                    return Some(Ok(()));
                 }
                 DecodeState::Data => {
                     // `Multipart::next_part` makes sure we never get in here
