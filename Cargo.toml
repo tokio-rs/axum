@@ -13,10 +13,8 @@ repository = "https://github.com/davidpdrsn/axum"
 version = "0.1.0"
 
 [features]
-default = ["hyper-h1"]
+default = []
 ws = ["tokio-tungstenite", "sha-1", "base64"]
-hyper-h1 = ["hyper/http1"]
-hyper-h2 = ["hyper/http2"]
 multipart = ["multer", "mime"]
 
 [dependencies]

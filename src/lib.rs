@@ -545,8 +545,6 @@
 //! The following optional features are available:
 //!
 //! - `ws`: Enables WebSockets support.
-//! - `hyper-h1`: Enables hyper's `http1` feature. On by default.
-//! - `hyper-h2`: Enables hyper's `http2` feature.
 //! - `headers`: Enables extracing typed headers via [`extract::TypedHeader`].
 //! - `multipart`: Enables parsing `multipart/form-data` requests with [`extract::Multipart`].
 //!
