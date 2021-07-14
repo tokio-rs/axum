@@ -6,8 +6,7 @@ use super::{rejection::*, BodyStream, FromRequest};
 use async_trait::async_trait;
 use bytes::Bytes;
 use futures_util::stream::Stream;
-use headers::HeaderMap;
-use http::header::CONTENT_TYPE;
+use http::header::{HeaderMap, CONTENT_TYPE};
 use mime::Mime;
 use std::{
     fmt,
