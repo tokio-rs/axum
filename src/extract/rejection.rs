@@ -4,57 +4,6 @@ use super::IntoResponse;
 use crate::body::Body;
 use tower::BoxError;
 
-macro_rules! define_rejection {
-    (
-        #[status = $status:ident]
-        #[body = $body:expr]
-        $(#[$m:meta])*
-        pub struct $name:ident;
-    ) => {
-        $(#[$m])*
-        #[derive(Debug)]
-        #[non_exhaustive]
-        pub struct $name;
-
-        impl IntoResponse for $name {
-            fn into_response(self) -> http::Response<Body> {
-                let mut res = http::Response::new(Body::from($body));
-                *res.status_mut() = http::StatusCode::$status;
-                res
-            }
-        }
-    };
-
-    (
-        #[status = $status:ident]
-        #[body = $body:expr]
-        $(#[$m:meta])*
-        pub struct $name:ident (BoxError);
-    ) => {
-        $(#[$m])*
-        #[derive(Debug)]
-        pub struct $name(pub(super) tower::BoxError);
-
-        impl $name {
-            pub(super) fn from_err<E>(err: E) -> Self
-            where
-                E: Into<tower::BoxError>,
-            {
-                Self(err.into())
-            }
-        }
-
-        impl IntoResponse for $name {
-            fn into_response(self) -> http::Response<Body> {
-                let mut res =
-                    http::Response::new(Body::from(format!(concat!($body, ": {}"), self.0)));
-                *res.status_mut() = http::StatusCode::$status;
-                res
-            }
-        }
-    };
-}
-
 define_rejection! {
     #[status = BAD_REQUEST]
     #[body = "Query string was invalid or missing"]
@@ -203,44 +152,6 @@ impl IntoResponse for FailedToDeserializeQueryString {
         *res.status_mut() = http::StatusCode::BAD_REQUEST;
         res
     }
-}
-
-macro_rules! composite_rejection {
-    (
-        $(#[$m:meta])*
-        pub enum $name:ident {
-            $($variant:ident),+
-            $(,)?
-        }
-    ) => {
-        $(#[$m])*
-        #[derive(Debug)]
-        #[non_exhaustive]
-        pub enum $name {
-            $(
-                #[allow(missing_docs)]
-                $variant($variant)
-            ),+
-        }
-
-        impl IntoResponse for $name {
-            fn into_response(self) -> http::Response<Body> {
-                match self {
-                    $(
-                        Self::$variant(inner) => inner.into_response(),
-                    )+
-                }
-            }
-        }
-
-        $(
-            impl From<$variant> for $name {
-                fn from(inner: $variant) -> Self {
-                    Self::$variant(inner)
-                }
-            }
-        )+
-    };
 }
 
 composite_rejection! {

@@ -171,16 +171,11 @@
 //! # };
 //! ```
 
-use crate::{
-    body::{BoxBody, BoxStdError},
-    response::IntoResponse,
-    util::ByteStr,
-};
+use crate::{response::IntoResponse, util::ByteStr};
 use async_trait::async_trait;
 use bytes::{Buf, Bytes};
 use futures_util::stream::Stream;
 use http::{header, HeaderMap, Method, Request, Uri, Version};
-use http_body::Body;
 use rejection::*;
 use serde::de::DeserializeOwned;
 use std::{
@@ -197,6 +192,15 @@ pub mod rejection;
 
 #[doc(inline)]
 pub use self::extractor_middleware::extractor_middleware;
+
+#[cfg(feature = "multipart")]
+#[cfg_attr(docsrs, doc(cfg(feature = "multipart")))]
+pub mod multipart;
+
+#[cfg(feature = "multipart")]
+#[cfg_attr(docsrs, doc(cfg(feature = "multipart")))]
+#[doc(inline)]
+pub use self::multipart::Multipart;
 
 /// Types that can be created from requests.
 ///
@@ -552,10 +556,13 @@ where
 /// # };
 /// ```
 #[derive(Debug)]
-pub struct BodyStream(BoxBody);
+pub struct BodyStream<B = crate::body::Body>(B);
 
-impl Stream for BodyStream {
-    type Item = Result<Bytes, BoxStdError>;
+impl<B> Stream for BodyStream<B>
+where
+    B: http_body::Body + Unpin,
+{
+    type Item = Result<B::Data, B::Error>;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         Pin::new(&mut self.0).poll_data(cx)
@@ -563,17 +570,15 @@ impl Stream for BodyStream {
 }
 
 #[async_trait]
-impl<B> FromRequest<B> for BodyStream
+impl<B> FromRequest<B> for BodyStream<B>
 where
-    B: http_body::Body<Data = Bytes> + Default + Send + Sync + 'static,
-    B::Data: Send,
-    B::Error: Into<tower::BoxError>,
+    B: http_body::Body + Default + Unpin + Send,
 {
     type Rejection = BodyAlreadyExtracted;
 
     async fn from_request(req: &mut Request<B>) -> Result<Self, Self::Rejection> {
         let body = take_body(req)?;
-        let stream = BodyStream(BoxBody::new(body));
+        let stream = BodyStream(body);
         Ok(stream)
     }
 }

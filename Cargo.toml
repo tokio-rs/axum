@@ -17,6 +17,7 @@ default = ["hyper-h1"]
 ws = ["tokio-tungstenite", "sha-1", "base64"]
 hyper-h1 = ["hyper/http1"]
 hyper-h2 = ["hyper/http2"]
+multipart = ["multer", "mime"]
 
 [dependencies]
 async-trait = "0.1"
@@ -40,6 +41,8 @@ tokio-tungstenite = { optional = true, version = "0.14" }
 sha-1 = { optional = true, version = "0.9.6" }
 base64 = { optional = true, version = "0.13" }
 headers = { optional = true, version = "0.3" }
+multer = { optional = true, version = "2.0.0" }
+mime = { optional = true, version = "0.3" }
 
 [dev-dependencies]
 askama = "0.10.5"
