@@ -15,6 +15,7 @@
 //! - [Sharing state with handlers](#sharing-state-with-handlers)
 //! - [Routing to any `Service`](#routing-to-any-service)
 //! - [Nesting applications](#nesting-applications)
+//! - [Examples](#examples)
 //! - [Feature flags](#feature-flags)
 //!
 //! # Goals
