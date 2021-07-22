@@ -137,22 +137,21 @@ impl IntoResponse for StatusCode {
 
 impl<T> IntoResponse for (StatusCode, T)
 where
-    T: Into<Body>,
+    T: IntoResponse,
 {
     fn into_response(self) -> Response<Body> {
-        Response::builder()
-            .status(self.0)
-            .body(self.1.into())
-            .unwrap()
+        let mut res = self.1.into_response();
+        *res.status_mut() = self.0;
+        res
     }
 }
 
 impl<T> IntoResponse for (HeaderMap, T)
 where
-    T: Into<Body>,
+    T: IntoResponse,
 {
     fn into_response(self) -> Response<Body> {
-        let mut res = Response::new(self.1.into());
+        let mut res = self.1.into_response();
         *res.headers_mut() = self.0;
         res
     }
@@ -160,10 +159,10 @@ where
 
 impl<T> IntoResponse for (StatusCode, HeaderMap, T)
 where
-    T: Into<Body>,
+    T: IntoResponse,
 {
     fn into_response(self) -> Response<Body> {
-        let mut res = Response::new(self.2.into());
+        let mut res = self.2.into_response();
         *res.status_mut() = self.0;
         *res.headers_mut() = self.1;
         res
