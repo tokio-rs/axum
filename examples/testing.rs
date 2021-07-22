@@ -36,6 +36,7 @@ mod tests {
     use super::*;
     use http::StatusCode;
     use serde_json::{json, Value};
+    use std::net::{SocketAddr, TcpListener};
     use tower::ServiceExt; // for `app.oneshot()`
 
     #[tokio::test]
@@ -97,5 +98,35 @@ mod tests {
         assert_eq!(response.status(), StatusCode::NOT_FOUND);
         let body = hyper::body::to_bytes(response.into_body()).await.unwrap();
         assert!(body.is_empty());
+    }
+
+    // You can also spawn a server and talk to it like any other HTTP server:
+    #[tokio::test]
+    async fn the_real_deal() {
+        let listener = TcpListener::bind("0.0.0.0:0".parse::<SocketAddr>().unwrap()).unwrap();
+        let addr = listener.local_addr().unwrap();
+
+        tokio::spawn(async move {
+            hyper::Server::from_tcp(listener)
+                .unwrap()
+                .serve(app().into_make_service())
+                .await
+                .unwrap();
+        });
+
+        let client = hyper::Client::new();
+
+        let response = client
+            .request(
+                Request::builder()
+                    .uri(format!("http://{}", addr))
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        let body = hyper::body::to_bytes(response.into_body()).await.unwrap();
+        assert_eq!(&body[..], b"Hello, World!");
     }
 }
