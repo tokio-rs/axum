@@ -613,53 +613,6 @@ async fn typed_header() {
 }
 
 #[tokio::test]
-async fn different_request_body_types() {
-    use http_body::{Empty, Full};
-    use std::convert::Infallible;
-    use tower_http::map_request_body::MapRequestBodyLayer;
-
-    async fn handler(body: String) -> String {
-        body
-    }
-
-    async fn svc_handler<B>(req: Request<B>) -> Result<Response<Body>, Infallible>
-    where
-        B: http_body::Body,
-        B::Error: std::fmt::Debug,
-    {
-        let body = hyper::body::to_bytes(req.into_body()).await.unwrap();
-        Ok(Response::new(Body::from(body)))
-    }
-
-    let app = route("/", service::get(service_fn(svc_handler)))
-        .route(
-            "/foo",
-            get(handler.layer(MapRequestBodyLayer::new(|_| Full::<Bytes>::from("foo")))),
-        )
-        .layer(MapRequestBodyLayer::new(|_| Empty::<Bytes>::new()));
-
-    let addr = run_in_background(app).await;
-
-    let client = reqwest::Client::new();
-
-    let res = client
-        .get(format!("http://{}/", addr))
-        .send()
-        .await
-        .unwrap();
-    let body = res.text().await.unwrap();
-    assert_eq!(body, "");
-
-    let res = client
-        .get(format!("http://{}/foo", addr))
-        .send()
-        .await
-        .unwrap();
-    let body = res.text().await.unwrap();
-    assert_eq!(body, "foo");
-}
-
-#[tokio::test]
 async fn service_in_bottom() {
     async fn handler(_req: Request<hyper::Body>) -> Result<Response<hyper::Body>, hyper::Error> {
         Ok(Response::new(hyper::Body::empty()))

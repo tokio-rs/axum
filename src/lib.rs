@@ -487,7 +487,7 @@
 //!     "/",
 //!     service::any(service_fn(|_: Request<Body>| async {
 //!         let res = Response::new(Body::from("Hi from `GET /`"));
-//!         Ok::<_, Infallible>(res)
+//!         Ok(res)
 //!     }))
 //! ).route(
 //!     // GET `/static/Cargo.toml` goes to a service from tower-http

@@ -172,6 +172,77 @@
 //! # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 //! # };
 //! ```
+//!
+//! # Request body extractors
+//!
+//! Most of the time your request body type will be [`body::Body`] (a re-export
+//! of [`hyper::Body`]), which is directly supported by all extractors.
+//!
+//! However if you're applying a tower middleware that changes the response you
+//! might have to apply a different body type to some extractors:
+//!
+//! ```rust
+//! use std::{
+//!     task::{Context, Poll},
+//!     pin::Pin,
+//! };
+//! use tower_http::map_request_body::MapRequestBodyLayer;
+//! use axum::prelude::*;
+//!
+//! struct MyBody<B>(B);
+//!
+//! impl<B> http_body::Body for MyBody<B>
+//! where
+//!     B: http_body::Body + Unpin,
+//! {
+//!     type Data = B::Data;
+//!     type Error = B::Error;
+//!
+//!     fn poll_data(
+//!         mut self: Pin<&mut Self>,
+//!         cx: &mut Context<'_>,
+//!     ) -> Poll<Option<Result<Self::Data, Self::Error>>> {
+//!         Pin::new(&mut self.0).poll_data(cx)
+//!     }
+//!
+//!     fn poll_trailers(
+//!         mut self: Pin<&mut Self>,
+//!         cx: &mut Context<'_>,
+//!     ) -> Poll<Result<Option<headers::HeaderMap>, Self::Error>> {
+//!         Pin::new(&mut self.0).poll_trailers(cx)
+//!     }
+//! }
+//!
+//! let app =
+//!     // `String` works directly with any body type
+//!     route(
+//!         "/string",
+//!         get(|_: String| async {})
+//!     )
+//!     .route(
+//!         "/body",
+//!         // `extract::Body` defaults to `axum::body::Body`
+//!         // but can be customized
+//!         get(|_: extract::Body<MyBody<Body>>| async {})
+//!     )
+//!     .route(
+//!         "/body-stream",
+//!         // same for `extract::BodyStream`
+//!         get(|_: extract::BodyStream<MyBody<Body>>| async {}),
+//!     )
+//!     .route(
+//!         // and `Request<_>`
+//!         "/request",
+//!         get(|_: Request<MyBody<Body>>| async {})
+//!     )
+//!     // middleware that changes the request body type
+//!     .layer(MapRequestBodyLayer::new(MyBody));
+//! # async {
+//! # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+//! # };
+//! ```
+//!
+//! [`body::Body`]: crate::body::Body
 
 use crate::{response::IntoResponse, util::ByteStr};
 use async_trait::async_trait;
@@ -785,6 +856,39 @@ where
         let body = take_body(req)?;
         let stream = BodyStream(body);
         Ok(stream)
+    }
+}
+
+/// Extractor that extracts the request body.
+///
+/// # Example
+///
+/// ```rust,no_run
+/// use axum::prelude::*;
+/// use futures::StreamExt;
+///
+/// async fn handler(extract::Body(body): extract::Body) {
+///     // ...
+/// }
+///
+/// let app = route("/users", get(handler));
+/// # async {
+/// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+/// # };
+/// ```
+#[derive(Debug, Default, Clone)]
+pub struct Body<B = crate::body::Body>(pub B);
+
+#[async_trait]
+impl<B> FromRequest<B> for Body<B>
+where
+    B: Send,
+{
+    type Rejection = BodyAlreadyExtracted;
+
+    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+        let body = take_body(req)?;
+        Ok(Self(body))
     }
 }
 
