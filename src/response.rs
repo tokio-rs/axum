@@ -59,6 +59,12 @@ impl IntoResponse for Response<Body> {
     }
 }
 
+impl IntoResponse for Body {
+    fn into_response(self) -> Response<Body> {
+        Response::new(self)
+    }
+}
+
 impl IntoResponse for &'static str {
     #[inline]
     fn into_response(self) -> Response<Body> {
