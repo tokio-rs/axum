@@ -24,7 +24,7 @@
 //! handle(Request) -> Response`.
 //! - Solid foundation. axum is built on top of [tower] and [hyper] and makes it
 //! easy to plug in any middleware from the [tower] and [tower-http] ecosystem.
-//! This improves compatibility since axum doesn't have its own custom
+//! This improves modularity since axum doesn't have its own custom
 //! middleware system.
 //! - Focus on routing, extracting data from requests, and building responses.
 //! tower middleware can handle the rest.
