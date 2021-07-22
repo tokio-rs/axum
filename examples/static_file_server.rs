@@ -1,4 +1,4 @@
-use axum::{prelude::*, service::ServiceExt};
+use axum::{prelude::*, routing::nest, service::ServiceExt};
 use http::StatusCode;
 use std::net::SocketAddr;
 use tower_http::{services::ServeDir, trace::TraceLayer};
@@ -7,7 +7,7 @@ use tower_http::{services::ServeDir, trace::TraceLayer};
 async fn main() {
     tracing_subscriber::fmt::init();
 
-    let app = axum::routing::nest(
+    let app = nest(
         "/static",
         axum::service::get(ServeDir::new(".").handle_error(|error: std::io::Error| {
             Ok::<_, std::convert::Infallible>((
