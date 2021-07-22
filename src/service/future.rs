@@ -1,6 +1,9 @@
 //! [`Service`](tower::Service) future types.
 
-use crate::{body::BoxBody, response::IntoResponse};
+use crate::{
+    body::{box_body, BoxBody},
+    response::IntoResponse,
+};
 use bytes::Bytes;
 use futures_util::ready;
 use http::Response;
@@ -36,11 +39,11 @@ where
         let this = self.project();
 
         match ready!(this.inner.poll(cx)) {
-            Ok(res) => Ok(res.map(BoxBody::new)).into(),
+            Ok(res) => Ok(res.map(box_body)).into(),
             Err(err) => {
                 let f = this.f.take().unwrap();
                 let res = f(err).into_response();
-                Ok(res.map(BoxBody::new)).into()
+                Ok(res.map(box_body)).into()
             }
         }
     }

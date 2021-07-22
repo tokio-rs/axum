@@ -2,7 +2,7 @@
 //!
 //! See [`Multipart`] for more details.
 
-use super::{rejection::*, BodyStream, FromRequest};
+use super::{rejection::*, BodyStream, FromRequest, RequestParts};
 use async_trait::async_trait;
 use bytes::Bytes;
 use futures_util::stream::Stream;
@@ -53,9 +53,10 @@ where
 {
     type Rejection = MultipartRejection;
 
-    async fn from_request(req: &mut http::Request<B>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
         let stream = BodyStream::from_request(req).await?;
-        let boundary = parse_boundary(req.headers()).ok_or(InvalidBoundary)?;
+        let headers = req.headers().ok_or(HeadersAlreadyExtracted)?;
+        let boundary = parse_boundary(headers).ok_or(InvalidBoundary)?;
         let multipart = multer::Multipart::new(stream, boundary);
         Ok(Self { inner: multipart })
     }
@@ -175,6 +176,7 @@ composite_rejection! {
     pub enum MultipartRejection {
         BodyAlreadyExtracted,
         InvalidBoundary,
+        HeadersAlreadyExtracted,
     }
 }
 

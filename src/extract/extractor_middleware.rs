@@ -2,7 +2,7 @@
 //!
 //! See [`extractor_middleware`] for more details.
 
-use super::FromRequest;
+use super::{FromRequest, RequestParts};
 use crate::{body::BoxBody, response::IntoResponse};
 use bytes::Bytes;
 use futures_util::{future::BoxFuture, ready};
@@ -34,7 +34,7 @@ use tower::{BoxError, Layer, Service};
 /// # Example
 ///
 /// ```rust
-/// use axum::{extract::extractor_middleware, prelude::*};
+/// use axum::{extract::{extractor_middleware, RequestParts}, prelude::*};
 /// use http::StatusCode;
 /// use async_trait::async_trait;
 ///
@@ -48,12 +48,13 @@ use tower::{BoxError, Layer, Service};
 /// {
 ///     type Rejection = StatusCode;
 ///
-///     async fn from_request(req: &mut Request<B>) -> Result<Self, Self::Rejection> {
-///         if let Some(value) = req
+///     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+///         let auth_header = req
 ///             .headers()
-///             .get(http::header::AUTHORIZATION)
-///             .and_then(|value| value.to_str().ok())
-///         {
+///             .and_then(|headers| headers.get(http::header::AUTHORIZATION))
+///             .and_then(|value| value.to_str().ok());
+///
+///         if let Some(value) = auth_header {
 ///             if value == "secret" {
 ///                 return Ok(Self);
 ///             }
@@ -169,8 +170,9 @@ where
         self.inner.poll_ready(cx)
     }
 
-    fn call(&mut self, mut req: Request<ReqBody>) -> Self::Future {
+    fn call(&mut self, req: Request<ReqBody>) -> Self::Future {
         let extract_future = Box::pin(async move {
+            let mut req = super::RequestParts::new(req);
             let extracted = E::from_request(&mut req).await;
             (req, extracted)
         });
@@ -201,7 +203,7 @@ where
     E: FromRequest<ReqBody>,
     S: Service<Request<ReqBody>>,
 {
-    Extracting(BoxFuture<'static, (Request<ReqBody>, Result<E, E::Rejection>)>),
+    Extracting(BoxFuture<'static, (RequestParts<ReqBody>, Result<E, E::Rejection>)>),
     Call(#[pin] S::Future),
 }
 
@@ -220,16 +222,16 @@ where
 
             let new_state = match this.state.as_mut().project() {
                 StateProj::Extracting(future) => {
-                    let (req, extracted) = ready!(future.as_mut().poll(cx));
+                    let (mut req, extracted) = ready!(future.as_mut().poll(cx));
 
                     match extracted {
                         Ok(_) => {
                             let mut svc = this.svc.take().expect("future polled after completion");
-                            let future = svc.call(req);
+                            let future = svc.call(req.into_request());
                             State::Call(future)
                         }
                         Err(err) => {
-                            let res = err.into_response().map(BoxBody::new);
+                            let res = err.into_response().map(crate::body::box_body);
                             return Poll::Ready(Ok(res));
                         }
                     }
@@ -237,7 +239,7 @@ where
                 StateProj::Call(future) => {
                     return future
                         .poll(cx)
-                        .map(|result| result.map(|response| response.map(BoxBody::new)));
+                        .map(|result| result.map(|response| response.map(crate::body::box_body)));
                 }
             };
 

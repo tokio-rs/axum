@@ -87,7 +87,7 @@
 //! [load shed]: tower::load_shed
 
 use crate::{
-    body::BoxBody,
+    body::{box_body, BoxBody},
     response::IntoResponse,
     routing::{EmptyRouter, MethodFilter, RouteFuture},
 };
@@ -656,7 +656,7 @@ where
 
     fn poll(self: std::pin::Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let res = ready!(self.project().0.poll(cx))?;
-        let res = res.map(BoxBody::new);
+        let res = res.map(box_body);
         Poll::Ready(Ok(res))
     }
 }

@@ -39,7 +39,7 @@
 //! the [`extract`](crate::extract) module.
 
 use crate::{
-    body::BoxBody,
+    body::{box_body, BoxBody},
     extract::FromRequest,
     response::IntoResponse,
     routing::{EmptyRouter, MethodFilter, RouteFuture},
@@ -289,7 +289,7 @@ where
     type Sealed = sealed::Hidden;
 
     async fn call(self, _req: Request<B>) -> Response<BoxBody> {
-        self().await.into_response().map(BoxBody::new)
+        self().await.into_response().map(box_body)
     }
 }
 
@@ -310,22 +310,24 @@ macro_rules! impl_handler {
         {
             type Sealed = sealed::Hidden;
 
-            async fn call(self, mut req: Request<B>) -> Response<BoxBody> {
+            async fn call(self, req: Request<B>) -> Response<BoxBody> {
+                let mut req = crate::extract::RequestParts::new(req);
+
                 let $head = match $head::from_request(&mut req).await {
                     Ok(value) => value,
-                    Err(rejection) => return rejection.into_response().map(BoxBody::new),
+                    Err(rejection) => return rejection.into_response().map(crate::body::box_body),
                 };
 
                 $(
                     let $tail = match $tail::from_request(&mut req).await {
                         Ok(value) => value,
-                        Err(rejection) => return rejection.into_response().map(BoxBody::new),
+                        Err(rejection) => return rejection.into_response().map(crate::body::box_body),
                     };
                 )*
 
                 let res = self($head, $($tail,)*).await;
 
-                res.into_response().map(BoxBody::new)
+                res.into_response().map(crate::body::box_body)
             }
         }
 
@@ -380,8 +382,8 @@ where
             .await
             .map_err(IntoResponse::into_response)
         {
-            Ok(res) => res.map(BoxBody::new),
-            Err(res) => res.map(BoxBody::new),
+            Ok(res) => res.map(box_body),
+            Err(res) => res.map(box_body),
         }
     }
 }
