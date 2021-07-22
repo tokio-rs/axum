@@ -229,6 +229,7 @@ where
             Ok(res) => res,
             Err(err) => {
                 return Response::builder()
+                    .status(StatusCode::INTERNAL_SERVER_ERROR)
                     .header(header::CONTENT_TYPE, "text/plain")
                     .body(Body::from(err.to_string()))
                     .unwrap();
