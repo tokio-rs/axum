@@ -19,6 +19,7 @@ use http::StatusCode;
 use std::{
     borrow::Cow,
     collections::HashMap,
+    convert::Infallible,
     net::SocketAddr,
     sync::{Arc, RwLock},
     time::Duration,
@@ -152,20 +153,20 @@ where
     }
 }
 
-fn handle_error(error: BoxError) -> impl IntoResponse {
+fn handle_error(error: BoxError) -> Result<impl IntoResponse, Infallible> {
     if error.is::<tower::timeout::error::Elapsed>() {
-        return (StatusCode::REQUEST_TIMEOUT, Cow::from("request timed out"));
+        return Ok((StatusCode::REQUEST_TIMEOUT, Cow::from("request timed out")));
     }
 
     if error.is::<tower::load_shed::error::Overloaded>() {
-        return (
+        return Ok((
             StatusCode::SERVICE_UNAVAILABLE,
             Cow::from("service is overloaded, try again later"),
-        );
+        ));
     }
 
-    (
+    Ok((
         StatusCode::INTERNAL_SERVER_ERROR,
         Cow::from(format!("Unhandled internal error: {}", error)),
-    )
+    ))
 }

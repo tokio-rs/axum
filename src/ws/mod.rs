@@ -56,7 +56,7 @@ where
     crate::service::get::<_, B>(svc)
 }
 
-/// [`Service`] that ugprades connections to websockets and spawns a task to
+/// [`Service`] that upgrades connections to websockets and spawns a task to
 /// handle the stream.
 ///
 /// Created with [`ws`].

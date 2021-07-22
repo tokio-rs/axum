@@ -1,12 +1,31 @@
 //! axum is a web application framework that focuses on ergonomics and modularity.
 //!
-//! ## Goals
+//! # Table of contents
+//!
+//! - [Goals](#goals)
+//! - [Compatibility](#compatibility)
+//! - [Handlers](#handlers)
+//! - [Routing](#routing)
+//! - [Extractors](#extractors)
+//! - [Building responses](#building-responses)
+//! - [Applying middleware](#applying-middleware)
+//!     - [To individual handlers](#to-individual-handlers)
+//!     - [To groups of routes](#to-groups-of-routes)
+//!     - [Error handling](#error-handling)
+//! - [Sharing state with handlers](#sharing-state-with-handlers)
+//! - [Routing to any `Service`](#routing-to-any-service)
+//! - [Nesting applications](#nesting-applications)
+//! - [Feature flags](#feature-flags)
+//!
+//! # Goals
 //!
 //! - Ease of use. Building web apps in Rust should be as easy as `async fn
 //! handle(Request) -> Response`.
 //! - Solid foundation. axum is built on top of [tower] and [hyper] and makes it
 //! easy to plug in any middleware from the [tower] and [tower-http] ecosystem.
-//! - Focus on routing, extracting data from requests, and generating responses.
+//! This improves compatibility since axum doesn't have its own custom
+//! middleware system.
+//! - Focus on routing, extracting data from requests, and building responses.
 //! tower middleware can handle the rest.
 //! - Macro free core. Macro frameworks have their place but axum focuses
 //! on providing a core that is macro free.
@@ -39,6 +58,41 @@
 //! }
 //! ```
 //!
+//! # Handlers
+//!
+//! In axum a "handler" is an async function that accepts zero or more
+//! ["extractors"](#extractors) as arguments and returns something that
+//! can be converted [into a response](#building-responses).
+//!
+//! Handlers is where you custom domain logic lives and axum applications are
+//! built by routing between handlers.
+//!
+//! Some examples of handlers:
+//!
+//! ```rust
+//! use axum::prelude::*;
+//! use bytes::Bytes;
+//! use http::StatusCode;
+//!
+//! // Handler that immediately returns an empty `200 OK` response.
+//! async fn unit_handler() {}
+//!
+//! // Handler that immediately returns an empty `200 Ok` response with a plain
+//! // text body.
+//! async fn string_handler() -> String {
+//!     "Hello, World!".to_string()
+//! }
+//!
+//! // Handler that buffers the request body and returns it if it is valid UTF-8
+//! async fn buffer_body(body: Bytes) -> Result<String, StatusCode> {
+//!     if let Ok(string) = String::from_utf8(body.to_vec()) {
+//!         Ok(string)
+//!     } else {
+//!         Err(StatusCode::BAD_REQUEST)
+//!     }
+//! }
+//! ```
+//!
 //! # Routing
 //!
 //! Routing between handlers looks like this:
@@ -65,92 +119,12 @@
 //! # };
 //! ```
 //!
-//! Routes can also be dynamic like `/users/:id`. See ["Extracting data from
-//! requests"](#extracting-data-from-requests) for more details on that.
+//! Routes can also be dynamic like `/users/:id`.
 //!
-//! # Responses
+//! # Extractors
 //!
-//! Anything that implements [`IntoResponse`](response::IntoResponse) can be
-//! returned from a handler:
-//!
-//! ```rust,no_run
-//! use axum::{body::Body, response::{Html, Json}, prelude::*};
-//! use http::{StatusCode, Response, Uri};
-//! use serde_json::{Value, json};
-//!
-//! // We've already seen returning &'static str
-//! async fn plain_text() -> &'static str {
-//!     "foo"
-//! }
-//!
-//! // String works too and will get a text/plain content-type
-//! async fn plain_text_string(uri: Uri) -> String {
-//!     format!("Hi from {}", uri.path())
-//! }
-//!
-//! // Bytes will get a `application/octet-stream` content-type
-//! async fn bytes() -> Vec<u8> {
-//!     vec![1, 2, 3, 4]
-//! }
-//!
-//! // `()` gives an empty response
-//! async fn empty() {}
-//!
-//! // `StatusCode` gives an empty response with that status code
-//! async fn empty_with_status() -> StatusCode {
-//!     StatusCode::NOT_FOUND
-//! }
-//!
-//! // A tuple of `StatusCode` and something that implements `IntoResponse` can
-//! // be used to override the status code
-//! async fn with_status() -> (StatusCode, &'static str) {
-//!     (StatusCode::INTERNAL_SERVER_ERROR, "Something went wrong")
-//! }
-//!
-//! // `Html` gives a content-type of `text/html`
-//! async fn html() -> Html<&'static str> {
-//!     Html("<h1>Hello, World!</h1>")
-//! }
-//!
-//! // `Json` gives a content-type of `application/json` and works with any type
-//! // that implements `serde::Serialize`
-//! async fn json() -> Json<Value> {
-//!     Json(json!({ "data": 42 }))
-//! }
-//!
-//! // `Result<T, E>` where `T` and `E` implement `IntoResponse` is useful for
-//! // returning errors
-//! async fn result() -> Result<&'static str, StatusCode> {
-//!     Ok("all good")
-//! }
-//!
-//! // `Response` gives full control
-//! async fn response() -> Response<Body> {
-//!     Response::builder().body(Body::empty()).unwrap()
-//! }
-//!
-//! let app = route("/plain_text", get(plain_text))
-//!     .route("/plain_text_string", get(plain_text_string))
-//!     .route("/bytes", get(bytes))
-//!     .route("/empty", get(empty))
-//!     .route("/empty_with_status", get(empty_with_status))
-//!     .route("/with_status", get(with_status))
-//!     .route("/html", get(html))
-//!     .route("/json", get(json))
-//!     .route("/result", get(result))
-//!     .route("/response", get(response));
-//! # async {
-//! # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-//! # };
-//! ```
-//!
-//! See the [`response`] module for more details.
-//!
-//! # Extracting data from requests
-//!
-//! A handler function is an async function take takes any number of
-//! "extractors" as arguments. An extractor is a type that implements
-//! [`FromRequest`](crate::extract::FromRequest).
+//! An extractor is a type that implements [`FromRequest`]. Extractors is how
+//! you pick apart the incoming request to get the parts your handler needs.
 //!
 //! For example, [`extract::Json`] is an extractor that consumes the request
 //! body and deserializes it as JSON into some target type:
@@ -256,13 +230,90 @@
 //! See the [`extract`] module for more details.
 //!
 //! [`Uuid`]: https://docs.rs/uuid/latest/uuid/
+//! [`FromRequest`]: crate::extract::FromRequest
+//!
+//! # Building responses
+//!
+//! Anything that implements [`IntoResponse`](response::IntoResponse) can be
+//! returned from a handler:
+//!
+//! ```rust,no_run
+//! use axum::{body::Body, response::{Html, Json}, prelude::*};
+//! use http::{StatusCode, Response, Uri};
+//! use serde_json::{Value, json};
+//!
+//! // We've already seen returning &'static str
+//! async fn plain_text() -> &'static str {
+//!     "foo"
+//! }
+//!
+//! // String works too and will get a text/plain content-type
+//! async fn plain_text_string(uri: Uri) -> String {
+//!     format!("Hi from {}", uri.path())
+//! }
+//!
+//! // Bytes will get a `application/octet-stream` content-type
+//! async fn bytes() -> Vec<u8> {
+//!     vec![1, 2, 3, 4]
+//! }
+//!
+//! // `()` gives an empty response
+//! async fn empty() {}
+//!
+//! // `StatusCode` gives an empty response with that status code
+//! async fn empty_with_status() -> StatusCode {
+//!     StatusCode::NOT_FOUND
+//! }
+//!
+//! // A tuple of `StatusCode` and something that implements `IntoResponse` can
+//! // be used to override the status code
+//! async fn with_status() -> (StatusCode, &'static str) {
+//!     (StatusCode::INTERNAL_SERVER_ERROR, "Something went wrong")
+//! }
+//!
+//! // `Html` gives a content-type of `text/html`
+//! async fn html() -> Html<&'static str> {
+//!     Html("<h1>Hello, World!</h1>")
+//! }
+//!
+//! // `Json` gives a content-type of `application/json` and works with any type
+//! // that implements `serde::Serialize`
+//! async fn json() -> Json<Value> {
+//!     Json(json!({ "data": 42 }))
+//! }
+//!
+//! // `Result<T, E>` where `T` and `E` implement `IntoResponse` is useful for
+//! // returning errors
+//! async fn result() -> Result<&'static str, StatusCode> {
+//!     Ok("all good")
+//! }
+//!
+//! // `Response` gives full control
+//! async fn response() -> Response<Body> {
+//!     Response::builder().body(Body::empty()).unwrap()
+//! }
+//!
+//! let app = route("/plain_text", get(plain_text))
+//!     .route("/plain_text_string", get(plain_text_string))
+//!     .route("/bytes", get(bytes))
+//!     .route("/empty", get(empty))
+//!     .route("/empty_with_status", get(empty_with_status))
+//!     .route("/with_status", get(with_status))
+//!     .route("/html", get(html))
+//!     .route("/json", get(json))
+//!     .route("/result", get(result))
+//!     .route("/response", get(response));
+//! # async {
+//! # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+//! # };
+//! ```
 //!
 //! # Applying middleware
 //!
 //! axum is designed to take full advantage of the tower and tower-http
 //! ecosystem of middleware:
 //!
-//! ## Applying middleware to individual handlers
+//! ## To individual handlers
 //!
 //! A middleware can be applied to a single handler like so:
 //!
@@ -281,7 +332,7 @@
 //! # };
 //! ```
 //!
-//! ## Applying middleware to groups of routes
+//! ## To groups of routes
 //!
 //! Middleware can also be applied to a group of routes like so:
 //!
@@ -320,7 +371,7 @@
 //! use tower::{
 //!     BoxError, timeout::{TimeoutLayer, error::Elapsed},
 //! };
-//! use std::{borrow::Cow, time::Duration};
+//! use std::{borrow::Cow, time::Duration, convert::Infallible};
 //! use http::StatusCode;
 //!
 //! let app = route(
@@ -332,16 +383,19 @@
 //!             // Check if the actual error type is `Elapsed` which
 //!             // `Timeout` returns
 //!             if error.is::<Elapsed>() {
-//!                 return (StatusCode::REQUEST_TIMEOUT, "Request took too long".into());
+//!                 return Ok::<_, Infallible>((
+//!                     StatusCode::REQUEST_TIMEOUT,
+//!                     "Request took too long".into(),
+//!                 ));
 //!             }
 //!
 //!             // If we encounter some error we don't handle return a generic
 //!             // error
-//!             return (
+//!             return Ok::<_, Infallible>((
 //!                 StatusCode::INTERNAL_SERVER_ERROR,
 //!                 // `Cow` lets us return either `&str` or `String`
 //!                 Cow::from(format!("Unhandled internal error: {}", error)),
-//!             );
+//!             ));
 //!         })),
 //! );
 //!
@@ -352,30 +406,10 @@
 //! ```
 //!
 //! The closure passed to [`handle_error`](handler::Layered::handle_error) must
-//! return something that implements [`IntoResponse`](response::IntoResponse).
+//! return `Result<T, E>` where `T` implements
+//! [`IntoResponse`](response::IntoResponse).
 //!
-//! [`handle_error`](routing::Layered::handle_error) is also available on a
-//! group of routes with middleware applied:
-//!
-//! ```rust,no_run
-//! use axum::prelude::*;
-//! use tower::{BoxError, timeout::TimeoutLayer};
-//! use std::time::Duration;
-//!
-//! let app = route("/", get(handle))
-//!     .route("/foo", post(other_handle))
-//!     .layer(TimeoutLayer::new(Duration::from_secs(30)))
-//!     .handle_error(|error: BoxError| {
-//!         // ...
-//!     });
-//!
-//! async fn handle() {}
-//!
-//! async fn other_handle() {}
-//! # async {
-//! # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-//! # };
-//! ```
+//! See [`routing::Layered::handle_error`] fo more details.
 //!
 //! ## Applying multiple middleware
 //!
@@ -383,14 +417,9 @@
 //!
 //! ```rust,no_run
 //! use axum::prelude::*;
-//! use tower::{
-//!     ServiceBuilder, BoxError,
-//!     load_shed::error::Overloaded,
-//!     timeout::error::Elapsed,
-//! };
+//! use tower::ServiceBuilder;
 //! use tower_http::compression::CompressionLayer;
 //! use std::{borrow::Cow, time::Duration};
-//! use http::StatusCode;
 //!
 //! let middleware_stack = ServiceBuilder::new()
 //!     // Return an error after 30 seconds
@@ -404,27 +433,7 @@
 //!     .into_inner();
 //!
 //! let app = route("/", get(|_: Request<Body>| async { /* ... */ }))
-//!     .layer(middleware_stack)
-//!     .handle_error(|error: BoxError| {
-//!         if error.is::<Overloaded>() {
-//!             return (
-//!                 StatusCode::SERVICE_UNAVAILABLE,
-//!                 "Try again later".into(),
-//!             );
-//!         }
-//!
-//!         if error.is::<Elapsed>() {
-//!             return (
-//!                 StatusCode::REQUEST_TIMEOUT,
-//!                 "Request took too long".into(),
-//!             );
-//!         };
-//!
-//!         return (
-//!             StatusCode::INTERNAL_SERVER_ERROR,
-//!             Cow::from(format!("Unhandled internal error: {}", error)),
-//!         );
-//!     });
+//!     .layer(middleware_stack);
 //! # async {
 //! # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 //! # };
@@ -466,10 +475,7 @@
 //! axum also supports routing to general [`Service`]s:
 //!
 //! ```rust,no_run
-//! use axum::{
-//!     // `ServiceExt` adds `handle_error` to any `Service`
-//!     service::{self, ServiceExt}, prelude::*,
-//! };
+//! use axum::{service, prelude::*};
 //! use tower_http::services::ServeFile;
 //! use http::Response;
 //! use std::convert::Infallible;
@@ -485,10 +491,7 @@
 //! ).route(
 //!     // GET `/static/Cargo.toml` goes to a service from tower-http
 //!     "/static/Cargo.toml",
-//!     service::get(
-//!         ServeFile::new("Cargo.toml")
-//!             .handle_error(|error: std::io::Error| { /* ... */ })
-//!     )
+//!     service::get(ServeFile::new("Cargo.toml"))
 //! );
 //! # async {
 //! # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
@@ -518,26 +521,12 @@
 //! # };
 //! ```
 //!
-//! [`nest`](routing::nest) can also be used to serve static files from a directory:
+//! # Examples
 //!
-//! ```rust,no_run
-//! use axum::{prelude::*, service::ServiceExt, routing::nest};
-//! use tower_http::services::ServeDir;
-//! use http::Response;
-//! use tower::{service_fn, BoxError};
+//! The axum repo contains [a number of examples][examples] that show how to put all the
+//! pieces togehter.
 //!
-//! let app = nest(
-//!     "/images",
-//!     ServeDir::new("public/images").handle_error(|error: std::io::Error| {
-//!         // ...
-//!     })
-//! );
-//! # async {
-//! # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-//! # };
-//! ```
-//!
-//! # Features
+//! # Feature flags
 //!
 //! axum uses a set of [feature flags] to reduce the amount of compiled and
 //! optional dependencies.
@@ -555,6 +544,7 @@
 //! [feature flags]: https://doc.rust-lang.org/cargo/reference/features.html#the-features-section
 //! [`IntoResponse`]: crate::response::IntoResponse
 //! [`Timeout`]: tower::timeout::Timeout
+//! [examples]: https://github.com/davidpdrsn/axum/tree/main/examples
 
 #![doc(html_root_url = "https://docs.rs/tower-http/0.1.0")]
 #![warn(

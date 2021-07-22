@@ -10,10 +10,10 @@ async fn main() {
     let app = axum::routing::nest(
         "/static",
         axum::service::get(ServeDir::new(".").handle_error(|error: std::io::Error| {
-            (
+            Ok::<_, std::convert::Infallible>((
                 StatusCode::INTERNAL_SERVER_ERROR,
                 format!("Unhandled interal error: {}", error),
-            )
+            ))
         })),
     )
     .layer(TraceLayer::new_for_http());

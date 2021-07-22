@@ -1,42 +1,4 @@
 //! Async functions that can be used to handle requests.
-//!
-//! # What is a handler?
-//!
-//! In axum a "handler" is an async function that accepts zero or more
-//! ["extractors"](crate::extract) as arguments and returns something that
-//! implements [`IntoResponse`].
-//!
-//! # Example
-//!
-//! Some examples of handlers:
-//!
-//! ```rust
-//! use axum::prelude::*;
-//! use bytes::Bytes;
-//! use http::StatusCode;
-//!
-//! // Handler that immediately returns an empty `200 OK` response.
-//! async fn unit_handler() {}
-//!
-//! // Handler that immediately returns an empty `200 Ok` response with a plain
-//! /// text body.
-//! async fn string_handler() -> String {
-//!     "Hello, World!".to_string()
-//! }
-//!
-//! // Handler that buffers the request body and returns it if it is valid UTF-8
-//! async fn buffer_body(body: Bytes) -> Result<String, StatusCode> {
-//!     if let Ok(string) = String::from_utf8(body.to_vec()) {
-//!         Ok(string)
-//!     } else {
-//!         Err(StatusCode::BAD_REQUEST)
-//!     }
-//! }
-//! ```
-//!
-//! For more details on generating responses see the
-//! [`response`](crate::response) module and for more details on extractors see
-//! the [`extract`](crate::extract) module.
 
 use crate::{
     body::{box_body, BoxBody},
@@ -402,49 +364,16 @@ impl<S, T> Layered<S, T> {
     /// This is used to convert errors to responses rather than simply
     /// terminating the connection.
     ///
-    /// `handle_error` can be used like so:
+    /// It works similarly to [`routing::Layered::handle_error`]. See that for more details.
     ///
-    /// ```rust
-    /// use axum::prelude::*;
-    /// use http::StatusCode;
-    /// use tower::{BoxError, timeout::TimeoutLayer};
-    /// use std::time::Duration;
-    ///
-    /// async fn handler() { /* ... */ }
-    ///
-    /// // `Timeout` will fail with `BoxError` if the timeout elapses...
-    /// let layered_handler = handler
-    ///     .layer(TimeoutLayer::new(Duration::from_secs(30)));
-    ///
-    /// // ...so we should handle that error
-    /// let layered_handler = layered_handler.handle_error(|error: BoxError| {
-    ///     if error.is::<tower::timeout::error::Elapsed>() {
-    ///         (
-    ///             StatusCode::REQUEST_TIMEOUT,
-    ///             "request took too long".to_string(),
-    ///         )
-    ///     } else {
-    ///         (
-    ///             StatusCode::INTERNAL_SERVER_ERROR,
-    ///             format!("Unhandled internal error: {}", error),
-    ///         )
-    ///     }
-    /// });
-    ///
-    /// let app = route("/", get(layered_handler));
-    /// # async {
-    /// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-    /// # };
-    /// ```
-    ///
-    /// The closure can return any type that implements [`IntoResponse`].
-    pub fn handle_error<F, ReqBody, ResBody, Res>(
+    /// [`routing::Layered::handle_error`]: crate::routing::Layered::handle_error
+    pub fn handle_error<F, ReqBody, ResBody, Res, E>(
         self,
         f: F,
     ) -> Layered<HandleError<S, F, ReqBody>, T>
     where
         S: Service<Request<ReqBody>, Response = Response<ResBody>>,
-        F: FnOnce(S::Error) -> Res,
+        F: FnOnce(S::Error) -> Result<Res, E>,
         Res: IntoResponse,
     {
         let svc = HandleError::new(self.svc, f);

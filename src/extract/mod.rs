@@ -796,12 +796,22 @@ where
     type Rejection = RequestAlreadyExtracted;
 
     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-        let all_parts = req
-            .method()
-            .zip(req.uri())
-            .zip(req.headers())
-            .zip(req.extensions())
-            .zip(req.body());
+        let RequestParts {
+            method,
+            uri,
+            version,
+            headers,
+            extensions,
+            body,
+        } = req;
+
+        let all_parts = method
+            .as_ref()
+            .zip(version.as_ref())
+            .zip(uri.as_ref())
+            .zip(extensions.as_ref())
+            .zip(body.as_ref())
+            .zip(headers.as_ref());
 
         if all_parts.is_some() {
             Ok(req.into_request())

@@ -28,7 +28,7 @@ use tower::{
 };
 use tower_http::map_response_body::MapResponseBodyLayer;
 
-/// A filter that matches one or more HTTP method.
+/// A filter that matches one or more HTTP methods.
 #[derive(Debug, Copy, Clone)]
 pub enum MethodFilter {
     /// Match any method.
@@ -632,7 +632,7 @@ impl<S> Layered<S> {
     /// use axum::prelude::*;
     /// use http::StatusCode;
     /// use tower::{BoxError, timeout::TimeoutLayer};
-    /// use std::time::Duration;
+    /// use std::{convert::Infallible, time::Duration};
     ///
     /// async fn handler() { /* ... */ }
     ///
@@ -643,18 +643,17 @@ impl<S> Layered<S> {
     /// // ...so we should handle that error
     /// let with_errors_handled = layered_app.handle_error(|error: BoxError| {
     ///     if error.is::<tower::timeout::error::Elapsed>() {
-    ///         (
+    ///         Ok::<_, Infallible>((
     ///             StatusCode::REQUEST_TIMEOUT,
     ///             "request took too long".to_string(),
-    ///         )
+    ///         ))
     ///     } else {
-    ///         (
+    ///         Ok::<_, Infallible>((
     ///             StatusCode::INTERNAL_SERVER_ERROR,
     ///             format!("Unhandled internal error: {}", error),
-    ///         )
+    ///         ))
     ///     }
     /// });
-    ///
     /// # async {
     /// # hyper::Server::bind(&"".parse().unwrap())
     /// #     .serve(with_errors_handled.into_make_service())
@@ -663,14 +662,46 @@ impl<S> Layered<S> {
     /// # };
     /// ```
     ///
-    /// The closure can return any type that implements [`IntoResponse`].
-    pub fn handle_error<F, ReqBody, ResBody, Res>(
+    /// The closure must return `Result<T, E>` where `T` implements [`IntoResponse`].
+    ///
+    /// You can also return `Err(_)` if you don't wish to handle the error:
+    ///
+    /// ```rust
+    /// use axum::prelude::*;
+    /// use http::StatusCode;
+    /// use tower::{BoxError, timeout::TimeoutLayer};
+    /// use std::time::Duration;
+    ///
+    /// async fn handler() { /* ... */ }
+    ///
+    /// let layered_app = route("/", get(handler))
+    ///     .layer(TimeoutLayer::new(Duration::from_secs(30)));
+    ///
+    /// let with_errors_handled = layered_app.handle_error(|error: BoxError| {
+    ///     if error.is::<tower::timeout::error::Elapsed>() {
+    ///         Ok((
+    ///             StatusCode::REQUEST_TIMEOUT,
+    ///             "request took too long".to_string(),
+    ///         ))
+    ///     } else {
+    ///         // keep the error as is
+    ///         Err(error)
+    ///     }
+    /// });
+    /// # async {
+    /// # hyper::Server::bind(&"".parse().unwrap())
+    /// #     .serve(with_errors_handled.into_make_service())
+    /// #     .await
+    /// #     .unwrap();
+    /// # };
+    /// ```
+    pub fn handle_error<F, ReqBody, ResBody, Res, E>(
         self,
         f: F,
     ) -> crate::service::HandleError<S, F, ReqBody>
     where
         S: Service<Request<ReqBody>, Response = Response<ResBody>> + Clone,
-        F: FnOnce(S::Error) -> Res,
+        F: FnOnce(S::Error) -> Result<Res, E>,
         Res: IntoResponse,
         ResBody: http_body::Body<Data = Bytes> + Send + Sync + 'static,
         ResBody::Error: Into<BoxError> + Send + Sync + 'static,
@@ -757,8 +788,7 @@ where
 /// use tower_http::services::ServeDir;
 ///
 /// // Serves files inside the `public` directory at `GET /public/*`
-/// let serve_dir_service = ServeDir::new("public")
-///     .handle_error(|error: std::io::Error| { /* ... */ });
+/// let serve_dir_service = ServeDir::new("public");
 ///
 /// let app = nest("/public", get(serve_dir_service));
 /// # async {

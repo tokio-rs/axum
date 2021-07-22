@@ -507,16 +507,16 @@ where
     }
 }
 
-impl<S, F, ReqBody, ResBody, Res> Service<Request<ReqBody>> for HandleError<S, F, ReqBody>
+impl<S, F, ReqBody, ResBody, Res, E> Service<Request<ReqBody>> for HandleError<S, F, ReqBody>
 where
     S: Service<Request<ReqBody>, Response = Response<ResBody>> + Clone,
-    F: FnOnce(S::Error) -> Res + Clone,
+    F: FnOnce(S::Error) -> Result<Res, E> + Clone,
     Res: IntoResponse,
     ResBody: http_body::Body<Data = Bytes> + Send + Sync + 'static,
     ResBody::Error: Into<BoxError> + Send + Sync + 'static,
 {
     type Response = Response<BoxBody>;
-    type Error = Infallible;
+    type Error = E;
     type Future = future::HandleErrorFuture<Oneshot<S, Request<ReqBody>>, F>;
 
     fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
@@ -538,15 +538,16 @@ pub trait ServiceExt<ReqBody, ResBody>:
     /// Handle errors from a service.
     ///
     /// `handle_error` takes a closure that will map errors from the service
-    /// into responses. The closure's return type must implement
-    /// [`IntoResponse`].
+    /// into responses. The closure's return type must be `Result<T, E>` where
+    /// `T` implements [`IntoIntoResponse`](crate::response::IntoResponse).
     ///
     /// # Example
     ///
     /// ```rust,no_run
     /// use axum::{service::{self, ServiceExt}, prelude::*};
-    /// use http::Response;
+    /// use http::{Response, StatusCode};
     /// use tower::{service_fn, BoxError};
+    /// use std::convert::Infallible;
     ///
     /// // A service that might fail with `std::io::Error`
     /// let service = service_fn(|_: Request<Body>| async {
@@ -557,7 +558,10 @@ pub trait ServiceExt<ReqBody, ResBody>:
     /// let app = route(
     ///     "/",
     ///     service.handle_error(|error: std::io::Error| {
-    ///         // Handle error by returning something that implements `IntoResponse`
+    ///         Ok::<_, Infallible>((
+    ///             StatusCode::INTERNAL_SERVER_ERROR,
+    ///             error.to_string(),
+    ///         ))
     ///     }),
     /// );
     /// #
@@ -565,10 +569,14 @@ pub trait ServiceExt<ReqBody, ResBody>:
     /// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
     /// # };
     /// ```
-    fn handle_error<F, Res>(self, f: F) -> HandleError<Self, F, ReqBody>
+    ///
+    /// It works similarly to [`routing::Layered::handle_error`]. See that for more details.
+    ///
+    /// [`routing::Layered::handle_error`]: crate::routing::Layered::handle_error
+    fn handle_error<F, Res, E>(self, f: F) -> HandleError<Self, F, ReqBody>
     where
         Self: Sized,
-        F: FnOnce(Self::Error) -> Res,
+        F: FnOnce(Self::Error) -> Result<Res, E>,
         Res: IntoResponse,
         ResBody: http_body::Body<Data = Bytes> + Send + Sync + 'static,
         ResBody::Error: Into<BoxError> + Send + Sync + 'static,
