@@ -1,4 +1,7 @@
-use crate::{handler::on, prelude::*, response::IntoResponse, routing::MethodFilter, service};
+use crate::{
+    extract::RequestParts, handler::on, prelude::*, response::IntoResponse, routing::MethodFilter,
+    service,
+};
 use bytes::Bytes;
 use http::{header::AUTHORIZATION, Request, Response, StatusCode};
 use hyper::{Body, Server};
@@ -105,7 +108,7 @@ async fn consume_body_to_json_requires_json_content_type() {
 
     let app = route(
         "/",
-        post(|_: Request<Body>, input: extract::Json<Input>| async { input.0.foo }),
+        post(|input: extract::Json<Input>| async { input.0.foo }),
     );
 
     let addr = run_in_background(app).await;
@@ -675,9 +678,10 @@ async fn test_extractor_middleware() {
     {
         type Rejection = StatusCode;
 
-        async fn from_request(req: &mut Request<B>) -> Result<Self, Self::Rejection> {
+        async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
             if let Some(auth) = req
                 .headers()
+                .expect("headers already extracted")
                 .get("authorization")
                 .and_then(|v| v.to_str().ok())
             {

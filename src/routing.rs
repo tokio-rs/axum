@@ -1,6 +1,11 @@
 //! Routing between [`Service`]s.
 
-use crate::{body::BoxBody, buffer::MpscBuffer, response::IntoResponse, util::ByteStr};
+use crate::{
+    body::{box_body, BoxBody},
+    buffer::MpscBuffer,
+    response::IntoResponse,
+    util::ByteStr,
+};
 use async_trait::async_trait;
 use bytes::Bytes;
 use futures_util::future;
@@ -165,7 +170,7 @@ pub trait RoutingDsl: crate::sealed::Sealed + Sized {
             .layer_fn(BoxRoute)
             .layer_fn(MpscBuffer::new)
             .layer(BoxService::layer())
-            .layer(MapResponseBodyLayer::new(BoxBody::new))
+            .layer(MapResponseBodyLayer::new(box_body))
             .service(self)
     }
 
@@ -399,7 +404,7 @@ impl<B, E> Service<Request<B>> for EmptyRouter<E> {
     }
 
     fn call(&mut self, _req: Request<B>) -> Self::Future {
-        let mut res = Response::new(BoxBody::empty());
+        let mut res = Response::new(crate::body::empty());
         *res.status_mut() = StatusCode::NOT_FOUND;
         EmptyRouterFuture(future::ok(res))
     }

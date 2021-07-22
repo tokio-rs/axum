@@ -7,7 +7,8 @@
 //! ```
 
 use axum::{
-    extract::{ContentLengthLimit, Extension, UrlParams},
+    async_trait,
+    extract::{extractor_middleware, ContentLengthLimit, Extension, RequestParts, UrlParams},
     prelude::*,
     response::IntoResponse,
     routing::BoxRoute,
@@ -24,8 +25,7 @@ use std::{
 };
 use tower::{BoxError, ServiceBuilder};
 use tower_http::{
-    add_extension::AddExtensionLayer, auth::RequireAuthorizationLayer,
-    compression::CompressionLayer, trace::TraceLayer,
+    add_extension::AddExtensionLayer, compression::CompressionLayer, trace::TraceLayer,
 };
 
 #[tokio::main]
@@ -118,8 +118,38 @@ fn admin_routes() -> BoxRoute<hyper::Body> {
     route("/keys", delete(delete_all_keys))
         .route("/key/:key", delete(remove_key))
         // Require beare auth for all admin routes
-        .layer(RequireAuthorizationLayer::bearer("secret-token"))
+        .layer(extractor_middleware::<RequireAuth>())
         .boxed()
+}
+
+/// An extractor that performs authorization.
+// TODO: when https://github.com/hyperium/http-body/pull/46 is merged we can use
+// `tower_http::auth::RequireAuthorization` instead
+struct RequireAuth;
+
+#[async_trait]
+impl<B> extract::FromRequest<B> for RequireAuth
+where
+    B: Send,
+{
+    type Rejection = StatusCode;
+
+    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+        let auth_header = req
+            .headers()
+            .and_then(|headers| headers.get(http::header::AUTHORIZATION))
+            .and_then(|value| value.to_str().ok());
+
+        if let Some(value) = auth_header {
+            if let Some(token) = value.strip_prefix("Bearer ") {
+                if token == "secret-token" {
+                    return Ok(Self);
+                }
+            }
+        }
+
+        Err(StatusCode::UNAUTHORIZED)
+    }
 }
 
 fn handle_error(error: BoxError) -> impl IntoResponse {

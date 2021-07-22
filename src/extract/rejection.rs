@@ -5,6 +5,41 @@ use crate::body::Body;
 use tower::BoxError;
 
 define_rejection! {
+    #[status = INTERNAL_SERVER_ERROR]
+    #[body = "Version taken by other extractor"]
+    /// Rejection used if the HTTP version has been taken by another extractor.
+    pub struct VersionAlreadyExtracted;
+}
+
+define_rejection! {
+    #[status = INTERNAL_SERVER_ERROR]
+    #[body = "URI taken by other extractor"]
+    /// Rejection used if the URI has been taken by another extractor.
+    pub struct UriAlreadyExtracted;
+}
+
+define_rejection! {
+    #[status = INTERNAL_SERVER_ERROR]
+    #[body = "Method taken by other extractor"]
+    /// Rejection used if the method has been taken by another extractor.
+    pub struct MethodAlreadyExtracted;
+}
+
+define_rejection! {
+    #[status = INTERNAL_SERVER_ERROR]
+    #[body = "Extensions taken by other extractor"]
+    /// Rejection used if the method has been taken by another extractor.
+    pub struct ExtensionsAlreadyExtracted;
+}
+
+define_rejection! {
+    #[status = INTERNAL_SERVER_ERROR]
+    #[body = "Headers taken by other extractor"]
+    /// Rejection used if the URI has been taken by another extractor.
+    pub struct HeadersAlreadyExtracted;
+}
+
+define_rejection! {
     #[status = BAD_REQUEST]
     #[body = "Query string was invalid or missing"]
     /// Rejection type for [`Query`](super::Query).
@@ -160,6 +195,7 @@ composite_rejection! {
     /// Contains one variant for each way the [`Query`](super::Query) extractor
     /// can fail.
     pub enum QueryRejection {
+        UriAlreadyExtracted,
         QueryStringMissing,
         FailedToDeserializeQueryString,
     }
@@ -176,6 +212,9 @@ composite_rejection! {
         FailedToDeserializeQueryString,
         FailedToBufferBody,
         BodyAlreadyExtracted,
+        UriAlreadyExtracted,
+        HeadersAlreadyExtracted,
+        MethodAlreadyExtracted,
     }
 }
 
@@ -188,6 +227,18 @@ composite_rejection! {
         InvalidJsonBody,
         MissingJsonContentType,
         BodyAlreadyExtracted,
+        HeadersAlreadyExtracted,
+    }
+}
+
+composite_rejection! {
+    /// Rejection used for [`Extension`](super::Extension).
+    ///
+    /// Contains one variant for each way the [`Extension`](super::Extension) extractor
+    /// can fail.
+    pub enum ExtensionRejection {
+        MissingExtension,
+        ExtensionsAlreadyExtracted,
     }
 }
 
@@ -236,6 +287,8 @@ pub enum ContentLengthLimitRejection<T> {
     #[allow(missing_docs)]
     LengthRequired(LengthRequired),
     #[allow(missing_docs)]
+    HeadersAlreadyExtracted(HeadersAlreadyExtracted),
+    #[allow(missing_docs)]
     Inner(T),
 }
 
@@ -247,6 +300,7 @@ where
         match self {
             Self::PayloadTooLarge(inner) => inner.into_response(),
             Self::LengthRequired(inner) => inner.into_response(),
+            Self::HeadersAlreadyExtracted(inner) => inner.into_response(),
             Self::Inner(inner) => inner.into_response(),
         }
     }

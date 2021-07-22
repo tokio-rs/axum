@@ -34,7 +34,7 @@
 //! You can also define your own extractors by implementing [`FromRequest`]:
 //!
 //! ```rust,no_run
-//! use axum::{async_trait, extract::FromRequest, prelude::*};
+//! use axum::{async_trait, extract::{FromRequest, RequestParts}, prelude::*};
 //! use http::{StatusCode, header::{HeaderValue, USER_AGENT}};
 //!
 //! struct ExtractUserAgent(HeaderValue);
@@ -46,8 +46,10 @@
 //! {
 //!     type Rejection = (StatusCode, &'static str);
 //!
-//!     async fn from_request(req: &mut Request<B>) -> Result<Self, Self::Rejection> {
-//!         if let Some(user_agent) = req.headers().get(USER_AGENT) {
+//!     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+//!         let user_agent = req.headers().and_then(|headers| headers.get(USER_AGENT));
+//!
+//!         if let Some(user_agent) = user_agent {
 //!             Ok(ExtractUserAgent(user_agent.clone()))
 //!         } else {
 //!             Err((StatusCode::BAD_REQUEST, "`User-Agent` header is missing"))
@@ -175,13 +177,12 @@ use crate::{response::IntoResponse, util::ByteStr};
 use async_trait::async_trait;
 use bytes::{Buf, Bytes};
 use futures_util::stream::Stream;
-use http::{header, HeaderMap, Method, Request, Uri, Version};
+use http::{header, Extensions, HeaderMap, Method, Request, Uri, Version};
 use rejection::*;
 use serde::de::DeserializeOwned;
 use std::{
     collections::HashMap,
     convert::Infallible,
-    mem,
     pin::Pin,
     str::FromStr,
     task::{Context, Poll},
@@ -212,7 +213,195 @@ pub trait FromRequest<B>: Sized {
     type Rejection: IntoResponse;
 
     /// Perform the extraction.
-    async fn from_request(req: &mut Request<B>) -> Result<Self, Self::Rejection>;
+    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection>;
+}
+
+/// The type used with [`FromRequest`] to extract data from requests.
+///
+/// Has several convenience methods for getting owned parts of the request.
+#[derive(Debug)]
+pub struct RequestParts<B> {
+    method: Option<Method>,
+    uri: Option<Uri>,
+    version: Option<Version>,
+    headers: Option<HeaderMap>,
+    extensions: Option<Extensions>,
+    body: Option<B>,
+}
+
+impl<B> RequestParts<B> {
+    pub(crate) fn new(req: Request<B>) -> Self {
+        let (
+            http::request::Parts {
+                method,
+                uri,
+                version,
+                headers,
+                extensions,
+                ..
+            },
+            body,
+        ) = req.into_parts();
+
+        RequestParts {
+            method: Some(method),
+            uri: Some(uri),
+            version: Some(version),
+            headers: Some(headers),
+            extensions: Some(extensions),
+            body: Some(body),
+        }
+    }
+
+    #[allow(clippy::wrong_self_convention)]
+    pub(crate) fn into_request(&mut self) -> Request<B> {
+        let Self {
+            method,
+            uri,
+            version,
+            headers,
+            extensions,
+            body,
+        } = self;
+
+        let mut req = Request::new(body.take().expect("body already extracted"));
+
+        if let Some(method) = method.take() {
+            *req.method_mut() = method;
+        }
+
+        if let Some(uri) = uri.take() {
+            *req.uri_mut() = uri;
+        }
+
+        if let Some(version) = version.take() {
+            *req.version_mut() = version;
+        }
+
+        if let Some(headers) = headers.take() {
+            *req.headers_mut() = headers;
+        }
+
+        if let Some(extensions) = extensions.take() {
+            *req.extensions_mut() = extensions;
+        }
+
+        req
+    }
+
+    /// Gets a reference to the request method.
+    ///
+    /// Returns `None` if the method has been taken by another extractor.
+    pub fn method(&self) -> Option<&Method> {
+        self.method.as_ref()
+    }
+
+    /// Gets a mutable reference to the request method.
+    ///
+    /// Returns `None` if the method has been taken by another extractor.
+    pub fn method_mut(&mut self) -> Option<&mut Method> {
+        self.method.as_mut()
+    }
+
+    /// Takes the method out of the request, leaving a `None` in its place.
+    pub fn take_method(&mut self) -> Option<Method> {
+        self.method.take()
+    }
+
+    /// Gets a reference to the request URI.
+    ///
+    /// Returns `None` if the URI has been taken by another extractor.
+    pub fn uri(&self) -> Option<&Uri> {
+        self.uri.as_ref()
+    }
+
+    /// Gets a mutable reference to the request URI.
+    ///
+    /// Returns `None` if the URI has been taken by another extractor.
+    pub fn uri_mut(&mut self) -> Option<&mut Uri> {
+        self.uri.as_mut()
+    }
+
+    /// Takes the URI out of the request, leaving a `None` in its place.
+    pub fn take_uri(&mut self) -> Option<Uri> {
+        self.uri.take()
+    }
+
+    /// Gets a reference to the request HTTP version.
+    ///
+    /// Returns `None` if the HTTP version has been taken by another extractor.
+    pub fn version(&self) -> Option<Version> {
+        self.version
+    }
+
+    /// Gets a mutable reference to the request HTTP version.
+    ///
+    /// Returns `None` if the HTTP version has been taken by another extractor.
+    pub fn version_mut(&mut self) -> Option<&mut Version> {
+        self.version.as_mut()
+    }
+
+    /// Takes the HTTP version out of the request, leaving a `None` in its place.
+    pub fn take_version(&mut self) -> Option<Version> {
+        self.version.take()
+    }
+
+    /// Gets a reference to the request headers.
+    ///
+    /// Returns `None` if the headers has been taken by another extractor.
+    pub fn headers(&self) -> Option<&HeaderMap> {
+        self.headers.as_ref()
+    }
+
+    /// Gets a mutable reference to the request headers.
+    ///
+    /// Returns `None` if the headers has been taken by another extractor.
+    pub fn headers_mut(&mut self) -> Option<&mut HeaderMap> {
+        self.headers.as_mut()
+    }
+
+    /// Takes the headers out of the request, leaving a `None` in its place.
+    pub fn take_headers(&mut self) -> Option<HeaderMap> {
+        self.headers.take()
+    }
+
+    /// Gets a reference to the request extensions.
+    ///
+    /// Returns `None` if the extensions has been taken by another extractor.
+    pub fn extensions(&self) -> Option<&Extensions> {
+        self.extensions.as_ref()
+    }
+
+    /// Gets a mutable reference to the request extensions.
+    ///
+    /// Returns `None` if the extensions has been taken by another extractor.
+    pub fn extensions_mut(&mut self) -> Option<&mut Extensions> {
+        self.extensions.as_mut()
+    }
+
+    /// Takes the extensions out of the request, leaving a `None` in its place.
+    pub fn take_extensions(&mut self) -> Option<Extensions> {
+        self.extensions.take()
+    }
+
+    /// Gets a reference to the request body.
+    ///
+    /// Returns `None` if the body has been taken by another extractor.
+    pub fn body(&self) -> Option<&B> {
+        self.body.as_ref()
+    }
+
+    /// Gets a mutable reference to the request body.
+    ///
+    /// Returns `None` if the body has been taken by another extractor.
+    pub fn body_mut(&mut self) -> Option<&mut B> {
+        self.body.as_mut()
+    }
+
+    /// Takes the body out of the request, leaving a `None` in its place.
+    pub fn take_body(&mut self) -> Option<B> {
+        self.body.take()
+    }
 }
 
 #[async_trait]
@@ -223,7 +412,7 @@ where
 {
     type Rejection = Infallible;
 
-    async fn from_request(req: &mut Request<B>) -> Result<Option<T>, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts<B>) -> Result<Option<T>, Self::Rejection> {
         Ok(T::from_request(req).await.ok())
     }
 }
@@ -236,7 +425,7 @@ where
 {
     type Rejection = Infallible;
 
-    async fn from_request(req: &mut Request<B>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
         Ok(T::from_request(req).await)
     }
 }
@@ -284,8 +473,12 @@ where
 {
     type Rejection = QueryRejection;
 
-    async fn from_request(req: &mut Request<B>) -> Result<Self, Self::Rejection> {
-        let query = req.uri().query().ok_or(QueryStringMissing)?;
+    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+        let query = req
+            .uri()
+            .ok_or(UriAlreadyExtracted)?
+            .query()
+            .ok_or(QueryStringMissing)?;
         let value = serde_urlencoded::from_str(query)
             .map_err(FailedToDeserializeQueryString::new::<T, _>)?;
         Ok(Query(value))
@@ -329,20 +522,24 @@ pub struct Form<T>(pub T);
 impl<T, B> FromRequest<B> for Form<T>
 where
     T: DeserializeOwned,
-    B: http_body::Body + Default + Send,
+    B: http_body::Body + Send,
     B::Data: Send,
     B::Error: Into<tower::BoxError>,
 {
     type Rejection = FormRejection;
 
     #[allow(warnings)]
-    async fn from_request(req: &mut Request<B>) -> Result<Self, Self::Rejection> {
-        if !has_content_type(&req, "application/x-www-form-urlencoded") {
+    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+        if !has_content_type(&req, "application/x-www-form-urlencoded")? {
             Err(InvalidFormContentType)?;
         }
 
-        if req.method() == Method::GET {
-            let query = req.uri().query().ok_or(QueryStringMissing)?;
+        if req.method().ok_or(MethodAlreadyExtracted)? == Method::GET {
+            let query = req
+                .uri()
+                .ok_or(UriAlreadyExtracted)?
+                .query()
+                .ok_or(QueryStringMissing)?;
             let value = serde_urlencoded::from_str(query)
                 .map_err(FailedToDeserializeQueryString::new::<T, _>)?;
             Ok(Form(value))
@@ -398,16 +595,16 @@ pub struct Json<T>(pub T);
 impl<T, B> FromRequest<B> for Json<T>
 where
     T: DeserializeOwned,
-    B: http_body::Body + Default + Send,
+    B: http_body::Body + Send,
     B::Data: Send,
     B::Error: Into<tower::BoxError>,
 {
     type Rejection = JsonRejection;
 
-    async fn from_request(req: &mut Request<B>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
         use bytes::Buf;
 
-        if has_content_type(req, "application/json") {
+        if has_content_type(req, "application/json")? {
             let body = take_body(req)?;
 
             let buf = hyper::body::aggregate(body)
@@ -423,20 +620,27 @@ where
     }
 }
 
-fn has_content_type<B>(req: &Request<B>, expected_content_type: &str) -> bool {
-    let content_type = if let Some(content_type) = req.headers().get(header::CONTENT_TYPE) {
+fn has_content_type<B>(
+    req: &RequestParts<B>,
+    expected_content_type: &str,
+) -> Result<bool, HeadersAlreadyExtracted> {
+    let content_type = if let Some(content_type) = req
+        .headers()
+        .ok_or(HeadersAlreadyExtracted)?
+        .get(header::CONTENT_TYPE)
+    {
         content_type
     } else {
-        return false;
+        return Ok(false);
     };
 
     let content_type = if let Ok(content_type) = content_type.to_str() {
         content_type
     } else {
-        return false;
+        return Ok(false);
     };
 
-    content_type.starts_with(expected_content_type)
+    Ok(content_type.starts_with(expected_content_type))
 }
 
 /// Extractor that gets a value from request extensions.
@@ -480,11 +684,12 @@ where
     T: Clone + Send + Sync + 'static,
     B: Send,
 {
-    type Rejection = MissingExtension;
+    type Rejection = ExtensionRejection;
 
-    async fn from_request(req: &mut Request<B>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
         let value = req
             .extensions()
+            .ok_or(ExtensionsAlreadyExtracted)?
             .get::<T>()
             .ok_or(MissingExtension)
             .map(|x| x.clone())?;
@@ -496,13 +701,13 @@ where
 #[async_trait]
 impl<B> FromRequest<B> for Bytes
 where
-    B: http_body::Body + Default + Send,
+    B: http_body::Body + Send,
     B::Data: Send,
     B::Error: Into<tower::BoxError>,
 {
     type Rejection = BytesRejection;
 
-    async fn from_request(req: &mut Request<B>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
         let body = take_body(req)?;
 
         let bytes = hyper::body::to_bytes(body)
@@ -516,13 +721,13 @@ where
 #[async_trait]
 impl<B> FromRequest<B> for String
 where
-    B: http_body::Body + Default + Send,
+    B: http_body::Body + Send,
     B::Data: Send,
     B::Error: Into<tower::BoxError>,
 {
     type Rejection = StringRejection;
 
-    async fn from_request(req: &mut Request<B>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
         let body = take_body(req)?;
 
         let bytes = hyper::body::to_bytes(body)
@@ -572,11 +777,11 @@ where
 #[async_trait]
 impl<B> FromRequest<B> for BodyStream<B>
 where
-    B: http_body::Body + Default + Unpin + Send,
+    B: http_body::Body + Unpin + Send,
 {
     type Rejection = BodyAlreadyExtracted;
 
-    async fn from_request(req: &mut Request<B>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
         let body = take_body(req)?;
         let stream = BodyStream(body);
         Ok(stream)
@@ -586,21 +791,22 @@ where
 #[async_trait]
 impl<B> FromRequest<B> for Request<B>
 where
-    B: Default + Send,
+    B: Send,
 {
     type Rejection = RequestAlreadyExtracted;
 
-    async fn from_request(req: &mut Request<B>) -> Result<Self, Self::Rejection> {
-        struct RequestAlreadyExtractedExt;
+    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+        let all_parts = req
+            .method()
+            .zip(req.uri())
+            .zip(req.headers())
+            .zip(req.extensions())
+            .zip(req.body());
 
-        if req
-            .extensions_mut()
-            .insert(RequestAlreadyExtractedExt)
-            .is_some()
-        {
-            Err(RequestAlreadyExtracted)
+        if all_parts.is_some() {
+            Ok(req.into_request())
         } else {
-            Ok(mem::take(req))
+            Err(RequestAlreadyExtracted)
         }
     }
 }
@@ -610,10 +816,10 @@ impl<B> FromRequest<B> for Method
 where
     B: Send,
 {
-    type Rejection = Infallible;
+    type Rejection = MethodAlreadyExtracted;
 
-    async fn from_request(req: &mut Request<B>) -> Result<Self, Self::Rejection> {
-        Ok(req.method().clone())
+    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+        req.take_method().ok_or(MethodAlreadyExtracted)
     }
 }
 
@@ -622,10 +828,10 @@ impl<B> FromRequest<B> for Uri
 where
     B: Send,
 {
-    type Rejection = Infallible;
+    type Rejection = UriAlreadyExtracted;
 
-    async fn from_request(req: &mut Request<B>) -> Result<Self, Self::Rejection> {
-        Ok(req.uri().clone())
+    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+        req.take_uri().ok_or(UriAlreadyExtracted)
     }
 }
 
@@ -634,10 +840,10 @@ impl<B> FromRequest<B> for Version
 where
     B: Send,
 {
-    type Rejection = Infallible;
+    type Rejection = VersionAlreadyExtracted;
 
-    async fn from_request(req: &mut Request<B>) -> Result<Self, Self::Rejection> {
-        Ok(req.version())
+    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+        req.take_version().ok_or(VersionAlreadyExtracted)
     }
 }
 
@@ -646,10 +852,10 @@ impl<B> FromRequest<B> for HeaderMap
 where
     B: Send,
 {
-    type Rejection = Infallible;
+    type Rejection = HeadersAlreadyExtracted;
 
-    async fn from_request(req: &mut Request<B>) -> Result<Self, Self::Rejection> {
-        Ok(mem::take(req.headers_mut()))
+    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+        req.take_headers().ok_or(HeadersAlreadyExtracted)
     }
 }
 
@@ -682,8 +888,13 @@ where
 {
     type Rejection = ContentLengthLimitRejection<T::Rejection>;
 
-    async fn from_request(req: &mut Request<B>) -> Result<Self, Self::Rejection> {
-        let content_length = req.headers().get(http::header::CONTENT_LENGTH).cloned();
+    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+        let content_length = req
+            .headers()
+            .ok_or(ContentLengthLimitRejection::HeadersAlreadyExtracted(
+                HeadersAlreadyExtracted,
+            ))?
+            .get(http::header::CONTENT_LENGTH);
 
         let content_length =
             content_length.and_then(|value| value.to_str().ok()?.parse::<u64>().ok());
@@ -752,10 +963,10 @@ where
 {
     type Rejection = MissingRouteParams;
 
-    async fn from_request(req: &mut Request<B>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
         if let Some(params) = req
             .extensions_mut()
-            .get_mut::<Option<crate::routing::UrlParams>>()
+            .and_then(|ext| ext.get_mut::<Option<crate::routing::UrlParams>>())
         {
             if let Some(params) = params {
                 Ok(Self(params.0.iter().cloned().collect()))
@@ -810,10 +1021,12 @@ macro_rules! impl_parse_url {
             type Rejection = UrlParamsRejection;
 
             #[allow(non_snake_case)]
-            async fn from_request(req: &mut Request<B>) -> Result<Self, Self::Rejection> {
+            async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
                 let params = if let Some(params) = req
                     .extensions_mut()
-                    .get_mut::<Option<crate::routing::UrlParams>>()
+                    .and_then(|ext| {
+                        ext.get_mut::<Option<crate::routing::UrlParams>>()
+                    })
                 {
                     if let Some(params) = params {
                         params.0.clone()
@@ -852,23 +1065,8 @@ macro_rules! impl_parse_url {
 
 impl_parse_url!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16);
 
-/// Request extension used to indicate that body has been extracted and `Default` has been left in
-/// its place.
-struct BodyAlreadyExtractedExt;
-
-fn take_body<B>(req: &mut Request<B>) -> Result<B, BodyAlreadyExtracted>
-where
-    B: Default,
-{
-    if req
-        .extensions_mut()
-        .insert(BodyAlreadyExtractedExt)
-        .is_some()
-    {
-        Err(BodyAlreadyExtracted)
-    } else {
-        Ok(mem::take(req.body_mut()))
-    }
+fn take_body<B>(req: &mut RequestParts<B>) -> Result<B, BodyAlreadyExtracted> {
+    req.take_body().ok_or(BodyAlreadyExtracted)
 }
 
 /// Extractor that extracts a typed header value from [`headers`].
@@ -903,10 +1101,16 @@ where
     T: headers::Header,
     B: Send,
 {
-    type Rejection = rejection::TypedHeaderRejection;
+    type Rejection = TypedHeaderRejection;
 
-    async fn from_request(req: &mut Request<B>) -> Result<Self, Self::Rejection> {
-        let header_values = req.headers().get_all(T::name());
+    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+        let empty_headers = HeaderMap::new();
+        let header_values = if let Some(headers) = req.headers() {
+            headers.get_all(T::name())
+        } else {
+            empty_headers.get_all(T::name())
+        };
+
         T::decode(&mut header_values.iter())
             .map(Self)
             .map_err(|err| rejection::TypedHeaderRejection {

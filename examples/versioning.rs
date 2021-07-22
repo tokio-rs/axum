@@ -1,5 +1,9 @@
 use axum::response::IntoResponse;
-use axum::{async_trait, extract::FromRequest, prelude::*};
+use axum::{
+    async_trait,
+    extract::{FromRequest, RequestParts},
+    prelude::*,
+};
 use http::Response;
 use http::StatusCode;
 use std::net::SocketAddr;
@@ -36,7 +40,7 @@ where
 {
     type Rejection = Response<Body>;
 
-    async fn from_request(req: &mut Request<B>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
         let params = extract::UrlParamsMap::from_request(req)
             .await
             .map_err(IntoResponse::into_response)?;
