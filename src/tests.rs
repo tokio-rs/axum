@@ -8,6 +8,7 @@ use hyper::{Body, Server};
 use serde::Deserialize;
 use serde_json::json;
 use std::{
+    convert::Infallible,
     net::{SocketAddr, TcpListener},
     time::Duration,
 };
@@ -340,7 +341,7 @@ async fn service_handlers() {
             service_fn(|req: Request<Body>| async move {
                 Ok::<_, BoxError>(Response::new(req.into_body()))
             })
-            .handle_error(|_error: BoxError| StatusCode::INTERNAL_SERVER_ERROR),
+            .handle_error(|_error: BoxError| Ok(StatusCode::INTERNAL_SERVER_ERROR)),
         ),
     )
     .route(
@@ -348,7 +349,7 @@ async fn service_handlers() {
         service::on(
             MethodFilter::Get,
             ServeFile::new("Cargo.toml").handle_error(|error: std::io::Error| {
-                (StatusCode::INTERNAL_SERVER_ERROR, error.to_string())
+                Ok::<_, Infallible>((StatusCode::INTERNAL_SERVER_ERROR, error.to_string()))
             }),
         ),
     );
@@ -485,7 +486,9 @@ async fn handling_errors_from_layered_single_routes() {
                     .layer(TraceLayer::new_for_http())
                     .into_inner(),
             )
-            .handle_error(|_error: BoxError| StatusCode::INTERNAL_SERVER_ERROR)),
+            .handle_error(|_error: BoxError| {
+                Ok::<_, Infallible>(StatusCode::INTERNAL_SERVER_ERROR)
+            })),
     );
 
     let addr = run_in_background(app).await;
@@ -508,7 +511,7 @@ async fn layer_on_whole_router() {
                 .timeout(Duration::from_millis(100))
                 .into_inner(),
         )
-        .handle_error(|_err: BoxError| StatusCode::INTERNAL_SERVER_ERROR);
+        .handle_error(|_err: BoxError| Ok::<_, Infallible>(StatusCode::INTERNAL_SERVER_ERROR));
 
     let addr = run_in_background(app).await;
 

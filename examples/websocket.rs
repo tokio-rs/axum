@@ -33,10 +33,10 @@ async fn main() {
             ServeDir::new("examples/websocket")
                 .append_index_html_on_directories(true)
                 .handle_error(|error: std::io::Error| {
-                    (
+                    Ok::<_, std::convert::Infallible>((
                         StatusCode::INTERNAL_SERVER_ERROR,
                         format!("Unhandled interal error: {}", error),
-                    )
+                    ))
                 }),
         ),
     )
