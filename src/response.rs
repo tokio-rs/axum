@@ -169,6 +169,14 @@ where
     }
 }
 
+impl IntoResponse for HeaderMap {
+    fn into_response(self) -> Response<Body> {
+        let mut res = Response::new(Body::empty());
+        *res.headers_mut() = self;
+        res
+    }
+}
+
 /// An HTML response.
 ///
 /// Will automatically get `Content-Type: text/html`.
