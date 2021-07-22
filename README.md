@@ -2,7 +2,7 @@
 
 axum is a web application framework that focuses on ergonomics and modularity.
 
-[![Build status](https://github.com/davidpdrsn/axum/workflows/CI/badge.svg)](https://github.com/davidpdrsn/axum/actions)
+[![Build status](https://github.com/tokio-rs/axum/workflows/CI/badge.svg)](https://github.com/tokio-rs/axum/actions)
 <!--
 [![Crates.io](https://img.shields.io/crates/v/axum)](https://crates.io/crates/axum)
 [![Documentation](https://docs.rs/axum/badge.svg)](https://docs.rs/axum)
@@ -74,11 +74,11 @@ Unless you explicitly state otherwise, any contribution intentionally submitted
 for inclusion in axum by you, shall be licensed as MIT, without any
 additional terms or conditions.
 
-[examples]: https://github.com/davidpdrsn/axum/tree/master/examples
+[examples]: https://github.com/tokio-rs/axum/tree/master/examples
 [docs]: https://docs.rs/axum/0.1.0
 [tower]: https://crates.io/crates/tower
 [hyper]: https://crates.io/crates/hyper
 [tower-http]: https://crates.io/crates/tower-http
 [guide]: CONTRIBUTING.md
 [chat]: https://discord.gg/tokio
-[issue]: https://github.com/davidpdrsn/axum/issues/new
+[issue]: https://github.com/tokio-rs/axum/issues/new

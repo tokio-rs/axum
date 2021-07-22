@@ -4,7 +4,7 @@ the requirements below.
 
 Bug fixes and new features should include tests.
 
-Contributors guide: https://github.com/davidpdrsn/axum/blob/master/CONTRIBUTING.md
+Contributors guide: https://github.com/tokio-rs/axum/blob/master/CONTRIBUTING.md
 -->
 
 ## Motivation

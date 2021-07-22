@@ -545,7 +545,7 @@
 //! [feature flags]: https://doc.rust-lang.org/cargo/reference/features.html#the-features-section
 //! [`IntoResponse`]: crate::response::IntoResponse
 //! [`Timeout`]: tower::timeout::Timeout
-//! [examples]: https://github.com/davidpdrsn/axum/tree/main/examples
+//! [examples]: https://github.com/tokio-rs/axum/tree/main/examples
 
 #![doc(html_root_url = "https://docs.rs/tower-http/0.1.0")]
 #![warn(

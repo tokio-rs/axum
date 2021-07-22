@@ -12,7 +12,7 @@ expert, we can use your help.
 This guide will help you get started. **Do not let this guide intimidate you**.
 It should be considered a map to help you navigate the process.
 
-Don't know where to start? Check [issues labeled with "E-help-wanted"](https://github.com/davidpdrsn/axum/issues?q=is%3Aopen+is%3Aissue+label%3AE-help-wanted) or ["E-easy"](https://github.com/davidpdrsn/axum/issues?q=is%3Aopen+is%3Aissue+label%3AE-easy).
+Don't know where to start? Check [issues labeled with "E-help-wanted"](https://github.com/tokio-rs/axum/issues?q=is%3Aopen+is%3Aissue+label%3AE-help-wanted) or ["E-easy"](https://github.com/tokio-rs/axum/issues?q=is%3Aopen+is%3Aissue+label%3AE-easy).
 
 You may also get help with contributing in the [`tower` Discord
 channel][discord], please join us!
@@ -32,7 +32,7 @@ For any issue, there are fundamentally three ways an individual can contribute:
 
 1. By opening the issue for discussion: For instance, if you believe that you
    have uncovered a bug in a `axum` crate, creating a new issue in the
-   davidpdrsn/axum [issue tracker][issues] is the way to report it.
+   tokio-rs/axum [issue tracker][issues] is the way to report it.
 
 2. By helping to triage the issue: This can be done by providing
    supporting details (a test case that demonstrates a bug), providing
@@ -47,7 +47,7 @@ For any issue, there are fundamentally three ways an individual can contribute:
 **Anybody can participate in any stage of contribution**. We urge you to
 participate in the discussion around bugs and participate in reviewing PRs.
 
-[issues]: https://github.com/davidpdrsn/axum/issues
+[issues]: https://github.com/tokio-rs/axum/issues
 
 ### Asking for General Help
 
