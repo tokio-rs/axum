@@ -1,8 +1,5 @@
 # axum
 
-**WARNING:** axum is very much still work in progress. Nothing is released
-to crates.io yet and you shouldn't be using this in production.
-
 axum is a web application framework that focuses on ergonomics and modularity.
 
 [![Build status](https://github.com/davidpdrsn/axum/workflows/CI/badge.svg)](https://github.com/davidpdrsn/axum/actions)
