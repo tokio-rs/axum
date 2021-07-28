@@ -18,20 +18,18 @@
 //! # };
 //! ```
 
-use crate::{
-    routing::EmptyRouter,
-    service::{BoxResponseBody, OnMethod},
-};
-use bytes::Bytes;
+use crate::body::BoxBody;
 use future::ResponseFuture;
 use futures_util::{sink::SinkExt, stream::StreamExt};
 use http::{
     header::{self, HeaderName},
     HeaderValue, Request, Response, StatusCode,
 };
-use http_body::Full;
 use hyper::upgrade::{OnUpgrade, Upgraded};
-use std::{borrow::Cow, convert::Infallible, fmt, future::Future, task::Context, task::Poll};
+use std::{
+    borrow::Cow, convert::Infallible, fmt, future::Future, marker::PhantomData, task::Context,
+    task::Poll,
+};
 use tokio_tungstenite::{
     tungstenite::protocol::{self, WebSocketConfig},
     WebSocketStream,
@@ -44,16 +42,16 @@ pub mod future;
 /// each connection.
 ///
 /// See the [module docs](crate::ws) for more details.
-pub fn ws<F, Fut, B>(callback: F) -> OnMethod<BoxResponseBody<WebSocketUpgrade<F>, B>, EmptyRouter>
+pub fn ws<F, Fut, B>(callback: F) -> WebSocketUpgrade<F, B>
 where
     F: FnOnce(WebSocket) -> Fut + Clone + Send + 'static,
     Fut: Future<Output = ()> + Send + 'static,
 {
-    let svc = WebSocketUpgrade {
+    WebSocketUpgrade {
         callback,
         config: WebSocketConfig::default(),
-    };
-    crate::service::get::<_, B>(svc)
+        _request_body: PhantomData,
+    }
 }
 
 /// [`Service`] that upgrades connections to websockets and spawns a task to
@@ -62,13 +60,26 @@ where
 /// Created with [`ws`].
 ///
 /// See the [module docs](crate::ws) for more details.
-#[derive(Clone)]
-pub struct WebSocketUpgrade<F> {
+pub struct WebSocketUpgrade<F, B> {
     callback: F,
     config: WebSocketConfig,
+    _request_body: PhantomData<fn() -> B>,
 }
 
-impl<F> fmt::Debug for WebSocketUpgrade<F> {
+impl<F, B> Clone for WebSocketUpgrade<F, B>
+where
+    F: Clone,
+{
+    fn clone(&self) -> Self {
+        Self {
+            callback: self.callback.clone(),
+            config: self.config,
+            _request_body: PhantomData,
+        }
+    }
+}
+
+impl<F, B> fmt::Debug for WebSocketUpgrade<F, B> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("WebSocketUpgrade")
             .field("callback", &format_args!("{}", std::any::type_name::<F>()))
@@ -77,7 +88,7 @@ impl<F> fmt::Debug for WebSocketUpgrade<F> {
     }
 }
 
-impl<F> WebSocketUpgrade<F> {
+impl<F, B> WebSocketUpgrade<F, B> {
     /// Set the size of the internal message send queue.
     pub fn max_send_queue(mut self, max: usize) -> Self {
         self.config.max_send_queue = Some(max);
@@ -97,12 +108,12 @@ impl<F> WebSocketUpgrade<F> {
     }
 }
 
-impl<ReqBody, F, Fut> Service<Request<ReqBody>> for WebSocketUpgrade<F>
+impl<ReqBody, F, Fut> Service<Request<ReqBody>> for WebSocketUpgrade<F, ReqBody>
 where
     F: FnOnce(WebSocket) -> Fut + Clone + Send + 'static,
     Fut: Future<Output = ()> + Send + 'static,
 {
-    type Response = Response<Full<Bytes>>;
+    type Response = Response<BoxBody>;
     type Error = Infallible;
     type Future = ResponseFuture;
 
@@ -111,6 +122,10 @@ where
     }
 
     fn call(&mut self, mut req: Request<ReqBody>) -> Self::Future {
+        if req.method() != http::Method::GET {
+            return ResponseFuture::err(StatusCode::NOT_FOUND, "Request method must be `GET`");
+        }
+
         if !header_eq(
             &req,
             header::CONNECTION,

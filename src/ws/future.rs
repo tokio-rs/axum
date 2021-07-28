@@ -1,5 +1,6 @@
 //! Future types.
 
+use crate::body::{box_body, BoxBody};
 use bytes::Bytes;
 use http::{HeaderValue, Response, StatusCode};
 use http_body::Full;
@@ -26,7 +27,7 @@ impl ResponseFuture {
 }
 
 impl Future for ResponseFuture {
-    type Output = Result<Response<Full<Bytes>>, Infallible>;
+    type Output = Result<Response<BoxBody>, Infallible>;
 
     fn poll(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Self::Output> {
         let res = match self.get_mut().0.as_mut() {
@@ -44,13 +45,13 @@ impl Future for ResponseFuture {
                     http::header::SEC_WEBSOCKET_ACCEPT,
                     sign(key.take().unwrap().as_bytes()),
                 )
-                .body(Full::new(Bytes::new()))
+                .body(box_body(Full::new(Bytes::new())))
                 .unwrap(),
             Err(err) => {
                 let (status, body) = err.take().unwrap();
                 Response::builder()
                     .status(status)
-                    .body(Full::from(body))
+                    .body(box_body(Full::from(body)))
                     .unwrap()
             }
         };
