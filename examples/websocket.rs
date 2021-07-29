@@ -5,11 +5,12 @@
 //! ```
 //! RUST_LOG=tower_http=debug,key_value_store=trace \
 //!     cargo run \
-//!     --features ws \
+//!     --all-features \
 //!     --example websocket
 //! ```
 
 use axum::{
+    extract::TypedHeader,
     prelude::*,
     routing::nest,
     service::ServiceExt,
@@ -57,7 +58,13 @@ async fn main() {
         .unwrap();
 }
 
-async fn handle_socket(mut socket: WebSocket) {
+async fn handle_socket(
+    mut socket: WebSocket,
+    // websocket handlers can also use extractors
+    TypedHeader(user_agent): TypedHeader<headers::UserAgent>,
+) {
+    println!("`{}` connected", user_agent.as_str());
+
     if let Some(msg) = socket.recv().await {
         let msg = msg.unwrap();
         println!("Client says: {:?}", msg);

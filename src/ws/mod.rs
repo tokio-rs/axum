@@ -17,15 +17,58 @@
 //! # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 //! # };
 //! ```
+//!
+//! Websocket handlers can also use extractors, however the first function
+//! argument must be of type [`WebSocket`]:
+//!
+//! ```
+//! use axum::{prelude::*, extract::{RequestParts, FromRequest}, ws::{ws, WebSocket}};
+//! use http::{HeaderMap, StatusCode};
+//!
+//! /// An extractor that authorizes requests.
+//! struct RequireAuth;
+//!
+//! #[async_trait::async_trait]
+//! impl<B> FromRequest<B> for RequireAuth
+//! where
+//!     B: Send,
+//! {
+//!     type Rejection = StatusCode;
+//!
+//!     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+//!         # unimplemented!()
+//!         // Put your auth logic here...
+//!     }
+//! }
+//!
+//! let app = route("/ws", ws(handle_socket));
+//!
+//! async fn handle_socket(
+//!     mut socket: WebSocket,
+//!     // Run `RequireAuth` for each request before upgrading.
+//!     _auth: RequireAuth,
+//! ) {
+//!     // ...
+//! }
+//! # async {
+//! # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+//! # };
+//! ```
 
-use crate::body::BoxBody;
+use crate::body::{box_body, BoxBody};
+use crate::extract::{FromRequest, RequestParts};
+use crate::response::IntoResponse;
+use async_trait::async_trait;
+use bytes::Bytes;
 use future::ResponseFuture;
 use futures_util::{sink::SinkExt, stream::StreamExt};
 use http::{
     header::{self, HeaderName},
     HeaderValue, Request, Response, StatusCode,
 };
+use http_body::Full;
 use hyper::upgrade::{OnUpgrade, Upgraded};
+use sha1::{Digest, Sha1};
 use std::{
     borrow::Cow, convert::Infallible, fmt, future::Future, marker::PhantomData, task::Context,
     task::Poll,
@@ -42,10 +85,9 @@ pub mod future;
 /// each connection.
 ///
 /// See the [module docs](crate::ws) for more details.
-pub fn ws<F, Fut, B>(callback: F) -> WebSocketUpgrade<F, B>
+pub fn ws<F, B, T>(callback: F) -> WebSocketUpgrade<F, B, T>
 where
-    F: FnOnce(WebSocket) -> Fut + Clone + Send + 'static,
-    Fut: Future<Output = ()> + Send + 'static,
+    F: WebSocketHandler<B, T>,
 {
     WebSocketUpgrade {
         callback,
@@ -54,19 +96,79 @@ where
     }
 }
 
+/// Trait for async functions that can be used to handle websocket requests.
+///
+/// You shouldn't need to depend on this trait directly. It is automatically
+/// implemented to closures of the right types.
+///
+/// See the [module docs](crate::ws) for more details.
+#[async_trait]
+pub trait WebSocketHandler<B, In>: Sized {
+    // This seals the trait. We cannot use the regular "sealed super trait"
+    // approach due to coherence.
+    #[doc(hidden)]
+    type Sealed: crate::handler::sealed::HiddentTrait;
+
+    /// Call the handler with the given websocket stream and input parsed by
+    /// extractors.
+    async fn call(self, stream: WebSocket, input: In);
+}
+
+#[async_trait]
+impl<F, Fut, B> WebSocketHandler<B, ()> for F
+where
+    F: FnOnce(WebSocket) -> Fut + Send,
+    Fut: Future<Output = ()> + Send,
+    B: Send,
+{
+    type Sealed = crate::handler::sealed::Hidden;
+
+    async fn call(self, stream: WebSocket, _: ()) {
+        self(stream).await
+    }
+}
+
+macro_rules! impl_ws_handler {
+    () => {
+    };
+
+    ( $head:ident, $($tail:ident),* $(,)? ) => {
+        #[async_trait]
+        #[allow(non_snake_case)]
+        impl<F, Fut, B, $head, $($tail,)*> WebSocketHandler<B, ($head, $($tail,)*)> for F
+        where
+            B: Send,
+            $head: FromRequest<B> + Send + 'static,
+            $( $tail: FromRequest<B> + Send + 'static, )*
+            F: FnOnce(WebSocket, $head, $($tail,)*) -> Fut + Send,
+            Fut: Future<Output = ()> + Send,
+        {
+            type Sealed = crate::handler::sealed::Hidden;
+
+            async fn call(self, stream: WebSocket, ($head, $($tail,)*): ($head, $($tail,)*)) {
+                self(stream, $head, $($tail,)*).await
+            }
+        }
+
+        impl_ws_handler!($($tail,)*);
+    };
+}
+
+impl_ws_handler!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16);
+
 /// [`Service`] that upgrades connections to websockets and spawns a task to
 /// handle the stream.
 ///
 /// Created with [`ws`].
 ///
 /// See the [module docs](crate::ws) for more details.
-pub struct WebSocketUpgrade<F, B> {
+pub struct WebSocketUpgrade<F, B, T> {
     callback: F,
     config: WebSocketConfig,
-    _request_body: PhantomData<fn() -> B>,
+    _request_body: PhantomData<fn() -> (B, T)>,
 }
 
-impl<F, B> Clone for WebSocketUpgrade<F, B>
+impl<F, B, T> Clone for WebSocketUpgrade<F, B, T>
 where
     F: Clone,
 {
@@ -79,7 +181,7 @@ where
     }
 }
 
-impl<F, B> fmt::Debug for WebSocketUpgrade<F, B> {
+impl<F, B, T> fmt::Debug for WebSocketUpgrade<F, B, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("WebSocketUpgrade")
             .field("callback", &format_args!("{}", std::any::type_name::<F>()))
@@ -88,7 +190,7 @@ impl<F, B> fmt::Debug for WebSocketUpgrade<F, B> {
     }
 }
 
-impl<F, B> WebSocketUpgrade<F, B> {
+impl<F, B, T> WebSocketUpgrade<F, B, T> {
     /// Set the size of the internal message send queue.
     pub fn max_send_queue(mut self, max: usize) -> Self {
         self.config.max_send_queue = Some(max);
@@ -108,10 +210,11 @@ impl<F, B> WebSocketUpgrade<F, B> {
     }
 }
 
-impl<ReqBody, F, Fut> Service<Request<ReqBody>> for WebSocketUpgrade<F, ReqBody>
+impl<ReqBody, F, T> Service<Request<ReqBody>> for WebSocketUpgrade<F, ReqBody, T>
 where
-    F: FnOnce(WebSocket) -> Fut + Clone + Send + 'static,
-    Fut: Future<Output = ()> + Send + 'static,
+    F: WebSocketHandler<ReqBody, T> + Clone + Send + 'static,
+    T: FromRequest<ReqBody> + Send + 'static,
+    ReqBody: Send + 'static,
 {
     type Response = Response<BoxBody>;
     type Error = Infallible;
@@ -122,64 +225,102 @@ where
     }
 
     fn call(&mut self, mut req: Request<ReqBody>) -> Self::Future {
-        if req.method() != http::Method::GET {
-            return ResponseFuture::err(StatusCode::NOT_FOUND, "Request method must be `GET`");
-        }
+        let this = self.clone();
 
-        if !header_eq(
-            &req,
-            header::CONNECTION,
-            HeaderValue::from_static("upgrade"),
-        ) {
-            return ResponseFuture::err(
-                StatusCode::BAD_REQUEST,
-                "Connection header did not include 'upgrade'",
-            );
-        }
+        ResponseFuture(Box::pin(async move {
+            if req.method() != http::Method::GET {
+                return response(StatusCode::NOT_FOUND, "Request method must be `GET`");
+            }
 
-        if !header_eq(&req, header::UPGRADE, HeaderValue::from_static("websocket")) {
-            return ResponseFuture::err(
-                StatusCode::BAD_REQUEST,
-                "`Upgrade` header did not include 'websocket'",
-            );
-        }
+            if !header_eq(
+                &req,
+                header::CONNECTION,
+                HeaderValue::from_static("upgrade"),
+            ) {
+                return response(
+                    StatusCode::BAD_REQUEST,
+                    "Connection header did not include 'upgrade'",
+                );
+            }
 
-        if !header_eq(
-            &req,
-            header::SEC_WEBSOCKET_VERSION,
-            HeaderValue::from_static("13"),
-        ) {
-            return ResponseFuture::err(
-                StatusCode::BAD_REQUEST,
-                "`Sec-Websocket-Version` header did not include '13'",
-            );
-        }
+            if !header_eq(&req, header::UPGRADE, HeaderValue::from_static("websocket")) {
+                return response(
+                    StatusCode::BAD_REQUEST,
+                    "`Upgrade` header did not include 'websocket'",
+                );
+            }
 
-        let key = if let Some(key) = req.headers_mut().remove(header::SEC_WEBSOCKET_KEY) {
-            key
-        } else {
-            return ResponseFuture::err(
-                StatusCode::BAD_REQUEST,
-                "`Sec-Websocket-Key` header missing",
-            );
-        };
+            if !header_eq(
+                &req,
+                header::SEC_WEBSOCKET_VERSION,
+                HeaderValue::from_static("13"),
+            ) {
+                return response(
+                    StatusCode::BAD_REQUEST,
+                    "`Sec-Websocket-Version` header did not include '13'",
+                );
+            }
 
-        let on_upgrade = req.extensions_mut().remove::<OnUpgrade>().unwrap();
+            let key = if let Some(key) = req.headers_mut().remove(header::SEC_WEBSOCKET_KEY) {
+                key
+            } else {
+                return response(
+                    StatusCode::BAD_REQUEST,
+                    "`Sec-Websocket-Key` header missing",
+                );
+            };
 
-        let config = self.config;
-        let callback = self.callback.clone();
+            let on_upgrade = req.extensions_mut().remove::<OnUpgrade>().unwrap();
 
-        tokio::spawn(async move {
-            let upgraded = on_upgrade.await.unwrap();
-            let socket =
-                WebSocketStream::from_raw_socket(upgraded, protocol::Role::Server, Some(config))
-                    .await;
-            let socket = WebSocket { inner: socket };
-            callback(socket).await;
-        });
+            let config = this.config;
+            let callback = this.callback.clone();
 
-        ResponseFuture::ok(key)
+            let mut req = RequestParts::new(req);
+            let input = match T::from_request(&mut req).await {
+                Ok(input) => input,
+                Err(rejection) => {
+                    let res = rejection.into_response().map(box_body);
+                    return Ok(res);
+                }
+            };
+
+            tokio::spawn(async move {
+                let upgraded = on_upgrade.await.unwrap();
+                let socket = WebSocketStream::from_raw_socket(
+                    upgraded,
+                    protocol::Role::Server,
+                    Some(config),
+                )
+                .await;
+                let socket = WebSocket { inner: socket };
+                callback.call(socket, input).await;
+            });
+
+            let res = Response::builder()
+                .status(StatusCode::SWITCHING_PROTOCOLS)
+                .header(
+                    http::header::CONNECTION,
+                    HeaderValue::from_str("upgrade").unwrap(),
+                )
+                .header(
+                    http::header::UPGRADE,
+                    HeaderValue::from_str("websocket").unwrap(),
+                )
+                .header(http::header::SEC_WEBSOCKET_ACCEPT, sign(key.as_bytes()))
+                .body(box_body(Full::new(Bytes::new())))
+                .unwrap();
+
+            Ok(res)
+        }))
     }
+}
+
+fn response<E>(status: StatusCode, body: &'static str) -> Result<Response<BoxBody>, E> {
+    let res = Response::builder()
+        .status(status)
+        .body(box_body(Full::from(body)))
+        .unwrap();
+    Ok(res)
 }
 
 fn header_eq<B>(req: &Request<B>, key: HeaderName, value: HeaderValue) -> bool {
@@ -188,6 +329,14 @@ fn header_eq<B>(req: &Request<B>, key: HeaderName, value: HeaderValue) -> bool {
     } else {
         false
     }
+}
+
+fn sign(key: &[u8]) -> HeaderValue {
+    let mut sha1 = Sha1::default();
+    sha1.update(key);
+    sha1.update(&b"258EAFA5-E914-47DA-95CA-C5AB0DC85B11"[..]);
+    let b64 = Bytes::from(base64::encode(&sha1.finalize()));
+    HeaderValue::from_maybe_shared(b64).expect("base64 is a valid value")
 }
 
 /// A stream of websocket messages.
