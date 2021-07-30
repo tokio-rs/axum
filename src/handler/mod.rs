@@ -172,7 +172,7 @@ where
     }
 }
 
-mod sealed {
+pub(crate) mod sealed {
     #![allow(unreachable_pub, missing_docs, missing_debug_implementations)]
 
     pub trait HiddentTrait {}
@@ -188,8 +188,8 @@ mod sealed {
 /// See the [module docs](crate::handler) for more details.
 #[async_trait]
 pub trait Handler<B, In>: Sized {
-    // This seals the trait. We cannot use the regular "sealed super trait" approach
-    // due to coherence.
+    // This seals the trait. We cannot use the regular "sealed super trait"
+    // approach due to coherence.
     #[doc(hidden)]
     type Sealed: sealed::HiddentTrait;
 
@@ -256,7 +256,8 @@ where
 }
 
 macro_rules! impl_handler {
-    () => {};
+    () => {
+    };
 
     ( $head:ident, $($tail:ident),* $(,)? ) => {
         #[async_trait]

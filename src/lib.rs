@@ -65,7 +65,7 @@
 //! ["extractors"](#extractors) as arguments and returns something that
 //! can be converted [into a response](#building-responses).
 //!
-//! Handlers is where you custom domain logic lives and axum applications are
+//! Handlers is where your custom domain logic lives and axum applications are
 //! built by routing between handlers.
 //!
 //! Some examples of handlers:
@@ -78,14 +78,14 @@
 //! // Handler that immediately returns an empty `200 OK` response.
 //! async fn unit_handler() {}
 //!
-//! // Handler that immediately returns an empty `200 Ok` response with a plain
+//! // Handler that immediately returns an empty `200 OK` response with a plain
 //! // text body.
 //! async fn string_handler() -> String {
 //!     "Hello, World!".to_string()
 //! }
 //!
-//! // Handler that buffers the request body and returns it if it is valid UTF-8
-//! async fn buffer_body(body: Bytes) -> Result<String, StatusCode> {
+//! // Handler that buffers the request body and returns it.
+//! async fn echo(body: Bytes) -> Result<String, StatusCode> {
 //!     if let Ok(string) = String::from_utf8(body.to_vec()) {
 //!         Ok(string)
 //!     } else {
@@ -248,7 +248,7 @@
 //!     "foo"
 //! }
 //!
-//! // String works too and will get a text/plain content-type
+//! // String works too and will get a `text/plain` content-type
 //! async fn plain_text_string(uri: Uri) -> String {
 //!     format!("Hi from {}", uri.path())
 //! }
@@ -547,14 +547,13 @@
 //! [`Timeout`]: tower::timeout::Timeout
 //! [examples]: https://github.com/tokio-rs/axum/tree/main/examples
 
-#![doc(html_root_url = "https://docs.rs/tower-http/0.1.0")]
+#![doc(html_root_url = "https://docs.rs/axum/0.1.0")]
 #![warn(
     clippy::all,
     clippy::dbg_macro,
     clippy::todo,
     clippy::empty_enum,
     clippy::enum_glob_use,
-    clippy::pub_enum_variant_names,
     clippy::mem_forget,
     clippy::unused_self,
     clippy::filter_map_next,

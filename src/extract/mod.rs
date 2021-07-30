@@ -248,7 +248,7 @@ use crate::{response::IntoResponse, util::ByteStr};
 use async_trait::async_trait;
 use bytes::{Buf, Bytes};
 use futures_util::stream::Stream;
-use http::{header, Extensions, HeaderMap, Method, Request, Uri, Version};
+use http::{header, Extensions, HeaderMap, Method, Request, Response, Uri, Version};
 use rejection::*;
 use serde::de::DeserializeOwned;
 use std::{
@@ -474,6 +474,46 @@ impl<B> RequestParts<B> {
         self.body.take()
     }
 }
+
+#[async_trait]
+impl<B> FromRequest<B> for ()
+where
+    B: Send,
+{
+    type Rejection = Infallible;
+
+    async fn from_request(_: &mut RequestParts<B>) -> Result<(), Self::Rejection> {
+        Ok(())
+    }
+}
+
+macro_rules! impl_from_request {
+    () => {
+    };
+
+    ( $head:ident, $($tail:ident),* $(,)? ) => {
+        #[async_trait]
+        #[allow(non_snake_case)]
+        impl<B, $head, $($tail,)*> FromRequest<B> for ($head, $($tail,)*)
+        where
+            $head: FromRequest<B> + Send,
+            $( $tail: FromRequest<B> + Send, )*
+            B: Send,
+        {
+            type Rejection = Response<crate::body::Body>;
+
+            async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+                let $head = $head::from_request(req).await.map_err(IntoResponse::into_response)?;
+                $( let $tail = $tail::from_request(req).await.map_err(IntoResponse::into_response)?; )*
+                Ok(($head, $($tail,)*))
+            }
+        }
+
+        impl_from_request!($($tail,)*);
+    };
+}
+
+impl_from_request!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16);
 
 #[async_trait]
 impl<T, B> FromRequest<B> for Option<T>
@@ -1231,5 +1271,41 @@ where
                 err,
                 name: T::name(),
             })
+    }
+}
+
+/// Extractor that extracts the raw query string, without parsing it.
+///
+/// # Example
+///
+/// ```rust,no_run
+/// use axum::prelude::*;
+/// use futures::StreamExt;
+///
+/// async fn handler(extract::RawQuery(query): extract::RawQuery) {
+///     // ...
+/// }
+///
+/// let app = route("/users", get(handler));
+/// # async {
+/// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+/// # };
+/// ```
+#[derive(Debug)]
+pub struct RawQuery(pub Option<String>);
+
+#[async_trait]
+impl<B> FromRequest<B> for RawQuery
+where
+    B: Send,
+{
+    type Rejection = Infallible;
+
+    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+        let query = req
+            .uri()
+            .and_then(|uri| uri.query())
+            .map(|query| query.to_string());
+        Ok(Self(query))
     }
 }
