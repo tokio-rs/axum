@@ -1,8 +1,8 @@
 [package]
 authors = ["David Pedersen <david.pdrsn@gmail.com>"]
-categories = [] # TODO
+categories = ["asynchronous", "network-programming", "web-programming"]
 description = "Web framework that focuses on ergonomics and modularity"
-documentation = "https://docs.rs/tower-http/0.1.0"
+documentation = "https://docs.rs/axum/0.1.0"
 edition = "2018"
 homepage = "https://github.com/tokio-rs/axum"
 keywords = ["http", "web", "framework"]
