@@ -114,7 +114,7 @@ for inclusion in `axum` by you, shall be licensed as MIT, without any
 additional terms or conditions.
 
 [examples]: https://github.com/tokio-rs/axum/tree/master/examples
-[docs]: https://docs.rs/axum/0.1.0
+[docs]: https://docs.rs/axum
 [`tower`]: https://crates.io/crates/tower
 [`hyper`]: https://crates.io/crates/hyper
 [`tower-http`]: https://crates.io/crates/tower-http

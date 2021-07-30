@@ -13,6 +13,10 @@ None.
 
 None.
 
+# 0.1.1 (30. July, 2021)
+
+- Misc readme fixes.
+
 # 0.1.0 (30. July, 2021)
 
 - Initial release.

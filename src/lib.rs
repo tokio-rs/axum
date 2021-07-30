@@ -550,7 +550,7 @@
 //! [`Timeout`]: tower::timeout::Timeout
 //! [examples]: https://github.com/tokio-rs/axum/tree/main/examples
 
-#![doc(html_root_url = "https://docs.rs/axum/0.1.0")]
+#![doc(html_root_url = "https://docs.rs/axum/0.1.1")]
 #![warn(
     clippy::all,
     clippy::dbg_macro,
