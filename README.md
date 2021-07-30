@@ -11,37 +11,79 @@ axum is a web application framework that focuses on ergonomics and modularity.
 
 More information about this crate can be found in the [crate documentation][docs].
 
-## Goals
+## High level features
 
-- Ease of use. Building web apps in Rust should be as easy as `async fn
-handle(Request) -> Response`.
-- Solid foundation. axum is built on top of [tower] and [hyper] and makes it
-easy to plug in any middleware from the [tower] and [tower-http] ecosystem.
-This improves modularity since axum doesn't have its own custom
-middleware system.
-- Focus on routing, extracting data from requests, and building responses.
-tower middleware can handle the rest.
-- Macro free core. Macro frameworks have their place but axum focuses
-on providing a core that is macro free.
+- Route requests to handlers with a macro free API.
+- Declaratively parse requests using extractors.
+- Simple and predictable error handling model.
+- Generate responses with minimal boilerplate.
+- Take full advantage of the [`tower`] and [`tower-http`] ecosystem of
+  middleware, services, and utilities.
+
+In particular the last point is what sets `axum` apart from other frameworks.
+`axum` doesn't have its own middleware system but instead uses
+[`tower::Service`]. This means `axum` gets timeouts, tracing, compression,
+authorization, and more, for free. It also enables you to share middleware with
+applications written using [`hyper`] or [`tonic`].
 
 ## Usage example
 
 ```rust
-use axum::prelude::*;
-use hyper::Server;
+use axum::{prelude::*, response::IntoResponse};
+use http::StatusCode;
+use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
 
 #[tokio::main]
 async fn main() {
-    // build our application with a single route
-    let app = route("/", get(|| async { "Hello, World!" }));
+    // build our application with a route
+    let app =
+        // `GET /` goes to `root`
+        route("/", get(root))
+        // `POST /users` goes to `create_user`
+        .route("/users", post(create_user));
 
-    // run it with hyper on localhost:3000
+    // run our app with hyper
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
-    Server::bind(&addr)
+    tracing::debug!("listening on {}", addr);
+    hyper::Server::bind(&addr)
         .serve(app.into_make_service())
         .await
         .unwrap();
+}
+
+// basic handler that responds with a static string
+async fn root() -> &'static str {
+    "Hello, World!"
+}
+
+async fn create_user(
+    // this argument tells axum to parse the request body
+    // as JSON into a `CreateUser` type
+    extract::Json(payload): extract::Json<CreateUser>,
+) -> impl IntoResponse {
+    // insert your application logic here
+    let user = User {
+        id: 1337,
+        username: payload.username,
+    };
+
+    // this will be converted into an JSON response
+    // with a status code of `201 Created`
+    (StatusCode::CREATED, response::Json(user))
+}
+
+// the input to our `create_user` handler
+#[derive(Deserialize)]
+struct CreateUser {
+    username: String,
+}
+
+// the output to our `create_user` handler
+#[derive(Serialize)]
+struct User {
+    id: u64,
+    username: String,
 }
 ```
 
@@ -49,12 +91,12 @@ See the [crate documentation][docs] for way more examples.
 
 ## Examples
 
-The [examples] folder contains various examples of how to use axum. The
+The [examples] folder contains various examples of how to use `axum`. The
 [docs] also have lots of examples
 
 ## Getting Help
 
-In the axum's repo we also have a [number of examples][examples]
+In the `axum`'s repo we also have a [number of examples][examples]
 showing how to put everything together. You're also welcome to ask in the
 [`#tower` Discord channel][chat] or open an [issue] with your question.
 
@@ -62,7 +104,7 @@ showing how to put everything together. You're also welcome to ask in the
 
 :balloon: Thanks for your help improving the project! We are so happy to have
 you! We have a [contributing guide][guide] to help you get involved in the
-axum project.
+`axum` project.
 
 ## License
 
@@ -71,7 +113,7 @@ This project is licensed under the [MIT license](LICENSE).
 ### Contribution
 
 Unless you explicitly state otherwise, any contribution intentionally submitted
-for inclusion in axum by you, shall be licensed as MIT, without any
+for inclusion in `axum` by you, shall be licensed as MIT, without any
 additional terms or conditions.
 
 [examples]: https://github.com/tokio-rs/axum/tree/master/examples

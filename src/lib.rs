@@ -2,7 +2,7 @@
 //!
 //! # Table of contents
 //!
-//! - [Goals](#goals)
+//! - [High level features](#high-level-features)
 //! - [Compatibility](#compatibility)
 //! - [Handlers](#handlers)
 //! - [Routing](#routing)
@@ -18,18 +18,20 @@
 //! - [Examples](#examples)
 //! - [Feature flags](#feature-flags)
 //!
-//! # Goals
+//! # High level features
 //!
-//! - Ease of use. Building web apps in Rust should be as easy as `async fn
-//! handle(Request) -> Response`.
-//! - Solid foundation. axum is built on top of [tower] and [hyper] and makes it
-//! easy to plug in any middleware from the [tower] and [tower-http] ecosystem.
-//! This improves modularity since axum doesn't have its own custom
-//! middleware system.
-//! - Focus on routing, extracting data from requests, and building responses.
-//! tower middleware can handle the rest.
-//! - Macro free core. Macro frameworks have their place but axum focuses
-//! on providing a core that is macro free.
+//! - Route requests to handlers with a macro free API.
+//! - Declaratively parse requests using extractors.
+//! - Simple and predictable error handling model.
+//! - Generate responses with minimal boilerplate.
+//! - Take full advantage of the [`tower`] and [`tower-http`] ecosystem of
+//!   middleware, services, and utilities.
+//!
+//! In particular the last point is what sets `axum` apart from other frameworks.
+//! `axum` doesn't have its own middleware system but instead uses
+//! [`tower::Service`]. This means `axum` gets timeouts, tracing, compression,
+//! authorization, and more, for free. It also enables you to share middleware with
+//! applications written using [`hyper`] or [`tonic`].
 //!
 //! # Compatibility
 //!
@@ -538,10 +540,11 @@
 //! - `headers`: Enables extracing typed headers via [`extract::TypedHeader`].
 //! - `multipart`: Enables parsing `multipart/form-data` requests with [`extract::Multipart`].
 //!
-//! [tower]: https://crates.io/crates/tower
-//! [tower-http]: https://crates.io/crates/tower-http
-//! [tokio]: http://crates.io/crates/tokio
-//! [hyper]: http://crates.io/crates/hyper
+//! [`tower`]: https://crates.io/crates/tower
+//! [`tower-http`]: https://crates.io/crates/tower-http
+//! [`tokio`]: http://crates.io/crates/tokio
+//! [`hyper`]: http://crates.io/crates/hyper
+//! [`tonic`]: http://crates.io/crates/tonic
 //! [feature flags]: https://doc.rust-lang.org/cargo/reference/features.html#the-features-section
 //! [`IntoResponse`]: crate::response::IntoResponse
 //! [`Timeout`]: tower::timeout::Timeout
