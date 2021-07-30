@@ -359,7 +359,7 @@
 //!
 //! Handlers created from async functions must always produce a response, even
 //! when returning a `Result<T, E>` the error type must implement
-//! [`IntoResponse`]. In practice this makes error handling very perdictable and
+//! [`IntoResponse`]. In practice this makes error handling very predictable and
 //! easier to reason about.
 //!
 //! However when applying middleware, or embedding other tower services, errors
