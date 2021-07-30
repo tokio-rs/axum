@@ -1,6 +1,6 @@
 # axum
 
-axum is a web application framework that focuses on ergonomics and modularity.
+`axum` is a web application framework that focuses on ergonomics and modularity.
 
 [![Build status](https://github.com/tokio-rs/axum/workflows/CI/badge.svg)](https://github.com/tokio-rs/axum/actions)
 <!--
@@ -96,9 +96,9 @@ The [examples] folder contains various examples of how to use `axum`. The
 
 ## Getting Help
 
-In the `axum`'s repo we also have a [number of examples][examples]
-showing how to put everything together. You're also welcome to ask in the
-[`#tower` Discord channel][chat] or open an [issue] with your question.
+In the `axum`'s repo we also have a [number of examples][examples] showing how
+to put everything together. You're also welcome to ask in the [Discord
+channel][chat] or open an [issue] with your question.
 
 ## Contributing
 
@@ -118,9 +118,11 @@ additional terms or conditions.
 
 [examples]: https://github.com/tokio-rs/axum/tree/master/examples
 [docs]: https://docs.rs/axum/0.1.0
-[tower]: https://crates.io/crates/tower
-[hyper]: https://crates.io/crates/hyper
-[tower-http]: https://crates.io/crates/tower-http
+[`tower`]: https://crates.io/crates/tower
+[`hyper`]: https://crates.io/crates/hyper
+[`tower-http`]: https://crates.io/crates/tower-http
+[`tonic`]: https://crates.io/crates/tonic
 [guide]: CONTRIBUTING.md
 [chat]: https://discord.gg/tokio
 [issue]: https://github.com/tokio-rs/axum/issues/new
+[`tower::Service`]: https://docs.rs/tower/latest/tower/trait.Service.html
