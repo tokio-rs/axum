@@ -86,6 +86,12 @@ struct User {
 
 See the [crate documentation][docs] for way more examples.
 
+## Performance
+
+`axum` is a relatively thin layer on top of [`hyper`] and adds very little
+overhead. So `axum`'s performance is comparable to [`hyper`]. You can find a
+benchmark [here](https://github.com/programatik29/rust-web-benchmarks).
+
 ## Examples
 
 The [examples] folder contains various examples of how to use `axum`. The
