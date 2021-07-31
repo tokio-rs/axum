@@ -7,9 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- Implement `Stream` for `WebSocket`.
-- Implement `Sink` for `WebSocket`.
-- Implement `Deref` most extractors.
+- Implement `Stream` for `WebSocket` ([#52](https://github.com/tokio-rs/axum/pull/52))
+- Implement `Sink` for `WebSocket` ([#52](https://github.com/tokio-rs/axum/pull/52))
+- Implement `Deref` most extractors ([#56](https://github.com/tokio-rs/axum/pull/56))
+- Return `405 Method Not Allowed` for unsupported method for route ([#63](https://github.com/tokio-rs/axum/pull/63))
 
 ## Breaking changes
 
