@@ -875,6 +875,8 @@ where
 /// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 /// # };
 /// ```
+///
+/// [`Stream`]: https://docs.rs/futures/latest/futures/stream/trait.Stream.html
 #[derive(Debug)]
 pub struct BodyStream<B = crate::body::Body>(B);
 
