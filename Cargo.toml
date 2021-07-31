@@ -23,7 +23,7 @@ bytes = "1.0"
 futures-util = "0.3"
 http = "0.2"
 http-body = "0.4"
-hyper = { version = "0.14", features = ["server", "tcp"] }
+hyper = { version = "0.14", features = ["server", "tcp", "http1"] }
 pin-project = "1.0"
 regex = "1.5"
 serde = "1.0"
