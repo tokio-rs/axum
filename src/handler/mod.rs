@@ -168,7 +168,7 @@ where
     OnMethod {
         method,
         svc: handler.into_service(),
-        fallback: EmptyRouter::new(),
+        fallback: EmptyRouter::method_not_allowed(),
     }
 }
 

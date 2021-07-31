@@ -3,6 +3,7 @@ use crate::{
     service,
 };
 use bytes::Bytes;
+use futures_util::future::Ready;
 use http::{header::AUTHORIZATION, Request, Response, StatusCode};
 use hyper::{Body, Server};
 use serde::Deserialize;
@@ -10,6 +11,7 @@ use serde_json::json;
 use std::{
     convert::Infallible,
     net::{SocketAddr, TcpListener},
+    task::{Context, Poll},
     time::Duration,
 };
 use tower::{make::Shared, service_fn, BoxError, Service, ServiceBuilder};
@@ -675,6 +677,124 @@ async fn test_extractor_middleware() {
         .await
         .unwrap();
     assert_eq!(res.status(), StatusCode::OK);
+}
+
+#[tokio::test]
+async fn wrong_method_handler() {
+    let app = route("/", get(|| async {}).post(|| async {})).route("/foo", patch(|| async {}));
+
+    let addr = run_in_background(app).await;
+
+    let client = reqwest::Client::new();
+
+    let res = client
+        .patch(format!("http://{}", addr))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::METHOD_NOT_ALLOWED);
+
+    let res = client
+        .patch(format!("http://{}/foo", addr))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+
+    let res = client
+        .post(format!("http://{}/foo", addr))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::METHOD_NOT_ALLOWED);
+
+    let res = client
+        .get(format!("http://{}/bar", addr))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+}
+
+#[tokio::test]
+async fn wrong_method_nest() {
+    let nested_app = route("/", get(|| async {}));
+    let app = crate::routing::nest("/", nested_app);
+
+    let addr = run_in_background(app).await;
+
+    let client = reqwest::Client::new();
+
+    let res = client.get(format!("http://{}", addr)).send().await.unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+
+    let res = client
+        .post(format!("http://{}", addr))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::METHOD_NOT_ALLOWED);
+
+    let res = client
+        .patch(format!("http://{}/foo", addr))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+}
+
+#[tokio::test]
+async fn wrong_method_service() {
+    #[derive(Clone)]
+    struct Svc;
+
+    impl<R> Service<R> for Svc {
+        type Response = Response<http_body::Empty<Bytes>>;
+        type Error = Infallible;
+        type Future = Ready<Result<Self::Response, Self::Error>>;
+
+        fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+            Poll::Ready(Ok(()))
+        }
+
+        fn call(&mut self, _req: R) -> Self::Future {
+            futures_util::future::ok(Response::new(http_body::Empty::new()))
+        }
+    }
+
+    let app = route("/", service::get(Svc).post(Svc)).route("/foo", service::patch(Svc));
+
+    let addr = run_in_background(app).await;
+
+    let client = reqwest::Client::new();
+
+    let res = client
+        .patch(format!("http://{}", addr))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::METHOD_NOT_ALLOWED);
+
+    let res = client
+        .patch(format!("http://{}/foo", addr))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+
+    let res = client
+        .post(format!("http://{}/foo", addr))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::METHOD_NOT_ALLOWED);
+
+    let res = client
+        .get(format!("http://{}/bar", addr))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
 }
 
 /// Run a `tower::Service` in the background and get a URI for it.
