@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Implement `Stream` for `WebSocket`.
 - Implement `Sink` for `WebSocket`.
-- Add extractor for remote connection info.
+- Add extractor for remote connection info ([#55](https://github.com/tokio-rs/axum/pull/55))
 
 ## Breaking changes
 
