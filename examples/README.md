@@ -13,3 +13,4 @@
 - [`error_handling_and_dependency_injection`](../examples/error_handling_and_dependency_injection.rs) - How to handle errors and dependency injection using trait objects.
 - [`tokio_postgres`](../examples/tokio_postgres.rs) - How to use a tokio-postgres and bb8 to query a database.
 - [`unix_domain_socket`](../examples/unix_domain_socket.rs) - How to run an Axum server over unix domain sockets.
+- [`sessions`](../examples/sessions.rs) - Sessions and cookies using [`async-session`](https://crates.io/crates/async-session).
