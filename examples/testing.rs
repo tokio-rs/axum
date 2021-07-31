@@ -34,10 +34,10 @@ fn app() -> BoxRoute<Body> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use axum::test::*;  // for `app.oneshot()`, `read_response_json()`
     use http::StatusCode;
     use serde_json::{json, Value};
     use std::net::{SocketAddr, TcpListener};
-    use tower::ServiceExt; // for `app.oneshot()`
 
     #[tokio::test]
     async fn hello_world() {
@@ -76,8 +76,7 @@ mod tests {
 
         assert_eq!(response.status(), StatusCode::OK);
 
-        let body = hyper::body::to_bytes(response.into_body()).await.unwrap();
-        let body: Value = serde_json::from_slice(&body).unwrap();
+        let body: Value = read_response_json(response).await;
         assert_eq!(body, json!({ "data": [1, 2, 3, 4] }));
     }
 
