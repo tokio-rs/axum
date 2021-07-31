@@ -85,7 +85,6 @@ pub struct Route<S, F> {
 }
 
 /// Trait for building routers.
-// TODO(david): this name isn't great
 #[async_trait]
 pub trait RoutingDsl: crate::sealed::Sealed + Sized {
     /// Add another route to the router.
@@ -452,21 +451,38 @@ fn insert_url_params<B>(req: &mut Request<B>, params: Vec<(String, String)>) {
     }
 }
 
-/// A [`Service`] that responds with `404 Not Found` to all requests.
+/// A [`Service`] that responds with `404 Not Found` or `405 Method not allowed`
+/// to all requests.
 ///
 /// This is used as the bottom service in a router stack. You shouldn't have to
 /// use to manually.
-pub struct EmptyRouter<E = Infallible>(PhantomData<fn() -> E>);
+pub struct EmptyRouter<E = Infallible> {
+    status: StatusCode,
+    _marker: PhantomData<fn() -> E>,
+}
 
 impl<E> EmptyRouter<E> {
-    pub(crate) fn new() -> Self {
-        Self(PhantomData)
+    pub(crate) fn not_found() -> Self {
+        Self {
+            status: StatusCode::NOT_FOUND,
+            _marker: PhantomData,
+        }
+    }
+
+    pub(crate) fn method_not_allowed() -> Self {
+        Self {
+            status: StatusCode::METHOD_NOT_ALLOWED,
+            _marker: PhantomData,
+        }
     }
 }
 
 impl<E> Clone for EmptyRouter<E> {
     fn clone(&self) -> Self {
-        Self(PhantomData)
+        Self {
+            status: self.status,
+            _marker: PhantomData,
+        }
     }
 }
 
@@ -493,7 +509,7 @@ impl<B, E> Service<Request<B>> for EmptyRouter<E> {
 
     fn call(&mut self, _req: Request<B>) -> Self::Future {
         let mut res = Response::new(crate::body::empty());
-        *res.status_mut() = StatusCode::NOT_FOUND;
+        *res.status_mut() = self.status;
         EmptyRouterFuture(future::ok(res))
     }
 }
@@ -894,7 +910,7 @@ where
     Nested {
         pattern: PathPattern::new(description),
         svc,
-        fallback: EmptyRouter::new(),
+        fallback: EmptyRouter::not_found(),
     }
 }
 
