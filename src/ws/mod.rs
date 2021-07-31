@@ -61,7 +61,10 @@ use crate::response::IntoResponse;
 use async_trait::async_trait;
 use bytes::Bytes;
 use future::ResponseFuture;
-use futures_util::{sink::SinkExt, stream::StreamExt};
+use futures_util::{
+    sink::SinkExt,
+    stream::{Stream, StreamExt},
+};
 use http::{
     header::{self, HeaderName},
     HeaderValue, Request, Response, StatusCode,
@@ -69,6 +72,7 @@ use http::{
 use http_body::Full;
 use hyper::upgrade::{OnUpgrade, Upgraded};
 use sha1::{Digest, Sha1};
+use std::pin::Pin;
 use std::{
     borrow::Cow, convert::Infallible, fmt, future::Future, marker::PhantomData, task::Context,
     task::Poll,
@@ -348,12 +352,9 @@ pub struct WebSocket {
 impl WebSocket {
     /// Receive another message.
     ///
-    /// Returns `None` is stream has closed.
+    /// Returns `None` if the stream stream has closed.
     pub async fn recv(&mut self) -> Option<Result<Message, BoxError>> {
-        self.inner
-            .next()
-            .await
-            .map(|result| result.map_err(Into::into).map(|inner| Message { inner }))
+        self.next().await
     }
 
     /// Send a message.
@@ -364,6 +365,20 @@ impl WebSocket {
     /// Gracefully close this websocket.
     pub async fn close(mut self) -> Result<(), BoxError> {
         self.inner.close(None).await.map_err(Into::into)
+    }
+}
+
+impl Stream for WebSocket {
+    type Item = Result<Message, BoxError>;
+
+    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        self.inner.poll_next_unpin(cx).map(|option_msg| {
+            option_msg.map(|result_msg| {
+                result_msg
+                    .map_err(Into::into)
+                    .map(|inner| Message { inner })
+            })
+        })
     }
 }
 
