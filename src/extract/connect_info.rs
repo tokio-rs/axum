@@ -1,4 +1,8 @@
 //! Extractor for getting connection information from a client.
+//!
+//! See [`RoutingDsl::into_make_service_with_connect_info`] for more details.
+//!
+//! [`RoutingDsl::into_make_service_with_connect_info`]: crate::routing::RoutingDsl::into_make_service_with_connect_info
 
 use super::{Extension, FromRequest, RequestParts};
 use async_trait::async_trait;
