@@ -259,11 +259,15 @@ use std::{
     task::{Context, Poll},
 };
 
+pub mod connect_info;
 pub mod extractor_middleware;
 pub mod rejection;
 
 #[doc(inline)]
 pub use self::extractor_middleware::extractor_middleware;
+
+#[doc(inline)]
+pub use self::connect_info::ConnectInfo;
 
 #[cfg(feature = "multipart")]
 #[cfg_attr(docsrs, doc(cfg(feature = "multipart")))]

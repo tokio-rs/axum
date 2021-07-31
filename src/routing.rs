@@ -3,6 +3,7 @@
 use crate::{
     body::{box_body, BoxBody},
     buffer::MpscBuffer,
+    extract::connect_info::{Connected, IntoMakeServiceWithConnectInfo},
     response::IntoResponse,
     util::ByteStr,
 };
@@ -266,6 +267,89 @@ pub trait RoutingDsl: crate::sealed::Sealed + Sized {
         Self: Clone,
     {
         tower::make::Shared::new(self)
+    }
+
+    /// Convert this router into a [`MakeService`], that will store `C`'s
+    /// associated `ConnectInfo` in a request extension such that [`ConnectInfo`]
+    /// can extract it.
+    ///
+    /// This enables extracting things like the client's remote address.
+    ///
+    /// Extracting [`std::net::SocketAddr`] is supported out of the box:
+    ///
+    /// ```
+    /// use axum::{prelude::*, extract::ConnectInfo};
+    /// use std::net::SocketAddr;
+    ///
+    /// let app = route("/", get(handler));
+    ///
+    /// async fn handler(ConnectInfo(addr): ConnectInfo<SocketAddr>) -> String {
+    ///     format!("Hello {}", addr)
+    /// }
+    ///
+    /// # async {
+    /// hyper::Server::bind(&"0.0.0.0:3000".parse().unwrap())
+    ///     .serve(
+    ///         app.into_make_service_with_connect_info::<SocketAddr, _>()
+    ///     )
+    ///     .await
+    ///     .expect("server failed");
+    /// # };
+    /// ```
+    ///
+    /// You can implement custom a [`Connected`] like so:
+    ///
+    /// ```
+    /// use axum::{
+    ///     prelude::*,
+    ///     extract::connect_info::{ConnectInfo, Connected},
+    /// };
+    /// use hyper::server::conn::AddrStream;
+    ///
+    /// let app = route("/", get(handler));
+    ///
+    /// async fn handler(
+    ///     ConnectInfo(my_connect_info): ConnectInfo<MyConnectInfo>,
+    /// ) -> String {
+    ///     format!("Hello {:?}", my_connect_info)
+    /// }
+    ///
+    /// #[derive(Clone, Debug)]
+    /// struct MyConnectInfo {
+    ///     // ...
+    /// }
+    ///
+    /// impl Connected<&AddrStream> for MyConnectInfo {
+    ///     type ConnectInfo = MyConnectInfo;
+    ///
+    ///     fn connect_info(target: &&AddrStream) -> Self::ConnectInfo {
+    ///         MyConnectInfo {
+    ///             // ...
+    ///         }
+    ///     }
+    /// }
+    ///
+    /// # async {
+    /// hyper::Server::bind(&"0.0.0.0:3000".parse().unwrap())
+    ///     .serve(
+    ///         app.into_make_service_with_connect_info::<MyConnectInfo, _>()
+    ///     )
+    ///     .await
+    ///     .expect("server failed");
+    /// # };
+    /// ```
+    ///
+    /// [`MakeService`]: tower::make::MakeService
+    /// [`Connected`]: crate::extract::connect_info::Connected
+    /// [`ConnectInfo`]: crate::extract::connect_info::ConnectInfo
+    fn into_make_service_with_connect_info<C, Target>(
+        self,
+    ) -> IntoMakeServiceWithConnectInfo<Self, C>
+    where
+        Self: Clone,
+        C: Connected<Target>,
+    {
+        IntoMakeServiceWithConnectInfo::new(self)
     }
 }
 
