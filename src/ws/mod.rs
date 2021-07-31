@@ -62,7 +62,7 @@ use async_trait::async_trait;
 use bytes::Bytes;
 use future::ResponseFuture;
 use futures_util::{
-    sink::SinkExt,
+    sink::{Sink, SinkExt},
     stream::{Stream, StreamExt},
 };
 use http::{
@@ -379,6 +379,28 @@ impl Stream for WebSocket {
                     .map(|inner| Message { inner })
             })
         })
+    }
+}
+
+impl Sink<Message> for WebSocket {
+    type Error = BoxError;
+
+    fn poll_ready(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        Pin::new(&mut self.inner).poll_ready(cx).map_err(Into::into)
+    }
+
+    fn start_send(mut self: Pin<&mut Self>, item: Message) -> Result<(), Self::Error> {
+        Pin::new(&mut self.inner)
+            .start_send(item.inner)
+            .map_err(Into::into)
+    }
+
+    fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::Error>> {
+        Pin::new(&mut self.inner).poll_flush(cx).map_err(Into::into)
+    }
+
+    fn poll_close(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::Error>> {
+        Pin::new(&mut self.inner).poll_close(cx).map_err(Into::into)
     }
 }
 
