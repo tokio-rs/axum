@@ -1,18 +1,24 @@
-#![allow(missing_docs)]
+//! Extractor for getting connection information from a client.
 
-use crate::extract::{FromRequest, RequestParts};
+use super::{Extension, FromRequest, RequestParts};
 use async_trait::async_trait;
 use hyper::server::conn::AddrStream;
-use std::convert::Infallible;
-use std::fmt;
-use std::marker::PhantomData;
-use std::net::SocketAddr;
-use std::task::{Context, Poll};
+use std::{
+    convert::Infallible,
+    fmt,
+    marker::PhantomData,
+    net::SocketAddr,
+    task::{Context, Poll},
+};
 use tower::Service;
 use tower_http::add_extension::AddExtension;
 
-use super::Extension;
-
+/// A [`MakeService`] created from a router.
+///
+/// See [`RoutingDsl::into_make_service_with_connect_info`] for more details.
+///
+/// [`MakeService`]: tower::make::MakeService
+/// [`RoutingDsl::into_make_service_with_connect_info`]: crate::routing::RoutingDsl::into_make_service_with_connect_info
 pub struct IntoMakeServiceWithConnectInfo<S, C> {
     svc: S,
     _connect_info: PhantomData<fn() -> C>,
@@ -38,10 +44,29 @@ where
     }
 }
 
+/// Trait that connected IO resources implement and use to produce information
+/// about the connection.
+///
+/// The goal for this trait is to allow users to implement custom IO types that
+/// can still provide the same connection metadata.
+///
+/// See [`RoutingDsl::into_make_service_with_connect_info`] for more details.
+///
+/// [`RoutingDsl::into_make_service_with_connect_info`]: crate::routing::RoutingDsl::into_make_service_with_connect_info
 pub trait Connected<T> {
+    /// The connection information type the IO resources generates.
     type ConnectInfo: Clone + Send + Sync + 'static;
 
-    fn connect_info(target: &T) -> Self::ConnectInfo;
+    /// Create type holding information about the connection.
+    fn connect_info(target: T) -> Self::ConnectInfo;
+}
+
+impl Connected<&AddrStream> for SocketAddr {
+    type ConnectInfo = SocketAddr;
+
+    fn connect_info(target: &AddrStream) -> Self::ConnectInfo {
+        target.remote_addr()
+    }
 }
 
 impl<S, C, T> Service<T> for IntoMakeServiceWithConnectInfo<S, C>
@@ -51,19 +76,34 @@ where
 {
     type Response = AddExtension<S, ConnectInfo<C::ConnectInfo>>;
     type Error = Infallible;
-    type Future = futures_util::future::Ready<Result<Self::Response, Self::Error>>;
+    type Future = ResponseFuture<Self::Response>;
 
     fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         Poll::Ready(Ok(()))
     }
 
     fn call(&mut self, target: T) -> Self::Future {
-        let connect_info = ConnectInfo(C::connect_info(&target));
+        let connect_info = ConnectInfo(C::connect_info(target));
         let svc = AddExtension::new(self.svc.clone(), connect_info);
-        futures_util::future::ok(svc)
+        ResponseFuture(futures_util::future::ok(svc))
     }
 }
 
+opaque_future! {
+    /// Response future for [`IntoMakeServiceWithConnectInfo`].
+    pub type ResponseFuture<T> =
+        futures_util::future::Ready<Result<T, Infallible>>;
+}
+
+/// Extractor for getting connection information produced by a [`Connected`].
+///
+/// Note this extractor requires you to use
+/// [`RoutingDsl::into_make_service_with_connect_info`] to run your app
+/// otherwise it will fail at runtime.
+///
+/// See [`RoutingDsl::into_make_service_with_connect_info`] for more details.
+///
+/// [`RoutingDsl::into_make_service_with_connect_info`]: crate::routing::RoutingDsl::into_make_service_with_connect_info
 #[derive(Clone, Copy, Debug)]
 pub struct ConnectInfo<T>(pub T);
 
@@ -78,14 +118,6 @@ where
     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
         let Extension(connect_info) = Extension::<Self>::from_request(req).await?;
         Ok(connect_info)
-    }
-}
-
-impl Connected<&AddrStream> for SocketAddr {
-    type ConnectInfo = SocketAddr;
-
-    fn connect_info(target: &&AddrStream) -> Self::ConnectInfo {
-        target.remote_addr()
     }
 }
 
@@ -131,10 +163,10 @@ mod tests {
         }
 
         impl Connected<&AddrStream> for MyConnectInfo {
-            type ConnectInfo = MyConnectInfo;
+            type ConnectInfo = Self;
 
-            fn connect_info(_target: &&AddrStream) -> Self::ConnectInfo {
-                MyConnectInfo {
+            fn connect_info(_target: &AddrStream) -> Self::ConnectInfo {
+                Self {
                     value: "it worked!",
                 }
             }

@@ -322,7 +322,7 @@ pub trait RoutingDsl: crate::sealed::Sealed + Sized {
     /// impl Connected<&AddrStream> for MyConnectInfo {
     ///     type ConnectInfo = MyConnectInfo;
     ///
-    ///     fn connect_info(target: &&AddrStream) -> Self::ConnectInfo {
+    ///     fn connect_info(target: &AddrStream) -> Self::ConnectInfo {
     ///         MyConnectInfo {
     ///             // ...
     ///         }
@@ -339,9 +339,13 @@ pub trait RoutingDsl: crate::sealed::Sealed + Sized {
     /// # };
     /// ```
     ///
+    /// See the [unix domain socket example][uds] for an example of how to use
+    /// this to collect UDS connection info.
+    ///
     /// [`MakeService`]: tower::make::MakeService
     /// [`Connected`]: crate::extract::connect_info::Connected
     /// [`ConnectInfo`]: crate::extract::connect_info::ConnectInfo
+    /// [uds]: https://github.com/tokio-rs/axum/blob/main/examples/unix_domain_socket.rs
     fn into_make_service_with_connect_info<C, Target>(
         self,
     ) -> IntoMakeServiceWithConnectInfo<Self, C>
