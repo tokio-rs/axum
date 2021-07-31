@@ -676,7 +676,7 @@ where
 {
     use routing::RoutingDsl;
 
-    routing::EmptyRouter::new().route(description, service)
+    routing::EmptyRouter::not_found().route(description, service)
 }
 
 mod sealed {

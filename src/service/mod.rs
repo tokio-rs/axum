@@ -256,7 +256,7 @@ where
             inner: svc,
             _request_body: PhantomData,
         },
-        fallback: EmptyRouter::new(),
+        fallback: EmptyRouter::method_not_allowed(),
     }
 }
 
