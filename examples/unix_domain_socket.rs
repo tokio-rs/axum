@@ -1,4 +1,7 @@
-use axum::prelude::*;
+use axum::{
+    extract::connect_info::{self, ConnectInfo},
+    prelude::*,
+};
 use futures::ready;
 use http::{Method, StatusCode, Uri};
 use hyper::{
@@ -9,9 +12,10 @@ use std::{
     io,
     path::PathBuf,
     pin::Pin,
+    sync::Arc,
     task::{Context, Poll},
 };
-use tokio::net::UnixListener;
+use tokio::net::{unix::UCred, UnixListener};
 use tokio::{
     io::{AsyncRead, AsyncWrite},
     net::UnixStream,
@@ -35,10 +39,10 @@ async fn main() {
 
     let uds = UnixListener::bind(path.clone()).unwrap();
     tokio::spawn(async {
-        let app = route("/", get(|| async { "Hello, World!" }));
+        let app = route("/", get(handler));
 
         hyper::Server::builder(ServerAccept { uds })
-            .serve(app.into_make_service())
+            .serve(app.into_make_service_with_connect_info::<UdsConnectInfo, _>())
             .await
             .unwrap();
     });
@@ -65,6 +69,12 @@ async fn main() {
     let body = hyper::body::to_bytes(response.into_body()).await.unwrap();
     let body = String::from_utf8(body.to_vec()).unwrap();
     assert_eq!(body, "Hello, World!");
+}
+
+async fn handler(ConnectInfo(info): ConnectInfo<UdsConnectInfo>) -> &'static str {
+    println!("new connection from `{:?}`", info);
+
+    "Hello, World!"
 }
 
 struct ServerAccept {
@@ -122,5 +132,25 @@ impl AsyncRead for ClientConnection {
 impl Connection for ClientConnection {
     fn connected(&self) -> Connected {
         Connected::new()
+    }
+}
+
+#[derive(Clone, Debug)]
+struct UdsConnectInfo {
+    peer_addr: Arc<tokio::net::unix::SocketAddr>,
+    peer_cred: UCred,
+}
+
+impl connect_info::Connected<&UnixStream> for UdsConnectInfo {
+    type ConnectInfo = Self;
+
+    fn connect_info(target: &UnixStream) -> Self::ConnectInfo {
+        let peer_addr = target.peer_addr().unwrap();
+        let peer_cred = target.peer_cred().unwrap();
+
+        Self {
+            peer_addr: Arc::new(peer_addr),
+            peer_cred,
+        }
     }
 }

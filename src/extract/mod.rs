@@ -260,11 +260,15 @@ use std::{
     task::{Context, Poll},
 };
 
+pub mod connect_info;
 pub mod extractor_middleware;
 pub mod rejection;
 
 #[doc(inline)]
 pub use self::extractor_middleware::extractor_middleware;
+
+#[doc(inline)]
+pub use self::connect_info::ConnectInfo;
 
 #[cfg(feature = "multipart")]
 #[cfg_attr(docsrs, doc(cfg(feature = "multipart")))]
@@ -904,6 +908,8 @@ where
 /// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 /// # };
 /// ```
+///
+/// [`Stream`]: https://docs.rs/futures/latest/futures/stream/trait.Stream.html
 #[derive(Debug)]
 pub struct BodyStream<B = crate::body::Body>(B);
 
