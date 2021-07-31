@@ -1,4 +1,4 @@
-//! Use Tower [`Service`]s to handl requests.
+//! Use Tower [`Service`]s to handle requests.
 //!
 //! Most of the time applications will be written by composing
 //! [handlers](crate::handler), however sometimes you might have some general
