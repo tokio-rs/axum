@@ -3,30 +3,31 @@ use std::io::BufReader;
 use std::sync::Arc;
 
 use tokio_rustls::rustls::{
-    NoClientAuth,
-    ServerConfig,
-    internal::pemfile::certs,
-    internal::pemfile::pkcs8_private_keys
+    internal::pemfile::certs, internal::pemfile::pkcs8_private_keys, NoClientAuth, ServerConfig,
 };
 
 use tokio::net::TcpListener;
 
 use tokio_rustls::TlsAcceptor;
 
-use hyper::{Body, Response};
 use hyper::server::conn::Http;
+use hyper::{Body, Response};
 
-use axum::route;
 use axum::handler::get;
+use axum::route;
 
 #[tokio::main]
 async fn main() {
-    let rustls_config = rustls_server_config("self_signed_certs/key.pem", "self_signed_certs/cert.pem");
+    let rustls_config =
+        rustls_server_config("self_signed_certs/key.pem", "self_signed_certs/cert.pem");
 
     let acceptor = TlsAcceptor::from(rustls_config);
     let listener = TcpListener::bind("127.0.0.1:3443").await.unwrap();
 
-    let app = route("/", get(|| async { Response::new(Body::from("Hello, world!")) }));
+    let app = route(
+        "/",
+        get(|| async { Response::new(Body::from("Hello, world!")) }),
+    );
 
     loop {
         let (stream, _addr) = listener.accept().await.unwrap();
@@ -36,22 +37,18 @@ async fn main() {
 
         tokio::spawn(async move {
             if let Ok(stream) = acceptor.accept(stream).await {
-                let fut = Http::new()
-                    .serve_connection(stream, app);
+                let fut = Http::new().serve_connection(stream, app);
 
                 match fut.await {
                     Ok(()) => (),
-                    Err(_) => ()
+                    Err(_) => (),
                 }
             }
         });
     }
 }
 
-fn rustls_server_config(
-  key: &str,
-  cert: &str
-) -> Arc<ServerConfig> {
+fn rustls_server_config(key: &str, cert: &str) -> Arc<ServerConfig> {
     let mut config = ServerConfig::new(NoClientAuth::new());
 
     let mut key_reader = BufReader::new(File::open(key).unwrap());
