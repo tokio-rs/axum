@@ -254,6 +254,7 @@ use serde::de::DeserializeOwned;
 use std::{
     collections::HashMap,
     convert::Infallible,
+    ops::Deref,
     pin::Pin,
     str::FromStr,
     task::{Context, Poll},
@@ -600,6 +601,14 @@ where
     }
 }
 
+impl<T> Deref for Query<T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
 /// Extractor that deserializes `application/x-www-form-urlencoded` requests
 /// into some type.
 ///
@@ -671,6 +680,14 @@ where
     }
 }
 
+impl<T> Deref for Form<T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
 /// Extractor that deserializes request bodies into some type.
 ///
 /// `T` is expected to implement [`serde::Deserialize`].
@@ -732,6 +749,14 @@ where
         } else {
             Err(MissingJsonContentType.into())
         }
+    }
+}
+
+impl<T> Deref for Json<T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
     }
 }
 
@@ -810,6 +835,14 @@ where
             .map(|x| x.clone())?;
 
         Ok(Extension(value))
+    }
+}
+
+impl<T> Deref for Extension<T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
     }
 }
 
@@ -1077,6 +1110,14 @@ where
     }
 }
 
+impl<T, const N: u64> Deref for ContentLengthLimit<T, N> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
 /// Extractor that will get captures from the URL.
 ///
 /// # Example
@@ -1225,6 +1266,14 @@ macro_rules! impl_parse_url {
 
 impl_parse_url!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16);
 
+impl<T> Deref for UrlParams<T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
 fn take_body<B>(req: &mut RequestParts<B>) -> Result<B, BodyAlreadyExtracted> {
     req.take_body().ok_or(BodyAlreadyExtracted)
 }
@@ -1277,6 +1326,16 @@ where
                 err,
                 name: T::name(),
             })
+    }
+}
+
+#[cfg(feature = "headers")]
+#[cfg_attr(docsrs, doc(cfg(feature = "headers")))]
+impl<T> Deref for TypedHeader<T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
     }
 }
 
