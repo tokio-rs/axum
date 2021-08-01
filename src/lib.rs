@@ -6,6 +6,8 @@
 //! - [Compatibility](#compatibility)
 //! - [Handlers](#handlers)
 //! - [Routing](#routing)
+//!     - [Precedence](#precedence)
+//!     - [Matching multiple methods](#matching-multiple-methods)
 //! - [Extractors](#extractors)
 //! - [Building responses](#building-responses)
 //! - [Applying middleware](#applying-middleware)
@@ -122,7 +124,92 @@
 //! # };
 //! ```
 //!
-//! Routes can also be dynamic like `/users/:id`.
+//! Routes can also be dynamic like `/users/:id`. See [extractors](#extractors)
+//! for more details.
+//!
+//! ## Precedence
+//!
+//! Note that routes are matched _bottom to top_ so routes that should have
+//! higher precedence should be added _after_ routes with lower precedence:
+//!
+//! ```rust
+//! use axum::{prelude::*, body::BoxBody};
+//! use tower::{Service, ServiceExt, BoxError};
+//! use http::{Method, Response, StatusCode};
+//! use std::convert::Infallible;
+//!
+//! # #[tokio::main]
+//! # async fn main() {
+//! // `/foo` also matches `/:key` so adding the routes in this order means `/foo`
+//! // will be inaccessible.
+//! let mut app = route("/foo", get(|| async { "/foo called" }))
+//!     .route("/:key", get(|| async { "/:key called" }));
+//!
+//! // Even though we use `/foo` as the request URI, `/:key` takes precedence
+//! // since its defined last.
+//! let (status, body) = call_service(&mut app, Method::GET, "/foo").await;
+//! assert_eq!(status, StatusCode::OK);
+//! assert_eq!(body, "/:key called");
+//!
+//! // We have to add `/foo` after `/:key` since routes are matched bottom to
+//! // top.
+//! let mut new_app = route("/:key", get(|| async { "/:key called" }))
+//!     .route("/foo", get(|| async { "/foo called" }));
+//!
+//! // Now it works
+//! let (status, body) = call_service(&mut new_app, Method::GET, "/foo").await;
+//! assert_eq!(status, StatusCode::OK);
+//! assert_eq!(body, "/foo called");
+//!
+//! // And the other route works as well
+//! let (status, body) = call_service(&mut new_app, Method::GET, "/bar").await;
+//! assert_eq!(status, StatusCode::OK);
+//! assert_eq!(body, "/:key called");
+//!
+//! // Little helper function to make calling a service easier. Just for
+//! // demonstration purposes.
+//! async fn call_service<S>(
+//!     svc: &mut S,
+//!     method: Method,
+//!     uri: &str,
+//! ) -> (StatusCode, String)
+//! where
+//!     S: Service<Request<Body>, Response = Response<BoxBody>, Error = Infallible>
+//! {
+//!     let req = Request::builder().method(method).uri(uri).body(Body::empty()).unwrap();
+//!     let res = svc.ready().await.unwrap().call(req).await.unwrap();
+//!
+//!     let status = res.status();
+//!
+//!     let body = res.into_body();
+//!     let body = hyper::body::to_bytes(body).await.unwrap();
+//!     let body = String::from_utf8(body.to_vec()).unwrap();
+//!
+//!     (status, body)
+//! }
+//! # }
+//! ```
+//!
+//! ## Matching multiple methods
+//!
+//! If you want a path to accept multiple HTTP methods you must add them all at
+//! once:
+//!
+//! ```rust,no_run
+//! use axum::prelude::*;
+//!
+//! // `GET /` and `POST /` are both accepted
+//! let app = route("/", get(handler).post(handler));
+//!
+//! // This will _not_ work. Only `POST /` will be accessible.
+//! let wont_work = route("/", get(handler)).route("/", post(handler));
+//!
+//! async fn handler() {}
+//! # async {
+//! # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+//! # hyper::Server::bind(&"".parse().unwrap()).serve(wont_work.into_make_service()).await.unwrap();
+//! # };
+//! ```
 //!
 //! # Extractors
 //!
@@ -487,10 +574,23 @@
 //! let app = route(
 //!     // Any request to `/` goes to a service
 //!     "/",
+//!     // Services who's response body is not `axum::body::BoxBody`
+//!     // can be wrapped in `axum::service::any` (or one of the other routing filters)
+//!     // to have the response body mapped
 //!     service::any(service_fn(|_: Request<Body>| async {
 //!         let res = Response::new(Body::from("Hi from `GET /`"));
 //!         Ok(res)
 //!     }))
+//! ).route(
+//!     "/foo",
+//!     // This service's response body is `axum::body::BoxBody` so
+//!     // it can be routed to directly.
+//!     service_fn(|req: Request<Body>| async move {
+//!         let body = Body::from(format!("Hi from `{} /foo`", req.method()));
+//!         let body = axum::body::box_body(body);
+//!         let res = Response::new(body);
+//!         Ok(res)
+//!     })
 //! ).route(
 //!     // GET `/static/Cargo.toml` goes to a service from tower-http
 //!     "/static/Cargo.toml",
