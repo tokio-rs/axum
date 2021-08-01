@@ -831,7 +831,12 @@ where
             .extensions()
             .ok_or(ExtensionsAlreadyExtracted)?
             .get::<T>()
-            .ok_or(MissingExtension)
+            .ok_or_else(|| {
+                MissingExtension::from_err(format!(
+                    "Extension of type `{}` was not found. Perhaps you forgot to add it?",
+                    std::any::type_name::<T>()
+                ))
+            })
             .map(|x| x.clone())?;
 
         Ok(Extension(value))
