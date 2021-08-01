@@ -7,6 +7,8 @@ use tokio_postgres::NoTls;
 
 #[tokio::main]
 async fn main() {
+    tracing_subscriber::fmt::init();
+
     // setup connection pool
     let manager =
         PostgresConnectionManager::new_from_stringlike("host=localhost user=postgres", NoTls)

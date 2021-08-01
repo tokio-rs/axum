@@ -33,6 +33,9 @@ use std::net::SocketAddr;
 
 #[tokio::main]
 async fn main() {
+    // initialize tracing
+    tracing_subscriber::fmt::init();
+
     // build our application with a route
     let app =
         // `GET /` goes to `root`

@@ -11,6 +11,8 @@ use tokio_rustls::{
 
 #[tokio::main]
 async fn main() {
+    tracing_subscriber::fmt::init();
+
     let rustls_config = rustls_server_config(
         "examples/self_signed_certs/key.pem",
         "examples/self_signed_certs/cert.pem",
