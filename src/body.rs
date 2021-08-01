@@ -9,11 +9,12 @@ pub use hyper::body::Body;
 
 /// A boxed [`Body`] trait object.
 ///
-/// This is used in axum as the response body type for applications. Its necessary to unify
-/// multiple response bodies types into one.
+/// This is used in axum as the response body type for applications. Its
+/// necessary to unify multiple response bodies types into one.
 pub type BoxBody = http_body::combinators::BoxBody<Bytes, BoxStdError>;
 
-pub(crate) fn box_body<B>(body: B) -> BoxBody
+/// Convert a [`http_body::Body`] into a [`BoxBody`].
+pub fn box_body<B>(body: B) -> BoxBody
 where
     B: http_body::Body<Data = Bytes> + Send + Sync + 'static,
     B::Error: Into<BoxError>,
