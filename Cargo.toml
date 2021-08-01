@@ -23,7 +23,7 @@ bytes = "1.0"
 futures-util = "0.3"
 http = "0.2"
 http-body = "0.4"
-hyper = { version = "0.14", features = ["server", "tcp", "http1"] }
+hyper = { version = "0.14", features = ["server", "tcp", "http1", "stream"] }
 pin-project = "1.0"
 regex = "1.5"
 serde = "1.0"
@@ -57,6 +57,7 @@ tracing = "0.1"
 tracing-subscriber = "0.2"
 uuid = { version = "0.8", features = ["serde", "v4"] }
 async-session = "3.0.0"
+tokio-stream = "0.1.7"
 
 [dev-dependencies.tower]
 version = "0.4"
