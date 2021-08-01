@@ -28,8 +28,8 @@
 //!
 //! Generally routing to one of multiple services and backpressure doesn't mix
 //! well. Ideally you would want ensure a service is ready to receive a request
-//! before calling the it. However in order to know which service to call you
-//! need the request...
+//! before calling it. However, in order to know which service to call, you need
+//! the request...
 //!
 //! One approach is to not consider the router service itself ready until all
 //! destination services are ready. That is the approach used by
@@ -47,10 +47,10 @@
 //! about backpressure. At the very least you should [load shed] so requests are
 //! dropped quickly and don't keep piling up.
 //!
-//! It also means if `poll_ready` returns an error that error will be returned
-//! in the response future from `call`, and _not_ from `poll_ready`. In that
-//! case the underlying service will _not_ be discarded and will continue to be
-//! used for future requests. Services that expect to be discarded if
+//! It also means that if `poll_ready` returns an error then that error will be
+//! returned in the response future from `call` and _not_ from `poll_ready`. In
+//! that case, the underlying service will _not_ be discarded and will continue
+//! to be used for future requests. Services that expect to be discarded if
 //! `poll_ready` fails should _not_ be used with axum.
 //!
 //! One possible approach is to only apply backpressure sensitive middleware
@@ -539,7 +539,7 @@ pub trait ServiceExt<ReqBody, ResBody>:
     ///
     /// `handle_error` takes a closure that will map errors from the service
     /// into responses. The closure's return type must be `Result<T, E>` where
-    /// `T` implements [`IntoIntoResponse`](crate::response::IntoResponse).
+    /// `T` implements [`IntoResponse`](crate::response::IntoResponse).
     ///
     /// # Example
     ///
@@ -586,7 +586,7 @@ pub trait ServiceExt<ReqBody, ResBody>:
 
     /// Check that your service cannot fail.
     ///
-    /// That is its error type is [`Infallible`].
+    /// That is, its error type is [`Infallible`].
     fn check_infallible(self) -> Self
     where
         Self: Service<Request<ReqBody>, Response = Response<ResBody>, Error = Infallible> + Sized,
