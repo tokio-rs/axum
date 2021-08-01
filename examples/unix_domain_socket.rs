@@ -30,6 +30,8 @@ fn main() {
 #[cfg(unix)]
 #[tokio::main]
 async fn main() {
+    tracing_subscriber::fmt::init();
+
     let path = PathBuf::from("/tmp/axum/helloworld");
 
     let _ = tokio::fs::remove_file(&path).await;

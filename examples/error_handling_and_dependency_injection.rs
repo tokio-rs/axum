@@ -18,6 +18,8 @@ use uuid::Uuid;
 
 #[tokio::main]
 async fn main() {
+    tracing_subscriber::fmt::init();
+
     // Inject a `UserRepo` into our handlers via a trait object. This could be
     // the live implementation or just a mock for testing.
     let user_repo = Arc::new(ExampleUserRepo) as DynUserRepo;

@@ -14,6 +14,8 @@ use uuid::Uuid;
 
 #[tokio::main]
 async fn main() {
+    tracing_subscriber::fmt::init();
+
     // `MemoryStore` just used as an example. Don't use this in production.
     let store = MemoryStore::new();
 
