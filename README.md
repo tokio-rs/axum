@@ -2,7 +2,7 @@
 
 `axum` is a web application framework that focuses on ergonomics and modularity.
 
-[![Build status](https://github.com/tokio-rs/axum/workflows/CI/badge.svg)](https://github.com/tokio-rs/axum/actions)
+[![Build status](https://github.com/tokio-rs/axum/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/tokio-rs/axum/actions/workflows/CI.yml)
 [![Crates.io](https://img.shields.io/crates/v/axum)](https://crates.io/crates/axum)
 [![Documentation](https://docs.rs/axum/badge.svg)](https://docs.rs/axum)
 
