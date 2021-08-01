@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+None.
+
+## Breaking changes
+
+None.
+
+# 0.1.2 (01. August, 2021)
+
 - Implement `Stream` for `WebSocket` ([#52](https://github.com/tokio-rs/axum/pull/52))
 - Implement `Sink` for `WebSocket` ([#52](https://github.com/tokio-rs/axum/pull/52))
 - Implement `Deref` most extractors ([#56](https://github.com/tokio-rs/axum/pull/56))
@@ -19,10 +27,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add `axum::sse` for Server-Sent Events ([#75](https://github.com/tokio-rs/axum/pull/75))
 - Mention required dependencies in docs ([#77](https://github.com/tokio-rs/axum/pull/77))
 - Fix WebSockets failing on Firefox ([#76](https://github.com/tokio-rs/axum/pull/76))
-
-## Breaking changes
-
-None.
 
 # 0.1.1 (30. July, 2021)
 
