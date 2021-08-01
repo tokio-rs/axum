@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::HashSet;
 use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};
 
@@ -6,24 +6,23 @@ use futures::{sink::SinkExt, stream::StreamExt};
 
 use tokio::sync::broadcast;
 
-use axum::handler::get;
+use axum::prelude::*;
 use axum::response::Html;
-use axum::routing::RoutingDsl;
 use axum::ws::{ws, Message, WebSocket};
-use axum::{extract, route, AddExtensionLayer};
+use axum::AddExtensionLayer;
 
 // Our shared state
 struct AppState {
-    user_map: Mutex<HashMap<String, ()>>,
+    user_set: Mutex<HashSet<String>>,
     tx: broadcast::Sender<String>,
 }
 
 #[tokio::main]
 async fn main() {
-    let user_map = Mutex::new(HashMap::new());
+    let user_set = Mutex::new(HashSet::new());
     let (tx, _rx) = broadcast::channel(100);
 
-    let app_state = Arc::new(AppState { user_map, tx });
+    let app_state = Arc::new(AppState { user_set, tx });
 
     let app = route("/", get(index))
         .route("/websocket", ws(websocket))
@@ -43,7 +42,7 @@ async fn websocket(stream: WebSocket, state: extract::Extension<Arc<AppState>>) 
     // By splitting we can send and receive at the same time.
     let (mut sender, mut receiver) = stream.split();
 
-    // Empty string.
+    // Username gets set in the receive loop, if its valid
     let mut username = String::new();
 
     // Loop until a text message is found.
@@ -75,7 +74,7 @@ async fn websocket(stream: WebSocket, state: extract::Extension<Arc<AppState>>) 
     let mut send_task = tokio::spawn(async move {
         while let Ok(msg) = rx.recv().await {
             // In any websocket error, break loop.
-            if let Err(_) = sender.send(Message::text(msg)).await {
+            if sender.send(Message::text(msg)).await.is_err() {
                 break;
             }
         }
@@ -106,14 +105,14 @@ async fn websocket(stream: WebSocket, state: extract::Extension<Arc<AppState>>) 
     let _ = state.tx.send(msg);
 
     // Remove username from map so new clients can take it.
-    state.user_map.lock().unwrap().remove(&username);
+    state.user_set.lock().unwrap().remove(&username);
 }
 
 fn check_username(state: &AppState, string: &mut String, name: &str) {
-    let mut user_map = state.user_map.lock().unwrap();
+    let mut user_set = state.user_set.lock().unwrap();
 
-    if !user_map.contains_key(name) {
-        user_map.insert(name.to_owned(), ());
+    if !user_set.contains(name) {
+        user_set.insert(name.to_owned());
 
         string.push_str(name);
     }
