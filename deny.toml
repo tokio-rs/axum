@@ -41,8 +41,7 @@ skip = [
     { name = "spin", version = "=0.5.2" },
     # tokio-postgres uses old version (dev dep)
     { name = "hmac", version = "=0.10.1" },
-    { name = "crypto-mac", version = "=0.8.0" },
-    { name = "crypto-mac", version = "=0.10.0" },
+    { name = "crypto-mac" },
     # async-session uses old version (dev dep)
     { name = "cfg-if", version = "=0.1.10" },
 ]
