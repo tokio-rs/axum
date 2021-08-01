@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8">
+		<title>Websocket Chat</title>
+	</head>
+	<body>
+		<h1>Websocket Chat Example</h1>
+
+		<input id="username" style="display:block; width:100px; box-sizing: border-box" type="text" placeholder="username">
+		<button id="join-chat" type="button">Join Chat</button>
+		<textarea id="chat" style="display:block; width:600px; height:400px; box-sizing: border-box" cols="30" rows="10"></textarea>
+		<input id="input" style="display:block; width:600px; box-sizing: border-box" type="text" placeholder="chat">
+
+		<script>
+			const username = document.querySelector("#username");
+			const join_btn = document.querySelector("#join-chat");
+			const textarea = document.querySelector("#chat");
+			const input = document.querySelector("#input");
+
+			join_btn.addEventListener("click", function(e) {
+				this.disabled = true;
+
+				const websocket = new WebSocket("ws://localhost:3000/websocket");
+
+				websocket.onopen = function() {
+					console.log("connection opened");
+					websocket.send(username.value);
+				}
+
+				const btn = this;
+
+				websocket.onclose = function() {
+					console.log("connection closed");
+					btn.disabled = false;
+				}
+
+				websocket.onmessage = function(e) {
+					console.log("received message: "+e.data);
+					textarea.value += e.data+"\r\n";
+				}
+
+				input.onkeydown = function(e) {
+					if (e.key == "Enter") {
+						websocket.send(input.value);
+						input.value = "";
+					}
+				}
+			});
+		</script>
+	</body>
+</html>
