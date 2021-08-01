@@ -37,10 +37,6 @@ multiple-versions = "deny"
 highlight = "all"
 skip-tree = []
 skip = [
-    # iri-string uses old version
-    # iri-string pulled in by tower-http
-    # PR to update tower-http is https://github.com/tower-rs/tower-http/pull/110
-    { name = "nom", version = "=5.1.2" },
     # rustls uses old version (dev dep)
     { name = "spin", version = "=0.5.2" },
     # tokio-postgres uses old version (dev dep)
