@@ -66,7 +66,7 @@ define_rejection! {
     #[body = "Missing request extension"]
     /// Rejection type for [`Extension`](super::Extension) if an expected
     /// request extension was not found.
-    pub struct MissingExtension;
+    pub struct MissingExtension(BoxError);
 }
 
 define_rejection! {
