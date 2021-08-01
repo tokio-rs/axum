@@ -7,8 +7,6 @@ use tower_http::{services::ServeDir, trace::TraceLayer};
 
 #[tokio::main]
 async fn main() {
-    std::env::set_var("RUST_LOG", "sse=trace,tower_http=trace");
-
     tracing_subscriber::fmt::init();
 
     // build our application with a route
