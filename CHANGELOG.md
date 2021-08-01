@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Implement `Deref` most extractors ([#56](https://github.com/tokio-rs/axum/pull/56))
 - Return `405 Method Not Allowed` for unsupported method for route ([#63](https://github.com/tokio-rs/axum/pull/63))
 - Add extractor for remote connection info ([#55](https://github.com/tokio-rs/axum/pull/55))
-- Improve documentation for routing
+- Improve documentation for routing ([#71](https://github.com/tokio-rs/axum/pull/71))
 
 ## Breaking changes
 
