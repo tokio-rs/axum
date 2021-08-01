@@ -236,29 +236,21 @@ where
                 return response(StatusCode::NOT_FOUND, "Request method must be `GET`");
             }
 
-            if !header_eq(
-                &req,
-                header::CONNECTION,
-                HeaderValue::from_static("upgrade"),
-            ) {
+            if !header_contains(&req, header::CONNECTION, "upgrade") {
                 return response(
                     StatusCode::BAD_REQUEST,
                     "Connection header did not include 'upgrade'",
                 );
             }
 
-            if !header_eq(&req, header::UPGRADE, HeaderValue::from_static("websocket")) {
+            if !header_eq(&req, header::UPGRADE, "websocket") {
                 return response(
                     StatusCode::BAD_REQUEST,
                     "`Upgrade` header did not include 'websocket'",
                 );
             }
 
-            if !header_eq(
-                &req,
-                header::SEC_WEBSOCKET_VERSION,
-                HeaderValue::from_static("13"),
-            ) {
+            if !header_eq(&req, header::SEC_WEBSOCKET_VERSION, "13") {
                 return response(
                     StatusCode::BAD_REQUEST,
                     "`Sec-Websocket-Version` header did not include '13'",
@@ -320,6 +312,8 @@ where
 }
 
 fn response<E>(status: StatusCode, body: &'static str) -> Result<Response<BoxBody>, E> {
+    dbg!((status, body));
+
     let res = Response::builder()
         .status(status)
         .body(box_body(Full::from(body)))
@@ -327,9 +321,23 @@ fn response<E>(status: StatusCode, body: &'static str) -> Result<Response<BoxBod
     Ok(res)
 }
 
-fn header_eq<B>(req: &Request<B>, key: HeaderName, value: HeaderValue) -> bool {
+fn header_eq<B>(req: &Request<B>, key: HeaderName, value: &'static str) -> bool {
     if let Some(header) = req.headers().get(&key) {
         header.as_bytes().eq_ignore_ascii_case(value.as_bytes())
+    } else {
+        false
+    }
+}
+
+fn header_contains<B>(req: &Request<B>, key: HeaderName, value: &'static str) -> bool {
+    let header = if let Some(header) = req.headers().get(&key) {
+        header
+    } else {
+        return false;
+    };
+
+    if let Ok(header) = std::str::from_utf8(header.as_bytes()) {
+        header.to_ascii_lowercase().contains(value)
     } else {
         false
     }
