@@ -15,3 +15,4 @@
 - [`unix_domain_socket`](../examples/unix_domain_socket.rs) - How to run an Axum server over unix domain sockets.
 - [`sessions`](../examples/sessions.rs) - Sessions and cookies using [`async-session`](https://crates.io/crates/async-session).
 - [`tls_rustls`](../examples/tls_rustls.rs) - TLS with [`tokio-rustls`](https://crates.io/crates/tokio-rustls).
+- [`chat`](../examples/chat.rs) - Chat application example.
