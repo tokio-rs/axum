@@ -3,7 +3,10 @@
 use crate::body::{box_body, BoxBody, BoxStdError};
 use bytes::Bytes;
 use http::{header, HeaderMap, HeaderValue, Response, StatusCode};
-use http_body::{Empty, Full};
+use http_body::{
+    combinators::{MapData, MapErr},
+    Empty, Full,
+};
 use serde::Serialize;
 use std::{borrow::Cow, convert::Infallible};
 use tower::{util::Either, BoxError};
@@ -17,11 +20,11 @@ use tower::{util::Either, BoxError};
 /// You generally shouldn't have to implement `IntoResponse` manually, as axum
 /// provides implementations for many common types.
 ///
-/// A manual implementation should only be necessary when you're implementing a
-/// custom response body type:
+/// A manual implementation should only be necessary if you have a custom
+/// response body type:
 ///
 /// ```rust
-/// use axum::response::IntoResponse;
+/// use axum::{prelude::*, response::IntoResponse};
 /// use http_body::Body;
 /// use http::{Response, HeaderMap};
 /// use bytes::Bytes;
@@ -65,6 +68,15 @@ use tower::{util::Either, BoxError};
 ///         Response::new(self)
 ///     }
 /// }
+///
+/// // We don't need to implement `IntoResponse for Response<MyBody>` as that is
+/// // covered by a blanket implementation in axum.
+///
+/// // `MyBody` can now be returned from handlers.
+/// let app = route("/", get(|| async { MyBody }));
+/// # async {
+/// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+/// # };
 /// ```
 pub trait IntoResponse {
     /// The body type of the response.
@@ -75,8 +87,11 @@ pub trait IntoResponse {
     /// - [`hyper::Body`]: A good default that supports most use cases.
     /// - [`http_body::Empty<Bytes>`]: When you know your response is always
     /// empty.
-    /// - [`http_body::Full<Bytes>`]: When you know your response is always
+    /// - [`http_body::Full<Bytes>`]: When you know your response always
     /// contains exactly one chunk.
+    /// - [`BoxBody`]: If you need to unify multiple body types into one, or
+    /// return a body type that cannot be named. Can be created with
+    /// [`box_body`].
     ///
     /// [`http_body::Empty<Bytes>`]: http_body::Empty
     /// [`http_body::Full<Bytes>`]: http_body::Full
@@ -186,6 +201,34 @@ where
     type BodyError = E;
 
     fn into_response(self) -> Response<Self> {
+        Response::new(self)
+    }
+}
+
+impl<B, F> IntoResponse for MapData<B, F>
+where
+    B: http_body::Body + Send + Sync + 'static,
+    F: FnMut(B::Data) -> Bytes + Send + Sync + 'static,
+    B::Error: Into<BoxError>,
+{
+    type Body = Self;
+    type BodyError = <B as http_body::Body>::Error;
+
+    fn into_response(self) -> Response<Self::Body> {
+        Response::new(self)
+    }
+}
+
+impl<B, F, E> IntoResponse for MapErr<B, F>
+where
+    B: http_body::Body<Data = Bytes> + Send + Sync + 'static,
+    F: FnMut(B::Error) -> E + Send + Sync + 'static,
+    E: Into<BoxError>,
+{
+    type Body = Self;
+    type BodyError = E;
+
+    fn into_response(self) -> Response<Self::Body> {
         Response::new(self)
     }
 }
