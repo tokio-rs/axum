@@ -1,3 +1,11 @@
+//! Example chat application.
+//!
+//! Run with
+//!
+//! ```
+//! cargo run --features=ws --example chat
+//! ```
+
 use std::collections::HashSet;
 use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};
