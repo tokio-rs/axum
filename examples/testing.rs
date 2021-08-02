@@ -1,3 +1,9 @@
+//! Run with
+//!
+//! ```not_rust
+//! cargo test --example testing
+//! ```
+
 use axum::{prelude::*, routing::BoxRoute};
 use tower_http::trace::TraceLayer;
 

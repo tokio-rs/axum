@@ -1,3 +1,9 @@
+//! Run with
+//!
+//! ```not_rust
+//! cargo run --example form
+//! ```
+
 use axum::prelude::*;
 use serde::Deserialize;
 use std::net::SocketAddr;

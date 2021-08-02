@@ -1,3 +1,9 @@
+//! Run with
+//!
+//! ```not_rust
+//! cargo run --example static_file_server
+//! ```
+
 use axum::{prelude::*, routing::nest, service::ServiceExt};
 use http::StatusCode;
 use std::net::SocketAddr;

@@ -3,7 +3,7 @@
 //! Run with:
 //!
 //! ```not_rust
-//! RUST_LOG=tower_http=debug,key_value_store=trace cargo run --example key_value_store
+//! cargo run --example key_value_store
 //! ```
 
 use axum::{

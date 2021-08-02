@@ -2,7 +2,7 @@
 //!
 //! Run with
 //!
-//! ```
+//! ```not_rust
 //! cargo run --features=ws --example chat
 //! ```
 

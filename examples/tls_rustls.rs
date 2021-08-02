@@ -1,3 +1,9 @@
+//! Run with
+//!
+//! ```not_rust
+//! cargo run --example tls_rustls
+//! ```
+
 use axum::prelude::*;
 use hyper::server::conn::Http;
 use std::{fs::File, io::BufReader, sync::Arc};

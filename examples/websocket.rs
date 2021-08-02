@@ -2,11 +2,8 @@
 //!
 //! Run with
 //!
-//! ```
-//! RUST_LOG=tower_http=debug,key_value_store=trace \
-//!     cargo run \
-//!     --all-features \
-//!     --example websocket
+//! ```not_rust
+//! RUST_LOG=tower_http=debug,key_value_store=trace cargo run --features=ws,headers --example websocket
 //! ```
 
 use axum::{
@@ -61,17 +58,26 @@ async fn main() {
 async fn handle_socket(
     mut socket: WebSocket,
     // websocket handlers can also use extractors
-    TypedHeader(user_agent): TypedHeader<headers::UserAgent>,
+    user_agent: Option<TypedHeader<headers::UserAgent>>,
 ) {
-    println!("`{}` connected", user_agent.as_str());
+    if let Some(TypedHeader(user_agent)) = user_agent {
+        println!("`{}` connected", user_agent.as_str());
+    }
 
     if let Some(msg) = socket.recv().await {
-        let msg = msg.unwrap();
-        println!("Client says: {:?}", msg);
+        if let Ok(msg) = msg {
+            println!("Client says: {:?}", msg);
+        } else {
+            println!("client disconnected");
+            return;
+        }
     }
 
     loop {
-        socket.send(Message::text("Hi!")).await.unwrap();
+        if socket.send(Message::text("Hi!")).await.is_err() {
+            println!("client disconnected");
+            return;
+        }
         tokio::time::sleep(std::time::Duration::from_secs(3)).await;
     }
 }

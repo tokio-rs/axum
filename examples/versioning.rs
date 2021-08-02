@@ -1,3 +1,9 @@
+//! Run with
+//!
+//! ```not_rust
+//! cargo run --example versioning
+//! ```
+
 use axum::response::IntoResponse;
 use axum::{
     async_trait,

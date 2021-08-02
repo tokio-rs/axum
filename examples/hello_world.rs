@@ -1,3 +1,9 @@
+//! Run with
+//!
+//! ```not_rust
+//! cargo run --example hello_world
+//! ```
+
 use axum::prelude::*;
 use std::net::SocketAddr;
 
