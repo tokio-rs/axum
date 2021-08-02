@@ -80,3 +80,7 @@ rustdoc-args = ["--cfg", "docsrs"]
 
 [package.metadata.playground]
 features = ["ws"]
+
+[[example]]
+name = "chat"
+required-features = ["ws"]
