@@ -11,7 +11,9 @@ None.
 
 ## Breaking changes
 
-None.
+- Add associated `Body` and `BodyError` types to `IntoResponse`. This is
+  required for returning responses with bodies other than `hyper::Body` from
+  handlers. That wasn't previously possible.
 
 # 0.1.2 (01. August, 2021)
 
