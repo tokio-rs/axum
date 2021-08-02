@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-None.
+- Fix stripping prefix when nesting services at `/`
 
 ## Breaking changes
 
