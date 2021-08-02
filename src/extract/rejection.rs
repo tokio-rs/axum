@@ -1,11 +1,9 @@
 //! Rejection response types.
 
-use std::convert::Infallible;
-
 use super::IntoResponse;
-use crate::body::Body;
 use bytes::Bytes;
 use http_body::Full;
+use std::convert::Infallible;
 use tower::BoxError;
 
 define_rejection! {

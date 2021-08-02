@@ -1,9 +1,6 @@
 //! Types and traits for generating responses.
 
-use crate::{
-    body::{box_body, BoxBody, BoxStdError},
-    Body,
-};
+use crate::body::{box_body, BoxBody, BoxStdError};
 use bytes::Bytes;
 use http::{header, HeaderMap, HeaderValue, Response, StatusCode};
 use http_body::{Empty, Full};
@@ -14,8 +11,87 @@ use tower::{util::Either, BoxError};
 /// Trait for generating responses.
 ///
 /// Types that implement `IntoResponse` can be returned from handlers.
+///
+/// # Implementing `IntoResponse`
+///
+/// You generally shouldn't have to implement `IntoResponse` manually, as axum
+/// provides implementations for many common types.
+///
+/// A manual implementation should only be necessary when you're implementing a
+/// custom response body type:
+///
+/// ```rust
+/// use axum::response::IntoResponse;
+/// use http_body::Body;
+/// use http::{Response, HeaderMap};
+/// use bytes::Bytes;
+/// use std::{
+///     convert::Infallible,
+///     task::{Poll, Context},
+///     pin::Pin,
+/// };
+///
+/// struct MyBody;
+///
+/// // First implement `Body` for `MyBody`. This could for example use
+/// // some custom streaming protocol.
+/// impl Body for MyBody {
+///     type Data = Bytes;
+///     type Error = Infallible;
+///
+///     fn poll_data(
+///         self: Pin<&mut Self>,
+///         cx: &mut Context<'_>
+///     ) -> Poll<Option<Result<Self::Data, Self::Error>>> {
+///         # unimplemented!()
+///         // ...
+///     }
+///
+///     fn poll_trailers(
+///         self: Pin<&mut Self>,
+///         cx: &mut Context<'_>
+///     ) -> Poll<Result<Option<HeaderMap>, Self::Error>> {
+///         # unimplemented!()
+///         // ...
+///     }
+/// }
+///
+/// // Now we can implement `IntoResponse` directly for `MyBody`
+/// impl IntoResponse for MyBody {
+///     type Body = Self;
+///     type BodyError = <Self as Body>::Error;
+///
+///     fn into_response(self) -> Response<Self::Body> {
+///         Response::new(self)
+///     }
+/// }
+/// ```
 pub trait IntoResponse {
+    /// The body type of the response.
+    ///
+    /// Unless you're implementing this trait for a custom body type, these are
+    /// some common types you can use:
+    ///
+    /// - [`hyper::Body`]: A good default that supports most use cases.
+    /// - [`http_body::Empty<Bytes>`]: When you know your response is always
+    /// empty.
+    /// - [`http_body::Full<Bytes>`]: When you know your response is always
+    /// contains exactly one chunk.
+    ///
+    /// [`http_body::Empty<Bytes>`]: http_body::Empty
+    /// [`http_body::Full<Bytes>`]: http_body::Full
     type Body: http_body::Body<Data = Bytes, Error = Self::BodyError> + Send + Sync + 'static;
+
+    /// The error type `Self::Body` might generate.
+    ///
+    /// Generally it should be possible to set this to:
+    ///
+    /// ```rust,ignore
+    /// type BodyError = <Self::Body as http_body::Body>::Error;
+    /// ```
+    ///
+    /// This associated type exists mainly to make returning `impl IntoResponse`
+    /// possible and to simplify trait bounds internally in axum.
     type BodyError: Into<BoxError>;
 
     /// Create a response.
@@ -98,10 +174,21 @@ macro_rules! impl_into_response_for_body {
     };
 }
 
-impl_into_response_for_body!(Body);
+impl_into_response_for_body!(hyper::Body);
 impl_into_response_for_body!(Full<Bytes>);
 impl_into_response_for_body!(Empty<Bytes>);
-impl_into_response_for_body!(BoxBody);
+
+impl<E> IntoResponse for http_body::combinators::BoxBody<Bytes, E>
+where
+    E: Into<BoxError> + 'static,
+{
+    type Body = Self;
+    type BodyError = E;
+
+    fn into_response(self) -> Response<Self> {
+        Response::new(self)
+    }
+}
 
 impl IntoResponse for &'static str {
     type Body = Full<Bytes>;

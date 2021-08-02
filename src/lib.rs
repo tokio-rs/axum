@@ -718,7 +718,6 @@
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![cfg_attr(test, allow(clippy::float_cmp))]
 
-use self::body::Body;
 use http::Request;
 use routing::{EmptyRouter, Route};
 use tower::Service;
