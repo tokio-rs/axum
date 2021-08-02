@@ -312,8 +312,6 @@ where
 }
 
 fn response<E>(status: StatusCode, body: &'static str) -> Result<Response<BoxBody>, E> {
-    dbg!((status, body));
-
     let res = Response::builder()
         .status(status)
         .body(box_body(Full::from(body)))
