@@ -3,7 +3,7 @@
 //! Run with
 //!
 //! ```
-//!     cargo run --features="ws" --example chat
+//! cargo run --features=ws --example chat
 //! ```
 
 use std::collections::HashSet;
