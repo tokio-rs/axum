@@ -1,7 +1,9 @@
 use askama::Template;
 use axum::{prelude::*, response::IntoResponse};
+use bytes::Bytes;
 use http::{Response, StatusCode};
-use std::net::SocketAddr;
+use http_body::Full;
+use std::{convert::Infallible, net::SocketAddr};
 
 #[tokio::main]
 async fn main() {
@@ -42,12 +44,15 @@ impl<T> IntoResponse for HtmlTemplate<T>
 where
     T: Template,
 {
-    fn into_response(self) -> http::Response<Body> {
+    type Body = Full<Bytes>;
+    type BodyError = Infallible;
+
+    fn into_response(self) -> Response<Self::Body> {
         match self.0.render() {
             Ok(html) => response::Html(html).into_response(),
             Err(err) => Response::builder()
                 .status(StatusCode::INTERNAL_SERVER_ERROR)
-                .body(Body::from(format!(
+                .body(Full::from(format!(
                     "Failed to render template. Error: {}",
                     err
                 )))

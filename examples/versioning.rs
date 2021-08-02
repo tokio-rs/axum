@@ -4,8 +4,10 @@ use axum::{
     extract::{FromRequest, RequestParts},
     prelude::*,
 };
+use bytes::Bytes;
 use http::Response;
 use http::StatusCode;
+use http_body::Full;
 use std::net::SocketAddr;
 
 #[tokio::main]
@@ -40,7 +42,7 @@ impl<B> FromRequest<B> for Version
 where
     B: Send,
 {
-    type Rejection = Response<Body>;
+    type Rejection = Response<Full<Bytes>>;
 
     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
         let params = extract::UrlParamsMap::from_request(req)

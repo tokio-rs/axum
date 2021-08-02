@@ -244,11 +244,16 @@
 //!
 //! [`body::Body`]: crate::body::Body
 
-use crate::{response::IntoResponse, util::ByteStr};
+use crate::{
+    body::{box_body, BoxBody},
+    response::IntoResponse,
+    util::ByteStr,
+};
 use async_trait::async_trait;
 use bytes::{Buf, Bytes};
 use futures_util::stream::Stream;
 use http::{header, Extensions, HeaderMap, Method, Request, Response, Uri, Version};
+use http_body::Full;
 use rejection::*;
 use serde::de::DeserializeOwned;
 use std::{
@@ -492,7 +497,7 @@ where
     }
 }
 
-macro_rules! impl_from_request {
+macro_rules! impl_from_request_for_tuple {
     () => {
     };
 
@@ -505,20 +510,20 @@ macro_rules! impl_from_request {
             $( $tail: FromRequest<B> + Send, )*
             B: Send,
         {
-            type Rejection = Response<crate::body::Body>;
+            type Rejection = Response<BoxBody>;
 
             async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-                let $head = $head::from_request(req).await.map_err(IntoResponse::into_response)?;
-                $( let $tail = $tail::from_request(req).await.map_err(IntoResponse::into_response)?; )*
+                let $head = $head::from_request(req).await.map_err(|err| err.into_response().map(box_body))?;
+                $( let $tail = $tail::from_request(req).await.map_err(|err| err.into_response().map(box_body))?; )*
                 Ok(($head, $($tail,)*))
             }
         }
 
-        impl_from_request!($($tail,)*);
+        impl_from_request_for_tuple!($($tail,)*);
     };
 }
 
-impl_from_request!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16);
+impl_from_request_for_tuple!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16);
 
 #[async_trait]
 impl<T, B> FromRequest<B> for Option<T>
@@ -1082,6 +1087,7 @@ pub struct ContentLengthLimit<T, const N: u64>(pub T);
 impl<T, B, const N: u64> FromRequest<B> for ContentLengthLimit<T, N>
 where
     T: FromRequest<B>,
+    T::Rejection: IntoResponse<Body = Full<Bytes>>,
     B: Send,
 {
     type Rejection = ContentLengthLimitRejection<T::Rejection>;
