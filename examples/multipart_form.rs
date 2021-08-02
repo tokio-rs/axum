@@ -1,3 +1,9 @@
+//! Run with
+//!
+//! ```not_rust
+//! cargo run --example multipart_form --features=multipart
+//! ```
+
 use axum::{
     extract::{ContentLengthLimit, Multipart},
     prelude::*,

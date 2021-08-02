@@ -1,3 +1,9 @@
+//! Run with
+//!
+//! ```not_rust
+//! cargo run --example tokio_postgres
+//! ```
+
 use axum::{extract::Extension, prelude::*, AddExtensionLayer};
 use bb8::Pool;
 use bb8_postgres::PostgresConnectionManager;

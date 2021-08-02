@@ -1,3 +1,9 @@
+//! Run with
+//!
+//! ```not_rust
+//! cargo run --example templates
+//! ```
+
 use askama::Template;
 use axum::{prelude::*, response::IntoResponse};
 use http::{Response, StatusCode};

@@ -6,6 +6,12 @@
 //! - `POST /todos`: create a new Todo.
 //! - `PUT /todos/:id`: update a specific Todo.
 //! - `DELETE /todos/:id`: delete a specific Todo.
+//!
+//! Run with
+//!
+//! ```not_rust
+//! cargo run --example todos
+//! ```
 
 use axum::{
     extract::{Extension, Json, Query, UrlParams},

@@ -1,3 +1,9 @@
+//! Run with
+//!
+//! ```not_rust
+//! cargo run --example sse --features=headers
+//! ```
+
 use axum::{extract::TypedHeader, prelude::*, routing::nest, service::ServiceExt, sse::Event};
 use futures::stream::{self, Stream};
 use http::StatusCode;

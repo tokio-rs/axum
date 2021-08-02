@@ -2,11 +2,8 @@
 //!
 //! Run with
 //!
-//! ```
-//! RUST_LOG=tower_http=debug,key_value_store=trace \
-//!     cargo run \
-//!     --all-features \
-//!     --example websocket
+//! ```not_rust
+//! RUST_LOG=tower_http=debug,key_value_store=trace cargo run --features=ws,headers --example websocket
 //! ```
 
 use axum::{

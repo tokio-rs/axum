@@ -1,5 +1,11 @@
 //! Example showing how to convert errors into responses and how one might do
 //! dependency injection using trait objects.
+//!
+//! Run with
+//!
+//! ```not_rust
+//! cargo run --example error_handling_and_dependency_injection
+//! ```
 
 #![allow(dead_code)]
 

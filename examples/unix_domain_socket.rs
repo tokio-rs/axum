@@ -1,3 +1,9 @@
+//! Run with
+//!
+//! ```not_rust
+//! cargo run --example unix_domain_socket
+//! ```
+
 use axum::{
     extract::connect_info::{self, ConnectInfo},
     prelude::*,
