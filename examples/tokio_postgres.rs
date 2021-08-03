@@ -4,11 +4,12 @@
 //! cargo run --example tokio_postgres
 //! ```
 
+use std::net::SocketAddr;
+
 use axum::{extract::Extension, prelude::*, AddExtensionLayer};
 use bb8::Pool;
 use bb8_postgres::PostgresConnectionManager;
 use http::StatusCode;
-use std::net::SocketAddr;
 use tokio_postgres::NoTls;
 
 #[tokio::main]

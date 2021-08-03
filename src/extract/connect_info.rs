@@ -4,9 +4,6 @@
 //!
 //! [`RoutingDsl::into_make_service_with_connect_info`]: crate::routing::RoutingDsl::into_make_service_with_connect_info
 
-use super::{Extension, FromRequest, RequestParts};
-use async_trait::async_trait;
-use hyper::server::conn::AddrStream;
 use std::{
     convert::Infallible,
     fmt,
@@ -14,8 +11,13 @@ use std::{
     net::SocketAddr,
     task::{Context, Poll},
 };
+
+use async_trait::async_trait;
+use hyper::server::conn::AddrStream;
 use tower::Service;
 use tower_http::add_extension::AddExtension;
+
+use super::{Extension, FromRequest, RequestParts};
 
 /// A [`MakeService`] created from a router.
 ///

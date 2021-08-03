@@ -9,6 +9,8 @@
 
 #![allow(dead_code)]
 
+use std::{net::SocketAddr, sync::Arc};
+
 use axum::{
     async_trait,
     extract::{Extension, Json, UrlParams},
@@ -19,7 +21,6 @@ use axum::{
 use http::StatusCode;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use std::{net::SocketAddr, sync::Arc};
 use uuid::Uuid;
 
 #[tokio::main]

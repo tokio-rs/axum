@@ -10,14 +10,12 @@ use std::collections::HashSet;
 use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};
 
-use futures::{sink::SinkExt, stream::StreamExt};
-
-use tokio::sync::broadcast;
-
 use axum::prelude::*;
 use axum::response::Html;
 use axum::ws::{ws, Message, WebSocket};
 use axum::AddExtensionLayer;
+use futures::{sink::SinkExt, stream::StreamExt};
+use tokio::sync::broadcast;
 
 // Our shared state
 struct AppState {

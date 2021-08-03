@@ -6,6 +6,8 @@
 //! RUST_LOG=tower_http=debug,key_value_store=trace cargo run --features=ws,headers --example websocket
 //! ```
 
+use std::net::SocketAddr;
+
 use axum::{
     extract::TypedHeader,
     prelude::*,
@@ -14,7 +16,6 @@ use axum::{
     ws::{ws, Message, WebSocket},
 };
 use http::StatusCode;
-use std::net::SocketAddr;
 use tower_http::{
     services::ServeDir,
     trace::{DefaultMakeSpan, TraceLayer},

@@ -86,15 +86,6 @@
 //! [`Redirect`]: tower_http::services::Redirect
 //! [load shed]: tower::load_shed
 
-use crate::{
-    body::{box_body, BoxBody},
-    response::IntoResponse,
-    routing::{EmptyRouter, MethodFilter, RouteFuture},
-};
-use bytes::Bytes;
-use futures_util::ready;
-use http::{Request, Response};
-use pin_project::pin_project;
 use std::{
     convert::Infallible,
     fmt,
@@ -102,7 +93,18 @@ use std::{
     marker::PhantomData,
     task::{Context, Poll},
 };
+
+use bytes::Bytes;
+use futures_util::ready;
+use http::{Request, Response};
+use pin_project::pin_project;
 use tower::{util::Oneshot, BoxError, Service, ServiceExt as _};
+
+use crate::{
+    body::{box_body, BoxBody},
+    response::IntoResponse,
+    routing::{EmptyRouter, MethodFilter, RouteFuture},
+};
 
 pub mod future;
 

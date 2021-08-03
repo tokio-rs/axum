@@ -4,8 +4,9 @@
 //! cargo run --example hello_world
 //! ```
 
-use axum::prelude::*;
 use std::net::SocketAddr;
+
+use axum::prelude::*;
 
 #[tokio::main]
 async fn main() {

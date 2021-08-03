@@ -4,10 +4,11 @@
 //! cargo run --example templates
 //! ```
 
+use std::net::SocketAddr;
+
 use askama::Template;
 use axum::{prelude::*, response::IntoResponse};
 use http::{Response, StatusCode};
-use std::net::SocketAddr;
 
 #[tokio::main]
 async fn main() {

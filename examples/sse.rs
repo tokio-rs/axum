@@ -4,10 +4,11 @@
 //! cargo run --example sse --features=headers
 //! ```
 
+use std::{convert::Infallible, net::SocketAddr, time::Duration};
+
 use axum::{extract::TypedHeader, prelude::*, routing::nest, service::ServiceExt, sse::Event};
 use futures::stream::{self, Stream};
 use http::StatusCode;
-use std::{convert::Infallible, net::SocketAddr, time::Duration};
 use tokio_stream::StreamExt as _;
 use tower_http::{services::ServeDir, trace::TraceLayer};
 

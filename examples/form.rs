@@ -4,9 +4,10 @@
 //! cargo run --example form
 //! ```
 
+use std::net::SocketAddr;
+
 use axum::prelude::*;
 use serde::Deserialize;
-use std::net::SocketAddr;
 
 #[tokio::main]
 async fn main() {

@@ -1,11 +1,13 @@
 //! Types and traits for generating responses.
 
-use crate::Body;
+use std::{borrow::Cow, convert::Infallible};
+
 use bytes::Bytes;
 use http::{header, HeaderMap, HeaderValue, Response, StatusCode};
 use serde::Serialize;
-use std::{borrow::Cow, convert::Infallible};
 use tower::util::Either;
+
+use crate::Body;
 
 /// Trait for generating responses.
 ///

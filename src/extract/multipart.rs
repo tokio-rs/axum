@@ -2,18 +2,20 @@
 //!
 //! See [`Multipart`] for more details.
 
-use super::{rejection::*, BodyStream, FromRequest, RequestParts};
-use async_trait::async_trait;
-use bytes::Bytes;
-use futures_util::stream::Stream;
-use http::header::{HeaderMap, CONTENT_TYPE};
-use mime::Mime;
 use std::{
     fmt,
     pin::Pin,
     task::{Context, Poll},
 };
+
+use async_trait::async_trait;
+use bytes::Bytes;
+use futures_util::stream::Stream;
+use http::header::{HeaderMap, CONTENT_TYPE};
+use mime::Mime;
 use tower::BoxError;
+
+use super::{rejection::*, BodyStream, FromRequest, RequestParts};
 
 /// Extractor that parses `multipart/form-data` requests commonly used with file uploads.
 ///

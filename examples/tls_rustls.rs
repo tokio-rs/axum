@@ -4,9 +4,10 @@
 //! cargo run --example tls_rustls
 //! ```
 
+use std::{fs::File, io::BufReader, sync::Arc};
+
 use axum::prelude::*;
 use hyper::server::conn::Http;
-use std::{fs::File, io::BufReader, sync::Arc};
 use tokio::net::TcpListener;
 use tokio_rustls::{
     rustls::{

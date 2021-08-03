@@ -1,8 +1,10 @@
 //! Handler future types.
 
-use crate::body::BoxBody;
-use http::Response;
 use std::convert::Infallible;
+
+use http::Response;
+
+use crate::body::BoxBody;
 
 opaque_future! {
     /// The response future for [`IntoService`](super::IntoService).

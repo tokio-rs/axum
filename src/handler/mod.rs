@@ -1,15 +1,5 @@
 //! Async functions that can be used to handle requests.
 
-use crate::{
-    body::{box_body, BoxBody},
-    extract::FromRequest,
-    response::IntoResponse,
-    routing::{EmptyRouter, MethodFilter, RouteFuture},
-    service::HandleError,
-};
-use async_trait::async_trait;
-use bytes::Bytes;
-use http::{Request, Response};
 use std::{
     convert::Infallible,
     fmt,
@@ -17,7 +7,19 @@ use std::{
     marker::PhantomData,
     task::{Context, Poll},
 };
+
+use async_trait::async_trait;
+use bytes::Bytes;
+use http::{Request, Response};
 use tower::{BoxError, Layer, Service, ServiceExt};
+
+use crate::{
+    body::{box_body, BoxBody},
+    extract::FromRequest,
+    response::IntoResponse,
+    routing::{EmptyRouter, MethodFilter, RouteFuture},
+    service::HandleError,
+};
 
 pub mod future;
 

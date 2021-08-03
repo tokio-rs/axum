@@ -13,6 +13,14 @@
 //! cargo run --example todos
 //! ```
 
+use std::{
+    collections::HashMap,
+    convert::Infallible,
+    net::SocketAddr,
+    sync::{Arc, RwLock},
+    time::Duration,
+};
+
 use axum::{
     extract::{Extension, Json, Query, UrlParams},
     prelude::*,
@@ -21,13 +29,6 @@ use axum::{
 };
 use http::StatusCode;
 use serde::{Deserialize, Serialize};
-use std::{
-    collections::HashMap,
-    convert::Infallible,
-    net::SocketAddr,
-    sync::{Arc, RwLock},
-    time::Duration,
-};
 use tower::{BoxError, ServiceBuilder};
 use tower_http::{add_extension::AddExtensionLayer, trace::TraceLayer};
 use uuid::Uuid;

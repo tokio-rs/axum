@@ -69,20 +69,6 @@
 //! # };
 //! ```
 
-use crate::{
-    body::{box_body, BoxBody, BoxStdError},
-    extract::{FromRequest, RequestParts},
-    response::IntoResponse,
-};
-use async_trait::async_trait;
-use futures_util::{
-    future::{TryFuture, TryFutureExt},
-    stream::{Stream, StreamExt, TryStream, TryStreamExt},
-};
-use http::{Request, Response};
-use hyper::Body;
-use pin_project::pin_project;
-use serde::Serialize;
 use std::{
     borrow::Cow,
     convert::Infallible,
@@ -93,8 +79,24 @@ use std::{
     task::{Context, Poll},
     time::Duration,
 };
+
+use async_trait::async_trait;
+use futures_util::{
+    future::{TryFuture, TryFutureExt},
+    stream::{Stream, StreamExt, TryStream, TryStreamExt},
+};
+use http::{Request, Response};
+use hyper::Body;
+use pin_project::pin_project;
+use serde::Serialize;
 use tokio::time::Sleep;
 use tower::{BoxError, Service};
+
+use crate::{
+    body::{box_body, BoxBody, BoxStdError},
+    extract::{FromRequest, RequestParts},
+    response::IntoResponse,
+};
 
 /// Create a new [`Sse`] service that will call the closure to produce a stream
 /// of [`Event`]s.

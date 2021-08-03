@@ -4,6 +4,14 @@
 //! cargo run --example unix_domain_socket
 //! ```
 
+use std::{
+    io,
+    path::PathBuf,
+    pin::Pin,
+    sync::Arc,
+    task::{Context, Poll},
+};
+
 use axum::{
     extract::connect_info::{self, ConnectInfo},
     prelude::*,
@@ -13,13 +21,6 @@ use http::{Method, StatusCode, Uri};
 use hyper::{
     client::connect::{Connected, Connection},
     server::accept::Accept,
-};
-use std::{
-    io,
-    path::PathBuf,
-    pin::Pin,
-    sync::Arc,
-    task::{Context, Poll},
 };
 use tokio::net::{unix::UCred, UnixListener};
 use tokio::{

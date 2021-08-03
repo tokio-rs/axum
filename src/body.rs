@@ -1,8 +1,9 @@
 //! HTTP body utilities.
 
+use std::{error::Error as StdError, fmt};
+
 use bytes::Bytes;
 use http_body::Body as _;
-use std::{error::Error as StdError, fmt};
 use tower::BoxError;
 
 pub use hyper::body::Body;

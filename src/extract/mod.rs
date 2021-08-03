@@ -244,13 +244,6 @@
 //!
 //! [`body::Body`]: crate::body::Body
 
-use crate::{response::IntoResponse, util::ByteStr};
-use async_trait::async_trait;
-use bytes::{Buf, Bytes};
-use futures_util::stream::Stream;
-use http::{header, Extensions, HeaderMap, Method, Request, Response, Uri, Version};
-use rejection::*;
-use serde::de::DeserializeOwned;
 use std::{
     collections::HashMap,
     convert::Infallible,
@@ -259,6 +252,15 @@ use std::{
     str::FromStr,
     task::{Context, Poll},
 };
+
+use async_trait::async_trait;
+use bytes::{Buf, Bytes};
+use futures_util::stream::Stream;
+use http::{header, Extensions, HeaderMap, Method, Request, Response, Uri, Version};
+use rejection::*;
+use serde::de::DeserializeOwned;
+
+use crate::{response::IntoResponse, util::ByteStr};
 
 pub mod connect_info;
 pub mod extractor_middleware;

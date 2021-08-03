@@ -1,18 +1,5 @@
 //! Routing between [`Service`]s.
 
-use crate::{
-    body::{box_body, BoxBody},
-    buffer::MpscBuffer,
-    extract::connect_info::{Connected, IntoMakeServiceWithConnectInfo},
-    response::IntoResponse,
-    util::ByteStr,
-};
-use async_trait::async_trait;
-use bytes::Bytes;
-use futures_util::future;
-use http::{Method, Request, Response, StatusCode, Uri};
-use pin_project::pin_project;
-use regex::Regex;
 use std::{
     borrow::Cow,
     convert::Infallible,
@@ -23,11 +10,26 @@ use std::{
     sync::Arc,
     task::{Context, Poll},
 };
+
+use async_trait::async_trait;
+use bytes::Bytes;
+use futures_util::future;
+use http::{Method, Request, Response, StatusCode, Uri};
+use pin_project::pin_project;
+use regex::Regex;
 use tower::{
     util::{BoxService, Oneshot, ServiceExt},
     BoxError, Layer, Service, ServiceBuilder,
 };
 use tower_http::map_response_body::MapResponseBodyLayer;
+
+use crate::{
+    body::{box_body, BoxBody},
+    buffer::MpscBuffer,
+    extract::connect_info::{Connected, IntoMakeServiceWithConnectInfo},
+    response::IntoResponse,
+    util::ByteStr,
+};
 
 /// A filter that matches one or more HTTP methods.
 #[derive(Debug, Copy, Clone)]

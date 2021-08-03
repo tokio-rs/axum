@@ -4,6 +4,8 @@
 //! cargo run --example versioning
 //! ```
 
+use std::net::SocketAddr;
+
 use axum::response::IntoResponse;
 use axum::{
     async_trait,
@@ -12,7 +14,6 @@ use axum::{
 };
 use http::Response;
 use http::StatusCode;
-use std::net::SocketAddr;
 
 #[tokio::main]
 async fn main() {

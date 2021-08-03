@@ -1,8 +1,9 @@
 //! Rejection response types.
 
+use tower::BoxError;
+
 use super::IntoResponse;
 use crate::body::Body;
-use tower::BoxError;
 
 define_rejection! {
     #[status = INTERNAL_SERVER_ERROR]

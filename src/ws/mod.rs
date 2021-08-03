@@ -55,9 +55,12 @@
 //! # };
 //! ```
 
-use crate::body::{box_body, BoxBody};
-use crate::extract::{FromRequest, RequestParts};
-use crate::response::IntoResponse;
+use std::pin::Pin;
+use std::{
+    borrow::Cow, convert::Infallible, fmt, future::Future, marker::PhantomData, task::Context,
+    task::Poll,
+};
+
 use async_trait::async_trait;
 use bytes::Bytes;
 use future::ResponseFuture;
@@ -72,16 +75,15 @@ use http::{
 use http_body::Full;
 use hyper::upgrade::{OnUpgrade, Upgraded};
 use sha1::{Digest, Sha1};
-use std::pin::Pin;
-use std::{
-    borrow::Cow, convert::Infallible, fmt, future::Future, marker::PhantomData, task::Context,
-    task::Poll,
-};
 use tokio_tungstenite::{
     tungstenite::protocol::{self, WebSocketConfig},
     WebSocketStream,
 };
 use tower::{BoxError, Service};
+
+use crate::body::{box_body, BoxBody};
+use crate::extract::{FromRequest, RequestParts};
+use crate::response::IntoResponse;
 
 pub mod future;
 

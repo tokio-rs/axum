@@ -1,21 +1,23 @@
-use crate::{
-    extract::RequestParts, handler::on, prelude::*, response::IntoResponse, routing::nest,
-    routing::MethodFilter, service,
-};
-use bytes::Bytes;
-use futures_util::future::Ready;
-use http::{header::AUTHORIZATION, Request, Response, StatusCode, Uri};
-use hyper::{Body, Server};
-use serde::Deserialize;
-use serde_json::json;
 use std::{
     convert::Infallible,
     net::{SocketAddr, TcpListener},
     task::{Context, Poll},
     time::Duration,
 };
+
+use bytes::Bytes;
+use futures_util::future::Ready;
+use http::{header::AUTHORIZATION, Request, Response, StatusCode, Uri};
+use hyper::{Body, Server};
+use serde::Deserialize;
+use serde_json::json;
 use tower::{make::Shared, service_fn, BoxError, Service, ServiceBuilder};
 use tower_http::{compression::CompressionLayer, trace::TraceLayer};
+
+use crate::{
+    extract::RequestParts, handler::on, prelude::*, response::IntoResponse, routing::nest,
+    routing::MethodFilter, service,
+};
 
 mod nest;
 

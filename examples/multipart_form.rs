@@ -4,11 +4,12 @@
 //! cargo run --example multipart_form --features=multipart
 //! ```
 
+use std::net::SocketAddr;
+
 use axum::{
     extract::{ContentLengthLimit, Multipart},
     prelude::*,
 };
-use std::net::SocketAddr;
 
 #[tokio::main]
 async fn main() {

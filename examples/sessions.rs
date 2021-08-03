@@ -4,6 +4,8 @@
 //! cargo run --example sessions
 //! ```
 
+use std::net::SocketAddr;
+
 use async_session::{MemoryStore, Session, SessionStore as _};
 use axum::{
     async_trait,
@@ -15,7 +17,6 @@ use axum::{
 use http::header::{HeaderMap, HeaderValue};
 use http::StatusCode;
 use serde::{Deserialize, Serialize};
-use std::net::SocketAddr;
 use uuid::Uuid;
 
 #[tokio::main]

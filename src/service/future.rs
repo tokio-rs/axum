@@ -1,19 +1,21 @@
 //! [`Service`](tower::Service) future types.
 
-use crate::{
-    body::{box_body, BoxBody},
-    response::IntoResponse,
-};
-use bytes::Bytes;
-use futures_util::ready;
-use http::Response;
-use pin_project::pin_project;
 use std::{
     future::Future,
     pin::Pin,
     task::{Context, Poll},
 };
+
+use bytes::Bytes;
+use futures_util::ready;
+use http::Response;
+use pin_project::pin_project;
 use tower::BoxError;
+
+use crate::{
+    body::{box_body, BoxBody},
+    response::IntoResponse,
+};
 
 /// Response future for [`HandleError`](super::HandleError).
 #[pin_project]

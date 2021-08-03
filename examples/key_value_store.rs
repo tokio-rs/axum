@@ -6,6 +6,15 @@
 //! cargo run --example key_value_store
 //! ```
 
+use std::{
+    borrow::Cow,
+    collections::HashMap,
+    convert::Infallible,
+    net::SocketAddr,
+    sync::{Arc, RwLock},
+    time::Duration,
+};
+
 use axum::{
     async_trait,
     extract::{extractor_middleware, ContentLengthLimit, Extension, RequestParts, UrlParams},
@@ -16,14 +25,6 @@ use axum::{
 };
 use bytes::Bytes;
 use http::StatusCode;
-use std::{
-    borrow::Cow,
-    collections::HashMap,
-    convert::Infallible,
-    net::SocketAddr,
-    sync::{Arc, RwLock},
-    time::Duration,
-};
 use tower::{BoxError, ServiceBuilder};
 use tower_http::{
     add_extension::AddExtensionLayer, compression::CompressionLayer, trace::TraceLayer,
