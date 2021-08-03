@@ -44,9 +44,10 @@ async fn main() {
         .unwrap();
 }
 
-async fn websocket(stream: WebSocket, state: extract::Extension<Arc<AppState>>) {
-    let state = state.0;
-
+async fn websocket(
+    stream: WebSocket,
+    extract::Extension(state): extract::Extension<Arc<AppState>>,
+) {
     // By splitting we can send and receive at the same time.
     let (mut sender, mut receiver) = stream.split();
 
