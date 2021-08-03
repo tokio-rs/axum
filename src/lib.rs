@@ -47,9 +47,6 @@
 //!
 //! ```rust,no_run
 //! use axum::prelude::*;
-//! use hyper::Server;
-//! use std::net::SocketAddr;
-//! use tower::make::Shared;
 //!
 //! #[tokio::main]
 //! async fn main() {
