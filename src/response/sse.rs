@@ -57,7 +57,7 @@ where
     }
 }
 
-/// An SSE response.
+/// An SSE response, created by [`sse`].
 #[derive(Clone)]
 pub struct Sse<S> {
     stream: S,

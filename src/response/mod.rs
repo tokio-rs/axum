@@ -9,6 +9,8 @@ use tower::util::Either;
 
 pub mod sse;
 
+pub use sse::{sse, Sse};
+
 /// Trait for generating responses.
 ///
 /// Types that implement `IntoResponse` can be returned from handlers.
