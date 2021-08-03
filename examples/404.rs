@@ -17,7 +17,9 @@ async fn main() {
     tracing_subscriber::fmt::init();
 
     // build our application with a route
-    let app = route("/", get(handler)).layer(MapResponseLayer::new(map_404));
+    let app = route("/", get(handler))
+        // make sure this is added as the very last thing
+        .layer(MapResponseLayer::new(map_404));
 
     // run it
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
