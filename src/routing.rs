@@ -11,7 +11,7 @@ use async_trait::async_trait;
 use bytes::Bytes;
 use futures_util::future;
 use http::{Method, Request, Response, StatusCode, Uri};
-use pin_project::pin_project;
+use pin_project_lite::pin_project;
 use regex::Regex;
 use std::{
     borrow::Cow,
@@ -385,13 +385,16 @@ where
     }
 }
 
-/// The response future for [`Route`].
-#[pin_project]
-#[derive(Debug)]
-pub struct RouteFuture<S, F, B>(#[pin] RouteFutureInner<S, F, B>)
-where
-    S: Service<Request<B>>,
-    F: Service<Request<B>>;
+pin_project! {
+    /// The response future for [`Route`].
+    #[derive(Debug)]
+    pub struct RouteFuture<S, F, B>
+    where
+        S: Service<Request<B>>,
+        F: Service<Request<B>> {
+        #[pin] inner: RouteFutureInner<S, F, B>,
+    }
+}
 
 impl<S, F, B> RouteFuture<S, F, B>
 where
@@ -399,23 +402,29 @@ where
     F: Service<Request<B>>,
 {
     pub(crate) fn a(a: Oneshot<S, Request<B>>) -> Self {
-        RouteFuture(RouteFutureInner::A(a))
+        RouteFuture {
+            inner: RouteFutureInner::A { a },
+        }
     }
 
     pub(crate) fn b(b: Oneshot<F, Request<B>>) -> Self {
-        RouteFuture(RouteFutureInner::B(b))
+        RouteFuture {
+            inner: RouteFutureInner::B { b },
+        }
     }
 }
 
-#[pin_project(project = RouteFutureInnerProj)]
-#[derive(Debug)]
-enum RouteFutureInner<S, F, B>
-where
-    S: Service<Request<B>>,
-    F: Service<Request<B>>,
-{
-    A(#[pin] Oneshot<S, Request<B>>),
-    B(#[pin] Oneshot<F, Request<B>>),
+pin_project! {
+    #[project = RouteFutureInnerProj]
+    #[derive(Debug)]
+    enum RouteFutureInner<S, F, B>
+    where
+        S: Service<Request<B>>,
+        F: Service<Request<B>>,
+    {
+        A { #[pin] a: Oneshot<S, Request<B>> },
+        B { #[pin] b: Oneshot<F, Request<B>> },
+    }
 }
 
 impl<S, F, B> Future for RouteFuture<S, F, B>
@@ -426,9 +435,9 @@ where
     type Output = Result<Response<BoxBody>, S::Error>;
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        match self.project().0.project() {
-            RouteFutureInnerProj::A(inner) => inner.poll(cx),
-            RouteFutureInnerProj::B(inner) => inner.poll(cx),
+        match self.project().inner.project() {
+            RouteFutureInnerProj::A { a } => a.poll(cx),
+            RouteFutureInnerProj::B { b } => b.poll(cx),
         }
     }
 }
@@ -510,7 +519,9 @@ impl<B, E> Service<Request<B>> for EmptyRouter<E> {
     fn call(&mut self, _req: Request<B>) -> Self::Future {
         let mut res = Response::new(crate::body::empty());
         *res.status_mut() = self.status;
-        EmptyRouterFuture(future::ok(res))
+        EmptyRouterFuture {
+            future: future::ok(res),
+        }
     }
 }
 
@@ -655,15 +666,14 @@ where
     }
 }
 
-/// The response future for [`BoxRoute`].
-#[pin_project]
-pub struct BoxRouteFuture<B, E>
-where
-    E: Into<BoxError>,
-{
-    #[pin]
-    inner:
-        Oneshot<MpscBuffer<BoxService<Request<B>, Response<BoxBody>, E>, Request<B>>, Request<B>>,
+pin_project! {
+    /// The response future for [`BoxRoute`].
+    pub struct BoxRouteFuture<B, E>
+    where
+        E: Into<BoxError>,
+    {
+        #[pin] inner: Oneshot<MpscBuffer<BoxService<Request<B>, Response<BoxBody>, E>, Request<B>>, Request<B>>,
+    }
 }
 
 impl<B, E> Future for BoxRouteFuture<B, E>

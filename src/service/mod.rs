@@ -94,7 +94,7 @@ use crate::{
 use bytes::Bytes;
 use futures_util::ready;
 use http::{Request, Response};
-use pin_project::pin_project;
+use pin_project_lite::pin_project;
 use std::{
     convert::Infallible,
     fmt,
@@ -645,14 +645,17 @@ where
 
     fn call(&mut self, req: Request<ReqBody>) -> Self::Future {
         let fut = self.inner.clone().oneshot(req);
-        BoxResponseBodyFuture(fut)
+        BoxResponseBodyFuture { future: fut }
     }
 }
 
-/// Response future for [`BoxResponseBody`].
-#[pin_project]
-#[derive(Debug)]
-pub struct BoxResponseBodyFuture<F>(#[pin] F);
+pin_project! {
+    /// Response future for [`BoxResponseBody`].
+    #[derive(Debug)]
+    pub struct BoxResponseBodyFuture<F> {
+        #[pin] future: F,
+    }
+}
 
 impl<F, B, E> Future for BoxResponseBodyFuture<F>
 where
@@ -663,7 +666,7 @@ where
     type Output = Result<Response<BoxBody>, E>;
 
     fn poll(self: std::pin::Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        let res = ready!(self.project().0.poll(cx))?;
+        let res = ready!(self.project().future.poll(cx))?;
         let res = res.map(box_body);
         Poll::Ready(Ok(res))
     }

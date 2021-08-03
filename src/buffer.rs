@@ -1,5 +1,5 @@
 use futures_util::ready;
-use pin_project::pin_project;
+use pin_project_lite::pin_project;
 use std::{
     future::Future,
     pin::Pin,
@@ -119,23 +119,26 @@ where
         });
 
         ResponseFuture {
-            state: State::Channel(reply_rx),
+            state: State::Channel { reply_rx },
             permit,
         }
     }
 }
 
-#[pin_project]
-pub(crate) struct ResponseFuture<F, E> {
-    #[pin]
-    state: State<F, E>,
-    permit: OwnedSemaphorePermit,
+pin_project! {
+    pub(crate) struct ResponseFuture<F, E> {
+        #[pin]
+        state: State<F, E>,
+        permit: OwnedSemaphorePermit,
+    }
 }
 
-#[pin_project(project = StateProj)]
-enum State<F, E> {
-    Channel(oneshot::Receiver<WorkerReply<F, E>>),
-    Future(#[pin] F),
+pin_project! {
+    #[project = StateProj]
+    enum State<F, E> {
+        Channel { reply_rx: oneshot::Receiver<WorkerReply<F, E>> },
+        Future { #[pin] future: F },
+    }
 }
 
 impl<F, E, T> Future for ResponseFuture<F, E>
@@ -149,16 +152,16 @@ where
             let mut this = self.as_mut().project();
 
             let new_state = match this.state.as_mut().project() {
-                StateProj::Channel(reply_rx) => {
+                StateProj::Channel { reply_rx } => {
                     let msg = ready!(Pin::new(reply_rx).poll(cx))
                         .expect("buffer worker not running. This is a bug in axum and should never happen. Please file an issue");
 
                     match msg {
-                        WorkerReply::Future(future) => State::Future(future),
+                        WorkerReply::Future(future) => State::Future { future },
                         WorkerReply::Error(err) => return Poll::Ready(Err(err)),
                     }
                 }
-                StateProj::Future(future) => {
+                StateProj::Future { future } => {
                     return future.poll(cx);
                 }
             };

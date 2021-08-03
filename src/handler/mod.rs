@@ -444,7 +444,7 @@ where
             let res = Handler::call(handler, req).await;
             Ok(res)
         });
-        future::IntoServiceFuture(future)
+        future::IntoServiceFuture { future }
     }
 }
 
