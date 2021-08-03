@@ -735,7 +735,6 @@ pub mod handler;
 pub mod response;
 pub mod routing;
 pub mod service;
-pub mod sse;
 
 #[cfg(feature = "ws")]
 #[cfg_attr(docsrs, doc(cfg(feature = "ws")))]

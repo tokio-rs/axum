@@ -4,7 +4,13 @@
 //! cargo run --example sse --features=headers
 //! ```
 
-use axum::{extract::TypedHeader, prelude::*, routing::nest, service::ServiceExt, sse::Event};
+use axum::{
+    extract::TypedHeader,
+    prelude::*,
+    response::sse::{sse, Event, Sse},
+    routing::nest,
+    service::ServiceExt,
+};
 use futures::stream::{self, Stream};
 use http::StatusCode;
 use std::{convert::Infallible, net::SocketAddr, time::Duration};
@@ -29,7 +35,7 @@ async fn main() {
                 }),
         ),
     )
-    .route("/sse", axum::sse::sse(make_stream))
+    .route("/sse", get(sse_handler))
     .layer(TraceLayer::new_for_http());
 
     // run it
@@ -41,10 +47,9 @@ async fn main() {
         .unwrap();
 }
 
-async fn make_stream(
-    // sse handlers can also use extractors
+async fn sse_handler(
     TypedHeader(user_agent): TypedHeader<headers::UserAgent>,
-) -> Result<impl Stream<Item = Result<Event, Infallible>>, Infallible> {
+) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
     println!("`{}` connected", user_agent.as_str());
 
     // A `Stream` that repeats an event every second
@@ -52,5 +57,5 @@ async fn make_stream(
         .map(Ok)
         .throttle(Duration::from_secs(1));
 
-    Ok(stream)
+    sse(stream)
 }

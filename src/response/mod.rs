@@ -7,6 +7,8 @@ use serde::Serialize;
 use std::{borrow::Cow, convert::Infallible};
 use tower::util::Either;
 
+pub mod sse;
+
 /// Trait for generating responses.
 ///
 /// Types that implement `IntoResponse` can be returned from handlers.
