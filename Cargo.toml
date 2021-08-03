@@ -24,7 +24,7 @@ futures-util = "0.3"
 http = "0.2"
 http-body = "0.4.2"
 hyper = { version = "0.14", features = ["server", "tcp", "http1", "stream"] }
-pin-project = "1.0"
+pin-project-lite = "0.2.7"
 regex = "1.5"
 serde = "1.0"
 serde_json = "1.0"

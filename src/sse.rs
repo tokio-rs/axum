@@ -81,7 +81,7 @@ use futures_util::{
 };
 use http::{Request, Response};
 use hyper::Body;
-use pin_project::pin_project;
+use pin_project_lite::pin_project;
 use serde::Serialize;
 use std::{
     borrow::Cow,
@@ -245,49 +245,51 @@ where
         let handler = self.handler.clone();
         let keep_alive = self.keep_alive.clone();
 
-        ResponseFuture(Box::pin(async move {
-            let mut req = RequestParts::new(req);
-            let input = match T::from_request(&mut req).await {
-                Ok(input) => input,
-                Err(err) => {
-                    return Ok(err.into_response().map(box_body));
-                }
-            };
+        ResponseFuture {
+            future: Box::pin(async move {
+                let mut req = RequestParts::new(req);
+                let input = match T::from_request(&mut req).await {
+                    Ok(input) => input,
+                    Err(err) => {
+                        return Ok(err.into_response().map(box_body));
+                    }
+                };
 
-            let stream = match handler.call(input).await {
-                Ok(stream) => stream,
-                Err(err) => {
-                    return Ok(err.into_response().map(box_body));
-                }
-            };
+                let stream = match handler.call(input).await {
+                    Ok(stream) => stream,
+                    Err(err) => {
+                        return Ok(err.into_response().map(box_body));
+                    }
+                };
 
-            let stream = if let Some(keep_alive) = keep_alive {
-                KeepAliveStream {
-                    event_stream: stream,
-                    comment_text: keep_alive.comment_text,
-                    max_interval: keep_alive.max_interval,
-                    alive_timer: tokio::time::sleep(keep_alive.max_interval),
-                }
-                .left_stream()
-            } else {
-                stream.into_stream().right_stream()
-            };
+                let stream = if let Some(keep_alive) = keep_alive {
+                    KeepAliveStream {
+                        event_stream: stream,
+                        comment_text: keep_alive.comment_text,
+                        max_interval: keep_alive.max_interval,
+                        alive_timer: tokio::time::sleep(keep_alive.max_interval),
+                    }
+                    .left_stream()
+                } else {
+                    stream.into_stream().right_stream()
+                };
 
-            let stream = stream
-                .map_ok(|event| event.to_string())
-                .map_err(|err| BoxStdError(err.into()))
-                .into_stream();
+                let stream = stream
+                    .map_ok(|event| event.to_string())
+                    .map_err(|err| BoxStdError(err.into()))
+                    .into_stream();
 
-            let body = box_body(Body::wrap_stream(stream));
+                let body = box_body(Body::wrap_stream(stream));
 
-            let response = Response::builder()
-                .header(http::header::CONTENT_TYPE, "text/event-stream")
-                .header(http::header::CACHE_CONTROL, "no-cache")
-                .body(body)
-                .unwrap();
+                let response = Response::builder()
+                    .header(http::header::CONTENT_TYPE, "text/event-stream")
+                    .header(http::header::CACHE_CONTROL, "no-cache")
+                    .body(body)
+                    .unwrap();
 
-            Ok(response)
-        }))
+                Ok(response)
+            }),
+        }
     }
 }
 
@@ -483,14 +485,15 @@ impl Default for KeepAlive {
     }
 }
 
-#[pin_project]
-struct KeepAliveStream<S> {
-    #[pin]
-    event_stream: S,
-    comment_text: Cow<'static, str>,
-    max_interval: Duration,
-    #[pin]
-    alive_timer: Sleep,
+pin_project! {
+    struct KeepAliveStream<S> {
+        #[pin]
+        event_stream: S,
+        comment_text: Cow<'static, str>,
+        max_interval: Duration,
+        #[pin]
+        alive_timer: Sleep,
+    }
 }
 
 impl<S> Stream for KeepAliveStream<S>

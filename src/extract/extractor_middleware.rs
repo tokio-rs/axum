@@ -7,7 +7,7 @@ use crate::{body::BoxBody, response::IntoResponse};
 use bytes::Bytes;
 use futures_util::{future::BoxFuture, ready};
 use http::{Request, Response};
-use pin_project::pin_project;
+use pin_project_lite::pin_project;
 use std::{
     fmt,
     future::Future,
@@ -178,33 +178,38 @@ where
         });
 
         ExtractorMiddlewareResponseFuture {
-            state: State::Extracting(extract_future),
+            state: State::Extracting {
+                future: extract_future,
+            },
             svc: Some(self.inner.clone()),
         }
     }
 }
 
-/// Response future for [`ExtractorMiddleware`].
-#[allow(missing_debug_implementations)]
-#[pin_project]
-pub struct ExtractorMiddlewareResponseFuture<ReqBody, S, E>
-where
-    E: FromRequest<ReqBody>,
-    S: Service<Request<ReqBody>>,
-{
-    #[pin]
-    state: State<ReqBody, S, E>,
-    svc: Option<S>,
+pin_project! {
+    /// Response future for [`ExtractorMiddleware`].
+    #[allow(missing_debug_implementations)]
+    pub struct ExtractorMiddlewareResponseFuture<ReqBody, S, E>
+    where
+        E: FromRequest<ReqBody>,
+        S: Service<Request<ReqBody>>,
+    {
+        #[pin]
+        state: State<ReqBody, S, E>,
+        svc: Option<S>,
+    }
 }
 
-#[pin_project(project = StateProj)]
-enum State<ReqBody, S, E>
-where
-    E: FromRequest<ReqBody>,
-    S: Service<Request<ReqBody>>,
-{
-    Extracting(BoxFuture<'static, (RequestParts<ReqBody>, Result<E, E::Rejection>)>),
-    Call(#[pin] S::Future),
+pin_project! {
+    #[project = StateProj]
+    enum State<ReqBody, S, E>
+    where
+        E: FromRequest<ReqBody>,
+        S: Service<Request<ReqBody>>,
+    {
+        Extracting { future: BoxFuture<'static, (RequestParts<ReqBody>, Result<E, E::Rejection>)> },
+        Call { #[pin] future: S::Future },
+    }
 }
 
 impl<ReqBody, S, E, ResBody> Future for ExtractorMiddlewareResponseFuture<ReqBody, S, E>
@@ -221,14 +226,14 @@ where
             let mut this = self.as_mut().project();
 
             let new_state = match this.state.as_mut().project() {
-                StateProj::Extracting(future) => {
+                StateProj::Extracting { future } => {
                     let (mut req, extracted) = ready!(future.as_mut().poll(cx));
 
                     match extracted {
                         Ok(_) => {
                             let mut svc = this.svc.take().expect("future polled after completion");
                             let future = svc.call(req.into_request());
-                            State::Call(future)
+                            State::Call { future }
                         }
                         Err(err) => {
                             let res = err.into_response().map(crate::body::box_body);
@@ -236,7 +241,7 @@ where
                         }
                     }
                 }
-                StateProj::Call(future) => {
+                StateProj::Call { future } => {
                     return future
                         .poll(cx)
                         .map(|result| result.map(|response| response.map(crate::body::box_body)));
