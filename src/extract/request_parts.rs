@@ -2,8 +2,7 @@ use super::{rejection::*, take_body, FromRequest, RequestParts};
 use async_trait::async_trait;
 use bytes::Bytes;
 use futures_util::stream::Stream;
-use headers::HeaderMap;
-use http::{Method, Request, Uri, Version};
+use http::{HeaderMap, Method, Request, Uri, Version};
 use std::{
     pin::Pin,
     task::{Context, Poll},
