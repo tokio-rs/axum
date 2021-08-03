@@ -16,3 +16,4 @@
 - [`sessions`](../examples/sessions.rs) - Sessions and cookies using [`async-session`](https://crates.io/crates/async-session).
 - [`tls_rustls`](../examples/tls_rustls.rs) - TLS with [`tokio-rustls`](https://crates.io/crates/tokio-rustls).
 - [`chat`](../examples/chat.rs) - Chat application example.
+- [`404`](../examples/404.rs) - Custom 404 page.
