@@ -29,6 +29,8 @@ use tower::{
 };
 use tower_http::map_response_body::MapResponseBodyLayer;
 
+pub mod or;
+
 /// A filter that matches one or more HTTP methods.
 #[derive(Debug, Copy, Clone)]
 pub enum MethodFilter {
@@ -355,11 +357,35 @@ pub trait RoutingDsl: crate::sealed::Sealed + Sized {
         IntoMakeServiceWithConnectInfo::new(self)
     }
 
-    // TODO(david): Could doing `.or` with some random service lead to strange
-    // behavior?
-    // Could `where S: RoutingDsl` prevent misuse?
-    fn or<S>(self, other: S) -> Or<Self, S> {
-        Or {
+    /// Merge two routers into one.
+    ///
+    /// This is useful for breaking apps into smaller pieces and combining them
+    /// into one.
+    ///
+    /// ```
+    /// use axum::prelude::*;
+    /// #
+    /// # async fn users_list() {}
+    /// # async fn users_show() {}
+    /// # async fn teams_list() {}
+    ///
+    /// // define some routes separately
+    /// let user_routes = route("/users", get(users_list))
+    ///     .route("/users/:id", get(users_show));
+    ///
+    /// let team_routes = route("/teams", get(teams_list));
+    ///
+    /// // combine them into one
+    /// let app = user_routes.or(team_routes);
+    /// # async {
+    /// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+    /// # };
+    /// ```
+    fn or<S>(self, other: S) -> or::Or<Self, S>
+    where
+        S: RoutingDsl,
+    {
+        or::Or {
             first: self,
             second: other,
         }
@@ -519,7 +545,6 @@ impl<E> crate::sealed::Sealed for EmptyRouter<E> {}
 
 impl<B, E> Service<Request<B>> for EmptyRouter<E>
 where
-    // TODO(david): breaking change
     B: Send + Sync + 'static,
 {
     type Response = Response<BoxBody>;
@@ -1024,57 +1049,6 @@ fn strip_prefix(uri: &Uri, prefix: &str) -> Uri {
     parts.path_and_query = path_and_query;
 
     Uri::from_parts(parts).unwrap()
-}
-
-#[derive(Debug, Clone, Copy)]
-pub struct Or<A, B> {
-    first: A,
-    second: B,
-}
-
-impl<A, B> RoutingDsl for Or<A, B> {}
-
-impl<A, B> crate::sealed::Sealed for Or<A, B> {}
-
-#[allow(warnings)]
-impl<A, B, ReqBody> Service<Request<ReqBody>> for Or<A, B>
-where
-    A: Service<Request<ReqBody>, Response = Response<BoxBody>> + Clone,
-    B: Service<Request<ReqBody>, Response = Response<BoxBody>, Error = A::Error> + Clone,
-    ReqBody: Send + Sync + 'static,
-    A: Send + 'static,
-    B: Send + 'static,
-    A::Future: Send + 'static,
-    B::Future: Send + 'static,
-{
-    type Response = Response<BoxBody>;
-    type Error = A::Error;
-    // TODO(david): don't use a boxed future here
-    type Future = futures_util::future::BoxFuture<'static, Result<Self::Response, Self::Error>>;
-
-    fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        Poll::Ready(Ok(()))
-    }
-
-    fn call(&mut self, req: Request<ReqBody>) -> Self::Future {
-        let mut first = self.first.clone();
-        let mut second = self.second.clone();
-
-        Box::pin(async move {
-            let mut response: Response<BoxBody> = first.oneshot(req).await?;
-
-            let req = if let Some(ext) = response
-                .extensions_mut()
-                .remove::<FromEmptyRouter<ReqBody>>()
-            {
-                ext.request
-            } else {
-                return Ok(response);
-            };
-
-            second.oneshot(req).await
-        })
-    }
 }
 
 #[cfg(test)]

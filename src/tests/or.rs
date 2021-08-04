@@ -1,4 +1,4 @@
-use tower::timeout::TimeoutLayer;
+use tower::{limit::ConcurrencyLimitLayer, timeout::TimeoutLayer};
 
 use super::*;
 
@@ -42,6 +42,31 @@ async fn basic() {
 }
 
 #[tokio::test]
+async fn layer() {
+    let one = route("/foo", get(|| async {}));
+    let two = route("/bar", get(|| async {})).layer(ConcurrencyLimitLayer::new(10));
+    let app = one.or(two);
+
+    let addr = run_in_background(app).await;
+
+    let client = reqwest::Client::new();
+
+    let res = client
+        .get(format!("http://{}/foo", addr))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+
+    let res = client
+        .get(format!("http://{}/bar", addr))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+}
+
+#[tokio::test]
 async fn layer_and_handle_error() {
     let one = route("/foo", get(|| async {}));
     let two = route("/time-out", get(futures::future::pending::<()>))
@@ -60,8 +85,6 @@ async fn layer_and_handle_error() {
         .unwrap();
     assert_eq!(res.status(), StatusCode::REQUEST_TIMEOUT);
 }
-
-// TODO(david): layered without handle error
 
 #[tokio::test]
 async fn nesting() {
@@ -99,8 +122,6 @@ async fn boxed() {
     assert_eq!(res.status(), StatusCode::OK);
 }
 
-// TODO(david): boxed
-
 #[tokio::test]
 async fn many_ors() {
     let app = route("/r1", get(|| async {}))
@@ -132,4 +153,36 @@ async fn many_ors() {
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
 }
 
-// TODO(david): service
+#[tokio::test]
+async fn services() {
+    let app = route(
+        "/foo",
+        crate::service::get(service_fn(|_: Request<Body>| async {
+            Ok::<_, Infallible>(Response::new(Body::empty()))
+        })),
+    )
+    .or(route(
+        "/bar",
+        crate::service::get(service_fn(|_: Request<Body>| async {
+            Ok::<_, Infallible>(Response::new(Body::empty()))
+        })),
+    ));
+
+    let addr = run_in_background(app).await;
+
+    let client = reqwest::Client::new();
+
+    let res = client
+        .get(format!("http://{}/foo", addr))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+
+    let res = client
+        .get(format!("http://{}/bar", addr))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+}
