@@ -17,3 +17,4 @@
 - [`tls_rustls`](../examples/tls_rustls.rs) - TLS with [`tokio-rustls`](https://crates.io/crates/tokio-rustls).
 - [`chat`](../examples/chat.rs) - Chat application example.
 - [`404`](../examples/404.rs) - Custom 404 page.
+- [`async-graphql`](../examples/async-graphql) - GraphQL example using [`async-graphql`](https://crates.io/crates/async-graphql).
