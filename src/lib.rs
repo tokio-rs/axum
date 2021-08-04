@@ -624,21 +624,24 @@
 //!
 //! # Required dependencies
 //!
-//! To use Axum there are a few dependencies you have pull in as well:
+//! To use axum there are a few dependencies you have pull in as well:
 //!
-//! ```not_rust
+//! ```toml
 //! [dependencies]
 //! axum = "<latest-version>"
-//!
-//! // "full" isn't strictly necessary for tokio and hyper but its the
-//! // easiest way to get started.
 //! hyper = { version = "<latest-version>", features = ["full"] }
 //! tokio = { version = "<latest-version>", features = ["full"] }
-//!
-//! // Not strictly necessary but helpful for testing. There is a
-//! // testing example in the repo that shows how to test axum apps.
 //! tower = "<latest-version>"
 //! ```
+//!
+//! The `"full"` feature for hyper and tokio isn't strictly necessary but its
+//! the easiest way to get started.
+//!
+//! Note that [`hyper::Server`] is re-exported by axum so if thats all you need
+//! then you don't have to explicitly depend on hyper.
+//!
+//! Tower isn't strictly necessary either but helpful for testing. See the
+//! testing example in the repo to learn more about testing axum apps.
 //!
 //! # Examples
 //!
@@ -665,6 +668,7 @@
 //! [`IntoResponse`]: crate::response::IntoResponse
 //! [`Timeout`]: tower::timeout::Timeout
 //! [examples]: https://github.com/tokio-rs/axum/tree/main/examples
+//! [`hyper::Server`]: hyper::server::Server
 
 #![doc(html_root_url = "https://docs.rs/axum/0.1.2")]
 #![warn(
