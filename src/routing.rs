@@ -182,7 +182,7 @@ pub trait RoutingDsl: crate::sealed::Sealed + Sized {
     /// This can be used to add additional processing to a request for a group
     /// of routes.
     ///
-    /// Note this differes from [`handler::Layered`](crate::handler::Layered)
+    /// Note this differs from [`handler::Layered`](crate::handler::Layered)
     /// which adds a middleware to a single handler.
     ///
     /// # Example

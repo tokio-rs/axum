@@ -32,7 +32,7 @@ use std::ops::Deref;
 /// # };
 /// ```
 ///
-/// If the extension is missing it will reject the request with a `500 Interal
+/// If the extension is missing it will reject the request with a `500 Internal
 /// Server Error` response.
 #[derive(Debug, Clone, Copy)]
 pub struct Extension<T>(pub T);
