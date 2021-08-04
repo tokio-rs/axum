@@ -626,17 +626,17 @@
 //!
 //! To use Axum there are a few dependencies you have pull in as well:
 //!
-//! ```toml
+//! ```not_rust
 //! [dependencies]
 //! axum = "<latest-version>"
 //!
-//! # "full" isn't strictly necessary for tokio and hyper but its the
-//! # easiest way to get started.
+//! // "full" isn't strictly necessary for tokio and hyper but its the
+//! // easiest way to get started.
 //! hyper = { version = "<latest-version>", features = ["full"] }
 //! tokio = { version = "<latest-version>", features = ["full"] }
 //!
-//! # Not strictly necessary but helpful for testing. There is a
-//! # testing example in the repo that shows how to test axum apps.
+//! // Not strictly necessary but helpful for testing. There is a
+//! // testing example in the repo that shows how to test axum apps.
 //! tower = "<latest-version>"
 //! ```
 //!
