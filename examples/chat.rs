@@ -55,20 +55,22 @@ async fn websocket(
     let mut username = String::new();
 
     // Loop until a text message is found.
-    while let Some(Ok(Message::Text(name))) = receiver.next().await {
-        // If username that is sent by client is not taken, fill username string.
-        check_username(&state, &mut username, &name);
+    while let Some(Ok(message)) = receiver.next().await {
+        if let Message::Text(name) = message {
+            // If username that is sent by client is not taken, fill username string.
+            check_username(&state, &mut username, &name);
 
-        // If not empty we want to quit the loop else we want to quit function.
-        if !username.is_empty() {
-            break;
-        } else {
-            // Only send our client that username is taken.
-            let _ = sender
-                .send(Message::Text(String::from("Username already taken.")))
-                .await;
+            // If not empty we want to quit the loop else we want to quit function.
+            if !username.is_empty() {
+                break;
+            } else {
+                // Only send our client that username is taken.
+                let _ = sender
+                    .send(Message::Text(String::from("Username already taken.")))
+                    .await;
 
-            return;
+                return;
+            }
         }
     }
 
