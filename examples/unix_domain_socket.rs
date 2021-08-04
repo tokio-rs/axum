@@ -49,7 +49,7 @@ async fn main() {
     tokio::spawn(async {
         let app = route("/", get(handler));
 
-        hyper::Server::builder(ServerAccept { uds })
+        axum::Server::builder(ServerAccept { uds })
             .serve(app.into_make_service_with_connect_info::<UdsConnectInfo, _>())
             .await
             .unwrap();

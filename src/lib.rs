@@ -47,9 +47,6 @@
 //!
 //! ```rust,no_run
 //! use axum::prelude::*;
-//! use hyper::Server;
-//! use std::net::SocketAddr;
-//! use tower::make::Shared;
 //!
 //! #[tokio::main]
 //! async fn main() {
@@ -57,7 +54,7 @@
 //!     let app = route("/", get(|| async { "Hello, World!" }));
 //!
 //!     // run it with hyper on localhost:3000
-//!     hyper::Server::bind(&"0.0.0.0:3000".parse().unwrap())
+//!     axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())
 //!         .serve(app.into_make_service())
 //!         .await
 //!         .unwrap();
@@ -121,7 +118,7 @@
 //!     // `GET /foo` called
 //! }
 //! # async {
-//! # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+//! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 //! # };
 //! ```
 //!
@@ -209,8 +206,8 @@
 //!
 //! async fn handler() {}
 //! # async {
-//! # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-//! # hyper::Server::bind(&"".parse().unwrap()).serve(wont_work.into_make_service()).await.unwrap();
+//! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+//! # axum::Server::bind(&"".parse().unwrap()).serve(wont_work.into_make_service()).await.unwrap();
 //! # };
 //! ```
 //!
@@ -240,7 +237,7 @@
 //!     // ...
 //! }
 //! # async {
-//! # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+//! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 //! # };
 //! ```
 //!
@@ -260,7 +257,7 @@
 //!     // ...
 //! }
 //! # async {
-//! # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+//! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 //! # };
 //! ```
 //!
@@ -298,7 +295,7 @@
 //!     // ...
 //! }
 //! # async {
-//! # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+//! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 //! # };
 //! ```
 //!
@@ -313,7 +310,7 @@
 //!     // ...
 //! }
 //! # async {
-//! # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+//! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 //! # };
 //! ```
 //!
@@ -397,7 +394,7 @@
 //!     .route("/result", get(result))
 //!     .route("/response", get(response));
 //! # async {
-//! # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+//! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 //! # };
 //! ```
 //!
@@ -421,7 +418,7 @@
 //!
 //! async fn handler() {}
 //! # async {
-//! # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+//! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 //! # };
 //! ```
 //!
@@ -441,7 +438,7 @@
 //!
 //! async fn post_foo() {}
 //! # async {
-//! # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+//! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 //! # };
 //! ```
 //!
@@ -455,7 +452,7 @@
 //! However when applying middleware, or embedding other tower services, errors
 //! might happen. For example [`Timeout`] will return an error if the timeout
 //! elapses. By default these errors will be propagated all the way up to hyper
-//! where the connection will be closed. If that isn't desireable you can call
+//! where the connection will be closed. If that isn't desirable you can call
 //! [`handle_error`](handler::Layered::handle_error) to handle errors from
 //! adding a middleware to a handler:
 //!
@@ -494,7 +491,7 @@
 //!
 //! async fn handle() {}
 //! # async {
-//! # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+//! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 //! # };
 //! ```
 //!
@@ -502,7 +499,7 @@
 //! return `Result<T, E>` where `T` implements
 //! [`IntoResponse`](response::IntoResponse).
 //!
-//! See [`routing::Layered::handle_error`] fo more details.
+//! See [`routing::Layered::handle_error`] for more details.
 //!
 //! ## Applying multiple middleware
 //!
@@ -528,7 +525,7 @@
 //! let app = route("/", get(|_: Request<Body>| async { /* ... */ }))
 //!     .layer(middleware_stack);
 //! # async {
-//! # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+//! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 //! # };
 //! ```
 //!
@@ -559,7 +556,7 @@
 //!     // ...
 //! }
 //! # async {
-//! # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+//! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 //! # };
 //! ```
 //!
@@ -600,7 +597,7 @@
 //!     service::get(ServeFile::new("Cargo.toml"))
 //! );
 //! # async {
-//! # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+//! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 //! # };
 //! ```
 //!
@@ -623,35 +620,35 @@
 //! let app = route("/", get(|_: Request<Body>| async { /* ... */ }))
 //!     .nest("/api", api_routes());
 //! # async {
-//! # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+//! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 //! # };
 //! ```
 //!
 //! # Required dependencies
 //!
-//! To use Axum there are a few dependencies you have pull in as well:
+//! To use axum there are a few dependencies you have pull in as well:
 //!
 //! ```toml
 //! [dependencies]
 //! axum = "<latest-version>"
-//!
-//! # For http types like `StatusCode`, `Method`, and `Response`
-//! http = "<latest-version>"
-//!
-//! # "full" isn't strictly necessary for tokio and hyper but its the
-//! # easiest way to get started.
 //! hyper = { version = "<latest-version>", features = ["full"] }
 //! tokio = { version = "<latest-version>", features = ["full"] }
-//!
-//! # Not strictly necessary but helpful for testing. There is a
-//! # testing example in the repo that shows how to test axum apps.
 //! tower = "<latest-version>"
 //! ```
+//!
+//! The `"full"` feature for hyper and tokio isn't strictly necessary but its
+//! the easiest way to get started.
+//!
+//! Note that [`axum::Server`] is re-exported by axum so if thats all you need
+//! then you don't have to explicitly depend on hyper.
+//!
+//! Tower isn't strictly necessary either but helpful for testing. See the
+//! testing example in the repo to learn more about testing axum apps.
 //!
 //! # Examples
 //!
 //! The axum repo contains [a number of examples][examples] that show how to put all the
-//! pieces togehter.
+//! pieces together.
 //!
 //! # Feature flags
 //!
@@ -661,7 +658,7 @@
 //! The following optional features are available:
 //!
 //! - `ws`: Enables WebSockets support.
-//! - `headers`: Enables extracing typed headers via [`extract::TypedHeader`].
+//! - `headers`: Enables extracting typed headers via [`extract::TypedHeader`].
 //! - `multipart`: Enables parsing `multipart/form-data` requests with [`extract::Multipart`].
 //!
 //! [`tower`]: https://crates.io/crates/tower
@@ -674,6 +671,7 @@
 //! [`Timeout`]: tower::timeout::Timeout
 //! [examples]: https://github.com/tokio-rs/axum/tree/main/examples
 //! [`RoutingDsl::or`]: crate::routing::RoutingDsl::or
+//! [`axum::Server`]: hyper::server::Server
 
 #![doc(html_root_url = "https://docs.rs/axum/0.1.2")]
 #![warn(
@@ -711,12 +709,7 @@
     missing_docs
 )]
 #![deny(unreachable_pub, broken_intra_doc_links, private_in_public)]
-#![allow(
-    elided_lifetimes_in_paths,
-    // TODO: Remove this once the MSRV bumps to 1.42.0 or above.
-    clippy::match_like_matches_macro,
-    clippy::type_complexity
-)]
+#![allow(elided_lifetimes_in_paths, clippy::type_complexity)]
 #![forbid(unsafe_code)]
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![cfg_attr(test, allow(clippy::float_cmp))]
@@ -748,6 +741,10 @@ pub mod ws;
 mod tests;
 
 pub use async_trait::async_trait;
+#[doc(no_inline)]
+pub use http;
+#[doc(no_inline)]
+pub use hyper::Server;
 pub use tower_http::add_extension::{AddExtension, AddExtensionLayer};
 
 pub mod prelude {

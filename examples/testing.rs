@@ -15,7 +15,7 @@ async fn main() {
 
     tracing::debug!("listening on {}", addr);
 
-    hyper::Server::bind(&addr)
+    axum::Server::bind(&addr)
         .serve(app().into_make_service())
         .await
         .unwrap();
@@ -113,7 +113,7 @@ mod tests {
         let addr = listener.local_addr().unwrap();
 
         tokio::spawn(async move {
-            hyper::Server::from_tcp(listener)
+            axum::Server::from_tcp(listener)
                 .unwrap()
                 .serve(app().into_make_service())
                 .await

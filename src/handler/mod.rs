@@ -34,7 +34,7 @@ pub mod future;
 /// // All requests to `/` will go to `handler` regardless of the HTTP method.
 /// let app = route("/", any(handler));
 /// # async {
-/// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+/// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 /// # };
 /// ```
 pub fn any<H, B, T>(handler: H) -> OnMethod<IntoService<H, B, T>, EmptyRouter>
@@ -76,7 +76,7 @@ where
 /// // Requests to `GET /` will go to `handler`.
 /// let app = route("/", get(handler));
 /// # async {
-/// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+/// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 /// # };
 /// ```
 pub fn get<H, B, T>(handler: H) -> OnMethod<IntoService<H, B, T>, EmptyRouter>
@@ -158,7 +158,7 @@ where
 /// // Requests to `POST /` will go to `handler`.
 /// let app = route("/", on(MethodFilter::Post, handler));
 /// # async {
-/// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+/// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 /// # };
 /// ```
 pub fn on<H, B, T>(method: MethodFilter, handler: H) -> OnMethod<IntoService<H, B, T>, EmptyRouter>
@@ -204,7 +204,7 @@ pub trait Handler<B, In>: Sized {
     /// This can be used to add additional processing to a request for a single
     /// handler.
     ///
-    /// Note this differes from [`routing::Layered`](crate::routing::Layered)
+    /// Note this differs from [`routing::Layered`](crate::routing::Layered)
     /// which adds a middleware to a group of routes.
     ///
     /// # Example
@@ -221,7 +221,7 @@ pub trait Handler<B, In>: Sized {
     /// let layered_handler = handler.layer(ConcurrencyLimitLayer::new(64));
     /// let app = route("/", get(layered_handler));
     /// # async {
-    /// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+    /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
     /// # };
     /// ```
     ///
@@ -504,7 +504,7 @@ impl<S, F> OnMethod<S, F> {
     /// // `other_handler`.
     /// let app = route("/", post(handler).get(other_handler));
     /// # async {
-    /// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+    /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
     /// # };
     /// ```
     pub fn get<H, B, T>(self, handler: H) -> OnMethod<IntoService<H, B, T>, Self>
@@ -590,7 +590,7 @@ impl<S, F> OnMethod<S, F> {
     /// // `other_handler`
     /// let app = route("/", get(handler).on(MethodFilter::Delete, other_handler));
     /// # async {
-    /// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+    /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
     /// # };
     /// ```
     pub fn on<H, B, T>(

@@ -42,6 +42,7 @@ define_rejection! {
 define_rejection! {
     #[status = BAD_REQUEST]
     #[body = "Query string was invalid or missing"]
+    #[deprecated(since = "0.1.3", note = "No longer used. See https://github.com/tokio-rs/axum/pull/117")]
     /// Rejection type for [`Query`](super::Query).
     pub struct QueryStringMissing;
 }

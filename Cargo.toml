@@ -59,6 +59,10 @@ uuid = { version = "0.8", features = ["serde", "v4"] }
 async-session = "3.0.0"
 tokio-stream = "0.1.7"
 
+# for async-graphql example
+async-graphql = "2.9.9"
+slab = "0.4.3"
+
 [dev-dependencies.tower]
 version = "0.4"
 features = [
@@ -96,3 +100,7 @@ required-features = ["headers"]
 [[example]]
 name = "websocket"
 required-features = ["ws", "headers"]
+
+[[example]]
+name = "async-graphql"
+required-features = ["headers"]
