@@ -717,7 +717,7 @@
 
 use self::body::Body;
 use http::Request;
-use routing::{EmptyRouter, Route};
+use routing::{EmptyRouter, Route, RoutePath};
 use tower::Service;
 
 #[macro_use]
@@ -790,9 +790,10 @@ pub mod prelude {
 /// # Panics
 ///
 /// Panics if `description` doesn't start with `/`.
-pub fn route<S, B>(description: &str, service: S) -> Route<S, EmptyRouter<S::Error>>
+pub fn route<S, B, P>(description: P, service: S) -> Route<S, EmptyRouter<S::Error>>
 where
     S: Service<Request<B>> + Clone,
+    P: Into<RoutePath>,
 {
     use routing::RoutingDsl;
 

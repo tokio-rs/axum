@@ -73,13 +73,34 @@ impl MethodFilter {
     }
 }
 
+/// Represents one or more [`PathPattern`] to associated with a given handler
+#[derive(Debug, Clone)]
+pub enum RoutePath {
+    /// Match a single path
+    One(PathPattern),
+    /// Match multiple paths
+    Multi(Vec<PathPattern>),
+}
+
+impl From<&str> for RoutePath {
+    fn from(one: &str) -> Self {
+        Self::One(PathPattern::new(one))
+    }
+}
+
+impl<T: AsRef<str>> From<&[T]> for RoutePath {
+    fn from(many: &[T]) -> Self {
+        Self::Multi(many.iter().map(|p| PathPattern::new(p.as_ref())).collect())
+    }
+}
+
 /// A route that sends requests to one of two [`Service`]s depending on the
 /// path.
 ///
 /// Created with [`route`](crate::route). See that function for more details.
 #[derive(Debug, Clone)]
 pub struct Route<S, F> {
-    pub(crate) pattern: PathPattern,
+    pub(crate) pattern: RoutePath,
     pub(crate) svc: S,
     pub(crate) fallback: F,
 }
@@ -108,16 +129,28 @@ pub trait RoutingDsl: crate::sealed::Sealed + Sized {
     /// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
     /// # };
     /// ```
-    fn route<T, B>(self, description: &str, svc: T) -> Route<T, Self>
+    fn route<T, B, P>(self, description: P, svc: T) -> Route<T, Self>
     where
         T: Service<Request<B>> + Clone,
+        P: Into<RoutePath>,
     {
         Route {
-            pattern: PathPattern::new(description),
+            pattern: description.into(),
             svc,
             fallback: self,
         }
     }
+
+    // fn multi_route<T, B, R>(self, description: R, svc: T) -> Route<T, Self>
+    //     where R: Into<RoutePath>,
+    //     T: Service<Request<B>> + Clone,
+    // {
+    //     Route {
+    //         pattern: vec![PathPattern::new(description)],
+    //         self.svc,
+    //         fallback: self,
+    //     }
+    // }
 
     /// Nest another service inside this router at the given path.
     ///
@@ -373,14 +406,34 @@ where
         Poll::Ready(Ok(()))
     }
 
-    fn call(&mut self, mut req: Request<B>) -> Self::Future {
-        if let Some(captures) = self.pattern.full_match(req.uri().path()) {
+    fn call(&mut self, req: Request<B>) -> Self::Future {
+        let handle_match = |captures: Vec<(String, String)>, mut req: Request<B>| -> Self::Future {
             insert_url_params(&mut req, captures);
             let fut = self.svc.clone().oneshot(req);
             RouteFuture::a(fut)
-        } else {
-            let fut = self.fallback.clone().oneshot(req);
-            RouteFuture::b(fut)
+        };
+        let handle_fallback = |req: Request<B>| -> Self::Future {
+            let fut = self.svc.clone().oneshot(req);
+            RouteFuture::a(fut)
+        };
+
+        match &self.pattern {
+            RoutePath::One(pattern) => {
+                if let Some(captures) = pattern.full_match(req.uri().path()) {
+                    handle_match(captures, req)
+                } else {
+                    handle_fallback(req)
+                }
+            }
+            RoutePath::Multi(patterns) => {
+                while let Some(pattern) = patterns.iter().next() {
+                    if let Some(captures) = pattern.full_match(req.uri().path()) {
+                        return handle_match(captures, req);
+                    }
+                }
+
+                handle_fallback(req)
+            }
         }
     }
 }
@@ -531,8 +584,9 @@ opaque_future! {
         future::Ready<Result<Response<BoxBody>, E>>;
 }
 
+/// Represents a literal endpoint or capturable segment
 #[derive(Debug, Clone)]
-pub(crate) struct PathPattern(Arc<Inner>);
+pub struct PathPattern(Arc<Inner>);
 
 #[derive(Debug)]
 struct Inner {
