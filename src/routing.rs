@@ -84,12 +84,13 @@ pub enum RoutePath {
 
 impl From<&str> for RoutePath {
     fn from(one: &str) -> Self {
+        dbg!(&one);
         Self::One(PathPattern::new(one))
     }
 }
 
-impl<T: AsRef<str>> From<&[T]> for RoutePath {
-    fn from(many: &[T]) -> Self {
+impl<T: AsRef<str>, const N: usize> From<&[T; N]> for RoutePath {
+    fn from(many: &[T; N]) -> Self {
         Self::Multi(many.iter().map(|p| PathPattern::new(p.as_ref())).collect())
     }
 }
@@ -140,17 +141,6 @@ pub trait RoutingDsl: crate::sealed::Sealed + Sized {
             fallback: self,
         }
     }
-
-    // fn multi_route<T, B, R>(self, description: R, svc: T) -> Route<T, Self>
-    //     where R: Into<RoutePath>,
-    //     T: Service<Request<B>> + Clone,
-    // {
-    //     Route {
-    //         pattern: vec![PathPattern::new(description)],
-    //         self.svc,
-    //         fallback: self,
-    //     }
-    // }
 
     /// Nest another service inside this router at the given path.
     ///
@@ -413,20 +403,21 @@ where
             RouteFuture::a(fut)
         };
         let handle_fallback = |req: Request<B>| -> Self::Future {
-            let fut = self.svc.clone().oneshot(req);
-            RouteFuture::a(fut)
+            let fut = self.fallback.clone().oneshot(req);
+            RouteFuture::b(fut)
         };
 
         match &self.pattern {
             RoutePath::One(pattern) => {
                 if let Some(captures) = pattern.full_match(req.uri().path()) {
+                    dbg!(&captures);
                     handle_match(captures, req)
                 } else {
                     handle_fallback(req)
                 }
             }
             RoutePath::Multi(patterns) => {
-                while let Some(pattern) = patterns.iter().next() {
+                for pattern in patterns {
                     if let Some(captures) = pattern.full_match(req.uri().path()) {
                         return handle_match(captures, req);
                     }
