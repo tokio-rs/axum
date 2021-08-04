@@ -13,7 +13,7 @@ None.
 
 - Add associated `Body` and `BodyError` types to `IntoResponse`. This is
   required for returning responses with bodies other than `hyper::Body` from
-  handlers. That wasn't previously possible.
+  handlers. That wasn't previously possible. ([#86](https://github.com/tokio-rs/axum/pull/86))
 
 # 0.1.2 (01. August, 2021)
 
