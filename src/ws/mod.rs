@@ -443,7 +443,10 @@ impl WebSocket {
 
     /// Send a message.
     pub async fn send(&mut self, msg: Message) -> Result<(), BoxError> {
-        self.inner.send(msg.into_tungstenite()).await.map_err(Into::into)
+        self.inner
+            .send(msg.into_tungstenite())
+            .await
+            .map_err(Into::into)
     }
 
     /// Gracefully close this websocket.
