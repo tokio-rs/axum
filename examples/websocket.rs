@@ -74,7 +74,7 @@ async fn handle_socket(
     }
 
     loop {
-        if socket.send(Message::text("Hi!")).await.is_err() {
+        if socket.send(Message::Text(String::from("Hi!"))).await.is_err() {
             println!("client disconnected");
             return;
         }
