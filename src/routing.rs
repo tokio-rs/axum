@@ -574,7 +574,7 @@ opaque_future! {
 /// Response extension used by [`EmptyRouter`] to send the request back to [`Or`] so
 /// the other service can be called.
 ///
-/// Without this we would loose ownership of the response when calling the first
+/// Without this we would loose ownership of the request when calling the first
 /// service in [`Or`]. We also wouldn't be able to identify if the response came
 /// from [`EmptyRouter`] and therefore can be discarded in [`Or`].
 struct FromEmptyRouter<B> {

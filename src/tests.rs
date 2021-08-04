@@ -1,8 +1,13 @@
 #![allow(clippy::blacklisted_name)]
 
 use crate::{
-    extract::RequestParts, handler::on, prelude::*, response::IntoResponse, routing::nest,
-    routing::MethodFilter, service,
+    extract::RequestParts,
+    handler::on,
+    prelude::*,
+    response::IntoResponse,
+    routing::nest,
+    routing::MethodFilter,
+    service::{self, ServiceExt as _},
 };
 use bytes::Bytes;
 use futures_util::future::Ready;

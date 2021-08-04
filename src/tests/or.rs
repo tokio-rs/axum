@@ -186,3 +186,18 @@ async fn services() {
         .unwrap();
     assert_eq!(res.status(), StatusCode::OK);
 }
+
+// TODO(david): can we make this not compile?
+// #[tokio::test]
+// async fn foo() {
+//     let svc_one = service_fn(|_: Request<Body>| async {
+//         Ok::<_, hyper::Error>(Response::new(Body::empty()))
+//     })
+//     .handle_error::<_, _, hyper::Error>(|_| Ok(StatusCode::INTERNAL_SERVER_ERROR));
+
+//     let svc_two = svc_one.clone();
+
+//     let app = svc_one.or(svc_two);
+
+//     let addr = run_in_background(app).await;
+// }
