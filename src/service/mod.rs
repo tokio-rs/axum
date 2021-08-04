@@ -465,13 +465,13 @@ where
 /// [`handler::Layered::handle_error`](crate::handler::Layered::handle_error) or
 /// [`routing::Layered::handle_error`](crate::routing::Layered::handle_error).
 /// See those methods for more details.
-pub struct HandleError<S, F, B> {
+pub struct HandleError<S, F, B, T> {
     inner: S,
     f: F,
-    _marker: PhantomData<fn() -> B>,
+    _marker: PhantomData<fn() -> (B, T)>,
 }
 
-impl<S, F, B> Clone for HandleError<S, F, B>
+impl<S, F, B, T> Clone for HandleError<S, F, B, T>
 where
     S: Clone,
     F: Clone,
@@ -481,11 +481,23 @@ where
     }
 }
 
-impl<S, F, B> crate::routing::RoutingDsl for HandleError<S, F, B> {}
+/// Maker type used for [`HandleError`] to indicate that it should implement
+/// [`RoutingDsl`](crate::routing::RoutingDsl).
+#[non_exhaustive]
+#[derive(Debug)]
+pub struct HandleErrorFromRouter;
 
-impl<S, F, B> crate::sealed::Sealed for HandleError<S, F, B> {}
+/// Maker type used for [`HandleError`] to indicate that it should _not_ implement
+/// [`RoutingDsl`](crate::routing::RoutingDsl).
+#[non_exhaustive]
+#[derive(Debug)]
+pub struct HandleErrorFromService;
 
-impl<S, F, B> HandleError<S, F, B> {
+impl<S, F, B> crate::routing::RoutingDsl for HandleError<S, F, B, HandleErrorFromRouter> {}
+
+impl<S, F, B> crate::sealed::Sealed for HandleError<S, F, B, HandleErrorFromRouter> {}
+
+impl<S, F, B, T> HandleError<S, F, B, T> {
     pub(crate) fn new(inner: S, f: F) -> Self {
         Self {
             inner,
@@ -495,7 +507,7 @@ impl<S, F, B> HandleError<S, F, B> {
     }
 }
 
-impl<S, F, B> fmt::Debug for HandleError<S, F, B>
+impl<S, F, B, T> fmt::Debug for HandleError<S, F, B, T>
 where
     S: fmt::Debug,
 {
@@ -507,7 +519,7 @@ where
     }
 }
 
-impl<S, F, ReqBody, ResBody, Res, E> Service<Request<ReqBody>> for HandleError<S, F, ReqBody>
+impl<S, F, ReqBody, ResBody, Res, E, T> Service<Request<ReqBody>> for HandleError<S, F, ReqBody, T>
 where
     S: Service<Request<ReqBody>, Response = Response<ResBody>> + Clone,
     F: FnOnce(S::Error) -> Result<Res, E> + Clone,
@@ -573,7 +585,7 @@ pub trait ServiceExt<ReqBody, ResBody>:
     /// It works similarly to [`routing::Layered::handle_error`]. See that for more details.
     ///
     /// [`routing::Layered::handle_error`]: crate::routing::Layered::handle_error
-    fn handle_error<F, Res, E>(self, f: F) -> HandleError<Self, F, ReqBody>
+    fn handle_error<F, Res, E>(self, f: F) -> HandleError<Self, F, ReqBody, HandleErrorFromService>
     where
         Self: Sized,
         F: FnOnce(Self::Error) -> Result<Res, E>,
@@ -671,3 +683,21 @@ where
         Poll::Ready(Ok(res))
     }
 }
+
+/// ```compile_fail
+/// use crate::{service::ServiceExt, prelude::*};
+/// use tower::service_fn;
+/// use hyper::Body;
+/// use http::{Request, Response, StatusCode};
+///
+/// let svc = service_fn(|_: Request<Body>| async {
+///     Ok::<_, hyper::Error>(Response::new(Body::empty()))
+/// })
+/// .handle_error::<_, _, hyper::Error>(|_| Ok(StatusCode::INTERNAL_SERVER_ERROR));
+///
+/// // `.route` should not compile, ie `HandleError` created from any
+/// // random service should not implement `RoutingDsl`
+/// svc.route::<_, Body>("/", get(|| async {}));
+/// ```
+#[allow(dead_code)]
+fn compile_fail_tests() {}
