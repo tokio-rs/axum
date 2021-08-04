@@ -7,7 +7,6 @@ use std::{
     fmt,
 };
 
-use self::CloseCode::*;
 /// Status code used to indicate why an endpoint is closing the WebSocket connection.
 #[derive(Debug, Eq, PartialEq, Clone, Copy)]
 pub enum CloseCode {
@@ -84,6 +83,8 @@ pub enum CloseCode {
 impl CloseCode {
     /// Check if this CloseCode is allowed.
     pub fn is_allowed(self) -> bool {
+        use CloseCode::{Abnormal, Bad, Reserved, Status, Tls};
+
         !matches!(self, Bad(_) | Reserved(_) | Status | Abnormal | Tls)
     }
 }
@@ -97,6 +98,11 @@ impl fmt::Display for CloseCode {
 
 impl From<CloseCode> for u16 {
     fn from(code: CloseCode) -> u16 {
+        use CloseCode::{
+            Abnormal, Again, Away, Bad, Error, Extension, Iana, Invalid, Library, Normal, Policy,
+            Protocol, Reserved, Restart, Size, Status, Tls, Unsupported,
+        };
+
         match code {
             Normal => 1000,
             Away => 1001,
@@ -128,6 +134,10 @@ impl<'t> From<&'t CloseCode> for u16 {
 
 impl From<u16> for CloseCode {
     fn from(code: u16) -> CloseCode {
+        use CloseCode::{
+            Abnormal, Again, Away, Bad, Error, Extension, Iana, Invalid, Library, Normal, Policy,
+            Protocol, Reserved, Restart, Size, Status, Tls, Unsupported,
+        };
         match code {
             1000 => Normal,
             1001 => Away,
@@ -155,7 +165,6 @@ impl From<u16> for CloseCode {
 #[cfg(test)]
 mod tests {
     use super::*;
-
 
     #[test]
     fn closecode_from_u16() {
