@@ -204,7 +204,7 @@ pub trait Handler<B, In>: Sized {
     /// This can be used to add additional processing to a request for a single
     /// handler.
     ///
-    /// Note this differes from [`routing::Layered`](crate::routing::Layered)
+    /// Note this differs from [`routing::Layered`](crate::routing::Layered)
     /// which adds a middleware to a group of routes.
     ///
     /// # Example

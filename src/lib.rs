@@ -450,7 +450,7 @@
 //! However when applying middleware, or embedding other tower services, errors
 //! might happen. For example [`Timeout`] will return an error if the timeout
 //! elapses. By default these errors will be propagated all the way up to hyper
-//! where the connection will be closed. If that isn't desireable you can call
+//! where the connection will be closed. If that isn't desirable you can call
 //! [`handle_error`](handler::Layered::handle_error) to handle errors from
 //! adding a middleware to a handler:
 //!
@@ -497,7 +497,7 @@
 //! return `Result<T, E>` where `T` implements
 //! [`IntoResponse`](response::IntoResponse).
 //!
-//! See [`routing::Layered::handle_error`] fo more details.
+//! See [`routing::Layered::handle_error`] for more details.
 //!
 //! ## Applying multiple middleware
 //!
@@ -646,7 +646,7 @@
 //! # Examples
 //!
 //! The axum repo contains [a number of examples][examples] that show how to put all the
-//! pieces togehter.
+//! pieces together.
 //!
 //! # Feature flags
 //!
@@ -656,7 +656,7 @@
 //! The following optional features are available:
 //!
 //! - `ws`: Enables WebSockets support.
-//! - `headers`: Enables extracing typed headers via [`extract::TypedHeader`].
+//! - `headers`: Enables extracting typed headers via [`extract::TypedHeader`].
 //! - `multipart`: Enables parsing `multipart/form-data` requests with [`extract::Multipart`].
 //!
 //! [`tower`]: https://crates.io/crates/tower

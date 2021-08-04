@@ -24,7 +24,7 @@ async fn main() {
                 .handle_error(|error: std::io::Error| {
                     Ok::<_, std::convert::Infallible>((
                         StatusCode::INTERNAL_SERVER_ERROR,
-                        format!("Unhandled interal error: {}", error),
+                        format!("Unhandled internal error: {}", error),
                     ))
                 }),
         ),
