@@ -26,8 +26,7 @@ applications written using [`hyper`] or [`tonic`].
 ## Usage example
 
 ```rust
-use axum::{prelude::*, response::IntoResponse};
-use http::StatusCode;
+use axum::{prelude::*, response::IntoResponse, http::StatusCode};
 use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
 
@@ -44,9 +43,10 @@ async fn main() {
         .route("/users", post(create_user));
 
     // run our app with hyper
+    // `axum::Server` is a re-export of `hyper::Server`
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
     tracing::debug!("listening on {}", addr);
-    hyper::Server::bind(&addr)
+    axum::Server::bind(&addr)
         .serve(app.into_make_service())
         .await
         .unwrap();

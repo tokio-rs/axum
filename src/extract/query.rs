@@ -29,7 +29,7 @@ use std::ops::Deref;
 ///
 /// let app = route("/list_things", get(list_things));
 /// # async {
-/// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+/// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 /// # };
 /// ```
 ///

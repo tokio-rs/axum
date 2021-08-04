@@ -28,7 +28,7 @@ use std::ops::Deref;
 ///     // extensions.
 ///     .layer(AddExtensionLayer::new(state));
 /// # async {
-/// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+/// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 /// # };
 /// ```
 ///

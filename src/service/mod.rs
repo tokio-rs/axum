@@ -20,7 +20,7 @@
 //! let app = route("/old", service::get(redirect_service))
 //!     .route("/new", handler::get(handler));
 //! # async {
-//! # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+//! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 //! # };
 //! ```
 //!
@@ -71,7 +71,7 @@
 //!     .layer(some_backpressure_sensitive_middleware)
 //!     .service(app);
 //! # async {
-//! # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+//! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 //! # };
 //! ```
 //!
@@ -153,7 +153,7 @@ where
 /// // Requests to `GET /` will go to `service`.
 /// let app = route("/", service::get(service));
 /// # async {
-/// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+/// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 /// # };
 /// ```
 pub fn get<S, B>(svc: S) -> OnMethod<BoxResponseBody<S, B>, EmptyRouter<S::Error>>
@@ -240,7 +240,7 @@ where
 /// // Requests to `POST /` will go to `service`.
 /// let app = route("/", service::on(MethodFilter::Post, service));
 /// # async {
-/// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+/// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 /// # };
 /// ```
 pub fn on<S, B>(
@@ -323,7 +323,7 @@ impl<S, F> OnMethod<S, F> {
     /// // `other_service`.
     /// let app = route("/", service::post(service).get(other_service));
     /// # async {
-    /// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+    /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
     /// # };
     /// ```
     pub fn get<T, B>(self, svc: T) -> OnMethod<BoxResponseBody<T, B>, Self>
@@ -415,7 +415,7 @@ impl<S, F> OnMethod<S, F> {
     /// // Requests to `DELETE /` will go to `service`
     /// let app = route("/", service::on(MethodFilter::Delete, service));
     /// # async {
-    /// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+    /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
     /// # };
     /// ```
     pub fn on<T, B>(self, method: MethodFilter, svc: T) -> OnMethod<BoxResponseBody<T, B>, Self>
@@ -566,7 +566,7 @@ pub trait ServiceExt<ReqBody, ResBody>:
     /// );
     /// #
     /// # async {
-    /// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+    /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
     /// # };
     /// ```
     ///

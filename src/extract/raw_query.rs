@@ -16,7 +16,7 @@ use std::convert::Infallible;
 ///
 /// let app = route("/users", get(handler));
 /// # async {
-/// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+/// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 /// # };
 /// ```
 #[derive(Debug)]

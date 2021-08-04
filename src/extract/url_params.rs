@@ -21,7 +21,7 @@ use std::{ops::Deref, str::FromStr};
 ///
 /// let app = route("/users/:user_id/team/:team_id", get(users_teams_show));
 /// # async {
-/// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+/// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 /// # };
 /// ```
 ///

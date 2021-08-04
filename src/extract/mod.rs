@@ -25,7 +25,7 @@
 //!
 //! let app = route("/users", post(create_user));
 //! # async {
-//! # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+//! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 //! # };
 //! ```
 //!
@@ -65,7 +65,7 @@
 //!
 //! let app = route("/foo", get(handler));
 //! # async {
-//! # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+//! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 //! # };
 //! ```
 //!
@@ -90,7 +90,7 @@
 //!
 //! let app = route("/foo", get(handler));
 //! # async {
-//! # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+//! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 //! # };
 //! ```
 //!
@@ -115,7 +115,7 @@
 //!
 //! let app = route("/users", post(create_user));
 //! # async {
-//! # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+//! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 //! # };
 //! ```
 //!
@@ -150,7 +150,7 @@
 //!
 //! let app = route("/users", post(create_user));
 //! # async {
-//! # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+//! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 //! # };
 //! ```
 //!
@@ -169,7 +169,7 @@
 //!
 //! let app = route("/users", post(create_user));
 //! # async {
-//! # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+//! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 //! # };
 //! ```
 //!
@@ -238,7 +238,7 @@
 //!     // middleware that changes the request body type
 //!     .layer(MapRequestBodyLayer::new(MyBody));
 //! # async {
-//! # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+//! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 //! # };
 //! ```
 //!
