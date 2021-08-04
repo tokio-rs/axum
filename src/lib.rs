@@ -630,9 +630,6 @@
 //! [dependencies]
 //! axum = "<latest-version>"
 //!
-//! # For http types like `StatusCode`, `Method`, and `Response`
-//! http = "<latest-version>"
-//!
 //! # "full" isn't strictly necessary for tokio and hyper but its the
 //! # easiest way to get started.
 //! hyper = { version = "<latest-version>", features = ["full"] }
@@ -742,6 +739,10 @@ pub mod ws;
 mod tests;
 
 pub use async_trait::async_trait;
+#[doc(no_inline)]
+pub use http;
+#[doc(no_inline)]
+pub use hyper::Server;
 pub use tower_http::add_extension::{AddExtension, AddExtensionLayer};
 
 pub mod prelude {

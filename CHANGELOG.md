@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fix stripping prefix when nesting services at `/` ([#91](https://github.com/tokio-rs/axum/pull/91))
 - Add support for WebSocket protocol negotiation. ([#83](https://github.com/tokio-rs/axum/pull/83))
 - Use `pin-project-lite` instead of `pin-project`. ([#95](https://github.com/tokio-rs/axum/pull/95))
+- Re-export `http` crate and `hyper::Server`. ([#110](https://github.com/tokio-rs/axum/pull/110))
 
 ## Breaking changes
 
