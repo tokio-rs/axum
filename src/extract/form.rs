@@ -30,7 +30,7 @@ use std::ops::Deref;
 ///
 /// let app = route("/sign_up", post(accept_form));
 /// # async {
-/// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+/// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 /// # };
 /// ```
 ///

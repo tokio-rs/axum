@@ -77,7 +77,7 @@ use tower::{BoxError, Layer, Service};
 ///     // The extractor will run before all routes
 ///     .layer(extractor_middleware::<RequireAuth>());
 /// # async {
-/// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+/// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 /// # };
 /// ```
 pub fn extractor_middleware<E>() -> ExtractorMiddlewareLayer<E> {

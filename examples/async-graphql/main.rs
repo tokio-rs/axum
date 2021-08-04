@@ -28,7 +28,7 @@ async fn main() {
 
     println!("Playground: http://localhost:3000");
 
-    hyper::Server::bind(&"0.0.0.0:3000".parse().unwrap())
+    axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())
         .serve(app.into_make_service())
         .await
         .unwrap();

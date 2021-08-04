@@ -14,7 +14,7 @@
 //!     }
 //! }
 //! # async {
-//! # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+//! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 //! # };
 //! ```
 //!
@@ -51,7 +51,7 @@
 //!     // ...
 //! }
 //! # async {
-//! # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+//! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 //! # };
 //! ```
 
@@ -238,7 +238,7 @@ impl<F, B, T> WebSocketUpgrade<F, B, T> {
     /// let app = route("/ws", ws(handle_socket).protocols(["graphql-ws", "graphql-transport-ws"]));
     /// #
     /// #   let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
-    /// #   hyper::Server::bind(&addr)
+    /// #   axum::Server::bind(&addr)
     /// #       .serve(app.into_make_service())
     /// #       .await
     /// #       .unwrap();

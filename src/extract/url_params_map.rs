@@ -18,7 +18,7 @@ use std::{collections::HashMap, str::FromStr};
 ///
 /// let app = route("/users/:id", get(users_show));
 /// # async {
-/// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+/// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 /// # };
 /// ```
 ///
