@@ -1,4 +1,4 @@
-use super::{rejection::TypedHeaderRejection, take_body, FromRequest, RequestParts};
+use super::{rejection::TypedHeaderRejection, FromRequest, RequestParts};
 use async_trait::async_trait;
 use headers::HeaderMap;
 use std::ops::Deref;
