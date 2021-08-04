@@ -44,9 +44,8 @@ use futures_util::{
     sink::{Sink, SinkExt},
     stream::{Stream, StreamExt},
 };
-use headers::HeaderName;
 use http::{
-    header::{self, HeaderValue},
+    header::{self, HeaderName, HeaderValue},
     Method, Response, StatusCode,
 };
 use hyper::{
