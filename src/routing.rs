@@ -126,7 +126,7 @@ pub trait RoutingDsl: crate::sealed::Sealed + Sized {
     /// let app = route("/", get(first_handler).post(second_handler))
     ///     .route("/foo", get(third_handler));
     /// # async {
-    /// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+    /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
     /// # };
     /// ```
     fn route<T, B, P>(self, description: P, svc: T) -> Route<T, Self>
@@ -215,7 +215,7 @@ pub trait RoutingDsl: crate::sealed::Sealed + Sized {
     /// This can be used to add additional processing to a request for a group
     /// of routes.
     ///
-    /// Note this differes from [`handler::Layered`](crate::handler::Layered)
+    /// Note this differs from [`handler::Layered`](crate::handler::Layered)
     /// which adds a middleware to a single handler.
     ///
     /// # Example
@@ -242,7 +242,7 @@ pub trait RoutingDsl: crate::sealed::Sealed + Sized {
     ///     // wont be sent through `ConcurrencyLimit`
     ///     .route("/bar", get(third_handler));
     /// # async {
-    /// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+    /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
     /// # };
     /// ```
     ///
@@ -264,7 +264,7 @@ pub trait RoutingDsl: crate::sealed::Sealed + Sized {
     ///     .route("/bar", get(third_handler))
     ///     .layer(TraceLayer::new_for_http());
     /// # async {
-    /// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+    /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
     /// # };
     /// ```
     fn layer<L>(self, layer: L) -> Layered<L::Service>
@@ -286,7 +286,7 @@ pub trait RoutingDsl: crate::sealed::Sealed + Sized {
     /// let app = route("/", get(|| async { "Hi!" }));
     ///
     /// # async {
-    /// hyper::Server::bind(&"0.0.0.0:3000".parse().unwrap())
+    /// axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())
     ///     .serve(app.into_make_service())
     ///     .await
     ///     .expect("server failed");
@@ -320,7 +320,7 @@ pub trait RoutingDsl: crate::sealed::Sealed + Sized {
     /// }
     ///
     /// # async {
-    /// hyper::Server::bind(&"0.0.0.0:3000".parse().unwrap())
+    /// axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())
     ///     .serve(
     ///         app.into_make_service_with_connect_info::<SocketAddr, _>()
     ///     )
@@ -362,7 +362,7 @@ pub trait RoutingDsl: crate::sealed::Sealed + Sized {
     /// }
     ///
     /// # async {
-    /// hyper::Server::bind(&"0.0.0.0:3000".parse().unwrap())
+    /// axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())
     ///     .serve(
     ///         app.into_make_service_with_connect_info::<MyConnectInfo, _>()
     ///     )
@@ -823,7 +823,7 @@ impl<S> Layered<S> {
     ///     }
     /// });
     /// # async {
-    /// # hyper::Server::bind(&"".parse().unwrap())
+    /// # axum::Server::bind(&"".parse().unwrap())
     /// #     .serve(with_errors_handled.into_make_service())
     /// #     .await
     /// #     .unwrap();
@@ -857,7 +857,7 @@ impl<S> Layered<S> {
     ///     }
     /// });
     /// # async {
-    /// # hyper::Server::bind(&"".parse().unwrap())
+    /// # axum::Server::bind(&"".parse().unwrap())
     /// #     .serve(with_errors_handled.into_make_service())
     /// #     .await
     /// #     .unwrap();
@@ -921,7 +921,7 @@ where
 ///
 /// let app = nest("/api", users_api).route("/careers", get(careers));
 /// # async {
-/// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+/// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 /// # };
 /// ```
 ///
@@ -942,7 +942,7 @@ where
 ///
 /// let app = nest("/:version/api", users_api);
 /// # async {
-/// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+/// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 /// # };
 /// ```
 ///
@@ -960,7 +960,7 @@ where
 ///
 /// let app = nest("/public", get(serve_dir_service));
 /// # async {
-/// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+/// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 /// # };
 /// ```
 ///

@@ -24,7 +24,7 @@ async fn main() {
                 .handle_error(|error: std::io::Error| {
                     Ok::<_, std::convert::Infallible>((
                         StatusCode::INTERNAL_SERVER_ERROR,
-                        format!("Unhandled interal error: {}", error),
+                        format!("Unhandled internal error: {}", error),
                     ))
                 }),
         ),
@@ -35,7 +35,7 @@ async fn main() {
     // run it
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
     tracing::debug!("listening on {}", addr);
-    hyper::Server::bind(&addr)
+    axum::Server::bind(&addr)
         .serve(app.into_make_service())
         .await
         .unwrap();

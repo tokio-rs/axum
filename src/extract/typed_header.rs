@@ -1,4 +1,4 @@
-use super::{rejection::TypedHeaderRejection, take_body, FromRequest, RequestParts};
+use super::{rejection::TypedHeaderRejection, FromRequest, RequestParts};
 use async_trait::async_trait;
 use headers::HeaderMap;
 use std::ops::Deref;
@@ -19,7 +19,7 @@ use std::ops::Deref;
 ///
 /// let app = route("/users/:user_id/team/:team_id", get(users_teams_show));
 /// # async {
-/// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+/// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 /// # };
 /// ```
 #[cfg(feature = "headers")]
