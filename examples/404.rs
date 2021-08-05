@@ -39,12 +39,14 @@ async fn handler() -> response::Html<&'static str> {
 }
 
 fn map_404(response: Response<BoxBody>) -> Response<BoxBody> {
-    if response.status() != StatusCode::NOT_FOUND {
-        return response;
+    if response.status() == StatusCode::NOT_FOUND
+        || response.status() == StatusCode::METHOD_NOT_ALLOWED
+    {
+        return Response::builder()
+            .status(StatusCode::NOT_FOUND)
+            .body(box_body(Body::from("nothing to see here")))
+            .unwrap();
     }
 
-    Response::builder()
-        .status(StatusCode::NOT_FOUND)
-        .body(box_body(Body::from("nothing to see here")))
-        .unwrap()
+    response
 }
