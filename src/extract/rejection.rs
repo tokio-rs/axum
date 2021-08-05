@@ -49,7 +49,7 @@ define_rejection! {
 
 define_rejection! {
     #[status = BAD_REQUEST]
-    #[body = "Failed to parse the response body as JSON"]
+    #[body = "Failed to parse the request body as JSON"]
     /// Rejection type for [`Json`](super::Json).
     pub struct InvalidJsonBody(BoxError);
 }
@@ -80,7 +80,7 @@ define_rejection! {
 
 define_rejection! {
     #[status = BAD_REQUEST]
-    #[body = "Response body didn't contain valid UTF-8"]
+    #[body = "Request body didn't contain valid UTF-8"]
     /// Rejection type used when buffering the request into a [`String`] if the
     /// body doesn't contain valid UTF-8.
     pub struct InvalidUtf8(BoxError);
