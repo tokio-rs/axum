@@ -186,13 +186,6 @@ where
     }
 }
 
-#[doc(hidden)]
-#[deprecated(
-    since = "0.1.3",
-    note = "Use axum::extract::extractor_middleware::ResponseFuture"
-)]
-pub type ExtractorMiddlewareResponseFuture<B, S, E> = ResponseFuture<B, S, E>;
-
 pin_project! {
     /// Response future for [`ExtractorMiddleware`].
     #[allow(missing_debug_implementations)]

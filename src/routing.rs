@@ -27,11 +27,6 @@ use tower_http::map_response_body::MapResponseBodyLayer;
 
 pub mod future;
 
-// for backwards compatibility
-// TODO: remove these in 0.2
-#[doc(hidden)]
-pub use self::future::{BoxRouteFuture, EmptyRouterFuture, RouteFuture};
-
 /// A filter that matches one or more HTTP methods.
 #[derive(Debug, Copy, Clone)]
 pub enum MethodFilter {
