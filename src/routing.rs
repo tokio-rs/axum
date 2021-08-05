@@ -79,19 +79,18 @@ pub enum RoutePath {
     /// Match a single path
     One(PathPattern),
     /// Match multiple paths
-    Multi(Vec<PathPattern>),
+    Many(Vec<PathPattern>),
 }
 
 impl From<&str> for RoutePath {
     fn from(one: &str) -> Self {
-        dbg!(&one);
         Self::One(PathPattern::new(one))
     }
 }
 
 impl<T: AsRef<str>, const N: usize> From<&[T; N]> for RoutePath {
     fn from(many: &[T; N]) -> Self {
-        Self::Multi(many.iter().map(|p| PathPattern::new(p.as_ref())).collect())
+        Self::Many(many.iter().map(|p| PathPattern::new(p.as_ref())).collect())
     }
 }
 
@@ -410,13 +409,12 @@ where
         match &self.pattern {
             RoutePath::One(pattern) => {
                 if let Some(captures) = pattern.full_match(req.uri().path()) {
-                    dbg!(&captures);
                     handle_match(captures, req)
                 } else {
                     handle_fallback(req)
                 }
             }
-            RoutePath::Multi(patterns) => {
+            RoutePath::Many(patterns) => {
                 for pattern in patterns {
                     if let Some(captures) = pattern.full_match(req.uri().path()) {
                         return handle_match(captures, req);
