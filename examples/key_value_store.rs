@@ -31,7 +31,13 @@ use tower_http::{
 
 #[tokio::main]
 async fn main() {
-    tracing_subscriber::fmt::init();
+    // Set the RUST_LOG, if it hasn't been explicitly defined
+    if std::env::var("RUST_LOG").is_err() {
+        std::env::set_var("RUST_LOG", "key_value_store=debug,tower_http=debug")
+    }
+    tracing_subscriber::fmt::fmt()
+        .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
+        .init();
 
     // Build our application by composing routes
     let app = route(

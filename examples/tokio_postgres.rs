@@ -13,7 +13,13 @@ use tokio_postgres::NoTls;
 
 #[tokio::main]
 async fn main() {
-    tracing_subscriber::fmt::init();
+    // Set the RUST_LOG, if it hasn't been explicitly defined
+    if std::env::var("RUST_LOG").is_err() {
+        std::env::set_var("RUST_LOG", "tokio_postgres=debug")
+    }
+    tracing_subscriber::fmt::fmt()
+        .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
+        .init();
 
     // setup connection pool
     let manager =
