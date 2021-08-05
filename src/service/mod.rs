@@ -87,24 +87,25 @@
 //! [load shed]: tower::load_shed
 
 use crate::{
-    body::{box_body, BoxBody},
+    body::BoxBody,
     response::IntoResponse,
     routing::{EmptyRouter, MethodFilter, RouteFuture},
 };
 use bytes::Bytes;
-use futures_util::ready;
 use http::{Request, Response};
-use pin_project_lite::pin_project;
 use std::{
     convert::Infallible,
     fmt,
-    future::Future,
     marker::PhantomData,
     task::{Context, Poll},
 };
 use tower::{util::Oneshot, BoxError, Service, ServiceExt as _};
 
 pub mod future;
+
+// for backwards compatibility
+#[doc(hidden)]
+pub use future::BoxResponseBodyFuture;
 
 /// Route requests to the given service regardless of the HTTP method.
 ///
@@ -637,7 +638,7 @@ where
 {
     type Response = Response<BoxBody>;
     type Error = S::Error;
-    type Future = BoxResponseBodyFuture<Oneshot<S, Request<ReqBody>>>;
+    type Future = future::BoxResponseBodyFuture<Oneshot<S, Request<ReqBody>>>;
 
     fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         Poll::Ready(Ok(()))
@@ -645,29 +646,6 @@ where
 
     fn call(&mut self, req: Request<ReqBody>) -> Self::Future {
         let fut = self.inner.clone().oneshot(req);
-        BoxResponseBodyFuture { future: fut }
-    }
-}
-
-pin_project! {
-    /// Response future for [`BoxResponseBody`].
-    #[derive(Debug)]
-    pub struct BoxResponseBodyFuture<F> {
-        #[pin] future: F,
-    }
-}
-
-impl<F, B, E> Future for BoxResponseBodyFuture<F>
-where
-    F: Future<Output = Result<Response<B>, E>>,
-    B: http_body::Body<Data = Bytes> + Send + Sync + 'static,
-    B::Error: Into<BoxError> + Send + Sync + 'static,
-{
-    type Output = Result<Response<BoxBody>, E>;
-
-    fn poll(self: std::pin::Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        let res = ready!(self.project().future.poll(cx))?;
-        let res = res.map(box_body);
-        Poll::Ready(Ok(res))
+        future::BoxResponseBodyFuture { future: fut }
     }
 }

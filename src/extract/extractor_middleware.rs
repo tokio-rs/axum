@@ -163,7 +163,7 @@ where
 {
     type Response = Response<BoxBody>;
     type Error = S::Error;
-    type Future = ExtractorMiddlewareResponseFuture<ReqBody, S, E>;
+    type Future = ResponseFuture<ReqBody, S, E>;
 
     #[inline]
     fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
@@ -177,7 +177,7 @@ where
             (req, extracted)
         });
 
-        ExtractorMiddlewareResponseFuture {
+        ResponseFuture {
             state: State::Extracting {
                 future: extract_future,
             },
@@ -186,10 +186,17 @@ where
     }
 }
 
+#[doc(hidden)]
+#[deprecated(
+    since = "0.1.3",
+    note = "Use axum::extract::extractor_middleware::ResponseFuture"
+)]
+pub type ExtractorMiddlewareResponseFuture<B, S, E> = ResponseFuture<B, S, E>;
+
 pin_project! {
     /// Response future for [`ExtractorMiddleware`].
     #[allow(missing_debug_implementations)]
-    pub struct ExtractorMiddlewareResponseFuture<ReqBody, S, E>
+    pub struct ResponseFuture<ReqBody, S, E>
     where
         E: FromRequest<ReqBody>,
         S: Service<Request<ReqBody>>,
@@ -212,7 +219,7 @@ pin_project! {
     }
 }
 
-impl<ReqBody, S, E, ResBody> Future for ExtractorMiddlewareResponseFuture<ReqBody, S, E>
+impl<ReqBody, S, E, ResBody> Future for ResponseFuture<ReqBody, S, E>
 where
     E: FromRequest<ReqBody>,
     S: Service<Request<ReqBody>, Response = Response<ResBody>>,
