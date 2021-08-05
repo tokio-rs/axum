@@ -495,8 +495,6 @@ impl<E> Clone for EmptyRouter<E> {
     }
 }
 
-impl<E> Copy for EmptyRouter<E> {}
-
 impl<E> fmt::Debug for EmptyRouter<E> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("EmptyRouter").finish()
