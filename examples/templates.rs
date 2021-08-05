@@ -29,14 +29,8 @@ async fn main() {
         .unwrap();
 }
 
-async fn greet(params: extract::UrlParamsMap) -> impl IntoResponse {
-    let name = params
-        .get("name")
-        .expect("`name` will be there if route was matched")
-        .to_string();
-
+async fn greet(extract::Path(name): extract::Path<String>) -> impl IntoResponse {
     let template = HelloTemplate { name };
-
     HtmlTemplate(template)
 }
 

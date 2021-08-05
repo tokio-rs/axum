@@ -258,6 +258,7 @@ mod content_length_limit;
 mod extension;
 mod form;
 mod json;
+mod path;
 mod query;
 mod raw_query;
 mod request_parts;
@@ -273,6 +274,7 @@ pub use self::{
     extractor_middleware::extractor_middleware,
     form::Form,
     json::Json,
+    path::Path,
     query::Query,
     raw_query::RawQuery,
     request_parts::{Body, BodyStream},

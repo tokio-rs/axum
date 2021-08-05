@@ -11,7 +11,7 @@
 
 use axum::{
     async_trait,
-    extract::{Extension, Json, UrlParams},
+    extract::{Extension, Json, Path},
     prelude::*,
     response::IntoResponse,
     AddExtensionLayer,
@@ -56,7 +56,7 @@ async fn main() {
 /// are automatically converted into `AppError` which implements `IntoResponse`
 /// so it can be returned from handlers directly.
 async fn users_show(
-    UrlParams((user_id,)): UrlParams<(Uuid,)>,
+    Path(user_id): Path<Uuid>,
     Extension(user_repo): Extension<DynUserRepo>,
 ) -> Result<response::Json<User>, AppError> {
     let user = user_repo.find(user_id).await?;
