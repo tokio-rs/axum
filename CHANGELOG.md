@@ -15,7 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Breaking changes
 
-- The following types no longer implement `Copy`:
+- The following types no longer implement `Copy` ([#132](https://github.com/tokio-rs/axum/pull/132)):
     - `EmptyRouter`
     - `ExtractorMiddleware`
     - `ExtractorMiddlewareLayer`
