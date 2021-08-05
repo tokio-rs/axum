@@ -21,9 +21,7 @@ async fn main() {
     if std::env::var("RUST_LOG").is_err() {
         std::env::set_var("RUST_LOG", "rustls=debug")
     }
-    tracing_subscriber::fmt::fmt()
-        .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
-        .init();
+    tracing_subscriber::fmt::init();
 
     let rustls_config = rustls_server_config(
         "examples/self_signed_certs/key.pem",

@@ -13,9 +13,7 @@ async fn main() {
     if std::env::var("RUST_LOG").is_err() {
         std::env::set_var("RUST_LOG", "testing=debug,tower_http=debug")
     }
-    tracing_subscriber::fmt::fmt()
-        .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
-        .init();
+    tracing_subscriber::fmt::init();
 
     let addr = std::net::SocketAddr::from(([127, 0, 0, 1], 3000));
 
