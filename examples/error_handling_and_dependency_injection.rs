@@ -28,9 +28,7 @@ async fn main() {
     if std::env::var("RUST_LOG").is_err() {
         std::env::set_var("RUST_LOG", "error_handling_and_dependency_injection=debug")
     }
-    tracing_subscriber::fmt::fmt()
-        .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
-        .init();
+    tracing_subscriber::fmt::init();
 
     // Inject a `UserRepo` into our handlers via a trait object. This could be
     // the live implementation or just a mock for testing.
