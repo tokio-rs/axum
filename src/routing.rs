@@ -1,5 +1,6 @@
 //! Routing between [`Service`]s.
 
+use self::future::{BoxRouteFuture, EmptyRouterFuture, RouteFuture};
 use crate::{
     body::{box_body, BoxBody},
     buffer::MpscBuffer,
