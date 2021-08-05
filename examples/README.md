@@ -18,3 +18,8 @@
 - [`chat`](../examples/chat.rs) - Chat application example.
 - [`404`](../examples/404.rs) - Custom 404 page.
 - [`async-graphql`](../examples/async-graphql) - GraphQL example using [`async-graphql`](https://crates.io/crates/async-graphql).
+
+
+# Community showcase
+
+- [Houseflow](https://github.com/gbaranski/houseflow): House automation platform written in Rust.
