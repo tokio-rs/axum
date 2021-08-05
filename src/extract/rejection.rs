@@ -189,7 +189,6 @@ composite_rejection! {
     /// can fail.
     pub enum QueryRejection {
         UriAlreadyExtracted,
-        QueryStringMissing,
         FailedToDeserializeQueryString,
     }
 }
@@ -201,7 +200,6 @@ composite_rejection! {
     /// can fail.
     pub enum FormRejection {
         InvalidFormContentType,
-        QueryStringMissing,
         FailedToDeserializeQueryString,
         FailedToBufferBody,
         BodyAlreadyExtracted,
