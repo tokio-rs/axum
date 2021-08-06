@@ -158,7 +158,7 @@ where
 {
     fn into_response(self) -> Response<Body> {
         let mut res = self.1.into_response();
-        *res.headers_mut() = self.0;
+        res.headers_mut().extend(self.0);
         res
     }
 }
@@ -170,7 +170,7 @@ where
     fn into_response(self) -> Response<Body> {
         let mut res = self.2.into_response();
         *res.status_mut() = self.0;
-        *res.headers_mut() = self.1;
+        res.headers_mut().extend(self.1);
         res
     }
 }
@@ -262,5 +262,44 @@ where
 impl<T> From<T> for Json<T> {
     fn from(inner: T) -> Self {
         Self(inner)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use http::header::{HeaderMap, HeaderName};
+
+    #[test]
+    fn test_merge_headers() {
+        struct MyResponse;
+
+        impl IntoResponse for MyResponse {
+            fn into_response(self) -> Response<Body> {
+                let mut resp = Response::new(String::new().into());
+                resp.headers_mut()
+                    .insert(HeaderName::from_static("a"), HeaderValue::from_static("1"));
+                resp
+            }
+        }
+
+        fn check(resp: impl IntoResponse) {
+            let resp = resp.into_response();
+            assert_eq!(
+                resp.headers().get(HeaderName::from_static("a")).unwrap(),
+                &HeaderValue::from_static("1")
+            );
+            assert_eq!(
+                resp.headers().get(HeaderName::from_static("b")).unwrap(),
+                &HeaderValue::from_static("2")
+            );
+        }
+
+        let headers: HeaderMap =
+            std::iter::once((HeaderName::from_static("b"), HeaderValue::from_static("2")))
+                .collect();
+
+        check((headers.clone(), MyResponse));
+        check((StatusCode::OK, headers, MyResponse));
     }
 }
