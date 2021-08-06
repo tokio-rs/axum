@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        rust: [stable, 1.40.0]
+        rust: [stable, 1.51]
     steps:
     - uses: actions/checkout@master
     - uses: actions-rs/toolchain@v1
@@ -67,7 +67,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        rust: [stable, beta, nightly, 1.40.0]
+        rust: [stable, beta, nightly, 1.51]
     steps:
     - uses: actions/checkout@master
     - uses: actions-rs/toolchain@v1
