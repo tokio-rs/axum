@@ -257,7 +257,6 @@ pub mod rejection;
 mod content_length_limit;
 mod extension;
 mod form;
-mod json;
 mod path;
 mod query;
 mod raw_query;
@@ -274,7 +273,6 @@ pub use self::{
     extension::Extension,
     extractor_middleware::extractor_middleware,
     form::Form,
-    json::Json,
     path::Path,
     query::Query,
     raw_query::RawQuery,
@@ -282,6 +280,8 @@ pub use self::{
     url_params::UrlParams,
     url_params_map::UrlParamsMap,
 };
+#[doc(no_inline)]
+pub use crate::Json;
 
 #[cfg(feature = "multipart")]
 #[cfg_attr(docsrs, doc(cfg(feature = "multipart")))]
@@ -528,7 +528,7 @@ where
     }
 }
 
-fn has_content_type<B>(
+pub(crate) fn has_content_type<B>(
     req: &RequestParts<B>,
     expected_content_type: &str,
 ) -> Result<bool, HeadersAlreadyExtracted> {
@@ -551,6 +551,6 @@ fn has_content_type<B>(
     Ok(content_type.starts_with(expected_content_type))
 }
 
-fn take_body<B>(req: &mut RequestParts<B>) -> Result<B, BodyAlreadyExtracted> {
+pub(crate) fn take_body<B>(req: &mut RequestParts<B>) -> Result<B, BodyAlreadyExtracted> {
     req.take_body().ok_or(BodyAlreadyExtracted)
 }
