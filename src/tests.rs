@@ -1,6 +1,5 @@
 use crate::{
-    extract::RequestParts, handler::on, prelude::*, response::IntoResponse, routing::nest,
-    routing::MethodFilter, service,
+    extract::RequestParts, handler::on, prelude::*, routing::nest, routing::MethodFilter, service,
 };
 use bytes::Bytes;
 use futures_util::future::Ready;
@@ -514,8 +513,10 @@ async fn layer_on_whole_router() {
 }
 
 #[tokio::test]
+#[cfg(feature = "header")]
 async fn typed_header() {
-    use extract::TypedHeader;
+    use crate::{extract::TypedHeader, response::IntoResponse};
+
     async fn handle(TypedHeader(user_agent): TypedHeader<headers::UserAgent>) -> impl IntoResponse {
         user_agent.to_string()
     }
