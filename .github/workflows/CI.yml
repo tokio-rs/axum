@@ -40,6 +40,8 @@ jobs:
         profile: minimal
     - name: cargo doc
       working-directory: ${{ matrix.subcrate }}
+      env:
+          RUSTDOCFLAGS: "-D broken-intra-doc-links"
       run: cargo doc --all-features --no-deps
 
   cargo-hack:
