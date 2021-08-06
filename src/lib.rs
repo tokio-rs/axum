@@ -239,8 +239,8 @@
 //! # };
 //! ```
 //!
-//! [`extract::UrlParams`] can be used to extract params from a dynamic URL. It
-//! is compatible with any type that implements [`std::str::FromStr`], such as
+//! [`extract::Path`] can be used to extract params from a dynamic URL. It
+//! is compatible with any type that implements [`serde::Deserialize`], such as
 //! [`Uuid`]:
 //!
 //! ```rust,no_run
@@ -249,18 +249,13 @@
 //!
 //! let app = route("/users/:id", post(create_user));
 //!
-//! async fn create_user(params: extract::UrlParams<(Uuid,)>) {
-//!     let user_id: Uuid = (params.0).0;
-//!
+//! async fn create_user(extract::Path(user_id): extract::Path<Uuid>) {
 //!     // ...
 //! }
 //! # async {
 //! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 //! # };
 //! ```
-//!
-//! There is also [`UrlParamsMap`](extract::UrlParamsMap) which provide a map
-//! like API for extracting URL params.
 //!
 //! You can also apply multiple extractors:
 //!
@@ -284,10 +279,9 @@
 //! }
 //!
 //! async fn get_user_things(
-//!     params: extract::UrlParams<(Uuid,)>,
+//!     extract::Path(user_id): extract::Path<Uuid>,
 //!     pagination: Option<extract::Query<Pagination>>,
 //! ) {
-//!     let user_id: Uuid = (params.0).0;
 //!     let pagination: Pagination = pagination.unwrap_or_default().0;
 //!
 //!     // ...
