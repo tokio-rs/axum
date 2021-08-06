@@ -59,6 +59,10 @@ uuid = { version = "0.8", features = ["serde", "v4"] }
 async-session = "3.0.0"
 tokio-stream = "0.1.7"
 
+# for oauth example
+oauth2 = "4.1"
+http-types = "2.11.1"
+
 # for async-graphql example
 async-graphql = "2.9.9"
 slab = "0.4.3"
@@ -103,4 +107,8 @@ required-features = ["ws", "headers"]
 
 [[example]]
 name = "async-graphql"
+required-features = ["headers"]
+
+[[example]]
+name = "oauth"
 required-features = ["headers"]
