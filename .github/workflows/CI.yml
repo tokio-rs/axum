@@ -10,14 +10,11 @@ jobs:
   check:
     # Run `cargo check` first to ensure that the pushed code at least compiles.
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        rust: [stable, 1.51]
     steps:
     - uses: actions/checkout@master
     - uses: actions-rs/toolchain@v1
       with:
-        toolchain: ${{ matrix.rust }}
+        toolchain: stable
         override: true
         profile: minimal
         components: clippy
