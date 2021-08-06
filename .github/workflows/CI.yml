@@ -20,6 +20,7 @@ jobs:
         toolchain: ${{ matrix.rust }}
         override: true
         profile: minimal
+        components: clippy
     - name: Check
       uses: actions-rs/cargo@v1
       with:
