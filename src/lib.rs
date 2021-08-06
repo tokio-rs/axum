@@ -664,7 +664,6 @@
 //! [examples]: https://github.com/tokio-rs/axum/tree/main/examples
 //! [`axum::Server`]: hyper::server::Server
 
-#![doc(html_root_url = "https://docs.rs/axum/0.1.3")]
 #![warn(
     clippy::all,
     clippy::dbg_macro,
