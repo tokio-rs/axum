@@ -267,6 +267,7 @@ mod url_params;
 mod url_params_map;
 
 #[doc(inline)]
+#[allow(deprecated)]
 pub use self::{
     connect_info::ConnectInfo,
     content_length_limit::ContentLengthLimit,
