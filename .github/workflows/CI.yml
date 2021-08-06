@@ -18,6 +18,7 @@ jobs:
     - uses: actions-rs/toolchain@v1
       with:
         toolchain: ${{ matrix.rust }}
+        override: true
         profile: minimal
     - name: Check
       uses: actions-rs/cargo@v1
@@ -37,6 +38,7 @@ jobs:
     - uses: actions-rs/toolchain@v1
       with:
         toolchain: stable
+        override: true
         profile: minimal
     - name: cargo doc
       working-directory: ${{ matrix.subcrate }}
@@ -49,6 +51,7 @@ jobs:
     - uses: actions-rs/toolchain@v1
       with:
         toolchain: stable
+        override: true
         profile: minimal
     - name: Install cargo-hack
       run: |
@@ -69,6 +72,7 @@ jobs:
     - uses: actions-rs/toolchain@v1
       with:
         toolchain: ${{ matrix.rust }}
+        override: true
         profile: minimal
     - name: Run tests
       uses: actions-rs/cargo@v1
