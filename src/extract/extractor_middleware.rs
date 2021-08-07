@@ -98,8 +98,6 @@ impl<E> Clone for ExtractorMiddlewareLayer<E> {
     }
 }
 
-impl<E> Copy for ExtractorMiddlewareLayer<E> {}
-
 impl<E> fmt::Debug for ExtractorMiddlewareLayer<E> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("ExtractorMiddleware")
@@ -138,8 +136,6 @@ where
         }
     }
 }
-
-impl<S, E> Copy for ExtractorMiddleware<S, E> where S: Copy {}
 
 impl<S, E> fmt::Debug for ExtractorMiddleware<S, E>
 where
