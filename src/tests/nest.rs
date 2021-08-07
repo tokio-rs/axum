@@ -1,4 +1,5 @@
 use super::*;
+use std::collections::HashMap;
 
 #[tokio::test]
 async fn nesting_apps() {
@@ -8,23 +9,27 @@ async fn nesting_apps() {
     )
     .route(
         "/users/:id",
-        get(|params: extract::UrlParamsMap| async move {
-            format!(
-                "{}: users#show ({})",
-                params.get("version").unwrap(),
-                params.get("id").unwrap()
-            )
-        }),
+        get(
+            |params: extract::Path<HashMap<String, String>>| async move {
+                format!(
+                    "{}: users#show ({})",
+                    params.get("version").unwrap(),
+                    params.get("id").unwrap()
+                )
+            },
+        ),
     )
     .route(
         "/games/:id",
-        get(|params: extract::UrlParamsMap| async move {
-            format!(
-                "{}: games#show ({})",
-                params.get("version").unwrap(),
-                params.get("id").unwrap()
-            )
-        }),
+        get(
+            |params: extract::Path<HashMap<String, String>>| async move {
+                format!(
+                    "{}: games#show ({})",
+                    params.get("version").unwrap(),
+                    params.get("id").unwrap()
+                )
+            },
+        ),
     );
 
     let app = route("/", get(|| async { "hi" })).nest("/:version/api", api_routes);

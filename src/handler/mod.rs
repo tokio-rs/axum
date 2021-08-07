@@ -4,8 +4,8 @@ use crate::{
     body::{box_body, BoxBody},
     extract::FromRequest,
     response::IntoResponse,
-    routing::{EmptyRouter, MethodFilter, RouteFuture},
-    service::HandleError,
+    routing::{future::RouteFuture, EmptyRouter, MethodFilter},
+    service::{HandleError, HandleErrorFromRouter},
 };
 use async_trait::async_trait;
 use bytes::Bytes;
@@ -371,7 +371,7 @@ impl<S, T> Layered<S, T> {
     pub fn handle_error<F, ReqBody, ResBody, Res, E>(
         self,
         f: F,
-    ) -> Layered<HandleError<S, F, ReqBody>, T>
+    ) -> Layered<HandleError<S, F, ReqBody, HandleErrorFromRouter>, T>
     where
         S: Service<Request<ReqBody>, Response = Response<ResBody>>,
         F: FnOnce(S::Error) -> Result<Res, E>,

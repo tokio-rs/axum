@@ -41,15 +41,7 @@ define_rejection! {
 
 define_rejection! {
     #[status = BAD_REQUEST]
-    #[body = "Query string was invalid or missing"]
-    #[deprecated(since = "0.1.3", note = "No longer used. See https://github.com/tokio-rs/axum/pull/117")]
-    /// Rejection type for [`Query`](super::Query).
-    pub struct QueryStringMissing;
-}
-
-define_rejection! {
-    #[status = BAD_REQUEST]
-    #[body = "Failed to parse the response body as JSON"]
+    #[body = "Failed to parse the request body as JSON"]
     /// Rejection type for [`Json`](super::Json).
     pub struct InvalidJsonBody(BoxError);
 }
@@ -80,7 +72,7 @@ define_rejection! {
 
 define_rejection! {
     #[status = BAD_REQUEST]
-    #[body = "Response body didn't contain valid UTF-8"]
+    #[body = "Request body didn't contain valid UTF-8"]
     /// Rejection type used when buffering the request into a [`String`] if the
     /// body doesn't contain valid UTF-8.
     pub struct InvalidUtf8(BoxError);
@@ -159,6 +151,25 @@ impl IntoResponse for InvalidUrlParam {
     }
 }
 
+/// Rejection type for [`Path`](super::Path) if the capture route
+/// param didn't have the expected type.
+#[derive(Debug)]
+pub struct InvalidPathParam(String);
+
+impl InvalidPathParam {
+    pub(super) fn new(err: impl Into<String>) -> Self {
+        InvalidPathParam(err.into())
+    }
+}
+
+impl IntoResponse for InvalidPathParam {
+    fn into_response(self) -> http::Response<Body> {
+        let mut res = http::Response::new(Body::from(format!("Invalid URL param. {}", self.0)));
+        *res.status_mut() = http::StatusCode::BAD_REQUEST;
+        res
+    }
+}
+
 /// Rejection type for extractors that deserialize query strings if the input
 /// couldn't be deserialized into the target type.
 #[derive(Debug)]
@@ -197,7 +208,6 @@ composite_rejection! {
     /// can fail.
     pub enum QueryRejection {
         UriAlreadyExtracted,
-        QueryStringMissing,
         FailedToDeserializeQueryString,
     }
 }
@@ -209,7 +219,6 @@ composite_rejection! {
     /// can fail.
     pub enum FormRejection {
         InvalidFormContentType,
-        QueryStringMissing,
         FailedToDeserializeQueryString,
         FailedToBufferBody,
         BodyAlreadyExtracted,
@@ -250,6 +259,17 @@ composite_rejection! {
     /// can fail.
     pub enum UrlParamsRejection {
         InvalidUrlParam,
+        MissingRouteParams,
+    }
+}
+
+composite_rejection! {
+    /// Rejection used for [`Path`](super::Path).
+    ///
+    /// Contains one variant for each way the [`Path`](super::Path) extractor
+    /// can fail.
+    pub enum PathParamsRejection {
+        InvalidPathParam,
         MissingRouteParams,
     }
 }

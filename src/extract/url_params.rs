@@ -28,6 +28,7 @@ use std::{ops::Deref, str::FromStr};
 /// Note that you can only have one URL params extractor per handler. If you
 /// have multiple it'll response with `500 Internal Server Error`.
 #[derive(Debug)]
+#[deprecated(since = "0.1.3", note = "Use `axum::extract::Path` instead.")]
 pub struct UrlParams<T>(pub T);
 
 macro_rules! impl_parse_url {
@@ -35,6 +36,7 @@ macro_rules! impl_parse_url {
 
     ( $head:ident, $($tail:ident),* $(,)? ) => {
         #[async_trait]
+        #[allow(deprecated)]
         impl<B, $head, $($tail,)*> FromRequest<B> for UrlParams<($head, $($tail,)*)>
         where
             $head: FromStr + Send,
@@ -88,6 +90,7 @@ macro_rules! impl_parse_url {
 
 impl_parse_url!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16);
 
+#[allow(deprecated)]
 impl<T> Deref for UrlParams<T> {
     type Target = T;
 

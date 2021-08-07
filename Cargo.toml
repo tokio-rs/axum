@@ -2,7 +2,6 @@
 authors = ["David Pedersen <david.pdrsn@gmail.com>"]
 categories = ["asynchronous", "network-programming", "web-programming"]
 description = "Web framework that focuses on ergonomics and modularity"
-documentation = "https://docs.rs/axum/0.1.2"
 edition = "2018"
 homepage = "https://github.com/tokio-rs/axum"
 keywords = ["http", "web", "framework"]
@@ -10,7 +9,7 @@ license = "MIT"
 name = "axum"
 readme = "README.md"
 repository = "https://github.com/tokio-rs/axum"
-version = "0.1.2"
+version = "0.1.3"
 
 [features]
 default = []
