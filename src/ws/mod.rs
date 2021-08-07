@@ -85,9 +85,10 @@ use tokio_tungstenite::{
 };
 use tower::{BoxError, Service};
 
-mod coding;
-pub use coding::CloseCode;
 pub mod future;
+
+/// Status code used to indicate why an endpoint is closing the WebSocket connection.
+pub type CloseCode = u16;
 
 /// Create a new [`WebSocketUpgrade`] service that will call the closure with
 /// each connection.
@@ -495,7 +496,7 @@ impl Sink<Message> for WebSocket {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct CloseFrame<'t> {
     /// The reason as a code.
-    pub code: coding::CloseCode,
+    pub code: CloseCode,
     /// The reason as text string.
     pub reason: Cow<'t, str>,
 }
@@ -550,9 +551,8 @@ impl Message {
             Self::Ping(ping) => tungstenite::Message::Ping(ping),
             Self::Pong(pong) => tungstenite::Message::Pong(pong),
             Self::Close(Some(close)) => {
-                let code: u16 = close.code.into();
                 tungstenite::Message::Close(Some(tungstenite::protocol::CloseFrame {
-                    code: tungstenite::protocol::frame::coding::CloseCode::from(code),
+                    code: tungstenite::protocol::frame::coding::CloseCode::from(close.code),
                     reason: close.reason,
                 }))
             }
