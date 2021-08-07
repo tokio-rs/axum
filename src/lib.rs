@@ -664,7 +664,6 @@
 //! [examples]: https://github.com/tokio-rs/axum/tree/main/examples
 //! [`axum::Server`]: hyper::server::Server
 
-#![doc(html_root_url = "https://docs.rs/axum/0.1.3")]
 #![warn(
     clippy::all,
     clippy::dbg_macro,
@@ -699,7 +698,7 @@
     missing_debug_implementations,
     missing_docs
 )]
-#![deny(unreachable_pub, broken_intra_doc_links, private_in_public)]
+#![deny(unreachable_pub, private_in_public)]
 #![allow(elided_lifetimes_in_paths, clippy::type_complexity)]
 #![forbid(unsafe_code)]
 #![cfg_attr(docsrs, feature(doc_cfg))]
