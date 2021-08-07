@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   required for returning responses with bodies other than `hyper::Body` from
   handlers. See the docs for advice on how to implement `IntoResponse` ([#86](https://github.com/tokio-rs/axum/pull/86))
 - Change WebSocket API to use an extractor ([#121](https://github.com/tokio-rs/axum/pull/121))
+- Make WebSocket Message an enum ([#116](https://github.com/tokio-rs/axum/pull/116))
 - Add `RoutingDsl::or` for combining routes. ([#108](https://github.com/tokio-rs/axum/pull/108))
 - Ensure a `HandleError` service created from `axum::ServiceExt::handle_error`
   _does not_ implement `RoutingDsl` as that could lead to confusing routing
