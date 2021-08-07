@@ -800,17 +800,15 @@ where
 /// Nest a group of routes (or a [`Service`]) at some path.
 ///
 /// This allows you to break your application into smaller pieces and compose
-/// them together. This will strip the matching prefix from the URL so the
-/// nested route will only see the part of URL:
+/// them together.
 ///
 /// ```
 /// use axum::{routing::nest, prelude::*};
 /// use http::Uri;
 ///
 /// async fn users_get(uri: Uri) {
-///     // `users_get` doesn't see the whole URL. `nest` will strip the matching
-///     // `/api` prefix.
-///     assert_eq!(uri.path(), "/users");
+///     // `users_get` will still see the whole URI.
+///     assert_eq!(uri.path(), "/api/users");
 /// }
 ///
 /// async fn users_post() {}
@@ -907,6 +905,11 @@ where
     }
 
     fn call(&mut self, mut req: Request<B>) -> Self::Future {
+        if req.extensions().get::<OriginalUri>().is_none() {
+            let original_uri = OriginalUri(req.uri().clone());
+            req.extensions_mut().insert(original_uri);
+        }
+
         let f = if let Some((prefix, captures)) = self.pattern.prefix_match(req.uri().path()) {
             let without_prefix = strip_prefix(req.uri(), prefix);
             *req.uri_mut() = without_prefix;
@@ -922,6 +925,11 @@ where
         NestedFuture { inner: f }
     }
 }
+
+/// `Nested` changes the incoming requests URI. This will be saved as an
+/// extension so extractors can still access the original URI.
+#[derive(Clone)]
+pub(crate) struct OriginalUri(pub(crate) Uri);
 
 fn strip_prefix(uri: &Uri, prefix: &str) -> Uri {
     let path_and_query = if let Some(path_and_query) = uri.path_and_query() {
