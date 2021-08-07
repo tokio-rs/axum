@@ -464,13 +464,10 @@ impl Message {
             tungstenite::Message::Binary(binary) => Self::Binary(binary),
             tungstenite::Message::Ping(ping) => Self::Ping(ping),
             tungstenite::Message::Pong(pong) => Self::Pong(pong),
-            tungstenite::Message::Close(Some(close)) => {
-                let code: u16 = close.code.into();
-                Self::Close(Some(CloseFrame {
-                    code: CloseCode::from(code),
-                    reason: close.reason,
-                }))
-            }
+            tungstenite::Message::Close(Some(close)) => Self::Close(Some(CloseFrame {
+                code: close.code.into(),
+                reason: close.reason,
+            })),
             tungstenite::Message::Close(None) => Self::Close(None),
         }
     }
