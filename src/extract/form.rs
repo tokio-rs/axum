@@ -30,7 +30,7 @@ use std::ops::Deref;
 ///
 /// let app = route("/sign_up", post(accept_form));
 /// # async {
-/// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+/// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 /// # };
 /// ```
 ///
@@ -50,20 +50,20 @@ where
 
     #[allow(warnings)]
     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-        if !has_content_type(&req, "application/x-www-form-urlencoded")? {
-            Err(InvalidFormContentType)?;
-        }
-
         if req.method().ok_or(MethodAlreadyExtracted)? == Method::GET {
             let query = req
                 .uri()
                 .ok_or(UriAlreadyExtracted)?
                 .query()
-                .ok_or(QueryStringMissing)?;
+                .unwrap_or_default();
             let value = serde_urlencoded::from_str(query)
                 .map_err(FailedToDeserializeQueryString::new::<T, _>)?;
             Ok(Form(value))
         } else {
+            if !has_content_type(&req, "application/x-www-form-urlencoded")? {
+                Err(InvalidFormContentType)?;
+            }
+
             let body = take_body(req)?;
             let chunks = hyper::body::aggregate(body)
                 .await
@@ -81,5 +81,123 @@ impl<T> Deref for Form<T> {
 
     fn deref(&self) -> &Self::Target {
         &self.0
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::extract::RequestParts;
+    use http::Request;
+    use serde::{Deserialize, Serialize};
+    use std::fmt::Debug;
+
+    #[derive(Debug, PartialEq, Serialize, Deserialize)]
+    struct Pagination {
+        size: Option<u64>,
+        page: Option<u64>,
+    }
+
+    async fn check_query<T: DeserializeOwned + PartialEq + Debug>(uri: impl AsRef<str>, value: T) {
+        let mut req = RequestParts::new(
+            Request::builder()
+                .uri(uri.as_ref())
+                .body(http_body::Empty::<bytes::Bytes>::new())
+                .unwrap(),
+        );
+        assert_eq!(Form::<T>::from_request(&mut req).await.unwrap().0, value);
+    }
+
+    async fn check_body<T: Serialize + DeserializeOwned + PartialEq + Debug>(value: T) {
+        let mut req = RequestParts::new(
+            Request::builder()
+                .uri("http://example.com/test")
+                .method(Method::POST)
+                .header(
+                    http::header::CONTENT_TYPE,
+                    "application/x-www-form-urlencoded",
+                )
+                .body(http_body::Full::<bytes::Bytes>::new(
+                    serde_urlencoded::to_string(&value).unwrap().into(),
+                ))
+                .unwrap(),
+        );
+        assert_eq!(Form::<T>::from_request(&mut req).await.unwrap().0, value);
+    }
+
+    #[tokio::test]
+    async fn test_form_query() {
+        check_query(
+            "http://example.com/test",
+            Pagination {
+                size: None,
+                page: None,
+            },
+        )
+        .await;
+
+        check_query(
+            "http://example.com/test?size=10",
+            Pagination {
+                size: Some(10),
+                page: None,
+            },
+        )
+        .await;
+
+        check_query(
+            "http://example.com/test?size=10&page=20",
+            Pagination {
+                size: Some(10),
+                page: Some(20),
+            },
+        )
+        .await;
+    }
+
+    #[tokio::test]
+    async fn test_form_body() {
+        check_body(Pagination {
+            size: None,
+            page: None,
+        })
+        .await;
+
+        check_body(Pagination {
+            size: Some(10),
+            page: None,
+        })
+        .await;
+
+        check_body(Pagination {
+            size: Some(10),
+            page: Some(20),
+        })
+        .await;
+    }
+
+    #[tokio::test]
+    async fn test_incorrect_content_type() {
+        let mut req = RequestParts::new(
+            Request::builder()
+                .uri("http://example.com/test")
+                .method(Method::POST)
+                .header(http::header::CONTENT_TYPE, "application/json")
+                .body(http_body::Full::<bytes::Bytes>::new(
+                    serde_urlencoded::to_string(&Pagination {
+                        size: Some(10),
+                        page: None,
+                    })
+                    .unwrap()
+                    .into(),
+                ))
+                .unwrap(),
+        );
+        assert!(matches!(
+            Form::<Pagination>::from_request(&mut req)
+                .await
+                .unwrap_err(),
+            FormRejection::InvalidFormContentType(InvalidFormContentType)
+        ));
     }
 }

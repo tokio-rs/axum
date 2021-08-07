@@ -25,7 +25,7 @@
 //!
 //! let app = route("/users", post(create_user));
 //! # async {
-//! # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+//! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 //! # };
 //! ```
 //!
@@ -65,7 +65,7 @@
 //!
 //! let app = route("/foo", get(handler));
 //! # async {
-//! # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+//! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 //! # };
 //! ```
 //!
@@ -90,7 +90,7 @@
 //!
 //! let app = route("/foo", get(handler));
 //! # async {
-//! # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+//! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 //! # };
 //! ```
 //!
@@ -115,7 +115,7 @@
 //!
 //! let app = route("/users", post(create_user));
 //! # async {
-//! # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+//! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 //! # };
 //! ```
 //!
@@ -150,7 +150,7 @@
 //!
 //! let app = route("/users", post(create_user));
 //! # async {
-//! # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+//! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 //! # };
 //! ```
 //!
@@ -169,7 +169,7 @@
 //!
 //! let app = route("/users", post(create_user));
 //! # async {
-//! # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+//! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 //! # };
 //! ```
 //!
@@ -238,7 +238,7 @@
 //!     // middleware that changes the request body type
 //!     .layer(MapRequestBodyLayer::new(MyBody));
 //! # async {
-//! # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+//! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 //! # };
 //! ```
 //!
@@ -254,10 +254,14 @@ pub mod connect_info;
 pub mod extractor_middleware;
 pub mod rejection;
 
+#[cfg(feature = "ws")]
+#[cfg_attr(docsrs, doc(cfg(feature = "ws")))]
+pub mod ws;
+
 mod content_length_limit;
 mod extension;
 mod form;
-mod json;
+mod path;
 mod query;
 mod raw_query;
 mod request_parts;
@@ -266,19 +270,22 @@ mod url_params;
 mod url_params_map;
 
 #[doc(inline)]
+#[allow(deprecated)]
 pub use self::{
     connect_info::ConnectInfo,
     content_length_limit::ContentLengthLimit,
     extension::Extension,
     extractor_middleware::extractor_middleware,
     form::Form,
-    json::Json,
+    path::Path,
     query::Query,
     raw_query::RawQuery,
     request_parts::{Body, BodyStream},
     url_params::UrlParams,
     url_params_map::UrlParamsMap,
 };
+#[doc(no_inline)]
+pub use crate::Json;
 
 #[cfg(feature = "multipart")]
 #[cfg_attr(docsrs, doc(cfg(feature = "multipart")))]
@@ -288,6 +295,11 @@ pub mod multipart;
 #[cfg_attr(docsrs, doc(cfg(feature = "multipart")))]
 #[doc(inline)]
 pub use self::multipart::Multipart;
+
+#[cfg(feature = "ws")]
+#[cfg_attr(docsrs, doc(cfg(feature = "ws")))]
+#[doc(inline)]
+pub use self::ws::WebSocketUpgrade;
 
 #[cfg(feature = "headers")]
 #[cfg_attr(docsrs, doc(cfg(feature = "headers")))]
@@ -301,8 +313,48 @@ pub use self::typed_header::TypedHeader;
 /// Types that can be created from requests.
 ///
 /// See the [module docs](crate::extract) for more details.
+///
+/// # What is the `B` type parameter?
+///
+/// `FromRequest` is generic over the request body (the `B` in
+/// [`http::Request<B>`]). This is to allow `FromRequest` to be usable will any
+/// type of request body. This is necessary because some middleware change the
+/// request body, for example to add timeouts.
+///
+/// If you're writing your own `FromRequest` that wont be used outside your
+/// application, and not using any middleware that changes the request body, you
+/// can most likely use `axum::body::Body`. Note this is also the default.
+///
+/// If you're writing a library, thats intended for others to use, its recommended
+/// to keep the generic type parameter:
+///
+/// ```rust
+/// use axum::{
+///     async_trait,
+///     extract::{FromRequest, RequestParts},
+/// };
+///
+/// struct MyExtractor;
+///
+/// #[async_trait]
+/// impl<B> FromRequest<B> for MyExtractor
+/// where
+///     B: Send, // required by `async_trait`
+/// {
+///     type Rejection = http::StatusCode;
+///
+///     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+///         // ...
+///         # unimplemented!()
+///     }
+/// }
+/// ```
+///
+/// This ensures your extractor is as flexible as possible.
+///
+/// [`http::Request<B>`]: http::Request
 #[async_trait]
-pub trait FromRequest<B>: Sized {
+pub trait FromRequest<B = crate::body::Body>: Sized {
     /// If the extractor fails it'll use this "rejection" type. A rejection is
     /// a kind of error that can be converted into a response.
     type Rejection: IntoResponse;
@@ -315,7 +367,7 @@ pub trait FromRequest<B>: Sized {
 ///
 /// Has several convenience methods for getting owned parts of the request.
 #[derive(Debug)]
-pub struct RequestParts<B> {
+pub struct RequestParts<B = crate::body::Body> {
     method: Option<Method>,
     uri: Option<Uri>,
     version: Option<Version>,
@@ -525,7 +577,7 @@ where
     }
 }
 
-fn has_content_type<B>(
+pub(crate) fn has_content_type<B>(
     req: &RequestParts<B>,
     expected_content_type: &str,
 ) -> Result<bool, HeadersAlreadyExtracted> {
@@ -548,6 +600,6 @@ fn has_content_type<B>(
     Ok(content_type.starts_with(expected_content_type))
 }
 
-fn take_body<B>(req: &mut RequestParts<B>) -> Result<B, BodyAlreadyExtracted> {
+pub(crate) fn take_body<B>(req: &mut RequestParts<B>) -> Result<B, BodyAlreadyExtracted> {
     req.take_body().ok_or(BodyAlreadyExtracted)
 }

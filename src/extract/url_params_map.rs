@@ -18,15 +18,17 @@ use std::{collections::HashMap, str::FromStr};
 ///
 /// let app = route("/users/:id", get(users_show));
 /// # async {
-/// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+/// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 /// # };
 /// ```
 ///
 /// Note that you can only have one URL params extractor per handler. If you
 /// have multiple it'll response with `500 Internal Server Error`.
 #[derive(Debug)]
+#[deprecated(since = "0.1.3", note = "Use `axum::extract::Path` instead.")]
 pub struct UrlParamsMap(HashMap<ByteStr, ByteStr>);
 
+#[allow(deprecated)]
 impl UrlParamsMap {
     /// Look up the value for a key.
     pub fn get(&self, key: &str) -> Option<&str> {
@@ -43,6 +45,7 @@ impl UrlParamsMap {
 }
 
 #[async_trait]
+#[allow(deprecated)]
 impl<B> FromRequest<B> for UrlParamsMap
 where
     B: Send,

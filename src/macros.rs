@@ -47,9 +47,13 @@ macro_rules! define_rejection {
         #[non_exhaustive]
         pub struct $name;
 
+        #[allow(deprecated)]
         impl $crate::response::IntoResponse for $name {
-            fn into_response(self) -> http::Response<$crate::body::Body> {
-                let mut res = http::Response::new($crate::body::Body::from($body));
+            type Body = http_body::Full<bytes::Bytes>;
+            type BodyError = std::convert::Infallible;
+
+            fn into_response(self) -> http::Response<Self::Body> {
+                let mut res = http::Response::new(http_body::Full::from($body));
                 *res.status_mut() = http::StatusCode::$status;
                 res
             }
@@ -64,10 +68,10 @@ macro_rules! define_rejection {
     ) => {
         $(#[$m])*
         #[derive(Debug)]
-        pub struct $name(pub(super) tower::BoxError);
+        pub struct $name(pub(crate) tower::BoxError);
 
         impl $name {
-            pub(super) fn from_err<E>(err: E) -> Self
+            pub(crate) fn from_err<E>(err: E) -> Self
             where
                 E: Into<tower::BoxError>,
             {
@@ -76,9 +80,12 @@ macro_rules! define_rejection {
         }
 
         impl IntoResponse for $name {
-            fn into_response(self) -> http::Response<Body> {
+            type Body = http_body::Full<bytes::Bytes>;
+            type BodyError = std::convert::Infallible;
+
+            fn into_response(self) -> http::Response<Self::Body> {
                 let mut res =
-                    http::Response::new(Body::from(format!(concat!($body, ": {}"), self.0)));
+                    http::Response::new(http_body::Full::from(format!(concat!($body, ": {}"), self.0)));
                 *res.status_mut() = http::StatusCode::$status;
                 res
             }
@@ -99,13 +106,16 @@ macro_rules! composite_rejection {
         #[non_exhaustive]
         pub enum $name {
             $(
-                #[allow(missing_docs)]
+                #[allow(missing_docs, deprecated)]
                 $variant($variant)
             ),+
         }
 
         impl $crate::response::IntoResponse for $name {
-            fn into_response(self) -> http::Response<$crate::body::Body> {
+            type Body = http_body::Full<bytes::Bytes>;
+            type BodyError = std::convert::Infallible;
+
+            fn into_response(self) -> http::Response<Self::Body> {
                 match self {
                     $(
                         Self::$variant(inner) => inner.into_response(),
@@ -115,6 +125,7 @@ macro_rules! composite_rejection {
         }
 
         $(
+            #[allow(deprecated)]
             impl From<$variant> for $name {
                 fn from(inner: $variant) -> Self {
                     Self::$variant(inner)

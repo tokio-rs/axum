@@ -1,5 +1,8 @@
 use super::{FromRequest, RequestParts};
-use crate::response::IntoResponse;
+use crate::{
+    body::{box_body, BoxBody},
+    response::IntoResponse,
+};
 use async_trait::async_trait;
 use http::Response;
 use std::convert::Infallible;
@@ -29,11 +32,11 @@ macro_rules! impl_from_request {
             $( $tail: FromRequest<B> + Send, )*
             B: Send,
         {
-            type Rejection = Response<crate::body::Body>;
+            type Rejection = Response<BoxBody>;
 
             async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-                let $head = $head::from_request(req).await.map_err(IntoResponse::into_response)?;
-                $( let $tail = $tail::from_request(req).await.map_err(IntoResponse::into_response)?; )*
+                let $head = $head::from_request(req).await.map_err(|err| err.into_response().map(box_body))?;
+                $( let $tail = $tail::from_request(req).await.map_err(|err| err.into_response().map(box_body))?; )*
                 Ok(($head, $($tail,)*))
             }
         }

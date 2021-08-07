@@ -10,6 +10,10 @@ use std::net::SocketAddr;
 
 #[tokio::main]
 async fn main() {
+    // Set the RUST_LOG, if it hasn't been explicitly defined
+    if std::env::var("RUST_LOG").is_err() {
+        std::env::set_var("RUST_LOG", "form=debug")
+    }
     tracing_subscriber::fmt::init();
 
     // build our application with some routes
@@ -18,7 +22,7 @@ async fn main() {
     // run it with hyper
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
     tracing::debug!("listening on {}", addr);
-    hyper::Server::bind(&addr)
+    axum::Server::bind(&addr)
         .serve(app.into_make_service())
         .await
         .unwrap();

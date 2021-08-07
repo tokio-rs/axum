@@ -131,7 +131,7 @@ where
 mod tests {
     use super::*;
     use crate::prelude::*;
-    use hyper::Server;
+    use crate::Server;
     use std::net::{SocketAddr, TcpListener};
 
     #[tokio::test]

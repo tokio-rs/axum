@@ -14,9 +14,9 @@ use futures::{sink::SinkExt, stream::StreamExt};
 
 use tokio::sync::broadcast;
 
+use axum::extract::ws::{Message, WebSocket, WebSocketUpgrade};
 use axum::prelude::*;
-use axum::response::Html;
-use axum::ws::{ws, Message, WebSocket};
+use axum::response::{Html, IntoResponse};
 use axum::AddExtensionLayer;
 
 // Our shared state
@@ -33,21 +33,25 @@ async fn main() {
     let app_state = Arc::new(AppState { user_set, tx });
 
     let app = route("/", get(index))
-        .route("/websocket", ws(websocket))
+        .route("/websocket", get(websocket_handler))
         .layer(AddExtensionLayer::new(app_state));
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
 
-    hyper::Server::bind(&addr)
+    axum::Server::bind(&addr)
         .serve(app.into_make_service())
         .await
         .unwrap();
 }
 
-async fn websocket(
-    stream: WebSocket,
+async fn websocket_handler(
+    ws: WebSocketUpgrade,
     extract::Extension(state): extract::Extension<Arc<AppState>>,
-) {
+) -> impl IntoResponse {
+    ws.on_upgrade(|socket| websocket(socket, state))
+}
+
+async fn websocket(stream: WebSocket, state: Arc<AppState>) {
     // By splitting we can send and receive at the same time.
     let (mut sender, mut receiver) = stream.split();
 

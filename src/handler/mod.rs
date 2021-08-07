@@ -4,8 +4,8 @@ use crate::{
     body::{box_body, BoxBody},
     extract::FromRequest,
     response::IntoResponse,
-    routing::{EmptyRouter, MethodFilter, RouteFuture},
-    service::HandleError,
+    routing::{future::RouteFuture, EmptyRouter, MethodFilter},
+    service::{HandleError, HandleErrorFromRouter},
 };
 use async_trait::async_trait;
 use bytes::Bytes;
@@ -34,7 +34,7 @@ pub mod future;
 /// // All requests to `/` will go to `handler` regardless of the HTTP method.
 /// let app = route("/", any(handler));
 /// # async {
-/// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+/// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 /// # };
 /// ```
 pub fn any<H, B, T>(handler: H) -> OnMethod<IntoService<H, B, T>, EmptyRouter>
@@ -76,7 +76,7 @@ where
 /// // Requests to `GET /` will go to `handler`.
 /// let app = route("/", get(handler));
 /// # async {
-/// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+/// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 /// # };
 /// ```
 pub fn get<H, B, T>(handler: H) -> OnMethod<IntoService<H, B, T>, EmptyRouter>
@@ -158,7 +158,7 @@ where
 /// // Requests to `POST /` will go to `handler`.
 /// let app = route("/", on(MethodFilter::Post, handler));
 /// # async {
-/// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+/// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 /// # };
 /// ```
 pub fn on<H, B, T>(method: MethodFilter, handler: H) -> OnMethod<IntoService<H, B, T>, EmptyRouter>
@@ -221,7 +221,7 @@ pub trait Handler<B, In>: Sized {
     /// let layered_handler = handler.layer(ConcurrencyLimitLayer::new(64));
     /// let app = route("/", get(layered_handler));
     /// # async {
-    /// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+    /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
     /// # };
     /// ```
     ///
@@ -268,8 +268,9 @@ macro_rules! impl_handler {
             Fut: Future<Output = Res> + Send,
             B: Send + 'static,
             Res: IntoResponse,
+            B: Send + 'static,
             $head: FromRequest<B> + Send,
-            $( $tail: FromRequest<B> + Send, )*
+            $( $tail: FromRequest<B> + Send,)*
         {
             type Sealed = sealed::Hidden;
 
@@ -278,13 +279,13 @@ macro_rules! impl_handler {
 
                 let $head = match $head::from_request(&mut req).await {
                     Ok(value) => value,
-                    Err(rejection) => return rejection.into_response().map(crate::body::box_body),
+                    Err(rejection) => return rejection.into_response().map(box_body),
                 };
 
                 $(
                     let $tail = match $tail::from_request(&mut req).await {
                         Ok(value) => value,
-                        Err(rejection) => return rejection.into_response().map(crate::body::box_body),
+                        Err(rejection) => return rejection.into_response().map(box_body),
                     };
                 )*
 
@@ -371,7 +372,7 @@ impl<S, T> Layered<S, T> {
     pub fn handle_error<F, ReqBody, ResBody, Res, E>(
         self,
         f: F,
-    ) -> Layered<HandleError<S, F, ReqBody>, T>
+    ) -> Layered<HandleError<S, F, ReqBody, HandleErrorFromRouter>, T>
     where
         S: Service<Request<ReqBody>, Response = Response<ResBody>>,
         F: FnOnce(S::Error) -> Result<Res, E>,
@@ -504,7 +505,7 @@ impl<S, F> OnMethod<S, F> {
     /// // `other_handler`.
     /// let app = route("/", post(handler).get(other_handler));
     /// # async {
-    /// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+    /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
     /// # };
     /// ```
     pub fn get<H, B, T>(self, handler: H) -> OnMethod<IntoService<H, B, T>, Self>
@@ -590,7 +591,7 @@ impl<S, F> OnMethod<S, F> {
     /// // `other_handler`
     /// let app = route("/", get(handler).on(MethodFilter::Delete, other_handler));
     /// # async {
-    /// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+    /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
     /// # };
     /// ```
     pub fn on<H, B, T>(
