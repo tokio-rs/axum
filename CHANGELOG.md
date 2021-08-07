@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Breaking changes
 
+- Remove `QueryStringMissing` as it was no longer being used
 - `extract::extractor_middleware::ExtractorMiddlewareResponseFuture` moved
   to `extract::extractor_middleware::future::ResponseFuture` ([#133](https://github.com/tokio-rs/axum/pull/133))
 - `routing::BoxRouteFuture` moved to `routing::future::BoxRouteFuture` ([#133](https://github.com/tokio-rs/axum/pull/133))
