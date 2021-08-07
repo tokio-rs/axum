@@ -1,7 +1,10 @@
 //! Rejection response types.
 
 use super::IntoResponse;
-use crate::body::{box_body, BoxBody, BoxStdError};
+use crate::{
+    body::{box_body, BoxBody},
+    Error,
+};
 use bytes::Bytes;
 use http_body::Full;
 use std::convert::Infallible;
@@ -46,7 +49,7 @@ define_rejection! {
     #[status = BAD_REQUEST]
     #[body = "Failed to parse the request body as JSON"]
     /// Rejection type for [`Json`](super::Json).
-    pub struct InvalidJsonBody(BoxError);
+    pub struct InvalidJsonBody(Error);
 }
 
 define_rejection! {
@@ -62,7 +65,7 @@ define_rejection! {
     #[body = "Missing request extension"]
     /// Rejection type for [`Extension`](super::Extension) if an expected
     /// request extension was not found.
-    pub struct MissingExtension(BoxError);
+    pub struct MissingExtension(Error);
 }
 
 define_rejection! {
@@ -70,7 +73,7 @@ define_rejection! {
     #[body = "Failed to buffer the request body"]
     /// Rejection type for extractors that buffer the request body. Used if the
     /// request body cannot be buffered due to an error.
-    pub struct FailedToBufferBody(BoxError);
+    pub struct FailedToBufferBody(Error);
 }
 
 define_rejection! {
@@ -78,7 +81,7 @@ define_rejection! {
     #[body = "Request body didn't contain valid UTF-8"]
     /// Rejection type used when buffering the request into a [`String`] if the
     /// body doesn't contain valid UTF-8.
-    pub struct InvalidUtf8(BoxError);
+    pub struct InvalidUtf8(Error);
 }
 
 define_rejection! {
@@ -183,7 +186,7 @@ impl IntoResponse for InvalidPathParam {
 /// couldn't be deserialized into the target type.
 #[derive(Debug)]
 pub struct FailedToDeserializeQueryString {
-    error: BoxError,
+    error: Error,
     type_name: &'static str,
 }
 
@@ -193,7 +196,7 @@ impl FailedToDeserializeQueryString {
         E: Into<BoxError>,
     {
         FailedToDeserializeQueryString {
-            error: error.into(),
+            error: Error::new(error),
             type_name: std::any::type_name::<T>(),
         }
     }
@@ -330,7 +333,7 @@ where
     T: IntoResponse,
 {
     type Body = BoxBody;
-    type BodyError = BoxStdError;
+    type BodyError = Error;
 
     fn into_response(self) -> http::Response<Self::Body> {
         match self {

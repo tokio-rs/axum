@@ -37,7 +37,7 @@
 
 use self::rejection::*;
 use super::{rejection::*, FromRequest, RequestParts};
-use crate::response::IntoResponse;
+use crate::{response::IntoResponse, Error};
 use async_trait::async_trait;
 use bytes::Bytes;
 use futures_util::{
@@ -64,7 +64,6 @@ use tokio_tungstenite::{
     },
     WebSocketStream,
 };
-use tower::BoxError;
 
 /// Extractor for establishing WebSocket connections.
 ///
@@ -332,32 +331,32 @@ impl WebSocket {
     /// Receive another message.
     ///
     /// Returns `None` if the stream stream has closed.
-    pub async fn recv(&mut self) -> Option<Result<Message, BoxError>> {
+    pub async fn recv(&mut self) -> Option<Result<Message, Error>> {
         self.next().await
     }
 
     /// Send a message.
-    pub async fn send(&mut self, msg: Message) -> Result<(), BoxError> {
+    pub async fn send(&mut self, msg: Message) -> Result<(), Error> {
         self.inner
             .send(msg.into_tungstenite())
             .await
-            .map_err(Into::into)
+            .map_err(Error::new)
     }
 
     /// Gracefully close this WebSocket.
-    pub async fn close(mut self) -> Result<(), BoxError> {
-        self.inner.close(None).await.map_err(Into::into)
+    pub async fn close(mut self) -> Result<(), Error> {
+        self.inner.close(None).await.map_err(Error::new)
     }
 }
 
 impl Stream for WebSocket {
-    type Item = Result<Message, BoxError>;
+    type Item = Result<Message, Error>;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         self.inner.poll_next_unpin(cx).map(|option_msg| {
             option_msg.map(|result_msg| {
                 result_msg
-                    .map_err(Into::into)
+                    .map_err(Error::new)
                     .map(Message::from_tungstenite)
             })
         })
@@ -365,24 +364,24 @@ impl Stream for WebSocket {
 }
 
 impl Sink<Message> for WebSocket {
-    type Error = BoxError;
+    type Error = Error;
 
     fn poll_ready(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        Pin::new(&mut self.inner).poll_ready(cx).map_err(Into::into)
+        Pin::new(&mut self.inner).poll_ready(cx).map_err(Error::new)
     }
 
     fn start_send(mut self: Pin<&mut Self>, item: Message) -> Result<(), Self::Error> {
         Pin::new(&mut self.inner)
             .start_send(item.into_tungstenite())
-            .map_err(Into::into)
+            .map_err(Error::new)
     }
 
     fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        Pin::new(&mut self.inner).poll_flush(cx).map_err(Into::into)
+        Pin::new(&mut self.inner).poll_flush(cx).map_err(Error::new)
     }
 
     fn poll_close(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        Pin::new(&mut self.inner).poll_close(cx).map_err(Into::into)
+        Pin::new(&mut self.inner).poll_close(cx).map_err(Error::new)
     }
 }
 
@@ -483,12 +482,12 @@ impl Message {
     }
 
     /// Attempt to consume the WebSocket message and convert it to a String.
-    pub fn into_text(self) -> Result<String, BoxError> {
+    pub fn into_text(self) -> Result<String, Error> {
         match self {
             Self::Text(string) => Ok(string),
-            Self::Binary(data) | Self::Ping(data) | Self::Pong(data) => {
-                Ok(String::from_utf8(data).map_err(|err| err.utf8_error())?)
-            }
+            Self::Binary(data) | Self::Ping(data) | Self::Pong(data) => Ok(String::from_utf8(data)
+                .map_err(|err| err.utf8_error())
+                .map_err(Error::new)?),
             Self::Close(None) => Ok(String::new()),
             Self::Close(Some(frame)) => Ok(frame.reason.into_owned()),
         }
@@ -496,11 +495,11 @@ impl Message {
 
     /// Attempt to get a &str from the WebSocket message,
     /// this will try to convert binary data to utf8.
-    pub fn to_text(&self) -> Result<&str, BoxError> {
+    pub fn to_text(&self) -> Result<&str, Error> {
         match *self {
             Self::Text(ref string) => Ok(string),
             Self::Binary(ref data) | Self::Ping(ref data) | Self::Pong(ref data) => {
-                Ok(std::str::from_utf8(data)?)
+                Ok(std::str::from_utf8(data).map_err(Error::new)?)
             }
             Self::Close(None) => Ok(""),
             Self::Close(Some(ref frame)) => Ok(&frame.reason),

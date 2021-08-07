@@ -1,6 +1,9 @@
 //! Types and traits for generating responses.
 
-use crate::body::{box_body, BoxBody, BoxStdError};
+use crate::{
+    body::{box_body, BoxBody},
+    Error,
+};
 use bytes::Bytes;
 use http::{header, HeaderMap, HeaderValue, Response, StatusCode};
 use http_body::{
@@ -139,7 +142,7 @@ where
     K: IntoResponse,
 {
     type Body = BoxBody;
-    type BodyError = BoxStdError;
+    type BodyError = Error;
 
     fn into_response(self) -> Response<Self::Body> {
         match self {
@@ -155,7 +158,7 @@ where
     E: IntoResponse,
 {
     type Body = BoxBody;
-    type BodyError = BoxStdError;
+    type BodyError = Error;
 
     fn into_response(self) -> Response<Self::Body> {
         match self {

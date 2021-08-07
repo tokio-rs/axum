@@ -64,18 +64,18 @@ macro_rules! define_rejection {
         #[status = $status:ident]
         #[body = $body:expr]
         $(#[$m:meta])*
-        pub struct $name:ident (BoxError);
+        pub struct $name:ident (Error);
     ) => {
         $(#[$m])*
         #[derive(Debug)]
-        pub struct $name(pub(crate) tower::BoxError);
+        pub struct $name(pub(crate) crate::Error);
 
         impl $name {
             pub(crate) fn from_err<E>(err: E) -> Self
             where
                 E: Into<tower::BoxError>,
             {
-                Self(err.into())
+                Self(crate::Error::new(err))
             }
         }
 

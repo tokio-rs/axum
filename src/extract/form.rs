@@ -4,6 +4,7 @@ use bytes::Buf;
 use http::Method;
 use serde::de::DeserializeOwned;
 use std::ops::Deref;
+use tower::BoxError;
 
 /// Extractor that deserializes `application/x-www-form-urlencoded` requests
 /// into some type.
@@ -44,7 +45,7 @@ where
     T: DeserializeOwned,
     B: http_body::Body + Send,
     B::Data: Send,
-    B::Error: Into<tower::BoxError>,
+    B::Error: Into<BoxError>,
 {
     type Rejection = FormRejection;
 
