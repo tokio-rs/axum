@@ -79,7 +79,7 @@
 //!
 //! async fn handler(
 //!     // Extract captured parameters from the URL
-//!     params: extract::UrlParamsMap,
+//!     params: extract::Path<HashMap<String, String>>,
 //!     // Parse query string into a `HashMap`
 //!     query_params: extract::Query<HashMap<String, String>>,
 //!     // Buffer the request body into a `Bytes`
@@ -266,8 +266,6 @@ mod query;
 mod raw_query;
 mod request_parts;
 mod tuple;
-mod url_params;
-mod url_params_map;
 
 #[doc(inline)]
 #[allow(deprecated)]
@@ -281,8 +279,6 @@ pub use self::{
     query::Query,
     raw_query::RawQuery,
     request_parts::{Body, BodyStream},
-    url_params::UrlParams,
-    url_params_map::UrlParamsMap,
 };
 #[doc(no_inline)]
 pub use crate::Json;
