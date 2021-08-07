@@ -18,6 +18,23 @@ jobs:
         override: true
         profile: minimal
         components: clippy
+    # caching
+    - name: Cache cargo registry
+      uses: actions/cache@v2.1.6
+      with:
+        path: ~/.cargo/registry
+        key: ${{ runner.os }}-v1-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+    - name: Cache cargo index
+      uses: actions/cache@v2.1.6
+      with:
+        path: ~/.cargo/git
+        key: ${{ runner.os }}-v1-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+    - name: Cache cargo target dir
+      uses: actions/cache@v2.1.6
+      with:
+        path: target
+        key: ${{ runner.os }}-v1-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+    # /caching
     - name: Check
       uses: actions-rs/cargo@v1
       with:
@@ -38,6 +55,23 @@ jobs:
         toolchain: stable
         override: true
         profile: minimal
+    # caching
+    - name: Cache cargo registry
+      uses: actions/cache@v2.1.6
+      with:
+        path: ~/.cargo/registry
+        key: ${{ runner.os }}-v1-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+    - name: Cache cargo index
+      uses: actions/cache@v2.1.6
+      with:
+        path: ~/.cargo/git
+        key: ${{ runner.os }}-v1-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+    - name: Cache cargo target dir
+      uses: actions/cache@v2.1.6
+      with:
+        path: target
+        key: ${{ runner.os }}-v1-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+    # /caching
     - name: cargo doc
       working-directory: ${{ matrix.subcrate }}
       env:
@@ -53,6 +87,23 @@ jobs:
         toolchain: stable
         override: true
         profile: minimal
+    # caching
+    - name: Cache cargo registry
+      uses: actions/cache@v2.1.6
+      with:
+        path: ~/.cargo/registry
+        key: ${{ runner.os }}-v1-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+    - name: Cache cargo index
+      uses: actions/cache@v2.1.6
+      with:
+        path: ~/.cargo/git
+        key: ${{ runner.os }}-v1-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+    - name: Cache cargo target dir
+      uses: actions/cache@v2.1.6
+      with:
+        path: target
+        key: ${{ runner.os }}-v1-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+    # /caching
     - name: Install cargo-hack
       run: |
         curl -LsSf https://github.com/taiki-e/cargo-hack/releases/latest/download/cargo-hack-x86_64-unknown-linux-gnu.tar.gz | tar xzf - -C ~/.cargo/bin
@@ -74,6 +125,23 @@ jobs:
         toolchain: ${{ matrix.rust }}
         override: true
         profile: minimal
+    # caching
+    - name: Cache cargo registry
+      uses: actions/cache@v2.1.6
+      with:
+        path: ~/.cargo/registry
+        key: ${{ runner.os }}-v1-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+    - name: Cache cargo index
+      uses: actions/cache@v2.1.6
+      with:
+        path: ~/.cargo/git
+        key: ${{ runner.os }}-v1-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+    - name: Cache cargo target dir
+      uses: actions/cache@v2.1.6
+      with:
+        path: target
+        key: ${{ runner.os }}-v1-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+    # /caching
     - name: Run tests
       uses: actions-rs/cargo@v1
       with:
