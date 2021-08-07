@@ -31,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - `ExtractorMiddleware`
     - `ExtractorMiddlewareLayer`
 - Replace `axum::body::BoxStdError` with `axum::Error`, which supports downcasting ([#150](https://github.com/tokio-rs/axum/pull/150))
+- `WebSocket` now uses `axum::Error` as its error type ([#150](https://github.com/tokio-rs/axum/pull/150))
 
 # 0.1.3 (06. August, 2021)
 
