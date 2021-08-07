@@ -18,7 +18,7 @@
 - [`chat`](../examples/chat.rs) - Chat application example.
 - [`404`](../examples/404.rs) - Custom 404 page.
 - [`async-graphql`](../examples/async-graphql) - GraphQL example using [`async-graphql`](https://crates.io/crates/async-graphql).
-
+- [`tracing_aka_logging`](../examples/tracing_aka_logging) - How to setup and configure tracing/logging.
 
 # Community showcase
 
