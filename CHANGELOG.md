@@ -11,6 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Breaking changes
 
+- Ensure a `HandleError` service created from `axum::ServiceExt::handle_error`
+  _does not_ implement `RoutingDsl` as that could lead to confusing routing
+  behavior. ([#120](https://github.com/tokio-rs/axum/pull/120))
 - Remove `QueryStringMissing` as it was no longer being used
 - `extract::extractor_middleware::ExtractorMiddlewareResponseFuture` moved
   to `extract::extractor_middleware::future::ResponseFuture` ([#133](https://github.com/tokio-rs/axum/pull/133))

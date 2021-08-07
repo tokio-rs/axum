@@ -6,6 +6,7 @@ use crate::{
     buffer::MpscBuffer,
     extract::connect_info::{Connected, IntoMakeServiceWithConnectInfo},
     response::IntoResponse,
+    service::HandleErrorFromRouter,
     util::ByteStr,
 };
 use async_trait::async_trait;
@@ -716,7 +717,7 @@ impl<S> Layered<S> {
     pub fn handle_error<F, ReqBody, ResBody, Res, E>(
         self,
         f: F,
-    ) -> crate::service::HandleError<S, F, ReqBody>
+    ) -> crate::service::HandleError<S, F, ReqBody, HandleErrorFromRouter>
     where
         S: Service<Request<ReqBody>, Response = Response<ResBody>> + Clone,
         F: FnOnce(S::Error) -> Result<Res, E>,
