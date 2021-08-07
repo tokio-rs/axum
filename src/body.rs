@@ -5,6 +5,7 @@ use http_body::Body as _;
 use std::{error::Error as StdError, fmt};
 use tower::BoxError;
 
+#[doc(no_inline)]
 pub use hyper::body::Body;
 
 /// A boxed [`Body`] trait object.

@@ -1,6 +1,5 @@
 use crate::{
-    extract::RequestParts, handler::on, prelude::*, response::IntoResponse, routing::nest,
-    routing::MethodFilter, service,
+    extract::RequestParts, handler::on, prelude::*, routing::nest, routing::MethodFilter, service,
 };
 use bytes::Bytes;
 use futures_util::future::Ready;
@@ -9,6 +8,7 @@ use hyper::{Body, Server};
 use serde::Deserialize;
 use serde_json::json;
 use std::{
+    collections::HashMap,
     convert::Infallible,
     net::{SocketAddr, TcpListener},
     task::{Context, Poll},
@@ -244,20 +244,14 @@ async fn routing() {
 async fn extracting_url_params() {
     let app = route(
         "/users/:id",
-        get(|params: extract::UrlParams<(i32,)>| async move {
-            let (id,) = params.0;
+        get(|extract::Path(id): extract::Path<i32>| async move {
             assert_eq!(id, 42);
         })
-        .post(|params_map: extract::UrlParamsMap| async move {
-            assert_eq!(params_map.get("id").unwrap(), "1337");
-            assert_eq!(
-                params_map
-                    .get_typed::<i32>("id")
-                    .expect("missing")
-                    .expect("failed to parse"),
-                1337
-            );
-        }),
+        .post(
+            |extract::Path(params_map): extract::Path<HashMap<String, i32>>| async move {
+                assert_eq!(params_map.get("id").unwrap(), &1337);
+            },
+        ),
     );
 
     let addr = run_in_background(app).await;
@@ -283,12 +277,7 @@ async fn extracting_url_params() {
 async fn extracting_url_params_multiple_times() {
     let app = route(
         "/users/:id",
-        get(
-            |_: extract::UrlParams<(i32,)>,
-             _: extract::UrlParamsMap,
-             _: extract::UrlParams<(i32,)>,
-             _: extract::UrlParamsMap| async {},
-        ),
+        get(|_: extract::Path<i32>, _: extract::Path<String>| async {}),
     );
 
     let addr = run_in_background(app).await;
@@ -524,8 +513,10 @@ async fn layer_on_whole_router() {
 }
 
 #[tokio::test]
+#[cfg(feature = "header")]
 async fn typed_header() {
-    use extract::TypedHeader;
+    use crate::{extract::TypedHeader, response::IntoResponse};
+
     async fn handle(TypedHeader(user_agent): TypedHeader<headers::UserAgent>) -> impl IntoResponse {
         user_agent.to_string()
     }

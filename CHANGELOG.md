@@ -7,11 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- Fix stripping prefix when nesting services at `/` ([#91](https://github.com/tokio-rs/axum/pull/91))
-- Add support for WebSocket protocol negotiation. ([#83](https://github.com/tokio-rs/axum/pull/83))
-- Use `pin-project-lite` instead of `pin-project`. ([#95](https://github.com/tokio-rs/axum/pull/95))
-- Re-export `http` crate and `hyper::Server`. ([#110](https://github.com/tokio-rs/axum/pull/110))
-- Fix `Query` and `Form` extractors giving bad request error when query string is empty. ([#117](https://github.com/tokio-rs/axum/pull/117))
+- Make `FromRequest` default to being generic over `axum::body::Body` ([#146](https://github.com/tokio-rs/axum/pull/146))
 
 ## Breaking changes
 
@@ -21,6 +17,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `routing::EmptyRouterFuture` moved to `routing::future::EmptyRouterFuture` ([#133](https://github.com/tokio-rs/axum/pull/133))
 - `routing::RouteFuture` moved to `routing::future::RouteFuture` ([#133](https://github.com/tokio-rs/axum/pull/133))
 - `service::BoxResponseBodyFuture` moved to `service::future::BoxResponseBodyFuture` ([#133](https://github.com/tokio-rs/axum/pull/133))
+- The following types no longer implement `Copy` ([#132](https://github.com/tokio-rs/axum/pull/132)):
+    - `EmptyRouter`
+    - `ExtractorMiddleware`
+    - `ExtractorMiddlewareLayer`
+
+# 0.1.3 (06. August, 2021)
+
+- Fix stripping prefix when nesting services at `/` ([#91](https://github.com/tokio-rs/axum/pull/91))
+- Add support for WebSocket protocol negotiation ([#83](https://github.com/tokio-rs/axum/pull/83))
+- Use `pin-project-lite` instead of `pin-project` ([#95](https://github.com/tokio-rs/axum/pull/95))
+- Re-export `http` crate and `hyper::Server` ([#110](https://github.com/tokio-rs/axum/pull/110))
+- Fix `Query` and `Form` extractors giving bad request error when query string is empty. ([#117](https://github.com/tokio-rs/axum/pull/117))
+- Add `Path` extractor. ([#124](https://github.com/tokio-rs/axum/pull/124))
+- Fixed the implementation of `IntoResponse` of `(HeaderMap, T)` and `(StatusCode, HeaderMap, T)` would ignore headers from `T` ([#137](https://github.com/tokio-rs/axum/pull/137))
+- Deprecate `extract::UrlParams` and `extract::UrlParamsMap`. Use `extract::Path` instead ([#138](https://github.com/tokio-rs/axum/pull/138))
 
 # 0.1.2 (01. August, 2021)
 

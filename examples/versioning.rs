@@ -12,6 +12,7 @@ use axum::{
 };
 use http::Response;
 use http::StatusCode;
+use std::collections::HashMap;
 use std::net::SocketAddr;
 
 #[tokio::main]
@@ -53,7 +54,7 @@ where
     type Rejection = Response<Body>;
 
     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-        let params = extract::UrlParamsMap::from_request(req)
+        let params = extract::Path::<HashMap<String, String>>::from_request(req)
             .await
             .map_err(IntoResponse::into_response)?;
 
@@ -61,7 +62,7 @@ where
             .get("version")
             .ok_or_else(|| (StatusCode::NOT_FOUND, "version param missing").into_response())?;
 
-        match version {
+        match version.as_str() {
             "v1" => Ok(Version::V1),
             "v2" => Ok(Version::V2),
             "v3" => Ok(Version::V3),
