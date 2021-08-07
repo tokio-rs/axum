@@ -14,9 +14,9 @@ use std::ops::Deref;
 
 /// JSON Extractor/Response
 ///
-/// When used as an Extractor, it can deserializes request bodies into some type that
-/// implements [`serde::Serialize`]. If the request bodies cannot be parsed, or it does not contain
-/// the `Content-Type: application/json`t header, will reject the request and return a
+/// When used as an extractor, it can deserialize request bodies into some type that
+/// implements [`serde::Serialize`]. If the request body cannot be parsed, or it does not contain
+/// the `Content-Type: application/json` header, it will reject the request and return a
 /// `400 Bad Request` response.
 ///
 /// # Extractor example
