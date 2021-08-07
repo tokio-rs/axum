@@ -33,8 +33,6 @@ use std::ops::{Deref, DerefMut};
 ///
 /// async fn create_user(extract::Json(payload): extract::Json<CreateUser>) {
 ///     // payload is a `CreateUser`
-///
-///     // ...
 /// }
 ///
 /// let app = route("/users", post(create_user));
@@ -59,12 +57,18 @@ use std::ops::{Deref, DerefMut};
 ///
 /// #[derive(Serialize)]
 /// struct User {
-///     name: String,
-///     email: String,
+///     id: Uuid,
+///     username: String,
 /// }
 ///
 /// async fn get_user(Path(user_id) : Path<Uuid>) -> Json<User> {
-///     todo!()
+///     let user = find_user(user_id).await;
+///     Json(user)
+/// }
+///
+/// async fn find_user(user_id: Uuid) -> User {
+///     // ...
+///     # unimplemented!()
 /// }
 ///
 /// let app = route("/users/:id", get(get_user));
