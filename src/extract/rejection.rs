@@ -151,6 +151,25 @@ impl IntoResponse for InvalidUrlParam {
     }
 }
 
+/// Rejection type for [`Path`](super::Path) if the capture route
+/// param didn't have the expected type.
+#[derive(Debug)]
+pub struct InvalidPathParam(String);
+
+impl InvalidPathParam {
+    pub(super) fn new(err: impl Into<String>) -> Self {
+        InvalidPathParam(err.into())
+    }
+}
+
+impl IntoResponse for InvalidPathParam {
+    fn into_response(self) -> http::Response<Body> {
+        let mut res = http::Response::new(Body::from(format!("Invalid URL param. {}", self.0)));
+        *res.status_mut() = http::StatusCode::BAD_REQUEST;
+        res
+    }
+}
+
 /// Rejection type for extractors that deserialize query strings if the input
 /// couldn't be deserialized into the target type.
 #[derive(Debug)]
@@ -240,6 +259,17 @@ composite_rejection! {
     /// can fail.
     pub enum UrlParamsRejection {
         InvalidUrlParam,
+        MissingRouteParams,
+    }
+}
+
+composite_rejection! {
+    /// Rejection used for [`Path`](super::Path).
+    ///
+    /// Contains one variant for each way the [`Path`](super::Path) extractor
+    /// can fail.
+    pub enum PathParamsRejection {
+        InvalidPathParam,
         MissingRouteParams,
     }
 }

@@ -9,6 +9,10 @@ use std::net::SocketAddr;
 
 #[tokio::main]
 async fn main() {
+    // Set the RUST_LOG, if it hasn't been explicitly defined
+    if std::env::var("RUST_LOG").is_err() {
+        std::env::set_var("RUST_LOG", "hello_world=debug")
+    }
     tracing_subscriber::fmt::init();
 
     // build our application with a route

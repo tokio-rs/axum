@@ -11,6 +11,10 @@ use std::net::SocketAddr;
 
 #[tokio::main]
 async fn main() {
+    // Set the RUST_LOG, if it hasn't been explicitly defined
+    if std::env::var("RUST_LOG").is_err() {
+        std::env::set_var("RUST_LOG", "templates=debug")
+    }
     tracing_subscriber::fmt::init();
 
     // build our application with some routes
@@ -25,14 +29,8 @@ async fn main() {
         .unwrap();
 }
 
-async fn greet(params: extract::UrlParamsMap) -> impl IntoResponse {
-    let name = params
-        .get("name")
-        .expect("`name` will be there if route was matched")
-        .to_string();
-
+async fn greet(extract::Path(name): extract::Path<String>) -> impl IntoResponse {
     let template = HelloTemplate { name };
-
     HtmlTemplate(template)
 }
 

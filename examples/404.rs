@@ -14,6 +14,10 @@ use tower::util::MapResponseLayer;
 
 #[tokio::main]
 async fn main() {
+    // Set the RUST_LOG, if it hasn't been explicitly defined
+    if std::env::var("RUST_LOG").is_err() {
+        std::env::set_var("RUST_LOG", "404=debug")
+    }
     tracing_subscriber::fmt::init();
 
     // build our application with a route
@@ -35,12 +39,14 @@ async fn handler() -> response::Html<&'static str> {
 }
 
 fn map_404(response: Response<BoxBody>) -> Response<BoxBody> {
-    if response.status() != StatusCode::NOT_FOUND {
-        return response;
+    if response.status() == StatusCode::NOT_FOUND
+        || response.status() == StatusCode::METHOD_NOT_ALLOWED
+    {
+        return Response::builder()
+            .status(StatusCode::NOT_FOUND)
+            .body(box_body(Body::from("nothing to see here")))
+            .unwrap();
     }
 
-    Response::builder()
-        .status(StatusCode::NOT_FOUND)
-        .body(box_body(Body::from("nothing to see here")))
-        .unwrap()
+    response
 }

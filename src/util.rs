@@ -1,8 +1,18 @@
 use bytes::Bytes;
+use std::ops::Deref;
 
 /// A string like type backed by `Bytes` making it cheap to clone.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub(crate) struct ByteStr(Bytes);
+
+impl Deref for ByteStr {
+    type Target = str;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        self.as_str()
+    }
+}
 
 impl ByteStr {
     pub(crate) fn new<S>(s: S) -> Self

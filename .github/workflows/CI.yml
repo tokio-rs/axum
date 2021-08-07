@@ -3,22 +3,21 @@ name: CI
 on:
   push:
     branches:
-    - master
+    - main
   pull_request: {}
 
 jobs:
   check:
     # Run `cargo check` first to ensure that the pushed code at least compiles.
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        rust: [stable, 1.40.0]
     steps:
     - uses: actions/checkout@master
     - uses: actions-rs/toolchain@v1
       with:
-        toolchain: ${{ matrix.rust }}
+        toolchain: stable
+        override: true
         profile: minimal
+        components: clippy
     - name: Check
       uses: actions-rs/cargo@v1
       with:
@@ -37,9 +36,12 @@ jobs:
     - uses: actions-rs/toolchain@v1
       with:
         toolchain: stable
+        override: true
         profile: minimal
     - name: cargo doc
       working-directory: ${{ matrix.subcrate }}
+      env:
+          RUSTDOCFLAGS: "-D broken-intra-doc-links"
       run: cargo doc --all-features --no-deps
 
   cargo-hack:
@@ -49,6 +51,7 @@ jobs:
     - uses: actions-rs/toolchain@v1
       with:
         toolchain: stable
+        override: true
         profile: minimal
     - name: Install cargo-hack
       run: |
@@ -63,12 +66,13 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        rust: [stable, beta, nightly, 1.40.0]
+        rust: [stable, beta, nightly, 1.51]
     steps:
     - uses: actions/checkout@master
     - uses: actions-rs/toolchain@v1
       with:
         toolchain: ${{ matrix.rust }}
+        override: true
         profile: minimal
     - name: Run tests
       uses: actions-rs/cargo@v1
