@@ -358,7 +358,7 @@ pub trait FromRequest<B = crate::body::Body>: Sized {
 ///
 /// Has several convenience methods for getting owned parts of the request.
 #[derive(Debug)]
-pub struct RequestParts<B> {
+pub struct RequestParts<B = crate::body::Body> {
     method: Option<Method>,
     uri: Option<Uri>,
     version: Option<Version>,
