@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Add associated `Body` and `BodyError` types to `IntoResponse`. This is
   required for returning responses with bodies other than `hyper::Body` from
-  handlers. That wasn't previously possible. ([#86](https://github.com/tokio-rs/axum/pull/86))
+  handlers. See the docs for advice on how to implement `IntoResponse` ([#86](https://github.com/tokio-rs/axum/pull/86))
 - Add `RoutingDsl::or` for combining routes. ([#108](https://github.com/tokio-rs/axum/pull/108))
 - Ensure a `HandleError` service created from `axum::ServiceExt::handle_error`
   _does not_ implement `RoutingDsl` as that could lead to confusing routing
