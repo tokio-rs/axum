@@ -10,31 +10,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Make `FromRequest` default to being generic over `axum::body::Body` ([#146](https://github.com/tokio-rs/axum/pull/146))
 - Implement `std::error::Error` for all rejections ([#153](https://github.com/tokio-rs/axum/pull/153))
 - Fix `Uri` extractor not being the full URI if using `nest` ([#156](https://github.com/tokio-rs/axum/pull/156))
+- Add `RoutingDsl::or` for combining routes ([#108](https://github.com/tokio-rs/axum/pull/108))
 
 ## Breaking changes
 
 - Add associated `Body` and `BodyError` types to `IntoResponse`. This is
   required for returning responses with bodies other than `hyper::Body` from
   handlers. See the docs for advice on how to implement `IntoResponse` ([#86](https://github.com/tokio-rs/axum/pull/86))
+- Replace `axum::body::BoxStdError` with `axum::Error`, which supports downcasting ([#150](https://github.com/tokio-rs/axum/pull/150))
 - Change WebSocket API to use an extractor ([#121](https://github.com/tokio-rs/axum/pull/121))
 - Make WebSocket `Message` an enum ([#116](https://github.com/tokio-rs/axum/pull/116))
-- Add `RoutingDsl::or` for combining routes. ([#108](https://github.com/tokio-rs/axum/pull/108))
+- `WebSocket` now uses `axum::Error` as its error type ([#150](https://github.com/tokio-rs/axum/pull/150))
 - Ensure a `HandleError` service created from `axum::ServiceExt::handle_error`
   _does not_ implement `RoutingDsl` as that could lead to confusing routing
-  behavior. ([#120](https://github.com/tokio-rs/axum/pull/120))
-- Remove `QueryStringMissing` as it was no longer being used
-- `extract::extractor_middleware::ExtractorMiddlewareResponseFuture` moved
-  to `extract::extractor_middleware::future::ResponseFuture` ([#133](https://github.com/tokio-rs/axum/pull/133))
-- `routing::BoxRouteFuture` moved to `routing::future::BoxRouteFuture` ([#133](https://github.com/tokio-rs/axum/pull/133))
-- `routing::EmptyRouterFuture` moved to `routing::future::EmptyRouterFuture` ([#133](https://github.com/tokio-rs/axum/pull/133))
-- `routing::RouteFuture` moved to `routing::future::RouteFuture` ([#133](https://github.com/tokio-rs/axum/pull/133))
-- `service::BoxResponseBodyFuture` moved to `service::future::BoxResponseBodyFuture` ([#133](https://github.com/tokio-rs/axum/pull/133))
+  behavior ([#120](https://github.com/tokio-rs/axum/pull/120))
+- Removed `extract::UrlParams` and `extract::UrlParamsMap`. Use `extract::Path` instead
+- `EmptyRouter` now requires the response body to implement `Send + Sync + 'static'` ([#108](https://github.com/tokio-rs/axum/pull/108))
+- These future types have been moved
+    - `extract::extractor_middleware::ExtractorMiddlewareResponseFuture` moved
+      to `extract::extractor_middleware::future::ResponseFuture` ([#133](https://github.com/tokio-rs/axum/pull/133))
+    - `routing::BoxRouteFuture` moved to `routing::future::BoxRouteFuture` ([#133](https://github.com/tokio-rs/axum/pull/133))
+    - `routing::EmptyRouterFuture` moved to `routing::future::EmptyRouterFuture` ([#133](https://github.com/tokio-rs/axum/pull/133))
+    - `routing::RouteFuture` moved to `routing::future::RouteFuture` ([#133](https://github.com/tokio-rs/axum/pull/133))
+    - `service::BoxResponseBodyFuture` moved to `service::future::BoxResponseBodyFuture` ([#133](https://github.com/tokio-rs/axum/pull/133))
 - The following types no longer implement `Copy` ([#132](https://github.com/tokio-rs/axum/pull/132))
     - `EmptyRouter`
     - `ExtractorMiddleware`
     - `ExtractorMiddlewareLayer`
-- Replace `axum::body::BoxStdError` with `axum::Error`, which supports downcasting ([#150](https://github.com/tokio-rs/axum/pull/150))
-- `WebSocket` now uses `axum::Error` as its error type ([#150](https://github.com/tokio-rs/axum/pull/150))
+    - `QueryStringMissing`
 - `RequestParts` changes ([#153](https://github.com/tokio-rs/axum/pull/153))
     - `method` new returns an `&http::Method`
     - `method_mut` new returns an `&mut http::Method`
@@ -48,11 +51,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - `VersionAlreadyExtracted` ([#153](https://github.com/tokio-rs/axum/pull/153))
     - `UrlParamsRejection`
     - `InvalidUrlParam`
-- Removed `extract::UrlParams` and `extract::UrlParamsMap`. Use `extract::Path` instead
 - The following services have new response future types:
-  - `service::OnMethod`
-  - `handler::OnMethod`
-  - `routing::Nested`
+    - `service::OnMethod`
+    - `handler::OnMethod`
+    - `routing::Nested`
 
 # 0.1.3 (06. August, 2021)
 
