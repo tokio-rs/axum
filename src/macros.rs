@@ -49,8 +49,11 @@ macro_rules! define_rejection {
 
         #[allow(deprecated)]
         impl $crate::response::IntoResponse for $name {
-            fn into_response(self) -> http::Response<$crate::body::Body> {
-                let mut res = http::Response::new($crate::body::Body::from($body));
+            type Body = http_body::Full<bytes::Bytes>;
+            type BodyError = std::convert::Infallible;
+
+            fn into_response(self) -> http::Response<Self::Body> {
+                let mut res = http::Response::new(http_body::Full::from($body));
                 *res.status_mut() = http::StatusCode::$status;
                 res
             }
@@ -77,9 +80,12 @@ macro_rules! define_rejection {
         }
 
         impl IntoResponse for $name {
-            fn into_response(self) -> http::Response<Body> {
+            type Body = http_body::Full<bytes::Bytes>;
+            type BodyError = std::convert::Infallible;
+
+            fn into_response(self) -> http::Response<Self::Body> {
                 let mut res =
-                    http::Response::new(Body::from(format!(concat!($body, ": {}"), self.0)));
+                    http::Response::new(http_body::Full::from(format!(concat!($body, ": {}"), self.0)));
                 *res.status_mut() = http::StatusCode::$status;
                 res
             }
@@ -106,7 +112,10 @@ macro_rules! composite_rejection {
         }
 
         impl $crate::response::IntoResponse for $name {
-            fn into_response(self) -> http::Response<$crate::body::Body> {
+            type Body = http_body::Full<bytes::Bytes>;
+            type BodyError = std::convert::Infallible;
+
+            fn into_response(self) -> http::Response<Self::Body> {
                 match self {
                     $(
                         Self::$variant(inner) => inner.into_response(),

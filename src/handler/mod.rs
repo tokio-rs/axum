@@ -268,8 +268,9 @@ macro_rules! impl_handler {
             Fut: Future<Output = Res> + Send,
             B: Send + 'static,
             Res: IntoResponse,
+            B: Send + 'static,
             $head: FromRequest<B> + Send,
-            $( $tail: FromRequest<B> + Send, )*
+            $( $tail: FromRequest<B> + Send,)*
         {
             type Sealed = sealed::Hidden;
 
@@ -278,13 +279,13 @@ macro_rules! impl_handler {
 
                 let $head = match $head::from_request(&mut req).await {
                     Ok(value) => value,
-                    Err(rejection) => return rejection.into_response().map(crate::body::box_body),
+                    Err(rejection) => return rejection.into_response().map(box_body),
                 };
 
                 $(
                     let $tail = match $tail::from_request(&mut req).await {
                         Ok(value) => value,
-                        Err(rejection) => return rejection.into_response().map(crate::body::box_body),
+                        Err(rejection) => return rejection.into_response().map(box_body),
                     };
                 )*
 

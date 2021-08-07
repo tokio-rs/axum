@@ -1,3 +1,5 @@
+use crate::response::IntoResponse;
+
 use super::{rejection::*, FromRequest, RequestParts};
 use async_trait::async_trait;
 use std::ops::Deref;
@@ -27,6 +29,7 @@ pub struct ContentLengthLimit<T, const N: u64>(pub T);
 impl<T, B, const N: u64> FromRequest<B> for ContentLengthLimit<T, N>
 where
     T: FromRequest<B>,
+    T::Rejection: IntoResponse,
     B: Send,
 {
     type Rejection = ContentLengthLimitRejection<T::Rejection>;

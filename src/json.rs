@@ -1,16 +1,20 @@
 use crate::{
     extract::{has_content_type, rejection::*, take_body, FromRequest, RequestParts},
     prelude::response::IntoResponse,
-    Body,
 };
 use async_trait::async_trait;
+use bytes::Bytes;
 use http::{
     header::{self, HeaderValue},
     StatusCode,
 };
+use http_body::Full;
 use hyper::Response;
 use serde::{de::DeserializeOwned, Serialize};
-use std::ops::{Deref, DerefMut};
+use std::{
+    convert::Infallible,
+    ops::{Deref, DerefMut},
+};
 
 /// JSON Extractor/Response
 ///
@@ -132,19 +136,22 @@ impl<T> IntoResponse for Json<T>
 where
     T: Serialize,
 {
-    fn into_response(self) -> Response<Body> {
+    type Body = Full<Bytes>;
+    type BodyError = Infallible;
+
+    fn into_response(self) -> Response<Self::Body> {
         let bytes = match serde_json::to_vec(&self.0) {
             Ok(res) => res,
             Err(err) => {
                 return Response::builder()
                     .status(StatusCode::INTERNAL_SERVER_ERROR)
                     .header(header::CONTENT_TYPE, "text/plain")
-                    .body(Body::from(err.to_string()))
+                    .body(Full::from(err.to_string()))
                     .unwrap();
             }
         };
 
-        let mut res = Response::new(Body::from(bytes));
+        let mut res = Response::new(Full::from(bytes));
         res.headers_mut().insert(
             header::CONTENT_TYPE,
             HeaderValue::from_static("application/json"),

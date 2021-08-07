@@ -48,10 +48,8 @@ use http::{
     header::{self, HeaderName, HeaderValue},
     Method, Response, StatusCode,
 };
-use hyper::{
-    upgrade::{OnUpgrade, Upgraded},
-    Body,
-};
+use http_body::Full;
+use hyper::upgrade::{OnUpgrade, Upgraded};
 use sha1::{Digest, Sha1};
 use std::{
     borrow::Cow,
@@ -256,7 +254,10 @@ where
     F: FnOnce(WebSocket) -> Fut + Send + 'static,
     Fut: Future + Send + 'static,
 {
-    fn into_response(self) -> Response<Body> {
+    type Body = Full<Bytes>;
+    type BodyError = <Self::Body as http_body::Body>::Error;
+
+    fn into_response(self) -> Response<Self::Body> {
         // check requested protocols
         let protocol = self
             .extractor
@@ -315,7 +316,7 @@ where
             builder = builder.header(header::SEC_WEBSOCKET_PROTOCOL, protocol);
         }
 
-        builder.body(Body::empty()).unwrap()
+        builder.body(Full::default()).unwrap()
     }
 }
 

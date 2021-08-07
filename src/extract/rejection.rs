@@ -1,7 +1,10 @@
 //! Rejection response types.
 
 use super::IntoResponse;
-use crate::body::Body;
+use crate::body::{box_body, BoxBody, BoxStdError};
+use bytes::Bytes;
+use http_body::Full;
+use std::convert::Infallible;
 use tower::BoxError;
 
 define_rejection! {
@@ -141,8 +144,11 @@ impl InvalidUrlParam {
 }
 
 impl IntoResponse for InvalidUrlParam {
-    fn into_response(self) -> http::Response<Body> {
-        let mut res = http::Response::new(Body::from(format!(
+    type Body = Full<Bytes>;
+    type BodyError = Infallible;
+
+    fn into_response(self) -> http::Response<Self::Body> {
+        let mut res = http::Response::new(Full::from(format!(
             "Invalid URL param. Expected something of type `{}`",
             self.type_name
         )));
@@ -163,8 +169,11 @@ impl InvalidPathParam {
 }
 
 impl IntoResponse for InvalidPathParam {
-    fn into_response(self) -> http::Response<Body> {
-        let mut res = http::Response::new(Body::from(format!("Invalid URL param. {}", self.0)));
+    type Body = Full<Bytes>;
+    type BodyError = Infallible;
+
+    fn into_response(self) -> http::Response<Self::Body> {
+        let mut res = http::Response::new(Full::from(format!("Invalid URL param. {}", self.0)));
         *res.status_mut() = http::StatusCode::BAD_REQUEST;
         res
     }
@@ -191,8 +200,11 @@ impl FailedToDeserializeQueryString {
 }
 
 impl IntoResponse for FailedToDeserializeQueryString {
-    fn into_response(self) -> http::Response<Body> {
-        let mut res = http::Response::new(Body::from(format!(
+    type Body = Full<Bytes>;
+    type BodyError = Infallible;
+
+    fn into_response(self) -> http::Response<Self::Body> {
+        let mut res = http::Response::new(Full::from(format!(
             "Failed to deserialize query string. Expected something of type `{}`. Error: {}",
             self.type_name, self.error,
         )));
@@ -317,12 +329,15 @@ impl<T> IntoResponse for ContentLengthLimitRejection<T>
 where
     T: IntoResponse,
 {
-    fn into_response(self) -> http::Response<Body> {
+    type Body = BoxBody;
+    type BodyError = BoxStdError;
+
+    fn into_response(self) -> http::Response<Self::Body> {
         match self {
-            Self::PayloadTooLarge(inner) => inner.into_response(),
-            Self::LengthRequired(inner) => inner.into_response(),
-            Self::HeadersAlreadyExtracted(inner) => inner.into_response(),
-            Self::Inner(inner) => inner.into_response(),
+            Self::PayloadTooLarge(inner) => inner.into_response().map(box_body),
+            Self::LengthRequired(inner) => inner.into_response().map(box_body),
+            Self::HeadersAlreadyExtracted(inner) => inner.into_response().map(box_body),
+            Self::Inner(inner) => inner.into_response().map(box_body),
         }
     }
 }
@@ -339,7 +354,10 @@ pub struct TypedHeaderRejection {
 #[cfg(feature = "headers")]
 #[cfg_attr(docsrs, doc(cfg(feature = "headers")))]
 impl IntoResponse for TypedHeaderRejection {
-    fn into_response(self) -> http::Response<crate::Body> {
+    type Body = Full<Bytes>;
+    type BodyError = Infallible;
+
+    fn into_response(self) -> http::Response<Self::Body> {
         let mut res = format!("{} ({})", self.err, self.name).into_response();
         *res.status_mut() = http::StatusCode::BAD_REQUEST;
         res
