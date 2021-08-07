@@ -1,3 +1,5 @@
+#![allow(clippy::blacklisted_name)]
+
 use crate::{
     extract::RequestParts, handler::on, prelude::*, routing::nest, routing::MethodFilter, service,
 };
@@ -18,6 +20,7 @@ use tower::{make::Shared, service_fn, BoxError, Service, ServiceBuilder};
 use tower_http::{compression::CompressionLayer, trace::TraceLayer};
 
 mod nest;
+mod or;
 
 #[tokio::test]
 async fn hello_world() {

@@ -28,6 +28,7 @@ use tower::{
 use tower_http::map_response_body::MapResponseBodyLayer;
 
 pub mod future;
+pub mod or;
 
 /// A filter that matches one or more HTTP methods.
 #[derive(Debug, Copy, Clone)]
@@ -354,6 +355,40 @@ pub trait RoutingDsl: crate::sealed::Sealed + Sized {
     {
         IntoMakeServiceWithConnectInfo::new(self)
     }
+
+    /// Merge two routers into one.
+    ///
+    /// This is useful for breaking apps into smaller pieces and combining them
+    /// into one.
+    ///
+    /// ```
+    /// use axum::prelude::*;
+    /// #
+    /// # async fn users_list() {}
+    /// # async fn users_show() {}
+    /// # async fn teams_list() {}
+    ///
+    /// // define some routes separately
+    /// let user_routes = route("/users", get(users_list))
+    ///     .route("/users/:id", get(users_show));
+    ///
+    /// let team_routes = route("/teams", get(teams_list));
+    ///
+    /// // combine them into one
+    /// let app = user_routes.or(team_routes);
+    /// # async {
+    /// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+    /// # };
+    /// ```
+    fn or<S>(self, other: S) -> or::Or<Self, S>
+    where
+        S: RoutingDsl,
+    {
+        or::Or {
+            first: self,
+            second: other,
+        }
+    }
 }
 
 impl<S, F> RoutingDsl for Route<S, F> {}
@@ -448,7 +483,10 @@ impl<E> RoutingDsl for EmptyRouter<E> {}
 
 impl<E> crate::sealed::Sealed for EmptyRouter<E> {}
 
-impl<B, E> Service<Request<B>> for EmptyRouter<E> {
+impl<B, E> Service<Request<B>> for EmptyRouter<E>
+where
+    B: Send + Sync + 'static,
+{
     type Response = Response<BoxBody>;
     type Error = E;
     type Future = EmptyRouterFuture<E>;
@@ -457,13 +495,24 @@ impl<B, E> Service<Request<B>> for EmptyRouter<E> {
         Poll::Ready(Ok(()))
     }
 
-    fn call(&mut self, _req: Request<B>) -> Self::Future {
+    fn call(&mut self, request: Request<B>) -> Self::Future {
         let mut res = Response::new(crate::body::empty());
+        res.extensions_mut().insert(FromEmptyRouter { request });
         *res.status_mut() = self.status;
         EmptyRouterFuture {
             future: futures_util::future::ok(res),
         }
     }
+}
+
+/// Response extension used by [`EmptyRouter`] to send the request back to [`Or`] so
+/// the other service can be called.
+///
+/// Without this we would loose ownership of the request when calling the first
+/// service in [`Or`]. We also wouldn't be able to identify if the response came
+/// from [`EmptyRouter`] and therefore can be discarded in [`Or`].
+struct FromEmptyRouter<B> {
+    request: Request<B>,
 }
 
 #[derive(Debug, Clone)]

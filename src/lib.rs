@@ -125,6 +125,8 @@
 //! Routes can also be dynamic like `/users/:id`. See [extractors](#extractors)
 //! for more details.
 //!
+//! You can also define routes separately and merge them with [`RoutingDsl::or`].
+//!
 //! ## Precedence
 //!
 //! Note that routes are matched _bottom to top_ so routes that should have
@@ -662,6 +664,7 @@
 //! [`IntoResponse`]: crate::response::IntoResponse
 //! [`Timeout`]: tower::timeout::Timeout
 //! [examples]: https://github.com/tokio-rs/axum/tree/main/examples
+//! [`RoutingDsl::or`]: crate::routing::RoutingDsl::or
 //! [`axum::Server`]: hyper::server::Server
 
 #![warn(
