@@ -1,13 +1,9 @@
 //! Example OAuth (Discord) implementation.
 //!
-//! Thanks to pbzweihander for their tide-google-oauth-example!
-//! It helped me understand oauth2.
-//!
 //! Run with
 //!
 //! ```not_rust
-//! CLIENT_ID=123123 CLIENT_SECRET=secret
-//! cargo run --example oauth --features=headers
+//! CLIENT_ID=123 CLIENT_SECRET=secret cargo run --example oauth --features=headers
 //! ```
 
 use async_session::{MemoryStore, Session, SessionStore};
@@ -18,9 +14,9 @@ use axum::{
     response::IntoResponse,
     AddExtensionLayer,
 };
+use cookie::{Cookie, SameSite};
 use http::header::SET_COOKIE;
 use http::StatusCode;
-use http_types::{cookies::SameSite, Cookie};
 use hyper::Body;
 use oauth2::{
     basic::BasicClient, reqwest::async_http_client, AuthUrl, AuthorizationCode, ClientId,
@@ -98,11 +94,11 @@ fn oauth_client() -> BasicClient {
 // The user data we'll get back from Discord.
 // https://discord.com/developers/docs/resources/user#user-object-user-structure
 #[derive(Debug, Serialize, Deserialize)]
-pub struct User {
-    pub id: String,
-    pub avatar: Option<String>,
-    pub username: String,
-    pub discriminator: String,
+struct User {
+    id: String,
+    avatar: Option<String>,
+    username: String,
+    discriminator: String,
 }
 
 // Session is optional
@@ -116,7 +112,7 @@ async fn index(user: Option<User>) -> impl IntoResponse {
     }
 }
 
-pub(crate) async fn discord_auth(client: Extension<BasicClient>) -> impl IntoResponse {
+async fn discord_auth(client: Extension<BasicClient>) -> impl IntoResponse {
     let (auth_url, _csrf_token) = client
         .authorize_url(CsrfToken::new_random)
         .add_scope(Scope::new("identify".to_string()))
@@ -127,14 +123,14 @@ pub(crate) async fn discord_auth(client: Extension<BasicClient>) -> impl IntoRes
 }
 
 // Valid user session required. If there is none, redirect to the auth page
-pub(crate) async fn protected(user: User) -> impl IntoResponse {
+async fn protected(user: User) -> impl IntoResponse {
     format!(
         "Welcome to the protected area :)\nHere's your info:\n{:?}",
         user
     )
 }
 
-pub(crate) async fn logout(
+async fn logout(
     store: Extension<MemoryStore>,
     cookies: TypedHeader<headers::Cookie>,
 ) -> impl IntoResponse {
@@ -151,12 +147,12 @@ pub(crate) async fn logout(
 }
 
 #[derive(Debug, Deserialize)]
-pub struct AuthRequest {
-    pub code: String,
-    pub state: String,
+struct AuthRequest {
+    code: String,
+    state: String,
 }
 
-pub async fn login_authorized(
+async fn login_authorized(
     query: Query<AuthRequest>,
     store: Extension<MemoryStore>,
     oauth_client: Extension<BasicClient>,
@@ -203,8 +199,8 @@ pub async fn login_authorized(
 }
 
 // Utility to save some lines of code
-pub struct Redirect(String);
-impl<'a> IntoResponse for Redirect {
+struct Redirect(String);
+impl IntoResponse for Redirect {
     fn into_response(self) -> http::Response<Body> {
         let builder = http::Response::builder()
             .header("Location", self.0)
@@ -213,7 +209,7 @@ impl<'a> IntoResponse for Redirect {
     }
 }
 
-pub struct AuthRedirect;
+struct AuthRedirect;
 impl IntoResponse for AuthRedirect {
     fn into_response(self) -> http::Response<Body> {
         Redirect("/auth/discord".to_string()).into_response()
@@ -237,24 +233,15 @@ where
             .await
             .expect("could not get cookies");
 
-        let session_cookie = match cookies.get(COOKIE_NAME) {
-            Some(c) => c,
-            None => return Err(AuthRedirect),
-        };
+        let session_cookie = cookies.get(COOKIE_NAME).ok_or(AuthRedirect)?;
 
-        let session = match store
+        let session = store
             .load_session(session_cookie.to_string())
             .await
             .unwrap()
-        {
-            Some(c) => c,
-            None => return Err(AuthRedirect),
-        };
+            .ok_or(AuthRedirect)?;
 
-        let user = match session.get::<User>("user") {
-            Some(u) => u,
-            None => return Err(AuthRedirect),
-        };
+        let user = session.get::<User>("user").ok_or(AuthRedirect)?;
 
         Ok(user)
     }

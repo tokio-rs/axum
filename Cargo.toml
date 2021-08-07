@@ -61,7 +61,7 @@ tokio-stream = "0.1.7"
 
 # for oauth example
 oauth2 = "4.1"
-http-types = "2.11.1"
+cookie = "0.15.1"
 
 # for async-graphql example
 async-graphql = "2.9.9"
