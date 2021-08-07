@@ -7,6 +7,7 @@ use std::{
     pin::Pin,
     task::{Context, Poll},
 };
+use tower::BoxError;
 
 #[async_trait]
 impl<B> FromRequest<B> for Request<B>
@@ -176,7 +177,7 @@ impl<B> FromRequest<B> for Bytes
 where
     B: http_body::Body + Send,
     B::Data: Send,
-    B::Error: Into<tower::BoxError>,
+    B::Error: Into<BoxError>,
 {
     type Rejection = BytesRejection;
 
@@ -196,7 +197,7 @@ impl<B> FromRequest<B> for String
 where
     B: http_body::Body + Send,
     B::Data: Send,
-    B::Error: Into<tower::BoxError>,
+    B::Error: Into<BoxError>,
 {
     type Rejection = StringRejection;
 

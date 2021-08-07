@@ -15,6 +15,7 @@ use std::{
     convert::Infallible,
     ops::{Deref, DerefMut},
 };
+use tower::BoxError;
 
 /// JSON Extractor/Response
 ///
@@ -89,7 +90,7 @@ where
     T: DeserializeOwned,
     B: http_body::Body + Send,
     B::Data: Send,
-    B::Error: Into<tower::BoxError>,
+    B::Error: Into<BoxError>,
 {
     type Rejection = JsonRejection;
 

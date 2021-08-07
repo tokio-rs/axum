@@ -37,7 +37,7 @@
 
 use self::rejection::*;
 use super::{rejection::*, FromRequest, RequestParts};
-use crate::response::IntoResponse;
+use crate::{response::IntoResponse, Error};
 use async_trait::async_trait;
 use bytes::Bytes;
 use futures_util::{
@@ -62,7 +62,6 @@ use tokio_tungstenite::{
     tungstenite::protocol::{self, WebSocketConfig},
     WebSocketStream,
 };
-use tower::BoxError;
 
 /// Extractor for establishing WebSocket connections.
 ///
@@ -330,29 +329,29 @@ impl WebSocket {
     /// Receive another message.
     ///
     /// Returns `None` if the stream stream has closed.
-    pub async fn recv(&mut self) -> Option<Result<Message, BoxError>> {
+    pub async fn recv(&mut self) -> Option<Result<Message, Error>> {
         self.next().await
     }
 
     /// Send a message.
-    pub async fn send(&mut self, msg: Message) -> Result<(), BoxError> {
-        self.inner.send(msg.inner).await.map_err(Into::into)
+    pub async fn send(&mut self, msg: Message) -> Result<(), Error> {
+        self.inner.send(msg.inner).await.map_err(Error::new)
     }
 
     /// Gracefully close this WebSocket.
-    pub async fn close(mut self) -> Result<(), BoxError> {
-        self.inner.close(None).await.map_err(Into::into)
+    pub async fn close(mut self) -> Result<(), Error> {
+        self.inner.close(None).await.map_err(Error::new)
     }
 }
 
 impl Stream for WebSocket {
-    type Item = Result<Message, BoxError>;
+    type Item = Result<Message, Error>;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         self.inner.poll_next_unpin(cx).map(|option_msg| {
             option_msg.map(|result_msg| {
                 result_msg
-                    .map_err(Into::into)
+                    .map_err(Error::new)
                     .map(|inner| Message { inner })
             })
         })
@@ -360,24 +359,24 @@ impl Stream for WebSocket {
 }
 
 impl Sink<Message> for WebSocket {
-    type Error = BoxError;
+    type Error = Error;
 
     fn poll_ready(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        Pin::new(&mut self.inner).poll_ready(cx).map_err(Into::into)
+        Pin::new(&mut self.inner).poll_ready(cx).map_err(Error::new)
     }
 
     fn start_send(mut self: Pin<&mut Self>, item: Message) -> Result<(), Self::Error> {
         Pin::new(&mut self.inner)
             .start_send(item.inner)
-            .map_err(Into::into)
+            .map_err(Error::new)
     }
 
     fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        Pin::new(&mut self.inner).poll_flush(cx).map_err(Into::into)
+        Pin::new(&mut self.inner).poll_flush(cx).map_err(Error::new)
     }
 
     fn poll_close(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        Pin::new(&mut self.inner).poll_close(cx).map_err(Into::into)
+        Pin::new(&mut self.inner).poll_close(cx).map_err(Error::new)
     }
 }
 

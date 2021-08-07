@@ -134,7 +134,7 @@
 //!
 //! ```rust
 //! use axum::{prelude::*, body::BoxBody};
-//! use tower::{Service, ServiceExt, BoxError};
+//! use tower::{Service, ServiceExt};
 //! use http::{Method, Response, StatusCode};
 //! use std::convert::Infallible;
 //!
@@ -563,7 +563,7 @@
 //! use tower_http::services::ServeFile;
 //! use http::Response;
 //! use std::convert::Infallible;
-//! use tower::{service_fn, BoxError};
+//! use tower::service_fn;
 //!
 //! let app = route(
 //!     // Any request to `/` goes to a service
