@@ -1,6 +1,6 @@
 //! Routing between [`Service`]s.
 
-use self::future::{BoxRouteFuture, EmptyRouterFuture, RouteFuture};
+use self::future::{BoxRouteFuture, EmptyRouterFuture, NestedFuture, RouteFuture};
 use crate::{
     body::{box_body, BoxBody},
     buffer::MpscBuffer,
@@ -900,14 +900,14 @@ where
 {
     type Response = Response<BoxBody>;
     type Error = S::Error;
-    type Future = RouteFuture<S, F, B>;
+    type Future = NestedFuture<S, F, B>;
 
     fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         Poll::Ready(Ok(()))
     }
 
     fn call(&mut self, mut req: Request<B>) -> Self::Future {
-        if let Some((prefix, captures)) = self.pattern.prefix_match(req.uri().path()) {
+        let f = if let Some((prefix, captures)) = self.pattern.prefix_match(req.uri().path()) {
             let without_prefix = strip_prefix(req.uri(), prefix);
             *req.uri_mut() = without_prefix;
 
@@ -917,7 +917,9 @@ where
         } else {
             let fut = self.fallback.clone().oneshot(req);
             RouteFuture::b(fut)
-        }
+        };
+
+        NestedFuture { inner: f }
     }
 }
 
