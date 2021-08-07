@@ -15,7 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   required for returning responses with bodies other than `hyper::Body` from
   handlers. See the docs for advice on how to implement `IntoResponse` ([#86](https://github.com/tokio-rs/axum/pull/86))
 - Change WebSocket API to use an extractor ([#121](https://github.com/tokio-rs/axum/pull/121))
-- Make WebSocket Message an enum ([#116](https://github.com/tokio-rs/axum/pull/116))
+- Make WebSocket `Message` an enum ([#116](https://github.com/tokio-rs/axum/pull/116))
 - Add `RoutingDsl::or` for combining routes. ([#108](https://github.com/tokio-rs/axum/pull/108))
 - Ensure a `HandleError` service created from `axum::ServiceExt::handle_error`
   _does not_ implement `RoutingDsl` as that could lead to confusing routing
@@ -34,11 +34,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Replace `axum::body::BoxStdError` with `axum::Error`, which supports downcasting ([#150](https://github.com/tokio-rs/axum/pull/150))
 - `WebSocket` now uses `axum::Error` as its error type ([#150](https://github.com/tokio-rs/axum/pull/150))
 - `RequestParts` changes:
-    - `method` new returns an owned `http::Method`
+    - `method` new returns an `&http::Method`
     - `method_mut` new returns an `&mut http::Method`
     - `take_method` has been removed
+    - `uri` new returns an `&http::Uri`
+    - `uri_mut` new returns an `&mut http::Uri`
+    - `take_uri` has been removed
 - These rejections have been removed as they're no longer used
     - `MethodAlreadyExtracted`
+    - `UriAlreadyExtracted`
 
 # 0.1.3 (06. August, 2021)
 

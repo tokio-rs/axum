@@ -47,11 +47,7 @@ where
     type Rejection = QueryRejection;
 
     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-        let query = req
-            .uri()
-            .ok_or(UriAlreadyExtracted)?
-            .query()
-            .unwrap_or_default();
+        let query = req.uri().query().unwrap_or_default();
         let value = serde_urlencoded::from_str(query)
             .map_err(FailedToDeserializeQueryString::new::<T, _>)?;
         Ok(Query(value))

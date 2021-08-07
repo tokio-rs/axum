@@ -369,7 +369,7 @@ pub trait FromRequest<B = crate::body::Body>: Sized {
 #[derive(Debug)]
 pub struct RequestParts<B = crate::body::Body> {
     method: Method,
-    uri: Option<Uri>,
+    uri: Uri,
     version: Option<Version>,
     headers: Option<HeaderMap>,
     extensions: Option<Extensions>,
@@ -392,7 +392,7 @@ impl<B> RequestParts<B> {
 
         RequestParts {
             method,
-            uri: Some(uri),
+            uri,
             version: Some(version),
             headers: Some(headers),
             extensions: Some(extensions),
@@ -414,10 +414,7 @@ impl<B> RequestParts<B> {
         let mut req = Request::new(body.take().expect("body already extracted"));
 
         *req.method_mut() = method.clone();
-
-        if let Some(uri) = uri.take() {
-            *req.uri_mut() = uri;
-        }
+        *req.uri_mut() = uri.clone();
 
         if let Some(version) = version.take() {
             *req.version_mut() = version;
@@ -434,37 +431,24 @@ impl<B> RequestParts<B> {
         req
     }
 
-    /// Gets a reference to the request method.
-    ///
-    /// Returns `None` if the method has been taken by another extractor.
-    pub fn method(&self) -> Method {
-        self.method.clone()
+    /// Gets a reference the request method.
+    pub fn method(&self) -> &Method {
+        &self.method
     }
 
     /// Gets a mutable reference to the request method.
-    ///
-    /// Returns `None` if the method has been taken by another extractor.
     pub fn method_mut(&mut self) -> &mut Method {
         &mut self.method
     }
 
-    /// Gets a reference to the request URI.
-    ///
-    /// Returns `None` if the URI has been taken by another extractor.
-    pub fn uri(&self) -> Option<&Uri> {
-        self.uri.as_ref()
+    /// Gets a reference the request URI.
+    pub fn uri(&self) -> &Uri {
+        &self.uri
     }
 
     /// Gets a mutable reference to the request URI.
-    ///
-    /// Returns `None` if the URI has been taken by another extractor.
-    pub fn uri_mut(&mut self) -> Option<&mut Uri> {
-        self.uri.as_mut()
-    }
-
-    /// Takes the URI out of the request, leaving a `None` in its place.
-    pub fn take_uri(&mut self) -> Option<Uri> {
-        self.uri.take()
+    pub fn uri_mut(&mut self) -> &mut Uri {
+        &mut self.uri
     }
 
     /// Gets a reference to the request HTTP version.

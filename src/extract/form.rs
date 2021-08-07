@@ -52,11 +52,7 @@ where
     #[allow(warnings)]
     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
         if req.method() == Method::GET {
-            let query = req
-                .uri()
-                .ok_or(UriAlreadyExtracted)?
-                .query()
-                .unwrap_or_default();
+            let query = req.uri().query().unwrap_or_default();
             let value = serde_urlencoded::from_str(query)
                 .map_err(FailedToDeserializeQueryString::new::<T, _>)?;
             Ok(Form(value))

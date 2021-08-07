@@ -20,7 +20,7 @@ where
     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
         let RequestParts {
             method: _,
-            uri,
+            uri: _,
             version,
             headers,
             extensions,
@@ -29,7 +29,6 @@ where
 
         let all_parts = version
             .as_ref()
-            .zip(uri.as_ref())
             .zip(extensions.as_ref())
             .zip(body.as_ref())
             .zip(headers.as_ref());
@@ -63,7 +62,7 @@ where
     type Rejection = Infallible;
 
     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-        Ok(req.method())
+        Ok(req.method().clone())
     }
 }
 
@@ -72,10 +71,10 @@ impl<B> FromRequest<B> for Uri
 where
     B: Send,
 {
-    type Rejection = UriAlreadyExtracted;
+    type Rejection = Infallible;
 
     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-        req.take_uri().ok_or(UriAlreadyExtracted)
+        Ok(req.uri().clone())
     }
 }
 
