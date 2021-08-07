@@ -370,7 +370,7 @@ pub trait FromRequest<B = crate::body::Body>: Sized {
 pub struct RequestParts<B = crate::body::Body> {
     method: Method,
     uri: Uri,
-    version: Option<Version>,
+    version: Version,
     headers: Option<HeaderMap>,
     extensions: Option<Extensions>,
     body: Option<B>,
@@ -393,7 +393,7 @@ impl<B> RequestParts<B> {
         RequestParts {
             method,
             uri,
-            version: Some(version),
+            version,
             headers: Some(headers),
             extensions: Some(extensions),
             body: Some(body),
@@ -415,10 +415,7 @@ impl<B> RequestParts<B> {
 
         *req.method_mut() = method.clone();
         *req.uri_mut() = uri.clone();
-
-        if let Some(version) = version.take() {
-            *req.version_mut() = version;
-        }
+        *req.version_mut() = *version;
 
         if let Some(headers) = headers.take() {
             *req.headers_mut() = headers;
@@ -451,23 +448,14 @@ impl<B> RequestParts<B> {
         &mut self.uri
     }
 
-    /// Gets a reference to the request HTTP version.
-    ///
-    /// Returns `None` if the HTTP version has been taken by another extractor.
-    pub fn version(&self) -> Option<Version> {
+    /// Get the request HTTP version.
+    pub fn version(&self) -> Version {
         self.version
     }
 
     /// Gets a mutable reference to the request HTTP version.
-    ///
-    /// Returns `None` if the HTTP version has been taken by another extractor.
-    pub fn version_mut(&mut self) -> Option<&mut Version> {
-        self.version.as_mut()
-    }
-
-    /// Takes the HTTP version out of the request, leaving a `None` in its place.
-    pub fn take_version(&mut self) -> Option<Version> {
-        self.version.take()
+    pub fn version_mut(&mut self) -> &mut Version {
+        &mut self.version
     }
 
     /// Gets a reference to the request headers.

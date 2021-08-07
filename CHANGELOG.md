@@ -43,6 +43,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - These rejections have been removed as they're no longer used
     - `MethodAlreadyExtracted`
     - `UriAlreadyExtracted`
+    - `VersionAlreadyExtracted`
 
 # 0.1.3 (06. August, 2021)
 

@@ -12,13 +12,6 @@ use tower::BoxError;
 
 define_rejection! {
     #[status = INTERNAL_SERVER_ERROR]
-    #[body = "Version taken by other extractor"]
-    /// Rejection used if the HTTP version has been taken by another extractor.
-    pub struct VersionAlreadyExtracted;
-}
-
-define_rejection! {
-    #[status = INTERNAL_SERVER_ERROR]
     #[body = "Extensions taken by other extractor"]
     /// Rejection used if the method has been taken by another extractor.
     pub struct ExtensionsAlreadyExtracted;

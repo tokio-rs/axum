@@ -21,17 +21,13 @@ where
         let RequestParts {
             method: _,
             uri: _,
-            version,
+            version: _,
             headers,
             extensions,
             body,
         } = req;
 
-        let all_parts = version
-            .as_ref()
-            .zip(extensions.as_ref())
-            .zip(body.as_ref())
-            .zip(headers.as_ref());
+        let all_parts = extensions.as_ref().zip(body.as_ref()).zip(headers.as_ref());
 
         if all_parts.is_some() {
             Ok(req.into_request())
@@ -83,10 +79,10 @@ impl<B> FromRequest<B> for Version
 where
     B: Send,
 {
-    type Rejection = VersionAlreadyExtracted;
+    type Rejection = Infallible;
 
     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-        req.take_version().ok_or(VersionAlreadyExtracted)
+        Ok(req.version())
     }
 }
 
