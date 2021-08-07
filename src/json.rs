@@ -31,8 +31,8 @@ use std::ops::Deref;
 ///     password: String,
 /// }
 ///
-/// async fn create_user(payload: extract::Json<CreateUser>) {
-///     let payload: CreateUser = payload.0;
+/// async fn create_user(extract::Json(payload): extract::Json<CreateUser>) {
+///     // payload is a `CreateUser`
 ///
 ///     // ...
 /// }
