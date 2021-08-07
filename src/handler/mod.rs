@@ -4,7 +4,7 @@ use crate::{
     body::{box_body, BoxBody},
     extract::FromRequest,
     response::IntoResponse,
-    routing::{EmptyRouter, MethodFilter, RouteFuture},
+    routing::{future::RouteFuture, EmptyRouter, MethodFilter},
     service::HandleError,
 };
 use async_trait::async_trait;

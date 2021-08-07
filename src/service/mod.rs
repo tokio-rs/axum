@@ -89,7 +89,7 @@
 use crate::{
     body::BoxBody,
     response::IntoResponse,
-    routing::{EmptyRouter, MethodFilter, RouteFuture},
+    routing::{future::RouteFuture, EmptyRouter, MethodFilter},
 };
 use bytes::Bytes;
 use http::{Request, Response};
@@ -102,10 +102,6 @@ use std::{
 use tower::{util::Oneshot, BoxError, Service, ServiceExt as _};
 
 pub mod future;
-
-// for backwards compatibility
-#[doc(hidden)]
-pub use future::BoxResponseBodyFuture;
 
 /// Route requests to the given service regardless of the HTTP method.
 ///
