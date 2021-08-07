@@ -115,3 +115,28 @@ where
         }
     }
 }
+
+pin_project! {
+    /// The response future for [`Nested`](super::Nested).
+    #[derive(Debug)]
+    pub struct NestedFuture<S, F, B>
+    where
+        S: Service<Request<B>>,
+        F: Service<Request<B>>
+    {
+        #[pin]
+        pub(super) inner: RouteFuture<S, F, B>,
+    }
+}
+
+impl<S, F, B> Future for NestedFuture<S, F, B>
+where
+    S: Service<Request<B>, Response = Response<BoxBody>>,
+    F: Service<Request<B>, Response = Response<BoxBody>, Error = S::Error>,
+{
+    type Output = Result<Response<BoxBody>, S::Error>;
+
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        self.project().inner.poll(cx)
+    }
+}

@@ -49,6 +49,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - `UrlParamsRejection`
     - `InvalidUrlParam`
 - Removed `extract::UrlParams` and `extract::UrlParamsMap`. Use `extract::Path` instead
+- The following services have new response future types:
+  - `service::OnMethod`
+  - `handler::OnMethod`
+  - `routing::Nested`
 
 # 0.1.3 (06. August, 2021)
 

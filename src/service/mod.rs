@@ -439,20 +439,22 @@ where
 {
     type Response = Response<BoxBody>;
     type Error = S::Error;
-    type Future = RouteFuture<S, F, B>;
+    type Future = future::OnMethodFuture<S, F, B>;
 
     fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         Poll::Ready(Ok(()))
     }
 
     fn call(&mut self, req: Request<B>) -> Self::Future {
-        if self.method.matches(req.method()) {
+        let f = if self.method.matches(req.method()) {
             let fut = self.svc.clone().oneshot(req);
             RouteFuture::a(fut)
         } else {
             let fut = self.fallback.clone().oneshot(req);
             RouteFuture::b(fut)
-        }
+        };
+
+        future::OnMethodFuture { inner: f }
     }
 }
 
