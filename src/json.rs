@@ -10,7 +10,7 @@ use http::{
 };
 use hyper::Response;
 use serde::{de::DeserializeOwned, Serialize};
-use std::ops::Deref;
+use std::ops::{Deref, DerefMut};
 
 /// JSON Extractor/Response
 ///
@@ -49,20 +49,28 @@ use std::ops::Deref;
 /// # Response example
 ///
 /// ```
-/// use serde_json::json;
-/// use axum::{body::Body, response::{Json, IntoResponse}};
-/// use http::{Response, header::CONTENT_TYPE};
+/// use axum::{
+///     prelude::*,
+///     extract::Path,
+///     Json,
+/// };
+/// use serde::Serialize;
+/// use uuid::Uuid;
 ///
-/// let json = json!({
-///     "data": 42,
-/// });
+/// #[derive(Serialize)]
+/// struct User {
+///     name: String,
+///     email: String,
+/// }
 ///
-/// let response: Response<Body> = Json(json).into_response();
+/// async fn get_user(Path(user_id) : Path<Uuid>) -> Json<User> {
+///     todo!()
+/// }
 ///
-/// assert_eq!(
-///     response.headers().get(CONTENT_TYPE).unwrap(),
-///     "application/json",
-/// );
+/// let app = route("/users/:id", get(get_user));
+/// # async {
+/// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+/// # };
 /// ```
 #[derive(Debug, Clone, Copy, Default)]
 pub struct Json<T>(pub T);
@@ -101,6 +109,12 @@ impl<T> Deref for Json<T> {
 
     fn deref(&self) -> &Self::Target {
         &self.0
+    }
+}
+
+impl<T> DerefMut for Json<T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
     }
 }
 
