@@ -480,13 +480,13 @@ where
     }
 }
 
-/// Maker type used for [`HandleError`] to indicate that it should implement
+/// Marker type used for [`HandleError`] to indicate that it should implement
 /// [`RoutingDsl`](crate::routing::RoutingDsl).
 #[non_exhaustive]
 #[derive(Debug)]
 pub struct HandleErrorFromRouter;
 
-/// Maker type used for [`HandleError`] to indicate that it should _not_ implement
+/// Marker type used for [`HandleError`] to indicate that it should _not_ implement
 /// [`RoutingDsl`](crate::routing::RoutingDsl).
 #[non_exhaustive]
 #[derive(Debug)]
