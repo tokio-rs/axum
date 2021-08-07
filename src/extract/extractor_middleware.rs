@@ -98,8 +98,6 @@ impl<E> Clone for ExtractorMiddlewareLayer<E> {
     }
 }
 
-impl<E> Copy for ExtractorMiddlewareLayer<E> {}
-
 impl<E> fmt::Debug for ExtractorMiddlewareLayer<E> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("ExtractorMiddleware")
@@ -139,8 +137,6 @@ where
     }
 }
 
-impl<S, E> Copy for ExtractorMiddleware<S, E> where S: Copy {}
-
 impl<S, E> fmt::Debug for ExtractorMiddleware<S, E>
 where
     S: fmt::Debug,
@@ -163,7 +159,7 @@ where
 {
     type Response = Response<BoxBody>;
     type Error = S::Error;
-    type Future = ExtractorMiddlewareResponseFuture<ReqBody, S, E>;
+    type Future = ResponseFuture<ReqBody, S, E>;
 
     #[inline]
     fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
@@ -177,7 +173,7 @@ where
             (req, extracted)
         });
 
-        ExtractorMiddlewareResponseFuture {
+        ResponseFuture {
             state: State::Extracting {
                 future: extract_future,
             },
@@ -189,7 +185,7 @@ where
 pin_project! {
     /// Response future for [`ExtractorMiddleware`].
     #[allow(missing_debug_implementations)]
-    pub struct ExtractorMiddlewareResponseFuture<ReqBody, S, E>
+    pub struct ResponseFuture<ReqBody, S, E>
     where
         E: FromRequest<ReqBody>,
         S: Service<Request<ReqBody>>,
@@ -212,7 +208,7 @@ pin_project! {
     }
 }
 
-impl<ReqBody, S, E, ResBody> Future for ExtractorMiddlewareResponseFuture<ReqBody, S, E>
+impl<ReqBody, S, E, ResBody> Future for ResponseFuture<ReqBody, S, E>
 where
     E: FromRequest<ReqBody>,
     S: Service<Request<ReqBody>, Response = Response<ResBody>>,

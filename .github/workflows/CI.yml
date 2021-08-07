@@ -3,22 +3,38 @@ name: CI
 on:
   push:
     branches:
-    - master
+    - main
   pull_request: {}
 
 jobs:
   check:
     # Run `cargo check` first to ensure that the pushed code at least compiles.
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        rust: [stable, 1.40.0]
     steps:
     - uses: actions/checkout@master
     - uses: actions-rs/toolchain@v1
       with:
-        toolchain: ${{ matrix.rust }}
+        toolchain: stable
+        override: true
         profile: minimal
+        components: clippy
+    # caching
+    - name: Cache cargo registry
+      uses: actions/cache@v2.1.6
+      with:
+        path: ~/.cargo/registry
+        key: ${{ runner.os }}-v1-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+    - name: Cache cargo index
+      uses: actions/cache@v2.1.6
+      with:
+        path: ~/.cargo/git
+        key: ${{ runner.os }}-v1-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+    - name: Cache cargo target dir
+      uses: actions/cache@v2.1.6
+      with:
+        path: target
+        key: ${{ runner.os }}-v1-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+    # /caching
     - name: Check
       uses: actions-rs/cargo@v1
       with:
@@ -37,9 +53,29 @@ jobs:
     - uses: actions-rs/toolchain@v1
       with:
         toolchain: stable
+        override: true
         profile: minimal
+    # caching
+    - name: Cache cargo registry
+      uses: actions/cache@v2.1.6
+      with:
+        path: ~/.cargo/registry
+        key: ${{ runner.os }}-v1-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+    - name: Cache cargo index
+      uses: actions/cache@v2.1.6
+      with:
+        path: ~/.cargo/git
+        key: ${{ runner.os }}-v1-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+    - name: Cache cargo target dir
+      uses: actions/cache@v2.1.6
+      with:
+        path: target
+        key: ${{ runner.os }}-v1-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+    # /caching
     - name: cargo doc
       working-directory: ${{ matrix.subcrate }}
+      env:
+          RUSTDOCFLAGS: "-D broken-intra-doc-links"
       run: cargo doc --all-features --no-deps
 
   cargo-hack:
@@ -49,7 +85,25 @@ jobs:
     - uses: actions-rs/toolchain@v1
       with:
         toolchain: stable
+        override: true
         profile: minimal
+    # caching
+    - name: Cache cargo registry
+      uses: actions/cache@v2.1.6
+      with:
+        path: ~/.cargo/registry
+        key: ${{ runner.os }}-v1-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+    - name: Cache cargo index
+      uses: actions/cache@v2.1.6
+      with:
+        path: ~/.cargo/git
+        key: ${{ runner.os }}-v1-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+    - name: Cache cargo target dir
+      uses: actions/cache@v2.1.6
+      with:
+        path: target
+        key: ${{ runner.os }}-v1-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+    # /caching
     - name: Install cargo-hack
       run: |
         curl -LsSf https://github.com/taiki-e/cargo-hack/releases/latest/download/cargo-hack-x86_64-unknown-linux-gnu.tar.gz | tar xzf - -C ~/.cargo/bin
@@ -63,13 +117,31 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        rust: [stable, beta, nightly, 1.40.0]
+        rust: [stable, beta, nightly, 1.51]
     steps:
     - uses: actions/checkout@master
     - uses: actions-rs/toolchain@v1
       with:
         toolchain: ${{ matrix.rust }}
+        override: true
         profile: minimal
+    # caching
+    - name: Cache cargo registry
+      uses: actions/cache@v2.1.6
+      with:
+        path: ~/.cargo/registry
+        key: ${{ runner.os }}-v1-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+    - name: Cache cargo index
+      uses: actions/cache@v2.1.6
+      with:
+        path: ~/.cargo/git
+        key: ${{ runner.os }}-v1-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+    - name: Cache cargo target dir
+      uses: actions/cache@v2.1.6
+      with:
+        path: target
+        key: ${{ runner.os }}-v1-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+    # /caching
     - name: Run tests
       uses: actions-rs/cargo@v1
       with:

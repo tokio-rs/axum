@@ -20,6 +20,10 @@ use uuid::Uuid;
 
 #[tokio::main]
 async fn main() {
+    // Set the RUST_LOG, if it hasn't been explicitly defined
+    if std::env::var("RUST_LOG").is_err() {
+        std::env::set_var("RUST_LOG", "sessions=debug")
+    }
     tracing_subscriber::fmt::init();
 
     // `MemoryStore` just used as an example. Don't use this in production.
