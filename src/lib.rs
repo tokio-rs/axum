@@ -715,6 +715,7 @@ use tower::Service;
 pub(crate) mod macros;
 
 mod buffer;
+mod error;
 mod json;
 mod util;
 
@@ -729,14 +730,16 @@ pub mod sse;
 #[cfg(test)]
 mod tests;
 
+#[doc(no_inline)]
 pub use async_trait::async_trait;
 #[doc(no_inline)]
 pub use http;
 #[doc(no_inline)]
 pub use hyper::Server;
+#[doc(no_inline)]
 pub use tower_http::add_extension::{AddExtension, AddExtensionLayer};
 
-pub use crate::json::Json;
+pub use self::{error::Error, json::Json};
 
 pub mod prelude {
     //! Re-exports of important traits, types, and functions used with axum. Meant to be glob

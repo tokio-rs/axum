@@ -30,6 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - `EmptyRouter`
     - `ExtractorMiddleware`
     - `ExtractorMiddlewareLayer`
+- Replace `axum::body::BoxStdError` with `axum::Error`, which supports downcasting ([#108](https://github.com/tokio-rs/axum/pull/108))
 
 # 0.1.3 (06. August, 2021)
 

@@ -1,7 +1,10 @@
 //! Rejection response types.
 
 use super::IntoResponse;
-use crate::body::{box_body, BoxBody, BoxStdError};
+use crate::{
+    body::{box_body, BoxBody},
+    Error,
+};
 use bytes::Bytes;
 use http_body::Full;
 use std::convert::Infallible;
@@ -330,7 +333,7 @@ where
     T: IntoResponse,
 {
     type Body = BoxBody;
-    type BodyError = BoxStdError;
+    type BodyError = Error;
 
     fn into_response(self) -> http::Response<Self::Body> {
         match self {
