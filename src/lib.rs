@@ -726,10 +726,6 @@ pub mod routing;
 pub mod service;
 pub mod sse;
 
-#[cfg(feature = "ws")]
-#[cfg_attr(docsrs, doc(cfg(feature = "ws")))]
-pub mod ws;
-
 #[cfg(test)]
 mod tests;
 
