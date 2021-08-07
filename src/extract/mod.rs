@@ -304,8 +304,48 @@ pub use self::typed_header::TypedHeader;
 /// Types that can be created from requests.
 ///
 /// See the [module docs](crate::extract) for more details.
+///
+/// # What is the `B` type parameter?
+///
+/// `FromRequest` is generic over the request body (the `B` in
+/// [`http::Request<B>`]). This is to allow `FromRequest` to be usable will any
+/// type of request body. This is necessary because some middleware change the
+/// request body, for example to add timeouts.
+///
+/// If you're writing your own `FromRequest` that wont be used outside your
+/// application, and not using any middleware that changes the request body, you
+/// can most likely use `axum::body::Body`. Note this is also the default.
+///
+/// If you're writing a library, thats intended for others to use, its recommended
+/// to keep the generic type parameter:
+///
+/// ```rust
+/// use axum::{
+///     async_trait,
+///     extract::{FromRequest, RequestParts},
+/// };
+///
+/// struct MyExtractor;
+///
+/// #[async_trait]
+/// impl<B> FromRequest<B> for MyExtractor
+/// where
+///     B: Send, // required by `async_trait`
+/// {
+///     type Rejection = http::StatusCode;
+///
+///     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+///         // ...
+///         # unimplemented!()
+///     }
+/// }
+/// ```
+///
+/// This ensures your extractor is as flexible as possible.
+///
+/// [`http::Request<B>`]: http::Request
 #[async_trait]
-pub trait FromRequest<B>: Sized {
+pub trait FromRequest<B = crate::body::Body>: Sized {
     /// If the extractor fails it'll use this "rejection" type. A rejection is
     /// a kind of error that can be converted into a response.
     type Rejection: IntoResponse;
