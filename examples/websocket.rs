@@ -7,11 +7,14 @@
 //! ```
 
 use axum::{
-    extract::TypedHeader,
+    extract::{
+        ws::{Message, WebSocket, WebSocketUpgrade},
+        TypedHeader,
+    },
     prelude::*,
+    response::IntoResponse,
     routing::nest,
     service::ServiceExt,
-    ws::{ws, Message, WebSocket},
 };
 use http::StatusCode;
 use std::net::SocketAddr;
@@ -44,7 +47,7 @@ async fn main() {
     )
     // routes are matched from bottom to top, so we have to put `nest` at the
     // top since it matches all routes
-    .route("/ws", ws(handle_socket))
+    .route("/ws", get(ws_handler))
     // logging so we can see whats going on
     .layer(
         TraceLayer::new_for_http().make_span_with(DefaultMakeSpan::default().include_headers(true)),
@@ -59,15 +62,18 @@ async fn main() {
         .unwrap();
 }
 
-async fn handle_socket(
-    mut socket: WebSocket,
-    // websocket handlers can also use extractors
+async fn ws_handler(
+    ws: WebSocketUpgrade,
     user_agent: Option<TypedHeader<headers::UserAgent>>,
-) {
+) -> impl IntoResponse {
     if let Some(TypedHeader(user_agent)) = user_agent {
         println!("`{}` connected", user_agent.as_str());
     }
 
+    ws.on_upgrade(handle_socket)
+}
+
+async fn handle_socket(mut socket: WebSocket) {
     if let Some(msg) = socket.recv().await {
         if let Ok(msg) = msg {
             println!("Client says: {:?}", msg);

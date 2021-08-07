@@ -254,6 +254,10 @@ pub mod connect_info;
 pub mod extractor_middleware;
 pub mod rejection;
 
+#[cfg(feature = "ws")]
+#[cfg_attr(docsrs, doc(cfg(feature = "ws")))]
+pub mod ws;
+
 mod content_length_limit;
 mod extension;
 mod form;
@@ -291,6 +295,11 @@ pub mod multipart;
 #[cfg_attr(docsrs, doc(cfg(feature = "multipart")))]
 #[doc(inline)]
 pub use self::multipart::Multipart;
+
+#[cfg(feature = "ws")]
+#[cfg_attr(docsrs, doc(cfg(feature = "ws")))]
+#[doc(inline)]
+pub use self::ws::WebSocketUpgrade;
 
 #[cfg(feature = "headers")]
 #[cfg_attr(docsrs, doc(cfg(feature = "headers")))]
