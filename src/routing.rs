@@ -800,17 +800,15 @@ where
 /// Nest a group of routes (or a [`Service`]) at some path.
 ///
 /// This allows you to break your application into smaller pieces and compose
-/// them together. This will strip the matching prefix from the URL so the
-/// nested route will only see the part of URL:
+/// them together.
 ///
 /// ```
 /// use axum::{routing::nest, prelude::*};
 /// use http::Uri;
 ///
 /// async fn users_get(uri: Uri) {
-///     // `users_get` doesn't see the whole URL. `nest` will strip the matching
-///     // `/api` prefix.
-///     assert_eq!(uri.path(), "/users");
+///     // `users_get` will still see the whole URI.
+///     assert_eq!(uri.path(), "/api/users");
 /// }
 ///
 /// async fn users_post() {}
