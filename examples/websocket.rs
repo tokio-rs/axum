@@ -3,7 +3,7 @@
 //! Run with
 //!
 //! ```not_rust
-//! RUST_LOG=tower_http=debug,key_value_store=trace cargo run --features=ws,headers --example websocket
+//! cargo run --features=ws,headers --example websocket
 //! ```
 
 use axum::{
@@ -22,6 +22,10 @@ use tower_http::{
 
 #[tokio::main]
 async fn main() {
+    // Set the RUST_LOG, if it hasn't been explicitly defined
+    if std::env::var("RUST_LOG").is_err() {
+        std::env::set_var("RUST_LOG", "websocket=debug,tower_http=debug")
+    }
     tracing_subscriber::fmt::init();
 
     // build our application with some routes

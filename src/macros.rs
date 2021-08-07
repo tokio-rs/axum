@@ -47,6 +47,7 @@ macro_rules! define_rejection {
         #[non_exhaustive]
         pub struct $name;
 
+        #[allow(deprecated)]
         impl $crate::response::IntoResponse for $name {
             fn into_response(self) -> http::Response<$crate::body::Body> {
                 let mut res = http::Response::new($crate::body::Body::from($body));
@@ -64,10 +65,10 @@ macro_rules! define_rejection {
     ) => {
         $(#[$m])*
         #[derive(Debug)]
-        pub struct $name(pub(super) tower::BoxError);
+        pub struct $name(pub(crate) tower::BoxError);
 
         impl $name {
-            pub(super) fn from_err<E>(err: E) -> Self
+            pub(crate) fn from_err<E>(err: E) -> Self
             where
                 E: Into<tower::BoxError>,
             {
@@ -99,7 +100,7 @@ macro_rules! composite_rejection {
         #[non_exhaustive]
         pub enum $name {
             $(
-                #[allow(missing_docs)]
+                #[allow(missing_docs, deprecated)]
                 $variant($variant)
             ),+
         }
@@ -115,6 +116,7 @@ macro_rules! composite_rejection {
         }
 
         $(
+            #[allow(deprecated)]
             impl From<$variant> for $name {
                 fn from(inner: $variant) -> Self {
                     Self::$variant(inner)

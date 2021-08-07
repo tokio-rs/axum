@@ -50,3 +50,27 @@ where
         }
     }
 }
+
+pin_project! {
+    /// Response future for [`BoxResponseBody`].
+    #[derive(Debug)]
+    pub struct BoxResponseBodyFuture<F> {
+        #[pin]
+        pub(super) future: F,
+    }
+}
+
+impl<F, B, E> Future for BoxResponseBodyFuture<F>
+where
+    F: Future<Output = Result<Response<B>, E>>,
+    B: http_body::Body<Data = Bytes> + Send + Sync + 'static,
+    B::Error: Into<BoxError> + Send + Sync + 'static,
+{
+    type Output = Result<Response<BoxBody>, E>;
+
+    fn poll(self: std::pin::Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        let res = ready!(self.project().future.poll(cx))?;
+        let res = res.map(box_body);
+        Poll::Ready(Ok(res))
+    }
+}
