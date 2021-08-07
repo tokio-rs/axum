@@ -167,7 +167,7 @@ where
     type Rejection = WebSocketUpgradeRejection;
 
     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-        if req.method().ok_or(MethodAlreadyExtracted)? != Method::GET {
+        if req.method() != Method::GET {
             return Err(MethodNotGet.into());
         }
 
@@ -572,7 +572,6 @@ pub mod rejection {
             InvalidUpgradeHeader,
             InvalidWebsocketVersionHeader,
             WebsocketKeyHeaderMissing,
-            MethodAlreadyExtracted,
             HeadersAlreadyExtracted,
             ExtensionsAlreadyExtracted,
         }

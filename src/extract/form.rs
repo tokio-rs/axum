@@ -51,7 +51,7 @@ where
 
     #[allow(warnings)]
     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-        if req.method().ok_or(MethodAlreadyExtracted)? == Method::GET {
+        if req.method() == Method::GET {
             let query = req
                 .uri()
                 .ok_or(UriAlreadyExtracted)?

@@ -4,6 +4,7 @@ use bytes::Bytes;
 use futures_util::stream::Stream;
 use http::{HeaderMap, Method, Request, Uri, Version};
 use std::{
+    convert::Infallible,
     pin::Pin,
     task::{Context, Poll},
 };
@@ -18,7 +19,7 @@ where
 
     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
         let RequestParts {
-            method,
+            method: _,
             uri,
             version,
             headers,
@@ -26,9 +27,8 @@ where
             body,
         } = req;
 
-        let all_parts = method
+        let all_parts = version
             .as_ref()
-            .zip(version.as_ref())
             .zip(uri.as_ref())
             .zip(extensions.as_ref())
             .zip(body.as_ref())
@@ -60,10 +60,10 @@ impl<B> FromRequest<B> for Method
 where
     B: Send,
 {
-    type Rejection = MethodAlreadyExtracted;
+    type Rejection = Infallible;
 
     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-        req.take_method().ok_or(MethodAlreadyExtracted)
+        Ok(req.method())
     }
 }
 

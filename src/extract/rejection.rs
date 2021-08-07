@@ -26,13 +26,6 @@ define_rejection! {
 
 define_rejection! {
     #[status = INTERNAL_SERVER_ERROR]
-    #[body = "Method taken by other extractor"]
-    /// Rejection used if the method has been taken by another extractor.
-    pub struct MethodAlreadyExtracted;
-}
-
-define_rejection! {
-    #[status = INTERNAL_SERVER_ERROR]
     #[body = "Extensions taken by other extractor"]
     /// Rejection used if the method has been taken by another extractor.
     pub struct ExtensionsAlreadyExtracted;
@@ -239,7 +232,6 @@ composite_rejection! {
         BodyAlreadyExtracted,
         UriAlreadyExtracted,
         HeadersAlreadyExtracted,
-        MethodAlreadyExtracted,
     }
 }
 
