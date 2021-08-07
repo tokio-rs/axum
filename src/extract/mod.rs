@@ -244,7 +244,7 @@
 //!
 //! [`body::Body`]: crate::body::Body
 
-use crate::response::IntoResponse;
+use crate::{response::IntoResponse, routing::OriginalUri};
 use async_trait::async_trait;
 use http::{header, Extensions, HeaderMap, Method, Request, Uri, Version};
 use rejection::*;
@@ -377,7 +377,7 @@ impl<B> RequestParts<B> {
         let (
             http::request::Parts {
                 method,
-                uri,
+                mut uri,
                 version,
                 headers,
                 extensions,
@@ -385,6 +385,10 @@ impl<B> RequestParts<B> {
             },
             body,
         ) = req.into_parts();
+
+        if let Some(original_uri) = extensions.get::<OriginalUri>() {
+            uri = original_uri.0.clone();
+        };
 
         RequestParts {
             method,
