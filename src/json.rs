@@ -43,7 +43,7 @@ use std::ops::Deref;
 /// # };
 /// ```
 ///
-/// When used as a `Response`, it can serialize any type that implements [`serde::Serialize`] to `JSON`,
+/// When used as a response, it can serialize any type that implements [`serde::Serialize`] to `JSON`,
 /// and will automatically set `Content-Type: application/json` header.
 ///
 /// # Response example
