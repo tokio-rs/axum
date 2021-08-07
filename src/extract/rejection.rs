@@ -12,27 +12,6 @@ use tower::BoxError;
 
 define_rejection! {
     #[status = INTERNAL_SERVER_ERROR]
-    #[body = "Version taken by other extractor"]
-    /// Rejection used if the HTTP version has been taken by another extractor.
-    pub struct VersionAlreadyExtracted;
-}
-
-define_rejection! {
-    #[status = INTERNAL_SERVER_ERROR]
-    #[body = "URI taken by other extractor"]
-    /// Rejection used if the URI has been taken by another extractor.
-    pub struct UriAlreadyExtracted;
-}
-
-define_rejection! {
-    #[status = INTERNAL_SERVER_ERROR]
-    #[body = "Method taken by other extractor"]
-    /// Rejection used if the method has been taken by another extractor.
-    pub struct MethodAlreadyExtracted;
-}
-
-define_rejection! {
-    #[status = INTERNAL_SERVER_ERROR]
     #[body = "Extensions taken by other extractor"]
     /// Rejection used if the method has been taken by another extractor.
     pub struct ExtensionsAlreadyExtracted;
@@ -222,7 +201,6 @@ composite_rejection! {
     /// Contains one variant for each way the [`Query`](super::Query) extractor
     /// can fail.
     pub enum QueryRejection {
-        UriAlreadyExtracted,
         FailedToDeserializeQueryString,
     }
 }
@@ -237,9 +215,7 @@ composite_rejection! {
         FailedToDeserializeQueryString,
         FailedToBufferBody,
         BodyAlreadyExtracted,
-        UriAlreadyExtracted,
         HeadersAlreadyExtracted,
-        MethodAlreadyExtracted,
     }
 }
 

@@ -368,9 +368,9 @@ pub trait FromRequest<B = crate::body::Body>: Sized {
 /// Has several convenience methods for getting owned parts of the request.
 #[derive(Debug)]
 pub struct RequestParts<B = crate::body::Body> {
-    method: Option<Method>,
-    uri: Option<Uri>,
-    version: Option<Version>,
+    method: Method,
+    uri: Uri,
+    version: Version,
     headers: Option<HeaderMap>,
     extensions: Option<Extensions>,
     body: Option<B>,
@@ -391,9 +391,9 @@ impl<B> RequestParts<B> {
         ) = req.into_parts();
 
         RequestParts {
-            method: Some(method),
-            uri: Some(uri),
-            version: Some(version),
+            method,
+            uri,
+            version,
             headers: Some(headers),
             extensions: Some(extensions),
             body: Some(body),
@@ -413,17 +413,9 @@ impl<B> RequestParts<B> {
 
         let mut req = Request::new(body.take().expect("body already extracted"));
 
-        if let Some(method) = method.take() {
-            *req.method_mut() = method;
-        }
-
-        if let Some(uri) = uri.take() {
-            *req.uri_mut() = uri;
-        }
-
-        if let Some(version) = version.take() {
-            *req.version_mut() = version;
-        }
+        *req.method_mut() = method.clone();
+        *req.uri_mut() = uri.clone();
+        *req.version_mut() = *version;
 
         if let Some(headers) = headers.take() {
             *req.headers_mut() = headers;
@@ -436,61 +428,34 @@ impl<B> RequestParts<B> {
         req
     }
 
-    /// Gets a reference to the request method.
-    ///
-    /// Returns `None` if the method has been taken by another extractor.
-    pub fn method(&self) -> Option<&Method> {
-        self.method.as_ref()
+    /// Gets a reference the request method.
+    pub fn method(&self) -> &Method {
+        &self.method
     }
 
     /// Gets a mutable reference to the request method.
-    ///
-    /// Returns `None` if the method has been taken by another extractor.
-    pub fn method_mut(&mut self) -> Option<&mut Method> {
-        self.method.as_mut()
+    pub fn method_mut(&mut self) -> &mut Method {
+        &mut self.method
     }
 
-    /// Takes the method out of the request, leaving a `None` in its place.
-    pub fn take_method(&mut self) -> Option<Method> {
-        self.method.take()
-    }
-
-    /// Gets a reference to the request URI.
-    ///
-    /// Returns `None` if the URI has been taken by another extractor.
-    pub fn uri(&self) -> Option<&Uri> {
-        self.uri.as_ref()
+    /// Gets a reference the request URI.
+    pub fn uri(&self) -> &Uri {
+        &self.uri
     }
 
     /// Gets a mutable reference to the request URI.
-    ///
-    /// Returns `None` if the URI has been taken by another extractor.
-    pub fn uri_mut(&mut self) -> Option<&mut Uri> {
-        self.uri.as_mut()
+    pub fn uri_mut(&mut self) -> &mut Uri {
+        &mut self.uri
     }
 
-    /// Takes the URI out of the request, leaving a `None` in its place.
-    pub fn take_uri(&mut self) -> Option<Uri> {
-        self.uri.take()
-    }
-
-    /// Gets a reference to the request HTTP version.
-    ///
-    /// Returns `None` if the HTTP version has been taken by another extractor.
-    pub fn version(&self) -> Option<Version> {
+    /// Get the request HTTP version.
+    pub fn version(&self) -> Version {
         self.version
     }
 
     /// Gets a mutable reference to the request HTTP version.
-    ///
-    /// Returns `None` if the HTTP version has been taken by another extractor.
-    pub fn version_mut(&mut self) -> Option<&mut Version> {
-        self.version.as_mut()
-    }
-
-    /// Takes the HTTP version out of the request, leaving a `None` in its place.
-    pub fn take_version(&mut self) -> Option<Version> {
-        self.version.take()
+    pub fn version_mut(&mut self) -> &mut Version {
+        &mut self.version
     }
 
     /// Gets a reference to the request headers.
