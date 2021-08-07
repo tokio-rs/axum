@@ -2,9 +2,10 @@
 
 use crate::Error;
 use bytes::Bytes;
-use http_body::Body as _;
 use tower::BoxError;
 
+#[doc(no_inline)]
+pub use http_body::Body as HttpBody;
 #[doc(no_inline)]
 pub use hyper::body::Body;
 
