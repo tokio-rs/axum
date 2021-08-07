@@ -28,13 +28,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `routing::EmptyRouterFuture` moved to `routing::future::EmptyRouterFuture` ([#133](https://github.com/tokio-rs/axum/pull/133))
 - `routing::RouteFuture` moved to `routing::future::RouteFuture` ([#133](https://github.com/tokio-rs/axum/pull/133))
 - `service::BoxResponseBodyFuture` moved to `service::future::BoxResponseBodyFuture` ([#133](https://github.com/tokio-rs/axum/pull/133))
-- The following types no longer implement `Copy` ([#132](https://github.com/tokio-rs/axum/pull/132)):
+- The following types no longer implement `Copy` ([#132](https://github.com/tokio-rs/axum/pull/132))
     - `EmptyRouter`
     - `ExtractorMiddleware`
     - `ExtractorMiddlewareLayer`
 - Replace `axum::body::BoxStdError` with `axum::Error`, which supports downcasting ([#150](https://github.com/tokio-rs/axum/pull/150))
 - `WebSocket` now uses `axum::Error` as its error type ([#150](https://github.com/tokio-rs/axum/pull/150))
-- `RequestParts` changes:
+- `RequestParts` changes ([#153](https://github.com/tokio-rs/axum/pull/153))
     - `method` new returns an `&http::Method`
     - `method_mut` new returns an `&mut http::Method`
     - `take_method` has been removed
@@ -42,9 +42,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - `uri_mut` new returns an `&mut http::Uri`
     - `take_uri` has been removed
 - These rejections have been removed as they're no longer used
-    - `MethodAlreadyExtracted`
-    - `UriAlreadyExtracted`
-    - `VersionAlreadyExtracted`
+    - `MethodAlreadyExtracted` ([#153](https://github.com/tokio-rs/axum/pull/153))
+    - `UriAlreadyExtracted` ([#153](https://github.com/tokio-rs/axum/pull/153))
+    - `VersionAlreadyExtracted` ([#153](https://github.com/tokio-rs/axum/pull/153))
+    - `UrlParamsRejection`
+    - `InvalidUrlParam`
+- Removed `extract::UrlParams` and `extract::UrlParamsMap`. Use `extract::Path` instead
 
 # 0.1.3 (06. August, 2021)
 

@@ -82,9 +82,7 @@ define_rejection! {
 define_rejection! {
     #[status = INTERNAL_SERVER_ERROR]
     #[body = "No url params found for matched route. This is a bug in axum. Please open an issue"]
-    /// Rejection type for [`UrlParamsMap`](super::UrlParamsMap) and
-    /// [`UrlParams`](super::UrlParams) if you try and extract the URL params
-    /// more than once.
+    /// Rejection type used if you try and extract the URL params more than once.
     pub struct MissingRouteParams;
 }
 
@@ -108,44 +106,6 @@ define_rejection! {
     #[body = "Form requests must have `Content-Type: x-www-form-urlencoded`"]
     /// Rejection type used if you try and extract the request more than once.
     pub struct InvalidFormContentType;
-}
-
-/// Rejection type for [`UrlParams`](super::UrlParams) if the capture route
-/// param didn't have the expected type.
-#[derive(Debug)]
-pub struct InvalidUrlParam {
-    type_name: &'static str,
-}
-
-impl InvalidUrlParam {
-    pub(super) fn new<T>() -> Self {
-        InvalidUrlParam {
-            type_name: std::any::type_name::<T>(),
-        }
-    }
-}
-
-impl std::fmt::Display for InvalidUrlParam {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "Invalid URL param. Expected something of type `{}`",
-            self.type_name
-        )
-    }
-}
-
-impl std::error::Error for InvalidUrlParam {}
-
-impl IntoResponse for InvalidUrlParam {
-    type Body = Full<Bytes>;
-    type BodyError = Infallible;
-
-    fn into_response(self) -> http::Response<Self::Body> {
-        let mut res = http::Response::new(Full::from(self.to_string()));
-        *res.status_mut() = http::StatusCode::BAD_REQUEST;
-        res
-    }
 }
 
 /// Rejection type for [`Path`](super::Path) if the capture route
@@ -266,17 +226,6 @@ composite_rejection! {
     pub enum ExtensionRejection {
         MissingExtension,
         ExtensionsAlreadyExtracted,
-    }
-}
-
-composite_rejection! {
-    /// Rejection used for [`UrlParams`](super::UrlParams).
-    ///
-    /// Contains one variant for each way the [`UrlParams`](super::UrlParams) extractor
-    /// can fail.
-    pub enum UrlParamsRejection {
-        InvalidUrlParam,
-        MissingRouteParams,
     }
 }
 

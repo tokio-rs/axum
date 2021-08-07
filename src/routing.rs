@@ -830,8 +830,9 @@ where
 ///
 /// ```
 /// use axum::{routing::nest, prelude::*};
+/// use std::collections::HashMap;
 ///
-/// async fn users_get(params: extract::UrlParamsMap) {
+/// async fn users_get(extract::Path(params): extract::Path<HashMap<String, String>>) {
 ///     // Both `version` and `id` were captured even though `users_api` only
 ///     // explicitly captures `id`.
 ///     let version = params.get("version");
