@@ -14,7 +14,6 @@ use axum::{
     response::IntoResponse,
     AddExtensionLayer,
 };
-use cookie::{Cookie, SameSite};
 use http::header::SET_COOKIE;
 use http::StatusCode;
 use hyper::Body;
@@ -184,15 +183,13 @@ async fn login_authorized(
     // Store session and get corresponding cookie
     let cookie = store.0.store_session(session).await.unwrap().unwrap();
 
-    let cookie = Cookie::build(COOKIE_NAME, cookie)
-        .same_site(SameSite::Lax)
-        .path("/")
-        .finish();
+    // Build the cookie
+    let cookie = format!("{}={}; SameSite=Lax; Path=/", COOKIE_NAME, cookie);
 
     // Set cookie
     let r = http::Response::builder()
         .header("Location", "/")
-        .header(SET_COOKIE, cookie.to_string())
+        .header(SET_COOKIE, cookie)
         .status(302);
 
     r.body(Body::empty()).unwrap()
