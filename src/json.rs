@@ -19,7 +19,7 @@ use std::ops::Deref;
 /// the `Content-Type: application/json`t header, will reject the request and return a
 /// `400 Bad Request` response.
 ///
-/// # Example
+/// # Extractor example
 ///
 /// ```rust,no_run
 /// use axum::prelude::*;
