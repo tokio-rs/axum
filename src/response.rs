@@ -107,7 +107,7 @@ pub trait IntoResponse {
     /// Generally it should be possible to set this to:
     ///
     /// ```rust,ignore
-    /// type BodyError = <Self::Body as http_body::Body>::Error;
+    /// type BodyError = <Self::Body as axum::body::HttpBody>::Error;
     /// ```
     ///
     /// This associated type exists mainly to make returning `impl IntoResponse`
