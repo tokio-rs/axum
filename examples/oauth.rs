@@ -111,7 +111,7 @@ async fn index(user: Option<User>) -> impl IntoResponse {
     }
 }
 
-async fn discord_auth(client: Extension<BasicClient>) -> impl IntoResponse {
+async fn discord_auth(Extension(client): Extension<BasicClient>) -> impl IntoResponse {
     let (auth_url, _csrf_token) = client
         .authorize_url(CsrfToken::new_random)
         .add_scope(Scope::new("identify".to_string()))
@@ -130,8 +130,8 @@ async fn protected(user: User) -> impl IntoResponse {
 }
 
 async fn logout(
-    store: Extension<MemoryStore>,
-    cookies: TypedHeader<headers::Cookie>,
+    Extension(store): Extension<MemoryStore>,
+    TypedHeader(cookies): TypedHeader<headers::Cookie>,
 ) -> impl IntoResponse {
     let cookie = cookies.get(COOKIE_NAME).unwrap();
     let session = match store.load_session(cookie.to_string()).await.unwrap() {
@@ -152,9 +152,9 @@ struct AuthRequest {
 }
 
 async fn login_authorized(
-    query: Query<AuthRequest>,
-    store: Extension<MemoryStore>,
-    oauth_client: Extension<BasicClient>,
+    Query(query): Query<AuthRequest>,
+    Extension(store): Extension<MemoryStore>,
+    Extension(oauth_client): Extension<BasicClient>,
 ) -> impl IntoResponse {
     // Get an auth token
     let token = oauth_client
@@ -181,7 +181,7 @@ async fn login_authorized(
     session.insert("user", &user_data).unwrap();
 
     // Store session and get corresponding cookie
-    let cookie = store.0.store_session(session).await.unwrap().unwrap();
+    let cookie = store.store_session(session).await.unwrap().unwrap();
 
     // Build the cookie
     let cookie = format!("{}={}; SameSite=Lax; Path=/", COOKIE_NAME, cookie);
