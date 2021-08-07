@@ -3,9 +3,11 @@
 use crate::Body;
 use bytes::Bytes;
 use http::{header, HeaderMap, HeaderValue, Response, StatusCode};
-use serde::Serialize;
 use std::{borrow::Cow, convert::Infallible};
 use tower::util::Either;
+
+#[doc(no_inline)]
+pub use crate::Json;
 
 /// Trait for generating responses.
 ///
@@ -202,64 +204,6 @@ where
 }
 
 impl<T> From<T> for Html<T> {
-    fn from(inner: T) -> Self {
-        Self(inner)
-    }
-}
-
-/// A JSON response.
-///
-/// Can be created from any type that implements [`serde::Serialize`].
-///
-/// Will automatically get `Content-Type: application/json`.
-///
-/// # Example
-///
-/// ```
-/// use serde_json::json;
-/// use axum::{body::Body, response::{Json, IntoResponse}};
-/// use http::{Response, header::CONTENT_TYPE};
-///
-/// let json = json!({
-///     "data": 42,
-/// });
-///
-/// let response: Response<Body> = Json(json).into_response();
-///
-/// assert_eq!(
-///     response.headers().get(CONTENT_TYPE).unwrap(),
-///     "application/json",
-/// );
-/// ```
-#[derive(Clone, Copy, Debug)]
-pub struct Json<T>(pub T);
-
-impl<T> IntoResponse for Json<T>
-where
-    T: Serialize,
-{
-    fn into_response(self) -> Response<Body> {
-        let bytes = match serde_json::to_vec(&self.0) {
-            Ok(res) => res,
-            Err(err) => {
-                return Response::builder()
-                    .status(StatusCode::INTERNAL_SERVER_ERROR)
-                    .header(header::CONTENT_TYPE, "text/plain")
-                    .body(Body::from(err.to_string()))
-                    .unwrap();
-            }
-        };
-
-        let mut res = Response::new(Body::from(bytes));
-        res.headers_mut().insert(
-            header::CONTENT_TYPE,
-            HeaderValue::from_static("application/json"),
-        );
-        res
-    }
-}
-
-impl<T> From<T> for Json<T> {
     fn from(inner: T) -> Self {
         Self(inner)
     }

@@ -713,6 +713,7 @@ use tower::Service;
 pub(crate) mod macros;
 
 mod buffer;
+mod json;
 mod util;
 
 pub mod body;
@@ -736,6 +737,8 @@ pub use http;
 #[doc(no_inline)]
 pub use hyper::Server;
 pub use tower_http::add_extension::{AddExtension, AddExtensionLayer};
+
+pub use crate::json::Json;
 
 pub mod prelude {
     //! Re-exports of important traits, types, and functions used with axum. Meant to be glob
