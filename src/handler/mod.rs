@@ -41,7 +41,7 @@ pub fn any<H, B, T>(handler: H) -> OnMethod<IntoService<H, B, T>, EmptyRouter>
 where
     H: Handler<B, T>,
 {
-    on(MethodFilter::Any, handler)
+    on(MethodFilter::all(), handler)
 }
 
 /// Route `CONNECT` requests to the given handler.
@@ -51,7 +51,7 @@ pub fn connect<H, B, T>(handler: H) -> OnMethod<IntoService<H, B, T>, EmptyRoute
 where
     H: Handler<B, T>,
 {
-    on(MethodFilter::Connect, handler)
+    on(MethodFilter::CONNECT, handler)
 }
 
 /// Route `DELETE` requests to the given handler.
@@ -61,7 +61,7 @@ pub fn delete<H, B, T>(handler: H) -> OnMethod<IntoService<H, B, T>, EmptyRouter
 where
     H: Handler<B, T>,
 {
-    on(MethodFilter::Delete, handler)
+    on(MethodFilter::DELETE, handler)
 }
 
 /// Route `GET` requests to the given handler.
@@ -83,7 +83,7 @@ pub fn get<H, B, T>(handler: H) -> OnMethod<IntoService<H, B, T>, EmptyRouter>
 where
     H: Handler<B, T>,
 {
-    on(MethodFilter::Get, handler)
+    on(MethodFilter::GET, handler)
 }
 
 /// Route `HEAD` requests to the given handler.
@@ -93,7 +93,7 @@ pub fn head<H, B, T>(handler: H) -> OnMethod<IntoService<H, B, T>, EmptyRouter>
 where
     H: Handler<B, T>,
 {
-    on(MethodFilter::Head, handler)
+    on(MethodFilter::HEAD, handler)
 }
 
 /// Route `OPTIONS` requests to the given handler.
@@ -103,7 +103,7 @@ pub fn options<H, B, T>(handler: H) -> OnMethod<IntoService<H, B, T>, EmptyRoute
 where
     H: Handler<B, T>,
 {
-    on(MethodFilter::Options, handler)
+    on(MethodFilter::OPTIONS, handler)
 }
 
 /// Route `PATCH` requests to the given handler.
@@ -113,7 +113,7 @@ pub fn patch<H, B, T>(handler: H) -> OnMethod<IntoService<H, B, T>, EmptyRouter>
 where
     H: Handler<B, T>,
 {
-    on(MethodFilter::Patch, handler)
+    on(MethodFilter::PATCH, handler)
 }
 
 /// Route `POST` requests to the given handler.
@@ -123,7 +123,7 @@ pub fn post<H, B, T>(handler: H) -> OnMethod<IntoService<H, B, T>, EmptyRouter>
 where
     H: Handler<B, T>,
 {
-    on(MethodFilter::Post, handler)
+    on(MethodFilter::POST, handler)
 }
 
 /// Route `PUT` requests to the given handler.
@@ -133,7 +133,7 @@ pub fn put<H, B, T>(handler: H) -> OnMethod<IntoService<H, B, T>, EmptyRouter>
 where
     H: Handler<B, T>,
 {
-    on(MethodFilter::Put, handler)
+    on(MethodFilter::PUT, handler)
 }
 
 /// Route `TRACE` requests to the given handler.
@@ -143,7 +143,7 @@ pub fn trace<H, B, T>(handler: H) -> OnMethod<IntoService<H, B, T>, EmptyRouter>
 where
     H: Handler<B, T>,
 {
-    on(MethodFilter::Trace, handler)
+    on(MethodFilter::TRACE, handler)
 }
 
 /// Route requests with the given method to the handler.
@@ -156,7 +156,7 @@ where
 /// async fn handler() {}
 ///
 /// // Requests to `POST /` will go to `handler`.
-/// let app = route("/", on(MethodFilter::Post, handler));
+/// let app = route("/", on(MethodFilter::POST, handler));
 /// # async {
 /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 /// # };
@@ -467,7 +467,7 @@ impl<S, F> OnMethod<S, F> {
     where
         H: Handler<B, T>,
     {
-        self.on(MethodFilter::Any, handler)
+        self.on(MethodFilter::all(), handler)
     }
 
     /// Chain an additional handler that will only accept `CONNECT` requests.
@@ -477,7 +477,7 @@ impl<S, F> OnMethod<S, F> {
     where
         H: Handler<B, T>,
     {
-        self.on(MethodFilter::Connect, handler)
+        self.on(MethodFilter::CONNECT, handler)
     }
 
     /// Chain an additional handler that will only accept `DELETE` requests.
@@ -487,7 +487,7 @@ impl<S, F> OnMethod<S, F> {
     where
         H: Handler<B, T>,
     {
-        self.on(MethodFilter::Delete, handler)
+        self.on(MethodFilter::DELETE, handler)
     }
 
     /// Chain an additional handler that will only accept `GET` requests.
@@ -512,7 +512,7 @@ impl<S, F> OnMethod<S, F> {
     where
         H: Handler<B, T>,
     {
-        self.on(MethodFilter::Get, handler)
+        self.on(MethodFilter::GET, handler)
     }
 
     /// Chain an additional handler that will only accept `HEAD` requests.
@@ -522,7 +522,7 @@ impl<S, F> OnMethod<S, F> {
     where
         H: Handler<B, T>,
     {
-        self.on(MethodFilter::Head, handler)
+        self.on(MethodFilter::HEAD, handler)
     }
 
     /// Chain an additional handler that will only accept `OPTIONS` requests.
@@ -532,7 +532,7 @@ impl<S, F> OnMethod<S, F> {
     where
         H: Handler<B, T>,
     {
-        self.on(MethodFilter::Options, handler)
+        self.on(MethodFilter::OPTIONS, handler)
     }
 
     /// Chain an additional handler that will only accept `PATCH` requests.
@@ -542,7 +542,7 @@ impl<S, F> OnMethod<S, F> {
     where
         H: Handler<B, T>,
     {
-        self.on(MethodFilter::Patch, handler)
+        self.on(MethodFilter::PATCH, handler)
     }
 
     /// Chain an additional handler that will only accept `POST` requests.
@@ -552,7 +552,7 @@ impl<S, F> OnMethod<S, F> {
     where
         H: Handler<B, T>,
     {
-        self.on(MethodFilter::Post, handler)
+        self.on(MethodFilter::POST, handler)
     }
 
     /// Chain an additional handler that will only accept `PUT` requests.
@@ -562,7 +562,7 @@ impl<S, F> OnMethod<S, F> {
     where
         H: Handler<B, T>,
     {
-        self.on(MethodFilter::Put, handler)
+        self.on(MethodFilter::PUT, handler)
     }
 
     /// Chain an additional handler that will only accept `TRACE` requests.
@@ -572,7 +572,7 @@ impl<S, F> OnMethod<S, F> {
     where
         H: Handler<B, T>,
     {
-        self.on(MethodFilter::Trace, handler)
+        self.on(MethodFilter::TRACE, handler)
     }
 
     /// Chain an additional handler that will accept requests matching the given
@@ -589,7 +589,7 @@ impl<S, F> OnMethod<S, F> {
     ///
     /// // Requests to `GET /` will go to `handler` and `DELETE /` will go to
     /// // `other_handler`
-    /// let app = route("/", get(handler).on(MethodFilter::Delete, other_handler));
+    /// let app = route("/", get(handler).on(MethodFilter::DELETE, other_handler));
     /// # async {
     /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
     /// # };

@@ -299,10 +299,10 @@ async fn extracting_url_params_multiple_times() {
 async fn boxing() {
     let app = route(
         "/",
-        on(MethodFilter::Get, |_: Request<Body>| async {
+        on(MethodFilter::GET, |_: Request<Body>| async {
             "hi from GET"
         })
-        .on(MethodFilter::Post, |_: Request<Body>| async {
+        .on(MethodFilter::POST, |_: Request<Body>| async {
             "hi from POST"
         }),
     )
@@ -343,7 +343,7 @@ async fn service_handlers() {
     .route(
         "/static/Cargo.toml",
         service::on(
-            MethodFilter::Get,
+            MethodFilter::GET,
             ServeFile::new("Cargo.toml").handle_error(|error: std::io::Error| {
                 Ok::<_, Infallible>((StatusCode::INTERNAL_SERVER_ERROR, error.to_string()))
             }),
@@ -391,7 +391,7 @@ async fn routing_between_services() {
             Ok::<_, Infallible>(Response::new(Body::from("one post")))
         }))
         .on(
-            MethodFilter::Put,
+            MethodFilter::PUT,
             service_fn(|_: Request<Body>| async {
                 Ok::<_, Infallible>(Response::new(Body::from("one put")))
             }),
@@ -399,7 +399,7 @@ async fn routing_between_services() {
     )
     .route(
         "/two",
-        service::on(MethodFilter::Get, handle.into_service()),
+        service::on(MethodFilter::GET, handle.into_service()),
     );
 
     let addr = run_in_background(app).await;

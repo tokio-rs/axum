@@ -110,7 +110,7 @@ pub fn any<S, B>(svc: S) -> OnMethod<BoxResponseBody<S, B>, EmptyRouter<S::Error
 where
     S: Service<Request<B>> + Clone,
 {
-    on(MethodFilter::Any, svc)
+    on(MethodFilter::all(), svc)
 }
 
 /// Route `CONNECT` requests to the given service.
@@ -120,7 +120,7 @@ pub fn connect<S, B>(svc: S) -> OnMethod<BoxResponseBody<S, B>, EmptyRouter<S::E
 where
     S: Service<Request<B>> + Clone,
 {
-    on(MethodFilter::Connect, svc)
+    on(MethodFilter::CONNECT, svc)
 }
 
 /// Route `DELETE` requests to the given service.
@@ -130,7 +130,7 @@ pub fn delete<S, B>(svc: S) -> OnMethod<BoxResponseBody<S, B>, EmptyRouter<S::Er
 where
     S: Service<Request<B>> + Clone,
 {
-    on(MethodFilter::Delete, svc)
+    on(MethodFilter::DELETE, svc)
 }
 
 /// Route `GET` requests to the given service.
@@ -157,7 +157,7 @@ pub fn get<S, B>(svc: S) -> OnMethod<BoxResponseBody<S, B>, EmptyRouter<S::Error
 where
     S: Service<Request<B>> + Clone,
 {
-    on(MethodFilter::Get, svc)
+    on(MethodFilter::GET, svc)
 }
 
 /// Route `HEAD` requests to the given service.
@@ -167,7 +167,7 @@ pub fn head<S, B>(svc: S) -> OnMethod<BoxResponseBody<S, B>, EmptyRouter<S::Erro
 where
     S: Service<Request<B>> + Clone,
 {
-    on(MethodFilter::Head, svc)
+    on(MethodFilter::HEAD, svc)
 }
 
 /// Route `OPTIONS` requests to the given service.
@@ -177,7 +177,7 @@ pub fn options<S, B>(svc: S) -> OnMethod<BoxResponseBody<S, B>, EmptyRouter<S::E
 where
     S: Service<Request<B>> + Clone,
 {
-    on(MethodFilter::Options, svc)
+    on(MethodFilter::OPTIONS, svc)
 }
 
 /// Route `PATCH` requests to the given service.
@@ -187,7 +187,7 @@ pub fn patch<S, B>(svc: S) -> OnMethod<BoxResponseBody<S, B>, EmptyRouter<S::Err
 where
     S: Service<Request<B>> + Clone,
 {
-    on(MethodFilter::Patch, svc)
+    on(MethodFilter::PATCH, svc)
 }
 
 /// Route `POST` requests to the given service.
@@ -197,7 +197,7 @@ pub fn post<S, B>(svc: S) -> OnMethod<BoxResponseBody<S, B>, EmptyRouter<S::Erro
 where
     S: Service<Request<B>> + Clone,
 {
-    on(MethodFilter::Post, svc)
+    on(MethodFilter::POST, svc)
 }
 
 /// Route `PUT` requests to the given service.
@@ -207,7 +207,7 @@ pub fn put<S, B>(svc: S) -> OnMethod<BoxResponseBody<S, B>, EmptyRouter<S::Error
 where
     S: Service<Request<B>> + Clone,
 {
-    on(MethodFilter::Put, svc)
+    on(MethodFilter::PUT, svc)
 }
 
 /// Route `TRACE` requests to the given service.
@@ -217,7 +217,7 @@ pub fn trace<S, B>(svc: S) -> OnMethod<BoxResponseBody<S, B>, EmptyRouter<S::Err
 where
     S: Service<Request<B>> + Clone,
 {
-    on(MethodFilter::Trace, svc)
+    on(MethodFilter::TRACE, svc)
 }
 
 /// Route requests with the given method to the service.
@@ -235,7 +235,7 @@ where
 /// });
 ///
 /// // Requests to `POST /` will go to `service`.
-/// let app = route("/", service::on(MethodFilter::Post, service));
+/// let app = route("/", service::on(MethodFilter::POST, service));
 /// # async {
 /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 /// # };
@@ -275,7 +275,7 @@ impl<S, F> OnMethod<S, F> {
     where
         T: Service<Request<B>> + Clone,
     {
-        self.on(MethodFilter::Any, svc)
+        self.on(MethodFilter::all(), svc)
     }
 
     /// Chain an additional service that will only accept `CONNECT` requests.
@@ -285,7 +285,7 @@ impl<S, F> OnMethod<S, F> {
     where
         T: Service<Request<B>> + Clone,
     {
-        self.on(MethodFilter::Connect, svc)
+        self.on(MethodFilter::CONNECT, svc)
     }
 
     /// Chain an additional service that will only accept `DELETE` requests.
@@ -295,7 +295,7 @@ impl<S, F> OnMethod<S, F> {
     where
         T: Service<Request<B>> + Clone,
     {
-        self.on(MethodFilter::Delete, svc)
+        self.on(MethodFilter::DELETE, svc)
     }
 
     /// Chain an additional service that will only accept `GET` requests.
@@ -327,7 +327,7 @@ impl<S, F> OnMethod<S, F> {
     where
         T: Service<Request<B>> + Clone,
     {
-        self.on(MethodFilter::Get, svc)
+        self.on(MethodFilter::GET, svc)
     }
 
     /// Chain an additional service that will only accept `HEAD` requests.
@@ -337,7 +337,7 @@ impl<S, F> OnMethod<S, F> {
     where
         T: Service<Request<B>> + Clone,
     {
-        self.on(MethodFilter::Head, svc)
+        self.on(MethodFilter::HEAD, svc)
     }
 
     /// Chain an additional service that will only accept `OPTIONS` requests.
@@ -347,7 +347,7 @@ impl<S, F> OnMethod<S, F> {
     where
         T: Service<Request<B>> + Clone,
     {
-        self.on(MethodFilter::Options, svc)
+        self.on(MethodFilter::OPTIONS, svc)
     }
 
     /// Chain an additional service that will only accept `PATCH` requests.
@@ -357,7 +357,7 @@ impl<S, F> OnMethod<S, F> {
     where
         T: Service<Request<B>> + Clone,
     {
-        self.on(MethodFilter::Patch, svc)
+        self.on(MethodFilter::PATCH, svc)
     }
 
     /// Chain an additional service that will only accept `POST` requests.
@@ -367,7 +367,7 @@ impl<S, F> OnMethod<S, F> {
     where
         T: Service<Request<B>> + Clone,
     {
-        self.on(MethodFilter::Post, svc)
+        self.on(MethodFilter::POST, svc)
     }
 
     /// Chain an additional service that will only accept `PUT` requests.
@@ -377,7 +377,7 @@ impl<S, F> OnMethod<S, F> {
     where
         T: Service<Request<B>> + Clone,
     {
-        self.on(MethodFilter::Put, svc)
+        self.on(MethodFilter::PUT, svc)
     }
 
     /// Chain an additional service that will only accept `TRACE` requests.
@@ -387,7 +387,7 @@ impl<S, F> OnMethod<S, F> {
     where
         T: Service<Request<B>> + Clone,
     {
-        self.on(MethodFilter::Trace, svc)
+        self.on(MethodFilter::TRACE, svc)
     }
 
     /// Chain an additional service that will accept requests matching the given
@@ -410,7 +410,7 @@ impl<S, F> OnMethod<S, F> {
     /// });
     ///
     /// // Requests to `DELETE /` will go to `service`
-    /// let app = route("/", service::on(MethodFilter::Delete, service));
+    /// let app = route("/", service::on(MethodFilter::DELETE, service));
     /// # async {
     /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
     /// # };

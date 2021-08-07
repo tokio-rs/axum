@@ -11,7 +11,7 @@ use crate::{
 };
 use async_trait::async_trait;
 use bytes::Bytes;
-use http::{Method, Request, Response, StatusCode, Uri};
+use http::{Request, Response, StatusCode, Uri};
 use regex::Regex;
 use std::{
     borrow::Cow,
@@ -29,50 +29,9 @@ use tower_http::map_response_body::MapResponseBodyLayer;
 
 pub mod future;
 pub mod or;
+pub use self::method_filter::MethodFilter;
 
-/// A filter that matches one or more HTTP methods.
-#[derive(Debug, Copy, Clone)]
-pub enum MethodFilter {
-    /// Match any method.
-    Any,
-    /// Match `CONNECT` requests.
-    Connect,
-    /// Match `DELETE` requests.
-    Delete,
-    /// Match `GET` requests.
-    Get,
-    /// Match `HEAD` requests.
-    Head,
-    /// Match `OPTIONS` requests.
-    Options,
-    /// Match `PATCH` requests.
-    Patch,
-    /// Match `POST` requests.
-    Post,
-    /// Match `PUT` requests.
-    Put,
-    /// Match `TRACE` requests.
-    Trace,
-}
-
-impl MethodFilter {
-    #[allow(clippy::match_like_matches_macro)]
-    pub(crate) fn matches(self, method: &Method) -> bool {
-        match (self, method) {
-            (MethodFilter::Any, _)
-            | (MethodFilter::Connect, &Method::CONNECT)
-            | (MethodFilter::Delete, &Method::DELETE)
-            | (MethodFilter::Get, &Method::GET)
-            | (MethodFilter::Head, &Method::HEAD)
-            | (MethodFilter::Options, &Method::OPTIONS)
-            | (MethodFilter::Patch, &Method::PATCH)
-            | (MethodFilter::Post, &Method::POST)
-            | (MethodFilter::Put, &Method::PUT)
-            | (MethodFilter::Trace, &Method::TRACE) => true,
-            _ => false,
-        }
-    }
-}
+mod method_filter;
 
 /// A route that sends requests to one of two [`Service`]s depending on the
 /// path.

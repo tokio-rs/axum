@@ -18,6 +18,7 @@ multipart = ["multer", "mime"]
 
 [dependencies]
 async-trait = "0.1"
+bitflags = "1.0"
 bytes = "1.0"
 futures-util = "0.3"
 http = "0.2"
