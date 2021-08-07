@@ -125,15 +125,24 @@ impl InvalidUrlParam {
     }
 }
 
+impl std::fmt::Display for InvalidUrlParam {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "Invalid URL param. Expected something of type `{}`",
+            self.type_name
+        )
+    }
+}
+
+impl std::error::Error for InvalidUrlParam {}
+
 impl IntoResponse for InvalidUrlParam {
     type Body = Full<Bytes>;
     type BodyError = Infallible;
 
     fn into_response(self) -> http::Response<Self::Body> {
-        let mut res = http::Response::new(Full::from(format!(
-            "Invalid URL param. Expected something of type `{}`",
-            self.type_name
-        )));
+        let mut res = http::Response::new(Full::from(self.to_string()));
         *res.status_mut() = http::StatusCode::BAD_REQUEST;
         res
     }
@@ -155,11 +164,19 @@ impl IntoResponse for InvalidPathParam {
     type BodyError = Infallible;
 
     fn into_response(self) -> http::Response<Self::Body> {
-        let mut res = http::Response::new(Full::from(format!("Invalid URL param. {}", self.0)));
+        let mut res = http::Response::new(Full::from(self.to_string()));
         *res.status_mut() = http::StatusCode::BAD_REQUEST;
         res
     }
 }
+
+impl std::fmt::Display for InvalidPathParam {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Invalid URL param. {}", self.0)
+    }
+}
+
+impl std::error::Error for InvalidPathParam {}
 
 /// Rejection type for extractors that deserialize query strings if the input
 /// couldn't be deserialized into the target type.
@@ -186,14 +203,23 @@ impl IntoResponse for FailedToDeserializeQueryString {
     type BodyError = Infallible;
 
     fn into_response(self) -> http::Response<Self::Body> {
-        let mut res = http::Response::new(Full::from(format!(
-            "Failed to deserialize query string. Expected something of type `{}`. Error: {}",
-            self.type_name, self.error,
-        )));
+        let mut res = http::Response::new(Full::from(self.to_string()));
         *res.status_mut() = http::StatusCode::BAD_REQUEST;
         res
     }
 }
+
+impl std::fmt::Display for FailedToDeserializeQueryString {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "Failed to deserialize query string. Expected something of type `{}`. Error: {}",
+            self.type_name, self.error,
+        )
+    }
+}
+
+impl std::error::Error for FailedToDeserializeQueryString {}
 
 composite_rejection! {
     /// Rejection used for [`Query`](super::Query).
@@ -321,6 +347,34 @@ where
     }
 }
 
+impl<T> std::fmt::Display for ContentLengthLimitRejection<T>
+where
+    T: std::fmt::Display,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::PayloadTooLarge(inner) => inner.fmt(f),
+            Self::LengthRequired(inner) => inner.fmt(f),
+            Self::HeadersAlreadyExtracted(inner) => inner.fmt(f),
+            Self::Inner(inner) => inner.fmt(f),
+        }
+    }
+}
+
+impl<T> std::error::Error for ContentLengthLimitRejection<T>
+where
+    T: std::error::Error + 'static,
+{
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            Self::PayloadTooLarge(inner) => Some(inner),
+            Self::LengthRequired(inner) => Some(inner),
+            Self::HeadersAlreadyExtracted(inner) => Some(inner),
+            Self::Inner(inner) => Some(inner),
+        }
+    }
+}
+
 /// Rejection used for [`TypedHeader`](super::TypedHeader).
 #[cfg(feature = "headers")]
 #[cfg_attr(docsrs, doc(cfg(feature = "headers")))]
@@ -337,8 +391,24 @@ impl IntoResponse for TypedHeaderRejection {
     type BodyError = Infallible;
 
     fn into_response(self) -> http::Response<Self::Body> {
-        let mut res = format!("{} ({})", self.err, self.name).into_response();
+        let mut res = self.to_string().into_response();
         *res.status_mut() = http::StatusCode::BAD_REQUEST;
         res
+    }
+}
+
+#[cfg(feature = "headers")]
+#[cfg_attr(docsrs, doc(cfg(feature = "headers")))]
+impl std::fmt::Display for TypedHeaderRejection {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{} ({})", self.err, self.name)
+    }
+}
+
+#[cfg(feature = "headers")]
+#[cfg_attr(docsrs, doc(cfg(feature = "headers")))]
+impl std::error::Error for TypedHeaderRejection {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        Some(&self.err)
     }
 }

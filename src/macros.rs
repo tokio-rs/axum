@@ -58,6 +58,14 @@ macro_rules! define_rejection {
                 res
             }
         }
+
+        impl std::fmt::Display for $name {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                write!(f, "{}", $body)
+            }
+        }
+
+        impl std::error::Error for $name {}
     };
 
     (
@@ -88,6 +96,18 @@ macro_rules! define_rejection {
                     http::Response::new(http_body::Full::from(format!(concat!($body, ": {}"), self.0)));
                 *res.status_mut() = http::StatusCode::$status;
                 res
+            }
+        }
+
+        impl std::fmt::Display for $name {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                write!(f, "{}", $body)
+            }
+        }
+
+        impl std::error::Error for $name {
+            fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+                Some(&self.0)
             }
         }
     };
@@ -132,5 +152,25 @@ macro_rules! composite_rejection {
                 }
             }
         )+
+
+        impl std::fmt::Display for $name {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                match self {
+                    $(
+                        Self::$variant(inner) => write!(f, "{}", inner),
+                    )+
+                }
+            }
+        }
+
+        impl std::error::Error for $name {
+            fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+                match self {
+                    $(
+                        Self::$variant(inner) => Some(inner),
+                    )+
+                }
+            }
+        }
     };
 }
