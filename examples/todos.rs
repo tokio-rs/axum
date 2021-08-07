@@ -6,9 +6,15 @@
 //! - `POST /todos`: create a new Todo.
 //! - `PUT /todos/:id`: update a specific Todo.
 //! - `DELETE /todos/:id`: delete a specific Todo.
+//!
+//! Run with
+//!
+//! ```not_rust
+//! cargo run --example todos
+//! ```
 
 use axum::{
-    extract::{Extension, Json, Query, UrlParams},
+    extract::{Extension, Json, Path, Query},
     prelude::*,
     response::IntoResponse,
     service::ServiceExt,
@@ -28,6 +34,10 @@ use uuid::Uuid;
 
 #[tokio::main]
 async fn main() {
+    // Set the RUST_LOG, if it hasn't been explicitly defined
+    if std::env::var("RUST_LOG").is_err() {
+        std::env::set_var("RUST_LOG", "todos=debug,tower_http=debug")
+    }
     tracing_subscriber::fmt::init();
 
     let db = Db::default();
@@ -61,7 +71,7 @@ async fn main() {
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
     tracing::debug!("listening on {}", addr);
-    hyper::Server::bind(&addr)
+    axum::Server::bind(&addr)
         .serve(app.into_make_service())
         .await
         .unwrap();
@@ -119,7 +129,7 @@ struct UpdateTodo {
 }
 
 async fn todos_update(
-    UrlParams((id,)): UrlParams<(Uuid,)>,
+    Path(id): Path<Uuid>,
     Json(input): Json<UpdateTodo>,
     Extension(db): Extension<Db>,
 ) -> Result<impl IntoResponse, StatusCode> {
@@ -143,10 +153,7 @@ async fn todos_update(
     Ok(response::Json(todo))
 }
 
-async fn todos_delete(
-    UrlParams((id,)): UrlParams<(Uuid,)>,
-    Extension(db): Extension<Db>,
-) -> impl IntoResponse {
+async fn todos_delete(Path(id): Path<Uuid>, Extension(db): Extension<Db>) -> impl IntoResponse {
     if db.write().unwrap().remove(&id).is_some() {
         StatusCode::NO_CONTENT
     } else {

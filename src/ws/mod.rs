@@ -14,7 +14,7 @@
 //!     }
 //! }
 //! # async {
-//! # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+//! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 //! # };
 //! ```
 //!
@@ -51,7 +51,7 @@
 //!     // ...
 //! }
 //! # async {
-//! # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+//! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 //! # };
 //! ```
 
@@ -73,6 +73,7 @@ use http_body::Full;
 use hyper::upgrade::{OnUpgrade, Upgraded};
 use sha1::{Digest, Sha1};
 use std::pin::Pin;
+use std::sync::Arc;
 use std::{
     borrow::Cow, convert::Infallible, fmt, future::Future, marker::PhantomData, task::Context,
     task::Poll,
@@ -96,6 +97,7 @@ where
     WebSocketUpgrade {
         callback,
         config: WebSocketConfig::default(),
+        protocols: Vec::new().into(),
         _request_body: PhantomData,
     }
 }
@@ -169,6 +171,7 @@ impl_ws_handler!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T1
 pub struct WebSocketUpgrade<F, B, T> {
     callback: F,
     config: WebSocketConfig,
+    protocols: Arc<[Cow<'static, str>]>,
     _request_body: PhantomData<fn() -> (B, T)>,
 }
 
@@ -180,6 +183,7 @@ where
         Self {
             callback: self.callback.clone(),
             config: self.config,
+            protocols: self.protocols.clone(),
             _request_body: PhantomData,
         }
     }
@@ -212,6 +216,47 @@ impl<F, B, T> WebSocketUpgrade<F, B, T> {
         self.config.max_frame_size = Some(max);
         self
     }
+
+    /// Set the known protocols.
+    ///
+    /// If the protocol name specified by `Sec-WebSocket-Protocol` header
+    /// to match any of them, the upgrade response will include `Sec-WebSocket-Protocol` header and return the protocol name.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// # use axum::prelude::*;
+    /// # use axum::ws::{ws, WebSocket};
+    /// # use std::net::SocketAddr;
+    /// #
+    /// # async fn handle_socket(socket: WebSocket) {
+    /// #     todo!()
+    /// # }
+    /// #
+    /// # #[tokio::main]
+    /// # async fn main() {
+    /// let app = route("/ws", ws(handle_socket).protocols(["graphql-ws", "graphql-transport-ws"]));
+    /// #
+    /// #   let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
+    /// #   axum::Server::bind(&addr)
+    /// #       .serve(app.into_make_service())
+    /// #       .await
+    /// #       .unwrap();
+    /// # }
+    ///
+    /// ```
+    pub fn protocols<I>(mut self, protocols: I) -> Self
+    where
+        I: IntoIterator,
+        I::Item: Into<Cow<'static, str>>,
+    {
+        self.protocols = protocols
+            .into_iter()
+            .map(Into::into)
+            .collect::<Vec<_>>()
+            .into();
+        self
+    }
 }
 
 impl<ReqBody, F, T> Service<Request<ReqBody>> for WebSocketUpgrade<F, ReqBody, T>
@@ -230,84 +275,114 @@ where
 
     fn call(&mut self, mut req: Request<ReqBody>) -> Self::Future {
         let this = self.clone();
+        let protocols = self.protocols.clone();
 
-        ResponseFuture(Box::pin(async move {
-            if req.method() != http::Method::GET {
-                return response(StatusCode::NOT_FOUND, "Request method must be `GET`");
-            }
-
-            if !header_contains(&req, header::CONNECTION, "upgrade") {
-                return response(
-                    StatusCode::BAD_REQUEST,
-                    "Connection header did not include 'upgrade'",
-                );
-            }
-
-            if !header_eq(&req, header::UPGRADE, "websocket") {
-                return response(
-                    StatusCode::BAD_REQUEST,
-                    "`Upgrade` header did not include 'websocket'",
-                );
-            }
-
-            if !header_eq(&req, header::SEC_WEBSOCKET_VERSION, "13") {
-                return response(
-                    StatusCode::BAD_REQUEST,
-                    "`Sec-Websocket-Version` header did not include '13'",
-                );
-            }
-
-            let key = if let Some(key) = req.headers_mut().remove(header::SEC_WEBSOCKET_KEY) {
-                key
-            } else {
-                return response(
-                    StatusCode::BAD_REQUEST,
-                    "`Sec-Websocket-Key` header missing",
-                );
-            };
-
-            let on_upgrade = req.extensions_mut().remove::<OnUpgrade>().unwrap();
-
-            let config = this.config;
-            let callback = this.callback.clone();
-
-            let mut req = RequestParts::new(req);
-            let input = match T::from_request(&mut req).await {
-                Ok(input) => input,
-                Err(rejection) => {
-                    let res = rejection.into_response().map(box_body);
-                    return Ok(res);
+        ResponseFuture {
+            future: Box::pin(async move {
+                if req.method() != http::Method::GET {
+                    return response(StatusCode::NOT_FOUND, "Request method must be `GET`");
                 }
-            };
 
-            tokio::spawn(async move {
-                let upgraded = on_upgrade.await.unwrap();
-                let socket = WebSocketStream::from_raw_socket(
-                    upgraded,
-                    protocol::Role::Server,
-                    Some(config),
-                )
-                .await;
-                let socket = WebSocket { inner: socket };
-                callback.call(socket, input).await;
-            });
+                if !header_contains(&req, header::CONNECTION, "upgrade") {
+                    return response(
+                        StatusCode::BAD_REQUEST,
+                        "Connection header did not include 'upgrade'",
+                    );
+                }
 
-            let res = Response::builder()
-                .status(StatusCode::SWITCHING_PROTOCOLS)
-                .header(
-                    http::header::CONNECTION,
-                    HeaderValue::from_str("upgrade").unwrap(),
-                )
-                .header(
-                    http::header::UPGRADE,
-                    HeaderValue::from_str("websocket").unwrap(),
-                )
-                .header(http::header::SEC_WEBSOCKET_ACCEPT, sign(key.as_bytes()))
-                .body(box_body(Full::new(Bytes::new())))
-                .unwrap();
+                if !header_eq(&req, header::UPGRADE, "websocket") {
+                    return response(
+                        StatusCode::BAD_REQUEST,
+                        "`Upgrade` header did not include 'websocket'",
+                    );
+                }
 
-            Ok(res)
-        }))
+                if !header_eq(&req, header::SEC_WEBSOCKET_VERSION, "13") {
+                    return response(
+                        StatusCode::BAD_REQUEST,
+                        "`Sec-Websocket-Version` header did not include '13'",
+                    );
+                }
+
+                // check requested protocols
+                let protocol =
+                    req.headers()
+                        .get(&header::SEC_WEBSOCKET_PROTOCOL)
+                        .and_then(|req_protocols| {
+                            let req_protocols = req_protocols.to_str().ok()?;
+                            req_protocols
+                                .split(',')
+                                .map(|req_p| req_p.trim())
+                                .find(|req_p| protocols.iter().any(|p| p == req_p))
+                        });
+                let protocol = match protocol {
+                    Some(protocol) => {
+                        if let Ok(protocol) = HeaderValue::from_str(protocol) {
+                            Some(protocol)
+                        } else {
+                            return response(
+                                StatusCode::BAD_REQUEST,
+                                "`Sec-Websocket-Protocol` header is invalid",
+                            );
+                        }
+                    }
+                    None => None,
+                };
+
+                let key = if let Some(key) = req.headers_mut().remove(header::SEC_WEBSOCKET_KEY) {
+                    key
+                } else {
+                    return response(
+                        StatusCode::BAD_REQUEST,
+                        "`Sec-Websocket-Key` header missing",
+                    );
+                };
+
+                let on_upgrade = req.extensions_mut().remove::<OnUpgrade>().unwrap();
+
+                let config = this.config;
+                let callback = this.callback.clone();
+
+                let mut req = RequestParts::new(req);
+                let input = match T::from_request(&mut req).await {
+                    Ok(input) => input,
+                    Err(rejection) => {
+                        let res = rejection.into_response().map(box_body);
+                        return Ok(res);
+                    }
+                };
+
+                tokio::spawn(async move {
+                    let upgraded = on_upgrade.await.unwrap();
+                    let socket = WebSocketStream::from_raw_socket(
+                        upgraded,
+                        protocol::Role::Server,
+                        Some(config),
+                    )
+                    .await;
+                    let socket = WebSocket { inner: socket };
+                    callback.call(socket, input).await;
+                });
+
+                let mut builder = Response::builder()
+                    .status(StatusCode::SWITCHING_PROTOCOLS)
+                    .header(
+                        http::header::CONNECTION,
+                        HeaderValue::from_str("upgrade").unwrap(),
+                    )
+                    .header(
+                        http::header::UPGRADE,
+                        HeaderValue::from_str("websocket").unwrap(),
+                    )
+                    .header(http::header::SEC_WEBSOCKET_ACCEPT, sign(key.as_bytes()));
+                if let Some(protocol) = protocol {
+                    builder = builder.header(http::header::SEC_WEBSOCKET_PROTOCOL, protocol);
+                }
+                let res = builder.body(box_body(Full::new(Bytes::new()))).unwrap();
+
+                Ok(res)
+            }),
+        }
     }
 }
 

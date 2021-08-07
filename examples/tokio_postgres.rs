@@ -1,3 +1,9 @@
+//! Run with
+//!
+//! ```not_rust
+//! cargo run --example tokio_postgres
+//! ```
+
 use axum::{extract::Extension, prelude::*, AddExtensionLayer};
 use bb8::Pool;
 use bb8_postgres::PostgresConnectionManager;
@@ -7,6 +13,10 @@ use tokio_postgres::NoTls;
 
 #[tokio::main]
 async fn main() {
+    // Set the RUST_LOG, if it hasn't been explicitly defined
+    if std::env::var("RUST_LOG").is_err() {
+        std::env::set_var("RUST_LOG", "tokio_postgres=debug")
+    }
     tracing_subscriber::fmt::init();
 
     // setup connection pool
@@ -21,7 +31,7 @@ async fn main() {
     // run it with hyper
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
     tracing::debug!("listening on {}", addr);
-    hyper::Server::bind(&addr)
+    axum::Server::bind(&addr)
         .serve(app.into_make_service())
         .await
         .unwrap();

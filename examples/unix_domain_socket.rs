@@ -1,3 +1,9 @@
+//! Run with
+//!
+//! ```not_rust
+//! cargo run --example unix_domain_socket
+//! ```
+
 use axum::{
     extract::connect_info::{self, ConnectInfo},
     prelude::*,
@@ -30,6 +36,10 @@ fn main() {
 #[cfg(unix)]
 #[tokio::main]
 async fn main() {
+    // Set the RUST_LOG, if it hasn't been explicitly defined
+    if std::env::var("RUST_LOG").is_err() {
+        std::env::set_var("RUST_LOG", "debug")
+    }
     tracing_subscriber::fmt::init();
 
     let path = PathBuf::from("/tmp/axum/helloworld");
@@ -43,7 +53,7 @@ async fn main() {
     tokio::spawn(async {
         let app = route("/", get(handler));
 
-        hyper::Server::builder(ServerAccept { uds })
+        axum::Server::builder(ServerAccept { uds })
             .serve(app.into_make_service_with_connect_info::<UdsConnectInfo, _>())
             .await
             .unwrap();

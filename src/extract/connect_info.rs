@@ -89,7 +89,9 @@ where
     fn call(&mut self, target: T) -> Self::Future {
         let connect_info = ConnectInfo(C::connect_info(target));
         let svc = AddExtension::new(self.svc.clone(), connect_info);
-        ResponseFuture(futures_util::future::ok(svc))
+        ResponseFuture {
+            future: futures_util::future::ok(svc),
+        }
     }
 }
 
@@ -129,7 +131,7 @@ where
 mod tests {
     use super::*;
     use crate::prelude::*;
-    use hyper::Server;
+    use crate::Server;
     use std::net::{SocketAddr, TcpListener};
 
     #[tokio::test]

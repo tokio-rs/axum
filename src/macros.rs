@@ -9,10 +9,12 @@ macro_rules! opaque_future {
     };
 
     ($(#[$m:meta])* pub type $name:ident<$($param:ident),*> = $actual:ty;) => {
-        #[pin_project::pin_project]
-        $(#[$m])*
-        pub struct $name<$($param),*>(#[pin] pub(crate) $actual)
-        where;
+        pin_project_lite::pin_project! {
+            $(#[$m])*
+            pub struct $name<$($param),*> {
+                #[pin] pub(crate) future: $actual,
+            }
+        }
 
         impl<$($param),*> std::fmt::Debug for $name<$($param),*> {
             fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -27,7 +29,7 @@ macro_rules! opaque_future {
             type Output = <$actual as std::future::Future>::Output;
             #[inline]
             fn poll(self: std::pin::Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> std::task::Poll<Self::Output> {
-                self.project().0.poll(cx)
+                self.project().future.poll(cx)
             }
         }
     };
@@ -45,6 +47,7 @@ macro_rules! define_rejection {
         #[non_exhaustive]
         pub struct $name;
 
+        #[allow(deprecated)]
         impl $crate::response::IntoResponse for $name {
             type Body = http_body::Full<bytes::Bytes>;
             type BodyError = std::convert::Infallible;
@@ -65,10 +68,10 @@ macro_rules! define_rejection {
     ) => {
         $(#[$m])*
         #[derive(Debug)]
-        pub struct $name(pub(super) tower::BoxError);
+        pub struct $name(pub(crate) tower::BoxError);
 
         impl $name {
-            pub(super) fn from_err<E>(err: E) -> Self
+            pub(crate) fn from_err<E>(err: E) -> Self
             where
                 E: Into<tower::BoxError>,
             {
@@ -103,7 +106,7 @@ macro_rules! composite_rejection {
         #[non_exhaustive]
         pub enum $name {
             $(
-                #[allow(missing_docs)]
+                #[allow(missing_docs, deprecated)]
                 $variant($variant)
             ),+
         }
@@ -122,6 +125,7 @@ macro_rules! composite_rejection {
         }
 
         $(
+            #[allow(deprecated)]
             impl From<$variant> for $name {
                 fn from(inner: $variant) -> Self {
                     Self::$variant(inner)

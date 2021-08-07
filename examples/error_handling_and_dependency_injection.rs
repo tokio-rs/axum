@@ -1,11 +1,17 @@
 //! Example showing how to convert errors into responses and how one might do
 //! dependency injection using trait objects.
+//!
+//! Run with
+//!
+//! ```not_rust
+//! cargo run --example error_handling_and_dependency_injection
+//! ```
 
 #![allow(dead_code)]
 
 use axum::{
     async_trait,
-    extract::{Extension, Json, UrlParams},
+    extract::{Extension, Json, Path},
     prelude::*,
     response::IntoResponse,
     AddExtensionLayer,
@@ -20,6 +26,10 @@ use uuid::Uuid;
 
 #[tokio::main]
 async fn main() {
+    // Set the RUST_LOG, if it hasn't been explicitly defined
+    if std::env::var("RUST_LOG").is_err() {
+        std::env::set_var("RUST_LOG", "error_handling_and_dependency_injection=debug")
+    }
     tracing_subscriber::fmt::init();
 
     // Inject a `UserRepo` into our handlers via a trait object. This could be
@@ -36,7 +46,7 @@ async fn main() {
     // Run our application
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
     tracing::debug!("listening on {}", addr);
-    hyper::Server::bind(&addr)
+    axum::Server::bind(&addr)
         .serve(app.into_make_service())
         .await
         .unwrap();
@@ -48,7 +58,7 @@ async fn main() {
 /// are automatically converted into `AppError` which implements `IntoResponse`
 /// so it can be returned from handlers directly.
 async fn users_show(
-    UrlParams((user_id,)): UrlParams<(Uuid,)>,
+    Path(user_id): Path<Uuid>,
     Extension(user_repo): Extension<DynUserRepo>,
 ) -> Result<response::Json<User>, AppError> {
     let user = user_repo.find(user_id).await?;

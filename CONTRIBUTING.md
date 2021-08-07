@@ -14,7 +14,7 @@ It should be considered a map to help you navigate the process.
 
 Don't know where to start? Check [issues labeled with "E-help-wanted"](https://github.com/tokio-rs/axum/issues?q=is%3Aopen+is%3Aissue+label%3AE-help-wanted) or ["E-easy"](https://github.com/tokio-rs/axum/issues?q=is%3Aopen+is%3Aissue+label%3AE-easy).
 
-You may also get help with contributing in the [`tower` Discord
+You may also get help with contributing in the [`axum` Discord
 channel][discord], please join us!
 
 [discord]: https://discord.gg/tokio
@@ -196,7 +196,7 @@ however, will stay intact on the Pull Request page.
 
 ## Reviewing Pull Requests
 
-**Any Tokio, Hyperium, and Tower community member is welcome to review any pull request**.
+**Any Tokio, Hyperium, and Tower, Axum community member is welcome to review any pull request**.
 
 All contributors who choose to review and provide feedback on Pull Requests have
 a responsibility to both the project and the individual making the contribution.
@@ -242,7 +242,7 @@ Specific performance optimization techniques, coding styles and conventions
 change over time. The first impression you give to a new contributor never does.
 
 Nits (requests for small changes that are not essential) are fine, but try to
-avoid stalling the Pull Request. Most nits can typically be fixed by the Tower
+avoid stalling the Pull Request. Most nits can typically be fixed by the Axum
 Collaborator landing the Pull Request but they can also be an opportunity for
 the contributor to learn a bit more about the project.
 

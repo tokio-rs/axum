@@ -2,11 +2,8 @@
 //!
 //! Run with
 //!
-//! ```
-//! RUST_LOG=tower_http=debug,key_value_store=trace \
-//!     cargo run \
-//!     --all-features \
-//!     --example websocket
+//! ```not_rust
+//! cargo run --features=ws,headers --example websocket
 //! ```
 
 use axum::{
@@ -25,6 +22,10 @@ use tower_http::{
 
 #[tokio::main]
 async fn main() {
+    // Set the RUST_LOG, if it hasn't been explicitly defined
+    if std::env::var("RUST_LOG").is_err() {
+        std::env::set_var("RUST_LOG", "websocket=debug,tower_http=debug")
+    }
     tracing_subscriber::fmt::init();
 
     // build our application with some routes
@@ -36,7 +37,7 @@ async fn main() {
                 .handle_error(|error: std::io::Error| {
                     Ok::<_, std::convert::Infallible>((
                         StatusCode::INTERNAL_SERVER_ERROR,
-                        format!("Unhandled interal error: {}", error),
+                        format!("Unhandled internal error: {}", error),
                     ))
                 }),
         ),
@@ -52,7 +53,7 @@ async fn main() {
     // run it with hyper
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
     tracing::debug!("listening on {}", addr);
-    hyper::Server::bind(&addr)
+    axum::Server::bind(&addr)
         .serve(app.into_make_service())
         .await
         .unwrap();
@@ -61,17 +62,26 @@ async fn main() {
 async fn handle_socket(
     mut socket: WebSocket,
     // websocket handlers can also use extractors
-    TypedHeader(user_agent): TypedHeader<headers::UserAgent>,
+    user_agent: Option<TypedHeader<headers::UserAgent>>,
 ) {
-    println!("`{}` connected", user_agent.as_str());
+    if let Some(TypedHeader(user_agent)) = user_agent {
+        println!("`{}` connected", user_agent.as_str());
+    }
 
     if let Some(msg) = socket.recv().await {
-        let msg = msg.unwrap();
-        println!("Client says: {:?}", msg);
+        if let Ok(msg) = msg {
+            println!("Client says: {:?}", msg);
+        } else {
+            println!("client disconnected");
+            return;
+        }
     }
 
     loop {
-        socket.send(Message::text("Hi!")).await.unwrap();
+        if socket.send(Message::text("Hi!")).await.is_err() {
+            println!("client disconnected");
+            return;
+        }
         tokio::time::sleep(std::time::Duration::from_secs(3)).await;
     }
 }

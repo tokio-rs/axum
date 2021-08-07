@@ -3,12 +3,12 @@
 //! Run with:
 //!
 //! ```not_rust
-//! RUST_LOG=tower_http=debug,key_value_store=trace cargo run --example key_value_store
+//! cargo run --example key_value_store
 //! ```
 
 use axum::{
     async_trait,
-    extract::{extractor_middleware, ContentLengthLimit, Extension, RequestParts, UrlParams},
+    extract::{extractor_middleware, ContentLengthLimit, Extension, Path, RequestParts},
     prelude::*,
     response::IntoResponse,
     routing::BoxRoute,
@@ -31,6 +31,10 @@ use tower_http::{
 
 #[tokio::main]
 async fn main() {
+    // Set the RUST_LOG, if it hasn't been explicitly defined
+    if std::env::var("RUST_LOG").is_err() {
+        std::env::set_var("RUST_LOG", "key_value_store=debug,tower_http=debug")
+    }
     tracing_subscriber::fmt::init();
 
     // Build our application by composing routes
@@ -61,7 +65,7 @@ async fn main() {
     // Run our app with hyper
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
     tracing::debug!("listening on {}", addr);
-    hyper::Server::bind(&addr)
+    axum::Server::bind(&addr)
         .serve(app.into_make_service())
         .await
         .unwrap();
@@ -75,7 +79,7 @@ struct State {
 }
 
 async fn kv_get(
-    UrlParams((key,)): UrlParams<(String,)>,
+    Path(key): Path<String>,
     Extension(state): Extension<SharedState>,
 ) -> Result<Bytes, StatusCode> {
     let db = &state.read().unwrap().db;
@@ -88,7 +92,7 @@ async fn kv_get(
 }
 
 async fn kv_set(
-    UrlParams((key,)): UrlParams<(String,)>,
+    Path(key): Path<String>,
     ContentLengthLimit(bytes): ContentLengthLimit<Bytes, { 1024 * 5_000 }>, // ~5mb
     Extension(state): Extension<SharedState>,
 ) {
@@ -109,10 +113,7 @@ fn admin_routes() -> BoxRoute<hyper::Body> {
         state.write().unwrap().db.clear();
     }
 
-    async fn remove_key(
-        UrlParams((key,)): UrlParams<(String,)>,
-        Extension(state): Extension<SharedState>,
-    ) {
+    async fn remove_key(Path(key): Path<String>, Extension(state): Extension<SharedState>) {
         state.write().unwrap().db.remove(&key);
     }
 

@@ -1,3 +1,11 @@
+//! Example chat application.
+//!
+//! Run with
+//!
+//! ```not_rust
+//! cargo run --features=ws --example chat
+//! ```
+
 use std::collections::HashSet;
 use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};
@@ -30,15 +38,16 @@ async fn main() {
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
 
-    hyper::Server::bind(&addr)
+    axum::Server::bind(&addr)
         .serve(app.into_make_service())
         .await
         .unwrap();
 }
 
-async fn websocket(stream: WebSocket, state: extract::Extension<Arc<AppState>>) {
-    let state = state.0;
-
+async fn websocket(
+    stream: WebSocket,
+    extract::Extension(state): extract::Extension<Arc<AppState>>,
+) {
     // By splitting we can send and receive at the same time.
     let (mut sender, mut receiver) = stream.split();
 

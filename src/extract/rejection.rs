@@ -1,6 +1,7 @@
 //! Rejection response types.
 
 use super::IntoResponse;
+use crate::body::{box_body, BoxBody, BoxStdError};
 use bytes::Bytes;
 use http_body::Full;
 use std::convert::Infallible;
@@ -43,14 +44,7 @@ define_rejection! {
 
 define_rejection! {
     #[status = BAD_REQUEST]
-    #[body = "Query string was invalid or missing"]
-    /// Rejection type for [`Query`](super::Query).
-    pub struct QueryStringMissing;
-}
-
-define_rejection! {
-    #[status = BAD_REQUEST]
-    #[body = "Failed to parse the response body as JSON"]
+    #[body = "Failed to parse the request body as JSON"]
     /// Rejection type for [`Json`](super::Json).
     pub struct InvalidJsonBody(BoxError);
 }
@@ -81,7 +75,7 @@ define_rejection! {
 
 define_rejection! {
     #[status = BAD_REQUEST]
-    #[body = "Response body didn't contain valid UTF-8"]
+    #[body = "Request body didn't contain valid UTF-8"]
     /// Rejection type used when buffering the request into a [`String`] if the
     /// body doesn't contain valid UTF-8.
     pub struct InvalidUtf8(BoxError);
@@ -163,6 +157,28 @@ impl IntoResponse for InvalidUrlParam {
     }
 }
 
+/// Rejection type for [`Path`](super::Path) if the capture route
+/// param didn't have the expected type.
+#[derive(Debug)]
+pub struct InvalidPathParam(String);
+
+impl InvalidPathParam {
+    pub(super) fn new(err: impl Into<String>) -> Self {
+        InvalidPathParam(err.into())
+    }
+}
+
+impl IntoResponse for InvalidPathParam {
+    type Body = Full<Bytes>;
+    type BodyError = Infallible;
+
+    fn into_response(self) -> http::Response<Self::Body> {
+        let mut res = http::Response::new(Full::from(format!("Invalid URL param. {}", self.0)));
+        *res.status_mut() = http::StatusCode::BAD_REQUEST;
+        res
+    }
+}
+
 /// Rejection type for extractors that deserialize query strings if the input
 /// couldn't be deserialized into the target type.
 #[derive(Debug)]
@@ -204,7 +220,6 @@ composite_rejection! {
     /// can fail.
     pub enum QueryRejection {
         UriAlreadyExtracted,
-        QueryStringMissing,
         FailedToDeserializeQueryString,
     }
 }
@@ -216,7 +231,6 @@ composite_rejection! {
     /// can fail.
     pub enum FormRejection {
         InvalidFormContentType,
-        QueryStringMissing,
         FailedToDeserializeQueryString,
         FailedToBufferBody,
         BodyAlreadyExtracted,
@@ -262,6 +276,17 @@ composite_rejection! {
 }
 
 composite_rejection! {
+    /// Rejection used for [`Path`](super::Path).
+    ///
+    /// Contains one variant for each way the [`Path`](super::Path) extractor
+    /// can fail.
+    pub enum PathParamsRejection {
+        InvalidPathParam,
+        MissingRouteParams,
+    }
+}
+
+composite_rejection! {
     /// Rejection used for [`Bytes`](bytes::Bytes).
     ///
     /// Contains one variant for each way the [`Bytes`](bytes::Bytes) extractor
@@ -302,17 +327,17 @@ pub enum ContentLengthLimitRejection<T> {
 
 impl<T> IntoResponse for ContentLengthLimitRejection<T>
 where
-    T: IntoResponse<Body = Full<Bytes>>,
+    T: IntoResponse,
 {
-    type Body = Full<Bytes>;
-    type BodyError = Infallible;
+    type Body = BoxBody;
+    type BodyError = BoxStdError;
 
     fn into_response(self) -> http::Response<Self::Body> {
         match self {
-            Self::PayloadTooLarge(inner) => inner.into_response(),
-            Self::LengthRequired(inner) => inner.into_response(),
-            Self::HeadersAlreadyExtracted(inner) => inner.into_response(),
-            Self::Inner(inner) => inner.into_response(),
+            Self::PayloadTooLarge(inner) => inner.into_response().map(box_body),
+            Self::LengthRequired(inner) => inner.into_response().map(box_body),
+            Self::HeadersAlreadyExtracted(inner) => inner.into_response().map(box_body),
+            Self::Inner(inner) => inner.into_response().map(box_body),
         }
     }
 }

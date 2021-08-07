@@ -1,3 +1,9 @@
+//! Run with
+//!
+//! ```not_rust
+//! cargo run --example static_file_server
+//! ```
+
 use axum::{prelude::*, routing::nest, service::ServiceExt};
 use http::StatusCode;
 use std::net::SocketAddr;
@@ -5,6 +11,10 @@ use tower_http::{services::ServeDir, trace::TraceLayer};
 
 #[tokio::main]
 async fn main() {
+    // Set the RUST_LOG, if it hasn't been explicitly defined
+    if std::env::var("RUST_LOG").is_err() {
+        std::env::set_var("RUST_LOG", "static_file_server=debug,tower_http=debug")
+    }
     tracing_subscriber::fmt::init();
 
     let app = nest(
@@ -12,7 +22,7 @@ async fn main() {
         axum::service::get(ServeDir::new(".").handle_error(|error: std::io::Error| {
             Ok::<_, std::convert::Infallible>((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Unhandled interal error: {}", error),
+                format!("Unhandled internal error: {}", error),
             ))
         })),
     )
@@ -20,7 +30,7 @@ async fn main() {
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
     tracing::debug!("listening on {}", addr);
-    hyper::Server::bind(&addr)
+    axum::Server::bind(&addr)
         .serve(app.into_make_service())
         .await
         .unwrap();

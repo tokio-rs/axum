@@ -1,3 +1,9 @@
+//! Run with
+//!
+//! ```not_rust
+//! cargo run --example tls_rustls
+//! ```
+
 use axum::prelude::*;
 use hyper::server::conn::Http;
 use std::{fs::File, io::BufReader, sync::Arc};
@@ -11,6 +17,10 @@ use tokio_rustls::{
 
 #[tokio::main]
 async fn main() {
+    // Set the RUST_LOG, if it hasn't been explicitly defined
+    if std::env::var("RUST_LOG").is_err() {
+        std::env::set_var("RUST_LOG", "rustls=debug")
+    }
     tracing_subscriber::fmt::init();
 
     let rustls_config = rustls_server_config(

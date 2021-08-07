@@ -7,9 +7,11 @@ use http_body::{
     combinators::{MapData, MapErr},
     Empty, Full,
 };
-use serde::Serialize;
 use std::{borrow::Cow, convert::Infallible};
 use tower::{util::Either, BoxError};
+
+#[doc(no_inline)]
+pub use crate::Json;
 
 /// Trait for generating responses.
 ///
@@ -353,7 +355,7 @@ where
 
     fn into_response(self) -> Response<T::Body> {
         let mut res = self.1.into_response();
-        *res.headers_mut() = self.0;
+        res.headers_mut().extend(self.0);
         res
     }
 }
@@ -368,7 +370,7 @@ where
     fn into_response(self) -> Response<T::Body> {
         let mut res = self.2.into_response();
         *res.status_mut() = self.0;
-        *res.headers_mut() = self.1;
+        res.headers_mut().extend(self.1);
         res
     }
 }
@@ -411,65 +413,45 @@ impl<T> From<T> for Html<T> {
     }
 }
 
-/// A JSON response.
-///
-/// Can be created from any type that implements [`serde::Serialize`].
-///
-/// Will automatically get `Content-Type: application/json`.
-///
-/// # Example
-///
-/// ```
-/// use serde_json::json;
-/// use axum::{body::Body, response::{Json, IntoResponse}};
-/// use http::{Response, header::CONTENT_TYPE};
-/// use http_body::Full;
-/// use bytes::Bytes;
-///
-/// let json = json!({
-///     "data": 42,
-/// });
-///
-/// let response: Response<Full<Bytes>> = Json(json).into_response();
-///
-/// assert_eq!(
-///     response.headers().get(CONTENT_TYPE).unwrap(),
-///     "application/json",
-/// );
-/// ```
-#[derive(Clone, Copy, Debug)]
-pub struct Json<T>(pub T);
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::body::Body;
+    use http::header::{HeaderMap, HeaderName};
 
-impl<T> IntoResponse for Json<T>
-where
-    T: Serialize,
-{
-    type Body = Full<Bytes>;
-    type BodyError = Infallible;
+    #[test]
+    fn test_merge_headers() {
+        struct MyResponse;
 
-    fn into_response(self) -> Response<Self::Body> {
-        let bytes = match serde_json::to_vec(&self.0) {
-            Ok(res) => res,
-            Err(err) => {
-                return Response::builder()
-                    .status(StatusCode::INTERNAL_SERVER_ERROR)
-                    .header(header::CONTENT_TYPE, "text/plain")
-                    .body(Full::from(err.to_string()))
-                    .unwrap();
+        impl IntoResponse for MyResponse {
+            type Body = Body;
+            type BodyError = <Self::Body as http_body::Body>::Error;
+
+            fn into_response(self) -> Response<Body> {
+                let mut resp = Response::new(String::new().into());
+                resp.headers_mut()
+                    .insert(HeaderName::from_static("a"), HeaderValue::from_static("1"));
+                resp
             }
-        };
+        }
 
-        let mut res = Response::new(Full::from(bytes));
-        res.headers_mut().insert(
-            header::CONTENT_TYPE,
-            HeaderValue::from_static("application/json"),
-        );
-        res
-    }
-}
+        fn check(resp: impl IntoResponse) {
+            let resp = resp.into_response();
+            assert_eq!(
+                resp.headers().get(HeaderName::from_static("a")).unwrap(),
+                &HeaderValue::from_static("1")
+            );
+            assert_eq!(
+                resp.headers().get(HeaderName::from_static("b")).unwrap(),
+                &HeaderValue::from_static("2")
+            );
+        }
 
-impl<T> From<T> for Json<T> {
-    fn from(inner: T) -> Self {
-        Self(inner)
+        let headers: HeaderMap =
+            std::iter::once((HeaderName::from_static("b"), HeaderValue::from_static("2")))
+                .collect();
+
+        check((headers.clone(), MyResponse));
+        check((StatusCode::OK, headers, MyResponse));
     }
 }
