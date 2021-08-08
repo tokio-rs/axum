@@ -158,3 +158,28 @@ async fn nested_url_extractor() {
         .unwrap();
     assert_eq!(res.text().await.unwrap(), "/foo/bar/qux");
 }
+
+#[tokio::test]
+async fn nested_url_nested_extractor() {
+    let app = nest(
+        "/foo",
+        nest(
+            "/bar",
+            route(
+                "/baz",
+                get(|uri: extract::NestedUri| async move { uri.0.to_string() }),
+            ),
+        ),
+    );
+
+    let addr = run_in_background(app).await;
+
+    let client = reqwest::Client::new();
+
+    let res = client
+        .get(format!("http://{}/foo/bar/baz", addr))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.text().await.unwrap(), "/baz");
+}

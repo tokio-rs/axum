@@ -1,4 +1,4 @@
-use super::{rejection::*, take_body, FromRequest, RequestParts};
+use super::{rejection::*, take_body, Extension, FromRequest, RequestParts};
 use async_trait::async_trait;
 use bytes::Bytes;
 use futures_util::stream::Stream;
@@ -71,6 +71,48 @@ where
 
     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
         Ok(req.uri().clone())
+    }
+}
+
+/// Extractor that gets the request URI for a nested service.
+///
+/// This is necessary since [`Uri`](http::Uri), when used as an extractor, will
+/// always be the full URI.
+///
+/// # Example
+///
+/// ```
+/// use axum::{prelude::*, extract::NestedUri, http::Uri};
+///
+/// let api_routes = route(
+///     "/users",
+///     get(|uri: Uri, NestedUri(nested_uri): NestedUri| async {
+///         // `uri` is `/api/users`
+///         // `nested_uri` is `/users`
+///     }),
+/// );
+///
+/// let app = nest("/api", api_routes);
+/// # async {
+/// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+/// # };
+/// ```
+#[derive(Debug, Clone)]
+pub struct NestedUri(pub Uri);
+
+#[async_trait]
+impl<B> FromRequest<B> for NestedUri
+where
+    B: Send,
+{
+    type Rejection = NotNested;
+
+    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+        let uri = Extension::<Self>::from_request(req)
+            .await
+            .map_err(|_| NotNested)?
+            .0;
+        Ok(uri)
     }
 }
 

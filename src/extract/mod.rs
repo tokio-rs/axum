@@ -278,6 +278,7 @@ pub use self::{
     path::Path,
     query::Query,
     raw_query::RawQuery,
+    request_parts::NestedUri,
     request_parts::{Body, BodyStream},
 };
 #[doc(no_inline)]
