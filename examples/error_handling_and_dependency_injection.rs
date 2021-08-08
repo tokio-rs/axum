@@ -16,10 +16,12 @@ use axum::{
     response::IntoResponse,
     AddExtensionLayer,
 };
-use http::StatusCode;
+use bytes::Bytes;
+use http::{Response, StatusCode};
+use http_body::Full;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use std::{net::SocketAddr, sync::Arc};
+use std::{convert::Infallible, net::SocketAddr, sync::Arc};
 use uuid::Uuid;
 
 #[tokio::main]
@@ -89,7 +91,10 @@ impl From<UserRepoError> for AppError {
 }
 
 impl IntoResponse for AppError {
-    fn into_response(self) -> http::Response<Body> {
+    type Body = Full<Bytes>;
+    type BodyError = Infallible;
+
+    fn into_response(self) -> Response<Self::Body> {
         let (status, error_json) = match self {
             AppError::UserRepo(UserRepoError::NotFound) => {
                 (StatusCode::NOT_FOUND, json!("User not found"))

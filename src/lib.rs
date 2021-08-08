@@ -125,6 +125,8 @@
 //! Routes can also be dynamic like `/users/:id`. See [extractors](#extractors)
 //! for more details.
 //!
+//! You can also define routes separately and merge them with [`RoutingDsl::or`].
+//!
 //! ## Precedence
 //!
 //! Note that routes are matched _bottom to top_ so routes that should have
@@ -132,7 +134,7 @@
 //!
 //! ```rust
 //! use axum::{prelude::*, body::BoxBody};
-//! use tower::{Service, ServiceExt, BoxError};
+//! use tower::{Service, ServiceExt};
 //! use http::{Method, Response, StatusCode};
 //! use std::convert::Infallible;
 //!
@@ -561,7 +563,7 @@
 //! use tower_http::services::ServeFile;
 //! use http::Response;
 //! use std::convert::Infallible;
-//! use tower::{service_fn, BoxError};
+//! use tower::service_fn;
 //!
 //! let app = route(
 //!     // Any request to `/` goes to a service
@@ -662,9 +664,9 @@
 //! [`IntoResponse`]: crate::response::IntoResponse
 //! [`Timeout`]: tower::timeout::Timeout
 //! [examples]: https://github.com/tokio-rs/axum/tree/main/examples
+//! [`RoutingDsl::or`]: crate::routing::RoutingDsl::or
 //! [`axum::Server`]: hyper::server::Server
 
-#![doc(html_root_url = "https://docs.rs/axum/0.1.3")]
 #![warn(
     clippy::all,
     clippy::dbg_macro,
@@ -699,13 +701,12 @@
     missing_debug_implementations,
     missing_docs
 )]
-#![deny(unreachable_pub, broken_intra_doc_links, private_in_public)]
+#![deny(unreachable_pub, private_in_public)]
 #![allow(elided_lifetimes_in_paths, clippy::type_complexity)]
 #![forbid(unsafe_code)]
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![cfg_attr(test, allow(clippy::float_cmp))]
 
-use self::body::Body;
 use http::Request;
 use routing::{EmptyRouter, Route};
 use tower::Service;
@@ -714,6 +715,8 @@ use tower::Service;
 pub(crate) mod macros;
 
 mod buffer;
+mod error;
+mod json;
 mod util;
 
 pub mod body;
@@ -724,19 +727,19 @@ pub mod routing;
 pub mod service;
 pub mod sse;
 
-#[cfg(feature = "ws")]
-#[cfg_attr(docsrs, doc(cfg(feature = "ws")))]
-pub mod ws;
-
 #[cfg(test)]
 mod tests;
 
+#[doc(no_inline)]
 pub use async_trait::async_trait;
 #[doc(no_inline)]
 pub use http;
 #[doc(no_inline)]
 pub use hyper::Server;
+#[doc(no_inline)]
 pub use tower_http::add_extension::{AddExtension, AddExtensionLayer};
+
+pub use self::{error::Error, json::Json};
 
 pub mod prelude {
     //! Re-exports of important traits, types, and functions used with axum. Meant to be glob

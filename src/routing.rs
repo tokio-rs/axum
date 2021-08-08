@@ -1,15 +1,17 @@
 //! Routing between [`Service`]s.
 
+use self::future::{BoxRouteFuture, EmptyRouterFuture, NestedFuture, RouteFuture};
 use crate::{
     body::{box_body, BoxBody},
     buffer::MpscBuffer,
     extract::connect_info::{Connected, IntoMakeServiceWithConnectInfo},
     response::IntoResponse,
+    service::HandleErrorFromRouter,
     util::ByteStr,
 };
 use async_trait::async_trait;
 use bytes::Bytes;
-use http::{Method, Request, Response, StatusCode, Uri};
+use http::{Request, Response, StatusCode, Uri};
 use regex::Regex;
 use std::{
     borrow::Cow,
@@ -26,55 +28,10 @@ use tower::{
 use tower_http::map_response_body::MapResponseBodyLayer;
 
 pub mod future;
+pub mod or;
+pub use self::method_filter::MethodFilter;
 
-// for backwards compatibility
-// TODO: remove these in 0.2
-#[doc(hidden)]
-pub use self::future::{BoxRouteFuture, EmptyRouterFuture, RouteFuture};
-
-/// A filter that matches one or more HTTP methods.
-#[derive(Debug, Copy, Clone)]
-pub enum MethodFilter {
-    /// Match any method.
-    Any,
-    /// Match `CONNECT` requests.
-    Connect,
-    /// Match `DELETE` requests.
-    Delete,
-    /// Match `GET` requests.
-    Get,
-    /// Match `HEAD` requests.
-    Head,
-    /// Match `OPTIONS` requests.
-    Options,
-    /// Match `PATCH` requests.
-    Patch,
-    /// Match `POST` requests.
-    Post,
-    /// Match `PUT` requests.
-    Put,
-    /// Match `TRACE` requests.
-    Trace,
-}
-
-impl MethodFilter {
-    #[allow(clippy::match_like_matches_macro)]
-    pub(crate) fn matches(self, method: &Method) -> bool {
-        match (self, method) {
-            (MethodFilter::Any, _)
-            | (MethodFilter::Connect, &Method::CONNECT)
-            | (MethodFilter::Delete, &Method::DELETE)
-            | (MethodFilter::Get, &Method::GET)
-            | (MethodFilter::Head, &Method::HEAD)
-            | (MethodFilter::Options, &Method::OPTIONS)
-            | (MethodFilter::Patch, &Method::PATCH)
-            | (MethodFilter::Post, &Method::POST)
-            | (MethodFilter::Put, &Method::PUT)
-            | (MethodFilter::Trace, &Method::TRACE) => true,
-            _ => false,
-        }
-    }
-}
+mod method_filter;
 
 /// A route that sends requests to one of two [`Service`]s depending on the
 /// path.
@@ -357,6 +314,40 @@ pub trait RoutingDsl: crate::sealed::Sealed + Sized {
     {
         IntoMakeServiceWithConnectInfo::new(self)
     }
+
+    /// Merge two routers into one.
+    ///
+    /// This is useful for breaking apps into smaller pieces and combining them
+    /// into one.
+    ///
+    /// ```
+    /// use axum::prelude::*;
+    /// #
+    /// # async fn users_list() {}
+    /// # async fn users_show() {}
+    /// # async fn teams_list() {}
+    ///
+    /// // define some routes separately
+    /// let user_routes = route("/users", get(users_list))
+    ///     .route("/users/:id", get(users_show));
+    ///
+    /// let team_routes = route("/teams", get(teams_list));
+    ///
+    /// // combine them into one
+    /// let app = user_routes.or(team_routes);
+    /// # async {
+    /// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+    /// # };
+    /// ```
+    fn or<S>(self, other: S) -> or::Or<Self, S>
+    where
+        S: RoutingDsl,
+    {
+        or::Or {
+            first: self,
+            second: other,
+        }
+    }
 }
 
 impl<S, F> RoutingDsl for Route<S, F> {}
@@ -441,8 +432,6 @@ impl<E> Clone for EmptyRouter<E> {
     }
 }
 
-impl<E> Copy for EmptyRouter<E> {}
-
 impl<E> fmt::Debug for EmptyRouter<E> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("EmptyRouter").finish()
@@ -453,7 +442,10 @@ impl<E> RoutingDsl for EmptyRouter<E> {}
 
 impl<E> crate::sealed::Sealed for EmptyRouter<E> {}
 
-impl<B, E> Service<Request<B>> for EmptyRouter<E> {
+impl<B, E> Service<Request<B>> for EmptyRouter<E>
+where
+    B: Send + Sync + 'static,
+{
     type Response = Response<BoxBody>;
     type Error = E;
     type Future = EmptyRouterFuture<E>;
@@ -462,13 +454,24 @@ impl<B, E> Service<Request<B>> for EmptyRouter<E> {
         Poll::Ready(Ok(()))
     }
 
-    fn call(&mut self, _req: Request<B>) -> Self::Future {
+    fn call(&mut self, request: Request<B>) -> Self::Future {
         let mut res = Response::new(crate::body::empty());
+        res.extensions_mut().insert(FromEmptyRouter { request });
         *res.status_mut() = self.status;
         EmptyRouterFuture {
             future: futures_util::future::ok(res),
         }
     }
+}
+
+/// Response extension used by [`EmptyRouter`] to send the request back to [`Or`] so
+/// the other service can be called.
+///
+/// Without this we would loose ownership of the request when calling the first
+/// service in [`Or`]. We also wouldn't be able to identify if the response came
+/// from [`EmptyRouter`] and therefore can be discarded in [`Or`].
+struct FromEmptyRouter<B> {
+    request: Request<B>,
 }
 
 #[derive(Debug, Clone)]
@@ -722,7 +725,7 @@ impl<S> Layered<S> {
     pub fn handle_error<F, ReqBody, ResBody, Res, E>(
         self,
         f: F,
-    ) -> crate::service::HandleError<S, F, ReqBody>
+    ) -> crate::service::HandleError<S, F, ReqBody, HandleErrorFromRouter>
     where
         S: Service<Request<ReqBody>, Response = Response<ResBody>> + Clone,
         F: FnOnce(S::Error) -> Result<Res, E>,
@@ -756,17 +759,15 @@ where
 /// Nest a group of routes (or a [`Service`]) at some path.
 ///
 /// This allows you to break your application into smaller pieces and compose
-/// them together. This will strip the matching prefix from the URL so the
-/// nested route will only see the part of URL:
+/// them together.
 ///
 /// ```
 /// use axum::{routing::nest, prelude::*};
 /// use http::Uri;
 ///
 /// async fn users_get(uri: Uri) {
-///     // `users_get` doesn't see the whole URL. `nest` will strip the matching
-///     // `/api` prefix.
-///     assert_eq!(uri.path(), "/users");
+///     // `users_get` will still see the whole URI.
+///     assert_eq!(uri.path(), "/api/users");
 /// }
 ///
 /// async fn users_post() {}
@@ -786,8 +787,9 @@ where
 ///
 /// ```
 /// use axum::{routing::nest, prelude::*};
+/// use std::collections::HashMap;
 ///
-/// async fn users_get(params: extract::UrlParamsMap) {
+/// async fn users_get(extract::Path(params): extract::Path<HashMap<String, String>>) {
 ///     // Both `version` and `id` were captured even though `users_api` only
 ///     // explicitly captures `id`.
 ///     let version = params.get("version");
@@ -855,14 +857,19 @@ where
 {
     type Response = Response<BoxBody>;
     type Error = S::Error;
-    type Future = RouteFuture<S, F, B>;
+    type Future = NestedFuture<S, F, B>;
 
     fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         Poll::Ready(Ok(()))
     }
 
     fn call(&mut self, mut req: Request<B>) -> Self::Future {
-        if let Some((prefix, captures)) = self.pattern.prefix_match(req.uri().path()) {
+        if req.extensions().get::<OriginalUri>().is_none() {
+            let original_uri = OriginalUri(req.uri().clone());
+            req.extensions_mut().insert(original_uri);
+        }
+
+        let f = if let Some((prefix, captures)) = self.pattern.prefix_match(req.uri().path()) {
             let without_prefix = strip_prefix(req.uri(), prefix);
             *req.uri_mut() = without_prefix;
 
@@ -872,9 +879,16 @@ where
         } else {
             let fut = self.fallback.clone().oneshot(req);
             RouteFuture::b(fut)
-        }
+        };
+
+        NestedFuture { inner: f }
     }
 }
+
+/// `Nested` changes the incoming requests URI. This will be saved as an
+/// extension so extractors can still access the original URI.
+#[derive(Clone)]
+pub(crate) struct OriginalUri(pub(crate) Uri);
 
 fn strip_prefix(uri: &Uri, prefix: &str) -> Uri {
     let path_and_query = if let Some(path_and_query) = uri.path_and_query() {

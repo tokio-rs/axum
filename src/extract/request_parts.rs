@@ -4,9 +4,11 @@ use bytes::Bytes;
 use futures_util::stream::Stream;
 use http::{HeaderMap, Method, Request, Uri, Version};
 use std::{
+    convert::Infallible,
     pin::Pin,
     task::{Context, Poll},
 };
+use tower::BoxError;
 
 #[async_trait]
 impl<B> FromRequest<B> for Request<B>
@@ -17,21 +19,15 @@ where
 
     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
         let RequestParts {
-            method,
-            uri,
-            version,
+            method: _,
+            uri: _,
+            version: _,
             headers,
             extensions,
             body,
         } = req;
 
-        let all_parts = method
-            .as_ref()
-            .zip(version.as_ref())
-            .zip(uri.as_ref())
-            .zip(extensions.as_ref())
-            .zip(body.as_ref())
-            .zip(headers.as_ref());
+        let all_parts = extensions.as_ref().zip(body.as_ref()).zip(headers.as_ref());
 
         if all_parts.is_some() {
             Ok(req.into_request())
@@ -59,10 +55,10 @@ impl<B> FromRequest<B> for Method
 where
     B: Send,
 {
-    type Rejection = MethodAlreadyExtracted;
+    type Rejection = Infallible;
 
     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-        req.take_method().ok_or(MethodAlreadyExtracted)
+        Ok(req.method().clone())
     }
 }
 
@@ -71,10 +67,10 @@ impl<B> FromRequest<B> for Uri
 where
     B: Send,
 {
-    type Rejection = UriAlreadyExtracted;
+    type Rejection = Infallible;
 
     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-        req.take_uri().ok_or(UriAlreadyExtracted)
+        Ok(req.uri().clone())
     }
 }
 
@@ -83,10 +79,10 @@ impl<B> FromRequest<B> for Version
 where
     B: Send,
 {
-    type Rejection = VersionAlreadyExtracted;
+    type Rejection = Infallible;
 
     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-        req.take_version().ok_or(VersionAlreadyExtracted)
+        Ok(req.version())
     }
 }
 
@@ -176,7 +172,7 @@ impl<B> FromRequest<B> for Bytes
 where
     B: http_body::Body + Send,
     B::Data: Send,
-    B::Error: Into<tower::BoxError>,
+    B::Error: Into<BoxError>,
 {
     type Rejection = BytesRejection;
 
@@ -196,7 +192,7 @@ impl<B> FromRequest<B> for String
 where
     B: http_body::Body + Send,
     B::Data: Send,
-    B::Error: Into<tower::BoxError>,
+    B::Error: Into<BoxError>,
 {
     type Rejection = StringRejection;
 

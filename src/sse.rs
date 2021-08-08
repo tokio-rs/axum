@@ -70,9 +70,10 @@
 //! ```
 
 use crate::{
-    body::{box_body, BoxBody, BoxStdError},
+    body::{box_body, BoxBody},
     extract::{FromRequest, RequestParts},
     response::IntoResponse,
+    Error,
 };
 use async_trait::async_trait;
 use futures_util::{
@@ -276,7 +277,7 @@ where
 
                 let stream = stream
                     .map_ok(|event| event.to_string())
-                    .map_err(|err| BoxStdError(err.into()))
+                    .map_err(Error::new)
                     .into_stream();
 
                 let body = box_body(Body::wrap_stream(stream));

@@ -126,3 +126,35 @@ async fn nesting_at_root() {
     assert_eq!(res.status(), StatusCode::OK);
     assert_eq!(res.text().await.unwrap(), "/foo/bar");
 }
+
+#[tokio::test]
+async fn nested_url_extractor() {
+    let app = nest(
+        "/foo",
+        nest(
+            "/bar",
+            route("/baz", get(|uri: Uri| async move { uri.to_string() })).route(
+                "/qux",
+                get(|req: Request<Body>| async move { req.uri().to_string() }),
+            ),
+        ),
+    );
+
+    let addr = run_in_background(app).await;
+
+    let client = reqwest::Client::new();
+
+    let res = client
+        .get(format!("http://{}/foo/bar/baz", addr))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.text().await.unwrap(), "/foo/bar/baz");
+
+    let res = client
+        .get(format!("http://{}/foo/bar/qux", addr))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.text().await.unwrap(), "/foo/bar/qux");
+}

@@ -98,8 +98,6 @@ impl<E> Clone for ExtractorMiddlewareLayer<E> {
     }
 }
 
-impl<E> Copy for ExtractorMiddlewareLayer<E> {}
-
 impl<E> fmt::Debug for ExtractorMiddlewareLayer<E> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("ExtractorMiddleware")
@@ -138,8 +136,6 @@ where
         }
     }
 }
-
-impl<S, E> Copy for ExtractorMiddleware<S, E> where S: Copy {}
 
 impl<S, E> fmt::Debug for ExtractorMiddleware<S, E>
 where
@@ -185,13 +181,6 @@ where
         }
     }
 }
-
-#[doc(hidden)]
-#[deprecated(
-    since = "0.1.3",
-    note = "Use axum::extract::extractor_middleware::ResponseFuture"
-)]
-pub type ExtractorMiddlewareResponseFuture<B, S, E> = ResponseFuture<B, S, E>;
 
 pin_project! {
     /// Response future for [`ExtractorMiddleware`].

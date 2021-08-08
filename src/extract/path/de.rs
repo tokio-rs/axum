@@ -579,7 +579,7 @@ mod tests {
         ($ty:ty, $value_str:literal, $value:expr) => {
             #[allow(clippy::bool_assert_comparison)]
             {
-                let url_params = create_url_params([("value", $value_str)]);
+                let url_params = create_url_params(vec![("value", $value_str)]);
                 let deserializer = PathDeserializer::new(&url_params);
                 assert_eq!(<$ty>::deserialize(deserializer).unwrap(), $value);
             }
@@ -603,13 +603,13 @@ mod tests {
         check_single_value!(String, "abc", "abc");
         check_single_value!(char, "a", 'a');
 
-        let url_params = create_url_params([("a", "B")]);
+        let url_params = create_url_params(vec![("a", "B")]);
         assert_eq!(
             MyEnum::deserialize(PathDeserializer::new(&url_params)).unwrap(),
             MyEnum::B
         );
 
-        let url_params = create_url_params([("a", "1"), ("b", "2")]);
+        let url_params = create_url_params(vec![("a", "1"), ("b", "2")]);
         assert_eq!(
             i32::deserialize(PathDeserializer::new(&url_params)).unwrap_err(),
             PathDeserializerError::custom("wrong number of parameters: 2 expected 1".to_string())
@@ -618,7 +618,7 @@ mod tests {
 
     #[test]
     fn test_parse_seq() {
-        let url_params = create_url_params([("a", "1"), ("b", "true"), ("c", "abc")]);
+        let url_params = create_url_params(vec![("a", "1"), ("b", "true"), ("c", "abc")]);
         assert_eq!(
             <(i32, bool, String)>::deserialize(PathDeserializer::new(&url_params)).unwrap(),
             (1, true, "abc".to_string())
@@ -631,13 +631,13 @@ mod tests {
             TupleStruct(1, true, "abc".to_string())
         );
 
-        let url_params = create_url_params([("a", "1"), ("b", "2"), ("c", "3")]);
+        let url_params = create_url_params(vec![("a", "1"), ("b", "2"), ("c", "3")]);
         assert_eq!(
             <Vec<i32>>::deserialize(PathDeserializer::new(&url_params)).unwrap(),
             vec![1, 2, 3]
         );
 
-        let url_params = create_url_params([("a", "c"), ("a", "B")]);
+        let url_params = create_url_params(vec![("a", "c"), ("a", "B")]);
         assert_eq!(
             <Vec<MyEnum>>::deserialize(PathDeserializer::new(&url_params)).unwrap(),
             vec![MyEnum::C, MyEnum::B]
@@ -646,7 +646,7 @@ mod tests {
 
     #[test]
     fn test_parse_struct() {
-        let url_params = create_url_params([("a", "1"), ("b", "true"), ("c", "abc")]);
+        let url_params = create_url_params(vec![("a", "1"), ("b", "true"), ("c", "abc")]);
         assert_eq!(
             Struct::deserialize(PathDeserializer::new(&url_params)).unwrap(),
             Struct {
@@ -659,7 +659,7 @@ mod tests {
 
     #[test]
     fn test_parse_map() {
-        let url_params = create_url_params([("a", "1"), ("b", "true"), ("c", "abc")]);
+        let url_params = create_url_params(vec![("a", "1"), ("b", "true"), ("c", "abc")]);
         assert_eq!(
             <HashMap<String, String>>::deserialize(PathDeserializer::new(&url_params)).unwrap(),
             [("a", "1"), ("b", "true"), ("c", "abc")]

@@ -30,10 +30,7 @@ where
     type Rejection = Infallible;
 
     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-        let query = req
-            .uri()
-            .and_then(|uri| uri.query())
-            .map(|query| query.to_string());
+        let query = req.uri().query().map(|query| query.to_string());
         Ok(Self(query))
     }
 }

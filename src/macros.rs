@@ -49,39 +49,65 @@ macro_rules! define_rejection {
 
         #[allow(deprecated)]
         impl $crate::response::IntoResponse for $name {
-            fn into_response(self) -> http::Response<$crate::body::Body> {
-                let mut res = http::Response::new($crate::body::Body::from($body));
+            type Body = http_body::Full<bytes::Bytes>;
+            type BodyError = std::convert::Infallible;
+
+            fn into_response(self) -> http::Response<Self::Body> {
+                let mut res = http::Response::new(http_body::Full::from($body));
                 *res.status_mut() = http::StatusCode::$status;
                 res
             }
         }
+
+        impl std::fmt::Display for $name {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                write!(f, "{}", $body)
+            }
+        }
+
+        impl std::error::Error for $name {}
     };
 
     (
         #[status = $status:ident]
         #[body = $body:expr]
         $(#[$m:meta])*
-        pub struct $name:ident (BoxError);
+        pub struct $name:ident (Error);
     ) => {
         $(#[$m])*
         #[derive(Debug)]
-        pub struct $name(pub(super) tower::BoxError);
+        pub struct $name(pub(crate) crate::Error);
 
         impl $name {
-            pub(super) fn from_err<E>(err: E) -> Self
+            pub(crate) fn from_err<E>(err: E) -> Self
             where
                 E: Into<tower::BoxError>,
             {
-                Self(err.into())
+                Self(crate::Error::new(err))
             }
         }
 
         impl IntoResponse for $name {
-            fn into_response(self) -> http::Response<Body> {
+            type Body = http_body::Full<bytes::Bytes>;
+            type BodyError = std::convert::Infallible;
+
+            fn into_response(self) -> http::Response<Self::Body> {
                 let mut res =
-                    http::Response::new(Body::from(format!(concat!($body, ": {}"), self.0)));
+                    http::Response::new(http_body::Full::from(format!(concat!($body, ": {}"), self.0)));
                 *res.status_mut() = http::StatusCode::$status;
                 res
+            }
+        }
+
+        impl std::fmt::Display for $name {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                write!(f, "{}", $body)
+            }
+        }
+
+        impl std::error::Error for $name {
+            fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+                Some(&self.0)
             }
         }
     };
@@ -106,7 +132,10 @@ macro_rules! composite_rejection {
         }
 
         impl $crate::response::IntoResponse for $name {
-            fn into_response(self) -> http::Response<$crate::body::Body> {
+            type Body = http_body::Full<bytes::Bytes>;
+            type BodyError = std::convert::Infallible;
+
+            fn into_response(self) -> http::Response<Self::Body> {
                 match self {
                     $(
                         Self::$variant(inner) => inner.into_response(),
@@ -123,5 +152,25 @@ macro_rules! composite_rejection {
                 }
             }
         )+
+
+        impl std::fmt::Display for $name {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                match self {
+                    $(
+                        Self::$variant(inner) => write!(f, "{}", inner),
+                    )+
+                }
+            }
+        }
+
+        impl std::error::Error for $name {
+            fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+                match self {
+                    $(
+                        Self::$variant(inner) => Some(inner),
+                    )+
+                }
+            }
+        }
     };
 }
