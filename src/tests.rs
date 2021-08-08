@@ -16,9 +16,9 @@ use std::{
     task::{Context, Poll},
     time::Duration,
 };
-use tower::{make::Shared, service_fn, BoxError, Service, ServiceBuilder};
-use tower_http::{compression::CompressionLayer, trace::TraceLayer};
+use tower::{make::Shared, service_fn, BoxError, Service};
 
+mod handle_error;
 mod nest;
 mod or;
 
@@ -327,53 +327,6 @@ async fn boxing() {
 }
 
 #[tokio::test]
-async fn service_handlers() {
-    use crate::service::ServiceExt as _;
-    use tower_http::services::ServeFile;
-
-    let app = route(
-        "/echo",
-        service::post(
-            service_fn(|req: Request<Body>| async move {
-                Ok::<_, BoxError>(Response::new(req.into_body()))
-            })
-            .handle_error(|_error: BoxError| Ok(StatusCode::INTERNAL_SERVER_ERROR)),
-        ),
-    )
-    .route(
-        "/static/Cargo.toml",
-        service::on(
-            MethodFilter::GET,
-            ServeFile::new("Cargo.toml").handle_error(|error: std::io::Error| {
-                Ok::<_, Infallible>((StatusCode::INTERNAL_SERVER_ERROR, error.to_string()))
-            }),
-        ),
-    );
-
-    let addr = run_in_background(app).await;
-
-    let client = reqwest::Client::new();
-
-    let res = client
-        .post(format!("http://{}/echo", addr))
-        .body("foobar")
-        .send()
-        .await
-        .unwrap();
-    assert_eq!(res.status(), StatusCode::OK);
-    assert_eq!(res.text().await.unwrap(), "foobar");
-
-    let res = client
-        .get(format!("http://{}/static/Cargo.toml", addr))
-        .body("foobar")
-        .send()
-        .await
-        .unwrap();
-    assert_eq!(res.status(), StatusCode::OK);
-    assert!(res.text().await.unwrap().contains("edition ="));
-}
-
-#[tokio::test]
 async fn routing_between_services() {
     use std::convert::Infallible;
     use tower::service_fn;
@@ -464,55 +417,6 @@ async fn middleware_on_single_route() {
     let body = res.text().await.unwrap();
 
     assert_eq!(body, "Hello, World!");
-}
-
-#[tokio::test]
-async fn handling_errors_from_layered_single_routes() {
-    async fn handle(_req: Request<Body>) -> &'static str {
-        tokio::time::sleep(Duration::from_secs(10)).await;
-        ""
-    }
-
-    let app = route(
-        "/",
-        get(handle
-            .layer(
-                ServiceBuilder::new()
-                    .timeout(Duration::from_millis(100))
-                    .layer(TraceLayer::new_for_http())
-                    .into_inner(),
-            )
-            .handle_error(|_error: BoxError| {
-                Ok::<_, Infallible>(StatusCode::INTERNAL_SERVER_ERROR)
-            })),
-    );
-
-    let addr = run_in_background(app).await;
-
-    let res = reqwest::get(format!("http://{}", addr)).await.unwrap();
-    assert_eq!(res.status(), StatusCode::INTERNAL_SERVER_ERROR);
-}
-
-#[tokio::test]
-async fn layer_on_whole_router() {
-    async fn handle(_req: Request<Body>) -> &'static str {
-        tokio::time::sleep(Duration::from_secs(10)).await;
-        ""
-    }
-
-    let app = route("/", get(handle))
-        .layer(
-            ServiceBuilder::new()
-                .layer(CompressionLayer::new())
-                .timeout(Duration::from_millis(100))
-                .into_inner(),
-        )
-        .handle_error(|_err: BoxError| Ok::<_, Infallible>(StatusCode::INTERNAL_SERVER_ERROR));
-
-    let addr = run_in_background(app).await;
-
-    let res = reqwest::get(format!("http://{}", addr)).await.unwrap();
-    assert_eq!(res.status(), StatusCode::INTERNAL_SERVER_ERROR);
 }
 
 #[tokio::test]

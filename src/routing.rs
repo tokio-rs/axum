@@ -6,7 +6,7 @@ use crate::{
     buffer::MpscBuffer,
     extract::connect_info::{Connected, IntoMakeServiceWithConnectInfo},
     response::IntoResponse,
-    service::HandleErrorFromRouter,
+    service::{HandleError, HandleErrorFromRouter},
     util::ByteStr,
 };
 use async_trait::async_trait;
@@ -348,6 +348,94 @@ pub trait RoutingDsl: crate::sealed::Sealed + Sized {
             second: other,
         }
     }
+
+    /// Handle errors services in this router might produce, by mapping them to
+    /// responses.
+    ///
+    /// Unhandled errors will close the connection without sending a response.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use axum::{http::StatusCode, prelude::*};
+    /// use tower::{BoxError, timeout::TimeoutLayer};
+    /// use std::{time::Duration, convert::Infallible};
+    ///
+    /// // This router can never fail, since handlers can never fail.
+    /// let app = route("/", get(|| async {}));
+    ///
+    /// // Now the router can fail since the `tower::timeout::Timeout`
+    /// // middleware will return an error if the timeout elapses.
+    /// let app = app.layer(TimeoutLayer::new(Duration::from_secs(10)));
+    ///
+    /// // With `handle_error` we can handle errors `Timeout` might produce.
+    /// // Our router now cannot fail, that is its error type is `Infallible`.
+    /// let app = app.handle_error(|error: BoxError| {
+    ///     if error.is::<tower::timeout::error::Elapsed>() {
+    ///         Ok::<_, Infallible>((
+    ///             StatusCode::REQUEST_TIMEOUT,
+    ///             "request took too long to handle".to_string(),
+    ///         ))
+    ///     } else {
+    ///         Ok::<_, Infallible>((
+    ///             StatusCode::INTERNAL_SERVER_ERROR,
+    ///             format!("Unhandled error: {}", error),
+    ///         ))
+    ///     }
+    /// });
+    /// # async {
+    /// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+    /// # };
+    /// ```
+    ///
+    /// You can return `Err(_)` from the closure if you don't wish to handle
+    /// some errors:
+    ///
+    /// ```
+    /// use axum::{http::StatusCode, prelude::*};
+    /// use tower::{BoxError, timeout::TimeoutLayer};
+    /// use std::time::Duration;
+    ///
+    /// let app = route("/", get(|| async {}))
+    ///     .layer(TimeoutLayer::new(Duration::from_secs(10)))
+    ///     .handle_error(|error: BoxError| {
+    ///         if error.is::<tower::timeout::error::Elapsed>() {
+    ///             Ok((
+    ///                 StatusCode::REQUEST_TIMEOUT,
+    ///                 "request took too long to handle".to_string(),
+    ///             ))
+    ///         } else {
+    ///             // return the error as is
+    ///             Err(error)
+    ///         }
+    ///     });
+    /// # async {
+    /// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+    /// # };
+    /// ```
+    fn handle_error<ReqBody, ResBody, F, Res, E>(
+        self,
+        f: F,
+    ) -> HandleError<Self, F, ReqBody, HandleErrorFromRouter>
+    where
+        Self: Service<Request<ReqBody>, Response = Response<ResBody>>,
+        F: FnOnce(Self::Error) -> Result<Res, E>,
+        Res: IntoResponse,
+        ResBody: http_body::Body<Data = Bytes> + Send + Sync + 'static,
+        ResBody::Error: Into<BoxError> + Send + Sync + 'static,
+    {
+        HandleError::new(self, f)
+    }
+
+    /// Check that your service cannot fail.
+    ///
+    /// That is, its error type is [`Infallible`].
+    fn check_infallible<ReqBody>(self) -> Self
+    where
+        Self: Service<Request<ReqBody>, Error = Infallible>,
+    {
+        self
+    }
 }
 
 impl<S, F> RoutingDsl for Route<S, F> {}
@@ -646,97 +734,6 @@ impl<S> RoutingDsl for Layered<S> {}
 
 impl<S> crate::sealed::Sealed for Layered<S> {}
 
-impl<S> Layered<S> {
-    /// Create a new [`Layered`] service where errors will be handled using the
-    /// given closure.
-    ///
-    /// This is used to convert errors to responses rather than simply
-    /// terminating the connection.
-    ///
-    /// That can be done using `handle_error` like so:
-    ///
-    /// ```rust
-    /// use axum::prelude::*;
-    /// use http::StatusCode;
-    /// use tower::{BoxError, timeout::TimeoutLayer};
-    /// use std::{convert::Infallible, time::Duration};
-    ///
-    /// async fn handler() { /* ... */ }
-    ///
-    /// // `Timeout` will fail with `BoxError` if the timeout elapses...
-    /// let layered_app = route("/", get(handler))
-    ///     .layer(TimeoutLayer::new(Duration::from_secs(30)));
-    ///
-    /// // ...so we should handle that error
-    /// let with_errors_handled = layered_app.handle_error(|error: BoxError| {
-    ///     if error.is::<tower::timeout::error::Elapsed>() {
-    ///         Ok::<_, Infallible>((
-    ///             StatusCode::REQUEST_TIMEOUT,
-    ///             "request took too long".to_string(),
-    ///         ))
-    ///     } else {
-    ///         Ok::<_, Infallible>((
-    ///             StatusCode::INTERNAL_SERVER_ERROR,
-    ///             format!("Unhandled internal error: {}", error),
-    ///         ))
-    ///     }
-    /// });
-    /// # async {
-    /// # axum::Server::bind(&"".parse().unwrap())
-    /// #     .serve(with_errors_handled.into_make_service())
-    /// #     .await
-    /// #     .unwrap();
-    /// # };
-    /// ```
-    ///
-    /// The closure must return `Result<T, E>` where `T` implements [`IntoResponse`].
-    ///
-    /// You can also return `Err(_)` if you don't wish to handle the error:
-    ///
-    /// ```rust
-    /// use axum::prelude::*;
-    /// use http::StatusCode;
-    /// use tower::{BoxError, timeout::TimeoutLayer};
-    /// use std::time::Duration;
-    ///
-    /// async fn handler() { /* ... */ }
-    ///
-    /// let layered_app = route("/", get(handler))
-    ///     .layer(TimeoutLayer::new(Duration::from_secs(30)));
-    ///
-    /// let with_errors_handled = layered_app.handle_error(|error: BoxError| {
-    ///     if error.is::<tower::timeout::error::Elapsed>() {
-    ///         Ok((
-    ///             StatusCode::REQUEST_TIMEOUT,
-    ///             "request took too long".to_string(),
-    ///         ))
-    ///     } else {
-    ///         // keep the error as is
-    ///         Err(error)
-    ///     }
-    /// });
-    /// # async {
-    /// # axum::Server::bind(&"".parse().unwrap())
-    /// #     .serve(with_errors_handled.into_make_service())
-    /// #     .await
-    /// #     .unwrap();
-    /// # };
-    /// ```
-    pub fn handle_error<F, ReqBody, ResBody, Res, E>(
-        self,
-        f: F,
-    ) -> crate::service::HandleError<S, F, ReqBody, HandleErrorFromRouter>
-    where
-        S: Service<Request<ReqBody>, Response = Response<ResBody>> + Clone,
-        F: FnOnce(S::Error) -> Result<Res, E>,
-        Res: IntoResponse,
-        ResBody: http_body::Body<Data = Bytes> + Send + Sync + 'static,
-        ResBody::Error: Into<BoxError> + Send + Sync + 'static,
-    {
-        crate::service::HandleError::new(self.inner, f)
-    }
-}
-
 impl<S, R> Service<R> for Layered<S>
 where
     S: Service<R>,
@@ -809,7 +806,7 @@ where
 ///
 /// ```
 /// use axum::{
-///     routing::nest, service::{get, ServiceExt}, prelude::*,
+///     routing::nest, service::get, prelude::*,
 /// };
 /// use tower_http::services::ServeDir;
 ///

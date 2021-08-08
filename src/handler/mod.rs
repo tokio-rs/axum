@@ -366,9 +366,9 @@ impl<S, T> Layered<S, T> {
     /// This is used to convert errors to responses rather than simply
     /// terminating the connection.
     ///
-    /// It works similarly to [`routing::Layered::handle_error`]. See that for more details.
+    /// It works similarly to [`routing::RoutingDsl::handle_error`]. See that for more details.
     ///
-    /// [`routing::Layered::handle_error`]: crate::routing::Layered::handle_error
+    /// [`routing::RoutingDsl::handle_error`]: crate::routing::RoutingDsl::handle_error
     pub fn handle_error<F, ReqBody, ResBody, Res, E>(
         self,
         f: F,
