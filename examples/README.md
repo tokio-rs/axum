@@ -19,6 +19,8 @@
 - [`404`](../examples/404.rs) - Custom 404 page.
 - [`async-graphql`](../examples/async-graphql) - GraphQL example using [`async-graphql`](https://crates.io/crates/async-graphql).
 - [`tracing_aka_logging`](../examples/tracing_aka_logging) - How to setup and configure tracing/logging.
+- [`oauth`](../examples/oauth.rs) - Implementing authentication using [`oauth2`](https://crates.io/crates/oauth2) and [`async-session`](https://crates.io/crates/async-session).
+
 
 # Community showcase
 
