@@ -4,7 +4,7 @@
 //! cargo run --example sse --features=headers
 //! ```
 
-use axum::{extract::TypedHeader, prelude::*, routing::nest, service::ServiceExt, sse::Event};
+use axum::{extract::TypedHeader, prelude::*, routing::nest, sse::Event};
 use futures::stream::{self, Stream};
 use http::StatusCode;
 use std::{convert::Infallible, net::SocketAddr, time::Duration};
@@ -19,22 +19,19 @@ async fn main() {
     }
     tracing_subscriber::fmt::init();
 
+    let static_files_service =
+        axum::service::get(ServeDir::new("examples/sse").append_index_html_on_directories(true))
+            .handle_error(|error: std::io::Error| {
+                Ok::<_, std::convert::Infallible>((
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    format!("Unhandled internal error: {}", error),
+                ))
+            });
+
     // build our application with a route
-    let app = nest(
-        "/",
-        axum::service::get(
-            ServeDir::new("examples/sse")
-                .append_index_html_on_directories(true)
-                .handle_error(|error: std::io::Error| {
-                    Ok::<_, std::convert::Infallible>((
-                        StatusCode::INTERNAL_SERVER_ERROR,
-                        format!("Unhandled internal error: {}", error),
-                    ))
-                }),
-        ),
-    )
-    .route("/sse", axum::sse::sse(make_stream))
-    .layer(TraceLayer::new_for_http());
+    let app = nest("/", static_files_service)
+        .route("/sse", axum::sse::sse(make_stream))
+        .layer(TraceLayer::new_for_http());
 
     // run it
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));

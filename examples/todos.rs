@@ -17,7 +17,6 @@ use axum::{
     extract::{Extension, Json, Path, Query},
     prelude::*,
     response::IntoResponse,
-    service::ServiceExt,
 };
 use http::StatusCode;
 use serde::{Deserialize, Serialize};

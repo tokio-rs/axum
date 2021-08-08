@@ -493,7 +493,7 @@
 //! return `Result<T, E>` where `T` implements
 //! [`IntoResponse`](response::IntoResponse).
 //!
-//! See [`routing::Layered::handle_error`] for more details.
+//! See [`routing::RoutingDsl::handle_error`] for more details.
 //!
 //! ## Applying multiple middleware
 //!

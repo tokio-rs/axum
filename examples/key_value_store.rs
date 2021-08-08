@@ -12,7 +12,6 @@ use axum::{
     prelude::*,
     response::IntoResponse,
     routing::BoxRoute,
-    service::ServiceExt,
 };
 use bytes::Bytes;
 use http::StatusCode;
