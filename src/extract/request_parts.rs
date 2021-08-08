@@ -2,7 +2,7 @@ use super::{rejection::*, take_body, Extension, FromRequest, RequestParts};
 use async_trait::async_trait;
 use bytes::Bytes;
 use futures_util::stream::Stream;
-use http::{HeaderMap, Method, Request, Uri, Version};
+use http::{Extensions, HeaderMap, Method, Request, Uri, Version};
 use std::{
     convert::Infallible,
     pin::Pin,
@@ -145,6 +145,18 @@ where
 
     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
         req.take_headers().ok_or(HeadersAlreadyExtracted)
+    }
+}
+
+#[async_trait]
+impl<B> FromRequest<B> for Extensions
+where
+    B: Send,
+{
+    type Rejection = ExtensionsAlreadyExtracted;
+
+    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+        req.take_extensions().ok_or(ExtensionsAlreadyExtracted)
     }
 }
 
