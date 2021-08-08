@@ -82,7 +82,7 @@ where
 /// # Example
 ///
 /// ```
-/// use axum::{prelude::*, extract::NestedUri, http::Uri};
+/// use axum::{prelude::*, routing::nest, extract::NestedUri, http::Uri};
 ///
 /// let api_routes = route(
 ///     "/users",
