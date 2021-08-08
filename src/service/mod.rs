@@ -94,7 +94,6 @@ use crate::{
 use bytes::Bytes;
 use http::{Request, Response};
 use std::{
-    convert::Infallible,
     fmt,
     marker::PhantomData,
     task::{Context, Poll},
@@ -428,6 +427,26 @@ impl<S, F> OnMethod<S, F> {
             fallback: self,
         }
     }
+
+    /// Handle errors this service might produce, by mapping them to responses.
+    ///
+    /// Unhandled errors will close the connection without sending a response.
+    ///
+    /// Works similarly to [`RoutingDsl::handle_error`]. See that for more
+    /// details.
+    ///
+    /// [`RoutingDsl::handle_error`]: crate::routing::RoutingDsl::handle_error
+    pub fn handle_error<ReqBody, H, Res, E>(
+        self,
+        f: H,
+    ) -> HandleError<Self, H, ReqBody, HandleErrorFromService>
+    where
+        Self: Service<Request<ReqBody>, Response = Response<BoxBody>>,
+        H: FnOnce(<Self as Service<Request<ReqBody>>>::Error) -> Result<Res, E>,
+        Res: IntoResponse,
+    {
+        HandleError::new(self, f)
+    }
 }
 
 // this is identical to `routing::OnMethod`'s implementation. Would be nice to find a way to clean
@@ -462,7 +481,7 @@ where
 ///
 /// Created with
 /// [`handler::Layered::handle_error`](crate::handler::Layered::handle_error) or
-/// [`routing::Layered::handle_error`](crate::routing::Layered::handle_error).
+/// [`routing::RoutingDsl::handle_error`](crate::routing::RoutingDsl::handle_error).
 /// See those methods for more details.
 pub struct HandleError<S, F, B, T> {
     inner: S,
@@ -540,75 +559,6 @@ where
             inner: self.inner.clone().oneshot(req),
         }
     }
-}
-
-/// Extension trait that adds additional methods to [`Service`].
-pub trait ServiceExt<ReqBody, ResBody>:
-    Service<Request<ReqBody>, Response = Response<ResBody>>
-{
-    /// Handle errors from a service.
-    ///
-    /// `handle_error` takes a closure that will map errors from the service
-    /// into responses. The closure's return type must be `Result<T, E>` where
-    /// `T` implements [`IntoResponse`](crate::response::IntoResponse).
-    ///
-    /// # Example
-    ///
-    /// ```rust,no_run
-    /// use axum::{service::{self, ServiceExt}, prelude::*};
-    /// use http::{Response, StatusCode};
-    /// use tower::{service_fn, BoxError};
-    /// use std::convert::Infallible;
-    ///
-    /// // A service that might fail with `std::io::Error`
-    /// let service = service_fn(|_: Request<Body>| async {
-    ///     let res = Response::new(Body::empty());
-    ///     Ok::<_, std::io::Error>(res)
-    /// });
-    ///
-    /// let app = route(
-    ///     "/",
-    ///     service.handle_error(|error: std::io::Error| {
-    ///         Ok::<_, Infallible>((
-    ///             StatusCode::INTERNAL_SERVER_ERROR,
-    ///             error.to_string(),
-    ///         ))
-    ///     }),
-    /// );
-    /// #
-    /// # async {
-    /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-    /// # };
-    /// ```
-    ///
-    /// It works similarly to [`routing::Layered::handle_error`]. See that for more details.
-    ///
-    /// [`routing::Layered::handle_error`]: crate::routing::Layered::handle_error
-    fn handle_error<F, Res, E>(self, f: F) -> HandleError<Self, F, ReqBody, HandleErrorFromService>
-    where
-        Self: Sized,
-        F: FnOnce(Self::Error) -> Result<Res, E>,
-        Res: IntoResponse,
-        ResBody: http_body::Body<Data = Bytes> + Send + Sync + 'static,
-        ResBody::Error: Into<BoxError> + Send + Sync + 'static,
-    {
-        HandleError::new(self, f)
-    }
-
-    /// Check that your service cannot fail.
-    ///
-    /// That is, its error type is [`Infallible`].
-    fn check_infallible(self) -> Self
-    where
-        Self: Service<Request<ReqBody>, Response = Response<ResBody>, Error = Infallible> + Sized,
-    {
-        self
-    }
-}
-
-impl<S, ReqBody, ResBody> ServiceExt<ReqBody, ResBody> for S where
-    S: Service<Request<ReqBody>, Response = Response<ResBody>>
-{
 }
 
 /// A [`Service`] that boxes response bodies.

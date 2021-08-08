@@ -14,7 +14,6 @@ use axum::{
     prelude::*,
     response::IntoResponse,
     routing::nest,
-    service::ServiceExt,
 };
 use http::StatusCode;
 use std::net::SocketAddr;
@@ -35,15 +34,14 @@ async fn main() {
     let app = nest(
         "/",
         axum::service::get(
-            ServeDir::new("examples/websocket")
-                .append_index_html_on_directories(true)
-                .handle_error(|error: std::io::Error| {
-                    Ok::<_, std::convert::Infallible>((
-                        StatusCode::INTERNAL_SERVER_ERROR,
-                        format!("Unhandled internal error: {}", error),
-                    ))
-                }),
-        ),
+            ServeDir::new("examples/websocket").append_index_html_on_directories(true),
+        )
+        .handle_error(|error: std::io::Error| {
+            Ok::<_, std::convert::Infallible>((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Unhandled internal error: {}", error),
+            ))
+        }),
     )
     // routes are matched from bottom to top, so we have to put `nest` at the
     // top since it matches all routes
