@@ -459,7 +459,7 @@ where
     }
 
     fn call(&mut self, mut req: Request<B>) -> Self::Future {
-        if let Some(captures) = self.pattern.full_match(req.uri().path()) {
+        if let Some(captures) = self.pattern.full_match(&req) {
             insert_url_params(&mut req, captures);
             let fut = self.svc.clone().oneshot(req);
             RouteFuture::a(fut)
@@ -606,8 +606,8 @@ impl PathPattern {
         }))
     }
 
-    pub(crate) fn full_match(&self, path: &str) -> Option<Captures> {
-        self.do_match(path).and_then(|match_| {
+    pub(crate) fn full_match<B>(&self, req: &Request<B>) -> Option<Captures> {
+        self.do_match(req).and_then(|match_| {
             if match_.full_match {
                 Some(match_.captures)
             } else {
@@ -616,12 +616,18 @@ impl PathPattern {
         })
     }
 
-    pub(crate) fn prefix_match<'a>(&self, path: &'a str) -> Option<(&'a str, Captures)> {
-        self.do_match(path)
+    pub(crate) fn prefix_match<'a, B>(&self, req: &'a Request<B>) -> Option<(&'a str, Captures)> {
+        self.do_match(req)
             .map(|match_| (match_.matched, match_.captures))
     }
 
-    fn do_match<'a>(&self, path: &'a str) -> Option<Match<'a>> {
+    fn do_match<'a, B>(&self, req: &'a Request<B>) -> Option<Match<'a>> {
+        let path = if let Some(nested_uri) = req.extensions().get::<NestedUri>() {
+            nested_uri.0.path()
+        } else {
+            req.uri().path()
+        };
+
         self.0.full_path_regex.captures(path).map(|captures| {
             let matched = captures.get(0).unwrap();
             let full_match = matched.as_str() == path;
@@ -864,16 +870,15 @@ where
     }
 
     fn call(&mut self, mut req: Request<B>) -> Self::Future {
-        if req.extensions().get::<OriginalUri>().is_none() {
-            let original_uri = OriginalUri(req.uri().clone());
-            req.extensions_mut().insert(original_uri);
-        }
+        let f = if let Some((prefix, captures)) = self.pattern.prefix_match(&req) {
+            let uri = if let Some(nested_uri) = req.extensions().get::<NestedUri>() {
+                &nested_uri.0
+            } else {
+                req.uri()
+            };
 
-        let f = if let Some((prefix, captures)) = self.pattern.prefix_match(req.uri().path()) {
-            let without_prefix = strip_prefix(req.uri(), prefix);
-            req.extensions_mut()
-                .insert(NestedUri(without_prefix.clone()));
-            *req.uri_mut() = without_prefix;
+            let without_prefix = strip_prefix(uri, prefix);
+            req.extensions_mut().insert(NestedUri(without_prefix));
 
             insert_url_params(&mut req, captures);
             let fut = self.svc.clone().oneshot(req);
@@ -886,11 +891,6 @@ where
         NestedFuture { inner: f }
     }
 }
-
-/// `Nested` changes the incoming requests URI. This will be saved as an
-/// extension so extractors can still access the original URI.
-#[derive(Clone)]
-pub(crate) struct OriginalUri(pub(crate) Uri);
 
 fn strip_prefix(uri: &Uri, prefix: &str) -> Uri {
     let path_and_query = if let Some(path_and_query) = uri.path_and_query() {
@@ -953,8 +953,9 @@ mod tests {
 
     fn assert_match(route_spec: &'static str, path: &'static str) {
         let route = PathPattern::new(route_spec);
+        let req = Request::builder().uri(path).body(()).unwrap();
         assert!(
-            route.full_match(path).is_some(),
+            route.full_match(&req).is_some(),
             "`{}` doesn't match `{}`",
             path,
             route_spec
@@ -963,8 +964,9 @@ mod tests {
 
     fn refute_match(route_spec: &'static str, path: &'static str) {
         let route = PathPattern::new(route_spec);
+        let req = Request::builder().uri(path).body(()).unwrap();
         assert!(
-            route.full_match(path).is_none(),
+            route.full_match(&req).is_none(),
             "`{}` did match `{}` (but shouldn't)",
             path,
             route_spec
