@@ -198,6 +198,9 @@ async fn login_authorized(
 // Utility to save some lines of code
 struct Redirect(String);
 impl IntoResponse for Redirect {
+    type Body = Body;
+    type BodyError = hyper::Error;
+
     fn into_response(self) -> http::Response<Body> {
         let builder = http::Response::builder()
             .header("Location", self.0)
@@ -208,6 +211,9 @@ impl IntoResponse for Redirect {
 
 struct AuthRedirect;
 impl IntoResponse for AuthRedirect {
+    type Body = Body;
+    type BodyError = hyper::Error;
+
     fn into_response(self) -> http::Response<Body> {
         Redirect("/auth/discord".to_string()).into_response()
     }
