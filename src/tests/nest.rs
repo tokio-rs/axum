@@ -1,4 +1,5 @@
 use super::*;
+use crate::body::box_body;
 use std::collections::HashMap;
 
 #[tokio::test]
@@ -149,6 +150,7 @@ async fn nested_url_extractor() {
         .send()
         .await
         .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
     assert_eq!(res.text().await.unwrap(), "/foo/bar/baz");
 
     let res = client
@@ -156,6 +158,7 @@ async fn nested_url_extractor() {
         .send()
         .await
         .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
     assert_eq!(res.text().await.unwrap(), "/foo/bar/qux");
 }
 
@@ -181,5 +184,35 @@ async fn nested_url_nested_extractor() {
         .send()
         .await
         .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
     assert_eq!(res.text().await.unwrap(), "/baz");
+}
+
+#[tokio::test]
+async fn nested_service_sees_original_uri() {
+    let app = nest(
+        "/foo",
+        nest(
+            "/bar",
+            route(
+                "/baz",
+                service_fn(|req: Request<Body>| async move {
+                    let body = box_body(Body::from(req.uri().to_string()));
+                    Ok::<_, Infallible>(Response::new(body))
+                }),
+            ),
+        ),
+    );
+
+    let addr = run_in_background(app).await;
+
+    let client = reqwest::Client::new();
+
+    let res = client
+        .get(format!("http://{}/foo/bar/baz", addr))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.text().await.unwrap(), "/foo/bar/baz");
 }
