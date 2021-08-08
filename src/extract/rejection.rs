@@ -108,6 +108,16 @@ define_rejection! {
     pub struct InvalidFormContentType;
 }
 
+define_rejection! {
+    #[status = INTERNAL_SERVER_ERROR]
+    #[body = "`NestedUri` extractor used for route that isn't nested"]
+    /// Rejection type used if you try and extract [`NestedUri`] from a route that
+    /// isn't nested.
+    ///
+    /// [`NestedUri`]: crate::extract::NestedUri
+    pub struct NotNested;
+}
+
 /// Rejection type for [`Path`](super::Path) if the capture route
 /// param didn't have the expected type.
 #[derive(Debug)]

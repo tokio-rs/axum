@@ -4,7 +4,10 @@ use self::future::{BoxRouteFuture, EmptyRouterFuture, NestedFuture, RouteFuture}
 use crate::{
     body::{box_body, BoxBody},
     buffer::MpscBuffer,
-    extract::connect_info::{Connected, IntoMakeServiceWithConnectInfo},
+    extract::{
+        connect_info::{Connected, IntoMakeServiceWithConnectInfo},
+        NestedUri,
+    },
     response::IntoResponse,
     service::HandleErrorFromRouter,
     util::ByteStr,
@@ -871,6 +874,8 @@ where
 
         let f = if let Some((prefix, captures)) = self.pattern.prefix_match(req.uri().path()) {
             let without_prefix = strip_prefix(req.uri(), prefix);
+            req.extensions_mut()
+                .insert(NestedUri(without_prefix.clone()));
             *req.uri_mut() = without_prefix;
 
             insert_url_params(&mut req, captures);

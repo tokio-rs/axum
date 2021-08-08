@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Implement `std::error::Error` for all rejections ([#153](https://github.com/tokio-rs/axum/pull/153))
 - Fix `Uri` extractor not being the full URI if using `nest` ([#156](https://github.com/tokio-rs/axum/pull/156))
 - Add `RoutingDsl::or` for combining routes ([#108](https://github.com/tokio-rs/axum/pull/108))
+- Add `NestedUri` for extracting request URI in nested services
 
 ## Breaking changes
 
