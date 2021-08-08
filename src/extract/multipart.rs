@@ -14,6 +14,7 @@ use std::{
     task::{Context, Poll},
 };
 use tower::BoxError;
+use std::collections::HashMap;
 
 /// Extractor that parses `multipart/form-data` requests commonly used with file uploads.
 ///
@@ -80,6 +81,21 @@ impl Multipart {
             Ok(None)
         }
     }
+
+    /// make all fields to a hashmap
+    /// you can easy to check & get field data.
+    pub async fn map(&mut self) -> Result<HashMap<String, Field<'_>>, MultipartError> {
+
+        let mut result = HashMap::new();
+
+        while let Some(mut field) = self.next_field().await? {
+            let name = field.name()?.to_string();
+            result.insert(name, field);
+        }
+
+        Ok(result)
+    }
+
 }
 
 /// A single field in a multipart stream.
