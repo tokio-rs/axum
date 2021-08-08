@@ -244,7 +244,7 @@
 //!
 //! [`body::Body`]: crate::body::Body
 
-use crate::response::IntoResponse;
+use crate::{response::IntoResponse, Error};
 use async_trait::async_trait;
 use http::{header, Extensions, HeaderMap, Method, Request, Uri, Version};
 use rejection::*;
@@ -397,32 +397,47 @@ impl<B> RequestParts<B> {
         }
     }
 
-    #[allow(clippy::wrong_self_convention)]
-    pub(crate) fn into_request(&mut self) -> Request<B> {
+    // this method uses `Error` since we might make this method public one day and then
+    // `Error` is more flexible.
+    pub(crate) fn try_into_request(self) -> Result<Request<B>, Error> {
         let Self {
             method,
             uri,
             version,
-            headers,
-            extensions,
-            body,
+            mut headers,
+            mut extensions,
+            mut body,
         } = self;
 
-        let mut req = Request::new(body.take().expect("body already extracted"));
+        let mut req = if let Some(body) = body.take() {
+            Request::new(body)
+        } else {
+            return Err(Error::new(RequestAlreadyExtracted::BodyAlreadyExtracted(
+                BodyAlreadyExtracted,
+            )));
+        };
 
-        *req.method_mut() = method.clone();
-        *req.uri_mut() = uri.clone();
-        *req.version_mut() = *version;
+        *req.method_mut() = method;
+        *req.uri_mut() = uri;
+        *req.version_mut() = version;
 
         if let Some(headers) = headers.take() {
             *req.headers_mut() = headers;
+        } else {
+            return Err(Error::new(
+                RequestAlreadyExtracted::HeadersAlreadyExtracted(HeadersAlreadyExtracted),
+            ));
         }
 
         if let Some(extensions) = extensions.take() {
             *req.extensions_mut() = extensions;
+        } else {
+            return Err(Error::new(
+                RequestAlreadyExtracted::ExtensionsAlreadyExtracted(ExtensionsAlreadyExtracted),
+            ));
         }
 
-        req
+        Ok(req)
     }
 
     /// Gets a reference the request method.

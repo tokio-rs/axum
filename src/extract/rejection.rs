@@ -13,14 +13,15 @@ use tower::BoxError;
 define_rejection! {
     #[status = INTERNAL_SERVER_ERROR]
     #[body = "Extensions taken by other extractor"]
-    /// Rejection used if the method has been taken by another extractor.
+    /// Rejection used if the request extension has been taken by another
+    /// extractor.
     pub struct ExtensionsAlreadyExtracted;
 }
 
 define_rejection! {
     #[status = INTERNAL_SERVER_ERROR]
     #[body = "Headers taken by other extractor"]
-    /// Rejection used if the URI has been taken by another extractor.
+    /// Rejection used if the headers has been taken by another extractor.
     pub struct HeadersAlreadyExtracted;
 }
 
@@ -92,13 +93,6 @@ define_rejection! {
     /// Rejection type used if you try and extract the request body more than
     /// once.
     pub struct BodyAlreadyExtracted;
-}
-
-define_rejection! {
-    #[status = INTERNAL_SERVER_ERROR]
-    #[body = "Cannot have two `Request<_>` extractors for a single handler"]
-    /// Rejection type used if you try and extract the request more than once.
-    pub struct RequestAlreadyExtracted;
 }
 
 define_rejection! {
@@ -269,6 +263,19 @@ composite_rejection! {
         BodyAlreadyExtracted,
         FailedToBufferBody,
         InvalidUtf8,
+    }
+}
+
+composite_rejection! {
+    /// Rejection used for [`Request<_>`].
+    ///
+    /// Contains one variant for each way the [`Request<_>`] extractor can fail.
+    ///
+    /// [`Request<_>`]: http::Request
+    pub enum RequestAlreadyExtracted {
+        BodyAlreadyExtracted,
+        HeadersAlreadyExtracted,
+        ExtensionsAlreadyExtracted,
     }
 }
 
