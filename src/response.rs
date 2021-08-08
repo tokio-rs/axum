@@ -89,8 +89,7 @@ pub trait IntoResponse {
     /// Unless you're implementing this trait for a custom body type, these are
     /// some common types you can use:
     ///
-    /// - [`hyper::Body`]: A good default that supports most use cases. This is
-    /// also re-exported as [`axum::body::Body`].
+    /// - [`axum::body::Body`]: A good default that supports most use cases.
     /// - [`axum::body::Empty<Bytes>`]: When you know your response is always
     /// empty.
     /// - [`axum::body::Full<Bytes>`]: When you know your response always
