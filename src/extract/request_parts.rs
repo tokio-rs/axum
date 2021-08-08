@@ -18,21 +18,29 @@ where
     type Rejection = RequestAlreadyExtracted;
 
     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-        let RequestParts {
-            method: _,
-            uri: _,
-            version: _,
-            headers,
-            extensions,
-            body,
-        } = req;
+        let req = std::mem::replace(
+            req,
+            RequestParts {
+                method: req.method.clone(),
+                version: req.version,
+                uri: req.uri.clone(),
+                headers: None,
+                extensions: None,
+                body: None,
+            },
+        );
 
-        let all_parts = extensions.as_ref().zip(body.as_ref()).zip(headers.as_ref());
+        let err = match req.try_into_request() {
+            Ok(req) => return Ok(req),
+            Err(err) => err,
+        };
 
-        if all_parts.is_some() {
-            Ok(req.into_request())
-        } else {
-            Err(RequestAlreadyExtracted)
+        match err.downcast::<RequestAlreadyExtracted>() {
+            Ok(err) => return Err(err),
+            Err(err) => unreachable!(
+                "Unexpected error type from `try_into_request`: `{:?}`. This is a bug in axum, please file an issue",
+                err,
+            ),
         }
     }
 }
@@ -249,5 +257,35 @@ where
         let string = String::from_utf8(bytes).map_err(InvalidUtf8::from_err)?;
 
         Ok(string)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{body::Body, prelude::*, tests::*};
+    use http::StatusCode;
+
+    #[tokio::test]
+    async fn multiple_request_extractors() {
+        async fn handler(_: Request<Body>, _: Request<Body>) {}
+
+        let app = route("/", post(handler));
+
+        let addr = run_in_background(app).await;
+
+        let client = reqwest::Client::new();
+
+        let res = client
+            .post(format!("http://{}", addr))
+            .body("hi there")
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::INTERNAL_SERVER_ERROR);
+        assert_eq!(
+            res.text().await.unwrap(),
+            "Cannot have two request body extractors for a single handler"
+        );
     }
 }

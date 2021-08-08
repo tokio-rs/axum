@@ -605,7 +605,7 @@ async fn wrong_method_service() {
 }
 
 /// Run a `tower::Service` in the background and get a URI for it.
-async fn run_in_background<S, ResBody>(svc: S) -> SocketAddr
+pub(crate) async fn run_in_background<S, ResBody>(svc: S) -> SocketAddr
 where
     S: Service<Request<Body>, Response = Response<ResBody>> + Clone + Send + 'static,
     ResBody: http_body::Body + Send + 'static,

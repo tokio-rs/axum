@@ -152,7 +152,7 @@ where
 impl<S, E, ReqBody, ResBody> Service<Request<ReqBody>> for ExtractorMiddleware<S, E>
 where
     E: FromRequest<ReqBody> + 'static,
-    ReqBody: Send + 'static,
+    ReqBody: Default + Send + 'static,
     S: Service<Request<ReqBody>, Response = Response<ResBody>> + Clone,
     ResBody: http_body::Body<Data = Bytes> + Send + Sync + 'static,
     ResBody::Error: Into<BoxError>,
@@ -212,6 +212,7 @@ impl<ReqBody, S, E, ResBody> Future for ResponseFuture<ReqBody, S, E>
 where
     E: FromRequest<ReqBody>,
     S: Service<Request<ReqBody>, Response = Response<ResBody>>,
+    ReqBody: Default,
     ResBody: http_body::Body<Data = Bytes> + Send + Sync + 'static,
     ResBody::Error: Into<BoxError>,
 {
@@ -223,12 +224,13 @@ where
 
             let new_state = match this.state.as_mut().project() {
                 StateProj::Extracting { future } => {
-                    let (mut req, extracted) = ready!(future.as_mut().poll(cx));
+                    let (req, extracted) = ready!(future.as_mut().poll(cx));
 
                     match extracted {
                         Ok(_) => {
                             let mut svc = this.svc.take().expect("future polled after completion");
-                            let future = svc.call(req.into_request());
+                            let req = req.try_into_request().unwrap_or_default();
+                            let future = svc.call(req);
                             State::Call { future }
                         }
                         Err(err) => {
