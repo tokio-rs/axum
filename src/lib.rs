@@ -727,6 +727,10 @@ pub mod routing;
 pub mod service;
 pub mod sse;
 
+#[cfg(feature = "open_api")]
+#[cfg_attr(docsrs, doc(cfg(feature = "open_api")))]
+pub mod open_api;
+
 #[cfg(test)]
 mod tests;
 

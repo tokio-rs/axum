@@ -570,6 +570,7 @@ pub(crate) struct PathPattern(Arc<Inner>);
 
 #[derive(Debug)]
 struct Inner {
+    original_pattern: Box<str>,
     full_path_regex: Regex,
     capture_group_names: Box<[Bytes]>,
 }
@@ -583,7 +584,7 @@ impl PathPattern {
 
         let mut capture_group_names = Vec::new();
 
-        let pattern = pattern
+        let full_path_regex = pattern
             .split('/')
             .map(|part| {
                 if let Some(key) = part.strip_prefix(':') {
@@ -597,13 +598,18 @@ impl PathPattern {
             .collect::<Vec<_>>()
             .join("/");
 
-        let full_path_regex =
-            Regex::new(&format!("^{}", pattern)).expect("invalid regex generated from route");
+        let full_path_regex = Regex::new(&format!("^{}", full_path_regex))
+            .expect("invalid regex generated from route");
 
         Self(Arc::new(Inner {
+            original_pattern: pattern.into(),
             full_path_regex,
             capture_group_names: capture_group_names.into(),
         }))
+    }
+
+    pub(crate) fn original_pattern(&self) -> &str {
+        &*self.0.original_pattern
     }
 
     pub(crate) fn full_match<B>(&self, req: &Request<B>) -> Option<Captures> {

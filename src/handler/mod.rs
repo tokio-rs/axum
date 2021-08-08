@@ -193,6 +193,8 @@ pub trait Handler<B, In>: Sized {
     #[doc(hidden)]
     type Sealed: sealed::HiddentTrait;
 
+    type Response;
+
     /// Call the handler with the given request.
     async fn call(self, req: Request<B>) -> Response<BoxBody>;
 
@@ -249,6 +251,7 @@ where
     B: Send + 'static,
 {
     type Sealed = sealed::Hidden;
+    type Response = Res;
 
     async fn call(self, _req: Request<B>) -> Response<BoxBody> {
         self().await.into_response().map(box_body)
@@ -273,6 +276,7 @@ macro_rules! impl_handler {
             $( $tail: FromRequest<B> + Send,)*
         {
             type Sealed = sealed::Hidden;
+            type Response = Res;
 
             async fn call(self, req: Request<B>) -> Response<BoxBody> {
                 let mut req = crate::extract::RequestParts::new(req);
@@ -338,6 +342,7 @@ where
     ResBody::Error: Into<BoxError> + Send + Sync + 'static,
 {
     type Sealed = sealed::Hidden;
+    type Response = Response<ResBody>;
 
     async fn call(self, req: Request<ReqBody>) -> Response<BoxBody> {
         match self
@@ -387,7 +392,7 @@ impl<S, T> Layered<S, T> {
 ///
 /// Created with [`Handler::into_service`].
 pub struct IntoService<H, B, T> {
-    handler: H,
+    pub(crate) handler: H,
     _marker: PhantomData<fn() -> (B, T)>,
 }
 

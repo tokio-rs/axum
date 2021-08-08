@@ -15,6 +15,7 @@ version = "0.1.3"
 default = []
 ws = ["tokio-tungstenite", "sha-1", "base64"]
 multipart = ["multer", "mime"]
+open_api = ["openapiv3", "indexmap"]
 
 [dependencies]
 async-trait = "0.1"
@@ -41,6 +42,8 @@ base64 = { optional = true, version = "0.13" }
 headers = { optional = true, version = "0.3" }
 multer = { optional = true, version = "2.0.0" }
 mime = { optional = true, version = "0.3" }
+openapiv3 = { optional = true, version = "0.5.0" }
+indexmap = { optional = true, version = "1.7" }
 
 [dev-dependencies]
 askama = "0.10.5"
@@ -111,3 +114,7 @@ required-features = ["headers"]
 [[example]]
 name = "oauth"
 required-features = ["headers"]
+
+[[example]]
+name = "open_api"
+required-features = ["open_api"]
