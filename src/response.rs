@@ -89,17 +89,20 @@ pub trait IntoResponse {
     /// Unless you're implementing this trait for a custom body type, these are
     /// some common types you can use:
     ///
-    /// - [`hyper::Body`]: A good default that supports most use cases.
-    /// - [`http_body::Empty<Bytes>`]: When you know your response is always
+    /// - [`hyper::Body`]: A good default that supports most use cases. This is
+    /// also re-exported as [`axum::body::Body`].
+    /// - [`axum::body::Empty<Bytes>`]: When you know your response is always
     /// empty.
-    /// - [`http_body::Full<Bytes>`]: When you know your response always
+    /// - [`axum::body::Full<Bytes>`]: When you know your response always
     /// contains exactly one chunk.
-    /// - [`BoxBody`]: If you need to unify multiple body types into one, or
-    /// return a body type that cannot be named. Can be created with
+    /// - [`axum::body::BoxBody`]: If you need to unify multiple body types into
+    /// one, or return a body type that cannot be named. Can be created with
     /// [`box_body`].
     ///
-    /// [`http_body::Empty<Bytes>`]: http_body::Empty
-    /// [`http_body::Full<Bytes>`]: http_body::Full
+    /// [`axum::body::Body`]: crate::body::Body
+    /// [`axum::body::Empty<Bytes>`]: crate::body::Empty
+    /// [`axum::body::Full<Bytes>`]: crate::body::Full
+    /// [`axum::body::BoxBody`]: crate::body::BoxBody
     type Body: http_body::Body<Data = Bytes, Error = Self::BodyError> + Send + Sync + 'static;
 
     /// The error type `Self::Body` might generate.
