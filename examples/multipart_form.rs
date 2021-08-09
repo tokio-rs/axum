@@ -60,10 +60,34 @@ async fn accept_form(
         },
     >,
 ) {
-    while let Some(field) = multipart.next_field().await.unwrap() {
-        let name = field.name().unwrap().to_string();
-        let data = field.bytes().await.unwrap();
 
-        println!("Length of `{}` is {} bytes", name, data.len());
+    let v = multipart.map().await.unwrap();
+
+    let text = v.0;
+    let file = v.1;
+
+    println!("Form-Data: Text\n");
+    for i in text {
+
+        println!("{}: {:?}", i.0, i.1);
+
     }
+
+    println!("\nForm-Data: File\n");
+    for i in file {
+
+        println!("{}: size({})", i.0, i.1.content.len());
+
+    }
+
+    println!();
+
+    // This is another way to use it
+    //
+    // while let Some(field) = multipart.next_field().await.unwrap() {
+    //     let name = field.name().unwrap().to_string();
+    //     let data = field.bytes().await.unwrap();
+    //
+    //     println!("Length of `{}` is {} bytes", name, data.len());
+    // }
 }

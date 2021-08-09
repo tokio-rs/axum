@@ -59,7 +59,7 @@ where
         let headers = req.headers().ok_or(HeadersAlreadyExtracted)?;
         let boundary = parse_boundary(headers).ok_or(InvalidBoundary)?;
         let multipart = multer::Multipart::new(stream, boundary);
-        Ok(Self { inner: multipart })
+        Ok(Self { inner: multipart } )
     }
 }
 
@@ -84,18 +84,48 @@ impl Multipart {
 
     /// make all fields to a hashmap
     /// you can easy to check & get field data.
-    pub async fn map(&mut self) -> Result<HashMap<String, Field<'_>>, MultipartError> {
+    pub async fn map(&mut self) -> Result<(
+    HashMap<String, String>,
+    HashMap<String, UploadFile>
+    ), MultipartError> {
 
-        let mut result = HashMap::new();
+        let mut text_list: HashMap<String, String> = HashMap::new();
+        let mut file_list: HashMap<String, UploadFile> = HashMap::new();
 
-        while let Some(mut field) = self.next_field().await? {
-            let name = field.name()?.to_string();
-            result.insert(name, field);
+        while let Some(field) = self.next_field().await? {
+            let name = field.name().unwrap().to_string();
+
+            let file_name = field.file_name().clone();
+
+            if let None = file_name {
+                // the field is text
+                text_list.insert(name, field.text().await?);
+            } else {
+                // the field is file
+                let file_name = file_name.unwrap().to_string();
+                let content_type = field.content_type().unwrap().clone();
+                let content = field.bytes().await?;
+
+                file_list.insert(name, UploadFile {
+                    content_type,
+                    file_name,
+                    content
+                });
+            }
+
         }
 
-        Ok(result)
+        Ok((text_list, file_list))
     }
 
+}
+
+/// upload file struct in multipart
+#[derive(Debug)]
+pub struct UploadFile {
+    pub content_type: Mime,
+    pub content: Bytes,
+    pub file_name: String,
 }
 
 /// A single field in a multipart stream.
