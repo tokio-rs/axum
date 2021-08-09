@@ -1,26 +1,24 @@
-//! Run with
-//!
-//! ```not_rust
-//! cargo run --example hello_world
-//! ```
-
 use axum::prelude::*;
-use std::net::SocketAddr;
+use std::{convert::Infallible, net::SocketAddr, time::Duration};
+use tower::{limit::RateLimitLayer, BoxError, ServiceBuilder};
 
 #[tokio::main]
 async fn main() {
-    // Set the RUST_LOG, if it hasn't been explicitly defined
-    if std::env::var("RUST_LOG").is_err() {
-        std::env::set_var("RUST_LOG", "hello_world=debug")
-    }
-    tracing_subscriber::fmt::init();
+    let handler_layer = ServiceBuilder::new()
+        .buffer(1024)
+        .layer(RateLimitLayer::new(10, Duration::from_secs(10)))
+        .into_inner();
 
-    // build our application with a route
-    let app = route("/", get(handler));
+    let app = route(
+        "/",
+        get(handler
+            .layer(handler_layer)
+            .handle_error(|error: BoxError| {
+                Ok::<_, Infallible>(format!("Unhandled error: {}", error))
+            })),
+    );
 
-    // run it
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
-    tracing::debug!("listening on {}", addr);
     axum::Server::bind(&addr)
         .serve(app.into_make_service())
         .await

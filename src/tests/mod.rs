@@ -604,6 +604,29 @@ async fn wrong_method_service() {
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
 }
 
+#[tokio::test]
+async fn multiple_methods_for_one_handler() {
+    async fn root(_: Request<Body>) -> &'static str {
+        "Hello, World!"
+    }
+
+    let app = route("/", on(MethodFilter::GET | MethodFilter::POST, root));
+
+    let addr = run_in_background(app).await;
+
+    let client = reqwest::Client::new();
+
+    let res = client.get(format!("http://{}", addr)).send().await.unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+
+    let res = client
+        .post(format!("http://{}", addr))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+}
+
 /// Run a `tower::Service` in the background and get a URI for it.
 pub(crate) async fn run_in_background<S, ResBody>(svc: S) -> SocketAddr
 where
