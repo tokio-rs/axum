@@ -61,6 +61,7 @@ tracing-subscriber = "0.2"
 uuid = { version = "0.8", features = ["serde", "v4"] }
 async-session = "3.0.0"
 tokio-stream = "0.1.7"
+serde_yaml = "0.8.17"
 
 # for oauth example
 oauth2 = "4.1"

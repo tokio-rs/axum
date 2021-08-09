@@ -19,8 +19,8 @@ use tower::{util::Oneshot, Service, ServiceExt};
 /// [`RoutingDsl::or`]: super::RoutingDsl::or
 #[derive(Debug, Clone, Copy)]
 pub struct Or<A, B> {
-    pub(super) first: A,
-    pub(super) second: B,
+    pub(crate) first: A,
+    pub(crate) second: B,
 }
 
 impl<A, B> RoutingDsl for Or<A, B> {}

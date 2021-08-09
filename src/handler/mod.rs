@@ -240,6 +240,31 @@ pub trait Handler<B, In>: Sized {
     fn into_service(self) -> IntoService<Self, B, In> {
         IntoService::new(self)
     }
+
+    /// TODO: docs
+    #[cfg(feature = "open_api")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "open_api")))]
+    fn map_operation<F>(self, f: F) -> crate::open_api::MapOperationHandler<Self, F, B>
+    where
+        F: Fn(openapiv3::Operation) -> openapiv3::Operation,
+    {
+        crate::open_api::MapOperationHandler {
+            handler: self,
+            f,
+            _marker: PhantomData,
+        }
+    }
+
+    /// TODO: docs
+    #[cfg(feature = "open_api")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "open_api")))]
+    fn operation_id(self, id: &'static str) -> crate::open_api::OperationIdHandler<Self, B> {
+        crate::open_api::OperationIdHandler {
+            handler: self,
+            id,
+            _marker: PhantomData,
+        }
+    }
 }
 
 #[async_trait]
@@ -259,8 +284,7 @@ where
 }
 
 macro_rules! impl_handler {
-    () => {
-    };
+    () => {};
 
     ( $head:ident, $($tail:ident),* $(,)? ) => {
         #[async_trait]
@@ -456,12 +480,15 @@ where
 
 /// A handler [`Service`] that accepts requests based on a [`MethodFilter`] and
 /// allows chaining additional handlers.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct OnMethod<S, F> {
     pub(crate) method: MethodFilter,
     pub(crate) svc: S,
     pub(crate) fallback: F,
 }
+
+#[cfg(not(feature = "open_api"))]
+impl<S, F> Copy for OnMethod<S, F> {}
 
 impl<S, F> OnMethod<S, F> {
     /// Chain an additional handler that will accept all requests regardless of

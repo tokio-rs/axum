@@ -1,10 +1,13 @@
 #![allow(warnings)]
 
 use crate::{
+    body::BoxBody,
     extract, handler,
-    response::IntoResponse,
-    routing::{EmptyRouter, MethodFilter, Nested, Route, RoutingDsl},
+    response::{Html, IntoResponse},
+    routing::{or::Or, EmptyRouter, MethodFilter, Nested, Route, RoutingDsl},
+    Json,
 };
+use async_trait::async_trait;
 use indexmap::IndexMap;
 use openapiv3::{
     Encoding, MediaType, NumberType, ObjectType, OpenAPI, Operation, Parameter, ParameterData,
@@ -12,7 +15,9 @@ use openapiv3::{
     Schema, SchemaData, SchemaKind, StringType, Type,
 };
 use std::{
+    any::TypeId,
     future::Future,
+    marker::PhantomData,
     ops::{Deref, DerefMut},
     sync::Arc,
     task::{Context, Poll},
@@ -31,27 +36,9 @@ where
         .collect();
 
     let mut open_api = OpenAPI::default();
+    open_api.openapi = "3.0.0".to_string();
     open_api.paths = paths;
     open_api
-}
-
-impl<R, T> Service<R> for WithPaths<T>
-where
-    T: Service<R>,
-{
-    type Response = T::Response;
-    type Error = T::Error;
-    type Future = T::Future;
-
-    #[inline]
-    fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        self.inner.poll_ready(cx)
-    }
-
-    #[inline]
-    fn call(&mut self, req: R) -> Self::Future {
-        self.inner.call(req)
-    }
 }
 
 pub trait DescribePaths {
@@ -92,7 +79,7 @@ pub trait ToQueryParameter {
 }
 
 pub trait ToResponse {
-    fn to_response(response: &mut Response);
+    fn to_response() -> Response;
 }
 
 impl<S, F> DescribePaths for Route<S, F>
@@ -107,6 +94,17 @@ where
         paths.insert(self.pattern.original_pattern().to_string(), path_item);
 
         self.fallback.describe_paths(paths);
+    }
+}
+
+impl<A, B> DescribePaths for Or<A, B>
+where
+    A: DescribePaths,
+    B: DescribePaths,
+{
+    fn describe_paths(&self, paths: &mut IndexMap<String, PathItem>) {
+        self.first.describe_paths(paths);
+        self.second.describe_paths(paths);
     }
 }
 
@@ -173,6 +171,25 @@ impl<T> DescribePaths for WithPaths<T> {
 impl<T> RoutingDsl for WithPaths<T> where T: RoutingDsl {}
 
 impl<T> crate::sealed::Sealed for WithPaths<T> where T: crate::sealed::Sealed {}
+
+impl<R, T> Service<R> for WithPaths<T>
+where
+    T: Service<R>,
+{
+    type Response = T::Response;
+    type Error = T::Error;
+    type Future = T::Future;
+
+    #[inline]
+    fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        self.inner.poll_ready(cx)
+    }
+
+    #[inline]
+    fn call(&mut self, req: R) -> Self::Future {
+        self.inner.call(req)
+    }
+}
 
 impl ToSchema for usize {
     fn to_schema() -> Schema {
@@ -263,48 +280,164 @@ where
     }
 }
 
+// --- MapOperationHandler
+
+pub struct MapOperationHandler<H, F, B> {
+    pub(crate) handler: H,
+    pub(crate) f: F,
+    pub(crate) _marker: PhantomData<fn() -> B>,
+}
+
+impl<H, F, B> Clone for MapOperationHandler<H, F, B>
+where
+    H: Clone,
+    F: Clone,
+{
+    fn clone(&self) -> Self {
+        Self {
+            handler: self.handler.clone(),
+            f: self.f.clone(),
+            _marker: self._marker,
+        }
+    }
+}
+
+#[async_trait]
+impl<B, T, H, F> handler::Handler<B, T> for MapOperationHandler<H, F, B>
+where
+    H: handler::Handler<B, T> + Send + 'static,
+    B: Send + 'static,
+    F: Send + 'static,
+{
+    type Sealed = handler::sealed::Hidden;
+    type Response = H::Response;
+
+    async fn call(self, req: http::Request<B>) -> http::Response<BoxBody> {
+        self.handler.call(req).await
+    }
+}
+
+impl<T, H, F, B> ToOperation<T> for MapOperationHandler<H, F, B>
+where
+    H: ToOperation<T>,
+    // TODO(david): make `MapOperation` trait so users can compose map operations without
+    // dealing with functions
+    F: Fn(openapiv3::Operation) -> openapiv3::Operation,
+{
+    fn to_operation(&self) -> Operation {
+        let operation = self.handler.to_operation();
+        (self.f)(operation)
+    }
+}
+
+// --- OperationIdHandler
+
+pub struct OperationIdHandler<H, B> {
+    pub(crate) handler: H,
+    pub(crate) id: &'static str,
+    pub(crate) _marker: PhantomData<fn() -> B>,
+}
+
+impl<H, B> Clone for OperationIdHandler<H, B>
+where
+    H: Clone,
+{
+    fn clone(&self) -> Self {
+        Self {
+            handler: self.handler.clone(),
+            id: self.id,
+            _marker: self._marker,
+        }
+    }
+}
+
+#[async_trait]
+impl<B, T, H> handler::Handler<B, T> for OperationIdHandler<H, B>
+where
+    H: handler::Handler<B, T> + Send + 'static,
+    B: Send + 'static,
+{
+    type Sealed = handler::sealed::Hidden;
+    type Response = H::Response;
+
+    async fn call(self, req: http::Request<B>) -> http::Response<BoxBody> {
+        self.handler.call(req).await
+    }
+}
+
+impl<T, H, B> ToOperation<T> for OperationIdHandler<H, B>
+where
+    H: ToOperation<T>,
+{
+    fn to_operation(&self) -> Operation {
+        let mut operation = self.handler.to_operation();
+        operation.operation_id = Some(self.id.to_string());
+        operation
+    }
+}
+
 impl<F, Fut, Res> ToOperation<()> for F
 where
-    F: FnOnce() -> Fut,
+    F: FnOnce() -> Fut + 'static,
     Fut: Future<Output = Res>,
     Res: ToResponse,
 {
     fn to_operation(&self) -> Operation {
         let mut operation = Operation::default();
 
-        let mut response = Response::default();
-        Res::to_response(&mut response);
+        let response = Res::to_response();
         operation.responses.default = Some(ReferenceOr::Item(response));
 
         operation
     }
 }
 
-impl<F, Fut, Res, T1> ToOperation<(T1,)> for F
-where
-    F: FnOnce(T1) -> Fut,
-    Fut: Future<Output = Res>,
-    Res: ToResponse,
-    T1: ToOperationInput,
-{
-    fn to_operation(&self) -> Operation {
-        let mut operation = Operation::default();
+macro_rules! impl_to_operation {
+    () => {};
 
-        let mut response = Response::default();
-        Res::to_response(&mut response);
-        operation.responses.default = Some(ReferenceOr::Item(response));
+    ( $head:ident, $($tail:ident),* $(,)? ) => {
+        #[allow(non_snake_case)]
+        impl<F, Fut, Res, $head, $($tail,)*> ToOperation<($head, $($tail,)*)> for F
+        where
+            F: FnOnce($head, $($tail,)*) -> Fut,
+            Fut: Future<Output = Res>,
+            Res: ToResponse,
+            $head: ToOperationInput,
+            $( $tail: ToOperationInput, )*
+        {
+            fn to_operation(&self) -> Operation {
+                let mut operation = Operation::default();
 
-        if let Some(parameter) = T1::to_parameter() {
-            operation.parameters = vec![ReferenceOr::Item(parameter)];
+                let response = Res::to_response();
+                operation.responses.default = Some(ReferenceOr::Item(response));
+
+                if let Some(parameter) = $head::to_parameter() {
+                    operation.parameters = vec![ReferenceOr::Item(parameter)];
+                }
+
+                if let Some(request_body) = $head::to_request_body() {
+                    operation.request_body = Some(ReferenceOr::Item(request_body));
+                }
+
+                $(
+                    if let Some(parameter) = $tail::to_parameter() {
+                        operation.parameters = vec![ReferenceOr::Item(parameter)];
+                    }
+
+                    if let Some(request_body) = $tail::to_request_body() {
+                        operation.request_body = Some(ReferenceOr::Item(request_body));
+                    }
+                )*
+
+                operation
+            }
         }
 
-        if let Some(request_body) = T1::to_request_body() {
-            operation.request_body = Some(ReferenceOr::Item(request_body));
-        }
-
-        operation
-    }
+        impl_to_operation!($($tail,)*);
+    };
 }
+
+impl_to_operation!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16);
 
 impl<T> ToOperationInput for Option<T>
 where
@@ -353,13 +486,17 @@ where
 }
 
 impl ToResponse for () {
-    fn to_response(response: &mut Response) {
+    fn to_response() -> Response {
+        let mut response = Response::default();
         response.description = "Always empty".to_string();
+        response
     }
 }
 
 impl ToResponse for &str {
-    fn to_response(response: &mut Response) {
+    fn to_response() -> Response {
+        let mut response = Response::default();
+
         response.description = "Plain text".to_string();
 
         let mut media_type = MediaType::default();
@@ -369,12 +506,34 @@ impl ToResponse for &str {
             .encoding
             .insert("text/plain".to_string(), encoding);
 
-        let schema = Self::to_schema();
-
-        media_type.schema = Some(ReferenceOr::Item(schema));
-
         response
             .content
             .insert("text/plain".to_string(), media_type);
+
+        response
+    }
+}
+
+impl<T> ToResponse for Html<T>
+where
+    T: ToResponse,
+{
+    fn to_response() -> Response {
+        let mut response = T::to_response();
+
+        response.description = "HTML".to_string();
+
+        response.content.clear();
+
+        let mut media_type = MediaType::default();
+        let mut encoding = Encoding::default();
+        encoding.content_type = Some("text/html".to_string());
+        media_type
+            .encoding
+            .insert("text/html".to_string(), encoding);
+
+        response.content.insert("text/html".to_string(), media_type);
+
+        response
     }
 }
