@@ -8,9 +8,10 @@
 
 use axum::{
     extract::{Extension, Query},
-    open_api::{self, ToQueryParameter},
+    open_api::{self, *},
     prelude::*,
     response::IntoResponse,
+    routing::BoxRoute,
     AddExtensionLayer, Json,
 };
 use openapiv3::OpenAPI;
@@ -19,9 +20,16 @@ use std::sync::Arc;
 
 #[tokio::main]
 async fn main() {
-    let app = route("/api/users", get(get_users).post(|| async {}));
+    let app = route("/api/users", get(get_users).post(|| async {}))
+        .route("/other-route", get(|| async {}))
+        .nest("/foo", nested_routes());
 
     let open_api = open_api::to_open_api(&app);
+
+    {
+        let json = serde_json::to_string_pretty(&open_api).unwrap();
+        println!("{}", json);
+    }
 
     let app = app
         .route("/openapi.json", get(open_api_json))
@@ -41,6 +49,10 @@ async fn get_users(_: Query<Pagination>) -> &'static str {
     "users"
 }
 
+fn nested_routes() -> WithPaths<BoxRoute<Body>> {
+    route("/bar", get(|| async {})).boxed_with_open_api()
+}
+
 #[derive(Deserialize)]
 struct Pagination {
     offset: Option<usize>,
@@ -54,27 +66,15 @@ impl ToQueryParameter for Pagination {
 
         let mut obj = ObjectType::default();
 
-        let offset_schema_data = SchemaData {
-            nullable: true,
-            ..Default::default()
-        };
-        let offset_schema = Box::new(Schema {
-            schema_data: offset_schema_data,
-            schema_kind: SchemaKind::Type(Type::Number(NumberType::default())),
-        });
-        obj.properties
-            .insert("offset".to_string(), ReferenceOr::Item(offset_schema));
+        obj.properties.insert(
+            "offset".to_string(),
+            ReferenceOr::Item(Box::new(Option::<usize>::to_schema())),
+        );
 
-        let limit_schema_data = SchemaData {
-            nullable: true,
-            ..Default::default()
-        };
-        let limit_schema = Box::new(Schema {
-            schema_data: limit_schema_data,
-            schema_kind: SchemaKind::Type(Type::Number(NumberType::default())),
-        });
-        obj.properties
-            .insert("limit".to_string(), ReferenceOr::Item(limit_schema));
+        obj.properties.insert(
+            "limit".to_string(),
+            ReferenceOr::Item(Box::new(Option::<usize>::to_schema())),
+        );
 
         let schema = Schema {
             schema_data: SchemaData::default(),

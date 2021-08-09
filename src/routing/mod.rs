@@ -130,7 +130,40 @@ pub trait RoutingDsl: crate::sealed::Sealed + Sized {
         ResBody::Error: Into<BoxError> + Send + Sync + 'static,
     {
         ServiceBuilder::new()
-            .layer_fn(BoxRoute)
+            .layer_fn(|inner| BoxRoute { inner })
+            .layer_fn(MpscBuffer::new)
+            .layer(BoxService::layer())
+            .layer(MapResponseBodyLayer::new(box_body))
+            .service(self)
+    }
+
+    /// TODO: docs
+    #[cfg(feature = "open_api")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "open_api")))]
+    fn boxed_with_open_api<ReqBody, ResBody>(
+        self,
+    ) -> crate::open_api::WithPaths<BoxRoute<ReqBody, Self::Error>>
+    where
+        Self: crate::open_api::DescribePaths
+            + Service<Request<ReqBody>, Response = Response<ResBody>>
+            + Send
+            + 'static,
+        <Self as Service<Request<ReqBody>>>::Error: Into<BoxError> + Send + Sync,
+        <Self as Service<Request<ReqBody>>>::Future: Send,
+        ReqBody: http_body::Body<Data = Bytes> + Send + Sync + 'static,
+        ReqBody::Error: Into<BoxError> + Send + Sync + 'static,
+        ResBody: http_body::Body<Data = Bytes> + Send + Sync + 'static,
+        ResBody::Error: Into<BoxError> + Send + Sync + 'static,
+    {
+        let mut paths = indexmap::IndexMap::new();
+        self.describe_paths(&mut paths);
+
+        ServiceBuilder::new()
+            .layer_fn(move |inner| crate::open_api::WithPaths {
+                inner,
+                paths: Arc::new(paths.clone()),
+            })
+            .layer_fn(|inner| BoxRoute { inner })
             .layer_fn(MpscBuffer::new)
             .layer(BoxService::layer())
             .layer(MapResponseBodyLayer::new(box_body))
@@ -671,13 +704,15 @@ type Captures = Vec<(String, String)>;
 /// A boxed route trait object.
 ///
 /// See [`RoutingDsl::boxed`] for more details.
-pub struct BoxRoute<B, E = Infallible>(
-    MpscBuffer<BoxService<Request<B>, Response<BoxBody>, E>, Request<B>>,
-);
+pub struct BoxRoute<B, E = Infallible> {
+    inner: MpscBuffer<BoxService<Request<B>, Response<BoxBody>, E>, Request<B>>,
+}
 
 impl<B, E> Clone for BoxRoute<B, E> {
     fn clone(&self) -> Self {
-        Self(self.0.clone())
+        Self {
+            inner: self.inner.clone(),
+        }
     }
 }
 
@@ -707,7 +742,7 @@ where
     #[inline]
     fn call(&mut self, req: Request<B>) -> Self::Future {
         BoxRouteFuture {
-            inner: self.0.clone().oneshot(req),
+            inner: self.inner.clone().oneshot(req),
         }
     }
 }
@@ -853,9 +888,9 @@ where
 /// Created with [`nest`] or [`RoutingDsl::nest`].
 #[derive(Debug, Clone)]
 pub struct Nested<S, F> {
-    pattern: PathPattern,
-    svc: S,
-    fallback: F,
+    pub(crate) pattern: PathPattern,
+    pub(crate) svc: S,
+    pub(crate) fallback: F,
 }
 
 impl<S, F> RoutingDsl for Nested<S, F> {}
