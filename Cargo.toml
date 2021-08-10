@@ -20,7 +20,7 @@ multipart = ["multer", "mime"]
 async-trait = "0.1"
 bitflags = "1.0"
 bytes = "1.0"
-futures-util = "0.3"
+futures-util = { version = "0.3", default-features = false, features = ["alloc"] }
 http = "0.2"
 http-body = "0.4.3"
 hyper = { version = "0.14", features = ["server", "tcp", "http1", "stream"] }
