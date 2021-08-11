@@ -45,7 +45,7 @@ mime = { optional = true, version = "0.3" }
 
 [dev-dependencies]
 askama = "0.10.5"
-bb8 = "0.7.0"
+bb8 = "0.7.1"
 bb8-postgres = "0.7.0"
 futures = "0.3"
 hyper = { version = "0.14", features = ["full"] }
