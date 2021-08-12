@@ -62,7 +62,7 @@ fn rustls_server_config(key: &str, cert: &str) -> Arc<ServerConfig> {
 
     config.set_single_cert(certs, key).unwrap();
 
-    config.set_protocols(&[b"h2".to_vec(), b"http/1.1".to_vec()]);
+    config.set_protocols(&[b"http/1.1".to_vec()]);
 
     Arc::new(config)
 }
