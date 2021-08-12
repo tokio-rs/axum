@@ -10,7 +10,7 @@ use std::{fs::File, io::BufReader, sync::Arc};
 use tokio::net::TcpListener;
 use tokio_rustls::{
     rustls::{
-        internal::pemfile::certs, internal::pemfile::pkcs8_private_keys, NoClientAuth, ServerConfig,
+	internal::pemfile::certs, internal::pemfile::rsa_private_keys, internal::pemfile::pkcs8_private_keys, NoClientAuth, ServerConfig,
     },
     TlsAcceptor,
 };
@@ -52,12 +52,17 @@ async fn handler() -> &'static str {
 }
 
 fn rustls_server_config(key: &str, cert: &str) -> Arc<ServerConfig> {
+    // close Client Auth, important!
     let mut config = ServerConfig::new(NoClientAuth::new());
 
     let mut key_reader = BufReader::new(File::open(key).unwrap());
     let mut cert_reader = BufReader::new(File::open(cert).unwrap());
 
-    let key = pkcs8_private_keys(&mut key_reader).unwrap().remove(0);
+    // compatiable pkcs1 & pkcs8
+    let key = match rsa_private_keys(&mut key_reader) {
+        Ok(mut t) => t.remove(0),
+        Err(e) => pkcs8_private_keys(&mut key_reader).unwrap().remove(0)
+    };
     let certs = certs(&mut cert_reader).unwrap();
 
     config.set_single_cert(certs, key).unwrap();
