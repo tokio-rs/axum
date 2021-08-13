@@ -49,7 +49,7 @@ define_rejection! {
 
 define_rejection! {
     #[status = BAD_REQUEST]
-    #[body = "Failed to parse the request body as JSON"]
+    #[body = "Failed to parse the response body as JSON"]
     /// Rejection type for [`Json`](super::Json).
     pub struct InvalidJsonBody(BoxError);
 }
