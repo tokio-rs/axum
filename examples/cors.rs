@@ -26,8 +26,8 @@ async fn main() {
 	))
 	.into_inner();
 
-    // build our application with a route and add the layer off middleware
-    let app = route("/", get(handler))
+    // create application with a route and add the layer off middleware including a handler for OPTIONS requests.
+    let app = route("/", get(handler).options(|| async { "" }))
 	.layer(cors_middleware);
 
     // run it
