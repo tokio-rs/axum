@@ -422,6 +422,33 @@ impl<T> From<T> for Html<T> {
     }
 }
 
+/// An XHTML response.
+///
+/// Will automatically get `Content-Type: application/xhtml+xml`.
+#[derive(Clone, Copy, Debug)]
+pub struct Xhtml<T>(pub T);
+
+impl<T> IntoResponse for Xhtml<T>
+where
+    T: Into<Full<Bytes>>,
+{
+    type Body = Full<Bytes>;
+    type BodyError = Infallible;
+
+    fn into_response(self) -> Response<Self::Body> {
+        let mut res = Response::new(self.0.into());
+        res.headers_mut()
+            .insert(header::CONTENT_TYPE, HeaderValue::from_static("application/xhtml+xml"));
+        res
+    }
+}
+
+impl<T> From<T> for Xhtml<T> {
+    fn from(inner: T) -> Self {
+        Self(inner)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
