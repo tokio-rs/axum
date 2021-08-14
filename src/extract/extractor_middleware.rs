@@ -77,7 +77,7 @@ use tower::{BoxError, Layer, Service};
 ///     // The extractor will run before all routes
 ///     .layer(extractor_middleware::<RequireAuth>());
 /// # async {
-/// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+/// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 /// # };
 /// ```
 pub fn extractor_middleware<E>() -> ExtractorMiddlewareLayer<E> {
@@ -97,8 +97,6 @@ impl<E> Clone for ExtractorMiddlewareLayer<E> {
         Self(PhantomData)
     }
 }
-
-impl<E> Copy for ExtractorMiddlewareLayer<E> {}
 
 impl<E> fmt::Debug for ExtractorMiddlewareLayer<E> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -139,8 +137,6 @@ where
     }
 }
 
-impl<S, E> Copy for ExtractorMiddleware<S, E> where S: Copy {}
-
 impl<S, E> fmt::Debug for ExtractorMiddleware<S, E>
 where
     S: fmt::Debug,
@@ -156,14 +152,14 @@ where
 impl<S, E, ReqBody, ResBody> Service<Request<ReqBody>> for ExtractorMiddleware<S, E>
 where
     E: FromRequest<ReqBody> + 'static,
-    ReqBody: Send + 'static,
+    ReqBody: Default + Send + 'static,
     S: Service<Request<ReqBody>, Response = Response<ResBody>> + Clone,
     ResBody: http_body::Body<Data = Bytes> + Send + Sync + 'static,
     ResBody::Error: Into<BoxError>,
 {
     type Response = Response<BoxBody>;
     type Error = S::Error;
-    type Future = ExtractorMiddlewareResponseFuture<ReqBody, S, E>;
+    type Future = ResponseFuture<ReqBody, S, E>;
 
     #[inline]
     fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
@@ -177,7 +173,7 @@ where
             (req, extracted)
         });
 
-        ExtractorMiddlewareResponseFuture {
+        ResponseFuture {
             state: State::Extracting {
                 future: extract_future,
             },
@@ -189,7 +185,7 @@ where
 pin_project! {
     /// Response future for [`ExtractorMiddleware`].
     #[allow(missing_debug_implementations)]
-    pub struct ExtractorMiddlewareResponseFuture<ReqBody, S, E>
+    pub struct ResponseFuture<ReqBody, S, E>
     where
         E: FromRequest<ReqBody>,
         S: Service<Request<ReqBody>>,
@@ -212,10 +208,11 @@ pin_project! {
     }
 }
 
-impl<ReqBody, S, E, ResBody> Future for ExtractorMiddlewareResponseFuture<ReqBody, S, E>
+impl<ReqBody, S, E, ResBody> Future for ResponseFuture<ReqBody, S, E>
 where
     E: FromRequest<ReqBody>,
     S: Service<Request<ReqBody>, Response = Response<ResBody>>,
+    ReqBody: Default,
     ResBody: http_body::Body<Data = Bytes> + Send + Sync + 'static,
     ResBody::Error: Into<BoxError>,
 {
@@ -227,12 +224,13 @@ where
 
             let new_state = match this.state.as_mut().project() {
                 StateProj::Extracting { future } => {
-                    let (mut req, extracted) = ready!(future.as_mut().poll(cx));
+                    let (req, extracted) = ready!(future.as_mut().poll(cx));
 
                     match extracted {
                         Ok(_) => {
                             let mut svc = this.svc.take().expect("future polled after completion");
-                            let future = svc.call(req.into_request());
+                            let req = req.try_into_request().unwrap_or_default();
+                            let future = svc.call(req);
                             State::Call { future }
                         }
                         Err(err) => {

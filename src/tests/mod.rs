@@ -1,6 +1,7 @@
+#![allow(clippy::blacklisted_name)]
+
 use crate::{
-    extract::RequestParts, handler::on, prelude::*, response::IntoResponse, routing::nest,
-    routing::MethodFilter, service,
+    extract::RequestParts, handler::on, prelude::*, routing::nest, routing::MethodFilter, service,
 };
 use bytes::Bytes;
 use futures_util::future::Ready;
@@ -9,15 +10,17 @@ use hyper::{Body, Server};
 use serde::Deserialize;
 use serde_json::json;
 use std::{
+    collections::HashMap,
     convert::Infallible,
     net::{SocketAddr, TcpListener},
     task::{Context, Poll},
     time::Duration,
 };
-use tower::{make::Shared, service_fn, BoxError, Service, ServiceBuilder};
-use tower_http::{compression::CompressionLayer, trace::TraceLayer};
+use tower::{make::Shared, service_fn, BoxError, Service};
 
+mod handle_error;
 mod nest;
+mod or;
 
 #[tokio::test]
 async fn hello_world() {
@@ -244,20 +247,14 @@ async fn routing() {
 async fn extracting_url_params() {
     let app = route(
         "/users/:id",
-        get(|params: extract::UrlParams<(i32,)>| async move {
-            let (id,) = params.0;
+        get(|extract::Path(id): extract::Path<i32>| async move {
             assert_eq!(id, 42);
         })
-        .post(|params_map: extract::UrlParamsMap| async move {
-            assert_eq!(params_map.get("id").unwrap(), "1337");
-            assert_eq!(
-                params_map
-                    .get_typed::<i32>("id")
-                    .expect("missing")
-                    .expect("failed to parse"),
-                1337
-            );
-        }),
+        .post(
+            |extract::Path(params_map): extract::Path<HashMap<String, i32>>| async move {
+                assert_eq!(params_map.get("id").unwrap(), &1337);
+            },
+        ),
     );
 
     let addr = run_in_background(app).await;
@@ -283,12 +280,7 @@ async fn extracting_url_params() {
 async fn extracting_url_params_multiple_times() {
     let app = route(
         "/users/:id",
-        get(
-            |_: extract::UrlParams<(i32,)>,
-             _: extract::UrlParamsMap,
-             _: extract::UrlParams<(i32,)>,
-             _: extract::UrlParamsMap| async {},
-        ),
+        get(|_: extract::Path<i32>, _: extract::Path<String>| async {}),
     );
 
     let addr = run_in_background(app).await;
@@ -307,10 +299,10 @@ async fn extracting_url_params_multiple_times() {
 async fn boxing() {
     let app = route(
         "/",
-        on(MethodFilter::Get, |_: Request<Body>| async {
+        on(MethodFilter::GET, |_: Request<Body>| async {
             "hi from GET"
         })
-        .on(MethodFilter::Post, |_: Request<Body>| async {
+        .on(MethodFilter::POST, |_: Request<Body>| async {
             "hi from POST"
         }),
     )
@@ -335,53 +327,6 @@ async fn boxing() {
 }
 
 #[tokio::test]
-async fn service_handlers() {
-    use crate::service::ServiceExt as _;
-    use tower_http::services::ServeFile;
-
-    let app = route(
-        "/echo",
-        service::post(
-            service_fn(|req: Request<Body>| async move {
-                Ok::<_, BoxError>(Response::new(req.into_body()))
-            })
-            .handle_error(|_error: BoxError| Ok(StatusCode::INTERNAL_SERVER_ERROR)),
-        ),
-    )
-    .route(
-        "/static/Cargo.toml",
-        service::on(
-            MethodFilter::Get,
-            ServeFile::new("Cargo.toml").handle_error(|error: std::io::Error| {
-                Ok::<_, Infallible>((StatusCode::INTERNAL_SERVER_ERROR, error.to_string()))
-            }),
-        ),
-    );
-
-    let addr = run_in_background(app).await;
-
-    let client = reqwest::Client::new();
-
-    let res = client
-        .post(format!("http://{}/echo", addr))
-        .body("foobar")
-        .send()
-        .await
-        .unwrap();
-    assert_eq!(res.status(), StatusCode::OK);
-    assert_eq!(res.text().await.unwrap(), "foobar");
-
-    let res = client
-        .get(format!("http://{}/static/Cargo.toml", addr))
-        .body("foobar")
-        .send()
-        .await
-        .unwrap();
-    assert_eq!(res.status(), StatusCode::OK);
-    assert!(res.text().await.unwrap().contains("edition ="));
-}
-
-#[tokio::test]
 async fn routing_between_services() {
     use std::convert::Infallible;
     use tower::service_fn;
@@ -399,7 +344,7 @@ async fn routing_between_services() {
             Ok::<_, Infallible>(Response::new(Body::from("one post")))
         }))
         .on(
-            MethodFilter::Put,
+            MethodFilter::PUT,
             service_fn(|_: Request<Body>| async {
                 Ok::<_, Infallible>(Response::new(Body::from("one put")))
             }),
@@ -407,7 +352,7 @@ async fn routing_between_services() {
     )
     .route(
         "/two",
-        service::on(MethodFilter::Get, handle.into_service()),
+        service::on(MethodFilter::GET, handle.into_service()),
     );
 
     let addr = run_in_background(app).await;
@@ -475,57 +420,10 @@ async fn middleware_on_single_route() {
 }
 
 #[tokio::test]
-async fn handling_errors_from_layered_single_routes() {
-    async fn handle(_req: Request<Body>) -> &'static str {
-        tokio::time::sleep(Duration::from_secs(10)).await;
-        ""
-    }
-
-    let app = route(
-        "/",
-        get(handle
-            .layer(
-                ServiceBuilder::new()
-                    .timeout(Duration::from_millis(100))
-                    .layer(TraceLayer::new_for_http())
-                    .into_inner(),
-            )
-            .handle_error(|_error: BoxError| {
-                Ok::<_, Infallible>(StatusCode::INTERNAL_SERVER_ERROR)
-            })),
-    );
-
-    let addr = run_in_background(app).await;
-
-    let res = reqwest::get(format!("http://{}", addr)).await.unwrap();
-    assert_eq!(res.status(), StatusCode::INTERNAL_SERVER_ERROR);
-}
-
-#[tokio::test]
-async fn layer_on_whole_router() {
-    async fn handle(_req: Request<Body>) -> &'static str {
-        tokio::time::sleep(Duration::from_secs(10)).await;
-        ""
-    }
-
-    let app = route("/", get(handle))
-        .layer(
-            ServiceBuilder::new()
-                .layer(CompressionLayer::new())
-                .timeout(Duration::from_millis(100))
-                .into_inner(),
-        )
-        .handle_error(|_err: BoxError| Ok::<_, Infallible>(StatusCode::INTERNAL_SERVER_ERROR));
-
-    let addr = run_in_background(app).await;
-
-    let res = reqwest::get(format!("http://{}", addr)).await.unwrap();
-    assert_eq!(res.status(), StatusCode::INTERNAL_SERVER_ERROR);
-}
-
-#[tokio::test]
+#[cfg(feature = "header")]
 async fn typed_header() {
-    use extract::TypedHeader;
+    use crate::{extract::TypedHeader, response::IntoResponse};
+
     async fn handle(TypedHeader(user_agent): TypedHeader<headers::UserAgent>) -> impl IntoResponse {
         user_agent.to_string()
     }
@@ -706,8 +604,31 @@ async fn wrong_method_service() {
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
 }
 
+#[tokio::test]
+async fn multiple_methods_for_one_handler() {
+    async fn root(_: Request<Body>) -> &'static str {
+        "Hello, World!"
+    }
+
+    let app = route("/", on(MethodFilter::GET | MethodFilter::POST, root));
+
+    let addr = run_in_background(app).await;
+
+    let client = reqwest::Client::new();
+
+    let res = client.get(format!("http://{}", addr)).send().await.unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+
+    let res = client
+        .post(format!("http://{}", addr))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+}
+
 /// Run a `tower::Service` in the background and get a URI for it.
-async fn run_in_background<S, ResBody>(svc: S) -> SocketAddr
+pub(crate) async fn run_in_background<S, ResBody>(svc: S) -> SocketAddr
 where
     S: Service<Request<Body>, Response = Response<ResBody>> + Clone + Send + 'static,
     ResBody: http_body::Body + Send + 'static,

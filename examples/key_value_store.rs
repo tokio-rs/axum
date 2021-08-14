@@ -7,12 +7,10 @@
 //! ```
 
 use axum::{
-    async_trait,
-    extract::{extractor_middleware, ContentLengthLimit, Extension, RequestParts, UrlParams},
+    extract::{ContentLengthLimit, Extension, Path},
     prelude::*,
     response::IntoResponse,
     routing::BoxRoute,
-    service::ServiceExt,
 };
 use bytes::Bytes;
 use http::StatusCode;
@@ -26,11 +24,16 @@ use std::{
 };
 use tower::{BoxError, ServiceBuilder};
 use tower_http::{
-    add_extension::AddExtensionLayer, compression::CompressionLayer, trace::TraceLayer,
+    add_extension::AddExtensionLayer, auth::RequireAuthorizationLayer,
+    compression::CompressionLayer, trace::TraceLayer,
 };
 
 #[tokio::main]
 async fn main() {
+    // Set the RUST_LOG, if it hasn't been explicitly defined
+    if std::env::var("RUST_LOG").is_err() {
+        std::env::set_var("RUST_LOG", "key_value_store=debug,tower_http=debug")
+    }
     tracing_subscriber::fmt::init();
 
     // Build our application by composing routes
@@ -61,7 +64,7 @@ async fn main() {
     // Run our app with hyper
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
     tracing::debug!("listening on {}", addr);
-    hyper::Server::bind(&addr)
+    axum::Server::bind(&addr)
         .serve(app.into_make_service())
         .await
         .unwrap();
@@ -75,7 +78,7 @@ struct State {
 }
 
 async fn kv_get(
-    UrlParams((key,)): UrlParams<(String,)>,
+    Path(key): Path<String>,
     Extension(state): Extension<SharedState>,
 ) -> Result<Bytes, StatusCode> {
     let db = &state.read().unwrap().db;
@@ -88,7 +91,7 @@ async fn kv_get(
 }
 
 async fn kv_set(
-    UrlParams((key,)): UrlParams<(String,)>,
+    Path(key): Path<String>,
     ContentLengthLimit(bytes): ContentLengthLimit<Bytes, { 1024 * 5_000 }>, // ~5mb
     Extension(state): Extension<SharedState>,
 ) {
@@ -109,48 +112,15 @@ fn admin_routes() -> BoxRoute<hyper::Body> {
         state.write().unwrap().db.clear();
     }
 
-    async fn remove_key(
-        UrlParams((key,)): UrlParams<(String,)>,
-        Extension(state): Extension<SharedState>,
-    ) {
+    async fn remove_key(Path(key): Path<String>, Extension(state): Extension<SharedState>) {
         state.write().unwrap().db.remove(&key);
     }
 
     route("/keys", delete(delete_all_keys))
         .route("/key/:key", delete(remove_key))
-        // Require beare auth for all admin routes
-        .layer(extractor_middleware::<RequireAuth>())
+        // Require bearer auth for all admin routes
+        .layer(RequireAuthorizationLayer::bearer("secret-token"))
         .boxed()
-}
-
-/// An extractor that performs authorization.
-// TODO: when https://github.com/hyperium/http-body/pull/46 is merged we can use
-// `tower_http::auth::RequireAuthorization` instead
-struct RequireAuth;
-
-#[async_trait]
-impl<B> extract::FromRequest<B> for RequireAuth
-where
-    B: Send,
-{
-    type Rejection = StatusCode;
-
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-        let auth_header = req
-            .headers()
-            .and_then(|headers| headers.get(http::header::AUTHORIZATION))
-            .and_then(|value| value.to_str().ok());
-
-        if let Some(value) = auth_header {
-            if let Some(token) = value.strip_prefix("Bearer ") {
-                if token == "secret-token" {
-                    return Ok(Self);
-                }
-            }
-        }
-
-        Err(StatusCode::UNAUTHORIZED)
-    }
 }
 
 fn handle_error(error: BoxError) -> Result<impl IntoResponse, Infallible> {

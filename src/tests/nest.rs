@@ -1,4 +1,6 @@
 use super::*;
+use crate::body::box_body;
+use std::collections::HashMap;
 
 #[tokio::test]
 async fn nesting_apps() {
@@ -8,23 +10,27 @@ async fn nesting_apps() {
     )
     .route(
         "/users/:id",
-        get(|params: extract::UrlParamsMap| async move {
-            format!(
-                "{}: users#show ({})",
-                params.get("version").unwrap(),
-                params.get("id").unwrap()
-            )
-        }),
+        get(
+            |params: extract::Path<HashMap<String, String>>| async move {
+                format!(
+                    "{}: users#show ({})",
+                    params.get("version").unwrap(),
+                    params.get("id").unwrap()
+                )
+            },
+        ),
     )
     .route(
         "/games/:id",
-        get(|params: extract::UrlParamsMap| async move {
-            format!(
-                "{}: games#show ({})",
-                params.get("version").unwrap(),
-                params.get("id").unwrap()
-            )
-        }),
+        get(
+            |params: extract::Path<HashMap<String, String>>| async move {
+                format!(
+                    "{}: games#show ({})",
+                    params.get("version").unwrap(),
+                    params.get("id").unwrap()
+                )
+            },
+        ),
     );
 
     let app = route("/", get(|| async { "hi" })).nest("/:version/api", api_routes);
@@ -120,4 +126,93 @@ async fn nesting_at_root() {
         .unwrap();
     assert_eq!(res.status(), StatusCode::OK);
     assert_eq!(res.text().await.unwrap(), "/foo/bar");
+}
+
+#[tokio::test]
+async fn nested_url_extractor() {
+    let app = nest(
+        "/foo",
+        nest(
+            "/bar",
+            route("/baz", get(|uri: Uri| async move { uri.to_string() })).route(
+                "/qux",
+                get(|req: Request<Body>| async move { req.uri().to_string() }),
+            ),
+        ),
+    );
+
+    let addr = run_in_background(app).await;
+
+    let client = reqwest::Client::new();
+
+    let res = client
+        .get(format!("http://{}/foo/bar/baz", addr))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.text().await.unwrap(), "/foo/bar/baz");
+
+    let res = client
+        .get(format!("http://{}/foo/bar/qux", addr))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.text().await.unwrap(), "/foo/bar/qux");
+}
+
+#[tokio::test]
+async fn nested_url_nested_extractor() {
+    let app = nest(
+        "/foo",
+        nest(
+            "/bar",
+            route(
+                "/baz",
+                get(|uri: extract::NestedUri| async move { uri.0.to_string() }),
+            ),
+        ),
+    );
+
+    let addr = run_in_background(app).await;
+
+    let client = reqwest::Client::new();
+
+    let res = client
+        .get(format!("http://{}/foo/bar/baz", addr))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.text().await.unwrap(), "/baz");
+}
+
+#[tokio::test]
+async fn nested_service_sees_original_uri() {
+    let app = nest(
+        "/foo",
+        nest(
+            "/bar",
+            route(
+                "/baz",
+                service_fn(|req: Request<Body>| async move {
+                    let body = box_body(Body::from(req.uri().to_string()));
+                    Ok::<_, Infallible>(Response::new(body))
+                }),
+            ),
+        ),
+    );
+
+    let addr = run_in_background(app).await;
+
+    let client = reqwest::Client::new();
+
+    let res = client
+        .get(format!("http://{}/foo/bar/baz", addr))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.text().await.unwrap(), "/foo/bar/baz");
 }

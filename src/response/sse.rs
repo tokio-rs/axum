@@ -24,10 +24,14 @@
 //! # };
 //! ```
 
-use crate::{body::BoxStdError, response::IntoResponse};
-use futures_util::stream::{Stream, StreamExt as _, TryStream, TryStreamExt as _};
+use crate::response::IntoResponse;
+use bytes::Bytes;
+use futures_util::{
+    ready,
+    stream::{Stream, TryStream},
+};
 use http::Response;
-use hyper::Body;
+use http_body::Body as HttpBody;
 use pin_project_lite::pin_project;
 use serde::Serialize;
 use std::{
@@ -39,6 +43,7 @@ use std::{
     task::{Context, Poll},
     time::Duration,
 };
+use sync_wrapper::SyncWrapper;
 use tokio::time::Sleep;
 use tower::BoxError;
 
@@ -88,28 +93,73 @@ where
     S: Stream<Item = Result<Event, E>> + Send + 'static,
     E: Into<BoxError>,
 {
-    fn into_response(self) -> Response<Body> {
-        let stream = if let Some(keep_alive) = self.keep_alive {
-            KeepAliveStream {
-                event_stream: self.stream,
-                comment_text: keep_alive.comment_text,
-                max_interval: keep_alive.max_interval,
-                alive_timer: tokio::time::sleep(keep_alive.max_interval),
-            }
-            .left_stream::<S>()
-        } else {
-            self.stream.right_stream::<KeepAliveStream<S>>()
-        };
+    type Body = Body<S>;
+    type BodyError = E;
 
-        let stream = stream
-            .map_ok(|event| event.to_string())
-            .map_err(|err| BoxStdError(err.into()));
+    fn into_response(self) -> Response<Self::Body> {
+        let body = Body {
+            event_stream: SyncWrapper::new(self.stream),
+            keep_alive: self.keep_alive.map(KeepAliveStream::new),
+        };
 
         Response::builder()
             .header(http::header::CONTENT_TYPE, "text/event-stream")
             .header(http::header::CACHE_CONTROL, "no-cache")
-            .body(Body::wrap_stream(stream))
+            .body(body)
             .unwrap()
+    }
+}
+
+pin_project! {
+    /// The body of an SSE response.
+    #[derive(Debug)]
+    pub struct Body<S> {
+        #[pin]
+        event_stream: SyncWrapper<S>,
+        #[pin]
+        keep_alive: Option<KeepAliveStream>,
+    }
+}
+
+impl<S, E> HttpBody for Body<S>
+where
+    S: Stream<Item = Result<Event, E>>,
+{
+    type Data = Bytes;
+    type Error = E;
+
+    fn poll_data(
+        self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+    ) -> Poll<Option<Result<Self::Data, Self::Error>>> {
+        let this = self.project();
+
+        match this.event_stream.get_pin_mut().poll_next(cx) {
+            Poll::Pending => {
+                if let Some(keep_alive) = this.keep_alive.as_pin_mut() {
+                    keep_alive
+                        .poll_event(cx)
+                        .map(|e| Some(Ok(Bytes::from(e.to_string()))))
+                } else {
+                    Poll::Pending
+                }
+            }
+            Poll::Ready(Some(Ok(event))) => {
+                if let Some(keep_alive) = this.keep_alive.as_pin_mut() {
+                    keep_alive.reset();
+                }
+                Poll::Ready(Some(Ok(Bytes::from(event.to_string()))))
+            }
+            Poll::Ready(Some(Err(error))) => Poll::Ready(Some(Err(error))),
+            Poll::Ready(None) => Poll::Ready(None),
+        }
+    }
+
+    fn poll_trailers(
+        self: Pin<&mut Self>,
+        _cx: &mut Context<'_>,
+    ) -> Poll<Result<Option<http::HeaderMap>, Self::Error>> {
+        Poll::Ready(Ok(None))
     }
 }
 
@@ -300,47 +350,38 @@ impl Default for KeepAlive {
 }
 
 pin_project! {
-    struct KeepAliveStream<S> {
-        #[pin]
-        event_stream: S,
-        comment_text: Cow<'static, str>,
-        max_interval: Duration,
+    #[derive(Debug)]
+    struct KeepAliveStream {
+        keep_alive: KeepAlive,
         #[pin]
         alive_timer: Sleep,
     }
 }
 
-impl<S> Stream for KeepAliveStream<S>
-where
-    S: TryStream<Ok = Event>,
-{
-    type Item = Result<Event, S::Error>;
-
-    fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        let mut this = self.project();
-
-        match this.event_stream.try_poll_next(cx) {
-            Poll::Pending => match this.alive_timer.as_mut().poll(cx) {
-                Poll::Pending => Poll::Pending,
-                Poll::Ready(_) => {
-                    // restart timer
-                    this.alive_timer
-                        .reset(tokio::time::Instant::now() + *this.max_interval);
-
-                    let comment_str = this.comment_text.clone();
-                    let event = Event::default().comment(comment_str);
-                    Poll::Ready(Some(Ok(event)))
-                }
-            },
-            Poll::Ready(Some(Ok(event))) => {
-                // restart timer
-                this.alive_timer
-                    .reset(tokio::time::Instant::now() + *this.max_interval);
-
-                Poll::Ready(Some(Ok(event)))
-            }
-            Poll::Ready(None) => Poll::Ready(None),
-            Poll::Ready(Some(Err(error))) => Poll::Ready(Some(Err(error))),
+impl KeepAliveStream {
+    fn new(keep_alive: KeepAlive) -> Self {
+        Self {
+            alive_timer: tokio::time::sleep(keep_alive.max_interval),
+            keep_alive,
         }
+    }
+
+    fn reset(self: Pin<&mut Self>) {
+        let this = self.project();
+        this.alive_timer
+            .reset(tokio::time::Instant::now() + this.keep_alive.max_interval);
+    }
+
+    fn poll_event(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Event> {
+        let this = self.as_mut().project();
+
+        ready!(this.alive_timer.poll(cx));
+
+        let comment_str = this.keep_alive.comment_text.clone();
+        let event = Event::default().comment(comment_str);
+
+        self.reset();
+
+        Poll::Ready(event)
     }
 }

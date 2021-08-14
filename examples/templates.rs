@@ -6,11 +6,17 @@
 
 use askama::Template;
 use axum::{prelude::*, response::IntoResponse};
+use bytes::Bytes;
 use http::{Response, StatusCode};
-use std::net::SocketAddr;
+use http_body::Full;
+use std::{convert::Infallible, net::SocketAddr};
 
 #[tokio::main]
 async fn main() {
+    // Set the RUST_LOG, if it hasn't been explicitly defined
+    if std::env::var("RUST_LOG").is_err() {
+        std::env::set_var("RUST_LOG", "templates=debug")
+    }
     tracing_subscriber::fmt::init();
 
     // build our application with some routes
@@ -19,20 +25,14 @@ async fn main() {
     // run it
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
     tracing::debug!("listening on {}", addr);
-    hyper::Server::bind(&addr)
+    axum::Server::bind(&addr)
         .serve(app.into_make_service())
         .await
         .unwrap();
 }
 
-async fn greet(params: extract::UrlParamsMap) -> impl IntoResponse {
-    let name = params
-        .get("name")
-        .expect("`name` will be there if route was matched")
-        .to_string();
-
+async fn greet(extract::Path(name): extract::Path<String>) -> impl IntoResponse {
     let template = HelloTemplate { name };
-
     HtmlTemplate(template)
 }
 
@@ -48,12 +48,15 @@ impl<T> IntoResponse for HtmlTemplate<T>
 where
     T: Template,
 {
-    fn into_response(self) -> http::Response<Body> {
+    type Body = Full<Bytes>;
+    type BodyError = Infallible;
+
+    fn into_response(self) -> Response<Self::Body> {
         match self.0.render() {
             Ok(html) => response::Html(html).into_response(),
             Err(err) => Response::builder()
                 .status(StatusCode::INTERNAL_SERVER_ERROR)
-                .body(Body::from(format!(
+                .body(Full::from(format!(
                     "Failed to render template. Error: {}",
                     err
                 )))

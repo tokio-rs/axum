@@ -9,13 +9,17 @@ use tower_http::trace::TraceLayer;
 
 #[tokio::main]
 async fn main() {
+    // Set the RUST_LOG, if it hasn't been explicitly defined
+    if std::env::var("RUST_LOG").is_err() {
+        std::env::set_var("RUST_LOG", "testing=debug,tower_http=debug")
+    }
     tracing_subscriber::fmt::init();
 
     let addr = std::net::SocketAddr::from(([127, 0, 0, 1], 3000));
 
     tracing::debug!("listening on {}", addr);
 
-    hyper::Server::bind(&addr)
+    axum::Server::bind(&addr)
         .serve(app().into_make_service())
         .await
         .unwrap();
@@ -113,7 +117,7 @@ mod tests {
         let addr = listener.local_addr().unwrap();
 
         tokio::spawn(async move {
-            hyper::Server::from_tcp(listener)
+            axum::Server::from_tcp(listener)
                 .unwrap()
                 .serve(app().into_make_service())
                 .await

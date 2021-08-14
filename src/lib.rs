@@ -47,9 +47,6 @@
 //!
 //! ```rust,no_run
 //! use axum::prelude::*;
-//! use hyper::Server;
-//! use std::net::SocketAddr;
-//! use tower::make::Shared;
 //!
 //! #[tokio::main]
 //! async fn main() {
@@ -57,7 +54,7 @@
 //!     let app = route("/", get(|| async { "Hello, World!" }));
 //!
 //!     // run it with hyper on localhost:3000
-//!     hyper::Server::bind(&"0.0.0.0:3000".parse().unwrap())
+//!     axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())
 //!         .serve(app.into_make_service())
 //!         .await
 //!         .unwrap();
@@ -121,12 +118,14 @@
 //!     // `GET /foo` called
 //! }
 //! # async {
-//! # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+//! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 //! # };
 //! ```
 //!
 //! Routes can also be dynamic like `/users/:id`. See [extractors](#extractors)
 //! for more details.
+//!
+//! You can also define routes separately and merge them with [`RoutingDsl::or`].
 //!
 //! ## Precedence
 //!
@@ -135,7 +134,7 @@
 //!
 //! ```rust
 //! use axum::{prelude::*, body::BoxBody};
-//! use tower::{Service, ServiceExt, BoxError};
+//! use tower::{Service, ServiceExt};
 //! use http::{Method, Response, StatusCode};
 //! use std::convert::Infallible;
 //!
@@ -207,8 +206,8 @@
 //!
 //! async fn handler() {}
 //! # async {
-//! # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-//! # hyper::Server::bind(&"".parse().unwrap()).serve(wont_work.into_make_service()).await.unwrap();
+//! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+//! # axum::Server::bind(&"".parse().unwrap()).serve(wont_work.into_make_service()).await.unwrap();
 //! # };
 //! ```
 //!
@@ -238,12 +237,12 @@
 //!     // ...
 //! }
 //! # async {
-//! # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+//! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 //! # };
 //! ```
 //!
-//! [`extract::UrlParams`] can be used to extract params from a dynamic URL. It
-//! is compatible with any type that implements [`std::str::FromStr`], such as
+//! [`extract::Path`] can be used to extract params from a dynamic URL. It
+//! is compatible with any type that implements [`serde::Deserialize`], such as
 //! [`Uuid`]:
 //!
 //! ```rust,no_run
@@ -252,18 +251,13 @@
 //!
 //! let app = route("/users/:id", post(create_user));
 //!
-//! async fn create_user(params: extract::UrlParams<(Uuid,)>) {
-//!     let user_id: Uuid = (params.0).0;
-//!
+//! async fn create_user(extract::Path(user_id): extract::Path<Uuid>) {
 //!     // ...
 //! }
 //! # async {
-//! # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+//! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 //! # };
 //! ```
-//!
-//! There is also [`UrlParamsMap`](extract::UrlParamsMap) which provide a map
-//! like API for extracting URL params.
 //!
 //! You can also apply multiple extractors:
 //!
@@ -287,16 +281,15 @@
 //! }
 //!
 //! async fn get_user_things(
-//!     params: extract::UrlParams<(Uuid,)>,
+//!     extract::Path(user_id): extract::Path<Uuid>,
 //!     pagination: Option<extract::Query<Pagination>>,
 //! ) {
-//!     let user_id: Uuid = (params.0).0;
 //!     let pagination: Pagination = pagination.unwrap_or_default().0;
 //!
 //!     // ...
 //! }
 //! # async {
-//! # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+//! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 //! # };
 //! ```
 //!
@@ -311,7 +304,7 @@
 //!     // ...
 //! }
 //! # async {
-//! # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+//! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 //! # };
 //! ```
 //!
@@ -395,7 +388,7 @@
 //!     .route("/result", get(result))
 //!     .route("/response", get(response));
 //! # async {
-//! # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+//! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 //! # };
 //! ```
 //!
@@ -419,7 +412,7 @@
 //!
 //! async fn handler() {}
 //! # async {
-//! # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+//! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 //! # };
 //! ```
 //!
@@ -439,7 +432,7 @@
 //!
 //! async fn post_foo() {}
 //! # async {
-//! # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+//! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 //! # };
 //! ```
 //!
@@ -453,7 +446,7 @@
 //! However when applying middleware, or embedding other tower services, errors
 //! might happen. For example [`Timeout`] will return an error if the timeout
 //! elapses. By default these errors will be propagated all the way up to hyper
-//! where the connection will be closed. If that isn't desireable you can call
+//! where the connection will be closed. If that isn't desirable you can call
 //! [`handle_error`](handler::Layered::handle_error) to handle errors from
 //! adding a middleware to a handler:
 //!
@@ -492,7 +485,7 @@
 //!
 //! async fn handle() {}
 //! # async {
-//! # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+//! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 //! # };
 //! ```
 //!
@@ -500,7 +493,7 @@
 //! return `Result<T, E>` where `T` implements
 //! [`IntoResponse`](response::IntoResponse).
 //!
-//! See [`routing::Layered::handle_error`] fo more details.
+//! See [`routing::RoutingDsl::handle_error`] for more details.
 //!
 //! ## Applying multiple middleware
 //!
@@ -526,7 +519,7 @@
 //! let app = route("/", get(|_: Request<Body>| async { /* ... */ }))
 //!     .layer(middleware_stack);
 //! # async {
-//! # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+//! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 //! # };
 //! ```
 //!
@@ -557,7 +550,7 @@
 //!     // ...
 //! }
 //! # async {
-//! # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+//! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 //! # };
 //! ```
 //!
@@ -570,7 +563,7 @@
 //! use tower_http::services::ServeFile;
 //! use http::Response;
 //! use std::convert::Infallible;
-//! use tower::{service_fn, BoxError};
+//! use tower::service_fn;
 //!
 //! let app = route(
 //!     // Any request to `/` goes to a service
@@ -598,7 +591,7 @@
 //!     service::get(ServeFile::new("Cargo.toml"))
 //! );
 //! # async {
-//! # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+//! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 //! # };
 //! ```
 //!
@@ -621,35 +614,35 @@
 //! let app = route("/", get(|_: Request<Body>| async { /* ... */ }))
 //!     .nest("/api", api_routes());
 //! # async {
-//! # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+//! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 //! # };
 //! ```
 //!
 //! # Required dependencies
 //!
-//! To use Axum there are a few dependencies you have pull in as well:
+//! To use axum there are a few dependencies you have pull in as well:
 //!
 //! ```toml
 //! [dependencies]
 //! axum = "<latest-version>"
-//!
-//! # For http types like `StatusCode`, `Method`, and `Response`
-//! http = "<latest-version>"
-//!
-//! # "full" isn't strictly necessary for tokio and hyper but its the
-//! # easiest way to get started.
 //! hyper = { version = "<latest-version>", features = ["full"] }
 //! tokio = { version = "<latest-version>", features = ["full"] }
-//!
-//! # Not strictly necessary but helpful for testing. There is a
-//! # testing example in the repo that shows how to test axum apps.
 //! tower = "<latest-version>"
 //! ```
+//!
+//! The `"full"` feature for hyper and tokio isn't strictly necessary but its
+//! the easiest way to get started.
+//!
+//! Note that [`axum::Server`] is re-exported by axum so if thats all you need
+//! then you don't have to explicitly depend on hyper.
+//!
+//! Tower isn't strictly necessary either but helpful for testing. See the
+//! testing example in the repo to learn more about testing axum apps.
 //!
 //! # Examples
 //!
 //! The axum repo contains [a number of examples][examples] that show how to put all the
-//! pieces togehter.
+//! pieces together.
 //!
 //! # Feature flags
 //!
@@ -659,7 +652,7 @@
 //! The following optional features are available:
 //!
 //! - `ws`: Enables WebSockets support.
-//! - `headers`: Enables extracing typed headers via [`extract::TypedHeader`].
+//! - `headers`: Enables extracting typed headers via [`extract::TypedHeader`].
 //! - `multipart`: Enables parsing `multipart/form-data` requests with [`extract::Multipart`].
 //!
 //! [`tower`]: https://crates.io/crates/tower
@@ -671,8 +664,9 @@
 //! [`IntoResponse`]: crate::response::IntoResponse
 //! [`Timeout`]: tower::timeout::Timeout
 //! [examples]: https://github.com/tokio-rs/axum/tree/main/examples
+//! [`RoutingDsl::or`]: crate::routing::RoutingDsl::or
+//! [`axum::Server`]: hyper::server::Server
 
-#![doc(html_root_url = "https://docs.rs/axum/0.1.2")]
 #![warn(
     clippy::all,
     clippy::dbg_macro,
@@ -707,18 +701,12 @@
     missing_debug_implementations,
     missing_docs
 )]
-#![deny(unreachable_pub, broken_intra_doc_links, private_in_public)]
-#![allow(
-    elided_lifetimes_in_paths,
-    // TODO: Remove this once the MSRV bumps to 1.42.0 or above.
-    clippy::match_like_matches_macro,
-    clippy::type_complexity
-)]
+#![deny(unreachable_pub, private_in_public)]
+#![allow(elided_lifetimes_in_paths, clippy::type_complexity)]
 #![forbid(unsafe_code)]
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![cfg_attr(test, allow(clippy::float_cmp))]
 
-use self::body::Body;
 use http::Request;
 use routing::{EmptyRouter, Route};
 use tower::Service;
@@ -727,6 +715,8 @@ use tower::Service;
 pub(crate) mod macros;
 
 mod buffer;
+mod error;
+mod json;
 mod util;
 
 pub mod body;
@@ -736,15 +726,19 @@ pub mod response;
 pub mod routing;
 pub mod service;
 
-#[cfg(feature = "ws")]
-#[cfg_attr(docsrs, doc(cfg(feature = "ws")))]
-pub mod ws;
-
 #[cfg(test)]
 mod tests;
 
+#[doc(no_inline)]
 pub use async_trait::async_trait;
+#[doc(no_inline)]
+pub use http;
+#[doc(no_inline)]
+pub use hyper::Server;
+#[doc(no_inline)]
 pub use tower_http::add_extension::{AddExtension, AddExtensionLayer};
+
+pub use self::{error::Error, json::Json};
 
 pub mod prelude {
     //! Re-exports of important traits, types, and functions used with axum. Meant to be glob

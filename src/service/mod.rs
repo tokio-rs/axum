@@ -20,7 +20,7 @@
 //! let app = route("/old", service::get(redirect_service))
 //!     .route("/new", handler::get(handler));
 //! # async {
-//! # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+//! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 //! # };
 //! ```
 //!
@@ -71,7 +71,7 @@
 //!     .layer(some_backpressure_sensitive_middleware)
 //!     .service(app);
 //! # async {
-//! # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+//! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 //! # };
 //! ```
 //!
@@ -87,18 +87,14 @@
 //! [load shed]: tower::load_shed
 
 use crate::{
-    body::{box_body, BoxBody},
+    body::BoxBody,
     response::IntoResponse,
-    routing::{EmptyRouter, MethodFilter, RouteFuture},
+    routing::{future::RouteFuture, EmptyRouter, MethodFilter},
 };
 use bytes::Bytes;
-use futures_util::ready;
 use http::{Request, Response};
-use pin_project_lite::pin_project;
 use std::{
-    convert::Infallible,
     fmt,
-    future::Future,
     marker::PhantomData,
     task::{Context, Poll},
 };
@@ -113,7 +109,7 @@ pub fn any<S, B>(svc: S) -> OnMethod<BoxResponseBody<S, B>, EmptyRouter<S::Error
 where
     S: Service<Request<B>> + Clone,
 {
-    on(MethodFilter::Any, svc)
+    on(MethodFilter::all(), svc)
 }
 
 /// Route `CONNECT` requests to the given service.
@@ -123,7 +119,7 @@ pub fn connect<S, B>(svc: S) -> OnMethod<BoxResponseBody<S, B>, EmptyRouter<S::E
 where
     S: Service<Request<B>> + Clone,
 {
-    on(MethodFilter::Connect, svc)
+    on(MethodFilter::CONNECT, svc)
 }
 
 /// Route `DELETE` requests to the given service.
@@ -133,7 +129,7 @@ pub fn delete<S, B>(svc: S) -> OnMethod<BoxResponseBody<S, B>, EmptyRouter<S::Er
 where
     S: Service<Request<B>> + Clone,
 {
-    on(MethodFilter::Delete, svc)
+    on(MethodFilter::DELETE, svc)
 }
 
 /// Route `GET` requests to the given service.
@@ -153,14 +149,14 @@ where
 /// // Requests to `GET /` will go to `service`.
 /// let app = route("/", service::get(service));
 /// # async {
-/// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+/// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 /// # };
 /// ```
 pub fn get<S, B>(svc: S) -> OnMethod<BoxResponseBody<S, B>, EmptyRouter<S::Error>>
 where
     S: Service<Request<B>> + Clone,
 {
-    on(MethodFilter::Get, svc)
+    on(MethodFilter::GET, svc)
 }
 
 /// Route `HEAD` requests to the given service.
@@ -170,7 +166,7 @@ pub fn head<S, B>(svc: S) -> OnMethod<BoxResponseBody<S, B>, EmptyRouter<S::Erro
 where
     S: Service<Request<B>> + Clone,
 {
-    on(MethodFilter::Head, svc)
+    on(MethodFilter::HEAD, svc)
 }
 
 /// Route `OPTIONS` requests to the given service.
@@ -180,7 +176,7 @@ pub fn options<S, B>(svc: S) -> OnMethod<BoxResponseBody<S, B>, EmptyRouter<S::E
 where
     S: Service<Request<B>> + Clone,
 {
-    on(MethodFilter::Options, svc)
+    on(MethodFilter::OPTIONS, svc)
 }
 
 /// Route `PATCH` requests to the given service.
@@ -190,7 +186,7 @@ pub fn patch<S, B>(svc: S) -> OnMethod<BoxResponseBody<S, B>, EmptyRouter<S::Err
 where
     S: Service<Request<B>> + Clone,
 {
-    on(MethodFilter::Patch, svc)
+    on(MethodFilter::PATCH, svc)
 }
 
 /// Route `POST` requests to the given service.
@@ -200,7 +196,7 @@ pub fn post<S, B>(svc: S) -> OnMethod<BoxResponseBody<S, B>, EmptyRouter<S::Erro
 where
     S: Service<Request<B>> + Clone,
 {
-    on(MethodFilter::Post, svc)
+    on(MethodFilter::POST, svc)
 }
 
 /// Route `PUT` requests to the given service.
@@ -210,7 +206,7 @@ pub fn put<S, B>(svc: S) -> OnMethod<BoxResponseBody<S, B>, EmptyRouter<S::Error
 where
     S: Service<Request<B>> + Clone,
 {
-    on(MethodFilter::Put, svc)
+    on(MethodFilter::PUT, svc)
 }
 
 /// Route `TRACE` requests to the given service.
@@ -220,7 +216,7 @@ pub fn trace<S, B>(svc: S) -> OnMethod<BoxResponseBody<S, B>, EmptyRouter<S::Err
 where
     S: Service<Request<B>> + Clone,
 {
-    on(MethodFilter::Trace, svc)
+    on(MethodFilter::TRACE, svc)
 }
 
 /// Route requests with the given method to the service.
@@ -238,9 +234,9 @@ where
 /// });
 ///
 /// // Requests to `POST /` will go to `service`.
-/// let app = route("/", service::on(MethodFilter::Post, service));
+/// let app = route("/", service::on(MethodFilter::POST, service));
 /// # async {
-/// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+/// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 /// # };
 /// ```
 pub fn on<S, B>(
@@ -278,7 +274,7 @@ impl<S, F> OnMethod<S, F> {
     where
         T: Service<Request<B>> + Clone,
     {
-        self.on(MethodFilter::Any, svc)
+        self.on(MethodFilter::all(), svc)
     }
 
     /// Chain an additional service that will only accept `CONNECT` requests.
@@ -288,7 +284,7 @@ impl<S, F> OnMethod<S, F> {
     where
         T: Service<Request<B>> + Clone,
     {
-        self.on(MethodFilter::Connect, svc)
+        self.on(MethodFilter::CONNECT, svc)
     }
 
     /// Chain an additional service that will only accept `DELETE` requests.
@@ -298,7 +294,7 @@ impl<S, F> OnMethod<S, F> {
     where
         T: Service<Request<B>> + Clone,
     {
-        self.on(MethodFilter::Delete, svc)
+        self.on(MethodFilter::DELETE, svc)
     }
 
     /// Chain an additional service that will only accept `GET` requests.
@@ -323,14 +319,14 @@ impl<S, F> OnMethod<S, F> {
     /// // `other_service`.
     /// let app = route("/", service::post(service).get(other_service));
     /// # async {
-    /// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+    /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
     /// # };
     /// ```
     pub fn get<T, B>(self, svc: T) -> OnMethod<BoxResponseBody<T, B>, Self>
     where
         T: Service<Request<B>> + Clone,
     {
-        self.on(MethodFilter::Get, svc)
+        self.on(MethodFilter::GET, svc)
     }
 
     /// Chain an additional service that will only accept `HEAD` requests.
@@ -340,7 +336,7 @@ impl<S, F> OnMethod<S, F> {
     where
         T: Service<Request<B>> + Clone,
     {
-        self.on(MethodFilter::Head, svc)
+        self.on(MethodFilter::HEAD, svc)
     }
 
     /// Chain an additional service that will only accept `OPTIONS` requests.
@@ -350,7 +346,7 @@ impl<S, F> OnMethod<S, F> {
     where
         T: Service<Request<B>> + Clone,
     {
-        self.on(MethodFilter::Options, svc)
+        self.on(MethodFilter::OPTIONS, svc)
     }
 
     /// Chain an additional service that will only accept `PATCH` requests.
@@ -360,7 +356,7 @@ impl<S, F> OnMethod<S, F> {
     where
         T: Service<Request<B>> + Clone,
     {
-        self.on(MethodFilter::Patch, svc)
+        self.on(MethodFilter::PATCH, svc)
     }
 
     /// Chain an additional service that will only accept `POST` requests.
@@ -370,7 +366,7 @@ impl<S, F> OnMethod<S, F> {
     where
         T: Service<Request<B>> + Clone,
     {
-        self.on(MethodFilter::Post, svc)
+        self.on(MethodFilter::POST, svc)
     }
 
     /// Chain an additional service that will only accept `PUT` requests.
@@ -380,7 +376,7 @@ impl<S, F> OnMethod<S, F> {
     where
         T: Service<Request<B>> + Clone,
     {
-        self.on(MethodFilter::Put, svc)
+        self.on(MethodFilter::PUT, svc)
     }
 
     /// Chain an additional service that will only accept `TRACE` requests.
@@ -390,7 +386,7 @@ impl<S, F> OnMethod<S, F> {
     where
         T: Service<Request<B>> + Clone,
     {
-        self.on(MethodFilter::Trace, svc)
+        self.on(MethodFilter::TRACE, svc)
     }
 
     /// Chain an additional service that will accept requests matching the given
@@ -413,9 +409,9 @@ impl<S, F> OnMethod<S, F> {
     /// });
     ///
     /// // Requests to `DELETE /` will go to `service`
-    /// let app = route("/", service::on(MethodFilter::Delete, service));
+    /// let app = route("/", service::on(MethodFilter::DELETE, service));
     /// # async {
-    /// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+    /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
     /// # };
     /// ```
     pub fn on<T, B>(self, method: MethodFilter, svc: T) -> OnMethod<BoxResponseBody<T, B>, Self>
@@ -431,6 +427,26 @@ impl<S, F> OnMethod<S, F> {
             fallback: self,
         }
     }
+
+    /// Handle errors this service might produce, by mapping them to responses.
+    ///
+    /// Unhandled errors will close the connection without sending a response.
+    ///
+    /// Works similarly to [`RoutingDsl::handle_error`]. See that for more
+    /// details.
+    ///
+    /// [`RoutingDsl::handle_error`]: crate::routing::RoutingDsl::handle_error
+    pub fn handle_error<ReqBody, H, Res, E>(
+        self,
+        f: H,
+    ) -> HandleError<Self, H, ReqBody, HandleErrorFromService>
+    where
+        Self: Service<Request<ReqBody>, Response = Response<BoxBody>>,
+        H: FnOnce(<Self as Service<Request<ReqBody>>>::Error) -> Result<Res, E>,
+        Res: IntoResponse,
+    {
+        HandleError::new(self, f)
+    }
 }
 
 // this is identical to `routing::OnMethod`'s implementation. Would be nice to find a way to clean
@@ -442,20 +458,22 @@ where
 {
     type Response = Response<BoxBody>;
     type Error = S::Error;
-    type Future = RouteFuture<S, F, B>;
+    type Future = future::OnMethodFuture<S, F, B>;
 
     fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         Poll::Ready(Ok(()))
     }
 
     fn call(&mut self, req: Request<B>) -> Self::Future {
-        if self.method.matches(req.method()) {
+        let f = if self.method.matches(req.method()) {
             let fut = self.svc.clone().oneshot(req);
             RouteFuture::a(fut)
         } else {
             let fut = self.fallback.clone().oneshot(req);
             RouteFuture::b(fut)
-        }
+        };
+
+        future::OnMethodFuture { inner: f }
     }
 }
 
@@ -463,15 +481,15 @@ where
 ///
 /// Created with
 /// [`handler::Layered::handle_error`](crate::handler::Layered::handle_error) or
-/// [`routing::Layered::handle_error`](crate::routing::Layered::handle_error).
+/// [`routing::RoutingDsl::handle_error`](crate::routing::RoutingDsl::handle_error).
 /// See those methods for more details.
-pub struct HandleError<S, F, B> {
+pub struct HandleError<S, F, B, T> {
     inner: S,
     f: F,
-    _marker: PhantomData<fn() -> B>,
+    _marker: PhantomData<fn() -> (B, T)>,
 }
 
-impl<S, F, B> Clone for HandleError<S, F, B>
+impl<S, F, B, T> Clone for HandleError<S, F, B, T>
 where
     S: Clone,
     F: Clone,
@@ -481,11 +499,23 @@ where
     }
 }
 
-impl<S, F, B> crate::routing::RoutingDsl for HandleError<S, F, B> {}
+/// Marker type used for [`HandleError`] to indicate that it should implement
+/// [`RoutingDsl`](crate::routing::RoutingDsl).
+#[non_exhaustive]
+#[derive(Debug)]
+pub struct HandleErrorFromRouter;
 
-impl<S, F, B> crate::sealed::Sealed for HandleError<S, F, B> {}
+/// Marker type used for [`HandleError`] to indicate that it should _not_ implement
+/// [`RoutingDsl`](crate::routing::RoutingDsl).
+#[non_exhaustive]
+#[derive(Debug)]
+pub struct HandleErrorFromService;
 
-impl<S, F, B> HandleError<S, F, B> {
+impl<S, F, B> crate::routing::RoutingDsl for HandleError<S, F, B, HandleErrorFromRouter> {}
+
+impl<S, F, B> crate::sealed::Sealed for HandleError<S, F, B, HandleErrorFromRouter> {}
+
+impl<S, F, B, T> HandleError<S, F, B, T> {
     pub(crate) fn new(inner: S, f: F) -> Self {
         Self {
             inner,
@@ -495,7 +525,7 @@ impl<S, F, B> HandleError<S, F, B> {
     }
 }
 
-impl<S, F, B> fmt::Debug for HandleError<S, F, B>
+impl<S, F, B, T> fmt::Debug for HandleError<S, F, B, T>
 where
     S: fmt::Debug,
 {
@@ -507,7 +537,7 @@ where
     }
 }
 
-impl<S, F, ReqBody, ResBody, Res, E> Service<Request<ReqBody>> for HandleError<S, F, ReqBody>
+impl<S, F, ReqBody, ResBody, Res, E, T> Service<Request<ReqBody>> for HandleError<S, F, ReqBody, T>
 where
     S: Service<Request<ReqBody>, Response = Response<ResBody>> + Clone,
     F: FnOnce(S::Error) -> Result<Res, E> + Clone,
@@ -529,75 +559,6 @@ where
             inner: self.inner.clone().oneshot(req),
         }
     }
-}
-
-/// Extension trait that adds additional methods to [`Service`].
-pub trait ServiceExt<ReqBody, ResBody>:
-    Service<Request<ReqBody>, Response = Response<ResBody>>
-{
-    /// Handle errors from a service.
-    ///
-    /// `handle_error` takes a closure that will map errors from the service
-    /// into responses. The closure's return type must be `Result<T, E>` where
-    /// `T` implements [`IntoResponse`](crate::response::IntoResponse).
-    ///
-    /// # Example
-    ///
-    /// ```rust,no_run
-    /// use axum::{service::{self, ServiceExt}, prelude::*};
-    /// use http::{Response, StatusCode};
-    /// use tower::{service_fn, BoxError};
-    /// use std::convert::Infallible;
-    ///
-    /// // A service that might fail with `std::io::Error`
-    /// let service = service_fn(|_: Request<Body>| async {
-    ///     let res = Response::new(Body::empty());
-    ///     Ok::<_, std::io::Error>(res)
-    /// });
-    ///
-    /// let app = route(
-    ///     "/",
-    ///     service.handle_error(|error: std::io::Error| {
-    ///         Ok::<_, Infallible>((
-    ///             StatusCode::INTERNAL_SERVER_ERROR,
-    ///             error.to_string(),
-    ///         ))
-    ///     }),
-    /// );
-    /// #
-    /// # async {
-    /// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-    /// # };
-    /// ```
-    ///
-    /// It works similarly to [`routing::Layered::handle_error`]. See that for more details.
-    ///
-    /// [`routing::Layered::handle_error`]: crate::routing::Layered::handle_error
-    fn handle_error<F, Res, E>(self, f: F) -> HandleError<Self, F, ReqBody>
-    where
-        Self: Sized,
-        F: FnOnce(Self::Error) -> Result<Res, E>,
-        Res: IntoResponse,
-        ResBody: http_body::Body<Data = Bytes> + Send + Sync + 'static,
-        ResBody::Error: Into<BoxError> + Send + Sync + 'static,
-    {
-        HandleError::new(self, f)
-    }
-
-    /// Check that your service cannot fail.
-    ///
-    /// That is, its error type is [`Infallible`].
-    fn check_infallible(self) -> Self
-    where
-        Self: Service<Request<ReqBody>, Response = Response<ResBody>, Error = Infallible> + Sized,
-    {
-        self
-    }
-}
-
-impl<S, ReqBody, ResBody> ServiceExt<ReqBody, ResBody> for S where
-    S: Service<Request<ReqBody>, Response = Response<ResBody>>
-{
 }
 
 /// A [`Service`] that boxes response bodies.
@@ -637,7 +598,7 @@ where
 {
     type Response = Response<BoxBody>;
     type Error = S::Error;
-    type Future = BoxResponseBodyFuture<Oneshot<S, Request<ReqBody>>>;
+    type Future = future::BoxResponseBodyFuture<Oneshot<S, Request<ReqBody>>>;
 
     fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         Poll::Ready(Ok(()))
@@ -645,29 +606,24 @@ where
 
     fn call(&mut self, req: Request<ReqBody>) -> Self::Future {
         let fut = self.inner.clone().oneshot(req);
-        BoxResponseBodyFuture { future: fut }
+        future::BoxResponseBodyFuture { future: fut }
     }
 }
 
-pin_project! {
-    /// Response future for [`BoxResponseBody`].
-    #[derive(Debug)]
-    pub struct BoxResponseBodyFuture<F> {
-        #[pin] future: F,
-    }
-}
-
-impl<F, B, E> Future for BoxResponseBodyFuture<F>
-where
-    F: Future<Output = Result<Response<B>, E>>,
-    B: http_body::Body<Data = Bytes> + Send + Sync + 'static,
-    B::Error: Into<BoxError> + Send + Sync + 'static,
-{
-    type Output = Result<Response<BoxBody>, E>;
-
-    fn poll(self: std::pin::Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        let res = ready!(self.project().future.poll(cx))?;
-        let res = res.map(box_body);
-        Poll::Ready(Ok(res))
-    }
-}
+/// ```compile_fail
+/// use crate::{service::ServiceExt, prelude::*};
+/// use tower::service_fn;
+/// use hyper::Body;
+/// use http::{Request, Response, StatusCode};
+///
+/// let svc = service_fn(|_: Request<Body>| async {
+///     Ok::<_, hyper::Error>(Response::new(Body::empty()))
+/// })
+/// .handle_error::<_, _, hyper::Error>(|_| Ok(StatusCode::INTERNAL_SERVER_ERROR));
+///
+/// // `.route` should not compile, ie `HandleError` created from any
+/// // random service should not implement `RoutingDsl`
+/// svc.route::<_, Body>("/", get(|| async {}));
+/// ```
+#[allow(dead_code)]
+fn compile_fail_tests() {}

@@ -44,6 +44,12 @@ skip = [
     { name = "crypto-mac" },
     # async-session uses old version (dev dep)
     { name = "cfg-if", version = "=0.1.10" },
+    # async-graphql has a few outdated deps (dev dep)
+    { name = "sha-1", version = "=0.8.2" },
+    { name = "opaque-debug", version = "=0.2.3" },
+    { name = "generic-array", version = "=0.12.4" },
+    { name = "digest", version = "=0.8.1" },
+    { name = "block-buffer", version = "=0.7.3" },
 ]
 
 [sources]
