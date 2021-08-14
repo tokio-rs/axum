@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add `handle_error` to `service::OnMethod` ([#160](https://github.com/tokio-rs/axum/pull/160))
 - Add `NestedUri` for extracting request URI in nested services ([#161](https://github.com/tokio-rs/axum/pull/161))
 - Implement `FromRequest` for `http::Extensions`
+- Implement SSE as an `IntoResponse` instead of a service ([#98](https://github.com/tokio-rs/axum/pull/98))
 
 ## Breaking changes
 
@@ -62,6 +63,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - `service::OnMethod`
     - `handler::OnMethod`
     - `routing::Nested`
+- Remove `axum::sse` ([#98](https://github.com/tokio-rs/axum/pull/98))
 
 # 0.1.3 (06. August, 2021)
 

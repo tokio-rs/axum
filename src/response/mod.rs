@@ -16,6 +16,10 @@ use tower::{util::Either, BoxError};
 #[doc(no_inline)]
 pub use crate::Json;
 
+pub mod sse;
+
+pub use sse::{sse, Sse};
+
 /// Trait for generating responses.
 ///
 /// Types that implement `IntoResponse` can be returned from handlers.

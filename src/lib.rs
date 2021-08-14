@@ -725,7 +725,6 @@ pub mod handler;
 pub mod response;
 pub mod routing;
 pub mod service;
-pub mod sse;
 
 #[cfg(test)]
 mod tests;

@@ -33,6 +33,7 @@ tokio = { version = "1", features = ["time"] }
 tokio-util = "0.6"
 tower = { version = "0.4", features = ["util", "buffer", "make"] }
 tower-http = { version = "0.1", features = ["add-extension", "map-response-body"] }
+sync_wrapper = "0.1.1"
 
 # optional dependencies
 tokio-tungstenite = { optional = true, version = "0.14" }
