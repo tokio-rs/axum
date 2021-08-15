@@ -5,7 +5,10 @@ use crate::{
 };
 use bytes::Bytes;
 use futures_util::future::Ready;
-use http::{header::AUTHORIZATION, Request, Response, StatusCode, Uri};
+use http::{
+    header::{HeaderMap, AUTHORIZATION},
+    Request, Response, StatusCode, Uri,
+};
 use hyper::{Body, Server};
 use serde::Deserialize;
 use serde_json::json;
@@ -18,6 +21,7 @@ use std::{
 };
 use tower::{make::Shared, service_fn, BoxError, Service};
 
+mod get_to_head;
 mod handle_error;
 mod nest;
 mod or;

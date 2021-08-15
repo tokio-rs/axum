@@ -1,7 +1,8 @@
 //! Handler future types.
 
-use crate::body::BoxBody;
-use http::{Request, Response};
+use crate::body::{box_body, BoxBody};
+use http::{Method, Request, Response};
+use http_body::Empty;
 use pin_project_lite::pin_project;
 use std::{
     convert::Infallible,
@@ -27,6 +28,7 @@ pin_project! {
     {
         #[pin]
         pub(super) inner: crate::routing::future::RouteFuture<S, F, B>,
+        pub(super) req_method: Method,
     }
 }
 
@@ -38,6 +40,13 @@ where
     type Output = Result<Response<BoxBody>, S::Error>;
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        self.project().inner.poll(cx)
+        let this = self.project();
+        let response = futures_util::ready!(this.inner.poll(cx))?;
+        if this.req_method == &Method::HEAD {
+            let response = response.map(|_| box_body(Empty::new()));
+            Poll::Ready(Ok(response))
+        } else {
+            Poll::Ready(Ok(response))
+        }
     }
 }

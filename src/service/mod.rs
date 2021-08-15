@@ -152,11 +152,15 @@ where
 /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 /// # };
 /// ```
+///
+/// Note that `get` routes will also be called for `HEAD` requests but will have
+/// the response body removed. Make sure to add explicit `HEAD` routes
+/// afterwards.
 pub fn get<S, B>(svc: S) -> OnMethod<BoxResponseBody<S, B>, EmptyRouter<S::Error>>
 where
     S: Service<Request<B>> + Clone,
 {
-    on(MethodFilter::GET, svc)
+    on(MethodFilter::GET | MethodFilter::HEAD, svc)
 }
 
 /// Route `HEAD` requests to the given service.
@@ -322,11 +326,15 @@ impl<S, F> OnMethod<S, F> {
     /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
     /// # };
     /// ```
+    ///
+    /// Note that `get` routes will also be called for `HEAD` requests but will have
+    /// the response body removed. Make sure to add explicit `HEAD` routes
+    /// afterwards.
     pub fn get<T, B>(self, svc: T) -> OnMethod<BoxResponseBody<T, B>, Self>
     where
         T: Service<Request<B>> + Clone,
     {
-        self.on(MethodFilter::GET, svc)
+        self.on(MethodFilter::GET | MethodFilter::HEAD, svc)
     }
 
     /// Chain an additional service that will only accept `HEAD` requests.
@@ -465,6 +473,8 @@ where
     }
 
     fn call(&mut self, req: Request<B>) -> Self::Future {
+        let req_method = req.method().clone();
+
         let f = if self.method.matches(req.method()) {
             let fut = self.svc.clone().oneshot(req);
             RouteFuture::a(fut)
@@ -473,7 +483,10 @@ where
             RouteFuture::b(fut)
         };
 
-        future::OnMethodFuture { inner: f }
+        future::OnMethodFuture {
+            inner: f,
+            req_method,
+        }
     }
 }
 

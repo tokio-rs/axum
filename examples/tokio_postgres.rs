@@ -4,8 +4,13 @@
 //! cargo run --example tokio_postgres
 //! ```
 
-use axum::{extract::Extension, prelude::*, AddExtensionLayer};
-use bb8::Pool;
+use axum::{
+    async_trait,
+    extract::{Extension, FromRequest, RequestParts},
+    prelude::*,
+    AddExtensionLayer,
+};
+use bb8::{Pool, PooledConnection};
 use bb8_postgres::PostgresConnectionManager;
 use http::StatusCode;
 use std::net::SocketAddr;
@@ -26,7 +31,11 @@ async fn main() {
     let pool = Pool::builder().build(manager).await.unwrap();
 
     // build our application with some routes
-    let app = route("/", get(handler)).layer(AddExtensionLayer::new(pool));
+    let app = route(
+        "/",
+        get(using_connection_pool_extractor).post(using_connection_extractor),
+    )
+    .layer(AddExtensionLayer::new(pool));
 
     // run it with hyper
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
@@ -39,16 +48,46 @@ async fn main() {
 
 type ConnectionPool = Pool<PostgresConnectionManager<NoTls>>;
 
-async fn handler(
+// we can exact the connection pool with `Extension`
+async fn using_connection_pool_extractor(
     Extension(pool): Extension<ConnectionPool>,
 ) -> Result<String, (StatusCode, String)> {
-    // We cannot get a connection directly via an extractor because
-    // `bb8::PooledConnection` contains a reference to the pool and
-    // `extract::FromRequest` cannot return types that contain references.
-    //
-    // So therefore we have to get a connection from the pool manually.
     let conn = pool.get().await.map_err(internal_error)?;
 
+    let row = conn
+        .query_one("select 1 + 1", &[])
+        .await
+        .map_err(internal_error)?;
+    let two: i32 = row.try_get(0).map_err(internal_error)?;
+
+    Ok(two.to_string())
+}
+
+// we can also write a custom extractor that grabs a connection from the pool
+// which setup is appropriate depends on your application
+struct DatabaseConnection(PooledConnection<'static, PostgresConnectionManager<NoTls>>);
+
+#[async_trait]
+impl<B> FromRequest<B> for DatabaseConnection
+where
+    B: Send,
+{
+    type Rejection = (StatusCode, String);
+
+    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+        let Extension(pool) = Extension::<ConnectionPool>::from_request(req)
+            .await
+            .map_err(internal_error)?;
+
+        let conn = pool.get_owned().await.map_err(internal_error)?;
+
+        Ok(Self(conn))
+    }
+}
+
+async fn using_connection_extractor(
+    DatabaseConnection(conn): DatabaseConnection,
+) -> Result<String, (StatusCode, String)> {
     let row = conn
         .query_one("select 1 + 1", &[])
         .await
