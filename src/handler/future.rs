@@ -19,7 +19,10 @@ pin_project! {
         F: Service<Request<B>>
     {
         #[pin]
-        pub(super) inner: Either<BoxFuture<'static, Result<Response<BoxBody>, F::Error>>, Oneshot<F, Request<B>>>,
+        pub(super) inner: Either<
+            BoxFuture<'static, Result<Response<BoxBody>, F::Error>>,
+            Oneshot<F, Request<B>>,
+        >,
         pub(super) req_method: Method,
     }
 }

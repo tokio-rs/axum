@@ -105,7 +105,7 @@ pub mod future;
 /// Route requests to the given service regardless of the HTTP method.
 ///
 /// See [`get`] for an example.
-pub fn any<S, B>(svc: S) -> OnMethod<BoxResponseBody<S, B>, EmptyRouter<S::Error>>
+pub fn any<S, B>(svc: S) -> OnMethod<S, EmptyRouter<S::Error>, B>
 where
     S: Service<Request<B>> + Clone,
 {
@@ -115,7 +115,7 @@ where
 /// Route `CONNECT` requests to the given service.
 ///
 /// See [`get`] for an example.
-pub fn connect<S, B>(svc: S) -> OnMethod<BoxResponseBody<S, B>, EmptyRouter<S::Error>>
+pub fn connect<S, B>(svc: S) -> OnMethod<S, EmptyRouter<S::Error>, B>
 where
     S: Service<Request<B>> + Clone,
 {
@@ -125,7 +125,7 @@ where
 /// Route `DELETE` requests to the given service.
 ///
 /// See [`get`] for an example.
-pub fn delete<S, B>(svc: S) -> OnMethod<BoxResponseBody<S, B>, EmptyRouter<S::Error>>
+pub fn delete<S, B>(svc: S) -> OnMethod<S, EmptyRouter<S::Error>, B>
 where
     S: Service<Request<B>> + Clone,
 {
@@ -156,7 +156,7 @@ where
 /// Note that `get` routes will also be called for `HEAD` requests but will have
 /// the response body removed. Make sure to add explicit `HEAD` routes
 /// afterwards.
-pub fn get<S, B>(svc: S) -> OnMethod<BoxResponseBody<S, B>, EmptyRouter<S::Error>>
+pub fn get<S, B>(svc: S) -> OnMethod<S, EmptyRouter<S::Error>, B>
 where
     S: Service<Request<B>> + Clone,
 {
@@ -166,7 +166,7 @@ where
 /// Route `HEAD` requests to the given service.
 ///
 /// See [`get`] for an example.
-pub fn head<S, B>(svc: S) -> OnMethod<BoxResponseBody<S, B>, EmptyRouter<S::Error>>
+pub fn head<S, B>(svc: S) -> OnMethod<S, EmptyRouter<S::Error>, B>
 where
     S: Service<Request<B>> + Clone,
 {
@@ -176,7 +176,7 @@ where
 /// Route `OPTIONS` requests to the given service.
 ///
 /// See [`get`] for an example.
-pub fn options<S, B>(svc: S) -> OnMethod<BoxResponseBody<S, B>, EmptyRouter<S::Error>>
+pub fn options<S, B>(svc: S) -> OnMethod<S, EmptyRouter<S::Error>, B>
 where
     S: Service<Request<B>> + Clone,
 {
@@ -186,7 +186,7 @@ where
 /// Route `PATCH` requests to the given service.
 ///
 /// See [`get`] for an example.
-pub fn patch<S, B>(svc: S) -> OnMethod<BoxResponseBody<S, B>, EmptyRouter<S::Error>>
+pub fn patch<S, B>(svc: S) -> OnMethod<S, EmptyRouter<S::Error>, B>
 where
     S: Service<Request<B>> + Clone,
 {
@@ -196,7 +196,7 @@ where
 /// Route `POST` requests to the given service.
 ///
 /// See [`get`] for an example.
-pub fn post<S, B>(svc: S) -> OnMethod<BoxResponseBody<S, B>, EmptyRouter<S::Error>>
+pub fn post<S, B>(svc: S) -> OnMethod<S, EmptyRouter<S::Error>, B>
 where
     S: Service<Request<B>> + Clone,
 {
@@ -206,7 +206,7 @@ where
 /// Route `PUT` requests to the given service.
 ///
 /// See [`get`] for an example.
-pub fn put<S, B>(svc: S) -> OnMethod<BoxResponseBody<S, B>, EmptyRouter<S::Error>>
+pub fn put<S, B>(svc: S) -> OnMethod<S, EmptyRouter<S::Error>, B>
 where
     S: Service<Request<B>> + Clone,
 {
@@ -216,7 +216,7 @@ where
 /// Route `TRACE` requests to the given service.
 ///
 /// See [`get`] for an example.
-pub fn trace<S, B>(svc: S) -> OnMethod<BoxResponseBody<S, B>, EmptyRouter<S::Error>>
+pub fn trace<S, B>(svc: S) -> OnMethod<S, EmptyRouter<S::Error>, B>
 where
     S: Service<Request<B>> + Clone,
 {
@@ -243,38 +243,49 @@ where
 /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 /// # };
 /// ```
-pub fn on<S, B>(
-    method: MethodFilter,
-    svc: S,
-) -> OnMethod<BoxResponseBody<S, B>, EmptyRouter<S::Error>>
+pub fn on<S, B>(method: MethodFilter, svc: S) -> OnMethod<S, EmptyRouter<S::Error>, B>
 where
     S: Service<Request<B>> + Clone,
 {
     OnMethod {
         method,
-        svc: BoxResponseBody {
-            inner: svc,
-            _request_body: PhantomData,
-        },
+        svc,
         fallback: EmptyRouter::method_not_allowed(),
+        _request_body: PhantomData,
     }
 }
 
 /// A [`Service`] that accepts requests based on a [`MethodFilter`] and allows
 /// chaining additional services.
-#[derive(Clone, Debug)]
-pub struct OnMethod<S, F> {
+#[derive(Debug)] // TODO(david): don't require debug for B
+pub struct OnMethod<S, F, B> {
     pub(crate) method: MethodFilter,
     pub(crate) svc: S,
     pub(crate) fallback: F,
+    pub(crate) _request_body: PhantomData<fn() -> B>,
 }
 
-impl<S, F> OnMethod<S, F> {
+impl<S, F, B> Clone for OnMethod<S, F, B>
+where
+    S: Clone,
+    F: Clone,
+{
+    fn clone(&self) -> Self {
+        Self {
+            method: self.method,
+            svc: self.svc.clone(),
+            fallback: self.fallback.clone(),
+            _request_body: PhantomData,
+        }
+    }
+}
+
+impl<S, F, B> OnMethod<S, F, B> {
     /// Chain an additional service that will accept all requests regardless of
     /// its HTTP method.
     ///
     /// See [`OnMethod::get`] for an example.
-    pub fn any<T, B>(self, svc: T) -> OnMethod<BoxResponseBody<T, B>, Self>
+    pub fn any<T>(self, svc: T) -> OnMethod<T, Self, B>
     where
         T: Service<Request<B>> + Clone,
     {
@@ -284,7 +295,7 @@ impl<S, F> OnMethod<S, F> {
     /// Chain an additional service that will only accept `CONNECT` requests.
     ///
     /// See [`OnMethod::get`] for an example.
-    pub fn connect<T, B>(self, svc: T) -> OnMethod<BoxResponseBody<T, B>, Self>
+    pub fn connect<T>(self, svc: T) -> OnMethod<T, Self, B>
     where
         T: Service<Request<B>> + Clone,
     {
@@ -294,7 +305,7 @@ impl<S, F> OnMethod<S, F> {
     /// Chain an additional service that will only accept `DELETE` requests.
     ///
     /// See [`OnMethod::get`] for an example.
-    pub fn delete<T, B>(self, svc: T) -> OnMethod<BoxResponseBody<T, B>, Self>
+    pub fn delete<T>(self, svc: T) -> OnMethod<T, Self, B>
     where
         T: Service<Request<B>> + Clone,
     {
@@ -330,7 +341,7 @@ impl<S, F> OnMethod<S, F> {
     /// Note that `get` routes will also be called for `HEAD` requests but will have
     /// the response body removed. Make sure to add explicit `HEAD` routes
     /// afterwards.
-    pub fn get<T, B>(self, svc: T) -> OnMethod<BoxResponseBody<T, B>, Self>
+    pub fn get<T>(self, svc: T) -> OnMethod<T, Self, B>
     where
         T: Service<Request<B>> + Clone,
     {
@@ -340,7 +351,7 @@ impl<S, F> OnMethod<S, F> {
     /// Chain an additional service that will only accept `HEAD` requests.
     ///
     /// See [`OnMethod::get`] for an example.
-    pub fn head<T, B>(self, svc: T) -> OnMethod<BoxResponseBody<T, B>, Self>
+    pub fn head<T>(self, svc: T) -> OnMethod<T, Self, B>
     where
         T: Service<Request<B>> + Clone,
     {
@@ -350,7 +361,7 @@ impl<S, F> OnMethod<S, F> {
     /// Chain an additional service that will only accept `OPTIONS` requests.
     ///
     /// See [`OnMethod::get`] for an example.
-    pub fn options<T, B>(self, svc: T) -> OnMethod<BoxResponseBody<T, B>, Self>
+    pub fn options<T>(self, svc: T) -> OnMethod<T, Self, B>
     where
         T: Service<Request<B>> + Clone,
     {
@@ -360,7 +371,7 @@ impl<S, F> OnMethod<S, F> {
     /// Chain an additional service that will only accept `PATCH` requests.
     ///
     /// See [`OnMethod::get`] for an example.
-    pub fn patch<T, B>(self, svc: T) -> OnMethod<BoxResponseBody<T, B>, Self>
+    pub fn patch<T>(self, svc: T) -> OnMethod<T, Self, B>
     where
         T: Service<Request<B>> + Clone,
     {
@@ -370,7 +381,7 @@ impl<S, F> OnMethod<S, F> {
     /// Chain an additional service that will only accept `POST` requests.
     ///
     /// See [`OnMethod::get`] for an example.
-    pub fn post<T, B>(self, svc: T) -> OnMethod<BoxResponseBody<T, B>, Self>
+    pub fn post<T>(self, svc: T) -> OnMethod<T, Self, B>
     where
         T: Service<Request<B>> + Clone,
     {
@@ -380,7 +391,7 @@ impl<S, F> OnMethod<S, F> {
     /// Chain an additional service that will only accept `PUT` requests.
     ///
     /// See [`OnMethod::get`] for an example.
-    pub fn put<T, B>(self, svc: T) -> OnMethod<BoxResponseBody<T, B>, Self>
+    pub fn put<T>(self, svc: T) -> OnMethod<T, Self, B>
     where
         T: Service<Request<B>> + Clone,
     {
@@ -390,7 +401,7 @@ impl<S, F> OnMethod<S, F> {
     /// Chain an additional service that will only accept `TRACE` requests.
     ///
     /// See [`OnMethod::get`] for an example.
-    pub fn trace<T, B>(self, svc: T) -> OnMethod<BoxResponseBody<T, B>, Self>
+    pub fn trace<T>(self, svc: T) -> OnMethod<T, Self, B>
     where
         T: Service<Request<B>> + Clone,
     {
@@ -422,17 +433,15 @@ impl<S, F> OnMethod<S, F> {
     /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
     /// # };
     /// ```
-    pub fn on<T, B>(self, method: MethodFilter, svc: T) -> OnMethod<BoxResponseBody<T, B>, Self>
+    pub fn on<T>(self, method: MethodFilter, svc: T) -> OnMethod<T, Self, B>
     where
         T: Service<Request<B>> + Clone,
     {
         OnMethod {
             method,
-            svc: BoxResponseBody {
-                inner: svc,
-                _request_body: PhantomData,
-            },
+            svc,
             fallback: self,
+            _request_body: PhantomData,
         }
     }
 
@@ -459,9 +468,11 @@ impl<S, F> OnMethod<S, F> {
 
 // this is identical to `routing::OnMethod`'s implementation. Would be nice to find a way to clean
 // that up, but not sure its possible.
-impl<S, F, B> Service<Request<B>> for OnMethod<S, F>
+impl<S, F, B, ResBody> Service<Request<B>> for OnMethod<S, F, B>
 where
-    S: Service<Request<B>, Response = Response<BoxBody>> + Clone,
+    S: Service<Request<B>, Response = Response<ResBody>> + Clone,
+    ResBody: http_body::Body<Data = Bytes> + Send + Sync + 'static,
+    ResBody::Error: Into<BoxError>,
     F: Service<Request<B>, Response = Response<BoxBody>, Error = S::Error> + Clone,
 {
     type Response = Response<BoxBody>;
@@ -473,14 +484,16 @@ where
     }
 
     fn call(&mut self, req: Request<B>) -> Self::Future {
+        use crate::util::Either;
+
         let req_method = req.method().clone();
 
         let f = if self.method.matches(req.method()) {
             let fut = self.svc.clone().oneshot(req);
-            RouteFuture::a(fut)
+            Either::A { inner: fut }
         } else {
             let fut = self.fallback.clone().oneshot(req);
-            RouteFuture::b(fut)
+            Either::B { inner: fut }
         };
 
         future::OnMethodFuture {
@@ -571,55 +584,6 @@ where
             f: Some(self.f.clone()),
             inner: self.inner.clone().oneshot(req),
         }
-    }
-}
-
-/// A [`Service`] that boxes response bodies.
-pub struct BoxResponseBody<S, B> {
-    inner: S,
-    _request_body: PhantomData<fn() -> B>,
-}
-
-impl<S, B> Clone for BoxResponseBody<S, B>
-where
-    S: Clone,
-{
-    fn clone(&self) -> Self {
-        Self {
-            inner: self.inner.clone(),
-            _request_body: PhantomData,
-        }
-    }
-}
-
-impl<S, B> fmt::Debug for BoxResponseBody<S, B>
-where
-    S: fmt::Debug,
-{
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("BoxResponseBody")
-            .field("inner", &self.inner)
-            .finish()
-    }
-}
-
-impl<S, ReqBody, ResBody> Service<Request<ReqBody>> for BoxResponseBody<S, ReqBody>
-where
-    S: Service<Request<ReqBody>, Response = Response<ResBody>> + Clone,
-    ResBody: http_body::Body<Data = Bytes> + Send + Sync + 'static,
-    ResBody::Error: Into<BoxError> + Send + Sync + 'static,
-{
-    type Response = Response<BoxBody>;
-    type Error = S::Error;
-    type Future = future::BoxResponseBodyFuture<Oneshot<S, Request<ReqBody>>>;
-
-    fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        Poll::Ready(Ok(()))
-    }
-
-    fn call(&mut self, req: Request<ReqBody>) -> Self::Future {
-        let fut = self.inner.clone().oneshot(req);
-        future::BoxResponseBodyFuture { future: fut }
     }
 }
 

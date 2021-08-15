@@ -4,12 +4,12 @@ use crate::{
     body::{box_body, BoxBody},
     extract::FromRequest,
     response::IntoResponse,
-    routing::{future::RouteFuture, EmptyRouter, MethodFilter},
+    routing::{EmptyRouter, MethodFilter},
     service::{HandleError, HandleErrorFromRouter},
 };
 use async_trait::async_trait;
 use bytes::Bytes;
-use futures_util::future::{BoxFuture, Either};
+use futures_util::future::Either;
 use http::{Request, Response};
 use std::{
     convert::Infallible,
@@ -193,7 +193,7 @@ pub(crate) mod sealed {
 ///
 /// See the [module docs](crate::handler) for more details.
 #[async_trait]
-pub trait Handler<B, In>: Clone + Send + Sized + 'static {
+pub trait Handler<B, T>: Clone + Send + Sized + 'static {
     // This seals the trait. We cannot use the regular "sealed super trait"
     // approach due to coherence.
     #[doc(hidden)]
@@ -233,9 +233,9 @@ pub trait Handler<B, In>: Clone + Send + Sized + 'static {
     ///
     /// When adding middleware that might fail its recommended to handle those
     /// errors. See [`Layered::handle_error`] for more details.
-    fn layer<L>(self, layer: L) -> Layered<L::Service, In>
+    fn layer<L>(self, layer: L) -> Layered<L::Service, T>
     where
-        L: Layer<OnMethod<Self, B, In, EmptyRouter>>,
+        L: Layer<OnMethod<Self, B, T, EmptyRouter>>,
     {
         Layered::new(layer.layer(any(self)))
     }
@@ -396,14 +396,13 @@ pub struct OnMethod<H, B, T, F> {
 
 impl<H, B, T, F> fmt::Debug for OnMethod<H, B, T, F>
 where
-    H: fmt::Debug,
     T: fmt::Debug,
     F: fmt::Debug,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("OnMethod")
             .field("method", &self.method)
-            .field("handler", &self.handler)
+            .field("handler", &format_args!("{}", std::any::type_name::<H>()))
             .field("fallback", &self.fallback)
             .finish()
     }
