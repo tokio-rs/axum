@@ -79,11 +79,15 @@ where
 /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 /// # };
 /// ```
+///
+/// Note that `get` routes will also be called for `HEAD` requests but will have
+/// the response body removed. Make sure to add explicit `HEAD` routes
+/// afterwards.
 pub fn get<H, B, T>(handler: H) -> OnMethod<IntoService<H, B, T>, EmptyRouter>
 where
     H: Handler<B, T>,
 {
-    on(MethodFilter::GET, handler)
+    on(MethodFilter::GET | MethodFilter::HEAD, handler)
 }
 
 /// Route `HEAD` requests to the given handler.
@@ -508,11 +512,15 @@ impl<S, F> OnMethod<S, F> {
     /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
     /// # };
     /// ```
+    ///
+    /// Note that `get` routes will also be called for `HEAD` requests but will have
+    /// the response body removed. Make sure to add explicit `HEAD` routes
+    /// afterwards.
     pub fn get<H, B, T>(self, handler: H) -> OnMethod<IntoService<H, B, T>, Self>
     where
         H: Handler<B, T>,
     {
-        self.on(MethodFilter::GET, handler)
+        self.on(MethodFilter::GET | MethodFilter::HEAD, handler)
     }
 
     /// Chain an additional handler that will only accept `HEAD` requests.
@@ -624,6 +632,8 @@ where
     }
 
     fn call(&mut self, req: Request<B>) -> Self::Future {
+        let req_method = req.method().clone();
+
         let f = if self.method.matches(req.method()) {
             let fut = self.svc.clone().oneshot(req);
             RouteFuture::a(fut)
@@ -632,6 +642,9 @@ where
             RouteFuture::b(fut)
         };
 
-        future::OnMethodFuture { inner: f }
+        future::OnMethodFuture {
+            inner: f,
+            req_method,
+        }
     }
 }
