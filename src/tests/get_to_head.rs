@@ -39,17 +39,19 @@ mod for_handlers {
 mod for_services {
     use super::*;
     use crate::service::get;
+    use headers::HeaderValue;
 
     #[tokio::test]
     async fn get_handles_head() {
         let app = route(
             "/",
-            get((|| async {
-                let mut headers = HeaderMap::new();
-                headers.insert("x-some-header", "foobar".parse().unwrap());
-                (headers, "you shouldn't see this")
-            })
-            .into_service()),
+            get(service_fn(|req: Request<Body>| async move {
+                let res = Response::builder()
+                    .header("x-some-header", "foobar".parse::<HeaderValue>().unwrap())
+                    .body(Body::from("you shouldn't see this"))
+                    .unwrap();
+                Ok::<_, Infallible>(res)
+            })),
         );
 
         // don't use reqwest because it always strips bodies from HEAD responses

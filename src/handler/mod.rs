@@ -9,6 +9,7 @@ use crate::{
 };
 use async_trait::async_trait;
 use bytes::Bytes;
+use futures_util::future::{BoxFuture, Either};
 use http::{Request, Response};
 use std::{
     convert::Infallible,
@@ -37,7 +38,7 @@ pub mod future;
 /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 /// # };
 /// ```
-pub fn any<H, B, T>(handler: H) -> OnMethod<IntoService<H, B, T>, EmptyRouter>
+pub fn any<H, B, T>(handler: H) -> OnMethod<H, B, T, EmptyRouter>
 where
     H: Handler<B, T>,
 {
@@ -47,7 +48,7 @@ where
 /// Route `CONNECT` requests to the given handler.
 ///
 /// See [`get`] for an example.
-pub fn connect<H, B, T>(handler: H) -> OnMethod<IntoService<H, B, T>, EmptyRouter>
+pub fn connect<H, B, T>(handler: H) -> OnMethod<H, B, T, EmptyRouter>
 where
     H: Handler<B, T>,
 {
@@ -57,7 +58,7 @@ where
 /// Route `DELETE` requests to the given handler.
 ///
 /// See [`get`] for an example.
-pub fn delete<H, B, T>(handler: H) -> OnMethod<IntoService<H, B, T>, EmptyRouter>
+pub fn delete<H, B, T>(handler: H) -> OnMethod<H, B, T, EmptyRouter>
 where
     H: Handler<B, T>,
 {
@@ -83,7 +84,7 @@ where
 /// Note that `get` routes will also be called for `HEAD` requests but will have
 /// the response body removed. Make sure to add explicit `HEAD` routes
 /// afterwards.
-pub fn get<H, B, T>(handler: H) -> OnMethod<IntoService<H, B, T>, EmptyRouter>
+pub fn get<H, B, T>(handler: H) -> OnMethod<H, B, T, EmptyRouter>
 where
     H: Handler<B, T>,
 {
@@ -93,7 +94,7 @@ where
 /// Route `HEAD` requests to the given handler.
 ///
 /// See [`get`] for an example.
-pub fn head<H, B, T>(handler: H) -> OnMethod<IntoService<H, B, T>, EmptyRouter>
+pub fn head<H, B, T>(handler: H) -> OnMethod<H, B, T, EmptyRouter>
 where
     H: Handler<B, T>,
 {
@@ -103,7 +104,7 @@ where
 /// Route `OPTIONS` requests to the given handler.
 ///
 /// See [`get`] for an example.
-pub fn options<H, B, T>(handler: H) -> OnMethod<IntoService<H, B, T>, EmptyRouter>
+pub fn options<H, B, T>(handler: H) -> OnMethod<H, B, T, EmptyRouter>
 where
     H: Handler<B, T>,
 {
@@ -113,7 +114,7 @@ where
 /// Route `PATCH` requests to the given handler.
 ///
 /// See [`get`] for an example.
-pub fn patch<H, B, T>(handler: H) -> OnMethod<IntoService<H, B, T>, EmptyRouter>
+pub fn patch<H, B, T>(handler: H) -> OnMethod<H, B, T, EmptyRouter>
 where
     H: Handler<B, T>,
 {
@@ -123,7 +124,7 @@ where
 /// Route `POST` requests to the given handler.
 ///
 /// See [`get`] for an example.
-pub fn post<H, B, T>(handler: H) -> OnMethod<IntoService<H, B, T>, EmptyRouter>
+pub fn post<H, B, T>(handler: H) -> OnMethod<H, B, T, EmptyRouter>
 where
     H: Handler<B, T>,
 {
@@ -133,7 +134,7 @@ where
 /// Route `PUT` requests to the given handler.
 ///
 /// See [`get`] for an example.
-pub fn put<H, B, T>(handler: H) -> OnMethod<IntoService<H, B, T>, EmptyRouter>
+pub fn put<H, B, T>(handler: H) -> OnMethod<H, B, T, EmptyRouter>
 where
     H: Handler<B, T>,
 {
@@ -143,7 +144,7 @@ where
 /// Route `TRACE` requests to the given handler.
 ///
 /// See [`get`] for an example.
-pub fn trace<H, B, T>(handler: H) -> OnMethod<IntoService<H, B, T>, EmptyRouter>
+pub fn trace<H, B, T>(handler: H) -> OnMethod<H, B, T, EmptyRouter>
 where
     H: Handler<B, T>,
 {
@@ -165,14 +166,15 @@ where
 /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 /// # };
 /// ```
-pub fn on<H, B, T>(method: MethodFilter, handler: H) -> OnMethod<IntoService<H, B, T>, EmptyRouter>
+pub fn on<H, B, T>(method: MethodFilter, handler: H) -> OnMethod<H, B, T, EmptyRouter>
 where
     H: Handler<B, T>,
 {
     OnMethod {
         method,
-        svc: handler.into_service(),
+        handler,
         fallback: EmptyRouter::method_not_allowed(),
+        _marker: PhantomData,
     }
 }
 
@@ -191,7 +193,7 @@ pub(crate) mod sealed {
 ///
 /// See the [module docs](crate::handler) for more details.
 #[async_trait]
-pub trait Handler<B, In>: Sized {
+pub trait Handler<B, In>: Clone + Send + Sized + 'static {
     // This seals the trait. We cannot use the regular "sealed super trait"
     // approach due to coherence.
     #[doc(hidden)]
@@ -233,21 +235,16 @@ pub trait Handler<B, In>: Sized {
     /// errors. See [`Layered::handle_error`] for more details.
     fn layer<L>(self, layer: L) -> Layered<L::Service, In>
     where
-        L: Layer<IntoService<Self, B, In>>,
+        L: Layer<OnMethod<Self, B, In, EmptyRouter>>,
     {
-        Layered::new(layer.layer(IntoService::new(self)))
-    }
-
-    /// Convert the handler into a [`Service`].
-    fn into_service(self) -> IntoService<Self, B, In> {
-        IntoService::new(self)
+        Layered::new(layer.layer(any(self)))
     }
 }
 
 #[async_trait]
 impl<F, Fut, Res, B> Handler<B, ()> for F
 where
-    F: FnOnce() -> Fut + Send + Sync,
+    F: FnOnce() -> Fut + Clone + Send + Sync + 'static,
     Fut: Future<Output = Res> + Send,
     Res: IntoResponse,
     B: Send + 'static,
@@ -268,7 +265,7 @@ macro_rules! impl_handler {
         #[allow(non_snake_case)]
         impl<F, Fut, B, Res, $head, $($tail,)*> Handler<B, ($head, $($tail,)*)> for F
         where
-            F: FnOnce($head, $($tail,)*) -> Fut + Send + Sync,
+            F: FnOnce($head, $($tail,)*) -> Fut + Clone + Send + Sync + 'static,
             Fut: Future<Output = Res> + Send,
             B: Send + 'static,
             Res: IntoResponse,
@@ -334,9 +331,10 @@ where
 #[async_trait]
 impl<S, T, ReqBody, ResBody> Handler<ReqBody, T> for Layered<S, T>
 where
-    S: Service<Request<ReqBody>, Response = Response<ResBody>> + Send,
+    S: Service<Request<ReqBody>, Response = Response<ResBody>> + Clone + Send + 'static,
     S::Error: IntoResponse,
     S::Future: Send,
+    T: 'static,
     ReqBody: Send + 'static,
     ResBody: http_body::Body<Data = Bytes> + Send + Sync + 'static,
     ResBody::Error: Into<BoxError> + Send + Sync + 'static,
@@ -387,89 +385,60 @@ impl<S, T> Layered<S, T> {
     }
 }
 
-/// An adapter that makes a [`Handler`] into a [`Service`].
-///
-/// Created with [`Handler::into_service`].
-pub struct IntoService<H, B, T> {
-    handler: H,
-    _marker: PhantomData<fn() -> (B, T)>,
+/// A handler [`Service`] that accepts requests based on a [`MethodFilter`] and
+/// allows chaining additional handlers.
+pub struct OnMethod<H, B, T, F> {
+    pub(crate) method: MethodFilter,
+    pub(crate) handler: H,
+    pub(crate) fallback: F,
+    pub(crate) _marker: PhantomData<fn() -> (B, T)>,
 }
 
-impl<H, B, T> IntoService<H, B, T> {
-    fn new(handler: H) -> Self {
-        Self {
-            handler,
-            _marker: PhantomData,
-        }
-    }
-}
-
-impl<H, B, T> fmt::Debug for IntoService<H, B, T>
+impl<H, B, T, F> fmt::Debug for OnMethod<H, B, T, F>
 where
     H: fmt::Debug,
+    T: fmt::Debug,
+    F: fmt::Debug,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("IntoService")
+        f.debug_struct("OnMethod")
+            .field("method", &self.method)
             .field("handler", &self.handler)
+            .field("fallback", &self.fallback)
             .finish()
     }
 }
 
-impl<H, B, T> Clone for IntoService<H, B, T>
+impl<H, B, T, F> Clone for OnMethod<H, B, T, F>
 where
     H: Clone,
+    F: Clone,
 {
     fn clone(&self) -> Self {
         Self {
+            method: self.method,
             handler: self.handler.clone(),
+            fallback: self.fallback.clone(),
             _marker: PhantomData,
         }
     }
 }
 
-impl<H, T, B> Service<Request<B>> for IntoService<H, B, T>
+impl<H, B, T, F> Copy for OnMethod<H, B, T, F>
 where
-    H: Handler<B, T> + Clone + Send + 'static,
-    B: Send + 'static,
+    H: Copy,
+    F: Copy,
 {
-    type Response = Response<BoxBody>;
-    type Error = Infallible;
-    type Future = future::IntoServiceFuture;
-
-    fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        // `IntoService` can only be constructed from async functions which are always ready, or from
-        // `Layered` which bufferes in `<Layered as Handler>::call` and is therefore also always
-        // ready.
-        Poll::Ready(Ok(()))
-    }
-
-    fn call(&mut self, req: Request<B>) -> Self::Future {
-        let handler = self.handler.clone();
-        let future = Box::pin(async move {
-            let res = Handler::call(handler, req).await;
-            Ok(res)
-        });
-        future::IntoServiceFuture { future }
-    }
 }
 
-/// A handler [`Service`] that accepts requests based on a [`MethodFilter`] and
-/// allows chaining additional handlers.
-#[derive(Debug, Clone, Copy)]
-pub struct OnMethod<S, F> {
-    pub(crate) method: MethodFilter,
-    pub(crate) svc: S,
-    pub(crate) fallback: F,
-}
-
-impl<S, F> OnMethod<S, F> {
+impl<H, B, T, F> OnMethod<H, B, T, F> {
     /// Chain an additional handler that will accept all requests regardless of
     /// its HTTP method.
     ///
     /// See [`OnMethod::get`] for an example.
-    pub fn any<H, B, T>(self, handler: H) -> OnMethod<IntoService<H, B, T>, Self>
+    pub fn any<H2, T2>(self, handler: H2) -> OnMethod<H2, B, T2, Self>
     where
-        H: Handler<B, T>,
+        H2: Handler<B, T2>,
     {
         self.on(MethodFilter::all(), handler)
     }
@@ -477,9 +446,9 @@ impl<S, F> OnMethod<S, F> {
     /// Chain an additional handler that will only accept `CONNECT` requests.
     ///
     /// See [`OnMethod::get`] for an example.
-    pub fn connect<H, B, T>(self, handler: H) -> OnMethod<IntoService<H, B, T>, Self>
+    pub fn connect<H2, T2>(self, handler: H2) -> OnMethod<H2, B, T2, Self>
     where
-        H: Handler<B, T>,
+        H2: Handler<B, T2>,
     {
         self.on(MethodFilter::CONNECT, handler)
     }
@@ -487,9 +456,9 @@ impl<S, F> OnMethod<S, F> {
     /// Chain an additional handler that will only accept `DELETE` requests.
     ///
     /// See [`OnMethod::get`] for an example.
-    pub fn delete<H, B, T>(self, handler: H) -> OnMethod<IntoService<H, B, T>, Self>
+    pub fn delete<H2, T2>(self, handler: H2) -> OnMethod<H2, B, T2, Self>
     where
-        H: Handler<B, T>,
+        H2: Handler<B, T2>,
     {
         self.on(MethodFilter::DELETE, handler)
     }
@@ -516,9 +485,9 @@ impl<S, F> OnMethod<S, F> {
     /// Note that `get` routes will also be called for `HEAD` requests but will have
     /// the response body removed. Make sure to add explicit `HEAD` routes
     /// afterwards.
-    pub fn get<H, B, T>(self, handler: H) -> OnMethod<IntoService<H, B, T>, Self>
+    pub fn get<H2, T2>(self, handler: H2) -> OnMethod<H2, B, T2, Self>
     where
-        H: Handler<B, T>,
+        H2: Handler<B, T2>,
     {
         self.on(MethodFilter::GET | MethodFilter::HEAD, handler)
     }
@@ -526,9 +495,9 @@ impl<S, F> OnMethod<S, F> {
     /// Chain an additional handler that will only accept `HEAD` requests.
     ///
     /// See [`OnMethod::get`] for an example.
-    pub fn head<H, B, T>(self, handler: H) -> OnMethod<IntoService<H, B, T>, Self>
+    pub fn head<H2, T2>(self, handler: H2) -> OnMethod<H2, B, T2, Self>
     where
-        H: Handler<B, T>,
+        H2: Handler<B, T2>,
     {
         self.on(MethodFilter::HEAD, handler)
     }
@@ -536,9 +505,9 @@ impl<S, F> OnMethod<S, F> {
     /// Chain an additional handler that will only accept `OPTIONS` requests.
     ///
     /// See [`OnMethod::get`] for an example.
-    pub fn options<H, B, T>(self, handler: H) -> OnMethod<IntoService<H, B, T>, Self>
+    pub fn options<H2, T2>(self, handler: H2) -> OnMethod<H2, B, T2, Self>
     where
-        H: Handler<B, T>,
+        H2: Handler<B, T2>,
     {
         self.on(MethodFilter::OPTIONS, handler)
     }
@@ -546,9 +515,9 @@ impl<S, F> OnMethod<S, F> {
     /// Chain an additional handler that will only accept `PATCH` requests.
     ///
     /// See [`OnMethod::get`] for an example.
-    pub fn patch<H, B, T>(self, handler: H) -> OnMethod<IntoService<H, B, T>, Self>
+    pub fn patch<H2, T2>(self, handler: H2) -> OnMethod<H2, B, T2, Self>
     where
-        H: Handler<B, T>,
+        H2: Handler<B, T2>,
     {
         self.on(MethodFilter::PATCH, handler)
     }
@@ -556,9 +525,9 @@ impl<S, F> OnMethod<S, F> {
     /// Chain an additional handler that will only accept `POST` requests.
     ///
     /// See [`OnMethod::get`] for an example.
-    pub fn post<H, B, T>(self, handler: H) -> OnMethod<IntoService<H, B, T>, Self>
+    pub fn post<H2, T2>(self, handler: H2) -> OnMethod<H2, B, T2, Self>
     where
-        H: Handler<B, T>,
+        H2: Handler<B, T2>,
     {
         self.on(MethodFilter::POST, handler)
     }
@@ -566,9 +535,9 @@ impl<S, F> OnMethod<S, F> {
     /// Chain an additional handler that will only accept `PUT` requests.
     ///
     /// See [`OnMethod::get`] for an example.
-    pub fn put<H, B, T>(self, handler: H) -> OnMethod<IntoService<H, B, T>, Self>
+    pub fn put<H2, T2>(self, handler: H2) -> OnMethod<H2, B, T2, Self>
     where
-        H: Handler<B, T>,
+        H2: Handler<B, T2>,
     {
         self.on(MethodFilter::PUT, handler)
     }
@@ -576,9 +545,9 @@ impl<S, F> OnMethod<S, F> {
     /// Chain an additional handler that will only accept `TRACE` requests.
     ///
     /// See [`OnMethod::get`] for an example.
-    pub fn trace<H, B, T>(self, handler: H) -> OnMethod<IntoService<H, B, T>, Self>
+    pub fn trace<H2, T2>(self, handler: H2) -> OnMethod<H2, B, T2, Self>
     where
-        H: Handler<B, T>,
+        H2: Handler<B, T2>,
     {
         self.on(MethodFilter::TRACE, handler)
     }
@@ -602,30 +571,28 @@ impl<S, F> OnMethod<S, F> {
     /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
     /// # };
     /// ```
-    pub fn on<H, B, T>(
-        self,
-        method: MethodFilter,
-        handler: H,
-    ) -> OnMethod<IntoService<H, B, T>, Self>
+    pub fn on<H2, T2>(self, method: MethodFilter, handler: H2) -> OnMethod<H2, B, T2, Self>
     where
-        H: Handler<B, T>,
+        H2: Handler<B, T2>,
     {
         OnMethod {
             method,
-            svc: handler.into_service(),
+            handler,
             fallback: self,
+            _marker: PhantomData,
         }
     }
 }
 
-impl<S, F, B> Service<Request<B>> for OnMethod<S, F>
+impl<H, B, T, F> Service<Request<B>> for OnMethod<H, B, T, F>
 where
-    S: Service<Request<B>, Response = Response<BoxBody>, Error = Infallible> + Clone,
+    H: Handler<B, T>,
     F: Service<Request<B>, Response = Response<BoxBody>, Error = Infallible> + Clone,
+    B: Send + 'static,
 {
     type Response = Response<BoxBody>;
     type Error = Infallible;
-    type Future = future::OnMethodFuture<S, F, B>;
+    type Future = future::OnMethodFuture<F, B>;
 
     fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         Poll::Ready(Ok(()))
@@ -634,16 +601,20 @@ where
     fn call(&mut self, req: Request<B>) -> Self::Future {
         let req_method = req.method().clone();
 
-        let f = if self.method.matches(req.method()) {
-            let fut = self.svc.clone().oneshot(req);
-            RouteFuture::a(fut)
+        let fut = if self.method.matches(req.method()) {
+            let handler = self.handler.clone();
+            let fut = Box::pin(async move {
+                let res = Handler::call(handler, req).await;
+                Ok::<_, F::Error>(res)
+            }) as futures_util::future::BoxFuture<'static, _>;
+            Either::Left(fut)
         } else {
             let fut = self.fallback.clone().oneshot(req);
-            RouteFuture::b(fut)
+            Either::Right(fut)
         };
 
         future::OnMethodFuture {
-            inner: f,
+            inner: fut,
             req_method,
         }
     }

@@ -1,4 +1,5 @@
 use bytes::Bytes;
+use pin_project_lite::pin_project;
 use std::ops::Deref;
 
 /// A string like type backed by `Bytes` making it cheap to clone.
