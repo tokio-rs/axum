@@ -354,10 +354,7 @@ async fn routing_between_services() {
             }),
         ),
     )
-    .route(
-        "/two",
-        service::on(MethodFilter::GET, handle.into_service()),
-    );
+    .route("/two", service::on(MethodFilter::GET, any(handle)));
 
     let addr = run_in_background(app).await;
 

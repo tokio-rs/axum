@@ -1,43 +1,38 @@
 //! Handler future types.
 
 use crate::body::{box_body, BoxBody};
+use futures_util::future::{BoxFuture, Either};
 use http::{Method, Request, Response};
 use http_body::Empty;
 use pin_project_lite::pin_project;
 use std::{
-    convert::Infallible,
+    fmt,
     future::Future,
     pin::Pin,
     task::{Context, Poll},
 };
-use tower::Service;
-
-opaque_future! {
-    /// The response future for [`IntoService`](super::IntoService).
-    pub type IntoServiceFuture =
-        futures_util::future::BoxFuture<'static, Result<Response<BoxBody>, Infallible>>;
-}
+use tower::{util::Oneshot, Service};
 
 pin_project! {
     /// The response future for [`OnMethod`](super::OnMethod).
-    #[derive(Debug)]
-    pub struct OnMethodFuture<S, F, B>
+    pub struct OnMethodFuture<F, B>
     where
-        S: Service<Request<B>>,
         F: Service<Request<B>>
     {
         #[pin]
-        pub(super) inner: crate::routing::future::RouteFuture<S, F, B>,
+        pub(super) inner: Either<
+            BoxFuture<'static, Result<Response<BoxBody>, F::Error>>,
+            Oneshot<F, Request<B>>,
+        >,
         pub(super) req_method: Method,
     }
 }
 
-impl<S, F, B> Future for OnMethodFuture<S, F, B>
+impl<F, B> Future for OnMethodFuture<F, B>
 where
-    S: Service<Request<B>, Response = Response<BoxBody>>,
-    F: Service<Request<B>, Response = Response<BoxBody>, Error = S::Error>,
+    F: Service<Request<B>, Response = Response<BoxBody>>,
 {
-    type Output = Result<Response<BoxBody>, S::Error>;
+    type Output = Result<Response<BoxBody>, F::Error>;
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let this = self.project();
@@ -48,5 +43,14 @@ where
         } else {
             Poll::Ready(Ok(response))
         }
+    }
+}
+
+impl<F, B> fmt::Debug for OnMethodFuture<F, B>
+where
+    F: Service<Request<B>>,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("OnMethodFuture").finish()
     }
 }

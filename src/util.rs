@@ -1,4 +1,5 @@
 use bytes::Bytes;
+use pin_project_lite::pin_project;
 use std::ops::Deref;
 
 /// A string like type backed by `Bytes` making it cheap to clone.
@@ -26,5 +27,13 @@ impl ByteStr {
         // `ByteStr` can only be constructed from strings which are always valid
         // utf-8 so this wont panic.
         std::str::from_utf8(&self.0).unwrap()
+    }
+}
+
+pin_project! {
+    #[project = EitherProj]
+    pub(crate) enum Either<A, B> {
+        A { #[pin] inner: A },
+        B { #[pin] inner: B },
     }
 }
