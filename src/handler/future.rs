@@ -6,6 +6,7 @@ use http::{Method, Request, Response};
 use http_body::Empty;
 use pin_project_lite::pin_project;
 use std::{
+    fmt,
     future::Future,
     pin::Pin,
     task::{Context, Poll},
@@ -27,8 +28,6 @@ pin_project! {
     }
 }
 
-// TODO(david): impl debug for `OnMethodFuture`
-
 impl<F, B> Future for OnMethodFuture<F, B>
 where
     F: Service<Request<B>, Response = Response<BoxBody>>,
@@ -44,5 +43,14 @@ where
         } else {
             Poll::Ready(Ok(response))
         }
+    }
+}
+
+impl<F, B> fmt::Debug for OnMethodFuture<F, B>
+where
+    F: Service<Request<B>>,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("OnMethodFuture").finish()
     }
 }
