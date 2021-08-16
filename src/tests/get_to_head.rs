@@ -39,7 +39,7 @@ mod for_handlers {
 mod for_services {
     use super::*;
     use crate::service::get;
-    use headers::HeaderValue;
+    use http::header::HeaderValue;
 
     #[tokio::test]
     async fn get_handles_head() {
