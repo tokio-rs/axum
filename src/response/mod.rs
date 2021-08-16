@@ -14,6 +14,7 @@ use std::{borrow::Cow, convert::Infallible};
 use tower::{util::Either, BoxError};
 
 mod headers;
+mod redirect;
 
 pub mod sse;
 
@@ -24,6 +25,7 @@ pub use crate::Json;
 pub use self::{
     headers::Headers,
     sse::{sse, Sse},
+    redirect::Redirect,
 };
 
 /// Trait for generating responses.
