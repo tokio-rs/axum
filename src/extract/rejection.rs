@@ -341,40 +341,6 @@ where
     }
 }
 
-/// Rejection used for [`TypedHeader`](super::TypedHeader).
 #[cfg(feature = "headers")]
 #[cfg_attr(docsrs, doc(cfg(feature = "headers")))]
-#[derive(Debug)]
-pub struct TypedHeaderRejection {
-    pub(super) name: &'static http::header::HeaderName,
-    pub(super) err: headers::Error,
-}
-
-#[cfg(feature = "headers")]
-#[cfg_attr(docsrs, doc(cfg(feature = "headers")))]
-impl IntoResponse for TypedHeaderRejection {
-    type Body = Full<Bytes>;
-    type BodyError = Infallible;
-
-    fn into_response(self) -> http::Response<Self::Body> {
-        let mut res = self.to_string().into_response();
-        *res.status_mut() = http::StatusCode::BAD_REQUEST;
-        res
-    }
-}
-
-#[cfg(feature = "headers")]
-#[cfg_attr(docsrs, doc(cfg(feature = "headers")))]
-impl std::fmt::Display for TypedHeaderRejection {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{} ({})", self.err, self.name)
-    }
-}
-
-#[cfg(feature = "headers")]
-#[cfg_attr(docsrs, doc(cfg(feature = "headers")))]
-impl std::error::Error for TypedHeaderRejection {
-    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        Some(&self.err)
-    }
-}
+pub use super::typed_header::TypedHeaderRejection;

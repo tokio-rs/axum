@@ -89,7 +89,7 @@
 use crate::{
     body::BoxBody,
     response::IntoResponse,
-    routing::{future::RouteFuture, EmptyRouter, MethodFilter},
+    routing::{EmptyRouter, MethodFilter},
 };
 use bytes::Bytes;
 use http::{Request, Response};

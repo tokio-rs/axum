@@ -421,35 +421,6 @@ async fn middleware_on_single_route() {
 }
 
 #[tokio::test]
-#[cfg(feature = "header")]
-async fn typed_header() {
-    use crate::{extract::TypedHeader, response::IntoResponse};
-
-    async fn handle(TypedHeader(user_agent): TypedHeader<headers::UserAgent>) -> impl IntoResponse {
-        user_agent.to_string()
-    }
-
-    let app = route("/", get(handle));
-
-    let addr = run_in_background(app).await;
-
-    let client = reqwest::Client::new();
-
-    let res = client
-        .get(format!("http://{}", addr))
-        .header("user-agent", "foobar")
-        .send()
-        .await
-        .unwrap();
-    let body = res.text().await.unwrap();
-    assert_eq!(body, "foobar");
-
-    let res = client.get(format!("http://{}", addr)).send().await.unwrap();
-    let body = res.text().await.unwrap();
-    assert_eq!(body, "invalid HTTP header (user-agent)");
-}
-
-#[tokio::test]
 async fn service_in_bottom() {
     async fn handler(_req: Request<hyper::Body>) -> Result<Response<hyper::Body>, hyper::Error> {
         Ok(Response::new(hyper::Body::empty()))
