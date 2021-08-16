@@ -4,7 +4,7 @@
 //! cargo run --example static_file_server
 //! ```
 
-use axum::{prelude::*, routing::nest};
+use axum::routing::{nest, RoutingDsl};
 use http::StatusCode;
 use std::net::SocketAddr;
 use tower_http::{services::ServeDir, trace::TraceLayer};
