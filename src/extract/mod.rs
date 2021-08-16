@@ -221,7 +221,7 @@
 //! use axum::{
 //!     extract::{Body, BodyStream},
 //!     handler::get,
-//!     http::Request,
+//!     http::{header::HeaderMap, Request},
 //!     route,
 //!     routing::RoutingDsl
 //! };
@@ -245,7 +245,7 @@
 //!     fn poll_trailers(
 //!         mut self: Pin<&mut Self>,
 //!         cx: &mut Context<'_>,
-//!     ) -> Poll<Result<Option<headers::HeaderMap>, Self::Error>> {
+//!     ) -> Poll<Result<Option<HeaderMap>, Self::Error>> {
 //!         Pin::new(&mut self.0).poll_trailers(cx)
 //!     }
 //! }
