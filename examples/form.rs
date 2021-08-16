@@ -6,7 +6,7 @@
 
 use axum::{
     extract::Form,
-    handler::{get, post},
+    handler::get,
     response::Html,
     route,
     routing::RoutingDsl
