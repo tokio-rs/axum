@@ -7,7 +7,7 @@
 use axum::{
     handler::get,
     route,
-    http::response,
+    response::Html,
     routing::RoutingDsl
 };
 use std::net::SocketAddr;
@@ -32,6 +32,6 @@ async fn main() {
         .unwrap();
 }
 
-async fn handler() -> response::Html<&'static str> {
-    response::Html("<h1>Hello, World!</h1>")
+async fn handler() -> Html<&'static str> {
+    Html("<h1>Hello, World!</h1>")
 }
