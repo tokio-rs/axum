@@ -4,7 +4,14 @@
 //! cargo test --example testing
 //! ```
 
-use axum::{prelude::*, routing::BoxRoute};
+use axum::{
+    body::Body,
+    handler::{get, post},
+    Json,
+    Request,
+    route,
+    routing::{BoxRoute, RoutingDsl}
+};
 use tower_http::trace::TraceLayer;
 
 #[tokio::main]
@@ -32,8 +39,8 @@ fn app() -> BoxRoute<Body> {
     route("/", get(|| async { "Hello, World!" }))
         .route(
             "/json",
-            post(|payload: extract::Json<serde_json::Value>| async move {
-                response::Json(serde_json::json!({ "data": payload.0 }))
+            post(|payload: Json<serde_json::Value>| async move {
+                Json(serde_json::json!({ "data": payload.0 }))
             }),
         )
         // We can still add middleware
