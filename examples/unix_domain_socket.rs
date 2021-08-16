@@ -6,7 +6,11 @@
 
 use axum::{
     extract::connect_info::{self, ConnectInfo},
-    prelude::*,
+    body::Body,
+    handler::get,
+    http::Request,
+    route,
+    routing::RoutingDsl
 };
 use futures::ready;
 use http::{Method, StatusCode, Uri};
