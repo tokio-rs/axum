@@ -11,7 +11,12 @@ use std::ops::{Deref, DerefMut};
 /// # Example
 ///
 /// ```rust,no_run
-/// use axum::{extract::Path, prelude::*};
+/// use axum::{
+///     extract::Path,
+///     handler::get,
+///     route,
+///     routing::RoutingDsl
+/// };
 /// use uuid::Uuid;
 ///
 /// async fn users_teams_show(
@@ -29,7 +34,12 @@ use std::ops::{Deref, DerefMut};
 /// If the path contains only one parameter, then you can omit the tuple.
 ///
 /// ```rust,no_run
-/// use axum::{extract::Path, prelude::*};
+/// use axum::{
+///     extract::Path,
+///     handler::get,
+///     route,
+///     routing::RoutingDsl,
+/// };
 /// use uuid::Uuid;
 ///
 /// async fn user_info(Path(user_id): Path<Uuid>) {
@@ -46,7 +56,12 @@ use std::ops::{Deref, DerefMut};
 /// Path segment labels will be matched with struct field names.
 ///
 /// ```rust,no_run
-/// use axum::{extract::Path, prelude::*};
+/// use axum::{
+///     extract::Path,
+///     handler::get,
+///     route,
+///     routing::RoutingDsl
+/// };
 /// use serde::Deserialize;
 /// use uuid::Uuid;
 ///
