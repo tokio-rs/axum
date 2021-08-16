@@ -20,10 +20,15 @@ use tower::BoxError;
 /// # Example
 ///
 /// ```rust,no_run
-/// use axum::prelude::*;
+/// use axum::{
+///     extract::Multipart,
+///     handler::post,
+///     route,
+///     routing::RoutingDsl
+/// };
 /// use futures::stream::StreamExt;
 ///
-/// async fn upload(mut multipart: extract::Multipart) {
+/// async fn upload(mut multipart: Multipart) {
 ///     while let Some(mut field) = multipart.next_field().await.unwrap() {
 ///         let name = field.name().unwrap().to_string();
 ///         let data = field.bytes().await.unwrap();
