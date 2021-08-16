@@ -117,7 +117,7 @@ async fn discord_auth(Extension(client): Extension<BasicClient>) -> impl IntoRes
         .url();
 
     // Redirect to Discord's oauth service
-    Redirect::permanent(auth_url.to_string().parse().unwrap())
+    Redirect::found(auth_url.to_string().parse().unwrap())
 }
 
 // Valid user session required. If there is none, redirect to the auth page
@@ -136,12 +136,12 @@ async fn logout(
     let session = match store.load_session(cookie.to_string()).await.unwrap() {
         Some(s) => s,
         // No session active, just redirect
-        None => return Redirect::permanent("/".parse().unwrap()),
+        None => return Redirect::found("/".parse().unwrap()),
     };
 
     store.destroy_session(session).await.unwrap();
 
-    Redirect::permanent("/".parse().unwrap())
+    Redirect::found("/".parse().unwrap())
 }
 
 #[derive(Debug, Deserialize)]
@@ -189,7 +189,7 @@ async fn login_authorized(
     let mut headers = HeaderMap::new();
     headers.insert(SET_COOKIE, cookie.parse().unwrap());
 
-    (headers, Redirect::permanent("/".parse().unwrap()))
+    (headers, Redirect::found("/".parse().unwrap()))
 }
 
 struct AuthRedirect;
@@ -199,7 +199,7 @@ impl IntoResponse for AuthRedirect {
     type BodyError = <Self::Body as axum::body::HttpBody>::Error;
 
     fn into_response(self) -> http::Response<Self::Body> {
-        Redirect::permanent("/auth/discord".parse().unwrap()).into_response()
+        Redirect::found("/auth/discord".parse().unwrap()).into_response()
     }
 }
 

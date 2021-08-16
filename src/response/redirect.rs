@@ -28,7 +28,7 @@ impl Redirect {
     ///
     /// # Panics
     ///
-    /// - If `uri` isn't a valid [`HeaderValue`].
+    /// If `uri` isn't a valid [`HeaderValue`].
     ///
     /// [mdn]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/307
     pub fn temporary(uri: Uri) -> Self {
@@ -39,11 +39,22 @@ impl Redirect {
     ///
     /// # Panics
     ///
-    /// - If `uri` isn't a valid [`HeaderValue`].
+    /// If `uri` isn't a valid [`HeaderValue`].
     ///
     /// [mdn]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/308
     pub fn permanent(uri: Uri) -> Self {
         Self::with_status_code(StatusCode::PERMANENT_REDIRECT, uri)
+    }
+
+    /// Create a new [`Redirect`] that uses a [`302 Found`][mdn] status code.
+    ///
+    /// # Panics
+    ///
+    /// If `uri` isn't a valid [`HeaderValue`].
+    ///
+    /// [mdn]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/302
+    pub fn found(uri: Uri) -> Self {
+        Self::with_status_code(StatusCode::FOUND, uri)
     }
 
     // This is intentionally not public since other kinds of redirects might not
