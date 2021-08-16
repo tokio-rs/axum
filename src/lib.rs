@@ -77,7 +77,6 @@
 //! Some examples of handlers:
 //!
 //! ```rust
-//! use axum::prelude::*;
 //! use bytes::Bytes;
 //! use http::StatusCode;
 //!
