@@ -30,13 +30,15 @@ use tower::{util::Either, BoxError};
 ///     ])
 /// }
 ///
-/// // Or `[(&str, &str)]`
+/// // Or `Vec<(&str, &str)>`
 /// async fn from_strings() -> impl IntoResponse {
-///     Headers([("X-Foo", "foo")])
+///     Headers(vec![("X-Foo", "foo")])
 /// }
 ///
+/// // Or `[(&str, &str)]` if you're on Rust 1.53+
+///
 /// let app = route("/just-headers", get(just_headers))
-///     .route("/from-strings", get(from_strings))
+///     .route("/from-strings", get(from_strings));
 /// # async {
 /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 /// # };
@@ -172,15 +174,15 @@ mod tests {
     }
 
     #[test]
-    fn array_of_strings() {
-        let res = Headers([("user-agent", "axum")]).into_response();
+    fn vec_of_strings() {
+        let res = Headers(vec![("user-agent", "axum")]).into_response();
 
         assert_eq!(res.headers()["user-agent"], "axum");
     }
 
     #[test]
     fn with_body() {
-        let res = (Headers([("user-agent", "axum")]), "foo").into_response();
+        let res = (Headers(vec![("user-agent", "axum")]), "foo").into_response();
 
         assert_eq!(res.headers()["user-agent"], "axum");
         let body = hyper::body::to_bytes(res.into_body())
@@ -194,7 +196,7 @@ mod tests {
     fn with_status_and_body() {
         let res = (
             StatusCode::NOT_FOUND,
-            Headers([("user-agent", "axum")]),
+            Headers(vec![("user-agent", "axum")]),
             "foo",
         )
             .into_response();
@@ -211,7 +213,7 @@ mod tests {
     #[test]
     fn invalid_header_name() {
         let bytes: &[u8] = &[0, 159, 146, 150]; // invalid utf-8
-        let res = Headers([(bytes, "axum")]).into_response();
+        let res = Headers(vec![(bytes, "axum")]).into_response();
 
         assert_eq!(res.status(), StatusCode::INTERNAL_SERVER_ERROR);
     }
@@ -219,7 +221,7 @@ mod tests {
     #[test]
     fn invalid_header_value() {
         let bytes: &[u8] = &[0, 159, 146, 150]; // invalid utf-8
-        let res = Headers([("user-agent", bytes)]).into_response();
+        let res = Headers(vec![("user-agent", bytes)]).into_response();
 
         assert!(res.headers().get("user-agent").is_none());
         assert_eq!(res.status(), StatusCode::INTERNAL_SERVER_ERROR);
