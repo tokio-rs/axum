@@ -6,10 +6,10 @@ use crate::{
     response::IntoResponse,
     routing::{EmptyRouter, MethodFilter},
     service::{HandleError, HandleErrorFromRouter},
+    util::Either,
 };
 use async_trait::async_trait;
 use bytes::Bytes;
-use futures_util::future::Either;
 use http::{Request, Response};
 use std::{
     convert::Infallible,
@@ -601,15 +601,11 @@ where
         let req_method = req.method().clone();
 
         let fut = if self.method.matches(req.method()) {
-            let handler = self.handler.clone();
-            let fut = Box::pin(async move {
-                let res = Handler::call(handler, req).await;
-                Ok::<_, F::Error>(res)
-            }) as futures_util::future::BoxFuture<'static, _>;
-            Either::Left(fut)
+            let fut = Handler::call(self.handler.clone(), req);
+            Either::A { inner: fut }
         } else {
             let fut = self.fallback.clone().oneshot(req);
-            Either::Right(fut)
+            Either::B { inner: fut }
         };
 
         future::OnMethodFuture {
