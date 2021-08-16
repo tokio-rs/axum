@@ -2,7 +2,7 @@
 
 use crate::{
     extract,
-    handler::{any, get, on, patch, post, Handler},
+    handler::{any, delete, get, on, patch, post, Handler},
     route,
     routing::nest,
     routing::{MethodFilter, RoutingDsl},
