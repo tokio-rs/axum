@@ -4,7 +4,13 @@
 //! cargo run --example form
 //! ```
 
-use axum::prelude::*;
+use axum::{
+    extract::Form,
+    handler::{get, post},
+    response::Html,
+    route,
+    routing::RoutingDsl
+};
 use serde::Deserialize;
 use std::net::SocketAddr;
 
@@ -28,8 +34,8 @@ async fn main() {
         .unwrap();
 }
 
-async fn show_form() -> response::Html<&'static str> {
-    response::Html(
+async fn show_form() -> Html<&'static str> {
+    Html(
         r#"
         <!doctype html>
         <html>
@@ -60,6 +66,6 @@ struct Input {
     email: String,
 }
 
-async fn accept_form(extract::Form(input): extract::Form<Input>) {
+async fn accept_form(Form(input): Form<Input>) {
     dbg!(&input);
 }
