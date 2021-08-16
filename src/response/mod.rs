@@ -13,12 +13,18 @@ use http_body::{
 use std::{borrow::Cow, convert::Infallible};
 use tower::{util::Either, BoxError};
 
-#[doc(no_inline)]
-pub use crate::Json;
+mod headers;
 
 pub mod sse;
 
-pub use sse::{sse, Sse};
+#[doc(no_inline)]
+pub use crate::Json;
+
+#[doc(inline)]
+pub use self::{
+    headers::Headers,
+    sse::{sse, Sse},
+};
 
 /// Trait for generating responses.
 ///
