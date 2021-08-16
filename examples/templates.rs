@@ -5,7 +5,13 @@
 //! ```
 
 use askama::Template;
-use axum::{prelude::*, response::IntoResponse};
+use axum::{
+    extract,
+    handler::get,
+    response::{Html, IntoResponse},
+    route,
+    routing::RoutingDsl
+};
 use bytes::Bytes;
 use http::{Response, StatusCode};
 use http_body::Full;
@@ -53,7 +59,7 @@ where
 
     fn into_response(self) -> Response<Self::Body> {
         match self.0.render() {
-            Ok(html) => response::Html(html).into_response(),
+            Ok(html) => Html(html).into_response(),
             Err(err) => Response::builder()
                 .status(StatusCode::INTERNAL_SERVER_ERROR)
                 .body(Full::from(format!(
