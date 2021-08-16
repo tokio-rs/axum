@@ -45,7 +45,7 @@ mod for_services {
     async fn get_handles_head() {
         let app = route(
             "/",
-            get(service_fn(|req: Request<Body>| async move {
+            get(service_fn(|_req: Request<Body>| async move {
                 let res = Response::builder()
                     .header("x-some-header", "foobar".parse::<HeaderValue>().unwrap())
                     .body(Body::from("you shouldn't see this"))
