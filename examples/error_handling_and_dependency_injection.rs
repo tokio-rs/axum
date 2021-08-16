@@ -11,9 +11,12 @@
 
 use axum::{
     async_trait,
-    extract::{Extension, Json, Path},
-    prelude::*,
+    extract::{Extension, Path},
+    handler::{get, post},
+    Json,
     response::IntoResponse,
+    route,
+    routing::RoutingDsl,
     AddExtensionLayer,
 };
 use bytes::Bytes;
@@ -60,7 +63,7 @@ async fn main() {
 async fn users_show(
     Path(user_id): Path<Uuid>,
     Extension(user_repo): Extension<DynUserRepo>,
-) -> Result<response::Json<User>, AppError> {
+) -> Result<Json<User>, AppError> {
     let user = user_repo.find(user_id).await?;
 
     Ok(user.into())
@@ -70,7 +73,7 @@ async fn users_show(
 async fn users_create(
     Json(params): Json<CreateUser>,
     Extension(user_repo): Extension<DynUserRepo>,
-) -> Result<response::Json<User>, AppError> {
+) -> Result<Json<User>, AppError> {
     let user = user_repo.create(params).await?;
 
     Ok(user.into())
@@ -104,7 +107,7 @@ impl IntoResponse for AppError {
             }
         };
 
-        let mut response = response::Json(json!({
+        let mut response = Json(json!({
             "error": error_json,
         }))
         .into_response();
