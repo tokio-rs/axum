@@ -8,6 +8,8 @@
 //! - [Routing](#routing)
 //!     - [Precedence](#precedence)
 //!     - [Matching multiple methods](#matching-multiple-methods)
+//!     - [Routing to any `Service`](#routing-to-any-service)
+//!     - [Nesting Routes](#nesting-routes)
 //! - [Extractors](#extractors)
 //! - [Building responses](#building-responses)
 //! - [Applying middleware](#applying-middleware)
@@ -15,8 +17,6 @@
 //!     - [To groups of routes](#to-groups-of-routes)
 //!     - [Error handling](#error-handling)
 //! - [Sharing state with handlers](#sharing-state-with-handlers)
-//! - [Routing to any `Service`](#routing-to-any-service)
-//! - [Nesting applications](#nesting-applications)
 //! - [Required dependencies](#required-dependencies)
 //! - [Examples](#examples)
 //! - [Feature flags](#feature-flags)
@@ -208,6 +208,70 @@
 //! # async {
 //! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 //! # axum::Server::bind(&"".parse().unwrap()).serve(wont_work.into_make_service()).await.unwrap();
+//! # };
+//! ```
+//!
+//! ## Routing to any [`Service`]
+//!
+//! axum also supports routing to general [`Service`]s:
+//!
+//! ```rust,no_run
+//! use axum::{service, prelude::*};
+//! use tower_http::services::ServeFile;
+//! use http::Response;
+//! use std::convert::Infallible;
+//! use tower::service_fn;
+//!
+//! let app = route(
+//!     // Any request to `/` goes to a service
+//!     "/",
+//!     // Services who's response body is not `axum::body::BoxBody`
+//!     // can be wrapped in `axum::service::any` (or one of the other routing filters)
+//!     // to have the response body mapped
+//!     service::any(service_fn(|_: Request<Body>| async {
+//!         let res = Response::new(Body::from("Hi from `GET /`"));
+//!         Ok(res)
+//!     }))
+//! ).route(
+//!     "/foo",
+//!     // This service's response body is `axum::body::BoxBody` so
+//!     // it can be routed to directly.
+//!     service_fn(|req: Request<Body>| async move {
+//!         let body = Body::from(format!("Hi from `{} /foo`", req.method()));
+//!         let body = axum::body::box_body(body);
+//!         let res = Response::new(body);
+//!         Ok(res)
+//!     })
+//! ).route(
+//!     // GET `/static/Cargo.toml` goes to a service from tower-http
+//!     "/static/Cargo.toml",
+//!     service::get(ServeFile::new("Cargo.toml"))
+//! );
+//! # async {
+//! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+//! # };
+//! ```
+//!
+//! Routing to arbitrary services in this way has complications for backpressure
+//! ([`Service::poll_ready`]). See the [`service`] module for more details.
+//!
+//! ## Nesting Routes
+//!
+//! Routes can be nested by calling [`nest`](routing::nest):
+//!
+//! ```rust,no_run
+//! use axum::{prelude::*, routing::BoxRoute, body::{Body, BoxBody}};
+//! use tower_http::services::ServeFile;
+//! use http::Response;
+//!
+//! fn api_routes() -> BoxRoute<Body> {
+//!     route("/users", get(|_: Request<Body>| async { /* ... */ })).boxed()
+//! }
+//!
+//! let app = route("/", get(|_: Request<Body>| async { /* ... */ }))
+//!     .nest("/api", api_routes());
+//! # async {
+//! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 //! # };
 //! ```
 //!
@@ -549,70 +613,6 @@
 //!
 //!     // ...
 //! }
-//! # async {
-//! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-//! # };
-//! ```
-//!
-//! # Routing to any [`Service`]
-//!
-//! axum also supports routing to general [`Service`]s:
-//!
-//! ```rust,no_run
-//! use axum::{service, prelude::*};
-//! use tower_http::services::ServeFile;
-//! use http::Response;
-//! use std::convert::Infallible;
-//! use tower::service_fn;
-//!
-//! let app = route(
-//!     // Any request to `/` goes to a service
-//!     "/",
-//!     // Services who's response body is not `axum::body::BoxBody`
-//!     // can be wrapped in `axum::service::any` (or one of the other routing filters)
-//!     // to have the response body mapped
-//!     service::any(service_fn(|_: Request<Body>| async {
-//!         let res = Response::new(Body::from("Hi from `GET /`"));
-//!         Ok(res)
-//!     }))
-//! ).route(
-//!     "/foo",
-//!     // This service's response body is `axum::body::BoxBody` so
-//!     // it can be routed to directly.
-//!     service_fn(|req: Request<Body>| async move {
-//!         let body = Body::from(format!("Hi from `{} /foo`", req.method()));
-//!         let body = axum::body::box_body(body);
-//!         let res = Response::new(body);
-//!         Ok(res)
-//!     })
-//! ).route(
-//!     // GET `/static/Cargo.toml` goes to a service from tower-http
-//!     "/static/Cargo.toml",
-//!     service::get(ServeFile::new("Cargo.toml"))
-//! );
-//! # async {
-//! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-//! # };
-//! ```
-//!
-//! Routing to arbitrary services in this way has complications for backpressure
-//! ([`Service::poll_ready`]). See the [`service`] module for more details.
-//!
-//! # Nesting applications
-//!
-//! Applications can be nested by calling [`nest`](routing::nest):
-//!
-//! ```rust,no_run
-//! use axum::{prelude::*, routing::BoxRoute, body::{Body, BoxBody}};
-//! use tower_http::services::ServeFile;
-//! use http::Response;
-//!
-//! fn api_routes() -> BoxRoute<Body> {
-//!     route("/users", get(|_: Request<Body>| async { /* ... */ })).boxed()
-//! }
-//!
-//! let app = route("/", get(|_: Request<Body>| async { /* ... */ }))
-//!     .nest("/api", api_routes());
 //! # async {
 //! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 //! # };
