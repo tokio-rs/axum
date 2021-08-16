@@ -1,7 +1,12 @@
 #![allow(clippy::blacklisted_name)]
 
 use crate::{
-    extract::RequestParts, handler::on, prelude::*, routing::nest, routing::MethodFilter, service,
+    extract,
+    handler::{any, get, on, patch, post, Handler},
+    route,
+    routing::nest,
+    routing::{MethodFilter, RoutingDsl},
+    service,
 };
 use bytes::Bytes;
 use futures_util::future::Ready;
@@ -442,7 +447,7 @@ async fn test_extractor_middleware() {
     {
         type Rejection = StatusCode;
 
-        async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+        async fn from_request(req: &mut extract::RequestParts<B>) -> Result<Self, Self::Rejection> {
             if let Some(auth) = req
                 .headers()
                 .expect("headers already extracted")
