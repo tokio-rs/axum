@@ -24,8 +24,8 @@ pub use crate::Json;
 #[doc(inline)]
 pub use self::{
     headers::Headers,
-    sse::{sse, Sse},
     redirect::Redirect,
+    sse::{sse, Sse},
 };
 
 /// Trait for generating responses.
