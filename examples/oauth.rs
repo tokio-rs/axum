@@ -10,8 +10,10 @@ use async_session::{MemoryStore, Session, SessionStore};
 use axum::{
     async_trait,
     extract::{Extension, FromRequest, Query, RequestParts, TypedHeader},
-    prelude::*,
+    handler::get,
     response::IntoResponse,
+    route,
+    routing::RoutingDsl,
     AddExtensionLayer,
 };
 use http::header::SET_COOKIE;
@@ -228,11 +230,11 @@ where
     type Rejection = AuthRedirect;
 
     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-        let extract::Extension(store) = extract::Extension::<MemoryStore>::from_request(req)
+        let Extension(store) = Extension::<MemoryStore>::from_request(req)
             .await
             .expect("`MemoryStore` extension is missing");
 
-        let cookies = extract::TypedHeader::<headers::Cookie>::from_request(req)
+        let cookies = TypedHeader::<headers::Cookie>::from_request(req)
             .await
             .expect("could not get cookies");
 
