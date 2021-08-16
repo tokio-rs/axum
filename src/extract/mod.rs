@@ -8,7 +8,12 @@
 //! deserializes it as JSON into some target type:
 //!
 //! ```rust,no_run
-//! use axum::prelude::*;
+//! use axum::{
+//!     Json,
+//!     handler::post,
+//!     route,
+//!     routing::RoutingDsl
+//! };
 //! use serde::Deserialize;
 //!
 //! #[derive(Deserialize)]
@@ -17,7 +22,7 @@
 //!     password: String,
 //! }
 //!
-//! async fn create_user(payload: extract::Json<CreateUser>) {
+//! async fn create_user(payload: Json<CreateUser>) {
 //!     let payload: CreateUser = payload.0;
 //!
 //!     // ...
@@ -34,7 +39,13 @@
 //! You can also define your own extractors by implementing [`FromRequest`]:
 //!
 //! ```rust,no_run
-//! use axum::{async_trait, extract::{FromRequest, RequestParts}, prelude::*};
+//! use axum::{
+//!     async_trait,
+//!     extract::{FromRequest, RequestParts},
+//!     handler::get,
+//!     route,
+//!     routing::RoutingDsl
+//! };
 //! use http::{StatusCode, header::{HeaderValue, USER_AGENT}};
 //!
 //! struct ExtractUserAgent(HeaderValue);
@@ -74,14 +85,19 @@
 //! Handlers can also contain multiple extractors:
 //!
 //! ```rust,no_run
-//! use axum::prelude::*;
+//! use axum::{
+//!     extract::{Path, Query},
+//!     handler::get,
+//!     route,
+//!     routing::RoutingDsl
+//! };
 //! use std::collections::HashMap;
 //!
 //! async fn handler(
 //!     // Extract captured parameters from the URL
-//!     params: extract::Path<HashMap<String, String>>,
+//!     params: Path<HashMap<String, String>>,
 //!     // Parse query string into a `HashMap`
-//!     query_params: extract::Query<HashMap<String, String>>,
+//!     query_params: Query<HashMap<String, String>>,
 //!     // Buffer the request body into a `Bytes`
 //!     bytes: bytes::Bytes,
 //! ) {
@@ -102,7 +118,12 @@
 //! Wrapping extractors in `Option` will make them optional:
 //!
 //! ```rust,no_run
-//! use axum::{extract::Json, prelude::*};
+//! use axum::{
+//!     extract::Json,
+//!     handler::post,
+//!     route,
+//!     routing::RoutingDsl
+//! };
 //! use serde_json::Value;
 //!
 //! async fn create_user(payload: Option<Json<Value>>) {
@@ -123,7 +144,12 @@
 //! the extraction failed:
 //!
 //! ```rust,no_run
-//! use axum::{extract::{Json, rejection::JsonRejection}, prelude::*};
+//! use axum::{
+//!     extract::{Json, rejection::JsonRejection},
+//!     handler::post,
+//!     route,
+//!     routing::RoutingDsl
+//! };
 //! use serde_json::Value;
 //!
 //! async fn create_user(payload: Result<Json<Value>, JsonRejection>) {
@@ -156,11 +182,16 @@
 //!
 //! # Reducing boilerplate
 //!
-//! If you're feeling adventorous you can even deconstruct the extractors
+//! If you're feeling adventurous you can even deconstruct the extractors
 //! directly on the function signature:
 //!
 //! ```rust,no_run
-//! use axum::{extract::Json, prelude::*};
+//! use axum::{
+//!     extract::Json,
+//!     handler::post,
+//!     route,
+//!     routing::RoutingDsl
+//! };
 //! use serde_json::Value;
 //!
 //! async fn create_user(Json(value): Json<Value>) {
@@ -187,7 +218,13 @@
 //!     pin::Pin,
 //! };
 //! use tower_http::map_request_body::MapRequestBodyLayer;
-//! use axum::prelude::*;
+//! use axum::{
+//!     extract::{Body, BodyStream},
+//!     handler::get,
+//!     http::Request,
+//!     route,
+//!     routing::RoutingDsl
+//! };
 //!
 //! struct MyBody<B>(B);
 //!
@@ -223,12 +260,12 @@
 //!         "/body",
 //!         // `extract::Body` defaults to `axum::body::Body`
 //!         // but can be customized
-//!         get(|_: extract::Body<MyBody<Body>>| async {})
+//!         get(|_: Body<MyBody<Body>>| async {})
 //!     )
 //!     .route(
 //!         "/body-stream",
 //!         // same for `extract::BodyStream`
-//!         get(|_: extract::BodyStream<MyBody<Body>>| async {}),
+//!         get(|_: BodyStream<MyBody<Body>>| async {}),
 //!     )
 //!     .route(
 //!         // and `Request<_>`
