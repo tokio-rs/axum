@@ -11,7 +11,14 @@
 //!
 //! ```
 //! use tower_http::services::Redirect;
-//! use axum::{service, handler, prelude::*};
+//! use axum::{
+//!     body::Body,
+//!     handler::get,
+//!     http::Request,
+//!     route,
+//!     routing::RoutingDsl,
+//!     service,
+//! };
 //!
 //! async fn handler(request: Request<Body>) { /* ... */ }
 //!
@@ -58,7 +65,11 @@
 //! themselves services:
 //!
 //! ```rust
-//! use axum::prelude::*;
+//! use axum::{
+//!     handler::get,
+//!     route,
+//!     routing::RoutingDsl
+//! };
 //! use tower::ServiceBuilder;
 //! # let some_backpressure_sensitive_middleware =
 //! #     tower::layer::util::Identity::new();
@@ -137,7 +148,12 @@ where
 /// # Example
 ///
 /// ```rust
-/// use axum::{service, prelude::*};
+/// use axum::{
+///     http::Request,
+///     route,
+///     routing::RoutingDsl,
+///     service,
+/// };
 /// use http::Response;
 /// use std::convert::Infallible;
 /// use hyper::Body;
@@ -228,7 +244,13 @@ where
 /// # Example
 ///
 /// ```rust
-/// use axum::{handler::on, service, routing::MethodFilter, prelude::*};
+/// use axum::{
+///     http::Request,
+///     handler::on,
+///     service,
+///     route,
+///     routing::{MethodFilter, RoutingDsl},
+/// };
 /// use http::Response;
 /// use std::convert::Infallible;
 /// use hyper::Body;
@@ -317,7 +339,13 @@ impl<S, F, B> OnMethod<S, F, B> {
     /// # Example
     ///
     /// ```rust
-    /// use axum::{handler::on, service, routing::MethodFilter, prelude::*};
+    /// use axum::{
+    ///     http::Request,
+    ///     handler::on,
+    ///     service,
+    ///     route,
+    ///     routing::{MethodFilter, RoutingDsl},
+    /// };
     /// use http::Response;
     /// use std::convert::Infallible;
     /// use hyper::Body;
@@ -414,7 +442,13 @@ impl<S, F, B> OnMethod<S, F, B> {
     /// # Example
     ///
     /// ```rust
-    /// use axum::{handler::on, service, routing::MethodFilter, prelude::*};
+    /// use axum::{
+    ///     http::Request,
+    ///     handler::on,
+    ///     service,
+    ///     route,
+    ///     routing::{MethodFilter, RoutingDsl},
+    /// };
     /// use http::Response;
     /// use std::convert::Infallible;
     /// use hyper::Body;
