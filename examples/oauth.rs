@@ -9,14 +9,13 @@
 use async_session::{MemoryStore, Session, SessionStore};
 use axum::{
     async_trait,
+    body::{Bytes, Empty},
     extract::{Extension, FromRequest, Query, RequestParts, TypedHeader},
     prelude::*,
-    response::IntoResponse,
+    response::{IntoResponse, Redirect},
     AddExtensionLayer,
 };
-use http::header::SET_COOKIE;
-use http::StatusCode;
-use hyper::Body;
+use http::{header::SET_COOKIE, HeaderMap};
 use oauth2::{
     basic::BasicClient, reqwest::async_http_client, AuthUrl, AuthorizationCode, ClientId,
     ClientSecret, CsrfToken, RedirectUrl, Scope, TokenResponse, TokenUrl,
@@ -118,7 +117,7 @@ async fn discord_auth(Extension(client): Extension<BasicClient>) -> impl IntoRes
         .url();
 
     // Redirect to Discord's oauth service
-    Redirect(auth_url.into())
+    Redirect::permanent(auth_url.to_string().parse().unwrap())
 }
 
 // Valid user session required. If there is none, redirect to the auth page
@@ -137,12 +136,12 @@ async fn logout(
     let session = match store.load_session(cookie.to_string()).await.unwrap() {
         Some(s) => s,
         // No session active, just redirect
-        None => return Redirect("/".to_string()),
+        None => return Redirect::permanent("/".parse().unwrap()),
     };
 
     store.destroy_session(session).await.unwrap();
 
-    Redirect("/".to_string())
+    Redirect::permanent("/".parse().unwrap())
 }
 
 #[derive(Debug, Deserialize)]
@@ -187,35 +186,20 @@ async fn login_authorized(
     let cookie = format!("{}={}; SameSite=Lax; Path=/", COOKIE_NAME, cookie);
 
     // Set cookie
-    let r = http::Response::builder()
-        .header("Location", "/")
-        .header(SET_COOKIE, cookie)
-        .status(302);
+    let mut headers = HeaderMap::new();
+    headers.insert(SET_COOKIE, cookie.parse().unwrap());
 
-    r.body(Body::empty()).unwrap()
-}
-
-// Utility to save some lines of code
-struct Redirect(String);
-impl IntoResponse for Redirect {
-    type Body = Body;
-    type BodyError = hyper::Error;
-
-    fn into_response(self) -> http::Response<Body> {
-        let builder = http::Response::builder()
-            .header("Location", self.0)
-            .status(StatusCode::FOUND);
-        builder.body(Body::empty()).unwrap()
-    }
+    (headers, Redirect::permanent("/".parse().unwrap()))
 }
 
 struct AuthRedirect;
-impl IntoResponse for AuthRedirect {
-    type Body = Body;
-    type BodyError = hyper::Error;
 
-    fn into_response(self) -> http::Response<Body> {
-        Redirect("/auth/discord".to_string()).into_response()
+impl IntoResponse for AuthRedirect {
+    type Body = Empty<Bytes>;
+    type BodyError = <Self::Body as axum::body::HttpBody>::Error;
+
+    fn into_response(self) -> http::Response<Self::Body> {
+        Redirect::permanent("/auth/discord".parse().unwrap()).into_response()
     }
 }
 

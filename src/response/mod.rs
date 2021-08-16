@@ -16,8 +16,11 @@ use tower::{util::Either, BoxError};
 #[doc(no_inline)]
 pub use crate::Json;
 
-pub mod sse;
+mod redirect;
 
+pub use self::redirect::Redirect;
+
+pub mod sse;
 pub use sse::{sse, Sse};
 
 /// Trait for generating responses.
