@@ -1,7 +1,8 @@
 //! Handler future types.
 
 use crate::body::{box_body, BoxBody};
-use futures_util::future::{BoxFuture, Either};
+use crate::util::{Either, EitherProj};
+use futures_util::{future::BoxFuture, ready};
 use http::{Method, Request, Response};
 use http_body::Empty;
 use pin_project_lite::pin_project;
@@ -21,7 +22,7 @@ pin_project! {
     {
         #[pin]
         pub(super) inner: Either<
-            BoxFuture<'static, Result<Response<BoxBody>, F::Error>>,
+            BoxFuture<'static, Response<BoxBody>>,
             Oneshot<F, Request<B>>,
         >,
         pub(super) req_method: Method,
@@ -36,7 +37,11 @@ where
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let this = self.project();
-        let response = futures_util::ready!(this.inner.poll(cx))?;
+        let response = match this.inner.project() {
+            EitherProj::A { inner } => ready!(inner.poll(cx)),
+            EitherProj::B { inner } => ready!(inner.poll(cx))?,
+        };
+
         if this.req_method == &Method::HEAD {
             let response = response.map(|_| box_body(Empty::new()));
             Poll::Ready(Ok(response))
