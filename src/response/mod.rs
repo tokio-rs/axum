@@ -33,7 +33,12 @@ pub use sse::{sse, Sse};
 /// response body type:
 ///
 /// ```rust
-/// use axum::{prelude::*, response::IntoResponse};
+/// use axum::{
+///     handler::get,
+///     response::IntoResponse,
+///     route,
+///     routing::RoutingDsl
+/// };
 /// use http_body::Body;
 /// use http::{Response, HeaderMap};
 /// use bytes::Bytes;
