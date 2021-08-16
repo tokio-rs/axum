@@ -10,7 +10,7 @@
 //! ```rust,no_run
 //! use axum::{
 //!     Json,
-//!     handler::post,
+//!     handler::{post, Handler},
 //!     route,
 //!     routing::RoutingDsl
 //! };
