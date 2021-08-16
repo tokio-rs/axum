@@ -4,11 +4,13 @@
 //! cargo run --example versioning
 //! ```
 
-use axum::response::IntoResponse;
 use axum::{
     async_trait,
-    extract::{FromRequest, RequestParts},
-    prelude::*,
+    extract::{Path, FromRequest, RequestParts},
+    handler::get,
+    response::IntoResponse,
+    route,
+    routing::RoutingDsl,
 };
 use bytes::Bytes;
 use http::Response;
@@ -56,7 +58,7 @@ where
     type Rejection = Response<Full<Bytes>>;
 
     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-        let params = extract::Path::<HashMap<String, String>>::from_request(req)
+        let params = Path::<HashMap<String, String>>::from_request(req)
             .await
             .map_err(IntoResponse::into_response)?;
 
