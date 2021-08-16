@@ -3,18 +3,26 @@ mod starwars;
 use async_graphql::http::{playground_source, GraphQLPlaygroundConfig};
 use async_graphql::{EmptyMutation, EmptySubscription, Request, Response, Schema};
 use axum::response::IntoResponse;
-use axum::{prelude::*, AddExtensionLayer};
+use axum::{
+    AddExtensionLayer,
+    Json,
+    extract::Extension,
+    handler::get,
+    response::Html,
+    route,
+    routing::RoutingDsl
+};
 use starwars::{QueryRoot, StarWars, StarWarsSchema};
 
 async fn graphql_handler(
-    schema: extract::Extension<StarWarsSchema>,
-    req: extract::Json<Request>,
-) -> response::Json<Response> {
+    schema: Extension<StarWarsSchema>,
+    req: Json<Request>,
+) -> Json<Response> {
     schema.execute(req.0).await.into()
 }
 
 async fn graphql_playground() -> impl IntoResponse {
-    response::Html(playground_source(GraphQLPlaygroundConfig::new("/")))
+    Html(playground_source(GraphQLPlaygroundConfig::new("/")))
 }
 
 #[tokio::main]
