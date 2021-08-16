@@ -9,9 +9,14 @@ use std::ops::Deref;
 /// # Example
 ///
 /// ```rust,no_run
-/// use axum::prelude::*;
+/// use axum::{
+///     extract::ContentLengthLimit,
+///     handler::post,
+///     route,
+///     routing::RoutingDsl
+/// };
 ///
-/// async fn handler(body: extract::ContentLengthLimit<String, 1024>) {
+/// async fn handler(body: ContentLengthLimit<String, 1024>) {
 ///     // ...
 /// }
 ///
