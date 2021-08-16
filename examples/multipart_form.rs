@@ -6,7 +6,10 @@
 
 use axum::{
     extract::{ContentLengthLimit, Multipart},
-    prelude::*,
+    handler::get,
+    response::Html,
+    route,
+    routing::RoutingDsl
 };
 use std::net::SocketAddr;
 
@@ -31,8 +34,8 @@ async fn main() {
         .unwrap();
 }
 
-async fn show_form() -> response::Html<&'static str> {
-    response::Html(
+async fn show_form() -> Html<&'static str> {
+    Html(
         r#"
         <!doctype html>
         <html>
