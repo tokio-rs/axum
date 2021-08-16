@@ -25,7 +25,7 @@
 //! let redirect_service = Redirect::<Body>::permanent("/new".parse().unwrap());
 //!
 //! let app = route("/old", service::get(redirect_service))
-//!     .route("/new", handler::get(handler));
+//!     .route("/new", get(handler));
 //! # async {
 //! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 //! # };
