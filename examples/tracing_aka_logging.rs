@@ -4,7 +4,12 @@
 //! cargo run --example tracing_aka_logging
 //! ```
 
-use axum::prelude::*;
+use axum::{
+    handler::get,
+    response::Html,
+    route,
+    routing::RoutingDsl,
+};
 use std::net::SocketAddr;
 use tower_http::trace::TraceLayer;
 
@@ -32,6 +37,6 @@ async fn main() {
         .unwrap();
 }
 
-async fn handler() -> response::Html<&'static str> {
-    response::Html("<h1>Hello, World!</h1>")
+async fn handler() -> Html<&'static str> {
+    Html("<h1>Hello, World!</h1>")
 }
