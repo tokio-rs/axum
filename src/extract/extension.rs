@@ -9,7 +9,13 @@ use std::ops::Deref;
 /// # Example
 ///
 /// ```rust,no_run
-/// use axum::{AddExtensionLayer, prelude::*};
+/// use axum::{
+///     AddExtensionLayer,
+///     extract::Extension,
+///     handler::get,
+///     route,
+///     routing::RoutingDsl
+/// };
 /// use std::sync::Arc;
 ///
 /// // Some shared state used throughout our application
@@ -17,7 +23,7 @@ use std::ops::Deref;
 ///     // ...
 /// }
 ///
-/// async fn handler(state: extract::Extension<Arc<State>>) {
+/// async fn handler(state: Extension<Arc<State>>) {
 ///     // ...
 /// }
 ///
