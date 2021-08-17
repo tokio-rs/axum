@@ -2,9 +2,8 @@
 name = "example-hello-world"
 version = "0.1.0"
 edition = "2018"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+publish = false
 
 [dependencies]
-axum = { path = "../../.." }
+axum = { path = "../.." }
 tokio = { version = "1.0", features = ["full"] }

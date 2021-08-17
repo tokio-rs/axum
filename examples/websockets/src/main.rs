@@ -34,7 +34,7 @@ async fn main() {
     let app = nest(
         "/",
         axum::service::get(
-            ServeDir::new("examples/new/websockets/assets").append_index_html_on_directories(true),
+            ServeDir::new("examples/websockets/assets").append_index_html_on_directories(true),
         )
         .handle_error(|error: std::io::Error| {
             Ok::<_, std::convert::Infallible>((

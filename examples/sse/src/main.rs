@@ -25,7 +25,7 @@ async fn main() {
     tracing_subscriber::fmt::init();
 
     let static_files_service = axum::service::get(
-        ServeDir::new("examples/new/sse/assets").append_index_html_on_directories(true),
+        ServeDir::new("examples/sse/assets").append_index_html_on_directories(true),
     )
     .handle_error(|error: std::io::Error| {
         Ok::<_, std::convert::Infallible>((

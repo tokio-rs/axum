@@ -24,8 +24,8 @@ async fn main() {
     tracing_subscriber::fmt::init();
 
     let rustls_config = rustls_server_config(
-        "examples/self_signed_certs/key.pem",
-        "examples/self_signed_certs/cert.pem",
+        "examples/tls-rustls/self_signed_certs/key.pem",
+        "examples/tls-rustls/self_signed_certs/cert.pem",
     );
 
     let acceptor = TlsAcceptor::from(rustls_config);
