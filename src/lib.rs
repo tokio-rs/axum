@@ -275,6 +275,11 @@
 //! # };
 //! ```
 //!
+//! Note that nested routes will not see the orignal request URI but instead
+//! have the matched prefix stripped. This is necessary for services like static
+//! file serving to work. Use [`OriginalUri`] if you need the original request
+//! URI.
+//!
 //! # Extractors
 //!
 //! An extractor is a type that implements [`FromRequest`]. Extractors is how
@@ -666,6 +671,7 @@
 //! [examples]: https://github.com/tokio-rs/axum/tree/main/examples
 //! [`RoutingDsl::or`]: crate::routing::RoutingDsl::or
 //! [`axum::Server`]: hyper::server::Server
+//! [`OriginalUri`]: crate::extract::OriginalUri
 
 #![warn(
     clippy::all,

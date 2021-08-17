@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Implement `std::error::Error` for all rejections ([#153](https://github.com/tokio-rs/axum/pull/153))
 - Add `RoutingDsl::or` for combining routes ([#108](https://github.com/tokio-rs/axum/pull/108))
 - Add `handle_error` to `service::OnMethod` ([#160](https://github.com/tokio-rs/axum/pull/160))
-- Add `NestedUri` for extracting request URI in nested services ([#161](https://github.com/tokio-rs/axum/pull/161))
+- Add `OriginalUri` for extracting original request URI in nested services ([#197](https://github.com/tokio-rs/axum/pull/197))
 - Implement `FromRequest` for `http::Extensions`
 - Implement SSE as an `IntoResponse` instead of a service ([#98](https://github.com/tokio-rs/axum/pull/98))
 - Add `Redirect` response.
@@ -30,7 +30,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Ensure a `HandleError` service created from `ServiceExt::handle_error`
   _does not_ implement `RoutingDsl` as that could lead to confusing routing
   behavior ([#120](https://github.com/tokio-rs/axum/pull/120))
-- Fix `Uri` extractor not being the full URI if using `nest` ([#156](https://github.com/tokio-rs/axum/pull/156))
 - Implement `routing::MethodFilter` via [`bitflags`](https://crates.io/crates/bitflags)
 - Removed `extract::UrlParams` and `extract::UrlParamsMap`. Use `extract::Path` instead
 - `EmptyRouter` now requires the response body to implement `Send + Sync + 'static'` ([#108](https://github.com/tokio-rs/axum/pull/108))

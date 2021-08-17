@@ -82,21 +82,21 @@ where
     }
 }
 
-/// Extractor that gets the request URI for a nested service.
+/// Extractor that gets the original request URI regardless of nesting.
 ///
 /// This is necessary since [`Uri`](http::Uri), when used as an extractor, will
-/// always be the full URI.
+/// have the prefix stripped if used in a nested service.
 ///
 /// # Example
 ///
 /// ```
-/// use axum::{prelude::*, routing::nest, extract::NestedUri, http::Uri};
+/// use axum::{prelude::*, routing::nest, extract::OriginalUri, http::Uri};
 ///
 /// let api_routes = route(
 ///     "/users",
-///     get(|uri: Uri, NestedUri(nested_uri): NestedUri| async {
-///         // `uri` is `/api/users`
-///         // `nested_uri` is `/users`
+///     get(|uri: Uri, OriginalUri(original_uri): OriginalUri| async {
+///         // `uri` is `/users`
+///         // `original_uri` is `/api/users`
 ///     }),
 /// );
 ///
@@ -106,19 +106,19 @@ where
 /// # };
 /// ```
 #[derive(Debug, Clone)]
-pub struct NestedUri(pub Uri);
+pub struct OriginalUri(pub Uri);
 
 #[async_trait]
-impl<B> FromRequest<B> for NestedUri
+impl<B> FromRequest<B> for OriginalUri
 where
     B: Send,
 {
-    type Rejection = NotNested;
+    type Rejection = Infallible;
 
     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
         let uri = Extension::<Self>::from_request(req)
             .await
-            .map_err(|_| NotNested)?
+            .unwrap_or_else(|_| Extension(OriginalUri(req.uri().clone())))
             .0;
         Ok(uri)
     }
