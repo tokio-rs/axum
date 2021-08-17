@@ -7,8 +7,10 @@
 use axum::{
     async_trait,
     extract::{Extension, FromRequest, RequestParts},
+    handler::get,
     http::StatusCode,
-    prelude::*,
+    route,
+    routing::RoutingDsl,
     AddExtensionLayer,
 };
 use bb8::{Pool, PooledConnection};

@@ -1,30 +1,22 @@
 //! Run with
 //!
 //! ```not_rust
-//! cargo run -p example-tracing-aka-logging
+//! cargo run --example hello_world
 //! ```
 
 use axum::{handler::get, response::Html, route, routing::RoutingDsl};
 use std::net::SocketAddr;
-use tower_http::trace::TraceLayer;
 
 #[tokio::main]
 async fn main() {
     // Set the RUST_LOG, if it hasn't been explicitly defined
     if std::env::var("RUST_LOG").is_err() {
-        std::env::set_var(
-            "RUST_LOG",
-            "example_tracing_aka_logging=debug,tower_http=debug",
-        )
+        std::env::set_var("RUST_LOG", "hello_world=debug")
     }
     tracing_subscriber::fmt::init();
 
     // build our application with a route
-    let app = route("/", get(handler))
-        // `TraceLayer` is provided by tower-http so you have to add that as a dependency.
-        // It provides good defaults but is also very customizable.
-        // See https://docs.rs/tower-http/0.1.1/tower_http/trace/index.html for more details.
-        .layer(TraceLayer::new_for_http());
+    let app = route("/foo", get(handler)).or(route("/bar", get(handler)));
 
     // run it
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));

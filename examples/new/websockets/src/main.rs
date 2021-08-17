@@ -11,10 +11,10 @@ use axum::{
         ws::{Message, WebSocket, WebSocketUpgrade},
         TypedHeader,
     },
+    handler::get,
     http::StatusCode,
-    prelude::*,
     response::IntoResponse,
-    routing::nest,
+    routing::{nest, RoutingDsl},
 };
 use std::net::SocketAddr;
 use tower_http::{

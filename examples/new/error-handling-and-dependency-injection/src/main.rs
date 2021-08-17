@@ -10,11 +10,13 @@
 use axum::{
     async_trait,
     body::{Bytes, Full},
-    extract::{Extension, Json, Path},
+    extract::{Extension, Path},
+    handler::{get, post},
     http::{Response, StatusCode},
-    prelude::*,
     response::IntoResponse,
-    AddExtensionLayer,
+    route,
+    routing::RoutingDsl,
+    AddExtensionLayer, Json,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -57,7 +59,7 @@ async fn main() {
 async fn users_show(
     Path(user_id): Path<Uuid>,
     Extension(user_repo): Extension<DynUserRepo>,
-) -> Result<response::Json<User>, AppError> {
+) -> Result<Json<User>, AppError> {
     let user = user_repo.find(user_id).await?;
 
     Ok(user.into())
@@ -67,7 +69,7 @@ async fn users_show(
 async fn users_create(
     Json(params): Json<CreateUser>,
     Extension(user_repo): Extension<DynUserRepo>,
-) -> Result<response::Json<User>, AppError> {
+) -> Result<Json<User>, AppError> {
     let user = user_repo.create(params).await?;
 
     Ok(user.into())
@@ -101,7 +103,7 @@ impl IntoResponse for AppError {
             }
         };
 
-        let mut response = response::Json(json!({
+        let mut response = Json(json!({
             "error": error_json,
         }))
         .into_response();

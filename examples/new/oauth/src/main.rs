@@ -11,9 +11,11 @@ use axum::{
     async_trait,
     body::{Bytes, Empty},
     extract::{Extension, FromRequest, Query, RequestParts, TypedHeader},
+    handler::get,
     http::{header::SET_COOKIE, HeaderMap, Response},
-    prelude::*,
     response::{IntoResponse, Redirect},
+    route,
+    routing::RoutingDsl,
     AddExtensionLayer,
 };
 use oauth2::{
@@ -212,11 +214,11 @@ where
     type Rejection = AuthRedirect;
 
     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-        let extract::Extension(store) = extract::Extension::<MemoryStore>::from_request(req)
+        let Extension(store) = Extension::<MemoryStore>::from_request(req)
             .await
             .expect("`MemoryStore` extension is missing");
 
-        let cookies = extract::TypedHeader::<headers::Cookie>::from_request(req)
+        let cookies = TypedHeader::<headers::Cookie>::from_request(req)
             .await
             .expect("could not get cookies");
 

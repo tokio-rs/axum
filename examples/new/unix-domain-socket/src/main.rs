@@ -5,9 +5,12 @@
 //! ```
 
 use axum::{
+    body::Body,
     extract::connect_info::{self, ConnectInfo},
-    http::{Method, StatusCode, Uri},
-    prelude::*,
+    handler::get,
+    http::{Method, Request, StatusCode, Uri},
+    route,
+    routing::RoutingDsl,
 };
 use futures::ready;
 use hyper::{

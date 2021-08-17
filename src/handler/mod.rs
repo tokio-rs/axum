@@ -28,7 +28,11 @@ pub mod future;
 /// # Example
 ///
 /// ```rust
-/// use axum::prelude::*;
+/// use axum::{
+///     handler::any,
+///     route,
+///     routing::RoutingDsl
+/// };
 ///
 /// async fn handler() {}
 ///
@@ -70,7 +74,11 @@ where
 /// # Example
 ///
 /// ```rust
-/// use axum::prelude::*;
+/// use axum::{
+///     handler::get,
+///     route,
+///     routing::RoutingDsl
+/// };
 ///
 /// async fn handler() {}
 ///
@@ -156,7 +164,11 @@ where
 /// # Example
 ///
 /// ```rust
-/// use axum::{handler::on, routing::MethodFilter, prelude::*};
+/// use axum::{
+///     handler::on,
+///     route,
+///     routing::{MethodFilter, RoutingDsl},
+/// };
 ///
 /// async fn handler() {}
 ///
@@ -219,7 +231,11 @@ pub trait Handler<B, T>: Clone + Send + Sized + 'static {
     /// can be done like so:
     ///
     /// ```rust
-    /// use axum::prelude::*;
+    /// use axum::{
+    ///     handler::{get, Handler},
+    ///     route,
+    ///     routing::RoutingDsl
+    /// };
     /// use tower::limit::{ConcurrencyLimitLayer, ConcurrencyLimit};
     ///
     /// async fn handler() { /* ... */ }
@@ -467,7 +483,7 @@ impl<H, B, T, F> OnMethod<H, B, T, F> {
     /// # Example
     ///
     /// ```rust
-    /// use axum::prelude::*;
+    /// use axum::{handler::post, route, routing::RoutingDsl};
     ///
     /// async fn handler() {}
     ///
@@ -557,7 +573,11 @@ impl<H, B, T, F> OnMethod<H, B, T, F> {
     /// # Example
     ///
     /// ```rust
-    /// use axum::{routing::MethodFilter, prelude::*};
+    /// use axum::{
+    ///     handler::get,
+    ///     route,
+    ///     routing::{MethodFilter, RoutingDsl}
+    /// };
     ///
     /// async fn handler() {}
     ///

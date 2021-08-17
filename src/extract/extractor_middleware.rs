@@ -34,7 +34,12 @@ use tower::{BoxError, Layer, Service};
 /// # Example
 ///
 /// ```rust
-/// use axum::{extract::{extractor_middleware, RequestParts}, prelude::*};
+/// use axum::{
+///     extract::{extractor_middleware, FromRequest, RequestParts},
+///     handler::{get, post},
+///     route,
+///     routing::RoutingDsl
+/// };
 /// use http::StatusCode;
 /// use async_trait::async_trait;
 ///
@@ -42,7 +47,7 @@ use tower::{BoxError, Layer, Service};
 /// struct RequireAuth;
 ///
 /// #[async_trait]
-/// impl<B> extract::FromRequest<B> for RequireAuth
+/// impl<B> FromRequest<B> for RequireAuth
 /// where
 ///     B: Send,
 /// {

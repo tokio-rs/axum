@@ -7,8 +7,11 @@
 //! ```
 
 use axum::extract::ws::{Message, WebSocket, WebSocketUpgrade};
-use axum::prelude::*;
+use axum::extract::Extension;
+use axum::handler::get;
 use axum::response::{Html, IntoResponse};
+use axum::route;
+use axum::routing::RoutingDsl;
 use axum::AddExtensionLayer;
 use futures::{sink::SinkExt, stream::StreamExt};
 use std::collections::HashSet;
@@ -43,7 +46,7 @@ async fn main() {
 
 async fn websocket_handler(
     ws: WebSocketUpgrade,
-    extract::Extension(state): extract::Extension<Arc<AppState>>,
+    Extension(state): Extension<Arc<AppState>>,
 ) -> impl IntoResponse {
     ws.on_upgrade(|socket| websocket(socket, state))
 }

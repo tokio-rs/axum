@@ -4,14 +4,15 @@
 //! cargo run -p example-versioning
 //! ```
 
-use axum::response::IntoResponse;
 use axum::{
     async_trait,
     body::{Bytes, Full},
-    extract::{FromRequest, RequestParts},
-    http::Response,
-    http::StatusCode,
-    prelude::*,
+    extract::{FromRequest, Path, RequestParts},
+    handler::get,
+    http::{Response, StatusCode},
+    response::IntoResponse,
+    route,
+    routing::RoutingDsl,
 };
 use std::collections::HashMap;
 use std::net::SocketAddr;
@@ -55,7 +56,7 @@ where
     type Rejection = Response<Full<Bytes>>;
 
     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-        let params = extract::Path::<HashMap<String, String>>::from_request(req)
+        let params = Path::<HashMap<String, String>>::from_request(req)
             .await
             .map_err(IntoResponse::into_response)?;
 

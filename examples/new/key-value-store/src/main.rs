@@ -9,10 +9,11 @@
 use axum::{
     body::{Body, Bytes},
     extract::{ContentLengthLimit, Extension, Path},
+    handler::{delete, get, Handler},
     http::StatusCode,
-    prelude::*,
     response::IntoResponse,
-    routing::BoxRoute,
+    route,
+    routing::{BoxRoute, RoutingDsl},
 };
 use std::{
     borrow::Cow,

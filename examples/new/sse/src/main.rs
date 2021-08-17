@@ -6,10 +6,10 @@
 
 use axum::{
     extract::TypedHeader,
+    handler::get,
     http::StatusCode,
-    prelude::*,
     response::sse::{sse, Event, Sse},
-    routing::nest,
+    routing::{nest, RoutingDsl},
 };
 use futures::stream::{self, Stream};
 use std::{convert::Infallible, net::SocketAddr, time::Duration};

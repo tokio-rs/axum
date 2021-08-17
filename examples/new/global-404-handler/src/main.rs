@@ -6,8 +6,11 @@
 
 use axum::{
     body::{box_body, Body, BoxBody},
+    handler::get,
     http::{Response, StatusCode},
-    prelude::*,
+    response::Html,
+    route,
+    routing::RoutingDsl,
 };
 use std::net::SocketAddr;
 use tower::util::MapResponseLayer;
@@ -34,8 +37,8 @@ async fn main() {
         .unwrap();
 }
 
-async fn handler() -> response::Html<&'static str> {
-    response::Html("<h1>Hello, World!</h1>")
+async fn handler() -> Html<&'static str> {
+    Html("<h1>Hello, World!</h1>")
 }
 
 fn map_404(response: Response<BoxBody>) -> Response<BoxBody> {
