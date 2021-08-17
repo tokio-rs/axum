@@ -411,7 +411,12 @@ pub struct RequestParts<B = crate::body::Body> {
 }
 
 impl<B> RequestParts<B> {
-    pub(crate) fn new(req: Request<B>) -> Self {
+    /// Create a new `RequestParts`.
+    ///
+    /// You generally shouldn't need to construct this type yourself, unless
+    /// using extractors outside of axum for example to implement a
+    /// [`tower::Service`].
+    pub fn new(req: Request<B>) -> Self {
         let (
             http::request::Parts {
                 method,
@@ -434,9 +439,21 @@ impl<B> RequestParts<B> {
         }
     }
 
-    // this method uses `Error` since we might make this method public one day and then
-    // `Error` is more flexible.
-    pub(crate) fn try_into_request(self) -> Result<Request<B>, Error> {
+    /// Convert this `RequestParts` back into a [`Request`].
+    ///
+    /// Fails if
+    ///
+    /// - The full [`HeaderMap`] has been extracted, that is [`take_headers`]
+    /// have been called.
+    /// - The full [`Extensions`] has been extracted, that is
+    /// [`take_extensions`] have been called.
+    /// - The request body has been extracted, that is [`take_body`] have been
+    /// called.
+    ///
+    /// [`take_headers`]: RequestParts::take_headers
+    /// [`take_extensions`]: RequestParts::take_extensions
+    /// [`take_body`]: RequestParts::take_body
+    pub fn try_into_request(self) -> Result<Request<B>, Error> {
         let Self {
             method,
             uri,
