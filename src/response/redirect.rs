@@ -9,7 +9,12 @@ use std::convert::TryFrom;
 /// # Example
 ///
 /// ```rust
-/// use axum::{prelude::*, response::Redirect};
+/// use axum::{
+///     handler::get,
+///     response::Redirect,
+///     route,
+///     routing::RoutingDsl
+/// };
 ///
 /// let app = route("/old", get(|| async { Redirect::permanent("/new".parse().unwrap()) }))
 ///     .route("/new", get(|| async { "Hello!" }));

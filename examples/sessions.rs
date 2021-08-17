@@ -7,9 +7,11 @@
 use async_session::{MemoryStore, Session, SessionStore as _};
 use axum::{
     async_trait,
-    extract::{FromRequest, RequestParts},
-    prelude::*,
+    extract::{Extension, FromRequest, RequestParts},
+    handler::get,
     response::IntoResponse,
+    route,
+    routing::RoutingDsl,
     AddExtensionLayer,
 };
 use http::header::{HeaderMap, HeaderValue};
@@ -70,7 +72,7 @@ where
     type Rejection = (StatusCode, &'static str);
 
     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-        let extract::Extension(store) = extract::Extension::<MemoryStore>::from_request(req)
+        let Extension(store) = Extension::<MemoryStore>::from_request(req)
             .await
             .expect("`MemoryStore` extension missing");
 

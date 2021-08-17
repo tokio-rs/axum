@@ -11,7 +11,12 @@ use std::{convert::Infallible, ops::Deref};
 /// # Example
 ///
 /// ```rust,no_run
-/// use axum::{extract::TypedHeader, prelude::*};
+/// use axum::{
+///     extract::TypedHeader,
+///     handler::get,
+///     route,
+///     routing::RoutingDsl
+/// };
 /// use headers::UserAgent;
 ///
 /// async fn users_teams_show(

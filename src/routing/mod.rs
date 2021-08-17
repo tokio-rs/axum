@@ -54,7 +54,11 @@ pub trait RoutingDsl: crate::sealed::Sealed + Sized {
     /// # Example
     ///
     /// ```rust
-    /// use axum::prelude::*;
+    /// use axum::{
+    ///     handler::get,
+    ///     route,
+    ///     routing::RoutingDsl
+    /// };
     ///
     /// async fn first_handler() { /* ... */ }
     ///
@@ -101,7 +105,12 @@ pub trait RoutingDsl: crate::sealed::Sealed + Sized {
     /// return them from functions:
     ///
     /// ```rust
-    /// use axum::{routing::BoxRoute, body::Body, prelude::*};
+    /// use axum::{
+    ///     body::Body,
+    ///     handler::get,
+    ///     route,
+    ///     routing::{BoxRoute, RoutingDsl}
+    /// };
     ///
     /// async fn first_handler() { /* ... */ }
     ///
@@ -153,7 +162,11 @@ pub trait RoutingDsl: crate::sealed::Sealed + Sized {
     /// routes can be done like so:
     ///
     /// ```rust
-    /// use axum::prelude::*;
+    /// use axum::{
+    ///     handler::get,
+    ///     route,
+    ///     routing::RoutingDsl
+    /// };
     /// use tower::limit::{ConcurrencyLimitLayer, ConcurrencyLimit};
     ///
     /// async fn first_handler() { /* ... */ }
@@ -179,7 +192,11 @@ pub trait RoutingDsl: crate::sealed::Sealed + Sized {
     /// entire app:
     ///
     /// ```rust
-    /// use axum::prelude::*;
+    /// use axum::{
+    ///     handler::get,
+    ///     route,
+    ///     routing::RoutingDsl
+    /// };
     /// use tower_http::trace::TraceLayer;
     ///
     /// async fn first_handler() { /* ... */ }
@@ -210,7 +227,11 @@ pub trait RoutingDsl: crate::sealed::Sealed + Sized {
     /// [`Server`](hyper::server::Server):
     ///
     /// ```
-    /// use axum::prelude::*;
+    /// use axum::{
+    ///     handler::get,
+    ///     route,
+    ///     routing::RoutingDsl
+    /// };
     ///
     /// let app = route("/", get(|| async { "Hi!" }));
     ///
@@ -239,7 +260,12 @@ pub trait RoutingDsl: crate::sealed::Sealed + Sized {
     /// Extracting [`std::net::SocketAddr`] is supported out of the box:
     ///
     /// ```
-    /// use axum::{prelude::*, extract::ConnectInfo};
+    /// use axum::{
+    ///     extract::ConnectInfo,
+    ///     handler::get,
+    ///     route,
+    ///     routing::RoutingDsl
+    /// };
     /// use std::net::SocketAddr;
     ///
     /// let app = route("/", get(handler));
@@ -262,8 +288,10 @@ pub trait RoutingDsl: crate::sealed::Sealed + Sized {
     ///
     /// ```
     /// use axum::{
-    ///     prelude::*,
     ///     extract::connect_info::{ConnectInfo, Connected},
+    ///     handler::get,
+    ///     route,
+    ///     routing::RoutingDsl
     /// };
     /// use hyper::server::conn::AddrStream;
     ///
@@ -323,7 +351,11 @@ pub trait RoutingDsl: crate::sealed::Sealed + Sized {
     /// into one.
     ///
     /// ```
-    /// use axum::prelude::*;
+    /// use axum::{
+    ///     handler::get,
+    ///     route,
+    ///     routing::RoutingDsl
+    /// };
     /// #
     /// # async fn users_list() {}
     /// # async fn users_show() {}
@@ -359,7 +391,12 @@ pub trait RoutingDsl: crate::sealed::Sealed + Sized {
     /// # Example
     ///
     /// ```
-    /// use axum::{http::StatusCode, prelude::*};
+    /// use axum::{
+    ///     handler::get,
+    ///     http::StatusCode,
+    ///     route,
+    ///     routing::RoutingDsl
+    /// };
     /// use tower::{BoxError, timeout::TimeoutLayer};
     /// use std::{time::Duration, convert::Infallible};
     ///
@@ -394,7 +431,12 @@ pub trait RoutingDsl: crate::sealed::Sealed + Sized {
     /// some errors:
     ///
     /// ```
-    /// use axum::{http::StatusCode, prelude::*};
+    /// use axum::{
+    ///     handler::get,
+    ///     http::StatusCode,
+    ///     route,
+    ///     routing::RoutingDsl
+    /// };
     /// use tower::{BoxError, timeout::TimeoutLayer};
     /// use std::time::Duration;
     ///
@@ -794,7 +836,11 @@ where
 /// them together.
 ///
 /// ```
-/// use axum::{routing::nest, prelude::*};
+/// use axum::{
+///     handler::get,
+///     route,
+///     routing::{nest, RoutingDsl},
+/// };
 /// use http::Uri;
 ///
 /// async fn users_get(uri: Uri) {
@@ -818,10 +864,15 @@ where
 /// captures from the outer routes:
 ///
 /// ```
-/// use axum::{routing::nest, prelude::*};
+/// use axum::{
+///     extract::Path,
+///     handler::get,
+///     route,
+///     routing::{nest, RoutingDsl},
+/// };
 /// use std::collections::HashMap;
 ///
-/// async fn users_get(extract::Path(params): extract::Path<HashMap<String, String>>) {
+/// async fn users_get(Path(params): Path<HashMap<String, String>>) {
 ///     // Both `version` and `id` were captured even though `users_api` only
 ///     // explicitly captures `id`.
 ///     let version = params.get("version");
@@ -841,7 +892,8 @@ where
 ///
 /// ```
 /// use axum::{
-///     routing::nest, service::get, prelude::*,
+///     routing::{nest, RoutingDsl},
+///     service::get,
 /// };
 /// use tower_http::services::ServeDir;
 ///

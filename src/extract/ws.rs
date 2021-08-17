@@ -4,9 +4,11 @@
 //!
 //! ```
 //! use axum::{
-//!     prelude::*,
 //!     extract::ws::{WebSocketUpgrade, WebSocket},
+//!     handler::get,
 //!     response::IntoResponse,
+//!     route,
+//!     routing::RoutingDsl
 //! };
 //!
 //! let app = route("/ws", get(handler));
@@ -109,9 +111,11 @@ impl WebSocketUpgrade {
     ///
     /// ```
     /// use axum::{
-    ///     prelude::*,
     ///     extract::ws::{WebSocketUpgrade, WebSocket},
+    ///     handler::get,
     ///     response::IntoResponse,
+    ///     route,
+    ///     routing::RoutingDsl
     /// };
     ///
     /// let app = route("/ws", get(handler));

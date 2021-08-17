@@ -3,7 +3,11 @@
 //! # Example
 //!
 //! ```
-//! use axum::prelude::*;
+//! use axum::{
+//!     handler::get,
+//!     route,
+//!     routing::RoutingDsl
+//! };
 //! use axum::response::sse::{sse, Event, KeepAlive, Sse};
 //! use std::{time::Duration, convert::Infallible};
 //! use tokio_stream::StreamExt as _ ;

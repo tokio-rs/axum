@@ -6,7 +6,10 @@
 
 use axum::{
     body::{box_body, Body, BoxBody},
-    prelude::*,
+    handler::get,
+    response::Html,
+    route,
+    routing::RoutingDsl,
 };
 use http::{Response, StatusCode};
 use std::net::SocketAddr;
@@ -34,8 +37,8 @@ async fn main() {
         .unwrap();
 }
 
-async fn handler() -> response::Html<&'static str> {
-    response::Html("<h1>Hello, World!</h1>")
+async fn handler() -> Html<&'static str> {
+    Html("<h1>Hello, World!</h1>")
 }
 
 fn map_404(response: Response<BoxBody>) -> Response<BoxBody> {

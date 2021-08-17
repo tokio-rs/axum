@@ -4,7 +4,7 @@
 //! cargo run --example hello_world
 //! ```
 
-use axum::prelude::*;
+use axum::{handler::get, response::Html, route, routing::RoutingDsl};
 use std::net::SocketAddr;
 
 #[tokio::main]
@@ -27,6 +27,6 @@ async fn main() {
         .unwrap();
 }
 
-async fn handler() -> response::Html<&'static str> {
-    response::Html("<h1>Hello, World!</h1>")
+async fn handler() -> Html<&'static str> {
+    Html("<h1>Hello, World!</h1>")
 }

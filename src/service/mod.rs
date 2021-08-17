@@ -11,14 +11,21 @@
 //!
 //! ```
 //! use tower_http::services::Redirect;
-//! use axum::{service, handler, prelude::*};
+//! use axum::{
+//!     body::Body,
+//!     handler::get,
+//!     http::Request,
+//!     route,
+//!     routing::RoutingDsl,
+//!     service,
+//! };
 //!
 //! async fn handler(request: Request<Body>) { /* ... */ }
 //!
 //! let redirect_service = Redirect::<Body>::permanent("/new".parse().unwrap());
 //!
 //! let app = route("/old", service::get(redirect_service))
-//!     .route("/new", handler::get(handler));
+//!     .route("/new", get(handler));
 //! # async {
 //! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 //! # };
@@ -58,7 +65,11 @@
 //! themselves services:
 //!
 //! ```rust
-//! use axum::prelude::*;
+//! use axum::{
+//!     handler::get,
+//!     route,
+//!     routing::RoutingDsl
+//! };
 //! use tower::ServiceBuilder;
 //! # let some_backpressure_sensitive_middleware =
 //! #     tower::layer::util::Identity::new();
@@ -137,7 +148,12 @@ where
 /// # Example
 ///
 /// ```rust
-/// use axum::{service, prelude::*};
+/// use axum::{
+///     http::Request,
+///     route,
+///     routing::RoutingDsl,
+///     service,
+/// };
 /// use http::Response;
 /// use std::convert::Infallible;
 /// use hyper::Body;
@@ -228,7 +244,13 @@ where
 /// # Example
 ///
 /// ```rust
-/// use axum::{handler::on, service, routing::MethodFilter, prelude::*};
+/// use axum::{
+///     http::Request,
+///     handler::on,
+///     service,
+///     route,
+///     routing::{MethodFilter, RoutingDsl},
+/// };
 /// use http::Response;
 /// use std::convert::Infallible;
 /// use hyper::Body;
@@ -317,7 +339,13 @@ impl<S, F, B> OnMethod<S, F, B> {
     /// # Example
     ///
     /// ```rust
-    /// use axum::{handler::on, service, routing::MethodFilter, prelude::*};
+    /// use axum::{
+    ///     http::Request,
+    ///     handler::on,
+    ///     service,
+    ///     route,
+    ///     routing::{MethodFilter, RoutingDsl},
+    /// };
     /// use http::Response;
     /// use std::convert::Infallible;
     /// use hyper::Body;
@@ -414,7 +442,13 @@ impl<S, F, B> OnMethod<S, F, B> {
     /// # Example
     ///
     /// ```rust
-    /// use axum::{handler::on, service, routing::MethodFilter, prelude::*};
+    /// use axum::{
+    ///     http::Request,
+    ///     handler::on,
+    ///     service,
+    ///     route,
+    ///     routing::{MethodFilter, RoutingDsl},
+    /// };
     /// use http::Response;
     /// use std::convert::Infallible;
     /// use hyper::Body;
@@ -583,7 +617,7 @@ where
 }
 
 /// ```compile_fail
-/// use crate::{service::ServiceExt, prelude::*};
+/// use crate::{service::ServiceExt};
 /// use tower::service_fn;
 /// use hyper::Body;
 /// use http::{Request, Response, StatusCode};

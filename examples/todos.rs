@@ -14,9 +14,12 @@
 //! ```
 
 use axum::{
-    extract::{Extension, Json, Path, Query},
-    prelude::*,
+    extract::{Extension, Path, Query},
+    handler::{get, patch},
     response::IntoResponse,
+    route,
+    routing::RoutingDsl,
+    Json,
 };
 use http::StatusCode;
 use serde::{Deserialize, Serialize};
@@ -95,10 +98,10 @@ async fn todos_index(
         .values()
         .cloned()
         .skip(pagination.offset.unwrap_or(0))
-        .take(pagination.limit.unwrap_or(std::usize::MAX))
+        .take(pagination.limit.unwrap_or(usize::MAX))
         .collect::<Vec<_>>();
 
-    response::Json(todos)
+    Json(todos)
 }
 
 #[derive(Debug, Deserialize)]
@@ -118,7 +121,7 @@ async fn todos_create(
 
     db.write().unwrap().insert(todo.id, todo.clone());
 
-    (StatusCode::CREATED, response::Json(todo))
+    (StatusCode::CREATED, Json(todo))
 }
 
 #[derive(Debug, Deserialize)]
@@ -149,7 +152,7 @@ async fn todos_update(
 
     db.write().unwrap().insert(todo.id, todo.clone());
 
-    Ok(response::Json(todo))
+    Ok(Json(todo))
 }
 
 async fn todos_delete(Path(id): Path<Uuid>, Extension(db): Extension<Db>) -> impl IntoResponse {
