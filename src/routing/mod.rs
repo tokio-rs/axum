@@ -8,7 +8,6 @@ use crate::{
         connect_info::{Connected, IntoMakeServiceWithConnectInfo},
         NestedUri,
     },
-    response::IntoResponse,
     service::{HandleError, HandleErrorFromRouter},
     util::ByteStr,
 };
@@ -416,17 +415,10 @@ pub trait RoutingDsl: crate::sealed::Sealed + Sized {
     /// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
     /// # };
     /// ```
-    fn handle_error<ReqBody, ResBody, F, Res, E>(
+    fn handle_error<ReqBody, F>(
         self,
         f: F,
-    ) -> HandleError<Self, F, ReqBody, HandleErrorFromRouter>
-    where
-        Self: Service<Request<ReqBody>, Response = Response<ResBody>>,
-        F: FnOnce(Self::Error) -> Result<Res, E>,
-        Res: IntoResponse,
-        ResBody: http_body::Body<Data = Bytes> + Send + Sync + 'static,
-        ResBody::Error: Into<BoxError> + Send + Sync + 'static,
-    {
+    ) -> HandleError<Self, F, ReqBody, HandleErrorFromRouter> {
         HandleError::new(self, f)
     }
 
