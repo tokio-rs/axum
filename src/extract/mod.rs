@@ -219,7 +219,8 @@
 //! };
 //! use tower_http::map_request_body::MapRequestBodyLayer;
 //! use axum::{
-//!     extract::{Body, BodyStream},
+//!     extract::{self, BodyStream},
+//!     body::Body,
 //!     handler::get,
 //!     http::{header::HeaderMap, Request},
 //!     route,
@@ -260,12 +261,12 @@
 //!         "/body",
 //!         // `extract::Body` defaults to `axum::body::Body`
 //!         // but can be customized
-//!         get(|_: Body<MyBody<Body>>| async {})
+//!         get(|_: extract::Body<MyBody<Body>>| async {})
 //!     )
 //!     .route(
 //!         "/body-stream",
 //!         // same for `extract::BodyStream`
-//!         get(|_: BodyStream<MyBody<Body>>| async {}),
+//!         get(|_: extract::BodyStream<MyBody<Body>>| async {}),
 //!     )
 //!     .route(
 //!         // and `Request<_>`
