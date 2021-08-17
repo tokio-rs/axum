@@ -7,10 +7,10 @@
 use axum::{
     body::Body,
     handler::{get, post},
-    Json,
     http::Request,
     route,
-    routing::{BoxRoute, RoutingDsl}
+    routing::{BoxRoute, RoutingDsl},
+    Json,
 };
 use tower_http::trace::TraceLayer;
 

@@ -4,10 +4,7 @@
 //! cargo run --example tls_rustls
 //! ```
 
-use axum::{
-    handler::get,
-    route,
-};
+use axum::{handler::get, route};
 use hyper::server::conn::Http;
 use std::{fs::File, io::BufReader, sync::Arc};
 use tokio::net::TcpListener;

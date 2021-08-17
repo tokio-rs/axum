@@ -6,7 +6,7 @@
 
 use axum::{
     async_trait,
-    extract::{Path, FromRequest, RequestParts},
+    extract::{FromRequest, Path, RequestParts},
     handler::get,
     response::IntoResponse,
     route,

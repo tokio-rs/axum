@@ -15,8 +15,8 @@ use futures::{sink::SinkExt, stream::StreamExt};
 use tokio::sync::broadcast;
 
 use axum::extract::{
+    ws::{Message, WebSocket, WebSocketUpgrade},
     Extension,
-    ws::{Message, WebSocket, WebSocketUpgrade}
 };
 use axum::handler::get;
 use axum::response::{Html, IntoResponse};

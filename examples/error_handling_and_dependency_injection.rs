@@ -13,11 +13,10 @@ use axum::{
     async_trait,
     extract::{Extension, Path},
     handler::{get, post},
-    Json,
     response::IntoResponse,
     route,
     routing::RoutingDsl,
-    AddExtensionLayer,
+    AddExtensionLayer, Json,
 };
 use bytes::Bytes;
 use http::{Response, StatusCode};

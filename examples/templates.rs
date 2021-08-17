@@ -10,7 +10,7 @@ use axum::{
     handler::get,
     response::{Html, IntoResponse},
     route,
-    routing::RoutingDsl
+    routing::RoutingDsl,
 };
 use bytes::Bytes;
 use http::{Response, StatusCode};

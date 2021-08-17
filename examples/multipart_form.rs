@@ -9,7 +9,7 @@ use axum::{
     handler::get,
     response::Html,
     route,
-    routing::RoutingDsl
+    routing::RoutingDsl,
 };
 use std::net::SocketAddr;
 

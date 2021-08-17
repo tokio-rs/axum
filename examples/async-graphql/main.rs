@@ -4,20 +4,12 @@ use async_graphql::http::{playground_source, GraphQLPlaygroundConfig};
 use async_graphql::{EmptyMutation, EmptySubscription, Request, Response, Schema};
 use axum::response::IntoResponse;
 use axum::{
-    AddExtensionLayer,
-    Json,
-    extract::Extension,
-    handler::get,
-    response::Html,
-    route,
-    routing::RoutingDsl
+    extract::Extension, handler::get, response::Html, route, routing::RoutingDsl,
+    AddExtensionLayer, Json,
 };
 use starwars::{QueryRoot, StarWars, StarWarsSchema};
 
-async fn graphql_handler(
-    schema: Extension<StarWarsSchema>,
-    req: Json<Request>,
-) -> Json<Response> {
+async fn graphql_handler(schema: Extension<StarWarsSchema>, req: Json<Request>) -> Json<Response> {
     schema.execute(req.0).await.into()
 }
 

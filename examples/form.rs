@@ -4,13 +4,7 @@
 //! cargo run --example form
 //! ```
 
-use axum::{
-    extract::Form,
-    handler::get,
-    response::Html,
-    route,
-    routing::RoutingDsl
-};
+use axum::{extract::Form, handler::get, response::Html, route, routing::RoutingDsl};
 use serde::Deserialize;
 use std::net::SocketAddr;
 

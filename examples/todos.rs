@@ -16,10 +16,10 @@
 use axum::{
     extract::{Extension, Path, Query},
     handler::{get, patch},
-    Json,
-    route,
     response::IntoResponse,
-    routing::RoutingDsl
+    route,
+    routing::RoutingDsl,
+    Json,
 };
 use http::StatusCode;
 use serde::{Deserialize, Serialize};

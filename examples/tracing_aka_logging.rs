@@ -4,12 +4,7 @@
 //! cargo run --example tracing_aka_logging
 //! ```
 
-use axum::{
-    handler::get,
-    response::Html,
-    route,
-    routing::RoutingDsl,
-};
+use axum::{handler::get, response::Html, route, routing::RoutingDsl};
 use std::net::SocketAddr;
 use tower_http::trace::TraceLayer;
 

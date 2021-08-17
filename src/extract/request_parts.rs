@@ -291,12 +291,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{
-        body::Body,
-        handler::post,
-        route,
-        tests::*
-    };
+    use crate::{body::Body, handler::post, route, tests::*};
     use http::StatusCode;
 
     #[tokio::test]
