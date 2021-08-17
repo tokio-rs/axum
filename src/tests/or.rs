@@ -42,6 +42,121 @@ async fn basic() {
 }
 
 #[tokio::test]
+async fn multiple_ors_balanced_differently() {
+    let one = route("/one", get(|| async { "one" }));
+    let two = route("/two", get(|| async { "two" }));
+    let three = route("/three", get(|| async { "three" }));
+    let four = route("/four", get(|| async { "four" }));
+
+    test(
+        "one",
+        one.clone()
+            .or(two.clone())
+            .or(three.clone())
+            .or(four.clone()),
+    )
+    .await;
+
+    test(
+        "two",
+        one.clone()
+            .or(two.clone())
+            .or(three.clone().or(four.clone())),
+    )
+    .await;
+
+    test(
+        "three",
+        one.clone()
+            .or(two.clone().or(three.clone()).or(four.clone())),
+    )
+    .await;
+
+    test("four", one.or(two.or(three.or(four)))).await;
+
+    async fn test<S, ResBody>(name: &str, app: S)
+    where
+        S: Service<Request<Body>, Response = Response<ResBody>> + Clone + Send + 'static,
+        ResBody: http_body::Body + Send + 'static,
+        ResBody::Data: Send,
+        ResBody::Error: Into<BoxError>,
+        S::Future: Send,
+        S::Error: Into<BoxError>,
+    {
+        let addr = run_in_background(app).await;
+
+        let client = reqwest::Client::new();
+
+        for n in ["one", "two", "three", "four"].iter() {
+            println!("running: {} / {}", name, n);
+            let res = client
+                .get(format!("http://{}/{}", addr, n))
+                .send()
+                .await
+                .unwrap();
+            assert_eq!(res.status(), StatusCode::OK);
+            assert_eq!(res.text().await.unwrap(), *n);
+        }
+    }
+}
+
+#[tokio::test]
+async fn or_nested_inside_other_thing() {
+    let inner = route("/bar", get(|| async {})).or(route("/baz", get(|| async {})));
+    let app = nest("/foo", inner);
+
+    let addr = run_in_background(app).await;
+
+    let client = reqwest::Client::new();
+
+    let res = client
+        .get(format!("http://{}/foo/bar", addr))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+
+    let res = client
+        .get(format!("http://{}/foo/baz", addr))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+}
+
+#[tokio::test]
+async fn or_with_route_following() {
+    let one = route("/one", get(|| async { "one" }));
+    let two = route("/two", get(|| async { "two" }));
+    let app = one.or(two).route("/three", get(|| async { "three" }));
+
+    let addr = run_in_background(app).await;
+
+    let client = reqwest::Client::new();
+
+    let res = client
+        .get(format!("http://{}/one", addr))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+
+    let res = client
+        .get(format!("http://{}/two", addr))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+
+    let res = client
+        .get(format!("http://{}/three", addr))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+}
+
+#[tokio::test]
 async fn layer() {
     let one = route("/foo", get(|| async {}));
     let two = route("/bar", get(|| async {})).layer(ConcurrencyLimitLayer::new(10));
