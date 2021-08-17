@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+- Overall compile time improvements. If you're having issues with compile time
+  please file an issue!
 - Make `FromRequest` default to being generic over `body::Body` ([#146](https://github.com/tokio-rs/axum/pull/146))
 - Implement `std::error::Error` for all rejections ([#153](https://github.com/tokio-rs/axum/pull/153))
 - Add `RoutingDsl::or` for combining routes ([#108](https://github.com/tokio-rs/axum/pull/108))
@@ -16,7 +18,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Implement SSE as an `IntoResponse` instead of a service ([#98](https://github.com/tokio-rs/axum/pull/98))
 - Add `Redirect` response. ([#192](https://github.com/tokio-rs/axum/pull/192))
 - Make `RequestParts::{new, try_into_request}` public ([#194](https://github.com/tokio-rs/axum/pull/194))
-- Overall compile time improvements
 
 ## Breaking changes
 
