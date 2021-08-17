@@ -1,14 +1,14 @@
 //! Run with
 //!
 //! ```not_rust
-//! cargo run --example 404
+//! cargo run -p example-global-404-handler
 //! ```
 
 use axum::{
     body::{box_body, Body, BoxBody},
+    http::{Response, StatusCode},
     prelude::*,
 };
-use http::{Response, StatusCode};
 use std::net::SocketAddr;
 use tower::util::MapResponseLayer;
 

@@ -92,27 +92,3 @@ rustdoc-args = ["--cfg", "docsrs"]
 
 [package.metadata.playground]
 features = ["ws", "multipart", "headers"]
-
-[[example]]
-name = "chat"
-required-features = ["ws"]
-
-[[example]]
-name = "multipart_form"
-required-features = ["multipart"]
-
-[[example]]
-name = "sse"
-required-features = ["headers"]
-
-[[example]]
-name = "websocket"
-required-features = ["ws", "headers"]
-
-[[example]]
-name = "async-graphql"
-required-features = ["headers"]
-
-[[example]]
-name = "oauth"
-required-features = ["headers"]

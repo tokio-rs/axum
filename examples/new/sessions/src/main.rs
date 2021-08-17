@@ -1,19 +1,22 @@
 //! Run with
 //!
 //! ```not_rust
-//! cargo run --example sessions
+//! cargo run -p example-sessions
 //! ```
 
 use async_session::{MemoryStore, Session, SessionStore as _};
 use axum::{
     async_trait,
     extract::{FromRequest, RequestParts},
+    http::{
+        self,
+        header::{HeaderMap, HeaderValue},
+        StatusCode,
+    },
     prelude::*,
     response::IntoResponse,
     AddExtensionLayer,
 };
-use http::header::{HeaderMap, HeaderValue};
-use http::StatusCode;
 use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
 use uuid::Uuid;

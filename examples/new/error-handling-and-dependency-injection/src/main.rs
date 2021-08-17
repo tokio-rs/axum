@@ -4,21 +4,18 @@
 //! Run with
 //!
 //! ```not_rust
-//! cargo run --example error_handling_and_dependency_injection
+//! cargo run -p example-error-handling-and-dependency-injection
 //! ```
-
-#![allow(dead_code)]
 
 use axum::{
     async_trait,
+    body::{Bytes, Full},
     extract::{Extension, Json, Path},
+    http::{Response, StatusCode},
     prelude::*,
     response::IntoResponse,
     AddExtensionLayer,
 };
-use bytes::Bytes;
-use http::{Response, StatusCode};
-use http_body::Full;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::{convert::Infallible, net::SocketAddr, sync::Arc};
@@ -156,6 +153,8 @@ struct CreateUser {
 /// Errors that can happen when using the user repo.
 #[derive(Debug)]
 enum UserRepoError {
+    #[allow(dead_code)]
     NotFound,
+    #[allow(dead_code)]
     InvalidUsername,
 }

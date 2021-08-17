@@ -3,17 +3,17 @@
 //! Run with:
 //!
 //! ```not_rust
-//! cargo run --example key_value_store
+//! cargo run -p example-key-value-store
 //! ```
 
 use axum::{
+    body::{Body, Bytes},
     extract::{ContentLengthLimit, Extension, Path},
+    http::StatusCode,
     prelude::*,
     response::IntoResponse,
     routing::BoxRoute,
 };
-use bytes::Bytes;
-use http::StatusCode;
 use std::{
     borrow::Cow,
     collections::HashMap,
@@ -107,7 +107,7 @@ async fn list_keys(Extension(state): Extension<SharedState>) -> String {
         .join("\n")
 }
 
-fn admin_routes() -> BoxRoute<hyper::Body> {
+fn admin_routes() -> BoxRoute<Body> {
     async fn delete_all_keys(Extension(state): Extension<SharedState>) {
         state.write().unwrap().db.clear();
     }

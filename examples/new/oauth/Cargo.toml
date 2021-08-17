@@ -1,0 +1,16 @@
+[package]
+name = "example-oauth"
+version = "0.1.0"
+edition = "2018"
+publish = false
+
+[dependencies]
+axum = { path = "../../..", features = ["headers"] }
+tokio = { version = "1.0", features = ["full"] }
+tracing = "0.1"
+tracing-subscriber = "0.2"
+oauth2 = "4.1"
+async-session = "3.0.0"
+serde = { version = "1.0", features = ["derive"] }
+reqwest = "0.11"
+headers = "0.3"

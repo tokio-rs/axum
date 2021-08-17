@@ -3,7 +3,7 @@
 //! Run with
 //!
 //! ```not_rust
-//! CLIENT_ID=123 CLIENT_SECRET=secret cargo run --example oauth --features=headers
+//! CLIENT_ID=123 CLIENT_SECRET=secret cargo run -p example-oauth
 //! ```
 
 use async_session::{MemoryStore, Session, SessionStore};
@@ -11,11 +11,11 @@ use axum::{
     async_trait,
     body::{Bytes, Empty},
     extract::{Extension, FromRequest, Query, RequestParts, TypedHeader},
+    http::{header::SET_COOKIE, HeaderMap, Response},
     prelude::*,
     response::{IntoResponse, Redirect},
     AddExtensionLayer,
 };
-use http::{header::SET_COOKIE, HeaderMap};
 use oauth2::{
     basic::BasicClient, reqwest::async_http_client, AuthUrl, AuthorizationCode, ClientId,
     ClientSecret, CsrfToken, RedirectUrl, Scope, TokenResponse, TokenUrl,
@@ -198,7 +198,7 @@ impl IntoResponse for AuthRedirect {
     type Body = Empty<Bytes>;
     type BodyError = <Self::Body as axum::body::HttpBody>::Error;
 
-    fn into_response(self) -> http::Response<Self::Body> {
+    fn into_response(self) -> Response<Self::Body> {
         Redirect::found("/auth/discord".parse().unwrap()).into_response()
     }
 }

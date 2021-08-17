@@ -3,21 +3,18 @@
 //! Run with
 //!
 //! ```not_rust
-//! cargo run --features=ws --example chat
+//! cargo run -p example-chat
 //! ```
-
-use std::collections::HashSet;
-use std::net::SocketAddr;
-use std::sync::{Arc, Mutex};
-
-use futures::{sink::SinkExt, stream::StreamExt};
-
-use tokio::sync::broadcast;
 
 use axum::extract::ws::{Message, WebSocket, WebSocketUpgrade};
 use axum::prelude::*;
 use axum::response::{Html, IntoResponse};
 use axum::AddExtensionLayer;
+use futures::{sink::SinkExt, stream::StreamExt};
+use std::collections::HashSet;
+use std::net::SocketAddr;
+use std::sync::{Arc, Mutex};
+use tokio::sync::broadcast;
 
 // Our shared state
 struct AppState {
@@ -133,5 +130,5 @@ fn check_username(state: &AppState, string: &mut String, name: &str) {
 
 // Include utf-8 file at **compile** time.
 async fn index() -> Html<&'static str> {
-    Html(std::include_str!("chat/chat.html"))
+    Html(std::include_str!("../chat.html"))
 }

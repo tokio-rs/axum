@@ -1,7 +1,7 @@
 //! Run with
 //!
 //! ```not_rust
-//! cargo run -p hello-world
+//! cargo run -p example-hello-world
 //! ```
 
 use axum::prelude::*;
