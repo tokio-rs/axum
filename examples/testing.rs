@@ -7,7 +7,6 @@
 use axum::{
     body::Body,
     handler::{get, post},
-    http::Request,
     route,
     routing::{BoxRoute, RoutingDsl},
     Json,

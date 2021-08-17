@@ -13,7 +13,6 @@ use axum::{
     },
     handler::get,
     response::IntoResponse,
-    route,
     routing::{nest, RoutingDsl},
 };
 use http::StatusCode;

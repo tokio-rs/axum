@@ -8,7 +8,6 @@ use axum::{
     extract::TypedHeader,
     handler::get,
     response::sse::{sse, Event, Sse},
-    route,
     routing::{nest, RoutingDsl},
 };
 use futures::stream::{self, Stream};
