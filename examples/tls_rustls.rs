@@ -41,7 +41,7 @@ async fn main() {
 
         tokio::spawn(async move {
             if let Ok(stream) = acceptor.accept(stream).await {
-                Http::new().serve_connection(stream, app).await.unwrap();
+                let _ = Http::new().serve_connection(stream, app).await;
             }
         });
     }
