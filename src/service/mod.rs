@@ -453,15 +453,10 @@ impl<S, F, B> OnMethod<S, F, B> {
     /// details.
     ///
     /// [`RoutingDsl::handle_error`]: crate::routing::RoutingDsl::handle_error
-    pub fn handle_error<ReqBody, H, Res, E>(
+    pub fn handle_error<ReqBody, H>(
         self,
         f: H,
-    ) -> HandleError<Self, H, ReqBody, HandleErrorFromService>
-    where
-        Self: Service<Request<ReqBody>, Response = Response<BoxBody>>,
-        H: FnOnce(<Self as Service<Request<ReqBody>>>::Error) -> Result<Res, E>,
-        Res: IntoResponse,
-    {
+    ) -> HandleError<Self, H, ReqBody, HandleErrorFromService> {
         HandleError::new(self, f)
     }
 }

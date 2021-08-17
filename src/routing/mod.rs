@@ -8,7 +8,6 @@ use crate::{
         connect_info::{Connected, IntoMakeServiceWithConnectInfo},
         NestedUri,
     },
-    response::IntoResponse,
     service::{HandleError, HandleErrorFromRouter},
     util::ByteStr,
 };
@@ -416,28 +415,18 @@ pub trait RoutingDsl: crate::sealed::Sealed + Sized {
     /// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
     /// # };
     /// ```
-    fn handle_error<ReqBody, ResBody, F, Res, E>(
+    fn handle_error<ReqBody, F>(
         self,
         f: F,
-    ) -> HandleError<Self, F, ReqBody, HandleErrorFromRouter>
-    where
-        Self: Service<Request<ReqBody>, Response = Response<ResBody>>,
-        F: FnOnce(Self::Error) -> Result<Res, E>,
-        Res: IntoResponse,
-        ResBody: http_body::Body<Data = Bytes> + Send + Sync + 'static,
-        ResBody::Error: Into<BoxError> + Send + Sync + 'static,
-    {
+    ) -> HandleError<Self, F, ReqBody, HandleErrorFromRouter> {
         HandleError::new(self, f)
     }
 
     /// Check that your service cannot fail.
     ///
     /// That is, its error type is [`Infallible`].
-    fn check_infallible<ReqBody>(self) -> Self
-    where
-        Self: Service<Request<ReqBody>, Error = Infallible>,
-    {
-        self
+    fn check_infallible(self) -> CheckInfallible<Self> {
+        CheckInfallible(self)
     }
 }
 
@@ -963,6 +952,35 @@ fn strip_prefix(uri: &Uri, prefix: &str) -> Uri {
 
     Uri::from_parts(parts).unwrap()
 }
+
+/// Middleware that statically verifies that a service cannot fail.
+///
+/// Created with [`check_infallible`](RoutingDsl::check_infallible).
+#[derive(Debug, Clone, Copy)]
+pub struct CheckInfallible<S>(S);
+
+impl<R, S> Service<R> for CheckInfallible<S>
+where
+    S: Service<R, Error = Infallible>,
+{
+    type Response = S::Response;
+    type Error = S::Error;
+    type Future = S::Future;
+
+    #[inline]
+    fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        self.0.poll_ready(cx)
+    }
+
+    #[inline]
+    fn call(&mut self, req: R) -> Self::Future {
+        self.0.call(req)
+    }
+}
+
+impl<S> RoutingDsl for CheckInfallible<S> {}
+
+impl<S> crate::sealed::Sealed for CheckInfallible<S> {}
 
 #[cfg(test)]
 mod tests {
