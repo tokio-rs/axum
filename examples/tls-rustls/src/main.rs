@@ -19,7 +19,7 @@ use tokio_rustls::{
 async fn main() {
     // Set the RUST_LOG, if it hasn't been explicitly defined
     if std::env::var("RUST_LOG").is_err() {
-        std::env::set_var("RUST_LOG", "rustls=debug")
+        std::env::set_var("RUST_LOG", "example_tls_rustls=debug")
     }
     tracing_subscriber::fmt::init();
 

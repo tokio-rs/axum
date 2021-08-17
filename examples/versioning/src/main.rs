@@ -21,7 +21,7 @@ use std::net::SocketAddr;
 async fn main() {
     // Set the RUST_LOG, if it hasn't been explicitly defined
     if std::env::var("RUST_LOG").is_err() {
-        std::env::set_var("RUST_LOG", "versioning=debug")
+        std::env::set_var("RUST_LOG", "example_versioning=debug")
     }
     tracing_subscriber::fmt::init();
 

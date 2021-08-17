@@ -17,7 +17,7 @@ use tower_http::trace::TraceLayer;
 async fn main() {
     // Set the RUST_LOG, if it hasn't been explicitly defined
     if std::env::var("RUST_LOG").is_err() {
-        std::env::set_var("RUST_LOG", "testing=debug,tower_http=debug")
+        std::env::set_var("RUST_LOG", "example_testing=debug,tower_http=debug")
     }
     tracing_subscriber::fmt::init();
 
