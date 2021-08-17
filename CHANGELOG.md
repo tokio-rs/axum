@@ -14,7 +14,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add `NestedUri` for extracting request URI in nested services ([#161](https://github.com/tokio-rs/axum/pull/161))
 - Implement `FromRequest` for `http::Extensions`
 - Implement SSE as an `IntoResponse` instead of a service ([#98](https://github.com/tokio-rs/axum/pull/98))
-- Add `Redirect` response. ([#192](https://github.com/tokio-rs/axum/pull/192))
+- Add `Headers` for easily customizing headers on a response ([#193](https://github.com/tokio-rs/axum/pull/193))
+- Add `Redirect` response ([#192](https://github.com/tokio-rs/axum/pull/192))
 - Make `RequestParts::{new, try_into_request}` public ([#194](https://github.com/tokio-rs/axum/pull/194))
 
 ## Breaking changes
