@@ -1,0 +1,13 @@
+[package]
+name = "example-async-graphql"
+version = "0.1.0"
+edition = "2018"
+publish = false
+
+[dependencies]
+axum = { path = "../../.." }
+tokio = { version = "1.0", features = ["full"] }
+tracing = "0.1"
+tracing-subscriber = "0.2"
+async-graphql = "2.9.9"
+slab = "0.4.3"

@@ -1,7 +1,7 @@
 //! Run with
 //!
 //! ```not_rust
-//! cargo test --example testing
+//! cargo test -p example-testing
 //! ```
 
 use axum::{prelude::*, routing::BoxRoute};
@@ -44,7 +44,7 @@ fn app() -> BoxRoute<Body> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use http::StatusCode;
+    use axum::http::{self, StatusCode};
     use serde_json::{json, Value};
     use std::net::{SocketAddr, TcpListener};
     use tower::ServiceExt; // for `app.oneshot()`

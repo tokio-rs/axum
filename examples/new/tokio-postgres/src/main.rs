@@ -1,18 +1,18 @@
 //! Run with
 //!
 //! ```not_rust
-//! cargo run --example tokio_postgres
+//! cargo run -p example-tokio-postgres
 //! ```
 
 use axum::{
     async_trait,
     extract::{Extension, FromRequest, RequestParts},
+    http::StatusCode,
     prelude::*,
     AddExtensionLayer,
 };
 use bb8::{Pool, PooledConnection};
 use bb8_postgres::PostgresConnectionManager;
-use http::StatusCode;
 use std::net::SocketAddr;
 use tokio_postgres::NoTls;
 

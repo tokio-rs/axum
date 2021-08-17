@@ -1,19 +1,18 @@
 //! Run with
 //!
 //! ```not_rust
-//! cargo run --example versioning
+//! cargo run -p example-versioning
 //! ```
 
 use axum::response::IntoResponse;
 use axum::{
     async_trait,
+    body::{Bytes, Full},
     extract::{FromRequest, RequestParts},
+    http::Response,
+    http::StatusCode,
     prelude::*,
 };
-use bytes::Bytes;
-use http::Response;
-use http::StatusCode;
-use http_body::Full;
 use std::collections::HashMap;
 use std::net::SocketAddr;
 

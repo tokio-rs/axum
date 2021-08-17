@@ -1,14 +1,16 @@
 //! Run with
 //!
 //! ```not_rust
-//! cargo run --example templates
+//! cargo run -p example-templates
 //! ```
 
 use askama::Template;
-use axum::{prelude::*, response::IntoResponse};
-use bytes::Bytes;
-use http::{Response, StatusCode};
-use http_body::Full;
+use axum::{
+    body::{Bytes, Full},
+    http::{Response, StatusCode},
+    prelude::*,
+    response::IntoResponse,
+};
 use std::{convert::Infallible, net::SocketAddr};
 
 #[tokio::main]

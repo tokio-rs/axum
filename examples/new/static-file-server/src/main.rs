@@ -1,11 +1,10 @@
 //! Run with
 //!
 //! ```not_rust
-//! cargo run --example static_file_server
+//! cargo run -p example-static-file-server
 //! ```
 
-use axum::{prelude::*, routing::nest};
-use http::StatusCode;
+use axum::{http::StatusCode, prelude::*, routing::nest};
 use std::net::SocketAddr;
 use tower_http::{services::ServeDir, trace::TraceLayer};
 

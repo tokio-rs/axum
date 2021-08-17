@@ -1,17 +1,17 @@
 //! Run with
 //!
 //! ```not_rust
-//! cargo run --example sse --features=headers
+//! cargo run -p example-sse
 //! ```
 
 use axum::{
     extract::TypedHeader,
+    http::StatusCode,
     prelude::*,
     response::sse::{sse, Event, Sse},
     routing::nest,
 };
 use futures::stream::{self, Stream};
-use http::StatusCode;
 use std::{convert::Infallible, net::SocketAddr, time::Duration};
 use tokio_stream::StreamExt as _;
 use tower_http::{services::ServeDir, trace::TraceLayer};
@@ -24,14 +24,15 @@ async fn main() {
     }
     tracing_subscriber::fmt::init();
 
-    let static_files_service =
-        axum::service::get(ServeDir::new("examples/sse").append_index_html_on_directories(true))
-            .handle_error(|error: std::io::Error| {
-                Ok::<_, std::convert::Infallible>((
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    format!("Unhandled internal error: {}", error),
-                ))
-            });
+    let static_files_service = axum::service::get(
+        ServeDir::new("examples/new/sse/assets").append_index_html_on_directories(true),
+    )
+    .handle_error(|error: std::io::Error| {
+        Ok::<_, std::convert::Infallible>((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Unhandled internal error: {}", error),
+        ))
+    });
 
     // build our application with a route
     let app = nest("/", static_files_service)

@@ -1,7 +1,7 @@
 //! Run with
 //!
 //! ```not_rust
-//! cargo run --example tracing_aka_logging
+//! cargo run -p example-tracing-aka-logging
 //! ```
 
 use axum::prelude::*;
@@ -12,7 +12,10 @@ use tower_http::trace::TraceLayer;
 async fn main() {
     // Set the RUST_LOG, if it hasn't been explicitly defined
     if std::env::var("RUST_LOG").is_err() {
-        std::env::set_var("RUST_LOG", "tracing_aka_logging=debug,tower_http=debug")
+        std::env::set_var(
+            "RUST_LOG",
+            "example_tracing_aka_logging=debug,tower_http=debug",
+        )
     }
     tracing_subscriber::fmt::init();
 

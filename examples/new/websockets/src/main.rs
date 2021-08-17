@@ -3,7 +3,7 @@
 //! Run with
 //!
 //! ```not_rust
-//! cargo run --features=ws,headers --example websocket
+//! cargo run -p example-websockets
 //! ```
 
 use axum::{
@@ -11,11 +11,11 @@ use axum::{
         ws::{Message, WebSocket, WebSocketUpgrade},
         TypedHeader,
     },
+    http::StatusCode,
     prelude::*,
     response::IntoResponse,
     routing::nest,
 };
-use http::StatusCode;
 use std::net::SocketAddr;
 use tower_http::{
     services::ServeDir,
@@ -26,7 +26,7 @@ use tower_http::{
 async fn main() {
     // Set the RUST_LOG, if it hasn't been explicitly defined
     if std::env::var("RUST_LOG").is_err() {
-        std::env::set_var("RUST_LOG", "websocket=debug,tower_http=debug")
+        std::env::set_var("RUST_LOG", "example_websockets=debug,tower_http=debug")
     }
     tracing_subscriber::fmt::init();
 
@@ -34,7 +34,7 @@ async fn main() {
     let app = nest(
         "/",
         axum::service::get(
-            ServeDir::new("examples/websocket").append_index_html_on_directories(true),
+            ServeDir::new("examples/new/websockets/assets").append_index_html_on_directories(true),
         )
         .handle_error(|error: std::io::Error| {
             Ok::<_, std::convert::Infallible>((

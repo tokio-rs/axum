@@ -1,15 +1,15 @@
 //! Run with
 //!
 //! ```not_rust
-//! cargo run --example unix_domain_socket
+//! cargo run -p example-unix-domain-socket
 //! ```
 
 use axum::{
     extract::connect_info::{self, ConnectInfo},
+    http::{Method, StatusCode, Uri},
     prelude::*,
 };
 use futures::ready;
-use http::{Method, StatusCode, Uri};
 use hyper::{
     client::connect::{Connected, Connection},
     server::accept::Accept,

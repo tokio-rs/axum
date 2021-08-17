@@ -1,7 +1,7 @@
 //! Run with
 //!
 //! ```not_rust
-//! cargo run --example tls_rustls
+//! cargo run -p example-tls-rustls
 //! ```
 
 use axum::prelude::*;

@@ -10,15 +10,15 @@
 //! Run with
 //!
 //! ```not_rust
-//! cargo run --example todos
+//! cargo run -p example-todos
 //! ```
 
 use axum::{
     extract::{Extension, Json, Path, Query},
+    http::StatusCode,
     prelude::*,
     response::IntoResponse,
 };
-use http::StatusCode;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
@@ -35,7 +35,7 @@ use uuid::Uuid;
 async fn main() {
     // Set the RUST_LOG, if it hasn't been explicitly defined
     if std::env::var("RUST_LOG").is_err() {
-        std::env::set_var("RUST_LOG", "todos=debug,tower_http=debug")
+        std::env::set_var("RUST_LOG", "example_todos=debug,tower_http=debug")
     }
     tracing_subscriber::fmt::init();
 
