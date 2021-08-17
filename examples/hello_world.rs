@@ -16,7 +16,7 @@ async fn main() {
     tracing_subscriber::fmt::init();
 
     // build our application with a route
-    let app = route("/", get(handler));
+    let app = route("/foo", get(handler)).or(route("/bar", get(handler)));
 
     // run it
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
