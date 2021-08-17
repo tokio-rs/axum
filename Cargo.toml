@@ -11,6 +11,9 @@ readme = "README.md"
 repository = "https://github.com/tokio-rs/axum"
 version = "0.1.3"
 
+[workspace]
+members = ["examples/*"]
+
 [features]
 default = []
 ws = ["tokio-tungstenite", "sha-1", "base64"]
@@ -44,28 +47,10 @@ multer = { optional = true, version = "2.0.0" }
 mime = { optional = true, version = "0.3" }
 
 [dev-dependencies]
-askama = "0.10.5"
-bb8 = "0.7.1"
-bb8-postgres = "0.7.0"
 futures = "0.3"
-hyper = { version = "0.14", features = ["full"] }
 reqwest = { version = "0.11", features = ["json", "stream"] }
 serde = { version = "1.0", features = ["derive"] }
 tokio = { version = "1.6.1", features = ["macros", "rt", "rt-multi-thread", "net"] }
-tokio-rustls = "0.22.0"
-tokio-postgres = "0.7.2"
-tracing = "0.1"
-tracing-subscriber = "0.2"
-uuid = { version = "0.8", features = ["serde", "v4"] }
-async-session = "3.0.0"
-tokio-stream = "0.1.7"
-
-# for oauth example
-oauth2 = "4.1"
-
-# for async-graphql example
-async-graphql = "2.9.9"
-slab = "0.4.3"
 
 [dev-dependencies.tower]
 version = "0.4"
@@ -88,27 +73,3 @@ rustdoc-args = ["--cfg", "docsrs"]
 
 [package.metadata.playground]
 features = ["ws", "multipart", "headers"]
-
-[[example]]
-name = "chat"
-required-features = ["ws"]
-
-[[example]]
-name = "multipart_form"
-required-features = ["multipart"]
-
-[[example]]
-name = "sse"
-required-features = ["headers"]
-
-[[example]]
-name = "websocket"
-required-features = ["ws", "headers"]
-
-[[example]]
-name = "async-graphql"
-required-features = ["headers"]
-
-[[example]]
-name = "oauth"
-required-features = ["headers"]

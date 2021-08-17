@@ -1,0 +1,9 @@
+[package]
+name = "example-hello-world"
+version = "0.1.0"
+edition = "2018"
+publish = false
+
+[dependencies]
+axum = { path = "../.." }
+tokio = { version = "1.0", features = ["full"] }
