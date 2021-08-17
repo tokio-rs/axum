@@ -622,7 +622,7 @@ where
 }
 
 /// ```compile_fail
-/// use crate::{service::ServiceExt, prelude::*};
+/// use crate::{service::ServiceExt};
 /// use tower::service_fn;
 /// use hyper::Body;
 /// use http::{Request, Response, StatusCode};
