@@ -90,7 +90,13 @@ where
 /// # Example
 ///
 /// ```
-/// use axum::{prelude::*, routing::nest, extract::OriginalUri, http::Uri};
+/// use axum::{
+///     handler::get,
+///     route,
+///     routing::{nest, RoutingDsl},
+///     extract::OriginalUri,
+///     http::Uri
+/// };
 ///
 /// let api_routes = route(
 ///     "/users",
@@ -165,10 +171,15 @@ where
 /// # Example
 ///
 /// ```rust,no_run
-/// use axum::prelude::*;
+/// use axum::{
+///     extract::BodyStream,
+///     handler::get,
+///     route,
+///     routing::RoutingDsl
+/// };
 /// use futures::StreamExt;
 ///
-/// async fn handler(mut stream: extract::BodyStream) {
+/// async fn handler(mut stream: BodyStream) {
 ///     while let Some(chunk) = stream.next().await {
 ///         // ...
 ///     }
@@ -214,10 +225,15 @@ where
 /// # Example
 ///
 /// ```rust,no_run
-/// use axum::prelude::*;
+/// use axum::{
+///     extract::Body,
+///     handler::get,
+///     route,
+///     routing::RoutingDsl,
+/// };
 /// use futures::StreamExt;
 ///
-/// async fn handler(extract::Body(body): extract::Body) {
+/// async fn handler(Body(body): Body) {
 ///     // ...
 /// }
 ///
@@ -275,7 +291,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{body::Body, prelude::*, tests::*};
+    use crate::{body::Body, handler::post, route, tests::*};
     use http::StatusCode;
 
     #[tokio::test]

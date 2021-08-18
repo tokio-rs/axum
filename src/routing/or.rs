@@ -1,6 +1,6 @@
 //! [`Or`] used to combine two services into one.
 
-use super::{FromEmptyRouter, RoutingDsl};
+use super::{FromEmptyRouter, OrDepth, RoutingDsl};
 use crate::body::BoxBody;
 use futures_util::ready;
 use http::{Request, Response};
@@ -46,8 +46,15 @@ where
         Poll::Ready(Ok(()))
     }
 
-    fn call(&mut self, req: Request<ReqBody>) -> Self::Future {
+    fn call(&mut self, mut req: Request<ReqBody>) -> Self::Future {
         let original_uri = req.uri().clone();
+
+        if let Some(count) = req.extensions_mut().get_mut::<OrDepth>() {
+            count.increment();
+        } else {
+            req.extensions_mut().insert(OrDepth::new());
+        }
+
         ResponseFuture {
             state: State::FirstFuture {
                 f: self.first.clone().oneshot(req),
@@ -115,6 +122,18 @@ where
                     };
 
                     *req.uri_mut() = this.original_uri.take().unwrap();
+
+                    let mut leaving_outermost_or = false;
+                    if let Some(depth) = req.extensions_mut().get_mut::<OrDepth>() {
+                        if depth == 1 {
+                            leaving_outermost_or = true;
+                        } else {
+                            depth.decrement();
+                        }
+                    }
+                    if leaving_outermost_or {
+                        req.extensions_mut().remove::<OrDepth>();
+                    }
 
                     let second = this.second.take().expect("future polled after completion");
 

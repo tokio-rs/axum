@@ -130,8 +130,8 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::prelude::*;
     use crate::Server;
+    use crate::{handler::get, route, routing::RoutingDsl};
     use std::net::{SocketAddr, TcpListener};
 
     #[tokio::test]

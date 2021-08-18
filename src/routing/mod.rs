@@ -8,7 +8,6 @@ use crate::{
         connect_info::{Connected, IntoMakeServiceWithConnectInfo},
         OriginalUri,
     },
-    response::IntoResponse,
     service::{HandleError, HandleErrorFromRouter},
     util::ByteStr,
 };
@@ -55,7 +54,11 @@ pub trait RoutingDsl: crate::sealed::Sealed + Sized {
     /// # Example
     ///
     /// ```rust
-    /// use axum::prelude::*;
+    /// use axum::{
+    ///     handler::get,
+    ///     route,
+    ///     routing::RoutingDsl
+    /// };
     ///
     /// async fn first_handler() { /* ... */ }
     ///
@@ -102,7 +105,12 @@ pub trait RoutingDsl: crate::sealed::Sealed + Sized {
     /// return them from functions:
     ///
     /// ```rust
-    /// use axum::{routing::BoxRoute, body::Body, prelude::*};
+    /// use axum::{
+    ///     body::Body,
+    ///     handler::get,
+    ///     route,
+    ///     routing::{BoxRoute, RoutingDsl}
+    /// };
     ///
     /// async fn first_handler() { /* ... */ }
     ///
@@ -154,7 +162,11 @@ pub trait RoutingDsl: crate::sealed::Sealed + Sized {
     /// routes can be done like so:
     ///
     /// ```rust
-    /// use axum::prelude::*;
+    /// use axum::{
+    ///     handler::get,
+    ///     route,
+    ///     routing::RoutingDsl
+    /// };
     /// use tower::limit::{ConcurrencyLimitLayer, ConcurrencyLimit};
     ///
     /// async fn first_handler() { /* ... */ }
@@ -180,7 +192,11 @@ pub trait RoutingDsl: crate::sealed::Sealed + Sized {
     /// entire app:
     ///
     /// ```rust
-    /// use axum::prelude::*;
+    /// use axum::{
+    ///     handler::get,
+    ///     route,
+    ///     routing::RoutingDsl
+    /// };
     /// use tower_http::trace::TraceLayer;
     ///
     /// async fn first_handler() { /* ... */ }
@@ -211,7 +227,11 @@ pub trait RoutingDsl: crate::sealed::Sealed + Sized {
     /// [`Server`](hyper::server::Server):
     ///
     /// ```
-    /// use axum::prelude::*;
+    /// use axum::{
+    ///     handler::get,
+    ///     route,
+    ///     routing::RoutingDsl
+    /// };
     ///
     /// let app = route("/", get(|| async { "Hi!" }));
     ///
@@ -240,7 +260,12 @@ pub trait RoutingDsl: crate::sealed::Sealed + Sized {
     /// Extracting [`std::net::SocketAddr`] is supported out of the box:
     ///
     /// ```
-    /// use axum::{prelude::*, extract::ConnectInfo};
+    /// use axum::{
+    ///     extract::ConnectInfo,
+    ///     handler::get,
+    ///     route,
+    ///     routing::RoutingDsl
+    /// };
     /// use std::net::SocketAddr;
     ///
     /// let app = route("/", get(handler));
@@ -263,8 +288,10 @@ pub trait RoutingDsl: crate::sealed::Sealed + Sized {
     ///
     /// ```
     /// use axum::{
-    ///     prelude::*,
     ///     extract::connect_info::{ConnectInfo, Connected},
+    ///     handler::get,
+    ///     route,
+    ///     routing::RoutingDsl
     /// };
     /// use hyper::server::conn::AddrStream;
     ///
@@ -324,7 +351,11 @@ pub trait RoutingDsl: crate::sealed::Sealed + Sized {
     /// into one.
     ///
     /// ```
-    /// use axum::prelude::*;
+    /// use axum::{
+    ///     handler::get,
+    ///     route,
+    ///     routing::RoutingDsl
+    /// };
     /// #
     /// # async fn users_list() {}
     /// # async fn users_show() {}
@@ -360,7 +391,12 @@ pub trait RoutingDsl: crate::sealed::Sealed + Sized {
     /// # Example
     ///
     /// ```
-    /// use axum::{http::StatusCode, prelude::*};
+    /// use axum::{
+    ///     handler::get,
+    ///     http::StatusCode,
+    ///     route,
+    ///     routing::RoutingDsl
+    /// };
     /// use tower::{BoxError, timeout::TimeoutLayer};
     /// use std::{time::Duration, convert::Infallible};
     ///
@@ -395,7 +431,12 @@ pub trait RoutingDsl: crate::sealed::Sealed + Sized {
     /// some errors:
     ///
     /// ```
-    /// use axum::{http::StatusCode, prelude::*};
+    /// use axum::{
+    ///     handler::get,
+    ///     http::StatusCode,
+    ///     route,
+    ///     routing::RoutingDsl
+    /// };
     /// use tower::{BoxError, timeout::TimeoutLayer};
     /// use std::time::Duration;
     ///
@@ -416,28 +457,18 @@ pub trait RoutingDsl: crate::sealed::Sealed + Sized {
     /// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
     /// # };
     /// ```
-    fn handle_error<ReqBody, ResBody, F, Res, E>(
+    fn handle_error<ReqBody, F>(
         self,
         f: F,
-    ) -> HandleError<Self, F, ReqBody, HandleErrorFromRouter>
-    where
-        Self: Service<Request<ReqBody>, Response = Response<ResBody>>,
-        F: FnOnce(Self::Error) -> Result<Res, E>,
-        Res: IntoResponse,
-        ResBody: http_body::Body<Data = Bytes> + Send + Sync + 'static,
-        ResBody::Error: Into<BoxError> + Send + Sync + 'static,
-    {
+    ) -> HandleError<Self, F, ReqBody, HandleErrorFromRouter> {
         HandleError::new(self, f)
     }
 
     /// Check that your service cannot fail.
     ///
     /// That is, its error type is [`Infallible`].
-    fn check_infallible<ReqBody>(self) -> Self
-    where
-        Self: Service<Request<ReqBody>, Error = Infallible>,
-    {
-        self
+    fn check_infallible(self) -> CheckInfallible<Self> {
+        CheckInfallible(self)
     }
 }
 
@@ -547,7 +578,11 @@ where
 
     fn call(&mut self, request: Request<B>) -> Self::Future {
         let mut res = Response::new(crate::body::empty());
-        res.extensions_mut().insert(FromEmptyRouter { request });
+
+        if request.extensions().get::<OrDepth>().is_some() {
+            res.extensions_mut().insert(FromEmptyRouter { request });
+        }
+
         *res.status_mut() = self.status;
         EmptyRouterFuture {
             future: futures_util::future::ok(res),
@@ -563,6 +598,39 @@ where
 /// from [`EmptyRouter`] and therefore can be discarded in [`Or`].
 struct FromEmptyRouter<B> {
     request: Request<B>,
+}
+
+/// We need to track whether we're inside an `Or` or not, and only if we then
+/// should we save the request into the response extensions.
+///
+/// This is to work around https://github.com/hyperium/hyper/issues/2621.
+///
+/// Since ours can be nested we have to track the depth to know when we're
+/// leaving the top most `Or`.
+///
+/// Hopefully when https://github.com/hyperium/hyper/issues/2621 is resolved we
+/// can remove this nasty hack.
+#[derive(Debug)]
+struct OrDepth(usize);
+
+impl OrDepth {
+    fn new() -> Self {
+        Self(1)
+    }
+
+    fn increment(&mut self) {
+        self.0 += 1;
+    }
+
+    fn decrement(&mut self) {
+        self.0 -= 1;
+    }
+}
+
+impl PartialEq<usize> for &mut OrDepth {
+    fn eq(&self, other: &usize) -> bool {
+        self.0 == *other
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -764,7 +832,11 @@ where
 /// them together.
 ///
 /// ```
-/// use axum::{routing::nest, prelude::*};
+/// use axum::{
+///     handler::get,
+///     route,
+///     routing::{nest, RoutingDsl},
+/// };
 /// use http::Uri;
 ///
 /// async fn users_get(uri: Uri) {
@@ -788,10 +860,15 @@ where
 /// captures from the outer routes:
 ///
 /// ```
-/// use axum::{routing::nest, prelude::*};
+/// use axum::{
+///     extract::Path,
+///     handler::get,
+///     route,
+///     routing::{nest, RoutingDsl},
+/// };
 /// use std::collections::HashMap;
 ///
-/// async fn users_get(extract::Path(params): extract::Path<HashMap<String, String>>) {
+/// async fn users_get(Path(params): Path<HashMap<String, String>>) {
 ///     // Both `version` and `id` were captured even though `users_api` only
 ///     // explicitly captures `id`.
 ///     let version = params.get("version");
@@ -811,7 +888,8 @@ where
 ///
 /// ```
 /// use axum::{
-///     routing::nest, service::get, prelude::*,
+///     routing::{nest, RoutingDsl},
+///     service::get,
 /// };
 /// use tower_http::services::ServeDir;
 ///
@@ -921,6 +999,35 @@ fn strip_prefix(uri: &Uri, prefix: &str) -> Uri {
 
     Uri::from_parts(parts).unwrap()
 }
+
+/// Middleware that statically verifies that a service cannot fail.
+///
+/// Created with [`check_infallible`](RoutingDsl::check_infallible).
+#[derive(Debug, Clone, Copy)]
+pub struct CheckInfallible<S>(S);
+
+impl<R, S> Service<R> for CheckInfallible<S>
+where
+    S: Service<R, Error = Infallible>,
+{
+    type Response = S::Response;
+    type Error = S::Error;
+    type Future = S::Future;
+
+    #[inline]
+    fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        self.0.poll_ready(cx)
+    }
+
+    #[inline]
+    fn call(&mut self, req: R) -> Self::Future {
+        self.0.call(req)
+    }
+}
+
+impl<S> RoutingDsl for CheckInfallible<S> {}
+
+impl<S> crate::sealed::Sealed for CheckInfallible<S> {}
 
 #[cfg(test)]
 mod tests {

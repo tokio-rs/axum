@@ -13,15 +13,20 @@ use http_body::{
 use std::{borrow::Cow, convert::Infallible};
 use tower::{util::Either, BoxError};
 
+mod headers;
+mod redirect;
+
+pub mod sse;
+
 #[doc(no_inline)]
 pub use crate::Json;
 
-mod redirect;
-
-pub use self::redirect::Redirect;
-
-pub mod sse;
-pub use sse::{sse, Sse};
+#[doc(inline)]
+pub use self::{
+    headers::Headers,
+    redirect::Redirect,
+    sse::{sse, Sse},
+};
 
 /// Trait for generating responses.
 ///
@@ -36,7 +41,12 @@ pub use sse::{sse, Sse};
 /// response body type:
 ///
 /// ```rust
-/// use axum::{prelude::*, response::IntoResponse};
+/// use axum::{
+///     handler::get,
+///     response::IntoResponse,
+///     route,
+///     routing::RoutingDsl
+/// };
 /// use http_body::Body;
 /// use http::{Response, HeaderMap};
 /// use bytes::Bytes;

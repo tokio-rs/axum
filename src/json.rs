@@ -1,6 +1,6 @@
 use crate::{
     extract::{has_content_type, rejection::*, take_body, FromRequest, RequestParts},
-    prelude::response::IntoResponse,
+    response::IntoResponse,
 };
 use async_trait::async_trait;
 use bytes::Bytes;
@@ -27,7 +27,12 @@ use tower::BoxError;
 /// # Extractor example
 ///
 /// ```rust,no_run
-/// use axum::prelude::*;
+/// use axum::{
+///     extract,
+///     handler::post,
+///     route,
+///     routing::RoutingDsl
+/// };
 /// use serde::Deserialize;
 ///
 /// #[derive(Deserialize)]
@@ -53,8 +58,10 @@ use tower::BoxError;
 ///
 /// ```
 /// use axum::{
-///     prelude::*,
 ///     extract::Path,
+///     handler::get,
+///     route,
+///     routing::RoutingDsl,
 ///     Json,
 /// };
 /// use serde::Serialize;

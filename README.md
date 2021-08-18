@@ -68,7 +68,7 @@ async fn create_user(
         username: payload.username,
     };
 
-    // this will be converted into an JSON response
+    // this will be converted into a JSON response
     // with a status code of `201 Created`
     (StatusCode::CREATED, response::Json(user))
 }

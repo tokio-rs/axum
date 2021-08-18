@@ -14,7 +14,12 @@ use tower::BoxError;
 /// # Example
 ///
 /// ```rust,no_run
-/// use axum::prelude::*;
+/// use axum::{
+///     extract::Form,
+///     handler::post,
+///     route,
+///     routing::RoutingDsl
+/// };
 /// use serde::Deserialize;
 ///
 /// #[derive(Deserialize)]
@@ -23,7 +28,7 @@ use tower::BoxError;
 ///     password: String,
 /// }
 ///
-/// async fn accept_form(form: extract::Form<SignUp>) {
+/// async fn accept_form(form: Form<SignUp>) {
 ///     let sign_up: SignUp = form.0;
 ///
 ///     // ...

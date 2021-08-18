@@ -7,10 +7,15 @@ use std::convert::Infallible;
 /// # Example
 ///
 /// ```rust,no_run
-/// use axum::prelude::*;
+/// use axum::{
+///     extract::RawQuery,
+///     handler::get,
+///     route,
+///     routing::RoutingDsl
+/// };
 /// use futures::StreamExt;
 ///
-/// async fn handler(extract::RawQuery(query): extract::RawQuery) {
+/// async fn handler(RawQuery(query): RawQuery) {
 ///     // ...
 /// }
 ///

@@ -10,7 +10,12 @@ use std::ops::Deref;
 /// # Example
 ///
 /// ```rust,no_run
-/// use axum::prelude::*;
+/// use axum::{
+///     extract::Query,
+///     handler::get,
+///     route,
+///     routing::RoutingDsl
+/// };
 /// use serde::Deserialize;
 ///
 /// #[derive(Deserialize)]
@@ -21,7 +26,7 @@ use std::ops::Deref;
 ///
 /// // This will parse query strings like `?page=2&per_page=30` into `Pagination`
 /// // structs.
-/// async fn list_things(pagination: extract::Query<Pagination>) {
+/// async fn list_things(pagination: Query<Pagination>) {
 ///     let pagination: Pagination = pagination.0;
 ///
 ///     // ...

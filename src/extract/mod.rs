@@ -8,7 +8,12 @@
 //! deserializes it as JSON into some target type:
 //!
 //! ```rust,no_run
-//! use axum::prelude::*;
+//! use axum::{
+//!     Json,
+//!     handler::{post, Handler},
+//!     route,
+//!     routing::RoutingDsl
+//! };
 //! use serde::Deserialize;
 //!
 //! #[derive(Deserialize)]
@@ -17,7 +22,7 @@
 //!     password: String,
 //! }
 //!
-//! async fn create_user(payload: extract::Json<CreateUser>) {
+//! async fn create_user(payload: Json<CreateUser>) {
 //!     let payload: CreateUser = payload.0;
 //!
 //!     // ...
@@ -34,7 +39,13 @@
 //! You can also define your own extractors by implementing [`FromRequest`]:
 //!
 //! ```rust,no_run
-//! use axum::{async_trait, extract::{FromRequest, RequestParts}, prelude::*};
+//! use axum::{
+//!     async_trait,
+//!     extract::{FromRequest, RequestParts},
+//!     handler::get,
+//!     route,
+//!     routing::RoutingDsl
+//! };
 //! use http::{StatusCode, header::{HeaderValue, USER_AGENT}};
 //!
 //! struct ExtractUserAgent(HeaderValue);
@@ -74,14 +85,19 @@
 //! Handlers can also contain multiple extractors:
 //!
 //! ```rust,no_run
-//! use axum::prelude::*;
+//! use axum::{
+//!     extract::{Path, Query},
+//!     handler::get,
+//!     route,
+//!     routing::RoutingDsl
+//! };
 //! use std::collections::HashMap;
 //!
 //! async fn handler(
 //!     // Extract captured parameters from the URL
-//!     params: extract::Path<HashMap<String, String>>,
+//!     params: Path<HashMap<String, String>>,
 //!     // Parse query string into a `HashMap`
-//!     query_params: extract::Query<HashMap<String, String>>,
+//!     query_params: Query<HashMap<String, String>>,
 //!     // Buffer the request body into a `Bytes`
 //!     bytes: bytes::Bytes,
 //! ) {
@@ -102,7 +118,12 @@
 //! Wrapping extractors in `Option` will make them optional:
 //!
 //! ```rust,no_run
-//! use axum::{extract::Json, prelude::*};
+//! use axum::{
+//!     extract::Json,
+//!     handler::post,
+//!     route,
+//!     routing::RoutingDsl
+//! };
 //! use serde_json::Value;
 //!
 //! async fn create_user(payload: Option<Json<Value>>) {
@@ -123,7 +144,12 @@
 //! the extraction failed:
 //!
 //! ```rust,no_run
-//! use axum::{extract::{Json, rejection::JsonRejection}, prelude::*};
+//! use axum::{
+//!     extract::{Json, rejection::JsonRejection},
+//!     handler::post,
+//!     route,
+//!     routing::RoutingDsl
+//! };
 //! use serde_json::Value;
 //!
 //! async fn create_user(payload: Result<Json<Value>, JsonRejection>) {
@@ -156,11 +182,16 @@
 //!
 //! # Reducing boilerplate
 //!
-//! If you're feeling adventorous you can even deconstruct the extractors
+//! If you're feeling adventurous you can even deconstruct the extractors
 //! directly on the function signature:
 //!
 //! ```rust,no_run
-//! use axum::{extract::Json, prelude::*};
+//! use axum::{
+//!     extract::Json,
+//!     handler::post,
+//!     route,
+//!     routing::RoutingDsl
+//! };
 //! use serde_json::Value;
 //!
 //! async fn create_user(Json(value): Json<Value>) {
@@ -187,7 +218,14 @@
 //!     pin::Pin,
 //! };
 //! use tower_http::map_request_body::MapRequestBodyLayer;
-//! use axum::prelude::*;
+//! use axum::{
+//!     extract::{self, BodyStream},
+//!     body::Body,
+//!     handler::get,
+//!     http::{header::HeaderMap, Request},
+//!     route,
+//!     routing::RoutingDsl
+//! };
 //!
 //! struct MyBody<B>(B);
 //!
@@ -208,7 +246,7 @@
 //!     fn poll_trailers(
 //!         mut self: Pin<&mut Self>,
 //!         cx: &mut Context<'_>,
-//!     ) -> Poll<Result<Option<headers::HeaderMap>, Self::Error>> {
+//!     ) -> Poll<Result<Option<HeaderMap>, Self::Error>> {
 //!         Pin::new(&mut self.0).poll_trailers(cx)
 //!     }
 //! }
@@ -374,7 +412,12 @@ pub struct RequestParts<B = crate::body::Body> {
 }
 
 impl<B> RequestParts<B> {
-    pub(crate) fn new(req: Request<B>) -> Self {
+    /// Create a new `RequestParts`.
+    ///
+    /// You generally shouldn't need to construct this type yourself, unless
+    /// using extractors outside of axum for example to implement a
+    /// [`tower::Service`].
+    pub fn new(req: Request<B>) -> Self {
         let (
             http::request::Parts {
                 method,
@@ -397,9 +440,21 @@ impl<B> RequestParts<B> {
         }
     }
 
-    // this method uses `Error` since we might make this method public one day and then
-    // `Error` is more flexible.
-    pub(crate) fn try_into_request(self) -> Result<Request<B>, Error> {
+    /// Convert this `RequestParts` back into a [`Request`].
+    ///
+    /// Fails if
+    ///
+    /// - The full [`HeaderMap`] has been extracted, that is [`take_headers`]
+    /// have been called.
+    /// - The full [`Extensions`] has been extracted, that is
+    /// [`take_extensions`] have been called.
+    /// - The request body has been extracted, that is [`take_body`] have been
+    /// called.
+    ///
+    /// [`take_headers`]: RequestParts::take_headers
+    /// [`take_extensions`]: RequestParts::take_extensions
+    /// [`take_body`]: RequestParts::take_body
+    pub fn try_into_request(self) -> Result<Request<B>, Error> {
         let Self {
             method,
             uri,

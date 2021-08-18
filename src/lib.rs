@@ -46,7 +46,11 @@
 //! The "Hello, World!" of axum is:
 //!
 //! ```rust,no_run
-//! use axum::prelude::*;
+//! use axum::{
+//!     handler::get,
+//!     route,
+//!     routing::RoutingDsl
+//! };
 //!
 //! #[tokio::main]
 //! async fn main() {
@@ -73,7 +77,6 @@
 //! Some examples of handlers:
 //!
 //! ```rust
-//! use axum::prelude::*;
 //! use bytes::Bytes;
 //! use http::StatusCode;
 //!
@@ -101,7 +104,11 @@
 //! Routing between handlers looks like this:
 //!
 //! ```rust,no_run
-//! use axum::prelude::*;
+//! use axum::{
+//!     handler::get,
+//!     route,
+//!     routing::RoutingDsl
+//! };
 //!
 //! let app = route("/", get(get_slash).post(post_slash))
 //!     .route("/foo", get(get_foo));
@@ -133,7 +140,13 @@
 //! higher precedence should be added _after_ routes with lower precedence:
 //!
 //! ```rust
-//! use axum::{prelude::*, body::BoxBody};
+//! use axum::{
+//!     body::{Body, BoxBody},
+//!     handler::get,
+//!     http::Request,
+//!     route,
+//!     routing::RoutingDsl
+//! };
 //! use tower::{Service, ServiceExt};
 //! use http::{Method, Response, StatusCode};
 //! use std::convert::Infallible;
@@ -196,7 +209,11 @@
 //! once:
 //!
 //! ```rust,no_run
-//! use axum::prelude::*;
+//! use axum::{
+//!     route,
+//!     handler::{get, post},
+//!     routing::RoutingDsl
+//! };
 //!
 //! // `GET /` and `POST /` are both accepted
 //! let app = route("/", get(handler).post(handler));
@@ -216,7 +233,13 @@
 //! axum also supports routing to general [`Service`]s:
 //!
 //! ```rust,no_run
-//! use axum::{service, prelude::*};
+//! use axum::{
+//!     body::Body,
+//!     http::Request,
+//!     route,
+//!     routing::RoutingDsl,
+//!     service
+//! };
 //! use tower_http::services::ServeFile;
 //! use http::Response;
 //! use std::convert::Infallible;
@@ -260,7 +283,13 @@
 //! Routes can be nested by calling [`nest`](routing::nest):
 //!
 //! ```rust,no_run
-//! use axum::{prelude::*, routing::BoxRoute, body::{Body, BoxBody}};
+//! use axum::{
+//!     body::{Body, BoxBody},
+//!     http::Request,
+//!     handler::get,
+//!     route,
+//!     routing::{BoxRoute, RoutingDsl}
+//! };
 //! use tower_http::services::ServeFile;
 //! use http::Response;
 //!
@@ -289,7 +318,12 @@
 //! body and deserializes it as JSON into some target type:
 //!
 //! ```rust,no_run
-//! use axum::prelude::*;
+//! use axum::{
+//!     extract,
+//!     handler::post,
+//!     route,
+//!     routing::RoutingDsl
+//! };
 //! use serde::Deserialize;
 //!
 //! let app = route("/users", post(create_user));
@@ -315,7 +349,12 @@
 //! [`Uuid`]:
 //!
 //! ```rust,no_run
-//! use axum::prelude::*;
+//! use axum::{
+//!     extract,
+//!     handler::post,
+//!     route,
+//!     routing::RoutingDsl
+//! };
 //! use uuid::Uuid;
 //!
 //! let app = route("/users/:id", post(create_user));
@@ -331,7 +370,12 @@
 //! You can also apply multiple extractors:
 //!
 //! ```rust,no_run
-//! use axum::prelude::*;
+//! use axum::{
+//!     extract,
+//!     handler::get,
+//!     route,
+//!     routing::RoutingDsl
+//! };
 //! use uuid::Uuid;
 //! use serde::Deserialize;
 //!
@@ -365,7 +409,13 @@
 //! Additionally `Request<Body>` is itself an extractor:
 //!
 //! ```rust,no_run
-//! use axum::prelude::*;
+//! use axum::{
+//!     body::Body,
+//!     handler::post,
+//!     http::Request,
+//!     route,
+//!     routing::RoutingDsl
+//! };
 //!
 //! let app = route("/users/:id", post(handler));
 //!
@@ -391,7 +441,14 @@
 //! returned from a handler:
 //!
 //! ```rust,no_run
-//! use axum::{body::Body, response::{Html, Json}, prelude::*};
+//! use axum::{
+//!     body::Body,
+//!     handler::{get, Handler},
+//!     http::Request,
+//!     response::{Html, Json},
+//!     route,
+//!     routing::RoutingDsl
+//! };
 //! use http::{StatusCode, Response, Uri};
 //! use serde_json::{Value, json};
 //!
@@ -471,7 +528,11 @@
 //! A middleware can be applied to a single handler like so:
 //!
 //! ```rust,no_run
-//! use axum::prelude::*;
+//! use axum::{
+//!     handler::{get, Handler},
+//!     route,
+//!     routing::RoutingDsl
+//! };
 //! use tower::limit::ConcurrencyLimitLayer;
 //!
 //! let app = route(
@@ -490,7 +551,11 @@
 //! Middleware can also be applied to a group of routes like so:
 //!
 //! ```rust,no_run
-//! use axum::prelude::*;
+//! use axum::{
+//!     handler::{get, post},
+//!     route,
+//!     routing::RoutingDsl
+//! };
 //! use tower::limit::ConcurrencyLimitLayer;
 //!
 //! let app = route("/", get(get_slash))
@@ -520,7 +585,11 @@
 //! adding a middleware to a handler:
 //!
 //! ```rust,no_run
-//! use axum::prelude::*;
+//! use axum::{
+//!     handler::{get, Handler},
+//!     route,
+//!     routing::RoutingDsl
+//! };
 //! use tower::{
 //!     BoxError, timeout::{TimeoutLayer, error::Elapsed},
 //! };
@@ -569,7 +638,13 @@
 //! [`tower::ServiceBuilder`] can be used to combine multiple middleware:
 //!
 //! ```rust,no_run
-//! use axum::prelude::*;
+//! use axum::{
+//!     body::Body,
+//!     handler::get,
+//!     http::Request,
+//!     route,
+//!     routing::RoutingDsl
+//! };
 //! use tower::ServiceBuilder;
 //! use tower_http::compression::CompressionLayer;
 //! use std::{borrow::Cow, time::Duration};
@@ -600,7 +675,13 @@
 //! and the [`extract::Extension`] extractor:
 //!
 //! ```rust,no_run
-//! use axum::{AddExtensionLayer, prelude::*};
+//! use axum::{
+//!     AddExtensionLayer,
+//!     extract,
+//!     handler::get,
+//!     route,
+//!     routing::RoutingDsl
+//! };
 //! use std::sync::Arc;
 //!
 //! struct State {
@@ -746,21 +827,6 @@ pub use tower_http::add_extension::{AddExtension, AddExtensionLayer};
 
 pub use self::{error::Error, json::Json};
 
-pub mod prelude {
-    //! Re-exports of important traits, types, and functions used with axum. Meant to be glob
-    //! imported.
-
-    pub use crate::body::Body;
-    pub use crate::extract;
-    pub use crate::handler::{
-        any, connect, delete, get, head, options, patch, post, put, trace, Handler,
-    };
-    pub use crate::response;
-    pub use crate::route;
-    pub use crate::routing::RoutingDsl;
-    pub use http::Request;
-}
-
 /// Create a route.
 ///
 /// `description` is a string of path segments separated by `/`. Each segment
@@ -776,7 +842,12 @@ pub mod prelude {
 /// # Examples
 ///
 /// ```rust
-/// use axum::prelude::*;
+/// use axum::{
+///     body::Body,
+///     http::Request,
+///     route
+/// };
+///
 /// # use std::convert::Infallible;
 /// # use http::Response;
 /// # let service = tower::service_fn(|_: Request<Body>| async {
