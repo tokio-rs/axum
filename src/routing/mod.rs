@@ -523,7 +523,7 @@ fn insert_url_params<B>(req: &mut Request<B>, params: Vec<(String, String)>) {
 /// to all requests.
 ///
 /// This is used as the bottom service in a router stack. You shouldn't have to
-/// use to manually.
+/// use it manually.
 pub struct EmptyRouter<E = Infallible> {
     status: StatusCode,
     _marker: PhantomData<fn() -> E>,
