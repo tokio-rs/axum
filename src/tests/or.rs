@@ -1,4 +1,7 @@
+use serde_json::{json, Value};
 use tower::{limit::ConcurrencyLimitLayer, timeout::TimeoutLayer};
+
+use crate::{extract::OriginalUri, response::IntoResponse, Json};
 
 use super::*;
 
@@ -302,17 +305,190 @@ async fn services() {
     assert_eq!(res.status(), StatusCode::OK);
 }
 
-// TODO(david): can we make this not compile?
-// #[tokio::test]
-// async fn foo() {
-//     let svc_one = service_fn(|_: Request<Body>| async {
-//         Ok::<_, hyper::Error>(Response::new(Body::empty()))
-//     })
-//     .handle_error::<_, _, hyper::Error>(|_| Ok(StatusCode::INTERNAL_SERVER_ERROR));
+async fn all_the_uris(
+    uri: Uri,
+    OriginalUri(original_uri): OriginalUri,
+    req: Request<Body>,
+) -> impl IntoResponse {
+    Json(json!({
+        "uri": uri.to_string(),
+        "request_uri": req.uri().to_string(),
+        "original_uri": original_uri.to_string(),
+    }))
+}
 
-//     let svc_two = svc_one.clone();
+#[tokio::test]
+async fn nesting_and_seeing_the_right_uri() {
+    let one = nest("/foo", route("/bar", get(all_the_uris)));
+    let two = route("/foo", get(all_the_uris));
 
-//     let app = svc_one.or(svc_two);
+    let addr = run_in_background(one.or(two)).await;
 
-//     let addr = run_in_background(app).await;
-// }
+    let client = reqwest::Client::new();
+
+    let res = client
+        .get(format!("http://{}/foo/bar", addr))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(
+        res.json::<Value>().await.unwrap(),
+        json!({
+            "uri": "/bar",
+            "request_uri": "/bar",
+            "original_uri": "/foo/bar",
+        })
+    );
+
+    let res = client
+        .get(format!("http://{}/foo", addr))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(
+        res.json::<Value>().await.unwrap(),
+        json!({
+            "uri": "/foo",
+            "request_uri": "/foo",
+            "original_uri": "/foo",
+        })
+    );
+}
+
+#[tokio::test]
+async fn nesting_and_seeing_the_right_uri_at_more_levels_of_nesting() {
+    let one = nest("/foo", nest("/bar", route("/baz", get(all_the_uris))));
+    let two = route("/foo", get(all_the_uris));
+
+    let addr = run_in_background(one.or(two)).await;
+
+    let client = reqwest::Client::new();
+
+    let res = client
+        .get(format!("http://{}/foo/bar/baz", addr))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(
+        res.json::<Value>().await.unwrap(),
+        json!({
+            "uri": "/baz",
+            "request_uri": "/baz",
+            "original_uri": "/foo/bar/baz",
+        })
+    );
+
+    let res = client
+        .get(format!("http://{}/foo", addr))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(
+        res.json::<Value>().await.unwrap(),
+        json!({
+            "uri": "/foo",
+            "request_uri": "/foo",
+            "original_uri": "/foo",
+        })
+    );
+}
+
+#[tokio::test]
+async fn nesting_and_seeing_the_right_uri_ors_with_nesting() {
+    let one = nest("/foo", nest("/bar", route("/baz", get(all_the_uris))));
+    let two = nest("/foo", route("/qux", get(all_the_uris)));
+    let three = route("/foo", get(all_the_uris));
+
+    let addr = run_in_background(one.or(two).or(three)).await;
+
+    let client = reqwest::Client::new();
+
+    let res = client
+        .get(format!("http://{}/foo/bar/baz", addr))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(
+        res.json::<Value>().await.unwrap(),
+        json!({
+            "uri": "/baz",
+            "request_uri": "/baz",
+            "original_uri": "/foo/bar/baz",
+        })
+    );
+
+    let res = client
+        .get(format!("http://{}/foo/qux", addr))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(
+        res.json::<Value>().await.unwrap(),
+        json!({
+            "uri": "/qux",
+            "request_uri": "/qux",
+            "original_uri": "/foo/qux",
+        })
+    );
+
+    let res = client
+        .get(format!("http://{}/foo", addr))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(
+        res.json::<Value>().await.unwrap(),
+        json!({
+            "uri": "/foo",
+            "request_uri": "/foo",
+            "original_uri": "/foo",
+        })
+    );
+}
+
+#[tokio::test]
+async fn nesting_and_seeing_the_right_uri_ors_with_multi_segment_uris() {
+    let one = nest("/foo", nest("/bar", route("/baz", get(all_the_uris))));
+    let two = route("/foo/bar", get(all_the_uris));
+
+    let addr = run_in_background(one.or(two)).await;
+
+    let client = reqwest::Client::new();
+
+    let res = client
+        .get(format!("http://{}/foo/bar/baz", addr))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(
+        res.json::<Value>().await.unwrap(),
+        json!({
+            "uri": "/baz",
+            "request_uri": "/baz",
+            "original_uri": "/foo/bar/baz",
+        })
+    );
+
+    let res = client
+        .get(format!("http://{}/foo/bar", addr))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(
+        res.json::<Value>().await.unwrap(),
+        json!({
+            "uri": "/foo/bar",
+            "request_uri": "/foo/bar",
+            "original_uri": "/foo/bar",
+        })
+    );
+}

@@ -47,6 +47,8 @@ where
     }
 
     fn call(&mut self, mut req: Request<ReqBody>) -> Self::Future {
+        let original_uri = req.uri().clone();
+
         if let Some(count) = req.extensions_mut().get_mut::<OrDepth>() {
             count.increment();
         } else {
@@ -58,6 +60,7 @@ where
                 f: self.first.clone().oneshot(req),
             },
             second: Some(self.second.clone()),
+            original_uri: Some(original_uri),
         }
     }
 }
@@ -72,6 +75,9 @@ pin_project! {
         #[pin]
         state: State<A, B, ReqBody>,
         second: Option<B>,
+        // Some services, namely `Nested`, mutates the request URI so we must
+        // restore it to its original state before calling `second`
+        original_uri: Option<http::Uri>,
     }
 }
 
@@ -114,6 +120,8 @@ where
                     } else {
                         return Poll::Ready(Ok(response));
                     };
+
+                    *req.uri_mut() = this.original_uri.take().unwrap();
 
                     let mut leaving_outermost_or = false;
                     if let Some(depth) = req.extensions_mut().get_mut::<OrDepth>() {

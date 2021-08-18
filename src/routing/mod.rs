@@ -6,7 +6,7 @@ use crate::{
     buffer::MpscBuffer,
     extract::{
         connect_info::{Connected, IntoMakeServiceWithConnectInfo},
-        NestedUri,
+        OriginalUri,
     },
     service::{HandleError, HandleErrorFromRouter},
     util::ByteStr,
@@ -690,11 +690,7 @@ impl PathPattern {
     }
 
     fn do_match<'a, B>(&self, req: &'a Request<B>) -> Option<Match<'a>> {
-        let path = if let Some(nested_uri) = req.extensions().get::<NestedUri>() {
-            nested_uri.0.path()
-        } else {
-            req.uri().path()
-        };
+        let path = req.uri().path();
 
         self.0.full_path_regex.captures(path).map(|captures| {
             let matched = captures.get(0).unwrap();
@@ -948,15 +944,14 @@ where
     }
 
     fn call(&mut self, mut req: Request<B>) -> Self::Future {
-        let f = if let Some((prefix, captures)) = self.pattern.prefix_match(&req) {
-            let uri = if let Some(nested_uri) = req.extensions().get::<NestedUri>() {
-                &nested_uri.0
-            } else {
-                req.uri()
-            };
+        if req.extensions().get::<OriginalUri>().is_none() {
+            let original_uri = OriginalUri(req.uri().clone());
+            req.extensions_mut().insert(original_uri);
+        }
 
-            let without_prefix = strip_prefix(uri, prefix);
-            req.extensions_mut().insert(NestedUri(without_prefix));
+        let f = if let Some((prefix, captures)) = self.pattern.prefix_match(&req) {
+            let without_prefix = strip_prefix(req.uri(), prefix);
+            *req.uri_mut() = without_prefix;
 
             insert_url_params(&mut req, captures);
             let fut = self.svc.clone().oneshot(req);
