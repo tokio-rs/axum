@@ -14,7 +14,6 @@ use tower::{util::Either, BoxError};
 /// ```rust
 /// use axum::{
 ///     route,
-///     routing::RoutingDsl,
 ///     response::{IntoResponse, Headers},
 ///     handler::get,
 /// };

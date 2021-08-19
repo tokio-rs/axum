@@ -15,7 +15,6 @@ use std::ops::{Deref, DerefMut};
 ///     extract::Path,
 ///     handler::get,
 ///     route,
-///     routing::RoutingDsl
 /// };
 /// use uuid::Uuid;
 ///
@@ -38,7 +37,6 @@ use std::ops::{Deref, DerefMut};
 ///     extract::Path,
 ///     handler::get,
 ///     route,
-///     routing::RoutingDsl,
 /// };
 /// use uuid::Uuid;
 ///
@@ -60,7 +58,6 @@ use std::ops::{Deref, DerefMut};
 ///     extract::Path,
 ///     handler::get,
 ///     route,
-///     routing::RoutingDsl
 /// };
 /// use serde::Deserialize;
 /// use uuid::Uuid;

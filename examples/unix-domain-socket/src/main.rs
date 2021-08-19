@@ -10,7 +10,6 @@ use axum::{
     handler::get,
     http::{Method, Request, StatusCode, Uri},
     route,
-    routing::RoutingDsl,
 };
 use futures::ready;
 use hyper::{

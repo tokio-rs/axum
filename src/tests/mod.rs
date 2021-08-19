@@ -5,7 +5,7 @@ use crate::{
     handler::{any, delete, get, on, patch, post, Handler},
     route,
     routing::nest,
-    routing::{MethodFilter, RoutingDsl},
+    routing::MethodFilter,
     service,
 };
 use bytes::Bytes;

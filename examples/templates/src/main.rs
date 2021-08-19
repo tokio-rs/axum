@@ -12,7 +12,6 @@ use axum::{
     http::{Response, StatusCode},
     response::{Html, IntoResponse},
     route,
-    routing::RoutingDsl,
 };
 use std::{convert::Infallible, net::SocketAddr};
 

@@ -18,9 +18,7 @@ use axum::{
     handler::{get, patch},
     http::StatusCode,
     response::IntoResponse,
-    route,
-    routing::RoutingDsl,
-    Json,
+    route, Json,
 };
 use serde::{Deserialize, Serialize};
 use std::{

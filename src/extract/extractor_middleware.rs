@@ -38,7 +38,6 @@ use tower::{BoxError, Layer, Service};
 ///     extract::{extractor_middleware, FromRequest, RequestParts},
 ///     handler::{get, post},
 ///     route,
-///     routing::RoutingDsl
 /// };
 /// use http::StatusCode;
 /// use async_trait::async_trait;

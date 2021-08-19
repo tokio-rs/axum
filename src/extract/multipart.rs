@@ -24,7 +24,6 @@ use tower::BoxError;
 ///     extract::Multipart,
 ///     handler::post,
 ///     route,
-///     routing::RoutingDsl
 /// };
 /// use futures::stream::StreamExt;
 ///

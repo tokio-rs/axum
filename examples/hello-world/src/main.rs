@@ -4,7 +4,7 @@
 //! cargo run -p example-hello-world
 //! ```
 
-use axum::{handler::get, route, routing::RoutingDsl};
+use axum::{handler::get, route};
 use std::net::SocketAddr;
 
 #[tokio::main]

@@ -14,7 +14,6 @@ use std::ops::Deref;
 ///     extract::Extension,
 ///     handler::get,
 ///     route,
-///     routing::RoutingDsl
 /// };
 /// use std::sync::Arc;
 ///

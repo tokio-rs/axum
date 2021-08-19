@@ -5,10 +5,9 @@
 //! ```
 
 use axum::{
-    body::Body,
     handler::{get, post},
     route,
-    routing::{BoxRoute, RoutingDsl},
+    routing::{BoxRoute, Router},
     Json,
 };
 use tower_http::trace::TraceLayer;
@@ -34,7 +33,7 @@ async fn main() {
 /// Having a function that produces our app makes it easy to call it from tests
 /// without having to create an HTTP server.
 #[allow(dead_code)]
-fn app() -> BoxRoute<Body> {
+fn app() -> Router<BoxRoute> {
     route("/", get(|| async { "Hello, World!" }))
         .route(
             "/json",
@@ -50,6 +49,7 @@ fn app() -> BoxRoute<Body> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use axum::body::Body;
     use axum::http::{self, Request, StatusCode};
     use serde_json::{json, Value};
     use std::net::{SocketAddr, TcpListener};

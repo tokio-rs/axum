@@ -11,7 +11,6 @@ use std::convert::Infallible;
 ///     extract::RawQuery,
 ///     handler::get,
 ///     route,
-///     routing::RoutingDsl
 /// };
 /// use futures::StreamExt;
 ///

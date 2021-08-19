@@ -15,9 +15,7 @@ use axum::{
         StatusCode,
     },
     response::IntoResponse,
-    route,
-    routing::RoutingDsl,
-    AddExtensionLayer,
+    route, AddExtensionLayer,
 };
 use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;

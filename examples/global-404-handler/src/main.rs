@@ -10,7 +10,6 @@ use axum::{
     http::{Response, StatusCode},
     response::Html,
     route,
-    routing::RoutingDsl,
 };
 use std::net::SocketAddr;
 use tower::util::MapResponseLayer;

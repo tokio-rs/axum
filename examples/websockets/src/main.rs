@@ -14,7 +14,7 @@ use axum::{
     handler::get,
     http::StatusCode,
     response::IntoResponse,
-    routing::{nest, RoutingDsl},
+    routing::nest,
 };
 use std::net::SocketAddr;
 use tower_http::{

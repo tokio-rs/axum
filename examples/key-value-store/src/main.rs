@@ -7,13 +7,13 @@
 //! ```
 
 use axum::{
-    body::{Body, Bytes},
+    body::Bytes,
     extract::{ContentLengthLimit, Extension, Path},
     handler::{delete, get, Handler},
     http::StatusCode,
     response::IntoResponse,
     route,
-    routing::{BoxRoute, RoutingDsl},
+    routing::{BoxRoute, Router},
 };
 use std::{
     borrow::Cow,
@@ -108,7 +108,7 @@ async fn list_keys(Extension(state): Extension<SharedState>) -> String {
         .join("\n")
 }
 
-fn admin_routes() -> BoxRoute<Body> {
+fn admin_routes() -> Router<BoxRoute> {
     async fn delete_all_keys(Extension(state): Extension<SharedState>) {
         state.write().unwrap().db.clear();
     }

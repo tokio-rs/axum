@@ -13,7 +13,6 @@ use std::convert::TryFrom;
 ///     handler::get,
 ///     response::Redirect,
 ///     route,
-///     routing::RoutingDsl
 /// };
 ///
 /// let app = route("/old", get(|| async { Redirect::permanent("/new".parse().unwrap()) }))

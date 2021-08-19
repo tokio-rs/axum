@@ -16,7 +16,6 @@
 //!     handler::get,
 //!     http::Request,
 //!     route,
-//!     routing::RoutingDsl,
 //!     service,
 //! };
 //!
@@ -68,7 +67,6 @@
 //! use axum::{
 //!     handler::get,
 //!     route,
-//!     routing::RoutingDsl
 //! };
 //! use tower::ServiceBuilder;
 //! # let some_backpressure_sensitive_middleware =
@@ -151,7 +149,6 @@ where
 /// use axum::{
 ///     http::Request,
 ///     route,
-///     routing::RoutingDsl,
 ///     service,
 /// };
 /// use http::Response;
@@ -249,7 +246,7 @@ where
 ///     handler::on,
 ///     service,
 ///     route,
-///     routing::{MethodFilter, RoutingDsl},
+///     routing::MethodFilter,
 /// };
 /// use http::Response;
 /// use std::convert::Infallible;
@@ -344,7 +341,7 @@ impl<S, F, B> OnMethod<S, F, B> {
     ///     handler::on,
     ///     service,
     ///     route,
-    ///     routing::{MethodFilter, RoutingDsl},
+    ///     routing::MethodFilter,
     /// };
     /// use http::Response;
     /// use std::convert::Infallible;
@@ -447,7 +444,7 @@ impl<S, F, B> OnMethod<S, F, B> {
     ///     handler::on,
     ///     service,
     ///     route,
-    ///     routing::{MethodFilter, RoutingDsl},
+    ///     routing::MethodFilter,
     /// };
     /// use http::Response;
     /// use std::convert::Infallible;
@@ -483,14 +480,11 @@ impl<S, F, B> OnMethod<S, F, B> {
     ///
     /// Unhandled errors will close the connection without sending a response.
     ///
-    /// Works similarly to [`RoutingDsl::handle_error`]. See that for more
+    /// Works similarly to [`Router::handle_error`]. See that for more
     /// details.
     ///
-    /// [`RoutingDsl::handle_error`]: crate::routing::RoutingDsl::handle_error
-    pub fn handle_error<ReqBody, H>(
-        self,
-        f: H,
-    ) -> HandleError<Self, H, ReqBody, HandleErrorFromService> {
+    /// [`Router::handle_error`]: crate::routing::Router::handle_error
+    pub fn handle_error<ReqBody, H>(self, f: H) -> HandleError<Self, H, ReqBody> {
         HandleError::new(self, f)
     }
 }
@@ -536,15 +530,15 @@ where
 ///
 /// Created with
 /// [`handler::Layered::handle_error`](crate::handler::Layered::handle_error) or
-/// [`routing::RoutingDsl::handle_error`](crate::routing::RoutingDsl::handle_error).
+/// [`routing::Router::handle_error`](crate::routing::Router::handle_error).
 /// See those methods for more details.
-pub struct HandleError<S, F, B, T> {
+pub struct HandleError<S, F, B> {
     inner: S,
     f: F,
-    _marker: PhantomData<fn() -> (B, T)>,
+    _marker: PhantomData<fn() -> B>,
 }
 
-impl<S, F, B, T> Clone for HandleError<S, F, B, T>
+impl<S, F, B> Clone for HandleError<S, F, B>
 where
     S: Clone,
     F: Clone,
@@ -554,23 +548,7 @@ where
     }
 }
 
-/// Marker type used for [`HandleError`] to indicate that it should implement
-/// [`RoutingDsl`](crate::routing::RoutingDsl).
-#[non_exhaustive]
-#[derive(Debug)]
-pub struct HandleErrorFromRouter;
-
-/// Marker type used for [`HandleError`] to indicate that it should _not_ implement
-/// [`RoutingDsl`](crate::routing::RoutingDsl).
-#[non_exhaustive]
-#[derive(Debug)]
-pub struct HandleErrorFromService;
-
-impl<S, F, B> crate::routing::RoutingDsl for HandleError<S, F, B, HandleErrorFromRouter> {}
-
-impl<S, F, B> crate::sealed::Sealed for HandleError<S, F, B, HandleErrorFromRouter> {}
-
-impl<S, F, B, T> HandleError<S, F, B, T> {
+impl<S, F, B> HandleError<S, F, B> {
     pub(crate) fn new(inner: S, f: F) -> Self {
         Self {
             inner,
@@ -580,7 +558,7 @@ impl<S, F, B, T> HandleError<S, F, B, T> {
     }
 }
 
-impl<S, F, B, T> fmt::Debug for HandleError<S, F, B, T>
+impl<S, F, B> fmt::Debug for HandleError<S, F, B>
 where
     S: fmt::Debug,
 {
@@ -592,7 +570,7 @@ where
     }
 }
 
-impl<S, F, ReqBody, ResBody, Res, E, T> Service<Request<ReqBody>> for HandleError<S, F, ReqBody, T>
+impl<S, F, ReqBody, ResBody, Res, E> Service<Request<ReqBody>> for HandleError<S, F, ReqBody>
 where
     S: Service<Request<ReqBody>, Response = Response<ResBody>> + Clone,
     F: FnOnce(S::Error) -> Result<Res, E> + Clone,
@@ -615,21 +593,3 @@ where
         }
     }
 }
-
-/// ```compile_fail
-/// use crate::{service::ServiceExt};
-/// use tower::service_fn;
-/// use hyper::Body;
-/// use http::{Request, Response, StatusCode};
-///
-/// let svc = service_fn(|_: Request<Body>| async {
-///     Ok::<_, hyper::Error>(Response::new(Body::empty()))
-/// })
-/// .handle_error::<_, _, hyper::Error>(|_| Ok(StatusCode::INTERNAL_SERVER_ERROR));
-///
-/// // `.route` should not compile, ie `HandleError` created from any
-/// // random service should not implement `RoutingDsl`
-/// svc.route::<_, Body>("/", get(|| async {}));
-/// ```
-#[allow(dead_code)]
-fn compile_fail_tests() {}
