@@ -30,8 +30,7 @@ use axum::{
     extract,
     handler::{get, post},
     http::StatusCode,
-    response,
-    response::IntoResponse,
+    response::{self, IntoResponse},
     route,
     routing::RoutingDsl,
 };
