@@ -824,4 +824,5 @@ pub use hyper::Server;
 #[doc(no_inline)]
 pub use tower_http::add_extension::{AddExtension, AddExtensionLayer};
 
+#[doc(inline)]
 pub use self::{error::Error, json::Json, routing::Router};
