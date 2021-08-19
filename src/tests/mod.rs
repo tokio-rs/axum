@@ -3,6 +3,7 @@
 use crate::{
     extract,
     handler::{any, delete, get, on, patch, post, Handler},
+    response::IntoResponse,
     route,
     routing::nest,
     routing::{MethodFilter, RoutingDsl},
@@ -602,6 +603,26 @@ async fn multiple_methods_for_one_handler() {
         .await
         .unwrap();
     assert_eq!(res.status(), StatusCode::OK);
+}
+
+#[tokio::test]
+async fn handler_into_service() {
+    async fn handle(body: String) -> impl IntoResponse {
+        format!("you said: {}", body)
+    }
+
+    let addr = run_in_background(handle.into_service()).await;
+
+    let client = reqwest::Client::new();
+
+    let res = client
+        .post(format!("http://{}", addr))
+        .body("hi there!")
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.text().await.unwrap(), "you said: hi there!");
 }
 
 /// Run a `tower::Service` in the background and get a URI for it.

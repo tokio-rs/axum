@@ -21,6 +21,9 @@ use std::{
 use tower::{BoxError, Layer, Service, ServiceExt};
 
 pub mod future;
+mod into_service;
+
+pub use self::into_service::IntoService;
 
 /// Route requests to the given handler regardless of the HTTP method of the
 /// request.
@@ -254,6 +257,34 @@ pub trait Handler<B, T>: Clone + Send + Sized + 'static {
         L: Layer<OnMethod<Self, B, T, EmptyRouter>>,
     {
         Layered::new(layer.layer(any(self)))
+    }
+
+    /// Convert the handler into a [`Service`].
+    ///
+    /// This allows you to serve a single handler if you don't need any routing:
+    ///
+    /// ```rust
+    /// use axum::{
+    ///     Server, handler::Handler, http::{Uri, Method}, response::IntoResponse,
+    /// };
+    /// use tower::make::Shared;
+    /// use std::net::SocketAddr;
+    ///
+    /// async fn handler(method: Method, uri: Uri, body: String) -> impl IntoResponse {
+    ///     format!("received `{} {}` with body `{:?}`", method, uri, body)
+    /// }
+    ///
+    /// let service = handler.into_service();
+    ///
+    /// # async {
+    /// Server::bind(&SocketAddr::from(([127, 0, 0, 1], 3000)))
+    ///     .serve(Shared::new(service))
+    ///     .await?;
+    /// # Ok::<_, hyper::Error>(())
+    /// # };
+    /// ```
+    fn into_service(self) -> IntoService<Self, B, T> {
+        IntoService::new(self)
     }
 }
 

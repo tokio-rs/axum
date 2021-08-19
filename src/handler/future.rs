@@ -2,11 +2,15 @@
 
 use crate::body::{box_body, BoxBody};
 use crate::util::{Either, EitherProj};
-use futures_util::{future::BoxFuture, ready};
+use futures_util::{
+    future::{BoxFuture, Map},
+    ready,
+};
 use http::{Method, Request, Response};
 use http_body::Empty;
 use pin_project_lite::pin_project;
 use std::{
+    convert::Infallible,
     fmt,
     future::Future,
     pin::Pin,
@@ -58,4 +62,13 @@ where
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("OnMethodFuture").finish()
     }
+}
+
+opaque_future! {
+    /// The response future for [`IntoService`](super::IntoService).
+    pub type IntoServiceFuture =
+        Map<
+            BoxFuture<'static, Response<BoxBody>>,
+            fn(Response<BoxBody>) -> Result<Response<BoxBody>, Infallible>,
+        >;
 }
