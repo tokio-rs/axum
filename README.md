@@ -26,7 +26,15 @@ applications written using [`hyper`] or [`tonic`].
 ## Usage example
 
 ```rust
-use axum::{prelude::*, response::IntoResponse, http::StatusCode};
+use axum::{
+    extract,
+    handler::{get, post},
+    http::StatusCode,
+    response,
+    response::IntoResponse,
+    route,
+    routing::RoutingDsl,
+};
 use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
 
