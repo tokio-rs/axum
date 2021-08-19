@@ -146,7 +146,40 @@ jobs:
       uses: actions-rs/cargo@v1
       with:
         command: test
-        args: --all --all-features
+        args: --all --all-features --all-targets
+
+  test-docs:
+    needs: check
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@master
+    - uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        override: true
+        profile: minimal
+    # caching
+    - name: Cache cargo registry
+      uses: actions/cache@v2.1.6
+      with:
+        path: ~/.cargo/registry
+        key: ${{ runner.os }}-v1-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+    - name: Cache cargo index
+      uses: actions/cache@v2.1.6
+      with:
+        path: ~/.cargo/git
+        key: ${{ runner.os }}-v1-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+    - name: Cache cargo target dir
+      uses: actions/cache@v2.1.6
+      with:
+        path: target
+        key: ${{ runner.os }}-v1-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+    # /caching
+    - name: Run doc tests
+      uses: actions-rs/cargo@v1
+      with:
+        command: test
+        args: --all-features --doc
 
   deny-check:
     name: cargo-deny check
