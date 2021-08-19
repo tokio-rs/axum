@@ -14,6 +14,8 @@ use tower::{
     BoxError, Service,
 };
 
+pub use super::or::ResponseFuture as OrResponseFuture;
+
 opaque_future! {
     /// Response future for [`EmptyRouter`](super::EmptyRouter).
     pub type EmptyRouterFuture<E> =

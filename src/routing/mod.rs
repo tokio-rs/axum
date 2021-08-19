@@ -29,9 +29,9 @@ use tower::{
 use tower_http::map_response_body::MapResponseBodyLayer;
 
 pub mod future;
-pub mod or;
+mod or;
 
-pub use self::method_filter::MethodFilter;
+pub use self::{method_filter::MethodFilter, or::Or};
 
 mod method_filter;
 
@@ -479,7 +479,8 @@ impl<S> Router<S> {
     /// # async fn teams_list() {}
     ///
     /// // define some routes separately
-    /// let user_routes = Router::new().route("/users", get(users_list))
+    /// let user_routes = Router::new()
+    ///     .route("/users", get(users_list))
     ///     .route("/users/:id", get(users_show));
     ///
     /// let team_routes = Router::new().route("/teams", get(teams_list));
@@ -490,8 +491,8 @@ impl<S> Router<S> {
     /// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
     /// # };
     /// ```
-    pub fn or<S2>(self, other: S2) -> Router<or::Or<S, S2>> {
-        self.map(|first| or::Or {
+    pub fn or<S2>(self, other: S2) -> Router<Or<S, S2>> {
+        self.map(|first| Or {
             first,
             second: other,
         })
