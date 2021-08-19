@@ -23,7 +23,7 @@ use tower::BoxError;
 /// use axum::{
 ///     extract::Multipart,
 ///     handler::post,
-///     route,
+///     Router,
 /// };
 /// use futures::stream::StreamExt;
 ///
@@ -36,7 +36,7 @@ use tower::BoxError;
 ///     }
 /// }
 ///
-/// let app = route("/upload", post(upload));
+/// let app = Router::new().route("/upload", post(upload));
 /// # async {
 /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 /// # };

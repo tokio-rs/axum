@@ -4,8 +4,8 @@
 //! cargo run -p example-static-file-server
 //! ```
 
-use axum::{http::StatusCode, routing::nest};
-use std::net::SocketAddr;
+use axum::{http::StatusCode, service, Router};
+use std::{convert::Infallible, net::SocketAddr};
 use tower_http::{services::ServeDir, trace::TraceLayer};
 
 #[tokio::main]
@@ -19,16 +19,17 @@ async fn main() {
     }
     tracing_subscriber::fmt::init();
 
-    let app = nest(
-        "/static",
-        axum::service::get(ServeDir::new(".")).handle_error(|error: std::io::Error| {
-            Ok::<_, std::convert::Infallible>((
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Unhandled internal error: {}", error),
-            ))
-        }),
-    )
-    .layer(TraceLayer::new_for_http());
+    let app = Router::new()
+        .nest(
+            "/static",
+            service::get(ServeDir::new(".")).handle_error(|error: std::io::Error| {
+                Ok::<_, Infallible>((
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    format!("Unhandled internal error: {}", error),
+                ))
+            }),
+        )
+        .layer(TraceLayer::new_for_http());
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
     tracing::debug!("listening on {}", addr);

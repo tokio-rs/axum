@@ -10,8 +10,8 @@ use axum::extract::ws::{Message, WebSocket, WebSocketUpgrade};
 use axum::extract::Extension;
 use axum::handler::get;
 use axum::response::{Html, IntoResponse};
-use axum::route;
 use axum::AddExtensionLayer;
+use axum::Router;
 use futures::{sink::SinkExt, stream::StreamExt};
 use std::collections::HashSet;
 use std::net::SocketAddr;
@@ -31,7 +31,8 @@ async fn main() {
 
     let app_state = Arc::new(AppState { user_set, tx });
 
-    let app = route("/", get(index))
+    let app = Router::new()
+        .route("/", get(index))
         .route("/websocket", get(websocket_handler))
         .layer(AddExtensionLayer::new(app_state));
 

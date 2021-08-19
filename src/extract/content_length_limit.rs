@@ -12,14 +12,14 @@ use std::ops::Deref;
 /// use axum::{
 ///     extract::ContentLengthLimit,
 ///     handler::post,
-///     route,
+///     Router,
 /// };
 ///
 /// async fn handler(body: ContentLengthLimit<String, 1024>) {
 ///     // ...
 /// }
 ///
-/// let app = route("/", post(handler));
+/// let app = Router::new().route("/", post(handler));
 /// # async {
 /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 /// # };

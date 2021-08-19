@@ -6,9 +6,8 @@
 
 use axum::{
     handler::{get, post},
-    route,
-    routing::{BoxRoute, Router},
-    Json,
+    routing::BoxRoute,
+    Json, Router,
 };
 use tower_http::trace::TraceLayer;
 
@@ -34,7 +33,8 @@ async fn main() {
 /// without having to create an HTTP server.
 #[allow(dead_code)]
 fn app() -> Router<BoxRoute> {
-    route("/", get(|| async { "Hello, World!" }))
+    Router::new()
+        .route("/", get(|| async { "Hello, World!" }))
         .route(
             "/json",
             post(|payload: Json<serde_json::Value>| async move {

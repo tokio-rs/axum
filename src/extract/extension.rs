@@ -13,7 +13,7 @@ use std::ops::Deref;
 ///     AddExtensionLayer,
 ///     extract::Extension,
 ///     handler::get,
-///     route,
+///     Router,
 /// };
 /// use std::sync::Arc;
 ///
@@ -28,7 +28,7 @@ use std::ops::Deref;
 ///
 /// let state = Arc::new(State { /* ... */ });
 ///
-/// let app = route("/", get(handler))
+/// let app = Router::new().route("/", get(handler))
 ///     // Add middleware that inserts the state into all incoming request's
 ///     // extensions.
 ///     .layer(AddExtensionLayer::new(state));

@@ -11,7 +11,7 @@
 //! use axum::{
 //!     Json,
 //!     handler::{post, Handler},
-//!     route,
+//!     Router,
 //! };
 //! use serde::Deserialize;
 //!
@@ -27,7 +27,7 @@
 //!     // ...
 //! }
 //!
-//! let app = route("/users", post(create_user));
+//! let app = Router::new().route("/users", post(create_user));
 //! # async {
 //! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 //! # };
@@ -42,7 +42,7 @@
 //!     async_trait,
 //!     extract::{FromRequest, RequestParts},
 //!     handler::get,
-//!     route,
+//!     Router,
 //! };
 //! use http::{StatusCode, header::{HeaderValue, USER_AGENT}};
 //!
@@ -72,7 +72,7 @@
 //!     // ...
 //! }
 //!
-//! let app = route("/foo", get(handler));
+//! let app = Router::new().route("/foo", get(handler));
 //! # async {
 //! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 //! # };
@@ -86,7 +86,7 @@
 //! use axum::{
 //!     extract::{Path, Query},
 //!     handler::get,
-//!     route,
+//!     Router,
 //! };
 //! use std::collections::HashMap;
 //!
@@ -101,7 +101,7 @@
 //!     // ...
 //! }
 //!
-//! let app = route("/foo", get(handler));
+//! let app = Router::new().route("/foo", get(handler));
 //! # async {
 //! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 //! # };
@@ -118,7 +118,7 @@
 //! use axum::{
 //!     extract::Json,
 //!     handler::post,
-//!     route,
+//!     Router,
 //! };
 //! use serde_json::Value;
 //!
@@ -130,7 +130,7 @@
 //!     }
 //! }
 //!
-//! let app = route("/users", post(create_user));
+//! let app = Router::new().route("/users", post(create_user));
 //! # async {
 //! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 //! # };
@@ -143,7 +143,7 @@
 //! use axum::{
 //!     extract::{Json, rejection::JsonRejection},
 //!     handler::post,
-//!     route,
+//!     Router,
 //! };
 //! use serde_json::Value;
 //!
@@ -169,7 +169,7 @@
 //!     }
 //! }
 //!
-//! let app = route("/users", post(create_user));
+//! let app = Router::new().route("/users", post(create_user));
 //! # async {
 //! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 //! # };
@@ -184,7 +184,7 @@
 //! use axum::{
 //!     extract::Json,
 //!     handler::post,
-//!     route,
+//!     Router,
 //! };
 //! use serde_json::Value;
 //!
@@ -192,7 +192,7 @@
 //!     // `value` is of type `Value`
 //! }
 //!
-//! let app = route("/users", post(create_user));
+//! let app = Router::new().route("/users", post(create_user));
 //! # async {
 //! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 //! # };
@@ -217,7 +217,7 @@
 //!     body::Body,
 //!     handler::get,
 //!     http::{header::HeaderMap, Request},
-//!     route,
+//!     Router,
 //! };
 //!
 //! struct MyBody<B>(B);
@@ -244,10 +244,10 @@
 //!     }
 //! }
 //!
-//! let app =
-//!     // `String` works directly with any body type
-//!     route(
+//! let app = Router::new()
+//!     .route(
 //!         "/string",
+//!         // `String` works directly with any body type
 //!         get(|_: String| async {})
 //!     )
 //!     .route(

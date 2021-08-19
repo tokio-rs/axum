@@ -9,7 +9,7 @@ use axum::{
     handler::get,
     http::{Response, StatusCode},
     response::Html,
-    route,
+    Router,
 };
 use std::net::SocketAddr;
 use tower::util::MapResponseLayer;
@@ -23,7 +23,8 @@ async fn main() {
     tracing_subscriber::fmt::init();
 
     // build our application with a route
-    let app = route("/", get(handler))
+    let app = Router::new()
+        .route("/", get(handler))
         // make sure this is added as the very last thing
         .layer(MapResponseLayer::new(map_404));
 

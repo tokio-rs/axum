@@ -4,10 +4,8 @@ use crate::{
     extract,
     handler::{any, delete, get, on, patch, post, Handler},
     response::IntoResponse,
-    route,
-    routing::nest,
     routing::MethodFilter,
-    service,
+    service, Router,
 };
 use bytes::Bytes;
 use futures_util::future::Ready;
@@ -46,7 +44,9 @@ async fn hello_world() {
         "users#create"
     }
 
-    let app = route("/", get(root).post(foo)).route("/users", post(users_create));
+    let app = Router::new()
+        .route("/", get(root).post(foo))
+        .route("/users", post(users_create));
 
     let addr = run_in_background(app).await;
 
@@ -75,7 +75,7 @@ async fn hello_world() {
 
 #[tokio::test]
 async fn consume_body() {
-    let app = route("/", get(|body: String| async { body }));
+    let app = Router::new().route("/", get(|body: String| async { body }));
 
     let addr = run_in_background(app).await;
 
@@ -98,7 +98,7 @@ async fn deserialize_body() {
         foo: String,
     }
 
-    let app = route(
+    let app = Router::new().route(
         "/",
         post(|input: extract::Json<Input>| async { input.0.foo }),
     );
@@ -124,7 +124,7 @@ async fn consume_body_to_json_requires_json_content_type() {
         foo: String,
     }
 
-    let app = route(
+    let app = Router::new().route(
         "/",
         post(|input: extract::Json<Input>| async { input.0.foo }),
     );
@@ -156,7 +156,7 @@ async fn body_with_length_limit() {
 
     const LIMIT: u64 = 8;
 
-    let app = route(
+    let app = Router::new().route(
         "/",
         post(|_body: extract::ContentLengthLimit<Bytes, LIMIT>| async {}),
     );
@@ -202,16 +202,17 @@ async fn body_with_length_limit() {
 
 #[tokio::test]
 async fn routing() {
-    let app = route(
-        "/users",
-        get(|_: Request<Body>| async { "users#index" })
-            .post(|_: Request<Body>| async { "users#create" }),
-    )
-    .route("/users/:id", get(|_: Request<Body>| async { "users#show" }))
-    .route(
-        "/users/:id/action",
-        get(|_: Request<Body>| async { "users#action" }),
-    );
+    let app = Router::new()
+        .route(
+            "/users",
+            get(|_: Request<Body>| async { "users#index" })
+                .post(|_: Request<Body>| async { "users#create" }),
+        )
+        .route("/users/:id", get(|_: Request<Body>| async { "users#show" }))
+        .route(
+            "/users/:id/action",
+            get(|_: Request<Body>| async { "users#action" }),
+        );
 
     let addr = run_in_background(app).await;
 
@@ -255,7 +256,7 @@ async fn routing() {
 
 #[tokio::test]
 async fn extracting_url_params() {
-    let app = route(
+    let app = Router::new().route(
         "/users/:id",
         get(|extract::Path(id): extract::Path<i32>| async move {
             assert_eq!(id, 42);
@@ -288,7 +289,7 @@ async fn extracting_url_params() {
 
 #[tokio::test]
 async fn extracting_url_params_multiple_times() {
-    let app = route(
+    let app = Router::new().route(
         "/users/:id",
         get(|_: extract::Path<i32>, _: extract::Path<String>| async {}),
     );
@@ -307,17 +308,18 @@ async fn extracting_url_params_multiple_times() {
 
 #[tokio::test]
 async fn boxing() {
-    let app = route(
-        "/",
-        on(MethodFilter::GET, |_: Request<Body>| async {
-            "hi from GET"
-        })
-        .on(MethodFilter::POST, |_: Request<Body>| async {
-            "hi from POST"
-        }),
-    )
-    .layer(tower_http::compression::CompressionLayer::new())
-    .boxed();
+    let app = Router::new()
+        .route(
+            "/",
+            on(MethodFilter::GET, |_: Request<Body>| async {
+                "hi from GET"
+            })
+            .on(MethodFilter::POST, |_: Request<Body>| async {
+                "hi from POST"
+            }),
+        )
+        .layer(tower_http::compression::CompressionLayer::new())
+        .boxed();
 
     let addr = run_in_background(app).await;
 
@@ -345,22 +347,23 @@ async fn routing_between_services() {
         "handler"
     }
 
-    let app = route(
-        "/one",
-        service::get(service_fn(|_: Request<Body>| async {
-            Ok::<_, Infallible>(Response::new(Body::from("one get")))
-        }))
-        .post(service_fn(|_: Request<Body>| async {
-            Ok::<_, Infallible>(Response::new(Body::from("one post")))
-        }))
-        .on(
-            MethodFilter::PUT,
-            service_fn(|_: Request<Body>| async {
-                Ok::<_, Infallible>(Response::new(Body::from("one put")))
-            }),
-        ),
-    )
-    .route("/two", service::on(MethodFilter::GET, any(handle)));
+    let app = Router::new()
+        .route(
+            "/one",
+            service::get(service_fn(|_: Request<Body>| async {
+                Ok::<_, Infallible>(Response::new(Body::from("one get")))
+            }))
+            .post(service_fn(|_: Request<Body>| async {
+                Ok::<_, Infallible>(Response::new(Body::from("one post")))
+            }))
+            .on(
+                MethodFilter::PUT,
+                service_fn(|_: Request<Body>| async {
+                    Ok::<_, Infallible>(Response::new(Body::from("one put")))
+                }),
+            ),
+        )
+        .route("/two", service::on(MethodFilter::GET, any(handle)));
 
     let addr = run_in_background(app).await;
 
@@ -408,7 +411,7 @@ async fn middleware_on_single_route() {
         "Hello, World!"
     }
 
-    let app = route(
+    let app = Router::new().route(
         "/",
         get(handle.layer(
             ServiceBuilder::new()
@@ -432,7 +435,7 @@ async fn service_in_bottom() {
         Ok(Response::new(hyper::Body::empty()))
     }
 
-    let app = route("/", service::get(service_fn(handler)));
+    let app = Router::new().route("/", service::get(service_fn(handler)));
 
     run_in_background(app).await;
 }
@@ -466,7 +469,7 @@ async fn test_extractor_middleware() {
 
     async fn handler() {}
 
-    let app = route(
+    let app = Router::new().route(
         "/",
         get(handler.layer(extract::extractor_middleware::<RequireAuth>())),
     );
@@ -493,7 +496,9 @@ async fn test_extractor_middleware() {
 
 #[tokio::test]
 async fn wrong_method_handler() {
-    let app = route("/", get(|| async {}).post(|| async {})).route("/foo", patch(|| async {}));
+    let app = Router::new()
+        .route("/", get(|| async {}).post(|| async {}))
+        .route("/foo", patch(|| async {}));
 
     let addr = run_in_background(app).await;
 
@@ -547,7 +552,9 @@ async fn wrong_method_service() {
         }
     }
 
-    let app = route("/", service::get(Svc).post(Svc)).route("/foo", service::patch(Svc));
+    let app = Router::new()
+        .route("/", service::get(Svc).post(Svc))
+        .route("/foo", service::patch(Svc));
 
     let addr = run_in_background(app).await;
 
@@ -588,7 +595,7 @@ async fn multiple_methods_for_one_handler() {
         "Hello, World!"
     }
 
-    let app = route("/", on(MethodFilter::GET | MethodFilter::POST, root));
+    let app = Router::new().route("/", on(MethodFilter::GET | MethodFilter::POST, root));
 
     let addr = run_in_background(app).await;
 

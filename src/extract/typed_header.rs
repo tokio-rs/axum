@@ -14,7 +14,7 @@ use std::{convert::Infallible, ops::Deref};
 /// use axum::{
 ///     extract::TypedHeader,
 ///     handler::get,
-///     route,
+///     Router,
 /// };
 /// use headers::UserAgent;
 ///
@@ -24,7 +24,7 @@ use std::{convert::Infallible, ops::Deref};
 ///     // ...
 /// }
 ///
-/// let app = route("/users/:user_id/team/:team_id", get(users_teams_show));
+/// let app = Router::new().route("/users/:user_id/team/:team_id", get(users_teams_show));
 /// # async {
 /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 /// # };
@@ -125,7 +125,7 @@ impl std::error::Error for TypedHeaderRejection {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{handler::get, response::IntoResponse, route, tests::*};
+    use crate::{handler::get, response::IntoResponse, tests::*, Router};
 
     #[tokio::test]
     async fn typed_header() {
@@ -135,7 +135,7 @@ mod tests {
             user_agent.to_string()
         }
 
-        let app = route("/", get(handle));
+        let app = Router::new().route("/", get(handle));
 
         let addr = run_in_background(app).await;
 

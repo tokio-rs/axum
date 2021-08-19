@@ -44,7 +44,7 @@ pub use self::{
 /// use axum::{
 ///     handler::get,
 ///     response::IntoResponse,
-///     route,
+///     Router,
 /// };
 /// use http_body::Body;
 /// use http::{Response, HeaderMap};
@@ -94,7 +94,7 @@ pub use self::{
 /// // covered by a blanket implementation in axum.
 ///
 /// // `MyBody` can now be returned from handlers.
-/// let app = route("/", get(|| async { MyBody }));
+/// let app = Router::new().route("/", get(|| async { MyBody }));
 /// # async {
 /// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 /// # };

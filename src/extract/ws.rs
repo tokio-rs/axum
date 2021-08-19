@@ -7,10 +7,10 @@
 //!     extract::ws::{WebSocketUpgrade, WebSocket},
 //!     handler::get,
 //!     response::IntoResponse,
-//!     route,
+//!     Router,
 //! };
 //!
-//! let app = route("/ws", get(handler));
+//! let app = Router::new().route("/ws", get(handler));
 //!
 //! async fn handler(ws: WebSocketUpgrade) -> impl IntoResponse {
 //!     ws.on_upgrade(handle_socket)
@@ -113,10 +113,10 @@ impl WebSocketUpgrade {
     ///     extract::ws::{WebSocketUpgrade, WebSocket},
     ///     handler::get,
     ///     response::IntoResponse,
-    ///     route,
+    ///     Router,
     /// };
     ///
-    /// let app = route("/ws", get(handler));
+    /// let app = Router::new().route("/ws", get(handler));
     ///
     /// async fn handler(ws: WebSocketUpgrade) -> impl IntoResponse {
     ///     ws.protocols(["graphql-ws", "graphql-transport-ws"])

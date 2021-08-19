@@ -37,7 +37,7 @@ use tower::{BoxError, Layer, Service};
 /// use axum::{
 ///     extract::{extractor_middleware, FromRequest, RequestParts},
 ///     handler::{get, post},
-///     route,
+///     Router,
 /// };
 /// use http::StatusCode;
 /// use async_trait::async_trait;
@@ -76,7 +76,8 @@ use tower::{BoxError, Layer, Service};
 ///     // If we get here the request has been authorized
 /// }
 ///
-/// let app = route("/", get(handler))
+/// let app = Router::new()
+///     .route("/", get(handler))
 ///     .route("/foo", post(other_handler))
 ///     // The extractor will run before all routes
 ///     .layer(extractor_middleware::<RequireAuth>());

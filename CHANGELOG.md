@@ -9,8 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Overall compile time improvements. If you're having issues with compile time
   please file an issue!
-- Remove `prelude`. Explicit imports are now required.
-- Add dedicated `Router` to replace the `RoutingDsl` trait
+- Remove `prelude`. Explicit imports are now required ([#195](https://github.com/tokio-rs/axum/pull/195))
+- Add dedicated `Router` to replace the `RoutingDsl` trait ([#214](https://github.com/tokio-rs/axum/pull/214))
+- Replace `axum::route(...)` with `axum::Router::new().route(...)`. This means
+  there is now only one way to create a new router. Same goes for
+  `axum::routing::nest`. ([#215](https://github.com/tokio-rs/axum/pull/215))
 - Make `FromRequest` default to being generic over `body::Body` ([#146](https://github.com/tokio-rs/axum/pull/146))
 - Implement `std::error::Error` for all rejections ([#153](https://github.com/tokio-rs/axum/pull/153))
 - Add `Router::or` for combining routes ([#108](https://github.com/tokio-rs/axum/pull/108))

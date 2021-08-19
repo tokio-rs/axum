@@ -14,7 +14,7 @@ use std::ops::{Deref, DerefMut};
 /// use axum::{
 ///     extract::Path,
 ///     handler::get,
-///     route,
+///     Router,
 /// };
 /// use uuid::Uuid;
 ///
@@ -24,7 +24,7 @@ use std::ops::{Deref, DerefMut};
 ///     // ...
 /// }
 ///
-/// let app = route("/users/:user_id/team/:team_id", get(users_teams_show));
+/// let app = Router::new().route("/users/:user_id/team/:team_id", get(users_teams_show));
 /// # async {
 /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 /// # };
@@ -36,7 +36,7 @@ use std::ops::{Deref, DerefMut};
 /// use axum::{
 ///     extract::Path,
 ///     handler::get,
-///     route,
+///     Router,
 /// };
 /// use uuid::Uuid;
 ///
@@ -44,7 +44,7 @@ use std::ops::{Deref, DerefMut};
 ///     // ...
 /// }
 ///
-/// let app = route("/users/:user_id", get(user_info));
+/// let app = Router::new().route("/users/:user_id", get(user_info));
 /// # async {
 /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 /// # };
@@ -57,7 +57,7 @@ use std::ops::{Deref, DerefMut};
 /// use axum::{
 ///     extract::Path,
 ///     handler::get,
-///     route,
+///     Router,
 /// };
 /// use serde::Deserialize;
 /// use uuid::Uuid;
@@ -74,7 +74,7 @@ use std::ops::{Deref, DerefMut};
 ///     // ...
 /// }
 ///
-/// let app = route("/users/:user_id/team/:team_id", get(users_teams_show));
+/// let app = Router::new().route("/users/:user_id/team/:team_id", get(users_teams_show));
 /// # async {
 /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 /// # };

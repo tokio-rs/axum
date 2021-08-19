@@ -13,7 +13,7 @@ use std::ops::Deref;
 /// use axum::{
 ///     extract::Query,
 ///     handler::get,
-///     route,
+///     Router,
 /// };
 /// use serde::Deserialize;
 ///
@@ -31,7 +31,7 @@ use std::ops::Deref;
 ///     // ...
 /// }
 ///
-/// let app = route("/list_things", get(list_things));
+/// let app = Router::new().route("/list_things", get(list_things));
 /// # async {
 /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 /// # };

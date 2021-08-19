@@ -11,7 +11,7 @@ use axum::{
     handler::get,
     http::{Response, StatusCode},
     response::{Html, IntoResponse},
-    route,
+    Router,
 };
 use std::{convert::Infallible, net::SocketAddr};
 
@@ -24,7 +24,7 @@ async fn main() {
     tracing_subscriber::fmt::init();
 
     // build our application with some routes
-    let app = route("/greet/:name", get(greet));
+    let app = Router::new().route("/greet/:name", get(greet));
 
     // run it
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));

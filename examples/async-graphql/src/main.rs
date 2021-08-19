@@ -3,7 +3,7 @@ mod starwars;
 use async_graphql::http::{playground_source, GraphQLPlaygroundConfig};
 use async_graphql::{EmptyMutation, EmptySubscription, Request, Response, Schema};
 use axum::response::IntoResponse;
-use axum::{extract::Extension, handler::get, response::Html, route, AddExtensionLayer, Json};
+use axum::{extract::Extension, handler::get, response::Html, AddExtensionLayer, Json, Router};
 use starwars::{QueryRoot, StarWars, StarWarsSchema};
 
 async fn graphql_handler(schema: Extension<StarWarsSchema>, req: Json<Request>) -> Json<Response> {
@@ -20,7 +20,8 @@ async fn main() {
         .data(StarWars::new())
         .finish();
 
-    let app = route("/", get(graphql_playground).post(graphql_handler))
+    let app = Router::new()
+        .route("/", get(graphql_playground).post(graphql_handler))
         .layer(AddExtensionLayer::new(schema));
 
     println!("Playground: http://localhost:3000");

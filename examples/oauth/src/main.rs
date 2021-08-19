@@ -14,7 +14,7 @@ use axum::{
     handler::get,
     http::{header::SET_COOKIE, HeaderMap, Response},
     response::{IntoResponse, Redirect},
-    route, AddExtensionLayer,
+    AddExtensionLayer, Router,
 };
 use oauth2::{
     basic::BasicClient, reqwest::async_http_client, AuthUrl, AuthorizationCode, ClientId,
@@ -42,8 +42,11 @@ async fn main() {
 
     // `MemoryStore` just used as an example. Don't use this in production.
     let store = MemoryStore::new();
+
     let oauth_client = oauth_client();
-    let app = route("/", get(index))
+
+    let app = Router::new()
+        .route("/", get(index))
         .route("/auth/discord", get(discord_auth))
         .route("/auth/authorized", get(login_authorized))
         .route("/protected", get(protected))

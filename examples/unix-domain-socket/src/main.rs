@@ -9,7 +9,7 @@ use axum::{
     extract::connect_info::{self, ConnectInfo},
     handler::get,
     http::{Method, Request, StatusCode, Uri},
-    route,
+    Router,
 };
 use futures::ready;
 use hyper::{
@@ -53,7 +53,7 @@ async fn main() {
 
     let uds = UnixListener::bind(path.clone()).unwrap();
     tokio::spawn(async {
-        let app = route("/", get(handler));
+        let app = Router::new().route("/", get(handler));
 
         axum::Server::builder(ServerAccept { uds })
             .serve(app.into_make_service_with_connect_info::<UdsConnectInfo, _>())

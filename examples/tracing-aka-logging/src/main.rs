@@ -4,7 +4,7 @@
 //! cargo run -p example-tracing-aka-logging
 //! ```
 
-use axum::{handler::get, response::Html, route};
+use axum::{handler::get, response::Html, Router};
 use std::net::SocketAddr;
 use tower_http::trace::TraceLayer;
 
@@ -20,7 +20,8 @@ async fn main() {
     tracing_subscriber::fmt::init();
 
     // build our application with a route
-    let app = route("/", get(handler))
+    let app = Router::new()
+        .route("/", get(handler))
         // `TraceLayer` is provided by tower-http so you have to add that as a dependency.
         // It provides good defaults but is also very customizable.
         // See https://docs.rs/tower-http/0.1.1/tower_http/trace/index.html for more details.
