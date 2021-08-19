@@ -45,7 +45,7 @@ impl<E> Router<EmptyRouter<E>> {
     /// Create a new `Router`.
     ///
     /// Unless you add additional routes this will respond to `404 Not Found` to
-    /// call requests.
+    /// all requests.
     pub fn new() -> Self {
         Self {
             svc: EmptyRouter::not_found(),
