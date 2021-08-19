@@ -11,7 +11,6 @@ use axum::extract::Extension;
 use axum::handler::get;
 use axum::response::{Html, IntoResponse};
 use axum::route;
-use axum::routing::RoutingDsl;
 use axum::AddExtensionLayer;
 use futures::{sink::SinkExt, stream::StreamExt};
 use std::collections::HashSet;

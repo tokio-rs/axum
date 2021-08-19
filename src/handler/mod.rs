@@ -5,7 +5,7 @@ use crate::{
     extract::FromRequest,
     response::IntoResponse,
     routing::{EmptyRouter, MethodFilter},
-    service::{HandleError, HandleErrorFromRouter},
+    service::HandleError,
     util::Either,
 };
 use async_trait::async_trait;
@@ -34,7 +34,6 @@ pub use self::into_service::IntoService;
 /// use axum::{
 ///     handler::any,
 ///     route,
-///     routing::RoutingDsl
 /// };
 ///
 /// async fn handler() {}
@@ -80,7 +79,6 @@ where
 /// use axum::{
 ///     handler::get,
 ///     route,
-///     routing::RoutingDsl
 /// };
 ///
 /// async fn handler() {}
@@ -170,7 +168,7 @@ where
 /// use axum::{
 ///     handler::on,
 ///     route,
-///     routing::{MethodFilter, RoutingDsl},
+///     routing::MethodFilter,
 /// };
 ///
 /// async fn handler() {}
@@ -237,7 +235,6 @@ pub trait Handler<B, T>: Clone + Send + Sized + 'static {
     /// use axum::{
     ///     handler::{get, Handler},
     ///     route,
-    ///     routing::RoutingDsl
     /// };
     /// use tower::limit::{ConcurrencyLimitLayer, ConcurrencyLimit};
     ///
@@ -415,13 +412,13 @@ impl<S, T> Layered<S, T> {
     /// This is used to convert errors to responses rather than simply
     /// terminating the connection.
     ///
-    /// It works similarly to [`routing::RoutingDsl::handle_error`]. See that for more details.
+    /// It works similarly to [`routing::Router::handle_error`]. See that for more details.
     ///
-    /// [`routing::RoutingDsl::handle_error`]: crate::routing::RoutingDsl::handle_error
+    /// [`routing::Router::handle_error`]: crate::routing::Router::handle_error
     pub fn handle_error<F, ReqBody, ResBody, Res, E>(
         self,
         f: F,
-    ) -> Layered<HandleError<S, F, ReqBody, HandleErrorFromRouter>, T>
+    ) -> Layered<HandleError<S, F, ReqBody>, T>
     where
         S: Service<Request<ReqBody>, Response = Response<ResBody>>,
         F: FnOnce(S::Error) -> Result<Res, E>,
@@ -514,7 +511,7 @@ impl<H, B, T, F> OnMethod<H, B, T, F> {
     /// # Example
     ///
     /// ```rust
-    /// use axum::{handler::post, route, routing::RoutingDsl};
+    /// use axum::{handler::post, route};
     ///
     /// async fn handler() {}
     ///
@@ -607,7 +604,7 @@ impl<H, B, T, F> OnMethod<H, B, T, F> {
     /// use axum::{
     ///     handler::get,
     ///     route,
-    ///     routing::{MethodFilter, RoutingDsl}
+    ///     routing::MethodFilter
     /// };
     ///
     /// async fn handler() {}

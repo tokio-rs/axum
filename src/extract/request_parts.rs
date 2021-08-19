@@ -93,7 +93,7 @@ where
 /// use axum::{
 ///     handler::get,
 ///     route,
-///     routing::{nest, RoutingDsl},
+///     routing::nest,
 ///     extract::OriginalUri,
 ///     http::Uri
 /// };
@@ -175,7 +175,6 @@ where
 ///     extract::BodyStream,
 ///     handler::get,
 ///     route,
-///     routing::RoutingDsl
 /// };
 /// use futures::StreamExt;
 ///
@@ -229,7 +228,6 @@ where
 ///     extract::Body,
 ///     handler::get,
 ///     route,
-///     routing::RoutingDsl,
 /// };
 /// use futures::StreamExt;
 ///

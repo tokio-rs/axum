@@ -12,7 +12,6 @@
 //!     Json,
 //!     handler::{post, Handler},
 //!     route,
-//!     routing::RoutingDsl
 //! };
 //! use serde::Deserialize;
 //!
@@ -44,7 +43,6 @@
 //!     extract::{FromRequest, RequestParts},
 //!     handler::get,
 //!     route,
-//!     routing::RoutingDsl
 //! };
 //! use http::{StatusCode, header::{HeaderValue, USER_AGENT}};
 //!
@@ -89,7 +87,6 @@
 //!     extract::{Path, Query},
 //!     handler::get,
 //!     route,
-//!     routing::RoutingDsl
 //! };
 //! use std::collections::HashMap;
 //!
@@ -122,7 +119,6 @@
 //!     extract::Json,
 //!     handler::post,
 //!     route,
-//!     routing::RoutingDsl
 //! };
 //! use serde_json::Value;
 //!
@@ -148,7 +144,6 @@
 //!     extract::{Json, rejection::JsonRejection},
 //!     handler::post,
 //!     route,
-//!     routing::RoutingDsl
 //! };
 //! use serde_json::Value;
 //!
@@ -190,7 +185,6 @@
 //!     extract::Json,
 //!     handler::post,
 //!     route,
-//!     routing::RoutingDsl
 //! };
 //! use serde_json::Value;
 //!
@@ -224,7 +218,6 @@
 //!     handler::get,
 //!     http::{header::HeaderMap, Request},
 //!     route,
-//!     routing::RoutingDsl
 //! };
 //!
 //! struct MyBody<B>(B);

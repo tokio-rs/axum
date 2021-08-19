@@ -1,8 +1,8 @@
 //! Extractor for getting connection information from a client.
 //!
-//! See [`RoutingDsl::into_make_service_with_connect_info`] for more details.
+//! See [`Router::into_make_service_with_connect_info`] for more details.
 //!
-//! [`RoutingDsl::into_make_service_with_connect_info`]: crate::routing::RoutingDsl::into_make_service_with_connect_info
+//! [`Router::into_make_service_with_connect_info`]: crate::routing::Router::into_make_service_with_connect_info
 
 use super::{Extension, FromRequest, RequestParts};
 use async_trait::async_trait;
@@ -19,10 +19,10 @@ use tower_http::add_extension::AddExtension;
 
 /// A [`MakeService`] created from a router.
 ///
-/// See [`RoutingDsl::into_make_service_with_connect_info`] for more details.
+/// See [`Router::into_make_service_with_connect_info`] for more details.
 ///
 /// [`MakeService`]: tower::make::MakeService
-/// [`RoutingDsl::into_make_service_with_connect_info`]: crate::routing::RoutingDsl::into_make_service_with_connect_info
+/// [`Router::into_make_service_with_connect_info`]: crate::routing::Router::into_make_service_with_connect_info
 pub struct IntoMakeServiceWithConnectInfo<S, C> {
     svc: S,
     _connect_info: PhantomData<fn() -> C>,
@@ -54,9 +54,9 @@ where
 /// The goal for this trait is to allow users to implement custom IO types that
 /// can still provide the same connection metadata.
 ///
-/// See [`RoutingDsl::into_make_service_with_connect_info`] for more details.
+/// See [`Router::into_make_service_with_connect_info`] for more details.
 ///
-/// [`RoutingDsl::into_make_service_with_connect_info`]: crate::routing::RoutingDsl::into_make_service_with_connect_info
+/// [`Router::into_make_service_with_connect_info`]: crate::routing::Router::into_make_service_with_connect_info
 pub trait Connected<T> {
     /// The connection information type the IO resources generates.
     type ConnectInfo: Clone + Send + Sync + 'static;
@@ -104,12 +104,12 @@ opaque_future! {
 /// Extractor for getting connection information produced by a [`Connected`].
 ///
 /// Note this extractor requires you to use
-/// [`RoutingDsl::into_make_service_with_connect_info`] to run your app
+/// [`Router::into_make_service_with_connect_info`] to run your app
 /// otherwise it will fail at runtime.
 ///
-/// See [`RoutingDsl::into_make_service_with_connect_info`] for more details.
+/// See [`Router::into_make_service_with_connect_info`] for more details.
 ///
-/// [`RoutingDsl::into_make_service_with_connect_info`]: crate::routing::RoutingDsl::into_make_service_with_connect_info
+/// [`Router::into_make_service_with_connect_info`]: crate::routing::Router::into_make_service_with_connect_info
 #[derive(Clone, Copy, Debug)]
 pub struct ConnectInfo<T>(pub T);
 
@@ -131,7 +131,7 @@ where
 mod tests {
     use super::*;
     use crate::Server;
-    use crate::{handler::get, route, routing::RoutingDsl};
+    use crate::{handler::get, route};
     use std::net::{SocketAddr, TcpListener};
 
     #[tokio::test]

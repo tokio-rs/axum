@@ -14,9 +14,7 @@ use axum::{
     handler::get,
     http::{header::SET_COOKIE, HeaderMap, Response},
     response::{IntoResponse, Redirect},
-    route,
-    routing::RoutingDsl,
-    AddExtensionLayer,
+    route, AddExtensionLayer,
 };
 use oauth2::{
     basic::BasicClient, reqwest::async_http_client, AuthUrl, AuthorizationCode, ClientId,

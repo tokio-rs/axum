@@ -6,7 +6,7 @@ use crate::{
     response::IntoResponse,
     route,
     routing::nest,
-    routing::{MethodFilter, RoutingDsl},
+    routing::MethodFilter,
     service,
 };
 use bytes::Bytes;

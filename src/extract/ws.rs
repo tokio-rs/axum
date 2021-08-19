@@ -8,7 +8,6 @@
 //!     handler::get,
 //!     response::IntoResponse,
 //!     route,
-//!     routing::RoutingDsl
 //! };
 //!
 //! let app = route("/ws", get(handler));
@@ -115,7 +114,6 @@ impl WebSocketUpgrade {
     ///     handler::get,
     ///     response::IntoResponse,
     ///     route,
-    ///     routing::RoutingDsl
     /// };
     ///
     /// let app = route("/ws", get(handler));

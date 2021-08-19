@@ -49,7 +49,6 @@
 //! use axum::{
 //!     handler::get,
 //!     route,
-//!     routing::RoutingDsl
 //! };
 //!
 //! #[tokio::main]
@@ -107,7 +106,6 @@
 //! use axum::{
 //!     handler::get,
 //!     route,
-//!     routing::RoutingDsl
 //! };
 //!
 //! let app = route("/", get(get_slash).post(post_slash))
@@ -132,7 +130,7 @@
 //! Routes can also be dynamic like `/users/:id`. See [extractors](#extractors)
 //! for more details.
 //!
-//! You can also define routes separately and merge them with [`RoutingDsl::or`].
+//! You can also define routes separately and merge them with [`Router::or`].
 //!
 //! ## Precedence
 //!
@@ -145,7 +143,6 @@
 //!     handler::get,
 //!     http::Request,
 //!     route,
-//!     routing::RoutingDsl
 //! };
 //! use tower::{Service, ServiceExt};
 //! use http::{Method, Response, StatusCode};
@@ -212,7 +209,6 @@
 //! use axum::{
 //!     route,
 //!     handler::{get, post},
-//!     routing::RoutingDsl
 //! };
 //!
 //! // `GET /` and `POST /` are both accepted
@@ -237,7 +233,6 @@
 //!     body::Body,
 //!     http::Request,
 //!     route,
-//!     routing::RoutingDsl,
 //!     service
 //! };
 //! use tower_http::services::ServeFile;
@@ -288,12 +283,12 @@
 //!     http::Request,
 //!     handler::get,
 //!     route,
-//!     routing::{BoxRoute, RoutingDsl}
+//!     routing::{BoxRoute, Router}
 //! };
 //! use tower_http::services::ServeFile;
 //! use http::Response;
 //!
-//! fn api_routes() -> BoxRoute<Body> {
+//! fn api_routes() -> Router<BoxRoute> {
 //!     route("/users", get(|_: Request<Body>| async { /* ... */ })).boxed()
 //! }
 //!
@@ -322,7 +317,6 @@
 //!     extract,
 //!     handler::post,
 //!     route,
-//!     routing::RoutingDsl
 //! };
 //! use serde::Deserialize;
 //!
@@ -353,7 +347,6 @@
 //!     extract,
 //!     handler::post,
 //!     route,
-//!     routing::RoutingDsl
 //! };
 //! use uuid::Uuid;
 //!
@@ -374,7 +367,6 @@
 //!     extract,
 //!     handler::get,
 //!     route,
-//!     routing::RoutingDsl
 //! };
 //! use uuid::Uuid;
 //! use serde::Deserialize;
@@ -414,7 +406,6 @@
 //!     handler::post,
 //!     http::Request,
 //!     route,
-//!     routing::RoutingDsl
 //! };
 //!
 //! let app = route("/users/:id", post(handler));
@@ -447,7 +438,6 @@
 //!     http::Request,
 //!     response::{Html, Json},
 //!     route,
-//!     routing::RoutingDsl
 //! };
 //! use http::{StatusCode, Response, Uri};
 //! use serde_json::{Value, json};
@@ -531,7 +521,6 @@
 //! use axum::{
 //!     handler::{get, Handler},
 //!     route,
-//!     routing::RoutingDsl
 //! };
 //! use tower::limit::ConcurrencyLimitLayer;
 //!
@@ -554,7 +543,6 @@
 //! use axum::{
 //!     handler::{get, post},
 //!     route,
-//!     routing::RoutingDsl
 //! };
 //! use tower::limit::ConcurrencyLimitLayer;
 //!
@@ -588,7 +576,6 @@
 //! use axum::{
 //!     handler::{get, Handler},
 //!     route,
-//!     routing::RoutingDsl
 //! };
 //! use tower::{
 //!     BoxError, timeout::{TimeoutLayer, error::Elapsed},
@@ -631,7 +618,7 @@
 //! return `Result<T, E>` where `T` implements
 //! [`IntoResponse`](response::IntoResponse).
 //!
-//! See [`routing::RoutingDsl::handle_error`] for more details.
+//! See [`routing::Router::handle_error`] for more details.
 //!
 //! ## Applying multiple middleware
 //!
@@ -643,7 +630,6 @@
 //!     handler::get,
 //!     http::Request,
 //!     route,
-//!     routing::RoutingDsl
 //! };
 //! use tower::ServiceBuilder;
 //! use tower_http::compression::CompressionLayer;
@@ -680,7 +666,6 @@
 //!     extract,
 //!     handler::get,
 //!     route,
-//!     routing::RoutingDsl
 //! };
 //! use std::sync::Arc;
 //!
@@ -750,7 +735,7 @@
 //! [`IntoResponse`]: crate::response::IntoResponse
 //! [`Timeout`]: tower::timeout::Timeout
 //! [examples]: https://github.com/tokio-rs/axum/tree/main/examples
-//! [`RoutingDsl::or`]: crate::routing::RoutingDsl::or
+//! [`Router::or`]: crate::routing::Router::or
 //! [`axum::Server`]: hyper::server::Server
 //! [`OriginalUri`]: crate::extract::OriginalUri
 
@@ -863,13 +848,14 @@ pub use self::{error::Error, json::Json};
 /// # Panics
 ///
 /// Panics if `description` doesn't start with `/`.
-pub fn route<S, B>(description: &str, service: S) -> Route<S, EmptyRouter<S::Error>>
+pub fn route<S, B>(
+    description: &str,
+    service: S,
+) -> routing::Router<Route<S, EmptyRouter<S::Error>>>
 where
     S: Service<Request<B>> + Clone,
 {
-    use routing::RoutingDsl;
-
-    routing::EmptyRouter::not_found().route(description, service)
+    routing::Router::new().route(description, service)
 }
 
 mod sealed {

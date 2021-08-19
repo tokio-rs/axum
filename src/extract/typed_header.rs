@@ -15,7 +15,6 @@ use std::{convert::Infallible, ops::Deref};
 ///     extract::TypedHeader,
 ///     handler::get,
 ///     route,
-///     routing::RoutingDsl
 /// };
 /// use headers::UserAgent;
 ///

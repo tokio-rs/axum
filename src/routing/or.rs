@@ -1,6 +1,6 @@
 //! [`Or`] used to combine two services into one.
 
-use super::{FromEmptyRouter, OrDepth, RoutingDsl};
+use super::{FromEmptyRouter, OrDepth};
 use crate::body::BoxBody;
 use futures_util::ready;
 use http::{Request, Response};
@@ -14,18 +14,14 @@ use tower::{util::Oneshot, Service, ServiceExt};
 
 /// [`tower::Service`] that is the combination of two routers.
 ///
-/// See [`RoutingDsl::or`] for more details.
+/// See [`Router::or`] for more details.
 ///
-/// [`RoutingDsl::or`]: super::RoutingDsl::or
+/// [`Router::or`]: super::Router::or
 #[derive(Debug, Clone, Copy)]
 pub struct Or<A, B> {
     pub(super) first: A,
     pub(super) second: B,
 }
-
-impl<A, B> RoutingDsl for Or<A, B> {}
-
-impl<A, B> crate::sealed::Sealed for Or<A, B> {}
 
 #[allow(warnings)]
 impl<A, B, ReqBody> Service<Request<ReqBody>> for Or<A, B>

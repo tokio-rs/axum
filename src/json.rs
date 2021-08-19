@@ -31,7 +31,6 @@ use tower::BoxError;
 ///     extract,
 ///     handler::post,
 ///     route,
-///     routing::RoutingDsl
 /// };
 /// use serde::Deserialize;
 ///
@@ -61,7 +60,6 @@ use tower::BoxError;
 ///     extract::Path,
 ///     handler::get,
 ///     route,
-///     routing::RoutingDsl,
 ///     Json,
 /// };
 /// use serde::Serialize;

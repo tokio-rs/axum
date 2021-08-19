@@ -14,7 +14,6 @@ use std::ops::Deref;
 ///     extract::Query,
 ///     handler::get,
 ///     route,
-///     routing::RoutingDsl
 /// };
 /// use serde::Deserialize;
 ///

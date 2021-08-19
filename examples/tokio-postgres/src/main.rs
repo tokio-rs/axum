@@ -9,9 +9,7 @@ use axum::{
     extract::{Extension, FromRequest, RequestParts},
     handler::get,
     http::StatusCode,
-    route,
-    routing::RoutingDsl,
-    AddExtensionLayer,
+    route, AddExtensionLayer,
 };
 use bb8::{Pool, PooledConnection};
 use bb8_postgres::PostgresConnectionManager;

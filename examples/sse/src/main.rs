@@ -9,7 +9,7 @@ use axum::{
     handler::get,
     http::StatusCode,
     response::sse::{sse, Event, Sse},
-    routing::{nest, RoutingDsl},
+    routing::nest,
 };
 use futures::stream::{self, Stream};
 use std::{convert::Infallible, net::SocketAddr, time::Duration};

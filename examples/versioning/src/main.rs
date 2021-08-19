@@ -12,7 +12,6 @@ use axum::{
     http::{Response, StatusCode},
     response::IntoResponse,
     route,
-    routing::RoutingDsl,
 };
 use std::collections::HashMap;
 use std::net::SocketAddr;

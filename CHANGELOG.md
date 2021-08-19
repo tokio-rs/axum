@@ -10,9 +10,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Overall compile time improvements. If you're having issues with compile time
   please file an issue!
 - Remove `prelude`. Explicit imports are now required.
+- Add dedicated `Router` to replace the `RoutingDsl` trait
 - Make `FromRequest` default to being generic over `body::Body` ([#146](https://github.com/tokio-rs/axum/pull/146))
 - Implement `std::error::Error` for all rejections ([#153](https://github.com/tokio-rs/axum/pull/153))
-- Add `RoutingDsl::or` for combining routes ([#108](https://github.com/tokio-rs/axum/pull/108))
+- Add `Router::or` for combining routes ([#108](https://github.com/tokio-rs/axum/pull/108))
 - Add `handle_error` to `service::OnMethod` ([#160](https://github.com/tokio-rs/axum/pull/160))
 - Add `OriginalUri` for extracting original request URI in nested services ([#197](https://github.com/tokio-rs/axum/pull/197))
 - Implement `FromRequest` for `http::Extensions`
@@ -32,16 +33,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Change WebSocket API to use an extractor ([#121](https://github.com/tokio-rs/axum/pull/121))
 - Make WebSocket `Message` an enum ([#116](https://github.com/tokio-rs/axum/pull/116))
 - `WebSocket` now uses `Error` as its error type ([#150](https://github.com/tokio-rs/axum/pull/150))
-- Ensure a `HandleError` service created from `ServiceExt::handle_error`
-  _does not_ implement `RoutingDsl` as that could lead to confusing routing
   behavior ([#120](https://github.com/tokio-rs/axum/pull/120))
 - Implement `routing::MethodFilter` via [`bitflags`](https://crates.io/crates/bitflags)
 - Removed `extract::UrlParams` and `extract::UrlParamsMap`. Use `extract::Path` instead
 - `EmptyRouter` now requires the response body to implement `Send + Sync + 'static'` ([#108](https://github.com/tokio-rs/axum/pull/108))
-- `ServiceExt` has been removed and its methods have been moved to `RoutingDsl` ([#160](https://github.com/tokio-rs/axum/pull/160))
 - `extractor_middleware` now requires `RequestBody: Default` ([#167](https://github.com/tokio-rs/axum/pull/167))
 - Convert `RequestAlreadyExtracted` to an enum with each possible error variant ([#167](https://github.com/tokio-rs/axum/pull/167))
-- `RoutingDsl::check_infallible` now returns a `CheckInfallible` service. This
+- `Router::check_infallible` now returns a `CheckInfallible` service. This
   is to improve compile times.
 - These future types have been moved
     - `extract::extractor_middleware::ExtractorMiddlewareResponseFuture` moved

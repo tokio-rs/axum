@@ -45,7 +45,6 @@ pub use self::{
 ///     handler::get,
 ///     response::IntoResponse,
 ///     route,
-///     routing::RoutingDsl
 /// };
 /// use http_body::Body;
 /// use http::{Response, HeaderMap};

@@ -6,7 +6,6 @@
 //! use axum::{
 //!     handler::get,
 //!     route,
-//!     routing::RoutingDsl
 //! };
 //! use axum::response::sse::{sse, Event, KeepAlive, Sse};
 //! use std::{time::Duration, convert::Infallible};

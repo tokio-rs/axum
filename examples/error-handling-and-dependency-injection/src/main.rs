@@ -14,9 +14,7 @@ use axum::{
     handler::{get, post},
     http::{Response, StatusCode},
     response::IntoResponse,
-    route,
-    routing::RoutingDsl,
-    AddExtensionLayer, Json,
+    route, AddExtensionLayer, Json,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::json;

@@ -8,10 +8,9 @@ use crate::{
         connect_info::{Connected, IntoMakeServiceWithConnectInfo},
         OriginalUri,
     },
-    service::{HandleError, HandleErrorFromRouter},
+    service::HandleError,
     util::ByteStr,
 };
-use async_trait::async_trait;
 use bytes::Bytes;
 use http::{Request, Response, StatusCode, Uri};
 use regex::Regex;
@@ -31,24 +30,55 @@ use tower_http::map_response_body::MapResponseBodyLayer;
 
 pub mod future;
 pub mod or;
+
 pub use self::method_filter::MethodFilter;
 
 mod method_filter;
 
-/// A route that sends requests to one of two [`Service`]s depending on the
-/// path.
-///
-/// Created with [`route`](crate::route). See that function for more details.
+/// The router type for composing handlers and services.
 #[derive(Debug, Clone)]
-pub struct Route<S, F> {
-    pub(crate) pattern: PathPattern,
-    pub(crate) svc: S,
-    pub(crate) fallback: F,
+pub struct Router<S> {
+    svc: S,
 }
 
-/// Trait for building routers.
-#[async_trait]
-pub trait RoutingDsl: crate::sealed::Sealed + Sized {
+impl<E> Router<EmptyRouter<E>> {
+    /// Create a new `Router`.
+    ///
+    /// Unless you add additional routes this will respond to `404 Not Found` to
+    /// all requests.
+    pub fn new() -> Self {
+        Self {
+            svc: EmptyRouter::not_found(),
+        }
+    }
+}
+
+impl<E> Default for Router<EmptyRouter<E>> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl<S, R> Service<R> for Router<S>
+where
+    S: Service<R>,
+{
+    type Response = S::Response;
+    type Error = S::Error;
+    type Future = S::Future;
+
+    #[inline]
+    fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        self.svc.poll_ready(cx)
+    }
+
+    #[inline]
+    fn call(&mut self, req: R) -> Self::Future {
+        self.svc.call(req)
+    }
+}
+
+impl<S> Router<S> {
     /// Add another route to the router.
     ///
     /// # Example
@@ -57,7 +87,6 @@ pub trait RoutingDsl: crate::sealed::Sealed + Sized {
     /// use axum::{
     ///     handler::get,
     ///     route,
-    ///     routing::RoutingDsl
     /// };
     ///
     /// async fn first_handler() { /* ... */ }
@@ -74,29 +103,29 @@ pub trait RoutingDsl: crate::sealed::Sealed + Sized {
     /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
     /// # };
     /// ```
-    fn route<T, B>(self, description: &str, svc: T) -> Route<T, Self>
+    pub fn route<T, B>(self, description: &str, svc: T) -> Router<Route<T, S>>
     where
         T: Service<Request<B>> + Clone,
     {
-        Route {
+        self.map(|fallback| Route {
             pattern: PathPattern::new(description),
             svc,
-            fallback: self,
-        }
+            fallback,
+        })
     }
 
     /// Nest another service inside this router at the given path.
     ///
     /// See [`nest`] for more details.
-    fn nest<T, B>(self, description: &str, svc: T) -> Nested<T, Self>
+    pub fn nest<T, B>(self, description: &str, svc: T) -> Router<Nested<T, S>>
     where
         T: Service<Request<B>> + Clone,
     {
-        Nested {
+        self.map(|fallback| Nested {
             pattern: PathPattern::new(description),
             svc,
-            fallback: self,
-        }
+            fallback,
+        })
     }
 
     /// Create a boxed route trait object.
@@ -109,7 +138,7 @@ pub trait RoutingDsl: crate::sealed::Sealed + Sized {
     ///     body::Body,
     ///     handler::get,
     ///     route,
-    ///     routing::{BoxRoute, RoutingDsl}
+    ///     routing::{Router, BoxRoute}
     /// };
     ///
     /// async fn first_handler() { /* ... */ }
@@ -118,7 +147,7 @@ pub trait RoutingDsl: crate::sealed::Sealed + Sized {
     ///
     /// async fn third_handler() { /* ... */ }
     ///
-    /// fn app() -> BoxRoute<Body> {
+    /// fn app() -> Router<BoxRoute> {
     ///     route("/", get(first_handler).post(second_handler))
     ///         .route("/foo", get(third_handler))
     ///         .boxed()
@@ -127,22 +156,24 @@ pub trait RoutingDsl: crate::sealed::Sealed + Sized {
     ///
     /// It also helps with compile times when you have a very large number of
     /// routes.
-    fn boxed<ReqBody, ResBody>(self) -> BoxRoute<ReqBody, Self::Error>
+    pub fn boxed<ReqBody, ResBody>(self) -> Router<BoxRoute<ReqBody, S::Error>>
     where
-        Self: Service<Request<ReqBody>, Response = Response<ResBody>> + Send + 'static,
-        <Self as Service<Request<ReqBody>>>::Error: Into<BoxError> + Send + Sync,
-        <Self as Service<Request<ReqBody>>>::Future: Send,
+        S: Service<Request<ReqBody>, Response = Response<ResBody>> + Send + 'static,
+        S::Error: Into<BoxError> + Send + Sync,
+        S::Future: Send,
         ReqBody: http_body::Body<Data = Bytes> + Send + Sync + 'static,
         ReqBody::Error: Into<BoxError> + Send + Sync + 'static,
         ResBody: http_body::Body<Data = Bytes> + Send + Sync + 'static,
         ResBody::Error: Into<BoxError> + Send + Sync + 'static,
     {
-        ServiceBuilder::new()
-            .layer_fn(BoxRoute)
-            .layer_fn(MpscBuffer::new)
-            .layer(BoxService::layer())
-            .layer(MapResponseBodyLayer::new(box_body))
-            .service(self)
+        self.map(|svc| {
+            ServiceBuilder::new()
+                .layer_fn(BoxRoute)
+                .layer_fn(MpscBuffer::new)
+                .layer(BoxService::layer())
+                .layer(MapResponseBodyLayer::new(box_body))
+                .service(svc)
+        })
     }
 
     /// Apply a [`tower::Layer`] to the router.
@@ -165,7 +196,6 @@ pub trait RoutingDsl: crate::sealed::Sealed + Sized {
     /// use axum::{
     ///     handler::get,
     ///     route,
-    ///     routing::RoutingDsl
     /// };
     /// use tower::limit::{ConcurrencyLimitLayer, ConcurrencyLimit};
     ///
@@ -195,7 +225,6 @@ pub trait RoutingDsl: crate::sealed::Sealed + Sized {
     /// use axum::{
     ///     handler::get,
     ///     route,
-    ///     routing::RoutingDsl
     /// };
     /// use tower_http::trace::TraceLayer;
     ///
@@ -213,11 +242,11 @@ pub trait RoutingDsl: crate::sealed::Sealed + Sized {
     /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
     /// # };
     /// ```
-    fn layer<L>(self, layer: L) -> Layered<L::Service>
+    pub fn layer<L>(self, layer: L) -> Router<Layered<L::Service>>
     where
-        L: Layer<Self>,
+        L: Layer<S>,
     {
-        Layered::new(layer.layer(self))
+        self.map(|svc| Layered::new(layer.layer(svc)))
     }
 
     /// Convert this router into a [`MakeService`], that is a [`Service`] who's
@@ -230,7 +259,6 @@ pub trait RoutingDsl: crate::sealed::Sealed + Sized {
     /// use axum::{
     ///     handler::get,
     ///     route,
-    ///     routing::RoutingDsl
     /// };
     ///
     /// let app = route("/", get(|| async { "Hi!" }));
@@ -244,11 +272,11 @@ pub trait RoutingDsl: crate::sealed::Sealed + Sized {
     /// ```
     ///
     /// [`MakeService`]: tower::make::MakeService
-    fn into_make_service(self) -> tower::make::Shared<Self>
+    pub fn into_make_service(self) -> tower::make::Shared<S>
     where
-        Self: Clone,
+        S: Clone,
     {
-        tower::make::Shared::new(self)
+        tower::make::Shared::new(self.svc)
     }
 
     /// Convert this router into a [`MakeService`], that will store `C`'s
@@ -264,7 +292,6 @@ pub trait RoutingDsl: crate::sealed::Sealed + Sized {
     ///     extract::ConnectInfo,
     ///     handler::get,
     ///     route,
-    ///     routing::RoutingDsl
     /// };
     /// use std::net::SocketAddr;
     ///
@@ -291,7 +318,6 @@ pub trait RoutingDsl: crate::sealed::Sealed + Sized {
     ///     extract::connect_info::{ConnectInfo, Connected},
     ///     handler::get,
     ///     route,
-    ///     routing::RoutingDsl
     /// };
     /// use hyper::server::conn::AddrStream;
     ///
@@ -335,14 +361,14 @@ pub trait RoutingDsl: crate::sealed::Sealed + Sized {
     /// [`Connected`]: crate::extract::connect_info::Connected
     /// [`ConnectInfo`]: crate::extract::connect_info::ConnectInfo
     /// [uds]: https://github.com/tokio-rs/axum/blob/main/examples/unix_domain_socket.rs
-    fn into_make_service_with_connect_info<C, Target>(
+    pub fn into_make_service_with_connect_info<C, Target>(
         self,
-    ) -> IntoMakeServiceWithConnectInfo<Self, C>
+    ) -> IntoMakeServiceWithConnectInfo<S, C>
     where
-        Self: Clone,
+        S: Clone,
         C: Connected<Target>,
     {
-        IntoMakeServiceWithConnectInfo::new(self)
+        IntoMakeServiceWithConnectInfo::new(self.svc)
     }
 
     /// Merge two routers into one.
@@ -354,7 +380,6 @@ pub trait RoutingDsl: crate::sealed::Sealed + Sized {
     /// use axum::{
     ///     handler::get,
     ///     route,
-    ///     routing::RoutingDsl
     /// };
     /// #
     /// # async fn users_list() {}
@@ -373,14 +398,11 @@ pub trait RoutingDsl: crate::sealed::Sealed + Sized {
     /// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
     /// # };
     /// ```
-    fn or<S>(self, other: S) -> or::Or<Self, S>
-    where
-        S: RoutingDsl,
-    {
-        or::Or {
-            first: self,
+    pub fn or<S2>(self, other: S2) -> Router<or::Or<S, S2>> {
+        self.map(|first| or::Or {
+            first,
             second: other,
-        }
+        })
     }
 
     /// Handle errors services in this router might produce, by mapping them to
@@ -395,7 +417,6 @@ pub trait RoutingDsl: crate::sealed::Sealed + Sized {
     ///     handler::get,
     ///     http::StatusCode,
     ///     route,
-    ///     routing::RoutingDsl
     /// };
     /// use tower::{BoxError, timeout::TimeoutLayer};
     /// use std::{time::Duration, convert::Infallible};
@@ -435,7 +456,6 @@ pub trait RoutingDsl: crate::sealed::Sealed + Sized {
     ///     handler::get,
     ///     http::StatusCode,
     ///     route,
-    ///     routing::RoutingDsl
     /// };
     /// use tower::{BoxError, timeout::TimeoutLayer};
     /// use std::time::Duration;
@@ -457,24 +477,35 @@ pub trait RoutingDsl: crate::sealed::Sealed + Sized {
     /// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
     /// # };
     /// ```
-    fn handle_error<ReqBody, F>(
-        self,
-        f: F,
-    ) -> HandleError<Self, F, ReqBody, HandleErrorFromRouter> {
-        HandleError::new(self, f)
+    pub fn handle_error<ReqBody, F>(self, f: F) -> Router<HandleError<S, F, ReqBody>> {
+        self.map(|svc| HandleError::new(svc, f))
     }
 
     /// Check that your service cannot fail.
     ///
     /// That is, its error type is [`Infallible`].
-    fn check_infallible(self) -> CheckInfallible<Self> {
-        CheckInfallible(self)
+    pub fn check_infallible(self) -> Router<CheckInfallible<S>> {
+        self.map(CheckInfallible)
+    }
+
+    fn map<F, S2>(self, f: F) -> Router<S2>
+    where
+        F: FnOnce(S) -> S2,
+    {
+        Router { svc: f(self.svc) }
     }
 }
 
-impl<S, F> RoutingDsl for Route<S, F> {}
-
-impl<S, F> crate::sealed::Sealed for Route<S, F> {}
+/// A route that sends requests to one of two [`Service`]s depending on the
+/// path.
+///
+/// Created with [`route`](crate::route). See that function for more details.
+#[derive(Debug, Clone)]
+pub struct Route<S, F> {
+    pub(crate) pattern: PathPattern,
+    pub(crate) svc: S,
+    pub(crate) fallback: F,
+}
 
 impl<S, F, B> Service<Request<B>> for Route<S, F>
 where
@@ -559,10 +590,6 @@ impl<E> fmt::Debug for EmptyRouter<E> {
         f.debug_tuple("EmptyRouter").finish()
     }
 }
-
-impl<E> RoutingDsl for EmptyRouter<E> {}
-
-impl<E> crate::sealed::Sealed for EmptyRouter<E> {}
 
 impl<B, E> Service<Request<B>> for EmptyRouter<E>
 where
@@ -728,8 +755,8 @@ type Captures = Vec<(String, String)>;
 
 /// A boxed route trait object.
 ///
-/// See [`RoutingDsl::boxed`] for more details.
-pub struct BoxRoute<B, E = Infallible>(
+/// See [`Router::boxed`] for more details.
+pub struct BoxRoute<B = crate::body::Body, E = Infallible>(
     MpscBuffer<BoxService<Request<B>, Response<BoxBody>, E>, Request<B>>,
 );
 
@@ -744,10 +771,6 @@ impl<B, E> fmt::Debug for BoxRoute<B, E> {
         f.debug_struct("BoxRoute").finish()
     }
 }
-
-impl<B, E> RoutingDsl for BoxRoute<B, E> {}
-
-impl<B, E> crate::sealed::Sealed for BoxRoute<B, E> {}
 
 impl<B, E> Service<Request<B>> for BoxRoute<B, E>
 where
@@ -772,7 +795,7 @@ where
 
 /// A [`Service`] created from a router by applying a Tower middleware.
 ///
-/// Created with [`RoutingDsl::layer`]. See that method for more details.
+/// Created with [`Router::layer`]. See that method for more details.
 pub struct Layered<S> {
     inner: S,
 }
@@ -803,10 +826,6 @@ where
     }
 }
 
-impl<S> RoutingDsl for Layered<S> {}
-
-impl<S> crate::sealed::Sealed for Layered<S> {}
-
 impl<S, R> Service<R> for Layered<S>
 where
     S: Service<R>,
@@ -835,7 +854,7 @@ where
 /// use axum::{
 ///     handler::get,
 ///     route,
-///     routing::{nest, RoutingDsl},
+///     routing::nest,
 /// };
 /// use http::Uri;
 ///
@@ -864,7 +883,7 @@ where
 ///     extract::Path,
 ///     handler::get,
 ///     route,
-///     routing::{nest, RoutingDsl},
+///     routing::nest,
 /// };
 /// use std::collections::HashMap;
 ///
@@ -888,7 +907,7 @@ where
 ///
 /// ```
 /// use axum::{
-///     routing::{nest, RoutingDsl},
+///     routing::nest,
 ///     service::get,
 /// };
 /// use tower_http::services::ServeDir;
@@ -902,33 +921,25 @@ where
 /// # };
 /// ```
 ///
-/// If necessary you can use [`RoutingDsl::boxed`] to box a group of routes
+/// If necessary you can use [`Router::boxed`] to box a group of routes
 /// making the type easier to name. This is sometimes useful when working with
 /// `nest`.
-pub fn nest<S, B>(description: &str, svc: S) -> Nested<S, EmptyRouter<S::Error>>
+pub fn nest<S, B>(description: &str, svc: S) -> Router<Nested<S, EmptyRouter<S::Error>>>
 where
     S: Service<Request<B>> + Clone,
 {
-    Nested {
-        pattern: PathPattern::new(description),
-        svc,
-        fallback: EmptyRouter::not_found(),
-    }
+    Router::new().nest(description, svc)
 }
 
 /// A [`Service`] that has been nested inside a router at some path.
 ///
-/// Created with [`nest`] or [`RoutingDsl::nest`].
+/// Created with [`nest`] or [`Router::nest`].
 #[derive(Debug, Clone)]
 pub struct Nested<S, F> {
     pattern: PathPattern,
     svc: S,
     fallback: F,
 }
-
-impl<S, F> RoutingDsl for Nested<S, F> {}
-
-impl<S, F> crate::sealed::Sealed for Nested<S, F> {}
 
 impl<S, F, B> Service<Request<B>> for Nested<S, F>
 where
@@ -1002,7 +1013,7 @@ fn strip_prefix(uri: &Uri, prefix: &str) -> Uri {
 
 /// Middleware that statically verifies that a service cannot fail.
 ///
-/// Created with [`check_infallible`](RoutingDsl::check_infallible).
+/// Created with [`check_infallible`](Router::check_infallible).
 #[derive(Debug, Clone, Copy)]
 pub struct CheckInfallible<S>(S);
 
@@ -1024,10 +1035,6 @@ where
         self.0.call(req)
     }
 }
-
-impl<S> RoutingDsl for CheckInfallible<S> {}
-
-impl<S> crate::sealed::Sealed for CheckInfallible<S> {}
 
 #[cfg(test)]
 mod tests {
