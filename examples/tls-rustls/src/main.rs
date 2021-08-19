@@ -4,7 +4,7 @@
 //! cargo run -p example-tls-rustls
 //! ```
 
-use axum::{handler::get, route};
+use axum::{handler::get, Router};
 use hyper::server::conn::Http;
 use std::{fs::File, io::BufReader, sync::Arc};
 use tokio::net::TcpListener;
@@ -31,7 +31,7 @@ async fn main() {
     let acceptor = TlsAcceptor::from(rustls_config);
     let listener = TcpListener::bind("127.0.0.1:3000").await.unwrap();
 
-    let app = route("/", get(handler));
+    let app = Router::new().route("/", get(handler));
 
     loop {
         let (stream, _addr) = listener.accept().await.unwrap();

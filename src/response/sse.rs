@@ -5,14 +5,14 @@
 //! ```
 //! use axum::{
 //!     handler::get,
-//!     route,
+//!     Router,
 //! };
 //! use axum::response::sse::{sse, Event, KeepAlive, Sse};
 //! use std::{time::Duration, convert::Infallible};
 //! use tokio_stream::StreamExt as _ ;
 //! use futures::stream::{self, Stream};
 //!
-//! let app = route("/sse", get(sse_handler));
+//! let app = Router::new().route("/sse", get(sse_handler));
 //!
 //! async fn sse_handler() -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
 //!     // A `Stream` that repeats an event every second

@@ -4,7 +4,7 @@
 //! cargo run -p example-form
 //! ```
 
-use axum::{extract::Form, handler::get, response::Html, route};
+use axum::{extract::Form, handler::get, response::Html, Router};
 use serde::Deserialize;
 use std::net::SocketAddr;
 
@@ -17,7 +17,7 @@ async fn main() {
     tracing_subscriber::fmt::init();
 
     // build our application with some routes
-    let app = route("/", get(show_form).post(accept_form));
+    let app = Router::new().route("/", get(show_form).post(accept_form));
 
     // run it with hyper
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));

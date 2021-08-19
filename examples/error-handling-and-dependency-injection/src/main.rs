@@ -14,7 +14,7 @@ use axum::{
     handler::{get, post},
     http::{Response, StatusCode},
     response::IntoResponse,
-    route, AddExtensionLayer, Json,
+    AddExtensionLayer, Json, Router,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -37,7 +37,8 @@ async fn main() {
     let user_repo = Arc::new(ExampleUserRepo) as DynUserRepo;
 
     // Build our application with some routes
-    let app = route("/users/:id", get(users_show))
+    let app = Router::new()
+        .route("/users/:id", get(users_show))
         .route("/users", post(users_create))
         // Add our `user_repo` to all request's extensions so handlers can access
         // it.

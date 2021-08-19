@@ -7,7 +7,7 @@ mod for_handlers {
 
     #[tokio::test]
     async fn get_handles_head() {
-        let app = route(
+        let app = Router::new().route(
             "/",
             get(|| async {
                 let mut headers = HeaderMap::new();
@@ -43,7 +43,7 @@ mod for_services {
 
     #[tokio::test]
     async fn get_handles_head() {
-        let app = route(
+        let app = Router::new().route(
             "/",
             get(service_fn(|_req: Request<Body>| async move {
                 let res = Response::builder()

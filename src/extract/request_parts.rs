@@ -92,21 +92,21 @@ where
 /// ```
 /// use axum::{
 ///     handler::get,
-///     route,
-///     routing::nest,
+///     Router,
 ///     extract::OriginalUri,
 ///     http::Uri
 /// };
 ///
-/// let api_routes = route(
-///     "/users",
-///     get(|uri: Uri, OriginalUri(original_uri): OriginalUri| async {
-///         // `uri` is `/users`
-///         // `original_uri` is `/api/users`
-///     }),
-/// );
+/// let api_routes = Router::new()
+///     .route(
+///         "/users",
+///         get(|uri: Uri, OriginalUri(original_uri): OriginalUri| async {
+///             // `uri` is `/users`
+///             // `original_uri` is `/api/users`
+///         }),
+///     );
 ///
-/// let app = nest("/api", api_routes);
+/// let app = Router::new().nest("/api", api_routes);
 /// # async {
 /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 /// # };
@@ -174,7 +174,7 @@ where
 /// use axum::{
 ///     extract::BodyStream,
 ///     handler::get,
-///     route,
+///     Router,
 /// };
 /// use futures::StreamExt;
 ///
@@ -184,7 +184,7 @@ where
 ///     }
 /// }
 ///
-/// let app = route("/users", get(handler));
+/// let app = Router::new().route("/users", get(handler));
 /// # async {
 /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 /// # };
@@ -227,7 +227,7 @@ where
 /// use axum::{
 ///     extract::Body,
 ///     handler::get,
-///     route,
+///     Router,
 /// };
 /// use futures::StreamExt;
 ///
@@ -235,7 +235,7 @@ where
 ///     // ...
 /// }
 ///
-/// let app = route("/users", get(handler));
+/// let app = Router::new().route("/users", get(handler));
 /// # async {
 /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 /// # };
@@ -289,14 +289,14 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{body::Body, handler::post, route, tests::*};
+    use crate::{body::Body, handler::post, tests::*, Router};
     use http::StatusCode;
 
     #[tokio::test]
     async fn multiple_request_extractors() {
         async fn handler(_: Request<Body>, _: Request<Body>) {}
 
-        let app = route("/", post(handler));
+        let app = Router::new().route("/", post(handler));
 
         let addr = run_in_background(app).await;
 

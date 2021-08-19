@@ -17,7 +17,7 @@ use tower::BoxError;
 /// use axum::{
 ///     extract::Form,
 ///     handler::post,
-///     route,
+///     Router,
 /// };
 /// use serde::Deserialize;
 ///
@@ -33,7 +33,7 @@ use tower::BoxError;
 ///     // ...
 /// }
 ///
-/// let app = route("/sign_up", post(accept_form));
+/// let app = Router::new().route("/sign_up", post(accept_form));
 /// # async {
 /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 /// # };

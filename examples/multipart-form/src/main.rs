@@ -8,7 +8,7 @@ use axum::{
     extract::{ContentLengthLimit, Multipart},
     handler::get,
     response::Html,
-    route,
+    Router,
 };
 use std::net::SocketAddr;
 
@@ -21,7 +21,8 @@ async fn main() {
     tracing_subscriber::fmt::init();
 
     // build our application with some routes
-    let app = route("/", get(show_form).post(accept_form))
+    let app = Router::new()
+        .route("/", get(show_form).post(accept_form))
         .layer(tower_http::trace::TraceLayer::new_for_http());
 
     // run it with hyper

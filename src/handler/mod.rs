@@ -33,13 +33,13 @@ pub use self::into_service::IntoService;
 /// ```rust
 /// use axum::{
 ///     handler::any,
-///     route,
+///     Router,
 /// };
 ///
 /// async fn handler() {}
 ///
 /// // All requests to `/` will go to `handler` regardless of the HTTP method.
-/// let app = route("/", any(handler));
+/// let app = Router::new().route("/", any(handler));
 /// # async {
 /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 /// # };
@@ -78,13 +78,13 @@ where
 /// ```rust
 /// use axum::{
 ///     handler::get,
-///     route,
+///     Router,
 /// };
 ///
 /// async fn handler() {}
 ///
 /// // Requests to `GET /` will go to `handler`.
-/// let app = route("/", get(handler));
+/// let app = Router::new().route("/", get(handler));
 /// # async {
 /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 /// # };
@@ -167,14 +167,14 @@ where
 /// ```rust
 /// use axum::{
 ///     handler::on,
-///     route,
+///     Router,
 ///     routing::MethodFilter,
 /// };
 ///
 /// async fn handler() {}
 ///
 /// // Requests to `POST /` will go to `handler`.
-/// let app = route("/", on(MethodFilter::POST, handler));
+/// let app = Router::new().route("/", on(MethodFilter::POST, handler));
 /// # async {
 /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 /// # };
@@ -234,14 +234,14 @@ pub trait Handler<B, T>: Clone + Send + Sized + 'static {
     /// ```rust
     /// use axum::{
     ///     handler::{get, Handler},
-    ///     route,
+    ///     Router,
     /// };
     /// use tower::limit::{ConcurrencyLimitLayer, ConcurrencyLimit};
     ///
     /// async fn handler() { /* ... */ }
     ///
     /// let layered_handler = handler.layer(ConcurrencyLimitLayer::new(64));
-    /// let app = route("/", get(layered_handler));
+    /// let app = Router::new().route("/", get(layered_handler));
     /// # async {
     /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
     /// # };
@@ -511,7 +511,7 @@ impl<H, B, T, F> OnMethod<H, B, T, F> {
     /// # Example
     ///
     /// ```rust
-    /// use axum::{handler::post, route};
+    /// use axum::{handler::post, Router};
     ///
     /// async fn handler() {}
     ///
@@ -519,7 +519,7 @@ impl<H, B, T, F> OnMethod<H, B, T, F> {
     ///
     /// // Requests to `GET /` will go to `handler` and `POST /` will go to
     /// // `other_handler`.
-    /// let app = route("/", post(handler).get(other_handler));
+    /// let app = Router::new().route("/", post(handler).get(other_handler));
     /// # async {
     /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
     /// # };
@@ -603,7 +603,7 @@ impl<H, B, T, F> OnMethod<H, B, T, F> {
     /// ```rust
     /// use axum::{
     ///     handler::get,
-    ///     route,
+    ///     Router,
     ///     routing::MethodFilter
     /// };
     ///
@@ -613,7 +613,7 @@ impl<H, B, T, F> OnMethod<H, B, T, F> {
     ///
     /// // Requests to `GET /` will go to `handler` and `DELETE /` will go to
     /// // `other_handler`
-    /// let app = route("/", get(handler).on(MethodFilter::DELETE, other_handler));
+    /// let app = Router::new().route("/", get(handler).on(MethodFilter::DELETE, other_handler));
     /// # async {
     /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
     /// # };

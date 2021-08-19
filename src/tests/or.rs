@@ -7,8 +7,10 @@ use super::*;
 
 #[tokio::test]
 async fn basic() {
-    let one = route("/foo", get(|| async {})).route("/bar", get(|| async {}));
-    let two = route("/baz", get(|| async {}));
+    let one = Router::new()
+        .route("/foo", get(|| async {}))
+        .route("/bar", get(|| async {}));
+    let two = Router::new().route("/baz", get(|| async {}));
     let app = one.or(two);
 
     let addr = run_in_background(app).await;
@@ -46,10 +48,10 @@ async fn basic() {
 
 #[tokio::test]
 async fn multiple_ors_balanced_differently() {
-    let one = route("/one", get(|| async { "one" }));
-    let two = route("/two", get(|| async { "two" }));
-    let three = route("/three", get(|| async { "three" }));
-    let four = route("/four", get(|| async { "four" }));
+    let one = Router::new().route("/one", get(|| async { "one" }));
+    let two = Router::new().route("/two", get(|| async { "two" }));
+    let three = Router::new().route("/three", get(|| async { "three" }));
+    let four = Router::new().route("/four", get(|| async { "four" }));
 
     test(
         "one",
@@ -105,8 +107,10 @@ async fn multiple_ors_balanced_differently() {
 
 #[tokio::test]
 async fn or_nested_inside_other_thing() {
-    let inner = route("/bar", get(|| async {})).or(route("/baz", get(|| async {})));
-    let app = nest("/foo", inner);
+    let inner = Router::new()
+        .route("/bar", get(|| async {}))
+        .or(Router::new().route("/baz", get(|| async {})));
+    let app = Router::new().nest("/foo", inner);
 
     let addr = run_in_background(app).await;
 
@@ -129,8 +133,8 @@ async fn or_nested_inside_other_thing() {
 
 #[tokio::test]
 async fn or_with_route_following() {
-    let one = route("/one", get(|| async { "one" }));
-    let two = route("/two", get(|| async { "two" }));
+    let one = Router::new().route("/one", get(|| async { "one" }));
+    let two = Router::new().route("/two", get(|| async { "two" }));
     let app = one.or(two).route("/three", get(|| async { "three" }));
 
     let addr = run_in_background(app).await;
@@ -161,8 +165,10 @@ async fn or_with_route_following() {
 
 #[tokio::test]
 async fn layer() {
-    let one = route("/foo", get(|| async {}));
-    let two = route("/bar", get(|| async {})).layer(ConcurrencyLimitLayer::new(10));
+    let one = Router::new().route("/foo", get(|| async {}));
+    let two = Router::new()
+        .route("/bar", get(|| async {}))
+        .layer(ConcurrencyLimitLayer::new(10));
     let app = one.or(two);
 
     let addr = run_in_background(app).await;
@@ -186,8 +192,9 @@ async fn layer() {
 
 #[tokio::test]
 async fn layer_and_handle_error() {
-    let one = route("/foo", get(|| async {}));
-    let two = route("/time-out", get(futures::future::pending::<()>))
+    let one = Router::new().route("/foo", get(|| async {}));
+    let two = Router::new()
+        .route("/time-out", get(futures::future::pending::<()>))
         .layer(TimeoutLayer::new(Duration::from_millis(10)))
         .handle_error(|_| Ok(StatusCode::REQUEST_TIMEOUT));
     let app = one.or(two);
@@ -206,8 +213,8 @@ async fn layer_and_handle_error() {
 
 #[tokio::test]
 async fn nesting() {
-    let one = route("/foo", get(|| async {}));
-    let two = nest("/bar", route("/baz", get(|| async {})));
+    let one = Router::new().route("/foo", get(|| async {}));
+    let two = Router::new().nest("/bar", Router::new().route("/baz", get(|| async {})));
     let app = one.or(two);
 
     let addr = run_in_background(app).await;
@@ -224,8 +231,8 @@ async fn nesting() {
 
 #[tokio::test]
 async fn boxed() {
-    let one = route("/foo", get(|| async {})).boxed();
-    let two = route("/bar", get(|| async {})).boxed();
+    let one = Router::new().route("/foo", get(|| async {})).boxed();
+    let two = Router::new().route("/bar", get(|| async {})).boxed();
     let app = one.or(two);
 
     let addr = run_in_background(app).await;
@@ -242,13 +249,14 @@ async fn boxed() {
 
 #[tokio::test]
 async fn many_ors() {
-    let app = route("/r1", get(|| async {}))
-        .or(route("/r2", get(|| async {})))
-        .or(route("/r3", get(|| async {})))
-        .or(route("/r4", get(|| async {})))
-        .or(route("/r5", get(|| async {})))
-        .or(route("/r6", get(|| async {})))
-        .or(route("/r7", get(|| async {})));
+    let app = Router::new()
+        .route("/r1", get(|| async {}))
+        .or(Router::new().route("/r2", get(|| async {})))
+        .or(Router::new().route("/r3", get(|| async {})))
+        .or(Router::new().route("/r4", get(|| async {})))
+        .or(Router::new().route("/r5", get(|| async {})))
+        .or(Router::new().route("/r6", get(|| async {})))
+        .or(Router::new().route("/r7", get(|| async {})));
 
     let addr = run_in_background(app).await;
 
@@ -273,18 +281,19 @@ async fn many_ors() {
 
 #[tokio::test]
 async fn services() {
-    let app = route(
-        "/foo",
-        crate::service::get(service_fn(|_: Request<Body>| async {
-            Ok::<_, Infallible>(Response::new(Body::empty()))
-        })),
-    )
-    .or(route(
-        "/bar",
-        crate::service::get(service_fn(|_: Request<Body>| async {
-            Ok::<_, Infallible>(Response::new(Body::empty()))
-        })),
-    ));
+    let app = Router::new()
+        .route(
+            "/foo",
+            crate::service::get(service_fn(|_: Request<Body>| async {
+                Ok::<_, Infallible>(Response::new(Body::empty()))
+            })),
+        )
+        .or(Router::new().route(
+            "/bar",
+            crate::service::get(service_fn(|_: Request<Body>| async {
+                Ok::<_, Infallible>(Response::new(Body::empty()))
+            })),
+        ));
 
     let addr = run_in_background(app).await;
 
@@ -319,8 +328,8 @@ async fn all_the_uris(
 
 #[tokio::test]
 async fn nesting_and_seeing_the_right_uri() {
-    let one = nest("/foo", route("/bar", get(all_the_uris)));
-    let two = route("/foo", get(all_the_uris));
+    let one = Router::new().nest("/foo", Router::new().route("/bar", get(all_the_uris)));
+    let two = Router::new().route("/foo", get(all_the_uris));
 
     let addr = run_in_background(one.or(two)).await;
 
@@ -359,8 +368,11 @@ async fn nesting_and_seeing_the_right_uri() {
 
 #[tokio::test]
 async fn nesting_and_seeing_the_right_uri_at_more_levels_of_nesting() {
-    let one = nest("/foo", nest("/bar", route("/baz", get(all_the_uris))));
-    let two = route("/foo", get(all_the_uris));
+    let one = Router::new().nest(
+        "/foo",
+        Router::new().nest("/bar", Router::new().route("/baz", get(all_the_uris))),
+    );
+    let two = Router::new().route("/foo", get(all_the_uris));
 
     let addr = run_in_background(one.or(two)).await;
 
@@ -399,9 +411,12 @@ async fn nesting_and_seeing_the_right_uri_at_more_levels_of_nesting() {
 
 #[tokio::test]
 async fn nesting_and_seeing_the_right_uri_ors_with_nesting() {
-    let one = nest("/foo", nest("/bar", route("/baz", get(all_the_uris))));
-    let two = nest("/foo", route("/qux", get(all_the_uris)));
-    let three = route("/foo", get(all_the_uris));
+    let one = Router::new().nest(
+        "/foo",
+        Router::new().nest("/bar", Router::new().route("/baz", get(all_the_uris))),
+    );
+    let two = Router::new().nest("/foo", Router::new().route("/qux", get(all_the_uris)));
+    let three = Router::new().route("/foo", get(all_the_uris));
 
     let addr = run_in_background(one.or(two).or(three)).await;
 
@@ -455,8 +470,11 @@ async fn nesting_and_seeing_the_right_uri_ors_with_nesting() {
 
 #[tokio::test]
 async fn nesting_and_seeing_the_right_uri_ors_with_multi_segment_uris() {
-    let one = nest("/foo", nest("/bar", route("/baz", get(all_the_uris))));
-    let two = route("/foo/bar", get(all_the_uris));
+    let one = Router::new().nest(
+        "/foo",
+        Router::new().nest("/bar", Router::new().route("/baz", get(all_the_uris))),
+    );
+    let two = Router::new().route("/foo/bar", get(all_the_uris));
 
     let addr = run_in_background(one.or(two)).await;
 

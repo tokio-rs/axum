@@ -30,7 +30,7 @@ use tower::BoxError;
 /// use axum::{
 ///     extract,
 ///     handler::post,
-///     route,
+///     Router,
 /// };
 /// use serde::Deserialize;
 ///
@@ -44,7 +44,7 @@ use tower::BoxError;
 ///     // payload is a `CreateUser`
 /// }
 ///
-/// let app = route("/users", post(create_user));
+/// let app = Router::new().route("/users", post(create_user));
 /// # async {
 /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 /// # };
@@ -59,7 +59,7 @@ use tower::BoxError;
 /// use axum::{
 ///     extract::Path,
 ///     handler::get,
-///     route,
+///     Router,
 ///     Json,
 /// };
 /// use serde::Serialize;
@@ -81,7 +81,7 @@ use tower::BoxError;
 ///     # unimplemented!()
 /// }
 ///
-/// let app = route("/users/:id", get(get_user));
+/// let app = Router::new().route("/users/:id", get(get_user));
 /// # async {
 /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 /// # };

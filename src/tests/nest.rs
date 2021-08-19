@@ -4,36 +4,39 @@ use std::collections::HashMap;
 
 #[tokio::test]
 async fn nesting_apps() {
-    let api_routes = route(
-        "/users",
-        get(|| async { "users#index" }).post(|| async { "users#create" }),
-    )
-    .route(
-        "/users/:id",
-        get(
-            |params: extract::Path<HashMap<String, String>>| async move {
-                format!(
-                    "{}: users#show ({})",
-                    params.get("version").unwrap(),
-                    params.get("id").unwrap()
-                )
-            },
-        ),
-    )
-    .route(
-        "/games/:id",
-        get(
-            |params: extract::Path<HashMap<String, String>>| async move {
-                format!(
-                    "{}: games#show ({})",
-                    params.get("version").unwrap(),
-                    params.get("id").unwrap()
-                )
-            },
-        ),
-    );
+    let api_routes = Router::new()
+        .route(
+            "/users",
+            get(|| async { "users#index" }).post(|| async { "users#create" }),
+        )
+        .route(
+            "/users/:id",
+            get(
+                |params: extract::Path<HashMap<String, String>>| async move {
+                    format!(
+                        "{}: users#show ({})",
+                        params.get("version").unwrap(),
+                        params.get("id").unwrap()
+                    )
+                },
+            ),
+        )
+        .route(
+            "/games/:id",
+            get(
+                |params: extract::Path<HashMap<String, String>>| async move {
+                    format!(
+                        "{}: games#show ({})",
+                        params.get("version").unwrap(),
+                        params.get("id").unwrap()
+                    )
+                },
+            ),
+        );
 
-    let app = route("/", get(|| async { "hi" })).nest("/:version/api", api_routes);
+    let app = Router::new()
+        .route("/", get(|| async { "hi" }))
+        .nest("/:version/api", api_routes);
 
     let addr = run_in_background(app).await;
 
@@ -74,8 +77,8 @@ async fn nesting_apps() {
 
 #[tokio::test]
 async fn wrong_method_nest() {
-    let nested_app = route("/", get(|| async {}));
-    let app = crate::routing::nest("/", nested_app);
+    let nested_app = Router::new().route("/", get(|| async {}));
+    let app = Router::new().nest("/", nested_app);
 
     let addr = run_in_background(app).await;
 
@@ -101,7 +104,7 @@ async fn wrong_method_nest() {
 
 #[tokio::test]
 async fn nesting_at_root() {
-    let app = nest("/", get(|uri: Uri| async move { uri.to_string() }));
+    let app = Router::new().nest("/", get(|uri: Uri| async move { uri.to_string() }));
 
     let addr = run_in_background(app).await;
 
@@ -130,14 +133,16 @@ async fn nesting_at_root() {
 
 #[tokio::test]
 async fn nested_url_extractor() {
-    let app = nest(
+    let app = Router::new().nest(
         "/foo",
-        nest(
+        Router::new().nest(
             "/bar",
-            route("/baz", get(|uri: Uri| async move { uri.to_string() })).route(
-                "/qux",
-                get(|req: Request<Body>| async move { req.uri().to_string() }),
-            ),
+            Router::new()
+                .route("/baz", get(|uri: Uri| async move { uri.to_string() }))
+                .route(
+                    "/qux",
+                    get(|req: Request<Body>| async move { req.uri().to_string() }),
+                ),
         ),
     );
 
@@ -164,11 +169,11 @@ async fn nested_url_extractor() {
 
 #[tokio::test]
 async fn nested_url_original_extractor() {
-    let app = nest(
+    let app = Router::new().nest(
         "/foo",
-        nest(
+        Router::new().nest(
             "/bar",
-            route(
+            Router::new().route(
                 "/baz",
                 get(|uri: extract::OriginalUri| async move { uri.0.to_string() }),
             ),
@@ -190,11 +195,11 @@ async fn nested_url_original_extractor() {
 
 #[tokio::test]
 async fn nested_service_sees_stripped_uri() {
-    let app = nest(
+    let app = Router::new().nest(
         "/foo",
-        nest(
+        Router::new().nest(
             "/bar",
-            route(
+            Router::new().route(
                 "/baz",
                 service_fn(|req: Request<Body>| async move {
                     let body = box_body(Body::from(req.uri().to_string()));
@@ -219,7 +224,7 @@ async fn nested_service_sees_stripped_uri() {
 
 #[tokio::test]
 async fn nest_static_file_server() {
-    let app = nest(
+    let app = Router::new().nest(
         "/static",
         service::get(tower_http::services::ServeDir::new(".")).handle_error(|error| {
             Ok::<_, Infallible>((

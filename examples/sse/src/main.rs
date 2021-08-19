@@ -9,7 +9,7 @@ use axum::{
     handler::get,
     http::StatusCode,
     response::sse::{sse, Event, Sse},
-    routing::nest,
+    Router,
 };
 use futures::stream::{self, Stream};
 use std::{convert::Infallible, net::SocketAddr, time::Duration};
@@ -35,7 +35,8 @@ async fn main() {
     });
 
     // build our application with a route
-    let app = nest("/", static_files_service)
+    let app = Router::new()
+        .nest("/", static_files_service)
         .route("/sse", get(sse_handler))
         .layer(TraceLayer::new_for_http());
 

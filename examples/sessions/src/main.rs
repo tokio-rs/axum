@@ -15,7 +15,7 @@ use axum::{
         StatusCode,
     },
     response::IntoResponse,
-    route, AddExtensionLayer,
+    AddExtensionLayer, Router,
 };
 use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
@@ -32,7 +32,9 @@ async fn main() {
     // `MemoryStore` just used as an example. Don't use this in production.
     let store = MemoryStore::new();
 
-    let app = route("/", get(handler)).layer(AddExtensionLayer::new(store));
+    let app = Router::new()
+        .route("/", get(handler))
+        .layer(AddExtensionLayer::new(store));
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
     tracing::debug!("listening on {}", addr);

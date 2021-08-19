@@ -81,28 +81,44 @@ where
 impl<S> Router<S> {
     /// Add another route to the router.
     ///
+    /// `description` is a string of path segments separated by `/`. Each segment
+    /// can be either concrete or a capture:
+    ///
+    /// - `/foo/bar/baz` will only match requests where the path is `/foo/bar/bar`.
+    /// - `/:foo` will match any route with exactly one segment _and_ it will
+    /// capture the first segment and store it at the key `foo`.
+    ///
+    /// `service` is the [`Service`] that should receive the request if the path
+    /// matches `description`.
+    ///
     /// # Example
     ///
     /// ```rust
-    /// use axum::{
-    ///     handler::get,
-    ///     route,
-    /// };
+    /// use axum::{handler::{get, delete}, Router};
     ///
-    /// async fn first_handler() { /* ... */ }
+    /// let app = Router::new()
+    ///     .route("/", get(root))
+    ///     .route("/users", get(list_users).post(create_user))
+    ///     .route("/users/:id", get(show_user))
+    ///     .route("/api/:version/users/:id/action", delete(do_thing));
     ///
-    /// async fn second_handler() { /* ... */ }
+    /// async fn root() { /* ... */ }
     ///
-    /// async fn third_handler() { /* ... */ }
+    /// async fn list_users() { /* ... */ }
     ///
-    /// // `GET /` goes to `first_handler`, `POST /` goes to `second_handler`,
-    /// // and `GET /foo` goes to third_handler.
-    /// let app = route("/", get(first_handler).post(second_handler))
-    ///     .route("/foo", get(third_handler));
+    /// async fn create_user() { /* ... */ }
+    ///
+    /// async fn show_user() { /* ... */ }
+    ///
+    /// async fn do_thing() { /* ... */ }
     /// # async {
     /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
     /// # };
     /// ```
+    ///
+    /// # Panics
+    ///
+    /// Panics if `description` doesn't start with `/`.
     pub fn route<T, B>(self, description: &str, svc: T) -> Router<Route<T, S>>
     where
         T: Service<Request<B>> + Clone,
@@ -114,9 +130,83 @@ impl<S> Router<S> {
         })
     }
 
-    /// Nest another service inside this router at the given path.
+    /// Nest a group of routes (or a [`Service`]) at some path.
     ///
-    /// See [`nest`] for more details.
+    /// This allows you to break your application into smaller pieces and compose
+    /// them together.
+    ///
+    /// ```
+    /// use axum::{
+    ///     handler::get,
+    ///     Router,
+    /// };
+    /// use http::Uri;
+    ///
+    /// async fn users_get(uri: Uri) {
+    ///     // `users_get` will still see the whole URI.
+    ///     assert_eq!(uri.path(), "/api/users");
+    /// }
+    ///
+    /// async fn users_post() {}
+    ///
+    /// async fn careers() {}
+    ///
+    /// let users_api = Router::new().route("/users", get(users_get).post(users_post));
+    ///
+    /// let app = Router::new().nest("/api", users_api).route("/careers", get(careers));
+    /// # async {
+    /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+    /// # };
+    /// ```
+    ///
+    /// Take care when using `nest` together with dynamic routes as nesting also
+    /// captures from the outer routes:
+    ///
+    /// ```
+    /// use axum::{
+    ///     extract::Path,
+    ///     handler::get,
+    ///     Router,
+    /// };
+    /// use std::collections::HashMap;
+    ///
+    /// async fn users_get(Path(params): Path<HashMap<String, String>>) {
+    ///     // Both `version` and `id` were captured even though `users_api` only
+    ///     // explicitly captures `id`.
+    ///     let version = params.get("version");
+    ///     let id = params.get("id");
+    /// }
+    ///
+    /// let users_api = Router::new().route("/users/:id", get(users_get));
+    ///
+    /// let app = Router::new().nest("/:version/api", users_api);
+    /// # async {
+    /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+    /// # };
+    /// ```
+    ///
+    /// `nest` also accepts any [`Service`]. This can for example be used with
+    /// [`tower_http::services::ServeDir`] to serve static files from a directory:
+    ///
+    /// ```
+    /// use axum::{
+    ///     Router,
+    ///     service::get,
+    /// };
+    /// use tower_http::services::ServeDir;
+    ///
+    /// // Serves files inside the `public` directory at `GET /public/*`
+    /// let serve_dir_service = ServeDir::new("public");
+    ///
+    /// let app = Router::new().nest("/public", get(serve_dir_service));
+    /// # async {
+    /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+    /// # };
+    /// ```
+    ///
+    /// If necessary you can use [`Router::boxed`] to box a group of routes
+    /// making the type easier to name. This is sometimes useful when working with
+    /// `nest`.
     pub fn nest<T, B>(self, description: &str, svc: T) -> Router<Nested<T, S>>
     where
         T: Service<Request<B>> + Clone,
@@ -137,8 +227,8 @@ impl<S> Router<S> {
     /// use axum::{
     ///     body::Body,
     ///     handler::get,
-    ///     route,
-    ///     routing::{Router, BoxRoute}
+    ///     Router,
+    ///     routing::BoxRoute
     /// };
     ///
     /// async fn first_handler() { /* ... */ }
@@ -148,7 +238,8 @@ impl<S> Router<S> {
     /// async fn third_handler() { /* ... */ }
     ///
     /// fn app() -> Router<BoxRoute> {
-    ///     route("/", get(first_handler).post(second_handler))
+    ///     Router::new()
+    ///         .route("/", get(first_handler).post(second_handler))
     ///         .route("/foo", get(third_handler))
     ///         .boxed()
     /// }
@@ -195,7 +286,7 @@ impl<S> Router<S> {
     /// ```rust
     /// use axum::{
     ///     handler::get,
-    ///     route,
+    ///     Router,
     /// };
     /// use tower::limit::{ConcurrencyLimitLayer, ConcurrencyLimit};
     ///
@@ -207,7 +298,7 @@ impl<S> Router<S> {
     ///
     /// // All requests to `handler` and `other_handler` will be sent through
     /// // `ConcurrencyLimit`
-    /// let app = route("/", get(first_handler))
+    /// let app = Router::new().route("/", get(first_handler))
     ///     .route("/foo", get(second_handler))
     ///     .layer(ConcurrencyLimitLayer::new(64))
     ///     // Request to `GET /bar` will go directly to `third_handler` and
@@ -224,7 +315,7 @@ impl<S> Router<S> {
     /// ```rust
     /// use axum::{
     ///     handler::get,
-    ///     route,
+    ///     Router,
     /// };
     /// use tower_http::trace::TraceLayer;
     ///
@@ -234,7 +325,8 @@ impl<S> Router<S> {
     ///
     /// async fn third_handler() { /* ... */ }
     ///
-    /// let app = route("/", get(first_handler))
+    /// let app = Router::new()
+    ///     .route("/", get(first_handler))
     ///     .route("/foo", get(second_handler))
     ///     .route("/bar", get(third_handler))
     ///     .layer(TraceLayer::new_for_http());
@@ -258,10 +350,10 @@ impl<S> Router<S> {
     /// ```
     /// use axum::{
     ///     handler::get,
-    ///     route,
+    ///     Router,
     /// };
     ///
-    /// let app = route("/", get(|| async { "Hi!" }));
+    /// let app = Router::new().route("/", get(|| async { "Hi!" }));
     ///
     /// # async {
     /// axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())
@@ -291,11 +383,11 @@ impl<S> Router<S> {
     /// use axum::{
     ///     extract::ConnectInfo,
     ///     handler::get,
-    ///     route,
+    ///     Router,
     /// };
     /// use std::net::SocketAddr;
     ///
-    /// let app = route("/", get(handler));
+    /// let app = Router::new().route("/", get(handler));
     ///
     /// async fn handler(ConnectInfo(addr): ConnectInfo<SocketAddr>) -> String {
     ///     format!("Hello {}", addr)
@@ -317,11 +409,11 @@ impl<S> Router<S> {
     /// use axum::{
     ///     extract::connect_info::{ConnectInfo, Connected},
     ///     handler::get,
-    ///     route,
+    ///     Router,
     /// };
     /// use hyper::server::conn::AddrStream;
     ///
-    /// let app = route("/", get(handler));
+    /// let app = Router::new().route("/", get(handler));
     ///
     /// async fn handler(
     ///     ConnectInfo(my_connect_info): ConnectInfo<MyConnectInfo>,
@@ -379,7 +471,7 @@ impl<S> Router<S> {
     /// ```
     /// use axum::{
     ///     handler::get,
-    ///     route,
+    ///     Router,
     /// };
     /// #
     /// # async fn users_list() {}
@@ -387,10 +479,10 @@ impl<S> Router<S> {
     /// # async fn teams_list() {}
     ///
     /// // define some routes separately
-    /// let user_routes = route("/users", get(users_list))
+    /// let user_routes = Router::new().route("/users", get(users_list))
     ///     .route("/users/:id", get(users_show));
     ///
-    /// let team_routes = route("/teams", get(teams_list));
+    /// let team_routes = Router::new().route("/teams", get(teams_list));
     ///
     /// // combine them into one
     /// let app = user_routes.or(team_routes);
@@ -416,13 +508,13 @@ impl<S> Router<S> {
     /// use axum::{
     ///     handler::get,
     ///     http::StatusCode,
-    ///     route,
+    ///     Router,
     /// };
     /// use tower::{BoxError, timeout::TimeoutLayer};
     /// use std::{time::Duration, convert::Infallible};
     ///
     /// // This router can never fail, since handlers can never fail.
-    /// let app = route("/", get(|| async {}));
+    /// let app = Router::new().route("/", get(|| async {}));
     ///
     /// // Now the router can fail since the `tower::timeout::Timeout`
     /// // middleware will return an error if the timeout elapses.
@@ -455,12 +547,13 @@ impl<S> Router<S> {
     /// use axum::{
     ///     handler::get,
     ///     http::StatusCode,
-    ///     route,
+    ///     Router,
     /// };
     /// use tower::{BoxError, timeout::TimeoutLayer};
     /// use std::time::Duration;
     ///
-    /// let app = route("/", get(|| async {}))
+    /// let app = Router::new()
+    ///     .route("/", get(|| async {}))
     ///     .layer(TimeoutLayer::new(Duration::from_secs(10)))
     ///     .handle_error(|error: BoxError| {
     ///         if error.is::<tower::timeout::error::Elapsed>() {
@@ -498,8 +591,6 @@ impl<S> Router<S> {
 
 /// A route that sends requests to one of two [`Service`]s depending on the
 /// path.
-///
-/// Created with [`route`](crate::route). See that function for more details.
 #[derive(Debug, Clone)]
 pub struct Route<S, F> {
     pub(crate) pattern: PathPattern,
@@ -845,95 +936,9 @@ where
     }
 }
 
-/// Nest a group of routes (or a [`Service`]) at some path.
-///
-/// This allows you to break your application into smaller pieces and compose
-/// them together.
-///
-/// ```
-/// use axum::{
-///     handler::get,
-///     route,
-///     routing::nest,
-/// };
-/// use http::Uri;
-///
-/// async fn users_get(uri: Uri) {
-///     // `users_get` will still see the whole URI.
-///     assert_eq!(uri.path(), "/api/users");
-/// }
-///
-/// async fn users_post() {}
-///
-/// async fn careers() {}
-///
-/// let users_api = route("/users", get(users_get).post(users_post));
-///
-/// let app = nest("/api", users_api).route("/careers", get(careers));
-/// # async {
-/// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-/// # };
-/// ```
-///
-/// Take care when using `nest` together with dynamic routes as nesting also
-/// captures from the outer routes:
-///
-/// ```
-/// use axum::{
-///     extract::Path,
-///     handler::get,
-///     route,
-///     routing::nest,
-/// };
-/// use std::collections::HashMap;
-///
-/// async fn users_get(Path(params): Path<HashMap<String, String>>) {
-///     // Both `version` and `id` were captured even though `users_api` only
-///     // explicitly captures `id`.
-///     let version = params.get("version");
-///     let id = params.get("id");
-/// }
-///
-/// let users_api = route("/users/:id", get(users_get));
-///
-/// let app = nest("/:version/api", users_api);
-/// # async {
-/// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-/// # };
-/// ```
-///
-/// `nest` also accepts any [`Service`]. This can for example be used with
-/// [`tower_http::services::ServeDir`] to serve static files from a directory:
-///
-/// ```
-/// use axum::{
-///     routing::nest,
-///     service::get,
-/// };
-/// use tower_http::services::ServeDir;
-///
-/// // Serves files inside the `public` directory at `GET /public/*`
-/// let serve_dir_service = ServeDir::new("public");
-///
-/// let app = nest("/public", get(serve_dir_service));
-/// # async {
-/// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-/// # };
-/// ```
-///
-/// If necessary you can use [`Router::boxed`] to box a group of routes
-/// making the type easier to name. This is sometimes useful when working with
-/// `nest`.
-pub fn nest<S, B>(description: &str, svc: S) -> Router<Nested<S, EmptyRouter<S::Error>>>
-where
-    S: Service<Request<B>> + Clone,
-{
-    Router::new().nest(description, svc)
-}
-
 /// A [`Service`] that has been nested inside a router at some path.
 ///
-/// Created with [`nest`] or [`Router::nest`].
+/// Created with [`Router::nest`].
 #[derive(Debug, Clone)]
 pub struct Nested<S, F> {
     pattern: PathPattern,

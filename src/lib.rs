@@ -48,13 +48,13 @@
 //! ```rust,no_run
 //! use axum::{
 //!     handler::get,
-//!     route,
+//!     Router,
 //! };
 //!
 //! #[tokio::main]
 //! async fn main() {
 //!     // build our application with a single route
-//!     let app = route("/", get(|| async { "Hello, World!" }));
+//!     let app = Router::new().route("/", get(|| async { "Hello, World!" }));
 //!
 //!     // run it with hyper on localhost:3000
 //!     axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())
@@ -105,10 +105,11 @@
 //! ```rust,no_run
 //! use axum::{
 //!     handler::get,
-//!     route,
+//!     Router,
 //! };
 //!
-//! let app = route("/", get(get_slash).post(post_slash))
+//! let app = Router::new()
+//!     .route("/", get(get_slash).post(post_slash))
 //!     .route("/foo", get(get_foo));
 //!
 //! async fn get_slash() {
@@ -142,7 +143,7 @@
 //!     body::{Body, BoxBody},
 //!     handler::get,
 //!     http::Request,
-//!     route,
+//!     Router,
 //! };
 //! use tower::{Service, ServiceExt};
 //! use http::{Method, Response, StatusCode};
@@ -152,7 +153,8 @@
 //! # async fn main() {
 //! // `/foo` also matches `/:key` so adding the routes in this order means `/foo`
 //! // will be inaccessible.
-//! let mut app = route("/foo", get(|| async { "/foo called" }))
+//! let mut app = Router::new()
+//!     .route("/foo", get(|| async { "/foo called" }))
 //!     .route("/:key", get(|| async { "/:key called" }));
 //!
 //! // Even though we use `/foo` as the request URI, `/:key` takes precedence
@@ -163,7 +165,8 @@
 //!
 //! // We have to add `/foo` after `/:key` since routes are matched bottom to
 //! // top.
-//! let mut new_app = route("/:key", get(|| async { "/:key called" }))
+//! let mut new_app = Router::new()
+//!     .route("/:key", get(|| async { "/:key called" }))
 //!     .route("/foo", get(|| async { "/foo called" }));
 //!
 //! // Now it works
@@ -207,15 +210,15 @@
 //!
 //! ```rust,no_run
 //! use axum::{
-//!     route,
+//!     Router,
 //!     handler::{get, post},
 //! };
 //!
 //! // `GET /` and `POST /` are both accepted
-//! let app = route("/", get(handler).post(handler));
+//! let app = Router::new().route("/", get(handler).post(handler));
 //!
 //! // This will _not_ work. Only `POST /` will be accessible.
-//! let wont_work = route("/", get(handler)).route("/", post(handler));
+//! let wont_work = Router::new().route("/", get(handler)).route("/", post(handler));
 //!
 //! async fn handler() {}
 //! # async {
@@ -232,7 +235,7 @@
 //! use axum::{
 //!     body::Body,
 //!     http::Request,
-//!     route,
+//!     Router,
 //!     service
 //! };
 //! use tower_http::services::ServeFile;
@@ -240,31 +243,34 @@
 //! use std::convert::Infallible;
 //! use tower::service_fn;
 //!
-//! let app = route(
-//!     // Any request to `/` goes to a service
-//!     "/",
-//!     // Services who's response body is not `axum::body::BoxBody`
-//!     // can be wrapped in `axum::service::any` (or one of the other routing filters)
-//!     // to have the response body mapped
-//!     service::any(service_fn(|_: Request<Body>| async {
-//!         let res = Response::new(Body::from("Hi from `GET /`"));
-//!         Ok(res)
-//!     }))
-//! ).route(
-//!     "/foo",
-//!     // This service's response body is `axum::body::BoxBody` so
-//!     // it can be routed to directly.
-//!     service_fn(|req: Request<Body>| async move {
-//!         let body = Body::from(format!("Hi from `{} /foo`", req.method()));
-//!         let body = axum::body::box_body(body);
-//!         let res = Response::new(body);
-//!         Ok(res)
-//!     })
-//! ).route(
-//!     // GET `/static/Cargo.toml` goes to a service from tower-http
-//!     "/static/Cargo.toml",
-//!     service::get(ServeFile::new("Cargo.toml"))
-//! );
+//! let app = Router::new()
+//!     .route(
+//!         // Any request to `/` goes to a service
+//!         "/",
+//!         // Services who's response body is not `axum::body::BoxBody`
+//!         // can be wrapped in `axum::service::any` (or one of the other routing filters)
+//!         // to have the response body mapped
+//!         service::any(service_fn(|_: Request<Body>| async {
+//!             let res = Response::new(Body::from("Hi from `GET /`"));
+//!             Ok(res)
+//!         }))
+//!     )
+//!     .route(
+//!         "/foo",
+//!         // This service's response body is `axum::body::BoxBody` so
+//!         // it can be routed to directly.
+//!         service_fn(|req: Request<Body>| async move {
+//!             let body = Body::from(format!("Hi from `{} /foo`", req.method()));
+//!             let body = axum::body::box_body(body);
+//!             let res = Response::new(body);
+//!             Ok(res)
+//!         })
+//!     )
+//!     .route(
+//!         // GET `/static/Cargo.toml` goes to a service from tower-http
+//!         "/static/Cargo.toml",
+//!         service::get(ServeFile::new("Cargo.toml"))
+//!     );
 //! # async {
 //! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 //! # };
@@ -275,24 +281,27 @@
 //!
 //! ## Nesting Routes
 //!
-//! Routes can be nested by calling [`nest`](routing::nest):
+//! Routes can be nested by calling [`Router::nest`](routing::Router::nest):
 //!
 //! ```rust,no_run
 //! use axum::{
 //!     body::{Body, BoxBody},
 //!     http::Request,
 //!     handler::get,
-//!     route,
-//!     routing::{BoxRoute, Router}
+//!     Router,
+//!     routing::BoxRoute
 //! };
 //! use tower_http::services::ServeFile;
 //! use http::Response;
 //!
 //! fn api_routes() -> Router<BoxRoute> {
-//!     route("/users", get(|_: Request<Body>| async { /* ... */ })).boxed()
+//!     Router::new()
+//!         .route("/users", get(|_: Request<Body>| async { /* ... */ }))
+//!         .boxed()
 //! }
 //!
-//! let app = route("/", get(|_: Request<Body>| async { /* ... */ }))
+//! let app = Router::new()
+//!     .route("/", get(|_: Request<Body>| async { /* ... */ }))
 //!     .nest("/api", api_routes());
 //! # async {
 //! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
@@ -316,11 +325,11 @@
 //! use axum::{
 //!     extract,
 //!     handler::post,
-//!     route,
+//!     Router,
 //! };
 //! use serde::Deserialize;
 //!
-//! let app = route("/users", post(create_user));
+//! let app = Router::new().route("/users", post(create_user));
 //!
 //! #[derive(Deserialize)]
 //! struct CreateUser {
@@ -346,11 +355,11 @@
 //! use axum::{
 //!     extract,
 //!     handler::post,
-//!     route,
+//!     Router,
 //! };
 //! use uuid::Uuid;
 //!
-//! let app = route("/users/:id", post(create_user));
+//! let app = Router::new().route("/users/:id", post(create_user));
 //!
 //! async fn create_user(extract::Path(user_id): extract::Path<Uuid>) {
 //!     // ...
@@ -366,12 +375,12 @@
 //! use axum::{
 //!     extract,
 //!     handler::get,
-//!     route,
+//!     Router,
 //! };
 //! use uuid::Uuid;
 //! use serde::Deserialize;
 //!
-//! let app = route("/users/:id/things", get(get_user_things));
+//! let app = Router::new().route("/users/:id/things", get(get_user_things));
 //!
 //! #[derive(Deserialize)]
 //! struct Pagination {
@@ -405,10 +414,10 @@
 //!     body::Body,
 //!     handler::post,
 //!     http::Request,
-//!     route,
+//!     Router,
 //! };
 //!
-//! let app = route("/users/:id", post(handler));
+//! let app = Router::new().route("/users/:id", post(handler));
 //!
 //! async fn handler(req: Request<Body>) {
 //!     // ...
@@ -437,7 +446,7 @@
 //!     handler::{get, Handler},
 //!     http::Request,
 //!     response::{Html, Json},
-//!     route,
+//!     Router,
 //! };
 //! use http::{StatusCode, Response, Uri};
 //! use serde_json::{Value, json};
@@ -493,7 +502,8 @@
 //!     Response::builder().body(Body::empty()).unwrap()
 //! }
 //!
-//! let app = route("/plain_text", get(plain_text))
+//! let app = Router::new()
+//!     .route("/plain_text", get(plain_text))
 //!     .route("/plain_text_string", get(plain_text_string))
 //!     .route("/bytes", get(bytes))
 //!     .route("/empty", get(empty))
@@ -520,14 +530,15 @@
 //! ```rust,no_run
 //! use axum::{
 //!     handler::{get, Handler},
-//!     route,
+//!     Router,
 //! };
 //! use tower::limit::ConcurrencyLimitLayer;
 //!
-//! let app = route(
-//!     "/",
-//!     get(handler.layer(ConcurrencyLimitLayer::new(100))),
-//! );
+//! let app = Router::new()
+//!     .route(
+//!         "/",
+//!         get(handler.layer(ConcurrencyLimitLayer::new(100))),
+//!     );
 //!
 //! async fn handler() {}
 //! # async {
@@ -542,11 +553,12 @@
 //! ```rust,no_run
 //! use axum::{
 //!     handler::{get, post},
-//!     route,
+//!     Router,
 //! };
 //! use tower::limit::ConcurrencyLimitLayer;
 //!
-//! let app = route("/", get(get_slash))
+//! let app = Router::new()
+//!     .route("/", get(get_slash))
 //!     .route("/foo", post(post_foo))
 //!     .layer(ConcurrencyLimitLayer::new(100));
 //!
@@ -575,7 +587,7 @@
 //! ```rust,no_run
 //! use axum::{
 //!     handler::{get, Handler},
-//!     route,
+//!     Router,
 //! };
 //! use tower::{
 //!     BoxError, timeout::{TimeoutLayer, error::Elapsed},
@@ -583,30 +595,31 @@
 //! use std::{borrow::Cow, time::Duration, convert::Infallible};
 //! use http::StatusCode;
 //!
-//! let app = route(
-//!     "/",
-//!     get(handle
-//!         .layer(TimeoutLayer::new(Duration::from_secs(30)))
-//!         // `Timeout` uses `BoxError` as the error type
-//!         .handle_error(|error: BoxError| {
-//!             // Check if the actual error type is `Elapsed` which
-//!             // `Timeout` returns
-//!             if error.is::<Elapsed>() {
-//!                 return Ok::<_, Infallible>((
-//!                     StatusCode::REQUEST_TIMEOUT,
-//!                     "Request took too long".into(),
-//!                 ));
-//!             }
+//! let app = Router::new()
+//!     .route(
+//!         "/",
+//!         get(handle
+//!             .layer(TimeoutLayer::new(Duration::from_secs(30)))
+//!             // `Timeout` uses `BoxError` as the error type
+//!             .handle_error(|error: BoxError| {
+//!                 // Check if the actual error type is `Elapsed` which
+//!                 // `Timeout` returns
+//!                 if error.is::<Elapsed>() {
+//!                     return Ok::<_, Infallible>((
+//!                         StatusCode::REQUEST_TIMEOUT,
+//!                         "Request took too long".into(),
+//!                     ));
+//!                 }
 //!
-//!             // If we encounter some error we don't handle return a generic
-//!             // error
-//!             return Ok::<_, Infallible>((
-//!                 StatusCode::INTERNAL_SERVER_ERROR,
-//!                 // `Cow` lets us return either `&str` or `String`
-//!                 Cow::from(format!("Unhandled internal error: {}", error)),
-//!             ));
-//!         })),
-//! );
+//!                 // If we encounter some error we don't handle return a generic
+//!                 // error
+//!                 return Ok::<_, Infallible>((
+//!                     StatusCode::INTERNAL_SERVER_ERROR,
+//!                     // `Cow` lets us return either `&str` or `String`
+//!                     Cow::from(format!("Unhandled internal error: {}", error)),
+//!                 ));
+//!             })),
+//!     );
 //!
 //! async fn handle() {}
 //! # async {
@@ -629,7 +642,7 @@
 //!     body::Body,
 //!     handler::get,
 //!     http::Request,
-//!     route,
+//!     Router,
 //! };
 //! use tower::ServiceBuilder;
 //! use tower_http::compression::CompressionLayer;
@@ -646,7 +659,8 @@
 //!     .layer(CompressionLayer::new())
 //!     .into_inner();
 //!
-//! let app = route("/", get(|_: Request<Body>| async { /* ... */ }))
+//! let app = Router::new()
+//!     .route("/", get(|_: Request<Body>| async { /* ... */ }))
 //!     .layer(middleware_stack);
 //! # async {
 //! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
@@ -665,7 +679,7 @@
 //!     AddExtensionLayer,
 //!     extract,
 //!     handler::get,
-//!     route,
+//!     Router,
 //! };
 //! use std::sync::Arc;
 //!
@@ -675,7 +689,9 @@
 //!
 //! let shared_state = Arc::new(State { /* ... */ });
 //!
-//! let app = route("/", get(handler)).layer(AddExtensionLayer::new(shared_state));
+//! let app = Router::new()
+//!     .route("/", get(handler))
+//!     .layer(AddExtensionLayer::new(shared_state));
 //!
 //! async fn handler(
 //!     state: extract::Extension<Arc<State>>,
@@ -738,6 +754,8 @@
 //! [`Router::or`]: crate::routing::Router::or
 //! [`axum::Server`]: hyper::server::Server
 //! [`OriginalUri`]: crate::extract::OriginalUri
+//! [`Service`]: tower::Service
+//! [`Service::poll_ready`]: tower::Service::poll_ready
 
 #![warn(
     clippy::all,
@@ -779,10 +797,6 @@
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![cfg_attr(test, allow(clippy::float_cmp))]
 
-use http::Request;
-use routing::{EmptyRouter, Route};
-use tower::Service;
-
 #[macro_use]
 pub(crate) mod macros;
 
@@ -810,56 +824,4 @@ pub use hyper::Server;
 #[doc(no_inline)]
 pub use tower_http::add_extension::{AddExtension, AddExtensionLayer};
 
-pub use self::{error::Error, json::Json};
-
-/// Create a route.
-///
-/// `description` is a string of path segments separated by `/`. Each segment
-/// can be either concrete or a capture:
-///
-/// - `/foo/bar/baz` will only match requests where the path is `/foo/bar/bar`.
-/// - `/:foo` will match any route with exactly one segment _and_ it will
-/// capture the first segment and store it at the key `foo`.
-///
-/// `service` is the [`Service`] that should receive the request if the path
-/// matches `description`.
-///
-/// # Examples
-///
-/// ```rust
-/// use axum::{
-///     body::Body,
-///     http::Request,
-///     route
-/// };
-///
-/// # use std::convert::Infallible;
-/// # use http::Response;
-/// # let service = tower::service_fn(|_: Request<Body>| async {
-/// #     Ok::<Response<Body>, Infallible>(Response::new(Body::empty()))
-/// # });
-///
-/// route("/", service);
-/// route("/users", service);
-/// route("/users/:id", service);
-/// route("/api/:version/users/:id/action", service);
-/// ```
-///
-/// # Panics
-///
-/// Panics if `description` doesn't start with `/`.
-pub fn route<S, B>(
-    description: &str,
-    service: S,
-) -> routing::Router<Route<S, EmptyRouter<S::Error>>>
-where
-    S: Service<Request<B>> + Clone,
-{
-    routing::Router::new().route(description, service)
-}
-
-mod sealed {
-    #![allow(unreachable_pub, missing_docs)]
-
-    pub trait Sealed {}
-}
+pub use self::{error::Error, json::Json, routing::Router};

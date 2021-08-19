@@ -131,7 +131,7 @@ where
 mod tests {
     use super::*;
     use crate::Server;
-    use crate::{handler::get, route};
+    use crate::{handler::get, Router};
     use std::net::{SocketAddr, TcpListener};
 
     #[tokio::test]
@@ -145,7 +145,7 @@ mod tests {
 
         let (tx, rx) = tokio::sync::oneshot::channel();
         tokio::spawn(async move {
-            let app = route("/", get(handler));
+            let app = Router::new().route("/", get(handler));
             let server = Server::from_tcp(listener)
                 .unwrap()
                 .serve(app.into_make_service_with_connect_info::<SocketAddr, _>());
@@ -187,7 +187,7 @@ mod tests {
 
         let (tx, rx) = tokio::sync::oneshot::channel();
         tokio::spawn(async move {
-            let app = route("/", get(handler));
+            let app = Router::new().route("/", get(handler));
             let server = Server::from_tcp(listener)
                 .unwrap()
                 .serve(app.into_make_service_with_connect_info::<MyConnectInfo, _>());

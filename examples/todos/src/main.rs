@@ -18,7 +18,7 @@ use axum::{
     handler::{get, patch},
     http::StatusCode,
     response::IntoResponse,
-    route, Json,
+    Json, Router,
 };
 use serde::{Deserialize, Serialize};
 use std::{
@@ -43,7 +43,8 @@ async fn main() {
     let db = Db::default();
 
     // Compose the routes
-    let app = route("/todos", get(todos_index).post(todos_create))
+    let app = Router::new()
+        .route("/todos", get(todos_index).post(todos_create))
         .route("/todos/:id", patch(todos_update).delete(todos_delete))
         // Add middleware to all routes
         .layer(
@@ -53,7 +54,6 @@ async fn main() {
                 .layer(AddExtensionLayer::new(db))
                 .into_inner(),
         )
-        // If the timeout fails, map the error to a response
         .handle_error(|error: BoxError| {
             let result = if error.is::<tower::timeout::error::Elapsed>() {
                 Ok(StatusCode::REQUEST_TIMEOUT)

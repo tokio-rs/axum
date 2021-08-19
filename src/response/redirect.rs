@@ -12,10 +12,11 @@ use std::convert::TryFrom;
 /// use axum::{
 ///     handler::get,
 ///     response::Redirect,
-///     route,
+///     Router,
 /// };
 ///
-/// let app = route("/old", get(|| async { Redirect::permanent("/new".parse().unwrap()) }))
+/// let app = Router::new()
+///     .route("/old", get(|| async { Redirect::permanent("/new".parse().unwrap()) }))
 ///     .route("/new", get(|| async { "Hello!" }));
 /// # async {
 /// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();

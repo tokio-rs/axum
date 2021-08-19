@@ -15,7 +15,7 @@
 //!     body::Body,
 //!     handler::get,
 //!     http::Request,
-//!     route,
+//!     Router,
 //!     service,
 //! };
 //!
@@ -23,7 +23,8 @@
 //!
 //! let redirect_service = Redirect::<Body>::permanent("/new".parse().unwrap());
 //!
-//! let app = route("/old", service::get(redirect_service))
+//! let app = Router::new()
+//!     .route("/old", service::get(redirect_service))
 //!     .route("/new", get(handler));
 //! # async {
 //! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
@@ -66,7 +67,7 @@
 //! ```rust
 //! use axum::{
 //!     handler::get,
-//!     route,
+//!     Router,
 //! };
 //! use tower::ServiceBuilder;
 //! # let some_backpressure_sensitive_middleware =
@@ -74,7 +75,7 @@
 //!
 //! async fn handler() { /* ... */ }
 //!
-//! let app = route("/", get(handler));
+//! let app = Router::new().route("/", get(handler));
 //!
 //! let app = ServiceBuilder::new()
 //!     .layer(some_backpressure_sensitive_middleware)
@@ -148,7 +149,7 @@ where
 /// ```rust
 /// use axum::{
 ///     http::Request,
-///     route,
+///     Router,
 ///     service,
 /// };
 /// use http::Response;
@@ -160,7 +161,7 @@ where
 /// });
 ///
 /// // Requests to `GET /` will go to `service`.
-/// let app = route("/", service::get(service));
+/// let app = Router::new().route("/", service::get(service));
 /// # async {
 /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 /// # };
@@ -245,7 +246,7 @@ where
 ///     http::Request,
 ///     handler::on,
 ///     service,
-///     route,
+///     Router,
 ///     routing::MethodFilter,
 /// };
 /// use http::Response;
@@ -257,7 +258,7 @@ where
 /// });
 ///
 /// // Requests to `POST /` will go to `service`.
-/// let app = route("/", service::on(MethodFilter::POST, service));
+/// let app = Router::new().route("/", service::on(MethodFilter::POST, service));
 /// # async {
 /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 /// # };
@@ -340,7 +341,7 @@ impl<S, F, B> OnMethod<S, F, B> {
     ///     http::Request,
     ///     handler::on,
     ///     service,
-    ///     route,
+    ///     Router,
     ///     routing::MethodFilter,
     /// };
     /// use http::Response;
@@ -357,7 +358,7 @@ impl<S, F, B> OnMethod<S, F, B> {
     ///
     /// // Requests to `GET /` will go to `service` and `POST /` will go to
     /// // `other_service`.
-    /// let app = route("/", service::post(service).get(other_service));
+    /// let app = Router::new().route("/", service::post(service).get(other_service));
     /// # async {
     /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
     /// # };
@@ -443,7 +444,7 @@ impl<S, F, B> OnMethod<S, F, B> {
     ///     http::Request,
     ///     handler::on,
     ///     service,
-    ///     route,
+    ///     Router,
     ///     routing::MethodFilter,
     /// };
     /// use http::Response;
@@ -459,7 +460,7 @@ impl<S, F, B> OnMethod<S, F, B> {
     /// });
     ///
     /// // Requests to `DELETE /` will go to `service`
-    /// let app = route("/", service::on(MethodFilter::DELETE, service));
+    /// let app = Router::new().route("/", service::on(MethodFilter::DELETE, service));
     /// # async {
     /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
     /// # };

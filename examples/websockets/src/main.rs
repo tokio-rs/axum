@@ -14,7 +14,7 @@ use axum::{
     handler::get,
     http::StatusCode,
     response::IntoResponse,
-    routing::nest,
+    Router,
 };
 use std::net::SocketAddr;
 use tower_http::{
@@ -31,25 +31,27 @@ async fn main() {
     tracing_subscriber::fmt::init();
 
     // build our application with some routes
-    let app = nest(
-        "/",
-        axum::service::get(
-            ServeDir::new("examples/websockets/assets").append_index_html_on_directories(true),
+    let app = Router::new()
+        .nest(
+            "/",
+            axum::service::get(
+                ServeDir::new("examples/websockets/assets").append_index_html_on_directories(true),
+            )
+            .handle_error(|error: std::io::Error| {
+                Ok::<_, std::convert::Infallible>((
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    format!("Unhandled internal error: {}", error),
+                ))
+            }),
         )
-        .handle_error(|error: std::io::Error| {
-            Ok::<_, std::convert::Infallible>((
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Unhandled internal error: {}", error),
-            ))
-        }),
-    )
-    // routes are matched from bottom to top, so we have to put `nest` at the
-    // top since it matches all routes
-    .route("/ws", get(ws_handler))
-    // logging so we can see whats going on
-    .layer(
-        TraceLayer::new_for_http().make_span_with(DefaultMakeSpan::default().include_headers(true)),
-    );
+        // routes are matched from bottom to top, so we have to put `nest` at the
+        // top since it matches all routes
+        .route("/ws", get(ws_handler))
+        // logging so we can see whats going on
+        .layer(
+            TraceLayer::new_for_http()
+                .make_span_with(DefaultMakeSpan::default().include_headers(true)),
+        );
 
     // run it with hyper
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));

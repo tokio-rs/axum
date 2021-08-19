@@ -12,8 +12,8 @@ use axum::{
     handler::{delete, get, Handler},
     http::StatusCode,
     response::IntoResponse,
-    route,
-    routing::{BoxRoute, Router},
+    routing::BoxRoute,
+    Router,
 };
 use std::{
     borrow::Cow,
@@ -38,29 +38,30 @@ async fn main() {
     tracing_subscriber::fmt::init();
 
     // Build our application by composing routes
-    let app = route(
-        "/:key",
-        // Add compression to `kv_get`
-        get(kv_get.layer(CompressionLayer::new()))
-            // But don't compress `kv_set`
-            .post(kv_set),
-    )
-    .route("/keys", get(list_keys))
-    // Nest our admin routes under `/admin`
-    .nest("/admin", admin_routes())
-    // Add middleware to all routes
-    .layer(
-        ServiceBuilder::new()
-            .load_shed()
-            .concurrency_limit(1024)
-            .timeout(Duration::from_secs(10))
-            .layer(TraceLayer::new_for_http())
-            .layer(AddExtensionLayer::new(SharedState::default()))
-            .into_inner(),
-    )
-    // Handle errors from middleware
-    .handle_error(handle_error)
-    .check_infallible();
+    let app = Router::new()
+        .route(
+            "/:key",
+            // Add compression to `kv_get`
+            get(kv_get.layer(CompressionLayer::new()))
+                // But don't compress `kv_set`
+                .post(kv_set),
+        )
+        .route("/keys", get(list_keys))
+        // Nest our admin routes under `/admin`
+        .nest("/admin", admin_routes())
+        // Add middleware to all routes
+        .layer(
+            ServiceBuilder::new()
+                .load_shed()
+                .concurrency_limit(1024)
+                .timeout(Duration::from_secs(10))
+                .layer(TraceLayer::new_for_http())
+                .layer(AddExtensionLayer::new(SharedState::default()))
+                .into_inner(),
+        )
+        // Handle errors from middleware
+        .handle_error(handle_error)
+        .check_infallible();
 
     // Run our app with hyper
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
@@ -117,7 +118,8 @@ fn admin_routes() -> Router<BoxRoute> {
         state.write().unwrap().db.remove(&key);
     }
 
-    route("/keys", delete(delete_all_keys))
+    Router::new()
+        .route("/keys", delete(delete_all_keys))
         .route("/key/:key", delete(remove_key))
         // Require bearer auth for all admin routes
         .layer(RequireAuthorizationLayer::bearer("secret-token"))

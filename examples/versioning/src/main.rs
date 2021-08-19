@@ -11,7 +11,7 @@ use axum::{
     handler::get,
     http::{Response, StatusCode},
     response::IntoResponse,
-    route,
+    Router,
 };
 use std::collections::HashMap;
 use std::net::SocketAddr;
@@ -25,7 +25,7 @@ async fn main() {
     tracing_subscriber::fmt::init();
 
     // build our application with some routes
-    let app = route("/:version/foo", get(handler));
+    let app = Router::new().route("/:version/foo", get(handler));
 
     // run it
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));

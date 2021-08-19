@@ -10,7 +10,7 @@ use std::convert::Infallible;
 /// use axum::{
 ///     extract::RawQuery,
 ///     handler::get,
-///     route,
+///     Router,
 /// };
 /// use futures::StreamExt;
 ///
@@ -18,7 +18,7 @@ use std::convert::Infallible;
 ///     // ...
 /// }
 ///
-/// let app = route("/users", get(handler));
+/// let app = Router::new().route("/users", get(handler));
 /// # async {
 /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 /// # };

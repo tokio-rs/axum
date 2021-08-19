@@ -13,7 +13,7 @@ use tower::{util::Either, BoxError};
 ///
 /// ```rust
 /// use axum::{
-///     route,
+///     Router,
 ///     response::{IntoResponse, Headers},
 ///     handler::get,
 /// };
@@ -36,7 +36,8 @@ use tower::{util::Either, BoxError};
 ///
 /// // Or `[(&str, &str)]` if you're on Rust 1.53+
 ///
-/// let app = route("/just-headers", get(just_headers))
+/// let app = Router::new()
+///     .route("/just-headers", get(just_headers))
 ///     .route("/from-strings", get(from_strings));
 /// # async {
 /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
