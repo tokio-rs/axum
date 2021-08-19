@@ -39,7 +39,7 @@ tower-http = { version = "0.1", features = ["add-extension", "map-response-body"
 sync_wrapper = "0.1.1"
 
 # optional dependencies
-tokio-tungstenite = { optional = true, version = "0.14" }
+tokio-tungstenite = { optional = true, version = "0.15" }
 sha-1 = { optional = true, version = "0.9.6" }
 base64 = { optional = true, version = "0.13" }
 headers = { optional = true, version = "0.3" }
