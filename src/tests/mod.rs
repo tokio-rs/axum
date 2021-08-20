@@ -632,6 +632,43 @@ async fn handler_into_service() {
     assert_eq!(res.text().await.unwrap(), "you said: hi there!");
 }
 
+#[tokio::test]
+async fn when_multiple_routes_match() {
+    let app = Router::new()
+        .route("/", post(|| async {}))
+        .route("/", get(|| async {}))
+        .route("/foo", get(|| async {}))
+        .nest("/foo", Router::new().route("/bar", get(|| async {})));
+
+    let addr = run_in_background(app).await;
+
+    let client = reqwest::Client::new();
+
+    let res = client.get(format!("http://{}", addr)).send().await.unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+
+    let res = client
+        .post(format!("http://{}", addr))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+
+    let res = client
+        .get(format!("http://{}/foo/bar", addr))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+
+    let res = client
+        .get(format!("http://{}/foo", addr))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+}
+
 /// Run a `tower::Service` in the background and get a URI for it.
 pub(crate) async fn run_in_background<S, ResBody>(svc: S) -> SocketAddr
 where

@@ -597,6 +597,7 @@ impl<S, F, B> Service<Request<B>> for Route<S, F>
 where
     S: Service<Request<B>, Response = Response<BoxBody>> + Clone,
     F: Service<Request<B>, Response = Response<BoxBody>, Error = S::Error> + Clone,
+    B: Send + Sync + 'static,
 {
     type Response = Response<BoxBody>;
     type Error = S::Error;
@@ -610,7 +611,7 @@ where
         if let Some(captures) = self.pattern.full_match(&req) {
             insert_url_params(&mut req, captures);
             let fut = self.svc.clone().oneshot(req);
-            RouteFuture::a(fut)
+            RouteFuture::a(fut, self.fallback.clone())
         } else {
             let fut = self.fallback.clone().oneshot(req);
             RouteFuture::b(fut)
@@ -689,12 +690,29 @@ where
         Poll::Ready(Ok(()))
     }
 
-    fn call(&mut self, request: Request<B>) -> Self::Future {
+    fn call(&mut self, mut request: Request<B>) -> Self::Future {
+        if self.status == StatusCode::METHOD_NOT_ALLOWED {
+            // we're inside a route but there was no method that matched
+            // so record that so we can override the status if no other
+            // routes match
+            request.extensions_mut().insert(NoMethodMatch);
+        }
+
+        if self.status == StatusCode::NOT_FOUND
+            && request.extensions().get::<NoMethodMatch>().is_some()
+        {
+            self.status = StatusCode::METHOD_NOT_ALLOWED;
+        }
+
         let mut res = Response::new(crate::body::empty());
 
-        if request.extensions().get::<OrDepth>().is_some() {
-            res.extensions_mut().insert(FromEmptyRouter { request });
-        }
+        // if request.extensions().get::<OrDepth>().is_some() {
+        //     res.extensions_mut().insert(FromEmptyRouter { request });
+        // }
+
+        // XXX: we can't actually ship this because of
+        // https://github.com/hyperium/hyper/issues/2621
+        res.extensions_mut().insert(FromEmptyRouter { request });
 
         *res.status_mut() = self.status;
         EmptyRouterFuture {
@@ -702,6 +720,9 @@ where
         }
     }
 }
+
+#[derive(Clone, Copy)]
+struct NoMethodMatch;
 
 /// Response extension used by [`EmptyRouter`] to send the request back to [`Or`] so
 /// the other service can be called.
@@ -945,6 +966,7 @@ impl<S, F, B> Service<Request<B>> for Nested<S, F>
 where
     S: Service<Request<B>, Response = Response<BoxBody>> + Clone,
     F: Service<Request<B>, Response = Response<BoxBody>, Error = S::Error> + Clone,
+    B: Send + Sync + 'static,
 {
     type Response = Response<BoxBody>;
     type Error = S::Error;
@@ -966,7 +988,7 @@ where
 
             insert_url_params(&mut req, captures);
             let fut = self.svc.clone().oneshot(req);
-            RouteFuture::a(fut)
+            RouteFuture::a(fut, self.fallback.clone())
         } else {
             let fut = self.fallback.clone().oneshot(req);
             RouteFuture::b(fut)

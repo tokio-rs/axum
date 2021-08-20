@@ -24,6 +24,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add `Headers` for easily customizing headers on a response ([#193](https://github.com/tokio-rs/axum/pull/193))
 - Add `Redirect` response ([#192](https://github.com/tokio-rs/axum/pull/192))
 - Make `RequestParts::{new, try_into_request}` public ([#194](https://github.com/tokio-rs/axum/pull/194))
+- Support matching different HTTP methods for the same route that aren't defined
+  together. So `Router::new().route("/", get(...)).route("/", post(...))` now
+  accepts both `GET` and `POST`. Previously only `POST` would be accepted ([#224](https://github.com/tokio-rs/axum/pull/224))
 
 ## Breaking changes
 

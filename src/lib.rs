@@ -203,30 +203,6 @@
 //! # }
 //! ```
 //!
-//! ## Matching multiple methods
-//!
-//! If you want a path to accept multiple HTTP methods you must add them all at
-//! once:
-//!
-//! ```rust,no_run
-//! use axum::{
-//!     Router,
-//!     handler::{get, post},
-//! };
-//!
-//! // `GET /` and `POST /` are both accepted
-//! let app = Router::new().route("/", get(handler).post(handler));
-//!
-//! // This will _not_ work. Only `POST /` will be accessible.
-//! let wont_work = Router::new().route("/", get(handler)).route("/", post(handler));
-//!
-//! async fn handler() {}
-//! # async {
-//! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-//! # axum::Server::bind(&"".parse().unwrap()).serve(wont_work.into_make_service()).await.unwrap();
-//! # };
-//! ```
-//!
 //! ## Routing to any [`Service`]
 //!
 //! axum also supports routing to general [`Service`]s:
