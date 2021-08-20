@@ -132,24 +132,26 @@ async fn handler_multiple_methods_last() {
 
 #[test]
 fn service_propagates_errors() {
-    let app = Router::new().route::<_, Body>("/echo", service::post(Svc));
+    let app = Router::new().route("/echo", service::post::<_, Body>(Svc));
 
     check_make_svc::<_, _, _, hyper::Error>(app.into_make_service());
 }
 
 #[test]
 fn service_nested_propagates_errors() {
-    let app =
-        Router::new().route::<_, Body>("/echo", Router::new().nest("/foo", service::post(Svc)));
+    let app = Router::new().route(
+        "/echo",
+        Router::new().nest("/foo", service::post::<_, Body>(Svc)),
+    );
 
     check_make_svc::<_, _, _, hyper::Error>(app.into_make_service());
 }
 
 #[test]
 fn service_handle_on_method() {
-    let app = Router::new().route::<_, Body>(
+    let app = Router::new().route(
         "/echo",
-        service::get(Svc).handle_error(handle_error::<hyper::Error>),
+        service::get::<_, Body>(Svc).handle_error(handle_error::<hyper::Error>),
     );
 
     check_make_svc::<_, _, _, Infallible>(app.into_make_service());
@@ -157,9 +159,9 @@ fn service_handle_on_method() {
 
 #[test]
 fn service_handle_on_method_multiple() {
-    let app = Router::new().route::<_, Body>(
+    let app = Router::new().route(
         "/echo",
-        service::get(Svc)
+        service::get::<_, Body>(Svc)
             .post(Svc)
             .handle_error(handle_error::<hyper::Error>),
     );
@@ -170,7 +172,7 @@ fn service_handle_on_method_multiple() {
 #[test]
 fn service_handle_on_router() {
     let app = Router::new()
-        .route::<_, Body>("/echo", service::get(Svc))
+        .route("/echo", service::get::<_, Body>(Svc))
         .handle_error(handle_error::<hyper::Error>);
 
     check_make_svc::<_, _, _, Infallible>(app.into_make_service());
@@ -179,7 +181,7 @@ fn service_handle_on_router() {
 #[test]
 fn service_handle_on_router_still_impls_routing_dsl() {
     let app = Router::new()
-        .route::<_, Body>("/echo", service::get(Svc))
+        .route("/echo", service::get::<_, Body>(Svc))
         .handle_error(handle_error::<hyper::Error>)
         .route("/", get(unit));
 
@@ -189,7 +191,7 @@ fn service_handle_on_router_still_impls_routing_dsl() {
 #[test]
 fn layered() {
     let app = Router::new()
-        .route::<_, Body>("/echo", get(unit))
+        .route("/echo", get::<_, Body, _>(unit))
         .layer(timeout())
         .handle_error(handle_error::<BoxError>);
 
@@ -199,7 +201,7 @@ fn layered() {
 #[tokio::test] // async because of `.boxed()`
 async fn layered_boxed() {
     let app = Router::new()
-        .route::<_, Body>("/echo", get(unit))
+        .route("/echo", get::<_, Body, _>(unit))
         .layer(timeout())
         .boxed()
         .handle_error(handle_error::<BoxError>);
