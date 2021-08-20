@@ -191,9 +191,9 @@ fn service_handle_on_router_still_impls_routing_dsl() {
 #[test]
 fn layered() {
     let app = Router::new()
-        .route("/echo", get(unit))
+        .route("/echo", get::<_, Body, _>(unit))
         .layer(timeout())
-        .handle_error::<Body, _>(handle_error::<BoxError>);
+        .handle_error(handle_error::<BoxError>);
 
     check_make_svc::<_, _, _, Infallible>(app.into_make_service());
 }
@@ -201,9 +201,9 @@ fn layered() {
 #[tokio::test] // async because of `.boxed()`
 async fn layered_boxed() {
     let app = Router::new()
-        .route("/echo", get(unit))
+        .route("/echo", get::<_, Body, _>(unit))
         .layer(timeout())
-        .boxed::<Body, _>()
+        .boxed()
         .handle_error(handle_error::<BoxError>);
 
     check_make_svc::<_, _, _, Infallible>(app.into_make_service());

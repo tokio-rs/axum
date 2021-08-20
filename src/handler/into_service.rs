@@ -1,9 +1,5 @@
 use super::Handler;
-use crate::{
-    body::{box_body, BoxBody},
-    extract::{FromRequest, RequestParts},
-    response::IntoResponse,
-};
+use crate::body::BoxBody;
 use http::{Request, Response};
 use std::{
     convert::Infallible,
@@ -16,12 +12,12 @@ use tower::Service;
 /// An adapter that makes a [`Handler`] into a [`Service`].
 ///
 /// Created with [`Handler::into_service`].
-pub struct IntoService<H, T> {
+pub struct IntoService<H, B, T> {
     handler: H,
-    _marker: PhantomData<fn() -> T>,
+    _marker: PhantomData<fn() -> (B, T)>,
 }
 
-impl<H, T> IntoService<H, T> {
+impl<H, B, T> IntoService<H, B, T> {
     pub(super) fn new(handler: H) -> Self {
         Self {
             handler,
@@ -30,7 +26,7 @@ impl<H, T> IntoService<H, T> {
     }
 }
 
-impl<H, T> fmt::Debug for IntoService<H, T> {
+impl<H, B, T> fmt::Debug for IntoService<H, B, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("IntoService")
             .field(&format_args!("..."))
@@ -38,7 +34,7 @@ impl<H, T> fmt::Debug for IntoService<H, T> {
     }
 }
 
-impl<H, T> Clone for IntoService<H, T>
+impl<H, B, T> Clone for IntoService<H, B, T>
 where
     H: Clone,
 {
@@ -50,11 +46,9 @@ where
     }
 }
 
-impl<H, T, B> Service<Request<B>> for IntoService<H, T>
+impl<H, T, B> Service<Request<B>> for IntoService<H, B, T>
 where
-    H: Handler<T>,
-    T: FromRequest<B> + Send,
-    T::Rejection: Send,
+    H: Handler<B, T> + Clone + Send + 'static,
     B: Send + 'static,
 {
     type Response = Response<BoxBody>;
@@ -69,16 +63,10 @@ where
     }
 
     fn call(&mut self, req: Request<B>) -> Self::Future {
+        use futures_util::future::FutureExt;
+
         let handler = self.handler.clone();
-        let future = Box::pin(async move {
-            let mut req = RequestParts::new(req);
-            let input = T::from_request(&mut req).await;
-            let res = match input {
-                Ok(input) => Handler::call(handler, input).await,
-                Err(rejection) => rejection.into_response().map(box_body),
-            };
-            Ok::<_, Infallible>(res)
-        });
+        let future = Handler::call(handler, req).map(Ok::<_, Infallible> as _);
 
         super::future::IntoServiceFuture { future }
     }
