@@ -444,8 +444,8 @@
 //! use axum::{
 //!     body::Body,
 //!     handler::{get, Handler},
-//!     http::Request,
-//!     response::{Html, Json},
+//!     http::{Request, header::{HeaderMap, HeaderName, HeaderValue}},
+//!     response::{IntoResponse, Html, Json, Headers},
 //!     Router,
 //! };
 //! use http::{StatusCode, Response, Uri};
@@ -480,6 +480,33 @@
 //!     (StatusCode::INTERNAL_SERVER_ERROR, "Something went wrong")
 //! }
 //!
+//! // A tuple of `HeaderMap` and something that implements `IntoResponse` can
+//! // be used to override the headers
+//! async fn with_headers() -> (HeaderMap, &'static str) {
+//!     let mut headers = HeaderMap::new();
+//!     headers.insert(
+//!         HeaderName::from_static("x-foo"),
+//!         HeaderValue::from_static("foo"),
+//!     );
+//!     (headers, "foo")
+//! }
+//!
+//! // You can also override both status and headers at the same time
+//! async fn with_headers_and_status() -> (StatusCode, HeaderMap, &'static str) {
+//!     let mut headers = HeaderMap::new();
+//!     headers.insert(
+//!         HeaderName::from_static("x-foo"),
+//!         HeaderValue::from_static("foo"),
+//!     );
+//!     (StatusCode::INTERNAL_SERVER_ERROR, headers, "foo")
+//! }
+//!
+//! // `Headers` makes building the header map easier and `impl Trait` is easier
+//! // so you don't have to write the whole type
+//! async fn with_easy_headers() -> impl IntoResponse {
+//!     Headers(vec![("x-foo", "foo")])
+//! }
+//!
 //! // `Html` gives a content-type of `text/html`
 //! async fn html() -> Html<&'static str> {
 //!     Html("<h1>Hello, World!</h1>")
@@ -509,6 +536,9 @@
 //!     .route("/empty", get(empty))
 //!     .route("/empty_with_status", get(empty_with_status))
 //!     .route("/with_status", get(with_status))
+//!     .route("/with_headers", get(with_headers))
+//!     .route("/with_headers_and_status", get(with_headers_and_status))
+//!     .route("/with_easy_headers", get(with_easy_headers))
 //!     .route("/html", get(html))
 //!     .route("/json", get(json))
 //!     .route("/result", get(result))
