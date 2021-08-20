@@ -706,10 +706,6 @@ where
 
         let mut res = Response::new(crate::body::empty());
 
-        // if request.extensions().get::<OrDepth>().is_some() {
-        //     res.extensions_mut().insert(FromEmptyRouter { request });
-        // }
-
         // XXX: we can't actually ship this because of
         // https://github.com/hyperium/hyper/issues/2621
         res.extensions_mut().insert(FromEmptyRouter { request });
@@ -732,39 +728,6 @@ struct NoMethodMatch;
 /// from [`EmptyRouter`] and therefore can be discarded in [`Or`].
 struct FromEmptyRouter<B> {
     request: Request<B>,
-}
-
-/// We need to track whether we're inside an `Or` or not, and only if we then
-/// should we save the request into the response extensions.
-///
-/// This is to work around https://github.com/hyperium/hyper/issues/2621.
-///
-/// Since ours can be nested we have to track the depth to know when we're
-/// leaving the top most `Or`.
-///
-/// Hopefully when https://github.com/hyperium/hyper/issues/2621 is resolved we
-/// can remove this nasty hack.
-#[derive(Debug)]
-struct OrDepth(usize);
-
-impl OrDepth {
-    fn new() -> Self {
-        Self(1)
-    }
-
-    fn increment(&mut self) {
-        self.0 += 1;
-    }
-
-    fn decrement(&mut self) {
-        self.0 -= 1;
-    }
-}
-
-impl PartialEq<usize> for &mut OrDepth {
-    fn eq(&self, other: &usize) -> bool {
-        self.0 == *other
-    }
 }
 
 #[derive(Debug, Clone)]
