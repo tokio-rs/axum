@@ -706,8 +706,6 @@ where
 
         let mut res = Response::new(crate::body::empty());
 
-        // XXX: we can't actually ship this because of
-        // https://github.com/hyperium/hyper/issues/2621
         res.extensions_mut().insert(FromEmptyRouter { request });
 
         *res.status_mut() = self.status;

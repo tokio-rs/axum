@@ -127,7 +127,7 @@ where
         loop {
             let mut this = self.as_mut().project();
 
-            let new_state: RouteFutureInner<_, _, _> = match this.state.as_mut().project() {
+            let new_state = match this.state.as_mut().project() {
                 RouteFutureInnerProj::A { a, fallback } => {
                     let mut response = ready!(a.poll(cx))?;
 
