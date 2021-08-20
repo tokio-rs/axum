@@ -9,5 +9,5 @@ axum = { path = "../.." }
 tokio = { version = "1.0", features = ["full"] }
 tracing = "0.1"
 tracing-subscriber = "0.2"
-tower = { version = "0.4", features = ["util"] }
+tower = { version = "0.4", features = ["util", "filter"] }
 hyper = { version = "0.14", features = ["full"] }
