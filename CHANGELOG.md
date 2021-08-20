@@ -74,6 +74,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - `handler::OnMethod`
     - `routing::Nested`
 - Remove `axum::sse` ([#98](https://github.com/tokio-rs/axum/pull/98))
+- Add default feature `tower-log` which exposes `tower`'s `log` feature. ([#218](https://github.com/tokio-rs/axum/pull/218))
 
 # 0.1.3 (06. August, 2021)
 
