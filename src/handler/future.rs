@@ -2,10 +2,7 @@
 
 use crate::body::{box_body, BoxBody};
 use crate::util::{Either, EitherProj};
-use futures_util::{
-    future::{BoxFuture, Map},
-    ready,
-};
+use futures_util::{future::BoxFuture, ready};
 use http::{Method, Request, Response};
 use http_body::Empty;
 use pin_project_lite::pin_project;
