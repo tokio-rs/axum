@@ -2,10 +2,7 @@
 
 use crate::body::{box_body, BoxBody};
 use crate::util::{Either, EitherProj};
-use futures_util::{
-    future::{BoxFuture, Map},
-    ready,
-};
+use futures_util::{future::BoxFuture, ready};
 use http::{Method, Request, Response};
 use http_body::Empty;
 use pin_project_lite::pin_project;
@@ -67,8 +64,5 @@ where
 opaque_future! {
     /// The response future for [`IntoService`](super::IntoService).
     pub type IntoServiceFuture =
-        Map<
-            BoxFuture<'static, Response<BoxBody>>,
-            fn(Response<BoxBody>) -> Result<Response<BoxBody>, Infallible>,
-        >;
+        BoxFuture<'static, Result<Response<BoxBody>, Infallible>>;
 }
