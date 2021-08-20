@@ -67,8 +67,5 @@ where
 opaque_future! {
     /// The response future for [`IntoService`](super::IntoService).
     pub type IntoServiceFuture =
-        Map<
-            BoxFuture<'static, Response<BoxBody>>,
-            fn(Response<BoxBody>) -> Result<Response<BoxBody>, Infallible>,
-        >;
+        BoxFuture<'static, Result<Response<BoxBody>, Infallible>>;
 }
