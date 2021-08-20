@@ -119,10 +119,7 @@ impl<S> Router<S> {
     /// # Panics
     ///
     /// Panics if `description` doesn't start with `/`.
-    pub fn route<T, B>(self, description: &str, svc: T) -> Router<Route<T, S>>
-    where
-        T: Service<Request<B>> + Clone,
-    {
+    pub fn route<T>(self, description: &str, svc: T) -> Router<Route<T, S>> {
         self.map(|fallback| Route {
             pattern: PathPattern::new(description),
             svc,
@@ -207,10 +204,7 @@ impl<S> Router<S> {
     /// If necessary you can use [`Router::boxed`] to box a group of routes
     /// making the type easier to name. This is sometimes useful when working with
     /// `nest`.
-    pub fn nest<T, B>(self, description: &str, svc: T) -> Router<Nested<T, S>>
-    where
-        T: Service<Request<B>> + Clone,
-    {
+    pub fn nest<T>(self, description: &str, svc: T) -> Router<Nested<T, S>> {
         self.map(|fallback| Nested {
             pattern: PathPattern::new(description),
             svc,
