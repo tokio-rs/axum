@@ -1,14 +1,17 @@
 use super::{rejection::*, take_body, Extension, FromRequest, RequestParts};
-use crate::BoxError;
+use crate::{BoxError, Error};
 use async_trait::async_trait;
 use bytes::Bytes;
 use futures_util::stream::Stream;
 use http::{Extensions, HeaderMap, Method, Request, Uri, Version};
+use http_body::Body as HttpBody;
 use std::{
     convert::Infallible,
+    fmt,
     pin::Pin,
     task::{Context, Poll},
 };
+use sync_wrapper::SyncWrapper;
 
 #[async_trait]
 impl<B> FromRequest<B> for Request<B>
@@ -191,31 +194,45 @@ where
 /// ```
 ///
 /// [`Stream`]: https://docs.rs/futures/latest/futures/stream/trait.Stream.html
-#[derive(Debug)]
-pub struct BodyStream<B = crate::body::Body>(B);
+pub struct BodyStream(
+    SyncWrapper<Pin<Box<dyn http_body::Body<Data = Bytes, Error = Error> + Send + 'static>>>,
+);
 
-impl<B> Stream for BodyStream<B>
-where
-    B: http_body::Body + Unpin,
-{
-    type Item = Result<B::Data, B::Error>;
+impl Stream for BodyStream {
+    type Item = Result<Bytes, Error>;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        Pin::new(&mut self.0).poll_data(cx)
+        Pin::new(self.0.get_mut()).poll_data(cx)
     }
 }
 
 #[async_trait]
-impl<B> FromRequest<B> for BodyStream<B>
+impl<B> FromRequest<B> for BodyStream
 where
-    B: http_body::Body + Unpin + Send,
+    B: HttpBody + Send + 'static,
+    B::Data: Into<Bytes>,
+    B::Error: Into<BoxError>,
 {
     type Rejection = BodyAlreadyExtracted;
 
     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-        let body = take_body(req)?;
-        let stream = BodyStream(body);
+        let body = take_body(req)?
+            .map_data(Into::into)
+            .map_err(|err| Error::new(err.into()));
+        let stream = BodyStream(SyncWrapper::new(Box::pin(body)));
         Ok(stream)
+    }
+}
+
+#[test]
+fn body_stream_traits() {
+    crate::tests::assert_send::<BodyStream>();
+    crate::tests::assert_sync::<BodyStream>();
+}
+
+impl fmt::Debug for BodyStream {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_tuple("BodyStream").finish()
     }
 }
 
