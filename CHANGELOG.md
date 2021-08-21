@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Support matching different HTTP methods for the same route that aren't defined
   together. So `Router::new().route("/", get(...)).route("/", post(...))` now
   accepts both `GET` and `POST`. Previously only `POST` would be accepted ([#224](https://github.com/tokio-rs/axum/pull/224))
+- Add `body::StreamBody` for easily responding with a stream of byte chunks
 
 ## Breaking changes
 
