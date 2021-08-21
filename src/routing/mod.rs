@@ -19,6 +19,7 @@ use std::{
     borrow::Cow,
     convert::Infallible,
     fmt,
+    future::ready,
     marker::PhantomData,
     sync::Arc,
     task::{Context, Poll},
@@ -713,7 +714,7 @@ where
 
         *res.status_mut() = self.status;
         EmptyRouterFuture {
-            future: futures_util::future::ok(res),
+            future: ready(Ok(res)),
         }
     }
 }
@@ -1050,7 +1051,7 @@ where
 
     fn call(&mut self, _target: T) -> Self::Future {
         future::MakeRouteServiceFuture {
-            future: futures_util::future::ready(Ok(self.service.clone())),
+            future: ready(Ok(self.service.clone())),
         }
     }
 }

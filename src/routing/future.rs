@@ -22,7 +22,7 @@ pub use super::or::ResponseFuture as OrResponseFuture;
 opaque_future! {
     /// Response future for [`EmptyRouter`](super::EmptyRouter).
     pub type EmptyRouterFuture<E> =
-        futures_util::future::Ready<Result<Response<BoxBody>, E>>;
+        std::future::Ready<Result<Response<BoxBody>, E>>;
 }
 
 pin_project! {
@@ -185,5 +185,5 @@ where
 opaque_future! {
     /// Response future from [`MakeRouteService`] services.
     pub type MakeRouteServiceFuture<S> =
-        futures_util::future::Ready<Result<S, Infallible>>;
+        std::future::Ready<Result<S, Infallible>>;
 }
