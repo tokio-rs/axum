@@ -23,6 +23,16 @@ In particular the last point is what sets `axum` apart from other frameworks.
 authorization, and more, for free. It also enables you to share middleware with
 applications written using [`hyper`] or [`tonic`].
 
+## Breaking changes in 0.2
+
+Note that we're currently working on 0.2 which contain a number of [breaking
+changes]. The examples have been updated for 0.2 and wont work for the version
+released on crates.io. Look at the [0.1.3 tag][tag] instead. The example shown
+below still uses the 0.1 API.
+
+[breaking changes]: https://github.com/tokio-rs/axum/blob/main/CHANGELOG.md
+[tag]: https://github.com/tokio-rs/axum/tree/v0.1.3
+
 ## Usage example
 
 ```rust
