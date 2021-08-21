@@ -46,7 +46,7 @@ where
 }
 
 #[async_trait]
-impl<B> FromRequest<B> for Body<B>
+impl<B> FromRequest<B> for RawBody<B>
 where
     B: Send,
 {
@@ -219,19 +219,19 @@ where
     }
 }
 
-/// Extractor that extracts the request body.
+/// Extractor that extracts the raw request body.
 ///
 /// # Example
 ///
 /// ```rust,no_run
 /// use axum::{
-///     extract::Body,
+///     extract::RawBody,
 ///     handler::get,
 ///     Router,
 /// };
 /// use futures::StreamExt;
 ///
-/// async fn handler(Body(body): Body) {
+/// async fn handler(RawBody(body): RawBody) {
 ///     // ...
 /// }
 ///
@@ -241,7 +241,7 @@ where
 /// # };
 /// ```
 #[derive(Debug, Default, Clone)]
-pub struct Body<B = crate::body::Body>(pub B);
+pub struct RawBody<B = crate::body::Body>(pub B);
 
 #[async_trait]
 impl<B> FromRequest<B> for Bytes
