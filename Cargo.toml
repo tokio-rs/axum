@@ -36,6 +36,8 @@ serde_urlencoded = "0.7"
 tokio = { version = "1", features = ["time"] }
 tokio-util = "0.6"
 tower = { version = "0.4", default-features = false, features = ["util", "buffer", "make"] }
+tower-service = "0.3"
+tower-layer = "0.3"
 tower-http = { version = "0.1", features = ["add-extension", "map-response-body"] }
 sync_wrapper = "0.1.1"
 
@@ -56,6 +58,7 @@ uuid = { version = "0.8", features = ["serde", "v4"] }
 tokio-stream = "0.1"
 
 [dev-dependencies.tower]
+package = "tower"
 version = "0.4"
 features = [
     "util",

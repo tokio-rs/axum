@@ -28,6 +28,7 @@
 //! ```
 
 use crate::response::IntoResponse;
+use crate::BoxError;
 use bytes::Bytes;
 use futures_util::{
     ready,
@@ -48,7 +49,6 @@ use std::{
 };
 use sync_wrapper::SyncWrapper;
 use tokio::time::Sleep;
-use tower::BoxError;
 
 /// Create a new [`Sse`] response that will respond with the given stream of
 /// [`Event`]s.

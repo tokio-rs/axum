@@ -3,6 +3,7 @@
 //! See [`extractor_middleware`] for more details.
 
 use super::{FromRequest, RequestParts};
+use crate::BoxError;
 use crate::{body::BoxBody, response::IntoResponse};
 use bytes::Bytes;
 use futures_util::{future::BoxFuture, ready};
@@ -15,7 +16,8 @@ use std::{
     pin::Pin,
     task::{Context, Poll},
 };
-use tower::{BoxError, Layer, Service};
+use tower_layer::Layer;
+use tower_service::Service;
 
 /// Convert an extractor into a middleware.
 ///

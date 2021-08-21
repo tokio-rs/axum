@@ -1,6 +1,7 @@
 //! Rejection response types.
 
 use super::IntoResponse;
+use crate::BoxError;
 use crate::{
     body::{box_body, BoxBody},
     Error,
@@ -8,7 +9,6 @@ use crate::{
 use bytes::Bytes;
 use http_body::Full;
 use std::convert::Infallible;
-use tower::BoxError;
 
 define_rejection! {
     #[status = INTERNAL_SERVER_ERROR]

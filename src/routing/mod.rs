@@ -10,6 +10,7 @@ use crate::{
     },
     service::HandleError,
     util::ByteStr,
+    BoxError,
 };
 use bytes::Bytes;
 use http::{Request, Response, StatusCode, Uri};
@@ -24,16 +25,18 @@ use std::{
 };
 use tower::{
     util::{BoxService, ServiceExt},
-    BoxError, Layer, Service, ServiceBuilder,
+    ServiceBuilder,
 };
 use tower_http::map_response_body::MapResponseBodyLayer;
+use tower_layer::Layer;
+use tower_service::Service;
 
 pub mod future;
+
+mod method_filter;
 mod or;
 
 pub use self::{method_filter::MethodFilter, or::Or};
-
-mod method_filter;
 
 /// The router type for composing handlers and services.
 #[derive(Debug, Clone)]
@@ -358,11 +361,11 @@ impl<S> Router<S> {
     /// ```
     ///
     /// [`MakeService`]: tower::make::MakeService
-    pub fn into_make_service(self) -> tower::make::Shared<S>
+    pub fn into_make_service(self) -> IntoMakeService<S>
     where
         S: Clone,
     {
-        tower::make::Shared::new(self.svc)
+        IntoMakeService::new(self.svc)
     }
 
     /// Convert this router into a [`MakeService`], that will store `C`'s
@@ -1016,6 +1019,39 @@ where
     #[inline]
     fn call(&mut self, req: R) -> Self::Future {
         self.0.call(req)
+    }
+}
+
+/// A [`MakeService`] that produces axum router services.
+///
+/// [`MakeService`]: tower::make::MakeService
+#[derive(Debug, Clone)]
+pub struct IntoMakeService<S> {
+    service: S,
+}
+
+impl<S> IntoMakeService<S> {
+    fn new(service: S) -> Self {
+        Self { service }
+    }
+}
+
+impl<S, T> Service<T> for IntoMakeService<S>
+where
+    S: Clone,
+{
+    type Response = S;
+    type Error = Infallible;
+    type Future = future::MakeRouteServiceFuture<S>;
+
+    fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        Poll::Ready(Ok(()))
+    }
+
+    fn call(&mut self, _target: T) -> Self::Future {
+        future::MakeRouteServiceFuture {
+            future: futures_util::future::ready(Ok(self.service.clone())),
+        }
     }
 }
 

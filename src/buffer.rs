@@ -8,7 +8,8 @@ use std::{
 };
 use tokio::sync::{mpsc, oneshot, OwnedSemaphorePermit, Semaphore};
 use tokio_util::sync::PollSemaphore;
-use tower::{Service, ServiceExt};
+use tower::ServiceExt;
+use tower_service::Service;
 
 /// A version of [`tower::buffer::Buffer`] which panicks on channel related errors, thus keeping
 /// the error type of the service.

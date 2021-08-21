@@ -96,6 +96,7 @@
 //! [`Redirect`]: tower_http::services::Redirect
 //! [load shed]: tower::load_shed
 
+use crate::BoxError;
 use crate::{
     body::BoxBody,
     response::IntoResponse,
@@ -108,7 +109,8 @@ use std::{
     marker::PhantomData,
     task::{Context, Poll},
 };
-use tower::{util::Oneshot, BoxError, Service, ServiceExt as _};
+use tower::{util::Oneshot, ServiceExt as _};
+use tower_service::Service;
 
 pub mod future;
 

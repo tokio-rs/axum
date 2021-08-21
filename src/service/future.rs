@@ -4,6 +4,7 @@ use crate::{
     body::{box_body, BoxBody},
     response::IntoResponse,
     util::{Either, EitherProj},
+    BoxError,
 };
 use bytes::Bytes;
 use futures_util::ready;
@@ -15,7 +16,8 @@ use std::{
     pin::Pin,
     task::{Context, Poll},
 };
-use tower::{util::Oneshot, BoxError, Service};
+use tower::util::Oneshot;
+use tower_service::Service;
 
 pin_project! {
     /// Response future for [`HandleError`](super::HandleError).

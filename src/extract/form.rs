@@ -1,10 +1,10 @@
 use super::{has_content_type, rejection::*, take_body, FromRequest, RequestParts};
+use crate::BoxError;
 use async_trait::async_trait;
 use bytes::Buf;
 use http::Method;
 use serde::de::DeserializeOwned;
 use std::ops::Deref;
-use tower::BoxError;
 
 /// Extractor that deserializes `application/x-www-form-urlencoded` requests
 /// into some type.

@@ -14,8 +14,8 @@ use std::{
     net::SocketAddr,
     task::{Context, Poll},
 };
-use tower::Service;
 use tower_http::add_extension::AddExtension;
+use tower_service::Service;
 
 /// A [`MakeService`] created from a router.
 ///
