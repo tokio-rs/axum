@@ -9,6 +9,7 @@
 //!     - [Precedence](#precedence)
 //!     - [Matching multiple methods](#matching-multiple-methods)
 //!     - [Routing to any `Service`](#routing-to-any-service)
+//!         - [Routing to fallible services](#routing-to-fallible-services)
 //!     - [Nesting routes](#nesting-routes)
 //! - [Extractors](#extractors)
 //! - [Building responses](#building-responses)
@@ -254,6 +255,83 @@
 //!
 //! Routing to arbitrary services in this way has complications for backpressure
 //! ([`Service::poll_ready`]). See the [`service`] module for more details.
+//!
+//! ### Routing to fallible services
+//!
+//! Note that routing to general services has a small gotcha when it comes to
+//! errors. axum currently does not support mixing routes to fallible services
+//! with infallible handlers. For example this does _not_ compile:
+//!
+//! ```compile_fail
+//! use axum::{
+//!     Router,
+//!     service,
+//!     handler::get,
+//!     http::{Request, Response},
+//!     body::Body,
+//! };
+//! use std::io;
+//! use tower::service_fn;
+//!
+//! let app = Router::new()
+//!     // this route cannot fail
+//!     .route("/foo", get(|| async {}))
+//!     // this route can fail with io::Error
+//!     .route(
+//!         "/",
+//!         service::get(service_fn(|_req: Request<Body>| async {
+//!             let contents = tokio::fs::read_to_string("some_file").await?;
+//!             Ok::<_, io::Error>(Response::new(Body::from(contents)))
+//!         })),
+//!     );
+//! # async {
+//! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+//! # };
+//! ```
+//!
+//! The solution is to use [`handle_error`] and handle the error from the
+//! service:
+//!
+//! ```
+//! use axum::{
+//!     Router,
+//!     service,
+//!     handler::get,
+//!     http::{Request, Response},
+//!     response::IntoResponse,
+//!     body::Body,
+//! };
+//! use std::{io, convert::Infallible};
+//! use tower::service_fn;
+//!
+//! let app = Router::new()
+//!     // this route cannot fail
+//!     .route("/foo", get(|| async {}))
+//!     // this route can fail with io::Error
+//!     .route(
+//!         "/",
+//!         service::get(service_fn(|_req: Request<Body>| async {
+//!             let contents = tokio::fs::read_to_string("some_file").await?;
+//!             Ok::<_, io::Error>(Response::new(Body::from(contents)))
+//!         }))
+//!         .handle_error(handle_io_error),
+//!     );
+//!
+//! fn handle_io_error(error: io::Error) -> Result<impl IntoResponse, Infallible> {
+//!     # Ok(())
+//!     // ...
+//! }
+//! # async {
+//! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+//! # };
+//! ```
+//!
+//! In this particular case you can also handle the error directly in
+//! `service_fn` but that is not possible, if you're routing to a service which
+//! you don't control.
+//!
+//! See ["Error handling"](#error-handling) for more details on [`handle_error`]
+//! and error handling in general.
 //!
 //! ## Nesting routes
 //!
@@ -762,6 +840,7 @@
 //! [`OriginalUri`]: crate::extract::OriginalUri
 //! [`Service`]: tower::Service
 //! [`Service::poll_ready`]: tower::Service::poll_ready
+//! [`handle_error`]: routing::Router::handle_error
 
 #![warn(
     clippy::all,
