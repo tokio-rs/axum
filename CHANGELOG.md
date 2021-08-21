@@ -9,18 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Overall compile time improvements. If you're having issues with compile time
   please file an issue!
-- Remove `prelude`. Explicit imports are now required ([#195](https://github.com/tokio-rs/axum/pull/195))
 - Add dedicated `Router` to replace the `RoutingDsl` trait ([#214](https://github.com/tokio-rs/axum/pull/214))
-- Replace `axum::route(...)` with `axum::Router::new().route(...)`. This means
-  there is now only one way to create a new router. Same goes for
-  `axum::routing::nest`. ([#215](https://github.com/tokio-rs/axum/pull/215))
 - Make `FromRequest` default to being generic over `body::Body` ([#146](https://github.com/tokio-rs/axum/pull/146))
 - Implement `std::error::Error` for all rejections ([#153](https://github.com/tokio-rs/axum/pull/153))
 - Add `Router::or` for combining routes ([#108](https://github.com/tokio-rs/axum/pull/108))
 - Add `handle_error` to `service::OnMethod` ([#160](https://github.com/tokio-rs/axum/pull/160))
 - Add `OriginalUri` for extracting original request URI in nested services ([#197](https://github.com/tokio-rs/axum/pull/197))
 - Implement `FromRequest` for `http::Extensions`
-- Implement SSE as an `IntoResponse` instead of a service ([#98](https://github.com/tokio-rs/axum/pull/98))
 - Add `Headers` for easily customizing headers on a response ([#193](https://github.com/tokio-rs/axum/pull/193))
 - Add `Redirect` response ([#192](https://github.com/tokio-rs/axum/pull/192))
 - Make `RequestParts::{new, try_into_request}` public ([#194](https://github.com/tokio-rs/axum/pull/194))
@@ -30,9 +25,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Breaking changes
 
+- Remove `prelude`. Explicit imports are now required ([#195](https://github.com/tokio-rs/axum/pull/195))
+- Replace `axum::route(...)` with `axum::Router::new().route(...)`. This means
+  there is now only one way to create a new router. Same goes for
+  `axum::routing::nest`. ([#215](https://github.com/tokio-rs/axum/pull/215))
 - Add associated `Body` and `BodyError` types to `IntoResponse`. This is
   required for returning responses with bodies other than `hyper::Body` from
   handlers. See the docs for advice on how to implement `IntoResponse` ([#86](https://github.com/tokio-rs/axum/pull/86))
+- Implement SSE as an `IntoResponse` instead of a service ([#98](https://github.com/tokio-rs/axum/pull/98))
 - Replace `body::BoxStdError` with `Error`, which supports downcasting ([#150](https://github.com/tokio-rs/axum/pull/150))
 - `get` routes will now also be called for `HEAD` requests but will always have
   the response body removed ([#129](https://github.com/tokio-rs/axum/pull/129))
