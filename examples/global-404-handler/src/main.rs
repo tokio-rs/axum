@@ -6,7 +6,8 @@
 
 use axum::{
     handler::{get, Handler},
-    response::Html,
+    http::StatusCode,
+    response::{Html, IntoResponse},
     Router,
 };
 use std::net::SocketAddr;
@@ -38,6 +39,6 @@ async fn handler() -> Html<&'static str> {
     Html("<h1>Hello, World!</h1>")
 }
 
-async fn handler_404() -> &'static str {
-    "nothing to see here"
+async fn handler_404() -> impl IntoResponse {
+    (StatusCode::NOT_FOUND, "nothing to see here")
 }
