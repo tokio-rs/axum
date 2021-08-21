@@ -6,7 +6,8 @@ use async_trait::async_trait;
 use serde::de::DeserializeOwned;
 use std::ops::{Deref, DerefMut};
 
-/// Extractor that will get captures from the URL and parse them using [`serde`](https://crates.io/crates/serde).
+/// Extractor that will get captures from the URL and parse them using
+/// [`serde`].
 ///
 /// # Example
 ///
@@ -50,8 +51,9 @@ use std::ops::{Deref, DerefMut};
 /// # };
 /// ```
 ///
-/// Path segments also can be deserialized into any type that implements [serde::Deserialize](https://docs.rs/serde/1.0.127/serde/trait.Deserialize.html).
-/// Path segment labels will be matched with struct field names.
+/// Path segments also can be deserialized into any type that implements
+/// [`serde::Deserialize`]. Path segment labels will be matched with struct
+/// field names.
 ///
 /// ```rust,no_run
 /// use axum::{
@@ -79,6 +81,38 @@ use std::ops::{Deref, DerefMut};
 /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 /// # };
 /// ```
+///
+/// If you wish to capture all path parameters you can use `HashMap` or `Vec`:
+///
+/// ```rust,no_run
+/// use axum::{
+///     extract::Path,
+///     handler::get,
+///     Router,
+/// };
+/// use std::collections::HashMap;
+///
+/// async fn params_map(
+///     Path(params): Path<HashMap<String, String>>,
+/// ) {
+///     // ...
+/// }
+///
+/// async fn params_vec(
+///     Path(params): Path<Vec<(String, String)>>,
+/// ) {
+///     // ...
+/// }
+///
+/// let app = Router::new()
+///     .route("/users/:user_id/team/:team_id", get(params_map).post(params_vec));
+/// # async {
+/// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+/// # };
+/// ```
+///
+/// [`serde`]: https://crates.io/crates/serde
+/// [`serde::Deserialize`]: https://docs.rs/serde/1.0.127/serde/trait.Deserialize.html
 #[derive(Debug)]
 pub struct Path<T>(pub T);
 
