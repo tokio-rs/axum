@@ -82,7 +82,7 @@ use std::ops::{Deref, DerefMut};
 /// # };
 /// ```
 ///
-/// If you wish to capture all path parameters you can use `HashMap`:
+/// If you wish to capture all path parameters you can use `HashMap` or `Vec`:
 ///
 /// ```rust,no_run
 /// use axum::{
@@ -92,13 +92,20 @@ use std::ops::{Deref, DerefMut};
 /// };
 /// use std::collections::HashMap;
 ///
-/// async fn users_teams_show(
+/// async fn params_map(
 ///     Path(params): Path<HashMap<String, String>>,
 /// ) {
 ///     // ...
 /// }
 ///
-/// let app = Router::new().route("/users/:user_id/team/:team_id", get(users_teams_show));
+/// async fn params_vec(
+///     Path(params): Path<Vec<(String, String)>>,
+/// ) {
+///     // ...
+/// }
+///
+/// let app = Router::new()
+///     .route("/users/:user_id/team/:team_id", get(params_map).post(params_vec));
 /// # async {
 /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 /// # };
