@@ -1,5 +1,5 @@
 use super::*;
-use futures_util::future::{pending, ready};
+use std::future::{pending, ready};
 use tower::{timeout::TimeoutLayer, MakeService};
 
 async fn unit() {}

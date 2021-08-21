@@ -9,7 +9,6 @@ use crate::{
     service, Router,
 };
 use bytes::Bytes;
-use futures_util::future::Ready;
 use http::{
     header::{HeaderMap, AUTHORIZATION},
     Request, Response, StatusCode, Uri,
@@ -17,9 +16,11 @@ use http::{
 use hyper::{Body, Server};
 use serde::Deserialize;
 use serde_json::json;
+use std::future::Ready;
 use std::{
     collections::HashMap,
     convert::Infallible,
+    future::ready,
     net::{SocketAddr, TcpListener},
     task::{Context, Poll},
     time::Duration,
@@ -550,7 +551,7 @@ async fn wrong_method_service() {
         }
 
         fn call(&mut self, _req: R) -> Self::Future {
-            futures_util::future::ok(Response::new(http_body::Empty::new()))
+            ready(Ok(Response::new(http_body::Empty::new())))
         }
     }
 

@@ -7,6 +7,7 @@
 use super::{Extension, FromRequest, RequestParts};
 use async_trait::async_trait;
 use hyper::server::conn::AddrStream;
+use std::future::ready;
 use std::{
     convert::Infallible,
     fmt,
@@ -90,7 +91,7 @@ where
         let connect_info = ConnectInfo(C::connect_info(target));
         let svc = AddExtension::new(self.svc.clone(), connect_info);
         ResponseFuture {
-            future: futures_util::future::ok(svc),
+            future: ready(Ok(svc)),
         }
     }
 }
@@ -98,7 +99,7 @@ where
 opaque_future! {
     /// Response future for [`IntoMakeServiceWithConnectInfo`].
     pub type ResponseFuture<T> =
-        futures_util::future::Ready<Result<T, Infallible>>;
+        std::future::Ready<Result<T, Infallible>>;
 }
 
 /// Extractor for getting connection information produced by a [`Connected`].
