@@ -1,9 +1,7 @@
+use super::*;
+use crate::{extract::OriginalUri, response::IntoResponse, Json};
 use serde_json::{json, Value};
 use tower::{limit::ConcurrencyLimitLayer, timeout::TimeoutLayer};
-
-use crate::{extract::OriginalUri, response::IntoResponse, Json};
-
-use super::*;
 
 #[tokio::test]
 async fn basic() {

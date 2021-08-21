@@ -1,11 +1,14 @@
 use super::IntoResponse;
-use crate::body::{box_body, BoxBody};
+use crate::{
+    body::{box_body, BoxBody},
+    BoxError,
+};
 use bytes::Bytes;
 use http::header::{HeaderMap, HeaderName, HeaderValue};
 use http::{Response, StatusCode};
 use http_body::{Body, Full};
 use std::{convert::TryInto, fmt};
-use tower::{util::Either, BoxError};
+use tower::util::Either;
 
 /// A response with headers.
 ///

@@ -81,7 +81,7 @@ macro_rules! define_rejection {
         impl $name {
             pub(crate) fn from_err<E>(err: E) -> Self
             where
-                E: Into<tower::BoxError>,
+                E: Into<crate::BoxError>,
             {
                 Self(crate::Error::new(err))
             }

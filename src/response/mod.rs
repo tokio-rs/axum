@@ -2,7 +2,7 @@
 
 use crate::{
     body::{box_body, BoxBody},
-    Error,
+    BoxError, Error,
 };
 use bytes::Bytes;
 use http::{header, HeaderMap, HeaderValue, Response, StatusCode};
@@ -11,7 +11,6 @@ use http_body::{
     Empty, Full,
 };
 use std::{borrow::Cow, convert::Infallible};
-use tower::{util::Either, BoxError};
 
 mod headers;
 mod redirect;
@@ -151,22 +150,6 @@ impl IntoResponse for Infallible {
 
     fn into_response(self) -> Response<Self::Body> {
         match self {}
-    }
-}
-
-impl<T, K> IntoResponse for Either<T, K>
-where
-    T: IntoResponse,
-    K: IntoResponse,
-{
-    type Body = BoxBody;
-    type BodyError = Error;
-
-    fn into_response(self) -> Response<Self::Body> {
-        match self {
-            Either::A(inner) => inner.into_response().map(box_body),
-            Either::B(inner) => inner.into_response().map(box_body),
-        }
     }
 }
 

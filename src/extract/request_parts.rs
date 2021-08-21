@@ -1,4 +1,5 @@
 use super::{rejection::*, take_body, Extension, FromRequest, RequestParts};
+use crate::BoxError;
 use async_trait::async_trait;
 use bytes::Bytes;
 use futures_util::stream::Stream;
@@ -8,7 +9,6 @@ use std::{
     pin::Pin,
     task::{Context, Poll},
 };
-use tower::BoxError;
 
 #[async_trait]
 impl<B> FromRequest<B> for Request<B>

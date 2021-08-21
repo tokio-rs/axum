@@ -1,7 +1,7 @@
 //! HTTP body utilities.
 
+use crate::BoxError;
 use crate::Error;
-use tower::BoxError;
 
 #[doc(no_inline)]
 pub use http_body::{Body as HttpBody, Empty, Full};

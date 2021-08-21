@@ -832,3 +832,6 @@ pub use tower_http::add_extension::{AddExtension, AddExtensionLayer};
 
 #[doc(inline)]
 pub use self::{error::Error, json::Json, routing::Router};
+
+/// Alias for a type-erased error type.
+pub type BoxError = Box<dyn std::error::Error + Send + Sync>;

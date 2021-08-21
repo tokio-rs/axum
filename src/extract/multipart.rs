@@ -3,6 +3,7 @@
 //! See [`Multipart`] for more details.
 
 use super::{rejection::*, BodyStream, FromRequest, RequestParts};
+use crate::BoxError;
 use async_trait::async_trait;
 use bytes::Bytes;
 use futures_util::stream::Stream;
@@ -13,7 +14,6 @@ use std::{
     pin::Pin,
     task::{Context, Poll},
 };
-use tower::BoxError;
 
 /// Extractor that parses `multipart/form-data` requests commonly used with file uploads.
 ///

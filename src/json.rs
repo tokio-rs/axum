@@ -1,3 +1,4 @@
+use crate::BoxError;
 use crate::{
     extract::{has_content_type, rejection::*, take_body, FromRequest, RequestParts},
     response::IntoResponse,
@@ -15,7 +16,6 @@ use std::{
     convert::Infallible,
     ops::{Deref, DerefMut},
 };
-use tower::BoxError;
 
 /// JSON Extractor/Response
 ///

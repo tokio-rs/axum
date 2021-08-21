@@ -7,6 +7,7 @@ use crate::{
     routing::{EmptyRouter, MethodFilter},
     service::HandleError,
     util::Either,
+    BoxError,
 };
 use async_trait::async_trait;
 use bytes::Bytes;
@@ -18,7 +19,9 @@ use std::{
     marker::PhantomData,
     task::{Context, Poll},
 };
-use tower::{BoxError, Layer, Service, ServiceExt};
+use tower::ServiceExt;
+use tower_layer::Layer;
+use tower_service::Service;
 
 pub mod future;
 mod into_service;

@@ -7,7 +7,7 @@ use std::{
     marker::PhantomData,
     task::{Context, Poll},
 };
-use tower::Service;
+use tower_service::Service;
 
 /// An adapter that makes a [`Handler`] into a [`Service`].
 ///

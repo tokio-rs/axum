@@ -1,10 +1,11 @@
 //! Future types.
 
-use crate::{body::BoxBody, buffer::MpscBuffer, routing::FromEmptyRouter};
+use crate::{body::BoxBody, buffer::MpscBuffer, routing::FromEmptyRouter, BoxError};
 use futures_util::ready;
 use http::{Request, Response};
 use pin_project_lite::pin_project;
 use std::{
+    convert::Infallible,
     fmt,
     future::Future,
     pin::Pin,
@@ -12,8 +13,9 @@ use std::{
 };
 use tower::{
     util::{BoxService, Oneshot},
-    BoxError, Service, ServiceExt,
+    ServiceExt,
 };
+use tower_service::Service;
 
 pub use super::or::ResponseFuture as OrResponseFuture;
 
@@ -178,4 +180,10 @@ where
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         self.project().inner.poll(cx)
     }
+}
+
+opaque_future! {
+    /// Response future from [`MakeRouteService`] services.
+    pub type MakeRouteServiceFuture<S> =
+        futures_util::future::Ready<Result<S, Infallible>>;
 }

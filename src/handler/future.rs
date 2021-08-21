@@ -16,7 +16,8 @@ use std::{
     pin::Pin,
     task::{Context, Poll},
 };
-use tower::{util::Oneshot, Service};
+use tower::util::Oneshot;
+use tower_service::Service;
 
 pin_project! {
     /// The response future for [`OnMethod`](super::OnMethod).

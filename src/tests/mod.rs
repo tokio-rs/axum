@@ -1,5 +1,6 @@
 #![allow(clippy::blacklisted_name)]
 
+use crate::BoxError;
 use crate::{
     extract,
     handler::{any, delete, get, on, patch, post, Handler},
@@ -23,7 +24,8 @@ use std::{
     task::{Context, Poll},
     time::Duration,
 };
-use tower::{make::Shared, service_fn, BoxError, Service};
+use tower::{make::Shared, service_fn};
+use tower_service::Service;
 
 mod get_to_head;
 mod handle_error;
