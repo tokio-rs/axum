@@ -140,8 +140,8 @@ impl<S> Router<S> {
     /// use http::Uri;
     ///
     /// async fn users_get(uri: Uri) {
-    ///     // `users_get` will still see the whole URI.
-    ///     assert_eq!(uri.path(), "/api/users");
+    ///     // `uri` will be `/users` since `nest` strips the matching prefix.
+    ///     // use `OriginalUri` to always get the full URI.
     /// }
     ///
     /// async fn users_post() {}
@@ -150,11 +150,18 @@ impl<S> Router<S> {
     ///
     /// let users_api = Router::new().route("/users", get(users_get).post(users_post));
     ///
-    /// let app = Router::new().nest("/api", users_api).route("/careers", get(careers));
+    /// let app = Router::new()
+    ///     .nest("/api", users_api)
+    ///     .route("/careers", get(careers));
     /// # async {
     /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
     /// # };
     /// ```
+    ///
+    /// Note that nested routes will not see the orignal request URI but instead
+    /// have the matched prefix stripped. This is necessary for services like static
+    /// file serving to work. Use [`OriginalUri`] if you need the original request
+    /// URI.
     ///
     /// Take care when using `nest` together with dynamic routes as nesting also
     /// captures from the outer routes:
@@ -204,6 +211,8 @@ impl<S> Router<S> {
     /// If necessary you can use [`Router::boxed`] to box a group of routes
     /// making the type easier to name. This is sometimes useful when working with
     /// `nest`.
+    ///
+    /// [`OriginalUri`]: crate::extract::OriginalUri
     pub fn nest<T>(self, description: &str, svc: T) -> Router<Nested<T, S>> {
         self.map(|fallback| Nested {
             pattern: PathPattern::new(description),

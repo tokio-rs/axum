@@ -9,7 +9,7 @@
 //!     - [Precedence](#precedence)
 //!     - [Matching multiple methods](#matching-multiple-methods)
 //!     - [Routing to any `Service`](#routing-to-any-service)
-//!     - [Nesting Routes](#nesting-routes)
+//!     - [Nesting routes](#nesting-routes)
 //! - [Extractors](#extractors)
 //! - [Building responses](#building-responses)
 //! - [Applying middleware](#applying-middleware)
@@ -255,7 +255,7 @@
 //! Routing to arbitrary services in this way has complications for backpressure
 //! ([`Service::poll_ready`]). See the [`service`] module for more details.
 //!
-//! ## Nesting Routes
+//! ## Nesting routes
 //!
 //! Routes can be nested by calling [`Router::nest`](routing::Router::nest):
 //!
