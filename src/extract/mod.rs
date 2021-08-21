@@ -254,7 +254,7 @@
 //!         "/body",
 //!         // `extract::Body` defaults to `axum::body::Body`
 //!         // but can be customized
-//!         get(|_: extract::Body<MyBody<Body>>| async {})
+//!         get(|_: extract::RawBody<MyBody<Body>>| async {})
 //!     )
 //!     .route(
 //!         "/body-stream",
@@ -310,7 +310,7 @@ pub use self::{
     query::Query,
     raw_query::RawQuery,
     request_parts::OriginalUri,
-    request_parts::{Body, BodyStream},
+    request_parts::{BodyStream, RawBody},
 };
 #[doc(no_inline)]
 pub use crate::Json;

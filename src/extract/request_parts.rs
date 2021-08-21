@@ -49,7 +49,7 @@ where
 }
 
 #[async_trait]
-impl<B> FromRequest<B> for Body<B>
+impl<B> FromRequest<B> for RawBody<B>
 where
     B: Send,
 {
@@ -224,31 +224,31 @@ where
     }
 }
 
-#[test]
-fn body_stream_traits() {
-    crate::tests::assert_send::<BodyStream>();
-    crate::tests::assert_sync::<BodyStream>();
-}
-
 impl fmt::Debug for BodyStream {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("BodyStream").finish()
     }
 }
 
-/// Extractor that extracts the request body.
+#[test]
+fn body_stream_traits() {
+    crate::tests::assert_send::<BodyStream>();
+    crate::tests::assert_sync::<BodyStream>();
+}
+
+/// Extractor that extracts the raw request body.
 ///
 /// # Example
 ///
 /// ```rust,no_run
 /// use axum::{
-///     extract::Body,
+///     extract::RawBody,
 ///     handler::get,
 ///     Router,
 /// };
 /// use futures::StreamExt;
 ///
-/// async fn handler(Body(body): Body) {
+/// async fn handler(RawBody(body): RawBody) {
 ///     // ...
 /// }
 ///
@@ -258,7 +258,7 @@ impl fmt::Debug for BodyStream {
 /// # };
 /// ```
 #[derive(Debug, Default, Clone)]
-pub struct Body<B = crate::body::Body>(pub B);
+pub struct RawBody<B = crate::body::Body>(pub B);
 
 #[async_trait]
 impl<B> FromRequest<B> for Bytes
