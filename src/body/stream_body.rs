@@ -17,6 +17,10 @@ use sync_wrapper::SyncWrapper;
 pin_project! {
     /// An [`http_body::Body`] created from a [`Stream`].
     ///
+    /// If purpose of this type is to be used in responses. If you want to
+    /// extract the request body as a stream consider using
+    /// [`extract::BodyStream`].
+    ///
     /// # Example
     ///
     /// ```

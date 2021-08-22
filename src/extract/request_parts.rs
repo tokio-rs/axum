@@ -1,5 +1,5 @@
 use super::{rejection::*, take_body, Extension, FromRequest, RequestParts};
-use crate::{BoxError, Error};
+use crate::{body::Body, BoxError, Error};
 use async_trait::async_trait;
 use bytes::Bytes;
 use futures_util::stream::Stream;
@@ -171,6 +171,11 @@ where
 
 /// Extractor that extracts the request body as a [`Stream`].
 ///
+/// Note if your request body is [`body::Body`] you can extract that directly
+/// and since it already implements [`Stream`] you don't need this type. The
+/// purpose of this type is to extract other types of request bodies as a
+/// [`Stream`].
+///
 /// # Example
 ///
 /// ```rust,no_run
@@ -238,6 +243,9 @@ fn body_stream_traits() {
 
 /// Extractor that extracts the raw request body.
 ///
+/// Note that [`body::Body`] can be extracted directly. This purpose of this
+/// type is to extract other types of request bodies.
+///
 /// # Example
 ///
 /// ```rust,no_run
@@ -258,7 +266,7 @@ fn body_stream_traits() {
 /// # };
 /// ```
 #[derive(Debug, Default, Clone)]
-pub struct RawBody<B = crate::body::Body>(pub B);
+pub struct RawBody<B = Body>(pub B);
 
 #[async_trait]
 impl<B> FromRequest<B> for Bytes
@@ -277,6 +285,15 @@ where
             .map_err(FailedToBufferBody::from_err)?;
 
         Ok(bytes)
+    }
+}
+
+#[async_trait]
+impl FromRequest<Body> for Body {
+    type Rejection = BodyAlreadyExtracted;
+
+    async fn from_request(req: &mut RequestParts<Body>) -> Result<Self, Self::Rejection> {
+        req.take_body().ok_or(BodyAlreadyExtracted)
     }
 }
 
