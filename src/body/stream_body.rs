@@ -99,4 +99,5 @@ impl Body for StreamBody {
 fn stream_body_traits() {
     crate::tests::assert_send::<StreamBody>();
     crate::tests::assert_sync::<StreamBody>();
+    crate::tests::assert_unpin::<StreamBody>();
 }
