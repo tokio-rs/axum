@@ -1,9 +1,12 @@
-use crate::{BoxError, Error};
+use crate::{response::IntoResponse, BoxError, Error};
 use bytes::Bytes;
-use futures_util::stream::{self, Stream, TryStreamExt};
-use http::HeaderMap;
+use futures_util::{
+    ready,
+    stream::{self, TryStream},
+};
+use http::{HeaderMap, Response};
 use http_body::Body;
-use std::convert::Infallible;
+use pin_project_lite::pin_project;
 use std::{
     fmt,
     pin::Pin,
@@ -11,80 +14,108 @@ use std::{
 };
 use sync_wrapper::SyncWrapper;
 
-/// An [`http_body::Body`] created from a [`Stream`].
-///
-/// # Example
-///
-/// ```
-/// use axum::{
-///     Router,
-///     handler::get,
-///     body::StreamBody,
-/// };
-/// use futures::stream;
-///
-/// async fn handler() -> StreamBody {
-///     let chunks: Vec<Result<_, std::io::Error>> = vec![
-///         Ok("Hello,"),
-///         Ok(" "),
-///         Ok("world!"),
-///     ];
-///     let stream = stream::iter(chunks);
-///     StreamBody::new(stream)
-/// }
-///
-/// let app = Router::new().route("/", get(handler));
-/// # async {
-/// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-/// # };
-/// ```
-///
-/// [`Stream`]: futures_util::stream::Stream
-// this should probably be extracted to `http_body`, eventually...
-pub struct StreamBody {
-    stream: SyncWrapper<Pin<Box<dyn Stream<Item = Result<Bytes, Error>> + Send>>>,
+pin_project! {
+    /// An [`http_body::Body`] created from a [`Stream`].
+    ///
+    /// If purpose of this type is to be used in responses. If you want to
+    /// extract the request body as a stream consider using
+    /// [`extract::BodyStream`].
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use axum::{
+    ///     Router,
+    ///     handler::get,
+    ///     body::StreamBody,
+    ///     response::IntoResponse,
+    /// };
+    /// use futures::stream;
+    ///
+    /// async fn handler() -> impl IntoResponse {
+    ///     let chunks: Vec<Result<_, std::io::Error>> = vec![
+    ///         Ok("Hello,"),
+    ///         Ok(" "),
+    ///         Ok("world!"),
+    ///     ];
+    ///     let stream = stream::iter(chunks);
+    ///     StreamBody::new(stream)
+    /// }
+    ///
+    /// let app = Router::new().route("/", get(handler));
+    /// # async {
+    /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+    /// # };
+    /// ```
+    ///
+    /// [`Stream`]: futures_util::stream::Stream
+    pub struct StreamBody<S> {
+        #[pin]
+        stream: SyncWrapper<S>,
+    }
 }
 
-impl StreamBody {
+impl<S> StreamBody<S> {
     /// Create a new `StreamBody` from a [`Stream`].
     ///
     /// [`Stream`]: futures_util::stream::Stream
-    pub fn new<S, T, E>(stream: S) -> Self
+    pub fn new(stream: S) -> Self
     where
-        S: Stream<Item = Result<T, E>> + Send + 'static,
-        T: Into<Bytes> + 'static,
-        E: Into<BoxError> + 'static,
+        S: TryStream + Send + 'static,
+        S::Ok: Into<Bytes>,
+        S::Error: Into<BoxError>,
     {
-        let stream = stream
-            .map_ok(Into::into)
-            .map_err(|err| Error::new(err.into()));
         Self {
-            stream: SyncWrapper::new(Box::pin(stream)),
+            stream: SyncWrapper::new(stream),
         }
     }
 }
 
-impl Default for StreamBody {
-    fn default() -> Self {
-        Self::new(stream::empty::<Result<Bytes, Infallible>>())
+impl<S> IntoResponse for StreamBody<S>
+where
+    S: TryStream + Send + 'static,
+    S::Ok: Into<Bytes>,
+    S::Error: Into<BoxError>,
+{
+    type Body = Self;
+    type BodyError = Error;
+
+    fn into_response(self) -> Response<Self> {
+        Response::new(self)
     }
 }
 
-impl fmt::Debug for StreamBody {
+impl Default for StreamBody<futures_util::stream::Empty<Result<Bytes, Error>>> {
+    fn default() -> Self {
+        Self::new(stream::empty())
+    }
+}
+
+impl<S> fmt::Debug for StreamBody<S> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("StreamBody").finish()
     }
 }
 
-impl Body for StreamBody {
+impl<S> Body for StreamBody<S>
+where
+    S: TryStream,
+    S::Ok: Into<Bytes>,
+    S::Error: Into<BoxError>,
+{
     type Data = Bytes;
     type Error = Error;
 
     fn poll_data(
-        mut self: Pin<&mut Self>,
+        self: Pin<&mut Self>,
         cx: &mut Context<'_>,
     ) -> Poll<Option<Result<Self::Data, Self::Error>>> {
-        Pin::new(self.stream.get_mut()).poll_next(cx)
+        let stream = self.project().stream.get_pin_mut();
+        match ready!(stream.try_poll_next(cx)) {
+            Some(Ok(chunk)) => Poll::Ready(Some(Ok(chunk.into()))),
+            Some(Err(err)) => Poll::Ready(Some(Err(Error::new(err)))),
+            None => Poll::Ready(None),
+        }
     }
 
     fn poll_trailers(
@@ -97,7 +128,11 @@ impl Body for StreamBody {
 
 #[test]
 fn stream_body_traits() {
-    crate::tests::assert_send::<StreamBody>();
-    crate::tests::assert_sync::<StreamBody>();
-    crate::tests::assert_unpin::<StreamBody>();
+    use futures_util::stream::Empty;
+
+    type EmptyStream = StreamBody<Empty<Result<Bytes, BoxError>>>;
+
+    crate::tests::assert_send::<EmptyStream>();
+    crate::tests::assert_sync::<EmptyStream>();
+    crate::tests::assert_unpin::<EmptyStream>();
 }
