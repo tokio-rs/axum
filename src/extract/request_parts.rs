@@ -199,6 +199,7 @@ where
 /// ```
 ///
 /// [`Stream`]: https://docs.rs/futures/latest/futures/stream/trait.Stream.html
+/// [`body::Body`]: crate::body::Body
 pub struct BodyStream(
     SyncWrapper<Pin<Box<dyn http_body::Body<Data = Bytes, Error = Error> + Send + 'static>>>,
 );
@@ -265,6 +266,8 @@ fn body_stream_traits() {
 /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 /// # };
 /// ```
+///
+/// [`body::Body`]: crate::body::Body
 #[derive(Debug, Default, Clone)]
 pub struct RawBody<B = Body>(pub B);
 
