@@ -17,6 +17,9 @@
 //!     - [To individual handlers](#to-individual-handlers)
 //!     - [To groups of routes](#to-groups-of-routes)
 //!     - [Error handling](#error-handling)
+//!     - [Applying multiple middleware](#applying-multiple-middleware)
+//!     - [Commonly used middleware](#commonly-used-middleware)
+//!     - [Writing your own middleware](#writing-your-own-middleware)
 //! - [Sharing state with handlers](#sharing-state-with-handlers)
 //! - [Required dependencies](#required-dependencies)
 //! - [Examples](#examples)
@@ -605,7 +608,10 @@
 //! # Applying middleware
 //!
 //! axum is designed to take full advantage of the tower and tower-http
-//! ecosystem of middleware:
+//! ecosystem of middleware.
+//!
+//! If you're new to tower we recommend you read its [guides][tower-guides] for
+//! a general introduction to tower and its concepts.
 //!
 //! ## To individual handlers
 //!
@@ -751,6 +757,116 @@
 //! # };
 //! ```
 //!
+//! ## Commonly used middleware
+//!
+//! [`tower::util`] and [`tower_http`] have a large collection of middleware that are compatible
+//! with axum. Some commonly used are:
+//!
+//! ```rust,no_run
+//! use axum::{
+//!     body::{Body, BoxBody},
+//!     handler::get,
+//!     http::{Request, Response},
+//!     Router,
+//! };
+//! use tower::{
+//!     filter::AsyncFilterLayer,
+//!     util::AndThenLayer,
+//!     ServiceBuilder,
+//! };
+//! use std::convert::Infallible;
+//! use tower_http::trace::TraceLayer;
+//!
+//! let middleware_stack = ServiceBuilder::new()
+//!     // `TraceLayer` adds high level tracing and logging
+//!     .layer(TraceLayer::new_for_http())
+//!     // `AsyncFilterLayer` lets you asynchronously transform the request
+//!     .layer(AsyncFilterLayer::new(map_request))
+//!     // `AndThenLayer` lets you asynchronously transform the response
+//!     .layer(AndThenLayer::new(map_response))
+//!     .into_inner();
+//!
+//! async fn map_request(req: Request<Body>) -> Result<Request<Body>, Infallible> {
+//!     Ok(req)
+//! }
+//!
+//! async fn map_response(res: Response<BoxBody>) -> Result<Response<BoxBody>, Infallible> {
+//!     Ok(res)
+//! }
+//!
+//! let app = Router::new()
+//!     .route("/", get(|| async { /* ... */ }))
+//!     .layer(middleware_stack);
+//! # async {
+//! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+//! # };
+//! ```
+//!
+//! Additionally axum provides [`extract::extractor_middleware()`] for converting any extractor into
+//! a middleware. Among other things, this can be useful for doing authorization. See
+//! [`extract::extractor_middleware()`] for more details.
+//!
+//! ## Writing your own middleware
+//!
+//! You can also write you own middleware by implementing [`tower::Service`]:
+//!
+//! ```
+//! use axum::{
+//!     body::{Body, BoxBody},
+//!     handler::get,
+//!     http::{Request, Response},
+//!     Router,
+//! };
+//! use futures::future::BoxFuture;
+//! use tower::{Service, layer::layer_fn};
+//! use std::task::{Context, Poll};
+//!
+//! #[derive(Clone)]
+//! struct MyMiddleware<S> {
+//!     inner: S,
+//! }
+//!
+//! impl<S, ReqBody, ResBody> Service<Request<ReqBody>> for MyMiddleware<S>
+//! where
+//!     S: Service<Request<ReqBody>, Response = Response<ResBody>> + Clone + Send + 'static,
+//!     S::Future: Send + 'static,
+//!     ReqBody: Send + 'static,
+//!     ResBody: Send + 'static,
+//! {
+//!     type Response = S::Response;
+//!     type Error = S::Error;
+//!     type Future = BoxFuture<'static, Result<Self::Response, Self::Error>>;
+//!
+//!     fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+//!         self.inner.poll_ready(cx)
+//!     }
+//!
+//!     fn call(&mut self, mut req: Request<ReqBody>) -> Self::Future {
+//!         println!("`MyMiddleware` called!");
+//!
+//!         // best practice is to clone the inner service like this
+//!         // see https://github.com/tower-rs/tower/issues/547 for details
+//!         let clone = self.inner.clone();
+//!         let mut inner = std::mem::replace(&mut self.inner, clone);
+//!
+//!         Box::pin(async move {
+//!             let res: Response<ResBody> = inner.call(req).await?;
+//!
+//!             println!("`MyMiddleware` received the response");
+//!
+//!             Ok(res)
+//!         })
+//!     }
+//! }
+//!
+//! let app = Router::new()
+//!     .route("/", get(|| async { /* ... */ }))
+//!     .layer(layer_fn(|inner| MyMiddleware { inner }));
+//! # async {
+//! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+//! # };
+//! ```
+//!
 //! # Sharing state with handlers
 //!
 //! It is common to share some state between handlers for example to share a
@@ -840,7 +956,9 @@
 //! [`OriginalUri`]: crate::extract::OriginalUri
 //! [`Service`]: tower::Service
 //! [`Service::poll_ready`]: tower::Service::poll_ready
+//! [`tower::Service`]: tower::Service
 //! [`handle_error`]: routing::Router::handle_error
+//! [tower-guides]: https://github.com/tower-rs/tower/tree/master/guides
 
 #![warn(
     clippy::all,
