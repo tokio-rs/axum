@@ -3,6 +3,10 @@
 use crate::BoxError;
 use crate::Error;
 
+mod stream_body;
+
+pub use self::stream_body::StreamBody;
+
 #[doc(no_inline)]
 pub use http_body::{Body as HttpBody, Empty, Full};
 

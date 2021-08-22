@@ -48,6 +48,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Responses:
   - **added:** Add `Headers` for easily customizing headers on a response ([#193](https://github.com/tokio-rs/axum/pull/193))
   - **added:** Add `Redirect` response ([#192](https://github.com/tokio-rs/axum/pull/192))
+  - **added:** Add `body::StreamBody` for easily responding with a stream of byte chunks ([#237](https://github.com/tokio-rs/axum/pull/237))
   - **changed:** Add associated `Body` and `BodyError` types to `IntoResponse`. This is
     required for returning responses with bodies other than `hyper::Body` from
     handlers. See the docs for advice on how to implement `IntoResponse` ([#86](https://github.com/tokio-rs/axum/pull/86))
