@@ -198,7 +198,6 @@ macro_rules! impl_into_response_for_body {
 impl_into_response_for_body!(hyper::Body);
 impl_into_response_for_body!(Full<Bytes>);
 impl_into_response_for_body!(Empty<Bytes>);
-impl_into_response_for_body!(crate::body::StreamBody);
 
 impl<E> IntoResponse for http_body::combinators::BoxBody<Bytes, E>
 where
