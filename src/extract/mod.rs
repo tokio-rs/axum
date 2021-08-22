@@ -259,7 +259,7 @@
 //!     .route(
 //!         "/body-stream",
 //!         // same for `extract::BodyStream`
-//!         get(|_: extract::BodyStream<MyBody<Body>>| async {}),
+//!         get(|_: extract::BodyStream| async {}),
 //!     )
 //!     .route(
 //!         // and `Request<_>`
