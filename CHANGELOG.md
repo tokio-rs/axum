@@ -7,84 +7,71 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- Overall compile time improvements. If you're having issues with compile time
-  please file an issue!
-- Add dedicated `Router` to replace the `RoutingDsl` trait ([#214](https://github.com/tokio-rs/axum/pull/214))
-- Make `FromRequest` default to being generic over `body::Body` ([#146](https://github.com/tokio-rs/axum/pull/146))
-- Implement `std::error::Error` for all rejections ([#153](https://github.com/tokio-rs/axum/pull/153))
-- Add `Router::or` for combining routes ([#108](https://github.com/tokio-rs/axum/pull/108))
-- Add `handle_error` to `service::OnMethod` ([#160](https://github.com/tokio-rs/axum/pull/160))
-- Add `OriginalUri` for extracting original request URI in nested services ([#197](https://github.com/tokio-rs/axum/pull/197))
-- Implement `FromRequest` for `http::Extensions`
-- Add `Headers` for easily customizing headers on a response ([#193](https://github.com/tokio-rs/axum/pull/193))
-- Add `Redirect` response ([#192](https://github.com/tokio-rs/axum/pull/192))
-- Make `RequestParts::{new, try_into_request}` public ([#194](https://github.com/tokio-rs/axum/pull/194))
-- Support matching different HTTP methods for the same route that aren't defined
-  together. So `Router::new().route("/", get(...)).route("/", post(...))` now
-  accepts both `GET` and `POST`. Previously only `POST` would be accepted ([#224](https://github.com/tokio-rs/axum/pull/224))
-
-## Breaking changes
-
-- Remove `prelude`. Explicit imports are now required ([#195](https://github.com/tokio-rs/axum/pull/195))
-- Replace `axum::route(...)` with `axum::Router::new().route(...)`. This means
-  there is now only one way to create a new router. Same goes for
-  `axum::routing::nest`. ([#215](https://github.com/tokio-rs/axum/pull/215))
-- Add associated `Body` and `BodyError` types to `IntoResponse`. This is
-  required for returning responses with bodies other than `hyper::Body` from
-  handlers. See the docs for advice on how to implement `IntoResponse` ([#86](https://github.com/tokio-rs/axum/pull/86))
-- Implement SSE as an `IntoResponse` instead of a service ([#98](https://github.com/tokio-rs/axum/pull/98))
-- Replace `body::BoxStdError` with `Error`, which supports downcasting ([#150](https://github.com/tokio-rs/axum/pull/150))
-- `get` routes will now also be called for `HEAD` requests but will always have
-  the response body removed ([#129](https://github.com/tokio-rs/axum/pull/129))
-- Change WebSocket API to use an extractor ([#121](https://github.com/tokio-rs/axum/pull/121))
-- Make WebSocket `Message` an enum ([#116](https://github.com/tokio-rs/axum/pull/116))
-- `WebSocket` now uses `Error` as its error type ([#150](https://github.com/tokio-rs/axum/pull/150))
-  behavior ([#120](https://github.com/tokio-rs/axum/pull/120))
-- Implement `routing::MethodFilter` via [`bitflags`](https://crates.io/crates/bitflags)
-- Removed `extract::UrlParams` and `extract::UrlParamsMap`. Use `extract::Path` instead
-- `EmptyRouter` now requires the response body to implement `Send + Sync + 'static'` ([#108](https://github.com/tokio-rs/axum/pull/108))
-- `extractor_middleware` now requires `RequestBody: Default` ([#167](https://github.com/tokio-rs/axum/pull/167))
-- Convert `RequestAlreadyExtracted` to an enum with each possible error variant ([#167](https://github.com/tokio-rs/axum/pull/167))
-- `Router::check_infallible` now returns a `CheckInfallible` service. This
-  is to improve compile times.
-- `Router::into_make_service` now returns `routing::IntoMakeService` rather than
-  `tower::make::Shared` ([#229](https://github.com/tokio-rs/axum/pull/229))
-- All usage of `tower::BoxError` has been replaced with `axum::BoxError` ([#229](https://github.com/tokio-rs/axum/pull/229))
-- `tower::util::Either` no longer implements `IntoResponse` ([#229](https://github.com/tokio-rs/axum/pull/229))
-- `extract::BodyStream` is no longer generic over the request body ([#234](https://github.com/tokio-rs/axum/pull/234))
-- `extract::Body` has been renamed to `extract::RawBody` to avoid conflicting
-  with `body::Body`
-- These future types have been moved
-    - `extract::extractor_middleware::ExtractorMiddlewareResponseFuture` moved
-      to `extract::extractor_middleware::future::ResponseFuture` ([#133](https://github.com/tokio-rs/axum/pull/133))
-    - `routing::BoxRouteFuture` moved to `routing::future::BoxRouteFuture` ([#133](https://github.com/tokio-rs/axum/pull/133))
-    - `routing::EmptyRouterFuture` moved to `routing::future::EmptyRouterFuture` ([#133](https://github.com/tokio-rs/axum/pull/133))
-    - `routing::RouteFuture` moved to `routing::future::RouteFuture` ([#133](https://github.com/tokio-rs/axum/pull/133))
-    - `service::BoxResponseBodyFuture` moved to `service::future::BoxResponseBodyFuture` ([#133](https://github.com/tokio-rs/axum/pull/133))
-- The following types no longer implement `Copy` ([#132](https://github.com/tokio-rs/axum/pull/132))
-    - `EmptyRouter`
-    - `ExtractorMiddleware`
-    - `ExtractorMiddlewareLayer`
-    - `QueryStringMissing`
-- `RequestParts` changes ([#153](https://github.com/tokio-rs/axum/pull/153))
-    - `method` new returns an `&http::Method`
-    - `method_mut` new returns an `&mut http::Method`
-    - `take_method` has been removed
-    - `uri` new returns an `&http::Uri`
-    - `uri_mut` new returns an `&mut http::Uri`
-    - `take_uri` has been removed
-- These rejections have been removed as they're no longer used
-    - `MethodAlreadyExtracted` ([#153](https://github.com/tokio-rs/axum/pull/153))
-    - `UriAlreadyExtracted` ([#153](https://github.com/tokio-rs/axum/pull/153))
-    - `VersionAlreadyExtracted` ([#153](https://github.com/tokio-rs/axum/pull/153))
-    - `UrlParamsRejection`
-    - `InvalidUrlParam`
-- The following services have new response future types:
-    - `service::OnMethod`
-    - `handler::OnMethod`
-    - `routing::Nested`
-- Remove `axum::sse` ([#98](https://github.com/tokio-rs/axum/pull/98))
-- Add default feature `tower-log` which exposes `tower`'s `log` feature. ([#218](https://github.com/tokio-rs/axum/pull/218))
+- Overall:
+  - **added:** Add default feature `tower-log` which exposes `tower`'s `log` feature. ([#218](https://github.com/tokio-rs/axum/pull/218))
+  - **fixed:** Overall compile time improvements. If you're having issues with compile time
+    please file an issue! ([#184](https://github.com/tokio-rs/axum/pull/184)) ([#198](https://github.com/tokio-rs/axum/pull/198)) ([#220](https://github.com/tokio-rs/axum/pull/220))
+  - **fixed:** Remove `prelude`. Explicit imports are now required ([#195](https://github.com/tokio-rs/axum/pull/195))
+  - **changed:** Replace `body::BoxStdError` with `axum::Error`, which supports downcasting ([#150](https://github.com/tokio-rs/axum/pull/150))
+- Routing:
+  - **added:** Add dedicated `Router` to replace the `RoutingDsl` trait ([#214](https://github.com/tokio-rs/axum/pull/214))
+  - **added:** Add `Router::or` for combining routes ([#108](https://github.com/tokio-rs/axum/pull/108))
+  - **fixed:** Support matching different HTTP methods for the same route that aren't defined
+    together. So `Router::new().route("/", get(...)).route("/", post(...))` now
+    accepts both `GET` and `POST`. Previously only `POST` would be accepted ([#224](https://github.com/tokio-rs/axum/pull/224))
+  - **fixed:** `get` routes will now also be called for `HEAD` requests but will always have
+    the response body removed ([#129](https://github.com/tokio-rs/axum/pull/129))
+  - **changed:** Replace `axum::route(...)` with `axum::Router::new().route(...)`. This means
+    there is now only one way to create a new router. Same goes for
+    `axum::routing::nest`. ([#215](https://github.com/tokio-rs/axum/pull/215))
+  - **changed:** Implement `routing::MethodFilter` via [`bitflags`](https://crates.io/crates/bitflags) ([#158](https://github.com/tokio-rs/axum/pull/158))
+  - **changed:** Move `handle_error` from `ServiceExt` to `service::OnMethod` ([#160](https://github.com/tokio-rs/axum/pull/160))
+- Extractors:
+  - **added:** Make `FromRequest` default to being generic over `body::Body` ([#146](https://github.com/tokio-rs/axum/pull/146))
+  - **added:** Implement `std::error::Error` for all rejections ([#153](https://github.com/tokio-rs/axum/pull/153))
+  - **added:** Add `OriginalUri` for extracting original request URI in nested services ([#197](https://github.com/tokio-rs/axum/pull/197))
+  - **added:** Implement `FromRequest` for `http::Extensions` ([#169](https://github.com/tokio-rs/axum/pull/169))
+  - **added:** Make `RequestParts::{new, try_into_request}` public so extractors can be used outside axum ([#194](https://github.com/tokio-rs/axum/pull/194))
+  - **changed:** Removed `extract::UrlParams` and `extract::UrlParamsMap`. Use `extract::Path` instead ([#154](https://github.com/tokio-rs/axum/pull/154))
+  - **changed:** `extractor_middleware` now requires `RequestBody: Default` ([#167](https://github.com/tokio-rs/axum/pull/167))
+  - **changed:** Convert `RequestAlreadyExtracted` to an enum with each possible error variant ([#167](https://github.com/tokio-rs/axum/pull/167))
+  - **changed:** `extract::BodyStream` is no longer generic over the request body ([#234](https://github.com/tokio-rs/axum/pull/234))
+  - **changed:** `extract::Body` has been renamed to `extract::RawBody` to avoid conflicting with `body::Body` ([#233](https://github.com/tokio-rs/axum/pull/233))
+  - **changed:** `RequestParts` changes ([#153](https://github.com/tokio-rs/axum/pull/153))
+      - `method` new returns an `&http::Method`
+      - `method_mut` new returns an `&mut http::Method`
+      - `take_method` has been removed
+      - `uri` new returns an `&http::Uri`
+      - `uri_mut` new returns an `&mut http::Uri`
+      - `take_uri` has been removed
+  - **changed:** Remove several rejection types that were no longer used ([#153](https://github.com/tokio-rs/axum/pull/153)) ([#154](https://github.com/tokio-rs/axum/pull/154))
+- Responses:
+  - **added:** Add `Headers` for easily customizing headers on a response ([#193](https://github.com/tokio-rs/axum/pull/193))
+  - **added:** Add `Redirect` response ([#192](https://github.com/tokio-rs/axum/pull/192))
+  - **changed:** Add associated `Body` and `BodyError` types to `IntoResponse`. This is
+    required for returning responses with bodies other than `hyper::Body` from
+    handlers. See the docs for advice on how to implement `IntoResponse` ([#86](https://github.com/tokio-rs/axum/pull/86))
+  - **changed:** `tower::util::Either` no longer implements `IntoResponse` ([#229](https://github.com/tokio-rs/axum/pull/229))
+- SSE:
+  - **added:** Add `response::sse::Sse`. This implements SSE using a response rather than a service ([#98](https://github.com/tokio-rs/axum/pull/98))
+  - **changed:** Remove `axum::sse`. Its been replaced by `axum::response::sse` ([#98](https://github.com/tokio-rs/axum/pull/98))
+- WebSockets:
+  - **changed:** Change WebSocket API to use an extractor plus a response ([#121](https://github.com/tokio-rs/axum/pull/121))
+  - **changed:** Make WebSocket `Message` an enum ([#116](https://github.com/tokio-rs/axum/pull/116))
+  - **changed:** `WebSocket` now uses `Error` as its error type ([#150](https://github.com/tokio-rs/axum/pull/150))
+    behavior ([#120](https://github.com/tokio-rs/axum/pull/120))
+- Misc
+  - **changed:** `EmptyRouter` now requires the response body to implement `Send + Sync + 'static'` ([#108](https://github.com/tokio-rs/axum/pull/108))
+  - **changed:** `Router::check_infallible` now returns a `CheckInfallible` service. This
+    is to improve compile times ([#198](https://github.com/tokio-rs/axum/pull/198))
+  - **changed:** `Router::into_make_service` now returns `routing::IntoMakeService` rather than
+    `tower::make::Shared` ([#229](https://github.com/tokio-rs/axum/pull/229))
+  - **changed:** All usage of `tower::BoxError` has been replaced with `axum::BoxError` ([#229](https://github.com/tokio-rs/axum/pull/229))
+  - **changed:** Several response future types have been moved into dedicated
+    `future` modules ([#133](https://github.com/tokio-rs/axum/pull/133))
+  - **changed:** `EmptyRouter`, `ExtractorMiddleware`, `ExtractorMiddlewareLayer`,
+    and `QueryStringMissing` no longer implement `Copy` ([#132](https://github.com/tokio-rs/axum/pull/132))
+  - **changed:** `service::OnMethod`, `handler::OnMethod`, and `routing::Nested` have new response future types ([#157](https://github.com/tokio-rs/axum/pull/157))
 
 # 0.1.3 (06. August, 2021)
 
