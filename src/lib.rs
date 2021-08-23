@@ -941,6 +941,7 @@
 //! - `ws`: Enables WebSockets support.
 //! - `headers`: Enables extracting typed headers via [`extract::TypedHeader`].
 //! - `multipart`: Enables parsing `multipart/form-data` requests with [`extract::Multipart`].
+//! - `tower-log`: Enables `tower`'s `log` feature. Enabled by default.
 //!
 //! [`tower`]: https://crates.io/crates/tower
 //! [`tower-http`]: https://crates.io/crates/tower-http
