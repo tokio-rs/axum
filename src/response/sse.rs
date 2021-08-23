@@ -4,10 +4,10 @@
 //!
 //! ```
 //! use axum::{
-//!     handler::get,
 //!     Router,
+//!     handler::get,
+//!     response::sse::{Event, KeepAlive, Sse},
 //! };
-//! use axum::response::sse::{sse, Event, KeepAlive, Sse};
 //! use std::{time::Duration, convert::Infallible};
 //! use tokio_stream::StreamExt as _ ;
 //! use futures::stream::{self, Stream};
@@ -20,7 +20,7 @@
 //!         .map(Ok)
 //!         .throttle(Duration::from_secs(1));
 //!
-//!     sse(stream).keep_alive(KeepAlive::default())
+//!     Sse::new(stream).keep_alive(KeepAlive::default())
 //! }
 //! # async {
 //! # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
@@ -50,22 +50,7 @@ use std::{
 use sync_wrapper::SyncWrapper;
 use tokio::time::Sleep;
 
-/// Create a new [`Sse`] response that will respond with the given stream of
-/// [`Event`]s.
-///
-/// See the [module docs](self) for more details.
-pub fn sse<S>(stream: S) -> Sse<S>
-where
-    S: TryStream<Ok = Event> + Send + 'static,
-    S::Error: Into<BoxError>,
-{
-    Sse {
-        stream,
-        keep_alive: None,
-    }
-}
-
-/// An SSE response, created by [`sse`].
+/// An SSE response
 #[derive(Clone)]
 pub struct Sse<S> {
     stream: S,
@@ -73,6 +58,21 @@ pub struct Sse<S> {
 }
 
 impl<S> Sse<S> {
+    /// Create a new [`Sse`] response that will respond with the given stream of
+    /// [`Event`]s.
+    ///
+    /// See the [module docs](self) for more details.
+    pub fn new(stream: S) -> Self
+    where
+        S: TryStream<Ok = Event> + Send + 'static,
+        S::Error: Into<BoxError>,
+    {
+        Sse {
+            stream,
+            keep_alive: None,
+        }
+    }
+
     /// Configure the interval between keep-alive messages.
     ///
     /// Defaults to no keep-alive messages.
