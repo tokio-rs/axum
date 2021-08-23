@@ -26,6 +26,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     `axum::routing::nest`. ([#215](https://github.com/tokio-rs/axum/pull/215))
   - **changed:** Implement `routing::MethodFilter` via [`bitflags`](https://crates.io/crates/bitflags) ([#158](https://github.com/tokio-rs/axum/pull/158))
   - **changed:** Move `handle_error` from `ServiceExt` to `service::OnMethod` ([#160](https://github.com/tokio-rs/axum/pull/160))
+
+  With these changes this app using 0.1
+
+  ```rust
+  use axum::{extract::Extension, prelude::*, routing::BoxRoute, AddExtensionLayer};
+
+  let app = route("/", get(|| async { "hi" }))
+      .nest("/api", api_routes())
+      .layer(AddExtensionLayer::new(state));
+
+  fn api_routes() -> BoxRoute<Body> {
+      route(
+          "/users",
+          post(|Extension(state): Extension<State>| async { "hi from nested" }),
+      )
+      .boxed()
+  }
+  ```
+
+  Becomes this in 0.2:
+
+  ```rust
+  use axum::{
+      extract::Extension,
+      handler::{get, post},
+      routing::BoxRoute,
+      Router,
+  };
+
+  let app = Router::new()
+      .route("/", get(|| async { "hi" }))
+      .nest("/api", api_routes());
+
+  fn api_routes() -> Router<BoxRoute> {
+      Router::new()
+          .route(
+              "/users",
+              post(|Extension(state): Extension<State>| async { "hi from nested" }),
+          )
+          .boxed()
+  }
+  ```
 - Extractors:
   - **added:** Make `FromRequest` default to being generic over `body::Body` ([#146](https://github.com/tokio-rs/axum/pull/146))
   - **added:** Implement `std::error::Error` for all rejections ([#153](https://github.com/tokio-rs/axum/pull/153))
@@ -57,6 +99,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - SSE:
   - **added:** Add `response::sse::Sse`. This implements SSE using a response rather than a service ([#98](https://github.com/tokio-rs/axum/pull/98))
   - **changed:** Remove `axum::sse`. Its been replaced by `axum::response::sse` ([#98](https://github.com/tokio-rs/axum/pull/98))
+
+  Handler using WebSockets in 0.1:
+  Becomes this in 0.2:
 - WebSockets:
   - **changed:** Change WebSocket API to use an extractor plus a response ([#121](https://github.com/tokio-rs/axum/pull/121))
   - **changed:** Make WebSocket `Message` an enum ([#116](https://github.com/tokio-rs/axum/pull/116))
@@ -65,13 +110,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Handler using WebSockets in 0.1:
 
   ```rust
-  fn main() {}
+  use axum::{
+      prelude::*,
+      ws::{ws, WebSocket},
+  };
+
+  let app = route(
+      "/",
+      ws(|socket: WebSocket| async move {
+          // do stuff with socket
+      }),
+  );
   ```
 
   Becomes this in 0.2:
 
   ```rust
-  fn main() {}
+  use axum::{
+      extract::ws::{WebSocket, WebSocketUpgrade},
+      handler::get,
+      Router,
+  };
+
+  let app = Router::new().route(
+      "/",
+      get(|ws: WebSocketUpgrade| async move {
+          ws.on_upgrade(|socket: WebSocket| async move {
+              // do stuff with socket
+          })
+      }),
+  );
   ```
 - Misc
   - **changed:** `EmptyRouter` now requires the response body to implement `Send + Sync + 'static'` ([#108](https://github.com/tokio-rs/axum/pull/108))
