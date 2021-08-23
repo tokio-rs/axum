@@ -8,7 +8,7 @@ use axum::{
     extract::TypedHeader,
     handler::get,
     http::StatusCode,
-    response::sse::{sse, Event, Sse},
+    response::sse::{Event, Sse},
     Router,
 };
 use futures::stream::{self, Stream};
@@ -59,5 +59,5 @@ async fn sse_handler(
         .map(Ok)
         .throttle(Duration::from_secs(1));
 
-    sse(stream)
+    Sse::new(stream)
 }
