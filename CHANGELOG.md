@@ -26,6 +26,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     `axum::routing::nest`. ([#215](https://github.com/tokio-rs/axum/pull/215))
   - **changed:** Implement `routing::MethodFilter` via [`bitflags`](https://crates.io/crates/bitflags) ([#158](https://github.com/tokio-rs/axum/pull/158))
   - **changed:** Move `handle_error` from `ServiceExt` to `service::OnMethod` ([#160](https://github.com/tokio-rs/axum/pull/160))
+
+  With these changes this app using 0.1:
+
+  ```rust
+  use axum::{extract::Extension, prelude::*, routing::BoxRoute, AddExtensionLayer};
+
+  let app = route("/", get(|| async { "hi" }))
+      .nest("/api", api_routes())
+      .layer(AddExtensionLayer::new(state));
+
+  fn api_routes() -> BoxRoute<Body> {
+      route(
+          "/users",
+          post(|Extension(state): Extension<State>| async { "hi from nested" }),
+      )
+      .boxed()
+  }
+  ```
+
+  Becomes this in 0.2:
+
+  ```rust
+  use axum::{
+      extract::Extension,
+      handler::{get, post},
+      routing::BoxRoute,
+      Router,
+  };
+
+  let app = Router::new()
+      .route("/", get(|| async { "hi" }))
+      .nest("/api", api_routes());
+
+  fn api_routes() -> Router<BoxRoute> {
+      Router::new()
+          .route(
+              "/users",
+              post(|Extension(state): Extension<State>| async { "hi from nested" }),
+          )
+          .boxed()
+  }
+  ```
 - Extractors:
   - **added:** Make `FromRequest` default to being generic over `body::Body` ([#146](https://github.com/tokio-rs/axum/pull/146))
   - **added:** Implement `std::error::Error` for all rejections ([#153](https://github.com/tokio-rs/axum/pull/153))
@@ -54,13 +96,117 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     required for returning responses with bodies other than `hyper::Body` from
     handlers. See the docs for advice on how to implement `IntoResponse` ([#86](https://github.com/tokio-rs/axum/pull/86))
   - **changed:** `tower::util::Either` no longer implements `IntoResponse` ([#229](https://github.com/tokio-rs/axum/pull/229))
+
+  This `IntoResponse` from 0.1:
+  ```rust
+  use axum::{http::Response, prelude::*, response::IntoResponse};
+
+  struct MyResponse;
+
+  impl IntoResponse for MyResponse {
+      fn into_response(self) -> Response<Body> {
+          Response::new(Body::empty())
+      }
+  }
+  ```
+
+  Becomes this in 0.2:
+  ```rust
+  use axum::{body::Body, http::Response, response::IntoResponse};
+
+  struct MyResponse;
+
+  impl IntoResponse for MyResponse {
+      type Body = Body;
+      type BodyError = <Self::Body as axum::body::HttpBody>::Error;
+
+      fn into_response(self) -> Response<Self::Body> {
+          Response::new(Body::empty())
+      }
+  }
+  ```
 - SSE:
   - **added:** Add `response::sse::Sse`. This implements SSE using a response rather than a service ([#98](https://github.com/tokio-rs/axum/pull/98))
   - **changed:** Remove `axum::sse`. Its been replaced by `axum::response::sse` ([#98](https://github.com/tokio-rs/axum/pull/98))
+
+  Handler using SSE in 0.1:
+  ```rust
+  use axum::{
+      prelude::*,
+      sse::{sse, Event},
+  };
+  use std::convert::Infallible;
+
+  let app = route(
+      "/",
+      sse(|| async {
+          let stream = futures::stream::iter(vec![Ok::<_, Infallible>(
+              Event::default().data("hi there!"),
+          )]);
+          Ok::<_, Infallible>(stream)
+      }),
+  );
+  ```
+
+  Becomes this in 0.2:
+
+  ```rust
+  use axum::{
+      handler::get,
+      response::sse::{Event, Sse},
+      Router,
+  };
+  use std::convert::Infallible;
+
+  let app = Router::new().route(
+      "/",
+      get(|| async {
+          let stream = futures::stream::iter(vec![Ok::<_, Infallible>(
+              Event::default().data("hi there!"),
+          )]);
+          Sse::new(stream)
+      }),
+  );
+  ```
 - WebSockets:
   - **changed:** Change WebSocket API to use an extractor plus a response ([#121](https://github.com/tokio-rs/axum/pull/121))
   - **changed:** Make WebSocket `Message` an enum ([#116](https://github.com/tokio-rs/axum/pull/116))
   - **changed:** `WebSocket` now uses `Error` as its error type ([#150](https://github.com/tokio-rs/axum/pull/150))
+
+  Handler using WebSockets in 0.1:
+
+  ```rust
+  use axum::{
+      prelude::*,
+      ws::{ws, WebSocket},
+  };
+
+  let app = route(
+      "/",
+      ws(|socket: WebSocket| async move {
+          // do stuff with socket
+      }),
+  );
+  ```
+
+  Becomes this in 0.2:
+
+  ```rust
+  use axum::{
+      extract::ws::{WebSocket, WebSocketUpgrade},
+      handler::get,
+      Router,
+  };
+
+  let app = Router::new().route(
+      "/",
+      get(|ws: WebSocketUpgrade| async move {
+          ws.on_upgrade(|socket: WebSocket| async move {
+              // do stuff with socket
+          })
+      }),
+  );
+  ```
 - Misc
   - **changed:** `EmptyRouter` now requires the response body to implement `Send + Sync + 'static'` ([#108](https://github.com/tokio-rs/axum/pull/108))
   - **changed:** `Router::check_infallible` now returns a `CheckInfallible` service. This

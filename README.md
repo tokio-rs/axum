@@ -110,6 +110,10 @@ benchmark [here](https://github.com/programatik29/rust-web-benchmarks).
 This crate uses `#![forbid(unsafe_code)]` to ensure everything is implemented in
 100% safe Rust.
 
+## Minimum supported Rust version
+
+axum's MSRV is 1.51.
+
 ## Examples
 
 The [examples] folder contains various examples of how to use `axum`. The
