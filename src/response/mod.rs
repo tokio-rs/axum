@@ -21,11 +21,7 @@ pub mod sse;
 pub use crate::Json;
 
 #[doc(inline)]
-pub use self::{
-    headers::Headers,
-    redirect::Redirect,
-    sse::{sse, Sse},
-};
+pub use self::{headers::Headers, redirect::Redirect, sse::Sse};
 
 /// Trait for generating responses.
 ///
