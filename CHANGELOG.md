@@ -27,7 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **changed:** Implement `routing::MethodFilter` via [`bitflags`](https://crates.io/crates/bitflags) ([#158](https://github.com/tokio-rs/axum/pull/158))
   - **changed:** Move `handle_error` from `ServiceExt` to `service::OnMethod` ([#160](https://github.com/tokio-rs/axum/pull/160))
 
-  With these changes this app using 0.1
+  With these changes this app using 0.1:
 
   ```rust
   use axum::{extract::Extension, prelude::*, routing::BoxRoute, AddExtensionLayer};
@@ -96,6 +96,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     required for returning responses with bodies other than `hyper::Body` from
     handlers. See the docs for advice on how to implement `IntoResponse` ([#86](https://github.com/tokio-rs/axum/pull/86))
   - **changed:** `tower::util::Either` no longer implements `IntoResponse` ([#229](https://github.com/tokio-rs/axum/pull/229))
+
+  This `IntoResponse` from 0.1:
+  ```rust
+  use axum::{http::Response, prelude::*, response::IntoResponse};
+
+  struct MyResponse;
+
+  impl IntoResponse for MyResponse {
+      fn into_response(self) -> Response<Body> {
+          Response::new(Body::empty())
+      }
+  }
+  ```
+
+  Becomes this in 0.2:
+  ```rust
+  use axum::{body::Body, http::Response, response::IntoResponse};
+
+  struct MyResponse;
+
+  impl IntoResponse for MyResponse {
+      type Body = Body;
+      type BodyError = <Self::Body as axum::body::HttpBody>::Error;
+
+      fn into_response(self) -> Response<Self::Body> {
+          Response::new(Body::empty())
+      }
+  }
+  ```
 - SSE:
   - **added:** Add `response::sse::Sse`. This implements SSE using a response rather than a service ([#98](https://github.com/tokio-rs/axum/pull/98))
   - **changed:** Remove `axum::sse`. Its been replaced by `axum::response::sse` ([#98](https://github.com/tokio-rs/axum/pull/98))
