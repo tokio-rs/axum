@@ -36,7 +36,12 @@ below still uses the 0.1 API.
 ## Usage example
 
 ```rust
-use axum::{prelude::*, response::IntoResponse, http::StatusCode};
+use axum::{
+    handler::{get, post},
+    http::StatusCode,
+    response::IntoResponse,
+    Json, Router,
+};
 use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
 
@@ -46,9 +51,9 @@ async fn main() {
     tracing_subscriber::fmt::init();
 
     // build our application with a route
-    let app =
+    let app = Router::new()
         // `GET /` goes to `root`
-        route("/", get(root))
+        .route("/", get(root))
         // `POST /users` goes to `create_user`
         .route("/users", post(create_user));
 
@@ -70,7 +75,7 @@ async fn root() -> &'static str {
 async fn create_user(
     // this argument tells axum to parse the request body
     // as JSON into a `CreateUser` type
-    extract::Json(payload): extract::Json<CreateUser>,
+    Json(payload): Json<CreateUser>,
 ) -> impl IntoResponse {
     // insert your application logic here
     let user = User {
@@ -80,7 +85,7 @@ async fn create_user(
 
     // this will be converted into a JSON response
     // with a status code of `201 Created`
-    (StatusCode::CREATED, response::Json(user))
+    (StatusCode::CREATED, Json(user))
 }
 
 // the input to our `create_user` handler
