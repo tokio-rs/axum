@@ -100,8 +100,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **added:** Add `response::sse::Sse`. This implements SSE using a response rather than a service ([#98](https://github.com/tokio-rs/axum/pull/98))
   - **changed:** Remove `axum::sse`. Its been replaced by `axum::response::sse` ([#98](https://github.com/tokio-rs/axum/pull/98))
 
-  Handler using WebSockets in 0.1:
+  Handler using SSE in 0.1:
+  ```rust
+  use axum::{
+      prelude::*,
+      sse::{sse, Event},
+  };
+  use std::convert::Infallible;
+
+  let app = route(
+      "/",
+      sse(|| async {
+          let stream = futures::stream::iter(vec![Ok::<_, Infallible>(
+              Event::default().data("hi there!"),
+          )]);
+          Ok::<_, Infallible>(stream)
+      }),
+  );
+  ```
+
   Becomes this in 0.2:
+
+  ```rust
+  use axum::{
+      handler::get,
+      response::sse::{Event, Sse},
+      Router,
+  };
+  use std::convert::Infallible;
+
+  let app = Router::new().route(
+      "/",
+      get(|| async {
+          let stream = futures::stream::iter(vec![Ok::<_, Infallible>(
+              Event::default().data("hi there!"),
+          )]);
+          Sse::new(stream)
+      }),
+  );
+  ```
 - WebSockets:
   - **changed:** Change WebSocket API to use an extractor plus a response ([#121](https://github.com/tokio-rs/axum/pull/121))
   - **changed:** Make WebSocket `Message` an enum ([#116](https://github.com/tokio-rs/axum/pull/116))
