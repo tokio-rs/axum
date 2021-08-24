@@ -762,7 +762,7 @@ impl PathPattern {
                 if let Some(key) = part.strip_prefix(':') {
                     capture_group_names.push(Bytes::copy_from_slice(key.as_bytes()));
 
-                    Cow::Owned(format!("(?P<{}>[^/]*)", key))
+                    Cow::Owned(format!("(?P<{}>[^/]+)", key))
                 } else {
                     Cow::Borrowed(part)
                 }

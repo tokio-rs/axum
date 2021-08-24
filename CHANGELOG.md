@@ -7,7 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- 👀
+- **fixed:** Fix URI captures matching empty segments. This means requests with
+  URI `/` will no longer be matched by `/:key` ([#264](https://github.com/tokio-rs/axum/pull/264))
 
 # 0.2.1 (24. August, 2021)
 
