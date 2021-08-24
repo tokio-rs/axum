@@ -47,6 +47,9 @@ impl Redirect {
 
     /// Create a new [`Redirect`] that uses a [`307 Temporary Redirect`][mdn] status code.
     ///
+    /// This has the same behavior as [`Redirect::to`], except it will preserve the original HTTP
+    /// method and body.
+    ///
     /// # Panics
     ///
     /// If `uri` isn't a valid [`HeaderValue`].
@@ -68,6 +71,11 @@ impl Redirect {
     }
 
     /// Create a new [`Redirect`] that uses a [`302 Found`][mdn] status code.
+    ///
+    /// This is the same as [`Redirect::temporary`], except the status code is older and thus
+    /// supported by some legacy applications that doesn't understand the newer one, but some of
+    /// those applications wrongly apply [`Redirect::to`] (`303 See Other`) semantics for this
+    /// status code. It should be avoided where possible.
     ///
     /// # Panics
     ///
