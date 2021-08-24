@@ -96,23 +96,20 @@ impl IntoResponse for AppError {
     type BodyError = Infallible;
 
     fn into_response(self) -> Response<Self::Body> {
-        let (status, error_json) = match self {
+        let (status, error_message) = match self {
             AppError::UserRepo(UserRepoError::NotFound) => {
-                (StatusCode::NOT_FOUND, json!("User not found"))
+                (StatusCode::NOT_FOUND, "User not found")
             }
             AppError::UserRepo(UserRepoError::InvalidUsername) => {
-                (StatusCode::UNPROCESSABLE_ENTITY, json!("Invalid username"))
+                (StatusCode::UNPROCESSABLE_ENTITY, "Invalid username")
             }
         };
 
-        let mut response = Json(json!({
-            "error": error_json,
-        }))
-        .into_response();
+        let body = Json(json!({
+            "error": error_message,
+        }));
 
-        *response.status_mut() = status;
-
-        response
+        (status, body).into_response()
     }
 }
 
