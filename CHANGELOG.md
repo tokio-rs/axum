@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 # Unreleased
 
 - **added:** Add `Redirect::to` constructor ([#255](https://github.com/tokio-rs/axum/pull/255))
+- **added:** Document how to implement `IntoResponse` for custom error type ([#258](https://github.com/tokio-rs/axum/pull/258))
 
 # 0.2.0 (23. August, 2021)
 

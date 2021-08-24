@@ -32,8 +32,57 @@ pub use self::{headers::Headers, redirect::Redirect, sse::Sse};
 /// You generally shouldn't have to implement `IntoResponse` manually, as axum
 /// provides implementations for many common types.
 ///
-/// A manual implementation should only be necessary if you have a custom
-/// response body type:
+/// However it might be necessary if you have a custom error type that you want
+/// to return from handlers:
+///
+/// ```rust
+/// use axum::{
+///     Router,
+///     body::Body,
+///     handler::get,
+///     http::{Response, StatusCode},
+///     response::IntoResponse,
+/// };
+///
+/// enum MyError {
+///     SomethingWentWrong,
+///     SomethingElseWentWrong,
+/// }
+///
+/// impl IntoResponse for MyError {
+///     type Body = Body;
+///     type BodyError = <Self::Body as axum::body::HttpBody>::Error;
+///
+///     fn into_response(self) -> Response<Self::Body> {
+///         let body = match self {
+///             MyError::SomethingWentWrong => {
+///                 Body::from("something went wrong")
+///             },
+///             MyError::SomethingElseWentWrong => {
+///                 Body::from("something else went wrong")
+///             },
+///         };
+///
+///         Response::builder()
+///             .status(StatusCode::INTERNAL_SERVER_ERROR)
+///             .body(body)
+///             .unwrap()
+///     }
+/// }
+///
+/// // `Result<impl IntoResponse, MyError>` can now be returned from handlers
+/// let app = Router::new().route("/", get(handler));
+///
+/// async fn handler() -> Result<(), MyError> {
+///     Err(MyError::SomethingWentWrong)
+/// }
+/// # async {
+/// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+/// # };
+/// ```
+///
+/// Or if you have a custom body type you'll also need to implement
+/// `IntoResponse` for it:
 ///
 /// ```rust
 /// use axum::{
