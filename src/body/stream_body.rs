@@ -19,7 +19,7 @@ pin_project! {
     ///
     /// If purpose of this type is to be used in responses. If you want to
     /// extract the request body as a stream consider using
-    /// [`extract::BodyStream`].
+    /// [`BodyStream`](crate::extract::BodyStream).
     ///
     /// # Example
     ///
