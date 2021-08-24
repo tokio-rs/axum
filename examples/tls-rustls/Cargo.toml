@@ -6,8 +6,7 @@ publish = false
 
 [dependencies]
 axum = { path = "../.." }
-tokio = { version = "1.0", features = ["full"] }
+axum-server = { version = "0.1", features = ["tls-rustls"] }
+tokio = { version = "1", features = ["full"] }
 tracing = "0.1"
 tracing-subscriber = "0.2"
-tokio-rustls = "0.22.0"
-hyper = { version = "0.14", features = ["full"] }
