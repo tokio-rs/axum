@@ -85,7 +85,7 @@ where
 impl<S> Router<S> {
     /// Add another route to the router.
     ///
-    /// `description` is a string of path segments separated by `/`. Each segment
+    /// `path` is a string of path segments separated by `/`. Each segment
     /// can be either concrete or a capture:
     ///
     /// - `/foo/bar/baz` will only match requests where the path is `/foo/bar/bar`.
@@ -93,7 +93,7 @@ impl<S> Router<S> {
     /// capture the first segment and store it at the key `foo`.
     ///
     /// `service` is the [`Service`] that should receive the request if the path
-    /// matches `description`.
+    /// matches `path`.
     ///
     /// # Example
     ///
@@ -122,10 +122,10 @@ impl<S> Router<S> {
     ///
     /// # Panics
     ///
-    /// Panics if `description` doesn't start with `/`.
-    pub fn route<T>(self, description: &str, svc: T) -> Router<Route<T, S>> {
+    /// Panics if `path` doesn't start with `/`.
+    pub fn route<T>(self, path: &str, svc: T) -> Router<Route<T, S>> {
         self.map(|fallback| Route {
-            pattern: PathPattern::new(description),
+            pattern: PathPattern::new(path),
             svc,
             fallback,
         })
@@ -217,9 +217,9 @@ impl<S> Router<S> {
     /// `nest`.
     ///
     /// [`OriginalUri`]: crate::extract::OriginalUri
-    pub fn nest<T>(self, description: &str, svc: T) -> Router<Nested<T, S>> {
+    pub fn nest<T>(self, path: &str, svc: T) -> Router<Nested<T, S>> {
         self.map(|fallback| Nested {
-            pattern: PathPattern::new(description),
+            pattern: PathPattern::new(path),
             svc,
             fallback,
         })
@@ -752,10 +752,7 @@ struct Inner {
 
 impl PathPattern {
     pub(crate) fn new(pattern: &str) -> Self {
-        assert!(
-            pattern.starts_with('/'),
-            "Route description must start with a `/`"
-        );
+        assert!(pattern.starts_with('/'), "Route path must start with a `/`");
 
         let mut capture_group_names = Vec::new();
 
