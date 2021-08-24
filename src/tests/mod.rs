@@ -672,6 +672,25 @@ async fn when_multiple_routes_match() {
     assert_eq!(res.status(), StatusCode::OK);
 }
 
+#[tokio::test]
+async fn captures_dont_match_empty_segments() {
+    let app = Router::new().route("/:key", get(|| async {}));
+
+    let addr = run_in_background(app).await;
+
+    let client = reqwest::Client::new();
+
+    let res = client.get(format!("http://{}", addr)).send().await.unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+
+    let res = client
+        .get(format!("http://{}/foo", addr))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+}
+
 /// Run a `tower::Service` in the background and get a URI for it.
 pub(crate) async fn run_in_background<S, ResBody>(svc: S) -> SocketAddr
 where
