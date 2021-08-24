@@ -29,6 +29,22 @@ pub struct Redirect {
 }
 
 impl Redirect {
+    /// Create a new [`Redirect`] that uses a [`303 See Other`][mdn] status code.
+    ///
+    /// This redirect instructs the client to change the method to GET for the subsequent request
+    /// to the given `uri`, which is useful after successful form submission, file upload or when
+    /// you generally don't want the redirected-to page to observe the original request method and
+    /// body (if non-empty).
+    ///
+    /// # Panics
+    ///
+    /// If `uri` isn't a valid [`HeaderValue`].
+    ///
+    /// [mdn]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/303
+    pub fn to(uri: Uri) -> Self {
+        Self::with_status_code(StatusCode::SEE_OTHER, uri)
+    }
+
     /// Create a new [`Redirect`] that uses a [`307 Temporary Redirect`][mdn] status code.
     ///
     /// # Panics
