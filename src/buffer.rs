@@ -94,6 +94,7 @@ where
     type Error = S::Error;
     type Future = ResponseFuture<S::Future, S::Error>;
 
+    #[inline]
     fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         if self.permit.is_some() {
             return Poll::Ready(Ok(()));

@@ -644,10 +644,12 @@ where
     type Error = Infallible;
     type Future = future::OnMethodFuture<F, B>;
 
+    #[inline]
     fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         Poll::Ready(Ok(()))
     }
 
+    #[inline]
     fn call(&mut self, req: Request<B>) -> Self::Future {
         let req_method = req.method().clone();
 

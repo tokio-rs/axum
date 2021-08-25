@@ -505,10 +505,12 @@ where
     type Error = S::Error;
     type Future = future::OnMethodFuture<S, F, B>;
 
+    #[inline]
     fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         Poll::Ready(Ok(()))
     }
 
+    #[inline]
     fn call(&mut self, req: Request<B>) -> Self::Future {
         use crate::util::Either;
 
@@ -585,10 +587,12 @@ where
     type Error = E;
     type Future = future::HandleErrorFuture<Oneshot<S, Request<ReqBody>>, F>;
 
+    #[inline]
     fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         Poll::Ready(Ok(()))
     }
 
+    #[inline]
     fn call(&mut self, req: Request<ReqBody>) -> Self::Future {
         future::HandleErrorFuture {
             f: Some(self.f.clone()),

@@ -616,6 +616,7 @@ where
     type Error = S::Error;
     type Future = RouteFuture<S, F, B>;
 
+    #[inline]
     fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         Poll::Ready(Ok(()))
     }
@@ -699,6 +700,7 @@ where
     type Error = E;
     type Future = EmptyRouterFuture<E>;
 
+    #[inline]
     fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         Poll::Ready(Ok(()))
     }
@@ -943,6 +945,7 @@ where
     type Error = S::Error;
     type Future = NestedFuture<S, F, B>;
 
+    #[inline]
     fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         Poll::Ready(Ok(()))
     }
@@ -1051,6 +1054,7 @@ where
     type Error = Infallible;
     type Future = future::MakeRouteServiceFuture<S>;
 
+    #[inline]
     fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         Poll::Ready(Ok(()))
     }

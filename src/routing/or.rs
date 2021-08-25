@@ -39,10 +39,12 @@ where
     type Error = A::Error;
     type Future = ResponseFuture<A, B, ReqBody>;
 
+    #[inline]
     fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         Poll::Ready(Ok(()))
     }
 
+    #[inline]
     fn call(&mut self, mut req: Request<ReqBody>) -> Self::Future {
         let original_uri = req.uri().clone();
 
