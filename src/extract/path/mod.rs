@@ -157,3 +157,26 @@ where
             .map(Path)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::tests::*;
+    use crate::{handler::get, Router};
+
+    #[tokio::test]
+    async fn percent_decoding() {
+        let app = Router::new().route(
+            "/:key",
+            get(|Path(param): Path<String>| async move { param }),
+        );
+
+        let addr = run_in_background(app).await;
+
+        let res = reqwest::get(format!("http://{}/one%20two", addr))
+            .await
+            .unwrap();
+
+        assert_eq!(res.text().await.unwrap(), "one two");
+    }
+}

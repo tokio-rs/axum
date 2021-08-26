@@ -24,24 +24,24 @@ tower-log = ["tower/log"]
 async-trait = "0.1"
 bitflags = "1.0"
 bytes = "1.0"
+dyn-clone = "1.0"
 futures-util = { version = "0.3", default-features = false, features = ["alloc"] }
 http = "0.2"
 http-body = "0.4.3"
 hyper = { version = "0.14", features = ["server", "tcp", "http1", "stream"] }
+percent-encoding = "2.1"
 pin-project-lite = "0.2.7"
 regex = "1.5"
 serde = "1.0"
 serde_json = "1.0"
 serde_urlencoded = "0.7"
+sync_wrapper = "0.1.1"
 tokio = { version = "1", features = ["time"] }
 tokio-util = "0.6"
 tower = { version = "0.4", default-features = false, features = ["util", "buffer", "make"] }
-tower-service = "0.3"
-tower-layer = "0.3"
 tower-http = { version = "0.1", features = ["add-extension", "map-response-body"] }
-sync_wrapper = "0.1.1"
-
-dyn-clone = "1.0"
+tower-layer = "0.3"
+tower-service = "0.3"
 
 # optional dependencies
 tokio-tungstenite = { optional = true, version = "0.15" }

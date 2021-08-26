@@ -8,7 +8,7 @@ use crate::{
         OriginalUri,
     },
     service::HandleError,
-    util::{ByteStr, CloneBoxService},
+    util::{ByteStr, CloneBoxService, PercentDecodedByteStr},
     BoxError,
 };
 use bytes::Bytes;
@@ -627,12 +627,12 @@ where
 }
 
 #[derive(Debug)]
-pub(crate) struct UrlParams(pub(crate) Vec<(ByteStr, ByteStr)>);
+pub(crate) struct UrlParams(pub(crate) Vec<(ByteStr, PercentDecodedByteStr)>);
 
 fn insert_url_params<B>(req: &mut Request<B>, params: Vec<(String, String)>) {
     let params = params
         .into_iter()
-        .map(|(k, v)| (ByteStr::new(k), ByteStr::new(v)));
+        .map(|(k, v)| (ByteStr::new(k), PercentDecodedByteStr::new(v)));
 
     if let Some(current) = req.extensions_mut().get_mut::<Option<UrlParams>>() {
         let mut current = current.take().unwrap();

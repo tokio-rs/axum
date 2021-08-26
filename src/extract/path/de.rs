@@ -1,5 +1,5 @@
 use crate::routing::UrlParams;
-use crate::util::ByteStr;
+use crate::util::{ByteStr, PercentDecodedByteStr};
 use serde::{
     de::{self, DeserializeSeed, EnumAccess, Error, MapAccess, SeqAccess, VariantAccess, Visitor},
     forward_to_deserialize_any, Deserializer,
@@ -249,7 +249,7 @@ impl<'de> Deserializer<'de> for PathDeserializer<'de> {
 }
 
 struct MapDeserializer<'de> {
-    params: &'de [(ByteStr, ByteStr)],
+    params: &'de [(ByteStr, PercentDecodedByteStr)],
     value: Option<&'de str>,
 }
 
@@ -519,7 +519,7 @@ impl<'de> VariantAccess<'de> for UnitVariant {
 }
 
 struct SeqDeserializer<'de> {
-    params: &'de [(ByteStr, ByteStr)],
+    params: &'de [(ByteStr, PercentDecodedByteStr)],
 }
 
 impl<'de> SeqAccess<'de> for SeqDeserializer<'de> {
@@ -570,7 +570,7 @@ mod tests {
         UrlParams(
             values
                 .into_iter()
-                .map(|(k, v)| (ByteStr::new(k), ByteStr::new(v)))
+                .map(|(k, v)| (ByteStr::new(k), PercentDecodedByteStr::new(v)))
                 .collect(),
         )
     }
@@ -601,6 +601,7 @@ mod tests {
         check_single_value!(f32, "123", 123.0);
         check_single_value!(f64, "123", 123.0);
         check_single_value!(String, "abc", "abc");
+        check_single_value!(String, "one%20two", "one two");
         check_single_value!(char, "a", 'a');
 
         let url_params = create_url_params(vec![("a", "B")]);
