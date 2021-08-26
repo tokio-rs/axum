@@ -132,6 +132,13 @@ pub struct ExtractorMiddleware<S, E> {
     _extractor: PhantomData<fn() -> E>,
 }
 
+#[test]
+fn traits() {
+    use crate::tests::*;
+    assert_send::<ExtractorMiddleware<(), NotSendSync>>();
+    assert_sync::<ExtractorMiddleware<(), NotSendSync>>();
+}
+
 impl<S, E> Clone for ExtractorMiddleware<S, E>
 where
     S: Clone,

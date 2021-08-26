@@ -596,3 +596,14 @@ where
         }
     }
 }
+
+#[test]
+fn traits() {
+    use crate::tests::*;
+
+    assert_send::<OnMethod<(), (), NotSendSync>>();
+    assert_sync::<OnMethod<(), (), NotSendSync>>();
+
+    assert_send::<HandleError<(), (), NotSendSync>>();
+    assert_sync::<HandleError<(), (), NotSendSync>>();
+}

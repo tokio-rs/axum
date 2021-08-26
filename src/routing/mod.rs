@@ -1106,4 +1106,33 @@ mod tests {
             route_spec
         );
     }
+
+    #[test]
+    fn traits() {
+        use crate::tests::*;
+
+        assert_send::<Router<()>>();
+        assert_sync::<Router<()>>();
+
+        assert_send::<Route<(), ()>>();
+        assert_sync::<Route<(), ()>>();
+
+        assert_send::<EmptyRouter<NotSendSync>>();
+        assert_sync::<EmptyRouter<NotSendSync>>();
+
+        assert_send::<BoxRoute<(), ()>>();
+        assert_sync::<BoxRoute<(), ()>>();
+
+        assert_send::<Layered<()>>();
+        assert_sync::<Layered<()>>();
+
+        assert_send::<Nested<(), ()>>();
+        assert_sync::<Nested<(), ()>>();
+
+        assert_send::<CheckInfallible<()>>();
+        assert_sync::<CheckInfallible<()>>();
+
+        assert_send::<IntoMakeService<()>>();
+        assert_sync::<IntoMakeService<()>>();
+    }
 }
