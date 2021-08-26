@@ -9,7 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - None.
 
-# 0.2.2 (24. August, 2021)
+# 0.2.3 (26. August, 2021)
+
+- **fixed:** Fix accidental breaking change introduced by internal refactor.
+  `BoxRoute` used to be `Sync` but was accidental made `!Sync` ([#273](https://github.com/tokio-rs/axum/pull/273))
+
+# 0.2.2 (26. August, 2021)
 
 - **fixed:** Fix URI captures matching empty segments. This means requests with
   URI `/` will no longer be matched by `/:key` ([#264](https://github.com/tokio-rs/axum/pull/264))
