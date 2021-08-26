@@ -441,6 +441,13 @@ pub struct OnMethod<H, B, T, F> {
     pub(crate) _marker: PhantomData<fn() -> (B, T)>,
 }
 
+#[test]
+fn traits() {
+    use crate::tests::*;
+    assert_send::<OnMethod<(), NotSendSync, NotSendSync, ()>>();
+    assert_sync::<OnMethod<(), NotSendSync, NotSendSync, ()>>();
+}
+
 impl<H, B, T, F> fmt::Debug for OnMethod<H, B, T, F>
 where
     T: fmt::Debug,
