@@ -20,10 +20,12 @@ impl<R> Service<R> for Svc {
     type Error = hyper::Error;
     type Future = Ready<Result<Self::Response, Self::Error>>;
 
+    #[inline]
     fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         Poll::Ready(Ok(()))
     }
 
+    #[inline]
     fn call(&mut self, _req: R) -> Self::Future {
         ready(Ok(Response::new(Body::empty())))
     }

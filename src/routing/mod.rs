@@ -1055,6 +1055,7 @@ where
         Poll::Ready(Ok(()))
     }
 
+    #[inline]
     fn call(&mut self, _target: T) -> Self::Future {
         future::MakeRouteServiceFuture {
             future: ready(Ok(self.service.clone())),

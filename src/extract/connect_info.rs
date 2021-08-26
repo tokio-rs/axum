@@ -83,6 +83,7 @@ where
     type Error = Infallible;
     type Future = ResponseFuture<Self::Response>;
 
+    #[inline]
     fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         Poll::Ready(Ok(()))
     }

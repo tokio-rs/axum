@@ -38,10 +38,12 @@ impl<T, U, E> Service<T> for CloneBoxService<T, U, E> {
     type Error = E;
     type Future = BoxFuture<'static, Result<U, E>>;
 
+    #[inline]
     fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         CloneService::poll_ready(&mut *self.inner, cx)
     }
 
+    #[inline]
     fn call(&mut self, req: T) -> Self::Future {
         CloneService::call(&mut *self.inner, req)
     }
@@ -65,10 +67,12 @@ where
     type Error = T::Error;
     type Future = T::Future;
 
+    #[inline]
     fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         Service::poll_ready(self, cx)
     }
 
+    #[inline]
     fn call(&mut self, req: R) -> Self::Future {
         Service::call(self, req)
     }
