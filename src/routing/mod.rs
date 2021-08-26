@@ -257,12 +257,11 @@ impl<S> Router<S> {
     pub fn boxed<ReqBody, ResBody>(self) -> Router<BoxRoute<ReqBody, S::Error>>
     where
         S: Service<Request<ReqBody>, Response = Response<ResBody>> + Send + 'static,
-        S::Error: Into<BoxError> + Send + Sync,
+        S::Error: Into<BoxError> + Send,
         S::Future: Send,
-        ReqBody: http_body::Body<Data = Bytes> + Send + Sync + 'static,
-        ReqBody::Error: Into<BoxError> + Send + Sync + 'static,
+        ReqBody: Send + 'static,
         ResBody: http_body::Body<Data = Bytes> + Send + Sync + 'static,
-        ResBody::Error: Into<BoxError> + Send + Sync + 'static,
+        ResBody::Error: Into<BoxError>,
     {
         self.map(|svc| {
             ServiceBuilder::new()
