@@ -9,7 +9,7 @@ license = "MIT"
 name = "axum"
 readme = "README.md"
 repository = "https://github.com/tokio-rs/axum"
-version = "0.2.2"
+version = "0.2.3"
 
 [workspace]
 members = ["examples/*"]
@@ -40,8 +40,6 @@ tower-service = "0.3"
 tower-layer = "0.3"
 tower-http = { version = "0.1", features = ["add-extension", "map-response-body"] }
 sync_wrapper = "0.1.1"
-
-dyn-clone = "1.0"
 
 # optional dependencies
 tokio-tungstenite = { optional = true, version = "0.15" }
