@@ -1005,7 +1005,6 @@
 #[macro_use]
 pub(crate) mod macros;
 
-mod buffer;
 mod error;
 mod json;
 mod util;
