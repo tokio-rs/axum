@@ -649,7 +649,6 @@ where
         Poll::Ready(Ok(()))
     }
 
-    #[inline]
     fn call(&mut self, req: Request<B>) -> Self::Future {
         let req_method = req.method().clone();
 
