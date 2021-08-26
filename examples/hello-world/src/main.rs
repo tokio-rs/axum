@@ -4,7 +4,7 @@
 //! cargo run -p example-hello-world
 //! ```
 
-use axum::{handler::get, Router};
+use axum::{handler::get, response::Html, Router};
 use std::net::SocketAddr;
 
 #[tokio::main]
@@ -21,6 +21,6 @@ async fn main() {
         .unwrap();
 }
 
-async fn handler() -> &'static str {
-    "<h1>Hello, World!</h1>"
+async fn handler() -> Html<&'static str> {
+    Html("<h1>Hello, World!</h1>")
 }
