@@ -16,9 +16,10 @@ members = ["examples/*"]
 
 [features]
 default = ["tower-log"]
-ws = ["tokio-tungstenite", "sha-1", "base64"]
+http2 = ["hyper/http2"]
 multipart = ["multer", "mime"]
 tower-log = ["tower/log"]
+ws = ["tokio-tungstenite", "sha-1", "base64"]
 
 [dependencies]
 async-trait = "0.1"

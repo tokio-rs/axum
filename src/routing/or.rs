@@ -24,6 +24,13 @@ pub struct Or<A, B> {
     pub(super) second: B,
 }
 
+#[test]
+fn traits() {
+    use crate::tests::*;
+    assert_send::<Or<(), ()>>();
+    assert_sync::<Or<(), ()>>();
+}
+
 #[allow(warnings)]
 impl<A, B, ReqBody> Service<Request<ReqBody>> for Or<A, B>
 where
