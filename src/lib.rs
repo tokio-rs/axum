@@ -938,10 +938,11 @@
 //!
 //! The following optional features are available:
 //!
-//! - `ws`: Enables WebSockets support.
 //! - `headers`: Enables extracting typed headers via [`extract::TypedHeader`].
+//! - `http2`: Enables hyper's `http2` feature.
 //! - `multipart`: Enables parsing `multipart/form-data` requests with [`extract::Multipart`].
 //! - `tower-log`: Enables `tower`'s `log` feature. Enabled by default.
+//! - `ws`: Enables WebSockets support via [`extract::ws`].
 //!
 //! [`tower`]: https://crates.io/crates/tower
 //! [`tower-http`]: https://crates.io/crates/tower-http
