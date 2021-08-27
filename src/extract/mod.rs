@@ -1,6 +1,6 @@
 //! Types and traits for extracting data from requests.
 //!
-//! A handler function is an async function take takes any number of
+//! A handler function is an async function that takes any number of
 //! "extractors" as arguments. An extractor is a type that implements
 //! [`FromRequest`](crate::extract::FromRequest).
 //!
