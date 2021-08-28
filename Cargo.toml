@@ -15,7 +15,8 @@ version = "0.2.3"
 members = ["examples/*"]
 
 [features]
-default = ["json", "tower-log"]
+default = ["http1", "json", "tower-log"]
+http1 = ["hyper/http1"]
 http2 = ["hyper/http2"]
 json = ["serde_json"]
 multipart = ["multer", "mime"]
@@ -29,7 +30,7 @@ bytes = "1.0"
 futures-util = { version = "0.3", default-features = false, features = ["alloc"] }
 http = "0.2"
 http-body = "0.4.3"
-hyper = { version = "0.14", features = ["server", "tcp", "http1", "stream"] }
+hyper = { version = "0.14", features = ["server", "tcp", "stream"] }
 pin-project-lite = "0.2.7"
 regex = "1.5"
 serde = "1.0"

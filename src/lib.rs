@@ -939,6 +939,7 @@
 //! The following optional features are available:
 //!
 //! - `headers`: Enables extracting typed headers via [`extract::TypedHeader`].
+//! - `http1`: Enables hyper's `http1` feature. Enabled by default.
 //! - `http2`: Enables hyper's `http2` feature.
 //! - `json`: Enables the [`Json`] type and some similar convenience functionality.
 //!   Enabled by default.
