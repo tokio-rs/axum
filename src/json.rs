@@ -17,10 +17,10 @@ use std::{
     ops::{Deref, DerefMut},
 };
 
-/// JSON Extractor/Response
+/// JSON Extractor / Response.
 ///
 /// When used as an extractor, it can deserialize request bodies into some type that
-/// implements [`serde::Serialize`]. If the request body cannot be parsed, or it does not contain
+/// implements [`serde::Deserialize`]. If the request body cannot be parsed, or it does not contain
 /// the `Content-Type: application/json` header, it will reject the request and return a
 /// `400 Bad Request` response.
 ///
