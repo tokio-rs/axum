@@ -15,8 +15,9 @@ version = "0.2.3"
 members = ["examples/*"]
 
 [features]
-default = ["tower-log"]
+default = ["json", "tower-log"]
 http2 = ["hyper/http2"]
+json = ["serde_json"]
 multipart = ["multer", "mime"]
 tower-log = ["tower/log"]
 ws = ["tokio-tungstenite", "sha-1", "base64"]
@@ -32,7 +33,7 @@ hyper = { version = "0.14", features = ["server", "tcp", "http1", "stream"] }
 pin-project-lite = "0.2.7"
 regex = "1.5"
 serde = "1.0"
-serde_json = "1.0"
+serde_json = { version = "1.0", optional = true }
 serde_urlencoded = "0.7"
 tokio = { version = "1", features = ["time"] }
 tokio-util = "0.6"
@@ -54,6 +55,7 @@ mime = { optional = true, version = "0.3" }
 futures = "0.3"
 reqwest = { version = "0.11", features = ["json", "stream"] }
 serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
 tokio = { version = "1.6.1", features = ["macros", "rt", "rt-multi-thread", "net"] }
 uuid = { version = "0.8", features = ["serde", "v4"] }
 tokio-stream = "0.1"

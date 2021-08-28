@@ -37,7 +37,6 @@ use futures_util::{
 use http::Response;
 use http_body::Body as HttpBody;
 use pin_project_lite::pin_project;
-use serde::Serialize;
 use std::{
     borrow::Cow,
     fmt,
@@ -181,6 +180,7 @@ pub struct Event {
 #[derive(Debug)]
 enum DataType {
     Text(String),
+    #[cfg(feature = "json")]
     Json(String),
 }
 
@@ -197,9 +197,11 @@ impl Event {
 
     /// Set Server-sent event data
     /// data field(s) ("data:<content>")
+    #[cfg(feature = "json")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
     pub fn json_data<T>(mut self, data: T) -> Result<Event, serde_json::Error>
     where
-        T: Serialize,
+        T: serde::Serialize,
     {
         self.data = Some(DataType::Json(serde_json::to_string(&data)?));
         Ok(self)
@@ -265,6 +267,7 @@ impl fmt::Display for Event {
                     f.write_char('\n')?;
                 }
             }
+            #[cfg(feature = "json")]
             Some(DataType::Json(data)) => {
                 "data:".fmt(f)?;
                 data.fmt(f)?;

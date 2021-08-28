@@ -87,6 +87,7 @@ use std::{
 /// # };
 /// ```
 #[derive(Debug, Clone, Copy, Default)]
+#[cfg_attr(docsrs, doc(cfg(feature = "json")))]
 pub struct Json<T>(pub T);
 
 #[async_trait]
