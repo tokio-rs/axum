@@ -15,6 +15,10 @@ use std::{
 /// Extractor that will get captures from the URL and parse them using
 /// [`serde`].
 ///
+/// Any percent encoded parameters will be automatically decoded. The decoded
+/// parameters must be valid UTF-8, otherwise `Path` will fail and return a `400
+/// Bad Request` response.
+///
 /// # Example
 ///
 /// ```rust,no_run
