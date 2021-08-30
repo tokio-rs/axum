@@ -35,6 +35,33 @@
 //! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 //! # };
 //! ```
+//!
+//! # Read and write concurrently
+//!
+//! If you need to read and write concurrently from a [`WebSocket`] you can use
+//! [`StreamExt::split`]:
+//!
+//! ```
+//! use axum::{Error, extract::ws::{WebSocket, Message}};
+//! use futures::{sink::SinkExt, stream::{StreamExt, SplitSink, SplitStream}};
+//!
+//! async fn handle_socket(mut socket: WebSocket) {
+//!     let (mut sender, mut receiver) = socket.split();
+//!
+//!     tokio::spawn(write(sender));
+//!     tokio::spawn(read(receiver));
+//! }
+//!
+//! async fn read(receiver: SplitStream<WebSocket>) {
+//!     // ...
+//! }
+//!
+//! async fn write(sender: SplitSink<WebSocket, Message>) {
+//!     // ...
+//! }
+//! ```
+//!
+//! [`StreamExt::split`]: https://docs.rs/futures/0.3.17/futures/stream/trait.StreamExt.html#method.split
 
 use self::rejection::*;
 use super::{rejection::*, FromRequest, RequestParts};
