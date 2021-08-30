@@ -1,4 +1,3 @@
-use crate::routing::UrlParams;
 use crate::util::{ByteStr, PercentDecodedByteStr};
 use serde::{
     de::{self, DeserializeSeed, EnumAccess, Error, MapAccess, SeqAccess, VariantAccess, Visitor},
@@ -53,20 +52,20 @@ macro_rules! parse_single_value {
         where
             V: Visitor<'de>,
         {
-            if self.url_params.0.len() != 1 {
+            if self.url_params.len() != 1 {
                 return Err(PathDeserializerError::custom(
                     format!(
                         "wrong number of parameters: {} expected 1",
-                        self.url_params.0.len()
+                        self.url_params.len()
                     )
                     .as_str(),
                 ));
             }
 
-            let value = self.url_params.0[0].1.parse().map_err(|_| {
+            let value = self.url_params[0].1.parse().map_err(|_| {
                 PathDeserializerError::custom(format!(
                     "can not parse `{:?}` to a `{}`",
-                    self.url_params.0[0].1.as_str(),
+                    self.url_params[0].1.as_str(),
                     $tp
                 ))
             })?;
@@ -76,12 +75,12 @@ macro_rules! parse_single_value {
 }
 
 pub(crate) struct PathDeserializer<'de> {
-    url_params: &'de UrlParams,
+    url_params: &'de [(ByteStr, PercentDecodedByteStr)],
 }
 
 impl<'de> PathDeserializer<'de> {
     #[inline]
-    pub(crate) fn new(url_params: &'de UrlParams) -> Self {
+    pub(crate) fn new(url_params: &'de [(ByteStr, PercentDecodedByteStr)]) -> Self {
         PathDeserializer { url_params }
     }
 }
@@ -114,13 +113,13 @@ impl<'de> Deserializer<'de> for PathDeserializer<'de> {
     where
         V: Visitor<'de>,
     {
-        if self.url_params.0.len() != 1 {
+        if self.url_params.len() != 1 {
             return Err(PathDeserializerError::custom(format!(
                 "wrong number of parameters: {} expected 1",
-                self.url_params.0.len()
+                self.url_params.len()
             )));
         }
-        visitor.visit_str(&self.url_params.0[0].1)
+        visitor.visit_str(&self.url_params[0].1)
     }
 
     fn deserialize_unit<V>(self, visitor: V) -> Result<V::Value, Self::Error>
@@ -157,7 +156,7 @@ impl<'de> Deserializer<'de> for PathDeserializer<'de> {
         V: Visitor<'de>,
     {
         visitor.visit_seq(SeqDeserializer {
-            params: &self.url_params.0,
+            params: self.url_params,
         })
     }
 
@@ -165,18 +164,18 @@ impl<'de> Deserializer<'de> for PathDeserializer<'de> {
     where
         V: Visitor<'de>,
     {
-        if self.url_params.0.len() < len {
+        if self.url_params.len() < len {
             return Err(PathDeserializerError::custom(
                 format!(
                     "wrong number of parameters: {} expected {}",
-                    self.url_params.0.len(),
+                    self.url_params.len(),
                     len
                 )
                 .as_str(),
             ));
         }
         visitor.visit_seq(SeqDeserializer {
-            params: &self.url_params.0,
+            params: self.url_params,
         })
     }
 
@@ -189,18 +188,18 @@ impl<'de> Deserializer<'de> for PathDeserializer<'de> {
     where
         V: Visitor<'de>,
     {
-        if self.url_params.0.len() < len {
+        if self.url_params.len() < len {
             return Err(PathDeserializerError::custom(
                 format!(
                     "wrong number of parameters: {} expected {}",
-                    self.url_params.0.len(),
+                    self.url_params.len(),
                     len
                 )
                 .as_str(),
             ));
         }
         visitor.visit_seq(SeqDeserializer {
-            params: &self.url_params.0,
+            params: self.url_params,
         })
     }
 
@@ -209,7 +208,7 @@ impl<'de> Deserializer<'de> for PathDeserializer<'de> {
         V: Visitor<'de>,
     {
         visitor.visit_map(MapDeserializer {
-            params: &self.url_params.0,
+            params: self.url_params,
             value: None,
         })
     }
@@ -235,15 +234,15 @@ impl<'de> Deserializer<'de> for PathDeserializer<'de> {
     where
         V: Visitor<'de>,
     {
-        if self.url_params.0.len() != 1 {
+        if self.url_params.len() != 1 {
             return Err(PathDeserializerError::custom(format!(
                 "wrong number of parameters: {} expected 1",
-                self.url_params.0.len()
+                self.url_params.len()
             )));
         }
 
         visitor.visit_enum(EnumDeserializer {
-            value: &self.url_params.0[0].1,
+            value: &self.url_params[0].1,
         })
     }
 }
@@ -561,18 +560,16 @@ mod tests {
         a: i32,
     }
 
-    fn create_url_params<I, K, V>(values: I) -> UrlParams
+    fn create_url_params<I, K, V>(values: I) -> Vec<(ByteStr, PercentDecodedByteStr)>
     where
         I: IntoIterator<Item = (K, V)>,
         K: AsRef<str>,
         V: AsRef<str>,
     {
-        UrlParams(
-            values
-                .into_iter()
-                .map(|(k, v)| (ByteStr::new(k), PercentDecodedByteStr::new(v)))
-                .collect(),
-        )
+        values
+            .into_iter()
+            .map(|(k, v)| (ByteStr::new(k), PercentDecodedByteStr::new(v).unwrap()))
+            .collect()
     }
 
     macro_rules! check_single_value {

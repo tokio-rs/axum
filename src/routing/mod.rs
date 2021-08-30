@@ -626,22 +626,47 @@ where
     }
 }
 
-#[derive(Debug)]
-pub(crate) struct UrlParams(pub(crate) Vec<(ByteStr, PercentDecodedByteStr)>);
+// we store the potential error here such that users can handle invalid path
+// params using `Result<Path<T>, _>`. That wouldn't be possible if we
+// returned an error immediately when decoding the param
+pub(crate) struct UrlParams(
+    pub(crate) Result<Vec<(ByteStr, PercentDecodedByteStr)>, InvalidUtf8InPathParam>,
+);
 
 fn insert_url_params<B>(req: &mut Request<B>, params: Vec<(String, String)>) {
     let params = params
         .into_iter()
-        .map(|(k, v)| (ByteStr::new(k), PercentDecodedByteStr::new(v)));
+        .map(|(k, v)| {
+            if let Some(decoded) = PercentDecodedByteStr::new(v) {
+                Ok((ByteStr::new(k), decoded))
+            } else {
+                Err(InvalidUtf8InPathParam {
+                    key: ByteStr::new(k),
+                })
+            }
+        })
+        .collect::<Result<Vec<_>, _>>();
 
     if let Some(current) = req.extensions_mut().get_mut::<Option<UrlParams>>() {
-        let mut current = current.take().unwrap();
-        current.0.extend(params);
-        req.extensions_mut().insert(Some(current));
+        match params {
+            Ok(params) => {
+                let mut current = current.take().unwrap();
+                if let Ok(current) = &mut current.0 {
+                    current.extend(params);
+                }
+                req.extensions_mut().insert(Some(current));
+            }
+            Err(err) => {
+                req.extensions_mut().insert(Some(UrlParams(Err(err))));
+            }
+        }
     } else {
-        req.extensions_mut()
-            .insert(Some(UrlParams(params.collect())));
+        req.extensions_mut().insert(Some(UrlParams(params)));
     }
+}
+
+pub(crate) struct InvalidUtf8InPathParam {
+    pub(crate) key: ByteStr,
 }
 
 /// A [`Service`] that responds with `404 Not Found` or `405 Method not allowed`

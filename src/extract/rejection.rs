@@ -105,7 +105,7 @@ define_rejection! {
 /// Rejection type for [`Path`](super::Path) if the capture route
 /// param didn't have the expected type.
 #[derive(Debug)]
-pub struct InvalidPathParam(String);
+pub struct InvalidPathParam(pub(crate) String);
 
 impl InvalidPathParam {
     pub(super) fn new(err: impl Into<String>) -> Self {

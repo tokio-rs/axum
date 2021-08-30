@@ -38,7 +38,7 @@ impl ByteStr {
 pub(crate) struct PercentDecodedByteStr(ByteStr);
 
 impl PercentDecodedByteStr {
-    pub(crate) fn new<S>(s: S) -> Self
+    pub(crate) fn new<S>(s: S) -> Option<Self>
     where
         S: AsRef<str>,
     {
@@ -47,10 +47,10 @@ impl PercentDecodedByteStr {
         {
             ByteStr::new(decoded)
         } else {
-            ByteStr::new(s)
+            return None;
         };
 
-        Self(byte_str)
+        Some(Self(byte_str))
     }
 
     pub(crate) fn as_str(&self) -> &str {
