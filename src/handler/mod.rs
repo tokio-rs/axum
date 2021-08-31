@@ -316,7 +316,6 @@ macro_rules! impl_handler {
             Fut: Future<Output = Res> + Send,
             B: Send + 'static,
             Res: IntoResponse,
-            B: Send + 'static,
             $head: FromRequest<B> + Send,
             $( $tail: FromRequest<B> + Send,)*
         {
