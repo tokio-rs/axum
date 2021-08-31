@@ -42,15 +42,10 @@ impl PercentDecodedByteStr {
     where
         S: AsRef<str>,
     {
-        let byte_str = if let Ok(decoded) =
-            percent_encoding::percent_decode(s.as_ref().as_bytes()).decode_utf8()
-        {
-            ByteStr::new(decoded)
-        } else {
-            return None;
-        };
-
-        Some(Self(byte_str))
+        percent_encoding::percent_decode(s.as_ref().as_bytes())
+            .decode_utf8()
+            .ok()
+            .map(|decoded| Self(ByteStr::new(decoded)))
     }
 
     pub(crate) fn as_str(&self) -> &str {
