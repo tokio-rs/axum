@@ -647,14 +647,42 @@
 //! };
 //! use tower::limit::ConcurrencyLimitLayer;
 //!
+//! async fn handler() {}
+//!
 //! let app = Router::new()
-//!     .route("/", get(get_slash))
-//!     .route("/foo", post(post_foo))
+//!     .route("/", get(handler))
+//!     .route("/foo", post(handler))
+//!     .layer(ConcurrencyLimitLayer::new(100));
+//! # async {
+//! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+//! # };
+//! ```
+//!
+//! Note that [`Router::layer`] applies the middleware to all previously added
+//! routes, of that particular `Router`. If you need multiple groups of routes
+//! with different middleware build them separately and combine them with
+//! [`Router::or`]:
+//!
+//! ```rust,no_run
+//! use axum::{
+//!     handler::{get, post},
+//!     Router,
+//! };
+//! use tower::limit::ConcurrencyLimitLayer;
+//! # type MyAuthLayer = tower::layer::util::Identity;
+//!
+//! async fn handler() {}
+//!
+//! let foo = Router::new()
+//!     .route("/", get(handler))
+//!     .route("/foo", post(handler))
 //!     .layer(ConcurrencyLimitLayer::new(100));
 //!
-//! async fn get_slash() {}
+//! let bar = Router::new()
+//!     .route("/requires-auth", get(handler))
+//!     .layer(MyAuthLayer::new());
 //!
-//! async fn post_foo() {}
+//! let app = foo.or(bar);
 //! # async {
 //! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 //! # };
