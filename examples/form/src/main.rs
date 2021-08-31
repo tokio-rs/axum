@@ -36,7 +36,7 @@ async fn show_form(errors: Option<String>) -> Html<String> {
         <html>
             <head></head>
             <body>
-                <!-- In a more realistic application we would need to make sure things are properly escaped -->
+                <!-- In a more realistic application we would use a templating language (see templates example) -->
                 <pre>{}</pre>
                 <form action="/" method="post">
                     <label for="name">
@@ -71,7 +71,7 @@ async fn accept_form(Form(input): Form<Input>) -> Html<String> {
     match input.validate() {
         Ok(_) => String::from("Form submitted successfully!").into(),
         // Here the validation errors are presented as-is. In a more realistic
-        // application we would need to customize/process the validation errors to be able to
+        // application we would customize / process the validation errors to be able to
         // show to the user in a way that they could understand it
         Err(e) => show_form(Some(format!("Form error: {}", e))).await,
     }
