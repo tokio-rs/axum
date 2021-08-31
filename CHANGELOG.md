@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- **fixed:** Fix `extract::Path` not percent decoding params ([#272](https://github.com/tokio-rs/axum/pull/272))
+- **breaking change:** Automatically do percent decoding in `extract::Path` ([#272](https://github.com/tokio-rs/axum/pull/272))
 
 # 0.2.2 (24. August, 2021)
 
