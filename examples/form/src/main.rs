@@ -7,6 +7,7 @@
 use axum::{extract::Form, handler::get, response::Html, Router};
 use serde::Deserialize;
 use std::net::SocketAddr;
+use validator::Validate;
 
 #[tokio::main]
 async fn main() {
@@ -28,13 +29,15 @@ async fn main() {
         .unwrap();
 }
 
-async fn show_form() -> Html<&'static str> {
-    Html(
+async fn show_form(errors: Option<String>) -> Html<String> {
+    Html(format!(
         r#"
         <!doctype html>
         <html>
             <head></head>
             <body>
+                <!-- In a more realistic application we would need to make sure things are properly escaped -->
+                <pre>{}</pre>
                 <form action="/" method="post">
                     <label for="name">
                         Enter your name:
@@ -51,15 +54,25 @@ async fn show_form() -> Html<&'static str> {
             </body>
         </html>
         "#,
-    )
+        errors.unwrap_or_default()
+    ))
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Validate)]
 struct Input {
+    #[validate(length(min = 2))]
     name: String,
+    #[validate(email)]
     email: String,
 }
 
-async fn accept_form(Form(input): Form<Input>) {
+async fn accept_form(Form(input): Form<Input>) -> Html<String> {
     dbg!(&input);
+    match input.validate() {
+        Ok(_) => String::from("Form submitted successfully!").into(),
+        // Here the validation errors are presented as-is. In a more realistic
+        // application we would need to customize/process the validation errors to be able to
+        // show to the user in a way that they could understand it
+        Err(e) => show_form(Some(format!("Form error: {}", e))).await,
+    }
 }
