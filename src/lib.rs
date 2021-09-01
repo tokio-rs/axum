@@ -165,7 +165,7 @@
 //! // since its defined last.
 //! let (status, body) = call_service(&mut app, Method::GET, "/foo").await;
 //! assert_eq!(status, StatusCode::OK);
-//! assert_eq!(body, "/:key called");
+//! assert_eq!(body, "/foo called");
 //!
 //! // We have to add `/foo` after `/:key` since routes are matched bottom to
 //! // top.
@@ -176,7 +176,7 @@
 //! // Now it works
 //! let (status, body) = call_service(&mut new_app, Method::GET, "/foo").await;
 //! assert_eq!(status, StatusCode::OK);
-//! assert_eq!(body, "/foo called");
+//! assert_eq!(body, "/:key called");
 //!
 //! // And the other route works as well
 //! let (status, body) = call_service(&mut new_app, Method::GET, "/bar").await;

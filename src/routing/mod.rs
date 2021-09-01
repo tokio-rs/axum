@@ -123,11 +123,14 @@ impl<S> Router<S> {
     /// # Panics
     ///
     /// Panics if `path` doesn't start with `/`.
-    pub fn route<T>(self, path: &str, svc: T) -> Router<Route<T, S>> {
-        self.map(|fallback| Route {
-            pattern: PathPattern::new(path),
-            svc,
-            fallback,
+    pub fn route<T, E>(self, path: &str, svc: T) -> Router<Or<S, Route<T, EmptyRouter<E>>>> {
+        self.map(|previous| Or {
+            first: previous,
+            second: Route {
+                pattern: PathPattern::new(path),
+                svc,
+                fallback: EmptyRouter::not_found(),
+            },
         })
     }
 
