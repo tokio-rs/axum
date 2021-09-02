@@ -6,3 +6,4 @@ setup as its own crate so its dependencies are clear.
 ## Community showcase
 
 - [Houseflow](https://github.com/gbaranski/houseflow): House automation platform written in Rust.
+- [Datafuse](https://github.com/datafuselabs/datafuse): Cloud native data warehouse written in Rust.
