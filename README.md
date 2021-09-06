@@ -136,7 +136,7 @@ Unless you explicitly state otherwise, any contribution intentionally submitted
 for inclusion in `axum` by you, shall be licensed as MIT, without any
 additional terms or conditions.
 
-[examples]: https://github.com/tokio-rs/axum/tree/master/examples
+[examples]: https://github.com/tokio-rs/axum/tree/main/examples
 [docs]: https://docs.rs/axum
 [`tower`]: https://crates.io/crates/tower
 [`hyper`]: https://crates.io/crates/hyper
