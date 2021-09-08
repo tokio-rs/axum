@@ -84,8 +84,8 @@ async fn protected(
         sub: Some("b@b.com".to_string()),
         ..Validation::default()
     };
-    let token_data =
-        decode::<Claims>(token, &KEYS.decoded, &validation).map_err(|_| AuthError::InvalidToken)?;
+    let token_data = decode::<Claims>(token, &KEYS.decoding, &validation)
+        .map_err(|_| AuthError::InvalidToken)?;
 
     // Send the protected data to the user
     Ok(format!(
@@ -110,8 +110,8 @@ async fn auth(Json(payload): Json<AuthPayload>) -> Result<Json<AuthBody>, AuthEr
         company: "ACME".to_owned(),
         exp: 10000000000,
     };
-    let token =
-        encode(&Header::default(), &claims, &KEYS.encoded).map_err(|_| AuthError::TokenCreation)?;
+    let token = encode(&Header::default(), &claims, &KEYS.encoding)
+        .map_err(|_| AuthError::TokenCreation)?;
 
     // Send the authorization token
     Ok(Json(AuthBody::new(token)))
@@ -152,15 +152,15 @@ impl IntoResponse for AuthError {
 
 #[derive(Debug)]
 struct Keys {
-    encoded: EncodingKey,
-    decoded: DecodingKey<'static>,
+    encoding: EncodingKey,
+    decoding: DecodingKey<'static>,
 }
 
 impl Keys {
     fn new(secret: &[u8]) -> Self {
         Self {
-            encoded: EncodingKey::from_secret(secret),
-            decoded: DecodingKey::from_secret(secret).into_static(),
+            encoding: EncodingKey::from_secret(secret),
+            decoding: DecodingKey::from_secret(secret).into_static(),
         }
     }
 }
