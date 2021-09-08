@@ -3,7 +3,7 @@
 //! Run with
 //!
 //! ```not_rust
-//! cargo run -p example-jwt
+//! JWT_SECRET=secret cargo run -p example-jwt
 //! ```
 
 use axum::{
@@ -16,6 +16,7 @@ use axum::{
 };
 use headers::{authorization::Bearer, Authorization};
 use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
+use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::{convert::Infallible, fmt::Display, net::SocketAddr};
@@ -46,7 +47,10 @@ use std::{convert::Infallible, fmt::Display, net::SocketAddr};
 //     -H 'Authorization: Bearer blahblahblah' \
 //     http://localhost:3000/protected
 
-static JWT_SECRET: &[u8] = b"secret";
+static KEYS: Lazy<Keys> = Lazy::new(|| {
+    let secret = std::env::var("JWT_SECRET").expect("JWT_SECRET must be set");
+    Keys::new(secret.as_bytes())
+});
 
 #[tokio::main]
 async fn main() {
@@ -80,8 +84,8 @@ async fn protected(
         sub: Some("b@b.com".to_string()),
         ..Validation::default()
     };
-    let token_data = decode::<Claims>(token, &DecodingKey::from_secret(JWT_SECRET), &validation)
-        .map_err(|_| AuthError::InvalidToken)?;
+    let token_data =
+        decode::<Claims>(token, &KEYS.decoded, &validation).map_err(|_| AuthError::InvalidToken)?;
 
     // Send the protected data to the user
     Ok(format!(
@@ -106,12 +110,8 @@ async fn auth(Json(payload): Json<AuthPayload>) -> Result<Json<AuthBody>, AuthEr
         company: "ACME".to_owned(),
         exp: 10000000000,
     };
-    let token = encode(
-        &Header::default(),
-        &claims,
-        &EncodingKey::from_secret(JWT_SECRET),
-    )
-    .map_err(|_| AuthError::TokenCreation)?;
+    let token =
+        encode(&Header::default(), &claims, &KEYS.encoded).map_err(|_| AuthError::TokenCreation)?;
 
     // Send the authorization token
     Ok(Json(AuthBody::new(token)))
@@ -124,8 +124,8 @@ impl Display for Claims {
 }
 
 impl AuthBody {
-    pub fn new(access_token: String) -> Self {
-        AuthBody {
+    fn new(access_token: String) -> Self {
+        Self {
             access_token,
             token_type: "Bearer".to_string(),
         }
@@ -147,6 +147,21 @@ impl IntoResponse for AuthError {
             "error": error_message,
         }));
         (status, body).into_response()
+    }
+}
+
+#[derive(Debug)]
+struct Keys {
+    encoded: EncodingKey,
+    decoded: DecodingKey<'static>,
+}
+
+impl Keys {
+    fn new(secret: &[u8]) -> Self {
+        Self {
+            encoded: EncodingKey::from_secret(secret),
+            decoded: DecodingKey::from_secret(secret).into_static(),
+        }
     }
 }
 
