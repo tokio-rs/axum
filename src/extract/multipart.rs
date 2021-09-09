@@ -84,6 +84,77 @@ impl Multipart {
             Ok(None)
         }
     }
+
+    /// Yields the next [`OwnedField`] if available.
+    ///
+    /// Only one instance of `OwnedField` is allowed at the time.
+    ///
+    /// Unless previous instance is consumed, this function shall return error.
+    pub async fn next_owned_field(&mut self) -> Result<Option<OwnedField>, MultipartError> {
+        let field = self.inner
+                        .next_field()
+                        .await
+                        .map_err(MultipartError::from_multer)?;
+
+        if let Some(field) = field {
+            Ok(Some(OwnedField(field)))
+        } else {
+            Ok(None)
+        }
+    }
+}
+
+/// A single field in a multipart stream.
+#[derive(Debug)]
+#[repr(transparent)]
+pub struct OwnedField(multer::Field<'static>);
+
+impl OwnedField {
+    /// The field name found in the
+    /// [`Content-Disposition`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Disposition)
+    /// header.
+    pub fn name(&self) -> Option<&str> {
+        self.0.name()
+    }
+
+    /// The file name found in the
+    /// [`Content-Disposition`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Disposition)
+    /// header.
+    pub fn file_name(&self) -> Option<&str> {
+        self.0.file_name()
+    }
+
+    /// Get the content type of the field.
+    pub fn content_type(&self) -> Option<&Mime> {
+        self.0.content_type()
+    }
+
+    /// Get a map of headers as [`HeaderMap`].
+    pub fn headers(&self) -> &HeaderMap {
+        self.0.headers()
+    }
+
+    /// Get the full data of the field as [`Bytes`].
+    pub async fn bytes(self) -> Result<Bytes, MultipartError> {
+        self.0.bytes()
+              .await
+              .map_err(MultipartError::from_multer)
+    }
+
+    /// Get the full field data as text.
+    pub async fn text(self) -> Result<String, MultipartError> {
+        self.0.text().await.map_err(MultipartError::from_multer)
+    }
+}
+
+impl Stream for OwnedField {
+    type Item = Result<Bytes, MultipartError>;
+
+    #[inline]
+    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        Pin::new(&mut self.0).poll_next(cx)
+                             .map_err(MultipartError::from_multer)
+    }
 }
 
 /// A single field in a multipart stream.
