@@ -128,12 +128,12 @@ where
 
     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
         // Extract the token from the authorization header
-        let token = TypedHeader::<Authorization<Bearer>>::from_request(req)
-            .await
-            .map(|TypedHeader(Authorization(bearer))| bearer.token().to_owned())
-            .map_err(|_| AuthError::InvalidToken)?;
+        let TypedHeader(Authorization(bearer)) =
+            TypedHeader::<Authorization<Bearer>>::from_request(req)
+                .await
+                .map_err(|_| AuthError::InvalidToken)?;
         // Decode the user data
-        let token_data = decode::<Claims>(&token, &KEYS.decoding, &Validation::default())
+        let token_data = decode::<Claims>(bearer.token(), &KEYS.decoding, &Validation::default())
             .map_err(|_| AuthError::InvalidToken)?;
 
         Ok(token_data.claims)
