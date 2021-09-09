@@ -7,8 +7,9 @@
 //! ```
 
 use axum::{
+    async_trait,
     body::{Bytes, Full},
-    extract::TypedHeader,
+    extract::{FromRequest, RequestParts, TypedHeader},
     handler::{get, post},
     http::{Response, StatusCode},
     response::IntoResponse,
@@ -29,9 +30,9 @@ use std::{convert::Infallible, fmt::Display, net::SocketAddr};
 //     -w '\n' \
 //     -H 'Content-Type: application/json' \
 //     -d '{"client_id":"foo","client_secret":"bar"}' \
-//     http://localhost:3000/auth
+//     http://localhost:3000/authorize
 //
-// - visit the protected area using the token for authentication
+// - visit the protected area using the authorized token
 //
 // curl -s \
 //     -w '\n' \
@@ -62,7 +63,7 @@ async fn main() {
 
     let app = Router::new()
         .route("/protected", get(protected))
-        .route("/auth", post(auth));
+        .route("/authorize", post(authorize));
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
     tracing::debug!("listening on {}", addr);
@@ -73,28 +74,15 @@ async fn main() {
         .unwrap();
 }
 
-async fn protected(
-    TypedHeader(authorization): TypedHeader<Authorization<Bearer>>,
-) -> Result<String, AuthError> {
-    // Extract the authorization header value (i.e the token)
-    let token = authorization.0.token();
-
-    // Authenticate the user and returns his data
-    let validation = Validation {
-        sub: Some("b@b.com".to_string()),
-        ..Validation::default()
-    };
-    let token_data = decode::<Claims>(token, &KEYS.decoding, &validation)
-        .map_err(|_| AuthError::InvalidToken)?;
-
+async fn protected(claims: Claims) -> Result<String, AuthError> {
     // Send the protected data to the user
     Ok(format!(
         "Welcome to the protected area :)\nYour data:\n{}",
-        token_data.claims
+        claims
     ))
 }
 
-async fn auth(Json(payload): Json<AuthPayload>) -> Result<Json<AuthBody>, AuthError> {
+async fn authorize(Json(payload): Json<AuthPayload>) -> Result<Json<AuthBody>, AuthError> {
     // Check if the user sent the credentials
     if payload.client_id.is_empty() || payload.client_secret.is_empty() {
         return Err(AuthError::MissingCredentials);
@@ -103,17 +91,16 @@ async fn auth(Json(payload): Json<AuthPayload>) -> Result<Json<AuthBody>, AuthEr
     if payload.client_id != "foo" || payload.client_secret != "bar" {
         return Err(AuthError::WrongCredentials);
     }
-
-    // Create the authorization token
     let claims = Claims {
         sub: "b@b.com".to_owned(),
         company: "ACME".to_owned(),
         exp: 10000000000,
     };
+    // Create the authorization token
     let token = encode(&Header::default(), &claims, &KEYS.encoding)
         .map_err(|_| AuthError::TokenCreation)?;
 
-    // Send the authorization token
+    // Send the authorized token
     Ok(Json(AuthBody::new(token)))
 }
 
@@ -129,6 +116,27 @@ impl AuthBody {
             access_token,
             token_type: "Bearer".to_string(),
         }
+    }
+}
+
+#[async_trait]
+impl<B> FromRequest<B> for Claims
+where
+    B: Send,
+{
+    type Rejection = AuthError;
+
+    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+        // Extract the token from the authorization header
+        let token = TypedHeader::<Authorization<Bearer>>::from_request(req)
+            .await
+            .map(|TypedHeader(Authorization(bearer))| bearer.token().to_owned())
+            .map_err(|_| AuthError::InvalidToken)?;
+        // Decode the user data
+        let token_data = decode::<Claims>(&token, &KEYS.decoding, &Validation::default())
+            .map_err(|_| AuthError::InvalidToken)?;
+
+        Ok(token_data.claims)
     }
 }
 
