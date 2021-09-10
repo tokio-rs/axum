@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - None.
 
+# 0.2.4 (10. September, 2021)
+
+- Document using `StreamExt::split` with `WebSocket` ([#291])
+- Document adding middleware to multiple groups of routes ([#293])
+
+[#291]: https://github.com/tokio-rs/axum/pull/291
+[#293]: https://github.com/tokio-rs/axum/pull/293
+
 # 0.2.3 (26. August, 2021)
 
 - **fixed:** Fix accidental breaking change introduced by internal refactor.
