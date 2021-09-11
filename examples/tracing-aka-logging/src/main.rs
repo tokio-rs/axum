@@ -4,9 +4,16 @@
 //! cargo run -p example-tracing-aka-logging
 //! ```
 
-use axum::{handler::get, response::Html, Router};
-use std::net::SocketAddr;
-use tower_http::trace::TraceLayer;
+use axum::{
+    body::Bytes,
+    handler::get,
+    http::{HeaderMap, Request, Response},
+    response::Html,
+    Router,
+};
+use std::{net::SocketAddr, time::Duration};
+use tower_http::{classify::ServerErrorsFailureClass, trace::TraceLayer};
+use tracing::Span;
 
 #[tokio::main]
 async fn main() {
@@ -24,8 +31,36 @@ async fn main() {
         .route("/", get(handler))
         // `TraceLayer` is provided by tower-http so you have to add that as a dependency.
         // It provides good defaults but is also very customizable.
+        //
         // See https://docs.rs/tower-http/0.1.1/tower_http/trace/index.html for more details.
-        .layer(TraceLayer::new_for_http());
+        .layer(TraceLayer::new_for_http())
+        // If you want to customize the behavior using closures here is how
+        //
+        // This is just for demonstration, you don't need to add this middleware twice
+        .layer(
+            TraceLayer::new_for_http()
+                .on_request(|_request: &Request<_>, _span: &Span| {
+                    // ...
+                })
+                .on_response(
+                    |_response: &Response<_>, _latency: Duration, _span: &Span| {
+                        // ...
+                    },
+                )
+                .on_body_chunk(|_chunk: &Bytes, _latency: Duration, _span: &Span| {
+                    // ..
+                })
+                .on_eos(
+                    |_trailers: Option<&HeaderMap>, _stream_duration: Duration, _span: &Span| {
+                        // ...
+                    },
+                )
+                .on_failure(
+                    |_error: ServerErrorsFailureClass, _latency: Duration, _span: &Span| {
+                        // ...
+                    },
+                ),
+        );
 
     // run it
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
