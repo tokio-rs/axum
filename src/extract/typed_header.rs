@@ -79,12 +79,14 @@ impl<T> Deref for TypedHeader<T> {
 #[cfg_attr(docsrs, doc(cfg(feature = "headers")))]
 #[derive(Debug)]
 pub struct TypedHeaderRejection {
-    name: &'static http::header::HeaderName,
-    reason: Reason,
+    /// Name of the header that caused the rejection
+    pub name: &'static http::header::HeaderName,
+    /// Reason why the header extraction has failed
+    pub reason: Reason,
 }
 
 #[derive(Debug)]
-enum Reason {
+pub enum Reason {
     Missing,
     Error(headers::Error),
 }
