@@ -48,7 +48,7 @@ where
         } else {
             return Err(TypedHeaderRejection {
                 name: T::name(),
-                reason: Reason::Missing,
+                reason: TypedHeaderRejectionReason::Missing,
             });
         };
 
@@ -56,11 +56,11 @@ where
             Ok(Some(value)) => Ok(Self(value)),
             Ok(None) => Err(TypedHeaderRejection {
                 name: T::name(),
-                reason: Reason::Missing,
+                reason: TypedHeaderRejectionReason::Missing,
             }),
             Err(err) => Err(TypedHeaderRejection {
                 name: T::name(),
-                reason: Reason::Error(err),
+                reason: TypedHeaderRejectionReason::Error(err),
             }),
         }
     }
@@ -78,16 +78,20 @@ impl<T> Deref for TypedHeader<T> {
 #[cfg(feature = "headers")]
 #[cfg_attr(docsrs, doc(cfg(feature = "headers")))]
 #[derive(Debug)]
+#[non_exhaustive]
 pub struct TypedHeaderRejection {
     /// Name of the header that caused the rejection
     pub name: &'static http::header::HeaderName,
     /// Reason why the header extraction has failed
-    pub reason: Reason,
+    pub reason: TypedHeaderRejectionReason,
 }
 
+/// Additional information regarding a [`TypedHeaderRejection`](super::TypedHeaderRejection)
 #[derive(Debug)]
-pub enum Reason {
+pub enum TypedHeaderRejectionReason {
+    /// The header was missing from the HTTP request
     Missing,
+    /// An error occured when parsing the header from the HTTP request
     Error(headers::Error),
 }
 
@@ -105,10 +109,10 @@ impl IntoResponse for TypedHeaderRejection {
 impl std::fmt::Display for TypedHeaderRejection {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match &self.reason {
-            Reason::Missing => {
+            TypedHeaderRejectionReason::Missing => {
                 write!(f, "Header of type `{}` was missing", self.name)
             }
-            Reason::Error(err) => {
+            TypedHeaderRejectionReason::Error(err) => {
                 write!(f, "{} ({})", err, self.name)
             }
         }
@@ -118,8 +122,8 @@ impl std::fmt::Display for TypedHeaderRejection {
 impl std::error::Error for TypedHeaderRejection {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match &self.reason {
-            Reason::Error(err) => Some(err),
-            Reason::Missing => None,
+            TypedHeaderRejectionReason::Error(err) => Some(err),
+            TypedHeaderRejectionReason::Missing => None,
         }
     }
 }
