@@ -353,7 +353,7 @@ pub use self::typed_header::TypedHeader;
 /// application, and not using any middleware that changes the request body, you
 /// can most likely use `axum::body::Body`. Note that this is also the default.
 ///
-/// If you're writing a library, that's intended for others to use, it's recommended
+/// If you're writing a library that's intended for others to use, it's recommended
 /// to keep the generic type parameter:
 ///
 /// ```rust
