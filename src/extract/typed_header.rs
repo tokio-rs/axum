@@ -78,12 +78,21 @@ impl<T> Deref for TypedHeader<T> {
 #[cfg(feature = "headers")]
 #[cfg_attr(docsrs, doc(cfg(feature = "headers")))]
 #[derive(Debug)]
-#[non_exhaustive]
 pub struct TypedHeaderRejection {
+    name: &'static http::header::HeaderName,
+    reason: TypedHeaderRejectionReason,
+}
+
+impl TypedHeaderRejection {
     /// Name of the header that caused the rejection
-    pub name: &'static http::header::HeaderName,
+    pub fn name(&self) -> &http::header::HeaderName {
+        self.name
+    }
+
     /// Reason why the header extraction has failed
-    pub reason: TypedHeaderRejectionReason,
+    pub fn reason(&self) -> &TypedHeaderRejectionReason {
+        &self.reason
+    }
 }
 
 /// Additional information regarding a [`TypedHeaderRejection`](super::TypedHeaderRejection)
