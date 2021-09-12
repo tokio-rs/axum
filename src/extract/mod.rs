@@ -345,15 +345,15 @@ pub use self::typed_header::TypedHeader;
 /// # What is the `B` type parameter?
 ///
 /// `FromRequest` is generic over the request body (the `B` in
-/// [`http::Request<B>`]). This is to allow `FromRequest` to be usable will any
+/// [`http::Request<B>`]). This is to allow `FromRequest` to be usable with any
 /// type of request body. This is necessary because some middleware change the
 /// request body, for example to add timeouts.
 ///
 /// If you're writing your own `FromRequest` that wont be used outside your
 /// application, and not using any middleware that changes the request body, you
-/// can most likely use `axum::body::Body`. Note this is also the default.
+/// can most likely use `axum::body::Body`. Note that this is also the default.
 ///
-/// If you're writing a library, thats intended for others to use, its recommended
+/// If you're writing a library that's intended for others to use, it's recommended
 /// to keep the generic type parameter:
 ///
 /// ```rust
