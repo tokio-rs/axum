@@ -437,7 +437,7 @@
 //! // note this requires you've enabled axum's `headers`
 //! async fn user_agent(TypedHeader(user_agent): TypedHeader<UserAgent>) {}
 //!
-//! // `String` consumes the request body and ensures its valid utf-8
+//! // `String` consumes the request body and ensures it is valid utf-8
 //! async fn string(body: String) {}
 //!
 //! // `Bytes` gives you the raw request body
@@ -567,9 +567,8 @@
 //!
 //! ## Optional extractors
 //!
-//! All extractors defined in axum will reject the request if they request
-//! doesn't match. If you wish to make an extractor optional you can wrap it in
-//! `Option`:
+//! All extractors defined in axum will reject the request if it doesn't match.
+//! If you wish to make an extractor optional you can wrap it in `Option`:
 //!
 //! ```rust,no_run
 //! use axum::{
