@@ -316,7 +316,6 @@ macro_rules! impl_handler {
             Fut: Future<Output = Res> + Send,
             B: Send + 'static,
             Res: IntoResponse,
-            B: Send + 'static,
             $head: FromRequest<B> + Send,
             $( $tail: FromRequest<B> + Send,)*
         {
@@ -439,6 +438,13 @@ pub struct OnMethod<H, B, T, F> {
     pub(crate) handler: H,
     pub(crate) fallback: F,
     pub(crate) _marker: PhantomData<fn() -> (B, T)>,
+}
+
+#[test]
+fn traits() {
+    use crate::tests::*;
+    assert_send::<OnMethod<(), NotSendSync, NotSendSync, ()>>();
+    assert_sync::<OnMethod<(), NotSendSync, NotSendSync, ()>>();
 }
 
 impl<H, B, T, F> fmt::Debug for OnMethod<H, B, T, F>

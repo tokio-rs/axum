@@ -333,4 +333,4 @@ where
 
 #[cfg(feature = "headers")]
 #[cfg_attr(docsrs, doc(cfg(feature = "headers")))]
-pub use super::typed_header::TypedHeaderRejection;
+pub use super::typed_header::{TypedHeaderRejection, TypedHeaderRejectionReason};

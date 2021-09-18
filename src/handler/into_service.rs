@@ -17,6 +17,13 @@ pub struct IntoService<H, B, T> {
     _marker: PhantomData<fn() -> (B, T)>,
 }
 
+#[test]
+fn traits() {
+    use crate::tests::*;
+    assert_send::<IntoService<(), NotSendSync, NotSendSync>>();
+    assert_sync::<IntoService<(), NotSendSync, NotSendSync>>();
+}
+
 impl<H, B, T> IntoService<H, B, T> {
     pub(super) fn new(handler: H) -> Self {
         Self {

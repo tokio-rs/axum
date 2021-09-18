@@ -1,6 +1,6 @@
 //! Types and traits for extracting data from requests.
 //!
-//! A handler function is an async function take takes any number of
+//! A handler function is an async function that takes any number of
 //! "extractors" as arguments. An extractor is a type that implements
 //! [`FromRequest`](crate::extract::FromRequest).
 //!
@@ -9,7 +9,7 @@
 //!
 //! ```rust,no_run
 //! use axum::{
-//!     Json,
+//!     extract::Json,
 //!     handler::{post, Handler},
 //!     Router,
 //! };
@@ -21,9 +21,7 @@
 //!     password: String,
 //! }
 //!
-//! async fn create_user(payload: Json<CreateUser>) {
-//!     let payload: CreateUser = payload.0;
-//!
+//! async fn create_user(Json(payload): Json<CreateUser>) {
 //!     // ...
 //! }
 //!
@@ -66,38 +64,7 @@
 //!     }
 //! }
 //!
-//! async fn handler(user_agent: ExtractUserAgent) {
-//!     let user_agent: HeaderValue = user_agent.0;
-//!
-//!     // ...
-//! }
-//!
-//! let app = Router::new().route("/foo", get(handler));
-//! # async {
-//! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-//! # };
-//! ```
-//!
-//! # Multiple extractors
-//!
-//! Handlers can also contain multiple extractors:
-//!
-//! ```rust,no_run
-//! use axum::{
-//!     extract::{Path, Query},
-//!     handler::get,
-//!     Router,
-//! };
-//! use std::collections::HashMap;
-//!
-//! async fn handler(
-//!     // Extract captured parameters from the URL
-//!     params: Path<HashMap<String, String>>,
-//!     // Parse query string into a `HashMap`
-//!     query_params: Query<HashMap<String, String>>,
-//!     // Buffer the request body into a `Bytes`
-//!     bytes: bytes::Bytes,
-//! ) {
+//! async fn handler(ExtractUserAgent(user_agent): ExtractUserAgent) {
 //!     // ...
 //! }
 //!
@@ -109,94 +76,6 @@
 //!
 //! Note that only one extractor can consume the request body. If multiple body extractors are
 //! applied a `500 Internal Server Error` response will be returned.
-//!
-//! # Optional extractors
-//!
-//! Wrapping extractors in `Option` will make them optional:
-//!
-//! ```rust,no_run
-//! use axum::{
-//!     extract::Json,
-//!     handler::post,
-//!     Router,
-//! };
-//! use serde_json::Value;
-//!
-//! async fn create_user(payload: Option<Json<Value>>) {
-//!     if let Some(payload) = payload {
-//!         // We got a valid JSON payload
-//!     } else {
-//!         // Payload wasn't valid JSON
-//!     }
-//! }
-//!
-//! let app = Router::new().route("/users", post(create_user));
-//! # async {
-//! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-//! # };
-//! ```
-//!
-//! Wrapping extractors in `Result` makes them optional and gives you the reason
-//! the extraction failed:
-//!
-//! ```rust,no_run
-//! use axum::{
-//!     extract::{Json, rejection::JsonRejection},
-//!     handler::post,
-//!     Router,
-//! };
-//! use serde_json::Value;
-//!
-//! async fn create_user(payload: Result<Json<Value>, JsonRejection>) {
-//!     match payload {
-//!         Ok(payload) => {
-//!             // We got a valid JSON payload
-//!         }
-//!         Err(JsonRejection::MissingJsonContentType(_)) => {
-//!             // Request didn't have `Content-Type: application/json`
-//!             // header
-//!         }
-//!         Err(JsonRejection::InvalidJsonBody(_)) => {
-//!             // Couldn't deserialize the body into the target type
-//!         }
-//!         Err(JsonRejection::BodyAlreadyExtracted(_)) => {
-//!             // Another extractor had already consumed the body
-//!         }
-//!         Err(_) => {
-//!             // `JsonRejection` is marked `#[non_exhaustive]` so match must
-//!             // include a catch-all case.
-//!         }
-//!     }
-//! }
-//!
-//! let app = Router::new().route("/users", post(create_user));
-//! # async {
-//! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-//! # };
-//! ```
-//!
-//! # Reducing boilerplate
-//!
-//! If you're feeling adventurous you can even deconstruct the extractors
-//! directly on the function signature:
-//!
-//! ```rust,no_run
-//! use axum::{
-//!     extract::Json,
-//!     handler::post,
-//!     Router,
-//! };
-//! use serde_json::Value;
-//!
-//! async fn create_user(Json(value): Json<Value>) {
-//!     // `value` is of type `Value`
-//! }
-//!
-//! let app = Router::new().route("/users", post(create_user));
-//! # async {
-//! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-//! # };
-//! ```
 //!
 //! # Request body extractors
 //!
@@ -345,15 +224,15 @@ pub use self::typed_header::TypedHeader;
 /// # What is the `B` type parameter?
 ///
 /// `FromRequest` is generic over the request body (the `B` in
-/// [`http::Request<B>`]). This is to allow `FromRequest` to be usable will any
+/// [`http::Request<B>`]). This is to allow `FromRequest` to be usable with any
 /// type of request body. This is necessary because some middleware change the
 /// request body, for example to add timeouts.
 ///
 /// If you're writing your own `FromRequest` that wont be used outside your
 /// application, and not using any middleware that changes the request body, you
-/// can most likely use `axum::body::Body`. Note this is also the default.
+/// can most likely use `axum::body::Body`. Note that this is also the default.
 ///
-/// If you're writing a library, thats intended for others to use, its recommended
+/// If you're writing a library that's intended for others to use, it's recommended
 /// to keep the generic type parameter:
 ///
 /// ```rust

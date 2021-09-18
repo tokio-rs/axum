@@ -2,10 +2,6 @@ use bytes::Bytes;
 use pin_project_lite::pin_project;
 use std::ops::Deref;
 
-mod clone_box_service;
-
-pub(crate) use self::clone_box_service::CloneBoxService;
-
 /// A string like type backed by `Bytes` making it cheap to clone.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub(crate) struct ByteStr(Bytes);

@@ -29,6 +29,13 @@ pub struct IntoMakeServiceWithConnectInfo<S, C> {
     _connect_info: PhantomData<fn() -> C>,
 }
 
+#[test]
+fn traits() {
+    use crate::tests::*;
+    assert_send::<IntoMakeServiceWithConnectInfo<(), NotSendSync>>();
+    assert_sync::<IntoMakeServiceWithConnectInfo<(), NotSendSync>>();
+}
+
 impl<S, C> IntoMakeServiceWithConnectInfo<S, C> {
     pub(crate) fn new(svc: S) -> Self {
         Self {

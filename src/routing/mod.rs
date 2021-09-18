@@ -3,12 +3,13 @@
 use self::future::{BoxRouteFuture, EmptyRouterFuture, NestedFuture, RouteFuture};
 use crate::{
     body::{box_body, BoxBody},
+    buffer::MpscBuffer,
     extract::{
         connect_info::{Connected, IntoMakeServiceWithConnectInfo},
         OriginalUri,
     },
     service::HandleError,
-    util::{ByteStr, CloneBoxService, PercentDecodedByteStr},
+    util::{ByteStr, PercentDecodedByteStr},
     BoxError,
 };
 use bytes::Bytes;
@@ -23,7 +24,10 @@ use std::{
     sync::Arc,
     task::{Context, Poll},
 };
-use tower::{util::ServiceExt, ServiceBuilder};
+use tower::{
+    util::{BoxService, ServiceExt},
+    ServiceBuilder,
+};
 use tower_http::map_response_body::MapResponseBodyLayer;
 use tower_layer::Layer;
 use tower_service::Service;
@@ -252,7 +256,7 @@ impl<S> Router<S> {
     /// routes.
     pub fn boxed<ReqBody, ResBody>(self) -> Router<BoxRoute<ReqBody, S::Error>>
     where
-        S: Service<Request<ReqBody>, Response = Response<ResBody>> + Clone + Send + 'static,
+        S: Service<Request<ReqBody>, Response = Response<ResBody>> + Send + 'static,
         S::Error: Into<BoxError> + Send,
         S::Future: Send,
         ReqBody: Send + 'static,
@@ -261,8 +265,9 @@ impl<S> Router<S> {
     {
         self.map(|svc| {
             ServiceBuilder::new()
-                .layer_fn(|inner| BoxRoute { inner })
-                .layer_fn(CloneBoxService::new)
+                .layer_fn(BoxRoute)
+                .layer_fn(MpscBuffer::new)
+                .layer(BoxService::layer())
                 .layer(MapResponseBodyLayer::new(box_body))
                 .service(svc)
         })
@@ -853,15 +858,13 @@ type Captures = Vec<(String, String)>;
 /// A boxed route trait object.
 ///
 /// See [`Router::boxed`] for more details.
-pub struct BoxRoute<B = crate::body::Body, E = Infallible> {
-    inner: CloneBoxService<Request<B>, Response<BoxBody>, E>,
-}
+pub struct BoxRoute<B = crate::body::Body, E = Infallible>(
+    MpscBuffer<BoxService<Request<B>, Response<BoxBody>, E>, Request<B>>,
+);
 
 impl<B, E> Clone for BoxRoute<B, E> {
     fn clone(&self) -> Self {
-        BoxRoute {
-            inner: self.inner.clone(),
-        }
+        Self(self.0.clone())
     }
 }
 
@@ -887,7 +890,7 @@ where
     #[inline]
     fn call(&mut self, req: Request<B>) -> Self::Future {
         BoxRouteFuture {
-            inner: self.inner.clone().oneshot(req),
+            inner: self.0.clone().oneshot(req),
         }
     }
 }
@@ -1127,5 +1130,34 @@ mod tests {
             path,
             route_spec
         );
+    }
+
+    #[test]
+    fn traits() {
+        use crate::tests::*;
+
+        assert_send::<Router<()>>();
+        assert_sync::<Router<()>>();
+
+        assert_send::<Route<(), ()>>();
+        assert_sync::<Route<(), ()>>();
+
+        assert_send::<EmptyRouter<NotSendSync>>();
+        assert_sync::<EmptyRouter<NotSendSync>>();
+
+        assert_send::<BoxRoute<(), ()>>();
+        assert_sync::<BoxRoute<(), ()>>();
+
+        assert_send::<Layered<()>>();
+        assert_sync::<Layered<()>>();
+
+        assert_send::<Nested<(), ()>>();
+        assert_sync::<Nested<(), ()>>();
+
+        assert_send::<CheckInfallible<()>>();
+        assert_sync::<CheckInfallible<()>>();
+
+        assert_send::<IntoMakeService<()>>();
+        assert_sync::<IntoMakeService<()>>();
     }
 }
