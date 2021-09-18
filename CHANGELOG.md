@@ -7,8 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+- Clarify that `handler::any` and `service::any` only accepts standard HTTP
+  methods ([#337])
 - Add accessors to TypedHeaderRejection fields ([#317])
 
+[#337]: https://github.com/tokio-rs/axum/pull/337
 [#317]: https://github.com/tokio-rs/axum/pull/317
 
 # 0.2.4 (10. September, 2021)
