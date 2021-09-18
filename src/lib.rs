@@ -12,6 +12,9 @@
 //!         - [Routing to fallible services](#routing-to-fallible-services)
 //!     - [Nesting routes](#nesting-routes)
 //! - [Extractors](#extractors)
+//!     - [Common extractors](#common-extractors)
+//!     - [Applying multiple extractors](#applying-multiple-extractors)
+//!     - [Optional extractors](#optional-extractors)
 //! - [Building responses](#building-responses)
 //! - [Applying middleware](#applying-middleware)
 //!     - [To individual handlers](#to-individual-handlers)
@@ -380,7 +383,7 @@
 //!
 //! ```rust,no_run
 //! use axum::{
-//!     extract,
+//!     extract::Json,
 //!     handler::post,
 //!     Router,
 //! };
@@ -394,9 +397,7 @@
 //!     password: String,
 //! }
 //!
-//! async fn create_user(payload: extract::Json<CreateUser>) {
-//!     let payload: CreateUser = payload.0;
-//!
+//! async fn create_user(Json(payload): Json<CreateUser>) {
 //!     // ...
 //! }
 //! # async {
@@ -404,27 +405,73 @@
 //! # };
 //! ```
 //!
-//! [`extract::Path`] can be used to extract params from a dynamic URL. It
-//! is compatible with any type that implements [`serde::Deserialize`], such as
-//! [`Uuid`]:
+//! See the [`extract`] module for everything that can be used as an extractor.
+//!
+//! ## Common extractors
+//!
+//! Some commonly used extractors are:
 //!
 //! ```rust,no_run
 //! use axum::{
-//!     extract,
+//!     extract::{Json, TypedHeader, Path, Extension, Query},
 //!     handler::post,
+//!     http::{Request, header::HeaderMap},
+//!     body::{Bytes, Body},
 //!     Router,
 //! };
-//! use uuid::Uuid;
+//! use serde_json::Value;
+//! use headers::UserAgent;
+//! use std::collections::HashMap;
 //!
-//! let app = Router::new().route("/users/:id", post(create_user));
+//! // `Path` gives you the path parameters and deserializes them. See its docs for
+//! // more details
+//! async fn path(Path(user_id): Path<u32>) {}
 //!
-//! async fn create_user(extract::Path(user_id): extract::Path<Uuid>) {
-//!     // ...
-//! }
+//! // `Query` gives you the query parameters and deserializes them.
+//! async fn query(Query(params): Query<HashMap<String, String>>) {}
+//!
+//! // `HeaderMap` gives you all the headers
+//! async fn headers(headers: HeaderMap) {}
+//!
+//! // `TypedHeader` can be used to extract a single header
+//! // note this requires you've enabled axum's `headers`
+//! async fn user_agent(TypedHeader(user_agent): TypedHeader<UserAgent>) {}
+//!
+//! // `String` consumes the request body and ensures it is valid utf-8
+//! async fn string(body: String) {}
+//!
+//! // `Bytes` gives you the raw request body
+//! async fn bytes(body: Bytes) {}
+//!
+//! // We've already seen `Json` for parsing the request body as json
+//! async fn json(Json(payload): Json<Value>) {}
+//!
+//! // `Request` gives you the whole request for maximum control
+//! async fn request(request: Request<Body>) {}
+//!
+//! // `Extension` extracts data from "request extensions"
+//! // See the "Sharing state with handlers" section for more details
+//! async fn extension(Extension(state): Extension<State>) {}
+//!
+//! #[derive(Clone)]
+//! struct State { /* ... */ }
+//!
+//! let app = Router::new()
+//!     .route("/path", post(path))
+//!     .route("/query", post(query))
+//!     .route("/user_agent", post(user_agent))
+//!     .route("/headers", post(headers))
+//!     .route("/string", post(string))
+//!     .route("/bytes", post(bytes))
+//!     .route("/json", post(json))
+//!     .route("/request", post(request))
+//!     .route("/extension", post(extension));
 //! # async {
 //! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 //! # };
 //! ```
+//!
+//! ## Applying multiple extractors
 //!
 //! You can also apply multiple extractors:
 //!
@@ -464,33 +511,125 @@
 //! # };
 //! ```
 //!
-//! Additionally `Request<Body>` is itself an extractor:
+//! Take care of the order in which you apply extractors as some extractors
+//! mutate the request.
+//!
+//! For example using [`HeaderMap`] as an extractor will make the headers
+//! inaccessible for other extractors on the handler. If you need to extract
+//! individual headers _and_ a [`HeaderMap`] make sure to apply the extractor of
+//! individual headers first:
 //!
 //! ```rust,no_run
 //! use axum::{
-//!     body::Body,
-//!     handler::post,
-//!     http::Request,
+//!     extract::TypedHeader,
+//!     handler::get,
+//!     http::header::HeaderMap,
 //!     Router,
 //! };
+//! use headers::UserAgent;
 //!
-//! let app = Router::new().route("/users/:id", post(handler));
-//!
-//! async fn handler(req: Request<Body>) {
+//! async fn handler(
+//!     TypedHeader(user_agent): TypedHeader<UserAgent>,
+//!     all_headers: HeaderMap,
+//! ) {
 //!     // ...
 //! }
+//!
+//! let app = Router::new().route("/", get(handler));
 //! # async {
 //! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 //! # };
 //! ```
 //!
-//! However it cannot be combined with other extractors since it consumes the
-//! entire request.
+//! Extractors that consume the request body can also only be applied once as
+//! well as [`Request`], which consumes the entire request:
 //!
-//! See the [`extract`] module for more details.
+//! ```rust,no_run
+//! use axum::{
+//!     handler::get,
+//!     http::Request,
+//!     body::Body,
+//!     Router,
+//! };
 //!
-//! [`Uuid`]: https://docs.rs/uuid/latest/uuid/
-//! [`FromRequest`]: crate::extract::FromRequest
+//! async fn handler(request: Request<Body>) {
+//!     // ...
+//! }
+//!
+//! let app = Router::new().route("/", get(handler));
+//! # async {
+//! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+//! # };
+//! ```
+//!
+//! Extractors always run in the order of the function parameters that is from
+//! left to right.
+//!
+//! ## Optional extractors
+//!
+//! All extractors defined in axum will reject the request if it doesn't match.
+//! If you wish to make an extractor optional you can wrap it in `Option`:
+//!
+//! ```rust,no_run
+//! use axum::{
+//!     extract::Json,
+//!     handler::post,
+//!     Router,
+//! };
+//! use serde_json::Value;
+//!
+//! async fn create_user(payload: Option<Json<Value>>) {
+//!     if let Some(payload) = payload {
+//!         // We got a valid JSON payload
+//!     } else {
+//!         // Payload wasn't valid JSON
+//!     }
+//! }
+//!
+//! let app = Router::new().route("/users", post(create_user));
+//! # async {
+//! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+//! # };
+//! ```
+//!
+//! Wrapping extractors in `Result` makes them optional and gives you the reason
+//! the extraction failed:
+//!
+//! ```rust,no_run
+//! use axum::{
+//!     extract::{Json, rejection::JsonRejection},
+//!     handler::post,
+//!     Router,
+//! };
+//! use serde_json::Value;
+//!
+//! async fn create_user(payload: Result<Json<Value>, JsonRejection>) {
+//!     match payload {
+//!         Ok(payload) => {
+//!             // We got a valid JSON payload
+//!         }
+//!         Err(JsonRejection::MissingJsonContentType(_)) => {
+//!             // Request didn't have `Content-Type: application/json`
+//!             // header
+//!         }
+//!         Err(JsonRejection::InvalidJsonBody(_)) => {
+//!             // Couldn't deserialize the body into the target type
+//!         }
+//!         Err(JsonRejection::BodyAlreadyExtracted(_)) => {
+//!             // Another extractor had already consumed the body
+//!         }
+//!         Err(_) => {
+//!             // `JsonRejection` is marked `#[non_exhaustive]` so match must
+//!             // include a catch-all case.
+//!         }
+//!     }
+//! }
+//!
+//! let app = Router::new().route("/users", post(create_user));
+//! # async {
+//! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+//! # };
+//! ```
 //!
 //! # Building responses
 //!
@@ -989,6 +1128,10 @@
 //! [`tower::Service`]: tower::Service
 //! [`handle_error`]: routing::Router::handle_error
 //! [tower-guides]: https://github.com/tower-rs/tower/tree/master/guides
+//! [`Uuid`]: https://docs.rs/uuid/latest/uuid/
+//! [`FromRequest`]: crate::extract::FromRequest
+//! [`HeaderMap`]: http::header::HeaderMap
+//! [`Request`]: http::Request
 
 #![warn(
     clippy::all,
