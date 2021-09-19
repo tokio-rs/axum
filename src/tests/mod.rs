@@ -2,7 +2,7 @@
 
 use crate::BoxError;
 use crate::{
-    extract,
+    extract::{self, Path},
     handler::{any, delete, get, on, patch, post, Handler},
     response::IntoResponse,
     routing::MethodFilter,
@@ -13,7 +13,7 @@ use http::{
     header::{HeaderMap, AUTHORIZATION},
     Request, Response, StatusCode, Uri,
 };
-use hyper::{Body, Server};
+use hyper::Body;
 use serde::Deserialize;
 use serde_json::json;
 use std::future::Ready;
@@ -21,15 +21,17 @@ use std::{
     collections::HashMap,
     convert::Infallible,
     future::ready,
-    net::{SocketAddr, TcpListener},
     task::{Context, Poll},
     time::Duration,
 };
-use tower::{make::Shared, service_fn};
+use tower::service_fn;
 use tower_service::Service;
+
+pub(crate) use helpers::*;
 
 mod get_to_head;
 mod handle_error;
+mod helpers;
 mod nest;
 mod or;
 
@@ -51,28 +53,18 @@ async fn hello_world() {
         .route("/", get(root).post(foo))
         .route("/users", post(users_create));
 
-    let addr = run_in_background(app).await;
+    let client = TestClient::new(app);
 
-    let client = reqwest::Client::new();
-
-    let res = client.get(format!("http://{}", addr)).send().await.unwrap();
-    let body = res.text().await.unwrap();
+    let res = client.get("/").send().await;
+    let body = res.text().await;
     assert_eq!(body, "Hello, World!");
 
-    let res = client
-        .post(format!("http://{}", addr))
-        .send()
-        .await
-        .unwrap();
-    let body = res.text().await.unwrap();
+    let res = client.post("/").send().await;
+    let body = res.text().await;
     assert_eq!(body, "foo");
 
-    let res = client
-        .post(format!("http://{}/users", addr))
-        .send()
-        .await
-        .unwrap();
-    let body = res.text().await.unwrap();
+    let res = client.post("/users").send().await;
+    let body = res.text().await;
     assert_eq!(body, "users#create");
 }
 
@@ -80,16 +72,9 @@ async fn hello_world() {
 async fn consume_body() {
     let app = Router::new().route("/", get(|body: String| async { body }));
 
-    let addr = run_in_background(app).await;
-
-    let client = reqwest::Client::new();
-    let res = client
-        .get(format!("http://{}", addr))
-        .body("foo")
-        .send()
-        .await
-        .unwrap();
-    let body = res.text().await.unwrap();
+    let client = TestClient::new(app);
+    let res = client.get("/").body("foo").send().await;
+    let body = res.text().await;
 
     assert_eq!(body, "foo");
 }
@@ -106,16 +91,9 @@ async fn deserialize_body() {
         post(|input: extract::Json<Input>| async { input.0.foo }),
     );
 
-    let addr = run_in_background(app).await;
-
-    let client = reqwest::Client::new();
-    let res = client
-        .post(format!("http://{}", addr))
-        .json(&json!({ "foo": "bar" }))
-        .send()
-        .await
-        .unwrap();
-    let body = res.text().await.unwrap();
+    let client = TestClient::new(app);
+    let res = client.post("/").json(&json!({ "foo": "bar" })).send().await;
+    let body = res.text().await;
 
     assert_eq!(body, "bar");
 }
@@ -132,18 +110,11 @@ async fn consume_body_to_json_requires_json_content_type() {
         post(|input: extract::Json<Input>| async { input.0.foo }),
     );
 
-    let addr = run_in_background(app).await;
-
-    let client = reqwest::Client::new();
-    let res = client
-        .post(format!("http://{}", addr))
-        .body(r#"{ "foo": "bar" }"#)
-        .send()
-        .await
-        .unwrap();
+    let client = TestClient::new(app);
+    let res = client.post("/").body(r#"{ "foo": "bar" }"#).send().await;
 
     let status = res.status();
-    dbg!(res.text().await.unwrap());
+    dbg!(res.text().await);
 
     assert_eq!(status, StatusCode::BAD_REQUEST);
 }
@@ -164,42 +135,35 @@ async fn body_with_length_limit() {
         post(|_body: extract::ContentLengthLimit<Bytes, LIMIT>| async {}),
     );
 
-    let addr = run_in_background(app).await;
-
-    let client = reqwest::Client::new();
-
+    let client = TestClient::new(app);
     let res = client
-        .post(format!("http://{}", addr))
+        .post("/")
         .body(repeat(0_u8).take((LIMIT - 1) as usize).collect::<Vec<_>>())
         .send()
-        .await
-        .unwrap();
+        .await;
     assert_eq!(res.status(), StatusCode::OK);
 
     let res = client
-        .post(format!("http://{}", addr))
+        .post("/")
         .body(repeat(0_u8).take(LIMIT as usize).collect::<Vec<_>>())
         .send()
-        .await
-        .unwrap();
+        .await;
     assert_eq!(res.status(), StatusCode::OK);
 
     let res = client
-        .post(format!("http://{}", addr))
+        .post("/")
         .body(repeat(0_u8).take((LIMIT + 1) as usize).collect::<Vec<_>>())
         .send()
-        .await
-        .unwrap();
+        .await;
     assert_eq!(res.status(), StatusCode::PAYLOAD_TOO_LARGE);
 
     let res = client
-        .post(format!("http://{}", addr))
+        .post("/")
         .body(reqwest::Body::wrap_stream(futures_util::stream::iter(
             vec![Ok::<_, std::io::Error>(bytes::Bytes::new())],
         )))
         .send()
-        .await
-        .unwrap();
+        .await;
     assert_eq!(res.status(), StatusCode::LENGTH_REQUIRED);
 }
 
@@ -217,76 +181,46 @@ async fn routing() {
             get(|_: Request<Body>| async { "users#action" }),
         );
 
-    let addr = run_in_background(app).await;
+    let client = TestClient::new(app);
 
-    let client = reqwest::Client::new();
-
-    let res = client.get(format!("http://{}", addr)).send().await.unwrap();
+    let res = client.get("/").send().await;
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
 
-    let res = client
-        .get(format!("http://{}/users", addr))
-        .send()
-        .await
-        .unwrap();
+    let res = client.get("/users").send().await;
     assert_eq!(res.status(), StatusCode::OK);
-    assert_eq!(res.text().await.unwrap(), "users#index");
+    assert_eq!(res.text().await, "users#index");
 
-    let res = client
-        .post(format!("http://{}/users", addr))
-        .send()
-        .await
-        .unwrap();
+    let res = client.post("/users").send().await;
     assert_eq!(res.status(), StatusCode::OK);
-    assert_eq!(res.text().await.unwrap(), "users#create");
+    assert_eq!(res.text().await, "users#create");
 
-    let res = client
-        .get(format!("http://{}/users/1", addr))
-        .send()
-        .await
-        .unwrap();
+    let res = client.get("/users/1").send().await;
     assert_eq!(res.status(), StatusCode::OK);
-    assert_eq!(res.text().await.unwrap(), "users#show");
+    assert_eq!(res.text().await, "users#show");
 
-    let res = client
-        .get(format!("http://{}/users/1/action", addr))
-        .send()
-        .await
-        .unwrap();
+    let res = client.get("/users/1/action").send().await;
     assert_eq!(res.status(), StatusCode::OK);
-    assert_eq!(res.text().await.unwrap(), "users#action");
+    assert_eq!(res.text().await, "users#action");
 }
 
 #[tokio::test]
 async fn extracting_url_params() {
     let app = Router::new().route(
         "/users/:id",
-        get(|extract::Path(id): extract::Path<i32>| async move {
+        get(|Path(id): Path<i32>| async move {
             assert_eq!(id, 42);
         })
-        .post(
-            |extract::Path(params_map): extract::Path<HashMap<String, i32>>| async move {
-                assert_eq!(params_map.get("id").unwrap(), &1337);
-            },
-        ),
+        .post(|Path(params_map): Path<HashMap<String, i32>>| async move {
+            assert_eq!(params_map.get("id").unwrap(), &1337);
+        }),
     );
 
-    let addr = run_in_background(app).await;
+    let client = TestClient::new(app);
 
-    let client = reqwest::Client::new();
-
-    let res = client
-        .get(format!("http://{}/users/42", addr))
-        .send()
-        .await
-        .unwrap();
+    let res = client.get("/users/42").send().await;
     assert_eq!(res.status(), StatusCode::OK);
 
-    let res = client
-        .post(format!("http://{}/users/1337", addr))
-        .send()
-        .await
-        .unwrap();
+    let res = client.post("/users/1337").send().await;
     assert_eq!(res.status(), StatusCode::OK);
 }
 
@@ -297,15 +231,9 @@ async fn extracting_url_params_multiple_times() {
         get(|_: extract::Path<i32>, _: extract::Path<String>| async {}),
     );
 
-    let addr = run_in_background(app).await;
+    let client = TestClient::new(app);
 
-    let client = reqwest::Client::new();
-
-    let res = client
-        .get(format!("http://{}/users/42", addr))
-        .send()
-        .await
-        .unwrap();
+    let res = client.get("/users/42").send().await;
     assert_eq!(res.status(), StatusCode::OK);
 }
 
@@ -324,21 +252,15 @@ async fn boxing() {
         .layer(tower_http::compression::CompressionLayer::new())
         .boxed();
 
-    let addr = run_in_background(app).await;
+    let client = TestClient::new(app);
 
-    let client = reqwest::Client::new();
-
-    let res = client.get(format!("http://{}", addr)).send().await.unwrap();
+    let res = client.get("/").send().await;
     assert_eq!(res.status(), StatusCode::OK);
-    assert_eq!(res.text().await.unwrap(), "hi from GET");
+    assert_eq!(res.text().await, "hi from GET");
 
-    let res = client
-        .post(format!("http://{}", addr))
-        .send()
-        .await
-        .unwrap();
+    let res = client.post("/").send().await;
     assert_eq!(res.status(), StatusCode::OK);
-    assert_eq!(res.text().await.unwrap(), "hi from POST");
+    assert_eq!(res.text().await, "hi from POST");
 }
 
 #[tokio::test]
@@ -368,41 +290,23 @@ async fn routing_between_services() {
         )
         .route("/two", service::on(MethodFilter::GET, any(handle)));
 
-    let addr = run_in_background(app).await;
+    let client = TestClient::new(app);
 
-    let client = reqwest::Client::new();
-
-    let res = client
-        .get(format!("http://{}/one", addr))
-        .send()
-        .await
-        .unwrap();
+    let res = client.get("/one").send().await;
     assert_eq!(res.status(), StatusCode::OK);
-    assert_eq!(res.text().await.unwrap(), "one get");
+    assert_eq!(res.text().await, "one get");
 
-    let res = client
-        .post(format!("http://{}/one", addr))
-        .send()
-        .await
-        .unwrap();
+    let res = client.post("/one").send().await;
     assert_eq!(res.status(), StatusCode::OK);
-    assert_eq!(res.text().await.unwrap(), "one post");
+    assert_eq!(res.text().await, "one post");
 
-    let res = client
-        .put(format!("http://{}/one", addr))
-        .send()
-        .await
-        .unwrap();
+    let res = client.put("/one").send().await;
     assert_eq!(res.status(), StatusCode::OK);
-    assert_eq!(res.text().await.unwrap(), "one put");
+    assert_eq!(res.text().await, "one put");
 
-    let res = client
-        .get(format!("http://{}/two", addr))
-        .send()
-        .await
-        .unwrap();
+    let res = client.get("/two").send().await;
     assert_eq!(res.status(), StatusCode::OK);
-    assert_eq!(res.text().await.unwrap(), "handler");
+    assert_eq!(res.text().await, "handler");
 }
 
 #[tokio::test]
@@ -424,23 +328,23 @@ async fn middleware_on_single_route() {
         )),
     );
 
-    let addr = run_in_background(app).await;
+    let client = TestClient::new(app);
 
-    let res = reqwest::get(format!("http://{}", addr)).await.unwrap();
-    let body = res.text().await.unwrap();
+    let res = client.get("/").send().await;
+    let body = res.text().await;
 
     assert_eq!(body, "Hello, World!");
 }
 
 #[tokio::test]
 async fn service_in_bottom() {
-    async fn handler(_req: Request<hyper::Body>) -> Result<Response<hyper::Body>, hyper::Error> {
+    async fn handler(_req: Request<Body>) -> Result<Response<Body>, hyper::Error> {
         Ok(Response::new(hyper::Body::empty()))
     }
 
     let app = Router::new().route("/", service::get(service_fn(handler)));
 
-    run_in_background(app).await;
+    TestClient::new(app);
 }
 
 #[tokio::test]
@@ -477,23 +381,12 @@ async fn test_extractor_middleware() {
         get(handler.layer(extract::extractor_middleware::<RequireAuth>())),
     );
 
-    let addr = run_in_background(app).await;
+    let client = TestClient::new(app);
 
-    let client = reqwest::Client::new();
-
-    let res = client
-        .get(format!("http://{}/", addr))
-        .send()
-        .await
-        .unwrap();
+    let res = client.get("/").send().await;
     assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
 
-    let res = client
-        .get(format!("http://{}/", addr))
-        .header(AUTHORIZATION, "secret")
-        .send()
-        .await
-        .unwrap();
+    let res = client.get("/").header(AUTHORIZATION, "secret").send().await;
     assert_eq!(res.status(), StatusCode::OK);
 }
 
@@ -503,36 +396,18 @@ async fn wrong_method_handler() {
         .route("/", get(|| async {}).post(|| async {}))
         .route("/foo", patch(|| async {}));
 
-    let addr = run_in_background(app).await;
+    let client = TestClient::new(app);
 
-    let client = reqwest::Client::new();
-
-    let res = client
-        .patch(format!("http://{}", addr))
-        .send()
-        .await
-        .unwrap();
+    let res = client.patch("/").send().await;
     assert_eq!(res.status(), StatusCode::METHOD_NOT_ALLOWED);
 
-    let res = client
-        .patch(format!("http://{}/foo", addr))
-        .send()
-        .await
-        .unwrap();
+    let res = client.patch("/foo").send().await;
     assert_eq!(res.status(), StatusCode::OK);
 
-    let res = client
-        .post(format!("http://{}/foo", addr))
-        .send()
-        .await
-        .unwrap();
+    let res = client.post("/foo").send().await;
     assert_eq!(res.status(), StatusCode::METHOD_NOT_ALLOWED);
 
-    let res = client
-        .get(format!("http://{}/bar", addr))
-        .send()
-        .await
-        .unwrap();
+    let res = client.get("/bar").send().await;
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
 }
 
@@ -559,36 +434,18 @@ async fn wrong_method_service() {
         .route("/", service::get(Svc).post(Svc))
         .route("/foo", service::patch(Svc));
 
-    let addr = run_in_background(app).await;
+    let client = TestClient::new(app);
 
-    let client = reqwest::Client::new();
-
-    let res = client
-        .patch(format!("http://{}", addr))
-        .send()
-        .await
-        .unwrap();
+    let res = client.patch("/").send().await;
     assert_eq!(res.status(), StatusCode::METHOD_NOT_ALLOWED);
 
-    let res = client
-        .patch(format!("http://{}/foo", addr))
-        .send()
-        .await
-        .unwrap();
+    let res = client.patch("/foo").send().await;
     assert_eq!(res.status(), StatusCode::OK);
 
-    let res = client
-        .post(format!("http://{}/foo", addr))
-        .send()
-        .await
-        .unwrap();
+    let res = client.post("/foo").send().await;
     assert_eq!(res.status(), StatusCode::METHOD_NOT_ALLOWED);
 
-    let res = client
-        .get(format!("http://{}/bar", addr))
-        .send()
-        .await
-        .unwrap();
+    let res = client.get("/bar").send().await;
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
 }
 
@@ -600,18 +457,12 @@ async fn multiple_methods_for_one_handler() {
 
     let app = Router::new().route("/", on(MethodFilter::GET | MethodFilter::POST, root));
 
-    let addr = run_in_background(app).await;
+    let client = TestClient::new(app);
 
-    let client = reqwest::Client::new();
-
-    let res = client.get(format!("http://{}", addr)).send().await.unwrap();
+    let res = client.get("/").send().await;
     assert_eq!(res.status(), StatusCode::OK);
 
-    let res = client
-        .post(format!("http://{}", addr))
-        .send()
-        .await
-        .unwrap();
+    let res = client.post("/").send().await;
     assert_eq!(res.status(), StatusCode::OK);
 }
 
@@ -621,18 +472,11 @@ async fn handler_into_service() {
         format!("you said: {}", body)
     }
 
-    let addr = run_in_background(handle.into_service()).await;
+    let client = TestClient::new(handle.into_service());
 
-    let client = reqwest::Client::new();
-
-    let res = client
-        .post(format!("http://{}", addr))
-        .body("hi there!")
-        .send()
-        .await
-        .unwrap();
+    let res = client.post("/").body("hi there!").send().await;
     assert_eq!(res.status(), StatusCode::OK);
-    assert_eq!(res.text().await.unwrap(), "you said: hi there!");
+    assert_eq!(res.text().await, "you said: hi there!");
 }
 
 #[tokio::test]
@@ -643,32 +487,18 @@ async fn when_multiple_routes_match() {
         .route("/foo", get(|| async {}))
         .nest("/foo", Router::new().route("/bar", get(|| async {})));
 
-    let addr = run_in_background(app).await;
+    let client = TestClient::new(app);
 
-    let client = reqwest::Client::new();
-
-    let res = client.get(format!("http://{}", addr)).send().await.unwrap();
+    let res = client.get("/").send().await;
     assert_eq!(res.status(), StatusCode::OK);
 
-    let res = client
-        .post(format!("http://{}", addr))
-        .send()
-        .await
-        .unwrap();
+    let res = client.post("/").send().await;
     assert_eq!(res.status(), StatusCode::OK);
 
-    let res = client
-        .get(format!("http://{}/foo/bar", addr))
-        .send()
-        .await
-        .unwrap();
+    let res = client.get("/foo/bar").send().await;
     assert_eq!(res.status(), StatusCode::OK);
 
-    let res = client
-        .get(format!("http://{}/foo", addr))
-        .send()
-        .await
-        .unwrap();
+    let res = client.get("/foo").send().await;
     assert_eq!(res.status(), StatusCode::OK);
 }
 
@@ -676,46 +506,13 @@ async fn when_multiple_routes_match() {
 async fn captures_dont_match_empty_segments() {
     let app = Router::new().route("/:key", get(|| async {}));
 
-    let addr = run_in_background(app).await;
+    let client = TestClient::new(app);
 
-    let client = reqwest::Client::new();
-
-    let res = client.get(format!("http://{}", addr)).send().await.unwrap();
+    let res = client.get("/").send().await;
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
 
-    let res = client
-        .get(format!("http://{}/foo", addr))
-        .send()
-        .await
-        .unwrap();
+    let res = client.get("/foo").send().await;
     assert_eq!(res.status(), StatusCode::OK);
-}
-
-/// Run a `tower::Service` in the background and get a URI for it.
-pub(crate) async fn run_in_background<S, ResBody>(svc: S) -> SocketAddr
-where
-    S: Service<Request<Body>, Response = Response<ResBody>> + Clone + Send + 'static,
-    ResBody: http_body::Body + Send + 'static,
-    ResBody::Data: Send,
-    ResBody::Error: Into<BoxError>,
-    S::Future: Send,
-    S::Error: Into<BoxError>,
-{
-    let listener = TcpListener::bind("127.0.0.1:0").expect("Could not bind ephemeral socket");
-    let addr = listener.local_addr().unwrap();
-    println!("Listening on {}", addr);
-
-    let (tx, rx) = tokio::sync::oneshot::channel();
-
-    tokio::spawn(async move {
-        let server = Server::from_tcp(listener).unwrap().serve(Shared::new(svc));
-        tx.send(()).unwrap();
-        server.await.expect("server error");
-    });
-
-    rx.await.unwrap();
-
-    addr
 }
 
 pub(crate) fn assert_send<T: Send>() {}

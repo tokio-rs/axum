@@ -152,21 +152,14 @@ mod tests {
 
         let app = Router::new().route("/", get(handle));
 
-        let addr = run_in_background(app).await;
+        let client = TestClient::new(app);
 
-        let client = reqwest::Client::new();
-
-        let res = client
-            .get(format!("http://{}", addr))
-            .header("user-agent", "foobar")
-            .send()
-            .await
-            .unwrap();
-        let body = res.text().await.unwrap();
+        let res = client.get("/").header("user-agent", "foobar").send().await;
+        let body = res.text().await;
         assert_eq!(body, "foobar");
 
-        let res = client.get(format!("http://{}", addr)).send().await.unwrap();
-        let body = res.text().await.unwrap();
+        let res = client.get("/").send().await;
+        let body = res.text().await;
         assert_eq!(body, "Header of type `user-agent` was missing");
     }
 }
