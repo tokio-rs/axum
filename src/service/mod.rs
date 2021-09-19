@@ -114,9 +114,12 @@ use tower_service::Service;
 
 pub mod future;
 
-/// Route requests to the given service regardless of the HTTP method.
+/// Route requests with any standard HTTP method to the given service.
 ///
 /// See [`get`] for an example.
+///
+/// Note that this only accepts the standard HTTP methods. If you need to
+/// support non-standard methods you can route directly to a [`Service`].
 pub fn any<S, B>(svc: S) -> OnMethod<S, EmptyRouter<S::Error>, B>
 where
     S: Service<Request<B>> + Clone,

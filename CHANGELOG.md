@@ -7,7 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- None.
+- Clarify that `handler::any` and `service::any` only accepts standard HTTP
+  methods ([#337])
+  
+[#337]: https://github.com/tokio-rs/axum/pull/337
 
 # 0.2.5 (18. September, 2021)
 

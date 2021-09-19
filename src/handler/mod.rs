@@ -28,8 +28,7 @@ mod into_service;
 
 pub use self::into_service::IntoService;
 
-/// Route requests to the given handler regardless of the HTTP method of the
-/// request.
+/// Route requests with any standard HTTP method to the given handler.
 ///
 /// # Example
 ///
@@ -41,8 +40,24 @@ pub use self::into_service::IntoService;
 ///
 /// async fn handler() {}
 ///
-/// // All requests to `/` will go to `handler` regardless of the HTTP method.
 /// let app = Router::new().route("/", any(handler));
+/// # async {
+/// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+/// # };
+/// ```
+///
+/// Note that this only accepts the standard HTTP methods. If you need to
+/// support non-standard methods use [`Handler::into_service`]:
+///
+/// ```rust
+/// use axum::{
+///     handler::Handler,
+///     Router,
+/// };
+///
+/// async fn handler() {}
+///
+/// let app = Router::new().route("/", handler.into_service());
 /// # async {
 /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 /// # };
