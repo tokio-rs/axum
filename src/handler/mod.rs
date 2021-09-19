@@ -2,7 +2,7 @@
 
 use crate::{
     body::{box_body, BoxBody},
-    extract::FromRequest,
+    extract::{FromRequest, RequestParts},
     response::IntoResponse,
     routing::{EmptyRouter, MethodFilter},
     service::HandleError,
@@ -319,48 +319,52 @@ where
 }
 
 macro_rules! impl_handler {
-    () => {
-    };
-
-    ( $head:ident, $($tail:ident),* $(,)? ) => {
+    ( $($ty:ident),* $(,)? ) => {
         #[async_trait]
         #[allow(non_snake_case)]
-        impl<F, Fut, B, Res, $head, $($tail,)*> Handler<B, ($head, $($tail,)*)> for F
+        impl<F, Fut, B, Res, $($ty,)*> Handler<B, ($($ty,)*)> for F
         where
-            F: FnOnce($head, $($tail,)*) -> Fut + Clone + Send + Sync + 'static,
+            F: FnOnce($($ty,)*) -> Fut + Clone + Send + Sync + 'static,
             Fut: Future<Output = Res> + Send,
             B: Send + 'static,
             Res: IntoResponse,
-            $head: FromRequest<B> + Send,
-            $( $tail: FromRequest<B> + Send,)*
+            $( $ty: FromRequest<B> + Send,)*
         {
             type Sealed = sealed::Hidden;
 
             async fn call(self, req: Request<B>) -> Response<BoxBody> {
-                let mut req = crate::extract::RequestParts::new(req);
-
-                let $head = match $head::from_request(&mut req).await {
-                    Ok(value) => value,
-                    Err(rejection) => return rejection.into_response().map(box_body),
-                };
+                let mut req = RequestParts::new(req);
 
                 $(
-                    let $tail = match $tail::from_request(&mut req).await {
+                    let $ty = match $ty::from_request(&mut req).await {
                         Ok(value) => value,
                         Err(rejection) => return rejection.into_response().map(box_body),
                     };
                 )*
 
-                let res = self($head, $($tail,)*).await;
+                let res = self($($ty,)*).await;
 
-                res.into_response().map(crate::body::box_body)
+                res.into_response().map(box_body)
             }
         }
-
-        impl_handler!($($tail,)*);
     };
 }
 
+impl_handler!(T1);
+impl_handler!(T1, T2);
+impl_handler!(T1, T2, T3);
+impl_handler!(T1, T2, T3, T4);
+impl_handler!(T1, T2, T3, T4, T5);
+impl_handler!(T1, T2, T3, T4, T5, T6);
+impl_handler!(T1, T2, T3, T4, T5, T6, T7);
+impl_handler!(T1, T2, T3, T4, T5, T6, T7, T8);
+impl_handler!(T1, T2, T3, T4, T5, T6, T7, T8, T9);
+impl_handler!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10);
+impl_handler!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11);
+impl_handler!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12);
+impl_handler!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13);
+impl_handler!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14);
+impl_handler!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15);
 impl_handler!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16);
 
 /// A [`Service`] created from a [`Handler`] by applying a Tower middleware.
