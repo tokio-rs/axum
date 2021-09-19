@@ -11,36 +11,18 @@ async fn basic() {
     let two = Router::new().route("/baz", get(|| async {}));
     let app = one.or(two);
 
-    let addr = run_in_background(app).await;
+    let client = TestClient::new(app);
 
-    let client = reqwest::Client::new();
-
-    let res = client
-        .get(format!("http://{}/foo", addr))
-        .send()
-        .await
-        .unwrap();
+    let res = client.get("/foo").send().await;
     assert_eq!(res.status(), StatusCode::OK);
 
-    let res = client
-        .get(format!("http://{}/bar", addr))
-        .send()
-        .await
-        .unwrap();
+    let res = client.get("/bar").send().await;
     assert_eq!(res.status(), StatusCode::OK);
 
-    let res = client
-        .get(format!("http://{}/baz", addr))
-        .send()
-        .await
-        .unwrap();
+    let res = client.get("/baz").send().await;
     assert_eq!(res.status(), StatusCode::OK);
 
-    let res = client
-        .get(format!("http://{}/qux", addr))
-        .send()
-        .await
-        .unwrap();
+    let res = client.get("/qux").send().await;
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
 }
 
@@ -86,19 +68,13 @@ async fn multiple_ors_balanced_differently() {
         S::Future: Send,
         S::Error: Into<BoxError>,
     {
-        let addr = run_in_background(app).await;
-
-        let client = reqwest::Client::new();
+        let client = TestClient::new(app);
 
         for n in ["one", "two", "three", "four"].iter() {
             println!("running: {} / {}", name, n);
-            let res = client
-                .get(format!("http://{}/{}", addr, n))
-                .send()
-                .await
-                .unwrap();
+            let res = client.get(&format!("/{}", n)).send().await;
             assert_eq!(res.status(), StatusCode::OK);
-            assert_eq!(res.text().await.unwrap(), *n);
+            assert_eq!(res.text().await, *n);
         }
     }
 }
@@ -110,22 +86,12 @@ async fn or_nested_inside_other_thing() {
         .or(Router::new().route("/baz", get(|| async {})));
     let app = Router::new().nest("/foo", inner);
 
-    let addr = run_in_background(app).await;
+    let client = TestClient::new(app);
 
-    let client = reqwest::Client::new();
-
-    let res = client
-        .get(format!("http://{}/foo/bar", addr))
-        .send()
-        .await
-        .unwrap();
+    let res = client.get("/foo/bar").send().await;
     assert_eq!(res.status(), StatusCode::OK);
 
-    let res = client
-        .get(format!("http://{}/foo/baz", addr))
-        .send()
-        .await
-        .unwrap();
+    let res = client.get("/foo/baz").send().await;
     assert_eq!(res.status(), StatusCode::OK);
 }
 
@@ -135,29 +101,15 @@ async fn or_with_route_following() {
     let two = Router::new().route("/two", get(|| async { "two" }));
     let app = one.or(two).route("/three", get(|| async { "three" }));
 
-    let addr = run_in_background(app).await;
+    let client = TestClient::new(app);
 
-    let client = reqwest::Client::new();
-
-    let res = client
-        .get(format!("http://{}/one", addr))
-        .send()
-        .await
-        .unwrap();
+    let res = client.get("/one").send().await;
     assert_eq!(res.status(), StatusCode::OK);
 
-    let res = client
-        .get(format!("http://{}/two", addr))
-        .send()
-        .await
-        .unwrap();
+    let res = client.get("/two").send().await;
     assert_eq!(res.status(), StatusCode::OK);
 
-    let res = client
-        .get(format!("http://{}/three", addr))
-        .send()
-        .await
-        .unwrap();
+    let res = client.get("/three").send().await;
     assert_eq!(res.status(), StatusCode::OK);
 }
 
@@ -169,22 +121,12 @@ async fn layer() {
         .layer(ConcurrencyLimitLayer::new(10));
     let app = one.or(two);
 
-    let addr = run_in_background(app).await;
+    let client = TestClient::new(app);
 
-    let client = reqwest::Client::new();
-
-    let res = client
-        .get(format!("http://{}/foo", addr))
-        .send()
-        .await
-        .unwrap();
+    let res = client.get("/foo").send().await;
     assert_eq!(res.status(), StatusCode::OK);
 
-    let res = client
-        .get(format!("http://{}/bar", addr))
-        .send()
-        .await
-        .unwrap();
+    let res = client.get("/bar").send().await;
     assert_eq!(res.status(), StatusCode::OK);
 }
 
@@ -192,20 +134,14 @@ async fn layer() {
 async fn layer_and_handle_error() {
     let one = Router::new().route("/foo", get(|| async {}));
     let two = Router::new()
-        .route("/time-out", get(futures::future::pending::<()>))
+        .route("/timeout", get(futures::future::pending::<()>))
         .layer(TimeoutLayer::new(Duration::from_millis(10)))
         .handle_error(|_| Ok(StatusCode::REQUEST_TIMEOUT));
     let app = one.or(two);
 
-    let addr = run_in_background(app).await;
+    let client = TestClient::new(app);
 
-    let client = reqwest::Client::new();
-
-    let res = client
-        .get(format!("http://{}/time-out", addr))
-        .send()
-        .await
-        .unwrap();
+    let res = client.get("/timeout").send().await;
     assert_eq!(res.status(), StatusCode::REQUEST_TIMEOUT);
 }
 
@@ -215,15 +151,9 @@ async fn nesting() {
     let two = Router::new().nest("/bar", Router::new().route("/baz", get(|| async {})));
     let app = one.or(two);
 
-    let addr = run_in_background(app).await;
+    let client = TestClient::new(app);
 
-    let client = reqwest::Client::new();
-
-    let res = client
-        .get(format!("http://{}/bar/baz", addr))
-        .send()
-        .await
-        .unwrap();
+    let res = client.get("/bar/baz").send().await;
     assert_eq!(res.status(), StatusCode::OK);
 }
 
@@ -233,15 +163,9 @@ async fn boxed() {
     let two = Router::new().route("/bar", get(|| async {})).boxed();
     let app = one.or(two);
 
-    let addr = run_in_background(app).await;
+    let client = TestClient::new(app);
 
-    let client = reqwest::Client::new();
-
-    let res = client
-        .get(format!("http://{}/bar", addr))
-        .send()
-        .await
-        .unwrap();
+    let res = client.get("/bar").send().await;
     assert_eq!(res.status(), StatusCode::OK);
 }
 
@@ -256,24 +180,14 @@ async fn many_ors() {
         .or(Router::new().route("/r6", get(|| async {})))
         .or(Router::new().route("/r7", get(|| async {})));
 
-    let addr = run_in_background(app).await;
-
-    let client = reqwest::Client::new();
+    let client = TestClient::new(app);
 
     for n in 1..=7 {
-        let res = client
-            .get(format!("http://{}/r{}", addr, n))
-            .send()
-            .await
-            .unwrap();
+        let res = client.get(&format!("/r{}", n)).send().await;
         assert_eq!(res.status(), StatusCode::OK);
     }
 
-    let res = client
-        .get(format!("http://{}/r8", addr))
-        .send()
-        .await
-        .unwrap();
+    let res = client.get("/r8").send().await;
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
 }
 
@@ -293,22 +207,12 @@ async fn services() {
             })),
         ));
 
-    let addr = run_in_background(app).await;
+    let client = TestClient::new(app);
 
-    let client = reqwest::Client::new();
-
-    let res = client
-        .get(format!("http://{}/foo", addr))
-        .send()
-        .await
-        .unwrap();
+    let res = client.get("/foo").send().await;
     assert_eq!(res.status(), StatusCode::OK);
 
-    let res = client
-        .get(format!("http://{}/bar", addr))
-        .send()
-        .await
-        .unwrap();
+    let res = client.get("/bar").send().await;
     assert_eq!(res.status(), StatusCode::OK);
 }
 
@@ -329,18 +233,12 @@ async fn nesting_and_seeing_the_right_uri() {
     let one = Router::new().nest("/foo", Router::new().route("/bar", get(all_the_uris)));
     let two = Router::new().route("/foo", get(all_the_uris));
 
-    let addr = run_in_background(one.or(two)).await;
+    let client = TestClient::new(one.or(two));
 
-    let client = reqwest::Client::new();
-
-    let res = client
-        .get(format!("http://{}/foo/bar", addr))
-        .send()
-        .await
-        .unwrap();
+    let res = client.get("/foo/bar").send().await;
     assert_eq!(res.status(), StatusCode::OK);
     assert_eq!(
-        res.json::<Value>().await.unwrap(),
+        res.json::<Value>().await,
         json!({
             "uri": "/bar",
             "request_uri": "/bar",
@@ -348,14 +246,10 @@ async fn nesting_and_seeing_the_right_uri() {
         })
     );
 
-    let res = client
-        .get(format!("http://{}/foo", addr))
-        .send()
-        .await
-        .unwrap();
+    let res = client.get("/foo").send().await;
     assert_eq!(res.status(), StatusCode::OK);
     assert_eq!(
-        res.json::<Value>().await.unwrap(),
+        res.json::<Value>().await,
         json!({
             "uri": "/foo",
             "request_uri": "/foo",
@@ -372,18 +266,12 @@ async fn nesting_and_seeing_the_right_uri_at_more_levels_of_nesting() {
     );
     let two = Router::new().route("/foo", get(all_the_uris));
 
-    let addr = run_in_background(one.or(two)).await;
+    let client = TestClient::new(one.or(two));
 
-    let client = reqwest::Client::new();
-
-    let res = client
-        .get(format!("http://{}/foo/bar/baz", addr))
-        .send()
-        .await
-        .unwrap();
+    let res = client.get("/foo/bar/baz").send().await;
     assert_eq!(res.status(), StatusCode::OK);
     assert_eq!(
-        res.json::<Value>().await.unwrap(),
+        res.json::<Value>().await,
         json!({
             "uri": "/baz",
             "request_uri": "/baz",
@@ -391,14 +279,10 @@ async fn nesting_and_seeing_the_right_uri_at_more_levels_of_nesting() {
         })
     );
 
-    let res = client
-        .get(format!("http://{}/foo", addr))
-        .send()
-        .await
-        .unwrap();
+    let res = client.get("/foo").send().await;
     assert_eq!(res.status(), StatusCode::OK);
     assert_eq!(
-        res.json::<Value>().await.unwrap(),
+        res.json::<Value>().await,
         json!({
             "uri": "/foo",
             "request_uri": "/foo",
@@ -416,18 +300,12 @@ async fn nesting_and_seeing_the_right_uri_ors_with_nesting() {
     let two = Router::new().nest("/foo", Router::new().route("/qux", get(all_the_uris)));
     let three = Router::new().route("/foo", get(all_the_uris));
 
-    let addr = run_in_background(one.or(two).or(three)).await;
+    let client = TestClient::new(one.or(two).or(three));
 
-    let client = reqwest::Client::new();
-
-    let res = client
-        .get(format!("http://{}/foo/bar/baz", addr))
-        .send()
-        .await
-        .unwrap();
+    let res = client.get("/foo/bar/baz").send().await;
     assert_eq!(res.status(), StatusCode::OK);
     assert_eq!(
-        res.json::<Value>().await.unwrap(),
+        res.json::<Value>().await,
         json!({
             "uri": "/baz",
             "request_uri": "/baz",
@@ -435,14 +313,10 @@ async fn nesting_and_seeing_the_right_uri_ors_with_nesting() {
         })
     );
 
-    let res = client
-        .get(format!("http://{}/foo/qux", addr))
-        .send()
-        .await
-        .unwrap();
+    let res = client.get("/foo/qux").send().await;
     assert_eq!(res.status(), StatusCode::OK);
     assert_eq!(
-        res.json::<Value>().await.unwrap(),
+        res.json::<Value>().await,
         json!({
             "uri": "/qux",
             "request_uri": "/qux",
@@ -450,14 +324,10 @@ async fn nesting_and_seeing_the_right_uri_ors_with_nesting() {
         })
     );
 
-    let res = client
-        .get(format!("http://{}/foo", addr))
-        .send()
-        .await
-        .unwrap();
+    let res = client.get("/foo").send().await;
     assert_eq!(res.status(), StatusCode::OK);
     assert_eq!(
-        res.json::<Value>().await.unwrap(),
+        res.json::<Value>().await,
         json!({
             "uri": "/foo",
             "request_uri": "/foo",
@@ -474,18 +344,12 @@ async fn nesting_and_seeing_the_right_uri_ors_with_multi_segment_uris() {
     );
     let two = Router::new().route("/foo/bar", get(all_the_uris));
 
-    let addr = run_in_background(one.or(two)).await;
+    let client = TestClient::new(one.or(two));
 
-    let client = reqwest::Client::new();
-
-    let res = client
-        .get(format!("http://{}/foo/bar/baz", addr))
-        .send()
-        .await
-        .unwrap();
+    let res = client.get("/foo/bar/baz").send().await;
     assert_eq!(res.status(), StatusCode::OK);
     assert_eq!(
-        res.json::<Value>().await.unwrap(),
+        res.json::<Value>().await,
         json!({
             "uri": "/baz",
             "request_uri": "/baz",
@@ -493,14 +357,10 @@ async fn nesting_and_seeing_the_right_uri_ors_with_multi_segment_uris() {
         })
     );
 
-    let res = client
-        .get(format!("http://{}/foo/bar", addr))
-        .send()
-        .await
-        .unwrap();
+    let res = client.get("/foo/bar").send().await;
     assert_eq!(res.status(), StatusCode::OK);
     assert_eq!(
-        res.json::<Value>().await.unwrap(),
+        res.json::<Value>().await,
         json!({
             "uri": "/foo/bar",
             "request_uri": "/foo/bar",

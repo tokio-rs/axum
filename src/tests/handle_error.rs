@@ -48,15 +48,9 @@ async fn handler() {
             .handle_error(|_: BoxError| Ok::<_, Infallible>(StatusCode::REQUEST_TIMEOUT))),
     );
 
-    let addr = run_in_background(app).await;
+    let client = TestClient::new(app);
 
-    let client = reqwest::Client::new();
-
-    let res = client
-        .get(format!("http://{}/", addr))
-        .send()
-        .await
-        .unwrap();
+    let res = client.get("/").send().await;
     assert_eq!(res.status(), StatusCode::REQUEST_TIMEOUT);
 }
 
@@ -70,15 +64,9 @@ async fn handler_multiple_methods_first() {
         .post(unit),
     );
 
-    let addr = run_in_background(app).await;
+    let client = TestClient::new(app);
 
-    let client = reqwest::Client::new();
-
-    let res = client
-        .get(format!("http://{}/", addr))
-        .send()
-        .await
-        .unwrap();
+    let res = client.get("/").send().await;
     assert_eq!(res.status(), StatusCode::REQUEST_TIMEOUT);
 }
 
@@ -95,15 +83,9 @@ async fn handler_multiple_methods_middle() {
             .post(unit),
     );
 
-    let addr = run_in_background(app).await;
+    let client = TestClient::new(app);
 
-    let client = reqwest::Client::new();
-
-    let res = client
-        .get(format!("http://{}/", addr))
-        .send()
-        .await
-        .unwrap();
+    let res = client.get("/").send().await;
     assert_eq!(res.status(), StatusCode::REQUEST_TIMEOUT);
 }
 
@@ -118,15 +100,9 @@ async fn handler_multiple_methods_last() {
         ),
     );
 
-    let addr = run_in_background(app).await;
+    let client = TestClient::new(app);
 
-    let client = reqwest::Client::new();
-
-    let res = client
-        .get(format!("http://{}/", addr))
-        .send()
-        .await
-        .unwrap();
+    let res = client.get("/").send().await;
     assert_eq!(res.status(), StatusCode::REQUEST_TIMEOUT);
 }
 

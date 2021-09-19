@@ -335,19 +335,12 @@ mod tests {
 
         let app = Router::new().route("/", post(handler));
 
-        let addr = run_in_background(app).await;
+        let client = TestClient::new(app);
 
-        let client = reqwest::Client::new();
-
-        let res = client
-            .post(format!("http://{}", addr))
-            .body("hi there")
-            .send()
-            .await
-            .unwrap();
+        let res = client.post("/").body("hi there").send().await;
         assert_eq!(res.status(), StatusCode::INTERNAL_SERVER_ERROR);
         assert_eq!(
-            res.text().await.unwrap(),
+            res.text().await,
             "Cannot have two request body extractors for a single handler"
         );
     }
