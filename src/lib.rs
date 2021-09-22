@@ -1087,7 +1087,7 @@
 //! The `"full"` feature for hyper and tokio isn't strictly necessary but its
 //! the easiest way to get started.
 //!
-//! Note that [`axum::Server`] is re-exported by axum so if thats all you need
+//! Note that [`hyper::Server`] is re-exported by axum so if thats all you need
 //! then you don't have to explicitly depend on hyper.
 //!
 //! Tower isn't strictly necessary either but helpful for testing. See the
