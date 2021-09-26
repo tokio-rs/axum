@@ -13,6 +13,7 @@ async fn nesting_apps() {
             "/users/:id",
             get(
                 |params: extract::Path<HashMap<String, String>>| async move {
+                    dbg!(&params);
                     format!(
                         "{}: users#show ({})",
                         params.get("version").unwrap(),
@@ -178,4 +179,56 @@ async fn nest_static_file_server() {
 
     let res = client.get("/static/README.md").send().await;
     assert_eq!(res.status(), StatusCode::OK);
+}
+
+#[tokio::test]
+async fn nested_multiple_routes() {
+    let app = Router::new()
+        .nest(
+            "/api",
+            Router::new()
+                .route("/users", get(|| async { "users" }))
+                .route("/teams", get(|| async { "teams" })),
+        )
+        .route("/", get(|| async { "root" }));
+
+    let client = TestClient::new(app);
+
+    assert_eq!(client.get("/").send().await.text().await, "root");
+    assert_eq!(client.get("/api/users").send().await.text().await, "users");
+    assert_eq!(client.get("/api/teams").send().await.text().await, "teams");
+}
+
+#[tokio::test]
+async fn nested_with_other_route_also_matching_with_route_first() {
+    let app = Router::new().route("/api", get(|| async { "api" })).nest(
+        "/api",
+        Router::new()
+            .route("/users", get(|| async { "users" }))
+            .route("/teams", get(|| async { "teams" })),
+    );
+
+    let client = TestClient::new(app);
+
+    assert_eq!(client.get("/api").send().await.text().await, "api");
+    assert_eq!(client.get("/api/users").send().await.text().await, "users");
+    assert_eq!(client.get("/api/teams").send().await.text().await, "teams");
+}
+
+#[tokio::test]
+async fn nested_with_other_route_also_matching_with_route_last() {
+    let app = Router::new()
+        .nest(
+            "/api",
+            Router::new()
+                .route("/users", get(|| async { "users" }))
+                .route("/teams", get(|| async { "teams" })),
+        )
+        .route("/api", get(|| async { "api" }));
+
+    let client = TestClient::new(app);
+
+    assert_eq!(client.get("/api").send().await.text().await, "api");
+    assert_eq!(client.get("/api/users").send().await.text().await, "users");
+    assert_eq!(client.get("/api/teams").send().await.text().await, "teams");
 }

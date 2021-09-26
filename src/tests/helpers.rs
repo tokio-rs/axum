@@ -1,31 +1,14 @@
-#![allow(unused_imports, dead_code)]
-
 use crate::BoxError;
-use crate::{
-    extract,
-    handler::{any, delete, get, on, patch, post, Handler},
-    response::IntoResponse,
-    routing::MethodFilter,
-    service, Router,
-};
-use bytes::Bytes;
 use http::{
-    header::{HeaderMap, HeaderName, HeaderValue, AUTHORIZATION},
-    Method, Request, StatusCode, Uri,
+    header::{HeaderName, HeaderValue},
+    Request, StatusCode,
 };
 use hyper::{Body, Server};
-use serde::Deserialize;
-use serde_json::json;
-use std::future::Ready;
 use std::{
-    collections::HashMap,
-    convert::{Infallible, TryFrom},
-    future::ready,
+    convert::TryFrom,
     net::{SocketAddr, TcpListener},
-    task::{Context, Poll},
-    time::Duration,
 };
-use tower::{make::Shared, service_fn};
+use tower::make::Shared;
 use tower_service::Service;
 
 pub(crate) struct TestClient {

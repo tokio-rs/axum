@@ -32,6 +32,7 @@ futures-util = { version = "0.3", default-features = false, features = ["alloc"]
 http = "0.2"
 http-body = "0.4.3"
 hyper = { version = "0.14", features = ["server", "tcp", "stream"] }
+matchit = "0.4"
 percent-encoding = "2.1"
 pin-project-lite = "0.2.7"
 regex = "1.5"
@@ -60,8 +61,8 @@ reqwest = { version = "0.11", features = ["json", "stream"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 tokio = { version = "1.6.1", features = ["macros", "rt", "rt-multi-thread", "net"] }
-uuid = { version = "0.8", features = ["serde", "v4"] }
 tokio-stream = "0.1"
+uuid = { version = "0.8", features = ["serde", "v4"] }
 
 [dev-dependencies.tower]
 package = "tower"

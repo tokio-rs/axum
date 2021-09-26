@@ -14,14 +14,13 @@ use crate::{
 };
 use bytes::Bytes;
 use http::{Request, Response, StatusCode, Uri};
-use regex::Regex;
+use matchit::Node;
 use std::{
     borrow::Cow,
     convert::Infallible,
     fmt,
     future::ready,
     marker::PhantomData,
-    sync::Arc,
     task::{Context, Poll},
 };
 use tower::{util::ServiceExt, ServiceBuilder};
@@ -36,10 +35,22 @@ mod or;
 
 pub use self::{method_filter::MethodFilter, or::Or};
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct RouteId(u64);
+
+impl RouteId {
+    fn next() -> Self {
+        use std::sync::atomic::{AtomicU64, Ordering};
+        static ID: AtomicU64 = AtomicU64::new(0);
+        Self(ID.fetch_add(1, Ordering::SeqCst))
+    }
+}
+
 /// The router type for composing handlers and services.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct Router<S> {
-    svc: S,
+    routes: S,
+    node: Node<RouteId>,
 }
 
 impl<E> Router<EmptyRouter<E>> {
@@ -49,7 +60,8 @@ impl<E> Router<EmptyRouter<E>> {
     /// all requests.
     pub fn new() -> Self {
         Self {
-            svc: EmptyRouter::not_found(),
+            routes: EmptyRouter::not_found(),
+            node: Node::new(),
         }
     }
 }
@@ -60,24 +72,18 @@ impl<E> Default for Router<EmptyRouter<E>> {
     }
 }
 
-impl<S, R> Service<R> for Router<S>
+impl<S> fmt::Debug for Router<S>
 where
-    S: Service<R>,
+    S: fmt::Debug,
 {
-    type Response = S::Response;
-    type Error = S::Error;
-    type Future = S::Future;
-
-    #[inline]
-    fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        self.svc.poll_ready(cx)
-    }
-
-    #[inline]
-    fn call(&mut self, req: R) -> Self::Future {
-        self.svc.call(req)
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Router")
+            .field("routes", &self.routes)
+            .finish()
     }
 }
+
+const NEST_TAIL_PARAM: &str = "__axum_nest";
 
 impl<S> Router<S> {
     /// Add another route to the router.
@@ -120,12 +126,22 @@ impl<S> Router<S> {
     /// # Panics
     ///
     /// Panics if `path` doesn't start with `/`.
-    pub fn route<T>(self, path: &str, svc: T) -> Router<Route<T, S>> {
-        self.map(|fallback| Route {
-            pattern: PathPattern::new(path),
-            svc,
-            fallback,
-        })
+    pub fn route<T>(mut self, path: &str, svc: T) -> Router<Route<T, S>> {
+        let id = RouteId::next();
+
+        // TODO(david): Add `try_route`
+        if let Err(err) = self.node.insert(path, id) {
+            panic!("Invalid route: {}", err);
+        }
+
+        Router {
+            routes: Route {
+                id,
+                svc,
+                fallback: self.routes,
+            },
+            node: self.node,
+        }
     }
 
     /// Nest a group of routes (or a [`Service`]) at some path.
@@ -214,12 +230,28 @@ impl<S> Router<S> {
     /// `nest`.
     ///
     /// [`OriginalUri`]: crate::extract::OriginalUri
-    pub fn nest<T>(self, path: &str, svc: T) -> Router<Nested<T, S>> {
-        self.map(|fallback| Nested {
-            pattern: PathPattern::new(path),
-            svc,
-            fallback,
-        })
+    pub fn nest<T>(mut self, path: &str, svc: T) -> Router<Nested<T, S>> {
+        let id = RouteId::next();
+
+        let path = if path == "/" {
+            format!("/*{}", NEST_TAIL_PARAM)
+        } else {
+            format!("{}/*{}", path, NEST_TAIL_PARAM)
+        };
+
+        // TODO(david): Add `try_nest`
+        if let Err(err) = self.node.insert(path, id) {
+            panic!("Invalid route: {}", err);
+        }
+
+        Router {
+            routes: Nested {
+                id,
+                svc,
+                fallback: self.routes,
+            },
+            node: self.node,
+        }
     }
 
     /// Create a boxed route trait object.
@@ -366,11 +398,11 @@ impl<S> Router<S> {
     /// ```
     ///
     /// [`MakeService`]: tower::make::MakeService
-    pub fn into_make_service(self) -> IntoMakeService<S>
+    pub fn into_make_service(self) -> IntoMakeService<Self>
     where
         S: Clone,
     {
-        IntoMakeService::new(self.svc)
+        IntoMakeService::new(self)
     }
 
     /// Convert this router into a [`MakeService`], that will store `C`'s
@@ -457,12 +489,12 @@ impl<S> Router<S> {
     /// [uds]: https://github.com/tokio-rs/axum/blob/main/examples/unix_domain_socket.rs
     pub fn into_make_service_with_connect_info<C, Target>(
         self,
-    ) -> IntoMakeServiceWithConnectInfo<S, C>
+    ) -> IntoMakeServiceWithConnectInfo<Self, C>
     where
         S: Clone,
         C: Connected<Target>,
     {
-        IntoMakeServiceWithConnectInfo::new(self.svc)
+        IntoMakeServiceWithConnectInfo::new(self)
     }
 
     /// Merge two routers into one.
@@ -588,42 +620,76 @@ impl<S> Router<S> {
     where
         F: FnOnce(S) -> S2,
     {
-        Router { svc: f(self.svc) }
-    }
-}
-
-/// A route that sends requests to one of two [`Service`]s depending on the
-/// path.
-#[derive(Debug, Clone)]
-pub struct Route<S, F> {
-    pub(crate) pattern: PathPattern,
-    pub(crate) svc: S,
-    pub(crate) fallback: F,
-}
-
-impl<S, F, B> Service<Request<B>> for Route<S, F>
-where
-    S: Service<Request<B>, Response = Response<BoxBody>> + Clone,
-    F: Service<Request<B>, Response = Response<BoxBody>, Error = S::Error> + Clone,
-    B: Send + Sync + 'static,
-{
-    type Response = Response<BoxBody>;
-    type Error = S::Error;
-    type Future = RouteFuture<S, F, B>;
-
-    fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        Poll::Ready(Ok(()))
-    }
-
-    fn call(&mut self, mut req: Request<B>) -> Self::Future {
-        if let Some(captures) = self.pattern.full_match(&req) {
-            insert_url_params(&mut req, captures);
-            let fut = self.svc.clone().oneshot(req);
-            RouteFuture::a(fut, self.fallback.clone())
-        } else {
-            let fut = self.fallback.clone().oneshot(req);
-            RouteFuture::b(fut)
+        Router {
+            routes: f(self.routes),
+            node: self.node,
         }
+    }
+}
+
+impl<ReqBody, ResBody, S> Service<Request<ReqBody>> for Router<S>
+where
+    S: Service<Request<ReqBody>, Response = Response<ResBody>> + Clone,
+    ReqBody: Send + Sync + 'static,
+{
+    type Response = Response<ResBody>;
+    type Error = S::Error;
+    type Future = S::Future;
+
+    #[inline]
+    fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        self.routes.poll_ready(cx)
+    }
+
+    #[inline]
+    fn call(&mut self, mut req: Request<ReqBody>) -> Self::Future {
+        if req.extensions().get::<OriginalUri>().is_none() {
+            let original_uri = OriginalUri(req.uri().clone());
+            req.extensions_mut().insert(original_uri);
+        }
+
+        let path = req.uri().path().to_string();
+        if let Ok(match_) = self.node.at(&path) {
+            let id = *match_.value;
+            req.extensions_mut().insert(id);
+
+            let params = match_
+                .params
+                .iter()
+                .filter(|(key, _)| !key.starts_with(NEST_TAIL_PARAM))
+                .map(|(key, value)| (key.to_string(), value.to_string()))
+                .collect::<Vec<_>>();
+
+            if let Some(tail) = match_.params.get(NEST_TAIL_PARAM) {
+                UriStack::push(&mut req);
+                let new_uri = with_path(req.uri(), tail);
+                *req.uri_mut() = new_uri;
+            }
+
+            insert_url_params(&mut req, params);
+        }
+
+        self.routes.call(req)
+    }
+}
+
+pub(crate) struct UriStack(Vec<Uri>);
+
+impl UriStack {
+    fn push<B>(req: &mut Request<B>) {
+        let uri = req.uri().clone();
+
+        if let Some(stack) = req.extensions_mut().get_mut::<Self>() {
+            stack.0.push(uri);
+        } else {
+            req.extensions_mut().insert(Self(vec![uri]));
+        }
+    }
+
+    pub(crate) fn pop<B>(req: &mut Request<B>) -> Option<Uri> {
+        req.extensions_mut()
+            .get_mut::<Self>()
+            .and_then(|stack| stack.0.pop())
     }
 }
 
@@ -761,95 +827,84 @@ struct FromEmptyRouter<B> {
     request: Request<B>,
 }
 
+/// A route that sends requests to one of two [`Service`]s depending on the
+/// path.
 #[derive(Debug, Clone)]
-pub(crate) struct PathPattern(Arc<Inner>);
-
-#[derive(Debug)]
-struct Inner {
-    full_path_regex: Regex,
-    capture_group_names: Box<[Bytes]>,
+pub struct Route<S, T> {
+    id: RouteId,
+    svc: S,
+    fallback: T,
 }
 
-impl PathPattern {
-    pub(crate) fn new(pattern: &str) -> Self {
-        assert!(pattern.starts_with('/'), "Route path must start with a `/`");
+impl<B, S, T> Service<Request<B>> for Route<S, T>
+where
+    S: Service<Request<B>, Response = Response<BoxBody>> + Clone,
+    T: Service<Request<B>, Response = Response<BoxBody>, Error = S::Error> + Clone,
+    B: Send + Sync + 'static,
+{
+    type Response = Response<BoxBody>;
+    type Error = S::Error;
+    type Future = RouteFuture<S, T, B>;
 
-        let mut capture_group_names = Vec::new();
+    #[inline]
+    fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        Poll::Ready(Ok(()))
+    }
 
-        let pattern = pattern
-            .split('/')
-            .map(|part| {
-                if let Some(key) = part.strip_prefix(':') {
-                    capture_group_names.push(Bytes::copy_from_slice(key.as_bytes()));
-
-                    Cow::Owned(format!("(?P<{}>[^/]+)", key))
+    fn call(&mut self, req: Request<B>) -> Self::Future {
+        match req.extensions().get::<RouteId>() {
+            Some(id) => {
+                if self.id == *id {
+                    RouteFuture::a(self.svc.clone().oneshot(req))
                 } else {
-                    Cow::Borrowed(part)
+                    RouteFuture::b(self.fallback.clone().oneshot(req))
                 }
-            })
-            .collect::<Vec<_>>()
-            .join("/");
-
-        let full_path_regex =
-            Regex::new(&format!("^{}", pattern)).expect("invalid regex generated from route");
-
-        Self(Arc::new(Inner {
-            full_path_regex,
-            capture_group_names: capture_group_names.into(),
-        }))
-    }
-
-    pub(crate) fn full_match<B>(&self, req: &Request<B>) -> Option<Captures> {
-        self.do_match(req).and_then(|match_| {
-            if match_.full_match {
-                Some(match_.captures)
-            } else {
-                None
             }
-        })
-    }
-
-    pub(crate) fn prefix_match<'a, B>(&self, req: &'a Request<B>) -> Option<(&'a str, Captures)> {
-        self.do_match(req)
-            .map(|match_| (match_.matched, match_.captures))
-    }
-
-    fn do_match<'a, B>(&self, req: &'a Request<B>) -> Option<Match<'a>> {
-        let path = req.uri().path();
-
-        self.0.full_path_regex.captures(path).map(|captures| {
-            let matched = captures.get(0).unwrap();
-            let full_match = matched.as_str() == path;
-
-            let captures = self
-                .0
-                .capture_group_names
-                .iter()
-                .map(|bytes| {
-                    std::str::from_utf8(bytes)
-                        .expect("bytes were created from str so is valid utf-8")
-                })
-                .filter_map(|name| captures.name(name).map(|value| (name, value.as_str())))
-                .map(|(key, value)| (key.to_string(), value.to_string()))
-                .collect::<Vec<_>>();
-
-            Match {
-                captures,
-                full_match,
-                matched: matched.as_str(),
-            }
-        })
+            None => RouteFuture::b(self.fallback.clone().oneshot(req)),
+        }
     }
 }
 
-struct Match<'a> {
-    captures: Captures,
-    // true if regex matched whole path, false if it only matched a prefix
-    full_match: bool,
-    matched: &'a str,
+/// A [`Service`] that has been nested inside a router at some path.
+///
+/// Created with [`Router::nest`].
+#[derive(Debug, Clone)]
+pub struct Nested<S, T> {
+    id: RouteId,
+    svc: S,
+    fallback: T,
 }
 
-type Captures = Vec<(String, String)>;
+impl<B, S, T> Service<Request<B>> for Nested<S, T>
+where
+    S: Service<Request<B>, Response = Response<BoxBody>> + Clone,
+    T: Service<Request<B>, Response = Response<BoxBody>, Error = S::Error> + Clone,
+    B: Send + Sync + 'static,
+{
+    type Response = Response<BoxBody>;
+    type Error = S::Error;
+    type Future = NestedFuture<S, T, B>;
+
+    #[inline]
+    fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        Poll::Ready(Ok(()))
+    }
+
+    fn call(&mut self, req: Request<B>) -> Self::Future {
+        let future = match req.extensions().get::<RouteId>() {
+            Some(id) => {
+                if self.id == *id {
+                    RouteFuture::a(self.svc.clone().oneshot(req))
+                } else {
+                    RouteFuture::b(self.fallback.clone().oneshot(req))
+                }
+            }
+            None => RouteFuture::b(self.fallback.clone().oneshot(req)),
+        };
+
+        NestedFuture { inner: future }
+    }
+}
 
 /// A boxed route trait object.
 ///
@@ -943,60 +998,8 @@ where
     }
 }
 
-/// A [`Service`] that has been nested inside a router at some path.
-///
-/// Created with [`Router::nest`].
-#[derive(Debug, Clone)]
-pub struct Nested<S, F> {
-    pattern: PathPattern,
-    svc: S,
-    fallback: F,
-}
-
-impl<S, F, B> Service<Request<B>> for Nested<S, F>
-where
-    S: Service<Request<B>, Response = Response<BoxBody>> + Clone,
-    F: Service<Request<B>, Response = Response<BoxBody>, Error = S::Error> + Clone,
-    B: Send + Sync + 'static,
-{
-    type Response = Response<BoxBody>;
-    type Error = S::Error;
-    type Future = NestedFuture<S, F, B>;
-
-    fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        Poll::Ready(Ok(()))
-    }
-
-    fn call(&mut self, mut req: Request<B>) -> Self::Future {
-        if req.extensions().get::<OriginalUri>().is_none() {
-            let original_uri = OriginalUri(req.uri().clone());
-            req.extensions_mut().insert(original_uri);
-        }
-
-        let f = if let Some((prefix, captures)) = self.pattern.prefix_match(&req) {
-            let without_prefix = strip_prefix(req.uri(), prefix);
-            *req.uri_mut() = without_prefix;
-
-            insert_url_params(&mut req, captures);
-            let fut = self.svc.clone().oneshot(req);
-            RouteFuture::a(fut, self.fallback.clone())
-        } else {
-            let fut = self.fallback.clone().oneshot(req);
-            RouteFuture::b(fut)
-        };
-
-        NestedFuture { inner: f }
-    }
-}
-
-fn strip_prefix(uri: &Uri, prefix: &str) -> Uri {
+fn with_path(uri: &Uri, new_path: &str) -> Uri {
     let path_and_query = if let Some(path_and_query) = uri.path_and_query() {
-        let new_path = if let Some(path) = path_and_query.path().strip_prefix(prefix) {
-            path
-        } else {
-            path_and_query.path()
-        };
-
         let new_path = if new_path.starts_with('/') {
             Cow::Borrowed(new_path)
         } else {
@@ -1085,48 +1088,6 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn test_routing() {
-        assert_match("/", "/");
-
-        assert_match("/foo", "/foo");
-        assert_match("/foo/", "/foo/");
-        refute_match("/foo", "/foo/");
-        refute_match("/foo/", "/foo");
-
-        assert_match("/foo/bar", "/foo/bar");
-        refute_match("/foo/bar/", "/foo/bar");
-        refute_match("/foo/bar", "/foo/bar/");
-
-        assert_match("/:value", "/foo");
-        assert_match("/users/:id", "/users/1");
-        assert_match("/users/:id/action", "/users/42/action");
-        refute_match("/users/:id/action", "/users/42");
-        refute_match("/users/:id", "/users/42/action");
-    }
-
-    fn assert_match(route_spec: &'static str, path: &'static str) {
-        let route = PathPattern::new(route_spec);
-        let req = Request::builder().uri(path).body(()).unwrap();
-        assert!(
-            route.full_match(&req).is_some(),
-            "`{}` doesn't match `{}`",
-            path,
-            route_spec
-        );
-    }
-
-    fn refute_match(route_spec: &'static str, path: &'static str) {
-        let route = PathPattern::new(route_spec);
-        let req = Request::builder().uri(path).body(()).unwrap();
-        assert!(
-            route.full_match(&req).is_none(),
-            "`{}` did match `{}` (but shouldn't)",
-            path,
-            route_spec
-        );
-    }
 
     #[test]
     fn traits() {

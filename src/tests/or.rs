@@ -80,19 +80,19 @@ async fn multiple_ors_balanced_differently() {
 }
 
 #[tokio::test]
-async fn or_nested_inside_other_thing() {
-    let inner = Router::new()
-        .route("/bar", get(|| async {}))
-        .or(Router::new().route("/baz", get(|| async {})));
-    let app = Router::new().nest("/foo", inner);
+async fn nested_or() {
+    let bar = Router::new().route("/bar", get(|| async { "bar" }));
+    let baz = Router::new().route("/baz", get(|| async { "baz" }));
 
-    let client = TestClient::new(app);
+    let bar_or_baz = bar.or(baz);
 
-    let res = client.get("/foo/bar").send().await;
-    assert_eq!(res.status(), StatusCode::OK);
+    let client = TestClient::new(bar_or_baz.clone());
+    assert_eq!(client.get("/bar").send().await.text().await, "bar");
+    assert_eq!(client.get("/baz").send().await.text().await, "baz");
 
-    let res = client.get("/foo/baz").send().await;
-    assert_eq!(res.status(), StatusCode::OK);
+    let client = TestClient::new(Router::new().nest("/foo", bar_or_baz));
+    assert_eq!(client.get("/foo/bar").send().await.text().await, "bar");
+    assert_eq!(client.get("/foo/baz").send().await.text().await, "baz");
 }
 
 #[tokio::test]

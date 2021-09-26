@@ -480,29 +480,6 @@ async fn handler_into_service() {
 }
 
 #[tokio::test]
-async fn when_multiple_routes_match() {
-    let app = Router::new()
-        .route("/", post(|| async {}))
-        .route("/", get(|| async {}))
-        .route("/foo", get(|| async {}))
-        .nest("/foo", Router::new().route("/bar", get(|| async {})));
-
-    let client = TestClient::new(app);
-
-    let res = client.get("/").send().await;
-    assert_eq!(res.status(), StatusCode::OK);
-
-    let res = client.post("/").send().await;
-    assert_eq!(res.status(), StatusCode::OK);
-
-    let res = client.get("/foo/bar").send().await;
-    assert_eq!(res.status(), StatusCode::OK);
-
-    let res = client.get("/foo").send().await;
-    assert_eq!(res.status(), StatusCode::OK);
-}
-
-#[tokio::test]
 async fn captures_dont_match_empty_segments() {
     let app = Router::new().route("/:key", get(|| async {}));
 
