@@ -54,8 +54,8 @@ pub enum ServerError {
     #[error(transparent)]
     ValidationError(#[from] validator::ValidationErrors),
 
-    #[error(transparent)]
-    InternalServerError(#[from] anyhow::Error),
+    #[error("Internal server error")]
+    InternalServerError,
 }
 
 impl IntoResponse for ServerError {
@@ -68,9 +68,9 @@ impl IntoResponse for ServerError {
                 let message = format!("Input validation error: [{}]", self).replace("\n", ", ");
                 (StatusCode::BAD_REQUEST, message)
             }
-            _ => (
+            error => (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                StatusCode::INTERNAL_SERVER_ERROR.to_string(),
+                error.to_string(),
             ),
         }
         .into_response()
