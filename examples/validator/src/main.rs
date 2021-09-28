@@ -25,12 +25,17 @@ use validator::Validate;
 
 #[tokio::main]
 async fn main() {
+    if std::env::var_os("RUST_LOG").is_none() {
+        std::env::set_var("RUST_LOG", "example_validator=debug")
+    }
+    tracing_subscriber::fmt::init();
     // build our application with a route
     let app = Router::new().route("/", get(handler));
 
     // run it
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
-    println!("listening on {}", addr);
+    tracing::debug!("listening on {}", addr);
+
     axum::Server::bind(&addr)
         .serve(app.into_make_service())
         .await
