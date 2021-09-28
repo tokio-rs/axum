@@ -11,17 +11,15 @@
 //! ```
 
 use async_trait::async_trait;
-use axum::extract::{FromRequest, RequestParts};
 use axum::{
     body::{Bytes, Full},
-    extract::Form,
+    extract::{Form, FromRequest, RequestParts},
     handler::get,
     http::{Response, StatusCode},
     response::{Html, IntoResponse},
     BoxError, Router,
 };
-use serde::de::DeserializeOwned;
-use serde::Deserialize;
+use serde::{de::DeserializeOwned, Deserialize};
 use std::{convert::Infallible, net::SocketAddr};
 use thiserror::Error;
 use validator::Validate;
