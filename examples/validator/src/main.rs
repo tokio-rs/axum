@@ -30,6 +30,7 @@ async fn main() {
         std::env::set_var("RUST_LOG", "example_validator=debug")
     }
     tracing_subscriber::fmt::init();
+
     // build our application with a route
     let app = Router::new().route("/", get(handler));
 
@@ -49,11 +50,8 @@ pub struct NameInput {
     pub name: String,
 }
 
-async fn handler(
-    ValidatedForm(input): ValidatedForm<NameInput>,
-) -> Result<Html<String>, ServerError> {
-    Ok(Html(format!("<h1>Hello, {}!</h1>", input.name)))
-    // Err(ServerError::InternalServerError("custom message".to_string()))
+async fn handler(ValidatedForm(input): ValidatedForm<NameInput>) -> Html<String> {
+    Html(format!("<h1>Hello, {}!</h1>", input.name))
 }
 
 #[derive(Debug, Clone, Copy, Default)]
@@ -83,9 +81,6 @@ pub enum ServerError {
 
     #[error(transparent)]
     AxumFormRejection(#[from] axum::extract::rejection::FormRejection),
-
-    #[error("Internal server error: {0}")]
-    InternalServerError(String),
 }
 
 impl IntoResponse for ServerError {
@@ -99,7 +94,6 @@ impl IntoResponse for ServerError {
                 (StatusCode::BAD_REQUEST, message)
             }
             ServerError::AxumFormRejection(_) => (StatusCode::BAD_REQUEST, self.to_string()),
-            error => (StatusCode::INTERNAL_SERVER_ERROR, error.to_string()),
         }
         .into_response()
     }
