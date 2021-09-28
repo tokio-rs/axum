@@ -5,9 +5,8 @@ publish = false
 version = "0.1.0"
 
 [dependencies]
-anyhow = "1.0.44"
-axum = {path = "../.."}
-serde = {version = "1.0", features = ["derive"]}
+axum = { path = "../.." }
+serde = { version = "1.0", features = ["derive"] }
 thiserror = "1.0.29"
-tokio = {version = "1.0", features = ["full"]}
-validator = {version = "0.14.0", features = ["derive"]}
+tokio = { version = "1.0", features = ["full"] }
+validator = { version = "0.14.0", features = ["derive"] }
