@@ -10,14 +10,17 @@
 //! -> <h1>Hello, LT!</h1>
 //! ```
 
+use async_trait::async_trait;
+use axum::extract::{FromRequest, RequestParts};
 use axum::{
     body::{Bytes, Full},
     extract::Form,
     handler::get,
     http::{Response, StatusCode},
     response::{Html, IntoResponse},
-    Router,
+    BoxError, Router,
 };
+use serde::de::DeserializeOwned;
 use serde::Deserialize;
 use std::{convert::Infallible, net::SocketAddr};
 use thiserror::Error;
@@ -48,17 +51,40 @@ pub struct NameInput {
     pub name: String,
 }
 
-async fn handler(Form(input): Form<NameInput>) -> Result<Html<String>, ServerError> {
-    input.validate()?;
-
+async fn handler(
+    ValidatedForm(input): ValidatedForm<NameInput>,
+) -> Result<Html<String>, ServerError> {
     Ok(Html(format!("<h1>Hello, {}!</h1>", input.name)))
     // Err(ServerError::InternalServerError("custom message".to_string()))
+}
+
+#[derive(Debug, Clone, Copy, Default)]
+pub struct ValidatedForm<T>(pub T);
+
+#[async_trait]
+impl<T, B> FromRequest<B> for ValidatedForm<T>
+where
+    T: DeserializeOwned + Validate,
+    B: http_body::Body + Send,
+    B::Data: Send,
+    B::Error: Into<BoxError>,
+{
+    type Rejection = ServerError;
+
+    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+        let Form(value) = Form::<T>::from_request(req).await?;
+        value.validate()?;
+        Ok(ValidatedForm(value))
+    }
 }
 
 #[derive(Debug, Error)]
 pub enum ServerError {
     #[error(transparent)]
     ValidationError(#[from] validator::ValidationErrors),
+
+    #[error(transparent)]
+    AxumFormRejection(#[from] axum::extract::rejection::FormRejection),
 
     #[error("Internal server error: {0}")]
     InternalServerError(String),
@@ -74,6 +100,7 @@ impl IntoResponse for ServerError {
                 let message = format!("Input validation error: [{}]", self).replace("\n", ", ");
                 (StatusCode::BAD_REQUEST, message)
             }
+            ServerError::AxumFormRejection(_) => (StatusCode::BAD_REQUEST, self.to_string()),
             error => (StatusCode::INTERNAL_SERVER_ERROR, error.to_string()),
         }
         .into_response()
