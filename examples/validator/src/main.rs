@@ -52,6 +52,7 @@ async fn handler(Form(input): Form<NameInput>) -> Result<Html<String>, ServerErr
     input.validate()?;
 
     Ok(Html(format!("<h1>Hello, {}!</h1>", input.name)))
+    // Err(ServerError::InternalServerError("custom message".to_string()))
 }
 
 #[derive(Debug, Error)]
@@ -59,8 +60,8 @@ pub enum ServerError {
     #[error(transparent)]
     ValidationError(#[from] validator::ValidationErrors),
 
-    #[error("Internal server error")]
-    InternalServerError,
+    #[error("Internal server error: {0}")]
+    InternalServerError(String),
 }
 
 impl IntoResponse for ServerError {
@@ -73,10 +74,7 @@ impl IntoResponse for ServerError {
                 let message = format!("Input validation error: [{}]", self).replace("\n", ", ");
                 (StatusCode::BAD_REQUEST, message)
             }
-            error => (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                error.to_string(),
-            ),
+            error => (StatusCode::INTERNAL_SERVER_ERROR, error.to_string()),
         }
         .into_response()
     }
