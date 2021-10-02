@@ -18,6 +18,7 @@ mod redirect;
 pub mod sse;
 
 #[doc(no_inline)]
+#[cfg(feature = "json")]
 pub use crate::Json;
 
 #[doc(inline)]

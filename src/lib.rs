@@ -1120,7 +1120,10 @@
 //! The following optional features are available:
 //!
 //! - `headers`: Enables extracting typed headers via [`extract::TypedHeader`].
+//! - `http1`: Enables hyper's `http1` feature. Enabled by default.
 //! - `http2`: Enables hyper's `http2` feature.
+//! - `json`: Enables the [`Json`] type and some similar convenience functionality.
+//!   Enabled by default.
 //! - `multipart`: Enables parsing `multipart/form-data` requests with [`extract::Multipart`].
 //! - `tower-log`: Enables `tower`'s `log` feature. Enabled by default.
 //! - `ws`: Enables WebSockets support via [`extract::ws`].
@@ -1193,6 +1196,7 @@ pub(crate) mod macros;
 
 mod clone_box_service;
 mod error;
+#[cfg(feature = "json")]
 mod json;
 mod util;
 
@@ -1216,7 +1220,10 @@ pub use hyper::Server;
 pub use tower_http::add_extension::{AddExtension, AddExtensionLayer};
 
 #[doc(inline)]
-pub use self::{error::Error, json::Json, routing::Router};
+#[cfg(feature = "json")]
+pub use self::json::Json;
+#[doc(inline)]
+pub use self::{error::Error, routing::Router};
 
 /// Alias for a type-erased error type.
 pub type BoxError = Box<dyn std::error::Error + Send + Sync>;
