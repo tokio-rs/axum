@@ -10,8 +10,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improve performance of `BoxRoute` ([#339])
 - **breaking:** `Router::boxed` now the inner service to implement `Clone` and
   `Sync` in addition to the previous trait bounds ([#339])
+- **breaking:** Added feature flags for HTTP1 and JSON. This enables removing a
+  few dependencies if your app only uses HTTP2 or doesn't use JSON. Its only a
+  breaking change if you depend on axum with `default_features = false`. ([#286])
 
 [#339]: https://github.com/tokio-rs/axum/pull/339
+[#286]: https://github.com/tokio-rs/axum/pull/286
 
 # 0.2.6 (02. October, 2021)
 
