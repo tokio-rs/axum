@@ -185,12 +185,10 @@ mod tests {
             get(|Path(param): Path<String>| async move { param }),
         );
 
-        let addr = run_in_background(app).await;
+        let client = TestClient::new(app);
 
-        let res = reqwest::get(format!("http://{}/one%20two", addr))
-            .await
-            .unwrap();
+        let res = client.get("/one%20two").send().await;
 
-        assert_eq!(res.text().await.unwrap(), "one two");
+        assert_eq!(res.text().await, "one two");
     }
 }
