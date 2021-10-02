@@ -15,6 +15,7 @@
 //!     - [Common extractors](#common-extractors)
 //!     - [Applying multiple extractors](#applying-multiple-extractors)
 //!     - [Optional extractors](#optional-extractors)
+//!     - [Customizing extractor responses](#customizing-extractor-responses)
 //! - [Building responses](#building-responses)
 //! - [Applying middleware](#applying-middleware)
 //!     - [To individual handlers](#to-individual-handlers)
@@ -631,6 +632,19 @@
 //! # };
 //! ```
 //!
+//! ## Customizing extractor responses
+//!
+//! If an extractor fails it will return a response with the error and your
+//! handler will not be called. To customize the error response you have a two
+//! options:
+//!
+//! 1. Use `Result<T, T::Rejection>` as your extractor like shown in ["Optional
+//!    extractors"](#optional-extractors). This works well if you're only using
+//!    the extractor in a single handler.
+//! 2. Create your own extractor that in its [`FromRequest`] implementing calls
+//!    one of axum's built in extractors but returns a different response for
+//!    rejections. See the [customize-extractor-error] example for more details.
+//!
 //! # Building responses
 //!
 //! Anything that implements [`IntoResponse`](response::IntoResponse) can be
@@ -1087,7 +1101,7 @@
 //! The `"full"` feature for hyper and tokio isn't strictly necessary but its
 //! the easiest way to get started.
 //!
-//! Note that [`axum::Server`] is re-exported by axum so if thats all you need
+//! Note that [`hyper::Server`] is re-exported by axum so if thats all you need
 //! then you don't have to explicitly depend on hyper.
 //!
 //! Tower isn't strictly necessary either but helpful for testing. See the
@@ -1132,6 +1146,7 @@
 //! [`FromRequest`]: crate::extract::FromRequest
 //! [`HeaderMap`]: http::header::HeaderMap
 //! [`Request`]: http::Request
+//! [customize-extractor-error]: https://github.com/tokio-rs/axum/blob/main/examples/customize-extractor-error/src/main.rs
 
 #![warn(
     clippy::all,
