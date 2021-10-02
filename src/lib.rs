@@ -15,6 +15,7 @@
 //!     - [Common extractors](#common-extractors)
 //!     - [Applying multiple extractors](#applying-multiple-extractors)
 //!     - [Optional extractors](#optional-extractors)
+//!     - [Customizing extractor responses](#customizing-extractor-responses)
 //! - [Building responses](#building-responses)
 //! - [Applying middleware](#applying-middleware)
 //!     - [To individual handlers](#to-individual-handlers)
@@ -631,6 +632,19 @@
 //! # };
 //! ```
 //!
+//! ## Customizing extractor responses
+//!
+//! If an extractor fails it will return a response with the error and your
+//! handler will not be called. To customize the error response you have a two
+//! options:
+//!
+//! 1. Use `Result<T, T::Rejection>` as your extractor like shown in ["Optional
+//!    extractors"](#optional-extractors). This works well if you're only using
+//!    the extractor in a single handler.
+//! 2. Create your own extractor that in its [`FromRequest`] implementing calls
+//!    one of axum's built in extractors but returns a different response for
+//!    rejections. See the [customize-extractor-error] example for more details.
+//!
 //! # Building responses
 //!
 //! Anything that implements [`IntoResponse`](response::IntoResponse) can be
@@ -1087,7 +1101,7 @@
 //! The `"full"` feature for hyper and tokio isn't strictly necessary but its
 //! the easiest way to get started.
 //!
-//! Note that [`axum::Server`] is re-exported by axum so if thats all you need
+//! Note that [`hyper::Server`] is re-exported by axum so if thats all you need
 //! then you don't have to explicitly depend on hyper.
 //!
 //! Tower isn't strictly necessary either but helpful for testing. See the
@@ -1106,7 +1120,10 @@
 //! The following optional features are available:
 //!
 //! - `headers`: Enables extracting typed headers via [`extract::TypedHeader`].
+//! - `http1`: Enables hyper's `http1` feature. Enabled by default.
 //! - `http2`: Enables hyper's `http2` feature.
+//! - `json`: Enables the [`Json`] type and some similar convenience functionality.
+//!   Enabled by default.
 //! - `multipart`: Enables parsing `multipart/form-data` requests with [`extract::Multipart`].
 //! - `tower-log`: Enables `tower`'s `log` feature. Enabled by default.
 //! - `ws`: Enables WebSockets support via [`extract::ws`].
@@ -1132,6 +1149,7 @@
 //! [`FromRequest`]: crate::extract::FromRequest
 //! [`HeaderMap`]: http::header::HeaderMap
 //! [`Request`]: http::Request
+//! [customize-extractor-error]: https://github.com/tokio-rs/axum/blob/main/examples/customize-extractor-error/src/main.rs
 
 #![warn(
     clippy::all,
@@ -1176,8 +1194,9 @@
 #[macro_use]
 pub(crate) mod macros;
 
-mod buffer;
+mod clone_box_service;
 mod error;
+#[cfg(feature = "json")]
 mod json;
 mod util;
 
@@ -1201,7 +1220,10 @@ pub use hyper::Server;
 pub use tower_http::add_extension::{AddExtension, AddExtensionLayer};
 
 #[doc(inline)]
-pub use self::{error::Error, json::Json, routing::Router};
+#[cfg(feature = "json")]
+pub use self::json::Json;
+#[doc(inline)]
+pub use self::{error::Error, routing::Router};
 
 /// Alias for a type-erased error type.
 pub type BoxError = Box<dyn std::error::Error + Send + Sync>;

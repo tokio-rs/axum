@@ -1,6 +1,6 @@
 [package]
 name = "axum"
-version = "0.2.4"
+version = "0.2.6"
 authors = ["David Pedersen <david.pdrsn@gmail.com>"]
 categories = ["asynchronous", "network-programming", "web-programming"]
 description = "Web framework that focuses on ergonomics and modularity"
@@ -15,8 +15,10 @@ repository = "https://github.com/tokio-rs/axum"
 members = ["examples/*"]
 
 [features]
-default = ["tower-log"]
+default = ["http1", "json", "tower-log"]
+http1 = ["hyper/http1"]
 http2 = ["hyper/http2"]
+json = ["serde_json"]
 multipart = ["multer", "mime"]
 tower-log = ["tower/log"]
 ws = ["tokio-tungstenite", "sha-1", "base64"]
@@ -29,12 +31,11 @@ dyn-clone = "1.0"
 futures-util = { version = "0.3", default-features = false, features = ["alloc"] }
 http = "0.2"
 http-body = "0.4.3"
-hyper = { version = "0.14", features = ["server", "tcp", "http1", "stream"] }
+hyper = { version = "0.14", features = ["server", "tcp", "stream"] }
 percent-encoding = "2.1"
 pin-project-lite = "0.2.7"
 regex = "1.5"
 serde = "1.0"
-serde_json = "1.0"
 serde_urlencoded = "0.7"
 sync_wrapper = "0.1.1"
 tokio = { version = "1", features = ["time"] }
@@ -45,17 +46,19 @@ tower-layer = "0.3"
 tower-service = "0.3"
 
 # optional dependencies
-tokio-tungstenite = { optional = true, version = "0.15" }
-sha-1 = { optional = true, version = "0.9.6" }
 base64 = { optional = true, version = "0.13" }
 headers = { optional = true, version = "0.3" }
-multer = { optional = true, version = "2.0.0" }
 mime = { optional = true, version = "0.3" }
+multer = { optional = true, version = "2.0.0" }
+serde_json = { version = "1.0", optional = true }
+sha-1 = { optional = true, version = "0.9.6" }
+tokio-tungstenite = { optional = true, version = "0.15" }
 
 [dev-dependencies]
 futures = "0.3"
 reqwest = { version = "0.11", features = ["json", "stream"] }
 serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
 tokio = { version = "1.6.1", features = ["macros", "rt", "rt-multi-thread", "net"] }
 uuid = { version = "0.8", features = ["serde", "v4"] }
 tokio-stream = "0.1"
@@ -81,4 +84,11 @@ all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
 
 [package.metadata.playground]
-features = ["ws", "multipart", "headers"]
+features = [
+  "http1",
+  "http2",
+  "json",
+  "multipart",
+  "tower",
+  "ws",
+]

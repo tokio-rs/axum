@@ -1,6 +1,8 @@
 //! Future types.
 
-use crate::{body::BoxBody, buffer::MpscBuffer, routing::FromEmptyRouter, BoxError};
+use crate::{
+    body::BoxBody, clone_box_service::CloneBoxService, routing::FromEmptyRouter, BoxError,
+};
 use futures_util::ready;
 use http::{Request, Response};
 use pin_project_lite::pin_project;
@@ -11,10 +13,7 @@ use std::{
     pin::Pin,
     task::{Context, Poll},
 };
-use tower::{
-    util::{BoxService, Oneshot},
-    ServiceExt,
-};
+use tower::{util::Oneshot, ServiceExt};
 use tower_service::Service;
 
 pub use super::or::ResponseFuture as OrResponseFuture;
@@ -33,10 +32,7 @@ pin_project! {
     {
         #[pin]
         pub(super) inner: Oneshot<
-            MpscBuffer<
-                BoxService<Request<B>, Response<BoxBody>, E >,
-                Request<B>
-            >,
+            CloneBoxService<Request<B>, Response<BoxBody>, E>,
             Request<B>,
         >,
     }

@@ -38,41 +38,23 @@ async fn nesting_apps() {
         .route("/", get(|| async { "hi" }))
         .nest("/:version/api", api_routes);
 
-    let addr = run_in_background(app).await;
+    let client = TestClient::new(app);
 
-    let client = reqwest::Client::new();
-
-    let res = client
-        .get(format!("http://{}/", addr))
-        .send()
-        .await
-        .unwrap();
+    let res = client.get("/").send().await;
     assert_eq!(res.status(), StatusCode::OK);
-    assert_eq!(res.text().await.unwrap(), "hi");
+    assert_eq!(res.text().await, "hi");
 
-    let res = client
-        .get(format!("http://{}/v0/api/users", addr))
-        .send()
-        .await
-        .unwrap();
+    let res = client.get("/v0/api/users").send().await;
     assert_eq!(res.status(), StatusCode::OK);
-    assert_eq!(res.text().await.unwrap(), "users#index");
+    assert_eq!(res.text().await, "users#index");
 
-    let res = client
-        .get(format!("http://{}/v0/api/users/123", addr))
-        .send()
-        .await
-        .unwrap();
+    let res = client.get("/v0/api/users/123").send().await;
     assert_eq!(res.status(), StatusCode::OK);
-    assert_eq!(res.text().await.unwrap(), "v0: users#show (123)");
+    assert_eq!(res.text().await, "v0: users#show (123)");
 
-    let res = client
-        .get(format!("http://{}/v0/api/games/123", addr))
-        .send()
-        .await
-        .unwrap();
+    let res = client.get("/v0/api/games/123").send().await;
     assert_eq!(res.status(), StatusCode::OK);
-    assert_eq!(res.text().await.unwrap(), "v0: games#show (123)");
+    assert_eq!(res.text().await, "v0: games#show (123)");
 }
 
 #[tokio::test]
@@ -80,25 +62,15 @@ async fn wrong_method_nest() {
     let nested_app = Router::new().route("/", get(|| async {}));
     let app = Router::new().nest("/", nested_app);
 
-    let addr = run_in_background(app).await;
+    let client = TestClient::new(app);
 
-    let client = reqwest::Client::new();
-
-    let res = client.get(format!("http://{}", addr)).send().await.unwrap();
+    let res = client.get("/").send().await;
     assert_eq!(res.status(), StatusCode::OK);
 
-    let res = client
-        .post(format!("http://{}", addr))
-        .send()
-        .await
-        .unwrap();
+    let res = client.post("/").send().await;
     assert_eq!(res.status(), StatusCode::METHOD_NOT_ALLOWED);
 
-    let res = client
-        .patch(format!("http://{}/foo", addr))
-        .send()
-        .await
-        .unwrap();
+    let res = client.patch("/foo").send().await;
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
 }
 
@@ -106,29 +78,19 @@ async fn wrong_method_nest() {
 async fn nesting_at_root() {
     let app = Router::new().nest("/", get(|uri: Uri| async move { uri.to_string() }));
 
-    let addr = run_in_background(app).await;
+    let client = TestClient::new(app);
 
-    let client = reqwest::Client::new();
-
-    let res = client.get(format!("http://{}", addr)).send().await.unwrap();
+    let res = client.get("/").send().await;
     assert_eq!(res.status(), StatusCode::OK);
-    assert_eq!(res.text().await.unwrap(), "/");
+    assert_eq!(res.text().await, "/");
 
-    let res = client
-        .get(format!("http://{}/foo", addr))
-        .send()
-        .await
-        .unwrap();
+    let res = client.get("/foo").send().await;
     assert_eq!(res.status(), StatusCode::OK);
-    assert_eq!(res.text().await.unwrap(), "/foo");
+    assert_eq!(res.text().await, "/foo");
 
-    let res = client
-        .get(format!("http://{}/foo/bar", addr))
-        .send()
-        .await
-        .unwrap();
+    let res = client.get("/foo/bar").send().await;
     assert_eq!(res.status(), StatusCode::OK);
-    assert_eq!(res.text().await.unwrap(), "/foo/bar");
+    assert_eq!(res.text().await, "/foo/bar");
 }
 
 #[tokio::test]
@@ -146,25 +108,15 @@ async fn nested_url_extractor() {
         ),
     );
 
-    let addr = run_in_background(app).await;
+    let client = TestClient::new(app);
 
-    let client = reqwest::Client::new();
-
-    let res = client
-        .get(format!("http://{}/foo/bar/baz", addr))
-        .send()
-        .await
-        .unwrap();
+    let res = client.get("/foo/bar/baz").send().await;
     assert_eq!(res.status(), StatusCode::OK);
-    assert_eq!(res.text().await.unwrap(), "/baz");
+    assert_eq!(res.text().await, "/baz");
 
-    let res = client
-        .get(format!("http://{}/foo/bar/qux", addr))
-        .send()
-        .await
-        .unwrap();
+    let res = client.get("/foo/bar/qux").send().await;
     assert_eq!(res.status(), StatusCode::OK);
-    assert_eq!(res.text().await.unwrap(), "/qux");
+    assert_eq!(res.text().await, "/qux");
 }
 
 #[tokio::test]
@@ -180,17 +132,11 @@ async fn nested_url_original_extractor() {
         ),
     );
 
-    let addr = run_in_background(app).await;
+    let client = TestClient::new(app);
 
-    let client = reqwest::Client::new();
-
-    let res = client
-        .get(format!("http://{}/foo/bar/baz", addr))
-        .send()
-        .await
-        .unwrap();
+    let res = client.get("/foo/bar/baz").send().await;
     assert_eq!(res.status(), StatusCode::OK);
-    assert_eq!(res.text().await.unwrap(), "/foo/bar/baz");
+    assert_eq!(res.text().await, "/foo/bar/baz");
 }
 
 #[tokio::test]
@@ -209,17 +155,11 @@ async fn nested_service_sees_stripped_uri() {
         ),
     );
 
-    let addr = run_in_background(app).await;
+    let client = TestClient::new(app);
 
-    let client = reqwest::Client::new();
-
-    let res = client
-        .get(format!("http://{}/foo/bar/baz", addr))
-        .send()
-        .await
-        .unwrap();
+    let res = client.get("/foo/bar/baz").send().await;
     assert_eq!(res.status(), StatusCode::OK);
-    assert_eq!(res.text().await.unwrap(), "/baz");
+    assert_eq!(res.text().await, "/baz");
 }
 
 #[tokio::test]
@@ -234,14 +174,8 @@ async fn nest_static_file_server() {
         }),
     );
 
-    let addr = run_in_background(app).await;
+    let client = TestClient::new(app);
 
-    let client = reqwest::Client::new();
-
-    let res = client
-        .get(format!("http://{}/static/README.md", addr))
-        .send()
-        .await
-        .unwrap();
+    let res = client.get("/static/README.md").send().await;
     assert_eq!(res.status(), StatusCode::OK);
 }

@@ -25,9 +25,11 @@ define_rejection! {
     pub struct HeadersAlreadyExtracted;
 }
 
+#[cfg(feature = "json")]
 define_rejection! {
     #[status = BAD_REQUEST]
     #[body = "Failed to parse the request body as JSON"]
+    #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
     /// Rejection type for [`Json`](super::Json).
     pub struct InvalidJsonBody(Error);
 }
@@ -199,11 +201,13 @@ composite_rejection! {
     }
 }
 
+#[cfg(feature = "json")]
 composite_rejection! {
     /// Rejection used for [`Json`](super::Json).
     ///
     /// Contains one variant for each way the [`Json`](super::Json) extractor
     /// can fail.
+    #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
     pub enum JsonRejection {
         InvalidJsonBody,
         MissingJsonContentType,
