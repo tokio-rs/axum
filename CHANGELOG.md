@@ -7,10 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+- None
+
+# 0.2.6 (02. October, 2021)
+
 - Clarify that `handler::any` and `service::any` only accepts standard HTTP
   methods ([#337])
-  
+- Document how to customize error responses from extractors ([#359])
+
 [#337]: https://github.com/tokio-rs/axum/pull/337
+[#359]: https://github.com/tokio-rs/axum/pull/359
 
 # 0.2.5 (18. September, 2021)
 
