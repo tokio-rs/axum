@@ -7,7 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- None
+- Improve performance of `BoxRoute` ([#339])
+- **breaking:** `Router::boxed` now the inner service to implement `Clone` and
+  `Sync` in addition to the previous trait bounds ([#339])
+
+[#339]: https://github.com/tokio-rs/axum/pull/339
 
 # 0.2.6 (02. October, 2021)
 
