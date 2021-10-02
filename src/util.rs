@@ -30,6 +30,34 @@ impl ByteStr {
     }
 }
 
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub(crate) struct PercentDecodedByteStr(ByteStr);
+
+impl PercentDecodedByteStr {
+    pub(crate) fn new<S>(s: S) -> Option<Self>
+    where
+        S: AsRef<str>,
+    {
+        percent_encoding::percent_decode(s.as_ref().as_bytes())
+            .decode_utf8()
+            .ok()
+            .map(|decoded| Self(ByteStr::new(decoded)))
+    }
+
+    pub(crate) fn as_str(&self) -> &str {
+        self.0.as_str()
+    }
+}
+
+impl Deref for PercentDecodedByteStr {
+    type Target = str;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        self.as_str()
+    }
+}
+
 pin_project! {
     #[project = EitherProj]
     pub(crate) enum Either<A, B> {

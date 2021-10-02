@@ -27,30 +27,32 @@ ws = ["tokio-tungstenite", "sha-1", "base64"]
 async-trait = "0.1"
 bitflags = "1.0"
 bytes = "1.0"
+dyn-clone = "1.0"
 futures-util = { version = "0.3", default-features = false, features = ["alloc"] }
 http = "0.2"
 http-body = "0.4.3"
 hyper = { version = "0.14", features = ["server", "tcp", "stream"] }
+percent-encoding = "2.1"
 pin-project-lite = "0.2.7"
 regex = "1.5"
 serde = "1.0"
-serde_json = { version = "1.0", optional = true }
 serde_urlencoded = "0.7"
+sync_wrapper = "0.1.1"
 tokio = { version = "1", features = ["time"] }
 tokio-util = "0.6"
 tower = { version = "0.4", default-features = false, features = ["util", "buffer", "make"] }
-tower-service = "0.3"
-tower-layer = "0.3"
 tower-http = { version = "0.1", features = ["add-extension", "map-response-body"] }
-sync_wrapper = "0.1.1"
+tower-layer = "0.3"
+tower-service = "0.3"
 
 # optional dependencies
-tokio-tungstenite = { optional = true, version = "0.15" }
-sha-1 = { optional = true, version = "0.9.6" }
 base64 = { optional = true, version = "0.13" }
 headers = { optional = true, version = "0.3" }
-multer = { optional = true, version = "2.0.0" }
 mime = { optional = true, version = "0.3" }
+multer = { optional = true, version = "2.0.0" }
+serde_json = { version = "1.0", optional = true }
+sha-1 = { optional = true, version = "0.9.6" }
+tokio-tungstenite = { optional = true, version = "0.15" }
 
 [dev-dependencies]
 futures = "0.3"
@@ -82,4 +84,11 @@ all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
 
 [package.metadata.playground]
-features = ["ws", "multipart", "headers"]
+features = [
+  "http1",
+  "http2",
+  "json",
+  "multipart",
+  "tower",
+  "ws",
+]

@@ -1,13 +1,23 @@
 mod de;
 
 use super::{rejection::*, FromRequest};
-use crate::{extract::RequestParts, routing::UrlParams};
+use crate::{
+    extract::RequestParts,
+    routing::{InvalidUtf8InPathParam, UrlParams},
+};
 use async_trait::async_trait;
 use serde::de::DeserializeOwned;
-use std::ops::{Deref, DerefMut};
+use std::{
+    borrow::Cow,
+    ops::{Deref, DerefMut},
+};
 
 /// Extractor that will get captures from the URL and parse them using
 /// [`serde`].
+///
+/// Any percent encoded parameters will be automatically decoded. The decoded
+/// parameters must be valid UTF-8, otherwise `Path` will fail and return a `400
+/// Bad Request` response.
 ///
 /// # Example
 ///
@@ -140,20 +150,45 @@ where
 {
     type Rejection = PathParamsRejection;
 
+    #[allow(warnings)]
     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-        const EMPTY_URL_PARAMS: &UrlParams = &UrlParams(Vec::new());
-
-        let url_params = if let Some(params) = req
+        let params = match req
             .extensions_mut()
             .and_then(|ext| ext.get::<Option<UrlParams>>())
         {
-            params.as_ref().unwrap_or(EMPTY_URL_PARAMS)
-        } else {
-            return Err(MissingRouteParams.into());
+            Some(Some(UrlParams(Ok(params)))) => Cow::Borrowed(params),
+            Some(Some(UrlParams(Err(InvalidUtf8InPathParam { key })))) => {
+                return Err(InvalidPathParam::new(key.as_str()).into())
+            }
+            Some(None) => Cow::Owned(Vec::new()),
+            None => {
+                return Err(MissingRouteParams.into());
+            }
         };
 
-        T::deserialize(de::PathDeserializer::new(url_params))
+        T::deserialize(de::PathDeserializer::new(&*params))
             .map_err(|err| PathParamsRejection::InvalidPathParam(InvalidPathParam::new(err.0)))
             .map(Path)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::tests::*;
+    use crate::{handler::get, Router};
+
+    #[tokio::test]
+    async fn percent_decoding() {
+        let app = Router::new().route(
+            "/:key",
+            get(|Path(param): Path<String>| async move { param }),
+        );
+
+        let client = TestClient::new(app);
+
+        let res = client.get("/one%20two").send().await;
+
+        assert_eq!(res.text().await, "one two");
     }
 }

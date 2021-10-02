@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 # Unreleased
 
 - Improve performance of `BoxRoute` ([#339])
+- **breaking:** Automatically do percent decoding in `extract::Path`
+  ([#272])
 - **breaking:** `Router::boxed` now the inner service to implement `Clone` and
   `Sync` in addition to the previous trait bounds ([#339])
 - **breaking:** Added feature flags for HTTP1 and JSON. This enables removing a
@@ -16,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 [#339]: https://github.com/tokio-rs/axum/pull/339
 [#286]: https://github.com/tokio-rs/axum/pull/286
+[#272]: https://github.com/tokio-rs/axum/pull/272
 
 # 0.2.6 (02. October, 2021)
 
