@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 # Unreleased
 
 - Big internal refactoring of routing leading to several improvements ([#363])
-  - Wild card routes like `.route("/api/users/*", service)` is now supported.
+  - Wildcard routes like `.route("/api/users/*rest", service)` is now supported.
   - The order routes are added in no longer matters.
   - Adding a conflicting route will now cause a panic instead of silently making
     a route unreachable.

@@ -10,6 +10,7 @@
 //!     - [Matching multiple methods](#matching-multiple-methods)
 //!     - [Routing to any `Service`](#routing-to-any-service)
 //!         - [Routing to fallible services](#routing-to-fallible-services)
+//!     - [Wildcard routes](#wildcard-routes)
 //!     - [Nesting routes](#nesting-routes)
 //! - [Extractors](#extractors)
 //!     - [Common extractors](#common-extractors)
@@ -305,6 +306,41 @@
 //! See ["Error handling"](#error-handling) for more details on [`handle_error`]
 //! and error handling in general.
 //!
+//! ## Wildcard routes
+//!
+//! axum also supports wildcard routes:
+//!
+//! ```rust,no_run
+//! use axum::{
+//!     handler::get,
+//!     Router,
+//! };
+//!
+//! let app = Router::new()
+//!     // this matches any request that starts with `/api`
+//!     .route("/api/*rest", get(|| async { /* ... */ }));
+//! # async {
+//! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+//! # };
+//! ```
+//!
+//! The matched path can be extracted via [`extract::Path`]:
+//!
+//! ```rust,no_run
+//! use axum::{
+//!     handler::get,
+//!     extract::Path,
+//!     Router,
+//! };
+//!
+//! let app = Router::new().route("/api/*rest", get(|Path(rest): Path<String>| async {
+//!     // `rest` will be everything after `/api`
+//! }));
+//! # async {
+//! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+//! # };
+//! ```
+//!
 //! ## Nesting routes
 //!
 //! Routes can be nested by calling [`Router::nest`](routing::Router::nest):
@@ -338,6 +374,25 @@
 //! have the matched prefix stripped. This is necessary for services like static
 //! file serving to work. Use [`OriginalUri`] if you need the original request
 //! URI.
+//!
+//! Nested routes are similar to wild card routes. The difference is that
+//! wildcard routes still see the whole URI whereas nested routes will have
+//! the prefix stripped.
+//!
+//! ```rust
+//! use axum::{handler::get, http::Uri, Router};
+//!
+//! let app = Router::new()
+//!     .route("/foo/*rest", get(|uri: Uri| async {
+//!         // `uri` will contain `/foo`
+//!     }))
+//!     .nest("/bar", get(|uri: Uri| async {
+//!         // `uri` will _not_ contain `/bar`
+//!     }));
+//! # async {
+//! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+//! # };
+//! ```
 //!
 //! # Extractors
 //!

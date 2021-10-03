@@ -125,11 +125,36 @@ impl<S> Router<S> {
     ///
     /// # Panics
     ///
-    /// Panics if `path` doesn't start with `/`.
+    /// Panics if the route conflicts with another route:
+    ///
+    /// ```panics
+    /// use axum::{handler::get, Router};
+    ///
+    /// let app = Router::new()
+    ///     .route("/", get(|| async {}))
+    ///     .route("/", get(|| async {}));
+    /// # async {
+    /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+    /// # };
+    /// ```
+    ///
+    /// This also applies to `nest` which is similar to a wild card route:
+    ///
+    /// ```panics
+    /// use axum::{handler::get, Router};
+    ///
+    /// let app = Router::new()
+    ///     // this is similar to `/api/*`
+    ///     .nest("/api", get(|| async {}))
+    ///     // which conflicts with this route
+    ///     .route("/api/users", get(|| async {}));
+    /// # async {
+    /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+    /// # };
+    /// ```
     pub fn route<T>(mut self, path: &str, svc: T) -> Router<Route<T, S>> {
         let id = RouteId::next();
 
-        // TODO(david): Add `try_route`
         if let Err(err) = self.node.insert(path, id) {
             panic!("Invalid route: {}", err);
         }
@@ -229,6 +254,32 @@ impl<S> Router<S> {
     /// making the type easier to name. This is sometimes useful when working with
     /// `nest`.
     ///
+    /// # Wildcard routes
+    ///
+    /// Nested routes are similar to wild card routes. The difference is that
+    /// wildcard routes still see the whole URI whereas nested routes will have
+    /// the prefix stripped.
+    ///
+    /// ```rust
+    /// use axum::{handler::get, http::Uri, Router};
+    ///
+    /// let app = Router::new()
+    ///     .route("/foo/*rest", get(|uri: Uri| async {
+    ///         // `uri` will contain `/foo`
+    ///     }))
+    ///     .nest("/bar", get(|uri: Uri| async {
+    ///         // `uri` will _not_ contain `/bar`
+    ///     }));
+    /// # async {
+    /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+    /// # };
+    /// ```
+    ///
+    /// # Panics
+    ///
+    /// Panics if the route conflicts with another route. See [`Router::route`]
+    /// for more details.
+    ///
     /// [`OriginalUri`]: crate::extract::OriginalUri
     pub fn nest<T>(mut self, path: &str, svc: T) -> Router<Nested<T, S>> {
         let id = RouteId::next();
@@ -239,7 +290,6 @@ impl<S> Router<S> {
             format!("{}/*{}", path, NEST_TAIL_PARAM)
         };
 
-        // TODO(david): Add `try_nest`
         if let Err(err) = self.node.insert(path, id) {
             panic!("Invalid route: {}", err);
         }
