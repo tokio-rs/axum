@@ -138,7 +138,7 @@ impl<S> Router<S> {
     /// # };
     /// ```
     ///
-    /// This also applies to `nest` which is similar to a wild card route:
+    /// This also applies to `nest` which is similar to a wildcard route:
     ///
     /// ```panics
     /// use axum::{handler::get, Router};
@@ -256,7 +256,7 @@ impl<S> Router<S> {
     ///
     /// # Wildcard routes
     ///
-    /// Nested routes are similar to wild card routes. The difference is that
+    /// Nested routes are similar to wildcard routes. The difference is that
     /// wildcard routes still see the whole URI whereas nested routes will have
     /// the prefix stripped.
     ///
