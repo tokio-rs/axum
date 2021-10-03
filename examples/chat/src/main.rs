@@ -6,16 +6,21 @@
 //! cargo run -p example-chat
 //! ```
 
-use axum::extract::ws::{Message, WebSocket, WebSocketUpgrade};
-use axum::extract::Extension;
-use axum::handler::get;
-use axum::response::{Html, IntoResponse};
-use axum::AddExtensionLayer;
-use axum::Router;
+use axum::{
+    extract::{
+        ws::{Message, WebSocket, WebSocketUpgrade},
+        Extension,
+    },
+    handler::get,
+    response::{Html, IntoResponse},
+    AddExtensionLayer, Router,
+};
 use futures::{sink::SinkExt, stream::StreamExt};
-use std::collections::HashSet;
-use std::net::SocketAddr;
-use std::sync::{Arc, Mutex};
+use std::{
+    collections::HashSet,
+    net::SocketAddr,
+    sync::{Arc, Mutex},
+};
 use tokio::sync::broadcast;
 
 // Our shared state
