@@ -35,7 +35,6 @@ hyper = { version = "0.14", features = ["server", "tcp", "stream"] }
 matchit = "0.4"
 percent-encoding = "2.1"
 pin-project-lite = "0.2.7"
-regex = "1.5"
 serde = "1.0"
 serde_urlencoded = "0.7"
 sync_wrapper = "0.1.1"
