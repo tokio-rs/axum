@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+- Big internal refactoring of routing leading to several improvements ([#363])
+  - Wild card routes like `.route("/api/users/*", service)` is now supported.
+  - The order routes are added in no longer matters.
+  - Adding a conflicting route will now cause a panic instead of silently making
+    a route unreachable.
+  - Route matching is faster as number of routes increase.
 - Improve performance of `BoxRoute` ([#339])
 - Expand accepted content types for JSON requests ([#378])
 - **breaking:** Automatically do percent decoding in `extract::Path`
@@ -21,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#286]: https://github.com/tokio-rs/axum/pull/286
 [#272]: https://github.com/tokio-rs/axum/pull/272
 [#378]: https://github.com/tokio-rs/axum/pull/378
+[#363]: https://github.com/tokio-rs/axum/pull/363
 
 # 0.2.8 (07. October, 2021)
 
