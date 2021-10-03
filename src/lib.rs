@@ -177,6 +177,9 @@
 //!
 //! You can also define routes separately and merge them with [`Router::or`].
 //!
+//! Routes are not allowed to overlap and will panic if an overlapping route is
+//! added. This also means the order in which routes are added doesn't matter.
+//!
 //! ## Routing to any [`Service`]
 //!
 //! axum also supports routing to general [`Service`]s:

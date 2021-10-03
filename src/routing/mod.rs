@@ -125,7 +125,7 @@ impl<S> Router<S> {
     ///
     /// # Panics
     ///
-    /// Panics if the route conflicts with another route:
+    /// Panics if the route overlaps with another route:
     ///
     /// ```panics
     /// use axum::{handler::get, Router};
@@ -146,7 +146,7 @@ impl<S> Router<S> {
     /// let app = Router::new()
     ///     // this is similar to `/api/*`
     ///     .nest("/api", get(|| async {}))
-    ///     // which conflicts with this route
+    ///     // which overlaps with this route
     ///     .route("/api/users", get(|| async {}));
     /// # async {
     /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
@@ -277,7 +277,7 @@ impl<S> Router<S> {
     ///
     /// # Panics
     ///
-    /// Panics if the route conflicts with another route. See [`Router::route`]
+    /// Panics if the route overlaps with another route. See [`Router::route`]
     /// for more details.
     ///
     /// [`OriginalUri`]: crate::extract::OriginalUri
