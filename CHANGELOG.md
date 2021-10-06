@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - None
 
+# 0.2.7 (06. October, 2021)
+
+- Bump minimum version of async-trait ([#370])
+
+[#370]: https://github.com/tokio-rs/axum/pull/370
+
 # 0.2.6 (02. October, 2021)
 
 - Clarify that `handler::any` and `service::any` only accepts standard HTTP
