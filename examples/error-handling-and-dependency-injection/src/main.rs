@@ -147,6 +147,7 @@ struct User {
 }
 
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 struct CreateUser {
     username: String,
 }

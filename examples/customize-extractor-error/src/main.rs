@@ -41,6 +41,7 @@ async fn handler(Json(user): Json<User>) {
 }
 
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 struct User {
     id: i64,
     username: String,
