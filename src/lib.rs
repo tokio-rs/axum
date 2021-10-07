@@ -121,7 +121,7 @@
 //! future `!Send` is to hold a `!Send` type across an await.
 //!
 //! Unfortunately Rust gives poor error messages if you try to use a function
-//! who doesn't quite match whats required by [`Handler`].
+//! that doesn't quite match what's required by [`Handler`].
 //!
 //! You might get an error like this:
 //!
@@ -139,8 +139,8 @@
 //! ```
 //!
 //! This error doesn't tell you _why_ your function doesn't implement
-//! [`Handler`]. Its possible to improve the error with the [`debug_handler`]
-//! proc-macro in the [axum-debug] crate.
+//! [`Handler`]. It's possible to improve the error with the [`debug_handler`]
+//! proc-macro from the [axum-debug] crate.
 //!
 //! # Routing
 //!
