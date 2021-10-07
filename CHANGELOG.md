@@ -20,6 +20,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#286]: https://github.com/tokio-rs/axum/pull/286
 [#272]: https://github.com/tokio-rs/axum/pull/272
 
+# 0.2.8 (07. October, 2021)
+
+- Document debugging handler type errors with "axum-debug" ([#372])
+
+[#372]: https://github.com/tokio-rs/axum/pull/372
+
 # 0.2.7 (06. October, 2021)
 
 - Bump minimum version of async-trait ([#370])
