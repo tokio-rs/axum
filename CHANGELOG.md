@@ -13,6 +13,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Adding a conflicting route will now cause a panic instead of silently making
     a route unreachable.
   - Route matching is faster as number of routes increase.
+  - The routes `/foo` and `/:key` are considered to overlap and will cause a
+    panic when constructing the router. This might be fixed in the future.
+    Please open an issue if this is important to you.
 - Improve performance of `BoxRoute` ([#339])
 - Expand accepted content types for JSON requests ([#378])
 - **breaking:** Automatically do percent decoding in `extract::Path`

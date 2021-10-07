@@ -127,7 +127,7 @@ impl<S> Router<S> {
     ///
     /// Panics if the route overlaps with another route:
     ///
-    /// ```panics
+    /// ```should_panic
     /// use axum::{handler::get, Router};
     ///
     /// let app = Router::new()
@@ -140,7 +140,7 @@ impl<S> Router<S> {
     ///
     /// This also applies to `nest` which is similar to a wildcard route:
     ///
-    /// ```panics
+    /// ```should_panic
     /// use axum::{handler::get, Router};
     ///
     /// let app = Router::new()
@@ -148,6 +148,19 @@ impl<S> Router<S> {
     ///     .nest("/api", get(|| async {}))
     ///     // which overlaps with this route
     ///     .route("/api/users", get(|| async {}));
+    /// # async {
+    /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+    /// # };
+    /// ```
+    ///
+    /// Note that routes like `/:key` and `/foo` are considered overlapping:
+    ///
+    /// ```should_panic
+    /// use axum::{handler::get, Router};
+    ///
+    /// let app = Router::new()
+    ///     .route("/foo", get(|| async {}))
+    ///     .route("/:key", get(|| async {}));
     /// # async {
     /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
     /// # };
