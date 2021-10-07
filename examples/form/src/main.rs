@@ -55,6 +55,7 @@ async fn show_form() -> Html<&'static str> {
 }
 
 #[derive(Deserialize, Debug)]
+#[allow(dead_code)]
 struct Input {
     name: String,
     email: String,
