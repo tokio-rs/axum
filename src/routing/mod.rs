@@ -297,6 +297,10 @@ impl<S> Router<S> {
     pub fn nest<T>(mut self, path: &str, svc: T) -> Router<Nested<T, S>> {
         let id = RouteId::next();
 
+        if path.contains('*') {
+            panic!("Invalid route: nested routes cannot contain wildcards (*)");
+        }
+
         let path = if path == "/" {
             format!("/*{}", NEST_TAIL_PARAM)
         } else {
