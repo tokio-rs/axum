@@ -105,7 +105,10 @@ where
     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
         use bytes::Buf;
 
-        if has_content_type(req, ExpectedContentType::StartsWith("application/json"))? {
+        if has_content_type(req, ExpectedContentType::StartsWith("application/json"))?
+            // a JSON suffix, for example used with JSON schema types
+            || has_content_type(req, ExpectedContentType::EndsWith("+json"))?
+        {
             let body = take_body(req)?;
 
             let buf = hyper::body::aggregate(body)

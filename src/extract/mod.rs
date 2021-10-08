@@ -544,6 +544,11 @@ mod tests {
                 ExpectedContentType::EndsWith("application/cloudevents+json"),
             ),
             (
+                true,
+                "application/schema+json",
+                ExpectedContentType::EndsWith("+json"),
+            ),
+            (
                 false,
                 "application/x-www-form-urlencoded",
                 ExpectedContentType::StartsWith("x-www-form-urlencoded"),
