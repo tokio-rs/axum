@@ -1,6 +1,8 @@
 use crate::BoxError;
 use crate::{
-    extract::{has_content_type, rejection::*, take_body, FromRequest, RequestParts},
+    extract::{
+        has_content_type, rejection::*, take_body, ExpectedContentType, FromRequest, RequestParts,
+    },
     response::IntoResponse,
 };
 use async_trait::async_trait;
@@ -103,7 +105,7 @@ where
     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
         use bytes::Buf;
 
-        if has_content_type(req, "application/json")? {
+        if has_content_type(req, ExpectedContentType::StartsWith("application/json"))? {
             let body = take_body(req)?;
 
             let buf = hyper::body::aggregate(body)

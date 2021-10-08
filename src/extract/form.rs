@@ -1,4 +1,6 @@
-use super::{has_content_type, rejection::*, take_body, FromRequest, RequestParts};
+use super::{
+    has_content_type, rejection::*, take_body, ExpectedContentType, FromRequest, RequestParts,
+};
 use crate::BoxError;
 use async_trait::async_trait;
 use bytes::Buf;
@@ -60,8 +62,11 @@ where
                 .map_err(FailedToDeserializeQueryString::new::<T, _>)?;
             Ok(Form(value))
         } else {
-            if !has_content_type(req, "application/x-www-form-urlencoded")? {
-                return Err(InvalidFormContentType.into());
+            if !has_content_type(
+                &req,
+                ExpectedContentType::StartsWith("application/x-www-form-urlencoded"),
+            )? {
+                Err(InvalidFormContentType.into())?;
             }
 
             let body = take_body(req)?;

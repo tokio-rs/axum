@@ -482,9 +482,14 @@ where
     }
 }
 
+pub(crate) enum ExpectedContentType<'a> {
+    StartsWith(&'a str),
+    EndsWith(&'a str),
+}
+
 pub(crate) fn has_content_type<B>(
     req: &RequestParts<B>,
-    expected_content_type: &str,
+    expected_content_type: ExpectedContentType,
 ) -> Result<bool, HeadersAlreadyExtracted> {
     let content_type = if let Some(content_type) = req
         .headers()
@@ -496,15 +501,73 @@ pub(crate) fn has_content_type<B>(
         return Ok(false);
     };
 
+    // Get content type as &str if it contains all ASCII
     let content_type = if let Ok(content_type) = content_type.to_str() {
         content_type
     } else {
         return Ok(false);
     };
 
-    Ok(content_type.starts_with(expected_content_type))
+    Ok(match expected_content_type {
+        ExpectedContentType::StartsWith(prefix) => content_type.starts_with(prefix),
+        ExpectedContentType::EndsWith(suffix) => content_type.ends_with(suffix),
+    })
 }
 
 pub(crate) fn take_body<B>(req: &mut RequestParts<B>) -> Result<B, BodyAlreadyExtracted> {
     req.take_body().ok_or(BodyAlreadyExtracted)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::body::Body;
+    use crate::extract::RequestParts;
+    use http::Request;
+
+    #[test]
+    fn test_has_content_type_expected_content_type() {
+        let tests = vec![
+            (
+                true,
+                "application/x-www-form-urlencoded",
+                ExpectedContentType::StartsWith("application/x-www-form-urlencoded"),
+            ),
+            (
+                true,
+                "application/json",
+                ExpectedContentType::StartsWith("application/json"),
+            ),
+            (
+                true,
+                "application/cloudevents+json",
+                ExpectedContentType::EndsWith("application/cloudevents+json"),
+            ),
+            (
+                false,
+                "application/x-www-form-urlencoded",
+                ExpectedContentType::StartsWith("x-www-form-urlencoded"),
+            ),
+            (
+                false,
+                "application/cloudevents+json",
+                ExpectedContentType::StartsWith("application/json"),
+            ),
+        ];
+
+        tests
+            .into_iter()
+            .for_each(|(expected_result, content_type, search)| {
+                let req = RequestParts::new(
+                    Request::builder()
+                        .uri("http://example.com/test")
+                        .method(Method::POST)
+                        .header(http::header::CONTENT_TYPE, content_type)
+                        .body(Body::empty())
+                        .unwrap(),
+                );
+
+                assert_eq!(Some(expected_result), has_content_type(&req, search).ok())
+            });
+    }
 }
