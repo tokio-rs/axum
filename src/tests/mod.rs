@@ -534,6 +534,7 @@ async fn json_content_types() {
 
     test("application/json").await;
     test("application/json; charset=utf-8").await;
+    test("application/json;charset=utf-8").await;
     test("application/cloudevents+json").await;
 }
 
