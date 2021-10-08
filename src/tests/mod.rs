@@ -517,7 +517,7 @@ async fn captures_dont_match_empty_segments() {
 
 #[tokio::test]
 async fn json_content_types() {
-    async fn test(content_type: &str) {
+    async fn valid_json_content_type(content_type: &str) -> bool {
         println!("testing {:?}", content_type);
 
         let app = Router::new().route("/", post(|Json(_): Json<Value>| async {}));
@@ -529,13 +529,14 @@ async fn json_content_types() {
             .send()
             .await;
 
-        assert_eq!(res.status(), StatusCode::OK);
+        res.status() == StatusCode::OK
     }
 
-    test("application/json").await;
-    test("application/json; charset=utf-8").await;
-    test("application/json;charset=utf-8").await;
-    test("application/cloudevents+json").await;
+    assert!(valid_json_content_type("application/json").await);
+    assert!(valid_json_content_type("application/json; charset=utf-8").await);
+    assert!(valid_json_content_type("application/json;charset=utf-8").await);
+    assert!(valid_json_content_type("application/cloudevents+json").await);
+    assert!(!valid_json_content_type("text/json").await);
 }
 
 pub(crate) fn assert_send<T: Send>() {}

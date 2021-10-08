@@ -142,11 +142,14 @@ fn json_content_type<B>(req: &RequestParts<B>) -> Result<bool, HeadersAlreadyExt
         return Ok(false);
     };
 
-    Ok(mime.subtype() == "json"
-        || mime
-            .suffix()
-            .filter(|name| name.as_str() == "json")
-            .is_some())
+    let is_json_content_type = mime.type_() == "application"
+        && (mime.subtype() == "json"
+            || mime
+                .suffix()
+                .filter(|name| name.as_str() == "json")
+                .is_some());
+
+    Ok(is_json_content_type)
 }
 
 impl<T> Deref for Json<T> {
