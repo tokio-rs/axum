@@ -81,7 +81,6 @@ where
 {
     type Output = Result<Response<BoxBody>, S::Error>;
 
-    #[allow(warnings)]
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let this = self.project();
 
