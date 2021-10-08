@@ -31,7 +31,6 @@ fn traits() {
     assert_sync::<Or<(), ()>>();
 }
 
-#[allow(warnings)]
 impl<A, B, ReqBody> Service<Request<ReqBody>> for Or<A, B>
 where
     A: Service<Request<ReqBody>, Response = Response<BoxBody>> + Clone,
@@ -46,11 +45,11 @@ where
     type Error = A::Error;
     type Future = ResponseFuture<A, B, ReqBody>;
 
-    fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+    fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         Poll::Ready(Ok(()))
     }
 
-    fn call(&mut self, mut req: Request<ReqBody>) -> Self::Future {
+    fn call(&mut self, req: Request<ReqBody>) -> Self::Future {
         let original_uri = req.uri().clone();
 
         ResponseFuture {

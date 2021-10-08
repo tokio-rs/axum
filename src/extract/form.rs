@@ -53,7 +53,6 @@ where
 {
     type Rejection = FormRejection;
 
-    #[allow(warnings)]
     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
         if req.method() == Method::GET {
             let query = req.uri().query().unwrap_or_default();
@@ -61,8 +60,8 @@ where
                 .map_err(FailedToDeserializeQueryString::new::<T, _>)?;
             Ok(Form(value))
         } else {
-            if !has_content_type(&req, "application/x-www-form-urlencoded")? {
-                Err(InvalidFormContentType)?;
+            if !has_content_type(req, "application/x-www-form-urlencoded")? {
+                return Err(InvalidFormContentType.into());
             }
 
             let body = take_body(req)?;

@@ -120,7 +120,6 @@ where
 {
     type Output = Result<Response<BoxBody>, S::Error>;
 
-    #[allow(warnings)]
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         loop {
             let mut this = self.as_mut().project();
