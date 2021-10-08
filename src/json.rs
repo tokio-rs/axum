@@ -143,11 +143,7 @@ fn json_content_type<B>(req: &RequestParts<B>) -> Result<bool, HeadersAlreadyExt
     };
 
     let is_json_content_type = mime.type_() == "application"
-        && (mime.subtype() == "json"
-            || mime
-                .suffix()
-                .filter(|name| name.as_str() == "json")
-                .is_some());
+        && (mime.subtype() == "json" || mime.suffix().filter(|name| *name == "json").is_some());
 
     Ok(is_json_content_type)
 }
