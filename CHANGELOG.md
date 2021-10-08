@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 # Unreleased
 
 - Improve performance of `BoxRoute` ([#339])
+- Expand accepted content types for JSON requests ([#378])
 - **breaking:** Automatically do percent decoding in `extract::Path`
   ([#272])
 - **breaking:** `Router::boxed` now the inner service to implement `Clone` and
@@ -19,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#339]: https://github.com/tokio-rs/axum/pull/339
 [#286]: https://github.com/tokio-rs/axum/pull/286
 [#272]: https://github.com/tokio-rs/axum/pull/272
+[#378]: https://github.com/tokio-rs/axum/pull/378
 
 # 0.2.8 (07. October, 2021)
 

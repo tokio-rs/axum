@@ -1,6 +1,6 @@
 use crate::BoxError;
 use crate::{
-    extract::{has_content_type, rejection::*, take_body, FromRequest, RequestParts},
+    extract::{rejection::*, take_body, FromRequest, RequestParts},
     response::IntoResponse,
 };
 use async_trait::async_trait;
@@ -103,7 +103,7 @@ where
     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
         use bytes::Buf;
 
-        if has_content_type(req, "application/json")? {
+        if json_content_type(req)? {
             let body = take_body(req)?;
 
             let buf = hyper::body::aggregate(body)
@@ -117,6 +117,35 @@ where
             Err(MissingJsonContentType.into())
         }
     }
+}
+
+fn json_content_type<B>(req: &RequestParts<B>) -> Result<bool, HeadersAlreadyExtracted> {
+    let content_type = if let Some(content_type) = req
+        .headers()
+        .ok_or(HeadersAlreadyExtracted)?
+        .get(header::CONTENT_TYPE)
+    {
+        content_type
+    } else {
+        return Ok(false);
+    };
+
+    let content_type = if let Ok(content_type) = content_type.to_str() {
+        content_type
+    } else {
+        return Ok(false);
+    };
+
+    let mime = if let Ok(mime) = content_type.parse::<mime::Mime>() {
+        mime
+    } else {
+        return Ok(false);
+    };
+
+    let is_json_content_type = mime.type_() == "application"
+        && (mime.subtype() == "json" || mime.suffix().filter(|name| *name == "json").is_some());
+
+    Ok(is_json_content_type)
 }
 
 impl<T> Deref for Json<T> {

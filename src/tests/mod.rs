@@ -6,7 +6,7 @@ use crate::{
     handler::{any, delete, get, on, patch, post, Handler},
     response::IntoResponse,
     routing::MethodFilter,
-    service, Router,
+    service, Json, Router,
 };
 use bytes::Bytes;
 use http::{
@@ -15,7 +15,7 @@ use http::{
 };
 use hyper::Body;
 use serde::Deserialize;
-use serde_json::json;
+use serde_json::{json, Value};
 use std::future::Ready;
 use std::{
     collections::HashMap,
@@ -513,6 +513,30 @@ async fn captures_dont_match_empty_segments() {
 
     let res = client.get("/foo").send().await;
     assert_eq!(res.status(), StatusCode::OK);
+}
+
+#[tokio::test]
+async fn json_content_types() {
+    async fn valid_json_content_type(content_type: &str) -> bool {
+        println!("testing {:?}", content_type);
+
+        let app = Router::new().route("/", post(|Json(_): Json<Value>| async {}));
+
+        let res = TestClient::new(app)
+            .post("/")
+            .header("content-type", content_type)
+            .body("{}")
+            .send()
+            .await;
+
+        res.status() == StatusCode::OK
+    }
+
+    assert!(valid_json_content_type("application/json").await);
+    assert!(valid_json_content_type("application/json; charset=utf-8").await);
+    assert!(valid_json_content_type("application/json;charset=utf-8").await);
+    assert!(valid_json_content_type("application/cloudevents+json").await);
+    assert!(!valid_json_content_type("text/json").await);
 }
 
 pub(crate) fn assert_send<T: Send>() {}
