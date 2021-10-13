@@ -118,14 +118,10 @@ where
 {
     type Output = Result<Response<BoxBody>, S::Error>;
 
-    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        loop {
-            let mut this = self.as_mut().project();
-
-            match this.state.as_mut().project() {
-                RouteFutureInnerProj::A { a } => return a.poll(cx),
-                RouteFutureInnerProj::B { b } => return b.poll(cx),
-            }
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        match self.project().state.project() {
+            RouteFutureInnerProj::A { a } => a.poll(cx),
+            RouteFutureInnerProj::B { b } => b.poll(cx),
         }
     }
 }

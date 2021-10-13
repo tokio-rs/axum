@@ -49,7 +49,7 @@ where
         Poll::Ready(Ok(()))
     }
 
-    fn call(&mut self, mut req: Request<ReqBody>) -> Self::Future {
+    fn call(&mut self, req: Request<ReqBody>) -> Self::Future {
         ResponseFuture {
             state: State::FirstFuture {
                 f: self.first.clone().oneshot(req),
