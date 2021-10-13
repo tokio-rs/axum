@@ -241,7 +241,7 @@ pub trait Handler<B, T>: Clone + Send + Sized + 'static {
     /// This can be used to add additional processing to a request for a single
     /// handler.
     ///
-    /// Note this differs from [`routing::Layered`](crate::routing::Layered)
+    /// Note this differs from [`routing::Router::layer`](crate::routing::Router::layer)
     /// which adds a middleware to a group of routes.
     ///
     /// # Example

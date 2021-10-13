@@ -16,6 +16,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **breaking:** Added feature flags for HTTP1 and JSON. This enables removing a
   few dependencies if your app only uses HTTP2 or doesn't use JSON. Its only a
   breaking change if you depend on axum with `default_features = false`. ([#286])
+- **breaking:** Remove `routing::Layered` as it didn't actually do anything and
+  thus wasn't necessary
 
 [#339]: https://github.com/tokio-rs/axum/pull/339
 [#286]: https://github.com/tokio-rs/axum/pull/286
