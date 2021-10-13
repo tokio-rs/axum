@@ -260,13 +260,13 @@ impl<S> Router<S> {
         ResBody: http_body::Body<Data = Bytes> + Send + Sync + 'static,
         ResBody::Error: Into<BoxError>,
     {
-        self.map(|svc| {
+        self.layer(
             ServiceBuilder::new()
                 .layer_fn(BoxRoute)
                 .layer_fn(CloneBoxService::new)
                 .layer(MapResponseBodyLayer::new(box_body))
-                .service(svc)
-        })
+                .into_inner(),
+        )
     }
 
     /// Apply a [`tower::Layer`] to the router.
