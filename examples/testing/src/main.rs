@@ -5,10 +5,12 @@
 //! ```
 
 use axum::{
+    body::Body,
     handler::{get, post},
     routing::BoxRoute,
     Json, Router,
 };
+use tower::ServiceBuilder;
 use tower_http::trace::TraceLayer;
 
 #[tokio::main]
@@ -42,8 +44,11 @@ fn app() -> Router<BoxRoute> {
             }),
         )
         // We can still add middleware
-        .layer(TraceLayer::new_for_http())
-        .boxed()
+        .layer(
+            ServiceBuilder::new()
+                .layer(BoxRoute::<Body>::layer())
+                .layer(TraceLayer::new_for_http()),
+        )
 }
 
 #[cfg(test)]

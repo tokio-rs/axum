@@ -9,7 +9,6 @@ use crate::{
     },
     service::HandleError,
     util::{ByteStr, PercentDecodedByteStr},
-    BoxError,
 };
 use bytes::Bytes;
 use http::{Request, Response, StatusCode, Uri};

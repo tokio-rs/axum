@@ -7,7 +7,7 @@
 //! ```
 
 use axum::{
-    body::Bytes,
+    body::{Body, Bytes},
     extract::{ContentLengthLimit, Extension, Path},
     handler::{delete, get, Handler},
     http::StatusCode,
@@ -121,9 +121,13 @@ fn admin_routes() -> Router<BoxRoute> {
     Router::new()
         .route("/keys", delete(delete_all_keys))
         .route("/key/:key", delete(remove_key))
-        // Require bearer auth for all admin routes
-        .layer(RequireAuthorizationLayer::bearer("secret-token"))
-        .boxed()
+        .layer(
+            ServiceBuilder::new()
+                // Box the router so we can name the type
+                .layer(BoxRoute::<Body>::layer())
+                // Require bearer auth for all admin routes
+                .layer(RequireAuthorizationLayer::bearer("secret-token")),
+        )
 }
 
 fn handle_error(error: BoxError) -> Result<impl IntoResponse, Infallible> {
