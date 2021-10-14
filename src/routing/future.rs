@@ -1,14 +1,11 @@
 //! Future types.
 
-use crate::{
-    body::BoxBody, clone_box_service::CloneBoxService, routing::FromEmptyRouter, BoxError,
-};
+use crate::{body::BoxBody, routing::FromEmptyRouter};
 use futures_util::ready;
 use http::{Request, Response};
 use pin_project_lite::pin_project;
 use std::{
     convert::Infallible,
-    fmt,
     future::Future,
     pin::Pin,
     task::{Context, Poll},
@@ -16,46 +13,12 @@ use std::{
 use tower::{util::Oneshot, ServiceExt};
 use tower_service::Service;
 
-pub use super::or::ResponseFuture as OrResponseFuture;
+pub use super::{box_route::BoxRouteFuture, or::ResponseFuture as OrResponseFuture};
 
 opaque_future! {
     /// Response future for [`EmptyRouter`](super::EmptyRouter).
     pub type EmptyRouterFuture<E> =
         std::future::Ready<Result<Response<BoxBody>, E>>;
-}
-
-pin_project! {
-    /// The response future for [`BoxRoute`](super::BoxRoute).
-    pub struct BoxRouteFuture<B, E>
-    where
-        E: Into<BoxError>,
-    {
-        #[pin]
-        pub(super) inner: Oneshot<
-            CloneBoxService<Request<B>, Response<BoxBody>, E>,
-            Request<B>,
-        >,
-    }
-}
-
-impl<B, E> Future for BoxRouteFuture<B, E>
-where
-    E: Into<BoxError>,
-{
-    type Output = Result<Response<BoxBody>, E>;
-
-    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        self.project().inner.poll(cx)
-    }
-}
-
-impl<B, E> fmt::Debug for BoxRouteFuture<B, E>
-where
-    E: Into<BoxError>,
-{
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("BoxRouteFuture").finish()
-    }
 }
 
 pin_project! {

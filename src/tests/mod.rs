@@ -1,12 +1,11 @@
 #![allow(clippy::blacklisted_name)]
 
-use crate::BoxError;
 use crate::{
     extract::{self, Path},
     handler::{any, delete, get, on, patch, post, Handler},
     response::IntoResponse,
-    routing::MethodFilter,
-    service, Json, Router,
+    routing::{BoxRoute, MethodFilter},
+    service, BoxError, Json, Router,
 };
 use bytes::Bytes;
 use http::{
@@ -250,7 +249,7 @@ async fn boxing() {
             }),
         )
         .layer(tower_http::compression::CompressionLayer::new())
-        .boxed();
+        .layer(BoxRoute::<Body>::layer());
 
     let client = TestClient::new(app);
 

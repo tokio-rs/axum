@@ -1,9 +1,8 @@
 //! Routing between [`Service`]s.
 
-use self::future::{BoxRouteFuture, EmptyRouterFuture, NestedFuture, RouteFuture};
+use self::future::{EmptyRouterFuture, NestedFuture, RouteFuture};
 use crate::{
-    body::{box_body, BoxBody},
-    clone_box_service::CloneBoxService,
+    body::BoxBody,
     extract::{
         connect_info::{Connected, IntoMakeServiceWithConnectInfo},
         OriginalUri,
@@ -24,17 +23,21 @@ use std::{
     sync::Arc,
     task::{Context, Poll},
 };
-use tower::{util::ServiceExt, ServiceBuilder};
-use tower_http::map_response_body::MapResponseBodyLayer;
+use tower::util::ServiceExt;
 use tower_layer::Layer;
 use tower_service::Service;
 
 pub mod future;
 
+mod box_route;
 mod method_filter;
 mod or;
 
-pub use self::{method_filter::MethodFilter, or::Or};
+pub use self::{
+    box_route::{BoxRoute, BoxRouteLayer},
+    method_filter::MethodFilter,
+    or::Or,
+};
 
 /// The router type for composing handlers and services.
 #[derive(Debug, Clone)]
@@ -209,7 +212,7 @@ impl<S> Router<S> {
     /// # };
     /// ```
     ///
-    /// If necessary you can use [`Router::boxed`] to box a group of routes
+    /// If necessary you can use [`BoxRoute`] to box a group of routes
     /// making the type easier to name. This is sometimes useful when working with
     /// `nest`.
     ///
@@ -220,53 +223,6 @@ impl<S> Router<S> {
             svc,
             fallback,
         })
-    }
-
-    /// Create a boxed route trait object.
-    ///
-    /// This makes it easier to name the types of routers to, for example,
-    /// return them from functions:
-    ///
-    /// ```rust
-    /// use axum::{
-    ///     body::Body,
-    ///     handler::get,
-    ///     Router,
-    ///     routing::BoxRoute
-    /// };
-    ///
-    /// async fn first_handler() { /* ... */ }
-    ///
-    /// async fn second_handler() { /* ... */ }
-    ///
-    /// async fn third_handler() { /* ... */ }
-    ///
-    /// fn app() -> Router<BoxRoute> {
-    ///     Router::new()
-    ///         .route("/", get(first_handler).post(second_handler))
-    ///         .route("/foo", get(third_handler))
-    ///         .boxed()
-    /// }
-    /// ```
-    ///
-    /// It also helps with compile times when you have a very large number of
-    /// routes.
-    pub fn boxed<ReqBody, ResBody>(self) -> Router<BoxRoute<ReqBody, S::Error>>
-    where
-        S: Service<Request<ReqBody>, Response = Response<ResBody>> + Clone + Send + Sync + 'static,
-        S::Error: Into<BoxError> + Send,
-        S::Future: Send,
-        ReqBody: Send + 'static,
-        ResBody: http_body::Body<Data = Bytes> + Send + Sync + 'static,
-        ResBody::Error: Into<BoxError>,
-    {
-        self.layer(
-            ServiceBuilder::new()
-                .layer_fn(BoxRoute)
-                .layer_fn(CloneBoxService::new)
-                .layer(MapResponseBodyLayer::new(box_body))
-                .into_inner(),
-        )
     }
 
     /// Apply a [`tower::Layer`] to the router.
@@ -850,46 +806,6 @@ struct Match<'a> {
 }
 
 type Captures = Vec<(String, String)>;
-
-/// A boxed route trait object.
-///
-/// See [`Router::boxed`] for more details.
-pub struct BoxRoute<B = crate::body::Body, E = Infallible>(
-    CloneBoxService<Request<B>, Response<BoxBody>, E>,
-);
-
-impl<B, E> Clone for BoxRoute<B, E> {
-    fn clone(&self) -> Self {
-        Self(self.0.clone())
-    }
-}
-
-impl<B, E> fmt::Debug for BoxRoute<B, E> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("BoxRoute").finish()
-    }
-}
-
-impl<B, E> Service<Request<B>> for BoxRoute<B, E>
-where
-    E: Into<BoxError>,
-{
-    type Response = Response<BoxBody>;
-    type Error = E;
-    type Future = BoxRouteFuture<B, E>;
-
-    #[inline]
-    fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        Poll::Ready(Ok(()))
-    }
-
-    #[inline]
-    fn call(&mut self, req: Request<B>) -> Self::Future {
-        BoxRouteFuture {
-            inner: self.0.clone().oneshot(req),
-        }
-    }
-}
 
 /// A [`Service`] that has been nested inside a router at some path.
 ///

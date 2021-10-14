@@ -1,5 +1,5 @@
 use super::*;
-use crate::{extract::OriginalUri, response::IntoResponse, Json};
+use crate::{extract::OriginalUri, response::IntoResponse, routing::BoxRoute, Json};
 use serde_json::{json, Value};
 use tower::{limit::ConcurrencyLimitLayer, timeout::TimeoutLayer};
 
@@ -159,8 +159,14 @@ async fn nesting() {
 
 #[tokio::test]
 async fn boxed() {
-    let one = Router::new().route("/foo", get(|| async {})).boxed();
-    let two = Router::new().route("/bar", get(|| async {})).boxed();
+    let one = Router::new()
+        .route("/foo", get(|| async {}))
+        .layer(BoxRoute::<Body>::layer());
+
+    let two = Router::new()
+        .route("/bar", get(|| async {}))
+        .layer(BoxRoute::<Body>::layer());
+
     let app = one.or(two);
 
     let client = TestClient::new(app);

@@ -18,6 +18,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   breaking change if you depend on axum with `default_features = false`. ([#286])
 - **breaking:** Remove `routing::Layered` as it didn't actually do anything and
   thus wasn't necessary
+- **breaking:** Replace `Router::boxed` with `routing::BoxRoute::layer`. This
+  fixes compile time issues with `Router::boxed`. Routes are now boxed with
+  `.layer(BoxRoute::<Body>::layer())`.
 
 [#339]: https://github.com/tokio-rs/axum/pull/339
 [#286]: https://github.com/tokio-rs/axum/pull/286

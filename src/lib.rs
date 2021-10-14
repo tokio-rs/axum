@@ -394,7 +394,7 @@
 //! fn api_routes() -> Router<BoxRoute> {
 //!     Router::new()
 //!         .route("/users", get(|_: Request<Body>| async { /* ... */ }))
-//!         .boxed()
+//!         .layer(BoxRoute::<Body>::layer())
 //! }
 //!
 //! let app = Router::new()
