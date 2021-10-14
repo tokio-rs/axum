@@ -323,8 +323,7 @@ async fn middleware_on_single_route() {
         get(handle.layer(
             ServiceBuilder::new()
                 .layer(TraceLayer::new_for_http())
-                .layer(CompressionLayer::new())
-                .into_inner(),
+                .layer(CompressionLayer::new()),
         )),
     );
 

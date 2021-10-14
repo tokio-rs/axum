@@ -56,8 +56,7 @@ async fn main() {
                 .concurrency_limit(1024)
                 .timeout(Duration::from_secs(10))
                 .layer(TraceLayer::new_for_http())
-                .layer(AddExtensionLayer::new(SharedState::default()))
-                .into_inner(),
+                .layer(AddExtensionLayer::new(SharedState::default())),
         )
         // Handle errors from middleware
         .handle_error(handle_error)

@@ -963,8 +963,7 @@
 //!     // Process at most 100 requests concurrently
 //!     .concurrency_limit(100)
 //!     // Compress response bodies
-//!     .layer(CompressionLayer::new())
-//!     .into_inner();
+//!     .layer(CompressionLayer::new());
 //!
 //! let app = Router::new()
 //!     .route("/", get(|_: Request<Body>| async { /* ... */ }))
@@ -1000,8 +999,7 @@
 //!     // `AsyncFilterLayer` lets you asynchronously transform the request
 //!     .layer(AsyncFilterLayer::new(map_request))
 //!     // `AndThenLayer` lets you asynchronously transform the response
-//!     .layer(AndThenLayer::new(map_response))
-//!     .into_inner();
+//!     .layer(AndThenLayer::new(map_response));
 //!
 //! async fn map_request(req: Request<Body>) -> Result<Request<Body>, Infallible> {
 //!     Ok(req)

@@ -51,8 +51,7 @@ async fn main() {
             ServiceBuilder::new()
                 .timeout(Duration::from_secs(10))
                 .layer(TraceLayer::new_for_http())
-                .layer(AddExtensionLayer::new(db))
-                .into_inner(),
+                .layer(AddExtensionLayer::new(db)),
         )
         .handle_error(|error: BoxError| {
             let result = if error.is::<tower::timeout::error::Elapsed>() {

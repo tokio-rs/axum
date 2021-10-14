@@ -264,8 +264,7 @@ impl<S> Router<S> {
             ServiceBuilder::new()
                 .layer_fn(BoxRoute)
                 .layer_fn(CloneBoxService::new)
-                .layer(MapResponseBodyLayer::new(box_body))
-                .into_inner(),
+                .layer(MapResponseBodyLayer::new(box_body)),
         )
     }
 
