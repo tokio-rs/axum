@@ -1,0 +1,11 @@
+[package]
+name = "example-reverse-proxy"
+version = "0.1.0"
+edition = "2018"
+
+[dependencies]
+axum = { path = "../.." }
+hyper = { version = "0.14", features = ["full"] }
+tokio = { version = "1", features = ["full"] }
+tracing = "0.1"
+tracing-subscriber = "0.2"
