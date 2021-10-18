@@ -550,6 +550,19 @@ impl<S> Router<S> {
         self.map(CheckInfallible)
     }
 
+    /// TODO: docs
+    pub fn boxed<ReqBody, ResBody>(self) -> Router<BoxRoute<ReqBody, S::Error>>
+    where
+        S: Service<Request<ReqBody>, Response = Response<ResBody>> + Clone + Send + Sync + 'static,
+        S::Error: Into<crate::BoxError> + Send,
+        S::Future: Send,
+        ReqBody: Send + 'static,
+        ResBody: http_body::Body<Data = Bytes> + Send + Sync + 'static,
+        ResBody::Error: Into<crate::BoxError>,
+    {
+        self.layer(BoxRoute::<ReqBody, S::Error>::layer())
+    }
+
     fn map<F, S2>(self, f: F) -> Router<S2>
     where
         F: FnOnce(S) -> S2,
