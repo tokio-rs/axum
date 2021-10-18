@@ -1,5 +1,8 @@
 use futures_util::future::BoxFuture;
-use std::task::{Context, Poll};
+use std::{
+    fmt,
+    task::{Context, Poll},
+};
 use tower::ServiceExt;
 use tower_service::Service;
 
@@ -40,6 +43,12 @@ impl<T, U, E> Service<T> for CloneBoxService<T, U, E> {
 impl<T, U, E> Clone for CloneBoxService<T, U, E> {
     fn clone(&self) -> Self {
         Self(self.0.clone_box())
+    }
+}
+
+impl<T, U, E> fmt::Debug for CloneBoxService<T, U, E> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_tuple("CloneBoxService").finish()
     }
 }
 

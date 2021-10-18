@@ -1,6 +1,6 @@
 //! Future types.
 
-use crate::{body::BoxBody, routing::FromEmptyRouter};
+use crate::{body::BoxBody, clone_box_service::CloneBoxService, routing::FromEmptyRouter};
 use futures_util::ready;
 use http::{Request, Response};
 use pin_project_lite::pin_project;
@@ -24,22 +24,23 @@ opaque_future! {
 pin_project! {
     /// The response future for [`Route`](super::Route).
     #[derive(Debug)]
-    pub struct RouteFuture<S, F, B>
+    pub struct RouteFuture<B, E, F>
     where
-        S: Service<Request<B>>,
         F: Service<Request<B>>
     {
         #[pin]
-        state: RouteFutureInner<S, F, B>,
+        state: RouteFutureInner<B, E, F>,
     }
 }
 
-impl<S, F, B> RouteFuture<S, F, B>
+impl<B, E, F> RouteFuture<B, E, F>
 where
-    S: Service<Request<B>>,
     F: Service<Request<B>>,
 {
-    pub(crate) fn a(a: Oneshot<S, Request<B>>, fallback: F) -> Self {
+    pub(crate) fn a(
+        a: Oneshot<CloneBoxService<Request<B>, Response<BoxBody>, E>, Request<B>>,
+        fallback: F,
+    ) -> Self {
         RouteFuture {
             state: RouteFutureInner::A {
                 a,
@@ -58,14 +59,13 @@ where
 pin_project! {
     #[project = RouteFutureInnerProj]
     #[derive(Debug)]
-    enum RouteFutureInner<S, F, B>
+    enum RouteFutureInner<B, E, F>
     where
-        S: Service<Request<B>>,
         F: Service<Request<B>>,
     {
         A {
             #[pin]
-            a: Oneshot<S, Request<B>>,
+            a: Oneshot<CloneBoxService<Request<B>, Response<BoxBody>, E>, Request<B>>,
             fallback: Option<F>,
         },
         B {
@@ -75,13 +75,12 @@ pin_project! {
     }
 }
 
-impl<S, F, B> Future for RouteFuture<S, F, B>
+impl<B, E, F> Future for RouteFuture<B, E, F>
 where
-    S: Service<Request<B>, Response = Response<BoxBody>>,
-    F: Service<Request<B>, Response = Response<BoxBody>, Error = S::Error>,
+    F: Service<Request<B>, Response = Response<BoxBody>, Error = E>,
     B: Send + Sync + 'static,
 {
-    type Output = Result<Response<BoxBody>, S::Error>;
+    type Output = Result<Response<BoxBody>, E>;
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         loop {
@@ -117,23 +116,21 @@ where
 pin_project! {
     /// The response future for [`Nested`](super::Nested).
     #[derive(Debug)]
-    pub struct NestedFuture<S, F, B>
+    pub struct NestedFuture<B, E, F>
     where
-        S: Service<Request<B>>,
         F: Service<Request<B>>
     {
         #[pin]
-        pub(super) inner: RouteFuture<S, F, B>,
+        pub(super) inner: RouteFuture<B, E, F>,
     }
 }
 
-impl<S, F, B> Future for NestedFuture<S, F, B>
+impl<B, E, F> Future for NestedFuture<B, E, F>
 where
-    S: Service<Request<B>, Response = Response<BoxBody>>,
-    F: Service<Request<B>, Response = Response<BoxBody>, Error = S::Error>,
+    F: Service<Request<B>, Response = Response<BoxBody>, Error = E>,
     B: Send + Sync + 'static,
 {
-    type Output = Result<Response<BoxBody>, S::Error>;
+    type Output = Result<Response<BoxBody>, E>;
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         self.project().inner.poll(cx)
