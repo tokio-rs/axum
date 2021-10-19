@@ -117,7 +117,8 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        rust: [stable, beta, nightly, 1.51]
+        # nightly disabled for now due to compile time bugs
+        rust: [stable, beta, 1.51]
     steps:
     - uses: actions/checkout@master
     - uses: actions-rs/toolchain@v1
