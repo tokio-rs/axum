@@ -370,13 +370,13 @@ impl<S> Router<S> {
         ResBody: http_body::Body<Data = Bytes> + Send + Sync + 'static,
         ResBody::Error: Into<BoxError>,
     {
-        self.map(|svc| {
+        self.layer(
             ServiceBuilder::new()
                 .layer_fn(BoxRoute)
                 .layer_fn(CloneBoxService::new)
                 .layer(MapResponseBodyLayer::new(box_body))
-                .service(svc)
-        })
+                .into_inner(),
+        )
     }
 
     /// Apply a [`tower::Layer`] to the router.
@@ -446,11 +446,11 @@ impl<S> Router<S> {
     /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
     /// # };
     /// ```
-    pub fn layer<L>(self, layer: L) -> Router<Layered<L::Service>>
+    pub fn layer<L>(self, layer: L) -> Router<L::Service>
     where
         L: Layer<S>,
     {
-        self.map(|svc| Layered::new(layer.layer(svc)))
+        self.map(|svc| layer.layer(svc))
     }
 
     /// Convert this router into a [`MakeService`], that is a [`Service`] who's
@@ -1059,58 +1059,6 @@ where
     }
 }
 
-/// A [`Service`] created from a router by applying a Tower middleware.
-///
-/// Created with [`Router::layer`]. See that method for more details.
-pub struct Layered<S> {
-    inner: S,
-}
-
-impl<S> Layered<S> {
-    fn new(inner: S) -> Self {
-        Self { inner }
-    }
-}
-
-impl<S> Clone for Layered<S>
-where
-    S: Clone,
-{
-    fn clone(&self) -> Self {
-        Self::new(self.inner.clone())
-    }
-}
-
-impl<S> fmt::Debug for Layered<S>
-where
-    S: fmt::Debug,
-{
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Layered")
-            .field("inner", &self.inner)
-            .finish()
-    }
-}
-
-impl<S, R> Service<R> for Layered<S>
-where
-    S: Service<R>,
-{
-    type Response = S::Response;
-    type Error = S::Error;
-    type Future = S::Future;
-
-    #[inline]
-    fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        self.inner.poll_ready(cx)
-    }
-
-    #[inline]
-    fn call(&mut self, req: R) -> Self::Future {
-        self.inner.call(req)
-    }
-}
-
 fn with_path(uri: &Uri, new_path: &str) -> Uri {
     let path_and_query = if let Some(path_and_query) = uri.path_and_query() {
         let new_path = if new_path.starts_with('/') {
@@ -1217,9 +1165,6 @@ mod tests {
 
         assert_send::<BoxRoute<(), ()>>();
         assert_sync::<BoxRoute<(), ()>>();
-
-        assert_send::<Layered<()>>();
-        assert_sync::<Layered<()>>();
 
         assert_send::<Nested<(), ()>>();
         assert_sync::<Nested<(), ()>>();

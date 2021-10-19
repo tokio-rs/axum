@@ -47,7 +47,7 @@ struct User {
     username: String,
 }
 
-// We define our own `Json` extactor that customizes the error from `axum::Json`
+// We define our own `Json` extractor that customizes the error from `axum::Json`
 struct Json<T>(T);
 
 #[async_trait]
