@@ -26,12 +26,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   breaking change if you depend on axum with `default_features = false`. ([#286])
 - **breaking:** Remove `routing::Layered` as it didn't actually do anything and
   thus wasn't necessary
+- **breaking:** Change `Connected::connect_info` to return `Self` and remove
+  the associated type `ConnectInfo` ([#396])
 
 [#339]: https://github.com/tokio-rs/axum/pull/339
 [#286]: https://github.com/tokio-rs/axum/pull/286
 [#272]: https://github.com/tokio-rs/axum/pull/272
 [#378]: https://github.com/tokio-rs/axum/pull/378
 [#363]: https://github.com/tokio-rs/axum/pull/363
+[#396]: https://github.com/tokio-rs/axum/pull/396
 
 # 0.2.8 (07. October, 2021)
 
