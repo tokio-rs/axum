@@ -117,8 +117,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        # nightly disabled for now due to compile time bugs
-        rust: [stable, beta, 1.51]
+        rust: [stable, beta, nightly, 1.51]
     steps:
     - uses: actions/checkout@master
     - uses: actions-rs/toolchain@v1
@@ -127,21 +126,21 @@ jobs:
         override: true
         profile: minimal
     # caching
-    - name: Cache cargo registry
-      uses: actions/cache@v2.1.6
-      with:
-        path: ~/.cargo/registry
-        key: ${{ runner.os }}-v1-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
-    - name: Cache cargo index
-      uses: actions/cache@v2.1.6
-      with:
-        path: ~/.cargo/git
-        key: ${{ runner.os }}-v1-cargo-index-${{ hashFiles('**/Cargo.lock') }}
-    - name: Cache cargo target dir
-      uses: actions/cache@v2.1.6
-      with:
-        path: target
-        key: ${{ runner.os }}-v1-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+    # - name: Cache cargo registry
+    #   uses: actions/cache@v2.1.6
+    #   with:
+    #     path: ~/.cargo/registry
+    #     key: ${{ runner.os }}-v1-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+    # - name: Cache cargo index
+    #   uses: actions/cache@v2.1.6
+    #   with:
+    #     path: ~/.cargo/git
+    #     key: ${{ runner.os }}-v1-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+    # - name: Cache cargo target dir
+    #   uses: actions/cache@v2.1.6
+    #   with:
+    #     path: target
+    #     key: ${{ runner.os }}-v1-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
     # /caching
     - name: Run tests
       uses: actions-rs/cargo@v1
