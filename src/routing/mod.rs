@@ -429,9 +429,7 @@ impl<S> Router<S> {
     /// }
     ///
     /// impl Connected<&AddrStream> for MyConnectInfo {
-    ///     type ConnectInfo = MyConnectInfo;
-    ///
-    ///     fn connect_info(target: &AddrStream) -> Self::ConnectInfo {
+    ///     fn connect_info(target: &AddrStream) -> Self {
     ///         MyConnectInfo {
     ///             // ...
     ///         }

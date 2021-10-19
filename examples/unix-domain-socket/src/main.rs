@@ -156,9 +156,7 @@ struct UdsConnectInfo {
 }
 
 impl connect_info::Connected<&UnixStream> for UdsConnectInfo {
-    type ConnectInfo = Self;
-
-    fn connect_info(target: &UnixStream) -> Self::ConnectInfo {
+    fn connect_info(target: &UnixStream) -> Self {
         let peer_addr = target.peer_addr().unwrap();
         let peer_cred = target.peer_cred().unwrap();
 
