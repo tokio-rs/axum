@@ -25,6 +25,7 @@ use std::{
     time::Duration,
 };
 use tower::service_fn;
+use tower::timeout::TimeoutLayer;
 use tower_service::Service;
 
 pub(crate) use helpers::*;
@@ -524,6 +525,23 @@ async fn wildcard_sees_whole_url() {
 
     let res = client.get("/api/foo/bar").send().await;
     assert_eq!(res.text().await, "/api/foo/bar");
+}
+
+#[tokio::test]
+async fn middleware_applies_to_routes_above() {
+    let app = Router::new()
+        .route("/one", get(std::future::pending::<()>))
+        .layer(TimeoutLayer::new(Duration::ZERO))
+        .handle_error(|_: BoxError| Ok::<_, Infallible>(StatusCode::REQUEST_TIMEOUT))
+        .route("/two", get(|| async {}));
+
+    let client = TestClient::new(app);
+
+    let res = client.get("/one").send().await;
+    assert_eq!(res.status(), StatusCode::REQUEST_TIMEOUT);
+
+    let res = client.get("/two").send().await;
+    assert_eq!(res.status(), StatusCode::OK);
 }
 
 pub(crate) fn assert_send<T: Send>() {}
