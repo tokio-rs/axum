@@ -531,7 +531,7 @@ async fn wildcard_sees_whole_url() {
 async fn middleware_applies_to_routes_above() {
     let app = Router::new()
         .route("/one", get(std::future::pending::<()>))
-        .layer(TimeoutLayer::new(Duration::ZERO))
+        .layer(TimeoutLayer::new(Duration::new(0, 0)))
         .handle_error(|_: BoxError| Ok::<_, Infallible>(StatusCode::REQUEST_TIMEOUT))
         .route("/two", get(|| async {}));
 
