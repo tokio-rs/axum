@@ -65,18 +65,13 @@ where
 /// See [`Router::into_make_service_with_connect_info`] for more details.
 ///
 /// [`Router::into_make_service_with_connect_info`]: crate::routing::Router::into_make_service_with_connect_info
-pub trait Connected<T> {
-    /// The connection information type the IO resources generates.
-    type ConnectInfo: Clone + Send + Sync + 'static;
-
+pub trait Connected<T>: Clone + Send + Sync + 'static {
     /// Create type holding information about the connection.
-    fn connect_info(target: T) -> Self::ConnectInfo;
+    fn connect_info(target: T) -> Self;
 }
 
 impl Connected<&AddrStream> for SocketAddr {
-    type ConnectInfo = SocketAddr;
-
-    fn connect_info(target: &AddrStream) -> Self::ConnectInfo {
+    fn connect_info(target: &AddrStream) -> Self {
         target.remote_addr()
     }
 }
@@ -86,7 +81,7 @@ where
     S: Clone,
     C: Connected<T>,
 {
-    type Response = AddExtension<S, ConnectInfo<C::ConnectInfo>>;
+    type Response = AddExtension<S, ConnectInfo<C>>;
     type Error = Infallible;
     type Future = ResponseFuture<Self::Response>;
 
@@ -177,9 +172,7 @@ mod tests {
         }
 
         impl Connected<&AddrStream> for MyConnectInfo {
-            type ConnectInfo = Self;
-
-            fn connect_info(_target: &AddrStream) -> Self::ConnectInfo {
+            fn connect_info(_target: &AddrStream) -> Self {
                 Self {
                     value: "it worked!",
                 }
