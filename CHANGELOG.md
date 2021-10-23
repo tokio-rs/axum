@@ -7,12 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- Improve performance of `BoxRoute` ([#339])
-- Expand accepted content types for JSON requests ([#378])
+- **fixed:** Fix regressions in compile times introduced by Rust 1.56
+- **fixed:** Expand accepted content types for JSON requests ([#378])
+- **breaking:** The router's type is now always `Router` regardless of how many routes or
+  middleware are applies.
+
+  This means router types are all always nameable:
+
+  ```rust
+  fn my_routes() -> Router {
+      Router::new().route(
+          "/users",
+          post(|| async { "Hello, World!" }),
+      )
+  }
+  ```
+- **breaking:** `Route::boxed` and `BoxRoute` have been removed as they're no longer
+  necessary
+- **breaking:** `Router::check_infallible` now directly returns a `self` (if the router
+  cannot fail) without any additional middleware
+- **breaking:** The following methods have new specific trait bounds necessary for boxing:
+    - `Router::route`
+    - `Router::nest`
+    - `Router::layer`
+    - `Router::or`
+    - `Router::handle_error`
+- **breaking:** `Router::into_make_service` and `Router::into_make_service_with_connect_info`
+  now produce `Router` services
+- **breaking:** `Route`, `Nested`, `Or` types are now private. They no longer had to be
+  public because `Router` is internally boxed
 - **breaking:** Automatically do percent decoding in `extract::Path`
   ([#272])
-- **breaking:** `Router::boxed` now the inner service to implement `Clone` and
-  `Sync` in addition to the previous trait bounds ([#339])
 - **breaking:** Added feature flags for HTTP1 and JSON. This enables removing a
   few dependencies if your app only uses HTTP2 or doesn't use JSON. Its only a
   breaking change if you depend on axum with `default_features = false`. ([#286])
@@ -21,7 +46,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **breaking:** Change `Connected::connect_info` to return `Self` and remove
   the associated type `ConnectInfo` ([#396])
 
-[#339]: https://github.com/tokio-rs/axum/pull/339
 [#286]: https://github.com/tokio-rs/axum/pull/286
 [#272]: https://github.com/tokio-rs/axum/pull/272
 [#378]: https://github.com/tokio-rs/axum/pull/378

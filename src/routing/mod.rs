@@ -42,13 +42,13 @@ pub use self::method_filter::MethodFilter;
 
 /// The router type for composing handlers and services.
 pub struct Router<ReqBody = Body, E = Infallible> {
-    svc: Routes<ReqBody, E>,
+    routes: Routes<ReqBody, E>,
 }
 
 impl<ReqBody, E> Clone for Router<ReqBody, E> {
     fn clone(&self) -> Self {
         Self {
-            svc: self.svc.clone(),
+            routes: self.routes.clone(),
         }
     }
 }
@@ -70,7 +70,7 @@ where
     /// all requests.
     pub fn new() -> Self {
         Self {
-            svc: Routes(CloneBoxService::new(EmptyRouter::not_found())),
+            routes: Routes(CloneBoxService::new(EmptyRouter::not_found())),
         }
     }
 }
@@ -92,13 +92,13 @@ impl<B, E> Service<Request<B>> for Router<B, E> {
 
     #[inline]
     fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        self.svc.poll_ready(cx)
+        self.routes.poll_ready(cx)
     }
 
     #[inline]
     fn call(&mut self, req: Request<B>) -> Self::Future {
         future::RouterFuture {
-            future: self.svc.call(req).future,
+            future: self.routes.call(req).future,
         }
     }
 }
@@ -190,7 +190,6 @@ where
         T: Service<Request<ReqBody>, Response = Response<BoxBody>, Error = E>
             + Clone
             + Send
-            + Sync
             + 'static,
         T::Future: Send + 'static,
     {
@@ -288,7 +287,6 @@ where
         T: Service<Request<ReqBody>, Response = Response<BoxBody>, Error = E>
             + Clone
             + Send
-            + Sync
             + 'static,
         T::Future: Send + 'static,
     {
@@ -375,7 +373,6 @@ where
         L::Service: Service<Request<LayeredReqBody>, Response = Response<LayeredResBody>>
             + Clone
             + Send
-            + Sync
             + 'static,
         <L::Service as Service<Request<LayeredReqBody>>>::Future: Send + 'static,
         LayeredResBody: http_body::Body<Data = Bytes> + Send + Sync + 'static,
@@ -534,7 +531,6 @@ where {
         T: Service<Request<ReqBody>, Response = Response<BoxBody>, Error = E>
             + Clone
             + Send
-            + Sync
             + 'static,
         T::Future: Send + 'static,
     {
@@ -628,15 +624,11 @@ where {
     fn map<F, T, E2, B2>(self, f: F) -> Router<B2, E2>
     where
         F: FnOnce(Routes<ReqBody, E>) -> T,
-        T: Service<Request<B2>, Response = Response<BoxBody>, Error = E2>
-            + Clone
-            + Send
-            + Sync
-            + 'static,
+        T: Service<Request<B2>, Response = Response<BoxBody>, Error = E2> + Clone + Send + 'static,
         T::Future: Send + 'static,
     {
         Router {
-            svc: Routes(CloneBoxService::new(f(self.svc))),
+            routes: Routes(CloneBoxService::new(f(self.routes))),
         }
     }
 }
@@ -1072,7 +1064,6 @@ mod tests {
         use crate::tests::*;
 
         assert_send::<Router<()>>();
-        assert_sync::<Router<()>>();
 
         assert_send::<PathRoute<(), ()>>();
         assert_sync::<PathRoute<(), ()>>();

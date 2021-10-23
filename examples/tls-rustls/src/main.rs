@@ -14,14 +14,18 @@ async fn main() {
     }
     tracing_subscriber::fmt::init();
 
-    let app = Router::new().route("/", get(handler));
+    // this doesn't currently work because axum-server requires services to be
+    // `Sync`. That requirement can be removed but requires making a new
+    // release
 
-    axum_server::bind_rustls("127.0.0.1:3000")
-        .private_key_file("examples/tls-rustls/self_signed_certs/key.pem")
-        .certificate_file("examples/tls-rustls/self_signed_certs/cert.pem")
-        .serve(app)
-        .await
-        .unwrap();
+    // let app = Router::new().route("/", get(handler));
+
+    // axum_server::bind_rustls("127.0.0.1:3000")
+    //     .private_key_file("examples/tls-rustls/self_signed_certs/key.pem")
+    //     .certificate_file("examples/tls-rustls/self_signed_certs/cert.pem")
+    //     .serve(app)
+    //     .await
+    //     .unwrap();
 }
 
 async fn handler() -> &'static str {
