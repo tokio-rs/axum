@@ -24,6 +24,18 @@ opaque_future! {
         std::future::Ready<Result<Response<BoxBody>, E>>;
 }
 
+opaque_future! {
+    /// Response future for [`Router`](super::Router).
+    pub type RouterFuture<E> =
+        futures_util::future::BoxFuture<'static, Result<Response<BoxBody>, E>>;
+}
+
+opaque_future! {
+    /// Response future for [`Routes`](super::Routes).
+    pub type RoutesFuture<E> =
+        futures_util::future::BoxFuture<'static, Result<Response<BoxBody>, E>>;
+}
+
 pin_project! {
     /// The response future for [`BoxRoute`](super::BoxRoute).
     pub struct BoxRouteFuture<B, E>

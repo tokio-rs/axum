@@ -1,5 +1,8 @@
 use futures_util::future::BoxFuture;
-use std::task::{Context, Poll};
+use std::{
+    fmt,
+    task::{Context, Poll},
+};
 use tower::ServiceExt;
 use tower_service::Service;
 
@@ -11,6 +14,12 @@ pub(crate) struct CloneBoxService<T, U, E>(
             + Sync,
     >,
 );
+
+impl<T, U, E> fmt::Debug for CloneBoxService<T, U, E> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("CloneBoxService").finish()
+    }
+}
 
 impl<T, U, E> CloneBoxService<T, U, E> {
     pub(crate) fn new<S>(inner: S) -> Self

@@ -13,13 +13,8 @@ use std::{
 use tower::{util::Oneshot, ServiceExt};
 use tower_service::Service;
 
-/// [`tower::Service`] that is the combination of two routers.
-///
-/// See [`Router::or`] for more details.
-///
-/// [`Router::or`]: super::Router::or
 #[derive(Debug, Clone, Copy)]
-pub struct Or<A, B> {
+pub(crate) struct Or<A, B> {
     pub(super) first: A,
     pub(super) second: B,
 }

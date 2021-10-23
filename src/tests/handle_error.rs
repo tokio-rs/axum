@@ -173,14 +173,3 @@ fn layered() {
 
     check_make_svc::<_, _, _, Infallible>(app.into_make_service());
 }
-
-#[tokio::test] // async because of `.boxed()`
-async fn layered_boxed() {
-    let app = Router::new()
-        .route("/echo", get::<_, Body, _>(unit))
-        .layer(timeout())
-        .boxed()
-        .handle_error(handle_error::<BoxError>);
-
-    check_make_svc::<_, _, _, Infallible>(app.into_make_service());
-}

@@ -1,13 +1,17 @@
 //! Routing between [`Service`]s.
 
-use self::future::{BoxRouteFuture, EmptyRouterFuture, NestedFuture, RouteFuture};
+use self::{
+    future::{EmptyRouterFuture, NestedFuture, RouteFuture},
+    or::Or,
+};
 use crate::{
-    body::{box_body, BoxBody},
+    body::{box_body, Body, BoxBody},
     clone_box_service::CloneBoxService,
     extract::{
         connect_info::{Connected, IntoMakeServiceWithConnectInfo},
         OriginalUri,
     },
+    response::IntoResponse,
     service::HandleError,
     util::{ByteStr, PercentDecodedByteStr},
     BoxError,
@@ -24,8 +28,8 @@ use std::{
     sync::Arc,
     task::{Context, Poll},
 };
-use tower::{util::ServiceExt, ServiceBuilder};
-use tower_http::map_response_body::MapResponseBodyLayer;
+use tower::util::ServiceExt;
+use tower_http::map_response_body::MapResponseBody;
 use tower_layer::Layer;
 use tower_service::Service;
 
@@ -34,39 +38,57 @@ pub mod future;
 mod method_filter;
 mod or;
 
-pub use self::{method_filter::MethodFilter, or::Or};
+pub use self::method_filter::MethodFilter;
 
 /// The router type for composing handlers and services.
-#[derive(Debug, Clone)]
-pub struct Router<S> {
-    svc: S,
+pub struct Router<ReqBody = Body, E = Infallible> {
+    svc: Routes<ReqBody, E>,
 }
 
-impl<E> Router<EmptyRouter<E>> {
+impl<ReqBody, E> Clone for Router<ReqBody, E> {
+    fn clone(&self) -> Self {
+        Self {
+            svc: self.svc.clone(),
+        }
+    }
+}
+
+impl<ReqBody, E> fmt::Debug for Router<ReqBody, E> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Router").finish()
+    }
+}
+
+impl<ReqBody, E> Router<ReqBody, E>
+where
+    ReqBody: Send + Sync + 'static,
+    E: Send + 'static,
+{
     /// Create a new `Router`.
     ///
     /// Unless you add additional routes this will respond to `404 Not Found` to
     /// all requests.
     pub fn new() -> Self {
         Self {
-            svc: EmptyRouter::not_found(),
+            svc: Routes(CloneBoxService::new(EmptyRouter::not_found())),
         }
     }
 }
 
-impl<E> Default for Router<EmptyRouter<E>> {
+impl<B, E> Default for Router<B, EmptyRouter<E>>
+where
+    B: Send + Sync + 'static,
+    E: Send + 'static,
+{
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<S, R> Service<R> for Router<S>
-where
-    S: Service<R>,
-{
-    type Response = S::Response;
-    type Error = S::Error;
-    type Future = S::Future;
+impl<B, E> Service<Request<B>> for Router<B, E> {
+    type Response = Response<BoxBody>;
+    type Error = E;
+    type Future = future::RouterFuture<E>;
 
     #[inline]
     fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
@@ -74,12 +96,55 @@ where
     }
 
     #[inline]
-    fn call(&mut self, req: R) -> Self::Future {
-        self.svc.call(req)
+    fn call(&mut self, req: Request<B>) -> Self::Future {
+        future::RouterFuture {
+            future: self.svc.call(req).future,
+        }
     }
 }
 
-impl<S> Router<S> {
+/// How routes are stored inside a [`Router`].
+///
+/// You normally shouldn't need to care about this type.
+pub struct Routes<ReqBody = Body, E = Infallible>(
+    CloneBoxService<Request<ReqBody>, Response<BoxBody>, E>,
+);
+
+impl<ReqBody, E> Clone for Routes<ReqBody, E> {
+    fn clone(&self) -> Self {
+        Self(self.0.clone())
+    }
+}
+
+impl<ReqBody, E> fmt::Debug for Routes<ReqBody, E> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Router").finish()
+    }
+}
+
+impl<B, E> Service<Request<B>> for Routes<B, E> {
+    type Response = Response<BoxBody>;
+    type Error = E;
+    type Future = future::RoutesFuture<E>;
+
+    #[inline]
+    fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        self.0.poll_ready(cx)
+    }
+
+    #[inline]
+    fn call(&mut self, req: Request<B>) -> Self::Future {
+        future::RoutesFuture {
+            future: self.0.call(req),
+        }
+    }
+}
+
+impl<ReqBody, E> Router<ReqBody, E>
+where
+    ReqBody: Send + Sync + 'static,
+    E: Send + 'static,
+{
     /// Add another route to the router.
     ///
     /// `path` is a string of path segments separated by `/`. Each segment
@@ -120,8 +185,16 @@ impl<S> Router<S> {
     /// # Panics
     ///
     /// Panics if `path` doesn't start with `/`.
-    pub fn route<T>(self, path: &str, svc: T) -> Router<Route<T, S>> {
-        self.map(|fallback| Route {
+    pub fn route<T>(self, path: &str, svc: T) -> Self
+    where
+        T: Service<Request<ReqBody>, Response = Response<BoxBody>, Error = E>
+            + Clone
+            + Send
+            + Sync
+            + 'static,
+        T::Future: Send + 'static,
+    {
+        self.map(|fallback| PathRoute {
             pattern: PathPattern::new(path),
             svc,
             fallback,
@@ -209,64 +282,21 @@ impl<S> Router<S> {
     /// # };
     /// ```
     ///
-    /// If necessary you can use [`Router::boxed`] to box a group of routes
-    /// making the type easier to name. This is sometimes useful when working with
-    /// `nest`.
-    ///
     /// [`OriginalUri`]: crate::extract::OriginalUri
-    pub fn nest<T>(self, path: &str, svc: T) -> Router<Nested<T, S>> {
+    pub fn nest<T>(self, path: &str, svc: T) -> Self
+    where
+        T: Service<Request<ReqBody>, Response = Response<BoxBody>, Error = E>
+            + Clone
+            + Send
+            + Sync
+            + 'static,
+        T::Future: Send + 'static,
+    {
         self.map(|fallback| Nested {
             pattern: PathPattern::new(path),
             svc,
             fallback,
         })
-    }
-
-    /// Create a boxed route trait object.
-    ///
-    /// This makes it easier to name the types of routers to, for example,
-    /// return them from functions:
-    ///
-    /// ```rust
-    /// use axum::{
-    ///     body::Body,
-    ///     handler::get,
-    ///     Router,
-    ///     routing::BoxRoute
-    /// };
-    ///
-    /// async fn first_handler() { /* ... */ }
-    ///
-    /// async fn second_handler() { /* ... */ }
-    ///
-    /// async fn third_handler() { /* ... */ }
-    ///
-    /// fn app() -> Router<BoxRoute> {
-    ///     Router::new()
-    ///         .route("/", get(first_handler).post(second_handler))
-    ///         .route("/foo", get(third_handler))
-    ///         .boxed()
-    /// }
-    /// ```
-    ///
-    /// It also helps with compile times when you have a very large number of
-    /// routes.
-    pub fn boxed<ReqBody, ResBody>(self) -> Router<BoxRoute<ReqBody, S::Error>>
-    where
-        S: Service<Request<ReqBody>, Response = Response<ResBody>> + Clone + Send + Sync + 'static,
-        S::Error: Into<BoxError> + Send,
-        S::Future: Send,
-        ReqBody: Send + 'static,
-        ResBody: http_body::Body<Data = Bytes> + Send + Sync + 'static,
-        ResBody::Error: Into<BoxError>,
-    {
-        self.layer(
-            ServiceBuilder::new()
-                .layer_fn(BoxRoute)
-                .layer_fn(CloneBoxService::new)
-                .layer(MapResponseBodyLayer::new(box_body))
-                .into_inner(),
-        )
     }
 
     /// Apply a [`tower::Layer`] to the router.
@@ -336,11 +366,22 @@ impl<S> Router<S> {
     /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
     /// # };
     /// ```
-    pub fn layer<L>(self, layer: L) -> Router<L::Service>
+    pub fn layer<L, LayeredReqBody, LayeredResBody>(
+        self,
+        layer: L,
+    ) -> Router<LayeredReqBody, <L::Service as Service<Request<LayeredReqBody>>>::Error>
     where
-        L: Layer<S>,
+        L: Layer<Routes<ReqBody, E>>,
+        L::Service: Service<Request<LayeredReqBody>, Response = Response<LayeredResBody>>
+            + Clone
+            + Send
+            + Sync
+            + 'static,
+        <L::Service as Service<Request<LayeredReqBody>>>::Future: Send + 'static,
+        LayeredResBody: http_body::Body<Data = Bytes> + Send + Sync + 'static,
+        LayeredResBody::Error: Into<BoxError>,
     {
-        self.map(|svc| layer.layer(svc))
+        self.map(|svc| MapResponseBody::new(layer.layer(svc), box_body))
     }
 
     /// Convert this router into a [`MakeService`], that is a [`Service`] who's
@@ -366,11 +407,9 @@ impl<S> Router<S> {
     /// ```
     ///
     /// [`MakeService`]: tower::make::MakeService
-    pub fn into_make_service(self) -> IntoMakeService<S>
-    where
-        S: Clone,
-    {
-        IntoMakeService::new(self.svc)
+    pub fn into_make_service(self) -> IntoMakeService<Self>
+where {
+        IntoMakeService::new(self)
     }
 
     /// Convert this router into a [`MakeService`], that will store `C`'s
@@ -455,12 +494,11 @@ impl<S> Router<S> {
     /// [uds]: https://github.com/tokio-rs/axum/blob/main/examples/unix_domain_socket.rs
     pub fn into_make_service_with_connect_info<C, Target>(
         self,
-    ) -> IntoMakeServiceWithConnectInfo<S, C>
+    ) -> IntoMakeServiceWithConnectInfo<Self, C>
     where
-        S: Clone,
         C: Connected<Target>,
     {
-        IntoMakeServiceWithConnectInfo::new(self.svc)
+        IntoMakeServiceWithConnectInfo::new(self)
     }
 
     /// Merge two routers into one.
@@ -491,7 +529,15 @@ impl<S> Router<S> {
     /// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
     /// # };
     /// ```
-    pub fn or<S2>(self, other: S2) -> Router<Or<S, S2>> {
+    pub fn or<T>(self, other: T) -> Self
+    where
+        T: Service<Request<ReqBody>, Response = Response<BoxBody>, Error = E>
+            + Clone
+            + Send
+            + Sync
+            + 'static,
+        T::Future: Send + 'static,
+    {
         self.map(|first| Or {
             first,
             second: other,
@@ -571,35 +617,50 @@ impl<S> Router<S> {
     /// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
     /// # };
     /// ```
-    pub fn handle_error<ReqBody, F>(self, f: F) -> Router<HandleError<S, F, ReqBody>> {
+    pub fn handle_error<F, Res, E2>(self, f: F) -> Router<ReqBody, E2>
+    where
+        F: FnOnce(E) -> Result<Res, E2> + Clone + Send + Sync + 'static,
+        Res: IntoResponse,
+    {
         self.map(|svc| HandleError::new(svc, f))
     }
 
-    /// Check that your service cannot fail.
-    ///
-    /// That is, its error type is [`Infallible`].
-    pub fn check_infallible(self) -> Router<CheckInfallible<S>> {
-        self.map(CheckInfallible)
-    }
-
-    fn map<F, S2>(self, f: F) -> Router<S2>
+    fn map<F, T, E2, B2>(self, f: F) -> Router<B2, E2>
     where
-        F: FnOnce(S) -> S2,
+        F: FnOnce(Routes<ReqBody, E>) -> T,
+        T: Service<Request<B2>, Response = Response<BoxBody>, Error = E2>
+            + Clone
+            + Send
+            + Sync
+            + 'static,
+        T::Future: Send + 'static,
     {
-        Router { svc: f(self.svc) }
+        Router {
+            svc: Routes(CloneBoxService::new(f(self.svc))),
+        }
     }
 }
 
-/// A route that sends requests to one of two [`Service`]s depending on the
-/// path.
+impl<B> Router<B, Infallible>
+where
+    B: Send + Sync + 'static,
+{
+    /// Check that your service cannot fail.
+    ///
+    /// That is, its error type is [`Infallible`].
+    pub fn check_infallible(self) -> Self {
+        self
+    }
+}
+
 #[derive(Debug, Clone)]
-pub struct Route<S, F> {
+pub(crate) struct PathRoute<S, F> {
     pub(crate) pattern: PathPattern,
     pub(crate) svc: S,
     pub(crate) fallback: F,
 }
 
-impl<S, F, B> Service<Request<B>> for Route<S, F>
+impl<S, F, B> Service<Request<B>> for PathRoute<S, F>
 where
     S: Service<Request<B>, Response = Response<BoxBody>> + Clone,
     F: Service<Request<B>, Response = Response<BoxBody>, Error = S::Error> + Clone,
@@ -849,51 +910,8 @@ struct Match<'a> {
 
 type Captures = Vec<(String, String)>;
 
-/// A boxed route trait object.
-///
-/// See [`Router::boxed`] for more details.
-pub struct BoxRoute<B = crate::body::Body, E = Infallible>(
-    CloneBoxService<Request<B>, Response<BoxBody>, E>,
-);
-
-impl<B, E> Clone for BoxRoute<B, E> {
-    fn clone(&self) -> Self {
-        Self(self.0.clone())
-    }
-}
-
-impl<B, E> fmt::Debug for BoxRoute<B, E> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("BoxRoute").finish()
-    }
-}
-
-impl<B, E> Service<Request<B>> for BoxRoute<B, E>
-where
-    E: Into<BoxError>,
-{
-    type Response = Response<BoxBody>;
-    type Error = E;
-    type Future = BoxRouteFuture<B, E>;
-
-    #[inline]
-    fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        Poll::Ready(Ok(()))
-    }
-
-    #[inline]
-    fn call(&mut self, req: Request<B>) -> Self::Future {
-        BoxRouteFuture {
-            inner: self.0.clone().oneshot(req),
-        }
-    }
-}
-
-/// A [`Service`] that has been nested inside a router at some path.
-///
-/// Created with [`Router::nest`].
 #[derive(Debug, Clone)]
-pub struct Nested<S, F> {
+pub(crate) struct Nested<S, F> {
     pattern: PathPattern,
     svc: S,
     fallback: F,
@@ -968,31 +986,6 @@ fn strip_prefix(uri: &Uri, prefix: &str) -> Uri {
     parts.path_and_query = path_and_query;
 
     Uri::from_parts(parts).unwrap()
-}
-
-/// Middleware that statically verifies that a service cannot fail.
-///
-/// Created with [`check_infallible`](Router::check_infallible).
-#[derive(Debug, Clone, Copy)]
-pub struct CheckInfallible<S>(S);
-
-impl<R, S> Service<R> for CheckInfallible<S>
-where
-    S: Service<R, Error = Infallible>,
-{
-    type Response = S::Response;
-    type Error = S::Error;
-    type Future = S::Future;
-
-    #[inline]
-    fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        self.0.poll_ready(cx)
-    }
-
-    #[inline]
-    fn call(&mut self, req: R) -> Self::Future {
-        self.0.call(req)
-    }
 }
 
 /// A [`MakeService`] that produces axum router services.
@@ -1081,20 +1074,14 @@ mod tests {
         assert_send::<Router<()>>();
         assert_sync::<Router<()>>();
 
-        assert_send::<Route<(), ()>>();
-        assert_sync::<Route<(), ()>>();
+        assert_send::<PathRoute<(), ()>>();
+        assert_sync::<PathRoute<(), ()>>();
 
         assert_send::<EmptyRouter<NotSendSync>>();
         assert_sync::<EmptyRouter<NotSendSync>>();
 
-        assert_send::<BoxRoute<(), ()>>();
-        assert_sync::<BoxRoute<(), ()>>();
-
         assert_send::<Nested<(), ()>>();
         assert_sync::<Nested<(), ()>>();
-
-        assert_send::<CheckInfallible<()>>();
-        assert_sync::<CheckInfallible<()>>();
 
         assert_send::<IntoMakeService<()>>();
         assert_sync::<IntoMakeService<()>>();

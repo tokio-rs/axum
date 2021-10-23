@@ -12,7 +12,6 @@ use axum::{
     handler::{delete, get, Handler},
     http::StatusCode,
     response::IntoResponse,
-    routing::BoxRoute,
     Router,
 };
 use std::{
@@ -109,7 +108,7 @@ async fn list_keys(Extension(state): Extension<SharedState>) -> String {
         .join("\n")
 }
 
-fn admin_routes() -> Router<BoxRoute> {
+fn admin_routes() -> Router {
     async fn delete_all_keys(Extension(state): Extension<SharedState>) {
         state.write().unwrap().db.clear();
     }
@@ -123,7 +122,6 @@ fn admin_routes() -> Router<BoxRoute> {
         .route("/key/:key", delete(remove_key))
         // Require bearer auth for all admin routes
         .layer(RequireAuthorizationLayer::bearer("secret-token"))
-        .boxed()
 }
 
 fn handle_error(error: BoxError) -> Result<impl IntoResponse, Infallible> {

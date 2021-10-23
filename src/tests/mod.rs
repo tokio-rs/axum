@@ -249,8 +249,7 @@ async fn boxing() {
                 "hi from POST"
             }),
         )
-        .layer(tower_http::compression::CompressionLayer::new())
-        .boxed();
+        .layer(tower_http::compression::CompressionLayer::new());
 
     let client = TestClient::new(app);
 

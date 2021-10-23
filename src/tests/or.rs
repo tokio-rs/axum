@@ -159,8 +159,8 @@ async fn nesting() {
 
 #[tokio::test]
 async fn boxed() {
-    let one = Router::new().route("/foo", get(|| async {})).boxed();
-    let two = Router::new().route("/bar", get(|| async {})).boxed();
+    let one = Router::new().route("/foo", get(|| async {}));
+    let two = Router::new().route("/bar", get(|| async {}));
     let app = one.or(two);
 
     let client = TestClient::new(app);
