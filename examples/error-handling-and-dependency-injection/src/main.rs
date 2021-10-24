@@ -11,9 +11,9 @@ use axum::{
     async_trait,
     body::{Bytes, Full},
     extract::{Extension, Path},
-    handler::{get, post},
     http::{Response, StatusCode},
     response::IntoResponse,
+    routing::{get, post},
     AddExtensionLayer, Json, Router,
 };
 use serde::{Deserialize, Serialize};

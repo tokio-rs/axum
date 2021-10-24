@@ -14,9 +14,9 @@ use async_trait::async_trait;
 use axum::{
     body::{Bytes, Full},
     extract::{Form, FromRequest, RequestParts},
-    handler::get,
     http::{Response, StatusCode},
     response::{Html, IntoResponse},
+    routing::get,
     BoxError, Router,
 };
 use serde::{de::DeserializeOwned, Deserialize};

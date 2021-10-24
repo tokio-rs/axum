@@ -9,7 +9,7 @@ use std::convert::Infallible;
 /// ```rust,no_run
 /// use axum::{
 ///     extract::RawQuery,
-///     handler::get,
+///     routing::get,
 ///     Router,
 /// };
 /// use futures::StreamExt;

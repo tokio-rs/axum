@@ -18,7 +18,7 @@ use tower::util::Either;
 /// use axum::{
 ///     Router,
 ///     response::{IntoResponse, Headers},
-///     handler::get,
+///     routing::get,
 /// };
 /// use http::header::{HeaderName, HeaderValue};
 ///

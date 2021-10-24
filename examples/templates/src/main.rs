@@ -8,9 +8,9 @@ use askama::Template;
 use axum::{
     body::{Bytes, Full},
     extract,
-    handler::get,
     http::{Response, StatusCode},
     response::{Html, IntoResponse},
+    routing::get,
     Router,
 };
 use std::{convert::Infallible, net::SocketAddr};

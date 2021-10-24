@@ -38,7 +38,7 @@ use tower_service::Service;
 /// ```rust
 /// use axum::{
 ///     extract::{extractor_middleware, FromRequest, RequestParts},
-///     handler::{get, post},
+///     routing::{get, post},
 ///     Router,
 /// };
 /// use http::StatusCode;

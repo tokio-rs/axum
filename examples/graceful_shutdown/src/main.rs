@@ -5,7 +5,7 @@
 //! kill or ctrl-c
 //! ```
 
-use axum::{handler::get, response::Html, Router};
+use axum::{response::Html, routing::get, Router};
 use std::net::SocketAddr;
 
 #[tokio::main]

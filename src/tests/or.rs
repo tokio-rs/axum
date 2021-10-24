@@ -196,16 +196,18 @@ async fn many_ors() {
 
 #[tokio::test]
 async fn services() {
+    use crate::routing::service_method_router::get;
+
     let app = Router::new()
         .route(
             "/foo",
-            crate::service::get(service_fn(|_: Request<Body>| async {
+            get(service_fn(|_: Request<Body>| async {
                 Ok::<_, Infallible>(Response::new(Body::empty()))
             })),
         )
         .or(Router::new().route(
             "/bar",
-            crate::service::get(service_fn(|_: Request<Body>| async {
+            get(service_fn(|_: Request<Body>| async {
                 Ok::<_, Infallible>(Response::new(Body::empty()))
             })),
         ));

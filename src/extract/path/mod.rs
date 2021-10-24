@@ -24,7 +24,7 @@ use std::{
 /// ```rust,no_run
 /// use axum::{
 ///     extract::Path,
-///     handler::get,
+///     routing::get,
 ///     Router,
 /// };
 /// use uuid::Uuid;
@@ -46,7 +46,7 @@ use std::{
 /// ```rust,no_run
 /// use axum::{
 ///     extract::Path,
-///     handler::get,
+///     routing::get,
 ///     Router,
 /// };
 /// use uuid::Uuid;
@@ -68,7 +68,7 @@ use std::{
 /// ```rust,no_run
 /// use axum::{
 ///     extract::Path,
-///     handler::get,
+///     routing::get,
 ///     Router,
 /// };
 /// use serde::Deserialize;
@@ -97,7 +97,7 @@ use std::{
 /// ```rust,no_run
 /// use axum::{
 ///     extract::Path,
-///     handler::get,
+///     routing::get,
 ///     Router,
 /// };
 /// use std::collections::HashMap;
@@ -175,7 +175,7 @@ where
 mod tests {
     use super::*;
     use crate::tests::*;
-    use crate::{handler::get, Router};
+    use crate::{routing::get, Router};
     use std::collections::HashMap;
 
     #[tokio::test]

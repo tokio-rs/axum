@@ -13,7 +13,7 @@ use std::{convert::Infallible, ops::Deref};
 /// ```rust,no_run
 /// use axum::{
 ///     extract::TypedHeader,
-///     handler::get,
+///     routing::get,
 ///     Router,
 /// };
 /// use headers::UserAgent;
@@ -140,7 +140,7 @@ impl std::error::Error for TypedHeaderRejection {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{handler::get, response::IntoResponse, tests::*, Router};
+    use crate::{response::IntoResponse, routing::get, tests::*, Router};
 
     #[tokio::test]
     async fn typed_header() {

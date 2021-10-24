@@ -29,7 +29,7 @@ use std::{
 /// ```rust,no_run
 /// use axum::{
 ///     extract,
-///     handler::post,
+///     routing::post,
 ///     Router,
 /// };
 /// use serde::Deserialize;
@@ -58,7 +58,7 @@ use std::{
 /// ```
 /// use axum::{
 ///     extract::Path,
-///     handler::get,
+///     routing::get,
 ///     Router,
 ///     Json,
 /// };

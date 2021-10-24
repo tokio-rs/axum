@@ -94,7 +94,7 @@ where
 ///
 /// ```
 /// use axum::{
-///     handler::get,
+///     routing::get,
 ///     Router,
 ///     extract::OriginalUri,
 ///     http::Uri
@@ -181,7 +181,7 @@ where
 /// ```rust,no_run
 /// use axum::{
 ///     extract::BodyStream,
-///     handler::get,
+///     routing::get,
 ///     Router,
 /// };
 /// use futures::StreamExt;
@@ -252,7 +252,7 @@ fn body_stream_traits() {
 /// ```rust,no_run
 /// use axum::{
 ///     extract::RawBody,
-///     handler::get,
+///     routing::get,
 ///     Router,
 /// };
 /// use futures::StreamExt;
@@ -326,7 +326,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{body::Body, handler::post, tests::*, Router};
+    use crate::{body::Body, routing::post, tests::*, Router};
     use http::StatusCode;
 
     #[tokio::test]

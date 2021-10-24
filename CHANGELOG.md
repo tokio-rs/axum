@@ -56,7 +56,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
   ```rust,no_run
   use axum::{
-      handler::get,
+      routing::get,
       http::StatusCode,
       error_handling::HandleErrorLayer,
       response::IntoResponse,
@@ -89,7 +89,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   use axum::{
       Router, service,
       body::Body,
-      handler::get,
+      routing::service_method_router::get,
       response::IntoResponse,
       http::{Request, Response},
       error_handling::HandleErrorExt, // for `.handle_error`
@@ -100,7 +100,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   let app = Router::new()
       .route(
           "/",
-          service::get(service_fn(|_req: Request<Body>| async {
+          get(service_fn(|_req: Request<Body>| async {
               let contents = tokio::fs::read_to_string("some_file").await?;
               Ok::<_, io::Error>(Response::new(Body::from(contents)))
           }))
@@ -111,6 +111,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
       // ...
   }
   ```
+- **breaking:** Method routing for handlers have been moved from `axum::handler`
+  to `axum::routing`. So `axum::handler::get` now lives at `axum::routing::get`
+  ([#405])
+- **breaking:** Method routing for services have been moved from `axum::service`
+  to `axum::routing`. So `axum::service::get` now lives at
+  `axum::service_method_router::get` ([#405])
 
 [#339]: https://github.com/tokio-rs/axum/pull/339
 [#286]: https://github.com/tokio-rs/axum/pull/286
@@ -120,6 +126,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#396]: https://github.com/tokio-rs/axum/pull/396
 [#402]: https://github.com/tokio-rs/axum/pull/402
 [#404]: https://github.com/tokio-rs/axum/pull/404
+[#405]: https://github.com/tokio-rs/axum/pull/405
 
 # 0.2.8 (07. October, 2021)
 

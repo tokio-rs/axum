@@ -5,7 +5,7 @@
 //! ```
 //! use axum::{
 //!     extract::ws::{WebSocketUpgrade, WebSocket},
-//!     handler::get,
+//!     routing::get,
 //!     response::IntoResponse,
 //!     Router,
 //! };
@@ -96,7 +96,7 @@ use tokio_tungstenite::{
 /// Extractor for establishing WebSocket connections.
 ///
 /// Note: This extractor requires the request method to be `GET` so it should
-/// always be used with [`get`](crate::handler::get). Requests with other methods will be
+/// always be used with [`get`](crate::routing::get). Requests with other methods will be
 /// rejected.
 ///
 /// See the [module docs](self) for an example.
@@ -138,7 +138,7 @@ impl WebSocketUpgrade {
     /// ```
     /// use axum::{
     ///     extract::ws::{WebSocketUpgrade, WebSocket},
-    ///     handler::get,
+    ///     routing::get,
     ///     response::IntoResponse,
     ///     Router,
     /// };

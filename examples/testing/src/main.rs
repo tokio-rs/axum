@@ -5,7 +5,7 @@
 //! ```
 
 use axum::{
-    handler::{get, post},
+    routing::{get, post},
     Json, Router,
 };
 use tower_http::trace::TraceLayer;

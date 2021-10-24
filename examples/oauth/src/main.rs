@@ -11,9 +11,9 @@ use axum::{
     async_trait,
     body::{Bytes, Empty},
     extract::{Extension, FromRequest, Query, RequestParts, TypedHeader},
-    handler::get,
     http::{header::SET_COOKIE, HeaderMap, Response},
     response::{IntoResponse, Redirect},
+    routing::get,
     AddExtensionLayer, Router,
 };
 use oauth2::{

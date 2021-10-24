@@ -40,7 +40,7 @@ pub use self::{headers::Headers, redirect::Redirect, sse::Sse};
 /// use axum::{
 ///     Router,
 ///     body::Body,
-///     handler::get,
+///     routing::get,
 ///     http::{Response, StatusCode},
 ///     response::IntoResponse,
 /// };
@@ -87,7 +87,7 @@ pub use self::{headers::Headers, redirect::Redirect, sse::Sse};
 ///
 /// ```rust
 /// use axum::{
-///     handler::get,
+///     routing::get,
 ///     response::IntoResponse,
 ///     Router,
 /// };

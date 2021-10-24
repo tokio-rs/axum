@@ -16,9 +16,9 @@
 use axum::{
     error_handling::HandleErrorLayer,
     extract::{Extension, Path, Query},
-    handler::{get, patch},
     http::StatusCode,
     response::IntoResponse,
+    routing::{get, patch},
     Json, Router,
 };
 use serde::{Deserialize, Serialize};

@@ -12,7 +12,7 @@ use std::ops::Deref;
 /// ```rust,no_run
 /// use axum::{
 ///     extract::Query,
-///     handler::get,
+///     routing::get,
 ///     Router,
 /// };
 /// use serde::Deserialize;

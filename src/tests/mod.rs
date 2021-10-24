@@ -4,10 +4,10 @@ use crate::error_handling::HandleErrorLayer;
 use crate::BoxError;
 use crate::{
     extract::{self, Path},
-    handler::{any, delete, get, on, patch, post, Handler},
+    handler::Handler,
     response::IntoResponse,
-    routing::MethodFilter,
-    service, Json, Router,
+    routing::{any, delete, get, on, patch, post, service_method_router as service, MethodFilter},
+    Json, Router,
 };
 use bytes::Bytes;
 use http::{

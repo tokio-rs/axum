@@ -6,8 +6,8 @@
 
 use axum::{
     extract::{ContentLengthLimit, Multipart},
-    handler::get,
     response::Html,
+    routing::get,
     Router,
 };
 use std::net::SocketAddr;
