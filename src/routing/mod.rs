@@ -1,4 +1,4 @@
-//! Routing between [`Service`]s.
+//! Routing between [`Service`]s and handlers.
 
 use self::future::{EmptyRouterFuture, NestedFuture, RouteFuture, RoutesFuture};
 use crate::{
@@ -28,11 +28,17 @@ use tower_layer::Layer;
 use tower_service::Service;
 
 pub mod future;
+pub mod method_router_handler;
 
 mod method_filter;
 mod or;
 
 pub use self::method_filter::MethodFilter;
+
+#[doc(no_inline)]
+pub use self::method_router_handler::{
+    any, connect, delete, get, head, on, options, patch, post, put, trace, MethodRouter,
+};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 struct RouteId(u64);
@@ -109,7 +115,7 @@ where
     /// # Example
     ///
     /// ```rust
-    /// use axum::{handler::{get, delete}, Router};
+    /// use axum::{routing::{get, delete}, Router};
     ///
     /// let app = Router::new()
     ///     .route("/", get(root))
@@ -136,7 +142,7 @@ where
     /// Panics if the route overlaps with another route:
     ///
     /// ```should_panic
-    /// use axum::{handler::get, Router};
+    /// use axum::{routing::get, Router};
     ///
     /// let app = Router::new()
     ///     .route("/", get(|| async {}))
@@ -149,7 +155,7 @@ where
     /// This also applies to `nest` which is similar to a wildcard route:
     ///
     /// ```should_panic
-    /// use axum::{handler::get, Router};
+    /// use axum::{routing::get, Router};
     ///
     /// let app = Router::new()
     ///     // this is similar to `/api/*`
@@ -164,7 +170,7 @@ where
     /// Note that routes like `/:key` and `/foo` are considered overlapping:
     ///
     /// ```should_panic
-    /// use axum::{handler::get, Router};
+    /// use axum::{routing::get, Router};
     ///
     /// let app = Router::new()
     ///     .route("/foo", get(|| async {}))
@@ -204,7 +210,7 @@ where
     ///
     /// ```
     /// use axum::{
-    ///     handler::get,
+    ///     routing::get,
     ///     Router,
     /// };
     /// use http::Uri;
@@ -239,7 +245,7 @@ where
     /// ```
     /// use axum::{
     ///     extract::Path,
-    ///     handler::get,
+    ///     routing::get,
     ///     Router,
     /// };
     /// use std::collections::HashMap;
@@ -294,7 +300,7 @@ where
     /// the prefix stripped.
     ///
     /// ```rust
-    /// use axum::{handler::get, http::Uri, Router};
+    /// use axum::{routing::get, http::Uri, Router};
     ///
     /// let app = Router::new()
     ///     .route("/foo/*rest", get(|uri: Uri| async {
@@ -366,7 +372,7 @@ where
     ///
     /// ```rust
     /// use axum::{
-    ///     handler::get,
+    ///     routing::get,
     ///     Router,
     /// };
     /// use tower::limit::{ConcurrencyLimitLayer, ConcurrencyLimit};
@@ -395,7 +401,7 @@ where
     ///
     /// ```rust
     /// use axum::{
-    ///     handler::get,
+    ///     routing::get,
     ///     Router,
     /// };
     /// use tower_http::trace::TraceLayer;
@@ -440,7 +446,7 @@ where
     ///
     /// ```
     /// use axum::{
-    ///     handler::get,
+    ///     routing::get,
     ///     Router,
     /// };
     ///
@@ -470,7 +476,7 @@ where
     /// ```
     /// use axum::{
     ///     extract::ConnectInfo,
-    ///     handler::get,
+    ///     routing::get,
     ///     Router,
     /// };
     /// use std::net::SocketAddr;
@@ -496,7 +502,7 @@ where
     /// ```
     /// use axum::{
     ///     extract::connect_info::{ConnectInfo, Connected},
-    ///     handler::get,
+    ///     routing::get,
     ///     Router,
     /// };
     /// use hyper::server::conn::AddrStream;
@@ -555,7 +561,7 @@ where
     ///
     /// ```
     /// use axum::{
-    ///     handler::get,
+    ///     routing::get,
     ///     Router,
     /// };
     /// #

@@ -12,9 +12,9 @@ use axum::{
         ws::{Message, WebSocket, WebSocketUpgrade},
         TypedHeader,
     },
-    handler::get,
     http::StatusCode,
     response::IntoResponse,
+    routing::get,
     Router,
 };
 use std::net::SocketAddr;

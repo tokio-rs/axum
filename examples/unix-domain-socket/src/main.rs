@@ -7,8 +7,8 @@
 use axum::{
     body::Body,
     extract::connect_info::{self, ConnectInfo},
-    handler::get,
     http::{Method, Request, StatusCode, Uri},
+    routing::get,
     Router,
 };
 use futures::ready;

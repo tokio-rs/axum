@@ -55,7 +55,7 @@
 //!
 //! ```rust,no_run
 //! use axum::{
-//!     handler::get,
+//!     routing::get,
 //!     Router,
 //! };
 //!
@@ -134,7 +134,7 @@
 //!    ::: axum/src/handler/mod.rs:116:8
 //!     |
 //! 116 |     H: Handler<B, T>,
-//!     |        ------------- required by this bound in `axum::handler::get`
+//!     |        ------------- required by this bound in `axum::routing::get`
 //! ```
 //!
 //! This error doesn't tell you _why_ your function doesn't implement
@@ -147,7 +147,7 @@
 //!
 //! ```rust,no_run
 //! use axum::{
-//!     handler::get,
+//!     routing::get,
 //!     Router,
 //! };
 //!
@@ -249,7 +249,7 @@
 //! use axum::{
 //!     Router,
 //!     service,
-//!     handler::get,
+//!     routing::get,
 //!     http::{Request, Response},
 //!     body::Body,
 //! };
@@ -279,7 +279,7 @@
 //! use axum::{
 //!     Router, service,
 //!     body::Body,
-//!     handler::get,
+//!     routing::get,
 //!     response::IntoResponse,
 //!     http::{Request, Response},
 //!     error_handling::HandleErrorExt,
@@ -321,7 +321,7 @@
 //!
 //! ```rust,no_run
 //! use axum::{
-//!     handler::get,
+//!     routing::get,
 //!     Router,
 //! };
 //!
@@ -337,7 +337,7 @@
 //!
 //! ```rust,no_run
 //! use axum::{
-//!     handler::get,
+//!     routing::get,
 //!     extract::Path,
 //!     Router,
 //! };
@@ -358,7 +358,7 @@
 //! use axum::{
 //!     body::{Body, BoxBody},
 //!     http::Request,
-//!     handler::get,
+//!     routing::get,
 //!     Router,
 //! };
 //! use tower_http::services::ServeFile;
@@ -387,7 +387,7 @@
 //! the prefix stripped.
 //!
 //! ```rust
-//! use axum::{handler::get, http::Uri, Router};
+//! use axum::{routing::get, http::Uri, Router};
 //!
 //! let app = Router::new()
 //!     .route("/foo/*rest", get(|uri: Uri| async {
@@ -412,7 +412,7 @@
 //! ```rust,no_run
 //! use axum::{
 //!     extract::Json,
-//!     handler::post,
+//!     routing::post,
 //!     Router,
 //! };
 //! use serde::Deserialize;
@@ -442,7 +442,7 @@
 //! ```rust,no_run
 //! use axum::{
 //!     extract::{Json, TypedHeader, Path, Extension, Query},
-//!     handler::post,
+//!     routing::post,
 //!     http::{Request, header::HeaderMap},
 //!     body::{Bytes, Body},
 //!     Router,
@@ -506,7 +506,7 @@
 //! ```rust,no_run
 //! use axum::{
 //!     extract,
-//!     handler::get,
+//!     routing::get,
 //!     Router,
 //! };
 //! use uuid::Uuid;
@@ -550,7 +550,7 @@
 //! ```rust,no_run
 //! use axum::{
 //!     extract::TypedHeader,
-//!     handler::get,
+//!     routing::get,
 //!     http::header::HeaderMap,
 //!     Router,
 //! };
@@ -574,7 +574,7 @@
 //!
 //! ```rust,no_run
 //! use axum::{
-//!     handler::get,
+//!     routing::get,
 //!     http::Request,
 //!     body::Body,
 //!     Router,
@@ -601,7 +601,7 @@
 //! ```rust,no_run
 //! use axum::{
 //!     extract::Json,
-//!     handler::post,
+//!     routing::post,
 //!     Router,
 //! };
 //! use serde_json::Value;
@@ -626,7 +626,7 @@
 //! ```rust,no_run
 //! use axum::{
 //!     extract::{Json, rejection::JsonRejection},
-//!     handler::post,
+//!     routing::post,
 //!     Router,
 //! };
 //! use serde_json::Value;
@@ -680,7 +680,8 @@
 //! ```rust,no_run
 //! use axum::{
 //!     body::Body,
-//!     handler::{get, Handler},
+//!     routing::get,
+//!     handler::Handler,
 //!     http::{Request, header::{HeaderMap, HeaderName, HeaderValue}},
 //!     response::{IntoResponse, Html, Json, Headers},
 //!     Router,
@@ -819,7 +820,8 @@
 //!
 //! ```rust,no_run
 //! use axum::{
-//!     handler::{get, Handler},
+//!     handler::Handler,
+//!     routing::get,
 //!     Router,
 //! };
 //! use tower::limit::ConcurrencyLimitLayer;
@@ -842,7 +844,7 @@
 //!
 //! ```rust,no_run
 //! use axum::{
-//!     handler::{get, post},
+//!     routing::{get, post},
 //!     Router,
 //! };
 //! use tower::limit::ConcurrencyLimitLayer;
@@ -865,7 +867,7 @@
 //!
 //! ```rust,no_run
 //! use axum::{
-//!     handler::{get, post},
+//!     routing::{get, post},
 //!     Router,
 //! };
 //! use tower::limit::ConcurrencyLimitLayer;
@@ -895,7 +897,7 @@
 //! ```rust,no_run
 //! use axum::{
 //!     body::Body,
-//!     handler::get,
+//!     routing::get,
 //!     http::{Request, StatusCode},
 //!     error_handling::HandleErrorLayer,
 //!     response::IntoResponse,
@@ -945,7 +947,7 @@
 //! ```rust,no_run
 //! use axum::{
 //!     body::{Body, BoxBody},
-//!     handler::get,
+//!     routing::get,
 //!     http::{Request, Response},
 //!     error_handling::HandleErrorLayer,
 //!     Router,
@@ -1004,7 +1006,7 @@
 //! ```
 //! use axum::{
 //!     body::{Body, BoxBody},
-//!     handler::get,
+//!     routing::get,
 //!     http::{Request, Response},
 //!     Router,
 //! };
@@ -1069,7 +1071,7 @@
 //! use axum::{
 //!     AddExtensionLayer,
 //!     extract,
-//!     handler::get,
+//!     routing::get,
 //!     Router,
 //! };
 //! use std::sync::Arc;

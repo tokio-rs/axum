@@ -5,9 +5,10 @@
 //! ```
 
 use axum::{
-    handler::{get, Handler},
+    handler::Handler,
     http::StatusCode,
     response::{Html, IntoResponse},
+    routing::get,
     Router,
 };
 use std::net::SocketAddr;

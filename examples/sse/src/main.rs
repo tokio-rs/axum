@@ -7,9 +7,9 @@
 use axum::{
     error_handling::HandleErrorExt,
     extract::TypedHeader,
-    handler::get,
     http::StatusCode,
     response::sse::{Event, Sse},
+    routing::get,
     Router,
 };
 use futures::stream::{self, Stream};

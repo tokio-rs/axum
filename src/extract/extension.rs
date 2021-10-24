@@ -12,7 +12,7 @@ use std::ops::Deref;
 /// use axum::{
 ///     AddExtensionLayer,
 ///     extract::Extension,
-///     handler::get,
+///     routing::get,
 ///     Router,
 /// };
 /// use std::sync::Arc;

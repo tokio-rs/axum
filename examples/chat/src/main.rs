@@ -11,8 +11,8 @@ use axum::{
         ws::{Message, WebSocket, WebSocketUpgrade},
         Extension,
     },
-    handler::get,
     response::{Html, IntoResponse},
+    routing::get,
     AddExtensionLayer, Router,
 };
 use futures::{sink::SinkExt, stream::StreamExt};

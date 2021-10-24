@@ -22,7 +22,7 @@ use std::{
 /// ```rust,no_run
 /// use axum::{
 ///     extract::Multipart,
-///     handler::post,
+///     routing::post,
 ///     Router,
 /// };
 /// use futures::stream::StreamExt;

@@ -56,7 +56,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
   ```rust,no_run
   use axum::{
-      handler::get,
+      routing::get,
       http::StatusCode,
       error_handling::HandleErrorLayer,
       response::IntoResponse,
@@ -89,7 +89,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   use axum::{
       Router, service,
       body::Body,
-      handler::get,
+      routing::get,
       response::IntoResponse,
       http::{Request, Response},
       error_handling::HandleErrorExt, // for `.handle_error`
@@ -111,6 +111,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
       // ...
   }
   ```
+- **breaking:** Method routing for handlers have been moved from `axum::handler`
+  to `axum::routing`. So `axum::handler::get` now lives at `axum::routing::get`.
 
 [#339]: https://github.com/tokio-rs/axum/pull/339
 [#286]: https://github.com/tokio-rs/axum/pull/286

@@ -10,7 +10,8 @@
 //! ```rust,no_run
 //! use axum::{
 //!     extract::Json,
-//!     handler::{post, Handler},
+//!     routing::post,
+//!     handler::Handler,
 //!     Router,
 //! };
 //! use serde::Deserialize;
@@ -39,7 +40,7 @@
 //! use axum::{
 //!     async_trait,
 //!     extract::{FromRequest, RequestParts},
-//!     handler::get,
+//!     routing::get,
 //!     Router,
 //! };
 //! use http::{StatusCode, header::{HeaderValue, USER_AGENT}};
@@ -94,7 +95,7 @@
 //! use axum::{
 //!     extract::{self, BodyStream},
 //!     body::Body,
-//!     handler::get,
+//!     routing::get,
 //!     http::{header::HeaderMap, Request},
 //!     Router,
 //! };

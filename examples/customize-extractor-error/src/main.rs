@@ -8,8 +8,8 @@ use axum::{
     async_trait,
     extract::rejection::JsonRejection,
     extract::{FromRequest, RequestParts},
-    handler::post,
     http::StatusCode,
+    routing::post,
     BoxError, Router,
 };
 use serde::{de::DeserializeOwned, Deserialize};

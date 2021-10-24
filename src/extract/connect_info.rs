@@ -134,7 +134,7 @@ where
 mod tests {
     use super::*;
     use crate::Server;
-    use crate::{handler::get, Router};
+    use crate::{routing::get, Router};
     use std::net::{SocketAddr, TcpListener};
 
     #[tokio::test]

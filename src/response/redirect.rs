@@ -10,7 +10,7 @@ use std::convert::TryFrom;
 ///
 /// ```rust
 /// use axum::{
-///     handler::get,
+///     routing::get,
 ///     response::Redirect,
 ///     Router,
 /// };

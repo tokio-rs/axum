@@ -26,7 +26,7 @@ pin_project! {
     /// ```
     /// use axum::{
     ///     Router,
-    ///     handler::get,
+    ///     routing::get,
     ///     body::StreamBody,
     ///     response::IntoResponse,
     /// };

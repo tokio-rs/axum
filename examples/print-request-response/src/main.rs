@@ -7,8 +7,8 @@
 use axum::{
     body::{Body, BoxBody, Bytes},
     error_handling::HandleErrorLayer,
-    handler::post,
     http::{Request, Response, StatusCode},
+    routing::post,
     Router,
 };
 use std::net::SocketAddr;

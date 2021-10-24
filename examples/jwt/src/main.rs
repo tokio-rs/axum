@@ -10,9 +10,9 @@ use axum::{
     async_trait,
     body::{Bytes, Full},
     extract::{FromRequest, RequestParts, TypedHeader},
-    handler::{get, post},
     http::{Response, StatusCode},
     response::IntoResponse,
+    routing::{get, post},
     Json, Router,
 };
 use headers::{authorization::Bearer, Authorization};

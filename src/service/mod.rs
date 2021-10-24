@@ -13,7 +13,7 @@
 //! use tower_http::services::Redirect;
 //! use axum::{
 //!     body::Body,
-//!     handler::get,
+//!     routing::get,
 //!     http::Request,
 //!     Router,
 //!     service,
@@ -66,7 +66,7 @@
 //!
 //! ```rust
 //! use axum::{
-//!     handler::get,
+//!     routing::get,
 //!     Router,
 //! };
 //! use tower::ServiceBuilder;
@@ -247,7 +247,7 @@ where
 /// ```rust
 /// use axum::{
 ///     http::Request,
-///     handler::on,
+///     routing::on,
 ///     service,
 ///     Router,
 ///     routing::MethodFilter,
@@ -342,10 +342,9 @@ impl<S, F, B> OnMethod<S, F, B> {
     /// ```rust
     /// use axum::{
     ///     http::Request,
-    ///     handler::on,
     ///     service,
     ///     Router,
-    ///     routing::MethodFilter,
+    ///     routing::{MethodFilter, on},
     /// };
     /// use http::Response;
     /// use std::convert::Infallible;
@@ -445,10 +444,9 @@ impl<S, F, B> OnMethod<S, F, B> {
     /// ```rust
     /// use axum::{
     ///     http::Request,
-    ///     handler::on,
     ///     service,
     ///     Router,
-    ///     routing::MethodFilter,
+    ///     routing::{MethodFilter, on},
     /// };
     /// use http::Response;
     /// use std::convert::Infallible;

@@ -16,7 +16,7 @@ use std::ops::Deref;
 /// ```rust,no_run
 /// use axum::{
 ///     extract::Form,
-///     handler::post,
+///     routing::post,
 ///     Router,
 /// };
 /// use serde::Deserialize;

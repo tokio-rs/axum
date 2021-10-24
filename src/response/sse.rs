@@ -5,7 +5,7 @@
 //! ```
 //! use axum::{
 //!     Router,
-//!     handler::get,
+//!     routing::get,
 //!     response::sse::{Event, KeepAlive, Sse},
 //! };
 //! use std::{time::Duration, convert::Infallible};

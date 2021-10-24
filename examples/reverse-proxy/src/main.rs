@@ -9,8 +9,8 @@
 
 use axum::{
     extract::Extension,
-    handler::get,
     http::{uri::Uri, Request, Response},
+    routing::get,
     AddExtensionLayer, Router,
 };
 use hyper::{client::HttpConnector, Body};

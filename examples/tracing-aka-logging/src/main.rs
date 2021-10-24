@@ -6,9 +6,9 @@
 
 use axum::{
     body::Bytes,
-    handler::get,
     http::{HeaderMap, Request, Response},
     response::Html,
+    routing::get,
     Router,
 };
 use std::{net::SocketAddr, time::Duration};

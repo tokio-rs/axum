@@ -10,9 +10,10 @@ use axum::{
     body::Bytes,
     error_handling::HandleErrorLayer,
     extract::{ContentLengthLimit, Extension, Path},
-    handler::{delete, get, Handler},
+    handler::Handler,
     http::StatusCode,
     response::IntoResponse,
+    routing::{delete, get},
     Router,
 };
 use std::{

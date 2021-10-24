@@ -8,13 +8,13 @@ use async_session::{MemoryStore, Session, SessionStore as _};
 use axum::{
     async_trait,
     extract::{Extension, FromRequest, RequestParts},
-    handler::get,
     http::{
         self,
         header::{HeaderMap, HeaderValue},
         StatusCode,
     },
     response::IntoResponse,
+    routing::get,
     AddExtensionLayer, Router,
 };
 use serde::{Deserialize, Serialize};

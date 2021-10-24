@@ -11,7 +11,7 @@ use std::ops::Deref;
 /// ```rust,no_run
 /// use axum::{
 ///     extract::ContentLengthLimit,
-///     handler::post,
+///     routing::post,
 ///     Router,
 /// };
 ///

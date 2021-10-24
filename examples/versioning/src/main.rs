@@ -8,9 +8,9 @@ use axum::{
     async_trait,
     body::{Bytes, Full},
     extract::{FromRequest, Path, RequestParts},
-    handler::get,
     http::{Response, StatusCode},
     response::IntoResponse,
+    routing::get,
     Router,
 };
 use std::collections::HashMap;
