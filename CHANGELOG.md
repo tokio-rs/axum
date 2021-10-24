@@ -7,7 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- **fixed:** Fix regressions in compile times introduced by Rust 1.56
+- **fixed:** All known compile time issues are resolved, including those with
+  `boxed` and those introduced by Rust 1.56 ([#404])
 - Big internal refactoring of routing leading to several improvements ([#363])
   - **added:** Wildcard routes like `.route("/api/users/*rest", service)` are now supported.
   - **fixed:** The order routes are added in no longer matters.
@@ -18,7 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     will cause a panic when constructing the router. This might be fixed in the future.
 - **fixed:** Expand accepted content types for JSON requests ([#378])
 - **breaking:** The router's type is now always `Router` regardless of how many routes or
-  middleware are applies.
+  middleware are applies ([#404])
 
   This means router types are all always nameable:
 
@@ -31,9 +32,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   }
   ```
 - **breaking:** `Route::boxed` and `BoxRoute` have been removed as they're no longer
-  necessary
+  necessary ([#404])
 - **breaking:** `Route`, `Nested`, `Or` types are now private. They no longer had to be
-  public because `Router` is internally boxed
+  public because `Router` is internally boxed ([#404])
 - **breaking:** Automatically do percent decoding in `extract::Path`
   ([#272])
 - **breaking:** Added feature flags for HTTP1 and JSON. This enables removing a
@@ -118,6 +119,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#363]: https://github.com/tokio-rs/axum/pull/363
 [#396]: https://github.com/tokio-rs/axum/pull/396
 [#402]: https://github.com/tokio-rs/axum/pull/402
+[#404]: https://github.com/tokio-rs/axum/pull/404
 
 # 0.2.8 (07. October, 2021)
 
