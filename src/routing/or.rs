@@ -20,7 +20,7 @@ use tower_service::Service;
 ///
 /// [`Router::or`]: super::Router::or
 #[derive(Debug, Clone, Copy)]
-pub struct Or<A, B> {
+pub(crate) struct Or<A, B> {
     pub(super) first: A,
     pub(super) second: B,
 }
@@ -62,7 +62,7 @@ where
 
 pin_project! {
     /// Response future for [`Or`].
-    pub struct ResponseFuture<A, B, ReqBody>
+    pub(crate) struct ResponseFuture<A, B, ReqBody>
     where
         A: Service<Request<ReqBody>>,
         B: Service<Request<ReqBody>>,

@@ -2,14 +2,12 @@
 
 use crate::{
     body::BoxBody,
-    clone_box_service::CloneBoxService,
     routing::{FromEmptyRouter, UriStack},
 };
 use http::{Request, Response};
 use pin_project_lite::pin_project;
 use std::{
     convert::Infallible,
-    fmt,
     future::Future,
     pin::Pin,
     task::{Context, Poll},
@@ -17,43 +15,22 @@ use std::{
 use tower::util::Oneshot;
 use tower_service::Service;
 
-pub use super::or::ResponseFuture as OrResponseFuture;
-
 opaque_future! {
     /// Response future for [`EmptyRouter`](super::EmptyRouter).
     pub type EmptyRouterFuture<E> =
         std::future::Ready<Result<Response<BoxBody>, E>>;
 }
 
-pin_project! {
-    /// The response future for [`BoxRoute`](super::BoxRoute).
-    pub struct BoxRouteFuture<B> {
-        #[pin]
-        pub(super) inner: Oneshot<
-            CloneBoxService<Request<B>, Response<BoxBody>, Infallible>,
-            Request<B>,
-        >,
-    }
-}
-
-impl<B> Future for BoxRouteFuture<B> {
-    type Output = Result<Response<BoxBody>, Infallible>;
-
-    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        self.project().inner.poll(cx)
-    }
-}
-
-impl<B> fmt::Debug for BoxRouteFuture<B> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("BoxRouteFuture").finish()
-    }
+opaque_future! {
+    /// Response future for [`Routes`](super::Routes).
+    pub type RoutesFuture =
+        futures_util::future::BoxFuture<'static, Result<Response<BoxBody>, Infallible>>;
 }
 
 pin_project! {
     /// The response future for [`Route`](super::Route).
     #[derive(Debug)]
-    pub struct RouteFuture<S, F, B>
+    pub(crate) struct RouteFuture<S, F, B>
     where
         S: Service<Request<B>>,
         F: Service<Request<B>>
@@ -119,7 +96,7 @@ where
 pin_project! {
     /// The response future for [`Nested`](super::Nested).
     #[derive(Debug)]
-    pub struct NestedFuture<S, F, B>
+    pub(crate) struct NestedFuture<S, F, B>
     where
         S: Service<Request<B>>,
         F: Service<Request<B>>

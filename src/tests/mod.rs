@@ -25,8 +25,8 @@ use std::{
     task::{Context, Poll},
     time::Duration,
 };
-use tower::service_fn;
 use tower::timeout::TimeoutLayer;
+use tower::{service_fn, ServiceBuilder};
 use tower_service::Service;
 
 pub(crate) use helpers::*;
@@ -251,8 +251,7 @@ async fn boxing() {
                 "hi from POST"
             }),
         )
-        .layer(tower_http::compression::CompressionLayer::new())
-        .boxed();
+        .layer(tower_http::compression::CompressionLayer::new());
 
     let client = TestClient::new(app);
 
@@ -532,10 +531,13 @@ async fn wildcard_sees_whole_url() {
 async fn middleware_applies_to_routes_above() {
     let app = Router::new()
         .route("/one", get(std::future::pending::<()>))
-        .layer(TimeoutLayer::new(Duration::new(0, 0)))
-        .layer(HandleErrorLayer::new(|_: BoxError| {
-            StatusCode::REQUEST_TIMEOUT
-        }))
+        .layer(
+            ServiceBuilder::new()
+                .layer(HandleErrorLayer::new(|_: BoxError| {
+                    StatusCode::REQUEST_TIMEOUT
+                }))
+                .layer(TimeoutLayer::new(Duration::new(0, 0))),
+        )
         .route("/two", get(|| async {}));
 
     let client = TestClient::new(app);

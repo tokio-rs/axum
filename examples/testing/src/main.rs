@@ -6,7 +6,6 @@
 
 use axum::{
     handler::{get, post},
-    routing::BoxRoute,
     Json, Router,
 };
 use tower_http::trace::TraceLayer;
@@ -32,7 +31,7 @@ async fn main() {
 /// Having a function that produces our app makes it easy to call it from tests
 /// without having to create an HTTP server.
 #[allow(dead_code)]
-fn app() -> Router<BoxRoute> {
+fn app() -> Router {
     Router::new()
         .route("/", get(|| async { "Hello, World!" }))
         .route(
@@ -43,7 +42,6 @@ fn app() -> Router<BoxRoute> {
         )
         // We can still add middleware
         .layer(TraceLayer::new_for_http())
-        .boxed()
 }
 
 #[cfg(test)]
@@ -59,7 +57,7 @@ mod tests {
     async fn hello_world() {
         let app = app();
 
-        // `BoxRoute<Body>` implements `tower::Service<Request<Body>>` so we can
+        // `Router` implements `tower::Service<Request<Body>>` so we can
         // call it like any tower service, no need to run an HTTP server.
         let response = app
             .oneshot(Request::builder().uri("/").body(Body::empty()).unwrap())

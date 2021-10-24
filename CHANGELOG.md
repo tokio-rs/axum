@@ -7,20 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+- **fixed:** Fix regressions in compile times introduced by Rust 1.56
 - Big internal refactoring of routing leading to several improvements ([#363])
-  - Wildcard routes like `.route("/api/users/*rest", service)` are now supported.
-  - The order routes are added in no longer matters.
-  - Adding a conflicting route will now cause a panic instead of silently making
+  - **added:** Wildcard routes like `.route("/api/users/*rest", service)` are now supported.
+  - **fixed:** The order routes are added in no longer matters.
+  - **fixed:** Adding a conflicting route will now cause a panic instead of silently making
     a route unreachable.
-  - Route matching is faster as number of routes increase.
+  - **fixed:** Route matching is faster as number of routes increase.
   - **breaking:** The routes `/foo` and `/:key` are considered to overlap and
     will cause a panic when constructing the router. This might be fixed in the future.
-- Improve performance of `BoxRoute` ([#339])
-- Expand accepted content types for JSON requests ([#378])
+- **fixed:** Expand accepted content types for JSON requests ([#378])
+- **breaking:** The router's type is now always `Router` regardless of how many routes or
+  middleware are applies.
+
+  This means router types are all always nameable:
+
+  ```rust
+  fn my_routes() -> Router {
+      Router::new().route(
+          "/users",
+          post(|| async { "Hello, World!" }),
+      )
+  }
+  ```
+- **breaking:** `Route::boxed` and `BoxRoute` have been removed as they're no longer
+  necessary
+- **breaking:** `Route`, `Nested`, `Or` types are now private. They no longer had to be
+  public because `Router` is internally boxed
 - **breaking:** Automatically do percent decoding in `extract::Path`
   ([#272])
-- **breaking:** `Router::boxed` now the inner service to implement `Clone` and
-  `Sync` in addition to the previous trait bounds ([#339])
 - **breaking:** Added feature flags for HTTP1 and JSON. This enables removing a
   few dependencies if your app only uses HTTP2 or doesn't use JSON. Its only a
   breaking change if you depend on axum with `default_features = false`. ([#286])

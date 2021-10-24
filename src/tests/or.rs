@@ -135,8 +135,11 @@ async fn layer_and_handle_error() {
     let one = Router::new().route("/foo", get(|| async {}));
     let two = Router::new()
         .route("/timeout", get(futures::future::pending::<()>))
-        .layer(TimeoutLayer::new(Duration::from_millis(10)))
-        .layer(HandleErrorLayer::new(|_| StatusCode::REQUEST_TIMEOUT));
+        .layer(
+            ServiceBuilder::new()
+                .layer(HandleErrorLayer::new(|_| StatusCode::REQUEST_TIMEOUT))
+                .layer(TimeoutLayer::new(Duration::from_millis(10))),
+        );
     let app = one.or(two);
 
     let client = TestClient::new(app);
@@ -159,8 +162,8 @@ async fn nesting() {
 
 #[tokio::test]
 async fn boxed() {
-    let one = Router::new().route("/foo", get(|| async {})).boxed();
-    let two = Router::new().route("/bar", get(|| async {})).boxed();
+    let one = Router::new().route("/foo", get(|| async {}));
+    let two = Router::new().route("/bar", get(|| async {}));
     let app = one.or(two);
 
     let client = TestClient::new(app);
