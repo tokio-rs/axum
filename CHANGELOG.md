@@ -13,8 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Adding a conflicting route will now cause a panic instead of silently making
     a route unreachable.
   - Route matching is faster as number of routes increase.
-  - The routes `/foo` and `/:key` are considered to overlap and will cause a
-    panic when constructing the router. This might be fixed in the future.
+  - **breaking:** The routes `/foo` and `/:key` are considered to overlap and
+    will cause a panic when constructing the router. This might be fixed in the future.
 - Improve performance of `BoxRoute` ([#339])
 - Expand accepted content types for JSON requests ([#378])
 - **breaking:** Automatically do percent decoding in `extract::Path`
@@ -28,6 +28,73 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   thus wasn't necessary
 - **breaking:** Change `Connected::connect_info` to return `Self` and remove
   the associated type `ConnectInfo` ([#396])
+- **breaking:** Simplify error handling model ([#402]):
+  - All services part of the router are now required to be infallible.
+  - Error handling utilities have been moved to an `error_handling` module.
+  - `Router::check_infallible` has been removed since routers are always
+    infallible with the error handling changes.
+  - Error handling closures must now handle all errors and thus always return
+    something that implements `IntoResponse`.
+
+  With these changes handling errors from fallible middleware is done like so:
+
+  ```rust,no_run
+  use axum::{
+      handler::get,
+      http::StatusCode,
+      error_handling::HandleErrorLayer,
+      response::IntoResponse,
+      Router, BoxError,
+  };
+  use tower::ServiceBuilder;
+  use std::time::Duration;
+
+  let middleware_stack = ServiceBuilder::new()
+      // Handle errors from middleware
+      //
+      // This middleware most be added above any fallible
+      // ones if you're using `ServiceBuilder`, due to how ordering works
+      .layer(HandleErrorLayer::new(handle_error))
+      // Return an error after 30 seconds
+      .timeout(Duration::from_secs(30));
+
+  let app = Router::new()
+      .route("/", get(|| async { /* ... */ }))
+      .layer(middleware_stack);
+
+  fn handle_error(_error: BoxError) -> impl IntoResponse {
+      StatusCode::REQUEST_TIMEOUT
+  }
+  ```
+
+  And handling errors from fallible leaf services is done like so:
+
+  ```rust
+  use axum::{
+      Router, service,
+      body::Body,
+      handler::get,
+      response::IntoResponse,
+      http::{Request, Response},
+      error_handling::HandleErrorExt, // for `.handle_error`
+  };
+  use std::{io, convert::Infallible};
+  use tower::service_fn;
+
+  let app = Router::new()
+      .route(
+          "/",
+          service::get(service_fn(|_req: Request<Body>| async {
+              let contents = tokio::fs::read_to_string("some_file").await?;
+              Ok::<_, io::Error>(Response::new(Body::from(contents)))
+          }))
+          .handle_error(handle_io_error),
+      );
+
+  fn handle_io_error(error: io::Error) -> impl IntoResponse {
+      // ...
+  }
+  ```
 
 [#339]: https://github.com/tokio-rs/axum/pull/339
 [#286]: https://github.com/tokio-rs/axum/pull/286
@@ -35,6 +102,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#378]: https://github.com/tokio-rs/axum/pull/378
 [#363]: https://github.com/tokio-rs/axum/pull/363
 [#396]: https://github.com/tokio-rs/axum/pull/396
+[#402]: https://github.com/tokio-rs/axum/pull/402
 
 # 0.2.8 (07. October, 2021)
 

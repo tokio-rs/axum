@@ -1,6 +1,6 @@
 use super::*;
 use std::future::{pending, ready};
-use tower::{timeout::TimeoutLayer, MakeService};
+use tower::{timeout::TimeoutLayer, ServiceBuilder};
 
 async fn unit() {}
 
@@ -29,23 +29,17 @@ impl<R> Service<R> for Svc {
     }
 }
 
-fn check_make_svc<M, R, T, E>(_make_svc: M)
-where
-    M: MakeService<(), R, Response = T, Error = E>,
-{
-}
-
-fn handle_error<E>(_: E) -> Result<StatusCode, Infallible> {
-    Ok(StatusCode::INTERNAL_SERVER_ERROR)
-}
-
 #[tokio::test]
 async fn handler() {
     let app = Router::new().route(
         "/",
-        get(forever
-            .layer(timeout())
-            .handle_error(|_: BoxError| Ok::<_, Infallible>(StatusCode::REQUEST_TIMEOUT))),
+        get(forever.layer(
+            ServiceBuilder::new()
+                .layer(HandleErrorLayer::new(|_: BoxError| {
+                    StatusCode::REQUEST_TIMEOUT
+                }))
+                .layer(timeout()),
+        )),
     );
 
     let client = TestClient::new(app);
@@ -58,9 +52,13 @@ async fn handler() {
 async fn handler_multiple_methods_first() {
     let app = Router::new().route(
         "/",
-        get(forever
-            .layer(timeout())
-            .handle_error(|_: BoxError| Ok::<_, Infallible>(StatusCode::REQUEST_TIMEOUT)))
+        get(forever.layer(
+            ServiceBuilder::new()
+                .layer(HandleErrorLayer::new(|_: BoxError| {
+                    StatusCode::REQUEST_TIMEOUT
+                }))
+                .layer(timeout()),
+        ))
         .post(unit),
     );
 
@@ -76,9 +74,13 @@ async fn handler_multiple_methods_middle() {
         "/",
         delete(unit)
             .get(
-                forever
-                    .layer(timeout())
-                    .handle_error(|_: BoxError| Ok::<_, Infallible>(StatusCode::REQUEST_TIMEOUT)),
+                forever.layer(
+                    ServiceBuilder::new()
+                        .layer(HandleErrorLayer::new(|_: BoxError| {
+                            StatusCode::REQUEST_TIMEOUT
+                        }))
+                        .layer(timeout()),
+                ),
             )
             .post(unit),
     );
@@ -94,9 +96,13 @@ async fn handler_multiple_methods_last() {
     let app = Router::new().route(
         "/",
         delete(unit).get(
-            forever
-                .layer(timeout())
-                .handle_error(|_: BoxError| Ok::<_, Infallible>(StatusCode::REQUEST_TIMEOUT)),
+            forever.layer(
+                ServiceBuilder::new()
+                    .layer(HandleErrorLayer::new(|_: BoxError| {
+                        StatusCode::REQUEST_TIMEOUT
+                    }))
+                    .layer(timeout()),
+            ),
         ),
     );
 
@@ -104,83 +110,4 @@ async fn handler_multiple_methods_last() {
 
     let res = client.get("/").send().await;
     assert_eq!(res.status(), StatusCode::REQUEST_TIMEOUT);
-}
-
-#[test]
-fn service_propagates_errors() {
-    let app = Router::new().route("/echo", service::post::<_, Body>(Svc));
-
-    check_make_svc::<_, _, _, hyper::Error>(app.into_make_service());
-}
-
-#[test]
-fn service_nested_propagates_errors() {
-    let app = Router::new().route(
-        "/echo",
-        Router::new().nest("/foo", service::post::<_, Body>(Svc)),
-    );
-
-    check_make_svc::<_, _, _, hyper::Error>(app.into_make_service());
-}
-
-#[test]
-fn service_handle_on_method() {
-    let app = Router::new().route(
-        "/echo",
-        service::get::<_, Body>(Svc).handle_error(handle_error::<hyper::Error>),
-    );
-
-    check_make_svc::<_, _, _, Infallible>(app.into_make_service());
-}
-
-#[test]
-fn service_handle_on_method_multiple() {
-    let app = Router::new().route(
-        "/echo",
-        service::get::<_, Body>(Svc)
-            .post(Svc)
-            .handle_error(handle_error::<hyper::Error>),
-    );
-
-    check_make_svc::<_, _, _, Infallible>(app.into_make_service());
-}
-
-#[test]
-fn service_handle_on_router() {
-    let app = Router::new()
-        .route("/echo", service::get::<_, Body>(Svc))
-        .handle_error(handle_error::<hyper::Error>);
-
-    check_make_svc::<_, _, _, Infallible>(app.into_make_service());
-}
-
-#[test]
-fn service_handle_on_router_still_impls_routing_dsl() {
-    let app = Router::new()
-        .route("/echo", service::get::<_, Body>(Svc))
-        .handle_error(handle_error::<hyper::Error>)
-        .route("/", get(unit));
-
-    check_make_svc::<_, _, _, Infallible>(app.into_make_service());
-}
-
-#[test]
-fn layered() {
-    let app = Router::new()
-        .route("/echo", get::<_, Body, _>(unit))
-        .layer(timeout())
-        .handle_error(handle_error::<BoxError>);
-
-    check_make_svc::<_, _, _, Infallible>(app.into_make_service());
-}
-
-#[tokio::test] // async because of `.boxed()`
-async fn layered_boxed() {
-    let app = Router::new()
-        .route("/echo", get::<_, Body, _>(unit))
-        .layer(timeout())
-        .boxed()
-        .handle_error(handle_error::<BoxError>);
-
-    check_make_svc::<_, _, _, Infallible>(app.into_make_service());
 }

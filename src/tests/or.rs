@@ -1,5 +1,5 @@
 use super::*;
-use crate::{extract::OriginalUri, response::IntoResponse, Json};
+use crate::{error_handling::HandleErrorLayer, extract::OriginalUri, response::IntoResponse, Json};
 use serde_json::{json, Value};
 use tower::{limit::ConcurrencyLimitLayer, timeout::TimeoutLayer};
 
@@ -136,7 +136,7 @@ async fn layer_and_handle_error() {
     let two = Router::new()
         .route("/timeout", get(futures::future::pending::<()>))
         .layer(TimeoutLayer::new(Duration::from_millis(10)))
-        .handle_error(|_| Ok(StatusCode::REQUEST_TIMEOUT));
+        .layer(HandleErrorLayer::new(|_| StatusCode::REQUEST_TIMEOUT));
     let app = one.or(two);
 
     let client = TestClient::new(app);

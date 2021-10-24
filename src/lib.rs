@@ -7,7 +7,6 @@
 //! - [Handlers](#handlers)
 //!     - [Debugging handler type errors](#debugging-handler-type-errors)
 //! - [Routing](#routing)
-//!     - [Matching multiple methods](#matching-multiple-methods)
 //!     - [Routing to any `Service`](#routing-to-any-service)
 //!         - [Routing to fallible services](#routing-to-fallible-services)
 //!     - [Wildcard routes](#wildcard-routes)
@@ -18,10 +17,10 @@
 //!     - [Optional extractors](#optional-extractors)
 //!     - [Customizing extractor responses](#customizing-extractor-responses)
 //! - [Building responses](#building-responses)
+//! - [Error handling](#error-handling)
 //! - [Applying middleware](#applying-middleware)
 //!     - [To individual handlers](#to-individual-handlers)
 //!     - [To groups of routes](#to-groups-of-routes)
-//!     - [Error handling](#error-handling)
 //!     - [Applying multiple middleware](#applying-multiple-middleware)
 //!     - [Commonly used middleware](#commonly-used-middleware)
 //!     - [Writing your own middleware](#writing-your-own-middleware)
@@ -186,14 +185,15 @@
 //!
 //! ```rust,no_run
 //! use axum::{
-//!     body::Body,
-//!     http::Request,
 //!     Router,
-//!     service
+//!     service,
+//!     body::Body,
+//!     error_handling::HandleErrorExt,
+//!     http::{Request, StatusCode},
 //! };
 //! use tower_http::services::ServeFile;
 //! use http::Response;
-//! use std::convert::Infallible;
+//! use std::{convert::Infallible, io};
 //! use tower::service_fn;
 //!
 //! let app = Router::new()
@@ -205,7 +205,7 @@
 //!         // to have the response body mapped
 //!         service::any(service_fn(|_: Request<Body>| async {
 //!             let res = Response::new(Body::from("Hi from `GET /`"));
-//!             Ok(res)
+//!             Ok::<_, Infallible>(res)
 //!         }))
 //!     )
 //!     .route(
@@ -216,13 +216,20 @@
 //!             let body = Body::from(format!("Hi from `{} /foo`", req.method()));
 //!             let body = axum::body::box_body(body);
 //!             let res = Response::new(body);
-//!             Ok(res)
+//!             Ok::<_, Infallible>(res)
 //!         })
 //!     )
 //!     .route(
 //!         // GET `/static/Cargo.toml` goes to a service from tower-http
 //!         "/static/Cargo.toml",
 //!         service::get(ServeFile::new("Cargo.toml"))
+//!             // though we must handle any potential errors
+//!             .handle_error(|error: io::Error| {
+//!                 (
+//!                     StatusCode::INTERNAL_SERVER_ERROR,
+//!                     format!("Unhandled internal error: {}", error),
+//!                 )
+//!             })
 //!     );
 //! # async {
 //! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
@@ -270,12 +277,12 @@
 //!
 //! ```
 //! use axum::{
-//!     Router,
-//!     service,
-//!     handler::get,
-//!     http::{Request, Response},
-//!     response::IntoResponse,
+//!     Router, service,
 //!     body::Body,
+//!     handler::get,
+//!     response::IntoResponse,
+//!     http::{Request, Response},
+//!     error_handling::HandleErrorExt,
 //! };
 //! use std::{io, convert::Infallible};
 //! use tower::service_fn;
@@ -293,8 +300,7 @@
 //!         .handle_error(handle_io_error),
 //!     );
 //!
-//! fn handle_io_error(error: io::Error) -> Result<impl IntoResponse, Infallible> {
-//!     # Ok(())
+//! fn handle_io_error(error: io::Error) -> impl IntoResponse {
 //!     // ...
 //! }
 //! # async {
@@ -664,7 +670,7 @@
 //! 1. Use `Result<T, T::Rejection>` as your extractor like shown in ["Optional
 //!    extractors"](#optional-extractors). This works well if you're only using
 //!    the extractor in a single handler.
-//! 2. Create your own extractor that in its [`FromRequest`] implementing calls
+//! 2. Create your own extractor that in its [`FromRequest`] implemention calls
 //!    one of axum's built in extractors but returns a different response for
 //!    rejections. See the [customize-extractor-error] example for more details.
 //!
@@ -781,6 +787,26 @@
 //! # };
 //! ```
 //!
+//! # Error handling
+//!
+//! In the context of axum an "error" specifically means if a [`Service`]'s
+//! response future resolves to `Err(Service::Error)`. That means async handler
+//! functions can _never_ fail since they always produce a response and their
+//! `Service::Error` type is [`Infallible`]. Returning statuses like 404 or 500
+//! are _not_ errors.
+//!
+//! axum works this way because hyper will close the connection, without sending
+//! a response, if an error is encountered. This is not desireable so axum makes
+//! it impossible to forget to handle errors.
+//!
+//! Sometimes you need to route to fallible services or apply fallible
+//! middleware in which case you need to handle the errors. That can be done
+//! using things from [`error_handling`].
+//!
+//! You can find examples here:
+//! - [Routing to fallible services](#routing-to-fallible-services)
+//! - [Applying fallible middleware](#applying-multiple-middleware)
+//!
 //! # Applying middleware
 //!
 //! axum is designed to take full advantage of the tower and tower-http
@@ -864,69 +890,6 @@
 //! # };
 //! ```
 //!
-//! ## Error handling
-//!
-//! Handlers created from async functions must always produce a response, even
-//! when returning a `Result<T, E>` the error type must implement
-//! [`IntoResponse`]. In practice this makes error handling very predictable and
-//! easier to reason about.
-//!
-//! However when applying middleware, or embedding other tower services, errors
-//! might happen. For example [`Timeout`] will return an error if the timeout
-//! elapses. By default these errors will be propagated all the way up to hyper
-//! where the connection will be closed. If that isn't desirable you can call
-//! [`handle_error`](handler::Layered::handle_error) to handle errors from
-//! adding a middleware to a handler:
-//!
-//! ```rust,no_run
-//! use axum::{
-//!     handler::{get, Handler},
-//!     Router,
-//! };
-//! use tower::{
-//!     BoxError, timeout::{TimeoutLayer, error::Elapsed},
-//! };
-//! use std::{borrow::Cow, time::Duration, convert::Infallible};
-//! use http::StatusCode;
-//!
-//! let app = Router::new()
-//!     .route(
-//!         "/",
-//!         get(handle
-//!             .layer(TimeoutLayer::new(Duration::from_secs(30)))
-//!             // `Timeout` uses `BoxError` as the error type
-//!             .handle_error(|error: BoxError| {
-//!                 // Check if the actual error type is `Elapsed` which
-//!                 // `Timeout` returns
-//!                 if error.is::<Elapsed>() {
-//!                     return Ok::<_, Infallible>((
-//!                         StatusCode::REQUEST_TIMEOUT,
-//!                         "Request took too long".into(),
-//!                     ));
-//!                 }
-//!
-//!                 // If we encounter some error we don't handle return a generic
-//!                 // error
-//!                 return Ok::<_, Infallible>((
-//!                     StatusCode::INTERNAL_SERVER_ERROR,
-//!                     // `Cow` lets us return either `&str` or `String`
-//!                     Cow::from(format!("Unhandled internal error: {}", error)),
-//!                 ));
-//!             })),
-//!     );
-//!
-//! async fn handle() {}
-//! # async {
-//! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-//! # };
-//! ```
-//!
-//! The closure passed to [`handle_error`](handler::Layered::handle_error) must
-//! return `Result<T, E>` where `T` implements
-//! [`IntoResponse`](response::IntoResponse).
-//!
-//! See [`routing::Router::handle_error`] for more details.
-//!
 //! ## Applying multiple middleware
 //!
 //! [`tower::ServiceBuilder`] can be used to combine multiple middleware:
@@ -935,14 +898,21 @@
 //! use axum::{
 //!     body::Body,
 //!     handler::get,
-//!     http::Request,
-//!     Router,
+//!     http::{Request, StatusCode},
+//!     error_handling::HandleErrorLayer,
+//!     response::IntoResponse,
+//!     Router, BoxError,
 //! };
 //! use tower::ServiceBuilder;
 //! use tower_http::compression::CompressionLayer;
 //! use std::{borrow::Cow, time::Duration};
 //!
 //! let middleware_stack = ServiceBuilder::new()
+//!     // Handle errors from middleware
+//!     //
+//!     // This middleware most be added above any fallible
+//!     // ones if you're using `ServiceBuilder`, due to how ordering works
+//!     .layer(HandleErrorLayer::new(handle_error))
 //!     // Return an error after 30 seconds
 //!     .timeout(Duration::from_secs(30))
 //!     // Shed load if we're receiving too many requests
@@ -950,16 +920,24 @@
 //!     // Process at most 100 requests concurrently
 //!     .concurrency_limit(100)
 //!     // Compress response bodies
-//!     .layer(CompressionLayer::new())
-//!     .into_inner();
+//!     .layer(CompressionLayer::new());
 //!
 //! let app = Router::new()
 //!     .route("/", get(|_: Request<Body>| async { /* ... */ }))
 //!     .layer(middleware_stack);
+//!
+//! fn handle_error(error: BoxError) -> impl IntoResponse {
+//!     (
+//!         StatusCode::INTERNAL_SERVER_ERROR,
+//!         format!("Something went wrong: {}", error),
+//!     )
+//! }
 //! # async {
 //! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 //! # };
 //! ```
+//!
+//! See [Error handling](#error-handling) for more details on general error handling in axum.
 //!
 //! ## Commonly used middleware
 //!
@@ -971,6 +949,7 @@
 //!     body::{Body, BoxBody},
 //!     handler::get,
 //!     http::{Request, Response},
+//!     error_handling::HandleErrorLayer,
 //!     Router,
 //! };
 //! use tower::{
@@ -980,15 +959,23 @@
 //! };
 //! use std::convert::Infallible;
 //! use tower_http::trace::TraceLayer;
+//! #
+//! # fn handle_error<T>(error: T) -> axum::http::StatusCode {
+//! #     axum::http::StatusCode::INTERNAL_SERVER_ERROR
+//! # }
 //!
 //! let middleware_stack = ServiceBuilder::new()
+//!     // Handle errors from middleware
+//!     //
+//!     // This middleware most be added above any fallible
+//!     // ones if you're using `ServiceBuilder`, due to how ordering works
+//!     .layer(HandleErrorLayer::new(handle_error))
 //!     // `TraceLayer` adds high level tracing and logging
 //!     .layer(TraceLayer::new_for_http())
 //!     // `AsyncFilterLayer` lets you asynchronously transform the request
 //!     .layer(AsyncFilterLayer::new(map_request))
 //!     // `AndThenLayer` lets you asynchronously transform the response
-//!     .layer(AndThenLayer::new(map_response))
-//!     .into_inner();
+//!     .layer(AndThenLayer::new(map_response));
 //!
 //! async fn map_request(req: Request<Body>) -> Result<Request<Body>, Infallible> {
 //!     Ok(req)
@@ -1009,6 +996,8 @@
 //! Additionally axum provides [`extract::extractor_middleware()`] for converting any extractor into
 //! a middleware. Among other things, this can be useful for doing authorization. See
 //! [`extract::extractor_middleware()`] for more details.
+//!
+//! See [Error handling](#error-handling) for more details on general error handling in axum.
 //!
 //! ## Writing your own middleware
 //!
@@ -1166,7 +1155,7 @@
 //! [`Service`]: tower::Service
 //! [`Service::poll_ready`]: tower::Service::poll_ready
 //! [`tower::Service`]: tower::Service
-//! [`handle_error`]: routing::Router::handle_error
+//! [`handle_error`]: error_handling::HandleErrorExt::handle_error
 //! [tower-guides]: https://github.com/tower-rs/tower/tree/master/guides
 //! [`Uuid`]: https://docs.rs/uuid/latest/uuid/
 //! [`FromRequest`]: crate::extract::FromRequest
@@ -1176,6 +1165,7 @@
 //! [axum-debug]: https://docs.rs/axum-debug
 //! [`debug_handler`]: https://docs.rs/axum-debug/latest/axum_debug/attr.debug_handler.html
 //! [`Handler`]: crate::handler::Handler
+//! [`Infallible`]: std::convert::Infallible
 
 #![warn(
     clippy::all,
@@ -1227,6 +1217,7 @@ mod json;
 mod util;
 
 pub mod body;
+pub mod error_handling;
 pub mod extract;
 pub mod handler;
 pub mod response;

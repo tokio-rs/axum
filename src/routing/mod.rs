@@ -8,7 +8,6 @@ use crate::{
         connect_info::{Connected, IntoMakeServiceWithConnectInfo},
         OriginalUri,
     },
-    service::HandleError,
     util::{ByteStr, PercentDecodedByteStr},
     BoxError,
 };
@@ -64,7 +63,7 @@ enum MaybeSharedNode {
     Shared(Arc<Node<RouteId>>),
 }
 
-impl<E> Router<EmptyRouter<E>> {
+impl Router<EmptyRouter> {
     /// Create a new `Router`.
     ///
     /// Unless you add additional routes this will respond to `404 Not Found` to
@@ -77,7 +76,7 @@ impl<E> Router<EmptyRouter<E>> {
     }
 }
 
-impl<E> Default for Router<EmptyRouter<E>> {
+impl Default for Router<EmptyRouter> {
     fn default() -> Self {
         Self::new()
     }
@@ -176,7 +175,10 @@ impl<S> Router<S> {
     /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
     /// # };
     /// ```
-    pub fn route<T>(mut self, path: &str, svc: T) -> Router<Route<T, S>> {
+    pub fn route<T, B>(mut self, path: &str, svc: T) -> Router<Route<T, S>>
+    where
+        T: Service<Request<B>, Error = Infallible>,
+    {
         let id = RouteId::next();
 
         if let Err(err) = self.update_node(|node| node.insert(path, id)) {
@@ -262,11 +264,20 @@ impl<S> Router<S> {
     /// use axum::{
     ///     Router,
     ///     service::get,
+    ///     error_handling::HandleErrorExt,
+    ///     http::StatusCode,
     /// };
+    /// use std::{io, convert::Infallible};
     /// use tower_http::services::ServeDir;
     ///
     /// // Serves files inside the `public` directory at `GET /public/*`
-    /// let serve_dir_service = ServeDir::new("public");
+    /// let serve_dir_service = ServeDir::new("public")
+    ///     .handle_error(|error: io::Error| {
+    ///         (
+    ///             StatusCode::INTERNAL_SERVER_ERROR,
+    ///             format!("Unhandled internal error: {}", error),
+    ///         )
+    ///     });
     ///
     /// let app = Router::new().nest("/public", get(serve_dir_service));
     /// # async {
@@ -305,7 +316,10 @@ impl<S> Router<S> {
     /// for more details.
     ///
     /// [`OriginalUri`]: crate::extract::OriginalUri
-    pub fn nest<T>(mut self, path: &str, svc: T) -> Router<Nested<T, S>> {
+    pub fn nest<T, B>(mut self, path: &str, svc: T) -> Router<Nested<T, S>>
+    where
+        T: Service<Request<B>, Error = Infallible>,
+    {
         let id = RouteId::next();
 
         if path.contains('*') {
@@ -361,10 +375,13 @@ impl<S> Router<S> {
     ///
     /// It also helps with compile times when you have a very large number of
     /// routes.
-    pub fn boxed<ReqBody, ResBody>(self) -> Router<BoxRoute<ReqBody, S::Error>>
+    pub fn boxed<ReqBody, ResBody>(self) -> Router<BoxRoute<ReqBody>>
     where
-        S: Service<Request<ReqBody>, Response = Response<ResBody>> + Clone + Send + Sync + 'static,
-        S::Error: Into<BoxError> + Send,
+        S: Service<Request<ReqBody>, Response = Response<ResBody>, Error = Infallible>
+            + Clone
+            + Send
+            + Sync
+            + 'static,
         S::Future: Send,
         ReqBody: Send + 'static,
         ResBody: http_body::Body<Data = Bytes> + Send + Sync + 'static,
@@ -374,8 +391,7 @@ impl<S> Router<S> {
             ServiceBuilder::new()
                 .layer_fn(BoxRoute)
                 .layer_fn(CloneBoxService::new)
-                .layer(MapResponseBodyLayer::new(box_body))
-                .into_inner(),
+                .layer(MapResponseBodyLayer::new(box_body)),
         )
     }
 
@@ -601,100 +617,19 @@ impl<S> Router<S> {
     /// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
     /// # };
     /// ```
-    pub fn or<S2>(self, other: S2) -> Router<Or<S, S2>> {
+    pub fn or<T, B>(self, other: T) -> Router<Or<S, T>>
+    where
+        T: Service<Request<B>, Error = Infallible>,
+    {
         self.map(|first| Or {
             first,
             second: other,
         })
     }
 
-    /// Handle errors services in this router might produce, by mapping them to
-    /// responses.
-    ///
-    /// Unhandled errors will close the connection without sending a response.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// use axum::{
-    ///     handler::get,
-    ///     http::StatusCode,
-    ///     Router,
-    /// };
-    /// use tower::{BoxError, timeout::TimeoutLayer};
-    /// use std::{time::Duration, convert::Infallible};
-    ///
-    /// // This router can never fail, since handlers can never fail.
-    /// let app = Router::new().route("/", get(|| async {}));
-    ///
-    /// // Now the router can fail since the `tower::timeout::Timeout`
-    /// // middleware will return an error if the timeout elapses.
-    /// let app = app.layer(TimeoutLayer::new(Duration::from_secs(10)));
-    ///
-    /// // With `handle_error` we can handle errors `Timeout` might produce.
-    /// // Our router now cannot fail, that is its error type is `Infallible`.
-    /// let app = app.handle_error(|error: BoxError| {
-    ///     if error.is::<tower::timeout::error::Elapsed>() {
-    ///         Ok::<_, Infallible>((
-    ///             StatusCode::REQUEST_TIMEOUT,
-    ///             "request took too long to handle".to_string(),
-    ///         ))
-    ///     } else {
-    ///         Ok::<_, Infallible>((
-    ///             StatusCode::INTERNAL_SERVER_ERROR,
-    ///             format!("Unhandled error: {}", error),
-    ///         ))
-    ///     }
-    /// });
-    /// # async {
-    /// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-    /// # };
-    /// ```
-    ///
-    /// You can return `Err(_)` from the closure if you don't wish to handle
-    /// some errors:
-    ///
-    /// ```
-    /// use axum::{
-    ///     handler::get,
-    ///     http::StatusCode,
-    ///     Router,
-    /// };
-    /// use tower::{BoxError, timeout::TimeoutLayer};
-    /// use std::time::Duration;
-    ///
-    /// let app = Router::new()
-    ///     .route("/", get(|| async {}))
-    ///     .layer(TimeoutLayer::new(Duration::from_secs(10)))
-    ///     .handle_error(|error: BoxError| {
-    ///         if error.is::<tower::timeout::error::Elapsed>() {
-    ///             Ok((
-    ///                 StatusCode::REQUEST_TIMEOUT,
-    ///                 "request took too long to handle".to_string(),
-    ///             ))
-    ///         } else {
-    ///             // return the error as is
-    ///             Err(error)
-    ///         }
-    ///     });
-    /// # async {
-    /// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-    /// # };
-    /// ```
-    pub fn handle_error<ReqBody, F>(self, f: F) -> Router<HandleError<S, F, ReqBody>> {
-        self.map(|svc| HandleError::new(svc, f))
-    }
-
-    /// Check that your service cannot fail.
-    ///
-    /// That is, its error type is [`Infallible`].
-    pub fn check_infallible(self) -> Router<CheckInfallible<S>> {
-        self.map(CheckInfallible)
-    }
-
-    fn map<F, S2>(self, f: F) -> Router<S2>
+    fn map<F, T>(self, f: F) -> Router<T>
     where
-        F: FnOnce(S) -> S2,
+        F: FnOnce(S) -> T,
     {
         Router {
             routes: f(self.routes),
@@ -740,11 +675,11 @@ impl<S> Router<S> {
 
 impl<ReqBody, ResBody, S> Service<Request<ReqBody>> for Router<S>
 where
-    S: Service<Request<ReqBody>, Response = Response<ResBody>> + Clone,
+    S: Service<Request<ReqBody>, Response = Response<ResBody>, Error = Infallible> + Clone,
     ReqBody: Send + Sync + 'static,
 {
     type Response = Response<ResBody>;
-    type Error = S::Error;
+    type Error = Infallible;
     type Future = S::Future;
 
     #[inline]
@@ -949,12 +884,12 @@ pub struct Route<S, T> {
 
 impl<B, S, T> Service<Request<B>> for Route<S, T>
 where
-    S: Service<Request<B>, Response = Response<BoxBody>> + Clone,
-    T: Service<Request<B>, Response = Response<BoxBody>, Error = S::Error> + Clone,
+    S: Service<Request<B>, Response = Response<BoxBody>, Error = Infallible> + Clone,
+    T: Service<Request<B>, Response = Response<BoxBody>, Error = Infallible> + Clone,
     B: Send + Sync + 'static,
 {
     type Response = Response<BoxBody>;
-    type Error = S::Error;
+    type Error = Infallible;
     type Future = RouteFuture<S, T, B>;
 
     #[inline]
@@ -988,12 +923,12 @@ pub struct Nested<S, T> {
 
 impl<B, S, T> Service<Request<B>> for Nested<S, T>
 where
-    S: Service<Request<B>, Response = Response<BoxBody>> + Clone,
-    T: Service<Request<B>, Response = Response<BoxBody>, Error = S::Error> + Clone,
+    S: Service<Request<B>, Response = Response<BoxBody>, Error = Infallible> + Clone,
+    T: Service<Request<B>, Response = Response<BoxBody>, Error = Infallible> + Clone,
     B: Send + Sync + 'static,
 {
     type Response = Response<BoxBody>;
-    type Error = S::Error;
+    type Error = Infallible;
     type Future = NestedFuture<S, T, B>;
 
     #[inline]
@@ -1020,29 +955,26 @@ where
 /// A boxed route trait object.
 ///
 /// See [`Router::boxed`] for more details.
-pub struct BoxRoute<B = crate::body::Body, E = Infallible>(
-    CloneBoxService<Request<B>, Response<BoxBody>, E>,
+pub struct BoxRoute<B = crate::body::Body>(
+    CloneBoxService<Request<B>, Response<BoxBody>, Infallible>,
 );
 
-impl<B, E> Clone for BoxRoute<B, E> {
+impl<B> Clone for BoxRoute<B> {
     fn clone(&self) -> Self {
         Self(self.0.clone())
     }
 }
 
-impl<B, E> fmt::Debug for BoxRoute<B, E> {
+impl<B> fmt::Debug for BoxRoute<B> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("BoxRoute").finish()
     }
 }
 
-impl<B, E> Service<Request<B>> for BoxRoute<B, E>
-where
-    E: Into<BoxError>,
-{
+impl<B> Service<Request<B>> for BoxRoute<B> {
     type Response = Response<BoxBody>;
-    type Error = E;
-    type Future = BoxRouteFuture<B, E>;
+    type Error = Infallible;
+    type Future = BoxRouteFuture<B>;
 
     #[inline]
     fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
@@ -1084,31 +1016,6 @@ fn with_path(uri: &Uri, new_path: &str) -> Uri {
     parts.path_and_query = path_and_query;
 
     Uri::from_parts(parts).unwrap()
-}
-
-/// Middleware that statically verifies that a service cannot fail.
-///
-/// Created with [`check_infallible`](Router::check_infallible).
-#[derive(Debug, Clone, Copy)]
-pub struct CheckInfallible<S>(S);
-
-impl<R, S> Service<R> for CheckInfallible<S>
-where
-    S: Service<R, Error = Infallible>,
-{
-    type Response = S::Response;
-    type Error = S::Error;
-    type Future = S::Future;
-
-    #[inline]
-    fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        self.0.poll_ready(cx)
-    }
-
-    #[inline]
-    fn call(&mut self, req: R) -> Self::Future {
-        self.0.call(req)
-    }
 }
 
 /// A [`MakeService`] that produces axum router services.
@@ -1161,14 +1068,11 @@ mod tests {
         assert_send::<EmptyRouter<NotSendSync>>();
         assert_sync::<EmptyRouter<NotSendSync>>();
 
-        assert_send::<BoxRoute<(), ()>>();
-        assert_sync::<BoxRoute<(), ()>>();
+        assert_send::<BoxRoute<()>>();
+        assert_sync::<BoxRoute<()>>();
 
         assert_send::<Nested<(), ()>>();
         assert_sync::<Nested<(), ()>>();
-
-        assert_send::<CheckInfallible<()>>();
-        assert_sync::<CheckInfallible<()>>();
 
         assert_send::<IntoMakeService<()>>();
         assert_sync::<IntoMakeService<()>>();

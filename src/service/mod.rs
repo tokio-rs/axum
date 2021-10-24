@@ -99,17 +99,15 @@
 use crate::BoxError;
 use crate::{
     body::BoxBody,
-    response::IntoResponse,
     routing::{EmptyRouter, MethodFilter},
 };
 use bytes::Bytes;
 use http::{Request, Response};
 use std::{
-    fmt,
     marker::PhantomData,
     task::{Context, Poll},
 };
-use tower::{util::Oneshot, ServiceExt as _};
+use tower::ServiceExt as _;
 use tower_service::Service;
 
 pub mod future;
@@ -481,18 +479,6 @@ impl<S, F, B> OnMethod<S, F, B> {
             _request_body: PhantomData,
         }
     }
-
-    /// Handle errors this service might produce, by mapping them to responses.
-    ///
-    /// Unhandled errors will close the connection without sending a response.
-    ///
-    /// Works similarly to [`Router::handle_error`]. See that for more
-    /// details.
-    ///
-    /// [`Router::handle_error`]: crate::routing::Router::handle_error
-    pub fn handle_error<ReqBody, H>(self, f: H) -> HandleError<Self, H, ReqBody> {
-        HandleError::new(self, f)
-    }
 }
 
 // this is identical to `routing::OnMethod`'s implementation. Would be nice to find a way to clean
@@ -532,81 +518,10 @@ where
     }
 }
 
-/// A [`Service`] adapter that handles errors with a closure.
-///
-/// Created with
-/// [`handler::Layered::handle_error`](crate::handler::Layered::handle_error) or
-/// [`routing::Router::handle_error`](crate::routing::Router::handle_error).
-/// See those methods for more details.
-pub struct HandleError<S, F, B> {
-    inner: S,
-    f: F,
-    _marker: PhantomData<fn() -> B>,
-}
-
-impl<S, F, B> Clone for HandleError<S, F, B>
-where
-    S: Clone,
-    F: Clone,
-{
-    fn clone(&self) -> Self {
-        Self::new(self.inner.clone(), self.f.clone())
-    }
-}
-
-impl<S, F, B> HandleError<S, F, B> {
-    pub(crate) fn new(inner: S, f: F) -> Self {
-        Self {
-            inner,
-            f,
-            _marker: PhantomData,
-        }
-    }
-}
-
-impl<S, F, B> fmt::Debug for HandleError<S, F, B>
-where
-    S: fmt::Debug,
-{
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("HandleError")
-            .field("inner", &self.inner)
-            .field("f", &format_args!("{}", std::any::type_name::<F>()))
-            .finish()
-    }
-}
-
-impl<S, F, ReqBody, ResBody, Res, E> Service<Request<ReqBody>> for HandleError<S, F, ReqBody>
-where
-    S: Service<Request<ReqBody>, Response = Response<ResBody>> + Clone,
-    F: FnOnce(S::Error) -> Result<Res, E> + Clone,
-    Res: IntoResponse,
-    ResBody: http_body::Body<Data = Bytes> + Send + Sync + 'static,
-    ResBody::Error: Into<BoxError> + Send + Sync + 'static,
-{
-    type Response = Response<BoxBody>;
-    type Error = E;
-    type Future = future::HandleErrorFuture<Oneshot<S, Request<ReqBody>>, F>;
-
-    fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        Poll::Ready(Ok(()))
-    }
-
-    fn call(&mut self, req: Request<ReqBody>) -> Self::Future {
-        future::HandleErrorFuture {
-            f: Some(self.f.clone()),
-            inner: self.inner.clone().oneshot(req),
-        }
-    }
-}
-
 #[test]
 fn traits() {
     use crate::tests::*;
 
     assert_send::<OnMethod<(), (), NotSendSync>>();
     assert_sync::<OnMethod<(), (), NotSendSync>>();
-
-    assert_send::<HandleError<(), (), NotSendSync>>();
-    assert_sync::<HandleError<(), (), NotSendSync>>();
 }

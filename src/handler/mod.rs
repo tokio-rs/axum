@@ -5,7 +5,6 @@ use crate::{
     extract::{FromRequest, RequestParts},
     response::IntoResponse,
     routing::{EmptyRouter, MethodFilter},
-    service::HandleError,
     util::Either,
     BoxError,
 };
@@ -264,9 +263,6 @@ pub trait Handler<B, T>: Clone + Send + Sized + 'static {
     /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
     /// # };
     /// ```
-    ///
-    /// When adding middleware that might fail its recommended to handle those
-    /// errors. See [`Layered::handle_error`] for more details.
     fn layer<L>(self, layer: L) -> Layered<L::Service, T>
     where
         L: Layer<OnMethod<Self, B, T, EmptyRouter>>,
@@ -425,28 +421,6 @@ impl<S, T> Layered<S, T> {
             svc,
             _input: PhantomData,
         }
-    }
-
-    /// Create a new [`Layered`] handler where errors will be handled using the
-    /// given closure.
-    ///
-    /// This is used to convert errors to responses rather than simply
-    /// terminating the connection.
-    ///
-    /// It works similarly to [`routing::Router::handle_error`]. See that for more details.
-    ///
-    /// [`routing::Router::handle_error`]: crate::routing::Router::handle_error
-    pub fn handle_error<F, ReqBody, ResBody, Res, E>(
-        self,
-        f: F,
-    ) -> Layered<HandleError<S, F, ReqBody>, T>
-    where
-        S: Service<Request<ReqBody>, Response = Response<ResBody>>,
-        F: FnOnce(S::Error) -> Result<Res, E>,
-        Res: IntoResponse,
-    {
-        let svc = HandleError::new(self.svc, f);
-        Layered::new(svc)
     }
 }
 

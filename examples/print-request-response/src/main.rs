@@ -6,12 +6,13 @@
 
 use axum::{
     body::{Body, BoxBody, Bytes},
+    error_handling::HandleErrorLayer,
     handler::post,
-    http::{Request, Response},
+    http::{Request, Response, StatusCode},
     Router,
 };
 use std::net::SocketAddr;
-use tower::{filter::AsyncFilterLayer, util::AndThenLayer, BoxError};
+use tower::{filter::AsyncFilterLayer, util::AndThenLayer, BoxError, ServiceBuilder};
 
 #[tokio::main]
 async fn main() {
@@ -26,8 +27,17 @@ async fn main() {
 
     let app = Router::new()
         .route("/", post(|| async move { "Hello from `POST /`" }))
-        .layer(AsyncFilterLayer::new(map_request))
-        .layer(AndThenLayer::new(map_response));
+        .layer(
+            ServiceBuilder::new()
+                .layer(HandleErrorLayer::new(|error| {
+                    (
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        format!("Unhandled internal error: {}", error),
+                    )
+                }))
+                .layer(AndThenLayer::new(map_response))
+                .layer(AsyncFilterLayer::new(map_request)),
+        );
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
     tracing::debug!("listening on {}", addr);
