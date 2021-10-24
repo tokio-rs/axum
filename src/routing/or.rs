@@ -6,6 +6,7 @@ use futures_util::ready;
 use http::{Request, Response};
 use pin_project_lite::pin_project;
 use std::{
+    convert::Infallible,
     future::Future,
     pin::Pin,
     task::{Context, Poll},
@@ -33,8 +34,8 @@ fn traits() {
 
 impl<A, B, ReqBody> Service<Request<ReqBody>> for Or<A, B>
 where
-    A: Service<Request<ReqBody>, Response = Response<BoxBody>> + Clone,
-    B: Service<Request<ReqBody>, Response = Response<BoxBody>, Error = A::Error> + Clone,
+    A: Service<Request<ReqBody>, Response = Response<BoxBody>, Error = Infallible> + Clone,
+    B: Service<Request<ReqBody>, Response = Response<BoxBody>, Error = Infallible> + Clone,
     ReqBody: Send + Sync + 'static,
     A: Send + 'static,
     B: Send + 'static,
@@ -42,7 +43,7 @@ where
     B::Future: Send + 'static,
 {
     type Response = Response<BoxBody>;
-    type Error = A::Error;
+    type Error = Infallible;
     type Future = ResponseFuture<A, B, ReqBody>;
 
     fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
@@ -89,11 +90,11 @@ pin_project! {
 
 impl<A, B, ReqBody> Future for ResponseFuture<A, B, ReqBody>
 where
-    A: Service<Request<ReqBody>, Response = Response<BoxBody>>,
-    B: Service<Request<ReqBody>, Response = Response<BoxBody>, Error = A::Error>,
+    A: Service<Request<ReqBody>, Response = Response<BoxBody>, Error = Infallible>,
+    B: Service<Request<ReqBody>, Response = Response<BoxBody>, Error = Infallible>,
     ReqBody: Send + Sync + 'static,
 {
-    type Output = Result<Response<BoxBody>, A::Error>;
+    type Output = Result<Response<BoxBody>, Infallible>;
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         loop {

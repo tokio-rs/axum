@@ -967,6 +967,9 @@
 //!
 //! let middleware_stack = ServiceBuilder::new()
 //!     // Handle errors from middleware
+//!     //
+//!     // This middleware most be added above any fallible
+//!     // ones if you're using `ServiceBuilder`, due to how ordering works
 //!     .layer(HandleErrorLayer::new(handle_error))
 //!     // `TraceLayer` adds high level tracing and logging
 //!     .layer(TraceLayer::new_for_http())
