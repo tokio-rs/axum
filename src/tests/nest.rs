@@ -1,7 +1,6 @@
 use super::*;
 use crate::body::box_body;
 use crate::error_handling::HandleErrorExt;
-use crate::routing::EmptyRouter;
 use std::collections::HashMap;
 
 #[tokio::test]
@@ -256,5 +255,5 @@ async fn multiple_top_level_nests() {
 #[tokio::test]
 #[should_panic(expected = "Invalid route: nested routes cannot contain wildcards (*)")]
 async fn nest_cannot_contain_wildcards() {
-    Router::<EmptyRouter>::new().nest::<_, Body>("/one/*rest", Router::<EmptyRouter>::new());
+    Router::<Body>::new().nest("/one/*rest", Router::new());
 }

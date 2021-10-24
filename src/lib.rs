@@ -360,15 +360,13 @@
 //!     http::Request,
 //!     handler::get,
 //!     Router,
-//!     routing::BoxRoute
 //! };
 //! use tower_http::services::ServeFile;
 //! use http::Response;
 //!
-//! fn api_routes() -> Router<BoxRoute> {
+//! fn api_routes() -> Router {
 //!     Router::new()
 //!         .route("/users", get(|_: Request<Body>| async { /* ... */ }))
-//!         .boxed()
 //! }
 //!
 //! let app = Router::new()
