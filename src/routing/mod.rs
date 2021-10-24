@@ -369,7 +369,6 @@ impl<S> Router<S> {
         S: Service<Request<ReqBody>, Response = Response<ResBody>, Error = Infallible>
             + Clone
             + Send
-            + Sync
             + 'static,
         S::Future: Send,
         ReqBody: Send + 'static,
@@ -1023,7 +1022,6 @@ mod tests {
         assert_sync::<EmptyRouter<NotSendSync>>();
 
         assert_send::<BoxRoute<()>>();
-        assert_sync::<BoxRoute<()>>();
 
         assert_send::<Nested<(), ()>>();
         assert_sync::<Nested<(), ()>>();
