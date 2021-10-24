@@ -20,7 +20,6 @@ use std::{
     fmt,
     future::ready,
     marker::PhantomData,
-    sync::Arc,
     task::{Context, Poll},
 };
 use tower::{util::ServiceExt, ServiceBuilder};
@@ -50,17 +49,7 @@ impl RouteId {
 #[derive(Clone)]
 pub struct Router<S> {
     routes: S,
-    node: MaybeSharedNode,
-}
-
-// optimization that allows us to only clone the whole `Node` if we're actually
-// mutating it while building the router. Once we've created a `MakeService` we
-// no longer need to add routes and can `Arc` the node making it cheaper to
-// clone
-#[derive(Clone)]
-enum MaybeSharedNode {
-    NotShared(Node<RouteId>),
-    Shared(Arc<Node<RouteId>>),
+    node: Node<RouteId>,
 }
 
 impl Router<EmptyRouter> {
@@ -71,7 +60,7 @@ impl Router<EmptyRouter> {
     pub fn new() -> Self {
         Self {
             routes: EmptyRouter::not_found(),
-            node: MaybeSharedNode::NotShared(Node::new()),
+            node: Node::new(),
         }
     }
 }
@@ -181,7 +170,7 @@ impl<S> Router<S> {
     {
         let id = RouteId::next();
 
-        if let Err(err) = self.update_node(|node| node.insert(path, id)) {
+        if let Err(err) = self.node.insert(path, id) {
             panic!("Invalid route: {}", err);
         }
 
@@ -332,7 +321,7 @@ impl<S> Router<S> {
             format!("{}/*{}", path, NEST_TAIL_PARAM)
         };
 
-        if let Err(err) = self.update_node(|node| node.insert(path, id)) {
+        if let Err(err) = self.node.insert(path, id) {
             panic!("Invalid route: {}", err);
         }
 
@@ -496,7 +485,7 @@ impl<S> Router<S> {
     where
         S: Clone,
     {
-        IntoMakeService::new(self.into_shared_node())
+        IntoMakeService::new(self)
     }
 
     /// Convert this router into a [`MakeService`], that will store `C`'s
@@ -586,7 +575,7 @@ impl<S> Router<S> {
         S: Clone,
         C: Connected<Target>,
     {
-        IntoMakeServiceWithConnectInfo::new(self.into_shared_node())
+        IntoMakeServiceWithConnectInfo::new(self)
     }
 
     /// Merge two routers into one.
@@ -636,41 +625,6 @@ impl<S> Router<S> {
             node: self.node,
         }
     }
-
-    fn update_node<F, T>(&mut self, f: F) -> T
-    where
-        F: FnOnce(&mut Node<RouteId>) -> T,
-    {
-        match &mut self.node {
-            MaybeSharedNode::NotShared(node) => f(node),
-            MaybeSharedNode::Shared(shared_node) => {
-                let mut node: Node<_> = Clone::clone(&*shared_node);
-                let result = f(&mut node);
-                self.node = MaybeSharedNode::NotShared(node);
-                result
-            }
-        }
-    }
-
-    fn get_node(&self) -> &Node<RouteId> {
-        match &self.node {
-            MaybeSharedNode::NotShared(node) => node,
-            MaybeSharedNode::Shared(shared_node) => &*shared_node,
-        }
-    }
-
-    fn into_shared_node(self) -> Self {
-        let node = match self.node {
-            MaybeSharedNode::NotShared(node) => MaybeSharedNode::Shared(Arc::new(node)),
-            MaybeSharedNode::Shared(shared_node) => {
-                MaybeSharedNode::Shared(Arc::clone(&shared_node))
-            }
-        };
-        Self {
-            routes: self.routes,
-            node,
-        }
-    }
 }
 
 impl<ReqBody, ResBody, S> Service<Request<ReqBody>> for Router<S>
@@ -695,7 +649,7 @@ where
         }
 
         let path = req.uri().path().to_string();
-        if let Ok(match_) = self.get_node().at(&path) {
+        if let Ok(match_) = self.node.at(&path) {
             let id = *match_.value;
             req.extensions_mut().insert(id);
 
