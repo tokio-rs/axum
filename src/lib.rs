@@ -791,10 +791,10 @@
 //! # Error handling
 //!
 //! In the context of axum an "error" specifically means if a [`Service`]'s
-//! response future resolves to `Err(Service::Error)`. That means responses from
-//! async handler functions are _never_ considered to be errors. That is because
-//! they always produce a result and their `Service::Error` type is
-//! [`Infallible`]. Returning statuses like 404 or 500 are _not_ errors.
+//! response future resolves to `Err(Service::Error)`. That means async handler
+//! functions can _never_ fail since they always produce a response and their
+//! `Service::Error` type is [`Infallible`]. Returning statuses like 404 or 500
+//! are _not_ errors.
 //!
 //! axum works this way because hyper will close the connection, without sending
 //! a response, if an error is encountered. This is not desireable so axum makes

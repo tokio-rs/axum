@@ -28,9 +28,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   thus wasn't necessary
 - **breaking:** Change `Connected::connect_info` to return `Self` and remove
   the associated type `ConnectInfo` ([#396])
-- **breaking:** Simplify error handling model:
+- **breaking:** Simplify error handling model ([#402]):
   - All services part of the router are now required to be infallible.
   - Error handling utilities have been moved to an `error_handling` module.
+  - `Router::check_infallible` has been removed since routers are always
+    infallible with the error handling changes.
+  - Error handling closures must now handle all errors and thus always return
+    something that implements `IntoResponse`.
 
   With these changes handling errors from fallible middleware is done like so:
 
@@ -98,6 +102,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#378]: https://github.com/tokio-rs/axum/pull/378
 [#363]: https://github.com/tokio-rs/axum/pull/363
 [#396]: https://github.com/tokio-rs/axum/pull/396
+[#402]: https://github.com/tokio-rs/axum/pull/402
 
 # 0.2.8 (07. October, 2021)
 

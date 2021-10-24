@@ -25,7 +25,7 @@ use tower_layer::Layer;
 use tower_service::Service;
 
 /// [`Layer`] that applies [`HandleErrorLayer`] which is a [`Service`] adapter
-/// that handles errors by converting into responses.
+/// that handles errors by converting them into responses.
 ///
 /// See [error handling](../index.html#error-handling) for more details.
 pub struct HandleErrorLayer<F, B> {
@@ -78,7 +78,7 @@ impl<F, B> fmt::Debug for HandleErrorLayer<F, B> {
     }
 }
 
-/// A [`Service`] adapter that handles errors by converting into responses.
+/// A [`Service`] adapter that handles errors by converting them into responses.
 ///
 /// See [error handling](../index.html#error-handling) for more details.
 pub struct HandleError<S, F, B> {
@@ -148,8 +148,8 @@ where
 ///
 /// See [error handling](../index.html#error-handling) for more details.
 pub trait HandleErrorExt<B>: Service<Request<B>> + Sized {
-    #[allow(missing_docs)]
-    fn handle_error<H>(self, f: H) -> HandleError<Self, H, B> {
+    /// Apply a [`HandleError`] middleware.
+    fn handle_error<F>(self, f: F) -> HandleError<Self, F, B> {
         HandleError::new(self, f)
     }
 }
