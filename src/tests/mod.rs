@@ -25,6 +25,7 @@ use std::{
     time::Duration,
 };
 use tower::service_fn;
+use tower::timeout::TimeoutLayer;
 use tower_service::Service;
 
 pub(crate) use helpers::*;
@@ -480,29 +481,6 @@ async fn handler_into_service() {
 }
 
 #[tokio::test]
-async fn when_multiple_routes_match() {
-    let app = Router::new()
-        .route("/", post(|| async {}))
-        .route("/", get(|| async {}))
-        .route("/foo", get(|| async {}))
-        .nest("/foo", Router::new().route("/bar", get(|| async {})));
-
-    let client = TestClient::new(app);
-
-    let res = client.get("/").send().await;
-    assert_eq!(res.status(), StatusCode::OK);
-
-    let res = client.post("/").send().await;
-    assert_eq!(res.status(), StatusCode::OK);
-
-    let res = client.get("/foo/bar").send().await;
-    assert_eq!(res.status(), StatusCode::OK);
-
-    let res = client.get("/foo").send().await;
-    assert_eq!(res.status(), StatusCode::OK);
-}
-
-#[tokio::test]
 async fn captures_dont_match_empty_segments() {
     let app = Router::new().route("/:key", get(|| async {}));
 
@@ -537,6 +515,33 @@ async fn json_content_types() {
     assert!(valid_json_content_type("application/json;charset=utf-8").await);
     assert!(valid_json_content_type("application/cloudevents+json").await);
     assert!(!valid_json_content_type("text/json").await);
+}
+
+#[tokio::test]
+async fn wildcard_sees_whole_url() {
+    let app = Router::new().route("/api/*rest", get(|uri: Uri| async move { uri.to_string() }));
+
+    let client = TestClient::new(app);
+
+    let res = client.get("/api/foo/bar").send().await;
+    assert_eq!(res.text().await, "/api/foo/bar");
+}
+
+#[tokio::test]
+async fn middleware_applies_to_routes_above() {
+    let app = Router::new()
+        .route("/one", get(std::future::pending::<()>))
+        .layer(TimeoutLayer::new(Duration::new(0, 0)))
+        .handle_error(|_: BoxError| Ok::<_, Infallible>(StatusCode::REQUEST_TIMEOUT))
+        .route("/two", get(|| async {}));
+
+    let client = TestClient::new(app);
+
+    let res = client.get("/one").send().await;
+    assert_eq!(res.status(), StatusCode::REQUEST_TIMEOUT);
+
+    let res = client.get("/two").send().await;
+    assert_eq!(res.status(), StatusCode::OK);
 }
 
 pub(crate) fn assert_send<T: Send>() {}

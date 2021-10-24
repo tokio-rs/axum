@@ -176,6 +176,7 @@ mod tests {
     use super::*;
     use crate::tests::*;
     use crate::{handler::get, Router};
+    use std::collections::HashMap;
 
     #[tokio::test]
     async fn percent_decoding() {
@@ -189,5 +190,28 @@ mod tests {
         let res = client.get("/one%20two").send().await;
 
         assert_eq!(res.text().await, "one two");
+    }
+
+    #[tokio::test]
+    async fn wildcard() {
+        let app = Router::new()
+            .route(
+                "/foo/*rest",
+                get(|Path(param): Path<String>| async move { param }),
+            )
+            .route(
+                "/bar/*rest",
+                get(|Path(params): Path<HashMap<String, String>>| async move {
+                    params.get("rest").unwrap().clone()
+                }),
+            );
+
+        let client = TestClient::new(app);
+
+        let res = client.get("/foo/bar/baz").send().await;
+        assert_eq!(res.text().await, "/bar/baz");
+
+        let res = client.get("/bar/baz/qux").send().await;
+        assert_eq!(res.text().await, "/baz/qux");
     }
 }

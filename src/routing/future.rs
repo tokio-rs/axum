@@ -1,9 +1,11 @@
 //! Future types.
 
 use crate::{
-    body::BoxBody, clone_box_service::CloneBoxService, routing::FromEmptyRouter, BoxError,
+    body::BoxBody,
+    clone_box_service::CloneBoxService,
+    routing::{FromEmptyRouter, UriStack},
+    BoxError,
 };
-use futures_util::ready;
 use http::{Request, Response};
 use pin_project_lite::pin_project;
 use std::{
@@ -13,7 +15,7 @@ use std::{
     pin::Pin,
     task::{Context, Poll},
 };
-use tower::{util::Oneshot, ServiceExt};
+use tower::util::Oneshot;
 use tower_service::Service;
 
 pub use super::or::ResponseFuture as OrResponseFuture;
@@ -76,12 +78,9 @@ where
     S: Service<Request<B>>,
     F: Service<Request<B>>,
 {
-    pub(crate) fn a(a: Oneshot<S, Request<B>>, fallback: F) -> Self {
+    pub(crate) fn a(a: Oneshot<S, Request<B>>) -> Self {
         RouteFuture {
-            state: RouteFutureInner::A {
-                a,
-                fallback: Some(fallback),
-            },
+            state: RouteFutureInner::A { a },
         }
     }
 
@@ -103,7 +102,6 @@ pin_project! {
         A {
             #[pin]
             a: Oneshot<S, Request<B>>,
-            fallback: Option<F>,
         },
         B {
             #[pin]
@@ -120,33 +118,10 @@ where
 {
     type Output = Result<Response<BoxBody>, S::Error>;
 
-    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        loop {
-            let mut this = self.as_mut().project();
-
-            let new_state = match this.state.as_mut().project() {
-                RouteFutureInnerProj::A { a, fallback } => {
-                    let mut response = ready!(a.poll(cx))?;
-
-                    let req = if let Some(ext) =
-                        response.extensions_mut().remove::<FromEmptyRouter<B>>()
-                    {
-                        ext.request
-                    } else {
-                        return Poll::Ready(Ok(response));
-                    };
-
-                    RouteFutureInner::B {
-                        b: fallback
-                            .take()
-                            .expect("future polled after completion")
-                            .oneshot(req),
-                    }
-                }
-                RouteFutureInnerProj::B { b } => return b.poll(cx),
-            };
-
-            this.state.set(new_state);
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        match self.project().state.project() {
+            RouteFutureInnerProj::A { a } => a.poll(cx),
+            RouteFutureInnerProj::B { b } => b.poll(cx),
         }
     }
 }
@@ -173,7 +148,20 @@ where
     type Output = Result<Response<BoxBody>, S::Error>;
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        self.project().inner.poll(cx)
+        let mut res: Response<_> = futures_util::ready!(self.project().inner.poll(cx)?);
+
+        // `nest` mutates the URI of the request so if it turns out no route matched
+        // we need to reset the URI so the next routes see the original URI
+        //
+        // That requires using a stack since we can have arbitrarily nested routes
+        if let Some(from_empty_router) = res.extensions_mut().get_mut::<FromEmptyRouter<B>>() {
+            let uri = UriStack::pop(&mut from_empty_router.request);
+            if let Some(uri) = uri {
+                *from_empty_router.request.uri_mut() = uri;
+            }
+        }
+
+        Poll::Ready(Ok(res))
     }
 }
 
