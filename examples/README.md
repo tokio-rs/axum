@@ -8,3 +8,4 @@ setup as its own crate so its dependencies are clear.
 - [Houseflow](https://github.com/gbaranski/houseflow): House automation platform written in Rust.
 - [Datafuse](https://github.com/datafuselabs/datafuse): Cloud native data warehouse written in Rust.
 - [JWT Auth](https://github.com/Z4RX/axum_jwt_example): JWT auth service for educational purposes.
+- [ROAPI](https://github.com/roapi/roapi): Create full-fledged APIs for static datasets without writing a single line of code.
