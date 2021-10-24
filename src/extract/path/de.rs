@@ -99,10 +99,12 @@ impl<'de> Deserializer<'de> for PathDeserializer<'de> {
     parse_single_value!(deserialize_i16, visit_i16, "i16");
     parse_single_value!(deserialize_i32, visit_i32, "i32");
     parse_single_value!(deserialize_i64, visit_i64, "i64");
+    parse_single_value!(deserialize_i128, visit_i128, "i128");
     parse_single_value!(deserialize_u8, visit_u8, "u8");
     parse_single_value!(deserialize_u16, visit_u16, "u16");
     parse_single_value!(deserialize_u32, visit_u32, "u32");
     parse_single_value!(deserialize_u64, visit_u64, "u64");
+    parse_single_value!(deserialize_u128, visit_u128, "u128");
     parse_single_value!(deserialize_f32, visit_f32, "f32");
     parse_single_value!(deserialize_f64, visit_f64, "f64");
     parse_single_value!(deserialize_string, visit_string, "String");
@@ -310,7 +312,7 @@ impl<'de> Deserializer<'de> for KeyDeserializer<'de> {
     }
 
     forward_to_deserialize_any! {
-        bool i8 i16 i32 i64 u8 u16 u32 u64 f32 f64 char bytes
+        bool i8 i16 i32 i64 i128 u8 u16 u32 u64 u128 f32 f64 char bytes
         byte_buf option unit unit_struct seq tuple
         tuple_struct map newtype_struct struct enum ignored_any
     }
@@ -350,10 +352,12 @@ impl<'de> Deserializer<'de> for ValueDeserializer<'de> {
     parse_value!(deserialize_i16, visit_i16, "i16");
     parse_value!(deserialize_i32, visit_i32, "i16");
     parse_value!(deserialize_i64, visit_i64, "i64");
+    parse_value!(deserialize_i128, visit_i128, "i128");
     parse_value!(deserialize_u8, visit_u8, "u8");
     parse_value!(deserialize_u16, visit_u16, "u16");
     parse_value!(deserialize_u32, visit_u32, "u32");
     parse_value!(deserialize_u64, visit_u64, "u64");
+    parse_value!(deserialize_u128, visit_u128, "u128");
     parse_value!(deserialize_f32, visit_f32, "f32");
     parse_value!(deserialize_f64, visit_f64, "f64");
     parse_value!(deserialize_string, visit_string, "String");
@@ -591,10 +595,12 @@ mod tests {
         check_single_value!(i16, "-123", -123);
         check_single_value!(i32, "-123", -123);
         check_single_value!(i64, "-123", -123);
+        check_single_value!(i128, "123", 123);
         check_single_value!(u8, "123", 123);
         check_single_value!(u16, "123", 123);
         check_single_value!(u32, "123", 123);
         check_single_value!(u64, "123", 123);
+        check_single_value!(u128, "123", 123);
         check_single_value!(f32, "123", 123.0);
         check_single_value!(f64, "123", 123.0);
         check_single_value!(String, "abc", "abc");

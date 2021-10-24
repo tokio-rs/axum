@@ -193,6 +193,27 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn supports_128_bit_numbers() {
+        let app = Router::new()
+            .route(
+                "/i/:key",
+                get(|Path(param): Path<i128>| async move { param.to_string() }),
+            )
+            .route(
+                "/u/:key",
+                get(|Path(param): Path<u128>| async move { param.to_string() }),
+            );
+
+        let client = TestClient::new(app);
+
+        let res = client.get("/i/123").send().await;
+        assert_eq!(res.text().await, "123");
+
+        let res = client.get("/u/123").send().await;
+        assert_eq!(res.text().await, "123");
+    }
+
+    #[tokio::test]
     async fn wildcard() {
         let app = Router::new()
             .route(
