@@ -14,7 +14,7 @@ use axum::{
     },
     http::StatusCode,
     response::IntoResponse,
-    routing::get,
+    routing::{get, service_method_router as service},
     Router,
 };
 use std::net::SocketAddr;
@@ -35,7 +35,7 @@ async fn main() {
     let app = Router::new()
         .nest(
             "/",
-            axum::service::get(
+            service::get(
                 ServeDir::new("examples/websockets/assets").append_index_html_on_directories(true),
             )
             .handle_error(|error: std::io::Error| {

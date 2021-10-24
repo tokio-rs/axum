@@ -89,7 +89,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   use axum::{
       Router, service,
       body::Body,
-      routing::get,
+      routing::service_method_router::get,
       response::IntoResponse,
       http::{Request, Response},
       error_handling::HandleErrorExt, // for `.handle_error`
@@ -100,7 +100,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   let app = Router::new()
       .route(
           "/",
-          service::get(service_fn(|_req: Request<Body>| async {
+          get(service_fn(|_req: Request<Body>| async {
               let contents = tokio::fs::read_to_string("some_file").await?;
               Ok::<_, io::Error>(Response::new(Body::from(contents)))
           }))
@@ -113,6 +113,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ```
 - **breaking:** Method routing for handlers have been moved from `axum::handler`
   to `axum::routing`. So `axum::handler::get` now lives at `axum::routing::get`.
+- **breaking:** Method routing for services have been moved from `axum::service`
+  to `axum::routing`. So `axum::service::get` now lives at
+  `axum::service_method_router::get`.
 
 [#339]: https://github.com/tokio-rs/axum/pull/339
 [#286]: https://github.com/tokio-rs/axum/pull/286

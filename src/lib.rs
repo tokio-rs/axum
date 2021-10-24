@@ -186,8 +186,8 @@
 //! ```rust,no_run
 //! use axum::{
 //!     Router,
-//!     service,
 //!     body::Body,
+//!     routing::service_method_router as service,
 //!     error_handling::HandleErrorExt,
 //!     http::{Request, StatusCode},
 //! };
@@ -248,8 +248,7 @@
 //! ```compile_fail
 //! use axum::{
 //!     Router,
-//!     service,
-//!     routing::get,
+//!     routing::{get, service_method_router as service},
 //!     http::{Request, Response},
 //!     body::Body,
 //! };
@@ -277,9 +276,9 @@
 //!
 //! ```
 //! use axum::{
-//!     Router, service,
+//!     Router,
 //!     body::Body,
-//!     routing::get,
+//!     routing::{get, service_method_router as service},
 //!     response::IntoResponse,
 //!     http::{Request, Response},
 //!     error_handling::HandleErrorExt,
@@ -1222,7 +1221,6 @@ pub mod extract;
 pub mod handler;
 pub mod response;
 pub mod routing;
-pub mod service;
 
 #[cfg(test)]
 mod tests;

@@ -28,7 +28,8 @@ use tower_layer::Layer;
 use tower_service::Service;
 
 pub mod future;
-pub mod method_router_handler;
+pub mod handler_method_router;
+pub mod service_method_router;
 
 mod method_filter;
 mod or;
@@ -36,7 +37,7 @@ mod or;
 pub use self::method_filter::MethodFilter;
 
 #[doc(no_inline)]
-pub use self::method_router_handler::{
+pub use self::handler_method_router::{
     any, connect, delete, get, head, on, options, patch, post, put, trace, MethodRouter,
 };
 
@@ -271,7 +272,7 @@ where
     /// ```
     /// use axum::{
     ///     Router,
-    ///     service::get,
+    ///     routing::service_method_router::get,
     ///     error_handling::HandleErrorExt,
     ///     http::StatusCode,
     /// };

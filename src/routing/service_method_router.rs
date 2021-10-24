@@ -1,4 +1,4 @@
-//! Use Tower [`Service`]s to handle requests.
+//! Routing for [`Service`'s] based on HTTP methods.
 //!
 //! Most of the time applications will be written by composing
 //! [handlers](crate::handler), however sometimes you might have some general
@@ -13,10 +13,9 @@
 //! use tower_http::services::Redirect;
 //! use axum::{
 //!     body::Body,
-//!     routing::get,
+//!     routing::{get, service_method_router as service},
 //!     http::Request,
 //!     Router,
-//!     service,
 //! };
 //!
 //! async fn handler(request: Request<Body>) { /* ... */ }
@@ -95,22 +94,28 @@
 //!
 //! [`Redirect`]: tower_http::services::Redirect
 //! [load shed]: tower::load_shed
+//! [`Service`'s]: tower::Service
 
-use crate::BoxError;
 use crate::{
-    body::BoxBody,
+    body::{box_body, BoxBody},
     routing::{EmptyRouter, MethodFilter},
+    util::{Either, EitherProj},
+    BoxError,
 };
 use bytes::Bytes;
-use http::{Request, Response};
+use futures_util::ready;
+use http::{Method, Request, Response};
+use http_body::Empty;
+use pin_project_lite::pin_project;
+use std::marker::PhantomData;
 use std::{
-    marker::PhantomData,
+    future::Future,
+    pin::Pin,
     task::{Context, Poll},
 };
+use tower::util::Oneshot;
 use tower::ServiceExt as _;
 use tower_service::Service;
-
-pub mod future;
 
 /// Route requests with any standard HTTP method to the given service.
 ///
@@ -118,7 +123,7 @@ pub mod future;
 ///
 /// Note that this only accepts the standard HTTP methods. If you need to
 /// support non-standard methods you can route directly to a [`Service`].
-pub fn any<S, B>(svc: S) -> OnMethod<S, EmptyRouter<S::Error>, B>
+pub fn any<S, B>(svc: S) -> MethodRouter<S, EmptyRouter<S::Error>, B>
 where
     S: Service<Request<B>> + Clone,
 {
@@ -128,7 +133,7 @@ where
 /// Route `CONNECT` requests to the given service.
 ///
 /// See [`get`] for an example.
-pub fn connect<S, B>(svc: S) -> OnMethod<S, EmptyRouter<S::Error>, B>
+pub fn connect<S, B>(svc: S) -> MethodRouter<S, EmptyRouter<S::Error>, B>
 where
     S: Service<Request<B>> + Clone,
 {
@@ -138,7 +143,7 @@ where
 /// Route `DELETE` requests to the given service.
 ///
 /// See [`get`] for an example.
-pub fn delete<S, B>(svc: S) -> OnMethod<S, EmptyRouter<S::Error>, B>
+pub fn delete<S, B>(svc: S) -> MethodRouter<S, EmptyRouter<S::Error>, B>
 where
     S: Service<Request<B>> + Clone,
 {
@@ -153,7 +158,7 @@ where
 /// use axum::{
 ///     http::Request,
 ///     Router,
-///     service,
+///     routing::service_method_router as service,
 /// };
 /// use http::Response;
 /// use std::convert::Infallible;
@@ -173,7 +178,7 @@ where
 /// Note that `get` routes will also be called for `HEAD` requests but will have
 /// the response body removed. Make sure to add explicit `HEAD` routes
 /// afterwards.
-pub fn get<S, B>(svc: S) -> OnMethod<S, EmptyRouter<S::Error>, B>
+pub fn get<S, B>(svc: S) -> MethodRouter<S, EmptyRouter<S::Error>, B>
 where
     S: Service<Request<B>> + Clone,
 {
@@ -183,7 +188,7 @@ where
 /// Route `HEAD` requests to the given service.
 ///
 /// See [`get`] for an example.
-pub fn head<S, B>(svc: S) -> OnMethod<S, EmptyRouter<S::Error>, B>
+pub fn head<S, B>(svc: S) -> MethodRouter<S, EmptyRouter<S::Error>, B>
 where
     S: Service<Request<B>> + Clone,
 {
@@ -193,7 +198,7 @@ where
 /// Route `OPTIONS` requests to the given service.
 ///
 /// See [`get`] for an example.
-pub fn options<S, B>(svc: S) -> OnMethod<S, EmptyRouter<S::Error>, B>
+pub fn options<S, B>(svc: S) -> MethodRouter<S, EmptyRouter<S::Error>, B>
 where
     S: Service<Request<B>> + Clone,
 {
@@ -203,7 +208,7 @@ where
 /// Route `PATCH` requests to the given service.
 ///
 /// See [`get`] for an example.
-pub fn patch<S, B>(svc: S) -> OnMethod<S, EmptyRouter<S::Error>, B>
+pub fn patch<S, B>(svc: S) -> MethodRouter<S, EmptyRouter<S::Error>, B>
 where
     S: Service<Request<B>> + Clone,
 {
@@ -213,7 +218,7 @@ where
 /// Route `POST` requests to the given service.
 ///
 /// See [`get`] for an example.
-pub fn post<S, B>(svc: S) -> OnMethod<S, EmptyRouter<S::Error>, B>
+pub fn post<S, B>(svc: S) -> MethodRouter<S, EmptyRouter<S::Error>, B>
 where
     S: Service<Request<B>> + Clone,
 {
@@ -223,7 +228,7 @@ where
 /// Route `PUT` requests to the given service.
 ///
 /// See [`get`] for an example.
-pub fn put<S, B>(svc: S) -> OnMethod<S, EmptyRouter<S::Error>, B>
+pub fn put<S, B>(svc: S) -> MethodRouter<S, EmptyRouter<S::Error>, B>
 where
     S: Service<Request<B>> + Clone,
 {
@@ -233,7 +238,7 @@ where
 /// Route `TRACE` requests to the given service.
 ///
 /// See [`get`] for an example.
-pub fn trace<S, B>(svc: S) -> OnMethod<S, EmptyRouter<S::Error>, B>
+pub fn trace<S, B>(svc: S) -> MethodRouter<S, EmptyRouter<S::Error>, B>
 where
     S: Service<Request<B>> + Clone,
 {
@@ -248,9 +253,8 @@ where
 /// use axum::{
 ///     http::Request,
 ///     routing::on,
-///     service,
 ///     Router,
-///     routing::MethodFilter,
+///     routing::{MethodFilter, service_method_router as service},
 /// };
 /// use http::Response;
 /// use std::convert::Infallible;
@@ -266,11 +270,11 @@ where
 /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 /// # };
 /// ```
-pub fn on<S, B>(method: MethodFilter, svc: S) -> OnMethod<S, EmptyRouter<S::Error>, B>
+pub fn on<S, B>(method: MethodFilter, svc: S) -> MethodRouter<S, EmptyRouter<S::Error>, B>
 where
     S: Service<Request<B>> + Clone,
 {
-    OnMethod {
+    MethodRouter {
         method,
         svc,
         fallback: EmptyRouter::method_not_allowed(),
@@ -281,14 +285,14 @@ where
 /// A [`Service`] that accepts requests based on a [`MethodFilter`] and allows
 /// chaining additional services.
 #[derive(Debug)] // TODO(david): don't require debug for B
-pub struct OnMethod<S, F, B> {
+pub struct MethodRouter<S, F, B> {
     pub(crate) method: MethodFilter,
     pub(crate) svc: S,
     pub(crate) fallback: F,
     pub(crate) _request_body: PhantomData<fn() -> B>,
 }
 
-impl<S, F, B> Clone for OnMethod<S, F, B>
+impl<S, F, B> Clone for MethodRouter<S, F, B>
 where
     S: Clone,
     F: Clone,
@@ -303,12 +307,12 @@ where
     }
 }
 
-impl<S, F, B> OnMethod<S, F, B> {
+impl<S, F, B> MethodRouter<S, F, B> {
     /// Chain an additional service that will accept all requests regardless of
     /// its HTTP method.
     ///
-    /// See [`OnMethod::get`] for an example.
-    pub fn any<T>(self, svc: T) -> OnMethod<T, Self, B>
+    /// See [`MethodRouter::get`] for an example.
+    pub fn any<T>(self, svc: T) -> MethodRouter<T, Self, B>
     where
         T: Service<Request<B>> + Clone,
     {
@@ -317,8 +321,8 @@ impl<S, F, B> OnMethod<S, F, B> {
 
     /// Chain an additional service that will only accept `CONNECT` requests.
     ///
-    /// See [`OnMethod::get`] for an example.
-    pub fn connect<T>(self, svc: T) -> OnMethod<T, Self, B>
+    /// See [`MethodRouter::get`] for an example.
+    pub fn connect<T>(self, svc: T) -> MethodRouter<T, Self, B>
     where
         T: Service<Request<B>> + Clone,
     {
@@ -327,8 +331,8 @@ impl<S, F, B> OnMethod<S, F, B> {
 
     /// Chain an additional service that will only accept `DELETE` requests.
     ///
-    /// See [`OnMethod::get`] for an example.
-    pub fn delete<T>(self, svc: T) -> OnMethod<T, Self, B>
+    /// See [`MethodRouter::get`] for an example.
+    pub fn delete<T>(self, svc: T) -> MethodRouter<T, Self, B>
     where
         T: Service<Request<B>> + Clone,
     {
@@ -342,9 +346,8 @@ impl<S, F, B> OnMethod<S, F, B> {
     /// ```rust
     /// use axum::{
     ///     http::Request,
-    ///     service,
     ///     Router,
-    ///     routing::{MethodFilter, on},
+    ///     routing::{MethodFilter, on, service_method_router as service},
     /// };
     /// use http::Response;
     /// use std::convert::Infallible;
@@ -369,7 +372,7 @@ impl<S, F, B> OnMethod<S, F, B> {
     /// Note that `get` routes will also be called for `HEAD` requests but will have
     /// the response body removed. Make sure to add explicit `HEAD` routes
     /// afterwards.
-    pub fn get<T>(self, svc: T) -> OnMethod<T, Self, B>
+    pub fn get<T>(self, svc: T) -> MethodRouter<T, Self, B>
     where
         T: Service<Request<B>> + Clone,
     {
@@ -378,8 +381,8 @@ impl<S, F, B> OnMethod<S, F, B> {
 
     /// Chain an additional service that will only accept `HEAD` requests.
     ///
-    /// See [`OnMethod::get`] for an example.
-    pub fn head<T>(self, svc: T) -> OnMethod<T, Self, B>
+    /// See [`MethodRouter::get`] for an example.
+    pub fn head<T>(self, svc: T) -> MethodRouter<T, Self, B>
     where
         T: Service<Request<B>> + Clone,
     {
@@ -388,8 +391,8 @@ impl<S, F, B> OnMethod<S, F, B> {
 
     /// Chain an additional service that will only accept `OPTIONS` requests.
     ///
-    /// See [`OnMethod::get`] for an example.
-    pub fn options<T>(self, svc: T) -> OnMethod<T, Self, B>
+    /// See [`MethodRouter::get`] for an example.
+    pub fn options<T>(self, svc: T) -> MethodRouter<T, Self, B>
     where
         T: Service<Request<B>> + Clone,
     {
@@ -398,8 +401,8 @@ impl<S, F, B> OnMethod<S, F, B> {
 
     /// Chain an additional service that will only accept `PATCH` requests.
     ///
-    /// See [`OnMethod::get`] for an example.
-    pub fn patch<T>(self, svc: T) -> OnMethod<T, Self, B>
+    /// See [`MethodRouter::get`] for an example.
+    pub fn patch<T>(self, svc: T) -> MethodRouter<T, Self, B>
     where
         T: Service<Request<B>> + Clone,
     {
@@ -408,8 +411,8 @@ impl<S, F, B> OnMethod<S, F, B> {
 
     /// Chain an additional service that will only accept `POST` requests.
     ///
-    /// See [`OnMethod::get`] for an example.
-    pub fn post<T>(self, svc: T) -> OnMethod<T, Self, B>
+    /// See [`MethodRouter::get`] for an example.
+    pub fn post<T>(self, svc: T) -> MethodRouter<T, Self, B>
     where
         T: Service<Request<B>> + Clone,
     {
@@ -418,8 +421,8 @@ impl<S, F, B> OnMethod<S, F, B> {
 
     /// Chain an additional service that will only accept `PUT` requests.
     ///
-    /// See [`OnMethod::get`] for an example.
-    pub fn put<T>(self, svc: T) -> OnMethod<T, Self, B>
+    /// See [`MethodRouter::get`] for an example.
+    pub fn put<T>(self, svc: T) -> MethodRouter<T, Self, B>
     where
         T: Service<Request<B>> + Clone,
     {
@@ -428,8 +431,8 @@ impl<S, F, B> OnMethod<S, F, B> {
 
     /// Chain an additional service that will only accept `TRACE` requests.
     ///
-    /// See [`OnMethod::get`] for an example.
-    pub fn trace<T>(self, svc: T) -> OnMethod<T, Self, B>
+    /// See [`MethodRouter::get`] for an example.
+    pub fn trace<T>(self, svc: T) -> MethodRouter<T, Self, B>
     where
         T: Service<Request<B>> + Clone,
     {
@@ -444,9 +447,8 @@ impl<S, F, B> OnMethod<S, F, B> {
     /// ```rust
     /// use axum::{
     ///     http::Request,
-    ///     service,
     ///     Router,
-    ///     routing::{MethodFilter, on},
+    ///     routing::{MethodFilter, on, service_method_router as service},
     /// };
     /// use http::Response;
     /// use std::convert::Infallible;
@@ -466,11 +468,11 @@ impl<S, F, B> OnMethod<S, F, B> {
     /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
     /// # };
     /// ```
-    pub fn on<T>(self, method: MethodFilter, svc: T) -> OnMethod<T, Self, B>
+    pub fn on<T>(self, method: MethodFilter, svc: T) -> MethodRouter<T, Self, B>
     where
         T: Service<Request<B>> + Clone,
     {
-        OnMethod {
+        MethodRouter {
             method,
             svc,
             fallback: self,
@@ -479,9 +481,7 @@ impl<S, F, B> OnMethod<S, F, B> {
     }
 }
 
-// this is identical to `routing::OnMethod`'s implementation. Would be nice to find a way to clean
-// that up, but not sure its possible.
-impl<S, F, B, ResBody> Service<Request<B>> for OnMethod<S, F, B>
+impl<S, F, B, ResBody> Service<Request<B>> for MethodRouter<S, F, B>
 where
     S: Service<Request<B>, Response = Response<ResBody>> + Clone,
     ResBody: http_body::Body<Data = Bytes> + Send + Sync + 'static,
@@ -490,15 +490,13 @@ where
 {
     type Response = Response<BoxBody>;
     type Error = S::Error;
-    type Future = future::OnMethodFuture<S, F, B>;
+    type Future = MethodRouterFuture<S, F, B>;
 
     fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         Poll::Ready(Ok(()))
     }
 
     fn call(&mut self, req: Request<B>) -> Self::Future {
-        use crate::util::Either;
-
         let req_method = req.method().clone();
 
         let f = if self.method.matches(req.method()) {
@@ -509,9 +507,51 @@ where
             Either::B { inner: fut }
         };
 
-        future::OnMethodFuture {
+        MethodRouterFuture {
             inner: f,
             req_method,
+        }
+    }
+}
+
+pin_project! {
+    /// The response future for [`MethodRouter`].
+    pub struct MethodRouterFuture<S, F, B>
+    where
+        S: Service<Request<B>>,
+        F: Service<Request<B>>
+    {
+        #[pin]
+        pub(super) inner: Either<
+            Oneshot<S, Request<B>>,
+            Oneshot<F, Request<B>>,
+        >,
+        pub(super) req_method: Method,
+    }
+}
+
+impl<S, F, B, ResBody> Future for MethodRouterFuture<S, F, B>
+where
+    S: Service<Request<B>, Response = Response<ResBody>> + Clone,
+    ResBody: http_body::Body<Data = Bytes> + Send + Sync + 'static,
+    ResBody::Error: Into<BoxError>,
+    F: Service<Request<B>, Response = Response<BoxBody>, Error = S::Error>,
+{
+    type Output = Result<Response<BoxBody>, S::Error>;
+
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        let this = self.project();
+
+        let response = match this.inner.project() {
+            EitherProj::A { inner } => ready!(inner.poll(cx))?.map(box_body),
+            EitherProj::B { inner } => ready!(inner.poll(cx))?,
+        };
+
+        if this.req_method == &Method::HEAD {
+            let response = response.map(|_| box_body(Empty::new()));
+            Poll::Ready(Ok(response))
+        } else {
+            Poll::Ready(Ok(response))
         }
     }
 }
@@ -520,6 +560,6 @@ where
 fn traits() {
     use crate::tests::*;
 
-    assert_send::<OnMethod<(), (), NotSendSync>>();
-    assert_sync::<OnMethod<(), (), NotSendSync>>();
+    assert_send::<MethodRouter<(), (), NotSendSync>>();
+    assert_sync::<MethodRouter<(), (), NotSendSync>>();
 }
