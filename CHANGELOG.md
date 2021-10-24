@@ -112,10 +112,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   }
   ```
 - **breaking:** Method routing for handlers have been moved from `axum::handler`
-  to `axum::routing`. So `axum::handler::get` now lives at `axum::routing::get`.
+  to `axum::routing`. So `axum::handler::get` now lives at `axum::routing::get`
+  ([#405])
 - **breaking:** Method routing for services have been moved from `axum::service`
   to `axum::routing`. So `axum::service::get` now lives at
-  `axum::service_method_router::get`.
+  `axum::service_method_router::get` ([#405])
 
 [#339]: https://github.com/tokio-rs/axum/pull/339
 [#286]: https://github.com/tokio-rs/axum/pull/286
@@ -125,6 +126,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#396]: https://github.com/tokio-rs/axum/pull/396
 [#402]: https://github.com/tokio-rs/axum/pull/402
 [#404]: https://github.com/tokio-rs/axum/pull/404
+[#405]: https://github.com/tokio-rs/axum/pull/405
 
 # 0.2.8 (07. October, 2021)
 
