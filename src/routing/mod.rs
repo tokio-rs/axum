@@ -13,7 +13,6 @@ use crate::{
 };
 use bytes::Bytes;
 use http::{Request, Response, StatusCode, Uri};
-use matchit::Node;
 use std::{
     borrow::Cow,
     collections::HashMap,
@@ -24,7 +23,7 @@ use std::{
     task::{Context, Poll},
 };
 use tower::{util::ServiceExt, ServiceBuilder};
-use tower_http::map_response_body::{MapResponseBody, MapResponseBodyLayer};
+use tower_http::map_response_body::MapResponseBodyLayer;
 use tower_layer::Layer;
 use tower_service::Service;
 
@@ -33,7 +32,6 @@ pub mod handler_method_router;
 pub mod service_method_router;
 
 mod method_filter;
-mod or;
 
 pub use self::method_filter::MethodFilter;
 
@@ -56,7 +54,8 @@ impl RouteId {
 /// The router type for composing handlers and services.
 pub struct Router<B = Body> {
     routes: HashMap<RouteId, Route<B>>,
-    node: Node<RouteId>,
+    node: Node,
+    fallback: Option<Route<B>>,
 }
 
 impl<B> Clone for Router<B> {
@@ -64,6 +63,7 @@ impl<B> Clone for Router<B> {
         Self {
             routes: self.routes.clone(),
             node: self.node.clone(),
+            fallback: self.fallback.clone(),
         }
     }
 }
@@ -81,11 +81,13 @@ impl<B> fmt::Debug for Router<B> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Router")
             .field("routes", &self.routes)
+            .field("node", &self.node)
+            .field("fallback", &self.fallback)
             .finish()
     }
 }
 
-const NEST_TAIL_PARAM: &str = "__axum_nest";
+const NEST_TAIL_PARAM: &str = "__axum_internal_nest_capture";
 
 impl<B> Router<B>
 where
@@ -98,7 +100,8 @@ where
     pub fn new() -> Self {
         Self {
             routes: Default::default(),
-            node: Node::new(),
+            node: Default::default(),
+            fallback: None,
         }
     }
 
@@ -438,14 +441,17 @@ where
             .routes
             .into_iter()
             .map(|(id, route)| {
-                let route = tower_layer::Layer::layer(&layer, route);
+                let route = Layer::layer(&layer, route);
                 (id, route)
             })
             .collect::<HashMap<RouteId, Route<LayeredReqBody>>>();
 
+        let fallback = self.fallback.map(|fallback| Layer::layer(&layer, fallback));
+
         Router {
             routes,
             node: self.node,
+            fallback,
         }
     }
 
@@ -593,7 +599,32 @@ where
     /// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
     /// # };
     /// ```
-    pub fn or<T>(self, other: T) -> Self
+    pub fn or(mut self, other: Router<B>) -> Self {
+        let Router {
+            routes,
+            node,
+            fallback,
+        } = other;
+
+        if let Err(err) = self.node.merge(node) {
+            panic!("Invalid route: {}", err);
+        }
+
+        for (id, route) in routes {
+            assert!(self.routes.insert(id, route).is_none());
+        }
+
+        if self.fallback.is_none() {
+            self.fallback = fallback;
+        }
+
+        self
+    }
+
+    /// ```
+    /// todo!();
+    /// ```
+    pub fn fallback<T>(mut self, svc: T) -> Self
     where
         T: Service<Request<B>, Response = Response<BoxBody>, Error = Infallible>
             + Clone
@@ -601,11 +632,39 @@ where
             + 'static,
         T::Future: Send + 'static,
     {
-        todo!()
-        // self.map(|first| or::Or {
-        //     first,
-        //     second: other,
-        // })
+        self.fallback = Some(Route(CloneBoxService::new(svc)));
+        self
+    }
+
+    #[inline]
+    fn call_route(&self, match_: matchit::Match<&RouteId>, mut req: Request<B>) -> RouterFuture<B> {
+        let id = *match_.value;
+        req.extensions_mut().insert(id);
+
+        let params = match_
+            .params
+            .iter()
+            .filter(|(key, _)| !key.starts_with(NEST_TAIL_PARAM))
+            .map(|(key, value)| (key.to_string(), value.to_string()))
+            .collect::<Vec<_>>();
+
+        if let Some(tail) = match_.params.get(NEST_TAIL_PARAM) {
+            UriStack::push(&mut req);
+            let new_uri = with_path(req.uri(), tail);
+            *req.uri_mut() = new_uri;
+        }
+
+        insert_url_params(&mut req, params);
+
+        let route = self
+            .routes
+            .get(&id)
+            .expect("no route for id. This is a bug in axum. Please file an issue")
+            .clone();
+
+        RouterFuture {
+            future: futures_util::future::Either::Left(route.oneshot(req)),
+        }
     }
 }
 
@@ -630,33 +689,12 @@ where
         }
 
         let path = req.uri().path().to_string();
+
         if let Ok(match_) = self.node.at(&path) {
-            let id = *match_.value;
-            req.extensions_mut().insert(id);
-
-            let params = match_
-                .params
-                .iter()
-                .filter(|(key, _)| !key.starts_with(NEST_TAIL_PARAM))
-                .map(|(key, value)| (key.to_string(), value.to_string()))
-                .collect::<Vec<_>>();
-
-            if let Some(tail) = match_.params.get(NEST_TAIL_PARAM) {
-                UriStack::push(&mut req);
-                let new_uri = with_path(req.uri(), tail);
-                *req.uri_mut() = new_uri;
-            }
-
-            insert_url_params(&mut req, params);
-
-            let route = self
-                .routes
-                .get(&id)
-                .expect("no route for id. This is a bug in axum. Please file an issue")
-                .clone();
-
+            self.call_route(match_, req)
+        } else if let Some(fallback) = &self.fallback {
             RouterFuture {
-                future: futures_util::future::Either::Left(route.oneshot(req)),
+                future: futures_util::future::Either::Left(fallback.clone().oneshot(req)),
             }
         } else {
             let res = EmptyRouter::<Infallible>::not_found().call_sync(req);
@@ -678,12 +716,6 @@ impl UriStack {
         } else {
             req.extensions_mut().insert(Self(vec![uri]));
         }
-    }
-
-    pub(crate) fn pop<B>(req: &mut Request<B>) -> Option<Uri> {
-        req.extensions_mut()
-            .get_mut::<Self>()
-            .and_then(|stack| stack.0.pop())
     }
 }
 
@@ -755,29 +787,12 @@ impl<E> EmptyRouter<E> {
         }
     }
 
-    fn call_sync<B>(&mut self, mut request: Request<B>) -> Response<BoxBody>
+    fn call_sync<B>(&mut self, _req: Request<B>) -> Response<BoxBody>
     where
         B: Send + Sync + 'static,
     {
-        if self.status == StatusCode::METHOD_NOT_ALLOWED {
-            // we're inside a route but there was no method that matched
-            // so record that so we can override the status if no other
-            // routes match
-            request.extensions_mut().insert(NoMethodMatch);
-        }
-
-        if self.status == StatusCode::NOT_FOUND
-            && request.extensions().get::<NoMethodMatch>().is_some()
-        {
-            self.status = StatusCode::METHOD_NOT_ALLOWED;
-        }
-
         let mut res = Response::new(crate::body::empty());
-
-        res.extensions_mut().insert(FromEmptyRouter { request });
-
         *res.status_mut() = self.status;
-
         res
     }
 }
@@ -816,19 +831,6 @@ where
             future: ready(Ok(res)),
         }
     }
-}
-
-#[derive(Clone, Copy)]
-struct NoMethodMatch;
-
-/// Response extension used by [`EmptyRouter`] to send the request back to [`Or`] so
-/// the other service can be called.
-///
-/// Without this we would loose ownership of the request when calling the first
-/// service in [`Or`]. We also wouldn't be able to identify if the response came
-/// from [`EmptyRouter`] and therefore can be discarded in [`Or`].
-struct FromEmptyRouter<B> {
-    request: Request<B>,
 }
 
 /// A [`Service`] that has been nested inside a router at some path.
@@ -942,7 +944,7 @@ impl<ReqBody> fmt::Debug for Route<ReqBody> {
 impl<B> Service<Request<B>> for Route<B> {
     type Response = Response<BoxBody>;
     type Error = Infallible;
-    type Future = future::RouteFuture;
+    type Future = RouteFuture;
 
     #[inline]
     fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
@@ -951,9 +953,48 @@ impl<B> Service<Request<B>> for Route<B> {
 
     #[inline]
     fn call(&mut self, req: Request<B>) -> Self::Future {
-        future::RouteFuture {
+        RouteFuture {
             future: self.0.call(req),
         }
+    }
+}
+
+#[derive(Clone, Default)]
+struct Node {
+    inner: matchit::Node<RouteId>,
+    paths: Vec<(String, RouteId)>,
+}
+
+impl Node {
+    fn insert(
+        &mut self,
+        path: impl Into<String>,
+        val: RouteId,
+    ) -> Result<(), matchit::InsertError> {
+        let path = path.into();
+        self.inner.insert(&path, val)?;
+        self.paths.push((path, val));
+        Ok(())
+    }
+
+    fn merge(&mut self, other: Node) -> Result<(), matchit::InsertError> {
+        for (path, id) in other.paths {
+            self.insert(path, id)?;
+        }
+        Ok(())
+    }
+
+    fn at<'n, 'p>(
+        &'n self,
+        path: &'p str,
+    ) -> Result<matchit::Match<'n, 'p, &'n RouteId>, matchit::MatchError> {
+        self.inner.at(path)
+    }
+}
+
+impl fmt::Debug for Node {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Node").field("paths", &self.paths).finish()
     }
 }
 

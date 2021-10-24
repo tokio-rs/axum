@@ -1,9 +1,6 @@
 //! Future types.
 
-use crate::{
-    body::BoxBody,
-    routing::{FromEmptyRouter, UriStack},
-};
+use crate::body::BoxBody;
 use http::{Request, Response};
 use pin_project_lite::pin_project;
 use std::{
@@ -16,9 +13,12 @@ use tower::util::Oneshot;
 use tower_service::Service;
 
 opaque_future! {
-    /// Response future for [`EmptyRouter`](super::EmptyRouter).
-    pub type EmptyRouterFuture<E> =
-        std::future::Ready<Result<Response<BoxBody>, E>>;
+    /// Response future for [`Router`](super::Router).
+    pub type RouterFuture<B> =
+        futures_util::future::Either<
+            Oneshot<super::Route<B>, Request<B>>,
+            std::future::Ready<Result<Response<BoxBody>, Infallible>>,
+        >;
 }
 
 opaque_future! {
@@ -28,12 +28,9 @@ opaque_future! {
 }
 
 opaque_future! {
-    /// Response future for [`Router`](super::Router).
-    pub type RouterFuture<B> =
-        futures_util::future::Either<
-            Oneshot<super::Route<B>, Request<B>>,
-            std::future::Ready<Result<Response<BoxBody>, Infallible>>,
-        >;
+    /// Response future for [`EmptyRouter`](super::EmptyRouter).
+    pub type EmptyRouterFuture<E> =
+        std::future::Ready<Result<Response<BoxBody>, E>>;
 }
 
 pin_project! {
@@ -55,21 +52,9 @@ where
 {
     type Output = Result<Response<BoxBody>, Infallible>;
 
+    #[inline]
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        let mut res: Response<_> = futures_util::ready!(self.project().inner.poll(cx)?);
-
-        // `nest` mutates the URI of the request so if it turns out no route matched
-        // we need to reset the URI so the next routes see the original URI
-        //
-        // That requires using a stack since we can have arbitrarily nested routes
-        if let Some(from_empty_router) = res.extensions_mut().get_mut::<FromEmptyRouter<B>>() {
-            let uri = UriStack::pop(&mut from_empty_router.request);
-            if let Some(uri) = uri {
-                *from_empty_router.request.uri_mut() = uri;
-            }
-        }
-
-        Poll::Ready(Ok(res))
+        self.project().inner.poll(cx)
     }
 }
 

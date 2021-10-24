@@ -299,44 +299,44 @@ async fn nesting_and_seeing_the_right_uri_at_more_levels_of_nesting() {
 #[tokio::test]
 async fn nesting_and_seeing_the_right_uri_ors_with_nesting() {
     let one = Router::new().nest(
-        "/foo",
+        "/one",
         Router::new().nest("/bar", Router::new().route("/baz", get(all_the_uris))),
     );
-    let two = Router::new().nest("/foo", Router::new().route("/qux", get(all_the_uris)));
-    let three = Router::new().route("/foo", get(all_the_uris));
+    let two = Router::new().nest("/two", Router::new().route("/qux", get(all_the_uris)));
+    let three = Router::new().route("/three", get(all_the_uris));
 
     let client = TestClient::new(one.or(two).or(three));
 
-    let res = client.get("/foo/bar/baz").send().await;
+    let res = client.get("/one/bar/baz").send().await;
     assert_eq!(res.status(), StatusCode::OK);
     assert_eq!(
         res.json::<Value>().await,
         json!({
             "uri": "/baz",
             "request_uri": "/baz",
-            "original_uri": "/foo/bar/baz",
+            "original_uri": "/one/bar/baz",
         })
     );
 
-    let res = client.get("/foo/qux").send().await;
+    let res = client.get("/two/qux").send().await;
     assert_eq!(res.status(), StatusCode::OK);
     assert_eq!(
         res.json::<Value>().await,
         json!({
             "uri": "/qux",
             "request_uri": "/qux",
-            "original_uri": "/foo/qux",
+            "original_uri": "/two/qux",
         })
     );
 
-    let res = client.get("/foo").send().await;
+    let res = client.get("/three").send().await;
     assert_eq!(res.status(), StatusCode::OK);
     assert_eq!(
         res.json::<Value>().await,
         json!({
-            "uri": "/foo",
-            "request_uri": "/foo",
-            "original_uri": "/foo",
+            "uri": "/three",
+            "request_uri": "/three",
+            "original_uri": "/three",
         })
     );
 }
@@ -344,32 +344,32 @@ async fn nesting_and_seeing_the_right_uri_ors_with_nesting() {
 #[tokio::test]
 async fn nesting_and_seeing_the_right_uri_ors_with_multi_segment_uris() {
     let one = Router::new().nest(
-        "/foo",
-        Router::new().nest("/bar", Router::new().route("/baz", get(all_the_uris))),
+        "/one",
+        Router::new().nest("/foo", Router::new().route("/bar", get(all_the_uris))),
     );
-    let two = Router::new().route("/foo/bar", get(all_the_uris));
+    let two = Router::new().route("/two/foo", get(all_the_uris));
 
     let client = TestClient::new(one.or(two));
 
-    let res = client.get("/foo/bar/baz").send().await;
+    let res = client.get("/one/foo/bar").send().await;
     assert_eq!(res.status(), StatusCode::OK);
     assert_eq!(
         res.json::<Value>().await,
         json!({
-            "uri": "/baz",
-            "request_uri": "/baz",
-            "original_uri": "/foo/bar/baz",
+            "uri": "/bar",
+            "request_uri": "/bar",
+            "original_uri": "/one/foo/bar",
         })
     );
 
-    let res = client.get("/foo/bar").send().await;
+    let res = client.get("/two/foo").send().await;
     assert_eq!(res.status(), StatusCode::OK);
     assert_eq!(
         res.json::<Value>().await,
         json!({
-            "uri": "/foo/bar",
-            "request_uri": "/foo/bar",
-            "original_uri": "/foo/bar",
+            "uri": "/two/foo",
+            "request_uri": "/two/foo",
+            "original_uri": "/two/foo",
         })
     );
 }
