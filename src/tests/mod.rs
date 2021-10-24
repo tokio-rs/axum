@@ -1,5 +1,6 @@
 #![allow(clippy::blacklisted_name)]
 
+use crate::error_handling::HandleErrorLayer;
 use crate::BoxError;
 use crate::{
     extract::{self, Path},
@@ -339,7 +340,7 @@ async fn middleware_on_single_route() {
 
 #[tokio::test]
 async fn service_in_bottom() {
-    async fn handler(_req: Request<Body>) -> Result<Response<Body>, hyper::Error> {
+    async fn handler(_req: Request<Body>) -> Result<Response<Body>, Infallible> {
         Ok(Response::new(hyper::Body::empty()))
     }
 
@@ -532,7 +533,9 @@ async fn middleware_applies_to_routes_above() {
     let app = Router::new()
         .route("/one", get(std::future::pending::<()>))
         .layer(TimeoutLayer::new(Duration::new(0, 0)))
-        .handle_error(|_: BoxError| Ok::<_, Infallible>(StatusCode::REQUEST_TIMEOUT))
+        .layer(HandleErrorLayer::new(|_: BoxError| {
+            StatusCode::REQUEST_TIMEOUT
+        }))
         .route("/two", get(|| async {}));
 
     let client = TestClient::new(app);

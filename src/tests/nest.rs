@@ -1,5 +1,6 @@
 use super::*;
 use crate::body::box_body;
+use crate::error_handling::HandleErrorExt;
 use crate::routing::EmptyRouter;
 use std::collections::HashMap;
 
@@ -169,10 +170,10 @@ async fn nest_static_file_server() {
     let app = Router::new().nest(
         "/static",
         service::get(tower_http::services::ServeDir::new(".")).handle_error(|error| {
-            Ok::<_, Infallible>((
+            (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 format!("Unhandled internal error: {}", error),
-            ))
+            )
         }),
     );
 
@@ -255,5 +256,5 @@ async fn multiple_top_level_nests() {
 #[tokio::test]
 #[should_panic(expected = "Invalid route: nested routes cannot contain wildcards (*)")]
 async fn nest_cannot_contain_wildcards() {
-    Router::<EmptyRouter>::new().nest("/one/*rest", Router::<EmptyRouter>::new());
+    Router::<EmptyRouter>::new().nest::<_, Body>("/one/*rest", Router::<EmptyRouter>::new());
 }

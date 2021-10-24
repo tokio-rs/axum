@@ -7,6 +7,7 @@
 //! ```
 
 use axum::{
+    error_handling::HandleErrorExt,
     extract::{
         ws::{Message, WebSocket, WebSocketUpgrade},
         TypedHeader,
@@ -38,10 +39,10 @@ async fn main() {
                 ServeDir::new("examples/websockets/assets").append_index_html_on_directories(true),
             )
             .handle_error(|error: std::io::Error| {
-                Ok::<_, std::convert::Infallible>((
+                (
                     StatusCode::INTERNAL_SERVER_ERROR,
                     format!("Unhandled internal error: {}", error),
-                ))
+                )
             }),
         )
         // routes are matched from bottom to top, so we have to put `nest` at the

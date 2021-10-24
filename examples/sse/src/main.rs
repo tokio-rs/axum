@@ -5,6 +5,7 @@
 //! ```
 
 use axum::{
+    error_handling::HandleErrorExt,
     extract::TypedHeader,
     handler::get,
     http::StatusCode,
@@ -28,10 +29,10 @@ async fn main() {
         ServeDir::new("examples/sse/assets").append_index_html_on_directories(true),
     )
     .handle_error(|error: std::io::Error| {
-        Ok::<_, std::convert::Infallible>((
+        (
             StatusCode::INTERNAL_SERVER_ERROR,
             format!("Unhandled internal error: {}", error),
-        ))
+        )
     });
 
     // build our application with a route

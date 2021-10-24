@@ -4,7 +4,6 @@ use crate::{
     body::BoxBody,
     clone_box_service::CloneBoxService,
     routing::{FromEmptyRouter, UriStack},
-    BoxError,
 };
 use http::{Request, Response};
 use pin_project_lite::pin_project;
@@ -28,33 +27,24 @@ opaque_future! {
 
 pin_project! {
     /// The response future for [`BoxRoute`](super::BoxRoute).
-    pub struct BoxRouteFuture<B, E>
-    where
-        E: Into<BoxError>,
-    {
+    pub struct BoxRouteFuture<B> {
         #[pin]
         pub(super) inner: Oneshot<
-            CloneBoxService<Request<B>, Response<BoxBody>, E>,
+            CloneBoxService<Request<B>, Response<BoxBody>, Infallible>,
             Request<B>,
         >,
     }
 }
 
-impl<B, E> Future for BoxRouteFuture<B, E>
-where
-    E: Into<BoxError>,
-{
-    type Output = Result<Response<BoxBody>, E>;
+impl<B> Future for BoxRouteFuture<B> {
+    type Output = Result<Response<BoxBody>, Infallible>;
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         self.project().inner.poll(cx)
     }
 }
 
-impl<B, E> fmt::Debug for BoxRouteFuture<B, E>
-where
-    E: Into<BoxError>,
-{
+impl<B> fmt::Debug for BoxRouteFuture<B> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("BoxRouteFuture").finish()
     }
@@ -112,11 +102,11 @@ pin_project! {
 
 impl<S, F, B> Future for RouteFuture<S, F, B>
 where
-    S: Service<Request<B>, Response = Response<BoxBody>>,
-    F: Service<Request<B>, Response = Response<BoxBody>, Error = S::Error>,
+    S: Service<Request<B>, Response = Response<BoxBody>, Error = Infallible>,
+    F: Service<Request<B>, Response = Response<BoxBody>, Error = Infallible>,
     B: Send + Sync + 'static,
 {
-    type Output = Result<Response<BoxBody>, S::Error>;
+    type Output = Result<Response<BoxBody>, Infallible>;
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         match self.project().state.project() {
@@ -141,11 +131,11 @@ pin_project! {
 
 impl<S, F, B> Future for NestedFuture<S, F, B>
 where
-    S: Service<Request<B>, Response = Response<BoxBody>>,
-    F: Service<Request<B>, Response = Response<BoxBody>, Error = S::Error>,
+    S: Service<Request<B>, Response = Response<BoxBody>, Error = Infallible>,
+    F: Service<Request<B>, Response = Response<BoxBody>, Error = Infallible>,
     B: Send + Sync + 'static,
 {
-    type Output = Result<Response<BoxBody>, S::Error>;
+    type Output = Result<Response<BoxBody>, Infallible>;
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let mut res: Response<_> = futures_util::ready!(self.project().inner.poll(cx)?);

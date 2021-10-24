@@ -14,6 +14,7 @@
 //! ```
 
 use axum::{
+    error_handling::HandleErrorLayer,
     extract::{Extension, Path, Query},
     handler::{get, patch},
     http::StatusCode,
@@ -23,7 +24,6 @@ use axum::{
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
-    convert::Infallible,
     net::SocketAddr,
     sync::{Arc, RwLock},
     time::Duration,
@@ -49,25 +49,21 @@ async fn main() {
         // Add middleware to all routes
         .layer(
             ServiceBuilder::new()
+                .layer(HandleErrorLayer::new(|error: BoxError| {
+                    if error.is::<tower::timeout::error::Elapsed>() {
+                        Ok(StatusCode::REQUEST_TIMEOUT)
+                    } else {
+                        Err((
+                            StatusCode::INTERNAL_SERVER_ERROR,
+                            format!("Unhandled internal error: {}", error),
+                        ))
+                    }
+                }))
                 .timeout(Duration::from_secs(10))
                 .layer(TraceLayer::new_for_http())
                 .layer(AddExtensionLayer::new(db))
                 .into_inner(),
-        )
-        .handle_error(|error: BoxError| {
-            let result = if error.is::<tower::timeout::error::Elapsed>() {
-                Ok(StatusCode::REQUEST_TIMEOUT)
-            } else {
-                Err((
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    format!("Unhandled internal error: {}", error),
-                ))
-            };
-
-            Ok::<_, Infallible>(result)
-        })
-        // Make sure all errors have been handled
-        .check_infallible();
+        );
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
     tracing::debug!("listening on {}", addr);
