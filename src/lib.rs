@@ -7,7 +7,6 @@
 //! - [Handlers](#handlers)
 //!     - [Debugging handler type errors](#debugging-handler-type-errors)
 //! - [Routing](#routing)
-//!     - [Matching multiple methods](#matching-multiple-methods)
 //!     - [Routing to any `Service`](#routing-to-any-service)
 //!         - [Routing to fallible services](#routing-to-fallible-services)
 //!     - [Wildcard routes](#wildcard-routes)
@@ -671,7 +670,7 @@
 //! 1. Use `Result<T, T::Rejection>` as your extractor like shown in ["Optional
 //!    extractors"](#optional-extractors). This works well if you're only using
 //!    the extractor in a single handler.
-//! 2. Create your own extractor that in its [`FromRequest`] implementing calls
+//! 2. Create your own extractor that in its [`FromRequest`] implemention calls
 //!    one of axum's built in extractors but returns a different response for
 //!    rejections. See the [customize-extractor-error] example for more details.
 //!
