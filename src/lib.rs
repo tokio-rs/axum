@@ -7,10 +7,11 @@
 //! - [Handlers](#handlers)
 //!     - [Debugging handler type errors](#debugging-handler-type-errors)
 //! - [Routing](#routing)
-//!     - [Routing to any `Service`](#routing-to-any-service)
-//!         - [Routing to fallible services](#routing-to-fallible-services)
 //!     - [Wildcard routes](#wildcard-routes)
 //!     - [Nesting routes](#nesting-routes)
+//!     - [Fallback routes](#fallback-routes)
+//!     - [Routing to any `Service`](#routing-to-any-service)
+//!         - [Routing to fallible services](#routing-to-fallible-services)
 //! - [Extractors](#extractors)
 //!     - [Common extractors](#common-extractors)
 //!     - [Applying multiple extractors](#applying-multiple-extractors)
@@ -143,7 +144,7 @@
 //!
 //! # Routing
 //!
-//! Routing between handlers looks like this:
+//! [`Router::route`] is the main way to add routes:
 //!
 //! ```rust,no_run
 //! use axum::{
@@ -174,10 +175,124 @@
 //! Routes can also be dynamic like `/users/:id`. See [extractors](#extractors)
 //! for more details.
 //!
-//! You can also define routes separately and merge them with [`Router::or`].
+//! You can also define routes separately and merge them with [`Router::merge`].
 //!
 //! Routes are not allowed to overlap and will panic if an overlapping route is
 //! added. This also means the order in which routes are added doesn't matter.
+//!
+//! ## Wildcard routes
+//!
+//! axum also supports wildcard routes:
+//!
+//! ```rust,no_run
+//! use axum::{
+//!     routing::get,
+//!     Router,
+//! };
+//!
+//! let app = Router::new()
+//!     // this matches any request that starts with `/api`
+//!     .route("/api/*rest", get(|| async { /* ... */ }));
+//! # async {
+//! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+//! # };
+//! ```
+//!
+//! The matched path can be extracted via [`extract::Path`]:
+//!
+//! ```rust,no_run
+//! use axum::{
+//!     routing::get,
+//!     extract::Path,
+//!     Router,
+//! };
+//!
+//! let app = Router::new().route("/api/*rest", get(|Path(rest): Path<String>| async {
+//!     // `rest` will be everything after `/api`
+//! }));
+//! # async {
+//! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+//! # };
+//! ```
+//!
+//! ## Nesting routes
+//!
+//! Routes can be nested by calling [`Router::nest`](routing::Router::nest):
+//!
+//! ```rust,no_run
+//! use axum::{
+//!     body::{Body, BoxBody},
+//!     http::Request,
+//!     routing::get,
+//!     Router,
+//! };
+//! use tower_http::services::ServeFile;
+//! use http::Response;
+//!
+//! fn api_routes() -> Router {
+//!     Router::new()
+//!         .route("/users", get(|_: Request<Body>| async { /* ... */ }))
+//! }
+//!
+//! let app = Router::new()
+//!     .route("/", get(|_: Request<Body>| async { /* ... */ }))
+//!     .nest("/api", api_routes());
+//! # async {
+//! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+//! # };
+//! ```
+//!
+//! Note that nested routes will not see the orignal request URI but instead
+//! have the matched prefix stripped. This is necessary for services like static
+//! file serving to work. Use [`OriginalUri`] if you need the original request
+//! URI.
+//!
+//! Nested routes are similar to wild card routes. The difference is that
+//! wildcard routes still see the whole URI whereas nested routes will have
+//! the prefix stripped.
+//!
+//! ```rust
+//! use axum::{routing::get, http::Uri, Router};
+//!
+//! let app = Router::new()
+//!     .route("/foo/*rest", get(|uri: Uri| async {
+//!         // `uri` will contain `/foo`
+//!     }))
+//!     .nest("/bar", get(|uri: Uri| async {
+//!         // `uri` will _not_ contain `/bar`
+//!     }));
+//! # async {
+//! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+//! # };
+//! ```
+//!
+//! ## Fallback routes
+//!
+//! By default axum will respond with an empty `404 Not Found` response to unhandled requests. To
+//! override that you can use [`Router::fallback`]:
+//!
+//! ```rust
+//! use axum::{
+//!     Router,
+//!     routing::get,
+//!     handler::Handler,
+//!     response::IntoResponse,
+//!     http::{StatusCode, Uri},
+//! };
+//!
+//! async fn fallback(uri: Uri) -> impl IntoResponse {
+//!     (StatusCode::NOT_FOUND, format!("No route for {}", uri))
+//! }
+//!
+//! let app = Router::new()
+//!     .route("/foo", get(|| async { /* ... */ }))
+//!     .fallback(fallback.into_service());
+//! # async {
+//! # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+//! # };
+//! ```
+//!
+//! See [`Router::fallback`] for more details.
 //!
 //! ## Routing to any [`Service`]
 //!
@@ -313,92 +428,6 @@
 //!
 //! See ["Error handling"](#error-handling) for more details on [`handle_error`]
 //! and error handling in general.
-//!
-//! ## Wildcard routes
-//!
-//! axum also supports wildcard routes:
-//!
-//! ```rust,no_run
-//! use axum::{
-//!     routing::get,
-//!     Router,
-//! };
-//!
-//! let app = Router::new()
-//!     // this matches any request that starts with `/api`
-//!     .route("/api/*rest", get(|| async { /* ... */ }));
-//! # async {
-//! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-//! # };
-//! ```
-//!
-//! The matched path can be extracted via [`extract::Path`]:
-//!
-//! ```rust,no_run
-//! use axum::{
-//!     routing::get,
-//!     extract::Path,
-//!     Router,
-//! };
-//!
-//! let app = Router::new().route("/api/*rest", get(|Path(rest): Path<String>| async {
-//!     // `rest` will be everything after `/api`
-//! }));
-//! # async {
-//! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-//! # };
-//! ```
-//!
-//! ## Nesting routes
-//!
-//! Routes can be nested by calling [`Router::nest`](routing::Router::nest):
-//!
-//! ```rust,no_run
-//! use axum::{
-//!     body::{Body, BoxBody},
-//!     http::Request,
-//!     routing::get,
-//!     Router,
-//! };
-//! use tower_http::services::ServeFile;
-//! use http::Response;
-//!
-//! fn api_routes() -> Router {
-//!     Router::new()
-//!         .route("/users", get(|_: Request<Body>| async { /* ... */ }))
-//! }
-//!
-//! let app = Router::new()
-//!     .route("/", get(|_: Request<Body>| async { /* ... */ }))
-//!     .nest("/api", api_routes());
-//! # async {
-//! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-//! # };
-//! ```
-//!
-//! Note that nested routes will not see the orignal request URI but instead
-//! have the matched prefix stripped. This is necessary for services like static
-//! file serving to work. Use [`OriginalUri`] if you need the original request
-//! URI.
-//!
-//! Nested routes are similar to wild card routes. The difference is that
-//! wildcard routes still see the whole URI whereas nested routes will have
-//! the prefix stripped.
-//!
-//! ```rust
-//! use axum::{routing::get, http::Uri, Router};
-//!
-//! let app = Router::new()
-//!     .route("/foo/*rest", get(|uri: Uri| async {
-//!         // `uri` will contain `/foo`
-//!     }))
-//!     .nest("/bar", get(|uri: Uri| async {
-//!         // `uri` will _not_ contain `/bar`
-//!     }));
-//! # async {
-//! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-//! # };
-//! ```
 //!
 //! # Extractors
 //!
@@ -862,7 +891,7 @@
 //! Note that [`Router::layer`] applies the middleware to all previously added
 //! routes, of that particular `Router`. If you need multiple groups of routes
 //! with different middleware build them separately and combine them with
-//! [`Router::or`]:
+//! [`Router::merge`]:
 //!
 //! ```rust,no_run
 //! use axum::{
@@ -883,7 +912,7 @@
 //!     .route("/requires-auth", get(handler))
 //!     .layer(MyAuthLayer::new());
 //!
-//! let app = foo.or(bar);
+//! let app = foo.merge(bar);
 //! # async {
 //! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 //! # };
@@ -1148,7 +1177,7 @@
 //! [`IntoResponse`]: crate::response::IntoResponse
 //! [`Timeout`]: tower::timeout::Timeout
 //! [examples]: https://github.com/tokio-rs/axum/tree/main/examples
-//! [`Router::or`]: crate::routing::Router::or
+//! [`Router::merge`]: crate::routing::Router::merge
 //! [`axum::Server`]: hyper::server::Server
 //! [`OriginalUri`]: crate::extract::OriginalUri
 //! [`Service`]: tower::Service

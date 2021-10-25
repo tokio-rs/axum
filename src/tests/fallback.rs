@@ -1,0 +1,96 @@
+use super::*;
+use crate::handler::Handler;
+
+#[tokio::test]
+async fn basic() {
+    let app = Router::new()
+        .route("/foo", get(|| async {}))
+        .fallback((|| async { "fallback" }).into_service());
+
+    let client = TestClient::new(app);
+
+    assert_eq!(client.get("/foo").send().await.status(), StatusCode::OK);
+
+    let res = client.get("/does-not-exist").send().await;
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.text().await, "fallback");
+}
+
+#[tokio::test]
+async fn nest() {
+    let app = Router::new()
+        .nest("/foo", Router::new().route("/bar", get(|| async {})))
+        .fallback((|| async { "fallback" }).into_service());
+
+    let client = TestClient::new(app);
+
+    assert_eq!(client.get("/foo/bar").send().await.status(), StatusCode::OK);
+
+    let res = client.get("/does-not-exist").send().await;
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.text().await, "fallback");
+}
+
+#[tokio::test]
+async fn nesting_with_fallback() {
+    let app = Router::new().nest(
+        "/foo",
+        Router::new()
+            .route("/bar", get(|| async {}))
+            .fallback((|| async { "fallback" }).into_service()),
+    );
+
+    let client = TestClient::new(app);
+
+    assert_eq!(client.get("/foo/bar").send().await.status(), StatusCode::OK);
+
+    // this shouldn't exist because the fallback is inside the nested router
+    let res = client.get("/does-not-exist").send().await;
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+
+    // this should work since we get into the nested router
+    let res = client.get("/foo/does-not-exist").send().await;
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.text().await, "fallback");
+}
+
+#[tokio::test]
+async fn or() {
+    let one = Router::new().route("/one", get(|| async {}));
+    let two = Router::new().route("/two", get(|| async {}));
+
+    let app = one
+        .merge(two)
+        .fallback((|| async { "fallback" }).into_service());
+
+    let client = TestClient::new(app);
+
+    assert_eq!(client.get("/one").send().await.status(), StatusCode::OK);
+    assert_eq!(client.get("/two").send().await.status(), StatusCode::OK);
+
+    let res = client.get("/does-not-exist").send().await;
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.text().await, "fallback");
+}
+
+#[tokio::test]
+async fn fallback_on_or() {
+    let one = Router::new()
+        .route("/one", get(|| async {}))
+        .fallback((|| async { "fallback one" }).into_service());
+
+    let two = Router::new()
+        .route("/two", get(|| async {}))
+        .fallback((|| async { "fallback two" }).into_service());
+
+    let app = one.merge(two);
+
+    let client = TestClient::new(app);
+
+    assert_eq!(client.get("/one").send().await.status(), StatusCode::OK);
+    assert_eq!(client.get("/two").send().await.status(), StatusCode::OK);
+
+    let res = client.get("/does-not-exist").send().await;
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.text().await, "fallback two");
+}

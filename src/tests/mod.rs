@@ -31,11 +31,12 @@ use tower_service::Service;
 
 pub(crate) use helpers::*;
 
+mod fallback;
 mod get_to_head;
 mod handle_error;
 mod helpers;
+mod merge;
 mod nest;
-mod or;
 
 #[tokio::test]
 async fn hello_world() {

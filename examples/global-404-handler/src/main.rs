@@ -24,8 +24,8 @@ async fn main() {
     // build our application with a route
     let app = Router::new().route("/", get(handler));
 
-    // make sure this is added as the very last thing
-    let app = app.or(handler_404.into_service());
+    // add a fallback service for handling routes to unknown paths
+    let app = app.fallback(handler_404.into_service());
 
     // run it
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
