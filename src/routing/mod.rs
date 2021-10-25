@@ -614,8 +614,8 @@ where
             assert!(self.routes.insert(id, route).is_none());
         }
 
-        if self.fallback.is_none() {
-            self.fallback = fallback;
+        if let Some(new_fallback) = fallback {
+            self.fallback = Some(new_fallback);
         }
 
         self
