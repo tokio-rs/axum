@@ -118,6 +118,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **breaking:** Method routing for services have been moved from `axum::service`
   to `axum::routing`. So `axum::service::get` now lives at
   `axum::service_method_router::get` ([#405])
+- **breaking:** `Router::or` renamed to `Router::merge` and will now panic on
+  overlapping routes. It now only accepts `Router`s and not general `Service`s.
+  Use `Router::fallback` for adding fallback routes ([#408])
+- **added:** `Router::fallback` for adding handlers for request that didn't
+  match any routes ([#408])
 
 [#339]: https://github.com/tokio-rs/axum/pull/339
 [#286]: https://github.com/tokio-rs/axum/pull/286
@@ -128,6 +133,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#402]: https://github.com/tokio-rs/axum/pull/402
 [#404]: https://github.com/tokio-rs/axum/pull/404
 [#405]: https://github.com/tokio-rs/axum/pull/405
+[#408]: https://github.com/tokio-rs/axum/pull/408
 
 # 0.2.8 (07. October, 2021)
 
