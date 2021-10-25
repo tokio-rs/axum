@@ -928,9 +928,7 @@ where
             .body(crate::body::empty())
             .unwrap();
 
-        MethodNotAllowedFuture {
-            future: ready(Ok(res)),
-        }
+        MethodNotAllowedFuture::new(ready(Ok(res)))
     }
 }
 
@@ -1019,9 +1017,7 @@ where
     }
 
     fn call(&mut self, _target: T) -> Self::Future {
-        future::MakeRouteServiceFuture {
-            future: ready(Ok(self.service.clone())),
-        }
+        future::MakeRouteServiceFuture::new(ready(Ok(self.service.clone())))
     }
 }
 
@@ -1054,9 +1050,7 @@ impl<B> Service<Request<B>> for Route<B> {
 
     #[inline]
     fn call(&mut self, req: Request<B>) -> Self::Future {
-        RouteFuture {
-            future: self.0.call(req),
-        }
+        RouteFuture::new(self.0.call(req))
     }
 }
 

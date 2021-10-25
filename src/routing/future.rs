@@ -1,11 +1,12 @@
 //! Future types.
 
 use crate::body::BoxBody;
+use futures_util::future::Either;
 use http::{Request, Response};
 use pin_project_lite::pin_project;
 use std::{
     convert::Infallible,
-    future::Future,
+    future::{ready, Future},
     pin::Pin,
     task::{Context, Poll},
 };
@@ -23,15 +24,11 @@ opaque_future! {
 
 impl<B> RouterFuture<B> {
     pub(super) fn from_oneshot(future: Oneshot<super::Route<B>, Request<B>>) -> Self {
-        Self {
-            future: futures_util::future::Either::Left(future),
-        }
+        Self::new(Either::Left(future))
     }
 
     pub(super) fn from_response(response: Response<BoxBody>) -> Self {
-        RouterFuture {
-            future: futures_util::future::Either::Right(std::future::ready(Ok(response))),
-        }
+        RouterFuture::new(Either::Right(ready(Ok(response))))
     }
 }
 

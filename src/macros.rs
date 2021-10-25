@@ -12,7 +12,13 @@ macro_rules! opaque_future {
         pin_project_lite::pin_project! {
             $(#[$m])*
             pub struct $name<$($param),*> {
-                #[pin] pub(crate) future: $actual,
+                #[pin] future: $actual,
+            }
+        }
+
+        impl<$($param),*> $name<$($param),*> {
+            pub(crate) fn new(future: $actual) -> Self {
+                Self { future }
             }
         }
 

@@ -75,6 +75,6 @@ where
         let handler = self.handler.clone();
         let future = Handler::call(handler, req).map(Ok::<_, Infallible> as _);
 
-        super::future::IntoServiceFuture { future }
+        super::future::IntoServiceFuture::new(future)
     }
 }
