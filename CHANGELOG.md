@@ -123,6 +123,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Use `Router::fallback` for adding fallback routes ([#408])
 - **added:** `Router::fallback` for adding handlers for request that didn't
   match any routes ([#408])
+- **fixed:** Middleware that return early (such as `tower_http::auth::RequireAuthorization`)
+  now no longer catch requests that would otherwise be 404s. They also work
+  correctly with `Router::merge` (previously called `or`) ([#408])
 
 [#339]: https://github.com/tokio-rs/axum/pull/339
 [#286]: https://github.com/tokio-rs/axum/pull/286
