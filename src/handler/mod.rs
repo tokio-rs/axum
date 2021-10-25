@@ -4,7 +4,7 @@ use crate::{
     body::{box_body, BoxBody},
     extract::{FromRequest, RequestParts},
     response::IntoResponse,
-    routing::{EmptyRouter, MethodRouter},
+    routing::{MethodNotAllowed, MethodRouter},
     BoxError,
 };
 use async_trait::async_trait;
@@ -78,7 +78,7 @@ pub trait Handler<B, T>: Clone + Send + Sized + 'static {
     /// ```
     fn layer<L>(self, layer: L) -> Layered<L::Service, T>
     where
-        L: Layer<MethodRouter<Self, B, T, EmptyRouter>>,
+        L: Layer<MethodRouter<Self, B, T, MethodNotAllowed>>,
     {
         Layered::new(layer.layer(crate::routing::any(self)))
     }

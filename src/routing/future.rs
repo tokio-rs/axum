@@ -42,8 +42,8 @@ opaque_future! {
 }
 
 opaque_future! {
-    /// Response future for [`EmptyRouter`](super::EmptyRouter).
-    pub type EmptyRouterFuture<E> =
+    /// Response future for [`MethodNotAllowed`](super::MethodNotAllowed).
+    pub type MethodNotAllowedFuture<E> =
         std::future::Ready<Result<Response<BoxBody>, E>>;
 }
 

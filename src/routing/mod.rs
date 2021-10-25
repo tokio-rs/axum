@@ -1,6 +1,6 @@
 //! Routing between [`Service`]s and handlers.
 
-use self::future::{EmptyRouterFuture, NestedFuture, RouteFuture, RouterFuture};
+use self::future::{MethodNotAllowedFuture, NestedFuture, RouteFuture, RouterFuture};
 use crate::{
     body::{box_body, Body, BoxBody},
     clone_box_service::CloneBoxService,
@@ -806,7 +806,10 @@ where
                 } else if let Some(fallback) = &self.fallback {
                     RouterFuture::from_oneshot(fallback.clone().oneshot(req))
                 } else {
-                    let res = EmptyRouter::<Infallible>::not_found().call_sync(req);
+                    let res = Response::builder()
+                        .status(StatusCode::NOT_FOUND)
+                        .body(crate::body::empty())
+                        .unwrap();
                     RouterFuture::from_response(res)
                 }
             }
@@ -871,72 +874,56 @@ pub(crate) struct InvalidUtf8InPathParam {
     pub(crate) key: ByteStr,
 }
 
-/// A [`Service`] that responds with `404 Not Found` or `405 Method not allowed`
-/// to all requests.
+/// A [`Service`] that responds with `405 Method not allowed` to all requests.
 ///
-/// This is used as the bottom service in a router stack. You shouldn't have to
+/// This is used as the bottom service in a method router. You shouldn't have to
 /// use it manually.
-pub struct EmptyRouter<E = Infallible> {
-    status: StatusCode,
+pub struct MethodNotAllowed<E = Infallible> {
     _marker: PhantomData<fn() -> E>,
 }
 
-impl<E> EmptyRouter<E> {
-    pub(crate) fn not_found() -> Self {
+impl<E> MethodNotAllowed<E> {
+    pub(crate) fn new() -> Self {
         Self {
-            status: StatusCode::NOT_FOUND,
             _marker: PhantomData,
         }
-    }
-
-    pub(crate) fn method_not_allowed() -> Self {
-        Self {
-            status: StatusCode::METHOD_NOT_ALLOWED,
-            _marker: PhantomData,
-        }
-    }
-
-    fn call_sync<B>(&mut self, _req: Request<B>) -> Response<BoxBody>
-    where
-        B: Send + Sync + 'static,
-    {
-        let mut res = Response::new(crate::body::empty());
-        *res.status_mut() = self.status;
-        res
     }
 }
 
-impl<E> Clone for EmptyRouter<E> {
+impl<E> Clone for MethodNotAllowed<E> {
     fn clone(&self) -> Self {
         Self {
-            status: self.status,
             _marker: PhantomData,
         }
     }
 }
 
-impl<E> fmt::Debug for EmptyRouter<E> {
+impl<E> fmt::Debug for MethodNotAllowed<E> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("EmptyRouter").finish()
+        f.debug_tuple("MethodNotAllowed").finish()
     }
 }
 
-impl<B, E> Service<Request<B>> for EmptyRouter<E>
+impl<B, E> Service<Request<B>> for MethodNotAllowed<E>
 where
     B: Send + Sync + 'static,
 {
     type Response = Response<BoxBody>;
     type Error = E;
-    type Future = EmptyRouterFuture<E>;
+    type Future = MethodNotAllowedFuture<E>;
 
+    #[inline]
     fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         Poll::Ready(Ok(()))
     }
 
-    fn call(&mut self, request: Request<B>) -> Self::Future {
-        let res = self.call_sync(request);
+    fn call(&mut self, _req: Request<B>) -> Self::Future {
+        let res = Response::builder()
+            .status(StatusCode::METHOD_NOT_ALLOWED)
+            .body(crate::body::empty())
+            .unwrap();
 
-        EmptyRouterFuture {
+        MethodNotAllowedFuture {
             future: ready(Ok(res)),
         }
     }
@@ -1120,8 +1107,8 @@ mod tests {
 
         assert_send::<Route<()>>();
 
-        assert_send::<EmptyRouter<NotSendSync>>();
-        assert_sync::<EmptyRouter<NotSendSync>>();
+        assert_send::<MethodNotAllowed<NotSendSync>>();
+        assert_sync::<MethodNotAllowed<NotSendSync>>();
 
         assert_send::<Nested<()>>();
         assert_sync::<Nested<()>>();
