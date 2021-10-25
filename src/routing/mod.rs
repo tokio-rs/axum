@@ -20,6 +20,7 @@ use std::{
     fmt,
     future::ready,
     marker::PhantomData,
+    sync::Arc,
     task::{Context, Poll},
 };
 use tower::{util::ServiceExt, ServiceBuilder};
@@ -1055,10 +1056,11 @@ impl<B> Service<Request<B>> for Route<B> {
     }
 }
 
+/// Wrapper around `matchit::Node` that supports merging two `Node`s.
 #[derive(Clone, Default)]
 struct Node {
     inner: matchit::Node<RouteId>,
-    paths: Vec<(String, RouteId)>,
+    paths: Vec<(Arc<str>, RouteId)>,
 }
 
 impl Node {
@@ -1069,13 +1071,13 @@ impl Node {
     ) -> Result<(), matchit::InsertError> {
         let path = path.into();
         self.inner.insert(&path, val)?;
-        self.paths.push((path, val));
+        self.paths.push((path.into(), val));
         Ok(())
     }
 
     fn merge(&mut self, other: Node) -> Result<(), matchit::InsertError> {
         for (path, id) in other.paths {
-            self.insert(path, id)?;
+            self.insert(&*path, id)?;
         }
         Ok(())
     }
