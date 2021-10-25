@@ -60,7 +60,7 @@ async fn or() {
     let two = Router::new().route("/two", get(|| async {}));
 
     let app = one
-        .or(two)
+        .merge(two)
         .fallback((|| async { "fallback" }).into_service());
 
     let client = TestClient::new(app);
@@ -83,7 +83,7 @@ async fn fallback_on_or() {
         .route("/two", get(|| async {}))
         .fallback((|| async { "fallback two" }).into_service());
 
-    let app = one.or(two);
+    let app = one.merge(two);
 
     let client = TestClient::new(app);
 

@@ -594,12 +594,12 @@ where
     /// let team_routes = Router::new().route("/teams", get(teams_list));
     ///
     /// // combine them into one
-    /// let app = user_routes.or(team_routes);
+    /// let app = user_routes.merge(team_routes);
     /// # async {
     /// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
     /// # };
     /// ```
-    pub fn or(mut self, other: Router<B>) -> Self {
+    pub fn merge(mut self, other: Router<B>) -> Self {
         let Router {
             routes,
             node,

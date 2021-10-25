@@ -883,7 +883,7 @@
 //!     .route("/requires-auth", get(handler))
 //!     .layer(MyAuthLayer::new());
 //!
-//! let app = foo.or(bar);
+//! let app = foo.merge(bar);
 //! # async {
 //! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 //! # };
