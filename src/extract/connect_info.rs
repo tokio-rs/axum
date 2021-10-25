@@ -86,6 +86,7 @@ where
     type Error = Infallible;
     type Future = ResponseFuture<Self::Response>;
 
+    #[inline]
     fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         Poll::Ready(Ok(()))
     }
@@ -93,9 +94,7 @@ where
     fn call(&mut self, target: T) -> Self::Future {
         let connect_info = ConnectInfo(C::connect_info(target));
         let svc = AddExtensionLayer::new(connect_info).layer(self.svc.clone());
-        ResponseFuture {
-            future: ready(Ok(svc)),
-        }
+        ResponseFuture::new(ready(Ok(svc)))
     }
 }
 
