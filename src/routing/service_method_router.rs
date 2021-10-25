@@ -492,6 +492,7 @@ where
     type Error = S::Error;
     type Future = MethodRouterFuture<S, F, B>;
 
+    #[inline]
     fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         Poll::Ready(Ok(()))
     }

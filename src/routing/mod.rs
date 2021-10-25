@@ -1012,6 +1012,7 @@ where
     type Error = Infallible;
     type Future = future::MakeRouteServiceFuture<S>;
 
+    #[inline]
     fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         Poll::Ready(Ok(()))
     }
@@ -1041,16 +1042,16 @@ impl<ReqBody> fmt::Debug for Route<ReqBody> {
 impl<B> Service<Request<B>> for Route<B> {
     type Response = Response<BoxBody>;
     type Error = Infallible;
-    type Future = RouteFuture;
+    type Future = RouteFuture<B>;
 
     #[inline]
-    fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        self.0.poll_ready(cx)
+    fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        Poll::Ready(Ok(()))
     }
 
     #[inline]
     fn call(&mut self, req: Request<B>) -> Self::Future {
-        RouteFuture::new(self.0.call(req))
+        RouteFuture::new(self.0.clone().oneshot(req))
     }
 }
 

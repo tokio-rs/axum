@@ -1,6 +1,6 @@
 //! Future types.
 
-use crate::body::BoxBody;
+use crate::{body::BoxBody, clone_box_service::CloneBoxService};
 use futures_util::future::Either;
 use http::{Request, Response};
 use pin_project_lite::pin_project;
@@ -32,10 +32,32 @@ impl<B> RouterFuture<B> {
     }
 }
 
-opaque_future! {
+pin_project! {
     /// Response future for [`Route`](super::Route).
-    pub type RouteFuture =
-        futures_util::future::BoxFuture<'static, Result<Response<BoxBody>, Infallible>>;
+    pub struct RouteFuture<B> {
+        #[pin]
+        future: Oneshot<
+            CloneBoxService<Request<B>, Response<BoxBody>, Infallible>,
+            Request<B>,
+        >
+    }
+}
+
+impl<B> RouteFuture<B> {
+    pub(crate) fn new(
+        future: Oneshot<CloneBoxService<Request<B>, Response<BoxBody>, Infallible>, Request<B>>,
+    ) -> Self {
+        RouteFuture { future }
+    }
+}
+
+impl<B> Future for RouteFuture<B> {
+    type Output = Result<Response<BoxBody>, Infallible>;
+
+    #[inline]
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        self.project().future.poll(cx)
+    }
 }
 
 opaque_future! {

@@ -33,8 +33,12 @@ macro_rules! opaque_future {
             $actual: std::future::Future,
         {
             type Output = <$actual as std::future::Future>::Output;
+
             #[inline]
-            fn poll(self: std::pin::Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> std::task::Poll<Self::Output> {
+            fn poll(
+                self: std::pin::Pin<&mut Self>,
+                cx: &mut std::task::Context<'_>,
+            ) -> std::task::Poll<Self::Output> {
                 self.project().future.poll(cx)
             }
         }

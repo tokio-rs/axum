@@ -132,6 +132,7 @@ where
     type Error = Infallible;
     type Future = HandleErrorFuture<Oneshot<S, Request<ReqBody>>, F>;
 
+    #[inline]
     fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         Poll::Ready(Ok(()))
     }
