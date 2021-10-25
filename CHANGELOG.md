@@ -41,8 +41,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - **fixed:** Adding a conflicting route will now cause a panic instead of silently making
       a route unreachable.
     - **fixed:** Route matching is faster as number of routes increase.
-    - **breaking:** The routes `/foo` and `/:key` are considered to overlap and
-      will cause a panic when constructing the router. This might be fixed in the future.
   - **fixed:** Middleware that return early (such as `tower_http::auth::RequireAuthorization`)
     now no longer catch requests that would otherwise be 404s. They also work
     correctly with `Router::merge` (previously called `or`) ([#408])
