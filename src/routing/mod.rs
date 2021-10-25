@@ -759,9 +759,7 @@ where
             .expect("no route for id. This is a bug in axum. Please file an issue")
             .clone();
 
-        RouterFuture {
-            future: futures_util::future::Either::Left(route.oneshot(req)),
-        }
+        RouterFuture::from_oneshot(route.oneshot(req))
     }
 }
 
@@ -787,16 +785,30 @@ where
 
         let path = req.uri().path().to_string();
 
-        if let Ok(match_) = self.node.at(&path) {
-            self.call_route(match_, req)
-        } else if let Some(fallback) = &self.fallback {
-            RouterFuture {
-                future: futures_util::future::Either::Left(fallback.clone().oneshot(req)),
-            }
-        } else {
-            let res = EmptyRouter::<Infallible>::not_found().call_sync(req);
-            RouterFuture {
-                future: futures_util::future::Either::Right(std::future::ready(Ok(res))),
+        match self.node.at(&path) {
+            Ok(match_) => self.call_route(match_, req),
+            Err(err) => {
+                if err.tsr()
+                    // workaround for https://github.com/ibraheemdev/matchit/issues/7
+                    && path != "/"
+                {
+                    let redirect_to = if let Some(without_tsr) = path.strip_suffix('/') {
+                        with_path(req.uri(), without_tsr)
+                    } else {
+                        with_path(req.uri(), &format!("{}/", path))
+                    };
+                    let res = Response::builder()
+                        .status(StatusCode::MOVED_PERMANENTLY)
+                        .header(http::header::LOCATION, redirect_to.to_string())
+                        .body(crate::body::empty())
+                        .unwrap();
+                    RouterFuture::from_response(res)
+                } else if let Some(fallback) = &self.fallback {
+                    RouterFuture::from_oneshot(fallback.clone().oneshot(req))
+                } else {
+                    let res = EmptyRouter::<Infallible>::not_found().call_sync(req);
+                    RouterFuture::from_response(res)
+                }
             }
         }
     }
