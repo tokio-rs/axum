@@ -32,6 +32,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     public because `Router` is internally boxed ([#404])
   - **breaking:** Remove `routing::Layered` as it didn't actually do anything and
     thus wasn't necessary
+  - **breaking:** Vendor `AddExtensionLayer` and `AddExtension` to reduce public
+    dependencies
 - Routing:
   - Big internal refactoring of routing leading to several improvements ([#363])
     - **added:** Wildcard routes like `.route("/api/users/*rest", service)` are now supported.

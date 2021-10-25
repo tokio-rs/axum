@@ -5,6 +5,7 @@
 //! [`Router::into_make_service_with_connect_info`]: crate::routing::Router::into_make_service_with_connect_info
 
 use super::{Extension, FromRequest, RequestParts};
+use crate::{AddExtension, AddExtensionLayer};
 use async_trait::async_trait;
 use hyper::server::conn::AddrStream;
 use std::future::ready;
@@ -15,7 +16,7 @@ use std::{
     net::SocketAddr,
     task::{Context, Poll},
 };
-use tower_http::add_extension::AddExtension;
+use tower_layer::Layer;
 use tower_service::Service;
 
 /// A [`MakeService`] created from a router.
@@ -91,7 +92,7 @@ where
 
     fn call(&mut self, target: T) -> Self::Future {
         let connect_info = ConnectInfo(C::connect_info(target));
-        let svc = AddExtension::new(self.svc.clone(), connect_info);
+        let svc = AddExtensionLayer::new(connect_info).layer(self.svc.clone());
         ResponseFuture {
             future: ready(Ok(svc)),
         }

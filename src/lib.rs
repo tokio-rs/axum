@@ -1238,6 +1238,7 @@
 #[macro_use]
 pub(crate) mod macros;
 
+mod add_extension;
 mod clone_box_service;
 mod error;
 #[cfg(feature = "json")]
@@ -1254,14 +1255,13 @@ pub mod routing;
 #[cfg(test)]
 mod tests;
 
+pub use add_extension::{AddExtension, AddExtensionLayer};
 #[doc(no_inline)]
 pub use async_trait::async_trait;
 #[doc(no_inline)]
 pub use http;
 #[doc(no_inline)]
 pub use hyper::Server;
-#[doc(no_inline)]
-pub use tower_http::add_extension::{AddExtension, AddExtensionLayer};
 
 #[doc(inline)]
 #[cfg(feature = "json")]
