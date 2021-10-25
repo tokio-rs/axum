@@ -7,126 +7,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- **fixed:** All known compile time issues are resolved, including those with
-  `boxed` and those introduced by Rust 1.56 ([#404])
-- Big internal refactoring of routing leading to several improvements ([#363])
-  - **added:** Wildcard routes like `.route("/api/users/*rest", service)` are now supported.
-  - **fixed:** The order routes are added in no longer matters.
-  - **fixed:** Adding a conflicting route will now cause a panic instead of silently making
-    a route unreachable.
-  - **fixed:** Route matching is faster as number of routes increase.
-  - **breaking:** The routes `/foo` and `/:key` are considered to overlap and
-    will cause a panic when constructing the router. This might be fixed in the future.
-- **fixed:** Expand accepted content types for JSON requests ([#378])
-- **fixed:** Support deserializing `i128` and `u128` in `extract::Path`
-- **breaking:** The router's type is now always `Router` regardless of how many routes or
-  middleware are applies ([#404])
+- Overall:
+  - **fixed:** All known compile time issues are resolved, including those with
+    `boxed` and those introduced by Rust 1.56 ([#404])
+  - **breaking:** The router's type is now always `Router` regardless of how many routes or
+    middleware are applies ([#404])
 
-  This means router types are all always nameable:
+    This means router types are all always nameable:
 
-  ```rust
-  fn my_routes() -> Router {
-      Router::new().route(
-          "/users",
-          post(|| async { "Hello, World!" }),
-      )
-  }
-  ```
-- **breaking:** `Route::boxed` and `BoxRoute` have been removed as they're no longer
-  necessary ([#404])
-- **breaking:** `Route`, `Nested`, `Or` types are now private. They no longer had to be
-  public because `Router` is internally boxed ([#404])
-- **breaking:** Automatically do percent decoding in `extract::Path`
-  ([#272])
-- **breaking:** Added feature flags for HTTP1 and JSON. This enables removing a
-  few dependencies if your app only uses HTTP2 or doesn't use JSON. Its only a
-  breaking change if you depend on axum with `default_features = false`. ([#286])
-- **breaking:** Remove `routing::Layered` as it didn't actually do anything and
-  thus wasn't necessary
-- **breaking:** Change `Connected::connect_info` to return `Self` and remove
-  the associated type `ConnectInfo` ([#396])
-- **breaking:** Simplify error handling model ([#402]):
-  - All services part of the router are now required to be infallible.
-  - Error handling utilities have been moved to an `error_handling` module.
-  - `Router::check_infallible` has been removed since routers are always
-    infallible with the error handling changes.
-  - Error handling closures must now handle all errors and thus always return
-    something that implements `IntoResponse`.
-
-  With these changes handling errors from fallible middleware is done like so:
-
-  ```rust,no_run
-  use axum::{
-      routing::get,
-      http::StatusCode,
-      error_handling::HandleErrorLayer,
-      response::IntoResponse,
-      Router, BoxError,
-  };
-  use tower::ServiceBuilder;
-  use std::time::Duration;
-
-  let middleware_stack = ServiceBuilder::new()
-      // Handle errors from middleware
-      //
-      // This middleware most be added above any fallible
-      // ones if you're using `ServiceBuilder`, due to how ordering works
-      .layer(HandleErrorLayer::new(handle_error))
-      // Return an error after 30 seconds
-      .timeout(Duration::from_secs(30));
-
-  let app = Router::new()
-      .route("/", get(|| async { /* ... */ }))
-      .layer(middleware_stack);
-
-  fn handle_error(_error: BoxError) -> impl IntoResponse {
-      StatusCode::REQUEST_TIMEOUT
-  }
-  ```
-
-  And handling errors from fallible leaf services is done like so:
-
-  ```rust
-  use axum::{
-      Router, service,
-      body::Body,
-      routing::service_method_router::get,
-      response::IntoResponse,
-      http::{Request, Response},
-      error_handling::HandleErrorExt, // for `.handle_error`
-  };
-  use std::{io, convert::Infallible};
-  use tower::service_fn;
-
-  let app = Router::new()
-      .route(
-          "/",
-          get(service_fn(|_req: Request<Body>| async {
-              let contents = tokio::fs::read_to_string("some_file").await?;
-              Ok::<_, io::Error>(Response::new(Body::from(contents)))
-          }))
-          .handle_error(handle_io_error),
-      );
-
-  fn handle_io_error(error: io::Error) -> impl IntoResponse {
-      // ...
-  }
-  ```
-- **breaking:** Method routing for handlers have been moved from `axum::handler`
-  to `axum::routing`. So `axum::handler::get` now lives at `axum::routing::get`
-  ([#405])
-- **breaking:** Method routing for services have been moved from `axum::service`
-  to `axum::routing`. So `axum::service::get` now lives at
-  `axum::service_method_router::get` ([#405])
-- **breaking:** `Router::or` renamed to `Router::merge` and will now panic on
-  overlapping routes. It now only accepts `Router`s and not general `Service`s.
-  Use `Router::fallback` for adding fallback routes ([#408])
-- **added:** `Router::fallback` for adding handlers for request that didn't
-  match any routes ([#408])
-- **fixed:** Middleware that return early (such as `tower_http::auth::RequireAuthorization`)
-  now no longer catch requests that would otherwise be 404s. They also work
-  correctly with `Router::merge` (previously called `or`) ([#408])
-- **fixed:** Correctly handle trailing slashes in routes:
+    ```rust
+    fn my_routes() -> Router {
+        Router::new().route(
+            "/users",
+            post(|| async { "Hello, World!" }),
+        )
+    }
+    ```
+  - **breaking:** Added feature flags for HTTP1 and JSON. This enables removing a
+    few dependencies if your app only uses HTTP2 or doesn't use JSON. Its only a
+    breaking change if you depend on axum with `default_features = false`. ([#286])
+  - **breaking:** `Route::boxed` and `BoxRoute` have been removed as they're no longer
+    necessary ([#404])
+  - **breaking:** `Route`, `Nested`, `Or` types are now private. They no longer had to be
+    public because `Router` is internally boxed ([#404])
+  - **breaking:** Remove `routing::Layered` as it didn't actually do anything and
+    thus wasn't necessary
+- Routing:
+  - Big internal refactoring of routing leading to several improvements ([#363])
+    - **added:** Wildcard routes like `.route("/api/users/*rest", service)` are now supported.
+    - **fixed:** The order routes are added in no longer matters.
+    - **fixed:** Adding a conflicting route will now cause a panic instead of silently making
+      a route unreachable.
+    - **fixed:** Route matching is faster as number of routes increase.
+    - **breaking:** The routes `/foo` and `/:key` are considered to overlap and
+      will cause a panic when constructing the router. This might be fixed in the future.
+  - **fixed:** Middleware that return early (such as `tower_http::auth::RequireAuthorization`)
+    now no longer catch requests that would otherwise be 404s. They also work
+    correctly with `Router::merge` (previously called `or`) ([#408])
+  - **fixed:** Correctly handle trailing slashes in routes:
     - If a route with a trailing slash exists and a request without a trailing
       slash is received, axum will send a 301 redirection to the route with the
       trailing slash.
@@ -134,10 +52,96 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
       with a trailing slash is received.
     - This can be overridden by explicitly defining two routes: One with and one
       without trailing a slash.
-- **breaking:** `EmptyRouter` has been renamed to `MethodNotAllowed` as its only
-  used in method routers and not in path routers (`Router`)
-- **added:** Add `extract::MatchedPath` for accessing path in router that
-  matched request ([#412])
+  - **breaking:** Method routing for handlers have been moved from `axum::handler`
+    to `axum::routing`. So `axum::handler::get` now lives at `axum::routing::get`
+    ([#405])
+  - **breaking:** Method routing for services have been moved from `axum::service`
+    to `axum::routing`. So `axum::service::get` now lives at, etc.
+    `axum::routing::service_method_router::get`, etc. ([#405])
+  - **breaking:** `Router::or` renamed to `Router::merge` and will now panic on
+    overlapping routes. It now only accepts `Router`s and not general `Service`s.
+    Use `Router::fallback` for adding fallback routes ([#408])
+  - **added:** `Router::fallback` for adding handlers for request that didn't
+    match any routes ([#408])
+  - **breaking:** `EmptyRouter` has been renamed to `MethodNotAllowed` as its only
+    used in method routers and not in path routers (`Router`)
+- Extractors:
+  - **fixed:** Expand accepted content types for JSON requests ([#378])
+  - **fixed:** Support deserializing `i128` and `u128` in `extract::Path`
+  - **breaking:** Automatically do percent decoding in `extract::Path`
+    ([#272])
+  - **breaking:** Change `Connected::connect_info` to return `Self` and remove
+    the associated type `ConnectInfo` ([#396])
+  - **added:** Add `extract::MatchedPath` for accessing path in router that
+    matched request ([#412])
+- Error handling:
+  - **breaking:** Simplify error handling model ([#402]):
+    - All services part of the router are now required to be infallible.
+    - Error handling utilities have been moved to an `error_handling` module.
+    - `Router::check_infallible` has been removed since routers are always
+      infallible with the error handling changes.
+    - Error handling closures must now handle all errors and thus always return
+      something that implements `IntoResponse`.
+
+    With these changes handling errors from fallible middleware is done like so:
+
+    ```rust,no_run
+    use axum::{
+        routing::get,
+        http::StatusCode,
+        error_handling::HandleErrorLayer,
+        response::IntoResponse,
+        Router, BoxError,
+    };
+    use tower::ServiceBuilder;
+    use std::time::Duration;
+
+    let middleware_stack = ServiceBuilder::new()
+        // Handle errors from middleware
+        //
+        // This middleware most be added above any fallible
+        // ones if you're using `ServiceBuilder`, due to how ordering works
+        .layer(HandleErrorLayer::new(handle_error))
+        // Return an error after 30 seconds
+        .timeout(Duration::from_secs(30));
+
+    let app = Router::new()
+        .route("/", get(|| async { /* ... */ }))
+        .layer(middleware_stack);
+
+    fn handle_error(_error: BoxError) -> impl IntoResponse {
+        StatusCode::REQUEST_TIMEOUT
+    }
+    ```
+
+    And handling errors from fallible leaf services is done like so:
+
+    ```rust
+    use axum::{
+        Router, service,
+        body::Body,
+        routing::service_method_router::get,
+        response::IntoResponse,
+        http::{Request, Response},
+        error_handling::HandleErrorExt, // for `.handle_error`
+    };
+    use std::{io, convert::Infallible};
+    use tower::service_fn;
+
+    let app = Router::new()
+        .route(
+            "/",
+            get(service_fn(|_req: Request<Body>| async {
+                let contents = tokio::fs::read_to_string("some_file").await?;
+                Ok::<_, io::Error>(Response::new(Body::from(contents)))
+            }))
+            .handle_error(handle_io_error),
+        );
+
+    fn handle_io_error(error: io::Error) -> impl IntoResponse {
+        // ...
+    }
+    ```
 
 [#339]: https://github.com/tokio-rs/axum/pull/339
 [#286]: https://github.com/tokio-rs/axum/pull/286
