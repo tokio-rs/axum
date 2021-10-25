@@ -209,7 +209,7 @@ where
         }
 
         if !header_eq(req, header::SEC_WEBSOCKET_VERSION, "13")? {
-            return Err(InvalidWebsocketVersionHeader.into());
+            return Err(InvalidWebSocketVersionHeader.into());
         }
 
         let sec_websocket_key = if let Some(key) = req
@@ -219,7 +219,7 @@ where
         {
             key
         } else {
-            return Err(WebsocketKeyHeaderMissing.into());
+            return Err(WebSocketKeyHeaderMissing.into());
         };
 
         let on_upgrade = req
@@ -309,7 +309,7 @@ where
                 } else {
                     return (
                         StatusCode::BAD_REQUEST,
-                        "`Sec-Websocket-Protocol` header is invalid",
+                        "`Sec-WebSocket-Protocol` header is invalid",
                     )
                         .into_response();
                 }
@@ -578,16 +578,16 @@ pub mod rejection {
 
     define_rejection! {
         #[status = BAD_REQUEST]
-        #[body = "`Sec-Websocket-Version` header did not include '13'"]
+        #[body = "`Sec-WebSocket-Version` header did not include '13'"]
         /// Rejection type for [`WebSocketUpgrade`](super::WebSocketUpgrade).
-        pub struct InvalidWebsocketVersionHeader;
+        pub struct InvalidWebSocketVersionHeader;
     }
 
     define_rejection! {
         #[status = BAD_REQUEST]
-        #[body = "`Sec-Websocket-Key` header missing"]
+        #[body = "`Sec-WebSocket-Key` header missing"]
         /// Rejection type for [`WebSocketUpgrade`](super::WebSocketUpgrade).
-        pub struct WebsocketKeyHeaderMissing;
+        pub struct WebSocketKeyHeaderMissing;
     }
 
     composite_rejection! {
@@ -599,8 +599,8 @@ pub mod rejection {
             MethodNotGet,
             InvalidConnectionHeader,
             InvalidUpgradeHeader,
-            InvalidWebsocketVersionHeader,
-            WebsocketKeyHeaderMissing,
+            InvalidWebSocketVersionHeader,
+            WebSocketKeyHeaderMissing,
             HeadersAlreadyExtracted,
             ExtensionsAlreadyExtracted,
         }

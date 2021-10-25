@@ -144,6 +144,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
         // ...
     }
     ```
+- Misc:
+  - `InvalidWebsocketVersionHeader` has been renamed to `InvalidWebSocketVersionHeader` ([#416])
+  - `WebsocketKeyHeaderMissing` has been renamed to `WebSocketKeyHeaderMissing` ([#416])
 
 [#339]: https://github.com/tokio-rs/axum/pull/339
 [#286]: https://github.com/tokio-rs/axum/pull/286
@@ -156,6 +159,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#405]: https://github.com/tokio-rs/axum/pull/405
 [#408]: https://github.com/tokio-rs/axum/pull/408
 [#412]: https://github.com/tokio-rs/axum/pull/412
+[#416]: https://github.com/tokio-rs/axum/pull/416
 
 # 0.2.8 (07. October, 2021)
 
