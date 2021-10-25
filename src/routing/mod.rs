@@ -108,11 +108,14 @@ where
     /// Add another route to the router.
     ///
     /// `path` is a string of path segments separated by `/`. Each segment
-    /// can be either concrete or a capture:
+    /// can be either concrete, a capture, or a wildcard:
     ///
     /// - `/foo/bar/baz` will only match requests where the path is `/foo/bar/bar`.
     /// - `/:foo` will match any route with exactly one segment _and_ it will
     /// capture the first segment and store it at the key `foo`.
+    /// - `/foo/bar/*rest` will match all requests that start with `/foo/bar`
+    /// and any number of segments after that. It will also create a capture
+    /// with the key `rest` that contains the matched segments.
     ///
     /// `service` is the [`Service`] that should receive the request if the path
     /// matches `path`.
@@ -120,13 +123,14 @@ where
     /// # Example
     ///
     /// ```rust
-    /// use axum::{routing::{get, delete}, Router};
+    /// use axum::{Router, routing::{get, delete}, extract::Path};
     ///
     /// let app = Router::new()
     ///     .route("/", get(root))
     ///     .route("/users", get(list_users).post(create_user))
     ///     .route("/users/:id", get(show_user))
-    ///     .route("/api/:version/users/:id/action", delete(do_thing));
+    ///     .route("/api/:version/users/:id/action", delete(do_users_action))
+    ///     .route("/assets/*path", get(serve_asset));
     ///
     /// async fn root() { /* ... */ }
     ///
@@ -136,7 +140,9 @@ where
     ///
     /// async fn show_user() { /* ... */ }
     ///
-    /// async fn do_thing() { /* ... */ }
+    /// async fn do_users_action() { /* ... */ }
+    ///
+    /// async fn serve_asset(Path(path): Path<String>) { /* ... */ }
     /// # async {
     /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
     /// # };
@@ -293,7 +299,7 @@ where
     /// # };
     /// ```
     ///
-    /// # Wildcard routes
+    /// # Differences to wildcard routes
     ///
     /// Nested routes are similar to wildcard routes. The difference is that
     /// wildcard routes still see the whole URI whereas nested routes will have
@@ -621,8 +627,98 @@ where
         self
     }
 
+    /// Add a fallback service to the router.
+    ///
+    /// This service will be called if no routes matches the incoming request.
+    ///
+    /// ```rust
+    /// use axum::{
+    ///     Router,
+    ///     routing::get,
+    ///     handler::Handler,
+    ///     response::IntoResponse,
+    ///     http::{StatusCode, Uri},
+    /// };
+    ///
+    /// let app = Router::new()
+    ///     .route("/foo", get(|| async { /* ... */ }))
+    ///     .fallback(fallback.into_service());
+    ///
+    /// async fn fallback(uri: Uri) -> impl IntoResponse {
+    ///     (StatusCode::NOT_FOUND, format!("No route for {}", uri))
+    /// }
+    /// # async {
+    /// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+    /// # };
     /// ```
-    /// todo!();
+    ///
+    /// Fallbacks only apply to routes that aren't matched by anything in the
+    /// router. If a handler is matched by a request but returns 404 the
+    /// fallback is not called.
+    ///
+    /// ## When used with `Router::merge`
+    ///
+    /// If a router with a fallback is merged with another router that also has
+    /// a fallback the fallback of the second router will be used:
+    ///
+    /// ```rust
+    /// use axum::{
+    ///     Router,
+    ///     routing::get,
+    ///     handler::Handler,
+    ///     response::IntoResponse,
+    ///     http::{StatusCode, Uri},
+    /// };
+    ///
+    /// let one = Router::new()
+    ///     .route("/one", get(|| async { /* ... */ }))
+    ///     .fallback(fallback_one.into_service());
+    ///
+    /// let two = Router::new()
+    ///     .route("/two", get(|| async { /* ... */ }))
+    ///     .fallback(fallback_two.into_service());
+    ///
+    /// let app = one.merge(two);
+    ///
+    /// async fn fallback_one() -> impl IntoResponse { /* ... */ }
+    /// async fn fallback_two() -> impl IntoResponse { /* ... */ }
+    ///
+    /// // the fallback for `app` is `fallback_two`
+    /// # async {
+    /// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+    /// # };
+    /// ```
+    ///
+    /// If only one of the routers have a fallback that will be used in the
+    /// merged router.
+    ///
+    /// ## When used with `Router::nest`
+    ///
+    /// If a router with a fallback is nested inside another router the fallback
+    /// will only apply to requests that matches the prefix:
+    ///
+    /// ```rust
+    /// use axum::{
+    ///     Router,
+    ///     routing::get,
+    ///     handler::Handler,
+    ///     response::IntoResponse,
+    ///     http::{StatusCode, Uri},
+    /// };
+    ///
+    /// let api = Router::new()
+    ///     .route("/", get(|| async { /* ... */ }))
+    ///     .fallback(api_fallback.into_service());
+    ///
+    /// let app = Router::new().nest("/api", api);
+    ///
+    /// async fn api_fallback() -> impl IntoResponse { /* ... */ }
+    ///
+    /// // `api_fallback` will be called for `/api/some-unknown-path` but not for
+    /// // `/some-unknown-path` as the path doesn't start with `/api`
+    /// # async {
+    /// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+    /// # };
     /// ```
     pub fn fallback<T>(mut self, svc: T) -> Self
     where
