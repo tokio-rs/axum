@@ -738,6 +738,11 @@ where
         let id = *match_.value;
         req.extensions_mut().insert(id);
 
+        if let Some(matched_path) = self.node.paths.get(&id) {
+            req.extensions_mut()
+                .insert(crate::extract::MatchedPath(matched_path.clone()));
+        }
+
         let params = match_
             .params
             .iter()
@@ -1059,7 +1064,7 @@ impl<B> Service<Request<B>> for Route<B> {
 #[derive(Clone, Default)]
 struct Node {
     inner: matchit::Node<RouteId>,
-    paths: Vec<(Arc<str>, RouteId)>,
+    paths: HashMap<RouteId, Arc<str>>,
 }
 
 impl Node {
@@ -1070,12 +1075,12 @@ impl Node {
     ) -> Result<(), matchit::InsertError> {
         let path = path.into();
         self.inner.insert(&path, val)?;
-        self.paths.push((path.into(), val));
+        self.paths.insert(val, path.into());
         Ok(())
     }
 
     fn merge(&mut self, other: Node) -> Result<(), matchit::InsertError> {
-        for (path, id) in other.paths {
+        for (id, path) in other.paths {
             self.insert(&*path, id)?;
         }
         Ok(())

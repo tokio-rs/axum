@@ -273,6 +273,23 @@ composite_rejection! {
     }
 }
 
+define_rejection! {
+    #[status = INTERNAL_SERVER_ERROR]
+    #[body = "No matched path found"]
+    /// Rejection if no matched path could be found.
+    ///
+    /// See [`MatchedPath`](super::MatchedPath) for more details.
+    pub struct MatchedPathMissing;
+}
+
+composite_rejection! {
+    /// Rejection used for [`MatchedPath`](super::MatchedPath).
+    pub enum MatchedPathRejection {
+        ExtensionsAlreadyExtracted,
+        MatchedPathMissing,
+    }
+}
+
 /// Rejection used for [`ContentLengthLimit`](super::ContentLengthLimit).
 ///
 /// Contains one variant for each way the

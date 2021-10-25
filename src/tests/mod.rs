@@ -1,6 +1,7 @@
 #![allow(clippy::blacklisted_name)]
 
 use crate::error_handling::HandleErrorLayer;
+use crate::extract::MatchedPath;
 use crate::BoxError;
 use crate::{
     extract::{self, Path},
@@ -27,6 +28,7 @@ use std::{
 };
 use tower::{service_fn, timeout::TimeoutLayer, ServiceBuilder};
 use tower_http::auth::RequireAuthorizationLayer;
+use tower_http::trace::TraceLayer;
 use tower_service::Service;
 
 pub(crate) use helpers::*;
@@ -616,6 +618,26 @@ async fn with_and_without_trailing_slash() {
     let res = client.get("/foo").send().await;
     assert_eq!(res.status(), StatusCode::OK);
     assert_eq!(res.text().await, "without tsr");
+}
+
+#[tokio::test]
+async fn access_matched_path() {
+    let app = Router::new()
+        .route(
+            "/:key",
+            get(|path: MatchedPath| async move { path.as_str().to_string() }),
+        )
+        .layer(
+            TraceLayer::new_for_http().make_span_with(|req: &Request<_>| {
+                let path = req.extensions().get::<MatchedPath>().unwrap().as_str();
+                tracing::info_span!("http-request", %path)
+            }),
+        );
+
+    let client = TestClient::new(app);
+
+    let res = client.get("/foo").send().await;
+    assert_eq!(res.text().await, "/:key");
 }
 
 pub(crate) fn assert_send<T: Send>() {}
