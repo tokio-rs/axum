@@ -172,6 +172,7 @@ pub mod ws;
 mod content_length_limit;
 mod extension;
 mod form;
+mod matched_path;
 mod path;
 mod query;
 mod raw_query;
@@ -186,6 +187,7 @@ pub use self::{
     extension::Extension,
     extractor_middleware::extractor_middleware,
     form::Form,
+    matched_path::MatchedPath,
     path::Path,
     query::Query,
     raw_query::RawQuery,

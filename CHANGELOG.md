@@ -136,6 +136,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
       without trailing a slash.
 - **breaking:** `EmptyRouter` has been renamed to `MethodNotAllowed` as its only
   used in method routers and not in path routers (`Router`)
+- **added:** Add `extract::MatchedPath` for accessing path in router that
+  matched request ([#412])
 
 [#339]: https://github.com/tokio-rs/axum/pull/339
 [#286]: https://github.com/tokio-rs/axum/pull/286
@@ -147,6 +149,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#404]: https://github.com/tokio-rs/axum/pull/404
 [#405]: https://github.com/tokio-rs/axum/pull/405
 [#408]: https://github.com/tokio-rs/axum/pull/408
+[#412]: https://github.com/tokio-rs/axum/pull/412
 
 # 0.2.8 (07. October, 2021)
 
