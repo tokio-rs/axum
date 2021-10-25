@@ -98,7 +98,7 @@
 
 use crate::{
     body::{box_body, BoxBody},
-    routing::{EmptyRouter, MethodFilter},
+    routing::{MethodFilter, MethodNotAllowed},
     util::{Either, EitherProj},
     BoxError,
 };
@@ -123,7 +123,7 @@ use tower_service::Service;
 ///
 /// Note that this only accepts the standard HTTP methods. If you need to
 /// support non-standard methods you can route directly to a [`Service`].
-pub fn any<S, B>(svc: S) -> MethodRouter<S, EmptyRouter<S::Error>, B>
+pub fn any<S, B>(svc: S) -> MethodRouter<S, MethodNotAllowed<S::Error>, B>
 where
     S: Service<Request<B>> + Clone,
 {
@@ -133,7 +133,7 @@ where
 /// Route `CONNECT` requests to the given service.
 ///
 /// See [`get`] for an example.
-pub fn connect<S, B>(svc: S) -> MethodRouter<S, EmptyRouter<S::Error>, B>
+pub fn connect<S, B>(svc: S) -> MethodRouter<S, MethodNotAllowed<S::Error>, B>
 where
     S: Service<Request<B>> + Clone,
 {
@@ -143,7 +143,7 @@ where
 /// Route `DELETE` requests to the given service.
 ///
 /// See [`get`] for an example.
-pub fn delete<S, B>(svc: S) -> MethodRouter<S, EmptyRouter<S::Error>, B>
+pub fn delete<S, B>(svc: S) -> MethodRouter<S, MethodNotAllowed<S::Error>, B>
 where
     S: Service<Request<B>> + Clone,
 {
@@ -178,7 +178,7 @@ where
 /// Note that `get` routes will also be called for `HEAD` requests but will have
 /// the response body removed. Make sure to add explicit `HEAD` routes
 /// afterwards.
-pub fn get<S, B>(svc: S) -> MethodRouter<S, EmptyRouter<S::Error>, B>
+pub fn get<S, B>(svc: S) -> MethodRouter<S, MethodNotAllowed<S::Error>, B>
 where
     S: Service<Request<B>> + Clone,
 {
@@ -188,7 +188,7 @@ where
 /// Route `HEAD` requests to the given service.
 ///
 /// See [`get`] for an example.
-pub fn head<S, B>(svc: S) -> MethodRouter<S, EmptyRouter<S::Error>, B>
+pub fn head<S, B>(svc: S) -> MethodRouter<S, MethodNotAllowed<S::Error>, B>
 where
     S: Service<Request<B>> + Clone,
 {
@@ -198,7 +198,7 @@ where
 /// Route `OPTIONS` requests to the given service.
 ///
 /// See [`get`] for an example.
-pub fn options<S, B>(svc: S) -> MethodRouter<S, EmptyRouter<S::Error>, B>
+pub fn options<S, B>(svc: S) -> MethodRouter<S, MethodNotAllowed<S::Error>, B>
 where
     S: Service<Request<B>> + Clone,
 {
@@ -208,7 +208,7 @@ where
 /// Route `PATCH` requests to the given service.
 ///
 /// See [`get`] for an example.
-pub fn patch<S, B>(svc: S) -> MethodRouter<S, EmptyRouter<S::Error>, B>
+pub fn patch<S, B>(svc: S) -> MethodRouter<S, MethodNotAllowed<S::Error>, B>
 where
     S: Service<Request<B>> + Clone,
 {
@@ -218,7 +218,7 @@ where
 /// Route `POST` requests to the given service.
 ///
 /// See [`get`] for an example.
-pub fn post<S, B>(svc: S) -> MethodRouter<S, EmptyRouter<S::Error>, B>
+pub fn post<S, B>(svc: S) -> MethodRouter<S, MethodNotAllowed<S::Error>, B>
 where
     S: Service<Request<B>> + Clone,
 {
@@ -228,7 +228,7 @@ where
 /// Route `PUT` requests to the given service.
 ///
 /// See [`get`] for an example.
-pub fn put<S, B>(svc: S) -> MethodRouter<S, EmptyRouter<S::Error>, B>
+pub fn put<S, B>(svc: S) -> MethodRouter<S, MethodNotAllowed<S::Error>, B>
 where
     S: Service<Request<B>> + Clone,
 {
@@ -238,7 +238,7 @@ where
 /// Route `TRACE` requests to the given service.
 ///
 /// See [`get`] for an example.
-pub fn trace<S, B>(svc: S) -> MethodRouter<S, EmptyRouter<S::Error>, B>
+pub fn trace<S, B>(svc: S) -> MethodRouter<S, MethodNotAllowed<S::Error>, B>
 where
     S: Service<Request<B>> + Clone,
 {
@@ -270,14 +270,14 @@ where
 /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 /// # };
 /// ```
-pub fn on<S, B>(method: MethodFilter, svc: S) -> MethodRouter<S, EmptyRouter<S::Error>, B>
+pub fn on<S, B>(method: MethodFilter, svc: S) -> MethodRouter<S, MethodNotAllowed<S::Error>, B>
 where
     S: Service<Request<B>> + Clone,
 {
     MethodRouter {
         method,
         svc,
-        fallback: EmptyRouter::method_not_allowed(),
+        fallback: MethodNotAllowed::new(),
         _request_body: PhantomData,
     }
 }

@@ -3,7 +3,7 @@
 use crate::{
     body::{box_body, BoxBody},
     handler::Handler,
-    routing::{EmptyRouter, MethodFilter},
+    routing::{MethodFilter, MethodNotAllowed},
     util::{Either, EitherProj},
 };
 use futures_util::{future::BoxFuture, ready};
@@ -57,7 +57,7 @@ use tower_service::Service;
 /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 /// # };
 /// ```
-pub fn any<H, B, T>(handler: H) -> MethodRouter<H, B, T, EmptyRouter>
+pub fn any<H, B, T>(handler: H) -> MethodRouter<H, B, T, MethodNotAllowed>
 where
     H: Handler<B, T>,
 {
@@ -67,7 +67,7 @@ where
 /// Route `CONNECT` requests to the given handler.
 ///
 /// See [`get`] for an example.
-pub fn connect<H, B, T>(handler: H) -> MethodRouter<H, B, T, EmptyRouter>
+pub fn connect<H, B, T>(handler: H) -> MethodRouter<H, B, T, MethodNotAllowed>
 where
     H: Handler<B, T>,
 {
@@ -77,7 +77,7 @@ where
 /// Route `DELETE` requests to the given handler.
 ///
 /// See [`get`] for an example.
-pub fn delete<H, B, T>(handler: H) -> MethodRouter<H, B, T, EmptyRouter>
+pub fn delete<H, B, T>(handler: H) -> MethodRouter<H, B, T, MethodNotAllowed>
 where
     H: Handler<B, T>,
 {
@@ -106,7 +106,7 @@ where
 /// Note that `get` routes will also be called for `HEAD` requests but will have
 /// the response body removed. Make sure to add explicit `HEAD` routes
 /// afterwards.
-pub fn get<H, B, T>(handler: H) -> MethodRouter<H, B, T, EmptyRouter>
+pub fn get<H, B, T>(handler: H) -> MethodRouter<H, B, T, MethodNotAllowed>
 where
     H: Handler<B, T>,
 {
@@ -116,7 +116,7 @@ where
 /// Route `HEAD` requests to the given handler.
 ///
 /// See [`get`] for an example.
-pub fn head<H, B, T>(handler: H) -> MethodRouter<H, B, T, EmptyRouter>
+pub fn head<H, B, T>(handler: H) -> MethodRouter<H, B, T, MethodNotAllowed>
 where
     H: Handler<B, T>,
 {
@@ -126,7 +126,7 @@ where
 /// Route `OPTIONS` requests to the given handler.
 ///
 /// See [`get`] for an example.
-pub fn options<H, B, T>(handler: H) -> MethodRouter<H, B, T, EmptyRouter>
+pub fn options<H, B, T>(handler: H) -> MethodRouter<H, B, T, MethodNotAllowed>
 where
     H: Handler<B, T>,
 {
@@ -136,7 +136,7 @@ where
 /// Route `PATCH` requests to the given handler.
 ///
 /// See [`get`] for an example.
-pub fn patch<H, B, T>(handler: H) -> MethodRouter<H, B, T, EmptyRouter>
+pub fn patch<H, B, T>(handler: H) -> MethodRouter<H, B, T, MethodNotAllowed>
 where
     H: Handler<B, T>,
 {
@@ -146,7 +146,7 @@ where
 /// Route `POST` requests to the given handler.
 ///
 /// See [`get`] for an example.
-pub fn post<H, B, T>(handler: H) -> MethodRouter<H, B, T, EmptyRouter>
+pub fn post<H, B, T>(handler: H) -> MethodRouter<H, B, T, MethodNotAllowed>
 where
     H: Handler<B, T>,
 {
@@ -156,7 +156,7 @@ where
 /// Route `PUT` requests to the given handler.
 ///
 /// See [`get`] for an example.
-pub fn put<H, B, T>(handler: H) -> MethodRouter<H, B, T, EmptyRouter>
+pub fn put<H, B, T>(handler: H) -> MethodRouter<H, B, T, MethodNotAllowed>
 where
     H: Handler<B, T>,
 {
@@ -166,7 +166,7 @@ where
 /// Route `TRACE` requests to the given handler.
 ///
 /// See [`get`] for an example.
-pub fn trace<H, B, T>(handler: H) -> MethodRouter<H, B, T, EmptyRouter>
+pub fn trace<H, B, T>(handler: H) -> MethodRouter<H, B, T, MethodNotAllowed>
 where
     H: Handler<B, T>,
 {
@@ -192,14 +192,14 @@ where
 /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 /// # };
 /// ```
-pub fn on<H, B, T>(method: MethodFilter, handler: H) -> MethodRouter<H, B, T, EmptyRouter>
+pub fn on<H, B, T>(method: MethodFilter, handler: H) -> MethodRouter<H, B, T, MethodNotAllowed>
 where
     H: Handler<B, T>,
 {
     MethodRouter {
         method,
         handler,
-        fallback: EmptyRouter::method_not_allowed(),
+        fallback: MethodNotAllowed::new(),
         _marker: PhantomData,
     }
 }
