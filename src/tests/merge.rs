@@ -373,3 +373,33 @@ async fn nesting_and_seeing_the_right_uri_ors_with_multi_segment_uris() {
         })
     );
 }
+
+#[tokio::test]
+async fn middleware_that_return_early() {
+    let private = Router::new()
+        .route("/", get(|| async {}))
+        .layer(RequireAuthorizationLayer::bearer("password"));
+
+    let public = Router::new().route("/public", get(|| async {}));
+
+    let client = TestClient::new(private.merge(public));
+
+    assert_eq!(
+        client.get("/").send().await.status(),
+        StatusCode::UNAUTHORIZED
+    );
+    assert_eq!(
+        client
+            .get("/")
+            .header("authorization", "Bearer password")
+            .send()
+            .await
+            .status(),
+        StatusCode::OK
+    );
+    assert_eq!(
+        client.get("/doesnt-exist").send().await.status(),
+        StatusCode::NOT_FOUND
+    );
+    assert_eq!(client.get("/public").send().await.status(), StatusCode::OK);
+}

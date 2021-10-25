@@ -25,8 +25,8 @@ use std::{
     task::{Context, Poll},
     time::Duration,
 };
-use tower::timeout::TimeoutLayer;
-use tower::{service_fn, ServiceBuilder};
+use tower::{service_fn, timeout::TimeoutLayer, ServiceBuilder};
+use tower_http::auth::RequireAuthorizationLayer;
 use tower_service::Service;
 
 pub(crate) use helpers::*;
@@ -548,6 +548,35 @@ async fn middleware_applies_to_routes_above() {
 
     let res = client.get("/two").send().await;
     assert_eq!(res.status(), StatusCode::OK);
+}
+
+#[tokio::test]
+async fn middleware_that_return_early() {
+    let app = Router::new()
+        .route("/", get(|| async {}))
+        .layer(RequireAuthorizationLayer::bearer("password"))
+        .route("/public", get(|| async {}));
+
+    let client = TestClient::new(app);
+
+    assert_eq!(
+        client.get("/").send().await.status(),
+        StatusCode::UNAUTHORIZED
+    );
+    assert_eq!(
+        client
+            .get("/")
+            .header("authorization", "Bearer password")
+            .send()
+            .await
+            .status(),
+        StatusCode::OK
+    );
+    assert_eq!(
+        client.get("/doesnt-exist").send().await.status(),
+        StatusCode::NOT_FOUND
+    );
+    assert_eq!(client.get("/public").send().await.status(), StatusCode::OK);
 }
 
 pub(crate) fn assert_send<T: Send>() {}
