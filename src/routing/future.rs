@@ -21,6 +21,20 @@ opaque_future! {
         >;
 }
 
+impl<B> RouterFuture<B> {
+    pub(super) fn from_oneshot(future: Oneshot<super::Route<B>, Request<B>>) -> Self {
+        Self {
+            future: futures_util::future::Either::Left(future),
+        }
+    }
+
+    pub(super) fn from_response(response: Response<BoxBody>) -> Self {
+        RouterFuture {
+            future: futures_util::future::Either::Right(std::future::ready(Ok(response))),
+        }
+    }
+}
+
 opaque_future! {
     /// Response future for [`Route`](super::Route).
     pub type RouteFuture =

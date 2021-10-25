@@ -579,6 +579,45 @@ async fn middleware_that_return_early() {
     assert_eq!(client.get("/public").send().await.status(), StatusCode::OK);
 }
 
+#[tokio::test]
+async fn with_trailing_slash() {
+    let app = Router::new().route("/foo", get(|| async {}));
+
+    let client = TestClient::new(app);
+
+    // `TestClient` automatically follows redirects
+    let res = client.get("/foo/").send().await;
+    assert_eq!(res.status(), StatusCode::OK);
+}
+
+#[tokio::test]
+async fn without_trailing_slash() {
+    let app = Router::new().route("/foo/", get(|| async {}));
+
+    let client = TestClient::new(app);
+
+    // `TestClient` automatically follows redirects
+    let res = client.get("/foo").send().await;
+    assert_eq!(res.status(), StatusCode::OK);
+}
+
+#[tokio::test]
+async fn with_and_without_trailing_slash() {
+    let app = Router::new()
+        .route("/foo", get(|| async { "without tsr" }))
+        .route("/foo/", get(|| async { "with tsr" }));
+
+    let client = TestClient::new(app);
+
+    let res = client.get("/foo/").send().await;
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.text().await, "with tsr");
+
+    let res = client.get("/foo").send().await;
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.text().await, "without tsr");
+}
+
 pub(crate) fn assert_send<T: Send>() {}
 pub(crate) fn assert_sync<T: Sync>() {}
 pub(crate) fn assert_unpin<T: Unpin>() {}
