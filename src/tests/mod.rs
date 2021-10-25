@@ -640,6 +640,24 @@ async fn access_matched_path() {
     assert_eq!(res.text().await, "/:key");
 }
 
+#[tokio::test]
+async fn static_and_dynamic_paths() {
+    let app = Router::new()
+        .route(
+            "/:key",
+            get(|Path(key): Path<String>| async move { format!("dynamic: {}", key) }),
+        )
+        .route("/foo", get(|| async { "static" }));
+
+    let client = TestClient::new(app);
+
+    let res = client.get("/bar").send().await;
+    assert_eq!(res.text().await, "dynamic: bar");
+
+    let res = client.get("/foo").send().await;
+    assert_eq!(res.text().await, "static");
+}
+
 pub(crate) fn assert_send<T: Send>() {}
 pub(crate) fn assert_sync<T: Sync>() {}
 pub(crate) fn assert_unpin<T: Unpin>() {}

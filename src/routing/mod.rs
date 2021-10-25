@@ -178,19 +178,6 @@ where
     /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
     /// # };
     /// ```
-    ///
-    /// Note that routes like `/:key` and `/foo` are considered overlapping:
-    ///
-    /// ```should_panic
-    /// use axum::{routing::get, Router};
-    ///
-    /// let app = Router::new()
-    ///     .route("/foo", get(|| async {}))
-    ///     .route("/:key", get(|| async {}));
-    /// # async {
-    /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-    /// # };
-    /// ```
     pub fn route<T>(mut self, path: &str, svc: T) -> Self
     where
         T: Service<Request<B>, Response = Response<BoxBody>, Error = Infallible>
@@ -793,10 +780,7 @@ where
         match self.node.at(&path) {
             Ok(match_) => self.call_route(match_, req),
             Err(err) => {
-                if err.tsr()
-                    // workaround for https://github.com/ibraheemdev/matchit/issues/7
-                    && path != "/"
-                {
+                if err.tsr() {
                     let redirect_to = if let Some(without_tsr) = path.strip_suffix('/') {
                         with_path(req.uri(), without_tsr)
                     } else {
