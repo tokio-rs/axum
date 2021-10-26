@@ -1,6 +1,7 @@
 use super::*;
 use crate::body::box_body;
 use crate::error_handling::HandleErrorExt;
+use crate::extract::Extension;
 use std::collections::HashMap;
 
 #[tokio::test]
@@ -256,4 +257,55 @@ async fn multiple_top_level_nests() {
 #[should_panic(expected = "Invalid route: nested routes cannot contain wildcards (*)")]
 async fn nest_cannot_contain_wildcards() {
     Router::<Body>::new().nest("/one/*rest", Router::new());
+}
+
+#[tokio::test]
+async fn outer_middleware_still_see_whole_url() {
+    #[derive(Clone)]
+    struct SetUriExtension<S>(S);
+
+    #[derive(Clone)]
+    struct Uri(http::Uri);
+
+    impl<B, S> Service<Request<B>> for SetUriExtension<S>
+    where
+        S: Service<Request<B>>,
+    {
+        type Response = S::Response;
+        type Error = S::Error;
+        type Future = S::Future;
+
+        fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+            self.0.poll_ready(cx)
+        }
+
+        fn call(&mut self, mut req: Request<B>) -> Self::Future {
+            let uri = Uri(req.uri().clone());
+            req.extensions_mut().insert(uri);
+            self.0.call(req)
+        }
+    }
+
+    async fn handler(Extension(Uri(middleware_uri)): Extension<Uri>) -> impl IntoResponse {
+        middleware_uri.to_string()
+    }
+
+    let app = Router::new()
+        .route("/", get(handler))
+        .route("/foo", get(handler))
+        .route("/foo/bar", get(handler))
+        .nest("/one", Router::new().route("/two", get(handler)))
+        .fallback(handler.into_service())
+        .layer(tower::layer::layer_fn(SetUriExtension));
+
+    let client = TestClient::new(app);
+
+    assert_eq!(client.get("/").send().await.text().await, "/");
+    assert_eq!(client.get("/foo").send().await.text().await, "/foo");
+    assert_eq!(client.get("/foo/bar").send().await.text().await, "/foo/bar");
+    assert_eq!(
+        client.get("/not-found").send().await.text().await,
+        "/not-found"
+    );
+    assert_eq!(client.get("/one/two").send().await.text().await, "/one/two");
 }
