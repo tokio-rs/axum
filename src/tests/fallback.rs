@@ -32,29 +32,6 @@ async fn nest() {
 }
 
 #[tokio::test]
-async fn nesting_with_fallback() {
-    let app = Router::new().nest(
-        "/foo",
-        Router::new()
-            .route("/bar", get(|| async {}))
-            .fallback((|| async { "fallback" }).into_service()),
-    );
-
-    let client = TestClient::new(app);
-
-    assert_eq!(client.get("/foo/bar").send().await.status(), StatusCode::OK);
-
-    // this shouldn't exist because the fallback is inside the nested router
-    let res = client.get("/does-not-exist").send().await;
-    assert_eq!(res.status(), StatusCode::NOT_FOUND);
-
-    // this should work since we get into the nested router
-    let res = client.get("/foo/does-not-exist").send().await;
-    assert_eq!(res.status(), StatusCode::OK);
-    assert_eq!(res.text().await, "fallback");
-}
-
-#[tokio::test]
 async fn or() {
     let one = Router::new().route("/one", get(|| async {}));
     let two = Router::new().route("/two", get(|| async {}));
