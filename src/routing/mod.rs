@@ -1,6 +1,7 @@
 //! Routing between [`Service`]s and handlers.
 
-use self::future::{MethodNotAllowedFuture, NestedFuture, RouteFuture, RouterFuture};
+use self::future::{NestedFuture, RouteFuture, RouterFuture};
+use self::not_found::NotFound;
 use crate::{
     body::{box_body, Body, BoxBody},
     clone_box_service::CloneBoxService,
@@ -19,7 +20,6 @@ use std::{
     convert::Infallible,
     fmt,
     future::ready,
-    marker::PhantomData,
     sync::Arc,
     task::{Context, Poll},
 };
@@ -33,8 +33,11 @@ pub mod handler_method_router;
 pub mod service_method_router;
 
 mod method_filter;
+mod method_not_allowed;
+mod not_found;
 
 pub use self::method_filter::MethodFilter;
+pub(crate) use self::method_not_allowed::MethodNotAllowed;
 
 #[doc(no_inline)]
 pub use self::handler_method_router::{
@@ -56,7 +59,7 @@ impl RouteId {
 pub struct Router<B = Body> {
     routes: HashMap<RouteId, Route<B>>,
     node: Node,
-    fallback: Option<Route<B>>,
+    fallback: Fallback<B>,
 }
 
 impl<B> Clone for Router<B> {
@@ -102,7 +105,7 @@ where
         Self {
             routes: Default::default(),
             node: Default::default(),
-            fallback: None,
+            fallback: Fallback::Default(Route::new(NotFound)),
         }
     }
 
@@ -198,7 +201,7 @@ where
             panic!("Invalid route: {}", err);
         }
 
-        self.routes.insert(id, Route(CloneBoxService::new(svc)));
+        self.routes.insert(id, Route::new(svc));
 
         self
     }
@@ -350,8 +353,7 @@ where
             panic!("Invalid route: {}", err);
         }
 
-        self.routes
-            .insert(id, Route(CloneBoxService::new(Nested { svc })));
+        self.routes.insert(id, Route::new(Nested { svc }));
 
         self
     }
@@ -452,7 +454,7 @@ where
             })
             .collect::<HashMap<RouteId, Route<LayeredReqBody>>>();
 
-        let fallback = self.fallback.map(|fallback| Layer::layer(&layer, fallback));
+        let fallback = self.fallback.map(|svc| Layer::layer(&layer, svc));
 
         Router {
             routes,
@@ -620,9 +622,12 @@ where
             assert!(self.routes.insert(id, route).is_none());
         }
 
-        if let Some(new_fallback) = fallback {
-            self.fallback = Some(new_fallback);
-        }
+        self.fallback = match (self.fallback, fallback) {
+            (Fallback::Default(_), pick @ Fallback::Default(_)) => pick,
+            (Fallback::Default(_), pick @ Fallback::Custom(_)) => pick,
+            (pick @ Fallback::Custom(_), Fallback::Default(_)) => pick,
+            (Fallback::Custom(_), pick @ Fallback::Custom(_)) => pick,
+        };
 
         self
     }
@@ -728,7 +733,7 @@ where
             + 'static,
         T::Future: Send + 'static,
     {
-        self.fallback = Some(Route(CloneBoxService::new(svc)));
+        self.fallback = Fallback::Custom(Route::new(svc));
         self
     }
 
@@ -804,14 +809,15 @@ where
                         .body(crate::body::empty())
                         .unwrap();
                     RouterFuture::from_response(res)
-                } else if let Some(fallback) = &self.fallback {
-                    RouterFuture::from_oneshot(fallback.clone().oneshot(req))
                 } else {
-                    let res = Response::builder()
-                        .status(StatusCode::NOT_FOUND)
-                        .body(crate::body::empty())
-                        .unwrap();
-                    RouterFuture::from_response(res)
+                    match &self.fallback {
+                        Fallback::Default(inner) => {
+                            RouterFuture::from_oneshot(inner.clone().oneshot(req))
+                        }
+                        Fallback::Custom(inner) => {
+                            RouterFuture::from_oneshot(inner.clone().oneshot(req))
+                        }
+                    }
                 }
             }
         }
@@ -873,59 +879,6 @@ fn insert_url_params<B>(req: &mut Request<B>, params: Vec<(String, String)>) {
 
 pub(crate) struct InvalidUtf8InPathParam {
     pub(crate) key: ByteStr,
-}
-
-/// A [`Service`] that responds with `405 Method not allowed` to all requests.
-///
-/// This is used as the bottom service in a method router. You shouldn't have to
-/// use it manually.
-pub struct MethodNotAllowed<E = Infallible> {
-    _marker: PhantomData<fn() -> E>,
-}
-
-impl<E> MethodNotAllowed<E> {
-    pub(crate) fn new() -> Self {
-        Self {
-            _marker: PhantomData,
-        }
-    }
-}
-
-impl<E> Clone for MethodNotAllowed<E> {
-    fn clone(&self) -> Self {
-        Self {
-            _marker: PhantomData,
-        }
-    }
-}
-
-impl<E> fmt::Debug for MethodNotAllowed<E> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("MethodNotAllowed").finish()
-    }
-}
-
-impl<B, E> Service<Request<B>> for MethodNotAllowed<E>
-where
-    B: Send + Sync + 'static,
-{
-    type Response = Response<BoxBody>;
-    type Error = E;
-    type Future = MethodNotAllowedFuture<E>;
-
-    #[inline]
-    fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        Poll::Ready(Ok(()))
-    }
-
-    fn call(&mut self, _req: Request<B>) -> Self::Future {
-        let res = Response::builder()
-            .status(StatusCode::METHOD_NOT_ALLOWED)
-            .body(crate::body::empty())
-            .unwrap();
-
-        MethodNotAllowedFuture::new(ready(Ok(res)))
-    }
 }
 
 /// A [`Service`] that has been nested inside a router at some path.
@@ -1023,6 +976,19 @@ where
 /// You normally shouldn't need to care about this type.
 pub struct Route<B = Body>(CloneBoxService<Request<B>, Response<BoxBody>, Infallible>);
 
+impl<B> Route<B> {
+    fn new<T>(svc: T) -> Self
+    where
+        T: Service<Request<B>, Response = Response<BoxBody>, Error = Infallible>
+            + Clone
+            + Send
+            + 'static,
+        T::Future: Send + 'static,
+    {
+        Self(CloneBoxService::new(svc))
+    }
+}
+
 impl<ReqBody> Clone for Route<ReqBody> {
     fn clone(&self) -> Self {
         Self(self.0.clone())
@@ -1088,6 +1054,41 @@ impl Node {
 impl fmt::Debug for Node {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Node").field("paths", &self.paths).finish()
+    }
+}
+
+enum Fallback<B> {
+    Default(Route<B>),
+    Custom(Route<B>),
+}
+
+impl<B> Clone for Fallback<B> {
+    fn clone(&self) -> Self {
+        match self {
+            Fallback::Default(inner) => Fallback::Default(inner.clone()),
+            Fallback::Custom(inner) => Fallback::Custom(inner.clone()),
+        }
+    }
+}
+
+impl<B> fmt::Debug for Fallback<B> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Default(inner) => f.debug_tuple("Default").field(inner).finish(),
+            Self::Custom(inner) => f.debug_tuple("Custom").field(inner).finish(),
+        }
+    }
+}
+
+impl<B> Fallback<B> {
+    fn map<F, B2>(self, f: F) -> Fallback<B2>
+    where
+        F: FnOnce(Route<B>) -> Route<B2>,
+    {
+        match self {
+            Fallback::Default(inner) => Fallback::Default(f(inner)),
+            Fallback::Custom(inner) => Fallback::Custom(f(inner)),
+        }
     }
 }
 

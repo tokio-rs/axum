@@ -19,6 +19,7 @@ use hyper::Body;
 use serde::Deserialize;
 use serde_json::{json, Value};
 use std::future::Ready;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::{
     collections::HashMap,
     convert::Infallible,
@@ -553,35 +554,6 @@ async fn middleware_applies_to_routes_above() {
 }
 
 #[tokio::test]
-async fn middleware_that_return_early() {
-    let app = Router::new()
-        .route("/", get(|| async {}))
-        .layer(RequireAuthorizationLayer::bearer("password"))
-        .route("/public", get(|| async {}));
-
-    let client = TestClient::new(app);
-
-    assert_eq!(
-        client.get("/").send().await.status(),
-        StatusCode::UNAUTHORIZED
-    );
-    assert_eq!(
-        client
-            .get("/")
-            .header("authorization", "Bearer password")
-            .send()
-            .await
-            .status(),
-        StatusCode::OK
-    );
-    assert_eq!(
-        client.get("/doesnt-exist").send().await.status(),
-        StatusCode::NOT_FOUND
-    );
-    assert_eq!(client.get("/public").send().await.status(), StatusCode::OK);
-}
-
-#[tokio::test]
 async fn with_trailing_slash() {
     let app = Router::new().route("/foo", get(|| async {}));
 
@@ -671,6 +643,48 @@ async fn empty_route_nested() {
     let app = Router::new().nest("", get(|| async {}));
     TestClient::new(app);
 }
+
+#[tokio::test]
+async fn middleware_still_run_for_unmatched_requests() {
+    #[derive(Clone)]
+    struct CountMiddleware<S>(S);
+
+    static COUNT: AtomicUsize = AtomicUsize::new(0);
+
+    impl<R, S> Service<R> for CountMiddleware<S>
+    where
+        S: Service<R>,
+    {
+        type Response = S::Response;
+        type Error = S::Error;
+        type Future = S::Future;
+
+        fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+            self.0.poll_ready(cx)
+        }
+
+        fn call(&mut self, req: R) -> Self::Future {
+            COUNT.fetch_add(1, Ordering::SeqCst);
+            self.0.call(req)
+        }
+    }
+
+    let app = Router::new()
+        .route("/", get(|| async {}))
+        .layer(tower::layer::layer_fn(CountMiddleware));
+
+    let client = TestClient::new(app);
+
+    assert_eq!(COUNT.load(Ordering::SeqCst), 0);
+
+    client.get("/").send().await;
+    assert_eq!(COUNT.load(Ordering::SeqCst), 1);
+
+    client.get("/not-found").send().await;
+    assert_eq!(COUNT.load(Ordering::SeqCst), 2);
+}
+
+// TODO(david): middleware still run for empty routers
 
 pub(crate) fn assert_send<T: Send>() {}
 pub(crate) fn assert_sync<T: Sync>() {}
