@@ -62,6 +62,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     match any routes ([#408])
   - **breaking:** `EmptyRouter` has been renamed to `MethodNotAllowed` as its only
     used in method routers and not in path routers (`Router`)
+  - **breaking:** Remove support for routing based on the `CONNECT` method. An
+    example of combining axum with and HTTP proxy can be found [here][proxy] ([#428])
 - Extractors:
   - **fixed:** Expand accepted content types for JSON requests ([#378])
   - **fixed:** Support deserializing `i128` and `u128` in `extract::Path`
@@ -155,6 +157,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#408]: https://github.com/tokio-rs/axum/pull/408
 [#412]: https://github.com/tokio-rs/axum/pull/412
 [#416]: https://github.com/tokio-rs/axum/pull/416
+[#428]: https://github.com/tokio-rs/axum/pull/428
+[proxy]: https://github.com/tokio-rs/axum/blob/main/examples/http-proxy/src/main.rs
 
 # 0.2.8 (07. October, 2021)
 
