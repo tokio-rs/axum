@@ -1,10 +1,9 @@
 //! Routing between [`Service`]s and handlers.
 
-use self::future::{NestedFuture, RouteFuture, RouterFuture};
+use self::future::RouterFuture;
 use self::not_found::NotFound;
 use crate::{
     body::{box_body, Body, BoxBody},
-    clone_box_service::CloneBoxService,
     extract::{
         connect_info::{Connected, IntoMakeServiceWithConnectInfo},
         OriginalUri,
@@ -19,7 +18,6 @@ use std::{
     collections::HashMap,
     convert::Infallible,
     fmt,
-    future::ready,
     sync::Arc,
     task::{Context, Poll},
 };
@@ -32,12 +30,15 @@ pub mod future;
 pub mod handler_method_router;
 pub mod service_method_router;
 
+mod into_make_service;
 mod method_filter;
 mod method_not_allowed;
+mod nested;
 mod not_found;
+mod route;
 
-pub use self::method_filter::MethodFilter;
 pub(crate) use self::method_not_allowed::MethodNotAllowed;
+pub use self::{into_make_service::IntoMakeService, method_filter::MethodFilter, route::Route};
 
 #[doc(no_inline)]
 pub use self::handler_method_router::{
@@ -353,7 +354,7 @@ where
             panic!("Invalid route: {}", err);
         }
 
-        self.routes.insert(id, Route::new(Nested { svc }));
+        self.routes.insert(id, Route::new(nested::Nested { svc }));
 
         self
     }
@@ -754,7 +755,8 @@ where
             .collect::<Vec<_>>();
 
         if let Some(tail) = match_.params.get(NEST_TAIL_PARAM) {
-            req.extensions_mut().insert(NestMatchTail(tail.to_string()));
+            req.extensions_mut()
+                .insert(nested::NestMatchTail(tail.to_string()));
         }
 
         insert_url_params(&mut req, params);
@@ -768,9 +770,6 @@ where
         RouterFuture::from_oneshot(route.oneshot(req))
     }
 }
-
-#[derive(Clone)]
-struct NestMatchTail(String);
 
 impl<B> Service<Request<B>> for Router<B>
 where
@@ -824,18 +823,33 @@ where
     }
 }
 
-pub(crate) struct UriStack(Vec<Uri>);
-
-impl UriStack {
-    fn push<B>(req: &mut Request<B>) {
-        let uri = req.uri().clone();
-
-        if let Some(stack) = req.extensions_mut().get_mut::<Self>() {
-            stack.0.push(uri);
+fn with_path(uri: &Uri, new_path: &str) -> Uri {
+    let path_and_query = if let Some(path_and_query) = uri.path_and_query() {
+        let new_path = if new_path.starts_with('/') {
+            Cow::Borrowed(new_path)
         } else {
-            req.extensions_mut().insert(Self(vec![uri]));
+            Cow::Owned(format!("/{}", new_path))
+        };
+
+        if let Some(query) = path_and_query.query() {
+            Some(
+                format!("{}?{}", new_path, query)
+                    .parse::<http::uri::PathAndQuery>()
+                    .unwrap(),
+            )
+        } else {
+            Some(new_path.parse().unwrap())
         }
-    }
+    } else {
+        None
+    };
+
+    let mut parts = http::uri::Parts::default();
+    parts.scheme = uri.scheme().cloned();
+    parts.authority = uri.authority().cloned();
+    parts.path_and_query = path_and_query;
+
+    Uri::from_parts(parts).unwrap()
 }
 
 // we store the potential error here such that users can handle invalid path
@@ -879,150 +893,6 @@ fn insert_url_params<B>(req: &mut Request<B>, params: Vec<(String, String)>) {
 
 pub(crate) struct InvalidUtf8InPathParam {
     pub(crate) key: ByteStr,
-}
-
-/// A [`Service`] that has been nested inside a router at some path.
-///
-/// Created with [`Router::nest`].
-#[derive(Debug, Clone)]
-struct Nested<S> {
-    svc: S,
-}
-
-impl<B, S> Service<Request<B>> for Nested<S>
-where
-    S: Service<Request<B>, Response = Response<BoxBody>, Error = Infallible> + Clone,
-    B: Send + Sync + 'static,
-{
-    type Response = Response<BoxBody>;
-    type Error = Infallible;
-    type Future = NestedFuture<S, B>;
-
-    #[inline]
-    fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        Poll::Ready(Ok(()))
-    }
-
-    fn call(&mut self, mut req: Request<B>) -> Self::Future {
-        // strip the prefix from the URI just before calling the inner service
-        // such that any surrounding middleware still see the full path
-        if let Some(tail) = req.extensions_mut().remove::<NestMatchTail>() {
-            UriStack::push(&mut req);
-            let new_uri = with_path(req.uri(), &tail.0);
-            *req.uri_mut() = new_uri;
-        }
-
-        NestedFuture {
-            inner: self.svc.clone().oneshot(req),
-        }
-    }
-}
-
-fn with_path(uri: &Uri, new_path: &str) -> Uri {
-    let path_and_query = if let Some(path_and_query) = uri.path_and_query() {
-        let new_path = if new_path.starts_with('/') {
-            Cow::Borrowed(new_path)
-        } else {
-            Cow::Owned(format!("/{}", new_path))
-        };
-
-        if let Some(query) = path_and_query.query() {
-            Some(
-                format!("{}?{}", new_path, query)
-                    .parse::<http::uri::PathAndQuery>()
-                    .unwrap(),
-            )
-        } else {
-            Some(new_path.parse().unwrap())
-        }
-    } else {
-        None
-    };
-
-    let mut parts = http::uri::Parts::default();
-    parts.scheme = uri.scheme().cloned();
-    parts.authority = uri.authority().cloned();
-    parts.path_and_query = path_and_query;
-
-    Uri::from_parts(parts).unwrap()
-}
-
-/// A [`MakeService`] that produces axum router services.
-///
-/// [`MakeService`]: tower::make::MakeService
-#[derive(Debug, Clone)]
-pub struct IntoMakeService<S> {
-    service: S,
-}
-
-impl<S> IntoMakeService<S> {
-    fn new(service: S) -> Self {
-        Self { service }
-    }
-}
-
-impl<S, T> Service<T> for IntoMakeService<S>
-where
-    S: Clone,
-{
-    type Response = S;
-    type Error = Infallible;
-    type Future = future::MakeRouteServiceFuture<S>;
-
-    #[inline]
-    fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        Poll::Ready(Ok(()))
-    }
-
-    fn call(&mut self, _target: T) -> Self::Future {
-        future::MakeRouteServiceFuture::new(ready(Ok(self.service.clone())))
-    }
-}
-
-/// How routes are stored inside a [`Router`].
-///
-/// You normally shouldn't need to care about this type.
-pub struct Route<B = Body>(CloneBoxService<Request<B>, Response<BoxBody>, Infallible>);
-
-impl<B> Route<B> {
-    fn new<T>(svc: T) -> Self
-    where
-        T: Service<Request<B>, Response = Response<BoxBody>, Error = Infallible>
-            + Clone
-            + Send
-            + 'static,
-        T::Future: Send + 'static,
-    {
-        Self(CloneBoxService::new(svc))
-    }
-}
-
-impl<ReqBody> Clone for Route<ReqBody> {
-    fn clone(&self) -> Self {
-        Self(self.0.clone())
-    }
-}
-
-impl<ReqBody> fmt::Debug for Route<ReqBody> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Route").finish()
-    }
-}
-
-impl<B> Service<Request<B>> for Route<B> {
-    type Response = Response<BoxBody>;
-    type Error = Infallible;
-    type Future = RouteFuture<B>;
-
-    #[inline]
-    fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        Poll::Ready(Ok(()))
-    }
-
-    #[inline]
-    fn call(&mut self, req: Request<B>) -> Self::Future {
-        RouteFuture::new(self.0.clone().oneshot(req))
-    }
 }
 
 /// Wrapper around `matchit::Node` that supports merging two `Node`s.
@@ -1109,16 +979,5 @@ mod tests {
         use crate::tests::*;
 
         assert_send::<Router<()>>();
-
-        assert_send::<Route<()>>();
-
-        assert_send::<MethodNotAllowed<NotSendSync>>();
-        assert_sync::<MethodNotAllowed<NotSendSync>>();
-
-        assert_send::<Nested<()>>();
-        assert_sync::<Nested<()>>();
-
-        assert_send::<IntoMakeService<()>>();
-        assert_sync::<IntoMakeService<()>>();
     }
 }

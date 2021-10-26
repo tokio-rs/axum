@@ -67,3 +67,16 @@ opaque_future! {
     pub type MethodNotAllowedFuture<E> =
         std::future::Ready<Result<Response<BoxBody>, E>>;
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn traits() {
+        use crate::tests::*;
+
+        assert_send::<MethodNotAllowed<NotSendSync>>();
+        assert_sync::<MethodNotAllowed<NotSendSync>>();
+    }
+}
