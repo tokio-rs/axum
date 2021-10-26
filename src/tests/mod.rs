@@ -1,7 +1,7 @@
 #![allow(clippy::blacklisted_name)]
 
 use crate::error_handling::HandleErrorLayer;
-use crate::extract::MatchedPath;
+use crate::extract::{Extension, MatchedPath};
 use crate::BoxError;
 use crate::{
     extract::{self, Path},
@@ -29,7 +29,6 @@ use std::{
 };
 use tower::{service_fn, timeout::TimeoutLayer, ServiceBuilder};
 use tower_http::auth::RequireAuthorizationLayer;
-use tower_http::trace::TraceLayer;
 use tower_service::Service;
 
 pub(crate) use helpers::*;
@@ -592,24 +591,92 @@ async fn with_and_without_trailing_slash() {
     assert_eq!(res.text().await, "without tsr");
 }
 
+#[derive(Clone)]
+struct SetMatchedPathExtension<S>(S);
+
+impl<B, S> Service<Request<B>> for SetMatchedPathExtension<S>
+where
+    S: Service<Request<B>>,
+{
+    type Response = S::Response;
+    type Error = S::Error;
+    type Future = S::Future;
+
+    fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        self.0.poll_ready(cx)
+    }
+
+    fn call(&mut self, mut req: Request<B>) -> Self::Future {
+        let path = req
+            .extensions()
+            .get::<MatchedPath>()
+            .unwrap()
+            .as_str()
+            .to_string();
+        req.extensions_mut().insert(MatchedPathFromMiddleware(path));
+        self.0.call(req)
+    }
+}
+
+#[derive(Clone)]
+struct MatchedPathFromMiddleware(String);
+
 #[tokio::test]
 async fn access_matched_path() {
+    let api = Router::new().route(
+        "/users/:id",
+        get(|path: MatchedPath| async move { path.as_str().to_string() }),
+    );
+
+    async fn handler(
+        path: MatchedPath,
+        Extension(MatchedPathFromMiddleware(path_from_middleware)): Extension<
+            MatchedPathFromMiddleware,
+        >,
+    ) -> String {
+        format!(
+            "extractor = {}, middleware = {}",
+            path.as_str(),
+            path_from_middleware
+        )
+    }
+
     let app = Router::new()
         .route(
             "/:key",
             get(|path: MatchedPath| async move { path.as_str().to_string() }),
         )
-        .layer(
-            TraceLayer::new_for_http().make_span_with(|req: &Request<_>| {
-                let path = req.extensions().get::<MatchedPath>().unwrap().as_str();
-                tracing::info_span!("http-request", %path)
-            }),
-        );
+        .nest("/api", api)
+        .nest(
+            "/public",
+            Router::new().route("/assets/*path", get(handler)),
+        )
+        .nest("/foo", handler.into_service())
+        .layer(tower::layer::layer_fn(SetMatchedPathExtension));
 
     let client = TestClient::new(app);
 
     let res = client.get("/foo").send().await;
     assert_eq!(res.text().await, "/:key");
+
+    let res = client.get("/api/users/123").send().await;
+    assert_eq!(res.text().await, "/api/users/:id");
+
+    let res = client.get("/public/assets/css/style.css").send().await;
+    assert_eq!(
+        res.text().await,
+        "extractor = /public/assets/*path, middleware = /public/assets/*path"
+    );
+
+    let res = client.get("/foo/bar/baz").send().await;
+    assert_eq!(
+        res.text().await,
+        format!(
+            "extractor = /foo/*{}, middleware = /foo/*{}",
+            crate::routing::NEST_TAIL_PARAM,
+            crate::routing::NEST_TAIL_PARAM,
+        ),
+    );
 }
 
 #[tokio::test]

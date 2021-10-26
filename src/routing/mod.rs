@@ -6,7 +6,7 @@ use crate::{
     body::{box_body, Body, BoxBody},
     extract::{
         connect_info::{Connected, IntoMakeServiceWithConnectInfo},
-        OriginalUri,
+        MatchedPath, OriginalUri,
     },
     util::{ByteStr, PercentDecodedByteStr},
     BoxError,
@@ -33,9 +33,9 @@ pub mod service_method_router;
 mod into_make_service;
 mod method_filter;
 mod method_not_allowed;
-mod nested;
 mod not_found;
 mod route;
+mod strip_prefix;
 
 pub(crate) use self::method_not_allowed::MethodNotAllowed;
 pub use self::{into_make_service::IntoMakeService, method_filter::MethodFilter, route::Route};
@@ -92,7 +92,8 @@ impl<B> fmt::Debug for Router<B> {
     }
 }
 
-const NEST_TAIL_PARAM: &str = "__axum_internal_nest_capture";
+pub(crate) const NEST_TAIL_PARAM: &str = "axum_nest";
+const NEST_TAIL_PARAM_CAPTURE: &str = "/*axum_nest";
 
 impl<B> Router<B>
 where
@@ -342,19 +343,48 @@ where
             panic!("Invalid route: nested routes cannot contain wildcards (*)");
         }
 
-        let id = RouteId::next();
+        let prefix = path.to_string();
 
-        let path = if path == "/" {
-            format!("/*{}", NEST_TAIL_PARAM)
-        } else {
-            format!("{}/*{}", path, NEST_TAIL_PARAM)
-        };
+        match try_downcast::<Router<B>, _>(svc) {
+            // if the user is nesting a `Router` we can implement nesting
+            // by simplying copying all the routes and adding the prefix in
+            // front
+            Ok(router) => {
+                let Router {
+                    mut routes,
+                    node,
+                    fallback: _,
+                } = router;
 
-        if let Err(err) = self.node.insert(path, id) {
-            panic!("Invalid route: {}", err);
+                for (id, nested_path) in node.paths {
+                    let route = routes.remove(&id).unwrap();
+                    let full_path = if &*nested_path == "/" {
+                        path.to_string()
+                    } else {
+                        format!("{}{}", path, nested_path)
+                    };
+                    self = self.route(
+                        &full_path,
+                        strip_prefix::StripPrefix {
+                            inner: route,
+                            prefix: prefix.clone(),
+                        },
+                    );
+                }
+
+                debug_assert!(routes.is_empty());
+            }
+            // otherwise we add a wildcard route to the service
+            Err(svc) => {
+                let path = if path == "/" {
+                    format!("/*{}", NEST_TAIL_PARAM)
+                } else {
+                    format!("{}/*{}", path, NEST_TAIL_PARAM)
+                };
+
+                self = self.route(&path, strip_prefix::StripPrefix { inner: svc, prefix });
+            }
         }
-
-        self.routes.insert(id, Route::new(nested::Nested { svc }));
 
         self
     }
@@ -700,31 +730,8 @@ where
     /// ## When used with `Router::nest`
     ///
     /// If a router with a fallback is nested inside another router the fallback
-    /// will only apply to requests that matches the prefix:
-    ///
-    /// ```rust
-    /// use axum::{
-    ///     Router,
-    ///     routing::get,
-    ///     handler::Handler,
-    ///     response::IntoResponse,
-    ///     http::{StatusCode, Uri},
-    /// };
-    ///
-    /// let api = Router::new()
-    ///     .route("/", get(|| async { /* ... */ }))
-    ///     .fallback(api_fallback.into_service());
-    ///
-    /// let app = Router::new().nest("/api", api);
-    ///
-    /// async fn api_fallback() -> impl IntoResponse { /* ... */ }
-    ///
-    /// // `api_fallback` will be called for `/api/some-unknown-path` but not for
-    /// // `/some-unknown-path` as the path doesn't start with `/api`
-    /// # async {
-    /// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-    /// # };
-    /// ```
+    /// of the nested router will be discarded and not used. This is such that
+    /// the outer router's fallback takes precedence.
     pub fn fallback<T>(mut self, svc: T) -> Self
     where
         T: Service<Request<B>, Response = Response<BoxBody>, Error = Infallible>
@@ -743,8 +750,22 @@ where
         req.extensions_mut().insert(id);
 
         if let Some(matched_path) = self.node.paths.get(&id) {
-            req.extensions_mut()
-                .insert(crate::extract::MatchedPath(matched_path.clone()));
+            let matched_path = if let Some(previous) = req.extensions_mut().get::<MatchedPath>() {
+                // a previous `MatchedPath` might exist if we're inside a nested Router
+                let previous = if let Some(previous) =
+                    previous.as_str().strip_suffix(NEST_TAIL_PARAM_CAPTURE)
+                {
+                    previous
+                } else {
+                    previous.as_str()
+                };
+
+                let matched_path = format!("{}{}", previous, matched_path);
+                matched_path.into()
+            } else {
+                Arc::clone(matched_path)
+            };
+            req.extensions_mut().insert(MatchedPath(matched_path));
         }
 
         let params = match_
@@ -753,11 +774,6 @@ where
             .filter(|(key, _)| !key.starts_with(NEST_TAIL_PARAM))
             .map(|(key, value)| (key.to_string(), value.to_string()))
             .collect::<Vec<_>>();
-
-        if let Some(tail) = match_.params.get(NEST_TAIL_PARAM) {
-            req.extensions_mut()
-                .insert(nested::NestMatchTail(tail.to_string()));
-        }
 
         insert_url_params(&mut req, params);
 
@@ -970,14 +986,22 @@ impl<B> Fallback<B> {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+fn try_downcast<T, K>(k: K) -> Result<T, K>
+where
+    T: 'static,
+    K: Send + 'static,
+{
+    use std::any::Any;
 
-    #[test]
-    fn traits() {
-        use crate::tests::*;
-
-        assert_send::<Router<()>>();
+    let k = Box::new(k) as Box<dyn Any + Send + 'static>;
+    match k.downcast() {
+        Ok(t) => Ok(*t),
+        Err(other) => Err(*other.downcast().unwrap()),
     }
+}
+
+#[test]
+fn traits() {
+    use crate::tests::*;
+    assert_send::<Router<()>>();
 }
