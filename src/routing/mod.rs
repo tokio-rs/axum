@@ -42,7 +42,7 @@ pub use self::{into_make_service::IntoMakeService, method_filter::MethodFilter, 
 
 #[doc(no_inline)]
 pub use self::handler_method_router::{
-    any, connect, delete, get, head, on, options, patch, post, put, trace, MethodRouter,
+    any, delete, get, head, on, options, patch, post, put, trace, MethodRouter,
 };
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
