@@ -1,14 +1,24 @@
 use http::{Request, Uri};
 use std::{
     borrow::Cow,
+    sync::Arc,
     task::{Context, Poll},
 };
 use tower_service::Service;
 
 #[derive(Clone)]
 pub(super) struct StripPrefix<S> {
-    pub(super) inner: S,
-    pub(super) prefix: String,
+    inner: S,
+    prefix: Arc<str>,
+}
+
+impl<S> StripPrefix<S> {
+    pub(super) fn new(inner: S, prefix: &str) -> Self {
+        Self {
+            inner,
+            prefix: prefix.into(),
+        }
+    }
 }
 
 impl<S, B> Service<Request<B>> for StripPrefix<S>

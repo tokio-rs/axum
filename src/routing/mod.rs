@@ -343,7 +343,7 @@ where
             panic!("Invalid route: nested routes cannot contain wildcards (*)");
         }
 
-        let prefix = path.to_string();
+        let prefix = path;
 
         match try_downcast::<Router<B>, _>(svc) {
             // if the user is nesting a `Router` we can implement nesting
@@ -363,13 +363,7 @@ where
                     } else {
                         format!("{}{}", path, nested_path)
                     };
-                    self = self.route(
-                        &full_path,
-                        strip_prefix::StripPrefix {
-                            inner: route,
-                            prefix: prefix.clone(),
-                        },
-                    );
+                    self = self.route(&full_path, strip_prefix::StripPrefix::new(route, prefix));
                 }
 
                 debug_assert!(routes.is_empty());
@@ -382,7 +376,7 @@ where
                     format!("{}/*{}", path, NEST_TAIL_PARAM)
                 };
 
-                self = self.route(&path, strip_prefix::StripPrefix { inner: svc, prefix });
+                self = self.route(&path, strip_prefix::StripPrefix::new(svc, prefix));
             }
         }
 
