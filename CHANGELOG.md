@@ -41,9 +41,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - **fixed:** Adding a conflicting route will now cause a panic instead of silently making
       a route unreachable.
     - **fixed:** Route matching is faster as number of routes increase.
-  - **fixed:** Middleware that return early (such as `tower_http::auth::RequireAuthorization`)
-    now no longer catch requests that would otherwise be 404s. They also work
-    correctly with `Router::merge` (previously called `or`) ([#408])
   - **fixed:** Correctly handle trailing slashes in routes:
     - If a route with a trailing slash exists and a request without a trailing
       slash is received, axum will send a 301 redirection to the route with the

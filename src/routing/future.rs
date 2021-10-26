@@ -13,6 +13,8 @@ use std::{
 use tower::util::Oneshot;
 use tower_service::Service;
 
+pub use super::method_not_allowed::MethodNotAllowedFuture;
+
 opaque_future! {
     /// Response future for [`Router`](super::Router).
     pub type RouterFuture<B> =
@@ -58,12 +60,6 @@ impl<B> Future for RouteFuture<B> {
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         self.project().future.poll(cx)
     }
-}
-
-opaque_future! {
-    /// Response future for [`MethodNotAllowed`](super::MethodNotAllowed).
-    pub type MethodNotAllowedFuture<E> =
-        std::future::Ready<Result<Response<BoxBody>, E>>;
 }
 
 pin_project! {
