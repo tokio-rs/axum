@@ -1,0 +1,13 @@
+[package]
+name = "example-http-proxy"
+version = "0.1.0"
+edition = "2018"
+publish = false
+
+[dependencies]
+axum = { path = "../.." }
+tokio = { version = "1.0", features = ["full"] }
+hyper = { version = "0.14", features = ["full"] }
+tower = { version = "0.4", features = ["make"] }
+tracing = "0.1"
+tracing-subscriber = "0.2"
