@@ -751,6 +751,14 @@ async fn middleware_still_run_for_unmatched_requests() {
     assert_eq!(COUNT.load(Ordering::SeqCst), 2);
 }
 
+#[tokio::test]
+#[should_panic(
+    expected = "Invalid route: `Router::route` cannot be used with `Router`s. Use `Router::nest` instead"
+)]
+async fn routing_to_router_panics() {
+    TestClient::new(Router::new().route("/", Router::new()));
+}
+
 pub(crate) fn assert_send<T: Send>() {}
 pub(crate) fn assert_sync<T: Sync>() {}
 pub(crate) fn assert_unpin<T: Unpin>() {}

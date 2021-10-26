@@ -197,6 +197,13 @@ where
             panic!("Invalid route: empty path");
         }
 
+        let svc = match try_downcast::<Router<B>, _>(svc) {
+            Ok(_) => {
+                panic!("Invalid route: `Router::route` cannot be used with `Router`s. Use `Router::nest` instead")
+            }
+            Err(svc) => svc,
+        };
+
         let id = RouteId::next();
 
         if let Err(err) = self.node.insert(path, id) {
