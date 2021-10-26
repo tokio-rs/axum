@@ -178,6 +178,8 @@ where
     /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
     /// # };
     /// ```
+    ///
+    /// Also panics if `path` is empty.
     pub fn route<T>(mut self, path: &str, svc: T) -> Self
     where
         T: Service<Request<B>, Response = Response<BoxBody>, Error = Infallible>
@@ -186,6 +188,10 @@ where
             + 'static,
         T::Future: Send + 'static,
     {
+        if path.is_empty() {
+            panic!("Invalid route: empty path");
+        }
+
         let id = RouteId::next();
 
         if let Err(err) = self.node.insert(path, id) {
@@ -310,8 +316,10 @@ where
     ///
     /// # Panics
     ///
-    /// Panics if the route overlaps with another route. See [`Router::route`]
+    /// - If the route overlaps with another route. See [`Router::route`]
     /// for more details.
+    /// - If the route contains a wildcard (`*`).
+    /// - If `path` is empty.
     ///
     /// [`OriginalUri`]: crate::extract::OriginalUri
     pub fn nest<T>(mut self, path: &str, svc: T) -> Self
@@ -322,11 +330,15 @@ where
             + 'static,
         T::Future: Send + 'static,
     {
-        let id = RouteId::next();
+        if path.is_empty() {
+            panic!("Invalid route: empty path");
+        }
 
         if path.contains('*') {
             panic!("Invalid route: nested routes cannot contain wildcards (*)");
         }
+
+        let id = RouteId::next();
 
         let path = if path == "/" {
             format!("/*{}", NEST_TAIL_PARAM)

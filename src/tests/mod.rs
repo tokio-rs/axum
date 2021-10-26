@@ -658,6 +658,20 @@ async fn static_and_dynamic_paths() {
     assert_eq!(res.text().await, "static");
 }
 
+#[tokio::test]
+#[should_panic(expected = "Invalid route: empty path")]
+async fn empty_route() {
+    let app = Router::new().route("", get(|| async {}));
+    TestClient::new(app);
+}
+
+#[tokio::test]
+#[should_panic(expected = "Invalid route: empty path")]
+async fn empty_route_nested() {
+    let app = Router::new().nest("", get(|| async {}));
+    TestClient::new(app);
+}
+
 pub(crate) fn assert_send<T: Send>() {}
 pub(crate) fn assert_sync<T: Sync>() {}
 pub(crate) fn assert_unpin<T: Unpin>() {}
