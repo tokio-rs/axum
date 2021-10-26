@@ -130,16 +130,6 @@ where
     on(MethodFilter::all(), svc)
 }
 
-/// Route `CONNECT` requests to the given service.
-///
-/// See [`get`] for an example.
-pub fn connect<S, B>(svc: S) -> MethodRouter<S, MethodNotAllowed<S::Error>, B>
-where
-    S: Service<Request<B>> + Clone,
-{
-    on(MethodFilter::CONNECT, svc)
-}
-
 /// Route `DELETE` requests to the given service.
 ///
 /// See [`get`] for an example.
@@ -317,16 +307,6 @@ impl<S, F, B> MethodRouter<S, F, B> {
         T: Service<Request<B>> + Clone,
     {
         self.on(MethodFilter::all(), svc)
-    }
-
-    /// Chain an additional service that will only accept `CONNECT` requests.
-    ///
-    /// See [`MethodRouter::get`] for an example.
-    pub fn connect<T>(self, svc: T) -> MethodRouter<T, Self, B>
-    where
-        T: Service<Request<B>> + Clone,
-    {
-        self.on(MethodFilter::CONNECT, svc)
     }
 
     /// Chain an additional service that will only accept `DELETE` requests.

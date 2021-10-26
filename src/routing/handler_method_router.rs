@@ -64,16 +64,6 @@ where
     on(MethodFilter::all(), handler)
 }
 
-/// Route `CONNECT` requests to the given handler.
-///
-/// See [`get`] for an example.
-pub fn connect<H, B, T>(handler: H) -> MethodRouter<H, B, T, MethodNotAllowed>
-where
-    H: Handler<B, T>,
-{
-    on(MethodFilter::CONNECT, handler)
-}
-
 /// Route `DELETE` requests to the given handler.
 ///
 /// See [`get`] for an example.
@@ -259,16 +249,6 @@ impl<H, B, T, F> MethodRouter<H, B, T, F> {
         H2: Handler<B, T2>,
     {
         self.on(MethodFilter::all(), handler)
-    }
-
-    /// Chain an additional handler that will only accept `CONNECT` requests.
-    ///
-    /// See [`MethodRouter::get`] for an example.
-    pub fn connect<H2, T2>(self, handler: H2) -> MethodRouter<H2, B, T2, Self>
-    where
-        H2: Handler<B, T2>,
-    {
-        self.on(MethodFilter::CONNECT, handler)
     }
 
     /// Chain an additional handler that will only accept `DELETE` requests.
