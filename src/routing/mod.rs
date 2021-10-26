@@ -440,8 +440,7 @@ where
         LayeredResBody::Error: Into<BoxError>,
     {
         let layer = ServiceBuilder::new()
-            .layer_fn(Route)
-            .layer_fn(CloneBoxService::new)
+            .layer_fn(Route::new)
             .layer(MapResponseBodyLayer::new(box_body))
             .layer(layer);
 
@@ -755,9 +754,7 @@ where
             .collect::<Vec<_>>();
 
         if let Some(tail) = match_.params.get(NEST_TAIL_PARAM) {
-            UriStack::push(&mut req);
-            let new_uri = with_path(req.uri(), tail);
-            *req.uri_mut() = new_uri;
+            req.extensions_mut().insert(NestMatchTail(tail.to_string()));
         }
 
         insert_url_params(&mut req, params);
@@ -771,6 +768,9 @@ where
         RouterFuture::from_oneshot(route.oneshot(req))
     }
 }
+
+#[derive(Clone)]
+struct NestMatchTail(String);
 
 impl<B> Service<Request<B>> for Router<B>
 where
@@ -903,7 +903,15 @@ where
         Poll::Ready(Ok(()))
     }
 
-    fn call(&mut self, req: Request<B>) -> Self::Future {
+    fn call(&mut self, mut req: Request<B>) -> Self::Future {
+        // strip the prefix from the URI just before calling the inner service
+        // such that any surrounding middleware still see the full path
+        if let Some(tail) = req.extensions_mut().remove::<NestMatchTail>() {
+            UriStack::push(&mut req);
+            let new_uri = with_path(req.uri(), &tail.0);
+            *req.uri_mut() = new_uri;
+        }
+
         NestedFuture {
             inner: self.svc.clone().oneshot(req),
         }

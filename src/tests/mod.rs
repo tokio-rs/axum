@@ -684,8 +684,6 @@ async fn middleware_still_run_for_unmatched_requests() {
     assert_eq!(COUNT.load(Ordering::SeqCst), 2);
 }
 
-// TODO(david): middleware still run for empty routers
-
 pub(crate) fn assert_send<T: Send>() {}
 pub(crate) fn assert_sync<T: Sync>() {}
 pub(crate) fn assert_unpin<T: Unpin>() {}
