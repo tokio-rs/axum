@@ -36,7 +36,7 @@ async fn main() {
 
     // build our application with a route
     let app = Router::new()
-        .nest("/", static_files_service)
+        .fallback(static_files_service)
         .route("/sse", get(sse_handler))
         .layer(TraceLayer::new_for_http());
 
