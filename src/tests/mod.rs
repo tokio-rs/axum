@@ -13,7 +13,7 @@ use crate::{
 use bytes::Bytes;
 use http::{
     header::{HeaderMap, AUTHORIZATION},
-    Request, Response, StatusCode, Uri,
+    Method, Request, Response, StatusCode, Uri,
 };
 use hyper::Body;
 use serde::Deserialize;
@@ -27,7 +27,7 @@ use std::{
     task::{Context, Poll},
     time::Duration,
 };
-use tower::{service_fn, timeout::TimeoutLayer, ServiceBuilder};
+use tower::{service_fn, timeout::TimeoutLayer, ServiceBuilder, ServiceExt};
 use tower_http::auth::RequireAuthorizationLayer;
 use tower_service::Service;
 
@@ -589,6 +589,49 @@ async fn with_and_without_trailing_slash() {
     let res = client.get("/foo").send().await;
     assert_eq!(res.status(), StatusCode::OK);
     assert_eq!(res.text().await, "without tsr");
+}
+
+// for https://github.com/tokio-rs/axum/issues/420
+#[tokio::test]
+async fn wildcard_with_trailing_slash() {
+    #[derive(Deserialize, serde::Serialize)]
+    struct Tree {
+        user: String,
+        repo: String,
+        path: String,
+    }
+
+    let app: Router = Router::new().route(
+        "/:user/:repo/tree/*path",
+        get(|Path(tree): Path<Tree>| async move { Json(tree) }),
+    );
+
+    // low level check that the correct redirect happens
+    let res = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method(Method::GET)
+                .uri("/user1/repo1/tree")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::MOVED_PERMANENTLY);
+    assert_eq!(res.headers()["location"], "/user1/repo1/tree/");
+
+    // check that the params are deserialized correctly
+    let client = TestClient::new(app);
+    let res = client.get("/user1/repo1/tree/").send().await;
+    assert_eq!(
+        res.json::<Value>().await,
+        json!({
+            "user": "user1",
+            "repo": "repo1",
+            "path": "/",
+        })
+    );
 }
 
 #[derive(Clone)]
