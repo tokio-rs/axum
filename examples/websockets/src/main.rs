@@ -33,8 +33,7 @@ async fn main() {
 
     // build our application with some routes
     let app = Router::new()
-        .nest(
-            "/",
+        .fallback(
             service::get(
                 ServeDir::new("examples/websockets/assets").append_index_html_on_directories(true),
             )
