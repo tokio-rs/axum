@@ -7,7 +7,7 @@ use std::{
 };
 use tower_service::Service;
 
-/// A [`Service`] that responds with `405 Method not allowed` to all requests.
+/// A [`Service`] that responds with `404 Not Found` to all requests.
 ///
 /// This is used as the bottom service in a method router. You shouldn't have to
 /// use it manually.
