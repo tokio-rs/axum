@@ -23,9 +23,9 @@ pub use self::into_service::IntoService;
 pub(crate) mod sealed {
     #![allow(unreachable_pub, missing_docs, missing_debug_implementations)]
 
-    pub trait HiddentTrait {}
+    pub trait HiddenTrait {}
     pub struct Hidden;
-    impl HiddentTrait for Hidden {}
+    impl HiddenTrait for Hidden {}
 }
 
 /// Trait for async functions that can be used to handle requests.
@@ -39,7 +39,7 @@ pub trait Handler<B, T>: Clone + Send + Sized + 'static {
     // This seals the trait. We cannot use the regular "sealed super trait"
     // approach due to coherence.
     #[doc(hidden)]
-    type Sealed: sealed::HiddentTrait;
+    type Sealed: sealed::HiddenTrait;
 
     /// Call the handler with the given request.
     async fn call(self, req: Request<B>) -> Response<BoxBody>;
