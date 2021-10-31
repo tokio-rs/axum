@@ -111,81 +111,8 @@ where
         }
     }
 
-    /// Add another route to the router.
-    ///
-    /// `path` is a string of path segments separated by `/`. Each segment
-    /// can be either concrete, a capture, or a wildcard:
-    ///
-    /// - `/foo/bar/baz` will only match requests where the path is `/foo/bar/bar`.
-    /// - `/:foo` will match any route with exactly one segment _and_ it will
-    /// capture the first segment and store it at the key `foo`.
-    /// - `/foo/bar/*rest` will match all requests that start with `/foo/bar`
-    /// and any number of segments after that. It will also create a capture
-    /// with the key `rest` that contains the matched segments.
-    ///
-    /// `service` is the [`Service`] that should receive the request if the path
-    /// matches `path`.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// use axum::{Router, routing::{get, delete}, extract::Path};
-    ///
-    /// let app = Router::new()
-    ///     .route("/", get(root))
-    ///     .route("/users", get(list_users).post(create_user))
-    ///     .route("/users/:id", get(show_user))
-    ///     .route("/api/:version/users/:id/action", delete(do_users_action))
-    ///     .route("/assets/*path", get(serve_asset));
-    ///
-    /// async fn root() { /* ... */ }
-    ///
-    /// async fn list_users() { /* ... */ }
-    ///
-    /// async fn create_user() { /* ... */ }
-    ///
-    /// async fn show_user() { /* ... */ }
-    ///
-    /// async fn do_users_action() { /* ... */ }
-    ///
-    /// async fn serve_asset(Path(path): Path<String>) { /* ... */ }
-    /// # async {
-    /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-    /// # };
-    /// ```
-    ///
-    /// # Panics
-    ///
-    /// Panics if the route overlaps with another route:
-    ///
-    /// ```should_panic
-    /// use axum::{routing::get, Router};
-    ///
-    /// let app = Router::new()
-    ///     .route("/", get(|| async {}))
-    ///     .route("/", get(|| async {}));
-    /// # async {
-    /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-    /// # };
-    /// ```
-    ///
-    /// This also applies to `nest` which is similar to a wildcard route:
-    ///
-    /// ```should_panic
-    /// use axum::{routing::get, Router};
-    ///
-    /// let app = Router::new()
-    ///     // this is similar to `/api/*`
-    ///     .nest("/api", get(|| async {}))
-    ///     // which overlaps with this route
-    ///     .route("/api/users", get(|| async {}));
-    /// # async {
-    /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-    /// # };
-    /// ```
-    ///
-    /// Also panics if `path` is empty.
-    pub fn route<T>(mut self, path: &str, svc: T) -> Self
+    #[doc = include_str!("../docs/routing/route.md")]
+    pub fn route<T>(mut self, path: &str, service: T) -> Self
     where
         T: Service<Request<B>, Response = Response<BoxBody>, Error = Infallible>
             + Clone
@@ -197,7 +124,7 @@ where
             panic!("Invalid route: empty path");
         }
 
-        let svc = match try_downcast::<Router<B>, _>(svc) {
+        let service = match try_downcast::<Router<B>, _>(service) {
             Ok(_) => {
                 panic!("Invalid route: `Router::route` cannot be used with `Router`s. Use `Router::nest` instead")
             }
@@ -210,130 +137,12 @@ where
             panic!("Invalid route: {}", err);
         }
 
-        self.routes.insert(id, Route::new(svc));
+        self.routes.insert(id, Route::new(service));
 
         self
     }
 
-    /// Nest a group of routes (or a [`Service`]) at some path.
-    ///
-    /// This allows you to break your application into smaller pieces and compose
-    /// them together.
-    ///
-    /// ```
-    /// use axum::{
-    ///     routing::get,
-    ///     Router,
-    /// };
-    /// use http::Uri;
-    ///
-    /// async fn users_get(uri: Uri) {
-    ///     // `uri` will be `/users` since `nest` strips the matching prefix.
-    ///     // use `OriginalUri` to always get the full URI.
-    /// }
-    ///
-    /// async fn users_post() {}
-    ///
-    /// async fn careers() {}
-    ///
-    /// let users_api = Router::new().route("/users", get(users_get).post(users_post));
-    ///
-    /// let app = Router::new()
-    ///     .nest("/api", users_api)
-    ///     .route("/careers", get(careers));
-    /// # async {
-    /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-    /// # };
-    /// ```
-    ///
-    /// Note that nested routes will not see the orignal request URI but instead
-    /// have the matched prefix stripped. This is necessary for services like static
-    /// file serving to work. Use [`OriginalUri`] if you need the original request
-    /// URI.
-    ///
-    /// Take care when using `nest` together with dynamic routes as nesting also
-    /// captures from the outer routes:
-    ///
-    /// ```
-    /// use axum::{
-    ///     extract::Path,
-    ///     routing::get,
-    ///     Router,
-    /// };
-    /// use std::collections::HashMap;
-    ///
-    /// async fn users_get(Path(params): Path<HashMap<String, String>>) {
-    ///     // Both `version` and `id` were captured even though `users_api` only
-    ///     // explicitly captures `id`.
-    ///     let version = params.get("version");
-    ///     let id = params.get("id");
-    /// }
-    ///
-    /// let users_api = Router::new().route("/users/:id", get(users_get));
-    ///
-    /// let app = Router::new().nest("/:version/api", users_api);
-    /// # async {
-    /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-    /// # };
-    /// ```
-    ///
-    /// `nest` also accepts any [`Service`]. This can for example be used with
-    /// [`tower_http::services::ServeDir`] to serve static files from a directory:
-    ///
-    /// ```
-    /// use axum::{
-    ///     Router,
-    ///     routing::service_method_router::get,
-    ///     error_handling::HandleErrorExt,
-    ///     http::StatusCode,
-    /// };
-    /// use std::{io, convert::Infallible};
-    /// use tower_http::services::ServeDir;
-    ///
-    /// // Serves files inside the `public` directory at `GET /public/*`
-    /// let serve_dir_service = ServeDir::new("public")
-    ///     .handle_error(|error: io::Error| {
-    ///         (
-    ///             StatusCode::INTERNAL_SERVER_ERROR,
-    ///             format!("Unhandled internal error: {}", error),
-    ///         )
-    ///     });
-    ///
-    /// let app = Router::new().nest("/public", get(serve_dir_service));
-    /// # async {
-    /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-    /// # };
-    /// ```
-    ///
-    /// # Differences to wildcard routes
-    ///
-    /// Nested routes are similar to wildcard routes. The difference is that
-    /// wildcard routes still see the whole URI whereas nested routes will have
-    /// the prefix stripped.
-    ///
-    /// ```rust
-    /// use axum::{routing::get, http::Uri, Router};
-    ///
-    /// let app = Router::new()
-    ///     .route("/foo/*rest", get(|uri: Uri| async {
-    ///         // `uri` will contain `/foo`
-    ///     }))
-    ///     .nest("/bar", get(|uri: Uri| async {
-    ///         // `uri` will _not_ contain `/bar`
-    ///     }));
-    /// # async {
-    /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-    /// # };
-    /// ```
-    ///
-    /// # Panics
-    ///
-    /// - If the route overlaps with another route. See [`Router::route`]
-    /// for more details.
-    /// - If the route contains a wildcard (`*`).
-    /// - If `path` is empty.
-    ///
-    /// [`OriginalUri`]: crate::extract::OriginalUri
+    #[doc = include_str!("../docs/routing/nest.md")]
     pub fn nest<T>(mut self, path: &str, svc: T) -> Self
     where
         T: Service<Request<B>, Response = Response<BoxBody>, Error = Infallible>
@@ -360,6 +169,7 @@ where
                 let Router {
                     mut routes,
                     node,
+                    // discard the fallback of the nested router
                     fallback: _,
                 } = router;
 
@@ -390,73 +200,33 @@ where
         self
     }
 
-    /// Apply a [`tower::Layer`] to the router.
-    ///
-    /// All requests to the router will be processed by the layer's
-    /// corresponding middleware.
-    ///
-    /// This can be used to add additional processing to a request for a group
-    /// of routes.
-    ///
-    /// Note this differs from [`handler::Layered`](crate::handler::Layered)
-    /// which adds a middleware to a single handler.
-    ///
-    /// # Example
-    ///
-    /// Adding the [`tower::limit::ConcurrencyLimit`] middleware to a group of
-    /// routes can be done like so:
-    ///
-    /// ```rust
-    /// use axum::{
-    ///     routing::get,
-    ///     Router,
-    /// };
-    /// use tower::limit::{ConcurrencyLimitLayer, ConcurrencyLimit};
-    ///
-    /// async fn first_handler() { /* ... */ }
-    ///
-    /// async fn second_handler() { /* ... */ }
-    ///
-    /// async fn third_handler() { /* ... */ }
-    ///
-    /// // All requests to `handler` and `other_handler` will be sent through
-    /// // `ConcurrencyLimit`
-    /// let app = Router::new().route("/", get(first_handler))
-    ///     .route("/foo", get(second_handler))
-    ///     .layer(ConcurrencyLimitLayer::new(64))
-    ///     // Request to `GET /bar` will go directly to `third_handler` and
-    ///     // wont be sent through `ConcurrencyLimit`
-    ///     .route("/bar", get(third_handler));
-    /// # async {
-    /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-    /// # };
-    /// ```
-    ///
-    /// This is commonly used to add middleware such as tracing/logging to your
-    /// entire app:
-    ///
-    /// ```rust
-    /// use axum::{
-    ///     routing::get,
-    ///     Router,
-    /// };
-    /// use tower_http::trace::TraceLayer;
-    ///
-    /// async fn first_handler() { /* ... */ }
-    ///
-    /// async fn second_handler() { /* ... */ }
-    ///
-    /// async fn third_handler() { /* ... */ }
-    ///
-    /// let app = Router::new()
-    ///     .route("/", get(first_handler))
-    ///     .route("/foo", get(second_handler))
-    ///     .route("/bar", get(third_handler))
-    ///     .layer(TraceLayer::new_for_http());
-    /// # async {
-    /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-    /// # };
-    /// ```
+    #[doc = include_str!("../docs/routing/merge.md")]
+    pub fn merge(mut self, other: Router<B>) -> Self {
+        let Router {
+            routes,
+            node,
+            fallback,
+        } = other;
+
+        if let Err(err) = self.node.merge(node) {
+            panic!("Invalid route: {}", err);
+        }
+
+        for (id, route) in routes {
+            assert!(self.routes.insert(id, route).is_none());
+        }
+
+        self.fallback = match (self.fallback, fallback) {
+            (Fallback::Default(_), pick @ Fallback::Default(_)) => pick,
+            (Fallback::Default(_), pick @ Fallback::Custom(_)) => pick,
+            (pick @ Fallback::Custom(_), Fallback::Default(_)) => pick,
+            (Fallback::Custom(_), pick @ Fallback::Custom(_)) => pick,
+        };
+
+        self
+    }
+
+    #[doc = include_str!("../docs/routing/layer.md")]
     pub fn layer<L, LayeredReqBody, LayeredResBody>(self, layer: L) -> Router<LayeredReqBody>
     where
         L: Layer<Route<B>>,
@@ -494,6 +264,19 @@ where
         }
     }
 
+    #[doc = include_str!("../docs/routing/fallback.md")]
+    pub fn fallback<T>(mut self, svc: T) -> Self
+    where
+        T: Service<Request<B>, Response = Response<BoxBody>, Error = Infallible>
+            + Clone
+            + Send
+            + 'static,
+        T::Future: Send + 'static,
+    {
+        self.fallback = Fallback::Custom(Route::new(svc));
+        self
+    }
+
     /// Convert this router into a [`MakeService`], that is a [`Service`] who's
     /// response is another service.
     ///
@@ -521,86 +304,7 @@ where
         IntoMakeService::new(self)
     }
 
-    /// Convert this router into a [`MakeService`], that will store `C`'s
-    /// associated `ConnectInfo` in a request extension such that [`ConnectInfo`]
-    /// can extract it.
-    ///
-    /// This enables extracting things like the client's remote address.
-    ///
-    /// Extracting [`std::net::SocketAddr`] is supported out of the box:
-    ///
-    /// ```
-    /// use axum::{
-    ///     extract::ConnectInfo,
-    ///     routing::get,
-    ///     Router,
-    /// };
-    /// use std::net::SocketAddr;
-    ///
-    /// let app = Router::new().route("/", get(handler));
-    ///
-    /// async fn handler(ConnectInfo(addr): ConnectInfo<SocketAddr>) -> String {
-    ///     format!("Hello {}", addr)
-    /// }
-    ///
-    /// # async {
-    /// axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())
-    ///     .serve(
-    ///         app.into_make_service_with_connect_info::<SocketAddr, _>()
-    ///     )
-    ///     .await
-    ///     .expect("server failed");
-    /// # };
-    /// ```
-    ///
-    /// You can implement custom a [`Connected`] like so:
-    ///
-    /// ```
-    /// use axum::{
-    ///     extract::connect_info::{ConnectInfo, Connected},
-    ///     routing::get,
-    ///     Router,
-    /// };
-    /// use hyper::server::conn::AddrStream;
-    ///
-    /// let app = Router::new().route("/", get(handler));
-    ///
-    /// async fn handler(
-    ///     ConnectInfo(my_connect_info): ConnectInfo<MyConnectInfo>,
-    /// ) -> String {
-    ///     format!("Hello {:?}", my_connect_info)
-    /// }
-    ///
-    /// #[derive(Clone, Debug)]
-    /// struct MyConnectInfo {
-    ///     // ...
-    /// }
-    ///
-    /// impl Connected<&AddrStream> for MyConnectInfo {
-    ///     fn connect_info(target: &AddrStream) -> Self {
-    ///         MyConnectInfo {
-    ///             // ...
-    ///         }
-    ///     }
-    /// }
-    ///
-    /// # async {
-    /// axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())
-    ///     .serve(
-    ///         app.into_make_service_with_connect_info::<MyConnectInfo, _>()
-    ///     )
-    ///     .await
-    ///     .expect("server failed");
-    /// # };
-    /// ```
-    ///
-    /// See the [unix domain socket example][uds] for an example of how to use
-    /// this to collect UDS connection info.
-    ///
-    /// [`MakeService`]: tower::make::MakeService
-    /// [`Connected`]: crate::extract::connect_info::Connected
-    /// [`ConnectInfo`]: crate::extract::connect_info::ConnectInfo
-    /// [uds]: https://github.com/tokio-rs/axum/blob/main/examples/unix_domain_socket.rs
+    #[doc = include_str!("../docs/routing/into_make_service_with_connect_info.md")]
     pub fn into_make_service_with_connect_info<C, Target>(
         self,
     ) -> IntoMakeServiceWithConnectInfo<Self, C>
@@ -608,141 +312,6 @@ where
         C: Connected<Target>,
     {
         IntoMakeServiceWithConnectInfo::new(self)
-    }
-
-    /// Merge two routers into one.
-    ///
-    /// This is useful for breaking apps into smaller pieces and combining them
-    /// into one.
-    ///
-    /// ```
-    /// use axum::{
-    ///     routing::get,
-    ///     Router,
-    /// };
-    /// #
-    /// # async fn users_list() {}
-    /// # async fn users_show() {}
-    /// # async fn teams_list() {}
-    ///
-    /// // define some routes separately
-    /// let user_routes = Router::new()
-    ///     .route("/users", get(users_list))
-    ///     .route("/users/:id", get(users_show));
-    ///
-    /// let team_routes = Router::new().route("/teams", get(teams_list));
-    ///
-    /// // combine them into one
-    /// let app = user_routes.merge(team_routes);
-    /// # async {
-    /// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-    /// # };
-    /// ```
-    pub fn merge(mut self, other: Router<B>) -> Self {
-        let Router {
-            routes,
-            node,
-            fallback,
-        } = other;
-
-        if let Err(err) = self.node.merge(node) {
-            panic!("Invalid route: {}", err);
-        }
-
-        for (id, route) in routes {
-            assert!(self.routes.insert(id, route).is_none());
-        }
-
-        self.fallback = match (self.fallback, fallback) {
-            (Fallback::Default(_), pick @ Fallback::Default(_)) => pick,
-            (Fallback::Default(_), pick @ Fallback::Custom(_)) => pick,
-            (pick @ Fallback::Custom(_), Fallback::Default(_)) => pick,
-            (Fallback::Custom(_), pick @ Fallback::Custom(_)) => pick,
-        };
-
-        self
-    }
-
-    /// Add a fallback service to the router.
-    ///
-    /// This service will be called if no routes matches the incoming request.
-    ///
-    /// ```rust
-    /// use axum::{
-    ///     Router,
-    ///     routing::get,
-    ///     handler::Handler,
-    ///     response::IntoResponse,
-    ///     http::{StatusCode, Uri},
-    /// };
-    ///
-    /// let app = Router::new()
-    ///     .route("/foo", get(|| async { /* ... */ }))
-    ///     .fallback(fallback.into_service());
-    ///
-    /// async fn fallback(uri: Uri) -> impl IntoResponse {
-    ///     (StatusCode::NOT_FOUND, format!("No route for {}", uri))
-    /// }
-    /// # async {
-    /// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-    /// # };
-    /// ```
-    ///
-    /// Fallbacks only apply to routes that aren't matched by anything in the
-    /// router. If a handler is matched by a request but returns 404 the
-    /// fallback is not called.
-    ///
-    /// ## When used with `Router::merge`
-    ///
-    /// If a router with a fallback is merged with another router that also has
-    /// a fallback the fallback of the second router will be used:
-    ///
-    /// ```rust
-    /// use axum::{
-    ///     Router,
-    ///     routing::get,
-    ///     handler::Handler,
-    ///     response::IntoResponse,
-    ///     http::{StatusCode, Uri},
-    /// };
-    ///
-    /// let one = Router::new()
-    ///     .route("/one", get(|| async { /* ... */ }))
-    ///     .fallback(fallback_one.into_service());
-    ///
-    /// let two = Router::new()
-    ///     .route("/two", get(|| async { /* ... */ }))
-    ///     .fallback(fallback_two.into_service());
-    ///
-    /// let app = one.merge(two);
-    ///
-    /// async fn fallback_one() -> impl IntoResponse { /* ... */ }
-    /// async fn fallback_two() -> impl IntoResponse { /* ... */ }
-    ///
-    /// // the fallback for `app` is `fallback_two`
-    /// # async {
-    /// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-    /// # };
-    /// ```
-    ///
-    /// If only one of the routers have a fallback that will be used in the
-    /// merged router.
-    ///
-    /// ## When used with `Router::nest`
-    ///
-    /// If a router with a fallback is nested inside another router the fallback
-    /// of the nested router will be discarded and not used. This is such that
-    /// the outer router's fallback takes precedence.
-    pub fn fallback<T>(mut self, svc: T) -> Self
-    where
-        T: Service<Request<B>, Response = Response<BoxBody>, Error = Infallible>
-            + Clone
-            + Send
-            + 'static,
-        T::Future: Send + 'static,
-    {
-        self.fallback = Fallback::Custom(Route::new(svc));
-        self
     }
 
     #[inline]

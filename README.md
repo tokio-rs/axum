@@ -25,9 +25,13 @@ applications written using [`hyper`] or [`tonic`].
 
 ## Usage example
 
+Note this example uses `main` which contains breaking changes. See the
+[v0.2.x](https://github.com/tokio-rs/axum/tree/v0.2.x) branch for an example
+using 0.2.
+
 ```rust
 use axum::{
-    handler::{get, post},
+    routing::{get, post},
     http::StatusCode,
     response::IntoResponse,
     Json, Router,
