@@ -9,3 +9,4 @@ setup as its own crate so its dependencies are clear.
 - [Datafuse](https://github.com/datafuselabs/datafuse): Cloud native data warehouse written in Rust.
 - [JWT Auth](https://github.com/Z4RX/axum_jwt_example): JWT auth service for educational purposes.
 - [ROAPI](https://github.com/roapi/roapi): Create full-fledged APIs for static datasets without writing a single line of code.
+- [notify.run](https://github.com/notify-run/notify-run-rs): HTTP-to-WebPush relay for sending desktop/mobile notifications to yourself, written in Rust.
