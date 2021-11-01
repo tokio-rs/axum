@@ -1,7 +1,8 @@
+Types and traits for generating responses.
+
 # Building responses
 
-Anything that implements [`IntoResponse`](response::IntoResponse) can be
-returned from a handler:
+Anything that implements [`IntoResponse`] can be returned from a handler:
 
 ```rust,no_run
 use axum::{

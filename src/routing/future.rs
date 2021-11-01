@@ -7,7 +7,7 @@ use std::{convert::Infallible, future::ready};
 use tower::util::Oneshot;
 
 pub use super::{
-    into_make_service::IntoMakeService, method_not_allowed::MethodNotAllowedFuture,
+    into_make_service::IntoMakeServiceFuture, method_not_allowed::MethodNotAllowedFuture,
     route::RouteFuture,
 };
 

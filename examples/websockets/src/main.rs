@@ -14,7 +14,7 @@ use axum::{
     },
     http::StatusCode,
     response::IntoResponse,
-    routing::{get, service_method_router as service},
+    routing::{get, service_method_routing as service},
     Router,
 };
 use std::net::SocketAddr;

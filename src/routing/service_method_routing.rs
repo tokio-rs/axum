@@ -13,7 +13,7 @@
 //! use tower_http::services::Redirect;
 //! use axum::{
 //!     body::Body,
-//!     routing::{get, service_method_router as service},
+//!     routing::{get, service_method_routing as service},
 //!     http::Request,
 //!     Router,
 //! };
@@ -148,7 +148,7 @@ where
 /// use axum::{
 ///     http::Request,
 ///     Router,
-///     routing::service_method_router as service,
+///     routing::service_method_routing as service,
 /// };
 /// use http::Response;
 /// use std::convert::Infallible;
@@ -244,7 +244,7 @@ where
 ///     http::Request,
 ///     routing::on,
 ///     Router,
-///     routing::{MethodFilter, service_method_router as service},
+///     routing::{MethodFilter, service_method_routing as service},
 /// };
 /// use http::Response;
 /// use std::convert::Infallible;
@@ -327,7 +327,7 @@ impl<S, F, B> MethodRouter<S, F, B> {
     /// use axum::{
     ///     http::Request,
     ///     Router,
-    ///     routing::{MethodFilter, on, service_method_router as service},
+    ///     routing::{MethodFilter, on, service_method_routing as service},
     /// };
     /// use http::Response;
     /// use std::convert::Infallible;
@@ -428,7 +428,7 @@ impl<S, F, B> MethodRouter<S, F, B> {
     /// use axum::{
     ///     http::Request,
     ///     Router,
-    ///     routing::{MethodFilter, on, service_method_router as service},
+    ///     routing::{MethodFilter, on, service_method_routing as service},
     /// };
     /// use http::Response;
     /// use std::convert::Infallible;

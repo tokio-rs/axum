@@ -1,4 +1,4 @@
-//! Types and traits for generating responses.
+#![doc = include_str!("../docs/response.md")]
 
 use crate::{
     body::{box_body, BoxBody},

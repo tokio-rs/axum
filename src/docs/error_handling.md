@@ -1,19 +1,130 @@
-# Error handling
+Error handling model and utilities
 
-In the context of axum an "error" specifically means if a [`Service`]'s
-response future resolves to `Err(Service::Error)`. That means async handler
-functions can _never_ fail since they always produce a response and their
-`Service::Error` type is [`Infallible`]. Returning statuses like 404 or 500
-are _not_ errors.
+# axum's error handling model
 
-axum works this way because hyper will close the connection, without sending
-a response, if an error is encountered. This is not desireable so axum makes
-it impossible to forget to handle errors.
+axum is based on [`tower::Service`] which bundles errors through its associated
+`Error` type. If you have a [`Service`] that produces an error and that error
+makes it all the way up to hyper, the connection will be terminated _without_
+sending a response. This is generally not desirable so axum makes sure you
+always produce a response by relying on the type system.
 
-Sometimes you need to route to fallible services or apply fallible
-middleware in which case you need to handle the errors. That can be done
-using things from [`error_handling`].
+axum does this by requiring all services have [`Infallible`] as their error
+type. `Infallible` is the error type for errors that can never happen.
 
-You can find examples here:
-- [Routing to fallible services](#routing-to-fallible-services)
-- [Applying fallible middleware](#applying-multiple-middleware)
+This means if you define a handler like:
+
+```rust
+use axum::http::StatusCode;
+
+async fn handler() -> Result<String, StatusCode> {
+    # todo!()
+    // ...
+}
+```
+
+While it looks like it might fail with a `StatusCode` this actually isn't an
+"error". If this handler returns `Err(some_status_code)` that will still be
+converted into a [`Response<_>`] and sent back to the client. This is done
+through `StatusCode`'s [`IntoResponse`] implementation.
+
+It doesn't matter whether you return `Err(StatusCode::NOT_FOUND)` or
+`Err(StatusCode::INTERNAL_SERVER_ERROR)`. These are not considered errors in
+axum.
+
+# Routing to fallible services
+
+You generally don't have to think about errors if you're only using async
+functions as handlers. However if you're embedding general `Service`s or
+applying middleware, which might produce errors you have to tell axum how to
+convert those errors into responses.
+
+You can handle errors from services using [`HandleErrorExt::handle_error`]:
+
+```rust
+use axum::{
+    Router,
+    body::Body,
+    http::{Request, Response, StatusCode},
+    error_handling::HandleErrorExt, // for `.handle_error()`
+};
+
+async fn thing_that_might_fail() -> Result<(), anyhow::Error> {
+    # Ok(())
+    // ...
+}
+
+// this service might fail with `anyhow::Error`
+let some_fallible_service = tower::service_fn(|_req| async {
+    thing_that_might_fail().await?;
+    Ok::<_, anyhow::Error>(Response::new(Body::empty()))
+});
+
+let app = Router::new().route(
+    "/",
+    // we cannot route to `some_fallible_service` directly since it might fail.
+    // we have to use `handle_error` which converts its errors into responses
+    // and changes its error type from `anyhow::Error` to `Infallible`.
+    some_fallible_service.handle_error(handle_anyhow_error),
+);
+
+// handle errors by converting them into something that implements
+// `IntoResponse`
+fn handle_anyhow_error(err: anyhow::Error) -> (StatusCode, String) {
+    (
+        StatusCode::INTERNAL_SERVER_ERROR,
+        format!("Something went wrong: {}", err),
+    )
+}
+# async {
+# axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+# };
+```
+
+# Applying fallible middleware
+
+Similarly axum requires you to handle errors from middleware. That is done with
+[`HandleErrorLayer`]:
+
+```rust
+use axum::{
+    Router,
+    BoxError,
+    routing::get,
+    http::StatusCode,
+    error_handling::HandleErrorLayer,
+};
+use std::time::Duration;
+use tower::ServiceBuilder;
+
+let app = Router::new()
+    .route("/", get(|| async {}))
+    .layer(
+        ServiceBuilder::new()
+            // `timeout` will produce an error if the handler takes
+            // too long so we must handle those
+            .layer(HandleErrorLayer::new(handle_timeout_error))
+            .timeout(Duration::from_secs(30))
+    );
+
+fn handle_timeout_error(err: BoxError) -> (StatusCode, String) {
+    if err.is::<tower::timeout::error::Elapsed>() {
+        (
+            StatusCode::REQUEST_TIMEOUT,
+            "Request took too long".to_string(),
+        )
+    } else {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Unhandled internal error: {}", err),
+        )
+    }
+}
+# async {
+# axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+# };
+```
+
+[`tower::Service`]: `tower::Service`
+[`Infallible`]: std::convert::Infallible
+[`Response<_>`]: http::Response
+[`IntoResponse`]: crate::response::IntoResponse

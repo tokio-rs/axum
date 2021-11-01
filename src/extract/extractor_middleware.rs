@@ -37,52 +37,38 @@ use tower_service::Service;
 ///
 /// ```rust
 /// use axum::{
-///     extract::{extractor_middleware, FromRequest, RequestParts},
-///     routing::{get, post},
 ///     Router,
+///     async_trait,
+///     extract::{extractor_middleware, FromRequest, RequestParts},
+///     http::StatusCode,
+///     routing::{get, post},
 /// };
-/// use http::StatusCode;
-/// use async_trait::async_trait;
+/// use std::convert::Infallible;
 ///
-/// // An extractor that performs authorization.
-/// struct RequireAuth;
+/// struct MyExtractor;
 ///
 /// #[async_trait]
-/// impl<B> FromRequest<B> for RequireAuth
+/// impl<B> FromRequest<B> for MyExtractor
 /// where
 ///     B: Send,
 /// {
-///     type Rejection = StatusCode;
+///     type Rejection = Infallible;
 ///
 ///     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-///         let auth_header = req
-///             .headers()
-///             .and_then(|headers| headers.get(http::header::AUTHORIZATION))
-///             .and_then(|value| value.to_str().ok());
-///
-///         if let Some(value) = auth_header {
-///             if value == "secret" {
-///                 return Ok(Self);
-///             }
-///         }
-///
-///         Err(StatusCode::UNAUTHORIZED)
+///         # Ok(Self)
+///         // ...
 ///     }
 /// }
 ///
-/// async fn handler() {
-///     // If we get here the request has been authorized
-/// }
+/// async fn handler() {}
 ///
-/// async fn other_handler() {
-///     // If we get here the request has been authorized
-/// }
+/// async fn other_handler() {}
 ///
 /// let app = Router::new()
 ///     .route("/", get(handler))
 ///     .route("/foo", post(other_handler))
 ///     // The extractor will run before all routes
-///     .layer(extractor_middleware::<RequireAuth>());
+///     .layer(extractor_middleware::<MyExtractor>());
 /// # async {
 /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 /// # };
