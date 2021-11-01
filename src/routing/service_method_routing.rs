@@ -109,6 +109,7 @@ use http_body::Empty;
 use pin_project_lite::pin_project;
 use std::marker::PhantomData;
 use std::{
+    fmt,
     future::Future,
     pin::Pin,
     task::{Context, Poll},
@@ -274,12 +275,25 @@ where
 
 /// A [`Service`] that accepts requests based on a [`MethodFilter`] and allows
 /// chaining additional services.
-#[derive(Debug)] // TODO(david): don't require debug for B
 pub struct MethodRouter<S, F, B> {
     pub(crate) method: MethodFilter,
     pub(crate) svc: S,
     pub(crate) fallback: F,
     pub(crate) _request_body: PhantomData<fn() -> B>,
+}
+
+impl<S, F, B> fmt::Debug for MethodRouter<S, F, B>
+where
+    S: fmt::Debug,
+    F: fmt::Debug,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("MethodRouter")
+            .field("method", &self.method)
+            .field("svc", &self.svc)
+            .field("fallback", &self.fallback)
+            .finish()
+    }
 }
 
 impl<S, F, B> Clone for MethodRouter<S, F, B>

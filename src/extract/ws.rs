@@ -87,7 +87,7 @@ use std::{
 };
 use tokio_tungstenite::{
     tungstenite::{
-        self,
+        self as ts,
         protocol::{self, WebSocketConfig},
     },
     WebSocketStream,
@@ -468,35 +468,31 @@ pub enum Message {
 }
 
 impl Message {
-    fn into_tungstenite(self) -> tungstenite::Message {
-        // TODO: maybe some shorter way to do that?
+    fn into_tungstenite(self) -> ts::Message {
         match self {
-            Self::Text(text) => tungstenite::Message::Text(text),
-            Self::Binary(binary) => tungstenite::Message::Binary(binary),
-            Self::Ping(ping) => tungstenite::Message::Ping(ping),
-            Self::Pong(pong) => tungstenite::Message::Pong(pong),
-            Self::Close(Some(close)) => {
-                tungstenite::Message::Close(Some(tungstenite::protocol::CloseFrame {
-                    code: tungstenite::protocol::frame::coding::CloseCode::from(close.code),
-                    reason: close.reason,
-                }))
-            }
-            Self::Close(None) => tungstenite::Message::Close(None),
+            Self::Text(text) => ts::Message::Text(text),
+            Self::Binary(binary) => ts::Message::Binary(binary),
+            Self::Ping(ping) => ts::Message::Ping(ping),
+            Self::Pong(pong) => ts::Message::Pong(pong),
+            Self::Close(Some(close)) => ts::Message::Close(Some(ts::protocol::CloseFrame {
+                code: ts::protocol::frame::coding::CloseCode::from(close.code),
+                reason: close.reason,
+            })),
+            Self::Close(None) => ts::Message::Close(None),
         }
     }
 
-    fn from_tungstenite(message: tungstenite::Message) -> Self {
-        // TODO: maybe some shorter way to do that?
+    fn from_tungstenite(message: ts::Message) -> Self {
         match message {
-            tungstenite::Message::Text(text) => Self::Text(text),
-            tungstenite::Message::Binary(binary) => Self::Binary(binary),
-            tungstenite::Message::Ping(ping) => Self::Ping(ping),
-            tungstenite::Message::Pong(pong) => Self::Pong(pong),
-            tungstenite::Message::Close(Some(close)) => Self::Close(Some(CloseFrame {
+            ts::Message::Text(text) => Self::Text(text),
+            ts::Message::Binary(binary) => Self::Binary(binary),
+            ts::Message::Ping(ping) => Self::Ping(ping),
+            ts::Message::Pong(pong) => Self::Pong(pong),
+            ts::Message::Close(Some(close)) => Self::Close(Some(CloseFrame {
                 code: close.code.into(),
                 reason: close.reason,
             })),
-            tungstenite::Message::Close(None) => Self::Close(None),
+            ts::Message::Close(None) => Self::Close(None),
         }
     }
 
