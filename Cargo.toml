@@ -61,7 +61,6 @@ serde_json = "1.0"
 tokio = { version = "1.6.1", features = ["macros", "rt", "rt-multi-thread", "net"] }
 tokio-stream = "0.1"
 tracing = "0.1"
-tracing-subscriber = "0.2"
 uuid = { version = "0.8", features = ["serde", "v4"] }
 anyhow = "1.0"
 
