@@ -37,8 +37,10 @@ mod not_found;
 mod route;
 mod strip_prefix;
 
-pub(crate) use self::method_not_allowed::MethodNotAllowed;
-pub use self::{into_make_service::IntoMakeService, method_filter::MethodFilter, route::Route};
+pub use self::{
+    into_make_service::IntoMakeService, method_filter::MethodFilter,
+    method_not_allowed::MethodNotAllowed, route::Route,
+};
 
 #[doc(no_inline)]
 pub use self::handler_method_router::{
