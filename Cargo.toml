@@ -29,8 +29,8 @@ bitflags = "1.0"
 bytes = "1.0"
 futures-util = { version = "0.3", default-features = false, features = ["alloc"] }
 http = "0.2"
-http-body = "0.4.3"
-hyper = { version = "0.14", features = ["server", "tcp", "stream"] }
+http-body = "0.4.4"
+hyper = { version = "0.14.14", features = ["server", "tcp", "stream"] }
 matchit = "0.4.4"
 percent-encoding = "2.1"
 pin-project-lite = "0.2.7"

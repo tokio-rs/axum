@@ -115,7 +115,7 @@ where
 impl<H, T, K, V> IntoResponse for (Headers<H>, T)
 where
     T: IntoResponse,
-    T::Body: Body<Data = Bytes> + Send + Sync + 'static,
+    T::Body: Body<Data = Bytes> + Send + 'static,
     <T::Body as Body>::Error: Into<BoxError>,
     H: IntoIterator<Item = (K, V)>,
     K: TryInto<HeaderName>,
@@ -141,7 +141,7 @@ where
 impl<H, T, K, V> IntoResponse for (StatusCode, Headers<H>, T)
 where
     T: IntoResponse,
-    T::Body: Body<Data = Bytes> + Send + Sync + 'static,
+    T::Body: Body<Data = Bytes> + Send + 'static,
     <T::Body as Body>::Error: Into<BoxError>,
     H: IntoIterator<Item = (K, V)>,
     K: TryInto<HeaderName>,

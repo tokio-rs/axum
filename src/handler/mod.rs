@@ -281,8 +281,8 @@ where
     S::Future: Send,
     T: 'static,
     ReqBody: Send + 'static,
-    ResBody: http_body::Body<Data = Bytes> + Send + Sync + 'static,
-    ResBody::Error: Into<BoxError> + Send + Sync + 'static,
+    ResBody: http_body::Body<Data = Bytes> + Send + 'static,
+    ResBody::Error: Into<BoxError>,
 {
     type Sealed = sealed::Hidden;
 

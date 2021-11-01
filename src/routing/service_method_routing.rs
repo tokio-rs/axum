@@ -464,7 +464,7 @@ impl<S, F, B> MethodRouter<S, F, B> {
 impl<S, F, B, ResBody> Service<Request<B>> for MethodRouter<S, F, B>
 where
     S: Service<Request<B>, Response = Response<ResBody>> + Clone,
-    ResBody: http_body::Body<Data = Bytes> + Send + Sync + 'static,
+    ResBody: http_body::Body<Data = Bytes> + Send + 'static,
     ResBody::Error: Into<BoxError>,
     F: Service<Request<B>, Response = Response<BoxBody>, Error = S::Error> + Clone,
 {
@@ -514,7 +514,7 @@ pin_project! {
 impl<S, F, B, ResBody> Future for MethodRouterFuture<S, F, B>
 where
     S: Service<Request<B>, Response = Response<ResBody>> + Clone,
-    ResBody: http_body::Body<Data = Bytes> + Send + Sync + 'static,
+    ResBody: http_body::Body<Data = Bytes> + Send + 'static,
     ResBody::Error: Into<BoxError>,
     F: Service<Request<B>, Response = Response<BoxBody>, Error = S::Error>,
 {

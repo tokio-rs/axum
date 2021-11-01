@@ -163,7 +163,7 @@ pub trait IntoResponse {
     /// [`axum::body::Empty<Bytes>`]: crate::body::Empty
     /// [`axum::body::Full<Bytes>`]: crate::body::Full
     /// [`axum::body::BoxBody`]: crate::body::BoxBody
-    type Body: http_body::Body<Data = Bytes, Error = Self::BodyError> + Send + Sync + 'static;
+    type Body: http_body::Body<Data = Bytes, Error = Self::BodyError> + Send + 'static;
 
     /// The error type `Self::Body` might generate.
     ///
@@ -217,7 +217,7 @@ where
 
 impl<B> IntoResponse for Response<B>
 where
-    B: http_body::Body<Data = Bytes> + Send + Sync + 'static,
+    B: http_body::Body<Data = Bytes> + Send + 'static,
     B::Error: Into<BoxError>,
 {
     type Body = B;
@@ -257,10 +257,22 @@ where
     }
 }
 
+impl<E> IntoResponse for http_body::combinators::UnsyncBoxBody<Bytes, E>
+where
+    E: Into<BoxError> + 'static,
+{
+    type Body = Self;
+    type BodyError = E;
+
+    fn into_response(self) -> Response<Self> {
+        Response::new(self)
+    }
+}
+
 impl<B, F> IntoResponse for MapData<B, F>
 where
-    B: http_body::Body + Send + Sync + 'static,
-    F: FnMut(B::Data) -> Bytes + Send + Sync + 'static,
+    B: http_body::Body + Send + 'static,
+    F: FnMut(B::Data) -> Bytes + Send + 'static,
     B::Error: Into<BoxError>,
 {
     type Body = Self;
@@ -273,8 +285,8 @@ where
 
 impl<B, F, E> IntoResponse for MapErr<B, F>
 where
-    B: http_body::Body<Data = Bytes> + Send + Sync + 'static,
-    F: FnMut(B::Error) -> E + Send + Sync + 'static,
+    B: http_body::Body<Data = Bytes> + Send + 'static,
+    F: FnMut(B::Error) -> E + Send + 'static,
     E: Into<BoxError>,
 {
     type Body = Self;
