@@ -77,7 +77,7 @@ impl<B> Clone for Router<B> {
 
 impl<B> Default for Router<B>
 where
-    B: Send + Sync + 'static,
+    B: Send + 'static,
 {
     fn default() -> Self {
         Self::new()
@@ -99,7 +99,7 @@ const NEST_TAIL_PARAM_CAPTURE: &str = "/*axum_nest";
 
 impl<B> Router<B>
 where
-    B: Send + Sync + 'static,
+    B: Send + 'static,
 {
     /// Create a new `Router`.
     ///
@@ -240,7 +240,7 @@ where
             + Send
             + 'static,
         <L::Service as Service<Request<LayeredReqBody>>>::Future: Send + 'static,
-        LayeredResBody: http_body::Body<Data = Bytes> + Send + Sync + 'static,
+        LayeredResBody: http_body::Body<Data = Bytes> + Send + 'static,
         LayeredResBody::Error: Into<BoxError>,
     {
         let layer = ServiceBuilder::new()
@@ -361,7 +361,7 @@ where
 
 impl<B> Service<Request<B>> for Router<B>
 where
-    B: Send + Sync + 'static,
+    B: Send + 'static,
 {
     type Response = Response<BoxBody>;
     type Error = Infallible;

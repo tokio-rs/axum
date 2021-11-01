@@ -154,7 +154,7 @@ where
     E: FromRequest<ReqBody> + 'static,
     ReqBody: Default + Send + 'static,
     S: Service<Request<ReqBody>, Response = Response<ResBody>> + Clone,
-    ResBody: http_body::Body<Data = Bytes> + Send + Sync + 'static,
+    ResBody: http_body::Body<Data = Bytes> + Send + 'static,
     ResBody::Error: Into<BoxError>,
 {
     type Response = Response<BoxBody>;
@@ -213,7 +213,7 @@ where
     E: FromRequest<ReqBody>,
     S: Service<Request<ReqBody>, Response = Response<ResBody>>,
     ReqBody: Default,
-    ResBody: http_body::Body<Data = Bytes> + Send + Sync + 'static,
+    ResBody: http_body::Body<Data = Bytes> + Send + 'static,
     ResBody::Error: Into<BoxError>,
 {
     type Output = Result<Response<BoxBody>, S::Error>;

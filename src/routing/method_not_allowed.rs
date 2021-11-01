@@ -41,7 +41,7 @@ impl<E> fmt::Debug for MethodNotAllowed<E> {
 
 impl<B, E> Service<Request<B>> for MethodNotAllowed<E>
 where
-    B: Send + Sync + 'static,
+    B: Send + 'static,
 {
     type Response = Response<BoxBody>;
     type Error = E;

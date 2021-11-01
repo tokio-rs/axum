@@ -34,6 +34,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     thus wasn't necessary
   - **breaking:** Vendor `AddExtensionLayer` and `AddExtension` to reduce public
     dependencies
+  - **breaking:** `body::BoxBody` is now a type alias for
+    `http_body::combinators::UnsyncBoxBody` and thus is no longer `Sync`. This
+    is because bodies are streams and requiring streams to be `Sync` is
+    unnecessary.
+  - **added:** Implement `IntoResponse` for `http_body::combinators::UnsyncBoxBody`.
 - Routing:
   - Big internal refactoring of routing leading to several improvements ([#363])
     - **added:** Wildcard routes like `.route("/api/users/*rest", service)` are now supported.

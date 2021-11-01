@@ -16,7 +16,7 @@ pub(crate) struct NotFound;
 
 impl<B> Service<Request<B>> for NotFound
 where
-    B: Send + Sync + 'static,
+    B: Send + 'static,
 {
     type Response = Response<BoxBody>;
     type Error = Infallible;

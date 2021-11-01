@@ -114,8 +114,8 @@ where
     S: Service<Request<ReqBody>, Response = Response<ResBody>> + Clone,
     F: FnOnce(S::Error) -> Res + Clone,
     Res: IntoResponse,
-    ResBody: http_body::Body<Data = Bytes> + Send + Sync + 'static,
-    ResBody::Error: Into<BoxError> + Send + Sync + 'static,
+    ResBody: http_body::Body<Data = Bytes> + Send + 'static,
+    ResBody::Error: Into<BoxError>,
 {
     type Response = Response<BoxBody>;
     type Error = Infallible;
@@ -181,8 +181,8 @@ pub mod future {
         Fut: Future<Output = Result<Response<B>, E>>,
         F: FnOnce(E) -> Res,
         Res: IntoResponse,
-        B: http_body::Body<Data = Bytes> + Send + Sync + 'static,
-        B::Error: Into<BoxError> + Send + Sync + 'static,
+        B: http_body::Body<Data = Bytes> + Send + 'static,
+        B::Error: Into<BoxError>,
     {
         type Output = Result<Response<BoxBody>, Infallible>;
 
