@@ -302,14 +302,14 @@ where
     /// ```
     ///
     /// [`MakeService`]: tower::make::MakeService
-    pub fn into_make_service(self) -> IntoMakeService<Self> {
+    pub fn into_make_service(self) -> IntoMakeService<B> {
         IntoMakeService::new(self)
     }
 
     #[doc = include_str!("../docs/routing/into_make_service_with_connect_info.md")]
     pub fn into_make_service_with_connect_info<C, Target>(
         self,
-    ) -> IntoMakeServiceWithConnectInfo<Self, C>
+    ) -> IntoMakeServiceWithConnectInfo<B, C>
     where
         C: Connected<Target>,
     {
