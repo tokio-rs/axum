@@ -72,7 +72,7 @@ let app = Router::new().nest("/:version/api", users_api);
 ```rust
 use axum::{
     Router,
-    routing::service_method_router::get,
+    routing::service_method_routing::get,
     error_handling::HandleErrorExt,
     http::StatusCode,
 };

@@ -88,7 +88,7 @@ axum also supports routing to general [`Service`]s:
 use axum::{
     Router,
     body::Body,
-    routing::service_method_router as service,
+    routing::service_method_routing as service,
     error_handling::HandleErrorExt,
     http::{Request, StatusCode},
 };
@@ -138,7 +138,7 @@ let app = Router::new()
 ```
 
 Routing to arbitrary services in this way has complications for backpressure
-([`Service::poll_ready`]). See the [`service_method_router`] module for more
+([`Service::poll_ready`]). See the [`service_method_routing`] module for more
 details.
 
 # Panics

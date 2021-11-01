@@ -122,8 +122,9 @@ pub trait Handler<B, T>: Clone + Send + Sized + 'static {
     /// Note this differs from [`routing::Router::layer`](crate::routing::Router::layer)
     /// which adds a middleware to a group of routes.
     ///
-    /// Middleware is a common way to introduce errors into your application. You can
-    /// learn more about handling errors from middleware [here](crate::error_handling).
+    /// If you're applying middleware that produces errors you have to handle the errors
+    /// so they're converted into responses. You can learn more about doing that
+    /// [here](crate::error_handling).
     ///
     /// # Example
     ///

@@ -27,8 +27,8 @@ use tower_layer::Layer;
 use tower_service::Service;
 
 pub mod future;
-pub mod handler_method_router;
-pub mod service_method_router;
+pub mod handler_method_routing;
+pub mod service_method_routing;
 
 mod into_make_service;
 mod method_filter;
@@ -43,7 +43,7 @@ pub use self::{
 };
 
 #[doc(no_inline)]
-pub use self::handler_method_router::{
+pub use self::handler_method_routing::{
     any, delete, get, head, on, options, patch, post, put, trace, MethodRouter,
 };
 

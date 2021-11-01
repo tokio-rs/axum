@@ -5,7 +5,7 @@
 //! ```
 
 use axum::{
-    error_handling::HandleErrorExt, http::StatusCode, routing::service_method_router as service,
+    error_handling::HandleErrorExt, http::StatusCode, routing::service_method_routing as service,
     Router,
 };
 use std::net::SocketAddr;

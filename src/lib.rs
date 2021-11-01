@@ -66,13 +66,13 @@
 //! ```rust
 //! use axum::{Router, routing::get};
 //!
-//! // our routes
+//! // our router
 //! let app = Router::new()
 //!     .route("/", get(root))
 //!     .route("/foo", get(foo))
 //!     .route("/foo/bar", get(foo_bar));
 //!
-//! // which calls a handler
+//! // which calls one of these handlers
 //! async fn root() {}
 //! async fn foo() {}
 //! async fn foo_bar() {}
@@ -164,7 +164,7 @@
 //! It is common to share some state between handlers for example to share a
 //! pool of database connections or clients to other services. That can be done
 //! using the [`AddExtension`] middleware (applied with [`AddExtensionLayer`])
-//! and the [`extract::Extension`] extractor:
+//! and the [`Extension`](crate::extract::Extension) extractor:
 //!
 //! ```rust,no_run
 //! use axum::{
@@ -228,15 +228,18 @@
 //!
 //! The following optional features are available:
 //!
-//! - `headers`: Enables extracting typed headers via [`extract::TypedHeader`].
-//! - `http1`: Enables hyper's `http1` feature. Enabled by default.
-//! - `http2`: Enables hyper's `http2` feature.
-//! - `json`: Enables the [`Json`] type and some similar convenience functionality.
-//!   Enabled by default.
-//! - `multipart`: Enables parsing `multipart/form-data` requests with [`extract::Multipart`].
-//! - `tower-log`: Enables `tower`'s `log` feature. Enabled by default.
-//! - `ws`: Enables WebSockets support via [`extract::ws`].
+//! Name | Description | Default?
+//! ---|---|---
+//! `headers` | Enables extracting typed headers via [`TypedHeader`] | No
+//! `http1` | Enables hyper's `http1` feature | Yes
+//! `http2` | Enables hyper's `http2` feature | No
+//! `json` | Enables the [`Json`] type and some similar convenience functionality | Yes
+//! `multipart` | Enables parsing `multipart/form-data` requests with [`Multipart`] | No
+//! `tower-log` | Enables `tower`'s `log` feature | Yes
+//! `ws` | Enables WebSockets support via [`extract::ws`] | No
 //!
+//! [`TypedHeader`]: crate::extract::TypedHeader
+//! [`Multipart`]: crate::extract::Multipart
 //! [`tower`]: https://crates.io/crates/tower
 //! [`tower-http`]: https://crates.io/crates/tower-http
 //! [`tokio`]: http://crates.io/crates/tokio

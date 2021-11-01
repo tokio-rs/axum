@@ -9,7 +9,7 @@ use axum::{
     extract::TypedHeader,
     http::StatusCode,
     response::sse::{Event, Sse},
-    routing::{get, service_method_router as service},
+    routing::{get, service_method_routing as service},
     Router,
 };
 use futures::stream::{self, Stream};

@@ -38,7 +38,7 @@ mod for_handlers {
 
 mod for_services {
     use super::*;
-    use crate::routing::service_method_router::get;
+    use crate::routing::service_method_routing::get;
     use http::header::HeaderValue;
 
     #[tokio::test]

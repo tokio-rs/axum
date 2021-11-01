@@ -196,7 +196,7 @@ async fn many_ors() {
 
 #[tokio::test]
 async fn services() {
-    use crate::routing::service_method_router::get;
+    use crate::routing::service_method_routing::get;
 
     let app = Router::new()
         .route(

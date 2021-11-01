@@ -44,13 +44,14 @@ let app = Router::new()
 
 ## Middleware and errors
 
-Middleware is a common way to introduce errors into your application. You can
-learn more about handling errors from middleware [here](crate::error_handling).
+If you're applying middleware that produces errors you have to handle the errors
+so they're converted into responses. You can learn more about doing that
+[here](crate::error_handling).
 
 ## Commonly used middleware
 
 [`tower`] and [`tower_http`] have a large collection of middleware that are
-compatible with axum. Some commonly used are:
+compatible with axum. Some commonly used middleware are:
 
 ```rust,no_run
 use axum::{
@@ -101,9 +102,9 @@ let app = Router::new()
 # };
 ```
 
-Additionally axum provides [`extract::extractor_middleware()`] for converting any extractor into
-a middleware. Among other things, this can be useful for doing authorization. See
-[`extract::extractor_middleware()`] for more details.
+Additionally axum provides [`extract::extractor_middleware()`] for converting
+any extractor into a middleware. See [`extract::extractor_middleware()`] for
+more details.
 
 ## Writing your own middleware
 
@@ -125,12 +126,10 @@ struct MyMiddleware<S> {
     inner: S,
 }
 
-impl<S, ReqBody, ResBody> Service<Request<ReqBody>> for MyMiddleware<S>
+impl<S> Service<Request<Body>> for MyMiddleware<S>
 where
-    S: Service<Request<ReqBody>, Response = Response<ResBody>> + Clone + Send + 'static,
+    S: Service<Request<Body>, Response = Response<BoxBody>> + Clone + Send + 'static,
     S::Future: Send + 'static,
-    ReqBody: Send + 'static,
-    ResBody: Send + 'static,
 {
     type Response = S::Response;
     type Error = S::Error;
@@ -140,7 +139,7 @@ where
         self.inner.poll_ready(cx)
     }
 
-    fn call(&mut self, mut req: Request<ReqBody>) -> Self::Future {
+    fn call(&mut self, mut req: Request<Body>) -> Self::Future {
         println!("`MyMiddleware` called!");
 
         // best practice is to clone the inner service like this
@@ -149,7 +148,7 @@ where
         let mut inner = std::mem::replace(&mut self.inner, clone);
 
         Box::pin(async move {
-            let res: Response<ResBody> = inner.call(req).await?;
+            let res: Response<BoxBody> = inner.call(req).await?;
 
             println!("`MyMiddleware` received the response");
 

@@ -275,10 +275,10 @@ axum's built-in extractors don't directly expose the inner error. This gives us
 more flexibility and allows us to change internal implementations without
 breaking the public API.
 
-For example that means while [`Json`] is implemented using `serde_json` it
+For example that means while [`Json`] is implemented using [`serde_json`] it
 doesn't directly expose the [`serde_json::Error`] thats contained in
 [`JsonRejection::InvalidJsonBody`]. However it is still possible to access via
-methods from `std::error::Error`:
+methods from [`std::error::Error`]:
 
 ```rust
 use std::error::Error;
@@ -397,16 +397,13 @@ let app = Router::new().route("/foo", get(handler));
 # };
 ```
 
-Note that only one extractor can consume the request body. If multiple body extractors are
-applied a `500 Internal Server Error` response will be returned.
-
 # Request body extractors
 
 Most of the time your request body type will be [`body::Body`] (a re-export
 of [`hyper::Body`]), which is directly supported by all extractors.
 
-However if you're applying a tower middleware that changes the response you
-might have to apply a different body type to some extractors:
+However if you're applying a tower middleware that changes the request body type
+you might have to apply a different body type to some extractors:
 
 ```rust
 use std::{
@@ -476,3 +473,4 @@ let app = Router::new()
 ```
 
 [`body::Body`]: crate::body::Body
+[customize-extractor-error]: https://github.com/tokio-rs/axum/blob/main/examples/customize-extractor-error/src/main.rs

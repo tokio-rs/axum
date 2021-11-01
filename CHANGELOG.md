@@ -54,7 +54,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     ([#405])
   - **breaking:** Method routing for services have been moved from `axum::service`
     to `axum::routing`. So `axum::service::get` now lives at, etc.
-    `axum::routing::service_method_router::get`, etc. ([#405])
+    `axum::routing::service_method_routing::get`, etc. ([#405])
   - **breaking:** `Router::or` renamed to `Router::merge` and will now panic on
     overlapping routes. It now only accepts `Router`s and not general `Service`s.
     Use `Router::fallback` for adding fallback routes ([#408])
@@ -119,7 +119,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     use axum::{
         Router, service,
         body::Body,
-        routing::service_method_router::get,
+        routing::service_method_routing::get,
         response::IntoResponse,
         http::{Request, Response},
         error_handling::HandleErrorExt, // for `.handle_error`
