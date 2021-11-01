@@ -1,6 +1,6 @@
 In axum a "handler" is an async function that accepts zero or more
 ["extractors"](#extractors) as arguments and returns something that
-can be converted [into a response](#building-responses).
+can be converted [into a response](crate::response).
 
 Handlers is where your custom domain logic lives and axum applications are
 built by routing between handlers.

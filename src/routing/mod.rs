@@ -101,7 +101,7 @@ where
 {
     /// Create a new `Router`.
     ///
-    /// Unless you add additional routes this will respond to `404 Not Found` to
+    /// Unless you add additional routes this will respond with `404 Not Found` to
     /// all requests.
     pub fn new() -> Self {
         Self {

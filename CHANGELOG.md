@@ -59,7 +59,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     overlapping routes. It now only accepts `Router`s and not general `Service`s.
     Use `Router::fallback` for adding fallback routes ([#408])
   - **added:** `Router::fallback` for adding handlers for request that didn't
-    match any routes ([#408])
+    match any routes. `Router::fallback` must be use instead of `nest("/", _)` ([#408])
   - **breaking:** `EmptyRouter` has been renamed to `MethodNotAllowed` as its only
     used in method routers and not in path routers (`Router`)
   - **breaking:** Remove support for routing based on the `CONNECT` method. An

@@ -18,6 +18,12 @@
 //! }
 //!
 //! // Handler that buffers the request body and returns it.
+//! //
+//! // This works because `Bytes` implements `FromRequest`
+//! // and therefore can be used as an extractor.
+//! //
+//! // `String` and `StatusCode` both implement `IntoResponse` and
+//! // therefore `Result<String, StatusCode>` also implements `IntoResponse`
 //! async fn echo(body: Bytes) -> Result<String, StatusCode> {
 //!     if let Ok(string) = String::from_utf8(body.to_vec()) {
 //!         Ok(string)
@@ -66,7 +72,6 @@ use crate::{
     body::{box_body, BoxBody},
     extract::{FromRequest, RequestParts},
     response::IntoResponse,
-    routing::{MethodNotAllowed, MethodRouter},
     BoxError,
 };
 use async_trait::async_trait;
@@ -140,9 +145,9 @@ pub trait Handler<B, T>: Clone + Send + Sized + 'static {
     /// ```
     fn layer<L>(self, layer: L) -> Layered<L::Service, T>
     where
-        L: Layer<MethodRouter<Self, B, T, MethodNotAllowed>>,
+        L: Layer<IntoService<Self, B, T>>,
     {
-        Layered::new(layer.layer(crate::routing::any(self)))
+        Layered::new(layer.layer(self.into_service()))
     }
 
     /// Convert the handler into a [`Service`].
@@ -301,6 +306,7 @@ impl<S, T> Layered<S, T> {
 
 #[test]
 fn traits() {
+    use crate::routing::MethodRouter;
     use crate::tests::*;
     assert_send::<MethodRouter<(), NotSendSync, NotSendSync, ()>>();
     assert_sync::<MethodRouter<(), NotSendSync, NotSendSync, ()>>();

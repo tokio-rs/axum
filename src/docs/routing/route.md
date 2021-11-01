@@ -3,9 +3,10 @@ Add another route to the router.
 `path` is a string of path segments separated by `/`. Each segment
 can be either static, a capture, or a wildcard.
 
-`service` is the [`Service`] that should receive the request if the path
-matches `path`. `service` will commonly be a handler. See
-[`handler`](crate::handler) for more details on handlers.
+`service` is the [`Service`] that should receive the request if the path matches
+`path`. `service` will commonly be a handler wrapped in a method router like
+[`get`](crate::routing::get). See [`handler`](crate::handler) for more details
+on handlers.
 
 # Static paths
 
@@ -69,15 +70,76 @@ async fn list_users() {}
 
 async fn create_user() {}
 
-async fn show_user() {}
+async fn show_user(Path(id): Path<u64>) {}
 
-async fn do_users_action() {}
+async fn do_users_action(Path((version, id)): Path<(String, u64)>) {}
 
 async fn serve_asset(Path(path): Path<String>) {}
 # async {
 # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 # };
 ```
+
+# Routing to any [`Service`]
+
+axum also supports routing to general [`Service`]s:
+
+```rust,no_run
+use axum::{
+    Router,
+    body::Body,
+    routing::service_method_router as service,
+    error_handling::HandleErrorExt,
+    http::{Request, StatusCode},
+};
+use tower_http::services::ServeFile;
+use http::Response;
+use std::{convert::Infallible, io};
+use tower::service_fn;
+
+let app = Router::new()
+    .route(
+        // Any request to `/` goes to a service
+        "/",
+        // Services who's response body is not `axum::body::BoxBody`
+        // can be wrapped in `axum::service::any` (or one of the other routing filters)
+        // to have the response body mapped
+        service::any(service_fn(|_: Request<Body>| async {
+            let res = Response::new(Body::from("Hi from `GET /`"));
+            Ok::<_, Infallible>(res)
+        }))
+    )
+    .route(
+        "/foo",
+        // This service's response body is `axum::body::BoxBody` so
+        // it can be routed to directly.
+        service_fn(|req: Request<Body>| async move {
+            let body = Body::from(format!("Hi from `{} /foo`", req.method()));
+            let body = axum::body::box_body(body);
+            let res = Response::new(body);
+            Ok::<_, Infallible>(res)
+        })
+    )
+    .route(
+        // GET `/static/Cargo.toml` goes to a service from tower-http
+        "/static/Cargo.toml",
+        service::get(ServeFile::new("Cargo.toml"))
+            // though we must handle any potential errors
+            .handle_error(|error: io::Error| {
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    format!("Unhandled internal error: {}", error),
+                )
+            })
+    );
+# async {
+# axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+# };
+```
+
+Routing to arbitrary services in this way has complications for backpressure
+([`Service::poll_ready`]). See the [`service_method_router`] module for more
+details.
 
 # Panics
 

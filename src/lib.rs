@@ -5,8 +5,8 @@
 //! - [High level features](#high-level-features)
 //! - [Compatibility](#compatibility)
 //! - [Example](#example)
-//! - [Handlers](#handlers)
 //! - [Routing](#routing)
+//! - [Handlers](#handlers)
 //! - [Extractors](#extractors)
 //! - [Responses](#responses)
 //! - [Error handling](#error-handling)
@@ -59,12 +59,6 @@
 //! }
 //! ```
 //!
-//! # Handlers
-//!
-#![doc = include_str!("docs/handlers_intro.md")]
-//!
-//! See [`handler`](crate::handler) for more details on handlers.
-//!
 //! # Routing
 //!
 //! [`Router`] is used to setup which paths goes to which services:
@@ -89,17 +83,77 @@
 //!
 //! See [`Router`] for more details on routing.
 //!
+//! # Handlers
+//!
+#![doc = include_str!("docs/handlers_intro.md")]
+//!
+//! See [`handler`](crate::handler) for more details on handlers.
+//!
 //! # Extractors
 //!
-//! TODO
+//! An extractor is a type that implements [`FromRequest`]. Extractors is how
+//! you pick apart the incoming request to get the parts your handler needs.
+//!
+//! ```rust
+//! use axum::extract::{Path, Query, Json};
+//! use std::collections::HashMap;
+//!
+//! // `Path` gives you the path parameters and deserializes them.
+//! async fn path(Path(user_id): Path<u32>) {}
+//!
+//! // `Query` gives you the query parameters and deserializes them.
+//! async fn query(Query(params): Query<HashMap<String, String>>) {}
+//!
+//! // Buffer the request body and deserialize it as JSON into a
+//! // `serde_json::Value`. `Json` supports any type that implements
+//! // `serde::Deserialize`.
+//! async fn json(Json(payload): Json<serde_json::Value>) {}
+//! ```
+//!
+//! See [`extract`](crate::extract) for more details on extractors.
 //!
 //! # Responses
 //!
-//! TODO
+//! Anything that implements [`IntoResponse`] can be returned from handlers.
+//!
+//! ```rust,no_run
+//! use axum::{
+//!     body::Body,
+//!     routing::get,
+//!     response::Json,
+//!     Router,
+//! };
+//! use serde_json::{Value, json};
+//!
+//! // `&'static str` becomes a `200 OK` with `content-type: text/plain`
+//! async fn plain_text() -> &'static str {
+//!     "foo"
+//! }
+//!
+//! // `Json` gives a content-type of `application/json` and works with any type
+//! // that implements `serde::Serialize`
+//! async fn json() -> Json<Value> {
+//!     Json(json!({ "data": 42 }))
+//! }
+//!
+//! let app = Router::new()
+//!     .route("/plain_text", get(plain_text))
+//!     .route("/json", get(json));
+//! # async {
+//! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+//! # };
+//! ```
+//!
+//! See [`response`](crate::response) for more details on building responses.
 //!
 //! # Error handling
 //!
-//! TODO
+//! axum aims to have a simple and predictable error handling model. That means
+//! it is simple to convert errors into responses and you are guaranteed that
+//! all errors are handled.
+//!
+//! See [`error_handling`](crate::error_handling) for more details on axum's
+//! error handling model and how to handle errors gracefully.
 //!
 //! # Middleware
 //!
@@ -107,7 +161,39 @@
 //!
 //! # Sharing state with handlers
 //!
-//! TODO
+//! It is common to share some state between handlers for example to share a
+//! pool of database connections or clients to other services. That can be done
+//! using the [`AddExtension`] middleware (applied with [`AddExtensionLayer`])
+//! and the [`extract::Extension`] extractor:
+//!
+//! ```rust,no_run
+//! use axum::{
+//!     AddExtensionLayer,
+//!     extract::Extension,
+//!     routing::get,
+//!     Router,
+//! };
+//! use std::sync::Arc;
+//!
+//! struct State {
+//!     // ...
+//! }
+//!
+//! let shared_state = Arc::new(State { /* ... */ });
+//!
+//! let app = Router::new()
+//!     .route("/", get(handler))
+//!     .layer(AddExtensionLayer::new(shared_state));
+//!
+//! async fn handler(
+//!     Extension(state): Extension<Arc<State>>,
+//! ) {
+//!     // ...
+//! }
+//! # async {
+//! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+//! # };
+//! ```
 //!
 //! # Required dependencies
 //!

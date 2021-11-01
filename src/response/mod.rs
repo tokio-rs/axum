@@ -1,4 +1,4 @@
-//! Types and traits for generating responses.
+#![doc = include_str!("../docs/response.md")]
 
 use crate::{
     body::{box_body, BoxBody},
@@ -28,122 +28,8 @@ pub use self::{headers::Headers, redirect::Redirect, sse::Sse};
 ///
 /// Types that implement `IntoResponse` can be returned from handlers.
 ///
-/// # Implementing `IntoResponse`
-///
-/// You generally shouldn't have to implement `IntoResponse` manually, as axum
-/// provides implementations for many common types.
-///
-/// However it might be necessary if you have a custom error type that you want
-/// to return from handlers:
-///
-/// ```rust
-/// use axum::{
-///     Router,
-///     body::Body,
-///     routing::get,
-///     http::{Response, StatusCode},
-///     response::IntoResponse,
-/// };
-///
-/// enum MyError {
-///     SomethingWentWrong,
-///     SomethingElseWentWrong,
-/// }
-///
-/// impl IntoResponse for MyError {
-///     type Body = Body;
-///     type BodyError = <Self::Body as axum::body::HttpBody>::Error;
-///
-///     fn into_response(self) -> Response<Self::Body> {
-///         let body = match self {
-///             MyError::SomethingWentWrong => {
-///                 Body::from("something went wrong")
-///             },
-///             MyError::SomethingElseWentWrong => {
-///                 Body::from("something else went wrong")
-///             },
-///         };
-///
-///         Response::builder()
-///             .status(StatusCode::INTERNAL_SERVER_ERROR)
-///             .body(body)
-///             .unwrap()
-///     }
-/// }
-///
-/// // `Result<impl IntoResponse, MyError>` can now be returned from handlers
-/// let app = Router::new().route("/", get(handler));
-///
-/// async fn handler() -> Result<(), MyError> {
-///     Err(MyError::SomethingWentWrong)
-/// }
-/// # async {
-/// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-/// # };
-/// ```
-///
-/// Or if you have a custom body type you'll also need to implement
-/// `IntoResponse` for it:
-///
-/// ```rust
-/// use axum::{
-///     routing::get,
-///     response::IntoResponse,
-///     Router,
-/// };
-/// use http_body::Body;
-/// use http::{Response, HeaderMap};
-/// use bytes::Bytes;
-/// use std::{
-///     convert::Infallible,
-///     task::{Poll, Context},
-///     pin::Pin,
-/// };
-///
-/// struct MyBody;
-///
-/// // First implement `Body` for `MyBody`. This could for example use
-/// // some custom streaming protocol.
-/// impl Body for MyBody {
-///     type Data = Bytes;
-///     type Error = Infallible;
-///
-///     fn poll_data(
-///         self: Pin<&mut Self>,
-///         cx: &mut Context<'_>
-///     ) -> Poll<Option<Result<Self::Data, Self::Error>>> {
-///         # unimplemented!()
-///         // ...
-///     }
-///
-///     fn poll_trailers(
-///         self: Pin<&mut Self>,
-///         cx: &mut Context<'_>
-///     ) -> Poll<Result<Option<HeaderMap>, Self::Error>> {
-///         # unimplemented!()
-///         // ...
-///     }
-/// }
-///
-/// // Now we can implement `IntoResponse` directly for `MyBody`
-/// impl IntoResponse for MyBody {
-///     type Body = Self;
-///     type BodyError = <Self as Body>::Error;
-///
-///     fn into_response(self) -> Response<Self::Body> {
-///         Response::new(self)
-///     }
-/// }
-///
-/// // We don't need to implement `IntoResponse for Response<MyBody>` as that is
-/// // covered by a blanket implementation in axum.
-///
-/// // `MyBody` can now be returned from handlers.
-/// let app = Router::new().route("/", get(|| async { MyBody }));
-/// # async {
-/// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-/// # };
-/// ```
+/// See the [module docs](self) for tips on how to implement `IntoResponse` and
+/// make your own response compatible types.
 pub trait IntoResponse {
     /// The body type of the response.
     ///

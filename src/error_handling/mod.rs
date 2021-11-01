@@ -1,33 +1,22 @@
-//! Error handling utilities
-//!
-//! See [error handling](../index.html#error-handling) for more details on how
-//! error handling works in axum.
+#![doc = include_str!("../docs/error_handling.md")]
 
-use crate::{
-    body::{box_body, BoxBody},
-    response::IntoResponse,
-    BoxError,
-};
+use crate::{body::BoxBody, response::IntoResponse, BoxError};
 use bytes::Bytes;
-use futures_util::ready;
 use http::{Request, Response};
-use pin_project_lite::pin_project;
 use std::convert::Infallible;
 use std::{
     fmt,
-    future::Future,
     marker::PhantomData,
-    pin::Pin,
     task::{Context, Poll},
 };
 use tower::{util::Oneshot, ServiceExt as _};
 use tower_layer::Layer;
 use tower_service::Service;
 
-/// [`Layer`] that applies [`HandleErrorLayer`] which is a [`Service`] adapter
+/// [`Layer`] that applies [`HandleError`] which is a [`Service`] adapter
 /// that handles errors by converting them into responses.
 ///
-/// See [error handling](../index.html#error-handling) for more details.
+/// See [module docs](self) for more details on axum's error handling model.
 pub struct HandleErrorLayer<F, B> {
     f: F,
     _marker: PhantomData<fn() -> B>,
@@ -80,7 +69,7 @@ impl<F, B> fmt::Debug for HandleErrorLayer<F, B> {
 
 /// A [`Service`] adapter that handles errors by converting them into responses.
 ///
-/// See [error handling](../index.html#error-handling) for more details.
+/// See [module docs](self) for more details on axum's error handling model.
 pub struct HandleError<S, F, B> {
     inner: S,
     f: F,
@@ -130,7 +119,7 @@ where
 {
     type Response = Response<BoxBody>;
     type Error = Infallible;
-    type Future = HandleErrorFuture<Oneshot<S, Request<ReqBody>>, F>;
+    type Future = future::HandleErrorFuture<Oneshot<S, Request<ReqBody>>, F>;
 
     #[inline]
     fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
@@ -138,16 +127,17 @@ where
     }
 
     fn call(&mut self, req: Request<ReqBody>) -> Self::Future {
-        HandleErrorFuture {
+        future::HandleErrorFuture {
             f: Some(self.f.clone()),
             inner: self.inner.clone().oneshot(req),
         }
     }
 }
 
-/// Handle errors this service might produce, by mapping them to responses.
+/// Extension trait to [`Service`] for handling errors by mapping them to
+/// responses.
 ///
-/// See [error handling](../index.html#error-handling) for more details.
+/// See [module docs](self) for more details on axum's error handling model.
 pub trait HandleErrorExt<B>: Service<Request<B>> + Sized {
     /// Apply a [`HandleError`] middleware.
     fn handle_error<F>(self, f: F) -> HandleError<Self, F, B> {
@@ -157,35 +147,55 @@ pub trait HandleErrorExt<B>: Service<Request<B>> + Sized {
 
 impl<B, S> HandleErrorExt<B> for S where S: Service<Request<B>> {}
 
-pin_project! {
-    /// Response future for [`HandleError`](super::HandleError).
-    #[derive(Debug)]
-    pub struct HandleErrorFuture<Fut, F> {
-        #[pin]
-        pub(super) inner: Fut,
-        pub(super) f: Option<F>,
+pub mod future {
+    //! Future types.
+
+    use crate::{
+        body::{box_body, BoxBody},
+        response::IntoResponse,
+        BoxError,
+    };
+    use bytes::Bytes;
+    use futures_util::ready;
+    use http::Response;
+    use pin_project_lite::pin_project;
+    use std::convert::Infallible;
+    use std::{
+        future::Future,
+        pin::Pin,
+        task::{Context, Poll},
+    };
+
+    pin_project! {
+        /// Response future for [`HandleError`](super::HandleError).
+        #[derive(Debug)]
+        pub struct HandleErrorFuture<Fut, F> {
+            #[pin]
+            pub(super) inner: Fut,
+            pub(super) f: Option<F>,
+        }
     }
-}
 
-impl<Fut, F, E, B, Res> Future for HandleErrorFuture<Fut, F>
-where
-    Fut: Future<Output = Result<Response<B>, E>>,
-    F: FnOnce(E) -> Res,
-    Res: IntoResponse,
-    B: http_body::Body<Data = Bytes> + Send + Sync + 'static,
-    B::Error: Into<BoxError> + Send + Sync + 'static,
-{
-    type Output = Result<Response<BoxBody>, Infallible>;
+    impl<Fut, F, E, B, Res> Future for HandleErrorFuture<Fut, F>
+    where
+        Fut: Future<Output = Result<Response<B>, E>>,
+        F: FnOnce(E) -> Res,
+        Res: IntoResponse,
+        B: http_body::Body<Data = Bytes> + Send + Sync + 'static,
+        B::Error: Into<BoxError> + Send + Sync + 'static,
+    {
+        type Output = Result<Response<BoxBody>, Infallible>;
 
-    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        let this = self.project();
+        fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+            let this = self.project();
 
-        match ready!(this.inner.poll(cx)) {
-            Ok(res) => Ok(res.map(box_body)).into(),
-            Err(err) => {
-                let f = this.f.take().unwrap();
-                let res = f(err);
-                Ok(res.into_response().map(box_body)).into()
+            match ready!(this.inner.poll(cx)) {
+                Ok(res) => Ok(res.map(box_body)).into(),
+                Err(err) => {
+                    let f = this.f.take().unwrap();
+                    let res = f(err);
+                    Ok(res.into_response().map(box_body)).into()
+                }
             }
         }
     }
