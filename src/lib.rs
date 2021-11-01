@@ -157,7 +157,7 @@
 //!
 //! # Middleware
 //!
-//! TODO
+#![doc = include_str!("docs/middleware.md")]
 //!
 //! # Sharing state with handlers
 //!
