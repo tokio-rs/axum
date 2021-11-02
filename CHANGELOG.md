@@ -39,6 +39,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     is because bodies are streams and requiring streams to be `Sync` is
     unnecessary.
   - **added:** Implement `IntoResponse` for `http_body::combinators::UnsyncBoxBody`.
+  - **added:** Add `Handler::into_make_service` for serving a handler without a
+    `Router`.
+  - **added:** Add `Handler::into_make_service_with_connect_info` for serving a
+    handler without a `Router`, and storing info about the incoming connection.
 - Routing:
   - Big internal refactoring of routing leading to several improvements ([#363])
     - **added:** Wildcard routes like `.route("/api/users/*rest", service)` are now supported.
