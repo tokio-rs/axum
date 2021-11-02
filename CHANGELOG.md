@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **fixed:** All known compile time issues are resolved, including those with
     `boxed` and those introduced by Rust 1.56 ([#404])
   - **breaking:** The router's type is now always `Router` regardless of how many routes or
-    middleware are applies ([#404])
+    middleware are applied ([#404])
 
     This means router types are all always nameable:
 
