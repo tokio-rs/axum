@@ -28,7 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     breaking change if you depend on axum with `default_features = false`. ([#286])
   - **breaking:** `Route::boxed` and `BoxRoute` have been removed as they're no longer
     necessary ([#404])
-  - **breaking:** `Route`, `Nested`, `Or` types are now private. They no longer had to be
+  - **breaking:** `Nested`, `Or` types are now private. They no longer had to be
     public because `Router` is internally boxed ([#404])
   - **breaking:** Remove `routing::Layered` as it didn't actually do anything and
     thus wasn't necessary
@@ -81,7 +81,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **breaking:** Change `Connected::connect_info` to return `Self` and remove
     the associated type `ConnectInfo` ([#396])
   - **added:** Add `extract::MatchedPath` for accessing path in router that
-    matched request ([#412])
+    matched the request ([#412])
 - Error handling:
   - **breaking:** Simplify error handling model ([#402]):
     - All services part of the router are now required to be infallible.
