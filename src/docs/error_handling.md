@@ -31,6 +31,11 @@ It doesn't matter whether you return `Err(StatusCode::NOT_FOUND)` or
 `Err(StatusCode::INTERNAL_SERVER_ERROR)`. These are not considered errors in
 axum.
 
+This also applies to extractors. If an extractor doesn't match the request the
+request will be rejected and a response will be returned without calling your
+handler. See [`extract`](crate::extract) to learn more about handling extractor
+failures.
+
 # Routing to fallible services
 
 You generally don't have to think about errors if you're only using async
