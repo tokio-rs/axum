@@ -24,7 +24,12 @@ async fn handler(Query(params): Query<Params>) -> String {
 }
 
 /// See the tests below for which combinations of `foo` and `bar` result in
-/// which deserializations
+/// which deserializations.
+///
+/// This example only shows one possible way to do this. [`serde_with`] provides
+/// another way. Use which ever method works best for you.
+///
+/// [`serde_with`]: https://docs.rs/serde_with/1.11.0/serde_with/rust/string_empty_as_none/index.html
 #[derive(Debug, Deserialize)]
 struct Params {
     #[serde(default, deserialize_with = "empty_string_as_none")]
