@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+- None
+
+# 0.3.0 (02. November, 2021)
+
 - Overall:
   - **fixed:** All known compile time issues are resolved, including those with
     `boxed` and those introduced by Rust 1.56 ([#404])
