@@ -5,7 +5,7 @@
 //! [`Router::into_make_service_with_connect_info`]: crate::routing::Router::into_make_service_with_connect_info
 
 use super::{Extension, FromRequest, RequestParts};
-use crate::{AddExtension, AddExtensionLayer, Router};
+use crate::{AddExtension, AddExtensionLayer};
 use async_trait::async_trait;
 use hyper::server::conn::AddrStream;
 use std::future::ready;
@@ -25,8 +25,8 @@ use tower_service::Service;
 ///
 /// [`MakeService`]: tower::make::MakeService
 /// [`Router::into_make_service_with_connect_info`]: crate::routing::Router::into_make_service_with_connect_info
-pub struct IntoMakeServiceWithConnectInfo<B, C> {
-    router: Router<B>,
+pub struct IntoMakeServiceWithConnectInfo<S, C> {
+    svc: S,
     _connect_info: PhantomData<fn() -> C>,
 }
 
@@ -36,19 +36,22 @@ fn traits() {
     assert_send::<IntoMakeServiceWithConnectInfo<(), NotSendSync>>();
 }
 
-impl<B, C> IntoMakeServiceWithConnectInfo<B, C> {
-    pub(crate) fn new(router: Router<B>) -> Self {
+impl<S, C> IntoMakeServiceWithConnectInfo<S, C> {
+    pub(crate) fn new(svc: S) -> Self {
         Self {
-            router,
+            svc,
             _connect_info: PhantomData,
         }
     }
 }
 
-impl<B, C> fmt::Debug for IntoMakeServiceWithConnectInfo<B, C> {
+impl<S, C> fmt::Debug for IntoMakeServiceWithConnectInfo<S, C>
+where
+    S: fmt::Debug,
+{
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("IntoMakeServiceWithConnectInfo")
-            .field("router", &self.router)
+            .field("svc", &self.svc)
             .finish()
     }
 }
@@ -73,13 +76,14 @@ impl Connected<&AddrStream> for SocketAddr {
     }
 }
 
-impl<B, C, T> Service<T> for IntoMakeServiceWithConnectInfo<B, C>
+impl<S, C, T> Service<T> for IntoMakeServiceWithConnectInfo<S, C>
 where
+    S: Clone,
     C: Connected<T>,
 {
-    type Response = AddExtension<Router<B>, ConnectInfo<C>>;
+    type Response = AddExtension<S, ConnectInfo<C>>;
     type Error = Infallible;
-    type Future = ResponseFuture<B, C>;
+    type Future = ResponseFuture<S, C>;
 
     #[inline]
     fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
@@ -88,15 +92,15 @@ where
 
     fn call(&mut self, target: T) -> Self::Future {
         let connect_info = ConnectInfo(C::connect_info(target));
-        let svc = AddExtensionLayer::new(connect_info).layer(self.router.clone());
+        let svc = AddExtensionLayer::new(connect_info).layer(self.svc.clone());
         ResponseFuture::new(ready(Ok(svc)))
     }
 }
 
 opaque_future! {
     /// Response future for [`IntoMakeServiceWithConnectInfo`].
-    pub type ResponseFuture<B, C> =
-        std::future::Ready<Result<AddExtension<Router<B>, ConnectInfo<C>>, Infallible>>;
+    pub type ResponseFuture<S, C> =
+        std::future::Ready<Result<AddExtension<S, ConnectInfo<C>>, Infallible>>;
 }
 
 /// Extractor for getting connection information produced by a [`Connected`].

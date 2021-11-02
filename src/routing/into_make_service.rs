@@ -1,7 +1,5 @@
-use super::Router;
 use std::{
     convert::Infallible,
-    fmt,
     future::ready,
     task::{Context, Poll},
 };
@@ -10,36 +8,24 @@ use tower_service::Service;
 /// A [`MakeService`] that produces axum router services.
 ///
 /// [`MakeService`]: tower::make::MakeService
-pub struct IntoMakeService<B> {
-    router: Router<B>,
+#[derive(Debug, Clone)]
+pub struct IntoMakeService<S> {
+    svc: S,
 }
 
-impl<B> IntoMakeService<B> {
-    pub(super) fn new(router: Router<B>) -> Self {
-        Self { router }
+impl<S> IntoMakeService<S> {
+    pub(super) fn new(svc: S) -> Self {
+        Self { svc }
     }
 }
 
-impl<B> Clone for IntoMakeService<B> {
-    fn clone(&self) -> Self {
-        Self {
-            router: self.router.clone(),
-        }
-    }
-}
-
-impl<B> fmt::Debug for IntoMakeService<B> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("IntoMakeService")
-            .field("router", &self.router)
-            .finish()
-    }
-}
-
-impl<B, T> Service<T> for IntoMakeService<B> {
-    type Response = Router<B>;
+impl<S, T> Service<T> for IntoMakeService<S>
+where
+    S: Clone,
+{
+    type Response = S;
     type Error = Infallible;
-    type Future = IntoMakeServiceFuture<B>;
+    type Future = IntoMakeServiceFuture<S>;
 
     #[inline]
     fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
@@ -47,14 +33,14 @@ impl<B, T> Service<T> for IntoMakeService<B> {
     }
 
     fn call(&mut self, _target: T) -> Self::Future {
-        IntoMakeServiceFuture::new(ready(Ok(self.router.clone())))
+        IntoMakeServiceFuture::new(ready(Ok(self.svc.clone())))
     }
 }
 
 opaque_future! {
     /// Response future for [`IntoMakeService`].
-    pub type IntoMakeServiceFuture<B> =
-        std::future::Ready<Result<Router<B>, Infallible>>;
+    pub type IntoMakeServiceFuture<S> =
+        std::future::Ready<Result<S, Infallible>>;
 }
 
 #[cfg(test)]
