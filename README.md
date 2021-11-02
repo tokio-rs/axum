@@ -94,7 +94,7 @@ struct User {
 
 You can find this [example][readme-example] as well as other example projects in the [example directory][examples].
 
-There are also a number of usage examples in the [crate documentation][docs].
+See the [crate documentation][docs] for way more examples.
 
 ## Performance
 
