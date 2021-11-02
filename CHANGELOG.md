@@ -47,7 +47,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     `Router`.
   - **added:** Add `Handler::into_make_service_with_connect_info` for serving a
     handler without a `Router`, and storing info about the incoming connection.
-  - **breaking:** axum's minimum support rust version is not 1.54
+  - **breaking:** axum's minimum support rust version is now 1.54
 - Routing:
   - Big internal refactoring of routing leading to several improvements ([#363])
     - **added:** Wildcard routes like `.route("/api/users/*rest", service)` are now supported.
