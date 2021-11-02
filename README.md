@@ -50,7 +50,7 @@ async fn main() {
     // run our app with hyper
     // `axum::Server` is a re-export of `hyper::Server`
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
-    tracing::debug!("listening on {}", addr);
+    tracing::info!("listening on {}", addr);
     axum::Server::bind(&addr)
         .serve(app.into_make_service())
         .await
@@ -92,7 +92,9 @@ struct User {
 }
 ```
 
-See the [crate documentation][docs] for way more examples.
+You can find this [example][readme-example] as well as other example projects in the [example directory][examples]
+
+There are also a number of usage examples in the [crate documentation][docs].
 
 ## Performance
 
@@ -136,6 +138,7 @@ Unless you explicitly state otherwise, any contribution intentionally submitted
 for inclusion in `axum` by you, shall be licensed as MIT, without any
 additional terms or conditions.
 
+[readme-example]: https://github.com/tokio-rs/axum/tree/main/examples/readme-example
 [examples]: https://github.com/tokio-rs/axum/tree/main/examples
 [docs]: https://docs.rs/axum
 [`tower`]: https://crates.io/crates/tower
