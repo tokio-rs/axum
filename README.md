@@ -25,10 +25,6 @@ applications written using [`hyper`] or [`tonic`].
 
 ## Usage example
 
-Note this example uses `main` which contains breaking changes. See the
-[v0.2.x](https://github.com/tokio-rs/axum/tree/v0.2.x) branch for an example
-using 0.2.
-
 ```rust
 use axum::{
     routing::{get, post},
@@ -111,7 +107,7 @@ This crate uses `#![forbid(unsafe_code)]` to ensure everything is implemented in
 
 ## Minimum supported Rust version
 
-axum 0.2's MSRV is 1.51. axum 0.3's (still work-in-progress) MSRV will be 1.54.
+axum MSRV is 1.54.
 
 ## Examples
 
