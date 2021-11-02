@@ -70,8 +70,12 @@
 
 use crate::{
     body::{box_body, BoxBody},
-    extract::{FromRequest, RequestParts},
+    extract::{
+        connect_info::{Connected, IntoMakeServiceWithConnectInfo},
+        FromRequest, RequestParts,
+    },
     response::IntoResponse,
+    routing::IntoMakeService,
     BoxError,
 };
 use async_trait::async_trait;
@@ -156,30 +160,102 @@ pub trait Handler<B, T>: Clone + Send + Sized + 'static {
 
     /// Convert the handler into a [`Service`].
     ///
+    /// This is commonly used together with [`Router::fallback`]:
+    ///
+    /// ```rust
+    /// use axum::{
+    ///     Server,
+    ///     handler::Handler,
+    ///     http::{Uri, Method, StatusCode},
+    ///     response::IntoResponse,
+    ///     routing::{get, Router},
+    /// };
+    /// use tower::make::Shared;
+    /// use std::net::SocketAddr;
+    ///
+    /// async fn handler(method: Method, uri: Uri) -> impl IntoResponse {
+    ///     (StatusCode::NOT_FOUND, format!("Nothing to see at {} {}", method, uri))
+    /// }
+    ///
+    /// let app = Router::new()
+    ///     .route("/", get(|| async {}))
+    ///     .fallback(handler.into_service());
+    ///
+    /// # async {
+    /// Server::bind(&SocketAddr::from(([127, 0, 0, 1], 3000)))
+    ///     .serve(app.into_make_service())
+    ///     .await?;
+    /// # Ok::<_, hyper::Error>(())
+    /// # };
+    /// ```
+    ///
+    /// [`Router::fallback`]: crate::routing::Router::fallback
+    fn into_service(self) -> IntoService<Self, B, T> {
+        IntoService::new(self)
+    }
+
+    /// Convert the handler into a [`MakeService`].
+    ///
     /// This allows you to serve a single handler if you don't need any routing:
     ///
     /// ```rust
     /// use axum::{
     ///     Server, handler::Handler, http::{Uri, Method}, response::IntoResponse,
     /// };
-    /// use tower::make::Shared;
     /// use std::net::SocketAddr;
     ///
     /// async fn handler(method: Method, uri: Uri, body: String) -> impl IntoResponse {
     ///     format!("received `{} {}` with body `{:?}`", method, uri, body)
     /// }
     ///
-    /// let service = handler.into_service();
-    ///
     /// # async {
     /// Server::bind(&SocketAddr::from(([127, 0, 0, 1], 3000)))
-    ///     .serve(Shared::new(service))
+    ///     .serve(handler.into_make_service())
     ///     .await?;
     /// # Ok::<_, hyper::Error>(())
     /// # };
     /// ```
-    fn into_service(self) -> IntoService<Self, B, T> {
-        IntoService::new(self)
+    ///
+    /// [`MakeService`]: tower::make::MakeService
+    fn into_make_service(self) -> IntoMakeService<IntoService<Self, B, T>> {
+        IntoMakeService::new(self.into_service())
+    }
+
+    /// Convert the handler into a [`MakeService`] which stores information
+    /// about the incoming connection.
+    ///
+    /// See [`Router::into_make_service_with_connect_info`] for more details.
+    ///
+    /// ```rust
+    /// use axum::{
+    ///     Server,
+    ///     handler::Handler,
+    ///     response::IntoResponse,
+    ///     extract::ConnectInfo,
+    /// };
+    /// use std::net::SocketAddr;
+    ///
+    /// async fn handler(ConnectInfo(addr): ConnectInfo<SocketAddr>) -> impl IntoResponse {
+    ///     format!("Hello {}", addr)
+    /// }
+    ///
+    /// # async {
+    /// Server::bind(&SocketAddr::from(([127, 0, 0, 1], 3000)))
+    ///     .serve(handler.into_make_service_with_connect_info::<SocketAddr, _>())
+    ///     .await?;
+    /// # Ok::<_, hyper::Error>(())
+    /// # };
+    /// ```
+    ///
+    /// [`MakeService`]: tower::make::MakeService
+    /// [`Router::into_make_service_with_connect_info`]: crate::routing::Router::into_make_service_with_connect_info
+    fn into_make_service_with_connect_info<C, Target>(
+        self,
+    ) -> IntoMakeServiceWithConnectInfo<IntoService<Self, B, T>, C>
+    where
+        C: Connected<Target>,
+    {
+        IntoMakeServiceWithConnectInfo::new(self.into_service())
     }
 }
 
