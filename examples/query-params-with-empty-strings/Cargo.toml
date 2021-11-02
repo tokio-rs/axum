@@ -1,0 +1,12 @@
+[package]
+name = "example-query-params-with-empty-strings"
+version = "0.1.0"
+edition = "2018"
+publish = false
+
+[dependencies]
+axum = { path = "../.." }
+tokio = { version = "1.0", features = ["full"] }
+serde = { version = "1.0", features = ["derive"] }
+tower = { version = "0.4", features = ["util"] }
+hyper = "0.14"
