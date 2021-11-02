@@ -28,7 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     }
     ```
   - **breaking:** Added feature flags for HTTP1 and JSON. This enables removing a
-    few dependencies if your app only uses HTTP2 or doesn't use JSON. Its only a
+    few dependencies if your app only uses HTTP2 or doesn't use JSON. This is only a
     breaking change if you depend on axum with `default_features = false`. ([#286])
   - **breaking:** `Route::boxed` and `BoxRoute` have been removed as they're no longer
     necessary ([#404])
@@ -47,14 +47,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     `Router`.
   - **added:** Add `Handler::into_make_service_with_connect_info` for serving a
     handler without a `Router`, and storing info about the incoming connection.
-  - **breaking:** axum's minimum support rust version is now 1.54
+  - **breaking:** axum's minimum supported rust version is now 1.54
 - Routing:
   - Big internal refactoring of routing leading to several improvements ([#363])
     - **added:** Wildcard routes like `.route("/api/users/*rest", service)` are now supported.
     - **fixed:** The order routes are added in no longer matters.
     - **fixed:** Adding a conflicting route will now cause a panic instead of silently making
       a route unreachable.
-    - **fixed:** Route matching is faster as number of routes increase.
+    - **fixed:** Route matching is faster as number of routes increases.
   - **fixed:** Correctly handle trailing slashes in routes:
     - If a route with a trailing slash exists and a request without a trailing
       slash is received, axum will send a 301 redirection to the route with the
@@ -62,19 +62,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Or vice versa if a route without a trailing slash exists and a request
       with a trailing slash is received.
     - This can be overridden by explicitly defining two routes: One with and one
-      without trailing a slash.
-  - **breaking:** Method routing for handlers have been moved from `axum::handler`
+      without a trailing slash.
+  - **breaking:** Method routing for handlers has been moved from `axum::handler`
     to `axum::routing`. So `axum::handler::get` now lives at `axum::routing::get`
     ([#405])
-  - **breaking:** Method routing for services have been moved from `axum::service`
-    to `axum::routing`. So `axum::service::get` now lives at, etc.
+  - **breaking:** Method routing for services has been moved from `axum::service`
+    to `axum::routing::service_method_routing`. So `axum::service::get` now lives at
     `axum::routing::service_method_routing::get`, etc. ([#405])
   - **breaking:** `Router::or` renamed to `Router::merge` and will now panic on
     overlapping routes. It now only accepts `Router`s and not general `Service`s.
     Use `Router::fallback` for adding fallback routes ([#408])
   - **added:** `Router::fallback` for adding handlers for request that didn't
     match any routes. `Router::fallback` must be use instead of `nest("/", _)` ([#408])
-  - **breaking:** `EmptyRouter` has been renamed to `MethodNotAllowed` as its only
+  - **breaking:** `EmptyRouter` has been renamed to `MethodNotAllowed` as it's only
     used in method routers and not in path routers (`Router`)
   - **breaking:** Remove support for routing based on the `CONNECT` method. An
     example of combining axum with and HTTP proxy can be found [here][proxy] ([#428])
