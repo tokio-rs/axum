@@ -126,6 +126,8 @@ jobs:
     needs: check
     runs-on: ubuntu-latest
     steps:
+    - name: Install diff
+      run: sudo apt-get install -y diff
     - name: README.md and axum/README.md are identical
       uses: actions-rs/cargo@v1
       with:
