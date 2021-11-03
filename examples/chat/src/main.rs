@@ -60,7 +60,7 @@ async fn websocket(stream: WebSocket, state: Arc<AppState>) {
     // By splitting we can send and receive at the same time.
     let (mut sender, mut receiver) = stream.split();
 
-    // Username gets set in the receive loop, if its valid
+    // Username gets set in the receive loop, if it's valid.
     let mut username = String::new();
 
     // Loop until a text message is found.

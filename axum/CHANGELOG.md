@@ -350,7 +350,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ```
 - SSE:
   - **added:** Add `response::sse::Sse`. This implements SSE using a response rather than a service ([#98](https://github.com/tokio-rs/axum/pull/98))
-  - **changed:** Remove `axum::sse`. Its been replaced by `axum::response::sse` ([#98](https://github.com/tokio-rs/axum/pull/98))
+  - **changed:** Remove `axum::sse`. It has been replaced by `axum::response::sse` ([#98](https://github.com/tokio-rs/axum/pull/98))
 
   Handler using SSE in 0.1:
   ```rust

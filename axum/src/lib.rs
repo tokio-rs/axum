@@ -207,7 +207,7 @@
 //! tower = "<latest-version>"
 //! ```
 //!
-//! The `"full"` feature for hyper and tokio isn't strictly necessary but its
+//! The `"full"` feature for hyper and tokio isn't strictly necessary but it's
 //! the easiest way to get started.
 //!
 //! Note that [`hyper::Server`] is re-exported by axum so if thats all you need

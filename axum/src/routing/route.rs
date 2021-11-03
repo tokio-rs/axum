@@ -16,7 +16,7 @@ use tower_service::Service;
 
 /// How routes are stored inside a [`Router`](super::Router).
 ///
-/// You normally shouldn't need to care about this type. Its used in
+/// You normally shouldn't need to care about this type. It's used in
 /// [`Router::layer`](super::Router::layer).
 pub struct Route<B = Body>(CloneBoxService<Request<B>, Response<BoxBody>, Infallible>);
 

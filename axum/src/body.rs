@@ -18,7 +18,7 @@ pub use bytes::Bytes;
 
 /// A boxed [`Body`] trait object.
 ///
-/// This is used in axum as the response body type for applications. Its
+/// This is used in axum as the response body type for applications. It's
 /// necessary to unify multiple response bodies types into one.
 pub type BoxBody = http_body::combinators::UnsyncBoxBody<Bytes, Error>;
 
