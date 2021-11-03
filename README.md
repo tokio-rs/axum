@@ -92,7 +92,8 @@ struct User {
 }
 ```
 
-You can find this [example][readme-example] as well as other example projects in the [example directory][examples].
+You can find this [example][readme-example] as well as other example projects in
+the [example directory][examples].
 
 See the [crate documentation][docs] for way more examples.
 
@@ -138,7 +139,7 @@ Unless you explicitly state otherwise, any contribution intentionally submitted
 for inclusion in `axum` by you, shall be licensed as MIT, without any
 additional terms or conditions.
 
-[readme-example]: https://github.com/tokio-rs/axum/tree/main/examples/readme-example
+[readme-example]: https://github.com/tokio-rs/axum/tree/main/examples/readme
 [examples]: https://github.com/tokio-rs/axum/tree/main/examples
 [docs]: https://docs.rs/axum
 [`tower`]: https://crates.io/crates/tower
