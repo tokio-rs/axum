@@ -282,7 +282,7 @@ where
         self
     }
 
-    /// Convert this router into a [`MakeService`], that is a [`Service`] who's
+    /// Convert this router into a [`MakeService`], that is a [`Service`] whose
     /// response is another service.
     ///
     /// This is useful when running your application with hyper's
