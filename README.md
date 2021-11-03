@@ -123,6 +123,11 @@ In the `axum`'s repo we also have a [number of examples][examples] showing how
 to put everything together. You're also welcome to ask in the [Discord
 channel][chat] or open an [issue] with your question.
 
+## Community projects
+
+See [here](ECOSYSTEM.md) for a list of community maintained crates and projects
+built with axum.
+
 ## Contributing
 
 :balloon: Thanks for your help improving the project! We are so happy to have
