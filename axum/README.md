@@ -136,7 +136,7 @@ you! We have a [contributing guide][contributing] to help you get involved in th
 
 ## License
 
-This project is licensed under the [MIT license](license).
+This project is licensed under the [MIT license](LICENSE).
 
 ### Contribution
 
