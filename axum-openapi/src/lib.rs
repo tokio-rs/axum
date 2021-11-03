@@ -172,7 +172,7 @@ impl SchemaRoutes {
 
         if self.json {
             router = router.route(
-                &format!("/{}.yaml", self.path),
+                &format!("/{}.json", self.path),
                 axum::routing::get(|Extension(schema): Extension<Arc<OpenAPI>>| async move {
                     Json((&*schema).clone())
                 }),
