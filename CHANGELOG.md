@@ -55,6 +55,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - **fixed:** Adding a conflicting route will now cause a panic instead of silently making
       a route unreachable.
     - **fixed:** Route matching is faster as number of routes increases.
+    - **breaking:** Handlers for multiple HTTP methods must be added in the same
+      `Router::route` call. So `.route("/", get(get_handler).post(post_handler))` and
+      _not_ `.route("/", get(get_handler)).route("/", post(post_handler))`.
   - **fixed:** Correctly handle trailing slashes in routes:
     - If a route with a trailing slash exists and a request without a trailing
       slash is received, axum will send a 301 redirection to the route with the
