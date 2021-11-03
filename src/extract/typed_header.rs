@@ -140,7 +140,7 @@ impl std::error::Error for TypedHeaderRejection {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{response::IntoResponse, routing::get, tests::*, Router};
+    use crate::{response::IntoResponse, routing::get, test_helpers::*, Router};
 
     #[tokio::test]
     async fn typed_header() {

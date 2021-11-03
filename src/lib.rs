@@ -325,7 +325,7 @@ pub mod response;
 pub mod routing;
 
 #[cfg(test)]
-mod tests;
+mod test_helpers;
 
 pub use add_extension::{AddExtension, AddExtensionLayer};
 #[doc(no_inline)]

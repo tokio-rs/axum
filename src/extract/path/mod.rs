@@ -173,10 +173,43 @@ where
 
 #[cfg(test)]
 mod tests {
+    use http::StatusCode;
+
     use super::*;
-    use crate::tests::*;
+    use crate::test_helpers::*;
     use crate::{routing::get, Router};
     use std::collections::HashMap;
+
+    #[tokio::test]
+    async fn extracting_url_params() {
+        let app = Router::new().route(
+            "/users/:id",
+            get(|Path(id): Path<i32>| async move {
+                assert_eq!(id, 42);
+            })
+            .post(|Path(params_map): Path<HashMap<String, i32>>| async move {
+                assert_eq!(params_map.get("id").unwrap(), &1337);
+            }),
+        );
+
+        let client = TestClient::new(app);
+
+        let res = client.get("/users/42").send().await;
+        assert_eq!(res.status(), StatusCode::OK);
+
+        let res = client.post("/users/1337").send().await;
+        assert_eq!(res.status(), StatusCode::OK);
+    }
+
+    #[tokio::test]
+    async fn extracting_url_params_multiple_times() {
+        let app = Router::new().route("/users/:id", get(|_: Path<i32>, _: Path<String>| async {}));
+
+        let client = TestClient::new(app);
+
+        let res = client.get("/users/42").send().await;
+        assert_eq!(res.status(), StatusCode::OK);
+    }
 
     #[tokio::test]
     async fn percent_decoding() {
@@ -234,5 +267,18 @@ mod tests {
 
         let res = client.get("/bar/baz/qux").send().await;
         assert_eq!(res.text().await, "/baz/qux");
+    }
+
+    #[tokio::test]
+    async fn captures_dont_match_empty_segments() {
+        let app = Router::new().route("/:key", get(|| async {}));
+
+        let client = TestClient::new(app);
+
+        let res = client.get("/").send().await;
+        assert_eq!(res.status(), StatusCode::NOT_FOUND);
+
+        let res = client.get("/foo").send().await;
+        assert_eq!(res.status(), StatusCode::OK);
     }
 }

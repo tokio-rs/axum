@@ -19,7 +19,7 @@ pub struct IntoService<H, B, T> {
 
 #[test]
 fn traits() {
-    use crate::tests::*;
+    use crate::test_helpers::*;
     assert_send::<IntoService<(), NotSendSync, NotSendSync>>();
     assert_sync::<IntoService<(), NotSendSync, NotSendSync>>();
 }

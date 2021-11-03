@@ -37,6 +37,9 @@ mod not_found;
 mod route;
 mod strip_prefix;
 
+#[cfg(tests)]
+mod tests;
+
 pub use self::{
     into_make_service::IntoMakeService, method_filter::MethodFilter,
     method_not_allowed::MethodNotAllowed, route::Route,
@@ -574,6 +577,6 @@ where
 
 #[test]
 fn traits() {
-    use crate::tests::*;
+    use crate::test_helpers::*;
     assert_send::<Router<()>>();
 }

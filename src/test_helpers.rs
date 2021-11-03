@@ -1,15 +1,21 @@
+#![allow(clippy::blacklisted_name)]
+
 use crate::BoxError;
 use http::{
     header::{HeaderName, HeaderValue},
     Request, StatusCode,
 };
 use hyper::{Body, Server};
-use std::{
-    convert::TryFrom,
-    net::{SocketAddr, TcpListener},
-};
+use std::net::SocketAddr;
+use std::{convert::TryFrom, net::TcpListener};
 use tower::make::Shared;
 use tower_service::Service;
+
+pub(crate) fn assert_send<T: Send>() {}
+pub(crate) fn assert_sync<T: Sync>() {}
+pub(crate) fn assert_unpin<T: Unpin>() {}
+
+pub(crate) struct NotSendSync(*const ());
 
 pub(crate) struct TestClient {
     client: reqwest::Client,
@@ -53,12 +59,14 @@ impl TestClient {
         }
     }
 
+    #[allow(dead_code)]
     pub(crate) fn put(&self, url: &str) -> RequestBuilder {
         RequestBuilder {
             builder: self.client.put(format!("http://{}{}", self.addr, url)),
         }
     }
 
+    #[allow(dead_code)]
     pub(crate) fn patch(&self, url: &str) -> RequestBuilder {
         RequestBuilder {
             builder: self.client.patch(format!("http://{}{}", self.addr, url)),
@@ -71,8 +79,8 @@ pub(crate) struct RequestBuilder {
 }
 
 impl RequestBuilder {
-    pub(crate) async fn send(self) -> Response {
-        Response {
+    pub(crate) async fn send(self) -> TestResponse {
+        TestResponse {
             response: self.builder.send().await.unwrap(),
         }
     }
@@ -101,15 +109,16 @@ impl RequestBuilder {
     }
 }
 
-pub(crate) struct Response {
+pub(crate) struct TestResponse {
     response: reqwest::Response,
 }
 
-impl Response {
+impl TestResponse {
     pub(crate) async fn text(self) -> String {
         self.response.text().await.unwrap()
     }
 
+    #[allow(dead_code)]
     pub(crate) async fn json<T>(self) -> T
     where
         T: serde::de::DeserializeOwned,

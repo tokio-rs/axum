@@ -74,3 +74,60 @@ impl<T, const N: u64> Deref for ContentLengthLimit<T, N> {
         &self.0
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{routing::post, test_helpers::*, Router};
+    use bytes::Bytes;
+    use http::StatusCode;
+    use serde::Deserialize;
+
+    #[tokio::test]
+    async fn body_with_length_limit() {
+        use std::iter::repeat;
+
+        #[derive(Debug, Deserialize)]
+        struct Input {
+            foo: String,
+        }
+
+        const LIMIT: u64 = 8;
+
+        let app = Router::new().route(
+            "/",
+            post(|_body: ContentLengthLimit<Bytes, LIMIT>| async {}),
+        );
+
+        let client = TestClient::new(app);
+        let res = client
+            .post("/")
+            .body(repeat(0_u8).take((LIMIT - 1) as usize).collect::<Vec<_>>())
+            .send()
+            .await;
+        assert_eq!(res.status(), StatusCode::OK);
+
+        let res = client
+            .post("/")
+            .body(repeat(0_u8).take(LIMIT as usize).collect::<Vec<_>>())
+            .send()
+            .await;
+        assert_eq!(res.status(), StatusCode::OK);
+
+        let res = client
+            .post("/")
+            .body(repeat(0_u8).take((LIMIT + 1) as usize).collect::<Vec<_>>())
+            .send()
+            .await;
+        assert_eq!(res.status(), StatusCode::PAYLOAD_TOO_LARGE);
+
+        let res = client
+            .post("/")
+            .body(reqwest::Body::wrap_stream(futures_util::stream::iter(
+                vec![Ok::<_, std::io::Error>(bytes::Bytes::new())],
+            )))
+            .send()
+            .await;
+        assert_eq!(res.status(), StatusCode::LENGTH_REQUIRED);
+    }
+}

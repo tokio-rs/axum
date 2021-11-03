@@ -120,7 +120,7 @@ pub struct ExtractorMiddleware<S, E> {
 
 #[test]
 fn traits() {
-    use crate::tests::*;
+    use crate::test_helpers::*;
     assert_send::<ExtractorMiddleware<(), NotSendSync>>();
     assert_sync::<ExtractorMiddleware<(), NotSendSync>>();
 }
@@ -248,5 +248,59 @@ where
 
             this.state.set(new_state);
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{handler::Handler, routing::get, test_helpers::*, Router};
+    use http::StatusCode;
+
+    #[tokio::test]
+    async fn test_extractor_middleware() {
+        struct RequireAuth;
+
+        #[async_trait::async_trait]
+        impl<B> FromRequest<B> for RequireAuth
+        where
+            B: Send,
+        {
+            type Rejection = StatusCode;
+
+            async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+                if let Some(auth) = req
+                    .headers()
+                    .expect("headers already extracted")
+                    .get("authorization")
+                    .and_then(|v| v.to_str().ok())
+                {
+                    if auth == "secret" {
+                        return Ok(Self);
+                    }
+                }
+
+                Err(StatusCode::UNAUTHORIZED)
+            }
+        }
+
+        async fn handler() {}
+
+        let app = Router::new().route(
+            "/",
+            get(handler.layer(extractor_middleware::<RequireAuth>())),
+        );
+
+        let client = TestClient::new(app);
+
+        let res = client.get("/").send().await;
+        assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+
+        let res = client
+            .get("/")
+            .header(http::header::AUTHORIZATION, "secret")
+            .send()
+            .await;
+        assert_eq!(res.status(), StatusCode::OK);
     }
 }

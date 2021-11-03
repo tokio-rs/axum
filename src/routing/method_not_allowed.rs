@@ -74,7 +74,7 @@ mod tests {
 
     #[test]
     fn traits() {
-        use crate::tests::*;
+        use crate::test_helpers::*;
 
         assert_send::<MethodNotAllowed<NotSendSync>>();
         assert_sync::<MethodNotAllowed<NotSendSync>>();

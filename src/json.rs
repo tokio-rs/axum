@@ -195,3 +195,69 @@ where
         res
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{routing::post, test_helpers::*, Router};
+    use serde::Deserialize;
+    use serde_json::{json, Value};
+
+    #[tokio::test]
+    async fn deserialize_body() {
+        #[derive(Debug, Deserialize)]
+        struct Input {
+            foo: String,
+        }
+
+        let app = Router::new().route("/", post(|input: Json<Input>| async { input.0.foo }));
+
+        let client = TestClient::new(app);
+        let res = client.post("/").json(&json!({ "foo": "bar" })).send().await;
+        let body = res.text().await;
+
+        assert_eq!(body, "bar");
+    }
+
+    #[tokio::test]
+    async fn consume_body_to_json_requires_json_content_type() {
+        #[derive(Debug, Deserialize)]
+        struct Input {
+            foo: String,
+        }
+
+        let app = Router::new().route("/", post(|input: Json<Input>| async { input.0.foo }));
+
+        let client = TestClient::new(app);
+        let res = client.post("/").body(r#"{ "foo": "bar" }"#).send().await;
+
+        let status = res.status();
+        dbg!(res.text().await);
+
+        assert_eq!(status, StatusCode::BAD_REQUEST);
+    }
+
+    #[tokio::test]
+    async fn json_content_types() {
+        async fn valid_json_content_type(content_type: &str) -> bool {
+            println!("testing {:?}", content_type);
+
+            let app = Router::new().route("/", post(|Json(_): Json<Value>| async {}));
+
+            let res = TestClient::new(app)
+                .post("/")
+                .header("content-type", content_type)
+                .body("{}")
+                .send()
+                .await;
+
+            res.status() == StatusCode::OK
+        }
+
+        assert!(valid_json_content_type("application/json").await);
+        assert!(valid_json_content_type("application/json; charset=utf-8").await);
+        assert!(valid_json_content_type("application/json;charset=utf-8").await);
+        assert!(valid_json_content_type("application/cloudevents+json").await);
+        assert!(!valid_json_content_type("text/json").await);
+    }
+}
