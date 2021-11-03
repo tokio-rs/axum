@@ -11,17 +11,23 @@ use tower_service::Service;
 
 /// A [`Service`] that responds with `405 Method not allowed` to all requests.
 ///
-/// This is used as the bottom service in a method router. You shouldn't have to
-/// use it manually.
+/// This is used as the bottom service in a method router.
 pub struct MethodNotAllowed<E = Infallible> {
     _marker: PhantomData<fn() -> E>,
 }
 
 impl<E> MethodNotAllowed<E> {
-    pub(crate) fn new() -> Self {
+    /// Create a new `MethodNotAllowed`.
+    pub fn new() -> Self {
         Self {
             _marker: PhantomData,
         }
+    }
+}
+
+impl<E> Default for MethodNotAllowed<E> {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

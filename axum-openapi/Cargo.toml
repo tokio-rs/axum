@@ -1,0 +1,17 @@
+[package]
+name = "axum-openapi"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+axum = { path = "../axum" }
+openapiv3 = "0.5.0"
+tower-service = "0.3"
+tower-layer = "0.3"
+serde_yaml = "0.8"
+serde_json = "1.0"
+serde = "1.0"
+
+[dev-dependencies]
+tokio = { version = "1.13", features = ["full"] }
