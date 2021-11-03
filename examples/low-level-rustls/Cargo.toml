@@ -5,7 +5,7 @@ edition = "2018"
 publish = false
 
 [dependencies]
-axum = { path = "../.." }
+axum = { path = "../../axum" }
 hyper = { version = "0.14", features = ["full"] }
 tokio = { version = "1", features = ["full"] }
 tokio-rustls = "0.22"

@@ -122,6 +122,16 @@ jobs:
         command: test
         args: --all-features --doc
 
+  compare-readmes:
+    needs: check
+    runs-on: ubuntu-latest
+    steps:
+    - name: README.md and axum/README.md are identical
+      uses: actions-rs/cargo@v1
+      with:
+        command: diff
+        args: README.md axum/README.md
+
   deny-check:
     name: cargo-deny check
     runs-on: ubuntu-latest
