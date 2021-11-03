@@ -5,7 +5,7 @@ edition = "2018"
 publish = false
 
 [dependencies]
-axum = { path = "../..", features = ["headers"] }
+axum = { path = "../../axum", features = ["headers"] }
 tokio = { version = "1.0", features = ["full"] }
 tracing = "0.1"
 tracing-subscriber = "0.2"

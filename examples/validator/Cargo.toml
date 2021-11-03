@@ -6,7 +6,7 @@ version = "0.1.0"
 
 [dependencies]
 async-trait = "0.1"
-axum = { path = "../.." }
+axum = { path = "../../axum" }
 http-body = "0.4.3"
 serde = { version = "1.0", features = ["derive"] }
 thiserror = "1.0.29"
