@@ -4,7 +4,8 @@ If your project isn't listed here and you would like it to be, please feel free 
 
 ## Community maintained axum ecosystem
 
-- [axum-server](https://github.com/programatik29/axum-server): axum-server is a hyper server implementation designed to be used with axum framework.
+- [axum-server](https://crates.io/crates/axum-server): axum-server is a hyper server implementation designed to be used with axum framework.
+- [axum-typed-websockets](https://crates.io/crates/axum-typed-websockets): `axum::extract::ws` with type safe messages.
 
 ## Project showcase
 
