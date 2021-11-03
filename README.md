@@ -125,18 +125,18 @@ channel][chat] or open an [issue] with your question.
 
 ## Community projects
 
-See [here](ECOSYSTEM.md) for a list of community maintained crates and projects
+See [here](ecosystem) for a list of community maintained crates and projects
 built with axum.
 
 ## Contributing
 
 :balloon: Thanks for your help improving the project! We are so happy to have
-you! We have a [contributing guide][guide] to help you get involved in the
+you! We have a [contributing guide][contributing] to help you get involved in the
 `axum` project.
 
 ## License
 
-This project is licensed under the [MIT license](LICENSE).
+This project is licensed under the [MIT license](license).
 
 ### Contribution
 
@@ -151,7 +151,9 @@ additional terms or conditions.
 [`hyper`]: https://crates.io/crates/hyper
 [`tower-http`]: https://crates.io/crates/tower-http
 [`tonic`]: https://crates.io/crates/tonic
-[guide]: CONTRIBUTING.md
+[contributing]: https://github.com/tokio-rs/axum/blob/main/CONTRIBUTING.md
 [chat]: https://discord.gg/tokio
 [issue]: https://github.com/tokio-rs/axum/issues/new
 [`tower::Service`]: https://docs.rs/tower/latest/tower/trait.Service.html
+[ecosystem]: https://github.com/tokio-rs/axum/blob/main/ECOSYSTEM.md
+[license]: https://github.com/tokio-rs/axum/blob/main/LICENSE
