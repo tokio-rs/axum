@@ -50,7 +50,7 @@ mod tests {
 
     #[test]
     fn traits() {
-        use crate::tests::*;
+        use crate::test_helpers::*;
 
         assert_send::<IntoMakeService<Body>>();
     }

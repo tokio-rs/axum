@@ -32,7 +32,7 @@ pub struct IntoMakeServiceWithConnectInfo<S, C> {
 
 #[test]
 fn traits() {
-    use crate::tests::*;
+    use crate::test_helpers::*;
     assert_send::<IntoMakeServiceWithConnectInfo<(), NotSendSync>>();
 }
 

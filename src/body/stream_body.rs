@@ -132,7 +132,7 @@ fn stream_body_traits() {
 
     type EmptyStream = StreamBody<Empty<Result<Bytes, BoxError>>>;
 
-    crate::tests::assert_send::<EmptyStream>();
-    crate::tests::assert_sync::<EmptyStream>();
-    crate::tests::assert_unpin::<EmptyStream>();
+    crate::test_helpers::assert_send::<EmptyStream>();
+    crate::test_helpers::assert_sync::<EmptyStream>();
+    crate::test_helpers::assert_unpin::<EmptyStream>();
 }

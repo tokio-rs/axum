@@ -356,3 +356,20 @@ pub(crate) fn has_content_type<B>(
 pub(crate) fn take_body<B>(req: &mut RequestParts<B>) -> Result<B, BodyAlreadyExtracted> {
     req.take_body().ok_or(BodyAlreadyExtracted)
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::test_helpers::*;
+    use crate::{routing::get, Router};
+
+    #[tokio::test]
+    async fn consume_body() {
+        let app = Router::new().route("/", get(|body: String| async { body }));
+
+        let client = TestClient::new(app);
+        let res = client.get("/").body("foo").send().await;
+        let body = res.text().await;
+
+        assert_eq!(body, "foo");
+    }
+}

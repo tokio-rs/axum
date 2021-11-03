@@ -384,10 +384,30 @@ impl<S, T> Layered<S, T> {
     }
 }
 
-#[test]
-fn traits() {
-    use crate::routing::MethodRouter;
-    use crate::tests::*;
-    assert_send::<MethodRouter<(), NotSendSync, NotSendSync, ()>>();
-    assert_sync::<MethodRouter<(), NotSendSync, NotSendSync, ()>>();
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::test_helpers::*;
+    use http::StatusCode;
+
+    #[tokio::test]
+    async fn handler_into_service() {
+        async fn handle(body: String) -> impl IntoResponse {
+            format!("you said: {}", body)
+        }
+
+        let client = TestClient::new(handle.into_service());
+
+        let res = client.post("/").body("hi there!").send().await;
+        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.text().await, "you said: hi there!");
+    }
+
+    #[test]
+    fn traits() {
+        use crate::routing::MethodRouter;
+        use crate::test_helpers::*;
+        assert_send::<MethodRouter<(), NotSendSync, NotSendSync, ()>>();
+        assert_sync::<MethodRouter<(), NotSendSync, NotSendSync, ()>>();
+    }
 }

@@ -238,8 +238,8 @@ impl fmt::Debug for BodyStream {
 
 #[test]
 fn body_stream_traits() {
-    crate::tests::assert_send::<BodyStream>();
-    crate::tests::assert_sync::<BodyStream>();
+    crate::test_helpers::assert_send::<BodyStream>();
+    crate::test_helpers::assert_sync::<BodyStream>();
 }
 
 /// Extractor that extracts the raw request body.
@@ -326,7 +326,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{body::Body, routing::post, tests::*, Router};
+    use crate::{body::Body, routing::post, test_helpers::*, Router};
     use http::StatusCode;
 
     #[tokio::test]
