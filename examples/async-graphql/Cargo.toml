@@ -9,8 +9,5 @@ axum = { path = "../.." }
 tokio = { version = "1.0", features = ["full"] }
 tracing = "0.1"
 tracing-subscriber = "0.2"
-# the latest version requires 2021 edition which we cannot use in the
-# axum repo yet due to our MSRV
-# axum does work just fine on the 2021 edition
-async-graphql = "=2.9.9"
+async-graphql = "2.9.9"
 slab = "0.4.3"
