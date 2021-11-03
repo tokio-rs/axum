@@ -1,13 +1,11 @@
+use crate::ToOperation;
+use axum::{http::Response, response::IntoResponse, Json};
+use okapi::openapi3::{self, Components, MediaType, Operation, RefOr, Responses, SchemaObject};
+use schemars::{schema::RootSchema, JsonSchema};
 use std::{future::Future, marker::PhantomData};
 
-use axum::{http::Response, response::IntoResponse, Json};
-use okapi::openapi3::{self, MediaType, Operation, RefOr, Responses};
-use schemars::JsonSchema;
-
-use crate::ToOperation;
-
 pub trait ToResponses {
-    fn to_responses() -> Responses;
+    fn to_responses(components: &mut Components) -> Responses;
 }
 
 // `const S: &'static str` is gonna be great
@@ -18,19 +16,6 @@ pub trait ResponseDescription {
 pub trait IntoOpenApiResponse: ToResponses + IntoResponse {}
 
 impl<T> IntoOpenApiResponse for T where T: ToResponses + IntoResponse {}
-
-impl<F, Fut, Res> ToOperation<()> for F
-where
-    F: FnOnce() -> Fut,
-    Fut: Future<Output = Res> + Send,
-    Res: ToResponses,
-{
-    fn to_operation(&self) -> Operation {
-        let mut op = Operation::default();
-        op.responses = Res::to_responses();
-        op
-    }
-}
 
 pub struct WithDescription<T, K> {
     response: K,
@@ -79,8 +64,8 @@ where
     T: ResponseDescription,
     K: ToResponses,
 {
-    fn to_responses() -> Responses {
-        let mut res = K::to_responses();
+    fn to_responses(components: &mut Components) -> Responses {
+        let mut res = K::to_responses(components);
         if let Some(RefOr::Object(default)) = &mut res.default {
             default.description = T::DESCRIPTION.to_string();
         }
@@ -89,7 +74,7 @@ where
 }
 
 impl ToResponses for () {
-    fn to_responses() -> Responses {
+    fn to_responses(_components: &mut Components) -> Responses {
         Responses::default()
     }
 }
@@ -98,10 +83,27 @@ impl<T> ToResponses for Json<T>
 where
     T: JsonSchema,
 {
-    fn to_responses() -> Responses {
-        let schema = schemars::schema_for!(T).schema;
+    fn to_responses(components: &mut Components) -> Responses {
+        let gen = schemars::gen::SchemaSettings::openapi3().into_generator();
+
+        let RootSchema {
+            // TODO(david): what is `meta_schema`?
+            meta_schema,
+            schema,
+            definitions,
+        } = gen.into_root_schema_for::<T>();
+
         let mut media_type = MediaType::default();
         media_type.schema = Some(schema);
+
+        let definitions = definitions
+            .into_iter()
+            .filter_map(|(k, schema)| match schema {
+                schemars::schema::Schema::Bool(_) => None,
+                schemars::schema::Schema::Object(obj) => Some((k, obj)),
+            })
+            .collect::<schemars::Map<_, _>>();
+        components.schemas.extend(definitions);
 
         let response = openapi3::Response {
             content: vec![("application/json".to_string(), media_type)]

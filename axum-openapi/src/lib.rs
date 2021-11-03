@@ -2,11 +2,9 @@
     clippy::field_reassign_with_default,
     clippy::new_without_default,
     clippy::type_complexity,
-    dead_code,
     unreachable_code,
     unused_imports,
-    unused_mut,
-    unused_variables
+    unused_mut
 )]
 
 use axum::{
@@ -16,7 +14,9 @@ use axum::{
     routing::Route,
     BoxError, Json, Router,
 };
-use okapi::openapi3::{self, Info, MediaType, OpenApi, Operation, PathItem, RefOr, Responses};
+use okapi::openapi3::{
+    self, Components, Info, MediaType, OpenApi, Operation, PathItem, RefOr, Responses,
+};
 use schemars::JsonSchema;
 use std::{borrow::Cow, convert::Infallible, future::Future, marker::PhantomData};
 use tower_layer::Layer;
@@ -36,6 +36,7 @@ pub use self::{
 pub struct OpenApiRouter<B = Body> {
     router: Router<B>,
     schema: OpenApi,
+    components: Components,
 }
 
 impl<B> OpenApiRouter<B>
@@ -51,6 +52,7 @@ where
         Self {
             router: Default::default(),
             schema,
+            components: Default::default(),
         }
     }
 
@@ -68,7 +70,7 @@ where
 
         self.schema
             .paths
-            .insert(path.to_string(), service.to_path_item());
+            .insert(path.to_string(), service.to_path_item(&mut self.components));
 
         self.router = self.router.route(path, service);
         self
@@ -108,6 +110,7 @@ where
         OpenApiRouter {
             router: self.router.layer(layer),
             schema: self.schema,
+            components: self.components,
         }
     }
 
@@ -123,7 +126,8 @@ where
         self
     }
 
-    pub fn into_parts(self) -> (Router<B>, OpenApi) {
+    pub fn into_parts(mut self) -> (Router<B>, OpenApi) {
+        self.schema.components = Some(self.components);
         (self.router, self.schema)
     }
 }
@@ -230,7 +234,7 @@ mod tests {
     use crate::handler_method_routing::get;
     use assert_json_diff::assert_json_eq;
     use axum::{
-        extract::Extension,
+        extract::{Extension, Path},
         http::{header::CONTENT_TYPE, StatusCode},
         response::Headers,
         AddExtensionLayer, Json,
@@ -244,6 +248,12 @@ mod tests {
         #[derive(Serialize, JsonSchema)]
         struct RootResponse {
             foo: &'static str,
+            bar: Inner,
+        }
+
+        #[derive(Serialize, JsonSchema)]
+        struct Inner {
+            foo: &'static str,
             bar: bool,
         }
 
@@ -252,30 +262,33 @@ mod tests {
                 "Just JSON",
                 Json(RootResponse {
                     foo: "hi",
-                    bar: false,
+                    bar: Inner {
+                        foo: "hi",
+                        bar: false,
+                    },
                 })
             )
         }
 
-        let app = OpenApiRouter::<Body>::new(Info {
+        async fn get_foo(Path(id): Path<u64>) -> impl IntoOpenApiResponse {
+            // ...
+        }
+
+        let info = Info {
             title: "axum-test".to_string(),
-            description: Default::default(),
-            terms_of_service: Default::default(),
-            contact: Default::default(),
-            license: Default::default(),
             version: "0.0.0".to_string(),
-            extensions: Default::default(),
-        })
-        .route("/", get("root", root))
-        .route(
-            "/foo",
-            get("get_foo", || async {}).post("create_foo", || async {}),
-        );
+            ..Default::default()
+        };
+
+        let app = OpenApiRouter::<Body>::new(info)
+            .route("/", get("root", root))
+            .route("/foo/:id", get("get_foo", get_foo));
 
         let (_, openapi) = app.into_parts();
 
         println!("{}", serde_json::to_string_pretty(&openapi).unwrap());
 
+        // TODO(david): switch to cargo-insta
         assert_json_eq!(
             openapi,
             json!({
@@ -299,7 +312,7 @@ mod tests {
                                                 "required": ["bar", "foo"],
                                                 "properties": {
                                                     "foo": { "type": "string" },
-                                                    "bar": { "type": "boolean" },
+                                                    "bar": { "$ref": "#/components/schemas/Inner" },
                                                 }
                                             }
                                         }
@@ -308,16 +321,24 @@ mod tests {
                             },
                         }
                     },
-                    "/foo": {
+                    "/foo/:id": {
                         "get": {
                             "operationId": "get_foo",
                             "responses": {},
                         },
-                        "post": {
-                            "operationId": "create_foo",
-                            "responses": {},
-                        }
                     },
+                },
+                "components": {
+                    "schemas": {
+                        "Inner": {
+                            "type": "object",
+                            "required": ["bar", "foo"],
+                            "properties": {
+                                "foo": { "type": "string" },
+                                "bar": { "type": "boolean" },
+                            }
+                        }
+                    }
                 }
             }),
         );
