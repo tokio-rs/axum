@@ -6,12 +6,15 @@ publish = false
 
 [dependencies]
 axum = { path = "../axum" }
-openapiv3 = "0.5.0"
+# openapiv3 = "0.5.0"
+okapi = { version = "0.7.0-rc.1", features = ["impl_json_schema", "preserve_order"] }
 tower-service = "0.3"
 tower-layer = "0.3"
 serde_yaml = "0.8"
 serde_json = "1.0"
 serde = "1.0"
+assert-json-diff = "2.0"
+schemars = "0.8"
 
 [dev-dependencies]
 tokio = { version = "1.13", features = ["full"] }

@@ -16,30 +16,41 @@ use axum::{
     routing::Route,
     BoxError, Json, Router,
 };
-use openapiv3::{HeaderStyle, MediaType, OpenAPI, Operation, PathItem, ReferenceOr, Responses};
-use std::{borrow::Cow, convert::Infallible, future::Future};
+use okapi::openapi3::{self, Info, MediaType, OpenApi, Operation, PathItem, RefOr, Responses};
+use schemars::JsonSchema;
+use std::{borrow::Cow, convert::Infallible, future::Future, marker::PhantomData};
 use tower_layer::Layer;
 use tower_service::Service;
 
 pub mod handler_method_routing;
+mod to_operation;
+mod to_path_item;
+mod to_responses;
+
+pub use self::{
+    to_operation::ToOperation,
+    to_path_item::ToPathItem,
+    to_responses::{describe, IntoOpenApiResponse, ResponseDescription, ToResponses},
+};
 
 pub struct OpenApiRouter<B = Body> {
     router: Router<B>,
-    schema: OpenAPI,
+    schema: OpenApi,
 }
 
 impl<B> OpenApiRouter<B>
 where
     B: Send + 'static,
 {
-    pub fn new() -> Self {
-        Self::with_openapi(Default::default())
-    }
-
-    pub fn with_openapi(openapi: OpenAPI) -> Self {
+    pub fn new(info: Info) -> Self {
+        let schema = OpenApi {
+            openapi: OpenApi::default_version(),
+            info,
+            ..Default::default()
+        };
         Self {
             router: Default::default(),
-            schema: openapi,
+            schema,
         }
     }
 
@@ -57,7 +68,7 @@ where
 
         self.schema
             .paths
-            .insert(path.to_string(), ReferenceOr::Item(service.to_path_item()));
+            .insert(path.to_string(), service.to_path_item());
 
         self.router = self.router.route(path, service);
         self
@@ -112,12 +123,12 @@ where
         self
     }
 
-    pub fn into_parts(self) -> (Router<B>, OpenAPI) {
+    pub fn into_parts(self) -> (Router<B>, OpenApi) {
         (self.router, self.schema)
     }
 }
 
-pub fn schema_routes(schema: OpenAPI) -> SchemaRoutes {
+pub fn schema_routes(schema: OpenApi) -> SchemaRoutes {
     SchemaRoutes {
         schema,
         json: true,
@@ -127,7 +138,7 @@ pub fn schema_routes(schema: OpenAPI) -> SchemaRoutes {
 }
 
 pub struct SchemaRoutes {
-    schema: OpenAPI,
+    schema: OpenApi,
     json: bool,
     yaml: bool,
     path: Cow<'static, str>,
@@ -164,7 +175,7 @@ impl SchemaRoutes {
         if self.yaml {
             router = router.route(
                 &format!("/{}.yaml", self.path),
-                axum::routing::get(|Extension(schema): Extension<Arc<OpenAPI>>| async move {
+                axum::routing::get(|Extension(schema): Extension<Arc<OpenApi>>| async move {
                     Yaml((&*schema).clone())
                 }),
             );
@@ -173,7 +184,7 @@ impl SchemaRoutes {
         if self.json {
             router = router.route(
                 &format!("/{}.json", self.path),
-                axum::routing::get(|Extension(schema): Extension<Arc<OpenAPI>>| async move {
+                axum::routing::get(|Extension(schema): Extension<Arc<OpenApi>>| async move {
                     Json((&*schema).clone())
                 }),
             )
@@ -213,79 +224,102 @@ where
     }
 }
 
-pub trait ToPathItem {
-    fn to_path_item(&self) -> PathItem;
-}
-
-pub trait ToOperation<T> {
-    fn to_operation(&self) -> Operation;
-}
-
-pub trait ToResponses {
-    fn to_responses() -> Responses;
-}
-
-impl<F, Fut, Res> ToOperation<()> for F
-where
-    F: FnOnce() -> Fut,
-    Fut: Future<Output = Res> + Send,
-    Res: ToResponses,
-{
-    fn to_operation(&self) -> Operation {
-        let mut op = Operation::default();
-        op.responses = Res::to_responses();
-        op
-    }
-}
-
-impl ToResponses for () {
-    fn to_responses() -> Responses {
-        Responses::default()
-    }
-}
-
-impl<T> ToResponses for Json<T> {
-    fn to_responses() -> Responses {
-        let response = openapiv3::Response {
-            content: vec![("application/json".to_string(), MediaType::default())]
-                .into_iter()
-                .collect(),
-            ..Default::default()
-        };
-
-        // TODO(david): how to handle `response.content.schema`? Would be cool if we could say
-        // something else than "its JSON"
-
-        Responses {
-            default: Some(ReferenceOr::Item(response)),
-            responses: Default::default(),
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::handler_method_routing::get;
+    use assert_json_diff::assert_json_eq;
     use axum::{
         extract::Extension,
         http::{header::CONTENT_TYPE, StatusCode},
         response::Headers,
         AddExtensionLayer, Json,
     };
+    use serde::Serialize;
     use serde_json::json;
     use std::sync::Arc;
 
     #[tokio::test]
     async fn test_openapi() {
-        let app = OpenApiRouter::new()
-            .route("/", get(|| async { Json(json!({ "foo": "bar" })) }))
-            .route("/foo", get(|| async {}).post(|| async {}));
+        #[derive(Serialize, JsonSchema)]
+        struct RootResponse {
+            foo: &'static str,
+            bar: bool,
+        }
 
-        let (router, openapi) = app.into_parts();
+        async fn root() -> impl IntoOpenApiResponse {
+            describe!(
+                "Just JSON",
+                Json(RootResponse {
+                    foo: "hi",
+                    bar: false,
+                })
+            )
+        }
 
-        println!("{}", serde_yaml::to_string(&openapi).unwrap());
+        let app = OpenApiRouter::<Body>::new(Info {
+            title: "axum-test".to_string(),
+            description: Default::default(),
+            terms_of_service: Default::default(),
+            contact: Default::default(),
+            license: Default::default(),
+            version: "0.0.0".to_string(),
+            extensions: Default::default(),
+        })
+        .route("/", get("root", root))
+        .route(
+            "/foo",
+            get("get_foo", || async {}).post("create_foo", || async {}),
+        );
 
-        let router_with_openapi_schema = router.merge(schema_routes(openapi).into_router());
+        let (_, openapi) = app.into_parts();
+
+        println!("{}", serde_json::to_string_pretty(&openapi).unwrap());
+
+        assert_json_eq!(
+            openapi,
+            json!({
+                "openapi": "3.0.0",
+                "info": {
+                    "title": "axum-test",
+                    "version": "0.0.0",
+                },
+                "paths": {
+                    "/": {
+                        "get": {
+                            "operationId": "root",
+                            "responses": {
+                                "default": {
+                                    "description": "Just JSON",
+                                    "content": {
+                                        "application/json": {
+                                            "schema": {
+                                                "title": "RootResponse",
+                                                "type": "object",
+                                                "required": ["bar", "foo"],
+                                                "properties": {
+                                                    "foo": { "type": "string" },
+                                                    "bar": { "type": "boolean" },
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                        }
+                    },
+                    "/foo": {
+                        "get": {
+                            "operationId": "get_foo",
+                            "responses": {},
+                        },
+                        "post": {
+                            "operationId": "create_foo",
+                            "responses": {},
+                        }
+                    },
+                }
+            }),
+        );
     }
 }

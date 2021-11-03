@@ -13,7 +13,7 @@ use axum::{
     http::{Request, Response},
     routing::MethodNotAllowed,
 };
-use openapiv3::{Operation, PathItem};
+use okapi::openapi3::{Operation, PathItem};
 use tower_service::Service;
 
 // NOTE: could we make axum main method routers work like this? Its more generics but conceptually
@@ -22,25 +22,37 @@ use tower_service::Service;
 // write all this and could instead wrap it, similarly to how we're wrapping `Router`
 // TODO(david): impl fmt::Debug
 pub struct MethodRouter<Delete, Get, Head, On, Options, Patch, Post, Put, Trace, B = Body> {
-    delete: Delete,
-    delete_operation: Option<Operation>,
-    get: Get,
-    get_operation: Option<Operation>,
-    head: Head,
-    head_operation: Option<Operation>,
-    on: On,
-    on_operation: Option<Operation>,
-    options: Options,
-    options_operation: Option<Operation>,
-    patch: Patch,
-    patch_operation: Option<Operation>,
-    post: Post,
-    post_operation: Option<Operation>,
-    put: Put,
-    put_operation: Option<Operation>,
-    trace: Trace,
-    trace_operation: Option<Operation>,
+    delete: Option<WithOperation<Delete>>,
+    get: Option<WithOperation<Get>>,
+    head: Option<WithOperation<Head>>,
+    on: Option<WithOperation<On>>,
+    options: Option<WithOperation<Options>>,
+    patch: Option<WithOperation<Patch>>,
+    post: Option<WithOperation<Post>>,
+    put: Option<WithOperation<Put>>,
+    trace: Option<WithOperation<Trace>>,
     _marker: PhantomData<fn() -> B>,
+}
+
+#[derive(Clone, Default)]
+struct WithOperation<T> {
+    svc: T,
+    operation: Operation,
+}
+
+impl<T> WithOperation<T> {
+    fn get_operation(&self) -> Operation {
+        self.operation.clone()
+    }
+}
+
+fn operation_with_id<H, T>(id: impl Into<String>, handler: &H) -> Operation
+where
+    H: ToOperation<T>,
+{
+    let mut op = handler.to_operation();
+    op.operation_id = Some(id.into());
+    op
 }
 
 impl<Delete, Get, Head, On, Options, Patch, Post, Put, Trace, B> Clone
@@ -59,29 +71,21 @@ where
     fn clone(&self) -> Self {
         Self {
             delete: self.delete.clone(),
-            delete_operation: self.delete_operation.clone(),
             get: self.get.clone(),
-            get_operation: self.get_operation.clone(),
             head: self.head.clone(),
-            head_operation: self.head_operation.clone(),
             on: self.on.clone(),
-            on_operation: self.on_operation.clone(),
             options: self.options.clone(),
-            options_operation: self.options_operation.clone(),
             patch: self.patch.clone(),
-            patch_operation: self.patch_operation.clone(),
             post: self.post.clone(),
-            post_operation: self.post_operation.clone(),
             put: self.put.clone(),
-            put_operation: self.put_operation.clone(),
             trace: self.trace.clone(),
-            trace_operation: self.trace_operation.clone(),
             _marker: PhantomData,
         }
     }
 }
 
 pub fn get<H, B, T>(
+    id: impl Into<String>,
     handler: H,
 ) -> MethodRouter<
     MethodNotAllowed,
@@ -100,23 +104,17 @@ where
 {
     MethodRouter {
         delete: Default::default(),
-        delete_operation: Default::default(),
-        get_operation: Some(handler.to_operation()),
-        get: handler.into_service(),
+        get: Some(WithOperation {
+            operation: operation_with_id(id, &handler),
+            svc: handler.into_service(),
+        }),
         head: Default::default(),
-        head_operation: Default::default(),
         on: Default::default(),
-        on_operation: Default::default(),
         options: Default::default(),
-        options_operation: Default::default(),
         patch: Default::default(),
-        patch_operation: Default::default(),
         post: Default::default(),
-        post_operation: Default::default(),
         put: Default::default(),
-        put_operation: Default::default(),
         trace: Default::default(),
-        trace_operation: Default::default(),
         _marker: PhantomData,
     }
 }
@@ -126,6 +124,7 @@ impl<Delete, Get, Head, On, Options, Patch, Post, Put, Trace, B>
 {
     pub fn post<H, T>(
         self,
+        id: impl Into<String>,
         handler: H,
     ) -> MethodRouter<Delete, Get, Head, On, Options, Patch, IntoService<H, B, T>, Put, Trace, B>
     where
@@ -133,23 +132,17 @@ impl<Delete, Get, Head, On, Options, Patch, Post, Put, Trace, B>
     {
         MethodRouter {
             delete: self.delete,
-            delete_operation: self.delete_operation,
             get: self.get,
-            get_operation: self.get_operation,
             head: self.head,
-            head_operation: self.head_operation,
             on: self.on,
-            on_operation: self.on_operation,
             options: self.options,
-            options_operation: self.options_operation,
             patch: self.patch,
-            patch_operation: self.patch_operation,
-            post_operation: Some(handler.to_operation()),
-            post: handler.into_service(),
+            post: Some(WithOperation {
+                operation: operation_with_id(id, &handler),
+                svc: handler.into_service(),
+            }),
             put: self.put,
-            put_operation: self.put_operation,
             trace: self.trace,
-            trace_operation: self.trace_operation,
             _marker: PhantomData,
         }
     }
@@ -183,17 +176,15 @@ impl<Delete, Get, Head, On, Options, Patch, Post, Put, Trace, B> ToPathItem
 {
     fn to_path_item(&self) -> PathItem {
         PathItem {
-            get: self.get_operation.clone(),
-            put: self.put_operation.clone(),
-            post: self.post_operation.clone(),
-            delete: self.delete_operation.clone(),
-            options: self.options_operation.clone(),
-            head: self.head_operation.clone(),
-            patch: self.patch_operation.clone(),
-            trace: self.trace_operation.clone(),
-            servers: Default::default(),
-            parameters: Default::default(),
-            extensions: Default::default(),
+            get: self.get.as_ref().map(WithOperation::get_operation),
+            put: self.put.as_ref().map(WithOperation::get_operation),
+            post: self.post.as_ref().map(WithOperation::get_operation),
+            delete: self.delete.as_ref().map(WithOperation::get_operation),
+            options: self.options.as_ref().map(WithOperation::get_operation),
+            head: self.head.as_ref().map(WithOperation::get_operation),
+            patch: self.patch.as_ref().map(WithOperation::get_operation),
+            trace: self.trace.as_ref().map(WithOperation::get_operation),
+            ..Default::default()
         }
     }
 }
