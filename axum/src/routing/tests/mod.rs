@@ -1,5 +1,4 @@
 use crate::error_handling::HandleErrorLayer;
-use crate::extract::{Extension, MatchedPath};
 use crate::test_helpers::*;
 use crate::BoxError;
 use crate::{
@@ -10,17 +9,13 @@ use crate::{
     Json, Router,
 };
 use bytes::Bytes;
-use http::{
-    header::{HeaderMap, AUTHORIZATION},
-    Method, Request, Response, StatusCode, Uri,
-};
+use http::{header::HeaderMap, Method, Request, Response, StatusCode, Uri};
 use hyper::Body;
 use serde::Deserialize;
 use serde_json::{json, Value};
 use std::future::Ready;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::{
-    collections::HashMap,
     convert::Infallible,
     future::ready,
     task::{Context, Poll},

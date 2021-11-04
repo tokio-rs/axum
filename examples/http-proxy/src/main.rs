@@ -10,7 +10,7 @@
 //! $ curl -v -x "127.0.0.1:3000" https://tokio.rs
 //! ```
 //!
-//! Example is based on https://github.com/hyperium/hyper/blob/master/examples/http_proxy.rs
+//! Example is based on <https://github.com/hyperium/hyper/blob/master/examples/http_proxy.rs>
 
 use axum::{
     body::{box_body, Body},

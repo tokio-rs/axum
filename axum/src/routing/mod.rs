@@ -37,7 +37,7 @@ mod not_found;
 mod route;
 mod strip_prefix;
 
-#[cfg(tests)]
+#[cfg(test)]
 mod tests;
 
 pub use self::{
