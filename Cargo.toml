@@ -1,5 +1,6 @@
 [workspace]
 members = [
     "axum",
+    "axum-handle-error-extract",
     "examples/*",
 ]
