@@ -249,7 +249,7 @@ where
                 let route = Layer::layer(&layer, route);
                 (id, route)
             })
-            .collect::<HashMap<RouteId, Route<LayeredReqBody>>>();
+            .collect();
 
         let fallback = self.fallback.map(|svc| Layer::layer(&layer, svc));
 
@@ -257,6 +257,39 @@ where
             routes,
             node: self.node,
             fallback,
+        }
+    }
+
+    /// TODO: docs
+    pub fn layer_after_routing<L, LayeredResBody>(self, layer: L) -> Self
+    where
+        L: Layer<Route<B>>,
+        L::Service: Service<Request<B>, Response = Response<LayeredResBody>, Error = Infallible>
+            + Clone
+            + Send
+            + 'static,
+        <L::Service as Service<Request<B>>>::Future: Send + 'static,
+        LayeredResBody: http_body::Body<Data = Bytes> + Send + 'static,
+        LayeredResBody::Error: Into<BoxError>,
+    {
+        let layer = ServiceBuilder::new()
+            .layer_fn(Route::new)
+            .layer(MapResponseBodyLayer::new(box_body))
+            .layer(layer);
+
+        let routes = self
+            .routes
+            .into_iter()
+            .map(|(id, route)| {
+                let route = Layer::layer(&layer, route);
+                (id, route)
+            })
+            .collect();
+
+        Router {
+            routes,
+            node: self.node,
+            fallback: self.fallback,
         }
     }
 

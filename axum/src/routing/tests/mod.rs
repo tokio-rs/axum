@@ -483,7 +483,7 @@ async fn routing_to_router_panics() {
 async fn layer_after_routing() {
     let app = Router::new()
         .route("/foo", get(|| async {}))
-        .layer(RequireAuthorizationLayer::bearer("password"));
+        .layer_after_routing(RequireAuthorizationLayer::bearer("password"));
 
     let client = TestClient::new(app);
 
