@@ -478,3 +478,25 @@ async fn middleware_still_run_for_unmatched_requests() {
 async fn routing_to_router_panics() {
     TestClient::new(Router::new().route("/", Router::new()));
 }
+
+#[tokio::test]
+async fn layer_after_routing() {
+    let app = Router::new()
+        .route("/foo", get(|| async {}))
+        .layer(RequireAuthorizationLayer::bearer("password"));
+
+    let client = TestClient::new(app);
+
+    let res = client
+        .get("/foo")
+        .header("authorization", "Bearer password")
+        .send()
+        .await;
+    assert_eq!(res.status(), StatusCode::OK);
+
+    let res = client.get("/foo").send().await;
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+
+    let res = client.get("/not-found").send().await;
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+}
