@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+- None.
+
+# 0.3.1 (06. November, 2021)
+
 - **fixed:** Implement `Clone` for `IntoMakeServiceWithConnectInfo` ([#471])
 
 [#471]: https://github.com/tokio-rs/axum/pull/471
