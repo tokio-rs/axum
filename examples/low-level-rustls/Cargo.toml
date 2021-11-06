@@ -13,4 +13,4 @@ tokio = { version = "1", features = ["full"] }
 tokio-rustls = "0.23"
 tower = { version = "0.4", features = ["make"] }
 tracing = "0.1"
-tracing-subscriber = "0.2"
+tracing-subscriber = { version="0.3", features = ["env-filter"] }
