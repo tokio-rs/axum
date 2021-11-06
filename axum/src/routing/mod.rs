@@ -257,7 +257,7 @@ where
         }
     }
 
-    /// TODO: docs
+    #[doc = include_str!("../docs/routing/layer_on_matching_route.md")]
     pub fn layer_on_matching_route<L, NewResBody>(self, layer: L) -> Self
     where
         L: Layer<Route<B>>,

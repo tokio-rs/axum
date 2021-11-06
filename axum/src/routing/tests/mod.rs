@@ -499,4 +499,10 @@ async fn layer_on_matching_route() {
 
     let res = client.get("/not-found").send().await;
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
+
+    // it would be nice if this would return `405 Method Not Allowed`
+    // but that requires knowing more about which method route we're calling, which we
+    // don't know currently since its just a generic `Service`
+    let res = client.post("/foo").send().await;
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
 }
