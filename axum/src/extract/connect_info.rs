@@ -56,6 +56,18 @@ where
     }
 }
 
+impl<S, C> Clone for IntoMakeServiceWithConnectInfo<S, C>
+where
+    S: Clone,
+{
+    fn clone(&self) -> Self {
+        Self {
+            svc: self.svc.clone(),
+            _connect_info: PhantomData,
+        }
+    }
+}
+
 /// Trait that connected IO resources implement and use to produce information
 /// about the connection.
 ///
