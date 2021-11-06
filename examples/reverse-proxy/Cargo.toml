@@ -8,4 +8,4 @@ axum = { path = "../../axum" }
 hyper = { version = "0.14", features = ["full"] }
 tokio = { version = "1", features = ["full"] }
 tracing = "0.1"
-tracing-subscriber = "0.2"
+tracing-subscriber = { version="0.3", features = ["env-filter"] }

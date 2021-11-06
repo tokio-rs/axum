@@ -8,6 +8,6 @@ publish = false
 axum = { path = "../../axum" }
 tokio = { version = "1.0", features = ["full"] }
 tracing = "0.1"
-tracing-subscriber = "0.2"
+tracing-subscriber = { version="0.3", features = ["env-filter"] }
 tower = { version = "0.4", features = ["util", "timeout", "load-shed", "limit"] }
 tower-http = { version = "0.1", features = ["add-extension", "auth", "compression-full", "trace" ] }
