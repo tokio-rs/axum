@@ -223,19 +223,16 @@ where
     }
 
     #[doc = include_str!("../docs/routing/layer.md")]
-    pub fn layer<L, LayeredReqBody, LayeredResBody>(self, layer: L) -> Router<LayeredReqBody>
+    pub fn layer<L, NewReqBody, NewResBody>(self, layer: L) -> Router<NewReqBody>
     where
         L: Layer<Route<B>>,
-        L::Service: Service<
-                Request<LayeredReqBody>,
-                Response = Response<LayeredResBody>,
-                Error = Infallible,
-            > + Clone
+        L::Service: Service<Request<NewReqBody>, Response = Response<NewResBody>, Error = Infallible>
+            + Clone
             + Send
             + 'static,
-        <L::Service as Service<Request<LayeredReqBody>>>::Future: Send + 'static,
-        LayeredResBody: http_body::Body<Data = Bytes> + Send + 'static,
-        LayeredResBody::Error: Into<BoxError>,
+        <L::Service as Service<Request<NewReqBody>>>::Future: Send + 'static,
+        NewResBody: http_body::Body<Data = Bytes> + Send + 'static,
+        NewResBody::Error: Into<BoxError>,
     {
         let layer = ServiceBuilder::new()
             .layer_fn(Route::new)
@@ -261,16 +258,16 @@ where
     }
 
     /// TODO: docs
-    pub fn layer_after_routing<L, LayeredResBody>(self, layer: L) -> Self
+    pub fn layer_on_matching_route<L, NewResBody>(self, layer: L) -> Self
     where
         L: Layer<Route<B>>,
-        L::Service: Service<Request<B>, Response = Response<LayeredResBody>, Error = Infallible>
+        L::Service: Service<Request<B>, Response = Response<NewResBody>, Error = Infallible>
             + Clone
             + Send
             + 'static,
         <L::Service as Service<Request<B>>>::Future: Send + 'static,
-        LayeredResBody: http_body::Body<Data = Bytes> + Send + 'static,
-        LayeredResBody::Error: Into<BoxError>,
+        NewResBody: http_body::Body<Data = Bytes> + Send + 'static,
+        NewResBody::Error: Into<BoxError>,
     {
         let layer = ServiceBuilder::new()
             .layer_fn(Route::new)
