@@ -6,7 +6,9 @@ use headers::HeaderMapExt;
 use http_body::Full;
 use std::{convert::Infallible, ops::Deref};
 
-/// Extractor that extracts a typed header value from [`headers`].
+/// Extractor that extracts a typed header value from [`headers`]. In general, it's
+/// recommended to extract only the needed headers via `TypedHeader` rather than removing all
+/// headers with the `HeaderMap` extractor.
 ///
 /// # Example
 ///
