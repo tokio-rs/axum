@@ -17,9 +17,16 @@ use axum::{
     routing::get,
     AddExtensionLayer, Router,
 };
+use cookie::Cookie;
+use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::net::SocketAddr;
 use uuid::Uuid;
+
+lazy_static! {
+    static ref SESSION_ID: String = Uuid::new_v4().to_string();
+}
 
 #[tokio::main]
 async fn main() {
@@ -81,25 +88,29 @@ where
 
         let headers = req.headers().expect("other extractor taken headers");
 
-        let cookie = if let Some(cookie) = headers
+        let cookie = headers
             .get(http::header::COOKIE)
             .and_then(|value| value.to_str().ok())
             .map(|value| value.to_string())
-        {
-            cookie
-        } else {
+            .unwrap_or("".to_string());
+
+        let cookie_map = parse_cookie(cookie);
+
+        if !cookie_map.contains_key(&*SESSION_ID) {
             let user_id = UserId::new();
             let mut session = Session::new();
             session.insert("user_id", user_id).unwrap();
             let cookie = store.store_session(session).await.unwrap().unwrap();
 
+            let cookie = Cookie::build(&*SESSION_ID, &cookie).finish().to_string();
             return Ok(Self::CreatedFreshUserId {
                 user_id,
                 cookie: cookie.parse().unwrap(),
             });
-        };
+        }
 
-        let user_id = if let Some(session) = store.load_session(cookie).await.unwrap() {
+        let cookie = cookie_map.get(&*SESSION_ID).unwrap();
+        let user_id = if let Some(session) = store.load_session(cookie.to_string()).await.unwrap() {
             if let Some(user_id) = session.get::<UserId>("user_id") {
                 user_id
             } else {
@@ -123,4 +134,19 @@ impl UserId {
     fn new() -> Self {
         Self(Uuid::new_v4())
     }
+}
+
+fn parse_cookie(cookie: String) -> HashMap<String, String> {
+    let mut map = HashMap::new();
+    let v: Vec<&str> = cookie.split(";").collect();
+    for cookie in &v {
+        let kv: Vec<&str> = cookie.split("=").collect();
+        if kv.len() < 2 {
+            return HashMap::new();
+        }
+        let key = kv[0].trim_start();
+        let value = kv[1].trim_end();
+        map.insert(key.to_string(), value.to_string());
+    }
+    map
 }
