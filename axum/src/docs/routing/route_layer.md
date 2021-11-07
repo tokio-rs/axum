@@ -17,7 +17,7 @@ use tower_http::auth::RequireAuthorizationLayer;
 
 let app = Router::new()
     .route("/foo", get(|| async {}))
-    .layer_on_matching_route(RequireAuthorizationLayer::bearer("password"));
+    .route_layer(RequireAuthorizationLayer::bearer("password"));
 
 // `GET /foo` with a valid token will receive `200 OK`
 // `GET /foo` with a invalid token will receive `401 Unauthorized`

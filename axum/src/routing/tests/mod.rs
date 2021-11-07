@@ -480,10 +480,10 @@ async fn routing_to_router_panics() {
 }
 
 #[tokio::test]
-async fn layer_on_matching_route() {
+async fn route_layer() {
     let app = Router::new()
         .route("/foo", get(|| async {}))
-        .layer_on_matching_route(RequireAuthorizationLayer::bearer("password"));
+        .route_layer(RequireAuthorizationLayer::bearer("password"));
 
     let client = TestClient::new(app);
 

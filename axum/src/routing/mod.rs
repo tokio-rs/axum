@@ -257,8 +257,8 @@ where
         }
     }
 
-    #[doc = include_str!("../docs/routing/layer_on_matching_route.md")]
-    pub fn layer_on_matching_route<L, NewResBody>(self, layer: L) -> Self
+    #[doc = include_str!("../docs/routing/route_layer.md")]
+    pub fn route_layer<L, NewResBody>(self, layer: L) -> Self
     where
         L: Layer<Route<B>>,
         L::Service: Service<Request<B>, Response = Response<NewResBody>, Error = Infallible>
