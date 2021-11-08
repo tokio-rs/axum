@@ -13,4 +13,11 @@ repository = "https://github.com/tokio-rs/axum"
 
 [dependencies]
 axum = { version = "0.3.2", path = "../axum" }
+http-body = "0.4.4"
+pin-project-lite = "0.2"
+tower = { version = "0.4.10", default-features = false, features = ["util"] }
 tower-service = "0.3"
+
+[dev-dependencies]
+hyper = "0.14"
+tokio = { version = "1.13", features = ["rt", "macros"] }
