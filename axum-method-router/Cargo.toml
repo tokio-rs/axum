@@ -24,3 +24,4 @@ tower-http = { version = "0.1", features = ["map-response-body"] }
 hyper = "0.14"
 tokio = { version = "1.13", features = ["rt", "macros"] }
 tower = { version = "0.4.10", default-features = false, features = ["util", "timeout"] }
+tower-http = { version = "0.1", features = ["map-response-body", "auth", "fs"] }
