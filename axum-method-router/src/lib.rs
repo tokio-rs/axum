@@ -47,6 +47,7 @@ use axum::{
     BoxError,
 };
 use clone_box_service::CloneBoxService;
+use fallback::Fallback;
 use http_body::Empty;
 use pin_project_lite::pin_project;
 use std::{
@@ -63,6 +64,7 @@ use tower_layer::Layer;
 use tower_service::Service;
 
 mod clone_box_service;
+mod fallback;
 
 pub fn get_service<S, B>(svc: S) -> MethodRouter<B, S::Error>
 where
@@ -226,7 +228,7 @@ pub struct MethodRouter<B, E> {
     post: Option<MethodRoute<B, E>>,
     put: Option<MethodRoute<B, E>>,
     trace: Option<MethodRoute<B, E>>,
-    fallback: MethodRoute<B, E>,
+    fallback: Fallback<B, E>,
     _request_body: PhantomData<fn() -> (E, B)>,
 }
 
@@ -264,7 +266,7 @@ impl<B, E> MethodRouter<B, E> {
             post: None,
             put: None,
             trace: None,
-            fallback,
+            fallback: Fallback::Default(fallback),
             _request_body: PhantomData,
         }
     }
@@ -482,7 +484,7 @@ impl<B, E> MethodRouter<B, E> {
         S: Service<Request<B>, Response = Response<BoxBody>, Error = E> + Clone + Send + 'static,
         S::Future: Send + 'static,
     {
-        self.fallback = MethodRoute(CloneBoxService::new(svc));
+        self.fallback = Fallback::Custom(MethodRoute(CloneBoxService::new(svc)));
         self
     }
 
@@ -516,7 +518,7 @@ impl<B, E> MethodRouter<B, E> {
             post: self.post.map(layer_fn),
             put: self.put.map(layer_fn),
             trace: self.trace.map(layer_fn),
-            fallback: layer_fn(self.fallback),
+            fallback: self.fallback.map(layer_fn),
             _request_body: PhantomData,
         }
     }
@@ -552,6 +554,83 @@ impl<B, E> MethodRouter<B, E> {
             _request_body: PhantomData,
         }
     }
+
+    pub fn merge(self, other: MethodRouter<B, E>) -> Self {
+        macro_rules! merge {
+            ( $first:ident, $second:ident ) => {
+                match ($first, $second) {
+                    (Some(_), Some(_)) => panic!(concat!(
+                        "Overlapping method route. Cannot merge two method routes that both define `",
+                        stringify!($first),
+                        "`"
+                    )),
+                    (Some(svc), None) => Some(svc),
+                    (None, Some(svc)) => Some(svc),
+                    (None, None) => None,
+                }
+            };
+        }
+
+        let Self {
+            get,
+            head,
+            delete,
+            options,
+            patch,
+            post,
+            put,
+            trace,
+            fallback,
+            _request_body: _,
+        } = self;
+
+        let Self {
+            get: get_other,
+            head: head_other,
+            delete: delete_other,
+            options: options_other,
+            patch: patch_other,
+            post: post_other,
+            put: put_other,
+            trace: trace_other,
+            fallback: fallback_other,
+            _request_body: _,
+        } = other;
+
+        let get = merge!(get, get_other);
+        let head = merge!(head, head_other);
+        let delete = merge!(delete, delete_other);
+        let options = merge!(options, options_other);
+        let patch = merge!(patch, patch_other);
+        let post = merge!(post, post_other);
+        let put = merge!(put, put_other);
+        let trace = merge!(trace, trace_other);
+
+        let fallback = match (fallback, fallback_other) {
+            (pick @ Fallback::Default(_), Fallback::Default(_)) => pick,
+            (Fallback::Default(_), pick @ Fallback::Custom(_)) => pick,
+            (pick @ Fallback::Custom(_), Fallback::Default(_)) => pick,
+            (Fallback::Custom(_), Fallback::Custom(_)) => {
+                // TODO: we should probably make this a panic in `Router::merge` for 0.4
+                // as it is more consistent with overlapping routes and avoids subtle bugs
+                // where you think you have one fallback but actually you have another
+                panic!("Cannot merge two `MethodRouter`s that both have a fallback")
+            }
+        };
+
+        Self {
+            get,
+            head,
+            delete,
+            options,
+            patch,
+            post,
+            put,
+            trace,
+            fallback,
+            _request_body: PhantomData,
+        }
+    }
 }
 
 impl<B, E> Clone for MethodRouter<B, E> {
@@ -580,22 +659,6 @@ where
     }
 }
 
-macro_rules! call {
-    (
-        $req:expr,
-        $method:expr,
-        $method_variant:ident,
-        $svc:expr
-    ) => {
-        if $method == Method::$method_variant {
-            if let Some(svc) = $svc {
-                return MethodRouterFuture::from_oneshot(svc.clone().oneshot($req))
-                    .strip_body($method == Method::HEAD);
-            }
-        }
-    };
-}
-
 impl<B, E> Service<Request<B>> for MethodRouter<B, E> {
     type Response = Response<BoxBody>;
     type Error = E;
@@ -607,6 +670,22 @@ impl<B, E> Service<Request<B>> for MethodRouter<B, E> {
     }
 
     fn call(&mut self, req: Request<B>) -> Self::Future {
+        macro_rules! call {
+            (
+                $req:expr,
+                $method:expr,
+                $method_variant:ident,
+                $svc:expr
+            ) => {
+                if $method == Method::$method_variant {
+                    if let Some(svc) = $svc {
+                        return MethodRouterFuture::from_oneshot(svc.clone().oneshot($req))
+                            .strip_body($method == Method::HEAD);
+                    }
+                }
+            };
+        }
+
         let method = req.method().clone();
 
         // written with a pattern match like this to ensure we call all routes
@@ -623,9 +702,9 @@ impl<B, E> Service<Request<B>> for MethodRouter<B, E> {
             _request_body: _,
         } = self;
 
-        call!(req, method, GET, get);
-        call!(req, method, HEAD, get);
         call!(req, method, HEAD, head);
+        call!(req, method, HEAD, get);
+        call!(req, method, GET, get);
         call!(req, method, POST, post);
         call!(req, method, OPTIONS, options);
         call!(req, method, PATCH, patch);
@@ -633,8 +712,16 @@ impl<B, E> Service<Request<B>> for MethodRouter<B, E> {
         call!(req, method, DELETE, delete);
         call!(req, method, TRACE, trace);
 
-        MethodRouterFuture::from_oneshot(fallback.clone().oneshot(req))
-            .strip_body(method == Method::HEAD)
+        match fallback {
+            Fallback::Default(fallback) => {
+                MethodRouterFuture::from_oneshot(fallback.clone().oneshot(req))
+                    .strip_body(method == Method::HEAD)
+            }
+            Fallback::Custom(fallback) => {
+                MethodRouterFuture::from_oneshot(fallback.clone().oneshot(req))
+                    .strip_body(method == Method::HEAD)
+            }
+        }
     }
 }
 
@@ -775,6 +862,17 @@ mod tests {
         let (status, body) = call(Method::HEAD, &mut svc).await;
         assert_eq!(status, StatusCode::CREATED);
         assert!(body.is_empty());
+    }
+
+    #[tokio::test]
+    async fn merge() {
+        let mut svc = get(ok).merge(post(ok));
+
+        let (status, _) = call(Method::GET, &mut svc).await;
+        assert_eq!(status, StatusCode::OK);
+
+        let (status, _) = call(Method::POST, &mut svc).await;
+        assert_eq!(status, StatusCode::OK);
     }
 
     #[tokio::test]
