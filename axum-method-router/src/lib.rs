@@ -29,8 +29,8 @@
     rust_2018_idioms,
     future_incompatible,
     nonstandard_style,
-    // TODO(david): enable these lints when stuff is done
-    // missing_debug_implementations,
+    missing_debug_implementations,
+    // TODO(david): enable this lints
     // missing_docs
 )]
 #![deny(unreachable_pub, private_in_public)]
@@ -51,6 +51,7 @@ use http_body::Empty;
 use pin_project_lite::pin_project;
 use std::{
     convert::Infallible,
+    fmt,
     future::Future,
     marker::PhantomData,
     pin::Pin,
@@ -227,6 +228,23 @@ pub struct MethodRouter<B, E> {
     trace: Option<MethodRoute<B, E>>,
     fallback: MethodRoute<B, E>,
     _request_body: PhantomData<fn() -> (E, B)>,
+}
+
+impl<B, E> fmt::Debug for MethodRouter<B, E> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("MethodRouter")
+            .field("get", &self.get)
+            .field("head", &self.head)
+            .field("delete", &self.delete)
+            .field("options", &self.options)
+            .field("patch", &self.patch)
+            .field("post", &self.post)
+            .field("put", &self.put)
+            .field("trace", &self.trace)
+            .field("fallback", &self.fallback)
+            .field("_request_body", &self._request_body)
+            .finish()
+    }
 }
 
 impl<B, E> MethodRouter<B, E> {
@@ -667,6 +685,12 @@ impl<B, E> Future for MethodRouterFuture<B, E> {
 ///
 /// You normally shouldn’t need to care about this type. It's used in [`MethodRouter::layer`].
 pub struct MethodRoute<B, E>(CloneBoxService<Request<B>, Response<BoxBody>, E>);
+
+impl<B, E> fmt::Debug for MethodRoute<B, E> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_tuple("MethodRoute").field(&"...").finish()
+    }
+}
 
 impl<B, E> Clone for MethodRoute<B, E> {
     fn clone(&self) -> Self {
