@@ -1,0 +1,16 @@
+[package]
+name = "axum-method-router"
+version = "0.1.0"
+authors = ["David Pedersen <david.pdrsn@gmail.com>"]
+categories = ["asynchronous", "network-programming", "web-programming"]
+description = "An easier to use method router for axum"
+edition = "2018"
+homepage = "https://github.com/tokio-rs/axum"
+keywords = ["http", "web", "framework"]
+license = "MIT"
+readme = "README.md"
+repository = "https://github.com/tokio-rs/axum"
+
+[dependencies]
+axum = { version = "0.3.2", path = "../axum" }
+tower-service = "0.3"
