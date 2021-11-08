@@ -4,7 +4,7 @@ Error handling layer for axum that supports extractors and async functions
 
 [![Build status](https://github.com/tokio-rs/axum-handle-error-extract/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/tokio-rs/axum-handle-error-extract/actions/workflows/CI.yml)
 [![Crates.io](https://img.shields.io/crates/v/axum-handle-error-extract)](https://crates.io/crates/axum-handle-error-extract)
-[![Documentation](https://docs.rs/axum-handle-error-extract/badge.svg)](https://docs.rs/axum)
+[![Documentation](https://docs.rs/axum-handle-error-extract/badge.svg)](https://docs.rs/axum-handle-error-extract)
 
 More information about this crate can be found in the [crate documentation][docs].
 
