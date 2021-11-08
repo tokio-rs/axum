@@ -17,7 +17,10 @@ http-body = "0.4.4"
 pin-project-lite = "0.2"
 tower = { version = "0.4.10", default-features = false, features = ["util"] }
 tower-service = "0.3"
+tower-layer = "0.3"
+tower-http = { version = "0.1", features = ["map-response-body"] }
 
 [dev-dependencies]
 hyper = "0.14"
 tokio = { version = "1.13", features = ["rt", "macros"] }
+tower = { version = "0.4.10", default-features = false, features = ["util", "timeout"] }
