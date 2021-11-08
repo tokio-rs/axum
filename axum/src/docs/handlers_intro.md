@@ -1,5 +1,5 @@
 In axum a "handler" is an async function that accepts zero or more
-["extractors"](#extractors) as arguments and returns something that
+["extractors"](crate::extract) as arguments and returns something that
 can be converted [into a response](crate::response).
 
 Handlers is where your application logic lives and axum applications are built
