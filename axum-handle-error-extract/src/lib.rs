@@ -387,3 +387,16 @@ impl Future for ResponseFuture {
         self.project().future.poll(cx)
     }
 }
+
+/// Extension trait to [`Service`] for handling errors by mapping them to
+/// responses.
+///
+/// See [module docs](self) for more details on axum's error handling model.
+pub trait HandleErrorExt<B>: Service<Request<B>> + Sized {
+    /// Apply a [`HandleError`] middleware.
+    fn handle_error<F>(self, f: F) -> HandleError<Self, F, B> {
+        HandleError::new(self, f)
+    }
+}
+
+impl<B, S> HandleErrorExt<B> for S where S: Service<Request<B>> {}
