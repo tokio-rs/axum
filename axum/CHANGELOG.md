@@ -7,8 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+- None
+
+# 0.3.2 (08. November, 2021)
+
 - **added:** Add `Router::route_layer` for applying middleware that
-  will only run on requests that match a route ([#474])
+  will only run on requests that match a route. This is useful for middleware
+  that return early, such as authorization ([#474])
 
 [#474]: https://github.com/tokio-rs/axum/pull/474
 
