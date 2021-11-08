@@ -478,3 +478,31 @@ async fn middleware_still_run_for_unmatched_requests() {
 async fn routing_to_router_panics() {
     TestClient::new(Router::new().route("/", Router::new()));
 }
+
+#[tokio::test]
+async fn route_layer() {
+    let app = Router::new()
+        .route("/foo", get(|| async {}))
+        .route_layer(RequireAuthorizationLayer::bearer("password"));
+
+    let client = TestClient::new(app);
+
+    let res = client
+        .get("/foo")
+        .header("authorization", "Bearer password")
+        .send()
+        .await;
+    assert_eq!(res.status(), StatusCode::OK);
+
+    let res = client.get("/foo").send().await;
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+
+    let res = client.get("/not-found").send().await;
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+
+    // it would be nice if this would return `405 Method Not Allowed`
+    // but that requires knowing more about which method route we're calling, which we
+    // don't know currently since its just a generic `Service`
+    let res = client.post("/foo").send().await;
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}

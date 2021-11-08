@@ -7,7 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- None.
+- **added:** Add `Router::route_layer` for applying middleware that
+  will only run on requests that match a route ([#474])
+
+[#474]: https://github.com/tokio-rs/axum/pull/474
 
 # 0.3.1 (06. November, 2021)
 

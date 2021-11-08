@@ -223,19 +223,16 @@ where
     }
 
     #[doc = include_str!("../docs/routing/layer.md")]
-    pub fn layer<L, LayeredReqBody, LayeredResBody>(self, layer: L) -> Router<LayeredReqBody>
+    pub fn layer<L, NewReqBody, NewResBody>(self, layer: L) -> Router<NewReqBody>
     where
         L: Layer<Route<B>>,
-        L::Service: Service<
-                Request<LayeredReqBody>,
-                Response = Response<LayeredResBody>,
-                Error = Infallible,
-            > + Clone
+        L::Service: Service<Request<NewReqBody>, Response = Response<NewResBody>, Error = Infallible>
+            + Clone
             + Send
             + 'static,
-        <L::Service as Service<Request<LayeredReqBody>>>::Future: Send + 'static,
-        LayeredResBody: http_body::Body<Data = Bytes> + Send + 'static,
-        LayeredResBody::Error: Into<BoxError>,
+        <L::Service as Service<Request<NewReqBody>>>::Future: Send + 'static,
+        NewResBody: http_body::Body<Data = Bytes> + Send + 'static,
+        NewResBody::Error: Into<BoxError>,
     {
         let layer = ServiceBuilder::new()
             .layer_fn(Route::new)
@@ -249,7 +246,7 @@ where
                 let route = Layer::layer(&layer, route);
                 (id, route)
             })
-            .collect::<HashMap<RouteId, Route<LayeredReqBody>>>();
+            .collect();
 
         let fallback = self.fallback.map(|svc| Layer::layer(&layer, svc));
 
@@ -257,6 +254,39 @@ where
             routes,
             node: self.node,
             fallback,
+        }
+    }
+
+    #[doc = include_str!("../docs/routing/route_layer.md")]
+    pub fn route_layer<L, NewResBody>(self, layer: L) -> Self
+    where
+        L: Layer<Route<B>>,
+        L::Service: Service<Request<B>, Response = Response<NewResBody>, Error = Infallible>
+            + Clone
+            + Send
+            + 'static,
+        <L::Service as Service<Request<B>>>::Future: Send + 'static,
+        NewResBody: http_body::Body<Data = Bytes> + Send + 'static,
+        NewResBody::Error: Into<BoxError>,
+    {
+        let layer = ServiceBuilder::new()
+            .layer_fn(Route::new)
+            .layer(MapResponseBodyLayer::new(box_body))
+            .layer(layer);
+
+        let routes = self
+            .routes
+            .into_iter()
+            .map(|(id, route)| {
+                let route = Layer::layer(&layer, route);
+                (id, route)
+            })
+            .collect();
+
+        Router {
+            routes,
+            node: self.node,
+            fallback: self.fallback,
         }
     }
 
