@@ -23,10 +23,9 @@ use std::{
     sync::Arc,
     task::{Context, Poll},
 };
-use tokio::net::{unix::UCred, UnixListener};
 use tokio::{
     io::{AsyncRead, AsyncWrite},
-    net::UnixStream,
+    net::{unix::UCred, UnixListener, UnixStream},
 };
 use tower::BoxError;
 
@@ -150,6 +149,7 @@ impl Connection for ClientConnection {
 }
 
 #[derive(Clone, Debug)]
+#[allow(dead_code)]
 struct UdsConnectInfo {
     peer_addr: Arc<tokio::net::unix::SocketAddr>,
     peer_cred: UCred,

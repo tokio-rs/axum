@@ -1,7 +1,5 @@
 use super::*;
-use crate::body::box_body;
-use crate::error_handling::HandleErrorExt;
-use crate::extract::Extension;
+use crate::{body::box_body, error_handling::HandleErrorExt, extract::Extension};
 use std::collections::HashMap;
 
 #[tokio::test]

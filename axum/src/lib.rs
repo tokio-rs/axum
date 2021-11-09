@@ -295,6 +295,7 @@
     clippy::option_option,
     clippy::verbose_file_reads,
     clippy::unnested_or_patterns,
+    clippy::self_named_module_files,
     rust_2018_idioms,
     future_incompatible,
     nonstandard_style,

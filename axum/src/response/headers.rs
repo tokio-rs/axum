@@ -4,8 +4,10 @@ use crate::{
     BoxError,
 };
 use bytes::Bytes;
-use http::header::{HeaderMap, HeaderName, HeaderValue};
-use http::{Response, StatusCode};
+use http::{
+    header::{HeaderMap, HeaderName, HeaderValue},
+    Response, StatusCode,
+};
 use http_body::{Body, Full};
 use std::{convert::TryInto, fmt};
 use tower::util::Either;

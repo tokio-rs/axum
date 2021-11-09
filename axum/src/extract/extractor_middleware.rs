@@ -3,8 +3,7 @@
 //! See [`extractor_middleware`] for more details.
 
 use super::{FromRequest, RequestParts};
-use crate::BoxError;
-use crate::{body::BoxBody, response::IntoResponse};
+use crate::{body::BoxBody, response::IntoResponse, BoxError};
 use bytes::Bytes;
 use futures_util::{future::BoxFuture, ready};
 use http::{Request, Response};

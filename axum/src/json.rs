@@ -1,7 +1,7 @@
-use crate::BoxError;
 use crate::{
     extract::{rejection::*, take_body, FromRequest, RequestParts},
     response::IntoResponse,
+    BoxError,
 };
 use async_trait::async_trait;
 use bytes::Bytes;
@@ -50,8 +50,8 @@ use std::{
 /// # };
 /// ```
 ///
-/// When used as a response, it can serialize any type that implements [`serde::Serialize`] to `JSON`,
-/// and will automatically set `Content-Type: application/json` header.
+/// When used as a response, it can serialize any type that implements [`serde::Serialize`] to
+/// `JSON`, and will automatically set `Content-Type: application/json` header.
 ///
 /// # Response example
 ///

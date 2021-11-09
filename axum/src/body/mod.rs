@@ -1,7 +1,6 @@
 //! HTTP body utilities.
 
-use crate::BoxError;
-use crate::Error;
+use crate::{BoxError, Error};
 
 mod stream_body;
 

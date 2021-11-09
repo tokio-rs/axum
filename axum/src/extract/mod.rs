@@ -359,8 +359,7 @@ pub(crate) fn take_body<B>(req: &mut RequestParts<B>) -> Result<B, BodyAlreadyEx
 
 #[cfg(test)]
 mod tests {
-    use crate::test_helpers::*;
-    use crate::{routing::get, Router};
+    use crate::{routing::get, test_helpers::*, Router};
 
     #[tokio::test]
     async fn consume_body() {

@@ -3,8 +3,8 @@
 use crate::{body::BoxBody, response::IntoResponse, BoxError};
 use bytes::Bytes;
 use http::{Request, Response};
-use std::convert::Infallible;
 use std::{
+    convert::Infallible,
     fmt,
     marker::PhantomData,
     task::{Context, Poll},
@@ -159,8 +159,8 @@ pub mod future {
     use futures_util::ready;
     use http::Response;
     use pin_project_lite::pin_project;
-    use std::convert::Infallible;
     use std::{
+        convert::Infallible,
         future::Future,
         pin::Pin,
         task::{Context, Poll},

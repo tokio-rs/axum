@@ -1,7 +1,6 @@
 //! Routing between [`Service`]s and handlers.
 
-use self::future::RouterFuture;
-use self::not_found::NotFound;
+use self::{future::RouterFuture, not_found::NotFound};
 use crate::{
     body::{box_body, Body, BoxBody},
     extract::{

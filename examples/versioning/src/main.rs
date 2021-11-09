@@ -13,8 +13,7 @@ use axum::{
     routing::get,
     Router,
 };
-use std::collections::HashMap;
-use std::net::SocketAddr;
+use std::{collections::HashMap, net::SocketAddr};
 
 #[tokio::main]
 async fn main() {

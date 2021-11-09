@@ -8,10 +8,10 @@ use super::{Extension, FromRequest, RequestParts};
 use crate::{AddExtension, AddExtensionLayer};
 use async_trait::async_trait;
 use hyper::server::conn::AddrStream;
-use std::future::ready;
 use std::{
     convert::Infallible,
     fmt,
+    future::ready,
     marker::PhantomData,
     net::SocketAddr,
     task::{Context, Poll},
@@ -144,8 +144,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Server;
-    use crate::{routing::get, Router};
+    use crate::{routing::get, Router, Server};
     use std::net::{SocketAddr, TcpListener};
 
     #[tokio::test]

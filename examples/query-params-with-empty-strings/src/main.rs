@@ -31,6 +31,7 @@ async fn handler(Query(params): Query<Params>) -> String {
 ///
 /// [`serde_with`]: https://docs.rs/serde_with/1.11.0/serde_with/rust/string_empty_as_none/index.html
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 struct Params {
     #[serde(default, deserialize_with = "empty_string_as_none")]
     foo: Option<String>,

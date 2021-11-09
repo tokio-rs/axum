@@ -1,10 +1,9 @@
 //! Rejection response types.
 
 use super::IntoResponse;
-use crate::BoxError;
 use crate::{
     body::{box_body, BoxBody},
-    Error,
+    BoxError, Error,
 };
 use bytes::Bytes;
 use http_body::Full;
