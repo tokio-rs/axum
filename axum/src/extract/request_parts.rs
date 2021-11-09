@@ -323,10 +323,49 @@ where
     }
 }
 
+#[async_trait]
+impl<B> FromRequest<B> for http::request::Parts
+where
+    B: Send,
+{
+    type Rejection = RequestPartsAlreadyExtracted;
+
+    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+        let method = unwrap_infallible(Method::from_request(req).await);
+        let uri = unwrap_infallible(Uri::from_request(req).await);
+        let version = unwrap_infallible(Version::from_request(req).await);
+        let headers = HeaderMap::from_request(req).await?;
+        let extensions = Extensions::from_request(req).await?;
+
+        let mut temp_request = Request::new(());
+        *temp_request.method_mut() = method;
+        *temp_request.uri_mut() = uri;
+        *temp_request.version_mut() = version;
+        *temp_request.headers_mut() = headers;
+        *temp_request.extensions_mut() = extensions;
+
+        let (parts, _) = temp_request.into_parts();
+
+        Ok(parts)
+    }
+}
+
+fn unwrap_infallible<T>(result: Result<T, Infallible>) -> T {
+    match result {
+        Ok(value) => value,
+        Err(err) => match err {},
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{body::Body, routing::post, test_helpers::*, Router};
+    use crate::{
+        body::Body,
+        routing::{get, post},
+        test_helpers::*,
+        AddExtensionLayer, Router,
+    };
     use http::StatusCode;
 
     #[tokio::test]
@@ -343,5 +382,43 @@ mod tests {
             res.text().await,
             "Cannot have two request body extractors for a single handler"
         );
+    }
+
+    #[tokio::test]
+    async fn extract_request_parts() {
+        #[derive(Clone)]
+        struct Ext;
+
+        async fn handler(parts: http::request::Parts) {
+            assert_eq!(parts.method, Method::GET);
+            assert_eq!(parts.uri, "/");
+            assert_eq!(parts.version, http::Version::HTTP_11);
+            assert_eq!(parts.headers["x-foo"], "123");
+            parts.extensions.get::<Ext>().unwrap();
+        }
+
+        let client = TestClient::new(
+            Router::new()
+                .route("/", get(handler))
+                .layer(AddExtensionLayer::new(Ext)),
+        );
+
+        let res = client.get("/").header("x-foo", "123").send().await;
+        assert_eq!(res.status(), StatusCode::OK);
+    }
+
+    #[tokio::test]
+    async fn extract_request_parts_doesnt_consume_the_body() {
+        #[derive(Clone)]
+        struct Ext;
+
+        async fn handler(_parts: http::request::Parts, body: String) {
+            assert_eq!(body, "foo");
+        }
+
+        let client = TestClient::new(Router::new().route("/", get(handler)));
+
+        let res = client.get("/").body("foo").send().await;
+        assert_eq!(res.status(), StatusCode::OK);
     }
 }

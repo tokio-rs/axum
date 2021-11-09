@@ -272,6 +272,16 @@ composite_rejection! {
     }
 }
 
+composite_rejection! {
+    /// Rejection used for [`http::request::Parts`].
+    ///
+    /// Contains one variant for each way the [`http::request::Parts`] extractor can fail.
+    pub enum RequestPartsAlreadyExtracted {
+        HeadersAlreadyExtracted,
+        ExtensionsAlreadyExtracted,
+    }
+}
+
 define_rejection! {
     #[status = INTERNAL_SERVER_ERROR]
     #[body = "No matched path found"]
