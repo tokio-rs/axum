@@ -4,9 +4,10 @@ If your project isn't listed here and you would like it to be, please feel free 
 
 ## Community maintained axum ecosystem
 
-- [axum-server](https://crates.io/crates/axum-server): axum-server is a hyper server implementation designed to be used with axum framework.
+- [axum-server](https://crates.io/crates/axum-server): axum-server is a hyper server implementation designed to be used with axum.
 - [axum-typed-websockets](https://crates.io/crates/axum-typed-websockets): `axum::extract::ws` with type safe messages.
 - [axum-flash](https://crates.io/crates/axum-flash): One-time notifications (aka flash messages) for axum.
+- [axum-handle-error-extract](https://crates.io/crates/axum-handle-error-extract): Error handling layer for axum that supports extractors and async functions.
 
 ## Project showcase
 
