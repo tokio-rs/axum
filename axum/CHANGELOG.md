@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- None
+- Implement `IntoResponse` for `http::response::Parts` ([#490])
+
+[#490]: https://github.com/tokio-rs/axum/pull/490
 
 # 0.3.2 (08. November, 2021)
 
