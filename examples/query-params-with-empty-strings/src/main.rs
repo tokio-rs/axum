@@ -5,7 +5,8 @@
 //! ```
 
 use axum::{extract::Query, routing::get, Router};
-use serde::{de::IntoDeserializer, Deserialize, Deserializer};
+use serde::{de, Deserialize, Deserializer};
+use std::{fmt, str::FromStr};
 
 #[tokio::main]
 async fn main() {
@@ -33,7 +34,7 @@ async fn handler(Query(params): Query<Params>) -> String {
 #[derive(Debug, Deserialize)]
 struct Params {
     #[serde(default, deserialize_with = "empty_string_as_none")]
-    foo: Option<String>,
+    foo: Option<i32>,
     bar: Option<String>,
 }
 
@@ -41,12 +42,13 @@ struct Params {
 fn empty_string_as_none<'de, D, T>(de: D) -> Result<Option<T>, D::Error>
 where
     D: Deserializer<'de>,
-    T: Deserialize<'de>,
+    T: FromStr,
+    T::Err: fmt::Display,
 {
     let opt = Option::<String>::deserialize(de)?;
     match opt.as_deref() {
         None | Some("") => Ok(None),
-        Some(s) => T::deserialize(s.into_deserializer()).map(Some),
+        Some(s) => FromStr::from_str(s).map_err(de::Error::custom).map(Some),
     }
 }
 
@@ -59,8 +61,8 @@ mod tests {
     #[tokio::test]
     async fn test_something() {
         assert_eq!(
-            send_request_get_body("foo=foo&bar=bar").await,
-            r#"Params { foo: Some("foo"), bar: Some("bar") }"#,
+            send_request_get_body("foo=1&bar=bar").await,
+            r#"Params { foo: Some(1), bar: Some("bar") }"#,
         );
 
         assert_eq!(
@@ -74,8 +76,8 @@ mod tests {
         );
 
         assert_eq!(
-            send_request_get_body("foo=foo").await,
-            r#"Params { foo: Some("foo"), bar: None }"#,
+            send_request_get_body("foo=1").await,
+            r#"Params { foo: Some(1), bar: None }"#,
         );
 
         assert_eq!(
