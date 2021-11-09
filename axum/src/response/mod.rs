@@ -250,20 +250,7 @@ impl IntoResponse for http::response::Parts {
     type BodyError = Infallible;
 
     fn into_response(self) -> Response<Self::Body> {
-        let Self {
-            status,
-            version,
-            headers,
-            extensions,
-            ..
-        } = self;
-
-        let mut res = Response::new(Empty::new());
-        *res.status_mut() = status;
-        *res.version_mut() = version;
-        *res.headers_mut() = headers;
-        *res.extensions_mut() = extensions;
-        res
+        Response::from_parts(self, Empty::new())
     }
 }
 
