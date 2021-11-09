@@ -245,6 +245,28 @@ impl_into_response_for_body!(hyper::Body);
 impl_into_response_for_body!(Full<Bytes>);
 impl_into_response_for_body!(Empty<Bytes>);
 
+impl IntoResponse for http::response::Parts {
+    type Body = Empty<Bytes>;
+    type BodyError = Infallible;
+
+    fn into_response(self) -> Response<Self::Body> {
+        let Self {
+            status,
+            version,
+            headers,
+            extensions,
+            ..
+        } = self;
+
+        let mut res = Response::new(Empty::new());
+        *res.status_mut() = status;
+        *res.version_mut() = version;
+        *res.headers_mut() = headers;
+        *res.extensions_mut() = extensions;
+        res
+    }
+}
+
 impl<E> IntoResponse for http_body::combinators::BoxBody<Bytes, E>
 where
     E: Into<BoxError> + 'static,
