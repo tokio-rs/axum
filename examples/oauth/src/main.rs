@@ -148,6 +148,7 @@ async fn logout(
 }
 
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 struct AuthRequest {
     code: String,
     state: String,

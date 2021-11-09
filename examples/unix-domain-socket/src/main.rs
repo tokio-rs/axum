@@ -150,6 +150,7 @@ impl Connection for ClientConnection {
 }
 
 #[derive(Clone, Debug)]
+#[allow(dead_code)]
 struct UdsConnectInfo {
     peer_addr: Arc<tokio::net::unix::SocketAddr>,
     peer_cred: UCred,

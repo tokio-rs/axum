@@ -88,6 +88,7 @@ mod tests {
         use std::iter::repeat;
 
         #[derive(Debug, Deserialize)]
+        #[allow(dead_code)]
         struct Input {
             foo: String,
         }
