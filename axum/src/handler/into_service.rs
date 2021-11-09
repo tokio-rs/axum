@@ -64,9 +64,9 @@ where
 
     #[inline]
     fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        // `IntoService` can only be constructed from async functions which are always ready, or from
-        // `Layered` which bufferes in `<Layered as Handler>::call` and is therefore also always
-        // ready.
+        // `IntoService` can only be constructed from async functions which are always ready, or
+        // from `Layered` which bufferes in `<Layered as Handler>::call` and is therefore
+        // also always ready.
         Poll::Ready(Ok(()))
     }
 

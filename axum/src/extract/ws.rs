@@ -131,7 +131,8 @@ impl WebSocketUpgrade {
     /// Set the known protocols.
     ///
     /// If the protocol name specified by `Sec-WebSocket-Protocol` header
-    /// to match any of them, the upgrade response will include `Sec-WebSocket-Protocol` header and return the protocol name.
+    /// to match any of them, the upgrade response will include `Sec-WebSocket-Protocol` header and
+    /// return the protocol name.
     ///
     /// # Examples
     ///

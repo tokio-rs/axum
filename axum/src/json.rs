@@ -50,8 +50,8 @@ use std::{
 /// # };
 /// ```
 ///
-/// When used as a response, it can serialize any type that implements [`serde::Serialize`] to `JSON`,
-/// and will automatically set `Content-Type: application/json` header.
+/// When used as a response, it can serialize any type that implements [`serde::Serialize`] to
+/// `JSON`, and will automatically set `Content-Type: application/json` header.
 ///
 /// # Response example
 ///
