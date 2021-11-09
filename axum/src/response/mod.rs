@@ -245,6 +245,15 @@ impl_into_response_for_body!(hyper::Body);
 impl_into_response_for_body!(Full<Bytes>);
 impl_into_response_for_body!(Empty<Bytes>);
 
+impl IntoResponse for http::response::Parts {
+    type Body = Empty<Bytes>;
+    type BodyError = Infallible;
+
+    fn into_response(self) -> Response<Self::Body> {
+        Response::from_parts(self, Empty::new())
+    }
+}
+
 impl<E> IntoResponse for http_body::combinators::BoxBody<Bytes, E>
 where
     E: Into<BoxError> + 'static,
