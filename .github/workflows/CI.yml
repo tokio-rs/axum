@@ -14,10 +14,10 @@ jobs:
     - uses: actions/checkout@master
     - uses: actions-rs/toolchain@v1
       with:
-        toolchain: stable
+        toolchain: nightly
         override: true
         profile: minimal
-        components: clippy
+        components: clippy, rustfmt
     - uses: Swatinem/rust-cache@v1
     - name: Check
       uses: actions-rs/cargo@v1
