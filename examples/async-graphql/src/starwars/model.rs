@@ -1,6 +1,8 @@
 use super::StarWars;
-use async_graphql::connection::{query, Connection, Edge, EmptyFields};
-use async_graphql::{Context, Enum, FieldResult, Interface, Object};
+use async_graphql::{
+    connection::{query, Connection, Edge, EmptyFields},
+    Context, Enum, FieldResult, Interface, Object,
+};
 
 /// One of the films in the Star Wars Trilogy
 #[derive(Enum, Copy, Clone, Eq, PartialEq)]

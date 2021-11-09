@@ -407,8 +407,7 @@ mod tests {
 
     #[test]
     fn traits() {
-        use crate::routing::MethodRouter;
-        use crate::test_helpers::*;
+        use crate::{routing::MethodRouter, test_helpers::*};
         assert_send::<MethodRouter<(), NotSendSync, NotSendSync, ()>>();
         assert_sync::<MethodRouter<(), NotSendSync, NotSendSync, ()>>();
     }

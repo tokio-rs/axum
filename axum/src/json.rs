@@ -1,7 +1,7 @@
-use crate::BoxError;
 use crate::{
     extract::{rejection::*, take_body, FromRequest, RequestParts},
     response::IntoResponse,
+    BoxError,
 };
 use async_trait::async_trait;
 use bytes::Bytes;

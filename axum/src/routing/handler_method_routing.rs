@@ -7,8 +7,7 @@ use crate::{
     util::{Either, EitherProj},
 };
 use futures_util::{future::BoxFuture, ready};
-use http::Method;
-use http::{Request, Response};
+use http::{Method, Request, Response};
 use http_body::Empty;
 use pin_project_lite::pin_project;
 use std::{
@@ -19,8 +18,7 @@ use std::{
     pin::Pin,
     task::{Context, Poll},
 };
-use tower::util::Oneshot;
-use tower::ServiceExt;
+use tower::{util::Oneshot, ServiceExt};
 use tower_service::Service;
 
 /// Route requests with any standard HTTP method to the given handler.

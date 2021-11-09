@@ -1,0 +1,2 @@
+# Merge multiple `use`s from the same crate
+imports_granularity = "Crate"

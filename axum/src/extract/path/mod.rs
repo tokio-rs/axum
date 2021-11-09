@@ -176,8 +176,7 @@ mod tests {
     use http::StatusCode;
 
     use super::*;
-    use crate::test_helpers::*;
-    use crate::{routing::get, Router};
+    use crate::{routing::get, test_helpers::*, Router};
     use std::collections::HashMap;
 
     #[tokio::test]

@@ -47,8 +47,10 @@ fn app() -> Router {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use axum::body::Body;
-    use axum::http::{self, Request, StatusCode};
+    use axum::{
+        body::Body,
+        http::{self, Request, StatusCode},
+    };
     use serde_json::{json, Value};
     use std::net::{SocketAddr, TcpListener};
     use tower::ServiceExt; // for `app.oneshot()`

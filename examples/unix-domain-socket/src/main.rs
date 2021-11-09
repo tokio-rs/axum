@@ -23,10 +23,9 @@ use std::{
     sync::Arc,
     task::{Context, Poll},
 };
-use tokio::net::{unix::UCred, UnixListener};
 use tokio::{
     io::{AsyncRead, AsyncWrite},
-    net::UnixStream,
+    net::{unix::UCred, UnixListener, UnixStream},
 };
 use tower::BoxError;
 

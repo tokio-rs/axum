@@ -1,9 +1,15 @@
 mod starwars;
 
-use async_graphql::http::{playground_source, GraphQLPlaygroundConfig};
-use async_graphql::{EmptyMutation, EmptySubscription, Request, Response, Schema};
-use axum::response::IntoResponse;
-use axum::{extract::Extension, response::Html, routing::get, AddExtensionLayer, Json, Router};
+use async_graphql::{
+    http::{playground_source, GraphQLPlaygroundConfig},
+    EmptyMutation, EmptySubscription, Request, Response, Schema,
+};
+use axum::{
+    extract::Extension,
+    response::{Html, IntoResponse},
+    routing::get,
+    AddExtensionLayer, Json, Router,
+};
 use starwars::{QueryRoot, StarWars, StarWarsSchema};
 
 async fn graphql_handler(schema: Extension<StarWarsSchema>, req: Json<Request>) -> Json<Response> {

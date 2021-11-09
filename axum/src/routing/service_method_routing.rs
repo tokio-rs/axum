@@ -107,15 +107,14 @@ use futures_util::ready;
 use http::{Method, Request, Response};
 use http_body::Empty;
 use pin_project_lite::pin_project;
-use std::marker::PhantomData;
 use std::{
     fmt,
     future::Future,
+    marker::PhantomData,
     pin::Pin,
     task::{Context, Poll},
 };
-use tower::util::Oneshot;
-use tower::ServiceExt as _;
+use tower::{util::Oneshot, ServiceExt as _};
 use tower_service::Service;
 
 /// Route requests with any standard HTTP method to the given service.

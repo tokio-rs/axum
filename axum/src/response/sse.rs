@@ -27,8 +27,7 @@
 //! # };
 //! ```
 
-use crate::response::IntoResponse;
-use crate::BoxError;
+use crate::{response::IntoResponse, BoxError};
 use bytes::Bytes;
 use futures_util::{
     ready,
