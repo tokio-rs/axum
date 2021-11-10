@@ -35,7 +35,7 @@
 //!
 //! ## Debugging handler type errors
 //!
-//! For a function to used as a handler it must implement the [`Handler`] trait.
+//! For a function to be used as a handler it must implement the [`Handler`] trait.
 //! axum provides blanket implementations for functions that:
 //!
 //! - Are `async fn`s.
