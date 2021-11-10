@@ -4,31 +4,35 @@
 //! cargo run -p example-tls-rustls
 //! ```
 
-// NOTE: This example is currently broken since axum-server requires `S: Sync`,
-// that isn't necessary and will be fixed in a future release
+use axum::{routing::get, Router};
+use axum_server::tls_rustls::RustlsConfig;
+use std::net::SocketAddr;
 
-fn main() {}
+#[tokio::main]
+async fn main() {
+    // Set the RUST_LOG, if it hasn't been explicitly defined
+    if std::env::var_os("RUST_LOG").is_none() {
+        std::env::set_var("RUST_LOG", "example_tls_rustls=debug")
+    }
+    tracing_subscriber::fmt::init();
 
-// use axum::{handler::get, Router};
+    let config = RustlsConfig::from_pem_file(
+        "examples/tls-rustls/self_signed_certs/cert.pem",
+        "examples/tls-rustls/self_signed_certs/key.pem",
+    )
+    .await
+    .unwrap();
 
-// #[tokio::main]
-// async fn main() {
-//     // Set the RUST_LOG, if it hasn't been explicitly defined
-//     if std::env::var_os("RUST_LOG").is_none() {
-//         std::env::set_var("RUST_LOG", "example_tls_rustls=debug")
-//     }
-//     tracing_subscriber::fmt::init();
+    let app = Router::new().route("/", get(handler));
 
-//     // let app = Router::new().route("/", get(handler));
+    let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
+    println!("listening on {}", addr);
+    axum_server::bind_rustls(addr, config)
+        .serve(app.into_make_service())
+        .await
+        .unwrap();
+}
 
-//     // axum_server::bind_rustls("127.0.0.1:3000")
-//     //     .private_key_file("examples/tls-rustls/self_signed_certs/key.pem")
-//     //     .certificate_file("examples/tls-rustls/self_signed_certs/cert.pem")
-//     //     .serve(app)
-//     //     .await
-//     //     .unwrap();
-// }
-
-// async fn handler() -> &'static str {
-//     "Hello, World!"
-// }
+async fn handler() -> &'static str {
+    "Hello, World!"
+}
