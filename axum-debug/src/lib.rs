@@ -78,7 +78,7 @@
 //! }
 //! ```
 //!
-//! ## Performance
+//! # Performance
 //!
 //! Macros in this crate have no effect when using release profile. (eg. `cargo build --release`)
 //!
