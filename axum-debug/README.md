@@ -43,3 +43,4 @@ additional terms or conditions.
 [contributing]: /CONTRIBUTING.md
 [docs]: https://docs.rs/axum-debug
 [license]: /axum-debug/LICENSE
+[issue]: https://github.com/tokio-rs/axum/issues/new
