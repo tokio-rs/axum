@@ -36,6 +36,18 @@ async fn handler() -> bool {
 }
 ```
 
+Error message:
+
+```
+error[E0277]: the trait bound `bool: IntoResponse` is not satisfied
+  --> main.rs:xx:23
+   |
+xx | async fn handler() -> bool {
+   |                       ^^^^
+   |                       |
+   |                       the trait `IntoResponse` is not implemented for `bool`
+```
+
 ## Safety
 
 This crate uses `#![forbid(unsafe_code)]` to ensure everything is implemented in 100% safe Rust.
