@@ -15,7 +15,7 @@ This crate uses `#![forbid(unsafe_code)]` to ensure everything is implemented in
 
 ## Minimum supported Rust version
 
-axum-handle-error-extract's MSRV is 1.54.
+axum-debug's MSRV is 1.54.
 
 ## Getting Help
 
@@ -39,4 +39,7 @@ for inclusion in `axum` by you, shall be licensed as MIT, without any
 additional terms or conditions.
 
 [`axum`]: https://crates.io/crates/axum
+[chat]: https://discord.gg/tokio
+[contributing]: /CONTRIBUTING.md
 [docs]: https://docs.rs/axum-debug
+[license]: /axum-debug/LICENSE
