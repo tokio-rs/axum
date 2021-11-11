@@ -129,8 +129,8 @@ use proc_macro::TokenStream;
 ///
 /// Function is not async:
 ///
-/// ```rust,ignore
-/// #[debug_handler]
+/// ```rust,compile_fail
+/// #[axum_debug::debug_handler]
 /// fn handler() -> &'static str {
 ///     "Hello, world"
 /// }
@@ -146,8 +146,8 @@ use proc_macro::TokenStream;
 ///
 /// Wrong return type:
 ///
-/// ```rust,ignore
-/// #[debug_handler]
+/// ```rust,compile_fail
+/// #[axum_debug::debug_handler]
 /// async fn handler() -> bool {
 ///     false
 /// }
@@ -165,8 +165,8 @@ use proc_macro::TokenStream;
 ///
 /// Wrong extractor:
 ///
-/// ```rust,ignore
-/// #[debug_handler]
+/// ```rust,compile_fail
+/// #[axum_debug::debug_handler]
 /// async fn handler(a: bool) -> String {
 ///     format!("Can I extract a bool? {}", a)
 /// }
@@ -184,8 +184,8 @@ use proc_macro::TokenStream;
 ///
 /// Too many extractors:
 ///
-/// ```rust,ignore
-/// #[debug_handler]
+/// ```rust,compile_fail
+/// #[axum_debug::debug_handler]
 /// async fn handler(
 ///     a: String,
 ///     b: String,
@@ -224,12 +224,12 @@ use proc_macro::TokenStream;
 ///
 /// Future is not [`Send`]:
 ///
-/// ```rust,ignore
-/// #[debug_handler]
+/// ```rust,compile_fail
+/// #[axum_debug::debug_handler]
 /// async fn handler() {
 ///     let not_send = std::rc::Rc::new(());
 ///
-///     async{}.await;
+///     async {}.await;
 /// }
 /// ```
 ///
@@ -253,12 +253,11 @@ pub fn debug_handler(_attr: TokenStream, input: TokenStream) -> TokenStream {
 
 #[cfg(debug_assertions)]
 mod debug {
-    use proc_macro::TokenStream;
-    use proc_macro2::Span;
-    use quote::quote_spanned;
-    use syn::{parse_macro_input, FnArg, Ident, ItemFn, ReturnType, Signature};
+    use proc_macro2::TokenStream;
+    use quote::{format_ident, quote_spanned};
+    use syn::{parse_macro_input, spanned::Spanned, FnArg, Ident, ItemFn, ReturnType, Signature};
 
-    pub(crate) fn apply_debug_handler(input: TokenStream) -> TokenStream {
+    pub(crate) fn apply_debug_handler(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         let function = parse_macro_input!(input as ItemFn);
 
         let vis = &function.vis;
@@ -276,17 +275,20 @@ mod debug {
         });
         let block = &function.block;
 
-        if let Err(error) = async_check(sig) {
-            return error;
+        if let Err(err) = async_check(sig) {
+            return err.into_compile_error().into();
         }
 
-        if let Err(error) = param_limit_check(sig) {
-            return error;
+        if let Err(err) = param_limit_check(sig) {
+            return err.into_compile_error().into();
         }
 
         let check_trait = check_trait_code(sig, &generics);
         let check_return = check_return_code(sig, &generics);
-        let check_params = check_params_code(sig, &generics);
+        let check_params = match check_params_code(sig, &generics) {
+            Ok(tokens) => tokens,
+            Err(err) => return err.into_compile_error().into(),
+        };
 
         let expanded = quote_spanned! {span=>
             #vis #sig {
@@ -304,38 +306,34 @@ mod debug {
     }
 
     fn create_generics(len: usize) -> Vec<Ident> {
-        let mut vec = Vec::new();
-        for i in 1..=len {
-            vec.push(Ident::new(&format!("T{}", i), Span::call_site()));
-        }
-        vec
+        (1..=len).map(|i| format_ident!("T{}", i)).collect()
     }
 
-    fn async_check(sig: &Signature) -> Result<(), TokenStream> {
+    fn async_check(sig: &Signature) -> Result<(), syn::Error> {
         if sig.asyncness.is_none() {
-            let error = syn::Error::new_spanned(sig.fn_token, "handlers must be async functions")
-                .to_compile_error()
-                .into();
-
-            return Err(error);
+            Err(syn::Error::new_spanned(
+                sig.fn_token,
+                "handlers must be async functions",
+            ))
+        } else {
+            Ok(())
         }
-
-        Ok(())
     }
 
-    fn param_limit_check(sig: &Signature) -> Result<(), TokenStream> {
-        if sig.inputs.len() > 16 {
-            let msg = "too many extractors. 16 extractors are allowed\n\
-                       note: you can nest extractors like \"a: (Extractor, Extractor), b: (Extractor, Extractor)\"";
+    fn param_limit_check(sig: &Signature) -> Result<(), syn::Error> {
+        let max_extractors = 16;
 
-            let error = syn::Error::new_spanned(&sig.inputs, msg)
-                .to_compile_error()
-                .into();
+        if sig.inputs.len() > max_extractors {
+            let msg = format!(
+                "too many extractors. {} extractors are allowed\n\
+                note: you can nest extractors like \"a: (Extractor, Extractor), b: (Extractor, Extractor)\"",
+                max_extractors
+            );
 
-            return Err(error);
+            Err(syn::Error::new_spanned(&sig.inputs, msg))
+        } else {
+            Ok(())
         }
-
-        Ok(())
     }
 
     fn check_trait_code(sig: &Signature, generics: &[Ident]) -> proc_macro2::TokenStream {
@@ -357,8 +355,8 @@ mod debug {
 
     fn check_return_code(sig: &Signature, generics: &[Ident]) -> proc_macro2::TokenStream {
         let span = match &sig.output {
-            ReturnType::Default => syn::Error::new_spanned(&sig.output, "").span(),
-            ReturnType::Type(_, t) => syn::Error::new_spanned(t, "").span(),
+            ReturnType::Default => sig.output.span(),
+            ReturnType::Type(_, ty) => ty.span(),
         };
         let ident = &sig.ident;
 
@@ -376,34 +374,48 @@ mod debug {
         }
     }
 
-    fn check_params_code(sig: &Signature, generics: &[Ident]) -> Vec<proc_macro2::TokenStream> {
-        let mut vec = Vec::new();
-
+    fn check_params_code(
+        sig: &Signature,
+        generics: &[Ident],
+    ) -> Result<Vec<TokenStream>, syn::Error> {
         let ident = &sig.ident;
+        generics
+            .iter()
+            .enumerate()
+            .map(|(i, generic)| {
+                let span = match &sig.inputs[i] {
+                    FnArg::Typed(pat_type) => pat_type.ty.span(),
+                    FnArg::Receiver(receiver) => {
+                        // TODO: look into whether its possible to make this work
+                        return Err(syn::Error::new_spanned(
+                            receiver,
+                            "`#[debug_handler]` is not supported on methods",
+                        ));
+                    }
+                };
 
-        for (i, generic) in generics.iter().enumerate() {
-            let span = if let FnArg::Typed(pat_type) = &sig.inputs[i] {
-                syn::Error::new_spanned(&pat_type.ty, "").span()
-            } else {
-                panic!("not a handler")
-            };
+                let tokens = quote_spanned! {span=>
+                    {
+                        debug_handler(#ident);
 
-            let token_stream = quote_spanned! {span=>
-                {
-                    debug_handler(#ident);
+                        fn debug_handler<F, Fut, #(#generics),*>(_f: F)
+                        where
+                            F: ::std::ops::FnOnce(#(#generics),*) -> Fut,
+                            Fut: ::std::future::Future,
+                            #generic: ::axum::extract::FromRequest + Send,
+                        {}
+                    }
+                };
 
-                    fn debug_handler<F, Fut, #(#generics),*>(_f: F)
-                    where
-                        F: ::std::ops::FnOnce(#(#generics),*) -> Fut,
-                        Fut: ::std::future::Future,
-                        #generic: ::axum::extract::FromRequest + Send,
-                    {}
-                }
-            };
-
-            vec.push(token_stream);
-        }
-
-        vec
+                Ok(tokens)
+            })
+            .collect()
     }
+}
+
+#[test]
+fn ui() {
+    let t = trybuild::TestCases::new();
+    t.pass("tests/pass/*.rs");
+    t.compile_fail("tests/fail/*.rs");
 }
