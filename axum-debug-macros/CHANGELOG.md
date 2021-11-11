@@ -6,7 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-None.
+- **breaking:** Removed `debug_router` macro.
 
 # 0.1.0 (6. October 2021)
 
