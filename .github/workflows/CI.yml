@@ -41,9 +41,8 @@ jobs:
         profile: minimal
     - uses: Swatinem/rust-cache@v1
     - name: cargo doc
-      working-directory: ${{ matrix.subcrate }}
       env:
-          RUSTDOCFLAGS: "-D broken-intra-doc-links"
+        RUSTDOCFLAGS: "-D broken-intra-doc-links"
       run: cargo doc --all-features --no-deps
 
   cargo-hack:
@@ -60,7 +59,6 @@ jobs:
       run: |
         curl -LsSf https://github.com/taiki-e/cargo-hack/releases/latest/download/cargo-hack-x86_64-unknown-linux-gnu.tar.gz | tar xzf - -C ~/.cargo/bin
     - name: cargo hack check
-      working-directory: ${{ matrix.subcrate }}
       run: cargo hack check --each-feature --no-dev-deps --all
 
   test-versions:
@@ -88,14 +86,11 @@ jobs:
   test-msrv:
     needs: check
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        rust: [1.54]
     steps:
     - uses: actions/checkout@master
     - uses: actions-rs/toolchain@v1
       with:
-        toolchain: ${{ matrix.rust }}
+        toolchain: 1.54
         override: true
         profile: minimal
     - uses: Swatinem/rust-cache@v1
@@ -103,7 +98,11 @@ jobs:
       uses: actions-rs/cargo@v1
       with:
         command: test
-        args: -p axum --all-features --all-targets
+        args: >
+          -p axum
+          -p axum-debug 
+          -p axum-handle-error-extract
+          --all-features --all-targets
 
   test-docs:
     needs: check
