@@ -1,6 +1,6 @@
 # axum-debug
 
-[![Build status](https://github.com/tokio-rs/axum-debug/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/tokio-rs/axum-debug/actions/workflows/CI.yml)
+[![Build status](https://github.com/tokio-rs/axum/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/tokio-rs/axum-debug/actions/workflows/CI.yml)
 [![Crates.io](https://img.shields.io/crates/v/axum-debug)](https://crates.io/crates/axum-debug)
 [![Documentation](https://docs.rs/axum-debug/badge.svg)](https://docs.rs/axum-debug)
 
