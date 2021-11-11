@@ -1,0 +1,20 @@
+[package]
+authors = ["Programatik <programatik29@gmail.com>"]
+categories = ["development-tools::debugging"]
+description = "Macros for axum-debug crate."
+edition = "2018"
+homepage = "https://github.com/tokio-rs/axum"
+keywords = ["axum", "debugging", "debug"]
+license = "MIT"
+name = "axum-debug-macros"
+readme = "README.md"
+repository = "https://github.com/tokio-rs/axum"
+version = "0.1.0"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+proc-macro2 = "1"
+quote = "1"
+syn = { version = "1", features = ["full"] }
