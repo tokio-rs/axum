@@ -1,0 +1,12 @@
+error: too many extractors. 16 extractors are allowed
+note: you can nest extractors like "a: (Extractor, Extractor), b: (Extractor, Extractor)"
+  --> tests/fail/too_many_extractors.rs:5:5
+   |
+5  | /     e1: String,
+6  | |     e2: String,
+7  | |     e3: String,
+8  | |     e4: String,
+...  |
+20 | |     e16: String,
+21 | |     e17: String,
+   | |________________^

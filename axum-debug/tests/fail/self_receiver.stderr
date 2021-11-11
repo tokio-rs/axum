@@ -1,0 +1,5 @@
+error: `#[debug_handler]` is not supported on methods
+  --> tests/fail/self_receiver.rs:17:22
+   |
+17 |     async fn handler(self) {}
+   |                      ^^^^
