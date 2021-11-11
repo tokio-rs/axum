@@ -66,6 +66,7 @@ pub struct Router<B = Body> {
     routes: HashMap<RouteId, Route<B>>,
     node: Node,
     fallback: Fallback<B>,
+    nested_at_root: bool,
 }
 
 impl<B> Clone for Router<B> {
@@ -74,6 +75,7 @@ impl<B> Clone for Router<B> {
             routes: self.routes.clone(),
             node: self.node.clone(),
             fallback: self.fallback.clone(),
+            nested_at_root: self.nested_at_root,
         }
     }
 }
@@ -103,6 +105,7 @@ where
             routes: Default::default(),
             node: Default::default(),
             fallback: Fallback::Default(Route::new(NotFound)),
+            nested_at_root: false,
         }
     }
 
@@ -129,7 +132,7 @@ where
         let id = RouteId::next();
 
         if let Err(err) = self.node.insert(path, id) {
-            panic!("Invalid route: {}", err);
+            self.panic_on_matchit_error(err);
         }
 
         self.routes.insert(id, Route::new(service));
@@ -156,6 +159,10 @@ where
 
         let prefix = path;
 
+        if path == "/" {
+            self.nested_at_root = true;
+        }
+
         match try_downcast::<Router<B>, _>(svc) {
             // if the user is nesting a `Router` we can implement nesting
             // by simplying copying all the routes and adding the prefix in
@@ -166,6 +173,10 @@ where
                     node,
                     // discard the fallback of the nested router
                     fallback: _,
+                    // nesting a router that has something nested at root
+                    // doesn't mean something is nested at root in _this_ router
+                    // thus we don't need to propagate that
+                    nested_at_root: _,
                 } = router;
 
                 for (id, nested_path) in node.paths {
@@ -201,10 +212,11 @@ where
             routes,
             node,
             fallback,
+            nested_at_root,
         } = other;
 
         if let Err(err) = self.node.merge(node) {
-            panic!("Invalid route: {}", err);
+            self.panic_on_matchit_error(err);
         }
 
         for (id, route) in routes {
@@ -217,6 +229,8 @@ where
             (pick @ Fallback::Custom(_), Fallback::Default(_)) => pick,
             (Fallback::Custom(_), pick @ Fallback::Custom(_)) => pick,
         };
+
+        self.nested_at_root = self.nested_at_root || nested_at_root;
 
         self
     }
@@ -253,6 +267,7 @@ where
             routes,
             node: self.node,
             fallback,
+            nested_at_root: self.nested_at_root,
         }
     }
 
@@ -286,6 +301,7 @@ where
             routes,
             node: self.node,
             fallback: self.fallback,
+            nested_at_root: self.nested_at_root,
         }
     }
 
@@ -379,6 +395,17 @@ where
             .clone();
 
         RouterFuture::from_oneshot(route.oneshot(req))
+    }
+
+    fn panic_on_matchit_error(&self, err: matchit::InsertError) {
+        if self.nested_at_root {
+            panic!(
+                "Invalid route: {}. Note that `nest(\"/\", _)` conflicts with all routes. Use `Router::fallback` instead",
+                err,
+            );
+        } else {
+            panic!("Invalid route: {}", err);
+        }
     }
 }
 
