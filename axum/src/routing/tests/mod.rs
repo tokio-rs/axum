@@ -504,3 +504,36 @@ async fn route_layer() {
     let res = client.post("/foo").send().await;
     assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
 }
+
+#[tokio::test]
+#[should_panic(
+    expected = "Invalid route: insertion failed due to conflict with previously registered route: /foo"
+)]
+async fn conflicting_route() {
+    let app = Router::new()
+        .route("/foo", get(|| async {}))
+        .route("/foo", get(|| async {}));
+    TestClient::new(app);
+}
+
+#[tokio::test]
+#[should_panic(
+    expected = "Invalid route: insertion failed due to conflict with previously registered route: /*axum_nest. Note that `nest(\"/\", _)` conflicts with all routes. Use `Router::fallback` instead"
+)]
+async fn good_error_message_if_using_nest_root() {
+    let app = Router::new()
+        .nest("/", get(|| async {}))
+        .route("/", get(|| async {}));
+    TestClient::new(app);
+}
+
+#[tokio::test]
+#[should_panic(
+    expected = "Invalid route: insertion failed due to conflict with previously registered route: /*axum_nest. Note that `nest(\"/\", _)` conflicts with all routes. Use `Router::fallback` instead"
+)]
+async fn good_error_message_if_using_nest_root_when_merging() {
+    let one = Router::new().nest("/", get(|| async {}));
+    let two = Router::new().route("/", get(|| async {}));
+    let app = one.merge(two);
+    TestClient::new(app);
+}
