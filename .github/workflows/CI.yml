@@ -112,7 +112,7 @@ jobs:
         args: >
           -p axum-debug
           --doc
-          --all-features --all-targets
+          --all-features
 
   test-docs:
     needs: check
