@@ -370,7 +370,7 @@ mod debug {
                 where
                     F: ::std::ops::FnOnce(#(#generics),*) -> Fut,
                     Fut: ::std::future::Future<Output = Res>,
-                    Res: ::axum_debug::axum::response::IntoResponse,
+                    Res: ::axum::response::IntoResponse,
                 {}
             }
         }
@@ -396,7 +396,7 @@ mod debug {
                     where
                         F: ::std::ops::FnOnce(#(#generics),*) -> Fut,
                         Fut: ::std::future::Future,
-                        #generic: ::axum_debug::axum::extract::FromRequest + Send,
+                        #generic: ::axum::extract::FromRequest + Send,
                     {}
                 }
             };
