@@ -100,8 +100,18 @@ jobs:
         command: test
         args: >
           -p axum
-          -p axum-debug 
           -p axum-handle-error-extract
+          --all-features --all-targets
+    # the compiler errors are different on 1.54 which makes
+    # the trybuild tests in axum-debug fail, so just run the doc
+    # tests
+    - name: Run axum-debug doc tests
+      uses: actions-rs/cargo@v1
+      with:
+        command: test
+        args: >
+          -p axum-debug
+          --doc
           --all-features --all-targets
 
   test-docs:
