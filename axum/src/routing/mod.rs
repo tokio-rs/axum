@@ -24,6 +24,7 @@ use tower::{util::ServiceExt, ServiceBuilder};
 use tower_http::map_response_body::MapResponseBodyLayer;
 use tower_layer::Layer;
 use tower_service::Service;
+use tracing::warn;
 
 pub mod future;
 pub mod handler_method_routing;
@@ -148,6 +149,13 @@ where
     {
         if path.is_empty() {
             panic!("Invalid route: empty path");
+        }
+
+        if path == "/" {
+            warn!(
+                r#"Using `.nest("/", service)` is discouraged, use `.fallback(service)` instead."#
+            );
+            return self.fallback(svc);
         }
 
         if path.contains('*') {
