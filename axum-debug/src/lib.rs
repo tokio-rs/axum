@@ -79,7 +79,7 @@
 //!
 //! [`axum`]: axum
 //! [`Handler`]: axum::handler::Handler
-//! [`debug_handler`]: macro@debug_handler
+//! [`debug_handler`]: debug_handler
 
 #![warn(
     clippy::all,
