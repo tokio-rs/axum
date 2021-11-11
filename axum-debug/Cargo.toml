@@ -11,6 +11,11 @@ readme = "README.md"
 repository = "https://github.com/tokio-rs/axum"
 version = "0.1.0"
 
+[lib]
+proc-macro = true
+
 [dependencies]
-axum = { path = "../axum" }
-axum-debug-macros = { path = "../axum-debug-macros" }
+proc-macro2 = "1.0"
+quote = "1.0"
+syn = { version = "1.0", features = ["full"] }
+axum = { path = "../axum", version = "0.3" }

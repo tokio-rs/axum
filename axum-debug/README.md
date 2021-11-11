@@ -1,63 +1,42 @@
-[![License](https://img.shields.io/crates/l/axum-debug)](https://choosealicense.com/licenses/mit/)
-[![Crates.io](https://img.shields.io/crates/v/axum-debug)](https://crates.io/crates/axum-debug)
-[![Docs - Stable](https://img.shields.io/crates/v/axum-debug?color=blue&label=docs)](https://docs.rs/axum-debug/)
-
 # axum-debug
+
+[![Build status](https://github.com/tokio-rs/axum-debug/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/tokio-rs/axum-debug/actions/workflows/CI.yml)
+[![Crates.io](https://img.shields.io/crates/v/axum-debug)](https://crates.io/crates/axum-debug)
+[![Documentation](https://docs.rs/axum-debug/badge.svg)](https://docs.rs/axum-debug)
 
 This is a debugging crate that provides better error messages for [`axum`]
 framework.
 
-[`axum`] is a great framework for developing web applications. But when you
-make a mistake, error messages can be really complex and long. It can take a
-long time for you to figure out what is wrong in your code. This crate provides
-utilities to generate better error messages in case you make a mistake.
-
-## Usage Example
-
-Will fail with a better error message:
-
-```rust
-use axum::{routing::get, Router};
-use axum_debug::debug_handler;
-
-#[tokio::main]
-async fn main() {
-    let app = Router::new().route("/", get(handler));
-
-    axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())
-        .serve(app.into_make_service())
-        .await
-        .unwrap();
-}
-
-#[debug_handler]
-async fn handler() -> bool {
-    false
-}
-```
-
-Error message:
-
-```
-error[E0277]: the trait bound `bool: IntoResponse` is not satisfied
-  --> main.rs:xx:23
-   |
-xx | async fn handler() -> bool {
-   |                       ^^^^
-   |                       |
-   |                       the trait `IntoResponse` is not implemented for `bool`
-```
+More information about this crate can be found in the [crate documentation][docs].
 
 ## Safety
 
 This crate uses `#![forbid(unsafe_code)]` to ensure everything is implemented in 100% safe Rust.
 
-## Performance
+## Minimum supported Rust version
 
-Macros in this crate have no effect when using release profile. (eg. `cargo build --release`)
+axum-handle-error-extract's MSRV is 1.54.
+
+## Getting Help
+
+You're also welcome to ask in the [Discord channel][chat] or open an [issue]
+with your question.
+
+## Contributing
+
+:balloon: Thanks for your help improving the project! We are so happy to have
+you! We have a [contributing guide][contributing] to help you get involved in the
+`axum` project.
 
 ## License
 
-This project is licensed under the [MIT license](LICENSE).
+This project is licensed under the [MIT license][license].
+
+### Contribution
+
+Unless you explicitly state otherwise, any contribution intentionally submitted
+for inclusion in `axum` by you, shall be licensed as MIT, without any
+additional terms or conditions.
 
 [`axum`]: https://crates.io/crates/axum
+[docs]: https://docs.rs/axum-debug
