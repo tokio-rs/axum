@@ -173,17 +173,17 @@ mod debug {
         });
         let block = &function.block;
 
-        if let Err(error) = async_check(&sig) {
+        if let Err(error) = async_check(sig) {
             return error;
         }
 
-        if let Err(error) = param_limit_check(&sig) {
+        if let Err(error) = param_limit_check(sig) {
             return error;
         }
 
-        let check_trait = check_trait_code(&sig, &generics);
-        let check_return = check_return_code(&sig, &generics);
-        let check_params = check_params_code(&sig, &generics);
+        let check_trait = check_trait_code(sig, &generics);
+        let check_return = check_return_code(sig, &generics);
+        let check_params = check_params_code(sig, &generics);
 
         let expanded = quote_spanned! {span=>
             #vis #sig {
@@ -235,7 +235,7 @@ mod debug {
         Ok(())
     }
 
-    fn check_trait_code(sig: &Signature, generics: &Vec<Ident>) -> proc_macro2::TokenStream {
+    fn check_trait_code(sig: &Signature, generics: &[Ident]) -> proc_macro2::TokenStream {
         let ident = &sig.ident;
         let span = ident.span();
 
@@ -252,7 +252,7 @@ mod debug {
         }
     }
 
-    fn check_return_code(sig: &Signature, generics: &Vec<Ident>) -> proc_macro2::TokenStream {
+    fn check_return_code(sig: &Signature, generics: &[Ident]) -> proc_macro2::TokenStream {
         let span = match &sig.output {
             ReturnType::Default => syn::Error::new_spanned(&sig.output, "").span(),
             ReturnType::Type(_, t) => syn::Error::new_spanned(t, "").span(),
@@ -273,7 +273,7 @@ mod debug {
         }
     }
 
-    fn check_params_code(sig: &Signature, generics: &Vec<Ident>) -> Vec<proc_macro2::TokenStream> {
+    fn check_params_code(sig: &Signature, generics: &[Ident]) -> Vec<proc_macro2::TokenStream> {
         let mut vec = Vec::new();
 
         let ident = &sig.ident;
