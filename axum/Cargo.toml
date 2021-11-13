@@ -1,6 +1,6 @@
 [package]
 name = "axum"
-version = "0.3.2"
+version = "0.3.3"
 authors = ["David Pedersen <david.pdrsn@gmail.com>"]
 categories = ["asynchronous", "network-programming", "web-programming"]
 description = "Web framework that focuses on ergonomics and modularity"

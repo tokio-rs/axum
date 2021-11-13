@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+- None.
+
+# 0.3.3 (13. November, 2021)
+
 - Implement `FromRequest` for [`http::request::Parts`] so it can be used an
   extractor ([#489])
 - Implement `IntoResponse` for `http::response::Parts` ([#490])
