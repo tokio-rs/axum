@@ -1,0 +1,10 @@
+[package]
+name = "example-cors"
+version = "0.1.0"
+edition = "2018"
+publish = false
+
+[dependencies]
+axum = { path = "../../axum" }
+tokio = { version = "1.0", features = ["full"] }
+tower-http = { version = "0.1", features = ["cors"] }
