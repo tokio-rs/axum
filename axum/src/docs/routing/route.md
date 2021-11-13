@@ -52,6 +52,29 @@ Examples:
 
 Wildcard captures can also be extracted using [`Path`](crate::extract::Path).
 
+# Accepting multiple methods
+
+To accept multiple methods for the same route you must add all handlers at the
+same time:
+
+```rust
+use axum::{Router, routing::{get, delete}, extract::Path};
+
+let app = Router::new().route(
+    "/",
+    get(get_root).post(post_root).delete(delete_root),
+);
+
+async fn get_root() {}
+
+async fn post_root() {}
+
+async fn delete_root() {}
+# async {
+# axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+# };
+```
+
 # More examples
 
 ```rust
