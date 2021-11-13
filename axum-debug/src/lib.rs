@@ -415,7 +415,15 @@ mod debug {
 
 #[test]
 fn ui() {
-    let t = trybuild::TestCases::new();
-    t.pass("tests/pass/*.rs");
-    t.compile_fail("tests/fail/*.rs");
+    #[rustversion::stable]
+    fn run() {
+        let t = trybuild::TestCases::new();
+        t.pass("tests/pass/*.rs");
+        t.compile_fail("tests/fail/*.rs");
+    }
+
+    #[rustversion::not(stable)]
+    fn run() {}
+
+    run();
 }
