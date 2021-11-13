@@ -77,8 +77,8 @@
 //!
 //! Macros in this crate have no effect when using release profile. (eg. `cargo build --release`)
 //!
-//! [`axum`]: axum
-//! [`Handler`]: axum::handler::Handler
+//! [`axum`]: https://docs.rs/axum/0.3
+//! [`Handler`]: https://docs.rs/axum/0.3/axum/handler/trait.Handler.html
 //! [`debug_handler`]: macro@debug_handler
 
 #![warn(
