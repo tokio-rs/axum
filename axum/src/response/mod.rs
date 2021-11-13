@@ -17,6 +17,8 @@ mod redirect;
 
 pub mod sse;
 
+#[cfg(feature = "json")]
+pub use crate::json::JsonSerializationError;
 #[doc(no_inline)]
 #[cfg(feature = "json")]
 pub use crate::Json;

@@ -14,6 +14,7 @@ use hyper::Response;
 use serde::{de::DeserializeOwned, Serialize};
 use std::{
     convert::Infallible,
+    fmt,
     ops::{Deref, DerefMut},
 };
 
@@ -89,6 +90,36 @@ use std::{
 #[derive(Debug, Clone, Copy, Default)]
 #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
 pub struct Json<T>(pub T);
+
+impl Json<Box<serde_json::value::RawValue>> {
+    /// Create a `Json` instance by pre-serializing a Rust type.
+    ///
+    /// This allows returning a borrowing type from a handler, or returning different response
+    /// types as JSON from different branches inside a handler.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// # use axum::{response::IntoResponse, Json};
+    /// async fn handler() -> impl IntoResponse {
+    ///     # let condition = true;
+    ///     # let foo = ();
+    ///     # let bar = vec![()];
+    ///     // ...
+    ///
+    ///     if condition {
+    ///         Json::erased(&foo)
+    ///     } else {
+    ///         Json::erased(&bar)
+    ///     }
+    /// }
+    /// ```
+    pub fn erased<T: Serialize>(val: T) -> Result<Self, JsonSerializationError> {
+        serde_json::value::to_raw_value(&val)
+            .map(Self)
+            .map_err(JsonSerializationError)
+    }
+}
 
 #[async_trait]
 impl<T, B> FromRequest<B> for Json<T>
@@ -178,13 +209,7 @@ where
     fn into_response(self) -> Response<Self::Body> {
         let bytes = match serde_json::to_vec(&self.0) {
             Ok(res) => res,
-            Err(err) => {
-                return Response::builder()
-                    .status(StatusCode::INTERNAL_SERVER_ERROR)
-                    .header(header::CONTENT_TYPE, "text/plain")
-                    .body(Full::from(err.to_string()))
-                    .unwrap();
-            }
+            Err(err) => return JsonSerializationError(err).into_response(),
         };
 
         let mut res = Response::new(Full::from(bytes));
@@ -193,6 +218,39 @@ where
             HeaderValue::from_static("application/json"),
         );
         res
+    }
+}
+
+pub struct JsonSerializationError(serde_json::Error);
+
+impl fmt::Debug for JsonSerializationError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
+impl fmt::Display for JsonSerializationError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
+impl std::error::Error for JsonSerializationError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        Some(&self.0)
+    }
+}
+
+impl IntoResponse for JsonSerializationError {
+    type Body = Full<Bytes>;
+    type BodyError = Infallible;
+
+    fn into_response(self) -> Response<Self::Body> {
+        Response::builder()
+            .status(StatusCode::INTERNAL_SERVER_ERROR)
+            .header(header::CONTENT_TYPE, "text/plain")
+            .body(Full::from(self.to_string()))
+            .unwrap()
     }
 }
 
