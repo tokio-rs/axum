@@ -360,7 +360,15 @@ mod debug_handler {
 
 #[test]
 fn ui() {
-    let t = trybuild::TestCases::new();
-    t.compile_fail("tests/fail/*.rs");
-    t.pass("tests/pass/*.rs");
+    #[rustversion::stable]
+    fn go() {
+        let t = trybuild::TestCases::new();
+        t.compile_fail("tests/fail/*.rs");
+        t.pass("tests/pass/*.rs");
+    }
+
+    #[rustversion::not(stable)]
+    fn go() {}
+
+    go();
 }
