@@ -4,41 +4,23 @@
 //! cargo run -p example-hello-world
 //! ```
 
-use axum::{
-    async_trait,
-    body::{Bytes, Full},
-    extract::{FromRequest, RequestParts},
-    http::Response,
-    response::IntoResponse,
-};
-use axum_debug::debug_handler;
-use std::convert::Infallible;
+use axum::{response::Html, routing::get, Router};
+use std::net::SocketAddr;
 
-struct A;
+#[tokio::main]
+async fn main() {
+    // build our application with a route
+    let app = Router::new().route("/", get(handler));
 
-impl A {
-    #[debug_handler]
-    async fn handler(self) -> Self {
-        A
-    }
+    // run it
+    let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
+    println!("listening on {}", addr);
+    axum::Server::bind(&addr)
+        .serve(app.into_make_service())
+        .await
+        .unwrap();
 }
 
-impl IntoResponse for A {
-    type Body = Full<Bytes>;
-    type BodyError = Infallible;
-
-    fn into_response(self) -> Response<Self::Body> {
-        todo!()
-    }
+async fn handler() -> Html<&'static str> {
+    Html("<h1>Hello, World!</h1>")
 }
-
-#[async_trait]
-impl FromRequest for A {
-    type Rejection = ();
-
-    async fn from_request(_req: &mut RequestParts) -> Result<Self, Self::Rejection> {
-        unimplemented!()
-    }
-}
-
-fn main() {}
