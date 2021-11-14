@@ -198,7 +198,7 @@ mod debug_handler {
             .inputs
             .iter()
             .map(|arg| {
-                let tokens = match arg {
+                let (span, ty) = match arg {
                     FnArg::Receiver(receiver) => {
                         if receiver.reference.is_some() {
                             return Err(syn::Error::new_spanned(
@@ -208,34 +208,23 @@ mod debug_handler {
                         }
 
                         let span = receiver.span();
-                        let name = unique_name();
-                        quote_spanned! {span=>
-                            #[allow(warnings)]
-                            fn #name(self) {
-                                fn check<T>(_: T)
-                                where
-                                    T: ::axum::extract::FromRequest + Send,
-                                {}
-                                check(self);
-                            }
-                        }
+                        (span, syn::parse_quote!(Self))
                     }
                     FnArg::Typed(typed) => {
                         let ty = &typed.ty;
-
                         let span = ty.span();
-                        let name = unique_name();
-                        quote_spanned! {span=>
-                            #[allow(warnings)]
-                            fn #name()
-                            where
-                                #ty: ::axum::extract::FromRequest + Send,
-                            {}
-                        }
+                        (span, ty.clone())
                     }
                 };
 
-                Ok(tokens)
+                let name = unique_name();
+                Ok(quote_spanned! {span=>
+                    #[allow(warnings)]
+                    fn #name()
+                    where
+                        #ty: ::axum::extract::FromRequest + Send,
+                    {}
+                })
             })
             .collect::<syn::Result<TokenStream>>()
     }
