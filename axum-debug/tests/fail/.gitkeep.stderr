@@ -1,0 +1,3 @@
+error[E0601]: `main` function not found in crate `$CRATE`
+  |
+  = note: consider adding a `main` function to `$DIR/tests/fail/.gitkeep`

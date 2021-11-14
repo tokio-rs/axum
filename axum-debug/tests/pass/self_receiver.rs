@@ -1,5 +1,8 @@
+use axum::{
+    async_trait,
+    extract::{FromRequest, RequestParts},
+};
 use axum_debug::debug_handler;
-use axum::{async_trait, extract::{FromRequest, RequestParts}};
 
 struct A;
 

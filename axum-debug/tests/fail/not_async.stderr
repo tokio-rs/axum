@@ -1,4 +1,4 @@
-error: handlers must be async functions
+error: Handlers must be `async fn`s
  --> tests/fail/not_async.rs:4:1
   |
 4 | fn handler() {}
