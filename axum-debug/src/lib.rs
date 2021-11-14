@@ -193,6 +193,13 @@ mod debug_handler {
     }
 
     fn check_inputs_impls_from_request(item_fn: &ItemFn) -> syn::Result<TokenStream> {
+        if !item_fn.sig.generics.params.is_empty() {
+            return Err(syn::Error::new_spanned(
+                &item_fn.sig.generics,
+                "`#[axum_debug::debug_handler]` doesn't support generic functions",
+            ));
+        }
+
         item_fn
             .sig
             .inputs

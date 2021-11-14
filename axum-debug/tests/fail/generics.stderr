@@ -1,0 +1,5 @@
+error: `#[axum_debug::debug_handler]` doesn't support generic functions
+ --> tests/fail/generics.rs:4:17
+  |
+4 | async fn handler<T>() {}
+  |                 ^^^
