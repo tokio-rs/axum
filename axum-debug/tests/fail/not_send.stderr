@@ -2,7 +2,10 @@ error: future cannot be sent between threads safely
  --> tests/fail/not_send.rs:4:10
   |
 4 | async fn handler() {
-  |          ^^^^^^^ future returned by `handler` is not `Send`
+  |          ^^^^^^^
+  |          |
+  |          future returned by `handler` is not `Send`
+  |          required by this bound in `handler::{closure#0}::debug_handler`
   |
   = help: within `impl Future`, the trait `Send` is not implemented for `Rc<()>`
 note: future is not `Send` as this value is used across an await
@@ -14,8 +17,3 @@ note: future is not `Send` as this value is used across an await
   |     ^^^^^^^^^^^^^^ await occurs here, with `rc` maybe used later
 7 | }
   | - `rc` is later dropped here
-note: required by a bound in `handler::{closure#0}::debug_handler`
- --> tests/fail/not_send.rs:4:10
-  |
-4 | async fn handler() {
-  |          ^^^^^^^ required by this bound in `handler::{closure#0}::debug_handler`
