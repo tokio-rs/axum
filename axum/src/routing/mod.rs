@@ -26,12 +26,10 @@ use tower_layer::Layer;
 use tower_service::Service;
 
 pub mod future;
-pub mod handler_method_routing;
-pub mod service_method_routing;
 
 mod into_make_service;
 mod method_filter;
-mod method_not_allowed;
+mod method_routing;
 mod not_found;
 mod route;
 mod strip_prefix;
@@ -39,14 +37,12 @@ mod strip_prefix;
 #[cfg(test)]
 mod tests;
 
-pub use self::{
-    into_make_service::IntoMakeService, method_filter::MethodFilter,
-    method_not_allowed::MethodNotAllowed, route::Route,
-};
+pub use self::{into_make_service::IntoMakeService, method_filter::MethodFilter, route::Route};
 
-#[doc(no_inline)]
-pub use self::handler_method_routing::{
-    any, delete, get, head, on, options, patch, post, put, trace, MethodRouter,
+pub use self::method_routing::{
+    delete, delete_service, get, get_service, head, head_service, on, on_service, options,
+    options_service, patch, patch_service, post, post_service, put, put_service, trace,
+    trace_service, MethodRouter,
 };
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -573,12 +569,12 @@ impl fmt::Debug for Node {
     }
 }
 
-enum Fallback<B> {
-    Default(Route<B>),
-    Custom(Route<B>),
+enum Fallback<B, E = Infallible> {
+    Default(Route<B, E>),
+    Custom(Route<B, E>),
 }
 
-impl<B> Clone for Fallback<B> {
+impl<B, E> Clone for Fallback<B, E> {
     fn clone(&self) -> Self {
         match self {
             Fallback::Default(inner) => Fallback::Default(inner.clone()),
@@ -587,7 +583,7 @@ impl<B> Clone for Fallback<B> {
     }
 }
 
-impl<B> fmt::Debug for Fallback<B> {
+impl<B, E> fmt::Debug for Fallback<B, E> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Default(inner) => f.debug_tuple("Default").field(inner).finish(),
@@ -596,10 +592,10 @@ impl<B> fmt::Debug for Fallback<B> {
     }
 }
 
-impl<B> Fallback<B> {
-    fn map<F, B2>(self, f: F) -> Fallback<B2>
+impl<B, E> Fallback<B, E> {
+    fn map<F, B2, E2>(self, f: F) -> Fallback<B2, E2>
     where
-        F: FnOnce(Route<B>) -> Route<B2>,
+        F: FnOnce(Route<B, E>) -> Route<B2, E2>,
     {
         match self {
             Fallback::Default(inner) => Fallback::Default(f(inner)),

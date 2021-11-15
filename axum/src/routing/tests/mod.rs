@@ -3,12 +3,12 @@ use crate::{
     extract::{self, Path},
     handler::Handler,
     response::IntoResponse,
-    routing::{any, delete, get, on, patch, post, service_method_routing as service, MethodFilter},
+    routing::{delete, get, get_service, on, on_service, patch, patch_service, post, MethodFilter},
     test_helpers::*,
     BoxError, Json, Router,
 };
 use bytes::Bytes;
-use http::{header::HeaderMap, Method, Request, Response, StatusCode, Uri};
+use http::{Method, Request, Response, StatusCode, Uri};
 use hyper::Body;
 use serde::Deserialize;
 use serde_json::{json, Value};
@@ -135,20 +135,20 @@ async fn routing_between_services() {
     let app = Router::new()
         .route(
             "/one",
-            service::get(service_fn(|_: Request<Body>| async {
+            get_service(service_fn(|_: Request<Body>| async {
                 Ok::<_, Infallible>(Response::new(Body::from("one get")))
             }))
-            .post(service_fn(|_: Request<Body>| async {
+            .post_service(service_fn(|_: Request<Body>| async {
                 Ok::<_, Infallible>(Response::new(Body::from("one post")))
             }))
-            .on(
+            .on_service(
                 MethodFilter::PUT,
                 service_fn(|_: Request<Body>| async {
                     Ok::<_, Infallible>(Response::new(Body::from("one put")))
                 }),
             ),
         )
-        .route("/two", service::on(MethodFilter::GET, any(handle)));
+        .route("/two", on_service(MethodFilter::GET, handle.into_service()));
 
     let client = TestClient::new(app);
 
@@ -202,7 +202,7 @@ async fn service_in_bottom() {
         Ok(Response::new(hyper::Body::empty()))
     }
 
-    let app = Router::new().route("/", service::get(service_fn(handler)));
+    let app = Router::new().route("/", get_service(service_fn(handler)));
 
     TestClient::new(app);
 }
@@ -248,8 +248,8 @@ async fn wrong_method_service() {
     }
 
     let app = Router::new()
-        .route("/", service::get(Svc).post(Svc))
-        .route("/foo", service::patch(Svc));
+        .route("/", get_service(Svc).post_service(Svc))
+        .route("/foo", patch_service(Svc));
 
     let client = TestClient::new(app);
 

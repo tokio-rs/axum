@@ -6,10 +6,7 @@ use http::{Request, Response};
 use std::{convert::Infallible, future::ready};
 use tower::util::Oneshot;
 
-pub use super::{
-    into_make_service::IntoMakeServiceFuture, method_not_allowed::MethodNotAllowedFuture,
-    route::RouteFuture,
-};
+pub use super::{into_make_service::IntoMakeServiceFuture, route::RouteFuture};
 
 opaque_future! {
     /// Response future for [`Router`](super::Router).

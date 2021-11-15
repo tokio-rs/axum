@@ -1,5 +1,7 @@
+use tower_http::services::ServeDir;
+
 use super::*;
-use crate::{body::box_body, error_handling::HandleErrorExt, extract::Extension};
+use crate::{body::box_body, extract::Extension};
 use std::collections::HashMap;
 
 #[tokio::test]
@@ -167,7 +169,7 @@ async fn nested_service_sees_stripped_uri() {
 async fn nest_static_file_server() {
     let app = Router::new().nest(
         "/static",
-        service::get(tower_http::services::ServeDir::new(".")).handle_error(|error| {
+        get_service(ServeDir::new(".")).handle_error(|error| {
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 format!("Unhandled internal error: {}", error),
