@@ -18,3 +18,10 @@ If your project isn't listed here and you would like it to be, please feel free 
 - [ROAPI](https://github.com/roapi/roapi): Create full-fledged APIs for static datasets without writing a single line of code.
 - [notify.run](https://github.com/notify-run/notify-run-rs): HTTP-to-WebPush relay for sending desktop/mobile notifications to yourself, written in Rust.
 - [turbo.fish](https://turbo.fish/) ([repository](https://github.com/jplatte/turbo.fish)): Find out for yourself 😉
+
+## Tutorials
+
+- [axum-tutorial][axum-tutorial] ([website][axum-tutorial-website]): Axum web framework tutorial for beginners.
+
+[axum-tutorial]: https://github.com/programatik29/axum-tutorial
+[axum-tutorial-website]: https://programatik29.github.io/axum-tutorial/
