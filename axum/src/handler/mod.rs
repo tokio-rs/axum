@@ -60,7 +60,7 @@
 //!     |
 //!    ::: axum/src/handler/mod.rs:116:8
 //!     |
-//! 116 |     H: Handler<B, T>,
+//! 116 |     H: Handler<T, B>,
 //!     |        ------------- required by this bound in `axum::routing::get`
 //! ```
 //!
@@ -71,7 +71,7 @@
 //! [axum-debug]: https://docs.rs/axum-debug
 
 use crate::{
-    body::{box_body, BoxBody},
+    body::{box_body, Body, BoxBody},
     extract::{
         connect_info::{Connected, IntoMakeServiceWithConnectInfo},
         FromRequest, RequestParts,
@@ -108,7 +108,7 @@ pub(crate) mod sealed {
 ///
 /// See the [module docs](crate::handler) for more details.
 #[async_trait]
-pub trait Handler<B, T>: Clone + Send + Sized + 'static {
+pub trait Handler<T, B = Body>: Clone + Send + Sized + 'static {
     // This seals the trait. We cannot use the regular "sealed super trait"
     // approach due to coherence.
     #[doc(hidden)]
@@ -155,7 +155,7 @@ pub trait Handler<B, T>: Clone + Send + Sized + 'static {
     /// ```
     fn layer<L>(self, layer: L) -> Layered<L::Service, T>
     where
-        L: Layer<IntoService<Self, B, T>>,
+        L: Layer<IntoService<Self, T, B>>,
     {
         Layered::new(layer.layer(self.into_service()))
     }
@@ -192,7 +192,7 @@ pub trait Handler<B, T>: Clone + Send + Sized + 'static {
     /// ```
     ///
     /// [`Router::fallback`]: crate::routing::Router::fallback
-    fn into_service(self) -> IntoService<Self, B, T> {
+    fn into_service(self) -> IntoService<Self, T, B> {
         IntoService::new(self)
     }
 
@@ -219,7 +219,7 @@ pub trait Handler<B, T>: Clone + Send + Sized + 'static {
     /// ```
     ///
     /// [`MakeService`]: tower::make::MakeService
-    fn into_make_service(self) -> IntoMakeService<IntoService<Self, B, T>> {
+    fn into_make_service(self) -> IntoMakeService<IntoService<Self, T, B>> {
         IntoMakeService::new(self.into_service())
     }
 
@@ -253,7 +253,7 @@ pub trait Handler<B, T>: Clone + Send + Sized + 'static {
     /// [`Router::into_make_service_with_connect_info`]: crate::routing::Router::into_make_service_with_connect_info
     fn into_make_service_with_connect_info<C, Target>(
         self,
-    ) -> IntoMakeServiceWithConnectInfo<IntoService<Self, B, T>, C>
+    ) -> IntoMakeServiceWithConnectInfo<IntoService<Self, T, B>, C>
     where
         C: Connected<Target>,
     {
@@ -262,7 +262,7 @@ pub trait Handler<B, T>: Clone + Send + Sized + 'static {
 }
 
 #[async_trait]
-impl<F, Fut, Res, B> Handler<B, ()> for F
+impl<F, Fut, Res, B> Handler<(), B> for F
 where
     F: FnOnce() -> Fut + Clone + Send + 'static,
     Fut: Future<Output = Res> + Send,
@@ -280,7 +280,7 @@ macro_rules! impl_handler {
     ( $($ty:ident),* $(,)? ) => {
         #[async_trait]
         #[allow(non_snake_case)]
-        impl<F, Fut, B, Res, $($ty,)*> Handler<B, ($($ty,)*)> for F
+        impl<F, Fut, B, Res, $($ty,)*> Handler<($($ty,)*), B> for F
         where
             F: FnOnce($($ty,)*) -> Fut + Clone + Send + 'static,
             Fut: Future<Output = Res> + Send,
@@ -352,7 +352,7 @@ where
 }
 
 #[async_trait]
-impl<S, T, ReqBody, ResBody> Handler<ReqBody, T> for Layered<S, T>
+impl<S, T, ReqBody, ResBody> Handler<T, ReqBody> for Layered<S, T>
 where
     S: Service<Request<ReqBody>, Response = Response<ResBody>> + Clone + Send + 'static,
     S::Error: IntoResponse,
