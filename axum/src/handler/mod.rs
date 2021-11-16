@@ -71,7 +71,7 @@
 //! [axum-debug]: https://docs.rs/axum-debug
 
 use crate::{
-    body::{box_body, BoxBody},
+    body::{box_body, Body, BoxBody},
     extract::{
         connect_info::{Connected, IntoMakeServiceWithConnectInfo},
         FromRequest, RequestParts,
@@ -108,7 +108,7 @@ pub(crate) mod sealed {
 ///
 /// See the [module docs](crate::handler) for more details.
 #[async_trait]
-pub trait Handler<T, B>: Clone + Send + Sized + 'static {
+pub trait Handler<T, B = Body>: Clone + Send + Sized + 'static {
     // This seals the trait. We cannot use the regular "sealed super trait"
     // approach due to coherence.
     #[doc(hidden)]

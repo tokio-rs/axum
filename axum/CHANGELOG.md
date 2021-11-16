@@ -22,10 +22,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `MethodRouter::handle_error`.
 - **breaking:** The `Handler<B, T>` trait is now defined as `Handler<T, B =
   Body>`. That is the type parameters have been swapped and `B` defaults to
-  `axum::body::Body`.
+  `axum::body::Body` ([#527])
 - Update WebSockets to use tokio-tungstenite 0.16 ([#525])
 
 [#525]: https://github.com/tokio-rs/axum/pull/525
+[#527]: https://github.com/tokio-rs/axum/pull/527
 
 # 0.3.3 (13. November, 2021)
 
