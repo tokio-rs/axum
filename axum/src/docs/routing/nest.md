@@ -120,5 +120,7 @@ let app = Router::new()
 for more details.
 - If the route contains a wildcard (`*`).
 - If `path` is empty.
+- If the nested router has a [fallback](Router::fallback). This is because
+  `Router` only allows a single fallback.
 
 [`OriginalUri`]: crate::extract::OriginalUri

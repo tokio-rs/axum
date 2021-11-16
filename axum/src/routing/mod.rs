@@ -189,13 +189,16 @@ where
                 let Router {
                     mut routes,
                     node,
-                    // discard the fallback of the nested router
-                    fallback: _,
+                    fallback,
                     // nesting a router that has something nested at root
                     // doesn't mean something is nested at root in _this_ router
                     // thus we don't need to propagate that
                     nested_at_root: _,
                 } = router;
+
+                if let Fallback::Custom(_) = fallback {
+                    panic!("Cannot nest `Router`s that has a fallback");
+                }
 
                 for (id, nested_path) in node.route_id_to_path {
                     let route = routes.remove(&id).unwrap();
@@ -253,7 +256,9 @@ where
             (Fallback::Default(_), pick @ Fallback::Default(_)) => pick,
             (Fallback::Default(_), pick @ Fallback::Custom(_)) => pick,
             (pick @ Fallback::Custom(_), Fallback::Default(_)) => pick,
-            (Fallback::Custom(_), pick @ Fallback::Custom(_)) => pick,
+            (Fallback::Custom(_), Fallback::Custom(_)) => {
+                panic!("Cannot merge two `Router`s that both have a fallback")
+            }
         };
 
         self.nested_at_root = self.nested_at_root || nested_at_root;
