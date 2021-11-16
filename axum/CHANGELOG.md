@@ -7,7 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- None.
+- **breaking:** New `MethodRouter` that works similarly to `Router`:
+  - Route to handlers and services with the same type
+  - Add middleware to some routes more easily with `MethodRouter::layer` and
+    `MethodRouter::route_layer`.
+  - Merge method routers with `MethodRouter::merge`
+  - Customize response for unsupported methods with `MethodRouter::fallback`
+- **fixed:** Adding the same route with different methods now works ie
+  `.route("/", get(_)).route("/", post(_))`.
+- **breaking:** `routing::handler_method_router` and
+  `routing::service_method_router` has been removed in favor of
+  `routing::{get, get_service, ..., MethodRouter}`.
+- **breaking:** `HandleErrorExt` has been removed in favor of
+  `MethodRouter::handle_error`.
 
 # 0.3.3 (13. November, 2021)
 

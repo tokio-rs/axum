@@ -11,6 +11,7 @@
 //! - [Responses](#responses)
 //! - [Error handling](#error-handling)
 //! - [Middleware](#middleware)
+//! - [Routing to services and backpressure](#routing-to-services-and-backpressure)
 //! - [Sharing state with handlers](#sharing-state-with-handlers)
 //! - [Required dependencies](#required-dependencies)
 //! - [Examples](#examples)
@@ -160,6 +161,68 @@
 //!
 #![doc = include_str!("docs/middleware.md")]
 //!
+//! # Routing to services and backpressure
+//!
+//! Generally routing to one of multiple services and backpressure doesn't mix
+//! well. Ideally you would want ensure a service is ready to receive a request
+//! before calling it. However, in order to know which service to call, you need
+//! the request...
+//!
+//! One approach is to not consider the router service itself ready until all
+//! destination services are ready. That is the approach used by
+//! [`tower::steer::Steer`].
+//!
+//! Another approach is to always consider all services ready (always return
+//! `Poll::Ready(Ok(()))`) from `Service::poll_ready` and then actually drive
+//! readiness inside the response future returned by `Service::call`. This works
+//! well when your services don't care about backpressure and are always ready
+//! anyway.
+//!
+//! axum expects that all services used in your app wont care about
+//! backpressure and so it uses the latter strategy. However that means you
+//! should avoid routing to a service (or using a middleware) that _does_ care
+//! about backpressure. At the very least you should [load shed] so requests are
+//! dropped quickly and don't keep piling up.
+//!
+//! It also means that if `poll_ready` returns an error then that error will be
+//! returned in the response future from `call` and _not_ from `poll_ready`. In
+//! that case, the underlying service will _not_ be discarded and will continue
+//! to be used for future requests. Services that expect to be discarded if
+//! `poll_ready` fails should _not_ be used with axum.
+//!
+//! One possible approach is to only apply backpressure sensitive middleware
+//! around your entire app. This is possible because axum applications are
+//! themselves services:
+//!
+//! ```rust
+//! use axum::{
+//!     routing::get,
+//!     Router,
+//! };
+//! use tower::ServiceBuilder;
+//! # let some_backpressure_sensitive_middleware =
+//! #     tower::layer::util::Identity::new();
+//!
+//! async fn handler() { /* ... */ }
+//!
+//! let app = Router::new().route("/", get(handler));
+//!
+//! let app = ServiceBuilder::new()
+//!     .layer(some_backpressure_sensitive_middleware)
+//!     .service(app);
+//! # async {
+//! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+//! # };
+//! ```
+//!
+//! However when applying middleware around your whole application in this way
+//! you have to take care that errors are still being handled with
+//! appropriately.
+//!
+//! Also note that handlers created from async functions don't care about
+//! backpressure and are always ready. So if you're not using any Tower
+//! middleware you don't have to worry about any of this.
+//!
 //! # Sharing state with handlers
 //!
 //! It is common to share some state between handlers for example to share a
@@ -255,8 +318,8 @@
 //! [`OriginalUri`]: crate::extract::OriginalUri
 //! [`Service`]: tower::Service
 //! [`Service::poll_ready`]: tower::Service::poll_ready
+//! [`Service`'s]: tower::Service
 //! [`tower::Service`]: tower::Service
-//! [`handle_error`]: error_handling::HandleErrorExt::handle_error
 //! [tower-guides]: https://github.com/tower-rs/tower/tree/master/guides
 //! [`Uuid`]: https://docs.rs/uuid/latest/uuid/
 //! [`FromRequest`]: crate::extract::FromRequest
@@ -267,6 +330,7 @@
 //! [`debug_handler`]: https://docs.rs/axum-debug/latest/axum_debug/attr.debug_handler.html
 //! [`Handler`]: crate::handler::Handler
 //! [`Infallible`]: std::convert::Infallible
+//! [load shed]: tower::load_shed
 
 #![warn(
     clippy::all,

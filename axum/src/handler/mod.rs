@@ -404,11 +404,4 @@ mod tests {
         assert_eq!(res.status(), StatusCode::OK);
         assert_eq!(res.text().await, "you said: hi there!");
     }
-
-    #[test]
-    fn traits() {
-        use crate::{routing::MethodRouter, test_helpers::*};
-        assert_send::<MethodRouter<(), NotSendSync, NotSendSync, ()>>();
-        assert_sync::<MethodRouter<(), NotSendSync, NotSendSync, ()>>();
-    }
 }

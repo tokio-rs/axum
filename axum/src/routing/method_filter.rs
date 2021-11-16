@@ -1,5 +1,4 @@
 use bitflags::bitflags;
-use http::Method;
 
 bitflags! {
     /// A filter that matches one or more HTTP methods.
@@ -20,23 +19,5 @@ bitflags! {
         const PUT =     0b010000000;
         /// Match `TRACE` requests.
         const TRACE =   0b100000000;
-    }
-}
-
-impl MethodFilter {
-    #[allow(clippy::match_like_matches_macro)]
-    pub(crate) fn matches(self, method: &Method) -> bool {
-        let method = match *method {
-            Method::DELETE => Self::DELETE,
-            Method::GET => Self::GET,
-            Method::HEAD => Self::HEAD,
-            Method::OPTIONS => Self::OPTIONS,
-            Method::PATCH => Self::PATCH,
-            Method::POST => Self::POST,
-            Method::PUT => Self::PUT,
-            Method::TRACE => Self::TRACE,
-            _ => return false,
-        };
-        self.contains(method)
     }
 }

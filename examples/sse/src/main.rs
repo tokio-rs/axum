@@ -5,11 +5,10 @@
 //! ```
 
 use axum::{
-    error_handling::HandleErrorExt,
     extract::TypedHeader,
     http::StatusCode,
     response::sse::{Event, Sse},
-    routing::{get, service_method_routing as service},
+    routing::{get, get_service},
     Router,
 };
 use futures::stream::{self, Stream};
@@ -26,7 +25,7 @@ async fn main() {
     tracing_subscriber::fmt::init();
 
     let static_files_service =
-        service::get(ServeDir::new("examples/sse/assets").append_index_html_on_directories(true))
+        get_service(ServeDir::new("examples/sse/assets").append_index_html_on_directories(true))
             .handle_error(|error: std::io::Error| {
                 (
                     StatusCode::INTERNAL_SERVER_ERROR,
