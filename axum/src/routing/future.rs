@@ -2,9 +2,8 @@
 
 use crate::body::BoxBody;
 use futures_util::future::Either;
-use http::{Request, Response};
+use http::Response;
 use std::{convert::Infallible, future::ready};
-use tower::util::Oneshot;
 
 pub use super::{into_make_service::IntoMakeServiceFuture, route::RouteFuture};
 
@@ -12,13 +11,13 @@ opaque_future! {
     /// Response future for [`Router`](super::Router).
     pub type RouterFuture<B> =
         futures_util::future::Either<
-            Oneshot<super::Route<B>, Request<B>>,
+            RouteFuture<B, Infallible>,
             std::future::Ready<Result<Response<BoxBody>, Infallible>>,
         >;
 }
 
 impl<B> RouterFuture<B> {
-    pub(super) fn from_oneshot(future: Oneshot<super::Route<B>, Request<B>>) -> Self {
+    pub(super) fn from_future(future: RouteFuture<B, Infallible>) -> Self {
         Self::new(Either::Left(future))
     }
 

@@ -507,17 +507,6 @@ async fn route_layer() {
 
 #[tokio::test]
 #[should_panic(
-    expected = "Invalid route: insertion failed due to conflict with previously registered route: /foo"
-)]
-async fn conflicting_route() {
-    let app = Router::new()
-        .route("/foo", get(|| async {}))
-        .route("/foo", get(|| async {}));
-    TestClient::new(app);
-}
-
-#[tokio::test]
-#[should_panic(
     expected = "Invalid route: insertion failed due to conflict with previously registered route: /*axum_nest. Note that `nest(\"/\", _)` conflicts with all routes. Use `Router::fallback` instead"
 )]
 async fn good_error_message_if_using_nest_root() {
@@ -536,4 +525,44 @@ async fn good_error_message_if_using_nest_root_when_merging() {
     let two = Router::new().route("/", get(|| async {}));
     let app = one.merge(two);
     TestClient::new(app);
+}
+
+#[tokio::test]
+async fn different_methods_added_in_different_routes() {
+    let app = Router::new()
+        .route("/", get(|| async { "GET" }))
+        .route("/", post(|| async { "POST" }));
+
+    let client = TestClient::new(app);
+
+    let res = client.get("/").send().await;
+    let body = res.text().await;
+    assert_eq!(body, "GET");
+
+    let res = client.post("/").send().await;
+    let body = res.text().await;
+    assert_eq!(body, "POST");
+}
+
+#[tokio::test]
+async fn different_methods_added_in_different_routes_deeply_nested() {
+    let app = Router::new()
+        .route("/foo/bar/baz", get(|| async { "GET" }))
+        .nest(
+            "/foo",
+            Router::new().nest(
+                "/bar",
+                Router::new().route("/baz", post(|| async { "POST" })),
+            ),
+        );
+
+    let client = TestClient::new(app);
+
+    let res = client.get("/foo/bar/baz").send().await;
+    let body = res.text().await;
+    assert_eq!(body, "GET");
+
+    let res = client.post("/foo/bar/baz").send().await;
+    let body = res.text().await;
+    assert_eq!(body, "POST");
 }
