@@ -111,7 +111,7 @@ axum also supports routing to general [`Service`]s:
 use axum::{
     Router,
     body::Body,
-    routing::get_service,
+    routing::{any_service, get_service},
     http::{Request, StatusCode},
 };
 use tower_http::services::ServeFile;
@@ -121,11 +121,22 @@ use tower::service_fn;
 
 let app = Router::new()
     .route(
+        // Any request to `/` goes to a service
         "/",
+        // Services whose response body is not `axum::body::BoxBody`
+        // can be wrapped in `axum::routing::any_service` (or one of the other routing filters)
+        // to have the response body mapped
+        any_service(service_fn(|_: Request<Body>| async {
+            let res = Response::new(Body::from("Hi from `GET /`"));
+            Ok::<_, Infallible>(res)
+        }))
+    )
+    .route(
+        "/foo",
         // This service's response body is `axum::body::BoxBody` so
         // it can be routed to directly.
         service_fn(|req: Request<Body>| async move {
-            let body = Body::from(format!("Hi from `{} /`", req.method()));
+            let body = Body::from(format!("Hi from `{} /foo`", req.method()));
             let body = axum::body::box_body(body);
             let res = Response::new(body);
             Ok::<_, Infallible>(res)

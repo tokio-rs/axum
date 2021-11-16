@@ -326,6 +326,69 @@ where
     MethodRouter::new().on_service(filter, svc)
 }
 
+/// Route requests to the given service regardless of its method.
+///
+/// # Example
+///
+/// ```rust
+/// use axum::{
+///     http::Request,
+///     Router,
+///     routing::any_service,
+/// };
+/// use http::Response;
+/// use std::convert::Infallible;
+/// use hyper::Body;
+///
+/// let service = tower::service_fn(|request: Request<Body>| async {
+///     Ok::<_, Infallible>(Response::new(Body::empty()))
+/// });
+///
+/// // All requests to `/` will go to `service`.
+/// let app = Router::new().route("/", any_service(service));
+/// # async {
+/// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+/// # };
+/// ```
+///
+/// Additional methods can still be chained:
+///
+/// ```rust
+/// use axum::{
+///     http::Request,
+///     Router,
+///     routing::any_service,
+/// };
+/// use http::Response;
+/// use std::convert::Infallible;
+/// use hyper::Body;
+///
+/// let service = tower::service_fn(|request: Request<Body>| async {
+///     # Ok::<_, Infallible>(Response::new(Body::empty()))
+///     // ...
+/// });
+///
+/// let other_service = tower::service_fn(|request: Request<Body>| async {
+///     # Ok::<_, Infallible>(Response::new(Body::empty()))
+///     // ...
+/// });
+///
+/// // `POST /` goes to `other_service`. All other requests go to `service`
+/// let app = Router::new().route("/", any_service(service).post_service(other_service));
+/// # async {
+/// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+/// # };
+/// ```
+pub fn any_service<S, ReqBody, ResBody>(svc: S) -> MethodRouter<ReqBody, S::Error>
+where
+    S: Service<Request<ReqBody>, Response = Response<ResBody>> + Clone + Send + 'static,
+    S::Future: Send + 'static,
+    ResBody: http_body::Body<Data = Bytes> + Send + 'static,
+    ResBody::Error: Into<BoxError>,
+{
+    MethodRouter::new().fallback(svc)
+}
+
 top_level_handler_fn!(delete, DELETE);
 top_level_handler_fn!(get, GET);
 top_level_handler_fn!(head, HEAD);
@@ -361,6 +424,52 @@ where
     T: 'static,
 {
     MethodRouter::new().on(filter, handler)
+}
+
+/// Route requests with the given handler regardless of the method.
+///
+/// # Example
+///
+/// ```rust
+/// use axum::{
+///     routing::any,
+///     Router,
+/// };
+///
+/// async fn handler() {}
+///
+/// // All requests to `/` will go to `handler`.
+/// let app = Router::new().route("/", any(handler));
+/// # async {
+/// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+/// # };
+/// ```
+///
+/// Additional methods can still be chained:
+///
+/// ```rust
+/// use axum::{
+///     routing::any,
+///     Router,
+/// };
+///
+/// async fn handler() {}
+///
+/// async fn other_handler() {}
+///
+/// // `POST /` goes to `other_handler`. All other requests go to `handler`
+/// let app = Router::new().route("/", any(handler).post(other_handler));
+/// # async {
+/// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+/// # };
+/// ```
+pub fn any<H, B, T>(handler: H) -> MethodRouter<B, Infallible>
+where
+    H: Handler<B, T>,
+    B: Send + 'static,
+    T: 'static,
+{
+    MethodRouter::new().fallback_boxed_response_body(handler.into_service())
 }
 
 /// A [`Service`] that accepts requests based on a [`MethodFilter`] and
@@ -525,6 +634,18 @@ impl<ReqBody, E> MethodRouter<ReqBody, E> {
         ResBody::Error: Into<BoxError>,
     {
         self.fallback = Fallback::Custom(Route::new(svc.map_response(|res| res.map(box_body))));
+        self
+    }
+
+    fn fallback_boxed_response_body<S>(mut self, svc: S) -> Self
+    where
+        S: Service<Request<ReqBody>, Response = Response<BoxBody>, Error = E>
+            + Clone
+            + Send
+            + 'static,
+        S::Future: Send + 'static,
+    {
+        self.fallback = Fallback::Custom(Route::new(svc));
         self
     }
 
