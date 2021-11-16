@@ -484,7 +484,7 @@ pub struct MethodRouter<B = Body, E = Infallible> {
     put: Option<Route<B, E>>,
     trace: Option<Route<B, E>>,
     fallback: Fallback<B, E>,
-    _request_body: PhantomData<fn() -> (E, B)>,
+    _request_body: PhantomData<fn() -> (B, E)>,
 }
 
 impl<B, E> fmt::Debug for MethodRouter<B, E> {
@@ -499,7 +499,6 @@ impl<B, E> fmt::Debug for MethodRouter<B, E> {
             .field("put", &self.put)
             .field("trace", &self.trace)
             .field("fallback", &self.fallback)
-            .field("_request_body", &self._request_body)
             .finish()
     }
 }
