@@ -346,7 +346,7 @@ mod debug {
 
                 fn debug_handler<F, Fut, #(#generics),*>(_f: F)
                 where
-                    F: ::std::ops::FnOnce(#(#generics),*) -> Fut + Clone + Send + Sync + 'static,
+                    F: ::std::ops::FnOnce(#(#generics),*) -> Fut + Clone + Send + 'static,
                     Fut: ::std::future::Future + Send,
                 {}
             }

@@ -41,7 +41,7 @@
 //! - Are `async fn`s.
 //! - Take no more than 16 arguments that all implement [`FromRequest`].
 //! - Returns something that implements [`IntoResponse`].
-//! - If a closure is used it must implement `Clone + Send + Sync` and be
+//! - If a closure is used it must implement `Clone + Send` and be
 //! `'static`.
 //! - Returns a future that is `Send`. The most common way to accidentally make a
 //! future `!Send` is to hold a `!Send` type across an await.
@@ -264,7 +264,7 @@ pub trait Handler<B, T>: Clone + Send + Sized + 'static {
 #[async_trait]
 impl<F, Fut, Res, B> Handler<B, ()> for F
 where
-    F: FnOnce() -> Fut + Clone + Send + Sync + 'static,
+    F: FnOnce() -> Fut + Clone + Send + 'static,
     Fut: Future<Output = Res> + Send,
     Res: IntoResponse,
     B: Send + 'static,
@@ -282,7 +282,7 @@ macro_rules! impl_handler {
         #[allow(non_snake_case)]
         impl<F, Fut, B, Res, $($ty,)*> Handler<B, ($($ty,)*)> for F
         where
-            F: FnOnce($($ty,)*) -> Fut + Clone + Send + Sync + 'static,
+            F: FnOnce($($ty,)*) -> Fut + Clone + Send + 'static,
             Fut: Future<Output = Res> + Send,
             B: Send + 'static,
             Res: IntoResponse,
