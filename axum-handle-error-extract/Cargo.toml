@@ -12,7 +12,7 @@ readme = "README.md"
 repository = "https://github.com/tokio-rs/axum"
 
 [dependencies]
-axum = { version = "0.3.2", path = "../axum" }
+axum = { version = "0.4", path = "../axum" }
 tower-service = "0.3"
 tower-layer = "0.3"
 tower = { version = "0.4", features = ["util"] }
