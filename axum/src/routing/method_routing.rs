@@ -134,9 +134,9 @@ macro_rules! top_level_handler_fn {
         $name:ident, $method:ident
     ) => {
         $(#[$m])+
-        pub fn $name<H, B, T>(handler: H) -> MethodRouter<B, Infallible>
+        pub fn $name<H, T, B>(handler: H) -> MethodRouter<B, Infallible>
         where
-            H: Handler<B, T>,
+            H: Handler<T, B>,
             B: Send + 'static,
             T: 'static,
         {
@@ -271,7 +271,7 @@ macro_rules! chained_handler_fn {
         $(#[$m])+
         pub fn $name<H, T>(self, handler: H) -> Self
         where
-            H: Handler<B, T>,
+            H: Handler<T, B>,
             T: 'static,
         {
             self.on(MethodFilter::$method, handler)
@@ -417,9 +417,9 @@ top_level_handler_fn!(trace, TRACE);
 /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 /// # };
 /// ```
-pub fn on<H, B, T>(filter: MethodFilter, handler: H) -> MethodRouter<B, Infallible>
+pub fn on<H, T, B>(filter: MethodFilter, handler: H) -> MethodRouter<B, Infallible>
 where
-    H: Handler<B, T>,
+    H: Handler<T, B>,
     B: Send + 'static,
     T: 'static,
 {
@@ -463,9 +463,9 @@ where
 /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 /// # };
 /// ```
-pub fn any<H, B, T>(handler: H) -> MethodRouter<B, Infallible>
+pub fn any<H, T, B>(handler: H) -> MethodRouter<B, Infallible>
 where
-    H: Handler<B, T>,
+    H: Handler<T, B>,
     B: Send + 'static,
     T: 'static,
 {
@@ -557,7 +557,7 @@ where
     /// ```
     pub fn on<H, T>(self, filter: MethodFilter, handler: H) -> Self
     where
-        H: Handler<B, T>,
+        H: Handler<T, B>,
         T: 'static,
     {
         self.on_service_boxed_response_body(filter, handler.into_service())

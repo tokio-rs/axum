@@ -20,6 +20,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `routing::{get, get_service, ..., MethodRouter}`.
 - **breaking:** `HandleErrorExt` has been removed in favor of
   `MethodRouter::handle_error`.
+- **breaking:** The `Handler<B, T>` trait is now defined as `Handler<T, B =
+  Body>`. That is the type parameters have been swapped and `B` defaults to
+  `axum::body::Body`.
 - Update WebSockets to use tokio-tungstenite 0.16 ([#525])
 
 [#525]: https://github.com/tokio-rs/axum/pull/525
