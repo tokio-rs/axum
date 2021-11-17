@@ -1,5 +1,4 @@
 [package]
-authors = ["David Pedersen <david.pdrsn@gmail.com>"]
 categories = ["asynchronous", "network-programming", "web-programming"]
 description = "Extra utilities for axum"
 edition = "2018"
