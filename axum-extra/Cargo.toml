@@ -12,3 +12,9 @@ version = "0.1.0"
 
 [dependencies]
 axum = { path = "../axum", version = "0.3" }
+tower-service = "0.3"
+
+[dev-dependencies]
+tower = { version = "0.4", features = ["util"] }
+tokio = { version = "1.14", features = ["full"] }
+hyper = "0.14"
