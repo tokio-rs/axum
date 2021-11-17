@@ -22,7 +22,7 @@ async fn main() {
     let app = Router::new()
         .nest(
             "/static",
-            get_service(ServeDir::new(".")).handle_error(|error: std::io::Error| {
+            get_service(ServeDir::new(".")).handle_error(|error: std::io::Error| async move {
                 (
                     StatusCode::INTERNAL_SERVER_ERROR,
                     format!("Unhandled internal error: {}", error),

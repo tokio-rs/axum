@@ -124,7 +124,9 @@ let app = Router::new()
         ServiceBuilder::new()
             // this middleware goes above `TimeoutLayer` because it will receive
             // errors returned by `TimeoutLayer`
-            .layer(HandleErrorLayer::new(|_: BoxError| StatusCode::REQUEST_TIMEOUT))
+            .layer(HandleErrorLayer::new(|_: BoxError| async {
+                StatusCode::REQUEST_TIMEOUT
+            }))
             .layer(TimeoutLayer::new(Duration::from_secs(10)))
     );
 # async {

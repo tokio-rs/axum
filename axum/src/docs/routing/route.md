@@ -113,6 +113,7 @@ use axum::{
     body::Body,
     routing::{any_service, get_service},
     http::{Request, StatusCode},
+    error_handling::HandleErrorLayer,
 };
 use tower_http::services::ServeFile;
 use http::Response;
@@ -147,7 +148,7 @@ let app = Router::new()
         "/static/Cargo.toml",
         get_service(ServeFile::new("Cargo.toml"))
             // though we must handle any potential errors
-            .handle_error(|error: io::Error| {
+            .handle_error(|error: io::Error| async move {
                 (
                     StatusCode::INTERNAL_SERVER_ERROR,
                     format!("Unhandled internal error: {}", error),

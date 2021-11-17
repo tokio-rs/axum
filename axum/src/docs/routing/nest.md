@@ -74,13 +74,14 @@ use axum::{
     Router,
     routing::get_service,
     http::StatusCode,
+    error_handling::HandleErrorLayer,
 };
 use std::{io, convert::Infallible};
 use tower_http::services::ServeDir;
 
 // Serves files inside the `public` directory at `GET /public/*`
 let serve_dir_service = get_service(ServeDir::new("public"))
-    .handle_error(|error: io::Error| {
+    .handle_error(|error: io::Error| async move {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
             format!("Unhandled internal error: {}", error),
