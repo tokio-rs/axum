@@ -331,12 +331,17 @@ impl IntoResponse for std::borrow::Cow<'static, str> {
     type BodyError = Infallible;
 
     fn into_response(self) -> Response<Self::Body> {
+        #[allow(clippy::declare_interior_mutable_const)]
+        const TEXT_PLAIN: HeaderValue = HeaderValue::from_static("text/plain");
+
         let mut res = Response::new(Full::from(self));
-        res.headers_mut()
-            .insert(header::CONTENT_TYPE, HeaderValue::from_static("text/plain"));
+        res.headers_mut().insert(header::CONTENT_TYPE, TEXT_PLAIN);
         res
     }
 }
+
+#[allow(clippy::declare_interior_mutable_const)]
+const APPLICATION_OCTET_STREAM: HeaderValue = HeaderValue::from_static("application/octet-stream");
 
 impl IntoResponse for Bytes {
     type Body = Full<Bytes>;
@@ -344,10 +349,8 @@ impl IntoResponse for Bytes {
 
     fn into_response(self) -> Response<Self::Body> {
         let mut res = Response::new(Full::from(self));
-        res.headers_mut().insert(
-            header::CONTENT_TYPE,
-            HeaderValue::from_static("application/octet-stream"),
-        );
+        res.headers_mut()
+            .insert(header::CONTENT_TYPE, APPLICATION_OCTET_STREAM);
         res
     }
 }
@@ -358,10 +361,8 @@ impl IntoResponse for &'static [u8] {
 
     fn into_response(self) -> Response<Self::Body> {
         let mut res = Response::new(Full::from(self));
-        res.headers_mut().insert(
-            header::CONTENT_TYPE,
-            HeaderValue::from_static("application/octet-stream"),
-        );
+        res.headers_mut()
+            .insert(header::CONTENT_TYPE, APPLICATION_OCTET_STREAM);
         res
     }
 }
@@ -372,10 +373,8 @@ impl IntoResponse for Vec<u8> {
 
     fn into_response(self) -> Response<Self::Body> {
         let mut res = Response::new(Full::from(self));
-        res.headers_mut().insert(
-            header::CONTENT_TYPE,
-            HeaderValue::from_static("application/octet-stream"),
-        );
+        res.headers_mut()
+            .insert(header::CONTENT_TYPE, APPLICATION_OCTET_STREAM);
         res
     }
 }
@@ -386,10 +385,8 @@ impl IntoResponse for std::borrow::Cow<'static, [u8]> {
 
     fn into_response(self) -> Response<Self::Body> {
         let mut res = Response::new(Full::from(self));
-        res.headers_mut().insert(
-            header::CONTENT_TYPE,
-            HeaderValue::from_static("application/octet-stream"),
-        );
+        res.headers_mut()
+            .insert(header::CONTENT_TYPE, APPLICATION_OCTET_STREAM);
         res
     }
 }
@@ -471,9 +468,11 @@ where
     type BodyError = Infallible;
 
     fn into_response(self) -> Response<Self::Body> {
+        #[allow(clippy::declare_interior_mutable_const)]
+        const TEXT_HTML: HeaderValue = HeaderValue::from_static("text/html");
+
         let mut res = Response::new(self.0.into());
-        res.headers_mut()
-            .insert(header::CONTENT_TYPE, HeaderValue::from_static("text/html"));
+        res.headers_mut().insert(header::CONTENT_TYPE, TEXT_HTML);
         res
     }
 }
