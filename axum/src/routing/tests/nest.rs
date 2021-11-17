@@ -1,5 +1,5 @@
 use super::*;
-use crate::{body::box_body, error_handling::HandleErrorExt, extract::Extension};
+use crate::{body::boxed, error_handling::HandleErrorExt, extract::Extension};
 use std::collections::HashMap;
 
 #[tokio::test]
@@ -149,7 +149,7 @@ async fn nested_service_sees_stripped_uri() {
             Router::new().route(
                 "/baz",
                 service_fn(|req: Request<Body>| async move {
-                    let body = box_body(Body::from(req.uri().to_string()));
+                    let body = boxed(Body::from(req.uri().to_string()));
                     Ok::<_, Infallible>(Response::new(body))
                 }),
             ),

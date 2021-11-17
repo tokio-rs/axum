@@ -2,7 +2,7 @@
 
 use super::IntoResponse;
 use crate::{
-    body::{box_body, BoxBody},
+    body::{boxed, BoxBody},
     BoxError, Error,
 };
 use bytes::Bytes;
@@ -325,10 +325,10 @@ where
 
     fn into_response(self) -> http::Response<Self::Body> {
         match self {
-            Self::PayloadTooLarge(inner) => inner.into_response().map(box_body),
-            Self::LengthRequired(inner) => inner.into_response().map(box_body),
-            Self::HeadersAlreadyExtracted(inner) => inner.into_response().map(box_body),
-            Self::Inner(inner) => inner.into_response().map(box_body),
+            Self::PayloadTooLarge(inner) => inner.into_response().map(boxed),
+            Self::LengthRequired(inner) => inner.into_response().map(boxed),
+            Self::HeadersAlreadyExtracted(inner) => inner.into_response().map(boxed),
+            Self::Inner(inner) => inner.into_response().map(boxed),
         }
     }
 }
