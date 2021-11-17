@@ -176,6 +176,9 @@ where
     type BodyError = Infallible;
 
     fn into_response(self) -> Response<Self::Body> {
+        #[allow(clippy::declare_interior_mutable_const)]
+        const APPLICATION_JSON: HeaderValue = HeaderValue::from_static("application/json");
+
         let bytes = match serde_json::to_vec(&self.0) {
             Ok(res) => res,
             Err(err) => {
@@ -188,10 +191,8 @@ where
         };
 
         let mut res = Response::new(Full::from(bytes));
-        res.headers_mut().insert(
-            header::CONTENT_TYPE,
-            HeaderValue::from_static("application/json"),
-        );
+        res.headers_mut()
+            .insert(header::CONTENT_TYPE, APPLICATION_JSON);
         res
     }
 }
