@@ -1,7 +1,7 @@
 //! Routing for handlers based on HTTP methods.
 
 use crate::{
-    body::{box_body, BoxBody},
+    body::{boxed, BoxBody},
     handler::Handler,
     routing::{MethodFilter, MethodNotAllowed},
     util::{Either, EitherProj},
@@ -446,7 +446,7 @@ where
         };
 
         if this.req_method == &Method::HEAD {
-            let response = response.map(|_| box_body(Empty::new()));
+            let response = response.map(|_| boxed(Empty::new()));
             Poll::Ready(Ok(response))
         } else {
             Poll::Ready(Ok(response))

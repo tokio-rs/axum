@@ -71,7 +71,7 @@
 //! [axum-debug]: https://docs.rs/axum-debug
 
 use crate::{
-    body::{box_body, BoxBody},
+    body::{boxed, BoxBody},
     extract::{
         connect_info::{Connected, IntoMakeServiceWithConnectInfo},
         FromRequest, RequestParts,
@@ -272,7 +272,7 @@ where
     type Sealed = sealed::Hidden;
 
     async fn call(self, _req: Request<B>) -> Response<BoxBody> {
-        self().await.into_response().map(box_body)
+        self().await.into_response().map(boxed)
     }
 }
 
@@ -296,13 +296,13 @@ macro_rules! impl_handler {
                 $(
                     let $ty = match $ty::from_request(&mut req).await {
                         Ok(value) => value,
-                        Err(rejection) => return rejection.into_response().map(box_body),
+                        Err(rejection) => return rejection.into_response().map(boxed),
                     };
                 )*
 
                 let res = self($($ty,)*).await;
 
-                res.into_response().map(box_body)
+                res.into_response().map(boxed)
             }
         }
     };
@@ -371,8 +371,8 @@ where
             .await
             .map_err(IntoResponse::into_response)
         {
-            Ok(res) => res.map(box_body),
-            Err(res) => res.map(box_body),
+            Ok(res) => res.map(boxed),
+            Err(res) => res.map(boxed),
         }
     }
 }

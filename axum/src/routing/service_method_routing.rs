@@ -97,7 +97,7 @@
 //! [`Service`'s]: tower::Service
 
 use crate::{
-    body::{box_body, BoxBody},
+    body::{boxed, BoxBody},
     routing::{MethodFilter, MethodNotAllowed},
     util::{Either, EitherProj},
     BoxError,
@@ -537,12 +537,12 @@ where
         let this = self.project();
 
         let response = match this.inner.project() {
-            EitherProj::A { inner } => ready!(inner.poll(cx))?.map(box_body),
+            EitherProj::A { inner } => ready!(inner.poll(cx))?.map(boxed),
             EitherProj::B { inner } => ready!(inner.poll(cx))?,
         };
 
         if this.req_method == &Method::HEAD {
-            let response = response.map(|_| box_body(Empty::new()));
+            let response = response.map(|_| boxed(Empty::new()));
             Poll::Ready(Ok(response))
         } else {
             Poll::Ready(Ok(response))

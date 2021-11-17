@@ -151,7 +151,7 @@ pub mod future {
     //! Future types.
 
     use crate::{
-        body::{box_body, BoxBody},
+        body::{boxed, BoxBody},
         response::IntoResponse,
         BoxError,
     };
@@ -190,11 +190,11 @@ pub mod future {
             let this = self.project();
 
             match ready!(this.inner.poll(cx)) {
-                Ok(res) => Ok(res.map(box_body)).into(),
+                Ok(res) => Ok(res.map(boxed)).into(),
                 Err(err) => {
                     let f = this.f.take().unwrap();
                     let res = f(err);
-                    Ok(res.into_response().map(box_body)).into()
+                    Ok(res.into_response().map(boxed)).into()
                 }
             }
         }

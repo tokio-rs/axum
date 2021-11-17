@@ -138,7 +138,7 @@ let app = Router::new()
         // it can be routed to directly.
         service_fn(|req: Request<Body>| async move {
             let body = Body::from(format!("Hi from `{} /foo`", req.method()));
-            let body = axum::body::box_body(body);
+            let body = axum::body::boxed(body);
             let res = Response::new(body);
             Ok::<_, Infallible>(res)
         })

@@ -1,7 +1,7 @@
 #![doc = include_str!("../docs/response.md")]
 
 use crate::{
-    body::{box_body, BoxBody},
+    body::{boxed, BoxBody},
     BoxError, Error,
 };
 use bytes::Bytes;
@@ -157,7 +157,7 @@ pub trait IntoResponse {
     /// contains exactly one chunk.
     /// - [`axum::body::BoxBody`]: If you need to unify multiple body types into
     /// one, or return a body type that cannot be named. Can be created with
-    /// [`box_body`].
+    /// [`boxed`].
     ///
     /// [`axum::body::Body`]: crate::body::Body
     /// [`axum::body::Empty<Bytes>`]: crate::body::Empty
@@ -209,8 +209,8 @@ where
 
     fn into_response(self) -> Response<Self::Body> {
         match self {
-            Ok(value) => value.into_response().map(box_body),
-            Err(err) => err.into_response().map(box_body),
+            Ok(value) => value.into_response().map(boxed),
+            Err(err) => err.into_response().map(boxed),
         }
     }
 }

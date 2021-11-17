@@ -7,7 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- None.
+- **change:** `box_body` has been renamed to `boxed`. `box_body` still exists
+  but is deprecated.
 
 # 0.3.3 (13. November, 2021)
 
@@ -490,7 +491,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improve error message of `MissingExtension` rejections ([#72](https://github.com/tokio-rs/axum/pull/72))
 - Improve documentation for routing ([#71](https://github.com/tokio-rs/axum/pull/71))
 - Clarify required response body type when routing to `tower::Service`s ([#69](https://github.com/tokio-rs/axum/pull/69))
-- Add `axum::body::box_body` to converting an `http_body::Body` to `axum::body::BoxBody` ([#69](https://github.com/tokio-rs/axum/pull/69))
+- Add `axum::body::boxed` to converting an `http_body::Body` to `axum::body::BoxBody` ([#69](https://github.com/tokio-rs/axum/pull/69))
 - Add `axum::sse` for Server-Sent Events ([#75](https://github.com/tokio-rs/axum/pull/75))
 - Mention required dependencies in docs ([#77](https://github.com/tokio-rs/axum/pull/77))
 - Fix WebSockets failing on Firefox ([#76](https://github.com/tokio-rs/axum/pull/76))

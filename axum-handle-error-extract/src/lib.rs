@@ -138,7 +138,7 @@
 #![cfg_attr(test, allow(clippy::float_cmp))]
 
 use axum::{
-    body::{box_body, BoxBody, Bytes, Full, HttpBody},
+    body::{boxed, BoxBody, Bytes, Full, HttpBody},
     extract::{FromRequest, RequestParts},
     http::{Request, Response, StatusCode},
     response::IntoResponse,
@@ -281,8 +281,8 @@ where
 
         let future = Box::pin(async move {
             match inner.oneshot(req).await {
-                Ok(res) => Ok(res.map(box_body)),
-                Err(err) => Ok(f(err).await.into_response().map(box_body)),
+                Ok(res) => Ok(res.map(boxed)),
+                Err(err) => Ok(f(err).await.into_response().map(boxed)),
             }
         });
 
@@ -329,7 +329,7 @@ macro_rules! impl_service {
                     $(
                         let $ty = match $ty::from_request(&mut req).await {
                             Ok(value) => value,
-                            Err(rejection) => return Ok(rejection.into_response().map(box_body)),
+                            Err(rejection) => return Ok(rejection.into_response().map(boxed)),
                         };
                     )*
 
@@ -338,14 +338,14 @@ macro_rules! impl_service {
                         Err(err) => {
                             return Ok(Response::builder()
                                 .status(StatusCode::INTERNAL_SERVER_ERROR)
-                                .body(box_body(Full::from(err.to_string())))
+                                .body(boxed(Full::from(err.to_string())))
                                 .unwrap());
                         }
                     };
 
                     match inner.oneshot(req).await {
-                        Ok(res) => Ok(res.map(box_body)),
-                        Err(err) => Ok(f($($ty),*, err).await.into_response().map(box_body)),
+                        Ok(res) => Ok(res.map(boxed)),
+                        Err(err) => Ok(f($($ty),*, err).await.into_response().map(boxed)),
                     }
                 });
 
