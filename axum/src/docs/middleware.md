@@ -69,7 +69,7 @@ use tower::{
 use std::convert::Infallible;
 use tower_http::trace::TraceLayer;
 #
-# fn handle_error<T>(error: T) -> axum::http::StatusCode {
+# async fn handle_error<T>(error: T) -> axum::http::StatusCode {
 #     axum::http::StatusCode::INTERNAL_SERVER_ERROR
 # }
 

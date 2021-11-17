@@ -299,7 +299,7 @@ async fn middleware_applies_to_routes_above() {
         .route("/one", get(std::future::pending::<()>))
         .layer(
             ServiceBuilder::new()
-                .layer(HandleErrorLayer::new(|_: BoxError| {
+                .layer(HandleErrorLayer::new(|_: BoxError| async move {
                     StatusCode::REQUEST_TIMEOUT
                 }))
                 .layer(TimeoutLayer::new(Duration::new(0, 0))),

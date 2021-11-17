@@ -124,7 +124,7 @@ fn admin_routes() -> Router {
         .layer(RequireAuthorizationLayer::bearer("secret-token"))
 }
 
-fn handle_error(error: BoxError) -> impl IntoResponse {
+async fn handle_error(error: BoxError) -> impl IntoResponse {
     if error.is::<tower::timeout::error::Elapsed>() {
         return (StatusCode::REQUEST_TIMEOUT, Cow::from("request timed out"));
     }
