@@ -1,6 +1,6 @@
 use super::IntoResponse;
 use crate::{
-    body::{box_body, BoxBody},
+    body::{boxed, BoxBody},
     BoxError,
 };
 use bytes::Bytes;
@@ -133,10 +133,10 @@ where
     fn into_response(self) -> Response<Self::Body> {
         let headers = match self.0.try_into_header_map() {
             Ok(headers) => headers,
-            Err(res) => return res.map(box_body),
+            Err(res) => return res.map(boxed),
         };
 
-        (headers, self.1).into_response().map(box_body)
+        (headers, self.1).into_response().map(boxed)
     }
 }
 
@@ -157,10 +157,10 @@ where
     fn into_response(self) -> Response<Self::Body> {
         let headers = match self.1.try_into_header_map() {
             Ok(headers) => headers,
-            Err(res) => return res.map(box_body),
+            Err(res) => return res.map(boxed),
         };
 
-        (self.0, headers, self.2).into_response().map(box_body)
+        (self.0, headers, self.2).into_response().map(boxed)
     }
 }
 

@@ -1,5 +1,5 @@
 use crate::{
-    body::{box_body, Body, BoxBody},
+    body::{boxed, Body, BoxBody},
     clone_box_service::CloneBoxService,
 };
 use http::{Request, Response};
@@ -99,7 +99,7 @@ impl<B, E> Future for RouteFuture<B, E> {
         match self.project().future.poll(cx) {
             Poll::Ready(Ok(res)) => {
                 if strip_body {
-                    Poll::Ready(Ok(res.map(|_| box_body(Empty::new()))))
+                    Poll::Ready(Ok(res.map(|_| boxed(Empty::new()))))
                 } else {
                     Poll::Ready(Ok(res))
                 }

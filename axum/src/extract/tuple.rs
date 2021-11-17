@@ -1,6 +1,6 @@
 use super::{FromRequest, RequestParts};
 use crate::{
-    body::{box_body, BoxBody},
+    body::{boxed, BoxBody},
     response::IntoResponse,
 };
 use async_trait::async_trait;
@@ -33,7 +33,7 @@ macro_rules! impl_from_request {
             type Rejection = Response<BoxBody>;
 
             async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-                $( let $ty = $ty::from_request(req).await.map_err(|err| err.into_response().map(box_body))?; )*
+                $( let $ty = $ty::from_request(req).await.map_err(|err| err.into_response().map(boxed))?; )*
                 Ok(($($ty,)*))
             }
         }

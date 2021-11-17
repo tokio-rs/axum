@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     `MethodRouter::route_layer`.
   - Merge method routers with `MethodRouter::merge`
   - Customize response for unsupported methods with `MethodRouter::fallback`
+- **breaking:** The previously deprecated `axum::body::box_body` function has
+  been removed. Use `axum::body::boxed` instead.
 - **fixed:** Adding the same route with different methods now works ie
   `.route("/", get(_)).route("/", post(_))`.
 - **breaking:** `routing::handler_method_router` and
