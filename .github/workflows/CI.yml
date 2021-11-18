@@ -100,7 +100,7 @@ jobs:
         command: test
         args: >
           -p axum
-          -p axum-handle-error-extract
+          -p axum-extra
           --all-features --all-targets
     # the compiler errors are different on 1.54 which makes
     # the trybuild tests in axum-debug fail, so just run the doc

@@ -13,7 +13,7 @@
 //! Example is based on <https://github.com/hyperium/hyper/blob/master/examples/http_proxy.rs>
 
 use axum::{
-    body::{box_body, Body},
+    body::{boxed, Body},
     http::{Method, Request, Response, StatusCode},
     routing::get,
     Router,
@@ -37,7 +37,7 @@ async fn main() {
         let router = router.clone();
         async move {
             if req.method() == Method::CONNECT {
-                proxy(req).await.map(|res| res.map(box_body))
+                proxy(req).await.map(|res| res.map(boxed))
             } else {
                 router.oneshot(req).await.map_err(|err| match err {})
             }

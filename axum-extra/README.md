@@ -1,21 +1,20 @@
-# axum-handle-error-extract
+# axum-extra
 
-Error handling layer for axum that supports extractors and async functions
+[![Build status](https://github.com/tokio-rs/axum/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/tokio-rs/axum-extra/actions/workflows/CI.yml)
+[![Crates.io](https://img.shields.io/crates/v/axum-extra)](https://crates.io/crates/axum-extra)
+[![Documentation](https://docs.rs/axum-extra/badge.svg)](https://docs.rs/axum-extra)
 
-[![Build status](https://github.com/tokio-rs/axum-handle-error-extract/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/tokio-rs/axum-handle-error-extract/actions/workflows/CI.yml)
-[![Crates.io](https://img.shields.io/crates/v/axum-handle-error-extract)](https://crates.io/crates/axum-handle-error-extract)
-[![Documentation](https://docs.rs/axum-handle-error-extract/badge.svg)](https://docs.rs/axum-handle-error-extract)
+Extra utilities for [`axum`].
 
 More information about this crate can be found in the [crate documentation][docs].
 
 ## Safety
 
-This crate uses `#![forbid(unsafe_code)]` to ensure everything is implemented in
-100% safe Rust.
+This crate uses `#![forbid(unsafe_code)]` to ensure everything is implemented in 100% safe Rust.
 
 ## Minimum supported Rust version
 
-axum-handle-error-extract's MSRV is 1.54.
+axum-extra's MSRV is 1.54.
 
 ## Getting Help
 
@@ -38,8 +37,9 @@ Unless you explicitly state otherwise, any contribution intentionally submitted
 for inclusion in `axum` by you, shall be licensed as MIT, without any
 additional terms or conditions.
 
-[docs]: https://docs.rs/axum-handle-error-extract
-[contributing]: /CONTRIBUTING.md
+[`axum`]: https://crates.io/crates/axum
 [chat]: https://discord.gg/tokio
+[contributing]: /CONTRIBUTING.md
+[docs]: https://docs.rs/axum-extra
+[license]: /axum-extra/LICENSE
 [issue]: https://github.com/tokio-rs/axum/issues/new
-[license]: /axum/LICENSE

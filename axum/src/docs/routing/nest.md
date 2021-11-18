@@ -72,23 +72,23 @@ let app = Router::new().nest("/:version/api", users_api);
 ```rust
 use axum::{
     Router,
-    routing::service_method_routing::get,
-    error_handling::HandleErrorExt,
+    routing::get_service,
     http::StatusCode,
+    error_handling::HandleErrorLayer,
 };
 use std::{io, convert::Infallible};
 use tower_http::services::ServeDir;
 
 // Serves files inside the `public` directory at `GET /public/*`
-let serve_dir_service = ServeDir::new("public")
-    .handle_error(|error: io::Error| {
+let serve_dir_service = get_service(ServeDir::new("public"))
+    .handle_error(|error: io::Error| async move {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
             format!("Unhandled internal error: {}", error),
         )
     });
 
-let app = Router::new().nest("/public", get(serve_dir_service));
+let app = Router::new().nest("/public", serve_dir_service);
 # async {
 # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 # };

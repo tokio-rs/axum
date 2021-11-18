@@ -49,7 +49,7 @@ async fn main() {
         // Add middleware to all routes
         .layer(
             ServiceBuilder::new()
-                .layer(HandleErrorLayer::new(|error: BoxError| {
+                .layer(HandleErrorLayer::new(|error: BoxError| async move {
                     if error.is::<tower::timeout::error::Elapsed>() {
                         Ok(StatusCode::REQUEST_TIMEOUT)
                     } else {

@@ -111,9 +111,9 @@ axum also supports routing to general [`Service`]s:
 use axum::{
     Router,
     body::Body,
-    routing::service_method_routing as service,
-    error_handling::HandleErrorExt,
+    routing::{any_service, get_service},
     http::{Request, StatusCode},
+    error_handling::HandleErrorLayer,
 };
 use tower_http::services::ServeFile;
 use http::Response;
@@ -125,9 +125,9 @@ let app = Router::new()
         // Any request to `/` goes to a service
         "/",
         // Services whose response body is not `axum::body::BoxBody`
-        // can be wrapped in `axum::service::any` (or one of the other routing filters)
+        // can be wrapped in `axum::routing::any_service` (or one of the other routing filters)
         // to have the response body mapped
-        service::any(service_fn(|_: Request<Body>| async {
+        any_service(service_fn(|_: Request<Body>| async {
             let res = Response::new(Body::from("Hi from `GET /`"));
             Ok::<_, Infallible>(res)
         }))
@@ -138,7 +138,7 @@ let app = Router::new()
         // it can be routed to directly.
         service_fn(|req: Request<Body>| async move {
             let body = Body::from(format!("Hi from `{} /foo`", req.method()));
-            let body = axum::body::box_body(body);
+            let body = axum::body::boxed(body);
             let res = Response::new(body);
             Ok::<_, Infallible>(res)
         })
@@ -146,9 +146,9 @@ let app = Router::new()
     .route(
         // GET `/static/Cargo.toml` goes to a service from tower-http
         "/static/Cargo.toml",
-        service::get(ServeFile::new("Cargo.toml"))
+        get_service(ServeFile::new("Cargo.toml"))
             // though we must handle any potential errors
-            .handle_error(|error: io::Error| {
+            .handle_error(|error: io::Error| async move {
                 (
                     StatusCode::INTERNAL_SERVER_ERROR,
                     format!("Unhandled internal error: {}", error),
@@ -161,8 +161,10 @@ let app = Router::new()
 ```
 
 Routing to arbitrary services in this way has complications for backpressure
-([`Service::poll_ready`]). See the [`service_method_routing`] module for more
-details.
+([`Service::poll_ready`]). See the [Routing to services and backpressure] module
+for more details.
+
+[Routing to services and backpressure]: /#routing-to-services-and-backpressure
 
 # Panics
 

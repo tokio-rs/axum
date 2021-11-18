@@ -35,7 +35,7 @@ async fn handler() {
         "/",
         get(forever.layer(
             ServiceBuilder::new()
-                .layer(HandleErrorLayer::new(|_: BoxError| {
+                .layer(HandleErrorLayer::new(|_: BoxError| async {
                     StatusCode::REQUEST_TIMEOUT
                 }))
                 .layer(timeout()),
@@ -54,7 +54,7 @@ async fn handler_multiple_methods_first() {
         "/",
         get(forever.layer(
             ServiceBuilder::new()
-                .layer(HandleErrorLayer::new(|_: BoxError| {
+                .layer(HandleErrorLayer::new(|_: BoxError| async {
                     StatusCode::REQUEST_TIMEOUT
                 }))
                 .layer(timeout()),
@@ -76,7 +76,7 @@ async fn handler_multiple_methods_middle() {
             .get(
                 forever.layer(
                     ServiceBuilder::new()
-                        .layer(HandleErrorLayer::new(|_: BoxError| {
+                        .layer(HandleErrorLayer::new(|_: BoxError| async {
                             StatusCode::REQUEST_TIMEOUT
                         }))
                         .layer(timeout()),
@@ -98,7 +98,7 @@ async fn handler_multiple_methods_last() {
         delete(unit).get(
             forever.layer(
                 ServiceBuilder::new()
-                    .layer(HandleErrorLayer::new(|_: BoxError| {
+                    .layer(HandleErrorLayer::new(|_: BoxError| async {
                         StatusCode::REQUEST_TIMEOUT
                     }))
                     .layer(timeout()),

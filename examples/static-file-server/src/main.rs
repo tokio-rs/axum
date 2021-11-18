@@ -4,10 +4,7 @@
 //! cargo run -p example-static-file-server
 //! ```
 
-use axum::{
-    error_handling::HandleErrorExt, http::StatusCode, routing::service_method_routing as service,
-    Router,
-};
+use axum::{http::StatusCode, routing::get_service, Router};
 use std::net::SocketAddr;
 use tower_http::{services::ServeDir, trace::TraceLayer};
 
@@ -25,7 +22,7 @@ async fn main() {
     let app = Router::new()
         .nest(
             "/static",
-            service::get(ServeDir::new(".")).handle_error(|error: std::io::Error| {
+            get_service(ServeDir::new(".")).handle_error(|error: std::io::Error| async move {
                 (
                     StatusCode::INTERNAL_SERVER_ERROR,
                     format!("Unhandled internal error: {}", error),

@@ -43,14 +43,12 @@ functions as handlers. However if you're embedding general `Service`s or
 applying middleware, which might produce errors you have to tell axum how to
 convert those errors into responses.
 
-You can handle errors from services using [`HandleErrorExt::handle_error`]:
-
 ```rust
 use axum::{
     Router,
     body::Body,
     http::{Request, Response, StatusCode},
-    error_handling::HandleErrorExt, // for `.handle_error()`
+    error_handling::HandleError,
 };
 
 async fn thing_that_might_fail() -> Result<(), anyhow::Error> {
@@ -69,12 +67,12 @@ let app = Router::new().route(
     // we cannot route to `some_fallible_service` directly since it might fail.
     // we have to use `handle_error` which converts its errors into responses
     // and changes its error type from `anyhow::Error` to `Infallible`.
-    some_fallible_service.handle_error(handle_anyhow_error),
+    HandleError::new(some_fallible_service, handle_anyhow_error),
 );
 
 // handle errors by converting them into something that implements
 // `IntoResponse`
-fn handle_anyhow_error(err: anyhow::Error) -> (StatusCode, String) {
+async fn handle_anyhow_error(err: anyhow::Error) -> (StatusCode, String) {
     (
         StatusCode::INTERNAL_SERVER_ERROR,
         format!("Something went wrong: {}", err),
@@ -111,7 +109,7 @@ let app = Router::new()
             .timeout(Duration::from_secs(30))
     );
 
-fn handle_timeout_error(err: BoxError) -> (StatusCode, String) {
+async fn handle_timeout_error(err: BoxError) -> (StatusCode, String) {
     if err.is::<tower::timeout::error::Elapsed>() {
         (
             StatusCode::REQUEST_TIMEOUT,
@@ -123,6 +121,48 @@ fn handle_timeout_error(err: BoxError) -> (StatusCode, String) {
             format!("Unhandled internal error: {}", err),
         )
     }
+}
+# async {
+# axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+# };
+```
+
+# Running extractors for error handling
+
+`HandleErrorLayer` also supports running extractors:
+
+```rust
+use axum::{
+    Router,
+    BoxError,
+    routing::get,
+    http::{StatusCode, Method, Uri},
+    error_handling::HandleErrorLayer,
+};
+use std::time::Duration;
+use tower::ServiceBuilder;
+
+let app = Router::new()
+    .route("/", get(|| async {}))
+    .layer(
+        ServiceBuilder::new()
+            // `timeout` will produce an error if the handler takes
+            // too long so we must handle those
+            .layer(HandleErrorLayer::new(handle_timeout_error))
+            .timeout(Duration::from_secs(30))
+    );
+
+async fn handle_timeout_error(
+    // `Method` and `Uri` are extractors so they can be used here
+    method: Method,
+    uri: Uri,
+    // the last argument must be the error itself
+    err: BoxError,
+) -> (StatusCode, String) {
+    (
+        StatusCode::INTERNAL_SERVER_ERROR,
+        format!("`{} {}` failed with {}", method, uri, err),
+    )
 }
 # async {
 # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();

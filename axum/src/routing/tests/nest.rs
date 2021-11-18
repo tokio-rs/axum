@@ -1,5 +1,7 @@
+use tower_http::services::ServeDir;
+
 use super::*;
-use crate::{body::box_body, error_handling::HandleErrorExt, extract::Extension};
+use crate::{body::boxed, extract::Extension};
 use std::collections::HashMap;
 
 #[tokio::test]
@@ -149,7 +151,7 @@ async fn nested_service_sees_stripped_uri() {
             Router::new().route(
                 "/baz",
                 service_fn(|req: Request<Body>| async move {
-                    let body = box_body(Body::from(req.uri().to_string()));
+                    let body = boxed(Body::from(req.uri().to_string()));
                     Ok::<_, Infallible>(Response::new(body))
                 }),
             ),
@@ -167,7 +169,7 @@ async fn nested_service_sees_stripped_uri() {
 async fn nest_static_file_server() {
     let app = Router::new().nest(
         "/static",
-        service::get(tower_http::services::ServeDir::new(".")).handle_error(|error| {
+        get_service(ServeDir::new(".")).handle_error(|error| async move {
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 format!("Unhandled internal error: {}", error),

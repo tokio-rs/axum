@@ -4,6 +4,7 @@ use tower::ServiceExt;
 
 mod for_handlers {
     use super::*;
+    use headers::HeaderMap;
 
     #[tokio::test]
     async fn get_handles_head() {
@@ -38,14 +39,14 @@ mod for_handlers {
 
 mod for_services {
     use super::*;
-    use crate::routing::service_method_routing::get;
+    use crate::routing::get_service;
     use http::header::HeaderValue;
 
     #[tokio::test]
     async fn get_handles_head() {
         let app = Router::new().route(
             "/",
-            get(service_fn(|_req: Request<Body>| async move {
+            get_service(service_fn(|_req: Request<Body>| async move {
                 let res = Response::builder()
                     .header("x-some-header", "foobar".parse::<HeaderValue>().unwrap())
                     .body(Body::from("you shouldn't see this"))

@@ -1,0 +1,53 @@
+Add a fallback service to the router.
+
+This service will be called if no routes matches the incoming request.
+
+```rust
+use axum::{
+    Router,
+    routing::get,
+    handler::Handler,
+    response::IntoResponse,
+    http::{StatusCode, Method, Uri},
+};
+
+let handler = get(|| async {}).fallback(fallback.into_service());
+
+let app = Router::new().route("/", handler);
+
+async fn fallback(method: Method, uri: Uri) -> impl IntoResponse {
+    (StatusCode::NOT_FOUND, format!("`{}` not allowed for {}", method, uri))
+}
+# async {
+# hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+# };
+```
+
+## When used with `MethodRouter::merge`
+
+Two routers that both have a fallback cannot be merged. Doing so results in a
+panic:
+
+```rust,should_panic
+use axum::{
+    routing::{get, post},
+    handler::Handler,
+    response::IntoResponse,
+    http::{StatusCode, Uri},
+};
+
+let one = get(|| async {})
+    .fallback(fallback_one.into_service());
+
+let two = post(|| async {})
+    .fallback(fallback_two.into_service());
+
+let method_route = one.merge(two);
+
+async fn fallback_one() -> impl IntoResponse {}
+async fn fallback_two() -> impl IntoResponse {}
+# let app = axum::Router::new().route("/", method_route);
+# async {
+# hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+# };
+```

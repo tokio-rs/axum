@@ -1,5 +1,4 @@
 [package]
-authors = ["Programatik <programatik29@gmail.com>"]
 categories = ["development-tools::debugging"]
 description = "Better error messages for axum framework."
 edition = "2018"
