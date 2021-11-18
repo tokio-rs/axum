@@ -1,7 +1,4 @@
-use crate::{
-    body::{boxed, Body, BoxBody},
-    clone_box_service::CloneBoxService,
-};
+use crate::body::{boxed, Body, BoxBody};
 use http::{Request, Response};
 use http_body::Empty;
 use pin_project_lite::pin_project;
@@ -12,7 +9,10 @@ use std::{
     pin::Pin,
     task::{Context, Poll},
 };
-use tower::{util::Oneshot, ServiceExt};
+use tower::{
+    util::{BoxCloneService, Oneshot},
+    ServiceExt,
+};
 use tower_service::Service;
 
 /// How routes are stored inside a [`Router`](super::Router).
@@ -20,7 +20,7 @@ use tower_service::Service;
 /// You normally shouldn't need to care about this type. It's used in
 /// [`Router::layer`](super::Router::layer).
 pub struct Route<B = Body, E = Infallible>(
-    pub(crate) CloneBoxService<Request<B>, Response<BoxBody>, E>,
+    pub(crate) BoxCloneService<Request<B>, Response<BoxBody>, E>,
 );
 
 impl<B, E> Route<B, E> {
@@ -29,7 +29,7 @@ impl<B, E> Route<B, E> {
         T: Service<Request<B>, Response = Response<BoxBody>, Error = E> + Clone + Send + 'static,
         T::Future: Send + 'static,
     {
-        Self(CloneBoxService::new(svc))
+        Self(BoxCloneService::new(svc))
     }
 }
 
@@ -66,7 +66,7 @@ pin_project! {
     pub struct RouteFuture<B, E> {
         #[pin]
         future: Oneshot<
-            CloneBoxService<Request<B>, Response<BoxBody>, E>,
+            BoxCloneService<Request<B>, Response<BoxBody>, E>,
             Request<B>,
         >,
         strip_body: bool,
@@ -75,7 +75,7 @@ pin_project! {
 
 impl<B, E> RouteFuture<B, E> {
     pub(crate) fn new(
-        future: Oneshot<CloneBoxService<Request<B>, Response<BoxBody>, E>, Request<B>>,
+        future: Oneshot<BoxCloneService<Request<B>, Response<BoxBody>, E>, Request<B>>,
     ) -> Self {
         RouteFuture {
             future,
