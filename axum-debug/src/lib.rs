@@ -268,19 +268,33 @@ mod debug_handler {
             }
         };
 
-        let receiver = self_receiver(item_fn);
-
         let name = format_ident!("__axum_debug_check_{}_into_response", item_fn.sig.ident);
-        quote_spanned! {span=>
-            #make
 
-            #[allow(warnings)]
-            async fn #name() {
-                let value = #receiver #make_value_name().await;
-                fn check<T>(_: T)
-                    where T: ::axum::response::IntoResponse
-                    {}
-                check(value);
+        if let Some(receiver) = self_receiver(item_fn) {
+            quote_spanned! {span=>
+                #make
+
+                #[allow(warnings)]
+                async fn #name() {
+                    let value = #receiver #make_value_name().await;
+                    fn check<T>(_: T)
+                        where T: ::axum::response::IntoResponse
+                        {}
+                    check(value);
+                }
+            }
+        } else {
+            quote_spanned! {span=>
+                #[allow(warnings)]
+                async fn #name() {
+                    #make
+
+                    let value = #make_value_name().await;
+                    fn check<T>(_: T)
+                        where T: ::axum::response::IntoResponse
+                        {}
+                    check(value);
+                }
             }
         }
     }
@@ -299,8 +313,6 @@ mod debug_handler {
             };
         }
 
-        let receiver = self_receiver(item_fn);
-
         let span = item_fn.span();
 
         let handler_name = &item_fn.sig.ident;
@@ -310,26 +322,42 @@ mod debug_handler {
         });
 
         let name = format_ident!("__axum_debug_check_{}_future", item_fn.sig.ident);
-        quote_spanned! {span=>
-            #[allow(warnings)]
-            fn #name() {
-                let future = #receiver #handler_name(#(#args),*);
-                fn check<T>(_: T)
-                    where T: ::std::future::Future + Send
-                {}
-                check(future);
+
+        if let Some(receiver) = self_receiver(item_fn) {
+            quote_spanned! {span=>
+                #[allow(warnings)]
+                fn #name() {
+                    let future = #receiver #handler_name(#(#args),*);
+                    fn check<T>(_: T)
+                        where T: ::std::future::Future + Send
+                    {}
+                    check(future);
+                }
+            }
+        } else {
+            quote_spanned! {span=>
+                #[allow(warnings)]
+                fn #name() {
+                    #item_fn
+
+                    let future = #handler_name(#(#args),*);
+                    fn check<T>(_: T)
+                        where T: ::std::future::Future + Send
+                    {}
+                    check(future);
+                }
             }
         }
     }
 
-    fn self_receiver(item_fn: &ItemFn) -> TokenStream {
+    fn self_receiver(item_fn: &ItemFn) -> Option<TokenStream> {
         let takes_self = item_fn
             .sig
             .inputs
             .iter()
             .any(|arg| matches!(arg, syn::FnArg::Receiver(_)));
         if takes_self {
-            return quote! { Self:: };
+            return Some(quote! { Self:: });
         }
 
         if let syn::ReturnType::Type(_, ty) = &item_fn.sig.output {
@@ -339,7 +367,7 @@ mod debug_handler {
                     if let Some(last) = segments.last() {
                         match &last.arguments {
                             syn::PathArguments::None if last.ident == "Self" => {
-                                return quote! { Self:: };
+                                return Some(quote! { Self:: });
                             }
                             _ => {}
                         }
@@ -348,7 +376,7 @@ mod debug_handler {
             }
         }
 
-        quote! {}
+        None
     }
 }
 
