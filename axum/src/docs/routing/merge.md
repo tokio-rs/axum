@@ -36,3 +36,8 @@ let app = Router::new()
 # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 # };
 ```
+
+## Panics
+
+- If two routers that each have a [fallback](Router::fallback) are merged. This
+  is because `Router` only allows a single fallback.

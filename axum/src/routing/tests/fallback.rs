@@ -49,25 +49,3 @@ async fn or() {
     assert_eq!(res.status(), StatusCode::OK);
     assert_eq!(res.text().await, "fallback");
 }
-
-#[tokio::test]
-async fn fallback_on_or() {
-    let one = Router::new()
-        .route("/one", get(|| async {}))
-        .fallback((|| async { "fallback one" }).into_service());
-
-    let two = Router::new()
-        .route("/two", get(|| async {}))
-        .fallback((|| async { "fallback two" }).into_service());
-
-    let app = one.merge(two);
-
-    let client = TestClient::new(app);
-
-    assert_eq!(client.get("/one").send().await.status(), StatusCode::OK);
-    assert_eq!(client.get("/two").send().await.status(), StatusCode::OK);
-
-    let res = client.get("/does-not-exist").send().await;
-    assert_eq!(res.status(), StatusCode::OK);
-    assert_eq!(res.text().await, "fallback two");
-}

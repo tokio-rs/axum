@@ -28,10 +28,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **breaking:** The `Handler<B, T>` trait is now defined as `Handler<T, B =
   Body>`. That is the type parameters have been swapped and `B` defaults to
   `axum::body::Body` ([#527])
+- **breaking:** `Router::merge` will panic if both routers have fallbacks.
+  Previously the left side fallback would be silently discarded ([#529])
+- **breaking:** `Router::nest` will panic if the nested router has a fallback.
+  Previously it would be silently discarded ([#529])
 - Update WebSockets to use tokio-tungstenite 0.16 ([#525])
 
 [#525]: https://github.com/tokio-rs/axum/pull/525
 [#527]: https://github.com/tokio-rs/axum/pull/527
+[#529]: https://github.com/tokio-rs/axum/pull/529
 [#534]: https://github.com/tokio-rs/axum/pull/534
 
 # 0.3.3 (13. November, 2021)
