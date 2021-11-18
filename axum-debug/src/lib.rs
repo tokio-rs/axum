@@ -135,8 +135,8 @@ pub fn debug_handler(_attr: TokenStream, input: TokenStream) -> TokenStream {
 
 #[cfg(debug_assertions)]
 mod debug_handler {
-    use proc_macro2::{Ident, TokenStream};
-    use quote::{quote, quote_spanned};
+    use proc_macro2::TokenStream;
+    use quote::{format_ident, quote, quote_spanned};
     use syn::{parse::Parse, spanned::Spanned, FnArg, ItemFn};
 
     pub(crate) fn expand(
@@ -155,9 +155,9 @@ mod debug_handler {
 
         check_extractor_count(&item_fn)?;
 
-        let check_inputs_impls_from_request = check_inputs_impls_from_request(&item_fn)?;
-        let check_output_impls_into_response = check_output_impls_into_response(&item_fn)?;
-        let check_future_send = check_future_send(&item_fn)?;
+        let check_inputs_impls_from_request = check_inputs_impls_from_request(&item_fn);
+        let check_output_impls_into_response = check_output_impls_into_response(&item_fn);
+        let check_future_send = check_future_send(&item_fn);
 
         let tokens = quote! {
             #input
@@ -192,12 +192,13 @@ mod debug_handler {
         }
     }
 
-    fn check_inputs_impls_from_request(item_fn: &ItemFn) -> syn::Result<TokenStream> {
+    fn check_inputs_impls_from_request(item_fn: &ItemFn) -> TokenStream {
         if !item_fn.sig.generics.params.is_empty() {
-            return Err(syn::Error::new_spanned(
+            return syn::Error::new_spanned(
                 &item_fn.sig.generics,
                 "`#[axum_debug::debug_handler]` doesn't support generic functions",
-            ));
+            )
+            .into_compile_error();
         }
 
         item_fn
@@ -208,10 +209,11 @@ mod debug_handler {
                 let (span, ty) = match arg {
                     FnArg::Receiver(receiver) => {
                         if receiver.reference.is_some() {
-                            return Err(syn::Error::new_spanned(
+                            return syn::Error::new_spanned(
                                 receiver,
                                 "Handlers must only take owned values",
-                            ));
+                            )
+                            .into_compile_error();
                         }
 
                         let span = receiver.span();
@@ -224,26 +226,29 @@ mod debug_handler {
                     }
                 };
 
-                let name = unique_name();
-                Ok(quote_spanned! {span=>
+                let name = format_ident!("__axum_debug_check_{}_from_request", item_fn.sig.ident);
+                quote_spanned! {span=>
                     #[allow(warnings)]
                     fn #name()
                     where
                         #ty: ::axum::extract::FromRequest + Send,
                     {}
-                })
+                }
             })
-            .collect::<syn::Result<TokenStream>>()
+            .collect::<TokenStream>()
     }
 
-    fn check_output_impls_into_response(item_fn: &ItemFn) -> syn::Result<TokenStream> {
+    fn check_output_impls_into_response(item_fn: &ItemFn) -> TokenStream {
         let ty = match &item_fn.sig.output {
-            syn::ReturnType::Default => return Ok(quote! {}),
+            syn::ReturnType::Default => return quote! {},
             syn::ReturnType::Type(_, ty) => ty,
         };
         let span = ty.span();
 
-        let make_value_name = unique_name();
+        let make_value_name = format_ident!(
+            "__axum_debug_check_{}_into_response_make_value",
+            item_fn.sig.ident
+        );
 
         let make = if item_fn.sig.asyncness.is_some() {
             quote_spanned! {span=>
@@ -265,30 +270,30 @@ mod debug_handler {
 
         let receiver = self_receiver(item_fn);
 
-        let name = unique_name();
-
-        Ok(quote_spanned! {span=>
+        let name = format_ident!("__axum_debug_check_{}_into_response", item_fn.sig.ident);
+        quote_spanned! {span=>
             #make
 
             #[allow(warnings)]
             async fn #name() {
                 let value = #receiver #make_value_name().await;
                 fn check<T>(_: T)
-                where T: ::axum::response::IntoResponse
-                {}
+                    where T: ::axum::response::IntoResponse
+                    {}
                 check(value);
             }
-        })
+        }
     }
 
-    fn check_future_send(item_fn: &ItemFn) -> syn::Result<TokenStream> {
+    fn check_future_send(item_fn: &ItemFn) -> TokenStream {
         if item_fn.sig.asyncness.is_none() {
             match &item_fn.sig.output {
                 syn::ReturnType::Default => {
-                    return Err(syn::Error::new_spanned(
+                    return syn::Error::new_spanned(
                         &item_fn.sig.fn_token,
                         "Handlers must be `async fn`s",
-                    ));
+                    )
+                    .into_compile_error();
                 }
                 syn::ReturnType::Type(_, ty) => ty,
             };
@@ -304,24 +309,17 @@ mod debug_handler {
             quote_spanned! {span=> panic!() }
         });
 
-        let name = unique_name();
-        Ok(quote_spanned! {span=>
+        let name = format_ident!("__axum_debug_check_{}_future", item_fn.sig.ident);
+        quote_spanned! {span=>
             #[allow(warnings)]
             fn #name() {
                 let future = #receiver #handler_name(#(#args),*);
                 fn check<T>(_: T)
-                where T: ::std::future::Future + Send
+                    where T: ::std::future::Future + Send
                 {}
                 check(future);
             }
-        })
-    }
-
-    fn unique_name() -> Ident {
-        use std::sync::atomic::{AtomicU64, Ordering};
-        static COUNT: AtomicU64 = AtomicU64::new(0);
-        let count = COUNT.fetch_add(1, Ordering::SeqCst);
-        quote::format_ident!("__axum_debug_check_{}", count)
+        }
     }
 
     fn self_receiver(item_fn: &ItemFn) -> TokenStream {
