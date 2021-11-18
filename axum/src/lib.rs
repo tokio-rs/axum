@@ -376,7 +376,6 @@
 pub(crate) mod macros;
 
 mod add_extension;
-mod clone_box_service;
 mod error;
 #[cfg(feature = "json")]
 mod json;
