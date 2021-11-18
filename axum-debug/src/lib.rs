@@ -292,7 +292,7 @@ mod debug_handler {
                     let value = #make_value_name().await;
                     fn check<T>(_: T)
                         where T: ::axum::response::IntoResponse
-                        {}
+                    {}
                     check(value);
                 }
             }
