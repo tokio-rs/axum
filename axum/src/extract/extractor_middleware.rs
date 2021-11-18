@@ -247,7 +247,7 @@ where
                             State::Call { future }
                         }
                         Err(err) => {
-                            let res = err.into_response().map(crate::body::box_body);
+                            let res = err.into_response().map(crate::body::boxed);
                             return Poll::Ready(Ok(res));
                         }
                     }
@@ -255,7 +255,7 @@ where
                 StateProj::Call { future } => {
                     return future
                         .poll(cx)
-                        .map(|result| result.map(|response| response.map(crate::body::box_body)));
+                        .map(|result| result.map(|response| response.map(crate::body::boxed)));
                 }
             };
 

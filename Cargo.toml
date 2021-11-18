@@ -2,6 +2,6 @@
 members = [
     "axum",
     "axum-debug",
-    "axum-handle-error-extract",
+    "axum-extra",
     "examples/*",
 ]

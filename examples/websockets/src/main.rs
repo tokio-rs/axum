@@ -36,7 +36,7 @@ async fn main() {
             get_service(
                 ServeDir::new("examples/websockets/assets").append_index_html_on_directories(true),
             )
-            .handle_error(|error: std::io::Error| {
+            .handle_error(|error: std::io::Error| async move {
                 (
                     StatusCode::INTERNAL_SERVER_ERROR,
                     format!("Unhandled internal error: {}", error),

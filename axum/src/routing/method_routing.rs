@@ -1,6 +1,6 @@
 use crate::{
-    body::{box_body, Body, BoxBody, Bytes},
-    error_handling::HandleErrorLayer,
+    body::{boxed, Body, BoxBody, Bytes},
+    error_handling::{HandleError, HandleErrorLayer},
     handler::Handler,
     http::{Method, Request, Response, StatusCode},
     routing::{Fallback, MethodFilter, Route},
@@ -508,7 +508,7 @@ impl<B, E> MethodRouter<B, E> {
     /// requests.
     pub fn new() -> Self {
         let fallback = Route::new(service_fn(|_: Request<B>| async {
-            let mut response = Response::new(box_body(Empty::new()));
+            let mut response = Response::new(boxed(Empty::new()));
             *response.status_mut() = StatusCode::METHOD_NOT_ALLOWED;
             Ok(response)
         }));
@@ -609,7 +609,7 @@ impl<ReqBody, E> MethodRouter<ReqBody, E> {
         ResBody: http_body::Body<Data = Bytes> + Send + 'static,
         ResBody::Error: Into<BoxError>,
     {
-        self.on_service_boxed_response_body(filter, svc.map_response(|res| res.map(box_body)))
+        self.on_service_boxed_response_body(filter, svc.map_response(|res| res.map(boxed)))
     }
 
     chained_service_fn!(delete_service, DELETE);
@@ -632,7 +632,7 @@ impl<ReqBody, E> MethodRouter<ReqBody, E> {
         ResBody: http_body::Body<Data = Bytes> + Send + 'static,
         ResBody::Error: Into<BoxError>,
     {
-        self.fallback = Fallback::Custom(Route::new(svc.map_response(|res| res.map(box_body))));
+        self.fallback = Fallback::Custom(Route::new(svc.map_response(|res| res.map(boxed))));
         self
     }
 
@@ -665,7 +665,7 @@ impl<ReqBody, E> MethodRouter<ReqBody, E> {
     {
         let layer = ServiceBuilder::new()
             .layer_fn(Route::new)
-            .layer(MapResponseBodyLayer::new(box_body))
+            .layer(MapResponseBodyLayer::new(boxed))
             .layer(layer)
             .into_inner();
         let layer_fn = |s| layer.layer(s);
@@ -698,7 +698,7 @@ impl<ReqBody, E> MethodRouter<ReqBody, E> {
     {
         let layer = ServiceBuilder::new()
             .layer_fn(Route::new)
-            .layer(MapResponseBodyLayer::new(box_body))
+            .layer(MapResponseBodyLayer::new(boxed))
             .layer(layer)
             .into_inner();
         let layer_fn = |s| layer.layer(s);
@@ -795,12 +795,15 @@ impl<ReqBody, E> MethodRouter<ReqBody, E> {
     /// Apply a [`HandleErrorLayer`].
     ///
     /// This is a convenience method for doing `self.layer(HandleErrorLayer::new(f))`.
-    pub fn handle_error<F, Res>(self, f: F) -> MethodRouter<ReqBody, Infallible>
+    pub fn handle_error<F, T>(self, f: F) -> MethodRouter<ReqBody, Infallible>
     where
-        F: FnOnce(E) -> Res + Clone + Send + 'static,
-        Res: crate::response::IntoResponse,
-        ReqBody: Send + 'static,
+        F: Clone + Send + 'static,
+        HandleError<Route<ReqBody, E>, F, T>:
+            Service<Request<ReqBody>, Response = Response<BoxBody>, Error = Infallible>,
+        <HandleError<Route<ReqBody, E>, F, T> as Service<Request<ReqBody>>>::Future: Send,
+        T: 'static,
         E: 'static,
+        ReqBody: 'static,
     {
         self.layer(HandleErrorLayer::new(f))
     }
@@ -1047,12 +1050,17 @@ mod tests {
             get(ok)
                 .post(ok)
                 .route_layer(RequireAuthorizationLayer::bearer("password"))
-                .merge(delete_service(ServeDir::new(".")).handle_error(|_| StatusCode::NOT_FOUND))
+                .merge(
+                    delete_service(ServeDir::new("."))
+                        .handle_error(|_| async { StatusCode::NOT_FOUND }),
+                )
                 .fallback((|| async { StatusCode::NOT_FOUND }).into_service())
                 .put(ok)
                 .layer(
                     ServiceBuilder::new()
-                        .layer(HandleErrorLayer::new(|_| StatusCode::REQUEST_TIMEOUT))
+                        .layer(HandleErrorLayer::new(|_| async {
+                            StatusCode::REQUEST_TIMEOUT
+                        }))
                         .layer(TimeoutLayer::new(Duration::from_secs(10))),
                 ),
         );

@@ -137,7 +137,9 @@ async fn layer_and_handle_error() {
         .route("/timeout", get(futures::future::pending::<()>))
         .layer(
             ServiceBuilder::new()
-                .layer(HandleErrorLayer::new(|_| StatusCode::REQUEST_TIMEOUT))
+                .layer(HandleErrorLayer::new(|_| async {
+                    StatusCode::REQUEST_TIMEOUT
+                }))
                 .layer(TimeoutLayer::new(Duration::from_millis(10))),
         );
     let app = one.merge(two);

@@ -71,7 +71,7 @@
 //! [axum-debug]: https://docs.rs/axum-debug
 
 use crate::{
-    body::{box_body, Body, BoxBody},
+    body::{boxed, Body, BoxBody},
     extract::{
         connect_info::{Connected, IntoMakeServiceWithConnectInfo},
         FromRequest, RequestParts,
@@ -272,7 +272,7 @@ where
     type Sealed = sealed::Hidden;
 
     async fn call(self, _req: Request<B>) -> Response<BoxBody> {
-        self().await.into_response().map(box_body)
+        self().await.into_response().map(boxed)
     }
 }
 
@@ -296,34 +296,19 @@ macro_rules! impl_handler {
                 $(
                     let $ty = match $ty::from_request(&mut req).await {
                         Ok(value) => value,
-                        Err(rejection) => return rejection.into_response().map(box_body),
+                        Err(rejection) => return rejection.into_response().map(boxed),
                     };
                 )*
 
                 let res = self($($ty,)*).await;
 
-                res.into_response().map(box_body)
+                res.into_response().map(boxed)
             }
         }
     };
 }
 
-impl_handler!(T1);
-impl_handler!(T1, T2);
-impl_handler!(T1, T2, T3);
-impl_handler!(T1, T2, T3, T4);
-impl_handler!(T1, T2, T3, T4, T5);
-impl_handler!(T1, T2, T3, T4, T5, T6);
-impl_handler!(T1, T2, T3, T4, T5, T6, T7);
-impl_handler!(T1, T2, T3, T4, T5, T6, T7, T8);
-impl_handler!(T1, T2, T3, T4, T5, T6, T7, T8, T9);
-impl_handler!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10);
-impl_handler!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11);
-impl_handler!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12);
-impl_handler!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13);
-impl_handler!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14);
-impl_handler!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15);
-impl_handler!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16);
+all_the_tuples!(impl_handler);
 
 /// A [`Service`] created from a [`Handler`] by applying a Tower middleware.
 ///
@@ -371,8 +356,8 @@ where
             .await
             .map_err(IntoResponse::into_response)
         {
-            Ok(res) => res.map(box_body),
-            Err(res) => res.map(box_body),
+            Ok(res) => res.map(boxed),
+            Err(res) => res.map(boxed),
         }
     }
 }

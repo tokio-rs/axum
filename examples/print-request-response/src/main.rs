@@ -29,7 +29,7 @@ async fn main() {
         .route("/", post(|| async move { "Hello from `POST /`" }))
         .layer(
             ServiceBuilder::new()
-                .layer(HandleErrorLayer::new(|error| {
+                .layer(HandleErrorLayer::new(|error| async move {
                     (
                         StatusCode::INTERNAL_SERVER_ERROR,
                         format!("Unhandled internal error: {}", error),

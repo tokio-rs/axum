@@ -2,7 +2,7 @@
 
 use self::{future::RouterFuture, not_found::NotFound};
 use crate::{
-    body::{box_body, Body, BoxBody},
+    body::{boxed, Body, BoxBody},
     extract::{
         connect_info::{Connected, IntoMakeServiceWithConnectInfo},
         MatchedPath, OriginalUri,
@@ -279,7 +279,7 @@ where
         NewResBody::Error: Into<BoxError>,
     {
         let layer = ServiceBuilder::new()
-            .layer(MapResponseBodyLayer::new(box_body))
+            .layer(MapResponseBodyLayer::new(boxed))
             .layer(layer)
             .into_inner();
 
@@ -320,7 +320,7 @@ where
         NewResBody::Error: Into<BoxError>,
     {
         let layer = ServiceBuilder::new()
-            .layer(MapResponseBodyLayer::new(box_body))
+            .layer(MapResponseBodyLayer::new(boxed))
             .layer(layer)
             .into_inner();
 

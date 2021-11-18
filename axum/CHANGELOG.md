@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     `MethodRouter::route_layer`.
   - Merge method routers with `MethodRouter::merge`
   - Customize response for unsupported methods with `MethodRouter::fallback`
+- **breaking:** The previously deprecated `axum::body::box_body` function has
+  been removed. Use `axum::body::boxed` instead.
 - **fixed:** Adding the same route with different methods now works ie
   `.route("/", get(_)).route("/", post(_))`.
 - **breaking:** `routing::handler_method_router` and
@@ -20,6 +22,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `routing::{get, get_service, ..., MethodRouter}`.
 - **breaking:** `HandleErrorExt` has been removed in favor of
   `MethodRouter::handle_error`.
+- **breaking:** `HandleErrorLayer` now requires the handler function to be
+  `async` ([#534])
+- **added:** `HandleErrorLayer` now supports running extractors.
 - **breaking:** The `Handler<B, T>` trait is now defined as `Handler<T, B =
   Body>`. That is the type parameters have been swapped and `B` defaults to
   `axum::body::Body` ([#527])
@@ -32,6 +37,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#525]: https://github.com/tokio-rs/axum/pull/525
 [#527]: https://github.com/tokio-rs/axum/pull/527
 [#529]: https://github.com/tokio-rs/axum/pull/529
+[#534]: https://github.com/tokio-rs/axum/pull/534
 
 # 0.3.3 (13. November, 2021)
 
