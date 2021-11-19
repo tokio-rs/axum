@@ -584,3 +584,19 @@ async fn nesting_router_with_fallbacks_panics() {
     let app = Router::new().nest("/", one);
     TestClient::new(app);
 }
+
+#[tokio::test]
+async fn merging_routers_with_same_paths_but_different_methods() {
+    let one = Router::new().route("/", get(|| async { "GET" }));
+    let two = Router::new().route("/", post(|| async { "POST" }));
+
+    let client = TestClient::new(one.merge(two));
+
+    let res = client.get("/").send().await;
+    let body = res.text().await;
+    assert_eq!(body, "GET");
+
+    let res = client.post("/").send().await;
+    let body = res.text().await;
+    assert_eq!(body, "POST");
+}

@@ -244,12 +244,15 @@ where
             nested_at_root,
         } = other;
 
-        if let Err(err) = self.node.merge(node) {
-            self.panic_on_matchit_error(err);
-        }
-
         for (id, route) in routes {
-            assert!(self.routes.insert(id, route).is_none());
+            let path = node
+                .route_id_to_path
+                .get(&id)
+                .expect("no path for route id. This is a bug in axum. Please file an issue");
+            self = match route {
+                Endpoint::MethodRouter(route) => self.route(path, route),
+                Endpoint::Route(route) => self.route(path, route),
+            };
         }
 
         self.fallback = match (self.fallback, fallback) {
@@ -600,13 +603,6 @@ impl Node {
         self.route_id_to_path.insert(val, shared_path.clone());
         self.path_to_route_id.insert(shared_path, val);
 
-        Ok(())
-    }
-
-    fn merge(&mut self, other: Node) -> Result<(), matchit::InsertError> {
-        for (id, path) in other.route_id_to_path {
-            self.insert(&*path, id)?;
-        }
         Ok(())
     }
 
