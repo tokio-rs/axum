@@ -1,6 +1,6 @@
 //! Additional types for defining routes.
 
-use axum::Router;
+use axum::{body::Body, Router};
 
 mod resource;
 
@@ -8,24 +8,55 @@ pub use self::resource::Resource;
 
 /// Extension trait that adds additional methods to [`Router`].
 pub trait RouterExt<B>: sealed::Sealed {
-    /// Add a [`Resource`] to the router.
+    /// Add the routes from `T`'s [`HasRoutes::routes`] to this router.
     ///
-    /// See [`Resource`] for more details.
-    fn resource<F>(self, name: &str, f: F) -> Self
+    /// # Example
+    ///
+    /// Using [`Resource`] which implements [`HasRoutes`]:
+    ///
+    /// ```rust
+    /// use axum::{Router, routing::get};
+    /// use axum_extra::routing::{RouterExt, Resource};
+    ///
+    /// let app = Router::new()
+    ///     .with(
+    ///         Resource::named("users")
+    ///             .index(|| async {})
+    ///             .create(|| async {})
+    ///     )
+    ///     .with(
+    ///         Resource::named("teams").index(|| async {})
+    ///     );
+    /// # let _: Router<axum::body::Body> = app;
+    /// ```
+    fn with<T>(self, routes: T) -> Self
     where
-        F: FnOnce(resource::Resource<B>) -> resource::Resource<B>;
+        T: HasRoutes<B>;
 }
 
-impl<B> RouterExt<B> for Router<B> {
-    fn resource<F>(self, name: &str, f: F) -> Self
+impl<B> RouterExt<B> for Router<B>
+where
+    B: Send + 'static,
+{
+    fn with<T>(self, routes: T) -> Self
     where
-        F: FnOnce(resource::Resource<B>) -> resource::Resource<B>,
+        T: HasRoutes<B>,
     {
-        f(resource::Resource {
-            name: name.to_owned(),
-            router: self,
-        })
-        .router
+        self.merge(routes.routes())
+    }
+}
+
+/// Trait for things that can provide routes.
+///
+/// Used with [`RouterExt::with`].
+pub trait HasRoutes<B = Body> {
+    /// Get the routes.
+    fn routes(&self) -> Router<B>;
+}
+
+impl<B> HasRoutes<B> for Router<B> {
+    fn routes(&self) -> Router<B> {
+        self.clone()
     }
 }
 
