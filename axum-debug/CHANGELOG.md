@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+- None.
+
+# 0.2.1 (19. October 2021)
+
 - Make macro handle more cases such as mutable extractors and handlers taking
   `self` ([#518])
 
