@@ -59,7 +59,7 @@ impl<B: Send + 'static> Resource<B> {
     /// All routes will be nested at `/{resource_name}`.
     pub fn named(resource_name: &str) -> Self {
         Self {
-            name: resource_name.to_string(),
+            name: resource_name.to_owned(),
             router: Default::default(),
         }
     }

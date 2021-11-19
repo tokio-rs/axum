@@ -109,6 +109,7 @@
     clippy::option_option,
     clippy::verbose_file_reads,
     clippy::unnested_or_patterns,
+    clippy::str_to_string,
     rust_2018_idioms,
     future_incompatible,
     nonstandard_style,

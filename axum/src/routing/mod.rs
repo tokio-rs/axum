@@ -203,7 +203,7 @@ where
                 for (id, nested_path) in node.route_id_to_path {
                     let route = routes.remove(&id).unwrap();
                     let full_path = if &*nested_path == "/" {
-                        path.to_string()
+                        path.to_owned()
                     } else {
                         format!("{}{}", path, nested_path)
                     };
@@ -427,7 +427,7 @@ where
             .params
             .iter()
             .filter(|(key, _)| !key.starts_with(NEST_TAIL_PARAM))
-            .map(|(key, value)| (key.to_string(), value.to_string()))
+            .map(|(key, value)| (key.to_owned(), value.to_owned()))
             .collect::<Vec<_>>();
 
         insert_url_params(&mut req, params);
@@ -477,7 +477,7 @@ where
             req.extensions_mut().insert(original_uri);
         }
 
-        let path = req.uri().path().to_string();
+        let path = req.uri().path().to_owned();
 
         match self.node.at(&path) {
             Ok(match_) => self.call_route(match_, req),
