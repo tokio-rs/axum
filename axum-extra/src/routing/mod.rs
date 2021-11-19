@@ -51,12 +51,12 @@ where
 /// Used with [`RouterExt::with`].
 pub trait HasRoutes<B = Body> {
     /// Get the routes.
-    fn routes(&self) -> Router<B>;
+    fn routes(self) -> Router<B>;
 }
 
 impl<B> HasRoutes<B> for Router<B> {
-    fn routes(&self) -> Router<B> {
-        self.clone()
+    fn routes(self) -> Router<B> {
+        self
     }
 }
 

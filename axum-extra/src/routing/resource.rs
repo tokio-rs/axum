@@ -188,8 +188,8 @@ impl<B: Send + 'static> Resource<B> {
 }
 
 impl<B> HasRoutes<B> for Resource<B> {
-    fn routes(&self) -> Router<B> {
-        self.router.clone()
+    fn routes(self) -> Router<B> {
+        self.router
     }
 }
 
