@@ -1,3 +1,4 @@
+use super::HasRoutes;
 use axum::{
     body::{Body, BoxBody},
     handler::Handler,
@@ -14,35 +15,36 @@ use tower_service::Service;
 ///
 /// ```rust
 /// use axum::{Router, routing::get, extract::Path};
-/// use axum_extra::routing::RouterExt;
+/// use axum_extra::routing::{RouterExt, Resource};
 ///
-/// let app = Router::new().resource("users", |r| {
+/// let users = Resource::named("users")
 ///     // Define a route for `GET /users`
-///     r.index(|| async {})
-///         // `POST /users`
-///         .create(|| async {})
-///         // `GET /users/new`
-///         .new(|| async {})
-///         // `GET /users/:users_id`
-///         .show(|Path(user_id): Path<u64>| async {})
-///         // `GET /users/:users_id/edit`
-///         .edit(|Path(user_id): Path<u64>| async {})
-///         // `PUT or PATCH /users/:users_id`
-///         .update(|Path(user_id): Path<u64>| async {})
-///         // `DELETE /users/:users_id`
-///         .destroy(|Path(user_id): Path<u64>| async {})
-///         // Nest another router at the "member level"
-///         // This defines a route for `GET /users/:users_id/tweets`
-///         .nest(Router::new().route(
-///             "/tweets",
-///             get(|Path(user_id): Path<u64>| async {}),
-///         ))
-///         // Nest another router at the "collection level"
-///         // This defines a route for `GET /users/featured`
-///         .nest_collection(
-///             Router::new().route("/featured", get(|| async {})),
-///         )
-/// });
+///     .index(|| async {})
+///     // `POST /users`
+///     .create(|| async {})
+///     // `GET /users/new`
+///     .new(|| async {})
+///     // `GET /users/:users_id`
+///     .show(|Path(user_id): Path<u64>| async {})
+///     // `GET /users/:users_id/edit`
+///     .edit(|Path(user_id): Path<u64>| async {})
+///     // `PUT or PATCH /users/:users_id`
+///     .update(|Path(user_id): Path<u64>| async {})
+///     // `DELETE /users/:users_id`
+///     .destroy(|Path(user_id): Path<u64>| async {})
+///     // Nest another router at the "member level"
+///     // This defines a route for `GET /users/:users_id/tweets`
+///     .nest(Router::new().route(
+///         "/tweets",
+///         get(|Path(user_id): Path<u64>| async {}),
+///     ))
+///     // Nest another router at the "collection level"
+///     // This defines a route for `GET /users/featured`
+///     .nest_collection(
+///         Router::new().route("/featured", get(|| async {})),
+///     );
+///
+/// let app = Router::new().with(users);
 /// # let _: Router<axum::body::Body> = app;
 /// ```
 #[derive(Debug)]
@@ -52,27 +54,17 @@ pub struct Resource<B = Body> {
 }
 
 impl<B: Send + 'static> Resource<B> {
-    fn index_create_path(&self) -> String {
-        format!("/{}", self.name)
+    /// Create a `Resource` with the given name.
+    ///
+    /// All routes will be nested at `/{resource_name}`.
+    pub fn named(resource_name: &str) -> Self {
+        Self {
+            name: resource_name.to_string(),
+            router: Default::default(),
+        }
     }
 
-    fn show_update_destroy_path(&self) -> String {
-        format!("/{0}/:{0}_id", self.name)
-    }
-
-    fn route<T>(mut self, path: &str, svc: T) -> Self
-    where
-        T: Service<Request<B>, Response = Response<BoxBody>, Error = Infallible>
-            + Clone
-            + Send
-            + 'static,
-        T::Future: Send + 'static,
-    {
-        self.router = self.router.route(path, svc);
-        self
-    }
-
-    /// Add a handler at `GET /resource_name`.
+    /// Add a handler at `GET /{resource_name}`.
     pub fn index<H, T>(self, handler: H) -> Self
     where
         H: Handler<T, B>,
@@ -173,6 +165,32 @@ impl<B: Send + 'static> Resource<B> {
         self.router = self.router.nest(&path, svc);
         self
     }
+
+    fn index_create_path(&self) -> String {
+        format!("/{}", self.name)
+    }
+
+    fn show_update_destroy_path(&self) -> String {
+        format!("/{0}/:{0}_id", self.name)
+    }
+
+    fn route<T>(mut self, path: &str, svc: T) -> Self
+    where
+        T: Service<Request<B>, Response = Response<BoxBody>, Error = Infallible>
+            + Clone
+            + Send
+            + 'static,
+        T::Future: Send + 'static,
+    {
+        self.router = self.router.route(path, svc);
+        self
+    }
+}
+
+impl<B> HasRoutes<B> for Resource<B> {
+    fn routes(self) -> Router<B> {
+        self.router
+    }
 }
 
 #[cfg(test)]
@@ -185,22 +203,23 @@ mod tests {
 
     #[tokio::test]
     async fn works() {
-        let mut app = Router::new().resource("users", |r| {
-            r.index(|| async { "users#index" })
-                .create(|| async { "users#create" })
-                .new(|| async { "users#new" })
-                .show(|Path(id): Path<u64>| async move { format!("users#show id={}", id) })
-                .edit(|Path(id): Path<u64>| async move { format!("users#edit id={}", id) })
-                .update(|Path(id): Path<u64>| async move { format!("users#update id={}", id) })
-                .destroy(|Path(id): Path<u64>| async move { format!("users#destroy id={}", id) })
-                .nest(Router::new().route(
-                    "/tweets",
-                    get(|Path(id): Path<u64>| async move { format!("users#tweets id={}", id) }),
-                ))
-                .nest_collection(
-                    Router::new().route("/featured", get(|| async move { "users#featured" })),
-                )
-        });
+        let users = Resource::named("users")
+            .index(|| async { "users#index" })
+            .create(|| async { "users#create" })
+            .new(|| async { "users#new" })
+            .show(|Path(id): Path<u64>| async move { format!("users#show id={}", id) })
+            .edit(|Path(id): Path<u64>| async move { format!("users#edit id={}", id) })
+            .update(|Path(id): Path<u64>| async move { format!("users#update id={}", id) })
+            .destroy(|Path(id): Path<u64>| async move { format!("users#destroy id={}", id) })
+            .nest(Router::new().route(
+                "/tweets",
+                get(|Path(id): Path<u64>| async move { format!("users#tweets id={}", id) }),
+            ))
+            .nest_collection(
+                Router::new().route("/featured", get(|| async move { "users#featured" })),
+            );
+
+        let mut app = Router::new().with(users);
 
         assert_eq!(
             call_route(&mut app, Method::GET, "/users").await,
