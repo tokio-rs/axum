@@ -1,5 +1,4 @@
-error: too many extractors. 16 extractors are allowed
-note: you can nest extractors like "a: (Extractor, Extractor), b: (Extractor, Extractor)"
+error: Handlers cannot take more than 16 arguments. Use `(a, b): (ExtractorA, ExtractorA)` to further nest extractors
   --> tests/fail/too_many_extractors.rs:5:5
    |
 5  | /     e1: String,

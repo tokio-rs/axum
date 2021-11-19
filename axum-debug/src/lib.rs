@@ -124,298 +124,273 @@
 use proc_macro::TokenStream;
 
 /// Generates better error messages when applied to a handler function.
-///
-/// # Examples
-///
-/// Function is not async:
-///
-/// ```rust,compile_fail
-/// #[axum_debug::debug_handler]
-/// fn handler() -> &'static str {
-///     "Hello, world"
-/// }
-/// ```
-///
-/// ```text
-/// error: handlers must be async functions
-///   --> main.rs:xx:1
-///    |
-/// xx | fn handler() -> &'static str {
-///    | ^^
-/// ```
-///
-/// Wrong return type:
-///
-/// ```rust,compile_fail
-/// #[axum_debug::debug_handler]
-/// async fn handler() -> bool {
-///     false
-/// }
-/// ```
-///
-/// ```text
-/// error[E0277]: the trait bound `bool: IntoResponse` is not satisfied
-///   --> main.rs:xx:23
-///    |
-/// xx | async fn handler() -> bool {
-///    |                       ^^^^
-///    |                       |
-///    |                       the trait `IntoResponse` is not implemented for `bool`
-/// ```
-///
-/// Wrong extractor:
-///
-/// ```rust,compile_fail
-/// #[axum_debug::debug_handler]
-/// async fn handler(a: bool) -> String {
-///     format!("Can I extract a bool? {}", a)
-/// }
-/// ```
-///
-/// ```text
-/// error[E0277]: the trait bound `bool: FromRequest` is not satisfied
-///   --> main.rs:xx:21
-///    |
-/// xx | async fn handler(a: bool) -> String {
-///    |                     ^^^^
-///    |                     |
-///    |                     the trait `FromRequest` is not implemented for `bool`
-/// ```
-///
-/// Too many extractors:
-///
-/// ```rust,compile_fail
-/// #[axum_debug::debug_handler]
-/// async fn handler(
-///     a: String,
-///     b: String,
-///     c: String,
-///     d: String,
-///     e: String,
-///     f: String,
-///     g: String,
-///     h: String,
-///     i: String,
-///     j: String,
-///     k: String,
-///     l: String,
-///     m: String,
-///     n: String,
-///     o: String,
-///     p: String,
-///     q: String,
-/// ) {}
-/// ```
-///
-/// ```text
-/// error: too many extractors. 16 extractors are allowed
-/// note: you can nest extractors like "a: (Extractor, Extractor), b: (Extractor, Extractor)"
-///   --> main.rs:xx:5
-///    |
-/// xx | /     a: String,
-/// xx | |     b: String,
-/// xx | |     c: String,
-/// xx | |     d: String,
-/// ...  |
-/// xx | |     p: String,
-/// xx | |     q: String,
-///    | |______________^
-/// ```
-///
-/// Future is not [`Send`]:
-///
-/// ```rust,compile_fail
-/// #[axum_debug::debug_handler]
-/// async fn handler() {
-///     let not_send = std::rc::Rc::new(());
-///
-///     async {}.await;
-/// }
-/// ```
-///
-/// ```text
-/// error: future cannot be sent between threads safely
-///   --> main.rs:xx:10
-///    |
-/// xx | async fn handler() {
-///    |          ^^^^^^^
-///    |          |
-///    |          future returned by `handler` is not `Send`
-/// ```
 #[proc_macro_attribute]
 pub fn debug_handler(_attr: TokenStream, input: TokenStream) -> TokenStream {
     #[cfg(not(debug_assertions))]
     return input;
 
     #[cfg(debug_assertions)]
-    return debug::apply_debug_handler(input);
+    return debug_handler::expand(_attr, input);
 }
 
 #[cfg(debug_assertions)]
-mod debug {
+mod debug_handler {
     use proc_macro2::TokenStream;
-    use quote::{format_ident, quote_spanned};
-    use syn::{parse_macro_input, spanned::Spanned, FnArg, Ident, ItemFn, ReturnType, Signature};
+    use quote::{format_ident, quote, quote_spanned};
+    use syn::{parse::Parse, spanned::Spanned, FnArg, ItemFn};
 
-    pub(crate) fn apply_debug_handler(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-        let function = parse_macro_input!(input as ItemFn);
-
-        let vis = &function.vis;
-        let sig = &function.sig;
-        let ident = &sig.ident;
-        let span = ident.span();
-        let len = sig.inputs.len();
-        let generics = create_generics(len);
-        let params = sig.inputs.iter().map(|fn_arg| {
-            if let FnArg::Typed(pat_type) = fn_arg {
-                &pat_type.pat
-            } else {
-                panic!("not a handler function");
-            }
-        });
-        let block = &function.block;
-
-        if let Err(err) = async_check(sig) {
-            return err.into_compile_error().into();
+    pub(crate) fn expand(
+        attr: proc_macro::TokenStream,
+        input: proc_macro::TokenStream,
+    ) -> proc_macro::TokenStream {
+        match try_expand(attr.into(), input.into()) {
+            Ok(tokens) => tokens.into(),
+            Err(err) => err.into_compile_error().into(),
         }
+    }
 
-        if let Err(err) = param_limit_check(sig) {
-            return err.into_compile_error().into();
-        }
+    pub(crate) fn try_expand(attr: TokenStream, input: TokenStream) -> syn::Result<TokenStream> {
+        syn::parse2::<Attrs>(attr)?;
+        let item_fn = syn::parse2::<ItemFn>(input.clone())?;
 
-        let check_trait = check_trait_code(sig, &generics);
-        let check_return = check_return_code(sig, &generics);
-        let check_params = match check_params_code(sig, &generics) {
-            Ok(tokens) => tokens,
-            Err(err) => return err.into_compile_error().into(),
+        check_extractor_count(&item_fn)?;
+
+        let check_inputs_impls_from_request = check_inputs_impls_from_request(&item_fn);
+        let check_output_impls_into_response = check_output_impls_into_response(&item_fn);
+        let check_future_send = check_future_send(&item_fn);
+
+        let tokens = quote! {
+            #input
+            #check_inputs_impls_from_request
+            #check_output_impls_into_response
+            #check_future_send
         };
 
-        let expanded = quote_spanned! {span=>
-            #vis #sig {
-                #check_trait
-                #check_return
-                #(#check_params)*
-
-                #sig #block
-
-                #ident(#(#params),*).await
-            }
-        };
-
-        expanded.into()
+        Ok(tokens)
     }
 
-    fn create_generics(len: usize) -> Vec<Ident> {
-        (1..=len).map(|i| format_ident!("T{}", i)).collect()
-    }
+    struct Attrs;
 
-    fn async_check(sig: &Signature) -> Result<(), syn::Error> {
-        if sig.asyncness.is_none() {
-            Err(syn::Error::new_spanned(
-                sig.fn_token,
-                "handlers must be async functions",
-            ))
-        } else {
-            Ok(())
+    impl Parse for Attrs {
+        fn parse(_input: syn::parse::ParseStream) -> syn::Result<Self> {
+            Ok(Self)
         }
     }
 
-    fn param_limit_check(sig: &Signature) -> Result<(), syn::Error> {
+    fn check_extractor_count(item_fn: &ItemFn) -> syn::Result<()> {
         let max_extractors = 16;
-
-        if sig.inputs.len() > max_extractors {
-            let msg = format!(
-                "too many extractors. {} extractors are allowed\n\
-                note: you can nest extractors like \"a: (Extractor, Extractor), b: (Extractor, Extractor)\"",
-                max_extractors
-            );
-
-            Err(syn::Error::new_spanned(&sig.inputs, msg))
-        } else {
+        if item_fn.sig.inputs.len() <= max_extractors {
             Ok(())
+        } else {
+            Err(syn::Error::new_spanned(
+                &item_fn.sig.inputs,
+                format!(
+                    "Handlers cannot take more than {} arguments. Use `(a, b): (ExtractorA, ExtractorA)` to further nest extractors",
+                    max_extractors,
+                )
+            ))
         }
     }
 
-    fn check_trait_code(sig: &Signature, generics: &[Ident]) -> proc_macro2::TokenStream {
-        let ident = &sig.ident;
-        let span = ident.span();
-
-        quote_spanned! {span=>
-            {
-                debug_handler(#ident);
-
-                fn debug_handler<F, Fut, #(#generics),*>(_f: F)
-                where
-                    F: ::std::ops::FnOnce(#(#generics),*) -> Fut + Clone + Send + 'static,
-                    Fut: ::std::future::Future + Send,
-                {}
-            }
+    fn check_inputs_impls_from_request(item_fn: &ItemFn) -> TokenStream {
+        if !item_fn.sig.generics.params.is_empty() {
+            return syn::Error::new_spanned(
+                &item_fn.sig.generics,
+                "`#[axum_debug::debug_handler]` doesn't support generic functions",
+            )
+            .into_compile_error();
         }
-    }
 
-    fn check_return_code(sig: &Signature, generics: &[Ident]) -> proc_macro2::TokenStream {
-        let span = match &sig.output {
-            ReturnType::Default => sig.output.span(),
-            ReturnType::Type(_, ty) => ty.span(),
-        };
-        let ident = &sig.ident;
-
-        quote_spanned! {span=>
-            {
-                debug_handler(#ident);
-
-                fn debug_handler<F, Fut, Res, #(#generics),*>(_f: F)
-                where
-                    F: ::std::ops::FnOnce(#(#generics),*) -> Fut,
-                    Fut: ::std::future::Future<Output = Res>,
-                    Res: ::axum::response::IntoResponse,
-                {}
-            }
-        }
-    }
-
-    fn check_params_code(
-        sig: &Signature,
-        generics: &[Ident],
-    ) -> Result<Vec<TokenStream>, syn::Error> {
-        let ident = &sig.ident;
-        generics
+        item_fn
+            .sig
+            .inputs
             .iter()
-            .enumerate()
-            .map(|(i, generic)| {
-                let span = match &sig.inputs[i] {
-                    FnArg::Typed(pat_type) => pat_type.ty.span(),
+            .map(|arg| {
+                let (span, ty) = match arg {
                     FnArg::Receiver(receiver) => {
-                        // TODO: look into whether its possible to make this work
-                        return Err(syn::Error::new_spanned(
-                            receiver,
-                            "`#[debug_handler]` is not supported on methods",
-                        ));
+                        if receiver.reference.is_some() {
+                            return syn::Error::new_spanned(
+                                receiver,
+                                "Handlers must only take owned values",
+                            )
+                            .into_compile_error();
+                        }
+
+                        let span = receiver.span();
+                        (span, syn::parse_quote!(Self))
+                    }
+                    FnArg::Typed(typed) => {
+                        let ty = &typed.ty;
+                        let span = ty.span();
+                        (span, ty.clone())
                     }
                 };
 
-                let tokens = quote_spanned! {span=>
-                    {
-                        debug_handler(#ident);
-
-                        fn debug_handler<F, Fut, #(#generics),*>(_f: F)
-                        where
-                            F: ::std::ops::FnOnce(#(#generics),*) -> Fut,
-                            Fut: ::std::future::Future,
-                            #generic: ::axum::extract::FromRequest + Send,
-                        {}
-                    }
-                };
-
-                Ok(tokens)
+                let name = format_ident!("__axum_debug_check_{}_from_request", item_fn.sig.ident);
+                quote_spanned! {span=>
+                    #[allow(warnings)]
+                    fn #name()
+                    where
+                        #ty: ::axum::extract::FromRequest + Send,
+                    {}
+                }
             })
-            .collect()
+            .collect::<TokenStream>()
+    }
+
+    fn check_output_impls_into_response(item_fn: &ItemFn) -> TokenStream {
+        let ty = match &item_fn.sig.output {
+            syn::ReturnType::Default => return quote! {},
+            syn::ReturnType::Type(_, ty) => ty,
+        };
+        let span = ty.span();
+
+        let make_value_name = format_ident!(
+            "__axum_debug_check_{}_into_response_make_value",
+            item_fn.sig.ident
+        );
+
+        let make = if item_fn.sig.asyncness.is_some() {
+            quote_spanned! {span=>
+                #[allow(warnings)]
+                async fn #make_value_name() -> #ty { panic!() }
+            }
+        } else if let syn::Type::ImplTrait(_) = &**ty {
+            // lets just assume it returns `impl Future`
+            quote_spanned! {span=>
+                #[allow(warnings)]
+                fn #make_value_name() -> #ty { async { panic!() } }
+            }
+        } else {
+            quote_spanned! {span=>
+                #[allow(warnings)]
+                fn #make_value_name() -> #ty { panic!() }
+            }
+        };
+
+        let name = format_ident!("__axum_debug_check_{}_into_response", item_fn.sig.ident);
+
+        if let Some(receiver) = self_receiver(item_fn) {
+            quote_spanned! {span=>
+                #make
+
+                #[allow(warnings)]
+                async fn #name() {
+                    let value = #receiver #make_value_name().await;
+                    fn check<T>(_: T)
+                        where T: ::axum::response::IntoResponse
+                        {}
+                    check(value);
+                }
+            }
+        } else {
+            quote_spanned! {span=>
+                #[allow(warnings)]
+                async fn #name() {
+                    #make
+
+                    let value = #make_value_name().await;
+                    fn check<T>(_: T)
+                        where T: ::axum::response::IntoResponse
+                    {}
+                    check(value);
+                }
+            }
+        }
+    }
+
+    fn check_future_send(item_fn: &ItemFn) -> TokenStream {
+        if item_fn.sig.asyncness.is_none() {
+            match &item_fn.sig.output {
+                syn::ReturnType::Default => {
+                    return syn::Error::new_spanned(
+                        &item_fn.sig.fn_token,
+                        "Handlers must be `async fn`s",
+                    )
+                    .into_compile_error();
+                }
+                syn::ReturnType::Type(_, ty) => ty,
+            };
+        }
+
+        let span = item_fn.span();
+
+        let handler_name = &item_fn.sig.ident;
+
+        let args = item_fn.sig.inputs.iter().map(|_| {
+            quote_spanned! {span=> panic!() }
+        });
+
+        let name = format_ident!("__axum_debug_check_{}_future", item_fn.sig.ident);
+
+        if let Some(receiver) = self_receiver(item_fn) {
+            quote_spanned! {span=>
+                #[allow(warnings)]
+                fn #name() {
+                    let future = #receiver #handler_name(#(#args),*);
+                    fn check<T>(_: T)
+                        where T: ::std::future::Future + Send
+                    {}
+                    check(future);
+                }
+            }
+        } else {
+            quote_spanned! {span=>
+                #[allow(warnings)]
+                fn #name() {
+                    #item_fn
+
+                    let future = #handler_name(#(#args),*);
+                    fn check<T>(_: T)
+                        where T: ::std::future::Future + Send
+                    {}
+                    check(future);
+                }
+            }
+        }
+    }
+
+    fn self_receiver(item_fn: &ItemFn) -> Option<TokenStream> {
+        let takes_self = item_fn
+            .sig
+            .inputs
+            .iter()
+            .any(|arg| matches!(arg, syn::FnArg::Receiver(_)));
+        if takes_self {
+            return Some(quote! { Self:: });
+        }
+
+        if let syn::ReturnType::Type(_, ty) = &item_fn.sig.output {
+            if let syn::Type::Path(path) = &**ty {
+                let segments = &path.path.segments;
+                if segments.len() == 1 {
+                    if let Some(last) = segments.last() {
+                        match &last.arguments {
+                            syn::PathArguments::None if last.ident == "Self" => {
+                                return Some(quote! { Self:: });
+                            }
+                            _ => {}
+                        }
+                    }
+                }
+            }
+        }
+
+        None
     }
 }
 
 #[test]
 fn ui() {
-    let t = trybuild::TestCases::new();
-    t.pass("tests/pass/*.rs");
-    t.compile_fail("tests/fail/*.rs");
+    #[rustversion::stable]
+    fn go() {
+        let t = trybuild::TestCases::new();
+        t.compile_fail("tests/fail/*.rs");
+        t.pass("tests/pass/*.rs");
+    }
+
+    #[rustversion::not(stable)]
+    fn go() {}
+
+    go();
 }

@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+- Make macro handle more cases such as mutable extractors and handlers taking
+  `self` ([#518])
+
+[#518]: https://github.com/tokio-rs/axum/pull/518
+
 # 0.2.0 (13. October 2021)
 
 - **breaking:** Removed `debug_router` macro.

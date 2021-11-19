@@ -21,3 +21,4 @@ syn = { version = "1.0", features = ["full"] }
 [dev-dependencies]
 axum = { path = "../axum", version = "0.3" }
 trybuild = "1.0"
+rustversion = "1.0"
