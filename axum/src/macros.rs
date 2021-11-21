@@ -86,10 +86,10 @@ macro_rules! define_rejection {
     ) => {
         $(#[$m])*
         #[derive(Debug)]
-        pub struct $name(pub(crate) crate::Error);
+        pub struct $name(pub crate::Error);
 
         impl $name {
-            pub(crate) fn from_err<E>(err: E) -> Self
+            pub fn from_err<E>(err: E) -> Self
             where
                 E: Into<crate::BoxError>,
             {
