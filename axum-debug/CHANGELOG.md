@@ -7,8 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+- None.
+
+# 0.2.2 (22. October 2021)
+
 - Fix regression causing errors when `#[debug_handler]` was used on functions with multiple
-  extractors.
+  extractors ([#552])
+
+[#552]: https://github.com/tokio-rs/axum/pull/552
 
 # 0.2.1 (19. October 2021)
 
