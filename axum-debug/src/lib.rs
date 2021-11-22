@@ -138,7 +138,7 @@ pub fn debug_handler(_attr: TokenStream, input: TokenStream) -> TokenStream {
 mod debug_handler {
     use proc_macro2::TokenStream;
     use quote::{format_ident, quote, quote_spanned};
-    use syn::{parse::Parse, spanned::Spanned, visit::Visit, FnArg, Ident, ItemFn};
+    use syn::{parse::Parse, spanned::Spanned, FnArg, ItemFn};
 
     pub(crate) fn expand(
         attr: proc_macro::TokenStream,
@@ -206,8 +206,9 @@ mod debug_handler {
             .sig
             .inputs
             .iter()
-            .map(|arg| {
-                let (span, ty, arg_ident) = match arg {
+            .enumerate()
+            .map(|(idx, arg)| {
+                let (span, ty) = match arg {
                     FnArg::Receiver(receiver) => {
                         if receiver.reference.is_some() {
                             return syn::Error::new_spanned(
@@ -218,23 +219,19 @@ mod debug_handler {
                         }
 
                         let span = receiver.span();
-                        (span, syn::parse_quote!(Self), format_ident!("self"))
+                        (span, syn::parse_quote!(Self))
                     }
                     FnArg::Typed(typed) => {
-                        let mut gather_idents = GatherAllIdents::default();
-                        gather_idents.visit_pat_type(typed);
-                        let ident = gather_idents.join_idents();
-
                         let ty = &typed.ty;
                         let span = ty.span();
-                        (span, ty.clone(), ident)
+                        (span, ty.clone())
                     }
                 };
 
                 let name = format_ident!(
                     "__axum_debug_check_{}_{}_from_request",
                     item_fn.sig.ident,
-                    arg_ident
+                    idx
                 );
                 quote_spanned! {span=>
                     #[allow(warnings)]
@@ -386,29 +383,6 @@ mod debug_handler {
         }
 
         None
-    }
-
-    #[derive(Default)]
-    struct GatherAllIdents<'ast> {
-        idents: Vec<&'ast Ident>,
-    }
-
-    impl<'ast> Visit<'ast> for GatherAllIdents<'ast> {
-        fn visit_ident(&mut self, i: &'ast Ident) {
-            self.idents.push(i);
-        }
-    }
-
-    impl<'ast> GatherAllIdents<'ast> {
-        fn join_idents(self) -> Ident {
-            let joined = self
-                .idents
-                .iter()
-                .map(|ident| ident.to_string())
-                .collect::<Vec<_>>()
-                .join("_");
-            format_ident!("{}", joined)
-        }
     }
 }
 
