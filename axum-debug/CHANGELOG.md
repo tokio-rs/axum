@@ -7,7 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- None.
+- Fix regression causing errors when `#[debug_handler]` was used on functions with multiple
+  extractors.
 
 # 0.2.1 (19. October 2021)
 

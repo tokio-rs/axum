@@ -206,7 +206,8 @@ mod debug_handler {
             .sig
             .inputs
             .iter()
-            .map(|arg| {
+            .enumerate()
+            .map(|(idx, arg)| {
                 let (span, ty) = match arg {
                     FnArg::Receiver(receiver) => {
                         if receiver.reference.is_some() {
@@ -227,7 +228,11 @@ mod debug_handler {
                     }
                 };
 
-                let name = format_ident!("__axum_debug_check_{}_from_request", item_fn.sig.ident);
+                let name = format_ident!(
+                    "__axum_debug_check_{}_{}_from_request",
+                    item_fn.sig.ident,
+                    idx
+                );
                 quote_spanned! {span=>
                     #[allow(warnings)]
                     fn #name()
