@@ -321,7 +321,7 @@ where
     T: IntoResponse,
 {
     type Body = BoxBody;
-    type BodyError = Error;
+    type BodyError = <Self::Body as crate::body::HttpBody>::Error;
 
     fn into_response(self) -> http::Response<Self::Body> {
         match self {

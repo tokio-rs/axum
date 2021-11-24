@@ -10,7 +10,6 @@ use http::{
 };
 use http_body::{Body, Full};
 use std::{convert::TryInto, fmt};
-use tower::util::Either;
 
 /// A response with headers.
 ///
@@ -162,6 +161,11 @@ where
 
         (self.0, headers, self.2).into_response().map(boxed)
     }
+}
+
+enum Either<A, B> {
+    A(A),
+    B(B),
 }
 
 #[cfg(test)]

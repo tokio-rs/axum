@@ -616,7 +616,7 @@ mod tests {
         let url_params = create_url_params(vec![("a", "1"), ("b", "2")]);
         assert_eq!(
             i32::deserialize(PathDeserializer::new(&url_params)).unwrap_err(),
-            PathDeserializerError::custom("wrong number of parameters: 2 expected 1".to_string())
+            PathDeserializerError::custom("wrong number of parameters: 2 expected 1".to_owned())
         );
     }
 
@@ -625,14 +625,14 @@ mod tests {
         let url_params = create_url_params(vec![("a", "1"), ("b", "true"), ("c", "abc")]);
         assert_eq!(
             <(i32, bool, String)>::deserialize(PathDeserializer::new(&url_params)).unwrap(),
-            (1, true, "abc".to_string())
+            (1, true, "abc".to_owned())
         );
 
         #[derive(Debug, Deserialize, Eq, PartialEq)]
         struct TupleStruct(i32, bool, String);
         assert_eq!(
             TupleStruct::deserialize(PathDeserializer::new(&url_params)).unwrap(),
-            TupleStruct(1, true, "abc".to_string())
+            TupleStruct(1, true, "abc".to_owned())
         );
 
         let url_params = create_url_params(vec![("a", "1"), ("b", "2"), ("c", "3")]);
@@ -654,7 +654,7 @@ mod tests {
         assert_eq!(
             Struct::deserialize(PathDeserializer::new(&url_params)).unwrap(),
             Struct {
-                c: "abc".to_string(),
+                c: "abc".to_owned(),
                 b: true,
                 a: 1,
             }
@@ -668,7 +668,7 @@ mod tests {
             <HashMap<String, String>>::deserialize(PathDeserializer::new(&url_params)).unwrap(),
             [("a", "1"), ("b", "true"), ("c", "abc")]
                 .iter()
-                .map(|(key, value)| ((*key).to_string(), (*value).to_string()))
+                .map(|(key, value)| ((*key).to_owned(), (*value).to_owned()))
                 .collect()
         );
     }
