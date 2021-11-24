@@ -3,7 +3,6 @@ use crate::BoxError;
 use async_trait::async_trait;
 use bytes::Bytes;
 use http::{Extensions, HeaderMap, Method, Request, Uri, Version};
-use hyper::Body;
 use std::convert::Infallible;
 
 #[async_trait]
@@ -113,20 +112,11 @@ where
     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
         let body = take_body(req)?;
 
-        let bytes = hyper::body::to_bytes(body)
+        let bytes = crate::body::to_bytes(body)
             .await
             .map_err(FailedToBufferBody::from_err)?;
 
         Ok(bytes)
-    }
-}
-
-#[async_trait]
-impl FromRequest<Body> for Body {
-    type Rejection = BodyAlreadyExtracted;
-
-    async fn from_request(req: &mut RequestParts<Body>) -> Result<Self, Self::Rejection> {
-        req.take_body().ok_or(BodyAlreadyExtracted)
     }
 }
 
@@ -142,7 +132,7 @@ where
     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
         let body = take_body(req)?;
 
-        let bytes = hyper::body::to_bytes(body)
+        let bytes = crate::body::to_bytes(body)
             .await
             .map_err(FailedToBufferBody::from_err)?
             .to_vec();

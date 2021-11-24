@@ -1,7 +1,7 @@
-error[E0277]: the trait bound `bool: FromRequest` is not satisfied
+error[E0277]: the trait bound `bool: FromRequest<axum::body::Body>` is not satisfied
  --> tests/fail/argument_not_extractor.rs:4:23
   |
 4 | async fn handler(foo: bool) {}
-  |                       ^^^^ the trait `FromRequest` is not implemented for `bool`
+  |                       ^^^^ the trait `FromRequest<axum::body::Body>` is not implemented for `bool`
   |
   = help: see issue #48214

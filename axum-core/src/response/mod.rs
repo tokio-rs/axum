@@ -241,7 +241,6 @@ macro_rules! impl_into_response_for_body {
     };
 }
 
-impl_into_response_for_body!(hyper::Body);
 impl_into_response_for_body!(Full<Bytes>);
 impl_into_response_for_body!(Empty<Bytes>);
 

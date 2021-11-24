@@ -163,6 +163,19 @@ fn body_stream_traits() {
 #[derive(Debug, Default, Clone)]
 pub struct RawBody<B = Body>(pub B);
 
+#[async_trait]
+impl<B> FromRequest<B> for RawBody<B>
+where
+    B: Send,
+{
+    type Rejection = BodyAlreadyExtracted;
+
+    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+        let body = take_body(req)?;
+        Ok(Self(body))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::{

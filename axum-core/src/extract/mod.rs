@@ -60,7 +60,7 @@ mod tuple;
 ///
 /// [`http::Request<B>`]: http::Request
 #[async_trait]
-pub trait FromRequest<B = hyper::Body>: Sized {
+pub trait FromRequest<B>: Sized {
     /// If the extractor fails it'll use this "rejection" type. A rejection is
     /// a kind of error that can be converted into a response.
     type Rejection: IntoResponse;
@@ -73,7 +73,7 @@ pub trait FromRequest<B = hyper::Body>: Sized {
 ///
 /// Has several convenience methods for getting owned parts of the request.
 #[derive(Debug)]
-pub struct RequestParts<B = hyper::Body> {
+pub struct RequestParts<B> {
     method: Method,
     uri: Uri,
     version: Version,
