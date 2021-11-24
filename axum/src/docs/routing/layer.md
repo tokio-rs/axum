@@ -27,7 +27,7 @@ async fn second_handler() {}
 
 async fn third_handler() {}
 
-// All requests to `handler` and `other_handler` will be sent through
+// All requests to `first_handler` and `second_handler` will be sent through
 // `ConcurrencyLimit`
 let app = Router::new().route("/", get(first_handler))
     .route("/foo", get(second_handler))
