@@ -13,6 +13,7 @@
 //! - [Middleware](#middleware)
 //! - [Routing to services and backpressure](#routing-to-services-and-backpressure)
 //! - [Sharing state with handlers](#sharing-state-with-handlers)
+//! - [Building integrations for axum](#building-integrations-for-axum)
 //! - [Required dependencies](#required-dependencies)
 //! - [Examples](#examples)
 //! - [Feature flags](#feature-flags)
@@ -259,6 +260,12 @@
 //! # };
 //! ```
 //!
+//! # Building integrations for axum
+//!
+//! Libraries authors that want to provide [`FromRequest`] or [`IntoResponse`] implementations
+//! should depend on the [`axum-core`] crate, instead of `axum` if possible. [`axum-core`] contains
+//! core types and traits and is less likely to receive breaking changes.
+//!
 //! # Required dependencies
 //!
 //! To use axum there are a few dependencies you have pull in as well:
@@ -331,6 +338,7 @@
 //! [`Handler`]: crate::handler::Handler
 //! [`Infallible`]: std::convert::Infallible
 //! [load shed]: tower::load_shed
+//! [`axum-core`]: http://crates.io/crates/axum-core
 
 #![warn(
     clippy::all,

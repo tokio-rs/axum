@@ -1,6 +1,12 @@
 //! Core types and traits for [`axum`].
 //!
+//! Libraries authors that want to provide [`FromRequest`] or [`IntoResponse`] implementations
+//! should depend on the [`axum-core`] crate, instead of `axum` if possible.
+//!
+//! [`FromRequest`]: crate::extract::FromRequest
+//! [`IntoResponse`]: crate::response::IntoResponse
 //! [`axum`]: https://crates.io/crates/axum
+//! [`axum-core`]: http://crates.io/crates/axum-core
 
 #![warn(
     clippy::all,

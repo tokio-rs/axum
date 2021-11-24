@@ -16,8 +16,6 @@ bytes = "1.0"
 http = "0.2"
 http-body = "0.4"
 hyper = { version = "0.14", default_features = false }
-sync_wrapper = "0.1"
-futures-core = "0.3"
 
 [dev-dependencies]
 futures-util = "0.3"

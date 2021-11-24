@@ -1,20 +1,10 @@
-#![allow(warnings)]
-
 use super::{rejection::*, FromRequest, RequestParts};
-use crate::{BoxError, Error};
+use crate::BoxError;
 use async_trait::async_trait;
 use bytes::Bytes;
-use futures_core::stream::Stream;
 use http::{Extensions, HeaderMap, Method, Request, Uri, Version};
-use http_body::Body as HttpBody;
 use hyper::Body;
-use std::{
-    convert::Infallible,
-    fmt,
-    pin::Pin,
-    task::{Context, Poll},
-};
-use sync_wrapper::SyncWrapper;
+use std::convert::Infallible;
 
 #[async_trait]
 impl<B> FromRequest<B> for Request<B>
