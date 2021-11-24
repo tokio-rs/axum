@@ -18,7 +18,7 @@ mod tuple;
 
 /// Types that can be created from requests.
 ///
-/// See the [module docs](crate::extract) for more details.
+/// See [`axum::extract`] for more details.
 ///
 /// # What is the `B` type parameter?
 ///
@@ -59,6 +59,7 @@ mod tuple;
 /// This ensures your extractor is as flexible as possible.
 ///
 /// [`http::Request<B>`]: http::Request
+/// [`axum::extract`]: https://docs.rs/axum/latest/axum/extract/index.html
 #[async_trait]
 pub trait FromRequest<B>: Sized {
     /// If the extractor fails it'll use this "rejection" type. A rejection is
