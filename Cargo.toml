@@ -6,6 +6,3 @@ members = [
     "axum-extra",
     "examples/*",
 ]
-
-[patch.crates-io]
-tower-http = { git = "https://github.com/tower-rs/tower-http.git" }

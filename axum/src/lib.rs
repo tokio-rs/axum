@@ -377,7 +377,6 @@
 pub(crate) mod macros;
 
 mod add_extension;
-mod error;
 #[cfg(feature = "json")]
 mod json;
 mod util;
@@ -404,7 +403,7 @@ pub use hyper::Server;
 #[cfg(feature = "json")]
 pub use self::json::Json;
 #[doc(inline)]
-pub use self::{error::Error, routing::Router};
+pub use self::routing::Router;
 
 #[doc(inline)]
-pub use axum_core::BoxError;
+pub use axum_core::{BoxError, Error};

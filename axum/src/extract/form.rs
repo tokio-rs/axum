@@ -1,7 +1,6 @@
-use super::{has_content_type, rejection::*, take_body, FromRequest, RequestParts};
+use super::{has_content_type, rejection::*, FromRequest, RequestParts};
 use crate::BoxError;
 use async_trait::async_trait;
-use bytes::Buf;
 use http::Method;
 use serde::de::DeserializeOwned;
 use std::ops::Deref;
@@ -64,11 +63,8 @@ where
                 return Err(InvalidFormContentType.into());
             }
 
-            let body = take_body(req)?;
-            let chunks = hyper::body::aggregate(body)
-                .await
-                .map_err(FailedToBufferBody::from_err)?;
-            let value = serde_urlencoded::from_reader(chunks.reader())
+            let bytes = bytes::Bytes::from_request(req).await?;
+            let value = serde_urlencoded::from_bytes(&bytes)
                 .map_err(FailedToDeserializeQueryString::new::<T, _>)?;
 
             Ok(Form(value))

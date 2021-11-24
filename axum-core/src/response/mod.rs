@@ -6,7 +6,7 @@
 
 use crate::{
     body::{boxed, BoxBody},
-    BoxError,
+    BoxError, Error,
 };
 use bytes::Bytes;
 use http::{
@@ -205,7 +205,7 @@ where
     E: IntoResponse,
 {
     type Body = BoxBody;
-    type BodyError = BoxError;
+    type BodyError = Error;
 
     fn into_response(self) -> Response<Self::Body> {
         match self {

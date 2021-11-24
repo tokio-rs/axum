@@ -43,7 +43,14 @@
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![cfg_attr(test, allow(clippy::float_cmp))]
 
+#[macro_use]
+pub(crate) mod macros;
+
+mod error;
+pub use self::error::Error;
+
 pub mod body;
+pub mod extract;
 pub mod response;
 
 /// Alias for a type-erased error type.

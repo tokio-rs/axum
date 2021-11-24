@@ -1,5 +1,5 @@
 use crate::{
-    extract::{rejection::*, take_body, FromRequest, RequestParts},
+    extract::{rejection::*, FromRequest, RequestParts},
     response::IntoResponse,
     BoxError,
 };
@@ -101,16 +101,10 @@ where
     type Rejection = JsonRejection;
 
     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-        use bytes::Buf;
-
         if json_content_type(req)? {
-            let body = take_body(req)?;
+            let bytes = bytes::Bytes::from_request(req).await?;
 
-            let buf = hyper::body::aggregate(body)
-                .await
-                .map_err(InvalidJsonBody::from_err)?;
-
-            let value = serde_json::from_reader(buf.reader()).map_err(InvalidJsonBody::from_err)?;
+            let value = serde_json::from_slice(&bytes).map_err(InvalidJsonBody::from_err)?;
 
             Ok(Json(value))
         } else {
