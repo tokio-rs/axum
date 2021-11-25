@@ -93,6 +93,9 @@ use std::{
 #[derive(Debug, Clone, Default)]
 pub struct Cached<T>(pub T);
 
+#[derive(Clone)]
+struct CachedEntry<T>(T);
+
 #[async_trait]
 impl<B, T> FromRequest<B> for Cached<T>
 where
@@ -102,8 +105,8 @@ where
     type Rejection = CachedRejection<T::Rejection>;
 
     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-        match Extension::<T>::from_request(req).await {
-            Ok(value) => Ok(Self(value.0)),
+        match Extension::<CachedEntry<T>>::from_request(req).await {
+            Ok(Extension(CachedEntry(value))) => Ok(Self(value)),
             Err(ExtensionRejection::ExtensionsAlreadyExtracted(err)) => {
                 Err(CachedRejection::ExtensionsAlreadyExtracted(err))
             }
@@ -116,7 +119,7 @@ where
                             ExtensionsAlreadyExtracted::default(),
                         )
                     })?
-                    .insert(value.clone());
+                    .insert(CachedEntry(value.clone()));
 
                 Ok(Self(value))
             }
