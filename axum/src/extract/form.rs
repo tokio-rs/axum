@@ -60,7 +60,7 @@ where
                 .map_err(FailedToDeserializeQueryString::new::<T, _>)?;
             Ok(Form(value))
         } else {
-            if !has_content_type(req, &mime::WWW_FORM_URLENCODED)? {
+            if !has_content_type(req, &mime::APPLICATION_WWW_FORM_URLENCODED)? {
                 return Err(InvalidFormContentType.into());
             }
 
@@ -115,7 +115,7 @@ mod tests {
                 .method(Method::POST)
                 .header(
                     http::header::CONTENT_TYPE,
-                    mime::WWW_FORM_URLENCODED.as_ref(),
+                    mime::APPLICATION_WWW_FORM_URLENCODED.as_ref(),
                 )
                 .body(http_body::Full::<bytes::Bytes>::new(
                     serde_urlencoded::to_string(&value).unwrap().into(),
