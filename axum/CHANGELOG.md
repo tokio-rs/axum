@@ -33,11 +33,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **breaking:** `Router::nest` will panic if the nested router has a fallback.
   Previously it would be silently discarded ([#529])
 - Update WebSockets to use tokio-tungstenite 0.16 ([#525])
+- **added:** Default to return `charset=utf-8` for text content type. ([#554])
 
 [#525]: https://github.com/tokio-rs/axum/pull/525
 [#527]: https://github.com/tokio-rs/axum/pull/527
 [#529]: https://github.com/tokio-rs/axum/pull/529
 [#534]: https://github.com/tokio-rs/axum/pull/534
+[#554]: https://github.com/tokio-rs/axum/pull/554
 
 # 0.3.3 (13. November, 2021)
 

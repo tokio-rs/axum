@@ -104,7 +104,7 @@ where
         };
 
         Response::builder()
-            .header(http::header::CONTENT_TYPE, "text/event-stream")
+            .header(http::header::CONTENT_TYPE, mime::TEXT_EVENT_STREAM.as_ref())
             .header(http::header::CACHE_CONTROL, "no-cache")
             .body(body)
             .unwrap()

@@ -21,7 +21,7 @@ async fn plain_text() -> &'static str {
     "foo"
 }
 
-// String works too and will get a `text/plain` content-type
+// String works too and will get a `text/plain; charset=utf-8` content-type
 async fn plain_text_string(uri: Uri) -> String {
     format!("Hi from {}", uri.path())
 }

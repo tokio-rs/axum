@@ -127,7 +127,7 @@
 //! };
 //! use serde_json::{Value, json};
 //!
-//! // `&'static str` becomes a `200 OK` with `content-type: text/plain`
+//! // `&'static str` becomes a `200 OK` with `content-type: text/plain; charset=utf-8`
 //! async fn plain_text() -> &'static str {
 //!     "foo"
 //! }
