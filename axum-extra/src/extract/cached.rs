@@ -146,16 +146,16 @@ impl<T> DerefMut for Cached<T> {
 /// Contains one variant for each way the [`Cached`] extractor can fail.
 #[derive(Debug)]
 #[non_exhaustive]
-pub enum CachedRejection<T> {
+pub enum CachedRejection<R> {
     #[allow(missing_docs)]
     ExtensionsAlreadyExtracted(ExtensionsAlreadyExtracted),
     #[allow(missing_docs)]
-    Inner(T),
+    Inner(R),
 }
 
-impl<T> IntoResponse for CachedRejection<T>
+impl<R> IntoResponse for CachedRejection<R>
 where
-    T: IntoResponse,
+    R: IntoResponse,
 {
     type Body = BoxBody;
     type BodyError = <Self::Body as axum::body::HttpBody>::Error;
@@ -168,9 +168,9 @@ where
     }
 }
 
-impl<T> fmt::Display for CachedRejection<T>
+impl<R> fmt::Display for CachedRejection<R>
 where
-    T: fmt::Display,
+    R: fmt::Display,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -180,9 +180,9 @@ where
     }
 }
 
-impl<T> std::error::Error for CachedRejection<T>
+impl<R> std::error::Error for CachedRejection<R>
 where
-    T: std::error::Error + 'static,
+    R: std::error::Error + 'static,
 {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
