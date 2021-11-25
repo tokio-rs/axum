@@ -15,6 +15,7 @@ erased-json = ["serde", "serde_json"]
 
 [dependencies]
 axum = { path = "../axum", version = "0.3" }
+http = "0.2"
 mime = "0.3"
 tower-service = "0.3"
 
