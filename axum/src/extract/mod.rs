@@ -72,7 +72,7 @@ pub(crate) fn has_content_type<B>(
 ) -> Result<bool, HeadersAlreadyExtracted> {
     let content_type = if let Some(content_type) = req
         .headers()
-        .ok_or(HeadersAlreadyExtracted)?
+        .ok_or_else(HeadersAlreadyExtracted::default)?
         .get(header::CONTENT_TYPE)
     {
         content_type
@@ -90,7 +90,7 @@ pub(crate) fn has_content_type<B>(
 }
 
 pub(crate) fn take_body<B>(req: &mut RequestParts<B>) -> Result<B, BodyAlreadyExtracted> {
-    req.take_body().ok_or(BodyAlreadyExtracted)
+    req.take_body().ok_or_else(BodyAlreadyExtracted::default)
 }
 
 #[cfg(test)]

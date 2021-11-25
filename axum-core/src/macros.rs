@@ -7,6 +7,7 @@ macro_rules! define_rejection {
     ) => {
         $(#[$m])*
         #[derive(Debug)]
+        #[non_exhaustive]
         pub struct $name;
 
         #[allow(deprecated)]
@@ -28,6 +29,12 @@ macro_rules! define_rejection {
         }
 
         impl std::error::Error for $name {}
+
+        impl Default for $name {
+            fn default() -> Self {
+                Self
+            }
+        }
     };
 
     (

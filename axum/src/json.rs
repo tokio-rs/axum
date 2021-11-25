@@ -116,7 +116,7 @@ where
 fn json_content_type<B>(req: &RequestParts<B>) -> Result<bool, HeadersAlreadyExtracted> {
     let content_type = if let Some(content_type) = req
         .headers()
-        .ok_or(HeadersAlreadyExtracted)?
+        .ok_or_else(HeadersAlreadyExtracted::default)?
         .get(header::CONTENT_TYPE)
     {
         content_type
