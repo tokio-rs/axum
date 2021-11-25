@@ -332,7 +332,7 @@ where
 
 pub(crate) fn has_content_type<B>(
     req: &RequestParts<B>,
-    expected_content_type: &str,
+    expected_content_type: &mime::Mime,
 ) -> Result<bool, HeadersAlreadyExtracted> {
     let content_type = if let Some(content_type) = req
         .headers()
@@ -350,7 +350,7 @@ pub(crate) fn has_content_type<B>(
         return Ok(false);
     };
 
-    Ok(content_type.starts_with(expected_content_type))
+    Ok(content_type.starts_with(expected_content_type.as_ref()))
 }
 
 pub(crate) fn take_body<B>(req: &mut RequestParts<B>) -> Result<B, BodyAlreadyExtracted> {
