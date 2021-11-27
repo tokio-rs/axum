@@ -1,10 +1,8 @@
 use super::{FromRequest, RequestParts};
-use crate::response::IntoResponse;
+use crate::{body::BoxBody, response::IntoResponse};
 use async_trait::async_trait;
-use bytes::Bytes;
 use headers::HeaderMapExt;
-use http_body::Full;
-use std::{convert::Infallible, ops::Deref};
+use std::ops::Deref;
 
 /// Extractor that extracts a typed header value from [`headers`].
 ///
@@ -108,10 +106,7 @@ pub enum TypedHeaderRejectionReason {
 }
 
 impl IntoResponse for TypedHeaderRejection {
-    type Body = Full<Bytes>;
-    type BodyError = Infallible;
-
-    fn into_response(self) -> http::Response<Self::Body> {
+    fn into_response(self) -> http::Response<BoxBody> {
         let mut res = self.to_string().into_response();
         *res.status_mut() = http::StatusCode::BAD_REQUEST;
         res

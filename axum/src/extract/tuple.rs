@@ -1,8 +1,5 @@
 use super::{FromRequest, RequestParts};
-use crate::{
-    body::{boxed, BoxBody},
-    response::IntoResponse,
-};
+use crate::{body::BoxBody, response::IntoResponse};
 use async_trait::async_trait;
 use http::Response;
 use std::convert::Infallible;
@@ -33,7 +30,7 @@ macro_rules! impl_from_request {
             type Rejection = Response<BoxBody>;
 
             async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-                $( let $ty = $ty::from_request(req).await.map_err(|err| err.into_response().map(boxed))?; )*
+                $( let $ty = $ty::from_request(req).await.map_err(|err| err.into_response())?; )*
                 Ok(($($ty,)*))
             }
         }

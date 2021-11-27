@@ -272,7 +272,7 @@ where
     type Sealed = sealed::Hidden;
 
     async fn call(self, _req: Request<B>) -> Response<BoxBody> {
-        self().await.into_response().map(boxed)
+        self().await.into_response()
     }
 }
 
@@ -296,13 +296,13 @@ macro_rules! impl_handler {
                 $(
                     let $ty = match $ty::from_request(&mut req).await {
                         Ok(value) => value,
-                        Err(rejection) => return rejection.into_response().map(boxed),
+                        Err(rejection) => return rejection.into_response(),
                     };
                 )*
 
                 let res = self($($ty,)*).await;
 
-                res.into_response().map(boxed)
+                res.into_response()
             }
         }
     };
@@ -350,14 +350,9 @@ where
     type Sealed = sealed::Hidden;
 
     async fn call(self, req: Request<ReqBody>) -> Response<BoxBody> {
-        match self
-            .svc
-            .oneshot(req)
-            .await
-            .map_err(IntoResponse::into_response)
-        {
+        match self.svc.oneshot(req).await {
             Ok(res) => res.map(boxed),
-            Err(res) => res.map(boxed),
+            Err(res) => res.into_response(),
         }
     }
 }

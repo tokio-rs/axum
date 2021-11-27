@@ -13,8 +13,9 @@
 //! Example is based on <https://github.com/hyperium/hyper/blob/master/examples/http_proxy.rs>
 
 use axum::{
-    body::{boxed, Body},
+    body::{self, Body, BoxBody},
     http::{Method, Request, Response, StatusCode},
+    response::IntoResponse,
     routing::get,
     Router,
 };
@@ -37,7 +38,7 @@ async fn main() {
         let router = router.clone();
         async move {
             if req.method() == Method::CONNECT {
-                proxy(req).await.map(|res| res.map(boxed))
+                proxy(req).await
             } else {
                 router.oneshot(req).await.map_err(|err| match err {})
             }
@@ -54,7 +55,7 @@ async fn main() {
         .unwrap();
 }
 
-async fn proxy(req: Request<Body>) -> Result<Response<Body>, hyper::Error> {
+async fn proxy(req: Request<Body>) -> Result<Response<BoxBody>, hyper::Error> {
     tracing::trace!(?req);
 
     if let Some(host_addr) = req.uri().authority().map(|auth| auth.to_string()) {
@@ -69,13 +70,14 @@ async fn proxy(req: Request<Body>) -> Result<Response<Body>, hyper::Error> {
             }
         });
 
-        Ok(Response::new(Body::empty()))
+        Ok(Response::new(body::boxed(body::Empty::new())))
     } else {
         tracing::warn!("CONNECT host is not socket addr: {:?}", req.uri());
-        let mut resp = Response::new(Body::from("CONNECT must be to a socket address"));
-        *resp.status_mut() = StatusCode::BAD_REQUEST;
-
-        Ok(resp)
+        Ok((
+            StatusCode::BAD_REQUEST,
+            "CONNECT must be to a socket address",
+        )
+            .into_response())
     }
 }
 

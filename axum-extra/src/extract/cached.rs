@@ -1,6 +1,6 @@
 use axum::{
     async_trait,
-    body::{boxed, BoxBody},
+    body::BoxBody,
     extract::{
         rejection::{ExtensionRejection, ExtensionsAlreadyExtracted},
         Extension, FromRequest, RequestParts,
@@ -30,7 +30,7 @@ use std::{
 /// use axum::{
 ///     async_trait,
 ///     extract::{FromRequest, RequestParts},
-///     body::{self, BoxBody},
+///     body::BoxBody,
 ///     response::IntoResponse,
 ///     http::{StatusCode, Response},
 /// };
@@ -67,7 +67,7 @@ use std::{
 ///         // once, in case other extractors for the same request also loads the session
 ///         let session: Session = Cached::<Session>::from_request(req)
 ///             .await
-///             .map_err(|err| err.into_response().map(body::boxed))?
+///             .map_err(|err| err.into_response())?
 ///             .0;
 ///
 ///         // load user from session...
@@ -157,13 +157,10 @@ impl<R> IntoResponse for CachedRejection<R>
 where
     R: IntoResponse,
 {
-    type Body = BoxBody;
-    type BodyError = <Self::Body as axum::body::HttpBody>::Error;
-
-    fn into_response(self) -> Response<Self::Body> {
+    fn into_response(self) -> Response<BoxBody> {
         match self {
-            Self::ExtensionsAlreadyExtracted(inner) => inner.into_response().map(boxed),
-            Self::Inner(inner) => inner.into_response().map(boxed),
+            Self::ExtensionsAlreadyExtracted(inner) => inner.into_response(),
+            Self::Inner(inner) => inner.into_response(),
         }
     }
 }

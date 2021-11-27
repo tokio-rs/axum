@@ -6,14 +6,14 @@
 
 use askama::Template;
 use axum::{
-    body::{Bytes, Full},
+    body::{self, BoxBody, Full},
     extract,
     http::{Response, StatusCode},
     response::{Html, IntoResponse},
     routing::get,
     Router,
 };
-use std::{convert::Infallible, net::SocketAddr};
+use std::net::SocketAddr;
 
 #[tokio::main]
 async fn main() {
@@ -52,18 +52,15 @@ impl<T> IntoResponse for HtmlTemplate<T>
 where
     T: Template,
 {
-    type Body = Full<Bytes>;
-    type BodyError = Infallible;
-
-    fn into_response(self) -> Response<Self::Body> {
+    fn into_response(self) -> Response<BoxBody> {
         match self.0.render() {
             Ok(html) => Html(html).into_response(),
             Err(err) => Response::builder()
                 .status(StatusCode::INTERNAL_SERVER_ERROR)
-                .body(Full::from(format!(
+                .body(body::boxed(Full::from(format!(
                     "Failed to render template. Error: {}",
                     err
-                )))
+                ))))
                 .unwrap(),
         }
     }

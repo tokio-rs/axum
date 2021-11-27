@@ -1,5 +1,5 @@
 use axum::{
-    body::{Bytes, Full},
+    body::BoxBody,
     http::Response,
     response::IntoResponse,
 };
@@ -16,10 +16,7 @@ impl A {
 }
 
 impl IntoResponse for A {
-    type Body = Full<Bytes>;
-    type BodyError = Infallible;
-
-    fn into_response(self) -> Response<Self::Body> {
+    fn into_response(self) -> Response<BoxBody> {
         todo!()
     }
 }

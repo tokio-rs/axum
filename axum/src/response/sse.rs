@@ -27,7 +27,11 @@
 //! # };
 //! ```
 
-use crate::{response::IntoResponse, BoxError};
+use crate::{
+    body::{self, BoxBody},
+    response::IntoResponse,
+    BoxError,
+};
 use bytes::Bytes;
 use futures_util::{
     ready,
@@ -94,14 +98,11 @@ where
     S: Stream<Item = Result<Event, E>> + Send + 'static,
     E: Into<BoxError>,
 {
-    type Body = Body<S>;
-    type BodyError = E;
-
-    fn into_response(self) -> Response<Self::Body> {
-        let body = Body {
+    fn into_response(self) -> Response<BoxBody> {
+        let body = body::boxed(Body {
             event_stream: SyncWrapper::new(self.stream),
             keep_alive: self.keep_alive.map(KeepAliveStream::new),
-        };
+        });
 
         Response::builder()
             .header(http::header::CONTENT_TYPE, mime::TEXT_EVENT_STREAM.as_ref())
@@ -112,9 +113,7 @@ where
 }
 
 pin_project! {
-    /// The body of an SSE response.
-    #[derive(Debug)]
-    pub struct Body<S> {
+    struct Body<S> {
         #[pin]
         event_stream: SyncWrapper<S>,
         #[pin]

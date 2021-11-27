@@ -2,7 +2,7 @@
 
 use crate::{
     body::{boxed, BoxBody},
-    BoxError, Error,
+    BoxError,
 };
 use bytes::Bytes;
 use http::{header, HeaderMap, HeaderValue, Response, StatusCode};
@@ -39,7 +39,7 @@ pub use self::{headers::Headers, redirect::Redirect, sse::Sse};
 /// ```rust
 /// use axum::{
 ///     Router,
-///     body::Body,
+///     body::{self, BoxBody, Bytes},
 ///     routing::get,
 ///     http::{Response, StatusCode},
 ///     response::IntoResponse,
@@ -51,16 +51,13 @@ pub use self::{headers::Headers, redirect::Redirect, sse::Sse};
 /// }
 ///
 /// impl IntoResponse for MyError {
-///     type Body = Body;
-///     type BodyError = <Self::Body as axum::body::HttpBody>::Error;
-///
-///     fn into_response(self) -> Response<Self::Body> {
+///     fn into_response(self) -> Response<BoxBody> {
 ///         let body = match self {
 ///             MyError::SomethingWentWrong => {
-///                 Body::from("something went wrong")
+///                 body::boxed(body::Full::from("something went wrong"))
 ///             },
 ///             MyError::SomethingElseWentWrong => {
-///                 Body::from("something else went wrong")
+///                 body::boxed(body::Full::from("something else went wrong"))
 ///             },
 ///         };
 ///
@@ -87,6 +84,7 @@ pub use self::{headers::Headers, redirect::Redirect, sse::Sse};
 ///
 /// ```rust
 /// use axum::{
+///     body::{self, BoxBody},
 ///     routing::get,
 ///     response::IntoResponse,
 ///     Router,
@@ -127,11 +125,8 @@ pub use self::{headers::Headers, redirect::Redirect, sse::Sse};
 ///
 /// // Now we can implement `IntoResponse` directly for `MyBody`
 /// impl IntoResponse for MyBody {
-///     type Body = Self;
-///     type BodyError = <Self as Body>::Error;
-///
-///     fn into_response(self) -> Response<Self::Body> {
-///         Response::new(self)
+///     fn into_response(self) -> Response<BoxBody> {
+///         Response::new(body::boxed(self))
 ///     }
 /// }
 ///
@@ -145,56 +140,18 @@ pub use self::{headers::Headers, redirect::Redirect, sse::Sse};
 /// # };
 /// ```
 pub trait IntoResponse {
-    /// The body type of the response.
-    ///
-    /// Unless you're implementing this trait for a custom body type, these are
-    /// some common types you can use:
-    ///
-    /// - [`axum::body::Body`]: A good default that supports most use cases.
-    /// - [`axum::body::Empty<Bytes>`]: When you know your response is always
-    /// empty.
-    /// - [`axum::body::Full<Bytes>`]: When you know your response always
-    /// contains exactly one chunk.
-    /// - [`axum::body::BoxBody`]: If you need to unify multiple body types into
-    /// one, or return a body type that cannot be named. Can be created with
-    /// [`boxed`].
-    ///
-    /// [`axum::body::Body`]: crate::body::Body
-    /// [`axum::body::Empty<Bytes>`]: crate::body::Empty
-    /// [`axum::body::Full<Bytes>`]: crate::body::Full
-    /// [`axum::body::BoxBody`]: crate::body::BoxBody
-    type Body: http_body::Body<Data = Bytes, Error = Self::BodyError> + Send + 'static;
-
-    /// The error type `Self::Body` might generate.
-    ///
-    /// Generally it should be possible to set this to:
-    ///
-    /// ```rust,ignore
-    /// type BodyError = <Self::Body as axum::body::HttpBody>::Error;
-    /// ```
-    ///
-    /// This associated type exists mainly to make returning `impl IntoResponse`
-    /// possible and to simplify trait bounds internally in axum.
-    type BodyError: Into<BoxError>;
-
     /// Create a response.
-    fn into_response(self) -> Response<Self::Body>;
+    fn into_response(self) -> Response<BoxBody>;
 }
 
 impl IntoResponse for () {
-    type Body = Empty<Bytes>;
-    type BodyError = Infallible;
-
-    fn into_response(self) -> Response<Self::Body> {
-        Response::new(Empty::new())
+    fn into_response(self) -> Response<BoxBody> {
+        Response::new(boxed(Empty::new()))
     }
 }
 
 impl IntoResponse for Infallible {
-    type Body = Empty<Bytes>;
-    type BodyError = Infallible;
-
-    fn into_response(self) -> Response<Self::Body> {
+    fn into_response(self) -> Response<BoxBody> {
         match self {}
     }
 }
@@ -204,13 +161,10 @@ where
     T: IntoResponse,
     E: IntoResponse,
 {
-    type Body = BoxBody;
-    type BodyError = Error;
-
-    fn into_response(self) -> Response<Self::Body> {
+    fn into_response(self) -> Response<BoxBody> {
         match self {
-            Ok(value) => value.into_response().map(boxed),
-            Err(err) => err.into_response().map(boxed),
+            Ok(value) => value.into_response(),
+            Err(err) => err.into_response(),
         }
     }
 }
@@ -220,22 +174,16 @@ where
     B: http_body::Body<Data = Bytes> + Send + 'static,
     B::Error: Into<BoxError>,
 {
-    type Body = B;
-    type BodyError = <B as http_body::Body>::Error;
-
-    fn into_response(self) -> Self {
-        self
+    fn into_response(self) -> Response<BoxBody> {
+        self.map(boxed)
     }
 }
 
 macro_rules! impl_into_response_for_body {
     ($body:ty) => {
         impl IntoResponse for $body {
-            type Body = $body;
-            type BodyError = <$body as http_body::Body>::Error;
-
-            fn into_response(self) -> Response<Self> {
-                Response::new(self)
+            fn into_response(self) -> Response<BoxBody> {
+                Response::new(boxed(self))
             }
         }
     };
@@ -246,11 +194,8 @@ impl_into_response_for_body!(Full<Bytes>);
 impl_into_response_for_body!(Empty<Bytes>);
 
 impl IntoResponse for http::response::Parts {
-    type Body = Empty<Bytes>;
-    type BodyError = Infallible;
-
-    fn into_response(self) -> Response<Self::Body> {
-        Response::from_parts(self, Empty::new())
+    fn into_response(self) -> Response<BoxBody> {
+        Response::from_parts(self, boxed(Empty::new()))
     }
 }
 
@@ -258,11 +203,8 @@ impl<E> IntoResponse for http_body::combinators::BoxBody<Bytes, E>
 where
     E: Into<BoxError> + 'static,
 {
-    type Body = Self;
-    type BodyError = E;
-
-    fn into_response(self) -> Response<Self> {
-        Response::new(self)
+    fn into_response(self) -> Response<BoxBody> {
+        Response::new(boxed(self))
     }
 }
 
@@ -270,11 +212,8 @@ impl<E> IntoResponse for http_body::combinators::UnsyncBoxBody<Bytes, E>
 where
     E: Into<BoxError> + 'static,
 {
-    type Body = Self;
-    type BodyError = E;
-
-    fn into_response(self) -> Response<Self> {
-        Response::new(self)
+    fn into_response(self) -> Response<BoxBody> {
+        Response::new(boxed(self))
     }
 }
 
@@ -284,11 +223,8 @@ where
     F: FnMut(B::Data) -> Bytes + Send + 'static,
     B::Error: Into<BoxError>,
 {
-    type Body = Self;
-    type BodyError = <B as http_body::Body>::Error;
-
-    fn into_response(self) -> Response<Self::Body> {
-        Response::new(self)
+    fn into_response(self) -> Response<BoxBody> {
+        Response::new(boxed(self))
     }
 }
 
@@ -298,40 +234,28 @@ where
     F: FnMut(B::Error) -> E + Send + 'static,
     E: Into<BoxError>,
 {
-    type Body = Self;
-    type BodyError = E;
-
-    fn into_response(self) -> Response<Self::Body> {
-        Response::new(self)
+    fn into_response(self) -> Response<BoxBody> {
+        Response::new(boxed(self))
     }
 }
 
 impl IntoResponse for &'static str {
-    type Body = Full<Bytes>;
-    type BodyError = Infallible;
-
     #[inline]
-    fn into_response(self) -> Response<Self::Body> {
+    fn into_response(self) -> Response<BoxBody> {
         Cow::Borrowed(self).into_response()
     }
 }
 
 impl IntoResponse for String {
-    type Body = Full<Bytes>;
-    type BodyError = Infallible;
-
     #[inline]
-    fn into_response(self) -> Response<Self::Body> {
+    fn into_response(self) -> Response<BoxBody> {
         Cow::<'static, str>::Owned(self).into_response()
     }
 }
 
-impl IntoResponse for std::borrow::Cow<'static, str> {
-    type Body = Full<Bytes>;
-    type BodyError = Infallible;
-
-    fn into_response(self) -> Response<Self::Body> {
-        let mut res = Response::new(Full::from(self));
+impl IntoResponse for Cow<'static, str> {
+    fn into_response(self) -> Response<BoxBody> {
+        let mut res = Response::new(boxed(Full::from(self)));
         res.headers_mut().insert(
             header::CONTENT_TYPE,
             HeaderValue::from_static(mime::TEXT_PLAIN_UTF_8.as_ref()),
@@ -341,11 +265,8 @@ impl IntoResponse for std::borrow::Cow<'static, str> {
 }
 
 impl IntoResponse for Bytes {
-    type Body = Full<Bytes>;
-    type BodyError = Infallible;
-
-    fn into_response(self) -> Response<Self::Body> {
-        let mut res = Response::new(Full::from(self));
+    fn into_response(self) -> Response<BoxBody> {
+        let mut res = Response::new(boxed(Full::from(self)));
         res.headers_mut().insert(
             header::CONTENT_TYPE,
             HeaderValue::from_static(mime::APPLICATION_OCTET_STREAM.as_ref()),
@@ -355,11 +276,8 @@ impl IntoResponse for Bytes {
 }
 
 impl IntoResponse for &'static [u8] {
-    type Body = Full<Bytes>;
-    type BodyError = Infallible;
-
-    fn into_response(self) -> Response<Self::Body> {
-        let mut res = Response::new(Full::from(self));
+    fn into_response(self) -> Response<BoxBody> {
+        let mut res = Response::new(boxed(Full::from(self)));
         res.headers_mut().insert(
             header::CONTENT_TYPE,
             HeaderValue::from_static(mime::APPLICATION_OCTET_STREAM.as_ref()),
@@ -369,11 +287,8 @@ impl IntoResponse for &'static [u8] {
 }
 
 impl IntoResponse for Vec<u8> {
-    type Body = Full<Bytes>;
-    type BodyError = Infallible;
-
-    fn into_response(self) -> Response<Self::Body> {
-        let mut res = Response::new(Full::from(self));
+    fn into_response(self) -> Response<BoxBody> {
+        let mut res = Response::new(boxed(Full::from(self)));
         res.headers_mut().insert(
             header::CONTENT_TYPE,
             HeaderValue::from_static(mime::APPLICATION_OCTET_STREAM.as_ref()),
@@ -382,12 +297,9 @@ impl IntoResponse for Vec<u8> {
     }
 }
 
-impl IntoResponse for std::borrow::Cow<'static, [u8]> {
-    type Body = Full<Bytes>;
-    type BodyError = Infallible;
-
-    fn into_response(self) -> Response<Self::Body> {
-        let mut res = Response::new(Full::from(self));
+impl IntoResponse for Cow<'static, [u8]> {
+    fn into_response(self) -> Response<BoxBody> {
+        let mut res = Response::new(boxed(Full::from(self)));
         res.headers_mut().insert(
             header::CONTENT_TYPE,
             HeaderValue::from_static(mime::APPLICATION_OCTET_STREAM.as_ref()),
@@ -397,11 +309,11 @@ impl IntoResponse for std::borrow::Cow<'static, [u8]> {
 }
 
 impl IntoResponse for StatusCode {
-    type Body = Empty<Bytes>;
-    type BodyError = Infallible;
-
-    fn into_response(self) -> Response<Self::Body> {
-        Response::builder().status(self).body(Empty::new()).unwrap()
+    fn into_response(self) -> Response<BoxBody> {
+        Response::builder()
+            .status(self)
+            .body(boxed(Empty::new()))
+            .unwrap()
     }
 }
 
@@ -409,10 +321,7 @@ impl<T> IntoResponse for (StatusCode, T)
 where
     T: IntoResponse,
 {
-    type Body = T::Body;
-    type BodyError = T::BodyError;
-
-    fn into_response(self) -> Response<T::Body> {
+    fn into_response(self) -> Response<BoxBody> {
         let mut res = self.1.into_response();
         *res.status_mut() = self.0;
         res
@@ -423,10 +332,7 @@ impl<T> IntoResponse for (HeaderMap, T)
 where
     T: IntoResponse,
 {
-    type Body = T::Body;
-    type BodyError = T::BodyError;
-
-    fn into_response(self) -> Response<T::Body> {
+    fn into_response(self) -> Response<BoxBody> {
         let mut res = self.1.into_response();
         res.headers_mut().extend(self.0);
         res
@@ -437,10 +343,7 @@ impl<T> IntoResponse for (StatusCode, HeaderMap, T)
 where
     T: IntoResponse,
 {
-    type Body = T::Body;
-    type BodyError = T::BodyError;
-
-    fn into_response(self) -> Response<T::Body> {
+    fn into_response(self) -> Response<BoxBody> {
         let mut res = self.2.into_response();
         *res.status_mut() = self.0;
         res.headers_mut().extend(self.1);
@@ -449,11 +352,8 @@ where
 }
 
 impl IntoResponse for HeaderMap {
-    type Body = Empty<Bytes>;
-    type BodyError = Infallible;
-
-    fn into_response(self) -> Response<Self::Body> {
-        let mut res = Response::new(Empty::new());
+    fn into_response(self) -> Response<BoxBody> {
+        let mut res = Response::new(boxed(Empty::new()));
         *res.headers_mut() = self;
         res
     }
@@ -469,11 +369,8 @@ impl<T> IntoResponse for Html<T>
 where
     T: Into<Full<Bytes>>,
 {
-    type Body = Full<Bytes>;
-    type BodyError = Infallible;
-
-    fn into_response(self) -> Response<Self::Body> {
-        let mut res = Response::new(self.0.into());
+    fn into_response(self) -> Response<BoxBody> {
+        let mut res = Response::new(boxed(self.0.into()));
         res.headers_mut().insert(
             header::CONTENT_TYPE,
             HeaderValue::from_static(mime::TEXT_HTML_UTF_8.as_ref()),
@@ -491,7 +388,6 @@ impl<T> From<T> for Html<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::body::Body;
     use http::header::{HeaderMap, HeaderName};
 
     #[test]
@@ -499,11 +395,8 @@ mod tests {
         struct MyResponse;
 
         impl IntoResponse for MyResponse {
-            type Body = Body;
-            type BodyError = <Self::Body as http_body::Body>::Error;
-
-            fn into_response(self) -> Response<Body> {
-                let mut resp = Response::new(String::new().into());
+            fn into_response(self) -> Response<BoxBody> {
+                let mut resp = Response::new(boxed(Empty::new()));
                 resp.headers_mut()
                     .insert(HeaderName::from_static("a"), HeaderValue::from_static("1"));
                 resp

@@ -8,7 +8,7 @@
 
 use axum::{
     async_trait,
-    body::{Bytes, Full},
+    body::BoxBody,
     extract::{FromRequest, RequestParts, TypedHeader},
     http::{Response, StatusCode},
     response::IntoResponse,
@@ -20,7 +20,7 @@ use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation}
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use std::{convert::Infallible, fmt::Display, net::SocketAddr};
+use std::{fmt::Display, net::SocketAddr};
 
 // Quick instructions
 //
@@ -141,10 +141,7 @@ where
 }
 
 impl IntoResponse for AuthError {
-    type Body = Full<Bytes>;
-    type BodyError = Infallible;
-
-    fn into_response(self) -> Response<Self::Body> {
+    fn into_response(self) -> Response<BoxBody> {
         let (status, error_message) = match self {
             AuthError::WrongCredentials => (StatusCode::UNAUTHORIZED, "Wrong credentials"),
             AuthError::MissingCredentials => (StatusCode::BAD_REQUEST, "Missing credentials"),
