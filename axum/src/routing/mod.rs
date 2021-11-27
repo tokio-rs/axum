@@ -8,7 +8,7 @@ use crate::{
         MatchedPath, OriginalUri,
     },
     routing::strip_prefix::StripPrefix,
-    util::{ByteStr, PercentDecodedByteStr},
+    util::{try_downcast, ByteStr, PercentDecodedByteStr},
     BoxError,
 };
 use bytes::Bytes;
@@ -654,20 +654,6 @@ impl<B, E> Fallback<B, E> {
             Fallback::Default(inner) => Fallback::Default(f(inner)),
             Fallback::Custom(inner) => Fallback::Custom(f(inner)),
         }
-    }
-}
-
-fn try_downcast<T, K>(k: K) -> Result<T, K>
-where
-    T: 'static,
-    K: Send + 'static,
-{
-    use std::any::Any;
-
-    let k = Box::new(k) as Box<dyn Any + Send + 'static>;
-    match k.downcast() {
-        Ok(t) => Ok(*t),
-        Err(other) => Err(*other.downcast().unwrap()),
     }
 }
 

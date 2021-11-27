@@ -1,6 +1,6 @@
 //! HTTP body utilities.
 
-use crate::{BoxError, Error};
+use crate::{util::try_downcast, BoxError, Error};
 
 mod stream_body;
 
@@ -27,7 +27,7 @@ where
     B: http_body::Body<Data = Bytes> + Send + 'static,
     B::Error: Into<BoxError>,
 {
-    body.map_err(Error::new).boxed_unsync()
+    try_downcast(body).unwrap_or_else(|body| body.map_err(Error::new).boxed_unsync())
 }
 
 pub(crate) fn empty() -> BoxBody {
