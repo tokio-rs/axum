@@ -174,7 +174,7 @@ where
                         key: key.as_str().to_owned(),
                     },
                 };
-                let err = DeserializationError(err);
+                let err = FailedToDeserializePathParams(err);
                 return Err(err.into());
             }
             Some(None) => Cow::Owned(Vec::new()),
@@ -184,7 +184,11 @@ where
         };
 
         T::deserialize(de::PathDeserializer::new(&*params))
-            .map_err(|err| PathParamsRejection::DeserializationError(DeserializationError(err)))
+            .map_err(|err| {
+                PathParamsRejection::FailedToDeserializePathParams(FailedToDeserializePathParams(
+                    err,
+                ))
+            })
             .map(Path)
     }
 }
@@ -252,7 +256,7 @@ impl std::error::Error for InternalDeserializationError {}
 
 /// The kinds of errors that can happen we deserializing into a [`Path`].
 ///
-/// This type is obtained through [`DeserializationError::into_kind`] and is useful for building
+/// This type is obtained through [`FailedToDeserializePathParams::into_kind`] and is useful for building
 /// more precise error messages.
 #[derive(Debug)]
 #[non_exhaustive]
@@ -358,16 +362,16 @@ impl fmt::Display for ErrorKind {
 /// Rejection type for [`Path`](super::Path) if the captured routes params couldn't be deserialized
 /// into the expected type.
 #[derive(Debug)]
-pub struct DeserializationError(InternalDeserializationError);
+pub struct FailedToDeserializePathParams(InternalDeserializationError);
 
-impl DeserializationError {
+impl FailedToDeserializePathParams {
     /// Convert this error into the underlying error kind.
     pub fn into_kind(self) -> ErrorKind {
         self.0.kind
     }
 }
 
-impl IntoResponse for DeserializationError {
+impl IntoResponse for FailedToDeserializePathParams {
     fn into_response(self) -> http::Response<BoxBody> {
         let (status, body) = match self.0.kind {
             ErrorKind::Message(_)
@@ -389,13 +393,13 @@ impl IntoResponse for DeserializationError {
     }
 }
 
-impl fmt::Display for DeserializationError {
+impl fmt::Display for FailedToDeserializePathParams {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.0.fmt(f)
     }
 }
 
-impl std::error::Error for DeserializationError {}
+impl std::error::Error for FailedToDeserializePathParams {}
 
 #[cfg(test)]
 mod tests {

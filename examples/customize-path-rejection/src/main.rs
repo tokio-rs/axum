@@ -62,7 +62,7 @@ where
             Ok(value) => Ok(Self(value.0)),
             Err(rejection) => {
                 let (status, body) = match rejection {
-                    PathParamsRejection::DeserializationError(inner) => {
+                    PathParamsRejection::FailedToDeserializePathParams(inner) => {
                         let mut status = StatusCode::BAD_REQUEST;
 
                         let kind = inner.into_kind();
