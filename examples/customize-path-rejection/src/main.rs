@@ -72,7 +72,7 @@ where
                                 location: None,
                             },
 
-                            ErrorKind::ParseErrorAt { key, .. } => PathError {
+                            ErrorKind::ParseErrorAtKey { key, .. } => PathError {
                                 message: kind.to_string(),
                                 location: Some(key.clone()),
                             },

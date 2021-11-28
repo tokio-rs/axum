@@ -285,7 +285,7 @@ macro_rules! parse_value {
         {
             let v = self.value.parse().map_err(|_| {
                 if let Some(key) = self.key.take() {
-                    InternalPathDeserializerError::new(ErrorKind::ParseErrorAt {
+                    InternalPathDeserializerError::new(ErrorKind::ParseErrorAtKey {
                         key: key.as_str().to_owned(),
                         value: self.value.to_owned(),
                         expected_type: $ty,

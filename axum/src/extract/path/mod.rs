@@ -268,7 +268,7 @@ pub enum ErrorKind {
     /// Failed to parse the value at a specific key into the expected type.
     ///
     /// This variant is used when deserializing into types that have named fields, such as structs.
-    ParseErrorAt {
+    ParseErrorAtKey {
         /// The key at which the value was located.
         key: String,
         /// The value from the URI.
@@ -318,7 +318,7 @@ impl fmt::Display for ErrorKind {
                 expected, got
             ),
             ErrorKind::UnsupportedType { name } => write!(f, "Unsupported type `{}`", name),
-            ErrorKind::ParseErrorAt {
+            ErrorKind::ParseErrorAtKey {
                 key,
                 value,
                 expected_type,
@@ -354,7 +354,7 @@ impl IntoResponse for PathDeserializerError {
             | ErrorKind::InvalidUtf8InPathParam { .. }
             | ErrorKind::WrongNumberOfParameters { .. }
             | ErrorKind::ParseError { .. }
-            | ErrorKind::ParseErrorAt { .. } => (
+            | ErrorKind::ParseErrorAtKey { .. } => (
                 StatusCode::BAD_REQUEST,
                 format!("Invalid URL: {}", self.0.kind),
             ),
