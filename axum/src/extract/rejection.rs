@@ -7,7 +7,6 @@ use crate::{
 };
 use http_body::Full;
 
-#[doc(inline)]
 pub use crate::extract::path::FailedToDeserializePathParams;
 
 define_rejection! {

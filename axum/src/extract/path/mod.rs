@@ -169,7 +169,7 @@ where
         {
             Some(Some(UrlParams(Ok(params)))) => Cow::Borrowed(params),
             Some(Some(UrlParams(Err(InvalidUtf8InPathParam { key })))) => {
-                let err = InternalDeserializationError {
+                let err = PathDeserializationError {
                     kind: ErrorKind::InvalidUtf8InPathParam {
                         key: key.as_str().to_owned(),
                     },
@@ -196,11 +196,11 @@ where
 // this wrapper type is used as the deserializer error to hide the `serde::de::Error` impl which
 // would otherwise be public if we used `ErrorKind` as the error directly
 #[derive(Debug)]
-pub(crate) struct InternalDeserializationError {
+pub(crate) struct PathDeserializationError {
     pub(super) kind: ErrorKind,
 }
 
-impl InternalDeserializationError {
+impl PathDeserializationError {
     pub(super) fn new(kind: ErrorKind) -> Self {
         Self { kind }
     }
@@ -226,15 +226,15 @@ impl<G> WrongNumberOfParameters<G> {
 }
 
 impl WrongNumberOfParameters<usize> {
-    pub(super) fn expected(self, expected: usize) -> InternalDeserializationError {
-        InternalDeserializationError::new(ErrorKind::WrongNumberOfParameters {
+    pub(super) fn expected(self, expected: usize) -> PathDeserializationError {
+        PathDeserializationError::new(ErrorKind::WrongNumberOfParameters {
             got: self.got,
             expected,
         })
     }
 }
 
-impl serde::de::Error for InternalDeserializationError {
+impl serde::de::Error for PathDeserializationError {
     #[inline]
     fn custom<T>(msg: T) -> Self
     where
@@ -246,13 +246,13 @@ impl serde::de::Error for InternalDeserializationError {
     }
 }
 
-impl fmt::Display for InternalDeserializationError {
+impl fmt::Display for PathDeserializationError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.kind.fmt(f)
     }
 }
 
-impl std::error::Error for InternalDeserializationError {}
+impl std::error::Error for PathDeserializationError {}
 
 /// The kinds of errors that can happen we deserializing into a [`Path`].
 ///
@@ -362,7 +362,7 @@ impl fmt::Display for ErrorKind {
 /// Rejection type for [`Path`](super::Path) if the captured routes params couldn't be deserialized
 /// into the expected type.
 #[derive(Debug)]
-pub struct FailedToDeserializePathParams(InternalDeserializationError);
+pub struct FailedToDeserializePathParams(PathDeserializationError);
 
 impl FailedToDeserializePathParams {
     /// Convert this error into the underlying error kind.
