@@ -7,6 +7,8 @@ use crate::{
 };
 use http_body::Full;
 
+pub use crate::extract::path::PathDeserializerError;
+
 define_rejection! {
     #[status = INTERNAL_SERVER_ERROR]
     #[body = "Extensions taken by other extractor"]
@@ -100,33 +102,6 @@ define_rejection! {
     /// Rejection type used if you try and extract the request more than once.
     pub struct InvalidFormContentType;
 }
-
-/// Rejection type for [`Path`](super::Path) if the capture route
-/// param didn't have the expected type.
-#[derive(Debug)]
-pub struct InvalidPathParam(pub(crate) String);
-
-impl InvalidPathParam {
-    pub(super) fn new(err: impl Into<String>) -> Self {
-        InvalidPathParam(err.into())
-    }
-}
-
-impl IntoResponse for InvalidPathParam {
-    fn into_response(self) -> http::Response<BoxBody> {
-        let mut res = http::Response::new(boxed(Full::from(self.to_string())));
-        *res.status_mut() = http::StatusCode::BAD_REQUEST;
-        res
-    }
-}
-
-impl std::fmt::Display for InvalidPathParam {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Invalid URL param. {}", self.0)
-    }
-}
-
-impl std::error::Error for InvalidPathParam {}
 
 /// Rejection type for extractors that deserialize query strings if the input
 /// couldn't be deserialized into the target type.
@@ -224,7 +199,7 @@ composite_rejection! {
     /// Contains one variant for each way the [`Path`](super::Path) extractor
     /// can fail.
     pub enum PathParamsRejection {
-        InvalidPathParam,
+        PathDeserializerError,
         MissingRouteParams,
     }
 }

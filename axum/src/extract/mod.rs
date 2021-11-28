@@ -8,6 +8,7 @@ use std::convert::Infallible;
 
 pub mod connect_info;
 pub mod extractor_middleware;
+pub mod path;
 pub mod rejection;
 
 #[cfg(feature = "ws")]
@@ -18,7 +19,6 @@ mod content_length_limit;
 mod extension;
 mod form;
 mod matched_path;
-mod path;
 mod query;
 mod raw_query;
 mod request_parts;
