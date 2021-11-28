@@ -169,12 +169,12 @@ where
         {
             Some(Some(UrlParams(Ok(params)))) => Cow::Borrowed(params),
             Some(Some(UrlParams(Err(InvalidUtf8InPathParam { key })))) => {
-                let err = InternalPathDeserializerError {
+                let err = InternalDeserializationError {
                     kind: ErrorKind::InvalidUtf8InPathParam {
                         key: key.as_str().to_owned(),
                     },
                 };
-                let err = PathDeserializerError(err);
+                let err = DeserializationError(err);
                 return Err(err.into());
             }
             Some(None) => Cow::Owned(Vec::new()),
@@ -184,7 +184,7 @@ where
         };
 
         T::deserialize(de::PathDeserializer::new(&*params))
-            .map_err(|err| PathParamsRejection::PathDeserializerError(PathDeserializerError(err)))
+            .map_err(|err| PathParamsRejection::DeserializationError(DeserializationError(err)))
             .map(Path)
     }
 }
@@ -192,11 +192,11 @@ where
 // this wrapper type is used as the deserializer error to hide the `serde::de::Error` impl which
 // would otherwise be public if we used `ErrorKind` as the error directly
 #[derive(Debug)]
-pub(crate) struct InternalPathDeserializerError {
+pub(crate) struct InternalDeserializationError {
     pub(super) kind: ErrorKind,
 }
 
-impl InternalPathDeserializerError {
+impl InternalDeserializationError {
     pub(super) fn new(kind: ErrorKind) -> Self {
         Self { kind }
     }
@@ -222,15 +222,15 @@ impl<G> WrongNumberOfParameters<G> {
 }
 
 impl WrongNumberOfParameters<usize> {
-    pub(super) fn expected(self, expected: usize) -> InternalPathDeserializerError {
-        InternalPathDeserializerError::new(ErrorKind::WrongNumberOfParameters {
+    pub(super) fn expected(self, expected: usize) -> InternalDeserializationError {
+        InternalDeserializationError::new(ErrorKind::WrongNumberOfParameters {
             got: self.got,
             expected,
         })
     }
 }
 
-impl serde::de::Error for InternalPathDeserializerError {
+impl serde::de::Error for InternalDeserializationError {
     #[inline]
     fn custom<T>(msg: T) -> Self
     where
@@ -242,17 +242,17 @@ impl serde::de::Error for InternalPathDeserializerError {
     }
 }
 
-impl fmt::Display for InternalPathDeserializerError {
+impl fmt::Display for InternalDeserializationError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.kind.fmt(f)
     }
 }
 
-impl std::error::Error for InternalPathDeserializerError {}
+impl std::error::Error for InternalDeserializationError {}
 
 /// The kinds of errors that can happen we deserializing into a [`Path`].
 ///
-/// This type is obtained through [`PathDeserializerError::into_kind`] and is useful for building
+/// This type is obtained through [`DeserializationError::into_kind`] and is useful for building
 /// more precise error messages.
 #[derive(Debug)]
 #[non_exhaustive]
@@ -291,8 +291,7 @@ pub enum ErrorKind {
 
     /// Failed to parse a value into the expected type.
     ///
-    /// This variant is used when deserializing into types that don't have named fields, such as
-    /// single types (such as `String` and `u32`) or tuples.
+    /// This variant is used when deserializing into a primitive type (such as `String` and `u32`).
     ParseError {
         /// The value from the URI.
         value: String,
@@ -359,16 +358,16 @@ impl fmt::Display for ErrorKind {
 /// Rejection type for [`Path`](super::Path) if the captured routes params couldn't be deserialized
 /// into the expected type.
 #[derive(Debug)]
-pub struct PathDeserializerError(InternalPathDeserializerError);
+pub struct DeserializationError(InternalDeserializationError);
 
-impl PathDeserializerError {
+impl DeserializationError {
     /// Convert this error into the underlying error kind.
     pub fn into_kind(self) -> ErrorKind {
         self.0.kind
     }
 }
 
-impl IntoResponse for PathDeserializerError {
+impl IntoResponse for DeserializationError {
     fn into_response(self) -> http::Response<BoxBody> {
         let (status, body) = match self.0.kind {
             ErrorKind::Message(_)
@@ -390,13 +389,13 @@ impl IntoResponse for PathDeserializerError {
     }
 }
 
-impl fmt::Display for PathDeserializerError {
+impl fmt::Display for DeserializationError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.0.fmt(f)
     }
 }
 
-impl std::error::Error for PathDeserializerError {}
+impl std::error::Error for DeserializationError {}
 
 #[cfg(test)]
 mod tests {

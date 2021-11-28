@@ -7,7 +7,7 @@ use crate::{
 };
 use http_body::Full;
 
-pub use crate::extract::path::PathDeserializerError;
+pub use crate::extract::path::DeserializationError;
 
 define_rejection! {
     #[status = INTERNAL_SERVER_ERROR]
@@ -199,7 +199,7 @@ composite_rejection! {
     /// Contains one variant for each way the [`Path`](super::Path) extractor
     /// can fail.
     pub enum PathParamsRejection {
-        PathDeserializerError,
+        DeserializationError,
         MissingRouteParams,
     }
 }
