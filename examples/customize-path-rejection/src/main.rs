@@ -6,7 +6,7 @@
 
 use axum::{
     async_trait,
-    extract::{path::ErrorKind, rejection::PathParamsRejection, FromRequest, RequestParts},
+    extract::{path::ErrorKind, rejection::PathRejection, FromRequest, RequestParts},
     http::StatusCode,
     response::IntoResponse,
     routing::get,
@@ -62,7 +62,7 @@ where
             Ok(value) => Ok(Self(value.0)),
             Err(rejection) => {
                 let (status, body) = match rejection {
-                    PathParamsRejection::FailedToDeserializePathParams(inner) => {
+                    PathRejection::FailedToDeserializePathParams(inner) => {
                         let mut status = StatusCode::BAD_REQUEST;
 
                         let kind = inner.into_kind();
@@ -115,7 +115,7 @@ where
 
                         (status, body)
                     }
-                    PathParamsRejection::MissingPathParams(error) => (
+                    PathRejection::MissingPathParams(error) => (
                         StatusCode::INTERNAL_SERVER_ERROR,
                         PathError {
                             message: error.to_string(),

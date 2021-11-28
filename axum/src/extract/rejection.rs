@@ -199,7 +199,7 @@ composite_rejection! {
     ///
     /// Contains one variant for each way the [`Path`](super::Path) extractor
     /// can fail.
-    pub enum PathParamsRejection {
+    pub enum PathRejection {
         FailedToDeserializePathParams,
         MissingPathParams,
     }

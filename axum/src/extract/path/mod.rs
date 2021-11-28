@@ -160,7 +160,7 @@ where
     T: DeserializeOwned + Send,
     B: Send,
 {
-    type Rejection = PathParamsRejection;
+    type Rejection = PathRejection;
 
     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
         let params = match req
@@ -185,9 +185,7 @@ where
 
         T::deserialize(de::PathDeserializer::new(&*params))
             .map_err(|err| {
-                PathParamsRejection::FailedToDeserializePathParams(FailedToDeserializePathParams(
-                    err,
-                ))
+                PathRejection::FailedToDeserializePathParams(FailedToDeserializePathParams(err))
             })
             .map(Path)
     }
