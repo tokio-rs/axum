@@ -277,6 +277,18 @@ pub enum ErrorKind {
         expected_type: &'static str,
     },
 
+    /// Failed to parse the value at a specific index into the expected type.
+    ///
+    /// This variant is used when deserializing into sequence types, such as tuples.
+    ParseErrorAtIndex {
+        /// The index at which the value was located.
+        index: usize,
+        /// The value from the URI.
+        value: String,
+        /// The expected type of the value.
+        expected_type: &'static str,
+    },
+
     /// Failed to parse a value into the expected type.
     ///
     /// This variant is used when deserializing into types that don't have named fields, such as
@@ -331,6 +343,15 @@ impl fmt::Display for ErrorKind {
                 value,
                 expected_type,
             } => write!(f, "Cannot parse `{:?}` to a `{}`", value, expected_type),
+            ErrorKind::ParseErrorAtIndex {
+                index,
+                value,
+                expected_type,
+            } => write!(
+                f,
+                "Cannot parse value at index {} with value `{:?}` to a `{}`",
+                index, value, expected_type
+            ),
         }
     }
 }
@@ -354,6 +375,7 @@ impl IntoResponse for PathDeserializerError {
             | ErrorKind::InvalidUtf8InPathParam { .. }
             | ErrorKind::WrongNumberOfParameters { .. }
             | ErrorKind::ParseError { .. }
+            | ErrorKind::ParseErrorAtIndex { .. }
             | ErrorKind::ParseErrorAtKey { .. } => (
                 StatusCode::BAD_REQUEST,
                 format!("Invalid URL: {}", self.0.kind),

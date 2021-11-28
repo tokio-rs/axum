@@ -77,6 +77,11 @@ where
                                 location: Some(key.clone()),
                             },
 
+                            ErrorKind::ParseErrorAtIndex { index, .. } => PathError {
+                                message: kind.to_string(),
+                                location: Some(index.to_string()),
+                            },
+
                             ErrorKind::ParseError { .. } => PathError {
                                 message: kind.to_string(),
                                 location: None,

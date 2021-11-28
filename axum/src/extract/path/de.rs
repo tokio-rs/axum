@@ -123,6 +123,7 @@ impl<'de> Deserializer<'de> for PathDeserializer<'de> {
     {
         visitor.visit_seq(SeqDeserializer {
             params: self.url_params,
+            idx: 0,
         })
     }
 
@@ -137,6 +138,7 @@ impl<'de> Deserializer<'de> for PathDeserializer<'de> {
         }
         visitor.visit_seq(SeqDeserializer {
             params: self.url_params,
+            idx: 0,
         })
     }
 
@@ -156,6 +158,7 @@ impl<'de> Deserializer<'de> for PathDeserializer<'de> {
         }
         visitor.visit_seq(SeqDeserializer {
             params: self.url_params,
+            idx: 0,
         })
     }
 
@@ -205,7 +208,7 @@ impl<'de> Deserializer<'de> for PathDeserializer<'de> {
 
 struct MapDeserializer<'de> {
     params: &'de [(ByteStr, PercentDecodedByteStr)],
-    key: Option<ByteStr>,
+    key: Option<KeyOrIdx>,
     value: Option<&'de str>,
 }
 
@@ -220,7 +223,7 @@ impl<'de> MapAccess<'de> for MapDeserializer<'de> {
             Some(((key, value), tail)) => {
                 self.value = Some(value);
                 self.params = tail;
-                self.key = Some(key.clone());
+                self.key = Some(KeyOrIdx::Key(key.clone()));
                 seed.deserialize(KeyDeserializer { key }).map(Some)
             }
             None => Ok(None),
@@ -285,11 +288,19 @@ macro_rules! parse_value {
         {
             let v = self.value.parse().map_err(|_| {
                 if let Some(key) = self.key.take() {
-                    InternalPathDeserializerError::new(ErrorKind::ParseErrorAtKey {
-                        key: key.as_str().to_owned(),
-                        value: self.value.to_owned(),
-                        expected_type: $ty,
-                    })
+                    let kind = match key {
+                        KeyOrIdx::Key(key) => ErrorKind::ParseErrorAtKey {
+                            key: key.as_str().to_owned(),
+                            value: self.value.to_owned(),
+                            expected_type: $ty,
+                        },
+                        KeyOrIdx::Idx(index) => ErrorKind::ParseErrorAtIndex {
+                            index,
+                            value: self.value.to_owned(),
+                            expected_type: $ty,
+                        },
+                    };
+                    InternalPathDeserializerError::new(kind)
                 } else {
                     InternalPathDeserializerError::new(ErrorKind::ParseError {
                         value: self.value.to_owned(),
@@ -303,7 +314,7 @@ macro_rules! parse_value {
 }
 
 struct ValueDeserializer<'de> {
-    key: Option<ByteStr>, // `None` if we're deserializing a seq
+    key: Option<KeyOrIdx>,
     value: &'de str,
 }
 
@@ -497,6 +508,7 @@ impl<'de> VariantAccess<'de> for UnitVariant {
 
 struct SeqDeserializer<'de> {
     params: &'de [(ByteStr, PercentDecodedByteStr)],
+    idx: usize,
 }
 
 impl<'de> SeqAccess<'de> for SeqDeserializer<'de> {
@@ -509,13 +521,22 @@ impl<'de> SeqAccess<'de> for SeqDeserializer<'de> {
         match self.params.split_first() {
             Some(((_, value), tail)) => {
                 self.params = tail;
-                Ok(Some(
-                    seed.deserialize(ValueDeserializer { key: None, value })?,
-                ))
+                let idx = self.idx;
+                self.idx += 1;
+                Ok(Some(seed.deserialize(ValueDeserializer {
+                    key: Some(KeyOrIdx::Idx(idx)),
+                    value,
+                })?))
             }
             None => Ok(None),
         }
     }
+}
+
+#[derive(Clone)]
+enum KeyOrIdx {
+    Key(ByteStr),
+    Idx(usize),
 }
 
 #[cfg(test)]

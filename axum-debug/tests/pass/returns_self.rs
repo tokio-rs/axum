@@ -4,7 +4,6 @@ use axum::{
     response::IntoResponse,
 };
 use axum_debug::debug_handler;
-use std::convert::Infallible;
 
 struct A;
 
