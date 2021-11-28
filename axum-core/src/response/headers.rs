@@ -1,14 +1,11 @@
 use super::IntoResponse;
-use crate::{
-    body::{boxed, BoxBody},
-    BoxError,
-};
+use crate::body::{boxed, BoxBody};
 use bytes::Bytes;
 use http::{
     header::{HeaderMap, HeaderName, HeaderValue},
     Response, StatusCode,
 };
-use http_body::{Body, Full};
+use http_body::{Empty, Full};
 use std::{convert::TryInto, fmt};
 
 /// A response with headers.
@@ -58,7 +55,7 @@ use std::{convert::TryInto, fmt};
 pub struct Headers<H>(pub H);
 
 impl<H> Headers<H> {
-    fn try_into_header_map<K, V>(self) -> Result<HeaderMap, Response<Full<Bytes>>>
+    fn try_into_header_map<K, V>(self) -> Result<HeaderMap, Response<BoxBody>>
     where
         H: IntoIterator<Item = (K, V)>,
         K: TryInto<HeaderName>,
@@ -80,7 +77,7 @@ impl<H> Headers<H> {
                     Either::B(err) => err.to_string(),
                 };
 
-                let body = Full::new(Bytes::copy_from_slice(err.as_bytes()));
+                let body = boxed(Full::new(Bytes::copy_from_slice(err.as_bytes())));
                 let mut res = Response::new(body);
                 *res.status_mut() = StatusCode::INTERNAL_SERVER_ERROR;
                 res
@@ -96,15 +93,12 @@ where
     V: TryInto<HeaderValue>,
     V::Error: fmt::Display,
 {
-    type Body = Full<Bytes>;
-    type BodyError = <Self::Body as Body>::Error;
-
-    fn into_response(self) -> http::Response<Self::Body> {
+    fn into_response(self) -> http::Response<BoxBody> {
         let headers = self.try_into_header_map();
 
         match headers {
             Ok(headers) => {
-                let mut res = Response::new(Full::new(Bytes::new()));
+                let mut res = Response::new(boxed(Empty::new()));
                 *res.headers_mut() = headers;
                 res
             }
@@ -116,50 +110,38 @@ where
 impl<H, T, K, V> IntoResponse for (Headers<H>, T)
 where
     T: IntoResponse,
-    T::Body: Body<Data = Bytes> + Send + 'static,
-    <T::Body as Body>::Error: Into<BoxError>,
     H: IntoIterator<Item = (K, V)>,
     K: TryInto<HeaderName>,
     K::Error: fmt::Display,
     V: TryInto<HeaderValue>,
     V::Error: fmt::Display,
 {
-    type Body = BoxBody;
-    type BodyError = <Self::Body as Body>::Error;
-
-    // this boxing could be improved with a EitherBody but thats
-    // an issue for another time
-    fn into_response(self) -> Response<Self::Body> {
+    fn into_response(self) -> Response<BoxBody> {
         let headers = match self.0.try_into_header_map() {
             Ok(headers) => headers,
-            Err(res) => return res.map(boxed),
+            Err(res) => return res,
         };
 
-        (headers, self.1).into_response().map(boxed)
+        (headers, self.1).into_response()
     }
 }
 
 impl<H, T, K, V> IntoResponse for (StatusCode, Headers<H>, T)
 where
     T: IntoResponse,
-    T::Body: Body<Data = Bytes> + Send + 'static,
-    <T::Body as Body>::Error: Into<BoxError>,
     H: IntoIterator<Item = (K, V)>,
     K: TryInto<HeaderName>,
     K::Error: fmt::Display,
     V: TryInto<HeaderValue>,
     V::Error: fmt::Display,
 {
-    type Body = BoxBody;
-    type BodyError = <Self::Body as Body>::Error;
-
-    fn into_response(self) -> Response<Self::Body> {
+    fn into_response(self) -> Response<BoxBody> {
         let headers = match self.1.try_into_header_map() {
             Ok(headers) => headers,
-            Err(res) => return res.map(boxed),
+            Err(res) => return res,
         };
 
-        (self.0, headers, self.2).into_response().map(boxed)
+        (self.0, headers, self.2).into_response()
     }
 }
 

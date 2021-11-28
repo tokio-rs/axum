@@ -12,7 +12,7 @@
 
 use async_trait::async_trait;
 use axum::{
-    body::{Bytes, Full},
+    body::BoxBody,
     extract::{Form, FromRequest, RequestParts},
     http::{Response, StatusCode},
     response::{Html, IntoResponse},
@@ -20,7 +20,7 @@ use axum::{
     BoxError, Router,
 };
 use serde::{de::DeserializeOwned, Deserialize};
-use std::{convert::Infallible, net::SocketAddr};
+use std::net::SocketAddr;
 use thiserror::Error;
 use validator::Validate;
 
@@ -84,10 +84,7 @@ pub enum ServerError {
 }
 
 impl IntoResponse for ServerError {
-    type Body = Full<Bytes>;
-    type BodyError = Infallible;
-
-    fn into_response(self) -> Response<Self::Body> {
+    fn into_response(self) -> Response<BoxBody> {
         match self {
             ServerError::ValidationError(_) => {
                 let message = format!("Input validation error: [{}]", self).replace("\n", ", ");

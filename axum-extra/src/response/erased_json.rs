@@ -1,7 +1,5 @@
-use std::convert::Infallible;
-
 use axum::{
-    body::{Bytes, Full},
+    body::{self, BoxBody, Full},
     http::{header, HeaderValue, Response, StatusCode},
     response::IntoResponse,
 };
@@ -41,27 +39,23 @@ impl ErasedJson {
 }
 
 impl IntoResponse for ErasedJson {
-    type Body = Full<Bytes>;
-    type BodyError = Infallible;
-
-    fn into_response(self) -> Response<Self::Body> {
-        #[allow(clippy::declare_interior_mutable_const)]
-        const APPLICATION_JSON: HeaderValue = HeaderValue::from_static("application/json");
-
+    fn into_response(self) -> Response<BoxBody> {
         let bytes = match self.0 {
             Ok(res) => res,
             Err(err) => {
                 return Response::builder()
                     .status(StatusCode::INTERNAL_SERVER_ERROR)
-                    .header(header::CONTENT_TYPE, "text/plain")
-                    .body(Full::from(err.to_string()))
+                    .header(header::CONTENT_TYPE, mime::TEXT_PLAIN_UTF_8.as_ref())
+                    .body(body::boxed(Full::from(err.to_string())))
                     .unwrap();
             }
         };
 
-        let mut res = Response::new(Full::from(bytes));
-        res.headers_mut()
-            .insert(header::CONTENT_TYPE, APPLICATION_JSON);
+        let mut res = Response::new(body::boxed(Full::from(bytes)));
+        res.headers_mut().insert(
+            header::CONTENT_TYPE,
+            HeaderValue::from_static(mime::APPLICATION_JSON.as_ref()),
+        );
         res
     }
 }

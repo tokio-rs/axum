@@ -13,9 +13,10 @@ version = "0.1.0"
 [dependencies]
 async-trait = "0.1"
 bytes = "1.0"
+futures-util = { version = "0.3", default-features = false, features = ["alloc"] }
 http = "0.2"
 http-body = "0.4"
-futures-util = { version = "0.3", default-features = false, features = ["alloc"] }
+mime = "0.3.16"
 
 [dev-dependencies]
 futures-util = "0.3"

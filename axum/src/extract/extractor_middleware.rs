@@ -247,7 +247,7 @@ where
                             State::Call { future }
                         }
                         Err(err) => {
-                            let res = err.into_response().map(crate::body::boxed);
+                            let res = err.into_response();
                             return Poll::Ready(Ok(res));
                         }
                     }

@@ -9,7 +9,7 @@
 use async_session::{MemoryStore, Session, SessionStore};
 use axum::{
     async_trait,
-    body::{Bytes, Empty},
+    body::BoxBody,
     extract::{Extension, FromRequest, Query, RequestParts, TypedHeader},
     http::{header::SET_COOKIE, HeaderMap, Response},
     response::{IntoResponse, Redirect},
@@ -199,10 +199,7 @@ async fn login_authorized(
 struct AuthRedirect;
 
 impl IntoResponse for AuthRedirect {
-    type Body = Empty<Bytes>;
-    type BodyError = <Self::Body as axum::body::HttpBody>::Error;
-
-    fn into_response(self) -> Response<Self::Body> {
+    fn into_response(self) -> Response<BoxBody> {
         Redirect::found("/auth/discord".parse().unwrap()).into_response()
     }
 }

@@ -59,7 +59,7 @@ where
                 .map_err(FailedToDeserializeQueryString::new::<T, _>)?;
             Ok(Form(value))
         } else {
-            if !has_content_type(req, "application/x-www-form-urlencoded")? {
+            if !has_content_type(req, &mime::APPLICATION_WWW_FORM_URLENCODED)? {
                 return Err(InvalidFormContentType.into());
             }
 
@@ -111,7 +111,7 @@ mod tests {
                 .method(Method::POST)
                 .header(
                     http::header::CONTENT_TYPE,
-                    "application/x-www-form-urlencoded",
+                    mime::APPLICATION_WWW_FORM_URLENCODED.as_ref(),
                 )
                 .body(http_body::Full::<bytes::Bytes>::new(
                     serde_urlencoded::to_string(&value).unwrap().into(),
@@ -178,7 +178,7 @@ mod tests {
             Request::builder()
                 .uri("http://example.com/test")
                 .method(Method::POST)
-                .header(http::header::CONTENT_TYPE, "application/json")
+                .header(http::header::CONTENT_TYPE, mime::APPLICATION_JSON.as_ref())
                 .body(http_body::Full::<bytes::Bytes>::new(
                     serde_urlencoded::to_string(&Pagination {
                         size: Some(10),

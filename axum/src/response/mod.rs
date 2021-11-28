@@ -1,9 +1,9 @@
 #![doc = include_str!("../docs/response.md")]
 
+use axum_core::body::{boxed, BoxBody};
 use bytes::Bytes;
 use http::{header, HeaderValue, Response};
 use http_body::Full;
-use std::convert::Infallible;
 
 mod redirect;
 
@@ -29,15 +29,12 @@ impl<T> IntoResponse for Html<T>
 where
     T: Into<Full<Bytes>>,
 {
-    type Body = Full<Bytes>;
-    type BodyError = Infallible;
-
-    fn into_response(self) -> Response<Self::Body> {
-        #[allow(clippy::declare_interior_mutable_const)]
-        const TEXT_HTML: HeaderValue = HeaderValue::from_static("text/html");
-
-        let mut res = Response::new(self.0.into());
-        res.headers_mut().insert(header::CONTENT_TYPE, TEXT_HTML);
+    fn into_response(self) -> Response<BoxBody> {
+        let mut res = Response::new(boxed(self.0.into()));
+        res.headers_mut().insert(
+            header::CONTENT_TYPE,
+            HeaderValue::from_static(mime::TEXT_HTML_UTF_8.as_ref()),
+        );
         res
     }
 }
@@ -51,22 +48,19 @@ impl<T> From<T> for Html<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::body::Body;
     use http::{
         header::{HeaderMap, HeaderName},
         StatusCode,
     };
+    use http_body::Empty;
 
     #[test]
     fn test_merge_headers() {
         struct MyResponse;
 
         impl IntoResponse for MyResponse {
-            type Body = Body;
-            type BodyError = <Self::Body as http_body::Body>::Error;
-
-            fn into_response(self) -> Response<Body> {
-                let mut resp = Response::new(String::new().into());
+            fn into_response(self) -> Response<BoxBody> {
+                let mut resp = Response::new(boxed(Empty::new()));
                 resp.headers_mut()
                     .insert(HeaderName::from_static("a"), HeaderValue::from_static("1"));
                 resp

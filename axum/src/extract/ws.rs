@@ -65,7 +65,11 @@
 
 use self::rejection::*;
 use super::{rejection::*, FromRequest, RequestParts};
-use crate::{response::IntoResponse, Error};
+use crate::{
+    body::{self, BoxBody},
+    response::IntoResponse,
+    Error,
+};
 use async_trait::async_trait;
 use bytes::Bytes;
 use futures_util::{
@@ -76,7 +80,6 @@ use http::{
     header::{self, HeaderName, HeaderValue},
     Method, Response, StatusCode,
 };
-use http_body::Full;
 use hyper::upgrade::{OnUpgrade, Upgraded};
 use sha1::{Digest, Sha1};
 use std::{
@@ -293,10 +296,7 @@ where
     F: FnOnce(WebSocket) -> Fut + Send + 'static,
     Fut: Future + Send + 'static,
 {
-    type Body = Full<Bytes>;
-    type BodyError = <Self::Body as http_body::Body>::Error;
-
-    fn into_response(self) -> Response<Self::Body> {
+    fn into_response(self) -> Response<BoxBody> {
         // check requested protocols
         let protocol = self
             .extractor
@@ -355,7 +355,7 @@ where
             builder = builder.header(header::SEC_WEBSOCKET_PROTOCOL, protocol);
         }
 
-        builder.body(Full::default()).unwrap()
+        builder.body(body::boxed(body::Empty::new())).unwrap()
     }
 }
 

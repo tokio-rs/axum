@@ -1,4 +1,8 @@
-use crate::{response::IntoResponse, BoxError, Error};
+use crate::{
+    body::{self, BoxBody},
+    response::IntoResponse,
+    BoxError, Error,
+};
 use bytes::Bytes;
 use futures_util::{
     ready,
@@ -77,11 +81,8 @@ where
     S::Ok: Into<Bytes>,
     S::Error: Into<BoxError>,
 {
-    type Body = Self;
-    type BodyError = Error;
-
-    fn into_response(self) -> Response<Self> {
-        Response::new(self)
+    fn into_response(self) -> Response<BoxBody> {
+        Response::new(body::boxed(self))
     }
 }
 
