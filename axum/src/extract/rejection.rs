@@ -5,9 +5,7 @@ use crate::{
     body::{boxed, BoxBody},
     BoxError, Error,
 };
-use bytes::Bytes;
 use http_body::Full;
-use std::convert::Infallible;
 
 define_rejection! {
     #[status = INTERNAL_SERVER_ERROR]
@@ -115,11 +113,8 @@ impl InvalidPathParam {
 }
 
 impl IntoResponse for InvalidPathParam {
-    type Body = Full<Bytes>;
-    type BodyError = Infallible;
-
-    fn into_response(self) -> http::Response<Self::Body> {
-        let mut res = http::Response::new(Full::from(self.to_string()));
+    fn into_response(self) -> http::Response<BoxBody> {
+        let mut res = http::Response::new(boxed(Full::from(self.to_string())));
         *res.status_mut() = http::StatusCode::BAD_REQUEST;
         res
     }
@@ -154,11 +149,8 @@ impl FailedToDeserializeQueryString {
 }
 
 impl IntoResponse for FailedToDeserializeQueryString {
-    type Body = Full<Bytes>;
-    type BodyError = Infallible;
-
-    fn into_response(self) -> http::Response<Self::Body> {
-        let mut res = http::Response::new(Full::from(self.to_string()));
+    fn into_response(self) -> http::Response<BoxBody> {
+        let mut res = http::Response::new(boxed(Full::from(self.to_string())));
         *res.status_mut() = http::StatusCode::BAD_REQUEST;
         res
     }
@@ -320,15 +312,12 @@ impl<T> IntoResponse for ContentLengthLimitRejection<T>
 where
     T: IntoResponse,
 {
-    type Body = BoxBody;
-    type BodyError = Error;
-
-    fn into_response(self) -> http::Response<Self::Body> {
+    fn into_response(self) -> http::Response<BoxBody> {
         match self {
-            Self::PayloadTooLarge(inner) => inner.into_response().map(boxed),
-            Self::LengthRequired(inner) => inner.into_response().map(boxed),
-            Self::HeadersAlreadyExtracted(inner) => inner.into_response().map(boxed),
-            Self::Inner(inner) => inner.into_response().map(boxed),
+            Self::PayloadTooLarge(inner) => inner.into_response(),
+            Self::LengthRequired(inner) => inner.into_response(),
+            Self::HeadersAlreadyExtracted(inner) => inner.into_response(),
+            Self::Inner(inner) => inner.into_response(),
         }
     }
 }

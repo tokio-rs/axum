@@ -1,7 +1,5 @@
-use std::convert::Infallible;
-
 use axum::{
-    body::{Bytes, Full},
+    body::{self, BoxBody, Full},
     http::{header, HeaderValue, Response, StatusCode},
     response::IntoResponse,
 };
@@ -41,22 +39,19 @@ impl ErasedJson {
 }
 
 impl IntoResponse for ErasedJson {
-    type Body = Full<Bytes>;
-    type BodyError = Infallible;
-
-    fn into_response(self) -> Response<Self::Body> {
+    fn into_response(self) -> Response<BoxBody> {
         let bytes = match self.0 {
             Ok(res) => res,
             Err(err) => {
                 return Response::builder()
                     .status(StatusCode::INTERNAL_SERVER_ERROR)
                     .header(header::CONTENT_TYPE, mime::TEXT_PLAIN_UTF_8.as_ref())
-                    .body(Full::from(err.to_string()))
+                    .body(body::boxed(Full::from(err.to_string())))
                     .unwrap();
             }
         };
 
-        let mut res = Response::new(Full::from(bytes));
+        let mut res = Response::new(body::boxed(Full::from(bytes)));
         res.headers_mut().insert(
             header::CONTENT_TYPE,
             HeaderValue::from_static(mime::APPLICATION_JSON.as_ref()),

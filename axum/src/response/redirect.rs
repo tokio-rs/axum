@@ -1,7 +1,7 @@
 use super::IntoResponse;
-use bytes::Bytes;
+use crate::body::{boxed, BoxBody};
 use http::{header::LOCATION, HeaderValue, Response, StatusCode, Uri};
-use http_body::{Body, Empty};
+use http_body::Empty;
 use std::convert::TryFrom;
 
 /// Response that redirects the request to another location.
@@ -105,11 +105,8 @@ impl Redirect {
 }
 
 impl IntoResponse for Redirect {
-    type Body = Empty<Bytes>;
-    type BodyError = <Self::Body as Body>::Error;
-
-    fn into_response(self) -> Response<Self::Body> {
-        let mut res = Response::new(Empty::new());
+    fn into_response(self) -> Response<BoxBody> {
+        let mut res = Response::new(boxed(Empty::new()));
         *res.status_mut() = self.status_code;
         res.headers_mut().insert(LOCATION, self.location);
         res
