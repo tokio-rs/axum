@@ -83,10 +83,10 @@ define_rejection! {
 
 define_rejection! {
     #[status = INTERNAL_SERVER_ERROR]
-    #[body = "No url params found for matched route. This is a bug in axum. Please open an issue"]
-    /// Rejection type used if axum's internal representation of URI parameters are missing. This
+    #[body = "No paths parameters found for matched route. This is a bug in axum. Please open an issue"]
+    /// Rejection type used if axum's internal representation of path parameters is missing. This
     /// should never happen and is a bug in axum if it does.
-    pub struct MissingRouteParams;
+    pub struct MissingPathParams;
 }
 
 define_rejection! {
@@ -201,7 +201,7 @@ composite_rejection! {
     /// can fail.
     pub enum PathParamsRejection {
         DeserializationError,
-        MissingRouteParams,
+        MissingPathParams,
     }
 }
 

@@ -179,7 +179,7 @@ where
             }
             Some(None) => Cow::Owned(Vec::new()),
             None => {
-                return Err(MissingRouteParams.into());
+                return Err(MissingPathParams.into());
             }
         };
 

@@ -115,7 +115,7 @@ where
 
                         (status, body)
                     }
-                    PathParamsRejection::MissingRouteParams(error) => (
+                    PathParamsRejection::MissingPathParams(error) => (
                         StatusCode::INTERNAL_SERVER_ERROR,
                         PathError {
                             message: error.to_string(),
