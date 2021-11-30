@@ -12,7 +12,7 @@ use tower_service::Service;
 /// This is used as the bottom service in a method router. You shouldn't have to
 /// use it manually.
 #[derive(Clone, Copy, Debug)]
-pub(crate) struct NotFound;
+pub(super) struct NotFound;
 
 impl<B> Service<Request<B>> for NotFound
 where
