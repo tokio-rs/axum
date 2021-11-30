@@ -8,7 +8,8 @@ pub struct Error {
 }
 
 impl Error {
-    pub(crate) fn new(error: impl Into<BoxError>) -> Self {
+    /// Create a new `Error` from a boxable error.
+    pub fn new(error: impl Into<BoxError>) -> Self {
         Self {
             inner: error.into(),
         }

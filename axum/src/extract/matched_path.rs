@@ -70,11 +70,9 @@ where
     type Rejection = MatchedPathRejection;
 
     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-        let extensions =
-            req.extensions()
-                .ok_or(MatchedPathRejection::ExtensionsAlreadyExtracted(
-                    ExtensionsAlreadyExtracted,
-                ))?;
+        let extensions = req.extensions().ok_or_else(|| {
+            MatchedPathRejection::ExtensionsAlreadyExtracted(ExtensionsAlreadyExtracted::default())
+        })?;
 
         let matched_path = extensions
             .get::<Self>()
@@ -114,7 +112,7 @@ mod tests {
                 .get::<MatchedPath>()
                 .unwrap()
                 .as_str()
-                .to_string();
+                .to_owned();
             req.extensions_mut().insert(MatchedPathFromMiddleware(path));
             self.0.call(req)
         }
@@ -127,7 +125,7 @@ mod tests {
     async fn access_matched_path() {
         let api = Router::new().route(
             "/users/:id",
-            get(|path: MatchedPath| async move { path.as_str().to_string() }),
+            get(|path: MatchedPath| async move { path.as_str().to_owned() }),
         );
 
         async fn handler(
@@ -146,7 +144,7 @@ mod tests {
         let app = Router::new()
             .route(
                 "/:key",
-                get(|path: MatchedPath| async move { path.as_str().to_string() }),
+                get(|path: MatchedPath| async move { path.as_str().to_owned() }),
             )
             .nest("/api", api)
             .nest(

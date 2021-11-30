@@ -218,7 +218,7 @@ where
 
         let sec_websocket_key = if let Some(key) = req
             .headers_mut()
-            .ok_or(HeadersAlreadyExtracted)?
+            .ok_or_else(HeadersAlreadyExtracted::default)?
             .remove(header::SEC_WEBSOCKET_KEY)
         {
             key
@@ -228,13 +228,13 @@ where
 
         let on_upgrade = req
             .extensions_mut()
-            .ok_or(ExtensionsAlreadyExtracted)?
+            .ok_or_else(ExtensionsAlreadyExtracted::default)?
             .remove::<OnUpgrade>()
             .unwrap();
 
         let sec_websocket_protocol = req
             .headers()
-            .ok_or(HeadersAlreadyExtracted)?
+            .ok_or_else(HeadersAlreadyExtracted::default)?
             .get(header::SEC_WEBSOCKET_PROTOCOL)
             .cloned();
 
@@ -253,7 +253,11 @@ fn header_eq<B>(
     key: HeaderName,
     value: &'static str,
 ) -> Result<bool, HeadersAlreadyExtracted> {
-    if let Some(header) = req.headers().ok_or(HeadersAlreadyExtracted)?.get(&key) {
+    if let Some(header) = req
+        .headers()
+        .ok_or_else(HeadersAlreadyExtracted::default)?
+        .get(&key)
+    {
         Ok(header.as_bytes().eq_ignore_ascii_case(value.as_bytes()))
     } else {
         Ok(false)
@@ -265,7 +269,11 @@ fn header_contains<B>(
     key: HeaderName,
     value: &'static str,
 ) -> Result<bool, HeadersAlreadyExtracted> {
-    let header = if let Some(header) = req.headers().ok_or(HeadersAlreadyExtracted)?.get(&key) {
+    let header = if let Some(header) = req
+        .headers()
+        .ok_or_else(HeadersAlreadyExtracted::default)?
+        .get(&key)
+    {
         header
     } else {
         return Ok(false);

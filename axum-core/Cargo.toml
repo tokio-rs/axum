@@ -1,0 +1,24 @@
+[package]
+categories = ["asynchronous", "network-programming", "web-programming"]
+description = "Core types and traits for axum"
+edition = "2018"
+homepage = "https://github.com/tokio-rs/axum"
+keywords = ["http", "web", "framework"]
+license = "MIT"
+name = "axum-core"
+readme = "README.md"
+repository = "https://github.com/tokio-rs/axum"
+version = "0.1.0"
+
+[dependencies]
+async-trait = "0.1"
+bytes = "1.0"
+futures-util = { version = "0.3", default-features = false, features = ["alloc"] }
+http = "0.2"
+http-body = "0.4"
+mime = "0.3.16"
+
+[dev-dependencies]
+futures-util = "0.3"
+axum = { path = "../axum", version = "0.3" }
+hyper = "0.14"

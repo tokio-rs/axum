@@ -41,9 +41,11 @@ where
     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
         let content_length = req
             .headers()
-            .ok_or(ContentLengthLimitRejection::HeadersAlreadyExtracted(
-                HeadersAlreadyExtracted,
-            ))?
+            .ok_or_else(|| {
+                ContentLengthLimitRejection::HeadersAlreadyExtracted(
+                    HeadersAlreadyExtracted::default(),
+                )
+            })?
             .get(http::header::CONTENT_LENGTH);
 
         let content_length =
