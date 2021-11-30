@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "axum",
+    "axum-core",
     "axum-debug",
     "axum-extra",
     "examples/*",

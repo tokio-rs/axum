@@ -13,6 +13,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     `MethodRouter::route_layer`.
   - Merge method routers with `MethodRouter::merge`
   - Customize response for unsupported methods with `MethodRouter::fallback`
+- **breaking:** The default for the type parameter in `FromRequest` and
+  `RequestParts` has been removed. Use `FromRequest<Body>` and
+  `RequestParts<Body>` to get the previous behavior ([#564])
+- **added:** `FromRequest` and `IntoResponse` are now defined in a new called
+  `axum-core`. This crate is intended for library authors to depend on, rather
+  than `axum` itself, if possible. `axum-core` has a smaller API and will thus
+  receive fewer breaking changes. `FromRequest` and `IntoResponse` are
+  re-exported from `axum` in the same location so nothing is changed for `axum`
+  users ([#564])
 - **breaking:** The previously deprecated `axum::body::box_body` function has
   been removed. Use `axum::body::boxed` instead.
 - **fixed:** Adding the same route with different methods now works ie
@@ -46,6 +55,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#529]: https://github.com/tokio-rs/axum/pull/529
 [#534]: https://github.com/tokio-rs/axum/pull/534
 [#554]: https://github.com/tokio-rs/axum/pull/554
+[#564]: https://github.com/tokio-rs/axum/pull/564
 [#571]: https://github.com/tokio-rs/axum/pull/571
 [#574]: https://github.com/tokio-rs/axum/pull/574
 

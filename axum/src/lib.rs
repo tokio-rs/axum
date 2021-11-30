@@ -13,6 +13,7 @@
 //! - [Middleware](#middleware)
 //! - [Routing to services and backpressure](#routing-to-services-and-backpressure)
 //! - [Sharing state with handlers](#sharing-state-with-handlers)
+//! - [Building integrations for axum](#building-integrations-for-axum)
 //! - [Required dependencies](#required-dependencies)
 //! - [Examples](#examples)
 //! - [Feature flags](#feature-flags)
@@ -259,6 +260,12 @@
 //! # };
 //! ```
 //!
+//! # Building integrations for axum
+//!
+//! Libraries authors that want to provide [`FromRequest`] or [`IntoResponse`] implementations
+//! should depend on the [`axum-core`] crate, instead of `axum` if possible. [`axum-core`] contains
+//! core types and traits and is less likely to receive breaking changes.
+//!
 //! # Required dependencies
 //!
 //! To use axum there are a few dependencies you have pull in as well:
@@ -331,6 +338,7 @@
 //! [`Handler`]: crate::handler::Handler
 //! [`Infallible`]: std::convert::Infallible
 //! [load shed]: tower::load_shed
+//! [`axum-core`]: http://crates.io/crates/axum-core
 
 #![warn(
     clippy::all,
@@ -377,7 +385,6 @@
 pub(crate) mod macros;
 
 mod add_extension;
-mod error;
 #[cfg(feature = "json")]
 mod json;
 mod util;
@@ -404,7 +411,7 @@ pub use hyper::Server;
 #[cfg(feature = "json")]
 pub use self::json::Json;
 #[doc(inline)]
-pub use self::{error::Error, routing::Router};
+pub use self::routing::Router;
 
-/// Alias for a type-erased error type.
-pub type BoxError = Box<dyn std::error::Error + Send + Sync>;
+#[doc(inline)]
+pub use axum_core::{BoxError, Error};

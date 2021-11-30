@@ -237,7 +237,7 @@ mod debug_handler {
                     #[allow(warnings)]
                     fn #name()
                     where
-                        #ty: ::axum::extract::FromRequest + Send,
+                        #ty: ::axum::extract::FromRequest<::axum::body::Body> + Send,
                     {}
                 }
             })

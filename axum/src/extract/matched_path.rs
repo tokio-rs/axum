@@ -70,11 +70,9 @@ where
     type Rejection = MatchedPathRejection;
 
     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-        let extensions =
-            req.extensions()
-                .ok_or(MatchedPathRejection::ExtensionsAlreadyExtracted(
-                    ExtensionsAlreadyExtracted,
-                ))?;
+        let extensions = req.extensions().ok_or_else(|| {
+            MatchedPathRejection::ExtensionsAlreadyExtracted(ExtensionsAlreadyExtracted::default())
+        })?;
 
         let matched_path = extensions
             .get::<Self>()

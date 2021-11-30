@@ -240,8 +240,8 @@ async fn create_user(payload: Result<Json<Value>, JsonRejection>) {
         Err(JsonRejection::InvalidJsonBody(_)) => {
             // Couldn't deserialize the body into the target type
         }
-        Err(JsonRejection::BodyAlreadyExtracted(_)) => {
-            // Another extractor had already consumed the body
+        Err(JsonRejection::BytesRejection(_)) => {
+            // Failed to extract the request body
         }
         Err(_) => {
             // `JsonRejection` is marked `#[non_exhaustive]` so match must
@@ -316,9 +316,9 @@ async fn handler(result: Result<Json<Value>, JsonRejection>) -> impl IntoRespons
                 StatusCode::BAD_REQUEST,
                 "Missing `Content-Type: application/json` header".to_string(),
             )),
-            JsonRejection::BodyAlreadyExtracted(_) => Err((
+            JsonRejection::BytesRejection(_) => Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                "Body already extracted".to_string(),
+                "Failed to buffer request body".to_string(),
             )),
             JsonRejection::HeadersAlreadyExtracted(_) => Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
@@ -474,3 +474,5 @@ let app = Router::new()
 
 [`body::Body`]: crate::body::Body
 [customize-extractor-error]: https://github.com/tokio-rs/axum/blob/main/examples/customize-extractor-error/src/main.rs
+[`HeaderMap`]: https://docs.rs/http/latest/http/header/struct.HeaderMap.html
+[`Request`]: https://docs.rs/http/latest/http/struct.Request.html

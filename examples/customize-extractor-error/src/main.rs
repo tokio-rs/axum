@@ -73,9 +73,6 @@ where
                     JsonRejection::MissingJsonContentType(err) => {
                         (StatusCode::BAD_REQUEST, err.to_string().into())
                     }
-                    JsonRejection::BodyAlreadyExtracted(err) => {
-                        (StatusCode::INTERNAL_SERVER_ERROR, err.to_string().into())
-                    }
                     JsonRejection::HeadersAlreadyExtracted(err) => {
                         (StatusCode::INTERNAL_SERVER_ERROR, err.to_string().into())
                     }

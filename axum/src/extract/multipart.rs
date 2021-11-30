@@ -59,7 +59,7 @@ where
 
     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
         let stream = BodyStream::from_request(req).await?;
-        let headers = req.headers().ok_or(HeadersAlreadyExtracted)?;
+        let headers = req.headers().ok_or_else(HeadersAlreadyExtracted::default)?;
         let boundary = parse_boundary(headers).ok_or(InvalidBoundary)?;
         let multipart = multer::Multipart::new(stream, boundary);
         Ok(Self { inner: multipart })
