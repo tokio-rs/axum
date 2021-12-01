@@ -4,6 +4,7 @@ use serde::{
     de::{self, DeserializeSeed, EnumAccess, Error, MapAccess, SeqAccess, VariantAccess, Visitor},
     forward_to_deserialize_any, Deserializer,
 };
+use std::any::type_name;
 
 macro_rules! unsupported_type {
     ($trait_fn:ident, $name:literal) => {
@@ -11,7 +12,9 @@ macro_rules! unsupported_type {
         where
             V: Visitor<'de>,
         {
-            Err(PathDeserializationError::unsupported_type($name))
+            Err(PathDeserializationError::unsupported_type(type_name::<
+                V::Value,
+            >()))
         }
     };
 }
@@ -397,7 +400,9 @@ impl<'de> Deserializer<'de> for ValueDeserializer<'de> {
     where
         V: Visitor<'de>,
     {
-        Err(PathDeserializationError::unsupported_type("tuple"))
+        Err(PathDeserializationError::unsupported_type(type_name::<
+            V::Value,
+        >()))
     }
 
     fn deserialize_tuple_struct<V>(
@@ -409,7 +414,9 @@ impl<'de> Deserializer<'de> for ValueDeserializer<'de> {
     where
         V: Visitor<'de>,
     {
-        Err(PathDeserializationError::unsupported_type("tuple struct"))
+        Err(PathDeserializationError::unsupported_type(type_name::<
+            V::Value,
+        >()))
     }
 
     fn deserialize_struct<V>(
@@ -421,7 +428,9 @@ impl<'de> Deserializer<'de> for ValueDeserializer<'de> {
     where
         V: Visitor<'de>,
     {
-        Err(PathDeserializationError::unsupported_type("struct"))
+        Err(PathDeserializationError::unsupported_type(type_name::<
+            V::Value,
+        >()))
     }
 
     fn deserialize_enum<V>(
@@ -663,6 +672,38 @@ mod tests {
     }
 
     #[test]
+    fn test_parse_struct_ignoring_additional_fields() {
+        let url_params = create_url_params(vec![
+            ("a", "1"),
+            ("b", "true"),
+            ("c", "abc"),
+            ("d", "false"),
+        ]);
+        assert_eq!(
+            Struct::deserialize(PathDeserializer::new(&url_params)).unwrap(),
+            Struct {
+                c: "abc".to_owned(),
+                b: true,
+                a: 1,
+            }
+        );
+    }
+
+    #[test]
+    fn test_parse_tuple_ignoring_additional_fields() {
+        let url_params = create_url_params(vec![
+            ("a", "abc"),
+            ("b", "true"),
+            ("c", "1"),
+            ("d", "false"),
+        ]);
+        assert_eq!(
+            <(&str, bool, u32)>::deserialize(PathDeserializer::new(&url_params)).unwrap(),
+            ("abc", true, 1)
+        );
+    }
+
+    #[test]
     fn test_parse_map() {
         let url_params = create_url_params(vec![("a", "1"), ("b", "true"), ("c", "abc")]);
         assert_eq!(
@@ -671,6 +712,112 @@ mod tests {
                 .iter()
                 .map(|(key, value)| ((*key).to_owned(), (*value).to_owned()))
                 .collect()
+        );
+    }
+
+    macro_rules! test_parse_error {
+        (
+            $params:expr,
+            $ty:ty,
+            $expected_error_kind:expr $(,)?
+        ) => {
+            let url_params = create_url_params($params);
+            let actual_error_kind = <$ty>::deserialize(PathDeserializer::new(&url_params))
+                .unwrap_err()
+                .kind;
+            assert_eq!(actual_error_kind, $expected_error_kind);
+        };
+    }
+
+    #[test]
+    fn test_wrong_number_of_parameters_error() {
+        test_parse_error!(
+            vec![("a", "1")],
+            (u32, u32),
+            ErrorKind::WrongNumberOfParameters {
+                got: 1,
+                expected: 2,
+            }
+        );
+    }
+
+    #[test]
+    fn test_parse_error_at_key_error() {
+        #[derive(Debug, Deserialize)]
+        struct Params {
+            a: u32,
+        }
+        test_parse_error!(
+            vec![("a", "false")],
+            Params,
+            ErrorKind::ParseErrorAtKey {
+                key: "a".to_owned(),
+                value: "false".to_owned(),
+                expected_type: "u32",
+            }
+        );
+    }
+
+    #[test]
+    fn test_parse_error_at_key_error_multiple() {
+        #[derive(Debug, Deserialize)]
+        struct Params {
+            a: u32,
+            b: u32,
+        }
+        test_parse_error!(
+            vec![("a", "false")],
+            Params,
+            ErrorKind::ParseErrorAtKey {
+                key: "a".to_owned(),
+                value: "false".to_owned(),
+                expected_type: "u32",
+            }
+        );
+    }
+
+    #[test]
+    fn test_parse_error_at_index_error() {
+        test_parse_error!(
+            vec![("a", "false"), ("b", "true")],
+            (bool, u32),
+            ErrorKind::ParseErrorAtIndex {
+                index: 1,
+                value: "true".to_owned(),
+                expected_type: "u32",
+            }
+        );
+    }
+
+    #[test]
+    fn test_parse_error_error() {
+        test_parse_error!(
+            vec![("a", "false")],
+            u32,
+            ErrorKind::ParseError {
+                value: "false".to_owned(),
+                expected_type: "u32",
+            }
+        );
+    }
+
+    #[test]
+    fn test_unsupported_type_error_nested_data_structure() {
+        test_parse_error!(
+            vec![("a", "false")],
+            Vec<Vec<u32>>,
+            ErrorKind::UnsupportedType {
+                name: "alloc::vec::Vec<u32>",
+            }
+        );
+    }
+
+    #[test]
+    fn test_unsupported_type_error_tuple() {
+        test_parse_error!(
+            vec![("a", "false")],
+            Vec<(u32, u32)>,
+            ErrorKind::UnsupportedType { name: "(u32, u32)" }
         );
     }
 }
