@@ -50,6 +50,8 @@ skip = [
     { name = "generic-array", version = "=0.12.4" },
     { name = "digest", version = "=0.8.1" },
     { name = "block-buffer", version = "=0.7.3" },
+    # old version pulled in by reqwest, only used in tests
+    { name = "webpki", version = "=0.21.4" },
 ]
 
 [sources]
