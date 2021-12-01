@@ -46,7 +46,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **breaking:** The `Body` and `BodyError` associated types on the
   `IntoResponse` trait have been removed - instead, `.into_response()` will now
   always return `Response<BoxBody>` ([#571])
-- **breaking:** The variants of `Path`'s rejection type has been renamed ([#574])
+- **breaking:** `PathParamsRejection` has been renamed to `PathRejection` and its
+  variants renamed to `FailedToDeserializePathParams` and `MissingPathParams`. This
+  makes it more consistent with the rest of axum ([#574])
 - **added:** `Path`'s rejection type now provides data about exactly which part of
   the path couldn't be deserialized ([#574])
 
