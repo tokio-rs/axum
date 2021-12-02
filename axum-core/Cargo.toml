@@ -20,5 +20,5 @@ mime = "0.3.16"
 
 [dev-dependencies]
 futures-util = "0.3"
-axum = { path = "../axum", version = "0.3" }
+axum = { path = "../axum", version = "0.4" }
 hyper = "0.14"

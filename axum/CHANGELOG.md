@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+- None.
+
+# 0.4.0 (02. December, 2021)
+
 - **breaking:** New `MethodRouter` that works similarly to `Router`:
   - Route to handlers and services with the same type
   - Add middleware to some routes more easily with `MethodRouter::layer` and
