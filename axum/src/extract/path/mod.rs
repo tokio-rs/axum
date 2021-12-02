@@ -1,14 +1,20 @@
+//! Extractor that will get captures from the URL and parse them using
+//! [`serde`].
+
 mod de;
 
-use super::{rejection::*, FromRequest};
 use crate::{
-    extract::RequestParts,
+    body::{boxed, BoxBody, Full},
+    extract::{rejection::*, FromRequest, RequestParts},
+    response::IntoResponse,
     routing::{InvalidUtf8InPathParam, UrlParams},
 };
 use async_trait::async_trait;
+use http::StatusCode;
 use serde::de::DeserializeOwned;
 use std::{
     borrow::Cow,
+    fmt,
     ops::{Deref, DerefMut},
 };
 
@@ -121,8 +127,14 @@ use std::{
 /// # };
 /// ```
 ///
+/// # Providing detailed rejection output
+///
+/// If the URI cannot be deserialized into the target type the request will be rejected and an
+/// error response will be returned. See [`customize-path-rejection`] for an exapmle of how to customize that error.
+///
 /// [`serde`]: https://crates.io/crates/serde
 /// [`serde::Deserialize`]: https://docs.rs/serde/1.0.127/serde/trait.Deserialize.html
+/// [`customize-path-rejection`]: https://github.com/tokio-rs/axum/blob/main/examples/customize-path-rejection/src/main.rs
 #[derive(Debug)]
 pub struct Path<T>(pub T);
 
@@ -148,7 +160,7 @@ where
     T: DeserializeOwned + Send,
     B: Send,
 {
-    type Rejection = PathParamsRejection;
+    type Rejection = PathRejection;
 
     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
         let params = match req
@@ -157,19 +169,235 @@ where
         {
             Some(Some(UrlParams(Ok(params)))) => Cow::Borrowed(params),
             Some(Some(UrlParams(Err(InvalidUtf8InPathParam { key })))) => {
-                return Err(InvalidPathParam::new(key.as_str()).into())
+                let err = PathDeserializationError {
+                    kind: ErrorKind::InvalidUtf8InPathParam {
+                        key: key.as_str().to_owned(),
+                    },
+                };
+                let err = FailedToDeserializePathParams(err);
+                return Err(err.into());
             }
             Some(None) => Cow::Owned(Vec::new()),
             None => {
-                return Err(MissingRouteParams.into());
+                return Err(MissingPathParams.into());
             }
         };
 
         T::deserialize(de::PathDeserializer::new(&*params))
-            .map_err(|err| PathParamsRejection::InvalidPathParam(InvalidPathParam::new(err.0)))
+            .map_err(|err| {
+                PathRejection::FailedToDeserializePathParams(FailedToDeserializePathParams(err))
+            })
             .map(Path)
     }
 }
+
+// this wrapper type is used as the deserializer error to hide the `serde::de::Error` impl which
+// would otherwise be public if we used `ErrorKind` as the error directly
+#[derive(Debug)]
+pub(crate) struct PathDeserializationError {
+    pub(super) kind: ErrorKind,
+}
+
+impl PathDeserializationError {
+    pub(super) fn new(kind: ErrorKind) -> Self {
+        Self { kind }
+    }
+
+    pub(super) fn wrong_number_of_parameters() -> WrongNumberOfParameters<()> {
+        WrongNumberOfParameters { got: () }
+    }
+
+    pub(super) fn unsupported_type(name: &'static str) -> Self {
+        Self::new(ErrorKind::UnsupportedType { name })
+    }
+}
+
+pub(super) struct WrongNumberOfParameters<G> {
+    got: G,
+}
+
+impl<G> WrongNumberOfParameters<G> {
+    #[allow(clippy::unused_self)]
+    pub(super) fn got<G2>(self, got: G2) -> WrongNumberOfParameters<G2> {
+        WrongNumberOfParameters { got }
+    }
+}
+
+impl WrongNumberOfParameters<usize> {
+    pub(super) fn expected(self, expected: usize) -> PathDeserializationError {
+        PathDeserializationError::new(ErrorKind::WrongNumberOfParameters {
+            got: self.got,
+            expected,
+        })
+    }
+}
+
+impl serde::de::Error for PathDeserializationError {
+    #[inline]
+    fn custom<T>(msg: T) -> Self
+    where
+        T: fmt::Display,
+    {
+        Self {
+            kind: ErrorKind::Message(msg.to_string()),
+        }
+    }
+}
+
+impl fmt::Display for PathDeserializationError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.kind.fmt(f)
+    }
+}
+
+impl std::error::Error for PathDeserializationError {}
+
+/// The kinds of errors that can happen we deserializing into a [`Path`].
+///
+/// This type is obtained through [`FailedToDeserializePathParams::into_kind`] and is useful for building
+/// more precise error messages.
+#[derive(Debug, PartialEq)]
+#[non_exhaustive]
+pub enum ErrorKind {
+    /// The URI contained the wrong number of parameters.
+    WrongNumberOfParameters {
+        /// The number of actual parameters in the URI.
+        got: usize,
+        /// The number of expected parameters.
+        expected: usize,
+    },
+
+    /// Failed to parse the value at a specific key into the expected type.
+    ///
+    /// This variant is used when deserializing into types that have named fields, such as structs.
+    ParseErrorAtKey {
+        /// The key at which the value was located.
+        key: String,
+        /// The value from the URI.
+        value: String,
+        /// The expected type of the value.
+        expected_type: &'static str,
+    },
+
+    /// Failed to parse the value at a specific index into the expected type.
+    ///
+    /// This variant is used when deserializing into sequence types, such as tuples.
+    ParseErrorAtIndex {
+        /// The index at which the value was located.
+        index: usize,
+        /// The value from the URI.
+        value: String,
+        /// The expected type of the value.
+        expected_type: &'static str,
+    },
+
+    /// Failed to parse a value into the expected type.
+    ///
+    /// This variant is used when deserializing into a primitive type (such as `String` and `u32`).
+    ParseError {
+        /// The value from the URI.
+        value: String,
+        /// The expected type of the value.
+        expected_type: &'static str,
+    },
+
+    /// A parameter contained text that, once percent decoded, wasn't valid UTF-8.
+    InvalidUtf8InPathParam {
+        /// The key at which the invalid value was located.
+        key: String,
+    },
+
+    /// Tried to serialize into an unsupported type such as nested maps.
+    ///
+    /// This error kind is caused by programmer errors and thus gets converted into a `500 Internal
+    /// Server Error` response.
+    UnsupportedType {
+        /// The name of the unsupported type.
+        name: &'static str,
+    },
+
+    /// Catch-all variant for errors that don't fit any other variant.
+    Message(String),
+}
+
+impl fmt::Display for ErrorKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ErrorKind::Message(error) => error.fmt(f),
+            ErrorKind::InvalidUtf8InPathParam { key } => write!(f, "Invalid UTF-8 in `{}`", key),
+            ErrorKind::WrongNumberOfParameters { got, expected } => write!(
+                f,
+                "Wronger number of parameters. Expected {} but got {}",
+                expected, got
+            ),
+            ErrorKind::UnsupportedType { name } => write!(f, "Unsupported type `{}`", name),
+            ErrorKind::ParseErrorAtKey {
+                key,
+                value,
+                expected_type,
+            } => write!(
+                f,
+                "Cannot parse `{}` with value `{:?}` to a `{}`",
+                key, value, expected_type
+            ),
+            ErrorKind::ParseError {
+                value,
+                expected_type,
+            } => write!(f, "Cannot parse `{:?}` to a `{}`", value, expected_type),
+            ErrorKind::ParseErrorAtIndex {
+                index,
+                value,
+                expected_type,
+            } => write!(
+                f,
+                "Cannot parse value at index {} with value `{:?}` to a `{}`",
+                index, value, expected_type
+            ),
+        }
+    }
+}
+
+/// Rejection type for [`Path`](super::Path) if the captured routes params couldn't be deserialized
+/// into the expected type.
+#[derive(Debug)]
+pub struct FailedToDeserializePathParams(PathDeserializationError);
+
+impl FailedToDeserializePathParams {
+    /// Convert this error into the underlying error kind.
+    pub fn into_kind(self) -> ErrorKind {
+        self.0.kind
+    }
+}
+
+impl IntoResponse for FailedToDeserializePathParams {
+    fn into_response(self) -> http::Response<BoxBody> {
+        let (status, body) = match self.0.kind {
+            ErrorKind::Message(_)
+            | ErrorKind::InvalidUtf8InPathParam { .. }
+            | ErrorKind::WrongNumberOfParameters { .. }
+            | ErrorKind::ParseError { .. }
+            | ErrorKind::ParseErrorAtIndex { .. }
+            | ErrorKind::ParseErrorAtKey { .. } => (
+                StatusCode::BAD_REQUEST,
+                format!("Invalid URL: {}", self.0.kind),
+            ),
+            ErrorKind::UnsupportedType { .. } => {
+                (StatusCode::INTERNAL_SERVER_ERROR, self.0.kind.to_string())
+            }
+        };
+        let mut res = http::Response::new(boxed(Full::from(body)));
+        *res.status_mut() = status;
+        res
+    }
+}
+
+impl fmt::Display for FailedToDeserializePathParams {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
+impl std::error::Error for FailedToDeserializePathParams {}
 
 #[cfg(test)]
 mod tests {

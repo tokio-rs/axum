@@ -7,6 +7,7 @@ use crate::{
 };
 use http_body::Full;
 
+pub use crate::extract::path::FailedToDeserializePathParams;
 pub use axum_core::extract::rejection::*;
 
 #[cfg(feature = "json")]
@@ -52,9 +53,10 @@ define_rejection! {
 
 define_rejection! {
     #[status = INTERNAL_SERVER_ERROR]
-    #[body = "No url params found for matched route. This is a bug in axum. Please open an issue"]
-    /// Rejection type used if you try and extract the URL params more than once.
-    pub struct MissingRouteParams;
+    #[body = "No paths parameters found for matched route. This is a bug in axum. Please open an issue"]
+    /// Rejection type used if axum's internal representation of path parameters is missing. This
+    /// should never happen and is a bug in axum if it does.
+    pub struct MissingPathParams;
 }
 
 define_rejection! {
@@ -63,33 +65,6 @@ define_rejection! {
     /// Rejection type used if you try and extract the request more than once.
     pub struct InvalidFormContentType;
 }
-
-/// Rejection type for [`Path`](super::Path) if the capture route
-/// param didn't have the expected type.
-#[derive(Debug)]
-pub struct InvalidPathParam(pub(crate) String);
-
-impl InvalidPathParam {
-    pub(super) fn new(err: impl Into<String>) -> Self {
-        InvalidPathParam(err.into())
-    }
-}
-
-impl IntoResponse for InvalidPathParam {
-    fn into_response(self) -> http::Response<BoxBody> {
-        let mut res = http::Response::new(boxed(Full::from(self.to_string())));
-        *res.status_mut() = http::StatusCode::BAD_REQUEST;
-        res
-    }
-}
-
-impl std::fmt::Display for InvalidPathParam {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Invalid URL param. {}", self.0)
-    }
-}
-
-impl std::error::Error for InvalidPathParam {}
 
 /// Rejection type for extractors that deserialize query strings if the input
 /// couldn't be deserialized into the target type.
@@ -185,9 +160,9 @@ composite_rejection! {
     ///
     /// Contains one variant for each way the [`Path`](super::Path) extractor
     /// can fail.
-    pub enum PathParamsRejection {
-        InvalidPathParam,
-        MissingRouteParams,
+    pub enum PathRejection {
+        FailedToDeserializePathParams,
+        MissingPathParams,
     }
 }
 
