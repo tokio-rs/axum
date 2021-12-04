@@ -27,3 +27,4 @@ serde_json = { version = "1.0.71", optional = true }
 hyper = "0.14"
 tokio = { version = "1.14", features = ["full"] }
 tower = { version = "0.4", features = ["util"] }
+serde = { version = "1.0", features = ["derive"] }
