@@ -251,6 +251,24 @@ mod debug_handler {
         };
         let span = ty.span();
 
+        let declare_inputs = item_fn
+            .sig
+            .inputs
+            .iter()
+            .filter_map(|arg| match arg {
+                FnArg::Receiver(_) => None,
+                FnArg::Typed(pat_ty) => {
+                    let pat = &pat_ty.pat;
+                    let ty = &pat_ty.ty;
+                    Some(quote! {
+                        let #pat: #ty = panic!();
+                    })
+                }
+            })
+            .collect::<TokenStream>();
+
+        let block = &item_fn.block;
+
         let make_value_name = format_ident!(
             "__axum_debug_check_{}_into_response_make_value",
             item_fn.sig.ident
@@ -259,18 +277,18 @@ mod debug_handler {
         let make = if item_fn.sig.asyncness.is_some() {
             quote_spanned! {span=>
                 #[allow(warnings)]
-                async fn #make_value_name() -> #ty { panic!() }
-            }
-        } else if let syn::Type::ImplTrait(_) = &**ty {
-            // lets just assume it returns `impl Future`
-            quote_spanned! {span=>
-                #[allow(warnings)]
-                fn #make_value_name() -> #ty { async { panic!() } }
+                async fn #make_value_name() -> #ty {
+                    #declare_inputs
+                    #block
+                }
             }
         } else {
             quote_spanned! {span=>
                 #[allow(warnings)]
-                fn #make_value_name() -> #ty { panic!() }
+                fn #make_value_name() -> #ty {
+                    #declare_inputs
+                    #block
+                }
             }
         };
 
@@ -285,7 +303,7 @@ mod debug_handler {
                     let value = #receiver #make_value_name().await;
                     fn check<T>(_: T)
                         where T: ::axum::response::IntoResponse
-                        {}
+                    {}
                     check(value);
                 }
             }
@@ -296,9 +314,11 @@ mod debug_handler {
                     #make
 
                     let value = #make_value_name().await;
+
                     fn check<T>(_: T)
-                        where T: ::axum::response::IntoResponse
+                    where T: ::axum::response::IntoResponse
                     {}
+
                     check(value);
                 }
             }

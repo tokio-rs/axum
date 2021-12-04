@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- None.
+- Fix `Result<impl IntoResponse, Error>` generating invalid code ([#588])
+
+[#588]: https://github.com/tokio-rs/axum/pull/588
 
 # 0.3.0 (03. December 2021)
 
