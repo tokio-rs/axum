@@ -14,7 +14,7 @@ use std::{
 ///
 /// # Example
 ///
-/// Serializing query params for pagination and using default values for missing params:
+/// Serializing query params for pagination and using default values for missing or invalid params:
 ///
 /// ```rust
 /// use axum_extra::extract::OrDefault;
@@ -57,6 +57,11 @@ use std::{
 ///     // are missing or invalid
 /// }
 /// ```
+///
+/// Note that for this particular example if the query params contains invalid values (like
+/// `?page=invalid&per_page=10`), `OrDefault` will catch the error and return
+/// `Pagination::default`. Thus `per_page` would be `30` instead of `10` like it was in the query
+/// string.
 #[derive(Copy, Clone, Debug, Default)]
 pub struct OrDefault<T>(pub T);
 
@@ -133,7 +138,7 @@ mod tests {
                 OrDefault::<Query<Pagination>>::from_request(&mut req)
                     .await
                     .unwrap();
-            assert_eq!(pagination, expected,);
+            assert_eq!(pagination, expected);
         }
 
         test(
@@ -165,6 +170,15 @@ mod tests {
 
         test(
             "/",
+            Pagination {
+                page: Page::default(),
+                per_page: PerPage::default(),
+            },
+        )
+        .await;
+
+        test(
+            "/?page=invalid&per_page=10",
             Pagination {
                 page: Page::default(),
                 per_page: PerPage::default(),
