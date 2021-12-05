@@ -410,8 +410,6 @@ pub use hyper::Server;
 #[doc(inline)]
 #[cfg(feature = "json")]
 pub use self::json::Json;
-#[doc(no_inline)]
-pub use self::response::Response;
 #[doc(inline)]
 pub use self::routing::Router;
 
