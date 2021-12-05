@@ -24,7 +24,7 @@ async fn handler() -> Result<String, StatusCode> {
 
 While it looks like it might fail with a `StatusCode` this actually isn't an
 "error". If this handler returns `Err(some_status_code)` that will still be
-converted into a [`Response<_>`] and sent back to the client. This is done
+converted into a [`Response`] and sent back to the client. This is done
 through `StatusCode`'s [`IntoResponse`] implementation.
 
 It doesn't matter whether you return `Err(StatusCode::NOT_FOUND)` or
@@ -171,5 +171,5 @@ async fn handle_timeout_error(
 
 [`tower::Service`]: `tower::Service`
 [`Infallible`]: std::convert::Infallible
-[`Response<_>`]: http::Response
+[`Response`]: crate::response::Response
 [`IntoResponse`]: crate::response::IntoResponse

@@ -1,8 +1,9 @@
 use super::HasRoutes;
 use axum::{
-    body::{Body, BoxBody},
+    body::Body,
     handler::Handler,
-    http::{Request, Response},
+    http::Request,
+    response::Response,
     routing::{delete, get, on, post, MethodFilter},
     Router,
 };
@@ -139,10 +140,7 @@ impl<B: Send + 'static> Resource<B> {
     /// The routes will be nested at `/{resource_name}/:{resource_name}_id`.
     pub fn nest<T>(mut self, svc: T) -> Self
     where
-        T: Service<Request<B>, Response = Response<BoxBody>, Error = Infallible>
-            + Clone
-            + Send
-            + 'static,
+        T: Service<Request<B>, Response = Response, Error = Infallible> + Clone + Send + 'static,
         T::Future: Send + 'static,
     {
         let path = self.show_update_destroy_path();
@@ -155,10 +153,7 @@ impl<B: Send + 'static> Resource<B> {
     /// The routes will be nested at `/{resource_name}`.
     pub fn nest_collection<T>(mut self, svc: T) -> Self
     where
-        T: Service<Request<B>, Response = Response<BoxBody>, Error = Infallible>
-            + Clone
-            + Send
-            + 'static,
+        T: Service<Request<B>, Response = Response, Error = Infallible> + Clone + Send + 'static,
         T::Future: Send + 'static,
     {
         let path = self.index_create_path();
@@ -176,10 +171,7 @@ impl<B: Send + 'static> Resource<B> {
 
     fn route<T>(mut self, path: &str, svc: T) -> Self
     where
-        T: Service<Request<B>, Response = Response<BoxBody>, Error = Infallible>
-            + Clone
-            + Send
-            + 'static,
+        T: Service<Request<B>, Response = Response, Error = Infallible> + Clone + Send + 'static,
         T::Future: Send + 'static,
     {
         self.router = self.router.route(path, svc);

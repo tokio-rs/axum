@@ -1,7 +1,7 @@
 use crate::{
-    body::{self, BoxBody},
+    body,
     extract::{rejection::*, FromRequest, RequestParts},
-    response::IntoResponse,
+    response::{IntoResponse, Response},
     BoxError,
 };
 use async_trait::async_trait;
@@ -10,7 +10,6 @@ use http::{
     StatusCode,
 };
 use http_body::Full;
-use hyper::Response;
 use serde::{de::DeserializeOwned, Serialize};
 use std::ops::{Deref, DerefMut};
 
@@ -163,7 +162,7 @@ impl<T> IntoResponse for Json<T>
 where
     T: Serialize,
 {
-    fn into_response(self) -> Response<BoxBody> {
+    fn into_response(self) -> Response {
         let bytes = match serde_json::to_vec(&self.0) {
             Ok(res) => res,
             Err(err) => {

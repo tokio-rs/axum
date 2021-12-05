@@ -1,7 +1,7 @@
 use axum::{
-    body::{self, BoxBody, Full},
-    http::{header, HeaderValue, Response, StatusCode},
-    response::IntoResponse,
+    body::{self, Full},
+    http::{header, HeaderValue, StatusCode},
+    response::{IntoResponse, Response},
 };
 use serde::Serialize;
 
@@ -39,7 +39,7 @@ impl ErasedJson {
 }
 
 impl IntoResponse for ErasedJson {
-    fn into_response(self) -> Response<BoxBody> {
+    fn into_response(self) -> Response {
         let bytes = match self.0 {
             Ok(res) => res,
             Err(err) => {

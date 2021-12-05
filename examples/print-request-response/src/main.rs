@@ -5,9 +5,10 @@
 //! ```
 
 use axum::{
-    body::{Body, BoxBody, Bytes},
+    body::{Body, Bytes},
     error_handling::HandleErrorLayer,
-    http::{Request, Response, StatusCode},
+    http::{Request, StatusCode},
+    response::Response,
     routing::post,
     Router,
 };
@@ -54,7 +55,7 @@ async fn map_request(req: Request<Body>) -> Result<Request<Body>, BoxError> {
     Ok(req)
 }
 
-async fn map_response(res: Response<BoxBody>) -> Result<Response<Body>, BoxError> {
+async fn map_response(res: Response) -> Result<Response<Body>, BoxError> {
     let (parts, body) = res.into_parts();
     let bytes = buffer_and_print("response", body).await?;
     let res = Response::from_parts(parts, Body::from(bytes));

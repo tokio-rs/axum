@@ -12,10 +12,9 @@
 
 use async_trait::async_trait;
 use axum::{
-    body::BoxBody,
     extract::{Form, FromRequest, RequestParts},
-    http::{Response, StatusCode},
-    response::{Html, IntoResponse},
+    http::StatusCode,
+    response::{Html, IntoResponse, Response},
     routing::get,
     BoxError, Router,
 };
@@ -84,7 +83,7 @@ pub enum ServerError {
 }
 
 impl IntoResponse for ServerError {
-    fn into_response(self) -> Response<BoxBody> {
+    fn into_response(self) -> Response {
         match self {
             ServerError::ValidationError(_) => {
                 let message = format!("Input validation error: [{}]", self).replace("\n", ", ");

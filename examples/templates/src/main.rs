@@ -6,10 +6,10 @@
 
 use askama::Template;
 use axum::{
-    body::{self, BoxBody, Full},
+    body::{self, Full},
     extract,
-    http::{Response, StatusCode},
-    response::{Html, IntoResponse},
+    http::StatusCode,
+    response::{Html, IntoResponse, Response},
     routing::get,
     Router,
 };
@@ -52,7 +52,7 @@ impl<T> IntoResponse for HtmlTemplate<T>
 where
     T: Template,
 {
-    fn into_response(self) -> Response<BoxBody> {
+    fn into_response(self) -> Response {
         match self.0.render() {
             Ok(html) => Html(html).into_response(),
             Err(err) => Response::builder()

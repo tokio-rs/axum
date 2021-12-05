@@ -1,10 +1,10 @@
 #![doc = include_str!("../docs/error_handling.md")]
 
 use crate::{
-    body::{boxed, BoxBody, Bytes, Full, HttpBody},
+    body::{boxed, Bytes, Full, HttpBody},
     extract::{FromRequest, RequestParts},
-    http::{Request, Response, StatusCode},
-    response::IntoResponse,
+    http::{Request, StatusCode},
+    response::{IntoResponse, Response},
     BoxError,
 };
 use std::{
@@ -126,7 +126,7 @@ where
     ResBody: HttpBody<Data = Bytes> + Send + 'static,
     ResBody::Error: Into<BoxError>,
 {
-    type Response = Response<BoxBody>;
+    type Response = Response;
     type Error = Infallible;
     type Future = future::HandleErrorFuture;
 
@@ -168,7 +168,7 @@ macro_rules! impl_service {
             ResBody: HttpBody<Data = Bytes> + Send + 'static,
             ResBody::Error: Into<BoxError>,
         {
-            type Response = Response<BoxBody>;
+            type Response = Response;
             type Error = Infallible;
 
             type Future = future::HandleErrorFuture;
@@ -221,8 +221,7 @@ all_the_tuples!(impl_service);
 pub mod future {
     //! Future types.
 
-    use crate::body::BoxBody;
-    use http::Response;
+    use crate::response::Response;
     use pin_project_lite::pin_project;
     use std::{
         convert::Infallible,
@@ -235,7 +234,7 @@ pub mod future {
         /// Response future for [`HandleError`].
         pub struct HandleErrorFuture {
             #[pin]
-            pub(super) future: Pin<Box<dyn Future<Output = Result<Response<BoxBody>, Infallible>>
+            pub(super) future: Pin<Box<dyn Future<Output = Result<Response, Infallible>>
                 + Send
                 + 'static
             >>,
@@ -243,7 +242,7 @@ pub mod future {
     }
 
     impl Future for HandleErrorFuture {
-        type Output = Result<Response<BoxBody>, Infallible>;
+        type Output = Result<Response, Infallible>;
 
         fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
             self.project().future.poll(cx)

@@ -8,10 +8,9 @@
 
 use axum::{
     async_trait,
-    body::BoxBody,
     extract::{FromRequest, RequestParts, TypedHeader},
-    http::{Response, StatusCode},
-    response::IntoResponse,
+    http::StatusCode,
+    response::{IntoResponse, Response},
     routing::{get, post},
     Json, Router,
 };
@@ -141,7 +140,7 @@ where
 }
 
 impl IntoResponse for AuthError {
-    fn into_response(self) -> Response<BoxBody> {
+    fn into_response(self) -> Response {
         let (status, error_message) = match self {
             AuthError::WrongCredentials => (StatusCode::UNAUTHORIZED, "Wrong credentials"),
             AuthError::MissingCredentials => (StatusCode::BAD_REQUEST, "Missing credentials"),

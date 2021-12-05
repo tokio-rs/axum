@@ -1,8 +1,8 @@
 //! Rejection response types.
 
-use super::IntoResponse;
 use crate::{
-    body::{boxed, BoxBody},
+    body::boxed,
+    response::{IntoResponse, Response},
     BoxError, Error,
 };
 use http_body::Full;
@@ -87,8 +87,8 @@ impl FailedToDeserializeQueryString {
 }
 
 impl IntoResponse for FailedToDeserializeQueryString {
-    fn into_response(self) -> http::Response<BoxBody> {
-        let mut res = http::Response::new(boxed(Full::from(self.to_string())));
+    fn into_response(self) -> Response {
+        let mut res = Response::new(boxed(Full::from(self.to_string())));
         *res.status_mut() = http::StatusCode::BAD_REQUEST;
         res
     }
@@ -204,7 +204,7 @@ impl<T> IntoResponse for ContentLengthLimitRejection<T>
 where
     T: IntoResponse,
 {
-    fn into_response(self) -> http::Response<BoxBody> {
+    fn into_response(self) -> Response {
         match self {
             Self::PayloadTooLarge(inner) => inner.into_response(),
             Self::LengthRequired(inner) => inner.into_response(),

@@ -6,8 +6,8 @@
 
 use axum::{
     body::Bytes,
-    http::{HeaderMap, Request, Response},
-    response::Html,
+    http::{HeaderMap, Request},
+    response::{Html, Response},
     routing::get,
     Router,
 };
@@ -42,11 +42,9 @@ async fn main() {
                 .on_request(|_request: &Request<_>, _span: &Span| {
                     // ...
                 })
-                .on_response(
-                    |_response: &Response<_>, _latency: Duration, _span: &Span| {
-                        // ...
-                    },
-                )
+                .on_response(|_response: &Response, _latency: Duration, _span: &Span| {
+                    // ...
+                })
                 .on_body_chunk(|_chunk: &Bytes, _latency: Duration, _span: &Span| {
                     // ..
                 })

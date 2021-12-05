@@ -1,6 +1,6 @@
-use super::IntoResponse;
-use crate::body::{boxed, BoxBody};
-use http::{header::LOCATION, HeaderValue, Response, StatusCode, Uri};
+use super::{IntoResponse, Response};
+use crate::body::boxed;
+use http::{header::LOCATION, HeaderValue, StatusCode, Uri};
 use http_body::Empty;
 use std::convert::TryFrom;
 
@@ -105,7 +105,7 @@ impl Redirect {
 }
 
 impl IntoResponse for Redirect {
-    fn into_response(self) -> Response<BoxBody> {
+    fn into_response(self) -> Response {
         let mut res = Response::new(boxed(Empty::new()));
         *res.status_mut() = self.status_code;
         res.headers_mut().insert(LOCATION, self.location);

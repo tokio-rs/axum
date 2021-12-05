@@ -1,5 +1,5 @@
 use super::{FromRequest, RequestParts};
-use crate::{body::BoxBody, response::IntoResponse};
+use crate::response::{IntoResponse, Response};
 use async_trait::async_trait;
 use headers::HeaderMapExt;
 use std::ops::Deref;
@@ -106,7 +106,7 @@ pub enum TypedHeaderRejectionReason {
 }
 
 impl IntoResponse for TypedHeaderRejection {
-    fn into_response(self) -> http::Response<BoxBody> {
+    fn into_response(self) -> Response {
         let mut res = self.to_string().into_response();
         *res.status_mut() = http::StatusCode::BAD_REQUEST;
         res

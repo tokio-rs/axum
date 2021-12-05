@@ -1,8 +1,9 @@
 use crate::{
-    body::{boxed, Body, BoxBody, Bytes},
+    body::{boxed, Body, Bytes},
     error_handling::{HandleError, HandleErrorLayer},
     handler::Handler,
-    http::{Method, Request, Response, StatusCode},
+    http::{Method, Request, StatusCode},
+    response::Response,
     routing::{Fallback, MethodFilter, Route},
     BoxError,
 };
@@ -638,10 +639,7 @@ impl<ReqBody, E> MethodRouter<ReqBody, E> {
 
     fn fallback_boxed_response_body<S>(mut self, svc: S) -> Self
     where
-        S: Service<Request<ReqBody>, Response = Response<BoxBody>, Error = E>
-            + Clone
-            + Send
-            + 'static,
+        S: Service<Request<ReqBody>, Response = Response, Error = E> + Clone + Send + 'static,
         S::Future: Send + 'static,
     {
         self.fallback = Fallback::Custom(Route::new(svc));
@@ -799,7 +797,7 @@ impl<ReqBody, E> MethodRouter<ReqBody, E> {
     where
         F: Clone + Send + 'static,
         HandleError<Route<ReqBody, E>, F, T>:
-            Service<Request<ReqBody>, Response = Response<BoxBody>, Error = Infallible>,
+            Service<Request<ReqBody>, Response = Response, Error = Infallible>,
         <HandleError<Route<ReqBody, E>, F, T> as Service<Request<ReqBody>>>::Future: Send,
         T: 'static,
         E: 'static,
@@ -810,10 +808,7 @@ impl<ReqBody, E> MethodRouter<ReqBody, E> {
 
     fn on_service_boxed_response_body<S>(self, filter: MethodFilter, svc: S) -> Self
     where
-        S: Service<Request<ReqBody>, Response = Response<BoxBody>, Error = E>
-            + Clone
-            + Send
-            + 'static,
+        S: Service<Request<ReqBody>, Response = Response, Error = E> + Clone + Send + 'static,
         S::Future: Send + 'static,
     {
         // written with a pattern match like this to ensure we update all fields
@@ -898,7 +893,7 @@ where
 use crate::routing::future::RouteFuture;
 
 impl<B, E> Service<Request<B>> for MethodRouter<B, E> {
-    type Response = Response<BoxBody>;
+    type Response = Response;
     type Error = E;
     type Future = RouteFuture<B, E>;
 
@@ -1070,7 +1065,7 @@ mod tests {
 
     async fn call<S>(method: Method, svc: &mut S) -> (StatusCode, String)
     where
-        S: Service<Request<Body>, Response = Response<BoxBody>, Error = Infallible>,
+        S: Service<Request<Body>, Response = Response, Error = Infallible>,
     {
         let request = Request::builder()
             .uri("/")

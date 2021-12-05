@@ -1,6 +1,6 @@
 use crate::{
-    body::{self, BoxBody},
-    response::IntoResponse,
+    body,
+    response::{IntoResponse, Response},
     BoxError, Error,
 };
 use bytes::Bytes;
@@ -8,7 +8,7 @@ use futures_util::{
     ready,
     stream::{self, TryStream},
 };
-use http::{HeaderMap, Response};
+use http::HeaderMap;
 use http_body::Body;
 use pin_project_lite::pin_project;
 use std::{
@@ -81,7 +81,7 @@ where
     S::Ok: Into<Bytes>,
     S::Error: Into<BoxError>,
 {
-    fn into_response(self) -> Response<BoxBody> {
+    fn into_response(self) -> Response {
         Response::new(body::boxed(self))
     }
 }

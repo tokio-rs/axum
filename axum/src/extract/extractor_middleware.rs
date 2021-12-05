@@ -3,10 +3,13 @@
 //! See [`extractor_middleware`] for more details.
 
 use super::{FromRequest, RequestParts};
-use crate::{body::BoxBody, response::IntoResponse, BoxError};
+use crate::{
+    response::{IntoResponse, Response},
+    BoxError,
+};
 use bytes::Bytes;
 use futures_util::{future::BoxFuture, ready};
-use http::{Request, Response};
+use http::Request;
 use pin_project_lite::pin_project;
 use std::{
     fmt,
@@ -170,7 +173,7 @@ where
     ResBody: http_body::Body<Data = Bytes> + Send + 'static,
     ResBody::Error: Into<BoxError>,
 {
-    type Response = Response<BoxBody>;
+    type Response = Response;
     type Error = S::Error;
     type Future = ResponseFuture<ReqBody, S, E>;
 
@@ -229,7 +232,7 @@ where
     ResBody: http_body::Body<Data = Bytes> + Send + 'static,
     ResBody::Error: Into<BoxError>,
 {
-    type Output = Result<Response<BoxBody>, S::Error>;
+    type Output = Result<Response, S::Error>;
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         loop {

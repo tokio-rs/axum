@@ -71,18 +71,18 @@
 //! [axum-debug]: https://docs.rs/axum-debug
 
 use crate::{
-    body::{boxed, Body, BoxBody},
+    body::{boxed, Body},
     extract::{
         connect_info::{Connected, IntoMakeServiceWithConnectInfo},
         FromRequest, RequestParts,
     },
-    response::IntoResponse,
+    response::{IntoResponse, Response},
     routing::IntoMakeService,
     BoxError,
 };
 use async_trait::async_trait;
 use bytes::Bytes;
-use http::{Request, Response};
+use http::Request;
 use std::{fmt, future::Future, marker::PhantomData};
 use tower::ServiceExt;
 use tower_layer::Layer;
@@ -115,7 +115,7 @@ pub trait Handler<T, B = Body>: Clone + Send + Sized + 'static {
     type Sealed: sealed::HiddenTrait;
 
     /// Call the handler with the given request.
-    async fn call(self, req: Request<B>) -> Response<BoxBody>;
+    async fn call(self, req: Request<B>) -> Response;
 
     /// Apply a [`tower::Layer`] to the handler.
     ///
@@ -271,7 +271,7 @@ where
 {
     type Sealed = sealed::Hidden;
 
-    async fn call(self, _req: Request<B>) -> Response<BoxBody> {
+    async fn call(self, _req: Request<B>) -> Response {
         self().await.into_response()
     }
 }
@@ -290,7 +290,7 @@ macro_rules! impl_handler {
         {
             type Sealed = sealed::Hidden;
 
-            async fn call(self, req: Request<B>) -> Response<BoxBody> {
+            async fn call(self, req: Request<B>) -> Response {
                 let mut req = RequestParts::new(req);
 
                 $(
@@ -349,7 +349,7 @@ where
 {
     type Sealed = sealed::Hidden;
 
-    async fn call(self, req: Request<ReqBody>) -> Response<BoxBody> {
+    async fn call(self, req: Request<ReqBody>) -> Response {
         match self.svc.oneshot(req).await {
             Ok(res) => res.map(boxed),
             Err(res) => res.into_response(),
