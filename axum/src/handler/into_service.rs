@@ -1,6 +1,6 @@
 use super::Handler;
-use crate::body::BoxBody;
-use http::{Request, Response};
+use crate::response::Response;
+use http::Request;
 use std::{
     convert::Infallible,
     fmt,
@@ -58,7 +58,7 @@ where
     H: Handler<T, B> + Clone + Send + 'static,
     B: Send + 'static,
 {
-    type Response = Response<BoxBody>;
+    type Response = Response;
     type Error = Infallible;
     type Future = super::future::IntoServiceFuture;
 

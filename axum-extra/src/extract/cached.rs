@@ -1,12 +1,10 @@
 use axum::{
     async_trait,
-    body::BoxBody,
     extract::{
         rejection::{ExtensionRejection, ExtensionsAlreadyExtracted},
         Extension, FromRequest, RequestParts,
     },
-    http::Response,
-    response::IntoResponse,
+    response::{IntoResponse, Response},
 };
 use std::{
     fmt,
@@ -31,8 +29,8 @@ use std::{
 ///     async_trait,
 ///     extract::{FromRequest, RequestParts},
 ///     body::BoxBody,
-///     response::IntoResponse,
-///     http::{StatusCode, Response},
+///     response::{IntoResponse, Response},
+///     http::StatusCode,
 /// };
 ///
 /// #[derive(Clone)]
@@ -58,7 +56,7 @@ use std::{
 /// where
 ///     B: Send,
 /// {
-///     type Rejection = Response<BoxBody>;
+///     type Rejection = Response;
 ///
 ///     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
 ///         // loading a `CurrentUser` requires first loading the `Session`
@@ -157,7 +155,7 @@ impl<R> IntoResponse for CachedRejection<R>
 where
     R: IntoResponse,
 {
-    fn into_response(self) -> Response<BoxBody> {
+    fn into_response(self) -> Response {
         match self {
             Self::ExtensionsAlreadyExtracted(inner) => inner.into_response(),
             Self::Inner(inner) => inner.into_response(),

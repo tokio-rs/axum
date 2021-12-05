@@ -1,9 +1,9 @@
-use super::IntoResponse;
-use crate::body::{boxed, BoxBody};
+use super::{IntoResponse, Response};
+use crate::body::boxed;
 use bytes::Bytes;
 use http::{
     header::{HeaderMap, HeaderName, HeaderValue},
-    Response, StatusCode,
+    StatusCode,
 };
 use http_body::{Empty, Full};
 use std::{convert::TryInto, fmt};
@@ -55,7 +55,7 @@ use std::{convert::TryInto, fmt};
 pub struct Headers<H>(pub H);
 
 impl<H> Headers<H> {
-    fn try_into_header_map<K, V>(self) -> Result<HeaderMap, Response<BoxBody>>
+    fn try_into_header_map<K, V>(self) -> Result<HeaderMap, Response>
     where
         H: IntoIterator<Item = (K, V)>,
         K: TryInto<HeaderName>,
@@ -93,7 +93,7 @@ where
     V: TryInto<HeaderValue>,
     V::Error: fmt::Display,
 {
-    fn into_response(self) -> http::Response<BoxBody> {
+    fn into_response(self) -> Response {
         let headers = self.try_into_header_map();
 
         match headers {
@@ -116,7 +116,7 @@ where
     V: TryInto<HeaderValue>,
     V::Error: fmt::Display,
 {
-    fn into_response(self) -> Response<BoxBody> {
+    fn into_response(self) -> Response {
         let headers = match self.0.try_into_header_map() {
             Ok(headers) => headers,
             Err(res) => return res,
@@ -135,7 +135,7 @@ where
     V: TryInto<HeaderValue>,
     V::Error: fmt::Display,
 {
-    fn into_response(self) -> Response<BoxBody> {
+    fn into_response(self) -> Response {
         let headers = match self.1.try_into_header_map() {
             Ok(headers) => headers,
             Err(res) => return res,

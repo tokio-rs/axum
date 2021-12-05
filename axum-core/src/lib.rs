@@ -59,5 +59,8 @@ pub mod body;
 pub mod extract;
 pub mod response;
 
+#[doc(no_inline)]
+pub use self::response::Response;
+
 /// Alias for a type-erased error type.
 pub type BoxError = Box<dyn std::error::Error + Send + Sync>;

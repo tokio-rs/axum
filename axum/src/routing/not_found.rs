@@ -1,5 +1,5 @@
-use crate::body::BoxBody;
-use http::{Request, Response, StatusCode};
+use crate::response::Response;
+use http::{Request, StatusCode};
 use std::{
     convert::Infallible,
     future::ready,
@@ -18,9 +18,9 @@ impl<B> Service<Request<B>> for NotFound
 where
     B: Send + 'static,
 {
-    type Response = Response<BoxBody>;
+    type Response = Response;
     type Error = Infallible;
-    type Future = std::future::Ready<Result<Response<BoxBody>, Self::Error>>;
+    type Future = std::future::Ready<Result<Response, Self::Error>>;
 
     #[inline]
     fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {

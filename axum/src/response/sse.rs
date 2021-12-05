@@ -28,8 +28,8 @@
 //! ```
 
 use crate::{
-    body::{self, BoxBody},
-    response::IntoResponse,
+    body,
+    response::{IntoResponse, Response},
     BoxError,
 };
 use bytes::Bytes;
@@ -37,7 +37,6 @@ use futures_util::{
     ready,
     stream::{Stream, TryStream},
 };
-use http::Response;
 use http_body::Body as HttpBody;
 use pin_project_lite::pin_project;
 use std::{
@@ -98,7 +97,7 @@ where
     S: Stream<Item = Result<Event, E>> + Send + 'static,
     E: Into<BoxError>,
 {
-    fn into_response(self) -> Response<BoxBody> {
+    fn into_response(self) -> Response {
         let body = body::boxed(Body {
             event_stream: SyncWrapper::new(self.stream),
             keep_alive: self.keep_alive.map(KeepAliveStream::new),

@@ -13,9 +13,9 @@
 //! Example is based on <https://github.com/hyperium/hyper/blob/master/examples/http_proxy.rs>
 
 use axum::{
-    body::{self, Body, BoxBody},
-    http::{Method, Request, Response, StatusCode},
-    response::IntoResponse,
+    body::{self, Body},
+    http::{Method, Request, StatusCode},
+    response::{IntoResponse, Response},
     routing::get,
     Router,
 };
@@ -55,7 +55,7 @@ async fn main() {
         .unwrap();
 }
 
-async fn proxy(req: Request<Body>) -> Result<Response<BoxBody>, hyper::Error> {
+async fn proxy(req: Request<Body>) -> Result<Response, hyper::Error> {
     tracing::trace!(?req);
 
     if let Some(host_addr) = req.uri().authority().map(|auth| auth.to_string()) {

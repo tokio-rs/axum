@@ -55,11 +55,12 @@ compatible with axum. Some commonly used middleware are:
 
 ```rust,no_run
 use axum::{
-    body::{Body, BoxBody},
-    routing::get,
-    http::{Request, Response},
-    error_handling::HandleErrorLayer,
+	response::Response,
     Router,
+    body::{Body, BoxBody},
+    error_handling::HandleErrorLayer,
+    http::Request,
+    routing::get,
 };
 use tower::{
     filter::AsyncFilterLayer,
@@ -90,7 +91,7 @@ async fn map_request(req: Request<Body>) -> Result<Request<Body>, Infallible> {
     Ok(req)
 }
 
-async fn map_response(res: Response<BoxBody>) -> Result<Response<BoxBody>, Infallible> {
+async fn map_response(res: Response) -> Result<Response, Infallible> {
     Ok(res)
 }
 
@@ -112,10 +113,11 @@ You can also write you own middleware by implementing [`tower::Service`]:
 
 ```rust
 use axum::{
-    body::{Body, BoxBody},
-    routing::get,
-    http::{Request, Response},
+	response::Response,
     Router,
+    body::{Body, BoxBody},
+    http::Request,
+    routing::get,
 };
 use futures::future::BoxFuture;
 use tower::{Service, layer::layer_fn};
@@ -128,7 +130,7 @@ struct MyMiddleware<S> {
 
 impl<S> Service<Request<Body>> for MyMiddleware<S>
 where
-    S: Service<Request<Body>, Response = Response<BoxBody>> + Clone + Send + 'static,
+    S: Service<Request<Body>, Response = Response> + Clone + Send + 'static,
     S::Future: Send + 'static,
 {
     type Response = S::Response;
@@ -148,7 +150,7 @@ where
         let mut inner = std::mem::replace(&mut self.inner, clone);
 
         Box::pin(async move {
-            let res: Response<BoxBody> = inner.call(req).await?;
+            let res: Response = inner.call(req).await?;
 
             println!("`MyMiddleware` received the response");
 

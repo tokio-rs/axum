@@ -1,7 +1,6 @@
 use axum::{
     body::BoxBody,
-    http::Response,
-    response::IntoResponse,
+    response::{IntoResponse, Response},
 };
 use axum_debug::debug_handler;
 
@@ -15,7 +14,7 @@ impl A {
 }
 
 impl IntoResponse for A {
-    fn into_response(self) -> Response<BoxBody> {
+    fn into_response(self) -> Response {
         todo!()
     }
 }

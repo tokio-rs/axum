@@ -1,8 +1,8 @@
 #![doc = include_str!("../docs/response.md")]
 
-use axum_core::body::{boxed, BoxBody};
+use axum_core::body::boxed;
 use bytes::Bytes;
-use http::{header, HeaderValue, Response};
+use http::{header, HeaderValue};
 use http_body::Full;
 
 mod redirect;
@@ -14,7 +14,7 @@ pub mod sse;
 pub use crate::Json;
 
 #[doc(inline)]
-pub use axum_core::response::{Headers, IntoResponse};
+pub use axum_core::response::{Headers, IntoResponse, Response};
 
 #[doc(inline)]
 pub use self::{redirect::Redirect, sse::Sse};
@@ -29,7 +29,7 @@ impl<T> IntoResponse for Html<T>
 where
     T: Into<Full<Bytes>>,
 {
-    fn into_response(self) -> Response<BoxBody> {
+    fn into_response(self) -> Response {
         let mut res = Response::new(boxed(self.0.into()));
         res.headers_mut().insert(
             header::CONTENT_TYPE,
@@ -59,7 +59,7 @@ mod tests {
         struct MyResponse;
 
         impl IntoResponse for MyResponse {
-            fn into_response(self) -> Response<BoxBody> {
+            fn into_response(self) -> Response {
                 let mut resp = Response::new(boxed(Empty::new()));
                 resp.headers_mut()
                     .insert(HeaderName::from_static("a"), HeaderValue::from_static("1"));

@@ -1,7 +1,6 @@
 use super::{FromRequest, RequestParts};
-use crate::{body::BoxBody, response::IntoResponse};
+use crate::response::{IntoResponse, Response};
 use async_trait::async_trait;
-use http::Response;
 use std::convert::Infallible;
 
 #[async_trait]
@@ -27,7 +26,7 @@ macro_rules! impl_from_request {
             $( $ty: FromRequest<B> + Send, )*
             B: Send,
         {
-            type Rejection = Response<BoxBody>;
+            type Rejection = Response;
 
             async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
                 $( let $ty = $ty::from_request(req).await.map_err(|err| err.into_response())?; )*

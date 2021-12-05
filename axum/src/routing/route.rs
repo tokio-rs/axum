@@ -1,5 +1,8 @@
-use crate::body::{boxed, Body, BoxBody};
-use http::{Request, Response};
+use crate::{
+    body::{boxed, Body},
+    response::Response,
+};
+use http::Request;
 use http_body::Empty;
 use pin_project_lite::pin_project;
 use std::{
@@ -19,14 +22,12 @@ use tower_service::Service;
 ///
 /// You normally shouldn't need to care about this type. It's used in
 /// [`Router::layer`](super::Router::layer).
-pub struct Route<B = Body, E = Infallible>(
-    pub(crate) BoxCloneService<Request<B>, Response<BoxBody>, E>,
-);
+pub struct Route<B = Body, E = Infallible>(pub(crate) BoxCloneService<Request<B>, Response, E>);
 
 impl<B, E> Route<B, E> {
     pub(super) fn new<T>(svc: T) -> Self
     where
-        T: Service<Request<B>, Response = Response<BoxBody>, Error = E> + Clone + Send + 'static,
+        T: Service<Request<B>, Response = Response, Error = E> + Clone + Send + 'static,
         T::Future: Send + 'static,
     {
         Self(BoxCloneService::new(svc))
@@ -46,7 +47,7 @@ impl<ReqBody, E> fmt::Debug for Route<ReqBody, E> {
 }
 
 impl<B, E> Service<Request<B>> for Route<B, E> {
-    type Response = Response<BoxBody>;
+    type Response = Response;
     type Error = E;
     type Future = RouteFuture<B, E>;
 
@@ -66,7 +67,7 @@ pin_project! {
     pub struct RouteFuture<B, E> {
         #[pin]
         future: Oneshot<
-            BoxCloneService<Request<B>, Response<BoxBody>, E>,
+            BoxCloneService<Request<B>, Response, E>,
             Request<B>,
         >,
         strip_body: bool,
@@ -75,7 +76,7 @@ pin_project! {
 
 impl<B, E> RouteFuture<B, E> {
     pub(crate) fn new(
-        future: Oneshot<BoxCloneService<Request<B>, Response<BoxBody>, E>, Request<B>>,
+        future: Oneshot<BoxCloneService<Request<B>, Response, E>, Request<B>>,
     ) -> Self {
         RouteFuture {
             future,
@@ -90,7 +91,7 @@ impl<B, E> RouteFuture<B, E> {
 }
 
 impl<B, E> Future for RouteFuture<B, E> {
-    type Output = Result<Response<BoxBody>, E>;
+    type Output = Result<Response, E>;
 
     #[inline]
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {

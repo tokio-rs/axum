@@ -2,17 +2,18 @@
 
 use self::{future::RouterFuture, not_found::NotFound};
 use crate::{
-    body::{boxed, Body, BoxBody},
+    body::{boxed, Body},
     extract::{
         connect_info::{Connected, IntoMakeServiceWithConnectInfo},
         MatchedPath, OriginalUri,
     },
+    response::Response,
     routing::strip_prefix::StripPrefix,
     util::{try_downcast, ByteStr, PercentDecodedByteStr},
     BoxError,
 };
 use bytes::Bytes;
-use http::{Request, Response, StatusCode, Uri};
+use http::{Request, StatusCode, Uri};
 use std::{
     borrow::Cow,
     collections::HashMap,
@@ -109,10 +110,7 @@ where
     #[doc = include_str!("../docs/routing/route.md")]
     pub fn route<T>(mut self, path: &str, service: T) -> Self
     where
-        T: Service<Request<B>, Response = Response<BoxBody>, Error = Infallible>
-            + Clone
-            + Send
-            + 'static,
+        T: Service<Request<B>, Response = Response, Error = Infallible> + Clone + Send + 'static,
         T::Future: Send + 'static,
     {
         if path.is_empty() {
@@ -161,10 +159,7 @@ where
     #[doc = include_str!("../docs/routing/nest.md")]
     pub fn nest<T>(mut self, path: &str, svc: T) -> Self
     where
-        T: Service<Request<B>, Response = Response<BoxBody>, Error = Infallible>
-            + Clone
-            + Send
-            + 'static,
+        T: Service<Request<B>, Response = Response, Error = Infallible> + Clone + Send + 'static,
         T::Future: Send + 'static,
     {
         if path.is_empty() {
@@ -352,10 +347,7 @@ where
     #[doc = include_str!("../docs/routing/fallback.md")]
     pub fn fallback<T>(mut self, svc: T) -> Self
     where
-        T: Service<Request<B>, Response = Response<BoxBody>, Error = Infallible>
-            + Clone
-            + Send
-            + 'static,
+        T: Service<Request<B>, Response = Response, Error = Infallible> + Clone + Send + 'static,
         T::Future: Send + 'static,
     {
         self.fallback = Fallback::Custom(Route::new(svc));
@@ -461,7 +453,7 @@ impl<B> Service<Request<B>> for Router<B>
 where
     B: Send + 'static,
 {
-    type Response = Response<BoxBody>;
+    type Response = Response;
     type Error = Infallible;
     type Future = RouterFuture<B>;
 

@@ -1,6 +1,5 @@
 #![doc = include_str!("../docs/extract.md")]
 
-use crate::response::IntoResponse;
 use http::header;
 use rejection::*;
 

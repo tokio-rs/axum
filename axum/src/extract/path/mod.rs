@@ -4,9 +4,9 @@
 mod de;
 
 use crate::{
-    body::{boxed, BoxBody, Full},
+    body::{boxed, Full},
     extract::{rejection::*, FromRequest, RequestParts},
-    response::IntoResponse,
+    response::{IntoResponse, Response},
     routing::{InvalidUtf8InPathParam, UrlParams},
 };
 use async_trait::async_trait;
@@ -370,7 +370,7 @@ impl FailedToDeserializePathParams {
 }
 
 impl IntoResponse for FailedToDeserializePathParams {
-    fn into_response(self) -> http::Response<BoxBody> {
+    fn into_response(self) -> Response {
         let (status, body) = match self.0.kind {
             ErrorKind::Message(_)
             | ErrorKind::InvalidUtf8InPathParam { .. }
@@ -385,7 +385,7 @@ impl IntoResponse for FailedToDeserializePathParams {
                 (StatusCode::INTERNAL_SERVER_ERROR, self.0.kind.to_string())
             }
         };
-        let mut res = http::Response::new(boxed(Full::from(body)));
+        let mut res = Response::new(boxed(Full::from(body)));
         *res.status_mut() = status;
         res
     }
