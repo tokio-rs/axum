@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+- None.
+
+# 0.4.1 (06. December, 2021)
+
 - **added:** `axum::response::Response` now exists as a shorthand for writing `Response<BoxBody>`.
 
 # 0.4.0 (02. December, 2021)
