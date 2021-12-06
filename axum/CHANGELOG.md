@@ -7,7 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- None.
+- **breaking:** `sse::Event` is more strict about what field values it supports, disallowing any
+  SSE events that break the specification (such as field values containing carriage returns).
+- **breaking:** `sse::Event` now accepts types implementing `AsRef<str>` instead of `Into<String>`
+  as field values.
+- **fixed:** `sse::Event` will no longer drop the leading space of data values that have it.
 
 # 0.4.2 (06. December, 2021)
 
