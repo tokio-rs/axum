@@ -25,7 +25,7 @@ mod headers;
 pub use self::headers::Headers;
 
 /// Type alias for [`http::Response`] whose body type defaults to [`BoxBody`], the most common body
-/// type used with Axum.
+/// type used with axum.
 pub type Response<T = BoxBody> = http::Response<T>;
 
 /// Trait for generating responses.
