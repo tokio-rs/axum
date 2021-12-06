@@ -9,9 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - None.
 
+# 0.4.2 (06. December, 2021)
+
+- **fix:** Depend on the correct version of `axum-core` ([#592])
+
+[#592]: https://github.com/tokio-rs/axum/pull/592
+
 # 0.4.1 (06. December, 2021)
 
-- **added:** `axum::response::Response` now exists as a shorthand for writing `Response<BoxBody>`.
+- **added:** `axum::response::Response` now exists as a shorthand for writing `Response<BoxBody>` ([#590])
+
+[#590]: https://github.com/tokio-rs/axum/pull/590
 
 # 0.4.0 (02. December, 2021)
 
