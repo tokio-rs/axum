@@ -73,6 +73,22 @@
 //! }
 //! ```
 //!
+//! # Changing request body type
+//!
+//! By default `#[debug_handler]` assumes your request body type is `axum::body::Body`. This will
+//! work for most extractors but, for example, it wont work for `Request<axum::body::BoxBody>`,
+//! which only implements `FromRequest<BoxBody>` and _not_ `FromRequest<Body>`.
+//!
+//! To work around that the request body type can be customized like so:
+//!
+//! ```rust
+//! use axum::{body::BoxBody, http::Request};
+//! # use axum_debug::debug_handler;
+//!
+//! #[debug_handler(body = BoxBody)]
+//! async fn handler(request: Request<BoxBody>) {}
+//! ```
+//!
 //! # Performance
 //!
 //! Macros in this crate have no effect when using release profile. (eg. `cargo build --release`)
@@ -125,6 +141,8 @@
 use proc_macro::TokenStream;
 
 /// Generates better error messages when applied to a handler function.
+///
+/// See the [module docs](self) for more details.
 #[proc_macro_attribute]
 pub fn debug_handler(_attr: TokenStream, input: TokenStream) -> TokenStream {
     #[cfg(not(debug_assertions))]
@@ -138,7 +156,7 @@ pub fn debug_handler(_attr: TokenStream, input: TokenStream) -> TokenStream {
 mod debug_handler {
     use proc_macro2::TokenStream;
     use quote::{format_ident, quote, quote_spanned};
-    use syn::{parse::Parse, spanned::Spanned, FnArg, ItemFn};
+    use syn::{parse::Parse, spanned::Spanned, FnArg, ItemFn, Token, Type};
 
     pub(crate) fn expand(
         attr: proc_macro::TokenStream,
@@ -151,12 +169,13 @@ mod debug_handler {
     }
 
     pub(crate) fn try_expand(attr: TokenStream, input: TokenStream) -> syn::Result<TokenStream> {
-        syn::parse2::<Attrs>(attr)?;
+        let attr = syn::parse2::<Attrs>(attr)?;
         let item_fn = syn::parse2::<ItemFn>(input.clone())?;
 
         check_extractor_count(&item_fn)?;
 
-        let check_inputs_impls_from_request = check_inputs_impls_from_request(&item_fn);
+        let check_inputs_impls_from_request =
+            check_inputs_impls_from_request(&item_fn, &attr.body_ty);
         let check_output_impls_into_response = check_output_impls_into_response(&item_fn);
         let check_future_send = check_future_send(&item_fn);
 
@@ -170,11 +189,29 @@ mod debug_handler {
         Ok(tokens)
     }
 
-    struct Attrs;
+    struct Attrs {
+        body_ty: Type,
+    }
 
     impl Parse for Attrs {
-        fn parse(_input: syn::parse::ParseStream) -> syn::Result<Self> {
-            Ok(Self)
+        fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
+            let mut body_ty = None;
+
+            while !input.is_empty() {
+                let ident = input.parse::<syn::Ident>()?;
+                if ident == "body" {
+                    input.parse::<Token![=]>()?;
+                    body_ty = Some(input.parse()?);
+                } else {
+                    return Err(syn::Error::new_spanned(ident, "unknown argument"));
+                }
+
+                let _ = input.parse::<Token![,]>();
+            }
+
+            let body_ty = body_ty.unwrap_or_else(|| syn::parse_quote!(axum::body::Body));
+
+            Ok(Self { body_ty })
         }
     }
 
@@ -193,7 +230,7 @@ mod debug_handler {
         }
     }
 
-    fn check_inputs_impls_from_request(item_fn: &ItemFn) -> TokenStream {
+    fn check_inputs_impls_from_request(item_fn: &ItemFn, body_ty: &Type) -> TokenStream {
         if !item_fn.sig.generics.params.is_empty() {
             return syn::Error::new_spanned(
                 &item_fn.sig.generics,
@@ -237,7 +274,7 @@ mod debug_handler {
                     #[allow(warnings)]
                     fn #name()
                     where
-                        #ty: ::axum::extract::FromRequest<::axum::body::Body> + Send,
+                        #ty: ::axum::extract::FromRequest<#body_ty> + Send,
                     {}
                 }
             })
