@@ -77,6 +77,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#571]: https://github.com/tokio-rs/axum/pull/571
 [#574]: https://github.com/tokio-rs/axum/pull/574
 
+# 0.3.4 (13. November, 2021)
+
+- **change:** `box_body` has been renamed to `boxed`. `box_body` still exists
+  but is deprecated ([#530])
+
+[#530]: https://github.com/tokio-rs/axum/pull/530
+
 # 0.3.3 (13. November, 2021)
 
 - Implement `FromRequest` for [`http::request::Parts`] so it can be used an
