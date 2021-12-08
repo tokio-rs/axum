@@ -183,11 +183,21 @@ enum DataType {
 impl Event {
     /// Set Server-sent event data
     /// data field(s) ("data:<content>")
+    ///
+    /// # Panics
+    ///
+    /// Panics if `data` contains any carriage returns, as they cannot be transmitted over SSE.
     pub fn data<T>(mut self, data: T) -> Event
     where
         T: Into<String>,
     {
-        self.data = Some(DataType::Text(data.into()));
+        let data = data.into();
+        assert_eq!(
+            memchr::memchr(b'\r', data.as_bytes()),
+            None,
+            "SSE data cannot contain carriage returns",
+        );
+        self.data = Some(DataType::Text(data));
         self
     }
 
@@ -205,21 +215,42 @@ impl Event {
 
     /// Set Server-sent event comment
     /// Comment field (":<comment-text>")
+    ///
+    /// # Panics
+    ///
+    /// Panics if `comment` contains any newlines or carriage returns, as they are not allowed in
+    /// comments.
     pub fn comment<T>(mut self, comment: T) -> Event
     where
         T: Into<String>,
     {
-        self.comment = Some(comment.into());
+        let comment = comment.into();
+        assert_eq!(
+            memchr::memchr2(b'\r', b'\n', comment.as_bytes()),
+            None,
+            "SSE comment cannot contain newlines or carriage returns"
+        );
+        self.comment = Some(comment);
         self
     }
 
     /// Set Server-sent event event
     /// Event name field ("event:<event-name>")
+    ///
+    /// # Panics
+    ///
+    /// Panics if `event` contains any newlines or carriage returns.
     pub fn event<T>(mut self, event: T) -> Event
     where
         T: Into<String>,
     {
-        self.event = Some(event.into());
+        let event = event.into();
+        assert_eq!(
+            memchr::memchr2(b'\r', b'\n', event.as_bytes()),
+            None,
+            "SSE event name cannot contain newlines or carriage returns"
+        );
+        self.event = Some(event);
         self
     }
 
@@ -232,11 +263,21 @@ impl Event {
 
     /// Set Server-sent event id
     /// Identifier field ("id:<identifier>")
+    ///
+    /// # Panics
+    ///
+    /// Panics if `id` contains any newlines, carriage returns or null characters.
     pub fn id<T>(mut self, id: T) -> Event
     where
         T: Into<String>,
     {
-        self.id = Some(id.into());
+        let id = id.into();
+        assert_eq!(
+            memchr::memchr3(b'\r', b'\n', b'\0', id.as_bytes()),
+            None,
+            "Event ID cannot contain newlines, carriage returns or null characters",
+        );
+        self.id = Some(id);
         self
     }
 }

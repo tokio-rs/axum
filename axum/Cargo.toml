@@ -30,6 +30,7 @@ http-body = "0.4.4"
 mime = "0.3.16"
 hyper = { version = "0.14.14", features = ["server", "tcp", "stream"] }
 matchit = "0.4.4"
+memchr = "2.4.1"
 percent-encoding = "2.1"
 pin-project-lite = "0.2.7"
 serde = "1.0"
