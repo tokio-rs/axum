@@ -7,7 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- None.
+- **fixed:** `sse::Event` is more strict about what field values it supports, disallowing any SSE
+  events that break the specification (such as field values containing carriage returns).
 
 # 0.4.2 (06. December, 2021)
 
