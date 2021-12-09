@@ -7,7 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- None.
+- **fixed:** `sse::Event` will no longer drop the leading space of data, event ID and name values
+  that have it.
 
 # 0.4.2 (06. December, 2021)
 
