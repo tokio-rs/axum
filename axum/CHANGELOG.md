@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- None.
+- **added:** `axum::AddExtension::layer` ([#607])
+
+[#607]: https://github.com/tokio-rs/axum/pull/607
 
 # 0.4.2 (06. December, 2021)
 
