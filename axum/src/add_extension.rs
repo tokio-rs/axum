@@ -19,7 +19,7 @@ pub struct AddExtensionLayer<T> {
 impl<T> AddExtensionLayer<T> {
     /// Create a new [`AddExtensionLayer`].
     pub fn new(value: T) -> Self {
-        AddExtensionLayer { value }
+        Self { value }
     }
 }
 
