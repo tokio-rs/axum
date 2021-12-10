@@ -49,7 +49,7 @@ use std::{convert::TryInto, fmt};
 /// Server Error` response will be returned.
 ///
 /// You can also return `(Headers, impl IntoResponse)` to customize the headers
-/// of a response, or `(StatusCode, Headeres, impl IntoResponse)` to customize
+/// of a response, or `(StatusCode, Headers, impl IntoResponse)` to customize
 /// the status code and headers.
 #[derive(Clone, Copy, Debug)]
 pub struct Headers<H>(pub H);
