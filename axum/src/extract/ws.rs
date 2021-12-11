@@ -180,15 +180,68 @@ impl WebSocketUpgrade {
     /// When using `WebSocketUpgrade`, the response produced by this method
     /// should be returned from the handler. See the [module docs](self) for an
     /// example.
-    pub fn on_upgrade<F, Fut>(self, callback: F) -> impl IntoResponse
+    pub fn on_upgrade<F, Fut>(self, callback: F) -> Response
     where
         F: FnOnce(WebSocket) -> Fut + Send + 'static,
         Fut: Future + Send + 'static,
     {
-        WebSocketUpgradeResponse {
-            extractor: self,
-            callback,
+        // check requested protocols
+        let protocol = self
+            .sec_websocket_protocol
+            .as_ref()
+            .and_then(|req_protocols| {
+                let req_protocols = req_protocols.to_str().ok()?;
+                let protocols = self.protocols.as_ref()?;
+                req_protocols
+                    .split(',')
+                    .map(|req_p| req_p.trim())
+                    .find(|req_p| protocols.iter().any(|p| p == req_p))
+            });
+
+        let protocol = match protocol {
+            Some(protocol) => {
+                if let Ok(protocol) = HeaderValue::from_str(protocol) {
+                    Some(protocol)
+                } else {
+                    return (
+                        StatusCode::BAD_REQUEST,
+                        "`Sec-WebSocket-Protocol` header is invalid",
+                    )
+                        .into_response();
+                }
+            }
+            None => None,
+        };
+
+        let on_upgrade = self.on_upgrade;
+        let config = self.config;
+
+        tokio::spawn(async move {
+            let upgraded = on_upgrade.await.expect("connection upgrade failed");
+            let socket =
+                WebSocketStream::from_raw_socket(upgraded, protocol::Role::Server, Some(config))
+                    .await;
+            let socket = WebSocket { inner: socket };
+            callback(socket).await;
+        });
+
+        let mut builder = Response::builder()
+            .status(StatusCode::SWITCHING_PROTOCOLS)
+            .header(
+                header::CONNECTION,
+                HeaderValue::from_str("upgrade").unwrap(),
+            )
+            .header(header::UPGRADE, HeaderValue::from_str("websocket").unwrap())
+            .header(
+                header::SEC_WEBSOCKET_ACCEPT,
+                sign(self.sec_websocket_key.as_bytes()),
+            );
+
+        if let Some(protocol) = protocol {
+            builder = builder.header(header::SEC_WEBSOCKET_PROTOCOL, protocol);
         }
+
+        builder.body(body::boxed(body::Empty::new())).unwrap()
     }
 }
 
@@ -283,79 +336,6 @@ fn header_contains<B>(
         Ok(header.to_ascii_lowercase().contains(value))
     } else {
         Ok(false)
-    }
-}
-
-struct WebSocketUpgradeResponse<F> {
-    extractor: WebSocketUpgrade,
-    callback: F,
-}
-
-impl<F, Fut> IntoResponse for WebSocketUpgradeResponse<F>
-where
-    F: FnOnce(WebSocket) -> Fut + Send + 'static,
-    Fut: Future + Send + 'static,
-{
-    fn into_response(self) -> Response {
-        // check requested protocols
-        let protocol = self
-            .extractor
-            .sec_websocket_protocol
-            .as_ref()
-            .and_then(|req_protocols| {
-                let req_protocols = req_protocols.to_str().ok()?;
-                let protocols = self.extractor.protocols.as_ref()?;
-                req_protocols
-                    .split(',')
-                    .map(|req_p| req_p.trim())
-                    .find(|req_p| protocols.iter().any(|p| p == req_p))
-            });
-
-        let protocol = match protocol {
-            Some(protocol) => {
-                if let Ok(protocol) = HeaderValue::from_str(protocol) {
-                    Some(protocol)
-                } else {
-                    return (
-                        StatusCode::BAD_REQUEST,
-                        "`Sec-WebSocket-Protocol` header is invalid",
-                    )
-                        .into_response();
-                }
-            }
-            None => None,
-        };
-
-        let callback = self.callback;
-        let on_upgrade = self.extractor.on_upgrade;
-        let config = self.extractor.config;
-
-        tokio::spawn(async move {
-            let upgraded = on_upgrade.await.expect("connection upgrade failed");
-            let socket =
-                WebSocketStream::from_raw_socket(upgraded, protocol::Role::Server, Some(config))
-                    .await;
-            let socket = WebSocket { inner: socket };
-            callback(socket).await;
-        });
-
-        let mut builder = Response::builder()
-            .status(StatusCode::SWITCHING_PROTOCOLS)
-            .header(
-                header::CONNECTION,
-                HeaderValue::from_str("upgrade").unwrap(),
-            )
-            .header(header::UPGRADE, HeaderValue::from_str("websocket").unwrap())
-            .header(
-                header::SEC_WEBSOCKET_ACCEPT,
-                sign(self.extractor.sec_websocket_key.as_bytes()),
-            );
-
-        if let Some(protocol) = protocol {
-            builder = builder.header(header::SEC_WEBSOCKET_PROTOCOL, protocol);
-        }
-
-        builder.body(body::boxed(body::Empty::new())).unwrap()
     }
 }
 
