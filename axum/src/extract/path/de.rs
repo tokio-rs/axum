@@ -744,6 +744,7 @@ mod tests {
     #[test]
     fn test_parse_error_at_key_error() {
         #[derive(Debug, Deserialize)]
+        #[allow(dead_code)]
         struct Params {
             a: u32,
         }
@@ -761,6 +762,7 @@ mod tests {
     #[test]
     fn test_parse_error_at_key_error_multiple() {
         #[derive(Debug, Deserialize)]
+        #[allow(dead_code)]
         struct Params {
             a: u32,
             b: u32,
