@@ -1,5 +1,0 @@
-error: unexpected token
- --> tests/fail/attrs.rs:3:17
-  |
-3 | #[debug_handler(foo)]
-  |                 ^^^

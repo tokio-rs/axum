@@ -466,11 +466,18 @@ pub enum Message {
     Binary(Vec<u8>),
     /// A ping message with the specified payload
     ///
-    /// The payload here must have a length less than 125 bytes
+    /// The payload here must have a length less than 125 bytes.
+    ///
+    /// Ping messages will be automatically responded to by the server, so you do not have to worry
+    /// about dealing with them yourself.
     Ping(Vec<u8>),
     /// A pong message with the specified payload
     ///
-    /// The payload here must have a length less than 125 bytes
+    /// The payload here must have a length less than 125 bytes.
+    ///
+    /// Pong messages will be automatically sent to the client if a ping message is received, so
+    /// you do not have to worry about constructing them yourself unless you want to implement a
+    /// [unidirectional heartbeat](https://tools.ietf.org/html/rfc6455#section-5.5.3).
     Pong(Vec<u8>),
     /// A close message with the optional close frame.
     Close(Option<CloseFrame<'static>>),
