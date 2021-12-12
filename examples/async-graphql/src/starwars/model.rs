@@ -122,12 +122,7 @@ impl QueryRoot {
         first: Option<i32>,
         last: Option<i32>,
     ) -> FieldResult<Connection<usize, Human, EmptyFields, EmptyFields>> {
-        let humans = ctx
-            .data_unchecked::<StarWars>()
-            .humans()
-            .iter()
-            .copied()
-            .collect::<Vec<_>>();
+        let humans = ctx.data_unchecked::<StarWars>().humans().to_vec();
         query_characters(after, before, first, last, &humans)
             .await
             .map(|conn| conn.map_node(Human))
@@ -149,12 +144,7 @@ impl QueryRoot {
         first: Option<i32>,
         last: Option<i32>,
     ) -> FieldResult<Connection<usize, Droid, EmptyFields, EmptyFields>> {
-        let droids = ctx
-            .data_unchecked::<StarWars>()
-            .droids()
-            .iter()
-            .copied()
-            .collect::<Vec<_>>();
+        let droids = ctx.data_unchecked::<StarWars>().droids().to_vec();
         query_characters(after, before, first, last, &droids)
             .await
             .map(|conn| conn.map_node(Droid))
