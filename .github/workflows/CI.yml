@@ -161,6 +161,9 @@ jobs:
     - uses: Swatinem/rust-cache@v1
     - name: Check
       uses: actions-rs/cargo@v1
+      env:
+        # Clang has native cross-compilation support
+        CC: clang
       with:
         command: check
         args: --all --all-targets --all-features --target armv5te-unknown-linux-musleabi

@@ -93,7 +93,7 @@ async fn authorize(Json(payload): Json<AuthPayload>) -> Result<Json<AuthBody>, A
     let claims = Claims {
         sub: "b@b.com".to_owned(),
         company: "ACME".to_owned(),
-        exp: 10000000000,
+        exp: 100000,
     };
     // Create the authorization token
     let token = encode(&Header::default(), &claims, &KEYS.encoding)
