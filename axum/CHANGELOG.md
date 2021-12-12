@@ -12,10 +12,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **fixed:** `sse::Event` is more strict about what field values it supports, disallowing any SSE
   events that break the specification (such as field values containing carriage returns) ([#599])
 - **added:** `axum::AddExtension::layer` ([#607])
+- **fixed:** Make `Path` fail with `ExtensionsAlreadyExtracted` if another extractor (such as
+  `Request`) has previously taken the request extensions. Thus `PathRejection` now contains a
+  variant with `ExtensionsAlreadyExtracted`. This is not a breaking change since `PathRejection` is
+  marked as `#[non_exhaustive]` ([#619])
 
 [#599]: https://github.com/tokio-rs/axum/pull/599
 [#600]: https://github.com/tokio-rs/axum/pull/600
 [#607]: https://github.com/tokio-rs/axum/pull/607
+[#619]: https://github.com/tokio-rs/axum/pull/619
 
 # 0.4.2 (06. December, 2021)
 
