@@ -3,6 +3,7 @@
 
 mod de;
 
+use super::rejection::ExtensionsAlreadyExtracted;
 use crate::{
     body::{boxed, Full},
     extract::{rejection::*, FromRequest, RequestParts},
@@ -17,8 +18,6 @@ use std::{
     fmt,
     ops::{Deref, DerefMut},
 };
-
-use super::rejection::ExtensionsAlreadyExtracted;
 
 /// Extractor that will get captures from the URL and parse them using
 /// [`serde`].
