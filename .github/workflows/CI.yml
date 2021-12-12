@@ -146,3 +146,21 @@ jobs:
         with:
           command: check ${{ matrix.checks }}
           arguments: --all-features --manifest-path axum/Cargo.toml
+
+  armv5te-unknown-linux-musleabi:
+    needs: check
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@master
+    - uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        target: armv5te-unknown-linux-musleabi
+        override: true
+        profile: minimal
+    - uses: Swatinem/rust-cache@v1
+    - name: Check
+      uses: actions-rs/cargo@v1
+      with:
+        command: check
+        args: --all --all-targets --all-features --target armv5te-unknown-linux-musleabi
