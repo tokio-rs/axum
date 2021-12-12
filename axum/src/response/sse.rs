@@ -315,7 +315,7 @@ impl fmt::Display for Event {
         }
 
         if let Some(event) = &self.event {
-            "event:".fmt(f)?;
+            "event: ".fmt(f)?;
             event.fmt(f)?;
             f.write_char('\n')?;
         }
@@ -323,7 +323,7 @@ impl fmt::Display for Event {
         match &self.data {
             Some(DataType::Text(data)) => {
                 for line in data.split('\n') {
-                    "data:".fmt(f)?;
+                    "data: ".fmt(f)?;
                     line.fmt(f)?;
                     f.write_char('\n')?;
                 }
@@ -338,7 +338,7 @@ impl fmt::Display for Event {
         }
 
         if let Some(id) = &self.id {
-            "id:".fmt(f)?;
+            "id: ".fmt(f)?;
             id.fmt(f)?;
             f.write_char('\n')?;
         }
@@ -451,4 +451,13 @@ impl KeepAliveStream {
 
         Poll::Ready(event)
     }
+}
+
+#[test]
+fn leading_space_is_not_stripped() {
+    let no_leading_space = Event::default().data("\tfoobar");
+    assert_eq!(no_leading_space.to_string(), "data: \tfoobar\n\n");
+
+    let leading_space = Event::default().data(" foobar");
+    assert_eq!(leading_space.to_string(), "data:  foobar\n\n");
 }

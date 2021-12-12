@@ -7,11 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+- **fixed:** `sse::Event` will no longer drop the leading space of data, event ID and name values
+  that have it ([#600])
 - **fixed:** `sse::Event` is more strict about what field values it supports, disallowing any SSE
   events that break the specification (such as field values containing carriage returns) ([#599])
 - **added:** `axum::AddExtension::layer` ([#607])
 
 [#599]: https://github.com/tokio-rs/axum/pull/599
+[#600]: https://github.com/tokio-rs/axum/pull/600
 [#607]: https://github.com/tokio-rs/axum/pull/607
 
 # 0.4.2 (06. December, 2021)
