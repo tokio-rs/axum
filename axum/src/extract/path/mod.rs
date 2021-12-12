@@ -18,6 +18,8 @@ use std::{
     ops::{Deref, DerefMut},
 };
 
+use super::rejection::ExtensionsAlreadyExtracted;
+
 /// Extractor that will get captures from the URL and parse them using
 /// [`serde`].
 ///
@@ -163,10 +165,11 @@ where
     type Rejection = PathRejection;
 
     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-        let params = match req
+        let ext = req
             .extensions_mut()
-            .and_then(|ext| ext.get::<Option<UrlParams>>())
-        {
+            .ok_or_else::<Self::Rejection, _>(|| ExtensionsAlreadyExtracted::default().into())?;
+
+        let params = match ext.get::<Option<UrlParams>>() {
             Some(Some(UrlParams(Ok(params)))) => Cow::Borrowed(params),
             Some(Some(UrlParams(Err(InvalidUtf8InPathParam { key })))) => {
                 let err = PathDeserializationError {
@@ -401,10 +404,10 @@ impl std::error::Error for FailedToDeserializePathParams {}
 
 #[cfg(test)]
 mod tests {
-    use http::StatusCode;
-
     use super::*;
     use crate::{routing::get, test_helpers::*, Router};
+    use http::{Request, StatusCode};
+    use hyper::Body;
     use std::collections::HashMap;
 
     #[tokio::test]
@@ -507,5 +510,16 @@ mod tests {
 
         let res = client.get("/foo").send().await;
         assert_eq!(res.status(), StatusCode::OK);
+    }
+
+    #[tokio::test]
+    async fn when_extensions_are_missing() {
+        let app = Router::new().route("/:key", get(|_: Request<Body>, _: Path<String>| async {}));
+
+        let client = TestClient::new(app);
+
+        let res = client.get("/foo").send().await;
+        assert_eq!(res.status(), StatusCode::INTERNAL_SERVER_ERROR);
+        assert_eq!(res.text().await, "Extensions taken by other extractor");
     }
 }

@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 # Unreleased
 
 - **added:** `axum::AddExtension::layer` ([#607])
+- **fixed:** Make `Path` fail with `ExtensionsAlreadyExtracted` if another extractor (such as
+  `Request`) has previously taken the request extensions. Thus `PathRejection` now contains a
+  variant with `ExtensionsAlreadyExtracted`. This is not a breaking change since `PathRejection` is
+  marked as `#[non_exhaustive]`
 
 [#607]: https://github.com/tokio-rs/axum/pull/607
 

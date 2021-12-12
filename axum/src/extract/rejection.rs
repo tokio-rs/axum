@@ -163,6 +163,7 @@ composite_rejection! {
     pub enum PathRejection {
         FailedToDeserializePathParams,
         MissingPathParams,
+        ExtensionsAlreadyExtracted,
     }
 }
 
