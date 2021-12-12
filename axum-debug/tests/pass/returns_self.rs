@@ -1,7 +1,4 @@
-use axum::{
-    body::BoxBody,
-    response::{IntoResponse, Response},
-};
+use axum::response::{IntoResponse, Response};
 use axum_debug::debug_handler;
 
 struct A;

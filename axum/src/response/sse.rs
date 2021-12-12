@@ -181,18 +181,36 @@ enum DataType {
 }
 
 impl Event {
-    /// Set Server-sent event data
-    /// data field(s) ("data:<content>")
+    /// Set the event's data data field(s) (`data:<content>`)
+    ///
+    /// Newlines in `data` will automatically be broken across `data:` fields.
+    ///
+    /// This corresponds to [`MessageEvent`'s data field].
+    ///
+    /// [`MessageEvent`'s data field]: https://developer.mozilla.org/en-US/docs/Web/API/MessageEvent/data
+    ///
+    /// # Panics
+    ///
+    /// Panics if `data` contains any carriage returns, as they cannot be transmitted over SSE.
     pub fn data<T>(mut self, data: T) -> Event
     where
         T: Into<String>,
     {
-        self.data = Some(DataType::Text(data.into()));
+        let data = data.into();
+        assert_eq!(
+            memchr::memchr(b'\r', data.as_bytes()),
+            None,
+            "SSE data cannot contain carriage returns",
+        );
+        self.data = Some(DataType::Text(data));
         self
     }
 
-    /// Set Server-sent event data
-    /// data field(s) ("data:<content>")
+    /// Set the event's data field to a value serialized as unformatted JSON (`data:<content>`).
+    ///
+    /// This corresponds to [`MessageEvent`'s data field].
+    ///
+    /// [`MessageEvent`'s data field]: https://developer.mozilla.org/en-US/docs/Web/API/MessageEvent/data
     #[cfg(feature = "json")]
     #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
     pub fn json_data<T>(mut self, data: T) -> Result<Event, serde_json::Error>
@@ -203,40 +221,87 @@ impl Event {
         Ok(self)
     }
 
-    /// Set Server-sent event comment
-    /// Comment field (":<comment-text>")
+    /// Set the event's comment field (`:<comment-text>`).
+    ///
+    /// This field will be ignored by most SSE clients.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `comment` contains any newlines or carriage returns, as they are not allowed in
+    /// comments.
     pub fn comment<T>(mut self, comment: T) -> Event
     where
         T: Into<String>,
     {
-        self.comment = Some(comment.into());
+        let comment = comment.into();
+        assert_eq!(
+            memchr::memchr2(b'\r', b'\n', comment.as_bytes()),
+            None,
+            "SSE comment cannot contain newlines or carriage returns"
+        );
+        self.comment = Some(comment);
         self
     }
 
-    /// Set Server-sent event event
-    /// Event name field ("event:<event-name>")
+    /// Set the event's name field (`event:<event-name>`).
+    ///
+    /// This corresponds to the `type` parameter given when calling `addEventListener` on an
+    /// [`EventSource`]. For example, `.event("update")` should correspond to
+    /// `.addEventListener("update", ...)`. If no event type is given, browsers will fire a
+    /// [`message` event] instead.
+    ///
+    /// [`EventSource`]: https://developer.mozilla.org/en-US/docs/Web/API/EventSource
+    /// [`message` event]: https://developer.mozilla.org/en-US/docs/Web/API/EventSource/message_event
+    ///
+    /// # Panics
+    ///
+    /// Panics if `event` contains any newlines or carriage returns.
     pub fn event<T>(mut self, event: T) -> Event
     where
         T: Into<String>,
     {
-        self.event = Some(event.into());
+        let event = event.into();
+        assert_eq!(
+            memchr::memchr2(b'\r', b'\n', event.as_bytes()),
+            None,
+            "SSE event name cannot contain newlines or carriage returns"
+        );
+        self.event = Some(event);
         self
     }
 
-    /// Set Server-sent event retry
-    /// Retry timeout field ("retry:<timeout>")
+    /// Set the event's retry timeout field (`retry:<timeout>`).
+    ///
+    /// This sets how long clients will wait before reconnecting if they are disconnected from the
+    /// SSE endpoint. Note that this is just a hint: clients are free to wait for longer if they
+    /// wish, such as if they implement exponential backoff.
     pub fn retry(mut self, duration: Duration) -> Event {
         self.retry = Some(duration);
         self
     }
 
-    /// Set Server-sent event id
-    /// Identifier field ("id:<identifier>")
+    /// Set the event's identifier field (`id:<identifier>`).
+    ///
+    /// This corresponds to [`MessageEvent`'s `lastEventId` field]. If no ID is in the event itself,
+    /// the browser will set that field to the last known message ID, starting with the empty
+    /// string.
+    ///
+    /// [`MessageEvent`'s `lastEventId` field]: https://developer.mozilla.org/en-US/docs/Web/API/MessageEvent/lastEventId
+    ///
+    /// # Panics
+    ///
+    /// Panics if `id` contains any newlines, carriage returns or null characters.
     pub fn id<T>(mut self, id: T) -> Event
     where
         T: Into<String>,
     {
-        self.id = Some(id.into());
+        let id = id.into();
+        assert_eq!(
+            memchr::memchr3(b'\r', b'\n', b'\0', id.as_bytes()),
+            None,
+            "Event ID cannot contain newlines, carriage returns or null characters",
+        );
+        self.id = Some(id);
         self
     }
 }

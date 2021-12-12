@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - None.
 
+# 0.3.2 (09. December 2021)
+
+- Support checking `FromRequest` bounds for extractors whose request body is something else than
+  `axum::body::Body`. Use `#[debug_handler(body = YourBodyType)]` to use a different request body
+  type ([#595])
+
+[#595]: https://github.com/tokio-rs/axum/pull/595
+
 # 0.3.1 (06. December 2021)
 
 - Fix `Result<impl IntoResponse, Error>` generating invalid code ([#588])

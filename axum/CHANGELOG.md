@@ -8,7 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 # Unreleased
 
 - **fixed:** `sse::Event` will no longer drop the leading space of data, event ID and name values
-  that have it.
+  that have it ([#600])
+- **fixed:** `sse::Event` is more strict about what field values it supports, disallowing any SSE
+  events that break the specification (such as field values containing carriage returns) ([#599])
+- **added:** `axum::AddExtension::layer` ([#607])
+
+[#599]: https://github.com/tokio-rs/axum/pull/599
+[#600]: https://github.com/tokio-rs/axum/pull/600
+[#607]: https://github.com/tokio-rs/axum/pull/607
 
 # 0.4.2 (06. December, 2021)
 
@@ -77,6 +84,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#564]: https://github.com/tokio-rs/axum/pull/564
 [#571]: https://github.com/tokio-rs/axum/pull/571
 [#574]: https://github.com/tokio-rs/axum/pull/574
+
+# 0.3.4 (13. November, 2021)
+
+- **change:** `box_body` has been renamed to `boxed`. `box_body` still exists
+  but is deprecated ([#530])
+
+[#530]: https://github.com/tokio-rs/axum/pull/530
 
 # 0.3.3 (13. November, 2021)
 

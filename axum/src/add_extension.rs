@@ -19,7 +19,7 @@ pub struct AddExtensionLayer<T> {
 impl<T> AddExtensionLayer<T> {
     /// Create a new [`AddExtensionLayer`].
     pub fn new(value: T) -> Self {
-        AddExtensionLayer { value }
+        Self { value }
     }
 }
 
@@ -47,6 +47,13 @@ where
 pub struct AddExtension<S, T> {
     inner: S,
     value: T,
+}
+
+impl<S, T> AddExtension<S, T> {
+    /// Create a new [`AddExtensionLayer`].
+    pub fn layer(value: T) -> AddExtensionLayer<T> {
+        AddExtensionLayer::new(value)
+    }
 }
 
 impl<ResBody, S, T> Service<Request<ResBody>> for AddExtension<S, T>
