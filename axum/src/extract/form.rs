@@ -1,5 +1,5 @@
 use super::{has_content_type, rejection::*, FromRequest, RequestParts};
-use crate::body::{Bytes, Empty, Full, HttpBody};
+use crate::body::{Bytes, HttpBody};
 use crate::BoxError;
 use async_trait::async_trait;
 use http::Method;
@@ -84,6 +84,7 @@ impl<T> Deref for Form<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::body::{Empty, Full};
     use crate::extract::RequestParts;
     use http::Request;
     use serde::{Deserialize, Serialize};
