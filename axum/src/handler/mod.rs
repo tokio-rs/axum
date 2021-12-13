@@ -5,7 +5,7 @@
 //! Some examples of handlers:
 //!
 //! ```rust
-//! use bytes::Bytes;
+//! use axum::body::Bytes;
 //! use http::StatusCode;
 //!
 //! // Handler that immediately returns an empty `200 OK` response.
@@ -71,7 +71,7 @@
 //! [axum-debug]: https://docs.rs/axum-debug
 
 use crate::{
-    body::{boxed, Body, HttpBody},
+    body::{boxed, Body, HttpBody, Bytes},
     extract::{
         connect_info::{Connected, IntoMakeServiceWithConnectInfo},
         FromRequest, RequestParts,
@@ -81,7 +81,6 @@ use crate::{
     BoxError,
 };
 use async_trait::async_trait;
-use bytes::Bytes;
 use http::Request;
 use std::{fmt, future::Future, marker::PhantomData};
 use tower::ServiceExt;

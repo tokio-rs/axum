@@ -1,5 +1,5 @@
 use crate::{
-    body::{self, HttpBody, Full},
+    body::{self, HttpBody, Full, Bytes},
     extract::{rejection::*, FromRequest, RequestParts},
     response::{IntoResponse, Response},
     BoxError,
@@ -97,7 +97,7 @@ where
 
     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
         if json_content_type(req)? {
-            let bytes = bytes::Bytes::from_request(req).await?;
+            let bytes = Bytes::from_request(req).await?;
 
             let value = serde_json::from_slice(&bytes).map_err(InvalidJsonBody::from_err)?;
 

@@ -28,11 +28,10 @@
 //! ```
 
 use crate::{
-    body::{self, HttpBody},
+    body::{self, HttpBody, Bytes},
     response::{IntoResponse, Response},
     BoxError,
 };
-use bytes::Bytes;
 use futures_util::{
     ready,
     stream::{Stream, TryStream},

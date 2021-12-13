@@ -1,4 +1,4 @@
-use bytes::Bytes;
+use crate::body::Bytes;
 use pin_project_lite::pin_project;
 use std::fmt;
 use std::ops::Deref;

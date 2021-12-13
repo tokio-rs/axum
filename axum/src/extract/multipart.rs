@@ -3,10 +3,9 @@
 //! See [`Multipart`] for more details.
 
 use super::{rejection::*, BodyStream, FromRequest, RequestParts};
-use crate::body::HttpBody;
+use crate::body::{HttpBody, Bytes};
 use crate::BoxError;
 use async_trait::async_trait;
-use bytes::Bytes;
 use futures_util::stream::Stream;
 use http::header::{HeaderMap, CONTENT_TYPE};
 use mime::Mime;

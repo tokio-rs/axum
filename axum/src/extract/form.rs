@@ -1,5 +1,5 @@
 use super::{has_content_type, rejection::*, FromRequest, RequestParts};
-use crate::body::{HttpBody, Empty, Full};
+use crate::body::{HttpBody, Empty, Full, Bytes};
 use crate::BoxError;
 use async_trait::async_trait;
 use http::Method;
@@ -64,7 +64,7 @@ where
                 return Err(InvalidFormContentType.into());
             }
 
-            let bytes = bytes::Bytes::from_request(req).await?;
+            let bytes = Bytes::from_request(req).await?;
             let value = serde_urlencoded::from_bytes(&bytes)
                 .map_err(FailedToDeserializeQueryString::new::<T, _>)?;
 
@@ -99,7 +99,7 @@ mod tests {
         let mut req = RequestParts::new(
             Request::builder()
                 .uri(uri.as_ref())
-                .body(Empty::<bytes::Bytes>::new())
+                .body(Empty::<Bytes>::new())
                 .unwrap(),
         );
         assert_eq!(Form::<T>::from_request(&mut req).await.unwrap().0, value);
@@ -114,7 +114,7 @@ mod tests {
                     http::header::CONTENT_TYPE,
                     mime::APPLICATION_WWW_FORM_URLENCODED.as_ref(),
                 )
-                .body(Full::<bytes::Bytes>::new(
+                .body(Full::<Bytes>::new(
                     serde_urlencoded::to_string(&value).unwrap().into(),
                 ))
                 .unwrap(),
@@ -180,7 +180,7 @@ mod tests {
                 .uri("http://example.com/test")
                 .method(Method::POST)
                 .header(http::header::CONTENT_TYPE, mime::APPLICATION_JSON.as_ref())
-                .body(Full::<bytes::Bytes>::new(
+                .body(Full::<Bytes>::new(
                     serde_urlencoded::to_string(&Pagination {
                         size: Some(10),
                         page: None,

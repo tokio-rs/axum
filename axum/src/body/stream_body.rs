@@ -1,9 +1,8 @@
 use crate::{
-    body::{self, HttpBody},
+    body::{self, HttpBody, Bytes},
     response::{IntoResponse, Response},
     BoxError, Error,
 };
-use bytes::Bytes;
 use futures_util::{
     ready,
     stream::{self, TryStream},

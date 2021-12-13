@@ -4,11 +4,10 @@
 
 use super::{FromRequest, RequestParts};
 use crate::{
-    body::HttpBody,
+    body::{HttpBody, Bytes},
     response::{IntoResponse, Response},
     BoxError,
 };
-use bytes::Bytes;
 use futures_util::{future::BoxFuture, ready};
 use http::Request;
 use pin_project_lite::pin_project;

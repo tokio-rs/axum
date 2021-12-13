@@ -1,8 +1,7 @@
 #![doc = include_str!("../docs/response.md")]
 
-use crate::body::Full;
+use crate::body::{Full, Bytes};
 use axum_core::body::boxed;
-use bytes::Bytes;
 use http::{header, HeaderValue};
 
 mod redirect;

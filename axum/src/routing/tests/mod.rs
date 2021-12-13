@@ -1,5 +1,5 @@
 use crate::{
-    body::Empty,
+    body::{Empty, Bytes},
     error_handling::HandleErrorLayer,
     extract::{self, Path},
     handler::Handler,
@@ -8,7 +8,6 @@ use crate::{
     test_helpers::*,
     BoxError, Json, Router,
 };
-use bytes::Bytes;
 use http::{Method, Request, Response, StatusCode, Uri};
 use hyper::Body;
 use serde::Deserialize;

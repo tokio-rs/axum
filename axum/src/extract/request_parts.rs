@@ -1,7 +1,6 @@
 use super::{rejection::*, take_body, Extension, FromRequest, RequestParts};
-use crate::{body::{Body, HttpBody}, BoxError, Error};
+use crate::{body::{Body, HttpBody, Bytes}, BoxError, Error};
 use async_trait::async_trait;
-use bytes::Bytes;
 use futures_util::stream::Stream;
 use http::Uri;
 use std::{

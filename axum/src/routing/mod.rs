@@ -2,7 +2,7 @@
 
 use self::{future::RouterFuture, not_found::NotFound};
 use crate::{
-    body::{boxed, Body, HttpBody},
+    body::{boxed, Body, HttpBody, Bytes},
     extract::{
         connect_info::{Connected, IntoMakeServiceWithConnectInfo},
         MatchedPath, OriginalUri,
@@ -12,7 +12,6 @@ use crate::{
     util::{try_downcast, ByteStr, PercentDecodedByteStr},
     BoxError,
 };
-use bytes::Bytes;
 use http::{Request, StatusCode, Uri};
 use std::{
     borrow::Cow,
