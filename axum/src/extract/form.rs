@@ -1,5 +1,5 @@
 use super::{has_content_type, rejection::*, FromRequest, RequestParts};
-use crate::body::{HttpBody, Empty, Full, Bytes};
+use crate::body::{Bytes, Empty, Full, HttpBody};
 use crate::BoxError;
 use async_trait::async_trait;
 use http::Method;

@@ -71,7 +71,7 @@
 //! [axum-debug]: https://docs.rs/axum-debug
 
 use crate::{
-    body::{boxed, Body, HttpBody, Bytes},
+    body::{boxed, Body, Bytes, HttpBody},
     extract::{
         connect_info::{Connected, IntoMakeServiceWithConnectInfo},
         FromRequest, RequestParts,

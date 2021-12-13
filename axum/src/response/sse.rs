@@ -28,7 +28,7 @@
 //! ```
 
 use crate::{
-    body::{self, HttpBody, Bytes},
+    body::{self, Bytes, HttpBody},
     response::{IntoResponse, Response},
     BoxError,
 };

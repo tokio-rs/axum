@@ -1,7 +1,7 @@
 #![allow(clippy::blacklisted_name)]
 
-use crate::BoxError;
 use crate::body::HttpBody;
+use crate::BoxError;
 use http::{
     header::{HeaderName, HeaderValue},
     Request, StatusCode,

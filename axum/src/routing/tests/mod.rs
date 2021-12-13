@@ -1,5 +1,5 @@
 use crate::{
-    body::{Empty, Bytes},
+    body::{Bytes, Empty},
     error_handling::HandleErrorLayer,
     extract::{self, Path},
     handler::Handler,

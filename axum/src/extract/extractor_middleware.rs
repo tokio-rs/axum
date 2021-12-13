@@ -4,7 +4,7 @@
 
 use super::{FromRequest, RequestParts};
 use crate::{
-    body::{HttpBody, Bytes},
+    body::{Bytes, HttpBody},
     response::{IntoResponse, Response},
     BoxError,
 };

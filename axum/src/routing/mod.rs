@@ -2,7 +2,7 @@
 
 use self::{future::RouterFuture, not_found::NotFound};
 use crate::{
-    body::{boxed, Body, HttpBody, Bytes},
+    body::{boxed, Body, Bytes, HttpBody},
     extract::{
         connect_info::{Connected, IntoMakeServiceWithConnectInfo},
         MatchedPath, OriginalUri,

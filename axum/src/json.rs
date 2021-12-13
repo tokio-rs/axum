@@ -1,5 +1,5 @@
 use crate::{
-    body::{self, HttpBody, Full, Bytes},
+    body::{self, Bytes, Full, HttpBody},
     extract::{rejection::*, FromRequest, RequestParts},
     response::{IntoResponse, Response},
     BoxError,

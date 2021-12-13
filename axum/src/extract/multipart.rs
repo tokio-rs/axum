@@ -3,7 +3,7 @@
 //! See [`Multipart`] for more details.
 
 use super::{rejection::*, BodyStream, FromRequest, RequestParts};
-use crate::body::{HttpBody, Bytes};
+use crate::body::{Bytes, HttpBody};
 use crate::BoxError;
 use async_trait::async_trait;
 use futures_util::stream::Stream;
