@@ -71,7 +71,7 @@
 //! [axum-debug]: https://docs.rs/axum-debug
 
 use crate::{
-    body::{boxed, Body},
+    body::{boxed, Body, HttpBody},
     extract::{
         connect_info::{Connected, IntoMakeServiceWithConnectInfo},
         FromRequest, RequestParts,
@@ -344,7 +344,7 @@ where
     S::Future: Send,
     T: 'static,
     ReqBody: Send + 'static,
-    ResBody: http_body::Body<Data = Bytes> + Send + 'static,
+    ResBody: HttpBody<Data = Bytes> + Send + 'static,
     ResBody::Error: Into<BoxError>,
 {
     type Sealed = sealed::Hidden;

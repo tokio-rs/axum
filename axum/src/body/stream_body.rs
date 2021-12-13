@@ -1,5 +1,5 @@
 use crate::{
-    body,
+    body::{self, HttpBody},
     response::{IntoResponse, Response},
     BoxError, Error,
 };
@@ -9,7 +9,6 @@ use futures_util::{
     stream::{self, TryStream},
 };
 use http::HeaderMap;
-use http_body::Body;
 use pin_project_lite::pin_project;
 use std::{
     fmt,
@@ -98,7 +97,7 @@ impl<S> fmt::Debug for StreamBody<S> {
     }
 }
 
-impl<S> Body for StreamBody<S>
+impl<S> HttpBody for StreamBody<S>
 where
     S: TryStream,
     S::Ok: Into<Bytes>,

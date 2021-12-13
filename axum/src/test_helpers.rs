@@ -1,6 +1,7 @@
 #![allow(clippy::blacklisted_name)]
 
 use crate::BoxError;
+use crate::body::HttpBody;
 use http::{
     header::{HeaderName, HeaderValue},
     Request, StatusCode,
@@ -28,7 +29,7 @@ impl TestClient {
     pub(crate) fn new<S, ResBody>(svc: S) -> Self
     where
         S: Service<Request<Body>, Response = http::Response<ResBody>> + Clone + Send + 'static,
-        ResBody: http_body::Body + Send + 'static,
+        ResBody: HttpBody + Send + 'static,
         ResBody::Data: Send,
         ResBody::Error: Into<BoxError>,
         S::Future: Send,

@@ -3,6 +3,7 @@
 //! See [`Multipart`] for more details.
 
 use super::{rejection::*, BodyStream, FromRequest, RequestParts};
+use crate::body::HttpBody;
 use crate::BoxError;
 use async_trait::async_trait;
 use bytes::Bytes;
@@ -52,7 +53,7 @@ pub struct Multipart {
 #[async_trait]
 impl<B> FromRequest<B> for Multipart
 where
-    B: http_body::Body<Data = Bytes> + Default + Unpin + Send + 'static,
+    B: HttpBody<Data = Bytes> + Default + Unpin + Send + 'static,
     B::Error: Into<BoxError>,
 {
     type Rejection = MultipartRejection;

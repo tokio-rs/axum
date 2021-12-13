@@ -1,4 +1,5 @@
 use super::{has_content_type, rejection::*, FromRequest, RequestParts};
+use crate::body::{HttpBody, Empty, Full};
 use crate::BoxError;
 use async_trait::async_trait;
 use http::Method;
@@ -46,7 +47,7 @@ pub struct Form<T>(pub T);
 impl<T, B> FromRequest<B> for Form<T>
 where
     T: DeserializeOwned,
-    B: http_body::Body + Send,
+    B: HttpBody + Send,
     B::Data: Send,
     B::Error: Into<BoxError>,
 {
@@ -98,7 +99,7 @@ mod tests {
         let mut req = RequestParts::new(
             Request::builder()
                 .uri(uri.as_ref())
-                .body(http_body::Empty::<bytes::Bytes>::new())
+                .body(Empty::<bytes::Bytes>::new())
                 .unwrap(),
         );
         assert_eq!(Form::<T>::from_request(&mut req).await.unwrap().0, value);
@@ -113,7 +114,7 @@ mod tests {
                     http::header::CONTENT_TYPE,
                     mime::APPLICATION_WWW_FORM_URLENCODED.as_ref(),
                 )
-                .body(http_body::Full::<bytes::Bytes>::new(
+                .body(Full::<bytes::Bytes>::new(
                     serde_urlencoded::to_string(&value).unwrap().into(),
                 ))
                 .unwrap(),
@@ -179,7 +180,7 @@ mod tests {
                 .uri("http://example.com/test")
                 .method(Method::POST)
                 .header(http::header::CONTENT_TYPE, mime::APPLICATION_JSON.as_ref())
-                .body(http_body::Full::<bytes::Bytes>::new(
+                .body(Full::<bytes::Bytes>::new(
                     serde_urlencoded::to_string(&Pagination {
                         size: Some(10),
                         page: None,

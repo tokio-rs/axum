@@ -1,11 +1,10 @@
 //! Rejection response types.
 
 use crate::{
-    body::boxed,
+    body::{boxed, Full},
     response::{IntoResponse, Response},
     BoxError, Error,
 };
-use http_body::Full;
 
 pub use crate::extract::path::FailedToDeserializePathParams;
 pub use axum_core::extract::rejection::*;

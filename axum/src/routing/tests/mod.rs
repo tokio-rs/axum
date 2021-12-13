@@ -1,4 +1,5 @@
 use crate::{
+    body::Empty,
     error_handling::HandleErrorLayer,
     extract::{self, Path},
     handler::Handler,
@@ -234,7 +235,7 @@ async fn wrong_method_service() {
     struct Svc;
 
     impl<R> Service<R> for Svc {
-        type Response = Response<http_body::Empty<Bytes>>;
+        type Response = Response<Empty<Bytes>>;
         type Error = Infallible;
         type Future = Ready<Result<Self::Response, Self::Error>>;
 
@@ -243,7 +244,7 @@ async fn wrong_method_service() {
         }
 
         fn call(&mut self, _req: R) -> Self::Future {
-            ready(Ok(Response::new(http_body::Empty::new())))
+            ready(Ok(Response::new(Empty::new())))
         }
     }
 

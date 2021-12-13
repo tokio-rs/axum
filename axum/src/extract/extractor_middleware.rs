@@ -4,6 +4,7 @@
 
 use super::{FromRequest, RequestParts};
 use crate::{
+    body::HttpBody,
     response::{IntoResponse, Response},
     BoxError,
 };
@@ -170,7 +171,7 @@ where
     E: FromRequest<ReqBody> + 'static,
     ReqBody: Default + Send + 'static,
     S: Service<Request<ReqBody>, Response = Response<ResBody>> + Clone,
-    ResBody: http_body::Body<Data = Bytes> + Send + 'static,
+    ResBody: HttpBody<Data = Bytes> + Send + 'static,
     ResBody::Error: Into<BoxError>,
 {
     type Response = Response;
@@ -229,7 +230,7 @@ where
     E: FromRequest<ReqBody>,
     S: Service<Request<ReqBody>, Response = Response<ResBody>>,
     ReqBody: Default,
-    ResBody: http_body::Body<Data = Bytes> + Send + 'static,
+    ResBody: HttpBody<Data = Bytes> + Send + 'static,
     ResBody::Error: Into<BoxError>,
 {
     type Output = Result<Response, S::Error>;

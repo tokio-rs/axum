@@ -1,7 +1,6 @@
 use super::{IntoResponse, Response};
-use crate::body::boxed;
+use crate::body::{boxed, Empty};
 use http::{header::LOCATION, HeaderValue, StatusCode, Uri};
-use http_body::Empty;
 use std::convert::TryFrom;
 
 /// Response that redirects the request to another location.
