@@ -1,9 +1,8 @@
 #![doc = include_str!("../docs/response.md")]
 
+use crate::body::{Bytes, Full};
 use axum_core::body::boxed;
-use bytes::Bytes;
 use http::{header, HeaderValue};
-use http_body::Full;
 
 mod redirect;
 
@@ -48,11 +47,11 @@ impl<T> From<T> for Html<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::body::Empty;
     use http::{
         header::{HeaderMap, HeaderName},
         StatusCode,
     };
-    use http_body::Empty;
 
     #[test]
     fn test_merge_headers() {

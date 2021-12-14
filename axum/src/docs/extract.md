@@ -413,7 +413,7 @@ use std::{
 use tower_http::map_request_body::MapRequestBodyLayer;
 use axum::{
     extract::{self, BodyStream},
-    body::Body,
+    body::{Body, HttpBody},
     routing::get,
     http::{header::HeaderMap, Request},
     Router,
@@ -421,9 +421,9 @@ use axum::{
 
 struct MyBody<B>(B);
 
-impl<B> http_body::Body for MyBody<B>
+impl<B> HttpBody for MyBody<B>
 where
-    B: http_body::Body + Unpin,
+    B: HttpBody + Unpin,
 {
     type Data = B::Data;
     type Error = B::Error;

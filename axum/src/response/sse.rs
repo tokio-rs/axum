@@ -28,16 +28,14 @@
 //! ```
 
 use crate::{
-    body,
+    body::{self, Bytes, HttpBody},
     response::{IntoResponse, Response},
     BoxError,
 };
-use bytes::Bytes;
 use futures_util::{
     ready,
     stream::{Stream, TryStream},
 };
-use http_body::Body as HttpBody;
 use pin_project_lite::pin_project;
 use std::{
     borrow::Cow,

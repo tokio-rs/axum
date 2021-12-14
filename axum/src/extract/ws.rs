@@ -65,9 +65,12 @@
 
 use self::rejection::*;
 use super::{rejection::*, FromRequest, RequestParts};
-use crate::{body, response::Response, Error};
+use crate::{
+    body::{self, Bytes},
+    response::Response,
+    Error,
+};
 use async_trait::async_trait;
-use bytes::Bytes;
 use futures_util::{
     sink::{Sink, SinkExt},
     stream::{Stream, StreamExt},

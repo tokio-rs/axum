@@ -1,5 +1,8 @@
 use super::*;
-use crate::{error_handling::HandleErrorLayer, extract::OriginalUri, response::IntoResponse, Json};
+use crate::{
+    body::HttpBody, error_handling::HandleErrorLayer, extract::OriginalUri, response::IntoResponse,
+    Json,
+};
 use serde_json::{json, Value};
 use tower::{limit::ConcurrencyLimitLayer, timeout::TimeoutLayer};
 
@@ -62,7 +65,7 @@ async fn multiple_ors_balanced_differently() {
     async fn test<S, ResBody>(name: &str, app: S)
     where
         S: Service<Request<Body>, Response = Response<ResBody>> + Clone + Send + 'static,
-        ResBody: http_body::Body + Send + 'static,
+        ResBody: HttpBody + Send + 'static,
         ResBody::Data: Send,
         ResBody::Error: Into<BoxError>,
         S::Future: Send,

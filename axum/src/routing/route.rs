@@ -1,9 +1,8 @@
 use crate::{
-    body::{boxed, Body},
+    body::{boxed, Body, Empty},
     response::Response,
 };
 use http::Request;
-use http_body::Empty;
 use pin_project_lite::pin_project;
 use std::{
     convert::Infallible,

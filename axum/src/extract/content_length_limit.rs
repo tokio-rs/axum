@@ -80,8 +80,7 @@ impl<T, const N: u64> Deref for ContentLengthLimit<T, N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{routing::post, test_helpers::*, Router};
-    use bytes::Bytes;
+    use crate::{body::Bytes, routing::post, test_helpers::*, Router};
     use http::StatusCode;
     use serde::Deserialize;
 
@@ -127,7 +126,7 @@ mod tests {
         let res = client
             .post("/")
             .body(reqwest::Body::wrap_stream(futures_util::stream::iter(
-                vec![Ok::<_, std::io::Error>(bytes::Bytes::new())],
+                vec![Ok::<_, std::io::Error>(Bytes::new())],
             )))
             .send()
             .await;

@@ -2,7 +2,7 @@
 
 use self::{future::RouterFuture, not_found::NotFound};
 use crate::{
-    body::{boxed, Body},
+    body::{boxed, Body, Bytes, HttpBody},
     extract::{
         connect_info::{Connected, IntoMakeServiceWithConnectInfo},
         MatchedPath, OriginalUri,
@@ -12,7 +12,6 @@ use crate::{
     util::{try_downcast, ByteStr, PercentDecodedByteStr},
     BoxError,
 };
-use bytes::Bytes;
 use http::{Request, StatusCode, Uri};
 use std::{
     borrow::Cow,
@@ -278,7 +277,7 @@ where
             + Send
             + 'static,
         <L::Service as Service<Request<NewReqBody>>>::Future: Send + 'static,
-        NewResBody: http_body::Body<Data = Bytes> + Send + 'static,
+        NewResBody: HttpBody<Data = Bytes> + Send + 'static,
         NewResBody::Error: Into<BoxError>,
     {
         let layer = ServiceBuilder::new()
@@ -319,7 +318,7 @@ where
             + Send
             + 'static,
         <L::Service as Service<Request<B>>>::Future: Send + 'static,
-        NewResBody: http_body::Body<Data = Bytes> + Send + 'static,
+        NewResBody: HttpBody<Data = Bytes> + Send + 'static,
         NewResBody::Error: Into<BoxError>,
     {
         let layer = ServiceBuilder::new()

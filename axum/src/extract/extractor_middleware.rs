@@ -4,10 +4,10 @@
 
 use super::{FromRequest, RequestParts};
 use crate::{
+    body::{Bytes, HttpBody},
     response::{IntoResponse, Response},
     BoxError,
 };
-use bytes::Bytes;
 use futures_util::{future::BoxFuture, ready};
 use http::Request;
 use pin_project_lite::pin_project;
@@ -170,7 +170,7 @@ where
     E: FromRequest<ReqBody> + 'static,
     ReqBody: Default + Send + 'static,
     S: Service<Request<ReqBody>, Response = Response<ResBody>> + Clone,
-    ResBody: http_body::Body<Data = Bytes> + Send + 'static,
+    ResBody: HttpBody<Data = Bytes> + Send + 'static,
     ResBody::Error: Into<BoxError>,
 {
     type Response = Response;
@@ -229,7 +229,7 @@ where
     E: FromRequest<ReqBody>,
     S: Service<Request<ReqBody>, Response = Response<ResBody>>,
     ReqBody: Default,
-    ResBody: http_body::Body<Data = Bytes> + Send + 'static,
+    ResBody: HttpBody<Data = Bytes> + Send + 'static,
     ResBody::Error: Into<BoxError>,
 {
     type Output = Result<Response, S::Error>;

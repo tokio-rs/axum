@@ -17,5 +17,5 @@ pub use bytes::Bytes;
 pub use axum_core::body::{boxed, BoxBody};
 
 pub(crate) fn empty() -> BoxBody {
-    boxed(http_body::Empty::new())
+    boxed(Empty::new())
 }

@@ -1,10 +1,11 @@
 use super::{rejection::*, take_body, Extension, FromRequest, RequestParts};
-use crate::{body::Body, BoxError, Error};
+use crate::{
+    body::{Body, Bytes, HttpBody},
+    BoxError, Error,
+};
 use async_trait::async_trait;
-use bytes::Bytes;
 use futures_util::stream::Stream;
 use http::Uri;
-use http_body::Body as HttpBody;
 use std::{
     convert::Infallible,
     fmt,
@@ -93,7 +94,7 @@ where
 /// [`Stream`]: https://docs.rs/futures/latest/futures/stream/trait.Stream.html
 /// [`body::Body`]: crate::body::Body
 pub struct BodyStream(
-    SyncWrapper<Pin<Box<dyn http_body::Body<Data = Bytes, Error = Error> + Send + 'static>>>,
+    SyncWrapper<Pin<Box<dyn HttpBody<Data = Bytes, Error = Error> + Send + 'static>>>,
 );
 
 impl Stream for BodyStream {

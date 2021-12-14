@@ -1,5 +1,5 @@
 use crate::{
-    body::{boxed, Body, Bytes},
+    body::{boxed, Body, Bytes, Empty, HttpBody},
     error_handling::{HandleError, HandleErrorLayer},
     handler::Handler,
     http::{Method, Request, StatusCode},
@@ -7,7 +7,6 @@ use crate::{
     routing::{Fallback, MethodFilter, Route},
     BoxError,
 };
-use http_body::Empty;
 use std::{
     convert::Infallible,
     fmt,
@@ -78,7 +77,7 @@ macro_rules! top_level_service_fn {
         where
             S: Service<Request<ReqBody>, Response = Response<ResBody>> + Clone + Send + 'static,
             S::Future: Send + 'static,
-            ResBody: http_body::Body<Data = Bytes> + Send + 'static,
+            ResBody: HttpBody<Data = Bytes> + Send + 'static,
             ResBody::Error: Into<BoxError>,
         {
             on_service(MethodFilter::$method, svc)
@@ -213,7 +212,7 @@ macro_rules! chained_service_fn {
                 + Send
                 + 'static,
             S::Future: Send + 'static,
-            ResBody: http_body::Body<Data = Bytes> + Send + 'static,
+            ResBody: HttpBody<Data = Bytes> + Send + 'static,
             ResBody::Error: Into<BoxError>,
         {
             self.on_service(MethodFilter::$method, svc)
@@ -321,7 +320,7 @@ pub fn on_service<S, ReqBody, ResBody>(
 where
     S: Service<Request<ReqBody>, Response = Response<ResBody>> + Clone + Send + 'static,
     S::Future: Send + 'static,
-    ResBody: http_body::Body<Data = Bytes> + Send + 'static,
+    ResBody: HttpBody<Data = Bytes> + Send + 'static,
     ResBody::Error: Into<BoxError>,
 {
     MethodRouter::new().on_service(filter, svc)
@@ -384,7 +383,7 @@ pub fn any_service<S, ReqBody, ResBody>(svc: S) -> MethodRouter<ReqBody, S::Erro
 where
     S: Service<Request<ReqBody>, Response = Response<ResBody>> + Clone + Send + 'static,
     S::Future: Send + 'static,
-    ResBody: http_body::Body<Data = Bytes> + Send + 'static,
+    ResBody: HttpBody<Data = Bytes> + Send + 'static,
     ResBody::Error: Into<BoxError>,
 {
     MethodRouter::new().fallback(svc)
@@ -607,7 +606,7 @@ impl<ReqBody, E> MethodRouter<ReqBody, E> {
             + Send
             + 'static,
         S::Future: Send + 'static,
-        ResBody: http_body::Body<Data = Bytes> + Send + 'static,
+        ResBody: HttpBody<Data = Bytes> + Send + 'static,
         ResBody::Error: Into<BoxError>,
     {
         self.on_service_boxed_response_body(filter, svc.map_response(|res| res.map(boxed)))
@@ -630,7 +629,7 @@ impl<ReqBody, E> MethodRouter<ReqBody, E> {
             + Send
             + 'static,
         S::Future: Send + 'static,
-        ResBody: http_body::Body<Data = Bytes> + Send + 'static,
+        ResBody: HttpBody<Data = Bytes> + Send + 'static,
         ResBody::Error: Into<BoxError>,
     {
         self.fallback = Fallback::Custom(Route::new(svc.map_response(|res| res.map(boxed))));
@@ -658,7 +657,7 @@ impl<ReqBody, E> MethodRouter<ReqBody, E> {
             + Send
             + 'static,
         <L::Service as Service<Request<NewReqBody>>>::Future: Send + 'static,
-        NewResBody: http_body::Body<Data = Bytes> + Send + 'static,
+        NewResBody: HttpBody<Data = Bytes> + Send + 'static,
         NewResBody::Error: Into<BoxError>,
     {
         let layer = ServiceBuilder::new()
@@ -691,7 +690,7 @@ impl<ReqBody, E> MethodRouter<ReqBody, E> {
             + Send
             + 'static,
         <L::Service as Service<Request<ReqBody>>>::Future: Send + 'static,
-        NewResBody: http_body::Body<Data = Bytes> + Send + 'static,
+        NewResBody: HttpBody<Data = Bytes> + Send + 'static,
         NewResBody::Error: Into<BoxError>,
     {
         let layer = ServiceBuilder::new()

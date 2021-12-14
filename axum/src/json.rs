@@ -1,5 +1,5 @@
 use crate::{
-    body,
+    body::{self, Bytes, Full, HttpBody},
     extract::{rejection::*, FromRequest, RequestParts},
     response::{IntoResponse, Response},
     BoxError,
@@ -9,7 +9,6 @@ use http::{
     header::{self, HeaderValue},
     StatusCode,
 };
-use http_body::Full;
 use serde::{de::DeserializeOwned, Serialize};
 use std::ops::{Deref, DerefMut};
 
@@ -90,7 +89,7 @@ pub struct Json<T>(pub T);
 impl<T, B> FromRequest<B> for Json<T>
 where
     T: DeserializeOwned,
-    B: http_body::Body + Send,
+    B: HttpBody + Send,
     B::Data: Send,
     B::Error: Into<BoxError>,
 {
@@ -98,7 +97,7 @@ where
 
     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
         if json_content_type(req)? {
-            let bytes = bytes::Bytes::from_request(req).await?;
+            let bytes = Bytes::from_request(req).await?;
 
             let value = serde_json::from_slice(&bytes).map_err(InvalidJsonBody::from_err)?;
 
