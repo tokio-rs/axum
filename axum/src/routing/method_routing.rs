@@ -77,7 +77,7 @@ macro_rules! top_level_service_fn {
         where
             S: Service<Request<ReqBody>, Response = Response<ResBody>> + Clone + Send + 'static,
             S::Future: Send + 'static,
-            ResBody: crate::body::HttpBody<Data = Bytes> + Send + 'static,
+            ResBody: HttpBody<Data = Bytes> + Send + 'static,
             ResBody::Error: Into<BoxError>,
         {
             on_service(MethodFilter::$method, svc)
