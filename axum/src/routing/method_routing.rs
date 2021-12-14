@@ -212,7 +212,7 @@ macro_rules! chained_service_fn {
                 + Send
                 + 'static,
             S::Future: Send + 'static,
-            ResBody: crate::body::HttpBody<Data = Bytes> + Send + 'static,
+            ResBody: HttpBody<Data = Bytes> + Send + 'static,
             ResBody::Error: Into<BoxError>,
         {
             self.on_service(MethodFilter::$method, svc)
