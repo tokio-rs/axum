@@ -402,6 +402,9 @@ mod test_helpers;
 pub use add_extension::{AddExtension, AddExtensionLayer};
 #[doc(no_inline)]
 pub use async_trait::async_trait;
+#[cfg(feature = "headers")]
+#[doc(no_inline)]
+pub use headers;
 #[doc(no_inline)]
 pub use http;
 #[doc(no_inline)]
