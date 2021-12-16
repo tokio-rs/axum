@@ -409,6 +409,8 @@ pub use headers;
 pub use http;
 #[doc(no_inline)]
 pub use hyper::Server;
+#[doc(no_inline)]
+pub use mime;
 
 #[doc(inline)]
 #[cfg(feature = "json")]
