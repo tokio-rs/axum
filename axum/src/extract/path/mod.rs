@@ -329,7 +329,7 @@ impl fmt::Display for ErrorKind {
             ErrorKind::InvalidUtf8InPathParam { key } => write!(f, "Invalid UTF-8 in `{}`", key),
             ErrorKind::WrongNumberOfParameters { got, expected } => write!(
                 f,
-                "Wronger number of parameters. Expected {} but got {}",
+                "Wrong number of parameters. Expected {} but got {}",
                 expected, got
             ),
             ErrorKind::UnsupportedType { name } => write!(f, "Unsupported type `{}`", name),
