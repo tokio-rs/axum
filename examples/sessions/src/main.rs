@@ -7,7 +7,8 @@
 use async_session::{MemoryStore, Session, SessionStore as _};
 use axum::{
     async_trait,
-    extract::{Extension, FromRequest, RequestParts},
+    extract::{Extension, FromRequest, RequestParts, TypedHeader},
+    headers::Cookie,
     http::{
         self,
         header::{HeaderMap, HeaderValue},
@@ -18,8 +19,11 @@ use axum::{
     AddExtensionLayer, Router,
 };
 use serde::{Deserialize, Serialize};
+use std::fmt::Debug;
 use std::net::SocketAddr;
 use uuid::Uuid;
+
+const AXUM_SESSION_COOKIE_NAME: &str = "axum_session";
 
 #[tokio::main]
 async fn main() {
@@ -45,26 +49,34 @@ async fn main() {
 }
 
 async fn handler(user_id: UserIdFromSession) -> impl IntoResponse {
-    let (headers, user_id) = match user_id {
-        UserIdFromSession::FoundUserId(user_id) => (HeaderMap::new(), user_id),
-        UserIdFromSession::CreatedFreshUserId { user_id, cookie } => {
+    let (headers, user_id, create_cookie) = match user_id {
+        UserIdFromSession::FoundUserId(user_id) => (HeaderMap::new(), user_id, false),
+        UserIdFromSession::CreatedFreshUserId(new_user) => {
             let mut headers = HeaderMap::new();
-            headers.insert(http::header::SET_COOKIE, cookie);
-            (headers, user_id)
+            headers.insert(http::header::SET_COOKIE, new_user.cookie);
+            (headers, new_user.user_id, true)
         }
     };
 
-    dbg!(user_id);
+    tracing::debug!("handler: user_id={:?} send_headers={:?}", user_id, headers);
 
-    headers
+    (
+        headers,
+        format!(
+            "user_id={:?} session_cookie_name={} create_new_session_cookie={}",
+            user_id, AXUM_SESSION_COOKIE_NAME, create_cookie
+        ),
+    )
+}
+
+struct FreshUserId {
+    pub user_id: UserId,
+    pub cookie: HeaderValue,
 }
 
 enum UserIdFromSession {
     FoundUserId(UserId),
-    CreatedFreshUserId {
-        user_id: UserId,
-        cookie: HeaderValue,
-    },
+    CreatedFreshUserId(FreshUserId),
 }
 
 #[async_trait]
@@ -79,28 +91,44 @@ where
             .await
             .expect("`MemoryStore` extension missing");
 
-        let headers = req.headers().expect("other extractor taken headers");
+        let session_cookie =
+            if let Ok(TypedHeader(cookie)) = TypedHeader::<Cookie>::from_request(req).await {
+                cookie.get(AXUM_SESSION_COOKIE_NAME).map(|x| x.to_owned())
+            } else {
+                None
+            };
 
-        let cookie = if let Some(cookie) = headers
-            .get(http::header::COOKIE)
-            .and_then(|value| value.to_str().ok())
-            .map(|value| value.to_string())
-        {
-            cookie
-        } else {
+        // return the new created session cookie for client
+        if session_cookie.is_none() {
             let user_id = UserId::new();
             let mut session = Session::new();
             session.insert("user_id", user_id).unwrap();
             let cookie = store.store_session(session).await.unwrap().unwrap();
-
-            return Ok(Self::CreatedFreshUserId {
+            return Ok(Self::CreatedFreshUserId(FreshUserId {
                 user_id,
-                cookie: cookie.parse().unwrap(),
-            });
-        };
+                cookie: HeaderValue::from_str(
+                    format!("{}={}", AXUM_SESSION_COOKIE_NAME, cookie).as_str(),
+                )
+                .unwrap(),
+            }));
+        }
 
-        let user_id = if let Some(session) = store.load_session(cookie).await.unwrap() {
+        tracing::debug!(
+            "UserIdFromSession: got exists session cookie, {}={}",
+            AXUM_SESSION_COOKIE_NAME,
+            session_cookie.as_ref().unwrap()
+        );
+        // continue to decode the session cookie
+        let user_id = if let Some(session) = store
+            .load_session(session_cookie.as_ref().unwrap().to_owned())
+            .await
+            .unwrap()
+        {
             if let Some(user_id) = session.get::<UserId>("user_id") {
+                tracing::debug!(
+                    "UserIdFromSession: session decoded success, user_id={:?}",
+                    user_id
+                );
                 user_id
             } else {
                 return Err((
@@ -109,6 +137,11 @@ where
                 ));
             }
         } else {
+            tracing::debug!(
+                "UserIdFromSession: err session not exists in store, {}={}",
+                AXUM_SESSION_COOKIE_NAME,
+                session_cookie.as_ref().unwrap()
+            );
             return Err((StatusCode::BAD_REQUEST, "No session found for cookie"));
         };
 
