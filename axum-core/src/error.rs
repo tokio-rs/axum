@@ -15,6 +15,7 @@ impl Error {
         }
     }
 
+    #[allow(dead_code)]
     pub(crate) fn downcast<T>(self) -> Result<T, Self>
     where
         T: StdError + 'static,
