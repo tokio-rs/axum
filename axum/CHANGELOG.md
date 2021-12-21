@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+- **breaking:** `sse::Event` now accepts types implementing `AsRef<str>` instead of `Into<String>`
+  as field values.
+- **breaking:** `sse::Event` now panics if a setter method is called twice instead of silently
+  overwriting old values.
 - **breaking:** Require `Output = ()` on `WebSocketStream::on_upgrade` ([#644])
 - **breaking:** Make `TypedHeaderRejectionReason` `#[non_exhaustive]` ([#665])
 
