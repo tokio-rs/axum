@@ -14,16 +14,6 @@ impl Error {
             inner: error.into(),
         }
     }
-
-    pub(crate) fn downcast<T>(self) -> Result<T, Self>
-    where
-        T: StdError + 'static,
-    {
-        match self.inner.downcast::<T>() {
-            Ok(t) => Ok(*t),
-            Err(err) => Err(*err.downcast().unwrap()),
-        }
-    }
 }
 
 impl fmt::Display for Error {
