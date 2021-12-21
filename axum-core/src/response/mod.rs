@@ -150,11 +150,22 @@ pub trait IntoResponse {
 
 /// Trait for generating response headers.
 ///
+
+/// **Note: If you see this trait not being implemented in an error message, you are almost
+/// certainly being mislead by the compiler¹. Look for the following snippet in the output and
+/// check [`IntoResponse`]'s documentation if you find it:**
+///
+/// ```text
+/// note: required because of the requirements on the impl of `IntoResponse` for `<type>`
+/// ```
+///
 /// Any type that implements this trait automatically implements `IntoResponse` as well, but can
 /// also be used in a tuple like `(StatusCode, Self)`, `(Self, impl IntoResponseHeaders)`,
 /// `(StatusCode, Self, impl IntoResponseHeaders, impl IntoResponse)` and so on.
 ///
 /// This trait can't currently be implemented outside of axum.
+///
+/// ¹ See also [this rustc issue](https://github.com/rust-lang/rust/issues/22590)
 pub trait IntoResponseHeaders {
     /// The return type of [`.into_headers()`].
     ///

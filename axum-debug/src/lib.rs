@@ -89,6 +89,34 @@
 //! async fn handler(request: Request<BoxBody>) {}
 //! ```
 //!
+//! # Known limitations
+//!
+//! If your response type doesn't implement `IntoResponse`, you will get a slightly confusing error
+//! message:
+//!
+//! ```text
+//! error[E0277]: the trait bound `bool: axum_core::response::IntoResponseHeaders` is not satisfied
+//!  --> tests/fail/wrong_return_type.rs:4:23
+//!   |
+//! 4 | async fn handler() -> bool {
+//!   |                       ^^^^ the trait `axum_core::response::IntoResponseHeaders` is not implemented for `bool`
+//!   |
+//!   = note: required because of the requirements on the impl of `IntoResponse` for `bool`
+//! note: required by a bound in `__axum_debug_check_handler_into_response::{closure#0}::check`
+//!  --> tests/fail/wrong_return_type.rs:4:23
+//!   |
+//! 4 | async fn handler() -> bool {
+//!   |                       ^^^^ required by this bound in `__axum_debug_check_handler_into_response::{closure#0}::check`
+//! ```
+//!
+//! The main error message when `IntoResponse` isn't implemented will also ways be for a different
+//! trait, `IntoResponseHeaders`, not being implemented. This trait is not meant to be implemented
+//! for types outside of axum and what you really need to do is change your return type or implement
+//! `IntoResponse` for it (if it is your own type that you want to return directly from handlers).
+//!
+//! This issue is not specific to axum and cannot be fixed by us. For more details, see the
+//! [rustc issue about it](https://github.com/rust-lang/rust/issues/22590).
+//!
 //! # Performance
 //!
 //! Macros in this crate have no effect when using release profile. (eg. `cargo build --release`)
