@@ -25,18 +25,7 @@ where
             },
         );
 
-        let err = match req.try_into_request() {
-            Ok(req) => return Ok(req),
-            Err(err) => err,
-        };
-
-        match err.downcast::<RequestAlreadyExtracted>() {
-            Ok(err) => return Err(err),
-            Err(err) => unreachable!(
-                "Unexpected error type from `try_into_request`: `{:?}`. This is a bug in axum, please file an issue",
-                err,
-            ),
-        }
+        req.try_into_request()
     }
 }
 
