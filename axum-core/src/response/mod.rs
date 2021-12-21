@@ -17,7 +17,7 @@ use http_body::{
     combinators::{MapData, MapErr},
     Empty, Full,
 };
-use std::{borrow::Cow, convert::Infallible};
+use std::{borrow::Cow, convert::Infallible, iter};
 
 mod headers;
 
@@ -384,5 +384,18 @@ impl IntoResponse for HeaderMap {
         let mut res = Response::new(boxed(Empty::new()));
         *res.headers_mut() = self;
         res
+    }
+}
+
+impl IntoResponseHeaders for HeaderMap {
+    type IntoIter = iter::Map<
+        http::header::IntoIter<HeaderValue>,
+        fn(
+            (Option<HeaderName>, HeaderValue),
+        ) -> Result<(Option<HeaderName>, HeaderValue), Response>,
+    >;
+
+    fn into_headers(self) -> Self::IntoIter {
+        self.into_iter().map(Ok)
     }
 }
