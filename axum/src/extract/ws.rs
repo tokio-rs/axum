@@ -201,7 +201,7 @@ impl WebSocketUpgrade {
     pub fn on_upgrade<F, Fut>(self, callback: F) -> Response
     where
         F: FnOnce(WebSocket) -> Fut + Send + 'static,
-        Fut: Future + Send + 'static,
+        Fut: Future<Output = ()> + Send + 'static,
     {
         let on_upgrade = self.on_upgrade;
         let config = self.config;

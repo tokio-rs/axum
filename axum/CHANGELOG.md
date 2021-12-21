@@ -16,11 +16,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `Request`) has previously taken the request extensions. Thus `PathRejection` now contains a
   variant with `ExtensionsAlreadyExtracted`. This is not a breaking change since `PathRejection` is
   marked as `#[non_exhaustive]` ([#619])
+- **breaking:** Require `Output = ()` on `WebSocketStream::on_upgrade` ([#644])
 
 [#599]: https://github.com/tokio-rs/axum/pull/599
 [#600]: https://github.com/tokio-rs/axum/pull/600
 [#607]: https://github.com/tokio-rs/axum/pull/607
 [#619]: https://github.com/tokio-rs/axum/pull/619
+[#644]: https://github.com/tokio-rs/axum/pull/644
 
 # 0.4.2 (06. December, 2021)
 
