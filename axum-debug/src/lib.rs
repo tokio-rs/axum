@@ -21,7 +21,7 @@
 //! ```
 //!
 //! You will get a long error message about function not implementing [`Handler`] trait. But why
-//! this function does not implement it? To figure it out [`debug_handler`] macro can be used.
+//! does this function not implement it? To figure it out, the [`debug_handler`] macro can be used.
 //!
 //! ```rust,compile_fail
 //! # use axum::{routing::get, Router};
