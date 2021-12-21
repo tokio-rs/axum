@@ -345,6 +345,21 @@ impl IntoResponse for StatusCode {
     }
 }
 
+impl<H> IntoResponse for H
+where
+    H: IntoResponseHeaders,
+{
+    fn into_response(self) -> Response {
+        let mut res = Response::new(boxed(Empty::new()));
+
+        if let Err(e) = try_extend_headers(res.headers_mut(), self.into_headers()) {
+            return e;
+        }
+
+        res
+    }
+}
+
 impl<T> IntoResponse for (StatusCode, T)
 where
     T: IntoResponse,
@@ -356,38 +371,41 @@ where
     }
 }
 
-impl<T> IntoResponse for (HeaderMap, T)
+impl<H, T> IntoResponse for (H, T)
 where
+    H: IntoResponseHeaders,
     T: IntoResponse,
 {
     fn into_response(self) -> Response {
         let mut res = self.1.into_response();
-        res.headers_mut().extend(self.0);
+
+        if let Err(e) = try_extend_headers(res.headers_mut(), self.0.into_headers()) {
+            return e;
+        }
+
         res
     }
 }
 
-impl<T> IntoResponse for (StatusCode, HeaderMap, T)
+impl<H, T> IntoResponse for (StatusCode, H, T)
 where
+    H: IntoResponseHeaders,
     T: IntoResponse,
 {
     fn into_response(self) -> Response {
         let mut res = self.2.into_response();
         *res.status_mut() = self.0;
-        res.headers_mut().extend(self.1);
-        res
-    }
-}
 
-impl IntoResponse for HeaderMap {
-    fn into_response(self) -> Response {
-        let mut res = Response::new(boxed(Empty::new()));
-        *res.headers_mut() = self;
+        if let Err(e) = try_extend_headers(res.headers_mut(), self.1.into_headers()) {
+            return e;
+        }
+
         res
     }
 }
 
 impl IntoResponseHeaders for HeaderMap {
+    // FIXME: Use type_alias_impl_trait when available
     type IntoIter = iter::Map<
         http::header::IntoIter<HeaderValue>,
         fn(
@@ -397,5 +415,54 @@ impl IntoResponseHeaders for HeaderMap {
 
     fn into_headers(self) -> Self::IntoIter {
         self.into_iter().map(Ok)
+    }
+}
+
+// Slightly adjusted version of `impl<T> Extend<(Option<HeaderName>, T)> for HeaderMap<T>`.
+// Accepts an iterator that returns Results and short-circuits on an `Err`.
+fn try_extend_headers(
+    headers: &mut HeaderMap,
+    iter: impl IntoIterator<Item = Result<(Option<HeaderName>, HeaderValue), Response>>,
+) -> Result<(), Response> {
+    use http::header::Entry;
+
+    let mut iter = iter.into_iter();
+
+    // The structure of this is a bit weird, but it is mostly to make the
+    // borrow checker happy.
+    let (mut key, mut val) = match iter.next().transpose()? {
+        Some((Some(key), val)) => (key, val),
+        Some((None, _)) => panic!("expected a header name, but got None"),
+        None => return Ok(()),
+    };
+
+    'outer: loop {
+        let mut entry = match headers.entry(key) {
+            Entry::Occupied(mut e) => {
+                // Replace all previous values while maintaining a handle to
+                // the entry.
+                e.insert(val);
+                e
+            }
+            Entry::Vacant(e) => e.insert_entry(val),
+        };
+
+        // As long as `HeaderName` is none, keep inserting the value into
+        // the current entry
+        loop {
+            match iter.next().transpose()? {
+                Some((Some(k), v)) => {
+                    key = k;
+                    val = v;
+                    continue 'outer;
+                }
+                Some((None, v)) => {
+                    entry.append(v);
+                }
+                None => {
+                    return Ok(());
+                }
+            }
+        }
     }
 }
