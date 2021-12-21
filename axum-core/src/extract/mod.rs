@@ -6,7 +6,6 @@
 
 use self::rejection::*;
 use crate::response::IntoResponse;
-use crate::Error;
 use async_trait::async_trait;
 use http::{Extensions, HeaderMap, Method, Request, Uri, Version};
 use std::convert::Infallible;
@@ -128,7 +127,7 @@ impl<B> RequestParts<B> {
     /// [`take_headers`]: RequestParts::take_headers
     /// [`take_extensions`]: RequestParts::take_extensions
     /// [`take_body`]: RequestParts::take_body
-    pub fn try_into_request(self) -> Result<Request<B>, Error> {
+    pub fn try_into_request(self) -> Result<Request<B>, RequestAlreadyExtracted> {
         let Self {
             method,
             uri,
@@ -141,9 +140,9 @@ impl<B> RequestParts<B> {
         let mut req = if let Some(body) = body.take() {
             Request::new(body)
         } else {
-            return Err(Error::new(RequestAlreadyExtracted::BodyAlreadyExtracted(
+            return Err(RequestAlreadyExtracted::BodyAlreadyExtracted(
                 BodyAlreadyExtracted,
-            )));
+            ));
         };
 
         *req.method_mut() = method;
@@ -153,16 +152,16 @@ impl<B> RequestParts<B> {
         if let Some(headers) = headers.take() {
             *req.headers_mut() = headers;
         } else {
-            return Err(Error::new(
-                RequestAlreadyExtracted::HeadersAlreadyExtracted(HeadersAlreadyExtracted),
+            return Err(RequestAlreadyExtracted::HeadersAlreadyExtracted(
+                HeadersAlreadyExtracted,
             ));
         }
 
         if let Some(extensions) = extensions.take() {
             *req.extensions_mut() = extensions;
         } else {
-            return Err(Error::new(
-                RequestAlreadyExtracted::ExtensionsAlreadyExtracted(ExtensionsAlreadyExtracted),
+            return Err(RequestAlreadyExtracted::ExtensionsAlreadyExtracted(
+                ExtensionsAlreadyExtracted,
             ));
         }
 
