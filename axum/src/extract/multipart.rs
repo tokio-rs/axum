@@ -8,14 +8,13 @@ use crate::BoxError;
 use async_trait::async_trait;
 use futures_util::stream::Stream;
 use http::header::{HeaderMap, CONTENT_TYPE};
-use mime::Mime;
 use std::{
     fmt,
     pin::Pin,
     task::{Context, Poll},
 };
 
-/// Extractor that parses `multipart/form-data` requests commonly used with file uploads.
+/// Extractor that parses `multipart/form-data` requests (commonly used with file uploads).
 ///
 /// # Example
 ///
@@ -42,7 +41,7 @@ use std::{
 /// # };
 /// ```
 ///
-/// For security reasons its recommended to combine this with
+/// For security reasons it's recommended to combine this with
 /// [`ContentLengthLimit`](super::ContentLengthLimit) to limit the size of the request payload.
 #[derive(Debug)]
 pub struct Multipart {
@@ -120,9 +119,9 @@ impl<'a> Field<'a> {
         self.inner.file_name()
     }
 
-    /// Get the content type of the field.
-    pub fn content_type(&self) -> Option<&Mime> {
-        self.inner.content_type()
+    /// Get the [content type](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Type) of the field.
+    pub fn content_type(&self) -> Option<&str> {
+        self.inner.content_type().map(|m| m.as_ref())
     }
 
     /// Get a map of headers as [`HeaderMap`].
@@ -190,4 +189,41 @@ define_rejection! {
     /// Rejection type used if the `boundary` in a `multipart/form-data` is
     /// missing or invalid.
     pub struct InvalidBoundary;
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{response::IntoResponse, routing::post, test_helpers::*, Router};
+
+    #[tokio::test]
+    async fn content_type_with_encoding() {
+        const BYTES: &[u8] = "<!doctype html><title>🦀</title>".as_bytes();
+        const FILE_NAME: &str = "index.html";
+        const CONTENT_TYPE: &str = "text/html; charset=utf-8";
+
+        async fn handle(mut multipart: Multipart) -> impl IntoResponse {
+            let field = multipart.next_field().await.unwrap().unwrap();
+
+            assert_eq!(field.file_name().unwrap(), FILE_NAME);
+            assert_eq!(field.content_type().unwrap(), CONTENT_TYPE);
+            assert_eq!(field.bytes().await.unwrap(), BYTES);
+
+            assert!(multipart.next_field().await.unwrap().is_none());
+        }
+
+        let app = Router::new().route("/", post(handle));
+
+        let client = TestClient::new(app);
+
+        let form = reqwest::multipart::Form::new().part(
+            "file",
+            reqwest::multipart::Part::bytes(BYTES)
+                .file_name(FILE_NAME)
+                .mime_str(CONTENT_TYPE)
+                .unwrap(),
+        );
+
+        client.post("/").multipart(form).send().await;
+    }
 }
