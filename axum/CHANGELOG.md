@@ -7,20 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+- None.
+
+# 0.4.3 (21. December, 2021)
+
+- **added:** `axum::AddExtension::layer` ([#607])
+- **added:** Re-export the headers crate when the headers feature is active ([#630])
 - **fixed:** `sse::Event` will no longer drop the leading space of data, event ID and name values
   that have it ([#600])
 - **fixed:** `sse::Event` is more strict about what field values it supports, disallowing any SSE
   events that break the specification (such as field values containing carriage returns) ([#599])
-- **added:** `axum::AddExtension::layer` ([#607])
+- **fixed:** Improve documentation of `sse::Event` ([#601])
 - **fixed:** Make `Path` fail with `ExtensionsAlreadyExtracted` if another extractor (such as
   `Request`) has previously taken the request extensions. Thus `PathRejection` now contains a
   variant with `ExtensionsAlreadyExtracted`. This is not a breaking change since `PathRejection` is
   marked as `#[non_exhaustive]` ([#619])
+- **fixed:** Fix misleading error message for `PathRejection` if extensions had
+  previously been extracted ([#619])
+- **fixed:** Use `AtomicU32` internally, rather than `AtomicU64`, to improve portability ([#616])
 
 [#599]: https://github.com/tokio-rs/axum/pull/599
 [#600]: https://github.com/tokio-rs/axum/pull/600
+[#601]: https://github.com/tokio-rs/axum/pull/601
 [#607]: https://github.com/tokio-rs/axum/pull/607
+[#616]: https://github.com/tokio-rs/axum/pull/616
 [#619]: https://github.com/tokio-rs/axum/pull/619
+[#619]: https://github.com/tokio-rs/axum/pull/619
+[#630]: https://github.com/tokio-rs/axum/pull/630
 
 # 0.4.2 (06. December, 2021)
 
