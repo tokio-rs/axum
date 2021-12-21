@@ -10,7 +10,7 @@ use crate::{
 };
 use bytes::Bytes;
 use http::{
-    header::{self, HeaderMap, HeaderValue},
+    header::{self, HeaderMap, HeaderName, HeaderValue},
     StatusCode,
 };
 use http_body::{
@@ -146,6 +146,31 @@ pub type Response<T = BoxBody> = http::Response<T>;
 pub trait IntoResponse {
     /// Create a response.
     fn into_response(self) -> Response;
+}
+
+/// Trait for generating response headers.
+///
+/// Any type that implements this trait automatically implements `IntoResponse` as well, but can
+/// also be used in a tuple like `(StatusCode, Self)`, `(Self, impl IntoResponseHeaders)`,
+/// `(StatusCode, Self, impl IntoResponseHeaders, impl IntoResponse)` and so on.
+///
+/// This trait can't currently be implemented outside of axum.
+pub trait IntoResponseHeaders {
+    /// The return type of [`.into_headers()`].
+    ///
+    /// The iterator item is a `Result` to allow the implementation to return a server error
+    /// instead.
+    ///
+    /// The header name is optional because `HeaderMap`s iterator doesn't yield it multiple times
+    /// for headers that have multiple values, to avoid unnecessary copies.
+    #[doc(hidden)]
+    type IntoIter: IntoIterator<Item = Result<(Option<HeaderName>, HeaderValue), Response>>;
+
+    /// Attempt to turn `self` into a list of headers.
+    ///
+    /// In practice, only the implementation for `axum::response::Headers` ever returns `Err(_)`.
+    #[doc(hidden)]
+    fn into_headers(self) -> Self::IntoIter;
 }
 
 impl IntoResponse for () {
