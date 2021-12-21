@@ -101,6 +101,7 @@ impl RequestBuilder {
         self.builder = self.builder.json(json);
         self
     }
+
     pub(crate) fn header<K, V>(mut self, key: K, value: V) -> Self
     where
         HeaderName: TryFrom<K>,
@@ -109,6 +110,11 @@ impl RequestBuilder {
         <HeaderValue as TryFrom<V>>::Error: Into<http::Error>,
     {
         self.builder = self.builder.header(key, value);
+        self
+    }
+
+    pub(crate) fn multipart(mut self, form: reqwest::multipart::Form) -> Self {
+        self.builder = self.builder.multipart(form);
         self
     }
 }
