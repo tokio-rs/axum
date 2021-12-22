@@ -115,7 +115,7 @@ where
         }
 
         tracing::debug!(
-            "UserIdFromSession: got exists session cookie, {}={}",
+            "UserIdFromSession: got session cookie from user agent, {}={}",
             AXUM_SESSION_COOKIE_NAME,
             session_cookie.unwrap()
         );
