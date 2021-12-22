@@ -91,10 +91,13 @@ where
             .await
             .expect("`MemoryStore` extension missing");
 
-        let session_cookie = Option::<TypedHeader<Cookie>>::from_request(req)
+        let cookie = Option::<TypedHeader<Cookie>>::from_request(req)
             .await
-            .unwrap()
-            .and_then(|cookie| Some(cookie.get(AXUM_SESSION_COOKIE_NAME)?.to_owned()));
+            .unwrap();
+
+        let session_cookie = cookie
+            .as_ref()
+            .and_then(|cookie| cookie.get(AXUM_SESSION_COOKIE_NAME));
 
         // return the new created session cookie for client
         if session_cookie.is_none() {
@@ -114,11 +117,11 @@ where
         tracing::debug!(
             "UserIdFromSession: got exists session cookie, {}={}",
             AXUM_SESSION_COOKIE_NAME,
-            session_cookie.as_ref().unwrap()
+            session_cookie.unwrap()
         );
         // continue to decode the session cookie
         let user_id = if let Some(session) = store
-            .load_session(session_cookie.as_ref().unwrap().to_owned())
+            .load_session(session_cookie.unwrap().to_owned())
             .await
             .unwrap()
         {
@@ -138,7 +141,7 @@ where
             tracing::debug!(
                 "UserIdFromSession: err session not exists in store, {}={}",
                 AXUM_SESSION_COOKIE_NAME,
-                session_cookie.as_ref().unwrap()
+                session_cookie.unwrap()
             );
             return Err((StatusCode::BAD_REQUEST, "No session found for cookie"));
         };
