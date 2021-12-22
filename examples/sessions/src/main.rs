@@ -91,12 +91,10 @@ where
             .await
             .expect("`MemoryStore` extension missing");
 
-        let session_cookie =
-            if let Ok(TypedHeader(cookie)) = TypedHeader::<Cookie>::from_request(req).await {
-                cookie.get(AXUM_SESSION_COOKIE_NAME).map(|x| x.to_owned())
-            } else {
-                None
-            };
+        let session_cookie = Option::<TypedHeader<Cookie>>::from_request(req)
+            .await
+            .unwrap()
+            .and_then(|cookie| Some(cookie.get(AXUM_SESSION_COOKIE_NAME)?.to_owned()));
 
         // return the new created session cookie for client
         if session_cookie.is_none() {
