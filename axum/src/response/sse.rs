@@ -451,11 +451,125 @@ impl KeepAliveStream {
     }
 }
 
-#[test]
-fn leading_space_is_not_stripped() {
-    let no_leading_space = Event::default().data("\tfoobar");
-    assert_eq!(no_leading_space.to_string(), "data: \tfoobar\n\n");
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{routing::get, test_helpers::*, Router};
+    use futures::{prelude::*, stream};
+    use std::{collections::HashMap, convert::Infallible};
 
-    let leading_space = Event::default().data(" foobar");
-    assert_eq!(leading_space.to_string(), "data:  foobar\n\n");
+    #[test]
+    fn leading_space_is_not_stripped() {
+        let no_leading_space = Event::default().data("\tfoobar");
+        assert_eq!(no_leading_space.to_string(), "data: \tfoobar\n\n");
+
+        let leading_space = Event::default().data(" foobar");
+        assert_eq!(leading_space.to_string(), "data:  foobar\n\n");
+    }
+
+    #[tokio::test]
+    async fn basic() {
+        let app = Router::new().route(
+            "/",
+            get(|| async {
+                let stream = stream::iter(vec![
+                    Event::default().data("one").comment("this is a comment"),
+                    Event::default()
+                        .json_data(serde_json::json!({ "foo": "bar" }))
+                        .unwrap(),
+                    Event::default()
+                        .event("three")
+                        .retry(Duration::from_secs(30))
+                        .id("unique-id"),
+                ])
+                .map(Ok::<_, Infallible>);
+                Sse::new(stream)
+            }),
+        );
+
+        let client = TestClient::new(app);
+        let mut res = client.get("/").send().await;
+
+        assert_eq!(res.headers()["content-type"], "text/event-stream");
+        assert_eq!(res.headers()["cache-control"], "no-cache");
+
+        let event_fields = parse_event(&res.chunk_text().await.unwrap());
+        assert_eq!(event_fields.get("data").unwrap(), "one");
+        assert_eq!(event_fields.get("comment").unwrap(), "this is a comment");
+
+        let event_fields = parse_event(&res.chunk_text().await.unwrap());
+        assert_eq!(event_fields.get("data").unwrap(), "{\"foo\":\"bar\"}");
+        assert!(event_fields.get("comment").is_none());
+
+        let event_fields = parse_event(&res.chunk_text().await.unwrap());
+        assert_eq!(event_fields.get("event").unwrap(), "three");
+        assert_eq!(event_fields.get("retry").unwrap(), "30000");
+        assert_eq!(event_fields.get("id").unwrap(), "unique-id");
+        assert!(event_fields.get("comment").is_none());
+
+        assert!(res.chunk_text().await.is_none());
+    }
+
+    #[tokio::test]
+    async fn keep_alive() {
+        const KEEP_ALIVE_INTERVAL: Duration = Duration::from_millis(10);
+
+        let app = Router::new().route(
+            "/",
+            get(|| async {
+                let stream =
+                    stream::once(async { Ok::<_, Infallible>(Event::default().data("one")) })
+                        .chain(stream::once(async {
+                            tokio::time::sleep(KEEP_ALIVE_INTERVAL * 2).await;
+                            Ok::<_, Infallible>(Event::default().data("two"))
+                        }))
+                        .chain(stream::pending());
+
+                Sse::new(stream).keep_alive(
+                    KeepAlive::new()
+                        .interval(KEEP_ALIVE_INTERVAL)
+                        .text("keep-alive-text"),
+                )
+            }),
+        );
+
+        let client = TestClient::new(app);
+        let mut res = client.get("/").send().await;
+
+        let event_fields = parse_event(&res.chunk_text().await.unwrap());
+        assert_eq!(event_fields.get("data").unwrap(), "one");
+
+        let event_fields = parse_event(&res.chunk_text().await.unwrap());
+        assert_eq!(event_fields.get("comment").unwrap(), "keep-alive-text");
+
+        let event_fields = parse_event(&res.chunk_text().await.unwrap());
+        assert_eq!(event_fields.get("data").unwrap(), "two");
+
+        let event_fields = parse_event(&res.chunk_text().await.unwrap());
+        assert_eq!(event_fields.get("comment").unwrap(), "keep-alive-text");
+
+        let event_fields = parse_event(&res.chunk_text().await.unwrap());
+        assert_eq!(event_fields.get("comment").unwrap(), "keep-alive-text");
+    }
+
+    fn parse_event(payload: &str) -> HashMap<String, String> {
+        let mut fields = HashMap::new();
+
+        let mut lines = payload.lines().peekable();
+        while let Some(line) = lines.next() {
+            if line.is_empty() {
+                assert!(lines.next().is_none());
+                break;
+            }
+
+            let (mut key, value) = line.split_once(':').unwrap();
+            let value = value.trim();
+            if key.is_empty() {
+                key = "comment";
+            }
+            fields.insert(key.to_owned(), value.to_owned());
+        }
+
+        fields
+    }
 }

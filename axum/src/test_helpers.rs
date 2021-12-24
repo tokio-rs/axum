@@ -2,6 +2,7 @@
 
 use crate::body::HttpBody;
 use crate::BoxError;
+use bytes::Bytes;
 use http::{
     header::{HeaderName, HeaderValue},
     Request, StatusCode,
@@ -131,5 +132,18 @@ impl TestResponse {
 
     pub(crate) fn status(&self) -> StatusCode {
         self.response.status()
+    }
+
+    pub(crate) fn headers(&self) -> &http::HeaderMap {
+        self.response.headers()
+    }
+
+    pub(crate) async fn chunk(&mut self) -> Option<Bytes> {
+        self.response.chunk().await.unwrap()
+    }
+
+    pub(crate) async fn chunk_text(&mut self) -> Option<String> {
+        let chunk = self.chunk().await?;
+        Some(String::from_utf8(chunk.to_vec()).unwrap())
     }
 }
