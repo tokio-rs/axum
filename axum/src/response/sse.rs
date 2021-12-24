@@ -522,8 +522,7 @@ mod tests {
                         .chain(stream::once(async {
                             tokio::time::sleep(KEEP_ALIVE_INTERVAL * 2).await;
                             Ok::<_, Infallible>(Event::default().data("two"))
-                        }))
-                        .chain(stream::pending());
+                        }));
 
                 Sse::new(stream).keep_alive(
                     KeepAlive::new()
@@ -545,11 +544,7 @@ mod tests {
         let event_fields = parse_event(&res.chunk_text().await.unwrap());
         assert_eq!(event_fields.get("data").unwrap(), "two");
 
-        let event_fields = parse_event(&res.chunk_text().await.unwrap());
-        assert_eq!(event_fields.get("comment").unwrap(), "keep-alive-text");
-
-        let event_fields = parse_event(&res.chunk_text().await.unwrap());
-        assert_eq!(event_fields.get("comment").unwrap(), "keep-alive-text");
+        assert!(res.chunk_text().await.is_none());
     }
 
     fn parse_event(payload: &str) -> HashMap<String, String> {
