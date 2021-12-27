@@ -175,28 +175,6 @@ impl<ReqBody> fmt::Debug for Next<ReqBody> {
     }
 }
 
-impl<ReqBody> Clone for Next<ReqBody> {
-    fn clone(&self) -> Self {
-        Self {
-            inner: self.inner.clone(),
-        }
-    }
-}
-
-impl<ReqBody> Service<Request<ReqBody>> for Next<ReqBody> {
-    type Response = Response;
-    type Error = Infallible;
-    type Future = Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>> + Send>>;
-
-    fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        self.inner.poll_ready(cx)
-    }
-
-    fn call(&mut self, req: Request<ReqBody>) -> Self::Future {
-        self.inner.call(req)
-    }
-}
-
 pin_project! {
     /// Response future for [`MiddlewareFn`].
     pub struct ResponseFuture<F> {
