@@ -55,7 +55,7 @@ use tower_service::Service;
 ///
 /// let app = Router::new()
 ///     .route("/", get(|| async { /* ... */ }))
-///     .layer(middleware::from_fn(auth));
+///     .route_layer(middleware::from_fn(auth));
 /// # let app: Router = app;
 /// ```
 pub fn from_fn<F>(f: F) -> MiddlewareFnLayer<F> {
