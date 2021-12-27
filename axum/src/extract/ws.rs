@@ -215,13 +215,15 @@ impl WebSocketUpgrade {
             callback(socket).await;
         });
 
+        #[allow(clippy::declare_interior_mutable_const)]
+        const UPGRADE: HeaderValue = HeaderValue::from_static("upgrade");
+        #[allow(clippy::declare_interior_mutable_const)]
+        const WEBSOCKET: HeaderValue = HeaderValue::from_static("websocket");
+
         let mut builder = Response::builder()
             .status(StatusCode::SWITCHING_PROTOCOLS)
-            .header(
-                header::CONNECTION,
-                HeaderValue::from_str("upgrade").unwrap(),
-            )
-            .header(header::UPGRADE, HeaderValue::from_str("websocket").unwrap())
+            .header(header::CONNECTION, UPGRADE)
+            .header(header::UPGRADE, WEBSOCKET)
             .header(
                 header::SEC_WEBSOCKET_ACCEPT,
                 sign(self.sec_websocket_key.as_bytes()),
