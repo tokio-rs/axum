@@ -14,10 +14,10 @@ use std::ops::Deref;
 /// ```rust,no_run
 /// use axum::{
 ///     extract::TypedHeader,
+///     headers::UserAgent,
 ///     routing::get,
 ///     Router,
 /// };
-/// use headers::UserAgent;
 ///
 /// async fn users_teams_show(
 ///     TypedHeader(user_agent): TypedHeader<UserAgent>,

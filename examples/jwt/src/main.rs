@@ -9,12 +9,12 @@
 use axum::{
     async_trait,
     extract::{FromRequest, RequestParts, TypedHeader},
+    headers::{authorization::Bearer, Authorization},
     http::StatusCode,
     response::{IntoResponse, Response},
     routing::{get, post},
     Json, Router,
 };
-use headers::{authorization::Bearer, Authorization};
 use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
