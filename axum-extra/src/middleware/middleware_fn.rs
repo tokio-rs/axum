@@ -43,14 +43,21 @@ use tower_service::Service;
 /// use axum_extra::middleware::{self, Next};
 ///
 /// async fn auth<B>(req: Request<B>, next: Next<B>) -> impl IntoResponse {
-///     let auth_header = req.headers().get(http::header::AUTHORIZATION);
+///     let auth_header = req.headers()
+///         .get(http::header::AUTHORIZATION)
+///         .and_then(|header| header.to_str().ok());
 ///
 ///     match auth_header {
-///         Some(auth_header) if auth_header == "secret" => {
+///         Some(auth_header) if token_is_valid(auth_header) => {
 ///             Ok(next.run(req).await)
 ///         }
 ///         _ => Err(StatusCode::UNAUTHORIZED),
 ///     }
+/// }
+///
+/// fn token_is_valid(token: &str) -> bool {
+///     // ...
+///     # false
 /// }
 ///
 /// let app = Router::new()

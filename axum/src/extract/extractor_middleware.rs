@@ -62,14 +62,18 @@ use tower_service::Service;
 ///             .and_then(|headers| headers.get(http::header::AUTHORIZATION))
 ///             .and_then(|value| value.to_str().ok());
 ///
-///         if let Some(value) = auth_header {
-///             if value == "secret" {
-///                 return Ok(Self);
+///         match auth_header {
+///             Some(auth_header) if token_is_valid(auth_header) => {
+///                 Ok(Self)
 ///             }
+///             _ => Err(StatusCode::UNAUTHORIZED),
 ///         }
-///
-///         Err(StatusCode::UNAUTHORIZED)
 ///     }
+/// }
+///
+/// fn token_is_valid(token: &str) -> bool {
+///     // ...
+///     # false
 /// }
 ///
 /// async fn handler() {
