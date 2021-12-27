@@ -4,7 +4,7 @@ use tower::ServiceExt;
 
 mod for_handlers {
     use super::*;
-    use headers::HeaderMap;
+    use http::HeaderMap;
 
     #[tokio::test]
     async fn get_handles_head() {
