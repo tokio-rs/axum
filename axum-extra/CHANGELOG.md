@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- Add `middleware::from_fn` for creating middleware from async functions
+- Add `middleware::from_fn` for creating middleware from async functions ([#656])
+
+[#656]: https://github.com/tokio-rs/axum/pull/656
 
 # 0.1.0 (02. December, 2021)
 
