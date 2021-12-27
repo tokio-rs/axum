@@ -40,14 +40,14 @@ use tower_service::Service;
 ///     routing::get,
 ///     response::IntoResponse,
 /// };
-/// use axum_extra::middleware::{from_fn, Next};
+/// use axum_extra::middleware::{self, Next};
 ///
-/// async fn auth<B>(req: Request<B>, next: Next<B>) -> impl IntoResponse {
+/// async fn auth<B>(req: Request<B>, mut next: Next<B>) -> impl IntoResponse {
 ///     let auth_header = req.headers().get(http::header::AUTHORIZATION);
 ///
 ///     match auth_header {
 ///         Some(auth_header) if auth_header == "secret" => {
-///             Ok(next.call(req).await)
+///             Ok(next.run(req).await)
 ///         }
 ///         _ => Err(StatusCode::UNAUTHORIZED),
 ///     }
@@ -55,7 +55,7 @@ use tower_service::Service;
 ///
 /// let app = Router::new()
 ///     .route("/", get(|| async { /* ... */ }))
-///     .layer(from_fn(auth));
+///     .layer(middleware::from_fn(auth));
 /// # let app: Router = app;
 /// ```
 pub fn from_fn<F>(f: F) -> MiddlewareFnLayer<F> {
@@ -159,7 +159,7 @@ pub struct Next<ReqBody> {
 
 impl<ReqBody> Next<ReqBody> {
     /// Execute the remaining middleware stack.
-    pub async fn call(mut self, req: Request<ReqBody>) -> Response {
+    pub async fn run(&mut self, req: Request<ReqBody>) -> Response {
         match self.inner.call(req).await {
             Ok(res) => res,
             Err(err) => match err {},
@@ -172,6 +172,28 @@ impl<ReqBody> fmt::Debug for Next<ReqBody> {
         f.debug_struct("MiddlewareFnLayer")
             .field("inner", &self.inner)
             .finish()
+    }
+}
+
+impl<ReqBody> Clone for Next<ReqBody> {
+    fn clone(&self) -> Self {
+        Self {
+            inner: self.inner.clone(),
+        }
+    }
+}
+
+impl<ReqBody> Service<Request<ReqBody>> for Next<ReqBody> {
+    type Response = Response;
+    type Error = Infallible;
+    type Future = Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>> + Send>>;
+
+    fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        self.inner.poll_ready(cx)
+    }
+
+    fn call(&mut self, req: Request<ReqBody>) -> Self::Future {
+        self.inner.call(req)
     }
 }
 
@@ -208,11 +230,11 @@ mod tests {
 
     #[tokio::test]
     async fn basic() {
-        async fn insert_header<B>(mut req: Request<B>, next: Next<B>) -> impl IntoResponse {
+        async fn insert_header<B>(mut req: Request<B>, mut next: Next<B>) -> impl IntoResponse {
             req.headers_mut()
                 .insert("x-axum-test", "ok".parse().unwrap());
 
-            next.call(req).await
+            next.run(req).await
         }
 
         async fn handle(headers: HeaderMap) -> String {
