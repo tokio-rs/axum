@@ -89,6 +89,7 @@ where
 impl<F> fmt::Debug for MiddlewareFnLayer<F> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("MiddlewareFnLayer")
+            // Write out the type name, without quoting it as `&type_name::<F>()` would
             .field("f", &format_args!("{}", type_name::<F>()))
             .finish()
     }
@@ -152,7 +153,7 @@ where
     }
 }
 
-/// The remainder of a middleware stack, including the endpoint.
+/// The remainder of a middleware stack, including the handler.
 pub struct Next<ReqBody> {
     inner: BoxCloneService<Request<ReqBody>, Response, Infallible>,
 }
