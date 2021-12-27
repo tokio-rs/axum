@@ -107,13 +107,21 @@ Additionally axum provides [`extract::extractor_middleware()`] for converting
 any extractor into a middleware. See [`extract::extractor_middleware()`] for
 more details.
 
-## Writing your own middleware
+## Writing your own middleware with `axum_extra::middleware::from_fn`
 
-You can also write you own middleware by implementing [`tower::Service`]:
+The easiest way to write a custom middleware is using
+[`axum_extra::middleware::from_fn`]. See that function for more details.
+
+[`axum_extra::middleware::from_fn`]: https://docs.rs/axum-extra/0.1/axum_extra/middleware/middleware_fn/fn.from_fn.html
+
+## Writing your own middleware with `tower::Service`
+
+For maximum control (and a more low level API) you can write you own middleware
+by implementing [`tower::Service`]:
 
 ```rust
 use axum::{
-	response::Response,
+    response::Response,
     Router,
     body::{Body, BoxBody},
     http::Request,
