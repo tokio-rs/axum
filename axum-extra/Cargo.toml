@@ -17,6 +17,10 @@ erased-json = ["serde", "serde_json"]
 axum = { path = "../axum", version = "0.4" }
 http = "0.2"
 mime = "0.3"
+pin-project-lite = "0.2"
+tower = { version = "0.4", features = ["util"] }
+tower-http = { version = "0.2", features = ["util", "map-response-body"] }
+tower-layer = "0.3"
 tower-service = "0.3"
 
 # optional dependencies
