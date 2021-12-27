@@ -98,6 +98,7 @@ impl TypedHeaderRejection {
 
 /// Additional information regarding a [`TypedHeaderRejection`](super::TypedHeaderRejection)
 #[derive(Debug)]
+#[non_exhaustive]
 pub enum TypedHeaderRejectionReason {
     /// The header was missing from the HTTP request
     Missing,
