@@ -8,8 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 # Unreleased
 
 - **breaking:** Require `Output = ()` on `WebSocketStream::on_upgrade` ([#644])
+- **breaking:** Make `TypedHeaderRejectionReason` `#[non_exhaustive]` ([#665])
 
 [#644]: https://github.com/tokio-rs/axum/pull/644
+[#665]: https://github.com/tokio-rs/axum/pull/665
 
 # 0.4.4 (13. January, 2021)
 
