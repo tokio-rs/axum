@@ -73,25 +73,17 @@ use tower_service::Service;
 /// use axum_extra::middleware::{self, Next};
 ///
 /// #[derive(Clone)]
-/// struct State {
-///     in_maintenance: bool,
-/// }
+/// struct State { /* ... */ }
 ///
 /// async fn my_middleware<B>(
 ///     req: Request<B>,
 ///     next: Next<B>,
-///     state: State,
 /// ) -> impl IntoResponse {
-///     if state.in_maintenance {
-///         Err(StatusCode::SERVICE_UNAVAILABLE)
-///     } else {
-///         Ok(next.run(req).await)
-///     }
+///     // ...
+///     # ()
 /// }
 ///
-/// let state = State {
-///     in_maintenance: false,
-/// };
+/// let state = State { /* ... */ };
 ///
 /// let app = Router::new()
 ///     .route("/", get(|| async { /* ... */ }))
