@@ -28,6 +28,7 @@ use serde::Serialize;
 ///     }
 /// }
 /// ```
+#[cfg_attr(docsrs, doc(cfg(feature = "erased-json")))]
 #[derive(Debug)]
 pub struct ErasedJson(serde_json::Result<Vec<u8>>);
 
