@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- None.
+- **fix:** Depend on tower with `default_features = false`
 
 # 0.1.1 (27. December, 2021)
 
