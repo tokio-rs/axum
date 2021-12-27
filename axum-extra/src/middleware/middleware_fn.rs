@@ -42,7 +42,7 @@ use tower_service::Service;
 /// };
 /// use axum_extra::middleware::{self, Next};
 ///
-/// async fn auth<B>(req: Request<B>, mut next: Next<B>) -> impl IntoResponse {
+/// async fn auth<B>(req: Request<B>, next: Next<B>) -> impl IntoResponse {
 ///     let auth_header = req.headers().get(http::header::AUTHORIZATION);
 ///
 ///     match auth_header {
@@ -159,7 +159,7 @@ pub struct Next<ReqBody> {
 
 impl<ReqBody> Next<ReqBody> {
     /// Execute the remaining middleware stack.
-    pub async fn run(&mut self, req: Request<ReqBody>) -> Response {
+    pub async fn run(mut self, req: Request<ReqBody>) -> Response {
         match self.inner.call(req).await {
             Ok(res) => res,
             Err(err) => match err {},
@@ -230,7 +230,7 @@ mod tests {
 
     #[tokio::test]
     async fn basic() {
-        async fn insert_header<B>(mut req: Request<B>, mut next: Next<B>) -> impl IntoResponse {
+        async fn insert_header<B>(mut req: Request<B>, next: Next<B>) -> impl IntoResponse {
             req.headers_mut()
                 .insert("x-axum-test", "ok".parse().unwrap());
 
