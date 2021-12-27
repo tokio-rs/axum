@@ -27,7 +27,7 @@ use tower_service::Service;
 /// `from_fn` requires the function given to
 ///
 /// 1. Be an `async fn`.
-/// 2. Take [`Request`](http::Request) as the first argument.
+/// 2. Take [`Request<B>`](http::Request) as the first argument.
 /// 3. Take [`Next<B>`](Next) as the second argument.
 /// 4. Return something that implements [`IntoResponse`].
 ///
@@ -63,6 +63,79 @@ use tower_service::Service;
 /// let app = Router::new()
 ///     .route("/", get(|| async { /* ... */ }))
 ///     .route_layer(middleware::from_fn(auth));
+/// # let app: Router = app;
+/// ```
+///
+/// # Passing state
+///
+/// State can be passed to the function like so:
+///
+/// ```rust
+/// use axum::{
+///     Router,
+///     http::{Request, StatusCode},
+///     routing::get,
+///     response::IntoResponse,
+/// };
+/// use axum_extra::middleware::{self, Next};
+///
+/// #[derive(Clone)]
+/// struct State { /* ... */ }
+///
+/// async fn my_middleware<B>(
+///     req: Request<B>,
+///     next: Next<B>,
+///     state: State,
+/// ) -> impl IntoResponse {
+///     // ...
+///     # ()
+/// }
+///
+/// let state = State { /* ... */ };
+///
+/// let app = Router::new()
+///     .route("/", get(|| async { /* ... */ }))
+///     .route_layer(middleware::from_fn(move |req, next| {
+///         my_middleware(req, next, state.clone())
+///     }));
+/// # let app: Router = app;
+/// ```
+///
+/// Or via extensions:
+///
+/// ```rust
+/// use axum::{
+///     Router,
+///     http::{Request, StatusCode},
+///     routing::get,
+///     response::IntoResponse,
+///     AddExtensionLayer,
+/// };
+/// use axum_extra::middleware::{self, Next};
+/// use tower::ServiceBuilder;
+///
+/// #[derive(Clone)]
+/// struct State { /* ... */ }
+///
+/// async fn my_middleware<B>(
+///     req: Request<B>,
+///     next: Next<B>,
+/// ) -> impl IntoResponse {
+///     let state: &State = req.extensions().get().unwrap();
+///
+///     // ...
+///     # ()
+/// }
+///
+/// let state = State { /* ... */ };
+///
+/// let app = Router::new()
+///     .route("/", get(|| async { /* ... */ }))
+///     .layer(
+///         ServiceBuilder::new()
+///             .layer(AddExtensionLayer::new(state))
+///             .layer(middleware::from_fn(my_middleware)),
+///     );
 /// # let app: Router = app;
 /// ```
 pub fn from_fn<F>(f: F) -> MiddlewareFnLayer<F> {
