@@ -78,6 +78,7 @@ use tower_service::Service;
 /// async fn my_middleware<B>(
 ///     req: Request<B>,
 ///     next: Next<B>,
+///     state: State,
 /// ) -> impl IntoResponse {
 ///     // ...
 ///     # ()
