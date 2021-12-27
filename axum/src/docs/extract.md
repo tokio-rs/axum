@@ -40,12 +40,12 @@ Some commonly used extractors are:
 use axum::{
     extract::{Json, TypedHeader, Path, Extension, Query},
     routing::post,
+    headers::UserAgent,
     http::{Request, header::HeaderMap},
     body::{Bytes, Body},
     Router,
 };
 use serde_json::Value;
-use headers::UserAgent;
 use std::collections::HashMap;
 
 // `Path` gives you the path parameters and deserializes them. See its docs for
@@ -148,10 +148,10 @@ individual headers first:
 use axum::{
     extract::TypedHeader,
     routing::get,
+    headers::UserAgent,
     http::header::HeaderMap,
     Router,
 };
-use headers::UserAgent;
 
 async fn handler(
     TypedHeader(user_agent): TypedHeader<UserAgent>,
