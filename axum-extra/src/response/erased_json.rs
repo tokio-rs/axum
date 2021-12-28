@@ -33,9 +33,14 @@ use serde::Serialize;
 pub struct ErasedJson(serde_json::Result<Vec<u8>>);
 
 impl ErasedJson {
-    /// Create an `ErasedJson` by serializing a value.
+    /// Create an `ErasedJson` by serializing a value with the compact formatter.
     pub fn new<T: Serialize>(val: T) -> Self {
         Self(serde_json::to_vec(&val))
+    }
+
+    /// Create an `ErasedJson` by serializing a value with the pretty formatter.
+    pub fn pretty<T: Serialize>(val: T) -> Self {
+        Self(serde_json::to_vec_pretty(&val))
     }
 }
 
