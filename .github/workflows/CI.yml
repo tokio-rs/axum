@@ -166,4 +166,11 @@ jobs:
         CC: clang
       with:
         command: check
-        args: --all --all-targets --all-features --target armv5te-unknown-linux-musleabi
+        args: >
+          --all-targets
+          --all-features
+          -p axum
+          -p axum-core
+          -p axum-extra
+          -p axum-debug
+          --target armv5te-unknown-linux-musleabi
