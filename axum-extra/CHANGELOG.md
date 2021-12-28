@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add support for returning pretty JSON response in `response::ErasedJson` ([#662])
 
 [#656]: https://github.com/tokio-rs/axum/pull/656
+[#662]: https://github.com/tokio-rs/axum/pull/662
 
 # 0.1.0 (02. December, 2021)
 
