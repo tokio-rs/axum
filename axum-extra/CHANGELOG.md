@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 # Unreleased
 
 - Add `middleware::from_fn` for creating middleware from async functions ([#656])
+- Add support for returning pretty JSON response in `response::ErasedJson` ([#662])
 
 [#656]: https://github.com/tokio-rs/axum/pull/656
 
