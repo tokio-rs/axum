@@ -3,6 +3,7 @@ use axum::{
     http::{header, HeaderValue, StatusCode},
     response::{IntoResponse, Response},
 };
+use bytes::{BufMut, Bytes, BytesMut};
 use serde::Serialize;
 
 /// A response type that holds a JSON in serialized form.
@@ -30,17 +31,19 @@ use serde::Serialize;
 /// ```
 #[cfg_attr(docsrs, doc(cfg(feature = "erased-json")))]
 #[derive(Debug)]
-pub struct ErasedJson(serde_json::Result<Vec<u8>>);
+pub struct ErasedJson(serde_json::Result<Bytes>);
 
 impl ErasedJson {
     /// Create an `ErasedJson` by serializing a value with the compact formatter.
     pub fn new<T: Serialize>(val: T) -> Self {
-        Self(serde_json::to_vec(&val))
+        let mut bytes = BytesMut::with_capacity(128);
+        Self(serde_json::to_writer((&mut bytes).writer(), &val).map(|_| bytes.freeze()))
     }
 
     /// Create an `ErasedJson` by serializing a value with the pretty formatter.
     pub fn pretty<T: Serialize>(val: T) -> Self {
-        Self(serde_json::to_vec_pretty(&val))
+        let mut bytes = BytesMut::with_capacity(128);
+        Self(serde_json::to_writer_pretty((&mut bytes).writer(), &val).map(|_| bytes.freeze()))
     }
 }
 
@@ -57,7 +60,7 @@ impl IntoResponse for ErasedJson {
             }
         };
 
-        let mut res = Response::new(body::boxed(Full::from(bytes)));
+        let mut res = Response::new(body::boxed(Full::new(bytes)));
         res.headers_mut().insert(
             header::CONTENT_TYPE,
             HeaderValue::from_static(mime::APPLICATION_JSON.as_ref()),
