@@ -100,8 +100,9 @@ See the [crate documentation][docs] for way more examples.
 ## Performance
 
 `axum` is a relatively thin layer on top of [`hyper`] and adds very little
-overhead. So `axum`'s performance is comparable to [`hyper`]. You can find a
-benchmark [here](https://github.com/programatik29/rust-web-benchmarks).
+overhead. So `axum`'s performance is comparable to [`hyper`]. You can find
+benchmarks [here](https://github.com/programatik29/rust-web-benchmarks) and
+[here](https://web-frameworks-benchmark.netlify.app/result?l=rust).
 
 ## Safety
 
