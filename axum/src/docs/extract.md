@@ -397,62 +397,60 @@ let app = Router::new().route("/foo", get(handler));
 # };
 ```
 
-# Accessing other extractors in [`FromRequest`] implementation
+# Accessing other extractors in [`FromRequest`] implementations
 
-When defining custom extractors you often need to access another extractor
+When defining custom extractors you often need to access another extractors
 in your implementation.
 
-```rust,no_run
+```rust
 use axum::{
     async_trait,
     extract::{Extension, FromRequest, RequestParts, TypedHeader},
     headers::{authorization::Bearer, Authorization},
     http::StatusCode,
+    response::{IntoResponse, Response},
     routing::get,
     AddExtensionLayer, Router,
 };
 
-#[derive(Clone, Default)]
+#[derive(Clone)]
 struct State {
     // ...
 }
 
-struct User {
+struct AuthenticatedUser {
     // ...
 }
 
 #[async_trait]
-impl<B> FromRequest<B> for User
+impl<B> FromRequest<B> for AuthenticatedUser
 where
     B: Send,
 {
-    type Rejection = StatusCode;
+    type Rejection = Response;
 
     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
         let TypedHeader(Authorization(token)) = 
             TypedHeader::<Authorization<Bearer>>::from_request(req)
                 .await
-                .map_err(|_| StatusCode::UNAUTHORIZED)?;
+                .map_err(|err| err.into_response())?;
 
         let Extension(state): Extension<State> = Extension::from_request(req)
             .await
-            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+            .map_err(|err| err.into_response())?;
 
-        // here we can validate token using shared state we extracted from the request,
-        // if we were provided with a valid authorization token we pass user data
-        // to the handler, otherwise we can reject the request with a 
-        // StatusCode::UNAUTHORIZED
-
-        
-        Ok(User {})
+        // actually perform the authorization...
+        unimplemented!()
     }
 }
 
-async fn handler(User {}: User) {
+async fn handler(user: AuthenticatedUser) {
     // ...
 }
 
-let app = Router::new().route("/", get(handler)).layer(AddExtensionLayer::new(State::default()));
+let state = State { /* ... */ };
+
+let app = Router::new().route("/", get(handler)).layer(AddExtensionLayer::new(state));
 # async {
 # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 # };
