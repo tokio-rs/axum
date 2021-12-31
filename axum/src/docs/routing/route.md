@@ -164,7 +164,7 @@ Routing to arbitrary services in this way has complications for backpressure
 ([`Service::poll_ready`]). See the [Routing to services and backpressure] module
 for more details.
 
-[Routing to services and backpressure]: /#routing-to-services-and-backpressure
+[Routing to services and backpressure]: ../index.html#routing-to-services-and-backpressure
 
 # Panics
 
