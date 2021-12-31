@@ -438,7 +438,7 @@ where
             .await
             .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
-        // here we can validate token using shared state we extracted from request
+        // here we can validate token using shared state we extracted from the request,
         // if we were provided with a valid authorization token we pass user data
         // to the handler, otherwise we can reject the request with a 
         // StatusCode::UNAUTHORIZED
