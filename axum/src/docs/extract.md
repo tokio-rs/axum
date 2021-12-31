@@ -397,6 +397,65 @@ let app = Router::new().route("/foo", get(handler));
 # };
 ```
 
+# Accessing other extractors in [`FromRequest`] implementations
+
+When defining custom extractors you often need to access another extractors
+in your implementation.
+
+```rust
+use axum::{
+    async_trait,
+    extract::{Extension, FromRequest, RequestParts, TypedHeader},
+    headers::{authorization::Bearer, Authorization},
+    http::StatusCode,
+    response::{IntoResponse, Response},
+    routing::get,
+    AddExtensionLayer, Router,
+};
+
+#[derive(Clone)]
+struct State {
+    // ...
+}
+
+struct AuthenticatedUser {
+    // ...
+}
+
+#[async_trait]
+impl<B> FromRequest<B> for AuthenticatedUser
+where
+    B: Send,
+{
+    type Rejection = Response;
+
+    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+        let TypedHeader(Authorization(token)) = 
+            TypedHeader::<Authorization<Bearer>>::from_request(req)
+                .await
+                .map_err(|err| err.into_response())?;
+
+        let Extension(state): Extension<State> = Extension::from_request(req)
+            .await
+            .map_err(|err| err.into_response())?;
+
+        // actually perform the authorization...
+        unimplemented!()
+    }
+}
+
+async fn handler(user: AuthenticatedUser) {
+    // ...
+}
+
+let state = State { /* ... */ };
+
+let app = Router::new().route("/", get(handler)).layer(AddExtensionLayer::new(state));
+# async {
+# axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+# };
+```
+
 # Request body extractors
 
 Most of the time your request body type will be [`body::Body`] (a re-export
