@@ -4,7 +4,7 @@ use crate::response::Response;
 use futures_util::future::Either;
 use std::{convert::Infallible, future::ready};
 
-pub use super::{into_make_service::IntoMakeServiceFuture, route::RouteFuture};
+pub use super::{into_make_service::SharedFuture, route::RouteFuture};
 
 opaque_future! {
     /// Response future for [`Router`](super::Router).

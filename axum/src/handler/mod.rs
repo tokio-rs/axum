@@ -73,7 +73,7 @@
 use crate::{
     body::{boxed, Body, Bytes, HttpBody},
     extract::{
-        connect_info::{Connected, IntoMakeServiceWithConnectInfo},
+        connect_info::{Connected, WithConnectInfo},
         FromRequest, RequestParts,
     },
     response::{IntoResponse, Response},
@@ -218,7 +218,7 @@ pub trait Handler<T, B = Body>: Clone + Send + Sized + 'static {
     /// ```
     ///
     /// [`MakeService`]: tower::make::MakeService
-    fn into_make_service(self) -> IntoMakeService<IntoService<Self, T, B>> {
+    fn into_make_service(self) -> IntoMakeService<crate::routing::Shared<IntoService<Self, T, B>>> {
         IntoMakeService::new(self.into_service())
     }
 
@@ -252,11 +252,11 @@ pub trait Handler<T, B = Body>: Clone + Send + Sized + 'static {
     /// [`Router::into_make_service_with_connect_info`]: crate::routing::Router::into_make_service_with_connect_info
     fn into_make_service_with_connect_info<C, Target>(
         self,
-    ) -> IntoMakeServiceWithConnectInfo<IntoService<Self, T, B>, C>
+    ) -> WithConnectInfo<IntoService<Self, T, B>, C>
     where
         C: Connected<Target>,
     {
-        IntoMakeServiceWithConnectInfo::new(self.into_service())
+        WithConnectInfo::new(self.into_service())
     }
 }
 

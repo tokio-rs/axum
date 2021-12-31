@@ -55,7 +55,10 @@ async fn main() {
         let app = Router::new().route("/", get(handler));
 
         axum::Server::builder(ServerAccept { uds })
-            .serve(app.into_make_service_with_connect_info::<UdsConnectInfo, _>())
+            .serve(
+                app.into_make_service()
+                    .with_connect_info::<UdsConnectInfo, _>(),
+            )
             .await
             .unwrap();
     });
@@ -156,7 +159,7 @@ struct UdsConnectInfo {
 }
 
 impl connect_info::Connected<&UnixStream> for UdsConnectInfo {
-    fn connect_info(target: &UnixStream) -> Self {
+    fn connect_info(target: &&UnixStream) -> Self {
         let peer_addr = target.peer_addr().unwrap();
         let peer_cred = target.peer_cred().unwrap();
 

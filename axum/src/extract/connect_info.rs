@@ -8,10 +8,11 @@ use super::{Extension, FromRequest, RequestParts};
 use crate::{AddExtension, AddExtensionLayer};
 use async_trait::async_trait;
 use hyper::server::conn::AddrStream;
+use pin_project_lite::pin_project;
 use std::{
     convert::Infallible,
     fmt,
-    future::ready,
+    future::{ready, Future},
     marker::PhantomData,
     net::SocketAddr,
     task::{Context, Poll},
@@ -25,44 +26,44 @@ use tower_service::Service;
 ///
 /// [`MakeService`]: tower::make::MakeService
 /// [`Router::into_make_service_with_connect_info`]: crate::routing::Router::into_make_service_with_connect_info
-pub struct IntoMakeServiceWithConnectInfo<S, C> {
-    svc: S,
+pub struct WithConnectInfo<M, C> {
+    make_svc: M,
     _connect_info: PhantomData<fn() -> C>,
 }
 
 #[test]
 fn traits() {
     use crate::test_helpers::*;
-    assert_send::<IntoMakeServiceWithConnectInfo<(), NotSendSync>>();
+    assert_send::<WithConnectInfo<(), NotSendSync>>();
 }
 
-impl<S, C> IntoMakeServiceWithConnectInfo<S, C> {
-    pub(crate) fn new(svc: S) -> Self {
+impl<M, C> WithConnectInfo<M, C> {
+    pub(crate) fn new(make_svc: M) -> Self {
         Self {
-            svc,
+            make_svc,
             _connect_info: PhantomData,
         }
     }
 }
 
-impl<S, C> fmt::Debug for IntoMakeServiceWithConnectInfo<S, C>
+impl<M, C> fmt::Debug for WithConnectInfo<M, C>
 where
-    S: fmt::Debug,
+    M: fmt::Debug,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("IntoMakeServiceWithConnectInfo")
-            .field("svc", &self.svc)
+            .field("svc", &self.make_svc)
             .finish()
     }
 }
 
-impl<S, C> Clone for IntoMakeServiceWithConnectInfo<S, C>
+impl<M, C> Clone for WithConnectInfo<M, C>
 where
-    S: Clone,
+    M: Clone,
 {
     fn clone(&self) -> Self {
         Self {
-            svc: self.svc.clone(),
+            make_svc: self.make_svc.clone(),
             _connect_info: PhantomData,
         }
     }
@@ -79,40 +80,64 @@ where
 /// [`Router::into_make_service_with_connect_info`]: crate::routing::Router::into_make_service_with_connect_info
 pub trait Connected<T>: Clone + Send + Sync + 'static {
     /// Create type holding information about the connection.
-    fn connect_info(target: T) -> Self;
+    fn connect_info(target: &T) -> Self;
 }
 
 impl Connected<&AddrStream> for SocketAddr {
-    fn connect_info(target: &AddrStream) -> Self {
+    fn connect_info(target: &&AddrStream) -> Self {
         target.remote_addr()
     }
 }
 
-impl<S, C, T> Service<T> for IntoMakeServiceWithConnectInfo<S, C>
+impl<M, C, T> Service<T> for WithConnectInfo<M, C>
 where
-    S: Clone,
+    M: Service<T>,
     C: Connected<T>,
 {
-    type Response = AddExtension<S, ConnectInfo<C>>;
-    type Error = Infallible;
-    type Future = ResponseFuture<S, C>;
+    type Response = AddExtension<M::Response, ConnectInfo<C>>;
+    type Error = M::Error;
+    type Future = ResponseFuture<M::Future, C>;
 
     #[inline]
-    fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        Poll::Ready(Ok(()))
+    fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        self.make_svc.poll_ready(cx)
     }
 
     fn call(&mut self, target: T) -> Self::Future {
-        let connect_info = ConnectInfo(C::connect_info(target));
-        let svc = AddExtensionLayer::new(connect_info).layer(self.svc.clone());
-        ResponseFuture::new(ready(Ok(svc)))
+        let connect_info = C::connect_info(&target);
+        ResponseFuture {
+            future: self.make_svc.call(target),
+            connect_info: Some(connect_info),
+        }
     }
 }
 
-opaque_future! {
+pin_project! {
     /// Response future for [`IntoMakeServiceWithConnectInfo`].
-    pub type ResponseFuture<S, C> =
-        std::future::Ready<Result<AddExtension<S, ConnectInfo<C>>, Infallible>>;
+    pub struct ResponseFuture<F, C> {
+        #[pin]
+        future: F,
+        connect_info: Option<C>,
+    }
+}
+
+impl<F, C, S, E> Future for ResponseFuture<F, C>
+where
+    F: Future<Output = Result<S, E>>,
+    C: Clone,
+{
+    type Output = Result<AddExtension<S, ConnectInfo<C>>, E>;
+
+    fn poll(self: std::pin::Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        let this = self.project();
+        let svc = futures_util::ready!(this.future.poll(cx))?;
+        let connect_info = this
+            .connect_info
+            .take()
+            .expect("future polled after completion");
+        let svc = AddExtensionLayer::new(ConnectInfo(connect_info)).layer(svc);
+        Poll::Ready(Ok(svc))
+    }
 }
 
 /// Extractor for getting connection information produced by a [`Connected`].
@@ -161,7 +186,7 @@ mod tests {
             let app = Router::new().route("/", get(handler));
             let server = Server::from_tcp(listener)
                 .unwrap()
-                .serve(app.into_make_service_with_connect_info::<SocketAddr, _>());
+                .serve(app.into_make_service().with_connect_info::<SocketAddr, _>());
             tx.send(()).unwrap();
             server.await.expect("server error");
         });
@@ -182,7 +207,7 @@ mod tests {
         }
 
         impl Connected<&AddrStream> for MyConnectInfo {
-            fn connect_info(_target: &AddrStream) -> Self {
+            fn connect_info(_target: &&AddrStream) -> Self {
                 Self {
                     value: "it worked!",
                 }
@@ -199,9 +224,10 @@ mod tests {
         let (tx, rx) = tokio::sync::oneshot::channel();
         tokio::spawn(async move {
             let app = Router::new().route("/", get(handler));
-            let server = Server::from_tcp(listener)
-                .unwrap()
-                .serve(app.into_make_service_with_connect_info::<MyConnectInfo, _>());
+            let server = Server::from_tcp(listener).unwrap().serve(
+                app.into_make_service()
+                    .with_connect_info::<MyConnectInfo, _>(),
+            );
             tx.send(()).unwrap();
             server.await.expect("server error");
         });

@@ -4,7 +4,7 @@ use self::{future::RouterFuture, not_found::NotFound};
 use crate::{
     body::{boxed, Body, Bytes, HttpBody},
     extract::{
-        connect_info::{Connected, IntoMakeServiceWithConnectInfo},
+        connect_info::{Connected, WithConnectInfo},
         MatchedPath, OriginalUri,
     },
     response::Response,
@@ -38,7 +38,11 @@ mod strip_prefix;
 #[cfg(test)]
 mod tests;
 
-pub use self::{into_make_service::IntoMakeService, method_filter::MethodFilter, route::Route};
+pub use self::{
+    into_make_service::{IntoMakeService, Shared},
+    method_filter::MethodFilter,
+    route::Route,
+};
 
 pub use self::method_routing::{
     any, any_service, delete, delete_service, get, get_service, head, head_service, on, on_service,
@@ -381,18 +385,8 @@ where
     /// ```
     ///
     /// [`MakeService`]: tower::make::MakeService
-    pub fn into_make_service(self) -> IntoMakeService<Self> {
+    pub fn into_make_service(self) -> IntoMakeService<Shared<Self>> {
         IntoMakeService::new(self)
-    }
-
-    #[doc = include_str!("../docs/routing/into_make_service_with_connect_info.md")]
-    pub fn into_make_service_with_connect_info<C, Target>(
-        self,
-    ) -> IntoMakeServiceWithConnectInfo<Self, C>
-    where
-        C: Connected<Target>,
-    {
-        IntoMakeServiceWithConnectInfo::new(self)
     }
 
     #[inline]
