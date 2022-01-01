@@ -485,7 +485,7 @@ where
                         with_path(req.uri(), &format!("{}/", path))
                     };
                     let res = Response::builder()
-                        .status(StatusCode::MOVED_PERMANENTLY)
+                        .status(StatusCode::PERMANENT_REDIRECT)
                         .header(http::header::LOCATION, redirect_to.to_string())
                         .body(crate::body::empty())
                         .unwrap();
