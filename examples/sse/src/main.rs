@@ -56,7 +56,11 @@ async fn sse_handler(
     // A `Stream` that repeats an event every second
     let stream = stream::repeat_with(|| Event::default().data("hi!"))
         .map(Ok)
-        .throttle(Duration::from_secs(1));
+        .throttle(Duration::from_secs(10));
 
-    Sse::new(stream)
+    Sse::new(stream).keep_alive(
+        axum::response::sse::KeepAlive::new()
+            .interval(Duration::from_secs(1))
+            .text("keep-alive-text"),
+    )
 }
