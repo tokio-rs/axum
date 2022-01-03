@@ -56,7 +56,13 @@ where
     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
         let uri = Extension::<Self>::from_request(req)
             .await
-            .unwrap_or_else(|_| Extension(OriginalUri(req.uri().clone())))
+            .unwrap_or_else(|_| {
+                #[cfg(debug_assertions)]
+                panic!("`OriginalUri` extension should always be present, but it wasn't");
+
+                #[allow(unreachable_code)]
+                Extension(OriginalUri(req.uri().clone()))
+            })
             .0;
         Ok(uri)
     }

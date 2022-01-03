@@ -417,6 +417,9 @@ where
                 Arc::clone(matched_path)
             };
             req.extensions_mut().insert(MatchedPath(matched_path));
+        } else {
+            #[cfg(debug_assertions)]
+            panic!("should always have a matched path for a route id");
         }
 
         let params = match_
