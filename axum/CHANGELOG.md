@@ -9,9 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **breaking:** Require `Output = ()` on `WebSocketStream::on_upgrade` ([#644])
 - **breaking:** Make `TypedHeaderRejectionReason` `#[non_exhaustive]` ([#665])
+- **breaking:** Rejection type for `OriginalUri` is now `OriginalUriRejection`
+  instead of `Infallible` ([#687])
 
 [#644]: https://github.com/tokio-rs/axum/pull/644
 [#665]: https://github.com/tokio-rs/axum/pull/665
+[#687]: https://github.com/tokio-rs/axum/pull/687
 
 # 0.4.3 (21. December, 2021)
 
