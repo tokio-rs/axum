@@ -489,26 +489,26 @@ mod tests {
         );
 
         let client = TestClient::new(app);
-        let mut res = client.get("/").send().await;
+        let mut stream = client.get("/").send().await;
 
-        assert_eq!(res.headers()["content-type"], "text/event-stream");
-        assert_eq!(res.headers()["cache-control"], "no-cache");
+        assert_eq!(stream.headers()["content-type"], "text/event-stream");
+        assert_eq!(stream.headers()["cache-control"], "no-cache");
 
-        let event_fields = parse_event(&res.chunk_text().await.unwrap());
+        let event_fields = parse_event(&stream.chunk_text().await.unwrap());
         assert_eq!(event_fields.get("data").unwrap(), "one");
         assert_eq!(event_fields.get("comment").unwrap(), "this is a comment");
 
-        let event_fields = parse_event(&res.chunk_text().await.unwrap());
+        let event_fields = parse_event(&stream.chunk_text().await.unwrap());
         assert_eq!(event_fields.get("data").unwrap(), "{\"foo\":\"bar\"}");
         assert!(event_fields.get("comment").is_none());
 
-        let event_fields = parse_event(&res.chunk_text().await.unwrap());
+        let event_fields = parse_event(&stream.chunk_text().await.unwrap());
         assert_eq!(event_fields.get("event").unwrap(), "three");
         assert_eq!(event_fields.get("retry").unwrap(), "30000");
         assert_eq!(event_fields.get("id").unwrap(), "unique-id");
         assert!(event_fields.get("comment").is_none());
 
-        assert!(res.chunk_text().await.is_none());
+        assert!(stream.chunk_text().await.is_none());
     }
 
     #[tokio::test(start_paused = true)]
@@ -531,17 +531,17 @@ mod tests {
         );
 
         let client = TestClient::new(app);
-        let mut res = client.get("/").send().await;
+        let mut stream = client.get("/").send().await;
 
         for _ in 0..5 {
             // first message should be an event
-            let event_fields = parse_event(&res.chunk_text().await.unwrap());
+            let event_fields = parse_event(&stream.chunk_text().await.unwrap());
             assert_eq!(event_fields.get("data").unwrap(), "msg");
 
             // then 4 seconds of keep-alive messages
             for _ in 0..4 {
                 tokio::time::sleep(Duration::from_secs(1)).await;
-                let event_fields = parse_event(&res.chunk_text().await.unwrap());
+                let event_fields = parse_event(&stream.chunk_text().await.unwrap());
                 assert_eq!(event_fields.get("comment").unwrap(), "keep-alive-text");
             }
         }
@@ -568,25 +568,25 @@ mod tests {
         );
 
         let client = TestClient::new(app);
-        let mut res = client.get("/").send().await;
+        let mut stream = client.get("/").send().await;
 
         // first message should be an event
-        let event_fields = parse_event(&res.chunk_text().await.unwrap());
+        let event_fields = parse_event(&stream.chunk_text().await.unwrap());
         assert_eq!(event_fields.get("data").unwrap(), "msg");
 
         // then 4 seconds of keep-alive messages
         for _ in 0..4 {
             tokio::time::sleep(Duration::from_secs(1)).await;
-            let event_fields = parse_event(&res.chunk_text().await.unwrap());
+            let event_fields = parse_event(&stream.chunk_text().await.unwrap());
             assert_eq!(event_fields.get("comment").unwrap(), "keep-alive-text");
         }
 
         // then the last event
-        let event_fields = parse_event(&res.chunk_text().await.unwrap());
+        let event_fields = parse_event(&stream.chunk_text().await.unwrap());
         assert_eq!(event_fields.get("data").unwrap(), "msg");
 
         // then no more events or keep-alive messages
-        assert!(res.chunk_text().await.is_none());
+        assert!(stream.chunk_text().await.is_none());
     }
 
     fn parse_event(payload: &str) -> HashMap<String, String> {
