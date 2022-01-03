@@ -61,8 +61,9 @@ define_rejection! {
 define_rejection! {
     #[status = INTERNAL_SERVER_ERROR]
     #[body = "No original uri was found for the matched route. This is likely a bug in axum. Please open an issue"]
-    /// Rejection type used if axum's internal representation of original URIs is missing. This
-    /// should never happen and is a bug in axum if it does.
+    /// Rejection type used if axum's internal representation of original URIs is missing.
+    ///
+    /// This should never happen and is likely a bug in axum if it does.
     pub struct MissingOriginalUri;
 }
 
