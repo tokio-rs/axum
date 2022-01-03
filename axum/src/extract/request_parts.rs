@@ -43,9 +43,11 @@ use sync_wrapper::SyncWrapper;
 /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 /// # };
 /// ```
+#[cfg(feature = "original-uri")]
 #[derive(Debug, Clone)]
 pub struct OriginalUri(pub Uri);
 
+#[cfg(feature = "original-uri")]
 #[async_trait]
 impl<B> FromRequest<B> for OriginalUri
 where
