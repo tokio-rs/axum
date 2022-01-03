@@ -15,7 +15,6 @@ pub mod ws;
 mod content_length_limit;
 mod extension;
 mod form;
-mod matched_path;
 mod query;
 mod raw_query;
 mod request_parts;
@@ -31,16 +30,22 @@ pub use self::{
     extension::Extension,
     extractor_middleware::extractor_middleware,
     form::Form,
-    matched_path::MatchedPath,
     path::Path,
     query::Query,
     raw_query::RawQuery,
-    request_parts::OriginalUri,
     request_parts::{BodyStream, RawBody},
 };
 #[doc(no_inline)]
 #[cfg(feature = "json")]
 pub use crate::Json;
+
+#[cfg(feature = "matched-path")]
+mod matched_path;
+
+#[cfg(feature = "matched-path")]
+#[cfg_attr(docsrs, doc(cfg(feature = "matched-path")))]
+#[doc(inline)]
+pub use self::matched_path::MatchedPath;
 
 #[cfg(feature = "multipart")]
 #[cfg_attr(docsrs, doc(cfg(feature = "multipart")))]
@@ -50,6 +55,11 @@ pub mod multipart;
 #[cfg_attr(docsrs, doc(cfg(feature = "multipart")))]
 #[doc(inline)]
 pub use self::multipart::Multipart;
+
+#[cfg(feature = "original-uri")]
+#[cfg_attr(docsrs, doc(cfg(feature = "original-uri")))]
+#[doc(inline)]
+pub use self::request_parts::OriginalUri;
 
 #[cfg(feature = "ws")]
 #[cfg_attr(docsrs, doc(cfg(feature = "ws")))]

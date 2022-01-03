@@ -305,12 +305,16 @@
 //! `http1` | Enables hyper's `http1` feature | Yes
 //! `http2` | Enables hyper's `http2` feature | No
 //! `json` | Enables the [`Json`] type and some similar convenience functionality | Yes
+//! `matched-path` | Enables capturing of every request's router path and the [`MatchedPath`] extractor | Yes
 //! `multipart` | Enables parsing `multipart/form-data` requests with [`Multipart`] | No
+//! `original-uri` | Enables capturing of every request's original URI and the [`OriginalUri`] extractor | Yes
 //! `tower-log` | Enables `tower`'s `log` feature | Yes
 //! `ws` | Enables WebSockets support via [`extract::ws`] | No
 //!
 //! [`TypedHeader`]: crate::extract::TypedHeader
+//! [`MatchedPath`]: crate::extract::MatchedPath
 //! [`Multipart`]: crate::extract::Multipart
+//! [`OriginalUri`]: crate::extract::OriginalUri
 //! [`tower`]: https://crates.io/crates/tower
 //! [`tower-http`]: https://crates.io/crates/tower-http
 //! [`tokio`]: http://crates.io/crates/tokio
@@ -322,7 +326,6 @@
 //! [examples]: https://github.com/tokio-rs/axum/tree/main/examples
 //! [`Router::merge`]: crate::routing::Router::merge
 //! [`axum::Server`]: hyper::server::Server
-//! [`OriginalUri`]: crate::extract::OriginalUri
 //! [`Service`]: tower::Service
 //! [`Service::poll_ready`]: tower::Service::poll_ready
 //! [`Service`'s]: tower::Service
