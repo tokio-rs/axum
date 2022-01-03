@@ -59,6 +59,14 @@ define_rejection! {
 }
 
 define_rejection! {
+    #[status = INTERNAL_SERVER_ERROR]
+    #[body = "No original uri was found for the matched route. This is a bug in axum. Please open an issue"]
+    /// Rejection type used if axum's internal representation of original URIs is missing. This
+    /// should never happen and is a bug in axum if it does.
+    pub struct MissingOriginalUri;
+}
+
+define_rejection! {
     #[status = BAD_REQUEST]
     #[body = "Form requests must have `Content-Type: x-www-form-urlencoded`"]
     /// Rejection type used if you try and extract the request more than once.
@@ -104,6 +112,17 @@ impl std::fmt::Display for FailedToDeserializeQueryString {
 }
 
 impl std::error::Error for FailedToDeserializeQueryString {}
+
+composite_rejection! {
+    /// Rejection used for [`OriginalUri`](super::OriginalUri).
+    ///
+    /// Contains one variant for each way the [`OriginalUri`](super::OriginalUri) extractor
+    /// can fail.
+    pub enum OriginalUriRejection {
+        MissingOriginalUri,
+        ExtensionsAlreadyExtracted,
+    }
+}
 
 composite_rejection! {
     /// Rejection used for [`Query`](super::Query).

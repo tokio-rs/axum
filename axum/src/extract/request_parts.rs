@@ -7,7 +7,6 @@ use async_trait::async_trait;
 use futures_util::stream::Stream;
 use http::Uri;
 use std::{
-    convert::Infallible,
     fmt,
     pin::Pin,
     task::{Context, Poll},
@@ -53,14 +52,18 @@ impl<B> FromRequest<B> for OriginalUri
 where
     B: Send,
 {
-    type Rejection = Infallible;
+    type Rejection = OriginalUriRejection;
 
     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-        let uri = Extension::<Self>::from_request(req)
-            .await
-            .unwrap_or_else(|_| Extension(OriginalUri(req.uri().clone())))
-            .0;
-        Ok(uri)
+        match Extension::<Self>::from_request(req).await {
+            Ok(Extension(uri)) => Ok(uri),
+            Err(ExtensionRejection::MissingExtension(_)) => Err(
+                OriginalUriRejection::MissingOriginalUri(MissingOriginalUri::default()),
+            ),
+            Err(ExtensionRejection::ExtensionsAlreadyExtracted(err)) => {
+                Err(OriginalUriRejection::ExtensionsAlreadyExtracted(err))
+            }
+        }
     }
 }
 
