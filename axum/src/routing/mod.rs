@@ -3,10 +3,7 @@
 use self::{future::RouterFuture, not_found::NotFound};
 use crate::{
     body::{boxed, Body, Bytes, HttpBody},
-    extract::{
-        connect_info::{Connected, IntoMakeServiceWithConnectInfo},
-        MatchedPath, OriginalUri,
-    },
+    extract::connect_info::{Connected, IntoMakeServiceWithConnectInfo},
     response::Response,
     routing::strip_prefix::StripPrefix,
     util::{try_downcast, ByteStr, PercentDecodedByteStr},
@@ -400,7 +397,10 @@ where
         let id = *match_.value;
         req.extensions_mut().insert(id);
 
+        #[cfg(feature = "matched-path")]
         if let Some(matched_path) = self.node.route_id_to_path.get(&id) {
+            use crate::extract::MatchedPath;
+
             let matched_path = if let Some(previous) = req.extensions_mut().get::<MatchedPath>() {
                 // a previous `MatchedPath` might exist if we're inside a nested Router
                 let previous = if let Some(previous) =
@@ -471,9 +471,14 @@ where
 
     #[inline]
     fn call(&mut self, mut req: Request<B>) -> Self::Future {
-        if req.extensions().get::<OriginalUri>().is_none() {
-            let original_uri = OriginalUri(req.uri().clone());
-            req.extensions_mut().insert(original_uri);
+        #[cfg(feature = "original-uri")]
+        {
+            use crate::extract::OriginalUri;
+
+            if req.extensions().get::<OriginalUri>().is_none() {
+                let original_uri = OriginalUri(req.uri().clone());
+                req.extensions_mut().insert(original_uri);
+            }
         }
 
         let path = req.uri().path().to_owned();
