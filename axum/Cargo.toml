@@ -11,11 +11,13 @@ readme = "README.md"
 repository = "https://github.com/tokio-rs/axum"
 
 [features]
-default = ["http1", "json", "tower-log"]
+default = ["http1", "json", "matched-path", "original-uri", "tower-log"]
 http1 = ["hyper/http1"]
 http2 = ["hyper/http2"]
 json = ["serde_json"]
+matched-path = []
 multipart = ["multer"]
+original-uri = []
 tower-log = ["tower/log"]
 ws = ["tokio-tungstenite", "sha-1", "base64"]
 
@@ -84,10 +86,10 @@ rustdoc-args = ["--cfg", "docsrs"]
 
 [package.metadata.playground]
 features = [
-  "http1",
-  "http2",
-  "json",
-  "multipart",
-  "tower",
-  "ws",
+    "http1",
+    "http2",
+    "json",
+    "multipart",
+    "tower",
+    "ws",
 ]
