@@ -227,9 +227,17 @@
 //! # Sharing state with handlers
 //!
 //! It is common to share some state between handlers for example to share a
-//! pool of database connections or clients to other services. That can be done
-//! using the [`AddExtension`] middleware (applied with [`AddExtensionLayer`])
-//! and the [`Extension`](crate::extract::Extension) extractor:
+//! pool of database connections or clients to other services.
+//!
+//! The two most common ways of doing that is:
+//! - Using request extensions
+//! - Using closure captures
+//!
+//! ## Using request extensions
+//!
+//! The easiest way to extract state in handlers is using [`AddExtension`]
+//! middleware (applied with [`AddExtensionLayer`]) and the
+//! [`Extension`](crate::extract::Extension) extractor:
 //!
 //! ```rust,no_run
 //! use axum::{
@@ -259,6 +267,68 @@
 //! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 //! # };
 //! ```
+//!
+//! The downside to this approach is that you'll get runtime errors
+//! (specifically a `500 Internal Server Error` response) if you try and extract
+//! an extension that doesn't exist, perhaps because you forgot add the
+//! middleware or because you're extracting the wrong type.
+//!
+//! ## Using closure captures
+//!
+//! State can also be passed directly to handlers using closure captures:
+//!
+//! ```rust,no_run
+//! use axum::{
+//!     AddExtensionLayer,
+//!     Json,
+//!     extract::{Extension, Path},
+//!     routing::{get, post},
+//!     Router,
+//! };
+//! use std::sync::Arc;
+//! use serde::Deserialize;
+//!
+//! struct State {
+//!     // ...
+//! }
+//!
+//! let shared_state = Arc::new(State { /* ... */ });
+//!
+//! let app = Router::new()
+//!     .route(
+//!         "/users",
+//!         post({
+//!             let shared_state = Arc::clone(&shared_state);
+//!             move |body| create_user(body, Arc::clone(&shared_state))
+//!         }),
+//!     )
+//!     .route(
+//!         "/users/:id",
+//!         get({
+//!             let shared_state = Arc::clone(&shared_state);
+//!             move |path| get_user(path, Arc::clone(&shared_state))
+//!         }),
+//!     );
+//!
+//! async fn get_user(Path(user_id): Path<String>, state: Arc<State>) {
+//!     // ...
+//! }
+//!
+//! async fn create_user(Json(payload): Json<CreateUserPayload>, state: Arc<State>) {
+//!     // ...
+//! }
+//!
+//! #[derive(Deserialize)]
+//! struct CreateUserPayload {
+//!     // ...
+//! }
+//! # async {
+//! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+//! # };
+//! ```
+//!
+//! The downside to this approach is that its a little more verbose than using
+//! extensions.
 //!
 //! # Building integrations for axum
 //!
