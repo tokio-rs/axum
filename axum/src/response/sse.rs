@@ -455,8 +455,9 @@ impl KeepAliveStream {
 mod tests {
     use super::*;
     use crate::{routing::get, test_helpers::*, Router};
-    use futures::{prelude::*, stream};
+    use futures::stream;
     use std::{collections::HashMap, convert::Infallible};
+    use tokio_stream::StreamExt as _;
 
     #[test]
     fn leading_space_is_not_stripped() {
@@ -510,23 +511,20 @@ mod tests {
         assert!(res.chunk_text().await.is_none());
     }
 
-    #[tokio::test]
+    #[tokio::test(start_paused = true)]
     async fn keep_alive() {
-        const KEEP_ALIVE_INTERVAL: Duration = Duration::from_millis(10);
+        const DELAY: Duration = Duration::from_secs(5);
 
         let app = Router::new().route(
             "/",
             get(|| async {
-                let stream =
-                    stream::once(async { Ok::<_, Infallible>(Event::default().data("one")) })
-                        .chain(stream::once(async {
-                            tokio::time::sleep(KEEP_ALIVE_INTERVAL * 2).await;
-                            Ok::<_, Infallible>(Event::default().data("two"))
-                        }));
+                let stream = stream::repeat_with(|| Event::default().data("msg"))
+                    .map(Ok::<_, Infallible>)
+                    .throttle(DELAY);
 
                 Sse::new(stream).keep_alive(
                     KeepAlive::new()
-                        .interval(KEEP_ALIVE_INTERVAL)
+                        .interval(Duration::from_secs(1))
                         .text("keep-alive-text"),
                 )
             }),
@@ -535,15 +533,59 @@ mod tests {
         let client = TestClient::new(app);
         let mut res = client.get("/").send().await;
 
-        let event_fields = parse_event(&res.chunk_text().await.unwrap());
-        assert_eq!(event_fields.get("data").unwrap(), "one");
+        for _ in 0..5 {
+            // first message should be an event
+            let event_fields = parse_event(&res.chunk_text().await.unwrap());
+            assert_eq!(event_fields.get("data").unwrap(), "msg");
 
-        let event_fields = parse_event(&res.chunk_text().await.unwrap());
-        assert_eq!(event_fields.get("comment").unwrap(), "keep-alive-text");
+            // then 4 seconds of keep-alive messages
+            for _ in 0..4 {
+                tokio::time::sleep(Duration::from_secs(1)).await;
+                let event_fields = parse_event(&res.chunk_text().await.unwrap());
+                assert_eq!(event_fields.get("comment").unwrap(), "keep-alive-text");
+            }
+        }
+    }
 
-        let event_fields = parse_event(&res.chunk_text().await.unwrap());
-        assert_eq!(event_fields.get("data").unwrap(), "two");
+    #[tokio::test(start_paused = true)]
+    async fn keep_alive_ends_when_the_stream_ends() {
+        const DELAY: Duration = Duration::from_secs(5);
 
+        let app = Router::new().route(
+            "/",
+            get(|| async {
+                let stream = stream::repeat_with(|| Event::default().data("msg"))
+                    .map(Ok::<_, Infallible>)
+                    .throttle(DELAY)
+                    .take(2);
+
+                Sse::new(stream).keep_alive(
+                    KeepAlive::new()
+                        .interval(Duration::from_secs(1))
+                        .text("keep-alive-text"),
+                )
+            }),
+        );
+
+        let client = TestClient::new(app);
+        let mut res = client.get("/").send().await;
+
+        // first message should be an event
+        let event_fields = parse_event(&res.chunk_text().await.unwrap());
+        assert_eq!(event_fields.get("data").unwrap(), "msg");
+
+        // then 4 seconds of keep-alive messages
+        for _ in 0..4 {
+            tokio::time::sleep(Duration::from_secs(1)).await;
+            let event_fields = parse_event(&res.chunk_text().await.unwrap());
+            assert_eq!(event_fields.get("comment").unwrap(), "keep-alive-text");
+        }
+
+        // then the last event
+        let event_fields = parse_event(&res.chunk_text().await.unwrap());
+        assert_eq!(event_fields.get("data").unwrap(), "msg");
+
+        // then no more events or keep-alive messages
         assert!(res.chunk_text().await.is_none());
     }
 
