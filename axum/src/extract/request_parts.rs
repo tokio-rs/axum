@@ -43,6 +43,43 @@ use sync_wrapper::SyncWrapper;
 /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 /// # };
 /// ```
+///
+/// # Extracting via request extensions
+///
+/// `OriginalUri` can also be accessed from middleware via request extensions.
+/// This is useful for example with [`Trace`](tower_http::trace::Trace) to
+/// create a span that contains the original URI, if your service might be nested:
+///
+/// ```
+/// use axum::{
+///     Router,
+///     extract::OriginalUri,
+///     http::Request,
+///     routing::get,
+/// };
+/// use tower_http::trace::TraceLayer;
+///
+/// let api_routes = Router::new()
+///     .route("/users/:id", get(|| async { /* ... */ }))
+///     .layer(
+///         TraceLayer::new_for_http().make_span_with(|req: &Request<_>| {
+///             let path = if let Some(path) = req.extensions().get::<OriginalUri>() {
+///                 // This will include `/api`
+///                 path.as_str()
+///             } else {
+///                 // The `OriginalUri` extension will always be present if using
+///                 // `Router` unless another extractor or middleware has removed it
+///                 req.uri().path()
+///             };
+///             tracing::info_span!("http-request", %path)
+///         }),
+///     );
+///
+/// let app = Router::new().nest("/api", api_routes);
+/// # async {
+/// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+/// # };
+/// ```
 #[derive(Debug, Clone)]
 pub struct OriginalUri(pub Uri);
 
