@@ -29,10 +29,11 @@ bytes = "1.0"
 futures-util = { version = "0.3", default-features = false, features = ["alloc"] }
 http = "0.2.5"
 http-body = "0.4.4"
-mime = "0.3.16"
 hyper = { version = "0.14.14", features = ["server", "tcp", "stream"] }
+itoa = "1.0.1"
 matchit = "0.4.4"
 memchr = "2.4.1"
+mime = "0.3.16"
 percent-encoding = "2.1"
 pin-project-lite = "0.2.7"
 serde = "1.0"
