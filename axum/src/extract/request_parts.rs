@@ -48,7 +48,7 @@ use sync_wrapper::SyncWrapper;
 ///
 /// `OriginalUri` can also be accessed from middleware via request extensions.
 /// This is useful for example with [`Trace`](tower_http::trace::Trace) to
-/// create a span that contains the original URI, if your service might be nested:
+/// create a span that contains the full path, if your service might be nested:
 ///
 /// ```
 /// use axum::{
