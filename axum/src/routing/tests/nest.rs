@@ -78,7 +78,43 @@ async fn wrong_method_nest() {
 }
 
 #[tokio::test]
-async fn nesting_at_root() {
+async fn nesting_router_at_root() {
+    let nested = Router::new().route("/foo", get(|uri: Uri| async move { uri.to_string() }));
+    let app = Router::new().nest("/", nested);
+
+    let client = TestClient::new(app);
+
+    let res = client.get("/").send().await;
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+
+    let res = client.get("/foo").send().await;
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.text().await, "/foo");
+
+    let res = client.get("/foo/bar").send().await;
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+}
+
+#[tokio::test]
+async fn nesting_router_at_empty_path() {
+    let nested = Router::new().route("/foo", get(|uri: Uri| async move { uri.to_string() }));
+    let app = Router::new().nest("", nested);
+
+    let client = TestClient::new(app);
+
+    let res = client.get("/").send().await;
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+
+    let res = client.get("/foo").send().await;
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.text().await, "/foo");
+
+    let res = client.get("/foo/bar").send().await;
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+}
+
+#[tokio::test]
+async fn nesting_handler_at_root() {
     let app = Router::new().nest("/", get(|uri: Uri| async move { uri.to_string() }));
 
     let client = TestClient::new(app);

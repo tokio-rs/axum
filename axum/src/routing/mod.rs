@@ -161,13 +161,14 @@ where
     }
 
     #[doc = include_str!("../docs/routing/nest.md")]
-    pub fn nest<T>(mut self, path: &str, svc: T) -> Self
+    pub fn nest<T>(mut self, mut path: &str, svc: T) -> Self
     where
         T: Service<Request<B>, Response = Response, Error = Infallible> + Clone + Send + 'static,
         T::Future: Send + 'static,
     {
         if path.is_empty() {
-            panic!("Invalid route: empty path");
+            // nesting at `""` and `"/"` should mean the same thing
+            path = "/";
         }
 
         if path.contains('*') {
@@ -201,10 +202,12 @@ where
 
                 for (id, nested_path) in node.route_id_to_path {
                     let route = routes.remove(&id).unwrap();
-                    let full_path = if &*nested_path == "/" {
-                        path.to_owned()
+                    let full_path: Cow<str> = if &*nested_path == "/" {
+                        path.into()
+                    } else if path == "/" {
+                        (&*nested_path).into()
                     } else {
-                        format!("{}{}", path, nested_path)
+                        format!("{}{}", path, nested_path).into()
                     };
                     self = match route {
                         Endpoint::MethodRouter(method_router) => self.route(
