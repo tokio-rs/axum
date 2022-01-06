@@ -65,11 +65,11 @@ use sync_wrapper::SyncWrapper;
 ///         TraceLayer::new_for_http().make_span_with(|req: &Request<_>| {
 ///             let path = if let Some(path) = req.extensions().get::<OriginalUri>() {
 ///                 // This will include `/api`
-///                 path.as_str()
+///                 path.0.path().to_owned()
 ///             } else {
 ///                 // The `OriginalUri` extension will always be present if using
 ///                 // `Router` unless another extractor or middleware has removed it
-///                 req.uri().path()
+///                 req.uri().path().to_owned()
 ///             };
 ///             tracing::info_span!("http-request", %path)
 ///         }),
