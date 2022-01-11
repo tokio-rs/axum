@@ -514,6 +514,9 @@ mod tests {
 
         let res = client.get("/foo").send().await;
         assert_eq!(res.status(), StatusCode::INTERNAL_SERVER_ERROR);
-        assert_eq!(res.text().await, "Extensions taken by other extractor");
+        assert_eq!(
+            res.text().await,
+            "No paths parameters found for matched route. Are you also extracting `Request<_>`?"
+        );
     }
 }
