@@ -115,14 +115,9 @@ impl<B> RequestParts<B> {
 
     /// Convert this `RequestParts` back into a [`Request`].
     ///
-    /// Fails if
+    /// Fails if The request body has been extracted, that is [`take_body`] have
+    /// been called.
     ///
-    /// - The full [`Extensions`] has been extracted, that is
-    /// [`take_extensions`] have been called.
-    /// - The request body has been extracted, that is [`take_body`] have been
-    /// called.
-    ///
-    /// [`take_extensions`]: RequestParts::take_extensions
     /// [`take_body`]: RequestParts::take_body
     pub fn try_into_request(self) -> Result<Request<B>, BodyAlreadyExtracted> {
         let Self {
