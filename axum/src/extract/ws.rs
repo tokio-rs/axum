@@ -249,27 +249,24 @@ where
             return Err(MethodNotGet.into());
         }
 
-        if !header_contains(req, header::CONNECTION, "upgrade")? {
+        if !header_contains(req, header::CONNECTION, "upgrade") {
             return Err(InvalidConnectionHeader.into());
         }
 
-        if !header_eq(req, header::UPGRADE, "websocket")? {
+        if !header_eq(req, header::UPGRADE, "websocket") {
             return Err(InvalidUpgradeHeader.into());
         }
 
-        if !header_eq(req, header::SEC_WEBSOCKET_VERSION, "13")? {
+        if !header_eq(req, header::SEC_WEBSOCKET_VERSION, "13") {
             return Err(InvalidWebSocketVersionHeader.into());
         }
 
-        let sec_websocket_key = if let Some(key) = req
-            .headers_mut()
-            .ok_or_else(HeadersAlreadyExtracted::default)?
-            .remove(header::SEC_WEBSOCKET_KEY)
-        {
-            key
-        } else {
-            return Err(WebSocketKeyHeaderMissing.into());
-        };
+        let sec_websocket_key =
+            if let Some(key) = req.headers_mut().remove(header::SEC_WEBSOCKET_KEY) {
+                key
+            } else {
+                return Err(WebSocketKeyHeaderMissing.into());
+            };
 
         let on_upgrade = req
             .extensions_mut()
@@ -277,11 +274,7 @@ where
             .remove::<OnUpgrade>()
             .unwrap();
 
-        let sec_websocket_protocol = req
-            .headers()
-            .ok_or_else(HeadersAlreadyExtracted::default)?
-            .get(header::SEC_WEBSOCKET_PROTOCOL)
-            .cloned();
+        let sec_websocket_protocol = req.headers().get(header::SEC_WEBSOCKET_PROTOCOL).cloned();
 
         Ok(Self {
             config: Default::default(),
@@ -293,41 +286,25 @@ where
     }
 }
 
-fn header_eq<B>(
-    req: &RequestParts<B>,
-    key: HeaderName,
-    value: &'static str,
-) -> Result<bool, HeadersAlreadyExtracted> {
-    if let Some(header) = req
-        .headers()
-        .ok_or_else(HeadersAlreadyExtracted::default)?
-        .get(&key)
-    {
-        Ok(header.as_bytes().eq_ignore_ascii_case(value.as_bytes()))
+fn header_eq<B>(req: &RequestParts<B>, key: HeaderName, value: &'static str) -> bool {
+    if let Some(header) = req.headers().get(&key) {
+        header.as_bytes().eq_ignore_ascii_case(value.as_bytes())
     } else {
-        Ok(false)
+        false
     }
 }
 
-fn header_contains<B>(
-    req: &RequestParts<B>,
-    key: HeaderName,
-    value: &'static str,
-) -> Result<bool, HeadersAlreadyExtracted> {
-    let header = if let Some(header) = req
-        .headers()
-        .ok_or_else(HeadersAlreadyExtracted::default)?
-        .get(&key)
-    {
+fn header_contains<B>(req: &RequestParts<B>, key: HeaderName, value: &'static str) -> bool {
+    let header = if let Some(header) = req.headers().get(&key) {
         header
     } else {
-        return Ok(false);
+        return false;
     };
 
     if let Ok(header) = std::str::from_utf8(header.as_bytes()) {
-        Ok(header.to_ascii_lowercase().contains(value))
+        header.to_ascii_lowercase().contains(value)
     } else {
-        Ok(false)
+        false
     }
 }
 
@@ -585,7 +562,6 @@ pub mod rejection {
             InvalidUpgradeHeader,
             InvalidWebSocketVersionHeader,
             WebSocketKeyHeaderMissing,
-            HeadersAlreadyExtracted,
             ExtensionsAlreadyExtracted,
         }
     }

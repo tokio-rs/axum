@@ -19,7 +19,7 @@ where
                 method: req.method.clone(),
                 version: req.version,
                 uri: req.uri.clone(),
-                headers: None,
+                headers: HeaderMap::new(),
                 extensions: None,
                 body: None,
             },
@@ -65,15 +65,20 @@ where
     }
 }
 
+/// Clone the headers from the request.
+///
+/// Prefer using [`TypedHeader`] to extract only the headers you need.
+///
+/// [`TypedHeader`]: https://docs.rs/axum/latest/axum/extract/struct.TypedHeader.html
 #[async_trait]
 impl<B> FromRequest<B> for HeaderMap
 where
     B: Send,
 {
-    type Rejection = HeadersAlreadyExtracted;
+    type Rejection = Infallible;
 
     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-        req.take_headers().ok_or(HeadersAlreadyExtracted)
+        Ok(req.headers().clone())
     }
 }
 
@@ -143,7 +148,10 @@ where
         let method = unwrap_infallible(Method::from_request(req).await);
         let uri = unwrap_infallible(Uri::from_request(req).await);
         let version = unwrap_infallible(Version::from_request(req).await);
-        let headers = HeaderMap::from_request(req).await?;
+        let headers = match HeaderMap::from_request(req).await {
+            Ok(headers) => headers,
+            Err(err) => match err {},
+        };
         let extensions = Extensions::from_request(req).await?;
 
         let mut temp_request = Request::new(());

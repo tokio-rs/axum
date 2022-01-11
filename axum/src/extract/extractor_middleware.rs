@@ -59,7 +59,7 @@ use tower_service::Service;
 ///     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
 ///         let auth_header = req
 ///             .headers()
-///             .and_then(|headers| headers.get(http::header::AUTHORIZATION))
+///             .get(http::header::AUTHORIZATION)
 ///             .and_then(|value| value.to_str().ok());
 ///
 ///         match auth_header {
@@ -291,7 +291,6 @@ mod tests {
             async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
                 if let Some(auth) = req
                     .headers()
-                    .expect("headers already extracted")
                     .get("authorization")
                     .and_then(|v| v.to_str().ok())
                 {

@@ -7,7 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- None.
+- **breaking:** Using `HeaderMap` as an extractor will no longer remove the headers and thus
+  they'll still be accessible to other extractors, such as `axum::extract::Json`. Instead
+  `HeaderMap` will clone the headers. You should prefer to use `TypedHeader` to extract only the
+  headers you need ([#698])
+
+  This includes these breaking changes:
+    - `RequestParts::take_headers` has been removed.
+    - `RequestParts::headers` returns `&HeaderMap`.
+    - `RequestParts::headers_mut` returns `&mut HeaderMap`.
+    - `HeadersAlreadyExtracted` has been removed.
+    - The `HeadersAlreadyExtracted` variant has been removed from these rejections:
+        - `RequestAlreadyExtracted`
+        - `RequestPartsAlreadyExtracted`
+    - `<HeaderMap as FromRequest<_>>::Error` has been changed to `std::convert::Infallible`.
+
+[#698]: https://github.com/tokio-rs/axum/pull/698
 
 # 0.1.1 (06. December, 2021)
 
