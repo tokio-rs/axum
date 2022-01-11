@@ -26,17 +26,6 @@ define_rejection! {
 }
 
 composite_rejection! {
-    /// Rejection used for [`Request<_>`].
-    ///
-    /// Contains one variant for each way the [`Request<_>`] extractor can fail.
-    ///
-    /// [`Request<_>`]: http::Request
-    pub enum RequestAlreadyExtracted {
-        BodyAlreadyExtracted,
-    }
-}
-
-composite_rejection! {
     /// Rejection used for [`Bytes`](bytes::Bytes).
     ///
     /// Contains one variant for each way the [`Bytes`](bytes::Bytes) extractor

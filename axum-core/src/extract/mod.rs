@@ -124,7 +124,7 @@ impl<B> RequestParts<B> {
     ///
     /// [`take_extensions`]: RequestParts::take_extensions
     /// [`take_body`]: RequestParts::take_body
-    pub fn try_into_request(self) -> Result<Request<B>, RequestAlreadyExtracted> {
+    pub fn try_into_request(self) -> Result<Request<B>, BodyAlreadyExtracted> {
         let Self {
             method,
             uri,
@@ -137,9 +137,7 @@ impl<B> RequestParts<B> {
         let mut req = if let Some(body) = body.take() {
             Request::new(body)
         } else {
-            return Err(RequestAlreadyExtracted::BodyAlreadyExtracted(
-                BodyAlreadyExtracted,
-            ));
+            return Err(BodyAlreadyExtracted);
         };
 
         *req.method_mut() = method;

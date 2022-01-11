@@ -10,7 +10,7 @@ impl<B> FromRequest<B> for Request<B>
 where
     B: Send,
 {
-    type Rejection = RequestAlreadyExtracted;
+    type Rejection = BodyAlreadyExtracted;
 
     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
         let req = std::mem::replace(
