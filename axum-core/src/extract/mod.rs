@@ -117,14 +117,11 @@ impl<B> RequestParts<B> {
     ///
     /// Fails if
     ///
-    /// - The full [`HeaderMap`] has been extracted, that is [`take_headers`]
-    /// have been called.
     /// - The full [`Extensions`] has been extracted, that is
     /// [`take_extensions`] have been called.
     /// - The request body has been extracted, that is [`take_body`] have been
     /// called.
     ///
-    /// [`take_headers`]: RequestParts::take_headers
     /// [`take_extensions`]: RequestParts::take_extensions
     /// [`take_body`]: RequestParts::take_body
     pub fn try_into_request(self) -> Result<Request<B>, RequestAlreadyExtracted> {
