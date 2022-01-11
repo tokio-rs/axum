@@ -1,13 +1,35 @@
 //! Rejection response types.
 
-define_rejection! {
-    #[status = INTERNAL_SERVER_ERROR]
-    #[body = "Cannot have two request body extractors for a single handler"]
-    /// Rejection type used if you try and extract the request body more than
-    /// once.
-    #[derive(Default)]
-    pub struct BodyAlreadyExtracted;
+use crate::body;
+use http::{Response, StatusCode};
+use http_body::Full;
+use std::fmt;
+
+/// Rejection type used if you try and extract the request body more than
+/// once.
+#[derive(Debug, Default)]
+#[non_exhaustive]
+pub struct BodyAlreadyExtracted;
+
+impl BodyAlreadyExtracted {
+    const BODY: &'static str = "Cannot have two request body extractors for a single handler";
 }
+
+impl crate::response::IntoResponse for BodyAlreadyExtracted {
+    fn into_response(self) -> crate::response::Response {
+        let mut res = Response::new(body::boxed(Full::from(Self::BODY)));
+        *res.status_mut() = StatusCode::INTERNAL_SERVER_ERROR;
+        res
+    }
+}
+
+impl fmt::Display for BodyAlreadyExtracted {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", Self::BODY)
+    }
+}
+
+impl std::error::Error for BodyAlreadyExtracted {}
 
 define_rejection! {
     #[status = BAD_REQUEST]
