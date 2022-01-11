@@ -13,9 +13,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   overwriting old values.
 - **breaking:** Require `Output = ()` on `WebSocketStream::on_upgrade` ([#644])
 - **breaking:** Make `TypedHeaderRejectionReason` `#[non_exhaustive]` ([#665])
+- **breaking:** Using `HeaderMap` as an extractor will no longer remove the headers and thus
+  they'll still be accessible to other extractors, such as `axum::extract::Json`. Instead
+  `HeaderMap` will clone the request. You should prefer to use `TypedHeader` to extract only the
+  header you need ([#698])
+
+  This includes these breaking changes:
+    - `RequestParts::take_headers` has been removed.
+    - `RequestParts::headers` returns `&HeaderMap`.
+    - `RequestParts::headers_mut` returns `&mut HeaderMap`.
+    - `HeadersAlreadyExtracted` has been removed.
+    - The `HeadersAlreadyExtracted` removed variant has been removed from these rejections:
+        - `RequestAlreadyExtracted`
+        - `RequestPartsAlreadyExtracted`
+        - `JsonRejection`
+        - `FormRejection`
+        - `ContentLengthLimitRejection`
+        - `WebSocketUpgradeRejection`
+    - `<HeaderMap as FromRequest<_>>::Error` has been changed to `std::convert::Infallible`.
 
 [#644]: https://github.com/tokio-rs/axum/pull/644
 [#665]: https://github.com/tokio-rs/axum/pull/665
+[#698]: https://github.com/tokio-rs/axum/pull/698
 
 # 0.4.3 (21. December, 2021)
 
