@@ -65,6 +65,11 @@ where
     }
 }
 
+/// Clone the headers from the request.
+///
+/// Prefer using [`TypedHeader`] to extract only the headers you need.
+///
+/// [`TypedHeader`]: https://docs.rs/axum/latest/axum/extract/struct.TypedHeader.html
 #[async_trait]
 impl<B> FromRequest<B> for HeaderMap
 where
