@@ -3,7 +3,6 @@
 
 mod de;
 
-use super::rejection::ExtensionsAlreadyExtracted;
 use crate::{
     body::{boxed, Full},
     extract::{rejection::*, FromRequest, RequestParts},
@@ -164,11 +163,7 @@ where
     type Rejection = PathRejection;
 
     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-        let ext = req
-            .extensions_mut()
-            .ok_or_else::<Self::Rejection, _>(|| ExtensionsAlreadyExtracted::default().into())?;
-
-        let params = match ext.get::<Option<UrlParams>>() {
+        let params = match req.extensions_mut().get::<Option<UrlParams>>() {
             Some(Some(UrlParams(Ok(params)))) => Cow::Borrowed(params),
             Some(Some(UrlParams(Err(InvalidUtf8InPathParam { key })))) => {
                 let err = PathDeserializationError {

@@ -148,7 +148,6 @@ composite_rejection! {
     /// can fail.
     pub enum ExtensionRejection {
         MissingExtension,
-        ExtensionsAlreadyExtracted,
     }
 }
 
@@ -160,7 +159,6 @@ composite_rejection! {
     pub enum PathRejection {
         FailedToDeserializePathParams,
         MissingPathParams,
-        ExtensionsAlreadyExtracted,
     }
 }
 
@@ -176,7 +174,6 @@ define_rejection! {
 composite_rejection! {
     /// Rejection used for [`MatchedPath`](super::MatchedPath).
     pub enum MatchedPathRejection {
-        ExtensionsAlreadyExtracted,
         MatchedPathMissing,
     }
 }

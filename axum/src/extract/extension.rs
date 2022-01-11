@@ -53,7 +53,6 @@ where
     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
         let value = req
             .extensions()
-            .ok_or_else(ExtensionsAlreadyExtracted::default)?
             .get::<T>()
             .ok_or_else(|| {
                 MissingExtension::from_err(format!(

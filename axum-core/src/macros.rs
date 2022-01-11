@@ -26,12 +26,6 @@ macro_rules! define_rejection {
         }
 
         impl std::error::Error for $name {}
-
-        impl Default for $name {
-            fn default() -> Self {
-                Self
-            }
-        }
     };
 
     (

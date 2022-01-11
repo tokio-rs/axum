@@ -5,15 +5,8 @@ define_rejection! {
     #[body = "Cannot have two request body extractors for a single handler"]
     /// Rejection type used if you try and extract the request body more than
     /// once.
+    #[derive(Default)]
     pub struct BodyAlreadyExtracted;
-}
-
-define_rejection! {
-    #[status = INTERNAL_SERVER_ERROR]
-    #[body = "Extensions taken by other extractor"]
-    /// Rejection used if the request extension has been taken by another
-    /// extractor.
-    pub struct ExtensionsAlreadyExtracted;
 }
 
 define_rejection! {
@@ -40,7 +33,6 @@ composite_rejection! {
     /// [`Request<_>`]: http::Request
     pub enum RequestAlreadyExtracted {
         BodyAlreadyExtracted,
-        ExtensionsAlreadyExtracted,
     }
 }
 
@@ -63,14 +55,5 @@ composite_rejection! {
         BodyAlreadyExtracted,
         FailedToBufferBody,
         InvalidUtf8,
-    }
-}
-
-composite_rejection! {
-    /// Rejection used for [`http::request::Parts`].
-    ///
-    /// Contains one variant for each way the [`http::request::Parts`] extractor can fail.
-    pub enum RequestPartsAlreadyExtracted {
-        ExtensionsAlreadyExtracted,
     }
 }

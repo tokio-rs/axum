@@ -78,7 +78,7 @@ pub struct RequestParts<B> {
     uri: Uri,
     version: Version,
     headers: HeaderMap,
-    extensions: Option<Extensions>,
+    extensions: Extensions,
     body: Option<B>,
 }
 
@@ -108,7 +108,7 @@ impl<B> RequestParts<B> {
             uri,
             version,
             headers,
-            extensions: Some(extensions),
+            extensions,
             body: Some(body),
         }
     }
@@ -130,7 +130,7 @@ impl<B> RequestParts<B> {
             uri,
             version,
             headers,
-            mut extensions,
+            extensions,
             mut body,
         } = self;
 
@@ -146,14 +146,7 @@ impl<B> RequestParts<B> {
         *req.uri_mut() = uri;
         *req.version_mut() = version;
         *req.headers_mut() = headers;
-
-        if let Some(extensions) = extensions.take() {
-            *req.extensions_mut() = extensions;
-        } else {
-            return Err(RequestAlreadyExtracted::ExtensionsAlreadyExtracted(
-                ExtensionsAlreadyExtracted,
-            ));
-        }
+        *req.extensions_mut() = extensions;
 
         Ok(req)
     }
@@ -201,20 +194,15 @@ impl<B> RequestParts<B> {
     /// Gets a reference to the request extensions.
     ///
     /// Returns `None` if the extensions has been taken by another extractor.
-    pub fn extensions(&self) -> Option<&Extensions> {
-        self.extensions.as_ref()
+    pub fn extensions(&self) -> &Extensions {
+        &self.extensions
     }
 
     /// Gets a mutable reference to the request extensions.
     ///
     /// Returns `None` if the extensions has been taken by another extractor.
-    pub fn extensions_mut(&mut self) -> Option<&mut Extensions> {
-        self.extensions.as_mut()
-    }
-
-    /// Takes the extensions out of the request, leaving a `None` in its place.
-    pub fn take_extensions(&mut self) -> Option<Extensions> {
-        self.extensions.take()
+    pub fn extensions_mut(&mut self) -> &mut Extensions {
+        &mut self.extensions
     }
 
     /// Gets a reference to the request body.

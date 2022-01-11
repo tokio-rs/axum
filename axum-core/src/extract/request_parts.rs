@@ -20,7 +20,7 @@ where
                 version: req.version,
                 uri: req.uri.clone(),
                 headers: HeaderMap::new(),
-                extensions: None,
+                extensions: Extensions::default(),
                 body: None,
             },
         );
@@ -83,18 +83,6 @@ where
 }
 
 #[async_trait]
-impl<B> FromRequest<B> for Extensions
-where
-    B: Send,
-{
-    type Rejection = ExtensionsAlreadyExtracted;
-
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-        req.take_extensions().ok_or(ExtensionsAlreadyExtracted)
-    }
-}
-
-#[async_trait]
 impl<B> FromRequest<B> for Bytes
 where
     B: http_body::Body + Send,
@@ -142,17 +130,14 @@ impl<B> FromRequest<B> for http::request::Parts
 where
     B: Send,
 {
-    type Rejection = RequestPartsAlreadyExtracted;
+    type Rejection = Infallible;
 
     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
         let method = unwrap_infallible(Method::from_request(req).await);
         let uri = unwrap_infallible(Uri::from_request(req).await);
         let version = unwrap_infallible(Version::from_request(req).await);
-        let headers = match HeaderMap::from_request(req).await {
-            Ok(headers) => headers,
-            Err(err) => match err {},
-        };
-        let extensions = Extensions::from_request(req).await?;
+        let headers = unwrap_infallible(HeaderMap::from_request(req).await);
+        let extensions = std::mem::take(req.extensions_mut());
 
         let mut temp_request = Request::new(());
         *temp_request.method_mut() = method;

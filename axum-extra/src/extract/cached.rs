@@ -1,15 +1,8 @@
 use axum::{
     async_trait,
-    extract::{
-        rejection::{ExtensionRejection, ExtensionsAlreadyExtracted},
-        Extension, FromRequest, RequestParts,
-    },
-    response::{IntoResponse, Response},
+    extract::{Extension, FromRequest, RequestParts},
 };
-use std::{
-    fmt,
-    ops::{Deref, DerefMut},
-};
+use std::ops::{Deref, DerefMut};
 
 /// Cache results of other extractors.
 ///
@@ -100,25 +93,14 @@ where
     B: Send,
     T: FromRequest<B> + Clone + Send + Sync + 'static,
 {
-    type Rejection = CachedRejection<T::Rejection>;
+    type Rejection = T::Rejection;
 
     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
         match Extension::<CachedEntry<T>>::from_request(req).await {
             Ok(Extension(CachedEntry(value))) => Ok(Self(value)),
-            Err(ExtensionRejection::ExtensionsAlreadyExtracted(err)) => {
-                Err(CachedRejection::ExtensionsAlreadyExtracted(err))
-            }
             Err(_) => {
-                let value = T::from_request(req).await.map_err(CachedRejection::Inner)?;
-
-                req.extensions_mut()
-                    .ok_or_else(|| {
-                        CachedRejection::ExtensionsAlreadyExtracted(
-                            ExtensionsAlreadyExtracted::default(),
-                        )
-                    })?
-                    .insert(CachedEntry(value.clone()));
-
+                let value = T::from_request(req).await?;
+                req.extensions_mut().insert(CachedEntry(value.clone()));
                 Ok(Self(value))
             }
         }
@@ -136,54 +118,6 @@ impl<T> Deref for Cached<T> {
 impl<T> DerefMut for Cached<T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
-    }
-}
-
-/// Rejection used for [`Cached`].
-///
-/// Contains one variant for each way the [`Cached`] extractor can fail.
-#[derive(Debug)]
-#[non_exhaustive]
-pub enum CachedRejection<R> {
-    #[allow(missing_docs)]
-    ExtensionsAlreadyExtracted(ExtensionsAlreadyExtracted),
-    #[allow(missing_docs)]
-    Inner(R),
-}
-
-impl<R> IntoResponse for CachedRejection<R>
-where
-    R: IntoResponse,
-{
-    fn into_response(self) -> Response {
-        match self {
-            Self::ExtensionsAlreadyExtracted(inner) => inner.into_response(),
-            Self::Inner(inner) => inner.into_response(),
-        }
-    }
-}
-
-impl<R> fmt::Display for CachedRejection<R>
-where
-    R: fmt::Display,
-{
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::ExtensionsAlreadyExtracted(inner) => write!(f, "{}", inner),
-            Self::Inner(inner) => write!(f, "{}", inner),
-        }
-    }
-}
-
-impl<R> std::error::Error for CachedRejection<R>
-where
-    R: std::error::Error + 'static,
-{
-    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        match self {
-            Self::ExtensionsAlreadyExtracted(inner) => Some(inner),
-            Self::Inner(inner) => Some(inner),
-        }
     }
 }
 
