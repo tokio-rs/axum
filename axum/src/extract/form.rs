@@ -60,7 +60,7 @@ where
                 .map_err(FailedToDeserializeQueryString::new::<T, _>)?;
             Ok(Form(value))
         } else {
-            if !has_content_type(req, &mime::APPLICATION_WWW_FORM_URLENCODED)? {
+            if !has_content_type(req, &mime::APPLICATION_WWW_FORM_URLENCODED) {
                 return Err(InvalidFormContentType.into());
             }
 

@@ -44,16 +44,7 @@ where
     type Rejection = TypedHeaderRejection;
 
     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-        let headers = if let Some(headers) = req.headers() {
-            headers
-        } else {
-            return Err(TypedHeaderRejection {
-                name: T::name(),
-                reason: TypedHeaderRejectionReason::Missing,
-            });
-        };
-
-        match headers.typed_try_get::<T>() {
+        match req.headers().typed_try_get::<T>() {
             Ok(Some(value)) => Ok(Self(value)),
             Ok(None) => Err(TypedHeaderRejection {
                 name: T::name(),
