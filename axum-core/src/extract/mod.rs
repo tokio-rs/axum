@@ -77,7 +77,7 @@ pub struct RequestParts<B> {
     method: Method,
     uri: Uri,
     version: Version,
-    headers: Option<HeaderMap>,
+    headers: HeaderMap,
     extensions: Option<Extensions>,
     body: Option<B>,
 }
@@ -107,7 +107,7 @@ impl<B> RequestParts<B> {
             method,
             uri,
             version,
-            headers: Some(headers),
+            headers,
             extensions: Some(extensions),
             body: Some(body),
         }
@@ -132,7 +132,7 @@ impl<B> RequestParts<B> {
             method,
             uri,
             version,
-            mut headers,
+            headers,
             mut extensions,
             mut body,
         } = self;
@@ -148,14 +148,7 @@ impl<B> RequestParts<B> {
         *req.method_mut() = method;
         *req.uri_mut() = uri;
         *req.version_mut() = version;
-
-        if let Some(headers) = headers.take() {
-            *req.headers_mut() = headers;
-        } else {
-            return Err(RequestAlreadyExtracted::HeadersAlreadyExtracted(
-                HeadersAlreadyExtracted,
-            ));
-        }
+        *req.headers_mut() = headers;
 
         if let Some(extensions) = extensions.take() {
             *req.extensions_mut() = extensions;
@@ -199,22 +192,13 @@ impl<B> RequestParts<B> {
     }
 
     /// Gets a reference to the request headers.
-    ///
-    /// Returns `None` if the headers has been taken by another extractor.
-    pub fn headers(&self) -> Option<&HeaderMap> {
-        self.headers.as_ref()
+    pub fn headers(&self) -> &HeaderMap {
+        &self.headers
     }
 
     /// Gets a mutable reference to the request headers.
-    ///
-    /// Returns `None` if the headers has been taken by another extractor.
-    pub fn headers_mut(&mut self) -> Option<&mut HeaderMap> {
-        self.headers.as_mut()
-    }
-
-    /// Takes the headers out of the request, leaving a `None` in its place.
-    pub fn take_headers(&mut self) -> Option<HeaderMap> {
-        self.headers.take()
+    pub fn headers_mut(&mut self) -> &mut HeaderMap {
+        &mut self.headers
     }
 
     /// Gets a reference to the request extensions.

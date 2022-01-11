@@ -124,7 +124,6 @@ composite_rejection! {
         InvalidFormContentType,
         FailedToDeserializeQueryString,
         BytesRejection,
-        HeadersAlreadyExtracted,
     }
 }
 
@@ -139,7 +138,6 @@ composite_rejection! {
         InvalidJsonBody,
         MissingJsonContentType,
         BytesRejection,
-        HeadersAlreadyExtracted,
     }
 }
 
@@ -195,8 +193,6 @@ pub enum ContentLengthLimitRejection<T> {
     #[allow(missing_docs)]
     LengthRequired(LengthRequired),
     #[allow(missing_docs)]
-    HeadersAlreadyExtracted(HeadersAlreadyExtracted),
-    #[allow(missing_docs)]
     Inner(T),
 }
 
@@ -208,7 +204,6 @@ where
         match self {
             Self::PayloadTooLarge(inner) => inner.into_response(),
             Self::LengthRequired(inner) => inner.into_response(),
-            Self::HeadersAlreadyExtracted(inner) => inner.into_response(),
             Self::Inner(inner) => inner.into_response(),
         }
     }
@@ -222,7 +217,6 @@ where
         match self {
             Self::PayloadTooLarge(inner) => inner.fmt(f),
             Self::LengthRequired(inner) => inner.fmt(f),
-            Self::HeadersAlreadyExtracted(inner) => inner.fmt(f),
             Self::Inner(inner) => inner.fmt(f),
         }
     }
@@ -236,7 +230,6 @@ where
         match self {
             Self::PayloadTooLarge(inner) => Some(inner),
             Self::LengthRequired(inner) => Some(inner),
-            Self::HeadersAlreadyExtracted(inner) => Some(inner),
             Self::Inner(inner) => Some(inner),
         }
     }

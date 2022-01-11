@@ -10,13 +10,6 @@ define_rejection! {
 
 define_rejection! {
     #[status = INTERNAL_SERVER_ERROR]
-    #[body = "Headers taken by other extractor"]
-    /// Rejection used if the headers has been taken by another extractor.
-    pub struct HeadersAlreadyExtracted;
-}
-
-define_rejection! {
-    #[status = INTERNAL_SERVER_ERROR]
     #[body = "Extensions taken by other extractor"]
     /// Rejection used if the request extension has been taken by another
     /// extractor.
@@ -47,7 +40,6 @@ composite_rejection! {
     /// [`Request<_>`]: http::Request
     pub enum RequestAlreadyExtracted {
         BodyAlreadyExtracted,
-        HeadersAlreadyExtracted,
         ExtensionsAlreadyExtracted,
     }
 }
@@ -79,7 +71,6 @@ composite_rejection! {
     ///
     /// Contains one variant for each way the [`http::request::Parts`] extractor can fail.
     pub enum RequestPartsAlreadyExtracted {
-        HeadersAlreadyExtracted,
         ExtensionsAlreadyExtracted,
     }
 }

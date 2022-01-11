@@ -96,7 +96,7 @@ where
     type Rejection = JsonRejection;
 
     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-        if json_content_type(req)? {
+        if json_content_type(req) {
             let bytes = Bytes::from_request(req).await?;
 
             let value = serde_json::from_slice(&bytes).map_err(InvalidJsonBody::from_err)?;
@@ -108,33 +108,29 @@ where
     }
 }
 
-fn json_content_type<B>(req: &RequestParts<B>) -> Result<bool, HeadersAlreadyExtracted> {
-    let content_type = if let Some(content_type) = req
-        .headers()
-        .ok_or_else(HeadersAlreadyExtracted::default)?
-        .get(header::CONTENT_TYPE)
-    {
+fn json_content_type<B>(req: &RequestParts<B>) -> bool {
+    let content_type = if let Some(content_type) = req.headers().get(header::CONTENT_TYPE) {
         content_type
     } else {
-        return Ok(false);
+        return false;
     };
 
     let content_type = if let Ok(content_type) = content_type.to_str() {
         content_type
     } else {
-        return Ok(false);
+        return false;
     };
 
     let mime = if let Ok(mime) = content_type.parse::<mime::Mime>() {
         mime
     } else {
-        return Ok(false);
+        return false;
     };
 
     let is_json_content_type = mime.type_() == "application"
         && (mime.subtype() == "json" || mime.suffix().map_or(false, |name| name == "json"));
 
-    Ok(is_json_content_type)
+    is_json_content_type
 }
 
 impl<T> Deref for Json<T> {

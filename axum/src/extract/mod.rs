@@ -78,24 +78,20 @@ pub use self::typed_header::TypedHeader;
 pub(crate) fn has_content_type<B>(
     req: &RequestParts<B>,
     expected_content_type: &mime::Mime,
-) -> Result<bool, HeadersAlreadyExtracted> {
-    let content_type = if let Some(content_type) = req
-        .headers()
-        .ok_or_else(HeadersAlreadyExtracted::default)?
-        .get(header::CONTENT_TYPE)
-    {
+) -> bool {
+    let content_type = if let Some(content_type) = req.headers().get(header::CONTENT_TYPE) {
         content_type
     } else {
-        return Ok(false);
+        return false;
     };
 
     let content_type = if let Ok(content_type) = content_type.to_str() {
         content_type
     } else {
-        return Ok(false);
+        return false;
     };
 
-    Ok(content_type.starts_with(expected_content_type.as_ref()))
+    content_type.starts_with(expected_content_type.as_ref())
 }
 
 pub(crate) fn take_body<B>(req: &mut RequestParts<B>) -> Result<B, BodyAlreadyExtracted> {

@@ -320,10 +320,6 @@ async fn handler(result: Result<Json<Value>, JsonRejection>) -> impl IntoRespons
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "Failed to buffer request body".to_string(),
             )),
-            JsonRejection::HeadersAlreadyExtracted(_) => Err((
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "Headers already extracted".to_string(),
-            )),
             // we must provide a catch-all case since `JsonRejection` is marked
             // `#[non_exhaustive]`
             _ => Err((
@@ -377,7 +373,7 @@ where
     type Rejection = (StatusCode, &'static str);
 
     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-        let user_agent = req.headers().and_then(|headers| headers.get(USER_AGENT));
+        let user_agent = req.headers().get(USER_AGENT);
 
         if let Some(user_agent) = user_agent {
             Ok(ExtractUserAgent(user_agent.clone()))
