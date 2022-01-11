@@ -192,15 +192,11 @@ impl<B> RequestParts<B> {
     }
 
     /// Gets a reference to the request extensions.
-    ///
-    /// Returns `None` if the extensions has been taken by another extractor.
     pub fn extensions(&self) -> &Extensions {
         &self.extensions
     }
 
     /// Gets a mutable reference to the request extensions.
-    ///
-    /// Returns `None` if the extensions has been taken by another extractor.
     pub fn extensions_mut(&mut self) -> &mut Extensions {
         &mut self.extensions
     }
