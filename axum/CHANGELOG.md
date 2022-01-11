@@ -15,7 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **breaking:** Make `TypedHeaderRejectionReason` `#[non_exhaustive]` ([#665])
 - **breaking:** Using `HeaderMap` as an extractor will no longer remove the headers and thus
   they'll still be accessible to other extractors, such as `axum::extract::Json`. Instead
-  `HeaderMap` will clone the request. You should prefer to use `TypedHeader` to extract only the
+  `HeaderMap` will clone the headers. You should prefer to use `TypedHeader` to extract only the
   header you need ([#698])
 
   This includes these breaking changes:
