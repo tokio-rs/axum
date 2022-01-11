@@ -17,7 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - `RequestParts::headers` returns `&HeaderMap`.
     - `RequestParts::headers_mut` returns `&mut HeaderMap`.
     - `HeadersAlreadyExtracted` has been removed.
-    - The `HeadersAlreadyExtracted` removed variant has been removed from these rejections:
+    - The `HeadersAlreadyExtracted` variant has been removed from these rejections:
         - `RequestAlreadyExtracted`
         - `RequestPartsAlreadyExtracted`
     - `<HeaderMap as FromRequest<_>>::Error` has been changed to `std::convert::Infallible`.
