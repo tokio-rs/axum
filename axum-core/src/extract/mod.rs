@@ -115,7 +115,7 @@ impl<B> RequestParts<B> {
 
     /// Convert this `RequestParts` back into a [`Request`].
     ///
-    /// Fails if The request body has been extracted, that is [`take_body`] have
+    /// Fails if The request body has been extracted, that is [`take_body`] has
     /// been called.
     ///
     /// [`take_body`]: RequestParts::take_body
