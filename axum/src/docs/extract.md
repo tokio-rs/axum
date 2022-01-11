@@ -373,9 +373,7 @@ where
     type Rejection = (StatusCode, &'static str);
 
     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-        let user_agent = req.headers().get(USER_AGENT);
-
-        if let Some(user_agent) = user_agent {
+        if let Some(user_agent) = req.headers().get(USER_AGENT) {
             Ok(ExtractUserAgent(user_agent.clone()))
         } else {
             Err((StatusCode::BAD_REQUEST, "`User-Agent` header is missing"))
