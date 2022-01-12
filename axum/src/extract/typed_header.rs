@@ -80,21 +80,17 @@ impl<T> Deref for TypedHeader<T> {
 #[cfg_attr(docsrs, doc(cfg(feature = "headers")))]
 #[derive(Debug)]
 pub struct TypedHeaderRejection {
-    /// Name of the header that caused the rejection
-    pub name: &'static http::header::HeaderName,
-
-    /// Reason why the header extraction has failed
-    pub reason: TypedHeaderRejectionReason,
+    name: &'static http::header::HeaderName,
+    reason: TypedHeaderRejectionReason,
 }
 
 impl TypedHeaderRejection {
-    // TODO remove workaround for rustdoc bug: https://github.com/rust-lang/rust/issues/92544
-    /// returns [name](#structfield.name)
+    /// Name of the header that caused the rejection
     pub fn name(&self) -> &http::header::HeaderName {
         self.name
     }
 
-    /// returns [reason](#structfield.reason)
+    /// Reason why the header extraction has failed
     pub fn reason(&self) -> &TypedHeaderRejectionReason {
         &self.reason
     }
