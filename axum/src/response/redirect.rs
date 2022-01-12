@@ -72,10 +72,10 @@ impl Redirect {
 
     /// Create a new [`Redirect`] that uses a [`302 Found`][mdn] status code.
     ///
-    /// This is the same as [`Redirect::temporary`] ([`307 Temporary Redirect`][mdn307]) except this status code is older and
-    /// thus supported by some legacy clients that don't understand the newer one. Many clients
-    /// wrongly apply [`Redirect::to`] ([`303 See Other`][mdn303]) semantics for this status code, so it
-    /// should be avoided where possible.
+    /// This is the same as [`Redirect::temporary`] ([`307 Temporary Redirect`][mdn307]) except
+    /// this status code is older and thus supported by some legacy clients that don't understand
+    /// the newer one. Many clients wrongly apply [`Redirect::to`] ([`303 See Other`][mdn303])
+    /// semantics for this status code, so it should be avoided where possible.
     ///
     /// # Panics
     ///
