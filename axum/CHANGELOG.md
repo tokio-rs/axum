@@ -7,11 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+- **fixed:** Fix using incorrect path prefix when nesting `Router`s at `/` ([#691])
+- **fixed:** Make `nest("", service)` work and mean the same as `nest("/", service)` ([#691])
 - **fixed:** Replace response code `301` with `308` for trailing slash redirects. Also deprecates
   `Redirect::found` (`302`) in favor of `Redirect::temporary` (`307`) or `Redirect::to` (`303`).
   This is to prevent clients from changing non-`GET` requests to `GET` requests ([#616])
 
-[#650]: https://github.com/tokio-rs/axum/pull/650
+[#691]: https://github.com/tokio-rs/axum/pull/691
+[#682]: https://github.com/tokio-rs/axum/pull/682
 
 # 0.4.3 (21. December, 2021)
 

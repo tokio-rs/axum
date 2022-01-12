@@ -447,13 +447,6 @@ async fn empty_route() {
 }
 
 #[tokio::test]
-#[should_panic(expected = "Invalid route: empty path")]
-async fn empty_route_nested() {
-    let app = Router::new().nest("", get(|| async {}));
-    TestClient::new(app);
-}
-
-#[tokio::test]
 async fn middleware_still_run_for_unmatched_requests() {
     #[derive(Clone)]
     struct CountMiddleware<S>(S);

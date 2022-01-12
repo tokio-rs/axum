@@ -12,7 +12,7 @@ For more details on that see
 
 ## Applying multiple middleware
 
-Its recommended to use [`tower::ServiceBuilder`] to apply multiple middleware at
+It's recommended to use [`tower::ServiceBuilder`] to apply multiple middleware at
 once, instead of calling [`Router::layer`] repeatedly:
 
 ```rust
