@@ -12,8 +12,8 @@ use async_session::{MemoryStore, Session, SessionStore};
 use axum::{
     async_trait,
     extract::{
-        rejection::TypedHeaderRejectionReason,
-        Extension, FromRequest, Query, RequestParts, TypedHeader,
+        rejection::TypedHeaderRejectionReason, Extension, FromRequest, Query, RequestParts,
+        TypedHeader,
     },
     http::{header::SET_COOKIE, HeaderMap},
     response::{IntoResponse, Redirect, Response},
@@ -215,15 +215,15 @@ where
             .await
             .expect("`MemoryStore` extension is missing");
 
-        let cookies = TypedHeader::<headers::Cookie>::from_request(req).await.map_err(|e| {
-            match *e.name() {
+        let cookies = TypedHeader::<headers::Cookie>::from_request(req)
+            .await
+            .map_err(|e| match *e.name() {
                 header::COOKIE => match e.reason() {
                     TypedHeaderRejectionReason::Missing => AuthRedirect,
                     _ => panic!("unexpected error getting Cookie header(s): {}", e),
                 },
                 _ => panic!("unexpected error getting cookies: {}", e),
-            }
-        })?;
+            })?;
         let session_cookie = cookies.get(COOKIE_NAME).ok_or(AuthRedirect)?;
 
         let session = store
