@@ -1,33 +1,32 @@
 //! Example OAuth (Discord) implementation.
 //!
-//! Run with
-//!
+//! 1) Create a new application at <https://discord.com/developers/applications>
+//! 2) Visit the OAuth2 tab to get your CLIENT_ID and CLIENT_SECRET
+//! 3) Add a new redirect URI (for this example: `http://127.0.0.1:3000/auth/authorized`)
+//! 4) Run with the following (replacing values appropriately):
 //! ```not_rust
-//! CLIENT_ID=123 CLIENT_SECRET=secret cargo run -p example-oauth
+//! CLIENT_ID=REPLACE_ME CLIENT_SECRET=REPLACE_ME cargo run -p example-oauth
 //! ```
 
 use async_session::{MemoryStore, Session, SessionStore};
 use axum::{
     async_trait,
-    extract::{Extension, FromRequest, Query, RequestParts, TypedHeader},
+    extract::{
+        rejection::TypedHeaderRejectionReason, Extension, FromRequest, Query, RequestParts,
+        TypedHeader,
+    },
     http::{header::SET_COOKIE, HeaderMap},
     response::{IntoResponse, Redirect, Response},
     routing::get,
     AddExtensionLayer, Router,
 };
+use http::header;
 use oauth2::{
     basic::BasicClient, reqwest::async_http_client, AuthUrl, AuthorizationCode, ClientId,
     ClientSecret, CsrfToken, RedirectUrl, Scope, TokenResponse, TokenUrl,
 };
 use serde::{Deserialize, Serialize};
 use std::{env, net::SocketAddr};
-
-// Quick instructions:
-// 1) create a new application at https://discord.com/developers/applications
-// 2) visit the OAuth2 tab to get your CLIENT_ID and CLIENT_SECRET
-// 3) add a new redirect URI (For this example: http://localhost:3000/auth/authorized)
-// 4) AUTH_URL and TOKEN_URL may stay the same for discord.
-// More information: https://discord.com/developers/applications/792730475856527411/oauth2
 
 static COOKIE_NAME: &str = "SESSION";
 
@@ -39,7 +38,7 @@ async fn main() {
     }
     tracing_subscriber::fmt::init();
 
-    // `MemoryStore` just used as an example. Don't use this in production.
+    // `MemoryStore` is just used as an example. Don't use this in production.
     let store = MemoryStore::new();
 
     let oauth_client = oauth_client();
@@ -64,8 +63,8 @@ async fn main() {
 
 fn oauth_client() -> BasicClient {
     // Environment variables (* = required):
-    // *"CLIENT_ID"     "123456789123456789";
-    // *"CLIENT_SECRET" "rAn60Mch4ra-CTErsSf-r04utHcLienT";
+    // *"CLIENT_ID"     "REPLACE_ME";
+    // *"CLIENT_SECRET" "REPLACE_ME";
     //  "REDIRECT_URL"  "http://127.0.0.1:3000/auth/authorized";
     //  "AUTH_URL"      "https://discord.com/api/oauth2/authorize?response_type=code";
     //  "TOKEN_URL"     "https://discord.com/api/oauth2/token";
@@ -119,7 +118,7 @@ async fn discord_auth(Extension(client): Extension<BasicClient>) -> impl IntoRes
         .url();
 
     // Redirect to Discord's oauth service
-    Redirect::found(auth_url.to_string().parse().unwrap())
+    Redirect::to(auth_url.to_string().parse().unwrap())
 }
 
 // Valid user session required. If there is none, redirect to the auth page
@@ -138,12 +137,12 @@ async fn logout(
     let session = match store.load_session(cookie.to_string()).await.unwrap() {
         Some(s) => s,
         // No session active, just redirect
-        None => return Redirect::found("/".parse().unwrap()),
+        None => return Redirect::to("/".parse().unwrap()),
     };
 
     store.destroy_session(session).await.unwrap();
 
-    Redirect::found("/".parse().unwrap())
+    Redirect::to("/".parse().unwrap())
 }
 
 #[derive(Debug, Deserialize)]
@@ -192,14 +191,14 @@ async fn login_authorized(
     let mut headers = HeaderMap::new();
     headers.insert(SET_COOKIE, cookie.parse().unwrap());
 
-    (headers, Redirect::found("/".parse().unwrap()))
+    (headers, Redirect::to("/".parse().unwrap()))
 }
 
 struct AuthRedirect;
 
 impl IntoResponse for AuthRedirect {
     fn into_response(self) -> Response {
-        Redirect::found("/auth/discord".parse().unwrap()).into_response()
+        Redirect::temporary("/auth/discord".parse().unwrap()).into_response()
     }
 }
 
@@ -218,8 +217,13 @@ where
 
         let cookies = TypedHeader::<headers::Cookie>::from_request(req)
             .await
-            .expect("could not get cookies");
-
+            .map_err(|e| match *e.name() {
+                header::COOKIE => match e.reason() {
+                    TypedHeaderRejectionReason::Missing => AuthRedirect,
+                    _ => panic!("unexpected error getting Cookie header(s): {}", e),
+                },
+                _ => panic!("unexpected error getting cookies: {}", e),
+            })?;
         let session_cookie = cookies.get(COOKIE_NAME).ok_or(AuthRedirect)?;
 
         let session = store
