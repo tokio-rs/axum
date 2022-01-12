@@ -216,8 +216,8 @@ where
             .expect("`MemoryStore` extension is missing");
 
         let cookies = TypedHeader::<headers::Cookie>::from_request(req).await.map_err(|e| {
-            match e.name() {
-                &header::COOKIE => match e.reason() {
+            match *e.name() {
+                header::COOKIE => match e.reason() {
                     TypedHeaderRejectionReason::Missing => AuthRedirect,
                     _ => panic!("unexpected error getting Cookie header(s): {}", e),
                 },
