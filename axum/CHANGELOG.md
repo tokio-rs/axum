@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+- None.
+
+# 0.4.4 (13. January, 2021)
+
 - **fixed:** Fix using incorrect path prefix when nesting `Router`s at `/` ([#691])
 - **fixed:** Make `nest("", service)` work and mean the same as `nest("/", service)` ([#691])
 - **fixed:** Replace response code `301` with `308` for trailing slash redirects. Also deprecates
