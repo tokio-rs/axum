@@ -21,8 +21,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
         - `RequestAlreadyExtracted`
         - `RequestPartsAlreadyExtracted`
     - `<HeaderMap as FromRequest<_>>::Error` has been changed to `std::convert::Infallible`.
+- **breaking:** `axum::http::Extensions` is no longer an extractor (ie it
+  doesn't implement `FromRequest`). The `axum::extract::Extension` extractor is
+  _not_ impacted by this and works the same. This change makes it harder to
+  accidentally remove all extensions which would result in confusing errors
+  elsewhere ([#699])
+  This includes these breaking changes:
+    - `RequestParts::take_extensions` has been removed.
+    - `RequestParts::extensions` returns `&Extensions`.
+    - `RequestParts::extensions_mut` returns `&mut Extensions`.
+    - `RequestAlreadyExtracted` has been removed.
+    - `<Request as FromRequest>::Error` is now `BodyAlreadyExtracted`.
+    - `<http::request::Parts as FromRequest>::Error` is now `Infallible`.
+    - `ExtensionsAlreadyExtracted` has been removed.
 
 [#698]: https://github.com/tokio-rs/axum/pull/698
+[#699]: https://github.com/tokio-rs/axum/pull/699
 
 # 0.1.1 (06. December, 2021)
 

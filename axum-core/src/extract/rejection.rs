@@ -1,20 +1,35 @@
 //! Rejection response types.
 
-define_rejection! {
-    #[status = INTERNAL_SERVER_ERROR]
-    #[body = "Cannot have two request body extractors for a single handler"]
-    /// Rejection type used if you try and extract the request body more than
-    /// once.
-    pub struct BodyAlreadyExtracted;
+use crate::body;
+use http::{Response, StatusCode};
+use http_body::Full;
+use std::fmt;
+
+/// Rejection type used if you try and extract the request body more than
+/// once.
+#[derive(Debug, Default)]
+#[non_exhaustive]
+pub struct BodyAlreadyExtracted;
+
+impl BodyAlreadyExtracted {
+    const BODY: &'static str = "Cannot have two request body extractors for a single handler";
 }
 
-define_rejection! {
-    #[status = INTERNAL_SERVER_ERROR]
-    #[body = "Extensions taken by other extractor"]
-    /// Rejection used if the request extension has been taken by another
-    /// extractor.
-    pub struct ExtensionsAlreadyExtracted;
+impl crate::response::IntoResponse for BodyAlreadyExtracted {
+    fn into_response(self) -> crate::response::Response {
+        let mut res = Response::new(body::boxed(Full::from(Self::BODY)));
+        *res.status_mut() = StatusCode::INTERNAL_SERVER_ERROR;
+        res
+    }
 }
+
+impl fmt::Display for BodyAlreadyExtracted {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", Self::BODY)
+    }
+}
+
+impl std::error::Error for BodyAlreadyExtracted {}
 
 define_rejection! {
     #[status = BAD_REQUEST]
@@ -30,18 +45,6 @@ define_rejection! {
     /// Rejection type used when buffering the request into a [`String`] if the
     /// body doesn't contain valid UTF-8.
     pub struct InvalidUtf8(Error);
-}
-
-composite_rejection! {
-    /// Rejection used for [`Request<_>`].
-    ///
-    /// Contains one variant for each way the [`Request<_>`] extractor can fail.
-    ///
-    /// [`Request<_>`]: http::Request
-    pub enum RequestAlreadyExtracted {
-        BodyAlreadyExtracted,
-        ExtensionsAlreadyExtracted,
-    }
 }
 
 composite_rejection! {
@@ -63,14 +66,5 @@ composite_rejection! {
         BodyAlreadyExtracted,
         FailedToBufferBody,
         InvalidUtf8,
-    }
-}
-
-composite_rejection! {
-    /// Rejection used for [`http::request::Parts`].
-    ///
-    /// Contains one variant for each way the [`http::request::Parts`] extractor can fail.
-    pub enum RequestPartsAlreadyExtracted {
-        ExtensionsAlreadyExtracted,
     }
 }

@@ -64,7 +64,7 @@
 //! [`StreamExt::split`]: https://docs.rs/futures/0.3.17/futures/stream/trait.StreamExt.html#method.split
 
 use self::rejection::*;
-use super::{rejection::*, FromRequest, RequestParts};
+use super::{FromRequest, RequestParts};
 use crate::{
     body::{self, Bytes},
     response::Response,
@@ -268,11 +268,7 @@ where
                 return Err(WebSocketKeyHeaderMissing.into());
             };
 
-        let on_upgrade = req
-            .extensions_mut()
-            .ok_or_else(ExtensionsAlreadyExtracted::default)?
-            .remove::<OnUpgrade>()
-            .unwrap();
+        let on_upgrade = req.extensions_mut().remove::<OnUpgrade>().unwrap();
 
         let sec_websocket_protocol = req.headers().get(header::SEC_WEBSOCKET_PROTOCOL).cloned();
 
@@ -514,8 +510,6 @@ fn sign(key: &[u8]) -> HeaderValue {
 pub mod rejection {
     //! WebSocket specific rejections.
 
-    use crate::extract::rejection::*;
-
     define_rejection! {
         #[status = METHOD_NOT_ALLOWED]
         #[body = "Request method must be `GET`"]
@@ -562,7 +556,6 @@ pub mod rejection {
             InvalidUpgradeHeader,
             InvalidWebSocketVersionHeader,
             WebSocketKeyHeaderMissing,
-            ExtensionsAlreadyExtracted,
         }
     }
 }
