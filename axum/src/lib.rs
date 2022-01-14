@@ -486,6 +486,7 @@ pub use hyper::Server;
 #[doc(inline)]
 #[cfg(feature = "json")]
 pub use self::json::Json;
+#[doc(inline)]
 #[cfg(feature = "messagepack")]
 pub use self::messagepack::MessagePack;
 #[doc(inline)]
