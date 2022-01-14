@@ -26,6 +26,23 @@ define_rejection! {
     pub struct MissingJsonContentType;
 }
 
+#[cfg(feature = "messagepack")]
+define_rejection! {
+    #[status = BAD_REQUEST]
+    #[body = "Failed to parse the request body as MessagePack"]
+    #[cfg_attr(docsrs, doc(cfg(feature = "messagepack")))]
+    /// Rejection type for [`MessagePack`](super::MessagePack).
+    pub struct InvalidMessagePackBody(Error);
+}
+
+define_rejection! {
+    #[status = BAD_REQUEST]
+    #[body = "Expected request with `Content-Type: application/msgpack`"]
+    /// Rejection type for [`MessagePack`](super::MessagePack) used if the `Content-Type`
+    /// header is missing.
+    pub struct MissingMessagePackContentType;
+}
+
 define_rejection! {
     #[status = INTERNAL_SERVER_ERROR]
     #[body = "Missing request extension"]
@@ -138,6 +155,21 @@ composite_rejection! {
     pub enum JsonRejection {
         InvalidJsonBody,
         MissingJsonContentType,
+        BytesRejection,
+        HeadersAlreadyExtracted,
+    }
+}
+
+#[cfg(feature = "messagepack")]
+composite_rejection! {
+    /// Rejection used for [`MessagePack`](super::MessagePack).
+    ///
+    /// Contains one variant for each way the [`MessagePack`](super::MessagePack) extractor
+    /// can fail.
+    #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
+    pub enum MessagePackRejection {
+        InvalidMessagePackBody,
+        MissingMessagePackContentType,
         BytesRejection,
         HeadersAlreadyExtracted,
     }

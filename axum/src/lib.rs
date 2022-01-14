@@ -375,6 +375,7 @@
 //! `http1` | Enables hyper's `http1` feature | Yes
 //! `http2` | Enables hyper's `http2` feature | No
 //! `json` | Enables the [`Json`] type and some similar convenience functionality | Yes
+//! `messagepack` | Enables the [`MessagePack`] type leveraging rmp-serde | No 
 //! `multipart` | Enables parsing `multipart/form-data` requests with [`Multipart`] | No
 //! `tower-log` | Enables `tower`'s `log` feature | Yes
 //! `ws` | Enables WebSockets support via [`extract::ws`] | No
@@ -457,6 +458,8 @@ pub(crate) mod macros;
 mod add_extension;
 #[cfg(feature = "json")]
 mod json;
+#[cfg(feature = "messagepack")]
+mod messagepack;
 mod util;
 
 pub mod body;
@@ -483,6 +486,8 @@ pub use hyper::Server;
 #[doc(inline)]
 #[cfg(feature = "json")]
 pub use self::json::Json;
+#[cfg(feature = "messagepack")]
+pub use self::messagepack::MessagePack;
 #[doc(inline)]
 pub use self::routing::Router;
 

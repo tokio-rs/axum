@@ -42,6 +42,10 @@ pub use self::{
 #[cfg(feature = "json")]
 pub use crate::Json;
 
+#[doc(no_inline)]
+#[cfg(feature = "messagepack")]
+pub use crate::MessagePack;
+
 #[cfg(feature = "multipart")]
 #[cfg_attr(docsrs, doc(cfg(feature = "multipart")))]
 pub mod multipart;
