@@ -130,12 +130,12 @@ fn message_pack_content_type<B>(req: &RequestParts<B>) -> Result<bool, HeadersAl
         return Ok(false)
     };
 
-    let is_rmp = mime.type_() == "application" && (
+    let is_message_pack = mime.type_() == "application" && (
         ["msgpack", "x-msgpack"].iter()
             .any(|subtype| *subtype == mime.subtype()) ||
         mime.suffix().map_or(false, |suffix| suffix == "msgpack"));
 
-    Ok(is_rmp)
+    Ok(is_message_pack)
 }
 
 impl<T> Deref for MessagePack<T> {
@@ -220,8 +220,8 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn json_content_types() {
-        async fn valid_json_content_type(content_type: &str) -> bool {
+    async fn message_pack_content_types() {
+        async fn valid_message_pack_content_type(content_type: &str) -> bool {
             println!("testing {:?}", content_type);
             let body = rmp_serde::to_vec(&Input {foo: "bar".into()}).expect("Failed to serialize to MessagePack");
             let app = Router::new().route("/", post(|MessagePack(_): MessagePack<Input>| async {}));
@@ -236,10 +236,10 @@ mod tests {
             res.status() == StatusCode::OK
         }
 
-        assert!(valid_json_content_type("application/msgpack").await);
-        assert!(valid_json_content_type("application/msgpack; charset=utf-8").await);
-        assert!(valid_json_content_type("application/msgpack;charset=utf-8").await);
-        assert!(valid_json_content_type("application/cloudevents+msgpack").await);
-        assert!(!valid_json_content_type("text/json").await);
+        assert!(valid_message_pack_content_type("application/msgpack").await);
+        assert!(valid_message_pack_content_type("application/msgpack; charset=utf-8").await);
+        assert!(valid_message_pack_content_type("application/msgpack;charset=utf-8").await);
+        assert!(valid_message_pack_content_type("application/cloudevents+msgpack").await);
+        assert!(!valid_message_pack_content_type("text/msgpack").await);
     }
 }
