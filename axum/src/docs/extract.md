@@ -82,7 +82,7 @@ async fn extension(Extension(state): Extension<State>) {}
 struct State { /* ... */ }
 
 let app = Router::new()
-    .route("/path", post(path))
+    .route("/path/:user_id", post(path))
     .route("/query", post(query))
     .route("/user_agent", post(user_agent))
     .route("/headers", post(headers))
