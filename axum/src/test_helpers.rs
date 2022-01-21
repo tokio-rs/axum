@@ -45,10 +45,12 @@ impl TestClient {
             server.await.expect("server error");
         });
 
-        TestClient {
-            client: reqwest::Client::new(),
-            addr,
-        }
+        let client = reqwest::Client::builder()
+            .redirect(reqwest::redirect::Policy::none())
+            .build()
+            .unwrap();
+
+        TestClient { client, addr }
     }
 
     pub(crate) fn get(&self, url: &str) -> RequestBuilder {

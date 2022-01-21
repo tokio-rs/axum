@@ -321,9 +321,9 @@ async fn with_trailing_slash() {
 
     let client = TestClient::new(app);
 
-    // `TestClient` automatically follows redirects
     let res = client.get("/foo/").send().await;
-    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.status(), StatusCode::PERMANENT_REDIRECT);
+    assert_eq!(res.headers().get("location").unwrap(), "/foo");
 }
 
 #[tokio::test]
@@ -332,9 +332,9 @@ async fn without_trailing_slash() {
 
     let client = TestClient::new(app);
 
-    // `TestClient` automatically follows redirects
     let res = client.get("/foo").send().await;
-    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.status(), StatusCode::PERMANENT_REDIRECT);
+    assert_eq!(res.headers().get("location").unwrap(), "/foo/");
 }
 
 #[tokio::test]
@@ -363,7 +363,8 @@ async fn with_trailing_slash_post() {
 
     // `TestClient` automatically follows redirects
     let res = client.post("/foo/").send().await;
-    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.status(), StatusCode::PERMANENT_REDIRECT);
+    assert_eq!(res.headers().get("location").unwrap(), "/foo");
 }
 
 // for https://github.com/tokio-rs/axum/issues/681
@@ -373,9 +374,9 @@ async fn without_trailing_slash_post() {
 
     let client = TestClient::new(app);
 
-    // `TestClient` automatically follows redirects
     let res = client.post("/foo").send().await;
-    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.status(), StatusCode::PERMANENT_REDIRECT);
+    assert_eq!(res.headers().get("location").unwrap(), "/foo/");
 }
 
 // for https://github.com/tokio-rs/axum/issues/420
