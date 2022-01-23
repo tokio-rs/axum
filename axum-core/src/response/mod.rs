@@ -152,9 +152,11 @@ pub trait IntoResponseHeaders {
     ///
     /// The header name is optional because [`HeaderMap`]s iterator doesn't yield it multiple times
     /// for headers that have multiple values, to avoid unnecessary copies.
+    #[doc(hidden)]
     type IntoIter: IntoIterator<Item = Result<(Option<HeaderName>, HeaderValue), Response>>;
 
     /// Attempt to turn `self` into a list of headers.
+    #[doc(hidden)]
     fn into_headers(self) -> Self::IntoIter;
 }
 
