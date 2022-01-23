@@ -8,6 +8,7 @@
 
 use axum::{
     extract::{Extension, Json, TypedHeader},
+    headers::UserAgent,
     routing::get,
     Router,
 };
@@ -28,6 +29,8 @@ async fn main() {
         .await
         .unwrap();
 }
+
+async fn handler(_: Unit, _: Tuple, _: Named, _: TupleVia, _: NamedVia, _: State) {}
 
 #[derive(FromRequest)]
 struct Unit;
@@ -51,14 +54,10 @@ struct TupleVia(
 struct NamedVia {
     state: State,
     #[from_request(via(TypedHeader))]
-    user_agent: axum::headers::UserAgent,
+    user_agent: UserAgent,
     #[from_request(via(Json))]
     body: Payload,
 }
-
-// -------
-
-async fn handler(_: Unit, _: Tuple, _: Named, _: TupleVia, _: NamedVia) {}
 
 #[derive(Clone, FromRequest)]
 #[from_request(via(Extension))]
@@ -68,5 +67,6 @@ struct State {
 
 #[derive(Deserialize)]
 struct Payload {
-    state: String,
+    one: i32,
+    two: String,
 }
