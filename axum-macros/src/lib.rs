@@ -3,7 +3,7 @@ use syn::parse::Parse;
 
 mod from_request;
 
-#[proc_macro_derive(FromRequest)]
+#[proc_macro_derive(FromRequest, attributes(from_request))]
 pub fn derive_from_request(item: proc_macro::TokenStream) -> proc_macro::TokenStream {
     expand_with(item, from_request::expand)
 }
@@ -15,7 +15,13 @@ where
     K: ToTokens,
 {
     match syn::parse(input).and_then(f) {
-        Ok(tokens) => (quote! { #tokens }).into(),
+        Ok(tokens) => {
+            let tokens = (quote! { #tokens }).into();
+            if std::env::var_os("AXUM_MACROS_DEBUG").is_some() {
+                eprintln!("{}", tokens);
+            }
+            tokens
+        }
         Err(err) => err.into_compile_error().into(),
     }
 }

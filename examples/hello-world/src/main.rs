@@ -4,7 +4,16 @@
 //! cargo run -p example-hello-world
 //! ```
 
-use axum::{response::Html, routing::get, Router};
+#![allow(dead_code)]
+
+use axum::{
+    extract::{Extension, Json, TypedHeader},
+    response::Html,
+    routing::get,
+    Router,
+};
+use axum_macros::FromRequest;
+use serde::Deserialize;
 use std::net::SocketAddr;
 
 #[tokio::main]
@@ -21,17 +30,40 @@ async fn main() {
         .unwrap();
 }
 
-async fn handler(_: Unit, _: Tuple, _: Named) -> Html<&'static str> {
-    Html("<h1>Hello, World!</h1>")
-}
-
-#[derive(axum_macros::FromRequest)]
+#[derive(FromRequest)]
 struct Unit;
 
-#[derive(axum_macros::FromRequest)]
+#[derive(FromRequest)]
 struct Tuple(String);
 
-#[derive(axum_macros::FromRequest)]
+#[derive(FromRequest)]
 struct Named {
     body: String,
 }
+
+#[derive(FromRequest)]
+struct TupleVia(
+    #[from_request(via(Extension))] State,
+    #[from_request(via(TypedHeader))] axum::headers::UserAgent,
+    #[from_request(via(Json))] Payload,
+);
+
+#[derive(FromRequest)]
+struct NamedVia {
+    #[from_request(via(Extension))]
+    state: State,
+    #[from_request(via(TypedHeader))]
+    user_agent: axum::headers::UserAgent,
+    #[from_request(via(Json))]
+    body: Payload,
+}
+
+// -------
+
+async fn handler(_: Unit, _: Tuple, _: Named, _: TupleVia, _: NamedVia) {}
+
+#[derive(Clone)]
+struct State;
+
+#[derive(Deserialize)]
+struct Payload {}
