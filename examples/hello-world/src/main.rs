@@ -21,6 +21,17 @@ async fn main() {
         .unwrap();
 }
 
-async fn handler() -> Html<&'static str> {
+async fn handler(_: Unit, _: Tuple, _: Named) -> Html<&'static str> {
     Html("<h1>Hello, World!</h1>")
+}
+
+#[derive(axum_macros::FromRequest)]
+struct Unit;
+
+#[derive(axum_macros::FromRequest)]
+struct Tuple(String);
+
+#[derive(axum_macros::FromRequest)]
+struct Named {
+    body: String,
 }

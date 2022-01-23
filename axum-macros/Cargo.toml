@@ -1,0 +1,24 @@
+[package]
+categories = ["asynchronous", "network-programming", "web-programming"]
+description = "Macros for axum"
+edition = "2018"
+homepage = "https://github.com/tokio-rs/axum"
+keywords = ["axum"]
+license = "MIT"
+name = "axum-macros"
+readme = "README.md"
+repository = "https://github.com/tokio-rs/axum"
+version = "0.1.0"
+publish = false # TODO: not quite ready for publishing yet
+
+[lib]
+proc-macro = true
+
+[dependencies]
+proc-macro2 = "1.0"
+quote = "1.0"
+syn = { version = "1.0", features = ["full"] }
+
+[dev-dependencies]
+axum = { path = "../axum", version = "0.4" }
+trybuild = "1.0"
