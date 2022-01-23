@@ -30,8 +30,8 @@ pub(crate) fn expand(item: syn::ItemStruct) -> syn::Result<TokenStream> {
 
     let FromRequestAttrs { via } = parse_attrs(&attrs)?;
 
-    if let Some(via) = via {
-        Ok(impl_by_extracting_all_at_once(ident, via))
+    if let Some((_, path)) = via {
+        impl_by_extracting_all_at_once(ident, fields, path)
     } else {
         impl_by_extracting_each_field(ident, fields)
     }
@@ -89,10 +89,10 @@ where
 
             let ty_span = field.ty.span();
 
-            let into_inner = if let Some(via) = via {
-                let span = via.span();
+            let into_inner = if let Some((_, path)) = via {
+                let span = path.span();
                 quote_spanned! {span=>
-                    |#via(inner)| inner
+                    |#path(inner)| inner
                 }
             } else {
                 quote_spanned! {ty_span=>
@@ -112,8 +112,31 @@ where
         .collect()
 }
 
-fn impl_by_extracting_all_at_once(ident: syn::Ident, via: syn::Path) -> TokenStream {
-    quote! {
+fn impl_by_extracting_all_at_once(
+    ident: syn::Ident,
+    fields: syn::Fields,
+    path: syn::Path,
+) -> syn::Result<TokenStream> {
+    let fields = match fields {
+        syn::Fields::Named(fields) => fields.named.into_iter(),
+        syn::Fields::Unnamed(fields) => fields.unnamed.into_iter(),
+        syn::Fields::Unit => Punctuated::<_, Token![,]>::new().into_iter(),
+    };
+
+    for field in fields {
+        let FromRequestAttrs { via } = parse_attrs(&field.attrs)?;
+        if let Some((via, _)) = via {
+            return Err(syn::Error::new_spanned(
+                via,
+                "`#[from_request(via(...))]` on a field cannot be used \
+                together with `#[from_request(...)]` on the container",
+            ));
+        }
+    }
+
+    let path_span = path.span();
+
+    Ok(quote_spanned! {path_span=>
         #[::axum::async_trait]
         impl<B> ::axum::extract::FromRequest<B> for #ident
         where
@@ -121,22 +144,26 @@ fn impl_by_extracting_all_at_once(ident: syn::Ident, via: syn::Path) -> TokenStr
             B::Data: ::std::marker::Send,
             B::Error: ::std::convert::Into<::axum::BoxError>,
         {
-            type Rejection = <#via<Self> as ::axum::extract::FromRequest<B>>::Rejection;
+            type Rejection = <#path<Self> as ::axum::extract::FromRequest<B>>::Rejection;
 
             async fn from_request(
                 req: &mut ::axum::extract::RequestParts<B>,
             ) -> ::std::result::Result<Self, Self::Rejection> {
                 ::axum::extract::FromRequest::<B>::from_request(req)
                     .await
-                    .map(|#via(inner)| inner)
+                    .map(|#path(inner)| inner)
             }
         }
-    }
+    })
 }
 
 #[derive(Debug, Default)]
 struct FromRequestAttrs {
-    via: Option<syn::Path>,
+    via: Option<(kw::via, syn::Path)>,
+}
+
+mod kw {
+    syn::custom_keyword!(via);
 }
 
 fn parse_attrs(attrs: &[syn::Attribute]) -> syn::Result<FromRequestAttrs> {
@@ -162,10 +189,6 @@ fn parse_attrs(attrs: &[syn::Attribute]) -> syn::Result<FromRequestAttrs> {
                 Err(lh.error())
             }
         }
-    }
-
-    mod kw {
-        syn::custom_keyword!(via);
     }
 
     let attrs = attrs
@@ -196,7 +219,7 @@ fn parse_attrs(attrs: &[syn::Attribute]) -> syn::Result<FromRequestAttrs> {
                                     "`via` specified more than once",
                                 ));
                             } else {
-                                out.via = Some(path);
+                                out.via = Some((via, path));
                             }
                         }
                     }

@@ -13,7 +13,7 @@ use axum::{
 };
 use axum_macros::FromRequest;
 use serde::Deserialize;
-use std::net::SocketAddr;
+use std::{net::SocketAddr, sync::Arc};
 
 #[tokio::main]
 async fn main() {
@@ -49,7 +49,6 @@ struct TupleVia(
 
 #[derive(FromRequest)]
 struct NamedVia {
-    #[from_request(via(Extension))]
     state: State,
     #[from_request(via(TypedHeader))]
     user_agent: axum::headers::UserAgent,
@@ -61,9 +60,13 @@ struct NamedVia {
 
 async fn handler(_: Unit, _: Tuple, _: Named, _: TupleVia, _: NamedVia) {}
 
-#[derive(Clone)]
-struct State;
+#[derive(Clone, FromRequest)]
+#[from_request(via(Extension))]
+struct State {
+    thing: Arc<String>,
+}
 
-#[derive(Deserialize, FromRequest)]
-#[from_request(via(Json))]
-struct Payload {}
+#[derive(Deserialize)]
+struct Payload {
+    state: String,
+}
