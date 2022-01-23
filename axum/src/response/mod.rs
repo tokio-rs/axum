@@ -4,6 +4,7 @@ use crate::body::{Bytes, Full};
 use axum_core::body::boxed;
 use http::{header, HeaderValue};
 
+mod headers;
 mod redirect;
 
 pub mod sse;
@@ -13,10 +14,10 @@ pub mod sse;
 pub use crate::Json;
 
 #[doc(inline)]
-pub use axum_core::response::{Headers, IntoResponse, Response};
+pub use axum_core::response::{IntoResponse, IntoResponseHeaders, Response};
 
 #[doc(inline)]
-pub use self::{redirect::Redirect, sse::Sse};
+pub use self::{headers::Headers, redirect::Redirect, sse::Sse};
 
 /// An HTML response.
 ///
