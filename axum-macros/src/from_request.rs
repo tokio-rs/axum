@@ -209,8 +209,8 @@ fn parse_attrs(attrs: &[syn::Attribute]) -> syn::Result<FromRequestAttrs> {
     let mut out = FromRequestAttrs::default();
     for attr in attrs {
         match attr {
-            Attr::FromRequest(from_requst_attrs) => {
-                for from_request_attr in from_requst_attrs {
+            Attr::FromRequest(from_request_attrs) => {
+                for from_request_attr in from_request_attrs {
                     match from_request_attr {
                         FromRequestAttr::Via { via, path } => {
                             if out.via.is_some() {
