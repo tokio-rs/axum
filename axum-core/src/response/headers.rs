@@ -1,11 +1,8 @@
-use super::{IntoResponse, Response};
-use crate::body::boxed;
-use bytes::Bytes;
+use super::{IntoResponse, IntoResponseHeaders, Response};
 use http::{
-    header::{HeaderMap, HeaderName, HeaderValue},
+    header::{HeaderName, HeaderValue},
     StatusCode,
 };
-use http_body::{Empty, Full};
 use std::{convert::TryInto, fmt};
 
 /// A response with headers.
@@ -54,38 +51,7 @@ use std::{convert::TryInto, fmt};
 #[derive(Clone, Copy, Debug)]
 pub struct Headers<H>(pub H);
 
-impl<H> Headers<H> {
-    fn try_into_header_map<K, V>(self) -> Result<HeaderMap, Response>
-    where
-        H: IntoIterator<Item = (K, V)>,
-        K: TryInto<HeaderName>,
-        K::Error: fmt::Display,
-        V: TryInto<HeaderValue>,
-        V::Error: fmt::Display,
-    {
-        self.0
-            .into_iter()
-            .map(|(key, value)| {
-                let key = key.try_into().map_err(Either::A)?;
-                let value = value.try_into().map_err(Either::B)?;
-                Ok((key, value))
-            })
-            .collect::<Result<_, _>>()
-            .map_err(|err| {
-                let err = match err {
-                    Either::A(err) => err.to_string(),
-                    Either::B(err) => err.to_string(),
-                };
-
-                let body = boxed(Full::new(Bytes::copy_from_slice(err.as_bytes())));
-                let mut res = Response::new(body);
-                *res.status_mut() = StatusCode::INTERNAL_SERVER_ERROR;
-                res
-            })
-    }
-}
-
-impl<H, K, V> IntoResponse for Headers<H>
+impl<H, K, V> IntoResponseHeaders for Headers<H>
 where
     H: IntoIterator<Item = (K, V)>,
     K: TryInto<HeaderName>,
@@ -93,61 +59,43 @@ where
     V: TryInto<HeaderValue>,
     V::Error: fmt::Display,
 {
-    fn into_response(self) -> Response {
-        let headers = self.try_into_header_map();
+    type IntoIter = IntoIter<H::IntoIter>;
 
-        match headers {
-            Ok(headers) => {
-                let mut res = Response::new(boxed(Empty::new()));
-                *res.headers_mut() = headers;
-                res
-            }
-            Err(err) => err,
+    fn into_headers(self) -> Self::IntoIter {
+        IntoIter {
+            inner: self.0.into_iter(),
         }
     }
 }
 
-impl<H, T, K, V> IntoResponse for (Headers<H>, T)
+#[doc(hidden)]
+#[derive(Debug)]
+pub struct IntoIter<H> {
+    inner: H,
+}
+
+impl<H, K, V> Iterator for IntoIter<H>
 where
-    T: IntoResponse,
-    H: IntoIterator<Item = (K, V)>,
+    H: Iterator<Item = (K, V)>,
     K: TryInto<HeaderName>,
     K::Error: fmt::Display,
     V: TryInto<HeaderValue>,
     V::Error: fmt::Display,
 {
-    fn into_response(self) -> Response {
-        let headers = match self.0.try_into_header_map() {
-            Ok(headers) => headers,
-            Err(res) => return res,
-        };
+    type Item = Result<(Option<HeaderName>, HeaderValue), Response>;
 
-        (headers, self.1).into_response()
+    fn next(&mut self) -> Option<Self::Item> {
+        self.inner.next().map(|(key, value)| {
+            let key = key
+                .try_into()
+                .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response())?;
+            let value = value
+                .try_into()
+                .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response())?;
+
+            Ok((Some(key), value))
+        })
     }
-}
-
-impl<H, T, K, V> IntoResponse for (StatusCode, Headers<H>, T)
-where
-    T: IntoResponse,
-    H: IntoIterator<Item = (K, V)>,
-    K: TryInto<HeaderName>,
-    K::Error: fmt::Display,
-    V: TryInto<HeaderValue>,
-    V::Error: fmt::Display,
-{
-    fn into_response(self) -> Response {
-        let headers = match self.1.try_into_header_map() {
-            Ok(headers) => headers,
-            Err(res) => return res,
-        };
-
-        (self.0, headers, self.2).into_response()
-    }
-}
-
-enum Either<A, B> {
-    A(A),
-    B(B),
 }
 
 #[cfg(test)]

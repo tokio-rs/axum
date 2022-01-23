@@ -50,6 +50,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
         - `MatchedPathRejection`
         - `WebSocketUpgradeRejection`
 
+TODO(david): make sure everything from https://github.com/tokio-rs/axum/pull/644
+is mentioned here.
+
 [#644]: https://github.com/tokio-rs/axum/pull/644
 [#665]: https://github.com/tokio-rs/axum/pull/665
 [#698]: https://github.com/tokio-rs/axum/pull/698
