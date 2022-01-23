@@ -8,7 +8,6 @@
 
 use axum::{
     extract::{Extension, Json, TypedHeader},
-    response::Html,
     routing::get,
     Router,
 };
@@ -65,5 +64,6 @@ async fn handler(_: Unit, _: Tuple, _: Named, _: TupleVia, _: NamedVia) {}
 #[derive(Clone)]
 struct State;
 
-#[derive(Deserialize)]
+#[derive(Deserialize, FromRequest)]
+#[from_request(via(Json))]
 struct Payload {}

@@ -7,9 +7,11 @@ use syn::{
     Token,
 };
 
+const GENERICS_ERROR: &str = "`#[derive(FromRequest)] doesn't support generics";
+
 pub(crate) fn expand(item: syn::ItemStruct) -> syn::Result<TokenStream> {
     let syn::ItemStruct {
-        attrs: _,
+        attrs,
         ident,
         generics,
         fields,
@@ -18,12 +20,6 @@ pub(crate) fn expand(item: syn::ItemStruct) -> syn::Result<TokenStream> {
         struct_token: _,
     } = item;
 
-    let extract_fields = match fields {
-        syn::Fields::Named(fields) => extract_fields(fields.named.iter())?,
-        syn::Fields::Unnamed(fields) => extract_fields(fields.unnamed.iter())?,
-        syn::Fields::Unit => Default::default(),
-    };
-
     if !generics.params.is_empty() {
         return Err(syn::Error::new_spanned(generics, GENERICS_ERROR));
     }
@@ -31,6 +27,25 @@ pub(crate) fn expand(item: syn::ItemStruct) -> syn::Result<TokenStream> {
     if let Some(where_clause) = generics.where_clause {
         return Err(syn::Error::new_spanned(where_clause, GENERICS_ERROR));
     }
+
+    let FromRequestAttrs { via } = parse_attrs(&attrs)?;
+
+    if let Some(via) = via {
+        Ok(impl_by_extracting_all_at_once(ident, via))
+    } else {
+        impl_by_extracting_each_field(ident, fields)
+    }
+}
+
+fn impl_by_extracting_each_field(
+    ident: syn::Ident,
+    fields: syn::Fields,
+) -> syn::Result<TokenStream> {
+    let extract_fields = match fields {
+        syn::Fields::Named(fields) => extract_fields(fields.named.iter())?,
+        syn::Fields::Unnamed(fields) => extract_fields(fields.unnamed.iter())?,
+        syn::Fields::Unit => Default::default(),
+    };
 
     Ok(quote! {
         #[::axum::async_trait]
@@ -52,8 +67,6 @@ pub(crate) fn expand(item: syn::ItemStruct) -> syn::Result<TokenStream> {
         }
     })
 }
-
-const GENERICS_ERROR: &str = "`#[derive(FromRequest)] doesn't support generics";
 
 fn extract_fields<'a, I>(fields: I) -> syn::Result<Vec<TokenStream>>
 where
@@ -110,6 +123,29 @@ where
         .collect()
 }
 
+fn impl_by_extracting_all_at_once(ident: syn::Ident, via: syn::Path) -> TokenStream {
+    quote! {
+        #[::axum::async_trait]
+        impl<B> ::axum::extract::FromRequest<B> for #ident
+        where
+            B: ::axum::body::HttpBody + ::std::marker::Send + 'static,
+            B::Data: ::std::marker::Send,
+            B::Error: ::std::convert::Into<::axum::BoxError>,
+        {
+            type Rejection = ::axum::response::Response;
+
+            async fn from_request(
+                req: &mut ::axum::extract::RequestParts<B>,
+            ) -> ::std::result::Result<Self, Self::Rejection> {
+                <#via<_> as ::axum::extract::FromRequest<B>>::from_request(req)
+                    .await
+                    .map(|#via(inner)| inner)
+                    .map_err(::axum::response::IntoResponse::into_response)
+            }
+        }
+    }
+}
+
 #[derive(Debug, Default)]
 struct FromRequestAttrs {
     via: Option<syn::Path>,
@@ -147,15 +183,14 @@ fn parse_attrs(attrs: &[syn::Attribute]) -> syn::Result<FromRequestAttrs> {
     let attrs = attrs
         .iter()
         .filter_map(|attr| attr.path.get_ident().map(|ident| (ident, attr)))
-        .map(|(ident, attr)| {
+        .filter_map(|(ident, attr)| {
             if ident == "from_request" {
-                attr.parse_args_with(Punctuated::parse_terminated)
-                    .map(Attr::FromRequest)
+                Some(
+                    attr.parse_args_with(Punctuated::parse_terminated)
+                        .map(Attr::FromRequest),
+                )
             } else {
-                Err(syn::Error::new_spanned(
-                    ident,
-                    format!("Unknown attribute: `{}`", ident),
-                ))
+                None
             }
         })
         .collect::<syn::Result<Vec<_>>>()?;
