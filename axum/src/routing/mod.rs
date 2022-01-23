@@ -4,7 +4,7 @@ use self::{future::RouterFuture, not_found::NotFound};
 use crate::{
     body::{boxed, Body, Bytes, HttpBody},
     extract::connect_info::{Connected, IntoMakeServiceWithConnectInfo},
-    response::{Response, Redirect, IntoResponse},
+    response::{IntoResponse, Redirect, Response},
     routing::strip_prefix::StripPrefix,
     util::{try_downcast, ByteStr, PercentDecodedByteStr},
     BoxError,

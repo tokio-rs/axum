@@ -10,14 +10,14 @@ use crate::{
 };
 use bytes::Bytes;
 use http::{
-    header::{self, HeaderMap, HeaderValue},
+    header::{self, HeaderMap, HeaderName, HeaderValue},
     StatusCode,
 };
 use http_body::{
     combinators::{MapData, MapErr},
     Empty, Full,
 };
-use std::{borrow::Cow, convert::Infallible};
+use std::{borrow::Cow, convert::Infallible, iter};
 
 mod headers;
 
@@ -146,6 +146,42 @@ pub type Response<T = BoxBody> = http::Response<T>;
 pub trait IntoResponse {
     /// Create a response.
     fn into_response(self) -> Response;
+}
+
+/// Trait for generating response headers.
+///
+
+/// **Note: If you see this trait not being implemented in an error message, you are almost
+/// certainly being mislead by the compiler¹. Look for the following snippet in the output and
+/// check [`IntoResponse`]'s documentation if you find it:**
+///
+/// ```text
+/// note: required because of the requirements on the impl of `IntoResponse` for `<type>`
+/// ```
+///
+/// Any type that implements this trait automatically implements `IntoResponse` as well, but can
+/// also be used in a tuple like `(StatusCode, Self)`, `(Self, impl IntoResponseHeaders)`,
+/// `(StatusCode, Self, impl IntoResponseHeaders, impl IntoResponse)` and so on.
+///
+/// This trait can't currently be implemented outside of axum.
+///
+/// ¹ See also [this rustc issue](https://github.com/rust-lang/rust/issues/22590)
+pub trait IntoResponseHeaders {
+    /// The return type of [`.into_headers()`].
+    ///
+    /// The iterator item is a `Result` to allow the implementation to return a server error
+    /// instead.
+    ///
+    /// The header name is optional because `HeaderMap`s iterator doesn't yield it multiple times
+    /// for headers that have multiple values, to avoid unnecessary copies.
+    #[doc(hidden)]
+    type IntoIter: IntoIterator<Item = Result<(Option<HeaderName>, HeaderValue), Response>>;
+
+    /// Attempt to turn `self` into a list of headers.
+    ///
+    /// In practice, only the implementation for `axum::response::Headers` ever returns `Err(_)`.
+    #[doc(hidden)]
+    fn into_headers(self) -> Self::IntoIter;
 }
 
 impl IntoResponse for () {
@@ -320,6 +356,21 @@ impl IntoResponse for StatusCode {
     }
 }
 
+impl<H> IntoResponse for H
+where
+    H: IntoResponseHeaders,
+{
+    fn into_response(self) -> Response {
+        let mut res = Response::new(boxed(Empty::new()));
+
+        if let Err(e) = try_extend_headers(res.headers_mut(), self.into_headers()) {
+            return e;
+        }
+
+        res
+    }
+}
+
 impl<T> IntoResponse for (StatusCode, T)
 where
     T: IntoResponse,
@@ -331,33 +382,98 @@ where
     }
 }
 
-impl<T> IntoResponse for (HeaderMap, T)
+impl<H, T> IntoResponse for (H, T)
 where
+    H: IntoResponseHeaders,
     T: IntoResponse,
 {
     fn into_response(self) -> Response {
         let mut res = self.1.into_response();
-        res.headers_mut().extend(self.0);
+
+        if let Err(e) = try_extend_headers(res.headers_mut(), self.0.into_headers()) {
+            return e;
+        }
+
         res
     }
 }
 
-impl<T> IntoResponse for (StatusCode, HeaderMap, T)
+impl<H, T> IntoResponse for (StatusCode, H, T)
 where
+    H: IntoResponseHeaders,
     T: IntoResponse,
 {
     fn into_response(self) -> Response {
         let mut res = self.2.into_response();
         *res.status_mut() = self.0;
-        res.headers_mut().extend(self.1);
+
+        if let Err(e) = try_extend_headers(res.headers_mut(), self.1.into_headers()) {
+            return e;
+        }
+
         res
     }
 }
 
-impl IntoResponse for HeaderMap {
-    fn into_response(self) -> Response {
-        let mut res = Response::new(boxed(Empty::new()));
-        *res.headers_mut() = self;
-        res
+impl IntoResponseHeaders for HeaderMap {
+    // FIXME: Use type_alias_impl_trait when available
+    type IntoIter = iter::Map<
+        http::header::IntoIter<HeaderValue>,
+        fn(
+            (Option<HeaderName>, HeaderValue),
+        ) -> Result<(Option<HeaderName>, HeaderValue), Response>,
+    >;
+
+    fn into_headers(self) -> Self::IntoIter {
+        self.into_iter().map(Ok)
+    }
+}
+
+// Slightly adjusted version of `impl<T> Extend<(Option<HeaderName>, T)> for HeaderMap<T>`.
+// Accepts an iterator that returns Results and short-circuits on an `Err`.
+fn try_extend_headers(
+    headers: &mut HeaderMap,
+    iter: impl IntoIterator<Item = Result<(Option<HeaderName>, HeaderValue), Response>>,
+) -> Result<(), Response> {
+    use http::header::Entry;
+
+    let mut iter = iter.into_iter();
+
+    // The structure of this is a bit weird, but it is mostly to make the
+    // borrow checker happy.
+    let (mut key, mut val) = match iter.next().transpose()? {
+        Some((Some(key), val)) => (key, val),
+        Some((None, _)) => panic!("expected a header name, but got None"),
+        None => return Ok(()),
+    };
+
+    'outer: loop {
+        let mut entry = match headers.entry(key) {
+            Entry::Occupied(mut e) => {
+                // Replace all previous values while maintaining a handle to
+                // the entry.
+                e.insert(val);
+                e
+            }
+            Entry::Vacant(e) => e.insert_entry(val),
+        };
+
+        // As long as `HeaderName` is none, keep inserting the value into
+        // the current entry
+        loop {
+            match iter.next().transpose()? {
+                Some((Some(k), v)) => {
+                    key = k;
+                    val = v;
+                    continue 'outer;
+                }
+                Some((None, v)) => {
+                    entry.append(v);
+                }
+                None => {
+                    return Ok(());
+                }
+            }
+        }
     }
 }
