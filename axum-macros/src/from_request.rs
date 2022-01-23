@@ -89,17 +89,6 @@ where
 
             let ty_span = field.ty.span();
 
-            let from_request_ty = if let Some(via) = &via {
-                let span = via.span();
-                quote_spanned! {span=>
-                    <#via<_> as ::axum::extract::FromRequest<B>>
-                }
-            } else {
-                quote_spanned! {ty_span=>
-                    ::axum::extract::FromRequest
-                }
-            };
-
             let into_inner = if let Some(via) = via {
                 let span = via.span();
                 quote_spanned! {span=>
@@ -113,7 +102,7 @@ where
 
             Ok(quote_spanned! {ty_span=>
                 #member: {
-                    #from_request_ty::from_request(req)
+                    ::axum::extract::FromRequest::from_request(req)
                         .await
                         .map(#into_inner)
                         .map_err(::axum::response::IntoResponse::into_response)?
@@ -132,15 +121,14 @@ fn impl_by_extracting_all_at_once(ident: syn::Ident, via: syn::Path) -> TokenStr
             B::Data: ::std::marker::Send,
             B::Error: ::std::convert::Into<::axum::BoxError>,
         {
-            type Rejection = ::axum::response::Response;
+            type Rejection = <#via<Self> as ::axum::extract::FromRequest<B>>::Rejection;
 
             async fn from_request(
                 req: &mut ::axum::extract::RequestParts<B>,
             ) -> ::std::result::Result<Self, Self::Rejection> {
-                <#via<_> as ::axum::extract::FromRequest<B>>::from_request(req)
+                ::axum::extract::FromRequest::<B>::from_request(req)
                     .await
                     .map(|#via(inner)| inner)
-                    .map_err(::axum::response::IntoResponse::into_response)
             }
         }
     }
