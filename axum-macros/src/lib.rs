@@ -125,7 +125,7 @@ mod from_request;
 /// // impl<T, B> FromRequest<B> for ViaExtractor<T> { ... }
 /// ```
 ///
-/// More complex via extractors are not supported and requires writing a manual implementation.
+/// More complex via extractors are not supported and require writing a manual implementation.
 ///
 /// ## Optional fields
 ///
