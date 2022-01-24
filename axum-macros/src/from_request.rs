@@ -417,7 +417,7 @@ fn impl_by_extracting_all_at_once(
     })
 }
 
-#[derive(Debug, Default)]
+#[derive(Default)]
 struct FromRequestAttrs {
     via: Option<(kw::via, syn::Path)>,
 }
@@ -427,12 +427,10 @@ mod kw {
 }
 
 fn parse_attrs(attrs: &[syn::Attribute]) -> syn::Result<FromRequestAttrs> {
-    #[derive(Debug)]
     enum Attr {
         FromRequest(Punctuated<FromRequestAttr, Token![,]>),
     }
 
-    #[derive(Debug)]
     enum FromRequestAttr {
         Via { via: kw::via, path: syn::Path },
     }
