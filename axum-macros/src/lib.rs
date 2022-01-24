@@ -221,6 +221,17 @@ mod from_request;
 /// The rejection will be the "via extractors"'s rejection. For the previous example that would be
 /// [`axum::extract::rejection::ExtensionRejection`].
 ///
+/// # Known limitations
+///
+/// Generics are not supported:
+///
+/// ```compile_fail
+/// #[derive(axum_macros::FromRequest)]
+/// struct MyExtractor<T> {
+///     thing: Option<T>,
+/// }
+/// ```
+///
 /// [`FromRequest`]: https://docs.rs/axum/latest/axum/extract/trait.FromRequest.html
 /// [`axum::extract::rejection::ExtensionRejection`]: https://docs.rs/axum/latest/axum/extract/rejection/enum.ExtensionRejection.html
 #[proc_macro_derive(FromRequest, attributes(from_request))]

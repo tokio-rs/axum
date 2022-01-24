@@ -30,7 +30,7 @@ where
         ExtractorRejection::Uri(inner) => {
             let _: Infallible = inner;
         }
-        ExtractorRejection::String(inner) => {
+        ExtractorRejection::Body(inner) => {
             let _: StringRejection = inner;
         }
         ExtractorRejection::UserAgent(inner) => {
@@ -39,7 +39,7 @@ where
         ExtractorRejection::ContentType(inner) => {
             let _: TypedHeaderRejection = inner;
         }
-        ExtractorRejection::ETag(inner) => {
+        ExtractorRejection::Etag(inner) => {
             let _: Infallible = inner;
         }
         ExtractorRejection::Host(inner) => {

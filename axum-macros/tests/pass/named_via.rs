@@ -43,7 +43,7 @@ where
         ExtractorRejection::ContentType(inner) => {
             let _: TypedHeaderRejection = inner;
         }
-        ExtractorRejection::ETag(inner) => {
+        ExtractorRejection::Etag(inner) => {
             let _: Infallible = inner;
         }
         ExtractorRejection::Host(inner) => {

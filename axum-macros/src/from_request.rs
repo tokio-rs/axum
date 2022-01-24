@@ -1,3 +1,4 @@
+use heck::ToUpperCamelCase;
 use proc_macro2::TokenStream;
 use quote::{quote, quote_spanned};
 use syn::{
@@ -327,14 +328,16 @@ fn extract_each_field_rejection(
     })
 }
 
-fn rejection_variant_name(field: &syn::Field) -> syn::Result<&syn::Ident> {
-    fn rejection_variant_name_for_type(ty: &syn::Type) -> syn::Result<&syn::Ident> {
+fn rejection_variant_name(field: &syn::Field) -> syn::Result<syn::Ident> {
+    fn rejection_variant_name_for_type(out: &mut String, ty: &syn::Type) -> syn::Result<()> {
         if let syn::Type::Path(type_path) = ty {
             let segment = type_path
                 .path
                 .segments
                 .last()
                 .ok_or_else(|| syn::Error::new_spanned(ty, "Empty type path"))?;
+
+            out.push_str(&segment.ident.to_string());
 
             match &segment.arguments {
                 syn::PathArguments::AngleBracketed(args) => {
@@ -357,7 +360,7 @@ fn rejection_variant_name(field: &syn::Field) -> syn::Result<&syn::Ident> {
                     };
 
                     if let syn::GenericArgument::Type(ty) = ty {
-                        rejection_variant_name_for_type(ty)
+                        rejection_variant_name_for_type(out, ty)
                     } else {
                         Err(syn::Error::new_spanned(ty, "Expected type path"))
                     }
@@ -365,14 +368,30 @@ fn rejection_variant_name(field: &syn::Field) -> syn::Result<&syn::Ident> {
                 syn::PathArguments::Parenthesized(args) => {
                     Err(syn::Error::new_spanned(args, "Unsupported"))
                 }
-                syn::PathArguments::None => Ok(&segment.ident),
+                syn::PathArguments::None => Ok(()),
             }
         } else {
             Err(syn::Error::new_spanned(ty, "Expected type path"))
         }
     }
 
-    rejection_variant_name_for_type(&field.ty)
+    if let Some(ident) = &field.ident {
+        Ok(quote::format_ident!(
+            "{}",
+            ident.to_string().to_upper_camel_case()
+        ))
+    } else {
+        let mut out = String::new();
+        rejection_variant_name_for_type(&mut out, &field.ty)?;
+
+        let FromRequestAttrs { via } = parse_attrs(&field.attrs)?;
+        if let Some((_, path)) = via {
+            let via_ident = &path.segments.last().unwrap().ident;
+            Ok(quote::format_ident!("{}{}", via_ident, out))
+        } else {
+            Ok(quote::format_ident!("{}", out))
+        }
+    }
 }
 
 fn impl_by_extracting_all_at_once(
