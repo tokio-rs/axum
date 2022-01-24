@@ -125,6 +125,33 @@ mod from_request;
 /// // impl<T, B> FromRequest<B> for ViaExtractor<T> { ... }
 /// ```
 ///
+/// More complex via extractors are not supported and requires writing a manual implementation.
+///
+/// ## Optional fields
+///
+/// `#[from_request(via(...))]` supports `Option<_>` and `Result<_, _>` to make fields optional:
+///
+/// ```
+/// use axum_macros::FromRequest;
+/// use axum::{
+///     extract::{TypedHeader, rejection::TypedHeaderRejection},
+///     headers::{ContentType, UserAgent},
+/// };
+///
+/// #[derive(FromRequest)]
+/// struct MyExtractor {
+///     // This will extracted via `Option::<TypedHeader<ContentType>>::from_request`
+///     #[from_request(via(TypedHeader))]
+///     content_type: Option<ContentType>,
+///     // This will extracted via
+///     // `Result::<TypedHeader<UserAgent>, TypedHeaderRejection>::from_request`
+///     #[from_request(via(TypedHeader))]
+///     user_agent: Result<UserAgent, TypedHeaderRejection>,
+/// }
+///
+/// async fn handler(extractor: MyExtractor) {}
+/// ```
+///
 /// ## The rejection
 ///
 /// A rejection enum is also generated. It has a variant for each field:

@@ -112,16 +112,97 @@ fn extract_fields(fields: &syn::Fields) -> syn::Result<Vec<TokenStream>> {
 
             let rejection_variant_name = rejection_variant_name(field)?;
 
-            Ok(quote_spanned! {ty_span=>
-                #member: {
-                    ::axum::extract::FromRequest::from_request(req)
-                        .await
-                        .map(#into_inner)
-                        .map_err(Self::Rejection::#rejection_variant_name)?
-                },
-            })
+            if peel_option(&field.ty).is_some() {
+                Ok(quote_spanned! {ty_span=>
+                    #member: {
+                        ::axum::extract::FromRequest::from_request(req)
+                            .await
+                            .ok()
+                            .map(#into_inner)
+                    },
+                })
+            } else if peel_result_ok(&field.ty).is_some() {
+                Ok(quote_spanned! {ty_span=>
+                    #member: {
+                        ::axum::extract::FromRequest::from_request(req)
+                            .await
+                            .map(#into_inner)
+                    },
+                })
+            } else {
+                Ok(quote_spanned! {ty_span=>
+                    #member: {
+                        ::axum::extract::FromRequest::from_request(req)
+                            .await
+                            .map(#into_inner)
+                            .map_err(Self::Rejection::#rejection_variant_name)?
+                    },
+                })
+            }
         })
         .collect()
+}
+
+fn peel_option(ty: &syn::Type) -> Option<&syn::Type> {
+    let type_path = if let syn::Type::Path(type_path) = ty {
+        type_path
+    } else {
+        return None;
+    };
+
+    let segment = type_path.path.segments.last()?;
+
+    if segment.ident != "Option" {
+        return None;
+    }
+
+    let args = match &segment.arguments {
+        syn::PathArguments::AngleBracketed(args) => args,
+        syn::PathArguments::Parenthesized(_) | syn::PathArguments::None => return None,
+    };
+
+    let ty = if args.args.len() == 1 {
+        args.args.last().unwrap()
+    } else {
+        return None;
+    };
+
+    if let syn::GenericArgument::Type(ty) = ty {
+        Some(ty)
+    } else {
+        None
+    }
+}
+
+fn peel_result_ok(ty: &syn::Type) -> Option<&syn::Type> {
+    let type_path = if let syn::Type::Path(type_path) = ty {
+        type_path
+    } else {
+        return None;
+    };
+
+    let segment = type_path.path.segments.last()?;
+
+    if segment.ident != "Result" {
+        return None;
+    }
+
+    let args = match &segment.arguments {
+        syn::PathArguments::AngleBracketed(args) => args,
+        syn::PathArguments::Parenthesized(_) | syn::PathArguments::None => return None,
+    };
+
+    let ty = if args.args.len() == 2 {
+        args.args.first().unwrap()
+    } else {
+        return None;
+    };
+
+    if let syn::GenericArgument::Type(ty) = ty {
+        Some(ty)
+    } else {
+        None
+    }
 }
 
 fn extract_each_field_rejection(
@@ -136,22 +217,31 @@ fn extract_each_field_rejection(
         .map(|field| {
             let FromRequestAttrs { via } = parse_attrs(&field.attrs)?;
 
-            let ty = &field.ty;
-            let ty_span = ty.span();
+            let field_ty = &field.ty;
+            let ty_span = field_ty.span();
 
             let variant_name = rejection_variant_name(field)?;
 
-            if let Some((_, path)) = via {
-                Ok(quote_spanned! {ty_span=>
-                    #[allow(non_camel_case_types)]
-                    #variant_name(<#path<#ty> as ::axum::extract::FromRequest<::axum::body::Body>>::Rejection),
-                })
+            let extractor_ty = if let Some((_, path)) = via {
+                if let Some(inner) = peel_option(field_ty) {
+                    quote_spanned! {ty_span=>
+                        Option<#path<#inner>>
+                    }
+                } else if let Some(inner) = peel_result_ok(field_ty) {
+                    quote_spanned! {ty_span=>
+                        Result<#path<#inner>, TypedHeaderRejection>
+                    }
+                } else {
+                    quote_spanned! {ty_span=> #path<#field_ty> }
+                }
             } else {
-                Ok(quote_spanned! {ty_span=>
-                    #[allow(non_camel_case_types)]
-                    #variant_name(<#ty as ::axum::extract::FromRequest<::axum::body::Body>>::Rejection),
-                })
-            }
+                quote_spanned! {ty_span=> #field_ty }
+            };
+
+            Ok(quote_spanned! {ty_span=>
+                #[allow(non_camel_case_types)]
+                #variant_name(<#extractor_ty as ::axum::extract::FromRequest<::axum::body::Body>>::Rejection),
+            })
         })
         .collect::<syn::Result<Vec<_>>>()?;
 
@@ -234,7 +324,7 @@ fn extract_each_field_rejection(
 }
 
 fn rejection_variant_name(field: &syn::Field) -> syn::Result<&syn::Ident> {
-    fn for_type(ty: &syn::Type) -> syn::Result<&syn::Ident> {
+    fn rejection_variant_name_for_type(ty: &syn::Type) -> syn::Result<&syn::Ident> {
         if let syn::Type::Path(type_path) = ty {
             let segment = type_path
                 .path
@@ -243,35 +333,42 @@ fn rejection_variant_name(field: &syn::Field) -> syn::Result<&syn::Ident> {
                 .ok_or_else(|| syn::Error::new_spanned(ty, "Empty type path"))?;
 
             match &segment.arguments {
-                syn::PathArguments::None => Ok(&segment.ident),
                 syn::PathArguments::AngleBracketed(args) => {
-                    let args = &args.args;
-
-                    let last = if args.len() == 1 {
-                        args.last().unwrap()
+                    let ty = if args.args.len() == 1 {
+                        args.args.last().unwrap()
+                    } else if args.args.len() == 2 {
+                        if segment.ident == "Result" {
+                            args.args.first().unwrap()
+                        } else {
+                            return Err(syn::Error::new_spanned(
+                                segment,
+                                "Only `Result<T, E>` is supported with two generics type paramters",
+                            ));
+                        }
                     } else {
                         return Err(syn::Error::new_spanned(
-                            args,
-                            "Expected exactly one type paramter",
+                            &args.args,
+                            "Expected exactly one or two type paramters",
                         ));
                     };
 
-                    if let syn::GenericArgument::Type(ty) = last {
-                        for_type(ty)
+                    if let syn::GenericArgument::Type(ty) = ty {
+                        rejection_variant_name_for_type(ty)
                     } else {
-                        Err(syn::Error::new_spanned(last, "Expected type path"))
+                        Err(syn::Error::new_spanned(ty, "Expected type path"))
                     }
                 }
                 syn::PathArguments::Parenthesized(args) => {
                     Err(syn::Error::new_spanned(args, "Unsupported"))
                 }
+                syn::PathArguments::None => Ok(&segment.ident),
             }
         } else {
             Err(syn::Error::new_spanned(ty, "Expected type path"))
         }
     }
 
-    for_type(&field.ty)
+    rejection_variant_name_for_type(&field.ty)
 }
 
 fn impl_by_extracting_all_at_once(

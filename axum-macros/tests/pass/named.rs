@@ -1,4 +1,8 @@
-use axum::{body::Body, extract::{FromRequest, TypedHeader}, headers::{self, UserAgent}};
+use axum::{
+    body::Body,
+    extract::{FromRequest, TypedHeader, rejection::{TypedHeaderRejection, StringRejection}},
+    headers::{self, UserAgent},
+};
 use axum_macros::FromRequest;
 use std::convert::Infallible;
 
@@ -8,6 +12,7 @@ struct Extractor {
     user_agent: TypedHeader<UserAgent>,
     content_type: TypedHeader<headers::ContentType>,
     etag: Option<TypedHeader<headers::ETag>>,
+    host: Result<TypedHeader<headers::Host>, TypedHeaderRejection>,
     body: String,
 }
 
@@ -26,15 +31,18 @@ where
             let _: Infallible = inner;
         }
         ExtractorRejection::String(inner) => {
-            let _: axum::extract::rejection::StringRejection = inner;
+            let _: StringRejection = inner;
         }
         ExtractorRejection::UserAgent(inner) => {
-            let _: axum::extract::rejection::TypedHeaderRejection = inner;
+            let _: TypedHeaderRejection = inner;
         }
         ExtractorRejection::ContentType(inner) => {
-            let _: axum::extract::rejection::TypedHeaderRejection = inner;
+            let _: TypedHeaderRejection = inner;
         }
         ExtractorRejection::ETag(inner) => {
+            let _: Infallible = inner;
+        }
+        ExtractorRejection::Host(inner) => {
             let _: Infallible = inner;
         }
     }
