@@ -497,3 +497,15 @@ fn ui() {
 
     go();
 }
+
+/// For some reason the compiler error for this is different locally and on CI. No idea why... So
+/// we don't use trybuild for this test.
+///
+/// ```compile_fail
+/// #[derive(axum_macros::FromRequest)]
+/// struct Extractor {
+///     thing: bool,
+/// }
+/// ```
+#[allow(dead_code)]
+fn test_field_doesnt_impl_from_request() {}
