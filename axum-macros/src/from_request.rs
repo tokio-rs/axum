@@ -258,6 +258,7 @@ fn extract_each_field_rejection(
             .collect::<syn::Result<Vec<_>>>()?;
 
         quote! {
+            #[automatically_derived]
             impl ::axum::response::IntoResponse for #rejection_ident {
                 fn into_response(self) -> ::axum::response::Response {
                     match self {
@@ -280,6 +281,7 @@ fn extract_each_field_rejection(
             .collect::<syn::Result<Vec<_>>>()?;
 
         quote! {
+            #[automatically_derived]
             impl ::std::fmt::Display for #rejection_ident {
                 fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
                     match self {
@@ -302,6 +304,7 @@ fn extract_each_field_rejection(
             .collect::<syn::Result<Vec<_>>>()?;
 
         quote! {
+            #[automatically_derived]
             impl ::std::error::Error for #rejection_ident {
                 fn source(&self) -> ::std::option::Option<&(dyn ::std::error::Error + 'static)> {
                     match self {
