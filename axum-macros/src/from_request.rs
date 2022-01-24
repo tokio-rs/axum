@@ -234,16 +234,44 @@ fn extract_each_field_rejection(
 }
 
 fn rejection_variant_name(field: &syn::Field) -> syn::Result<&syn::Ident> {
-    if let syn::Type::Path(type_path) = &field.ty {
-        Ok(&type_path
-            .path
-            .segments
-            .last()
-            .ok_or_else(|| syn::Error::new_spanned(&field.ty, "Empty type path"))?
-            .ident)
-    } else {
-        Err(syn::Error::new_spanned(&field.ty, "Expected type path"))
+    fn for_type(ty: &syn::Type) -> syn::Result<&syn::Ident> {
+        if let syn::Type::Path(type_path) = ty {
+            let segment = type_path
+                .path
+                .segments
+                .last()
+                .ok_or_else(|| syn::Error::new_spanned(ty, "Empty type path"))?;
+
+            match &segment.arguments {
+                syn::PathArguments::None => Ok(&segment.ident),
+                syn::PathArguments::AngleBracketed(args) => {
+                    let args = &args.args;
+
+                    let last = if args.len() == 1 {
+                        args.last().unwrap()
+                    } else {
+                        return Err(syn::Error::new_spanned(
+                            args,
+                            "Expected exactly one type paramter",
+                        ));
+                    };
+
+                    if let syn::GenericArgument::Type(ty) = last {
+                        for_type(ty)
+                    } else {
+                        Err(syn::Error::new_spanned(last, "Expected type path"))
+                    }
+                }
+                syn::PathArguments::Parenthesized(args) => {
+                    Err(syn::Error::new_spanned(args, "Unsupported"))
+                }
+            }
+        } else {
+            Err(syn::Error::new_spanned(ty, "Expected type path"))
+        }
     }
+
+    for_type(&field.ty)
 }
 
 fn impl_by_extracting_all_at_once(

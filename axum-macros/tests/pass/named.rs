@@ -1,9 +1,13 @@
-use axum::{body::Body, extract::FromRequest};
+use axum::{body::Body, extract::{FromRequest, TypedHeader}, headers::{self, UserAgent}};
 use axum_macros::FromRequest;
+use std::convert::Infallible;
 
 #[derive(FromRequest)]
 struct Extractor {
-    headers: axum::http::HeaderMap,
+    uri: axum::http::Uri,
+    user_agent: TypedHeader<UserAgent>,
+    content_type: TypedHeader<headers::ContentType>,
+    etag: Option<TypedHeader<headers::ETag>>,
     body: String,
 }
 
@@ -18,11 +22,20 @@ where
     ExtractorRejection: std::fmt::Debug + std::fmt::Display + std::error::Error,
 {
     match rejection {
-        ExtractorRejection::HeaderMap(inner) => {
-            let _: std::convert::Infallible = inner;
+        ExtractorRejection::Uri(inner) => {
+            let _: Infallible = inner;
         }
         ExtractorRejection::String(inner) => {
             let _: axum::extract::rejection::StringRejection = inner;
+        }
+        ExtractorRejection::UserAgent(inner) => {
+            let _: axum::extract::rejection::TypedHeaderRejection = inner;
+        }
+        ExtractorRejection::ContentType(inner) => {
+            let _: axum::extract::rejection::TypedHeaderRejection = inner;
+        }
+        ExtractorRejection::ETag(inner) => {
+            let _: Infallible = inner;
         }
     }
 }
