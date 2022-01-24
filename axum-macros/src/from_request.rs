@@ -143,10 +143,12 @@ fn extract_each_field_rejection(
 
             if let Some((_, path)) = via {
                 Ok(quote_spanned! {ty_span=>
+                    #[allow(non_camel_case_types)]
                     #variant_name(<#path<#ty> as ::axum::extract::FromRequest<::axum::body::Body>>::Rejection),
                 })
             } else {
                 Ok(quote_spanned! {ty_span=>
+                    #[allow(non_camel_case_types)]
                     #variant_name(<#ty as ::axum::extract::FromRequest<::axum::body::Body>>::Rejection),
                 })
             }
@@ -361,4 +363,19 @@ fn parse_attrs(attrs: &[syn::Attribute]) -> syn::Result<FromRequestAttrs> {
     }
 
     Ok(out)
+}
+
+#[test]
+fn ui() {
+    #[rustversion::stable]
+    fn go() {
+        let t = trybuild::TestCases::new();
+        t.compile_fail("tests/fail/*.rs");
+        t.pass("tests/pass/*.rs");
+    }
+
+    #[rustversion::not(stable)]
+    fn go() {}
+
+    go();
 }

@@ -1,0 +1,23 @@
+error[E0277]: the trait bound `bool: FromRequest<Body>` is not satisfied in `ExtractorRejection`
+   --> tests/fail/field_doesnt_impl_from_request.rs:3:10
+    |
+3   | #[derive(FromRequest)]
+    |          ^^^^^^^^^^^ within `ExtractorRejection`, the trait `FromRequest<Body>` is not implemented for `bool`
+    |
+note: required because it appears within the type `ExtractorRejection`
+   --> tests/fail/field_doesnt_impl_from_request.rs:4:8
+    |
+4   | struct Extractor {
+    |        ^^^^^^^^^
+note: required by a bound in `Result`
+   --> $RUST/core/src/result.rs
+    |
+    | pub enum Result<T, E> {
+    |                    ^ required by this bound in `Result`
+    = note: this error originates in the derive macro `FromRequest` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the trait bound `bool: FromRequest<Body>` is not satisfied
+ --> tests/fail/field_doesnt_impl_from_request.rs:5:12
+  |
+5 |     thing: bool,
+  |            ^^^^ the trait `FromRequest<Body>` is not implemented for `bool`
