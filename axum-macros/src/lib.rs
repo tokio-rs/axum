@@ -179,7 +179,7 @@ mod from_request;
 /// // enum MyExtractorRejection {
 /// //     State(ExtensionRejection),
 /// //     ContentType(TypedHeaderRejection),
-/// //     Bytes(BytesRejection),
+/// //     RequestBody(BytesRejection),
 /// // }
 /// //
 /// // impl axum::response::IntoResponse for MyExtractor { ... }
