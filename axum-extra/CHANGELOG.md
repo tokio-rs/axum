@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **fix:** Depend on tower with `default_features = false` ([#666])
 - **breaking:** `CachedRejection` has been removed ([#699])
 - **breaking:** `<Cached<T> as FromRequest>::Error` is now `T::Rejection`. ([#699])
+- **breaking:** `middleware::from_fn` has been moved into the main axum crate
 
 [#666]: https://github.com/tokio-rs/axum/pull/666
 [#699]: https://github.com/tokio-rs/axum/pull/699

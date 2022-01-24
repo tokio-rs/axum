@@ -7,8 +7,14 @@
 //! cargo run -p example-prometheus-metrics
 //! ```
 
-use axum::{extract::MatchedPath, http::Request, response::IntoResponse, routing::get, Router};
-use axum_extra::middleware::{self, Next};
+use axum::{
+    extract::MatchedPath,
+    http::Request,
+    middleware::{self, Next},
+    response::IntoResponse,
+    routing::get,
+    Router,
+};
 use metrics_exporter_prometheus::{Matcher, PrometheusBuilder, PrometheusHandle};
 use std::{
     future::ready,

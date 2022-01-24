@@ -1,8 +1,4 @@
-//! Create middleware from async functions.
-//!
-//! See [`from_fn`] for more details.
-
-use axum::{
+use crate::{
     body::{self, Bytes, HttpBody},
     response::{IntoResponse, Response},
     BoxError,
@@ -39,8 +35,8 @@ use tower_service::Service;
 ///     http::{Request, StatusCode},
 ///     routing::get,
 ///     response::IntoResponse,
+///     middleware::{self, Next},
 /// };
-/// use axum_extra::middleware::{self, Next};
 ///
 /// async fn auth<B>(req: Request<B>, next: Next<B>) -> impl IntoResponse {
 ///     let auth_header = req.headers()
@@ -76,8 +72,8 @@ use tower_service::Service;
 ///     http::{Request, StatusCode},
 ///     routing::get,
 ///     response::IntoResponse,
+///     middleware::{self, Next}
 /// };
-/// use axum_extra::middleware::{self, Next};
 ///
 /// #[derive(Clone)]
 /// struct State { /* ... */ }
@@ -109,9 +105,9 @@ use tower_service::Service;
 ///     http::{Request, StatusCode},
 ///     routing::get,
 ///     response::IntoResponse,
+///     middleware::{self, Next},
 ///     AddExtensionLayer,
 /// };
-/// use axum_extra::middleware::{self, Next};
 /// use tower::ServiceBuilder;
 ///
 /// #[derive(Clone)]
@@ -138,37 +134,37 @@ use tower_service::Service;
 ///     );
 /// # let app: Router = app;
 /// ```
-pub fn from_fn<F>(f: F) -> MiddlewareFnLayer<F> {
-    MiddlewareFnLayer { f }
+pub fn from_fn<F>(f: F) -> FromFnLayer<F> {
+    FromFnLayer { f }
 }
 
 /// A [`tower::Layer`] from an async function.
 ///
-/// [`tower::Layer`] is used to apply middleware to [`axum::Router`]s.
+/// [`tower::Layer`] is used to apply middleware to [`Router`](crate::Router)'s.
 ///
 /// Created with [`from_fn`]. See that function for more details.
 #[derive(Clone, Copy)]
-pub struct MiddlewareFnLayer<F> {
+pub struct FromFnLayer<F> {
     f: F,
 }
 
-impl<S, F> Layer<S> for MiddlewareFnLayer<F>
+impl<S, F> Layer<S> for FromFnLayer<F>
 where
     F: Clone,
 {
-    type Service = MiddlewareFn<F, S>;
+    type Service = FromFn<F, S>;
 
     fn layer(&self, inner: S) -> Self::Service {
-        MiddlewareFn {
+        FromFn {
             f: self.f.clone(),
             inner,
         }
     }
 }
 
-impl<F> fmt::Debug for MiddlewareFnLayer<F> {
+impl<F> fmt::Debug for FromFnLayer<F> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("MiddlewareFnLayer")
+        f.debug_struct("FromFnLayer")
             // Write out the type name, without quoting it as `&type_name::<F>()` would
             .field("f", &format_args!("{}", type_name::<F>()))
             .finish()
@@ -179,12 +175,12 @@ impl<F> fmt::Debug for MiddlewareFnLayer<F> {
 ///
 /// Created with [`from_fn`]. See that function for more details.
 #[derive(Clone, Copy)]
-pub struct MiddlewareFn<F, S> {
+pub struct FromFn<F, S> {
     f: F,
     inner: S,
 }
 
-impl<F, Fut, Out, S, ReqBody, ResBody> Service<Request<ReqBody>> for MiddlewareFn<F, S>
+impl<F, Fut, Out, S, ReqBody, ResBody> Service<Request<ReqBody>> for FromFn<F, S>
 where
     F: FnMut(Request<ReqBody>, Next<ReqBody>) -> Fut,
     Fut: Future<Output = Out>,
@@ -221,12 +217,12 @@ where
     }
 }
 
-impl<F, S> fmt::Debug for MiddlewareFn<F, S>
+impl<F, S> fmt::Debug for FromFn<F, S>
 where
     S: fmt::Debug,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("MiddlewareFnLayer")
+        f.debug_struct("FromFnLayer")
             .field("f", &format_args!("{}", type_name::<F>()))
             .field("inner", &self.inner)
             .finish()
@@ -250,14 +246,14 @@ impl<ReqBody> Next<ReqBody> {
 
 impl<ReqBody> fmt::Debug for Next<ReqBody> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("MiddlewareFnLayer")
+        f.debug_struct("FromFnLayer")
             .field("inner", &self.inner)
             .finish()
     }
 }
 
 pin_project! {
-    /// Response future for [`MiddlewareFn`].
+    /// Response future for [`FromFn`].
     pub struct ResponseFuture<F> {
         #[pin]
         inner: F,
@@ -283,7 +279,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use axum::{body::Empty, routing::get, Router};
+    use crate::{body::Empty, routing::get, Router};
     use http::{HeaderMap, StatusCode};
     use tower::ServiceExt;
 
