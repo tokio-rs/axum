@@ -327,8 +327,8 @@ fn parse_attrs(attrs: &[syn::Attribute]) -> syn::Result<FromRequestAttrs> {
 
     let attrs = attrs
         .iter()
-        .filter_map(|attr| attr.path.get_ident().map(|ident| (ident, attr)))
-        .filter_map(|(ident, attr)| {
+        .filter_map(|attr| {
+            let ident = attr.path.get_ident()?;
             if ident == "from_request" {
                 Some(
                     attr.parse_args_with(Punctuated::parse_terminated)
