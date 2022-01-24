@@ -54,6 +54,7 @@ fn impl_by_extracting_each_field(
 
     Ok(quote! {
         #[::axum::async_trait]
+        #[automatically_derived]
         impl<B> ::axum::extract::FromRequest<B> for #ident
         where
             B: ::axum::body::HttpBody + ::std::marker::Send + 'static,
@@ -454,7 +455,8 @@ fn parse_attrs(attrs: &[syn::Attribute]) -> syn::Result<FromRequestAttrs> {
         .iter()
         .filter(|attr| attr.path.is_ident("from_request"))
         .map(|attr| {
-            attr.parse_args_with(Punctuated::parse_terminated).map(Attr::FromRequest)
+            attr.parse_args_with(Punctuated::parse_terminated)
+                .map(Attr::FromRequest)
         })
         .collect::<syn::Result<Vec<_>>>()?;
 
