@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 # Unreleased
 
 - **added:** `axum_extra::middleware::from_fn` has been moved into the main axum crate. It is used
-  to easily crate a middleware from an async function
+  to easily crate a middleware from an async function ([#719])
 - **breaking:** `sse::Event` now accepts types implementing `AsRef<str>` instead of `Into<String>`
   as field values.
 - **breaking:** `sse::Event` now panics if a setter method is called twice instead of silently
@@ -59,6 +59,7 @@ is mentioned here.
 [#665]: https://github.com/tokio-rs/axum/pull/665
 [#698]: https://github.com/tokio-rs/axum/pull/698
 [#699]: https://github.com/tokio-rs/axum/pull/699
+[#719]: https://github.com/tokio-rs/axum/pull/719
 
 # 0.4.4 (13. January, 2021)
 
