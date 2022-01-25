@@ -1,13 +1,16 @@
+//! Example of application using https://github.com/launchbadge/sqlx
+//!
 //! Run with
 //!
 //! ```not_rust
-//! cargo run -p example-sqlx-sqlite
+//! cargo run -p example-sqlx-postgres
 //! ```
 //!
 //! Test with curl:
 //!
 //! ```not_rust
 //! curl 127.0.0.1:3000
+//! curl -X POST 127.0.0.1:3000
 //! ```
 
 use axum::{
@@ -17,11 +20,9 @@ use axum::{
     routing::get,
     AddExtensionLayer, Router,
 };
-use sqlx::any::Any;
-use sqlx::migrate::MigrateDatabase;
-use sqlx::sqlite::SqlitePool;
+use sqlx::postgres::{PgPool, PgPoolOptions};
 
-use std::net::SocketAddr;
+use std::{net::SocketAddr, time::Duration};
 
 #[tokio::main]
 async fn main() {
@@ -31,18 +32,16 @@ async fn main() {
     }
     tracing_subscriber::fmt::init();
 
-    let uri = std::env::var("DATABASE_URL")
-        .unwrap_or_else(|_| "sqlite://./target/db.sqlite3".to_string());
+    let db_connection_str = std::env::var("DATABASE_URL")
+        .unwrap_or_else(|_| "postgres://postgres:password@localhost".to_string());
 
-    if !Any::database_exists(&uri).await.unwrap() {
-        Any::create_database(&uri).await.unwrap();
-        tracing::info!("created sqlite database at {}", uri);
-    }
-
-    let pool = SqlitePool::connect(&uri).await.unwrap();
-
-    // embeds migrations inside the binary
-    sqlx::migrate!().run(&pool).await.unwrap();
+    // setup connection pool
+    let pool = PgPoolOptions::new()
+        .max_connections(5)
+        .connect_timeout(Duration::from_secs(3))
+        .connect(&db_connection_str)
+        .await
+        .expect("can connect to database");
 
     // build our application with some routes
     let app = Router::new()
@@ -63,20 +62,17 @@ async fn main() {
 
 // we can exact the connection pool with `Extension`
 async fn using_connection_pool_extractor(
-    Extension(pool): Extension<SqlitePool>,
+    Extension(pool): Extension<PgPool>,
 ) -> Result<String, (StatusCode, String)> {
-    let (result,) = sqlx::query_as("select username from users where id = $1")
-        .bind(1_u32)
+    sqlx::query_scalar("select 'hello world from pg'")
         .fetch_one(&pool)
         .await
-        .map_err(internal_error)?;
-
-    Ok(result)
+        .map_err(internal_error)
 }
 
 // we can also write a custom extractor that grabs a connection from the pool
 // which setup is appropriate depends on your application
-struct DatabaseConnection(sqlx::pool::PoolConnection<sqlx::Sqlite>);
+struct DatabaseConnection(sqlx::pool::PoolConnection<sqlx::Postgres>);
 
 #[async_trait]
 impl<B> FromRequest<B> for DatabaseConnection
@@ -86,7 +82,7 @@ where
     type Rejection = (StatusCode, String);
 
     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-        let Extension(pool) = Extension::<SqlitePool>::from_request(req)
+        let Extension(pool) = Extension::<PgPool>::from_request(req)
             .await
             .map_err(internal_error)?;
 
@@ -100,13 +96,10 @@ async fn using_connection_extractor(
     DatabaseConnection(conn): DatabaseConnection,
 ) -> Result<String, (StatusCode, String)> {
     let mut conn = conn;
-    let row: (String,) = sqlx::query_as("select username from users where id = $1")
-        .bind(1_u32)
+    sqlx::query_scalar("select 'hello world from pg'")
         .fetch_one(&mut conn)
         .await
-        .map_err(internal_error)?;
-
-    Ok(row.0)
+        .map_err(internal_error)
 }
 
 /// Utility function for mapping any error into a `500 Internal Server Error`

@@ -1,5 +1,5 @@
 [package]
-name = "example-sqlx-sqlite"
+name = "example-sqlx-postgres"
 version = "0.1.0"
 edition = "2018"
 publish = false
@@ -11,4 +11,4 @@ tracing = "0.1"
 tracing-subscriber = { version="0.3", features = ["env-filter"] }
 
 
-sqlx = { version = "0.5.10", features = ["runtime-tokio-rustls", "any", "sqlite", "migrate"] }
+sqlx = { version = "0.5.10", features = ["runtime-tokio-rustls", "any", "postgres"] }
