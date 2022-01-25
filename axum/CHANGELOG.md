@@ -23,14 +23,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - `RequestParts::headers` returns `&HeaderMap`.
     - `RequestParts::headers_mut` returns `&mut HeaderMap`.
     - `HeadersAlreadyExtracted` has been removed.
-    - The `HeadersAlreadyExtracted` removed variant has been removed from these rejections:
+    - The `HeadersAlreadyExtracted` variant has been removed from these rejections:
         - `RequestAlreadyExtracted`
         - `RequestPartsAlreadyExtracted`
         - `JsonRejection`
         - `FormRejection`
         - `ContentLengthLimitRejection`
         - `WebSocketUpgradeRejection`
-    - `<HeaderMap as FromRequest<_>>::Error` has been changed to `std::convert::Infallible`.
+    - `<HeaderMap as FromRequest<_>>::Rejection` has been changed to `std::convert::Infallible`.
 - **breaking:** `axum::http::Extensions` is no longer an extractor (ie it
   doesn't implement `FromRequest`). The `axum::extract::Extension` extractor is
   _not_ impacted by this and works the same. This change makes it harder to
@@ -41,17 +41,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - `RequestParts::extensions` returns `&Extensions`.
     - `RequestParts::extensions_mut` returns `&mut Extensions`.
     - `RequestAlreadyExtracted` has been removed.
-    - `<Request as FromRequest>::Error` is now `BodyAlreadyExtracted`.
-    - `<http::request::Parts as FromRequest>::Error` is now `Infallible`.
+    - `<Request as FromRequest>::Rejection` is now `BodyAlreadyExtracted`.
+    - `<http::request::Parts as FromRequest>::Rejection` is now `Infallible`.
     - `ExtensionsAlreadyExtracted` has been removed.
     - The `ExtensionsAlreadyExtracted` removed variant has been removed from these rejections:
         - `ExtensionRejection`
         - `PathRejection`
         - `MatchedPathRejection`
         - `WebSocketUpgradeRejection`
-
-TODO(david): make sure everything from https://github.com/tokio-rs/axum/pull/644
-is mentioned here.
 
 [#644]: https://github.com/tokio-rs/axum/pull/644
 [#665]: https://github.com/tokio-rs/axum/pull/665
