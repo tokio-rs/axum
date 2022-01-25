@@ -156,6 +156,8 @@ pub trait IntoResponseHeaders {
     type IntoIter: IntoIterator<Item = Result<(Option<HeaderName>, HeaderValue), Response>>;
 
     /// Attempt to turn `self` into a list of headers.
+    ///
+    /// In practice, only the implementation for `axum::response::Headers` ever returns `Err(_)`.
     #[doc(hidden)]
     fn into_headers(self) -> Self::IntoIter;
 }
