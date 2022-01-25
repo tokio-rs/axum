@@ -7,8 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- **added:** `axum_extra::middleware::from_fn` has been moved into the main axum crate. It is used
-  to easily crate a middleware from an async function ([#719])
+- **added:** `middleware::from_fn` for creating middleware from async functions.
+  This previously lived in axum-extra but has been moved to axum ([#719])
 - **breaking:** `sse::Event` now accepts types implementing `AsRef<str>` instead of `Into<String>`
   as field values.
 - **breaking:** `sse::Event` now panics if a setter method is called twice instead of silently
