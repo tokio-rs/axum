@@ -7,6 +7,8 @@
 This is a debugging crate that provides better error messages for [`axum`]
 framework.
 
+Note this crate is deprecated. Use [axum-macros] instead.
+
 More information about this crate can be found in the [crate documentation][docs].
 
 ## Safety
@@ -44,3 +46,4 @@ additional terms or conditions.
 [docs]: https://docs.rs/axum-debug
 [license]: /axum-debug/LICENSE
 [issue]: https://github.com/tokio-rs/axum/issues/new
+[axum-macros]: https://crates.io/crates/axum-macros

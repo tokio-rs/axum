@@ -406,8 +406,8 @@
 //! [`HeaderMap`]: http::header::HeaderMap
 //! [`Request`]: http::Request
 //! [customize-extractor-error]: https://github.com/tokio-rs/axum/blob/main/examples/customize-extractor-error/src/main.rs
-//! [axum-debug]: https://docs.rs/axum-debug
-//! [`debug_handler`]: https://docs.rs/axum-debug/latest/axum_debug/attr.debug_handler.html
+//! [axum-macros]: https://docs.rs/axum-macros
+//! [`debug_handler`]: https://docs.rs/axum-macros/latest/axum_macros/attr.debug_handler.html
 //! [`Handler`]: crate::handler::Handler
 //! [`Infallible`]: std::convert::Infallible
 //! [load shed]: tower::load_shed

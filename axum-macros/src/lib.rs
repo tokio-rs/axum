@@ -43,9 +43,11 @@
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![cfg_attr(test, allow(clippy::float_cmp))]
 
+use proc_macro::TokenStream;
 use quote::{quote, ToTokens};
 use syn::parse::Parse;
 
+mod debug_handler;
 mod from_request;
 
 /// Derive an implementation of [`FromRequest`].
@@ -235,17 +237,148 @@ mod from_request;
 /// [`FromRequest`]: https://docs.rs/axum/latest/axum/extract/trait.FromRequest.html
 /// [`axum::extract::rejection::ExtensionRejection`]: https://docs.rs/axum/latest/axum/extract/rejection/enum.ExtensionRejection.html
 #[proc_macro_derive(FromRequest, attributes(from_request))]
-pub fn derive_from_request(item: proc_macro::TokenStream) -> proc_macro::TokenStream {
+pub fn derive_from_request(item: TokenStream) -> TokenStream {
     expand_with(item, from_request::expand)
 }
 
-fn expand_with<F, T, K>(input: proc_macro::TokenStream, f: F) -> proc_macro::TokenStream
+/// Generates better error messages when applied handler functions.
+///
+/// While using [`axum`], you can get long error messages for simple mistakes. For example:
+///
+/// ```compile_fail
+/// use axum::{routing::get, Router};
+///
+/// #[tokio::main]
+/// async fn main() {
+///     let app = Router::new().route("/", get(handler));
+///
+///     axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())
+///         .serve(app.into_make_service())
+///         .await
+///         .unwrap();
+/// }
+///
+/// fn handler() -> &'static str {
+///     "Hello, world"
+/// }
+/// ```
+///
+/// You will get a long error message about function not implementing [`Handler`] trait. But why
+/// does this function not implement it? To figure it out, the [`debug_handler`] macro can be used.
+///
+/// ```compile_fail
+/// # use axum::{routing::get, Router};
+/// # use axum_macros::debug_handler;
+/// #
+/// # #[tokio::main]
+/// # async fn main() {
+/// #     let app = Router::new().route("/", get(handler));
+/// #
+/// #     axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())
+/// #         .serve(app.into_make_service())
+/// #         .await
+/// #         .unwrap();
+/// # }
+/// #
+/// #[debug_handler]
+/// fn handler() -> &'static str {
+///     "Hello, world"
+/// }
+/// ```
+///
+/// ```text
+/// error: handlers must be async functions
+///   --> main.rs:xx:1
+///    |
+/// xx | fn handler() -> &'static str {
+///    | ^^
+/// ```
+///
+/// As the error message says, handler function needs to be async.
+///
+/// ```
+/// use axum::{routing::get, Router};
+/// use axum_macros::debug_handler;
+///
+/// #[tokio::main]
+/// async fn main() {
+///     # async {
+///     let app = Router::new().route("/", get(handler));
+///
+///     axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())
+///         .serve(app.into_make_service())
+///         .await
+///         .unwrap();
+///     # };
+/// }
+///
+/// #[debug_handler]
+/// async fn handler() -> &'static str {
+///     "Hello, world"
+/// }
+/// ```
+///
+/// # Changing request body type
+///
+/// By default `#[debug_handler]` assumes your request body type is `axum::body::Body`. This will
+/// work for most extractors but, for example, it wont work for `Request<axum::body::BoxBody>`,
+/// which only implements `FromRequest<BoxBody>` and _not_ `FromRequest<Body>`.
+///
+/// To work around that the request body type can be customized like so:
+///
+/// ```
+/// use axum::{body::BoxBody, http::Request};
+/// # use axum_macros::debug_handler;
+///
+/// #[debug_handler(body = BoxBody)]
+/// async fn handler(request: Request<BoxBody>) {}
+/// ```
+///
+/// # Performance
+///
+/// This macro has no effect when compiled with the release profile. (eg. `cargo build --release`)
+///
+/// [`axum`]: https://docs.rs/axum/latest
+/// [`Handler`]: https://docs.rs/axum/latest/axum/handler/trait.Handler.html
+/// [`debug_handler`]: macro@debug_handler
+#[proc_macro_attribute]
+pub fn debug_handler(_attr: TokenStream, input: TokenStream) -> TokenStream {
+    #[cfg(not(debug_assertions))]
+    return input;
+
+    #[cfg(debug_assertions)]
+    return expand_attr_with(_attr, input, debug_handler::expand);
+}
+
+fn expand_with<F, I, K>(input: TokenStream, f: F) -> TokenStream
 where
-    F: FnOnce(T) -> syn::Result<K>,
-    T: Parse,
+    F: FnOnce(I) -> syn::Result<K>,
+    I: Parse,
     K: ToTokens,
 {
-    match syn::parse(input).and_then(f) {
+    expand(syn::parse(input).and_then(f))
+}
+
+fn expand_attr_with<F, A, I, K>(attr: TokenStream, input: TokenStream, f: F) -> TokenStream
+where
+    F: FnOnce(A, I) -> syn::Result<K>,
+    A: Parse,
+    I: Parse,
+    K: ToTokens,
+{
+    let expand_result = (|| {
+        let attr = syn::parse(attr)?;
+        let input = syn::parse(input)?;
+        f(attr, input)
+    })();
+    expand(expand_result)
+}
+
+fn expand<T>(result: syn::Result<T>) -> TokenStream
+where
+    T: ToTokens,
+{
+    match result {
         Ok(tokens) => {
             let tokens = (quote! { #tokens }).into();
             if std::env::var_os("AXUM_MACROS_DEBUG").is_some() {

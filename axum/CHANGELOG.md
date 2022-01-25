@@ -364,7 +364,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # 0.2.8 (07. October, 2021)
 
-- Document debugging handler type errors with "axum-debug" ([#372])
+- Document debugging handler type errors with "axum-macros" ([#372])
 
 [#372]: https://github.com/tokio-rs/axum/pull/372
 
