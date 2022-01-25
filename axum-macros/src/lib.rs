@@ -116,8 +116,8 @@ mod from_request;
 /// async fn handler(extractor: MyExtractor) {}
 /// ```
 ///
-/// Note this requires the via extractor to be a generic tuple struct that implements `FromRequest`
-/// and has exactly one public field:
+/// Note this requires the via extractor to be a generic newtype struct (a tuple struct with
+/// exactly one public field) that implements `FromRequest`:
 ///
 /// ```
 /// pub struct ViaExtractor<T>(pub T);
