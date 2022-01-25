@@ -81,7 +81,7 @@ mod from_request;
 /// async fn handler(extractor: MyExtractor) {}
 /// ```
 ///
-/// This requires that each field is an extractor (ie implements [`FromRequest`]).
+/// This requires that each field is an extractor (i.e. implements [`FromRequest`]).
 ///
 /// ## Extracting via another extractor
 ///
