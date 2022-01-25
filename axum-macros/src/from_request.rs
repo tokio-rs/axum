@@ -1,6 +1,6 @@
 use heck::ToUpperCamelCase;
 use proc_macro2::TokenStream;
-use quote::{quote, quote_spanned};
+use quote::{format_ident, quote, quote_spanned};
 use syn::{
     parse::{Parse, ParseStream},
     punctuated::Punctuated,
@@ -78,7 +78,7 @@ fn impl_by_extracting_each_field(
 }
 
 fn rejection_ident(ident: &syn::Ident) -> syn::Type {
-    let ident = quote::format_ident!("{}Rejection", ident);
+    let ident = format_ident!("{}Rejection", ident);
     syn::parse_quote!(#ident)
 }
 
@@ -227,11 +227,11 @@ fn extract_each_field_rejection(
             let extractor_ty = if let Some((_, path)) = via {
                 if let Some(inner) = peel_option(field_ty) {
                     quote_spanned! {ty_span=>
-                        Option<#path<#inner>>
+                        ::std::option::Option<#path<#inner>>
                     }
                 } else if let Some(inner) = peel_result_ok(field_ty) {
                     quote_spanned! {ty_span=>
-                        Result<#path<#inner>, TypedHeaderRejection>
+                        ::std::result::Result<#path<#inner>, TypedHeaderRejection>
                     }
                 } else {
                     quote_spanned! {ty_span=> #path<#field_ty> }
@@ -376,10 +376,7 @@ fn rejection_variant_name(field: &syn::Field) -> syn::Result<syn::Ident> {
     }
 
     if let Some(ident) = &field.ident {
-        Ok(quote::format_ident!(
-            "{}",
-            ident.to_string().to_upper_camel_case()
-        ))
+        Ok(format_ident!("{}", ident.to_string().to_upper_camel_case()))
     } else {
         let mut out = String::new();
         rejection_variant_name_for_type(&mut out, &field.ty)?;
@@ -387,9 +384,9 @@ fn rejection_variant_name(field: &syn::Field) -> syn::Result<syn::Ident> {
         let FromRequestAttrs { via } = parse_attrs(&field.attrs)?;
         if let Some((_, path)) = via {
             let via_ident = &path.segments.last().unwrap().ident;
-            Ok(quote::format_ident!("{}{}", via_ident, out))
+            Ok(format_ident!("{}{}", via_ident, out))
         } else {
-            Ok(quote::format_ident!("{}", out))
+            Ok(format_ident!("{}", out))
         }
     }
 }
@@ -420,6 +417,7 @@ fn impl_by_extracting_all_at_once(
 
     Ok(quote_spanned! {path_span=>
         #[::axum::async_trait]
+        #[automatically_derived]
         impl<B> ::axum::extract::FromRequest<B> for #ident
         where
             B: ::axum::body::HttpBody + ::std::marker::Send + 'static,
