@@ -1,4 +1,4 @@
-//! Example of application using https://github.com/launchbadge/sqlx
+//! Example of application using <https://github.com/launchbadge/sqlx>
 //!
 //! Run with
 //!
