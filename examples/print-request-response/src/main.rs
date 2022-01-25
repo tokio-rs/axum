@@ -7,11 +7,11 @@
 use axum::{
     body::{Body, Bytes},
     http::{Request, StatusCode},
+    middleware::{self, Next},
     response::{IntoResponse, Response},
     routing::post,
     Router,
 };
-use axum_extra::middleware::{self, Next};
 use std::net::SocketAddr;
 
 #[tokio::main]
