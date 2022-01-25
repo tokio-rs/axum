@@ -223,7 +223,7 @@ mod from_request;
 ///
 /// # Known limitations
 ///
-/// Generics are not supported:
+/// Generics are currently not supported:
 ///
 /// ```compile_fail
 /// #[derive(axum_macros::FromRequest)]
