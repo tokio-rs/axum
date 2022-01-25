@@ -39,7 +39,7 @@ sync_wrapper = "0.1.1"
 tokio = { version = "1", features = ["time"] }
 tokio-util = "0.6"
 tower = { version = "0.4.11", default-features = false, features = ["util", "buffer", "make"] }
-tower-http = { version = "0.2.0", features = ["map-response-body"] }
+tower-http = { version = "0.2.0", features = ["util", "map-response-body"] }
 tower-layer = "0.3"
 tower-service = "0.3"
 

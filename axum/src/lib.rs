@@ -463,6 +463,7 @@ pub mod body;
 pub mod error_handling;
 pub mod extract;
 pub mod handler;
+pub mod middleware;
 pub mod response;
 pub mod routing;
 
