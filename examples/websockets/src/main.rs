@@ -75,7 +75,24 @@ async fn ws_handler(
 async fn handle_socket(mut socket: WebSocket) {
     if let Some(msg) = socket.recv().await {
         if let Ok(msg) = msg {
-            println!("Client says: {:?}", msg);
+            match msg {
+                Message::Text(t) => {
+                    println!("client send str: {:?}", t);
+                }
+                Message::Binary(_) => {
+                    println!("client send binary data");
+                }
+                Message::Ping(_) => {
+                    println!("socket ping");
+                }
+                Message::Pong(_) => {
+                    println!("socket pong");
+                }
+                Message::Close(_) => {
+                    println!("client disconnected");
+                    return;
+                }
+            }
         } else {
             println!("client disconnected");
             return;
