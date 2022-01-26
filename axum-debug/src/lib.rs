@@ -1,6 +1,6 @@
 //! This is a debugging crate that provides better error messages for [`axum`] framework.
 //!
-//! Note this crate is deprecated. Use [axum-macros] instead.
+//! **Note:** this crate is deprecated. Use [axum-macros] instead.
 //!
 //! [axum-macros]: https://crates.io/crates/axum-macros
 //!

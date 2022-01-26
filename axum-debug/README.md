@@ -7,7 +7,7 @@
 This is a debugging crate that provides better error messages for [`axum`]
 framework.
 
-Note this crate is deprecated. Use [axum-macros] instead.
+**Note:** this crate is deprecated. Use [axum-macros] instead.
 
 More information about this crate can be found in the [crate documentation][docs].
 
