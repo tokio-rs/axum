@@ -58,7 +58,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#699]: https://github.com/tokio-rs/axum/pull/699
 [#719]: https://github.com/tokio-rs/axum/pull/719
 
-# 0.4.4 (13. January, 2021)
+# 0.4.4 (13. January, 2022)
 
 - **fixed:** Fix using incorrect path prefix when nesting `Router`s at `/` ([#691])
 - **fixed:** Make `nest("", service)` work and mean the same as `nest("/", service)` ([#691])
