@@ -1,148 +1,19 @@
 //! This is a debugging crate that provides better error messages for [`axum`] framework.
 //!
-//! While using [`axum`], you can get long error messages for simple mistakes. For example:
+//! **Note:** this crate is deprecated. Use [axum-macros] instead.
 //!
-//! ```rust,compile_fail
-//! use axum::{routing::get, Router};
+//! [axum-macros]: https://crates.io/crates/axum-macros
 //!
-//! #[tokio::main]
-//! async fn main() {
-//!     let app = Router::new().route("/", get(handler));
-//!
-//!     axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())
-//!         .serve(app.into_make_service())
-//!         .await
-//!         .unwrap();
-//! }
-//!
-//! fn handler() -> &'static str {
-//!     "Hello, world"
-//! }
-//! ```
-//!
-//! You will get a long error message about function not implementing [`Handler`] trait. But why
-//! does this function not implement it? To figure it out, the [`debug_handler`] macro can be used.
-//!
-//! ```rust,compile_fail
-//! # use axum::{routing::get, Router};
-//! # use axum_debug::debug_handler;
-//! #
-//! # #[tokio::main]
-//! # async fn main() {
-//! #     let app = Router::new().route("/", get(handler));
-//! #
-//! #     axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())
-//! #         .serve(app.into_make_service())
-//! #         .await
-//! #         .unwrap();
-//! # }
-//! #
-//! #[debug_handler]
-//! fn handler() -> &'static str {
-//!     "Hello, world"
-//! }
-//! ```
-//!
-//! ```text
-//! error: handlers must be async functions
-//!   --> main.rs:xx:1
-//!    |
-//! xx | fn handler() -> &'static str {
-//!    | ^^
-//! ```
-//!
-//! As the error message says, handler function needs to be async.
-//!
-//! ```rust,compile_fail
-//! use axum::{routing::get, Router};
-//! use axum_debug::debug_handler;
-//!
-//! #[tokio::main]
-//! async fn main() {
-//!     let app = Router::new().route("/", get(handler));
-//!
-//!     axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())
-//!         .serve(app.into_make_service())
-//!         .await
-//!         .unwrap();
-//! }
-//!
-//! #[debug_handler]
-//! async fn handler() -> &'static str {
-//!     "Hello, world"
-//! }
-//! ```
-//!
-//! # Changing request body type
-//!
-//! By default `#[debug_handler]` assumes your request body type is `axum::body::Body`. This will
-//! work for most extractors but, for example, it wont work for `Request<axum::body::BoxBody>`,
-//! which only implements `FromRequest<BoxBody>` and _not_ `FromRequest<Body>`.
-//!
-//! To work around that the request body type can be customized like so:
-//!
-//! ```rust
-//! use axum::{body::BoxBody, http::Request};
-//! # use axum_debug::debug_handler;
-//!
-//! #[debug_handler(body = BoxBody)]
-//! async fn handler(request: Request<BoxBody>) {}
-//! ```
-//!
-//! # Performance
-//!
-//! Macros in this crate have no effect when using release profile. (eg. `cargo build --release`)
-//!
-//! [`axum`]: https://docs.rs/axum/0.3
-//! [`Handler`]: https://docs.rs/axum/0.3/axum/handler/trait.Handler.html
-//! [`debug_handler`]: macro@debug_handler
-
-#![warn(
-    clippy::all,
-    clippy::dbg_macro,
-    clippy::todo,
-    clippy::empty_enum,
-    clippy::enum_glob_use,
-    clippy::mem_forget,
-    clippy::unused_self,
-    clippy::filter_map_next,
-    clippy::needless_continue,
-    clippy::needless_borrow,
-    clippy::match_wildcard_for_single_variants,
-    clippy::if_let_mutex,
-    clippy::mismatched_target_os,
-    clippy::await_holding_lock,
-    clippy::match_on_vec_items,
-    clippy::imprecise_flops,
-    clippy::suboptimal_flops,
-    clippy::lossy_float_literal,
-    clippy::rest_pat_in_fully_bound_structs,
-    clippy::fn_params_excessive_bools,
-    clippy::exit,
-    clippy::inefficient_to_string,
-    clippy::linkedlist,
-    clippy::macro_use_imports,
-    clippy::option_option,
-    clippy::verbose_file_reads,
-    clippy::unnested_or_patterns,
-    clippy::str_to_string,
-    rust_2018_idioms,
-    future_incompatible,
-    nonstandard_style,
-    missing_debug_implementations,
-    missing_docs
-)]
-#![deny(unreachable_pub, private_in_public)]
-#![allow(elided_lifetimes_in_paths, clippy::type_complexity)]
-#![forbid(unsafe_code)]
-#![cfg_attr(docsrs, feature(doc_cfg))]
-#![cfg_attr(test, allow(clippy::float_cmp))]
+//! [`axum`]: https://docs.rs/axum/latest
 
 use proc_macro::TokenStream;
 
 /// Generates better error messages when applied to a handler function.
 ///
-/// See the [module docs](self) for more details.
+/// Note this crate is deprecated. Use [axum-macros] instead.
+///
+/// [axum-macros]: https://crates.io/crates/axum-macros
+#[deprecated(since = "0.3.3", note = "Use the axum-macros crate instead")]
 #[proc_macro_attribute]
 pub fn debug_handler(_attr: TokenStream, input: TokenStream) -> TokenStream {
     #[cfg(not(debug_assertions))]
@@ -441,19 +312,4 @@ mod debug_handler {
 
         None
     }
-}
-
-#[test]
-fn ui() {
-    #[rustversion::stable]
-    fn go() {
-        let t = trybuild::TestCases::new();
-        t.compile_fail("tests/fail/*.rs");
-        t.pass("tests/pass/*.rs");
-    }
-
-    #[rustversion::not(stable)]
-    fn go() {}
-
-    go();
 }

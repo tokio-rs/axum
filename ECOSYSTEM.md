@@ -8,7 +8,6 @@ If your project isn't listed here and you would like it to be, please feel free 
 - [axum-typed-websockets](https://crates.io/crates/axum-typed-websockets): `axum::extract::ws` with type safe messages.
 - [tower-cookies](https://crates.io/crates/tower-cookies): Cookie manager middleware
 - [axum-flash](https://crates.io/crates/axum-flash): One-time notifications (aka flash messages) for axum.
-- [axum-debug](https://crates.io/crates/axum-debug): Debugging crate that provides better error messages for axum.
 - [axum-msgpack](https://crates.io/crates/axum-msgpack): MessagePack Extractors for axum.
 
 ## Project showcase

@@ -23,4 +23,5 @@ syn = { version = "1.0", features = ["full"] }
 axum = { path = "../axum", version = "0.4", features = ["headers"] }
 rustversion = "1.0"
 serde = { version = "1.0", features = ["derive"] }
+tokio = { version = "1.0", features = ["full"] }
 trybuild = "1.0"

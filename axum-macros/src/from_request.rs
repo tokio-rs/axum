@@ -508,8 +508,8 @@ fn ui() {
     #[rustversion::stable]
     fn go() {
         let t = trybuild::TestCases::new();
-        t.compile_fail("tests/fail/*.rs");
-        t.pass("tests/pass/*.rs");
+        t.compile_fail("tests/from_request/fail/*.rs");
+        t.pass("tests/from_request/pass/*.rs");
     }
 
     #[rustversion::not(stable)]

@@ -17,8 +17,3 @@ proc-macro = true
 proc-macro2 = "1.0"
 quote = "1.0"
 syn = { version = "1.0", features = ["full"] }
-
-[dev-dependencies]
-axum = { path = "../axum", version = "0.4" }
-trybuild = "1.0"
-rustversion = "1.0"

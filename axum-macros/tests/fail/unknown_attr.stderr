@@ -1,5 +1,0 @@
-error: expected `via`
- --> tests/fail/unknown_attr.rs:4:33
-  |
-4 | struct Extractor(#[from_request(foo)] String);
-  |                                 ^^^
