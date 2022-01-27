@@ -45,12 +45,12 @@ fn impl_by_extracting_each_field(
 ) -> syn::Result<TokenStream> {
     let extract_fields = extract_fields(&fields)?;
 
-    let (rejection_ident, rejection) = if let syn::Fields::Unit = &fields {
-        (syn::parse_quote!(::std::convert::Infallible), quote! {})
+    let (rejection_ident, rejection) = if has_no_fields(&fields) {
+        (syn::parse_quote!(::std::convert::Infallible), None)
     } else {
         let rejection_ident = rejection_ident(&ident);
         let rejection = extract_each_field_rejection(&ident, &fields, &vis)?;
-        (rejection_ident, rejection)
+        (rejection_ident, Some(rejection))
     };
 
     Ok(quote! {
@@ -75,6 +75,14 @@ fn impl_by_extracting_each_field(
 
         #rejection
     })
+}
+
+fn has_no_fields(fields: &syn::Fields) -> bool {
+    match fields {
+        syn::Fields::Named(fields) => fields.named.is_empty(),
+        syn::Fields::Unnamed(fields) => fields.unnamed.is_empty(),
+        syn::Fields::Unit => true,
+    }
 }
 
 fn rejection_ident(ident: &syn::Ident) -> syn::Type {
