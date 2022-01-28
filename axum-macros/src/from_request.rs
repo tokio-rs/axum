@@ -1,12 +1,13 @@
+use self::attr::{
+    parse_container_attrs, parse_field_attrs, FromRequestContainerAttr, FromRequestFieldAttr,
+    RejectionDeriveOptOuts,
+};
 use heck::ToUpperCamelCase;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote, quote_spanned};
-use syn::{
-    parse::{Parse, ParseStream},
-    punctuated::Punctuated,
-    spanned::Spanned,
-    Token,
-};
+use syn::{punctuated::Punctuated, spanned::Spanned, Token};
+
+mod attr;
 
 const GENERICS_ERROR: &str = "`#[derive(FromRequest)] doesn't support generics";
 
@@ -29,12 +30,18 @@ pub(crate) fn expand(item: syn::ItemStruct) -> syn::Result<TokenStream> {
         return Err(syn::Error::new_spanned(where_clause, GENERICS_ERROR));
     }
 
-    let FromRequestAttrs { via } = parse_attrs(&attrs)?;
+    let FromRequestContainerAttr {
+        via,
+        rejection_derive,
+    } = parse_container_attrs(&attrs)?;
 
     if let Some((_, path)) = via {
         impl_by_extracting_all_at_once(ident, fields, path)
     } else {
-        impl_by_extracting_each_field(ident, fields, vis)
+        let rejection_derive_opt_outs = rejection_derive
+            .map(|(_, opt_outs)| opt_outs)
+            .unwrap_or_default();
+        impl_by_extracting_each_field(ident, fields, vis, rejection_derive_opt_outs)
     }
 }
 
@@ -42,15 +49,17 @@ fn impl_by_extracting_each_field(
     ident: syn::Ident,
     fields: syn::Fields,
     vis: syn::Visibility,
+    rejection_derive_opt_outs: RejectionDeriveOptOuts,
 ) -> syn::Result<TokenStream> {
     let extract_fields = extract_fields(&fields)?;
 
-    let (rejection_ident, rejection) = if let syn::Fields::Unit = &fields {
-        (syn::parse_quote!(::std::convert::Infallible), quote! {})
+    let (rejection_ident, rejection) = if has_no_fields(&fields) {
+        (syn::parse_quote!(::std::convert::Infallible), None)
     } else {
         let rejection_ident = rejection_ident(&ident);
-        let rejection = extract_each_field_rejection(&ident, &fields, &vis)?;
-        (rejection_ident, rejection)
+        let rejection =
+            extract_each_field_rejection(&ident, &fields, &vis, rejection_derive_opt_outs)?;
+        (rejection_ident, Some(rejection))
     };
 
     Ok(quote! {
@@ -77,6 +86,14 @@ fn impl_by_extracting_each_field(
     })
 }
 
+fn has_no_fields(fields: &syn::Fields) -> bool {
+    match fields {
+        syn::Fields::Named(fields) => fields.named.is_empty(),
+        syn::Fields::Unnamed(fields) => fields.unnamed.is_empty(),
+        syn::Fields::Unit => true,
+    }
+}
+
 fn rejection_ident(ident: &syn::Ident) -> syn::Type {
     let ident = format_ident!("{}Rejection", ident);
     syn::parse_quote!(#ident)
@@ -87,7 +104,7 @@ fn extract_fields(fields: &syn::Fields) -> syn::Result<Vec<TokenStream>> {
         .iter()
         .enumerate()
         .map(|(index, field)| {
-            let FromRequestAttrs { via } = parse_attrs(&field.attrs)?;
+            let FromRequestFieldAttr { via } = parse_field_attrs(&field.attrs)?;
 
             let member = if let Some(ident) = &field.ident {
                 quote! { #ident }
@@ -211,13 +228,14 @@ fn extract_each_field_rejection(
     ident: &syn::Ident,
     fields: &syn::Fields,
     vis: &syn::Visibility,
+    rejection_derive_opt_outs: RejectionDeriveOptOuts,
 ) -> syn::Result<TokenStream> {
     let rejection_ident = rejection_ident(ident);
 
     let variants = fields
         .iter()
         .map(|field| {
-            let FromRequestAttrs { via } = parse_attrs(&field.attrs)?;
+            let FromRequestFieldAttr { via } = parse_field_attrs(&field.attrs)?;
 
             let field_ty = &field.ty;
             let ty_span = field_ty.span();
@@ -270,7 +288,7 @@ fn extract_each_field_rejection(
         }
     };
 
-    let impl_display = {
+    let impl_display = if rejection_derive_opt_outs.derive_display() {
         let arms = fields
             .iter()
             .map(|field| {
@@ -281,7 +299,7 @@ fn extract_each_field_rejection(
             })
             .collect::<syn::Result<Vec<_>>>()?;
 
-        quote! {
+        Some(quote! {
             #[automatically_derived]
             impl ::std::fmt::Display for #rejection_ident {
                 fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
@@ -290,10 +308,12 @@ fn extract_each_field_rejection(
                     }
                 }
             }
-        }
+        })
+    } else {
+        None
     };
 
-    let impl_error = {
+    let impl_error = if rejection_derive_opt_outs.derive_error() {
         let arms = fields
             .iter()
             .map(|field| {
@@ -304,7 +324,7 @@ fn extract_each_field_rejection(
             })
             .collect::<syn::Result<Vec<_>>>()?;
 
-        quote! {
+        Some(quote! {
             #[automatically_derived]
             impl ::std::error::Error for #rejection_ident {
                 fn source(&self) -> ::std::option::Option<&(dyn ::std::error::Error + 'static)> {
@@ -313,11 +333,17 @@ fn extract_each_field_rejection(
                     }
                 }
             }
-        }
+        })
+    } else {
+        None
     };
 
+    let impl_debug = rejection_derive_opt_outs.derive_debug().then(|| {
+        quote! { #[derive(Debug)] }
+    });
+
     Ok(quote! {
-        #[derive(Debug)]
+        #impl_debug
         #vis enum #rejection_ident {
             #(#variants)*
         }
@@ -381,7 +407,7 @@ fn rejection_variant_name(field: &syn::Field) -> syn::Result<syn::Ident> {
         let mut out = String::new();
         rejection_variant_name_for_type(&mut out, &field.ty)?;
 
-        let FromRequestAttrs { via } = parse_attrs(&field.attrs)?;
+        let FromRequestFieldAttr { via } = parse_field_attrs(&field.attrs)?;
         if let Some((_, path)) = via {
             let via_ident = &path.segments.last().unwrap().ident;
             Ok(format_ident!("{}{}", via_ident, out))
@@ -403,7 +429,7 @@ fn impl_by_extracting_all_at_once(
     };
 
     for field in fields {
-        let FromRequestAttrs { via } = parse_attrs(&field.attrs)?;
+        let FromRequestFieldAttr { via } = parse_field_attrs(&field.attrs)?;
         if let Some((via, _)) = via {
             return Err(syn::Error::new_spanned(
                 via,
@@ -435,72 +461,6 @@ fn impl_by_extracting_all_at_once(
             }
         }
     })
-}
-
-#[derive(Default)]
-struct FromRequestAttrs {
-    via: Option<(kw::via, syn::Path)>,
-}
-
-mod kw {
-    syn::custom_keyword!(via);
-}
-
-fn parse_attrs(attrs: &[syn::Attribute]) -> syn::Result<FromRequestAttrs> {
-    enum Attr {
-        FromRequest(Punctuated<FromRequestAttr, Token![,]>),
-    }
-
-    enum FromRequestAttr {
-        Via { via: kw::via, path: syn::Path },
-    }
-
-    impl Parse for FromRequestAttr {
-        fn parse(input: ParseStream) -> syn::Result<Self> {
-            let lh = input.lookahead1();
-            if lh.peek(kw::via) {
-                let via = input.parse::<kw::via>()?;
-                let content;
-                syn::parenthesized!(content in input);
-                content.parse().map(|path| Self::Via { via, path })
-            } else {
-                Err(lh.error())
-            }
-        }
-    }
-
-    let attrs = attrs
-        .iter()
-        .filter(|attr| attr.path.is_ident("from_request"))
-        .map(|attr| {
-            attr.parse_args_with(Punctuated::parse_terminated)
-                .map(Attr::FromRequest)
-        })
-        .collect::<syn::Result<Vec<_>>>()?;
-
-    let mut out = FromRequestAttrs::default();
-    for attr in attrs {
-        match attr {
-            Attr::FromRequest(from_request_attrs) => {
-                for from_request_attr in from_request_attrs {
-                    match from_request_attr {
-                        FromRequestAttr::Via { via, path } => {
-                            if out.via.is_some() {
-                                return Err(syn::Error::new_spanned(
-                                    via,
-                                    "`via` specified more than once",
-                                ));
-                            } else {
-                                out.via = Some((via, path));
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    Ok(out)
 }
 
 #[test]
