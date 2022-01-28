@@ -201,6 +201,41 @@ mod from_request;
 /// means the inner rejection types must themselves implement `std::error::Error`. All extractors
 /// in axum does this.
 ///
+/// You can opt out of this using `#[from_request(rejection_derive(...))]`:
+///
+/// ```
+/// use axum_macros::FromRequest;
+/// use axum::{
+///     extract::{FromRequest, RequestParts},
+///     http::StatusCode,
+///     headers::ContentType,
+///     body::Bytes,
+///     async_trait,
+/// };
+///
+/// #[derive(FromRequest)]
+/// #[from_request(rejection_derive(!Display, !Error))]
+/// struct MyExtractor {
+///     other: OtherExtractor,
+/// }
+///
+/// struct OtherExtractor;
+///
+/// #[async_trait]
+/// impl<B> FromRequest<B> for OtherExtractor
+/// where
+///     B: Send + 'static,
+/// {
+///     // this rejection doesn't implement `Display` and `Error`
+///     type Rejection = (StatusCode, String);
+///
+///     async fn from_request(_req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+///         // ...
+///         # unimplemented!()
+///     }
+/// }
+/// ```
+///
 /// # The whole type at once
 ///
 /// By using `#[from_request(via(...))]` on the container you can extract the whole type at once,
