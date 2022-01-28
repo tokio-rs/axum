@@ -54,6 +54,13 @@ pub(crate) fn parse_container_attrs(
     for from_request_attr in attrs {
         match from_request_attr {
             ContainerAttr::Via { via, path } => {
+                if out.rejection_derive.is_some() {
+                    return Err(syn::Error::new_spanned(
+                        via,
+                        "cannot use both `rejection_derive` and `via`",
+                    ));
+                }
+
                 if out.via.is_some() {
                     return Err(double_attr_error("via", via));
                 } else {
@@ -64,6 +71,13 @@ pub(crate) fn parse_container_attrs(
                 rejection_derive,
                 opt_outs,
             } => {
+                if out.via.is_some() {
+                    return Err(syn::Error::new_spanned(
+                        rejection_derive,
+                        "cannot use both `via` and `rejection_derive`",
+                    ));
+                }
+
                 if out.rejection_derive.is_some() {
                     return Err(double_attr_error("rejection_derive", rejection_derive));
                 } else {
