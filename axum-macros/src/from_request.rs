@@ -338,11 +338,9 @@ fn extract_each_field_rejection(
         None
     };
 
-    let impl_debug = if rejection_derive_opt_outs.derive_debug() {
-        Some(quote! { #[derive(Debug)] })
-    } else {
-        None
-    };
+    let impl_debug = rejection_derive_opt_outs.derive_debug().then(|| {
+        quote! { #[derive(Debug)] }
+    });
 
     Ok(quote! {
         #impl_debug
