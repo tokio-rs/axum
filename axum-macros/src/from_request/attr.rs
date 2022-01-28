@@ -172,6 +172,18 @@ impl RejectionDeriveOptOuts {
 
 impl Parse for RejectionDeriveOptOuts {
     fn parse(input: ParseStream) -> syn::Result<Self> {
+        fn parse_opt_out<T>(out: &mut Option<T>, ident: &str, input: ParseStream) -> syn::Result<()>
+        where
+            T: Parse,
+        {
+            if out.is_some() {
+                Err(input.error(format!("`{}` opt-out specified more than once", ident)))
+            } else {
+                *out = Some(input.parse()?);
+                Ok(())
+            }
+        }
+
         let mut debug = None;
         let mut display = None;
         let mut error = None;
@@ -181,11 +193,11 @@ impl Parse for RejectionDeriveOptOuts {
 
             let lh = input.lookahead1();
             if lh.peek(kw::Debug) {
-                debug = Some(input.parse()?);
+                parse_opt_out(&mut debug, "Debug", input)?;
             } else if lh.peek(kw::Display) {
-                display = Some(input.parse()?);
+                parse_opt_out(&mut display, "Display", input)?;
             } else if lh.peek(kw::Error) {
-                error = Some(input.parse()?);
+                parse_opt_out(&mut error, "Error", input)?;
             } else {
                 return Err(lh.error());
             }
