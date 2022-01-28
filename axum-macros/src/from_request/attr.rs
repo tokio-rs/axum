@@ -163,7 +163,7 @@ impl Parse for FieldAttr {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Default)]
 pub(crate) struct RejectionDeriveOptOuts {
     debug: Option<kw::Debug>,
     display: Option<kw::Display>,
