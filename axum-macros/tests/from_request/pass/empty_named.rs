@@ -1,7 +1,7 @@
 use axum_macros::FromRequest;
 
 #[derive(FromRequest)]
-struct Extractor;
+struct Extractor {}
 
 fn assert_from_request()
 where
