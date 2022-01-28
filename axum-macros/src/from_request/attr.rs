@@ -177,16 +177,16 @@ impl Parse for RejectionDeriveOptOuts {
             T: Parse,
         {
             if out.is_some() {
-                Err(input.error(format!("`{}` opt-out specified more than once", ident)))
+                Err(input.error(format!("`{}` opt out specified more than once", ident)))
             } else {
                 *out = Some(input.parse()?);
                 Ok(())
             }
         }
 
-        let mut debug = None;
-        let mut display = None;
-        let mut error = None;
+        let mut debug = None::<kw::Debug>;
+        let mut display = None::<kw::Display>;
+        let mut error = None::<kw::Error>;
 
         while !input.is_empty() {
             input.parse::<Token![!]>()?;
@@ -203,6 +203,21 @@ impl Parse for RejectionDeriveOptOuts {
             }
 
             input.parse::<Token![,]>().ok();
+        }
+
+        if error.is_none() {
+            match (debug, display) {
+                (Some(debug), Some(_)) => {
+                    return Err(syn::Error::new_spanned(debug, "opt out of `Debug` and `Display` requires also opting out of `Error`. Use `#[from_request(rejection_derive(!Debug, !Display, !Error))]`"));
+                }
+                (Some(debug), None) => {
+                    return Err(syn::Error::new_spanned(debug, "opt out of `Debug` requires also opting out of `Error`. Use `#[from_request(rejection_derive(!Debug, !Error))]`"));
+                }
+                (None, Some(display)) => {
+                    return Err(syn::Error::new_spanned(display, "opt out of `Display` requires also opting out of `Error`. Use `#[from_request(rejection_derive(!Display, !Error))]`"));
+                }
+                (None, None) => {}
+            }
         }
 
         Ok(Self {
