@@ -83,6 +83,7 @@ let app = Router::new()
     .layer(layer_one)
     .layer(layer_two)
     .layer(layer_three);
+# let app: Router<axum::body::Body> = app;
 ```
 
 Think of the middleware as being layered like an onion where each new layer
@@ -141,6 +142,7 @@ let app = Router::new()
             .layer(layer_two)
             .layer(layer_three),
     );
+# let app: Router<axum::body::Body> = app;
 ```
 
 `ServiceBuilder` works by composing all layers into one such that they run top
@@ -246,7 +248,7 @@ where
         let future = self.inner.call(request);
         Box::pin(async move {
             let response: Response = future.await?;
-            Ok(res)
+            Ok(response)
         })
     }
 }
