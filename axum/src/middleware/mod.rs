@@ -1,4 +1,6 @@
 //! Utilities for writing middleware
+//!
+#![doc = include_str!("../docs/middleware.md")]
 
 mod from_fn;
 
