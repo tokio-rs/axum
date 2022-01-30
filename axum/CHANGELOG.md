@@ -51,6 +51,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
         - `PathRejection`
         - `MatchedPathRejection`
         - `WebSocketUpgradeRejection`
+- **fixed:** Set `Allow` header when responding with `405 Method Not Allowed`
 
 [#644]: https://github.com/tokio-rs/axum/pull/644
 [#665]: https://github.com/tokio-rs/axum/pull/665
