@@ -9,8 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **added:** `middleware::from_fn` for creating middleware from async functions.
   This previously lived in axum-extra but has been moved to axum ([#719])
+- **fixed:** Set `Allow` header when responding with `405 Method Not Allowed` ([#733])
 
 [#719]: https://github.com/tokio-rs/axum/pull/719
+[#733]: https://github.com/tokio-rs/axum/pull/733
 
 # 0.4.5 (31. January, 2022)
 
