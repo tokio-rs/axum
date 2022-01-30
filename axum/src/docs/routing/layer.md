@@ -6,7 +6,7 @@ corresponding middleware.
 This can be used to add additional processing to a request for a group
 of routes.
 
-Note this differs from [`handler::Layered`](crate::handler::Layered)
+Note this differs from [`Handler::layer`](crate::handler::Handler::layer)
 which adds a middleware to a single handler.
 
 # Example
@@ -66,73 +66,12 @@ let app = Router::new()
 # };
 ```
 
-# Applying multiple middleware
+# Multiple middleware
 
-Its recommended to use [`tower::ServiceBuilder`] to apply multiple middleware at
-once, instead of calling `layer` repeatedly:
-
-```rust
-use axum::{
-    routing::get,
-    AddExtensionLayer,
-    Router,
-};
-use tower_http::{trace::TraceLayer};
-use tower::{ServiceBuilder, limit::ConcurrencyLimitLayer};
-
-async fn handler() {}
-
-#[derive(Clone)]
-struct State {}
-
-let app = Router::new()
-    .route("/", get(handler))
-    .layer(
-        ServiceBuilder::new()
-            .layer(TraceLayer::new_for_http())
-            .layer(ConcurrencyLimitLayer::new(64))
-            .layer(AddExtensionLayer::new(State {}))
-    );
-# async {
-# axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-# };
-```
+It's recommended to use [`tower::ServiceBuilder`] when applying multiple
+middleware. See [`middleware`](crate::middleware) for more details.
 
 # Error handling
 
-axum's error handling model requires handlers to always return a response.
-However middleware is one possible way to introduce errors into an application.
-If hyper receives an error the connection will be closed without sending a
-response. Thus axum requires those errors to be handled gracefully:
-
-```rust
-use axum::{
-    routing::get,
-    error_handling::HandleErrorLayer,
-    http::StatusCode,
-    BoxError,
-    Router,
-};
-use tower::{ServiceBuilder, timeout::TimeoutLayer};
-use std::time::Duration;
-
-async fn handler() {}
-
-let app = Router::new()
-    .route("/", get(handler))
-    .layer(
-        ServiceBuilder::new()
-            // this middleware goes above `TimeoutLayer` because it will receive
-            // errors returned by `TimeoutLayer`
-            .layer(HandleErrorLayer::new(|_: BoxError| async {
-                StatusCode::REQUEST_TIMEOUT
-            }))
-            .layer(TimeoutLayer::new(Duration::from_secs(10)))
-    );
-# async {
-# axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-# };
-```
-
-See [`error_handling`](crate::error_handling) for more details on axum's error
-handling model.
+See [`middleware`](crate::middleware) for details on how error handling impacts
+middleware.
