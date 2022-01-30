@@ -114,9 +114,9 @@ That is:
 - Which passes the request onto `handler` where a response is produced
 - That response is then passes to `layer_one`
 - Then to `layer_two`
-- And finally to `layer_three` where its returned out of your app
+- And finally to `layer_three` where it's returned out of your app
 
-Its a little more complicated in practice because any middleware is free to
+It's a little more complicated in practice because any middleware is free to
 return early and not call the next layer, for example if a request cannot be
 authorized, but its a useful mental model to have.
 
@@ -177,7 +177,7 @@ Use [`axum::extract::extractor_middleware`] to write your middleware when:
 ## tower's combinators
 
 tower has several utility combinators that can be used to perform simple
-modifications to requests or responses. The must commonly used ones are
+modifications to requests or responses. The most commonly used ones are
 
 - [`ServiceBuilder::map_request`]
 - [`ServiceBuilder::map_response`]
@@ -189,12 +189,12 @@ You should use these when
 - You want to perform a small ad hoc operation, such as adding a header.
 - You don't intend to publish your middleware as a crate for others to use.
 
-# `tower::Service` and `Box<dyn Future>`
+# `tower::Service` and `Pin<Box<dyn Future>>`
 
 For maximum control (and a more low level API) you can write you own middleware
 by implementing [`tower::Service`]:
 
-Use [`tower::Service`] with `Box<dyn Future>` to write your middleware when:
+Use [`tower::Service`] with `Pin<Box<dyn Future>>` to write your middleware when:
 
 - Your middleware needs to be configurable for example via builder methods on
   your [`tower::Layer`] such as [`tower_http::trace::TraceLayer`].

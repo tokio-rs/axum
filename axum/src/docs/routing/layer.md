@@ -68,7 +68,7 @@ let app = Router::new()
 
 # Multiple middleware
 
-Its recommended to use [`tower::ServiceBuilder`] when applying multiple
+It's recommended to use [`tower::ServiceBuilder`] when applying multiple
 middleware. See [`middleware`](crate::middleware) for more details.
 
 # Error handling
