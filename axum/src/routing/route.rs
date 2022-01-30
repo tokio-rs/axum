@@ -2,7 +2,8 @@ use crate::{
     body::{boxed, Body, Empty},
     response::Response,
 };
-use http::Request;
+use bytes::Bytes;
+use http::{header, HeaderValue, Request};
 use pin_project_lite::pin_project;
 use std::{
     convert::Infallible,
@@ -70,6 +71,7 @@ pin_project! {
             Request<B>,
         >,
         strip_body: bool,
+        allow_header: Option<Bytes>,
     }
 }
 
@@ -80,11 +82,17 @@ impl<B, E> RouteFuture<B, E> {
         RouteFuture {
             future,
             strip_body: false,
+            allow_header: None,
         }
     }
 
     pub(crate) fn strip_body(mut self, strip_body: bool) -> Self {
         self.strip_body = strip_body;
+        self
+    }
+
+    pub(crate) fn allow_header(mut self, allow_header: Bytes) -> Self {
+        self.allow_header = Some(allow_header);
         self
     }
 }
@@ -93,16 +101,30 @@ impl<B, E> Future for RouteFuture<B, E> {
     type Output = Result<Response, E>;
 
     #[inline]
-    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let strip_body = self.strip_body;
+        let allow_header = self.allow_header.take();
 
         match self.project().future.poll(cx) {
             Poll::Ready(Ok(res)) => {
-                if strip_body {
-                    Poll::Ready(Ok(res.map(|_| boxed(Empty::new()))))
+                let mut res = if strip_body {
+                    res.map(|_| boxed(Empty::new()))
                 } else {
-                    Poll::Ready(Ok(res))
+                    res
+                };
+
+                match allow_header {
+                    Some(allow_header) if !res.headers().contains_key(header::ALLOW) => {
+                        res.headers_mut().insert(
+                            header::ALLOW,
+                            HeaderValue::from_maybe_shared(allow_header)
+                                .expect("invalid `Allow` header"),
+                        );
+                    }
+                    _ => {}
                 }
+
+                Poll::Ready(Ok(res))
             }
             Poll::Ready(Err(err)) => Poll::Ready(Err(err)),
             Poll::Pending => Poll::Pending,
