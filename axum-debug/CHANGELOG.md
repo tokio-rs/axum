@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - None.
 
+# 0.3.3 (31. January 2022)
+
+- This crate is now deprecated. It continues to work but wont receive further
+  updates. Use [axum-macros](https://crates.io/crates/axum-macros) instead.
+
 # 0.3.2 (09. December 2021)
 
 - Support checking `FromRequest` bounds for extractors whose request body is something else than
