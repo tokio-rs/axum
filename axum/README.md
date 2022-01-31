@@ -152,9 +152,9 @@ additional terms or conditions.
 [`hyper`]: https://crates.io/crates/hyper
 [`tower-http`]: https://crates.io/crates/tower-http
 [`tonic`]: https://crates.io/crates/tonic
-[contributing]: /CONTRIBUTING.md
+[contributing]: https://github.com/tokio-rs/axum/blob/main/CONTRIBUTING.md
 [chat]: https://discord.gg/tokio
 [issue]: https://github.com/tokio-rs/axum/issues/new
 [`tower::Service`]: https://docs.rs/tower/latest/tower/trait.Service.html
-[ecosystem]: /ECOSYSTEM.md
-[license]: /axum/LICENSE
+[ecosystem]: https://github.com/tokio-rs/axum/blob/main/ECOSYSTEM.md
+[license]: https://github.com/tokio-rs/axum/blob/main/axum/LICENSE
