@@ -162,6 +162,7 @@ where
     where
         T: Service<Request<B>, Response = Response, Error = Infallible> + Clone + Send + 'static,
         T::Future: Send + 'static,
+        B: HttpBody,
     {
         if path.is_empty() {
             // nesting at `""` and `"/"` should mean the same thing
@@ -235,7 +236,10 @@ where
     }
 
     #[doc = include_str!("../docs/routing/merge.md")]
-    pub fn merge(mut self, other: Router<B>) -> Self {
+    pub fn merge(mut self, other: Router<B>) -> Self
+    where
+        B: HttpBody,
+    {
         let Router {
             routes,
             node,
@@ -396,7 +400,10 @@ where
     }
 
     #[inline]
-    fn call_route(&self, match_: matchit::Match<&RouteId>, mut req: Request<B>) -> RouterFuture<B> {
+    fn call_route(&self, match_: matchit::Match<&RouteId>, mut req: Request<B>) -> RouterFuture<B>
+    where
+        B: HttpBody,
+    {
         let id = *match_.value;
         req.extensions_mut().insert(id);
 
@@ -461,7 +468,7 @@ where
 
 impl<B> Service<Request<B>> for Router<B>
 where
-    B: Send + 'static,
+    B: HttpBody + Send + 'static,
 {
     type Response = Response;
     type Error = Infallible;
