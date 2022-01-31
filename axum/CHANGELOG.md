@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+- None.
+
+# 0.4.5 (31. January, 2022)
+
 - Reference [axum-macros] instead of [axum-debug]. The latter has been superseded by
   axum-macros and is deprecated ([#738])
 
@@ -14,7 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [axum-debug]: https://docs.rs/axum-debug
 [axum-macros]: https://docs.rs/axum-macros
 
-# 0.4.4 (13. January, 2021)
+# 0.4.4 (13. January, 2022)
 
 - **fixed:** Fix using incorrect path prefix when nesting `Router`s at `/` ([#691])
 - **fixed:** Make `nest("", service)` work and mean the same as `nest("/", service)` ([#691])
