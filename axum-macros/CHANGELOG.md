@@ -9,6 +9,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - None.
 
-# 0.1.0 (TODO)
+# 0.1.0 (31. January, 2022)
 
 - Initial release.
