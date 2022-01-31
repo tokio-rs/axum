@@ -103,14 +103,14 @@ jobs:
           -p axum-extra
           --all-features --all-targets
     # the compiler errors are different on 1.54 which makes
-    # the trybuild tests in axum-debug fail, so just run the doc
+    # the trybuild tests in axum-macros fail, so just run the doc
     # tests
-    - name: Run axum-debug doc tests
+    - name: Run axum-macros doc tests
       uses: actions-rs/cargo@v1
       with:
         command: test
         args: >
-          -p axum-debug
+          -p axum-macros
           --doc
           --all-features
 
@@ -172,5 +172,5 @@ jobs:
           -p axum
           -p axum-core
           -p axum-extra
-          -p axum-debug
+          -p axum-macros
           --target armv5te-unknown-linux-musleabi

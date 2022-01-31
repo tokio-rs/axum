@@ -2,7 +2,6 @@
 members = [
     "axum",
     "axum-core",
-    "axum-debug",
     "axum-extra",
     "axum-macros",
     "examples/*",
