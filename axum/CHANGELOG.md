@@ -7,7 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- None.
+- Reference [axum-macros] instead of [axum-debug]. The latter has been superseded by
+  axum-macros and is deprecated
+
+[axum-macros]: https://docs.rs/axum-macros
+[axum-debug]: https://docs.rs/axum-debug
 
 # 0.4.4 (13. January, 2021)
 

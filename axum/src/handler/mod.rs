@@ -66,9 +66,9 @@
 //!
 //! This error doesn't tell you _why_ your function doesn't implement
 //! [`Handler`]. It's possible to improve the error with the [`debug_handler`]
-//! proc-macro from the [axum-debug] crate.
+//! proc-macro from the [axum-macros] crate.
 //!
-//! [axum-debug]: https://docs.rs/axum-debug
+//! [axum-macros]: https://docs.rs/axum-macros
 
 use crate::{
     body::{boxed, Body, Bytes, HttpBody},
