@@ -52,6 +52,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
         - `MatchedPathRejection`
         - `WebSocketUpgradeRejection`
 - **fixed:** Set `Allow` header when responding with `405 Method Not Allowed`
+- **fixed:** Correctly set the `Content-Length` header for response to `HEAD`
+  requests
 
 [#644]: https://github.com/tokio-rs/axum/pull/644
 [#665]: https://github.com/tokio-rs/axum/pull/665
