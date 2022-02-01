@@ -19,6 +19,10 @@ If your project isn't listed here and you would like it to be, please feel free 
 - [notify.run](https://github.com/notify-run/notify-run-rs): HTTP-to-WebPush relay for sending desktop/mobile notifications to yourself, written in Rust.
 - [turbo.fish](https://turbo.fish/) ([repository](https://github.com/jplatte/turbo.fish)): Find out for yourself 😉
 - [Book Management](https://github.com/lz1998/axum-book-management): CRUD system of book-management with ORM and JWT for educational purposes.
+- [realworld-axum-sqlx](https://github.com/launchbadge/realworld-axum-sqlx): A Rust implementation of the [Realworld] demo app spec using Axum and [SQLx].
+
+[Realworld]: https://github.com/gothinkster/realworld
+[SQLx]: https://github.com/launchbadge/sqlx
 
 ## Tutorials
 
