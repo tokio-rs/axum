@@ -60,7 +60,7 @@ async fn main() {
         .unwrap();
 }
 
-// we can exact the connection pool with `Extension`
+// we can extract the connection pool with `Extension`
 async fn using_connection_pool_extractor(
     Extension(pool): Extension<PgPool>,
 ) -> Result<String, (StatusCode, String)> {
