@@ -11,7 +11,7 @@ pub use axum_core::extract::rejection::*;
 
 #[cfg(feature = "json")]
 define_rejection! {
-    #[status = BAD_REQUEST]
+    #[status = UNPROCESSABLE_ENTITY]
     #[body = "Failed to parse the request body as JSON"]
     #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
     /// Rejection type for [`Json`](super::Json).
@@ -19,7 +19,7 @@ define_rejection! {
 }
 
 define_rejection! {
-    #[status = BAD_REQUEST]
+    #[status = UNSUPPORTED_MEDIA_TYPE]
     #[body = "Expected request with `Content-Type: application/json`"]
     /// Rejection type for [`Json`](super::Json) used if the `Content-Type`
     /// header is missing.
@@ -59,7 +59,7 @@ define_rejection! {
 }
 
 define_rejection! {
-    #[status = BAD_REQUEST]
+    #[status = UNSUPPORTED_MEDIA_TYPE]
     #[body = "Form requests must have `Content-Type: x-www-form-urlencoded`"]
     /// Rejection type used if you try and extract the request more than once.
     pub struct InvalidFormContentType;
@@ -88,7 +88,7 @@ impl FailedToDeserializeQueryString {
 impl IntoResponse for FailedToDeserializeQueryString {
     fn into_response(self) -> Response {
         let mut res = Response::new(boxed(Full::from(self.to_string())));
-        *res.status_mut() = http::StatusCode::BAD_REQUEST;
+        *res.status_mut() = http::StatusCode::UNPROCESSABLE_ENTITY;
         res
     }
 }

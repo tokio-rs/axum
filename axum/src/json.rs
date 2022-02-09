@@ -223,7 +223,7 @@ mod tests {
         let status = res.status();
         dbg!(res.text().await);
 
-        assert_eq!(status, StatusCode::BAD_REQUEST);
+        assert_eq!(status, StatusCode::UNSUPPORTED_MEDIA_TYPE);
     }
 
     #[tokio::test]
