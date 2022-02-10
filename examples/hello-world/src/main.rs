@@ -4,7 +4,11 @@
 //! cargo run -p example-hello-world
 //! ```
 
+#![allow(dead_code)]
+
 use axum::{response::Html, routing::get, Router};
+use axum_macros::Route;
+use serde::Deserialize;
 use std::net::SocketAddr;
 
 #[tokio::main]
@@ -21,6 +25,21 @@ async fn main() {
         .unwrap();
 }
 
-async fn handler() -> Html<&'static str> {
+async fn handler(_: UsersShow) -> Html<&'static str> {
     Html("<h1>Hello, World!</h1>")
 }
+
+// #[derive(Deserialize, Route)]
+// #[route("/users")]
+// struct UsersIndex;
+
+#[derive(Deserialize, Route)]
+#[route("/users/:id/teams/:team_id")]
+struct UsersShow {
+    id: u32,
+    team_id: u32,
+}
+
+// #[derive(serde::Deserialize)]
+// #[route("/users/:id/edit")]
+// struct UsersEdit(u32);
