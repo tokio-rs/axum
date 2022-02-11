@@ -47,7 +47,7 @@ fn parse_attrs(attrs: &[syn::Attribute]) -> syn::Result<Attrs> {
     let mut route = None::<String>;
 
     for attr in attrs {
-        if attr.path.is_ident("route") {
+        if attr.path.is_ident("uri") {
             route = Some(attr.parse_args::<LitStr>()?.value());
         }
     }
@@ -70,8 +70,8 @@ fn route_method(route: &str, vis: &syn::Visibility, fields: &syn::Fields) -> Tok
             });
 
             quote! {
-                #vis fn route(&self) -> String {
-                    format!(#format_str, #(#set_placeholders,)*)
+                #vis fn path(&self) -> ::std::borrow::Cow<'static, str> {
+                    format!(#format_str, #(#set_placeholders,)*).into()
                 }
             }
         }
@@ -85,14 +85,14 @@ fn route_method(route: &str, vis: &syn::Visibility, fields: &syn::Fields) -> Tok
             });
 
             quote! {
-                #vis fn route(&self) -> String {
-                    format!(#format_str, #(#set_placeholders,)*)
+                #vis fn path(&self) -> ::std::borrow::Cow<'static, str> {
+                    format!(#format_str, #(#set_placeholders,)*).into()
                 }
             }
         }
         syn::Fields::Unit => quote! {
-            #vis fn route(&self) -> &'static str {
-                #route
+            #vis fn uri(&self) -> ::std::borrow::Cow<'static, str> {
+                #route.into()
             }
         },
     }

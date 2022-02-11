@@ -7,7 +7,7 @@
 #![allow(dead_code)]
 
 use axum::{response::Html, routing::get, Router};
-use axum_macros::Route;
+use axum_macros::Uri;
 use serde::Deserialize;
 use std::net::SocketAddr;
 
@@ -29,12 +29,12 @@ async fn handler(_: UsersShow) -> Html<&'static str> {
     Html("<h1>Hello, World!</h1>")
 }
 
-// #[derive(Deserialize, Route)]
-// #[route("/users")]
-// struct UsersIndex;
+#[derive(Deserialize, Uri)]
+#[uri("/users")]
+struct UsersIndex;
 
-#[derive(Deserialize, Route)]
-#[route("/users/:id/teams/:team_id")]
+#[derive(Deserialize, Uri)]
+#[uri("/users/:id/teams/:team_id")]
 struct UsersShow {
     id: u32,
     team_id: u32,

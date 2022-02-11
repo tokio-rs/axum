@@ -49,7 +49,7 @@ use syn::parse::Parse;
 
 mod debug_handler;
 mod from_request;
-mod route;
+mod uri;
 
 /// Derive an implementation of [`FromRequest`].
 ///
@@ -387,8 +387,8 @@ pub fn debug_handler(_attr: TokenStream, input: TokenStream) -> TokenStream {
 }
 
 /// TODO
-#[proc_macro_derive(Route, attributes(route))]
-pub fn derive_route(input: TokenStream) -> TokenStream {
+#[proc_macro_derive(Uri, attributes(uri))]
+pub fn derive_uri(input: TokenStream) -> TokenStream {
     expand_with(input, route::expand)
 }
 
