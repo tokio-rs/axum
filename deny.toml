@@ -35,14 +35,13 @@ license-files = [
 [bans]
 multiple-versions = "deny"
 highlight = "all"
-skip-tree = []
-skip = [
-    # rustls uses old version (dev dep)
-    { name = "spin", version = "=0.5.2" },
-    { name = "webpki", version = "=0.21.4" },
-    # pulled in by hyper, http, and serde_urlencoded
-    { name = "itoa", version = "=0.4.8" },
+skip-tree = [
+    # these crates are only used in examples
+    { name = "sqlx" },
+    { name = "async-graphql" },
+    { name = "axum-server" },
 ]
+skip = []
 
 [sources]
 unknown-registry = "warn"
