@@ -25,7 +25,7 @@ use tower_service::Service;
 ///
 /// You normally shouldn't need to care about this type. It's used in
 /// [`Router::layer`](super::Router::layer).
-pub struct Route<B = Body, E = Infallible>(pub(crate) BoxCloneService<Request<B>, Response, E>);
+pub struct Route<B = Body, E = Infallible>(BoxCloneService<Request<B>, Response, E>);
 
 impl<B, E> Route<B, E> {
     pub(super) fn new<T>(svc: T) -> Self
@@ -34,6 +34,13 @@ impl<B, E> Route<B, E> {
         T::Future: Send + 'static,
     {
         Self(BoxCloneService::new(svc))
+    }
+
+    pub(crate) fn oneshot_inner(
+        &mut self,
+        req: Request<B>,
+    ) -> Oneshot<BoxCloneService<Request<B>, Response, E>, Request<B>> {
+        self.0.clone().oneshot(req)
     }
 }
 
@@ -64,7 +71,7 @@ where
 
     #[inline]
     fn call(&mut self, req: Request<B>) -> Self::Future {
-        RouteFuture::from_future(self.0.clone().oneshot(req))
+        RouteFuture::from_future(self.oneshot_inner(req))
     }
 }
 
@@ -134,6 +141,9 @@ where
 
     #[inline]
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        #[derive(Clone, Copy)]
+        struct AlreadyPassedThroughRouteFuture;
+
         let this = self.project();
 
         let mut res = match this.kind.project() {
@@ -146,6 +156,16 @@ where
                 response.take().expect("future polled after completion")
             }
         };
+
+        if res
+            .extensions()
+            .get::<AlreadyPassedThroughRouteFuture>()
+            .is_some()
+        {
+            return Poll::Ready(Ok(res));
+        } else {
+            res.extensions_mut().insert(AlreadyPassedThroughRouteFuture);
+        }
 
         set_allow_header(&mut res, this.allow_header);
 
