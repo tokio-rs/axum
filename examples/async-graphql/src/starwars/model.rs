@@ -181,7 +181,7 @@ async fn query_characters(
 
             if let Some(after) = after {
                 if after >= characters.len() {
-                    return Ok(Connection::new(false, false));
+                    return Ok::<_, async_graphql::Error>(Connection::new(false, false));
                 }
                 start = after + 1;
             }
