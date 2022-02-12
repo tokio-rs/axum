@@ -54,6 +54,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **fixed:** Set `Allow` header when responding with `405 Method Not Allowed` ([#733])
 - **fixed:** Correctly set the `Content-Length` header for response to `HEAD`
   requests ([#734])
+- **fixed:** Fix wrong `content-length` for `HEAD` requests to endpoints that returns chunked
+  responses ([#755])
 
 [#644]: https://github.com/tokio-rs/axum/pull/644
 [#665]: https://github.com/tokio-rs/axum/pull/665
@@ -62,6 +64,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#719]: https://github.com/tokio-rs/axum/pull/719
 [#733]: https://github.com/tokio-rs/axum/pull/733
 [#734]: https://github.com/tokio-rs/axum/pull/734
+[#755]: https://github.com/tokio-rs/axum/pull/755
 
 # 0.4.4 (13. January, 2022)
 
