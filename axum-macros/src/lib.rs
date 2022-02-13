@@ -389,6 +389,8 @@ pub fn debug_handler(_attr: TokenStream, input: TokenStream) -> TokenStream {
 /// Derive an implementation of [`axum_extra::routing::TypedPath`].
 ///
 /// See that trait for more details.
+///
+/// [`axum_extra::routing::TypedPath`]: https://docs.rs/axum-extra/latest/axum_extra/routing/trait.TypedPath.html
 #[proc_macro_derive(TypedPath, attributes(typed_path))]
 pub fn derive_typed_path(input: TokenStream) -> TokenStream {
     expand_with(input, typed_path::expand)
