@@ -7,14 +7,15 @@ mod resource;
 #[cfg(feature = "typed-routing")]
 mod typed;
 
+pub use self::resource::Resource;
+
 #[cfg(feature = "typed-routing")]
 #[cfg_attr(docsrs, doc(cfg(feature = "typed-routing")))]
 pub use axum_macros::TypedPath;
 
-pub use self::{
-    resource::Resource,
-    typed::{FirstElementIs, TypedPath},
-};
+#[cfg(feature = "typed-routing")]
+#[cfg_attr(docsrs, doc(cfg(feature = "typed-routing")))]
+pub use self::typed::{FirstElementIs, TypedPath};
 
 /// Extension trait that adds additional methods to [`Router`].
 pub trait RouterExt<B>: sealed::Sealed {
