@@ -3,7 +3,14 @@
 use axum::{body::Body, handler::Handler, Router};
 
 mod resource;
+
+#[cfg(feature = "typed-routing")]
 mod typed;
+
+/// TODO(david): docs
+#[cfg(feature = "typed-routing")]
+#[cfg_attr(docsrs, doc(cfg(feature = "typed-routing")))]
+pub use axum_macros::TypedPath;
 
 pub use self::{
     resource::Resource,
@@ -38,6 +45,8 @@ pub trait RouterExt<B>: sealed::Sealed {
         T: HasRoutes<B>;
 
     /// TODO(david): docs
+    #[cfg(feature = "typed-routing")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "typed-routing")))]
     fn typed_get<H, T, P>(self, handler: H) -> Self
     where
         H: Handler<T, B>,
@@ -45,6 +54,8 @@ pub trait RouterExt<B>: sealed::Sealed {
         P: TypedPath;
 
     /// TODO(david): docs
+    #[cfg(feature = "typed-routing")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "typed-routing")))]
     fn typed_delete<H, T, P>(self, handler: H) -> Self
     where
         H: Handler<T, B>,
@@ -52,6 +63,8 @@ pub trait RouterExt<B>: sealed::Sealed {
         P: TypedPath;
 
     /// TODO(david): docs
+    #[cfg(feature = "typed-routing")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "typed-routing")))]
     fn typed_head<H, T, P>(self, handler: H) -> Self
     where
         H: Handler<T, B>,
@@ -59,6 +72,8 @@ pub trait RouterExt<B>: sealed::Sealed {
         P: TypedPath;
 
     /// TODO(david): docs
+    #[cfg(feature = "typed-routing")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "typed-routing")))]
     fn typed_options<H, T, P>(self, handler: H) -> Self
     where
         H: Handler<T, B>,
@@ -66,6 +81,8 @@ pub trait RouterExt<B>: sealed::Sealed {
         P: TypedPath;
 
     /// TODO(david): docs
+    #[cfg(feature = "typed-routing")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "typed-routing")))]
     fn typed_patch<H, T, P>(self, handler: H) -> Self
     where
         H: Handler<T, B>,
@@ -73,6 +90,8 @@ pub trait RouterExt<B>: sealed::Sealed {
         P: TypedPath;
 
     /// TODO(david): docs
+    #[cfg(feature = "typed-routing")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "typed-routing")))]
     fn typed_post<H, T, P>(self, handler: H) -> Self
     where
         H: Handler<T, B>,
@@ -80,6 +99,8 @@ pub trait RouterExt<B>: sealed::Sealed {
         P: TypedPath;
 
     /// TODO(david): docs
+    #[cfg(feature = "typed-routing")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "typed-routing")))]
     fn typed_put<H, T, P>(self, handler: H) -> Self
     where
         H: Handler<T, B>,
@@ -87,6 +108,8 @@ pub trait RouterExt<B>: sealed::Sealed {
         P: TypedPath;
 
     /// TODO(david): docs
+    #[cfg(feature = "typed-routing")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "typed-routing")))]
     fn typed_trace<H, T, P>(self, handler: H) -> Self
     where
         H: Handler<T, B>,
@@ -105,6 +128,8 @@ where
         self.merge(routes.routes())
     }
 
+    #[cfg(feature = "typed-routing")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "typed-routing")))]
     fn typed_get<H, T, P>(self, handler: H) -> Self
     where
         H: Handler<T, B>,
@@ -114,6 +139,8 @@ where
         self.route(P::PATH, axum::routing::get(handler))
     }
 
+    #[cfg(feature = "typed-routing")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "typed-routing")))]
     fn typed_delete<H, T, P>(self, handler: H) -> Self
     where
         H: Handler<T, B>,
@@ -123,6 +150,8 @@ where
         self.route(P::PATH, axum::routing::delete(handler))
     }
 
+    #[cfg(feature = "typed-routing")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "typed-routing")))]
     fn typed_head<H, T, P>(self, handler: H) -> Self
     where
         H: Handler<T, B>,
@@ -132,6 +161,8 @@ where
         self.route(P::PATH, axum::routing::head(handler))
     }
 
+    #[cfg(feature = "typed-routing")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "typed-routing")))]
     fn typed_options<H, T, P>(self, handler: H) -> Self
     where
         H: Handler<T, B>,
@@ -141,6 +172,8 @@ where
         self.route(P::PATH, axum::routing::options(handler))
     }
 
+    #[cfg(feature = "typed-routing")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "typed-routing")))]
     fn typed_patch<H, T, P>(self, handler: H) -> Self
     where
         H: Handler<T, B>,
@@ -150,6 +183,8 @@ where
         self.route(P::PATH, axum::routing::patch(handler))
     }
 
+    #[cfg(feature = "typed-routing")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "typed-routing")))]
     fn typed_post<H, T, P>(self, handler: H) -> Self
     where
         H: Handler<T, B>,
@@ -159,6 +194,8 @@ where
         self.route(P::PATH, axum::routing::post(handler))
     }
 
+    #[cfg(feature = "typed-routing")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "typed-routing")))]
     fn typed_put<H, T, P>(self, handler: H) -> Self
     where
         H: Handler<T, B>,
@@ -168,6 +205,8 @@ where
         self.route(P::PATH, axum::routing::put(handler))
     }
 
+    #[cfg(feature = "typed-routing")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "typed-routing")))]
     fn typed_trace<H, T, P>(self, handler: H) -> Self
     where
         H: Handler<T, B>,

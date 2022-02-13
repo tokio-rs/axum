@@ -29,11 +29,10 @@ pub(crate) fn expand(item_struct: ItemStruct) -> syn::Result<TokenStream> {
             let segments = parse_path(&path);
             expand_unnamed_fields(fields, ident, path, &segments)
         }
-        syn::Fields::Unit => Ok(expand_unit_fields(ident, path)),
+        syn::Fields::Unit => Ok(expand_unit_fields(ident, path)?),
     }
 }
 
-#[derive(Debug)]
 struct Attrs {
     path: LitStr,
 }
@@ -180,8 +179,20 @@ fn simple_pluralize(count: usize, word: &str) -> String {
     }
 }
 
-fn expand_unit_fields(ident: &syn::Ident, path: LitStr) -> TokenStream {
-    quote_spanned! {path.span()=>
+fn expand_unit_fields(ident: &syn::Ident, path: LitStr) -> syn::Result<TokenStream> {
+    for segment in parse_path(&path) {
+        match segment {
+            Segment::Capture(_, span) => {
+                return Err(syn::Error::new(
+                    span,
+                    "Typed paths for unit structs cannot contain captures",
+                ));
+            }
+            Segment::Static(_) => {}
+        }
+    }
+
+    Ok(quote_spanned! {path.span()=>
         #[automatically_derived]
         impl ::axum_extra::routing::TypedPath for #ident {
             const PATH: &'static str = #path;
@@ -210,7 +221,7 @@ fn expand_unit_fields(ident: &syn::Ident, path: LitStr) -> TokenStream {
                 }
             }
         }
-    }
+    })
 }
 
 fn format_str_from_path(segments: &[Segment]) -> String {

@@ -8,6 +8,5 @@ publish = false
 axum = { path = "../../axum" }
 tokio = { version = "1.0", features = ["full"] }
 
-axum-macros = { path = "../../axum-macros" }
-axum-extra = { path = "../../axum-extra" }
+axum-extra = { path = "../../axum-extra", features = ["typed-routing"] }
 serde = { version = "1.0", features = ["derive"] }

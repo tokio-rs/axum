@@ -1,4 +1,10 @@
-/// Type safe routing.
+//! Type safe routing.
+//!
+//! See [`TypedPath`] for more details.
+
+use super::sealed::Sealed;
+
+/// TODO(david): more docs
 ///
 /// # Example
 ///
@@ -8,7 +14,7 @@
 /// use axum::{Router, extract::Json};
 /// use axum_extra::routing::{
 ///     typed,
-///     RouterExt, // for `Router::with`
+///     RouterExt, // for `Router::typed_*`
 /// };
 ///
 /// // A type safe route with `/users/:id` as its associated path.
@@ -33,11 +39,9 @@
 ///     //
 ///     // The path will be inferred to `/users/:id` since `users_show`'s
 ///     // first argument is `UsersMember` which implements `TypedPath`
-///     .with(typed::get(users_show))
-///     // Add multiple handlers for `/users` depending on the HTTP method.
-///     .with(typed::post(users_create).delete(users_destroy))
-///     // We can still add regular routes.
-///     .route("/foo", get(|| async { /* ... */ }));
+///     .typed_get(users_show)
+///     .typed_post(users_create)
+///     .typed_delete(users_destroy);
 ///
 /// #[derive(TypedPath)]
 /// #[typed_path("/users")]
@@ -59,8 +63,6 @@
 /// #
 /// # let app: Router<axum::body::Body> = app;
 /// ```
-use super::sealed::Sealed;
-
 pub trait TypedPath: std::fmt::Display {
     const PATH: &'static str;
 }

@@ -7,8 +7,7 @@
 // Just using this file for manual testing. Will be cleaned up before an eventual merge
 
 use axum::{response::IntoResponse, Router};
-use axum_extra::routing::RouterExt;
-use axum_macros::TypedPath;
+use axum_extra::routing::{RouterExt, TypedPath};
 use serde::Deserialize;
 
 #[tokio::main]

@@ -11,7 +11,9 @@ repository = "https://github.com/tokio-rs/axum"
 version = "0.1.2"
 
 [features]
+default = []
 erased-json = ["serde_json"]
+typed-routing = ["axum-macros"]
 
 [dependencies]
 axum = { path = "../axum", version = "0.4" }
@@ -26,10 +28,10 @@ tower-layer = "0.3"
 tower-service = "0.3"
 
 # optional dependencies
+axum-macros = { path = "../axum-macros", version = "0.1", optional = true }
 serde_json = { version = "1.0.71", optional = true }
 
 [dev-dependencies]
-axum-macros = { path = "../axum-macros", version = "0.1" }
 hyper = "0.14"
 serde = { version = "1.0", features = ["derive"] }
 tokio = { version = "1.14", features = ["full"] }
