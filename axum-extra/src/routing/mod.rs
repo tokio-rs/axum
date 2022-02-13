@@ -7,7 +7,6 @@ mod resource;
 #[cfg(feature = "typed-routing")]
 mod typed;
 
-/// TODO(david): docs
 #[cfg(feature = "typed-routing")]
 #[cfg_attr(docsrs, doc(cfg(feature = "typed-routing")))]
 pub use axum_macros::TypedPath;
@@ -44,7 +43,12 @@ pub trait RouterExt<B>: sealed::Sealed {
     where
         T: HasRoutes<B>;
 
-    /// TODO(david): docs
+    /// Add a typed `GET` route to the router.
+    ///
+    /// The path will be inferred from the first argument to the handler function which must
+    /// implement [`TypedPath`].
+    ///
+    /// See [`TypedPath`] for more details and examples.
     #[cfg(feature = "typed-routing")]
     #[cfg_attr(docsrs, doc(cfg(feature = "typed-routing")))]
     fn typed_get<H, T, P>(self, handler: H) -> Self
@@ -53,7 +57,12 @@ pub trait RouterExt<B>: sealed::Sealed {
         T: FirstElementIs<P> + 'static,
         P: TypedPath;
 
-    /// TODO(david): docs
+    /// Add a typed `DELETE` route to the router.
+    ///
+    /// The path will be inferred from the first argument to the handler function which must
+    /// implement [`TypedPath`].
+    ///
+    /// See [`TypedPath`] for more details and examples.
     #[cfg(feature = "typed-routing")]
     #[cfg_attr(docsrs, doc(cfg(feature = "typed-routing")))]
     fn typed_delete<H, T, P>(self, handler: H) -> Self
@@ -62,7 +71,12 @@ pub trait RouterExt<B>: sealed::Sealed {
         T: FirstElementIs<P> + 'static,
         P: TypedPath;
 
-    /// TODO(david): docs
+    /// Add a typed `HEAD` route to the router.
+    ///
+    /// The path will be inferred from the first argument to the handler function which must
+    /// implement [`TypedPath`].
+    ///
+    /// See [`TypedPath`] for more details and examples.
     #[cfg(feature = "typed-routing")]
     #[cfg_attr(docsrs, doc(cfg(feature = "typed-routing")))]
     fn typed_head<H, T, P>(self, handler: H) -> Self
@@ -71,7 +85,12 @@ pub trait RouterExt<B>: sealed::Sealed {
         T: FirstElementIs<P> + 'static,
         P: TypedPath;
 
-    /// TODO(david): docs
+    /// Add a typed `OPTIONS` route to the router.
+    ///
+    /// The path will be inferred from the first argument to the handler function which must
+    /// implement [`TypedPath`].
+    ///
+    /// See [`TypedPath`] for more details and examples.
     #[cfg(feature = "typed-routing")]
     #[cfg_attr(docsrs, doc(cfg(feature = "typed-routing")))]
     fn typed_options<H, T, P>(self, handler: H) -> Self
@@ -80,7 +99,12 @@ pub trait RouterExt<B>: sealed::Sealed {
         T: FirstElementIs<P> + 'static,
         P: TypedPath;
 
-    /// TODO(david): docs
+    /// Add a typed `PATCH` route to the router.
+    ///
+    /// The path will be inferred from the first argument to the handler function which must
+    /// implement [`TypedPath`].
+    ///
+    /// See [`TypedPath`] for more details and examples.
     #[cfg(feature = "typed-routing")]
     #[cfg_attr(docsrs, doc(cfg(feature = "typed-routing")))]
     fn typed_patch<H, T, P>(self, handler: H) -> Self
@@ -89,7 +113,12 @@ pub trait RouterExt<B>: sealed::Sealed {
         T: FirstElementIs<P> + 'static,
         P: TypedPath;
 
-    /// TODO(david): docs
+    /// Add a typed `POST` route to the router.
+    ///
+    /// The path will be inferred from the first argument to the handler function which must
+    /// implement [`TypedPath`].
+    ///
+    /// See [`TypedPath`] for more details and examples.
     #[cfg(feature = "typed-routing")]
     #[cfg_attr(docsrs, doc(cfg(feature = "typed-routing")))]
     fn typed_post<H, T, P>(self, handler: H) -> Self
@@ -98,7 +127,12 @@ pub trait RouterExt<B>: sealed::Sealed {
         T: FirstElementIs<P> + 'static,
         P: TypedPath;
 
-    /// TODO(david): docs
+    /// Add a typed `PUT` route to the router.
+    ///
+    /// The path will be inferred from the first argument to the handler function which must
+    /// implement [`TypedPath`].
+    ///
+    /// See [`TypedPath`] for more details and examples.
     #[cfg(feature = "typed-routing")]
     #[cfg_attr(docsrs, doc(cfg(feature = "typed-routing")))]
     fn typed_put<H, T, P>(self, handler: H) -> Self
@@ -107,7 +141,12 @@ pub trait RouterExt<B>: sealed::Sealed {
         T: FirstElementIs<P> + 'static,
         P: TypedPath;
 
-    /// TODO(david): docs
+    /// Add a typed `TRACE` route to the router.
+    ///
+    /// The path will be inferred from the first argument to the handler function which must
+    /// implement [`TypedPath`].
+    ///
+    /// See [`TypedPath`] for more details and examples.
     #[cfg(feature = "typed-routing")]
     #[cfg_attr(docsrs, doc(cfg(feature = "typed-routing")))]
     fn typed_trace<H, T, P>(self, handler: H) -> Self

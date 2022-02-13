@@ -1,10 +1,9 @@
-//! Type safe routing.
-//!
-//! See [`TypedPath`] for more details.
-
 use super::sealed::Sealed;
 
-/// TODO(david): more docs
+/// A type safe path.
+///
+/// This is used to statically connect a path to its corresponding handler using
+/// [`RouterExt::typed_get`], [`RouterExt::typed_post`], etc.
 ///
 /// # Example
 ///
@@ -18,14 +17,14 @@ use super::sealed::Sealed;
 /// };
 ///
 /// // A type safe route with `/users/:id` as its associated path.
-/// #[derive(Deserialize, TypedPath)]
+/// #[derive(TypedPath, Deserialize)]
 /// #[typed_path("/users/:id")]
 /// struct UsersMember {
 ///     id: u32,
 /// }
 ///
 /// // A regular handler function that takes `UsersMember` as the first argument
-/// // and thus creates a typed connection between this handler and the `/users/:id` route.
+/// // and thus creates a typed connection between this handler and the `/users/:id` path.
 /// //
 /// // The `TypedPath` must be the first argument to the function.
 /// async fn users_show(
@@ -63,11 +62,68 @@ use super::sealed::Sealed;
 /// #
 /// # let app: Router<axum::body::Body> = app;
 /// ```
+///
+/// # Using `#[derive(TypedPath)]`
+///
+/// While `TypedPath` can be implemented manually its _highly_ recommended to derive it:
+///
+/// ```
+/// # use serde::Deserialize;
+/// #
+/// #[derive(TypedPath, Deserialize)]
+/// #[typed_path("/users/:id")]
+/// struct UsersMember {
+///     id: u32,
+/// }
+/// ```
+///
+/// The macro expands to:
+///
+/// - A `TypedPath` implementation.
+/// - A [`Display`] implementation that interpolates the captures. This can be used to, among other
+/// things, create links to known paths and have them verified statically.
+/// - A [`FromRequest`] implementation compatible with [`RouterExt::typed_get`],
+/// [`RouterExt::typed_post`], etc. This implementation uses [`Path`] and thus your struct must
+/// also implement [`serde::Deserialize`], unless its a unit struct.
+///
+/// Additionally the macro will verify the captures in the path matches the fields of the struct.
+/// For example this fails to compile since the struct doesn't have a `team_id` field:
+///
+/// ```compile_fail
+/// # use serde::Deserialize;
+/// #
+/// #[derive(TypedPath, Deserialize)]
+/// #[typed_path("/users/:id/teams/:team_id")]
+/// struct UsersMember {
+///     id: u32,
+/// }
+/// ```
+///
+/// Unit and tuple structs are also supported:
+///
+/// ```
+/// # use serde::Deserialize;
+/// #
+/// #[derive(TypedPath)]
+/// #[typed_path("/users")]
+/// struct UsersCollection;
+///
+/// #[derive(TypedPath, Deserialize)]
+/// #[typed_path("/users/:id")]
+/// struct UsersMember(u32);
+/// ```
+///
+/// [`FromRequest`]: axum::extract::FromRequest
+/// [`RouterExt::typed_get`]: super::RouterExt::typed_get
+/// [`RouterExt::typed_post`]: super::RouterExt::typed_post
+/// [`Path`]: axum::extract::Path
+/// [`Display`]: std::fmt::Display
 pub trait TypedPath: std::fmt::Display {
+    /// The path with optional captures such as `/users/:id`.
     const PATH: &'static str;
 }
 
-/// Utility trait used with [`TypedRouter`] to ensure the first element of a tuple type is a
+/// Utility trait used with [`RouterExt`] to ensure the first element of a tuple type is a
 /// given type.
 ///
 /// If you see it in type errors its most likely because the first argument to your handler doesn't
@@ -76,13 +132,21 @@ pub trait TypedPath: std::fmt::Display {
 /// You normally shouldn't have to use this trait directly.
 ///
 /// It is sealed such that it cannot be implemented outside this crate.
+///
+/// [`RouterExt`]: super::RouterExt
 pub trait FirstElementIs<P>: Sealed {}
 
 macro_rules! impl_first_element_is {
     ( $($ty:ident),* $(,)? ) => {
-        impl<P, $($ty,)*> FirstElementIs<P> for (P, $($ty,)*) {}
+        impl<P, $($ty,)*> FirstElementIs<P> for (P, $($ty,)*)
+        where
+            P: TypedPath
+        {}
 
-        impl<P, $($ty,)*> Sealed for (P, $($ty,)*) {}
+        impl<P, $($ty,)*> Sealed for (P, $($ty,)*)
+        where
+            P: TypedPath
+        {}
     };
 }
 
