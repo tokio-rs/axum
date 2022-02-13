@@ -31,13 +31,13 @@ async fn main() {
 #[typed_path("/users")]
 struct UsersIndex;
 
-#[derive(Deserialize, TypedPath)]
-#[typed_path("/users/:id/teams/:team_id")]
-struct UsersShow {
-    id: u32,
-    team_id: u32,
-}
+// #[derive(Deserialize, TypedPath)]
+// #[typed_path("/users/:id/teams/:team_id")]
+// struct UsersShow {
+//     id: u32,
+//     team_id: u32,
+// }
 
-#[derive(Deserialize, TypedPath)]
-#[typed_path("/users/:id/edit")]
-struct UsersEdit(u32);
+// #[derive(Deserialize, TypedPath)]
+// #[typed_path("/users/:id/edit")]
+// struct UsersEdit(u32);

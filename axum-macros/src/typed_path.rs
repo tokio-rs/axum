@@ -1,51 +1,42 @@
 use proc_macro2::{Span, TokenStream};
-use quote::{format_ident, quote};
+use quote::{format_ident, quote_spanned};
 use syn::{ItemStruct, LitStr};
 
 pub(crate) fn expand(item_struct: ItemStruct) -> syn::Result<TokenStream> {
     let ItemStruct {
         attrs,
-        vis: _,
-        struct_token: _,
         ident,
         generics,
         fields,
-        semi_token: _,
+        ..
     } = &item_struct;
-
-    if !generics.params.is_empty() || generics.where_clause.is_some() {
-        return Err(syn::Error::new_spanned(
-            generics,
-            "`#[derive(TypePath)]` doesn't support generics",
-        ));
-    }
 
     let Attrs { path } = parse_attrs(attrs)?;
 
     match fields {
         syn::Fields::Named(_) => {
             let segments = parse_path(&path);
-            Ok(expand_named_fields(ident, path, &segments))
+            Ok(expand_named_fields(ident, generics, path, &segments))
         }
         syn::Fields::Unnamed(fields) => {
             let segments = parse_path(&path);
-            expand_unnamed_fields(fields, ident, path, &segments)
+            expand_unnamed_fields(fields, ident, generics, path, &segments)
         }
-        syn::Fields::Unit => Ok(expand_unit_fields(ident, path)),
+        syn::Fields::Unit => Ok(expand_unit_fields(ident, generics, path)),
     }
 }
 
 #[derive(Debug)]
 struct Attrs {
-    path: String,
+    path: LitStr,
 }
 
 fn parse_attrs(attrs: &[syn::Attribute]) -> syn::Result<Attrs> {
-    let mut path = None::<String>;
+    let mut path = None;
 
     for attr in attrs {
         if attr.path.is_ident("typed_path") {
-            path = Some(attr.parse_args::<LitStr>()?.value());
+            path = Some(attr.parse_args()?);
         }
     }
 
@@ -59,13 +50,22 @@ fn parse_attrs(attrs: &[syn::Attribute]) -> syn::Result<Attrs> {
     })
 }
 
-fn expand_named_fields(ident: &syn::Ident, path: String, segments: &[Segment]) -> TokenStream {
+fn expand_named_fields(
+    ident: &syn::Ident,
+    generics: &syn::Generics,
+    path: LitStr,
+    segments: &[Segment],
+) -> TokenStream {
+    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
+
     let format_str = format_str_from_path(segments);
     let captures = captures_from_path(segments);
 
-    quote! {
+    quote_spanned! {path.span()=>
         #[automatically_derived]
-        impl ::axum_extra::routing::TypedPath for #ident {
+        impl #impl_generics ::axum_extra::routing::TypedPath for #ident
+        #ty_generics #where_clause
+        {
             const PATH: &'static str = #path;
 
             fn path(&self) -> ::std::borrow::Cow<'static, str> {
@@ -79,13 +79,16 @@ fn expand_named_fields(ident: &syn::Ident, path: String, segments: &[Segment]) -
 fn expand_unnamed_fields(
     fields: &syn::FieldsUnnamed,
     ident: &syn::Ident,
-    path: String,
+    generics: &syn::Generics,
+    path: LitStr,
     segments: &[Segment],
 ) -> syn::Result<TokenStream> {
+    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
+
     let num_captures = segments
         .iter()
         .filter(|segment| match segment {
-            Segment::Capture(_) => true,
+            Segment::Capture(_, _) => true,
             Segment::Static(_) => false,
         })
         .count();
@@ -104,7 +107,7 @@ fn expand_unnamed_fields(
     let destructure_self = segments
         .iter()
         .filter_map(|segment| match segment {
-            Segment::Capture(capture) => Some(capture),
+            Segment::Capture(capture, _) => Some(capture),
             Segment::Static(_) => None,
         })
         .enumerate()
@@ -113,8 +116,8 @@ fn expand_unnamed_fields(
                 index: idx as _,
                 span: Span::call_site(),
             };
-            let capture = format_ident!("{}", capture);
-            quote! {
+            let capture = format_ident!("{}", capture, span = path.span());
+            quote_spanned! {path.span()=>
                 #idx: #capture,
             }
         });
@@ -122,9 +125,11 @@ fn expand_unnamed_fields(
     let format_str = format_str_from_path(segments);
     let captures = captures_from_path(segments);
 
-    Ok(quote! {
+    Ok(quote_spanned! {path.span()=>
         #[automatically_derived]
-        impl ::axum_extra::routing::TypedPath for #ident {
+        impl #impl_generics ::axum_extra::routing::TypedPath for #ident
+        #ty_generics #where_clause
+        {
             const PATH: &'static str = #path;
 
             fn path(&self) -> ::std::borrow::Cow<'static, str> {
@@ -143,10 +148,14 @@ fn simple_pluralize(count: usize, word: &str) -> String {
     }
 }
 
-fn expand_unit_fields(ident: &syn::Ident, path: String) -> TokenStream {
-    quote! {
+fn expand_unit_fields(ident: &syn::Ident, generics: &syn::Generics, path: LitStr) -> TokenStream {
+    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
+
+    quote_spanned! {path.span()=>
         #[automatically_derived]
-        impl ::axum_extra::routing::TypedPath for #ident {
+        impl #impl_generics ::axum_extra::routing::TypedPath for #ident
+        #ty_generics #where_clause
+        {
             const PATH: &'static str = #path;
 
             fn path(&self) -> ::std::borrow::Cow<'static, str> {
@@ -160,7 +169,7 @@ fn format_str_from_path(segments: &[Segment]) -> String {
     segments
         .iter()
         .map(|segment| match segment {
-            Segment::Capture(capture) => format!("{{{}}}", capture),
+            Segment::Capture(capture, _) => format!("{{{}}}", capture),
             Segment::Static(segment) => segment.to_owned(),
         })
         .collect::<Vec<_>>()
@@ -171,17 +180,20 @@ fn captures_from_path(segments: &[Segment]) -> Vec<syn::Ident> {
     segments
         .iter()
         .filter_map(|segment| match segment {
-            Segment::Capture(capture) => Some(format_ident!("{}", capture)),
+            Segment::Capture(capture, span) => {
+                Some(format_ident!("{}", capture, span = span.clone()))
+            }
             Segment::Static(_) => None,
         })
         .collect::<Vec<_>>()
 }
 
-fn parse_path(path: &str) -> Vec<Segment> {
-    path.split('/')
+fn parse_path(path: &LitStr) -> Vec<Segment> {
+    path.value()
+        .split('/')
         .map(|segment| {
             if let Some(capture) = segment.strip_prefix(':') {
-                Segment::Capture(capture.to_owned())
+                Segment::Capture(capture.to_owned(), path.span())
             } else {
                 Segment::Static(segment.to_owned())
             }
@@ -190,6 +202,6 @@ fn parse_path(path: &str) -> Vec<Segment> {
 }
 
 enum Segment {
-    Capture(String),
+    Capture(String, Span),
     Static(String),
 }

@@ -11,7 +11,7 @@ repository = "https://github.com/tokio-rs/axum"
 version = "0.1.2"
 
 [features]
-erased-json = ["serde", "serde_json"]
+erased-json = ["serde_json"]
 
 [dependencies]
 axum = { path = "../axum", version = "0.4" }
@@ -19,16 +19,17 @@ bytes = "1.1.0"
 http = "0.2"
 mime = "0.3"
 pin-project-lite = "0.2"
+serde = "1.0"
 tower = { version = "0.4", default_features = false, features = ["util"] }
 tower-http = { version = "0.2", features = ["map-response-body"] }
 tower-layer = "0.3"
 tower-service = "0.3"
 
 # optional dependencies
-serde = { version = "1.0.130", optional = true }
 serde_json = { version = "1.0.71", optional = true }
 
 [dev-dependencies]
+axum-macros = { path = "../axum-macros", version = "0.1" }
 hyper = "0.14"
 tokio = { version = "1.14", features = ["full"] }
 tower = { version = "0.4", features = ["util"] }
