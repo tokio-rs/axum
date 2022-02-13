@@ -3,8 +3,9 @@
 use axum::{body::Body, Router};
 
 mod resource;
+mod typed_path;
 
-pub use self::resource::Resource;
+pub use self::{resource::Resource, typed_path::TypedPath};
 
 /// Extension trait that adds additional methods to [`Router`].
 pub trait RouterExt<B>: sealed::Sealed {

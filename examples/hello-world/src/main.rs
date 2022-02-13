@@ -4,17 +4,19 @@
 //! cargo run -p example-hello-world
 //! ```
 
-#![allow(dead_code)]
-
-use axum::{response::Html, routing::get, Router};
-use axum_macros::Uri;
+use axum::{extract::Path, routing::get, Router};
+use axum_extra::routing::TypedPath;
+use axum_macros::TypedPath;
 use serde::Deserialize;
 use std::net::SocketAddr;
 
 #[tokio::main]
 async fn main() {
     // build our application with a route
-    let app = Router::new().route("/", get(handler));
+    let app = Router::new()
+        .route(UsersIndex::PATH, get(|_: Path<UsersIndex>| async {}))
+        .route(UsersShow::PATH, get(|_: Path<UsersShow>| async {}))
+        .route(UsersEdit::PATH, get(|_: Path<UsersEdit>| async {}));
 
     // run it
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
@@ -25,21 +27,17 @@ async fn main() {
         .unwrap();
 }
 
-async fn handler(_: UsersShow) -> Html<&'static str> {
-    Html("<h1>Hello, World!</h1>")
-}
-
-#[derive(Deserialize, Uri)]
-#[uri("/users")]
+#[derive(Deserialize, TypedPath)]
+#[typed_path("/users")]
 struct UsersIndex;
 
-#[derive(Deserialize, Uri)]
-#[uri("/users/:id/teams/:team_id")]
+#[derive(Deserialize, TypedPath)]
+#[typed_path("/users/:id/teams/:team_id")]
 struct UsersShow {
     id: u32,
     team_id: u32,
 }
 
-// #[derive(serde::Deserialize)]
-// #[route("/users/:id/edit")]
-// struct UsersEdit(u32);
+#[derive(Deserialize, TypedPath)]
+#[typed_path("/users/:id/edit")]
+struct UsersEdit(u32);
