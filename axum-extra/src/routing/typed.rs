@@ -9,10 +9,9 @@ use super::sealed::Sealed;
 ///
 /// ```rust
 /// use serde::Deserialize;
-/// use axum_macros::TypedPath;
 /// use axum::{Router, extract::Json};
 /// use axum_extra::routing::{
-///     typed,
+///     TypedPath,
 ///     RouterExt, // for `Router::typed_*`
 /// };
 ///
@@ -52,7 +51,7 @@ use super::sealed::Sealed;
 /// async fn users_create(
 ///     _: UsersCollection,
 ///     // Our handlers can accept other extractors.
-///     Json(payload): Json<Payload>,
+///     Json(payload): Json<UsersCreatePayload>,
 /// ) {
 ///     // ...
 /// }
@@ -68,8 +67,9 @@ use super::sealed::Sealed;
 /// While `TypedPath` can be implemented manually its _highly_ recommended to derive it:
 ///
 /// ```
-/// # use serde::Deserialize;
-/// #
+/// use serde::Deserialize;
+/// use axum_extra::routing::TypedPath;
+///
 /// #[derive(TypedPath, Deserialize)]
 /// #[typed_path("/users/:id")]
 /// struct UsersMember {
@@ -90,8 +90,9 @@ use super::sealed::Sealed;
 /// For example this fails to compile since the struct doesn't have a `team_id` field:
 ///
 /// ```compile_fail
-/// # use serde::Deserialize;
-/// #
+/// use serde::Deserialize;
+/// use axum_extra::routing::TypedPath;
+///
 /// #[derive(TypedPath, Deserialize)]
 /// #[typed_path("/users/:id/teams/:team_id")]
 /// struct UsersMember {
@@ -102,8 +103,9 @@ use super::sealed::Sealed;
 /// Unit and tuple structs are also supported:
 ///
 /// ```
-/// # use serde::Deserialize;
-/// #
+/// use serde::Deserialize;
+/// use axum_extra::routing::TypedPath;
+///
 /// #[derive(TypedPath)]
 /// #[typed_path("/users")]
 /// struct UsersCollection;
