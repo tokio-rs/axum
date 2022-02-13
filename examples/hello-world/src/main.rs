@@ -4,40 +4,43 @@
 //! cargo run -p example-hello-world
 //! ```
 
-use axum::{extract::Path, routing::get, Router};
-use axum_extra::routing::TypedPath;
+// Just using this file for manual testing. Will be cleaned up before an eventual merge
+
+use axum::{response::IntoResponse, Router};
+use axum_extra::routing::{typed_path, RouterExt};
 use axum_macros::TypedPath;
 use serde::Deserialize;
-use std::net::SocketAddr;
 
 #[tokio::main]
 async fn main() {
-    // build our application with a route
     let app = Router::new()
-        .route(UsersIndex::PATH, get(|_: Path<UsersIndex>| async {}))
-        .route(UsersShow::PATH, get(|_: Path<UsersShow>| async {}))
-        .route(UsersEdit::PATH, get(|_: Path<UsersEdit>| async {}));
+        .with(typed_path::get(users_index).post(users_create))
+        .with(typed_path::get(users_show));
 
-    // run it
-    let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
-    println!("listening on {}", addr);
-    axum::Server::bind(&addr)
+    axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())
         .serve(app.into_make_service())
         .await
         .unwrap();
 }
 
-#[derive(Deserialize, TypedPath)]
+#[derive(TypedPath)]
 #[typed_path("/users")]
-struct UsersIndex;
+struct UsersCollection;
 
-// #[derive(Deserialize, TypedPath)]
-// #[typed_path("/users/:id/teams/:team_id")]
-// struct UsersShow {
-//     id: u32,
-//     team_id: u32,
-// }
+#[derive(Deserialize, TypedPath)]
+#[typed_path("/users/:id")]
+struct UsersMember {
+    id: u32,
+}
 
-// #[derive(Deserialize, TypedPath)]
-// #[typed_path("/users/:id/edit")]
-// struct UsersEdit(u32);
+async fn users_index(_: UsersCollection) -> impl IntoResponse {
+    "users#index"
+}
+
+async fn users_create(_: UsersCollection, _payload: String) -> impl IntoResponse {
+    "users#create"
+}
+
+async fn users_show(UsersMember { id }: UsersMember) -> impl IntoResponse {
+    format!("users#show: {}", id)
+}

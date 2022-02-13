@@ -11,18 +11,25 @@ pub(crate) fn expand(item_struct: ItemStruct) -> syn::Result<TokenStream> {
         ..
     } = &item_struct;
 
+    if !generics.params.is_empty() || generics.where_clause.is_some() {
+        return Err(syn::Error::new_spanned(
+            generics,
+            "`#[derive(TypePath)]` doesn't support generics",
+        ));
+    }
+
     let Attrs { path } = parse_attrs(attrs)?;
 
     match fields {
         syn::Fields::Named(_) => {
             let segments = parse_path(&path);
-            Ok(expand_named_fields(ident, generics, path, &segments))
+            Ok(expand_named_fields(ident, path, &segments))
         }
         syn::Fields::Unnamed(fields) => {
             let segments = parse_path(&path);
-            expand_unnamed_fields(fields, ident, generics, path, &segments)
+            expand_unnamed_fields(fields, ident, path, &segments)
         }
-        syn::Fields::Unit => Ok(expand_unit_fields(ident, generics, path)),
+        syn::Fields::Unit => Ok(expand_unit_fields(ident, path)),
     }
 }
 
@@ -50,27 +57,31 @@ fn parse_attrs(attrs: &[syn::Attribute]) -> syn::Result<Attrs> {
     })
 }
 
-fn expand_named_fields(
-    ident: &syn::Ident,
-    generics: &syn::Generics,
-    path: LitStr,
-    segments: &[Segment],
-) -> TokenStream {
-    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
-
+fn expand_named_fields(ident: &syn::Ident, path: LitStr, segments: &[Segment]) -> TokenStream {
     let format_str = format_str_from_path(segments);
     let captures = captures_from_path(segments);
 
     quote_spanned! {path.span()=>
         #[automatically_derived]
-        impl #impl_generics ::axum_extra::routing::TypedPath for #ident
-        #ty_generics #where_clause
-        {
+        impl ::axum_extra::routing::TypedPath for #ident {
             const PATH: &'static str = #path;
 
             fn path(&self) -> ::std::borrow::Cow<'static, str> {
                 let Self { #(#captures,)* } = self;
                 format!(#format_str, #(#captures = #captures,)*).into()
+            }
+        }
+
+        #[::axum::async_trait]
+        #[automatically_derived]
+        impl<B> ::axum::extract::FromRequest<B> for #ident
+        where
+            B: Send,
+        {
+            type Rejection = <::axum::extract::Path<Self> as ::axum::extract::FromRequest<B>>::Rejection;
+
+            async fn from_request(req: &mut ::axum::extract::RequestParts<B>) -> Result<Self, Self::Rejection> {
+                ::axum::extract::Path::from_request(req).await.map(|path| path.0)
             }
         }
     }
@@ -79,12 +90,9 @@ fn expand_named_fields(
 fn expand_unnamed_fields(
     fields: &syn::FieldsUnnamed,
     ident: &syn::Ident,
-    generics: &syn::Generics,
     path: LitStr,
     segments: &[Segment],
 ) -> syn::Result<TokenStream> {
-    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
-
     let num_captures = segments
         .iter()
         .filter(|segment| match segment {
@@ -127,9 +135,7 @@ fn expand_unnamed_fields(
 
     Ok(quote_spanned! {path.span()=>
         #[automatically_derived]
-        impl #impl_generics ::axum_extra::routing::TypedPath for #ident
-        #ty_generics #where_clause
-        {
+        impl ::axum_extra::routing::TypedPath for #ident {
             const PATH: &'static str = #path;
 
             fn path(&self) -> ::std::borrow::Cow<'static, str> {
@@ -148,18 +154,31 @@ fn simple_pluralize(count: usize, word: &str) -> String {
     }
 }
 
-fn expand_unit_fields(ident: &syn::Ident, generics: &syn::Generics, path: LitStr) -> TokenStream {
-    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
-
+fn expand_unit_fields(ident: &syn::Ident, path: LitStr) -> TokenStream {
     quote_spanned! {path.span()=>
         #[automatically_derived]
-        impl #impl_generics ::axum_extra::routing::TypedPath for #ident
-        #ty_generics #where_clause
-        {
+        impl ::axum_extra::routing::TypedPath for #ident {
             const PATH: &'static str = #path;
 
             fn path(&self) -> ::std::borrow::Cow<'static, str> {
                 #path.into()
+            }
+        }
+
+        #[::axum::async_trait]
+        #[automatically_derived]
+        impl<B> ::axum::extract::FromRequest<B> for #ident
+        where
+            B: Send,
+        {
+            type Rejection = ::axum::http::StatusCode;
+
+            async fn from_request(req: &mut ::axum::extract::RequestParts<B>) -> Result<Self, Self::Rejection> {
+                if req.uri().path() == <Self as ::axum_extra::routing::TypedPath>::PATH {
+                    Ok(Self)
+                } else {
+                    Err(::axum::http::StatusCode::NOT_FOUND)
+                }
             }
         }
     }
@@ -180,9 +199,7 @@ fn captures_from_path(segments: &[Segment]) -> Vec<syn::Ident> {
     segments
         .iter()
         .filter_map(|segment| match segment {
-            Segment::Capture(capture, span) => {
-                Some(format_ident!("{}", capture, span = span.clone()))
-            }
+            Segment::Capture(capture, span) => Some(format_ident!("{}", capture, span = *span)),
             Segment::Static(_) => None,
         })
         .collect::<Vec<_>>()
