@@ -43,7 +43,14 @@ fn parse_attrs(attrs: &[syn::Attribute]) -> syn::Result<Attrs> {
 
     for attr in attrs {
         if attr.path.is_ident("typed_path") {
-            path = Some(attr.parse_args()?);
+            if path.is_some() {
+                return Err(syn::Error::new_spanned(
+                    attr,
+                    "`typed_path` specified more than once",
+                ));
+            } else {
+                path = Some(attr.parse_args()?);
+            }
         }
     }
 
@@ -65,10 +72,13 @@ fn expand_named_fields(ident: &syn::Ident, path: LitStr, segments: &[Segment]) -
         #[automatically_derived]
         impl ::axum_extra::routing::TypedPath for #ident {
             const PATH: &'static str = #path;
+        }
 
-            fn path(&self) -> ::std::borrow::Cow<'static, str> {
+        #[automatically_derived]
+        impl ::std::fmt::Display for #ident {
+            fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
                 let Self { #(#captures,)* } = self;
-                format!(#format_str, #(#captures = #captures,)*).into()
+                write!(f, #format_str, #(#captures = #captures,)*)
             }
         }
 
@@ -137,10 +147,26 @@ fn expand_unnamed_fields(
         #[automatically_derived]
         impl ::axum_extra::routing::TypedPath for #ident {
             const PATH: &'static str = #path;
+        }
 
-            fn path(&self) -> ::std::borrow::Cow<'static, str> {
+        #[automatically_derived]
+        impl ::std::fmt::Display for #ident {
+            fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
                 let Self { #(#destructure_self)* } = self;
-                format!(#format_str, #(#captures = #captures,)*).into()
+                write!(f, #format_str, #(#captures = #captures,)*)
+            }
+        }
+
+        #[::axum::async_trait]
+        #[automatically_derived]
+        impl<B> ::axum::extract::FromRequest<B> for #ident
+        where
+            B: Send,
+        {
+            type Rejection = <::axum::extract::Path<Self> as ::axum::extract::FromRequest<B>>::Rejection;
+
+            async fn from_request(req: &mut ::axum::extract::RequestParts<B>) -> Result<Self, Self::Rejection> {
+                ::axum::extract::Path::from_request(req).await.map(|path| path.0)
             }
         }
     })
@@ -159,9 +185,12 @@ fn expand_unit_fields(ident: &syn::Ident, path: LitStr) -> TokenStream {
         #[automatically_derived]
         impl ::axum_extra::routing::TypedPath for #ident {
             const PATH: &'static str = #path;
+        }
 
-            fn path(&self) -> ::std::borrow::Cow<'static, str> {
-                #path.into()
+        #[automatically_derived]
+        impl ::std::fmt::Display for #ident {
+            fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+                write!(f, #path)
             }
         }
 
