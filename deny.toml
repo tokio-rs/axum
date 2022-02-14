@@ -47,7 +47,6 @@ skip-tree = [
 skip = [
     { name = "spin", version = "=0.5.2" },
 ]
-skip = []
 
 [sources]
 unknown-registry = "warn"
