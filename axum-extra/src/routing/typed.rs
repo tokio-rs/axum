@@ -85,7 +85,7 @@ use super::sealed::Sealed;
 /// also implement [`serde::Deserialize`], unless it's a unit struct.
 /// - A [`Display`] implementation that interpolates the captures. This can be used to, among other
 /// things, create links to known paths and have them verified statically. Note that the
-/// [`Display`] implementation for each field must return something that's compatible with it's
+/// [`Display`] implementation for each field must return something that's compatible with its
 /// [`Deserialize`] implementation.
 ///
 /// Additionally the macro will verify the captures in the path matches the fields of the struct.
