@@ -84,7 +84,7 @@ fn expand_named_fields(ident: &syn::Ident, path: LitStr, segments: &[Segment]) -
         }
     };
 
-    let from_request_impl = quote_spanned! {path.span()=>
+    let from_request_impl = quote! {
         #[::axum::async_trait]
         #[automatically_derived]
         impl<B> ::axum::extract::FromRequest<B> for #ident
