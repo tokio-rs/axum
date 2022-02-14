@@ -122,6 +122,7 @@ use super::sealed::Sealed;
 /// [`RouterExt::typed_post`]: super::RouterExt::typed_post
 /// [`Path`]: axum::extract::Path
 /// [`Display`]: std::fmt::Display
+/// [`Deserialize`]: serde::Deserialize
 pub trait TypedPath: std::fmt::Display {
     /// The path with optional captures such as `/users/:id`.
     const PATH: &'static str;
