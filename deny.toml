@@ -40,6 +40,12 @@ skip-tree = [
     { name = "sqlx" },
     { name = "async-graphql" },
     { name = "axum-server" },
+    # remove when tungstenite has had a new release
+    # https://github.com/snapview/tungstenite-rs/issues/262
+    { name = "tungstenite" },
+]
+skip = [
+    { name = "spin", version = "=0.5.2" },
 ]
 skip = []
 
