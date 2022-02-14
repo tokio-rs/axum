@@ -1,5 +1,5 @@
 use proc_macro2::{Span, TokenStream};
-use quote::{format_ident, quote_spanned};
+use quote::{format_ident, quote, quote_spanned};
 use syn::{ItemStruct, LitStr};
 
 pub(crate) fn expand(item_struct: ItemStruct) -> syn::Result<TokenStream> {
@@ -67,12 +67,14 @@ fn expand_named_fields(ident: &syn::Ident, path: LitStr, segments: &[Segment]) -
     let format_str = format_str_from_path(segments);
     let captures = captures_from_path(segments);
 
-    quote_spanned! {path.span()=>
+    let typed_path_impl = quote_spanned! {path.span()=>
         #[automatically_derived]
         impl ::axum_extra::routing::TypedPath for #ident {
             const PATH: &'static str = #path;
         }
+    };
 
+    let display_impl = quote_spanned! {path.span()=>
         #[automatically_derived]
         impl ::std::fmt::Display for #ident {
             fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
@@ -80,7 +82,9 @@ fn expand_named_fields(ident: &syn::Ident, path: LitStr, segments: &[Segment]) -
                 write!(f, #format_str, #(#captures = #captures,)*)
             }
         }
+    };
 
+    let from_request_impl = quote_spanned! {path.span()=>
         #[::axum::async_trait]
         #[automatically_derived]
         impl<B> ::axum::extract::FromRequest<B> for #ident
@@ -93,6 +97,12 @@ fn expand_named_fields(ident: &syn::Ident, path: LitStr, segments: &[Segment]) -
                 ::axum::extract::Path::from_request(req).await.map(|path| path.0)
             }
         }
+    };
+
+    quote! {
+        #typed_path_impl
+        #display_impl
+        #from_request_impl
     }
 }
 
@@ -142,12 +152,14 @@ fn expand_unnamed_fields(
     let format_str = format_str_from_path(segments);
     let captures = captures_from_path(segments);
 
-    Ok(quote_spanned! {path.span()=>
+    let typed_path_impl = quote_spanned! {path.span()=>
         #[automatically_derived]
         impl ::axum_extra::routing::TypedPath for #ident {
             const PATH: &'static str = #path;
         }
+    };
 
+    let display_impl = quote_spanned! {path.span()=>
         #[automatically_derived]
         impl ::std::fmt::Display for #ident {
             fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
@@ -155,7 +167,9 @@ fn expand_unnamed_fields(
                 write!(f, #format_str, #(#captures = #captures,)*)
             }
         }
+    };
 
+    let from_request_impl = quote! {
         #[::axum::async_trait]
         #[automatically_derived]
         impl<B> ::axum::extract::FromRequest<B> for #ident
@@ -168,6 +182,12 @@ fn expand_unnamed_fields(
                 ::axum::extract::Path::from_request(req).await.map(|path| path.0)
             }
         }
+    };
+
+    Ok(quote! {
+        #typed_path_impl
+        #display_impl
+        #from_request_impl
     })
 }
 
@@ -192,19 +212,23 @@ fn expand_unit_fields(ident: &syn::Ident, path: LitStr) -> syn::Result<TokenStre
         }
     }
 
-    Ok(quote_spanned! {path.span()=>
+    let typed_path_impl = quote_spanned! {path.span()=>
         #[automatically_derived]
         impl ::axum_extra::routing::TypedPath for #ident {
             const PATH: &'static str = #path;
         }
+    };
 
+    let display_impl = quote_spanned! {path.span()=>
         #[automatically_derived]
         impl ::std::fmt::Display for #ident {
             fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
                 write!(f, #path)
             }
         }
+    };
 
+    let from_request_impl = quote! {
         #[::axum::async_trait]
         #[automatically_derived]
         impl<B> ::axum::extract::FromRequest<B> for #ident
@@ -221,6 +245,12 @@ fn expand_unit_fields(ident: &syn::Ident, path: LitStr) -> syn::Result<TokenStre
                 }
             }
         }
+    };
+
+    Ok(quote! {
+        #typed_path_impl
+        #display_impl
+        #from_request_impl
     })
 }
 
