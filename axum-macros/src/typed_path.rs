@@ -262,3 +262,18 @@ enum Segment {
     Capture(String, Span),
     Static(String),
 }
+
+#[test]
+fn ui() {
+    #[rustversion::stable]
+    fn go() {
+        let t = trybuild::TestCases::new();
+        t.compile_fail("tests/typed_path/fail/*.rs");
+        t.pass("tests/typed_path/pass/*.rs");
+    }
+
+    #[rustversion::not(stable)]
+    fn go() {}
+
+    go();
+}
