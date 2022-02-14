@@ -14,7 +14,7 @@ pub(crate) fn expand(item_struct: ItemStruct) -> syn::Result<TokenStream> {
     if !generics.params.is_empty() || generics.where_clause.is_some() {
         return Err(syn::Error::new_spanned(
             generics,
-            "`#[derive(TypePath)]` doesn't support generics",
+            "`#[derive(TypedPath)]` doesn't support generics",
         ));
     }
 

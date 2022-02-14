@@ -64,7 +64,7 @@ use super::sealed::Sealed;
 ///
 /// # Using `#[derive(TypedPath)]`
 ///
-/// While `TypedPath` can be implemented manually its _highly_ recommended to derive it:
+/// While `TypedPath` can be implemented manually, it's _highly_ recommended to derive it:
 ///
 /// ```
 /// use serde::Deserialize;
@@ -84,7 +84,7 @@ use super::sealed::Sealed;
 /// things, create links to known paths and have them verified statically.
 /// - A [`FromRequest`] implementation compatible with [`RouterExt::typed_get`],
 /// [`RouterExt::typed_post`], etc. This implementation uses [`Path`] and thus your struct must
-/// also implement [`serde::Deserialize`], unless its a unit struct.
+/// also implement [`serde::Deserialize`], unless it's a unit struct.
 ///
 /// Additionally the macro will verify the captures in the path matches the fields of the struct.
 /// For example this fails to compile since the struct doesn't have a `team_id` field:
