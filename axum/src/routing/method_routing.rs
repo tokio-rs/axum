@@ -983,7 +983,7 @@ where
             ) => {
                 if $method == Method::$method_variant {
                     if let Some(svc) = $svc {
-                        return RouteFuture::from_future(svc.0.clone().oneshot($req))
+                        return RouteFuture::from_future(svc.oneshot_inner($req))
                             .strip_body($method == Method::HEAD);
                     }
                 }
@@ -1018,11 +1018,9 @@ where
         call!(req, method, TRACE, trace);
 
         let future = match fallback {
-            Fallback::Default(fallback) => {
-                RouteFuture::from_future(fallback.0.clone().oneshot(req))
-                    .strip_body(method == Method::HEAD)
-            }
-            Fallback::Custom(fallback) => RouteFuture::from_future(fallback.0.clone().oneshot(req))
+            Fallback::Default(fallback) => RouteFuture::from_future(fallback.oneshot_inner(req))
+                .strip_body(method == Method::HEAD),
+            Fallback::Custom(fallback) => RouteFuture::from_future(fallback.oneshot_inner(req))
                 .strip_body(method == Method::HEAD),
         };
 

@@ -1,6 +1,6 @@
 //! Routing between [`Service`]s and handlers.
 
-use self::{future::RouterFuture, not_found::NotFound};
+use self::{future::RouteFuture, not_found::NotFound};
 use crate::{
     body::{boxed, Body, Bytes, HttpBody},
     extract::connect_info::{Connected, IntoMakeServiceWithConnectInfo},
@@ -396,7 +396,11 @@ where
     }
 
     #[inline]
-    fn call_route(&self, match_: matchit::Match<&RouteId>, mut req: Request<B>) -> RouterFuture<B> {
+    fn call_route(
+        &self,
+        match_: matchit::Match<&RouteId>,
+        mut req: Request<B>,
+    ) -> RouteFuture<B, Infallible> {
         let id = *match_.value;
         req.extensions_mut().insert(id);
 
@@ -440,11 +444,10 @@ where
             .expect("no route for id. This is a bug in axum. Please file an issue")
             .clone();
 
-        let future = match &mut route {
+        match &mut route {
             Endpoint::MethodRouter(inner) => inner.call(req),
             Endpoint::Route(inner) => inner.call(req),
-        };
-        RouterFuture::from_future(future)
+        }
     }
 
     fn panic_on_matchit_error(&self, err: matchit::InsertError) {
@@ -465,7 +468,7 @@ where
 {
     type Response = Response;
     type Error = Infallible;
-    type Future = RouterFuture<B>;
+    type Future = RouteFuture<B, Infallible>;
 
     #[inline]
     fn poll_ready(&mut self, _: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
@@ -496,15 +499,11 @@ where
                         with_path(req.uri(), &format!("{}/", path))
                     };
                     let res = Redirect::permanent(redirect_to);
-                    RouterFuture::from_response(res.into_response())
+                    RouteFuture::from_response(res.into_response())
                 } else {
                     match &self.fallback {
-                        Fallback::Default(inner) => {
-                            RouterFuture::from_future(inner.clone().call(req))
-                        }
-                        Fallback::Custom(inner) => {
-                            RouterFuture::from_future(inner.clone().call(req))
-                        }
+                        Fallback::Default(inner) => inner.clone().call(req),
+                        Fallback::Custom(inner) => inner.clone().call(req),
                     }
                 }
             }
