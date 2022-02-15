@@ -13,7 +13,10 @@ pub use self::resource::Resource;
 pub use axum_macros::TypedPath;
 
 #[cfg(feature = "typed-routing")]
-pub use self::typed::{FirstElementIs, TypedPath};
+pub use self::typed::{
+    Any, Delete, FirstTwoElementsAre, Get, Head, OneOf, Options, Patch, Post, Put, Trace,
+    TypedMethod, TypedPath,
+};
 
 /// Extension trait that adds additional methods to [`Router`].
 pub trait RouterExt<B>: sealed::Sealed {
@@ -42,108 +45,80 @@ pub trait RouterExt<B>: sealed::Sealed {
     where
         T: HasRoutes<B>;
 
-    /// Add a typed `GET` route to the router.
+    /// Add a typed route to the router.
     ///
-    /// The path will be inferred from the first argument to the handler function which must
-    /// implement [`TypedPath`].
+    /// The method and path will be inferred from the first two arguments to the handler function
+    /// which must implement [`TypedMethod`] and [`TypedPath`] respectively.
     ///
-    /// See [`TypedPath`] for more details and examples.
+    /// # Example
+    ///
+    /// ```rust
+    /// use serde::Deserialize;
+    /// use axum::{Router, extract::Json};
+    /// use axum_extra::routing::{
+    ///     TypedPath,
+    ///     Get,
+    ///     Post,
+    ///     Delete,
+    ///     RouterExt, // for `Router::typed_*`
+    /// };
+    ///
+    /// // A type safe route with `/users/:id` as its associated path.
+    /// #[derive(TypedPath, Deserialize)]
+    /// #[typed_path("/users/:id")]
+    /// struct UsersMember {
+    ///     id: u32,
+    /// }
+    ///
+    /// // A regular handler function that takes `Get` as its first argument and
+    /// // `UsersMember` as the second argument and thus creates a typed connection
+    /// // between this handler and `GET /users/:id`.
+    /// //
+    /// // The first argument must implement `TypedMethod` and the second must
+    /// // implement `TypedPath`.
+    /// async fn users_show(
+    ///     _: Get,
+    ///     UsersMember { id }: UsersMember,
+    /// ) {
+    ///     // ...
+    /// }
+    ///
+    /// let app = Router::new()
+    ///     // Add our typed route to the router.
+    ///     //
+    ///     // The method and path will be inferred to `GET /users/:id` since `users_show`'s
+    ///     // first argument is `Get` and the second is `UsersMember`.
+    ///     .typed_route(users_show)
+    ///     .typed_route(users_create)
+    ///     .typed_route(users_destroy);
+    ///
+    /// #[derive(TypedPath)]
+    /// #[typed_path("/users")]
+    /// struct UsersCollection;
+    ///
+    /// #[derive(Deserialize)]
+    /// struct UsersCreatePayload { /* ... */ }
+    ///
+    /// async fn users_create(
+    ///     _: Post,
+    ///     _: UsersCollection,
+    ///     // Our handlers can accept other extractors.
+    ///     Json(payload): Json<UsersCreatePayload>,
+    /// ) {
+    ///     // ...
+    /// }
+    ///
+    /// async fn users_destroy(_: Delete, _: UsersCollection) { /* ... */ }
+    ///
+    /// #
+    /// # let app: Router<axum::body::Body> = app;
+    /// ```
     #[cfg(feature = "typed-routing")]
-    fn typed_get<H, T, P>(self, handler: H) -> Self
+    fn typed_route<H, T, M, P>(self, handler: H) -> Self
     where
         H: Handler<T, B>,
-        T: FirstElementIs<P> + 'static,
-        P: TypedPath;
-
-    /// Add a typed `DELETE` route to the router.
-    ///
-    /// The path will be inferred from the first argument to the handler function which must
-    /// implement [`TypedPath`].
-    ///
-    /// See [`TypedPath`] for more details and examples.
-    #[cfg(feature = "typed-routing")]
-    fn typed_delete<H, T, P>(self, handler: H) -> Self
-    where
-        H: Handler<T, B>,
-        T: FirstElementIs<P> + 'static,
-        P: TypedPath;
-
-    /// Add a typed `HEAD` route to the router.
-    ///
-    /// The path will be inferred from the first argument to the handler function which must
-    /// implement [`TypedPath`].
-    ///
-    /// See [`TypedPath`] for more details and examples.
-    #[cfg(feature = "typed-routing")]
-    fn typed_head<H, T, P>(self, handler: H) -> Self
-    where
-        H: Handler<T, B>,
-        T: FirstElementIs<P> + 'static,
-        P: TypedPath;
-
-    /// Add a typed `OPTIONS` route to the router.
-    ///
-    /// The path will be inferred from the first argument to the handler function which must
-    /// implement [`TypedPath`].
-    ///
-    /// See [`TypedPath`] for more details and examples.
-    #[cfg(feature = "typed-routing")]
-    fn typed_options<H, T, P>(self, handler: H) -> Self
-    where
-        H: Handler<T, B>,
-        T: FirstElementIs<P> + 'static,
-        P: TypedPath;
-
-    /// Add a typed `PATCH` route to the router.
-    ///
-    /// The path will be inferred from the first argument to the handler function which must
-    /// implement [`TypedPath`].
-    ///
-    /// See [`TypedPath`] for more details and examples.
-    #[cfg(feature = "typed-routing")]
-    fn typed_patch<H, T, P>(self, handler: H) -> Self
-    where
-        H: Handler<T, B>,
-        T: FirstElementIs<P> + 'static,
-        P: TypedPath;
-
-    /// Add a typed `POST` route to the router.
-    ///
-    /// The path will be inferred from the first argument to the handler function which must
-    /// implement [`TypedPath`].
-    ///
-    /// See [`TypedPath`] for more details and examples.
-    #[cfg(feature = "typed-routing")]
-    fn typed_post<H, T, P>(self, handler: H) -> Self
-    where
-        H: Handler<T, B>,
-        T: FirstElementIs<P> + 'static,
-        P: TypedPath;
-
-    /// Add a typed `PUT` route to the router.
-    ///
-    /// The path will be inferred from the first argument to the handler function which must
-    /// implement [`TypedPath`].
-    ///
-    /// See [`TypedPath`] for more details and examples.
-    #[cfg(feature = "typed-routing")]
-    fn typed_put<H, T, P>(self, handler: H) -> Self
-    where
-        H: Handler<T, B>,
-        T: FirstElementIs<P> + 'static,
-        P: TypedPath;
-
-    /// Add a typed `TRACE` route to the router.
-    ///
-    /// The path will be inferred from the first argument to the handler function which must
-    /// implement [`TypedPath`].
-    ///
-    /// See [`TypedPath`] for more details and examples.
-    #[cfg(feature = "typed-routing")]
-    fn typed_trace<H, T, P>(self, handler: H) -> Self
-    where
-        H: Handler<T, B>,
-        T: FirstElementIs<P> + 'static,
+        T: FirstTwoElementsAre<M, P> + 'static,
+        M: TypedMethod,
         P: TypedPath;
 }
 
@@ -159,83 +134,14 @@ where
     }
 
     #[cfg(feature = "typed-routing")]
-    fn typed_get<H, T, P>(self, handler: H) -> Self
+    fn typed_route<H, T, M, P>(self, handler: H) -> Self
     where
         H: Handler<T, B>,
-        T: FirstElementIs<P> + 'static,
+        T: FirstTwoElementsAre<M, P> + 'static,
+        M: TypedMethod,
         P: TypedPath,
     {
-        self.route(P::PATH, axum::routing::get(handler))
-    }
-
-    #[cfg(feature = "typed-routing")]
-    fn typed_delete<H, T, P>(self, handler: H) -> Self
-    where
-        H: Handler<T, B>,
-        T: FirstElementIs<P> + 'static,
-        P: TypedPath,
-    {
-        self.route(P::PATH, axum::routing::delete(handler))
-    }
-
-    #[cfg(feature = "typed-routing")]
-    fn typed_head<H, T, P>(self, handler: H) -> Self
-    where
-        H: Handler<T, B>,
-        T: FirstElementIs<P> + 'static,
-        P: TypedPath,
-    {
-        self.route(P::PATH, axum::routing::head(handler))
-    }
-
-    #[cfg(feature = "typed-routing")]
-    fn typed_options<H, T, P>(self, handler: H) -> Self
-    where
-        H: Handler<T, B>,
-        T: FirstElementIs<P> + 'static,
-        P: TypedPath,
-    {
-        self.route(P::PATH, axum::routing::options(handler))
-    }
-
-    #[cfg(feature = "typed-routing")]
-    fn typed_patch<H, T, P>(self, handler: H) -> Self
-    where
-        H: Handler<T, B>,
-        T: FirstElementIs<P> + 'static,
-        P: TypedPath,
-    {
-        self.route(P::PATH, axum::routing::patch(handler))
-    }
-
-    #[cfg(feature = "typed-routing")]
-    fn typed_post<H, T, P>(self, handler: H) -> Self
-    where
-        H: Handler<T, B>,
-        T: FirstElementIs<P> + 'static,
-        P: TypedPath,
-    {
-        self.route(P::PATH, axum::routing::post(handler))
-    }
-
-    #[cfg(feature = "typed-routing")]
-    fn typed_put<H, T, P>(self, handler: H) -> Self
-    where
-        H: Handler<T, B>,
-        T: FirstElementIs<P> + 'static,
-        P: TypedPath,
-    {
-        self.route(P::PATH, axum::routing::put(handler))
-    }
-
-    #[cfg(feature = "typed-routing")]
-    fn typed_trace<H, T, P>(self, handler: H) -> Self
-    where
-        H: Handler<T, B>,
-        T: FirstElementIs<P> + 'static,
-        P: TypedPath,
-    {
-        self.route(P::PATH, axum::routing::trace(handler))
+        self.route(P::PATH, M::apply_method_router(handler))
     }
 }
 

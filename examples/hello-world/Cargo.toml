@@ -7,6 +7,3 @@ publish = false
 [dependencies]
 axum = { path = "../../axum" }
 tokio = { version = "1.0", features = ["full"] }
-
-axum-extra = { path = "../../axum-extra", features = ["typed-routing"] }
-serde = { version = "1.0", features = ["derive"] }

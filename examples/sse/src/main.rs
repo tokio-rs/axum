@@ -37,7 +37,10 @@ async fn main() {
     let app = Router::new()
         .fallback(static_files_service)
         .route("/sse", get(sse_handler))
-        .layer(TraceLayer::new_for_http());
+        .layer(
+            TraceLayer::new_for_http()
+                .make_span_with(tower_http::trace::DefaultMakeSpan::new().include_headers(true)),
+        );
 
     // run it
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
