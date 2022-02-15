@@ -93,7 +93,8 @@ async fn authorize(Json(payload): Json<AuthPayload>) -> Result<Json<AuthBody>, A
     let claims = Claims {
         sub: "b@b.com".to_owned(),
         company: "ACME".to_owned(),
-        exp: 100000,
+        // Mandatory expiry time as UTC timestamp
+        exp: 2000000000, // May 2033
     };
     // Create the authorization token
     let token = encode(&Header::default(), &claims, &KEYS.encoding)
