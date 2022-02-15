@@ -77,4 +77,4 @@ this to collect UDS connection info.
 [`MakeService`]: tower::make::MakeService
 [`Connected`]: crate::extract::connect_info::Connected
 [`ConnectInfo`]: crate::extract::connect_info::ConnectInfo
-[uds]: https://github.com/tokio-rs/axum/blob/main/examples/unix_domain_socket.rs
+[uds]: https://github.com/tokio-rs/axum/blob/main/examples/unix-domain-socket/src/main.rs
