@@ -18,9 +18,11 @@ define_rejection! {
     pub struct InvalidJsonBody(Error);
 }
 
+#[cfg(feature = "json")]
 define_rejection! {
     #[status = UNSUPPORTED_MEDIA_TYPE]
     #[body = "Expected request with `Content-Type: application/json`"]
+    #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
     /// Rejection type for [`Json`](super::Json) used if the `Content-Type`
     /// header is missing.
     pub struct MissingJsonContentType;
@@ -163,17 +165,21 @@ composite_rejection! {
     }
 }
 
+#[cfg(feature = "matched-path")]
 define_rejection! {
     #[status = INTERNAL_SERVER_ERROR]
     #[body = "No matched path found"]
     /// Rejection if no matched path could be found.
     ///
     /// See [`MatchedPath`](super::MatchedPath) for more details.
+    #[cfg_attr(docsrs, doc(cfg(feature = "matched-path")))]
     pub struct MatchedPathMissing;
 }
 
+#[cfg(feature = "matched-path")]
 composite_rejection! {
     /// Rejection used for [`MatchedPath`](super::MatchedPath).
+    #[cfg_attr(docsrs, doc(cfg(feature = "matched-path")))]
     pub enum MatchedPathRejection {
         MatchedPathMissing,
     }
