@@ -22,7 +22,7 @@ If your project isn't listed here and you would like it to be, please feel free 
 - [realworld-axum-sqlx](https://github.com/launchbadge/realworld-axum-sqlx): A Rust implementation of the [Realworld] demo app spec using Axum and [SQLx].
 - [Rustapi](https://github.com/ndelvalle/rustapi): RESTful API template using MongoDB
 - [Jotsy](https://github.com/ohsayan/jotsy): Self-hosted notes app powered by Skytable, Axum and Tokio
-- [Svix](https://www.svix.com) ([repository](https://github.com/svix/svix-webhooks)): The enterprise ready webhook service
+- [Svix](https://www.svix.com) ([repository](https://github.com/svix/svix-webhooks)): Enterprise-ready webhook service
 
 [Realworld]: https://github.com/gothinkster/realworld
 [SQLx]: https://github.com/launchbadge/sqlx
