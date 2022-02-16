@@ -30,7 +30,7 @@ use std::ops::Deref;
 /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 /// # };
 /// ```
-#[cfg(feature = "headers")]
+#[cfg_attr(docsrs, doc(cfg(feature = "headers")))]
 #[derive(Debug, Clone, Copy)]
 pub struct TypedHeader<T>(pub T);
 
