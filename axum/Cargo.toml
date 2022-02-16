@@ -90,6 +90,5 @@ features = [
     "http2",
     "json",
     "multipart",
-    "tower",
     "ws",
 ]
