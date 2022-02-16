@@ -9,7 +9,6 @@ pub mod path;
 pub mod rejection;
 
 #[cfg(feature = "ws")]
-#[cfg_attr(docsrs, doc(cfg(feature = "ws")))]
 pub mod ws;
 
 mod content_length_limit;
@@ -43,35 +42,28 @@ pub use crate::Json;
 mod matched_path;
 
 #[cfg(feature = "matched-path")]
-#[cfg_attr(docsrs, doc(cfg(feature = "matched-path")))]
 #[doc(inline)]
 pub use self::matched_path::MatchedPath;
 
 #[cfg(feature = "multipart")]
-#[cfg_attr(docsrs, doc(cfg(feature = "multipart")))]
 pub mod multipart;
 
 #[cfg(feature = "multipart")]
-#[cfg_attr(docsrs, doc(cfg(feature = "multipart")))]
 #[doc(inline)]
 pub use self::multipart::Multipart;
 
 #[cfg(feature = "original-uri")]
-#[cfg_attr(docsrs, doc(cfg(feature = "original-uri")))]
 #[doc(inline)]
 pub use self::request_parts::OriginalUri;
 
 #[cfg(feature = "ws")]
-#[cfg_attr(docsrs, doc(cfg(feature = "ws")))]
 #[doc(inline)]
 pub use self::ws::WebSocketUpgrade;
 
 #[cfg(feature = "headers")]
-#[cfg_attr(docsrs, doc(cfg(feature = "headers")))]
 mod typed_header;
 
 #[cfg(feature = "headers")]
-#[cfg_attr(docsrs, doc(cfg(feature = "headers")))]
 #[doc(inline)]
 pub use self::typed_header::TypedHeader;
 

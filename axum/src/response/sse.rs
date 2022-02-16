@@ -204,7 +204,6 @@ impl Event {
     ///
     /// Panics if `data` or `json_data` have already been called.
     #[cfg(feature = "json")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
     pub fn json_data<T>(mut self, data: T) -> serde_json::Result<Event>
     where
         T: serde::Serialize,
