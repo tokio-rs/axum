@@ -18,9 +18,11 @@ define_rejection! {
     pub struct InvalidJsonBody(Error);
 }
 
+#[cfg(feature = "json")]
 define_rejection! {
     #[status = UNSUPPORTED_MEDIA_TYPE]
     #[body = "Expected request with `Content-Type: application/json`"]
+    #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
     /// Rejection type for [`Json`](super::Json) used if the `Content-Type`
     /// header is missing.
     pub struct MissingJsonContentType;
@@ -243,5 +245,4 @@ where
 }
 
 #[cfg(feature = "headers")]
-#[cfg_attr(docsrs, doc(cfg(feature = "headers")))]
 pub use super::typed_header::{TypedHeaderRejection, TypedHeaderRejectionReason};
