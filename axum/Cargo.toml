@@ -83,10 +83,9 @@ rustdoc-args = ["--cfg", "docsrs"]
 
 [package.metadata.playground]
 features = [
-  "http1",
-  "http2",
-  "json",
-  "multipart",
-  "tower",
-  "ws",
+    "http1",
+    "http2",
+    "json",
+    "multipart",
+    "ws",
 ]

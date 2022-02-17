@@ -210,8 +210,7 @@ impl Event {
     ///
     /// [`MessageEvent`'s data field]: https://developer.mozilla.org/en-US/docs/Web/API/MessageEvent/data
     #[cfg(feature = "json")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
-    pub fn json_data<T>(mut self, data: T) -> Result<Event, serde_json::Error>
+    pub fn json_data<T>(mut self, data: T) -> serde_json::Result<Event>
     where
         T: serde::Serialize,
     {

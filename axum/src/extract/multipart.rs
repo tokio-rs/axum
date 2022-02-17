@@ -44,6 +44,7 @@ use std::{
 ///
 /// For security reasons its recommended to combine this with
 /// [`ContentLengthLimit`](super::ContentLengthLimit) to limit the size of the request payload.
+#[cfg_attr(docsrs, doc(cfg(feature = "multipart")))]
 #[derive(Debug)]
 pub struct Multipart {
     inner: multer::Multipart<'static>,
