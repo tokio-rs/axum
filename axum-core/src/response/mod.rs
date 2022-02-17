@@ -8,16 +8,21 @@ use crate::{
     body::{boxed, BoxBody},
     BoxError,
 };
-use bytes::Bytes;
+use bytes::{buf::Chain, Buf, Bytes, BytesMut};
 use http::{
     header::{self, HeaderMap, HeaderValue},
     StatusCode,
 };
 use http_body::{
     combinators::{MapData, MapErr},
-    Empty, Full,
+    Empty, Full, SizeHint,
 };
-use std::{borrow::Cow, convert::Infallible};
+use std::{
+    borrow::Cow,
+    convert::Infallible,
+    pin::Pin,
+    task::{Context, Poll},
+};
 
 mod headers;
 
@@ -275,6 +280,85 @@ impl IntoResponse for Bytes {
             HeaderValue::from_static(mime::APPLICATION_OCTET_STREAM.as_ref()),
         );
         res
+    }
+}
+
+impl IntoResponse for BytesMut {
+    fn into_response(self) -> Response {
+        self.freeze().into_response()
+    }
+}
+
+impl<T, U> IntoResponse for Chain<T, U>
+where
+    T: Buf + Unpin + Send + 'static,
+    U: Buf + Unpin + Send + 'static,
+{
+    fn into_response(self) -> Response {
+        let (first, second) = self.into_inner();
+        let mut res = Response::new(boxed(BytesChainBody {
+            first: Some(first),
+            second: Some(second),
+        }));
+        res.headers_mut().insert(
+            header::CONTENT_TYPE,
+            HeaderValue::from_static(mime::APPLICATION_OCTET_STREAM.as_ref()),
+        );
+        res
+    }
+}
+
+struct BytesChainBody<T, U> {
+    first: Option<T>,
+    second: Option<U>,
+}
+
+impl<T, U> http_body::Body for BytesChainBody<T, U>
+where
+    T: Buf + Unpin,
+    U: Buf + Unpin,
+{
+    type Data = Bytes;
+    type Error = Infallible;
+
+    fn poll_data(
+        mut self: Pin<&mut Self>,
+        _cx: &mut Context<'_>,
+    ) -> Poll<Option<Result<Self::Data, Self::Error>>> {
+        if let Some(mut buf) = self.first.take() {
+            let bytes = buf.copy_to_bytes(buf.remaining());
+            return Poll::Ready(Some(Ok(bytes)));
+        }
+
+        if let Some(mut buf) = self.second.take() {
+            let bytes = buf.copy_to_bytes(buf.remaining());
+            return Poll::Ready(Some(Ok(bytes)));
+        }
+
+        Poll::Ready(None)
+    }
+
+    fn poll_trailers(
+        self: Pin<&mut Self>,
+        _cx: &mut Context<'_>,
+    ) -> Poll<Result<Option<HeaderMap>, Self::Error>> {
+        Poll::Ready(Ok(None))
+    }
+
+    fn is_end_stream(&self) -> bool {
+        self.first.is_none() && self.second.is_none()
+    }
+
+    fn size_hint(&self) -> SizeHint {
+        match (self.first.as_ref(), self.second.as_ref()) {
+            (Some(first), Some(second)) => {
+                let total_size = first.remaining() + second.remaining();
+                SizeHint::with_exact(total_size as u64)
+            }
+            (Some(buf), None) => SizeHint::with_exact(buf.remaining() as u64),
+            (None, Some(buf)) => SizeHint::with_exact(buf.remaining() as u64),
+            (None, None) => SizeHint::with_exact(0),
+        }
     }
 }
 
