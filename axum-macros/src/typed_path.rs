@@ -22,11 +22,11 @@ pub(crate) fn expand(item_struct: ItemStruct) -> syn::Result<TokenStream> {
 
     match fields {
         syn::Fields::Named(_) => {
-            let segments = parse_path(&path);
+            let segments = parse_path(&path)?;
             Ok(expand_named_fields(ident, path, &segments))
         }
         syn::Fields::Unnamed(fields) => {
-            let segments = parse_path(&path);
+            let segments = parse_path(&path)?;
             expand_unnamed_fields(fields, ident, path, &segments)
         }
         syn::Fields::Unit => Ok(expand_unit_fields(ident, path)?),
@@ -200,7 +200,7 @@ fn simple_pluralize(count: usize, word: &str) -> String {
 }
 
 fn expand_unit_fields(ident: &syn::Ident, path: LitStr) -> syn::Result<TokenStream> {
-    for segment in parse_path(&path) {
+    for segment in parse_path(&path)? {
         match segment {
             Segment::Capture(_, span) => {
                 return Err(syn::Error::new(
@@ -275,14 +275,21 @@ fn captures_from_path(segments: &[Segment]) -> Vec<syn::Ident> {
         .collect::<Vec<_>>()
 }
 
-fn parse_path(path: &LitStr) -> Vec<Segment> {
+fn parse_path(path: &LitStr) -> syn::Result<Vec<Segment>> {
     path.value()
         .split('/')
         .map(|segment| {
+            if segment.contains('*') {
+                return Err(syn::Error::new_spanned(
+                    path,
+                    "`typed_path` cannot contain wildcards",
+                ));
+            }
+
             if let Some(capture) = segment.strip_prefix(':') {
-                Segment::Capture(capture.to_owned(), path.span())
+                Ok(Segment::Capture(capture.to_owned(), path.span()))
             } else {
-                Segment::Static(segment.to_owned())
+                Ok(Segment::Static(segment.to_owned()))
             }
         })
         .collect()
