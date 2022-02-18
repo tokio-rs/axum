@@ -65,7 +65,6 @@ impl RouteId {
 }
 
 /// The router type for composing handlers and services.
-#[derive(Debug)]
 pub struct Router<B = Body> {
     routes: HashMap<RouteId, Endpoint<B>>,
     node: Node,
@@ -90,6 +89,17 @@ where
 {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+impl<B> fmt::Debug for Router<B> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Router")
+            .field("routes", &self.routes)
+            .field("node", &self.node)
+            .field("fallback", &self.fallback)
+            .field("nested_at_root", &self.nested_at_root)
+            .finish()
     }
 }
 
