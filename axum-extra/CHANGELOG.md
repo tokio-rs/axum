@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 # Unreleased
 
 - **added:** Add type safe routing. See `axum_extra::routing::typed` for more details ([#756])
+- **added:** OpenTelemetry compatible middleware
 - **breaking:** `CachedRejection` has been removed ([#699])
 - **breaking:** `<Cached<T> as FromRequest>::Rejection` is now `T::Rejection`. ([#699])
 - **breaking:** `middleware::from_fn` has been moved into the main axum crate ([#719])
