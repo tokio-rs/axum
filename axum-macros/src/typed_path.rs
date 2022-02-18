@@ -79,7 +79,11 @@ fn expand_named_fields(ident: &syn::Ident, path: LitStr, segments: &[Segment]) -
         impl ::std::fmt::Display for #ident {
             fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
                 let Self { #(#captures,)* } = self;
-                write!(f, #format_str, #(#captures = #captures,)*)
+                write!(
+                    f,
+                    #format_str,
+                    #(#captures = ::axum_extra::__private::utf8_percent_encode(&#captures.to_string(), ::axum_extra::__private::PATH_SEGMENT)),*
+                )
             }
         }
     };
@@ -164,7 +168,11 @@ fn expand_unnamed_fields(
         impl ::std::fmt::Display for #ident {
             fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
                 let Self { #(#destructure_self)* } = self;
-                write!(f, #format_str, #(#captures = #captures,)*)
+                write!(
+                    f,
+                    #format_str,
+                    #(#captures = ::axum_extra::__private::utf8_percent_encode(&#captures.to_string(), ::axum_extra::__private::PATH_SEGMENT)),*
+                )
             }
         }
     };

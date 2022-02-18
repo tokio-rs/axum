@@ -13,7 +13,7 @@ version = "0.1.2"
 [features]
 default = []
 erased-json = ["serde_json", "serde"]
-typed-routing = ["axum-macros", "serde"]
+typed-routing = ["axum-macros", "serde", "percent-encoding"]
 
 [dependencies]
 axum = { path = "../axum", version = "0.4" }
@@ -30,6 +30,7 @@ tower-service = "0.3"
 axum-macros = { path = "../axum-macros", version = "0.1", optional = true }
 serde = { version = "1.0", optional = true }
 serde_json = { version = "1.0.71", optional = true }
+percent-encoding = { version = "2.1", optional = true }
 
 [dev-dependencies]
 hyper = "0.14"

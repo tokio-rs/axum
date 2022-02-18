@@ -117,6 +117,28 @@ use super::sealed::Sealed;
 /// struct UsersMember(u32);
 /// ```
 ///
+/// ## Percent encoding
+///
+/// The generated [`Display`] implementation will automatically percent encoding parameters:
+///
+/// ```
+/// use serde::Deserialize;
+/// use axum_extra::routing::TypedPath;
+///
+/// #[derive(TypedPath, Deserialize)]
+/// #[typed_path("/users/:id")]
+/// struct UsersMember {
+///     id: String,
+/// }
+///
+/// assert_eq!(
+///     UsersMember {
+///         id: "foo bar".to_string(),
+///     }.to_string(),
+///     "/users/foo%20bar",
+/// );
+/// ```
+///
 /// [`FromRequest`]: axum::extract::FromRequest
 /// [`RouterExt::typed_get`]: super::RouterExt::typed_get
 /// [`RouterExt::typed_post`]: super::RouterExt::typed_post
