@@ -119,7 +119,7 @@ use super::sealed::Sealed;
 ///
 /// ## Percent encoding
 ///
-/// The generated [`Display`] implementation will automatically percent encoding parameters:
+/// The generated [`Display`] implementation will automatically percent-encode parameters:
 ///
 /// ```
 /// use serde::Deserialize;
