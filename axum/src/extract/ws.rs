@@ -103,6 +103,7 @@ use tokio_tungstenite::{
 ///
 /// See the [module docs](self) for an example.
 #[derive(Debug)]
+#[cfg_attr(docsrs, doc(cfg(feature = "ws")))]
 pub struct WebSocketUpgrade {
     config: WebSocketConfig,
     /// The chosen protocol sent in the `Sec-WebSocket-Protocol` header of the response.

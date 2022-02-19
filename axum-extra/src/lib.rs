@@ -40,9 +40,24 @@
 #![deny(unreachable_pub, private_in_public)]
 #![allow(elided_lifetimes_in_paths, clippy::type_complexity)]
 #![forbid(unsafe_code)]
-#![cfg_attr(docsrs, feature(doc_cfg))]
+#![cfg_attr(docsrs, feature(doc_cfg, doc_auto_cfg))]
 #![cfg_attr(test, allow(clippy::float_cmp))]
 
 pub mod extract;
 pub mod response;
 pub mod routing;
+
+#[cfg(feature = "typed-routing")]
+#[doc(hidden)]
+pub mod __private {
+    //! _not_ public API
+
+    use percent_encoding::{AsciiSet, CONTROLS};
+
+    pub use percent_encoding::utf8_percent_encode;
+
+    // from https://github.com/servo/rust-url/blob/master/url/src/parser.rs
+    const FRAGMENT: &AsciiSet = &CONTROLS.add(b' ').add(b'"').add(b'<').add(b'>').add(b'`');
+    const PATH: &AsciiSet = &FRAGMENT.add(b'#').add(b'?').add(b'{').add(b'}');
+    pub const PATH_SEGMENT: &AsciiSet = &PATH.add(b'/').add(b'%');
+}
