@@ -1,10 +1,6 @@
 //! OpenTelemetry middleware.
 //!
-//! # Example
-//!
-//! TODO
-
-// TODO(david): jaeger example
+//! See [`opentelemtry_tracing_layer`] for more details.
 
 use axum::{
     extract::{ConnectInfo, MatchedPath, OriginalUri},
@@ -23,11 +19,75 @@ use tracing_opentelemetry::OpenTelemetrySpanExt;
 
 /// OpenTelemetry tracing middleware.
 ///
-/// It will use [OpenTelemetry's conventional field names][otel].
+/// This returns a [`TraceLayer`] configured to use [OpenTelemetry's conventional span field
+/// names][otel].
 ///
-/// See the [module docs](self) for more details.
+/// # Span fields
+///
+/// The following fields will be set on the span:
+///
+/// - `http.client_ip`: The client's IP address. Requires using
+/// [`Router::into_make_service_with_connect_info`]
+/// - `http.flavor`: The protocol version used (http 1.1, http 2.0, etc)
+/// - `http.host`: The value of the `Host` header
+/// - `http.method`: The request method
+/// - `http.route`: The matched route
+/// - `http.scheme`: The URI scheme used (`HTTP` or `HTTPS`)
+/// - `http.status_code`: The response status code
+/// - `http.target`: The full request target including path and query parameters
+/// - `http.user_agent`: The value of the `User-Agent` header
+/// - `otel.kind`: Always `server`
+/// - `otel.status_code`: `OK` if the response is success, `ERROR` if it is a 5xx
+/// - `request_id`: The request id. Requires using [`SetRequestIdLayer`]. See example below.
+/// - `trace_id`: The trace id as tracted via the remote span context.
+///
+/// # Example
+///
+/// ```
+/// use axum::{Router, routing::get, http::Request};
+/// use axum_extra::middleware::opentelemtry_tracing_layer;
+/// use std::net::SocketAddr;
+/// use tower::ServiceBuilder;
+/// use tower_http::request_id::{MakeRequestId, RequestId, SetRequestIdLayer};
+///
+/// let app = Router::new()
+///     .route("/", get(|| async {}))
+///     .layer(
+///         ServiceBuilder::new()
+///             // this layer must run before `opentelemtry_tracing_layer` for request ids to be
+///             // picked up
+///             .layer(SetRequestIdLayer::x_request_id(MyMakeRequestId))
+///             .layer(opentelemtry_tracing_layer())
+///     );
+///
+/// #[derive(Copy, Clone)]
+/// struct MyMakeRequestId;
+///
+/// impl MakeRequestId for MyMakeRequestId {
+///     fn make_request_id<B>(&mut self, request: &Request<B>) -> Option<RequestId> {
+///         // somehow produce a request id
+///         # unimplemented!()
+///     }
+/// }
+///
+/// # async {
+/// axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())
+///     // we must use `into_make_service_with_connect_info` for `opentelemtry_tracing_layer` to
+///     // access the client ip
+///     .serve(app.into_make_service_with_connect_info::<SocketAddr, _>())
+///     .await
+///     .expect("server failed");
+/// # };
+/// ```
+///
+/// # Complete example
+///
+/// See the "opentelemetry-jaeger" example for a complete setup that includes an OpenTelemetry
+/// pipeline sending traces to jaeger.
 ///
 /// [otel]: https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/http.md
+/// [`Router::into_make_service_with_connect_info`]: axum::Router::into_make_service_with_connect_info
+/// [`SetRequestIdLayer`]: tower_http::request_id::SetRequestIdLayer
 pub fn opentelemtry_tracing_layer() -> TraceLayer<
     SharedClassifier<ServerErrorsAsFailures>,
     OtelMakeSpan,
@@ -77,20 +137,22 @@ impl<B> MakeSpan<B> for OtelMakeSpan {
             req.uri().path().to_owned()
         };
 
-        let http_target = if let Some(uri) = req.extensions().get::<OriginalUri>() {
-            uri.0.path().to_owned()
+        let uri = if let Some(uri) = req.extensions().get::<OriginalUri>() {
+            uri.0.clone()
         } else {
-            req.uri().path().to_owned()
+            req.uri().clone()
         };
+        let http_target = uri
+            .path_and_query()
+            .map(|path_and_query| path_and_query.to_string())
+            .unwrap_or_else(|| uri.path().to_owned());
 
-        // TODO(david): document that `into_make_service_with_connect_info` is required
         let client_ip = req
             .extensions()
             .get::<ConnectInfo<SocketAddr>>()
             .map(|ConnectInfo(client_ip)| Cow::from(client_ip.to_string()))
             .unwrap_or_default();
 
-        // TODO(david): document that you have to add a request id middleware as well
         let request_id = req
             .extensions()
             .get::<RequestId>()

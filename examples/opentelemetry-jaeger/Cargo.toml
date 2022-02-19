@@ -1,0 +1,18 @@
+[package]
+name = "example-opentelemetry-jaeger"
+version = "0.1.0"
+edition = "2018"
+publish = false
+
+[dependencies]
+axum = { path = "../../axum" }
+axum-extra = { path = "../../axum-extra", features = ["opentelemetry"] }
+opentelemetry = { version = "0.17", features = ["rt-tokio"] }
+opentelemetry-jaeger = { version = "0.16", features = ["rt-tokio"] }
+tokio = { version = "1.0", features = ["full"] }
+tower = "0.4"
+tower-http = { version = "0.2", features = ["request-id"] }
+tracing = "0.1"
+tracing-opentelemetry = "0.17"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+uuid = { version = "0.8", features = ["v4"] }

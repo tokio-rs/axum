@@ -26,7 +26,7 @@ opentelemetry = [
 ]
 
 [dependencies]
-axum = { path = "../axum", version = "0.4", default_features = false }
+axum = { path = "../axum", version = "0.4" }
 bytes = "1.1.0"
 http = "0.2"
 mime = "0.3"
@@ -48,6 +48,7 @@ tracing-opentelemetry = { version = "0.17", optional = true }
 
 [dev-dependencies]
 assert-json-diff = "2.0"
+axum = { path = "../axum", version = "0.4" }
 http-body = "0.4"
 hyper = "0.14"
 serde = { version = "1.0", features = ["derive"] }
