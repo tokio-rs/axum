@@ -13,7 +13,6 @@ pub mod ws;
 
 mod content_length_limit;
 mod extension;
-mod query;
 mod raw_query;
 mod request_parts;
 
@@ -28,7 +27,6 @@ pub use self::{
     extension::Extension,
     extractor_middleware::extractor_middleware,
     path::Path,
-    query::Query,
     raw_query::RawQuery,
     request_parts::{BodyStream, RawBody},
 };
@@ -57,6 +55,13 @@ pub mod multipart;
 #[cfg(feature = "multipart")]
 #[doc(inline)]
 pub use self::multipart::Multipart;
+
+#[cfg(feature = "query")]
+mod query;
+
+#[cfg(feature = "query")]
+#[doc(inline)]
+pub use self::query::Query;
 
 #[cfg(feature = "original-uri")]
 #[doc(inline)]

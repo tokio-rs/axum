@@ -44,6 +44,7 @@ use std::ops::Deref;
 /// example.
 ///
 /// [example]: https://github.com/tokio-rs/axum/blob/main/examples/query-params-with-empty-strings/src/main.rs
+#[cfg_attr(docsrs, doc(cfg(feature = "query")))]
 #[derive(Debug, Clone, Copy, Default)]
 pub struct Query<T>(pub T);
 
