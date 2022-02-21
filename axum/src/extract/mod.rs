@@ -13,7 +13,6 @@ pub mod ws;
 
 mod content_length_limit;
 mod extension;
-mod form;
 mod query;
 mod raw_query;
 mod request_parts;
@@ -28,15 +27,22 @@ pub use self::{
     content_length_limit::ContentLengthLimit,
     extension::Extension,
     extractor_middleware::extractor_middleware,
-    form::Form,
     path::Path,
     query::Query,
     raw_query::RawQuery,
     request_parts::{BodyStream, RawBody},
 };
+
 #[doc(no_inline)]
 #[cfg(feature = "json")]
 pub use crate::Json;
+
+#[cfg(feature = "form")]
+mod form;
+
+#[cfg(feature = "form")]
+#[doc(inline)]
+pub use self::form::Form;
 
 #[cfg(feature = "matched-path")]
 mod matched_path;
