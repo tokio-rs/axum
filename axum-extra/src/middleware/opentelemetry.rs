@@ -440,7 +440,7 @@ mod tests {
         mut router: Router<Body>,
         reqs: [Request<Body>; N],
     ) -> [(Value, Value); N] {
-        use http_body::Body as _;
+        use axum::body::HttpBody as _;
 
         let (make_writer, rx) = duplex_writer();
         let subscriber = tracing_subscriber::fmt::fmt()

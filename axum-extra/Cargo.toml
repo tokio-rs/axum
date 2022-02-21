@@ -46,8 +46,6 @@ tracing-opentelemetry = { version = "0.17", optional = true }
 
 [dev-dependencies]
 assert-json-diff = "2.0"
-axum = { path = "../axum", version = "0.4" }
-http-body = "0.4"
 hyper = "0.14"
 serde = { version = "1.0", features = ["derive"] }
 tokio = { version = "1.14", features = ["full"] }
