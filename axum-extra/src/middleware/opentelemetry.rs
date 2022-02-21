@@ -7,7 +7,8 @@ use axum::{
     response::Response,
 };
 use http::{header, uri::Scheme, Method, Request, Version};
-use opentelemetry_lib::trace::TraceContextExt;
+use opentelemetry::trace::TraceContextExt;
+use opentelemetry_lib as opentelemetry;
 use std::{borrow::Cow, net::SocketAddr, time::Duration};
 use tower_http::{
     classify::{ServerErrorsAsFailures, ServerErrorsFailureClass, SharedClassifier},
@@ -15,7 +16,6 @@ use tower_http::{
     trace::{MakeSpan, OnBodyChunk, OnEos, OnFailure, OnRequest, OnResponse, TraceLayer},
 };
 use tracing::{field::Empty, Span};
-use tracing_opentelemetry::OpenTelemetrySpanExt;
 
 /// OpenTelemetry tracing middleware.
 ///
@@ -184,7 +184,7 @@ impl<B> MakeSpan<B> for OtelMakeSpan {
             trace_id = %trace_id,
         );
 
-        span.set_parent(remote_context);
+        tracing_opentelemetry::OpenTelemetrySpanExt::set_parent(&span, remote_context);
 
         span
     }
@@ -227,9 +227,21 @@ fn http_scheme(scheme: &Scheme) -> Cow<'static, str> {
 }
 
 // If remote request has no span data the propagator defaults to an unsampled context
-fn extract_remote_context(headers: &http::HeaderMap) -> opentelemetry_lib::Context {
-    let extractor = opentelemetry_http::HeaderExtractor(headers);
-    opentelemetry_lib::global::get_text_map_propagator(|propagator| propagator.extract(&extractor))
+fn extract_remote_context(headers: &http::HeaderMap) -> opentelemetry::Context {
+    struct HeaderExtractor<'a>(&'a http::HeaderMap);
+
+    impl<'a> opentelemetry::propagation::Extractor for HeaderExtractor<'a> {
+        fn get(&self, key: &str) -> Option<&str> {
+            self.0.get(key).and_then(|value| value.to_str().ok())
+        }
+
+        fn keys(&self) -> Vec<&str> {
+            self.0.keys().map(|value| value.as_str()).collect()
+        }
+    }
+
+    let extractor = HeaderExtractor(headers);
+    opentelemetry::global::get_text_map_propagator(|propagator| propagator.extract(&extractor))
 }
 
 /// Callback that [`Trace`] will call when it receives a request.
