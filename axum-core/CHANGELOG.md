@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+- None.
+
+# 0.1.2 (22. February, 2022)
+
 - **added:** Implement `IntoResponse` for `bytes::BytesMut` and `bytes::Chain<T, U>` ([#767])
 
 [#767]: https://github.com/tokio-rs/axum/pull/767
