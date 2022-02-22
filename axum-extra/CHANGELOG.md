@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+- None.
+
+# 0.1.3 (22. February, 2022)
+
 - **added:** Add type safe routing. See `axum_extra::routing::typed` for more details ([#756])
 - **fix:** Depend on tower with `default_features = false` ([#666])
 - **change:** `middleware::from_fn` has been deprecated and moved into the main
@@ -16,7 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#719]: https://github.com/tokio-rs/axum/pull/719
 [#756]: https://github.com/tokio-rs/axum/pull/756
 
-# 0.1.2 (13. January, 2021)
+# 0.1.2 (13. January, 2022)
 
 - **fix:** Depend on tower with `default_features = false` ([#666])
 
