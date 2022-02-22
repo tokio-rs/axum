@@ -191,7 +191,7 @@ You should use these when
 - You want to perform a small ad hoc operation, such as adding a header.
 - You don't intend to publish your middleware as a crate for others to use.
 
-# `tower::Service` and `Pin<Box<dyn Future>>`
+## `tower::Service` and `Pin<Box<dyn Future>>`
 
 For maximum control (and a more low level API) you can write you own middleware
 by implementing [`tower::Service`]:
@@ -254,7 +254,7 @@ where
 }
 ```
 
-# `tower::Service` and custom futures
+## `tower::Service` and custom futures
 
 If you're comfortable implementing your own futures (or want to learn it) and
 need as much control as possible then using `tower::Service` without boxed
