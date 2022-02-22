@@ -40,6 +40,7 @@ use std::ops::Deref;
 /// ```
 ///
 /// Note that `Content-Type: multipart/form-data` requests are not supported.
+#[cfg_attr(docsrs, doc(cfg(feature = "form")))]
 #[derive(Debug, Clone, Copy, Default)]
 pub struct Form<T>(pub T);
 
