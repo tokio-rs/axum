@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+- None.
+
+# 0.4.6 (22. February, 2022)
+
 - **added:** `middleware::from_fn` for creating middleware from async functions.
   This previously lived in axum-extra but has been moved to axum ([#719])
 - **fixed:** Set `Allow` header when responding with `405 Method Not Allowed` ([#733])
