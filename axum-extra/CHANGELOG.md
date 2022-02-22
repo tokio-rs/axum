@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- None.
+- **fix:** Depend on the right versions of axum and axum-macros.
 
 # 0.1.3 (22. February, 2022)
 
