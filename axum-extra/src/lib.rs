@@ -56,7 +56,7 @@ pub mod middleware {
         //! Create middleware from async functions.
 
         pub use axum::middleware::{
-            from_fn, futures::FromFnResponseFuture as ResponseFuture, FromFn as MiddlewareFn,
+            from_fn, future::FromFnResponseFuture as ResponseFuture, FromFn as MiddlewareFn,
             FromFnLayer as MiddlewareFnLayer, Next,
         };
     }
