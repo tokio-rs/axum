@@ -11,7 +11,7 @@
 //! ```
 
 use axum::{http::Request, routing::get, Router};
-use axum_extra::middleware::opentelemtry_tracing_layer;
+use axum_extra::middleware::opentelemetry_tracing_layer;
 use std::net::SocketAddr;
 use tower::ServiceBuilder;
 use tower_http::request_id::{RequestId, SetRequestIdLayer};
@@ -48,7 +48,7 @@ async fn main() {
     let app = Router::new().route("/", get(handler)).layer(
         ServiceBuilder::new()
             .layer(SetRequestIdLayer::x_request_id(MakeRequestUuid))
-            .layer(opentelemtry_tracing_layer()),
+            .layer(opentelemetry_tracing_layer()),
     );
 
     // run it

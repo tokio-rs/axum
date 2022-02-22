@@ -1,6 +1,6 @@
 //! OpenTelemetry middleware.
 //!
-//! See [`opentelemtry_tracing_layer`] for more details.
+//! See [`opentelemetry_tracing_layer`] for more details.
 
 use axum::{
     extract::{ConnectInfo, MatchedPath, OriginalUri},
@@ -45,7 +45,7 @@ use tracing::{field::Empty, Span};
 ///
 /// ```
 /// use axum::{Router, routing::get, http::Request};
-/// use axum_extra::middleware::opentelemtry_tracing_layer;
+/// use axum_extra::middleware::opentelemetry_tracing_layer;
 /// use std::net::SocketAddr;
 /// use tower::ServiceBuilder;
 /// use tower_http::request_id::{MakeRequestId, RequestId, SetRequestIdLayer};
@@ -54,10 +54,10 @@ use tracing::{field::Empty, Span};
 ///     .route("/", get(|| async {}))
 ///     .layer(
 ///         ServiceBuilder::new()
-///             // this layer must run before `opentelemtry_tracing_layer` for request ids to be
+///             // this layer must run before `opentelemetry_tracing_layer` for request ids to be
 ///             // picked up
 ///             .layer(SetRequestIdLayer::x_request_id(MyMakeRequestId))
-///             .layer(opentelemtry_tracing_layer())
+///             .layer(opentelemetry_tracing_layer())
 ///     );
 ///
 /// #[derive(Copy, Clone)]
@@ -72,7 +72,7 @@ use tracing::{field::Empty, Span};
 ///
 /// # async {
 /// axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())
-///     // we must use `into_make_service_with_connect_info` for `opentelemtry_tracing_layer` to
+///     // we must use `into_make_service_with_connect_info` for `opentelemetry_tracing_layer` to
 ///     // access the client ip
 ///     .serve(app.into_make_service_with_connect_info::<SocketAddr, _>())
 ///     .await
@@ -88,7 +88,7 @@ use tracing::{field::Empty, Span};
 /// [otel]: https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/http.md
 /// [`Router::into_make_service_with_connect_info`]: axum::Router::into_make_service_with_connect_info
 /// [`SetRequestIdLayer`]: tower_http::request_id::SetRequestIdLayer
-pub fn opentelemtry_tracing_layer() -> TraceLayer<
+pub fn opentelemetry_tracing_layer() -> TraceLayer<
     SharedClassifier<ServerErrorsAsFailures>,
     OtelMakeSpan,
     OtelOnRequest,
@@ -345,7 +345,7 @@ mod tests {
             .layer(
                 ServiceBuilder::new()
                     .layer(SetRequestIdLayer::x_request_id(MakeRequestUuid))
-                    .layer(opentelemtry_tracing_layer()),
+                    .layer(opentelemetry_tracing_layer()),
             );
 
         let [(root_new, root_close), (users_id_new, users_id_close)] = spans_for_requests(

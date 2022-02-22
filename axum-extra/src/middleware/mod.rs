@@ -4,4 +4,4 @@
 pub mod opentelemetry;
 
 #[cfg(feature = "opentelemetry")]
-pub use self::opentelemetry::opentelemtry_tracing_layer;
+pub use self::opentelemetry::opentelemetry_tracing_layer;
