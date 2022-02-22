@@ -7,7 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- **fix:** Depend on the right versions of axum and axum-macros.
+- None.
+
+# 0.1.4 (22. February, 2022)
+
+- **fix:** Depend on the right versions of axum and axum-macros ([#782])
+
+[#782]: https://github.com/tokio-rs/axum/pull/782
 
 # 0.1.3 (22. February, 2022)
 
