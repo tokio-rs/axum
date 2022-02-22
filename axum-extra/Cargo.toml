@@ -11,7 +11,6 @@ repository = "https://github.com/tokio-rs/axum"
 version = "0.1.1"
 
 [features]
-default = []
 erased-json = ["serde_json", "serde"]
 typed-routing = ["axum-macros", "serde", "percent-encoding"]
 
