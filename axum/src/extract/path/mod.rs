@@ -131,7 +131,7 @@ use std::{
 /// # Providing detailed rejection output
 ///
 /// If the URI cannot be deserialized into the target type the request will be rejected and an
-/// error response will be returned. See [`customize-path-rejection`] for an exapmle of how to customize that error.
+/// error response will be returned. See [`customize-path-rejection`] for an example of how to customize that error.
 ///
 /// [`serde`]: https://crates.io/crates/serde
 /// [`serde::Deserialize`]: https://docs.rs/serde/1.0.127/serde/trait.Deserialize.html
