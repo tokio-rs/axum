@@ -46,3 +46,18 @@
 pub mod extract;
 pub mod response;
 pub mod routing;
+
+pub mod middleware {
+    //! Additional types for creating middleware.
+
+    pub use axum::middleware::{from_fn, Next};
+
+    pub mod middleware_fn {
+        //! Create middleware from async functions.
+
+        pub use axum::middleware::{
+            from_fn, futures::FromFnResponseFuture as ResponseFuture, FromFn as MiddlewareFn,
+            FromFnLayer as MiddlewareFnLayer, Next,
+        };
+    }
+}
