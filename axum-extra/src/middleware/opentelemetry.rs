@@ -6,7 +6,7 @@ use axum::{
     extract::{ConnectInfo, MatchedPath, OriginalUri},
     response::Response,
 };
-use http::{header, uri::Scheme, Method, Request, Version};
+use http::{header, uri::Scheme, HeaderMap, Method, Request, Version};
 use opentelemetry::trace::TraceContextExt;
 use opentelemetry_lib as opentelemetry;
 use std::{borrow::Cow, net::SocketAddr, time::Duration};
@@ -127,10 +127,12 @@ impl<B> MakeSpan<B> for OtelMakeSpan {
             .map(|path_and_query| path_and_query.to_string())
             .unwrap_or_else(|| uri.path().to_owned());
 
-        let client_ip = req
-            .extensions()
-            .get::<ConnectInfo<SocketAddr>>()
-            .map(|ConnectInfo(client_ip)| Cow::from(client_ip.to_string()))
+        let client_ip = parse_x_forwarded_for(req.headers())
+            .or_else(|| {
+                req.extensions()
+                    .get::<ConnectInfo<SocketAddr>>()
+                    .map(|ConnectInfo(client_ip)| Cow::from(client_ip.to_string()))
+            })
             .unwrap_or_default();
 
         let remote_context = extract_remote_context(req.headers());
@@ -161,6 +163,13 @@ impl<B> MakeSpan<B> for OtelMakeSpan {
 
         span
     }
+}
+
+fn parse_x_forwarded_for(headers: &HeaderMap) -> Option<Cow<'_, str>> {
+    let value = headers.get("x-forwarded-for")?;
+    let value = value.to_str().ok()?;
+    let mut ips = value.split(',');
+    Some(ips.next()?.trim().into())
 }
 
 fn http_method(method: &Method) -> Cow<'static, str> {
@@ -321,6 +330,7 @@ mod tests {
             [
                 Request::builder()
                     .header("user-agent", "tests")
+                    .header("x-forwarded-for", "127.0.0.1")
                     .uri("/")
                     .body(Body::empty())
                     .unwrap(),
@@ -340,7 +350,7 @@ mod tests {
                 },
                 "level": "INFO",
                 "span": {
-                    "http.client_ip": "",
+                    "http.client_ip": "127.0.0.1",
                     "http.flavor": "1.1",
                     "http.host": "",
                     "http.method": "GET",
@@ -363,7 +373,7 @@ mod tests {
                 },
                 "level": "INFO",
                 "span": {
-                    "http.client_ip": "",
+                    "http.client_ip": "127.0.0.1",
                     "http.flavor": "1.1",
                     "http.host": "",
                     "http.method": "GET",
@@ -386,6 +396,7 @@ mod tests {
                 "span": {
                     "http.route": "/users/:id",
                     "http.target": "/users/123",
+                    "http.client_ip": "",
                 }
             }),
         );
@@ -396,6 +407,7 @@ mod tests {
                 "span": {
                     "http.status_code": "500",
                     "otel.status_code": "ERROR",
+                    "http.client_ip": "",
                 }
             }),
         );
