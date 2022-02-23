@@ -18,7 +18,6 @@ opentelemetry = [
     "axum/matched-path",
     "axum/original-uri",
     "opentelemetry-lib",
-    "tower-http/request-id",
     "tower-http/trace",
     "tracing",
     "tracing-opentelemetry",

@@ -12,7 +12,6 @@ use opentelemetry_lib as opentelemetry;
 use std::{borrow::Cow, net::SocketAddr, time::Duration};
 use tower_http::{
     classify::{ServerErrorsAsFailures, ServerErrorsFailureClass, SharedClassifier},
-    request_id::RequestId,
     trace::{MakeSpan, OnBodyChunk, OnEos, OnFailure, OnRequest, OnResponse, TraceLayer},
 };
 use tracing::{field::Empty, Span};
@@ -38,7 +37,6 @@ use tracing::{field::Empty, Span};
 /// - `http.user_agent`: The value of the `User-Agent` header
 /// - `otel.kind`: Always `server`
 /// - `otel.status_code`: `OK` if the response is success, `ERROR` if it is a 5xx
-/// - `request_id`: The request id. Requires using [`SetRequestIdLayer`]. See example below.
 /// - `trace_id`: The trace id as tracted via the remote span context.
 ///
 /// # Example
@@ -48,27 +46,10 @@ use tracing::{field::Empty, Span};
 /// use axum_extra::middleware::opentelemetry_tracing_layer;
 /// use std::net::SocketAddr;
 /// use tower::ServiceBuilder;
-/// use tower_http::request_id::{MakeRequestId, RequestId, SetRequestIdLayer};
 ///
 /// let app = Router::new()
 ///     .route("/", get(|| async {}))
-///     .layer(
-///         ServiceBuilder::new()
-///             // this layer must run before `opentelemetry_tracing_layer` for request ids to be
-///             // picked up
-///             .layer(SetRequestIdLayer::x_request_id(MyMakeRequestId))
-///             .layer(opentelemetry_tracing_layer())
-///     );
-///
-/// #[derive(Copy, Clone)]
-/// struct MyMakeRequestId;
-///
-/// impl MakeRequestId for MyMakeRequestId {
-///     fn make_request_id<B>(&mut self, request: &Request<B>) -> Option<RequestId> {
-///         // somehow produce a request id
-///         # unimplemented!()
-///     }
-/// }
+///     .layer(opentelemetry_tracing_layer());
 ///
 /// # async {
 /// axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())
@@ -87,7 +68,6 @@ use tracing::{field::Empty, Span};
 ///
 /// [otel]: https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/http.md
 /// [`Router::into_make_service_with_connect_info`]: axum::Router::into_make_service_with_connect_info
-/// [`SetRequestIdLayer`]: tower_http::request_id::SetRequestIdLayer
 pub fn opentelemetry_tracing_layer() -> TraceLayer<
     SharedClassifier<ServerErrorsAsFailures>,
     OtelMakeSpan,
@@ -153,12 +133,6 @@ impl<B> MakeSpan<B> for OtelMakeSpan {
             .map(|ConnectInfo(client_ip)| Cow::from(client_ip.to_string()))
             .unwrap_or_default();
 
-        let request_id = req
-            .extensions()
-            .get::<RequestId>()
-            .and_then(|id| id.header_value().to_str().ok())
-            .unwrap_or_default();
-
         let remote_context = extract_remote_context(req.headers());
         let remote_span = remote_context.span();
         let span_context = remote_span.span_context();
@@ -180,7 +154,6 @@ impl<B> MakeSpan<B> for OtelMakeSpan {
             http.user_agent = %user_agent,
             otel.kind = "server",
             otel.status_code = Empty,
-            request_id = request_id,
             trace_id = %trace_id,
         );
 
@@ -326,8 +299,7 @@ mod tests {
         convert::TryInto,
         sync::mpsc::{self, Receiver, SyncSender},
     };
-    use tower::{Service, ServiceBuilder, ServiceExt};
-    use tower_http::request_id::SetRequestIdLayer;
+    use tower::{Service, ServiceExt};
     use tracing_subscriber::{
         fmt::{format::FmtSpan, MakeWriter},
         util::SubscriberInitExt,
@@ -342,17 +314,12 @@ mod tests {
                 "/users/:id",
                 get(|| async { StatusCode::INTERNAL_SERVER_ERROR }),
             )
-            .layer(
-                ServiceBuilder::new()
-                    .layer(SetRequestIdLayer::x_request_id(MakeRequestUuid))
-                    .layer(opentelemetry_tracing_layer()),
-            );
+            .layer(opentelemetry_tracing_layer());
 
         let [(root_new, root_close), (users_id_new, users_id_close)] = spans_for_requests(
             svc,
             [
                 Request::builder()
-                    .header("x-request-id", "request-id")
                     .header("user-agent", "tests")
                     .uri("/")
                     .body(Body::empty())
@@ -383,7 +350,6 @@ mod tests {
                     "http.user_agent": "tests",
                     "name": "HTTP request",
                     "otel.kind": "server",
-                    "request_id": "request-id",
                     "trace_id": ""
                 }
             }),
@@ -409,7 +375,6 @@ mod tests {
                     "name": "HTTP request",
                     "otel.kind": "server",
                     "otel.status_code": "OK",
-                    "request_id": "request-id",
                     "trace_id": ""
                 }
             }),
@@ -498,16 +463,6 @@ mod tests {
 
         fn flush(&mut self) -> std::io::Result<()> {
             Ok(())
-        }
-    }
-
-    #[derive(Clone, Copy)]
-    struct MakeRequestUuid;
-
-    impl tower_http::request_id::MakeRequestId for MakeRequestUuid {
-        fn make_request_id<B>(&mut self, _: &Request<B>) -> Option<RequestId> {
-            let request_id = uuid::Uuid::new_v4().to_string().parse().ok()?;
-            Some(RequestId::new(request_id))
         }
     }
 }

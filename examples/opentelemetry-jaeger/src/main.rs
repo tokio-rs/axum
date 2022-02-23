@@ -10,11 +10,9 @@
 //! cargo run -p example-opentelemetry-jaeger
 //! ```
 
-use axum::{http::Request, routing::get, Router};
+use axum::{routing::get, Router};
 use axum_extra::middleware::opentelemetry_tracing_layer;
 use std::net::SocketAddr;
-use tower::ServiceBuilder;
-use tower_http::request_id::{RequestId, SetRequestIdLayer};
 use tracing_subscriber::prelude::*;
 
 #[tokio::main]
@@ -45,11 +43,9 @@ async fn main() {
         .init();
 
     // build our application with a route
-    let app = Router::new().route("/", get(handler)).layer(
-        ServiceBuilder::new()
-            .layer(SetRequestIdLayer::x_request_id(MakeRequestUuid))
-            .layer(opentelemetry_tracing_layer()),
-    );
+    let app = Router::new()
+        .route("/", get(handler))
+        .layer(opentelemetry_tracing_layer());
 
     // run it
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
@@ -64,14 +60,4 @@ async fn main() {
 
 async fn handler() -> &'static str {
     "Hello, World!"
-}
-
-#[derive(Clone, Copy)]
-struct MakeRequestUuid;
-
-impl tower_http::request_id::MakeRequestId for MakeRequestUuid {
-    fn make_request_id<B>(&mut self, _: &Request<B>) -> Option<RequestId> {
-        let request_id = uuid::Uuid::new_v4().to_string().parse().ok()?;
-        Some(RequestId::new(request_id))
-    }
 }
