@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+None.
+
+# 0.1.4 (22. February, 2021)
+
 - **added:** Add type safe routing. See `axum_extra::routing::typed` for more details ([#756])
 - **breaking:** `CachedRejection` has been removed ([#699])
 - **breaking:** `<Cached<T> as FromRequest>::Rejection` is now `T::Rejection`. ([#699])
