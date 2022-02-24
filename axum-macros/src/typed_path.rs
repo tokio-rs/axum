@@ -20,17 +20,29 @@ pub(crate) fn expand(item_struct: ItemStruct) -> syn::Result<TokenStream> {
 
     let Attrs { path } = parse_attrs(attrs)?;
 
-    match fields {
+    let code = match fields {
         syn::Fields::Named(_) => {
             let segments = parse_path(&path)?;
-            Ok(expand_named_fields(ident, path, &segments))
+            expand_named_fields(ident, path, &segments)
         }
         syn::Fields::Unnamed(fields) => {
             let segments = parse_path(&path)?;
-            expand_unnamed_fields(fields, ident, path, &segments)
+            expand_unnamed_fields(fields, ident, path, &segments)?
         }
-        syn::Fields::Unit => Ok(expand_unit_fields(ident, path)?),
-    }
+        syn::Fields::Unit => expand_unit_fields(ident, path)?,
+    };
+
+    Ok(quote! {
+        #code
+
+        impl ::std::convert::TryFrom<#ident> for ::axum::http::Uri {
+            type Error = ::axum::http::uri::InvalidUri;
+
+            fn try_from(value: #ident) -> ::std::result::Result<Self, Self::Error> {
+                value.to_string().parse()
+            }
+        }
+    })
 }
 
 struct Attrs {
