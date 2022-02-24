@@ -337,13 +337,17 @@ impl Stream for WebSocket {
     type Item = Result<Message, Error>;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        self.inner.poll_next_unpin(cx).map(|option_msg| {
-            option_msg.map(|result_msg| {
-                result_msg
-                    .map_err(Error::new)
-                    .map(Message::from_tungstenite)
-            })
-        })
+        loop {
+            match futures_util::ready!(self.inner.poll_next_unpin(cx)) {
+                Some(Ok(msg)) => {
+                    if let Some(msg) = Message::from_tungstenite(msg) {
+                        return Poll::Ready(Some(Ok(msg)));
+                    }
+                }
+                Some(Err(err)) => return Poll::Ready(Some(Err(Error::new(err)))),
+                None => return Poll::Ready(None),
+            }
+        }
     }
 }
 
@@ -444,17 +448,20 @@ impl Message {
         }
     }
 
-    fn from_tungstenite(message: ts::Message) -> Self {
+    fn from_tungstenite(message: ts::Message) -> Option<Self> {
         match message {
-            ts::Message::Text(text) => Self::Text(text),
-            ts::Message::Binary(binary) => Self::Binary(binary),
-            ts::Message::Ping(ping) => Self::Ping(ping),
-            ts::Message::Pong(pong) => Self::Pong(pong),
-            ts::Message::Close(Some(close)) => Self::Close(Some(CloseFrame {
+            ts::Message::Text(text) => Some(Self::Text(text)),
+            ts::Message::Binary(binary) => Some(Self::Binary(binary)),
+            ts::Message::Ping(ping) => Some(Self::Ping(ping)),
+            ts::Message::Pong(pong) => Some(Self::Pong(pong)),
+            ts::Message::Close(Some(close)) => Some(Self::Close(Some(CloseFrame {
                 code: close.code.into(),
                 reason: close.reason,
-            })),
-            ts::Message::Close(None) => Self::Close(None),
+            }))),
+            ts::Message::Close(None) => Some(Self::Close(None)),
+            // we can ignore `Frame` frames as recommended by the tungstenite maintainers
+            // https://github.com/snapview/tungstenite-rs/issues/268
+            ts::Message::Frame(_) => None,
         }
     }
 
