@@ -2,8 +2,8 @@
 
 All notable changes to this project will be documented in this file.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+The format is based on [Keep a Changelog],
+and this project adheres to [Semantic Versioning].
 
 # Unreleased
 
@@ -17,7 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#719]: https://github.com/tokio-rs/axum/pull/719
 [#756]: https://github.com/tokio-rs/axum/pull/756
 
-# 0.1.2 (13. January, 2021)
+# 0.1.2 (13. January, 2022)
 
 - **fix:** Depend on tower with `default_features = false` ([#666])
 
@@ -32,3 +32,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 # 0.1.0 (02. December, 2021)
 
 - Initial release.
+
+[Keep a Changelog]: https://keepachangelog.com/en/1.0.0/
+[Semantic Versioning]: https://semver.org/spec/v2.0.0.html
