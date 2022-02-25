@@ -1,4 +1,5 @@
 use super::sealed::Sealed;
+use http::Uri;
 
 /// A type safe path.
 ///
@@ -150,6 +151,19 @@ use super::sealed::Sealed;
 pub trait TypedPath: std::fmt::Display {
     /// The path with optional captures such as `/users/:id`.
     const PATH: &'static str;
+
+    /// Convert the path into a `Uri`.
+    ///
+    /// # Panics
+    ///
+    /// The default implementation parses the required [`Display`] implemetation. If that fails it
+    /// will panic.
+    ///
+    /// Using `#[derive(TypedPath)]` will never result in a panic since it percent-encodes
+    /// arguments.
+    fn to_uri(&self) -> Uri {
+        self.to_string().parse().unwrap()
+    }
 }
 
 /// Utility trait used with [`RouterExt`] to ensure the first element of a tuple type is a
