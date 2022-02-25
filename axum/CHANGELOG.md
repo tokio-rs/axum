@@ -57,6 +57,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   requests ([#734])
 - **fixed:** Fix wrong `content-length` for `HEAD` requests to endpoints that returns chunked
   responses ([#755])
+- **changed:** Update to tokio-tungstenite 0.17 ([#791])
 
 [#644]: https://github.com/tokio-rs/axum/pull/644
 [#665]: https://github.com/tokio-rs/axum/pull/665
@@ -67,6 +68,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#734]: https://github.com/tokio-rs/axum/pull/734
 [#755]: https://github.com/tokio-rs/axum/pull/755
 [#783]: https://github.com/tokio-rs/axum/pull/783
+[#791]: https://github.com/tokio-rs/axum/pull/791
 
 # 0.4.4 (13. January, 2022)
 
