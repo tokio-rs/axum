@@ -90,9 +90,9 @@ async fn todos_index(
 
     let todos = todos
         .values()
-        .cloned()
         .skip(pagination.offset.unwrap_or(0))
         .take(pagination.limit.unwrap_or(usize::MAX))
+        .cloned()
         .collect::<Vec<_>>();
 
     Json(todos)
