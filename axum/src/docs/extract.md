@@ -136,38 +136,10 @@ async fn get_user_things(
 # };
 ```
 
-Take care of the order in which you apply extractors as some extractors
-mutate the request.
-
-For example using [`HeaderMap`] as an extractor will make the headers
-inaccessible for other extractors on the handler. If you need to extract
-individual headers _and_ a [`HeaderMap`] make sure to apply the extractor of
-individual headers first:
-
-```rust,no_run
-use axum::{
-    extract::TypedHeader,
-    routing::get,
-    headers::UserAgent,
-    http::header::HeaderMap,
-    Router,
-};
-
-async fn handler(
-    TypedHeader(user_agent): TypedHeader<UserAgent>,
-    all_headers: HeaderMap,
-) {
-    // ...
-}
-
-let app = Router::new().route("/", get(handler));
-# async {
-# axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-# };
-```
-
-Extractors that consume the request body can also only be applied once as
-well as [`Request`], which consumes the entire request:
+Take care of the order in which you apply extractors as some will mutate the
+request. For example extractors that consume the request body can only be
+applied once. The same is true for [`Request`], which consumes the entire
+request:
 
 ```rust,no_run
 use axum::{
