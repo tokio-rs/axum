@@ -161,6 +161,8 @@ pub trait TypedPath: std::fmt::Display {
     ///
     /// Using `#[derive(TypedPath)]` will never result in a panic since it percent-encodes
     /// arguments.
+    ///
+    /// [`Display`]: std::fmt::Display
     fn to_uri(&self) -> Uri {
         self.to_string().parse().unwrap()
     }
