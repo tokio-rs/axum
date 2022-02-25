@@ -56,7 +56,7 @@ where
             .get::<T>()
             .ok_or_else(|| {
                 MissingExtension::from_err(format!(
-                    "Extension of type `{}` was not found. Perhaps you forgot to add it?",
+                    "Extension of type `{}` was not found. Perhaps you forgot to add it? See `axum::AddExtensionLayer`.",
                     std::any::type_name::<T>()
                 ))
             })
