@@ -103,11 +103,6 @@ where
 
 /// Extractor that extracts the request body as a [`Stream`].
 ///
-/// Note if your request body is [`body::Body`] you can extract that directly
-/// and since it already implements [`Stream`] you don't need this type. The
-/// purpose of this type is to extract other types of request bodies as a
-/// [`Stream`].
-///
 /// # Example
 ///
 /// ```rust,no_run
@@ -175,9 +170,6 @@ fn body_stream_traits() {
 }
 
 /// Extractor that extracts the raw request body.
-///
-/// Note that [`body::Body`] can be extracted directly. This purpose of this
-/// type is to extract other types of request bodies.
 ///
 /// # Example
 ///
