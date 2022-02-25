@@ -191,7 +191,7 @@ You should use these when
 - You want to perform a small ad hoc operation, such as adding a header.
 - You don't intend to publish your middleware as a crate for others to use.
 
-# `tower::Service` and `Pin<Box<dyn Future>>`
+## `tower::Service` and `Pin<Box<dyn Future>>`
 
 For maximum control (and a more low level API) you can write you own middleware
 by implementing [`tower::Service`]:
@@ -254,7 +254,7 @@ where
 }
 ```
 
-# `tower::Service` and custom futures
+## `tower::Service` and custom futures
 
 If you're comfortable implementing your own futures (or want to learn it) and
 need as much control as possible then using `tower::Service` without boxed
@@ -374,6 +374,64 @@ Also note that handlers created from async functions don't care about
 backpressure and are always ready. So if you're not using any Tower
 middleware you don't have to worry about any of this.
 
+# Sharing state between handlers and middleware
+
+State can be shared between middleware and handlers using [request extensions]:
+
+```rust
+use axum::{
+    Router,
+    http::{Request, StatusCode},
+    routing::get,
+    response::IntoResponse,
+    middleware::{self, Next},
+    extract::Extension,
+};
+
+#[derive(Clone)]
+struct CurrentUser { /* ... */ }
+
+async fn auth<B>(mut req: Request<B>, next: Next<B>) -> impl IntoResponse {
+    let auth_header = req.headers()
+        .get(http::header::AUTHORIZATION)
+        .and_then(|header| header.to_str().ok());
+
+    let auth_header = if let Some(auth_header) = auth_header {
+        auth_header
+    } else {
+        return Err(StatusCode::UNAUTHORIZED);
+    };
+
+    if let Some(current_user) = authorize_current_user(auth_header).await {
+        req.extensions_mut().insert(current_user);
+        Ok(next.run(req).await)
+    } else {
+        Err(StatusCode::UNAUTHORIZED)
+    }
+}
+
+async fn authorize_current_user(auth_token: &str) -> Option<CurrentUser> {
+    // ...
+    # unimplemented!()
+}
+
+async fn handler(
+    // extract the current user, set by the middleware
+    Extension(current_user): Extension<CurrentUser>,
+) {
+    // ...
+}
+
+let app = Router::new()
+    .route("/", get(handler))
+    .route_layer(middleware::from_fn(auth));
+# let app: Router = app;
+```
+
+[Response extensions] can also be used but note that request extensions are not
+automatically moved to response extensions. You need to manually do that for the
+extensions you need.
+
 [`tower`]: https://crates.io/crates/tower
 [`tower-http`]: https://crates.io/crates/tower-http
 [tower-guides]: https://github.com/tower-rs/tower/tree/master/guides
@@ -390,3 +448,5 @@ middleware you don't have to worry about any of this.
 [`MethodRouter::layer`]: crate::routing::MethodRouter::layer
 [`Router::route_layer`]: crate::routing::Router::route_layer
 [`MethodRouter::route_layer`]: crate::routing::MethodRouter::route_layer
+[request extensions]: https://docs.rs/http/latest/http/request/struct.Request.html#method.extensions
+[Response extensions]: https://docs.rs/http/latest/http/response/struct.Response.html#method.extensions

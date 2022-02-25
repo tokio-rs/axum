@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **added:** `middleware::from_fn` for creating middleware from async functions.
   This previously lived in axum-extra but has been moved to axum ([#719])
+- **added:** Document sharing state between handler and middleware (#783])
 - **breaking:** `sse::Event` now accepts types implementing `AsRef<str>` instead of `Into<String>`
   as field values.
 - **breaking:** `sse::Event` now panics if a setter method is called twice instead of silently
@@ -65,6 +66,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#733]: https://github.com/tokio-rs/axum/pull/733
 [#734]: https://github.com/tokio-rs/axum/pull/734
 [#755]: https://github.com/tokio-rs/axum/pull/755
+[#783]: https://github.com/tokio-rs/axum/pull/783
 
 # 0.4.4 (13. January, 2022)
 
