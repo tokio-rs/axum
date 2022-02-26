@@ -97,7 +97,7 @@ fn expand_named_fields(ident: &syn::Ident, path: LitStr, segments: &[Segment]) -
         {
             type Rejection = <::axum::extract::Path<Self> as ::axum::extract::FromRequest<B>>::Rejection;
 
-            async fn from_request(req: &mut ::axum::extract::RequestParts<B>) -> Result<Self, Self::Rejection> {
+            async fn from_request(req: &mut ::axum::extract::RequestParts<B>) -> ::std::result::Result<Self, Self::Rejection> {
                 ::axum::extract::Path::from_request(req).await.map(|path| path.0)
             }
         }
@@ -186,7 +186,7 @@ fn expand_unnamed_fields(
         {
             type Rejection = <::axum::extract::Path<Self> as ::axum::extract::FromRequest<B>>::Rejection;
 
-            async fn from_request(req: &mut ::axum::extract::RequestParts<B>) -> Result<Self, Self::Rejection> {
+            async fn from_request(req: &mut ::axum::extract::RequestParts<B>) -> ::std::result::Result<Self, Self::Rejection> {
                 ::axum::extract::Path::from_request(req).await.map(|path| path.0)
             }
         }
@@ -245,7 +245,7 @@ fn expand_unit_fields(ident: &syn::Ident, path: LitStr) -> syn::Result<TokenStre
         {
             type Rejection = ::axum::http::StatusCode;
 
-            async fn from_request(req: &mut ::axum::extract::RequestParts<B>) -> Result<Self, Self::Rejection> {
+            async fn from_request(req: &mut ::axum::extract::RequestParts<B>) -> ::std::result::Result<Self, Self::Rejection> {
                 if req.uri().path() == <Self as ::axum_extra::routing::TypedPath>::PATH {
                     Ok(Self)
                 } else {
