@@ -28,10 +28,10 @@
 //! ```
 
 use crate::{
-    body::{self, Bytes, HttpBody},
-    response::{IntoResponse, Response},
+    body::{Bytes, HttpBody},
     BoxError,
 };
+use axum_core::response::{IntoResponseParts, ResponseParts};
 use bytes::{BufMut, BytesMut};
 use futures_util::{
     ready,
@@ -89,22 +89,18 @@ impl<S> fmt::Debug for Sse<S> {
     }
 }
 
-impl<S, E> IntoResponse for Sse<S>
+impl<S, E> IntoResponseParts for Sse<S>
 where
     S: Stream<Item = Result<Event, E>> + Send + 'static,
     E: Into<BoxError>,
 {
-    fn into_response(self) -> Response {
-        let body = body::boxed(Body {
+    fn into_response_parts(self, res: &mut ResponseParts) {
+        res.set_body(Body {
             event_stream: SyncWrapper::new(self.stream),
             keep_alive: self.keep_alive.map(KeepAliveStream::new),
         });
-
-        Response::builder()
-            .header(http::header::CONTENT_TYPE, mime::TEXT_EVENT_STREAM.as_ref())
-            .header(http::header::CACHE_CONTROL, "no-cache")
-            .body(body)
-            .unwrap()
+        res.insert_header(http::header::CONTENT_TYPE, mime::TEXT_EVENT_STREAM.as_ref());
+        res.insert_header(http::header::CACHE_CONTROL, "no-cache");
     }
 }
 

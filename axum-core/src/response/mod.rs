@@ -5,13 +5,13 @@
 //! [`axum::response`]: https://docs.rs/axum/latest/axum/response/index.html
 
 use crate::{
-    body::{boxed, BoxBody},
+    body::{self, BoxBody},
     BoxError,
 };
 use bytes::{buf::Chain, Buf, Bytes, BytesMut};
 use http::{
     header::{self, HeaderMap, HeaderName, HeaderValue},
-    StatusCode,
+    Extensions, StatusCode, Version,
 };
 use http_body::{
     combinators::{MapData, MapErr},
@@ -19,8 +19,8 @@ use http_body::{
 };
 use std::{
     borrow::Cow,
-    convert::Infallible,
-    iter,
+    convert::{Infallible, TryInto},
+    fmt,
     pin::Pin,
     task::{Context, Poll},
 };
@@ -47,7 +47,7 @@ pub type Response<T = BoxBody> = http::Response<T>;
 ///     body::{self, Bytes},
 ///     routing::get,
 ///     http::StatusCode,
-///     response::{IntoResponse, Response},
+///     response::{IntoResponseParts, ResponseParts},
 /// };
 ///
 /// enum MyError {
@@ -55,8 +55,8 @@ pub type Response<T = BoxBody> = http::Response<T>;
 ///     SomethingElseWentWrong,
 /// }
 ///
-/// impl IntoResponse for MyError {
-///     fn into_response(self) -> Response {
+/// impl IntoResponseParts for MyError {
+///     fn into_response_parts(self, res: &mut ResponseParts) {
 ///         let body = match self {
 ///             MyError::SomethingWentWrong => {
 ///                 body::boxed(body::Full::from("something went wrong"))
@@ -66,10 +66,7 @@ pub type Response<T = BoxBody> = http::Response<T>;
 ///             },
 ///         };
 ///
-///         Response::builder()
-///             .status(StatusCode::INTERNAL_SERVER_ERROR)
-///             .body(body)
-///             .unwrap()
+///         (StatusCode::INTERNAL_SERVER_ERROR, body).into_response_parts(res)
 ///     }
 /// }
 ///
@@ -91,7 +88,7 @@ pub type Response<T = BoxBody> = http::Response<T>;
 /// use axum::{
 ///     body,
 ///     routing::get,
-///     response::{IntoResponse, Response},
+///     response::{IntoResponseParts, ResponseParts},
 ///     Router,
 /// };
 /// use http_body::Body;
@@ -128,14 +125,14 @@ pub type Response<T = BoxBody> = http::Response<T>;
 ///     }
 /// }
 ///
-/// // Now we can implement `IntoResponse` directly for `MyBody`
-/// impl IntoResponse for MyBody {
-///     fn into_response(self) -> Response {
-///         Response::new(body::boxed(self))
+/// // Now we can implement `IntoResponseParts` directly for `MyBody`
+/// impl IntoResponseParts for MyBody {
+///     fn into_response_parts(self, res: &mut ResponseParts) {
+///         res.set_body(self)
 ///     }
 /// }
 ///
-/// // We don't need to implement `IntoResponse for Response<MyBody>` as that is
+/// // We don't need to implement `IntoResponseParts for Response<MyBody>` as that is
 /// // covered by a blanket implementation in axum.
 ///
 /// // `MyBody` can now be returned from handlers.
@@ -147,39 +144,214 @@ pub type Response<T = BoxBody> = http::Response<T>;
 pub trait IntoResponse {
     /// Create a response.
     fn into_response(self) -> Response;
+
+    /// [`IntoResponse`] is sealed. Implement [`IntoResponseParts`] instead and rely on the blanket
+    /// impl `impl<T: IntoResponseParts> IntoResponse for T`.
+    // This method contains a type that cannot be named outside axum-core, thus sealing the trait.
+    // We cannot use a sealed super trait since we a blanket impl.
+    //
+    // The method is intentionally public so users will see it when they open the docs.
+    fn sealed(_: sealed::DontImplementThisTrait);
 }
 
-/// Trait for generating response headers.
-pub trait IntoResponseHeaders {
-    /// The return type of `into_headers`.
-    ///
-    /// The iterator item is a [`Result`] to allow the implementation to return a server error
-    /// instead.
-    ///
-    /// The header name is optional because [`HeaderMap`]s iterator doesn't yield it multiple times
-    /// for headers that have multiple values, to avoid unnecessary copies.
-    #[doc(hidden)]
-    type IntoIter: IntoIterator<Item = Result<(Option<HeaderName>, HeaderValue), Response>>;
+mod sealed {
+    #![allow(unreachable_pub, missing_debug_implementations)]
 
-    /// Attempt to turn `self` into a list of headers.
-    ///
-    /// In practice, only the implementation for `axum::response::Headers` ever returns `Err(_)`.
-    #[doc(hidden)]
-    fn into_headers(self) -> Self::IntoIter;
+    pub struct DontImplementThisTrait;
 }
 
-impl IntoResponse for () {
+/// TODO
+pub trait IntoResponseParts {
+    /// TODO
+    fn into_response_parts(self, res: &mut ResponseParts);
+}
+
+impl<T> IntoResponse for T
+where
+    T: IntoResponseParts,
+{
     fn into_response(self) -> Response {
-        Response::new(boxed(Empty::new()))
+        let mut parts = ResponseParts {
+            version: None,
+            status: StatusCode::OK,
+            headers: Ok(HeaderMap::new()),
+            extensions: Extensions::new(),
+            body: None,
+        };
+
+        self.into_response_parts(&mut parts);
+
+        let ResponseParts {
+            version,
+            status,
+            headers,
+            extensions,
+            body,
+        } = parts;
+
+        let headers = match headers {
+            Ok(headers) => headers,
+            Err(err) => {
+                return Response::builder()
+                    .status(StatusCode::INTERNAL_SERVER_ERROR)
+                    .body(body::boxed(http_body::Full::from(err)))
+                    .unwrap();
+            }
+        };
+
+        let mut res = Response::new(body.unwrap_or_else(|| body::boxed(http_body::Empty::new())));
+        if let Some(version) = version {
+            *res.version_mut() = version;
+        }
+        *res.status_mut() = status;
+        *res.headers_mut() = headers;
+        *res.extensions_mut() = extensions;
+
+        res
+    }
+
+    fn sealed(_: sealed::DontImplementThisTrait) {}
+}
+
+/// TODO
+#[derive(Debug)]
+pub struct ResponseParts {
+    version: Option<Version>,
+    status: StatusCode,
+    headers: Result<HeaderMap, String>,
+    pub(super) extensions: Extensions,
+    body: Option<BoxBody>,
+}
+
+impl ResponseParts {
+    /// TODO
+    pub fn set_version(&mut self, version: Version) {
+        self.version = Some(version);
+    }
+
+    /// TODO
+    pub fn set_status(&mut self, status: StatusCode) {
+        self.status = status;
+    }
+
+    /// TODO
+    pub fn insert_header<K, V>(&mut self, key: K, value: V)
+    where
+        K: TryInto<HeaderName>,
+        K::Error: fmt::Display,
+        V: TryInto<HeaderValue>,
+        V::Error: fmt::Display,
+    {
+        if let Ok(headers) = &mut self.headers {
+            let key = match key.try_into() {
+                Ok(key) => key,
+                Err(err) => {
+                    self.headers = Err(err.to_string());
+                    return;
+                }
+            };
+
+            let value = match value.try_into() {
+                Ok(value) => value,
+                Err(err) => {
+                    self.headers = Err(err.to_string());
+                    return;
+                }
+            };
+
+            headers.insert(key, value);
+        }
+    }
+
+    /// TODO
+    pub fn insert_extension<T>(&mut self, extension: T)
+    where
+        T: Send + Sync + 'static,
+    {
+        self.extensions.insert(extension);
+    }
+
+    /// TODO
+    pub fn set_body<B>(&mut self, body: B)
+    where
+        B: http_body::Body<Data = Bytes> + Send + 'static,
+        B::Error: Into<BoxError>,
+    {
+        self.body = Some(body::boxed(body));
     }
 }
 
-impl IntoResponse for Infallible {
-    fn into_response(self) -> Response {
+// compatible with `HeaderMap::into_iter`
+impl Extend<(Option<HeaderName>, HeaderValue)> for ResponseParts {
+    fn extend<T>(&mut self, iter: T)
+    where
+        T: IntoIterator<Item = (Option<HeaderName>, HeaderValue)>,
+    {
+        let headers = if let Ok(headers) = &mut self.headers {
+            headers
+        } else {
+            return;
+        };
+
+        let mut prev = None;
+        for (key, value) in iter {
+            if let Some(key) = key {
+                prev = Some(key.clone());
+                headers.insert(key, value);
+            } else if let Some(prev) = &prev {
+                headers.insert(prev, value);
+            }
+        }
+    }
+}
+
+macro_rules! impl_into_response_parts {
+    ( $($ty:ident),* $(,)? ) => {
+        #[allow(non_snake_case)]
+        impl<$($ty,)*> IntoResponseParts for ($($ty,)*)
+        where
+            $( $ty: IntoResponseParts, )*
+        {
+            fn into_response_parts(self, res: &mut ResponseParts) {
+                let ($($ty,)*) = self;
+                $( $ty.into_response_parts(res); )*
+
+            }
+        }
+    };
+}
+
+all_the_tuples!(impl_into_response_parts);
+
+impl<K, V, const N: usize> IntoResponseParts for [(K, V); N]
+where
+    K: TryInto<HeaderName>,
+    K::Error: fmt::Display,
+    V: TryInto<HeaderValue>,
+    V::Error: fmt::Display,
+{
+    fn into_response_parts(self, res: &mut ResponseParts) {
+        for (key, value) in self {
+            res.insert_header(key, value);
+        }
+    }
+}
+
+impl IntoResponseParts for () {
+    fn into_response_parts(self, _res: &mut ResponseParts) {}
+}
+
+impl IntoResponseParts for Infallible {
+    fn into_response_parts(self, _res: &mut ResponseParts) {
         match self {}
     }
 }
 
+// `Result<T, E>` implements `IntoResponse` and not `IntoResponseParts` because otherwise
+// `Result<impl IntoResponse, E>` wouldn't work.
+//
+// This means you cannot include results in tuples of parts, ie `(some_result, body)`. But
+// thats probably fine.
 impl<T, E> IntoResponse for Result<T, E>
 where
     T: IntoResponse,
@@ -191,6 +363,8 @@ where
             Err(err) => err.into_response(),
         }
     }
+
+    fn sealed(_: sealed::DontImplementThisTrait) {}
 }
 
 impl<B> IntoResponse for Response<B>
@@ -199,127 +373,125 @@ where
     B::Error: Into<BoxError>,
 {
     fn into_response(self) -> Response {
-        self.map(boxed)
+        self.map(body::boxed)
     }
-}
 
-macro_rules! impl_into_response_for_body {
-    ($body:ty) => {
-        impl IntoResponse for $body {
-            fn into_response(self) -> Response {
-                Response::new(boxed(self))
-            }
-        }
-    };
+    fn sealed(_: sealed::DontImplementThisTrait) {}
 }
-
-impl_into_response_for_body!(Full<Bytes>);
-impl_into_response_for_body!(Empty<Bytes>);
 
 impl IntoResponse for http::response::Parts {
     fn into_response(self) -> Response {
-        Response::from_parts(self, boxed(Empty::new()))
+        Response::from_parts(self, body::boxed(Empty::new()))
+    }
+
+    fn sealed(_: sealed::DontImplementThisTrait) {}
+}
+
+impl IntoResponseParts for Full<Bytes> {
+    fn into_response_parts(self, res: &mut ResponseParts) {
+        res.set_body(self);
     }
 }
 
-impl<E> IntoResponse for http_body::combinators::BoxBody<Bytes, E>
+impl IntoResponseParts for Empty<Bytes> {
+    fn into_response_parts(self, res: &mut ResponseParts) {
+        res.set_body(self);
+    }
+}
+
+impl<E> IntoResponseParts for http_body::combinators::BoxBody<Bytes, E>
 where
     E: Into<BoxError> + 'static,
 {
-    fn into_response(self) -> Response {
-        Response::new(boxed(self))
+    fn into_response_parts(self, res: &mut ResponseParts) {
+        res.set_body(self);
     }
 }
 
-impl<E> IntoResponse for http_body::combinators::UnsyncBoxBody<Bytes, E>
+impl<E> IntoResponseParts for http_body::combinators::UnsyncBoxBody<Bytes, E>
 where
     E: Into<BoxError> + 'static,
 {
-    fn into_response(self) -> Response {
-        Response::new(boxed(self))
+    fn into_response_parts(self, res: &mut ResponseParts) {
+        res.set_body(self);
     }
 }
 
-impl<B, F> IntoResponse for MapData<B, F>
+impl<B, F> IntoResponseParts for MapData<B, F>
 where
     B: http_body::Body + Send + 'static,
     F: FnMut(B::Data) -> Bytes + Send + 'static,
     B::Error: Into<BoxError>,
 {
-    fn into_response(self) -> Response {
-        Response::new(boxed(self))
+    fn into_response_parts(self, res: &mut ResponseParts) {
+        res.set_body(self);
     }
 }
 
-impl<B, F, E> IntoResponse for MapErr<B, F>
+impl<B, F, E> IntoResponseParts for MapErr<B, F>
 where
     B: http_body::Body<Data = Bytes> + Send + 'static,
     F: FnMut(B::Error) -> E + Send + 'static,
     E: Into<BoxError>,
 {
-    fn into_response(self) -> Response {
-        Response::new(boxed(self))
+    fn into_response_parts(self, res: &mut ResponseParts) {
+        res.set_body(self);
     }
 }
 
-impl IntoResponse for &'static str {
-    #[inline]
-    fn into_response(self) -> Response {
-        Cow::Borrowed(self).into_response()
+impl IntoResponseParts for &'static str {
+    fn into_response_parts(self, res: &mut ResponseParts) {
+        Cow::Borrowed(self).into_response_parts(res)
     }
 }
 
-impl IntoResponse for String {
-    #[inline]
-    fn into_response(self) -> Response {
-        Cow::<'static, str>::Owned(self).into_response()
+impl IntoResponseParts for String {
+    fn into_response_parts(self, res: &mut ResponseParts) {
+        Cow::<'static, str>::Owned(self).into_response_parts(res)
     }
 }
 
-impl IntoResponse for Cow<'static, str> {
-    fn into_response(self) -> Response {
-        let mut res = Response::new(boxed(Full::from(self)));
-        res.headers_mut().insert(
+impl IntoResponseParts for Cow<'static, str> {
+    fn into_response_parts(self, res: &mut ResponseParts) {
+        res.set_body(Full::from(self));
+        res.insert_header(
             header::CONTENT_TYPE,
             HeaderValue::from_static(mime::TEXT_PLAIN_UTF_8.as_ref()),
         );
-        res
     }
 }
 
-impl IntoResponse for Bytes {
-    fn into_response(self) -> Response {
-        let mut res = Response::new(boxed(Full::from(self)));
-        res.headers_mut().insert(
+impl IntoResponseParts for Bytes {
+    fn into_response_parts(self, res: &mut ResponseParts) {
+        res.set_body(Full::from(self));
+        res.insert_header(
             header::CONTENT_TYPE,
             HeaderValue::from_static(mime::APPLICATION_OCTET_STREAM.as_ref()),
         );
-        res
     }
 }
 
-impl IntoResponse for BytesMut {
-    fn into_response(self) -> Response {
-        self.freeze().into_response()
+impl IntoResponseParts for BytesMut {
+    fn into_response_parts(self, res: &mut ResponseParts) {
+        self.freeze().into_response_parts(res)
     }
 }
 
-impl<T, U> IntoResponse for Chain<T, U>
+impl<T, U> IntoResponseParts for Chain<T, U>
 where
     T: Buf + Unpin + Send + 'static,
     U: Buf + Unpin + Send + 'static,
 {
-    fn into_response(self) -> Response {
+    fn into_response_parts(self, res: &mut ResponseParts) {
         let (first, second) = self.into_inner();
-        let mut res = Response::new(boxed(BytesChainBody {
+        res.set_body(BytesChainBody {
             first: Some(first),
             second: Some(second),
-        }));
-        res.headers_mut().insert(
+        });
+        res.insert_header(
             header::CONTENT_TYPE,
             HeaderValue::from_static(mime::APPLICATION_OCTET_STREAM.as_ref()),
         );
-        res
     }
 }
 
@@ -377,159 +549,36 @@ where
     }
 }
 
-impl IntoResponse for &'static [u8] {
-    fn into_response(self) -> Response {
-        let mut res = Response::new(boxed(Full::from(self)));
-        res.headers_mut().insert(
+impl IntoResponseParts for &'static [u8] {
+    fn into_response_parts(self, res: &mut ResponseParts) {
+        Cow::Borrowed(self).into_response_parts(res)
+    }
+}
+
+impl IntoResponseParts for Vec<u8> {
+    fn into_response_parts(self, res: &mut ResponseParts) {
+        Cow::<'static, [u8]>::Owned(self).into_response_parts(res)
+    }
+}
+
+impl IntoResponseParts for Cow<'static, [u8]> {
+    fn into_response_parts(self, res: &mut ResponseParts) {
+        res.set_body(Full::from(self));
+        res.insert_header(
             header::CONTENT_TYPE,
             HeaderValue::from_static(mime::APPLICATION_OCTET_STREAM.as_ref()),
         );
-        res
     }
 }
 
-impl IntoResponse for Vec<u8> {
-    fn into_response(self) -> Response {
-        let mut res = Response::new(boxed(Full::from(self)));
-        res.headers_mut().insert(
-            header::CONTENT_TYPE,
-            HeaderValue::from_static(mime::APPLICATION_OCTET_STREAM.as_ref()),
-        );
-        res
+impl IntoResponseParts for StatusCode {
+    fn into_response_parts(self, res: &mut ResponseParts) {
+        res.set_status(self);
     }
 }
 
-impl IntoResponse for Cow<'static, [u8]> {
-    fn into_response(self) -> Response {
-        let mut res = Response::new(boxed(Full::from(self)));
-        res.headers_mut().insert(
-            header::CONTENT_TYPE,
-            HeaderValue::from_static(mime::APPLICATION_OCTET_STREAM.as_ref()),
-        );
-        res
-    }
-}
-
-impl IntoResponse for StatusCode {
-    fn into_response(self) -> Response {
-        Response::builder()
-            .status(self)
-            .body(boxed(Empty::new()))
-            .unwrap()
-    }
-}
-
-impl IntoResponse for HeaderMap {
-    fn into_response(self) -> Response {
-        let mut res = Response::new(boxed(Empty::new()));
-        *res.headers_mut() = self;
-        res
-    }
-}
-
-impl<T> IntoResponse for (StatusCode, T)
-where
-    T: IntoResponse,
-{
-    fn into_response(self) -> Response {
-        let mut res = self.1.into_response();
-        *res.status_mut() = self.0;
-        res
-    }
-}
-
-impl<H, T> IntoResponse for (H, T)
-where
-    H: IntoResponseHeaders,
-    T: IntoResponse,
-{
-    fn into_response(self) -> Response {
-        let mut res = self.1.into_response();
-
-        if let Err(e) = try_extend_headers(res.headers_mut(), self.0.into_headers()) {
-            return e;
-        }
-
-        res
-    }
-}
-
-impl<H, T> IntoResponse for (StatusCode, H, T)
-where
-    H: IntoResponseHeaders,
-    T: IntoResponse,
-{
-    fn into_response(self) -> Response {
-        let mut res = self.2.into_response();
-        *res.status_mut() = self.0;
-
-        if let Err(e) = try_extend_headers(res.headers_mut(), self.1.into_headers()) {
-            return e;
-        }
-
-        res
-    }
-}
-
-impl IntoResponseHeaders for HeaderMap {
-    // FIXME: Use type_alias_impl_trait when available
-    type IntoIter = iter::Map<
-        http::header::IntoIter<HeaderValue>,
-        fn(
-            (Option<HeaderName>, HeaderValue),
-        ) -> Result<(Option<HeaderName>, HeaderValue), Response>,
-    >;
-
-    fn into_headers(self) -> Self::IntoIter {
-        self.into_iter().map(Ok)
-    }
-}
-
-// Slightly adjusted version of `impl<T> Extend<(Option<HeaderName>, T)> for HeaderMap<T>`.
-// Accepts an iterator that returns Results and short-circuits on an `Err`.
-fn try_extend_headers(
-    headers: &mut HeaderMap,
-    iter: impl IntoIterator<Item = Result<(Option<HeaderName>, HeaderValue), Response>>,
-) -> Result<(), Response> {
-    use http::header::Entry;
-
-    let mut iter = iter.into_iter();
-
-    // The structure of this is a bit weird, but it is mostly to make the
-    // borrow checker happy.
-    let (mut key, mut val) = match iter.next().transpose()? {
-        Some((Some(key), val)) => (key, val),
-        Some((None, _)) => panic!("expected a header name, but got None"),
-        None => return Ok(()),
-    };
-
-    'outer: loop {
-        let mut entry = match headers.entry(key) {
-            Entry::Occupied(mut e) => {
-                // Replace all previous values while maintaining a handle to
-                // the entry.
-                e.insert(val);
-                e
-            }
-            Entry::Vacant(e) => e.insert_entry(val),
-        };
-
-        // As long as `HeaderName` is none, keep inserting the value into
-        // the current entry
-        loop {
-            match iter.next().transpose()? {
-                Some((Some(k), v)) => {
-                    key = k;
-                    val = v;
-                    continue 'outer;
-                }
-                Some((None, v)) => {
-                    entry.append(v);
-                }
-                None => {
-                    return Ok(());
-                }
-            }
-        }
+impl IntoResponseParts for HeaderMap {
+    fn into_response_parts(self, res: &mut ResponseParts) {
+        res.extend(self);
     }
 }

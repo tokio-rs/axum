@@ -73,3 +73,12 @@ impl<T> Deref for Extension<T> {
         &self.0
     }
 }
+
+impl<T> crate::response::IntoResponseParts for Extension<T>
+where
+    T: Send + Sync + 'static,
+{
+    fn into_response_parts(self, res: &mut axum_core::response::ResponseParts) {
+        res.insert_extension(self.0);
+    }
+}

@@ -1,7 +1,8 @@
 use super::{FromRequest, RequestParts};
-use crate::response::{IntoResponse, Response};
 use async_trait::async_trait;
+use axum_core::response::{IntoResponseParts, ResponseParts};
 use headers::HeaderMapExt;
+use http::header::{HeaderName, HeaderValue};
 use std::ops::Deref;
 
 /// Extractor that extracts a typed header value from [`headers`].
@@ -65,6 +66,36 @@ impl<T> Deref for TypedHeader<T> {
     }
 }
 
+impl<T> IntoResponseParts for TypedHeader<T>
+where
+    T: headers::Header,
+{
+    fn into_response_parts(self, res: &mut ResponseParts) {
+        struct ExtendHeaders<'a> {
+            res: &'a mut ResponseParts,
+            key: &'static HeaderName,
+        }
+
+        impl<'a> Extend<HeaderValue> for ExtendHeaders<'a> {
+            fn extend<T>(&mut self, iter: T)
+            where
+                T: IntoIterator<Item = HeaderValue>,
+            {
+                for value in iter {
+                    self.res.insert_header(self.key, value);
+                }
+            }
+        }
+
+        let mut extend = ExtendHeaders {
+            res,
+            key: T::name(),
+        };
+
+        self.0.encode(&mut extend);
+    }
+}
+
 /// Rejection used for [`TypedHeader`](super::TypedHeader).
 #[cfg(feature = "headers")]
 #[derive(Debug)]
@@ -95,11 +126,10 @@ pub enum TypedHeaderRejectionReason {
     Error(headers::Error),
 }
 
-impl IntoResponse for TypedHeaderRejection {
-    fn into_response(self) -> Response {
-        let mut res = self.to_string().into_response();
-        *res.status_mut() = http::StatusCode::BAD_REQUEST;
-        res
+impl IntoResponseParts for TypedHeaderRejection {
+    fn into_response_parts(self, res: &mut ResponseParts) {
+        res.set_status(http::StatusCode::BAD_REQUEST);
+        self.to_string().into_response_parts(res);
     }
 }
 

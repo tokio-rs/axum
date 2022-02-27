@@ -9,8 +9,8 @@ use axum::{
     body::Body,
     routing::get,
     handler::Handler,
-    http::{Request, header::{HeaderMap, HeaderName, HeaderValue}},
-    response::{IntoResponse, Html, Json, Headers},
+    http::{Request, header::{HeaderMap, HeaderName, HeaderValue, self}},
+    response::{IntoResponse, Html, Json},
     Router,
 };
 use http::{StatusCode, Response, Uri};
@@ -66,10 +66,15 @@ async fn with_headers_and_status() -> (StatusCode, HeaderMap, &'static str) {
     (StatusCode::INTERNAL_SERVER_ERROR, headers, "foo")
 }
 
-// `Headers` makes building the header map easier and `impl Trait` is easier
-// so you don't have to write the whole type
-async fn with_easy_headers() -> impl IntoResponse {
-    Headers(vec![("x-foo", "foo")])
+// An array of tuples of things that can be converted into `HeaderName` and `HeaderValue` can be
+// used to easily create a list of headers
+async fn headers_array() -> impl IntoResponse {
+    [(header::CONTENT_TYPE, "text/plain")]
+}
+
+// And the header names can also be strings
+async fn headers_array_non_standard_name() -> impl IntoResponse {
+    [("x-request-id", "123")]
 }
 
 // `Html` gives a content-type of `text/html`
@@ -103,7 +108,8 @@ let app = Router::new()
     .route("/with_status", get(with_status))
     .route("/with_headers", get(with_headers))
     .route("/with_headers_and_status", get(with_headers_and_status))
-    .route("/with_easy_headers", get(with_easy_headers))
+    .route("/headers_array", get(headers_array))
+    .route("/headers_array_non_standard_name", get(headers_array_non_standard_name))
     .route("/html", get(html))
     .route("/json", get(json))
     .route("/result", get(result))

@@ -58,11 +58,10 @@ macro_rules! define_rejection {
         pub struct $name;
 
         #[allow(deprecated)]
-        impl $crate::response::IntoResponse for $name {
-            fn into_response(self) -> $crate::response::Response {
-                let mut res = http::Response::new($crate::body::boxed(crate::body::Full::from($body)));
-                *res.status_mut() = http::StatusCode::$status;
-                res
+        impl $crate::response::IntoResponseParts for $name {
+            fn into_response_parts(self, res: &mut $crate::response::ResponseParts) {
+                res.set_body(crate::body::Full::from($body));
+                res.set_status(http::StatusCode::$status);
             }
         }
 
@@ -100,12 +99,10 @@ macro_rules! define_rejection {
             }
         }
 
-        impl IntoResponse for $name {
-            fn into_response(self) -> $crate::response::Response {
-                let mut res =
-                    http::Response::new($crate::body::boxed(crate::body::Full::from(format!(concat!($body, ": {}"), self.0))));
-                *res.status_mut() = http::StatusCode::$status;
-                res
+        impl crate::response::IntoResponseParts for $name {
+            fn into_response_parts(self, res: &mut crate::response::ResponseParts) {
+                res.set_body(crate::body::Full::from(format!(concat!($body, ": {}"), self.0)));
+                res.set_status(http::StatusCode::$status);
             }
         }
 
@@ -141,11 +138,11 @@ macro_rules! composite_rejection {
             ),+
         }
 
-        impl $crate::response::IntoResponse for $name {
-            fn into_response(self) -> $crate::response::Response {
+        impl $crate::response::IntoResponseParts for $name {
+            fn into_response_parts(self, res: &mut crate::response::ResponseParts) {
                 match self {
                     $(
-                        Self::$variant(inner) => inner.into_response(),
+                        Self::$variant(inner) => inner.into_response_parts(res),
                     )+
                 }
             }

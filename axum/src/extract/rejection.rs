@@ -1,10 +1,7 @@
 //! Rejection response types.
 
-use crate::{
-    body::{boxed, Full},
-    response::{IntoResponse, Response},
-    BoxError, Error,
-};
+use crate::{body::Full, response::IntoResponseParts, BoxError, Error};
+use axum_core::response::ResponseParts;
 
 pub use crate::extract::path::FailedToDeserializePathParams;
 pub use axum_core::extract::rejection::*;
@@ -88,11 +85,10 @@ impl FailedToDeserializeQueryString {
     }
 }
 
-impl IntoResponse for FailedToDeserializeQueryString {
-    fn into_response(self) -> Response {
-        let mut res = Response::new(boxed(Full::from(self.to_string())));
-        *res.status_mut() = http::StatusCode::UNPROCESSABLE_ENTITY;
-        res
+impl IntoResponseParts for FailedToDeserializeQueryString {
+    fn into_response_parts(self, res: &mut ResponseParts) {
+        res.set_status(http::StatusCode::UNPROCESSABLE_ENTITY);
+        res.set_body(Full::from(self.to_string()));
     }
 }
 
@@ -200,15 +196,15 @@ pub enum ContentLengthLimitRejection<T> {
     Inner(T),
 }
 
-impl<T> IntoResponse for ContentLengthLimitRejection<T>
+impl<T> IntoResponseParts for ContentLengthLimitRejection<T>
 where
-    T: IntoResponse,
+    T: IntoResponseParts,
 {
-    fn into_response(self) -> Response {
+    fn into_response_parts(self, res: &mut ResponseParts) {
         match self {
-            Self::PayloadTooLarge(inner) => inner.into_response(),
-            Self::LengthRequired(inner) => inner.into_response(),
-            Self::Inner(inner) => inner.into_response(),
+            Self::PayloadTooLarge(inner) => inner.into_response_parts(res),
+            Self::LengthRequired(inner) => inner.into_response_parts(res),
+            Self::Inner(inner) => inner.into_response_parts(res),
         }
     }
 }

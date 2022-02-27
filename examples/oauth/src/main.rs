@@ -16,7 +16,7 @@ use axum::{
         TypedHeader,
     },
     http::{header::SET_COOKIE, HeaderMap},
-    response::{IntoResponse, Redirect, Response},
+    response::{IntoResponse, IntoResponseParts, Redirect, ResponseParts},
     routing::get,
     AddExtensionLayer, Router,
 };
@@ -196,9 +196,9 @@ async fn login_authorized(
 
 struct AuthRedirect;
 
-impl IntoResponse for AuthRedirect {
-    fn into_response(self) -> Response {
-        Redirect::temporary("/auth/discord".parse().unwrap()).into_response()
+impl IntoResponseParts for AuthRedirect {
+    fn into_response_parts(self, res: &mut ResponseParts) {
+        Redirect::temporary("/auth/discord".parse().unwrap()).into_response_parts(res)
     }
 }
 

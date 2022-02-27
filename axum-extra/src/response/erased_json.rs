@@ -1,7 +1,7 @@
 use axum::{
-    body::{self, Full},
+    body::Full,
     http::{header, HeaderValue, StatusCode},
-    response::{IntoResponse, Response},
+    response::{IntoResponseParts, ResponseParts},
 };
 use bytes::{BufMut, Bytes, BytesMut};
 use serde::Serialize;
@@ -47,24 +47,24 @@ impl ErasedJson {
     }
 }
 
-impl IntoResponse for ErasedJson {
-    fn into_response(self) -> Response {
-        let bytes = match self.0 {
-            Ok(res) => res,
-            Err(err) => {
-                return Response::builder()
-                    .status(StatusCode::INTERNAL_SERVER_ERROR)
-                    .header(header::CONTENT_TYPE, mime::TEXT_PLAIN_UTF_8.as_ref())
-                    .body(body::boxed(Full::from(err.to_string())))
-                    .unwrap();
+impl IntoResponseParts for ErasedJson {
+    fn into_response_parts(self, res: &mut ResponseParts) {
+        match self.0 {
+            Ok(bytes) => {
+                res.set_body(Full::from(bytes));
+                res.insert_header(
+                    header::CONTENT_TYPE,
+                    HeaderValue::from_static(mime::APPLICATION_JSON.as_ref()),
+                );
             }
-        };
-
-        let mut res = Response::new(body::boxed(Full::new(bytes)));
-        res.headers_mut().insert(
-            header::CONTENT_TYPE,
-            HeaderValue::from_static(mime::APPLICATION_JSON.as_ref()),
-        );
-        res
+            Err(err) => {
+                res.set_status(StatusCode::INTERNAL_SERVER_ERROR);
+                res.insert_header(
+                    header::CONTENT_TYPE,
+                    HeaderValue::from_static(mime::TEXT_PLAIN_UTF_8.as_ref()),
+                );
+                res.set_body(Full::from(err.to_string()));
+            }
+        }
     }
 }

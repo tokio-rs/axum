@@ -6,10 +6,9 @@
 
 use askama::Template;
 use axum::{
-    body::{self, Full},
     extract,
     http::StatusCode,
-    response::{Html, IntoResponse, Response},
+    response::{Html, IntoResponse, IntoResponseParts, ResponseParts},
     routing::get,
     Router,
 };
@@ -48,20 +47,18 @@ struct HelloTemplate {
 
 struct HtmlTemplate<T>(T);
 
-impl<T> IntoResponse for HtmlTemplate<T>
+impl<T> IntoResponseParts for HtmlTemplate<T>
 where
     T: Template,
 {
-    fn into_response(self) -> Response {
+    fn into_response_parts(self, res: &mut ResponseParts) {
         match self.0.render() {
-            Ok(html) => Html(html).into_response(),
-            Err(err) => Response::builder()
-                .status(StatusCode::INTERNAL_SERVER_ERROR)
-                .body(body::boxed(Full::from(format!(
-                    "Failed to render template. Error: {}",
-                    err
-                ))))
-                .unwrap(),
+            Ok(html) => Html(html).into_response_parts(res),
+            Err(err) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Failed to render template. Error: {}", err),
+            )
+                .into_response_parts(res),
         }
     }
 }

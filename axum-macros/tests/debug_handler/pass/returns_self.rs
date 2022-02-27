@@ -1,4 +1,4 @@
-use axum::response::{IntoResponse, Response};
+use axum::response::{IntoResponseParts, ResponseParts};
 use axum_macros::debug_handler;
 
 struct A;
@@ -10,8 +10,8 @@ impl A {
     }
 }
 
-impl IntoResponse for A {
-    fn into_response(self) -> Response {
+impl IntoResponseParts for A {
+    fn into_response_parts(self, _res: &mut ResponseParts) {
         todo!()
     }
 }

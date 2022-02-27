@@ -5,7 +5,6 @@
 //! [`axum::extract`]: https://docs.rs/axum/latest/axum/extract/index.html
 
 use self::rejection::*;
-use crate::response::IntoResponse;
 use async_trait::async_trait;
 use http::{Extensions, HeaderMap, Method, Request, Uri, Version};
 use std::convert::Infallible;
@@ -63,7 +62,7 @@ mod tuple;
 pub trait FromRequest<B>: Sized {
     /// If the extractor fails it'll use this "rejection" type. A rejection is
     /// a kind of error that can be converted into a response.
-    type Rejection: IntoResponse;
+    type Rejection: crate::response::IntoResponse;
 
     /// Perform the extraction.
     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection>;

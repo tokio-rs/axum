@@ -1,10 +1,10 @@
 use crate::{
-    body::{self, Bytes, Full, HttpBody},
+    body::{Bytes, Full, HttpBody},
     extract::{rejection::*, FromRequest, RequestParts},
-    response::{IntoResponse, Response},
     BoxError,
 };
 use async_trait::async_trait;
+use axum_core::response::{IntoResponseParts, ResponseParts};
 use http::{
     header::{self, HeaderValue},
     StatusCode,
@@ -153,31 +153,28 @@ impl<T> From<T> for Json<T> {
     }
 }
 
-impl<T> IntoResponse for Json<T>
+impl<T> IntoResponseParts for Json<T>
 where
     T: Serialize,
 {
-    fn into_response(self) -> Response {
-        let bytes = match serde_json::to_vec(&self.0) {
-            Ok(res) => res,
-            Err(err) => {
-                return Response::builder()
-                    .status(StatusCode::INTERNAL_SERVER_ERROR)
-                    .header(
-                        header::CONTENT_TYPE,
-                        HeaderValue::from_static(mime::TEXT_PLAIN_UTF_8.as_ref()),
-                    )
-                    .body(body::boxed(Full::from(err.to_string())))
-                    .unwrap();
+    fn into_response_parts(self, res: &mut ResponseParts) {
+        match serde_json::to_vec(&self.0) {
+            Ok(bytes) => {
+                res.set_body(Full::from(bytes));
+                res.insert_header(
+                    header::CONTENT_TYPE,
+                    HeaderValue::from_static(mime::APPLICATION_JSON.as_ref()),
+                );
             }
-        };
-
-        let mut res = Response::new(body::boxed(Full::from(bytes)));
-        res.headers_mut().insert(
-            header::CONTENT_TYPE,
-            HeaderValue::from_static(mime::APPLICATION_JSON.as_ref()),
-        );
-        res
+            Err(err) => {
+                res.set_status(StatusCode::INTERNAL_SERVER_ERROR);
+                res.insert_header(
+                    header::CONTENT_TYPE,
+                    HeaderValue::from_static(mime::TEXT_PLAIN_UTF_8.as_ref()),
+                );
+                res.set_body(Full::from(err.to_string()));
+            }
+        }
     }
 }
 
