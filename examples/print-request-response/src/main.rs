@@ -8,7 +8,7 @@ use axum::{
     body::{Body, Bytes},
     http::{Request, StatusCode},
     middleware::{self, Next},
-    response::Response,
+    response::{IntoResponse, Response},
     routing::post,
     Router,
 };
@@ -40,7 +40,7 @@ async fn main() {
 async fn print_request_response(
     req: Request<Body>,
     next: Next<Body>,
-) -> Result<Response<Body>, (StatusCode, String)> {
+) -> Result<impl IntoResponse, (StatusCode, String)> {
     let (parts, body) = req.into_parts();
     let bytes = buffer_and_print("request", body).await?;
     let req = Request::from_parts(parts, Body::from(bytes));
