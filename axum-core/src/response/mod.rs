@@ -32,10 +32,34 @@ pub type Response<T = BoxBody> = http::Response<T>;
 /// Trait for generating responses.
 ///
 /// Types that implement `IntoResponse` can be returned from handlers.
+pub trait IntoResponse {
+    /// Create a response.
+    fn into_response(self) -> Response;
+
+    /// This method seals `IntoResponse` as it contains a type that cannot be named. This is
+    /// intentional.
+    ///
+    /// Instead you must implement [`IntoResponseParts`] instead and rely on the blanket impl
+    /// `impl<T: IntoResponseParts> IntoResponse for T`. This means that any type that implements
+    /// [`IntoResponseParts`] also automatically implements `IntoResponse`.
+    // This method contains a type that cannot be named outside axum-core, thus sealing the trait.
+    // We cannot use a sealed super trait since we a blanket impl.
+    //
+    // The method is intentionally public so users will see it when they open the docs.
+    fn sealed(_: sealed::DontImplementThisTrait);
+}
+
+mod sealed {
+    #![allow(unreachable_pub, missing_debug_implementations)]
+
+    pub struct DontImplementThisTrait;
+}
+
+/// Trait for generating responses from individual parts.
 ///
-/// # Implementing `IntoResponse`
+/// # Implementing `IntoResponseParts`
 ///
-/// You generally shouldn't have to implement `IntoResponse` manually, as axum
+/// You generally shouldn't have to implement `IntoResponseParts` manually, as axum
 /// provides implementations for many common types.
 ///
 /// However it might be necessary if you have a custom error type that you want
@@ -82,7 +106,7 @@ pub type Response<T = BoxBody> = http::Response<T>;
 /// ```
 ///
 /// Or if you have a custom body type you'll also need to implement
-/// `IntoResponse` for it:
+/// `IntoResponseParts` for it:
 ///
 /// ```rust
 /// use axum::{
@@ -132,37 +156,14 @@ pub type Response<T = BoxBody> = http::Response<T>;
 ///     }
 /// }
 ///
-/// // We don't need to implement `IntoResponseParts for Response<MyBody>` as that is
-/// // covered by a blanket implementation in axum.
-///
 /// // `MyBody` can now be returned from handlers.
 /// let app = Router::new().route("/", get(|| async { MyBody }));
 /// # async {
 /// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 /// # };
 /// ```
-pub trait IntoResponse {
-    /// Create a response.
-    fn into_response(self) -> Response;
-
-    /// [`IntoResponse`] is sealed. Implement [`IntoResponseParts`] instead and rely on the blanket
-    /// impl `impl<T: IntoResponseParts> IntoResponse for T`.
-    // This method contains a type that cannot be named outside axum-core, thus sealing the trait.
-    // We cannot use a sealed super trait since we a blanket impl.
-    //
-    // The method is intentionally public so users will see it when they open the docs.
-    fn sealed(_: sealed::DontImplementThisTrait);
-}
-
-mod sealed {
-    #![allow(unreachable_pub, missing_debug_implementations)]
-
-    pub struct DontImplementThisTrait;
-}
-
-/// TODO
 pub trait IntoResponseParts {
-    /// TODO
+    /// Set parts of the response
     fn into_response_parts(self, res: &mut ResponseParts);
 }
 
@@ -213,34 +214,66 @@ where
     fn sealed(_: sealed::DontImplementThisTrait) {}
 }
 
-/// TODO
+/// Parts of a response.
+///
+/// Used with [`IntoResponseParts`].
 #[derive(Debug)]
 pub struct ResponseParts {
     version: Option<Version>,
     status: StatusCode,
     headers: Result<HeaderMap, String>,
-    pub(super) extensions: Extensions,
+    extensions: Extensions,
     body: Option<BoxBody>,
 }
 
 impl ResponseParts {
-    /// TODO
+    /// Set the HTTP version of the response.
     pub fn set_version(&mut self, version: Version) {
         self.version = Some(version);
     }
 
-    /// TODO
+    /// Set the status code of the response.
     pub fn set_status(&mut self, status: StatusCode) {
         self.status = status;
     }
 
-    /// TODO
+    /// Insert a header into the response.
+    ///
+    /// If the header already exists it will be overwritten.
     pub fn insert_header<K, V>(&mut self, key: K, value: V)
     where
         K: TryInto<HeaderName>,
         K::Error: fmt::Display,
         V: TryInto<HeaderValue>,
         V::Error: fmt::Display,
+    {
+        self.update_headers(key, value, |headers, key, value| {
+            headers.insert(key, value);
+        });
+    }
+
+    /// Append a header to the response.
+    ///
+    /// If the header already exists it will be appended to.
+    pub fn append_header<K, V>(&mut self, key: K, value: V)
+    where
+        K: TryInto<HeaderName>,
+        K::Error: fmt::Display,
+        V: TryInto<HeaderValue>,
+        V::Error: fmt::Display,
+    {
+        self.update_headers(key, value, |headers, key, value| {
+            headers.append(key, value);
+        });
+    }
+
+    fn update_headers<K, V, F>(&mut self, key: K, value: V, f: F)
+    where
+        K: TryInto<HeaderName>,
+        K::Error: fmt::Display,
+        V: TryInto<HeaderValue>,
+        V::Error: fmt::Display,
+        F: FnOnce(&mut HeaderMap, HeaderName, HeaderValue),
     {
         if let Ok(headers) = &mut self.headers {
             let key = match key.try_into() {
@@ -259,11 +292,13 @@ impl ResponseParts {
                 }
             };
 
-            headers.insert(key, value);
+            f(headers, key, value);
         }
     }
 
-    /// TODO
+    /// Insert an extension into the response.
+    ///
+    /// If the extension already exists it will be overwritten.
     pub fn insert_extension<T>(&mut self, extension: T)
     where
         T: Send + Sync + 'static,
@@ -271,7 +306,9 @@ impl ResponseParts {
         self.extensions.insert(extension);
     }
 
-    /// TODO
+    /// Set the body of the response.
+    ///
+    /// If the response already has a body it will be overwritten.
     pub fn set_body<B>(&mut self, body: B)
     where
         B: http_body::Body<Data = Bytes> + Send + 'static,
@@ -281,26 +318,13 @@ impl ResponseParts {
     }
 }
 
-// compatible with `HeaderMap::into_iter`
 impl Extend<(Option<HeaderName>, HeaderValue)> for ResponseParts {
     fn extend<T>(&mut self, iter: T)
     where
         T: IntoIterator<Item = (Option<HeaderName>, HeaderValue)>,
     {
-        let headers = if let Ok(headers) = &mut self.headers {
-            headers
-        } else {
-            return;
-        };
-
-        let mut prev = None;
-        for (key, value) in iter {
-            if let Some(key) = key {
-                prev = Some(key.clone());
-                headers.insert(key, value);
-            } else if let Some(prev) = &prev {
-                headers.insert(prev, value);
-            }
+        if let Ok(headers) = &mut self.headers {
+            headers.extend(iter);
         }
     }
 }

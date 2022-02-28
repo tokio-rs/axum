@@ -41,3 +41,44 @@ impl<T> From<T> for Html<T> {
         Self(inner)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use axum_core::response::IntoResponse;
+    use http::Uri;
+
+    use crate::{body::Body, routing::get, Router};
+
+    #[test]
+    fn impl_trait_result_works() {
+        async fn impl_trait_ok() -> Result<impl IntoResponse, ()> {
+            Ok(())
+        }
+
+        async fn impl_trait_err() -> Result<(), impl IntoResponse> {
+            Err(())
+        }
+
+        async fn impl_trait_both(uri: Uri) -> Result<impl IntoResponse, impl IntoResponse> {
+            if uri.path() == "/" {
+                Ok(())
+            } else {
+                Err(())
+            }
+        }
+
+        async fn impl_trait(uri: Uri) -> impl IntoResponse {
+            if uri.path() == "/" {
+                Ok(())
+            } else {
+                Err(())
+            }
+        }
+
+        Router::<Body>::new()
+            .route("/foo", get(impl_trait_ok))
+            .route("/bar", get(impl_trait_err))
+            .route("/baz", get(impl_trait_both))
+            .route("/qux", get(impl_trait));
+    }
+}
