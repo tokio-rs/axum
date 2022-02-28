@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **added:** Document sharing state between handler and middleware (#783])
 - **added:** `Extension<_>` can now be used in tuples for building responses, and will set an
   extension on the response ([#797])
+- **added:** Implement `tower::Layer` for `Extension` ([#801])
 - **breaking:** `sse::Event` now accepts types implementing `AsRef<str>` instead of `Into<String>`
   as field values.
 - **breaking:** `sse::Event` now panics if a setter method is called twice instead of silently
@@ -74,6 +75,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#791]: https://github.com/tokio-rs/axum/pull/791
 [#797]: https://github.com/tokio-rs/axum/pull/797
 [#800]: https://github.com/tokio-rs/axum/pull/800
+[#801]: https://github.com/tokio-rs/axum/pull/801
 
 # 0.4.4 (13. January, 2022)
 

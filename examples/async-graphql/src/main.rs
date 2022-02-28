@@ -8,7 +8,7 @@ use axum::{
     extract::Extension,
     response::{Html, IntoResponse},
     routing::get,
-    AddExtensionLayer, Json, Router,
+    Json, Router,
 };
 use starwars::{QueryRoot, StarWars, StarWarsSchema};
 
@@ -28,7 +28,7 @@ async fn main() {
 
     let app = Router::new()
         .route("/", get(graphql_playground).post(graphql_handler))
-        .layer(AddExtensionLayer::new(schema));
+        .layer(Extension(schema));
 
     println!("Playground: http://localhost:3000");
 
