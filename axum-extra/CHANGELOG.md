@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning].
 
 # Unreleased
 
+- **added:** Add `TypedPath::to_uri` for converting the path into a `Uri` ([#790])
 - **added:** Add type safe routing. See `axum_extra::routing::typed` for more details ([#756])
 - **breaking:** `CachedRejection` has been removed ([#699])
 - **breaking:** `<Cached<T> as FromRequest>::Rejection` is now `T::Rejection`. ([#699])
@@ -16,6 +17,7 @@ and this project adheres to [Semantic Versioning].
 [#699]: https://github.com/tokio-rs/axum/pull/699
 [#719]: https://github.com/tokio-rs/axum/pull/719
 [#756]: https://github.com/tokio-rs/axum/pull/756
+[#790]: https://github.com/tokio-rs/axum/pull/790
 
 # 0.1.2 (13. January, 2022)
 
