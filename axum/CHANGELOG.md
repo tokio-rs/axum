@@ -54,6 +54,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
         - `PathRejection`
         - `MatchedPathRejection`
         - `WebSocketUpgradeRejection`
+- **breaking:** `Redirect::found` has been removed
 - **fixed:** Set `Allow` header when responding with `405 Method Not Allowed` ([#733])
 - **fixed:** Correctly set the `Content-Length` header for response to `HEAD`
   requests ([#734])
