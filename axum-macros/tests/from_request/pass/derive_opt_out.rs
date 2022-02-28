@@ -1,7 +1,7 @@
 use axum::{
     async_trait,
     extract::{FromRequest, RequestParts},
-    response::{IntoResponseParts, ResponseParts},
+    response::{IntoResponse, Response},
 };
 use axum_macros::FromRequest;
 
@@ -28,8 +28,8 @@ where
 #[derive(Debug)]
 struct OtherExtractorRejection;
 
-impl IntoResponseParts for OtherExtractorRejection {
-    fn into_response_parts(self, _res: &mut ResponseParts) {
+impl IntoResponse for OtherExtractorRejection {
+    fn into_response(self) -> Response {
         unimplemented!()
     }
 }
