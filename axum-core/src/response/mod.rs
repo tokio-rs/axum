@@ -228,11 +228,15 @@ pub struct ResponseParts {
 
 impl ResponseParts {
     /// Set the HTTP version of the response.
+    ///
+    /// The default version is decided by hyper based on the HTTP version of the request.
     pub fn set_version(&mut self, version: Version) {
         self.version = Some(version);
     }
 
     /// Set the status code of the response.
+    ///
+    /// The default status code is `200 OK`.
     pub fn set_status(&mut self, status: StatusCode) {
         self.status = status;
     }
@@ -604,5 +608,40 @@ impl IntoResponseParts for StatusCode {
 impl IntoResponseParts for HeaderMap {
     fn into_response_parts(self, res: &mut ResponseParts) {
         res.extend(self);
+    }
+}
+
+impl IntoResponseParts for Version {
+    fn into_response_parts(self, res: &mut ResponseParts) {
+        res.set_version(self);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[allow(unused_imports)]
+    use super::*;
+
+    #[tokio::test]
+    async fn building_response_from_tuples() {
+        let mut headers = HeaderMap::new();
+        headers.insert(header::SERVER, "axum".parse().unwrap());
+
+        let res = (
+            StatusCode::NOT_FOUND,
+            [("x-foo", "foo")],
+            headers,
+            "body",
+            Version::HTTP_2,
+        )
+            .into_response();
+
+        assert_eq!(res.status(), StatusCode::NOT_FOUND);
+        assert_eq!(res.headers()["server"], "axum");
+        assert_eq!(res.headers()["x-foo"], "foo");
+        assert_eq!(res.version(), Version::HTTP_2);
+
+        let body = crate::body::to_bytes(res).await.unwrap();
+        assert_eq!(&body[..], b"body");
     }
 }
