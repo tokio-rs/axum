@@ -57,7 +57,6 @@ macro_rules! define_rejection {
         #[non_exhaustive]
         pub struct $name;
 
-        #[allow(deprecated)]
         impl $crate::response::IntoResponse for $name {
             fn into_response(self) -> $crate::response::Response {
                 (http::StatusCode::$status, $body).into_response()
@@ -134,7 +133,7 @@ macro_rules! composite_rejection {
         #[non_exhaustive]
         pub enum $name {
             $(
-                #[allow(missing_docs, deprecated)]
+                #[allow(missing_docs)]
                 $variant($variant)
             ),+
         }
@@ -150,7 +149,6 @@ macro_rules! composite_rejection {
         }
 
         $(
-            #[allow(deprecated)]
             impl From<$variant> for $name {
                 fn from(inner: $variant) -> Self {
                     Self::$variant(inner)

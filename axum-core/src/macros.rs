@@ -54,7 +54,7 @@ macro_rules! composite_rejection {
         #[non_exhaustive]
         pub enum $name {
             $(
-                #[allow(missing_docs, deprecated)]
+                #[allow(missing_docs)]
                 $variant($variant)
             ),+
         }
@@ -70,7 +70,6 @@ macro_rules! composite_rejection {
         }
 
         $(
-            #[allow(deprecated)]
             impl From<$variant> for $name {
                 fn from(inner: $variant) -> Self {
                     Self::$variant(inner)
