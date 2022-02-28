@@ -66,8 +66,7 @@ async fn impl_trait() -> impl IntoResponse {
 ```
 
 Additionally you can return tuples to build more complex responses from
-individual parts. Each element, from left to right, will set a part of the
-response:
+individual parts.
 
 ```rust,no_run
 use axum::{
@@ -77,45 +76,87 @@ use axum::{
     extract::Extension,
 };
 
-// A `404 Not Found` response with a `text/plain` body
+// `(StatusCode, impl IntoResponse)` will override the status code of the response
 async fn with_status(uri: Uri) -> (StatusCode, String) {
     (StatusCode::NOT_FOUND, format!("Not Found: {}", uri.path()))
 }
 
-// The order doesn't matter
-async fn with_status_reverse(uri: Uri) -> (String, StatusCode) {
-    (format!("Not Found: {}", uri.path()), StatusCode::NOT_FOUND)
-}
-
 // Use `impl IntoResponse` to avoid having to type the whole type
 async fn impl_trait(uri: Uri) -> impl IntoResponse {
-    (format!("Not Found: {}", uri.path()), StatusCode::NOT_FOUND)
+    (StatusCode::NOT_FOUND, format!("Not Found: {}", uri.path()))
 }
 
-// Any response parts that works on its own, also works in a tuple as
-// part of a larger response.
-//
-// This returns
-//
-//     404 Not Found
-//     x-foo: custom-header
-//     content-type: application/json
-//
-//     {"error":"not found"}
-//
-// With a response extension accessible to middleware
-async fn with_status_headers_and_body() -> impl IntoResponse {
+// `(HeaderMap, impl IntoResponse)` to add additional headers
+async fn with_headers() -> impl IntoResponse {
+    let mut headers = HeaderMap::new();
+    headers.insert(header::CONTENT_TYPE, "text/plain".parse().unwrap());
+    (headers, "foo")
+}
+
+// Or an array of tuples to more easily build the headers
+async fn with_array_headers() -> impl IntoResponse {
+    ([(header::CONTENT_TYPE, "text/plain")], "foo")
+}
+
+// Use string keys for custom headers
+async fn with_array_headers_custom() -> impl IntoResponse {
+    ([("x-custom", "custom")], "foo")
+}
+
+// `(StatusCode, headers, impl IntoResponse)` to set status and add headers
+// `headers` can be either a `HeaderMap` or an array of tuples
+async fn with_status_and_array_headers() -> impl IntoResponse {
     (
         StatusCode::NOT_FOUND,
-        [("x-foo", "custom-header")],
-        Json(serde_json::json!({ "error": "not found" })),
-        Extension(Foo("foo"))
+        [(header::CONTENT_TYPE, "text/plain")],
+        "foo",
     )
 }
 
-#[derive(Clone)]
+// `(Extension<_>, impl IntoResponse)` to set response extensions
+async fn with_status_extensions() -> impl IntoResponse {
+    (
+        Extension(Foo("foo")),
+        "foo",
+    )
+}
+
 struct Foo(&'static str);
+
+// Or mix and match all the things
+async fn all_the_things(uri: Uri) -> impl IntoResponse {
+    let mut header_map = HeaderMap::new();
+    if uri.path() == "/" {
+        header_map.insert(header::SERVER, "axum".parse().unwrap());
+    }
+
+    (
+        // set status code
+        StatusCode::NOT_FOUND,
+        // headers ith an array
+        [("x-custom", "custom")],
+        // some extensions
+        Extension(Foo("foo")),
+        Extension(Foo("bar")),
+        // more headers, built dynamically
+        header_map,
+        // and finally the body
+        "foo",
+    )
+}
 ```
+
+In general you can return tuples like:
+
+- `(StatusCode, impl IntoResponse)`
+- `(Version, impl IntoResponse)`
+- `(StatusCode, Version, impl IntoResponse)`
+- `(T1, .., Tn, impl IntoResponse)` where `T1` to `Tn` all implement [`IntoResponseParts`].
+- `(StatusCode, T1, .., Tn, impl IntoResponse)` where `T1` to `Tn` all implement [`IntoResponseParts`].
+- `(StatusCode, Version, T1, .., Tn, impl IntoResponse)` where `T1` to `Tn` all implement [`IntoResponseParts`].
+
+This means you cannot accidentally override the status, version, or body, as [`IntoResponseParts`] only allows
+setting headers and extensions.
 
 Use [`Response`](crate::response::Response) for more low level control:
 
@@ -135,27 +176,6 @@ async fn response() -> impl IntoResponse {
         .unwrap()
 }
 ```
-
-# `IntoResponseParts` and `IntoResponse`
-
-Building responses works via two traits:
-
-- [`IntoResponseParts`]: A trait for modifying a response and setting one or
-  more parts of it. Implement this trait to define new response types.
-- [`IntoResponse`]: A complete response that can be sent from a handler. You
-  cannot implement this trait directly.
-
-Note that [`IntoResponse`] is _sealed_ meaning you cannot implement it. Instead
-you must implement [`IntoResponseParts`] which has the blanked implementation
-`impl<T: IntoResponseParts> IntoResponse for T`. This means that any type that
-implements [`IntoResponseParts`] automatically also implements [`IntoResponse`].
-This is why types such as [`StatusCode`] which implement [`IntoResponseParts`]
-can be used as `impl IntoResponse` and be returned from handlers.
-
-See the docs for [`IntoResponseParts`] for details on how to implement it.
-
-It is recommended that you familiarize yourself with everything that implements
-[`IntoResponseParts`].
 
 [`IntoResponse`]: crate::response::IntoResponse
 [`IntoResponseParts`]: crate::response::IntoResponseParts

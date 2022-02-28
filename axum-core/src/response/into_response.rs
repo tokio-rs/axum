@@ -19,6 +19,109 @@ use std::{
 /// Trait for generating responses.
 ///
 /// Types that implement `IntoResponse` can be returned from handlers.
+///
+/// # Implementing `IntoResponse`
+///
+/// You generally shouldn't have to implement `IntoResponse` manually, as axum
+/// provides implementations for many common types.
+///
+/// However it might be necessary if you have a custom error type that you want
+/// to return from handlers:
+///
+/// ```rust
+/// use axum::{
+///     Router,
+///     body::{self, Bytes},
+///     routing::get,
+///     http::StatusCode,
+///     response::{IntoResponse, Response},
+/// };
+///
+/// enum MyError {
+///     SomethingWentWrong,
+///     SomethingElseWentWrong,
+/// }
+///
+/// impl IntoResponse for MyError {
+///     fn into_response(self) -> Response {
+///         let body = match self {
+///             MyError::SomethingWentWrong => "something went wrong",
+///             MyError::SomethingElseWentWrong => "something else went wrong",
+///         };
+///
+///         // its often easier to implement `IntoResponse` by calling other implementations
+///         (StatusCode::INTERNAL_SERVER_ERROR, body).into_response()
+///     }
+/// }
+///
+/// // `Result<impl IntoResponse, MyError>` can now be returned from handlers
+/// let app = Router::new().route("/", get(handler));
+///
+/// async fn handler() -> Result<(), MyError> {
+///     Err(MyError::SomethingWentWrong)
+/// }
+/// # async {
+/// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+/// # };
+/// ```
+///
+/// Or if you have a custom body type you'll also need to implement
+/// `IntoResponseParts` for it:
+///
+/// ```rust
+/// use axum::{
+///     body,
+///     routing::get,
+///     response::{IntoResponse, Response},
+///     Router,
+/// };
+/// use http_body::Body;
+/// use http::HeaderMap;
+/// use bytes::Bytes;
+/// use std::{
+///     convert::Infallible,
+///     task::{Poll, Context},
+///     pin::Pin,
+/// };
+///
+/// struct MyBody;
+///
+/// // First implement `Body` for `MyBody`. This could for example use
+/// // some custom streaming protocol.
+/// impl Body for MyBody {
+///     type Data = Bytes;
+///     type Error = Infallible;
+///
+///     fn poll_data(
+///         self: Pin<&mut Self>,
+///         cx: &mut Context<'_>
+///     ) -> Poll<Option<Result<Self::Data, Self::Error>>> {
+///         # unimplemented!()
+///         // ...
+///     }
+///
+///     fn poll_trailers(
+///         self: Pin<&mut Self>,
+///         cx: &mut Context<'_>
+///     ) -> Poll<Result<Option<HeaderMap>, Self::Error>> {
+///         # unimplemented!()
+///         // ...
+///     }
+/// }
+///
+/// // Now we can implement `IntoResponse` directly for `MyBody`
+/// impl IntoResponse for MyBody {
+///     fn into_response(self) -> Response {
+///         Response::new(body::boxed(self))
+///     }
+/// }
+///
+/// // `MyBody` can now be returned from handlers.
+/// let app = Router::new().route("/", get(|| async { MyBody }));
+/// # async {
+/// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+/// # };
+/// ```
 pub trait IntoResponse {
     /// Create a response.
     fn into_response(self) -> Response;
@@ -28,6 +131,14 @@ impl IntoResponse for StatusCode {
     fn into_response(self) -> Response {
         let mut res = ().into_response();
         *res.status_mut() = self;
+        res
+    }
+}
+
+impl IntoResponse for Version {
+    fn into_response(self) -> Response {
+        let mut res = ().into_response();
+        *res.version_mut() = self;
         res
     }
 }
@@ -285,6 +396,30 @@ where
     fn into_response(self) -> Response {
         let mut res = self.1.into_response();
         *res.status_mut() = self.0;
+        res
+    }
+}
+
+impl<R> IntoResponse for (Version, R)
+where
+    R: IntoResponse,
+{
+    fn into_response(self) -> Response {
+        let mut res = self.1.into_response();
+        *res.version_mut() = self.0;
+        res
+    }
+}
+
+impl<R> IntoResponse for (Version, StatusCode, R)
+where
+    R: IntoResponse,
+{
+    fn into_response(self) -> Response {
+        let (version, status, res) = self;
+        let mut res = res.into_response();
+        *res.version_mut() = version;
+        *res.status_mut() = status;
         res
     }
 }
