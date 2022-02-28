@@ -1,8 +1,7 @@
 //! Rejection response types.
 
-use crate::body;
-use http::{Response, StatusCode};
-use http_body::Full;
+use crate::response::{IntoResponse, Response};
+use http::StatusCode;
 use std::fmt;
 
 /// Rejection type used if you try and extract the request body more than
@@ -15,11 +14,9 @@ impl BodyAlreadyExtracted {
     const BODY: &'static str = "Cannot have two request body extractors for a single handler";
 }
 
-impl crate::response::IntoResponse for BodyAlreadyExtracted {
-    fn into_response(self) -> crate::response::Response {
-        let mut res = Response::new(body::boxed(Full::from(Self::BODY)));
-        *res.status_mut() = StatusCode::INTERNAL_SERVER_ERROR;
-        res
+impl IntoResponse for BodyAlreadyExtracted {
+    fn into_response(self) -> Response {
+        (StatusCode::INTERNAL_SERVER_ERROR, Self::BODY).into_response()
     }
 }
 

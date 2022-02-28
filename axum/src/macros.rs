@@ -60,9 +60,7 @@ macro_rules! define_rejection {
         #[allow(deprecated)]
         impl $crate::response::IntoResponse for $name {
             fn into_response(self) -> $crate::response::Response {
-                let mut res = http::Response::new($crate::body::boxed(crate::body::Full::from($body)));
-                *res.status_mut() = http::StatusCode::$status;
-                res
+                (http::StatusCode::$status, $body).into_response()
             }
         }
 
@@ -100,12 +98,12 @@ macro_rules! define_rejection {
             }
         }
 
-        impl IntoResponse for $name {
+        impl crate::response::IntoResponse for $name {
             fn into_response(self) -> $crate::response::Response {
-                let mut res =
-                    http::Response::new($crate::body::boxed(crate::body::Full::from(format!(concat!($body, ": {}"), self.0))));
-                *res.status_mut() = http::StatusCode::$status;
-                res
+                (
+                    http::StatusCode::$status,
+                    format!(concat!($body, ": {}"), self.0),
+                ).into_response()
             }
         }
 

@@ -1,5 +1,4 @@
-use super::{IntoResponse, Response};
-use crate::body::{boxed, Empty};
+use axum_core::response::{IntoResponse, Response};
 use http::{header::LOCATION, HeaderValue, StatusCode, Uri};
 use std::convert::TryFrom;
 
@@ -111,9 +110,6 @@ impl Redirect {
 
 impl IntoResponse for Redirect {
     fn into_response(self) -> Response {
-        let mut res = Response::new(boxed(Empty::new()));
-        *res.status_mut() = self.status_code;
-        res.headers_mut().insert(LOCATION, self.location);
-        res
+        (self.status_code, [(LOCATION, self.location)]).into_response()
     }
 }

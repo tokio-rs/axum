@@ -4,12 +4,11 @@
 mod de;
 
 use crate::{
-    body::{boxed, Full},
     extract::{rejection::*, FromRequest, RequestParts},
-    response::{IntoResponse, Response},
     routing::{InvalidUtf8InPathParam, UrlParams},
 };
 use async_trait::async_trait;
+use axum_core::response::{IntoResponse, Response};
 use http::StatusCode;
 use serde::de::DeserializeOwned;
 use std::{
@@ -382,9 +381,7 @@ impl IntoResponse for FailedToDeserializePathParams {
                 (StatusCode::INTERNAL_SERVER_ERROR, self.0.kind.to_string())
             }
         };
-        let mut res = Response::new(boxed(Full::from(body)));
-        *res.status_mut() = status;
-        res
+        (status, body).into_response()
     }
 }
 

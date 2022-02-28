@@ -2,27 +2,21 @@ Types and traits for generating responses.
 
 # Building responses
 
-Anything that implements [`IntoResponse`] can be returned from a handler:
+Anything that implements [`IntoResponse`] can be returned from a handler. axum
+provides implementations for common types:
 
 ```rust,no_run
 use axum::{
-    body::Body,
-    routing::get,
-    handler::Handler,
-    http::{Request, header::{HeaderMap, HeaderName, HeaderValue}},
-    response::{IntoResponse, Html, Json, Headers},
-    Router,
+    Json,
+    response::{Html, IntoResponse},
+    http::{StatusCode, Uri, header::{self, HeaderMap, HeaderName}},
 };
-use http::{StatusCode, Response, Uri};
-use serde_json::{Value, json};
 
-// We've already seen returning &'static str
-async fn plain_text() -> &'static str {
-    "foo"
-}
+// `()` gives an empty response
+async fn empty() {}
 
-// String works too and will get a `text/plain; charset=utf-8` content-type
-async fn plain_text_string(uri: Uri) -> String {
+// String will get a `text/plain; charset=utf-8` content-type
+async fn plain_text(uri: Uri) -> String {
     format!("Hi from {}", uri.path())
 }
 
@@ -31,84 +25,158 @@ async fn bytes() -> Vec<u8> {
     vec![1, 2, 3, 4]
 }
 
-// `()` gives an empty response
-async fn empty() {}
+// `Json` will get a `application/json` content-type and work with anything that
+// implements `serde::Serialize`
+async fn json() -> Json<Vec<String>> {
+    Json(vec!["foo".to_owned(), "bar".to_owned()])
+}
+
+// `Html` will get a `text/html` content-type
+async fn html() -> Html<&'static str> {
+    Html("<p>Hello, World!</p>")
+}
 
 // `StatusCode` gives an empty response with that status code
-async fn empty_with_status() -> StatusCode {
+async fn status() -> StatusCode {
     StatusCode::NOT_FOUND
 }
 
-// A tuple of `StatusCode` and something that implements `IntoResponse` can
-// be used to override the status code
-async fn with_status() -> (StatusCode, &'static str) {
-    (StatusCode::INTERNAL_SERVER_ERROR, "Something went wrong")
+// `HeaderMap` gives an empty response with some headers
+async fn headers() -> HeaderMap {
+    let mut headers = HeaderMap::new();
+    headers.insert(header::SERVER, "axum".parse().unwrap());
+    headers
 }
 
-// A tuple of `HeaderMap` and something that implements `IntoResponse` can
-// be used to override the headers
-async fn with_headers() -> (HeaderMap, &'static str) {
+// An array of tuples also gives headers
+async fn array_headers() -> [(HeaderName, &'static str); 2] {
+    [
+        (header::SERVER, "axum"),
+        (header::CONTENT_TYPE, "text/plain")
+    ]
+}
+
+// Use `impl IntoResponse` to avoid writing the whole type
+async fn impl_trait() -> impl IntoResponse {
+    [
+        (header::SERVER, "axum"),
+        (header::CONTENT_TYPE, "text/plain")
+    ]
+}
+```
+
+Additionally you can return tuples to build more complex responses from
+individual parts.
+
+```rust,no_run
+use axum::{
+    Json,
+    response::IntoResponse,
+    http::{StatusCode, HeaderMap, Uri, header},
+    extract::Extension,
+};
+
+// `(StatusCode, impl IntoResponse)` will override the status code of the response
+async fn with_status(uri: Uri) -> (StatusCode, String) {
+    (StatusCode::NOT_FOUND, format!("Not Found: {}", uri.path()))
+}
+
+// Use `impl IntoResponse` to avoid having to type the whole type
+async fn impl_trait(uri: Uri) -> impl IntoResponse {
+    (StatusCode::NOT_FOUND, format!("Not Found: {}", uri.path()))
+}
+
+// `(HeaderMap, impl IntoResponse)` to add additional headers
+async fn with_headers() -> impl IntoResponse {
     let mut headers = HeaderMap::new();
-    headers.insert(
-        HeaderName::from_static("x-foo"),
-        HeaderValue::from_static("foo"),
-    );
+    headers.insert(header::CONTENT_TYPE, "text/plain".parse().unwrap());
     (headers, "foo")
 }
 
-// You can also override both status and headers at the same time
-async fn with_headers_and_status() -> (StatusCode, HeaderMap, &'static str) {
-    let mut headers = HeaderMap::new();
-    headers.insert(
-        HeaderName::from_static("x-foo"),
-        HeaderValue::from_static("foo"),
-    );
-    (StatusCode::INTERNAL_SERVER_ERROR, headers, "foo")
+// Or an array of tuples to more easily build the headers
+async fn with_array_headers() -> impl IntoResponse {
+    ([(header::CONTENT_TYPE, "text/plain")], "foo")
 }
 
-// `Headers` makes building the header map easier and `impl Trait` is easier
-// so you don't have to write the whole type
-async fn with_easy_headers() -> impl IntoResponse {
-    Headers(vec![("x-foo", "foo")])
+// Use string keys for custom headers
+async fn with_array_headers_custom() -> impl IntoResponse {
+    ([("x-custom", "custom")], "foo")
 }
 
-// `Html` gives a content-type of `text/html`
-async fn html() -> Html<&'static str> {
-    Html("<h1>Hello, World!</h1>")
+// `(StatusCode, headers, impl IntoResponse)` to set status and add headers
+// `headers` can be either a `HeaderMap` or an array of tuples
+async fn with_status_and_array_headers() -> impl IntoResponse {
+    (
+        StatusCode::NOT_FOUND,
+        [(header::CONTENT_TYPE, "text/plain")],
+        "foo",
+    )
 }
 
-// `Json` gives a content-type of `application/json` and works with any type
-// that implements `serde::Serialize`
-async fn json() -> Json<Value> {
-    Json(json!({ "data": 42 }))
+// `(Extension<_>, impl IntoResponse)` to set response extensions
+async fn with_status_extensions() -> impl IntoResponse {
+    (
+        Extension(Foo("foo")),
+        "foo",
+    )
 }
 
-// `Result<T, E>` where `T` and `E` implement `IntoResponse` is useful for
-// returning errors
-async fn result() -> Result<&'static str, StatusCode> {
-    Ok("all good")
-}
+struct Foo(&'static str);
 
-// `Response` gives full control
-async fn response() -> Response<Body> {
-    Response::builder().body(Body::empty()).unwrap()
-}
+// Or mix and match all the things
+async fn all_the_things(uri: Uri) -> impl IntoResponse {
+    let mut header_map = HeaderMap::new();
+    if uri.path() == "/" {
+        header_map.insert(header::SERVER, "axum".parse().unwrap());
+    }
 
-let app = Router::new()
-    .route("/plain_text", get(plain_text))
-    .route("/plain_text_string", get(plain_text_string))
-    .route("/bytes", get(bytes))
-    .route("/empty", get(empty))
-    .route("/empty_with_status", get(empty_with_status))
-    .route("/with_status", get(with_status))
-    .route("/with_headers", get(with_headers))
-    .route("/with_headers_and_status", get(with_headers_and_status))
-    .route("/with_easy_headers", get(with_easy_headers))
-    .route("/html", get(html))
-    .route("/json", get(json))
-    .route("/result", get(result))
-    .route("/response", get(response));
-# async {
-# axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-# };
+    (
+        // set status code
+        StatusCode::NOT_FOUND,
+        // headers ith an array
+        [("x-custom", "custom")],
+        // some extensions
+        Extension(Foo("foo")),
+        Extension(Foo("bar")),
+        // more headers, built dynamically
+        header_map,
+        // and finally the body
+        "foo",
+    )
+}
 ```
+
+In general you can return tuples like:
+
+- `(StatusCode, impl IntoResponse)`
+- `(Version, impl IntoResponse)`
+- `(StatusCode, Version, impl IntoResponse)`
+- `(T1, .., Tn, impl IntoResponse)` where `T1` to `Tn` all implement [`IntoResponseParts`].
+- `(StatusCode, T1, .., Tn, impl IntoResponse)` where `T1` to `Tn` all implement [`IntoResponseParts`].
+- `(StatusCode, Version, T1, .., Tn, impl IntoResponse)` where `T1` to `Tn` all implement [`IntoResponseParts`].
+
+This means you cannot accidentally override the status, version, or body, as [`IntoResponseParts`] only allows
+setting headers and extensions.
+
+Use [`Response`](crate::response::Response) for more low level control:
+
+```rust,no_run
+use axum::{
+    Json,
+    response::{IntoResponse, Response},
+    body::Full,
+    http::StatusCode,
+};
+
+async fn response() -> impl IntoResponse {
+    Response::builder()
+        .status(StatusCode::NOT_FOUND)
+        .header("x-foo", "custom header")
+        .body(Full::from("not found"))
+        .unwrap()
+}
+```
+
+[`IntoResponse`]: crate::response::IntoResponse
+[`IntoResponseParts`]: crate::response::IntoResponseParts
+[`StatusCode`]: http::StatusCode
