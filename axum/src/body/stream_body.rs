@@ -1,8 +1,8 @@
 use crate::{
     body::{self, Bytes, HttpBody},
+    response::{IntoResponse, Response},
     BoxError, Error,
 };
-use axum_core::response::{IntoResponse, Response};
 use futures_util::{
     ready,
     stream::{self, TryStream},
