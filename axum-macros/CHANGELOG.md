@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- Add `#[derive(TypedPath)]` for use with axum-extra's new "type safe" routing API ([#756])
+- **added:** Add `#[derive(TypedPath)]` for use with axum-extra's new "type safe" routing API ([#756])
 
 # 0.1.0 (31. January, 2022)
 
