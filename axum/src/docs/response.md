@@ -15,7 +15,7 @@ use axum::{
 // `()` gives an empty response
 async fn empty() {}
 
-// String get a `text/plain; charset=utf-8` content-type
+// String will get a `text/plain; charset=utf-8` content-type
 async fn plain_text(uri: Uri) -> String {
     format!("Hi from {}", uri.path())
 }
