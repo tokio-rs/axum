@@ -71,11 +71,8 @@ pub use self::request_parts::OriginalUri;
 pub use self::ws::WebSocketUpgrade;
 
 #[cfg(feature = "headers")]
-mod typed_header;
-
-#[cfg(feature = "headers")]
-#[doc(inline)]
-pub use self::typed_header::TypedHeader;
+#[doc(no_inline)]
+pub use crate::TypedHeader;
 
 pub(crate) fn has_content_type<B>(
     req: &RequestParts<B>,
