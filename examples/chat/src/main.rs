@@ -13,7 +13,7 @@ use axum::{
     },
     response::{Html, IntoResponse},
     routing::get,
-    AddExtensionLayer, Router,
+    Router,
 };
 use futures::{sink::SinkExt, stream::StreamExt};
 use std::{
@@ -39,7 +39,7 @@ async fn main() {
     let app = Router::new()
         .route("/", get(index))
         .route("/websocket", get(websocket_handler))
-        .layer(AddExtensionLayer::new(app_state));
+        .layer(Extension(app_state));
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
 

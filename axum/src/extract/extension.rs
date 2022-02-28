@@ -12,7 +12,6 @@ use std::ops::Deref;
 ///
 /// ```rust,no_run
 /// use axum::{
-///     AddExtensionLayer,
 ///     extract::Extension,
 ///     routing::get,
 ///     Router,
@@ -33,7 +32,7 @@ use std::ops::Deref;
 /// let app = Router::new().route("/", get(handler))
 ///     // Add middleware that inserts the state into all incoming request's
 ///     // extensions.
-///     .layer(AddExtensionLayer::new(state));
+///     .layer(Extension(state));
 /// # async {
 /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 /// # };
@@ -58,7 +57,7 @@ where
             .get::<T>()
             .ok_or_else(|| {
                 MissingExtension::from_err(format!(
-                    "Extension of type `{}` was not found. Perhaps you forgot to add it? See `axum::AddExtensionLayer`.",
+                    "Extension of type `{}` was not found. Perhaps you forgot to add it? See `axum::extract::Extension`.",
                     std::any::type_name::<T>()
                 ))
             })
@@ -93,5 +92,19 @@ where
         let mut res = ().into_response();
         res.extensions_mut().insert(self.0);
         res
+    }
+}
+
+impl<S, T> tower_layer::Layer<S> for Extension<T>
+where
+    T: Clone + Send + Sync + 'static,
+{
+    type Service = crate::AddExtension<S, T>;
+
+    fn layer(&self, inner: S) -> Self::Service {
+        crate::AddExtension {
+            inner,
+            value: self.0.clone(),
+        }
     }
 }

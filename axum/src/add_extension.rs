@@ -45,8 +45,8 @@ where
 /// [request extensions]: https://docs.rs/http/latest/http/struct.Extensions.html
 #[derive(Clone, Copy, Debug)]
 pub struct AddExtension<S, T> {
-    inner: S,
-    value: T,
+    pub(crate) inner: S,
+    pub(crate) value: T,
 }
 
 impl<S, T> AddExtension<S, T> {
