@@ -8,9 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 # Unreleased
 
 - **added:** Implement `tower::Layer` for `Extension` ([#801])
-- **changed:** Deprecate `AddExtensionLayer`. Use `Extension` instead
+- **changed:** Deprecate `AddExtensionLayer`. Use `Extension` instead ([#805])
 
 [#801]: https://github.com/tokio-rs/axum/pull/801
+[#805]: https://github.com/tokio-rs/axum/pull/805
 
 # 0.4.6 (22. February, 2022)
 
