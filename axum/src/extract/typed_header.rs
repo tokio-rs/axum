@@ -1,6 +1,6 @@
 use super::{FromRequest, RequestParts};
 use async_trait::async_trait;
-use axum_core::response::{IntoResponseParts, ResponseParts};
+use axum_core::response::{IntoResponse, IntoResponseParts, Response, ResponseParts};
 use headers::HeaderMapExt;
 use http::header::{HeaderName, HeaderValue};
 use std::ops::Deref;
@@ -82,7 +82,7 @@ where
                 T: IntoIterator<Item = HeaderValue>,
             {
                 for value in iter {
-                    self.res.insert_header(self.key, value);
+                    self.res.append_header(self.key, value);
                 }
             }
         }
@@ -126,10 +126,9 @@ pub enum TypedHeaderRejectionReason {
     Error(headers::Error),
 }
 
-impl IntoResponseParts for TypedHeaderRejection {
-    fn into_response_parts(self, res: &mut ResponseParts) {
-        res.set_status(http::StatusCode::BAD_REQUEST);
-        self.to_string().into_response_parts(res);
+impl IntoResponse for TypedHeaderRejection {
+    fn into_response(self) -> Response {
+        (http::StatusCode::BAD_REQUEST, self.to_string()).into_response()
     }
 }
 

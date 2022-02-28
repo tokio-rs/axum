@@ -1,10 +1,10 @@
 use crate::{
-    body::{Bytes, Full, HttpBody},
+    body::{Bytes, HttpBody},
     extract::{rejection::*, FromRequest, RequestParts},
     BoxError,
 };
 use async_trait::async_trait;
-use axum_core::response::{IntoResponseParts, ResponseParts};
+use axum_core::response::{IntoResponse, Response};
 use http::{
     header::{self, HeaderValue},
     StatusCode,
@@ -153,27 +153,29 @@ impl<T> From<T> for Json<T> {
     }
 }
 
-impl<T> IntoResponseParts for Json<T>
+impl<T> IntoResponse for Json<T>
 where
     T: Serialize,
 {
-    fn into_response_parts(self, res: &mut ResponseParts) {
+    fn into_response(self) -> Response {
         match serde_json::to_vec(&self.0) {
-            Ok(bytes) => {
-                res.set_body(Full::from(bytes));
-                res.insert_header(
+            Ok(bytes) => (
+                [(
                     header::CONTENT_TYPE,
                     HeaderValue::from_static(mime::APPLICATION_JSON.as_ref()),
-                );
-            }
-            Err(err) => {
-                res.set_status(StatusCode::INTERNAL_SERVER_ERROR);
-                res.insert_header(
+                )],
+                bytes,
+            )
+                .into_response(),
+            Err(err) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                [(
                     header::CONTENT_TYPE,
                     HeaderValue::from_static(mime::TEXT_PLAIN_UTF_8.as_ref()),
-                );
-                res.set_body(Full::from(err.to_string()));
-            }
+                )],
+                err.to_string(),
+            )
+                .into_response(),
         }
     }
 }

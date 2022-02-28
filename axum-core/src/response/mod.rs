@@ -11,7 +11,7 @@ use crate::{
 use bytes::{buf::Chain, Buf, Bytes, BytesMut};
 use http::{
     header::{self, HeaderMap, HeaderName, HeaderValue},
-    Extensions, StatusCode, Version,
+    StatusCode,
 };
 use http_body::{
     combinators::{MapData, MapErr},
@@ -25,6 +25,8 @@ use std::{
     task::{Context, Poll},
 };
 
+mod generic_impls;
+
 /// Type alias for [`http::Response`] whose body type defaults to [`BoxBody`], the most common body
 /// type used with axum.
 pub type Response<T = BoxBody> = http::Response<T>;
@@ -35,24 +37,6 @@ pub type Response<T = BoxBody> = http::Response<T>;
 pub trait IntoResponse {
     /// Create a response.
     fn into_response(self) -> Response;
-
-    /// This method seals `IntoResponse` as it contains a type that cannot be named. This is
-    /// intentional.
-    ///
-    /// Instead you must implement [`IntoResponseParts`] instead and rely on the blanket impl
-    /// `impl<T: IntoResponseParts> IntoResponse for T`. This means that any type that implements
-    /// [`IntoResponseParts`] also automatically implements `IntoResponse`.
-    // This method contains a type that cannot be named outside axum-core, thus sealing the trait.
-    // We cannot use a sealed super trait since we a blanket impl.
-    //
-    // The method is intentionally public so users will see it when they open the docs.
-    fn sealed(_: sealed::DontImplementThisTrait);
-}
-
-mod sealed {
-    #![allow(unreachable_pub, missing_debug_implementations)]
-
-    pub struct DontImplementThisTrait;
 }
 
 /// Trait for generating responses from individual parts.
@@ -167,80 +151,15 @@ pub trait IntoResponseParts {
     fn into_response_parts(self, res: &mut ResponseParts);
 }
 
-impl<T> IntoResponse for T
-where
-    T: IntoResponseParts,
-{
-    fn into_response(self) -> Response {
-        let mut parts = ResponseParts {
-            version: None,
-            status: StatusCode::OK,
-            headers: Ok(HeaderMap::new()),
-            extensions: Extensions::new(),
-            body: None,
-        };
-
-        self.into_response_parts(&mut parts);
-
-        let ResponseParts {
-            version,
-            status,
-            headers,
-            extensions,
-            body,
-        } = parts;
-
-        let headers = match headers {
-            Ok(headers) => headers,
-            Err(err) => {
-                return Response::builder()
-                    .status(StatusCode::INTERNAL_SERVER_ERROR)
-                    .body(body::boxed(http_body::Full::from(err)))
-                    .unwrap();
-            }
-        };
-
-        let mut res = Response::new(body.unwrap_or_else(|| body::boxed(http_body::Empty::new())));
-        if let Some(version) = version {
-            *res.version_mut() = version;
-        }
-        *res.status_mut() = status;
-        *res.headers_mut() = headers;
-        *res.extensions_mut() = extensions;
-
-        res
-    }
-
-    fn sealed(_: sealed::DontImplementThisTrait) {}
-}
-
 /// Parts of a response.
 ///
 /// Used with [`IntoResponseParts`].
 #[derive(Debug)]
 pub struct ResponseParts {
-    version: Option<Version>,
-    status: StatusCode,
-    headers: Result<HeaderMap, String>,
-    extensions: Extensions,
-    body: Option<BoxBody>,
+    res: Result<Response, String>,
 }
 
 impl ResponseParts {
-    /// Set the HTTP version of the response.
-    ///
-    /// The default version is decided by hyper based on the HTTP version of the request.
-    pub fn set_version(&mut self, version: Version) {
-        self.version = Some(version);
-    }
-
-    /// Set the status code of the response.
-    ///
-    /// The default status code is `200 OK`.
-    pub fn set_status(&mut self, status: StatusCode) {
-        self.status = status;
-    }
-
     /// Insert a header into the response.
     ///
     /// If the header already exists it will be overwritten.
@@ -279,11 +198,11 @@ impl ResponseParts {
         V::Error: fmt::Display,
         F: FnOnce(&mut HeaderMap, HeaderName, HeaderValue),
     {
-        if let Ok(headers) = &mut self.headers {
+        if let Ok(response) = &mut self.res {
             let key = match key.try_into() {
                 Ok(key) => key,
                 Err(err) => {
-                    self.headers = Err(err.to_string());
+                    self.res = Err(err.to_string());
                     return;
                 }
             };
@@ -291,12 +210,12 @@ impl ResponseParts {
             let value = match value.try_into() {
                 Ok(value) => value,
                 Err(err) => {
-                    self.headers = Err(err.to_string());
+                    self.res = Err(err.to_string());
                     return;
                 }
             };
 
-            f(headers, key, value);
+            f(response.headers_mut(), key, value);
         }
     }
 
@@ -307,18 +226,9 @@ impl ResponseParts {
     where
         T: Send + Sync + 'static,
     {
-        self.extensions.insert(extension);
-    }
-
-    /// Set the body of the response.
-    ///
-    /// If the response already has a body it will be overwritten.
-    pub fn set_body<B>(&mut self, body: B)
-    where
-        B: http_body::Body<Data = Bytes> + Send + 'static,
-        B::Error: Into<BoxError>,
-    {
-        self.body = Some(body::boxed(body));
+        if let Ok(res) = &mut self.res {
+            res.extensions_mut().insert(extension);
+        }
     }
 }
 
@@ -327,29 +237,11 @@ impl Extend<(Option<HeaderName>, HeaderValue)> for ResponseParts {
     where
         T: IntoIterator<Item = (Option<HeaderName>, HeaderValue)>,
     {
-        if let Ok(headers) = &mut self.headers {
-            headers.extend(iter);
+        if let Ok(res) = &mut self.res {
+            res.headers_mut().extend(iter);
         }
     }
 }
-
-macro_rules! impl_into_response_parts {
-    ( $($ty:ident),* $(,)? ) => {
-        #[allow(non_snake_case)]
-        impl<$($ty,)*> IntoResponseParts for ($($ty,)*)
-        where
-            $( $ty: IntoResponseParts, )*
-        {
-            fn into_response_parts(self, res: &mut ResponseParts) {
-                let ($($ty,)*) = self;
-                $( $ty.into_response_parts(res); )*
-
-            }
-        }
-    };
-}
-
-all_the_tuples!(impl_into_response_parts);
 
 impl<K, V, const N: usize> IntoResponseParts for [(K, V); N]
 where
@@ -365,21 +257,18 @@ where
     }
 }
 
-impl IntoResponseParts for () {
-    fn into_response_parts(self, _res: &mut ResponseParts) {}
+impl IntoResponse for () {
+    fn into_response(self) -> Response {
+        Empty::new().into_response()
+    }
 }
 
-impl IntoResponseParts for Infallible {
-    fn into_response_parts(self, _res: &mut ResponseParts) {
+impl IntoResponse for Infallible {
+    fn into_response(self) -> Response {
         match self {}
     }
 }
 
-// `Result<T, E>` implements `IntoResponse` and not `IntoResponseParts` because otherwise
-// `Result<impl IntoResponse, E>` wouldn't work.
-//
-// This means you cannot include results in tuples of parts, ie `(some_result, body)`. But
-// thats probably fine.
 impl<T, E> IntoResponse for Result<T, E>
 where
     T: IntoResponse,
@@ -391,8 +280,6 @@ where
             Err(err) => err.into_response(),
         }
     }
-
-    fn sealed(_: sealed::DontImplementThisTrait) {}
 }
 
 impl<B> IntoResponse for Response<B>
@@ -403,123 +290,122 @@ where
     fn into_response(self) -> Response {
         self.map(body::boxed)
     }
-
-    fn sealed(_: sealed::DontImplementThisTrait) {}
 }
 
 impl IntoResponse for http::response::Parts {
     fn into_response(self) -> Response {
         Response::from_parts(self, body::boxed(Empty::new()))
     }
-
-    fn sealed(_: sealed::DontImplementThisTrait) {}
 }
 
-impl IntoResponseParts for Full<Bytes> {
-    fn into_response_parts(self, res: &mut ResponseParts) {
-        res.set_body(self);
+impl IntoResponse for Full<Bytes> {
+    fn into_response(self) -> Response {
+        Response::new(body::boxed(self))
     }
 }
 
-impl IntoResponseParts for Empty<Bytes> {
-    fn into_response_parts(self, res: &mut ResponseParts) {
-        res.set_body(self);
+impl IntoResponse for Empty<Bytes> {
+    fn into_response(self) -> Response {
+        Response::new(body::boxed(self))
     }
 }
 
-impl<E> IntoResponseParts for http_body::combinators::BoxBody<Bytes, E>
+impl<E> IntoResponse for http_body::combinators::BoxBody<Bytes, E>
 where
     E: Into<BoxError> + 'static,
 {
-    fn into_response_parts(self, res: &mut ResponseParts) {
-        res.set_body(self);
+    fn into_response(self) -> Response {
+        Response::new(body::boxed(self))
     }
 }
 
-impl<E> IntoResponseParts for http_body::combinators::UnsyncBoxBody<Bytes, E>
+impl<E> IntoResponse for http_body::combinators::UnsyncBoxBody<Bytes, E>
 where
     E: Into<BoxError> + 'static,
 {
-    fn into_response_parts(self, res: &mut ResponseParts) {
-        res.set_body(self);
+    fn into_response(self) -> Response {
+        Response::new(body::boxed(self))
     }
 }
 
-impl<B, F> IntoResponseParts for MapData<B, F>
+impl<B, F> IntoResponse for MapData<B, F>
 where
     B: http_body::Body + Send + 'static,
     F: FnMut(B::Data) -> Bytes + Send + 'static,
     B::Error: Into<BoxError>,
 {
-    fn into_response_parts(self, res: &mut ResponseParts) {
-        res.set_body(self);
+    fn into_response(self) -> Response {
+        Response::new(body::boxed(self))
     }
 }
 
-impl<B, F, E> IntoResponseParts for MapErr<B, F>
+impl<B, F, E> IntoResponse for MapErr<B, F>
 where
     B: http_body::Body<Data = Bytes> + Send + 'static,
     F: FnMut(B::Error) -> E + Send + 'static,
     E: Into<BoxError>,
 {
-    fn into_response_parts(self, res: &mut ResponseParts) {
-        res.set_body(self);
+    fn into_response(self) -> Response {
+        Response::new(body::boxed(self))
     }
 }
 
-impl IntoResponseParts for &'static str {
-    fn into_response_parts(self, res: &mut ResponseParts) {
-        Cow::Borrowed(self).into_response_parts(res)
+impl IntoResponse for &'static str {
+    fn into_response(self) -> Response {
+        Cow::Borrowed(self).into_response()
     }
 }
 
-impl IntoResponseParts for String {
-    fn into_response_parts(self, res: &mut ResponseParts) {
-        Cow::<'static, str>::Owned(self).into_response_parts(res)
+impl IntoResponse for String {
+    fn into_response(self) -> Response {
+        Cow::<'static, str>::Owned(self).into_response()
     }
 }
 
-impl IntoResponseParts for Cow<'static, str> {
-    fn into_response_parts(self, res: &mut ResponseParts) {
-        res.set_body(Full::from(self));
-        res.insert_header(
+impl IntoResponse for Cow<'static, str> {
+    fn into_response(self) -> Response {
+        let mut res = Full::from(self).into_response();
+        res.headers_mut().insert(
             header::CONTENT_TYPE,
             HeaderValue::from_static(mime::TEXT_PLAIN_UTF_8.as_ref()),
         );
+        res
     }
 }
 
-impl IntoResponseParts for Bytes {
-    fn into_response_parts(self, res: &mut ResponseParts) {
-        res.set_body(Full::from(self));
-        res.insert_header(
+impl IntoResponse for Bytes {
+    fn into_response(self) -> Response {
+        let mut res = Full::from(self).into_response();
+        res.headers_mut().insert(
             header::CONTENT_TYPE,
             HeaderValue::from_static(mime::APPLICATION_OCTET_STREAM.as_ref()),
         );
+        res
     }
 }
 
-impl IntoResponseParts for BytesMut {
-    fn into_response_parts(self, res: &mut ResponseParts) {
-        self.freeze().into_response_parts(res)
+impl IntoResponse for BytesMut {
+    fn into_response(self) -> Response {
+        self.freeze().into_response()
     }
 }
 
-impl<T, U> IntoResponseParts for Chain<T, U>
+impl<T, U> IntoResponse for Chain<T, U>
 where
     T: Buf + Unpin + Send + 'static,
     U: Buf + Unpin + Send + 'static,
 {
-    fn into_response_parts(self, res: &mut ResponseParts) {
+    fn into_response(self) -> Response {
         let (first, second) = self.into_inner();
-        res.set_body(BytesChainBody {
+        let mut res = Response::new(body::boxed(BytesChainBody {
             first: Some(first),
             second: Some(second),
-        });
-        res.insert_header(
+        }));
+        res.headers_mut().insert(
             header::CONTENT_TYPE,
             HeaderValue::from_static(mime::APPLICATION_OCTET_STREAM.as_ref()),
         );
+        res
     }
 }
 
@@ -577,71 +463,39 @@ where
     }
 }
 
-impl IntoResponseParts for &'static [u8] {
-    fn into_response_parts(self, res: &mut ResponseParts) {
-        Cow::Borrowed(self).into_response_parts(res)
+impl IntoResponse for &'static [u8] {
+    fn into_response(self) -> Response {
+        Cow::Borrowed(self).into_response()
     }
 }
 
-impl IntoResponseParts for Vec<u8> {
-    fn into_response_parts(self, res: &mut ResponseParts) {
-        Cow::<'static, [u8]>::Owned(self).into_response_parts(res)
+impl IntoResponse for Vec<u8> {
+    fn into_response(self) -> Response {
+        Cow::<'static, [u8]>::Owned(self).into_response()
     }
 }
 
-impl IntoResponseParts for Cow<'static, [u8]> {
-    fn into_response_parts(self, res: &mut ResponseParts) {
-        res.set_body(Full::from(self));
-        res.insert_header(
+impl IntoResponse for Cow<'static, [u8]> {
+    fn into_response(self) -> Response {
+        let mut res = Full::from(self).into_response();
+        res.headers_mut().insert(
             header::CONTENT_TYPE,
             HeaderValue::from_static(mime::APPLICATION_OCTET_STREAM.as_ref()),
         );
+        res
     }
 }
 
-impl IntoResponseParts for StatusCode {
-    fn into_response_parts(self, res: &mut ResponseParts) {
-        res.set_status(self);
+impl IntoResponse for StatusCode {
+    fn into_response(self) -> Response {
+        let mut res = ().into_response();
+        *res.status_mut() = self;
+        res
     }
 }
 
 impl IntoResponseParts for HeaderMap {
     fn into_response_parts(self, res: &mut ResponseParts) {
         res.extend(self);
-    }
-}
-
-impl IntoResponseParts for Version {
-    fn into_response_parts(self, res: &mut ResponseParts) {
-        res.set_version(self);
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    #[allow(unused_imports)]
-    use super::*;
-
-    #[tokio::test]
-    async fn building_response_from_tuples() {
-        let mut headers = HeaderMap::new();
-        headers.insert(header::SERVER, "axum".parse().unwrap());
-
-        let res = (
-            StatusCode::NOT_FOUND,
-            [("x-foo", "foo")],
-            headers,
-            "body",
-            Version::HTTP_2,
-        )
-            .into_response();
-
-        assert_eq!(res.status(), StatusCode::NOT_FOUND);
-        assert_eq!(res.headers()["server"], "axum");
-        assert_eq!(res.headers()["x-foo"], "foo");
-        assert_eq!(res.version(), Version::HTTP_2);
-
-        let body = crate::body::to_bytes(res).await.unwrap();
-        assert_eq!(&body[..], b"body");
     }
 }

@@ -11,7 +11,7 @@ use axum::{
     extract::{FromRequest, RequestParts, TypedHeader},
     headers::{authorization::Bearer, Authorization},
     http::StatusCode,
-    response::{IntoResponseParts, ResponseParts},
+    response::{IntoResponse, Response},
     routing::{get, post},
     Json, Router,
 };
@@ -140,8 +140,8 @@ where
     }
 }
 
-impl IntoResponseParts for AuthError {
-    fn into_response_parts(self, res: &mut ResponseParts) {
+impl IntoResponse for AuthError {
+    fn into_response(self) -> Response {
         let (status, error_message) = match self {
             AuthError::WrongCredentials => (StatusCode::UNAUTHORIZED, "Wrong credentials"),
             AuthError::MissingCredentials => (StatusCode::BAD_REQUEST, "Missing credentials"),
@@ -151,7 +151,7 @@ impl IntoResponseParts for AuthError {
         let body = Json(json!({
             "error": error_message,
         }));
-        (status, body).into_response_parts(res)
+        (status, body).into_response()
     }
 }
 

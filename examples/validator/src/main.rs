@@ -14,7 +14,7 @@ use async_trait::async_trait;
 use axum::{
     extract::{Form, FromRequest, RequestParts},
     http::StatusCode,
-    response::{Html, IntoResponseParts, ResponseParts},
+    response::{Html, IntoResponse, Response},
     routing::get,
     BoxError, Router,
 };
@@ -82,8 +82,8 @@ pub enum ServerError {
     AxumFormRejection(#[from] axum::extract::rejection::FormRejection),
 }
 
-impl IntoResponseParts for ServerError {
-    fn into_response_parts(self, res: &mut ResponseParts) {
+impl IntoResponse for ServerError {
+    fn into_response(self) -> Response {
         match self {
             ServerError::ValidationError(_) => {
                 let message = format!("Input validation error: [{}]", self).replace('\n', ", ");
@@ -91,6 +91,6 @@ impl IntoResponseParts for ServerError {
             }
             ServerError::AxumFormRejection(_) => (StatusCode::BAD_REQUEST, self.to_string()),
         }
-        .into_response_parts(res);
+        .into_response()
     }
 }

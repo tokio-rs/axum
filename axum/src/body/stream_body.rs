@@ -1,8 +1,8 @@
 use crate::{
-    body::{Bytes, HttpBody},
+    body::{self, Bytes, HttpBody},
     BoxError, Error,
 };
-use axum_core::response::{IntoResponseParts, ResponseParts};
+use axum_core::response::{IntoResponse, Response};
 use futures_util::{
     ready,
     stream::{self, TryStream},
@@ -73,14 +73,14 @@ impl<S> StreamBody<S> {
     }
 }
 
-impl<S> IntoResponseParts for StreamBody<S>
+impl<S> IntoResponse for StreamBody<S>
 where
     S: TryStream + Send + 'static,
     S::Ok: Into<Bytes>,
     S::Error: Into<BoxError>,
 {
-    fn into_response_parts(self, res: &mut ResponseParts) {
-        res.set_body(self);
+    fn into_response(self) -> Response {
+        Response::new(body::boxed(self))
     }
 }
 

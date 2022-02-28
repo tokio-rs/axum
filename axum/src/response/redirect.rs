@@ -1,4 +1,4 @@
-use axum_core::response::{IntoResponseParts, ResponseParts};
+use axum_core::response::{IntoResponse, Response};
 use http::{header::LOCATION, HeaderValue, StatusCode, Uri};
 use std::convert::TryFrom;
 
@@ -108,9 +108,8 @@ impl Redirect {
     }
 }
 
-impl IntoResponseParts for Redirect {
-    fn into_response_parts(self, res: &mut ResponseParts) {
-        res.set_status(self.status_code);
-        res.insert_header(LOCATION, self.location);
+impl IntoResponse for Redirect {
+    fn into_response(self) -> Response {
+        (self.status_code, [(LOCATION, self.location)]).into_response()
     }
 }

@@ -58,10 +58,9 @@ macro_rules! define_rejection {
         pub struct $name;
 
         #[allow(deprecated)]
-        impl $crate::response::IntoResponseParts for $name {
-            fn into_response_parts(self, res: &mut $crate::response::ResponseParts) {
-                res.set_body(crate::body::Full::from($body));
-                res.set_status(http::StatusCode::$status);
+        impl $crate::response::IntoResponse for $name {
+            fn into_response(self) -> $crate::response::Response {
+                (http::StatusCode::$status, $body).into_response()
             }
         }
 
@@ -99,10 +98,12 @@ macro_rules! define_rejection {
             }
         }
 
-        impl crate::response::IntoResponseParts for $name {
-            fn into_response_parts(self, res: &mut crate::response::ResponseParts) {
-                res.set_body(crate::body::Full::from(format!(concat!($body, ": {}"), self.0)));
-                res.set_status(http::StatusCode::$status);
+        impl crate::response::IntoResponse for $name {
+            fn into_response(self) -> $crate::response::Response {
+                (
+                    http::StatusCode::$status,
+                    format!(concat!($body, ": {}"), self.0),
+                ).into_response()
             }
         }
 
@@ -138,11 +139,11 @@ macro_rules! composite_rejection {
             ),+
         }
 
-        impl $crate::response::IntoResponseParts for $name {
-            fn into_response_parts(self, res: &mut crate::response::ResponseParts) {
+        impl $crate::response::IntoResponse for $name {
+            fn into_response(self) -> $crate::response::Response {
                 match self {
                     $(
-                        Self::$variant(inner) => inner.into_response_parts(res),
+                        Self::$variant(inner) => inner.into_response(),
                     )+
                 }
             }

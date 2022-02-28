@@ -11,7 +11,7 @@ use axum::{
     async_trait,
     extract::{Extension, Path},
     http::StatusCode,
-    response::{IntoResponseParts, ResponseParts},
+    response::{IntoResponse, Response},
     routing::{get, post},
     AddExtensionLayer, Json, Router,
 };
@@ -90,8 +90,8 @@ impl From<UserRepoError> for AppError {
     }
 }
 
-impl IntoResponseParts for AppError {
-    fn into_response_parts(self, res: &mut ResponseParts) {
+impl IntoResponse for AppError {
+    fn into_response(self) -> Response {
         let (status, error_message) = match self {
             AppError::UserRepo(UserRepoError::NotFound) => {
                 (StatusCode::NOT_FOUND, "User not found")
@@ -105,7 +105,7 @@ impl IntoResponseParts for AppError {
             "error": error_message,
         }));
 
-        (status, body).into_response_parts(res)
+        (status, body).into_response()
     }
 }
 
