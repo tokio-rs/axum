@@ -1,6 +1,6 @@
 use super::{IntoResponse, IntoResponseParts, Response, ResponseParts};
 use crate::body;
-use http::StatusCode;
+use http::{StatusCode, Version};
 
 impl<T> IntoResponse for T
 where
@@ -75,6 +75,33 @@ macro_rules! impl_into_response {
 
                 match parts.res {
                     Ok(mut res) => {
+                        *res.status_mut() = status;
+                        res
+                    }
+                    Err(err) => (StatusCode::INTERNAL_SERVER_ERROR, err).into_response(),
+                }
+            }
+        }
+
+        #[allow(non_snake_case)]
+        impl<R, $($ty,)*> IntoResponse for (Version, StatusCode, $($ty),*, R)
+        where
+            $( $ty: IntoResponseParts, )*
+            R: IntoResponse,
+        {
+            fn into_response(self) -> Response {
+                let (version, status, $($ty),*, res) = self;
+
+                let res = res.into_response();
+                let mut parts = ResponseParts { res: Ok(res) };
+
+                $(
+                    $ty.into_response_parts(&mut parts);
+                )*
+
+                match parts.res {
+                    Ok(mut res) => {
+                        *res.version_mut() = version;
                         *res.status_mut() = status;
                         res
                     }
