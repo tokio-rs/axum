@@ -57,15 +57,7 @@ impl IntoResponse for ErasedJson {
                 bytes,
             )
                 .into_response(),
-            Err(err) => (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                [(
-                    header::CONTENT_TYPE,
-                    HeaderValue::from_static(mime::TEXT_PLAIN_UTF_8.as_ref()),
-                )],
-                err.to_string(),
-            )
-                .into_response(),
+            Err(err) => (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response(),
         }
     }
 }
