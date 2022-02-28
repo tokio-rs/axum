@@ -1,3 +1,11 @@
+//! Example async-graphql application.
+//!
+//! Run with
+//!
+//! ```not_rust
+//! cargo run -p example-async-graphql
+//! ```
+
 mod starwars;
 
 use async_graphql::{
