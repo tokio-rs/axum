@@ -2,7 +2,7 @@ use super::{IntoResponseParts, Response, ResponseParts};
 use crate::{body, BoxError};
 use bytes::{buf::Chain, Buf, Bytes, BytesMut};
 use http::{
-    header::{self, HeaderMap, HeaderValue},
+    header::{self, HeaderMap, HeaderName, HeaderValue},
     StatusCode, Version,
 };
 use http_body::{
@@ -11,7 +11,8 @@ use http_body::{
 };
 use std::{
     borrow::Cow,
-    convert::Infallible,
+    convert::{Infallible, TryInto},
+    fmt,
     pin::Pin,
     task::{Context, Poll},
 };
@@ -66,7 +67,7 @@ use std::{
 /// ```
 ///
 /// Or if you have a custom body type you'll also need to implement
-/// `IntoResponseParts` for it:
+/// `IntoResponse` for it:
 ///
 /// ```rust
 /// use axum::{
@@ -372,23 +373,6 @@ impl IntoResponse for Cow<'static, [u8]> {
     }
 }
 
-impl<T> IntoResponse for T
-where
-    T: IntoResponseParts,
-{
-    fn into_response(self) -> Response {
-        let res = ().into_response();
-        let mut parts = ResponseParts { res: Ok(res) };
-
-        self.into_response_parts(&mut parts);
-
-        match parts.res {
-            Ok(res) => res,
-            Err(err) => (StatusCode::INTERNAL_SERVER_ERROR, err).into_response(),
-        }
-    }
-}
-
 impl<R> IntoResponse for (StatusCode, R)
 where
     R: IntoResponse,
@@ -420,6 +404,46 @@ where
         let mut res = res.into_response();
         *res.version_mut() = version;
         *res.status_mut() = status;
+        res
+    }
+}
+
+impl IntoResponse for HeaderMap {
+    fn into_response(self) -> Response {
+        let mut res = ().into_response();
+        *res.headers_mut() = self;
+        res
+    }
+}
+
+impl<K, V, const N: usize> IntoResponse for [(K, V); N]
+where
+    K: TryInto<HeaderName>,
+    K::Error: fmt::Display,
+    V: TryInto<HeaderValue>,
+    V::Error: fmt::Display,
+{
+    fn into_response(self) -> Response {
+        let mut res = ().into_response();
+
+        for (key, value) in self {
+            let key = match key.try_into() {
+                Ok(key) => key,
+                Err(err) => {
+                    return (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response()
+                }
+            };
+
+            let value = match value.try_into() {
+                Ok(value) => value,
+                Err(err) => {
+                    return (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response()
+                }
+            };
+
+            res.headers_mut().insert(key, value);
+        }
+
         res
     }
 }

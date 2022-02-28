@@ -1,7 +1,7 @@
 use super::{rejection::*, FromRequest, RequestParts};
 use crate::response::IntoResponseParts;
 use async_trait::async_trait;
-use axum_core::response::ResponseParts;
+use axum_core::response::{IntoResponse, Response, ResponseParts};
 use std::ops::Deref;
 
 /// Extractor that gets a value from request extensions.
@@ -82,5 +82,16 @@ where
 {
     fn into_response_parts(self, res: &mut ResponseParts) {
         res.insert_extension(self.0);
+    }
+}
+
+impl<T> IntoResponse for Extension<T>
+where
+    T: Send + Sync + 'static,
+{
+    fn into_response(self) -> Response {
+        let mut res = ().into_response();
+        res.extensions_mut().insert(self.0);
+        res
     }
 }

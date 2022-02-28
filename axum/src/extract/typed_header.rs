@@ -96,6 +96,17 @@ where
     }
 }
 
+impl<T> IntoResponse for TypedHeader<T>
+where
+    T: headers::Header,
+{
+    fn into_response(self) -> Response {
+        let mut res = ().into_response();
+        res.headers_mut().typed_insert(self.0);
+        res
+    }
+}
+
 /// Rejection used for [`TypedHeader`](super::TypedHeader).
 #[cfg(feature = "headers")]
 #[derive(Debug)]
