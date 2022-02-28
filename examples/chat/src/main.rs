@@ -93,7 +93,7 @@ async fn websocket(stream: WebSocket, state: Arc<AppState>) {
 
     // Send joined message to all subscribers.
     let msg = format!("{} joined.", username);
-    tracing::debug!("{}",msg);
+    tracing::debug!("{}", msg);
     let _ = state.tx.send(msg);
 
     // This task will receive broadcast messages and send text message to our client.
