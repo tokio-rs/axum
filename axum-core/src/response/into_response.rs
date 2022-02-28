@@ -50,7 +50,7 @@ use std::{
 ///             MyError::SomethingElseWentWrong => "something else went wrong",
 ///         };
 ///
-///         // its often easier to implement `IntoResponse` by calling other implementations
+///         // its often easiest to implement `IntoResponse` by calling other implementations
 ///         (StatusCode::INTERNAL_SERVER_ERROR, body).into_response()
 ///     }
 /// }

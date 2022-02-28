@@ -4,7 +4,7 @@ use std::{convert::TryInto, fmt};
 
 /// Trait for adding headers and extensions to a response.
 ///
-/// You generally shouldn't need to implement this trait manually. Its recommended instead to rely
+/// You generally don't need to implement this trait manually. It's recommended instead to rely
 /// on the implementations in axum.
 pub trait IntoResponseParts {
     /// Set parts of the response
@@ -22,7 +22,7 @@ pub struct ResponseParts {
 impl ResponseParts {
     /// Insert a header into the response.
     ///
-    /// If the header already exists it will be overwritten.
+    /// If the header already exists, it will be overwritten.
     pub fn insert_header<K, V>(&mut self, key: K, value: V)
     where
         K: TryInto<HeaderName>,
