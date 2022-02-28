@@ -22,7 +22,7 @@ macro_rules! define_rejection {
             fn into_response(self) -> $crate::response::Response {
                 (
                     http::StatusCode::$status,
-                    http_body::Full::from(format!(concat!($body, ": {}"), self.0))
+                    format!(concat!($body, ": {}"), self.0)
                 ).into_response()
             }
         }
