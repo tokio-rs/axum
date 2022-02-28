@@ -271,15 +271,15 @@ fn extract_each_field_rejection(
             .map(|field| {
                 let variant_name = rejection_variant_name(field)?;
                 Ok(quote! {
-                    Self::#variant_name(inner) => inner.into_response_parts(res),
+                    Self::#variant_name(inner) => inner.into_response(),
                 })
             })
             .collect::<syn::Result<Vec<_>>>()?;
 
         quote! {
             #[automatically_derived]
-            impl ::axum::response::IntoResponseParts for #rejection_ident {
-                fn into_response_parts(self, res: &mut ::axum::response::ResponseParts) {
+            impl ::axum::response::IntoResponse for #rejection_ident {
+                fn into_response(self) -> ::axum::response::Response {
                     match self {
                         #(#arms)*
                     }
