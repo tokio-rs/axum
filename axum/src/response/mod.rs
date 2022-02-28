@@ -1,7 +1,7 @@
 #![doc = include_str!("../docs/response.md")]
 
 use crate::body::{Bytes, Full};
-use http::header;
+use http::{header, HeaderValue};
 
 mod redirect;
 
@@ -29,7 +29,10 @@ where
 {
     fn into_response(self) -> Response {
         (
-            [(header::CONTENT_TYPE, mime::TEXT_HTML_UTF_8.as_ref())],
+            [(
+                header::CONTENT_TYPE,
+                HeaderValue::from_static(mime::TEXT_HTML_UTF_8.as_ref()),
+            )],
             self.0.into(),
         )
             .into_response()
