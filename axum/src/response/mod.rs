@@ -11,6 +11,9 @@ pub mod sse;
 #[cfg(feature = "json")]
 pub use crate::Json;
 
+#[doc(no_inline)]
+pub use crate::Extension;
+
 #[doc(inline)]
 pub use axum_core::response::{IntoResponse, IntoResponseParts, Response, ResponseParts};
 

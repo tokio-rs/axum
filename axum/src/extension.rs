@@ -1,20 +1,20 @@
-use super::{rejection::*, FromRequest, RequestParts};
+use crate::extract::{rejection::*, FromRequest, RequestParts};
 use crate::response::IntoResponseParts;
 use async_trait::async_trait;
 use axum_core::response::{IntoResponse, Response, ResponseParts};
 use std::ops::Deref;
 
-/// Extractor that gets a value from request extensions.
+/// Extractor and response for extensions.
+///
+/// # As extractor
 ///
 /// This is commonly used to share state across handlers.
 ///
-/// # Example
-///
 /// ```rust,no_run
 /// use axum::{
-///     extract::Extension,
-///     routing::get,
 ///     Router,
+///     Extension,
+///     routing::get,
 /// };
 /// use std::sync::Arc;
 ///
@@ -40,6 +40,27 @@ use std::ops::Deref;
 ///
 /// If the extension is missing it will reject the request with a `500 Internal
 /// Server Error` response.
+///
+/// # As response
+///
+/// Response extensions can be used to share state with middleware.
+///
+/// ```rust
+/// use axum::{
+///     Extension,
+///     response::IntoResponse,
+/// };
+///
+/// async fn handler() -> impl IntoResponse {
+///     (
+///         Extension(Foo("foo")),
+///         "Hello, World!"
+///     )
+/// }
+///
+/// #[derive(Clone)]
+/// struct Foo(&'static str);
+/// ```
 #[derive(Debug, Clone, Copy)]
 pub struct Extension<T>(pub T);
 
@@ -57,7 +78,7 @@ where
             .get::<T>()
             .ok_or_else(|| {
                 MissingExtension::from_err(format!(
-                    "Extension of type `{}` was not found. Perhaps you forgot to add it? See `axum::extract::Extension`.",
+                    "Extension of type `{}` was not found. Perhaps you forgot to add it? See `axum::Extension`.",
                     std::any::type_name::<T>()
                 ))
             })
