@@ -21,8 +21,6 @@ where
     }
 }
 
-// TODO(david): macroify these impls
-
 impl<R> IntoResponse for (StatusCode, R)
 where
     R: IntoResponse,
@@ -34,131 +32,57 @@ where
     }
 }
 
-impl<R, T1> IntoResponse for (T1, R)
-where
-    T1: IntoResponseParts,
-    R: IntoResponse,
-{
-    fn into_response(self) -> Response {
-        let res = self.1.into_response();
-        let mut parts = ResponseParts { res: Ok(res) };
+macro_rules! impl_into_response {
+    ( $($ty:ident),* $(,)? ) => {
+        #[allow(non_snake_case)]
+        impl<R, $($ty,)*> IntoResponse for ($($ty),*, R)
+        where
+            $( $ty: IntoResponseParts, )*
+            R: IntoResponse,
+        {
+            fn into_response(self) -> Response {
+                let ($($ty),*, res) = self;
 
-        self.0.into_response_parts(&mut parts);
+                let res = res.into_response();
+                let mut parts = ResponseParts { res: Ok(res) };
 
-        match parts.res {
-            Ok(res) => res,
-            Err(err) => (StatusCode::INTERNAL_SERVER_ERROR, err).into_response(),
-        }
-    }
-}
+                $(
+                    $ty.into_response_parts(&mut parts);
+                )*
 
-impl<R, T1> IntoResponse for (StatusCode, T1, R)
-where
-    T1: IntoResponseParts,
-    R: IntoResponse,
-{
-    fn into_response(self) -> Response {
-        let res = self.2.into_response();
-        let mut parts = ResponseParts { res: Ok(res) };
-
-        self.1.into_response_parts(&mut parts);
-
-        match parts.res {
-            Ok(mut res) => {
-                *res.status_mut() = self.0;
-                res
+                match parts.res {
+                    Ok(res) => res,
+                    Err(err) => (StatusCode::INTERNAL_SERVER_ERROR, err).into_response(),
+                }
             }
-            Err(err) => (StatusCode::INTERNAL_SERVER_ERROR, err).into_response(),
         }
-    }
-}
 
-impl<R, T1, T2> IntoResponse for (T1, T2, R)
-where
-    T1: IntoResponseParts,
-    T2: IntoResponseParts,
-    R: IntoResponse,
-{
-    fn into_response(self) -> Response {
-        let res = self.2.into_response();
-        let mut parts = ResponseParts { res: Ok(res) };
+        #[allow(non_snake_case)]
+        impl<R, $($ty,)*> IntoResponse for (StatusCode, $($ty),*, R)
+        where
+            $( $ty: IntoResponseParts, )*
+            R: IntoResponse,
+        {
+            fn into_response(self) -> Response {
+                let (status, $($ty),*, res) = self;
 
-        self.0.into_response_parts(&mut parts);
-        self.1.into_response_parts(&mut parts);
+                let res = res.into_response();
+                let mut parts = ResponseParts { res: Ok(res) };
 
-        match parts.res {
-            Ok(res) => res,
-            Err(err) => (StatusCode::INTERNAL_SERVER_ERROR, err).into_response(),
-        }
-    }
-}
+                $(
+                    $ty.into_response_parts(&mut parts);
+                )*
 
-impl<R, T1, T2> IntoResponse for (StatusCode, T1, T2, R)
-where
-    T1: IntoResponseParts,
-    T2: IntoResponseParts,
-    R: IntoResponse,
-{
-    fn into_response(self) -> Response {
-        let res = self.3.into_response();
-        let mut parts = ResponseParts { res: Ok(res) };
-
-        self.1.into_response_parts(&mut parts);
-        self.2.into_response_parts(&mut parts);
-
-        match parts.res {
-            Ok(mut res) => {
-                *res.status_mut() = self.0;
-                res
+                match parts.res {
+                    Ok(mut res) => {
+                        *res.status_mut() = status;
+                        res
+                    }
+                    Err(err) => (StatusCode::INTERNAL_SERVER_ERROR, err).into_response(),
+                }
             }
-            Err(err) => (StatusCode::INTERNAL_SERVER_ERROR, err).into_response(),
         }
     }
 }
 
-impl<R, T1, T2, T3> IntoResponse for (T1, T2, T3, R)
-where
-    T1: IntoResponseParts,
-    T2: IntoResponseParts,
-    T3: IntoResponseParts,
-    R: IntoResponse,
-{
-    fn into_response(self) -> Response {
-        let res = self.3.into_response();
-        let mut parts = ResponseParts { res: Ok(res) };
-
-        self.0.into_response_parts(&mut parts);
-        self.1.into_response_parts(&mut parts);
-        self.2.into_response_parts(&mut parts);
-
-        match parts.res {
-            Ok(res) => res,
-            Err(err) => (StatusCode::INTERNAL_SERVER_ERROR, err).into_response(),
-        }
-    }
-}
-
-impl<R, T1, T2, T3> IntoResponse for (StatusCode, T1, T2, T3, R)
-where
-    T1: IntoResponseParts,
-    T2: IntoResponseParts,
-    T3: IntoResponseParts,
-    R: IntoResponse,
-{
-    fn into_response(self) -> Response {
-        let res = self.4.into_response();
-        let mut parts = ResponseParts { res: Ok(res) };
-
-        self.1.into_response_parts(&mut parts);
-        self.2.into_response_parts(&mut parts);
-        self.3.into_response_parts(&mut parts);
-
-        match parts.res {
-            Ok(mut res) => {
-                *res.status_mut() = self.0;
-                res
-            }
-            Err(err) => (StatusCode::INTERNAL_SERVER_ERROR, err).into_response(),
-        }
-    }
-}
+all_the_tuples!(impl_into_response);
