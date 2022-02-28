@@ -13,7 +13,7 @@ use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
     routing::{get, post},
-    AddExtensionLayer, Json, Router,
+    Json, Router,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -41,7 +41,7 @@ async fn main() {
         .route("/users", post(users_create))
         // Add our `user_repo` to all request's extensions so handlers can access
         // it.
-        .layer(AddExtensionLayer::new(user_repo));
+        .layer(Extension(user_repo));
 
     // Run our application
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));

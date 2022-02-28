@@ -16,7 +16,7 @@ use axum::{
     },
     response::IntoResponse,
     routing::get,
-    AddExtensionLayer, Router,
+    Router,
 };
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
@@ -38,7 +38,7 @@ async fn main() {
 
     let app = Router::new()
         .route("/", get(handler))
-        .layer(AddExtensionLayer::new(store));
+        .layer(Extension(store));
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
     tracing::debug!("listening on {}", addr);

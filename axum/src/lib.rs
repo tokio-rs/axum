@@ -173,13 +173,11 @@
 //!
 //! ## Using request extensions
 //!
-//! The easiest way to extract state in handlers is using [`AddExtension`]
-//! middleware (applied with [`AddExtensionLayer`]) and the
-//! [`Extension`](crate::extract::Extension) extractor:
+//! The easiest way to extract state in handlers is using [`Extension`](crate::extract::Extension)
+//! as layer and extractor:
 //!
 //! ```rust,no_run
 //! use axum::{
-//!     AddExtensionLayer,
 //!     extract::Extension,
 //!     routing::get,
 //!     Router,
@@ -194,7 +192,7 @@
 //!
 //! let app = Router::new()
 //!     .route("/", get(handler))
-//!     .layer(AddExtensionLayer::new(shared_state));
+//!     .layer(Extension(shared_state));
 //!
 //! async fn handler(
 //!     Extension(state): Extension<Arc<State>>,
@@ -217,7 +215,6 @@
 //!
 //! ```rust,no_run
 //! use axum::{
-//!     AddExtensionLayer,
 //!     Json,
 //!     extract::{Extension, Path},
 //!     routing::{get, post},

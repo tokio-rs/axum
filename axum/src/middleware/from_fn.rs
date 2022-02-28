@@ -102,11 +102,11 @@ use tower_service::Service;
 /// ```rust
 /// use axum::{
 ///     Router,
+///     extract::Extension,
 ///     http::{Request, StatusCode},
 ///     routing::get,
 ///     response::IntoResponse,
 ///     middleware::{self, Next},
-///     AddExtensionLayer,
 /// };
 /// use tower::ServiceBuilder;
 ///
@@ -129,7 +129,7 @@ use tower_service::Service;
 ///     .route("/", get(|| async { /* ... */ }))
 ///     .layer(
 ///         ServiceBuilder::new()
-///             .layer(AddExtensionLayer::new(state))
+///             .layer(Extension(state))
 ///             .layer(middleware::from_fn(my_middleware)),
 ///     );
 /// # let app: Router = app;

@@ -29,7 +29,7 @@ use std::{
     time::Duration,
 };
 use tower::{BoxError, ServiceBuilder};
-use tower_http::{add_extension::AddExtensionLayer, trace::TraceLayer};
+use tower_http::trace::TraceLayer;
 use uuid::Uuid;
 
 #[tokio::main]
@@ -61,7 +61,7 @@ async fn main() {
                 }))
                 .timeout(Duration::from_secs(10))
                 .layer(TraceLayer::new_for_http())
-                .layer(AddExtensionLayer::new(db))
+                .layer(Extension(db))
                 .into_inner(),
         );
 

@@ -18,7 +18,7 @@ use axum::{
     http::{header::SET_COOKIE, HeaderMap},
     response::{IntoResponse, Redirect, Response},
     routing::get,
-    AddExtensionLayer, Router,
+    Router,
 };
 use http::header;
 use oauth2::{
@@ -49,8 +49,8 @@ async fn main() {
         .route("/auth/authorized", get(login_authorized))
         .route("/protected", get(protected))
         .route("/logout", get(logout))
-        .layer(AddExtensionLayer::new(store))
-        .layer(AddExtensionLayer::new(oauth_client));
+        .layer(Extension(store))
+        .layer(Extension(oauth_client));
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
     tracing::debug!("listening on {}", addr);
