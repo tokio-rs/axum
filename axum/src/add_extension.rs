@@ -14,7 +14,7 @@ use tower_service::Service;
 #[derive(Clone, Copy, Debug)]
 #[deprecated(
     since = "0.4.7",
-    note = "Use `axum::Extension` instead. It implements `tower::Layer`"
+    note = "Use `axum::extract::Extension` instead. It implements `tower::Layer`"
 )]
 pub struct AddExtensionLayer<T> {
     value: T,
@@ -59,7 +59,7 @@ impl<S, T> AddExtension<S, T> {
     /// Create a new [`AddExtensionLayer`].
     #[deprecated(
         since = "0.4.7",
-        note = "Use `axum::Extension` instead. It implements `tower::Layer`"
+        note = "Use `axum::extract::Extension` instead. It implements `tower::Layer`"
     )]
     #[allow(deprecated)]
     pub fn layer(value: T) -> AddExtensionLayer<T> {
