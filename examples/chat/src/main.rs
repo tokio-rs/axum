@@ -31,6 +31,12 @@ struct AppState {
 
 #[tokio::main]
 async fn main() {
+    // Set the RUST_LOG, if it hasn't been explicitly defined
+    if std::env::var_os("RUST_LOG").is_none() {
+        std::env::set_var("RUST_LOG", "example_chat=trace")
+    }
+    tracing_subscriber::fmt::init();
+
     let user_set = Mutex::new(HashSet::new());
     let (tx, _rx) = broadcast::channel(100);
 
@@ -42,7 +48,7 @@ async fn main() {
         .layer(Extension(app_state));
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
-
+    tracing::debug!("listening on {}", addr);
     axum::Server::bind(&addr)
         .serve(app.into_make_service())
         .await
@@ -62,7 +68,6 @@ async fn websocket(stream: WebSocket, state: Arc<AppState>) {
 
     // Username gets set in the receive loop, if it's valid.
     let mut username = String::new();
-
     // Loop until a text message is found.
     while let Some(Ok(message)) = receiver.next().await {
         if let Message::Text(name) = message {
@@ -88,6 +93,7 @@ async fn websocket(stream: WebSocket, state: Arc<AppState>) {
 
     // Send joined message to all subscribers.
     let msg = format!("{} joined.", username);
+    tracing::debug!("{}", msg);
     let _ = state.tx.send(msg);
 
     // This task will receive broadcast messages and send text message to our client.
@@ -120,8 +126,8 @@ async fn websocket(stream: WebSocket, state: Arc<AppState>) {
 
     // Send user left message.
     let msg = format!("{} left.", username);
+    tracing::debug!("{}", msg);
     let _ = state.tx.send(msg);
-
     // Remove username from map so new clients can take it.
     state.user_set.lock().unwrap().remove(&username);
 }

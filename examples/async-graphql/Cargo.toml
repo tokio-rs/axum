@@ -7,7 +7,5 @@ publish = false
 [dependencies]
 axum = { path = "../../axum" }
 tokio = { version = "1.0", features = ["full"] }
-tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 async-graphql = "3.0"
 slab = "0.4.3"
