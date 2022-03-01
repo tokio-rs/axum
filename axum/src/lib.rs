@@ -405,7 +405,10 @@ pub mod routing;
 #[cfg(test)]
 mod test_helpers;
 
-pub use add_extension::{AddExtension, AddExtensionLayer};
+pub use add_extension::AddExtension;
+#[allow(deprecated)]
+pub use add_extension::AddExtensionLayer;
+
 #[doc(no_inline)]
 pub use async_trait::async_trait;
 #[cfg(feature = "headers")]
