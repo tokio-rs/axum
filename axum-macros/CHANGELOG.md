@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - None.
 
+# 0.1.2 (1. March 2022)
+
+- **fixed:** Use fully qualified `Result` type ([#796])
+
+[#796]: https://github.com/tokio-rs/axum/pull/796
+
 # 0.1.1 (22. February 2022)
 
 - Add `#[derive(TypedPath)]` for use with axum-extra's new "type safe" routing API ([#756])
