@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+- None.
+
+# 0.1.5 (1. March, 2022)
+
 - **added:** Add `TypedPath::to_uri` for converting the path into a `Uri` ([#790])
 
 [#790]: https://github.com/tokio-rs/axum/pull/790
