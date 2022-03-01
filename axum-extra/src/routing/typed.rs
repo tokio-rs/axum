@@ -88,8 +88,6 @@ use http::Uri;
 /// things, create links to known paths and have them verified statically. Note that the
 /// [`Display`] implementation for each field must return something that's compatible with its
 /// [`Deserialize`] implementation.
-/// - A [`TryFrom<_> for Uri`](std::convert::TryFrom) implementation to converting your paths into
-/// [`Uri`](axum::http::Uri).
 ///
 /// Additionally the macro will verify the captures in the path matches the fields of the struct.
 /// For example this fails to compile since the struct doesn't have a `team_id` field:

@@ -173,13 +173,11 @@
 //!
 //! ## Using request extensions
 //!
-//! The easiest way to extract state in handlers is using [`AddExtension`]
-//! middleware (applied with [`AddExtensionLayer`]) and the
-//! [`Extension`](crate::extract::Extension) extractor:
+//! The easiest way to extract state in handlers is using [`Extension`](crate::extract::Extension)
+//! as layer and extractor:
 //!
 //! ```rust,no_run
 //! use axum::{
-//!     AddExtensionLayer,
 //!     extract::Extension,
 //!     routing::get,
 //!     Router,
@@ -194,7 +192,7 @@
 //!
 //! let app = Router::new()
 //!     .route("/", get(handler))
-//!     .layer(AddExtensionLayer::new(shared_state));
+//!     .layer(Extension(shared_state));
 //!
 //! async fn handler(
 //!     Extension(state): Extension<Arc<State>>,
@@ -217,7 +215,6 @@
 //!
 //! ```rust,no_run
 //! use axum::{
-//!     AddExtensionLayer,
 //!     Json,
 //!     extract::{Extension, Path},
 //!     routing::{get, post},
@@ -395,7 +392,7 @@
 #[macro_use]
 pub(crate) mod macros;
 
-mod add_extension;
+mod extension;
 #[cfg(feature = "json")]
 mod json;
 #[cfg(feature = "headers")]
@@ -413,7 +410,6 @@ pub mod routing;
 #[cfg(test)]
 mod test_helpers;
 
-pub use add_extension::{AddExtension, AddExtensionLayer};
 #[doc(no_inline)]
 pub use async_trait::async_trait;
 #[cfg(feature = "headers")]
@@ -424,6 +420,8 @@ pub use http;
 #[doc(no_inline)]
 pub use hyper::Server;
 
+#[doc(inline)]
+pub use self::extension::Extension;
 #[doc(inline)]
 #[cfg(feature = "json")]
 pub use self::json::Json;

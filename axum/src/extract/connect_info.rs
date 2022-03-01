@@ -5,7 +5,7 @@
 //! [`Router::into_make_service_with_connect_info`]: crate::routing::Router::into_make_service_with_connect_info
 
 use super::{Extension, FromRequest, RequestParts};
-use crate::{AddExtension, AddExtensionLayer};
+use crate::middleware::AddExtension;
 use async_trait::async_trait;
 use hyper::server::conn::AddrStream;
 use std::{
@@ -104,7 +104,7 @@ where
 
     fn call(&mut self, target: T) -> Self::Future {
         let connect_info = ConnectInfo(C::connect_info(target));
-        let svc = AddExtensionLayer::new(connect_info).layer(self.svc.clone());
+        let svc = Extension(connect_info).layer(self.svc.clone());
         ResponseFuture::new(ready(Ok(svc)))
     }
 }

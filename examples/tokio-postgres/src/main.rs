@@ -9,7 +9,7 @@ use axum::{
     extract::{Extension, FromRequest, RequestParts},
     http::StatusCode,
     routing::get,
-    AddExtensionLayer, Router,
+    Router,
 };
 use bb8::{Pool, PooledConnection};
 use bb8_postgres::PostgresConnectionManager;
@@ -36,7 +36,7 @@ async fn main() {
             "/",
             get(using_connection_pool_extractor).post(using_connection_extractor),
         )
-        .layer(AddExtensionLayer::new(pool));
+        .layer(Extension(pool));
 
     // run it with hyper
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
