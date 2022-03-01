@@ -376,7 +376,7 @@ use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
     routing::get,
-    AddExtensionLayer, Router,
+    Router,
 };
 
 #[derive(Clone)]
@@ -416,7 +416,7 @@ async fn handler(user: AuthenticatedUser) {
 
 let state = State { /* ... */ };
 
-let app = Router::new().route("/", get(handler)).layer(AddExtensionLayer::new(state));
+let app = Router::new().route("/", get(handler)).layer(Extension(state));
 # async {
 # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 # };
