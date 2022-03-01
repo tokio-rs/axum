@@ -392,7 +392,6 @@
 #[macro_use]
 pub(crate) mod macros;
 
-mod add_extension;
 mod extension;
 #[cfg(feature = "json")]
 mod json;
