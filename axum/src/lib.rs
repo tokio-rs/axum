@@ -393,6 +393,7 @@
 pub(crate) mod macros;
 
 mod add_extension;
+mod extension;
 #[cfg(feature = "json")]
 mod json;
 mod util;
@@ -419,6 +420,8 @@ pub use http;
 #[doc(no_inline)]
 pub use hyper::Server;
 
+#[doc(inline)]
+pub use self::extension::Extension;
 #[doc(inline)]
 #[cfg(feature = "json")]
 pub use self::json::Json;
