@@ -5,7 +5,7 @@
 //! [`Router::into_make_service_with_connect_info`]: crate::routing::Router::into_make_service_with_connect_info
 
 use super::{Extension, FromRequest, RequestParts};
-use crate::AddExtension;
+use crate::middleware::AddExtension;
 use async_trait::async_trait;
 use hyper::server::conn::AddrStream;
 use std::{

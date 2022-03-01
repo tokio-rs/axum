@@ -23,7 +23,7 @@ once, instead of calling `layer` (or `route_layer`) repeatedly:
 ```rust
 use axum::{
     routing::get,
-    AddExtensionLayer,
+    Extension,
     Router,
 };
 use tower_http::{trace::TraceLayer};
@@ -39,7 +39,7 @@ let app = Router::new()
     .layer(
         ServiceBuilder::new()
             .layer(TraceLayer::new_for_http())
-            .layer(AddExtensionLayer::new(State {}))
+            .layer(Extension(State {}))
     );
 # async {
 # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
@@ -74,9 +74,9 @@ use axum::{routing::get, Router};
 
 async fn handler() {}
 
-# let layer_one = axum::AddExtensionLayer::new(());
-# let layer_two = axum::AddExtensionLayer::new(());
-# let layer_three = axum::AddExtensionLayer::new(());
+# let layer_one = axum::Extension(());
+# let layer_two = axum::Extension(());
+# let layer_three = axum::Extension(());
 #
 let app = Router::new()
     .route("/", get(handler))
@@ -130,9 +130,9 @@ use axum::{routing::get, Router};
 
 async fn handler() {}
 
-# let layer_one = axum::AddExtensionLayer::new(());
-# let layer_two = axum::AddExtensionLayer::new(());
-# let layer_three = axum::AddExtensionLayer::new(());
+# let layer_one = axum::Extension(());
+# let layer_two = axum::Extension(());
+# let layer_three = axum::Extension(());
 #
 let app = Router::new()
     .route("/", get(handler))

@@ -56,6 +56,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
         - `MatchedPathRejection`
         - `WebSocketUpgradeRejection`
 - **breaking:** `Redirect::found` has been removed ([#800])
+- **breaking:** `AddExtensionLayer` has been removed. Use `Extension` instead. It now implements
+  `tower::Layer` ([#807])
+- **breaking:** `AddExtension` has been moved from the root module to `middleware`
 - **fixed:** Set `Allow` header when responding with `405 Method Not Allowed` ([#733])
 - **fixed:** Correctly set the `Content-Length` header for response to `HEAD`
   requests ([#734])
@@ -76,6 +79,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#797]: https://github.com/tokio-rs/axum/pull/797
 [#800]: https://github.com/tokio-rs/axum/pull/800
 [#801]: https://github.com/tokio-rs/axum/pull/801
+[#807]: https://github.com/tokio-rs/axum/pull/807
 
 # 0.4.4 (13. January, 2022)
 
