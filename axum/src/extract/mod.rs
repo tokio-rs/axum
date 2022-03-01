@@ -12,7 +12,6 @@ pub mod rejection;
 pub mod ws;
 
 mod content_length_limit;
-mod extension;
 mod raw_query;
 mod request_parts;
 
@@ -20,11 +19,9 @@ mod request_parts;
 pub use axum_core::extract::{FromRequest, RequestParts};
 
 #[doc(inline)]
-#[allow(deprecated)]
 pub use self::{
     connect_info::ConnectInfo,
     content_length_limit::ContentLengthLimit,
-    extension::Extension,
     extractor_middleware::extractor_middleware,
     path::Path,
     raw_query::RawQuery,
@@ -34,6 +31,9 @@ pub use self::{
 #[doc(no_inline)]
 #[cfg(feature = "json")]
 pub use crate::Json;
+
+#[doc(no_inline)]
+pub use crate::Extension;
 
 #[cfg(feature = "form")]
 mod form;

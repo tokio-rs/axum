@@ -1202,10 +1202,9 @@ mod tests {
             if method == Method::POST {
                 "OK".into_response()
             } else {
-                let headers = crate::response::Headers([(ALLOW, "GET,POST")]);
                 (
                     StatusCode::METHOD_NOT_ALLOWED,
-                    headers,
+                    [(ALLOW, "GET,POST")],
                     "Method not allowed",
                 )
                     .into_response()

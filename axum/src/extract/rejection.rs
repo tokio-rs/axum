@@ -1,10 +1,7 @@
 //! Rejection response types.
 
-use crate::{
-    body::{boxed, Full},
-    response::{IntoResponse, Response},
-    BoxError, Error,
-};
+use crate::{BoxError, Error};
+use axum_core::response::{IntoResponse, Response};
 
 pub use crate::extract::path::FailedToDeserializePathParams;
 pub use axum_core::extract::rejection::*;
@@ -90,9 +87,7 @@ impl FailedToDeserializeQueryString {
 
 impl IntoResponse for FailedToDeserializeQueryString {
     fn into_response(self) -> Response {
-        let mut res = Response::new(boxed(Full::from(self.to_string())));
-        *res.status_mut() = http::StatusCode::UNPROCESSABLE_ENTITY;
-        res
+        (http::StatusCode::UNPROCESSABLE_ENTITY, self.to_string()).into_response()
     }
 }
 

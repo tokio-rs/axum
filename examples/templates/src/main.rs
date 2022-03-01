@@ -6,7 +6,6 @@
 
 use askama::Template;
 use axum::{
-    body::{self, Full},
     extract,
     http::StatusCode,
     response::{Html, IntoResponse, Response},
@@ -55,13 +54,11 @@ where
     fn into_response(self) -> Response {
         match self.0.render() {
             Ok(html) => Html(html).into_response(),
-            Err(err) => Response::builder()
-                .status(StatusCode::INTERNAL_SERVER_ERROR)
-                .body(body::boxed(Full::from(format!(
-                    "Failed to render template. Error: {}",
-                    err
-                ))))
-                .unwrap(),
+            Err(err) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Failed to render template. Error: {}", err),
+            )
+                .into_response(),
         }
     }
 }

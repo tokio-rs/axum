@@ -1,5 +1,4 @@
-use super::{IntoResponse, Response};
-use crate::body::{boxed, Empty};
+use axum_core::response::{IntoResponse, Response};
 use http::{header::LOCATION, HeaderValue, StatusCode, Uri};
 use std::convert::TryFrom;
 
@@ -70,27 +69,6 @@ impl Redirect {
         Self::with_status_code(StatusCode::PERMANENT_REDIRECT, uri)
     }
 
-    /// Create a new [`Redirect`] that uses a [`302 Found`][mdn] status code.
-    ///
-    /// This is the same as [`Redirect::temporary`] ([`307 Temporary Redirect`][mdn307]) except
-    /// this status code is older and thus supported by some legacy clients that don't understand
-    /// the newer one. Many clients wrongly apply [`Redirect::to`] ([`303 See Other`][mdn303])
-    /// semantics for this status code, so it should be avoided where possible.
-    ///
-    /// # Panics
-    ///
-    /// If `uri` isn't a valid [`HeaderValue`].
-    ///
-    /// [mdn]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/302
-    /// [mdn307]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/307
-    /// [mdn303]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/303
-    #[deprecated(
-        note = "This results in different behavior between clients, so Redirect::temporary or Redirect::to should be used instead"
-    )]
-    pub fn found(uri: Uri) -> Self {
-        Self::with_status_code(StatusCode::FOUND, uri)
-    }
-
     // This is intentionally not public since other kinds of redirects might not
     // use the `Location` header, namely `304 Not Modified`.
     //
@@ -111,9 +89,6 @@ impl Redirect {
 
 impl IntoResponse for Redirect {
     fn into_response(self) -> Response {
-        let mut res = Response::new(boxed(Empty::new()));
-        *res.status_mut() = self.status_code;
-        res.headers_mut().insert(LOCATION, self.location);
-        res
+        (self.status_code, [(LOCATION, self.location)]).into_response()
     }
 }

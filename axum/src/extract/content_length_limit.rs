@@ -1,7 +1,6 @@
-use crate::response::IntoResponse;
-
 use super::{rejection::*, FromRequest, RequestParts};
 use async_trait::async_trait;
+use axum_core::response::IntoResponse;
 use std::ops::Deref;
 
 /// Extractor that will reject requests with a body larger than some size.

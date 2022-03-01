@@ -212,9 +212,10 @@ where
 mod tests {
     use crate::{
         body::Body,
+        extract::Extension,
         routing::{get, post},
         test_helpers::*,
-        AddExtensionLayer, Router,
+        Router,
     };
     use http::{Method, Request, StatusCode};
 
@@ -247,11 +248,7 @@ mod tests {
             parts.extensions.get::<Ext>().unwrap();
         }
 
-        let client = TestClient::new(
-            Router::new()
-                .route("/", get(handler))
-                .layer(AddExtensionLayer::new(Ext)),
-        );
+        let client = TestClient::new(Router::new().route("/", get(handler)).layer(Extension(Ext)));
 
         let res = client.get("/").header("x-foo", "123").send().await;
         assert_eq!(res.status(), StatusCode::OK);
