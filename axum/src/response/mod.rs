@@ -12,6 +12,10 @@ pub mod sse;
 pub use crate::Json;
 
 #[doc(no_inline)]
+#[cfg(feature = "headers")]
+pub use crate::TypedHeader;
+
+#[doc(no_inline)]
 pub use crate::Extension;
 
 #[doc(inline)]
