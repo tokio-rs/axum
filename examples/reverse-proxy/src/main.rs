@@ -11,7 +11,7 @@ use axum::{
     extract::Extension,
     http::{uri::Uri, Request, Response},
     routing::get,
-    AddExtensionLayer, Router,
+    Router,
 };
 use hyper::{client::HttpConnector, Body};
 use std::{convert::TryFrom, net::SocketAddr};
@@ -26,7 +26,7 @@ async fn main() {
 
     let app = Router::new()
         .route("/", get(handler))
-        .layer(AddExtensionLayer::new(client));
+        .layer(Extension(client));
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 4000));
     println!("reverse proxy listening on {}", addr);

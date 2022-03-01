@@ -12,10 +12,15 @@ use tower_service::Service;
 ///
 /// [request extensions]: https://docs.rs/http/latest/http/struct.Extensions.html
 #[derive(Clone, Copy, Debug)]
+#[deprecated(
+    since = "0.4.7",
+    note = "Use `axum::Extension` instead. It implements `tower::Layer`"
+)]
 pub struct AddExtensionLayer<T> {
     value: T,
 }
 
+#[allow(deprecated)]
 impl<T> AddExtensionLayer<T> {
     /// Create a new [`AddExtensionLayer`].
     pub fn new(value: T) -> Self {
@@ -23,6 +28,7 @@ impl<T> AddExtensionLayer<T> {
     }
 }
 
+#[allow(deprecated)]
 impl<S, T> Layer<S> for AddExtensionLayer<T>
 where
     T: Clone,
@@ -45,12 +51,17 @@ where
 /// [request extensions]: https://docs.rs/http/latest/http/struct.Extensions.html
 #[derive(Clone, Copy, Debug)]
 pub struct AddExtension<S, T> {
-    inner: S,
-    value: T,
+    pub(crate) inner: S,
+    pub(crate) value: T,
 }
 
 impl<S, T> AddExtension<S, T> {
     /// Create a new [`AddExtensionLayer`].
+    #[deprecated(
+        since = "0.4.7",
+        note = "Use `axum::Extension` instead. It implements `tower::Layer`"
+    )]
+    #[allow(deprecated)]
     pub fn layer(value: T) -> AddExtensionLayer<T> {
         AddExtensionLayer::new(value)
     }

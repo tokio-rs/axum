@@ -25,8 +25,7 @@ use std::{
 };
 use tower::{BoxError, ServiceBuilder};
 use tower_http::{
-    add_extension::AddExtensionLayer, auth::RequireAuthorizationLayer,
-    compression::CompressionLayer, trace::TraceLayer,
+    auth::RequireAuthorizationLayer, compression::CompressionLayer, trace::TraceLayer,
 };
 
 #[tokio::main]
@@ -58,7 +57,7 @@ async fn main() {
                 .concurrency_limit(1024)
                 .timeout(Duration::from_secs(10))
                 .layer(TraceLayer::new_for_http())
-                .layer(AddExtensionLayer::new(SharedState::default()))
+                .layer(Extension(SharedState::default()))
                 .into_inner(),
         );
 
