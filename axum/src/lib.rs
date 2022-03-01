@@ -409,7 +409,6 @@ pub mod routing;
 #[cfg(test)]
 mod test_helpers;
 
-pub use add_extension::AddExtension;
 #[doc(no_inline)]
 pub use async_trait::async_trait;
 #[cfg(feature = "headers")]

@@ -58,6 +58,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **breaking:** `Redirect::found` has been removed ([#800])
 - **breaking:** `AddExtensionLayer` has been removed. Use `Extension` instead. It now implements
   `tower::Layer` ([#807])
+- **breaking:** `AddExtension` has been moved from the root module to `middleware`
 - **fixed:** Set `Allow` header when responding with `405 Method Not Allowed` ([#733])
 - **fixed:** Correctly set the `Content-Length` header for response to `HEAD`
   requests ([#734])

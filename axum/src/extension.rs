@@ -1,5 +1,8 @@
-use crate::extract::{rejection::*, FromRequest, RequestParts};
-use crate::response::IntoResponseParts;
+use crate::{
+    extract::{rejection::*, FromRequest, RequestParts},
+    middleware::AddExtension,
+    response::IntoResponseParts,
+};
 use async_trait::async_trait;
 use axum_core::response::{IntoResponse, Response, ResponseParts};
 use std::ops::Deref;
@@ -120,10 +123,10 @@ impl<S, T> tower_layer::Layer<S> for Extension<T>
 where
     T: Clone + Send + Sync + 'static,
 {
-    type Service = crate::AddExtension<S, T>;
+    type Service = AddExtension<S, T>;
 
     fn layer(&self, inner: S) -> Self::Service {
-        crate::AddExtension {
+        AddExtension {
             inner,
             value: self.0.clone(),
         }
