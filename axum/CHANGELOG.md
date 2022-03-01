@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+- None.
+
+# 0.4.7 (1. March, 2022)
+
 - **added:** Implement `tower::Layer` for `Extension` ([#801])
 - **changed:** Deprecate `AddExtensionLayer`. Use `Extension` instead ([#805])
 
