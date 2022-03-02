@@ -235,4 +235,4 @@ where
 }
 
 #[cfg(feature = "headers")]
-pub use super::typed_header::{TypedHeaderRejection, TypedHeaderRejectionReason};
+pub use crate::typed_header::{TypedHeaderRejection, TypedHeaderRejectionReason};

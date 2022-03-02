@@ -1,20 +1,20 @@
-use super::{FromRequest, RequestParts};
+use crate::extract::{FromRequest, RequestParts};
 use async_trait::async_trait;
 use axum_core::response::{IntoResponse, IntoResponseParts, Response, ResponseParts};
 use headers::HeaderMapExt;
 use http::header::{HeaderName, HeaderValue};
 use std::ops::Deref;
 
-/// Extractor that extracts a typed header value from [`headers`].
+/// Extractor and response that works with typed header values from [`headers`].
+///
+/// # As extractor
 ///
 /// In general, it's recommended to extract only the needed headers via `TypedHeader` rather than
 /// removing all headers with the `HeaderMap` extractor.
 ///
-/// # Example
-///
 /// ```rust,no_run
 /// use axum::{
-///     extract::TypedHeader,
+///     TypedHeader,
 ///     headers::UserAgent,
 ///     routing::get,
 ///     Router,
@@ -31,7 +31,24 @@ use std::ops::Deref;
 /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 /// # };
 /// ```
-#[cfg_attr(docsrs, doc(cfg(feature = "headers")))]
+///
+/// # As response
+///
+/// ```rust
+/// use axum::{
+///     TypedHeader,
+///     response::IntoResponse,
+///     headers::ContentType,
+/// };
+///
+/// async fn handler() -> impl IntoResponse {
+///     (
+///         TypedHeader(ContentType::text_utf8()),
+///         "Hello, World!",
+///     )
+/// }
+/// ```
+#[cfg(feature = "headers")]
 #[derive(Debug, Clone, Copy)]
 pub struct TypedHeader<T>(pub T);
 
@@ -127,7 +144,8 @@ impl TypedHeaderRejection {
     }
 }
 
-/// Additional information regarding a [`TypedHeaderRejection`](super::TypedHeaderRejection)
+/// Additional information regarding a [`TypedHeaderRejection`]
+#[cfg(feature = "headers")]
 #[derive(Debug)]
 #[non_exhaustive]
 pub enum TypedHeaderRejectionReason {
