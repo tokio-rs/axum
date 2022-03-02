@@ -3,7 +3,7 @@ use crate::{body, BoxError};
 use bytes::{buf::Chain, Buf, Bytes, BytesMut};
 use http::{
     header::{self, HeaderMap, HeaderName, HeaderValue},
-    StatusCode, Version,
+    StatusCode,
 };
 use http_body::{
     combinators::{MapData, MapErr},
@@ -132,14 +132,6 @@ impl IntoResponse for StatusCode {
     fn into_response(self) -> Response {
         let mut res = ().into_response();
         *res.status_mut() = self;
-        res
-    }
-}
-
-impl IntoResponse for Version {
-    fn into_response(self) -> Response {
-        let mut res = ().into_response();
-        *res.version_mut() = self;
         res
     }
 }
@@ -384,30 +376,6 @@ where
     }
 }
 
-impl<R> IntoResponse for (Version, R)
-where
-    R: IntoResponse,
-{
-    fn into_response(self) -> Response {
-        let mut res = self.1.into_response();
-        *res.version_mut() = self.0;
-        res
-    }
-}
-
-impl<R> IntoResponse for (Version, StatusCode, R)
-where
-    R: IntoResponse,
-{
-    fn into_response(self) -> Response {
-        let (version, status, res) = self;
-        let mut res = res.into_response();
-        *res.version_mut() = version;
-        *res.status_mut() = status;
-        res
-    }
-}
-
 impl IntoResponse for HeaderMap {
     fn into_response(self) -> Response {
         let mut res = ().into_response();
@@ -497,34 +465,6 @@ macro_rules! impl_into_response {
                 )*
 
                 let mut res = parts.res;
-                *res.status_mut() = status;
-                res
-            }
-        }
-
-        #[allow(non_snake_case)]
-        impl<R, $($ty,)*> IntoResponse for (Version, StatusCode, $($ty),*, R)
-        where
-            $( $ty: IntoResponseParts, )*
-            R: IntoResponse,
-        {
-            fn into_response(self) -> Response {
-                let (version, status, $($ty),*, res) = self;
-
-                let res = res.into_response();
-                let parts = ResponseParts { res };
-
-                $(
-                    let parts = match $ty.into_response_parts(parts) {
-                        Ok(parts) => parts,
-                        Err(err) => {
-                            return err.into_response();
-                        }
-                    };
-                )*
-
-                let mut res = parts.res;
-                *res.version_mut() = version;
                 *res.status_mut() = status;
                 res
             }
