@@ -2,7 +2,6 @@ use crate::extract::{FromRequest, RequestParts};
 use async_trait::async_trait;
 use axum_core::response::{IntoResponse, IntoResponseParts, Response, ResponseParts};
 use headers::HeaderMapExt;
-use http::header::{HeaderName, HeaderValue};
 use std::{convert::Infallible, ops::Deref};
 
 /// Extractor and response that works with typed header values from [`headers`].
