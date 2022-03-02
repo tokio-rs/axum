@@ -90,7 +90,7 @@ where
     type Error = Infallible;
 
     fn into_response_parts(self, mut res: ResponseParts) -> Result<ResponseParts, Self::Error> {
-        res.typed_insert(self.0);
+        res.headers_mut().typed_insert(self.0);
         Ok(res)
     }
 }
