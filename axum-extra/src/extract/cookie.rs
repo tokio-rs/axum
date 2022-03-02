@@ -17,7 +17,7 @@ pub use cookie_lib::{Cookie, Key};
 /// Extractor that grabs cookies from the request and managers the jar.
 ///
 /// Note that methods like [`CookieJar::get`], [`CookieJar::remove`], etc returns a
-/// [`CookieJarDelta`]. This value _must_ returned from the handler as part of the response for the
+/// [`CookieJarDelta`]. This value _must_ be returned from the handler as part of the response for the
 /// changes to be propagated.
 ///
 /// # Example
