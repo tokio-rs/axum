@@ -11,7 +11,7 @@ mod into_response_parts;
 
 pub use self::{
     into_response::IntoResponse,
-    into_response_parts::{IntoResponseParts, ResponseParts},
+    into_response_parts::{IntoResponseParts, ResponseParts, TryIntoHeaderError},
 };
 
 /// Type alias for [`http::Response`] whose body type defaults to [`BoxBody`], the most common body

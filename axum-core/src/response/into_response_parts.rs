@@ -1,14 +1,22 @@
-use super::Response;
-use http::header::{HeaderMap, HeaderName, HeaderValue};
-use std::{convert::TryInto, fmt};
+use super::{IntoResponse, Response};
+use http::{
+    header::{HeaderMap, HeaderName, HeaderValue},
+    Extensions, StatusCode,
+};
+use std::{
+    convert::{Infallible, TryInto},
+    fmt,
+};
 
 /// Trait for adding headers and extensions to a response.
-///
-/// You generally don't need to implement this trait manually. It's recommended instead to rely
-/// on the implementations in axum.
 pub trait IntoResponseParts {
+    /// The type returned in the event of an error.
+    ///
+    /// This can be used to fallibly convert types into headers or extensions.
+    type Error: IntoResponse;
+
     /// Set parts of the response
-    fn into_response_parts(self, res: &mut ResponseParts);
+    fn into_response_parts(self, res: ResponseParts) -> Result<ResponseParts, Self::Error>;
 }
 
 /// Parts of a response.
@@ -16,96 +24,37 @@ pub trait IntoResponseParts {
 /// Used with [`IntoResponseParts`].
 #[derive(Debug)]
 pub struct ResponseParts {
-    pub(crate) res: Result<Response, String>,
+    pub(crate) res: Response,
 }
 
 impl ResponseParts {
-    /// Insert a header into the response.
-    ///
-    /// If the header already exists, it will be overwritten.
-    pub fn insert_header<K, V>(&mut self, key: K, value: V)
-    where
-        K: TryInto<HeaderName>,
-        K::Error: fmt::Display,
-        V: TryInto<HeaderValue>,
-        V::Error: fmt::Display,
-    {
-        self.update_headers(key, value, |headers, key, value| {
-            headers.insert(key, value);
-        });
+    /// Gets a reference to the response headers.
+    pub fn headers(&self) -> &HeaderMap {
+        self.res.headers()
     }
 
-    /// Append a header to the response.
-    ///
-    /// If the header already exists it will be appended to.
-    pub fn append_header<K, V>(&mut self, key: K, value: V)
-    where
-        K: TryInto<HeaderName>,
-        K::Error: fmt::Display,
-        V: TryInto<HeaderValue>,
-        V::Error: fmt::Display,
-    {
-        self.update_headers(key, value, |headers, key, value| {
-            headers.append(key, value);
-        });
+    /// Gets a mutable reference to the response headers.
+    pub fn headers_mut(&mut self) -> &mut HeaderMap {
+        self.res.headers_mut()
     }
 
-    fn update_headers<K, V, F>(&mut self, key: K, value: V, f: F)
-    where
-        K: TryInto<HeaderName>,
-        K::Error: fmt::Display,
-        V: TryInto<HeaderValue>,
-        V::Error: fmt::Display,
-        F: FnOnce(&mut HeaderMap, HeaderName, HeaderValue),
-    {
-        if let Ok(response) = &mut self.res {
-            let key = match key.try_into() {
-                Ok(key) => key,
-                Err(err) => {
-                    self.res = Err(err.to_string());
-                    return;
-                }
-            };
-
-            let value = match value.try_into() {
-                Ok(value) => value,
-                Err(err) => {
-                    self.res = Err(err.to_string());
-                    return;
-                }
-            };
-
-            f(response.headers_mut(), key, value);
-        }
+    /// Gets a reference to the response extensions.
+    pub fn extensions(&self) -> &Extensions {
+        self.res.extensions()
     }
 
-    /// Insert an extension into the response.
-    ///
-    /// If the extension already exists it will be overwritten.
-    pub fn insert_extension<T>(&mut self, extension: T)
-    where
-        T: Send + Sync + 'static,
-    {
-        if let Ok(res) = &mut self.res {
-            res.extensions_mut().insert(extension);
-        }
-    }
-}
-
-impl Extend<(Option<HeaderName>, HeaderValue)> for ResponseParts {
-    fn extend<T>(&mut self, iter: T)
-    where
-        T: IntoIterator<Item = (Option<HeaderName>, HeaderValue)>,
-    {
-        if let Ok(res) = &mut self.res {
-            res.headers_mut().extend(iter);
-        }
+    /// Gets a mutable reference to the response extensions.
+    pub fn extensions_mut(&mut self) -> &mut Extensions {
+        self.res.extensions_mut()
     }
 }
 
 impl IntoResponseParts for HeaderMap {
-    fn into_response_parts(self, res: &mut ResponseParts) {
-        res.extend(self);
+    type Error = Infallible;
+
+    fn into_response_parts(self, mut res: ResponseParts) -> Result<ResponseParts, Self::Error> {
+        res.headers_mut().extend(self);
+        Ok(res)
     }
 }
 
@@ -116,9 +65,82 @@ where
     V: TryInto<HeaderValue>,
     V::Error: fmt::Display,
 {
-    fn into_response_parts(self, res: &mut ResponseParts) {
+    type Error = TryIntoHeaderError<K::Error, V::Error>;
+
+    fn into_response_parts(self, mut res: ResponseParts) -> Result<ResponseParts, Self::Error> {
         for (key, value) in self {
-            res.insert_header(key, value);
+            let key = key.try_into().map_err(TryIntoHeaderError::key)?;
+            let value = value.try_into().map_err(TryIntoHeaderError::value)?;
+            res.headers_mut().insert(key, value);
+        }
+
+        Ok(res)
+    }
+}
+
+/// Error returned if converting a value to a header fails.
+#[derive(Debug)]
+pub struct TryIntoHeaderError<K, V> {
+    kind: TryIntoHeaderErrorKind<K, V>,
+}
+
+impl<K, V> TryIntoHeaderError<K, V> {
+    fn key(err: K) -> Self {
+        Self {
+            kind: TryIntoHeaderErrorKind::Key(err),
+        }
+    }
+
+    fn value(err: V) -> Self {
+        Self {
+            kind: TryIntoHeaderErrorKind::Value(err),
+        }
+    }
+}
+
+#[derive(Debug)]
+enum TryIntoHeaderErrorKind<K, V> {
+    Key(K),
+    Value(V),
+}
+
+impl<K, V> IntoResponse for TryIntoHeaderError<K, V>
+where
+    K: fmt::Display,
+    V: fmt::Display,
+{
+    fn into_response(self) -> Response {
+        match self.kind {
+            TryIntoHeaderErrorKind::Key(inner) => {
+                (StatusCode::INTERNAL_SERVER_ERROR, inner.to_string()).into_response()
+            }
+            TryIntoHeaderErrorKind::Value(inner) => {
+                (StatusCode::INTERNAL_SERVER_ERROR, inner.to_string()).into_response()
+            }
+        }
+    }
+}
+
+impl<K, V> fmt::Display for TryIntoHeaderError<K, V> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self.kind {
+            TryIntoHeaderErrorKind::Key(_) => write!(f, "failed to convert key to a header name"),
+            TryIntoHeaderErrorKind::Value(_) => {
+                write!(f, "failed to convert value to a header value")
+            }
+        }
+    }
+}
+
+impl<K, V> std::error::Error for TryIntoHeaderError<K, V>
+where
+    K: std::error::Error + 'static,
+    V: std::error::Error + 'static,
+{
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match &self.kind {
+            TryIntoHeaderErrorKind::Key(inner) => Some(inner),
+            TryIntoHeaderErrorKind::Value(inner) => Some(inner),
         }
     }
 }

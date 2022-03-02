@@ -460,16 +460,18 @@ macro_rules! impl_into_response {
                 let ($($ty),*, res) = self;
 
                 let res = res.into_response();
-                let mut parts = ResponseParts { res: Ok(res) };
+                let parts = ResponseParts { res };
 
                 $(
-                    $ty.into_response_parts(&mut parts);
+                    let parts = match $ty.into_response_parts(parts) {
+                        Ok(parts) => parts,
+                        Err(err) => {
+                            return err.into_response();
+                        }
+                    };
                 )*
 
-                match parts.res {
-                    Ok(res) => res,
-                    Err(err) => (StatusCode::INTERNAL_SERVER_ERROR, err).into_response(),
-                }
+                parts.res
             }
         }
 
@@ -483,19 +485,20 @@ macro_rules! impl_into_response {
                 let (status, $($ty),*, res) = self;
 
                 let res = res.into_response();
-                let mut parts = ResponseParts { res: Ok(res) };
+                let parts = ResponseParts { res };
 
                 $(
-                    $ty.into_response_parts(&mut parts);
+                    let parts = match $ty.into_response_parts(parts) {
+                        Ok(parts) => parts,
+                        Err(err) => {
+                            return err.into_response();
+                        }
+                    };
                 )*
 
-                match parts.res {
-                    Ok(mut res) => {
-                        *res.status_mut() = status;
-                        res
-                    }
-                    Err(err) => (StatusCode::INTERNAL_SERVER_ERROR, err).into_response(),
-                }
+                let mut res = parts.res;
+                *res.status_mut() = status;
+                res
             }
         }
 
@@ -509,20 +512,21 @@ macro_rules! impl_into_response {
                 let (version, status, $($ty),*, res) = self;
 
                 let res = res.into_response();
-                let mut parts = ResponseParts { res: Ok(res) };
+                let parts = ResponseParts { res };
 
                 $(
-                    $ty.into_response_parts(&mut parts);
+                    let parts = match $ty.into_response_parts(parts) {
+                        Ok(parts) => parts,
+                        Err(err) => {
+                            return err.into_response();
+                        }
+                    };
                 )*
 
-                match parts.res {
-                    Ok(mut res) => {
-                        *res.version_mut() = version;
-                        *res.status_mut() = status;
-                        res
-                    }
-                    Err(err) => (StatusCode::INTERNAL_SERVER_ERROR, err).into_response(),
-                }
+                let mut res = parts.res;
+                *res.version_mut() = version;
+                *res.status_mut() = status;
+                res
             }
         }
     }
