@@ -89,31 +89,9 @@ where
 {
     type Error = Infallible;
 
-    fn into_response_parts(self, res: ResponseParts) -> Result<ResponseParts, Self::Error> {
-        struct ExtendHeaders {
-            res: ResponseParts,
-            key: &'static HeaderName,
-        }
-
-        impl Extend<HeaderValue> for ExtendHeaders {
-            fn extend<T>(&mut self, iter: T)
-            where
-                T: IntoIterator<Item = HeaderValue>,
-            {
-                for value in iter {
-                    self.res.headers_mut().append(self.key, value);
-                }
-            }
-        }
-
-        let mut extend = ExtendHeaders {
-            res,
-            key: T::name(),
-        };
-
-        self.0.encode(&mut extend);
-
-        Ok(extend.res)
+    fn into_response_parts(self, mut res: ResponseParts) -> Result<ResponseParts, Self::Error> {
+        res.typed_insert(self.0);
+        Ok(res)
     }
 }
 
