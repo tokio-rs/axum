@@ -144,3 +144,32 @@ where
         }
     }
 }
+
+macro_rules! impl_into_response_parts {
+    ( $($ty:ident),* $(,)? ) => {
+        #[allow(non_snake_case)]
+        impl<$($ty,)*> IntoResponseParts for ($($ty,)*)
+        where
+            $( $ty: IntoResponseParts, )*
+        {
+            type Error = Response;
+
+            fn into_response_parts(self, res: ResponseParts) -> Result<ResponseParts, Self::Error> {
+                let ($($ty,)*) = self;
+
+                $(
+                    let res = match $ty.into_response_parts(res) {
+                        Ok(res) => res,
+                        Err(err) => {
+                            return Err(err.into_response());
+                        }
+                    };
+                )*
+
+                Ok(res)
+            }
+        }
+    }
+}
+
+all_the_tuples!(impl_into_response_parts);
