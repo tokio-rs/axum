@@ -284,6 +284,16 @@ fn captures_from_path(segments: &[Segment]) -> Vec<syn::Ident> {
 }
 
 fn parse_path(path: &LitStr) -> syn::Result<Vec<Segment>> {
+    let value = path.value();
+    if value.is_empty() {
+        return Err(syn::Error::new_spanned(
+            path,
+            "paths must start with a `/`. Use \"/\" for root routes",
+        ));
+    } else if !path.value().starts_with('/') {
+        return Err(syn::Error::new_spanned(path, "paths must start with a `/`"));
+    }
+
     path.value()
         .split('/')
         .map(|segment| {
