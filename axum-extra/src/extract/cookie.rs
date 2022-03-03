@@ -403,3 +403,134 @@ impl<'a, K> Iterator for SignedCookieJarIter<'a, K> {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use axum::{body::Body, http::Request, routing::get, Router};
+    use tower::ServiceExt;
+
+    #[tokio::test]
+    async fn set_get_remove_cookie() {
+        async fn set_cookie(mut jar: CookieJar) -> impl IntoResponse {
+            jar.add(Cookie::new("key", "value"))
+        }
+
+        async fn get_cookie(jar: CookieJar) -> impl IntoResponse {
+            jar.get("key").unwrap().value().to_owned()
+        }
+
+        async fn remove_cookie(mut jar: CookieJar) -> impl IntoResponse {
+            jar.remove(Cookie::named("key"))
+        }
+
+        let app = Router::<Body>::new()
+            .route("/set", get(set_cookie))
+            .route("/get", get(get_cookie))
+            .route("/remove", get(remove_cookie));
+
+        let res = app
+            .clone()
+            .oneshot(Request::builder().uri("/set").body(Body::empty()).unwrap())
+            .await
+            .unwrap();
+        let cookie_value = res.headers()["set-cookie"].to_str().unwrap();
+
+        let res = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .uri("/get")
+                    .header("cookie", cookie_value)
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        let body = body_text(res).await;
+        assert_eq!(body, "value");
+
+        let res = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .uri("/remove")
+                    .header("cookie", cookie_value)
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert!(res.headers()["set-cookie"]
+            .to_str()
+            .unwrap()
+            .contains("key=;"));
+    }
+
+    #[tokio::test]
+    async fn set_get_remove_signed_cookie() {
+        async fn set_cookie(mut jar: SignedCookieJar) -> impl IntoResponse {
+            jar.add(Cookie::new("key", "value"))
+        }
+
+        async fn get_cookie(jar: SignedCookieJar) -> impl IntoResponse {
+            jar.get("key").unwrap().value().to_owned()
+        }
+
+        async fn remove_cookie(mut jar: CookieJar) -> impl IntoResponse {
+            jar.remove(Cookie::named("key"))
+        }
+
+        let app = Router::<Body>::new()
+            .route("/set", get(set_cookie))
+            .route("/get", get(get_cookie))
+            .route("/remove", get(remove_cookie))
+            .layer(Extension(Key::generate()));
+
+        let res = app
+            .clone()
+            .oneshot(Request::builder().uri("/set").body(Body::empty()).unwrap())
+            .await
+            .unwrap();
+        let cookie_value = res.headers()["set-cookie"].to_str().unwrap();
+
+        let res = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .uri("/get")
+                    .header("cookie", cookie_value)
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        let body = body_text(res).await;
+        assert_eq!(body, "value");
+
+        let res = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .uri("/remove")
+                    .header("cookie", cookie_value)
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert!(res.headers()["set-cookie"]
+            .to_str()
+            .unwrap()
+            .contains("key=;"));
+    }
+
+    async fn body_text<B>(body: B) -> String
+    where
+        B: axum::body::HttpBody,
+        B::Error: std::fmt::Debug,
+    {
+        let bytes = hyper::body::to_bytes(body).await.unwrap();
+        String::from_utf8(bytes.to_vec()).unwrap()
+    }
+}
