@@ -44,7 +44,7 @@ use tower_service::Service;
 ///         Router::new().route("/featured", get(|| async {})),
 ///     );
 ///
-/// let app = Router::new().with(users);
+/// let app = Router::new().merge(users);
 /// # let _: Router<axum::body::Body> = app;
 /// ```
 #[derive(Debug)]
