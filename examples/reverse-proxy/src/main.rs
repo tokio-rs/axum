@@ -36,7 +36,12 @@ async fn main() {
         .unwrap();
 }
 
-async fn handler(Extension(client): Extension<Client>, mut req: Request<Body>) -> Response<Body> {
+async fn handler(
+    Extension(client): Extension<Client>,
+    // NOTE: Make sure to put the request extractor last because once the request
+    // is extracted, extensions can't be extracted anymore.
+    mut req: Request<Body>,
+) -> Response<Body> {
     let path = req.uri().path();
     let path_query = req
         .uri()
