@@ -60,6 +60,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **breaking:** `AddExtensionLayer` has been removed. Use `Extension` instead. It now implements
   `tower::Layer` ([#807])
 - **breaking:** `AddExtension` has been moved from the root module to `middleware`
+- **breaking:** Routes are now required to start with `/`. Previously routes such as `:foo` would
+  be accepted but most likely result in bugs
 - **fixed:** Set `Allow` header when responding with `405 Method Not Allowed` ([#733])
 - **fixed:** Correctly set the `Content-Length` header for response to `HEAD`
   requests ([#734])
