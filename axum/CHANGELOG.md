@@ -13,6 +13,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **added:** `Extension<_>` can now be used in tuples for building responses, and will set an
   extension on the response ([#797])
 - **added:** Implement `tower::Layer` for `Extension` ([#801])
+- **added:** Add `HasRoutes` trait allowing users to define their own types that work with
+  `Router::merge`
+- **changed:** `Router::merge` now requires the argument to implement `HasRoutes`. This is
+  implemented for `Router`
 - **breaking:** `sse::Event` now accepts types implementing `AsRef<str>` instead of `Into<String>`
   as field values.
 - **breaking:** `sse::Event` now panics if a setter method is called twice instead of silently

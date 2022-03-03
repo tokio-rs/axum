@@ -1,10 +1,9 @@
-use super::HasRoutes;
 use axum::{
     body::Body,
     handler::Handler,
     http::Request,
     response::Response,
-    routing::{delete, get, on, post, MethodFilter},
+    routing::{delete, get, on, post, HasRoutes, MethodFilter},
     Router,
 };
 use std::convert::Infallible;
@@ -192,7 +191,6 @@ impl<B> HasRoutes<B> for Resource<B> {
 mod tests {
     #[allow(unused_imports)]
     use super::*;
-    use crate::routing::RouterExt;
     use axum::{extract::Path, http::Method, Router};
     use tower::ServiceExt;
 
@@ -214,7 +212,7 @@ mod tests {
                 Router::new().route("/featured", get(|| async move { "users#featured" })),
             );
 
-        let mut app = Router::new().with(users);
+        let mut app = Router::new().merge(users);
 
         assert_eq!(
             call_route(&mut app, Method::GET, "/users").await,

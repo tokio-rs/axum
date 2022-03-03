@@ -12,6 +12,9 @@ and this project adheres to [Semantic Versioning].
 - **breaking:** `CachedRejection` has been removed ([#699])
 - **breaking:** `<Cached<T> as FromRequest>::Rejection` is now `T::Rejection`. ([#699])
 - **breaking:** `middleware::from_fn` has been moved into the main axum crate ([#719])
+- **breaking:** `HasRoutes` has been moved into axum
+- **breaking:** `RouterExt::with` method has been removed. Use `Router::merge` instead. It works
+  identically
 
 [#666]: https://github.com/tokio-rs/axum/pull/666
 [#699]: https://github.com/tokio-rs/axum/pull/699
