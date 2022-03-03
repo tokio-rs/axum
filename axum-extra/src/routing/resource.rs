@@ -3,7 +3,7 @@ use axum::{
     handler::Handler,
     http::Request,
     response::Response,
-    routing::{delete, get, on, post, HasRoutes, MethodFilter},
+    routing::{delete, get, on, post, MethodFilter},
     Router,
 };
 use std::convert::Infallible;
@@ -181,9 +181,9 @@ where
     }
 }
 
-impl<B> HasRoutes<B> for Resource<B> {
-    fn routes(self) -> Router<B> {
-        self.router
+impl<B> From<Resource<B>> for Router<B> {
+    fn from(resource: Resource<B>) -> Self {
+        resource.router
     }
 }
 

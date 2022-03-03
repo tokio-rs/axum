@@ -247,14 +247,14 @@ where
     #[doc = include_str!("../docs/routing/merge.md")]
     pub fn merge<R>(mut self, other: R) -> Self
     where
-        R: HasRoutes<B>,
+        R: Into<Router<B>>,
     {
         let Router {
             routes,
             node,
             fallback,
             nested_at_root,
-        } = other.routes();
+        } = other.into();
 
         for (id, route) in routes {
             let path = node
@@ -699,74 +699,4 @@ impl<B> fmt::Debug for Endpoint<B> {
 fn traits() {
     use crate::test_helpers::*;
     assert_send::<Router<()>>();
-}
-
-/// Trait for things that can provide routes.
-///
-/// Used with [`Router::merge`].
-///
-/// # Example
-///
-/// This can be used to build your own abstractions for building routes and have it work with
-/// [`Router::merge`].
-///
-/// Consider this hypothetical API for having a bunch of paths all go to the same handler:
-///
-/// ```rust
-/// use axum::{
-///     Router,
-///     routing::{get, post, MethodRouter, HasRoutes},
-///     handler::Handler,
-///     body::HttpBody,
-/// };
-///
-/// struct ToSameHandler<B> {
-///     route: MethodRouter<B>,
-///     routes: Router<B>,
-/// }
-///
-/// impl<B> ToSameHandler<B>
-/// where
-///     B: HttpBody + Send + 'static,
-/// {
-///     fn new<H, T>(handler: H) -> Self
-///     where
-///         H: Handler<T, B>,
-///         T: 'static,
-///     {
-///         Self {
-///             route: get(handler),
-///             routes: Router::new(),
-///         }
-///     }
-///
-///     fn add_path(mut self, path: &str) -> Self {
-///         self.routes = self.routes.route(path, self.route.clone());
-///         self
-///     }
-/// }
-///
-/// impl<B> HasRoutes<B> for ToSameHandler<B> {
-///     fn routes(self) -> Router<B> {
-///         self.routes
-///     }
-/// }
-///
-/// let app = Router::new().merge(
-///     ToSameHandler::new(|| async {})
-///         .add_path("/foo")
-///         .add_path("/bar")
-///         .add_path("/baz")
-/// );
-/// # let _: Router<axum::body::Body> = app;
-/// ```
-pub trait HasRoutes<B> {
-    /// Get the routes.
-    fn routes(self) -> Router<B>;
-}
-
-impl<B> HasRoutes<B> for Router<B> {
-    fn routes(self) -> Router<B> {
-        self
-    }
 }
