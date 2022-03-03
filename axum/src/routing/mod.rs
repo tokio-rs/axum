@@ -245,13 +245,16 @@ where
     }
 
     #[doc = include_str!("../docs/routing/merge.md")]
-    pub fn merge(mut self, other: Router<B>) -> Self {
+    pub fn merge<R>(mut self, other: R) -> Self
+    where
+        R: Into<Router<B>>,
+    {
         let Router {
             routes,
             node,
             fallback,
             nested_at_root,
-        } = other;
+        } = other.into();
 
         for (id, route) in routes {
             let path = node
