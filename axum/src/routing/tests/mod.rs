@@ -441,7 +441,7 @@ async fn static_and_dynamic_paths() {
 }
 
 #[tokio::test]
-#[should_panic(expected = "Invalid route: empty path")]
+#[should_panic(expected = "Paths must start with a `/`. Use \"/\" for root routes")]
 async fn empty_route() {
     let app = Router::new().route("", get(|| async {}));
     TestClient::new(app);
@@ -677,4 +677,11 @@ async fn head_with_middleware_applied() {
     // no content-length since we cannot know it since the response
     // is compressed
     assert!(!res.headers().contains_key("content-length"));
+}
+
+#[tokio::test]
+#[should_panic(expected = "Paths must start with a `/`")]
+async fn routes_must_start_with_slash() {
+    let app = Router::new().route(":foo", get(|| async {}));
+    TestClient::new(app);
 }

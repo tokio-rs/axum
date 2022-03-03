@@ -125,7 +125,9 @@ where
         T::Future: Send + 'static,
     {
         if path.is_empty() {
-            panic!("Invalid route: empty path");
+            panic!("Paths must start with a `/`. Use \"/\" for root routes");
+        } else if !path.starts_with('/') {
+            panic!("Paths must start with a `/`");
         }
 
         let service = match try_downcast::<Router<B>, _>(service) {
