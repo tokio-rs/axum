@@ -14,9 +14,9 @@ use std::{convert::Infallible, fmt, marker::PhantomData};
 
 pub use cookie_lib::{Cookie, Key};
 
-/// Extractor that grabs cookies from the request and managers the jar.
+/// Extractor that grabs cookies from the request and manages the jar.
 ///
-/// Note that methods like [`CookieJar::get`], [`CookieJar::remove`], etc returns a
+/// Note that methods like [`CookieJar::get`], [`CookieJar::remove`], etc return a
 /// [`CookieJarDelta`]. This value _must_ be returned from the handler as part of the response for the
 /// changes to be propagated.
 ///
@@ -194,7 +194,7 @@ impl IntoResponse for CookieJarDelta {
     }
 }
 
-/// Extractor that grabs signed cookies from the request and managers the jar.
+/// Extractor that grabs signed cookies from the request and manages the jar.
 ///
 /// All cookies will be signed and verified with a [`Key`]. Do not use this to store private data
 /// as the values are still transmitted in plaintext.
@@ -305,7 +305,7 @@ where
 impl<K> SignedCookieJar<K> {
     /// Get a cookie from the jar.
     ///
-    /// If the cookie exists and its authenticity and integrity can be verified then it's plaintext
+    /// If the cookie exists and its authenticity and integrity can be verified then its plaintext
     /// version is returned.
     ///
     /// # Example
