@@ -1,4 +1,3 @@
-use super::HasRoutes;
 use axum::{
     body::Body,
     handler::Handler,
@@ -45,7 +44,7 @@ use tower_service::Service;
 ///         Router::new().route("/featured", get(|| async {})),
 ///     );
 ///
-/// let app = Router::new().with(users);
+/// let app = Router::new().merge(users);
 /// # let _: Router<axum::body::Body> = app;
 /// ```
 #[derive(Debug)]
@@ -182,9 +181,9 @@ where
     }
 }
 
-impl<B> HasRoutes<B> for Resource<B> {
-    fn routes(self) -> Router<B> {
-        self.router
+impl<B> From<Resource<B>> for Router<B> {
+    fn from(resource: Resource<B>) -> Self {
+        resource.router
     }
 }
 
@@ -192,7 +191,6 @@ impl<B> HasRoutes<B> for Resource<B> {
 mod tests {
     #[allow(unused_imports)]
     use super::*;
-    use crate::routing::RouterExt;
     use axum::{extract::Path, http::Method, Router};
     use tower::ServiceExt;
 
@@ -214,7 +212,7 @@ mod tests {
                 Router::new().route("/featured", get(|| async move { "users#featured" })),
             );
 
-        let mut app = Router::new().with(users);
+        let mut app = Router::new().merge(users);
 
         assert_eq!(
             call_route(&mut app, Method::GET, "/users").await,
