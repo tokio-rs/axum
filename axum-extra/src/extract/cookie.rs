@@ -305,8 +305,8 @@ where
 impl<K> SignedCookieJar<K> {
     /// Get a cookie from the jar.
     ///
-    /// If the cookie exists and its authenticity and integrity can be verified then its plaintext
-    /// version is returned.
+    /// If the cookie exists and its authenticity and integrity can be verified then it is returned
+    /// in plaintext.
     ///
     /// # Example
     ///
