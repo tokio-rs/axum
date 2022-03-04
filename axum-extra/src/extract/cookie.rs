@@ -42,7 +42,8 @@ pub use cookie_lib::{Cookie, Key};
 /// ) -> impl IntoResponse {
 ///     if let Some(session_id) = authorize_and_create_session(auth.token()).await {
 ///         Ok((
-///             // `add` returns a "delta" that must be included in the response
+///             // the updated jar must be returned for the changes
+///             // to be included in the response
 ///             jar.add(Cookie::new("session_id", session_id)),
 ///             Redirect::to("/me".parse().unwrap()),
 ///         ))
@@ -210,7 +211,8 @@ impl IntoResponse for CookieJar {
 /// ) -> impl IntoResponse {
 ///     if let Some(session_id) = authorize_and_create_session(auth.token()).await {
 ///         Ok((
-///             // `add` returns a "delta" that must be included in the response
+///             // the updated jar must be returned for the changes
+///             // to be included in the response
 ///             jar.add(Cookie::new("session_id", session_id)),
 ///             Redirect::to("/me".parse().unwrap()),
 ///         ))
