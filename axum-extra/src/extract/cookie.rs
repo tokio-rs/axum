@@ -426,119 +426,94 @@ mod tests {
     use axum::{body::Body, http::Request, routing::get, Router};
     use tower::ServiceExt;
 
-    #[tokio::test]
-    async fn set_get_remove_cookie() {
-        async fn set_cookie(jar: CookieJar) -> impl IntoResponse {
-            jar.add(Cookie::new("key", "value"))
-        }
+    macro_rules! cookie_test {
+        ($name:ident, $jar:ty) => {
+            #[tokio::test]
+            async fn $name() {
+                async fn set_cookie(jar: $jar) -> impl IntoResponse {
+                    jar.add(Cookie::new("key", "value"))
+                }
 
-        async fn get_cookie(jar: CookieJar) -> impl IntoResponse {
-            jar.get("key").unwrap().value().to_owned()
-        }
+                async fn get_cookie(jar: $jar) -> impl IntoResponse {
+                    jar.get("key").unwrap().value().to_owned()
+                }
 
-        async fn remove_cookie(jar: CookieJar) -> impl IntoResponse {
-            jar.remove(Cookie::named("key"))
-        }
+                async fn remove_cookie(jar: $jar) -> impl IntoResponse {
+                    jar.remove(Cookie::named("key"))
+                }
 
-        let app = Router::<Body>::new()
-            .route("/set", get(set_cookie))
-            .route("/get", get(get_cookie))
-            .route("/remove", get(remove_cookie));
+                let app = Router::<Body>::new()
+                    .route("/set", get(set_cookie))
+                    .route("/get", get(get_cookie))
+                    .route("/remove", get(remove_cookie))
+                    .layer(Extension(Key::generate()));
 
-        let res = app
-            .clone()
-            .oneshot(Request::builder().uri("/set").body(Body::empty()).unwrap())
-            .await
-            .unwrap();
-        let cookie_value = res.headers()["set-cookie"].to_str().unwrap();
+                let res = app
+                    .clone()
+                    .oneshot(Request::builder().uri("/set").body(Body::empty()).unwrap())
+                    .await
+                    .unwrap();
+                let cookie_value = res.headers()["set-cookie"].to_str().unwrap();
 
-        let res = app
-            .clone()
-            .oneshot(
-                Request::builder()
-                    .uri("/get")
-                    .header("cookie", cookie_value)
-                    .body(Body::empty())
-                    .unwrap(),
-            )
-            .await
-            .unwrap();
-        let body = body_text(res).await;
-        assert_eq!(body, "value");
+                let res = app
+                    .clone()
+                    .oneshot(
+                        Request::builder()
+                            .uri("/get")
+                            .header("cookie", cookie_value)
+                            .body(Body::empty())
+                            .unwrap(),
+                    )
+                    .await
+                    .unwrap();
+                let body = body_text(res).await;
+                assert_eq!(body, "value");
 
-        let res = app
-            .clone()
-            .oneshot(
-                Request::builder()
-                    .uri("/remove")
-                    .header("cookie", cookie_value)
-                    .body(Body::empty())
-                    .unwrap(),
-            )
-            .await
-            .unwrap();
-        assert!(res.headers()["set-cookie"]
-            .to_str()
-            .unwrap()
-            .contains("key=;"));
+                let res = app
+                    .clone()
+                    .oneshot(
+                        Request::builder()
+                            .uri("/remove")
+                            .header("cookie", cookie_value)
+                            .body(Body::empty())
+                            .unwrap(),
+                    )
+                    .await
+                    .unwrap();
+                assert!(res.headers()["set-cookie"]
+                    .to_str()
+                    .unwrap()
+                    .contains("key=;"));
+            }
+        };
     }
 
+    cookie_test!(plaintext_cookies, CookieJar);
+    cookie_test!(signed_cookies, SignedCookieJar);
+
     #[tokio::test]
-    async fn set_get_remove_signed_cookie() {
-        async fn set_cookie(jar: SignedCookieJar) -> impl IntoResponse {
-            jar.add(Cookie::new("key", "value"))
-        }
-
+    async fn signed_cannot_access_invalid_cookies() {
         async fn get_cookie(jar: SignedCookieJar) -> impl IntoResponse {
-            jar.get("key").unwrap().value().to_owned()
-        }
-
-        async fn remove_cookie(jar: SignedCookieJar) -> impl IntoResponse {
-            jar.remove(Cookie::named("key"))
+            format!("{:?}", jar.get("key"))
         }
 
         let app = Router::<Body>::new()
-            .route("/set", get(set_cookie))
             .route("/get", get(get_cookie))
-            .route("/remove", get(remove_cookie))
             .layer(Extension(Key::generate()));
 
         let res = app
             .clone()
-            .oneshot(Request::builder().uri("/set").body(Body::empty()).unwrap())
-            .await
-            .unwrap();
-        let cookie_value = res.headers()["set-cookie"].to_str().unwrap();
-
-        let res = app
-            .clone()
             .oneshot(
                 Request::builder()
                     .uri("/get")
-                    .header("cookie", cookie_value)
+                    .header("cookie", "key=value")
                     .body(Body::empty())
                     .unwrap(),
             )
             .await
             .unwrap();
         let body = body_text(res).await;
-        assert_eq!(body, "value");
-
-        let res = app
-            .clone()
-            .oneshot(
-                Request::builder()
-                    .uri("/remove")
-                    .header("cookie", cookie_value)
-                    .body(Body::empty())
-                    .unwrap(),
-            )
-            .await
-            .unwrap();
-        assert!(res.headers()["set-cookie"]
-            .to_str()
-            .unwrap()
-            .contains("key=;"));
+        assert_eq!(body, "None");
     }
 
     async fn body_text<B>(body: B) -> String
