@@ -9,15 +9,18 @@ use axum::{
     Extension,
 };
 use cookie_lib::SignedJar;
-use http::header::{COOKIE, SET_COOKIE};
+use http::{
+    header::{COOKIE, SET_COOKIE},
+    HeaderMap,
+};
 use std::{convert::Infallible, fmt, marker::PhantomData};
 
 pub use cookie_lib::{Cookie, Key};
 
 /// Extractor that grabs cookies from the request and manages the jar.
 ///
-/// Note that methods like [`CookieJar::get`], [`CookieJar::remove`], etc return a
-/// [`CookieJarDelta`]. This value _must_ be returned from the handler as part of the response for the
+/// Note that methods like [`CookieJar::add`], [`CookieJar::remove`], etc updates the [`CookieJar`]
+/// and returns it. This value _must_ be returned from the handler as part of the response for the
 /// changes to be propagated.
 ///
 /// # Example
@@ -35,7 +38,7 @@ pub use cookie_lib::{Cookie, Key};
 ///
 /// async fn create_session(
 ///     TypedHeader(auth): TypedHeader<Authorization<Bearer>>,
-///     mut jar: CookieJar,
+///     jar: CookieJar,
 /// ) -> impl IntoResponse {
 ///     if let Some(session_id) = authorize_and_create_session(auth.token()).await {
 ///         Ok((
@@ -130,9 +133,10 @@ impl CookieJar {
     ///     jar.remove(Cookie::named("foo"))
     /// }
     /// ```
-    pub fn remove(&mut self, cookie: Cookie<'static>) -> CookieJarDelta {
+    #[must_use]
+    pub fn remove(mut self, cookie: Cookie<'static>) -> Self {
         self.jar.remove(cookie);
-        CookieJarDelta::from_jar(&mut self.jar)
+        self
     }
 
     /// Add a cookie to the jar.
@@ -149,9 +153,11 @@ impl CookieJar {
     ///     jar.add(Cookie::new("foo", "bar"))
     /// }
     /// ```
-    pub fn add(&mut self, cookie: Cookie<'static>) -> CookieJarDelta {
+    #[must_use]
+    #[allow(clippy::should_implement_trait)]
+    pub fn add(mut self, cookie: Cookie<'static>) -> Self {
         self.jar.add(cookie);
-        CookieJarDelta::from_jar(&mut self.jar)
+        self
     }
 
     /// Get an iterator over all cookies in the jar.
@@ -160,35 +166,16 @@ impl CookieJar {
     }
 }
 
-/// A response parts that adds a `Set-Cookie` header based on changes to a cookie jar.
-#[derive(Debug)]
-pub struct CookieJarDelta {
-    delta: Vec<Cookie<'static>>,
-}
-
-impl CookieJarDelta {
-    fn from_jar(jar: &mut cookie_lib::CookieJar) -> Self {
-        let delta = jar.delta().cloned().collect();
-        jar.reset_delta();
-        Self { delta }
-    }
-}
-
-impl IntoResponseParts for CookieJarDelta {
+impl IntoResponseParts for CookieJar {
     type Error = Infallible;
 
     fn into_response_parts(self, mut res: ResponseParts) -> Result<ResponseParts, Self::Error> {
-        for cookie in self.delta {
-            if let Ok(header_value) = cookie.encoded().to_string().parse() {
-                res.headers_mut().append(SET_COOKIE, header_value);
-            }
-        }
-
+        set_cookies(self.jar, res.headers_mut());
         Ok(res)
     }
 }
 
-impl IntoResponse for CookieJarDelta {
+impl IntoResponse for CookieJar {
     fn into_response(self) -> Response {
         (self, ()).into_response()
     }
@@ -199,9 +186,9 @@ impl IntoResponse for CookieJarDelta {
 /// All cookies will be signed and verified with a [`Key`]. Do not use this to store private data
 /// as the values are still transmitted in plaintext.
 ///
-/// Note that methods like [`SignedCookieJar::get`], [`SignedCookieJar::remove`], etc returns a
-/// [`CookieJarDelta`]. This value _must_ returned from the handler as part of the response for the
-/// changes to be propagated.
+/// Note that methods like [`SignedCookieJar::add`], [`SignedCookieJar::remove`], etc updates the
+/// [`SignedCookieJar`] and returns it. This value _must_ be returned from the handler as part of
+/// the response for the changes to be propagated.
 ///
 /// # Example
 ///
@@ -219,7 +206,7 @@ impl IntoResponse for CookieJarDelta {
 ///
 /// async fn create_session(
 ///     TypedHeader(auth): TypedHeader<Authorization<Bearer>>,
-///     mut jar: SignedCookieJar,
+///     jar: SignedCookieJar,
 /// ) -> impl IntoResponse {
 ///     if let Some(session_id) = authorize_and_create_session(auth.token()).await {
 ///         Ok((
@@ -336,9 +323,10 @@ impl<K> SignedCookieJar<K> {
     ///     jar.remove(Cookie::named("foo"))
     /// }
     /// ```
-    pub fn remove(&mut self, cookie: Cookie<'static>) -> CookieJarDelta {
+    #[must_use]
+    pub fn remove(mut self, cookie: Cookie<'static>) -> Self {
         self.signed_jar_mut().remove(cookie);
-        CookieJarDelta::from_jar(&mut self.jar)
+        self
     }
 
     /// Add a cookie to the jar.
@@ -355,9 +343,11 @@ impl<K> SignedCookieJar<K> {
     ///     jar.add(Cookie::new("foo", "bar"))
     /// }
     /// ```
-    pub fn add(&mut self, cookie: Cookie<'static>) -> CookieJarDelta {
+    #[must_use]
+    #[allow(clippy::should_implement_trait)]
+    pub fn add(mut self, cookie: Cookie<'static>) -> Self {
         self.signed_jar_mut().add(cookie);
-        CookieJarDelta::from_jar(&mut self.jar)
+        self
     }
 
     /// Verifies the authenticity and integrity of `cookie`, returning the plaintext version if
@@ -382,6 +372,32 @@ impl<K> SignedCookieJar<K> {
 
     fn signed_jar_mut(&mut self) -> SignedJar<&'_ mut cookie_lib::CookieJar> {
         self.jar.signed_mut(&self.key)
+    }
+}
+
+impl IntoResponseParts for SignedCookieJar {
+    type Error = Infallible;
+
+    fn into_response_parts(self, mut res: ResponseParts) -> Result<ResponseParts, Self::Error> {
+        set_cookies(self.jar, res.headers_mut());
+        Ok(res)
+    }
+}
+
+fn set_cookies(jar: cookie_lib::CookieJar, headers: &mut HeaderMap) {
+    for cookie in jar.delta() {
+        if let Ok(header_value) = cookie.encoded().to_string().parse() {
+            headers.append(SET_COOKIE, header_value);
+        }
+    }
+
+    // we don't need to call `jar.reset_delta()` because `into_response_parts` consumes the cookie
+    // jar so it cannot be called multiple times.
+}
+
+impl IntoResponse for SignedCookieJar {
+    fn into_response(self) -> Response {
+        (self, ()).into_response()
     }
 }
 
@@ -412,7 +428,7 @@ mod tests {
 
     #[tokio::test]
     async fn set_get_remove_cookie() {
-        async fn set_cookie(mut jar: CookieJar) -> impl IntoResponse {
+        async fn set_cookie(jar: CookieJar) -> impl IntoResponse {
             jar.add(Cookie::new("key", "value"))
         }
 
@@ -420,7 +436,7 @@ mod tests {
             jar.get("key").unwrap().value().to_owned()
         }
 
-        async fn remove_cookie(mut jar: CookieJar) -> impl IntoResponse {
+        async fn remove_cookie(jar: CookieJar) -> impl IntoResponse {
             jar.remove(Cookie::named("key"))
         }
 
@@ -469,7 +485,7 @@ mod tests {
 
     #[tokio::test]
     async fn set_get_remove_signed_cookie() {
-        async fn set_cookie(mut jar: SignedCookieJar) -> impl IntoResponse {
+        async fn set_cookie(jar: SignedCookieJar) -> impl IntoResponse {
             jar.add(Cookie::new("key", "value"))
         }
 
@@ -477,7 +493,7 @@ mod tests {
             jar.get("key").unwrap().value().to_owned()
         }
 
-        async fn remove_cookie(mut jar: CookieJar) -> impl IntoResponse {
+        async fn remove_cookie(jar: SignedCookieJar) -> impl IntoResponse {
             jar.remove(Cookie::named("key"))
         }
 
