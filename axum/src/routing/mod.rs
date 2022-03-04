@@ -215,6 +215,8 @@ where
                         path.into()
                     } else if path == "/" {
                         (&*nested_path).into()
+                    } else if let Some(path) = path.strip_suffix('/') {
+                        format!("{}{}", path, nested_path).into()
                     } else {
                         format!("{}{}", path, nested_path).into()
                     };
