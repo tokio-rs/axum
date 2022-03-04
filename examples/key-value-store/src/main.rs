@@ -27,14 +27,17 @@ use tower::{BoxError, ServiceBuilder};
 use tower_http::{
     auth::RequireAuthorizationLayer, compression::CompressionLayer, trace::TraceLayer,
 };
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[tokio::main]
 async fn main() {
-    // Set the RUST_LOG, if it hasn't been explicitly defined
-    if std::env::var_os("RUST_LOG").is_none() {
-        std::env::set_var("RUST_LOG", "example_key_value_store=debug,tower_http=debug")
-    }
-    tracing_subscriber::fmt::init();
+    tracing_subscriber::registry()
+        .with(tracing_subscriber::EnvFilter::new(
+            std::env::var("RUST_LOG")
+                .unwrap_or_else(|_| "example_key_value_store=debug,tower_http=debug".into()),
+        ))
+        .with(tracing_subscriber::fmt::layer())
+        .init();
 
     // Build our application by composing routes
     let app = Router::new()

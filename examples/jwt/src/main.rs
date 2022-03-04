@@ -20,6 +20,7 @@ use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::{fmt::Display, net::SocketAddr};
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 // Quick instructions
 //
@@ -54,11 +55,12 @@ static KEYS: Lazy<Keys> = Lazy::new(|| {
 
 #[tokio::main]
 async fn main() {
-    // Set the RUST_LOG, if it hasn't been explicitly defined
-    if std::env::var_os("RUST_LOG").is_none() {
-        std::env::set_var("RUST_LOG", "example_jwt=debug")
-    }
-    tracing_subscriber::fmt::init();
+    tracing_subscriber::registry()
+        .with(tracing_subscriber::EnvFilter::new(
+            std::env::var("RUST_LOG").unwrap_or_else(|_| "example_jwt=debug".into()),
+        ))
+        .with(tracing_subscriber::fmt::layer())
+        .init();
 
     let app = Router::new()
         .route("/protected", get(protected))

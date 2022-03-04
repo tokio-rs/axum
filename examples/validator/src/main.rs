@@ -21,14 +21,17 @@ use axum::{
 use serde::{de::DeserializeOwned, Deserialize};
 use std::net::SocketAddr;
 use thiserror::Error;
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 use validator::Validate;
 
 #[tokio::main]
 async fn main() {
-    if std::env::var_os("RUST_LOG").is_none() {
-        std::env::set_var("RUST_LOG", "example_validator=debug")
-    }
-    tracing_subscriber::fmt::init();
+    tracing_subscriber::registry()
+        .with(tracing_subscriber::EnvFilter::new(
+            std::env::var("RUST_LOG").unwrap_or_else(|_| "example_validator=debug".into()),
+        ))
+        .with(tracing_subscriber::fmt::layer())
+        .init();
 
     // build our application with a route
     let app = Router::new().route("/", get(handler));
