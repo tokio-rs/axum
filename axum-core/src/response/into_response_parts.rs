@@ -9,6 +9,67 @@ use std::{
 };
 
 /// Trait for adding headers and extensions to a response.
+///
+/// # Example
+///
+/// ```rust
+/// use axum::{
+///     response::{ResponseParts, IntoResponse, IntoResponseParts, Response},
+///     http::{StatusCode, header::{HeaderName, HeaderValue}},
+/// };
+///
+/// // Hypothetical helper type for setting a single header
+/// struct SetHeader<'a>(&'a str, &'a str);
+///
+/// impl<'a> IntoResponseParts for SetHeader<'a> {
+///     type Error = (StatusCode, String);
+///
+///     fn into_response_parts(self, mut res: ResponseParts) -> Result<ResponseParts, Self::Error> {
+///         match (self.0.parse::<HeaderName>(), self.1.parse::<HeaderValue>()) {
+///             (Ok(name), Ok(value)) => {
+///                 res.headers_mut().insert(name, value);
+///             },
+///             (Err(_), _) => {
+///                 return Err((
+///                     StatusCode::INTERNAL_SERVER_ERROR,
+///                     format!("Invalid header name {}", self.0),
+///                 ));
+///             },
+///             (_, Err(_)) => {
+///                 return Err((
+///                     StatusCode::INTERNAL_SERVER_ERROR,
+///                     format!("Invalid header value {}", self.1),
+///                 ));
+///             },
+///         }
+///
+///         Ok(res)
+///     }
+/// }
+///
+/// // Its also recommended to implement `IntoResponse` so `SetHeader` can be used on its own as
+/// // the response
+/// impl<'a> IntoResponse for SetHeader<'a> {
+///     fn into_response(self) -> Response {
+///         // This gives an empty response with the header
+///         (self, ()).into_response()
+///     }
+/// }
+///
+/// // We can now return `SetHeader` in responses
+/// async fn handler() -> impl IntoResponse {
+///     (
+///         SetHeader("server", "axum"),
+///         SetHeader("x-foo", "custom"),
+///         "body",
+///     )
+/// }
+///
+/// // Or on its own as the whole response
+/// async fn other_handler() -> impl IntoResponse {
+///     SetHeader("x-foo", "custom")
+/// }
+/// ```
 pub trait IntoResponseParts {
     /// The type returned in the event of an error.
     ///
