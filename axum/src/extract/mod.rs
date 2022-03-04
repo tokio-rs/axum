@@ -28,6 +28,8 @@ pub use self::{
     request_parts::{BodyStream, RawBody},
 };
 
+pub mod host;
+
 #[doc(no_inline)]
 #[cfg(feature = "json")]
 pub use crate::Json;
