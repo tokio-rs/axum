@@ -1,5 +1,8 @@
 name: CI
 
+env:
+  CARGO_TERM_COLOR: always
+
 on:
   push:
     branches:
