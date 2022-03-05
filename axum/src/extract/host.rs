@@ -13,9 +13,7 @@ where
     type Rejection = HostRejection;
 
     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-        if let Some(host) = req.headers().get(http::header::FORWARDED).and_then(|host| host.to_str().ok()) {
-            return Ok(Host(host.to_owned()));
-        }
+        // todo: extract host from http::header::FORWARDED
 
         if let Some(host) = req.headers().get("X-Forwarded-Host").and_then(|host| host.to_str().ok()) {
             return Ok(Host(host.to_owned()));
