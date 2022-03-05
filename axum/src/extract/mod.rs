@@ -14,6 +14,7 @@ pub mod ws;
 mod content_length_limit;
 mod raw_query;
 mod request_parts;
+mod host;
 
 #[doc(inline)]
 pub use axum_core::extract::{FromRequest, RequestParts};
@@ -23,12 +24,11 @@ pub use self::{
     connect_info::ConnectInfo,
     content_length_limit::ContentLengthLimit,
     extractor_middleware::extractor_middleware,
+    host::Host,
     path::Path,
     raw_query::RawQuery,
     request_parts::{BodyStream, RawBody},
 };
-
-pub mod host;
 
 #[doc(no_inline)]
 #[cfg(feature = "json")]
