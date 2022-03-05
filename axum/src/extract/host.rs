@@ -1,9 +1,8 @@
-use super::{FromRequest, RequestParts};
+use super::{FromRequest, RequestParts, rejection::{HostRejection, FailedToResolveHost}};
 use async_trait::async_trait;
-use std::{convert::Infallible};
 
 /// Extractor that extracts the host from a request.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct Host(pub String);
 
 #[async_trait]
@@ -11,18 +10,26 @@ impl<B> FromRequest<B> for Host
 where
     B: Send,
 {
-    type Rejection = Infallible;
+    type Rejection = HostRejection;
 
     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+        if let Some(host) = req.headers().get(http::header::FORWARDED).and_then(|host| host.to_str().ok()) {
+            return Ok(Host(host.to_owned()));
+        }
+
+        if let Some(host) = req.headers().get("X-Forwarded-Host").and_then(|host| host.to_str().ok()) {
+            return Ok(Host(host.to_owned()));
+        }
+
+        if let Some(host) = req.headers().get(http::header::HOST).and_then(|host| host.to_str().ok()) {
+            return Ok(Host(host.to_owned()));
+        }
+
         if let Some(host) = req.uri().host() {
-            return Ok(Host(host.to_string()));
+            return Ok(Host(host.to_owned()));
         }
 
-        if let Some(Ok(host)) = req.headers().get("host").map(|host| host.to_str()) {
-            return Ok(Host(host.to_string()));
-        }
-
-        Ok(Host("".to_string()))
+        Err(HostRejection::FailedToResolveHost(FailedToResolveHost))
     }
 }
 
