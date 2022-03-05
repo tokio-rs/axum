@@ -5,7 +5,7 @@ mod de;
 
 use crate::{
     extract::{rejection::*, FromRequest, RequestParts},
-    routing::{InvalidUtf8InPathParam, UrlParams},
+    routing::url_params::UrlParams,
 };
 use async_trait::async_trait;
 use axum_core::response::{IntoResponse, Response};
@@ -162,9 +162,9 @@ where
     type Rejection = PathRejection;
 
     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-        let params = match req.extensions_mut().get::<Option<UrlParams>>() {
-            Some(Some(UrlParams(Ok(params)))) => Cow::Borrowed(params),
-            Some(Some(UrlParams(Err(InvalidUtf8InPathParam { key })))) => {
+        let params = match req.extensions_mut().get::<UrlParams>() {
+            Some(UrlParams::Params(params)) => params,
+            Some(UrlParams::InvalidUtf8InPathParam { key }) => {
                 let err = PathDeserializationError {
                     kind: ErrorKind::InvalidUtf8InPathParam {
                         key: key.as_str().to_owned(),
@@ -173,7 +173,6 @@ where
                 let err = FailedToDeserializePathParams(err);
                 return Err(err.into());
             }
-            Some(None) => Cow::Owned(Vec::new()),
             None => {
                 return Err(MissingPathParams.into());
             }
