@@ -12,9 +12,9 @@ pub mod rejection;
 pub mod ws;
 
 mod content_length_limit;
+mod host;
 mod raw_query;
 mod request_parts;
-mod host;
 
 #[doc(inline)]
 pub use axum_core::extract::{FromRequest, RequestParts};
