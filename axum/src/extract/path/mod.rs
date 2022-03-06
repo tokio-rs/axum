@@ -12,7 +12,6 @@ use axum_core::response::{IntoResponse, Response};
 use http::StatusCode;
 use serde::de::DeserializeOwned;
 use std::{
-    borrow::Cow,
     fmt,
     ops::{Deref, DerefMut},
 };
