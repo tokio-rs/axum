@@ -8,7 +8,9 @@ pub(crate) enum UrlParams {
 }
 
 pub(super) fn insert_url_params(extensions: &mut Extensions, params: Params) {
-    if let Some(UrlParams::InvalidUtf8InPathParam { .. }) = extensions.get() {
+    let current_params = extensions.get_mut();
+
+    if let Some(UrlParams::InvalidUtf8InPathParam { .. }) = current_params {
         // nothing to do here since an error was stored earlier
         return;
     }
@@ -26,7 +28,7 @@ pub(super) fn insert_url_params(extensions: &mut Extensions, params: Params) {
         })
         .collect::<Result<Vec<_>, _>>();
 
-    match (extensions.get_mut(), params) {
+    match (current_params, params) {
         (Some(UrlParams::InvalidUtf8InPathParam { .. }), _) => {
             unreachable!("we check for this state earlier in this method")
         }
