@@ -6,7 +6,7 @@ use crate::{
     extract::connect_info::{Connected, IntoMakeServiceWithConnectInfo},
     response::{IntoResponse, Redirect, Response},
     routing::strip_prefix::StripPrefix,
-    util::{try_downcast, ByteStr, PercentDecodedByteStr},
+    util::try_downcast,
     BoxError,
 };
 use http::{Request, Uri};
@@ -31,6 +31,7 @@ mod method_routing;
 mod not_found;
 mod route;
 mod strip_prefix;
+pub(crate) mod url_params;
 
 #[cfg(test)]
 mod tests;
@@ -446,14 +447,7 @@ where
             panic!("should always have a matched path for a route id");
         }
 
-        let params = match_
-            .params
-            .iter()
-            .filter(|(key, _)| !key.starts_with(NEST_TAIL_PARAM))
-            .map(|(key, value)| (key.to_owned(), value.to_owned()))
-            .collect::<Vec<_>>();
-
-        insert_url_params(&mut req, params);
+        url_params::insert_url_params(req.extensions_mut(), match_.params);
 
         let mut route = self
             .routes
@@ -555,49 +549,6 @@ fn with_path(uri: &Uri, new_path: &str) -> Uri {
     parts.path_and_query = path_and_query;
 
     Uri::from_parts(parts).unwrap()
-}
-
-// we store the potential error here such that users can handle invalid path
-// params using `Result<Path<T>, _>`. That wouldn't be possible if we
-// returned an error immediately when decoding the param
-pub(crate) struct UrlParams(
-    pub(crate) Result<Vec<(ByteStr, PercentDecodedByteStr)>, InvalidUtf8InPathParam>,
-);
-
-fn insert_url_params<B>(req: &mut Request<B>, params: Vec<(String, String)>) {
-    let params = params
-        .into_iter()
-        .map(|(k, v)| {
-            if let Some(decoded) = PercentDecodedByteStr::new(v) {
-                Ok((ByteStr::new(k), decoded))
-            } else {
-                Err(InvalidUtf8InPathParam {
-                    key: ByteStr::new(k),
-                })
-            }
-        })
-        .collect::<Result<Vec<_>, _>>();
-
-    if let Some(current) = req.extensions_mut().get_mut::<Option<UrlParams>>() {
-        match params {
-            Ok(params) => {
-                let mut current = current.take().unwrap();
-                if let Ok(current) = &mut current.0 {
-                    current.extend(params);
-                }
-                req.extensions_mut().insert(Some(current));
-            }
-            Err(err) => {
-                req.extensions_mut().insert(Some(UrlParams(Err(err))));
-            }
-        }
-    } else {
-        req.extensions_mut().insert(Some(UrlParams(params)));
-    }
-}
-
-pub(crate) struct InvalidUtf8InPathParam {
-    pub(crate) key: ByteStr,
 }
 
 /// Wrapper around `matchit::Node` that supports merging two `Node`s.
