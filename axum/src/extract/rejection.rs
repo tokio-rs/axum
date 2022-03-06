@@ -65,6 +65,14 @@ define_rejection! {
     pub struct InvalidFormContentType;
 }
 
+define_rejection! {
+    #[status = BAD_REQUEST]
+    #[body = "No host found in request"]
+    /// Rejection type used if the [`Host`](super::Host) extractor is unable to
+    /// resolve a host.
+    pub struct FailedToResolveHost;
+}
+
 /// Rejection type for extractors that deserialize query strings if the input
 /// couldn't be deserialized into the target type.
 #[derive(Debug)]
@@ -157,6 +165,16 @@ composite_rejection! {
     pub enum PathRejection {
         FailedToDeserializePathParams,
         MissingPathParams,
+    }
+}
+
+composite_rejection! {
+    /// Rejection used for [`Host`](super::Host).
+    ///
+    /// Contains one variant for each way the [`Host`](super::Host) extractor
+    /// can fail.
+    pub enum HostRejection {
+        FailedToResolveHost,
     }
 }
 

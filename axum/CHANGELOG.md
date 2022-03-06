@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **added:** `Extension<_>` can now be used in tuples for building responses, and will set an
   extension on the response ([#797])
 - **added:** Implement `tower::Layer` for `Extension` ([#801])
+- **added:** `extract::Host` for extracting the hostname of a request ([#827])
 - **changed:** `Router::merge` now accepts `Into<Router>` ([#819])
 - **breaking:** `sse::Event` now accepts types implementing `AsRef<str>` instead of `Into<String>`
   as field values.
