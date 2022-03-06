@@ -99,8 +99,8 @@ impl<B> fmt::Debug for Router<B> {
     }
 }
 
-pub(crate) const NEST_TAIL_PARAM: &str = "axum_nest";
-const NEST_TAIL_PARAM_CAPTURE: &str = "/*axum_nest";
+pub(crate) const NEST_TAIL_PARAM: &str = "__private__axum_nest_tail_param";
+const NEST_TAIL_PARAM_CAPTURE: &str = "/*__private__axum_nest_tail_param";
 
 impl<B> Router<B>
 where
