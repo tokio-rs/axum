@@ -525,7 +525,10 @@ async fn route_layer() {
 
 #[tokio::test]
 #[should_panic(
-    expected = "Invalid route: insertion failed due to conflict with previously registered route: /*axum_nest. Note that `nest(\"/\", _)` conflicts with all routes. Use `Router::fallback` instead"
+    expected = "Invalid route: insertion failed due to conflict with previously registered \
+    route: /*__private__axum_nest_tail_param. \
+    Note that `nest(\"/\", _)` conflicts with all routes. \
+    Use `Router::fallback` instead"
 )]
 async fn good_error_message_if_using_nest_root() {
     let app = Router::new()
@@ -536,7 +539,10 @@ async fn good_error_message_if_using_nest_root() {
 
 #[tokio::test]
 #[should_panic(
-    expected = "Invalid route: insertion failed due to conflict with previously registered route: /*axum_nest. Note that `nest(\"/\", _)` conflicts with all routes. Use `Router::fallback` instead"
+    expected = "Invalid route: insertion failed due to conflict with previously registered \
+    route: /*__private__axum_nest_tail_param. \
+    Note that `nest(\"/\", _)` conflicts with all routes. \
+    Use `Router::fallback` instead"
 )]
 async fn good_error_message_if_using_nest_root_when_merging() {
     let one = Router::new().nest("/", get(|| async {}));
