@@ -23,14 +23,17 @@ use hyper::upgrade::Upgraded;
 use std::net::SocketAddr;
 use tokio::net::TcpStream;
 use tower::{make::Shared, ServiceExt};
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[tokio::main]
 async fn main() {
-    // Set the RUST_LOG, if it hasn't been explicitly defined
-    if std::env::var_os("RUST_LOG").is_none() {
-        std::env::set_var("RUST_LOG", "example_http_proxy=trace,tower_http=debug")
-    }
-    tracing_subscriber::fmt::init();
+    tracing_subscriber::registry()
+        .with(tracing_subscriber::EnvFilter::new(
+            std::env::var("RUST_LOG")
+                .unwrap_or_else(|_| "example_http_proxy=trace,tower_http=debug".into()),
+        ))
+        .with(tracing_subscriber::fmt::layer())
+        .init();
 
     let router = Router::new().route("/", get(|| async { "Hello, World!" }));
 
