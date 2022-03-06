@@ -69,7 +69,7 @@ define_rejection! {
     #[status = BAD_REQUEST]
     #[body = "No host found in request"]
     /// Rejection type used if the [`Host`](super::Host) extractor is unable to
-    /// resolve a host from it's supplied `RequestParts`.
+    /// resolve a host.
     pub struct FailedToResolveHost;
 }
 
