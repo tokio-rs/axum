@@ -1,7 +1,7 @@
 #![doc = include_str!("../docs/error_handling.md")]
 
 use crate::{
-    body::{boxed, Bytes, Full, HttpBody},
+    body::{boxed, Bytes, HttpBody},
     extract::{FromRequest, RequestParts},
     http::{Request, StatusCode},
     response::{IntoResponse, Response},
@@ -197,10 +197,7 @@ macro_rules! impl_service {
                     let req = match req.try_into_request() {
                         Ok(req) => req,
                         Err(err) => {
-                            return Ok(Response::builder()
-                                .status(StatusCode::INTERNAL_SERVER_ERROR)
-                                .body(boxed(Full::from(err.to_string())))
-                                .unwrap());
+                            return Ok((StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response());
                         }
                     };
 

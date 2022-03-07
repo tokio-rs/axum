@@ -40,18 +40,15 @@ mod for_handlers {
 mod for_services {
     use super::*;
     use crate::routing::get_service;
-    use http::header::HeaderValue;
 
     #[tokio::test]
     async fn get_handles_head() {
         let app = Router::new().route(
             "/",
             get_service(service_fn(|_req: Request<Body>| async move {
-                let res = Response::builder()
-                    .header("x-some-header", "foobar".parse::<HeaderValue>().unwrap())
-                    .body(Body::from("you shouldn't see this"))
-                    .unwrap();
-                Ok::<_, Infallible>(res)
+                Ok::<_, Infallible>(
+                    ([("x-some-header", "foobar")], "you shouldn't see this").into_response(),
+                )
             })),
         );
 
