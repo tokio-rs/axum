@@ -2,8 +2,7 @@ use crate::extract::{FromRequest, RequestParts};
 use async_trait::async_trait;
 use axum_core::response::{IntoResponse, IntoResponseParts, Response, ResponseParts};
 use headers::HeaderMapExt;
-use http::header::{HeaderName, HeaderValue};
-use std::ops::Deref;
+use std::{convert::Infallible, ops::Deref};
 
 /// Extractor and response that works with typed header values from [`headers`].
 ///
@@ -87,29 +86,11 @@ impl<T> IntoResponseParts for TypedHeader<T>
 where
     T: headers::Header,
 {
-    fn into_response_parts(self, res: &mut ResponseParts) {
-        struct ExtendHeaders<'a> {
-            res: &'a mut ResponseParts,
-            key: &'static HeaderName,
-        }
+    type Error = Infallible;
 
-        impl<'a> Extend<HeaderValue> for ExtendHeaders<'a> {
-            fn extend<T>(&mut self, iter: T)
-            where
-                T: IntoIterator<Item = HeaderValue>,
-            {
-                for value in iter {
-                    self.res.append_header(self.key, value);
-                }
-            }
-        }
-
-        let mut extend = ExtendHeaders {
-            res,
-            key: T::name(),
-        };
-
-        self.0.encode(&mut extend);
+    fn into_response_parts(self, mut res: ResponseParts) -> Result<ResponseParts, Self::Error> {
+        res.headers_mut().typed_insert(self.0);
+        Ok(res)
     }
 }
 

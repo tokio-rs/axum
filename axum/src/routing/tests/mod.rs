@@ -441,7 +441,7 @@ async fn static_and_dynamic_paths() {
 }
 
 #[tokio::test]
-#[should_panic(expected = "Invalid route: empty path")]
+#[should_panic(expected = "Paths must start with a `/`. Use \"/\" for root routes")]
 async fn empty_route() {
     let app = Router::new().route("", get(|| async {}));
     TestClient::new(app);
@@ -525,7 +525,10 @@ async fn route_layer() {
 
 #[tokio::test]
 #[should_panic(
-    expected = "Invalid route: insertion failed due to conflict with previously registered route: /*axum_nest. Note that `nest(\"/\", _)` conflicts with all routes. Use `Router::fallback` instead"
+    expected = "Invalid route: insertion failed due to conflict with previously registered \
+    route: /*__private__axum_nest_tail_param. \
+    Note that `nest(\"/\", _)` conflicts with all routes. \
+    Use `Router::fallback` instead"
 )]
 async fn good_error_message_if_using_nest_root() {
     let app = Router::new()
@@ -536,7 +539,10 @@ async fn good_error_message_if_using_nest_root() {
 
 #[tokio::test]
 #[should_panic(
-    expected = "Invalid route: insertion failed due to conflict with previously registered route: /*axum_nest. Note that `nest(\"/\", _)` conflicts with all routes. Use `Router::fallback` instead"
+    expected = "Invalid route: insertion failed due to conflict with previously registered \
+    route: /*__private__axum_nest_tail_param. \
+    Note that `nest(\"/\", _)` conflicts with all routes. \
+    Use `Router::fallback` instead"
 )]
 async fn good_error_message_if_using_nest_root_when_merging() {
     let one = Router::new().nest("/", get(|| async {}));
@@ -677,4 +683,11 @@ async fn head_with_middleware_applied() {
     // no content-length since we cannot know it since the response
     // is compressed
     assert!(!res.headers().contains_key("content-length"));
+}
+
+#[tokio::test]
+#[should_panic(expected = "Paths must start with a `/`")]
+async fn routes_must_start_with_slash() {
+    let app = Router::new().route(":foo", get(|| async {}));
+    TestClient::new(app);
 }

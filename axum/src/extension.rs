@@ -6,6 +6,7 @@ use async_trait::async_trait;
 use axum_core::response::{IntoResponse, Response, ResponseParts};
 use http::Request;
 use std::{
+    convert::Infallible,
     ops::Deref,
     task::{Context, Poll},
 };
@@ -107,8 +108,11 @@ impl<T> IntoResponseParts for Extension<T>
 where
     T: Send + Sync + 'static,
 {
-    fn into_response_parts(self, res: &mut ResponseParts) {
-        res.insert_extension(self.0);
+    type Error = Infallible;
+
+    fn into_response_parts(self, mut res: ResponseParts) -> Result<ResponseParts, Self::Error> {
+        res.extensions_mut().insert(self.0);
+        Ok(res)
     }
 }
 

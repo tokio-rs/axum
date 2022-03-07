@@ -345,3 +345,37 @@ async fn outer_middleware_still_see_whole_url() {
     );
     assert_eq!(client.get("/one/two").send().await.text().await, "/one/two");
 }
+
+macro_rules! nested_route_test {
+    (
+        $name:ident,
+        nest = $nested_path:literal,
+        route = $route_path:literal,
+        expected = $expected_path:literal $(,)?
+    ) => {
+        #[tokio::test]
+        async fn $name() {
+            let inner = Router::new().route($route_path, get(|| async {}));
+            let app = Router::new().nest($nested_path, inner);
+            let client = TestClient::new(app);
+            assert_eq!(
+                client.get($expected_path).send().await.status(),
+                StatusCode::OK
+            );
+        }
+    };
+}
+
+// test cases taken from https://github.com/tokio-rs/axum/issues/714#issuecomment-1058144460
+nested_route_test!(nest_1, nest = "", route = "/", expected = "/");
+nested_route_test!(nest_2, nest = "", route = "/a", expected = "/a");
+nested_route_test!(nest_3, nest = "", route = "/a/", expected = "/a/");
+nested_route_test!(nest_4, nest = "/", route = "/", expected = "/");
+nested_route_test!(nest_5, nest = "/", route = "/a", expected = "/a");
+nested_route_test!(nest_6, nest = "/", route = "/a/", expected = "/a/");
+nested_route_test!(nest_7, nest = "/a", route = "/", expected = "/a");
+nested_route_test!(nest_8, nest = "/a", route = "/a", expected = "/a/a");
+nested_route_test!(nest_9, nest = "/a", route = "/a/", expected = "/a/a/");
+nested_route_test!(nest_11, nest = "/a/", route = "/", expected = "/a/");
+nested_route_test!(nest_12, nest = "/a/", route = "/a", expected = "/a/a");
+nested_route_test!(nest_13, nest = "/a/", route = "/a/", expected = "/a/a/");

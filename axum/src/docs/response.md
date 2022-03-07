@@ -149,13 +149,10 @@ async fn all_the_things(uri: Uri) -> impl IntoResponse {
 In general you can return tuples like:
 
 - `(StatusCode, impl IntoResponse)`
-- `(Version, impl IntoResponse)`
-- `(StatusCode, Version, impl IntoResponse)`
 - `(T1, .., Tn, impl IntoResponse)` where `T1` to `Tn` all implement [`IntoResponseParts`].
 - `(StatusCode, T1, .., Tn, impl IntoResponse)` where `T1` to `Tn` all implement [`IntoResponseParts`].
-- `(StatusCode, Version, T1, .., Tn, impl IntoResponse)` where `T1` to `Tn` all implement [`IntoResponseParts`].
 
-This means you cannot accidentally override the status, version, or body, as [`IntoResponseParts`] only allows
+This means you cannot accidentally override the status or body as [`IntoResponseParts`] only allows
 setting headers and extensions.
 
 Use [`Response`](crate::response::Response) for more low level control:
