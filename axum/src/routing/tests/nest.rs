@@ -369,7 +369,8 @@ macro_rules! nested_route_test {
         $name:ident,
         nest = $nested_path:literal,
         route = $route_path:literal,
-        expected = $expected_path:literal $(,)?
+        expected = $expected_path:literal,
+        opaque_redirect = $opaque_redirect:expr $(,)?
     ) => {
         #[tokio::test]
         async fn $name() {
@@ -378,9 +379,41 @@ macro_rules! nested_route_test {
             let client = TestClient::new(app);
             assert_eq!(
                 client.get($expected_path).send().await.status(),
-                StatusCode::OK
+                StatusCode::OK,
+                "Router"
             );
+
+            let inner = Router::new()
+                .route($route_path, get(|| async {}))
+                .boxed_clone();
+            let app = Router::new().nest($nested_path, inner);
+            let client = TestClient::new(app);
+            let res = client.get($expected_path).send().await;
+            if $opaque_redirect {
+                assert_eq!(res.status(), StatusCode::PERMANENT_REDIRECT, "opaque");
+
+                let location = &res.headers()[http::header::LOCATION];
+                let res = client.get(location.to_str().unwrap()).send().await;
+                assert_eq!(res.status(), StatusCode::OK, "opaque with redirect");
+            } else {
+                assert_eq!(res.status(), StatusCode::OK, "opaque");
+            }
         }
+    };
+
+    (
+        $name:ident,
+        nest = $nested_path:literal,
+        route = $route_path:literal,
+        expected = $expected_path:literal $(,)?
+    ) => {
+        nested_route_test!(
+            $name,
+            nest = $nested_path,
+            route = $route_path,
+            expected = $expected_path,
+            opaque_redirect = false,
+        );
     };
 }
 
@@ -391,7 +424,22 @@ nested_route_test!(nest_3, nest = "", route = "/a/", expected = "/a/");
 nested_route_test!(nest_4, nest = "/", route = "/", expected = "/");
 nested_route_test!(nest_5, nest = "/", route = "/a", expected = "/a");
 nested_route_test!(nest_6, nest = "/", route = "/a/", expected = "/a/");
-nested_route_test!(nest_7, nest = "/a", route = "/", expected = "/a");
+
+// This case is different for opaque services.
+//
+// The internal route becomes `/a/*__private__axum_nest_tail_param` which, according to matchit
+// doesn't match `/a`. However matchit detects that a route for `/a/` is exists and so it issues a
+// redirect to `/a/`, which ends up calling the inner route as expected.
+//
+// So while the behavior isn't identical, the outcome is the same
+nested_route_test!(
+    nest_7,
+    nest = "/a",
+    route = "/",
+    expected = "/a",
+    opaque_redirect = true,
+);
+
 nested_route_test!(nest_8, nest = "/a", route = "/a", expected = "/a/a");
 nested_route_test!(nest_9, nest = "/a", route = "/a/", expected = "/a/a/");
 nested_route_test!(nest_11, nest = "/a/", route = "/", expected = "/a/");

@@ -42,8 +42,7 @@ where
 }
 
 fn strip_prefix(uri: &Uri, prefix: &str) -> Option<Uri> {
-    let path_and_query: http::uri::PathAndQuery = if let Some(path_and_query) = uri.path_and_query()
-    {
+    let path_and_query = if let Some(path_and_query) = uri.path_and_query() {
         // Check whether the prefix matches the path and if so how long the matching prefix is.
         //
         // # Examples
@@ -65,6 +64,8 @@ fn strip_prefix(uri: &Uri, prefix: &str) -> Option<Uri> {
                 Item::Both(path_segment, prefix_segment) => {
                     if prefix_segment.starts_with(':') || path_segment == prefix_segment {
                         *matching_prefix_length.as_mut().unwrap() += path_segment.len();
+                    } else if prefix_segment.is_empty() {
+                        break;
                     } else {
                         matching_prefix_length = None;
                         break;
@@ -183,7 +184,7 @@ mod tests {
         single_segment_root_prefix,
         uri = "/a",
         prefix = "/",
-        expected = None,
+        expected = Some("/a"),
     );
 
     test!(
@@ -332,6 +333,13 @@ mod tests {
         uri = "/a/",
         prefix = "/:param/",
         expected = Some("/"),
+    );
+
+    test!(
+        param_13,
+        uri = "/a/a",
+        prefix = "/a/",
+        expected = Some("/a"),
     );
 
     #[quickcheck]
