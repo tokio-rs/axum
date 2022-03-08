@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Login</title>
+</head>
+<body>
+<form action="/login" method="GET">
+    <div>
+        <input
+                type="text"
+                placeholder="Enter Login"
+                name="login"
+                value=""
+                id="login"
+                autofocus
+                required
+        >
+        <input
+                type="password"
+                placeholder="Enter Password"
+                name="password"
+                value=""
+                id="password"
+                autofocus
+                required
+        >
+    </div>
+    <div>
+        <div>
+            <a href="/register">
+                <input type="button" value="Register"/>
+            </a>
+        </div>
+        <div>
+            <input type="submit" value="Login"/>
+        </div>
+    </div>
+</form>
+</body>
+</html>

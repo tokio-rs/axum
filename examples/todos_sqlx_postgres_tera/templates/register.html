@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Register</title>
+</head>
+<body>
+<form action="/register" method="POST">
+    <div>
+        <input
+                type="text"
+                placeholder="Enter Login"
+                name="login"
+                value=""
+                id="login"
+                autofocus
+                required
+        >
+        <input
+                type="password"
+                placeholder="Enter Password"
+                name="password"
+                value=""
+                id="password"
+                autofocus
+                required
+        >
+    </div>
+    <div>
+        <input type="submit" value="Register"/>
+    </div>
+    <div>
+        <a href="/">
+            <input type="button" value="Back to Login">
+        </a>
+    </div>
+</form>
+<p>{{ is_already_exists_account }}</p>
+</body>
+</html>

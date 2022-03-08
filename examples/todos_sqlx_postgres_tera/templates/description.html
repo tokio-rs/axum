@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Description</title>
+</head>
+<body>
+<h1>TODO</h1>
+<p>Title: {{ title }}</p>
+<p>Description: {{ description }}</p>
+<p>Checked: {{ checked }}</p>
+<form action="/{{ id }}" method="POST">
+    <div>
+        <input type="submit" value="Delete Todo">
+    </div>
+</form>
+<div>
+    <a href="/"><input type="button" value="Back"></a>
+</div>
+</body>
+</html>

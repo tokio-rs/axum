@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Edit {{ todo.title }}</title>
+</head>
+<body>
+<form action="/edit/{{ todo.id }}" method="POST">
+    <div>
+        <input
+                type="text"
+                placeholder="Enter title"
+                name="title"
+                value="{{ todo.title }}"
+                id="title"
+                autofocus
+                required
+        >
+        <input
+                type="text"
+                placeholder="Enter description"
+                name="description"
+                value="{{ todo.description }}"
+                id="description"
+                autofocus
+                required
+        >
+        <input
+                type="checkbox"
+                placeholder="Checked"
+                name="checked"
+                value=""
+                id="checked"
+                autofocus
+        >
+    </div>
+    <div>
+        <div>
+            <input type="submit" value="Update"/>
+        </div>
+        <div>
+            <a href="/">
+                <input type="button" value="Cancel"/>
+            </a>
+        </div>
+    </div>
+</form>
+</body>
+</html>

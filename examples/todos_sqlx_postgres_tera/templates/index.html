@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Todos</title>
+</head>
+<body>
+<p>Your TODOs {{ account }}</p>
+<a href="/logout"><input type="button" value="Logout"></a>
+{% for todo in todos %}
+<p>ID: {{ todo.id }} | Title: <a href="/{{ todo.id }}">{{ todo.title }}</a> | Checked: {% if todo.checked %} Done {%
+    else %} Not yet Done {% endif %}
+    <a href="/edit/{{ todo.id }}">
+        <input type="button" value="Edit"/>
+    </a><br>
+</p>
+{% endfor %}
+<h4><a href="/new">New Todo</a></h4>
+<div>
+    <form action="/reset" method="GET">
+        <input type="submit" value="Delete all TODOs">
+    </form>
+</div>
+<div>
+    <form action="/reset" method="POST">
+        <input type="submit" value="Delete all done TODOs">
+    </form>
+</div>
+</body>
+</html>

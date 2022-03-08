@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>New</title>
+</head>
+<body>
+<div>
+    <h4>New Todo</h4>
+    <form action="/new" method="POST">
+        <div>
+            <input
+                    type="text"
+                    placeholder="Enter title"
+                    name="title"
+                    value=""
+                    id="title"
+                    autofocus
+                    required
+            >
+            <input
+                    type="text"
+                    placeholder="Enter description"
+                    name="description"
+                    value=""
+                    id="description"
+                    autofocus
+                    required
+            >
+        </div>
+        <div>
+            <div>
+                <a href="/">
+                    <input type="button" value="Cancel"/>
+                </a>
+            </div>
+            <div>
+                <input type="submit" value="Create Todo"/>
+            </div>
+        </div>
+    </form>
+</div>
+</body>
+</html>
