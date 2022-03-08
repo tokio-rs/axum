@@ -1,4 +1,5 @@
 use crate::response::Response;
+use axum_core::response::IntoResponse;
 use http::{Request, StatusCode};
 use std::{
     convert::Infallible,
@@ -28,11 +29,6 @@ where
     }
 
     fn call(&mut self, _req: Request<B>) -> Self::Future {
-        let res = Response::builder()
-            .status(StatusCode::NOT_FOUND)
-            .body(crate::body::empty())
-            .unwrap();
-
-        ready(Ok(res))
+        ready(Ok(StatusCode::NOT_FOUND.into_response()))
     }
 }

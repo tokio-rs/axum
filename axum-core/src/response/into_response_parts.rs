@@ -80,6 +80,21 @@ pub trait IntoResponseParts {
     fn into_response_parts(self, res: ResponseParts) -> Result<ResponseParts, Self::Error>;
 }
 
+impl<T> IntoResponseParts for Option<T>
+where
+    T: IntoResponseParts,
+{
+    type Error = T::Error;
+
+    fn into_response_parts(self, res: ResponseParts) -> Result<ResponseParts, Self::Error> {
+        if let Some(inner) = self {
+            inner.into_response_parts(res)
+        } else {
+            Ok(res)
+        }
+    }
+}
+
 /// Parts of a response.
 ///
 /// Used with [`IntoResponseParts`].
