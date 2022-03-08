@@ -346,6 +346,24 @@ async fn outer_middleware_still_see_whole_url() {
     assert_eq!(client.get("/one/two").send().await.text().await, "/one/two");
 }
 
+#[tokio::test]
+async fn nest_at_capture() {
+    let api_routes = Router::new()
+        .route(
+            "/:b",
+            get(|Path((a, b)): Path<(String, String)>| async move { format!("a={} b={}", a, b) }),
+        )
+        .boxed_clone();
+
+    let app = Router::new().nest("/:a", api_routes);
+
+    let client = TestClient::new(app);
+
+    let res = client.get("/foo/bar").send().await;
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.text().await, "a=foo b=bar");
+}
+
 macro_rules! nested_route_test {
     (
         $name:ident,
