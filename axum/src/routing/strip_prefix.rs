@@ -148,7 +148,7 @@ mod tests {
             $name:ident,
             uri = $uri:literal,
             prefix = $prefix:literal,
-            expected = $expected:expr $(,)?
+            expected = $expected:expr,
         ) => {
             #[test]
             fn $name() {
@@ -159,7 +159,7 @@ mod tests {
         };
     }
 
-    test!(empty, uri = "/", prefix = "/", expected = Some("/"));
+    test!(empty, uri = "/", prefix = "/", expected = Some("/"),);
 
     test!(
         single_segment,
@@ -194,7 +194,7 @@ mod tests {
         single_segment_trailing_slash,
         uri = "/a/",
         prefix = "/a/",
-        expected = Some("/")
+        expected = Some("/"),
     );
 
     test!(
@@ -208,14 +208,14 @@ mod tests {
         single_segment_trailing_slash_3,
         uri = "/a/",
         prefix = "/a",
-        expected = Some("/")
+        expected = Some("/"),
     );
 
     test!(
         multi_segment,
         uri = "/a/b",
         prefix = "/a",
-        expected = Some("/b")
+        expected = Some("/b"),
     );
 
     test!(
@@ -236,14 +236,14 @@ mod tests {
         multi_segment_4,
         uri = "/a/b",
         prefix = "/b",
-        expected = None
+        expected = None,
     );
 
     test!(
         multi_segment_trailing_slash,
         uri = "/a/b/",
         prefix = "/a/b/",
-        expected = Some("/")
+        expected = Some("/"),
     );
 
     test!(
@@ -257,37 +257,37 @@ mod tests {
         multi_segment_trailing_slash_3,
         uri = "/a/b/",
         prefix = "/a/b",
-        expected = Some("/")
+        expected = Some("/"),
     );
 
-    test!(param_0, uri = "/", prefix = "/:param", expected = Some("/"));
+    test!(param_0, uri = "/", prefix = "/:param", expected = Some("/"),);
 
     test!(
         param_1,
         uri = "/a",
         prefix = "/:param",
-        expected = Some("/")
+        expected = Some("/"),
     );
 
     test!(
         param_2,
         uri = "/a/b",
         prefix = "/:param",
-        expected = Some("/b")
+        expected = Some("/b"),
     );
 
     test!(
         param_3,
         uri = "/b/a",
         prefix = "/:param",
-        expected = Some("/a")
+        expected = Some("/a"),
     );
 
     test!(
         param_4,
         uri = "/a/b",
         prefix = "/a/:param",
-        expected = Some("/")
+        expected = Some("/"),
     );
 
     test!(param_5, uri = "/b/a", prefix = "/a/:param", expected = None,);
@@ -298,14 +298,14 @@ mod tests {
         param_7,
         uri = "/b/a",
         prefix = "/:param/a",
-        expected = Some("/")
+        expected = Some("/"),
     );
 
     test!(
         param_8,
         uri = "/a/b/c",
         prefix = "/a/:param/c",
-        expected = Some("/")
+        expected = Some("/"),
     );
 
     test!(
@@ -319,7 +319,7 @@ mod tests {
         param_10,
         uri = "/a/",
         prefix = "/:param",
-        expected = Some("/")
+        expected = Some("/"),
     );
 
     test!(param_11, uri = "/a", prefix = "/:param/", expected = None,);
@@ -328,7 +328,7 @@ mod tests {
         param_12,
         uri = "/a/",
         prefix = "/:param/",
-        expected = Some("/")
+        expected = Some("/"),
     );
 
     #[quickcheck]
