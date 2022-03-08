@@ -1,7 +1,5 @@
-use crate::util::IteratorExt;
 use http::{Request, Uri};
 use std::{
-    borrow::Cow,
     sync::Arc,
     task::{Context, Poll},
 };
@@ -36,26 +34,35 @@ where
     }
 
     fn call(&mut self, mut req: Request<B>) -> Self::Future {
-        let new_uri = strip_prefix(req.uri(), &self.prefix);
-        *req.uri_mut() = new_uri;
+        if let Some(new_uri) = strip_prefix(req.uri(), &self.prefix) {
+            *req.uri_mut() = new_uri;
+        }
         self.inner.call(req)
     }
 }
 
-#[allow(unused_must_use)]
-fn strip_prefix(uri: &Uri, prefix: &str) -> Uri {
-    let path_and_query = uri.path_and_query().map(|path_and_query| {
+fn strip_prefix(uri: &Uri, prefix: &str) -> Option<Uri> {
+    let path_and_query: http::uri::PathAndQuery = if let Some(path_and_query) = uri.path_and_query()
+    {
+        // Check whether the prefix matches the path and if so how long the matching prefix is.
+        //
+        // # Examples
+        //
+        // prefix = /api
+        // uri    = /api/users
+        //          ^^^^ this much is matched and the length is 4. Thus if we chop off the first 4
+        //          characters we get the remainder
+        //
+        // prefix = /api/:version
+        // uri    = /api/v0/users
+        //          ^^^^^^^ this much is matched and the length is 7.
         let mut matching_prefix_length = Some(0);
-
-        for (path_segment, prefix_segment) in segments(path_and_query.path()).zip(segments(prefix))
-        {
-            // add the `/`
+        for item in zip_longest(segments(path_and_query.path()), segments(prefix)) {
+            // count the `/`
             *matching_prefix_length.as_mut().unwrap() += 1;
 
-            // dbg!((&path_segment, &prefix_segment));
-
-            match (path_segment, prefix_segment) {
-                (Some(path_segment), Some(prefix_segment)) => {
+            match item {
+                Item::Both(path_segment, prefix_segment) => {
                     if prefix_segment.starts_with(':') || path_segment == prefix_segment {
                         *matching_prefix_length.as_mut().unwrap() += path_segment.len();
                     } else {
@@ -63,60 +70,39 @@ fn strip_prefix(uri: &Uri, prefix: &str) -> Uri {
                         break;
                     }
                 }
-                // the prefix had more segments than the path
-                // it cannot match
-                (None, Some(_)) => {
+                Item::First(_) => {
+                    break;
+                }
+                Item::Second(_) => {
                     matching_prefix_length = None;
-                    break;
-                }
-                // the path had more segments than the prefix
-                // the prefix might still match
-                (Some(_), None) => {
-                    break;
-                }
-                // path and prefix had same number of segments
-                (None, None) => {
                     break;
                 }
             }
         }
 
-        let prefix_with_interpolations = if let Some(idx) = matching_prefix_length {
-            dbg!(&idx);
-            dbg!(&uri.path());
-            let (prefix, _) = uri.path().split_at(idx - 1);
-            prefix
+        let after_prefix = if let Some(idx) = matching_prefix_length {
+            uri.path().split_at(idx).1
         } else {
-            return path_and_query.clone();
+            return None;
         };
 
-        let path_after_prefix = path_and_query
-            .path()
-            .strip_prefix(&prefix_with_interpolations)
-            .unwrap_or_else(|| path_and_query.path());
-
-        let new_path = if path_after_prefix.starts_with('/') {
-            Cow::Borrowed(path_after_prefix)
-        } else {
-            Cow::Owned(format!("/{}", path_after_prefix))
-        };
-
-        if let Some(query) = path_and_query.query() {
-            format!("{}?{}", new_path, query).parse().unwrap()
-        } else {
-            new_path.parse().unwrap()
+        match (after_prefix.starts_with('/'), path_and_query.query()) {
+            (true, None) => after_prefix.parse().unwrap(),
+            (true, Some(query)) => format!("{}?{}", after_prefix, query).parse().unwrap(),
+            (false, None) => format!("/{}", after_prefix).parse().unwrap(),
+            (false, Some(query)) => format!("/{}?{}", after_prefix, query).parse().unwrap(),
         }
-    });
+    } else {
+        return None;
+    };
 
-    let mut parts = http::uri::Parts::default();
-    parts.scheme = uri.scheme().cloned();
-    parts.authority = uri.authority().cloned();
-    parts.path_and_query = path_and_query;
+    let mut parts = uri.clone().into_parts();
+    parts.path_and_query = Some(path_and_query);
 
-    Uri::from_parts(parts).unwrap()
+    Some(Uri::from_parts(parts).unwrap())
 }
 
-fn segments(s: &str) -> impl Iterator<Item = Option<&str>> {
+fn segments(s: &str) -> impl Iterator<Item = &str> {
     assert!(
         s.starts_with('/'),
         "path didn't start with '/'. axum should have caught this higher up."
@@ -126,156 +112,315 @@ fn segments(s: &str) -> impl Iterator<Item = Option<&str>> {
         // skip one because paths always start with `/` so `/a/b` would become ["", "a", "b"]
         // otherwise
         .skip(1)
-        .map(Some)
-        .chain(std::iter::repeat_with(|| None))
+}
+
+fn zip_longest<I, I2>(a: I, b: I2) -> impl Iterator<Item = Item<I::Item>>
+where
+    I: Iterator,
+    I2: Iterator<Item = I::Item>,
+{
+    let a = a.map(Some).chain(std::iter::repeat_with(|| None));
+    let b = b.map(Some).chain(std::iter::repeat_with(|| None));
+    a.zip(b).map_while(|(a, b)| match (a, b) {
+        (Some(a), Some(b)) => Some(Item::Both(a, b)),
+        (Some(a), None) => Some(Item::First(a)),
+        (None, Some(b)) => Some(Item::Second(b)),
+        (None, None) => None,
+    })
+}
+
+#[derive(Debug)]
+enum Item<T> {
+    Both(T, T),
+    First(T),
+    Second(T),
 }
 
 #[cfg(test)]
 mod tests {
     #[allow(unused_imports)]
     use super::*;
+    use quickcheck::Arbitrary;
+    use quickcheck_macros::quickcheck;
 
     macro_rules! test {
         (
             $name:ident,
             uri = $uri:literal,
             prefix = $prefix:literal,
-            expected = $expected:literal $(,)?
+            expected = $expected:expr $(,)?
         ) => {
             #[test]
             fn $name() {
                 let uri = $uri.parse().unwrap();
-                assert_eq!(
-                    strip_prefix(&uri, $prefix),
-                    $expected,
-                    "without query params"
-                );
-
-                let uri = concat!($uri, "?foo=bar").parse().unwrap();
-                assert_eq!(
-                    strip_prefix(&uri, $prefix),
-                    concat!($expected, "?foo=bar"),
-                    "with query params"
-                );
+                let new_uri = strip_prefix(&uri, $prefix).map(|uri| uri.to_string());
+                assert_eq!(new_uri.as_deref(), $expected);
             }
         };
     }
 
-    test!(empty, uri = "/", prefix = "/", expected = "/");
+    test!(empty, uri = "/", prefix = "/", expected = Some("/"));
 
-    test!(single_segment, uri = "/a", prefix = "/a", expected = "/");
+    test!(
+        single_segment,
+        uri = "/a",
+        prefix = "/a",
+        expected = Some("/"),
+    );
+
     test!(
         single_segment_root_uri,
         uri = "/",
         prefix = "/a",
-        expected = "/"
+        expected = None,
     );
+
+    // the prefix is empty, so removing it should have no effect
     test!(
         single_segment_root_prefix,
         uri = "/a",
         prefix = "/",
-        expected = "/a"
+        expected = None,
     );
+
     test!(
-        single_segment_missing,
+        single_segment_no_match,
         uri = "/a",
         prefix = "/b",
-        expected = "/a"
+        expected = None,
     );
 
     test!(
         single_segment_trailing_slash,
         uri = "/a/",
         prefix = "/a/",
-        expected = "/"
+        expected = Some("/")
     );
-    // TODO(david): write integration test for this, is this behavior correct?
+
     test!(
         single_segment_trailing_slash_2,
         uri = "/a",
         prefix = "/a/",
-        expected = "/a"
+        expected = None,
     );
+
     test!(
         single_segment_trailing_slash_3,
         uri = "/a/",
         prefix = "/a",
-        expected = "/"
+        expected = Some("/")
     );
 
-    test!(multi_segment, uri = "/a/b", prefix = "/a", expected = "/b");
+    test!(
+        multi_segment,
+        uri = "/a/b",
+        prefix = "/a",
+        expected = Some("/b")
+    );
+
     test!(
         multi_segment_2,
         uri = "/b/a",
         prefix = "/a",
-        expected = "/b/a"
+        expected = None,
     );
+
     test!(
         multi_segment_3,
         uri = "/a",
         prefix = "/a/b",
-        expected = "/a"
+        expected = None,
     );
+
     test!(
         multi_segment_4,
         uri = "/a/b",
         prefix = "/b",
-        expected = "/a/b"
+        expected = None
     );
 
     test!(
         multi_segment_trailing_slash,
         uri = "/a/b/",
         prefix = "/a/b/",
-        expected = "/"
+        expected = Some("/")
     );
-    // TODO(david): write integration test for this, is this behavior correct?
+
     test!(
         multi_segment_trailing_slash_2,
         uri = "/a/b",
         prefix = "/a/b/",
-        expected = "/a/b"
+        expected = None,
     );
+
     test!(
         multi_segment_trailing_slash_3,
         uri = "/a/b/",
         prefix = "/a/b",
-        expected = "/"
+        expected = Some("/")
     );
 
-    test!(param_0, uri = "/", prefix = "/:param", expected = "/");
-    test!(param_1, uri = "/a", prefix = "/:param", expected = "/");
-    test!(param_2, uri = "/a/b", prefix = "/:param", expected = "/b");
-    test!(param_3, uri = "/b/a", prefix = "/:param", expected = "/a");
-    test!(param_4, uri = "/a/b", prefix = "/a/:param", expected = "/");
+    test!(param_0, uri = "/", prefix = "/:param", expected = Some("/"));
+
     test!(
-        param_5,
-        uri = "/b/a",
-        prefix = "/a/:param",
-        expected = "/b/a"
+        param_1,
+        uri = "/a",
+        prefix = "/:param",
+        expected = Some("/")
     );
+
     test!(
-        param_6,
+        param_2,
         uri = "/a/b",
-        prefix = "/:param/a",
-        expected = "/a/b"
+        prefix = "/:param",
+        expected = Some("/b")
     );
-    test!(param_7, uri = "/b/a", prefix = "/:param/a", expected = "/");
+
+    test!(
+        param_3,
+        uri = "/b/a",
+        prefix = "/:param",
+        expected = Some("/a")
+    );
+
+    test!(
+        param_4,
+        uri = "/a/b",
+        prefix = "/a/:param",
+        expected = Some("/")
+    );
+
+    test!(param_5, uri = "/b/a", prefix = "/a/:param", expected = None,);
+
+    test!(param_6, uri = "/a/b", prefix = "/:param/a", expected = None,);
+
+    test!(
+        param_7,
+        uri = "/b/a",
+        prefix = "/:param/a",
+        expected = Some("/")
+    );
+
     test!(
         param_8,
         uri = "/a/b/c",
         prefix = "/a/:param/c",
-        expected = "/"
+        expected = Some("/")
     );
+
     test!(
         param_9,
         uri = "/c/b/a",
         prefix = "/a/:param/c",
-        expected = "/c/b/a"
+        expected = None,
     );
-    test!(param_10, uri = "/a/", prefix = "/:param", expected = "/");
-    test!(param_11, uri = "/a", prefix = "/:param/", expected = "/a");
-    test!(param_12, uri = "/a/", prefix = "/:param/", expected = "/");
 
-    // TODO(david): quickcheck tests that we don't panic
+    test!(
+        param_10,
+        uri = "/a/",
+        prefix = "/:param",
+        expected = Some("/")
+    );
+
+    test!(param_11, uri = "/a", prefix = "/:param/", expected = None,);
+
+    test!(
+        param_12,
+        uri = "/a/",
+        prefix = "/:param/",
+        expected = Some("/")
+    );
+
+    #[quickcheck]
+    fn does_not_panic(uri_and_prefix: UriAndPrefix) -> bool {
+        let UriAndPrefix { uri, prefix } = uri_and_prefix;
+        strip_prefix(&uri, &prefix);
+        true
+    }
+
+    #[derive(Clone, Debug)]
+    struct UriAndPrefix {
+        uri: Uri,
+        prefix: String,
+    }
+
+    impl Arbitrary for UriAndPrefix {
+        fn arbitrary(g: &mut quickcheck::Gen) -> Self {
+            let mut uri = String::new();
+            let mut prefix = String::new();
+
+            let size = u8_between(1, 20, g);
+
+            for _ in 0..size {
+                let segment = ascii_alphanumeric(g);
+
+                uri.push('/');
+                uri.push_str(&segment);
+
+                prefix.push('/');
+
+                let make_matching_segment = bool::arbitrary(g);
+                let make_capture = bool::arbitrary(g);
+
+                match (make_matching_segment, make_capture) {
+                    (_, true) => {
+                        prefix.push_str(":a");
+                    }
+                    (true, false) => {
+                        prefix.push_str(&segment);
+                    }
+                    (false, false) => {
+                        prefix.push_str(&ascii_alphanumeric(g));
+                    }
+                }
+            }
+
+            if bool::arbitrary(g) {
+                uri.push('/');
+            }
+
+            if bool::arbitrary(g) {
+                prefix.push('/');
+            }
+
+            Self {
+                uri: uri.parse().unwrap(),
+                prefix,
+            }
+        }
+    }
+
+    fn ascii_alphanumeric(g: &mut quickcheck::Gen) -> String {
+        #[derive(Clone)]
+        struct AsciiAlphanumeric(String);
+
+        impl Arbitrary for AsciiAlphanumeric {
+            fn arbitrary(g: &mut quickcheck::Gen) -> Self {
+                let mut out = String::new();
+
+                let size = u8_between(1, 20, g) as usize;
+
+                while out.len() < size {
+                    let c = char::arbitrary(g);
+                    if c.is_ascii_alphanumeric() {
+                        out.push(c);
+                    }
+                }
+                Self(out)
+            }
+        }
+
+        let out = AsciiAlphanumeric::arbitrary(g).0;
+        assert!(!out.is_empty());
+        out
+    }
+
+    fn u8_between(lower: u8, upper: u8, g: &mut quickcheck::Gen) -> u8 {
+        loop {
+            let size = u8::arbitrary(g);
+            if size > lower && size <= upper {
+                break size;
+            }
+        }
+    }
 }
