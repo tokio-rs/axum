@@ -1,8 +1,10 @@
-use tower_http::services::ServeDir;
-
 use super::*;
-use crate::{body::boxed, extract::Extension};
+use crate::{
+    body::boxed,
+    extract::{Extension, MatchedPath},
+};
 use std::collections::HashMap;
+use tower_http::services::ServeDir;
 
 #[tokio::test]
 async fn nesting_apps() {
@@ -374,17 +376,22 @@ macro_rules! nested_route_test {
     ) => {
         #[tokio::test]
         async fn $name() {
-            let inner = Router::new().route($route_path, get(|| async {}));
+            let inner = Router::new().route(
+                $route_path,
+                get(|matched: MatchedPath| async move { matched.as_str().to_owned() }),
+            );
             let app = Router::new().nest($nested_path, inner);
             let client = TestClient::new(app);
-            assert_eq!(
-                client.get($expected_path).send().await.status(),
-                StatusCode::OK,
-                "Router"
-            );
+            let res = client.get($expected_path).send().await;
+            let status = res.status();
+            let matched_path = res.text().await;
+            assert_eq!(status, StatusCode::OK, "Router");
 
             let inner = Router::new()
-                .route($route_path, get(|| async {}))
+                .route(
+                    $route_path,
+                    get(|matched: MatchedPath| async move { matched.as_str().to_owned() }),
+                )
                 .boxed_clone();
             let app = Router::new().nest($nested_path, inner);
             let client = TestClient::new(app);
@@ -392,11 +399,13 @@ macro_rules! nested_route_test {
             if $opaque_redirect {
                 assert_eq!(res.status(), StatusCode::PERMANENT_REDIRECT, "opaque");
 
-                let location = &res.headers()[http::header::LOCATION];
-                let res = client.get(location.to_str().unwrap()).send().await;
+                let location = res.headers()[http::header::LOCATION].to_str().unwrap();
+                let res = client.get(location).send().await;
                 assert_eq!(res.status(), StatusCode::OK, "opaque with redirect");
+                assert_eq!(res.text().await, location);
             } else {
                 assert_eq!(res.status(), StatusCode::OK, "opaque");
+                assert_eq!(res.text().await, matched_path);
             }
         }
     };
