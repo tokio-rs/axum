@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **added:** `middleware::from_fn` for creating middleware from async functions.
   This previously lived in axum-extra but has been moved to axum ([#719])
-- **added:** Document sharing state between handler and middleware (#783])
+- **added:** Document sharing state between handler and middleware ([#783])
 - **added:** `Extension<_>` can now be used in tuples for building responses, and will set an
   extension on the response ([#797])
 - **added:** Implement `tower::Layer` for `Extension` ([#801])
@@ -91,6 +91,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#819]: https://github.com/tokio-rs/axum/pull/819
 [#823]: https://github.com/tokio-rs/axum/pull/823
 [#824]: https://github.com/tokio-rs/axum/pull/824
+[#827]: https://github.com/tokio-rs/axum/pull/827
 [#841]: https://github.com/tokio-rs/axum/pull/841
 [#842]: https://github.com/tokio-rs/axum/pull/842
 
