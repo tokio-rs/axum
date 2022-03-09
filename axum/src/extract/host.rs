@@ -13,8 +13,8 @@ const X_FORWARDED_HOST_HEADER_KEY: &str = "X-Forwarded-Host";
 /// - `Host` header
 /// - request target / URI
 ///
-/// Note that user agents can set `X-Forwarded-Host` and `Host` headers to arbitrarily so make sure
-/// to validate them to avoid security issues.
+/// Note that user agents can set `X-Forwarded-Host` and `Host` headers to arbitrary values so make
+/// sure to validate them to avoid security issues.
 #[derive(Debug, Clone)]
 pub struct Host(pub String);
 
