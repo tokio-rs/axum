@@ -15,7 +15,3 @@ pub use bytes::Bytes;
 
 #[doc(inline)]
 pub use axum_core::body::{boxed, BoxBody};
-
-pub(crate) fn empty() -> BoxBody {
-    boxed(Empty::new())
-}
