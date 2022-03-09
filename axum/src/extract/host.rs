@@ -4,7 +4,7 @@ use super::{
 };
 use async_trait::async_trait;
 
-const X_FORWARDED_HOST_HEADER_KEY: &'static str = "X-Forwarded-Host";
+const X_FORWARDED_HOST_HEADER_KEY: &str = "X-Forwarded-Host";
 
 /// Extractor that resolves the hostname of the request.
 ///
@@ -12,6 +12,9 @@ const X_FORWARDED_HOST_HEADER_KEY: &'static str = "X-Forwarded-Host";
 /// - `X-Forwarded-Host` header
 /// - `Host` header
 /// - request target / URI
+///
+/// Note that user agents can set `X-Forwarded-Host` and `Host` headers to arbitrary values so make
+/// sure to validate them to avoid security issues.
 #[derive(Debug, Clone)]
 pub struct Host(pub String);
 
