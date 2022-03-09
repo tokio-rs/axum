@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   extension on the response ([#797])
 - **added:** Implement `tower::Layer` for `Extension` ([#801])
 - **added:** `extract::Host` for extracting the hostname of a request ([#827])
+- **added:** Add `IntoResponseParts` trait which allows defining custom response
+  types for adding headers or extensions to responses ([#797])
+- **added:** `TypedHeader` implements the new `IntoResponseParts` trait so they
+  can be returned from handlers as parts of a response ([#797])
 - **changed:** `Router::merge` now accepts `Into<Router>` ([#819])
 - **breaking:** `sse::Event` now accepts types implementing `AsRef<str>` instead of `Into<String>`
   as field values.
@@ -65,6 +69,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   results in a route at `/foo/bar` instead of `/foo//bar` ([#824])
 - **breaking:** Routes are now required to start with `/`. Previously routes such as `:foo` would
   be accepted but most likely result in bugs ([#823])
+- **breaking:** `Headers` has been removed. Arrays for tuples directly implement
+  `IntoResponseParts` so `([("x-foo", "foo")], response)` now works ([#797])
 - **fixed:** Set `Allow` header when responding with `405 Method Not Allowed` ([#733])
 - **fixed:** Correctly set the `Content-Length` header for response to `HEAD`
   requests ([#734])
