@@ -7,7 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- **added:** Add `IntoResponseParts` trait ([#797])
+- **added:** Add `IntoResponseParts` trait which allows defining custom response
+  types for adding headers or extensions to responses ([#797])
 - **added:** Implement `IntoResponse` for `bytes::BytesMut` and `bytes::Chain<T, U>` ([#767])
 - **breaking:** Using `HeaderMap` as an extractor will no longer remove the headers and thus
   they'll still be accessible to other extractors, such as `axum::extract::Json`. Instead
