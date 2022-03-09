@@ -69,7 +69,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   results in a route at `/foo/bar` instead of `/foo//bar` ([#824])
 - **breaking:** Routes are now required to start with `/`. Previously routes such as `:foo` would
   be accepted but most likely result in bugs ([#823])
-- **breaking:** `Headers` has been removed. Arrays for tuples directly implement
+- **breaking:** `Headers` has been removed. Arrays of tuples directly implement
   `IntoResponseParts` so `([("x-foo", "foo")], response)` now works ([#797])
 - **fixed:** Set `Allow` header when responding with `405 Method Not Allowed` ([#733])
 - **fixed:** Correctly set the `Content-Length` header for response to `HEAD`
