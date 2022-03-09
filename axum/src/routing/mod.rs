@@ -10,6 +10,7 @@ use crate::{
     BoxError,
 };
 use http::{Request, Uri};
+use matchit::MatchError;
 use std::{
     borrow::Cow,
     collections::HashMap,
@@ -502,22 +503,17 @@ where
 
         match self.node.at(&path) {
             Ok(match_) => self.call_route(match_, req),
-            Err(err) => {
-                if err.tsr() {
-                    let redirect_to = if let Some(without_tsr) = path.strip_suffix('/') {
-                        with_path(req.uri(), without_tsr)
-                    } else {
-                        with_path(req.uri(), &format!("{}/", path))
-                    };
-                    let res = Redirect::permanent(redirect_to);
-                    RouteFuture::from_response(res.into_response())
-                } else {
-                    match &self.fallback {
-                        Fallback::Default(inner) => inner.clone().call(req),
-                        Fallback::Custom(inner) => inner.clone().call(req),
-                    }
-                }
-            }
+            Err(MatchError::MissingTrailingSlash) => RouteFuture::from_response(
+                Redirect::permanent(with_path(req.uri(), &format!("{}/", path))).into_response(),
+            ),
+            Err(MatchError::ExtraTrailingSlash) => RouteFuture::from_response(
+                Redirect::permanent(with_path(req.uri(), path.strip_suffix('/').unwrap()))
+                    .into_response(),
+            ),
+            Err(MatchError::NotFound) => match &self.fallback {
+                Fallback::Default(inner) => inner.clone().call(req),
+                Fallback::Custom(inner) => inner.clone().call(req),
+            },
         }
     }
 }
@@ -551,10 +547,10 @@ fn with_path(uri: &Uri, new_path: &str) -> Uri {
     Uri::from_parts(parts).unwrap()
 }
 
-/// Wrapper around `matchit::Node` that supports merging two `Node`s.
+/// Wrapper around `matchit::Router` that supports merging two `Router`s.
 #[derive(Clone, Default)]
 struct Node {
-    inner: matchit::Node<RouteId>,
+    inner: matchit::Router<RouteId>,
     route_id_to_path: HashMap<RouteId, Arc<str>>,
     path_to_route_id: HashMap<Arc<str>, RouteId>,
 }
@@ -579,7 +575,7 @@ impl Node {
     fn at<'n, 'p>(
         &'n self,
         path: &'p str,
-    ) -> Result<matchit::Match<'n, 'p, &'n RouteId>, matchit::MatchError> {
+    ) -> Result<matchit::Match<'n, 'p, &'n RouteId>, MatchError> {
         self.inner.at(path)
     }
 }
