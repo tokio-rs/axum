@@ -421,7 +421,6 @@ where
         mut req: Request<B>,
     ) -> RouteFuture<B, Infallible> {
         let id = *match_.value;
-        req.extensions_mut().insert(id);
 
         #[cfg(feature = "matched-path")]
         if let Some(matched_path) = self.node.route_id_to_path.get(&id) {
