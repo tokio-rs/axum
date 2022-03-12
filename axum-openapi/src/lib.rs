@@ -31,7 +31,7 @@ where
         }
     }
 
-    pub fn get<H, T>(mut self, path: &str, mut handler: H) -> Self
+    pub fn get<H, T>(mut self, path: &str, handler: H) -> Self
     where
         H: OpenApiHandler<T, B>,
         T: 'static,
@@ -43,7 +43,7 @@ where
         self
     }
 
-    pub fn post<H, T>(mut self, path: &str, mut handler: H) -> Self
+    pub fn post<H, T>(mut self, path: &str, handler: H) -> Self
     where
         H: OpenApiHandler<T, B>,
         T: 'static,
@@ -70,8 +70,6 @@ pub trait OpenApiHandler<T, B>: Handler<T, B> {
         }
     }
 }
-
-pub type SetOperationField<H, T, B> = MapOperation<H, T, B, Box<dyn FnOnce(&mut Operation)>>;
 
 pub struct MapOperation<H, T, B, F> {
     handler: H,
