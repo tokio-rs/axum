@@ -1,0 +1,9 @@
+[package]
+name = "axum-openapi"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+axum = { path = "../axum", version = "0.4" }
+okapi = "0.7.0-rc.1"
+schemars = "0.8.8"

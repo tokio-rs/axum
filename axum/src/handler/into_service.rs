@@ -71,10 +71,11 @@ where
     }
 
     fn call(&mut self, req: Request<B>) -> Self::Future {
-        use futures_util::future::FutureExt;
+        use futures_util::future::{BoxFuture, FutureExt};
 
         let handler = self.handler.clone();
-        let future = Handler::call(handler, req).map(Ok::<_, Infallible> as _);
+        let future = Box::pin(Handler::call(handler, req)) as BoxFuture<'static, _>;
+        let future = future.map(Ok::<_, Infallible> as _);
 
         super::future::IntoServiceFuture::new(future)
     }

@@ -82,7 +82,7 @@ use crate::{
 };
 use async_trait::async_trait;
 use http::Request;
-use std::{fmt, future::Future, marker::PhantomData};
+use std::{fmt, future::Future, marker::PhantomData, pin::Pin};
 use tower::ServiceExt;
 use tower_layer::Layer;
 use tower_service::Service;
@@ -92,29 +92,17 @@ mod into_service;
 
 pub use self::into_service::IntoService;
 
-pub(crate) mod sealed {
-    #![allow(unreachable_pub, missing_docs, missing_debug_implementations)]
-
-    pub trait HiddenTrait {}
-    pub struct Hidden;
-    impl HiddenTrait for Hidden {}
-}
-
 /// Trait for async functions that can be used to handle requests.
 ///
 /// You shouldn't need to depend on this trait directly. It is automatically
 /// implemented to closures of the right types.
 ///
 /// See the [module docs](crate::handler) for more details.
-#[async_trait]
 pub trait Handler<T, B = Body>: Clone + Send + Sized + 'static {
-    // This seals the trait. We cannot use the regular "sealed super trait"
-    // approach due to coherence.
-    #[doc(hidden)]
-    type Sealed: sealed::HiddenTrait;
+    type Future: Future<Output = Response> + Send + 'static;
 
     /// Call the handler with the given request.
-    async fn call(self, req: Request<B>) -> Response;
+    fn call(self, req: Request<B>) -> Self::Future;
 
     /// Apply a [`tower::Layer`] to the handler.
     ///
@@ -260,48 +248,48 @@ pub trait Handler<T, B = Body>: Clone + Send + Sized + 'static {
     }
 }
 
-#[async_trait]
-impl<F, Fut, Res, B> Handler<(), B> for F
+impl<F, Fut, B> Handler<(), B> for F
 where
     F: FnOnce() -> Fut + Clone + Send + 'static,
-    Fut: Future<Output = Res> + Send,
-    Res: IntoResponse,
+    Fut: Future + Send,
+    Fut::Output: IntoResponse,
     B: Send + 'static,
 {
-    type Sealed = sealed::Hidden;
+    type Future = Pin<Box<dyn Future<Output = Response> + Send + 'static>>;
 
-    async fn call(self, _req: Request<B>) -> Response {
-        self().await.into_response()
+    fn call(self, _req: Request<B>) -> Self::Future {
+        Box::pin(async move { self().await.into_response() })
     }
 }
 
 macro_rules! impl_handler {
     ( $($ty:ident),* $(,)? ) => {
-        #[async_trait]
         #[allow(non_snake_case)]
-        impl<F, Fut, B, Res, $($ty,)*> Handler<($($ty,)*), B> for F
+        impl<F, Fut, B, $($ty,)*> Handler<($($ty,)*), B> for F
         where
             F: FnOnce($($ty,)*) -> Fut + Clone + Send + 'static,
-            Fut: Future<Output = Res> + Send,
+            Fut: Future + Send,
             B: Send + 'static,
-            Res: IntoResponse,
+            Fut::Output: IntoResponse,
             $( $ty: FromRequest<B> + Send,)*
         {
-            type Sealed = sealed::Hidden;
+            type Future = Pin<Box<dyn Future<Output = Response> + Send + 'static>>;
 
-            async fn call(self, req: Request<B>) -> Response {
-                let mut req = RequestParts::new(req);
+            fn call(self, req: Request<B>) -> Self::Future {
+                Box::pin(async move {
+                    let mut req = RequestParts::new(req);
 
-                $(
-                    let $ty = match $ty::from_request(&mut req).await {
-                        Ok(value) => value,
-                        Err(rejection) => return rejection.into_response(),
-                    };
-                )*
+                    $(
+                        let $ty = match $ty::from_request(&mut req).await {
+                            Ok(value) => value,
+                            Err(rejection) => return rejection.into_response(),
+                        };
+                    )*
 
-                let res = self($($ty,)*).await;
+                    let res = self($($ty,)*).await;
 
-                res.into_response()
+                    res.into_response()
+                })
             }
         }
     };
@@ -346,13 +334,15 @@ where
     ResBody: HttpBody<Data = Bytes> + Send + 'static,
     ResBody::Error: Into<BoxError>,
 {
-    type Sealed = sealed::Hidden;
+    type Future = Pin<Box<dyn Future<Output = Response> + Send + 'static>>;
 
-    async fn call(self, req: Request<ReqBody>) -> Response {
-        match self.svc.oneshot(req).await {
-            Ok(res) => res.map(boxed),
-            Err(res) => res.into_response(),
-        }
+    fn call(self, req: Request<ReqBody>) -> Self::Future {
+        Box::pin(async move {
+            match self.svc.oneshot(req).await {
+                Ok(res) => res.map(boxed),
+                Err(res) => res.into_response(),
+            }
+        })
     }
 }
 
