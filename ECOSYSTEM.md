@@ -34,5 +34,4 @@ If your project isn't listed here and you would like it to be, please feel free 
 
 [axum-tutorial]: https://github.com/programatik29/axum-tutorial
 [axum-tutorial-website]: https://programatik29.github.io/axum-tutorial/
-
 - [demo-rust-axum](https://github.com/joelparkerhenderson/demo-rust-axum): Demo of Rust and axum web framework
