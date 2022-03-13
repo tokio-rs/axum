@@ -21,9 +21,9 @@ pub(crate) fn expand(item_struct: ItemStruct) -> syn::Result<TokenStream> {
     let Attrs { path } = parse_attrs(attrs)?;
 
     match fields {
-        syn::Fields::Named(_) => {
+        syn::Fields::Named(fields) => {
             let segments = parse_path(&path)?;
-            Ok(expand_named_fields(ident, path, &segments))
+            Ok(expand_named_fields(ident, fields, path, &segments))
         }
         syn::Fields::Unnamed(fields) => {
             let segments = parse_path(&path)?;
@@ -63,14 +63,23 @@ fn parse_attrs(attrs: &[syn::Attribute]) -> syn::Result<Attrs> {
     })
 }
 
-fn expand_named_fields(ident: &syn::Ident, path: LitStr, segments: &[Segment]) -> TokenStream {
+fn expand_named_fields(
+    ident: &syn::Ident,
+    fields: &syn::FieldsNamed,
+    path: LitStr,
+    segments: &[Segment],
+) -> TokenStream {
     let format_str = format_str_from_path(segments);
     let captures = captures_from_path(segments);
+
+    let params = fields.named.iter().map(|field| &field.ty);
 
     let typed_path_impl = quote_spanned! {path.span()=>
         #[automatically_derived]
         impl ::axum_extra::routing::TypedPath for #ident {
             const PATH: &'static str = #path;
+
+            type Parameters = (#(#params,)*);
         }
     };
 
@@ -156,10 +165,14 @@ fn expand_unnamed_fields(
     let format_str = format_str_from_path(segments);
     let captures = captures_from_path(segments);
 
+    let params = fields.unnamed.iter().map(|field| &field.ty);
+
     let typed_path_impl = quote_spanned! {path.span()=>
         #[automatically_derived]
         impl ::axum_extra::routing::TypedPath for #ident {
             const PATH: &'static str = #path;
+
+            type Parameters = (#(#params,)*);
         }
     };
 
@@ -224,6 +237,8 @@ fn expand_unit_fields(ident: &syn::Ident, path: LitStr) -> syn::Result<TokenStre
         #[automatically_derived]
         impl ::axum_extra::routing::TypedPath for #ident {
             const PATH: &'static str = #path;
+
+            type Parameters = ();
         }
     };
 

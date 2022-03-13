@@ -150,6 +150,9 @@ pub trait TypedPath: std::fmt::Display {
     /// The path with optional captures such as `/users/:id`.
     const PATH: &'static str;
 
+    /// The parameter types this path requires.
+    type Parameters;
+
     /// Convert the path into a `Uri`.
     ///
     /// # Panics

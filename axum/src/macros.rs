@@ -1,5 +1,3 @@
-//! Internal macros
-
 macro_rules! opaque_future {
     ($(#[$m:meta])* pub type $name:ident = $actual:ty;) => {
         opaque_future! {

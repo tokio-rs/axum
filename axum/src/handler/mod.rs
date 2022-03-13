@@ -99,6 +99,7 @@ pub use self::into_service::IntoService;
 ///
 /// See the [module docs](crate::handler) for more details.
 pub trait Handler<T, B = Body>: Clone + Send + Sized + 'static {
+    /// The type of future calling this handler returns.
     type Future: Future<Output = Response> + Send + 'static;
 
     /// Call the handler with the given request.
@@ -334,15 +335,18 @@ where
     ResBody: HttpBody<Data = Bytes> + Send + 'static,
     ResBody::Error: Into<BoxError>,
 {
-    type Future = Pin<Box<dyn Future<Output = Response> + Send + 'static>>;
+    type Future = future::LayeredFuture<S, ReqBody>;
 
     fn call(self, req: Request<ReqBody>) -> Self::Future {
-        Box::pin(async move {
-            match self.svc.oneshot(req).await {
+        use futures_util::future::{FutureExt, Map};
+
+        let future: Map<_, fn(Result<S::Response, S::Error>) -> _> =
+            self.svc.oneshot(req).map(|result| match result {
                 Ok(res) => res.map(boxed),
                 Err(res) => res.into_response(),
-            }
-        })
+            });
+
+        future::LayeredFuture::new(future)
     }
 }
 
