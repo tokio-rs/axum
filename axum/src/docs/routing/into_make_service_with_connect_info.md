@@ -23,7 +23,7 @@ async fn handler(ConnectInfo(addr): ConnectInfo<SocketAddr>) -> String {
 # async {
 axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())
     .serve(
-        app.into_make_service_with_connect_info::<SocketAddr, _>()
+        app.into_make_service_with_connect_info::<SocketAddr>()
     )
     .await
     .expect("server failed");
@@ -64,7 +64,7 @@ impl Connected<&AddrStream> for MyConnectInfo {
 # async {
 axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())
     .serve(
-        app.into_make_service_with_connect_info::<MyConnectInfo, _>()
+        app.into_make_service_with_connect_info::<MyConnectInfo>()
     )
     .await
     .expect("server failed");
