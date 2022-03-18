@@ -14,7 +14,7 @@ define_rejection! {
     /// Rejection type for [`Json`](super::Json).
     ///
     /// This rejection is used if the request body is syntactically valid JSON but couldn't be
-    /// serialized into the target type.
+    /// deserialized into the target type.
     pub struct JsonDataError(Error);
 }
 
@@ -25,7 +25,7 @@ define_rejection! {
     #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
     /// Rejection type for [`Json`](super::Json).
     ///
-    /// This rejection is used if the request body is didn't contain syntactically valid JSON.
+    /// This rejection is used if the request body didn't contain syntactically valid JSON.
     pub struct JsonSyntaxError(Error);
 }
 
