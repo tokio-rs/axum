@@ -9,10 +9,24 @@ pub use axum_core::extract::rejection::*;
 #[cfg(feature = "json")]
 define_rejection! {
     #[status = UNPROCESSABLE_ENTITY]
+    #[body = "Failed to deserialize the JSON body into the target type"]
+    #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
+    /// Rejection type for [`Json`](super::Json).
+    ///
+    /// This rejection is used if the request body is syntactically valid JSON but couldn't be
+    /// deserialized into the target type.
+    pub struct JsonDataError(Error);
+}
+
+#[cfg(feature = "json")]
+define_rejection! {
+    #[status = BAD_REQUEST]
     #[body = "Failed to parse the request body as JSON"]
     #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
     /// Rejection type for [`Json`](super::Json).
-    pub struct InvalidJsonBody(Error);
+    ///
+    /// This rejection is used if the request body didn't contain syntactically valid JSON.
+    pub struct JsonSyntaxError(Error);
 }
 
 #[cfg(feature = "json")]
@@ -141,7 +155,8 @@ composite_rejection! {
     /// can fail.
     #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
     pub enum JsonRejection {
-        InvalidJsonBody,
+        JsonDataError,
+        JsonSyntaxError,
         MissingJsonContentType,
         BytesRejection,
     }

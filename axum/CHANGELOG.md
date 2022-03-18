@@ -71,6 +71,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   be accepted but most likely result in bugs ([#823])
 - **breaking:** `Headers` has been removed. Arrays of tuples directly implement
   `IntoResponseParts` so `([("x-foo", "foo")], response)` now works ([#797])
+- **breaking:** `InvalidJsonBody` has been replaced with `JsonDataError` to clearly signal that the
+  request body was syntactically valid JSON but couldn't be deserialized into the target type
+- **changed:** New `JsonSyntaxError` variant added to `JsonRejection`. This is returned when the
+  request body contains syntactically invalid JSON
 - **fixed:** Set `Allow` header when responding with `405 Method Not Allowed` ([#733])
 - **fixed:** Correctly set the `Content-Length` header for response to `HEAD`
   requests ([#734])
