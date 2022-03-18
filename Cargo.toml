@@ -6,3 +6,4 @@ members = [
     "axum-macros",
     "examples/*",
 ]
+exclude = ["examples/sqlx-postgres"]
