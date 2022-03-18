@@ -57,6 +57,17 @@ pin_project! {
     }
 }
 
+impl<S> From<S> for StreamBody<S>
+where
+    S: TryStream + Send + 'static,
+    S::Ok: Into<Bytes>,
+    S::Error: Into<BoxError>,
+{
+    fn from(stream: S) -> Self {
+        Self::new(stream)
+    }
+}
+
 impl<S> StreamBody<S> {
     /// Create a new `StreamBody` from a [`Stream`].
     ///
