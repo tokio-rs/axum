@@ -204,7 +204,7 @@ impl<B> RequestParts<B> {
     /// Gets a mutable reference to the request body.
     ///
     /// Returns `None` if the body has been taken by another extractor.
-    // this returns `&mut Option<B>` rather than `Option<&mut B>` such that users can swap it
+    // this returns `&mut Option<B>` rather than `Option<&mut B>` such that users can use it to set the body.
     pub fn body_mut(&mut self) -> &mut Option<B> {
         &mut self.body
     }
