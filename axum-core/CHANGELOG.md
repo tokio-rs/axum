@@ -37,11 +37,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - `<Request as FromRequest>::Rejection` is now `BodyAlreadyExtracted`.
     - `<http::request::Parts as FromRequest>::Rejection` is now `Infallible`.
     - `ExtensionsAlreadyExtracted` has been removed.
+- **breaking:** `RequestParts::body_mut` now returns `&mut Option<B>` so the
+  body can be swapped ([#869])
 
 [#698]: https://github.com/tokio-rs/axum/pull/698
 [#699]: https://github.com/tokio-rs/axum/pull/699
 [#767]: https://github.com/tokio-rs/axum/pull/767
 [#797]: https://github.com/tokio-rs/axum/pull/797
+[#869]: https://github.com/tokio-rs/axum/pull/869
 
 # 0.1.1 (06. December, 2021)
 
