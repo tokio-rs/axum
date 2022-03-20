@@ -1,7 +1,4 @@
-#![allow(clippy::blacklisted_name)]
-
-use crate::body::HttpBody;
-use crate::BoxError;
+use super::{BoxError, HttpBody};
 use bytes::Bytes;
 use http::{
     header::{HeaderName, HeaderValue},
@@ -14,12 +11,6 @@ use std::{
 };
 use tower::make::Shared;
 use tower_service::Service;
-
-pub(crate) fn assert_send<T: Send>() {}
-pub(crate) fn assert_sync<T: Sync>() {}
-pub(crate) fn assert_unpin<T: Unpin>() {}
-
-pub(crate) struct NotSendSync(*const ());
 
 pub(crate) struct TestClient {
     client: reqwest::Client,

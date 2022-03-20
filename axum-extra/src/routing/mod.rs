@@ -4,6 +4,9 @@ use axum::{handler::Handler, Router};
 
 mod resource;
 
+#[cfg(feature = "spa")]
+mod spa;
+
 #[cfg(feature = "typed-routing")]
 mod typed;
 
@@ -14,6 +17,9 @@ pub use axum_macros::TypedPath;
 
 #[cfg(feature = "typed-routing")]
 pub use self::typed::{FirstElementIs, TypedPath};
+
+#[cfg(feature = "spa")]
+pub use self::spa::SpaRouter;
 
 /// Extension trait that adds additional methods to [`Router`].
 pub trait RouterExt<B>: sealed::Sealed {
