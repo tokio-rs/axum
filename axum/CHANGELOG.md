@@ -73,6 +73,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `IntoResponseParts` so `([("x-foo", "foo")], response)` now works ([#797])
 - **breaking:** `InvalidJsonBody` has been replaced with `JsonDataError` to clearly signal that the
   request body was syntactically valid JSON but couldn't be deserialized into the target type
+- **breaking:** `Handler` is no longer an `#[async_trait]` but instead has an
+  associated `Future` type. That allows users to build their own `Handler` types
+  without paying the cost of `#[async_trait]` ([#879])
 - **changed:** New `JsonSyntaxError` variant added to `JsonRejection`. This is returned when the
   request body contains syntactically invalid JSON
 - **fixed:** Set `Allow` header when responding with `405 Method Not Allowed` ([#733])
@@ -104,6 +107,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#827]: https://github.com/tokio-rs/axum/pull/827
 [#841]: https://github.com/tokio-rs/axum/pull/841
 [#842]: https://github.com/tokio-rs/axum/pull/842
+[#879]: https://github.com/tokio-rs/axum/pull/879
 
 # 0.4.4 (13. January, 2022)
 
