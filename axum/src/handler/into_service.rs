@@ -60,7 +60,7 @@ where
 {
     type Response = Response;
     type Error = Infallible;
-    type Future = super::future::IntoServiceFuture;
+    type Future = super::future::IntoServiceFuture<H::Future>;
 
     #[inline]
     fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
@@ -74,7 +74,8 @@ where
         use futures_util::future::FutureExt;
 
         let handler = self.handler.clone();
-        let future = Handler::call(handler, req).map(Ok::<_, Infallible> as _);
+        let future = Handler::call(handler, req);
+        let future = future.map(Ok as _);
 
         super::future::IntoServiceFuture::new(future)
     }
