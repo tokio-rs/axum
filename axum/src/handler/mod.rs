@@ -92,14 +92,6 @@ mod into_service;
 
 pub use self::into_service::IntoService;
 
-pub(crate) mod sealed {
-    #![allow(unreachable_pub, missing_docs, missing_debug_implementations)]
-
-    pub trait HiddenTrait {}
-    pub struct Hidden;
-    impl HiddenTrait for Hidden {}
-}
-
 /// Trait for async functions that can be used to handle requests.
 ///
 /// You shouldn't need to depend on this trait directly. It is automatically
@@ -108,11 +100,6 @@ pub(crate) mod sealed {
 /// See the [module docs](crate::handler) for more details.
 #[async_trait]
 pub trait Handler<T, B = Body>: Clone + Send + Sized + 'static {
-    // This seals the trait. We cannot use the regular "sealed super trait"
-    // approach due to coherence.
-    #[doc(hidden)]
-    type Sealed: sealed::HiddenTrait;
-
     /// Call the handler with the given request.
     async fn call(self, req: Request<B>) -> Response;
 
@@ -268,8 +255,6 @@ where
     Res: IntoResponse,
     B: Send + 'static,
 {
-    type Sealed = sealed::Hidden;
-
     async fn call(self, _req: Request<B>) -> Response {
         self().await.into_response()
     }
@@ -287,8 +272,6 @@ macro_rules! impl_handler {
             Res: IntoResponse,
             $( $ty: FromRequest<B> + Send,)*
         {
-            type Sealed = sealed::Hidden;
-
             async fn call(self, req: Request<B>) -> Response {
                 let mut req = RequestParts::new(req);
 
@@ -346,8 +329,6 @@ where
     ResBody: HttpBody<Data = Bytes> + Send + 'static,
     ResBody::Error: Into<BoxError>,
 {
-    type Sealed = sealed::Hidden;
-
     async fn call(self, req: Request<ReqBody>) -> Response {
         match self.svc.oneshot(req).await {
             Ok(res) => res.map(boxed),
