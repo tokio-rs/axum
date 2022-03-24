@@ -314,7 +314,7 @@ pub struct WebSocket {
 impl WebSocket {
     /// Receive another message.
     ///
-    /// Returns `None` if the stream stream has closed.
+    /// Returns `None` if the stream has closed.
     pub async fn recv(&mut self) -> Option<Result<Message, Error>> {
         self.next().await
     }

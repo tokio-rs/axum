@@ -262,7 +262,7 @@
 //! # };
 //! ```
 //!
-//! The downside to this approach is that its a little more verbose than using
+//! The downside to this approach is that it's a little more verbose than using
 //! extensions.
 //!
 //! # Building integrations for axum
