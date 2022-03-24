@@ -10,6 +10,7 @@ If your project isn't listed here and you would like it to be, please feel free 
 - [axum-flash](https://crates.io/crates/axum-flash): One-time notifications (aka flash messages) for axum.
 - [axum-msgpack](https://crates.io/crates/axum-msgpack): MessagePack Extractors for axum.
 - [axum-sqlx-tx](https://crates.io/crates/axum-sqlx-tx): Request-bound [SQLx](https://github.com/launchbadge/sqlx#readme) transactions with automatic commit/rollback based on response.
+- [ezsockets](https://github.com/gbaranski/ezsockets): Easy to use WebSocket library, which integrates with Axum.
 
 ## Project showcase
 
