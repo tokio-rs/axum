@@ -11,6 +11,7 @@ If your project isn't listed here and you would like it to be, please feel free 
 - [axum-msgpack](https://crates.io/crates/axum-msgpack): MessagePack Extractors for axum.
 - [axum-sqlx-tx](https://crates.io/crates/axum-sqlx-tx): Request-bound [SQLx](https://github.com/launchbadge/sqlx#readme) transactions with automatic commit/rollback based on response.
 - [aliri_tower](https://crates.io/crates/aliri_tower): JWT validation and OAuth2 scopes checking middleware.
+- [ezsockets](https://github.com/gbaranski/ezsockets): Easy to use WebSocket library that integrates with Axum.
 
 ## Project showcase
 
