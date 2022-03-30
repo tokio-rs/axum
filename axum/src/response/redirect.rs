@@ -14,7 +14,7 @@ use std::convert::TryFrom;
 /// };
 ///
 /// let app = Router::new()
-///     .route("/old", get(|| async { Redirect::permanent("/new".parse().unwrap()) }))
+///     .route("/old", get(|| async { Redirect::permanent("/new") }))
 ///     .route("/new", get(|| async { "Hello!" }));
 /// # async {
 /// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
