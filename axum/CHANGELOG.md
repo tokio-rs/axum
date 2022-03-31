@@ -90,7 +90,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   of `Uri` ([#889])
 - **breaking:** Remove second type parameter from `Router::into_make_service_with_connect_info`
   and `Handler::into_make_service_with_connect_info` to support `MakeService`s
-  that accept multiple targets
+  that accept multiple targets ([#892])
 
 [#644]: https://github.com/tokio-rs/axum/pull/644
 [#665]: https://github.com/tokio-rs/axum/pull/665
@@ -114,6 +114,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#842]: https://github.com/tokio-rs/axum/pull/842
 [#879]: https://github.com/tokio-rs/axum/pull/879
 [#889]: https://github.com/tokio-rs/axum/pull/889
+[#892]: https://github.com/tokio-rs/axum/pull/892
 
 # 0.4.4 (13. January, 2022)
 
