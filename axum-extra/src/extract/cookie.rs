@@ -45,7 +45,7 @@ pub use cookie_lib::{Cookie, Key};
 ///             // the updated jar must be returned for the changes
 ///             // to be included in the response
 ///             jar.add(Cookie::new("session_id", session_id)),
-///             Redirect::to("/me".parse().unwrap()),
+///             Redirect::to("/me"),
 ///         ))
 ///     } else {
 ///         Err(StatusCode::UNAUTHORIZED)
@@ -214,7 +214,7 @@ impl IntoResponse for CookieJar {
 ///             // the updated jar must be returned for the changes
 ///             // to be included in the response
 ///             jar.add(Cookie::new("session_id", session_id)),
-///             Redirect::to("/me".parse().unwrap()),
+///             Redirect::to("/me"),
 ///         ))
 ///     } else {
 ///         Err(StatusCode::UNAUTHORIZED)
