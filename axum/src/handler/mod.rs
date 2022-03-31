@@ -72,10 +72,7 @@
 
 use crate::{
     body::{boxed, Body, Bytes, HttpBody},
-    extract::{
-        connect_info::{Connected, IntoMakeServiceWithConnectInfo},
-        FromRequest, RequestParts,
-    },
+    extract::{connect_info::IntoMakeServiceWithConnectInfo, FromRequest, RequestParts},
     response::{IntoResponse, Response},
     routing::IntoMakeService,
     BoxError,
@@ -230,7 +227,7 @@ pub trait Handler<T, B = Body>: Clone + Send + Sized + 'static {
     ///
     /// # async {
     /// Server::bind(&SocketAddr::from(([127, 0, 0, 1], 3000)))
-    ///     .serve(handler.into_make_service_with_connect_info::<SocketAddr, _>())
+    ///     .serve(handler.into_make_service_with_connect_info::<SocketAddr>())
     ///     .await?;
     /// # Ok::<_, hyper::Error>(())
     /// # };
@@ -238,12 +235,9 @@ pub trait Handler<T, B = Body>: Clone + Send + Sized + 'static {
     ///
     /// [`MakeService`]: tower::make::MakeService
     /// [`Router::into_make_service_with_connect_info`]: crate::routing::Router::into_make_service_with_connect_info
-    fn into_make_service_with_connect_info<C, Target>(
+    fn into_make_service_with_connect_info<C>(
         self,
-    ) -> IntoMakeServiceWithConnectInfo<IntoService<Self, T, B>, C>
-    where
-        C: Connected<Target>,
-    {
+    ) -> IntoMakeServiceWithConnectInfo<IntoService<Self, T, B>, C> {
         IntoMakeServiceWithConnectInfo::new(self.into_service())
     }
 }

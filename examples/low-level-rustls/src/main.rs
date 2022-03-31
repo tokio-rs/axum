@@ -41,7 +41,7 @@ async fn main() {
 
     let mut app = Router::new()
         .route("/", get(handler))
-        .into_make_service_with_connect_info::<SocketAddr, _>();
+        .into_make_service_with_connect_info::<SocketAddr>();
 
     loop {
         let stream = poll_fn(|cx| Pin::new(&mut listener).poll_accept(cx))

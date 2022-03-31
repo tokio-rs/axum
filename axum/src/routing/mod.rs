@@ -3,7 +3,7 @@
 use self::{future::RouteFuture, not_found::NotFound};
 use crate::{
     body::{boxed, Body, Bytes, HttpBody},
-    extract::connect_info::{Connected, IntoMakeServiceWithConnectInfo},
+    extract::connect_info::IntoMakeServiceWithConnectInfo,
     response::{IntoResponse, Redirect, Response},
     routing::strip_prefix::StripPrefix,
     util::try_downcast,
@@ -405,12 +405,7 @@ where
     }
 
     #[doc = include_str!("../docs/routing/into_make_service_with_connect_info.md")]
-    pub fn into_make_service_with_connect_info<C, Target>(
-        self,
-    ) -> IntoMakeServiceWithConnectInfo<Self, C>
-    where
-        C: Connected<Target>,
-    {
+    pub fn into_make_service_with_connect_info<C>(self) -> IntoMakeServiceWithConnectInfo<Self, C> {
         IntoMakeServiceWithConnectInfo::new(self)
     }
 
