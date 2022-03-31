@@ -86,7 +86,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **fixed:** Fixed several routing bugs related to nested "opaque" tower services (i.e.
   non-`Router` services) ([#841] and [#842])
 - **changed:** Update to tokio-tungstenite 0.17 ([#791])
-- **changed:** `Redirect::{to, temporary, permanent}` now accept `&str` instead
+- **breaking:** `Redirect::{to, temporary, permanent}` now accept `&str` instead
   of `Uri` ([#889])
 
 [#644]: https://github.com/tokio-rs/axum/pull/644
