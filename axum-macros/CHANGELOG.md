@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+- None.
+
+# 0.2.0 (31. March, 2022)
+
 - **breaking:** Routes are now required to start with `/`. Previously empty routes or routes such
   as `:foo` would be accepted but most likely result in bugs ([#823])
 

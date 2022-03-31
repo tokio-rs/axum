@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning].
 
 # Unreleased
 
+- None.
+
+# 0.2.0 (31. March, 2022)
+
 - **added:** Add `TypedPath::to_uri` for converting the path into a `Uri` ([#790])
 - **added:** Extractors and responses for dealing with cookies. See `extract::cookies` for more
   details ([#816])
