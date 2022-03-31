@@ -45,7 +45,7 @@ pub use cookie_lib::{Cookie, Key};
 ///             // the updated jar must be returned for the changes
 ///             // to be included in the response
 ///             jar.add(Cookie::new("session_id", session_id)),
-///             Redirect::to("/me".parse().unwrap()),
+///             Redirect::to("/me"),
 ///         ))
 ///     } else {
 ///         Err(StatusCode::UNAUTHORIZED)
@@ -112,7 +112,7 @@ impl CookieJar {
     /// use axum_extra::extract::cookie::CookieJar;
     /// use axum::response::IntoResponse;
     ///
-    /// async fn handle(mut jar: CookieJar) {
+    /// async fn handle(jar: CookieJar) {
     ///     let value: Option<String> = jar
     ///         .get("foo")
     ///         .map(|cookie| cookie.value().to_owned());
@@ -130,7 +130,7 @@ impl CookieJar {
     /// use axum_extra::extract::cookie::{CookieJar, Cookie};
     /// use axum::response::IntoResponse;
     ///
-    /// async fn handle(mut jar: CookieJar) -> impl IntoResponse {
+    /// async fn handle(jar: CookieJar) -> impl IntoResponse {
     ///     jar.remove(Cookie::named("foo"))
     /// }
     /// ```
@@ -150,7 +150,7 @@ impl CookieJar {
     /// use axum_extra::extract::cookie::{CookieJar, Cookie};
     /// use axum::response::IntoResponse;
     ///
-    /// async fn handle(mut jar: CookieJar) -> impl IntoResponse {
+    /// async fn handle(jar: CookieJar) -> impl IntoResponse {
     ///     jar.add(Cookie::new("foo", "bar"))
     /// }
     /// ```
@@ -214,7 +214,7 @@ impl IntoResponse for CookieJar {
 ///             // the updated jar must be returned for the changes
 ///             // to be included in the response
 ///             jar.add(Cookie::new("session_id", session_id)),
-///             Redirect::to("/me".parse().unwrap()),
+///             Redirect::to("/me"),
 ///         ))
 ///     } else {
 ///         Err(StatusCode::UNAUTHORIZED)
@@ -303,7 +303,7 @@ impl<K> SignedCookieJar<K> {
     /// use axum_extra::extract::cookie::SignedCookieJar;
     /// use axum::response::IntoResponse;
     ///
-    /// async fn handle(mut jar: SignedCookieJar) {
+    /// async fn handle(jar: SignedCookieJar) {
     ///     let value: Option<String> = jar
     ///         .get("foo")
     ///         .map(|cookie| cookie.value().to_owned());
@@ -321,7 +321,7 @@ impl<K> SignedCookieJar<K> {
     /// use axum_extra::extract::cookie::{SignedCookieJar, Cookie};
     /// use axum::response::IntoResponse;
     ///
-    /// async fn handle(mut jar: SignedCookieJar) -> impl IntoResponse {
+    /// async fn handle(jar: SignedCookieJar) -> impl IntoResponse {
     ///     jar.remove(Cookie::named("foo"))
     /// }
     /// ```
@@ -341,7 +341,7 @@ impl<K> SignedCookieJar<K> {
     /// use axum_extra::extract::cookie::{SignedCookieJar, Cookie};
     /// use axum::response::IntoResponse;
     ///
-    /// async fn handle(mut jar: SignedCookieJar) -> impl IntoResponse {
+    /// async fn handle(jar: SignedCookieJar) -> impl IntoResponse {
     ///     jar.add(Cookie::new("foo", "bar"))
     /// }
     /// ```

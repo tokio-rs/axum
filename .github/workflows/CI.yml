@@ -17,7 +17,7 @@ jobs:
     - uses: actions/checkout@master
     - uses: actions-rs/toolchain@v1
       with:
-        toolchain: nightly
+        toolchain: beta
         override: true
         profile: minimal
         components: clippy, rustfmt
@@ -69,7 +69,9 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        rust: [stable, beta, nightly]
+        # nightly has an ICE, so ignore it for now
+        # rust: [stable, beta, nightly]
+        rust: [stable, beta]
     steps:
     - uses: actions/checkout@master
     - uses: actions-rs/toolchain@v1

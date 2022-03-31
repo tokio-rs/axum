@@ -1,5 +1,5 @@
 use axum_core::response::{IntoResponse, Response};
-use http::{header::LOCATION, HeaderValue, StatusCode, Uri};
+use http::{header::LOCATION, HeaderValue, StatusCode};
 use std::convert::TryFrom;
 
 /// Response that redirects the request to another location.
@@ -14,7 +14,7 @@ use std::convert::TryFrom;
 /// };
 ///
 /// let app = Router::new()
-///     .route("/old", get(|| async { Redirect::permanent("/new".parse().unwrap()) }))
+///     .route("/old", get(|| async { Redirect::permanent("/new") }))
 ///     .route("/new", get(|| async { "Hello!" }));
 /// # async {
 /// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
@@ -40,7 +40,7 @@ impl Redirect {
     /// If `uri` isn't a valid [`HeaderValue`].
     ///
     /// [mdn]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/303
-    pub fn to(uri: Uri) -> Self {
+    pub fn to(uri: &str) -> Self {
         Self::with_status_code(StatusCode::SEE_OTHER, uri)
     }
 
@@ -54,7 +54,7 @@ impl Redirect {
     /// If `uri` isn't a valid [`HeaderValue`].
     ///
     /// [mdn]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/307
-    pub fn temporary(uri: Uri) -> Self {
+    pub fn temporary(uri: &str) -> Self {
         Self::with_status_code(StatusCode::TEMPORARY_REDIRECT, uri)
     }
 
@@ -65,7 +65,7 @@ impl Redirect {
     /// If `uri` isn't a valid [`HeaderValue`].
     ///
     /// [mdn]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/308
-    pub fn permanent(uri: Uri) -> Self {
+    pub fn permanent(uri: &str) -> Self {
         Self::with_status_code(StatusCode::PERMANENT_REDIRECT, uri)
     }
 
@@ -73,7 +73,7 @@ impl Redirect {
     // use the `Location` header, namely `304 Not Modified`.
     //
     // We're open to adding more constructors upon request, if they make sense :)
-    fn with_status_code(status_code: StatusCode, uri: Uri) -> Self {
+    fn with_status_code(status_code: StatusCode, uri: &str) -> Self {
         assert!(
             status_code.is_redirection(),
             "not a redirection status code"
@@ -81,8 +81,7 @@ impl Redirect {
 
         Self {
             status_code,
-            location: HeaderValue::try_from(uri.to_string())
-                .expect("URI isn't a valid header value"),
+            location: HeaderValue::try_from(uri).expect("URI isn't a valid header value"),
         }
     }
 }

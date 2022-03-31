@@ -9,11 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **added:** `middleware::from_fn` for creating middleware from async functions.
   This previously lived in axum-extra but has been moved to axum ([#719])
-- **added:** Document sharing state between handler and middleware (#783])
+- **added:** Document sharing state between handler and middleware ([#783])
 - **added:** `Extension<_>` can now be used in tuples for building responses, and will set an
   extension on the response ([#797])
 - **added:** Implement `tower::Layer` for `Extension` ([#801])
 - **added:** `extract::Host` for extracting the hostname of a request ([#827])
+- **added:** Add `IntoResponseParts` trait which allows defining custom response
+  types for adding headers or extensions to responses ([#797])
+- **added:** `TypedHeader` implements the new `IntoResponseParts` trait so they
+  can be returned from handlers as parts of a response ([#797])
 - **changed:** `Router::merge` now accepts `Into<Router>` ([#819])
 - **breaking:** `sse::Event` now accepts types implementing `AsRef<str>` instead of `Into<String>`
   as field values.
@@ -65,12 +69,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   results in a route at `/foo/bar` instead of `/foo//bar` ([#824])
 - **breaking:** Routes are now required to start with `/`. Previously routes such as `:foo` would
   be accepted but most likely result in bugs ([#823])
+- **breaking:** `Headers` has been removed. Arrays of tuples directly implement
+  `IntoResponseParts` so `([("x-foo", "foo")], response)` now works ([#797])
+- **breaking:** `InvalidJsonBody` has been replaced with `JsonDataError` to clearly signal that the
+  request body was syntactically valid JSON but couldn't be deserialized into the target type
+- **breaking:** `Handler` is no longer an `#[async_trait]` but instead has an
+  associated `Future` type. That allows users to build their own `Handler` types
+  without paying the cost of `#[async_trait]` ([#879])
+- **changed:** New `JsonSyntaxError` variant added to `JsonRejection`. This is returned when the
+  request body contains syntactically invalid JSON
 - **fixed:** Set `Allow` header when responding with `405 Method Not Allowed` ([#733])
 - **fixed:** Correctly set the `Content-Length` header for response to `HEAD`
   requests ([#734])
 - **fixed:** Fix wrong `content-length` for `HEAD` requests to endpoints that returns chunked
   responses ([#755])
+- **fixed:** Fixed several routing bugs related to nested "opaque" tower services (i.e.
+  non-`Router` services) ([#841] and [#842])
 - **changed:** Update to tokio-tungstenite 0.17 ([#791])
+- **breaking:** `Redirect::{to, temporary, permanent}` now accept `&str` instead
+  of `Uri` ([#889])
 
 [#644]: https://github.com/tokio-rs/axum/pull/644
 [#665]: https://github.com/tokio-rs/axum/pull/665
@@ -89,6 +106,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#819]: https://github.com/tokio-rs/axum/pull/819
 [#823]: https://github.com/tokio-rs/axum/pull/823
 [#824]: https://github.com/tokio-rs/axum/pull/824
+[#827]: https://github.com/tokio-rs/axum/pull/827
+[#841]: https://github.com/tokio-rs/axum/pull/841
+[#842]: https://github.com/tokio-rs/axum/pull/842
+[#879]: https://github.com/tokio-rs/axum/pull/879
+[#889]: https://github.com/tokio-rs/axum/pull/889
 
 # 0.4.4 (13. January, 2022)
 

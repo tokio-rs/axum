@@ -9,7 +9,8 @@ use crate::{
     util::try_downcast,
     BoxError,
 };
-use http::{Request, Uri};
+use http::Request;
+use matchit::MatchError;
 use std::{
     borrow::Cow,
     collections::HashMap,
@@ -236,8 +237,8 @@ where
             }
             // otherwise we add a wildcard route to the service
             Err(svc) => {
-                let path = if path == "/" {
-                    format!("/*{}", NEST_TAIL_PARAM)
+                let path = if path.ends_with('/') {
+                    format!("{}*{}", path, NEST_TAIL_PARAM)
                 } else {
                     format!("{}/*{}", path, NEST_TAIL_PARAM)
                 };
@@ -420,7 +421,6 @@ where
         mut req: Request<B>,
     ) -> RouteFuture<B, Infallible> {
         let id = *match_.value;
-        req.extensions_mut().insert(id);
 
         #[cfg(feature = "matched-path")]
         if let Some(matched_path) = self.node.route_id_to_path.get(&id) {
@@ -502,59 +502,25 @@ where
 
         match self.node.at(&path) {
             Ok(match_) => self.call_route(match_, req),
-            Err(err) => {
-                if err.tsr() {
-                    let redirect_to = if let Some(without_tsr) = path.strip_suffix('/') {
-                        with_path(req.uri(), without_tsr)
-                    } else {
-                        with_path(req.uri(), &format!("{}/", path))
-                    };
-                    let res = Redirect::permanent(redirect_to);
-                    RouteFuture::from_response(res.into_response())
-                } else {
-                    match &self.fallback {
-                        Fallback::Default(inner) => inner.clone().call(req),
-                        Fallback::Custom(inner) => inner.clone().call(req),
-                    }
-                }
-            }
+            Err(MatchError::MissingTrailingSlash) => RouteFuture::from_response(
+                Redirect::permanent(&format!("{}/", req.uri().to_string())).into_response(),
+            ),
+            Err(MatchError::ExtraTrailingSlash) => RouteFuture::from_response(
+                Redirect::permanent(&req.uri().to_string().strip_suffix('/').unwrap())
+                    .into_response(),
+            ),
+            Err(MatchError::NotFound) => match &self.fallback {
+                Fallback::Default(inner) => inner.clone().call(req),
+                Fallback::Custom(inner) => inner.clone().call(req),
+            },
         }
     }
 }
 
-fn with_path(uri: &Uri, new_path: &str) -> Uri {
-    let path_and_query = if let Some(path_and_query) = uri.path_and_query() {
-        let new_path = if new_path.starts_with('/') {
-            Cow::Borrowed(new_path)
-        } else {
-            Cow::Owned(format!("/{}", new_path))
-        };
-
-        if let Some(query) = path_and_query.query() {
-            Some(
-                format!("{}?{}", new_path, query)
-                    .parse::<http::uri::PathAndQuery>()
-                    .unwrap(),
-            )
-        } else {
-            Some(new_path.parse().unwrap())
-        }
-    } else {
-        None
-    };
-
-    let mut parts = http::uri::Parts::default();
-    parts.scheme = uri.scheme().cloned();
-    parts.authority = uri.authority().cloned();
-    parts.path_and_query = path_and_query;
-
-    Uri::from_parts(parts).unwrap()
-}
-
-/// Wrapper around `matchit::Node` that supports merging two `Node`s.
+/// Wrapper around `matchit::Router` that supports merging two `Router`s.
 #[derive(Clone, Default)]
 struct Node {
-    inner: matchit::Node<RouteId>,
+    inner: matchit::Router<RouteId>,
     route_id_to_path: HashMap<RouteId, Arc<str>>,
     path_to_route_id: HashMap<Arc<str>, RouteId>,
 }
@@ -579,7 +545,7 @@ impl Node {
     fn at<'n, 'p>(
         &'n self,
         path: &'p str,
-    ) -> Result<matchit::Match<'n, 'p, &'n RouteId>, matchit::MatchError> {
+    ) -> Result<matchit::Match<'n, 'p, &'n RouteId>, MatchError> {
         self.inner.at(path)
     }
 }

@@ -209,8 +209,11 @@ async fn create_user(payload: Result<Json<Value>, JsonRejection>) {
             // Request didn't have `Content-Type: application/json`
             // header
         }
-        Err(JsonRejection::InvalidJsonBody(_)) => {
+        Err(JsonRejection::JsonDataError(_)) => {
             // Couldn't deserialize the body into the target type
+        }
+        Err(JsonRejection::JsonSyntaxError(_)) => {
+            // Syntax error in the body
         }
         Err(JsonRejection::BytesRejection(_)) => {
             // Failed to extract the request body
@@ -249,7 +252,7 @@ breaking the public API.
 
 For example that means while [`Json`] is implemented using [`serde_json`] it
 doesn't directly expose the [`serde_json::Error`] thats contained in
-[`JsonRejection::InvalidJsonBody`]. However it is still possible to access via
+[`JsonRejection::JsonDataError`]. However it is still possible to access via
 methods from [`std::error::Error`]:
 
 ```rust
@@ -267,21 +270,11 @@ async fn handler(result: Result<Json<Value>, JsonRejection>) -> impl IntoRespons
         Ok(Json(payload)) => Ok(Json(json!({ "payload": payload }))),
 
         Err(err) => match err {
-            // attempt to extract the inner `serde_json::Error`, if that
-            // succeeds we can provide a more specific error
-            JsonRejection::InvalidJsonBody(err) => {
-                if let Some(serde_json_err) = find_error_source::<serde_json::Error>(&err) {
-                    Err((
-                        StatusCode::BAD_REQUEST,
-                        format!(
-                            "Invalid JSON at line {} column {}",
-                            serde_json_err.line(),
-                            serde_json_err.column()
-                        ),
-                    ))
-                } else {
-                    Err((StatusCode::BAD_REQUEST, "Unknown error".to_string()))
-                }
+            JsonRejection::JsonDataError(err) => {
+                Err(serde_json_error_response(err))
+            }
+            JsonRejection::JsonSyntaxError(err) => {
+                Err(serde_json_error_response(err))
             }
             // handle other rejections from the `Json` extractor
             JsonRejection::MissingJsonContentType(_) => Err((
@@ -299,6 +292,26 @@ async fn handler(result: Result<Json<Value>, JsonRejection>) -> impl IntoRespons
                 "Unknown error".to_string(),
             )),
         },
+    }
+}
+
+// attempt to extract the inner `serde_json::Error`, if that succeeds we can
+// provide a more specific error
+fn serde_json_error_response<E>(err: E) -> (StatusCode, String)
+where
+    E: Error + 'static,
+{
+    if let Some(serde_json_err) = find_error_source::<serde_json::Error>(&err) {
+        (
+            StatusCode::BAD_REQUEST,
+            format!(
+                "Invalid JSON at line {} column {}",
+                serde_json_err.line(),
+                serde_json_err.column()
+            ),
+        )
+    } else {
+        (StatusCode::BAD_REQUEST, "Unknown error".to_string())
     }
 }
 

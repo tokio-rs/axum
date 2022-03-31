@@ -69,7 +69,7 @@ where
             Err(rejection) => {
                 // convert the error from `axum::Json` into whatever we want
                 let (status, body): (_, Cow<'_, str>) = match rejection {
-                    JsonRejection::InvalidJsonBody(err) => (
+                    JsonRejection::JsonDataError(err) => (
                         StatusCode::BAD_REQUEST,
                         format!("Invalid JSON request: {}", err).into(),
                     ),
