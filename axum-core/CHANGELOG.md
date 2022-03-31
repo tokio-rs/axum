@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+- None.
+
+# 0.2.0 (31. March, 2022)
+
 - **added:** Add `IntoResponseParts` trait which allows defining custom response
   types for adding headers or extensions to responses ([#797])
 - **breaking:** Using `HeaderMap` as an extractor will no longer remove the headers and thus
