@@ -7,12 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- **added:** `middleware::from_fn` for creating middleware from async functions.
-  This previously lived in axum-extra but has been moved to axum ([#719])
 - **added:** Document sharing state between handler and middleware ([#783])
 - **added:** `Extension<_>` can now be used in tuples for building responses, and will set an
   extension on the response ([#797])
-- **added:** Implement `tower::Layer` for `Extension` ([#801])
 - **added:** `extract::Host` for extracting the hostname of a request ([#827])
 - **added:** Add `IntoResponseParts` trait which allows defining custom response
   types for adding headers or extensions to responses ([#797])
@@ -78,7 +75,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   without paying the cost of `#[async_trait]` ([#879])
 - **changed:** New `JsonSyntaxError` variant added to `JsonRejection`. This is returned when the
   request body contains syntactically invalid JSON
-- **fixed:** Set `Allow` header when responding with `405 Method Not Allowed` ([#733])
 - **fixed:** Correctly set the `Content-Length` header for response to `HEAD`
   requests ([#734])
 - **fixed:** Fix wrong `content-length` for `HEAD` requests to endpoints that returns chunked
@@ -96,15 +92,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#665]: https://github.com/tokio-rs/axum/pull/665
 [#698]: https://github.com/tokio-rs/axum/pull/698
 [#699]: https://github.com/tokio-rs/axum/pull/699
-[#719]: https://github.com/tokio-rs/axum/pull/719
-[#733]: https://github.com/tokio-rs/axum/pull/733
 [#734]: https://github.com/tokio-rs/axum/pull/734
 [#755]: https://github.com/tokio-rs/axum/pull/755
 [#783]: https://github.com/tokio-rs/axum/pull/783
 [#791]: https://github.com/tokio-rs/axum/pull/791
 [#797]: https://github.com/tokio-rs/axum/pull/797
 [#800]: https://github.com/tokio-rs/axum/pull/800
-[#801]: https://github.com/tokio-rs/axum/pull/801
 [#807]: https://github.com/tokio-rs/axum/pull/807
 [#819]: https://github.com/tokio-rs/axum/pull/819
 [#823]: https://github.com/tokio-rs/axum/pull/823
@@ -115,6 +108,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#879]: https://github.com/tokio-rs/axum/pull/879
 [#889]: https://github.com/tokio-rs/axum/pull/889
 [#892]: https://github.com/tokio-rs/axum/pull/892
+
+# 0.4.8 (2. March, 2022)
+
+- Use correct path for `AddExtensionLayer` and `AddExtension::layer` deprecation
+  notes ([#812])
+
+[#812]: https://github.com/tokio-rs/axum/pull/812
+
+# 0.4.7 (1. March, 2022)
+
+- **added:** Implement `tower::Layer` for `Extension` ([#801])
+- **changed:** Deprecate `AddExtensionLayer`. Use `Extension` instead ([#805])
+
+[#801]: https://github.com/tokio-rs/axum/pull/801
+[#805]: https://github.com/tokio-rs/axum/pull/805
+
+# 0.4.6 (22. February, 2022)
+
+- **added:** `middleware::from_fn` for creating middleware from async functions.
+  This previously lived in axum-extra but has been moved to axum ([#719])
+- **fixed:** Set `Allow` header when responding with `405 Method Not Allowed` ([#733])
+
+[#719]: https://github.com/tokio-rs/axum/pull/719
+[#733]: https://github.com/tokio-rs/axum/pull/733
+
+# 0.4.5 (31. January, 2022)
+
+- Reference [axum-macros] instead of [axum-debug]. The latter has been superseded by
+  axum-macros and is deprecated ([#738])
+
+[#738]: https://github.com/tokio-rs/axum/pull/738
+[axum-debug]: https://docs.rs/axum-debug
+[axum-macros]: https://docs.rs/axum-macros
 
 # 0.4.4 (13. January, 2022)
 
