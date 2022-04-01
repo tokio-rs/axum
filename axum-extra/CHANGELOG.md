@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning].
 # Unreleased
 
 - **added:** Re-export `SameSite` and `Expiration` from the `cookie` crate.
+- **fixed:** Fix `SignedCookieJar` when using custom key types ([#899])
+
+[#899]: https://github.com/tokio-rs/axum/pull/899
 
 # 0.2.0 (31. March, 2022)
 
