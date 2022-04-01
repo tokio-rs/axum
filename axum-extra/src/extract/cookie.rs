@@ -273,7 +273,7 @@ where
     type Rejection = <axum::Extension<K> as FromRequest<B>>::Rejection;
 
     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-        let Extension(key) = Extension::from_request(req).await?;
+        let key = Extension::<K>::from_request(req).await?.0.into();
 
         let mut jar = cookie_lib::CookieJar::new();
         let mut signed_jar = jar.signed_mut(&key);
@@ -377,7 +377,7 @@ impl<K> SignedCookieJar<K> {
     }
 }
 
-impl IntoResponseParts for SignedCookieJar {
+impl<K> IntoResponseParts for SignedCookieJar<K> {
     type Error = Infallible;
 
     fn into_response_parts(self, mut res: ResponseParts) -> Result<ResponseParts, Self::Error> {
@@ -397,7 +397,7 @@ fn set_cookies(jar: cookie_lib::CookieJar, headers: &mut HeaderMap) {
     // jar so it cannot be called multiple times.
 }
 
-impl IntoResponse for SignedCookieJar {
+impl<K> IntoResponse for SignedCookieJar<K> {
     fn into_response(self) -> Response {
         (self, ()).into_response()
     }
@@ -448,7 +448,8 @@ mod tests {
                     .route("/set", get(set_cookie))
                     .route("/get", get(get_cookie))
                     .route("/remove", get(remove_cookie))
-                    .layer(Extension(Key::generate()));
+                    .layer(Extension(Key::generate()))
+                    .layer(Extension(CustomKey(Key::generate())));
 
                 let res = app
                     .clone()
@@ -492,6 +493,16 @@ mod tests {
 
     cookie_test!(plaintext_cookies, CookieJar);
     cookie_test!(signed_cookies, SignedCookieJar);
+    cookie_test!(signed_cookies_with_custom_key, SignedCookieJar<CustomKey>);
+
+    #[derive(Clone)]
+    struct CustomKey(Key);
+
+    impl From<CustomKey> for Key {
+        fn from(custom: CustomKey) -> Self {
+            custom.0
+        }
+    }
 
     #[tokio::test]
     async fn signed_cannot_access_invalid_cookies() {
