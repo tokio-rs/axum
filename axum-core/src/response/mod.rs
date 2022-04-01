@@ -9,7 +9,10 @@ use crate::body::BoxBody;
 mod into_response;
 mod into_response_parts;
 
+mod error;
+
 pub use self::{
+    error::Error,
     into_response::IntoResponse,
     into_response_parts::{IntoResponseParts, ResponseParts, TryIntoHeaderError},
 };
