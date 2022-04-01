@@ -113,6 +113,38 @@ impl<B> RequestParts<B> {
         }
     }
 
+    /// Apply an extractor to this `RequestParts`.
+    ///
+    /// `req.extract::<Extractor>()` is equivalent to `Extractor::from_request(req)`.
+    /// This function simply exists as a convenience.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # struct MyExtractor {}
+    ///
+    /// use std::convert::Infallible;
+    ///
+    /// use async_trait::async_trait;
+    /// use axum::extract::{FromRequest, RequestParts};
+    /// use http::{Method, Uri};
+    ///
+    /// #[async_trait]
+    /// impl<B: Send> FromRequest<B> for MyExtractor {
+    ///     type Rejection = Infallible;
+    ///
+    ///     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Infallible> {
+    ///         let method = req.extract::<Method>().await?;
+    ///         let path = req.extract::<Uri>().await?.path().to_owned();
+    ///
+    ///         todo!()
+    ///     }
+    /// }
+    /// ```
+    pub async fn extract<E: FromRequest<B>>(&mut self) -> Result<E, E::Rejection> {
+        E::from_request(self).await
+    }
+
     /// Convert this `RequestParts` back into a [`Request`].
     ///
     /// Fails if The request body has been extracted, that is [`take_body`] has

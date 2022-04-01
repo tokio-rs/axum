@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- None.
+- **added:** Add `RequestParts::extract` which allows applying an extractor as a method call
 
 # 0.5.0 (31. March, 2022)
 
