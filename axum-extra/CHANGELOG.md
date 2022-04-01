@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning].
 
 # Unreleased
 
-- None.
+- **added:** Re-export `SameSite` and `Expiration` from the `cookie` crate.
 
 # 0.2.0 (31. March, 2022)
 
