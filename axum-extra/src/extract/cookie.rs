@@ -1,6 +1,6 @@
 //! Cookie parsing and cookie jar management.
 //!
-//! See [`CookieJar`] and [`SignedCookieJar`] for more details.
+//! See [`CookieJar`], [`SignedCookieJar`], and [`PrivateCookieJar`] for more details.
 
 use axum::{
     async_trait,
@@ -15,6 +15,9 @@ use http::{
 };
 use std::{convert::Infallible, fmt, marker::PhantomData};
 
+mod private;
+
+pub use self::private::PrivateCookieJar;
 pub use cookie_lib::{Cookie, Expiration, Key, SameSite};
 
 /// Extractor that grabs cookies from the request and manages the jar.
@@ -494,6 +497,8 @@ mod tests {
     cookie_test!(plaintext_cookies, CookieJar);
     cookie_test!(signed_cookies, SignedCookieJar);
     cookie_test!(signed_cookies_with_custom_key, SignedCookieJar<CustomKey>);
+    cookie_test!(private_cookies, PrivateCookieJar);
+    cookie_test!(private_cookies_with_custom_key, PrivateCookieJar<CustomKey>);
 
     #[derive(Clone)]
     struct CustomKey(Key);
