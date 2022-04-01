@@ -15,7 +15,7 @@ use http::{
 };
 use std::{convert::Infallible, fmt, marker::PhantomData};
 
-pub use cookie_lib::{Cookie, Key};
+pub use cookie_lib::{Cookie, Expiration, Key, SameSite};
 
 /// Extractor that grabs cookies from the request and manages the jar.
 ///
