@@ -143,8 +143,32 @@ impl<'a> Field<'a> {
         self.inner.text().await.map_err(MultipartError::from_multer)
     }
     
-    // Stream a chunk of the field data.
-    pub async fn chunk(self) -> Result<Option<Bytes>, MultipartError> {
+    /// Stream a chunk of the field data.
+    ///
+    /// When the field data has been exhausted, this will return [`None`].
+    ///
+    /// This does the exact same thing as the `Stream` impl and is for convenience
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use axum::{
+    ///    extract::Multipart,
+    ///    routing::post,
+    ///    Router,
+    /// };
+    ///
+    /// async fn upload(mut multipart: Multipart) {
+    ///     while let Some(mut field) = multipart.next_field().await.unwrap() {
+    ///         while let Some(chunk) = field.chunk().await.unwrap() {
+    ///             println!("Chunk: {:?}", chunk);
+    ///         }
+    ///     }
+    /// }
+    ///
+    /// let app = Router::new().route("/upload", post(upload));
+    /// ```
+    pub async fn chunk(&mut self) -> Result<Option<Bytes>, MultipartError> {
         self.inner.chunk().await.map_err(MultipartError::from_multer)
     }
 }
