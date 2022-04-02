@@ -142,6 +142,11 @@ impl<'a> Field<'a> {
     pub async fn text(self) -> Result<String, MultipartError> {
         self.inner.text().await.map_err(MultipartError::from_multer)
     }
+    
+    // Stream a chunk of the field data.
+    pub async fn chunk(self) -> Result<Option<Bytes>, MultipartError> {
+        self.inner.chunk().await.map_err(MultipartError::from_multer)
+    }
 }
 
 /// Errors associated with parsing `multipart/form-data` requests.
