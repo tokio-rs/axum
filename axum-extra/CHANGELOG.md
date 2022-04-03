@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning].
 
 - None.
 
-# 0.2.0 (31. March, 2022)
+# 0.2.1 (03. April, 2022)
 
 - **added:** Re-export `SameSite` and `Expiration` from the `cookie` crate ([#898])
 - **added:** Add `PrivateCookieJar` for managing private cookies ([#900])
