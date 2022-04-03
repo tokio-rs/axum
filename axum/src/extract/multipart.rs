@@ -147,21 +147,23 @@ impl<'a> Field<'a> {
     ///
     /// When the field data has been exhausted, this will return [`None`].
     ///
-    /// This does the exact same thing as the `Stream` impl and is for convenience
+    /// Note this does the same thing as `Field`'s [`Stream`] implementation.
     ///
-    /// # Examples
+    /// # Example
     ///
     /// ```
     /// use axum::{
     ///    extract::Multipart,
     ///    routing::post,
+    ///    response::IntoResponse,
     ///    Router,
     /// };
+    /// use http::StatusCode;
     ///
-    /// async fn upload(mut multipart: Multipart) {
-    ///     while let Some(mut field) = multipart.next_field().await.unwrap() {
+    /// async fn upload(mut multipart: Multipart) -> impl IntoResponse {
+    ///     while let Some(mut field) = multipart.next_field().await.map_err(|err| (StatusCode::BAD_REQUEST, err.to_string()))? {
     ///         while let Some(chunk) = field.chunk().await.unwrap() {
-    ///             println!("Chunk: {:?}", chunk);
+    ///             println!("received {} bytes", chunk.len());
     ///         }
     ///     }
     /// }
