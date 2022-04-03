@@ -142,7 +142,7 @@ impl<'a> Field<'a> {
     pub async fn text(self) -> Result<String, MultipartError> {
         self.inner.text().await.map_err(MultipartError::from_multer)
     }
-    
+
     /// Stream a chunk of the field data.
     ///
     /// When the field data has been exhausted, this will return [`None`].
@@ -169,7 +169,10 @@ impl<'a> Field<'a> {
     /// let app = Router::new().route("/upload", post(upload));
     /// ```
     pub async fn chunk(&mut self) -> Result<Option<Bytes>, MultipartError> {
-        self.inner.chunk().await.map_err(MultipartError::from_multer)
+        self.inner
+            .chunk()
+            .await
+            .map_err(MultipartError::from_multer)
     }
 }
 
