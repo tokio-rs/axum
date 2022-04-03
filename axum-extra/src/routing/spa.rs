@@ -117,9 +117,8 @@ impl<B, T, F> SpaRouter<B, T, F> {
 
     /// Change the function used to handle unknown IO errors.
     ///
-    /// `SpaRouter` automatically maps missing files and permissions denied to
-    /// `404 Not Found`. The callback given here will be used for another IO
-    /// errors.
+    /// `SpaRouter` automatically maps missing files and permission denied to
+    /// `404 Not Found`. The callback given here will be used for other IO errors.
     ///
     /// See [`axum::error_handling::HandleErrorLayer`] for more details.
     ///
