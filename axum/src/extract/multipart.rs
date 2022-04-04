@@ -162,7 +162,7 @@ impl<'a> Field<'a> {
     ///
     /// async fn upload(mut multipart: Multipart) -> impl IntoResponse {
     ///     while let Some(mut field) = multipart.next_field().await.map_err(|err| (StatusCode::BAD_REQUEST, err.to_string()))? {
-    ///         while let Some(chunk) = field.chunk().await.unwrap() {
+    ///         while let Some(chunk) = field.chunk().await {
     ///             println!("received {} bytes", chunk.len());
     ///         }
     ///     }
