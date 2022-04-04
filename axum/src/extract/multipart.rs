@@ -156,19 +156,30 @@ impl<'a> Field<'a> {
     ///    extract::Multipart,
     ///    routing::post,
     ///    response::IntoResponse,
+    ///    http::StatusCode,
     ///    Router,
     /// };
-    /// use http::StatusCode;
     ///
-    /// async fn upload(mut multipart: Multipart) -> impl IntoResponse {
-    ///     while let Some(mut field) = multipart.next_field().await.map_err(|err| (StatusCode::BAD_REQUEST, err.to_string()))? {
-    ///         while let Some(chunk) = field.chunk().await {
+    /// async fn upload(mut multipart: Multipart) -> Result<(), (StatusCode, String)> {
+    ///     while let Some(mut field) = multipart
+    ///         .next_field()
+    ///         .await
+    ///         .map_err(|err| (StatusCode::BAD_REQUEST, err.to_string()))?
+    ///     {
+    ///         while let Some(chunk) = field
+    ///             .chunk()
+    ///             .await
+    ///             .map_err(|err| (StatusCode::BAD_REQUEST, err.to_string()))?
+    ///         {
     ///             println!("received {} bytes", chunk.len());
     ///         }
     ///     }
+    ///
+    ///     Ok(())
     /// }
     ///
     /// let app = Router::new().route("/upload", post(upload));
+    /// # let _: Router<axum::body::Body> = app;
     /// ```
     pub async fn chunk(&mut self) -> Result<Option<Bytes>, MultipartError> {
         self.inner
