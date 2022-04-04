@@ -7,7 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- None.
+- **added:** Add `axum::extract::multipart::Field::chunk` method for streaming a single chunk from
+  the field ([#901])
+
+[#901]: https://github.com/tokio-rs/axum/pull/901
 
 # 0.5.1 (03. April, 2022)
 
