@@ -142,6 +142,51 @@ impl<'a> Field<'a> {
     pub async fn text(self) -> Result<String, MultipartError> {
         self.inner.text().await.map_err(MultipartError::from_multer)
     }
+
+    /// Stream a chunk of the field data.
+    ///
+    /// When the field data has been exhausted, this will return [`None`].
+    ///
+    /// Note this does the same thing as `Field`'s [`Stream`] implementation.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use axum::{
+    ///    extract::Multipart,
+    ///    routing::post,
+    ///    response::IntoResponse,
+    ///    http::StatusCode,
+    ///    Router,
+    /// };
+    ///
+    /// async fn upload(mut multipart: Multipart) -> Result<(), (StatusCode, String)> {
+    ///     while let Some(mut field) = multipart
+    ///         .next_field()
+    ///         .await
+    ///         .map_err(|err| (StatusCode::BAD_REQUEST, err.to_string()))?
+    ///     {
+    ///         while let Some(chunk) = field
+    ///             .chunk()
+    ///             .await
+    ///             .map_err(|err| (StatusCode::BAD_REQUEST, err.to_string()))?
+    ///         {
+    ///             println!("received {} bytes", chunk.len());
+    ///         }
+    ///     }
+    ///
+    ///     Ok(())
+    /// }
+    ///
+    /// let app = Router::new().route("/upload", post(upload));
+    /// # let _: Router<axum::body::Body> = app;
+    /// ```
+    pub async fn chunk(&mut self) -> Result<Option<Bytes>, MultipartError> {
+        self.inner
+            .chunk()
+            .await
+            .map_err(MultipartError::from_multer)
+    }
 }
 
 /// Errors associated with parsing `multipart/form-data` requests.
