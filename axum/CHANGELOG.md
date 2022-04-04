@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # 0.5.1 (03. April, 2022)
 
-- **added:** Add `RequestParts::extract` which allows applying an extractor as a method call ([#897)
+- **added:** Add `RequestParts::extract` which allows applying an extractor as a method call ([#897])
 
 [#897]: https://github.com/tokio-rs/axum/pull/897
 
