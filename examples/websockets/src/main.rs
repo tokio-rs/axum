@@ -80,10 +80,10 @@ async fn handle_socket(mut socket: WebSocket) {
         if let Ok(msg) = msg {
             match msg {
                 Message::Text(t) => {
-                    println!("client send str: {:?}", t);
+                    println!("client sent str: {:?}", t);
                 }
                 Message::Binary(_) => {
-                    println!("client send binary data");
+                    println!("client sent binary data");
                 }
                 Message::Ping(_) => {
                     println!("socket ping");
