@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning].
 
 # Unreleased
 
-- None.
+- **fixed:** Don't depend on axum with default features enabled ([#913])
+
+[#913]: https://github.com/tokio-rs/axum/pull/913
 
 # 0.2.1 (03. April, 2022)
 
