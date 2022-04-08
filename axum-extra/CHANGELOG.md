@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning].
 
 # Unreleased
 
+- **added:** Re-export `time::OffsetDatetime` and `time::Duration` from the `cookie` crate.
 - **fixed:** Don't depend on axum with default features enabled ([#913])
 
 [#913]: https://github.com/tokio-rs/axum/pull/913

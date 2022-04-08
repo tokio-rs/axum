@@ -18,7 +18,10 @@ use std::{convert::Infallible, fmt, marker::PhantomData};
 mod private;
 
 pub use self::private::PrivateCookieJar;
-pub use cookie_lib::{Cookie, Expiration, Key, SameSite};
+pub use cookie_lib::{
+    time::{Duration, OffsetDateTime},
+    Cookie, Expiration, Key, SameSite,
+};
 
 /// Extractor that grabs cookies from the request and manages the jar.
 ///
