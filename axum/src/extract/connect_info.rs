@@ -161,7 +161,7 @@ mod tests {
             let app = Router::new().route("/", get(handler));
             let server = Server::from_tcp(listener)
                 .unwrap()
-                .serve(app.into_make_service_with_connect_info::<SocketAddr, _>());
+                .serve(app.into_make_service_with_connect_info::<SocketAddr>());
             tx.send(()).unwrap();
             server.await.expect("server error");
         });
@@ -201,7 +201,7 @@ mod tests {
             let app = Router::new().route("/", get(handler));
             let server = Server::from_tcp(listener)
                 .unwrap()
-                .serve(app.into_make_service_with_connect_info::<MyConnectInfo, _>());
+                .serve(app.into_make_service_with_connect_info::<MyConnectInfo>());
             tx.send(()).unwrap();
             server.await.expect("server error");
         });

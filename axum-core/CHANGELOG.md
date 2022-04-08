@@ -7,9 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+- None.
+
+# 0.2.1 (03. April, 2022)
+
+- **added:** Add `RequestParts::extract` which allows applying an extractor as a method call ([#897])
+
+[#897]: https://github.com/tokio-rs/axum/pull/897
+
+# 0.2.0 (31. March, 2022)
+
 - **added:** Add `IntoResponseParts` trait which allows defining custom response
   types for adding headers or extensions to responses ([#797])
-- **added:** Implement `IntoResponse` for `bytes::BytesMut` and `bytes::Chain<T, U>` ([#767])
 - **breaking:** Using `HeaderMap` as an extractor will no longer remove the headers and thus
   they'll still be accessible to other extractors, such as `axum::extract::Json`. Instead
   `HeaderMap` will clone the headers. You should prefer to use `TypedHeader` to extract only the
@@ -42,9 +51,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 [#698]: https://github.com/tokio-rs/axum/pull/698
 [#699]: https://github.com/tokio-rs/axum/pull/699
-[#767]: https://github.com/tokio-rs/axum/pull/767
 [#797]: https://github.com/tokio-rs/axum/pull/797
 [#869]: https://github.com/tokio-rs/axum/pull/869
+
+# 0.1.2 (22. February, 2022)
+
+- **added:** Implement `IntoResponse` for `bytes::BytesMut` and `bytes::Chain<T, U>` ([#767])
+
+[#767]: https://github.com/tokio-rs/axum/pull/767
 
 # 0.1.1 (06. December, 2021)
 

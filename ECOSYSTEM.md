@@ -12,11 +12,13 @@ If your project isn't listed here and you would like it to be, please feel free 
 - [axum-sqlx-tx](https://crates.io/crates/axum-sqlx-tx): Request-bound [SQLx](https://github.com/launchbadge/sqlx#readme) transactions with automatic commit/rollback based on response.
 - [aliri_tower](https://crates.io/crates/aliri_tower): JWT validation and OAuth2 scopes checking middleware.
 - [ezsockets](https://github.com/gbaranski/ezsockets): Easy to use WebSocket library that integrates with Axum.
+- [axum_database_sessions](https://github.com/AscendingCreations/AxumSessions): Database persistent sessions like pythons flask_sessionstore for Axum.
+- [axum_sessions_auth](https://github.com/AscendingCreations/AxumSessionsAuth): Persistant session based user login with rights management for Axum.
+- [axum-auth](https://crates.io/crates/axum-auth): High-level http auth extractors for axum.
 
 ## Project showcase
 
 - [Houseflow](https://github.com/gbaranski/houseflow): House automation platform written in Rust.
-- [Datafuse](https://github.com/datafuselabs/datafuse): Cloud native data warehouse written in Rust.
 - [JWT Auth](https://github.com/Z4RX/axum_jwt_example): JWT auth service for educational purposes.
 - [ROAPI](https://github.com/roapi/roapi): Create full-fledged APIs for static datasets without writing a single line of code.
 - [notify.run](https://github.com/notify-run/notify-run-rs): HTTP-to-WebPush relay for sending desktop/mobile notifications to yourself, written in Rust.
