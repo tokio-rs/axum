@@ -498,10 +498,10 @@ where
         match self.node.at(&path) {
             Ok(match_) => self.call_route(match_, req),
             Err(MatchError::MissingTrailingSlash) => RouteFuture::from_response(
-                Redirect::permanent(&format!("{}/", req.uri().to_string())).into_response(),
+                Redirect::permanent(&format!("{}/", req.uri())).into_response(),
             ),
             Err(MatchError::ExtraTrailingSlash) => RouteFuture::from_response(
-                Redirect::permanent(&req.uri().to_string().strip_suffix('/').unwrap())
+                Redirect::permanent(req.uri().to_string().strip_suffix('/').unwrap())
                     .into_response(),
             ),
             Err(MatchError::NotFound) => match &self.fallback {
