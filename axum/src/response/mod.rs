@@ -19,7 +19,9 @@ pub use crate::TypedHeader;
 pub use crate::Extension;
 
 #[doc(inline)]
-pub use axum_core::response::{IntoResponse, IntoResponseParts, Response, ResponseParts};
+pub use axum_core::response::{
+    AppendHeaders, IntoResponse, IntoResponseParts, Response, ResponseParts,
+};
 
 #[doc(inline)]
 pub use self::{redirect::Redirect, sse::Sse};
