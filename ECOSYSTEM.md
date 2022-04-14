@@ -15,6 +15,7 @@ If your project isn't listed here and you would like it to be, please feel free 
 - [axum_database_sessions](https://github.com/AscendingCreations/AxumSessions): Database persistent sessions like pythons flask_sessionstore for Axum.
 - [axum_sessions_auth](https://github.com/AscendingCreations/AxumSessionsAuth): Persistant session based user login with rights management for Axum.
 - [axum-auth](https://crates.io/crates/axum-auth): High-level http auth extractors for axum.
+- [shuttle](https://github.com/getsynth/shuttle): A serverless platform built for Rust. Now with axum support.
 
 ## Project showcase
 
