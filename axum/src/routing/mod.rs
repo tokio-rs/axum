@@ -497,13 +497,19 @@ where
 
         match self.node.at(&path) {
             Ok(match_) => self.call_route(match_, req),
-            Err(MatchError::MissingTrailingSlash) => RouteFuture::from_response(
-                Redirect::permanent(&format!("{}/", req.uri())).into_response(),
-            ),
-            Err(MatchError::ExtraTrailingSlash) => RouteFuture::from_response(
-                Redirect::permanent(req.uri().to_string().strip_suffix('/').unwrap())
-                    .into_response(),
-            ),
+            Err(MatchError::MissingTrailingSlash) => {
+                let new_uri = req.uri().to_string().replace(&path, &format!("{}/", &path));
+
+                RouteFuture::from_response(Redirect::permanent(&new_uri).into_response())
+            }
+            Err(MatchError::ExtraTrailingSlash) => {
+                let new_uri = req
+                    .uri()
+                    .to_string()
+                    .replace(&path, &path.strip_suffix('/').unwrap());
+
+                RouteFuture::from_response(Redirect::permanent(&new_uri).into_response())
+            }
             Err(MatchError::NotFound) => match &self.fallback {
                 Fallback::Default(inner) => inner.clone().call(req),
                 Fallback::Custom(inner) => inner.clone().call(req),
