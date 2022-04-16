@@ -22,12 +22,8 @@ use axum::{
     Json, Router,
 };
 use serde::{Deserialize, Serialize};
-use std::{
-    collections::HashMap,
-    net::SocketAddr,
-    sync::{Arc, RwLock},
-    time::Duration,
-};
+use std::{collections::HashMap, net::SocketAddr, sync::Arc, time::Duration};
+use tokio::sync::RwLock;
 use tower::{BoxError, ServiceBuilder};
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
@@ -87,7 +83,7 @@ async fn todos_index(
     pagination: Option<Query<Pagination>>,
     Extension(db): Extension<Db>,
 ) -> impl IntoResponse {
-    let todos = db.read().unwrap();
+    let todos = db.read().await;
 
     let Query(pagination) = pagination.unwrap_or_default();
 
@@ -116,7 +112,7 @@ async fn todos_create(
         completed: false,
     };
 
-    db.write().unwrap().insert(todo.id, todo.clone());
+    db.write().await.insert(todo.id, todo.clone());
 
     (StatusCode::CREATED, Json(todo))
 }
@@ -134,7 +130,7 @@ async fn todos_update(
 ) -> Result<impl IntoResponse, StatusCode> {
     let mut todo = db
         .read()
-        .unwrap()
+        .await
         .get(&id)
         .cloned()
         .ok_or(StatusCode::NOT_FOUND)?;
@@ -147,13 +143,13 @@ async fn todos_update(
         todo.completed = completed;
     }
 
-    db.write().unwrap().insert(todo.id, todo.clone());
+    db.write().await.insert(todo.id, todo.clone());
 
     Ok(Json(todo))
 }
 
 async fn todos_delete(Path(id): Path<Uuid>, Extension(db): Extension<Db>) -> impl IntoResponse {
-    if db.write().unwrap().remove(&id).is_some() {
+    if db.write().await.remove(&id).is_some() {
         StatusCode::NO_CONTENT
     } else {
         StatusCode::NOT_FOUND
