@@ -520,9 +520,8 @@ where
 }
 
 fn replace_trailing_slash(uri: &Uri, new_path: &str) -> Uri {
-    let query = uri.query();
     let mut new_path_and_query = new_path.to_string();
-    if let Some(query) = query {
+    if let Some(query) = uri.query() {
         new_path_and_query.push('?');
         new_path_and_query.push_str(query);
     }
