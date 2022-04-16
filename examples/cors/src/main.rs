@@ -27,6 +27,9 @@ async fn main() {
             CorsLayer::new()
                 .allow_origin(Origin::exact("http://localhost:3000".parse().unwrap()))
                 .allow_methods(vec![Method::GET]),
+                // pay attention that for some request types like posting content-type: application/json
+                // it is required to add ".allow_headers(vec![http::header::CONTENT_TYPE])"
+                // or see this issue https://github.com/tokio-rs/axum/issues/849
         );
         serve(app, 4000).await;
     };
