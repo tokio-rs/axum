@@ -6,10 +6,12 @@
 
 use crate::body::BoxBody;
 
+mod append_headers;
 mod into_response;
 mod into_response_parts;
 
 pub use self::{
+    append_headers::AppendHeaders,
     into_response::IntoResponse,
     into_response_parts::{IntoResponseParts, ResponseParts, TryIntoHeaderError},
 };

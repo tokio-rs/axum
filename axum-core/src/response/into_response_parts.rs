@@ -161,13 +161,13 @@ pub struct TryIntoHeaderError<K, V> {
 }
 
 impl<K, V> TryIntoHeaderError<K, V> {
-    fn key(err: K) -> Self {
+    pub(super) fn key(err: K) -> Self {
         Self {
             kind: TryIntoHeaderErrorKind::Key(err),
         }
     }
 
-    fn value(err: V) -> Self {
+    pub(super) fn value(err: V) -> Self {
         Self {
             kind: TryIntoHeaderErrorKind::Value(err),
         }
