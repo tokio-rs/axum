@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning].
 # Unreleased
 
 - **fixed:** Don't depend on axum with default features enabled ([#913])
+- **added:** Support serving assets at the root with `SpaRouter`
+- **breaking:** `SpaRouter` now requires the request body to implement `Default`
 
 [#913]: https://github.com/tokio-rs/axum/pull/913
 

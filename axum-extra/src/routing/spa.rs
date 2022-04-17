@@ -50,6 +50,20 @@ use tower_service::Service;
 /// - `GET /some/other/path` will serve `index.html` since there isn't another
 ///   route for it
 /// - `GET /api/foo` will serve the `api_foo` handler function
+///
+/// # Serving assets from the root
+///
+/// Assets can also be served from the root, i.e. not nested `/assets` or similar:
+///
+/// ```
+/// use axum_extra::routing::SpaRouter;
+/// use axum::{Router, routing::get};
+///
+/// let spa = SpaRouter::new("/", "dist");
+///
+/// let app = Router::new().merge(spa);
+/// # let _: Router<axum::body::Body> = app;
+/// ```
 pub struct SpaRouter<B = Body, T = (), F = fn(io::Error) -> Ready<StatusCode>> {
     paths: Arc<Paths>,
     handle_error: F,
@@ -153,18 +167,40 @@ where
     HandleError<Route<B, io::Error>, F, T>:
         Service<Request<B>, Response = Response, Error = Infallible>,
     <HandleError<Route<B, io::Error>, F, T> as Service<Request<B>>>::Future: Send,
-    B: HttpBody + Send + 'static,
+    B: HttpBody + Default + Send + 'static,
     T: 'static,
 {
     fn from(spa: SpaRouter<B, T, F>) -> Self {
-        let assets_service = get_service(ServeDir::new(&spa.paths.assets_dir))
+        use axum::{handler::Handler, response::IntoResponse};
+
+        let mut index_svc = get_service(ServeFile::new(&spa.paths.index_file))
             .handle_error(spa.handle_error.clone());
 
-        Router::new()
-            .nest(&spa.paths.assets_path, assets_service)
-            .fallback(
-                get_service(ServeFile::new(&spa.paths.index_file)).handle_error(spa.handle_error),
-            )
+        let mut assets_svc = get_service(ServeDir::new(&spa.paths.assets_dir))
+            .handle_error(spa.handle_error.clone());
+
+        if spa.paths.assets_path == "/" {
+            let fallback = |req: Request<B>| async move {
+                let mut req_clone = Request::new(B::default());
+                *req_clone.method_mut() = req.method().clone();
+                *req_clone.uri_mut() = req.uri().clone();
+                *req_clone.headers_mut() = req.headers().clone();
+
+                let res = assets_svc.call(req).await.into_response();
+
+                if res.status() == StatusCode::NOT_FOUND {
+                    index_svc.call(req_clone).await.into_response()
+                } else {
+                    res
+                }
+            };
+
+            Router::new().fallback(fallback.into_service())
+        } else {
+            Router::new()
+                .nest(&spa.paths.assets_path, assets_svc)
+                .fallback(index_svc)
+        }
     }
 }
 
@@ -265,5 +301,29 @@ mod tests {
         let spa = SpaRouter::new("/assets", "test_files").handle_error(handle_error);
 
         Router::<Body>::new().merge(spa);
+    }
+
+    #[tokio::test]
+    async fn serving_assets_at_root() {
+        let app = Router::new()
+            .route("/foo", get(|| async { "GET /foo" }))
+            .merge(SpaRouter::new("/", "test_files"));
+        let client = TestClient::new(app);
+
+        let res = client.get("/").send().await;
+        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.text().await, "<h1>Hello, World!</h1>\n");
+
+        let res = client.get("/some/random/path").send().await;
+        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.text().await, "<h1>Hello, World!</h1>\n");
+
+        let res = client.get("/script.js").send().await;
+        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.text().await, "console.log('hi')\n");
+
+        let res = client.get("/foo").send().await;
+        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.text().await, "GET /foo");
     }
 }
