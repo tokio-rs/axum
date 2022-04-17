@@ -56,7 +56,7 @@ impl<'de> PathDeserializer<'de> {
 impl<'de> Deserializer<'de> for PathDeserializer<'de> {
     type Error = PathDeserializationError;
 
-    unsupported_type!(deserialize_any, "'any'");
+    unsupported_type!(deserialize_any, "any");
     unsupported_type!(deserialize_bytes, "bytes");
     unsupported_type!(deserialize_option, "Option<T>");
     unsupported_type!(deserialize_identifier, "identifier");
