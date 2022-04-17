@@ -527,7 +527,7 @@ fn replace_trailing_slash(uri: &Uri, new_path: &str) -> Uri {
     }
 
     let mut parts = uri.clone().into_parts();
-    parts.path_and_query = new_path_and_query.parse().ok();
+    parts.path_and_query = Some(new_path_and_query.parse().unwrap());
 
     Uri::from_parts(parts).unwrap()
 }
