@@ -392,27 +392,7 @@ where
     V::Error: fmt::Display,
 {
     fn into_response(self) -> Response {
-        let mut res = ().into_response();
-
-        for (key, value) in self {
-            let key = match key.try_into() {
-                Ok(key) => key,
-                Err(err) => {
-                    return (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response()
-                }
-            };
-
-            let value = match value.try_into() {
-                Ok(value) => value,
-                Err(err) => {
-                    return (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response()
-                }
-            };
-
-            res.headers_mut().insert(key, value);
-        }
-
-        res
+        (self, ()).into_response()
     }
 }
 
