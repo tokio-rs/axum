@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+- None.
+
+# 0.5.2 (19. April, 2022)
+
 - **added:** Add `AppendHeaders` for appending headers to a response rather than overriding them ([#927])
 - **added:** Add `axum::extract::multipart::Field::chunk` method for streaming a single chunk from
   the field ([#901])
