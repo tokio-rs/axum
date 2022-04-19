@@ -291,15 +291,15 @@ where
     pub fn layer<L, NewReqBody, NewResBody>(self, layer: L) -> Router<NewReqBody>
     where
         L: Layer<Route<B>>,
-        L::Service:
-            Service<Request<NewReqBody>, Response = Response<NewResBody>> + Clone + Send + 'static,
-        <L::Service as Service<Request<NewReqBody>>>::Error: Into<Infallible> + 'static,
+        L::Service: Service<Request<NewReqBody>, Response = Response<NewResBody>, Error = Infallible>
+            + Clone
+            + Send
+            + 'static,
         <L::Service as Service<Request<NewReqBody>>>::Future: Send + 'static,
         NewResBody: HttpBody<Data = Bytes> + Send + 'static,
         NewResBody::Error: Into<BoxError>,
     {
         let layer = ServiceBuilder::new()
-            .map_err(Into::into)
             .layer(MapResponseBodyLayer::new(boxed))
             .layer(layer)
             .into_inner();
@@ -332,14 +332,15 @@ where
     pub fn route_layer<L, NewResBody>(self, layer: L) -> Self
     where
         L: Layer<Route<B>>,
-        L::Service: Service<Request<B>, Response = Response<NewResBody>> + Clone + Send + 'static,
-        <L::Service as Service<Request<B>>>::Error: Into<Infallible> + 'static,
+        L::Service: Service<Request<B>, Response = Response<NewResBody>, Error = Infallible>
+            + Clone
+            + Send
+            + 'static,
         <L::Service as Service<Request<B>>>::Future: Send + 'static,
         NewResBody: HttpBody<Data = Bytes> + Send + 'static,
         NewResBody::Error: Into<BoxError>,
     {
         let layer = ServiceBuilder::new()
-            .map_err(Into::into)
             .layer(MapResponseBodyLayer::new(boxed))
             .layer(layer)
             .into_inner();
