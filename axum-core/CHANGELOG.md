@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+- None.
+
+# 0.2.2 (19. April, 2022)
+
 - **added:** Add `AppendHeaders` for appending headers to a response rather than overriding them ([#927])
 
 [#927]: https://github.com/tokio-rs/axum/pull/927
