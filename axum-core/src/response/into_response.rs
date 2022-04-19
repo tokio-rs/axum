@@ -396,6 +396,27 @@ where
     }
 }
 
+impl<R> IntoResponse for (http::response::Parts, R)
+where
+    R: IntoResponse,
+{
+    fn into_response(self) -> Response {
+        let (parts, res) = self;
+        (parts.status, parts.headers, res).into_response()
+    }
+}
+
+impl<X, R> IntoResponse for (http::response::Response<X>, R)
+where
+    R: IntoResponse,
+{
+    fn into_response(self) -> Response {
+        let (template, res) = self;
+        let (parts, _) = template.into_parts();
+        (parts, res).into_response()
+    }
+}
+
 macro_rules! impl_into_response {
     ( $($ty:ident),* $(,)? ) => {
         #[allow(non_snake_case)]
