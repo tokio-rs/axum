@@ -1,0 +1,22 @@
+[package]
+name = "axum-openapi"
+version = "0.1.0"
+edition = "2021"
+authors = ["Austin Bonander <austin@launchbadge.com>"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+axum = { version = "=0.5.1", path = "../axum" }
+axum-openapi-macros = { path = "../axum-openapi-macros" }
+
+futures-core = "0.3.21"
+
+serde = { version = "1.0.136", features = ["derive", "rc"] }
+either = "1.6.1"
+
+serde_json = { version = "1.0.79", features = ["raw_value"] }
+
+schemars = { version = "0.8.8", features = ["preserve_order"] }
+
+indexmap = "1.8.1"

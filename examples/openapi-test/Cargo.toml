@@ -1,0 +1,15 @@
+[package]
+name = "openapi-test"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+axum = { version = "0.5.1", path = "../../axum" }
+axum-openapi = { path = "../../axum-openapi" }
+serde = { version = "1", features = ["derive"] }
+
+tower-http = { version = "0.2.5", features = ["cors"] }
+
+tokio = { version = "1.17.0", features = ["macros"] }
