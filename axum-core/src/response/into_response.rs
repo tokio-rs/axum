@@ -406,13 +406,13 @@ where
     }
 }
 
-impl<X, R> IntoResponse for (http::response::Response<X>, R)
+impl<R> IntoResponse for (http::response::Response<()>, R)
 where
     R: IntoResponse,
 {
     fn into_response(self) -> Response {
         let (template, res) = self;
-        let (parts, _) = template.into_parts();
+        let (parts, ()) = template.into_parts();
         (parts, res).into_response()
     }
 }
