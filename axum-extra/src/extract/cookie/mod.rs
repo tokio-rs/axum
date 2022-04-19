@@ -23,7 +23,10 @@ pub use self::private::PrivateCookieJar;
 #[cfg(feature = "cookie-signed")]
 pub use self::signed::SignedCookieJar;
 
-pub use cookie_lib::{Cookie, Expiration, Key, SameSite};
+pub use cookie_lib::{Cookie, Expiration, SameSite};
+
+#[cfg(any(feature = "cookie-signed", feature = "cookie-private"))]
+pub use cookie_lib::Key;
 
 /// Extractor that grabs cookies from the request and manages the jar.
 ///
