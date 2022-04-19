@@ -13,10 +13,16 @@ use http::{
 };
 use std::convert::Infallible;
 
+#[cfg(feature = "cookie-private")]
 mod private;
+#[cfg(feature = "cookie-signed")]
 mod signed;
 
-pub use self::{private::PrivateCookieJar, signed::SignedCookieJar};
+#[cfg(feature = "cookie-private")]
+pub use self::private::PrivateCookieJar;
+#[cfg(feature = "cookie-signed")]
+pub use self::signed::SignedCookieJar;
+
 pub use cookie_lib::{Cookie, Expiration, Key, SameSite};
 
 /// Extractor that grabs cookies from the request and manages the jar.
