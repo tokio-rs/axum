@@ -210,7 +210,6 @@ where
     B: HttpBody + Default + Send + 'static,
     T: 'static,
 {
-    #[allow(warnings)]
     fn from(spa: SpaRouter<B, T, F>) -> Self {
         use axum::{handler::Handler, response::IntoResponse};
         use tower::ServiceExt;
