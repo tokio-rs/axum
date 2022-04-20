@@ -67,6 +67,7 @@ use tower_service::Service;
 pub struct SpaRouter<B = Body, T = (), F = fn(io::Error) -> Ready<StatusCode>> {
     paths: Arc<Paths>,
     handle_error: F,
+    serve_index_file_on_missing_asset: bool,
     _marker: PhantomData<fn() -> (B, T)>,
 }
 
@@ -95,6 +96,7 @@ impl<B> SpaRouter<B, (), fn(io::Error) -> Ready<StatusCode>> {
                 index_file: path.join("index.html"),
             }),
             handle_error: |_| ready(StatusCode::INTERNAL_SERVER_ERROR),
+            serve_index_file_on_missing_asset: serve_assets_at == "/",
             _marker: PhantomData,
         }
     }
@@ -156,8 +158,46 @@ impl<B, T, F> SpaRouter<B, T, F> {
         SpaRouter {
             paths: self.paths,
             handle_error: f,
+            serve_index_file_on_missing_asset: self.serve_index_file_on_missing_asset,
             _marker: PhantomData,
         }
+    }
+
+    /// Change whats served when an asset is not found.
+    ///
+    /// By default if an asset is not found `SpaRouter` will respond with `404 Not Found`. Calling
+    /// this method with `true` changes that such that the index file is served instead. The status
+    /// code will be `200 OK`
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use axum_extra::routing::SpaRouter;
+    /// use axum::Router;
+    ///
+    /// let spa = SpaRouter::new("/assets", "dist")
+    ///     // if `/assets/something-that-doesnt-exist` is called the index file will be sent back
+    ///     .serve_index_file_on_missing_asset(true);
+    ///
+    /// let app = Router::new().merge(spa);
+    /// # let _: Router<axum::body::Body> = app;
+    /// ```
+    ///
+    /// # When serving assets at `/`
+    ///
+    /// If you're serving assets that `/` then you don't need to call
+    /// `.serve_index_file_on_missing_asset(true)` as that is done automatically.
+    ///
+    /// ```
+    /// use axum_extra::routing::SpaRouter;
+    ///
+    /// let spa = SpaRouter::new("/", "dist");
+    ///
+    /// // we don't need to call `.serve_index_file_on_missing_asset(true)`
+    /// ```
+    pub fn serve_index_file_on_missing_asset(mut self, flag: bool) -> Self {
+        self.serve_index_file_on_missing_asset = flag;
+        self
     }
 }
 
@@ -170,38 +210,59 @@ where
     B: HttpBody + Default + Send + 'static,
     T: 'static,
 {
+    #[allow(warnings)]
     fn from(spa: SpaRouter<B, T, F>) -> Self {
         use axum::{handler::Handler, response::IntoResponse};
+        use tower::ServiceExt;
 
-        let mut index_svc = get_service(ServeFile::new(&spa.paths.index_file))
+        let mut serve_index = get_service(ServeFile::new(&spa.paths.index_file))
             .handle_error(spa.handle_error.clone());
 
-        let mut assets_svc = get_service(ServeDir::new(&spa.paths.assets_dir))
+        let serve_asset_or_fallback_to_index = {
+            let serve_index_file_on_missing_asset = spa.serve_index_file_on_missing_asset;
+            let mut index_svc = serve_index.clone();
+
+            let mut assets_svc = get_service(
+                ServeDir::new(&spa.paths.assets_dir).append_index_html_on_directories(false),
+            )
             .handle_error(spa.handle_error.clone());
 
-        if spa.paths.assets_path == "/" {
-            let fallback = |req: Request<B>| async move {
-                let mut req_clone = Request::new(B::default());
-                *req_clone.method_mut() = req.method().clone();
-                *req_clone.uri_mut() = req.uri().clone();
-                *req_clone.headers_mut() = req.headers().clone();
+            move |req: Request<B>| async move {
+                let req_clone = clone_request_without_body(&req);
 
-                let res = assets_svc.call(req).await.into_response();
+                let assets_res = assets_svc.call(req).await.into_response();
 
-                if res.status() == StatusCode::NOT_FOUND {
+                if serve_index_file_on_missing_asset && assets_res.status() == StatusCode::NOT_FOUND
+                {
                     index_svc.call(req_clone).await.into_response()
                 } else {
-                    res
+                    assets_res
                 }
-            };
+            }
+        };
 
-            Router::new().fallback(fallback.into_service())
+        if spa.paths.assets_path == "/" {
+            Router::new().fallback(serve_asset_or_fallback_to_index.into_service())
         } else {
             Router::new()
-                .nest(&spa.paths.assets_path, assets_svc)
-                .fallback(index_svc)
+                .nest(
+                    &spa.paths.assets_path,
+                    serve_asset_or_fallback_to_index.into_service(),
+                )
+                .fallback(serve_index)
         }
     }
+}
+
+fn clone_request_without_body<B>(req: &Request<B>) -> Request<B>
+where
+    B: Default,
+{
+    let mut req_clone = Request::new(B::default());
+    *req_clone.method_mut() = req.method().clone();
+    *req_clone.uri_mut() = req.uri().clone();
+    *req_clone.headers_mut() = req.headers().clone();
+    req_clone
 }
 
 impl<B, T, F> fmt::Debug for SpaRouter<B, T, F> {
@@ -209,6 +270,7 @@ impl<B, T, F> fmt::Debug for SpaRouter<B, T, F> {
         let Self {
             paths,
             handle_error: _,
+            serve_index_file_on_missing_asset,
             _marker,
         } = self;
 
@@ -219,6 +281,10 @@ impl<B, T, F> fmt::Debug for SpaRouter<B, T, F> {
             .field(
                 "extractor_input_type",
                 &format_args!("{}", type_name::<T>()),
+            )
+            .field(
+                "serve_index_file_on_missing_asset",
+                &serve_index_file_on_missing_asset,
             )
             .finish()
     }
@@ -232,6 +298,7 @@ where
         Self {
             paths: self.paths.clone(),
             handle_error: self.handle_error.clone(),
+            serve_index_file_on_missing_asset: self.serve_index_file_on_missing_asset,
             _marker: self._marker,
         }
     }
@@ -247,30 +314,94 @@ mod tests {
     };
 
     #[tokio::test]
-    async fn basic() {
+    async fn serve_assets_at_root_and_serve_index_on_not_found() {
+        // serve_index_file_on_missing_asset is automatically set to `true` when serving assets at `/`,
+        // otherwise all requests would 404
+        //
+        // therefore testing the `false` variant doesn't make much sense
+
         let app = Router::new()
             .route("/foo", get(|| async { "GET /foo" }))
-            .merge(SpaRouter::new("/assets", "test_files"));
+            .merge(SpaRouter::new("/", "test_files"));
         let client = TestClient::new(app);
 
-        let res = client.get("/").send().await;
-        assert_eq!(res.status(), StatusCode::OK);
-        assert_eq!(res.text().await, "<h1>Hello, World!</h1>\n");
-
-        let res = client.get("/some/random/path").send().await;
-        assert_eq!(res.status(), StatusCode::OK);
-        assert_eq!(res.text().await, "<h1>Hello, World!</h1>\n");
-
-        let res = client.get("/assets/script.js").send().await;
-        assert_eq!(res.status(), StatusCode::OK);
-        assert_eq!(res.text().await, "console.log('hi')\n");
-
+        // route that exists
         let res = client.get("/foo").send().await;
         assert_eq!(res.status(), StatusCode::OK);
         assert_eq!(res.text().await, "GET /foo");
 
+        // route that doesn't exist
+        let res = client.get("/").send().await;
+        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.text().await, "<h1>Hello, World!</h1>\n");
+
+        // asset that exists
+        let res = client.get("/script.js").send().await;
+        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.text().await, "console.log('hi')\n");
+
+        // asset that doesn't exist
+        let res = client.get("/doesnt_exist").send().await;
+        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.text().await, "<h1>Hello, World!</h1>\n");
+    }
+
+    #[tokio::test]
+    async fn serve_assets_at_path_root_and_serve_index_on_not_found() {
+        let app = Router::new()
+            .route("/foo", get(|| async { "GET /foo" }))
+            .merge(SpaRouter::new("/assets", "test_files").serve_index_file_on_missing_asset(true));
+        let client = TestClient::new(app);
+
+        // route that exists
+        let res = client.get("/foo").send().await;
+        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.text().await, "GET /foo");
+
+        // route that doesn't exist
+        let res = client.get("/").send().await;
+        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.text().await, "<h1>Hello, World!</h1>\n");
+
+        // asset that exists
+        let res = client.get("/assets/script.js").send().await;
+        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.text().await, "console.log('hi')\n");
+
+        // asset that doesn't exist
+        let res = client.get("/assets/doesnt_exist").send().await;
+        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.text().await, "<h1>Hello, World!</h1>\n");
+    }
+
+    #[tokio::test]
+    async fn serve_assets_at_path_root_and_dont_serve_index_on_not_found() {
+        let app = Router::new()
+            .route("/foo", get(|| async { "GET /foo" }))
+            .merge(
+                SpaRouter::new("/assets", "test_files").serve_index_file_on_missing_asset(false),
+            );
+        let client = TestClient::new(app);
+
+        // route that exists
+        let res = client.get("/foo").send().await;
+        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.text().await, "GET /foo");
+
+        // route that doesn't exist
+        let res = client.get("/").send().await;
+        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.text().await, "<h1>Hello, World!</h1>\n");
+
+        // asset that exists
+        let res = client.get("/assets/script.js").send().await;
+        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.text().await, "console.log('hi')\n");
+
+        // asset that doesn't exist
         let res = client.get("/assets/doesnt_exist").send().await;
         assert_eq!(res.status(), StatusCode::NOT_FOUND);
+        assert_eq!(res.text().await, "");
     }
 
     #[tokio::test]
@@ -301,29 +432,5 @@ mod tests {
         let spa = SpaRouter::new("/assets", "test_files").handle_error(handle_error);
 
         Router::<Body>::new().merge(spa);
-    }
-
-    #[tokio::test]
-    async fn serving_assets_at_root() {
-        let app = Router::new()
-            .route("/foo", get(|| async { "GET /foo" }))
-            .merge(SpaRouter::new("/", "test_files"));
-        let client = TestClient::new(app);
-
-        let res = client.get("/").send().await;
-        assert_eq!(res.status(), StatusCode::OK);
-        assert_eq!(res.text().await, "<h1>Hello, World!</h1>\n");
-
-        let res = client.get("/some/random/path").send().await;
-        assert_eq!(res.status(), StatusCode::OK);
-        assert_eq!(res.text().await, "<h1>Hello, World!</h1>\n");
-
-        let res = client.get("/script.js").send().await;
-        assert_eq!(res.status(), StatusCode::OK);
-        assert_eq!(res.text().await, "console.log('hi')\n");
-
-        let res = client.get("/foo").send().await;
-        assert_eq!(res.status(), StatusCode::OK);
-        assert_eq!(res.text().await, "GET /foo");
     }
 }
