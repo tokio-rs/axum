@@ -13,3 +13,5 @@ serde = { version = "1", features = ["derive"] }
 tower-http = { version = "0.2.5", features = ["cors"] }
 
 tokio = { version = "1.17.0", features = ["macros"] }
+
+schemars = "0.8.8"

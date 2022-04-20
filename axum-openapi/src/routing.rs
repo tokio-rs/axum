@@ -8,7 +8,8 @@ use axum::handler::Handler;
 use axum::http::Request;
 use axum::response::Response;
 
-use crate::{openapi, RouteHandler};
+use crate::{openapi};
+use crate::handler::{DescribeHandler, DocumentedHandler};
 use crate::openapi::OpenApi;
 
 pub struct Router<B = Body> {
@@ -55,6 +56,31 @@ pub struct MethodRouter<B = Body, E = Infallible> {
     path_item: openapi::PathItem
 }
 
+impl<B, E> MethodRouter<B, E> {
+    pub fn new() -> Self {
+        MethodRouter {
+            inner: axum::routing::MethodRouter::new(),
+            path_item: Default::default()
+        }
+    }
+}
+
+impl<B: Send + 'static> MethodRouter<B, Infallible> {
+    pub fn post<T, H>(self, handler: DocumentedHandler<H>) -> Self
+    where H: Handler<T, B> + DescribeHandler<T>, T: Send + 'static
+    {
+        let operation = handler.to_operation();
+
+        Self {
+            inner: self.inner.post(handler.handler),
+            path_item: openapi::PathItem {
+                post: Some(operation),
+                ..self.path_item
+            }
+        }
+    }
+}
+
 pub struct SpecBuilder<B = Body> {
     router: axum::routing::Router<B>,
     info: openapi::Info,
@@ -85,20 +111,6 @@ impl<B> SpecBuilder<B> where B: HttpBody + Send + 'static {
             axum::routing::get(serve_spec)
                 .layer(Extension(serialized))
         )
-    }
-}
-
-pub fn post<H, T, B>(handler: fn() -> RouteHandler<H>) -> MethodRouter<B>
-where H: Handler<T, B>, B: Send + 'static, T: 'static {
-    let handler = (handler)();
-
-    let operation = (handler.describe)();
-
-    MethodRouter {
-        inner: axum::routing::post(handler.handler),
-        path_item: openapi::PathItem {
-            post: Some(operation),
-        }
     }
 }
 

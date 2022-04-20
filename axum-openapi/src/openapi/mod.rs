@@ -3,7 +3,9 @@
 use either::Either;
 use indexmap::IndexMap;
 use schemars::schema::RootSchema;
-use crate::HandlerArg;
+use serde::{Serialize, Serializer};
+use serde::ser::SerializeMap;
+use axum::http::StatusCode;
 
 #[derive(serde::Serialize, Debug)]
 pub struct OpenApi {
@@ -18,7 +20,7 @@ pub struct Info {
     pub description: Option<String>,
 }
 
-#[derive(serde::Serialize, Debug)]
+#[derive(serde::Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct PathItem {
     pub post: Option<Operation>,
@@ -33,6 +35,7 @@ pub struct Operation {
     pub operation_id: &'static str,
     pub parameters: Vec<Parameter>,
     pub request_body: Option<RequestBody>,
+    pub responses: Responses,
 }
 
 #[derive(serde::Serialize, Debug)]
@@ -59,7 +62,7 @@ pub enum ParameterLocation {
 #[derive(serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct RequestBody {
-    pub description: &'static str,
+    pub description: String,
     pub content: RequestBodyContent,
 }
 
@@ -70,17 +73,31 @@ pub enum RequestBodyContent {
     Json(RootSchema)
 }
 
-impl Operation {
-    #[doc(hidden)]
-    pub fn __push_handler_arg<T: HandlerArg>(&mut self) {
-        match T::describe() {
-            Some(Either::Left(param)) => self.parameters.push(param),
-            Some(Either::Right(body)) => {
-                if let Some(body) = self.request_body.replace(body) {
-                    panic!("handler has more than one request body: {:?}", body)
-                }
-            },
-            None => (),
+#[derive(Debug, Default)]
+pub struct Responses {
+    pub default: Option<Response>,
+    pub responses: IndexMap<StatusCode, Response>,
+}
+
+#[derive(serde::Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct Response {
+
+}
+
+impl Serialize for Responses {
+    fn serialize<S>(&self, ser: S) -> Result<S::Ok, S::Error> where S: Serializer {
+        let output_len = self.default.is_some() as usize + self.responses.len();
+
+        let mut out = ser.serialize_map(output_len.into())?;
+        if let Some(default) = &self.default {
+            out.serialize_entry("default", default)?;
         }
+
+        for (code, response) in &self.responses {
+            out.serialize_entry(&code.as_u16(), response)?;
+        }
+
+        out.end()
     }
 }

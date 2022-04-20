@@ -8,7 +8,6 @@ authors = ["Austin Bonander <austin@launchbadge.com>"]
 
 [dependencies]
 axum = { version = "=0.5.1", path = "../axum" }
-axum-openapi-macros = { path = "../axum-openapi-macros" }
 
 futures-core = "0.3.21"
 
