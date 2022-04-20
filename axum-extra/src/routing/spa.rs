@@ -192,6 +192,7 @@ impl<B, T, F> SpaRouter<B, T, F> {
     /// use axum_extra::routing::SpaRouter;
     ///
     /// let spa = SpaRouter::new("/", "dist");
+    /// # let _: SpaRouter::<axum::body::Body, _, _> = spa;
     ///
     /// // we don't need to call `.serve_index_file_on_missing_asset(true)`
     /// ```
@@ -212,9 +213,8 @@ where
 {
     fn from(spa: SpaRouter<B, T, F>) -> Self {
         use axum::{handler::Handler, response::IntoResponse};
-        use tower::ServiceExt;
 
-        let mut serve_index = get_service(ServeFile::new(&spa.paths.index_file))
+        let serve_index = get_service(ServeFile::new(&spa.paths.index_file))
             .handle_error(spa.handle_error.clone());
 
         let serve_asset_or_fallback_to_index = {
