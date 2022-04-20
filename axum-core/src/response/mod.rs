@@ -30,19 +30,19 @@ pub type Response<T = BoxBody> = http::Response<T>;
 ///
 /// ```no_run
 /// use axum::{
-///     response::{IntoResponse, Response, Result},
+///     response::{IntoResponse, Response, ResultResponse},
 ///     http::StatusCode,
 /// };
 ///
-/// fn handler() -> Result<&'static str> {
+/// fn handler() -> ResultResponse<&'static str> {
 ///     Err((StatusCode::NOT_FOUND, "not found"))?;
 ///     Err(StatusCode::BAD_REQUEST)?;
 ///     Ok("ok")
 /// }
 /// ```
-pub type Result<T, E = Error> = std::result::Result<T, E>;
+pub type ResultResponse<T> = std::result::Result<T, ErrorResponse>;
 
-impl<T> IntoResponse for Result<T>
+impl<T> IntoResponse for ResultResponse<T>
 where
     T: IntoResponse,
 {
@@ -56,11 +56,11 @@ where
 
 /// An [IntoResponse]-based error type
 ///
-/// See [Result] for more details.
+/// See [ResultResponse] for more details.
 #[derive(Debug)]
-pub struct Error(Response);
+pub struct ErrorResponse(Response);
 
-impl<T> From<T> for Error
+impl<T> From<T> for ErrorResponse
 where
     T: IntoResponse,
 {
