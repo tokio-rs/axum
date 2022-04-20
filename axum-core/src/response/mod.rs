@@ -29,23 +29,23 @@ pub type Response<T = BoxBody> = http::Response<T>;
 /// implement [IntoResponse].
 ///
 /// ```no_run
-/// use axum_core::response::{IntoResponse, Response, Result};
-/// use http::StatusCode;
+/// use axum::{
+///     response::{IntoResponse, Response, Result},
+///     http::StatusCode,
+/// };
 ///
-/// fn foo() -> Result<&'static str> {
+/// fn handler() -> Result<&'static str> {
 ///     Err((StatusCode::NOT_FOUND, "not found"))?;
 ///     Err(StatusCode::BAD_REQUEST)?;
 ///     Ok("ok")
 /// }
-///
-/// fn main() {
-///     let response: Response = foo().into_response();
-/// }
 /// ```
-pub type Result<T> = std::result::Result<T, Error>;
+pub type Result<T, E = Error> = std::result::Result<T, E>;
 
-impl<T: IntoResponse> IntoResponse for Result<T> {
-    #[inline]
+impl<T> IntoResponse for Result<T>
+where
+    T: IntoResponse,
+{
     fn into_response(self) -> Response {
         match self {
             Ok(ok) => ok.into_response(),
@@ -60,8 +60,10 @@ impl<T: IntoResponse> IntoResponse for Result<T> {
 #[derive(Debug)]
 pub struct Error(Response);
 
-impl<T: IntoResponse> From<T> for Error {
-    #[inline]
+impl<T> From<T> for Error
+where
+    T: IntoResponse,
+{
     fn from(value: T) -> Self {
         Self(value.into_response())
     }
