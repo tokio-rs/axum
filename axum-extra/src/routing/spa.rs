@@ -1,7 +1,8 @@
 use axum::{
     body::{Body, HttpBody},
     error_handling::HandleError,
-    response::Response,
+    handler::Handler,
+    response::{IntoResponse, Response},
     routing::{get_service, Route},
     Router,
 };
@@ -201,14 +202,178 @@ where
     }
 }
 
+trait SpaRouterExt {
+    fn spa(
+        self,
+        route: &str,
+        path: impl AsRef<Path>,
+        global_index: bool,
+        assets_index: bool,
+    ) -> Self;
+}
+
+impl SpaRouterExt for Router {
+    fn spa(
+        self,
+        route: &str,
+        path: impl AsRef<Path>,
+        global_index: bool,
+        assets_index: bool,
+    ) -> Self {
+        let path = path.as_ref();
+
+        let serve_index = get_service(ServeFile::new(path.join("index.html")))
+            .handle_error(|_| async { StatusCode::INTERNAL_SERVER_ERROR });
+        let mut serve_assets = get_service(ServeDir::new(path))
+            .handle_error(|_| async { StatusCode::INTERNAL_SERVER_ERROR });
+
+        let router = if assets_index {
+            let mut serve_index = serve_index.clone();
+            let handler = move |req: Request<Body>| async move {
+                let req_clone = {
+                    let mut clone = Request::new(Body::default());
+                    *clone.method_mut() = req.method().clone();
+                    *clone.uri_mut() = req.uri().clone();
+                    *clone.headers_mut() = req.headers().clone();
+                    clone
+                };
+
+                let res = serve_assets.call(req).await.into_response();
+
+                if res.status() == StatusCode::NOT_FOUND {
+                    serve_index.call(req_clone).await.into_response()
+                } else {
+                    res
+                }
+            };
+
+            self.nest(route, handler.into_service())
+        } else {
+            self.nest(route, serve_assets)
+        };
+
+        if global_index {
+            router.fallback(serve_index)
+        } else {
+            router
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::test_helpers::*;
     use axum::{
-        http::{Method, Uri},
+        http::{Method, StatusCode, Uri},
         routing::get,
     };
+
+    #[tokio::test]
+    async fn no_fallback() {
+        let app = Router::new()
+            .route("/foo", get(|| async { "GET /foo" }))
+            .spa("/assets", "test_files", false, false);
+        let client = TestClient::new(app);
+
+        let res = client.get("/").send().await;
+        assert_eq!(res.status(), StatusCode::NOT_FOUND);
+
+        let res = client.get("/some/random/path").send().await;
+        assert_eq!(res.status(), StatusCode::NOT_FOUND);
+
+        let res = client.get("/assets/script.js").send().await;
+        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.text().await, "console.log('hi')\n");
+
+        let res = client.get("/assets/random/path").send().await;
+        assert_eq!(res.status(), StatusCode::NOT_FOUND);
+
+        let res = client.get("/foo").send().await;
+        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.text().await, "GET /foo");
+    }
+
+    #[tokio::test]
+    async fn global_fallback() {
+        let app = Router::new()
+            .route("/foo", get(|| async { "GET /foo" }))
+            .spa("/assets", "test_files", true, false);
+        let client = TestClient::new(app);
+
+        let res = client.get("/").send().await;
+        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.text().await, "<h1>Hello, World!</h1>\n");
+
+        let res = client.get("/some/random/path").send().await;
+        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.text().await, "<h1>Hello, World!</h1>\n");
+
+        let res = client.get("/assets/script.js").send().await;
+        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.text().await, "console.log('hi')\n");
+
+        let res = client.get("/assets/random/path").send().await;
+        assert_eq!(res.status(), StatusCode::NOT_FOUND);
+
+        let res = client.get("/foo").send().await;
+        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.text().await, "GET /foo");
+    }
+
+    #[tokio::test]
+    async fn assets_fallback() {
+        let app = Router::new()
+            .route("/foo", get(|| async { "GET /foo" }))
+            .spa("/assets", "test_files", false, true);
+        let client = TestClient::new(app);
+
+        let res = client.get("/").send().await;
+        assert_eq!(res.status(), StatusCode::NOT_FOUND);
+
+        let res = client.get("/some/random/path").send().await;
+        assert_eq!(res.status(), StatusCode::NOT_FOUND);
+
+        let res = client.get("/assets/script.js").send().await;
+        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.text().await, "console.log('hi')\n");
+
+        let res = client.get("/assets/random/path").send().await;
+        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.text().await, "<h1>Hello, World!</h1>\n");
+
+        let res = client.get("/foo").send().await;
+        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.text().await, "GET /foo");
+    }
+
+    #[tokio::test]
+    async fn global_and_assets_fallback() {
+        let app = Router::new()
+            .route("/foo", get(|| async { "GET /foo" }))
+            .spa("/assets", "test_files", true, true);
+        let client = TestClient::new(app);
+
+        let res = client.get("/").send().await;
+        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.text().await, "<h1>Hello, World!</h1>\n");
+
+        let res = client.get("/some/random/path").send().await;
+        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.text().await, "<h1>Hello, World!</h1>\n");
+
+        let res = client.get("/assets/script.js").send().await;
+        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.text().await, "console.log('hi')\n");
+
+        let res = client.get("/assets/random/path").send().await;
+        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.text().await, "<h1>Hello, World!</h1>\n");
+
+        let res = client.get("/foo").send().await;
+        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.text().await, "GET /foo");
+    }
 
     #[tokio::test]
     async fn basic() {
