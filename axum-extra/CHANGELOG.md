@@ -7,11 +7,21 @@ and this project adheres to [Semantic Versioning].
 
 # Unreleased
 
-- **added:** Re-export `SameSite` and `Expiration` from the `cookie` crate.
-- **fixed:** Fix `SignedCookieJar` when using custom key types ([#899])
-- **added:** `PrivateCookieJar` for managing private cookies
+- **fixed:** Don't depend on axum with default features enabled ([#913])
 
+[#913]: https://github.com/tokio-rs/axum/pull/913
+
+# 0.2.1 (03. April, 2022)
+
+- **added:** Re-export `SameSite` and `Expiration` from the `cookie` crate ([#898])
+- **added:** Add `PrivateCookieJar` for managing private cookies ([#900])
+- **added:** Add `SpaRouter` for routing setups commonly used for single page applications ([#904])
+- **fixed:** Fix `SignedCookieJar` when using custom key types ([#899])
+
+[#898]: https://github.com/tokio-rs/axum/pull/898
 [#899]: https://github.com/tokio-rs/axum/pull/899
+[#900]: https://github.com/tokio-rs/axum/pull/900
+[#904]: https://github.com/tokio-rs/axum/pull/904
 
 # 0.2.0 (31. March, 2022)
 

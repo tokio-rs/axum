@@ -61,3 +61,19 @@ pub mod __private {
     const PATH: &AsciiSet = &FRAGMENT.add(b'#').add(b'?').add(b'{').add(b'}');
     pub const PATH_SEGMENT: &AsciiSet = &PATH.add(b'/').add(b'%');
 }
+
+#[cfg(test)]
+pub(crate) mod test_helpers {
+    #![allow(unused_imports)]
+
+    use axum::{body::HttpBody, BoxError};
+
+    mod test_client {
+        #![allow(dead_code)]
+        include!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../axum/src/test_helpers/test_client.rs"
+        ));
+    }
+    pub(crate) use self::test_client::*;
+}

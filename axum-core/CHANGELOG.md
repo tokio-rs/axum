@@ -7,7 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- **added:** Add `RequestParts::extract` which allows applying an extractor as a method call
+- None.
+
+# 0.2.2 (19. April, 2022)
+
+- **added:** Add `AppendHeaders` for appending headers to a response rather than overriding them ([#927])
+
+[#927]: https://github.com/tokio-rs/axum/pull/927
+
+# 0.2.1 (03. April, 2022)
+
+- **added:** Add `RequestParts::extract` which allows applying an extractor as a method call ([#897])
+
+[#897]: https://github.com/tokio-rs/axum/pull/897
 
 # 0.2.0 (31. March, 2022)
 

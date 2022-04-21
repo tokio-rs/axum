@@ -324,6 +324,10 @@ async fn with_trailing_slash() {
     let res = client.get("/foo/").send().await;
     assert_eq!(res.status(), StatusCode::PERMANENT_REDIRECT);
     assert_eq!(res.headers().get("location").unwrap(), "/foo");
+
+    let res = client.get("/foo/?bar=baz").send().await;
+    assert_eq!(res.status(), StatusCode::PERMANENT_REDIRECT);
+    assert_eq!(res.headers().get("location").unwrap(), "/foo?bar=baz");
 }
 
 #[tokio::test]
@@ -335,6 +339,10 @@ async fn without_trailing_slash() {
     let res = client.get("/foo").send().await;
     assert_eq!(res.status(), StatusCode::PERMANENT_REDIRECT);
     assert_eq!(res.headers().get("location").unwrap(), "/foo/");
+
+    let res = client.get("/foo?bar=baz").send().await;
+    assert_eq!(res.status(), StatusCode::PERMANENT_REDIRECT);
+    assert_eq!(res.headers().get("location").unwrap(), "/foo/?bar=baz");
 }
 
 #[tokio::test]

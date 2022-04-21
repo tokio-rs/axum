@@ -9,7 +9,7 @@ use crate::{
     util::try_downcast,
     BoxError,
 };
-use http::Request;
+use http::{Request, Uri};
 use matchit::MatchError;
 use std::{
     borrow::Cow,
@@ -497,19 +497,39 @@ where
 
         match self.node.at(&path) {
             Ok(match_) => self.call_route(match_, req),
-            Err(MatchError::MissingTrailingSlash) => RouteFuture::from_response(
-                Redirect::permanent(&format!("{}/", req.uri().to_string())).into_response(),
-            ),
-            Err(MatchError::ExtraTrailingSlash) => RouteFuture::from_response(
-                Redirect::permanent(&req.uri().to_string().strip_suffix('/').unwrap())
-                    .into_response(),
-            ),
+            Err(MatchError::MissingTrailingSlash) => {
+                let new_uri = replace_trailing_slash(req.uri(), &format!("{}/", &path));
+
+                RouteFuture::from_response(
+                    Redirect::permanent(&new_uri.to_string()).into_response(),
+                )
+            }
+            Err(MatchError::ExtraTrailingSlash) => {
+                let new_uri = replace_trailing_slash(req.uri(), &path.strip_suffix('/').unwrap());
+
+                RouteFuture::from_response(
+                    Redirect::permanent(&new_uri.to_string()).into_response(),
+                )
+            }
             Err(MatchError::NotFound) => match &self.fallback {
                 Fallback::Default(inner) => inner.clone().call(req),
                 Fallback::Custom(inner) => inner.clone().call(req),
             },
         }
     }
+}
+
+fn replace_trailing_slash(uri: &Uri, new_path: &str) -> Uri {
+    let mut new_path_and_query = new_path.to_string();
+    if let Some(query) = uri.query() {
+        new_path_and_query.push('?');
+        new_path_and_query.push_str(query);
+    }
+
+    let mut parts = uri.clone().into_parts();
+    parts.path_and_query = Some(new_path_and_query.parse().unwrap());
+
+    Uri::from_parts(parts).unwrap()
 }
 
 /// Wrapper around `matchit::Router` that supports merging two `Router`s.

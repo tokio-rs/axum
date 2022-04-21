@@ -8,16 +8,17 @@ license = "MIT"
 name = "axum-extra"
 readme = "README.md"
 repository = "https://github.com/tokio-rs/axum"
-version = "0.2.0"
+version = "0.2.1"
 
 [features]
 default = []
 erased-json = ["serde_json", "serde"]
 typed-routing = ["axum-macros", "serde", "percent-encoding"]
 cookie = ["cookie-lib"]
+spa = ["tower-http/fs"]
 
 [dependencies]
-axum = { path = "../axum", version = "0.5" }
+axum = { path = "../axum", version = "0.5", default-features = false }
 bytes = "1.1.0"
 http = "0.2"
 mime = "0.3"
@@ -37,6 +38,7 @@ cookie-lib = { package = "cookie", version = "0.16", features = ["percent-encode
 [dev-dependencies]
 axum = { path = "../axum", version = "0.5", features = ["headers"] }
 hyper = "0.14"
+reqwest = { version = "0.11", default-features = false, features = ["json", "stream", "multipart"] }
 serde = { version = "1.0", features = ["derive"] }
 tokio = { version = "1.14", features = ["full"] }
 tower = { version = "0.4", features = ["util"] }
