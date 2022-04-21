@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- **added:** `response::ErrorResponse` and `response::Result` for `IntoResponse`
+- **added:** Add `response::ErrorResponse` and `response::Result` for `IntoResponse`
   based error handling ([#921])
 
 [#921]: https://github.com/tokio-rs/axum/pull/921 
