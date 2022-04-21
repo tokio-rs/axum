@@ -18,31 +18,88 @@ pub use self::{
 /// type used with axum.
 pub type Response<T = BoxBody> = http::Response<T>;
 
-/// A flexible [IntoResponse]-based result type
+/// An [`IntoResponse`]-based result type that uses [`ErrorResponse`] as the error type.
 ///
-/// All types which implement [IntoResponse] can be converted to an [Error].
-/// This makes it useful as a general error type for functions which combine
-/// multiple distinct error types but all of which implement [IntoResponse].
+/// All types which implement [`IntoResponse`] can be converted to an [`ErrorResponse`]. This makes
+/// it useful as a general purpose error type for functions which combine multiple distinct error
+/// types that all implement [`IntoResponse`].
 ///
-/// For example, note that the error types below differ. However, both can be
-/// used with the [Result], and therefore the `?` operator, since they both
-/// implement [IntoResponse].
+/// # Example
 ///
-/// ```no_run
+/// ```
 /// use axum::{
-///     response::{IntoResponse, Response, ResultResponse},
+///     response::{IntoResponse, Response},
 ///     http::StatusCode,
 /// };
 ///
-/// fn handler() -> ResultResponse<&'static str> {
-///     Err((StatusCode::NOT_FOUND, "not found"))?;
-///     Err(StatusCode::BAD_REQUEST)?;
-///     Ok("ok")
+/// // two fallible functions with different error types
+/// fn try_something() -> Result<(), ErrorA> {
+///     // ...
+///     # unimplemented!()
+/// }
+///
+/// fn try_something_else() -> Result<(), ErrorB> {
+///     // ...
+///     # unimplemented!()
+/// }
+///
+/// // each error type implements `IntoResponse`
+/// struct ErrorA;
+///
+/// impl IntoResponse for ErrorA {
+///     fn into_response(self) -> Response {
+///         // ...
+///         # unimplemented!()
+///     }
+/// }
+///
+/// enum ErrorB {
+///     SomethingWentWrong,
+/// }
+///
+/// impl IntoResponse for ErrorB {
+///     fn into_response(self) -> Response {
+///         // ...
+///         # unimplemented!()
+///     }
+/// }
+///
+/// // we can combine them using `axum::response::Result` and still use `?`
+/// async fn handler() -> axum::response::Result<&'static str> {
+///     // the errors are automatically converted to `ErrorResponse`
+///     try_something()?;
+///     try_something_else()?;
+///
+///     Ok("it worked!")
 /// }
 /// ```
-pub type ResultResponse<T> = std::result::Result<T, ErrorResponse>;
+///
+/// # As a replacement for `std::result::Result`
+///
+/// Since `axum::response::Result` has a default error type you only have to specify the `Ok` type:
+///
+/// ```
+/// use axum::{
+///     response::{IntoResponse, Response, Result},
+///     http::StatusCode,
+/// };
+///
+/// // `Result<T>` automatically uses `ErrorResponse` as the error type.
+/// async fn handler() -> Result<&'static str> {
+///     try_something()?;
+///
+///     Ok("it worked!")
+/// }
+///
+/// // You can still specify the error even if you've imported `axum::response::Result`
+/// fn try_something() -> Result<(), StatusCode> {
+///     // ...
+///     # unimplemented!()
+/// }
+/// ```
+pub type Result<T, E = ErrorResponse> = std::result::Result<T, E>;
 
-impl<T> IntoResponse for ResultResponse<T>
+impl<T> IntoResponse for Result<T>
 where
     T: IntoResponse,
 {
@@ -54,9 +111,9 @@ where
     }
 }
 
-/// An [IntoResponse]-based error type
+/// An [`IntoResponse`]-based error type
 ///
-/// See [ResultResponse] for more details.
+/// See [`Result`] for more details.
 #[derive(Debug)]
 pub struct ErrorResponse(Response);
 
