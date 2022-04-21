@@ -20,7 +20,7 @@ pub use crate::Extension;
 
 #[doc(inline)]
 pub use axum_core::response::{
-    AppendHeaders, IntoResponse, IntoResponseParts, Response, ResponseParts,
+    AppendHeaders, ErrorResponse, IntoResponse, IntoResponseParts, Response, ResponseParts, Result,
 };
 
 #[doc(inline)]
