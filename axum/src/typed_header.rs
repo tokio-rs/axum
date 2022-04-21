@@ -109,8 +109,8 @@ where
 #[cfg(feature = "headers")]
 #[derive(Debug)]
 pub struct TypedHeaderRejection {
-    name: &'static http::header::HeaderName,
-    reason: TypedHeaderRejectionReason,
+    pub name: &'static http::header::HeaderName,
+    pub reason: TypedHeaderRejectionReason,
 }
 
 impl TypedHeaderRejection {
