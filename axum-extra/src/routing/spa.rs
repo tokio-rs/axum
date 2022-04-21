@@ -3,7 +3,7 @@ use axum::{
     error_handling::HandleError,
     handler::Handler,
     response::{IntoResponse, Response},
-    routing::{get_service, Route},
+    routing::{get_service, MethodRouter, Route},
     Router,
 };
 use http::{Request, StatusCode};
@@ -202,62 +202,41 @@ where
     }
 }
 
-trait SpaRouterExt {
-    fn spa(
-        self,
-        route: &str,
-        path: impl AsRef<Path>,
-        global_index: bool,
-        assets_index: bool,
-    ) -> Self;
+pub trait SpaRouterExt {
+    fn spa_assets(self, route: &str, path: impl AsRef<Path>) -> Self;
 }
 
 impl SpaRouterExt for Router {
-    fn spa(
-        self,
-        route: &str,
-        path: impl AsRef<Path>,
-        global_index: bool,
-        assets_index: bool,
-    ) -> Self {
-        let path = path.as_ref();
-
-        let serve_index = get_service(ServeFile::new(path.join("index.html")))
+    fn spa_assets(self, route: &str, path: impl AsRef<Path>) -> Self {
+        let mut serve_assets = get_service(ServeDir::new(&path))
             .handle_error(|_| async { StatusCode::INTERNAL_SERVER_ERROR });
-        let mut serve_assets = get_service(ServeDir::new(path))
-            .handle_error(|_| async { StatusCode::INTERNAL_SERVER_ERROR });
+        let mut serve_index = spa_index(&path);
 
-        let router = if assets_index {
-            let mut serve_index = serve_index.clone();
-            let handler = move |req: Request<Body>| async move {
-                let req_clone = {
-                    let mut clone = Request::new(Body::default());
-                    *clone.method_mut() = req.method().clone();
-                    *clone.uri_mut() = req.uri().clone();
-                    *clone.headers_mut() = req.headers().clone();
-                    clone
-                };
-
-                let res = serve_assets.call(req).await.into_response();
-
-                if res.status() == StatusCode::NOT_FOUND {
-                    serve_index.call(req_clone).await.into_response()
-                } else {
-                    res
-                }
+        let handler = move |req: Request<Body>| async move {
+            let req_clone = {
+                let mut clone = Request::new(Body::default());
+                *clone.method_mut() = req.method().clone();
+                *clone.uri_mut() = req.uri().clone();
+                *clone.headers_mut() = req.headers().clone();
+                clone
             };
 
-            self.nest(route, handler.into_service())
-        } else {
-            self.nest(route, serve_assets)
+            let res = serve_assets.call(req).await.into_response();
+
+            if res.status() == StatusCode::NOT_FOUND {
+                serve_index.call(req_clone).await.into_response()
+            } else {
+                res
+            }
         };
 
-        if global_index {
-            router.fallback(serve_index)
-        } else {
-            router
-        }
+        self.nest(route, handler.into_service())
     }
+}
+
+pub fn spa_index(path: impl AsRef<Path>) -> MethodRouter {
+    get_service(ServeFile::new(path.as_ref().join("index.html")))
+        .handle_error(|_| async { StatusCode::INTERNAL_SERVER_ERROR })
 }
 
 #[cfg(test)]
@@ -269,11 +248,16 @@ mod tests {
         routing::get,
     };
 
+    // Normal directory serving, noting about SPA really.
     #[tokio::test]
     async fn no_fallback() {
         let app = Router::new()
             .route("/foo", get(|| async { "GET /foo" }))
-            .spa("/assets", "test_files", false, false);
+            .nest(
+                "/assets",
+                get_service(ServeDir::new("test_files"))
+                    .handle_error(|_| async { StatusCode::INTERNAL_SERVER_ERROR }),
+            );
         let client = TestClient::new(app);
 
         let res = client.get("/").send().await;
@@ -294,11 +278,17 @@ mod tests {
         assert_eq!(res.text().await, "GET /foo");
     }
 
+    // Normal dir serving, plus a global fallback to the `index.html` for unknown routes.
     #[tokio::test]
     async fn global_fallback() {
         let app = Router::new()
             .route("/foo", get(|| async { "GET /foo" }))
-            .spa("/assets", "test_files", true, false);
+            .nest(
+                "/assets",
+                get_service(ServeDir::new("test_files"))
+                    .handle_error(|_| async { StatusCode::INTERNAL_SERVER_ERROR }),
+            )
+            .fallback(spa_index("test_files"));
         let client = TestClient::new(app);
 
         let res = client.get("/").send().await;
@@ -321,11 +311,12 @@ mod tests {
         assert_eq!(res.text().await, "GET /foo");
     }
 
+    // Dir serving, but with fallback to `index.html` if an asset wasn't found.
     #[tokio::test]
     async fn assets_fallback() {
         let app = Router::new()
             .route("/foo", get(|| async { "GET /foo" }))
-            .spa("/assets", "test_files", false, true);
+            .spa_assets("/assets", "test_files");
         let client = TestClient::new(app);
 
         let res = client.get("/").send().await;
@@ -347,11 +338,14 @@ mod tests {
         assert_eq!(res.text().await, "GET /foo");
     }
 
+    // Dir serving, with fallback to the `index.html` for missing assets, **and** a global fallback
+    // to the `index.html` for any unknown routes.
     #[tokio::test]
     async fn global_and_assets_fallback() {
         let app = Router::new()
             .route("/foo", get(|| async { "GET /foo" }))
-            .spa("/assets", "test_files", true, true);
+            .spa_assets("/assets", "test_files")
+            .fallback(spa_index("test_files"));
         let client = TestClient::new(app);
 
         let res = client.get("/").send().await;

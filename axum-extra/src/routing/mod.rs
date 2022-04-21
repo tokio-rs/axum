@@ -19,7 +19,7 @@ pub use axum_macros::TypedPath;
 pub use self::typed::{FirstElementIs, TypedPath};
 
 #[cfg(feature = "spa")]
-pub use self::spa::SpaRouter;
+pub use self::spa::{spa_index, SpaRouter, SpaRouterExt};
 
 /// Extension trait that adds additional methods to [`Router`].
 pub trait RouterExt<B>: sealed::Sealed {
