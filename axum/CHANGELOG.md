@@ -9,8 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **added:** Add `response::ErrorResponse` and `response::Result` for
   `IntoResponse`-based error handling ([#921])
+- **added:** Add `middleware::from_extractor` and deprecate `extract::extractor_middleware` ([#957])
 
-[#921]: https://github.com/tokio-rs/axum/pull/921 
+[#921]: https://github.com/tokio-rs/axum/pull/921
+[#957]: https://github.com/tokio-rs/axum/pull/957
 
 # 0.5.3 (19. April, 2022)
 
@@ -56,36 +58,38 @@ Yanked, as it contained an accidental breaking change.
   headers you need ([#698])
 
   This includes these breaking changes:
-    - `RequestParts::take_headers` has been removed.
-    - `RequestParts::headers` returns `&HeaderMap`.
-    - `RequestParts::headers_mut` returns `&mut HeaderMap`.
-    - `HeadersAlreadyExtracted` has been removed.
-    - The `HeadersAlreadyExtracted` variant has been removed from these rejections:
-        - `RequestAlreadyExtracted`
-        - `RequestPartsAlreadyExtracted`
-        - `JsonRejection`
-        - `FormRejection`
-        - `ContentLengthLimitRejection`
-        - `WebSocketUpgradeRejection`
-    - `<HeaderMap as FromRequest<_>>::Rejection` has been changed to `std::convert::Infallible`.
+
+  - `RequestParts::take_headers` has been removed.
+  - `RequestParts::headers` returns `&HeaderMap`.
+  - `RequestParts::headers_mut` returns `&mut HeaderMap`.
+  - `HeadersAlreadyExtracted` has been removed.
+  - The `HeadersAlreadyExtracted` variant has been removed from these rejections:
+    - `RequestAlreadyExtracted`
+    - `RequestPartsAlreadyExtracted`
+    - `JsonRejection`
+    - `FormRejection`
+    - `ContentLengthLimitRejection`
+    - `WebSocketUpgradeRejection`
+  - `<HeaderMap as FromRequest<_>>::Rejection` has been changed to `std::convert::Infallible`.
+
 - **breaking:** `axum::http::Extensions` is no longer an extractor (ie it
   doesn't implement `FromRequest`). The `axum::extract::Extension` extractor is
   _not_ impacted by this and works the same. This change makes it harder to
   accidentally remove all extensions which would result in confusing errors
   elsewhere ([#699])
   This includes these breaking changes:
-    - `RequestParts::take_extensions` has been removed.
-    - `RequestParts::extensions` returns `&Extensions`.
-    - `RequestParts::extensions_mut` returns `&mut Extensions`.
-    - `RequestAlreadyExtracted` has been removed.
-    - `<Request as FromRequest>::Rejection` is now `BodyAlreadyExtracted`.
-    - `<http::request::Parts as FromRequest>::Rejection` is now `Infallible`.
-    - `ExtensionsAlreadyExtracted` has been removed.
-    - The `ExtensionsAlreadyExtracted` removed variant has been removed from these rejections:
-        - `ExtensionRejection`
-        - `PathRejection`
-        - `MatchedPathRejection`
-        - `WebSocketUpgradeRejection`
+  - `RequestParts::take_extensions` has been removed.
+  - `RequestParts::extensions` returns `&Extensions`.
+  - `RequestParts::extensions_mut` returns `&mut Extensions`.
+  - `RequestAlreadyExtracted` has been removed.
+  - `<Request as FromRequest>::Rejection` is now `BodyAlreadyExtracted`.
+  - `<http::request::Parts as FromRequest>::Rejection` is now `Infallible`.
+  - `ExtensionsAlreadyExtracted` has been removed.
+  - The `ExtensionsAlreadyExtracted` removed variant has been removed from these rejections:
+    - `ExtensionRejection`
+    - `PathRejection`
+    - `MatchedPathRejection`
+    - `WebSocketUpgradeRejection`
 - **breaking:** `Redirect::found` has been removed ([#800])
 - **breaking:** `AddExtensionLayer` has been removed. Use `Extension` instead. It now implements
   `tower::Layer` ([#807])
@@ -248,8 +252,7 @@ Yanked, as it contained an accidental breaking change.
 - **breaking:** `HandleErrorLayer` now requires the handler function to be
   `async` ([#534])
 - **added:** `HandleErrorLayer` now supports running extractors.
-- **breaking:** The `Handler<B, T>` trait is now defined as `Handler<T, B =
-  Body>`. That is the type parameters have been swapped and `B` defaults to
+- **breaking:** The `Handler<B, T>` trait is now defined as `Handler<T, B = Body>`. That is the type parameters have been swapped and `B` defaults to
   `axum::body::Body` ([#527])
 - **breaking:** `Router::merge` will panic if both routers have fallbacks.
   Previously the left side fallback would be silently discarded ([#529])
@@ -290,7 +293,7 @@ Yanked, as it contained an accidental breaking change.
 
 [#489]: https://github.com/tokio-rs/axum/pull/489
 [#490]: https://github.com/tokio-rs/axum/pull/490
-[`http::request::Parts`]: https://docs.rs/http/latest/http/request/struct.Parts.html
+[`http::request::parts`]: https://docs.rs/http/latest/http/request/struct.Parts.html
 
 # 0.3.2 (08. November, 2021)
 
@@ -309,6 +312,7 @@ Yanked, as it contained an accidental breaking change.
 # 0.3.0 (02. November, 2021)
 
 - Overall:
+
   - **fixed:** All known compile time issues are resolved, including those with
     `boxed` and those introduced by Rust 1.56 ([#404])
   - **breaking:** The router's type is now always `Router` regardless of how many routes or
@@ -324,6 +328,7 @@ Yanked, as it contained an accidental breaking change.
         )
     }
     ```
+
   - **breaking:** Added feature flags for HTTP1 and JSON. This enables removing a
     few dependencies if your app only uses HTTP2 or doesn't use JSON. This is only a
     breaking change if you depend on axum with `default_features = false`. ([#286])
@@ -345,6 +350,7 @@ Yanked, as it contained an accidental breaking change.
   - **added:** Add `Handler::into_make_service_with_connect_info` for serving a
     handler without a `Router`, and storing info about the incoming connection.
   - **breaking:** axum's minimum supported rust version is now 1.54
+
 - Routing:
   - Big internal refactoring of routing leading to several improvements ([#363])
     - **added:** Wildcard routes like `.route("/api/users/*rest", service)` are now supported.
@@ -388,7 +394,9 @@ Yanked, as it contained an accidental breaking change.
   - **added:** Add `extract::MatchedPath` for accessing path in router that
     matched the request ([#412])
 - Error handling:
+
   - **breaking:** Simplify error handling model ([#402]):
+
     - All services part of the router are now required to be infallible.
     - Error handling utilities have been moved to an `error_handling` module.
     - `Router::check_infallible` has been removed since routers are always
@@ -455,6 +463,7 @@ Yanked, as it contained an accidental breaking change.
         // ...
     }
     ```
+
 - Misc:
   - `InvalidWebsocketVersionHeader` has been renamed to `InvalidWebSocketVersionHeader` ([#416])
   - `WebsocketKeyHeaderMissing` has been renamed to `WebSocketKeyHeaderMissing` ([#416])
@@ -534,6 +543,7 @@ Yanked, as it contained an accidental breaking change.
     please file an issue! ([#184](https://github.com/tokio-rs/axum/pull/184)) ([#198](https://github.com/tokio-rs/axum/pull/198)) ([#220](https://github.com/tokio-rs/axum/pull/220))
   - **changed:** Remove `prelude`. Explicit imports are now required ([#195](https://github.com/tokio-rs/axum/pull/195))
 - Routing:
+
   - **added:** Add dedicated `Router` to replace the `RoutingDsl` trait ([#214](https://github.com/tokio-rs/axum/pull/214))
   - **added:** Add `Router::or` for combining routes ([#108](https://github.com/tokio-rs/axum/pull/108))
   - **fixed:** Support matching different HTTP methods for the same route that aren't defined
@@ -588,6 +598,7 @@ Yanked, as it contained an accidental breaking change.
           .boxed()
   }
   ```
+
 - Extractors:
   - **added:** Make `FromRequest` default to being generic over `body::Body` ([#146](https://github.com/tokio-rs/axum/pull/146))
   - **added:** Implement `std::error::Error` for all rejections ([#153](https://github.com/tokio-rs/axum/pull/153))
@@ -601,14 +612,15 @@ Yanked, as it contained an accidental breaking change.
   - **changed:** `extract::BodyStream` is no longer generic over the request body ([#234](https://github.com/tokio-rs/axum/pull/234))
   - **changed:** `extract::Body` has been renamed to `extract::RawBody` to avoid conflicting with `body::Body` ([#233](https://github.com/tokio-rs/axum/pull/233))
   - **changed:** `RequestParts` changes ([#153](https://github.com/tokio-rs/axum/pull/153))
-      - `method` new returns an `&http::Method`
-      - `method_mut` new returns an `&mut http::Method`
-      - `take_method` has been removed
-      - `uri` new returns an `&http::Uri`
-      - `uri_mut` new returns an `&mut http::Uri`
-      - `take_uri` has been removed
+    - `method` new returns an `&http::Method`
+    - `method_mut` new returns an `&mut http::Method`
+    - `take_method` has been removed
+    - `uri` new returns an `&http::Uri`
+    - `uri_mut` new returns an `&mut http::Uri`
+    - `take_uri` has been removed
   - **changed:** Remove several rejection types that were no longer used ([#153](https://github.com/tokio-rs/axum/pull/153)) ([#154](https://github.com/tokio-rs/axum/pull/154))
 - Responses:
+
   - **added:** Add `Headers` for easily customizing headers on a response ([#193](https://github.com/tokio-rs/axum/pull/193))
   - **added:** Add `Redirect` response ([#192](https://github.com/tokio-rs/axum/pull/192))
   - **added:** Add `body::StreamBody` for easily responding with a stream of byte chunks ([#237](https://github.com/tokio-rs/axum/pull/237))
@@ -618,6 +630,7 @@ Yanked, as it contained an accidental breaking change.
   - **changed:** `tower::util::Either` no longer implements `IntoResponse` ([#229](https://github.com/tokio-rs/axum/pull/229))
 
   This `IntoResponse` from 0.1:
+
   ```rust
   use axum::{http::Response, prelude::*, response::IntoResponse};
 
@@ -631,6 +644,7 @@ Yanked, as it contained an accidental breaking change.
   ```
 
   Becomes this in 0.2:
+
   ```rust
   use axum::{body::Body, http::Response, response::IntoResponse};
 
@@ -645,11 +659,14 @@ Yanked, as it contained an accidental breaking change.
       }
   }
   ```
+
 - SSE:
+
   - **added:** Add `response::sse::Sse`. This implements SSE using a response rather than a service ([#98](https://github.com/tokio-rs/axum/pull/98))
   - **changed:** Remove `axum::sse`. It has been replaced by `axum::response::sse` ([#98](https://github.com/tokio-rs/axum/pull/98))
 
   Handler using SSE in 0.1:
+
   ```rust
   use axum::{
       prelude::*,
@@ -688,7 +705,9 @@ Yanked, as it contained an accidental breaking change.
       }),
   );
   ```
+
 - WebSockets:
+
   - **changed:** Change WebSocket API to use an extractor plus a response ([#121](https://github.com/tokio-rs/axum/pull/121))
   - **changed:** Make WebSocket `Message` an enum ([#116](https://github.com/tokio-rs/axum/pull/116))
   - **changed:** `WebSocket` now uses `Error` as its error type ([#150](https://github.com/tokio-rs/axum/pull/150))
@@ -727,6 +746,7 @@ Yanked, as it contained an accidental breaking change.
       }),
   );
   ```
+
 - Misc
   - **added:** Add default feature `tower-log` which exposes `tower`'s `log` feature. ([#218](https://github.com/tokio-rs/axum/pull/218))
   - **changed:** Replace `body::BoxStdError` with `axum::Error`, which supports downcasting ([#150](https://github.com/tokio-rs/axum/pull/150))
