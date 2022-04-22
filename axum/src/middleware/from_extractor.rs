@@ -1,7 +1,3 @@
-//! Convert an extractor into a middleware.
-//!
-//! See [`from_extractor`] for more details.
-
 use crate::{
     body::{Bytes, HttpBody},
     extract::{FromRequest, RequestParts},
