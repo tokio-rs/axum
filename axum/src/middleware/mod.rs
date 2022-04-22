@@ -2,8 +2,10 @@
 //!
 #![doc = include_str!("../docs/middleware.md")]
 
+mod from_extractor;
 mod from_fn;
 
+pub use self::from_extractor::{from_extractor, FromExtractor, FromExtractorLayer};
 pub use self::from_fn::{from_fn, FromFn, FromFnLayer, Next};
 pub use crate::extension::AddExtension;
 
