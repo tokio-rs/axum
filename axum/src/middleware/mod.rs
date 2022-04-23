@@ -12,5 +12,6 @@ pub use crate::extension::AddExtension;
 pub mod future {
     //! Future types.
 
+    pub use super::from_extractor::ResponseFuture as FromExtractorResponseFuture;
     pub use super::from_fn::ResponseFuture as FromFnResponseFuture;
 }
