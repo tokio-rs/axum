@@ -505,7 +505,7 @@ where
                 )
             }
             Err(MatchError::ExtraTrailingSlash) => {
-                let new_uri = replace_trailing_slash(req.uri(), &path.strip_suffix('/').unwrap());
+                let new_uri = replace_trailing_slash(req.uri(), path.strip_suffix('/').unwrap());
 
                 RouteFuture::from_response(
                     Redirect::permanent(&new_uri.to_string()).into_response(),
