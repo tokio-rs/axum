@@ -24,10 +24,16 @@ impl ByteStr {
         Self(Bytes::copy_from_slice(s.as_ref().as_bytes()))
     }
 
+    #[cfg(not(feature = "utf8_unckecked"))]
     pub(crate) fn as_str(&self) -> &str {
         // `ByteStr` can only be constructed from strings which are always valid
         // utf-8 so this wont panic.
         std::str::from_utf8(&self.0).unwrap()
+    }
+
+    #[cfg(feature = "utf8_unckecked")]
+    pub(crate) fn as_str(&self) -> &str {
+        unsafe { std::str::from_utf8_unchecked(&self.0) }
     }
 }
 
