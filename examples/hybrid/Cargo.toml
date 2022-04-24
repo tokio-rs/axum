@@ -1,0 +1,27 @@
+[package]
+name = "hybrid"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "helloword"
+path = "src/grpc/helloworld/client.rs"
+
+[dependencies]
+axum = "0.5"
+axum-macros = "0.2"
+futures = "0.3"
+futures-util = { version = "0.3", default-features = false, features = ["alloc"] }
+hyper = { version = "0.14",  features = ["full"] }
+pin-project = "1"
+prost = "0.10"
+prost-derive = "0.10"
+tokio = { version = "1", features = ["full"] }
+tonic = { version = "0.7" }
+tower = { version = "0.4", features = ["full"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["parking_lot"] }
+
+[build-dependencies]
+tonic-build = { version = "0.7", features = ["prost"]}
+
