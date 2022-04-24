@@ -10,9 +10,6 @@ pub use crate::middleware::{
 };
 
 /// Convert an extractor into a middleware.
-///
-/// Deprecated, please use [`crate::middleware::from_extractor`] instead
-///
 #[deprecated(note = "Please use `axum::middleware::from_extractor` instead")]
 pub fn extractor_middleware<E>() -> ExtractorMiddlewareLayer<E> {
     from_extractor()
