@@ -6,11 +6,9 @@ publish = false
 
 [dependencies]
 axum = { path = "../../axum" }
-axum-macros = "0.2"
 futures = "0.3"
 hyper = { version = "0.14",  features = ["full"] }
 prost = "0.10"
-prost-derive = "0.10"
 tokio = { version = "1", features = ["full"] }
 tonic = { version = "0.7" }
 tower = { version = "0.4", features = ["full"] }
