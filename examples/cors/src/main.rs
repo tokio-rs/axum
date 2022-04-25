@@ -5,13 +5,13 @@
 //! ```
 
 use axum::{
-    http::Method,
+    http::{HeaderValue, Method},
     response::{Html, IntoResponse},
     routing::get,
     Json, Router,
 };
 use std::net::SocketAddr;
-use tower_http::cors::{AllowOrigin, CorsLayer};
+use tower_http::cors::CorsLayer;
 
 #[tokio::main]
 async fn main() {
