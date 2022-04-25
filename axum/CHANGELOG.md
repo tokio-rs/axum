@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **added:** Add `response::ErrorResponse` and `response::Result` for
   `IntoResponse`-based error handling ([#921])
 - **added:** Add `middleware::from_extractor` and deprecate `extract::extractor_middleware` ([#957])
+- **changed:** Update to tower-http 0.3
 
 [#921]: https://github.com/tokio-rs/axum/pull/921
 [#957]: https://github.com/tokio-rs/axum/pull/957
