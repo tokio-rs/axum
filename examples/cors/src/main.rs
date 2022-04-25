@@ -29,7 +29,7 @@ async fn main() {
             // it is required to add ".allow_headers(vec![http::header::CONTENT_TYPE])"
             // or see this issue https://github.com/tokio-rs/axum/issues/849
             CorsLayer::new()
-                .allow_origin(AllowOrigin::exact("http://localhost:3000".parse().unwrap()))
+                .allow_origin("http://localhost:3000".parse::<HeaderValue>().unwrap())
                 .allow_methods(vec![Method::GET]),
         );
         serve(app, 4000).await;
