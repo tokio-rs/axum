@@ -20,6 +20,7 @@ mod request_parts;
 pub use axum_core::extract::{FromRequest, RequestParts};
 
 #[doc(inline)]
+#[allow(deprecated)]
 pub use self::{
     connect_info::ConnectInfo,
     content_length_limit::ContentLengthLimit,
