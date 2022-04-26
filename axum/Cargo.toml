@@ -22,6 +22,7 @@ original-uri = []
 query = ["serde_urlencoded"]
 tower-log = ["tower/log"]
 ws = ["tokio-tungstenite", "sha-1", "base64"]
+utf8_unckecked = []
 
 [dependencies]
 axum-core = { path = "../axum-core", version = "0.2.2" }
