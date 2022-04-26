@@ -42,7 +42,7 @@ async fn main() {
     tracing_subscriber::registry()
         .with(tracing_subscriber::EnvFilter::new(
             std::env::var("RUST_LOG")
-                .unwrap_or_else(|_| "example-rest-grpc-multiplex=debug".into()),
+                .unwrap_or_else(|_| "example_rest_grpc_multiplex=debug".into()),
         ))
         .with(tracing_subscriber::fmt::layer())
         .init();
