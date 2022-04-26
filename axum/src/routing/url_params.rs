@@ -18,7 +18,6 @@ pub(super) fn insert_url_params(extensions: &mut Extensions, params: Params) {
     let params = params
         .iter()
         .filter(|(key, _)| !key.starts_with(super::NEST_TAIL_PARAM))
-        .map(|(key, value)| (key.to_owned(), value.to_owned()))
         .map(|(k, v)| {
             if let Some(decoded) = PercentDecodedByteStr::new(v) {
                 Ok((ByteStr::new(k), decoded))
