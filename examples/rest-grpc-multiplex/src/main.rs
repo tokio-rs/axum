@@ -69,7 +69,7 @@ async fn main() {
     tracing::debug!("listening on {}", addr);
     hyper::Server::bind(&addr)
         .tcp_keepalive(Some(std::time::Duration::from_secs(360)))
-        .serve(service.make_shared())
+        .serve(tower::make::Shared::new(service))
         .await
         .unwrap();
 }
