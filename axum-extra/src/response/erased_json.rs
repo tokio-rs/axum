@@ -1,3 +1,5 @@
+use std::mem;
+
 use axum::{
     http::{header, HeaderValue, StatusCode},
     response::{IntoResponse, Response},
@@ -35,12 +37,18 @@ pub struct ErasedJson(serde_json::Result<Bytes>);
 impl ErasedJson {
     /// Create an `ErasedJson` by serializing a value with the compact formatter.
     pub fn new<T: Serialize>(val: T) -> Self {
+        if mem::size_of_val(&val) == 0 {
+            return Self(Ok(Bytes::from_static(b"null")));
+        }
         let mut bytes = BytesMut::with_capacity(128);
         Self(serde_json::to_writer((&mut bytes).writer(), &val).map(|_| bytes.freeze()))
     }
 
     /// Create an `ErasedJson` by serializing a value with the pretty formatter.
     pub fn pretty<T: Serialize>(val: T) -> Self {
+        if mem::size_of_val(&val) == 0 {
+            return Self(Ok(Bytes::from_static(b"null")));
+        }
         let mut bytes = BytesMut::with_capacity(128);
         Self(serde_json::to_writer_pretty((&mut bytes).writer(), &val).map(|_| bytes.freeze()))
     }
