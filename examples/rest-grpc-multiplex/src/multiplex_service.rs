@@ -14,16 +14,16 @@ pub struct MultiplexService<A, B> {
     pub grpc: B,
 }
 
-impl<A, B, Error> Service<Request<Body>> for MultiplexService<A, B>
+impl<A, B> Service<Request<Body>> for MultiplexService<A, B>
 where
-    A: Service<Request<Body>, Response = Response<BoxBody>, Error = Error>,
+    A: Service<Request<Body>, Error = Infallible>,
+    A::Response: IntoResponse,
     A::Future: Send + 'static,
-    A::Error: 'static,
-    B: Service<Request<Body>, Response = Response<BoxBody>, Error = Error>,
+    B: Service<Request<Body>, Error = Infallible>,
+    B::Response: IntoResponse,
     B::Future: Send + 'static,
-    B::Error: 'static,
 {
-    type Error = Error;
+    type Error = Infallible;
     type Future = BoxFuture<'static, Result<Self::Response, Self::Error>>;
     type Response = Response<BoxBody>;
 
@@ -31,10 +31,10 @@ where
         &mut self,
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Result<(), Self::Error>> {
-        Poll::Ready(if let Err(err) = ready!(self.web.poll_ready(cx)) {
+        Poll::Ready(if let Err(err) = ready!(self.rest.poll_ready(cx)) {
             Err(err)
         } else {
-            ready!(self.web.poll_ready(cx))
+            ready!(self.rest.poll_ready(cx))
         })
     }
 
@@ -45,9 +45,9 @@ where
             .filter(|value| value.starts_with(b"application/grpc"))
             .is_some()
         {
-            Either::Left(self.grpc.call(req))
+            Either::Left(self.grpc.call(req).map_ok(|res| res.into_response()))
         } else {
-            Either::Right(self.web.call(req))
+            Either::Right(self.rest.call(req).map_ok(|res| res.into_response()))
         };
 
         Box::pin(fut)
