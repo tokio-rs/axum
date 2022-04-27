@@ -1,13 +1,12 @@
 mod multiplex_service;
 
 use std::net::SocketAddr;
-use tonic::transport::Server;
 
 use rpc_helloworld::{greeter_server::Greeter, HelloReply, HelloRequest};
 use tonic::{Response as TonicResponse, Status};
 
-use axum::{response::Response, routing::get};
-use tower::ServiceExt;
+use axum::routing::get;
+
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 mod rpc_helloworld {
@@ -54,8 +53,6 @@ async fn main() {
     let grpc = rpc_helloworld::greeter_server::GreeterServer::new(GrpcServiceImpl::default());
 
     let service = multiplex_service::MultiplexService { rest, grpc };
-
-    let service = multiplex_service::MultiplexService { web, grpc };
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
     tracing::debug!("listening on {}", addr);

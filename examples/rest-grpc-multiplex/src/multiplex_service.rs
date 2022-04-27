@@ -1,16 +1,16 @@
-use std::task::Poll;
+use std::{convert::Infallible, task::Poll};
 
-use axum::body::BoxBody;
+use axum::{body::BoxBody, response::IntoResponse};
 use futures::{
     future::{BoxFuture, Either},
-    ready,
+    ready, TryFutureExt,
 };
 use hyper::{Body, Request, Response};
-use tower::{make::Shared, Service};
+use tower::Service;
 
 #[derive(Clone)]
 pub struct MultiplexService<A, B> {
-    pub web: A,
+    pub rest: A,
     pub grpc: B,
 }
 
