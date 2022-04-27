@@ -17,4 +17,3 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 [build-dependencies]
 tonic-build = { version = "0.7", features = ["prost"]}
-
