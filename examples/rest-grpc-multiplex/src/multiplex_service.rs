@@ -14,12 +14,6 @@ pub struct MultiplexService<A, B> {
     pub grpc: B,
 }
 
-impl<A, B> MultiplexService<A, B> {
-    pub fn make_shared(self) -> tower::make::Shared<Self> {
-        Shared::new(self)
-    }
-}
-
 impl<A, B, Error> Service<Request<Body>> for MultiplexService<A, B>
 where
     A: Service<Request<Body>, Response = Response<BoxBody>, Error = Error>,
