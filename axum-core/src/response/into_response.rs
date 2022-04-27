@@ -3,7 +3,7 @@ use crate::{body, BoxError};
 use bytes::{buf::Chain, Buf, Bytes, BytesMut};
 use http::{
     header::{self, HeaderMap, HeaderName, HeaderValue},
-    StatusCode,
+    Extensions, StatusCode,
 };
 use http_body::{
     combinators::{MapData, MapErr},
@@ -380,6 +380,14 @@ impl IntoResponse for HeaderMap {
     fn into_response(self) -> Response {
         let mut res = ().into_response();
         *res.headers_mut() = self;
+        res
+    }
+}
+
+impl IntoResponse for Extensions {
+    fn into_response(self) -> Response {
+        let mut res = ().into_response();
+        *res.extensions_mut() = self;
         res
     }
 }
