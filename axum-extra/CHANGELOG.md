@@ -7,9 +7,18 @@ and this project adheres to [Semantic Versioning].
 
 # Unreleased
 
+- None.
+
+# 0.3.0 (27. April, 2022)
+
 - **fixed:** Don't depend on axum with default features enabled ([#913])
+- **breaking:** Private and signed cookies now requires enabling the
+  `cookie-private` and `cookie-signed` features respectively ([#949])
+- **changed:** Update to tower-http 0.3 ([#965])
 
 [#913]: https://github.com/tokio-rs/axum/pull/913
+[#949]: https://github.com/tokio-rs/axum/pull/949
+[#965]: https://github.com/tokio-rs/axum/pull/965
 
 # 0.2.1 (03. April, 2022)
 
