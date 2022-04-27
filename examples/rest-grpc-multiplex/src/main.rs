@@ -47,21 +47,13 @@ async fn main() {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    // build our application with a route
-    let web = axum::Router::new()
-        .route("/", get(web_root).post(web_root))
-        .map_err(|i| match i {});
+    // build the rest service
+    let rest = axum::Router::new().route("/", get(web_root).post(web_root));
 
-    let hellowrld_service =
-        rpc_helloworld::greeter_server::GreeterServer::new(GrpcServiceImpl::default());
+    // build the grpc service
+    let grpc = rpc_helloworld::greeter_server::GreeterServer::new(GrpcServiceImpl::default());
 
-    let grpc = Server::builder()
-        .add_service(hellowrld_service)
-        .into_service()
-        .map_response(|response| {
-            let (parts, body) = response.into_parts();
-            Response::from_parts(parts, axum::body::boxed(body))
-        });
+    let service = multiplex_service::MultiplexService { rest, grpc };
 
     let service = multiplex_service::MultiplexService { web, grpc };
 
