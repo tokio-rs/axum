@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **added:** Implement `IntoResponse` and `IntoResponseParts` for `http::Extensions` ([#975])
 - **added:** Implement `IntoResponse` for `(http::response::Parts, impl IntoResponse)` ([#950])
 - **added:** Implement `IntoResponse` for `(http::response::Response<()>, impl IntoResponse)` ([#950])
+- **added:** Implement `IntoResponse for (Parts | Request<()>, $(impl IntoResponseParts)+, impl IntoResponse)`
 
 [#950]: https://github.com/tokio-rs/axum/pull/950
 [#975]: https://github.com/tokio-rs/axum/pull/975
