@@ -149,8 +149,12 @@ async fn all_the_things(uri: Uri) -> impl IntoResponse {
 In general you can return tuples like:
 
 - `(StatusCode, impl IntoResponse)`
+- `(Parts, impl IntoResponse)`
+- `(Response<()>, impl IntoResponse)`
 - `(T1, .., Tn, impl IntoResponse)` where `T1` to `Tn` all implement [`IntoResponseParts`].
 - `(StatusCode, T1, .., Tn, impl IntoResponse)` where `T1` to `Tn` all implement [`IntoResponseParts`].
+- `(Parts, T1, .., Tn, impl IntoResponse)` where `T1` to `Tn` all implement [`IntoResponseParts`].
+- `(Response<()>, T1, .., Tn, impl IntoResponse)` where `T1` to `Tn` all implement [`IntoResponseParts`].
 
 This means you cannot accidentally override the status or body as [`IntoResponseParts`] only allows
 setting headers and extensions.

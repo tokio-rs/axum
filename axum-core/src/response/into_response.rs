@@ -473,9 +473,44 @@ macro_rules! impl_into_response {
                     };
                 )*
 
-                let mut res = parts.res;
-                *res.status_mut() = status;
-                res
+                (status, parts.res).into_response()
+            }
+        }
+
+        #[allow(non_snake_case)]
+        impl<R, $($ty,)*> IntoResponse for (http::response::Parts, $($ty),*, R)
+        where
+            $( $ty: IntoResponseParts, )*
+            R: IntoResponse,
+        {
+            fn into_response(self) -> Response {
+                let (outer_parts, $($ty),*, res) = self;
+
+                let res = res.into_response();
+                let parts = ResponseParts { res };
+                $(
+                    let parts = match $ty.into_response_parts(parts) {
+                        Ok(parts) => parts,
+                        Err(err) => {
+                            return err.into_response();
+                        }
+                    };
+                )*
+
+                (outer_parts, parts.res).into_response()
+            }
+        }
+
+        #[allow(non_snake_case)]
+        impl<R, $($ty,)*> IntoResponse for (http::response::Response<()>, $($ty),*, R)
+        where
+            $( $ty: IntoResponseParts, )*
+            R: IntoResponse,
+        {
+            fn into_response(self) -> Response {
+                let (template, $($ty),*, res) = self;
+                let (parts, ()) = template.into_parts();
+                (parts, $($ty),*, res).into_response()
             }
         }
     }
