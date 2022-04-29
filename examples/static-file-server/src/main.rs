@@ -1,7 +1,7 @@
 //! Run with
 //!
 //! ```not_rust
-//! cargo run -p example-static-file-server
+//! cd examples && cargo run -p example-static-file-server
 //! ```
 
 use axum::{http::StatusCode, routing::get_service, Router};

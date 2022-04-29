@@ -1,7 +1,7 @@
 //! Run with
 //!
 //! ```not_rust
-//! cargo run -p example-tls-rustls
+//! cd examples && cargo run -p example-tls-rustls
 //! ```
 
 use axum::{routing::get, Router};

@@ -1,7 +1,7 @@
 //! Run with
 //!
 //! ```not_rust
-//! cargo run -p example-query-params-with-empty-strings
+//! cd examples && cargo run -p example-query-params-with-empty-strings
 //! ```
 
 use axum::{extract::Query, routing::get, Router};

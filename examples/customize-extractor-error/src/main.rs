@@ -1,7 +1,7 @@
 //! Run with
 //!
 //! ```not_rust
-//! cargo run -p example-customize-extractor-error
+//! cd examples && cargo run -p example-customize-extractor-error
 //! ```
 
 use axum::{

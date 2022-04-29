@@ -10,7 +10,7 @@
 //! Run with
 //!
 //! ```not_rust
-//! cargo run -p example-todos
+//! cd examples && cargo run -p example-todos
 //! ```
 
 use axum::{
