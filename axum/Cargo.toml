@@ -1,6 +1,6 @@
 [package]
 name = "axum"
-version = "0.5.2"
+version = "0.5.4"
 categories = ["asynchronous", "network-programming", "web-programming"]
 description = "Web framework that focuses on ergonomics and modularity"
 edition = "2018"
@@ -24,7 +24,7 @@ tower-log = ["tower/log"]
 ws = ["tokio-tungstenite", "sha-1", "base64"]
 
 [dependencies]
-axum-core = { path = "../axum-core", version = "0.2.1" }
+axum-core = { path = "../axum-core", version = "0.2.3" }
 async-trait = "0.1.43"
 bitflags = "1.0"
 bytes = "1.0"
@@ -42,7 +42,7 @@ serde = "1.0"
 sync_wrapper = "0.1.1"
 tokio = { version = "1", features = ["time"] }
 tower = { version = "0.4.11", default-features = false, features = ["util", "buffer", "make"] }
-tower-http = { version = "0.2.0", features = ["util", "map-response-body"] }
+tower-http = { version = "0.3.0", features = ["util", "map-response-body"] }
 tower-layer = "0.3"
 tower-service = "0.3"
 
@@ -81,7 +81,7 @@ features = [
 ]
 
 [dev-dependencies.tower-http]
-version = "0.2.0"
+version = "0.3.0"
 features = ["full"]
 
 [package.metadata.docs.rs]

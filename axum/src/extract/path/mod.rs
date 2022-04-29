@@ -166,7 +166,7 @@ where
             Some(UrlParams::InvalidUtf8InPathParam { key }) => {
                 let err = PathDeserializationError {
                     kind: ErrorKind::InvalidUtf8InPathParam {
-                        key: key.as_str().to_owned(),
+                        key: key.to_string(),
                     },
                 };
                 let err = FailedToDeserializePathParams(err);
