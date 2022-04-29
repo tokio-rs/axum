@@ -19,8 +19,6 @@ jobs:
           - examples
     steps:
     - uses: actions/checkout@master
-    - name: Print working directory
-      run: pwd
     - uses: actions-rs/toolchain@v1
       with:
         toolchain: beta
