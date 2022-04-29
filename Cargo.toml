@@ -6,6 +6,3 @@ members = [
     "axum-macros",
     "examples/*",
 ]
-
-[patch.crates-io]
-http = { git = "https://github.com/hyperium/http" }
