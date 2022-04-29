@@ -249,3 +249,12 @@ macro_rules! impl_into_response_parts {
 }
 
 all_the_tuples!(impl_into_response_parts);
+
+impl IntoResponseParts for Extensions {
+    type Error = Infallible;
+
+    fn into_response_parts(self, mut res: ResponseParts) -> Result<ResponseParts, Self::Error> {
+        res.extensions_mut().extend(self);
+        Ok(res)
+    }
+}

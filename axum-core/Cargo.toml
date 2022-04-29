@@ -14,7 +14,7 @@ version = "0.2.3" # remember to also bump the version that axum depends on
 async-trait = "0.1"
 bytes = "1.0"
 futures-util = { version = "0.3", default-features = false, features = ["alloc"] }
-http = "0.2"
+http = "0.2.7"
 http-body = "0.4"
 mime = "0.3.16"
 
