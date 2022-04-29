@@ -4,7 +4,7 @@
 //! Run with
 //!
 //! ```not_rust
-//! cargo run -p example-prometheus-metrics
+//! cd examples && cargo run -p example-prometheus-metrics
 //! ```
 
 use axum::{

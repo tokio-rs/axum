@@ -3,7 +3,7 @@
 //! Run with
 //!
 //! ```not_rust
-//! cargo run -p example-chat
+//! cd examples && cargo run -p example-chat
 //! ```
 
 use axum::{

@@ -3,7 +3,7 @@
 //! Run with
 //!
 //! ```not_rust
-//! cargo run -p example-websockets
+//! cd examples && cargo run -p example-websockets
 //! ```
 
 use axum::{

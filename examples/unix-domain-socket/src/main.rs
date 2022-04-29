@@ -1,7 +1,7 @@
 //! Run with
 //!
 //! ```not_rust
-//! cargo run -p example-unix-domain-socket
+//! cd examples && cargo run -p example-unix-domain-socket
 //! ```
 
 #[cfg(unix)]

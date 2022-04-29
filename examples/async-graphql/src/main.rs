@@ -3,7 +3,7 @@
 //! Run with
 //!
 //! ```not_rust
-//! cargo run -p example-async-graphql
+//! cd examples && cargo run -p example-async-graphql
 //! ```
 
 mod starwars;
