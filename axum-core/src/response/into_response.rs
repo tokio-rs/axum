@@ -486,21 +486,10 @@ macro_rules! impl_into_response {
             R: IntoResponse,
         {
             fn into_response(self) -> Response {
-                let (
-                    http::response::Parts {
-                        status,
-                        version: _,
-                        headers,
-                        extensions,
-                        ..
-                    },
-                    $($ty),*,
-                    res,
-                ) = self;
+                let (outer_parts, $($ty),*, res) = self;
 
                 let res = res.into_response();
                 let parts = ResponseParts { res };
-
                 $(
                     let parts = match $ty.into_response_parts(parts) {
                         Ok(parts) => parts,
@@ -510,11 +499,7 @@ macro_rules! impl_into_response {
                     };
                 )*
 
-                let mut res = parts.res;
-                *res.status_mut() = status;
-                res.headers_mut().extend(headers);
-                res.extensions_mut().extend(extensions);
-                res
+                (outer_parts, parts.res).into_response()
             }
         }
 
