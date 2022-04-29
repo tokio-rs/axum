@@ -258,3 +258,11 @@ impl IntoResponseParts for Extensions {
         Ok(res)
     }
 }
+
+impl IntoResponseParts for () {
+    type Error = Infallible;
+
+    fn into_response_parts(self, res: ResponseParts) -> Result<ResponseParts, Self::Error> {
+        Ok(res)
+    }
+}

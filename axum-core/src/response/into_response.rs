@@ -478,6 +478,58 @@ macro_rules! impl_into_response {
                 res
             }
         }
+
+        #[allow(non_snake_case)]
+        impl<R, $($ty,)*> IntoResponse for (http::response::Parts, $($ty),*, R)
+        where
+            $( $ty: IntoResponseParts, )*
+            R: IntoResponse,
+        {
+            fn into_response(self) -> Response {
+                let (
+                    http::response::Parts {
+                        status,
+                        version: _,
+                        headers,
+                        extensions,
+                        ..
+                    },
+                    $($ty),*,
+                    res,
+                ) = self;
+
+                let res = res.into_response();
+                let parts = ResponseParts { res };
+
+                $(
+                    let parts = match $ty.into_response_parts(parts) {
+                        Ok(parts) => parts,
+                        Err(err) => {
+                            return err.into_response();
+                        }
+                    };
+                )*
+
+                let mut res = parts.res;
+                *res.status_mut() = status;
+                res.headers_mut().extend(headers);
+                res.extensions_mut().extend(extensions);
+                res
+            }
+        }
+
+        #[allow(non_snake_case)]
+        impl<R, $($ty,)*> IntoResponse for (http::response::Response<()>, $($ty),*, R)
+        where
+            $( $ty: IntoResponseParts, )*
+            R: IntoResponse,
+        {
+            fn into_response(self) -> Response {
+                let (template, $($ty),*, res) = self;
+                let (parts, ()) = template.into_parts();
+                (parts, $($ty),*, res).into_response()
+            }
+        }
     }
 }
 
