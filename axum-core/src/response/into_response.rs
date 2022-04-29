@@ -473,9 +473,7 @@ macro_rules! impl_into_response {
                     };
                 )*
 
-                let mut res = parts.res;
-                *res.status_mut() = status;
-                res
+                (status, parts.res).into_response()
             }
         }
 
