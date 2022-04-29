@@ -410,7 +410,7 @@ where
 {
     fn into_response(self) -> Response {
         let (parts, res) = self;
-        (parts.status, parts.headers, res).into_response()
+        (parts.status, parts.headers, parts.extensions, res).into_response()
     }
 }
 
