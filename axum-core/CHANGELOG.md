@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+- None.
+
+# 0.2.4 (02. May, 2022)
+
 - **added:** Implement `IntoResponse` and `IntoResponseParts` for `http::Extensions` ([#975])
 - **added:** Implement `IntoResponse` for `(http::response::Parts, impl IntoResponse)` ([#950])
 - **added:** Implement `IntoResponse` for `(http::response::Response<()>, impl IntoResponse)` ([#950])
