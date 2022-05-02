@@ -4,7 +4,7 @@
 //! Run with
 //!
 //! ```not_rust
-//! cargo run -p example-error-handling-and-dependency-injection
+//! cd examples && cargo run -p example-error-handling-and-dependency-injection
 //! ```
 
 use axum::{

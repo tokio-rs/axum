@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+- None.
+
+# 0.5.4 (26. April, 2022)
+
 - **added:** Add `response::ErrorResponse` and `response::Result` for
   `IntoResponse`-based error handling ([#921])
 - **added:** Add `middleware::from_extractor` and deprecate `extract::extractor_middleware` ([#957])

@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+- None.
+
+# 0.2.4 (02. May, 2022)
+
+- **added:** Implement `IntoResponse` and `IntoResponseParts` for `http::Extensions` ([#975])
+- **added:** Implement `IntoResponse` for `(http::response::Parts, impl IntoResponse)` ([#950])
+- **added:** Implement `IntoResponse` for `(http::response::Response<()>, impl IntoResponse)` ([#950])
+- **added:** Implement `IntoResponse for (Parts | Request<()>, $(impl IntoResponseParts)+, impl IntoResponse)` ([#980])
+
+[#950]: https://github.com/tokio-rs/axum/pull/950
+[#975]: https://github.com/tokio-rs/axum/pull/975
+[#980]: https://github.com/tokio-rs/axum/pull/980
+
+# 0.2.3 (25. April, 2022)
+
 - **added:** Add `response::ErrorResponse` and `response::Result` for
   `IntoResponse`-based error handling ([#921])
 
