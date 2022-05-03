@@ -53,6 +53,14 @@ where
                     return Err(ContentLengthLimitRejection::ContentLengthNotAllowed(
                         ContentLengthNotAllowed,
                     ));
+                } else if req
+                    .headers()
+                    .get(http::header::TRANSFER_ENCODING)
+                    .map(|value| value.as_bytes())
+                    .filter(|value| value == b"chunked")
+                    .is_some()
+                {
+                    return Err(ContentLengthLimitRejection::LengthRequired(LengthRequired));
                 }
             }
             (Some(content_length), _) if content_length > N => {
@@ -166,5 +174,21 @@ mod tests {
             .send()
             .await;
         assert_eq!(res.status(), StatusCode::BAD_REQUEST);
+    }
+
+    #[tokio::test]
+    async fn get_request_with_chunked_encoding_is_rejected() {
+        let app = Router::new().route("/", get(|_body: ContentLengthLimit<Bytes, 1337>| async {}));
+
+        let client = TestClient::new(app);
+
+        let res = client
+            .get("/")
+            .header("transfer-encoding", "chunked")
+            .body("3\r\n".to_owned() + "foo\r\n" + "0\r\n" + "\r\n")
+            .send()
+            .await;
+
+        assert_eq!(res.status(), StatusCode::LENGTH_REQUIRED);
     }
 }
