@@ -56,9 +56,7 @@ where
                 } else if req
                     .headers()
                     .get(http::header::TRANSFER_ENCODING)
-                    .map(|value| value.as_bytes())
-                    .filter(|value| value == b"chunked")
-                    .is_some()
+                    .map_or(false, |value| value.as_bytes() == b"chunked")
                 {
                     return Err(ContentLengthLimitRejection::LengthRequired(LengthRequired));
                 }
