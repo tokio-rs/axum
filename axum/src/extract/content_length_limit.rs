@@ -185,7 +185,7 @@ mod tests {
         let res = client
             .get("/")
             .header("transfer-encoding", "chunked")
-            .body("3\r\n".to_owned() + "foo\r\n" + "0\r\n" + "\r\n")
+            .body("3\r\nfoo\r\n0\r\n\r\n")
             .send()
             .await;
 
