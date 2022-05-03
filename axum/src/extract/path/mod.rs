@@ -534,5 +534,9 @@ mod tests {
 
         let res = client.get("/foo").send().await;
         assert_eq!(res.text().await, "foo");
+
+        // percent decoding should also work
+        let res = client.get("/foo%20bar").send().await;
+        assert_eq!(res.text().await, "foo bar");
     }
 }
