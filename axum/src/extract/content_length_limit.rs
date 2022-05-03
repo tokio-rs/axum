@@ -6,7 +6,7 @@ use std::ops::Deref;
 
 /// Extractor that will reject requests with a body larger than some size.
 ///
-/// `GET`, `HEAD`, and `OPTIONS` requests are reject if they have a `Content-Length` header,
+/// `GET`, `HEAD`, and `OPTIONS` requests are rejected if they have a `Content-Length` header,
 /// otherwise they're accepted without the body being checked.
 ///
 /// # Example
@@ -47,8 +47,8 @@ where
             .get(http::header::CONTENT_LENGTH)
             .and_then(|value| value.to_str().ok()?.parse::<u64>().ok());
 
-        match (content_length, req.method().clone()) {
-            (content_length, Method::GET | Method::HEAD | Method::OPTIONS) => {
+        match (content_length, req.method()) {
+            (content_length, &(Method::GET | Method::HEAD | Method::OPTIONS)) => {
                 if content_length.is_some() {
                     return Err(ContentLengthLimitRejection::ContentLengthNotAllowed(
                         ContentLengthNotAllowed,
