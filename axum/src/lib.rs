@@ -2,7 +2,7 @@
 //!
 //! # Table of contents
 //!
-//! - [High level features](#high-level-features)
+//! - [High-level features](#high-level-features)
 //! - [Compatibility](#compatibility)
 //! - [Example](#example)
 //! - [Routing](#routing)
@@ -17,16 +17,16 @@
 //! - [Examples](#examples)
 //! - [Feature flags](#feature-flags)
 //!
-//! # High level features
+//! # High-level features
 //!
-//! - Route requests to handlers with a macro free API.
+//! - Route requests to handlers with a macro-free API.
 //! - Declaratively parse requests using extractors.
 //! - Simple and predictable error handling model.
 //! - Generate responses with minimal boilerplate.
 //! - Take full advantage of the [`tower`] and [`tower-http`] ecosystem of
 //!   middleware, services, and utilities.
 //!
-//! In particular the last point is what sets `axum` apart from other frameworks.
+//! In particular, the last point is what sets `axum` apart from other frameworks.
 //! `axum` doesn't have its own middleware system but instead uses
 //! [`tower::Service`]. This means `axum` gets timeouts, tracing, compression,
 //! authorization, and more, for free. It also enables you to share middleware with
@@ -167,7 +167,7 @@
 //! It is common to share some state between handlers for example to share a
 //! pool of database connections or clients to other services.
 //!
-//! The two most common ways of doing that is:
+//! The two most common ways of doing that are:
 //! - Using request extensions
 //! - Using closure captures
 //!
@@ -206,7 +206,7 @@
 //!
 //! The downside to this approach is that you'll get runtime errors
 //! (specifically a `500 Internal Server Error` response) if you try and extract
-//! an extension that doesn't exist, perhaps because you forgot add the
+//! an extension that doesn't exist, perhaps because you forgot to add the
 //! middleware or because you're extracting the wrong type.
 //!
 //! ## Using closure captures
@@ -273,7 +273,7 @@
 //!
 //! # Required dependencies
 //!
-//! To use axum there are a few dependencies you have pull in as well:
+//! To use axum there are a few dependencies you have to pull in as well:
 //!
 //! ```toml
 //! [dependencies]
@@ -286,7 +286,7 @@
 //! The `"full"` feature for hyper and tokio isn't strictly necessary but it's
 //! the easiest way to get started.
 //!
-//! Note that [`hyper::Server`] is re-exported by axum so if thats all you need
+//! Note that [`hyper::Server`] is re-exported by axum so if that's all you need
 //! then you don't have to explicitly depend on hyper.
 //!
 //! Tower isn't strictly necessary either but helpful for testing. See the
