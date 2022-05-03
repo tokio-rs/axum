@@ -88,7 +88,7 @@ impl<'de> Deserializer<'de> for PathDeserializer<'de> {
                 .got(self.url_params.len())
                 .expected(1));
         }
-        visitor.visit_str(&self.url_params[0].1)
+        visitor.visit_borrowed_str(&self.url_params[0].1)
     }
 
     fn deserialize_unit<V>(self, visitor: V) -> Result<V::Value, Self::Error>
@@ -608,6 +608,8 @@ mod tests {
         check_single_value!(f64, "123", 123.0);
         check_single_value!(String, "abc", "abc");
         check_single_value!(String, "one%20two", "one two");
+        check_single_value!(&str, "abc", "abc");
+        check_single_value!(&str, "one%20two", "one two");
         check_single_value!(char, "a", 'a');
 
         let url_params = create_url_params(vec![("a", "B")]);

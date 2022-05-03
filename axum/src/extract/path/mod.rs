@@ -514,4 +514,29 @@ mod tests {
             "No paths parameters found for matched route. Are you also extracting `Request<_>`?"
         );
     }
+
+    #[tokio::test]
+    async fn str_reference_deserialize() {
+        struct Param(String);
+        impl<'de> serde::Deserialize<'de> for Param {
+            fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+            where
+                D: serde::Deserializer<'de>,
+            {
+                let s = <&str as serde::Deserialize>::deserialize(deserializer)?;
+                Ok(Param(s.to_owned()))
+            }
+        }
+
+        let app = Router::new().route("/:key", get(|param: Path<Param>| async move { param.0 .0 }));
+
+        let client = TestClient::new(app);
+
+        let res = client.get("/foo").send().await;
+        assert_eq!(res.text().await, "foo");
+
+        // percent decoding should also work
+        let res = client.get("/foo%20bar").send().await;
+        assert_eq!(res.text().await, "foo bar");
+    }
 }
