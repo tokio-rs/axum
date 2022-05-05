@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning].
 
 # Unreleased
 
-- None.
+- **fixed:** `Option` and `Result` are now supported in typed paths ([#1001])
+
+[#1001]: https://github.com/tokio-rs/axum/pull/1001
 
 # 0.3.0 (27. April, 2022)
 

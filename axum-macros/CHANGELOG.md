@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- **fixed:** `Option` and `Result` are now supported in typed paths
+- **fixed:** `Option` and `Result` are now supported in typed paths ([#1001])
+
+[#1001]: https://github.com/tokio-rs/axum/pull/1001
 
 # 0.2.0 (31. March, 2022)
 
