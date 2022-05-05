@@ -7,7 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- None.
+- **fixed:** Correctly handle `GET`, `HEAD`, and `OPTIONS` requests in `ContentLengthLimit`.
+  Request with these methods are now accepted if they _do not_ have a `Content-Length` header, and
+  the request body will not be checked. If they do have a `Content-Length` header they'll be
+  rejected. This allows `ContentLengthLimit` to be used as middleware around several routes,
+  including `GET` routes ([#989])
+
+[#989]: https://github.com/tokio-rs/axum/pull/989
 
 # 0.5.4 (26. April, 2022)
 

@@ -64,6 +64,14 @@ define_rejection! {
 }
 
 define_rejection! {
+    #[status = BAD_REQUEST]
+    #[body = "`GET`, `HEAD`, `OPTIONS` requests are not allowed to have a `Content-Length` header"]
+    /// Rejection type for [`ContentLengthLimit`](super::ContentLengthLimit) if
+    /// the request is `GET`, `HEAD`, or `OPTIONS` and has a `Content-Length` header.
+    pub struct ContentLengthNotAllowed;
+}
+
+define_rejection! {
     #[status = INTERNAL_SERVER_ERROR]
     #[body = "No paths parameters found for matched route. Are you also extracting `Request<_>`?"]
     /// Rejection type used if axum's internal representation of path parameters
@@ -225,6 +233,8 @@ pub enum ContentLengthLimitRejection<T> {
     #[allow(missing_docs)]
     LengthRequired(LengthRequired),
     #[allow(missing_docs)]
+    ContentLengthNotAllowed(ContentLengthNotAllowed),
+    #[allow(missing_docs)]
     Inner(T),
 }
 
@@ -236,6 +246,7 @@ where
         match self {
             Self::PayloadTooLarge(inner) => inner.into_response(),
             Self::LengthRequired(inner) => inner.into_response(),
+            Self::ContentLengthNotAllowed(inner) => inner.into_response(),
             Self::Inner(inner) => inner.into_response(),
         }
     }
@@ -249,6 +260,7 @@ where
         match self {
             Self::PayloadTooLarge(inner) => inner.fmt(f),
             Self::LengthRequired(inner) => inner.fmt(f),
+            Self::ContentLengthNotAllowed(inner) => inner.fmt(f),
             Self::Inner(inner) => inner.fmt(f),
         }
     }
@@ -262,6 +274,7 @@ where
         match self {
             Self::PayloadTooLarge(inner) => Some(inner),
             Self::LengthRequired(inner) => Some(inner),
+            Self::ContentLengthNotAllowed(inner) => Some(inner),
             Self::Inner(inner) => Some(inner),
         }
     }

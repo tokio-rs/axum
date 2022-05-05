@@ -1,9 +1,13 @@
 use super::{rejection::*, FromRequest, RequestParts};
 use async_trait::async_trait;
 use axum_core::response::IntoResponse;
+use http::Method;
 use std::ops::Deref;
 
 /// Extractor that will reject requests with a body larger than some size.
+///
+/// `GET`, `HEAD`, and `OPTIONS` requests are rejected if they have a `Content-Length` header,
+/// otherwise they're accepted without the body being checked.
 ///
 /// # Example
 ///
@@ -38,20 +42,35 @@ where
     type Rejection = ContentLengthLimitRejection<T::Rejection>;
 
     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-        let content_length = req.headers().get(http::header::CONTENT_LENGTH);
+        let content_length = req
+            .headers()
+            .get(http::header::CONTENT_LENGTH)
+            .and_then(|value| value.to_str().ok()?.parse::<u64>().ok());
 
-        let content_length =
-            content_length.and_then(|value| value.to_str().ok()?.parse::<u64>().ok());
-
-        if let Some(length) = content_length {
-            if length > N {
+        match (content_length, req.method()) {
+            (content_length, &(Method::GET | Method::HEAD | Method::OPTIONS)) => {
+                if content_length.is_some() {
+                    return Err(ContentLengthLimitRejection::ContentLengthNotAllowed(
+                        ContentLengthNotAllowed,
+                    ));
+                } else if req
+                    .headers()
+                    .get(http::header::TRANSFER_ENCODING)
+                    .map_or(false, |value| value.as_bytes() == b"chunked")
+                {
+                    return Err(ContentLengthLimitRejection::LengthRequired(LengthRequired));
+                }
+            }
+            (Some(content_length), _) if content_length > N => {
                 return Err(ContentLengthLimitRejection::PayloadTooLarge(
                     PayloadTooLarge,
                 ));
             }
-        } else {
-            return Err(ContentLengthLimitRejection::LengthRequired(LengthRequired));
-        };
+            (None, _) => {
+                return Err(ContentLengthLimitRejection::LengthRequired(LengthRequired));
+            }
+            _ => {}
+        }
 
         let value = T::from_request(req)
             .await
@@ -72,7 +91,12 @@ impl<T, const N: u64> Deref for ContentLengthLimit<T, N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{body::Bytes, routing::post, test_helpers::*, Router};
+    use crate::{
+        body::Bytes,
+        routing::{get, post},
+        test_helpers::*,
+        Router,
+    };
     use http::StatusCode;
     use serde::Deserialize;
 
@@ -122,6 +146,47 @@ mod tests {
             )))
             .send()
             .await;
+        assert_eq!(res.status(), StatusCode::LENGTH_REQUIRED);
+    }
+
+    #[tokio::test]
+    async fn get_request_without_content_length_is_accepted() {
+        let app = Router::new().route("/", get(|_body: ContentLengthLimit<Bytes, 1337>| async {}));
+
+        let client = TestClient::new(app);
+
+        let res = client.get("/").send().await;
+        assert_eq!(res.status(), StatusCode::OK);
+    }
+
+    #[tokio::test]
+    async fn get_request_with_content_length_is_rejected() {
+        let app = Router::new().route("/", get(|_body: ContentLengthLimit<Bytes, 1337>| async {}));
+
+        let client = TestClient::new(app);
+
+        let res = client
+            .get("/")
+            .header("content-length", 3)
+            .body("foo")
+            .send()
+            .await;
+        assert_eq!(res.status(), StatusCode::BAD_REQUEST);
+    }
+
+    #[tokio::test]
+    async fn get_request_with_chunked_encoding_is_rejected() {
+        let app = Router::new().route("/", get(|_body: ContentLengthLimit<Bytes, 1337>| async {}));
+
+        let client = TestClient::new(app);
+
+        let res = client
+            .get("/")
+            .header("transfer-encoding", "chunked")
+            .body("3\r\nfoo\r\n0\r\n\r\n")
+            .send()
+            .await;
+
         assert_eq!(res.status(), StatusCode::LENGTH_REQUIRED);
     }
 }
