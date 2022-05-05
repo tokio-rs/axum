@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning].
 
 # Unreleased
 
-- **fixed:** `Option` and `Result` are now supported in typed paths ([#1001])
+- **fixed:** `Option` and `Result` are now supported in typed path route handler parameters ([#1001])
 
 [#1001]: https://github.com/tokio-rs/axum/pull/1001
 
