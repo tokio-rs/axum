@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- None.
+- **fixed:** `Option` and `Result` are now supported in typed paths
 
 # 0.2.0 (31. March, 2022)
 
