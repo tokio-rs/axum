@@ -1,5 +1,0 @@
-error: `typed_path` cannot contain wildcards
- --> tests/typed_path/fail/wildcard.rs:4:14
-  |
-4 | #[typed_path("/users/*rest")]
-  |              ^^^^^^^^^^^^^^

@@ -297,14 +297,10 @@ fn parse_path(path: &LitStr) -> syn::Result<Vec<Segment>> {
     path.value()
         .split('/')
         .map(|segment| {
-            if segment.contains('*') {
-                return Err(syn::Error::new_spanned(
-                    path,
-                    "`typed_path` cannot contain wildcards",
-                ));
-            }
-
-            if let Some(capture) = segment.strip_prefix(':') {
+            if let Some(capture) = segment
+                .strip_prefix(':')
+                .or_else(|| segment.strip_prefix('*'))
+            {
                 Ok(Segment::Capture(capture.to_owned(), path.span()))
             } else {
                 Ok(Segment::Static(segment.to_owned()))
