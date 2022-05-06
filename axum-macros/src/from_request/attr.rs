@@ -10,10 +10,10 @@ pub(crate) struct FromRequestFieldAttr {
     pub(crate) via: Option<(kw::via, syn::Path)>,
 }
 
-#[derive(Default)]
-pub(crate) struct FromRequestContainerAttr {
-    pub(crate) via: Option<(kw::via, syn::Path)>,
-    pub(crate) rejection_derive: Option<(kw::rejection_derive, RejectionDeriveOptOuts)>,
+pub(crate) enum FromRequestContainerAttr {
+    Via(syn::Path),
+    RejectionDerive(RejectionDeriveOptOuts),
+    None,
 }
 
 pub(crate) mod kw {
@@ -47,47 +47,53 @@ pub(crate) fn parse_field_attrs(attrs: &[syn::Attribute]) -> syn::Result<FromReq
 pub(crate) fn parse_container_attrs(
     attrs: &[syn::Attribute],
 ) -> syn::Result<FromRequestContainerAttr> {
-    let attrs = parse_attrs(attrs)?;
+    let attrs = parse_attrs::<ContainerAttr>(attrs)?;
 
-    let mut out = FromRequestContainerAttr::default();
+    let mut out_via = None;
+    let mut out_rejection_derive = None;
 
-    for from_request_attr in attrs {
+    // we track the index of the attribute to know which comes last
+    // used to give more accurate error messages
+    for (idx, from_request_attr) in attrs.into_iter().enumerate() {
         match from_request_attr {
             ContainerAttr::Via { via, path } => {
-                if out.rejection_derive.is_some() {
-                    return Err(syn::Error::new_spanned(
-                        via,
-                        "cannot use both `rejection_derive` and `via`",
-                    ));
-                }
-
-                if out.via.is_some() {
+                if out_via.is_some() {
                     return Err(double_attr_error("via", via));
                 } else {
-                    out.via = Some((via, path));
+                    out_via = Some((idx, via, path));
                 }
             }
             ContainerAttr::RejectionDerive {
                 rejection_derive,
                 opt_outs,
             } => {
-                if out.via.is_some() {
-                    return Err(syn::Error::new_spanned(
-                        rejection_derive,
-                        "cannot use both `via` and `rejection_derive`",
-                    ));
-                }
-
-                if out.rejection_derive.is_some() {
+                if out_rejection_derive.is_some() {
                     return Err(double_attr_error("rejection_derive", rejection_derive));
                 } else {
-                    out.rejection_derive = Some((rejection_derive, opt_outs));
+                    out_rejection_derive = Some((idx, rejection_derive, opt_outs));
                 }
             }
         }
     }
 
-    Ok(out)
+    match (out_via, out_rejection_derive) {
+        (Some((via_idx, via, _)), Some((rejection_derive_idx, rejection_derive, _))) => {
+            if via_idx > rejection_derive_idx {
+                Err(syn::Error::new_spanned(
+                    via,
+                    "cannot use both `rejection_derive` and `via`",
+                ))
+            } else {
+                Err(syn::Error::new_spanned(
+                    rejection_derive,
+                    "cannot use both `via` and `rejection_derive`",
+                ))
+            }
+        }
+        (Some((_, _, path)), None) => Ok(FromRequestContainerAttr::Via(path)),
+        (None, Some((_, _, opt_outs))) => Ok(FromRequestContainerAttr::RejectionDerive(opt_outs)),
+        (None, None) => Ok(FromRequestContainerAttr::None),
+    }
 }
 
 pub(crate) fn parse_attrs<T>(attrs: &[syn::Attribute]) -> syn::Result<Punctuated<T, Token![,]>>
