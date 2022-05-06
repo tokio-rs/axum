@@ -30,18 +30,14 @@ pub(crate) fn expand(item: syn::ItemStruct) -> syn::Result<TokenStream> {
         return Err(syn::Error::new_spanned(where_clause, GENERICS_ERROR));
     }
 
-    let FromRequestContainerAttr {
-        via,
-        rejection_derive,
-    } = parse_container_attrs(&attrs)?;
-
-    if let Some((_, path)) = via {
-        impl_by_extracting_all_at_once(ident, fields, path)
-    } else {
-        let rejection_derive_opt_outs = rejection_derive
-            .map(|(_, opt_outs)| opt_outs)
-            .unwrap_or_default();
-        impl_by_extracting_each_field(ident, fields, vis, rejection_derive_opt_outs)
+    match parse_container_attrs(&attrs)? {
+        FromRequestContainerAttr::Via(path) => impl_by_extracting_all_at_once(ident, fields, path),
+        FromRequestContainerAttr::RejectionDerive(opt_outs) => {
+            impl_by_extracting_each_field(ident, fields, vis, opt_outs)
+        }
+        FromRequestContainerAttr::None => {
+            impl_by_extracting_each_field(ident, fields, vis, RejectionDeriveOptOuts::default())
+        }
     }
 }
 
