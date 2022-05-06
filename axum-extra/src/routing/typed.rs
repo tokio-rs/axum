@@ -190,6 +190,26 @@ macro_rules! impl_first_element_is {
         where
             P: TypedPath
         {}
+
+        impl<P, $($ty,)*> FirstElementIs<P> for (Option<P>, $($ty,)*)
+        where
+            P: TypedPath
+        {}
+
+        impl<P, $($ty,)*> Sealed for (Option<P>, $($ty,)*)
+        where
+            P: TypedPath
+        {}
+
+        impl<P, E, $($ty,)*> FirstElementIs<P> for (Result<P, E>, $($ty,)*)
+        where
+            P: TypedPath
+        {}
+
+        impl<P, E, $($ty,)*> Sealed for (Result<P, E>, $($ty,)*)
+        where
+            P: TypedPath
+        {}
     };
 }
 
