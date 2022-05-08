@@ -3,24 +3,77 @@ use self::attr::{
     RejectionDeriveOptOuts,
 };
 use heck::ToUpperCamelCase;
-use proc_macro2::TokenStream;
+use proc_macro2::{Span, TokenStream};
 use quote::{format_ident, quote, quote_spanned};
 use syn::{punctuated::Punctuated, spanned::Spanned, Token};
 
 mod attr;
 
-const GENERICS_ERROR: &str = "`#[derive(FromRequest)] doesn't support generics";
+pub(crate) fn expand(item: syn::Item) -> syn::Result<TokenStream> {
+    match item {
+        syn::Item::Struct(item) => {
+            let syn::ItemStruct {
+                attrs,
+                ident,
+                generics,
+                fields,
+                semi_token: _,
+                vis,
+                struct_token: _,
+            } = item;
 
-pub(crate) fn expand(item: syn::ItemStruct) -> syn::Result<TokenStream> {
-    let syn::ItemStruct {
-        attrs,
-        ident,
-        generics,
-        fields,
-        semi_token: _,
-        vis,
-        struct_token: _,
-    } = item;
+            error_on_generics(generics)?;
+
+            match parse_container_attrs(&attrs)? {
+                FromRequestContainerAttr::Via(path) => {
+                    impl_struct_by_extracting_all_at_once(ident, fields, path)
+                }
+                FromRequestContainerAttr::RejectionDerive(_, opt_outs) => {
+                    impl_struct_by_extracting_each_field(ident, fields, vis, opt_outs)
+                }
+                FromRequestContainerAttr::None => impl_struct_by_extracting_each_field(
+                    ident,
+                    fields,
+                    vis,
+                    RejectionDeriveOptOuts::default(),
+                ),
+            }
+        }
+        syn::Item::Enum(item) => {
+            let syn::ItemEnum {
+                attrs,
+                vis: _,
+                enum_token: _,
+                ident,
+                generics,
+                brace_token: _,
+                variants,
+            } = item;
+
+            error_on_generics(generics)?;
+
+            match parse_container_attrs(&attrs)? {
+                FromRequestContainerAttr::Via(path) => {
+                    impl_enum_by_extracting_all_at_once(ident, variants, path)
+                }
+                FromRequestContainerAttr::RejectionDerive(rejection_derive, _) => {
+                    Err(syn::Error::new_spanned(
+                        rejection_derive,
+                        "cannot use `rejection_derive` on enums",
+                    ))
+                }
+                FromRequestContainerAttr::None => Err(syn::Error::new(
+                    Span::call_site(),
+                    "missing `#[from_request(via(...))]`",
+                )),
+            }
+        }
+        _ => Err(syn::Error::new_spanned(item, "expected `struct` or `enum`")),
+    }
+}
+
+fn error_on_generics(generics: syn::Generics) -> syn::Result<()> {
+    const GENERICS_ERROR: &str = "`#[derive(FromRequest)] doesn't support generics";
 
     if !generics.params.is_empty() {
         return Err(syn::Error::new_spanned(generics, GENERICS_ERROR));
@@ -30,18 +83,10 @@ pub(crate) fn expand(item: syn::ItemStruct) -> syn::Result<TokenStream> {
         return Err(syn::Error::new_spanned(where_clause, GENERICS_ERROR));
     }
 
-    match parse_container_attrs(&attrs)? {
-        FromRequestContainerAttr::Via(path) => impl_by_extracting_all_at_once(ident, fields, path),
-        FromRequestContainerAttr::RejectionDerive(opt_outs) => {
-            impl_by_extracting_each_field(ident, fields, vis, opt_outs)
-        }
-        FromRequestContainerAttr::None => {
-            impl_by_extracting_each_field(ident, fields, vis, RejectionDeriveOptOuts::default())
-        }
-    }
+    Ok(())
 }
 
-fn impl_by_extracting_each_field(
+fn impl_struct_by_extracting_each_field(
     ident: syn::Ident,
     fields: syn::Fields,
     vis: syn::Visibility,
@@ -413,7 +458,7 @@ fn rejection_variant_name(field: &syn::Field) -> syn::Result<syn::Ident> {
     }
 }
 
-fn impl_by_extracting_all_at_once(
+fn impl_struct_by_extracting_all_at_once(
     ident: syn::Ident,
     fields: syn::Fields,
     path: syn::Path,
@@ -432,6 +477,61 @@ fn impl_by_extracting_all_at_once(
                 "`#[from_request(via(...))]` on a field cannot be used \
                 together with `#[from_request(...)]` on the container",
             ));
+        }
+    }
+
+    let path_span = path.span();
+
+    Ok(quote_spanned! {path_span=>
+        #[::axum::async_trait]
+        #[automatically_derived]
+        impl<B> ::axum::extract::FromRequest<B> for #ident
+        where
+            B: ::axum::body::HttpBody + ::std::marker::Send + 'static,
+            B::Data: ::std::marker::Send,
+            B::Error: ::std::convert::Into<::axum::BoxError>,
+        {
+            type Rejection = <#path<Self> as ::axum::extract::FromRequest<B>>::Rejection;
+
+            async fn from_request(
+                req: &mut ::axum::extract::RequestParts<B>,
+            ) -> ::std::result::Result<Self, Self::Rejection> {
+                ::axum::extract::FromRequest::<B>::from_request(req)
+                    .await
+                    .map(|#path(inner)| inner)
+            }
+        }
+    })
+}
+
+fn impl_enum_by_extracting_all_at_once(
+    ident: syn::Ident,
+    variants: Punctuated<syn::Variant, Token![,]>,
+    path: syn::Path,
+) -> syn::Result<TokenStream> {
+    for variant in variants {
+        let FromRequestFieldAttr { via } = parse_field_attrs(&variant.attrs)?;
+        if let Some((via, _)) = via {
+            return Err(syn::Error::new_spanned(
+                via,
+                "`#[from_request(via(...))]` cannot be used on variants",
+            ));
+        }
+
+        let fields = match variant.fields {
+            syn::Fields::Named(fields) => fields.named.into_iter(),
+            syn::Fields::Unnamed(fields) => fields.unnamed.into_iter(),
+            syn::Fields::Unit => Punctuated::<_, Token![,]>::new().into_iter(),
+        };
+
+        for field in fields {
+            let FromRequestFieldAttr { via } = parse_field_attrs(&field.attrs)?;
+            if let Some((via, _)) = via {
+                return Err(syn::Error::new_spanned(
+                    via,
+                    "`#[from_request(via(...))]` cannot be used inside variants",
+                ));
+            }
         }
     }
 

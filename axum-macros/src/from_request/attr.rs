@@ -12,7 +12,7 @@ pub(crate) struct FromRequestFieldAttr {
 
 pub(crate) enum FromRequestContainerAttr {
     Via(syn::Path),
-    RejectionDerive(RejectionDeriveOptOuts),
+    RejectionDerive(kw::rejection_derive, RejectionDeriveOptOuts),
     None,
 }
 
@@ -91,7 +91,9 @@ pub(crate) fn parse_container_attrs(
             }
         }
         (Some((_, _, path)), None) => Ok(FromRequestContainerAttr::Via(path)),
-        (None, Some((_, _, opt_outs))) => Ok(FromRequestContainerAttr::RejectionDerive(opt_outs)),
+        (None, Some((_, rejection_derive, opt_outs))) => Ok(
+            FromRequestContainerAttr::RejectionDerive(rejection_derive, opt_outs),
+        ),
         (None, None) => Ok(FromRequestContainerAttr::None),
     }
 }

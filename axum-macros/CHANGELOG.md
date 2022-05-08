@@ -9,9 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **fixed:** `Option` and `Result` are now supported in typed path route handler parameters ([#1001])
 - **fixed:** Support wildcards in typed paths ([#1003])
+- **added:** Support `#[derive(FromRequest)]` on enums using `#[from_request(via(OtherExtractor))]` ([#1009])
 
 [#1001]: https://github.com/tokio-rs/axum/pull/1001
 [#1003]: https://github.com/tokio-rs/axum/pull/1003
+[#1009]: https://github.com/tokio-rs/axum/pull/1009
 
 # 0.2.0 (31. March, 2022)
 
