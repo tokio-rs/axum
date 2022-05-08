@@ -4,10 +4,14 @@
 //! cd examples && cargo run -p example-static-file-server
 //! ```
 
-use axum::{routing::get, Router};
-use std::{convert::Infallible, io, net::SocketAddr};
-use tower::{make::Shared, ServiceExt};
-use tower_http::services::ServeDir;
+use axum::{
+    http::StatusCode,
+    response::IntoResponse,
+    routing::{get, get_service},
+    Router,
+};
+use std::{io, net::SocketAddr};
+use tower_http::{services::ServeDir, trace::TraceLayer};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[tokio::main]
@@ -23,28 +27,24 @@ async fn main() {
     // `SpaRouter` is the easiest way to serve assets at a nested route like `/assets`
     // let app = Router::new()
     //     .route("/foo", get(|| async { "Hi from /foo" }))
-    //     .merge(axum_extra::routing::SpaRouter::new("/assets", "."));
+    //     .merge(axum_extra::routing::SpaRouter::new("/assets", "."))
+    //     .layer(TraceLayer::new_for_http());
 
     // for serving assets directly at the root you can use `tower_http::services::ServeDir`
-    // with a `Router` as the fallback
-    let app = ServeDir::new(".")
-        .fallback(
-            Router::new()
-                .route("/foo", get(|| async { "Hi from /foo" }))
-                // `ServeDir::fallback` requires the error type to be `io::Error`
-                .map_err(infallible_to_io_err),
-        )
-        // also call the fallback if the request isn't `GET` or `HEAD`
-        .call_fallback_on_method_not_allowed(true);
+    // as the fallback to a `Router`
+    let app: _ = Router::new()
+        .route("/foo", get(|| async { "Hi from /foo" }))
+        .fallback(get_service(ServeDir::new(".")).handle_error(handle_error))
+        .layer(TraceLayer::new_for_http());
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
     tracing::debug!("listening on {}", addr);
     axum::Server::bind(&addr)
-        .serve(Shared::new(app))
+        .serve(app.into_make_service())
         .await
         .unwrap();
 }
 
-fn infallible_to_io_err(err: Infallible) -> io::Error {
-    match err {}
+async fn handle_error(_err: io::Error) -> impl IntoResponse {
+    (StatusCode::INTERNAL_SERVER_ERROR, "Something went wrong...")
 }
