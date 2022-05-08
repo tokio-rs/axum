@@ -510,9 +510,19 @@ fn impl_struct_by_extracting_all_at_once(
 
 fn impl_enum_by_extracting_all_at_once(
     ident: syn::Ident,
-    _variants: Punctuated<syn::Variant, Token![,]>,
+    variants: Punctuated<syn::Variant, Token![,]>,
     path: syn::Path,
 ) -> syn::Result<TokenStream> {
+    for variant in variants {
+        let FromRequestFieldAttr { via } = parse_field_attrs(&variant.attrs)?;
+        if let Some((via, _)) = via {
+            return Err(syn::Error::new_spanned(
+                via,
+                "`#[from_request(via(...))]` cannot be used on variants",
+            ));
+        }
+    }
+
     let path_span = path.span();
 
     Ok(quote_spanned! {path_span=>
@@ -545,6 +555,7 @@ fn ui() {
         t.compile_fail("tests/from_request/fail/*.rs");
         t.pass("tests/from_request/pass/*.rs");
 
+        // t.compile_fail("tests/from_request/fail/enum_from_request_on_variant.rs");
         // t.compile_fail("tests/from_request/fail/enum_rejection_derive.rs");
         // t.compile_fail("tests/from_request/fail/enum_no_via.rs");
         // t.pass("tests/from_request/pass/enum_via.rs");
