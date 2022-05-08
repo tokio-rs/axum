@@ -140,12 +140,85 @@ use http::Uri;
 /// );
 /// ```
 ///
+/// ## Customizing the rejection
+///
+/// By default the rejection used in the [`FromRequest`] implemetation will be [`PathRejection`].
+///
+/// That can be customized using `#[typed_path("...", rejection(YourType))]`:
+///
+/// ```
+/// use serde::Deserialize;
+/// use axum_extra::routing::TypedPath;
+/// use axum::{
+///     response::{IntoResponse, Response},
+///     extract::rejection::PathRejection,
+/// };
+///
+/// #[derive(TypedPath, Deserialize)]
+/// #[typed_path("/users/:id", rejection(UsersMemberRejection))]
+/// struct UsersMember {
+///     id: String,
+/// }
+///
+/// struct UsersMemberRejection;
+///
+/// // Your rejection type must implement `From<PathRejection>`.
+/// //
+/// // Here you can grab whatever details from the inner rejection
+/// // that you need
+/// impl From<PathRejection> for UsersMemberRejection {
+///     fn from(rejection: PathRejection) -> Self {
+///         # UsersMemberRejection
+///         // ...
+///     }
+/// }
+///
+/// // And your rejection must implement `IntoResponse`, like all rejections
+/// impl IntoResponse for UsersMemberRejection {
+///     fn into_response(self) -> Response {
+///         # ().into_response()
+///         // ...
+///     }
+/// }
+/// ```
+///
+/// The `From<PathRejection>` requirement only applies if your typed path is a struct with named
+/// fields or a tuple struct. For unit structs your rejection type must implement `Default`:
+///
+/// ```
+/// use axum_extra::routing::TypedPath;
+/// use axum::response::{IntoResponse, Response};
+///
+/// #[derive(TypedPath)]
+/// #[typed_path("/users", rejection(UsersCollectionRejection))]
+/// struct UsersCollection;
+///
+/// struct UsersCollectionRejection;
+///
+/// // Since there are no path params the rejection isn't created via `From<PathRejection>` but
+/// // instead via `Default`
+/// impl Default for UsersCollectionRejection {
+///     fn default() -> Self {
+///         # UsersCollectionRejection
+///         // ...
+///     }
+/// }
+///
+/// impl IntoResponse for UsersCollectionRejection {
+///     fn into_response(self) -> Response {
+///         # ().into_response()
+///         // ...
+///     }
+/// }
+/// ```
+///
 /// [`FromRequest`]: axum::extract::FromRequest
 /// [`RouterExt::typed_get`]: super::RouterExt::typed_get
 /// [`RouterExt::typed_post`]: super::RouterExt::typed_post
 /// [`Path`]: axum::extract::Path
 /// [`Display`]: std::fmt::Display
 /// [`Deserialize`]: serde::Deserialize
+/// [`PathRejection`]: axum::extract::rejection::PathRejection
 pub trait TypedPath: std::fmt::Display {
     /// The path with optional captures such as `/users/:id`.
     const PATH: &'static str;
