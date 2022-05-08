@@ -1,5 +1,3 @@
-#![allow(clippy::todo)]
-
 use self::attr::{
     parse_container_attrs, parse_field_attrs, FromRequestContainerAttr, FromRequestFieldAttr,
     RejectionDeriveOptOuts,
@@ -10,8 +8,6 @@ use quote::{format_ident, quote, quote_spanned};
 use syn::{punctuated::Punctuated, spanned::Spanned, Token};
 
 mod attr;
-
-const GENERICS_ERROR: &str = "`#[derive(FromRequest)] doesn't support generics";
 
 pub(crate) fn expand(item: syn::Item) -> syn::Result<TokenStream> {
     match item {
@@ -72,13 +68,13 @@ pub(crate) fn expand(item: syn::Item) -> syn::Result<TokenStream> {
                 )),
             }
         }
-        _ => {
-            todo!("bingo")
-        }
+        _ => Err(syn::Error::new_spanned(item, "expected `struct` or `enum`")),
     }
 }
 
 fn error_on_generics(generics: syn::Generics) -> syn::Result<()> {
+    const GENERICS_ERROR: &str = "`#[derive(FromRequest)] doesn't support generics";
+
     if !generics.params.is_empty() {
         return Err(syn::Error::new_spanned(generics, GENERICS_ERROR));
     }
@@ -521,6 +517,22 @@ fn impl_enum_by_extracting_all_at_once(
                 "`#[from_request(via(...))]` cannot be used on variants",
             ));
         }
+
+        let fields = match variant.fields {
+            syn::Fields::Named(fields) => fields.named.into_iter(),
+            syn::Fields::Unnamed(fields) => fields.unnamed.into_iter(),
+            syn::Fields::Unit => Punctuated::<_, Token![,]>::new().into_iter(),
+        };
+
+        for field in fields {
+            let FromRequestFieldAttr { via } = parse_field_attrs(&field.attrs)?;
+            if let Some((via, _)) = via {
+                return Err(syn::Error::new_spanned(
+                    via,
+                    "`#[from_request(via(...))]` cannot be used inside variants",
+                ));
+            }
+        }
     }
 
     let path_span = path.span();
@@ -554,11 +566,6 @@ fn ui() {
         let t = trybuild::TestCases::new();
         t.compile_fail("tests/from_request/fail/*.rs");
         t.pass("tests/from_request/pass/*.rs");
-
-        // t.compile_fail("tests/from_request/fail/enum_from_request_on_variant.rs");
-        // t.compile_fail("tests/from_request/fail/enum_rejection_derive.rs");
-        // t.compile_fail("tests/from_request/fail/enum_no_via.rs");
-        // t.pass("tests/from_request/pass/enum_via.rs");
     }
 
     #[rustversion::not(stable)]
