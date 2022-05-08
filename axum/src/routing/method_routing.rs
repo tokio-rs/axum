@@ -1,3 +1,4 @@
+use super::IntoMakeService;
 use crate::{
     body::{boxed, Body, Bytes, Empty, HttpBody},
     error_handling::{HandleError, HandleErrorLayer},
@@ -5,7 +6,7 @@ use crate::{
     handler::Handler,
     http::{Method, Request, StatusCode},
     response::Response,
-    routing::{Fallback, MethodFilter, Route},
+    routing::{future::RouteFuture, Fallback, MethodFilter, Route},
     BoxError,
 };
 use bytes::BytesMut;
@@ -1026,10 +1027,6 @@ where
         Self::new()
     }
 }
-
-use crate::routing::future::RouteFuture;
-
-use super::IntoMakeService;
 
 impl<B, E> Service<Request<B>> for MethodRouter<B, E>
 where
