@@ -39,7 +39,6 @@ mod kw {
 
 struct Attrs {
     path: LitStr,
-    #[allow(dead_code)]
     rejection: Option<syn::Path>,
 }
 
@@ -62,7 +61,7 @@ impl Parse for Attrs {
 }
 
 fn parse_attrs(attrs: &[syn::Attribute]) -> syn::Result<Attrs> {
-    let mut out = None::<Attrs>;
+    let mut out = None;
 
     for attr in attrs {
         if attr.path.is_ident("typed_path") {
