@@ -4,9 +4,10 @@
 //! cd examples && cargo run -p example-static-file-server
 //! ```
 
-use axum::{http::StatusCode, routing::get_service, Router};
-use std::net::SocketAddr;
-use tower_http::{services::ServeDir, trace::TraceLayer};
+use axum::{routing::get, Router};
+use std::{convert::Infallible, io, net::SocketAddr};
+use tower::{make::Shared, ServiceExt};
+use tower_http::services::ServeDir;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[tokio::main]
@@ -19,22 +20,31 @@ async fn main() {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    let app = Router::new()
-        .nest(
-            "/static",
-            get_service(ServeDir::new(".")).handle_error(|error: std::io::Error| async move {
-                (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    format!("Unhandled internal error: {}", error),
-                )
-            }),
+    // `SpaRouter` is the easiest way to serve assets at a nested route like `/assets`
+    // let app = Router::new()
+    //     .route("/foo", get(|| async { "Hi from /foo" }))
+    //     .merge(axum_extra::routing::SpaRouter::new("/assets", "."));
+
+    // for serving assets directly at the root you can use `tower_http::services::ServeDir`
+    // with a `Router` as the fallback
+    let app = ServeDir::new(".")
+        .fallback(
+            Router::new()
+                .route("/foo", get(|| async { "Hi from /foo" }))
+                // `ServeDir::fallback` requires the error type to be `io::Error`
+                .map_err(infallible_to_io_err),
         )
-        .layer(TraceLayer::new_for_http());
+        // also call the fallback if the request isn't `GET` or `HEAD`
+        .call_fallback_on_method_not_allowed(true);
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
     tracing::debug!("listening on {}", addr);
     axum::Server::bind(&addr)
-        .serve(app.into_make_service())
+        .serve(Shared::new(app))
         .await
         .unwrap();
+}
+
+fn infallible_to_io_err(err: Infallible) -> io::Error {
+    match err {}
 }
