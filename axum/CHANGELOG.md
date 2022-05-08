@@ -12,9 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the request body will not be checked. If they do have a `Content-Length` header they'll be
   rejected. This allows `ContentLengthLimit` to be used as middleware around several routes,
   including `GET` routes ([#989])
-- **added:** Add `MethodRouter::{into_make_service, into_make_service_with_connect_info}`
+- **added:** Add `MethodRouter::{into_make_service, into_make_service_with_connect_info}` ([#1010])
 
 [#989]: https://github.com/tokio-rs/axum/pull/989
+[#1010]: https://github.com/tokio-rs/axum/pull/1010
 
 # 0.5.4 (26. April, 2022)
 
