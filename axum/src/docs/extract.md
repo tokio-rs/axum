@@ -211,7 +211,7 @@ async fn also_broken(
 
 Also keep this in mind if you extract or otherwise consume the body in
 middleware. You either need to not extract the body in handlers or make sure
-your middleware reinserts the body using [`RequestParts::body_mut`] so its
+your middleware reinserts the body using [`RequestParts::body_mut`] so it's
 available to handlers.
 
 # Optional extractors
