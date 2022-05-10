@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning].
 
 # Unreleased
 
+- None.
+
+# 0.3.1 (10. May, 2022)
+
 - **fixed:** `Option` and `Result` are now supported in typed path route handler parameters ([#1001])
 - **fixed:** Support wildcards in typed paths ([#1003])
 
