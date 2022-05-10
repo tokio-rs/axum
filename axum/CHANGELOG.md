@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+- None.
+
+# 0.5.5 (10. May, 2022)
+
 - **fixed:** Correctly handle `GET`, `HEAD`, and `OPTIONS` requests in `ContentLengthLimit`.
   Request with these methods are now accepted if they _do not_ have a `Content-Length` header, and
   the request body will not be checked. If they do have a `Content-Length` header they'll be
