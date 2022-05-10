@@ -207,10 +207,7 @@ impl WebSocketUpgrade {
         let on_upgrade = self.on_upgrade;
         let config = self.config;
 
-        let protocol = self
-            .protocol
-            .as_ref()
-            .map(|header| String::from_utf8_lossy(header.as_bytes()).to_string());
+        let protocol = self.protocol.clone();
 
         tokio::spawn(async move {
             let upgraded = on_upgrade.await.expect("connection upgrade failed");
@@ -317,7 +314,7 @@ fn header_contains<B>(req: &RequestParts<B>, key: HeaderName, value: &'static st
 #[derive(Debug)]
 pub struct WebSocket {
     inner: WebSocketStream<Upgraded>,
-    protocol: Option<String>,
+    protocol: Option<HeaderValue>,
 }
 
 impl WebSocket {
@@ -342,8 +339,8 @@ impl WebSocket {
     }
 
     /// Return the selected WebSocket subprotocol, if one has been chosen
-    pub fn protocol(&self) -> Option<&str> {
-        self.protocol.as_deref()
+    pub fn protocol(&self) -> Option<&HeaderValue> {
+        self.protocol.as_ref()
     }
 }
 
