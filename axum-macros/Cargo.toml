@@ -8,7 +8,7 @@ license = "MIT"
 name = "axum-macros"
 readme = "README.md"
 repository = "https://github.com/tokio-rs/axum"
-version = "0.2.0"
+version = "0.2.1"
 
 [lib]
 proc-macro = true

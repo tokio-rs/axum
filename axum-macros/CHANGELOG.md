@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+- None.
+
+# 0.2.1 (10. May, 2022)
+
 - **fixed:** `Option` and `Result` are now supported in typed path route handler parameters ([#1001])
 - **fixed:** Support wildcards in typed paths ([#1003])
 - **added:** Support `#[derive(FromRequest)]` on enums using `#[from_request(via(OtherExtractor))]` ([#1009])
