@@ -66,8 +66,7 @@ use std::{
 /// ```
 ///
 /// Path segments also can be deserialized into any type that implements
-/// [`serde::Deserialize`]. Path segment labels will be matched with struct
-/// field names.
+/// [`serde::Deserialize`]. This includes tuples and structs:
 ///
 /// ```rust,no_run
 /// use axum::{
@@ -78,6 +77,7 @@ use std::{
 /// use serde::Deserialize;
 /// use uuid::Uuid;
 ///
+/// // Path segment labels will be matched with struct field names
 /// #[derive(Deserialize)]
 /// struct Params {
 ///     user_id: Uuid,
@@ -90,7 +90,17 @@ use std::{
 ///     // ...
 /// }
 ///
-/// let app = Router::new().route("/users/:user_id/team/:team_id", get(users_teams_show));
+/// // When using tuples the path segments will be matched by their position in the route
+/// async fn users_teams_create(
+///     Path((user_id, team_id)): Path<(String, String)>,
+/// ) {
+///     // ...
+/// }
+///
+/// let app = Router::new().route(
+///     "/users/:user_id/team/:team_id",
+///     get(users_teams_show).post(users_teams_create),
+/// );
 /// # async {
 /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 /// # };
