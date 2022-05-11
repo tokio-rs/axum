@@ -332,7 +332,7 @@ impl fmt::Display for ErrorKind {
             ErrorKind::WrongNumberOfParameters { got, expected } => {
                 write!(
                     f,
-                    "Wrong number of type parameters to `Path`. Expected {} but got {}",
+                    "Wrong number of path arguments for `Path`. Expected {} but got {}",
                     expected, got
                 )?;
 
