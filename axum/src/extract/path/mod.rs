@@ -567,7 +567,7 @@ mod tests {
         assert_eq!(res.status(), StatusCode::INTERNAL_SERVER_ERROR);
         assert_eq!(
             res.text().await,
-            "Wrong number of type parameters to `Path`. Expected 1 but got 2. \
+            "Wrong number of path arguments for `Path`. Expected 1 but got 2. \
             Note that multiple parameters must be extracted with a tuple `Path<(_, _)>` or a struct `Path<YourParams>`",
         );
     }
