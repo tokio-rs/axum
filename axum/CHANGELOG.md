@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- None.
+- **added:** Add `WebSocket::protocol` to return the selected WebSocket subprotocol, if there is one. ([#1022])
+
+[#1022]: https://github.com/tokio-rs/axum/pull/1022
 
 # 0.5.5 (10. May, 2022)
 
