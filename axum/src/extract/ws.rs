@@ -338,7 +338,7 @@ impl WebSocket {
         self.inner.close(None).await.map_err(Error::new)
     }
 
-    /// Return the selected WebSocket subprotocol, if one has been chosen
+    /// Return the selected WebSocket subprotocol, if one has been chosen.
     pub fn protocol(&self) -> Option<&HeaderValue> {
         self.protocol.as_ref()
     }
