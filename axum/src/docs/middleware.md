@@ -442,7 +442,7 @@ extensions you need.
 [`ServiceBuilder::map_response`]: tower::ServiceBuilder::map_response
 [`ServiceBuilder::then`]: tower::ServiceBuilder::then
 [`ServiceBuilder::and_then`]: tower::ServiceBuilder::and_then
-[`axum::middleware::from_extractor`]: crate::extract::extractor_middleware()
+[`axum::middleware::from_extractor`]: crate::middleware::from_extractor
 [`Handler::layer`]: crate::handler::Handler::layer
 [`Router::layer`]: crate::routing::Router::layer
 [`MethodRouter::layer`]: crate::routing::MethodRouter::layer
