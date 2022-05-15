@@ -11,7 +11,9 @@ and this project adheres to [Semantic Versioning].
 
 # 0.3.2 (15. May, 2022)
 
-- **added:** Add `extract::Form` which supports multi-value items
+- **added:** Add `extract::Form` which supports multi-value items ([#1031])
+
+[#1031]: https://github.com/tokio-rs/axum/pull/1031
 
 # 0.3.1 (10. May, 2022)
 
