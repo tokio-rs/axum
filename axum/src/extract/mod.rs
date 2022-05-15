@@ -1,5 +1,6 @@
 #![doc = include_str!("../docs/extract.md")]
 
+use http::header;
 use rejection::*;
 
 pub mod connect_info;
@@ -11,12 +12,9 @@ pub mod rejection;
 pub mod ws;
 
 mod content_length_limit;
-mod has_content_type;
 mod host;
 mod raw_query;
 mod request_parts;
-
-pub(crate) use has_content_type::has_content_type;
 
 #[doc(inline)]
 pub use axum_core::extract::{FromRequest, RequestParts};
@@ -82,6 +80,26 @@ pub use crate::TypedHeader;
 
 pub(crate) fn take_body<B>(req: &mut RequestParts<B>) -> Result<B, BodyAlreadyExtracted> {
     req.take_body().ok_or_else(BodyAlreadyExtracted::default)
+}
+
+// this is duplicated in `axum-extra/src/extract/form.rs`
+pub(super) fn has_content_type<B>(
+    req: &RequestParts<B>,
+    expected_content_type: &mime::Mime,
+) -> bool {
+    let content_type = if let Some(content_type) = req.headers().get(header::CONTENT_TYPE) {
+        content_type
+    } else {
+        return false;
+    };
+
+    let content_type = if let Ok(content_type) = content_type.to_str() {
+        content_type
+    } else {
+        return false;
+    };
+
+    content_type.starts_with(expected_content_type.as_ref())
 }
 
 #[cfg(test)]
