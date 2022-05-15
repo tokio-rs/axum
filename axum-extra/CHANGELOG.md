@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning].
 
 # Unreleased
 
+- None.
+
+# 0.3.2 (15. May, 2022)
+
 - **added:** Add `extract::Form` which supports multi-value items
 
 # 0.3.1 (10. May, 2022)
