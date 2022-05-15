@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+- None.
+
+# 0.5.6 (15. May, 2022)
+
 - **added:** Add `WebSocket::protocol` to return the selected WebSocket subprotocol, if there is one. ([#1022])
 - **fixed:** Improve error for `PathRejection::WrongNumberOfParameters` to hint at using
   `Path<(String, String)>` or `Path<SomeStruct>` ([#1023])
