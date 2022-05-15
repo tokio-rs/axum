@@ -82,7 +82,7 @@ define_rejection! {
 
 define_rejection! {
     #[status = UNSUPPORTED_MEDIA_TYPE]
-    #[body = "Form requests must have `Content-Type: x-www-form-urlencoded`"]
+    #[body = "Form requests must have `Content-Type: application/x-www-form-urlencoded`"]
     /// Rejection type used if you try and extract the request more than once.
     pub struct InvalidFormContentType;
 }
@@ -104,7 +104,8 @@ pub struct FailedToDeserializeQueryString {
 }
 
 impl FailedToDeserializeQueryString {
-    pub(super) fn new<T, E>(error: E) -> Self
+    #[doc(hidden)]
+    pub fn __private_new<T, E>(error: E) -> Self
     where
         E: Into<BoxError>,
     {

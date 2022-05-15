@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `Path<(String, String)>` or `Path<SomeStruct>` ([#1023])
 - **fixed:** `PathRejection::WrongNumberOfParameters` now uses `500 Internal Server Error` since
   its a programmer error and not a client error ([#1023])
+- **fixed:** Fix `InvalidFormContentType` mentioning the wrong content type
 
 [#1022]: https://github.com/tokio-rs/axum/pull/1022
 [#1023]: https://github.com/tokio-rs/axum/pull/1023
