@@ -4,6 +4,8 @@ use syn::{parse::Parse, spanned::Spanned, FnArg, ItemFn, Token, Type};
 
 pub(crate) fn expand(attr: Attrs, item_fn: ItemFn) -> syn::Result<TokenStream> {
     check_extractor_count(&item_fn)?;
+    check_request_last_extractor(&item_fn)?;
+    let check_path_extractor = check_path_extractor(&item_fn);
 
     let check_inputs_impls_from_request = check_inputs_impls_from_request(&item_fn, &attr.body_ty);
     let check_output_impls_into_response = check_output_impls_into_response(&item_fn);
@@ -11,6 +13,7 @@ pub(crate) fn expand(attr: Attrs, item_fn: ItemFn) -> syn::Result<TokenStream> {
 
     let tokens = quote! {
         #item_fn
+        #check_path_extractor
         #check_inputs_impls_from_request
         #check_output_impls_into_response
         #check_future_send
@@ -57,6 +60,67 @@ fn check_extractor_count(item_fn: &ItemFn) -> syn::Result<()> {
                     max_extractors,
                 )
             ))
+    }
+}
+
+fn extractor_idents(item_fn: &ItemFn) -> impl Iterator<Item = (usize, &syn::FnArg, &syn::Ident)> {
+    item_fn
+        .sig
+        .inputs
+        .iter()
+        .enumerate()
+        .filter_map(|(idx, fn_arg)| match fn_arg {
+            FnArg::Receiver(_) => None,
+            FnArg::Typed(pat_type) => {
+                if let Type::Path(type_path) = &*pat_type.ty {
+                    type_path
+                        .path
+                        .segments
+                        .last()
+                        .map(|segment| (idx, fn_arg, &segment.ident))
+                } else {
+                    None
+                }
+            }
+        })
+}
+
+fn check_request_last_extractor(item_fn: &ItemFn) -> syn::Result<()> {
+    let request_extractor_ident =
+        extractor_idents(item_fn).find(|(_, _, ident)| *ident == "Request");
+
+    if let Some((idx, fn_arg, _)) = request_extractor_ident {
+        if idx != item_fn.sig.inputs.len() - 1 {
+            return Err(syn::Error::new_spanned(
+                fn_arg,
+                "`Request` extractor should always be last",
+            ));
+        }
+    }
+
+    Ok(())
+}
+
+fn check_path_extractor(item_fn: &ItemFn) -> TokenStream {
+    let path_extractors = extractor_idents(item_fn)
+        .filter(|(_, _, ident)| *ident == "Path")
+        .collect::<Vec<_>>();
+
+    if path_extractors.len() > 1 {
+        path_extractors
+            .into_iter()
+            .map(|(_, arg, _)| {
+                syn::Error::new_spanned(
+                    arg,
+                    "Multiple parameters must be extracted with a tuple \
+                    `Path<(_, _)>` or a struct `Path<YourParams>`, not by applying \
+                    multiple `Path<_>` extractors",
+                )
+                .to_compile_error()
+            })
+            .collect()
+    } else {
+        quote! {}
     }
 }
 

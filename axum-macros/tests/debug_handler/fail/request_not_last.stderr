@@ -1,0 +1,13 @@
+error: `Request` extractor should always be last
+ --> tests/debug_handler/fail/request_not_last.rs:5:18
+  |
+5 | async fn handler(_: Request<Body>, _: Extension<String>) {}
+  |                  ^^^^^^^^^^^^^^^^
+
+warning: unused imports: `body::Body`, `extract::Extension`, `http::Request`
+ --> tests/debug_handler/fail/request_not_last.rs:1:12
+  |
+1 | use axum::{body::Body, extract::Extension, http::Request};
+  |            ^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` on by default

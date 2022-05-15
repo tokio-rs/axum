@@ -7,7 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- None.
+- **added:** In `debug_handler`, check if `Request` is used as non-final extractor
+- **added:** In `debug_handler`, check if multiple `Path` extractors are used
 
 # 0.2.1 (10. May, 2022)
 
