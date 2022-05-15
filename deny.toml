@@ -46,8 +46,8 @@ skip-tree = [
 ]
 skip = [
     { name = "spin", version = "=0.5.2" },
-    # old version pulled in by h2
-    { name = "tokio-util", version = "=0.6.9" },
+    # old version pulled in by reqwest which is only a dev dependency
+    { name = "tokio-util", version = "=0.6.10" },
 ]
 
 [sources]
