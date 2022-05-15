@@ -12,10 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 # 0.5.6 (15. May, 2022)
 
 - **added:** Add `WebSocket::protocol` to return the selected WebSocket subprotocol, if there is one. ([#1022])
-- **fixed:** Improve error for `PathRejection::WrongNumberOfParameters` to hint at using
+- **fixed:** Improve error message for `PathRejection::WrongNumberOfParameters` to hint at using
   `Path<(String, String)>` or `Path<SomeStruct>` ([#1023])
 - **fixed:** `PathRejection::WrongNumberOfParameters` now uses `500 Internal Server Error` since
-  its a programmer error and not a client error ([#1023])
+  it's a programmer error and not a client error ([#1023])
 - **fixed:** Fix `InvalidFormContentType` mentioning the wrong content type
 
 [#1022]: https://github.com/tokio-rs/axum/pull/1022
