@@ -20,7 +20,9 @@ use std::ops::Deref;
 /// # Differences from `axum::extract::Form`
 ///
 /// This extractor uses [`serde_html_form`] under-the-hood which supports multi-value items. These
-/// are sent by multiple `<input>` attributes of the same name (e.g. checkboxes) and `<select>`s with the `multiple` attribute. Those values can be collected into a `Vec` or other sequential container.
+/// are sent by multiple `<input>` attributes of the same name (e.g. checkboxes) and `<select>`s
+/// with the `multiple` attribute. Those values can be collected into a `Vec` or other sequential
+/// container.
 ///
 /// # Example
 ///
