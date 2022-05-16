@@ -407,7 +407,7 @@ where
 
 fn expand_attr_with<F, A, I, K>(attr: TokenStream, input: TokenStream, f: F) -> TokenStream
 where
-    F: FnOnce(A, I) -> syn::Result<K>,
+    F: FnOnce(A, I) -> K,
     A: Parse,
     I: Parse,
     K: ToTokens,
@@ -415,7 +415,7 @@ where
     let expand_result = (|| {
         let attr = syn::parse(attr)?;
         let input = syn::parse(input)?;
-        f(attr, input)
+        Ok(f(attr, input))
     })();
     expand(expand_result)
 }
