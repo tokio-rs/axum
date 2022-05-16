@@ -6,6 +6,7 @@ pub(crate) fn expand(attr: Attrs, item_fn: ItemFn) -> TokenStream {
     let check_extractor_count = check_extractor_count(&item_fn);
     let check_request_last_extractor = check_request_last_extractor(&item_fn);
     let check_path_extractor = check_path_extractor(&item_fn);
+    let check_multiple_body_extractors = check_multiple_body_extractors(&item_fn);
 
     let check_inputs_impls_from_request = check_inputs_impls_from_request(&item_fn, &attr.body_ty);
     let check_output_impls_into_response = check_output_impls_into_response(&item_fn);
@@ -16,6 +17,7 @@ pub(crate) fn expand(attr: Attrs, item_fn: ItemFn) -> TokenStream {
         #check_extractor_count
         #check_request_last_extractor
         #check_path_extractor
+        #check_multiple_body_extractors
         #check_inputs_impls_from_request
         #check_output_impls_into_response
         #check_future_send
@@ -117,6 +119,32 @@ fn check_path_extractor(item_fn: &ItemFn) -> TokenStream {
                     multiple `Path<_>` extractors",
                 )
                 .to_compile_error()
+            })
+            .collect()
+    } else {
+        quote! {}
+    }
+}
+
+fn check_multiple_body_extractors(item_fn: &ItemFn) -> TokenStream {
+    let body_extractors = extractor_idents(item_fn)
+        .filter(|(_, _, ident)| {
+            *ident == "String"
+                || *ident == "Bytes"
+                || *ident == "Json"
+                || *ident == "RawBody"
+                || *ident == "BodyStream"
+                || *ident == "Multipart"
+                || *ident == "Request"
+        })
+        .collect::<Vec<_>>();
+
+    if body_extractors.len() > 1 {
+        body_extractors
+            .into_iter()
+            .map(|(_, arg, _)| {
+                syn::Error::new_spanned(arg, "Only one body extractor can be applied")
+                    .to_compile_error()
             })
             .collect()
     } else {

@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **added:** In `debug_handler`, check if `Request` is used as non-final extractor ([#1035])
 - **added:** In `debug_handler`, check if multiple `Path` extractors are used ([#1035])
+- **added:** In `debug_handler`, check if multiple body extractors are used
 
 [#1035]: https://github.com/tokio-rs/axum/pull/1035
 
