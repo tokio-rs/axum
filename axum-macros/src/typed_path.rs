@@ -381,22 +381,24 @@ fn path_rejection() -> TokenStream {
 }
 
 fn rejection_assoc_type(rejection: &Option<syn::Path>) -> TokenStream {
-    if let Some(rejection) = rejection {
-        quote! { #rejection }
-    } else {
-        path_rejection()
+    match rejection {
+        Some(rejection) => quote! { #rejection },
+        None => path_rejection(),
     }
 }
 
 fn map_err_rejection(rejection: &Option<syn::Path>) -> TokenStream {
-    rejection.map(|rejection| {
-        let path_rejection = path_rejection();
-        quote! {
-            .map_err(|rejection| {
-                <#rejection as ::std::convert::From<#path_rejection>>::from(rejection)
-            })
-        }
-    })
+    rejection
+        .as_ref()
+        .map(|rejection| {
+            let path_rejection = path_rejection();
+            quote! {
+                .map_err(|rejection| {
+                    <#rejection as ::std::convert::From<#path_rejection>>::from(rejection)
+                })
+            }
+        })
+        .unwrap_or_default()
 }
 
 #[test]
