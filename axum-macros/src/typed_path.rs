@@ -46,18 +46,15 @@ impl Parse for Attrs {
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
         let path = input.parse()?;
 
-        let _ = input.parse::<Token![,]>();
+        let rejection = if input.is_empty() {
+            None
+        } else {
+            let _: Token![,] = input.parse()?;
+            let _: kw::rejection = input.parse()?;
 
-        let lh = input.lookahead1();
-        let rejection = if lh.peek(kw::rejection) {
-            input.parse::<kw::rejection>()?;
             let content;
             syn::parenthesized!(content in input);
             Some(content.parse()?)
-        } else if lh.is_empty() {
-            None
-        } else {
-            return Err(lh.error());
         };
 
         Ok(Self { path, rejection })
