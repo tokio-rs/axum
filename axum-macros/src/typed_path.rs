@@ -54,8 +54,10 @@ impl Parse for Attrs {
             let content;
             syn::parenthesized!(content in input);
             Some(content.parse()?)
-        } else {
+        } else if lh.is_empty() {
             None
+        } else {
+            return Err(lh.error());
         };
 
         Ok(Self { path, rejection })
