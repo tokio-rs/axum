@@ -48,7 +48,9 @@ impl Parse for Attrs {
 
         let _ = input.parse::<Token![,]>();
 
-        let rejection = if input.parse::<kw::rejection>().is_ok() {
+        let lh = input.lookahead1();
+        let rejection = if lh.peek(kw::rejection) {
+            input.parse::<kw::rejection>()?;
             let content;
             syn::parenthesized!(content in input);
             Some(content.parse()?)
