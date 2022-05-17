@@ -21,9 +21,12 @@ and this project adheres to [Semantic Versioning].
 
 - **fixed:** `Option` and `Result` are now supported in typed path route handler parameters ([#1001])
 - **fixed:** Support wildcards in typed paths ([#1003])
+- **added:** Support using a custom rejection type for `#[derive(TypedPath)]`
+  instead of `PathRejection` ([#1012])
 
 [#1001]: https://github.com/tokio-rs/axum/pull/1001
 [#1003]: https://github.com/tokio-rs/axum/pull/1003
+[#1012]: https://github.com/tokio-rs/axum/pull/1012
 
 # 0.3.0 (27. April, 2022)
 
