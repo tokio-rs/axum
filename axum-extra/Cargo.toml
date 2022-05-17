@@ -18,6 +18,7 @@ cookie = ["cookie-lib"]
 cookie-signed = ["cookie", "cookie-lib/signed"]
 cookie-private = ["cookie", "cookie-lib/private"]
 form = ["serde", "serde_html_form"]
+query = ["serde", "serde_html_form"]
 spa = ["tower-http/fs"]
 
 [dependencies]

@@ -8,6 +8,9 @@ mod form;
 #[cfg(feature = "cookie")]
 pub mod cookie;
 
+#[cfg(feature = "query")]
+mod query;
+
 pub use self::cached::Cached;
 
 #[cfg(feature = "cookie")]
@@ -21,3 +24,6 @@ pub use self::cookie::SignedCookieJar;
 
 #[cfg(feature = "form")]
 pub use self::form::Form;
+
+#[cfg(feature = "query")]
+pub use self::query::Query;
