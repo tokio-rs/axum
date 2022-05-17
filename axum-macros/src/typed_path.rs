@@ -387,16 +387,14 @@ fn rejection_assoc_type(rejection: &Option<syn::Path>) -> TokenStream {
 }
 
 fn map_err_rejection(rejection: &Option<syn::Path>) -> TokenStream {
-    if let Some(rejection) = rejection {
+    rejection.map(|rejection| {
         let path_rejection = path_rejection();
         quote! {
             .map_err(|rejection| {
                 <#rejection as ::std::convert::From<#path_rejection>>::from(rejection)
             })
         }
-    } else {
-        quote! {}
-    }
+    })
 }
 
 #[test]

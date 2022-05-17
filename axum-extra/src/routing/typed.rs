@@ -165,7 +165,7 @@ use http::Uri;
 /// // Your rejection type must implement `From<PathRejection>`.
 /// //
 /// // Here you can grab whatever details from the inner rejection
-/// // that you need
+/// // that you need.
 /// impl From<PathRejection> for UsersMemberRejection {
 ///     fn from(rejection: PathRejection) -> Self {
 ///         # UsersMemberRejection
@@ -173,7 +173,7 @@ use http::Uri;
 ///     }
 /// }
 ///
-/// // And your rejection must implement `IntoResponse`, like all rejections
+/// // Your rejection must implement `IntoResponse`, like all rejections.
 /// impl IntoResponse for UsersMemberRejection {
 ///     fn into_response(self) -> Response {
 ///         # ().into_response()
@@ -193,16 +193,8 @@ use http::Uri;
 /// #[typed_path("/users", rejection(UsersCollectionRejection))]
 /// struct UsersCollection;
 ///
+/// #[derive(Default)]
 /// struct UsersCollectionRejection;
-///
-/// // Since there are no path params the rejection isn't created via `From<PathRejection>` but
-/// // instead via `Default`
-/// impl Default for UsersCollectionRejection {
-///     fn default() -> Self {
-///         # UsersCollectionRejection
-///         // ...
-///     }
-/// }
 ///
 /// impl IntoResponse for UsersCollectionRejection {
 ///     fn into_response(self) -> Response {
