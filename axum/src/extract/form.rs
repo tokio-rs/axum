@@ -57,7 +57,7 @@ where
     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
         if req.method() == Method::GET {
             let query = req.uri().query().unwrap_or_default();
-            let value = serde_urlencoded::from_str(query)
+            let value = serde_qs::from_str(query)
                 .map_err(FailedToDeserializeQueryString::__private_new::<T, _>)?;
             Ok(Form(value))
         } else {
@@ -66,7 +66,7 @@ where
             }
 
             let bytes = Bytes::from_request(req).await?;
-            let value = serde_urlencoded::from_bytes(&bytes)
+            let value = serde_qs::from_bytes(&bytes)
                 .map_err(FailedToDeserializeQueryString::__private_new::<T, _>)?;
 
             Ok(Form(value))
@@ -117,7 +117,7 @@ mod tests {
                     mime::APPLICATION_WWW_FORM_URLENCODED.as_ref(),
                 )
                 .body(Full::<Bytes>::new(
-                    serde_urlencoded::to_string(&value).unwrap().into(),
+                    serde_qs::to_string(&value).unwrap().into(),
                 ))
                 .unwrap(),
         );
@@ -183,7 +183,7 @@ mod tests {
                 .method(Method::POST)
                 .header(http::header::CONTENT_TYPE, mime::APPLICATION_JSON.as_ref())
                 .body(Full::<Bytes>::new(
-                    serde_urlencoded::to_string(&Pagination {
+                    serde_qs::to_string(&Pagination {
                         size: Some(10),
                         page: None,
                     })

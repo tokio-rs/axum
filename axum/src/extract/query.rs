@@ -58,7 +58,7 @@ where
 
     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
         let query = req.uri().query().unwrap_or_default();
-        let value = serde_urlencoded::from_str(query)
+        let value = serde_qs::from_str(query)
             .map_err(FailedToDeserializeQueryString::__private_new::<T, _>)?;
         Ok(Query(value))
     }
@@ -116,6 +116,27 @@ mod tests {
             Pagination {
                 size: Some(10),
                 page: Some(20),
+            },
+        )
+        .await;
+
+        #[derive(Debug, PartialEq, Deserialize)]
+        struct Users {
+            user_ids: Vec<u8>,
+        }
+
+        check(
+            "http://example.com/test?user_ids[0]=1&user_ids[1]=2&user_ids[2]=3&user_ids[3]=4",
+            Users {
+                user_ids: vec![1, 2, 3, 4],
+            },
+        )
+        .await;
+
+        check(
+            "http://example.com/test?user_ids[]=1&user_ids[]=2&user_ids[]=3&user_ids[]=4",
+            Users {
+                user_ids: vec![1, 2, 3, 4],
             },
         )
         .await;
