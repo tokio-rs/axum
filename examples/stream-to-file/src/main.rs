@@ -18,6 +18,8 @@ use tokio::{fs::File, io::BufWriter};
 use tokio_util::io::StreamReader;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
+const UPLOADS_DIRECTORY: &str = "uploads";
+
 #[tokio::main]
 async fn main() {
     tracing_subscriber::registry()
@@ -26,6 +28,11 @@ async fn main() {
         ))
         .with(tracing_subscriber::fmt::layer())
         .init();
+
+    // save files to a separte directory to not override files in the current directory
+    tokio::fs::create_dir(UPLOADS_DIRECTORY)
+        .await
+        .expect("failed to create `uploads` directory");
 
     let app = Router::new()
         .route("/", get(show_form).post(accept_form))
@@ -109,6 +116,7 @@ where
         futures::pin_mut!(body_reader);
 
         // Create the file. `File` implements `AsyncWrite`.
+        let path = std::path::Path::new(UPLOADS_DIRECTORY).join(path);
         let mut file = BufWriter::new(File::create(path).await?);
 
         // Copy the body into the file.
@@ -123,8 +131,8 @@ where
 // to prevent directory traversal attacks we ensure the path conists of exactly one normal
 // component
 fn path_is_valid(path: &str) -> bool {
-    let path_decoded = std::path::Path::new(&*path);
-    let mut components = path_decoded.components().peekable();
+    let path = std::path::Path::new(&*path);
+    let mut components = path.components().peekable();
 
     if let Some(first) = components.peek() {
         if !matches!(first, std::path::Component::Normal(_)) {
