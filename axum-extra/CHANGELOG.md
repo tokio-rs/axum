@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning].
 
 # Unreleased
 
-- None.
+- **added:** Add `extract::Query` which supports multi-value items ([#1041])
+
+[#1041]: https://github.com/tokio-rs/axum/pull/1041
 
 # 0.3.2 (15. May, 2022)
 
