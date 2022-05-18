@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- None.
+- **added:** Implement `Default` for `Extension` ([#1043])
 
 # 0.5.6 (15. May, 2022)
 
