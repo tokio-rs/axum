@@ -7,12 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+- None.
+
+# 0.2.2 (18. May, 2022)
+
 - **added:** In `debug_handler`, check if `Request` is used as non-final extractor ([#1035])
 - **added:** In `debug_handler`, check if multiple `Path` extractors are used ([#1035])
 - **added:** In `debug_handler`, check if multiple body extractors are used ([#1036])
+- **added:** Support customizing rejections for `#[derive(TypedPath)]` ([#1012])
 
 [#1035]: https://github.com/tokio-rs/axum/pull/1035
 [#1036]: https://github.com/tokio-rs/axum/pull/1036
+[#1012]: https://github.com/tokio-rs/axum/pull/1012
 
 # 0.2.1 (10. May, 2022)
 
