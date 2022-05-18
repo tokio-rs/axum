@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning].
 
 # Unreleased
 
-# 0.3.3
+# 0.3.3 (18. May, 2022)
 
 - **added:** Add `extract::Query` which supports multi-value items ([#1041])
 - **added:** Support customizing rejections for `#[derive(TypedPath)]` ([#1012])
