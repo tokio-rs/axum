@@ -7,9 +7,13 @@ and this project adheres to [Semantic Versioning].
 
 # Unreleased
 
+# 0.3.3
+
 - **added:** Add `extract::Query` which supports multi-value items ([#1041])
+- **added:** Support customizing rejections for `#[derive(TypedPath)]` ([#1012])
 
 [#1041]: https://github.com/tokio-rs/axum/pull/1041
+[#1012]: https://github.com/tokio-rs/axum/pull/1012
 
 # 0.3.2 (15. May, 2022)
 
