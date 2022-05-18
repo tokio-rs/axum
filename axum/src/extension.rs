@@ -69,7 +69,7 @@ use tower_service::Service;
 /// #[derive(Clone)]
 /// struct Foo(&'static str);
 /// ```
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Default)]
 pub struct Extension<T>(pub T);
 
 #[async_trait]
