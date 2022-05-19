@@ -6,9 +6,9 @@ use crate::{
     extract::connect_info::IntoMakeServiceWithConnectInfo,
     response::{IntoResponse, Redirect, Response},
     routing::strip_prefix::StripPrefix,
-    util::try_downcast,
     BoxError,
 };
+use axum_core::body::try_downcast;
 use http::{Request, Uri};
 use matchit::MatchError;
 use std::{

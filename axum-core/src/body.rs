@@ -20,7 +20,8 @@ where
     try_downcast(body).unwrap_or_else(|body| body.map_err(Error::new).boxed_unsync())
 }
 
-pub(crate) fn try_downcast<T, K>(k: K) -> Result<T, K>
+/// Returns some mutable reference to the inner value if it is of type T, or Returns Err
+pub fn try_downcast<T, K>(k: K) -> Result<T, K>
 where
     T: 'static,
     K: Send + 'static,
