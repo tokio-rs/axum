@@ -45,19 +45,27 @@ pub use self::method_routing::{
     trace_service, MethodRouter,
 };
 
+cfg_has_atomic_u64! {
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+struct RouteId(u64);
+}
+
+cfg_not_has_atomic_u64! {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 struct RouteId(u32);
+}
 
 impl RouteId {
     fn next() -> Self {
-        use std::sync::atomic::{AtomicU32, Ordering};
-        // `AtomicU64` isn't supported on all platforms
-        static ID: AtomicU32 = AtomicU32::new(0);
-        let id = ID.fetch_add(1, Ordering::Relaxed);
-        if id == u32::MAX {
-            panic!("Over `u32::MAX` routes created. If you need this, please file an issue.");
+        cfg_has_atomic_u64! {
+            use std::sync::atomic::{AtomicU64, Ordering};
+        static ID: AtomicU64 = AtomicU64::new(0);
         }
-        Self(id)
+        cfg_not_has_atomic_u64! {
+            use std::sync::atomic::{AtomicU32, Ordering};
+        static ID: AtomicU32 = AtomicU32::new(0);
+        }
+        Self(ID.fetch_add(1, Ordering::Relaxed))
     }
 }
 
