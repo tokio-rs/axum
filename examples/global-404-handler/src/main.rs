@@ -1,7 +1,7 @@
 //! Run with
 //!
 //! ```not_rust
-//! cargo run -p example-global-404-handler
+//! cd examples && cargo run -p example-global-404-handler
 //! ```
 
 use axum::{

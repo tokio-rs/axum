@@ -1,10 +1,10 @@
 use super::{ErrorKind, PathDeserializationError};
-use crate::util::{ByteStr, PercentDecodedByteStr};
+use crate::util::PercentDecodedStr;
 use serde::{
     de::{self, DeserializeSeed, EnumAccess, Error, MapAccess, SeqAccess, VariantAccess, Visitor},
     forward_to_deserialize_any, Deserializer,
 };
-use std::any::type_name;
+use std::{any::type_name, sync::Arc};
 
 macro_rules! unsupported_type {
     ($trait_fn:ident, $name:literal) => {
@@ -43,12 +43,12 @@ macro_rules! parse_single_value {
 }
 
 pub(crate) struct PathDeserializer<'de> {
-    url_params: &'de [(ByteStr, PercentDecodedByteStr)],
+    url_params: &'de [(Arc<str>, PercentDecodedStr)],
 }
 
 impl<'de> PathDeserializer<'de> {
     #[inline]
-    pub(crate) fn new(url_params: &'de [(ByteStr, PercentDecodedByteStr)]) -> Self {
+    pub(crate) fn new(url_params: &'de [(Arc<str>, PercentDecodedStr)]) -> Self {
         PathDeserializer { url_params }
     }
 }
@@ -88,7 +88,7 @@ impl<'de> Deserializer<'de> for PathDeserializer<'de> {
                 .got(self.url_params.len())
                 .expected(1));
         }
-        visitor.visit_str(&self.url_params[0].1)
+        visitor.visit_borrowed_str(&self.url_params[0].1)
     }
 
     fn deserialize_unit<V>(self, visitor: V) -> Result<V::Value, Self::Error>
@@ -210,7 +210,7 @@ impl<'de> Deserializer<'de> for PathDeserializer<'de> {
 }
 
 struct MapDeserializer<'de> {
-    params: &'de [(ByteStr, PercentDecodedByteStr)],
+    params: &'de [(Arc<str>, PercentDecodedStr)],
     key: Option<KeyOrIdx>,
     value: Option<&'de str>,
 }
@@ -293,7 +293,7 @@ macro_rules! parse_value {
                 if let Some(key) = self.key.take() {
                     let kind = match key {
                         KeyOrIdx::Key(key) => ErrorKind::ParseErrorAtKey {
-                            key: key.as_str().to_owned(),
+                            key: key.to_string(),
                             value: self.value.to_owned(),
                             expected_type: $ty,
                         },
@@ -514,7 +514,7 @@ impl<'de> VariantAccess<'de> for UnitVariant {
 }
 
 struct SeqDeserializer<'de> {
-    params: &'de [(ByteStr, PercentDecodedByteStr)],
+    params: &'de [(Arc<str>, PercentDecodedStr)],
     idx: usize,
 }
 
@@ -542,14 +542,13 @@ impl<'de> SeqAccess<'de> for SeqDeserializer<'de> {
 
 #[derive(Clone)]
 enum KeyOrIdx {
-    Key(ByteStr),
+    Key(Arc<str>),
     Idx(usize),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::util::ByteStr;
     use serde::Deserialize;
     use std::collections::HashMap;
 
@@ -568,7 +567,7 @@ mod tests {
         a: i32,
     }
 
-    fn create_url_params<I, K, V>(values: I) -> Vec<(ByteStr, PercentDecodedByteStr)>
+    fn create_url_params<I, K, V>(values: I) -> Vec<(Arc<str>, PercentDecodedStr)>
     where
         I: IntoIterator<Item = (K, V)>,
         K: AsRef<str>,
@@ -576,7 +575,7 @@ mod tests {
     {
         values
             .into_iter()
-            .map(|(k, v)| (ByteStr::new(k), PercentDecodedByteStr::new(v).unwrap()))
+            .map(|(k, v)| (Arc::from(k.as_ref()), PercentDecodedStr::new(v).unwrap()))
             .collect()
     }
 
@@ -609,6 +608,8 @@ mod tests {
         check_single_value!(f64, "123", 123.0);
         check_single_value!(String, "abc", "abc");
         check_single_value!(String, "one%20two", "one two");
+        check_single_value!(&str, "abc", "abc");
+        check_single_value!(&str, "one%20two", "one two");
         check_single_value!(char, "a", 'a');
 
         let url_params = create_url_params(vec![("a", "B")]);

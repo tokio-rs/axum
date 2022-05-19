@@ -168,9 +168,9 @@ Use [`axum::middleware::from_fn`] to write your middleware when:
 - You don't intend to publish your middleware as a crate for others to use.
   Middleware written like this are only compatible with axum.
 
-## `axum::extract::extractor_middleware`
+## `axum::middleware::from_extractor`
 
-Use [`axum::extract::extractor_middleware`] to write your middleware when:
+Use [`axum::middleware::from_extractor`] to write your middleware when:
 
 - You have a type that you sometimes want to use as an extractor and sometimes
   as a middleware. If you only need your type as a middleware prefer
@@ -442,7 +442,7 @@ extensions you need.
 [`ServiceBuilder::map_response`]: tower::ServiceBuilder::map_response
 [`ServiceBuilder::then`]: tower::ServiceBuilder::then
 [`ServiceBuilder::and_then`]: tower::ServiceBuilder::and_then
-[`axum::extract::extractor_middleware`]: crate::extract::extractor_middleware()
+[`axum::middleware::from_extractor`]: crate::middleware::from_extractor
 [`Handler::layer`]: crate::handler::Handler::layer
 [`Router::layer`]: crate::routing::Router::layer
 [`MethodRouter::layer`]: crate::routing::MethodRouter::layer

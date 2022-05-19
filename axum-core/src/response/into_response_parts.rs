@@ -161,13 +161,13 @@ pub struct TryIntoHeaderError<K, V> {
 }
 
 impl<K, V> TryIntoHeaderError<K, V> {
-    fn key(err: K) -> Self {
+    pub(super) fn key(err: K) -> Self {
         Self {
             kind: TryIntoHeaderErrorKind::Key(err),
         }
     }
 
-    fn value(err: V) -> Self {
+    pub(super) fn value(err: V) -> Self {
         Self {
             kind: TryIntoHeaderErrorKind::Value(err),
         }
@@ -249,3 +249,12 @@ macro_rules! impl_into_response_parts {
 }
 
 all_the_tuples!(impl_into_response_parts);
+
+impl IntoResponseParts for Extensions {
+    type Error = Infallible;
+
+    fn into_response_parts(self, mut res: ResponseParts) -> Result<ResponseParts, Self::Error> {
+        res.extensions_mut().extend(self);
+        Ok(res)
+    }
+}

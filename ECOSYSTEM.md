@@ -15,6 +15,8 @@ If your project isn't listed here and you would like it to be, please feel free 
 - [axum_database_sessions](https://github.com/AscendingCreations/AxumSessions): Database persistent sessions like pythons flask_sessionstore for Axum.
 - [axum_sessions_auth](https://github.com/AscendingCreations/AxumSessionsAuth): Persistant session based user login with rights management for Axum.
 - [axum-auth](https://crates.io/crates/axum-auth): High-level http auth extractors for axum.
+- [shuttle](https://github.com/getsynth/shuttle): A serverless platform built for Rust. Now with axum support.
+- [axum-tungstenite](https://github.com/davidpdrsn/axum-tungstenite): WebSocket connections for axum directly using tungstenite
 
 ## Project showcase
 
@@ -28,12 +30,15 @@ If your project isn't listed here and you would like it to be, please feel free 
 - [Rustapi](https://github.com/ndelvalle/rustapi): RESTful API template using MongoDB
 - [Jotsy](https://github.com/ohsayan/jotsy): Self-hosted notes app powered by Skytable, Axum and Tokio
 - [Svix](https://www.svix.com) ([repository](https://github.com/svix/svix-webhooks)): Enterprise-ready webhook service
+- [emojied](https://emojied.net) ([repository](https://github.com/sekunho/emojied)): Shorten URLs to emojis!
+- [CLOMonitor](https://clomonitor.io) ([repository](https://github.com/cncf/clomonitor)): Checks open source projects repositories to verify they meet certain best practices.
 
 [Realworld]: https://github.com/gothinkster/realworld
 [SQLx]: https://github.com/launchbadge/sqlx
 
 ## Tutorials
 
+- [Rust on Nails](https://cloak.software/blog/rust-on-nails/): A full stack architecture for Rust web applications (uses Axum)
 - [axum-tutorial] ([website][axum-tutorial-website]): Axum web framework tutorial for beginners.
 - [demo-rust-axum]: Demo of Rust and axum web framework
 

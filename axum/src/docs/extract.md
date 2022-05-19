@@ -136,31 +136,83 @@ async fn get_user_things(
 # };
 ```
 
-Take care of the order in which you apply extractors as some will mutate the
-request. For example extractors that consume the request body can only be
-applied once. The same is true for [`Request`], which consumes the entire
-request:
+Extractors always run in the order of the function parameters that is from
+left to right.
+
+# Be careful when extracting `Request`
+
+[`Request`] is itself an extractor:
 
 ```rust,no_run
-use axum::{
-    routing::get,
-    http::Request,
-    body::Body,
-    Router,
-};
+use axum::{http::Request, body::Body};
 
 async fn handler(request: Request<Body>) {
     // ...
 }
-
-let app = Router::new().route("/", get(handler));
-# async {
-# axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-# };
 ```
 
-Extractors always run in the order of the function parameters that is from
-left to right.
+However be careful when combining it with other extractors since it will consume
+all extensions and the request body. Therefore it is recommended to always apply
+the request extractor last:
+
+```rust,no_run
+use axum::{http::Request, Extension, body::Body};
+
+// this will fail at runtime since `Request<Body>` will have consumed all the
+// extensions so `Extension<State>` will be missing
+async fn broken(
+    request: Request<Body>,
+    Extension(state): Extension<State>,
+) {
+    // ...
+}
+
+// this will work since we extract `Extension<State>` before `Request<Body>`
+async fn works(
+    Extension(state): Extension<State>,
+    request: Request<Body>,
+) {
+    // ...
+}
+
+#[derive(Clone)]
+struct State {};
+```
+
+# Extracting request bodies
+
+Since request bodies are asynchronous streams they can only be extracted once:
+
+```rust,no_run
+use axum::{Json, http::Request, body::{Bytes, Body}};
+use serde_json::Value;
+
+// this will fail at runtime since `Json<Value>` and `Bytes` both attempt to extract
+// the body
+//
+// the solution is to only extract the body once so remove either
+// `body_json: Json<Value>` or `body_bytes: Bytes`
+async fn broken(
+    body_json: Json<Value>,
+    body_bytes: Bytes,
+) {
+    // ...
+}
+
+// this doesn't work either for the same reason: `Bytes` and `Request<Body>`
+// both extract the body
+async fn also_broken(
+    body_json: Json<Value>,
+    request: Request<Body>,
+) {
+    // ...
+}
+```
+
+Also keep this in mind if you extract or otherwise consume the body in
+middleware. You either need to not extract the body in handlers or make sure
+your middleware reinserts the body using [`RequestParts::body_mut`] so it's
+available to handlers.
 
 # Optional extractors
 
@@ -514,3 +566,4 @@ let app = Router::new()
 [customize-extractor-error]: https://github.com/tokio-rs/axum/blob/main/examples/customize-extractor-error/src/main.rs
 [`HeaderMap`]: https://docs.rs/http/latest/http/header/struct.HeaderMap.html
 [`Request`]: https://docs.rs/http/latest/http/struct.Request.html
+[`RequestParts::body_mut`]: crate::extract::RequestParts::body_mut

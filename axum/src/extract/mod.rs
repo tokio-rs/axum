@@ -20,6 +20,7 @@ mod request_parts;
 pub use axum_core::extract::{FromRequest, RequestParts};
 
 #[doc(inline)]
+#[allow(deprecated)]
 pub use self::{
     connect_info::ConnectInfo,
     content_length_limit::ContentLengthLimit,
@@ -77,7 +78,12 @@ pub use self::ws::WebSocketUpgrade;
 #[doc(no_inline)]
 pub use crate::TypedHeader;
 
-pub(crate) fn has_content_type<B>(
+pub(crate) fn take_body<B>(req: &mut RequestParts<B>) -> Result<B, BodyAlreadyExtracted> {
+    req.take_body().ok_or_else(BodyAlreadyExtracted::default)
+}
+
+// this is duplicated in `axum-extra/src/extract/form.rs`
+pub(super) fn has_content_type<B>(
     req: &RequestParts<B>,
     expected_content_type: &mime::Mime,
 ) -> bool {
@@ -94,10 +100,6 @@ pub(crate) fn has_content_type<B>(
     };
 
     content_type.starts_with(expected_content_type.as_ref())
-}
-
-pub(crate) fn take_body<B>(req: &mut RequestParts<B>) -> Result<B, BodyAlreadyExtracted> {
-    req.take_body().ok_or_else(BodyAlreadyExtracted::default)
 }
 
 #[cfg(test)]

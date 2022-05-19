@@ -7,9 +7,43 @@ and this project adheres to [Semantic Versioning].
 
 # Unreleased
 
+- None.
+
+# 0.3.3 (18. May, 2022)
+
+- **added:** Add `extract::Query` which supports multi-value items ([#1041])
+- **added:** Support customizing rejections for `#[derive(TypedPath)]` ([#1012])
+
+[#1041]: https://github.com/tokio-rs/axum/pull/1041
+[#1012]: https://github.com/tokio-rs/axum/pull/1012
+
+# 0.3.2 (15. May, 2022)
+
+- **added:** Add `extract::Form` which supports multi-value items ([#1031])
+
+[#1031]: https://github.com/tokio-rs/axum/pull/1031
+
+# 0.3.1 (10. May, 2022)
+
+- **fixed:** `Option` and `Result` are now supported in typed path route handler parameters ([#1001])
+- **fixed:** Support wildcards in typed paths ([#1003])
+- **added:** Support using a custom rejection type for `#[derive(TypedPath)]`
+  instead of `PathRejection` ([#1012])
+
+[#1001]: https://github.com/tokio-rs/axum/pull/1001
+[#1003]: https://github.com/tokio-rs/axum/pull/1003
+[#1012]: https://github.com/tokio-rs/axum/pull/1012
+
+# 0.3.0 (27. April, 2022)
+
 - **fixed:** Don't depend on axum with default features enabled ([#913])
+- **breaking:** Private and signed cookies now requires enabling the
+  `cookie-private` and `cookie-signed` features respectively ([#949])
+- **changed:** Update to tower-http 0.3 ([#965])
 
 [#913]: https://github.com/tokio-rs/axum/pull/913
+[#949]: https://github.com/tokio-rs/axum/pull/949
+[#965]: https://github.com/tokio-rs/axum/pull/965
 
 # 0.2.1 (03. April, 2022)
 

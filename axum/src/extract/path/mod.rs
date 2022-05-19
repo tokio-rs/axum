@@ -66,8 +66,7 @@ use std::{
 /// ```
 ///
 /// Path segments also can be deserialized into any type that implements
-/// [`serde::Deserialize`]. Path segment labels will be matched with struct
-/// field names.
+/// [`serde::Deserialize`]. This includes tuples and structs:
 ///
 /// ```rust,no_run
 /// use axum::{
@@ -78,6 +77,7 @@ use std::{
 /// use serde::Deserialize;
 /// use uuid::Uuid;
 ///
+/// // Path segment labels will be matched with struct field names
 /// #[derive(Deserialize)]
 /// struct Params {
 ///     user_id: Uuid,
@@ -90,7 +90,17 @@ use std::{
 ///     // ...
 /// }
 ///
-/// let app = Router::new().route("/users/:user_id/team/:team_id", get(users_teams_show));
+/// // When using tuples the path segments will be matched by their position in the route
+/// async fn users_teams_create(
+///     Path((user_id, team_id)): Path<(String, String)>,
+/// ) {
+///     // ...
+/// }
+///
+/// let app = Router::new().route(
+///     "/users/:user_id/team/:team_id",
+///     get(users_teams_show).post(users_teams_create),
+/// );
 /// # async {
 /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 /// # };
@@ -166,7 +176,7 @@ where
             Some(UrlParams::InvalidUtf8InPathParam { key }) => {
                 let err = PathDeserializationError {
                     kind: ErrorKind::InvalidUtf8InPathParam {
-                        key: key.as_str().to_owned(),
+                        key: key.to_string(),
                     },
                 };
                 let err = FailedToDeserializePathParams(err);
@@ -319,11 +329,19 @@ impl fmt::Display for ErrorKind {
         match self {
             ErrorKind::Message(error) => error.fmt(f),
             ErrorKind::InvalidUtf8InPathParam { key } => write!(f, "Invalid UTF-8 in `{}`", key),
-            ErrorKind::WrongNumberOfParameters { got, expected } => write!(
-                f,
-                "Wrong number of parameters. Expected {} but got {}",
-                expected, got
-            ),
+            ErrorKind::WrongNumberOfParameters { got, expected } => {
+                write!(
+                    f,
+                    "Wrong number of path arguments for `Path`. Expected {} but got {}",
+                    expected, got
+                )?;
+
+                if *expected == 1 {
+                    write!(f, ". Note that multiple parameters must be extracted with a tuple `Path<(_, _)>` or a struct `Path<YourParams>`")?;
+                }
+
+                Ok(())
+            }
             ErrorKind::UnsupportedType { name } => write!(f, "Unsupported type `{}`", name),
             ErrorKind::ParseErrorAtKey {
                 key,
@@ -368,14 +386,13 @@ impl IntoResponse for FailedToDeserializePathParams {
         let (status, body) = match self.0.kind {
             ErrorKind::Message(_)
             | ErrorKind::InvalidUtf8InPathParam { .. }
-            | ErrorKind::WrongNumberOfParameters { .. }
             | ErrorKind::ParseError { .. }
             | ErrorKind::ParseErrorAtIndex { .. }
             | ErrorKind::ParseErrorAtKey { .. } => (
                 StatusCode::BAD_REQUEST,
                 format!("Invalid URL: {}", self.0.kind),
             ),
-            ErrorKind::UnsupportedType { .. } => {
+            ErrorKind::WrongNumberOfParameters { .. } | ErrorKind::UnsupportedType { .. } => {
                 (StatusCode::INTERNAL_SERVER_ERROR, self.0.kind.to_string())
             }
         };
@@ -512,6 +529,46 @@ mod tests {
         assert_eq!(
             res.text().await,
             "No paths parameters found for matched route. Are you also extracting `Request<_>`?"
+        );
+    }
+
+    #[tokio::test]
+    async fn str_reference_deserialize() {
+        struct Param(String);
+        impl<'de> serde::Deserialize<'de> for Param {
+            fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+            where
+                D: serde::Deserializer<'de>,
+            {
+                let s = <&str as serde::Deserialize>::deserialize(deserializer)?;
+                Ok(Param(s.to_owned()))
+            }
+        }
+
+        let app = Router::new().route("/:key", get(|param: Path<Param>| async move { param.0 .0 }));
+
+        let client = TestClient::new(app);
+
+        let res = client.get("/foo").send().await;
+        assert_eq!(res.text().await, "foo");
+
+        // percent decoding should also work
+        let res = client.get("/foo%20bar").send().await;
+        assert_eq!(res.text().await, "foo bar");
+    }
+
+    #[tokio::test]
+    async fn two_path_extractors() {
+        let app = Router::new().route("/:a/:b", get(|_: Path<String>, _: Path<String>| async {}));
+
+        let client = TestClient::new(app);
+
+        let res = client.get("/a/b").send().await;
+        assert_eq!(res.status(), StatusCode::INTERNAL_SERVER_ERROR);
+        assert_eq!(
+            res.text().await,
+            "Wrong number of path arguments for `Path`. Expected 1 but got 2. \
+            Note that multiple parameters must be extracted with a tuple `Path<(_, _)>` or a struct `Path<YourParams>`",
         );
     }
 }

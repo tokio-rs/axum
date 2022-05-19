@@ -7,10 +7,57 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+- **added:** Implement `Default` for `Extension` ([#1043])
+
+# 0.5.6 (15. May, 2022)
+
+- **added:** Add `WebSocket::protocol` to return the selected WebSocket subprotocol, if there is one. ([#1022])
+- **fixed:** Improve error message for `PathRejection::WrongNumberOfParameters` to hint at using
+  `Path<(String, String)>` or `Path<SomeStruct>` ([#1023])
+- **fixed:** `PathRejection::WrongNumberOfParameters` now uses `500 Internal Server Error` since
+  it's a programmer error and not a client error ([#1023])
+- **fixed:** Fix `InvalidFormContentType` mentioning the wrong content type
+
+[#1022]: https://github.com/tokio-rs/axum/pull/1022
+[#1023]: https://github.com/tokio-rs/axum/pull/1023
+
+# 0.5.5 (10. May, 2022)
+
+- **fixed:** Correctly handle `GET`, `HEAD`, and `OPTIONS` requests in `ContentLengthLimit`.
+  Request with these methods are now accepted if they _do not_ have a `Content-Length` header, and
+  the request body will not be checked. If they do have a `Content-Length` header they'll be
+  rejected. This allows `ContentLengthLimit` to be used as middleware around several routes,
+  including `GET` routes ([#989])
+- **added:** Add `MethodRouter::{into_make_service, into_make_service_with_connect_info}` ([#1010])
+
+[#989]: https://github.com/tokio-rs/axum/pull/989
+[#1010]: https://github.com/tokio-rs/axum/pull/1010
+
+# 0.5.4 (26. April, 2022)
+
+- **added:** Add `response::ErrorResponse` and `response::Result` for
+  `IntoResponse`-based error handling ([#921])
+- **added:** Add `middleware::from_extractor` and deprecate `extract::extractor_middleware` ([#957])
+- **changed:** Update to tower-http 0.3 ([#965])
+
+[#921]: https://github.com/tokio-rs/axum/pull/921
+[#957]: https://github.com/tokio-rs/axum/pull/957
+[#965]: https://github.com/tokio-rs/axum/pull/965
+
+# 0.5.3 (19. April, 2022)
+
+- **added:** Add `AppendHeaders` for appending headers to a response rather than overriding them ([#927])
 - **added:** Add `axum::extract::multipart::Field::chunk` method for streaming a single chunk from
   the field ([#901])
+- **fixed:** Fix trailing slash redirection with query parameters ([#936])
 
 [#901]: https://github.com/tokio-rs/axum/pull/901
+[#927]: https://github.com/tokio-rs/axum/pull/927
+[#936]: https://github.com/tokio-rs/axum/pull/936
+
+# 0.5.2 (19. April, 2022)
+
+Yanked, as it contained an accidental breaking change.
 
 # 0.5.1 (03. April, 2022)
 
