@@ -56,7 +56,6 @@ impl<'de> PathDeserializer<'de> {
 impl<'de> Deserializer<'de> for PathDeserializer<'de> {
     type Error = PathDeserializationError;
 
-    unsupported_type!(deserialize_any, "any");
     unsupported_type!(deserialize_bytes, "bytes");
     unsupported_type!(deserialize_option, "Option<T>");
     unsupported_type!(deserialize_identifier, "identifier");
@@ -78,6 +77,18 @@ impl<'de> Deserializer<'de> for PathDeserializer<'de> {
     parse_single_value!(deserialize_string, visit_string, "String");
     parse_single_value!(deserialize_byte_buf, visit_string, "String");
     parse_single_value!(deserialize_char, visit_char, "char");
+
+    fn deserialize_any<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+    where
+        V: Visitor<'de>,
+    {
+        if self.url_params.len() != 1 {
+            return Err(PathDeserializationError::wrong_number_of_parameters()
+                .got(self.url_params.len())
+                .expected(1));
+        }
+        visitor.visit_str(&self.url_params[0].1)
+    }
 
     fn deserialize_str<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where
@@ -821,6 +832,40 @@ mod tests {
             vec![("a", "false")],
             Vec<(u32, u32)>,
             ErrorKind::UnsupportedType { name: "(u32, u32)" }
+        );
+    }
+
+    #[test]
+    fn test_untagged_enum() {
+        #[derive(serde::Serialize, serde::Deserialize, PartialEq, Eq, Debug)]
+        #[serde(untagged)]
+        enum Main {
+            A(A),
+            B(B),
+        }
+
+        #[derive(serde::Serialize, serde::Deserialize, PartialEq, Eq, Debug)]
+        enum A {
+            A1,
+            A2,
+        }
+
+        #[derive(serde::Serialize, serde::Deserialize, PartialEq, Eq, Debug)]
+        enum B {
+            B1,
+            B2,
+        }
+
+        let url_params = create_url_params(vec![("a", "A2")]);
+        assert_eq!(
+            Main::deserialize(PathDeserializer::new(&url_params)).unwrap(),
+            Main::A(A::A2)
+        );
+
+        let url_params = create_url_params(vec![("a", "B2")]);
+        assert_eq!(
+            Main::deserialize(PathDeserializer::new(&url_params)).unwrap(),
+            Main::B(B::B2)
         );
     }
 }
