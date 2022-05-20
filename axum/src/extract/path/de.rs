@@ -837,20 +837,20 @@ mod tests {
 
     #[test]
     fn test_untagged_enum() {
-        #[derive(serde::Serialize, serde::Deserialize, PartialEq, Eq, Debug)]
+        #[derive(Deserialize, PartialEq, Eq, Debug)]
         #[serde(untagged)]
         enum Main {
             A(A),
             B(B),
         }
 
-        #[derive(serde::Serialize, serde::Deserialize, PartialEq, Eq, Debug)]
+        #[derive(Deserialize, PartialEq, Eq, Debug)]
         enum A {
             A1,
             A2,
         }
 
-        #[derive(serde::Serialize, serde::Deserialize, PartialEq, Eq, Debug)]
+        #[derive(Deserialize, PartialEq, Eq, Debug)]
         enum B {
             B1,
             B2,
