@@ -483,6 +483,42 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn extracting_untagged_enums() {
+        #[derive(serde::Deserialize, PartialEq, Eq, Debug)]
+        #[serde(untagged)]
+        enum Main {
+            A(A),
+            B(B),
+        }
+
+        #[derive(serde::Deserialize, PartialEq, Eq, Debug)]
+        enum A {
+            A1,
+            A2,
+        }
+
+        #[derive(serde::Deserialize, PartialEq, Eq, Debug)]
+        enum B {
+            B1,
+            B2,
+        }
+
+        async fn page(variant: Path<Main>) -> String {
+            format!("{variant:?}")
+        }
+
+        let app = Router::new().route("/:variant", get(page));
+
+        let client = TestClient::new(app);
+
+        let res = client.get("/A2").send().await;
+        assert_eq!(res.text().await, "Path(A(A2))");
+
+        let res = client.get("/B2").send().await;
+        assert_eq!(res.text().await, "Path(B(B2))");
+    }
+
+    #[tokio::test]
     async fn wildcard() {
         let app = Router::new()
             .route(
