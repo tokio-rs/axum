@@ -603,7 +603,7 @@ where
     /// };
     /// use std::net::SocketAddr;
     ///
-    /// async fn handler(method: Method, uri: Uri, body: String) -> impl IntoResponse {
+    /// async fn handler(method: Method, uri: Uri, body: String) -> String {
     ///     format!("received `{} {}` with body `{:?}`", method, uri, body)
     /// }
     ///
@@ -637,7 +637,7 @@ where
     /// };
     /// use std::net::SocketAddr;
     ///
-    /// async fn handler(ConnectInfo(addr): ConnectInfo<SocketAddr>) -> impl IntoResponse {
+    /// async fn handler(ConnectInfo(addr): ConnectInfo<SocketAddr>) -> String {
     ///     format!("Hello {}", addr)
     /// }
     ///

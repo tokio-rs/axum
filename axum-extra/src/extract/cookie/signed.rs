@@ -35,7 +35,7 @@ use std::{convert::Infallible, fmt, marker::PhantomData};
 /// async fn create_session(
 ///     TypedHeader(auth): TypedHeader<Authorization<Bearer>>,
 ///     jar: SignedCookieJar,
-/// ) -> impl IntoResponse {
+/// ) -> Result<(SignedCookieJar, Redirect), StatusCode> {
 ///     if let Some(session_id) = authorize_and_create_session(auth.token()).await {
 ///         Ok((
 ///             // the updated jar must be returned for the changes
@@ -48,7 +48,7 @@ use std::{convert::Infallible, fmt, marker::PhantomData};
 ///     }
 /// }
 ///
-/// async fn me(jar: SignedCookieJar) -> impl IntoResponse {
+/// async fn me(jar: SignedCookieJar) -> Result<(), StatusCode> {
 ///     if let Some(session_id) = jar.get("session_id") {
 ///         // fetch and render user...
 ///         # Ok(())
@@ -148,7 +148,7 @@ impl<K> SignedCookieJar<K> {
     /// use axum_extra::extract::cookie::{SignedCookieJar, Cookie};
     /// use axum::response::IntoResponse;
     ///
-    /// async fn handle(jar: SignedCookieJar) -> impl IntoResponse {
+    /// async fn handle(jar: SignedCookieJar) -> SignedCookieJar {
     ///     jar.remove(Cookie::named("foo"))
     /// }
     /// ```
@@ -168,7 +168,7 @@ impl<K> SignedCookieJar<K> {
     /// use axum_extra::extract::cookie::{SignedCookieJar, Cookie};
     /// use axum::response::IntoResponse;
     ///
-    /// async fn handle(jar: SignedCookieJar) -> impl IntoResponse {
+    /// async fn handle(jar: SignedCookieJar) -> SignedCookieJar {
     ///     jar.add(Cookie::new("foo", "bar"))
     /// }
     /// ```

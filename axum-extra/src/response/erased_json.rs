@@ -15,7 +15,7 @@ use serde::Serialize;
 /// ```rust
 /// # use axum::{response::IntoResponse};
 /// # use axum_extra::response::ErasedJson;
-/// async fn handler() -> impl IntoResponse {
+/// async fn handler() -> ErasedJson {
 ///     # let condition = true;
 ///     # let foo = ();
 ///     # let bar = vec![()];

@@ -50,7 +50,7 @@ pub use cookie_lib::Key;
 /// async fn create_session(
 ///     TypedHeader(auth): TypedHeader<Authorization<Bearer>>,
 ///     jar: CookieJar,
-/// ) -> impl IntoResponse {
+/// ) -> Result<(CookieJar, Redirect), StatusCode> {
 ///     if let Some(session_id) = authorize_and_create_session(auth.token()).await {
 ///         Ok((
 ///             // the updated jar must be returned for the changes
@@ -63,7 +63,7 @@ pub use cookie_lib::Key;
 ///     }
 /// }
 ///
-/// async fn me(jar: CookieJar) -> impl IntoResponse {
+/// async fn me(jar: CookieJar) -> Result<(), StatusCode> {
 ///     if let Some(session_id) = jar.get("session_id") {
 ///         // fetch and render user...
 ///         # Ok(())
@@ -141,7 +141,7 @@ impl CookieJar {
     /// use axum_extra::extract::cookie::{CookieJar, Cookie};
     /// use axum::response::IntoResponse;
     ///
-    /// async fn handle(jar: CookieJar) -> impl IntoResponse {
+    /// async fn handle(jar: CookieJar) -> CookieJar {
     ///     jar.remove(Cookie::named("foo"))
     /// }
     /// ```
@@ -161,7 +161,7 @@ impl CookieJar {
     /// use axum_extra::extract::cookie::{CookieJar, Cookie};
     /// use axum::response::IntoResponse;
     ///
-    /// async fn handle(jar: CookieJar) -> impl IntoResponse {
+    /// async fn handle(jar: CookieJar) -> CookieJar {
     ///     jar.add(Cookie::new("foo", "bar"))
     /// }
     /// ```

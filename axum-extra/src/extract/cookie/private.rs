@@ -33,12 +33,12 @@ use std::{convert::Infallible, fmt, marker::PhantomData};
 ///
 /// async fn set_secret(
 ///     jar: PrivateCookieJar,
-/// ) -> impl IntoResponse {
+/// ) -> (PrivateCookieJar, Redirect) {
 ///     let updated_jar = jar.add(Cookie::new("secret", "secret-data"));
 ///     (updated_jar, Redirect::to("/get"))
 /// }
 ///
-/// async fn get_secret(jar: PrivateCookieJar) -> impl IntoResponse {
+/// async fn get_secret(jar: PrivateCookieJar) {
 ///     if let Some(data) = jar.get("secret") {
 ///         // ...
 ///     }
@@ -129,7 +129,7 @@ impl<K> PrivateCookieJar<K> {
     /// use axum_extra::extract::cookie::{PrivateCookieJar, Cookie};
     /// use axum::response::IntoResponse;
     ///
-    /// async fn handle(jar: PrivateCookieJar) -> impl IntoResponse {
+    /// async fn handle(jar: PrivateCookieJar) -> PrivateCookieJar {
     ///     jar.remove(Cookie::named("foo"))
     /// }
     /// ```
@@ -149,7 +149,7 @@ impl<K> PrivateCookieJar<K> {
     /// use axum_extra::extract::cookie::{PrivateCookieJar, Cookie};
     /// use axum::response::IntoResponse;
     ///
-    /// async fn handle(jar: PrivateCookieJar) -> impl IntoResponse {
+    /// async fn handle(jar: PrivateCookieJar) -> PrivateCookieJar {
     ///     jar.add(Cookie::new("foo", "bar"))
     /// }
     /// ```

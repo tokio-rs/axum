@@ -383,7 +383,7 @@ use axum::{
     Router,
     http::{Request, StatusCode},
     routing::get,
-    response::IntoResponse,
+    response::{IntoResponse, Response},
     middleware::{self, Next},
     extract::Extension,
 };
@@ -391,7 +391,7 @@ use axum::{
 #[derive(Clone)]
 struct CurrentUser { /* ... */ }
 
-async fn auth<B>(mut req: Request<B>, next: Next<B>) -> impl IntoResponse {
+async fn auth<B>(mut req: Request<B>, next: Next<B>) -> Result<Response, StatusCode> {
     let auth_header = req.headers()
         .get(http::header::AUTHORIZATION)
         .and_then(|header| header.to_str().ok());
