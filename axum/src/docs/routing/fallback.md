@@ -15,7 +15,7 @@ let app = Router::new()
     .route("/foo", get(|| async { /* ... */ }))
     .fallback(fallback.into_service());
 
-async fn fallback(uri: Uri) -> impl IntoResponse {
+async fn fallback(uri: Uri) -> (StatusCode, String) {
     (StatusCode::NOT_FOUND, format!("No route for {}", uri))
 }
 # async {

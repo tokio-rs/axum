@@ -133,7 +133,7 @@ async fn all_the_things(uri: Uri) -> impl IntoResponse {
     (
         // set status code
         StatusCode::NOT_FOUND,
-        // headers ith an array
+        // headers with an array
         [("x-custom", "custom")],
         // some extensions
         Extension(Foo("foo")),
@@ -165,16 +165,51 @@ Use [`Response`](crate::response::Response) for more low level control:
 use axum::{
     Json,
     response::{IntoResponse, Response},
-    body::Full,
+    body::{Full, Bytes},
     http::StatusCode,
 };
 
-async fn response() -> impl IntoResponse {
+async fn response() -> Response<Full<Bytes>> {
     Response::builder()
         .status(StatusCode::NOT_FOUND)
         .header("x-foo", "custom header")
         .body(Full::from("not found"))
         .unwrap()
+}
+```
+
+# Returning different response types
+
+If you need to return multiple response types, and `Result<T, E>` isn't appropriate, you can call
+`.into_response()` to turn things into `axum::response::Response`:
+
+```rust
+use axum::{
+    response::{IntoResponse, Redirect, Response},
+    http::StatusCode,
+};
+
+async fn handle() -> Response {
+    if something() {
+        "All good!".into_response()
+    } else if something_else() {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Something went wrong...",
+        ).into_response()
+    } else {
+        Redirect::to("/").into_response()
+    }
+}
+
+fn something() -> bool {
+    // ...
+    # true
+}
+
+fn something_else() -> bool {
+    // ...
+    # true
 }
 ```
 

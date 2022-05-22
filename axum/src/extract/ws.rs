@@ -6,13 +6,13 @@
 //! use axum::{
 //!     extract::ws::{WebSocketUpgrade, WebSocket},
 //!     routing::get,
-//!     response::IntoResponse,
+//!     response::{IntoResponse, Response},
 //!     Router,
 //! };
 //!
 //! let app = Router::new().route("/ws", get(handler));
 //!
-//! async fn handler(ws: WebSocketUpgrade) -> impl IntoResponse {
+//! async fn handler(ws: WebSocketUpgrade) -> Response {
 //!     ws.on_upgrade(handle_socket)
 //! }
 //!
@@ -148,13 +148,13 @@ impl WebSocketUpgrade {
     /// use axum::{
     ///     extract::ws::{WebSocketUpgrade, WebSocket},
     ///     routing::get,
-    ///     response::IntoResponse,
+    ///     response::{IntoResponse, Response},
     ///     Router,
     /// };
     ///
     /// let app = Router::new().route("/ws", get(handler));
     ///
-    /// async fn handler(ws: WebSocketUpgrade) -> impl IntoResponse {
+    /// async fn handler(ws: WebSocketUpgrade) -> Response {
     ///     ws.protocols(["graphql-ws", "graphql-transport-ws"])
     ///         .on_upgrade(|socket| async {
     ///             // ...

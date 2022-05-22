@@ -40,7 +40,7 @@ use std::{convert::Infallible, ops::Deref};
 ///     headers::ContentType,
 /// };
 ///
-/// async fn handler() -> impl IntoResponse {
+/// async fn handler() -> (TypedHeader<ContentType>, &'static str) {
 ///     (
 ///         TypedHeader(ContentType::text_utf8()),
 ///         "Hello, World!",

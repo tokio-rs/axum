@@ -316,7 +316,9 @@ use axum::{
 };
 use serde_json::{json, Value};
 
-async fn handler(result: Result<Json<Value>, JsonRejection>) -> impl IntoResponse {
+async fn handler(
+    result: Result<Json<Value>, JsonRejection>,
+) -> Result<Json<Value>, (StatusCode, String)> {
     match result {
         // if the client sent valid JSON then we're good
         Ok(Json(payload)) => Ok(Json(json!({ "payload": payload }))),

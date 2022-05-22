@@ -126,7 +126,7 @@ pub trait Handler<T, B = Body>: Clone + Send + Sized + 'static {
     /// use tower::make::Shared;
     /// use std::net::SocketAddr;
     ///
-    /// async fn handler(method: Method, uri: Uri) -> impl IntoResponse {
+    /// async fn handler(method: Method, uri: Uri) -> (StatusCode, String) {
     ///     (StatusCode::NOT_FOUND, format!("Nothing to see at {} {}", method, uri))
     /// }
     ///
@@ -157,7 +157,7 @@ pub trait Handler<T, B = Body>: Clone + Send + Sized + 'static {
     /// };
     /// use std::net::SocketAddr;
     ///
-    /// async fn handler(method: Method, uri: Uri, body: String) -> impl IntoResponse {
+    /// async fn handler(method: Method, uri: Uri, body: String) -> String {
     ///     format!("received `{} {}` with body `{:?}`", method, uri, body)
     /// }
     ///
@@ -188,7 +188,7 @@ pub trait Handler<T, B = Body>: Clone + Send + Sized + 'static {
     /// };
     /// use std::net::SocketAddr;
     ///
-    /// async fn handler(ConnectInfo(addr): ConnectInfo<SocketAddr>) -> impl IntoResponse {
+    /// async fn handler(ConnectInfo(addr): ConnectInfo<SocketAddr>) -> String {
     ///     format!("Hello {}", addr)
     /// }
     ///

@@ -57,7 +57,10 @@ use std::{
 /// }
 ///
 /// // We can now return `SetHeader` in responses
-/// async fn handler() -> impl IntoResponse {
+/// //
+/// // Note that returning `impl IntoResponse` might be easier if the response has many parts to
+/// // it. The return type is written out here for clarity.
+/// async fn handler() -> (SetHeader<'static>, SetHeader<'static>, &'static str) {
 ///     (
 ///         SetHeader("server", "axum"),
 ///         SetHeader("x-foo", "custom"),
@@ -66,7 +69,7 @@ use std::{
 /// }
 ///
 /// // Or on its own as the whole response
-/// async fn other_handler() -> impl IntoResponse {
+/// async fn other_handler() -> SetHeader<'static> {
 ///     SetHeader("x-foo", "custom")
 /// }
 /// ```

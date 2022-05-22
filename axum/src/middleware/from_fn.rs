@@ -34,11 +34,11 @@ use tower_service::Service;
 ///     Router,
 ///     http::{Request, StatusCode},
 ///     routing::get,
-///     response::IntoResponse,
+///     response::{IntoResponse, Response},
 ///     middleware::{self, Next},
 /// };
 ///
-/// async fn auth<B>(req: Request<B>, next: Next<B>) -> impl IntoResponse {
+/// async fn auth<B>(req: Request<B>, next: Next<B>) -> Result<Response, StatusCode> {
 ///     let auth_header = req.headers()
 ///         .get(http::header::AUTHORIZATION)
 ///         .and_then(|header| header.to_str().ok());
@@ -71,7 +71,7 @@ use tower_service::Service;
 ///     Router,
 ///     http::{Request, StatusCode},
 ///     routing::get,
-///     response::IntoResponse,
+///     response::{IntoResponse, Response},
 ///     middleware::{self, Next}
 /// };
 ///
@@ -82,9 +82,9 @@ use tower_service::Service;
 ///     req: Request<B>,
 ///     next: Next<B>,
 ///     state: State,
-/// ) -> impl IntoResponse {
+/// ) -> Response {
 ///     // ...
-///     # ()
+///     # ().into_response()
 /// }
 ///
 /// let state = State { /* ... */ };
@@ -105,7 +105,7 @@ use tower_service::Service;
 ///     extract::Extension,
 ///     http::{Request, StatusCode},
 ///     routing::get,
-///     response::IntoResponse,
+///     response::{IntoResponse, Response},
 ///     middleware::{self, Next},
 /// };
 /// use tower::ServiceBuilder;
@@ -116,11 +116,11 @@ use tower_service::Service;
 /// async fn my_middleware<B>(
 ///     req: Request<B>,
 ///     next: Next<B>,
-/// ) -> impl IntoResponse {
+/// ) -> Response {
 ///     let state: &State = req.extensions().get().unwrap();
 ///
 ///     // ...
-///     # ()
+///     # ().into_response()
 /// }
 ///
 /// let state = State { /* ... */ };

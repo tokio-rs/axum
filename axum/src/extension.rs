@@ -59,7 +59,7 @@ use tower_service::Service;
 ///     response::IntoResponse,
 /// };
 ///
-/// async fn handler() -> impl IntoResponse {
+/// async fn handler() -> (Extension<Foo>, &'static str) {
 ///     (
 ///         Extension(Foo("foo")),
 ///         "Hello, World!"
