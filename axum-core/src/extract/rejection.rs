@@ -2,6 +2,7 @@
 
 use crate::response::{IntoResponse, Response};
 use http::StatusCode;
+use http_body::LengthLimitError;
 use std::fmt;
 
 /// Rejection type used if you try and extract the request body more than
@@ -28,12 +29,72 @@ impl fmt::Display for BodyAlreadyExtracted {
 
 impl std::error::Error for BodyAlreadyExtracted {}
 
-define_rejection! {
-    #[status = BAD_REQUEST]
-    #[body = "Failed to buffer the request body"]
-    /// Rejection type for extractors that buffer the request body. Used if the
-    /// request body cannot be buffered due to an error.
-    pub struct FailedToBufferBody(Error);
+/// Rejection type for extractors that buffer the request body. Used if the
+/// request body cannot be buffered due to an error.
+// TODO: in next major for axum-core make this a #[non_exhaustive] enum so we don't need the
+// additional indirection
+#[derive(Debug)]
+pub struct FailedToBufferBody(FailedToBufferBodyInner);
+
+impl FailedToBufferBody {
+    /// Check if the body failed to be buffered because a length limit was hit.
+    ///
+    /// This can  _only_ happen when you're using [`tower_http::limit::RequestBodyLimitLayer`] or
+    /// otherwise wrapping request bodies in [`http_body::Limited`].
+    pub fn is_length_limit_error(&self) -> bool {
+        matches!(self.0, FailedToBufferBodyInner::LengthLimitError(_))
+    }
+}
+
+#[derive(Debug)]
+enum FailedToBufferBodyInner {
+    Unknown(crate::Error),
+    LengthLimitError(LengthLimitError),
+}
+
+impl FailedToBufferBody {
+    pub(crate) fn from_err<E>(err: E) -> Self
+    where
+        E: Into<crate::BoxError>,
+    {
+        let err = err.into();
+        match err.downcast::<LengthLimitError>() {
+            Ok(err) => Self(FailedToBufferBodyInner::LengthLimitError(*err)),
+            Err(err) => Self(FailedToBufferBodyInner::Unknown(crate::Error::new(err))),
+        }
+    }
+}
+
+impl crate::response::IntoResponse for FailedToBufferBody {
+    fn into_response(self) -> crate::response::Response {
+        match self.0 {
+            FailedToBufferBodyInner::Unknown(err) => (
+                http::StatusCode::BAD_REQUEST,
+                format!(concat!("Failed to buffer the request body", ": {}"), err),
+            )
+                .into_response(),
+            FailedToBufferBodyInner::LengthLimitError(err) => (
+                StatusCode::PAYLOAD_TOO_LARGE,
+                format!(concat!("Failed to buffer the request body", ": {}"), err),
+            )
+                .into_response(),
+        }
+    }
+}
+
+impl std::fmt::Display for FailedToBufferBody {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Failed to buffer the request body")
+    }
+}
+
+impl std::error::Error for FailedToBufferBody {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match &self.0 {
+            FailedToBufferBodyInner::Unknown(err) => Some(err),
+            FailedToBufferBodyInner::LengthLimitError(err) => Some(err),
+        }
+    }
 }
 
 define_rejection! {

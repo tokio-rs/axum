@@ -699,3 +699,20 @@ async fn routes_must_start_with_slash() {
     let app = Router::new().route(":foo", get(|| async {}));
     TestClient::new(app);
 }
+
+#[tokio::test]
+async fn limited_body() {
+    const LIMIT: usize = 3;
+
+    let app = Router::new()
+        .route("/", post(|_: Bytes| async {}))
+        .layer(tower_http::limit::RequestBodyLimitLayer::new(LIMIT));
+
+    let client = TestClient::new(app);
+
+    let res = client.post("/").body("a".repeat(LIMIT)).send().await;
+    assert_eq!(res.status(), StatusCode::OK);
+
+    let res = client.post("/").body("a".repeat(LIMIT * 2)).send().await;
+    assert_eq!(res.status(), StatusCode::PAYLOAD_TOO_LARGE);
+}
