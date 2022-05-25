@@ -3,6 +3,7 @@
 use http::header;
 use rejection::*;
 
+#[cfg(feature = "tokio")]
 pub mod connect_info;
 pub mod extractor_middleware;
 pub mod path;
@@ -22,7 +23,6 @@ pub use axum_core::extract::{FromRequest, RequestParts};
 #[doc(inline)]
 #[allow(deprecated)]
 pub use self::{
-    connect_info::ConnectInfo,
     content_length_limit::ContentLengthLimit,
     extractor_middleware::extractor_middleware,
     host::Host,
@@ -30,6 +30,10 @@ pub use self::{
     raw_query::RawQuery,
     request_parts::{BodyStream, RawBody},
 };
+
+#[doc(inline)]
+#[cfg(feature = "tokio")]
+pub use self::connect_info::ConnectInfo;
 
 #[doc(no_inline)]
 #[cfg(feature = "json")]

@@ -35,13 +35,16 @@
 //!
 #![doc = include_str!("../docs/debugging_handler_type_errors.md")]
 
+#[cfg(feature = "tokio")]
+use crate::extract::connect_info::IntoMakeServiceWithConnectInfo;
 use crate::{
     body::{boxed, Body, Bytes, HttpBody},
-    extract::{connect_info::IntoMakeServiceWithConnectInfo, FromRequest, RequestParts},
+    extract::{FromRequest, RequestParts},
     response::{IntoResponse, Response},
     routing::IntoMakeService,
     BoxError,
 };
+
 use http::Request;
 use std::{fmt, future::Future, marker::PhantomData, pin::Pin};
 use tower::ServiceExt;
@@ -202,6 +205,7 @@ pub trait Handler<T, B = Body>: Clone + Send + Sized + 'static {
     ///
     /// [`MakeService`]: tower::make::MakeService
     /// [`Router::into_make_service_with_connect_info`]: crate::routing::Router::into_make_service_with_connect_info
+    #[cfg(feature = "tokio")]
     fn into_make_service_with_connect_info<C>(
         self,
     ) -> IntoMakeServiceWithConnectInfo<IntoService<Self, T, B>, C> {

@@ -42,6 +42,8 @@
 //! The "Hello, World!" of axum is:
 //!
 //! ```rust,no_run
+//! # use tokio_cr as tokio;
+//!
 //! use axum::{
 //!     routing::get,
 //!     Router,
@@ -313,6 +315,7 @@
 //! `matched-path` | Enables capturing of every request's router path and the [`MatchedPath`] extractor | Yes
 //! `multipart` | Enables parsing `multipart/form-data` requests with [`Multipart`] | No
 //! `original-uri` | Enables capturing of every request's original URI and the [`OriginalUri`] extractor | Yes
+//! `tokio` | Enables `tokio` as a dependency and `axum::Server`, `SSE` and `extract::connect_info` types. | Yes
 //! `tower-log` | Enables `tower`'s `log` feature | Yes
 //! `ws` | Enables WebSockets support via [`extract::ws`] | No
 //! `form` | Enables the `Form` extractor | Yes
@@ -391,6 +394,11 @@
 #![cfg_attr(docsrs, feature(doc_auto_cfg, doc_cfg))]
 #![cfg_attr(test, allow(clippy::float_cmp))]
 
+// TODO: Remove once MSRV hits 1.60 and we can
+// use "dep:tokio" instead of this hack.
+#[cfg(feature = "tokio")]
+extern crate tokio_cr as tokio;
+
 #[macro_use]
 pub(crate) mod macros;
 
@@ -419,6 +427,7 @@ pub use async_trait::async_trait;
 pub use headers;
 #[doc(no_inline)]
 pub use http;
+#[cfg(feature = "tokio")]
 #[doc(no_inline)]
 pub use hyper::Server;
 
