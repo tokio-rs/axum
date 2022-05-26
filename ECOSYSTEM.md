@@ -18,6 +18,7 @@ If your project isn't listed here and you would like it to be, please feel free 
 - [shuttle](https://github.com/getsynth/shuttle): A serverless platform built for Rust. Now with axum support.
 - [axum-tungstenite](https://github.com/davidpdrsn/axum-tungstenite): WebSocket connections for axum directly using tungstenite
 - [axum-jrpc](https://github.com/0xdeafbeef/axum-jrpc): Json-rpc extractor for axum
+
 ## Project showcase
 
 - [Houseflow](https://github.com/gbaranski/houseflow): House automation platform written in Rust.
