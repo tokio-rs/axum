@@ -7,7 +7,7 @@ use serde::{
 use std::{any::type_name, sync::Arc};
 
 macro_rules! unsupported_type {
-    ($trait_fn:ident, $name:literal) => {
+    ($trait_fn:ident) => {
         fn $trait_fn<V>(self, _: V) -> Result<V::Value, Self::Error>
         where
             V: Visitor<'de>,
@@ -56,11 +56,11 @@ impl<'de> PathDeserializer<'de> {
 impl<'de> Deserializer<'de> for PathDeserializer<'de> {
     type Error = PathDeserializationError;
 
-    unsupported_type!(deserialize_any, "any");
-    unsupported_type!(deserialize_bytes, "bytes");
-    unsupported_type!(deserialize_option, "Option<T>");
-    unsupported_type!(deserialize_identifier, "identifier");
-    unsupported_type!(deserialize_ignored_any, "ignored_any");
+    unsupported_type!(deserialize_any);
+    unsupported_type!(deserialize_bytes);
+    unsupported_type!(deserialize_option);
+    unsupported_type!(deserialize_identifier);
+    unsupported_type!(deserialize_ignored_any);
 
     parse_single_value!(deserialize_bool, visit_bool, "bool");
     parse_single_value!(deserialize_i8, visit_i8, "i8");
@@ -204,7 +204,7 @@ impl<'de> Deserializer<'de> for PathDeserializer<'de> {
         }
 
         visitor.visit_enum(EnumDeserializer {
-            value: &self.url_params[0].1,
+            value: self.url_params[0].1.clone().into_inner(),
         })
     }
 }
@@ -212,7 +212,7 @@ impl<'de> Deserializer<'de> for PathDeserializer<'de> {
 struct MapDeserializer<'de> {
     params: &'de [(Arc<str>, PercentDecodedStr)],
     key: Option<KeyOrIdx>,
-    value: Option<&'de str>,
+    value: Option<&'de PercentDecodedStr>,
 }
 
 impl<'de> MapAccess<'de> for MapDeserializer<'de> {
@@ -227,7 +227,10 @@ impl<'de> MapAccess<'de> for MapDeserializer<'de> {
                 self.value = Some(value);
                 self.params = tail;
                 self.key = Some(KeyOrIdx::Key(key.clone()));
-                seed.deserialize(KeyDeserializer { key }).map(Some)
+                seed.deserialize(KeyDeserializer {
+                    key: Arc::clone(key),
+                })
+                .map(Some)
             }
             None => Ok(None),
         }
@@ -247,8 +250,8 @@ impl<'de> MapAccess<'de> for MapDeserializer<'de> {
     }
 }
 
-struct KeyDeserializer<'de> {
-    key: &'de str,
+struct KeyDeserializer {
+    key: Arc<str>,
 }
 
 macro_rules! parse_key {
@@ -257,12 +260,12 @@ macro_rules! parse_key {
         where
             V: Visitor<'de>,
         {
-            visitor.visit_str(self.key)
+            visitor.visit_str(&self.key)
         }
     };
 }
 
-impl<'de> Deserializer<'de> for KeyDeserializer<'de> {
+impl<'de> Deserializer<'de> for KeyDeserializer {
     type Error = PathDeserializationError;
 
     parse_key!(deserialize_identifier);
@@ -294,19 +297,19 @@ macro_rules! parse_value {
                     let kind = match key {
                         KeyOrIdx::Key(key) => ErrorKind::ParseErrorAtKey {
                             key: key.to_string(),
-                            value: self.value.to_owned(),
+                            value: self.value.as_str().to_owned(),
                             expected_type: $ty,
                         },
-                        KeyOrIdx::Idx(index) => ErrorKind::ParseErrorAtIndex {
+                        KeyOrIdx::Idx { idx: index, key: _ } => ErrorKind::ParseErrorAtIndex {
                             index,
-                            value: self.value.to_owned(),
+                            value: self.value.as_str().to_owned(),
                             expected_type: $ty,
                         },
                     };
                     PathDeserializationError::new(kind)
                 } else {
                     PathDeserializationError::new(ErrorKind::ParseError {
-                        value: self.value.to_owned(),
+                        value: self.value.as_str().to_owned(),
                         expected_type: $ty,
                     })
                 }
@@ -316,18 +319,18 @@ macro_rules! parse_value {
     };
 }
 
+#[derive(Debug)]
 struct ValueDeserializer<'de> {
     key: Option<KeyOrIdx>,
-    value: &'de str,
+    value: &'de PercentDecodedStr,
 }
 
 impl<'de> Deserializer<'de> for ValueDeserializer<'de> {
     type Error = PathDeserializationError;
 
-    unsupported_type!(deserialize_any, "any");
-    unsupported_type!(deserialize_seq, "seq");
-    unsupported_type!(deserialize_map, "map");
-    unsupported_type!(deserialize_identifier, "identifier");
+    unsupported_type!(deserialize_any);
+    unsupported_type!(deserialize_map);
+    unsupported_type!(deserialize_identifier);
 
     parse_value!(deserialize_bool, visit_bool, "bool");
     parse_value!(deserialize_i8, visit_i8, "i8");
@@ -396,7 +399,57 @@ impl<'de> Deserializer<'de> for ValueDeserializer<'de> {
         visitor.visit_newtype_struct(self)
     }
 
-    fn deserialize_tuple<V>(self, _len: usize, _visitor: V) -> Result<V::Value, Self::Error>
+    fn deserialize_tuple<V>(self, len: usize, visitor: V) -> Result<V::Value, Self::Error>
+    where
+        V: Visitor<'de>,
+    {
+        struct PairDeserializer<'de> {
+            key: Option<KeyOrIdx>,
+            value: Option<&'de PercentDecodedStr>,
+        }
+
+        impl<'de> SeqAccess<'de> for PairDeserializer<'de> {
+            type Error = PathDeserializationError;
+
+            fn next_element_seed<T>(&mut self, seed: T) -> Result<Option<T::Value>, Self::Error>
+            where
+                T: DeserializeSeed<'de>,
+            {
+                match self.key.take() {
+                    Some(KeyOrIdx::Idx { idx: _, key }) => {
+                        return seed.deserialize(KeyDeserializer { key }).map(Some);
+                    }
+                    // `KeyOrIdx::Key` is only used when deserializing maps so `deserialize_seq`
+                    // wouldn't be called for that
+                    Some(KeyOrIdx::Key(_)) => unreachable!(),
+                    None => {}
+                };
+
+                self.value
+                    .take()
+                    .map(|value| seed.deserialize(ValueDeserializer { key: None, value }))
+                    .transpose()
+            }
+        }
+
+        if len == 2 {
+            match self.key {
+                Some(key) => visitor.visit_seq(PairDeserializer {
+                    key: Some(key),
+                    value: Some(self.value),
+                }),
+                // `self.key` is only `None` when deserializing maps so `deserialize_seq`
+                // wouldn't be called for that
+                None => unreachable!(),
+            }
+        } else {
+            Err(PathDeserializationError::unsupported_type(type_name::<
+                V::Value,
+            >()))
+        }
+    }
+
+    fn deserialize_seq<V>(self, _visitor: V) -> Result<V::Value, Self::Error>
     where
         V: Visitor<'de>,
     {
@@ -442,7 +495,9 @@ impl<'de> Deserializer<'de> for ValueDeserializer<'de> {
     where
         V: Visitor<'de>,
     {
-        visitor.visit_enum(EnumDeserializer { value: self.value })
+        visitor.visit_enum(EnumDeserializer {
+            value: self.value.clone().into_inner(),
+        })
     }
 
     fn deserialize_ignored_any<V>(self, visitor: V) -> Result<V::Value, Self::Error>
@@ -453,11 +508,11 @@ impl<'de> Deserializer<'de> for ValueDeserializer<'de> {
     }
 }
 
-struct EnumDeserializer<'de> {
-    value: &'de str,
+struct EnumDeserializer {
+    value: Arc<str>,
 }
 
-impl<'de> EnumAccess<'de> for EnumDeserializer<'de> {
+impl<'de> EnumAccess<'de> for EnumDeserializer {
     type Error = PathDeserializationError;
     type Variant = UnitVariant;
 
@@ -526,12 +581,15 @@ impl<'de> SeqAccess<'de> for SeqDeserializer<'de> {
         T: DeserializeSeed<'de>,
     {
         match self.params.split_first() {
-            Some(((_, value), tail)) => {
+            Some(((key, value), tail)) => {
                 self.params = tail;
                 let idx = self.idx;
                 self.idx += 1;
                 Ok(Some(seed.deserialize(ValueDeserializer {
-                    key: Some(KeyOrIdx::Idx(idx)),
+                    key: Some(KeyOrIdx::Idx {
+                        idx,
+                        key: key.clone(),
+                    }),
                     value,
                 })?))
             }
@@ -540,10 +598,10 @@ impl<'de> SeqAccess<'de> for SeqDeserializer<'de> {
     }
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 enum KeyOrIdx {
     Key(Arc<str>),
-    Idx(usize),
+    Idx { idx: usize, key: Arc<str> },
 }
 
 #[cfg(test)]
@@ -656,6 +714,27 @@ mod tests {
         assert_eq!(
             <Vec<MyEnum>>::deserialize(PathDeserializer::new(&url_params)).unwrap(),
             vec![MyEnum::C, MyEnum::B]
+        );
+    }
+
+    #[test]
+    fn test_parse_seq_tuple_string_string() {
+        let url_params = create_url_params(vec![("a", "foo"), ("b", "bar")]);
+        assert_eq!(
+            <Vec<(String, String)>>::deserialize(PathDeserializer::new(&url_params)).unwrap(),
+            vec![
+                ("a".to_owned(), "foo".to_owned()),
+                ("b".to_owned(), "bar".to_owned())
+            ]
+        );
+    }
+
+    #[test]
+    fn test_parse_seq_tuple_string_parse() {
+        let url_params = create_url_params(vec![("a", "1"), ("b", "2")]);
+        assert_eq!(
+            <Vec<(String, u32)>>::deserialize(PathDeserializer::new(&url_params)).unwrap(),
+            vec![("a".to_owned(), 1), ("b".to_owned(), 2)]
         );
     }
 
@@ -816,11 +895,33 @@ mod tests {
     }
 
     #[test]
-    fn test_unsupported_type_error_tuple() {
+    fn test_parse_seq_tuple_unsupported_key_type() {
         test_parse_error!(
             vec![("a", "false")],
-            Vec<(u32, u32)>,
-            ErrorKind::UnsupportedType { name: "(u32, u32)" }
+            Vec<(u32, String)>,
+            ErrorKind::Message("Unexpected key type".to_owned())
+        );
+    }
+
+    #[test]
+    fn test_parse_seq_wrong_tuple_length() {
+        test_parse_error!(
+            vec![("a", "false")],
+            Vec<(String, String, String)>,
+            ErrorKind::UnsupportedType {
+                name: "(alloc::string::String, alloc::string::String, alloc::string::String)",
+            }
+        );
+    }
+
+    #[test]
+    fn test_parse_seq_seq() {
+        test_parse_error!(
+            vec![("a", "false")],
+            Vec<Vec<String>>,
+            ErrorKind::UnsupportedType {
+                name: "alloc::vec::Vec<alloc::string::String>",
+            }
         );
     }
 }

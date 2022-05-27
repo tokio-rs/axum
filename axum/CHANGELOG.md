@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 # Unreleased
 
 - **added:** Implement `Default` for `Extension` ([#1043])
+- **fixed:** Support deserializing `Vec<(String, String)>` in `extract::Path<_>` to get vector of
+  key/value pairs ([#1059])
+
+[#1043]: https://github.com/tokio-rs/axum/pull/1043
+[#1059]: https://github.com/tokio-rs/axum/pull/1059
 
 # 0.5.6 (15. May, 2022)
 
