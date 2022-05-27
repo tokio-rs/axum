@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 # Unreleased
 
 - **added:** Implement `Default` for `Extension` ([#1043])
+- **fixed:** Support deserializing `Vec<(String, String)>` in `extract::Path<_>` to get vector of
+  key/value pairs
 
 # 0.5.6 (15. May, 2022)
 

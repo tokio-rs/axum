@@ -571,4 +571,25 @@ mod tests {
             Note that multiple parameters must be extracted with a tuple `Path<(_, _)>` or a struct `Path<YourParams>`",
         );
     }
+
+    #[tokio::test]
+    async fn deserialize_into_vec_of_tuples() {
+        let app = Router::new().route(
+            "/:a/:b",
+            get(|Path(params): Path<Vec<(String, String)>>| async move {
+                assert_eq!(
+                    params,
+                    vec![
+                        ("a".to_owned(), "foo".to_owned()),
+                        ("b".to_owned(), "bar".to_owned())
+                    ]
+                );
+            }),
+        );
+
+        let client = TestClient::new(app);
+
+        let res = client.get("/foo/bar").send().await;
+        assert_eq!(res.status(), StatusCode::OK);
+    }
 }
