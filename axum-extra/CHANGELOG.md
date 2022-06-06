@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning].
 
 # Unreleased
 
-- None.
+- **fixed:** Use `impl IntoResponse` less in docs ([#1049])
+
+[#1049]: https://github.com/tokio-rs/axum/pull/1049
 
 # 0.3.3 (18. May, 2022)
 
