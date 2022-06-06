@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **added:** Implement `Default` for `Extension` ([#1043])
 - **fixed:** Support deserializing `Vec<(String, String)>` in `extract::Path<_>` to get vector of
   key/value pairs ([#1059])
+- **added:** Add `extract::ws::close_code` which contains constants for close codes
 
 [#1043]: https://github.com/tokio-rs/axum/pull/1043
 [#1059]: https://github.com/tokio-rs/axum/pull/1059
