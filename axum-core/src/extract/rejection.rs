@@ -41,6 +41,8 @@ impl FailedToBufferBody {
     ///
     /// This can  _only_ happen when you're using [`tower_http::limit::RequestBodyLimitLayer`] or
     /// otherwise wrapping request bodies in [`http_body::Limited`].
+    ///
+    /// [`tower_http::limit::RequestBodyLimitLayer`]: https://docs.rs/tower-http/latest/tower_http/limit/struct.RequestBodyLimitLayer.html
     pub fn is_length_limit_error(&self) -> bool {
         matches!(self.0, FailedToBufferBodyInner::LengthLimitError(_))
     }
