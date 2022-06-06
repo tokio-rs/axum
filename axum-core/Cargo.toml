@@ -23,3 +23,4 @@ futures-util = "0.3"
 axum = { path = "../axum", version = "0.5" }
 hyper = "0.14"
 tokio = { version = "1.0", features = ["macros"] }
+tower-http = { version = "0.3.4", features = ["limit"] }
