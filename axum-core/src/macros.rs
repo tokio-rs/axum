@@ -10,6 +10,7 @@ macro_rules! define_rejection {
         pub struct $name(pub(crate) crate::Error);
 
         impl $name {
+            #[allow(dead_code)]
             pub(crate) fn from_err<E>(err: E) -> Self
             where
                 E: Into<crate::BoxError>,
