@@ -578,3 +578,65 @@ pub mod rejection {
         }
     }
 }
+
+pub mod close_code {
+    //! Constants for [`CloseCode`]s.
+    //!
+    //! [`CloseCode`]: super::CloseCode
+
+    /// Indicates a normal closure, meaning that the purpose for which the connection was
+    /// established has been fulfilled.
+    pub const NORMAL: u16 = 1000;
+
+    /// Indicates that an endpoint is "going away", such as a server going down or a browser having
+    /// navigated away from a page.
+    pub const AWAY: u16 = 1001;
+
+    /// Indicates that an endpoint is terminating the connection due to a protocol error.
+    pub const PROTOCOL: u16 = 1002;
+
+    /// Indicates that an endpoint is terminating the connection because it has received a type of
+    /// data it cannot accept (e.g., an endpoint that understands only text data MAY send this if
+    /// it receives a binary message).
+    pub const UNSUPPORTED: u16 = 1003;
+
+    /// Indicates that no status code was included in a closing frame.
+    pub const STATUS: u16 = 1005;
+
+    /// Indicates an abnormal closure.
+    pub const ABNORMAL: u16 = 1006;
+
+    /// Indicates that an endpoint is terminating the connection because it has received data
+    /// within a message that was not consistent with the type of the message (e.g., non-UTF-8
+    /// RFC3629 data within a text message).
+    pub const INVALID: u16 = 1007;
+
+    /// Indicates that an endpoint is terminating the connection because it has received a message
+    /// that violates its policy. This is a generic status code that can be returned when there is
+    /// no other more suitable status code (e.g., `UNSUPPORTED` or `SIZE`) or if there is a need to
+    /// hide specific details about the policy.
+    pub const POLICY: u16 = 1008;
+
+    /// Indicates that an endpoint is terminating the connection because it has received a message
+    /// that is too big for it to process.
+    pub const SIZE: u16 = 1009;
+
+    /// Indicates that an endpoint (client) is terminating the connection because it has expected
+    /// the server to negotiate one or more extension, but the server didn't return them in the
+    /// response message of the WebSocket handshake. The list of extensions that are needed should
+    /// be given as the reason for closing. Note that this status code is not used by the server,
+    /// because it can fail the WebSocket handshake instead.
+    pub const EXTENSION: u16 = 1010;
+
+    /// Indicates that a server is terminating the connection because it encountered an unexpected
+    /// condition that prevented it from fulfilling the request.
+    pub const ERROR: u16 = 1011;
+
+    /// Indicates that the server is restarting.
+    pub const RESTART: u16 = 1012;
+
+    /// Indicates that the server is overloaded and the client should either connect to a different
+    /// IP (when multiple targets exist), or reconnect to the same IP when a user has performed an
+    /// action.
+    pub const AGAIN: u16 = 1013;
+}
