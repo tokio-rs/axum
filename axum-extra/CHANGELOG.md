@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning].
 
 # Unreleased
 
+- None.
+
+# 0.3.4 (08. June, 2022)
+
 - **fixed:** Use `impl IntoResponse` less in docs ([#1049])
 - **added:** Add `AsyncReadBody` for creating a body from a `tokio::io::AsyncRead` ([#1072])
 
