@@ -32,8 +32,6 @@ use std::ops::Deref;
 ///
 /// If you want to limit the size of request bodies without requiring a `Content-Length` header
 /// consider using [`tower_http::limit::RequestBodyLimitLayer`].
-// TODO(david): change this to apply `http_body::Limited` so it also supports streaming requests.
-// Will probably require renaming it.
 #[derive(Debug, Clone)]
 pub struct ContentLengthLimit<T, const N: u64>(pub T);
 
