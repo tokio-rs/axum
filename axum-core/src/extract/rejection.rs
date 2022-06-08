@@ -67,7 +67,7 @@ define_rejection! {
 define_rejection! {
     #[status = BAD_REQUEST]
     #[body = "Failed to buffer the request body"]
-    /// Encountered some other error when buffering the body.
+    /// Encountered an unknown error when buffering the body.
     pub struct UnknownBodyError(Error);
 }
 
