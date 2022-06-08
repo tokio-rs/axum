@@ -43,6 +43,7 @@
 #![cfg_attr(docsrs, feature(doc_cfg, doc_auto_cfg))]
 #![cfg_attr(test, allow(clippy::float_cmp))]
 
+pub mod body;
 pub mod extract;
 pub mod response;
 pub mod routing;
