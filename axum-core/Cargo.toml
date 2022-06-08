@@ -15,7 +15,7 @@ async-trait = "0.1"
 bytes = "1.0"
 futures-util = { version = "0.3", default-features = false, features = ["alloc"] }
 http = "0.2.7"
-http-body = "0.4"
+http-body = "0.4.5"
 mime = "0.3.16"
 
 [dev-dependencies]
