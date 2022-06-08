@@ -10,10 +10,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **added:** Implement `Default` for `Extension` ([#1043])
 - **fixed:** Support deserializing `Vec<(String, String)>` in `extract::Path<_>` to get vector of
   key/value pairs ([#1059])
-- **added:** Add `extract::ws::close_code` which contains constants for close codes
+- **added:** Add `extract::ws::close_code` which contains constants for close codes ([#1067])
+- **fixed:** Use `impl IntoResponse` less in docs ([#1049])
 
 [#1043]: https://github.com/tokio-rs/axum/pull/1043
+[#1049]: https://github.com/tokio-rs/axum/pull/1049
 [#1059]: https://github.com/tokio-rs/axum/pull/1059
+[#1067]: https://github.com/tokio-rs/axum/pull/1067
 
 # 0.5.6 (15. May, 2022)
 
