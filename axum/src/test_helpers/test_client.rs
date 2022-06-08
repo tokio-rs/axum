@@ -118,6 +118,7 @@ impl RequestBuilder {
     }
 }
 
+#[derive(Debug)]
 pub(crate) struct TestResponse {
     response: reqwest::Response,
 }
