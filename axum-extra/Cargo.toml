@@ -20,6 +20,7 @@ cookie-private = ["cookie", "cookie-lib/private"]
 form = ["serde", "serde_html_form"]
 query = ["serde", "serde_html_form"]
 spa = ["tower-http/fs"]
+async-read-body = ["tokio-util/io"]
 
 [dependencies]
 axum = { path = "../axum", version = "0.5", default-features = false }
@@ -27,6 +28,7 @@ bytes = "1.1.0"
 http = "0.2"
 mime = "0.3"
 pin-project-lite = "0.2"
+tokio = "1.19"
 tower = { version = "0.4", default_features = false, features = ["util"] }
 tower-http = { version = "0.3", features = ["map-response-body"] }
 tower-layer = "0.3"
@@ -39,6 +41,7 @@ serde_json = { version = "1.0.71", optional = true }
 percent-encoding = { version = "2.1", optional = true }
 cookie-lib = { package = "cookie", version = "0.16", features = ["percent-encode"], optional = true }
 serde_html_form = { version = "0.1", optional = true }
+tokio-util = { version = "0.7", optional = true }
 
 [dev-dependencies]
 axum = { path = "../axum", version = "0.5", features = ["headers"] }

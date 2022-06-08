@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning].
 # Unreleased
 
 - **fixed:** Use `impl IntoResponse` less in docs ([#1049])
+- **added:** Add `AsyncReadBody` for creating a body from a `tokio::io::AsyncRead`
 
 [#1049]: https://github.com/tokio-rs/axum/pull/1049
 
