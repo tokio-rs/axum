@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+- None.
+
+# 0.5.7 (08. June, 2022)
+
 - **added:** Implement `Default` for `Extension` ([#1043])
 - **fixed:** Support deserializing `Vec<(String, String)>` in `extract::Path<_>` to get vector of
   key/value pairs ([#1059])
