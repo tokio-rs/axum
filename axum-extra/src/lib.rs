@@ -1,5 +1,24 @@
 //! Extra utilities for [`axum`].
 //!
+//! # Feature flags
+//!
+//! axum-extra uses a set of [feature flags] to reduce the amount of compiled and
+//! optional dependencies.
+//!
+//! The following optional features are available:
+//!
+//! Name | Description | Default?
+//! ---|---|---
+//! `async-read-body` | Enables the `AsyncReadBody` body | No
+//! `cookie` | Enables the `CookieJar` extractor | No
+//! `cookie-private` | Enables the `PrivateCookieJar` extractor | No
+//! `cookie-signed` | Enables the `SignedCookieJar` extractor | No
+//! `erased-json` | Enables the `ErasedJson` response | No
+//! `form` | Enables the `Form` extractor | No
+//! `query` | Enables the `Query` extractor | No
+//! `spa` | Enables the `Spa` router | No
+//! `typed-routing` | Enables the `TypedPath` routing utilities | No
+//!
 //! [`axum`]: https://crates.io/crates/axum
 
 #![warn(
