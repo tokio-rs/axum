@@ -197,6 +197,7 @@ jobs:
         toolchain: beta
         override: true
         profile: minimal
+    - uses: Swatinem/rust-cache@v1
     - name: Install cargo-sort
       run: |
         cargo install cargo-sort
