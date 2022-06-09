@@ -18,6 +18,7 @@ cookie = ["cookie-lib"]
 cookie-private = ["cookie", "cookie-lib/private"]
 cookie-signed = ["cookie", "cookie-lib/signed"]
 erased-json = ["serde_json", "serde"]
+file-response = ["async-read-body", "mime_guess", "httpdate"]
 form = ["serde", "serde_html_form"]
 query = ["serde", "serde_html_form"]
 spa = ["tower-http/fs"]
@@ -38,6 +39,8 @@ tower-service = "0.3"
 # optional dependencies
 axum-macros = { path = "../axum-macros", version = "0.2.2", optional = true }
 cookie-lib = { package = "cookie", version = "0.16", features = ["percent-encode"], optional = true }
+httpdate = { version = "1.0", optional = true }
+mime_guess = { version = "2", optional = true, default_features = false }
 percent-encoding = { version = "2.1", optional = true }
 serde = { version = "1.0", optional = true }
 serde_html_form = { version = "0.1", optional = true }
