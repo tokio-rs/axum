@@ -26,7 +26,7 @@ where
     type Rejection = HostRejection;
 
     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-        // todo: extract host from http::header::FORWARDED
+        // TODO: extract host from http::header::FORWARDED
 
         if let Some(host) = req
             .headers()
