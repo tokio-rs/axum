@@ -7,7 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- None.
+- **breaking:** Remove `extractor_middleware` which was previously deprecated.
+  Use `axum::middleware::from_extractor` instead.
 
 # 0.5.7 (08. June, 2022)
 
