@@ -182,3 +182,25 @@ jobs:
           -p axum-extra
           -p axum-macros
           --target armv5te-unknown-linux-musleabi
+
+  dependecies-are-sorted:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        pwd:
+          - .
+          - examples
+    steps:
+    - uses: actions/checkout@master
+    - uses: actions-rs/toolchain@v1
+      with:
+        toolchain: beta
+        override: true
+        profile: minimal
+    - name: Install cargo-sort
+      run: |
+        cargo install cargo-sort
+    - name: Check dependecy tables
+      working-directory: ${{ matrix.pwd }}
+      run: |
+        cargo sort --workspace --grouped --check
