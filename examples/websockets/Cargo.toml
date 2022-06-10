@@ -6,8 +6,8 @@ publish = false
 
 [dependencies]
 axum = { path = "../../axum", features = ["ws", "headers"] }
+headers = "0.3"
 tokio = { version = "1.0", features = ["full"] }
+tower-http = { version = "0.3.0", features = ["fs", "trace"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-tower-http = { version = "0.3.0", features = ["fs", "trace"] }
-headers = "0.3"
