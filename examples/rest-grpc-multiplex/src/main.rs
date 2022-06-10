@@ -100,8 +100,8 @@ async fn main() {
 
     // build the rest service
     let rest = Router::new()
-    .route("/", get(web_root))
-    .route("/Hello", axum::routing::any(json_wrap_grpc(GrpcServiceImpl::say_hello)));
+        .route("/", get(web_root))
+        .route("/Hello", axum::routing::any(json_wrap_grpc(GrpcServiceImpl::say_hello)));
 
     // build the grpc service
     let grpc = GreeterServer::from_arc(GRPC_SERVICE.get().unwrap().clone());
