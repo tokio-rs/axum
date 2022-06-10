@@ -7,7 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- None.
+- **added:** Support resolving host name via `Forwarded` header in `Host`
+  extractor ([#1078])
+
+[#1078]: https://github.com/tokio-rs/axum/pull/1078
 
 # 0.5.7 (08. June, 2022)
 
