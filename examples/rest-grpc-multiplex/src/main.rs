@@ -44,14 +44,15 @@ impl Greeter for GrpcServiceImpl {
     }
 }
 
-/// axum::Handler only takes one parameter (request),
+/// axum Handler only takes one parameter (request),
 /// but tokio impls take two parameters (&self + request).
 /// tokio provides &self from an Arc stored in the service,
 /// so create GRPC_SERVICE as a static, pass it to tokio's GreeterServer::from_arc
-///   and statically reference it in the json_wrap_grpc
+///   and statically reference it in the json_wrap_grpc.
+/// This ensures that all endpoints reference the same service.
 static GRPC_SERVICE: OnceCell<Arc<GrpcServiceImpl>> = OnceCell::new();
 
-/// given a gRPC RPC implementation function,
+/// Given a gRPC RPC implementation function,
 /// produce a closure that can be used as an axum Handler that:
 /// 1. deserializes JSON into the request type
 /// 2. calls the gRPC RPC implementation
