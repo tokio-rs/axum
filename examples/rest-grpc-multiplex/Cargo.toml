@@ -7,12 +7,8 @@ publish = false
 [dependencies]
 axum = { path = "../../axum" }
 futures = "0.3"
-<<<<<<< HEAD
 hyper = { version = "0.14", features = ["full"] }
 once_cell = "1.12"
-=======
-hyper = { version = "0.14", features = ["full"] }
->>>>>>> 968ee4463112f495cfe9a5b27590d525f1e9778e
 prost = "0.10"
 serde = {version = "1", features = ["derive"]}
 serde_json = {version = "1"}
