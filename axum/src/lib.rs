@@ -315,6 +315,8 @@
 //! `original-uri` | Enables capturing of every request's original URI and the [`OriginalUri`] extractor | Yes
 //! `tower-log` | Enables `tower`'s `log` feature | Yes
 //! `ws` | Enables WebSockets support via [`extract::ws`] | No
+//! `form` | Enables the `Form` extractor | Yes
+//! `query` | Enables the `Query` extractor | Yes
 //!
 //! [`TypedHeader`]: crate::extract::TypedHeader
 //! [`MatchedPath`]: crate::extract::MatchedPath
