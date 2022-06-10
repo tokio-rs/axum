@@ -64,12 +64,12 @@ fn parse_forwarded(headers: &HeaderMap) -> Option<&str> {
     // get the first set of values
     let first_value = forwarded_values.split(',').nth(0)?;
 
-    // find the value of the `for` field
+    // find the value of the `host` field
     first_value.split(';').find_map(|pair| {
         let (key, value) = pair.split_once('=')?;
-        key.trim().eq_ignore_ascii_case("for").then(|| {
-            value.trim().trim_matches('"')
-        })
+        key.trim()
+            .eq_ignore_ascii_case("host")
+            .then(|| value.trim().trim_matches('"'))
     })
 }
 
@@ -137,27 +137,30 @@ mod tests {
     #[test]
     fn forwarded_parsing() {
         // the basic case
-        let headers = header_map(&[(FORWARDED, "for=192.0.2.60;proto=http;by=203.0.113.43")]);
+        let headers = header_map(&[(FORWARDED, "host=192.0.2.60;proto=http;by=203.0.113.43")]);
         let value = parse_forwarded(&headers).unwrap();
         assert_eq!(value, "192.0.2.60");
 
         // is case insensitive
-        let headers = header_map(&[(FORWARDED, "For=192.0.2.60;proto=http;by=203.0.113.43")]);
+        let headers = header_map(&[(FORWARDED, "host=192.0.2.60;proto=http;by=203.0.113.43")]);
         let value = parse_forwarded(&headers).unwrap();
         assert_eq!(value, "192.0.2.60");
 
         // ipv6
-        let headers = header_map(&[(FORWARDED, "For=\"[2001:db8:cafe::17]:4711\"")]);
+        let headers = header_map(&[(FORWARDED, "host=\"[2001:db8:cafe::17]:4711\"")]);
         let value = parse_forwarded(&headers).unwrap();
         assert_eq!(value, "[2001:db8:cafe::17]:4711");
 
         // multiple values in one header
-        let headers = header_map(&[(FORWARDED, "for=192.0.2.60, for=127.0.0.1")]);
+        let headers = header_map(&[(FORWARDED, "host=192.0.2.60, host=127.0.0.1")]);
         let value = parse_forwarded(&headers).unwrap();
         assert_eq!(value, "192.0.2.60");
 
         // multiple header values
-        let headers = header_map(&[(FORWARDED, "for=192.0.2.60"), (FORWARDED, "for=127.0.0.1")]);
+        let headers = header_map(&[
+            (FORWARDED, "host=192.0.2.60"),
+            (FORWARDED, "host=127.0.0.1"),
+        ]);
         let value = parse_forwarded(&headers).unwrap();
         assert_eq!(value, "192.0.2.60");
     }
