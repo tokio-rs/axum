@@ -24,7 +24,6 @@ mod proto {
     tonic::include_proto!("helloworld");
 }
 
-static GRPC_SERVICE: OnceCell<Arc<GrpcServiceImpl>> = OnceCell::new();
 struct GrpcServiceImpl {
     static_name: &'static str
 }
@@ -45,22 +44,36 @@ impl Greeter for GrpcServiceImpl {
     }
 }
 
-fn json_wrap_grpc<'a, 'r, F, ReqT, ResT> (func: F) -> impl FnOnce(Json<ReqT>) -> Pin<Box<dyn Future<Output = Result<Json<ResT>, GrpcErrorAsJson>> + Send + 'a>> + Clone + Send + Sized + 'static where //,HandlerFn
-    F: FnOnce(&'r GrpcServiceImpl, tonic::Request<ReqT>) -> Pin<Box<dyn Future<Output = Result<tonic::Response<ResT>, tonic::Status>> + Send + 'r>> + Clone + Send + Sync + 'static,
+/// axum::Handler only takes one parameter (request),
+/// but tokio impls take two parameters (&self + request).
+/// tokio provides &self from an Arc stored in the service,
+/// so create GRPC_SERVICE as a static, pass it to tokio's GreeterServer::from_arc
+///   and statically reference it in the json_wrap_grpc
+static GRPC_SERVICE: OnceCell<Arc<GrpcServiceImpl>> = OnceCell::new();
+
+/// given a gRPC RPC implementation function,
+/// produce a closure that can be used as an axum Handler that:
+/// 1. deserializes JSON into the request type
+/// 2. calls the gRPC RPC implementation
+/// 3. serializes the response back to JSON
+fn json_wrap_grpc<'a, 'r, F, ReqT, ResT> (grpc_impl_func: F)
+    -> impl FnOnce(Json<ReqT>)
+        -> Pin<Box<dyn Future<Output = Result<Json<ResT>, GrpcErrorAsJson>> + Send + 'a>> + Clone + Send + Sized + 'static
+where
+    F: FnOnce(&'r GrpcServiceImpl, tonic::Request<ReqT>)
+        -> Pin<Box<dyn Future<Output = Result<tonic::Response<ResT>, tonic::Status>> + Send + 'r>> + Clone + Send + Sync + 'static,
     for<'de> ReqT: serde::Deserialize<'de> + Send + 'a,
     ResT: serde::Serialize
 {
-    move |Json(req): Json<ReqT>| {Box::pin((|Json(req): Json<ReqT>| async move {
-        let r = (move || {
-            async move {
-                    func(GRPC_SERVICE.get().unwrap(), tonic::Request::new(req)).await
+    move |Json(req): Json<ReqT>| {
+        Box::pin((|Json(req): Json<ReqT>| async move {
+            let r = grpc_impl_func(GRPC_SERVICE.get().unwrap(), tonic::Request::new(req)).await;
+            match r {
+                Ok(r) => Ok(Json(r.into_inner())),
+                Err(e) => Err(GrpcErrorAsJson(e))
             }
-        })().await;
-        match r {
-            Ok(r) => Ok(Json(r.into_inner())),
-            Err(e) => Err(GrpcErrorAsJson(e))
-        }
-    })(Json(req)))}
+        })(Json(req)))
+    }
 }
 
 async fn web_root() -> &'static str {
