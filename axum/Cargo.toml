@@ -50,7 +50,7 @@ tower-service = "0.3"
 base64 = { version = "0.13", optional = true }
 headers = { version = "0.3", optional = true }
 multer = { version = "2.0.0", optional = true }
-serde_json = { features = ["raw_value"], optional = true }
+serde_json = { version = "1.0", features = ["raw_value"], optional = true }
 serde_urlencoded = { version = "0.7", optional = true }
 sha-1 = { version = "0.10", optional = true }
 tokio-tungstenite = { version = "0.17", optional = true }
