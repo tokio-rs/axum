@@ -67,11 +67,9 @@ fn parse_forwarded(headers: &HeaderMap) -> Option<&str> {
     // find the value of the `for` field
     first_value.split(';').find_map(|pair| {
         let (key, value) = pair.split_once('=')?;
-        if key.trim().eq_ignore_ascii_case("for") {
-            Some(value.trim().trim_matches('"'))
-        } else {
-            None
-        }
+        key.trim().eq_ignore_ascii_case("for").then(|| {
+            value.trim().trim_matches('"')
+        })
     })
 }
 
