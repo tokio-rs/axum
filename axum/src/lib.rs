@@ -397,6 +397,7 @@ pub(crate) mod macros;
 mod extension;
 #[cfg(feature = "json")]
 mod json;
+mod request_ext;
 #[cfg(feature = "headers")]
 mod typed_header;
 mod util;
@@ -436,3 +437,5 @@ pub use self::typed_header::TypedHeader;
 
 #[doc(inline)]
 pub use axum_core::{BoxError, Error};
+
+pub use self::request_ext::RequestExt;
