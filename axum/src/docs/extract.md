@@ -489,6 +489,11 @@ let app = Router::new().route("/", get(handler)).layer(Extension(state));
 # };
 ```
 
+# Running extractors from middleware
+
+See [`RequestExt::extract`] and [`RequestExt::extract_body`] for running
+extractors from middleware.
+
 # Request body extractors
 
 Most of the time your request body type will be [`body::Body`] (a re-export
@@ -569,3 +574,5 @@ let app = Router::new()
 [`HeaderMap`]: https://docs.rs/http/latest/http/header/struct.HeaderMap.html
 [`Request`]: https://docs.rs/http/latest/http/struct.Request.html
 [`RequestParts::body_mut`]: crate::extract::RequestParts::body_mut
+[`RequestExt::extract`]: crate::RequestExt::extract
+[`RequestExt::extract_body`]: crate::RequestExt::extract_body

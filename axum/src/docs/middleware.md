@@ -312,6 +312,11 @@ let app = Router::new()
 See [`error_handling`](crate::error_handling) for more details on axum's error
 handling model.
 
+# Running extractors from middleware
+
+See [`RequestExt::extract`] and [`RequestExt::extract_body`] for running
+extractors from middleware.
+
 # Routing to services/middleware and backpressure
 
 Generally routing to one of multiple services and backpressure doesn't mix
@@ -450,3 +455,5 @@ extensions you need.
 [`MethodRouter::route_layer`]: crate::routing::MethodRouter::route_layer
 [request extensions]: https://docs.rs/http/latest/http/request/struct.Request.html#method.extensions
 [Response extensions]: https://docs.rs/http/latest/http/response/struct.Response.html#method.extensions
+[`RequestExt::extract`]: crate::RequestExt::extract
+[`RequestExt::extract_body`]: crate::RequestExt::extract_body
