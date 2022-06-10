@@ -24,8 +24,8 @@ tower-log = ["tower/log"]
 ws = ["tokio-tungstenite", "sha-1", "base64"]
 
 [dependencies]
-axum-core = { path = "../axum-core", version = "0.2.5" }
 async-trait = "0.1.43"
+axum-core = { path = "../axum-core", version = "0.2.5" }
 bitflags = "1.0"
 bytes = "1.0"
 futures-util = { version = "0.3", default-features = false, features = ["alloc"] }
@@ -47,16 +47,19 @@ tower-layer = "0.3"
 tower-service = "0.3"
 
 # optional dependencies
-base64 = { optional = true, version = "0.13" }
-headers = { optional = true, version = "0.3" }
-multer = { optional = true, version = "2.0.0" }
-serde_json = { version = "1.0", optional = true, features = ["raw_value"] }
+base64 = { version = "0.13", optional = true }
+headers = { version = "0.3", optional = true }
+multer = { version = "2.0.0", optional = true }
+serde_json = { features = ["raw_value"], optional = true }
 serde_urlencoded = { version = "0.7", optional = true }
-sha-1 = { optional = true, version = "0.10" }
-tokio-tungstenite = { optional = true, version = "0.17" }
+sha-1 = { version = "0.10", optional = true }
+tokio-tungstenite = { version = "0.17", optional = true }
 
 [dev-dependencies]
+anyhow = "1.0"
 futures = "0.3"
+quickcheck = "1.0"
+quickcheck_macros = "1.0"
 reqwest = { version = "0.11", default-features = false, features = ["json", "stream", "multipart"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
@@ -64,9 +67,10 @@ tokio = { version = "1.6.1", features = ["macros", "rt", "rt-multi-thread", "net
 tokio-stream = "0.1"
 tracing = "0.1"
 uuid = { version = "1.0", features = ["serde", "v4"] }
-anyhow = "1.0"
-quickcheck = "1.0"
-quickcheck_macros = "1.0"
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
 
 [dev-dependencies.tower]
 package = "tower"
@@ -83,10 +87,6 @@ features = [
 [dev-dependencies.tower-http]
 version = "0.3.4"
 features = ["full"]
-
-[package.metadata.docs.rs]
-all-features = true
-rustdoc-args = ["--cfg", "docsrs"]
 
 [package.metadata.playground]
 features = [
