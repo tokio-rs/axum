@@ -1,5 +1,20 @@
 Types and traits for extracting data from requests.
 
+# Table of contents
+
+- [Intro](#intro)
+- [Common extractors](#common-extractors)
+- [Applying multiple extractors](#applying-multiple-extractors)
+- [Be careful when extracting `Request`](#be-careful-when-extracting-request)
+- [Optional extractors](#optional-extractors)
+- [Customizing extractor responses](#customizing-extractor-responses)
+- [Accessing inner errors](#accessing-inner-errors)
+- [Defining custom extractors](#defining-custom-extractors)
+- [Accessing other extractors in `FromRequest` implementations](#accessing-other-extractors-in-fromrequest-implementations)
+- [Request body extractors](#request-body-extractors)
+
+# Intro
+
 A handler function is an async function that takes any number of
 "extractors" as arguments. An extractor is a type that implements
 [`FromRequest`](crate::extract::FromRequest).

@@ -1,3 +1,14 @@
+# Table of contents
+
+- [Intro](#intro)
+- [Applying middleware](#applying-middleware)
+- [Commonly used middleware](#commonly-used-middleware)
+- [Writing middleware](#writing-middleware)
+- [Routing to services/middleware and backpressure](#routing-to-servicesmiddleware-and-backpressure)
+- [Sharing state between handlers and middleware](#sharing-state-between-handlers-and-middleware)
+
+# Intro
+
 axum is unique in that it doesn't have its own bespoke middleware system and
 instead integrates with [`tower`]. This means the ecosystem of [`tower`] and
 [`tower-http`] middleware all work with axum.
