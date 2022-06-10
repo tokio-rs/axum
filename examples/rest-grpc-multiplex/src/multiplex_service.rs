@@ -112,3 +112,52 @@ fn is_grpc_request<B>(req: &Request<B>) -> bool {
         .filter(|content_type| content_type.starts_with(b"application/grpc"))
         .is_some()
 }
+
+// wrapper type to convert GRPC errors to HTTP responses with JSON body
+pub struct GrpcErrorAsJson(pub tonic::Status);
+
+#[derive(serde::Serialize)]
+struct GrpcStatus<'a> {
+    grpc_error_code: i32,
+    grpc_error_description: &'a str,
+    message: &'a str
+}
+
+impl axum::response::IntoResponse for GrpcErrorAsJson {
+    fn into_response(self) -> axum::response::Response {
+        let json_status = GrpcStatus {
+            grpc_error_code: self.0.code() as i32,
+            grpc_error_description: self.0.code().description(),
+            message: self.0.message()
+        };
+        let response_body = serde_json::to_string(&json_status).unwrap();
+
+        // https://chromium.googlesource.com/external/github.com/grpc/grpc/+/refs/tags/v1.21.4-pre1/doc/statuscodes.md
+        let code = match self.0.code() {
+            tonic::Code::Ok => hyper::StatusCode::OK,
+            tonic::Code::Cancelled => hyper::StatusCode::from_u16(499u16).unwrap(),
+            tonic::Code::Unknown => hyper::StatusCode::INTERNAL_SERVER_ERROR,
+            tonic::Code::InvalidArgument => hyper::StatusCode::BAD_REQUEST,
+            tonic::Code::DeadlineExceeded => hyper::StatusCode::GATEWAY_TIMEOUT,
+            tonic::Code::NotFound => hyper::StatusCode::NOT_FOUND,
+            tonic::Code::AlreadyExists => hyper::StatusCode::CONFLICT,
+            tonic::Code::PermissionDenied => hyper::StatusCode::FORBIDDEN,
+            tonic::Code::ResourceExhausted => hyper::StatusCode::TOO_MANY_REQUESTS,
+            tonic::Code::FailedPrecondition => hyper::StatusCode::BAD_REQUEST,
+            tonic::Code::Aborted => hyper::StatusCode::CONFLICT,
+            tonic::Code::OutOfRange => hyper::StatusCode::BAD_REQUEST,
+            tonic::Code::Unimplemented => hyper::StatusCode::NOT_IMPLEMENTED,
+            tonic::Code::Internal => hyper::StatusCode::INTERNAL_SERVER_ERROR,
+            tonic::Code::Unavailable => hyper::StatusCode::SERVICE_UNAVAILABLE,
+            tonic::Code::DataLoss => hyper::StatusCode::INTERNAL_SERVER_ERROR,
+            tonic::Code::Unauthenticated => hyper::StatusCode::UNAUTHORIZED
+        };
+
+        let mut response = (code, response_body).into_response();
+        response.headers_mut().insert(
+            hyper::header::CONTENT_TYPE,
+            hyper::header::HeaderValue::from_static("application/json"),
+        );
+        response
+    }
+}

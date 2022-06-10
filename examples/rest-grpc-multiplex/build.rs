@@ -1,3 +1,5 @@
 fn main() {
-    tonic_build::compile_protos("proto/helloworld.proto").unwrap();
+    tonic_build::configure()
+        .type_attribute(".", r#"#[derive(serde::Serialize, serde::Deserialize)]"#)
+        .compile(&["proto/helloworld.proto"], &["proto"]).unwrap();
 }
