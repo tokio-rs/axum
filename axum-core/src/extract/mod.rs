@@ -176,6 +176,28 @@ impl<B> RequestParts<B> {
         Ok(req)
     }
 
+    /// Get the underlying `http::request::Parts`.
+    pub fn into_parts(self) -> http::request::Parts {
+        let Self {
+            method,
+            uri,
+            version,
+            headers,
+            extensions,
+            body: _,
+        } = self;
+
+        let mut req = Request::new(());
+
+        *req.method_mut() = method;
+        *req.uri_mut() = uri;
+        *req.version_mut() = version;
+        *req.headers_mut() = headers;
+        *req.extensions_mut() = extensions;
+
+        req.into_parts().0
+    }
+
     /// Gets a reference the request method.
     pub fn method(&self) -> &Method {
         &self.method
