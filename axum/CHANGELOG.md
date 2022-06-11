@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **added:** Support resolving host name via `Forwarded` header in `Host`
   extractor ([#1078])
+- **added:** Support running extractors from `middleware::from_fn` functions
 
 [#1078]: https://github.com/tokio-rs/axum/pull/1078
 
