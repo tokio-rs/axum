@@ -13,12 +13,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **change:** axum's MSRV is now 1.56 ([#1098])
 - **breaking:** Remove `extractor_middleware` which was previously deprecated.
   Use `axum::middleware::from_extractor` instead ([#1077])
+- **breaking:** Allow `Error: Into<Infallible>` for `Route::{layer, route_layer}` ([#924])
+- **breaking:** Remove `extractor_middleware` which was previously deprecated.
+  Use `axum::middleware::from_extractor` instead ([#1077])
 
 [#1077]: https://github.com/tokio-rs/axum/pull/1077
 [#1078]: https://github.com/tokio-rs/axum/pull/1078
 [#1078]: https://github.com/tokio-rs/axum/pull/1078
+[#1078]: https://github.com/tokio-rs/axum/pull/1078
 [#1095]: https://github.com/tokio-rs/axum/pull/1095
 [#1098]: https://github.com/tokio-rs/axum/pull/1098
+[#924]: https://github.com/tokio-rs/axum/pull/924
 
 # 0.5.7 (08. June, 2022)
 
