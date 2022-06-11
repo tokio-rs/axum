@@ -1,7 +1,7 @@
 //! Run with
 //!
 //! ```not_rust
-//! cargo run -p example-sessions
+//! cd examples && cargo run -p example-sessions
 //! ```
 
 use async_session::{MemoryStore, Session, SessionStore as _};

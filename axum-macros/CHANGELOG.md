@@ -9,6 +9,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - None.
 
+# 0.2.2 (18. May, 2022)
+
+- **added:** In `debug_handler`, check if `Request` is used as non-final extractor ([#1035])
+- **added:** In `debug_handler`, check if multiple `Path` extractors are used ([#1035])
+- **added:** In `debug_handler`, check if multiple body extractors are used ([#1036])
+- **added:** Support customizing rejections for `#[derive(TypedPath)]` ([#1012])
+
+[#1035]: https://github.com/tokio-rs/axum/pull/1035
+[#1036]: https://github.com/tokio-rs/axum/pull/1036
+[#1012]: https://github.com/tokio-rs/axum/pull/1012
+
+# 0.2.1 (10. May, 2022)
+
+- **fixed:** `Option` and `Result` are now supported in typed path route handler parameters ([#1001])
+- **fixed:** Support wildcards in typed paths ([#1003])
+- **added:** Support `#[derive(FromRequest)]` on enums using `#[from_request(via(OtherExtractor))]` ([#1009])
+- **added:** Support using a custom rejection type for `#[derive(TypedPath)]`
+  instead of `PathRejection` ([#1012])
+
+[#1001]: https://github.com/tokio-rs/axum/pull/1001
+[#1003]: https://github.com/tokio-rs/axum/pull/1003
+[#1009]: https://github.com/tokio-rs/axum/pull/1009
+[#1012]: https://github.com/tokio-rs/axum/pull/1012
+
 # 0.2.0 (31. March, 2022)
 
 - **breaking:** Routes are now required to start with `/`. Previously empty routes or routes such

@@ -7,9 +7,60 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+- **added:** Support resolving host name via `Forwarded` header in `Host`
+  extractor ([#1078])
 - **breaking:** Allow `Error: Into<Infallible>` for `Route::{layer, route_layer}` ([#924])
 
 [#924]: https://github.com/tokio-rs/axum/pull/924
+[#1078]: https://github.com/tokio-rs/axum/pull/1078
+
+# 0.5.7 (08. June, 2022)
+
+- **added:** Implement `Default` for `Extension` ([#1043])
+- **fixed:** Support deserializing `Vec<(String, String)>` in `extract::Path<_>` to get vector of
+  key/value pairs ([#1059])
+- **added:** Add `extract::ws::close_code` which contains constants for close codes ([#1067])
+- **fixed:** Use `impl IntoResponse` less in docs ([#1049])
+
+[#1043]: https://github.com/tokio-rs/axum/pull/1043
+[#1049]: https://github.com/tokio-rs/axum/pull/1049
+[#1059]: https://github.com/tokio-rs/axum/pull/1059
+[#1067]: https://github.com/tokio-rs/axum/pull/1067
+
+# 0.5.6 (15. May, 2022)
+
+- **added:** Add `WebSocket::protocol` to return the selected WebSocket subprotocol, if there is one. ([#1022])
+- **fixed:** Improve error message for `PathRejection::WrongNumberOfParameters` to hint at using
+  `Path<(String, String)>` or `Path<SomeStruct>` ([#1023])
+- **fixed:** `PathRejection::WrongNumberOfParameters` now uses `500 Internal Server Error` since
+  it's a programmer error and not a client error ([#1023])
+- **fixed:** Fix `InvalidFormContentType` mentioning the wrong content type
+
+[#1022]: https://github.com/tokio-rs/axum/pull/1022
+[#1023]: https://github.com/tokio-rs/axum/pull/1023
+
+# 0.5.5 (10. May, 2022)
+
+- **fixed:** Correctly handle `GET`, `HEAD`, and `OPTIONS` requests in `ContentLengthLimit`.
+  Request with these methods are now accepted if they _do not_ have a `Content-Length` header, and
+  the request body will not be checked. If they do have a `Content-Length` header they'll be
+  rejected. This allows `ContentLengthLimit` to be used as middleware around several routes,
+  including `GET` routes ([#989])
+- **added:** Add `MethodRouter::{into_make_service, into_make_service_with_connect_info}` ([#1010])
+
+[#989]: https://github.com/tokio-rs/axum/pull/989
+[#1010]: https://github.com/tokio-rs/axum/pull/1010
+
+# 0.5.4 (26. April, 2022)
+
+- **added:** Add `response::ErrorResponse` and `response::Result` for
+  `IntoResponse`-based error handling ([#921])
+- **added:** Add `middleware::from_extractor` and deprecate `extract::extractor_middleware` ([#957])
+- **changed:** Update to tower-http 0.3 ([#965])
+
+[#921]: https://github.com/tokio-rs/axum/pull/921
+[#957]: https://github.com/tokio-rs/axum/pull/957
+[#965]: https://github.com/tokio-rs/axum/pull/965
 
 # 0.5.3 (19. April, 2022)
 

@@ -15,7 +15,7 @@ let handler = get(|| async {}).fallback(fallback.into_service());
 
 let app = Router::new().route("/", handler);
 
-async fn fallback(method: Method, uri: Uri) -> impl IntoResponse {
+async fn fallback(method: Method, uri: Uri) -> (StatusCode, String) {
     (StatusCode::NOT_FOUND, format!("`{}` not allowed for {}", method, uri))
 }
 # async {
@@ -44,8 +44,8 @@ let two = post(|| async {})
 
 let method_route = one.merge(two);
 
-async fn fallback_one() -> impl IntoResponse {}
-async fn fallback_two() -> impl IntoResponse {}
+async fn fallback_one() -> impl IntoResponse { /* ... */ }
+async fn fallback_two() -> impl IntoResponse { /* ... */ }
 # let app = axum::Router::new().route("/", method_route);
 # async {
 # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();

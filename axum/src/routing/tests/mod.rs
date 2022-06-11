@@ -8,7 +8,7 @@ use crate::{
     test_helpers::*,
     BoxError, Json, Router,
 };
-use http::{Method, Request, Response, StatusCode, Uri};
+use http::{header::CONTENT_LENGTH, HeaderMap, Method, Request, Response, StatusCode, Uri};
 use hyper::Body;
 use serde::Deserialize;
 use serde_json::{json, Value};
@@ -20,7 +20,7 @@ use std::{
     time::Duration,
 };
 use tower::{service_fn, timeout::TimeoutLayer, ServiceBuilder, ServiceExt};
-use tower_http::auth::RequireAuthorizationLayer;
+use tower_http::{auth::RequireAuthorizationLayer, limit::RequestBodyLimitLayer};
 use tower_service::Service;
 
 mod fallback;
@@ -698,4 +698,58 @@ async fn head_with_middleware_applied() {
 async fn routes_must_start_with_slash() {
     let app = Router::new().route(":foo", get(|| async {}));
     TestClient::new(app);
+}
+
+#[tokio::test]
+async fn limited_body_with_content_length() {
+    const LIMIT: usize = 3;
+
+    let app = Router::new()
+        .route(
+            "/",
+            post(|headers: HeaderMap, _body: Bytes| async move {
+                assert!(headers.get(CONTENT_LENGTH).is_some());
+            }),
+        )
+        .layer(RequestBodyLimitLayer::new(LIMIT));
+
+    let client = TestClient::new(app);
+
+    let res = client.post("/").body("a".repeat(LIMIT)).send().await;
+    assert_eq!(res.status(), StatusCode::OK);
+
+    let res = client.post("/").body("a".repeat(LIMIT * 2)).send().await;
+    assert_eq!(res.status(), StatusCode::PAYLOAD_TOO_LARGE);
+}
+
+#[tokio::test]
+async fn limited_body_with_streaming_body() {
+    const LIMIT: usize = 3;
+
+    let app = Router::new()
+        .route(
+            "/",
+            post(|headers: HeaderMap, _body: Bytes| async move {
+                assert!(headers.get(CONTENT_LENGTH).is_none());
+            }),
+        )
+        .layer(RequestBodyLimitLayer::new(LIMIT));
+
+    let client = TestClient::new(app);
+
+    let stream = futures_util::stream::iter(vec![Ok::<_, hyper::Error>("a".repeat(LIMIT))]);
+    let res = client
+        .post("/")
+        .body(Body::wrap_stream(stream))
+        .send()
+        .await;
+    assert_eq!(res.status(), StatusCode::OK);
+
+    let stream = futures_util::stream::iter(vec![Ok::<_, hyper::Error>("a".repeat(LIMIT * 2))]);
+    let res = client
+        .post("/")
+        .body(Body::wrap_stream(stream))
+        .send()
+        .await;
+    assert_eq!(res.status(), StatusCode::PAYLOAD_TOO_LARGE);
 }

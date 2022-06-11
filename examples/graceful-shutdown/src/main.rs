@@ -1,7 +1,7 @@
 //! Run with
 //!
 //! ```not_rust
-//! cargo run -p example-graceful-shutdown
+//! cd examples && cargo run -p example-graceful-shutdown
 //! kill or ctrl-c
 //! ```
 

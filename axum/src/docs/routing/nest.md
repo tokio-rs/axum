@@ -31,7 +31,7 @@ let app = Router::new().nest("/api", api_routes);
 
 # How the URI changes
 
-Note that nested routes will not see the orignal request URI but instead
+Note that nested routes will not see the original request URI but instead
 have the matched prefix stripped. This is necessary for services like static
 file serving to work. Use [`OriginalUri`] if you need the original request
 URI.

@@ -32,10 +32,11 @@ pin_project! {
     ///     body::StreamBody,
     ///     response::IntoResponse,
     /// };
-    /// use futures::stream;
+    /// use futures::stream::{self, Stream};
+    /// use std::io;
     ///
-    /// async fn handler() -> impl IntoResponse {
-    ///     let chunks: Vec<Result<_, std::io::Error>> = vec![
+    /// async fn handler() -> StreamBody<impl Stream<Item = io::Result<&'static str>>> {
+    ///     let chunks: Vec<io::Result<_>> = vec![
     ///         Ok("Hello,"),
     ///         Ok(" "),
     ///         Ok("world!"),

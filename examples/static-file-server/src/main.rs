@@ -1,11 +1,16 @@
 //! Run with
 //!
 //! ```not_rust
-//! cargo run -p example-static-file-server
+//! cd examples && cargo run -p example-static-file-server
 //! ```
 
-use axum::{http::StatusCode, routing::get_service, Router};
-use std::net::SocketAddr;
+use axum::{
+    http::StatusCode,
+    response::IntoResponse,
+    routing::{get, get_service},
+    Router,
+};
+use std::{io, net::SocketAddr};
 use tower_http::{services::ServeDir, trace::TraceLayer};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
@@ -19,16 +24,17 @@ async fn main() {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    let app = Router::new()
-        .nest(
-            "/static",
-            get_service(ServeDir::new(".")).handle_error(|error: std::io::Error| async move {
-                (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    format!("Unhandled internal error: {}", error),
-                )
-            }),
-        )
+    // `SpaRouter` is the easiest way to serve assets at a nested route like `/assets`
+    // let app = Router::new()
+    //     .route("/foo", get(|| async { "Hi from /foo" }))
+    //     .merge(axum_extra::routing::SpaRouter::new("/assets", "."))
+    //     .layer(TraceLayer::new_for_http());
+
+    // for serving assets directly at the root you can use `tower_http::services::ServeDir`
+    // as the fallback to a `Router`
+    let app: _ = Router::new()
+        .route("/foo", get(|| async { "Hi from /foo" }))
+        .fallback(get_service(ServeDir::new(".")).handle_error(handle_error))
         .layer(TraceLayer::new_for_http());
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
@@ -37,4 +43,8 @@ async fn main() {
         .serve(app.into_make_service())
         .await
         .unwrap();
+}
+
+async fn handle_error(_err: io::Error) -> impl IntoResponse {
+    (StatusCode::INTERNAL_SERVER_ERROR, "Something went wrong...")
 }

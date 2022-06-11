@@ -1,7 +1,7 @@
 //! Run with
 //!
 //! ```not_rust
-//! cargo run -p example-multipart-form
+//! cd examples && cargo run -p example-multipart-form
 //! ```
 
 use axum::{

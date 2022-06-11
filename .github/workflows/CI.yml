@@ -11,8 +11,12 @@ on:
 
 jobs:
   check:
-    # Run `cargo check` first to ensure that the pushed code at least compiles.
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        pwd:
+          - .
+          - examples
     steps:
     - uses: actions/checkout@master
     - uses: actions-rs/toolchain@v1
@@ -23,15 +27,13 @@ jobs:
         components: clippy, rustfmt
     - uses: Swatinem/rust-cache@v1
     - name: Check
-      uses: actions-rs/cargo@v1
-      with:
-        command: clippy
-        args: --all --all-targets --all-features
+      working-directory: ${{ matrix.pwd }}
+      run: |
+        cargo clippy --all --all-targets --all-features
     - name: rustfmt
-      uses: actions-rs/cargo@v1
-      with:
-        command: fmt
-        args: --all -- --check
+      working-directory: ${{ matrix.pwd }}
+      run: |
+        cargo fmt --all -- --check
 
   check-docs:
     runs-on: ubuntu-latest
@@ -106,6 +108,7 @@ jobs:
         args: >
           -p axum
           -p axum-extra
+          -p axum-core
           --all-features --all-targets
     # the compiler errors are different on 1.54 which makes
     # the trybuild tests in axum-macros fail, so just run the doc
@@ -179,3 +182,26 @@ jobs:
           -p axum-extra
           -p axum-macros
           --target armv5te-unknown-linux-musleabi
+
+  dependecies-are-sorted:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        pwd:
+          - .
+          - examples
+    steps:
+    - uses: actions/checkout@master
+    - uses: actions-rs/toolchain@v1
+      with:
+        toolchain: beta
+        override: true
+        profile: minimal
+    - uses: Swatinem/rust-cache@v1
+    - name: Install cargo-sort
+      run: |
+        cargo install cargo-sort
+    - name: Check dependecy tables
+      working-directory: ${{ matrix.pwd }}
+      run: |
+        cargo sort --workspace --grouped --check

@@ -1,17 +1,17 @@
 //! Run with
 //!
 //! ```not_rust
-//! cargo run -p example-cors
+//! cd examples && cargo run -p example-cors
 //! ```
 
 use axum::{
-    http::Method,
+    http::{HeaderValue, Method},
     response::{Html, IntoResponse},
     routing::get,
     Json, Router,
 };
 use std::net::SocketAddr;
-use tower_http::cors::{CorsLayer, Origin};
+use tower_http::cors::CorsLayer;
 
 #[tokio::main]
 async fn main() {
@@ -26,11 +26,11 @@ async fn main() {
             // for more details
             //
             // pay attention that for some request types like posting content-type: application/json
-            // it is required to add ".allow_headers(vec![http::header::CONTENT_TYPE])"
+            // it is required to add ".allow_headers([http::header::CONTENT_TYPE])"
             // or see this issue https://github.com/tokio-rs/axum/issues/849
             CorsLayer::new()
-                .allow_origin(Origin::exact("http://localhost:3000".parse().unwrap()))
-                .allow_methods(vec![Method::GET]),
+                .allow_origin("http://localhost:3000".parse::<HeaderValue>().unwrap())
+                .allow_methods([Method::GET]),
         );
         serve(app, 4000).await;
     };

@@ -1,7 +1,7 @@
 //! Run with
 //!
 //! ```not_rust
-//! cargo run -p example-versioning
+//! cd examples && cargo run -p example-versioning
 //! ```
 
 use axum::{

@@ -1,10 +1,11 @@
-use crate::util::{ByteStr, PercentDecodedByteStr};
+use crate::util::PercentDecodedStr;
 use http::Extensions;
 use matchit::Params;
+use std::sync::Arc;
 
 pub(crate) enum UrlParams {
-    Params(Vec<(ByteStr, PercentDecodedByteStr)>),
-    InvalidUtf8InPathParam { key: ByteStr },
+    Params(Vec<(Arc<str>, PercentDecodedStr)>),
+    InvalidUtf8InPathParam { key: Arc<str> },
 }
 
 pub(super) fn insert_url_params(extensions: &mut Extensions, params: Params) {
@@ -18,12 +19,11 @@ pub(super) fn insert_url_params(extensions: &mut Extensions, params: Params) {
     let params = params
         .iter()
         .filter(|(key, _)| !key.starts_with(super::NEST_TAIL_PARAM))
-        .map(|(key, value)| (key.to_owned(), value.to_owned()))
         .map(|(k, v)| {
-            if let Some(decoded) = PercentDecodedByteStr::new(v) {
-                Ok((ByteStr::new(k), decoded))
+            if let Some(decoded) = PercentDecodedStr::new(v) {
+                Ok((Arc::from(k), decoded))
             } else {
-                Err(ByteStr::new(k))
+                Err(Arc::from(k))
             }
         })
         .collect::<Result<Vec<_>, _>>();

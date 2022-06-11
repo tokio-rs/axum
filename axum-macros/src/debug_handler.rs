@@ -2,21 +2,26 @@ use proc_macro2::TokenStream;
 use quote::{format_ident, quote, quote_spanned};
 use syn::{parse::Parse, spanned::Spanned, FnArg, ItemFn, Token, Type};
 
-pub(crate) fn expand(attr: Attrs, item_fn: ItemFn) -> syn::Result<TokenStream> {
-    check_extractor_count(&item_fn)?;
+pub(crate) fn expand(attr: Attrs, item_fn: ItemFn) -> TokenStream {
+    let check_extractor_count = check_extractor_count(&item_fn);
+    let check_request_last_extractor = check_request_last_extractor(&item_fn);
+    let check_path_extractor = check_path_extractor(&item_fn);
+    let check_multiple_body_extractors = check_multiple_body_extractors(&item_fn);
 
     let check_inputs_impls_from_request = check_inputs_impls_from_request(&item_fn, &attr.body_ty);
     let check_output_impls_into_response = check_output_impls_into_response(&item_fn);
     let check_future_send = check_future_send(&item_fn);
 
-    let tokens = quote! {
+    quote! {
         #item_fn
+        #check_extractor_count
+        #check_request_last_extractor
+        #check_path_extractor
+        #check_multiple_body_extractors
         #check_inputs_impls_from_request
         #check_output_impls_into_response
         #check_future_send
-    };
-
-    Ok(tokens)
+    }
 }
 
 pub(crate) struct Attrs {
@@ -45,18 +50,105 @@ impl Parse for Attrs {
     }
 }
 
-fn check_extractor_count(item_fn: &ItemFn) -> syn::Result<()> {
+fn check_extractor_count(item_fn: &ItemFn) -> Option<TokenStream> {
     let max_extractors = 16;
     if item_fn.sig.inputs.len() <= max_extractors {
-        Ok(())
+        None
     } else {
-        Err(syn::Error::new_spanned(
-                &item_fn.sig.inputs,
-                format!(
-                    "Handlers cannot take more than {} arguments. Use `(a, b): (ExtractorA, ExtractorA)` to further nest extractors",
-                    max_extractors,
+        let error_message = format!(
+            "Handlers cannot take more than {} arguments. \
+            Use `(a, b): (ExtractorA, ExtractorA)` to further nest extractors",
+            max_extractors,
+        );
+        let error = syn::Error::new_spanned(&item_fn.sig.inputs, error_message).to_compile_error();
+        Some(error)
+    }
+}
+
+fn extractor_idents(item_fn: &ItemFn) -> impl Iterator<Item = (usize, &syn::FnArg, &syn::Ident)> {
+    item_fn
+        .sig
+        .inputs
+        .iter()
+        .enumerate()
+        .filter_map(|(idx, fn_arg)| match fn_arg {
+            FnArg::Receiver(_) => None,
+            FnArg::Typed(pat_type) => {
+                if let Type::Path(type_path) = &*pat_type.ty {
+                    type_path
+                        .path
+                        .segments
+                        .last()
+                        .map(|segment| (idx, fn_arg, &segment.ident))
+                } else {
+                    None
+                }
+            }
+        })
+}
+
+fn check_request_last_extractor(item_fn: &ItemFn) -> Option<TokenStream> {
+    let request_extractor_ident =
+        extractor_idents(item_fn).find(|(_, _, ident)| *ident == "Request");
+
+    if let Some((idx, fn_arg, _)) = request_extractor_ident {
+        if idx != item_fn.sig.inputs.len() - 1 {
+            return Some(
+                syn::Error::new_spanned(fn_arg, "`Request` extractor should always be last")
+                    .to_compile_error(),
+            );
+        }
+    }
+
+    None
+}
+
+fn check_path_extractor(item_fn: &ItemFn) -> TokenStream {
+    let path_extractors = extractor_idents(item_fn)
+        .filter(|(_, _, ident)| *ident == "Path")
+        .collect::<Vec<_>>();
+
+    if path_extractors.len() > 1 {
+        path_extractors
+            .into_iter()
+            .map(|(_, arg, _)| {
+                syn::Error::new_spanned(
+                    arg,
+                    "Multiple parameters must be extracted with a tuple \
+                    `Path<(_, _)>` or a struct `Path<YourParams>`, not by applying \
+                    multiple `Path<_>` extractors",
                 )
-            ))
+                .to_compile_error()
+            })
+            .collect()
+    } else {
+        quote! {}
+    }
+}
+
+fn check_multiple_body_extractors(item_fn: &ItemFn) -> TokenStream {
+    let body_extractors = extractor_idents(item_fn)
+        .filter(|(_, _, ident)| {
+            *ident == "String"
+                || *ident == "Bytes"
+                || *ident == "Json"
+                || *ident == "RawBody"
+                || *ident == "BodyStream"
+                || *ident == "Multipart"
+                || *ident == "Request"
+        })
+        .collect::<Vec<_>>();
+
+    if body_extractors.len() > 1 {
+        body_extractors
+            .into_iter()
+            .map(|(_, arg, _)| {
+                syn::Error::new_spanned(arg, "Only one body extractor can be applied")
+                    .to_compile_error()
+            })
+            .collect()
+    } else {
+        quote! {}
     }
 }
 
