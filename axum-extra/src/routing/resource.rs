@@ -146,7 +146,7 @@ where
         T::Future: Send + 'static,
     {
         let path = self.show_update_destroy_path();
-        self.router = self.router.nest(&path, svc);
+        self.router = self.router.nest_service(&path, svc);
         self
     }
 
@@ -159,7 +159,7 @@ where
         T::Future: Send + 'static,
     {
         let path = self.index_create_path();
-        self.router = self.router.nest(&path, svc);
+        self.router = self.router.nest_service(&path, svc);
         self
     }
 

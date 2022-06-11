@@ -161,7 +161,7 @@ where
             .handle_error(spa.handle_error.clone());
 
         Router::new()
-            .nest(&spa.paths.assets_path, assets_service)
+            .nest_service(&spa.paths.assets_path, assets_service)
             .fallback(
                 get_service(ServeFile::new(&spa.paths.index_file)).handle_error(spa.handle_error),
             )

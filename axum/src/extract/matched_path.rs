@@ -149,12 +149,14 @@ mod tests {
                 "/public",
                 Router::new().route("/assets/*path", get(handler)),
             )
-            .nest("/foo", handler.into_service())
+            .nest_service("/foo", handler.into_service())
             .layer(tower::layer::layer_fn(SetMatchedPathExtension));
 
         let client = TestClient::new(app);
 
-        let res = client.get("/foo").send().await;
+        // we cannot call `/foo` because `nest_service("/foo", _)` registers routes
+        // for `/foo/*rest` and `/foo`
+        let res = client.get("/public").send().await;
         assert_eq!(res.text().await, "/:key");
 
         let res = client.get("/api/users/123").send().await;

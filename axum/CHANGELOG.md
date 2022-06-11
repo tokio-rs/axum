@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **added:** Support resolving host name via `Forwarded` header in `Host`
   extractor ([#1078])
+- **breaking:** `Router::nest` now only accepts `Router`s. Use
+  `Router::nest_service` to nest opaque services
+- **added:** Add `Router::nest_service` for nesting opaque services. Use this to
+  nest services like `tower::services::ServeDir`
+- **breaking:** The route `/foo/` no longer matches `/foo/*rest`. If you want
+  to match `/foo/` you have to add a route specifically for that
+- **breaking:** Path params for wildcard routes no longer include the prefix
+  `/`. e.g. `/foo.js` will match `/*filepath` with a value of `foo.js`, _not_
+  `/foo.js`
+- **fixed:** Routes like `/foo` and `/*rest` are no longer considered
+  overlapping. `/foo` will take priority
 
 [#1078]: https://github.com/tokio-rs/axum/pull/1078
 

@@ -3,7 +3,7 @@
 use self::{future::RouteFuture, not_found::NotFound};
 use crate::{
     body::{boxed, Body, Bytes, HttpBody},
-    extract::connect_info::IntoMakeServiceWithConnectInfo,
+    extract::{connect_info::IntoMakeServiceWithConnectInfo, MatchedPath},
     response::{IntoResponse, Redirect, Response},
     routing::strip_prefix::StripPrefix,
     util::try_downcast,
@@ -66,7 +66,6 @@ pub struct Router<B = Body> {
     routes: HashMap<RouteId, Endpoint<B>>,
     node: Node,
     fallback: Fallback<B>,
-    nested_at_root: bool,
 }
 
 impl<B> Clone for Router<B> {
@@ -75,7 +74,6 @@ impl<B> Clone for Router<B> {
             routes: self.routes.clone(),
             node: self.node.clone(),
             fallback: self.fallback.clone(),
-            nested_at_root: self.nested_at_root,
         }
     }
 }
@@ -95,13 +93,11 @@ impl<B> fmt::Debug for Router<B> {
             .field("routes", &self.routes)
             .field("node", &self.node)
             .field("fallback", &self.fallback)
-            .field("nested_at_root", &self.nested_at_root)
             .finish()
     }
 }
 
 pub(crate) const NEST_TAIL_PARAM: &str = "__private__axum_nest_tail_param";
-const NEST_TAIL_PARAM_CAPTURE: &str = "/*__private__axum_nest_tail_param";
 
 impl<B> Router<B>
 where
@@ -116,7 +112,6 @@ where
             routes: Default::default(),
             node: Default::default(),
             fallback: Fallback::Default(Route::new(NotFound)),
-            nested_at_root: false,
         }
     }
 
@@ -163,7 +158,7 @@ where
         };
 
         if let Err(err) = self.node.insert(path, id) {
-            self.panic_on_matchit_error(err);
+            panic!("Invalid route: {}", err);
         }
 
         self.routes.insert(id, service);
@@ -171,8 +166,57 @@ where
         self
     }
 
+    // TODO(david): update docs
     #[doc = include_str!("../docs/routing/nest.md")]
-    pub fn nest<T>(mut self, mut path: &str, svc: T) -> Self
+    pub fn nest(mut self, mut path: &str, router: Router<B>) -> Self {
+        if path.is_empty() {
+            // nesting at `""` and `"/"` should mean the same thing
+            path = "/";
+        }
+
+        if path.contains('*') {
+            panic!("Invalid route: nested routes cannot contain wildcards (*)");
+        }
+
+        let prefix = path;
+
+        let Router {
+            mut routes,
+            node,
+            fallback,
+        } = router;
+
+        if let Fallback::Custom(_) = fallback {
+            panic!("Cannot nest `Router`s that has a fallback");
+        }
+
+        for (id, nested_path) in node.route_id_to_path {
+            let route = routes.remove(&id).unwrap();
+            let full_path: Cow<str> = if &*nested_path == "/" {
+                path.into()
+            } else if path == "/" {
+                (&*nested_path).into()
+            } else if let Some(path) = path.strip_suffix('/') {
+                format!("{}{}", path, nested_path).into()
+            } else {
+                format!("{}{}", path, nested_path).into()
+            };
+            self = match route {
+                Endpoint::MethodRouter(method_router) => self.route(
+                    &full_path,
+                    method_router.layer(layer_fn(|s| StripPrefix::new(s, prefix))),
+                ),
+                Endpoint::Route(route) => self.route(&full_path, StripPrefix::new(route, prefix)),
+            };
+        }
+
+        debug_assert!(routes.is_empty());
+
+        self
+    }
+
+    /// TODO
+    pub fn nest_service<T>(mut self, mut path: &str, svc: T) -> Self
     where
         T: Service<Request<B>, Response = Response, Error = Infallible> + Clone + Send + 'static,
         T::Future: Send + 'static,
@@ -188,64 +232,21 @@ where
 
         let prefix = path;
 
-        if path == "/" {
-            self.nested_at_root = true;
-        }
+        let path = if path.ends_with('/') {
+            format!("{}*{}", path, NEST_TAIL_PARAM)
+        } else {
+            format!("{}/*{}", path, NEST_TAIL_PARAM)
+        };
 
-        match try_downcast::<Router<B>, _>(svc) {
-            // if the user is nesting a `Router` we can implement nesting
-            // by simplying copying all the routes and adding the prefix in
-            // front
-            Ok(router) => {
-                let Router {
-                    mut routes,
-                    node,
-                    fallback,
-                    // nesting a router that has something nested at root
-                    // doesn't mean something is nested at root in _this_ router
-                    // thus we don't need to propagate that
-                    nested_at_root: _,
-                } = router;
+        let svc = strip_prefix::StripPrefix::new(svc, prefix);
+        self = self.route(&path, svc.clone());
 
-                if let Fallback::Custom(_) = fallback {
-                    panic!("Cannot nest `Router`s that has a fallback");
-                }
-
-                for (id, nested_path) in node.route_id_to_path {
-                    let route = routes.remove(&id).unwrap();
-                    let full_path: Cow<str> = if &*nested_path == "/" {
-                        path.into()
-                    } else if path == "/" {
-                        (&*nested_path).into()
-                    } else if let Some(path) = path.strip_suffix('/') {
-                        format!("{}{}", path, nested_path).into()
-                    } else {
-                        format!("{}{}", path, nested_path).into()
-                    };
-                    self = match route {
-                        Endpoint::MethodRouter(method_router) => self.route(
-                            &full_path,
-                            method_router.layer(layer_fn(|s| StripPrefix::new(s, prefix))),
-                        ),
-                        Endpoint::Route(route) => {
-                            self.route(&full_path, StripPrefix::new(route, prefix))
-                        }
-                    };
-                }
-
-                debug_assert!(routes.is_empty());
-            }
-            // otherwise we add a wildcard route to the service
-            Err(svc) => {
-                let path = if path.ends_with('/') {
-                    format!("{}*{}", path, NEST_TAIL_PARAM)
-                } else {
-                    format!("{}/*{}", path, NEST_TAIL_PARAM)
-                };
-
-                self = self.route(&path, strip_prefix::StripPrefix::new(svc, prefix));
-            }
-        }
+        // `/*rest` is not matched by `/` so we need to also register a router at the
+        // prefix itself. Otherwise if you were to nest at `/foo` then `/foo` itself
+        // wouldn't match, which it should
+        self = self.route(prefix, svc.clone());
+        // same goes for `/foo/`, that should also match
+        self = self.route(&format!("{}/", prefix), svc);
 
         self
     }
@@ -259,7 +260,6 @@ where
             routes,
             node,
             fallback,
-            nested_at_root,
         } = other.into();
 
         for (id, route) in routes {
@@ -281,8 +281,6 @@ where
                 panic!("Cannot merge two `Router`s that both have a fallback")
             }
         };
-
-        self.nested_at_root = self.nested_at_root || nested_at_root;
 
         self
     }
@@ -324,7 +322,6 @@ where
             routes,
             node: self.node,
             fallback,
-            nested_at_root: self.nested_at_root,
         }
     }
 
@@ -363,7 +360,6 @@ where
             routes,
             node: self.node,
             fallback: self.fallback,
-            nested_at_root: self.nested_at_root,
         }
     }
 
@@ -419,24 +415,8 @@ where
 
         #[cfg(feature = "matched-path")]
         if let Some(matched_path) = self.node.route_id_to_path.get(&id) {
-            use crate::extract::MatchedPath;
-
-            let matched_path = if let Some(previous) = req.extensions_mut().get::<MatchedPath>() {
-                // a previous `MatchedPath` might exist if we're inside a nested Router
-                let previous = if let Some(previous) =
-                    previous.as_str().strip_suffix(NEST_TAIL_PARAM_CAPTURE)
-                {
-                    previous
-                } else {
-                    previous.as_str()
-                };
-
-                let matched_path = format!("{}{}", previous, matched_path);
-                matched_path.into()
-            } else {
-                Arc::clone(matched_path)
-            };
-            req.extensions_mut().insert(MatchedPath(matched_path));
+            req.extensions_mut()
+                .insert(MatchedPath(Arc::clone(matched_path)));
         } else {
             #[cfg(debug_assertions)]
             panic!("should always have a matched path for a route id");
@@ -453,17 +433,6 @@ where
         match &mut route {
             Endpoint::MethodRouter(inner) => inner.call(req),
             Endpoint::Route(inner) => inner.call(req),
-        }
-    }
-
-    fn panic_on_matchit_error(&self, err: matchit::InsertError) {
-        if self.nested_at_root {
-            panic!(
-                "Invalid route: {}. Note that `nest(\"/\", _)` conflicts with all routes. Use `Router::fallback` instead",
-                err,
-            );
-        } else {
-            panic!("Invalid route: {}", err);
         }
     }
 }
