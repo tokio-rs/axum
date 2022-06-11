@@ -9,9 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **added:** Support resolving host name via `Forwarded` header in `Host`
   extractor ([#1078])
+- **breaking:** Allow `Error: Into<Infallible>` for `Route::{layer, route_layer}` ([#924])
 - **breaking:** Remove `extractor_middleware` which was previously deprecated.
   Use `axum::middleware::from_extractor` instead ([#1077])
 
+[#924]: https://github.com/tokio-rs/axum/pull/924
 [#1078]: https://github.com/tokio-rs/axum/pull/1078
 [#1077]: https://github.com/tokio-rs/axum/pull/1077
 
