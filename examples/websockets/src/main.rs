@@ -32,12 +32,13 @@ async fn main() {
         ))
         .with(tracing_subscriber::fmt::layer())
         .init();
-
+    let mut assets_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    assets_dir.push("assets");
     // build our application with some routes
     let app = Router::new()
         .fallback(
             get_service(
-                ServeDir::new("examples/websockets/assets").append_index_html_on_directories(true),
+                ServeDir::new(assets_dir).append_index_html_on_directories(true),
             )
             .handle_error(|error: std::io::Error| async move {
                 (
