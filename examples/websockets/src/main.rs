@@ -36,15 +36,13 @@ async fn main() {
     // build our application with some routes
     let app = Router::new()
         .fallback(
-            get_service(
-                ServeDir::new(assets_dir).append_index_html_on_directories(true),
-            )
-            .handle_error(|error: std::io::Error| async move {
-                (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    format!("Unhandled internal error: {}", error),
-                )
-            }),
+            get_service(ServeDir::new(assets_dir).append_index_html_on_directories(true))
+                .handle_error(|error: std::io::Error| async move {
+                    (
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        format!("Unhandled internal error: {}", error),
+                    )
+                }),
         )
         // routes are matched from bottom to top, so we have to put `nest` at the
         // top since it matches all routes
