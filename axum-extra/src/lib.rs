@@ -10,11 +10,12 @@
 //! Name | Description | Default?
 //! ---|---|---
 //! `async-read-body` | Enables the `AsyncReadBody` body | No
-//! `cookie` | Enables the `CookieJar` extractor | No
 //! `cookie-private` | Enables the `PrivateCookieJar` extractor | No
 //! `cookie-signed` | Enables the `SignedCookieJar` extractor | No
+//! `cookie` | Enables the `CookieJar` extractor | No
 //! `erased-json` | Enables the `ErasedJson` response | No
 //! `form` | Enables the `Form` extractor | No
+//! `ndjson` | Enables the `NdJson` extractor and response | No
 //! `query` | Enables the `Query` extractor | No
 //! `spa` | Enables the `Spa` router | No
 //! `typed-routing` | Enables the `TypedPath` routing utilities | No
@@ -66,6 +67,9 @@ pub mod body;
 pub mod extract;
 pub mod response;
 pub mod routing;
+
+#[cfg(feature = "ndjson")]
+pub mod ndjson;
 
 #[cfg(feature = "typed-routing")]
 #[doc(hidden)]

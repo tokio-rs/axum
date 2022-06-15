@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning].
 
 # Unreleased
 
-- None.
+- **added:** Add `NdJson` for streaming newline delimited JSON
 
 # 0.3.4 (08. June, 2022)
 

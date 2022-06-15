@@ -27,3 +27,7 @@ pub use self::form::Form;
 
 #[cfg(feature = "query")]
 pub use self::query::Query;
+
+#[cfg(feature = "ndjson")]
+#[doc(no_inline)]
+pub use crate::ndjson::NdJson;
