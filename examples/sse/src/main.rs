@@ -12,7 +12,7 @@ use axum::{
     Router,
 };
 use futures::stream::{self, Stream};
-use std::{convert::Infallible, net::SocketAddr, time::Duration, path::PathBuf};
+use std::{convert::Infallible, net::SocketAddr, path::PathBuf, time::Duration};
 use tokio_stream::StreamExt as _;
 use tower_http::{services::ServeDir, trace::TraceLayer};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
