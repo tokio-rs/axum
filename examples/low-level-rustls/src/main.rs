@@ -40,7 +40,9 @@ async fn main() {
         PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("self_signed_certs")
             .join("key.pem"),
-        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("self_signed_certs/cert.pem"),
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("self_signed_certs")
+            .join("cert.pem"),
     );
 
     let acceptor = TlsAcceptor::from(rustls_config);
