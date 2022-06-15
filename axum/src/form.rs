@@ -1,24 +1,23 @@
-use super::{has_content_type, rejection::*, FromRequest, RequestParts};
 use crate::body::{Bytes, HttpBody};
+use crate::extract::{has_content_type, rejection::*, FromRequest, RequestParts};
 use crate::BoxError;
 use async_trait::async_trait;
-use http::Method;
+use axum_core::response::{IntoResponse, Response};
+use http::header::CONTENT_TYPE;
+use http::{Method, StatusCode};
 use serde::de::DeserializeOwned;
+use serde::Serialize;
 use std::ops::Deref;
 
-/// Extractor that deserializes `application/x-www-form-urlencoded` requests
-/// into some type.
+/// URL encoded extractor and response.
 ///
-/// `T` is expected to implement [`serde::Deserialize`].
+/// # As extractor
 ///
-/// # Example
+/// If used as an extractor `Form` will deserialize `application/x-www-form-urlencoded` request
+/// bodies into some target type via [`serde::Deserialize`].
 ///
-/// ```rust,no_run
-/// use axum::{
-///     extract::Form,
-///     routing::post,
-///     Router,
-/// };
+/// ```rust
+/// use axum::Form;
 /// use serde::Deserialize;
 ///
 /// #[derive(Deserialize)]
@@ -27,19 +26,29 @@ use std::ops::Deref;
 ///     password: String,
 /// }
 ///
-/// async fn accept_form(form: Form<SignUp>) {
-///     let sign_up: SignUp = form.0;
-///
+/// async fn accept_form(Form(sign_up): Form<SignUp>) {
 ///     // ...
 /// }
-///
-/// let app = Router::new().route("/sign_up", post(accept_form));
-/// # async {
-/// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-/// # };
 /// ```
 ///
-/// Note that `Content-Type: multipart/form-data` requests are not supported.
+/// Note that `Content-Type: multipart/form-data` requests are not supported. Use [`Multipart`]
+/// instead.
+///
+/// # As response
+///
+/// ```rust
+/// use axum::Form;
+/// use serde::Serialize;
+///
+/// #[derive(Serialize)]
+/// struct Payload {
+///     value: String,
+/// }
+///
+/// async fn handler() -> Form<Payload> {
+///     Form(Payload { value: "foo".to_owned() })
+/// }
+/// ```
 #[cfg_attr(docsrs, doc(cfg(feature = "form")))]
 #[derive(Debug, Clone, Copy, Default)]
 pub struct Form<T>(pub T);
@@ -70,6 +79,22 @@ where
                 .map_err(FailedToDeserializeQueryString::__private_new::<T, _>)?;
 
             Ok(Form(value))
+        }
+    }
+}
+
+impl<T> IntoResponse for Form<T>
+where
+    T: Serialize,
+{
+    fn into_response(self) -> Response {
+        match serde_urlencoded::to_string(&self.0) {
+            Ok(body) => (
+                [(CONTENT_TYPE, mime::APPLICATION_WWW_FORM_URLENCODED.as_ref())],
+                body,
+            )
+                .into_response(),
+            Err(err) => (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response(),
         }
     }
 }

@@ -15,6 +15,10 @@ pub use crate::Json;
 #[cfg(feature = "headers")]
 pub use crate::TypedHeader;
 
+#[cfg(feature = "form")]
+#[doc(no_inline)]
+pub use crate::form::Form;
+
 #[doc(no_inline)]
 pub use crate::Extension;
 
