@@ -16,7 +16,7 @@ use axum::{
     routing::{get, get_service},
     Router,
 };
-use std::net::SocketAddr;
+use std::{net::SocketAddr, path::PathBuf};
 use tower_http::{
     services::ServeDir,
     trace::{DefaultMakeSpan, TraceLayer},
@@ -32,7 +32,9 @@ async fn main() {
         ))
         .with(tracing_subscriber::fmt::layer())
         .init();
-    let assets_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("assets");
+
+    let assets_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("assets");
+
     // build our application with some routes
     let app = Router::new()
         .fallback(

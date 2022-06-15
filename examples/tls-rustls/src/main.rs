@@ -6,7 +6,7 @@
 
 use axum::{routing::get, Router};
 use axum_server::tls_rustls::RustlsConfig;
-use std::net::SocketAddr;
+use std::{net::SocketAddr, path::PathBuf};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[tokio::main]
@@ -19,8 +19,12 @@ async fn main() {
         .init();
 
     let config = RustlsConfig::from_pem_file(
-        "examples/tls-rustls/self_signed_certs/cert.pem",
-        "examples/tls-rustls/self_signed_certs/key.pem",
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("self_signed_certs")
+            .join("cert.pem"),
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("self_signed_certs")
+            .join("key.pem"),
     )
     .await
     .unwrap();
