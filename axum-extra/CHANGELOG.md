@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning].
 
 # Unreleased
 
-- **added:** Add `NdJson` for streaming newline delimited JSON
+- **added:** Add `NdJson` for streaming newline delimited JSON ([#1093])
+
+[#1093]: https://github.com/tokio-rs/axum/pull/1093
 
 # 0.3.4 (08. June, 2022)
 
