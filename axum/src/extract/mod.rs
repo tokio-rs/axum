@@ -4,7 +4,6 @@ use http::header;
 use rejection::*;
 
 pub mod connect_info;
-pub mod extractor_middleware;
 pub mod path;
 pub mod rejection;
 
@@ -24,7 +23,6 @@ pub use axum_core::extract::{FromRequest, RequestParts};
 pub use self::{
     connect_info::ConnectInfo,
     content_length_limit::ContentLengthLimit,
-    extractor_middleware::extractor_middleware,
     host::Host,
     path::Path,
     raw_query::RawQuery,
