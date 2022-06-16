@@ -73,7 +73,7 @@ pin_project! {
             #[pin]
             stream: S,
         },
-        Extrator {
+        Extractor {
             #[pin]
             stream: BoxStream<'static, Result<S, axum::Error>>,
         },
