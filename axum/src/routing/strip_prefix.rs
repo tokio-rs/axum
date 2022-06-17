@@ -138,7 +138,7 @@ where
     let a = a.map(Some).chain(std::iter::repeat_with(|| None));
     let b = b.map(Some).chain(std::iter::repeat_with(|| None));
     a.zip(b)
-        // use `map_while` when its stable in our MSRV
+        // use `map_while` when its stable in our MSRV (1.57)
         .take_while(|(a, b)| a.is_some() || b.is_some())
         .filter_map(|(a, b)| match (a, b) {
             (Some(a), Some(b)) => Some(Item::Both(a, b)),

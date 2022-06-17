@@ -9,9 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **added:** Support resolving host name via `Forwarded` header in `Host`
   extractor ([#1078])
-- **added:** Implement `IntoResponse` for `Form`
+- **added:** Implement `IntoResponse` for `Form` ([#1095])
+- **change:** axum's MSRV is now 1.56 ([#1098])
 
 [#1078]: https://github.com/tokio-rs/axum/pull/1078
+[#1095]: https://github.com/tokio-rs/axum/pull/1095
+[#1098]: https://github.com/tokio-rs/axum/pull/1098
 
 # 0.5.7 (08. June, 2022)
 
@@ -393,7 +396,7 @@ Yanked, as it contained an accidental breaking change.
     `Router`.
   - **added:** Add `Handler::into_make_service_with_connect_info` for serving a
     handler without a `Router`, and storing info about the incoming connection.
-  - **breaking:** axum's minimum supported rust version is now 1.54
+  - **breaking:** axum's minimum supported rust version is now 1.56
 - Routing:
   - Big internal refactoring of routing leading to several improvements ([#363])
     - **added:** Wildcard routes like `.route("/api/users/*rest", service)` are now supported.

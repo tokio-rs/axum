@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- None.
+- **change:** axum's MSRV is now 1.56 ([#1098])
+
+[#1098]: https://github.com/tokio-rs/axum/pull/1098
 
 # 0.2.5 (08. June, 2022)
 
