@@ -9,7 +9,6 @@ use axum::{
 };
 use bytes::{BufMut, Bytes, BytesMut};
 use futures_util::stream::{BoxStream, Stream, TryStream, TryStreamExt};
-use http::header::CONTENT_TYPE;
 use pin_project_lite::pin_project;
 use serde::{de::DeserializeOwned, Serialize};
 use std::{
@@ -23,17 +22,17 @@ use tokio_stream::wrappers::LinesStream;
 use tokio_util::io::StreamReader;
 
 pin_project! {
-    /// A stream of newline delimited JSON ([NDJSON]).
+    /// A stream of newline delimited JSON.
     ///
     /// This can be used both as an extractor and as a response.
     ///
     /// # As extractor
     ///
     /// ```rust
-    /// use axum_extra::ndjson::NdJson;
+    /// use axum_extra::json_lines::JsonLines;
     /// use futures::stream::StreamExt;
     ///
-    /// async fn handler(mut stream: NdJson<serde_json::Value>) {
+    /// async fn handler(mut stream: JsonLines<serde_json::Value>) {
     ///     while let Some(value) = stream.next().await {
     ///         // ...
     ///     }
@@ -44,7 +43,7 @@ pin_project! {
     ///
     /// ```rust
     /// use axum::{BoxError, response::{IntoResponse, Response}};
-    /// use axum_extra::ndjson::NdJson;
+    /// use axum_extra::json_lines::JsonLines;
     /// use futures::stream::Stream;
     ///
     /// fn stream_of_values() -> impl Stream<Item = Result<serde_json::Value, BoxError>> {
@@ -52,14 +51,12 @@ pin_project! {
     /// }
     ///
     /// async fn handler() -> Response {
-    ///     NdJson::new(stream_of_values()).into_response()
+    ///     JsonLines::new(stream_of_values()).into_response()
     /// }
     /// ```
-    ///
-    /// [NDJSON]: https://ndjson.org/
     // we use `AsExtractor` as the default because you're more likely to name this type if its used
     // as an extractor
-    pub struct NdJson<S, T = AsExtractor> {
+    pub struct JsonLines<S, T = AsExtractor> {
         #[pin]
         inner: Inner<S>,
         _marker: PhantomData<T>,
@@ -80,18 +77,18 @@ pin_project! {
     }
 }
 
-/// Maker type used to prove that an `NdJson` was constructed via `FromRequest`.
+/// Maker type used to prove that an `JsonLines` was constructed via `FromRequest`.
 #[derive(Debug)]
 #[non_exhaustive]
 pub struct AsExtractor;
 
-/// Maker type used to prove that an `NdJson` was constructed via `NdJson::new`.
+/// Maker type used to prove that an `JsonLines` was constructed via `JsonLines::new`.
 #[derive(Debug)]
 #[non_exhaustive]
 pub struct AsResponse;
 
-impl<S> NdJson<S, AsResponse> {
-    /// Create a new `NdJson` from a stream of items.
+impl<S> JsonLines<S, AsResponse> {
+    /// Create a new `JsonLines` from a stream of items.
     pub fn new(stream: S) -> Self {
         Self {
             inner: Inner::Response { stream },
@@ -101,7 +98,7 @@ impl<S> NdJson<S, AsResponse> {
 }
 
 #[async_trait]
-impl<B, T> FromRequest<B> for NdJson<T, AsExtractor>
+impl<B, T> FromRequest<B> for JsonLines<T, AsExtractor>
 where
     B: HttpBody + Send + 'static,
     B::Data: Into<Bytes>,
@@ -159,20 +156,20 @@ where
     }
 }
 
-impl<T> Stream for NdJson<T, AsExtractor> {
+impl<T> Stream for JsonLines<T, AsExtractor> {
     type Item = Result<T, axum::Error>;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         match self.project().inner.project() {
             InnerProj::Extrator { stream } => stream.poll_next(cx),
-            // `NdJson<_, AsExtractor>` can only be constructed via `FromRequest`
+            // `JsonLines<_, AsExtractor>` can only be constructed via `FromRequest`
             // which doesn't use this variant
             InnerProj::Response { .. } => unreachable!(),
         }
     }
 }
 
-impl<S> IntoResponse for NdJson<S, AsResponse>
+impl<S> IntoResponse for JsonLines<S, AsResponse>
 where
     S: TryStream + Send + 'static,
     S::Ok: Serialize + Send,
@@ -181,7 +178,7 @@ where
     fn into_response(self) -> Response {
         let inner = match self.inner {
             Inner::Response { stream } => stream,
-            // `NdJson<_, AsResponse>` can only be constructed via `NdJson::new`
+            // `JsonLines<_, AsResponse>` can only be constructed via `JsonLines::new`
             // which doesn't use this variant
             Inner::Extrator { .. } => unreachable!(),
         };
@@ -194,7 +191,9 @@ where
         });
         let stream = StreamBody::new(stream);
 
-        ([(CONTENT_TYPE, "application/x-ndjson")], stream).into_response()
+        // there is no consensus around mime type yet
+        // https://github.com/wardi/jsonlines/issues/36
+        stream.into_response()
     }
 }
 
@@ -220,7 +219,7 @@ mod tests {
     async fn extractor() {
         let app = Router::new().route(
             "/",
-            post(|mut stream: NdJson<User>| async move {
+            post(|mut stream: JsonLines<User>| async move {
                 assert_eq!(stream.next().await.unwrap().unwrap(), User { id: 1 });
                 assert_eq!(stream.next().await.unwrap().unwrap(), User { id: 2 });
                 assert_eq!(stream.next().await.unwrap().unwrap(), User { id: 3 });
@@ -264,14 +263,13 @@ mod tests {
                     Ok::<_, Infallible>(User { id: 2 }),
                     Ok::<_, Infallible>(User { id: 3 }),
                 ]);
-                NdJson::new(values)
+                JsonLines::new(values)
             }),
         );
 
         let client = TestClient::new(app);
 
         let res = client.get("/").send().await;
-        assert_eq!(res.headers()["content-type"], "application/x-ndjson");
 
         let values = res
             .text()
