@@ -88,8 +88,8 @@ jobs:
         command: test
         args: --all --all-features --all-targets
 
-  # some examples doesn't support 1.54 (such as async-graphql)
-  # so we only test axum itself on 1.54
+  # some examples doesn't support 1.56 (such as async-graphql)
+  # so we only test axum itself on 1.56
   test-msrv:
     needs: check
     runs-on: ubuntu-latest
@@ -97,7 +97,7 @@ jobs:
     - uses: actions/checkout@master
     - uses: actions-rs/toolchain@v1
       with:
-        toolchain: 1.54
+        toolchain: 1.56
         override: true
         profile: minimal
     - uses: Swatinem/rust-cache@v1
@@ -110,7 +110,7 @@ jobs:
           -p axum-extra
           -p axum-core
           --all-features --all-targets
-    # the compiler errors are different on 1.54 which makes
+    # the compiler errors are different on 1.56 which makes
     # the trybuild tests in axum-macros fail, so just run the doc
     # tests
     - name: Run axum-macros doc tests
