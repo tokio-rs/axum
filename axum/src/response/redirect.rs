@@ -1,6 +1,5 @@
 use axum_core::response::{IntoResponse, Response};
 use http::{header::LOCATION, HeaderValue, StatusCode};
-use std::convert::TryFrom;
 
 /// Response that redirects the request to another location.
 ///
