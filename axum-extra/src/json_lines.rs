@@ -128,7 +128,7 @@ where
                 });
 
         Ok(Self {
-            inner: Inner::Extrator {
+            inner: Inner::Extractor {
                 stream: Box::pin(deserialized_stream),
             },
             _marker: PhantomData,
@@ -137,7 +137,7 @@ where
 }
 
 // like `axum::extract::BodyStream` except it doesn't box the inner body
-// we don't need that since we box the final stream in `Inner::Extrator`
+// we don't need that since we box the final stream in `Inner::Extractor`
 pin_project! {
     struct BodyStream<B> {
         #[pin]
@@ -161,7 +161,7 @@ impl<T> Stream for JsonLines<T, AsExtractor> {
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         match self.project().inner.project() {
-            InnerProj::Extrator { stream } => stream.poll_next(cx),
+            InnerProj::Extractor { stream } => stream.poll_next(cx),
             // `JsonLines<_, AsExtractor>` can only be constructed via `FromRequest`
             // which doesn't use this variant
             InnerProj::Response { .. } => unreachable!(),
@@ -180,7 +180,7 @@ where
             Inner::Response { stream } => stream,
             // `JsonLines<_, AsResponse>` can only be constructed via `JsonLines::new`
             // which doesn't use this variant
-            Inner::Extrator { .. } => unreachable!(),
+            Inner::Extractor { .. } => unreachable!(),
         };
 
         let stream = inner.map_err(Into::into).and_then(|value| async move {
