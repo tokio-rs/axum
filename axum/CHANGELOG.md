@@ -9,8 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **added:** Support resolving host name via `Forwarded` header in `Host`
   extractor ([#1078])
+- **change:** axum's MSRV is now 1.56 ([#1098])
 
 [#1078]: https://github.com/tokio-rs/axum/pull/1078
+[#1098]: https://github.com/tokio-rs/axum/pull/1098
 
 # 0.5.7 (08. June, 2022)
 
