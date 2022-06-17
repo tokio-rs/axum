@@ -6,6 +6,6 @@ mod erased_json;
 #[cfg(feature = "erased-json")]
 pub use erased_json::ErasedJson;
 
-#[cfg(feature = "ndjson")]
+#[cfg(feature = "json-lines")]
 #[doc(no_inline)]
-pub use crate::ndjson::NdJson;
+pub use crate::json_lines::JsonLines;
