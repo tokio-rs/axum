@@ -14,7 +14,7 @@ use axum::{
     Router,
 };
 use hyper::{client::HttpConnector, Body};
-use std::{convert::TryFrom, net::SocketAddr};
+use std::net::SocketAddr;
 
 type Client = hyper::client::Client<HttpConnector, Body>;
 
