@@ -1,5 +1,5 @@
 [package]
-edition = "2018"
+edition = "2021"
 name = "example-validator"
 publish = false
 version = "0.1.0"
