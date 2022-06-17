@@ -49,6 +49,8 @@ use std::ops::Deref;
 ///     Form(Payload { value: "foo".to_owned() })
 /// }
 /// ```
+///
+/// [`Multipart`]: crate::extract::Multipart
 #[cfg_attr(docsrs, doc(cfg(feature = "form")))]
 #[derive(Debug, Clone, Copy, Default)]
 pub struct Form<T>(pub T);
