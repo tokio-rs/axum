@@ -1318,6 +1318,16 @@ mod tests {
         let _: MethodRouter = post_service(ok.into_service()).post_service(ok.into_service());
     }
 
+    #[tokio::test]
+    async fn get_head_does_not_overlap() {
+        let _: MethodRouter = get(ok).head(ok);
+    }
+
+    #[tokio::test]
+    async fn head_get_does_not_overlap() {
+        let _: MethodRouter = head(ok).get(ok);
+    }
+
     async fn call<S>(method: Method, svc: &mut S) -> (StatusCode, HeaderMap, String)
     where
         S: Service<Request<Body>, Response = Response, Error = Infallible>,
