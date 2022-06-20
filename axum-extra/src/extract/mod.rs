@@ -27,3 +27,7 @@ pub use self::form::Form;
 
 #[cfg(feature = "query")]
 pub use self::query::Query;
+
+#[cfg(feature = "json-lines")]
+#[doc(no_inline)]
+pub use crate::json_lines::JsonLines;
