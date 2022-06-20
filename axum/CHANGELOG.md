@@ -7,7 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- None.
+- **fixed:** Fix compile error when the `headers` is enabled and the `form`
+  feature is disabled
 
 # 0.5.8 (18. June, 2022)
 

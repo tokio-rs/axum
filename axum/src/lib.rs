@@ -437,8 +437,8 @@ pub use self::routing::Router;
 pub use self::typed_header::TypedHeader;
 
 #[doc(inline)]
-#[cfg(feature = "headers")]
-pub use form::Form;
+#[cfg(feature = "form")]
+pub use self::form::Form;
 
 #[doc(inline)]
 pub use axum_core::{BoxError, Error};
