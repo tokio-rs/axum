@@ -7,8 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+- None.
+
+# 0.5.9 (20. June, 2022)
+
 - **fixed:** Fix compile error when the `headers` is enabled and the `form`
-  feature is disabled
+  feature is disabled ([#1107])
+
+[#1107]: https://github.com/tokio-rs/axum/pull/1107
 
 # 0.5.8 (18. June, 2022)
 
