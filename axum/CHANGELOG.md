@@ -19,10 +19,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `/foo/`). That is no longer supported and such requests will now be sent to
   the fallback ([#1119])
 
-[#1119]: https://github.com/tokio-rs/axum/pull/1119
-
 [#1077]: https://github.com/tokio-rs/axum/pull/1077
 [#1102]: https://github.com/tokio-rs/axum/pull/1102
+[#1119]: https://github.com/tokio-rs/axum/pull/1119
 [#1123]: https://github.com/tokio-rs/axum/pull/1123
 [#924]: https://github.com/tokio-rs/axum/pull/924
 
