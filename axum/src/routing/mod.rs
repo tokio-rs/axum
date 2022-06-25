@@ -4,12 +4,12 @@ use self::{future::RouteFuture, not_found::NotFound};
 use crate::{
     body::{boxed, Body, Bytes, HttpBody},
     extract::connect_info::IntoMakeServiceWithConnectInfo,
-    response::{IntoResponse, Redirect, Response},
+    response::Response,
     routing::strip_prefix::StripPrefix,
     util::try_downcast,
     BoxError,
 };
-use http::{Request, Uri};
+use http::Request;
 use matchit::MatchError;
 use std::{
     borrow::Cow,
@@ -499,39 +499,16 @@ where
 
         match self.node.at(&path) {
             Ok(match_) => self.call_route(match_, req),
-            Err(MatchError::MissingTrailingSlash) => {
-                let new_uri = replace_trailing_slash(req.uri(), &format!("{}/", &path));
-
-                RouteFuture::from_response(
-                    Redirect::permanent(&new_uri.to_string()).into_response(),
-                )
-            }
-            Err(MatchError::ExtraTrailingSlash) => {
-                let new_uri = replace_trailing_slash(req.uri(), path.strip_suffix('/').unwrap());
-
-                RouteFuture::from_response(
-                    Redirect::permanent(&new_uri.to_string()).into_response(),
-                )
-            }
-            Err(MatchError::NotFound) => match &self.fallback {
+            Err(
+                MatchError::NotFound
+                | MatchError::ExtraTrailingSlash
+                | MatchError::MissingTrailingSlash,
+            ) => match &self.fallback {
                 Fallback::Default(inner) => inner.clone().call(req),
                 Fallback::Custom(inner) => inner.clone().call(req),
             },
         }
     }
-}
-
-fn replace_trailing_slash(uri: &Uri, new_path: &str) -> Uri {
-    let mut new_path_and_query = new_path.to_owned();
-    if let Some(query) = uri.query() {
-        new_path_and_query.push('?');
-        new_path_and_query.push_str(query);
-    }
-
-    let mut parts = uri.clone().into_parts();
-    parts.path_and_query = Some(new_path_and_query.parse().unwrap());
-
-    Uri::from_parts(parts).unwrap()
 }
 
 /// Wrapper around `matchit::Router` that supports merging two `Router`s.
