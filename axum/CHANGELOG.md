@@ -8,8 +8,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 # Unreleased
 
 - **fixed:** Make `Router` cheaper to clone ([#1123])
+- **breaking:** Remove `extractor_middleware` which was previously deprecated.
+  Use `axum::middleware::from_extractor` instead ([#1077])
+- **breaking:** Allow `Error: Into<Infallible>` for `Route::{layer, route_layer}` ([#924])
+- **breaking:** Remove `extractor_middleware` which was previously deprecated.
+  Use `axum::middleware::from_extractor` instead ([#1077])
+- **breaking:** `MethodRouter` now panics on overlapping routes ([#1102])
 
+[#1077]: https://github.com/tokio-rs/axum/pull/1077
+[#1102]: https://github.com/tokio-rs/axum/pull/1102
 [#1123]: https://github.com/tokio-rs/axum/pull/1123
+[#924]: https://github.com/tokio-rs/axum/pull/924
 
 # 0.5.9 (20. June, 2022)
 
@@ -24,21 +33,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   extractor ([#1078])
 - **added:** Implement `IntoResponse` for `Form` ([#1095])
 - **change:** axum's MSRV is now 1.56 ([#1098])
-- **breaking:** Remove `extractor_middleware` which was previously deprecated.
-  Use `axum::middleware::from_extractor` instead ([#1077])
-- **breaking:** Allow `Error: Into<Infallible>` for `Route::{layer, route_layer}` ([#924])
-- **breaking:** Remove `extractor_middleware` which was previously deprecated.
-  Use `axum::middleware::from_extractor` instead ([#1077])
-- **breaking:** `MethodRouter` now panics on overlapping routes ([#1102])
 
-[#1077]: https://github.com/tokio-rs/axum/pull/1077
-[#1078]: https://github.com/tokio-rs/axum/pull/1078
-[#1078]: https://github.com/tokio-rs/axum/pull/1078
 [#1078]: https://github.com/tokio-rs/axum/pull/1078
 [#1095]: https://github.com/tokio-rs/axum/pull/1095
 [#1098]: https://github.com/tokio-rs/axum/pull/1098
-[#924]: https://github.com/tokio-rs/axum/pull/924
-[#1102]: https://github.com/tokio-rs/axum/pull/1102
 
 # 0.5.7 (08. June, 2022)
 
