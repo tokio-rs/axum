@@ -6,7 +6,7 @@
 
 use axum::{
     async_trait,
-    extract::{rejection::JsonRejection, FromRequest, RequestParts},
+    extract::{rejection::JsonRejection, FromRequest, RequestParts, Once},
     http::StatusCode,
     routing::post,
     BoxError, Router,
@@ -53,7 +53,7 @@ struct User {
 struct Json<T>(T);
 
 #[async_trait]
-impl<B, T> FromRequest<B> for Json<T>
+impl<B, T> FromRequest<Once, B> for Json<T>
 where
     // these trait bounds are copied from `impl FromRequest for axum::Json`
     T: DeserializeOwned,
@@ -63,7 +63,7 @@ where
 {
     type Rejection = (StatusCode, axum::Json<Value>);
 
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts<Once, B>) -> Result<Self, Self::Rejection> {
         match axum::Json::<T>::from_request(req).await {
             Ok(value) => Ok(Self(value.0)),
             Err(rejection) => {

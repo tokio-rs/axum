@@ -7,7 +7,7 @@
 use axum::{
     async_trait,
     body::{self, BoxBody, Bytes, Full},
-    extract::{FromRequest, RequestParts},
+    extract::{FromRequest, Once, RequestParts},
     http::{Request, StatusCode},
     middleware::{self, Next},
     response::{IntoResponse, Response},
@@ -72,26 +72,24 @@ fn do_thing_with_request_body(bytes: Bytes) {
     tracing::debug!(body = ?bytes);
 }
 
-async fn handler(_: PrintRequestBody, body: Bytes) {
+async fn handler(PrintRequestBody(body): PrintRequestBody) {
     tracing::debug!(?body, "handler received body");
 }
 
 // extractor that shows how to consume the request body upfront
-struct PrintRequestBody;
+struct PrintRequestBody(BoxBody);
 
 #[async_trait]
-impl FromRequest<BoxBody> for PrintRequestBody {
+impl FromRequest<Once, BoxBody> for PrintRequestBody {
     type Rejection = Response;
 
-    async fn from_request(req: &mut RequestParts<BoxBody>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts<Once, BoxBody>) -> Result<Self, Self::Rejection> {
         let request = Request::from_request(req)
             .await
             .map_err(|err| err.into_response())?;
 
         let request = buffer_request_body(request).await?;
 
-        *req = RequestParts::new(request);
-
-        Ok(Self)
+        Ok(Self(request.into_body()))
     }
 }

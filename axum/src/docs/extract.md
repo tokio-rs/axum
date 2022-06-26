@@ -390,6 +390,8 @@ use http::{StatusCode, header::{HeaderValue, USER_AGENT}};
 
 struct ExtractUserAgent(HeaderValue);
 
+// if you need to consume the request body use `axum::extract::Once` instead of
+// `R`, otherwise use a generic type.
 #[async_trait]
 impl<R, B> FromRequest<R, B> for ExtractUserAgent
 where

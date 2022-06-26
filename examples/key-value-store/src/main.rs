@@ -95,8 +95,8 @@ async fn kv_get(
 
 async fn kv_set(
     Path(key): Path<String>,
-    ContentLengthLimit(bytes): ContentLengthLimit<Bytes, { 1024 * 5_000 }>, // ~5mb
     Extension(state): Extension<SharedState>,
+    ContentLengthLimit(bytes): ContentLengthLimit<Bytes, { 1024 * 5_000 }>, // ~5mb
 ) {
     state.write().unwrap().db.insert(key, bytes);
 }

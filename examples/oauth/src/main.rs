@@ -205,14 +205,14 @@ impl IntoResponse for AuthRedirect {
 }
 
 #[async_trait]
-impl<B> FromRequest<B> for User
+impl<R, B> FromRequest<R, B> for User
 where
     B: Send,
 {
     // If anything goes wrong or no session is found, redirect to the auth page
     type Rejection = AuthRedirect;
 
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts<R, B>) -> Result<Self, Self::Rejection> {
         let Extension(store) = Extension::<MemoryStore>::from_request(req)
             .await
             .expect("`MemoryStore` extension is missing");
