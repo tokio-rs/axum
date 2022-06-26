@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- None.
+- **fixed:** Make `Router` cheaper to clone ([#1123])
+
+[#1123]: https://github.com/tokio-rs/axum/pull/1123
 
 # 0.5.9 (20. June, 2022)
 
