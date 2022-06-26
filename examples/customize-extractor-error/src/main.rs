@@ -6,7 +6,7 @@
 
 use axum::{
     async_trait,
-    extract::{rejection::JsonRejection, FromRequest, RequestParts, Once},
+    extract::{rejection::JsonRejection, FromRequest, Once, RequestParts},
     http::StatusCode,
     routing::post,
     BoxError, Router,

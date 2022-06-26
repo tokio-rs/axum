@@ -12,7 +12,7 @@
 
 use async_trait::async_trait;
 use axum::{
-    extract::{Form, FromRequest, RequestParts, Once},
+    extract::{Form, FromRequest, Once, RequestParts},
     http::StatusCode,
     response::{Html, IntoResponse, Response},
     routing::get,
