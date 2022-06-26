@@ -42,7 +42,7 @@ use crate::{
     routing::IntoMakeService,
     BoxError,
 };
-use axum_core::extract::{Mut, Ref};
+use axum_core::extract::{Mut, Once};
 use http::Request;
 use std::{fmt, future::Future, marker::PhantomData, pin::Pin};
 use tower::ServiceExt;
@@ -232,7 +232,7 @@ where
     Fut: Future<Output = Res> + Send,
     Res: IntoResponse,
     B: Send + 'static,
-    T1: FromRequest<Mut, B> + Send,
+    T1: FromRequest<Once, B> + Send,
 {
     type Future = Pin<Box<dyn Future<Output = Response> + Send>>;
 
@@ -259,8 +259,8 @@ where
     Fut: Future<Output = Res> + Send,
     Res: IntoResponse,
     B: Send + 'static,
-    T1: FromRequest<Ref, B> + Send,
-    T2: FromRequest<Mut, B> + Send,
+    T1: FromRequest<Mut, B> + Send,
+    T2: FromRequest<Once, B> + Send,
 {
     type Future = Pin<Box<dyn Future<Output = Response> + Send>>;
 
@@ -294,9 +294,9 @@ where
     Fut: Future<Output = Res> + Send,
     Res: IntoResponse,
     B: Send + 'static,
-    T1: FromRequest<Ref, B> + Send,
-    T2: FromRequest<Ref, B> + Send,
-    T3: FromRequest<Mut, B> + Send,
+    T1: FromRequest<Mut, B> + Send,
+    T2: FromRequest<Mut, B> + Send,
+    T3: FromRequest<Once, B> + Send,
 {
     type Future = Pin<Box<dyn Future<Output = Response> + Send>>;
 

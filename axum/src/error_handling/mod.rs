@@ -2,8 +2,8 @@
 
 use crate::{
     body::{boxed, Bytes, HttpBody},
-    extract::{FromRequest, Ref, RequestParts},
-    http::{Request, StatusCode},
+    extract::{FromRequest, Mut, RequestParts},
+    http::Request,
     response::{IntoResponse, Response},
     BoxError,
 };
@@ -163,7 +163,7 @@ macro_rules! impl_service {
             F: FnOnce($($ty),*, S::Error) -> Fut + Clone + Send + 'static,
             Fut: Future<Output = Res> + Send,
             Res: IntoResponse,
-            $( $ty: FromRequest<Ref, ReqBody> + Send,)*
+            $( $ty: FromRequest<Mut, ReqBody> + Send,)*
             ReqBody: Send + 'static,
             ResBody: HttpBody<Data = Bytes> + Send + 'static,
             ResBody::Error: Into<BoxError>,

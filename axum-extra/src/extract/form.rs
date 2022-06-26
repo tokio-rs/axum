@@ -3,7 +3,7 @@ use axum::{
     body::HttpBody,
     extract::{
         rejection::{FailedToDeserializeQueryString, FormRejection, InvalidFormContentType},
-        FromRequest, Mut, RequestParts,
+        FromRequest, Once, RequestParts,
     },
     BoxError,
 };
@@ -54,7 +54,7 @@ impl<T> Deref for Form<T> {
 }
 
 #[async_trait]
-impl<T, B> FromRequest<Mut, B> for Form<T>
+impl<T, B> FromRequest<Once, B> for Form<T>
 where
     T: DeserializeOwned,
     B: HttpBody + Send,
@@ -63,7 +63,7 @@ where
 {
     type Rejection = FormRejection;
 
-    async fn from_request(req: &mut RequestParts<Mut, B>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts<Once, B>) -> Result<Self, Self::Rejection> {
         if req.method() == Method::GET {
             let query = req.uri().query().unwrap_or_default();
             let value = serde_html_form::from_str(query)

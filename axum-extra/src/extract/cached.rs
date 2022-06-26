@@ -124,7 +124,7 @@ impl<T> DerefMut for Cached<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use axum::{extract::Ref, http::Request};
+    use axum::{extract::Mut, http::Request};
     use std::{
         convert::Infallible,
         sync::atomic::{AtomicU32, Ordering},
@@ -151,7 +151,7 @@ mod tests {
             }
         }
 
-        let mut req = RequestParts::<Ref, _>::new(Request::new(()));
+        let mut req = RequestParts::<Mut, _>::new(Request::new(()));
 
         let first = Cached::<Extractor>::from_request(&mut req).await.unwrap().0;
         assert_eq!(COUNTER.load(Ordering::SeqCst), 1);

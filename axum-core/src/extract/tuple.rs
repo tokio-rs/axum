@@ -1,4 +1,4 @@
-use super::{FromRequest, Mut, Ref, RequestParts};
+use super::{FromRequest, Mut, Once, RequestParts};
 use crate::response::{IntoResponse, Response};
 use async_trait::async_trait;
 use std::convert::Infallible;
@@ -17,15 +17,15 @@ where
 
 // TODO(david): macroify this
 #[async_trait]
-impl<B, T1> FromRequest<Mut, B> for (T1,)
+impl<B, T1> FromRequest<Once, B> for (T1,)
 where
-    T1: FromRequest<Mut, B> + Send,
+    T1: FromRequest<Once, B> + Send,
     B: Send,
 {
     type Rejection = Response;
 
     #[allow(non_snake_case)]
-    async fn from_request(req: &mut RequestParts<Mut, B>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts<Once, B>) -> Result<Self, Self::Rejection> {
         let T1: T1 = T1::from_request(req)
             .await
             .map_err(|err| err.into_response())?;
@@ -34,17 +34,17 @@ where
 }
 
 #[async_trait]
-impl<B, T1, T2> FromRequest<Mut, B> for (T1, T2)
+impl<B, T1, T2> FromRequest<Once, B> for (T1, T2)
 where
-    T1: FromRequest<Ref, B> + Send,
-    T2: FromRequest<Mut, B> + Send,
+    T1: FromRequest<Mut, B> + Send,
+    T2: FromRequest<Once, B> + Send,
     B: Send,
 {
     type Rejection = Response;
 
     #[allow(non_snake_case)]
-    async fn from_request(req: &mut RequestParts<Mut, B>) -> Result<Self, Self::Rejection> {
-        let mut req = req.to_ref();
+    async fn from_request(req: &mut RequestParts<Once, B>) -> Result<Self, Self::Rejection> {
+        let mut req = req.to_mut();
 
         let T1 = T1::from_request(&mut req)
             .await
@@ -61,18 +61,18 @@ where
 }
 
 #[async_trait]
-impl<B, T1, T2, T3> FromRequest<Mut, B> for (T1, T2, T3)
+impl<B, T1, T2, T3> FromRequest<Once, B> for (T1, T2, T3)
 where
-    T1: FromRequest<Ref, B> + Send,
-    T2: FromRequest<Ref, B> + Send,
-    T3: FromRequest<Mut, B> + Send,
+    T1: FromRequest<Mut, B> + Send,
+    T2: FromRequest<Mut, B> + Send,
+    T3: FromRequest<Once, B> + Send,
     B: Send,
 {
     type Rejection = Response;
 
     #[allow(non_snake_case)]
-    async fn from_request(req: &mut RequestParts<Mut, B>) -> Result<Self, Self::Rejection> {
-        let mut req = req.to_ref();
+    async fn from_request(req: &mut RequestParts<Once, B>) -> Result<Self, Self::Rejection> {
+        let mut req = req.to_mut();
 
         let T1 = T1::from_request(&mut req)
             .await

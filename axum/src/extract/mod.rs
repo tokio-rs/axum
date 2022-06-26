@@ -16,7 +16,7 @@ mod raw_query;
 mod request_parts;
 
 #[doc(inline)]
-pub use axum_core::extract::{FromRequest, Mut, Ref, RequestParts};
+pub use axum_core::extract::{FromRequest, Mut, Once, RequestParts};
 
 #[doc(inline)]
 #[allow(deprecated)]
@@ -73,7 +73,7 @@ pub use self::ws::WebSocketUpgrade;
 #[doc(no_inline)]
 pub use crate::TypedHeader;
 
-pub(crate) fn take_body<B>(req: &mut RequestParts<Mut, B>) -> Result<B, BodyAlreadyExtracted> {
+pub(crate) fn take_body<B>(req: &mut RequestParts<Once, B>) -> Result<B, BodyAlreadyExtracted> {
     req.take_body().ok_or_else(BodyAlreadyExtracted::default)
 }
 

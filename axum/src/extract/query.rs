@@ -76,7 +76,7 @@ impl<T> Deref for Query<T> {
 mod tests {
     use super::*;
     use crate::extract::RequestParts;
-    use axum_core::extract::Ref;
+    use axum_core::extract::Mut;
     use http::Request;
     use serde::Deserialize;
     use std::fmt::Debug;
@@ -86,7 +86,7 @@ mod tests {
         T: DeserializeOwned + PartialEq + Debug,
     {
         let mut req =
-            RequestParts::<Ref, _>::new(Request::builder().uri(uri.as_ref()).body(()).unwrap());
+            RequestParts::<Mut, _>::new(Request::builder().uri(uri.as_ref()).body(()).unwrap());
         assert_eq!(Query::<T>::from_request(&mut req).await.unwrap().0, value);
     }
 

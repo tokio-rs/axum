@@ -5,7 +5,7 @@ use crate::{
 };
 use async_trait::async_trait;
 use axum_core::{
-    extract::Mut,
+    extract::Once,
     response::{IntoResponse, Response},
 };
 use http::{
@@ -96,7 +96,7 @@ use std::ops::{Deref, DerefMut};
 pub struct Json<T>(pub T);
 
 #[async_trait]
-impl<T, B> FromRequest<Mut, B> for Json<T>
+impl<T, B> FromRequest<Once, B> for Json<T>
 where
     T: DeserializeOwned,
     B: HttpBody + Send,
@@ -105,7 +105,7 @@ where
 {
     type Rejection = JsonRejection;
 
-    async fn from_request(req: &mut RequestParts<Mut, B>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts<Once, B>) -> Result<Self, Self::Rejection> {
         if json_content_type(req) {
             let bytes = Bytes::from_request(req).await?;
 

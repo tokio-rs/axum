@@ -280,6 +280,8 @@ where
 mod tests {
     use super::*;
     use crate::{body::Empty, routing::get, Router};
+    use async_trait::async_trait;
+    use axum_core::extract::{FromRequest, Mut, Once, RequestParts};
     use http::{HeaderMap, StatusCode};
     use tower::ServiceExt;
 
@@ -312,5 +314,63 @@ mod tests {
         assert_eq!(res.status(), StatusCode::OK);
         let body = hyper::body::to_bytes(res).await.unwrap();
         assert_eq!(&body[..], b"ok");
+    }
+
+    // this just needs to compile
+    #[allow(dead_code)]
+    fn running_extractor() {
+        struct MyExtractorAny;
+
+        #[async_trait]
+        impl<R, B> FromRequest<R, B> for MyExtractorAny
+        where
+            B: Send,
+        {
+            type Rejection = ();
+
+            async fn from_request(_req: &mut RequestParts<R, B>) -> Result<Self, Self::Rejection> {
+                Ok(Self)
+            }
+        }
+
+        struct MyExtractorOnce;
+
+        #[async_trait]
+        impl<B> FromRequest<Once, B> for MyExtractorOnce
+        where
+            B: Send,
+        {
+            type Rejection = ();
+
+            async fn from_request(
+                _req: &mut RequestParts<Once, B>,
+            ) -> Result<Self, Self::Rejection> {
+                Ok(Self)
+            }
+        }
+
+        async fn run_mut<B>(req: Request<B>, next: Next<B>) -> Response
+        where
+            B: Send,
+        {
+            let mut req = RequestParts::<Mut, _>::new(req);
+            let _: MyExtractorAny = req.extract::<MyExtractorAny>().await.unwrap();
+            let req = req.into_request();
+            next.run(req).await
+        }
+
+        async fn run_once<B>(req: Request<B>, next: Next<B>) -> Response
+        where
+            B: Send,
+        {
+            let mut req = RequestParts::<Once, _>::new(req);
+            let _: MyExtractorAny = req.extract::<MyExtractorAny>().await.unwrap();
+            let req = req.try_into_request().unwrap();
+            next.run(req).await
+        }
+
+        let _: Router = Router::new()
+            .layer(from_fn(run_mut))
+            .layer(from_fn(run_once));
     }
 }

@@ -4,7 +4,7 @@ use crate::{
     BoxError, Error,
 };
 use async_trait::async_trait;
-use axum_core::extract::Mut;
+use axum_core::extract::Once;
 use futures_util::stream::Stream;
 use http::Uri;
 use std::{
@@ -141,7 +141,7 @@ impl Stream for BodyStream {
 }
 
 #[async_trait]
-impl<B> FromRequest<Mut, B> for BodyStream
+impl<B> FromRequest<Once, B> for BodyStream
 where
     B: HttpBody + Send + 'static,
     B::Data: Into<Bytes>,
@@ -149,7 +149,7 @@ where
 {
     type Rejection = BodyAlreadyExtracted;
 
-    async fn from_request(req: &mut RequestParts<Mut, B>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts<Once, B>) -> Result<Self, Self::Rejection> {
         let body = take_body(req)?
             .map_data(Into::into)
             .map_err(|err| Error::new(err.into()));
@@ -197,13 +197,13 @@ fn body_stream_traits() {
 pub struct RawBody<B = Body>(pub B);
 
 #[async_trait]
-impl<B> FromRequest<Mut, B> for RawBody<B>
+impl<B> FromRequest<Once, B> for RawBody<B>
 where
     B: Send,
 {
     type Rejection = BodyAlreadyExtracted;
 
-    async fn from_request(req: &mut RequestParts<Mut, B>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts<Once, B>) -> Result<Self, Self::Rejection> {
         let body = take_body(req)?;
         Ok(Self(body))
     }

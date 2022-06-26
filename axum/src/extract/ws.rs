@@ -71,7 +71,6 @@ use crate::{
     Error,
 };
 use async_trait::async_trait;
-use axum_core::extract::Mut;
 use futures_util::{
     sink::{Sink, SinkExt},
     stream::{Stream, StreamExt},
@@ -247,13 +246,13 @@ impl WebSocketUpgrade {
 // TODO(david): this means you cannot extract the body and `WebSocketUpgrade`. Is that a problem
 // if so then make `extensions_mut` work for any `R`
 #[async_trait]
-impl<B> FromRequest<Mut, B> for WebSocketUpgrade
+impl<B, R> FromRequest<R, B> for WebSocketUpgrade
 where
     B: Send,
 {
     type Rejection = WebSocketUpgradeRejection;
 
-    async fn from_request(req: &mut RequestParts<Mut, B>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts<R, B>) -> Result<Self, Self::Rejection> {
         if req.method() != Method::GET {
             return Err(MethodNotGet.into());
         }
@@ -270,14 +269,13 @@ where
             return Err(InvalidWebSocketVersionHeader.into());
         }
 
-        let sec_websocket_key =
-            if let Some(key) = req.headers_mut().remove(header::SEC_WEBSOCKET_KEY) {
-                key
-            } else {
-                return Err(WebSocketKeyHeaderMissing.into());
-            };
+        let sec_websocket_key = if let Some(key) = req.headers().get(header::SEC_WEBSOCKET_KEY) {
+            key.clone()
+        } else {
+            return Err(WebSocketKeyHeaderMissing.into());
+        };
 
-        let on_upgrade = req.extensions_mut().remove::<OnUpgrade>().unwrap();
+        let on_upgrade = req.remove_extension::<OnUpgrade>().unwrap();
 
         let sec_websocket_protocol = req.headers().get(header::SEC_WEBSOCKET_PROTOCOL).cloned();
 

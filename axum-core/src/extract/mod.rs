@@ -7,7 +7,10 @@
 use self::rejection::*;
 use crate::response::IntoResponse;
 use async_trait::async_trait;
-use http::{Extensions, HeaderMap, Method, Request, Uri, Version};
+use http::{
+    header::{HeaderMap, HeaderValue, IntoHeaderName},
+    Extensions, Method, Request, Uri, Version,
+};
 use std::{convert::Infallible, marker::PhantomData};
 
 pub mod rejection;
@@ -15,19 +18,26 @@ pub mod rejection;
 mod request_parts;
 mod tuple;
 
-// TODO(david): write test to ensure we can still use extractors from middleware
-
-// TODO(david): naming
-#[derive(Debug, Clone, Copy)]
-pub struct Ref(Infallible);
-
+/// Maker type used to signify that an extractor can be run multiple times.
+///
+/// See [`FromRequest`] for more details.
 // TODO(david): naming
 #[derive(Debug, Clone, Copy)]
 pub struct Mut(Infallible);
 
+/// Maker type used to signify that an extractor can only be run once.
+///
+/// See [`FromRequest`] for more details.
+#[derive(Debug, Clone, Copy)]
+pub struct Once(Infallible);
+
 /// Types that can be created from requests.
 ///
 /// See [`axum::extract`] for more details.
+///
+/// # What is the `R` type parameter?
+///
+///  TODO(david): docs
 ///
 /// # What is the `B` type parameter?
 ///
@@ -52,13 +62,13 @@ pub struct Mut(Infallible);
 /// struct MyExtractor;
 ///
 /// #[async_trait]
-/// impl<B> FromRequest<B> for MyExtractor
+/// impl<R, B> FromRequest<R, B> for MyExtractor
 /// where
 ///     B: Send, // required by `async_trait`
 /// {
 ///     type Rejection = http::StatusCode;
 ///
-///     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+///     async fn from_request(req: &mut RequestParts<R, B>) -> Result<Self, Self::Rejection> {
 ///         // ...
 ///         # unimplemented!()
 ///     }
@@ -76,12 +86,7 @@ pub trait FromRequest<R, B>: Sized {
     type Rejection: IntoResponse;
 
     /// Perform the extraction.
-    async fn from_request(
-        // TODO(david): this arg shouldn't be `&mut`. Its weird having `&mut RequestParts<Ref, _>`
-        // because it isn't actually mutable.
-        // Should probably be `RequestParts<Ref<'_>, B>` or smth
-        req: &mut RequestParts<R, B>,
-    ) -> Result<Self, Self::Rejection>;
+    async fn from_request(req: &mut RequestParts<R, B>) -> Result<Self, Self::Rejection>;
 }
 
 /// The type used with [`FromRequest`] to extract data from requests.
@@ -165,8 +170,8 @@ impl<R, B> RequestParts<R, B> {
         E::from_request(self).await
     }
 
-    // NOTE: `method_mut`, `version_mut`, and `uri_mut` should be fine to call for `RequestParts<Ref, _>`
-    // because they don't remove any data that could make follow up extractors fail
+    // NOTE: `method_mut`, `version_mut`, and `uri_mut` should be fine to call for `RequestParts<Mut, _>`
+    // because they don't remove any data that could make follow up extractors fail.
     //
     // Whereas `extensions_mut` does since you can make `Extension` fail by removing all extensions
     // with `std::mem::take`
@@ -206,11 +211,32 @@ impl<R, B> RequestParts<R, B> {
         &self.headers
     }
 
+    /// Inserts a header, overriding any previous value.
+    ///
+    /// The previous value is returned, if any.
+    pub fn insert_header<K>(&mut self, key: K, value: HeaderValue) -> Option<HeaderValue>
+    where
+        K: IntoHeaderName,
+    {
+        self.headers.insert(key, value)
+    }
+
+    /// Appends a header, without overriding any previous value.
+    ///
+    /// If the map did not previously have this key present, then false is returned.
+    pub fn append_header<K>(&mut self, key: K, value: HeaderValue) -> bool
+    where
+        K: IntoHeaderName,
+    {
+        self.headers.append(key, value)
+    }
+
     /// Gets a reference to the request extensions.
     pub fn extensions(&self) -> &Extensions {
         &self.extensions
     }
 
+    /// Insert a new request extension.
     pub fn insert_extension<T>(&mut self, extension: T)
     where
         T: Send + Sync + 'static,
@@ -218,7 +244,13 @@ impl<R, B> RequestParts<R, B> {
         self.extensions.insert(extension);
     }
 
-    // TODO(david): probably want insert_header and append_header
+    /// Remove a type from the request extensions.
+    pub fn remove_extension<T>(&mut self) -> Option<T>
+    where
+        T: Send + Sync + 'static,
+    {
+        self.extensions.remove::<T>()
+    }
 
     /// Gets a reference to the request body.
     ///
@@ -228,7 +260,11 @@ impl<R, B> RequestParts<R, B> {
     }
 }
 
-impl<B> RequestParts<Ref, B> {
+impl<B> RequestParts<Mut, B> {
+    /// Convert this `RequestParts` back into a [`Request`], infallibly.
+    ///
+    /// This can never fail (as opposed to `RequestParts::try_into_request`) because
+    /// you cannot remove the body from a `RequestParts<Mut, _>`.
     pub fn into_request(self) -> Request<B> {
         let Self {
             method,
@@ -243,7 +279,7 @@ impl<B> RequestParts<Ref, B> {
         let mut req = if let Some(body) = body.take() {
             Request::new(body)
         } else {
-            // you cannot remove the body from a `RequestParts<Ref, _>` so it'll never be `None`
+            // you cannot remove the body from a `RequestParts<Mut, _>` so it'll never be `None`
             unreachable!();
         };
 
@@ -257,9 +293,7 @@ impl<B> RequestParts<Ref, B> {
     }
 }
 
-impl<B> RequestParts<Mut, B> {
-    // TODO(david): should all `*_mut` methods be here, or just body?
-
+impl<B> RequestParts<Once, B> {
     /// Convert this `RequestParts` back into a [`Request`].
     ///
     /// Fails if The request body has been extracted, that is [`take_body`] has
@@ -293,7 +327,7 @@ impl<B> RequestParts<Mut, B> {
     }
 
     #[allow(clippy::wrong_self_convention)]
-    pub(crate) fn to_ref(&mut self) -> RequestParts<Ref, B> {
+    pub(crate) fn to_mut(&mut self) -> RequestParts<Mut, B> {
         RequestParts {
             method: self.method().clone(),
             uri: self.uri().clone(),
@@ -302,7 +336,7 @@ impl<B> RequestParts<Mut, B> {
             extensions: std::mem::take(self.extensions_mut()),
             body: Some(
                 self.take_body()
-                    .expect("`to_ref` must be called before any extractors"),
+                    .expect("`to_mut` must be called before any extractors"),
             ),
             _marker: PhantomData,
         }
@@ -313,7 +347,6 @@ impl<B> RequestParts<Mut, B> {
         &mut self.headers
     }
 
-    // TODO(david): this impacts `WebSocketUpgrade`, see TODO there
     /// Gets a mutable reference to the request extensions.
     pub fn extensions_mut(&mut self) -> &mut Extensions {
         &mut self.extensions

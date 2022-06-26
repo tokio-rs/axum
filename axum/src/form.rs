@@ -2,7 +2,7 @@ use crate::body::{Bytes, HttpBody};
 use crate::extract::{has_content_type, rejection::*, FromRequest, RequestParts};
 use crate::BoxError;
 use async_trait::async_trait;
-use axum_core::extract::Mut;
+use axum_core::extract::Once;
 use axum_core::response::{IntoResponse, Response};
 use http::header::CONTENT_TYPE;
 use http::{Method, StatusCode};
@@ -57,7 +57,7 @@ use std::ops::Deref;
 pub struct Form<T>(pub T);
 
 #[async_trait]
-impl<T, B> FromRequest<Mut, B> for Form<T>
+impl<T, B> FromRequest<Once, B> for Form<T>
 where
     T: DeserializeOwned,
     B: HttpBody + Send,
@@ -66,7 +66,7 @@ where
 {
     type Rejection = FormRejection;
 
-    async fn from_request(req: &mut RequestParts<Mut, B>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts<Once, B>) -> Result<Self, Self::Rejection> {
         if req.method() == Method::GET {
             let query = req.uri().query().unwrap_or_default();
             let value = serde_urlencoded::from_str(query)
