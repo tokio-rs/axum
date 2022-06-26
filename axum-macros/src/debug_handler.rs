@@ -1,12 +1,11 @@
+use itertools::{Itertools, Position};
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote, quote_spanned};
 use syn::{parse::Parse, spanned::Spanned, FnArg, ItemFn, Token, Type};
 
 pub(crate) fn expand(attr: Attrs, item_fn: ItemFn) -> TokenStream {
     let check_extractor_count = check_extractor_count(&item_fn);
-    let check_request_last_extractor = check_request_last_extractor(&item_fn);
     let check_path_extractor = check_path_extractor(&item_fn);
-    let check_multiple_body_extractors = check_multiple_body_extractors(&item_fn);
 
     let check_inputs_impls_from_request = check_inputs_impls_from_request(&item_fn, &attr.body_ty);
     let check_output_impls_into_response = check_output_impls_into_response(&item_fn);
@@ -15,9 +14,7 @@ pub(crate) fn expand(attr: Attrs, item_fn: ItemFn) -> TokenStream {
     quote! {
         #item_fn
         #check_extractor_count
-        #check_request_last_extractor
         #check_path_extractor
-        #check_multiple_body_extractors
         #check_inputs_impls_from_request
         #check_output_impls_into_response
         #check_future_send
@@ -87,22 +84,6 @@ fn extractor_idents(item_fn: &ItemFn) -> impl Iterator<Item = (usize, &syn::FnAr
         })
 }
 
-fn check_request_last_extractor(item_fn: &ItemFn) -> Option<TokenStream> {
-    let request_extractor_ident =
-        extractor_idents(item_fn).find(|(_, _, ident)| *ident == "Request");
-
-    if let Some((idx, fn_arg, _)) = request_extractor_ident {
-        if idx != item_fn.sig.inputs.len() - 1 {
-            return Some(
-                syn::Error::new_spanned(fn_arg, "`Request` extractor should always be last")
-                    .to_compile_error(),
-            );
-        }
-    }
-
-    None
-}
-
 fn check_path_extractor(item_fn: &ItemFn) -> TokenStream {
     let path_extractors = extractor_idents(item_fn)
         .filter(|(_, _, ident)| *ident == "Path")
@@ -126,32 +107,6 @@ fn check_path_extractor(item_fn: &ItemFn) -> TokenStream {
     }
 }
 
-fn check_multiple_body_extractors(item_fn: &ItemFn) -> TokenStream {
-    let body_extractors = extractor_idents(item_fn)
-        .filter(|(_, _, ident)| {
-            *ident == "String"
-                || *ident == "Bytes"
-                || *ident == "Json"
-                || *ident == "RawBody"
-                || *ident == "BodyStream"
-                || *ident == "Multipart"
-                || *ident == "Request"
-        })
-        .collect::<Vec<_>>();
-
-    if body_extractors.len() > 1 {
-        body_extractors
-            .into_iter()
-            .map(|(_, arg, _)| {
-                syn::Error::new_spanned(arg, "Only one body extractor can be applied")
-                    .to_compile_error()
-            })
-            .collect()
-    } else {
-        quote! {}
-    }
-}
-
 fn check_inputs_impls_from_request(item_fn: &ItemFn, body_ty: &Type) -> TokenStream {
     if !item_fn.sig.generics.params.is_empty() {
         return syn::Error::new_spanned(
@@ -166,7 +121,14 @@ fn check_inputs_impls_from_request(item_fn: &ItemFn, body_ty: &Type) -> TokenStr
         .inputs
         .iter()
         .enumerate()
-        .map(|(idx, arg)| {
+        .with_position()
+        .map(|item| {
+            let mut_or_once = match &item {
+                Position::First(_) | Position::Middle(_) => quote! { ::axum::extract::Mut },
+                Position::Last(_) | Position::Only(_) => quote! { ::axum::extract::Once },
+            };
+            let (idx, arg) = item.into_inner();
+
             let (span, ty) = match arg {
                 FnArg::Receiver(receiver) => {
                     if receiver.reference.is_some() {
@@ -196,7 +158,7 @@ fn check_inputs_impls_from_request(item_fn: &ItemFn, body_ty: &Type) -> TokenStr
                 #[allow(warnings)]
                 fn #name()
                 where
-                    #ty: ::axum::extract::FromRequest<#body_ty> + Send,
+                    #ty: ::axum::extract::FromRequest<#mut_or_once, #body_ty> + Send,
                 {}
             }
         })

@@ -5,5 +5,5 @@ error[E0277]: the trait bound `for<'de> MyPath: serde::de::Deserialize<'de>` is 
   |          ^^^^^^^^^ the trait `for<'de> serde::de::Deserialize<'de>` is not implemented for `MyPath`
   |
   = note: required because of the requirements on the impl of `serde::de::DeserializeOwned` for `MyPath`
-  = note: required because of the requirements on the impl of `FromRequest<B>` for `axum::extract::Path<MyPath>`
+  = note: required because of the requirements on the impl of `FromRequest<R, B>` for `axum::extract::Path<MyPath>`
   = note: this error originates in the derive macro `TypedPath` (in Nightly builds, run with -Z macro-backtrace for more info)
