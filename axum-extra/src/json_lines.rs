@@ -3,7 +3,7 @@
 use axum::{
     async_trait,
     body::{HttpBody, StreamBody},
-    extract::{rejection::BodyAlreadyExtracted, FromRequest, RequestParts},
+    extract::{rejection::BodyAlreadyExtracted, FromRequest, Mut, RequestParts},
     response::{IntoResponse, Response},
     BoxError,
 };
@@ -98,7 +98,7 @@ impl<S> JsonLines<S, AsResponse> {
 }
 
 #[async_trait]
-impl<B, T> FromRequest<B> for JsonLines<T, AsExtractor>
+impl<B, T> FromRequest<Mut, B> for JsonLines<T, AsExtractor>
 where
     B: HttpBody + Send + 'static,
     B::Data: Into<Bytes>,
@@ -107,7 +107,7 @@ where
 {
     type Rejection = BodyAlreadyExtracted;
 
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts<Mut, B>) -> Result<Self, Self::Rejection> {
         // `Stream::lines` isn't a thing so we have to convert it into an `AsyncRead`
         // so we can call `AsyncRead::lines` and then convert it back to a `Stream`
 

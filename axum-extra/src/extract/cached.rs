@@ -88,19 +88,19 @@ pub struct Cached<T>(pub T);
 struct CachedEntry<T>(T);
 
 #[async_trait]
-impl<B, T> FromRequest<B> for Cached<T>
+impl<B, T, R> FromRequest<R, B> for Cached<T>
 where
     B: Send,
-    T: FromRequest<B> + Clone + Send + Sync + 'static,
+    T: FromRequest<R, B> + Clone + Send + Sync + 'static,
 {
     type Rejection = T::Rejection;
 
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts<R, B>) -> Result<Self, Self::Rejection> {
         match Extension::<CachedEntry<T>>::from_request(req).await {
             Ok(Extension(CachedEntry(value))) => Ok(Self(value)),
             Err(_) => {
                 let value = T::from_request(req).await?;
-                req.extensions_mut().insert(CachedEntry(value.clone()));
+                req.insert_extension(CachedEntry(value.clone()));
                 Ok(Self(value))
             }
         }
@@ -124,7 +124,7 @@ impl<T> DerefMut for Cached<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use axum::http::Request;
+    use axum::{extract::Ref, http::Request};
     use std::{
         convert::Infallible,
         sync::atomic::{AtomicU32, Ordering},
@@ -139,19 +139,19 @@ mod tests {
         struct Extractor(Instant);
 
         #[async_trait]
-        impl<B> FromRequest<B> for Extractor
+        impl<R, B> FromRequest<R, B> for Extractor
         where
             B: Send,
         {
             type Rejection = Infallible;
 
-            async fn from_request(_req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+            async fn from_request(_req: &mut RequestParts<R, B>) -> Result<Self, Self::Rejection> {
                 COUNTER.fetch_add(1, Ordering::SeqCst);
                 Ok(Self(Instant::now()))
             }
         }
 
-        let mut req = RequestParts::new(Request::new(()));
+        let mut req = RequestParts::<Ref, _>::new(Request::new(()));
 
         let first = Cached::<Extractor>::from_request(&mut req).await.unwrap().0;
         assert_eq!(COUNTER.load(Ordering::SeqCst), 1);

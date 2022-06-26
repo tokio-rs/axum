@@ -42,6 +42,7 @@ use crate::{
     routing::IntoMakeService,
     BoxError,
 };
+use axum_core::extract::{Mut, Ref};
 use http::Request;
 use std::{fmt, future::Future, marker::PhantomData, pin::Pin};
 use tower::ServiceExt;
@@ -223,40 +224,145 @@ where
     }
 }
 
-macro_rules! impl_handler {
-    ( $($ty:ident),* $(,)? ) => {
-        #[allow(non_snake_case)]
-        impl<F, Fut, B, Res, $($ty,)*> Handler<($($ty,)*), B> for F
-        where
-            F: FnOnce($($ty,)*) -> Fut + Clone + Send + 'static,
-            Fut: Future<Output = Res> + Send,
-            B: Send + 'static,
-            Res: IntoResponse,
-            $( $ty: FromRequest<B> + Send,)*
-        {
-            type Future = Pin<Box<dyn Future<Output = Response> + Send>>;
+// TODO(david): macroify this
 
-            fn call(self, req: Request<B>) -> Self::Future {
-                Box::pin(async move {
-                    let mut req = RequestParts::new(req);
+impl<F, Fut, Res, B, T1> Handler<(T1,), B> for F
+where
+    F: FnOnce(T1) -> Fut + Clone + Send + 'static,
+    Fut: Future<Output = Res> + Send,
+    Res: IntoResponse,
+    B: Send + 'static,
+    T1: FromRequest<Mut, B> + Send,
+{
+    type Future = Pin<Box<dyn Future<Output = Response> + Send>>;
 
-                    $(
-                        let $ty = match $ty::from_request(&mut req).await {
-                            Ok(value) => value,
-                            Err(rejection) => return rejection.into_response(),
-                        };
-                    )*
+    #[allow(non_snake_case)]
+    fn call(self, req: Request<B>) -> Self::Future {
+        Box::pin(async move {
+            let mut req = RequestParts::new(req);
 
-                    let res = self($($ty,)*).await;
+            let T1 = match T1::from_request(&mut req).await {
+                Ok(value) => value,
+                Err(rejection) => return rejection.into_response(),
+            };
 
-                    res.into_response()
-                })
-            }
-        }
-    };
+            let res = self(T1).await;
+
+            res.into_response()
+        })
+    }
 }
 
-all_the_tuples!(impl_handler);
+impl<F, Fut, Res, B, T1, T2> Handler<(T1, T2), B> for F
+where
+    F: FnOnce(T1, T2) -> Fut + Clone + Send + 'static,
+    Fut: Future<Output = Res> + Send,
+    Res: IntoResponse,
+    B: Send + 'static,
+    T1: FromRequest<Ref, B> + Send,
+    T2: FromRequest<Mut, B> + Send,
+{
+    type Future = Pin<Box<dyn Future<Output = Response> + Send>>;
+
+    #[allow(non_snake_case)]
+    fn call(self, req: Request<B>) -> Self::Future {
+        Box::pin(async move {
+            let mut req = RequestParts::new(req);
+
+            let T1 = match T1::from_request(&mut req).await {
+                Ok(value) => value,
+                Err(rejection) => return rejection.into_response(),
+            };
+
+            let mut req = RequestParts::new(req.into_request());
+
+            let T2 = match T2::from_request(&mut req).await {
+                Ok(value) => value,
+                Err(rejection) => return rejection.into_response(),
+            };
+
+            let res = self(T1, T2).await;
+
+            res.into_response()
+        })
+    }
+}
+
+impl<F, Fut, Res, B, T1, T2, T3> Handler<(T1, T2, T3), B> for F
+where
+    F: FnOnce(T1, T2, T3) -> Fut + Clone + Send + 'static,
+    Fut: Future<Output = Res> + Send,
+    Res: IntoResponse,
+    B: Send + 'static,
+    T1: FromRequest<Ref, B> + Send,
+    T2: FromRequest<Ref, B> + Send,
+    T3: FromRequest<Mut, B> + Send,
+{
+    type Future = Pin<Box<dyn Future<Output = Response> + Send>>;
+
+    #[allow(non_snake_case)]
+    fn call(self, req: Request<B>) -> Self::Future {
+        Box::pin(async move {
+            let mut req = RequestParts::new(req);
+
+            let T1 = match T1::from_request(&mut req).await {
+                Ok(value) => value,
+                Err(rejection) => return rejection.into_response(),
+            };
+
+            let T2 = match T2::from_request(&mut req).await {
+                Ok(value) => value,
+                Err(rejection) => return rejection.into_response(),
+            };
+
+            let mut req = RequestParts::new(req.into_request());
+
+            let T3 = match T3::from_request(&mut req).await {
+                Ok(value) => value,
+                Err(rejection) => return rejection.into_response(),
+            };
+
+            let res = self(T1, T2, T3).await;
+
+            res.into_response()
+        })
+    }
+}
+
+// macro_rules! impl_handler {
+//     ( $($ty:ident),* $(,)? ) => {
+//         #[allow(non_snake_case)]
+//         impl<F, Fut, B, Res, $($ty,)*> Handler<($($ty,)*), B> for F
+//         where
+//             F: FnOnce($($ty,)*) -> Fut + Clone + Send + 'static,
+//             Fut: Future<Output = Res> + Send,
+//             B: Send + 'static,
+//             Res: IntoResponse,
+//             $( $ty: FromRequest<B> + Send,)*
+//         {
+//             type Future = Pin<Box<dyn Future<Output = Response> + Send>>;
+
+//             fn call(self, req: Request<B>) -> Self::Future {
+//                 Box::pin(async move {
+//                     let mut req = RequestParts::new(req);
+
+//                     $(
+//                         let $ty = match $ty::from_request(&mut req).await {
+//                             Ok(value) => value,
+//                             Err(rejection) => return rejection.into_response(),
+//                         };
+//                     )*
+
+//                     let res = self($($ty,)*).await;
+
+//                     res.into_response()
+//                 })
+//             }
+//         }
+//     };
+// }
+
+// all_the_tuples!(impl_handler);
 
 /// A [`Service`] created from a [`Handler`] by applying a Tower middleware.
 ///

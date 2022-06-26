@@ -21,13 +21,13 @@ const X_FORWARDED_HOST_HEADER_KEY: &str = "X-Forwarded-Host";
 pub struct Host(pub String);
 
 #[async_trait]
-impl<B> FromRequest<B> for Host
+impl<R, B> FromRequest<R, B> for Host
 where
     B: Send,
 {
     type Rejection = HostRejection;
 
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts<R, B>) -> Result<Self, Self::Rejection> {
         if let Some(host) = parse_forwarded(req.headers()) {
             return Ok(Host(host.to_owned()));
         }

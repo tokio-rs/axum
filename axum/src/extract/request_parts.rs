@@ -4,6 +4,7 @@ use crate::{
     BoxError, Error,
 };
 use async_trait::async_trait;
+use axum_core::extract::Mut;
 use futures_util::stream::Stream;
 use http::Uri;
 use std::{
@@ -86,13 +87,13 @@ pub struct OriginalUri(pub Uri);
 
 #[cfg(feature = "original-uri")]
 #[async_trait]
-impl<B> FromRequest<B> for OriginalUri
+impl<R, B> FromRequest<R, B> for OriginalUri
 where
     B: Send,
 {
     type Rejection = Infallible;
 
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts<R, B>) -> Result<Self, Self::Rejection> {
         let uri = Extension::<Self>::from_request(req)
             .await
             .unwrap_or_else(|_| Extension(OriginalUri(req.uri().clone())))
@@ -140,7 +141,7 @@ impl Stream for BodyStream {
 }
 
 #[async_trait]
-impl<B> FromRequest<B> for BodyStream
+impl<B> FromRequest<Mut, B> for BodyStream
 where
     B: HttpBody + Send + 'static,
     B::Data: Into<Bytes>,
@@ -148,7 +149,7 @@ where
 {
     type Rejection = BodyAlreadyExtracted;
 
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts<Mut, B>) -> Result<Self, Self::Rejection> {
         let body = take_body(req)?
             .map_data(Into::into)
             .map_err(|err| Error::new(err.into()));
@@ -196,13 +197,13 @@ fn body_stream_traits() {
 pub struct RawBody<B = Body>(pub B);
 
 #[async_trait]
-impl<B> FromRequest<B> for RawBody<B>
+impl<B> FromRequest<Mut, B> for RawBody<B>
 where
     B: Send,
 {
     type Rejection = BodyAlreadyExtracted;
 
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts<Mut, B>) -> Result<Self, Self::Rejection> {
         let body = take_body(req)?;
         Ok(Self(body))
     }
@@ -220,22 +221,6 @@ mod tests {
     use http::{Method, Request, StatusCode};
 
     #[tokio::test]
-    async fn multiple_request_extractors() {
-        async fn handler(_: Request<Body>, _: Request<Body>) {}
-
-        let app = Router::new().route("/", post(handler));
-
-        let client = TestClient::new(app);
-
-        let res = client.post("/").body("hi there").send().await;
-        assert_eq!(res.status(), StatusCode::INTERNAL_SERVER_ERROR);
-        assert_eq!(
-            res.text().await,
-            "Cannot have two request body extractors for a single handler"
-        );
-    }
-
-    #[tokio::test]
     async fn extract_request_parts() {
         #[derive(Clone)]
         struct Ext;
@@ -251,21 +236,6 @@ mod tests {
         let client = TestClient::new(Router::new().route("/", get(handler)).layer(Extension(Ext)));
 
         let res = client.get("/").header("x-foo", "123").send().await;
-        assert_eq!(res.status(), StatusCode::OK);
-    }
-
-    #[tokio::test]
-    async fn extract_request_parts_doesnt_consume_the_body() {
-        #[derive(Clone)]
-        struct Ext;
-
-        async fn handler(_parts: http::request::Parts, body: String) {
-            assert_eq!(body, "foo");
-        }
-
-        let client = TestClient::new(Router::new().route("/", get(handler)));
-
-        let res = client.get("/").body("foo").send().await;
         assert_eq!(res.status(), StatusCode::OK);
     }
 }

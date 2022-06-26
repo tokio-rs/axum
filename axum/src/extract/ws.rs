@@ -71,6 +71,7 @@ use crate::{
     Error,
 };
 use async_trait::async_trait;
+use axum_core::extract::Mut;
 use futures_util::{
     sink::{Sink, SinkExt},
     stream::{Stream, StreamExt},
@@ -243,14 +244,16 @@ impl WebSocketUpgrade {
     }
 }
 
+// TODO(david): this means you cannot extract the body and `WebSocketUpgrade`. Is that a problem
+// if so then make `extensions_mut` work for any `R`
 #[async_trait]
-impl<B> FromRequest<B> for WebSocketUpgrade
+impl<B> FromRequest<Mut, B> for WebSocketUpgrade
 where
     B: Send,
 {
     type Rejection = WebSocketUpgradeRejection;
 
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts<Mut, B>) -> Result<Self, Self::Rejection> {
         if req.method() != Method::GET {
             return Err(MethodNotGet.into());
         }
@@ -288,7 +291,7 @@ where
     }
 }
 
-fn header_eq<B>(req: &RequestParts<B>, key: HeaderName, value: &'static str) -> bool {
+fn header_eq<R, B>(req: &RequestParts<R, B>, key: HeaderName, value: &'static str) -> bool {
     if let Some(header) = req.headers().get(&key) {
         header.as_bytes().eq_ignore_ascii_case(value.as_bytes())
     } else {
@@ -296,7 +299,7 @@ fn header_eq<B>(req: &RequestParts<B>, key: HeaderName, value: &'static str) -> 
     }
 }
 
-fn header_contains<B>(req: &RequestParts<B>, key: HeaderName, value: &'static str) -> bool {
+fn header_contains<R, B>(req: &RequestParts<R, B>, key: HeaderName, value: &'static str) -> bool {
     let header = if let Some(header) = req.headers().get(&key) {
         header
     } else {

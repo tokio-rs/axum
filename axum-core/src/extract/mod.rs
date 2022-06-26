@@ -8,12 +8,22 @@ use self::rejection::*;
 use crate::response::IntoResponse;
 use async_trait::async_trait;
 use http::{Extensions, HeaderMap, Method, Request, Uri, Version};
-use std::convert::Infallible;
+use std::{convert::Infallible, marker::PhantomData};
 
 pub mod rejection;
 
 mod request_parts;
 mod tuple;
+
+// TODO(david): write test to ensure we can still use extractors from middleware
+
+// TODO(david): naming
+#[derive(Debug, Clone, Copy)]
+pub struct Ref(Infallible);
+
+// TODO(david): naming
+#[derive(Debug, Clone, Copy)]
+pub struct Mut(Infallible);
 
 /// Types that can be created from requests.
 ///
@@ -60,29 +70,35 @@ mod tuple;
 /// [`http::Request<B>`]: http::Request
 /// [`axum::extract`]: https://docs.rs/axum/latest/axum/extract/index.html
 #[async_trait]
-pub trait FromRequest<B>: Sized {
+pub trait FromRequest<R, B>: Sized {
     /// If the extractor fails it'll use this "rejection" type. A rejection is
     /// a kind of error that can be converted into a response.
     type Rejection: IntoResponse;
 
     /// Perform the extraction.
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection>;
+    async fn from_request(
+        // TODO(david): this arg shouldn't be `&mut`. Its weird having `&mut RequestParts<Ref, _>`
+        // because it isn't actually mutable.
+        // Should probably be `RequestParts<Ref<'_>, B>` or smth
+        req: &mut RequestParts<R, B>,
+    ) -> Result<Self, Self::Rejection>;
 }
 
 /// The type used with [`FromRequest`] to extract data from requests.
 ///
 /// Has several convenience methods for getting owned parts of the request.
 #[derive(Debug)]
-pub struct RequestParts<B> {
+pub struct RequestParts<R, B> {
     method: Method,
     uri: Uri,
     version: Version,
     headers: HeaderMap,
     extensions: Extensions,
     body: Option<B>,
+    _marker: PhantomData<fn() -> R>,
 }
 
-impl<B> RequestParts<B> {
+impl<R, B> RequestParts<R, B> {
     /// Create a new `RequestParts`.
     ///
     /// You generally shouldn't need to construct this type yourself, unless
@@ -110,6 +126,7 @@ impl<B> RequestParts<B> {
             headers,
             extensions,
             body: Some(body),
+            _marker: PhantomData,
         }
     }
 
@@ -141,40 +158,18 @@ impl<B> RequestParts<B> {
     ///     }
     /// }
     /// ```
-    pub async fn extract<E: FromRequest<B>>(&mut self) -> Result<E, E::Rejection> {
+    pub async fn extract<E>(&mut self) -> Result<E, E::Rejection>
+    where
+        E: FromRequest<R, B>,
+    {
         E::from_request(self).await
     }
 
-    /// Convert this `RequestParts` back into a [`Request`].
-    ///
-    /// Fails if The request body has been extracted, that is [`take_body`] has
-    /// been called.
-    ///
-    /// [`take_body`]: RequestParts::take_body
-    pub fn try_into_request(self) -> Result<Request<B>, BodyAlreadyExtracted> {
-        let Self {
-            method,
-            uri,
-            version,
-            headers,
-            extensions,
-            mut body,
-        } = self;
-
-        let mut req = if let Some(body) = body.take() {
-            Request::new(body)
-        } else {
-            return Err(BodyAlreadyExtracted);
-        };
-
-        *req.method_mut() = method;
-        *req.uri_mut() = uri;
-        *req.version_mut() = version;
-        *req.headers_mut() = headers;
-        *req.extensions_mut() = extensions;
-
-        Ok(req)
-    }
+    // NOTE: `method_mut`, `version_mut`, and `uri_mut` should be fine to call for `RequestParts<Ref, _>`
+    // because they don't remove any data that could make follow up extractors fail
+    //
+    // Whereas `extensions_mut` does since you can make `Extension` fail by removing all extensions
+    // with `std::mem::take`
 
     /// Gets a reference the request method.
     pub fn method(&self) -> &Method {
@@ -211,26 +206,117 @@ impl<B> RequestParts<B> {
         &self.headers
     }
 
-    /// Gets a mutable reference to the request headers.
-    pub fn headers_mut(&mut self) -> &mut HeaderMap {
-        &mut self.headers
-    }
-
     /// Gets a reference to the request extensions.
     pub fn extensions(&self) -> &Extensions {
         &self.extensions
     }
 
-    /// Gets a mutable reference to the request extensions.
-    pub fn extensions_mut(&mut self) -> &mut Extensions {
-        &mut self.extensions
+    pub fn insert_extension<T>(&mut self, extension: T)
+    where
+        T: Send + Sync + 'static,
+    {
+        self.extensions.insert(extension);
     }
+
+    // TODO(david): probably want insert_header and append_header
 
     /// Gets a reference to the request body.
     ///
     /// Returns `None` if the body has been taken by another extractor.
     pub fn body(&self) -> Option<&B> {
         self.body.as_ref()
+    }
+}
+
+impl<B> RequestParts<Ref, B> {
+    pub fn into_request(self) -> Request<B> {
+        let Self {
+            method,
+            uri,
+            version,
+            headers,
+            extensions,
+            mut body,
+            _marker: _,
+        } = self;
+
+        let mut req = if let Some(body) = body.take() {
+            Request::new(body)
+        } else {
+            // you cannot remove the body from a `RequestParts<Ref, _>` so it'll never be `None`
+            unreachable!();
+        };
+
+        *req.method_mut() = method;
+        *req.uri_mut() = uri;
+        *req.version_mut() = version;
+        *req.headers_mut() = headers;
+        *req.extensions_mut() = extensions;
+
+        req
+    }
+}
+
+impl<B> RequestParts<Mut, B> {
+    // TODO(david): should all `*_mut` methods be here, or just body?
+
+    /// Convert this `RequestParts` back into a [`Request`].
+    ///
+    /// Fails if The request body has been extracted, that is [`take_body`] has
+    /// been called.
+    ///
+    /// [`take_body`]: RequestParts::take_body
+    pub fn try_into_request(self) -> Result<Request<B>, BodyAlreadyExtracted> {
+        let Self {
+            method,
+            uri,
+            version,
+            headers,
+            extensions,
+            mut body,
+            _marker: _,
+        } = self;
+
+        let mut req = if let Some(body) = body.take() {
+            Request::new(body)
+        } else {
+            return Err(BodyAlreadyExtracted);
+        };
+
+        *req.method_mut() = method;
+        *req.uri_mut() = uri;
+        *req.version_mut() = version;
+        *req.headers_mut() = headers;
+        *req.extensions_mut() = extensions;
+
+        Ok(req)
+    }
+
+    #[allow(clippy::wrong_self_convention)]
+    pub(crate) fn to_ref(&mut self) -> RequestParts<Ref, B> {
+        RequestParts {
+            method: self.method().clone(),
+            uri: self.uri().clone(),
+            version: self.version(),
+            headers: std::mem::take(self.headers_mut()),
+            extensions: std::mem::take(self.extensions_mut()),
+            body: Some(
+                self.take_body()
+                    .expect("`to_ref` must be called before any extractors"),
+            ),
+            _marker: PhantomData,
+        }
+    }
+
+    /// Gets a mutable reference to the request headers.
+    pub fn headers_mut(&mut self) -> &mut HeaderMap {
+        &mut self.headers
+    }
+
+    // TODO(david): this impacts `WebSocketUpgrade`, see TODO there
+    /// Gets a mutable reference to the request extensions.
+    pub fn extensions_mut(&mut self) -> &mut Extensions {
+        &mut self.extensions
     }
 
     /// Gets a mutable reference to the request body.
@@ -248,27 +334,27 @@ impl<B> RequestParts<B> {
 }
 
 #[async_trait]
-impl<T, B> FromRequest<B> for Option<T>
+impl<T, B, R> FromRequest<R, B> for Option<T>
 where
-    T: FromRequest<B>,
+    T: FromRequest<R, B>,
     B: Send,
 {
     type Rejection = Infallible;
 
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Option<T>, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts<R, B>) -> Result<Option<T>, Self::Rejection> {
         Ok(T::from_request(req).await.ok())
     }
 }
 
 #[async_trait]
-impl<T, B> FromRequest<B> for Result<T, T::Rejection>
+impl<T, B, R> FromRequest<R, B> for Result<T, T::Rejection>
 where
-    T: FromRequest<B>,
+    T: FromRequest<R, B>,
     B: Send,
 {
     type Rejection = Infallible;
 
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts<R, B>) -> Result<Self, Self::Rejection> {
         Ok(T::from_request(req).await)
     }
 }

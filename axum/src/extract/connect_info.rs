@@ -128,14 +128,14 @@ opaque_future! {
 pub struct ConnectInfo<T>(pub T);
 
 #[async_trait]
-impl<B, T> FromRequest<B> for ConnectInfo<T>
+impl<B, T, R> FromRequest<R, B> for ConnectInfo<T>
 where
     B: Send,
     T: Clone + Send + Sync + 'static,
 {
-    type Rejection = <Extension<Self> as FromRequest<B>>::Rejection;
+    type Rejection = <Extension<Self> as FromRequest<R, B>>::Rejection;
 
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts<R, B>) -> Result<Self, Self::Rejection> {
         let Extension(connect_info) = Extension::<Self>::from_request(req).await?;
         Ok(connect_info)
     }

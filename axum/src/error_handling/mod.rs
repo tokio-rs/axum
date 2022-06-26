@@ -2,7 +2,7 @@
 
 use crate::{
     body::{boxed, Bytes, HttpBody},
-    extract::{FromRequest, RequestParts},
+    extract::{FromRequest, Ref, RequestParts},
     http::{Request, StatusCode},
     response::{IntoResponse, Response},
     BoxError,
@@ -163,7 +163,7 @@ macro_rules! impl_service {
             F: FnOnce($($ty),*, S::Error) -> Fut + Clone + Send + 'static,
             Fut: Future<Output = Res> + Send,
             Res: IntoResponse,
-            $( $ty: FromRequest<ReqBody> + Send,)*
+            $( $ty: FromRequest<Ref, ReqBody> + Send,)*
             ReqBody: Send + 'static,
             ResBody: HttpBody<Data = Bytes> + Send + 'static,
             ResBody::Error: Into<BoxError>,
@@ -194,12 +194,7 @@ macro_rules! impl_service {
                         };
                     )*
 
-                    let req = match req.try_into_request() {
-                        Ok(req) => req,
-                        Err(err) => {
-                            return Ok((StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response());
-                        }
-                    };
+                    let req = req.into_request();
 
                     match inner.oneshot(req).await {
                         Ok(res) => Ok(res.map(boxed)),
