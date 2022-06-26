@@ -154,7 +154,51 @@ left to right.
 
 # Extractor ordering
 
-TODO(david): docs
+The order of extractors is important. Some extractors such as `String` and
+`Json<_>` consume the request body and thus can only run once. axum ensures you
+don't forget this by requiring such extractors to be the last argument.
+
+This fails to compile since `String` isn't the last extractor:
+
+```rust,compile_fail
+use axum::{
+    Router,
+    http::HeaderMap,
+    routing::post,
+};
+
+async fn handler(
+    body: String,
+    headers: HeaderMap,
+) {
+    // ...
+}
+
+let app = Router::new().route("/", post(handler));
+# let _: Router = app;
+```
+
+Additionally `Request<_>` must be extracted last:
+
+```rust,compile_fail
+use axum::{
+    Router,
+    http::{HeaderMap, Request},
+    routing::post,
+};
+
+async fn handler<B>(
+    req: Request<B>,
+    headers: HeaderMap,
+) {
+    // ...
+}
+
+let app = Router::new().route("/", post(handler));
+# let _: Router = app;
+```
+
+See [`FromRequest`] for details on how axum does this.
 
 # Optional extractors
 

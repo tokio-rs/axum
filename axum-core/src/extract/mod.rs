@@ -51,7 +51,45 @@ pub struct Once(Infallible);
 /// axum uses these types to guarantee that you don't accidentally attempt to extract the request
 /// body twice or otherwise run extractors in the wrong order.
 ///
-/// // TODO(david): compile_fail examples
+/// ```compile_fail
+/// use axum::{
+///     Router,
+///     body::Bytes,
+///     routing::post,
+/// };
+///
+/// // this fails to compile since we're extracting the body twice
+/// async fn handler(
+///     first_body: String,
+///     second_body: Bytes,
+/// ) {
+///     // ...
+/// }
+///
+/// let app = Router::new().route("/", post(handler));
+/// # let _: Router = app;
+/// ```
+///
+/// `Request<_>` must also be the last extractor:
+///
+/// ```compile_fail
+/// use axum::{
+///     Router,
+///     http::Request,
+///     routing::post,
+/// };
+///
+/// // this fails to compile since we cannot extract the request and the body
+/// async fn handler<B>(
+///     req: Request<B>,
+///     body: String,
+/// ) {
+///     // ...
+/// }
+///
+/// let app = Router::new().route("/", post(handler));
+/// # let _: Router = app;
+/// ```
 ///
 /// # What is the `B` type parameter?
 ///
@@ -166,10 +204,13 @@ impl<R, B> RequestParts<R, B> {
     /// use http::{Method, Uri};
     ///
     /// #[async_trait]
-    /// impl<B: Send> FromRequest<B> for MyExtractor {
+    /// impl<R, B> FromRequest<R, B> for MyExtractor
+    /// where
+    ///     B: Send
+    /// {
     ///     type Rejection = Infallible;
     ///
-    ///     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Infallible> {
+    ///     async fn from_request(req: &mut RequestParts<R, B>) -> Result<Self, Infallible> {
     ///         let method = req.extract::<Method>().await?;
     ///         let path = req.extract::<Uri>().await?.path().to_owned();
     ///
