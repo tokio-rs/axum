@@ -4,7 +4,7 @@ use crate::{
     response::{IntoResponse, Response},
     BoxError,
 };
-use axum_core::extract::Once;
+use axum_core::extract::Mut;
 use futures_util::{future::BoxFuture, ready};
 use http::Request;
 use pin_project_lite::pin_project;
@@ -169,7 +169,7 @@ where
 
 impl<S, E, ReqBody, ResBody> Service<Request<ReqBody>> for FromExtractor<S, E>
 where
-    E: FromRequest<Once, ReqBody> + 'static,
+    E: FromRequest<Mut, ReqBody> + 'static,
     ReqBody: Default + Send + 'static,
     S: Service<Request<ReqBody>, Response = Response<ResBody>> + Clone,
     ResBody: HttpBody<Data = Bytes> + Send + 'static,
@@ -186,7 +186,7 @@ where
 
     fn call(&mut self, req: Request<ReqBody>) -> Self::Future {
         let extract_future = Box::pin(async move {
-            let mut req = RequestParts::<Once, ReqBody>::new(req);
+            let mut req = RequestParts::<Mut, ReqBody>::new(req);
             let extracted = E::from_request(&mut req).await;
             (req, extracted)
         });
@@ -205,7 +205,7 @@ pin_project! {
     #[allow(missing_debug_implementations)]
     pub struct ResponseFuture<ReqBody, S, E>
     where
-        E: FromRequest<Once, ReqBody>,
+        E: FromRequest<Mut, ReqBody>,
         S: Service<Request<ReqBody>>,
     {
         #[pin]
@@ -218,17 +218,17 @@ pin_project! {
     #[project = StateProj]
     enum State<ReqBody, S, E>
     where
-        E: FromRequest<Once, ReqBody>,
+        E: FromRequest<Mut, ReqBody>,
         S: Service<Request<ReqBody>>,
     {
-        Extracting { future: BoxFuture<'static, (RequestParts<Once, ReqBody>, Result<E, E::Rejection>)> },
+        Extracting { future: BoxFuture<'static, (RequestParts<Mut, ReqBody>, Result<E, E::Rejection>)> },
         Call { #[pin] future: S::Future },
     }
 }
 
 impl<ReqBody, S, E, ResBody> Future for ResponseFuture<ReqBody, S, E>
 where
-    E: FromRequest<Once, ReqBody>,
+    E: FromRequest<Mut, ReqBody>,
     S: Service<Request<ReqBody>, Response = Response<ResBody>>,
     ReqBody: Default,
     ResBody: HttpBody<Data = Bytes> + Send + 'static,
@@ -247,7 +247,7 @@ where
                     match extracted {
                         Ok(_) => {
                             let mut svc = this.svc.take().expect("future polled after completion");
-                            let req = req.try_into_request().unwrap_or_default();
+                            let req = req.into_request();
                             let future = svc.call(req);
                             State::Call { future }
                         }

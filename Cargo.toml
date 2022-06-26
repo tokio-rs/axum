@@ -9,4 +9,6 @@ members = [
     # get for some dependencies which otherwise wouldn't build
     # with `cargo +nightly update -Z minimal-versions`
     "internal-minimal-versions",
+    # internal crate used for generating boilerplate code
+    "internal-code-gen",
 ]

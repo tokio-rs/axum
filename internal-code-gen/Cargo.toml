@@ -1,0 +1,8 @@
+[package]
+name = "internal-code-gen"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+quote = "1.0"

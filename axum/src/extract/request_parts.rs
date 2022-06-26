@@ -211,14 +211,8 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        body::Body,
-        extract::Extension,
-        routing::{get, post},
-        test_helpers::*,
-        Router,
-    };
-    use http::{Method, Request, StatusCode};
+    use crate::{extract::Extension, routing::get, test_helpers::*, Router};
+    use http::{Method, StatusCode};
 
     #[tokio::test]
     async fn extract_request_parts() {

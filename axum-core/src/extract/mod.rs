@@ -367,6 +367,18 @@ impl<B> RequestParts<Once, B> {
 }
 
 #[async_trait]
+impl<R, B> FromRequest<R, B> for ()
+where
+    B: Send,
+{
+    type Rejection = Infallible;
+
+    async fn from_request(_: &mut RequestParts<R, B>) -> Result<Self, Self::Rejection> {
+        Ok(())
+    }
+}
+
+#[async_trait]
 impl<T, B, R> FromRequest<R, B> for Option<T>
 where
     T: FromRequest<R, B>,
