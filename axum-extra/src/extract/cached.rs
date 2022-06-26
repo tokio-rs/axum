@@ -30,13 +30,13 @@ use std::ops::{Deref, DerefMut};
 /// struct Session { /* ... */ }
 ///
 /// #[async_trait]
-/// impl<B> FromRequest<B> for Session
+/// impl<R, B> FromRequest<R, B> for Session
 /// where
 ///     B: Send,
 /// {
 ///     type Rejection = (StatusCode, String);
 ///
-///     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+///     async fn from_request(req: &mut RequestParts<R, B>) -> Result<Self, Self::Rejection> {
 ///         // load session...
 ///         # unimplemented!()
 ///     }
@@ -45,13 +45,13 @@ use std::ops::{Deref, DerefMut};
 /// struct CurrentUser { /* ... */ }
 ///
 /// #[async_trait]
-/// impl<B> FromRequest<B> for CurrentUser
+/// impl<R, B> FromRequest<R, B> for CurrentUser
 /// where
 ///     B: Send,
 /// {
 ///     type Rejection = Response;
 ///
-///     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+///     async fn from_request(req: &mut RequestParts<R, B>) -> Result<Self, Self::Rejection> {
 ///         // loading a `CurrentUser` requires first loading the `Session`
 ///         //
 ///         // by using `Cached<Session>` we avoid extracting the session more than
