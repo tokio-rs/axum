@@ -243,8 +243,6 @@ impl WebSocketUpgrade {
     }
 }
 
-// TODO(david): this means you cannot extract the body and `WebSocketUpgrade`. Is that a problem
-// if so then make `extensions_mut` work for any `R`
 #[async_trait]
 impl<B, R> FromRequest<R, B> for WebSocketUpgrade
 where
