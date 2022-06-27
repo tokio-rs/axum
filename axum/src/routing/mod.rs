@@ -162,7 +162,7 @@ where
             Err(service) => Endpoint::Route(Route::new(service)),
         };
 
-        let mut node = (&*self.node).clone();
+        let mut node = Arc::try_unwrap(self.node).unwrap_or_else(|node| (*node).clone());
         if let Err(err) = node.insert(path, id) {
             self.panic_on_matchit_error(err);
         }
