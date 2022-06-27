@@ -214,7 +214,7 @@ where
                     panic!("Cannot nest `Router`s that has a fallback");
                 }
 
-                for (id, nested_path) in node.route_id_to_path.iter() {
+                for (id, nested_path) in &node.route_id_to_path {
                     let route = routes.remove(id).unwrap();
                     let full_path: Cow<str> = if &**nested_path == "/" {
                         path.into()
