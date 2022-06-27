@@ -104,12 +104,18 @@ fn expand_named_fields(
     let display_impl = quote_spanned! {path.span()=>
         #[automatically_derived]
         impl ::std::fmt::Display for #ident {
+            #[allow(clippy::unnecessary_to_owned)]
             fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
                 let Self { #(#captures,)* } = self;
                 write!(
                     f,
                     #format_str,
-                    #(#captures = ::axum_extra::__private::utf8_percent_encode(&#captures.to_string(), ::axum_extra::__private::PATH_SEGMENT)),*
+                    #(
+                        #captures = ::axum_extra::__private::utf8_percent_encode(
+                            &#captures.to_string(),
+                            ::axum_extra::__private::PATH_SEGMENT,
+                        )
+                    ),*
                 )
             }
         }
@@ -200,12 +206,18 @@ fn expand_unnamed_fields(
     let display_impl = quote_spanned! {path.span()=>
         #[automatically_derived]
         impl ::std::fmt::Display for #ident {
+            #[allow(clippy::unnecessary_to_owned)]
             fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
                 let Self { #(#destructure_self)* } = self;
                 write!(
                     f,
                     #format_str,
-                    #(#captures = ::axum_extra::__private::utf8_percent_encode(&#captures.to_string(), ::axum_extra::__private::PATH_SEGMENT)),*
+                    #(
+                        #captures = ::axum_extra::__private::utf8_percent_encode(
+                            &#captures.to_string(),
+                            ::axum_extra::__private::PATH_SEGMENT,
+                        )
+                    ),*
                 )
             }
         }
