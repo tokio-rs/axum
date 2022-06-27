@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning].
 
 # Unreleased
 
+- None.
+
+# 0.3.5 (27. June, 2022)
+
 - **added:** Add `JsonLines` for streaming newline delimited JSON ([#1093])
 - **change:** axum's MSRV is now 1.56 ([#1098])
 
