@@ -336,9 +336,6 @@ async fn not_found_for_missing_trailing_slash() {
 
     let res = client.get("/foo").send().await;
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
-
-    let res = client.get("/foo/").send().await;
-    assert_eq!(res.status(), StatusCode::OK);
 }
 
 #[tokio::test]
