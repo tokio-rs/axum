@@ -5,6 +5,7 @@ axum provides blanket implementations for functions that:
 
 - Are `async fn`s.
 - Take no more than 16 arguments that all implement [`FromRequest`].
+- Only the last argument implements `FromRequest<Once, B>`.
 - Returns something that implements [`IntoResponse`].
 - If a closure is used it must implement `Clone + Send` and be
 `'static`.

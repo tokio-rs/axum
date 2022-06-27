@@ -37,16 +37,17 @@ pub struct Once(Infallible);
 ///
 /// # What is the `R` type parameter?
 ///
-/// `FromRequest`'s `R` type parameter is used to control which parts of the request the extrator
+/// `FromRequest`'s `R` type parameter is used to control which parts of the request the extractor
 /// has access to.
 ///
 /// `R` is always one of two values:
 ///
 /// - [`Mut`]: This means the extractor has mutable (but limited) access the request. It can access
-/// the method, uri, version, headers, and extensions, but it cannot consume the body.
-/// - [`Once`]: This includes the same access as [`Mut`] but can als consume the body. This means
-/// extractors that use `RequestParts<Once, _>` can only be run once and must run as the last
-/// extractor.
+/// the method, uri, version, individual headers, and individual extensions. It cannot consume
+/// the body, consume all headers, or consume all extensions.
+/// - [`Once`]: This includes the same access as [`Mut`] but can also consume the body, consume all
+/// headers, and consume all extensions. This means extractors that use `RequestParts<Once, _>` can
+/// only be run once and must run as the _last_ extractor.
 ///
 /// axum uses these types to guarantee that you don't accidentally attempt to extract the request
 /// body twice or otherwise run extractors in the wrong order.
