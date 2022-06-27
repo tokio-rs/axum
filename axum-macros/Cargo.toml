@@ -26,4 +26,4 @@ rustversion = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 syn = { version = "1.0", features = ["full", "extra-traits"] }
 tokio = { version = "1.0", features = ["full"] }
-trybuild = "1.0"
+trybuild = "1.0.63"

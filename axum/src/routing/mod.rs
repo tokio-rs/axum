@@ -64,7 +64,7 @@ impl RouteId {
 /// The router type for composing handlers and services.
 pub struct Router<B = Body> {
     routes: HashMap<RouteId, Endpoint<B>>,
-    node: Node,
+    node: Arc<Node>,
     fallback: Fallback<B>,
     nested_at_root: bool,
 }
@@ -73,7 +73,7 @@ impl<B> Clone for Router<B> {
     fn clone(&self) -> Self {
         Self {
             routes: self.routes.clone(),
-            node: self.node.clone(),
+            node: Arc::clone(&self.node),
             fallback: self.fallback.clone(),
             nested_at_root: self.nested_at_root,
         }
@@ -162,9 +162,12 @@ where
             Err(service) => Endpoint::Route(Route::new(service)),
         };
 
-        if let Err(err) = self.node.insert(path, id) {
+        let mut node =
+            Arc::try_unwrap(Arc::clone(&self.node)).unwrap_or_else(|node| (*node).clone());
+        if let Err(err) = node.insert(path, id) {
             self.panic_on_matchit_error(err);
         }
+        self.node = Arc::new(node);
 
         self.routes.insert(id, service);
 
@@ -211,12 +214,12 @@ where
                     panic!("Cannot nest `Router`s that has a fallback");
                 }
 
-                for (id, nested_path) in node.route_id_to_path {
-                    let route = routes.remove(&id).unwrap();
-                    let full_path: Cow<str> = if &*nested_path == "/" {
+                for (id, nested_path) in &node.route_id_to_path {
+                    let route = routes.remove(id).unwrap();
+                    let full_path: Cow<str> = if &**nested_path == "/" {
                         path.into()
                     } else if path == "/" {
-                        (&*nested_path).into()
+                        (&**nested_path).into()
                     } else if let Some(path) = path.strip_suffix('/') {
                         format!("{}{}", path, nested_path).into()
                     } else {
@@ -632,6 +635,7 @@ impl<B> fmt::Debug for Endpoint<B> {
 }
 
 #[test]
+#[allow(warnings)]
 fn traits() {
     use crate::test_helpers::*;
     assert_send::<Router<()>>();
