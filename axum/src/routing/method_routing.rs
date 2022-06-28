@@ -1,8 +1,9 @@
 use super::IntoMakeService;
+#[cfg(feature = "tokio")]
+use crate::extract::connect_info::IntoMakeServiceWithConnectInfo;
 use crate::{
     body::{boxed, Body, Bytes, Empty, HttpBody},
     error_handling::{HandleError, HandleErrorLayer},
-    extract::connect_info::IntoMakeServiceWithConnectInfo,
     handler::Handler,
     http::{Method, Request, StatusCode},
     response::Response,
@@ -653,6 +654,7 @@ where
     ///
     /// [`MakeService`]: tower::make::MakeService
     /// [`Router::into_make_service_with_connect_info`]: crate::routing::Router::into_make_service_with_connect_info
+    #[cfg(feature = "tokio")]
     pub fn into_make_service_with_connect_info<C>(self) -> IntoMakeServiceWithConnectInfo<Self, C> {
         IntoMakeServiceWithConnectInfo::new(self)
     }

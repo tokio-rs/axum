@@ -41,7 +41,9 @@
 //! If you need to read and write concurrently from a [`WebSocket`] you can use
 //! [`StreamExt::split`]:
 //!
-//! ```
+//! ```rust,no_run
+//! # use tokio_cr as tokio;
+//!
 //! use axum::{Error, extract::ws::{WebSocket, Message}};
 //! use futures::{sink::SinkExt, stream::{StreamExt, SplitSink, SplitStream}};
 //!
