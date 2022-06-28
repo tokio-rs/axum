@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+- None.
+
+# 0.5.10 (28. June, 2022)
+
 - **fixed:** Make `Router` cheaper to clone ([#1123])
 - **fixed:** Fix possible panic when doing trailing slash redirect ([#1124])
 
