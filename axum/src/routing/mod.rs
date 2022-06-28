@@ -513,7 +513,7 @@ where
                     MatchError::ExtraTrailingSlash => {
                         replace_path(req.uri(), path.strip_suffix('/').unwrap())
                     }
-                    MatchError::NotFound => return fallback.call(req),
+                    MatchError::NotFound => None,
                 };
 
                 if let Some(new_uri) = new_uri {
