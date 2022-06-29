@@ -88,7 +88,7 @@ let serve_dir_service = get_service(ServeDir::new("public"))
         )
     });
 
-let app = Router::new().nest("/public", serve_dir_service);
+let app = Router::new().nest_service("/public", serve_dir_service);
 # async {
 # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 # };
@@ -107,7 +107,7 @@ let app = Router::new()
     .route("/foo/*rest", get(|uri: Uri| async {
         // `uri` will contain `/foo`
     }))
-    .nest("/bar", get(|uri: Uri| async {
+    .nest_service("/bar", get(|uri: Uri| async {
         // `uri` will _not_ contain `/bar`
     }));
 # async {

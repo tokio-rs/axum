@@ -414,7 +414,7 @@ nested_route_test!(nest_3, nest = "", route = "/a/", expected = "/a/");
 nested_route_test!(nest_4, nest = "/", route = "/", expected = "/");
 nested_route_test!(nest_5, nest = "/", route = "/a", expected = "/a");
 nested_route_test!(nest_6, nest = "/", route = "/a/", expected = "/a/");
-nested_route_test!(nest_7, nest = "/a", route = "/", expected = "/a",);
+nested_route_test!(nest_7, nest = "/a/", route = "/", expected = "/a");
 nested_route_test!(nest_8, nest = "/a", route = "/a", expected = "/a/a");
 nested_route_test!(nest_9, nest = "/a", route = "/a/", expected = "/a/a/");
 nested_route_test!(nest_11, nest = "/a/", route = "/", expected = "/a/");
