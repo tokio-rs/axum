@@ -22,10 +22,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `/foo.js` ([#1086])
 - **fixed:** Routes like `/foo` and `/*rest` are no longer considered
   overlapping. `/foo` will take priority ([#1086])
+- **breaking:** Remove trailing slash redirects. Previously if you added a route
+  for `/foo`, axum would redirect calls to `/foo/` to `/foo` (or vice versa for
+  `/foo/`). That is no longer supported and such requests will now be sent to
+  the fallback. Consider using `axum_extra::routing::RouterExt::route_with_tsr`
+  if you want the old behavior ([#1119])
 
 [#1077]: https://github.com/tokio-rs/axum/pull/1077
 [#1086]: https://github.com/tokio-rs/axum/pull/1086
 [#1102]: https://github.com/tokio-rs/axum/pull/1102
+[#1119]: https://github.com/tokio-rs/axum/pull/1119
 [#924]: https://github.com/tokio-rs/axum/pull/924
 
 # 0.5.10 (28. June, 2022)

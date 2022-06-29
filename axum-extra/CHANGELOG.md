@@ -7,10 +7,13 @@ and this project adheres to [Semantic Versioning].
 
 # Unreleased
 
+- **added:** Add `RouterExt::route_with_tsr` for adding routes with an
+  additional "trailing slash redirect" route ([#1119])
 - **breaking:** `Resource::nest` and `Resource::nest_collection` now only
   accepts `Router`s ([#1086])
 
 [#1086]: https://github.com/tokio-rs/axum/pull/1086
+[#1119]: https://github.com/tokio-rs/axum/pull/1119
 
 # 0.3.5 (27. June, 2022)
 
