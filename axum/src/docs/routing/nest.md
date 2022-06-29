@@ -106,15 +106,15 @@ async fn fallback() {}
 let app = Router::new()
     .nest("/api", nested_router)
     .nest_service("/assets", nested_service)
-    // the fallback is not called for request starting with `/bar` but will be
-    // called for requests starting with `/foo` if `nested_router` doesn't have
+    // the fallback is not called for request starting with `/assets` but will be
+    // called for requests starting with `/api` if `nested_router` doesn't have
     // a matching route
     .fallback(fallback.into_service());
 # let _: Router = app;
 ```
 
 Note that you would normally use [`tower_http::services::ServeDir`] for serving
-static files and thus not calling `nest_service` with a `Router`.
+static files and thus not call `nest_service` with a `Router`.
 
 # Panics
 
