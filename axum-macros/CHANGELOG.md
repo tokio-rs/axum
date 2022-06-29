@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - None.
 
+# 0.2.3 (27. June, 2022)
+
+- **change:** axum-macros's MSRV is now 1.56 ([#1098])
+- **fixed:** Silence "unnecessary use of `to_string`" lint for `#[derive(TypedPath)]` ([#1117])
+
+[#1098]: https://github.com/tokio-rs/axum/pull/1098
+[#1117]: https://github.com/tokio-rs/axum/pull/1117
+
 # 0.2.2 (18. May, 2022)
 
 - **added:** In `debug_handler`, check if `Request` is used as non-final extractor ([#1035])

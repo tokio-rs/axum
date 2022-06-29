@@ -395,6 +395,8 @@
 pub(crate) mod macros;
 
 mod extension;
+#[cfg(feature = "form")]
+mod form;
 #[cfg(feature = "json")]
 mod json;
 #[cfg(feature = "headers")]
@@ -433,6 +435,10 @@ pub use self::routing::Router;
 #[doc(inline)]
 #[cfg(feature = "headers")]
 pub use self::typed_header::TypedHeader;
+
+#[doc(inline)]
+#[cfg(feature = "form")]
+pub use self::form::Form;
 
 #[doc(inline)]
 pub use axum_core::{BoxError, Error};

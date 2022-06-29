@@ -2,6 +2,7 @@ name: CI
 
 env:
   CARGO_TERM_COLOR: always
+  MSRV: 1.56.0
 
 on:
   push:
@@ -88,8 +89,8 @@ jobs:
         command: test
         args: --all --all-features --all-targets
 
-  # some examples doesn't support 1.54 (such as async-graphql)
-  # so we only test axum itself on 1.54
+  # some examples doesn't support our MSRV (such as async-graphql)
+  # so we only test axum itself on our MSRV
   test-msrv:
     needs: check
     runs-on: ubuntu-latest
@@ -97,10 +98,21 @@ jobs:
     - uses: actions/checkout@master
     - uses: actions-rs/toolchain@v1
       with:
-        toolchain: 1.54
+        toolchain: ${{ env.MSRV }}
         override: true
         profile: minimal
+    - name: "install Rust nightly"
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: nightly
+        profile: minimal
     - uses: Swatinem/rust-cache@v1
+    - name: Select minimal versions
+      uses: actions-rs/cargo@v1
+      with:
+        command: update
+        args: -Z minimal-versions
+        toolchain: nightly
     - name: Run tests
       uses: actions-rs/cargo@v1
       with:
@@ -109,8 +121,12 @@ jobs:
           -p axum
           -p axum-extra
           -p axum-core
-          --all-features --all-targets
-    # the compiler errors are different on 1.54 which makes
+          -p internal-minimal-versions
+          --all-features
+          --all-targets
+          --locked
+        toolchain: ${{ env.MSRV }}
+    # the compiler errors are different on our MSRV which makes
     # the trybuild tests in axum-macros fail, so just run the doc
     # tests
     - name: Run axum-macros doc tests
@@ -119,8 +135,11 @@ jobs:
         command: test
         args: >
           -p axum-macros
+          -p internal-minimal-versions
           --doc
           --all-features
+          --locked
+        toolchain: ${{ env.MSRV }}
 
   test-docs:
     needs: check

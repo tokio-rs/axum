@@ -10,7 +10,7 @@ If your project isn't listed here and you would like it to be, please feel free 
 - [axum-flash](https://crates.io/crates/axum-flash): One-time notifications (aka flash messages) for axum.
 - [axum-msgpack](https://crates.io/crates/axum-msgpack): MessagePack Extractors for axum.
 - [axum-sqlx-tx](https://crates.io/crates/axum-sqlx-tx): Request-bound [SQLx](https://github.com/launchbadge/sqlx#readme) transactions with automatic commit/rollback based on response.
-- [aliri_tower](https://crates.io/crates/aliri_tower): JWT validation and OAuth2 scopes checking middleware.
+- [aliri_axum](https://docs.rs/aliri_axum) and [aliri_tower](https://docs.rs/aliri_tower): JWT validation middleware and OAuth2 scopes enforcing extractors.
 - [ezsockets](https://github.com/gbaranski/ezsockets): Easy to use WebSocket library that integrates with Axum.
 - [axum_database_sessions](https://github.com/AscendingCreations/AxumSessions): Database persistent sessions like pythons flask_sessionstore for Axum.
 - [axum_sessions_auth](https://github.com/AscendingCreations/AxumSessionsAuth): Persistant session based user login with rights management for Axum.
@@ -18,6 +18,7 @@ If your project isn't listed here and you would like it to be, please feel free 
 - [shuttle](https://github.com/getsynth/shuttle): A serverless platform built for Rust. Now with axum support.
 - [axum-tungstenite](https://github.com/davidpdrsn/axum-tungstenite): WebSocket connections for axum directly using tungstenite
 - [axum-jrpc](https://github.com/0xdeafbeef/axum-jrpc): Json-rpc extractor for axum
+- [axum-tracing-opentelemetry](https://crates.io/crates/axum-tracing-opentelemetry): Middlewares and tools to integrate axum + tracing + opentelemetry
 
 ## Project showcase
 
@@ -35,6 +36,7 @@ If your project isn't listed here and you would like it to be, please feel free 
 - [CLOMonitor](https://clomonitor.io) ([repository](https://github.com/cncf/clomonitor)): Checks open source projects repositories to verify they meet certain best practices.
 - [Pinging.net](https://www.pinging.net) ([repository](https://github.com/benhansenslc/pinging)): A new way to check and monitor your internet connection.
 - [wastebin](https://github.com/matze/wastebin): A minimalist pastebin service.
+- [sandbox_axum_observability](https://github.com/davidB/sandbox_axum_observability) A Sandbox/showcase project to experiment axum and observability (tracing, opentelemetry, jaeger, grafana tempo,...)
 
 [Realworld]: https://github.com/gothinkster/realworld
 [SQLx]: https://github.com/launchbadge/sqlx

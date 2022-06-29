@@ -204,6 +204,7 @@ mod tests {
             .edit(|Path(id): Path<u64>| async move { format!("users#edit id={}", id) })
             .update(|Path(id): Path<u64>| async move { format!("users#update id={}", id) })
             .destroy(|Path(id): Path<u64>| async move { format!("users#destroy id={}", id) })
+            // TODO(david): figure out if we need `nest_service` + `nest` methods on `Resource`
             .nest(Router::new().route(
                 "/tweets",
                 get(|Path(id): Path<u64>| async move { format!("users#tweets id={}", id) }),

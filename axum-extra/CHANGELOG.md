@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning].
 
 - None.
 
+# 0.3.5 (27. June, 2022)
+
+- **added:** Add `JsonLines` for streaming newline delimited JSON ([#1093])
+- **change:** axum's MSRV is now 1.56 ([#1098])
+
+[#1093]: https://github.com/tokio-rs/axum/pull/1093
+[#1098]: https://github.com/tokio-rs/axum/pull/1098
+
 # 0.3.4 (08. June, 2022)
 
 - **fixed:** Use `impl IntoResponse` less in docs ([#1049])

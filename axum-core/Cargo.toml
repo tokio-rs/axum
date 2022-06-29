@@ -1,14 +1,14 @@
 [package]
 categories = ["asynchronous", "network-programming", "web-programming"]
 description = "Core types and traits for axum"
-edition = "2018"
+edition = "2021"
 homepage = "https://github.com/tokio-rs/axum"
 keywords = ["http", "web", "framework"]
 license = "MIT"
 name = "axum-core"
 readme = "README.md"
 repository = "https://github.com/tokio-rs/axum"
-version = "0.2.5" # remember to also bump the version that axum depends on
+version = "0.2.6" # remember to also bump the version that axum depends on
 
 [dependencies]
 async-trait = "0.1"

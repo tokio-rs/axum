@@ -3,10 +3,7 @@ use http::{
     header::{HeaderMap, HeaderName, HeaderValue},
     Extensions, StatusCode,
 };
-use std::{
-    convert::{Infallible, TryInto},
-    fmt,
-};
+use std::{convert::Infallible, fmt};
 
 /// Trait for adding headers and extensions to a response.
 ///

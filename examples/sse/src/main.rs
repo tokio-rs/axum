@@ -12,7 +12,7 @@ use axum::{
     Router,
 };
 use futures::stream::{self, Stream};
-use std::{convert::Infallible, net::SocketAddr, time::Duration};
+use std::{convert::Infallible, net::SocketAddr, path::PathBuf, time::Duration};
 use tokio_stream::StreamExt as _;
 use tower_http::{services::ServeDir, trace::TraceLayer};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
@@ -27,14 +27,17 @@ async fn main() {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    let static_files_service =
-        get_service(ServeDir::new("examples/sse/assets").append_index_html_on_directories(true))
-            .handle_error(|error: std::io::Error| async move {
-                (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    format!("Unhandled internal error: {}", error),
-                )
-            });
+    let assets_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("assets");
+
+    let static_files_service = get_service(
+        ServeDir::new(assets_dir).append_index_html_on_directories(true),
+    )
+    .handle_error(|error: std::io::Error| async move {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Unhandled internal error: {}", error),
+        )
+    });
 
     // build our application with a route
     let app = Router::new()
@@ -59,7 +62,7 @@ async fn sse_handler(
     // A `Stream` that repeats an event every second
     let stream = stream::repeat_with(|| Event::default().data("hi!"))
         .map(Ok)
-        .throttle(Duration::from_secs(10));
+        .throttle(Duration::from_secs(1));
 
     Sse::new(stream).keep_alive(
         axum::response::sse::KeepAlive::new()

@@ -64,7 +64,7 @@ impl RouteId {
 /// The router type for composing handlers and services.
 pub struct Router<B = Body> {
     routes: HashMap<RouteId, Endpoint<B>>,
-    node: Node,
+    node: Arc<Node>,
     fallback: Fallback<B>,
 }
 
@@ -72,7 +72,7 @@ impl<B> Clone for Router<B> {
     fn clone(&self) -> Self {
         Self {
             routes: self.routes.clone(),
-            node: self.node.clone(),
+            node: Arc::clone(&self.node),
             fallback: self.fallback.clone(),
         }
     }
@@ -157,9 +157,12 @@ where
             Err(service) => Endpoint::Route(Route::new(service)),
         };
 
-        if let Err(err) = self.node.insert(path, id) {
+        let mut node =
+            Arc::try_unwrap(Arc::clone(&self.node)).unwrap_or_else(|node| (*node).clone());
+        if let Err(err) = node.insert(path, id) {
             panic!("Invalid route: {}", err);
         }
+        self.node = Arc::new(node);
 
         self.routes.insert(id, service);
 
@@ -190,12 +193,12 @@ where
             panic!("Cannot nest `Router`s that has a fallback");
         }
 
-        for (id, nested_path) in node.route_id_to_path {
-            let route = routes.remove(&id).unwrap();
-            let full_path: Cow<str> = if &*nested_path == "/" {
+        for (id, nested_path) in &node.route_id_to_path {
+            let route = routes.remove(id).unwrap();
+            let full_path: Cow<str> = if &**nested_path == "/" {
                 path.into()
             } else if path == "/" {
-                (&*nested_path).into()
+                (&**nested_path).into()
             } else if let Some(path) = path.strip_suffix('/') {
                 format!("{}{}", path, nested_path).into()
             } else {
@@ -289,15 +292,15 @@ where
     pub fn layer<L, NewReqBody, NewResBody>(self, layer: L) -> Router<NewReqBody>
     where
         L: Layer<Route<B>>,
-        L::Service: Service<Request<NewReqBody>, Response = Response<NewResBody>, Error = Infallible>
-            + Clone
-            + Send
-            + 'static,
+        L::Service:
+            Service<Request<NewReqBody>, Response = Response<NewResBody>> + Clone + Send + 'static,
+        <L::Service as Service<Request<NewReqBody>>>::Error: Into<Infallible> + 'static,
         <L::Service as Service<Request<NewReqBody>>>::Future: Send + 'static,
         NewResBody: HttpBody<Data = Bytes> + Send + 'static,
         NewResBody::Error: Into<BoxError>,
     {
         let layer = ServiceBuilder::new()
+            .map_err(Into::into)
             .layer(MapResponseBodyLayer::new(boxed))
             .layer(layer)
             .into_inner();
@@ -329,15 +332,14 @@ where
     pub fn route_layer<L, NewResBody>(self, layer: L) -> Self
     where
         L: Layer<Route<B>>,
-        L::Service: Service<Request<B>, Response = Response<NewResBody>, Error = Infallible>
-            + Clone
-            + Send
-            + 'static,
+        L::Service: Service<Request<B>, Response = Response<NewResBody>> + Clone + Send + 'static,
+        <L::Service as Service<Request<B>>>::Error: Into<Infallible> + 'static,
         <L::Service as Service<Request<B>>>::Future: Send + 'static,
         NewResBody: HttpBody<Data = Bytes> + Send + 'static,
         NewResBody::Error: Into<BoxError>,
     {
         let layer = ServiceBuilder::new()
+            .map_err(Into::into)
             .layer(MapResponseBodyLayer::new(boxed))
             .layer(layer)
             .into_inner();
@@ -466,29 +468,35 @@ where
 
         match self.node.at(&path) {
             Ok(match_) => self.call_route(match_, req),
-            Err(MatchError::MissingTrailingSlash) => {
-                let new_uri = replace_trailing_slash(req.uri(), &format!("{}/", &path));
+            Err(err) => {
+                let mut fallback = match &self.fallback {
+                    Fallback::Default(inner) => inner.clone(),
+                    Fallback::Custom(inner) => inner.clone(),
+                };
 
-                RouteFuture::from_response(
-                    Redirect::permanent(&new_uri.to_string()).into_response(),
-                )
-            }
-            Err(MatchError::ExtraTrailingSlash) => {
-                let new_uri = replace_trailing_slash(req.uri(), path.strip_suffix('/').unwrap());
+                let new_uri = match err {
+                    MatchError::MissingTrailingSlash => {
+                        replace_path(req.uri(), &format!("{}/", &path))
+                    }
+                    MatchError::ExtraTrailingSlash => {
+                        replace_path(req.uri(), path.strip_suffix('/').unwrap())
+                    }
+                    MatchError::NotFound => None,
+                };
 
-                RouteFuture::from_response(
-                    Redirect::permanent(&new_uri.to_string()).into_response(),
-                )
+                if let Some(new_uri) = new_uri {
+                    RouteFuture::from_response(
+                        Redirect::permanent(&new_uri.to_string()).into_response(),
+                    )
+                } else {
+                    fallback.call(req)
+                }
             }
-            Err(MatchError::NotFound) => match &self.fallback {
-                Fallback::Default(inner) => inner.clone().call(req),
-                Fallback::Custom(inner) => inner.clone().call(req),
-            },
         }
     }
 }
 
-fn replace_trailing_slash(uri: &Uri, new_path: &str) -> Uri {
+fn replace_path(uri: &Uri, new_path: &str) -> Option<Uri> {
     let mut new_path_and_query = new_path.to_owned();
     if let Some(query) = uri.query() {
         new_path_and_query.push('?');
@@ -498,7 +506,7 @@ fn replace_trailing_slash(uri: &Uri, new_path: &str) -> Uri {
     let mut parts = uri.clone().into_parts();
     parts.path_and_query = Some(new_path_and_query.parse().unwrap());
 
-    Uri::from_parts(parts).unwrap()
+    Uri::from_parts(parts).ok()
 }
 
 /// Wrapper around `matchit::Router` that supports merging two `Router`s.
@@ -601,7 +609,19 @@ impl<B> fmt::Debug for Endpoint<B> {
 }
 
 #[test]
+#[allow(warnings)]
 fn traits() {
     use crate::test_helpers::*;
     assert_send::<Router<()>>();
+}
+
+// https://github.com/tokio-rs/axum/issues/1122
+#[test]
+fn test_replace_trailing_slash() {
+    let uri = "api.ipify.org:80".parse::<Uri>().unwrap();
+    assert!(uri.scheme().is_none());
+    assert_eq!(uri.authority(), Some(&"api.ipify.org:80".parse().unwrap()));
+    assert!(uri.path_and_query().is_none());
+
+    replace_path(&uri, "/foo");
 }

@@ -4,7 +4,6 @@ use http::header;
 use rejection::*;
 
 pub mod connect_info;
-pub mod extractor_middleware;
 pub mod path;
 pub mod rejection;
 
@@ -24,7 +23,6 @@ pub use axum_core::extract::{FromRequest, RequestParts};
 pub use self::{
     connect_info::ConnectInfo,
     content_length_limit::ContentLengthLimit,
-    extractor_middleware::extractor_middleware,
     host::Host,
     path::Path,
     raw_query::RawQuery,
@@ -39,11 +37,8 @@ pub use crate::Json;
 pub use crate::Extension;
 
 #[cfg(feature = "form")]
-mod form;
-
-#[cfg(feature = "form")]
-#[doc(inline)]
-pub use self::form::Form;
+#[doc(no_inline)]
+pub use crate::form::Form;
 
 #[cfg(feature = "matched-path")]
 mod matched_path;

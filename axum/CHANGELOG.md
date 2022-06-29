@@ -7,13 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- **added:** Support resolving host name via `Forwarded` header in `Host`
-  extractor ([#1078])
+- **breaking:** Remove `extractor_middleware` which was previously deprecated.
+  Use `axum::middleware::from_extractor` instead ([#1077])
+- **breaking:** Allow `Error: Into<Infallible>` for `Route::{layer, route_layer}` ([#924])
+- **breaking:** `MethodRouter` now panics on overlapping routes ([#1102])
 - **breaking:** `Router::nest` now only accepts `Router`s. Use
   `Router::nest_service` to nest opaque services
 - **added:** Add `Router::nest_service` for nesting opaque services. Use this to
   nest services like `tower::services::ServeDir`
-- **breaking:** The route `/foo/` no longer matches `/foo/*rest`. If you want
+- **breaking:** The request `/foo/` no longer matches `/foo/*rest`. If you want
   to match `/foo/` you have to add a route specifically for that
 - **breaking:** Path params for wildcard routes no longer include the prefix
   `/`. e.g. `/foo.js` will match `/*filepath` with a value of `foo.js`, _not_
@@ -21,7 +23,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **fixed:** Routes like `/foo` and `/*rest` are no longer considered
   overlapping. `/foo` will take priority
 
+[#1077]: https://github.com/tokio-rs/axum/pull/1077
+[#1102]: https://github.com/tokio-rs/axum/pull/1102
+[#924]: https://github.com/tokio-rs/axum/pull/924
+
+# 0.5.10 (28. June, 2022)
+
+- **fixed:** Make `Router` cheaper to clone ([#1123])
+- **fixed:** Fix possible panic when doing trailing slash redirect ([#1124])
+
+[#1123]: https://github.com/tokio-rs/axum/pull/1123
+[#1124]: https://github.com/tokio-rs/axum/pull/1124
+
+# 0.5.9 (20. June, 2022)
+
+- **fixed:** Fix compile error when the `headers` is enabled and the `form`
+  feature is disabled ([#1107])
+
+[#1107]: https://github.com/tokio-rs/axum/pull/1107
+
+# 0.5.8 (18. June, 2022)
+
+- **added:** Support resolving host name via `Forwarded` header in `Host`
+  extractor ([#1078])
+- **added:** Implement `IntoResponse` for `Form` ([#1095])
+- **change:** axum's MSRV is now 1.56 ([#1098])
+
 [#1078]: https://github.com/tokio-rs/axum/pull/1078
+[#1095]: https://github.com/tokio-rs/axum/pull/1095
+[#1098]: https://github.com/tokio-rs/axum/pull/1098
 
 # 0.5.7 (08. June, 2022)
 
@@ -403,7 +433,7 @@ Yanked, as it contained an accidental breaking change.
     `Router`.
   - **added:** Add `Handler::into_make_service_with_connect_info` for serving a
     handler without a `Router`, and storing info about the incoming connection.
-  - **breaking:** axum's minimum supported rust version is now 1.54
+  - **breaking:** axum's minimum supported rust version is now 1.56
 - Routing:
   - Big internal refactoring of routing leading to several improvements ([#363])
     - **added:** Wildcard routes like `.route("/api/users/*rest", service)` are now supported.

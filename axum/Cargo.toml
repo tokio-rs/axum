@@ -1,9 +1,9 @@
 [package]
 name = "axum"
-version = "0.5.7"
+version = "0.5.10"
 categories = ["asynchronous", "network-programming", "web-programming"]
 description = "Web framework that focuses on ergonomics and modularity"
-edition = "2018"
+edition = "2021"
 homepage = "https://github.com/tokio-rs/axum"
 keywords = ["http", "web", "framework"]
 license = "MIT"
@@ -25,7 +25,7 @@ ws = ["tokio-tungstenite", "sha-1", "base64"]
 
 [dependencies]
 async-trait = "0.1.43"
-axum-core = { path = "../axum-core", version = "0.2.5" }
+axum-core = { path = "../axum-core", version = "0.2.6" }
 bitflags = "1.0"
 bytes = "1.0"
 futures-util = { version = "0.3", default-features = false, features = ["alloc"] }
@@ -33,9 +33,7 @@ http = "0.2.5"
 http-body = "0.4.4"
 hyper = { version = "0.14.14", features = ["server", "tcp", "stream"] }
 itoa = "1.0.1"
-# TODO(david): cannot ship until matchit has released a new version but we can
-# start making changes
-matchit = { git = "https://github.com/ibraheemdev/matchit", branch = "catchall-revamp" }
+matchit = "0.6"
 memchr = "2.4.1"
 mime = "0.3.16"
 percent-encoding = "2.1"
@@ -50,7 +48,7 @@ tower-service = "0.3"
 
 # optional dependencies
 base64 = { version = "0.13", optional = true }
-headers = { version = "0.3", optional = true }
+headers = { version = "0.3.7", optional = true }
 multer = { version = "2.0.0", optional = true }
 serde_json = { version = "1.0", features = ["raw_value"], optional = true }
 serde_urlencoded = { version = "0.7", optional = true }
@@ -62,7 +60,7 @@ anyhow = "1.0"
 futures = "0.3"
 quickcheck = "1.0"
 quickcheck_macros = "1.0"
-reqwest = { version = "0.11", default-features = false, features = ["json", "stream", "multipart"] }
+reqwest = { version = "0.11.11", default-features = false, features = ["json", "stream", "multipart"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 tokio = { version = "1.6.1", features = ["macros", "rt", "rt-multi-thread", "net", "test-util"] }

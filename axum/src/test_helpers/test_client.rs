@@ -5,10 +5,7 @@ use http::{
     Request, StatusCode,
 };
 use hyper::{Body, Server};
-use std::{
-    convert::TryFrom,
-    net::{SocketAddr, TcpListener},
-};
+use std::net::{SocketAddr, TcpListener};
 use tower::make::Shared;
 use tower_service::Service;
 
