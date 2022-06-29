@@ -153,9 +153,9 @@ pub trait RouterExt<B>: sealed::Sealed {
     /// use axum_extra::routing::RouterExt;
     ///
     /// let app = Router::new()
-    ///     // `/foo/` will rediret to `/foo`
+    ///     // `/foo/` will redirect to `/foo`
     ///     .route_with_tsr("/foo", get(|| async {}))
-    ///     // `/bar` will rediret to `/bar/`
+    ///     // `/bar` will redirect to `/bar/`
     ///     .route_with_tsr("/bar/", get(|| async {}));
     /// # let _: Router = app;
     /// ```
