@@ -140,26 +140,18 @@ where
     /// Nest another route at the "member level".
     ///
     /// The routes will be nested at `/{resource_name}/:{resource_name}_id`.
-    pub fn nest<T>(mut self, svc: T) -> Self
-    where
-        T: Service<Request<B>, Response = Response, Error = Infallible> + Clone + Send + 'static,
-        T::Future: Send + 'static,
-    {
+    pub fn nest(mut self, router: Router<B>) -> Self {
         let path = self.show_update_destroy_path();
-        self.router = self.router.nest_service(&path, svc);
+        self.router = self.router.nest(&path, router);
         self
     }
 
     /// Nest another route at the "collection level".
     ///
     /// The routes will be nested at `/{resource_name}`.
-    pub fn nest_collection<T>(mut self, svc: T) -> Self
-    where
-        T: Service<Request<B>, Response = Response, Error = Infallible> + Clone + Send + 'static,
-        T::Future: Send + 'static,
-    {
+    pub fn nest_collection(mut self, router: Router<B>) -> Self {
         let path = self.index_create_path();
-        self.router = self.router.nest_service(&path, svc);
+        self.router = self.router.nest(&path, router);
         self
     }
 
@@ -204,7 +196,6 @@ mod tests {
             .edit(|Path(id): Path<u64>| async move { format!("users#edit id={}", id) })
             .update(|Path(id): Path<u64>| async move { format!("users#update id={}", id) })
             .destroy(|Path(id): Path<u64>| async move { format!("users#destroy id={}", id) })
-            // TODO(david): figure out if we need `nest_service` + `nest` methods on `Resource`
             .nest(Router::new().route(
                 "/tweets",
                 get(|Path(id): Path<u64>| async move { format!("users#tweets id={}", id) }),
