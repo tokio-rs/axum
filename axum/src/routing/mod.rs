@@ -3,7 +3,7 @@
 use self::{future::RouteFuture, not_found::NotFound};
 use crate::{
     body::{boxed, Body, Bytes, HttpBody},
-    extract::{connect_info::IntoMakeServiceWithConnectInfo, MatchedPath},
+    extract::connect_info::IntoMakeServiceWithConnectInfo,
     response::{IntoResponse, Redirect, Response},
     routing::strip_prefix::StripPrefix,
     util::try_downcast,
@@ -417,7 +417,7 @@ where
         #[cfg(feature = "matched-path")]
         if let Some(matched_path) = self.node.route_id_to_path.get(&id) {
             req.extensions_mut()
-                .insert(MatchedPath(Arc::clone(matched_path)));
+                .insert(crate::extract::MatchedPath(Arc::clone(matched_path)));
         } else {
             #[cfg(debug_assertions)]
             panic!("should always have a matched path for a route id");
