@@ -178,4 +178,20 @@ mod tests {
             ),
         );
     }
+
+    #[tokio::test]
+    async fn nested_opaque_routers_append_to_matched_path() {
+        let app = Router::new().nest_service(
+            "/:a",
+            Router::new().route(
+                "/:b",
+                get(|path: MatchedPath| async move { path.as_str().to_owned() }),
+            ),
+        );
+
+        let client = TestClient::new(app);
+
+        let res = client.get("/foo/bar").send().await;
+        assert_eq!(res.text().await, "/:a/:b");
+    }
 }

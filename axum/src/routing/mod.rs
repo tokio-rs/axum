@@ -98,6 +98,7 @@ impl<B> fmt::Debug for Router<B> {
 }
 
 pub(crate) const NEST_TAIL_PARAM: &str = "__private__axum_nest_tail_param";
+const NEST_TAIL_PARAM_CAPTURE: &str = "/*__private__axum_nest_tail_param";
 
 impl<B> Router<B>
 where
@@ -416,8 +417,24 @@ where
 
         #[cfg(feature = "matched-path")]
         if let Some(matched_path) = self.node.route_id_to_path.get(&id) {
-            req.extensions_mut()
-                .insert(crate::extract::MatchedPath(Arc::clone(matched_path)));
+            use crate::extract::MatchedPath;
+
+            let matched_path = if let Some(previous) = req.extensions_mut().get::<MatchedPath>() {
+                // a previous `MatchedPath` might exist if we're inside a nested Router
+                let previous = if let Some(previous) =
+                    previous.as_str().strip_suffix(NEST_TAIL_PARAM_CAPTURE)
+                {
+                    previous
+                } else {
+                    previous.as_str()
+                };
+
+                let matched_path = format!("{}{}", previous, matched_path);
+                matched_path.into()
+            } else {
+                Arc::clone(matched_path)
+            };
+            req.extensions_mut().insert(MatchedPath(matched_path));
         } else {
             #[cfg(debug_assertions)]
             panic!("should always have a matched path for a route id");
