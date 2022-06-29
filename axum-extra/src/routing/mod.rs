@@ -142,6 +142,10 @@ pub trait RouterExt<B>: sealed::Sealed {
     /// If you add a route _with_ a trailing slash, such as `/bar/`, this method will also add a
     /// route for `/bar` that redirects to `/bar/`.
     ///
+    /// This is similar to what axum 0.5.x did by default, except this explicitly adds another
+    /// route, so trying to add a `/foo/` route after calling `.route_with_tsr("/foo", /* ... */)`
+    /// will result in a panic due to route overlap.
+    ///
     /// # Example
     ///
     /// ```
@@ -254,7 +258,7 @@ where
     {
         self = self.route(path, service);
 
-        let rediret = Redirect::permanent(path);
+        let redirect = Redirect::permanent(path);
 
         if let Some(path_without_trailing_slash) = path.strip_suffix('/') {
             self.route(
@@ -264,7 +268,7 @@ where
         } else {
             self.route(
                 &format!("{}/", path),
-                (move || ready(rediret.clone())).into_service(),
+                (move || ready(redirect.clone())).into_service(),
             )
         }
     }
