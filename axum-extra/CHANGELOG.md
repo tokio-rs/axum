@@ -7,7 +7,10 @@ and this project adheres to [Semantic Versioning].
 
 # Unreleased
 
-- None.
+- **breaking:** `Resource::nest` and `Resource::nest_collection` now only
+  accepts `Router`s ([#1086])
+
+[#1086]: https://github.com/tokio-rs/axum/pull/1086
 
 # 0.3.5 (27. June, 2022)
 
