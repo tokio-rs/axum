@@ -263,7 +263,7 @@ where
         if let Some(path_without_trailing_slash) = path.strip_suffix('/') {
             self.route(
                 path_without_trailing_slash,
-                (move || ready(rediret.clone())).into_service(),
+                (move || ready(redirect.clone())).into_service(),
             )
         } else {
             self.route(
