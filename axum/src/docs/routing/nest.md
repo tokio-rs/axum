@@ -1,4 +1,4 @@
-Nest a group of routes (or a [`Service`]) at some path.
+Nest a router at some path.
 
 This allows you to break your application into smaller pieces and compose
 them together.
@@ -64,36 +64,6 @@ let app = Router::new().nest("/:version/api", users_api);
 # };
 ```
 
-# Nesting services
-
-`nest` also accepts any [`Service`]. This can for example be used with
-[`tower_http::services::ServeDir`] to serve static files from a directory:
-
-```rust
-use axum::{
-    Router,
-    routing::get_service,
-    http::StatusCode,
-    error_handling::HandleErrorLayer,
-};
-use std::{io, convert::Infallible};
-use tower_http::services::ServeDir;
-
-// Serves files inside the `public` directory at `GET /public/*`
-let serve_dir_service = get_service(ServeDir::new("public"))
-    .handle_error(|error: io::Error| async move {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            format!("Unhandled internal error: {}", error),
-        )
-    });
-
-let app = Router::new().nest_service("/public", serve_dir_service);
-# async {
-# axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-# };
-```
-
 # Differences to wildcard routes
 
 Nested routes are similar to wildcard routes. The difference is that
@@ -103,17 +73,48 @@ the prefix stripped:
 ```rust
 use axum::{routing::get, http::Uri, Router};
 
+let nested_router = Router::new()
+    .route("/", get(|uri: Uri| async {
+        // `uri` will _not_ contain `/bar`
+    }));
+
 let app = Router::new()
     .route("/foo/*rest", get(|uri: Uri| async {
         // `uri` will contain `/foo`
     }))
-    .nest_service("/bar", get(|uri: Uri| async {
-        // `uri` will _not_ contain `/bar`
-    }));
+    .nest("/bar", nested_router);
 # async {
 # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 # };
 ```
+
+# Differences between `nest` and `nest_service`
+
+When [fallbacks] are called differs between `nest` and `nested_service`. Routers
+nested with `nest` will delegate to the fallback if they don't have a matching
+route, whereas `nested_service` will not.
+
+```rust
+use axum::{Router, routing::{get, any}, handler::Handler};
+
+let nested_router = Router::new().route("/users", get(|| async {}));
+
+let nested_service = Router::new().route("/app.js", get(|| async {}));
+
+async fn fallback() {}
+
+let app = Router::new()
+    .nest("/api", nested_router)
+    .nest_service("/assets", nested_service)
+    // the fallback is not called for request starting with `/bar` but will be
+    // called for requests starting with `/foo` if `nested_router` doesn't have
+    // a matching route
+    .fallback(fallback.into_service());
+# let _: Router = app;
+```
+
+Note that you would normally use [`tower_http::services::ServeDir`] for serving
+static files and thus not calling `nest_service` with a `Router`.
 
 # Panics
 
@@ -125,3 +126,4 @@ for more details.
   `Router` only allows a single fallback.
 
 [`OriginalUri`]: crate::extract::OriginalUri
+[fallbacks]: Router::fallback

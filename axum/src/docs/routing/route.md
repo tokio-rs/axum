@@ -51,6 +51,8 @@ Examples:
 - `/:id/:repo/*tree`
 
 Wildcard captures can also be extracted using [`Path`](crate::extract::Path).
+Note that the leading slash is not included, i.e. for the route `/foo/*rest` and
+the path `/foo/bar/baz` the value of `rest` will be `bar/baz`.
 
 # Accepting multiple methods
 

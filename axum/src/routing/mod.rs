@@ -169,7 +169,6 @@ where
         self
     }
 
-    // TODO(david): update docs
     #[doc = include_str!("../docs/routing/nest.md")]
     pub fn nest(mut self, mut path: &str, router: Router<B>) -> Self {
         if path.is_empty() {
@@ -218,7 +217,7 @@ where
         self
     }
 
-    /// TODO
+    #[doc = include_str!("../docs/routing/nest_service.md")]
     pub fn nest_service<T>(mut self, mut path: &str, svc: T) -> Self
     where
         T: Service<Request<B>, Response = Response, Error = Infallible> + Clone + Send + 'static,
