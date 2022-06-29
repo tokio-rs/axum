@@ -137,7 +137,7 @@ where
         self.route(&path, delete(handler))
     }
 
-    /// Nest another route at the "member level".
+    /// Nest another router at the "member level".
     ///
     /// The routes will be nested at `/{resource_name}/:{resource_name}_id`.
     pub fn nest(mut self, router: Router<B>) -> Self {
@@ -146,7 +146,7 @@ where
         self
     }
 
-    /// Nest another route at the "collection level".
+    /// Nest another router at the "collection level".
     ///
     /// The routes will be nested at `/{resource_name}`.
     pub fn nest_collection(mut self, router: Router<B>) -> Self {
