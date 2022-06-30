@@ -1,6 +1,6 @@
+use std::{fmt, fmt::{Debug, Formatter}};
 use bitflags::bitflags;
 use http::Method;
-use axum_core::Error;
 
 bitflags! {
     /// A filter that matches one or more HTTP methods.
@@ -24,10 +24,32 @@ bitflags! {
     }
 }
 
-impl TryFrom<Method> for MethodFilter {
-    type Error = Error;
+/// Error type used when converting a [`http::Method`] to a [`MethodFilter`] fails,
+/// because there is no matching [`MethodFilter`] for that [`http::Method`].
+#[derive(Debug)]
+pub struct NoMatchingMethodFilter {
+    method: http::Method,
+}
 
-    fn try_from(m: Method) -> Result<Self, Error> {
+impl NoMatchingMethodFilter {
+    /// [`NoMatchingMethodFilter`] exposes [`NoMatchingMethodFilter::method()`] to make the [`http::Method`] that was responsible for the error accessible.
+    pub fn method(&self) -> &http::Method {
+        &self.method
+    }
+}
+
+impl fmt::Display for NoMatchingMethodFilter {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "Failed to match http method: {}", self.method.as_str())
+    }
+}
+
+impl std::error::Error for NoMatchingMethodFilter {}
+
+impl TryFrom<Method> for MethodFilter {
+    type Error = NoMatchingMethodFilter;
+
+    fn try_from(m: Method) -> Result<Self, NoMatchingMethodFilter> {
         match m {
             Method::DELETE => Ok(MethodFilter::DELETE),
             Method::GET => Ok(MethodFilter::GET),
@@ -37,7 +59,7 @@ impl TryFrom<Method> for MethodFilter {
             Method::POST => Ok(MethodFilter::POST),
             Method::PUT => Ok(MethodFilter::PUT),
             Method::TRACE => Ok(MethodFilter::TRACE),
-            _ => Err(Error::new("could not map method")),
+            other => Err(NoMatchingMethodFilter { method: other}),
         }
     }
 }

@@ -731,4 +731,10 @@ fn from_http_method() {
     assert_eq!(MethodFilter::try_from(Method::POST).unwrap(), MethodFilter::POST);
     assert_eq!(MethodFilter::try_from(Method::PUT).unwrap(), MethodFilter::PUT);
     assert_eq!(MethodFilter::try_from(Method::TRACE).unwrap(), MethodFilter::TRACE);
+    match MethodFilter::try_from(http::Method::CONNECT) {
+        Ok(_) => panic!("test failed, the method 'CONNECT' is not supported"),
+        Err(e) => {
+            assert!(format!("{}", e).contains(e.method().as_str()))
+        }
+    }
 }
