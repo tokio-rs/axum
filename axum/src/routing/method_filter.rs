@@ -1,4 +1,6 @@
 use bitflags::bitflags;
+use http::Method;
+use axum_core::Error;
 
 bitflags! {
     /// A filter that matches one or more HTTP methods.
@@ -19,5 +21,23 @@ bitflags! {
         const PUT =     0b010000000;
         /// Match `TRACE` requests.
         const TRACE =   0b100000000;
+    }
+}
+
+impl TryFrom<Method> for MethodFilter {
+    type Error = Error;
+
+    fn try_from(m: Method) -> Result<Self, Error> {
+        match m {
+            Method::DELETE => Ok(MethodFilter::DELETE),
+            Method::GET => Ok(MethodFilter::GET),
+            Method::HEAD => Ok(MethodFilter::HEAD),
+            Method::OPTIONS => Ok(MethodFilter::OPTIONS),
+            Method::PATCH => Ok(MethodFilter::PATCH),
+            Method::POST => Ok(MethodFilter::POST),
+            Method::PUT => Ok(MethodFilter::PUT),
+            Method::TRACE => Ok(MethodFilter::TRACE),
+            _ => Err(Error::new("could not map method")),
+        }
     }
 }
