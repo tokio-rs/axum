@@ -16,6 +16,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `/foo/`). That is no longer supported and such requests will now be sent to
   the fallback. Consider using `axum_extra::routing::RouterExt::route_with_tsr`
   if you want the old behavior ([#1119])
+- **fixed:** If `WebSocketUpgrade` cannot upgrade the request it will return a
+  `WebSocketUpgradeRejection::MissingUpgradeState` rejection
+- **changed:** `WebSocketUpgradeRejection` has a new variant `MissingUpgradeState` variant
 
 [#1077]: https://github.com/tokio-rs/axum/pull/1077
 [#1102]: https://github.com/tokio-rs/axum/pull/1102
