@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- None.
+- **added** Implement `TryFrom<http:: Method>` for `MethodFilter` and use new `NoMatchingMethodFilter` error in case of failure ([#1130])
+
+[#1130]: https://github.com/tokio-rs/axum/pull/1130
 
 # 0.5.10 (28. June, 2022)
 
