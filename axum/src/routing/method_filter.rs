@@ -1,6 +1,9 @@
-use std::{fmt, fmt::{Debug, Formatter}};
 use bitflags::bitflags;
 use http::Method;
+use std::{
+    fmt,
+    fmt::{Debug, Formatter},
+};
 
 bitflags! {
     /// A filter that matches one or more HTTP methods.
@@ -24,23 +27,22 @@ bitflags! {
     }
 }
 
-/// Error type used when converting a [`http::Method`] to a [`MethodFilter`] fails,
-/// because there is no matching [`MethodFilter`] for that [`http::Method`].
+/// Error type used when converting a [`Method`] to a [`MethodFilter`] fails.
 #[derive(Debug)]
 pub struct NoMatchingMethodFilter {
-    method: http::Method,
+    method: Method,
 }
 
 impl NoMatchingMethodFilter {
-    /// [`NoMatchingMethodFilter`] exposes [`NoMatchingMethodFilter::method()`] to make the [`http::Method`] that was responsible for the error accessible.
-    pub fn method(&self) -> &http::Method {
+    /// Get the [`Method`] that couldn't be converted to a [`MethodFilter`].
+    pub fn method(&self) -> &Method {
         &self.method
     }
 }
 
 impl fmt::Display for NoMatchingMethodFilter {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "Failed to match http method: {}", self.method.as_str())
+        write!(f, "no `MethodFilter` for `{}`", self.method.as_str())
     }
 }
 
