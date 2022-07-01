@@ -16,7 +16,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `/foo/`). That is no longer supported and such requests will now be sent to
   the fallback. Consider using `axum_extra::routing::RouterExt::route_with_tsr`
   if you want the old behavior ([#1119])
+- **added** Implement `TryFrom<http:: Method>` for `MethodFilter` and use new `NoMatchingMethodFilter` error in case of failure ([#1130])
 
+[#1130]: https://github.com/tokio-rs/axum/pull/1130
 [#1077]: https://github.com/tokio-rs/axum/pull/1077
 [#1102]: https://github.com/tokio-rs/axum/pull/1102
 [#1119]: https://github.com/tokio-rs/axum/pull/1119
