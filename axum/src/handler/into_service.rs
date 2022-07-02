@@ -12,51 +12,59 @@ use tower_service::Service;
 /// An adapter that makes a [`Handler`] into a [`Service`].
 ///
 /// Created with [`Handler::into_service`].
-pub struct IntoService<H, T, B> {
+pub struct IntoService<H, S, T, B> {
     handler: H,
+    state: S,
     _marker: PhantomData<fn() -> (T, B)>,
 }
 
 #[test]
 fn traits() {
     use crate::test_helpers::*;
-    assert_send::<IntoService<(), NotSendSync, NotSendSync>>();
-    assert_sync::<IntoService<(), NotSendSync, NotSendSync>>();
+    assert_send::<IntoService<(), (), NotSendSync, NotSendSync>>();
+    assert_sync::<IntoService<(), (), NotSendSync, NotSendSync>>();
 }
 
-impl<H, T, B> IntoService<H, T, B> {
-    pub(super) fn new(handler: H) -> Self {
+impl<H, S, T, B> IntoService<H, S, T, B> {
+    pub(super) fn new(handler: H, state: S) -> Self {
         Self {
             handler,
+            state,
             _marker: PhantomData,
         }
     }
 }
 
-impl<H, T, B> fmt::Debug for IntoService<H, T, B> {
+impl<H, S, T, B> fmt::Debug for IntoService<H, S, T, B>
+where
+    S: fmt::Debug,
+{
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("IntoService")
-            .field(&format_args!("..."))
+        f.debug_struct("IntoService")
+            .field("state", &self.state)
             .finish()
     }
 }
 
-impl<H, T, B> Clone for IntoService<H, T, B>
+impl<H, S, T, B> Clone for IntoService<H, S, T, B>
 where
     H: Clone,
+    S: Clone,
 {
     fn clone(&self) -> Self {
         Self {
             handler: self.handler.clone(),
+            state: self.state.clone(),
             _marker: PhantomData,
         }
     }
 }
 
-impl<H, T, B> Service<Request<B>> for IntoService<H, T, B>
+impl<H, S, T, B> Service<Request<B>> for IntoService<H, S, T, B>
 where
-    H: Handler<T, B> + Clone + Send + 'static,
+    H: Handler<S, T, B> + Clone + Send + 'static,
     B: Send + 'static,
+    S: Clone,
 {
     type Response = Response;
     type Error = Infallible;
@@ -74,7 +82,8 @@ where
         use futures_util::future::FutureExt;
 
         let handler = self.handler.clone();
-        let future = Handler::call(handler, req);
+        let state = self.state.clone();
+        let future = Handler::call(handler, state, req);
         let future = future.map(Ok as _);
 
         super::future::IntoServiceFuture::new(future)

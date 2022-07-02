@@ -61,12 +61,12 @@ pub use self::into_service::IntoService;
 /// See the [module docs](crate::handler) for more details.
 ///
 #[doc = include_str!("../docs/debugging_handler_type_errors.md")]
-pub trait Handler<T, B = Body>: Clone + Send + Sized + 'static {
+pub trait Handler<S, T, B = Body>: Clone + Send + Sized + 'static {
     /// The type of future calling this handler returns.
     type Future: Future<Output = Response> + Send + 'static;
 
     /// Call the handler with the given request.
-    fn call(self, req: Request<B>) -> Self::Future;
+    fn call(self, state: S, req: Request<B>) -> Self::Future;
 
     /// Apply a [`tower::Layer`] to the handler.
     ///
@@ -106,9 +106,11 @@ pub trait Handler<T, B = Body>: Clone + Send + Sized + 'static {
     /// ```
     fn layer<L>(self, layer: L) -> Layered<L::Service, T>
     where
-        L: Layer<IntoService<Self, T, B>>,
+        L: Layer<IntoService<Self, S, T, B>>,
     {
-        Layered::new(layer.layer(self.into_service()))
+        // TODO(david): write this, somehow
+        todo!()
+        // Layered::new(layer.layer(self.into_service()))
     }
 
     /// Convert the handler into a [`Service`].
@@ -143,8 +145,8 @@ pub trait Handler<T, B = Body>: Clone + Send + Sized + 'static {
     /// ```
     ///
     /// [`Router::fallback`]: crate::routing::Router::fallback
-    fn into_service(self) -> IntoService<Self, T, B> {
-        IntoService::new(self)
+    fn into_service(self, state: S) -> IntoService<Self, S, T, B> {
+        IntoService::new(self, state)
     }
 
     /// Convert the handler into a [`MakeService`].
@@ -170,8 +172,8 @@ pub trait Handler<T, B = Body>: Clone + Send + Sized + 'static {
     /// ```
     ///
     /// [`MakeService`]: tower::make::MakeService
-    fn into_make_service(self) -> IntoMakeService<IntoService<Self, T, B>> {
-        IntoMakeService::new(self.into_service())
+    fn into_make_service(self, state: S) -> IntoMakeService<IntoService<Self, S, T, B>> {
+        IntoMakeService::new(self.into_service(state))
     }
 
     /// Convert the handler into a [`MakeService`] which stores information
@@ -204,12 +206,13 @@ pub trait Handler<T, B = Body>: Clone + Send + Sized + 'static {
     /// [`Router::into_make_service_with_connect_info`]: crate::routing::Router::into_make_service_with_connect_info
     fn into_make_service_with_connect_info<C>(
         self,
-    ) -> IntoMakeServiceWithConnectInfo<IntoService<Self, T, B>, C> {
-        IntoMakeServiceWithConnectInfo::new(self.into_service())
+        state: S,
+    ) -> IntoMakeServiceWithConnectInfo<IntoService<Self, S, T, B>, C> {
+        IntoMakeServiceWithConnectInfo::new(self.into_service(state))
     }
 }
 
-impl<F, Fut, Res, B> Handler<(), B> for F
+impl<F, Fut, Res, B, S> Handler<S, (), B> for F
 where
     F: FnOnce() -> Fut + Clone + Send + 'static,
     Fut: Future<Output = Res> + Send,
@@ -218,7 +221,7 @@ where
 {
     type Future = Pin<Box<dyn Future<Output = Response> + Send>>;
 
-    fn call(self, _req: Request<B>) -> Self::Future {
+    fn call(self, _state: S, _req: Request<B>) -> Self::Future {
         Box::pin(async move { self().await.into_response() })
     }
 }
@@ -226,7 +229,7 @@ where
 macro_rules! impl_handler {
     ( $($ty:ident),* $(,)? ) => {
         #[allow(non_snake_case)]
-        impl<F, Fut, B, Res, $($ty,)*> Handler<($($ty,)*), B> for F
+        impl<F, Fut, B, Res, S, $($ty,)*> Handler<S, ($($ty,)*), B> for F
         where
             F: FnOnce($($ty,)*) -> Fut + Clone + Send + 'static,
             Fut: Future<Output = Res> + Send,
@@ -236,7 +239,7 @@ macro_rules! impl_handler {
         {
             type Future = Pin<Box<dyn Future<Output = Response> + Send>>;
 
-            fn call(self, req: Request<B>) -> Self::Future {
+            fn call(self, state: S, req: Request<B>) -> Self::Future {
                 Box::pin(async move {
                     let mut req = RequestParts::new(req);
 
@@ -284,7 +287,7 @@ where
     }
 }
 
-impl<S, T, ReqBody, ResBody> Handler<T, ReqBody> for Layered<S, T>
+impl<S, T, ReqBody, ResBody, St> Handler<St, T, ReqBody> for Layered<S, T>
 where
     S: Service<Request<ReqBody>, Response = Response<ResBody>> + Clone + Send + 'static,
     S::Error: IntoResponse,
@@ -296,7 +299,7 @@ where
 {
     type Future = future::LayeredFuture<S, ReqBody>;
 
-    fn call(self, req: Request<ReqBody>) -> Self::Future {
+    fn call(self, state: St, req: Request<ReqBody>) -> Self::Future {
         use futures_util::future::{FutureExt, Map};
 
         let future: Map<_, fn(Result<S::Response, S::Error>) -> _> =
@@ -330,7 +333,7 @@ mod tests {
             format!("you said: {}", body)
         }
 
-        let client = TestClient::new(handle.into_service());
+        let client = TestClient::new(handle.into_service(()));
 
         let res = client.post("/").body("hi there!").send().await;
         assert_eq!(res.status(), StatusCode::OK);
