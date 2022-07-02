@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+- None.
+
+# 0.5.11 (02. July, 2022)
+
 - **added:** Implement `TryFrom<http:: Method>` for `MethodFilter` and use new
   `NoMatchingMethodFilter` error in case of failure ([#1130])
 - **added:** Document how to run extractors from middleware ([#1140])
