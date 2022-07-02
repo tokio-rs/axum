@@ -7,9 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- **added** Implement `TryFrom<http:: Method>` for `MethodFilter` and use new `NoMatchingMethodFilter` error in case of failure ([#1130])
+- **added:** Implement `TryFrom<http:: Method>` for `MethodFilter` and use new
+  `NoMatchingMethodFilter` error in case of failure ([#1130])
+- **added:** Document how to run extractors from middleware ([#1140])
 
 [#1130]: https://github.com/tokio-rs/axum/pull/1130
+[#1140]: https://github.com/tokio-rs/axum/pull/1140
 
 # 0.5.10 (28. June, 2022)
 
