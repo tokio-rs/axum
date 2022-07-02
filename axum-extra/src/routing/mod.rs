@@ -29,7 +29,7 @@ pub use self::typed::{FirstElementIs, TypedPath};
 pub use self::spa::SpaRouter;
 
 /// Extension trait that adds additional methods to [`Router`].
-pub trait RouterExt<B>: sealed::Sealed {
+pub trait RouterExt<S, B, R>: sealed::Sealed {
     /// Add a typed `GET` route to the router.
     ///
     /// The path will be inferred from the first argument to the handler function which must
@@ -166,9 +166,11 @@ pub trait RouterExt<B>: sealed::Sealed {
         Self: Sized;
 }
 
-impl<B> RouterExt<B> for Router<B>
+impl<S, B, R> RouterExt<S, B, R> for Router<S, B, R>
 where
     B: axum::body::HttpBody + Send + 'static,
+    R: 'static,
+    S: 'static,
 {
     #[cfg(feature = "typed-routing")]
     fn typed_get<H, T, P>(self, handler: H) -> Self
@@ -276,7 +278,7 @@ where
 
 mod sealed {
     pub trait Sealed {}
-    impl<B> Sealed for axum::Router<B> {}
+    impl<S, B, R> Sealed for axum::Router<S, B, R> {}
 }
 
 #[cfg(test)]
@@ -289,7 +291,8 @@ mod tests {
     async fn test_tsr() {
         let app = Router::new()
             .route_with_tsr("/foo", get(|| async {}))
-            .route_with_tsr("/bar/", get(|| async {}));
+            .route_with_tsr("/bar/", get(|| async {}))
+            .state(());
 
         let client = TestClient::new(app);
 

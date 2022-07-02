@@ -296,7 +296,7 @@ mod tests {
             (&headers["x-axum-test"]).to_str().unwrap().to_owned()
         }
 
-        let app = Router::new()
+        let app = Router::with_state(())
             .route("/", get(handle))
             .layer(from_fn(insert_header));
 

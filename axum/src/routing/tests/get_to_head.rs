@@ -8,14 +8,16 @@ mod for_handlers {
 
     #[tokio::test]
     async fn get_handles_head() {
-        let app = Router::new().route(
-            "/",
-            get(|| async {
-                let mut headers = HeaderMap::new();
-                headers.insert("x-some-header", "foobar".parse().unwrap());
-                (headers, "you shouldn't see this")
-            }),
-        );
+        let app = Router::new()
+            .route(
+                "/",
+                get(|| async {
+                    let mut headers = HeaderMap::new();
+                    headers.insert("x-some-header", "foobar".parse().unwrap());
+                    (headers, "you shouldn't see this")
+                }),
+            )
+            .state(());
 
         // don't use reqwest because it always strips bodies from HEAD responses
         let res = app
@@ -43,14 +45,16 @@ mod for_services {
 
     #[tokio::test]
     async fn get_handles_head() {
-        let app = Router::new().route(
-            "/",
-            get_service(service_fn(|_req: Request<Body>| async move {
-                Ok::<_, Infallible>(
-                    ([("x-some-header", "foobar")], "you shouldn't see this").into_response(),
-                )
-            })),
-        );
+        let app = Router::new()
+            .route(
+                "/",
+                get_service(service_fn(|_req: Request<Body>| async move {
+                    Ok::<_, Infallible>(
+                        ([("x-some-header", "foobar")], "you shouldn't see this").into_response(),
+                    )
+                })),
+            )
+            .state(());
 
         // don't use reqwest because it always strips bodies from HEAD responses
         let res = app

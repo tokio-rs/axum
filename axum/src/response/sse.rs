@@ -508,7 +508,7 @@ mod tests {
 
     #[tokio::test]
     async fn basic() {
-        let app = Router::new().route(
+        let app = Router::with_state(()).route(
             "/",
             get(|| async {
                 let stream = stream::iter(vec![
@@ -553,7 +553,7 @@ mod tests {
     async fn keep_alive() {
         const DELAY: Duration = Duration::from_secs(5);
 
-        let app = Router::new().route(
+        let app = Router::with_state(()).route(
             "/",
             get(|| async {
                 let stream = stream::repeat_with(|| Event::default().data("msg"))
@@ -589,7 +589,7 @@ mod tests {
     async fn keep_alive_ends_when_the_stream_ends() {
         const DELAY: Duration = Duration::from_secs(5);
 
-        let app = Router::new().route(
+        let app = Router::with_state(()).route(
             "/",
             get(|| async {
                 let stream = stream::repeat_with(|| Event::default().data("msg"))

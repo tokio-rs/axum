@@ -257,7 +257,7 @@ mod tests {
             assert!(multipart.next_field().await.unwrap().is_none());
         }
 
-        let app = Router::new().route("/", post(handle));
+        let app = Router::new().route("/", post(handle)).state(());
 
         let client = TestClient::new(app);
 

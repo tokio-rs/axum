@@ -116,10 +116,12 @@ mod tests {
             values: Vec<String>,
         }
 
-        let app = Router::new().route(
-            "/",
-            post(|Form(data): Form<Data>| async move { data.values.join(",") }),
-        );
+        let app = Router::new()
+            .route(
+                "/",
+                post(|Form(data): Form<Data>| async move { data.values.join(",") }),
+            )
+            .state(());
 
         let client = TestClient::new(app);
 

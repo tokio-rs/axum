@@ -16,6 +16,7 @@ use std::{
     collections::HashMap,
     convert::Infallible,
     fmt,
+    marker::PhantomData,
     sync::Arc,
     task::{Context, Poll},
 };
@@ -62,23 +63,33 @@ impl RouteId {
 }
 
 /// The router type for composing handlers and services.
-pub struct Router<B = Body> {
+pub struct Router<S, B = Body, R = MissingState> {
+    // Invariant: If `R == MissingState` then `state` is `None`
+    // If `R == WithState` then state is `Some`
+    // `R` cannot have other values
+    state: Option<S>,
     routes: HashMap<RouteId, Endpoint<B>>,
     node: Arc<Node>,
     fallback: Fallback<B>,
+    _marker: PhantomData<R>,
 }
 
-impl<B> Clone for Router<B> {
+impl<S, B, R> Clone for Router<S, B, R>
+where
+    S: Clone,
+{
     fn clone(&self) -> Self {
         Self {
+            state: self.state.clone(),
             routes: self.routes.clone(),
             node: Arc::clone(&self.node),
             fallback: self.fallback.clone(),
+            _marker: PhantomData,
         }
     }
 }
 
-impl<B> Default for Router<B>
+impl<S, B> Default for Router<S, B, MissingState>
 where
     B: HttpBody + Send + 'static,
 {
@@ -87,12 +98,23 @@ where
     }
 }
 
-impl<B> fmt::Debug for Router<B> {
+impl<S, B, R> fmt::Debug for Router<S, B, R>
+where
+    S: fmt::Debug,
+{
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let Self {
+            state,
+            routes,
+            node,
+            fallback,
+            _marker,
+        } = self;
         f.debug_struct("Router")
-            .field("routes", &self.routes)
-            .field("node", &self.node)
-            .field("fallback", &self.fallback)
+            .field("state", &state)
+            .field("routes", &routes)
+            .field("node", &node)
+            .field("fallback", &fallback)
             .finish()
     }
 }
@@ -100,7 +122,7 @@ impl<B> fmt::Debug for Router<B> {
 pub(crate) const NEST_TAIL_PARAM: &str = "__private__axum_nest_tail_param";
 const NEST_TAIL_PARAM_CAPTURE: &str = "/*__private__axum_nest_tail_param";
 
-impl<B> Router<B>
+impl<S, B> Router<S, B, MissingState>
 where
     B: HttpBody + Send + 'static,
 {
@@ -110,12 +132,42 @@ where
     /// all requests.
     pub fn new() -> Self {
         Self {
+            state: None,
             routes: Default::default(),
             node: Default::default(),
             fallback: Fallback::Default(Route::new(NotFound)),
+            _marker: PhantomData,
         }
     }
 
+    /// TODO(david): docs
+    pub fn state(self, state: S) -> Router<S, B, WithState> {
+        Router {
+            state: Some(state),
+            routes: self.routes,
+            node: self.node,
+            fallback: self.fallback,
+            _marker: PhantomData,
+        }
+    }
+}
+
+impl<S, B> Router<S, B, WithState>
+where
+    B: HttpBody + Send + 'static,
+{
+    /// TODO(david): docs
+    pub fn with_state(state: S) -> Self {
+        Router::new().state(state)
+    }
+}
+
+impl<S, B, R> Router<S, B, R>
+where
+    B: HttpBody + Send + 'static,
+    S: 'static,
+    R: 'static,
+{
     #[doc = include_str!("../docs/routing/route.md")]
     pub fn route<T>(mut self, path: &str, service: T) -> Self
     where
@@ -128,7 +180,10 @@ where
             panic!("Paths must start with a `/`");
         }
 
-        let service = match try_downcast::<Router<B>, _>(service) {
+        // Downcase to `WithState` rather than `R` because `Router<S, B, R>` only implements
+        // `Service` if `R == WithState` so any other type of `R` cannot be passed to `.router` in
+        // the first place
+        let service = match try_downcast::<Router<S, B, WithState>, _>(service) {
             Ok(_) => {
                 panic!("Invalid route: `Router::route` cannot be used with `Router`s. Use `Router::nest` instead")
             }
@@ -171,7 +226,7 @@ where
     }
 
     #[doc = include_str!("../docs/routing/nest.md")]
-    pub fn nest(mut self, mut path: &str, router: Router<B>) -> Self {
+    pub fn nest(mut self, mut path: &str, router: Router<S, B, MissingState>) -> Self {
         if path.is_empty() {
             // nesting at `""` and `"/"` should mean the same thing
             path = "/";
@@ -184,10 +239,14 @@ where
         let prefix = path;
 
         let Router {
+            state,
             mut routes,
             node,
             fallback,
+            _marker: _,
         } = router;
+
+        debug_assert!(state.is_none());
 
         if let Fallback::Custom(_) = fallback {
             panic!("Cannot nest `Router`s that has a fallback");
@@ -255,15 +314,19 @@ where
     }
 
     #[doc = include_str!("../docs/routing/merge.md")]
-    pub fn merge<R>(mut self, other: R) -> Self
+    pub fn merge<R2>(mut self, other: R2) -> Self
     where
-        R: Into<Router<B>>,
+        R2: Into<Router<S, B, MissingState>>,
     {
         let Router {
+            state,
             routes,
             node,
             fallback,
+            _marker: _,
         } = other.into();
+
+        debug_assert!(state.is_none());
 
         for (id, route) in routes {
             let path = node
@@ -289,7 +352,7 @@ where
     }
 
     #[doc = include_str!("../docs/routing/layer.md")]
-    pub fn layer<L, NewReqBody, NewResBody>(self, layer: L) -> Router<NewReqBody>
+    pub fn layer<L, NewReqBody, NewResBody>(self, layer: L) -> Router<S, NewReqBody, R>
     where
         L: Layer<Route<B>>,
         L::Service:
@@ -322,9 +385,11 @@ where
         let fallback = self.fallback.map(|svc| Route::new(layer.layer(svc)));
 
         Router {
+            state: self.state,
             routes,
             node: self.node,
             fallback,
+            _marker: self._marker,
         }
     }
 
@@ -359,9 +424,11 @@ where
             .collect();
 
         Router {
+            state: self.state,
             routes,
             node: self.node,
             fallback: self.fallback,
+            _marker: self._marker,
         }
     }
 
@@ -406,7 +473,13 @@ where
     pub fn into_make_service_with_connect_info<C>(self) -> IntoMakeServiceWithConnectInfo<Self, C> {
         IntoMakeServiceWithConnectInfo::new(self)
     }
+}
 
+impl<S, B> Router<S, B, WithState>
+where
+    B: HttpBody + Send + 'static,
+    S: Clone + Send + Sync + 'static,
+{
     #[inline]
     fn call_route(
         &self,
@@ -442,6 +515,10 @@ where
 
         url_params::insert_url_params(req.extensions_mut(), match_.params);
 
+        // the `unwrap` is safe because `self.state` is always some if `R = WithState`, which it is
+        req.extensions_mut()
+            .insert(crate::extract::State(self.state.as_ref().unwrap().clone()));
+
         let mut route = self
             .routes
             .get(&id)
@@ -455,9 +532,10 @@ where
     }
 }
 
-impl<B> Service<Request<B>> for Router<B>
+impl<S, B> Service<Request<B>> for Router<S, B, WithState>
 where
     B: HttpBody + Send + 'static,
+    S: Clone + Send + Sync + 'static,
 {
     type Response = Response;
     type Error = Infallible;
@@ -495,6 +573,12 @@ where
         }
     }
 }
+
+#[derive(Copy, Clone, Debug)]
+pub enum MissingState {}
+
+#[derive(Copy, Clone, Debug)]
+pub enum WithState {}
 
 /// Wrapper around `matchit::Router` that supports merging two `Router`s.
 #[derive(Clone, Default)]
@@ -599,5 +683,6 @@ impl<B> fmt::Debug for Endpoint<B> {
 #[allow(warnings)]
 fn traits() {
     use crate::test_helpers::*;
-    assert_send::<Router<()>>();
+    assert_send::<Router<(), (), WithState>>();
+    assert_send::<Router<(), (), MissingState>>();
 }

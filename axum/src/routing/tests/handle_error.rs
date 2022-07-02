@@ -31,7 +31,7 @@ impl<R> Service<R> for Svc {
 
 #[tokio::test]
 async fn handler() {
-    let app = Router::new().route(
+    let app = Router::with_state(()).route(
         "/",
         get(forever.layer(
             ServiceBuilder::new()
@@ -50,7 +50,7 @@ async fn handler() {
 
 #[tokio::test]
 async fn handler_multiple_methods_first() {
-    let app = Router::new().route(
+    let app = Router::with_state(()).route(
         "/",
         get(forever.layer(
             ServiceBuilder::new()
@@ -70,7 +70,7 @@ async fn handler_multiple_methods_first() {
 
 #[tokio::test]
 async fn handler_multiple_methods_middle() {
-    let app = Router::new().route(
+    let app = Router::with_state(()).route(
         "/",
         delete(unit)
             .get(
@@ -93,7 +93,7 @@ async fn handler_multiple_methods_middle() {
 
 #[tokio::test]
 async fn handler_multiple_methods_last() {
-    let app = Router::new().route(
+    let app = Router::with_state(()).route(
         "/",
         delete(unit).get(
             forever.layer(

@@ -217,22 +217,24 @@ mod tests {
 
     #[tokio::test]
     async fn extractor() {
-        let app = Router::new().route(
-            "/",
-            post(|mut stream: JsonLines<User>| async move {
-                assert_eq!(stream.next().await.unwrap().unwrap(), User { id: 1 });
-                assert_eq!(stream.next().await.unwrap().unwrap(), User { id: 2 });
-                assert_eq!(stream.next().await.unwrap().unwrap(), User { id: 3 });
+        let app = Router::new()
+            .route(
+                "/",
+                post(|mut stream: JsonLines<User>| async move {
+                    assert_eq!(stream.next().await.unwrap().unwrap(), User { id: 1 });
+                    assert_eq!(stream.next().await.unwrap().unwrap(), User { id: 2 });
+                    assert_eq!(stream.next().await.unwrap().unwrap(), User { id: 3 });
 
-                // sources are downcastable to `serde_json::Error`
-                let err = stream.next().await.unwrap().unwrap_err();
-                let _: &serde_json::Error = err
-                    .source()
-                    .unwrap()
-                    .downcast_ref::<serde_json::Error>()
-                    .unwrap();
-            }),
-        );
+                    // sources are downcastable to `serde_json::Error`
+                    let err = stream.next().await.unwrap().unwrap_err();
+                    let _: &serde_json::Error = err
+                        .source()
+                        .unwrap()
+                        .downcast_ref::<serde_json::Error>()
+                        .unwrap();
+                }),
+            )
+            .state(());
 
         let client = TestClient::new(app);
 
@@ -255,17 +257,19 @@ mod tests {
 
     #[tokio::test]
     async fn response() {
-        let app = Router::new().route(
-            "/",
-            get(|| async {
-                let values = futures_util::stream::iter(vec![
-                    Ok::<_, Infallible>(User { id: 1 }),
-                    Ok::<_, Infallible>(User { id: 2 }),
-                    Ok::<_, Infallible>(User { id: 3 }),
-                ]);
-                JsonLines::new(values)
-            }),
-        );
+        let app = Router::new()
+            .route(
+                "/",
+                get(|| async {
+                    let values = futures_util::stream::iter(vec![
+                        Ok::<_, Infallible>(User { id: 1 }),
+                        Ok::<_, Infallible>(User { id: 2 }),
+                        Ok::<_, Infallible>(User { id: 3 }),
+                    ]);
+                    JsonLines::new(values)
+                }),
+            )
+            .state(());
 
         let client = TestClient::new(app);
 

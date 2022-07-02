@@ -302,7 +302,8 @@ mod tests {
 
         async fn handler() {}
 
-        let app = Router::new().route("/", get(handler.layer(from_extractor::<RequireAuth>())));
+        let app =
+            Router::with_state(()).route("/", get(handler.layer(from_extractor::<RequireAuth>())));
 
         let client = TestClient::new(app);
 

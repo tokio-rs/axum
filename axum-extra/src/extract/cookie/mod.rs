@@ -226,12 +226,13 @@ mod tests {
                     jar.remove(Cookie::named("key"))
                 }
 
-                let app = Router::<Body>::new()
+                let app = Router::<_, Body, _>::new()
                     .route("/set", get(set_cookie))
                     .route("/get", get(get_cookie))
                     .route("/remove", get(remove_cookie))
                     .layer(Extension(Key::generate()))
-                    .layer(Extension(CustomKey(Key::generate())));
+                    .layer(Extension(CustomKey(Key::generate())))
+                    .state(());
 
                 let res = app
                     .clone()
@@ -294,9 +295,10 @@ mod tests {
             format!("{:?}", jar.get("key"))
         }
 
-        let app = Router::<Body>::new()
+        let app = Router::<_, Body, _>::new()
             .route("/get", get(get_cookie))
-            .layer(Extension(Key::generate()));
+            .layer(Extension(Key::generate()))
+            .state(());
 
         let res = app
             .clone()

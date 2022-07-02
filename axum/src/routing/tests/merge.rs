@@ -12,7 +12,7 @@ async fn basic() {
         .route("/foo", get(|| async {}))
         .route("/bar", get(|| async {}));
     let two = Router::new().route("/baz", get(|| async {}));
-    let app = one.merge(two);
+    let app = one.merge(two).state(());
 
     let client = TestClient::new(app);
 
@@ -41,7 +41,8 @@ async fn multiple_ors_balanced_differently() {
         one.clone()
             .merge(two.clone())
             .merge(three.clone())
-            .merge(four.clone()),
+            .merge(four.clone())
+            .state(()),
     )
     .await;
 
@@ -49,18 +50,20 @@ async fn multiple_ors_balanced_differently() {
         "two",
         one.clone()
             .merge(two.clone())
-            .merge(three.clone().merge(four.clone())),
+            .merge(three.clone().merge(four.clone()))
+            .state(()),
     )
     .await;
 
     test(
         "three",
         one.clone()
-            .merge(two.clone().merge(three.clone()).merge(four.clone())),
+            .merge(two.clone().merge(three.clone()).merge(four.clone()))
+            .state(()),
     )
     .await;
 
-    test("four", one.merge(two.merge(three.merge(four)))).await;
+    test("four", one.merge(two.merge(three.merge(four))).state(())).await;
 
     async fn test<S, ResBody>(name: &str, app: S)
     where
@@ -89,11 +92,11 @@ async fn nested_or() {
 
     let bar_or_baz = bar.merge(baz);
 
-    let client = TestClient::new(bar_or_baz.clone());
+    let client = TestClient::new(bar_or_baz.clone().state(()));
     assert_eq!(client.get("/bar").send().await.text().await, "bar");
     assert_eq!(client.get("/baz").send().await.text().await, "baz");
 
-    let client = TestClient::new(Router::new().nest("/foo", bar_or_baz));
+    let client = TestClient::new(Router::new().nest("/foo", bar_or_baz).state(()));
     assert_eq!(client.get("/foo/bar").send().await.text().await, "bar");
     assert_eq!(client.get("/foo/baz").send().await.text().await, "baz");
 }
@@ -102,7 +105,10 @@ async fn nested_or() {
 async fn or_with_route_following() {
     let one = Router::new().route("/one", get(|| async { "one" }));
     let two = Router::new().route("/two", get(|| async { "two" }));
-    let app = one.merge(two).route("/three", get(|| async { "three" }));
+    let app = one
+        .merge(two)
+        .route("/three", get(|| async { "three" }))
+        .state(());
 
     let client = TestClient::new(app);
 
@@ -122,7 +128,7 @@ async fn layer() {
     let two = Router::new()
         .route("/bar", get(|| async {}))
         .layer(ConcurrencyLimitLayer::new(10));
-    let app = one.merge(two);
+    let app = one.merge(two).state(());
 
     let client = TestClient::new(app);
 
@@ -145,7 +151,7 @@ async fn layer_and_handle_error() {
                 }))
                 .layer(TimeoutLayer::new(Duration::from_millis(10))),
         );
-    let app = one.merge(two);
+    let app = one.merge(two).state(());
 
     let client = TestClient::new(app);
 
@@ -159,7 +165,7 @@ async fn nesting() {
     let two = Router::new().nest("/bar", Router::new().route("/baz", get(|| async {})));
     let app = one.merge(two);
 
-    let client = TestClient::new(app);
+    let client = TestClient::new(app.state(()));
 
     let res = client.get("/bar/baz").send().await;
     assert_eq!(res.status(), StatusCode::OK);
@@ -171,7 +177,7 @@ async fn boxed() {
     let two = Router::new().route("/bar", get(|| async {}));
     let app = one.merge(two);
 
-    let client = TestClient::new(app);
+    let client = TestClient::new(app.state(()));
 
     let res = client.get("/bar").send().await;
     assert_eq!(res.status(), StatusCode::OK);
@@ -188,7 +194,7 @@ async fn many_ors() {
         .merge(Router::new().route("/r6", get(|| async {})))
         .merge(Router::new().route("/r7", get(|| async {})));
 
-    let client = TestClient::new(app);
+    let client = TestClient::new(app.state(()));
 
     for n in 1..=7 {
         let res = client.get(&format!("/r{}", n)).send().await;
@@ -217,7 +223,7 @@ async fn services() {
             })),
         ));
 
-    let client = TestClient::new(app);
+    let client = TestClient::new(app.state(()));
 
     let res = client.get("/foo").send().await;
     assert_eq!(res.status(), StatusCode::OK);
@@ -243,7 +249,7 @@ async fn nesting_and_seeing_the_right_uri() {
     let one = Router::new().nest("/foo", Router::new().route("/bar", get(all_the_uris)));
     let two = Router::new().route("/foo", get(all_the_uris));
 
-    let client = TestClient::new(one.merge(two));
+    let client = TestClient::new(one.merge(two).state(()));
 
     let res = client.get("/foo/bar").send().await;
     assert_eq!(res.status(), StatusCode::OK);
@@ -276,7 +282,7 @@ async fn nesting_and_seeing_the_right_uri_at_more_levels_of_nesting() {
     );
     let two = Router::new().route("/foo", get(all_the_uris));
 
-    let client = TestClient::new(one.merge(two));
+    let client = TestClient::new(one.merge(two).state(()));
 
     let res = client.get("/foo/bar/baz").send().await;
     assert_eq!(res.status(), StatusCode::OK);
@@ -310,7 +316,7 @@ async fn nesting_and_seeing_the_right_uri_ors_with_nesting() {
     let two = Router::new().nest("/two", Router::new().route("/qux", get(all_the_uris)));
     let three = Router::new().route("/three", get(all_the_uris));
 
-    let client = TestClient::new(one.merge(two).merge(three));
+    let client = TestClient::new(one.merge(two).merge(three).state(()));
 
     let res = client.get("/one/bar/baz").send().await;
     assert_eq!(res.status(), StatusCode::OK);
@@ -354,7 +360,7 @@ async fn nesting_and_seeing_the_right_uri_ors_with_multi_segment_uris() {
     );
     let two = Router::new().route("/two/foo", get(all_the_uris));
 
-    let client = TestClient::new(one.merge(two));
+    let client = TestClient::new(one.merge(two).state(()));
 
     let res = client.get("/one/foo/bar").send().await;
     assert_eq!(res.status(), StatusCode::OK);
@@ -387,7 +393,7 @@ async fn middleware_that_return_early() {
 
     let public = Router::new().route("/public", get(|| async {}));
 
-    let client = TestClient::new(private.merge(public));
+    let client = TestClient::new(private.merge(public).state(()));
 
     assert_eq!(
         client.get("/").send().await.status(),

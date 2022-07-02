@@ -223,7 +223,7 @@ mod tests {
     async fn multiple_request_extractors() {
         async fn handler(_: Request<Body>, _: Request<Body>) {}
 
-        let app = Router::new().route("/", post(handler));
+        let app = Router::new().route("/", post(handler)).state(());
 
         let client = TestClient::new(app);
 
@@ -248,7 +248,12 @@ mod tests {
             parts.extensions.get::<Ext>().unwrap();
         }
 
-        let client = TestClient::new(Router::new().route("/", get(handler)).layer(Extension(Ext)));
+        let client = TestClient::new(
+            Router::new()
+                .route("/", get(handler))
+                .layer(Extension(Ext))
+                .state(()),
+        );
 
         let res = client.get("/").header("x-foo", "123").send().await;
         assert_eq!(res.status(), StatusCode::OK);
@@ -263,7 +268,7 @@ mod tests {
             assert_eq!(body, "foo");
         }
 
-        let client = TestClient::new(Router::new().route("/", get(handler)));
+        let client = TestClient::new(Router::new().route("/", get(handler)).state(()));
 
         let res = client.get("/").body("foo").send().await;
         assert_eq!(res.status(), StatusCode::OK);

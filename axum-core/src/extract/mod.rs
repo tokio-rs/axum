@@ -272,3 +272,19 @@ where
         Ok(T::from_request(req).await)
     }
 }
+
+/// TODO(david): docs
+#[derive(Clone, Copy, Debug, Default)]
+pub struct State<S>(pub S);
+
+#[async_trait]
+impl<S, B> FromRequest<B> for State<S>
+where
+    B: Send,
+{
+    type Rejection = Infallible;
+
+    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+        todo!()
+    }
+}

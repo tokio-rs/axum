@@ -2,7 +2,7 @@ use axum::{
     body::{Body, HttpBody},
     error_handling::HandleError,
     response::Response,
-    routing::{get_service, Route},
+    routing::{get_service, MissingState, Route},
     Router,
 };
 use http::{Request, StatusCode};
@@ -147,7 +147,7 @@ impl<B, T, F> SpaRouter<B, T, F> {
     }
 }
 
-impl<B, F, T> From<SpaRouter<B, T, F>> for Router<B>
+impl<B, F, T, S> From<SpaRouter<B, T, F>> for Router<S, B, MissingState>
 where
     F: Clone + Send + 'static,
     HandleError<Route<B, io::Error>, F, T>:
@@ -155,6 +155,7 @@ where
     <HandleError<Route<B, io::Error>, F, T> as Service<Request<B>>>::Future: Send,
     B: HttpBody + Send + 'static,
     T: 'static,
+    S: 'static,
 {
     fn from(spa: SpaRouter<B, T, F>) -> Self {
         let assets_service = get_service(ServeDir::new(&spa.paths.assets_dir))
@@ -214,7 +215,8 @@ mod tests {
     async fn basic() {
         let app = Router::new()
             .route("/foo", get(|| async { "GET /foo" }))
-            .merge(SpaRouter::new("/assets", "test_files"));
+            .merge(SpaRouter::new("/assets", "test_files"))
+            .state(());
         let client = TestClient::new(app);
 
         let res = client.get("/").send().await;
@@ -239,8 +241,9 @@ mod tests {
 
     #[tokio::test]
     async fn setting_index_file() {
-        let app =
-            Router::new().merge(SpaRouter::new("/assets", "test_files").index_file("index_2.html"));
+        let app = Router::new()
+            .merge(SpaRouter::new("/assets", "test_files").index_file("index_2.html"))
+            .state(());
         let client = TestClient::new(app);
 
         let res = client.get("/").send().await;
@@ -264,6 +267,6 @@ mod tests {
 
         let spa = SpaRouter::new("/assets", "test_files").handle_error(handle_error);
 
-        Router::<Body>::new().merge(spa);
+        Router::<(), Body, _>::new().merge(spa);
     }
 }

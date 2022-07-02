@@ -84,7 +84,7 @@ mod tests {
             host
         }
 
-        TestClient::new(Router::new().route("/", get(host_as_body)))
+        TestClient::new(Router::new().route("/", get(host_as_body)).state(()))
     }
 
     #[tokio::test]

@@ -97,10 +97,12 @@ mod tests {
             values: Vec<String>,
         }
 
-        let app = Router::new().route(
-            "/",
-            post(|Query(data): Query<Data>| async move { data.values.join(",") }),
-        );
+        let app = Router::new()
+            .route(
+                "/",
+                post(|Query(data): Query<Data>| async move { data.values.join(",") }),
+            )
+            .state(());
 
         let client = TestClient::new(app);
 

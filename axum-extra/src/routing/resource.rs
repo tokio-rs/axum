@@ -3,10 +3,10 @@ use axum::{
     handler::Handler,
     http::Request,
     response::Response,
-    routing::{delete, get, on, post, MethodFilter},
+    routing::{delete, get, on, post, MethodFilter, MissingState, WithState},
     Router,
 };
-use std::convert::Infallible;
+use std::{convert::Infallible, fmt};
 use tower_service::Service;
 
 /// A resource which defines a set of conventional CRUD routes.
@@ -47,13 +47,24 @@ use tower_service::Service;
 /// let app = Router::new().merge(users);
 /// # let _: Router<axum::body::Body> = app;
 /// ```
-#[derive(Debug)]
-pub struct Resource<B = Body> {
+pub struct Resource<S, B = Body, R = MissingState> {
     pub(crate) name: String,
-    pub(crate) router: Router<B>,
+    pub(crate) router: Router<S, B, R>,
 }
 
-impl<B> Resource<B>
+impl<S, B, R> fmt::Debug for Resource<S, B, R>
+where
+    S: fmt::Debug,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Resource")
+            .field("name", &self.name)
+            .field("router", &self.router)
+            .finish()
+    }
+}
+
+impl<S, B> Resource<S, B, MissingState>
 where
     B: axum::body::HttpBody + Send + 'static,
 {
@@ -67,6 +78,24 @@ where
         }
     }
 
+    /// TODO(david): docs
+    pub fn state(self, state: S) -> Resource<S, B, WithState>
+    where
+        S: Clone,
+    {
+        Resource {
+            name: self.name,
+            router: self.router.state(state),
+        }
+    }
+}
+
+impl<S, B, R> Resource<S, B, R>
+where
+    B: axum::body::HttpBody + Send + 'static,
+    S: 'static,
+    R: 'static,
+{
     /// Add a handler at `GET /{resource_name}`.
     pub fn index<H, T>(self, handler: H) -> Self
     where
@@ -140,7 +169,7 @@ where
     /// Nest another router at the "member level".
     ///
     /// The routes will be nested at `/{resource_name}/:{resource_name}_id`.
-    pub fn nest(mut self, router: Router<B>) -> Self {
+    pub fn nest(mut self, router: Router<S, B, MissingState>) -> Self {
         let path = self.show_update_destroy_path();
         self.router = self.router.nest(&path, router);
         self
@@ -149,7 +178,7 @@ where
     /// Nest another router at the "collection level".
     ///
     /// The routes will be nested at `/{resource_name}`.
-    pub fn nest_collection(mut self, router: Router<B>) -> Self {
+    pub fn nest_collection(mut self, router: Router<S, B, MissingState>) -> Self {
         let path = self.index_create_path();
         self.router = self.router.nest(&path, router);
         self
@@ -173,8 +202,8 @@ where
     }
 }
 
-impl<B> From<Resource<B>> for Router<B> {
-    fn from(resource: Resource<B>) -> Self {
+impl<S, B> From<Resource<S, B, MissingState>> for Router<S, B, MissingState> {
+    fn from(resource: Resource<S, B, MissingState>) -> Self {
         resource.router
     }
 }
@@ -204,7 +233,7 @@ mod tests {
                 Router::new().route("/featured", get(|| async move { "users#featured" })),
             );
 
-        let mut app = Router::new().merge(users);
+        let mut app = Router::new().merge(users).state(());
 
         assert_eq!(
             call_route(&mut app, Method::GET, "/users").await,
@@ -257,7 +286,11 @@ mod tests {
         );
     }
 
-    async fn call_route(app: &mut Router, method: Method, uri: &str) -> String {
+    async fn call_route(
+        app: &mut Router<(), Body, axum::routing::WithState>,
+        method: Method,
+        uri: &str,
+    ) -> String {
         let res = app
             .ready()
             .await

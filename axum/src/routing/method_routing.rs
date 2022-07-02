@@ -1193,26 +1193,28 @@ mod tests {
 
     #[allow(dead_code)]
     fn buiding_complex_router() {
-        let app = crate::Router::new().route(
-            "/",
-            // use the all the things :bomb:
-            get(ok)
-                .post(ok)
-                .route_layer(RequireAuthorizationLayer::bearer("password"))
-                .merge(
-                    delete_service(ServeDir::new("."))
-                        .handle_error(|_| async { StatusCode::NOT_FOUND }),
-                )
-                .fallback((|| async { StatusCode::NOT_FOUND }).into_service())
-                .put(ok)
-                .layer(
-                    ServiceBuilder::new()
-                        .layer(HandleErrorLayer::new(|_| async {
-                            StatusCode::REQUEST_TIMEOUT
-                        }))
-                        .layer(TimeoutLayer::new(Duration::from_secs(10))),
-                ),
-        );
+        let app = crate::Router::new()
+            .route(
+                "/",
+                // use the all the things :bomb:
+                get(ok)
+                    .post(ok)
+                    .route_layer(RequireAuthorizationLayer::bearer("password"))
+                    .merge(
+                        delete_service(ServeDir::new("."))
+                            .handle_error(|_| async { StatusCode::NOT_FOUND }),
+                    )
+                    .fallback((|| async { StatusCode::NOT_FOUND }).into_service())
+                    .put(ok)
+                    .layer(
+                        ServiceBuilder::new()
+                            .layer(HandleErrorLayer::new(|_| async {
+                                StatusCode::REQUEST_TIMEOUT
+                            }))
+                            .layer(TimeoutLayer::new(Duration::from_secs(10))),
+                    ),
+            )
+            .state(());
 
         crate::Server::bind(&"0.0.0.0:0".parse().unwrap()).serve(app.into_make_service());
     }

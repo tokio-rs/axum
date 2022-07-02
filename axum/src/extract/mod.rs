@@ -16,7 +16,7 @@ mod raw_query;
 mod request_parts;
 
 #[doc(inline)]
-pub use axum_core::extract::{FromRequest, RequestParts};
+pub use axum_core::extract::{FromRequest, RequestParts, State};
 
 #[doc(inline)]
 #[allow(deprecated)]
@@ -103,7 +103,9 @@ mod tests {
 
     #[tokio::test]
     async fn consume_body() {
-        let app = Router::new().route("/", get(|body: String| async { body }));
+        let app = Router::new()
+            .route("/", get(|body: String| async { body }))
+            .state(());
 
         let client = TestClient::new(app);
         let res = client.get("/").body("foo").send().await;

@@ -46,7 +46,7 @@ async fn hello_world() {
         .route("/", get(root).post(foo))
         .route("/users", post(users_create));
 
-    let client = TestClient::new(app);
+    let client = TestClient::new(app.state(()));
 
     let res = client.get("/").send().await;
     let body = res.text().await;
@@ -75,7 +75,7 @@ async fn routing() {
             get(|_: Request<Body>| async { "users#action" }),
         );
 
-    let client = TestClient::new(app);
+    let client = TestClient::new(app.state(()));
 
     let res = client.get("/").send().await;
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
@@ -99,7 +99,7 @@ async fn routing() {
 
 #[tokio::test]
 async fn router_type_doesnt_change() {
-    let app: Router = Router::new()
+    let app: Router<()> = Router::new()
         .route(
             "/",
             on(MethodFilter::GET, |_: Request<Body>| async {
@@ -111,7 +111,7 @@ async fn router_type_doesnt_change() {
         )
         .layer(tower_http::compression::CompressionLayer::new());
 
-    let client = TestClient::new(app);
+    let client = TestClient::new(app.state(()));
 
     let res = client.get("/").send().await;
     assert_eq!(res.status(), StatusCode::OK);
@@ -149,7 +149,7 @@ async fn routing_between_services() {
         )
         .route("/two", on_service(MethodFilter::GET, handle.into_service()));
 
-    let client = TestClient::new(app);
+    let client = TestClient::new(app.state(()));
 
     let res = client.get("/one").send().await;
     assert_eq!(res.status(), StatusCode::OK);
@@ -187,7 +187,7 @@ async fn middleware_on_single_route() {
         )),
     );
 
-    let client = TestClient::new(app);
+    let client = TestClient::new(app.state(()));
 
     let res = client.get("/").send().await;
     let body = res.text().await;
@@ -203,7 +203,7 @@ async fn service_in_bottom() {
 
     let app = Router::new().route("/", get_service(service_fn(handler)));
 
-    TestClient::new(app);
+    TestClient::new(app.state(()));
 }
 
 #[tokio::test]
@@ -212,7 +212,7 @@ async fn wrong_method_handler() {
         .route("/", get(|| async {}).post(|| async {}))
         .route("/foo", patch(|| async {}));
 
-    let client = TestClient::new(app);
+    let client = TestClient::new(app.state(()));
 
     let res = client.patch("/").send().await;
     assert_eq!(res.status(), StatusCode::METHOD_NOT_ALLOWED);
@@ -250,7 +250,7 @@ async fn wrong_method_service() {
         .route("/", get_service(Svc).post_service(Svc))
         .route("/foo", patch_service(Svc));
 
-    let client = TestClient::new(app);
+    let client = TestClient::new(app.state(()));
 
     let res = client.patch("/").send().await;
     assert_eq!(res.status(), StatusCode::METHOD_NOT_ALLOWED);
@@ -273,7 +273,7 @@ async fn multiple_methods_for_one_handler() {
 
     let app = Router::new().route("/", on(MethodFilter::GET | MethodFilter::POST, root));
 
-    let client = TestClient::new(app);
+    let client = TestClient::new(app.state(()));
 
     let res = client.get("/").send().await;
     assert_eq!(res.status(), StatusCode::OK);
@@ -286,7 +286,7 @@ async fn multiple_methods_for_one_handler() {
 async fn wildcard_sees_whole_url() {
     let app = Router::new().route("/api/*rest", get(|uri: Uri| async move { uri.to_string() }));
 
-    let client = TestClient::new(app);
+    let client = TestClient::new(app.state(()));
 
     let res = client.get("/api/foo/bar").send().await;
     assert_eq!(res.text().await, "/api/foo/bar");
@@ -305,7 +305,7 @@ async fn middleware_applies_to_routes_above() {
         )
         .route("/two", get(|| async {}));
 
-    let client = TestClient::new(app);
+    let client = TestClient::new(app.state(()));
 
     let res = client.get("/one").send().await;
     assert_eq!(res.status(), StatusCode::REQUEST_TIMEOUT);
@@ -318,7 +318,7 @@ async fn middleware_applies_to_routes_above() {
 async fn not_found_for_extra_trailing_slash() {
     let app = Router::new().route("/foo", get(|| async {}));
 
-    let client = TestClient::new(app);
+    let client = TestClient::new(app.state(()));
 
     let res = client.get("/foo/").send().await;
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
@@ -331,7 +331,7 @@ async fn not_found_for_extra_trailing_slash() {
 async fn not_found_for_missing_trailing_slash() {
     let app = Router::new().route("/foo/", get(|| async {}));
 
-    let client = TestClient::new(app);
+    let client = TestClient::new(app.state(()));
 
     let res = client.get("/foo").send().await;
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
@@ -343,7 +343,7 @@ async fn with_and_without_trailing_slash() {
         .route("/foo", get(|| async { "without tsr" }))
         .route("/foo/", get(|| async { "with tsr" }));
 
-    let client = TestClient::new(app);
+    let client = TestClient::new(app.state(()));
 
     let res = client.get("/foo/").send().await;
     assert_eq!(res.status(), StatusCode::OK);
@@ -362,7 +362,7 @@ async fn wildcard_doesnt_match_just_trailing_slash() {
         get(|Path(path): Path<String>| async move { path }),
     );
 
-    let client = TestClient::new(app);
+    let client = TestClient::new(app.state(()));
 
     let res = client.get("/x").send().await;
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
@@ -384,7 +384,7 @@ async fn static_and_dynamic_paths() {
         )
         .route("/foo", get(|| async { "static" }));
 
-    let client = TestClient::new(app);
+    let client = TestClient::new(app.state(()));
 
     let res = client.get("/bar").send().await;
     assert_eq!(res.text().await, "dynamic: bar");
@@ -397,7 +397,7 @@ async fn static_and_dynamic_paths() {
 #[should_panic(expected = "Paths must start with a `/`. Use \"/\" for root routes")]
 async fn empty_route() {
     let app = Router::new().route("", get(|| async {}));
-    TestClient::new(app);
+    TestClient::new(app.state(()));
 }
 
 #[tokio::test]
@@ -429,7 +429,7 @@ async fn middleware_still_run_for_unmatched_requests() {
         .route("/", get(|| async {}))
         .layer(tower::layer::layer_fn(CountMiddleware));
 
-    let client = TestClient::new(app);
+    let client = TestClient::new(app.state(()));
 
     assert_eq!(COUNT.load(Ordering::SeqCst), 0);
 
@@ -445,7 +445,7 @@ async fn middleware_still_run_for_unmatched_requests() {
     expected = "Invalid route: `Router::route` cannot be used with `Router`s. Use `Router::nest` instead"
 )]
 async fn routing_to_router_panics() {
-    TestClient::new(Router::new().route("/", Router::new()));
+    TestClient::new(Router::new().route("/", Router::new().state(())).state(()));
 }
 
 #[tokio::test]
@@ -454,7 +454,7 @@ async fn route_layer() {
         .route("/foo", get(|| async {}))
         .route_layer(RequireAuthorizationLayer::bearer("password"));
 
-    let client = TestClient::new(app);
+    let client = TestClient::new(app.state(()));
 
     let res = client
         .get("/foo")
@@ -482,7 +482,7 @@ async fn different_methods_added_in_different_routes() {
         .route("/", get(|| async { "GET" }))
         .route("/", post(|| async { "POST" }));
 
-    let client = TestClient::new(app);
+    let client = TestClient::new(app.state(()));
 
     let res = client.get("/").send().await;
     let body = res.text().await;
@@ -505,7 +505,7 @@ async fn different_methods_added_in_different_routes_deeply_nested() {
             ),
         );
 
-    let client = TestClient::new(app);
+    let client = TestClient::new(app.state(()));
 
     let res = client.get("/foo/bar/baz").send().await;
     let body = res.text().await;
@@ -522,7 +522,7 @@ async fn merging_routers_with_fallbacks_panics() {
     async fn fallback() {}
     let one = Router::new().fallback(fallback.into_service());
     let two = Router::new().fallback(fallback.into_service());
-    TestClient::new(one.merge(two));
+    TestClient::new(one.merge(two).state(()));
 }
 
 #[tokio::test]
@@ -531,7 +531,7 @@ async fn nesting_router_with_fallbacks_panics() {
     async fn fallback() {}
     let one = Router::new().fallback(fallback.into_service());
     let app = Router::new().nest("/", one);
-    TestClient::new(app);
+    TestClient::new(app.state(()));
 }
 
 #[tokio::test]
@@ -539,7 +539,7 @@ async fn merging_routers_with_same_paths_but_different_methods() {
     let one = Router::new().route("/", get(|| async { "GET" }));
     let two = Router::new().route("/", post(|| async { "POST" }));
 
-    let client = TestClient::new(one.merge(two));
+    let client = TestClient::new(one.merge(two).state(()));
 
     let res = client.get("/").send().await;
     let body = res.text().await;
@@ -556,7 +556,7 @@ async fn head_content_length_through_hyper_server() {
         .route("/", get(|| async { "foo" }))
         .route("/json", get(|| async { Json(json!({ "foo": 1 })) }));
 
-    let client = TestClient::new(app);
+    let client = TestClient::new(app.state(()));
 
     let res = client.head("/").send().await;
     assert_eq!(res.headers()["content-length"], "3");
@@ -571,7 +571,7 @@ async fn head_content_length_through_hyper_server() {
 async fn head_content_length_through_hyper_server_that_hits_fallback() {
     let app = Router::new().fallback((|| async { "foo" }).into_service());
 
-    let client = TestClient::new(app);
+    let client = TestClient::new(app.state(()));
 
     let res = client.head("/").send().await;
     assert_eq!(res.headers()["content-length"], "3");
@@ -585,7 +585,7 @@ async fn head_with_middleware_applied() {
         .route("/", get(|| async { "Hello, World!" }))
         .layer(CompressionLayer::new().compress_when(SizeAbove::new(0)));
 
-    let client = TestClient::new(app);
+    let client = TestClient::new(app.state(()));
 
     // send GET request
     let res = client
@@ -614,7 +614,7 @@ async fn head_with_middleware_applied() {
 #[should_panic(expected = "Paths must start with a `/`")]
 async fn routes_must_start_with_slash() {
     let app = Router::new().route(":foo", get(|| async {}));
-    TestClient::new(app);
+    TestClient::new(app.state(()));
 }
 
 #[tokio::test]
@@ -630,7 +630,7 @@ async fn limited_body_with_content_length() {
         )
         .layer(RequestBodyLimitLayer::new(LIMIT));
 
-    let client = TestClient::new(app);
+    let client = TestClient::new(app.state(()));
 
     let res = client.post("/").body("a".repeat(LIMIT)).send().await;
     assert_eq!(res.status(), StatusCode::OK);
@@ -652,7 +652,7 @@ async fn limited_body_with_streaming_body() {
         )
         .layer(RequestBodyLimitLayer::new(LIMIT));
 
-    let client = TestClient::new(app);
+    let client = TestClient::new(app.state(()));
 
     let stream = futures_util::stream::iter(vec![Ok::<_, hyper::Error>("a".repeat(LIMIT))]);
     let res = client
