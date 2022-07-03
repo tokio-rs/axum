@@ -326,9 +326,4 @@ mod tests {
             .await;
         assert_eq!(res.status(), StatusCode::OK);
     }
-
-    #[test]
-    fn extracting_state() {
-        todo!()
-    }
 }

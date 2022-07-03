@@ -259,7 +259,7 @@ macro_rules! impl_service {
         impl<F, Fut, Out, S, ReqBody, ResBody, $($ty,)*> Service<Request<ReqBody>> for FromFn<F, S, ($($ty,)*)>
         where
             F: FnMut($($ty),*, Next<ReqBody>) -> Fut + Clone + Send + 'static,
-            $( $ty: FromRequest<ReqBody> + Send, )*
+            $( $ty: FromRequest<(), ReqBody> + Send, )*
             Fut: Future<Output = Out> + Send + 'static,
             Out: IntoResponse + 'static,
             S: Service<Request<ReqBody>, Response = Response<ResBody>, Error = Infallible>
@@ -286,7 +286,7 @@ macro_rules! impl_service {
                 let mut f = self.f.clone();
 
                 let future = Box::pin(async move {
-                    let mut parts = RequestParts::new(req);
+                    let mut parts = RequestParts::new((), req);
                     $(
                         let $ty = match $ty::from_request(&mut parts).await {
                             Ok(value) => value,
@@ -370,9 +370,8 @@ impl fmt::Debug for ResponseFuture {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{body::Empty, routing::get, Router};
+    use crate::{extract::State, routing::get, test_helpers::TestClient, Router};
     use http::{HeaderMap, StatusCode};
-    use tower::ServiceExt;
 
     #[tokio::test]
     async fn basic() {
@@ -391,22 +390,39 @@ mod tests {
             .route("/", get(handle))
             .layer(from_fn(insert_header));
 
-        let res = app
-            .oneshot(
-                Request::builder()
-                    .uri("/")
-                    .body(body::boxed(Empty::new()))
-                    .unwrap(),
-            )
-            .await
-            .unwrap();
+        let client = TestClient::new(app);
+
+        let res = client.get("/").send().await;
+
         assert_eq!(res.status(), StatusCode::OK);
-        let body = hyper::body::to_bytes(res).await.unwrap();
-        assert_eq!(&body[..], b"ok");
+        assert_eq!(res.text().await, "ok");
     }
 
-    #[test]
-    fn extracting_state() {
-        todo!()
+    #[tokio::test]
+    async fn extracting_state() {
+        async fn access_state<B>(req: Request<B>, next: Next<B>) -> impl IntoResponse {
+            let State(state) = req.extensions().get::<State<AppState>>().unwrap().clone();
+            state.value
+        }
+
+        async fn handle() {
+            panic!()
+        }
+
+        #[derive(Clone)]
+        struct AppState {
+            value: &'static str,
+        }
+
+        let app = Router::with_state(AppState { value: "foo" })
+            .route("/", get(handle))
+            .layer(from_fn(access_state));
+
+        let client = TestClient::new(app);
+
+        let res = client.get("/").send().await;
+
+        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.text().await, "foo");
     }
 }
