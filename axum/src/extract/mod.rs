@@ -105,9 +105,7 @@ mod tests {
 
     #[tokio::test]
     async fn consume_body() {
-        let app = Router::new()
-            .route("/", get(|body: String| async { body }))
-            .state(());
+        let app = Router::without_state().route("/", get(|body: String| async { body }));
 
         let client = TestClient::new(app);
         let res = client.get("/").body("foo").send().await;

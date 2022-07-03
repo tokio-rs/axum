@@ -222,9 +222,8 @@ mod tests {
             foo: String,
         }
 
-        let app = Router::new()
-            .route("/", post(|input: Json<Input>| async { input.0.foo }))
-            .state(());
+        let app =
+            Router::without_state().route("/", post(|input: Json<Input>| async { input.0.foo }));
 
         let client = TestClient::new(app);
         let res = client.post("/").json(&json!({ "foo": "bar" })).send().await;
@@ -240,9 +239,8 @@ mod tests {
             foo: String,
         }
 
-        let app = Router::new()
-            .route("/", post(|input: Json<Input>| async { input.0.foo }))
-            .state(());
+        let app =
+            Router::without_state().route("/", post(|input: Json<Input>| async { input.0.foo }));
 
         let client = TestClient::new(app);
         let res = client.post("/").body(r#"{ "foo": "bar" }"#).send().await;
@@ -258,9 +256,7 @@ mod tests {
         async fn valid_json_content_type(content_type: &str) -> bool {
             println!("testing {:?}", content_type);
 
-            let app = Router::new()
-                .route("/", post(|Json(_): Json<Value>| async {}))
-                .state(());
+            let app = Router::without_state().route("/", post(|Json(_): Json<Value>| async {}));
 
             let res = TestClient::new(app)
                 .post("/")
@@ -281,9 +277,7 @@ mod tests {
 
     #[tokio::test]
     async fn invalid_json_syntax() {
-        let app = Router::new()
-            .route("/", post(|_: Json<serde_json::Value>| async {}))
-            .state(());
+        let app = Router::without_state().route("/", post(|_: Json<serde_json::Value>| async {}));
 
         let client = TestClient::new(app);
         let res = client

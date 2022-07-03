@@ -140,7 +140,7 @@ mod tests {
             )
         }
 
-        let app = Router::new()
+        let app = Router::without_state()
             .route(
                 "/:key",
                 get(|path: MatchedPath| async move { path.as_str().to_owned() }),
@@ -151,8 +151,7 @@ mod tests {
                 Router::new().route("/assets/*path", get(handler)),
             )
             .nest_service("/foo", handler.into_service(()))
-            .layer(tower::layer::layer_fn(SetMatchedPathExtension))
-            .state(());
+            .layer(tower::layer::layer_fn(SetMatchedPathExtension));
 
         let client = TestClient::new(app);
 
@@ -183,17 +182,13 @@ mod tests {
 
     #[tokio::test]
     async fn nested_opaque_routers_append_to_matched_path() {
-        let app = Router::new()
-            .nest_service(
-                "/:a",
-                Router::new()
-                    .route(
-                        "/:b",
-                        get(|path: MatchedPath| async move { path.as_str().to_owned() }),
-                    )
-                    .state(()),
-            )
-            .state(());
+        let app = Router::without_state().nest_service(
+            "/:a",
+            Router::without_state().route(
+                "/:b",
+                get(|path: MatchedPath| async move { path.as_str().to_owned() }),
+            ),
+        );
 
         let client = TestClient::new(app);
 

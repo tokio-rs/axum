@@ -141,8 +141,7 @@ where
         }
     }
 
-    /// TODO(david): docs
-    pub fn state(self, state: S) -> Router<S, B, WithState>
+    fn state(self, state: S) -> Router<S, B, WithState>
     where
         S: Clone,
     {
@@ -151,8 +150,10 @@ where
             .into_iter()
             .map(|(id, endpoint)| {
                 let endpoint = match endpoint {
-                    Endpoint::MethodRouter(router) => {
-                        Endpoint::MethodRouter(router.state(state.clone()))
+                    Endpoint::MethodRouter(method_router) => {
+                        // the state will be provided later in `<Router as Service>::call`, so its safe to
+                        // ignore that it hasn't been provided yet
+                        Endpoint::MethodRouter(method_router.change_state_marker())
                     }
                     Endpoint::Route(route) => Endpoint::Route(route),
                 };

@@ -178,7 +178,7 @@ mod tests {
             user_agent.to_string()
         }
 
-        let app = Router::new().route("/", get(handle)).state(());
+        let app = Router::without_state().route("/", get(handle));
 
         let client = TestClient::new(app);
 

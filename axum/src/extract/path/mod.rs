@@ -419,17 +419,15 @@ mod tests {
 
     #[tokio::test]
     async fn extracting_url_params() {
-        let app = Router::new()
-            .route(
-                "/users/:id",
-                get(|Path(id): Path<i32>| async move {
-                    assert_eq!(id, 42);
-                })
-                .post(|Path(params_map): Path<HashMap<String, i32>>| async move {
-                    assert_eq!(params_map.get("id").unwrap(), &1337);
-                }),
-            )
-            .state(());
+        let app = Router::without_state().route(
+            "/users/:id",
+            get(|Path(id): Path<i32>| async move {
+                assert_eq!(id, 42);
+            })
+            .post(|Path(params_map): Path<HashMap<String, i32>>| async move {
+                assert_eq!(params_map.get("id").unwrap(), &1337);
+            }),
+        );
 
         let client = TestClient::new(app);
 
@@ -442,9 +440,8 @@ mod tests {
 
     #[tokio::test]
     async fn extracting_url_params_multiple_times() {
-        let app = Router::new()
-            .route("/users/:id", get(|_: Path<i32>, _: Path<String>| async {}))
-            .state(());
+        let app = Router::without_state()
+            .route("/users/:id", get(|_: Path<i32>, _: Path<String>| async {}));
 
         let client = TestClient::new(app);
 
@@ -454,12 +451,10 @@ mod tests {
 
     #[tokio::test]
     async fn percent_decoding() {
-        let app = Router::new()
-            .route(
-                "/:key",
-                get(|Path(param): Path<String>| async move { param }),
-            )
-            .state(());
+        let app = Router::without_state().route(
+            "/:key",
+            get(|Path(param): Path<String>| async move { param }),
+        );
 
         let client = TestClient::new(app);
 
@@ -470,7 +465,7 @@ mod tests {
 
     #[tokio::test]
     async fn supports_128_bit_numbers() {
-        let app = Router::new()
+        let app = Router::without_state()
             .route(
                 "/i/:key",
                 get(|Path(param): Path<i128>| async move { param.to_string() }),
@@ -478,8 +473,7 @@ mod tests {
             .route(
                 "/u/:key",
                 get(|Path(param): Path<u128>| async move { param.to_string() }),
-            )
-            .state(());
+            );
 
         let client = TestClient::new(app);
 
@@ -492,7 +486,7 @@ mod tests {
 
     #[tokio::test]
     async fn wildcard() {
-        let app = Router::new()
+        let app = Router::without_state()
             .route(
                 "/foo/*rest",
                 get(|Path(param): Path<String>| async move { param }),
@@ -502,8 +496,7 @@ mod tests {
                 get(|Path(params): Path<HashMap<String, String>>| async move {
                     params.get("rest").unwrap().clone()
                 }),
-            )
-            .state(());
+            );
 
         let client = TestClient::new(app);
 
@@ -516,7 +509,7 @@ mod tests {
 
     #[tokio::test]
     async fn captures_dont_match_empty_segments() {
-        let app = Router::new().route("/:key", get(|| async {})).state(());
+        let app = Router::without_state().route("/:key", get(|| async {}));
 
         let client = TestClient::new(app);
 
@@ -529,9 +522,8 @@ mod tests {
 
     #[tokio::test]
     async fn when_extensions_are_missing() {
-        let app = Router::new()
-            .route("/:key", get(|_: Request<Body>, _: Path<String>| async {}))
-            .state(());
+        let app = Router::without_state()
+            .route("/:key", get(|_: Request<Body>, _: Path<String>| async {}));
 
         let client = TestClient::new(app);
 
@@ -556,9 +548,8 @@ mod tests {
             }
         }
 
-        let app = Router::new()
-            .route("/:key", get(|param: Path<Param>| async move { param.0 .0 }))
-            .state(());
+        let app = Router::without_state()
+            .route("/:key", get(|param: Path<Param>| async move { param.0 .0 }));
 
         let client = TestClient::new(app);
 
@@ -572,9 +563,8 @@ mod tests {
 
     #[tokio::test]
     async fn two_path_extractors() {
-        let app = Router::new()
-            .route("/:a/:b", get(|_: Path<String>, _: Path<String>| async {}))
-            .state(());
+        let app = Router::without_state()
+            .route("/:a/:b", get(|_: Path<String>, _: Path<String>| async {}));
 
         let client = TestClient::new(app);
 
@@ -589,20 +579,18 @@ mod tests {
 
     #[tokio::test]
     async fn deserialize_into_vec_of_tuples() {
-        let app = Router::new()
-            .route(
-                "/:a/:b",
-                get(|Path(params): Path<Vec<(String, String)>>| async move {
-                    assert_eq!(
-                        params,
-                        vec![
-                            ("a".to_owned(), "foo".to_owned()),
-                            ("b".to_owned(), "bar".to_owned())
-                        ]
-                    );
-                }),
-            )
-            .state(());
+        let app = Router::without_state().route(
+            "/:a/:b",
+            get(|Path(params): Path<Vec<(String, String)>>| async move {
+                assert_eq!(
+                    params,
+                    vec![
+                        ("a".to_owned(), "foo".to_owned()),
+                        ("b".to_owned(), "bar".to_owned())
+                    ]
+                );
+            }),
+        );
 
         let client = TestClient::new(app);
 

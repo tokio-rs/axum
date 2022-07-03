@@ -116,12 +116,10 @@ mod tests {
 
         const LIMIT: u64 = 8;
 
-        let app = Router::new()
-            .route(
-                "/",
-                post(|_body: ContentLengthLimit<Bytes, LIMIT>| async {}),
-            )
-            .state(());
+        let app = Router::without_state().route(
+            "/",
+            post(|_body: ContentLengthLimit<Bytes, LIMIT>| async {}),
+        );
 
         let client = TestClient::new(app);
         let res = client
@@ -157,9 +155,8 @@ mod tests {
 
     #[tokio::test]
     async fn get_request_without_content_length_is_accepted() {
-        let app = Router::new()
-            .route("/", get(|_body: ContentLengthLimit<Bytes, 1337>| async {}))
-            .state(());
+        let app = Router::without_state()
+            .route("/", get(|_body: ContentLengthLimit<Bytes, 1337>| async {}));
 
         let client = TestClient::new(app);
 
@@ -169,9 +166,8 @@ mod tests {
 
     #[tokio::test]
     async fn get_request_with_content_length_is_rejected() {
-        let app = Router::new()
-            .route("/", get(|_body: ContentLengthLimit<Bytes, 1337>| async {}))
-            .state(());
+        let app = Router::without_state()
+            .route("/", get(|_body: ContentLengthLimit<Bytes, 1337>| async {}));
 
         let client = TestClient::new(app);
 
@@ -186,9 +182,8 @@ mod tests {
 
     #[tokio::test]
     async fn get_request_with_chunked_encoding_is_rejected() {
-        let app = Router::new()
-            .route("/", get(|_body: ContentLengthLimit<Bytes, 1337>| async {}))
-            .state(());
+        let app = Router::without_state()
+            .route("/", get(|_body: ContentLengthLimit<Bytes, 1337>| async {}));
 
         let client = TestClient::new(app);
 

@@ -159,7 +159,7 @@ mod tests {
 
         let (tx, rx) = tokio::sync::oneshot::channel();
         tokio::spawn(async move {
-            let app = Router::new().route("/", get(handler)).state(());
+            let app = Router::without_state().route("/", get(handler));
             let server = Server::from_tcp(listener)
                 .unwrap()
                 .serve(app.into_make_service_with_connect_info::<SocketAddr>());
@@ -199,7 +199,7 @@ mod tests {
 
         let (tx, rx) = tokio::sync::oneshot::channel();
         tokio::spawn(async move {
-            let app = Router::new().route("/", get(handler)).state(());
+            let app = Router::without_state().route("/", get(handler));
             let server = Server::from_tcp(listener)
                 .unwrap()
                 .serve(app.into_make_service_with_connect_info::<MyConnectInfo>());
