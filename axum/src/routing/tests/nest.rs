@@ -389,28 +389,35 @@ async fn nest_with_and_without_trailing() {
 #[tokio::test]
 async fn nesting_with_different_state() {
     #[derive(Clone)]
-    struct State {
+    struct AppState {
         inner: InnerState,
     }
 
     #[derive(Clone)]
-    struct InnerState {}
+    struct InnerState {
+        value: &'static str,
+    }
 
-    impl From<State> for InnerState {
-        fn from(state: State) -> Self {
+    impl From<AppState> for InnerState {
+        fn from(state: AppState) -> Self {
             state.inner
         }
     }
 
-    let inner_router = Router::<InnerState, Body, _>::new();
+    let inner_router = Router::<InnerState, Body, _>::new().route(
+        "/b",
+        get(|State(state): State<InnerState>| async move { state.value }),
+    );
 
-    let router_router = Router::<State, Body, _>::new()
-        .state(State {
-            inner: InnerState {},
-        })
-        .nest("/", inner_router.map_state(Into::into));
+    let app = Router::with_state(AppState {
+        inner: InnerState { value: "inner" },
+    })
+    .nest("/a", inner_router.map_state(Into::into));
 
-    todo!();
+    let client = TestClient::new(app);
+
+    let res = client.get("/a/b").send().await;
+    assert_eq!(res.text().await, "inner");
 }
 
 macro_rules! nested_route_test {

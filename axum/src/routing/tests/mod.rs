@@ -695,3 +695,8 @@ async fn extracting_state() {
     let res = client.get("/").send().await;
     assert_eq!(res.text().await, "foo");
 }
+
+#[tokio::test]
+async fn extracting_wrong_state_type_doesnt_compile() {
+    todo!()
+}

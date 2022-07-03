@@ -58,6 +58,9 @@ where
         use futures_util::future::FutureExt;
 
         let handler = self.handler.clone();
+
+        // TODO(david): this is duplicated in `axum/src/routing/mod.rs`
+        // extract into helper function
         let State(state) = req
             .extensions()
             .get::<State<S>>()

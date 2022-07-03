@@ -672,6 +672,26 @@ impl<S, B, R> MethodRouter<S, B, Infallible, R> {
     }
 }
 
+impl<S, B> MethodRouter<S, B, Infallible, MissingState> {
+    pub(crate) fn change_state<S2>(self) -> MethodRouter<S2, B, Infallible, MissingState> {
+        debug_assert!(self.state.is_none());
+        MethodRouter {
+            state: None,
+            get: self.get,
+            head: self.head,
+            delete: self.delete,
+            options: self.options,
+            patch: self.patch,
+            post: self.post,
+            put: self.put,
+            trace: self.trace,
+            fallback: self.fallback,
+            allow_header: self.allow_header,
+            _marker: PhantomData,
+        }
+    }
+}
+
 impl<S, B> MethodRouter<S, B, Infallible, WithState>
 where
     B: Send + 'static,
@@ -1181,10 +1201,8 @@ where
 
         if req.extensions().get::<State<S>>().is_none() {
             // the `unwrap` is safe because `self.state` is always some if `R = WithState`, which it is
-            let prev = req
-                .extensions_mut()
+            req.extensions_mut()
                 .insert(State(state.as_ref().unwrap().clone()));
-            debug_assert!(prev.is_none());
         }
 
         call!(req, method, HEAD, head);

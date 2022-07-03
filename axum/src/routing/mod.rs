@@ -21,7 +21,7 @@ use std::{
     sync::Arc,
     task::{Context, Poll},
 };
-use tower::{layer::layer_fn, ServiceBuilder};
+use tower::{layer::layer_fn, util::MapRequestLayer, ServiceBuilder};
 use tower_http::map_response_body::MapResponseBodyLayer;
 use tower_layer::Layer;
 use tower_service::Service;
@@ -168,13 +168,63 @@ where
             _marker: PhantomData,
         }
     }
+}
 
+impl<InnerState, B> Router<InnerState, B, MissingState>
+where
+    B: HttpBody + Send + 'static,
+{
     pub fn map_state<F, OuterState>(self, f: F) -> Router<OuterState, B, MissingState>
     where
-        // TODO(david): which Fn?
-        F: FnOnce(OuterState) -> S,
+        F: Fn(OuterState) -> InnerState + Clone + Send + Sync + 'static,
+        OuterState: Clone + Send + Sync + 'static,
+        InnerState: Send + Sync + 'static,
     {
-        todo!()
+        debug_assert!(self.state.is_none());
+
+        let routes = self
+            .routes
+            .into_iter()
+            .map(|(route_id, endpoint)| {
+                let endpoint = match endpoint {
+                    Endpoint::MethodRouter(method_router) => {
+                        // the state will be provided later in `<Router as Service>::call`, so its
+                        // safe to ignore that it hasn't been provided yet
+                        Endpoint::MethodRouter(method_router.change_state::<OuterState>())
+                    }
+                    Endpoint::Route(route) => Endpoint::Route(route),
+                };
+                (route_id, endpoint)
+            })
+            .collect();
+
+        Router {
+            state: None,
+            routes,
+            node: self.node,
+            fallback: self.fallback,
+            _marker: PhantomData,
+        }
+        .layer(MapRequestLayer::new(move |mut req: Request<_>| {
+            // TODO(david): this is duplicated in `axum/src/handler/into_extension_service.rs`
+            // extract into helper function
+            let State(outer_state) = req
+                .extensions()
+                .get::<State<OuterState>>()
+                .unwrap_or_else(|| {
+                    panic!(
+                        "no state of type `{}` was found. Please file an issue",
+                        std::any::type_name::<State<OuterState>>()
+                    )
+                })
+                .clone();
+
+            let inner_state = f(outer_state);
+
+            req.extensions_mut().insert(State(inner_state));
+
+            req
+        }))
     }
 }
 
