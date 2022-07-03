@@ -147,7 +147,10 @@ async fn routing_between_services() {
                 }),
             ),
         )
-        .route("/two", on_service(MethodFilter::GET, handle.into_service()));
+        .route(
+            "/two",
+            on_service(MethodFilter::GET, handle.into_service(())),
+        );
 
     let client = TestClient::new(app.state(()));
 
@@ -445,7 +448,11 @@ async fn middleware_still_run_for_unmatched_requests() {
     expected = "Invalid route: `Router::route` cannot be used with `Router`s. Use `Router::nest` instead"
 )]
 async fn routing_to_router_panics() {
-    TestClient::new(Router::new().route("/", Router::new().state(())).state(()));
+    TestClient::new(
+        Router::new()
+            .route_service("/", Router::new().state(()))
+            .state(()),
+    );
 }
 
 #[tokio::test]
@@ -520,8 +527,8 @@ async fn different_methods_added_in_different_routes_deeply_nested() {
 #[should_panic(expected = "Cannot merge two `Router`s that both have a fallback")]
 async fn merging_routers_with_fallbacks_panics() {
     async fn fallback() {}
-    let one = Router::new().fallback(fallback.into_service());
-    let two = Router::new().fallback(fallback.into_service());
+    let one = Router::new().fallback(fallback);
+    let two = Router::new().fallback(fallback);
     TestClient::new(one.merge(two).state(()));
 }
 
@@ -529,7 +536,7 @@ async fn merging_routers_with_fallbacks_panics() {
 #[should_panic(expected = "Cannot nest `Router`s that has a fallback")]
 async fn nesting_router_with_fallbacks_panics() {
     async fn fallback() {}
-    let one = Router::new().fallback(fallback.into_service());
+    let one = Router::new().fallback(fallback);
     let app = Router::new().nest("/", one);
     TestClient::new(app.state(()));
 }
@@ -569,7 +576,7 @@ async fn head_content_length_through_hyper_server() {
 
 #[tokio::test]
 async fn head_content_length_through_hyper_server_that_hits_fallback() {
-    let app = Router::new().fallback((|| async { "foo" }).into_service());
+    let app = Router::new().fallback(|| async { "foo" });
 
     let client = TestClient::new(app.state(()));
 

@@ -149,7 +149,7 @@ mod tests {
                 "/public",
                 Router::new().route("/assets/*path", get(handler)),
             )
-            .nest_service("/foo", handler.into_service())
+            .nest_service("/foo", handler.into_service(()))
             .layer(tower::layer::layer_fn(SetMatchedPathExtension))
             .state(());
 

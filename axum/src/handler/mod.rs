@@ -43,15 +43,18 @@ use crate::{
     BoxError,
 };
 use http::Request;
-use std::{fmt, future::Future, marker::PhantomData, pin::Pin};
+use std::{convert::Infallible, fmt, future::Future, marker::PhantomData, pin::Pin};
 use tower::ServiceExt;
 use tower_layer::Layer;
 use tower_service::Service;
 
-pub mod future;
+mod into_extension_service;
 mod into_service;
 
+pub(crate) use self::into_extension_service::IntoExtensionService;
 pub use self::into_service::IntoService;
+
+pub mod future;
 
 /// Trait for async functions that can be used to handle requests.
 ///
@@ -61,7 +64,8 @@ pub use self::into_service::IntoService;
 /// See the [module docs](crate::handler) for more details.
 ///
 #[doc = include_str!("../docs/debugging_handler_type_errors.md")]
-pub trait Handler<S, T, B = Body>: Clone + Send + Sized + 'static {
+// TODO(david): Add back `B = Body` default
+pub trait Handler<S, T, B>: Clone + Send + Sized + 'static {
     /// The type of future calling this handler returns.
     type Future: Future<Output = Response> + Send + 'static;
 
@@ -104,13 +108,15 @@ pub trait Handler<S, T, B = Body>: Clone + Send + Sized + 'static {
     /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
     /// # };
     /// ```
-    fn layer<L>(self, layer: L) -> Layered<L::Service, T>
+    fn layer<L>(self, layer: L) -> Layered<Self, S, B, L>
     where
         L: Layer<IntoService<Self, S, T, B>>,
     {
-        // TODO(david): write this, somehow
-        todo!()
-        // Layered::new(layer.layer(self.into_service()))
+        Layered {
+            handler: self,
+            layer,
+            _marker: PhantomData,
+        }
     }
 
     /// Convert the handler into a [`Service`].
@@ -145,6 +151,7 @@ pub trait Handler<S, T, B = Body>: Clone + Send + Sized + 'static {
     /// ```
     ///
     /// [`Router::fallback`]: crate::routing::Router::fallback
+    // TODO(david): remove this
     fn into_service(self, state: S) -> IntoService<Self, S, T, B> {
         IntoService::new(self, state)
     }
@@ -172,6 +179,7 @@ pub trait Handler<S, T, B = Body>: Clone + Send + Sized + 'static {
     /// ```
     ///
     /// [`MakeService`]: tower::make::MakeService
+    // TODO(david): remove this
     fn into_make_service(self, state: S) -> IntoMakeService<IntoService<Self, S, T, B>> {
         IntoMakeService::new(self.into_service(state))
     }
@@ -204,6 +212,7 @@ pub trait Handler<S, T, B = Body>: Clone + Send + Sized + 'static {
     ///
     /// [`MakeService`]: tower::make::MakeService
     /// [`Router::into_make_service_with_connect_info`]: crate::routing::Router::into_make_service_with_connect_info
+    // TODO(david): remove this
     fn into_make_service_with_connect_info<C>(
         self,
         state: S,
@@ -264,60 +273,76 @@ all_the_tuples!(impl_handler);
 /// A [`Service`] created from a [`Handler`] by applying a Tower middleware.
 ///
 /// Created with [`Handler::layer`]. See that method for more details.
-pub struct Layered<S, T> {
-    svc: S,
-    _input: PhantomData<fn() -> T>,
+pub struct Layered<H, S, B, L> {
+    handler: H,
+    layer: L,
+    _marker: PhantomData<(S, B)>,
 }
 
-impl<S, T> fmt::Debug for Layered<S, T>
+impl<H, S, B, L> Clone for Layered<H, S, B, L>
 where
-    S: fmt::Debug,
-{
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Layered").field("svc", &self.svc).finish()
-    }
-}
-
-impl<S, T> Clone for Layered<S, T>
-where
-    S: Clone,
+    H: Clone,
+    L: Clone,
 {
     fn clone(&self) -> Self {
-        Self::new(self.svc.clone())
+        Self {
+            handler: self.handler.clone(),
+            layer: self.layer.clone(),
+            _marker: self._marker,
+        }
     }
 }
 
-impl<S, T, ReqBody, ResBody, St> Handler<St, T, ReqBody> for Layered<S, T>
+impl<H, S, B, L> Copy for Layered<H, S, B, L>
 where
-    S: Service<Request<ReqBody>, Response = Response<ResBody>> + Clone + Send + 'static,
-    S::Error: IntoResponse,
-    S::Future: Send,
-    T: 'static,
-    ReqBody: Send + 'static,
+    H: Copy,
+    L: Copy,
+{
+}
+
+impl<H, S, B, L> fmt::Debug for Layered<H, S, B, L>
+where
+    L: fmt::Debug,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let Self {
+            handler: _,
+            layer,
+            _marker,
+        } = self;
+        f.debug_struct("Layered").field("layer", &layer).finish()
+    }
+}
+
+impl<H, L, S, T, B, ResBody> Handler<S, T, B> for Layered<H, S, B, L>
+where
+    H: Handler<S, T, B> + Clone + Send + 'static,
+    S: Send + 'static,
+    L: Layer<IntoService<H, S, T, B>> + Clone + Send + 'static,
+    L::Service: Service<Request<B>, Response = Response<ResBody>, Error = Infallible>
+        + Clone
+        + Send
+        + 'static,
+    <L::Service as Service<Request<B>>>::Future: Send,
+    B: Send + 'static,
     ResBody: HttpBody<Data = Bytes> + Send + 'static,
     ResBody::Error: Into<BoxError>,
 {
-    type Future = future::LayeredFuture<S, ReqBody>;
+    type Future = future::LayeredFuture<L::Service, B>;
 
-    fn call(self, state: St, req: Request<ReqBody>) -> Self::Future {
+    fn call(self, state: S, req: Request<B>) -> Self::Future {
         use futures_util::future::{FutureExt, Map};
 
-        let future: Map<_, fn(Result<S::Response, S::Error>) -> _> =
-            self.svc.oneshot(req).map(|result| match result {
+        let svc = self.handler.into_service(state);
+        let svc = self.layer.layer(svc);
+
+        let future: Map<_, fn(Result<Response<ResBody>, Infallible>) -> _> =
+            svc.oneshot(req).map(|result| match result {
                 Ok(res) => res.map(boxed),
-                Err(res) => res.into_response(),
+                Err(err) => match err {},
             });
 
         future::LayeredFuture::new(future)
-    }
-}
-
-impl<S, T> Layered<S, T> {
-    pub(crate) fn new(svc: S) -> Self {
-        Self {
-            svc,
-            _input: PhantomData,
-        }
     }
 }
 

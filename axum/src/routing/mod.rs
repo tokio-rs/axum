@@ -4,6 +4,7 @@ use self::{future::RouteFuture, not_found::NotFound};
 use crate::{
     body::{boxed, Body, Bytes, HttpBody},
     extract::connect_info::IntoMakeServiceWithConnectInfo,
+    handler::{Handler, IntoExtensionService},
     response::Response,
     routing::strip_prefix::StripPrefix,
     util::try_downcast,
@@ -68,7 +69,7 @@ pub struct Router<S, B = Body, R = MissingState> {
     // If `R == WithState` then state is `Some`
     // `R` cannot have other values
     state: Option<S>,
-    routes: HashMap<RouteId, Endpoint<B>>,
+    routes: HashMap<RouteId, Endpoint<S, B, R>>,
     node: Arc<Node>,
     fallback: Fallback<B>,
     _marker: PhantomData<R>,
@@ -141,10 +142,27 @@ where
     }
 
     /// TODO(david): docs
-    pub fn state(self, state: S) -> Router<S, B, WithState> {
+    pub fn state(self, state: S) -> Router<S, B, WithState>
+    where
+        S: Clone,
+    {
+        let routes = self
+            .routes
+            .into_iter()
+            .map(|(id, endpoint)| {
+                let endpoint = match endpoint {
+                    Endpoint::MethodRouter(router) => {
+                        Endpoint::MethodRouter(router.state(state.clone()))
+                    }
+                    Endpoint::Route(route) => Endpoint::Route(route),
+                };
+                (id, endpoint)
+            })
+            .collect();
+
         Router {
             state: Some(state),
-            routes: self.routes,
+            routes,
             node: self.node,
             fallback: self.fallback,
             _marker: PhantomData,
@@ -155,10 +173,21 @@ where
 impl<S, B> Router<S, B, WithState>
 where
     B: HttpBody + Send + 'static,
+    S: Clone,
 {
     /// TODO(david): docs
     pub fn with_state(state: S) -> Self {
         Router::new().state(state)
+    }
+}
+
+impl<B> Router<(), B, WithState>
+where
+    B: HttpBody + Send + 'static,
+{
+    /// TODO(david): docs
+    pub fn without_state() -> Self {
+        Router::with_state(())
     }
 }
 
@@ -169,72 +198,78 @@ where
     R: 'static,
 {
     #[doc = include_str!("../docs/routing/route.md")]
-    pub fn route<T>(mut self, path: &str, service: T) -> Self
+    pub fn route(
+        mut self,
+        path: &str,
+        // TODO(david): constrain this so it only accepts methods
+        // routers containing handlers
+        method_router: MethodRouter<S, B, Infallible, MissingState>,
+    ) -> Self {
+        self
+    }
+
+    /// TODO(david): docs
+    pub fn route_service<T>(mut self, path: &str, service: T) -> Self
     where
         T: Service<Request<B>, Response = Response, Error = Infallible> + Clone + Send + 'static,
         T::Future: Send + 'static,
     {
-        if path.is_empty() {
-            panic!("Paths must start with a `/`. Use \"/\" for root routes");
-        } else if !path.starts_with('/') {
-            panic!("Paths must start with a `/`");
-        }
-
-        // Downcase to `WithState` rather than `R` because `Router<S, B, R>` only implements
-        // `Service` if `R == WithState` so any other type of `R` cannot be passed to `.router` in
-        // the first place
-        let service = match try_downcast::<Router<S, B, WithState>, _>(service) {
-            Ok(_) => {
-                panic!("Invalid route: `Router::route` cannot be used with `Router`s. Use `Router::nest` instead")
-            }
-            Err(svc) => svc,
-        };
-
-        let id = RouteId::next();
-
-        let service = match try_downcast::<MethodRouter<B, Infallible>, _>(service) {
-            Ok(method_router) => {
-                if let Some((route_id, Endpoint::MethodRouter(prev_method_router))) = self
-                    .node
-                    .path_to_route_id
-                    .get(path)
-                    .and_then(|route_id| self.routes.get(route_id).map(|svc| (*route_id, svc)))
-                {
-                    // if we're adding a new `MethodRouter` to a route that already has one just
-                    // merge them. This makes `.route("/", get(_)).route("/", post(_))` work
-                    let service =
-                        Endpoint::MethodRouter(prev_method_router.clone().merge(method_router));
-                    self.routes.insert(route_id, service);
-                    return self;
-                } else {
-                    Endpoint::MethodRouter(method_router)
-                }
-            }
-            Err(service) => Endpoint::Route(Route::new(service)),
-        };
-
-        let mut node =
-            Arc::try_unwrap(Arc::clone(&self.node)).unwrap_or_else(|node| (*node).clone());
-        if let Err(err) = node.insert(path, id) {
-            panic!("Invalid route: {}", err);
-        }
-        self.node = Arc::new(node);
-
-        self.routes.insert(id, service);
-
         self
+
+        // if path.is_empty() {
+        //     panic!("Paths must start with a `/`. Use \"/\" for root routes");
+        // } else if !path.starts_with('/') {
+        //     panic!("Paths must start with a `/`");
+        // }
+
+        // // Downcase to `WithState` rather than `R` because `Router<S, B, R>` only implements
+        // // `Service` if `R == WithState` so any other type of `R` cannot be passed to `.router` in
+        // // the first place
+        // let service = match try_downcast::<Router<S, B, WithState>, _>(service) {
+        //     Ok(_) => {
+        //         panic!("Invalid route: `Router::route` cannot be used with `Router`s. Use `Router::nest` instead")
+        //     }
+        //     Err(svc) => svc,
+        // };
+
+        // let id = RouteId::next();
+
+        // let service = match try_downcast::<MethodRouter<B, Infallible>, _>(service) {
+        //     Ok(method_router) => {
+        //         if let Some((route_id, Endpoint::MethodRouter(prev_method_router))) = self
+        //             .node
+        //             .path_to_route_id
+        //             .get(path)
+        //             .and_then(|route_id| self.routes.get(route_id).map(|svc| (*route_id, svc)))
+        //         {
+        //             // if we're adding a new `MethodRouter` to a route that already has one just
+        //             // merge them. This makes `.route("/", get(_)).route("/", post(_))` work
+        //             let service =
+        //                 Endpoint::MethodRouter(prev_method_router.clone().merge(method_router));
+        //             self.routes.insert(route_id, service);
+        //             return self;
+        //         } else {
+        //             Endpoint::MethodRouter(method_router)
+        //         }
+        //     }
+        //     Err(service) => Endpoint::Route(Route::new(service)),
+        // };
+
+        // let mut node =
+        //     Arc::try_unwrap(Arc::clone(&self.node)).unwrap_or_else(|node| (*node).clone());
+        // if let Err(err) = node.insert(path, id) {
+        //     panic!("Invalid route: {}", err);
+        // }
+        // self.node = Arc::new(node);
+
+        // self.routes.insert(id, service);
+
+        // self
     }
 
     #[doc = include_str!("../docs/routing/nest.md")]
     pub fn nest(mut self, mut path: &str, router: Router<S, B, MissingState>) -> Self {
-        if path.is_empty() {
-            // nesting at `""` and `"/"` should mean the same thing
-            path = "/";
-        }
-
-        if path.contains('*') {
-            panic!("Invalid route: nested routes cannot contain wildcards (*)");
-        }
+        validate_path_for_nest(&mut path);
 
         let prefix = path;
 
@@ -268,7 +303,9 @@ where
                     &full_path,
                     method_router.layer(layer_fn(|s| StripPrefix::new(s, prefix))),
                 ),
-                Endpoint::Route(route) => self.route(&full_path, StripPrefix::new(route, prefix)),
+                Endpoint::Route(route) => {
+                    self.route_service(&full_path, StripPrefix::new(route, prefix))
+                }
             };
         }
 
@@ -283,14 +320,7 @@ where
         T: Service<Request<B>, Response = Response, Error = Infallible> + Clone + Send + 'static,
         T::Future: Send + 'static,
     {
-        if path.is_empty() {
-            // nesting at `""` and `"/"` should mean the same thing
-            path = "/";
-        }
-
-        if path.contains('*') {
-            panic!("Invalid route: nested routes cannot contain wildcards (*)");
-        }
+        validate_path_for_nest(&mut path);
 
         let prefix = path;
 
@@ -301,14 +331,14 @@ where
         };
 
         let svc = strip_prefix::StripPrefix::new(svc, prefix);
-        self = self.route(&path, svc.clone());
+        self = self.route_service(&path, svc.clone());
 
         // `/*rest` is not matched by `/` so we need to also register a router at the
         // prefix itself. Otherwise if you were to nest at `/foo` then `/foo` itself
         // wouldn't match, which it should
-        self = self.route(prefix, svc.clone());
+        self = self.route_service(prefix, svc.clone());
         // same goes for `/foo/`, that should also match
-        self = self.route(&format!("{}/", prefix), svc);
+        self = self.route_service(&format!("{}/", prefix), svc);
 
         self
     }
@@ -335,7 +365,7 @@ where
                 .expect("no path for route id. This is a bug in axum. Please file an issue");
             self = match route {
                 Endpoint::MethodRouter(route) => self.route(path, route),
-                Endpoint::Route(route) => self.route(path, route),
+                Endpoint::Route(route) => self.route_service(path, route),
             };
         }
 
@@ -433,7 +463,17 @@ where
     }
 
     #[doc = include_str!("../docs/routing/fallback.md")]
-    pub fn fallback<T>(mut self, svc: T) -> Self
+    pub fn fallback<H, T>(mut self, handler: H) -> Self
+    where
+        H: Handler<S, T, B>,
+        T: 'static,
+        S: Clone + Send + Sync + 'static,
+    {
+        self.fallback_service(IntoExtensionService::new(handler))
+    }
+
+    /// TODO(david): docs
+    pub fn fallback_service<T>(mut self, svc: T) -> Self
     where
         T: Service<Request<B>, Response = Response, Error = Infallible> + Clone + Send + 'static,
         T::Future: Send + 'static,
@@ -441,7 +481,13 @@ where
         self.fallback = Fallback::Custom(Route::new(svc));
         self
     }
+}
 
+impl<S, B> Router<S, B, WithState>
+where
+    B: HttpBody + Send + 'static,
+    S: Clone + Send + Sync + 'static,
+{
     /// Convert this router into a [`MakeService`], that is a [`Service`] whose
     /// response is another service.
     ///
@@ -473,13 +519,7 @@ where
     pub fn into_make_service_with_connect_info<C>(self) -> IntoMakeServiceWithConnectInfo<Self, C> {
         IntoMakeServiceWithConnectInfo::new(self)
     }
-}
 
-impl<S, B> Router<S, B, WithState>
-where
-    B: HttpBody + Send + 'static,
-    S: Clone + Send + Sync + 'static,
-{
     #[inline]
     fn call_route(
         &self,
@@ -514,10 +554,6 @@ where
         }
 
         url_params::insert_url_params(req.extensions_mut(), match_.params);
-
-        // the `unwrap` is safe because `self.state` is always some if `R = WithState`, which it is
-        req.extensions_mut()
-            .insert(crate::extract::State(self.state.as_ref().unwrap().clone()));
 
         let mut route = self
             .routes
@@ -560,6 +596,12 @@ where
 
         let path = req.uri().path().to_owned();
 
+        // the `unwrap` is safe because `self.state` is always some if `R = WithState`, which it is
+        let prev = req
+            .extensions_mut()
+            .insert(crate::extract::State(self.state.as_ref().unwrap().clone()));
+        debug_assert!(prev.is_none());
+
         match self.node.at(&path) {
             Ok(match_) => self.call_route(match_, req),
             Err(
@@ -579,6 +621,17 @@ pub enum MissingState {}
 
 #[derive(Copy, Clone, Debug)]
 pub enum WithState {}
+
+fn validate_path_for_nest(path: &mut &str) {
+    if path.is_empty() {
+        // nesting at `""` and `"/"` should mean the same thing
+        *path = "/";
+    }
+
+    if path.contains('*') {
+        panic!("Invalid route: nested routes cannot contain wildcards (*)");
+    }
+}
 
 /// Wrapper around `matchit::Router` that supports merging two `Router`s.
 #[derive(Clone, Default)]
@@ -656,12 +709,15 @@ impl<B, E> Fallback<B, E> {
     }
 }
 
-enum Endpoint<B> {
-    MethodRouter(MethodRouter<B>),
+enum Endpoint<S, B, R> {
+    MethodRouter(MethodRouter<S, B, Infallible, R>),
     Route(Route<B>),
 }
 
-impl<B> Clone for Endpoint<B> {
+impl<S, B, R> Clone for Endpoint<S, B, R>
+where
+    S: Clone,
+{
     fn clone(&self) -> Self {
         match self {
             Endpoint::MethodRouter(inner) => Endpoint::MethodRouter(inner.clone()),
@@ -670,7 +726,10 @@ impl<B> Clone for Endpoint<B> {
     }
 }
 
-impl<B> fmt::Debug for Endpoint<B> {
+impl<S, B, R> fmt::Debug for Endpoint<S, B, R>
+where
+    S: fmt::Debug,
+{
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::MethodRouter(inner) => inner.fmt(f),
