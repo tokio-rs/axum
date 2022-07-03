@@ -64,18 +64,18 @@ impl RouteId {
 }
 
 /// The router type for composing handlers and services.
-pub struct Router<S, B = Body, R = MissingState> {
+pub struct Router<S, R = MissingState, B = Body> {
     // Invariant: If `R == MissingState` then `state` is `None`
     // If `R == WithState` then state is `Some`
     // `R` cannot have other values
     state: Option<S>,
-    routes: HashMap<RouteId, Endpoint<S, B, R>>,
+    routes: HashMap<RouteId, Endpoint<S, R, B>>,
     node: Arc<Node>,
     fallback: Fallback<B>,
     _marker: PhantomData<R>,
 }
 
-impl<S, B, R> Clone for Router<S, B, R>
+impl<S, R, B> Clone for Router<S, R, B>
 where
     S: Clone,
 {
@@ -90,7 +90,7 @@ where
     }
 }
 
-impl<S, B> Default for Router<S, B, MissingState>
+impl<S, B> Default for Router<S, MissingState, B>
 where
     B: HttpBody + Send + 'static,
 {
@@ -99,7 +99,7 @@ where
     }
 }
 
-impl<S, B, R> fmt::Debug for Router<S, B, R>
+impl<S, R, B> fmt::Debug for Router<S, R, B>
 where
     S: fmt::Debug,
 {
@@ -123,7 +123,7 @@ where
 pub(crate) const NEST_TAIL_PARAM: &str = "__private__axum_nest_tail_param";
 const NEST_TAIL_PARAM_CAPTURE: &str = "/*__private__axum_nest_tail_param";
 
-impl<S, B> Router<S, B, MissingState>
+impl<S, B> Router<S, MissingState, B>
 where
     B: HttpBody + Send + 'static,
 {
@@ -141,7 +141,7 @@ where
         }
     }
 
-    fn state(self, state: S) -> Router<S, B, WithState>
+    fn state(self, state: S) -> Router<S, WithState, B>
     where
         S: Clone,
     {
@@ -171,11 +171,11 @@ where
     }
 }
 
-impl<InnerState, B> Router<InnerState, B, MissingState>
+impl<InnerState, B> Router<InnerState, MissingState, B>
 where
     B: HttpBody + Send + 'static,
 {
-    pub fn map_state<F, OuterState>(self, f: F) -> Router<OuterState, B, MissingState>
+    pub fn map_state<F, OuterState>(self, f: F) -> Router<OuterState, MissingState, B>
     where
         F: Fn(OuterState) -> InnerState + Clone + Send + Sync + 'static,
         OuterState: Clone + Send + Sync + 'static,
@@ -229,7 +229,7 @@ where
     }
 }
 
-impl<S, B> Router<S, B, WithState>
+impl<S, B> Router<S, WithState, B>
 where
     B: HttpBody + Send + 'static,
     S: Clone,
@@ -240,7 +240,7 @@ where
     }
 }
 
-impl<B> Router<(), B, WithState>
+impl<B> Router<(), WithState, B>
 where
     B: HttpBody + Send + 'static,
 {
@@ -250,7 +250,7 @@ where
     }
 }
 
-impl<S, B, R> Router<S, B, R>
+impl<S, R, B> Router<S, R, B>
 where
     B: HttpBody + Send + 'static,
     S: Clone + 'static,
@@ -307,7 +307,7 @@ where
         T: Service<Request<B>, Response = Response, Error = Infallible> + Clone + Send + 'static,
         T::Future: Send + 'static,
     {
-        let service = match try_downcast::<Router<S, B, WithState>, _>(service) {
+        let service = match try_downcast::<Router<S, WithState, B>, _>(service) {
             Ok(_) => {
                 panic!("Invalid route: `Router::route` cannot be used with `Router`s. Use `Router::nest` instead")
             }
@@ -324,7 +324,7 @@ where
         self
     }
 
-    fn insert_endpoint(&mut self, path: &str, id: RouteId, endpoint: Endpoint<S, B, R>) {
+    fn insert_endpoint(&mut self, path: &str, id: RouteId, endpoint: Endpoint<S, R, B>) {
         let mut node =
             Arc::try_unwrap(Arc::clone(&self.node)).unwrap_or_else(|node| (*node).clone());
         if let Err(err) = node.insert(path, id) {
@@ -336,7 +336,7 @@ where
     }
 
     #[doc = include_str!("../docs/routing/nest.md")]
-    pub fn nest(mut self, mut path: &str, router: Router<S, B, MissingState>) -> Self {
+    pub fn nest(mut self, mut path: &str, router: Router<S, MissingState, B>) -> Self {
         validate_path_for_nest(&mut path);
 
         let prefix = path;
@@ -414,7 +414,7 @@ where
     #[doc = include_str!("../docs/routing/merge.md")]
     pub fn merge<R2>(mut self, other: R2) -> Self
     where
-        R2: Into<Router<S, B, MissingState>>,
+        R2: Into<Router<S, MissingState, B>>,
     {
         let Router {
             state,
@@ -450,7 +450,7 @@ where
     }
 
     #[doc = include_str!("../docs/routing/layer.md")]
-    pub fn layer<L, NewReqBody, NewResBody>(self, layer: L) -> Router<S, NewReqBody, R>
+    pub fn layer<L, NewReqBody, NewResBody>(self, layer: L) -> Router<S, R, NewReqBody>
     where
         L: Layer<Route<B>>,
         L::Service:
@@ -551,7 +551,7 @@ where
     }
 }
 
-impl<S, B> Router<S, B, WithState>
+impl<S, B> Router<S, WithState, B>
 where
     B: HttpBody + Send + 'static,
     S: Clone + Send + Sync + 'static,
@@ -636,7 +636,7 @@ where
     }
 }
 
-impl<S, B> Service<Request<B>> for Router<S, B, WithState>
+impl<S, B> Service<Request<B>> for Router<S, WithState, B>
 where
     B: HttpBody + Send + 'static,
     S: Clone + Send + Sync + 'static,
@@ -785,12 +785,12 @@ impl<B, E> Fallback<B, E> {
     }
 }
 
-enum Endpoint<S, B, R> {
+enum Endpoint<S, R, B> {
     MethodRouter(MethodRouter<S, B, Infallible, R>),
     Route(Route<B>),
 }
 
-impl<S, B, R> Clone for Endpoint<S, B, R>
+impl<S, R, B> Clone for Endpoint<S, R, B>
 where
     S: Clone,
 {
@@ -802,7 +802,7 @@ where
     }
 }
 
-impl<S, B, R> fmt::Debug for Endpoint<S, B, R>
+impl<S, R, B> fmt::Debug for Endpoint<S, R, B>
 where
     S: fmt::Debug,
 {
@@ -821,3 +821,14 @@ fn traits() {
     assert_send::<Router<(), (), WithState>>();
     assert_send::<Router<(), (), MissingState>>();
 }
+
+/// ```compile_fail
+/// use axum::{Router, routing::get, extract::State};
+///
+/// async fn handler(_: State<bool>) {}
+///
+/// let app = Router::without_state().route("/", get(handler));
+/// # let _: Router<(), axum::routing::WithState> = app;
+/// ```
+#[allow(dead_code)]
+fn extracting_wrong_state_type_doesnt_compile() {}

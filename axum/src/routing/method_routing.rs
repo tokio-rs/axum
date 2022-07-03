@@ -491,6 +491,7 @@ where
 /// A [`Service`] that accepts requests based on a [`MethodFilter`] and
 /// allows chaining additional handlers and services.
 // TODO(david): Bring back `B = Body, E = Infallible` defaults
+// TODO(david): think about ordering of type params here
 pub struct MethodRouter<S, B, E, R> {
     // Invariant: If `R == MissingState` then `state` is `None`
     // If `R == WithState` then state is `Some`

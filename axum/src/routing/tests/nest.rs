@@ -297,7 +297,7 @@ async fn multiple_top_level_nests() {
 #[tokio::test]
 #[should_panic(expected = "Invalid route: nested routes cannot contain wildcards (*)")]
 async fn nest_cannot_contain_wildcards() {
-    Router::<(), Body, _>::new().nest("/one/*rest", Router::new());
+    Router::<()>::new().nest("/one/*rest", Router::new());
 }
 
 #[tokio::test]
