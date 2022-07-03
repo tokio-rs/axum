@@ -27,7 +27,7 @@ async fn main() {
         .init();
 
     // build our application with a route
-    let app = Router::new().route("/users", post(handler));
+    let app = Router::without_state().route("/users", post(handler));
 
     // run it
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
@@ -53,17 +53,18 @@ struct User {
 struct Json<T>(T);
 
 #[async_trait]
-impl<B, T> FromRequest<B> for Json<T>
+impl<S, B, T> FromRequest<S, B> for Json<T>
 where
     // these trait bounds are copied from `impl FromRequest for axum::Json`
     T: DeserializeOwned,
     B: axum::body::HttpBody + Send,
     B::Data: Send,
     B::Error: Into<BoxError>,
+    S: Send,
 {
     type Rejection = (StatusCode, axum::Json<Value>);
 
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts<S, B>) -> Result<Self, Self::Rejection> {
         match axum::Json::<T>::from_request(req).await {
             Ok(value) => Ok(Self(value.0)),
             Err(rejection) => {

@@ -36,7 +36,7 @@ async fn main() {
     let user_repo = Arc::new(ExampleUserRepo) as DynUserRepo;
 
     // Build our application with some routes
-    let app = Router::new()
+    let app = Router::without_state()
         .route("/users/:id", get(users_show))
         .route("/users", post(users_create))
         // Add our `user_repo` to all request's extensions so handlers can access

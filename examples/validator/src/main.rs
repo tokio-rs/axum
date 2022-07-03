@@ -34,7 +34,7 @@ async fn main() {
         .init();
 
     // build our application with a route
-    let app = Router::new().route("/", get(handler));
+    let app = Router::without_state().route("/", get(handler));
 
     // run it
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
@@ -60,16 +60,17 @@ async fn handler(ValidatedForm(input): ValidatedForm<NameInput>) -> Html<String>
 pub struct ValidatedForm<T>(pub T);
 
 #[async_trait]
-impl<T, B> FromRequest<B> for ValidatedForm<T>
+impl<T, S, B> FromRequest<S, B> for ValidatedForm<T>
 where
     T: DeserializeOwned + Validate,
     B: http_body::Body + Send,
     B::Data: Send,
     B::Error: Into<BoxError>,
+    S: Send,
 {
     type Rejection = ServerError;
 
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts<S, B>) -> Result<Self, Self::Rejection> {
         let Form(value) = Form::<T>::from_request(req).await?;
         value.validate()?;
         Ok(ValidatedForm(value))

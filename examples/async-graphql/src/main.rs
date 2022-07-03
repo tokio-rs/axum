@@ -34,7 +34,7 @@ async fn main() {
         .data(StarWars::new())
         .finish();
 
-    let app = Router::new()
+    let app = Router::without_state()
         .route("/", get(graphql_playground).post(graphql_handler))
         .layer(Extension(schema));
 

@@ -5,7 +5,7 @@
 //! ```
 
 use axum::{
-    routing::{get, post},
+    routing::{get, post, WithState},
     Json, Router,
 };
 use tower_http::trace::TraceLayer;
@@ -34,8 +34,8 @@ async fn main() {
 /// Having a function that produces our app makes it easy to call it from tests
 /// without having to create an HTTP server.
 #[allow(dead_code)]
-fn app() -> Router {
-    Router::new()
+fn app() -> Router<(), WithState> {
+    Router::without_state()
         .route("/", get(|| async { "Hello, World!" }))
         .route(
             "/json",

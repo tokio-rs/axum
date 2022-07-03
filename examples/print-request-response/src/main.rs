@@ -25,7 +25,7 @@ async fn main() {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    let app = Router::new()
+    let app = Router::without_state()
         .route("/", post(|| async move { "Hello from `POST /`" }))
         .layer(middleware::from_fn(print_request_response));
 

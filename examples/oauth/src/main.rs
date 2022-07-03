@@ -45,7 +45,7 @@ async fn main() {
 
     let oauth_client = oauth_client();
 
-    let app = Router::new()
+    let app = Router::without_state()
         .route("/", get(index))
         .route("/auth/discord", get(discord_auth))
         .route("/auth/authorized", get(login_authorized))
@@ -205,14 +205,15 @@ impl IntoResponse for AuthRedirect {
 }
 
 #[async_trait]
-impl<B> FromRequest<B> for User
+impl<S, B> FromRequest<S, B> for User
 where
+    S: Send,
     B: Send,
 {
     // If anything goes wrong or no session is found, redirect to the auth page
     type Rejection = AuthRedirect;
 
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts<S, B>) -> Result<Self, Self::Rejection> {
         let Extension(store) = Extension::<MemoryStore>::from_request(req)
             .await
             .expect("`MemoryStore` extension is missing");

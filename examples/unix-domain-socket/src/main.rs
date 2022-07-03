@@ -60,7 +60,7 @@ mod unix {
 
         let uds = UnixListener::bind(path.clone()).unwrap();
         tokio::spawn(async {
-            let app = Router::new().route("/", get(handler));
+            let app = Router::without_state().route("/", get(handler));
 
             axum::Server::builder(ServerAccept { uds })
                 .serve(app.into_make_service_with_connect_info::<UdsConnectInfo>())

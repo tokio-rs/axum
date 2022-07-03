@@ -27,7 +27,7 @@ async fn main() {
         .init();
 
     // build our application with a route
-    let app = Router::new()
+    let app = Router::without_state()
         .route("/", get(handler))
         // `TraceLayer` is provided by tower-http so you have to add that as a dependency.
         // It provides good defaults but is also very customizable.

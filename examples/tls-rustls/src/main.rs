@@ -29,7 +29,7 @@ async fn main() {
     .await
     .unwrap();
 
-    let app = Router::new().route("/", get(handler));
+    let app = Router::without_state().route("/", get(handler));
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
     println!("listening on {}", addr);

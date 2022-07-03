@@ -24,7 +24,7 @@ async fn main() {
 
     let client = Client::new();
 
-    let app = Router::new()
+    let app = Router::without_state()
         .route("/", get(handler))
         .layer(Extension(client));
 
@@ -57,7 +57,7 @@ async fn handler(
 }
 
 async fn server() {
-    let app = Router::new().route("/", get(|| async { "Hello, world!" }));
+    let app = Router::without_state().route("/", get(|| async { "Hello, world!" }));
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
     println!("server listening on {}", addr);

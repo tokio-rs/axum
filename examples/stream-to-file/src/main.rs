@@ -34,7 +34,7 @@ async fn main() {
         .await
         .expect("failed to create `uploads` directory");
 
-    let app = Router::new()
+    let app = Router::without_state()
         .route("/", get(show_form).post(accept_form))
         .route("/file/:file_name", post(save_request_body));
 

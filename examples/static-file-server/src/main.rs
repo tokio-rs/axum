@@ -32,9 +32,13 @@ async fn main() {
 
     // for serving assets directly at the root you can use `tower_http::services::ServeDir`
     // as the fallback to a `Router`
-    let app: _ = Router::new()
+    let app: _ = Router::without_state()
         .route("/foo", get(|| async { "Hi from /foo" }))
-        .fallback(get_service(ServeDir::new(".")).handle_error(handle_error))
+        .fallback_service(
+            get_service(ServeDir::new("."))
+                .handle_error(handle_error)
+                .state(()),
+        )
         .layer(TraceLayer::new_for_http());
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));

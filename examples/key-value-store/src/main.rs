@@ -40,7 +40,7 @@ async fn main() {
         .init();
 
     // Build our application by composing routes
-    let app = Router::new()
+    let app = Router::without_state()
         .route(
             "/:key",
             // Add compression to `kv_get`
@@ -110,7 +110,7 @@ async fn list_keys(Extension(state): Extension<SharedState>) -> String {
         .join("\n")
 }
 
-fn admin_routes() -> Router {
+fn admin_routes() -> Router<()> {
     async fn delete_all_keys(Extension(state): Extension<SharedState>) {
         state.write().unwrap().db.clear();
     }

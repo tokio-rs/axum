@@ -19,7 +19,7 @@ async fn main() {
     tracing_subscriber::fmt::init();
 
     // build our application with a route
-    let app = Router::new()
+    let app = Router::without_state()
         // `GET /` goes to `root`
         .route("/", get(root))
         // `POST /users` goes to `create_user`

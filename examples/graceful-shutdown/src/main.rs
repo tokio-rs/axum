@@ -12,7 +12,7 @@ use tokio::signal;
 #[tokio::main]
 async fn main() {
     // build our application with a route
-    let app = Router::new().route("/", get(handler));
+    let app = Router::without_state().route("/", get(handler));
 
     // run it
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));

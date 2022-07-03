@@ -25,7 +25,7 @@ async fn main() {
         .init();
 
     // build our application with some routes
-    let app = Router::new().route("/:version/foo", get(handler));
+    let app = Router::without_state().route("/:version/foo", get(handler));
 
     // run it
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
@@ -48,13 +48,14 @@ enum Version {
 }
 
 #[async_trait]
-impl<B> FromRequest<B> for Version
+impl<S, B> FromRequest<S, B> for Version
 where
     B: Send,
+    S: Send,
 {
     type Rejection = Response;
 
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts<S, B>) -> Result<Self, Self::Rejection> {
         let params = Path::<HashMap<String, String>>::from_request(req)
             .await
             .map_err(IntoResponse::into_response)?;

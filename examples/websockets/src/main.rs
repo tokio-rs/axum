@@ -36,15 +36,16 @@ async fn main() {
     let assets_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("assets");
 
     // build our application with some routes
-    let app = Router::new()
-        .fallback(
+    let app = Router::without_state()
+        .fallback_service(
             get_service(ServeDir::new(assets_dir).append_index_html_on_directories(true))
                 .handle_error(|error: std::io::Error| async move {
                     (
                         StatusCode::INTERNAL_SERVER_ERROR,
                         format!("Unhandled internal error: {}", error),
                     )
-                }),
+                })
+                .state(()),
         )
         // routes are matched from bottom to top, so we have to put `nest` at the
         // top since it matches all routes

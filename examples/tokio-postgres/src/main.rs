@@ -33,7 +33,7 @@ async fn main() {
     let pool = Pool::builder().build(manager).await.unwrap();
 
     // build our application with some routes
-    let app = Router::new()
+    let app = Router::without_state()
         .route(
             "/",
             get(using_connection_pool_extractor).post(using_connection_extractor),
@@ -71,13 +71,14 @@ async fn using_connection_pool_extractor(
 struct DatabaseConnection(PooledConnection<'static, PostgresConnectionManager<NoTls>>);
 
 #[async_trait]
-impl<B> FromRequest<B> for DatabaseConnection
+impl<S, B> FromRequest<S, B> for DatabaseConnection
 where
     B: Send,
+    S: Send,
 {
     type Rejection = (StatusCode, String);
 
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts<S, B>) -> Result<Self, Self::Rejection> {
         let Extension(pool) = Extension::<ConnectionPool>::from_request(req)
             .await
             .map_err(internal_error)?;

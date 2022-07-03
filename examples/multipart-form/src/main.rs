@@ -24,7 +24,7 @@ async fn main() {
         .init();
 
     // build our application with some routes
-    let app = Router::new()
+    let app = Router::without_state()
         .route("/", get(show_form).post(accept_form))
         .layer(tower_http::trace::TraceLayer::new_for_http());
 

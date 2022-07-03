@@ -35,7 +35,7 @@ async fn main() {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    let router = Router::new().route("/", get(|| async { "Hello, World!" }));
+    let router = Router::without_state().route("/", get(|| async { "Hello, World!" }));
 
     let service = tower::service_fn(move |req: Request<Body>| {
         let router = router.clone();

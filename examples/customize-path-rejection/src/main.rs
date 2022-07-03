@@ -27,7 +27,7 @@ async fn main() {
         .init();
 
     // build our application with a route
-    let app = Router::new().route("/users/:user_id/teams/:team_id", get(handler));
+    let app = Router::without_state().route("/users/:user_id/teams/:team_id", get(handler));
 
     // run it
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
@@ -52,15 +52,16 @@ struct Params {
 struct Path<T>(T);
 
 #[async_trait]
-impl<B, T> FromRequest<B> for Path<T>
+impl<S, B, T> FromRequest<S, B> for Path<T>
 where
     // these trait bounds are copied from `impl FromRequest for axum::extract::path::Path`
     T: DeserializeOwned + Send,
     B: Send,
+    S: Send,
 {
     type Rejection = (StatusCode, axum::Json<PathError>);
 
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts<S, B>) -> Result<Self, Self::Rejection> {
         match axum::extract::Path::<T>::from_request(req).await {
             Ok(value) => Ok(Self(value.0)),
             Err(rejection) => {

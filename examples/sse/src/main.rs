@@ -29,19 +29,19 @@ async fn main() {
 
     let assets_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("assets");
 
-    let static_files_service = get_service(
-        ServeDir::new(assets_dir).append_index_html_on_directories(true),
-    )
-    .handle_error(|error: std::io::Error| async move {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            format!("Unhandled internal error: {}", error),
-        )
-    });
+    let static_files_service =
+        get_service(ServeDir::new(assets_dir).append_index_html_on_directories(true))
+            .handle_error(|error: std::io::Error| async move {
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    format!("Unhandled internal error: {}", error),
+                )
+            })
+            .state(());
 
     // build our application with a route
-    let app = Router::new()
-        .fallback(static_files_service)
+    let app = Router::without_state()
+        .fallback_service(static_files_service)
         .route("/sse", get(sse_handler))
         .layer(TraceLayer::new_for_http());
 

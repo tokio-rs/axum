@@ -50,7 +50,7 @@ async fn main() {
     let listener = TcpListener::bind("127.0.0.1:3000").await.unwrap();
     let mut listener = AddrIncoming::from_listener(listener).unwrap();
 
-    let mut app = Router::new()
+    let mut app = Router::without_state()
         .route("/", get(handler))
         .into_make_service_with_connect_info::<SocketAddr>();
 

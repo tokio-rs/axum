@@ -44,7 +44,7 @@ async fn main() {
 
     let app_state = Arc::new(AppState { user_set, tx });
 
-    let app = Router::new()
+    let app = Router::without_state()
         .route("/", get(index))
         .route("/websocket", get(websocket_handler))
         .layer(Extension(app_state));

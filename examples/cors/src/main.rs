@@ -7,7 +7,7 @@
 use axum::{
     http::{HeaderValue, Method},
     response::{Html, IntoResponse},
-    routing::get,
+    routing::{get, WithState},
     Json, Router,
 };
 use std::net::SocketAddr;
@@ -16,12 +16,12 @@ use tower_http::cors::CorsLayer;
 #[tokio::main]
 async fn main() {
     let frontend = async {
-        let app = Router::new().route("/", get(html));
+        let app = Router::without_state().route("/", get(html));
         serve(app, 3000).await;
     };
 
     let backend = async {
-        let app = Router::new().route("/json", get(json)).layer(
+        let app = Router::without_state().route("/json", get(json)).layer(
             // see https://docs.rs/tower-http/latest/tower_http/cors/index.html
             // for more details
             //
@@ -38,7 +38,7 @@ async fn main() {
     tokio::join!(frontend, backend);
 }
 
-async fn serve(app: Router, port: u16) {
+async fn serve(app: Router<(), WithState>, port: u16) {
     let addr = SocketAddr::from(([127, 0, 0, 1], port));
     axum::Server::bind(&addr)
         .serve(app.into_make_service())

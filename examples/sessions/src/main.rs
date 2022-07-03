@@ -38,7 +38,7 @@ async fn main() {
     // `MemoryStore` just used as an example. Don't use this in production.
     let store = MemoryStore::new();
 
-    let app = Router::new()
+    let app = Router::without_state()
         .route("/", get(handler))
         .layer(Extension(store));
 
@@ -82,13 +82,14 @@ enum UserIdFromSession {
 }
 
 #[async_trait]
-impl<B> FromRequest<B> for UserIdFromSession
+impl<S, B> FromRequest<S, B> for UserIdFromSession
 where
     B: Send,
+    S: Send,
 {
     type Rejection = (StatusCode, &'static str);
 
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts<S, B>) -> Result<Self, Self::Rejection> {
         let Extension(store) = Extension::<MemoryStore>::from_request(req)
             .await
             .expect("`MemoryStore` extension missing");

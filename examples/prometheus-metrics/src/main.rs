@@ -35,7 +35,7 @@ async fn main() {
 
     let recorder_handle = setup_metrics_recorder();
 
-    let app = Router::new()
+    let app = Router::without_state()
         .route("/fast", get(|| async {}))
         .route(
             "/slow",

@@ -19,7 +19,7 @@ async fn main() {
         .init();
 
     // build our application with some routes
-    let app = Router::new().route("/", get(show_form).post(accept_form));
+    let app = Router::without_state().route("/", get(show_form).post(accept_form));
 
     // run it with hyper
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));

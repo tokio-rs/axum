@@ -46,7 +46,7 @@ async fn main() {
     let db = Db::default();
 
     // Compose the routes
-    let app = Router::new()
+    let app = Router::without_state()
         .route("/todos", get(todos_index).post(todos_create))
         .route("/todos/:id", patch(todos_update).delete(todos_delete))
         // Add middleware to all routes

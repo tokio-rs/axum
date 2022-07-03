@@ -4,7 +4,7 @@
 //! cd examples && cargo run -p example-query-params-with-empty-strings
 //! ```
 
-use axum::{extract::Query, routing::get, Router};
+use axum::{extract::Query, routing::{get, WithState}, Router};
 use serde::{de, Deserialize, Deserializer};
 use std::{fmt, str::FromStr};
 
@@ -16,8 +16,8 @@ async fn main() {
         .unwrap();
 }
 
-fn app() -> Router {
-    Router::new().route("/", get(handler))
+fn app() -> Router<(), WithState> {
+    Router::without_state().route("/", get(handler))
 }
 
 async fn handler(Query(params): Query<Params>) -> String {
