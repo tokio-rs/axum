@@ -88,13 +88,14 @@ pub struct CookieJar {
 }
 
 #[async_trait]
-impl<B> FromRequest<B> for CookieJar
+impl<S, B> FromRequest<S, B> for CookieJar
 where
+    S: Send,
     B: Send,
 {
     type Rejection = Infallible;
 
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts<S, B>) -> Result<Self, Self::Rejection> {
         let mut jar = cookie_lib::CookieJar::new();
         for cookie in cookies_from_request(req) {
             jar.add_original(cookie);
@@ -103,8 +104,8 @@ where
     }
 }
 
-fn cookies_from_request<B>(
-    req: &mut RequestParts<B>,
+fn cookies_from_request<S, B>(
+    req: &mut RequestParts<S, B>,
 ) -> impl Iterator<Item = Cookie<'static>> + '_ {
     req.headers()
         .get_all(COOKIE)
@@ -226,13 +227,12 @@ mod tests {
                     jar.remove(Cookie::named("key"))
                 }
 
-                let app = Router::<_, Body, _>::new()
+                let app = Router::without_state()
                     .route("/set", get(set_cookie))
                     .route("/get", get(get_cookie))
                     .route("/remove", get(remove_cookie))
                     .layer(Extension(Key::generate()))
-                    .layer(Extension(CustomKey(Key::generate())))
-                    .state(());
+                    .layer(Extension(CustomKey(Key::generate())));
 
                 let res = app
                     .clone()
@@ -295,10 +295,9 @@ mod tests {
             format!("{:?}", jar.get("key"))
         }
 
-        let app = Router::<_, Body, _>::new()
+        let app = Router::without_state()
             .route("/get", get(get_cookie))
-            .layer(Extension(Key::generate()))
-            .state(());
+            .layer(Extension(Key::generate()));
 
         let res = app
             .clone()

@@ -12,7 +12,7 @@ use std::net::SocketAddr;
 
 #[tokio::main]
 async fn main() {
-    let app = Router::new()
+    let app = Router::without_state()
         .merge(root())
         .merge(get_foo())
         .merge(post_foo());
@@ -25,7 +25,7 @@ async fn main() {
         .unwrap();
 }
 
-fn root() -> Router {
+fn root() -> Router<()> {
     async fn handler() -> &'static str {
         "Hello, World!"
     }
@@ -33,7 +33,7 @@ fn root() -> Router {
     route("/", get(handler))
 }
 
-fn get_foo() -> Router {
+fn get_foo() -> Router<()> {
     async fn handler() -> &'static str {
         "Hi from `GET /foo`"
     }
@@ -41,7 +41,7 @@ fn get_foo() -> Router {
     route("/foo", get(handler))
 }
 
-fn post_foo() -> Router {
+fn post_foo() -> Router<()> {
     async fn handler() -> &'static str {
         "Hi from `POST /foo`"
     }
@@ -49,6 +49,6 @@ fn post_foo() -> Router {
     route("/foo", post(handler))
 }
 
-fn route(path: &str, method_router: MethodRouter) -> Router {
+fn route(path: &str, method_router: MethodRouter<()>) -> Router<()> {
     Router::new().route(path, method_router)
 }

@@ -4,6 +4,7 @@ use axum::{
     handler::Handler,
     http::Request,
     response::{Redirect, Response},
+    routing::{MethodRouter, MissingState},
     Router,
 };
 use std::{convert::Infallible, future::ready};
@@ -29,7 +30,7 @@ pub use self::typed::{FirstElementIs, TypedPath};
 pub use self::spa::SpaRouter;
 
 /// Extension trait that adds additional methods to [`Router`].
-pub trait RouterExt<S, B, R>: sealed::Sealed {
+pub trait RouterExt<S, R, B>: sealed::Sealed {
     /// Add a typed `GET` route to the router.
     ///
     /// The path will be inferred from the first argument to the handler function which must
@@ -39,7 +40,7 @@ pub trait RouterExt<S, B, R>: sealed::Sealed {
     #[cfg(feature = "typed-routing")]
     fn typed_get<H, T, P>(self, handler: H) -> Self
     where
-        H: Handler<T, B>,
+        H: Handler<S, T, B>,
         T: FirstElementIs<P> + 'static,
         P: TypedPath;
 
@@ -52,7 +53,7 @@ pub trait RouterExt<S, B, R>: sealed::Sealed {
     #[cfg(feature = "typed-routing")]
     fn typed_delete<H, T, P>(self, handler: H) -> Self
     where
-        H: Handler<T, B>,
+        H: Handler<S, T, B>,
         T: FirstElementIs<P> + 'static,
         P: TypedPath;
 
@@ -65,7 +66,7 @@ pub trait RouterExt<S, B, R>: sealed::Sealed {
     #[cfg(feature = "typed-routing")]
     fn typed_head<H, T, P>(self, handler: H) -> Self
     where
-        H: Handler<T, B>,
+        H: Handler<S, T, B>,
         T: FirstElementIs<P> + 'static,
         P: TypedPath;
 
@@ -78,7 +79,7 @@ pub trait RouterExt<S, B, R>: sealed::Sealed {
     #[cfg(feature = "typed-routing")]
     fn typed_options<H, T, P>(self, handler: H) -> Self
     where
-        H: Handler<T, B>,
+        H: Handler<S, T, B>,
         T: FirstElementIs<P> + 'static,
         P: TypedPath;
 
@@ -91,7 +92,7 @@ pub trait RouterExt<S, B, R>: sealed::Sealed {
     #[cfg(feature = "typed-routing")]
     fn typed_patch<H, T, P>(self, handler: H) -> Self
     where
-        H: Handler<T, B>,
+        H: Handler<S, T, B>,
         T: FirstElementIs<P> + 'static,
         P: TypedPath;
 
@@ -104,7 +105,7 @@ pub trait RouterExt<S, B, R>: sealed::Sealed {
     #[cfg(feature = "typed-routing")]
     fn typed_post<H, T, P>(self, handler: H) -> Self
     where
-        H: Handler<T, B>,
+        H: Handler<S, T, B>,
         T: FirstElementIs<P> + 'static,
         P: TypedPath;
 
@@ -117,7 +118,7 @@ pub trait RouterExt<S, B, R>: sealed::Sealed {
     #[cfg(feature = "typed-routing")]
     fn typed_put<H, T, P>(self, handler: H) -> Self
     where
-        H: Handler<T, B>,
+        H: Handler<S, T, B>,
         T: FirstElementIs<P> + 'static,
         P: TypedPath;
 
@@ -130,9 +131,17 @@ pub trait RouterExt<S, B, R>: sealed::Sealed {
     #[cfg(feature = "typed-routing")]
     fn typed_trace<H, T, P>(self, handler: H) -> Self
     where
-        H: Handler<T, B>,
+        H: Handler<S, T, B>,
         T: FirstElementIs<P> + 'static,
         P: TypedPath;
+
+    fn route_with_tsr(
+        self,
+        path: &str,
+        // TODO(david): constrain this so it only accepts methods
+        // routers containing handlers
+        method_router: MethodRouter<S, MissingState, B, Infallible>,
+    ) -> Self;
 
     /// Add another route to the router with an additional "trailing slash redirect" route.
     ///
@@ -159,23 +168,23 @@ pub trait RouterExt<S, B, R>: sealed::Sealed {
     ///     .route_with_tsr("/bar/", get(|| async {}));
     /// # let _: Router = app;
     /// ```
-    fn route_with_tsr<T>(self, path: &str, service: T) -> Self
+    fn route_service_with_tsr<T>(self, path: &str, service: T) -> Self
     where
         T: Service<Request<B>, Response = Response, Error = Infallible> + Clone + Send + 'static,
         T::Future: Send + 'static,
         Self: Sized;
 }
 
-impl<S, B, R> RouterExt<S, B, R> for Router<S, B, R>
+impl<S, B, R> RouterExt<S, R, B> for Router<S, R, B>
 where
     B: axum::body::HttpBody + Send + 'static,
+    S: Clone + Send + Sync + 'static,
     R: 'static,
-    S: 'static,
 {
     #[cfg(feature = "typed-routing")]
     fn typed_get<H, T, P>(self, handler: H) -> Self
     where
-        H: Handler<T, B>,
+        H: Handler<S, T, B>,
         T: FirstElementIs<P> + 'static,
         P: TypedPath,
     {
@@ -185,7 +194,7 @@ where
     #[cfg(feature = "typed-routing")]
     fn typed_delete<H, T, P>(self, handler: H) -> Self
     where
-        H: Handler<T, B>,
+        H: Handler<S, T, B>,
         T: FirstElementIs<P> + 'static,
         P: TypedPath,
     {
@@ -195,7 +204,7 @@ where
     #[cfg(feature = "typed-routing")]
     fn typed_head<H, T, P>(self, handler: H) -> Self
     where
-        H: Handler<T, B>,
+        H: Handler<S, T, B>,
         T: FirstElementIs<P> + 'static,
         P: TypedPath,
     {
@@ -205,7 +214,7 @@ where
     #[cfg(feature = "typed-routing")]
     fn typed_options<H, T, P>(self, handler: H) -> Self
     where
-        H: Handler<T, B>,
+        H: Handler<S, T, B>,
         T: FirstElementIs<P> + 'static,
         P: TypedPath,
     {
@@ -215,7 +224,7 @@ where
     #[cfg(feature = "typed-routing")]
     fn typed_patch<H, T, P>(self, handler: H) -> Self
     where
-        H: Handler<T, B>,
+        H: Handler<S, T, B>,
         T: FirstElementIs<P> + 'static,
         P: TypedPath,
     {
@@ -225,7 +234,7 @@ where
     #[cfg(feature = "typed-routing")]
     fn typed_post<H, T, P>(self, handler: H) -> Self
     where
-        H: Handler<T, B>,
+        H: Handler<S, T, B>,
         T: FirstElementIs<P> + 'static,
         P: TypedPath,
     {
@@ -235,7 +244,7 @@ where
     #[cfg(feature = "typed-routing")]
     fn typed_put<H, T, P>(self, handler: H) -> Self
     where
-        H: Handler<T, B>,
+        H: Handler<S, T, B>,
         T: FirstElementIs<P> + 'static,
         P: TypedPath,
     {
@@ -245,32 +254,42 @@ where
     #[cfg(feature = "typed-routing")]
     fn typed_trace<H, T, P>(self, handler: H) -> Self
     where
-        H: Handler<T, B>,
+        H: Handler<S, T, B>,
         T: FirstElementIs<P> + 'static,
         P: TypedPath,
     {
         self.route(P::PATH, axum::routing::trace(handler))
     }
 
-    fn route_with_tsr<T>(mut self, path: &str, service: T) -> Self
+    fn route_with_tsr(
+        mut self,
+        path: &str,
+        // TODO(david): constrain this so it only accepts methods
+        // routers containing handlers
+        method_router: MethodRouter<S, MissingState, B, Infallible>,
+    ) -> Self {
+        todo!()
+    }
+
+    fn route_service_with_tsr<T>(mut self, path: &str, service: T) -> Self
     where
         T: Service<Request<B>, Response = Response, Error = Infallible> + Clone + Send + 'static,
         T::Future: Send + 'static,
         Self: Sized,
     {
-        self = self.route(path, service);
+        self = self.route_service(path, service);
 
         let redirect = Redirect::permanent(path);
 
         if let Some(path_without_trailing_slash) = path.strip_suffix('/') {
-            self.route(
+            self.route_service(
                 path_without_trailing_slash,
-                (move || ready(redirect.clone())).into_service(),
+                (move || ready(redirect.clone())).into_service(()),
             )
         } else {
-            self.route(
+            self.route_service(
                 &format!("{}/", path),
-                (move || ready(redirect.clone())).into_service(),
+                (move || ready(redirect.clone())).into_service(()),
             )
         }
     }
@@ -289,10 +308,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_tsr() {
-        let app = Router::new()
+        let app = Router::without_state()
             .route_with_tsr("/foo", get(|| async {}))
-            .route_with_tsr("/bar/", get(|| async {}))
-            .state(());
+            .route_with_tsr("/bar/", get(|| async {}));
 
         let client = TestClient::new(app);
 

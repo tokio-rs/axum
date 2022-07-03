@@ -147,7 +147,7 @@ impl<B, T, F> SpaRouter<B, T, F> {
     }
 }
 
-impl<B, F, T, S> From<SpaRouter<B, T, F>> for Router<S, B, MissingState>
+impl<B, F, T, S> From<SpaRouter<B, T, F>> for Router<S, MissingState, B>
 where
     F: Clone + Send + 'static,
     HandleError<Route<B, io::Error>, F, T>:
@@ -155,17 +155,22 @@ where
     <HandleError<Route<B, io::Error>, F, T> as Service<Request<B>>>::Future: Send,
     B: HttpBody + Send + 'static,
     T: 'static,
-    S: 'static,
+    S: Clone + Send + Sync + 'static,
 {
     fn from(spa: SpaRouter<B, T, F>) -> Self {
         let assets_service = get_service(ServeDir::new(&spa.paths.assets_dir))
-            .handle_error(spa.handle_error.clone());
+            .handle_error(spa.handle_error.clone())
+            // TODO(david): having to do this is annoying
+            .state(());
+
+        let fallback_service = get_service(ServeFile::new(&spa.paths.index_file))
+            .handle_error(spa.handle_error)
+            // TODO(david): having to do this is annoying
+            .state(());
 
         Router::new()
             .nest_service(&spa.paths.assets_path, assets_service)
-            .fallback(
-                get_service(ServeFile::new(&spa.paths.index_file)).handle_error(spa.handle_error),
-            )
+            .fallback_service(fallback_service)
     }
 }
 
@@ -213,10 +218,9 @@ mod tests {
 
     #[tokio::test]
     async fn basic() {
-        let app = Router::new()
+        let app = Router::without_state()
             .route("/foo", get(|| async { "GET /foo" }))
-            .merge(SpaRouter::new("/assets", "test_files"))
-            .state(());
+            .merge(SpaRouter::new("/assets", "test_files"));
         let client = TestClient::new(app);
 
         let res = client.get("/").send().await;
@@ -241,9 +245,8 @@ mod tests {
 
     #[tokio::test]
     async fn setting_index_file() {
-        let app = Router::new()
-            .merge(SpaRouter::new("/assets", "test_files").index_file("index_2.html"))
-            .state(());
+        let app = Router::without_state()
+            .merge(SpaRouter::new("/assets", "test_files").index_file("index_2.html"));
         let client = TestClient::new(app);
 
         let res = client.get("/").send().await;
@@ -267,6 +270,6 @@ mod tests {
 
         let spa = SpaRouter::new("/assets", "test_files").handle_error(handle_error);
 
-        Router::<(), Body, _>::new().merge(spa);
+        Router::<()>::new().merge(spa);
     }
 }

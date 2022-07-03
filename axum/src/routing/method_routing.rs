@@ -1469,4 +1469,11 @@ mod tests {
     async fn created() -> (StatusCode, &'static str) {
         (StatusCode::CREATED, "created")
     }
+
+    #[test]
+    fn service_constructors_have_state() {
+        // shouldn't have to do
+        // get_service(...).state(...)
+        todo!()
+    }
 }

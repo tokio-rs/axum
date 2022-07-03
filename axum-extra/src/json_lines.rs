@@ -98,16 +98,17 @@ impl<S> JsonLines<S, AsResponse> {
 }
 
 #[async_trait]
-impl<B, T> FromRequest<B> for JsonLines<T, AsExtractor>
+impl<S, B, T> FromRequest<S, B> for JsonLines<T, AsExtractor>
 where
     B: HttpBody + Send + 'static,
     B::Data: Into<Bytes>,
     B::Error: Into<BoxError>,
     T: DeserializeOwned,
+    S: Send,
 {
     type Rejection = BodyAlreadyExtracted;
 
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts<S, B>) -> Result<Self, Self::Rejection> {
         // `Stream::lines` isn't a thing so we have to convert it into an `AsyncRead`
         // so we can call `AsyncRead::lines` and then convert it back to a `Stream`
 
@@ -217,24 +218,22 @@ mod tests {
 
     #[tokio::test]
     async fn extractor() {
-        let app = Router::new()
-            .route(
-                "/",
-                post(|mut stream: JsonLines<User>| async move {
-                    assert_eq!(stream.next().await.unwrap().unwrap(), User { id: 1 });
-                    assert_eq!(stream.next().await.unwrap().unwrap(), User { id: 2 });
-                    assert_eq!(stream.next().await.unwrap().unwrap(), User { id: 3 });
+        let app = Router::without_state().route(
+            "/",
+            post(|mut stream: JsonLines<User>| async move {
+                assert_eq!(stream.next().await.unwrap().unwrap(), User { id: 1 });
+                assert_eq!(stream.next().await.unwrap().unwrap(), User { id: 2 });
+                assert_eq!(stream.next().await.unwrap().unwrap(), User { id: 3 });
 
-                    // sources are downcastable to `serde_json::Error`
-                    let err = stream.next().await.unwrap().unwrap_err();
-                    let _: &serde_json::Error = err
-                        .source()
-                        .unwrap()
-                        .downcast_ref::<serde_json::Error>()
-                        .unwrap();
-                }),
-            )
-            .state(());
+                // sources are downcastable to `serde_json::Error`
+                let err = stream.next().await.unwrap().unwrap_err();
+                let _: &serde_json::Error = err
+                    .source()
+                    .unwrap()
+                    .downcast_ref::<serde_json::Error>()
+                    .unwrap();
+            }),
+        );
 
         let client = TestClient::new(app);
 
@@ -257,19 +256,17 @@ mod tests {
 
     #[tokio::test]
     async fn response() {
-        let app = Router::new()
-            .route(
-                "/",
-                get(|| async {
-                    let values = futures_util::stream::iter(vec![
-                        Ok::<_, Infallible>(User { id: 1 }),
-                        Ok::<_, Infallible>(User { id: 2 }),
-                        Ok::<_, Infallible>(User { id: 3 }),
-                    ]);
-                    JsonLines::new(values)
-                }),
-            )
-            .state(());
+        let app = Router::without_state().route(
+            "/",
+            get(|| async {
+                let values = futures_util::stream::iter(vec![
+                    Ok::<_, Infallible>(User { id: 1 }),
+                    Ok::<_, Infallible>(User { id: 2 }),
+                    Ok::<_, Infallible>(User { id: 3 }),
+                ]);
+                JsonLines::new(values)
+            }),
+        );
 
         let client = TestClient::new(app);
 

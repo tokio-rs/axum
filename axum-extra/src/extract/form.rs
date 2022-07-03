@@ -54,16 +54,17 @@ impl<T> Deref for Form<T> {
 }
 
 #[async_trait]
-impl<T, B> FromRequest<B> for Form<T>
+impl<T, S, B> FromRequest<S, B> for Form<T>
 where
     T: DeserializeOwned,
     B: HttpBody + Send,
     B::Data: Send,
     B::Error: Into<BoxError>,
+    S: Send,
 {
     type Rejection = FormRejection;
 
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts<S, B>) -> Result<Self, Self::Rejection> {
         if req.method() == Method::GET {
             let query = req.uri().query().unwrap_or_default();
             let value = serde_html_form::from_str(query)
@@ -84,7 +85,7 @@ where
 }
 
 // this is duplicated in `axum/src/extract/mod.rs`
-fn has_content_type<B>(req: &RequestParts<B>, expected_content_type: &mime::Mime) -> bool {
+fn has_content_type<S, B>(req: &RequestParts<S, B>, expected_content_type: &mime::Mime) -> bool {
     let content_type = if let Some(content_type) = req.headers().get(header::CONTENT_TYPE) {
         content_type
     } else {
@@ -116,12 +117,10 @@ mod tests {
             values: Vec<String>,
         }
 
-        let app = Router::new()
-            .route(
-                "/",
-                post(|Form(data): Form<Data>| async move { data.values.join(",") }),
-            )
-            .state(());
+        let app = Router::without_state().route(
+            "/",
+            post(|Form(data): Form<Data>| async move { data.values.join(",") }),
+        );
 
         let client = TestClient::new(app);
 
