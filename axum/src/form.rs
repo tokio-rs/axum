@@ -56,16 +56,17 @@ use std::ops::Deref;
 pub struct Form<T>(pub T);
 
 #[async_trait]
-impl<T, B> FromRequest<B> for Form<T>
+impl<T, S, B> FromRequest<S, B> for Form<T>
 where
     T: DeserializeOwned,
     B: HttpBody + Send,
     B::Data: Send,
     B::Error: Into<BoxError>,
+    S: Send,
 {
     type Rejection = FormRejection;
 
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts<S, B>) -> Result<Self, Self::Rejection> {
         if req.method() == Method::GET {
             let query = req.uri().query().unwrap_or_default();
             let value = serde_urlencoded::from_str(query)
@@ -125,29 +126,27 @@ mod tests {
     }
 
     async fn check_query<T: DeserializeOwned + PartialEq + Debug>(uri: impl AsRef<str>, value: T) {
-        let mut req = RequestParts::new(
-            Request::builder()
-                .uri(uri.as_ref())
-                .body(Empty::<Bytes>::new())
-                .unwrap(),
-        );
+        let req = Request::builder()
+            .uri(uri.as_ref())
+            .body(Empty::<Bytes>::new())
+            .unwrap();
+        let mut req = RequestParts::new((), req);
         assert_eq!(Form::<T>::from_request(&mut req).await.unwrap().0, value);
     }
 
     async fn check_body<T: Serialize + DeserializeOwned + PartialEq + Debug>(value: T) {
-        let mut req = RequestParts::new(
-            Request::builder()
-                .uri("http://example.com/test")
-                .method(Method::POST)
-                .header(
-                    http::header::CONTENT_TYPE,
-                    mime::APPLICATION_WWW_FORM_URLENCODED.as_ref(),
-                )
-                .body(Full::<Bytes>::new(
-                    serde_urlencoded::to_string(&value).unwrap().into(),
-                ))
-                .unwrap(),
-        );
+        let req = Request::builder()
+            .uri("http://example.com/test")
+            .method(Method::POST)
+            .header(
+                http::header::CONTENT_TYPE,
+                mime::APPLICATION_WWW_FORM_URLENCODED.as_ref(),
+            )
+            .body(Full::<Bytes>::new(
+                serde_urlencoded::to_string(&value).unwrap().into(),
+            ))
+            .unwrap();
+        let mut req = RequestParts::new((), req);
         assert_eq!(Form::<T>::from_request(&mut req).await.unwrap().0, value);
     }
 
@@ -204,21 +203,20 @@ mod tests {
 
     #[tokio::test]
     async fn test_incorrect_content_type() {
-        let mut req = RequestParts::new(
-            Request::builder()
-                .uri("http://example.com/test")
-                .method(Method::POST)
-                .header(http::header::CONTENT_TYPE, mime::APPLICATION_JSON.as_ref())
-                .body(Full::<Bytes>::new(
-                    serde_urlencoded::to_string(&Pagination {
-                        size: Some(10),
-                        page: None,
-                    })
-                    .unwrap()
-                    .into(),
-                ))
-                .unwrap(),
-        );
+        let req = Request::builder()
+            .uri("http://example.com/test")
+            .method(Method::POST)
+            .header(http::header::CONTENT_TYPE, mime::APPLICATION_JSON.as_ref())
+            .body(Full::<Bytes>::new(
+                serde_urlencoded::to_string(&Pagination {
+                    size: Some(10),
+                    page: None,
+                })
+                .unwrap()
+                .into(),
+            ))
+            .unwrap();
+        let mut req = RequestParts::new((), req);
         assert!(matches!(
             Form::<Pagination>::from_request(&mut req)
                 .await

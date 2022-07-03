@@ -313,4 +313,9 @@ mod tests {
         let body = hyper::body::to_bytes(res).await.unwrap();
         assert_eq!(&body[..], b"ok");
     }
+
+    #[test]
+    fn extracting_state() {
+        todo!()
+    }
 }

@@ -49,14 +49,15 @@ use std::ops::Deref;
 pub struct Query<T>(pub T);
 
 #[async_trait]
-impl<T, B> FromRequest<B> for Query<T>
+impl<T, S, B> FromRequest<S, B> for Query<T>
 where
     T: DeserializeOwned,
     B: Send,
+    S: Send,
 {
     type Rejection = QueryRejection;
 
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts<S, B>) -> Result<Self, Self::Rejection> {
         let query = req.uri().query().unwrap_or_default();
         let value = serde_urlencoded::from_str(query)
             .map_err(FailedToDeserializeQueryString::__private_new::<T, _>)?;
@@ -80,8 +81,12 @@ mod tests {
     use serde::Deserialize;
     use std::fmt::Debug;
 
-    async fn check<T: DeserializeOwned + PartialEq + Debug>(uri: impl AsRef<str>, value: T) {
-        let mut req = RequestParts::new(Request::builder().uri(uri.as_ref()).body(()).unwrap());
+    async fn check<T>(uri: impl AsRef<str>, value: T)
+    where
+        T: DeserializeOwned + PartialEq + Debug,
+    {
+        let req = Request::builder().uri(uri.as_ref()).body(()).unwrap();
+        let mut req = RequestParts::new((), req);
         assert_eq!(Query::<T>::from_request(&mut req).await.unwrap().0, value);
     }
 

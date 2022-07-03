@@ -116,10 +116,10 @@ impl<E> fmt::Debug for FromExtractorLayer<E> {
     }
 }
 
-impl<E, S> Layer<S> for FromExtractorLayer<E> {
-    type Service = FromExtractor<S, E>;
+impl<E, T> Layer<T> for FromExtractorLayer<E> {
+    type Service = FromExtractor<T, E>;
 
-    fn layer(&self, inner: S) -> Self::Service {
+    fn layer(&self, inner: T) -> Self::Service {
         FromExtractor {
             inner,
             _extractor: PhantomData,
@@ -130,8 +130,8 @@ impl<E, S> Layer<S> for FromExtractorLayer<E> {
 /// Middleware that runs an extractor and discards the value.
 ///
 /// See [`from_extractor`] for more details.
-pub struct FromExtractor<S, E> {
-    inner: S,
+pub struct FromExtractor<T, E> {
+    inner: T,
     _extractor: PhantomData<fn() -> E>,
 }
 
@@ -142,9 +142,9 @@ fn traits() {
     assert_sync::<FromExtractor<(), NotSendSync>>();
 }
 
-impl<S, E> Clone for FromExtractor<S, E>
+impl<T, E> Clone for FromExtractor<T, E>
 where
-    S: Clone,
+    T: Clone,
 {
     fn clone(&self) -> Self {
         Self {
@@ -154,9 +154,9 @@ where
     }
 }
 
-impl<S, E> fmt::Debug for FromExtractor<S, E>
+impl<T, E> fmt::Debug for FromExtractor<T, E>
 where
-    S: fmt::Debug,
+    T: fmt::Debug,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("FromExtractor")
@@ -166,17 +166,17 @@ where
     }
 }
 
-impl<S, E, ReqBody, ResBody> Service<Request<ReqBody>> for FromExtractor<S, E>
+impl<T, E, ReqBody, ResBody> Service<Request<ReqBody>> for FromExtractor<T, E>
 where
-    E: FromRequest<ReqBody> + 'static,
+    E: FromRequest<(), ReqBody> + 'static,
     ReqBody: Default + Send + 'static,
-    S: Service<Request<ReqBody>, Response = Response<ResBody>> + Clone,
+    T: Service<Request<ReqBody>, Response = Response<ResBody>> + Clone,
     ResBody: HttpBody<Data = Bytes> + Send + 'static,
     ResBody::Error: Into<BoxError>,
 {
     type Response = Response;
-    type Error = S::Error;
-    type Future = ResponseFuture<ReqBody, S, E>;
+    type Error = T::Error;
+    type Future = ResponseFuture<ReqBody, T, E>;
 
     #[inline]
     fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
@@ -185,7 +185,7 @@ where
 
     fn call(&mut self, req: Request<ReqBody>) -> Self::Future {
         let extract_future = Box::pin(async move {
-            let mut req = RequestParts::new(req);
+            let mut req = RequestParts::new((), req);
             let extracted = E::from_request(&mut req).await;
             (req, extracted)
         });
@@ -202,38 +202,41 @@ where
 pin_project! {
     /// Response future for [`FromExtractor`].
     #[allow(missing_debug_implementations)]
-    pub struct ResponseFuture<ReqBody, S, E>
+    pub struct ResponseFuture<ReqBody, T, E>
     where
-        E: FromRequest<ReqBody>,
-        S: Service<Request<ReqBody>>,
+        E: FromRequest<(), ReqBody>,
+        T: Service<Request<ReqBody>>,
     {
         #[pin]
-        state: State<ReqBody, S, E>,
-        svc: Option<S>,
+        state: State<ReqBody, T, E>,
+        svc: Option<T>,
     }
 }
 
 pin_project! {
     #[project = StateProj]
-    enum State<ReqBody, S, E>
+    enum State<ReqBody, T, E>
     where
-        E: FromRequest<ReqBody>,
-        S: Service<Request<ReqBody>>,
+        E: FromRequest<(), ReqBody>,
+        T: Service<Request<ReqBody>>,
     {
-        Extracting { future: BoxFuture<'static, (RequestParts<ReqBody>, Result<E, E::Rejection>)> },
-        Call { #[pin] future: S::Future },
+        Extracting {
+            future: BoxFuture<'static, (RequestParts<(), ReqBody>, Result<E, E::Rejection>)>
+        },
+        Call { #[pin] future: T::Future },
+        Error { response: Option<Response> }
     }
 }
 
-impl<ReqBody, S, E, ResBody> Future for ResponseFuture<ReqBody, S, E>
+impl<ReqBody, T, E, ResBody> Future for ResponseFuture<ReqBody, T, E>
 where
-    E: FromRequest<ReqBody>,
-    S: Service<Request<ReqBody>, Response = Response<ResBody>>,
+    E: FromRequest<(), ReqBody>,
+    T: Service<Request<ReqBody>, Response = Response<ResBody>>,
     ReqBody: Default,
     ResBody: HttpBody<Data = Bytes> + Send + 'static,
     ResBody::Error: Into<BoxError>,
 {
-    type Output = Result<Response, S::Error>;
+    type Output = Result<Response, T::Error>;
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         loop {
@@ -261,6 +264,11 @@ where
                         .poll(cx)
                         .map(|result| result.map(|response| response.map(crate::body::boxed)));
                 }
+                StateProj::Error { response } => {
+                    return Poll::Ready(Ok(response
+                        .take()
+                        .expect("future polled after completion")))
+                }
             };
 
             this.state.set(new_state);
@@ -279,13 +287,14 @@ mod tests {
         struct RequireAuth;
 
         #[async_trait::async_trait]
-        impl<B> FromRequest<B> for RequireAuth
+        impl<S, B> FromRequest<S, B> for RequireAuth
         where
             B: Send,
+            S: Send,
         {
             type Rejection = StatusCode;
 
-            async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+            async fn from_request(req: &mut RequestParts<S, B>) -> Result<Self, Self::Rejection> {
                 if let Some(auth) = req
                     .headers()
                     .get(header::AUTHORIZATION)
@@ -316,5 +325,10 @@ mod tests {
             .send()
             .await;
         assert_eq!(res.status(), StatusCode::OK);
+    }
+
+    #[test]
+    fn extracting_state() {
+        todo!()
     }
 }

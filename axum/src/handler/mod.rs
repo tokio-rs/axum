@@ -244,13 +244,14 @@ macro_rules! impl_handler {
             Fut: Future<Output = Res> + Send,
             B: Send + 'static,
             Res: IntoResponse,
-            $( $ty: FromRequest<B> + Send,)*
+            $( $ty: FromRequest<S, B> + Send,)*
+            S: Send + Sync + 'static
         {
             type Future = Pin<Box<dyn Future<Output = Response> + Send>>;
 
             fn call(self, state: S, req: Request<B>) -> Self::Future {
                 Box::pin(async move {
-                    let mut req = RequestParts::new(req);
+                    let mut req = RequestParts::new(state, req);
 
                     $(
                         let $ty = match $ty::from_request(&mut req).await {

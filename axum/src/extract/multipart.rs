@@ -50,14 +50,15 @@ pub struct Multipart {
 }
 
 #[async_trait]
-impl<B> FromRequest<B> for Multipart
+impl<S, B> FromRequest<S, B> for Multipart
 where
     B: HttpBody<Data = Bytes> + Default + Unpin + Send + 'static,
     B::Error: Into<BoxError>,
+    S: Send,
 {
     type Rejection = MultipartRejection;
 
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts<S, B>) -> Result<Self, Self::Rejection> {
         let stream = BodyStream::from_request(req).await?;
         let headers = req.headers();
         let boundary = parse_boundary(headers).ok_or(InvalidBoundary)?;

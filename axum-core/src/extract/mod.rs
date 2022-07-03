@@ -60,29 +60,30 @@ mod tuple;
 /// [`http::Request<B>`]: http::Request
 /// [`axum::extract`]: https://docs.rs/axum/latest/axum/extract/index.html
 #[async_trait]
-pub trait FromRequest<B>: Sized {
+pub trait FromRequest<S, B>: Sized {
     /// If the extractor fails it'll use this "rejection" type. A rejection is
     /// a kind of error that can be converted into a response.
     type Rejection: IntoResponse;
 
     /// Perform the extraction.
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection>;
+    async fn from_request(req: &mut RequestParts<S, B>) -> Result<Self, Self::Rejection>;
 }
 
 /// The type used with [`FromRequest`] to extract data from requests.
 ///
 /// Has several convenience methods for getting owned parts of the request.
 #[derive(Debug)]
-pub struct RequestParts<B> {
+pub struct RequestParts<S, B> {
     method: Method,
     uri: Uri,
     version: Version,
     headers: HeaderMap,
     extensions: Extensions,
     body: Option<B>,
+    state: S,
 }
 
-impl<B> RequestParts<B> {
+impl<S, B> RequestParts<S, B> {
     /// Create a new `RequestParts`.
     ///
     /// You generally shouldn't need to construct this type yourself, unless
@@ -90,7 +91,10 @@ impl<B> RequestParts<B> {
     /// [`tower::Service`].
     ///
     /// [`tower::Service`]: https://docs.rs/tower/lastest/tower/trait.Service.html
-    pub fn new(req: Request<B>) -> Self {
+    pub fn new(state: S, req: Request<B>) -> Self
+    where
+        S: Send + Sync + 'static,
+    {
         let (
             http::request::Parts {
                 method,
@@ -110,6 +114,7 @@ impl<B> RequestParts<B> {
             headers,
             extensions,
             body: Some(body),
+            state,
         }
     }
 
@@ -141,7 +146,10 @@ impl<B> RequestParts<B> {
     ///     }
     /// }
     /// ```
-    pub async fn extract<E: FromRequest<B>>(&mut self) -> Result<E, E::Rejection> {
+    pub async fn extract<E>(&mut self) -> Result<E, E::Rejection>
+    where
+        E: FromRequest<S, B>,
+    {
         E::from_request(self).await
     }
 
@@ -159,6 +167,7 @@ impl<B> RequestParts<B> {
             headers,
             extensions,
             mut body,
+            state: _,
         } = self;
 
         let mut req = if let Some(body) = body.take() {
@@ -245,46 +254,36 @@ impl<B> RequestParts<B> {
     pub fn take_body(&mut self) -> Option<B> {
         self.body.take()
     }
+
+    pub fn state(&self) -> &S {
+        &self.state
+    }
 }
 
 #[async_trait]
-impl<T, B> FromRequest<B> for Option<T>
+impl<T, S, B> FromRequest<S, B> for Option<T>
 where
-    T: FromRequest<B>,
+    T: FromRequest<S, B>,
     B: Send,
+    S: Send,
 {
     type Rejection = Infallible;
 
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Option<T>, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts<S, B>) -> Result<Option<T>, Self::Rejection> {
         Ok(T::from_request(req).await.ok())
     }
 }
 
 #[async_trait]
-impl<T, B> FromRequest<B> for Result<T, T::Rejection>
+impl<T, S, B> FromRequest<S, B> for Result<T, T::Rejection>
 where
-    T: FromRequest<B>,
+    T: FromRequest<S, B>,
     B: Send,
+    S: Send,
 {
     type Rejection = Infallible;
 
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts<S, B>) -> Result<Self, Self::Rejection> {
         Ok(T::from_request(req).await)
-    }
-}
-
-/// TODO(david): docs
-#[derive(Clone, Copy, Debug, Default)]
-pub struct State<S>(pub S);
-
-#[async_trait]
-impl<S, B> FromRequest<B> for State<S>
-where
-    B: Send,
-{
-    type Rejection = Infallible;
-
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-        todo!()
     }
 }

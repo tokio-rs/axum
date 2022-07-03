@@ -22,6 +22,8 @@ use tower_service::Service;
 /// that handles errors by converting them into responses.
 ///
 /// See [module docs](self) for more details on axum's error handling model.
+// TODO(david): cannot access state, is that bad? It leads to inference issues and one has to
+// specify the type manually and risk getting it wrong. So its basically an Extension at that point
 pub struct HandleErrorLayer<F, T> {
     f: F,
     _extractor: PhantomData<fn() -> T>,
@@ -49,7 +51,7 @@ where
     }
 }
 
-impl<F, E> fmt::Debug for HandleErrorLayer<F, E> {
+impl<F, T> fmt::Debug for HandleErrorLayer<F, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("HandleErrorLayer")
             .field("f", &format_args!("{}", std::any::type_name::<F>()))
@@ -57,13 +59,13 @@ impl<F, E> fmt::Debug for HandleErrorLayer<F, E> {
     }
 }
 
-impl<S, F, T> Layer<S> for HandleErrorLayer<F, T>
+impl<Svc, F, T> Layer<Svc> for HandleErrorLayer<F, T>
 where
     F: Clone,
 {
-    type Service = HandleError<S, F, T>;
+    type Service = HandleError<Svc, F, T>;
 
-    fn layer(&self, inner: S) -> Self::Service {
+    fn layer(&self, inner: Svc) -> Self::Service {
         HandleError::new(inner, self.f.clone())
     }
 }
@@ -71,15 +73,15 @@ where
 /// A [`Service`] adapter that handles errors by converting them into responses.
 ///
 /// See [module docs](self) for more details on axum's error handling model.
-pub struct HandleError<S, F, T> {
-    inner: S,
+pub struct HandleError<Svc, F, T> {
+    inner: Svc,
     f: F,
     _extractor: PhantomData<fn() -> T>,
 }
 
-impl<S, F, T> HandleError<S, F, T> {
+impl<Svc, F, T> HandleError<Svc, F, T> {
     /// Create a new `HandleError`.
-    pub fn new(inner: S, f: F) -> Self {
+    pub fn new(inner: Svc, f: F) -> Self {
         Self {
             inner,
             f,
@@ -88,9 +90,9 @@ impl<S, F, T> HandleError<S, F, T> {
     }
 }
 
-impl<S, F, T> Clone for HandleError<S, F, T>
+impl<Svc, F, T> Clone for HandleError<Svc, F, T>
 where
-    S: Clone,
+    Svc: Clone,
     F: Clone,
 {
     fn clone(&self) -> Self {
@@ -102,9 +104,9 @@ where
     }
 }
 
-impl<S, F, E> fmt::Debug for HandleError<S, F, E>
+impl<Svc, F, E> fmt::Debug for HandleError<Svc, F, E>
 where
-    S: fmt::Debug,
+    Svc: fmt::Debug,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("HandleError")
@@ -114,12 +116,12 @@ where
     }
 }
 
-impl<S, F, ReqBody, ResBody, Fut, Res> Service<Request<ReqBody>> for HandleError<S, F, ()>
+impl<Svc, F, ReqBody, ResBody, Fut, Res> Service<Request<ReqBody>> for HandleError<Svc, F, ()>
 where
-    S: Service<Request<ReqBody>, Response = Response<ResBody>> + Clone + Send + 'static,
-    S::Error: Send,
-    S::Future: Send,
-    F: FnOnce(S::Error) -> Fut + Clone + Send + 'static,
+    Svc: Service<Request<ReqBody>, Response = Response<ResBody>> + Clone + Send + 'static,
+    Svc::Error: Send,
+    Svc::Future: Send,
+    F: FnOnce(Svc::Error) -> Fut + Clone + Send + 'static,
     Fut: Future<Output = Res> + Send,
     Res: IntoResponse,
     ReqBody: Send + 'static,
@@ -154,16 +156,16 @@ where
 #[allow(unused_macros)]
 macro_rules! impl_service {
     ( $($ty:ident),* $(,)? ) => {
-        impl<S, F, ReqBody, ResBody, Res, Fut, $($ty,)*> Service<Request<ReqBody>>
-            for HandleError<S, F, ($($ty,)*)>
+        impl<Svc, F, ReqBody, ResBody, Res, Fut, $($ty,)*> Service<Request<ReqBody>>
+            for HandleError<Svc, F, ($($ty,)*)>
         where
-            S: Service<Request<ReqBody>, Response = Response<ResBody>> + Clone + Send + 'static,
-            S::Error: Send,
-            S::Future: Send,
-            F: FnOnce($($ty),*, S::Error) -> Fut + Clone + Send + 'static,
+            Svc: Service<Request<ReqBody>, Response = Response<ResBody>> + Clone + Send + 'static,
+            Svc::Error: Send,
+            Svc::Future: Send,
+            F: FnOnce($($ty),*, Svc::Error) -> Fut + Clone + Send + 'static,
             Fut: Future<Output = Res> + Send,
             Res: IntoResponse,
-            $( $ty: FromRequest<ReqBody> + Send,)*
+            $( $ty: FromRequest<(), ReqBody> + Send,)*
             ReqBody: Send + 'static,
             ResBody: HttpBody<Data = Bytes> + Send + 'static,
             ResBody::Error: Into<BoxError>,
@@ -185,7 +187,7 @@ macro_rules! impl_service {
                 let inner = std::mem::replace(&mut self.inner, clone);
 
                 let future = Box::pin(async move {
-                    let mut req = RequestParts::new(req);
+                    let mut req = RequestParts::new((), req);
 
                     $(
                         let $ty = match $ty::from_request(&mut req).await {
