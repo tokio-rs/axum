@@ -664,11 +664,11 @@ where
 
         let path = req.uri().path().to_owned();
 
-        // the `unwrap` is safe because `self.state` is always some if `R = WithState`, which it is
-        let prev = req
-            .extensions_mut()
-            .insert(State(self.state.as_ref().unwrap().clone()));
-        debug_assert!(prev.is_none());
+        if req.extensions().get::<State<S>>().is_none() {
+            // the `unwrap` is safe because `self.state` is always some if `R = WithState`, which it is
+            req.extensions_mut()
+                .insert(State(self.state.as_ref().unwrap().clone()));
+        }
 
         match self.node.at(&path) {
             Ok(match_) => self.call_route(match_, req),

@@ -404,7 +404,7 @@ async fn nesting_with_different_state() {
         }
     }
 
-    let inner_router = Router::<InnerState, Body, _>::new().route(
+    let inner_router = Router::new().route(
         "/b",
         get(|State(state): State<InnerState>| async move { state.value }),
     );
@@ -433,15 +433,15 @@ macro_rules! nested_route_test {
         #[tokio::test]
         async fn $name() {
             let inner = Router::new().route($route_path, get(|| async {}));
-            let app = Router::new().nest($nested_path, inner);
-            let client = TestClient::new(app.state(()));
+            let app = Router::without_state().nest($nested_path, inner);
+            let client = TestClient::new(app);
             let res = client.get($expected_path).send().await;
             let status = res.status();
             assert_eq!(status, StatusCode::OK, "Router");
 
             let inner = Router::new().route($route_path, get(|| async {})).state(());
-            let app = Router::new().nest_service($nested_path, inner);
-            let client = TestClient::new(app.state(()));
+            let app = Router::without_state().nest_service($nested_path, inner);
+            let client = TestClient::new(app);
             let res = client.get(dbg!($expected_path)).send().await;
             assert_eq!(res.status(), StatusCode::OK, "opaque");
         }

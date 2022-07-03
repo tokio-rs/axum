@@ -417,5 +417,34 @@ async fn middleware_that_return_early() {
 
 #[tokio::test]
 async fn merging_with_different_state() {
-    todo!()
+    #[derive(Clone)]
+    struct AppState {
+        inner: InnerState,
+    }
+
+    #[derive(Clone)]
+    struct InnerState {
+        value: &'static str,
+    }
+
+    impl From<AppState> for InnerState {
+        fn from(state: AppState) -> Self {
+            state.inner
+        }
+    }
+
+    let inner_router = Router::new().route(
+        "/a",
+        get(|State(state): State<InnerState>| async move { state.value }),
+    );
+
+    let app = Router::with_state(AppState {
+        inner: InnerState { value: "inner" },
+    })
+    .merge(inner_router.map_state(Into::into));
+
+    let client = TestClient::new(app);
+
+    let res = client.get("/a").send().await;
+    assert_eq!(res.text().await, "inner");
 }
