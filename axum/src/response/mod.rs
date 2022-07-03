@@ -61,7 +61,7 @@ impl<T> From<T> for Html<T> {
 #[cfg(test)]
 mod tests {
     use crate::extract::Extension;
-    use crate::{body::Body, routing::get, Router};
+    use crate::{routing::get, Router};
     use axum_core::response::IntoResponse;
     use http::HeaderMap;
     use http::{StatusCode, Uri};

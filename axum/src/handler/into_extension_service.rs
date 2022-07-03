@@ -1,5 +1,5 @@
 use super::Handler;
-use crate::{extract::State, response::Response};
+use crate::{response::Response, util::extract_state_assume_present};
 use http::Request;
 use std::{
     convert::Infallible,
@@ -59,18 +59,7 @@ where
 
         let handler = self.handler.clone();
 
-        // TODO(david): this is duplicated in `axum/src/routing/mod.rs`
-        // extract into helper function
-        let State(state) = req
-            .extensions()
-            .get::<State<S>>()
-            .unwrap_or_else(|| {
-                panic!(
-                    "no state of type `{}` was found. Please file an issue",
-                    std::any::type_name::<State<S>>()
-                )
-            })
-            .clone();
+        let state = extract_state_assume_present::<S, _>(&req);
         let future = Handler::call(handler, state, req);
         let future = future.map(Ok as _);
 

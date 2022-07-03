@@ -1,5 +1,8 @@
+use http::Request;
 use pin_project_lite::pin_project;
 use std::{ops::Deref, sync::Arc};
+
+use crate::extract::State;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub(crate) struct PercentDecodedStr(Arc<str>);
@@ -52,6 +55,27 @@ where
     } else {
         Err(k.unwrap())
     }
+}
+
+/// Extract the state from request extensions and panic if its not there.
+///
+/// This should only be called after `Router::call` or `MethodRouter::call` have been called.
+pub(crate) fn extract_state_assume_present<S, B>(req: &Request<B>) -> S
+where
+    S: Clone + Send + Sync + 'static,
+{
+    let State(state) = req
+        .extensions()
+        .get::<State<S>>()
+        .unwrap_or_else(|| {
+            panic!(
+                "no state of type `{}` was found. Please file an issue",
+                std::any::type_name::<State<S>>()
+            )
+        })
+        .clone();
+
+    state
 }
 
 #[test]

@@ -400,7 +400,7 @@ mod tests {
 
     #[tokio::test]
     async fn extracting_state() {
-        async fn access_state<B>(req: Request<B>, next: Next<B>) -> impl IntoResponse {
+        async fn access_state<B>(req: Request<B>, _next: Next<B>) -> impl IntoResponse {
             let State(state) = req.extensions().get::<State<AppState>>().unwrap().clone();
             state.value
         }

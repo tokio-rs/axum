@@ -64,8 +64,7 @@ pub mod future;
 /// See the [module docs](crate::handler) for more details.
 ///
 #[doc = include_str!("../docs/debugging_handler_type_errors.md")]
-// TODO(david): Add back `B = Body` default
-pub trait Handler<S, T, B>: Clone + Send + Sized + 'static {
+pub trait Handler<S, T, B = Body>: Clone + Send + Sized + 'static {
     /// The type of future calling this handler returns.
     type Future: Future<Output = Response> + Send + 'static;
 
@@ -151,7 +150,6 @@ pub trait Handler<S, T, B>: Clone + Send + Sized + 'static {
     /// ```
     ///
     /// [`Router::fallback`]: crate::routing::Router::fallback
-    // TODO(david): remove this
     fn into_service(self, state: S) -> IntoService<Self, S, T, B> {
         IntoService::new(self, state)
     }
@@ -179,7 +177,6 @@ pub trait Handler<S, T, B>: Clone + Send + Sized + 'static {
     /// ```
     ///
     /// [`MakeService`]: tower::make::MakeService
-    // TODO(david): remove this
     fn into_make_service(self, state: S) -> IntoMakeService<IntoService<Self, S, T, B>> {
         IntoMakeService::new(self.into_service(state))
     }
@@ -212,7 +209,6 @@ pub trait Handler<S, T, B>: Clone + Send + Sized + 'static {
     ///
     /// [`MakeService`]: tower::make::MakeService
     /// [`Router::into_make_service_with_connect_info`]: crate::routing::Router::into_make_service_with_connect_info
-    // TODO(david): remove this
     fn into_make_service_with_connect_info<C>(
         self,
         state: S,
@@ -350,16 +346,20 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test_helpers::*;
+    use crate::{extract::State, test_helpers::*};
     use http::StatusCode;
 
     #[tokio::test]
     async fn handler_into_service() {
-        async fn handle(body: String) -> impl IntoResponse {
+        async fn handle(State(state): State<AppState>, body: String) -> impl IntoResponse {
+            assert_eq!(state.0, 1337);
             format!("you said: {}", body)
         }
 
-        let client = TestClient::new(handle.into_service(()));
+        #[derive(Clone)]
+        struct AppState(i32);
+
+        let client = TestClient::new(handle.into_service(AppState(1337)));
 
         let res = client.post("/").body("hi there!").send().await;
         assert_eq!(res.status(), StatusCode::OK);

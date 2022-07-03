@@ -7,7 +7,7 @@ use crate::{
     handler::{Handler, IntoExtensionService},
     response::Response,
     routing::strip_prefix::StripPrefix,
-    util::try_downcast,
+    util::{extract_state_assume_present, try_downcast},
     BoxError,
 };
 use http::Request;
@@ -207,23 +207,9 @@ where
             _marker: PhantomData,
         }
         .layer(MapRequestLayer::new(move |mut req: Request<_>| {
-            // TODO(david): this is duplicated in `axum/src/handler/into_extension_service.rs`
-            // extract into helper function
-            let State(outer_state) = req
-                .extensions()
-                .get::<State<OuterState>>()
-                .unwrap_or_else(|| {
-                    panic!(
-                        "no state of type `{}` was found. Please file an issue",
-                        std::any::type_name::<State<OuterState>>()
-                    )
-                })
-                .clone();
-
+            let outer_state = extract_state_assume_present::<OuterState, _>(&req);
             let inner_state = f(outer_state);
-
             req.extensions_mut().insert(State(inner_state));
-
             req
         }))
     }
@@ -234,7 +220,6 @@ where
     B: HttpBody + Send + 'static,
     S: Clone,
 {
-    /// TODO(david): docs
     pub fn with_state(state: S) -> Self {
         Router::new().state(state)
     }
@@ -244,7 +229,6 @@ impl<B> Router<(), WithState, B>
 where
     B: HttpBody + Send + 'static,
 {
-    /// TODO(david): docs
     pub fn without_state() -> Self {
         Router::with_state(())
     }
@@ -262,7 +246,7 @@ where
         path: &str,
         // TODO(david): constrain this so it only accepts methods
         // routers containing handlers
-        method_router: MethodRouter<S, B, Infallible, MissingState>,
+        method_router: MethodRouter<S, MissingState, B, Infallible>,
     ) -> Self {
         validate_path_for_route(path);
 
@@ -301,7 +285,6 @@ where
         }
     }
 
-    /// TODO(david): docs
     pub fn route_service<T>(mut self, path: &str, service: T) -> Self
     where
         T: Service<Request<B>, Response = Response, Error = Infallible> + Clone + Send + 'static,
@@ -530,8 +513,9 @@ where
         }
     }
 
+    // TODO(david): update docs
     #[doc = include_str!("../docs/routing/fallback.md")]
-    pub fn fallback<H, T>(mut self, handler: H) -> Self
+    pub fn fallback<H, T>(self, handler: H) -> Self
     where
         H: Handler<S, T, B>,
         T: 'static,
@@ -540,7 +524,6 @@ where
         self.fallback_service(IntoExtensionService::new(handler))
     }
 
-    /// TODO(david): docs
     pub fn fallback_service<T>(mut self, svc: T) -> Self
     where
         T: Service<Request<B>, Response = Response, Error = Infallible> + Clone + Send + 'static,
@@ -786,7 +769,7 @@ impl<B, E> Fallback<B, E> {
 }
 
 enum Endpoint<S, R, B> {
-    MethodRouter(MethodRouter<S, B, Infallible, R>),
+    MethodRouter(MethodRouter<S, R, B, Infallible>),
     Route(Route<B>),
 }
 

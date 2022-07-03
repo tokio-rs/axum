@@ -76,7 +76,7 @@ macro_rules! top_level_service_fn {
         $name:ident, $method:ident
     ) => {
         $(#[$m])+
-        pub fn $name<T, ReqBody, ResBody, S>(svc: T) -> MethodRouter<S, ReqBody, T::Error, MissingState>
+        pub fn $name<T, ReqBody, ResBody, S>(svc: T) -> MethodRouter<S, MissingState, ReqBody, T::Error>
         where
             T: Service<Request<ReqBody>, Response = Response<ResBody>> + Clone + Send + 'static,
             T::Future: Send + 'static,
@@ -137,7 +137,7 @@ macro_rules! top_level_handler_fn {
         $name:ident, $method:ident
     ) => {
         $(#[$m])+
-        pub fn $name<H, S, T, B>(handler: H) -> MethodRouter<S, B, Infallible, MissingState>
+        pub fn $name<H, S, T, B>(handler: H) -> MethodRouter<S, MissingState, B, Infallible>
         where
             H: Handler<S, T, B>,
             B: Send + 'static,
@@ -321,7 +321,7 @@ top_level_service_fn!(trace_service, TRACE);
 pub fn on_service<T, ReqBody, ResBody, S>(
     filter: MethodFilter,
     svc: T,
-) -> MethodRouter<S, ReqBody, T::Error, MissingState>
+) -> MethodRouter<S, MissingState, ReqBody, T::Error>
 where
     T: Service<Request<ReqBody>, Response = Response<ResBody>> + Clone + Send + 'static,
     T::Future: Send + 'static,
@@ -386,7 +386,7 @@ where
 /// ```
 pub fn any_service<T, ReqBody, ResBody, S>(
     svc: T,
-) -> MethodRouter<S, ReqBody, T::Error, MissingState>
+) -> MethodRouter<S, MissingState, ReqBody, T::Error>
 where
     T: Service<Request<ReqBody>, Response = Response<ResBody>> + Clone + Send + 'static,
     T::Future: Send + 'static,
@@ -429,7 +429,7 @@ top_level_handler_fn!(trace, TRACE);
 pub fn on<H, S, T, B>(
     filter: MethodFilter,
     handler: H,
-) -> MethodRouter<S, B, Infallible, MissingState>
+) -> MethodRouter<S, MissingState, B, Infallible>
 where
     H: Handler<S, T, B>,
     B: Send + 'static,
@@ -476,7 +476,7 @@ where
 /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 /// # };
 /// ```
-pub fn any<H, S, T, B>(handler: H) -> MethodRouter<S, B, Infallible, MissingState>
+pub fn any<H, S, T, B>(handler: H) -> MethodRouter<S, MissingState, B, Infallible>
 where
     H: Handler<S, T, B>,
     B: Send + 'static,
@@ -490,9 +490,7 @@ where
 
 /// A [`Service`] that accepts requests based on a [`MethodFilter`] and
 /// allows chaining additional handlers and services.
-// TODO(david): Bring back `B = Body, E = Infallible` defaults
-// TODO(david): think about ordering of type params here
-pub struct MethodRouter<S, B, E, R> {
+pub struct MethodRouter<S, R = MissingState, B = Body, E = Infallible> {
     // Invariant: If `R == MissingState` then `state` is `None`
     // If `R == WithState` then state is `Some`
     // `R` cannot have other values
@@ -520,7 +518,7 @@ enum AllowHeader {
     Bytes(BytesMut),
 }
 
-impl<S, B, E, R> fmt::Debug for MethodRouter<S, B, E, R>
+impl<S, B, E, R> fmt::Debug for MethodRouter<S, R, B, E>
 where
     S: fmt::Debug,
 {
@@ -540,7 +538,7 @@ where
     }
 }
 
-impl<S, B, E> MethodRouter<S, B, E, MissingState> {
+impl<S, B, E> MethodRouter<S, MissingState, B, E> {
     /// Create a default `MethodRouter` that will respond with `405 Method Not Allowed` to all
     /// requests.
     pub fn new() -> Self {
@@ -566,8 +564,7 @@ impl<S, B, E> MethodRouter<S, B, E, MissingState> {
         }
     }
 
-    /// TODO(david): docs
-    pub fn state(self, state: S) -> MethodRouter<S, B, E, WithState> {
+    pub fn state(self, state: S) -> MethodRouter<S, WithState, B, E> {
         MethodRouter {
             state: Some(state),
             get: self.get,
@@ -585,21 +582,19 @@ impl<S, B, E> MethodRouter<S, B, E, MissingState> {
     }
 }
 
-impl<S, B, E> MethodRouter<S, B, E, WithState> {
-    /// TODO(david): docs
+impl<S, B, E> MethodRouter<S, WithState, B, E> {
     pub fn with_state(state: S) -> Self {
         MethodRouter::new().state(state)
     }
 }
 
-impl<B, E> MethodRouter<(), B, E, WithState> {
-    /// TODO(david): docs
+impl<B, E> MethodRouter<(), WithState, B, E> {
     pub fn without_state() -> Self {
         MethodRouter::with_state(())
     }
 }
 
-impl<S, B, R> MethodRouter<S, B, Infallible, R>
+impl<S, B, R> MethodRouter<S, R, B, Infallible>
 where
     B: Send + 'static,
     S: Clone + Send + Sync + 'static,
@@ -645,7 +640,7 @@ where
     chained_handler_fn!(trace, TRACE);
 
     #[doc = include_str!("../docs/routing/fallback.md")]
-    pub fn fallback<H, T>(mut self, handler: H) -> Self
+    pub fn fallback<H, T>(self, handler: H) -> Self
     where
         H: Handler<S, T, B>,
         T: 'static,
@@ -654,8 +649,8 @@ where
     }
 }
 
-impl<S, B, R> MethodRouter<S, B, Infallible, R> {
-    pub(crate) fn change_state_marker<R2>(self) -> MethodRouter<S, B, Infallible, R2> {
+impl<S, B, R> MethodRouter<S, R, B, Infallible> {
+    pub(crate) fn change_state_marker<R2>(self) -> MethodRouter<S, R2, B, Infallible> {
         MethodRouter {
             state: self.state,
             get: self.get,
@@ -673,8 +668,8 @@ impl<S, B, R> MethodRouter<S, B, Infallible, R> {
     }
 }
 
-impl<S, B> MethodRouter<S, B, Infallible, MissingState> {
-    pub(crate) fn change_state<S2>(self) -> MethodRouter<S2, B, Infallible, MissingState> {
+impl<S, B> MethodRouter<S, MissingState, B, Infallible> {
+    pub(crate) fn change_state<S2>(self) -> MethodRouter<S2, MissingState, B, Infallible> {
         debug_assert!(self.state.is_none());
         MethodRouter {
             state: None,
@@ -693,7 +688,7 @@ impl<S, B> MethodRouter<S, B, Infallible, MissingState> {
     }
 }
 
-impl<S, B> MethodRouter<S, B, Infallible, WithState>
+impl<S, B> MethodRouter<S, WithState, B, Infallible>
 where
     B: Send + 'static,
     S: Clone + Send + Sync + 'static,
@@ -767,7 +762,7 @@ where
     }
 }
 
-impl<S, B, E, R> MethodRouter<S, B, E, R> {
+impl<S, B, E, R> MethodRouter<S, R, B, E> {
     /// Chain an additional service that will accept requests matching the given
     /// `MethodFilter`.
     ///
@@ -837,7 +832,7 @@ impl<S, B, E, R> MethodRouter<S, B, E, R> {
     pub fn layer<L, NewReqBody, NewResBody, NewError>(
         self,
         layer: L,
-    ) -> MethodRouter<S, NewReqBody, NewError, R>
+    ) -> MethodRouter<S, R, NewReqBody, NewError>
     where
         L: Layer<Route<B, E>>,
         L::Service: Service<Request<NewReqBody>, Response = Response<NewResBody>, Error = NewError>
@@ -872,7 +867,7 @@ impl<S, B, E, R> MethodRouter<S, B, E, R> {
     }
 
     #[doc = include_str!("../docs/method_routing/route_layer.md")]
-    pub fn route_layer<L, NewResBody>(self, layer: L) -> MethodRouter<S, B, E, R>
+    pub fn route_layer<L, NewResBody>(self, layer: L) -> MethodRouter<S, R, B, E>
     where
         L: Layer<Route<B, E>>,
         L::Service: Service<Request<B>, Response = Response<NewResBody>, Error = E>
@@ -907,7 +902,7 @@ impl<S, B, E, R> MethodRouter<S, B, E, R> {
     }
 
     #[doc = include_str!("../docs/method_routing/merge.md")]
-    pub fn merge(self, other: MethodRouter<S, B, E, MissingState>) -> Self {
+    pub fn merge(self, other: MethodRouter<S, MissingState, B, E>) -> Self {
         macro_rules! merge {
             ( $first:ident, $second:ident ) => {
                 match ($first, $second) {
@@ -1003,7 +998,7 @@ impl<S, B, E, R> MethodRouter<S, B, E, R> {
     /// Apply a [`HandleErrorLayer`].
     ///
     /// This is a convenience method for doing `self.layer(HandleErrorLayer::new(f))`.
-    pub fn handle_error<F, T>(self, f: F) -> MethodRouter<S, B, Infallible, R>
+    pub fn handle_error<F, T>(self, f: F) -> MethodRouter<S, R, B, Infallible>
     where
         F: Clone + Send + 'static,
         HandleError<Route<B, E>, F, T>:
@@ -1120,7 +1115,7 @@ fn append_allow_header(allow_header: &mut AllowHeader, method: &'static str) {
     }
 }
 
-impl<S, B, E, R> Clone for MethodRouter<S, B, E, R>
+impl<S, B, E, R> Clone for MethodRouter<S, R, B, E>
 where
     S: Clone,
 {
@@ -1142,7 +1137,7 @@ where
     }
 }
 
-impl<S, B, E> Default for MethodRouter<S, B, E, MissingState>
+impl<S, B, E> Default for MethodRouter<S, MissingState, B, E>
 where
     B: Send + 'static,
 {
@@ -1151,7 +1146,7 @@ where
     }
 }
 
-impl<S, B, E> Service<Request<B>> for MethodRouter<S, B, E, WithState>
+impl<S, B, E> Service<Request<B>> for MethodRouter<S, WithState, B, E>
 where
     B: HttpBody,
     S: Clone + Send + Sync + 'static,
@@ -1430,7 +1425,7 @@ mod tests {
         expected = "Overlapping method route. Cannot add two method routes that both handle `GET`"
     )]
     async fn handler_overlaps() {
-        let _: MethodRouter<(), Body, Infallible, _> = get(ok).get(ok);
+        let _: MethodRouter<(), _, Body, Infallible> = get(ok).get(ok);
     }
 
     #[tokio::test]
@@ -1438,18 +1433,18 @@ mod tests {
         expected = "Overlapping method route. Cannot add two method routes that both handle `POST`"
     )]
     async fn service_overlaps() {
-        let _: MethodRouter<(), Body, Infallible, _> =
+        let _: MethodRouter<(), _, Body, Infallible> =
             post_service(ok.into_service(())).post_service(ok.into_service(()));
     }
 
     #[tokio::test]
     async fn get_head_does_not_overlap() {
-        let _: MethodRouter<(), Body, Infallible, _> = get(ok).head(ok);
+        let _: MethodRouter<(), _, Body, Infallible> = get(ok).head(ok);
     }
 
     #[tokio::test]
     async fn head_get_does_not_overlap() {
-        let _: MethodRouter<(), Body, Infallible, _> = head(ok).get(ok);
+        let _: MethodRouter<(), _, Body, Infallible> = head(ok).get(ok);
     }
 
     async fn call<S>(method: Method, svc: &mut S) -> (StatusCode, HeaderMap, String)

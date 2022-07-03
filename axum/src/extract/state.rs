@@ -2,8 +2,7 @@ use super::{FromRequest, RequestParts};
 use async_trait::async_trait;
 use std::convert::Infallible;
 
-/// TODO(david): docs
-// TODO(david): document how to extract this from middleware
+// document how to extract this from middleware
 #[derive(Clone, Copy, Debug, Default)]
 pub struct State<S>(pub S);
 

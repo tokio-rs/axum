@@ -22,8 +22,6 @@ use tower_service::Service;
 /// that handles errors by converting them into responses.
 ///
 /// See [module docs](self) for more details on axum's error handling model.
-// TODO(david): cannot access state, is that bad? It leads to inference issues and one has to
-// specify the type manually and risk getting it wrong. So its basically an Extension at that point
 pub struct HandleErrorLayer<F, T> {
     f: F,
     _extractor: PhantomData<fn() -> T>,
