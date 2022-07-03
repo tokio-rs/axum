@@ -3,7 +3,7 @@
 use self::{future::RouteFuture, not_found::NotFound};
 use crate::{
     body::{boxed, Body, Bytes, HttpBody},
-    extract::connect_info::IntoMakeServiceWithConnectInfo,
+    extract::{connect_info::IntoMakeServiceWithConnectInfo, State},
     handler::{Handler, IntoExtensionService},
     response::Response,
     routing::strip_prefix::StripPrefix,
@@ -168,6 +168,14 @@ where
             _marker: PhantomData,
         }
     }
+
+    pub fn map_state<F, OuterState>(self, f: F) -> Router<OuterState, B, MissingState>
+    where
+        // TODO(david): which Fn?
+        F: FnOnce(OuterState) -> S,
+    {
+        todo!()
+    }
 }
 
 impl<S, B> Router<S, B, WithState>
@@ -194,7 +202,7 @@ where
 impl<S, B, R> Router<S, B, R>
 where
     B: HttpBody + Send + 'static,
-    S: 'static,
+    S: Clone + 'static,
     R: 'static,
 {
     #[doc = include_str!("../docs/routing/route.md")]
@@ -205,7 +213,41 @@ where
         // routers containing handlers
         method_router: MethodRouter<S, B, Infallible, MissingState>,
     ) -> Self {
-        self
+        validate_path_for_route(path);
+
+        let id = RouteId::next();
+
+        match self
+            .node
+            .path_to_route_id
+            .get(path)
+            .and_then(|route_id| self.routes.get(route_id).map(|svc| (*route_id, svc)))
+        {
+            Some((route_id, Endpoint::MethodRouter(prev_method_router))) => {
+                // if we're adding a new `MethodRouter` to a route that already has one just
+                // merge them. This makes `.route("/", get(_)).route("/", post(_))` work
+                let service =
+                    Endpoint::MethodRouter(prev_method_router.clone().merge(method_router));
+
+                self.routes.insert(route_id, service);
+
+                self
+            }
+            Some((_, Endpoint::Route(_))) => {
+                // if the endpoint isn't a `MethodRouter` then we have no way of merging things so
+                // just panic
+                panic!("A route for `{}` with a different HTTP method already exists and the routes could not be merge", path)
+            }
+            None => {
+                // the state will be provided later in `<Router as Service>::call`, so its safe to
+                // ignore that it hasn't been provided yet
+                let service = Endpoint::MethodRouter(method_router.change_state_marker());
+
+                self.insert_endpoint(path, id, service);
+
+                self
+            }
+        }
     }
 
     /// TODO(david): docs
@@ -214,57 +256,32 @@ where
         T: Service<Request<B>, Response = Response, Error = Infallible> + Clone + Send + 'static,
         T::Future: Send + 'static,
     {
+        let service = match try_downcast::<Router<S, B, WithState>, _>(service) {
+            Ok(_) => {
+                panic!("Invalid route: `Router::route` cannot be used with `Router`s. Use `Router::nest` instead")
+            }
+            Err(svc) => svc,
+        };
+
+        validate_path_for_route(path);
+
+        let id = RouteId::next();
+        let service = Endpoint::Route(Route::new(service));
+
+        self.insert_endpoint(path, id, service);
+
         self
+    }
 
-        // if path.is_empty() {
-        //     panic!("Paths must start with a `/`. Use \"/\" for root routes");
-        // } else if !path.starts_with('/') {
-        //     panic!("Paths must start with a `/`");
-        // }
+    fn insert_endpoint(&mut self, path: &str, id: RouteId, endpoint: Endpoint<S, B, R>) {
+        let mut node =
+            Arc::try_unwrap(Arc::clone(&self.node)).unwrap_or_else(|node| (*node).clone());
+        if let Err(err) = node.insert(path, id) {
+            panic!("Invalid route: {}", err);
+        }
+        self.node = Arc::new(node);
 
-        // // Downcase to `WithState` rather than `R` because `Router<S, B, R>` only implements
-        // // `Service` if `R == WithState` so any other type of `R` cannot be passed to `.router` in
-        // // the first place
-        // let service = match try_downcast::<Router<S, B, WithState>, _>(service) {
-        //     Ok(_) => {
-        //         panic!("Invalid route: `Router::route` cannot be used with `Router`s. Use `Router::nest` instead")
-        //     }
-        //     Err(svc) => svc,
-        // };
-
-        // let id = RouteId::next();
-
-        // let service = match try_downcast::<MethodRouter<B, Infallible>, _>(service) {
-        //     Ok(method_router) => {
-        //         if let Some((route_id, Endpoint::MethodRouter(prev_method_router))) = self
-        //             .node
-        //             .path_to_route_id
-        //             .get(path)
-        //             .and_then(|route_id| self.routes.get(route_id).map(|svc| (*route_id, svc)))
-        //         {
-        //             // if we're adding a new `MethodRouter` to a route that already has one just
-        //             // merge them. This makes `.route("/", get(_)).route("/", post(_))` work
-        //             let service =
-        //                 Endpoint::MethodRouter(prev_method_router.clone().merge(method_router));
-        //             self.routes.insert(route_id, service);
-        //             return self;
-        //         } else {
-        //             Endpoint::MethodRouter(method_router)
-        //         }
-        //     }
-        //     Err(service) => Endpoint::Route(Route::new(service)),
-        // };
-
-        // let mut node =
-        //     Arc::try_unwrap(Arc::clone(&self.node)).unwrap_or_else(|node| (*node).clone());
-        // if let Err(err) = node.insert(path, id) {
-        //     panic!("Invalid route: {}", err);
-        // }
-        // self.node = Arc::new(node);
-
-        // self.routes.insert(id, service);
-
-        // self
+        self.routes.insert(id, endpoint);
     }
 
     #[doc = include_str!("../docs/routing/nest.md")]
@@ -599,7 +616,7 @@ where
         // the `unwrap` is safe because `self.state` is always some if `R = WithState`, which it is
         let prev = req
             .extensions_mut()
-            .insert(crate::extract::State(self.state.as_ref().unwrap().clone()));
+            .insert(State(self.state.as_ref().unwrap().clone()));
         debug_assert!(prev.is_none());
 
         match self.node.at(&path) {
@@ -621,6 +638,14 @@ pub enum MissingState {}
 
 #[derive(Copy, Clone, Debug)]
 pub enum WithState {}
+
+fn validate_path_for_route(path: &str) {
+    if path.is_empty() {
+        panic!("Paths must start with a `/`. Use \"/\" for root routes");
+    } else if !path.starts_with('/') {
+        panic!("Paths must start with a `/`");
+    }
+}
 
 fn validate_path_for_nest(path: &mut &str) {
     if path.is_empty() {

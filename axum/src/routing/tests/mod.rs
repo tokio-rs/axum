@@ -1,7 +1,7 @@
 use crate::{
     body::{Bytes, Empty},
     error_handling::HandleErrorLayer,
-    extract::{self, Path},
+    extract::{self, Path, State},
     handler::Handler,
     response::IntoResponse,
     routing::{delete, get, get_service, on, on_service, patch, patch_service, post, MethodFilter},
@@ -34,31 +34,19 @@ async fn hello_world() {
         "Hello, World!"
     }
 
-    async fn foo(_: Request<Body>) -> &'static str {
-        "foo"
-    }
+    let app = Router::without_state()
+        .route("/", get(root))
+        .route_service("/foo", get(root).state(()));
 
-    async fn users_create(_: Request<Body>) -> &'static str {
-        "users#create"
-    }
-
-    let app = Router::new()
-        .route("/", get(root).post(foo))
-        .route("/users", post(users_create));
-
-    let client = TestClient::new(app.state(()));
+    let client = TestClient::new(app);
 
     let res = client.get("/").send().await;
     let body = res.text().await;
     assert_eq!(body, "Hello, World!");
 
-    let res = client.post("/").send().await;
+    let res = client.get("/foo").send().await;
     let body = res.text().await;
-    assert_eq!(body, "foo");
-
-    let res = client.post("/users").send().await;
-    let body = res.text().await;
-    assert_eq!(body, "users#create");
+    assert_eq!(body, "Hello, World!");
 }
 
 #[tokio::test]
@@ -456,6 +444,17 @@ async fn routing_to_router_panics() {
 }
 
 #[tokio::test]
+#[should_panic(
+    expected = "A route for `/` with a different HTTP method already exists and the routes could not be merge"
+)]
+async fn conflicting_method_router_and_opaque() {
+    let app = Router::without_state()
+        .route_service("/", get(|| async {}).state(()))
+        .route("/", post(|| async {}));
+    TestClient::new(app);
+}
+
+#[tokio::test]
 async fn route_layer() {
     let app = Router::new()
         .route("/foo", get(|| async {}))
@@ -502,7 +501,7 @@ async fn different_methods_added_in_different_routes() {
 
 #[tokio::test]
 async fn different_methods_added_in_different_routes_deeply_nested() {
-    let app = Router::new()
+    let app = Router::with_state(())
         .route("/foo/bar/baz", get(|| async { "GET" }))
         .nest(
             "/foo",
@@ -512,7 +511,7 @@ async fn different_methods_added_in_different_routes_deeply_nested() {
             ),
         );
 
-    let client = TestClient::new(app.state(()));
+    let client = TestClient::new(app);
 
     let res = client.get("/foo/bar/baz").send().await;
     let body = res.text().await;
@@ -676,4 +675,23 @@ async fn limited_body_with_streaming_body() {
         .send()
         .await;
     assert_eq!(res.status(), StatusCode::PAYLOAD_TOO_LARGE);
+}
+
+#[tokio::test]
+async fn extracting_state() {
+    #[derive(Clone)]
+    struct AppState {
+        value: &'static str,
+    }
+
+    async fn handler(State(app_state): State<AppState>) -> &'static str {
+        app_state.value
+    }
+
+    let app = Router::with_state(AppState { value: "foo" }).route("/", get(handler));
+
+    let client = TestClient::new(app);
+
+    let res = client.get("/").send().await;
+    assert_eq!(res.text().await, "foo");
 }

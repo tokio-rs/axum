@@ -648,9 +648,27 @@ where
     where
         H: Handler<S, T, B>,
         T: 'static,
-        S: Clone + Send + Sync + 'static,
     {
         self.fallback_boxed_response_body(IntoExtensionService::new(handler))
+    }
+}
+
+impl<S, B, R> MethodRouter<S, B, Infallible, R> {
+    pub(crate) fn change_state_marker<R2>(self) -> MethodRouter<S, B, Infallible, R2> {
+        MethodRouter {
+            state: self.state,
+            get: self.get,
+            head: self.head,
+            delete: self.delete,
+            options: self.options,
+            patch: self.patch,
+            post: self.post,
+            put: self.put,
+            trace: self.trace,
+            fallback: self.fallback,
+            allow_header: self.allow_header,
+            _marker: PhantomData,
+        }
     }
 }
 

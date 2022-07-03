@@ -1,5 +1,5 @@
 use super::Handler;
-use crate::response::Response;
+use crate::{extract::State, response::Response};
 use http::Request;
 use std::{
     convert::Infallible,
@@ -58,7 +58,16 @@ where
         use futures_util::future::FutureExt;
 
         let handler = self.handler.clone();
-        let state = req.extensions().get::<S>().unwrap().clone();
+        let State(state) = req
+            .extensions()
+            .get::<State<S>>()
+            .unwrap_or_else(|| {
+                panic!(
+                    "no state of type `{}` was found. Please file an issue",
+                    std::any::type_name::<State<S>>()
+                )
+            })
+            .clone();
         let future = Handler::call(handler, state, req);
         let future = future.map(Ok as _);
 

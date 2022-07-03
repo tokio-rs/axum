@@ -414,3 +414,8 @@ async fn middleware_that_return_early() {
     );
     assert_eq!(client.get("/public").send().await.status(), StatusCode::OK);
 }
+
+#[tokio::test]
+async fn merging_with_different_state() {
+    todo!()
+}

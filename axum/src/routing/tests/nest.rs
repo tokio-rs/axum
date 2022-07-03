@@ -386,6 +386,33 @@ async fn nest_with_and_without_trailing() {
     assert_eq!(res.status(), StatusCode::OK);
 }
 
+#[tokio::test]
+async fn nesting_with_different_state() {
+    #[derive(Clone)]
+    struct State {
+        inner: InnerState,
+    }
+
+    #[derive(Clone)]
+    struct InnerState {}
+
+    impl From<State> for InnerState {
+        fn from(state: State) -> Self {
+            state.inner
+        }
+    }
+
+    let inner_router = Router::<InnerState, Body, _>::new();
+
+    let router_router = Router::<State, Body, _>::new()
+        .state(State {
+            inner: InnerState {},
+        })
+        .nest("/", inner_router.map_state(Into::into));
+
+    todo!();
+}
+
 macro_rules! nested_route_test {
     (
         $name:ident,
