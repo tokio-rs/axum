@@ -91,17 +91,19 @@ let app = Router::new()
 # Differences between `nest` and `nest_service`
 
 When [fallbacks] are called differs between `nest` and `nested_service`. Routers
-nested with `nest` will delegate to the fallback if they don't have a matching
-route, whereas `nested_service` will not.
+nested with `nest` will delegate to the outer router's fallback if they don't
+have a matching route, whereas `nested_service` will not.
 
 ```rust
-use axum::{Router, routing::{get, any}, handler::Handler};
+use axum::{
+    Router,
+    routing::get,
+    handler::Handler,
+};
 
 let nested_router = Router::new().route("/users", get(|| async {}));
 
 let nested_service = Router::new().route("/app.js", get(|| async {}));
-
-async fn fallback() {}
 
 let app = Router::new()
     .nest("/api", nested_router)
@@ -111,10 +113,38 @@ let app = Router::new()
     // a matching route
     .fallback(fallback.into_service());
 # let _: Router = app;
+
+async fn fallback() {}
 ```
 
-Note that you would normally use [`tower_http::services::ServeDir`] for serving
-static files and thus not call `nest_service` with a `Router`.
+You can still add fallbacks explicitly to the inner router:
+
+```rust
+use axum::{
+    Router,
+    routing::get,
+    handler::Handler,
+};
+
+let nested_service = Router::new()
+    .route("/app.js", get(|| async {}))
+    .fallback(nested_service_fallback.into_service());
+
+let app = Router::new()
+    .nest_service("/assets", nested_service)
+    .fallback(outer_router_fallback.into_service());
+# let _: Router = app;
+
+// this handler is used for `nested_service`
+async fn nested_service_fallback() {
+    // ..
+}
+
+// this handler is used for the outer router
+async fn outer_router_fallback() {
+    // ...
+}
+```
 
 # Panics
 
