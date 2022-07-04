@@ -16,6 +16,7 @@ form = ["serde_urlencoded"]
 http1 = ["hyper/http1"]
 http2 = ["hyper/http2"]
 json = ["serde_json"]
+macros = ["axum-macros"]
 matched-path = []
 multipart = ["multer"]
 original-uri = []
@@ -47,6 +48,7 @@ tower-layer = "0.3"
 tower-service = "0.3"
 
 # optional dependencies
+axum-macros = { path = "../axum-macros", version = "0.2.3", optional = true }
 base64 = { version = "0.13", optional = true }
 headers = { version = "0.3.7", optional = true }
 multer = { version = "2.0.0", optional = true }
