@@ -310,6 +310,7 @@
 //! `http1` | Enables hyper's `http1` feature | Yes
 //! `http2` | Enables hyper's `http2` feature | No
 //! `json` | Enables the [`Json`] type and some similar convenience functionality | Yes
+//! `macros` | Enables optional utility macros | No
 //! `matched-path` | Enables capturing of every request's router path and the [`MatchedPath`] extractor | Yes
 //! `multipart` | Enables parsing `multipart/form-data` requests with [`Multipart`] | No
 //! `original-uri` | Enables capturing of every request's original URI and the [`OriginalUri`] extractor | Yes
@@ -442,3 +443,6 @@ pub use self::form::Form;
 
 #[doc(inline)]
 pub use axum_core::{BoxError, Error};
+
+#[cfg(feature = "macros")]
+pub use axum_macros::debug_handler;

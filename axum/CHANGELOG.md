@@ -20,10 +20,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `WebSocketUpgradeRejection::ConnectionNotUpgradable` rejection
 - **changed:** `WebSocketUpgradeRejection` has a new variant `ConnectionNotUpgradable`
   variant
+- **added** Implement `TryFrom<http:: Method>` for `MethodFilter` and use new `NoMatchingMethodFilter` error in case of failure ([#1130])
+- **added:** Support running extractors from `middleware::from_fn` functions ([#1088])
+- **added:** Added `debug_handler` which is an attribute macro that improves
+  type errors when applied to handler function. It is re-exported from
+  `axum-macros`
 
 [#1077]: https://github.com/tokio-rs/axum/pull/1077
+[#1088]: https://github.com/tokio-rs/axum/pull/1088
 [#1102]: https://github.com/tokio-rs/axum/pull/1102
 [#1119]: https://github.com/tokio-rs/axum/pull/1119
+[#1130]: https://github.com/tokio-rs/axum/pull/1130
 [#924]: https://github.com/tokio-rs/axum/pull/924
 
 # 0.5.10 (28. June, 2022)

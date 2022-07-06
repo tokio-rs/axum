@@ -12,6 +12,7 @@ Types and traits for extracting data from requests.
 - [Defining custom extractors](#defining-custom-extractors)
 - [Accessing other extractors in `FromRequest` implementations](#accessing-other-extractors-in-fromrequest-implementations)
 - [Request body extractors](#request-body-extractors)
+- [Running extractors from middleware](#running-extractors-from-middleware)
 
 # Intro
 
@@ -577,6 +578,62 @@ let app = Router::new()
 # async {
 # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 # };
+```
+
+# Running extractors from middleware
+
+Extractors can also be run from middleware by making a [`RequestParts`] and
+running your extractor:
+
+```rust
+use axum::{
+    Router,
+    middleware::{self, Next},
+    extract::{RequestParts, TypedHeader},
+    http::{Request, StatusCode},
+    response::Response,
+    headers::authorization::{Authorization, Bearer},
+};
+
+async fn auth_middleware<B>(
+    request: Request<B>,
+    next: Next<B>,
+) -> Result<Response, StatusCode>
+where
+    B: Send,
+{
+    // running extractors requires a `RequestParts`
+    let mut request_parts = RequestParts::new(request);
+
+    // `TypedHeader<Authorization<Bearer>>` extracts the auth token but
+    // `RequestParts::extract` works with anything that implements `FromRequest`
+    let auth = request_parts.extract::<TypedHeader<Authorization<Bearer>>>()
+        .await
+        .map_err(|_| StatusCode::UNAUTHORIZED)?;
+
+    if !token_is_valid(auth.token()) {
+        return Err(StatusCode::UNAUTHORIZED);
+    }
+
+    // get the request back so we can run `next`
+    //
+    // `try_into_request` will fail if you have extracted the request body. We
+    // know that `TypedHeader` never does that.
+    //
+    // see the `consume-body-in-extractor-or-middleware` example if you need to
+    // extract the body
+    let request = request_parts.try_into_request().expect("body extracted");
+
+    Ok(next.run(request).await)
+}
+
+fn token_is_valid(token: &str) -> bool {
+    // ...
+    # false
+}
+
+let app = Router::new().layer(middleware::from_fn(auth_middleware));
+# let _: Router = app;
 ```
 
 [`body::Body`]: crate::body::Body
