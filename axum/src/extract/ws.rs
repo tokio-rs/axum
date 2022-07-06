@@ -275,7 +275,7 @@ where
         let on_upgrade = req
             .extensions_mut()
             .remove::<OnUpgrade>()
-            .ok_or(MissingUpgradeState)?;
+            .ok_or(ConnectionNotUpgradable)?;
 
         let sec_websocket_protocol = req.headers().get(header::SEC_WEBSOCKET_PROTOCOL).cloned();
 
@@ -566,13 +566,17 @@ pub mod rejection {
     }
 
     define_rejection! {
-        #[status = BAD_REQUEST]
+        #[status = UPGRADE_REQUIRED]
         #[body = "WebSocket request couldn't be upgraded since no upgrade state was present"]
         /// Rejection type for [`WebSocketUpgrade`](super::WebSocketUpgrade).
         ///
-        /// See <https://docs.rs/hyper/latest/hyper/upgrade/index.html> for more details on how
-        /// hyper handles HTTP upgrades.
-        pub struct MissingUpgradeState;
+        /// This rejection is returned if the connection cannot be upgraded for example if the
+        /// request is HTTP/1.0.
+        ///
+        /// See [MDN] for more details about connection upgrades.
+        ///
+        /// [MDN]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Upgrade
+        pub struct ConnectionNotUpgradable;
     }
 
     composite_rejection! {
@@ -586,7 +590,7 @@ pub mod rejection {
             InvalidUpgradeHeader,
             InvalidWebSocketVersionHeader,
             WebSocketKeyHeaderMissing,
-            MissingUpgradeState,
+            ConnectionNotUpgradable,
         }
     }
 }
@@ -657,21 +661,22 @@ pub mod close_code {
 mod tests {
     use super::*;
     use crate::{body::Body, routing::get};
-    use http::Request;
+    use http::{Request, Version};
     use tower::ServiceExt;
 
     #[tokio::test]
-    async fn rejects_requests_without_upgrade() {
+    async fn rejects_http_1_0_requests() {
         let svc = get(|ws: Result<WebSocketUpgrade, WebSocketUpgradeRejection>| {
             let rejection = ws.unwrap_err();
             assert!(matches!(
                 rejection,
-                WebSocketUpgradeRejection::MissingUpgradeState(_)
+                WebSocketUpgradeRejection::ConnectionNotUpgradable(_)
             ));
             std::future::ready(())
         });
 
         let req = Request::builder()
+            .version(Version::HTTP_10)
             .method(Method::GET)
             .header("upgrade", "websocket")
             .header("connection", "Upgrade")
