@@ -23,13 +23,13 @@ mod tuple;
 /// See [`FromRequest`] for more details.
 // TODO(david): naming
 #[derive(Debug, Clone, Copy)]
-pub struct Mut(Infallible);
+pub enum Mut {}
 
 /// Maker type used to signify that an extractor can only be run once.
 ///
 /// See [`FromRequest`] for more details.
 #[derive(Debug, Clone, Copy)]
-pub struct Once(Infallible);
+pub enum Once {}
 
 /// Types that can be created from requests.
 ///
