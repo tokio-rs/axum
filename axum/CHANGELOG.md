@@ -7,18 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- **fixed:** Make `Router` cheaper to clone ([#1123])
 - **breaking:** Remove `extractor_middleware` which was previously deprecated.
   Use `axum::middleware::from_extractor` instead ([#1077])
 - **breaking:** Allow `Error: Into<Infallible>` for `Route::{layer, route_layer}` ([#924])
-- **breaking:** Remove `extractor_middleware` which was previously deprecated.
-  Use `axum::middleware::from_extractor` instead ([#1077])
 - **breaking:** `MethodRouter` now panics on overlapping routes ([#1102])
+- **breaking:** Remove trailing slash redirects. Previously if you added a route
+  for `/foo`, axum would redirect calls to `/foo/` to `/foo` (or vice versa for
+  `/foo/`). That is no longer supported and such requests will now be sent to
+  the fallback. Consider using `axum_extra::routing::RouterExt::route_with_tsr`
+  if you want the old behavior ([#1119])
+- **added** Implement `TryFrom<http:: Method>` for `MethodFilter` and use new `NoMatchingMethodFilter` error in case of failure ([#1130])
+- **added:** Support running extractors from `middleware::from_fn` functions ([#1088])
+- **added:** Added `debug_handler` which is an attribute macro that improves
+  type errors when applied to handler function. It is re-exported from
+  `axum-macros`
 
 [#1077]: https://github.com/tokio-rs/axum/pull/1077
+[#1088]: https://github.com/tokio-rs/axum/pull/1088
 [#1102]: https://github.com/tokio-rs/axum/pull/1102
-[#1123]: https://github.com/tokio-rs/axum/pull/1123
+[#1119]: https://github.com/tokio-rs/axum/pull/1119
+[#1130]: https://github.com/tokio-rs/axum/pull/1130
 [#924]: https://github.com/tokio-rs/axum/pull/924
+
+# 0.5.10 (28. June, 2022)
+
+- **fixed:** Make `Router` cheaper to clone ([#1123])
+- **fixed:** Fix possible panic when doing trailing slash redirect ([#1124])
+
+[#1123]: https://github.com/tokio-rs/axum/pull/1123
+[#1124]: https://github.com/tokio-rs/axum/pull/1124
 
 # 0.5.9 (20. June, 2022)
 

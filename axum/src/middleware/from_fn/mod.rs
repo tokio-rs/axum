@@ -3,13 +3,15 @@ use crate::{
     response::{IntoResponse, Response},
     BoxError,
 };
+use axum_core::extract::{FromRequest, RequestParts};
+use futures_util::future::BoxFuture;
 use http::Request;
-use pin_project_lite::pin_project;
 use std::{
     any::type_name,
     convert::Infallible,
     fmt,
     future::Future,
+    marker::PhantomData,
     pin::Pin,
     task::{Context, Poll},
 };
@@ -18,13 +20,15 @@ use tower_http::ServiceBuilderExt;
 use tower_layer::Layer;
 use tower_service::Service;
 
+mod generated;
+
 /// Create a middleware from an async function.
 ///
 /// `from_fn` requires the function given to
 ///
 /// 1. Be an `async fn`.
-/// 2. Take [`Request<B>`](http::Request) as the first argument.
-/// 3. Take [`Next<B>`](Next) as the second argument.
+/// 2. Take one or more [extractors] as the first arguments.
+/// 3. Take [`Next<B>`](Next) as the final argument.
 /// 4. Return something that implements [`IntoResponse`].
 ///
 /// # Example
@@ -59,6 +63,37 @@ use tower_service::Service;
 /// let app = Router::new()
 ///     .route("/", get(|| async { /* ... */ }))
 ///     .route_layer(middleware::from_fn(auth));
+/// # let app: Router = app;
+/// ```
+///
+/// # Running extractors
+///
+/// ```rust
+/// use axum::{
+///     Router,
+///     extract::{TypedHeader, Query},
+///     headers::authorization::{Authorization, Bearer},
+///     http::Request,
+///     middleware::{self, Next},
+///     response::Response,
+///     routing::get,
+/// };
+/// use std::collections::HashMap;
+///
+/// async fn my_middleware<B>(
+///     TypedHeader(auth): TypedHeader<Authorization<Bearer>>,
+///     Query(query_params): Query<HashMap<String, String>>,
+///     req: Request<B>,
+///     next: Next<B>,
+/// ) -> Response {
+///     // do something with `auth` and `query_params`...
+///
+///     next.run(req).await
+/// }
+///
+/// let app = Router::new()
+///     .route("/", get(|| async { /* ... */ }))
+///     .route_layer(middleware::from_fn(my_middleware));
 /// # let app: Router = app;
 /// ```
 ///
@@ -114,11 +149,10 @@ use tower_service::Service;
 /// struct State { /* ... */ }
 ///
 /// async fn my_middleware<B>(
+///     Extension(state): Extension<State>,
 ///     req: Request<B>,
 ///     next: Next<B>,
 /// ) -> Response {
-///     let state: &State = req.extensions().get().unwrap();
-///
 ///     // ...
 ///     # ().into_response()
 /// }
@@ -134,8 +168,13 @@ use tower_service::Service;
 ///     );
 /// # let app: Router = app;
 /// ```
-pub fn from_fn<F>(f: F) -> FromFnLayer<F> {
-    FromFnLayer { f }
+///
+/// [extractors]: crate::extract::FromRequest
+pub fn from_fn<F, T>(f: F) -> FromFnLayer<F, T> {
+    FromFnLayer {
+        f,
+        _extractor: PhantomData,
+    }
 }
 
 /// A [`tower::Layer`] from an async function.
@@ -143,26 +182,41 @@ pub fn from_fn<F>(f: F) -> FromFnLayer<F> {
 /// [`tower::Layer`] is used to apply middleware to [`Router`](crate::Router)'s.
 ///
 /// Created with [`from_fn`]. See that function for more details.
-#[derive(Clone, Copy)]
-pub struct FromFnLayer<F> {
+pub struct FromFnLayer<F, T> {
     f: F,
+    _extractor: PhantomData<fn() -> T>,
 }
 
-impl<S, F> Layer<S> for FromFnLayer<F>
+impl<F, T> Clone for FromFnLayer<F, T>
 where
     F: Clone,
 {
-    type Service = FromFn<F, S>;
+    fn clone(&self) -> Self {
+        Self {
+            f: self.f.clone(),
+            _extractor: self._extractor,
+        }
+    }
+}
+
+impl<F, T> Copy for FromFnLayer<F, T> where F: Copy {}
+
+impl<S, F, T> Layer<S> for FromFnLayer<F, T>
+where
+    F: Clone,
+{
+    type Service = FromFn<F, S, T>;
 
     fn layer(&self, inner: S) -> Self::Service {
         FromFn {
             f: self.f.clone(),
             inner,
+            _extractor: PhantomData,
         }
     }
 }
 
-impl<F> fmt::Debug for FromFnLayer<F> {
+impl<F, T> fmt::Debug for FromFnLayer<F, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("FromFnLayer")
             // Write out the type name, without quoting it as `&type_name::<F>()` would
@@ -174,50 +228,34 @@ impl<F> fmt::Debug for FromFnLayer<F> {
 /// A middleware created from an async function.
 ///
 /// Created with [`from_fn`]. See that function for more details.
-#[derive(Clone, Copy)]
-pub struct FromFn<F, S> {
+pub struct FromFn<F, S, T> {
     f: F,
     inner: S,
+    _extractor: PhantomData<fn() -> T>,
 }
 
-impl<F, Fut, Out, S, ReqBody, ResBody> Service<Request<ReqBody>> for FromFn<F, S>
+impl<F, S, T> Clone for FromFn<F, S, T>
 where
-    F: FnMut(Request<ReqBody>, Next<ReqBody>) -> Fut,
-    Fut: Future<Output = Out>,
-    Out: IntoResponse,
-    S: Service<Request<ReqBody>, Response = Response<ResBody>, Error = Infallible>
-        + Clone
-        + Send
-        + 'static,
-    S::Future: Send + 'static,
-    ResBody: HttpBody<Data = Bytes> + Send + 'static,
-    ResBody::Error: Into<BoxError>,
+    F: Clone,
+    S: Clone,
 {
-    type Response = Response;
-    type Error = Infallible;
-    type Future = ResponseFuture<Fut>;
-
-    fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        self.inner.poll_ready(cx)
-    }
-
-    fn call(&mut self, req: Request<ReqBody>) -> Self::Future {
-        let not_ready_inner = self.inner.clone();
-        let ready_inner = std::mem::replace(&mut self.inner, not_ready_inner);
-
-        let inner = ServiceBuilder::new()
-            .boxed_clone()
-            .map_response_body(body::boxed)
-            .service(ready_inner);
-        let next = Next { inner };
-
-        ResponseFuture {
-            inner: (self.f)(req, next),
+    fn clone(&self) -> Self {
+        Self {
+            f: self.f.clone(),
+            inner: self.inner.clone(),
+            _extractor: self._extractor,
         }
     }
 }
 
-impl<F, S> fmt::Debug for FromFn<F, S>
+impl<F, S, T> Copy for FromFn<F, S, T>
+where
+    F: Copy,
+    S: Copy,
+{
+}
+
+impl<F, S, T> fmt::Debug for FromFn<F, S, T>
 where
     S: fmt::Debug,
 {
@@ -252,27 +290,22 @@ impl<ReqBody> fmt::Debug for Next<ReqBody> {
     }
 }
 
-pin_project! {
-    /// Response future for [`FromFn`].
-    pub struct ResponseFuture<F> {
-        #[pin]
-        inner: F,
+/// Response future for [`FromFn`].
+pub struct ResponseFuture {
+    inner: BoxFuture<'static, Response>,
+}
+
+impl Future for ResponseFuture {
+    type Output = Result<Response, Infallible>;
+
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        self.inner.as_mut().poll(cx).map(Ok)
     }
 }
 
-impl<F, Out> Future for ResponseFuture<F>
-where
-    F: Future<Output = Out>,
-    Out: IntoResponse,
-{
-    type Output = Result<Response, Infallible>;
-
-    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        self.project()
-            .inner
-            .poll(cx)
-            .map(IntoResponse::into_response)
-            .map(Ok)
+impl fmt::Debug for ResponseFuture {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("ResponseFuture").finish()
     }
 }
 

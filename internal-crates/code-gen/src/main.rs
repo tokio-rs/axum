@@ -23,6 +23,7 @@ use quote::{format_ident, quote};
 fn main() {
     code_gen_handler();
     code_gen_from_request_tuples();
+    code_gen_middleware_from_fn();
     format();
 }
 
@@ -175,6 +176,118 @@ fn code_gen_from_request_tuples() {
     );
 
     std::fs::write("axum-core/src/extract/tuple.rs", acc).unwrap();
+}
+
+fn code_gen_middleware_from_fn() {
+    let mut acc = String::new();
+
+    for n in 1..=SIZE {
+        let tys = (1..=n).map(|n| format_ident!("T{}", n)).collect::<Vec<_>>();
+
+        let mut bounds = quote! {};
+        let mut mut_body = quote! {};
+        let mut once_body = quote! {};
+
+        let mut tys_iter = tys.clone().into_iter().peekable();
+        while let Some(ty) = tys_iter.next() {
+            if tys_iter.peek().is_some() {
+                // not the last one
+                bounds.extend(quote! {
+                    #ty: FromRequest<Mut, B> + Send,
+                });
+
+                mut_body.extend(quote! {
+                    let #ty = match #ty::from_request(&mut req).await {
+                        Ok(value) => value,
+                        Err(rejection) => return rejection.into_response(),
+                    };
+                });
+            } else {
+                // the last one
+                bounds.extend(quote! {
+                    #ty: FromRequest<Once, B> + Send,
+                });
+
+                once_body.extend(quote! {
+                    let #ty = match #ty::from_request(&mut req).await {
+                        Ok(value) => value,
+                        Err(rejection) => return rejection.into_response(),
+                    };
+                });
+            }
+        }
+
+        let code = quote! {
+            #[allow(non_snake_case, unused_mut)]
+            impl<
+                F,
+                Fut,
+                Out,
+                S,
+                B,
+                ResBody,
+                #(#tys,)*
+            > Service<Request<B>> for FromFn<F, S, (#(#tys,)*)>
+            where
+                F: FnMut(#(#tys),*, Next<B>) -> Fut + Clone + Send + 'static,
+                Fut: Future<Output = Out> + Send + 'static,
+                Out: IntoResponse + 'static,
+                S: Service<Request<B>, Response = Response<ResBody>, Error = Infallible>
+                    + Clone
+                    + Send
+                    + 'static,
+                S::Future: Send + 'static,
+                B: Send + 'static,
+                ResBody: HttpBody<Data = Bytes> + Send + 'static,
+                ResBody::Error: Into<BoxError>,
+                #bounds
+            {
+                type Response = Response;
+                type Error = Infallible;
+                type Future = ResponseFuture;
+
+                fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+                    self.inner.poll_ready(cx)
+                }
+
+                fn call(&mut self, req: Request<B>) -> Self::Future {
+                    let not_ready_inner = self.inner.clone();
+                    let ready_inner = std::mem::replace(&mut self.inner, not_ready_inner);
+
+                    let mut f = self.f.clone();
+
+                    let future = Box::pin(async move {
+                        let mut req = RequestParts::<Mut, B>::new(req);
+                        #mut_body
+
+                        let mut req = RequestParts::<Once, B>::new(req.into_request());
+                        #once_body
+
+                        let inner = ServiceBuilder::new()
+                            .boxed_clone()
+                            .map_response_body(body::boxed)
+                            .service(ready_inner);
+                        let next = Next { inner };
+
+                        f(#(#tys),*, next).await.into_response()
+                    });
+
+                    ResponseFuture {
+                        inner: future
+                    }
+                }
+            }
+        };
+
+        acc.push_str(&code.to_string());
+    }
+
+    let acc = format!(
+        "// this file is machine generated. Don't edit it!\n\nuse super::*;\nuse axum_core::extract::{{Once, Mut}};\n\n{}",
+        acc
+    );
+
+    std::fs::write("axum/src/middleware/from_fn/generated.rs", acc).unwrap();
 }
 
 fn format() {

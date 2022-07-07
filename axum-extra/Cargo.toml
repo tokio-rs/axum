@@ -58,4 +58,4 @@ tower = { version = "0.4", features = ["util"] }
 
 [package.metadata.docs.rs]
 all-features = true
-rustdocflags = ["--cfg", "docsrs"]
+rustdoc-args = ["--cfg", "docsrs"]
