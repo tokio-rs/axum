@@ -176,7 +176,7 @@ impl<B> RequestParts<B> {
         Ok(req)
     }
 
-    /// Gets a reference the request method.
+    /// Gets a reference to the request method.
     pub fn method(&self) -> &Method {
         &self.method
     }
@@ -186,7 +186,7 @@ impl<B> RequestParts<B> {
         &mut self.method
     }
 
-    /// Gets a reference the request URI.
+    /// Gets a reference to the request URI.
     pub fn uri(&self) -> &Uri {
         &self.uri
     }
