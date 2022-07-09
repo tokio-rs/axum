@@ -149,7 +149,7 @@ mod tests {
                 "/public",
                 Router::new().route("/assets/*path", get(handler)),
             )
-            .nest("/foo", handler.into_service())
+            .nest("/foo", handler.into_service(()))
             .layer(tower::layer::layer_fn(SetMatchedPathExtension));
 
         let client = TestClient::new(app);

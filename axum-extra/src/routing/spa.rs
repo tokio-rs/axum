@@ -147,7 +147,7 @@ impl<B, T, F> SpaRouter<B, T, F> {
     }
 }
 
-impl<B, F, T> From<SpaRouter<B, T, F>> for Router<B>
+impl<B, F, T> From<SpaRouter<B, T, F>> for Router<(), B>
 where
     F: Clone + Send + 'static,
     HandleError<Route<B, io::Error>, F, T>:
@@ -158,12 +158,15 @@ where
 {
     fn from(spa: SpaRouter<B, T, F>) -> Self {
         let assets_service = get_service(ServeDir::new(&spa.paths.assets_dir))
-            .handle_error(spa.handle_error.clone());
+            .handle_error(spa.handle_error.clone())
+            .with_state(());
 
         Router::new()
             .nest(&spa.paths.assets_path, assets_service)
-            .fallback(
-                get_service(ServeFile::new(&spa.paths.index_file)).handle_error(spa.handle_error),
+            .fallback_service(
+                get_service(ServeFile::new(&spa.paths.index_file))
+                    .handle_error(spa.handle_error)
+                    .with_state(()),
             )
     }
 }
@@ -264,6 +267,6 @@ mod tests {
 
         let spa = SpaRouter::new("/assets", "test_files").handle_error(handle_error);
 
-        Router::<Body>::new().merge(spa);
+        Router::<_, Body>::new().merge(spa);
     }
 }

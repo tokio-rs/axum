@@ -50,8 +50,10 @@ use tower_service::Service;
 
 pub mod future;
 mod into_service;
+mod into_service_state_in_extension;
 
 pub use self::into_service::IntoService;
+pub(crate) use self::into_service_state_in_extension::IntoServiceStateInExtension;
 
 /// Trait for async functions that can be used to handle requests.
 ///
@@ -61,7 +63,7 @@ pub use self::into_service::IntoService;
 /// See the [module docs](crate::handler) for more details.
 ///
 #[doc = include_str!("../docs/debugging_handler_type_errors.md")]
-pub trait Handler<T, B = Body>: Clone + Send + Sized + 'static {
+pub trait Handler<T, S, B = Body>: Clone + Send + Sized + 'static {
     /// The type of future calling this handler returns.
     type Future: Future<Output = Response> + Send + 'static;
 
@@ -104,11 +106,12 @@ pub trait Handler<T, B = Body>: Clone + Send + Sized + 'static {
     /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
     /// # };
     /// ```
-    fn layer<L>(self, layer: L) -> Layered<L::Service, T>
+    fn layer<L>(self, layer: L) -> Layered<L::Service, T, S>
     where
-        L: Layer<IntoService<Self, T, B>>,
+        L: Layer<IntoService<Self, T, S, B>>,
     {
-        Layered::new(layer.layer(self.into_service()))
+        todo!()
+        // Layered::new(layer.layer(self.into_service()))
     }
 
     /// Convert the handler into a [`Service`].
@@ -143,8 +146,8 @@ pub trait Handler<T, B = Body>: Clone + Send + Sized + 'static {
     /// ```
     ///
     /// [`Router::fallback`]: crate::routing::Router::fallback
-    fn into_service(self) -> IntoService<Self, T, B> {
-        IntoService::new(self)
+    fn into_service(self, state: S) -> IntoService<Self, T, S, B> {
+        IntoService::new(self, state)
     }
 
     /// Convert the handler into a [`MakeService`].
@@ -170,8 +173,8 @@ pub trait Handler<T, B = Body>: Clone + Send + Sized + 'static {
     /// ```
     ///
     /// [`MakeService`]: tower::make::MakeService
-    fn into_make_service(self) -> IntoMakeService<IntoService<Self, T, B>> {
-        IntoMakeService::new(self.into_service())
+    fn into_make_service(self, state: S) -> IntoMakeService<IntoService<Self, T, S, B>> {
+        IntoMakeService::new(self.into_service(state))
     }
 
     /// Convert the handler into a [`MakeService`] which stores information
@@ -204,12 +207,13 @@ pub trait Handler<T, B = Body>: Clone + Send + Sized + 'static {
     /// [`Router::into_make_service_with_connect_info`]: crate::routing::Router::into_make_service_with_connect_info
     fn into_make_service_with_connect_info<C>(
         self,
-    ) -> IntoMakeServiceWithConnectInfo<IntoService<Self, T, B>, C> {
-        IntoMakeServiceWithConnectInfo::new(self.into_service())
+        state: S,
+    ) -> IntoMakeServiceWithConnectInfo<IntoService<Self, T, S, B>, C> {
+        IntoMakeServiceWithConnectInfo::new(self.into_service(state))
     }
 }
 
-impl<F, Fut, Res, B> Handler<(), B> for F
+impl<F, Fut, Res, S, B> Handler<(), S, B> for F
 where
     F: FnOnce() -> Fut + Clone + Send + 'static,
     Fut: Future<Output = Res> + Send,
@@ -226,7 +230,7 @@ where
 macro_rules! impl_handler {
     ( $($ty:ident),* $(,)? ) => {
         #[allow(non_snake_case)]
-        impl<F, Fut, B, Res, $($ty,)*> Handler<($($ty,)*), B> for F
+        impl<F, Fut, B, S, Res, $($ty,)*> Handler<($($ty,)*), S, B> for F
         where
             F: FnOnce($($ty,)*) -> Fut + Clone + Send + 'static,
             Fut: Future<Output = Res> + Send,
@@ -261,45 +265,46 @@ all_the_tuples!(impl_handler);
 /// A [`Service`] created from a [`Handler`] by applying a Tower middleware.
 ///
 /// Created with [`Handler::layer`]. See that method for more details.
-pub struct Layered<S, T> {
-    svc: S,
-    _input: PhantomData<fn() -> T>,
+pub struct Layered<Svc, T, S> {
+    svc: Svc,
+    _input: PhantomData<fn() -> (T, S)>,
 }
 
-impl<S, T> fmt::Debug for Layered<S, T>
+impl<Svc, T, S> fmt::Debug for Layered<Svc, T, S>
 where
-    S: fmt::Debug,
+    Svc: fmt::Debug,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Layered").field("svc", &self.svc).finish()
     }
 }
 
-impl<S, T> Clone for Layered<S, T>
+impl<Svc, T, S> Clone for Layered<Svc, T, S>
 where
-    S: Clone,
+    Svc: Clone,
 {
     fn clone(&self) -> Self {
         Self::new(self.svc.clone())
     }
 }
 
-impl<S, T, ReqBody, ResBody> Handler<T, ReqBody> for Layered<S, T>
+impl<Svc, S, T, ReqBody, ResBody> Handler<T, S, ReqBody> for Layered<Svc, T, S>
 where
-    S: Service<Request<ReqBody>, Response = Response<ResBody>> + Clone + Send + 'static,
-    S::Error: IntoResponse,
-    S::Future: Send,
+    Svc: Service<Request<ReqBody>, Response = Response<ResBody>> + Clone + Send + 'static,
+    Svc::Error: IntoResponse,
+    Svc::Future: Send,
     T: 'static,
+    S: 'static,
     ReqBody: Send + 'static,
     ResBody: HttpBody<Data = Bytes> + Send + 'static,
     ResBody::Error: Into<BoxError>,
 {
-    type Future = future::LayeredFuture<S, ReqBody>;
+    type Future = future::LayeredFuture<Svc, ReqBody>;
 
     fn call(self, req: Request<ReqBody>) -> Self::Future {
         use futures_util::future::{FutureExt, Map};
 
-        let future: Map<_, fn(Result<S::Response, S::Error>) -> _> =
+        let future: Map<_, fn(Result<Svc::Response, Svc::Error>) -> _> =
             self.svc.oneshot(req).map(|result| match result {
                 Ok(res) => res.map(boxed),
                 Err(res) => res.into_response(),
@@ -309,8 +314,8 @@ where
     }
 }
 
-impl<S, T> Layered<S, T> {
-    pub(crate) fn new(svc: S) -> Self {
+impl<Svc, T, S> Layered<Svc, T, S> {
+    pub(crate) fn new(svc: Svc) -> Self {
         Self {
             svc,
             _input: PhantomData,
@@ -330,7 +335,7 @@ mod tests {
             format!("you said: {}", body)
         }
 
-        let client = TestClient::new(handle.into_service());
+        let client = TestClient::new(handle.into_service(()));
 
         let res = client.post("/").body("hi there!").send().await;
         assert_eq!(res.status(), StatusCode::OK);

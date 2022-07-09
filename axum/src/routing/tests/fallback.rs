@@ -5,7 +5,7 @@ use crate::handler::Handler;
 async fn basic() {
     let app = Router::new()
         .route("/foo", get(|| async {}))
-        .fallback((|| async { "fallback" }).into_service());
+        .fallback(|| async { "fallback" });
 
     let client = TestClient::new(app);
 
@@ -20,7 +20,7 @@ async fn basic() {
 async fn nest() {
     let app = Router::new()
         .nest("/foo", Router::new().route("/bar", get(|| async {})))
-        .fallback((|| async { "fallback" }).into_service());
+        .fallback(|| async { "fallback" });
 
     let client = TestClient::new(app);
 
@@ -36,9 +36,7 @@ async fn or() {
     let one = Router::new().route("/one", get(|| async {}));
     let two = Router::new().route("/two", get(|| async {}));
 
-    let app = one
-        .merge(two)
-        .fallback((|| async { "fallback" }).into_service());
+    let app = one.merge(two).fallback(|| async { "fallback" });
 
     let client = TestClient::new(app);
 

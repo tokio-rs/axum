@@ -226,7 +226,7 @@ mod tests {
                     jar.remove(Cookie::named("key"))
                 }
 
-                let app = Router::<Body>::new()
+                let app = Router::<_, Body>::new()
                     .route("/set", get(set_cookie))
                     .route("/get", get(get_cookie))
                     .route("/remove", get(remove_cookie))
@@ -294,7 +294,7 @@ mod tests {
             format!("{:?}", jar.get("key"))
         }
 
-        let app = Router::<Body>::new()
+        let app = Router::<_, Body>::new()
             .route("/get", get(get_cookie))
             .layer(Extension(Key::generate()));
 

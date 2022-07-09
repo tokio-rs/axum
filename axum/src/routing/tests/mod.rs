@@ -100,7 +100,7 @@ async fn routing() {
 
 #[tokio::test]
 async fn router_type_doesnt_change() {
-    let app: Router = Router::new()
+    let app: Router<()> = Router::new()
         .route(
             "/",
             on(MethodFilter::GET, |_: Request<Body>| async {
@@ -148,7 +148,10 @@ async fn routing_between_services() {
                 }),
             ),
         )
-        .route("/two", on_service(MethodFilter::GET, handle.into_service()));
+        .route(
+            "/two",
+            on_service(MethodFilter::GET, handle.into_service(())),
+        );
 
     let client = TestClient::new(app);
 
@@ -365,7 +368,7 @@ async fn wildcard_with_trailing_slash() {
         path: String,
     }
 
-    let app: Router = Router::new().route(
+    let app: Router<()> = Router::new().route(
         "/:user/:repo/tree/*path",
         get(|Path(tree): Path<Tree>| async move { Json(tree) }),
     );
@@ -467,7 +470,7 @@ async fn middleware_still_run_for_unmatched_requests() {
     expected = "Invalid route: `Router::route` cannot be used with `Router`s. Use `Router::nest` instead"
 )]
 async fn routing_to_router_panics() {
-    TestClient::new(Router::new().route("/", Router::new()));
+    TestClient::new(Router::new().route_service("/", Router::new()));
 }
 
 #[tokio::test]
@@ -507,7 +510,7 @@ async fn route_layer() {
 )]
 async fn good_error_message_if_using_nest_root() {
     let app = Router::new()
-        .nest("/", get(|| async {}))
+        .nest("/", get(|| async {}).with_state(()))
         .route("/", get(|| async {}));
     TestClient::new(app);
 }
@@ -520,7 +523,7 @@ async fn good_error_message_if_using_nest_root() {
     Use `Router::fallback` instead"
 )]
 async fn good_error_message_if_using_nest_root_when_merging() {
-    let one = Router::new().nest("/", get(|| async {}));
+    let one = Router::new().nest("/", get(|| async {}).with_state(()));
     let two = Router::new().route("/", get(|| async {}));
     let app = one.merge(two);
     TestClient::new(app);
@@ -570,8 +573,8 @@ async fn different_methods_added_in_different_routes_deeply_nested() {
 #[should_panic(expected = "Cannot merge two `Router`s that both have a fallback")]
 async fn merging_routers_with_fallbacks_panics() {
     async fn fallback() {}
-    let one = Router::new().fallback(fallback.into_service());
-    let two = Router::new().fallback(fallback.into_service());
+    let one = Router::new().fallback(fallback);
+    let two = Router::new().fallback(fallback);
     TestClient::new(one.merge(two));
 }
 
@@ -579,7 +582,7 @@ async fn merging_routers_with_fallbacks_panics() {
 #[should_panic(expected = "Cannot nest `Router`s that has a fallback")]
 async fn nesting_router_with_fallbacks_panics() {
     async fn fallback() {}
-    let one = Router::new().fallback(fallback.into_service());
+    let one = Router::new().fallback(fallback);
     let app = Router::new().nest("/", one);
     TestClient::new(app);
 }
@@ -619,7 +622,7 @@ async fn head_content_length_through_hyper_server() {
 
 #[tokio::test]
 async fn head_content_length_through_hyper_server_that_hits_fallback() {
-    let app = Router::new().fallback((|| async { "foo" }).into_service());
+    let app = Router::new().fallback(|| async { "foo" });
 
     let client = TestClient::new(app);
 

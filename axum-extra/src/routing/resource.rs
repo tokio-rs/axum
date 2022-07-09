@@ -3,7 +3,7 @@ use axum::{
     handler::Handler,
     http::Request,
     response::Response,
-    routing::{delete, get, on, post, MethodFilter},
+    routing::{delete, get, on, post, MethodFilter, MethodRouter},
     Router,
 };
 use std::convert::Infallible;
@@ -48,29 +48,30 @@ use tower_service::Service;
 /// # let _: Router<axum::body::Body> = app;
 /// ```
 #[derive(Debug)]
-pub struct Resource<B = Body> {
+pub struct Resource<S, B = Body> {
     pub(crate) name: String,
-    pub(crate) router: Router<B>,
+    pub(crate) router: Router<S, B>,
 }
 
-impl<B> Resource<B>
+impl<S, B> Resource<S, B>
 where
     B: axum::body::HttpBody + Send + 'static,
+    S: Clone + Send + Sync + 'static,
 {
     /// Create a `Resource` with the given name.
     ///
     /// All routes will be nested at `/{resource_name}`.
-    pub fn named(resource_name: &str) -> Self {
+    pub fn named(state: S, resource_name: &str) -> Self {
         Self {
             name: resource_name.to_owned(),
-            router: Default::default(),
+            router: Router::with_state(state),
         }
     }
 
     /// Add a handler at `GET /{resource_name}`.
     pub fn index<H, T>(self, handler: H) -> Self
     where
-        H: Handler<T, B>,
+        H: Handler<T, S, B>,
         T: 'static,
     {
         let path = self.index_create_path();
@@ -80,7 +81,7 @@ where
     /// Add a handler at `POST /{resource_name}`.
     pub fn create<H, T>(self, handler: H) -> Self
     where
-        H: Handler<T, B>,
+        H: Handler<T, S, B>,
         T: 'static,
     {
         let path = self.index_create_path();
@@ -90,7 +91,7 @@ where
     /// Add a handler at `GET /{resource_name}/new`.
     pub fn new<H, T>(self, handler: H) -> Self
     where
-        H: Handler<T, B>,
+        H: Handler<T, S, B>,
         T: 'static,
     {
         let path = format!("/{}/new", self.name);
@@ -100,7 +101,7 @@ where
     /// Add a handler at `GET /{resource_name}/:{resource_name}_id`.
     pub fn show<H, T>(self, handler: H) -> Self
     where
-        H: Handler<T, B>,
+        H: Handler<T, S, B>,
         T: 'static,
     {
         let path = self.show_update_destroy_path();
@@ -110,7 +111,7 @@ where
     /// Add a handler at `GET /{resource_name}/:{resource_name}_id/edit`.
     pub fn edit<H, T>(self, handler: H) -> Self
     where
-        H: Handler<T, B>,
+        H: Handler<T, S, B>,
         T: 'static,
     {
         let path = format!("/{0}/:{0}_id/edit", self.name);
@@ -120,7 +121,7 @@ where
     /// Add a handler at `PUT or PATCH /resource_name/:{resource_name}_id`.
     pub fn update<H, T>(self, handler: H) -> Self
     where
-        H: Handler<T, B>,
+        H: Handler<T, S, B>,
         T: 'static,
     {
         let path = self.show_update_destroy_path();
@@ -130,7 +131,7 @@ where
     /// Add a handler at `DELETE /{resource_name}/:{resource_name}_id`.
     pub fn destroy<H, T>(self, handler: H) -> Self
     where
-        H: Handler<T, B>,
+        H: Handler<T, S, B>,
         T: 'static,
     {
         let path = self.show_update_destroy_path();
@@ -171,12 +172,8 @@ where
         format!("/{0}/:{0}_id", self.name)
     }
 
-    fn route<T>(mut self, path: &str, svc: T) -> Self
-    where
-        T: Service<Request<B>, Response = Response, Error = Infallible> + Clone + Send + 'static,
-        T::Future: Send + 'static,
-    {
-        self.router = self.router.route(path, svc);
+    fn route(mut self, path: &str, method_router: MethodRouter<S, B>) -> Self {
+        self.router = self.router.route(path, method_router);
         self
     }
 }
@@ -196,7 +193,7 @@ mod tests {
 
     #[tokio::test]
     async fn works() {
-        let users = Resource::named("users")
+        let users = Resource::named((), "users")
             .index(|| async { "users#index" })
             .create(|| async { "users#create" })
             .new(|| async { "users#new" })
@@ -265,7 +262,7 @@ mod tests {
         );
     }
 
-    async fn call_route(app: &mut Router, method: Method, uri: &str) -> String {
+    async fn call_route(app: &mut Router<()>, method: Method, uri: &str) -> String {
         let res = app
             .ready()
             .await

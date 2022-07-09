@@ -117,7 +117,10 @@ async fn nesting_router_at_empty_path() {
 
 #[tokio::test]
 async fn nesting_handler_at_root() {
-    let app = Router::new().nest("/", get(|uri: Uri| async move { uri.to_string() }));
+    let app = Router::new().nest(
+        "/",
+        get(|uri: Uri| async move { uri.to_string() }).with_state(()),
+    );
 
     let client = TestClient::new(app);
 
@@ -186,7 +189,7 @@ async fn nested_service_sees_stripped_uri() {
         "/foo",
         Router::new().nest(
             "/bar",
-            Router::new().route(
+            Router::new().route_service(
                 "/baz",
                 service_fn(|req: Request<Body>| async move {
                     let body = boxed(Body::from(req.uri().to_string()));
@@ -207,12 +210,14 @@ async fn nested_service_sees_stripped_uri() {
 async fn nest_static_file_server() {
     let app = Router::new().nest(
         "/static",
-        get_service(ServeDir::new(".")).handle_error(|error| async move {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Unhandled internal error: {}", error),
-            )
-        }),
+        get_service(ServeDir::new("."))
+            .handle_error(|error| async move {
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    format!("Unhandled internal error: {}", error),
+                )
+            })
+            .with_state(()),
     );
 
     let client = TestClient::new(app);
@@ -294,7 +299,7 @@ async fn multiple_top_level_nests() {
 #[tokio::test]
 #[should_panic(expected = "Invalid route: nested routes cannot contain wildcards (*)")]
 async fn nest_cannot_contain_wildcards() {
-    Router::<Body>::new().nest("/one/*rest", Router::new());
+    Router::<_, Body>::new().nest("/one/*rest", Router::new());
 }
 
 #[tokio::test]
@@ -333,7 +338,7 @@ async fn outer_middleware_still_see_whole_url() {
         .route("/foo", get(handler))
         .route("/foo/bar", get(handler))
         .nest("/one", Router::new().route("/two", get(handler)))
-        .fallback(handler.into_service())
+        .fallback(handler)
         .layer(tower::layer::layer_fn(SetUriExtension));
 
     let client = TestClient::new(app);

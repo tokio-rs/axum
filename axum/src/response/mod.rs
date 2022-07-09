@@ -93,7 +93,7 @@ mod tests {
             }
         }
 
-        Router::<Body>::new()
+        Router::<_, Body>::new()
             .route("/", get(impl_trait_ok))
             .route("/", get(impl_trait_err))
             .route("/", get(impl_trait_both))
@@ -203,7 +203,7 @@ mod tests {
             )
         }
 
-        Router::<Body>::new()
+        Router::<_, Body>::new()
             .route("/", get(status))
             .route("/", get(status_headermap))
             .route("/", get(status_header_array))
