@@ -88,14 +88,15 @@ pub struct Cached<T>(pub T);
 struct CachedEntry<T>(T);
 
 #[async_trait]
-impl<B, T> FromRequest<B> for Cached<T>
+impl<S, B, T> FromRequest<S, B> for Cached<T>
 where
     B: Send,
-    T: FromRequest<B> + Clone + Send + Sync + 'static,
+    S: Send,
+    T: FromRequest<S, B> + Clone + Send + Sync + 'static,
 {
     type Rejection = T::Rejection;
 
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts<S, B>) -> Result<Self, Self::Rejection> {
         match Extension::<CachedEntry<T>>::from_request(req).await {
             Ok(Extension(CachedEntry(value))) => Ok(Self(value)),
             Err(_) => {
@@ -139,19 +140,20 @@ mod tests {
         struct Extractor(Instant);
 
         #[async_trait]
-        impl<B> FromRequest<B> for Extractor
+        impl<S, B> FromRequest<S, B> for Extractor
         where
             B: Send,
+            S: Send,
         {
             type Rejection = Infallible;
 
-            async fn from_request(_req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+            async fn from_request(_req: &mut RequestParts<S, B>) -> Result<Self, Self::Rejection> {
                 COUNTER.fetch_add(1, Ordering::SeqCst);
                 Ok(Self(Instant::now()))
             }
         }
 
-        let mut req = RequestParts::new(Request::new(()));
+        let mut req = RequestParts::new((), Request::new(()));
 
         let first = Cached::<Extractor>::from_request(&mut req).await.unwrap().0;
         assert_eq!(COUNTER.load(Ordering::SeqCst), 1);

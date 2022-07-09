@@ -1,7 +1,7 @@
 use crate::{
     body::{Bytes, Empty},
     error_handling::HandleErrorLayer,
-    extract::{self, Path},
+    extract::{self, Path, State},
     handler::Handler,
     response::IntoResponse,
     routing::{delete, get, get_service, on, on_service, patch, patch_service, post, MethodFilter},
@@ -722,4 +722,28 @@ async fn limited_body_with_streaming_body() {
         .send()
         .await;
     assert_eq!(res.status(), StatusCode::PAYLOAD_TOO_LARGE);
+}
+
+#[tokio::test]
+async fn extracting_state() {
+    #[derive(Clone)]
+    struct AppState {
+        inner: InnerState,
+    }
+
+    #[derive(Clone)]
+    struct InnerState {}
+
+    impl From<AppState> for InnerState {
+        fn from(state: AppState) -> Self {
+            state.inner
+        }
+    }
+
+    async fn handler(State(_): State<AppState>, State(_): State<InnerState>) {}
+
+    let state = AppState {
+        inner: InnerState {},
+    };
+    let _: Router<AppState> = Router::with_state(state).route("/", get(handler));
 }

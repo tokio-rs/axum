@@ -61,6 +61,7 @@ impl<H, T, S, B> Service<Request<B>> for IntoService<H, T, S, B>
 where
     H: Handler<T, S, B> + Clone + Send + 'static,
     B: Send + 'static,
+    S: Clone,
 {
     type Response = Response;
     type Error = Infallible;
@@ -78,7 +79,7 @@ where
         use futures_util::future::FutureExt;
 
         let handler = self.handler.clone();
-        let future = Handler::call(handler, req);
+        let future = Handler::call(handler, self.state.clone(), req);
         let future = future.map(Ok as _);
 
         super::future::IntoServiceFuture::new(future)

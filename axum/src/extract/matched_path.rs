@@ -64,13 +64,14 @@ impl MatchedPath {
 }
 
 #[async_trait]
-impl<B> FromRequest<B> for MatchedPath
+impl<S, B> FromRequest<S, B> for MatchedPath
 where
     B: Send,
+    S: Send,
 {
     type Rejection = MatchedPathRejection;
 
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts<S, B>) -> Result<Self, Self::Rejection> {
         let matched_path = req
             .extensions()
             .get::<Self>()

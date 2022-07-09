@@ -244,13 +244,14 @@ impl WebSocketUpgrade {
 }
 
 #[async_trait]
-impl<B> FromRequest<B> for WebSocketUpgrade
+impl<S, B> FromRequest<S, B> for WebSocketUpgrade
 where
     B: Send,
+    S: Send,
 {
     type Rejection = WebSocketUpgradeRejection;
 
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts<S, B>) -> Result<Self, Self::Rejection> {
         if req.method() != Method::GET {
             return Err(MethodNotGet.into());
         }
@@ -288,7 +289,7 @@ where
     }
 }
 
-fn header_eq<B>(req: &RequestParts<B>, key: HeaderName, value: &'static str) -> bool {
+fn header_eq<S, B>(req: &RequestParts<S, B>, key: HeaderName, value: &'static str) -> bool {
     if let Some(header) = req.headers().get(&key) {
         header.as_bytes().eq_ignore_ascii_case(value.as_bytes())
     } else {
@@ -296,7 +297,7 @@ fn header_eq<B>(req: &RequestParts<B>, key: HeaderName, value: &'static str) -> 
     }
 }
 
-fn header_contains<B>(req: &RequestParts<B>, key: HeaderName, value: &'static str) -> bool {
+fn header_contains<S, B>(req: &RequestParts<S, B>, key: HeaderName, value: &'static str) -> bool {
     let header = if let Some(header) = req.headers().get(&key) {
         header
     } else {

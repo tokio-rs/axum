@@ -68,7 +68,7 @@ pub trait Handler<T, S, B = Body>: Clone + Send + Sized + 'static {
     type Future: Future<Output = Response> + Send + 'static;
 
     /// Call the handler with the given request.
-    fn call(self, req: Request<B>) -> Self::Future;
+    fn call(self, state: S, req: Request<B>) -> Self::Future;
 
     /// Apply a [`tower::Layer`] to the handler.
     ///
@@ -222,7 +222,7 @@ where
 {
     type Future = Pin<Box<dyn Future<Output = Response> + Send>>;
 
-    fn call(self, _req: Request<B>) -> Self::Future {
+    fn call(self, _state: S, _req: Request<B>) -> Self::Future {
         Box::pin(async move { self().await.into_response() })
     }
 }
@@ -235,14 +235,15 @@ macro_rules! impl_handler {
             F: FnOnce($($ty,)*) -> Fut + Clone + Send + 'static,
             Fut: Future<Output = Res> + Send,
             B: Send + 'static,
+            S: Send + 'static,
             Res: IntoResponse,
-            $( $ty: FromRequest<B> + Send,)*
+            $( $ty: FromRequest<S, B> + Send,)*
         {
             type Future = Pin<Box<dyn Future<Output = Response> + Send>>;
 
-            fn call(self, req: Request<B>) -> Self::Future {
+            fn call(self, state: S, req: Request<B>) -> Self::Future {
                 Box::pin(async move {
-                    let mut req = RequestParts::new(req);
+                    let mut req = RequestParts::new(state, req);
 
                     $(
                         let $ty = match $ty::from_request(&mut req).await {
@@ -301,16 +302,18 @@ where
 {
     type Future = future::LayeredFuture<Svc, ReqBody>;
 
-    fn call(self, req: Request<ReqBody>) -> Self::Future {
-        use futures_util::future::{FutureExt, Map};
+    fn call(self, state: S, req: Request<ReqBody>) -> Self::Future {
+        todo!()
 
-        let future: Map<_, fn(Result<Svc::Response, Svc::Error>) -> _> =
-            self.svc.oneshot(req).map(|result| match result {
-                Ok(res) => res.map(boxed),
-                Err(res) => res.into_response(),
-            });
+        // use futures_util::future::{FutureExt, Map};
 
-        future::LayeredFuture::new(future)
+        // let future: Map<_, fn(Result<Svc::Response, Svc::Error>) -> _> =
+        //     self.svc.oneshot(req).map(|result| match result {
+        //         Ok(res) => res.map(boxed),
+        //         Err(res) => res.into_response(),
+        //     });
+
+        // future::LayeredFuture::new(future)
     }
 }
 

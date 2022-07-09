@@ -56,16 +56,17 @@ use std::ops::Deref;
 pub struct Form<T>(pub T);
 
 #[async_trait]
-impl<T, B> FromRequest<B> for Form<T>
+impl<T, S, B> FromRequest<S, B> for Form<T>
 where
     T: DeserializeOwned,
     B: HttpBody + Send,
     B::Data: Send,
     B::Error: Into<BoxError>,
+    S: Send,
 {
     type Rejection = FormRejection;
 
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts<S, B>) -> Result<Self, Self::Rejection> {
         if req.method() == Method::GET {
             let query = req.uri().query().unwrap_or_default();
             let value = serde_urlencoded::from_str(query)
@@ -126,6 +127,7 @@ mod tests {
 
     async fn check_query<T: DeserializeOwned + PartialEq + Debug>(uri: impl AsRef<str>, value: T) {
         let mut req = RequestParts::new(
+            (),
             Request::builder()
                 .uri(uri.as_ref())
                 .body(Empty::<Bytes>::new())
@@ -136,6 +138,7 @@ mod tests {
 
     async fn check_body<T: Serialize + DeserializeOwned + PartialEq + Debug>(value: T) {
         let mut req = RequestParts::new(
+            (),
             Request::builder()
                 .uri("http://example.com/test")
                 .method(Method::POST)
@@ -205,6 +208,7 @@ mod tests {
     #[tokio::test]
     async fn test_incorrect_content_type() {
         let mut req = RequestParts::new(
+            (),
             Request::builder()
                 .uri("http://example.com/test")
                 .method(Method::POST)

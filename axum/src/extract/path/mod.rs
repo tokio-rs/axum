@@ -163,14 +163,15 @@ impl<T> DerefMut for Path<T> {
 }
 
 #[async_trait]
-impl<T, B> FromRequest<B> for Path<T>
+impl<T, S, B> FromRequest<S, B> for Path<T>
 where
     T: DeserializeOwned + Send,
     B: Send,
+    S: Send,
 {
     type Rejection = PathRejection;
 
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts<S, B>) -> Result<Self, Self::Rejection> {
         let params = match req.extensions_mut().get::<UrlParams>() {
             Some(UrlParams::Params(params)) => params,
             Some(UrlParams::InvalidUtf8InPathParam { key }) => {

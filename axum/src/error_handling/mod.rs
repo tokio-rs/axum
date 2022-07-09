@@ -163,7 +163,7 @@ macro_rules! impl_service {
             F: FnOnce($($ty),*, S::Error) -> Fut + Clone + Send + 'static,
             Fut: Future<Output = Res> + Send,
             Res: IntoResponse,
-            $( $ty: FromRequest<ReqBody> + Send,)*
+            $( $ty: FromRequest<(), ReqBody> + Send,)*
             ReqBody: Send + 'static,
             ResBody: HttpBody<Data = Bytes> + Send + 'static,
             ResBody::Error: Into<BoxError>,
@@ -185,7 +185,7 @@ macro_rules! impl_service {
                 let inner = std::mem::replace(&mut self.inner, clone);
 
                 let future = Box::pin(async move {
-                    let mut req = RequestParts::new(req);
+                    let mut req = RequestParts::new((), req);
 
                     $(
                         let $ty = match $ty::from_request(&mut req).await {

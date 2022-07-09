@@ -168,7 +168,7 @@ where
 
 impl<S, E, ReqBody, ResBody> Service<Request<ReqBody>> for FromExtractor<S, E>
 where
-    E: FromRequest<ReqBody> + 'static,
+    E: FromRequest<(), ReqBody> + 'static,
     ReqBody: Default + Send + 'static,
     S: Service<Request<ReqBody>, Response = Response<ResBody>> + Clone,
     ResBody: HttpBody<Data = Bytes> + Send + 'static,
@@ -185,7 +185,7 @@ where
 
     fn call(&mut self, req: Request<ReqBody>) -> Self::Future {
         let extract_future = Box::pin(async move {
-            let mut req = RequestParts::new(req);
+            let mut req = RequestParts::new((), req);
             let extracted = E::from_request(&mut req).await;
             (req, extracted)
         });
@@ -204,7 +204,7 @@ pin_project! {
     #[allow(missing_debug_implementations)]
     pub struct ResponseFuture<ReqBody, S, E>
     where
-        E: FromRequest<ReqBody>,
+        E: FromRequest<(), ReqBody>,
         S: Service<Request<ReqBody>>,
     {
         #[pin]
@@ -217,17 +217,19 @@ pin_project! {
     #[project = StateProj]
     enum State<ReqBody, S, E>
     where
-        E: FromRequest<ReqBody>,
+        E: FromRequest<(), ReqBody>,
         S: Service<Request<ReqBody>>,
     {
-        Extracting { future: BoxFuture<'static, (RequestParts<ReqBody>, Result<E, E::Rejection>)> },
+        Extracting {
+            future: BoxFuture<'static, (RequestParts<(), ReqBody>, Result<E, E::Rejection>)>,
+        },
         Call { #[pin] future: S::Future },
     }
 }
 
 impl<ReqBody, S, E, ResBody> Future for ResponseFuture<ReqBody, S, E>
 where
-    E: FromRequest<ReqBody>,
+    E: FromRequest<(), ReqBody>,
     S: Service<Request<ReqBody>, Response = Response<ResBody>>,
     ReqBody: Default,
     ResBody: HttpBody<Data = Bytes> + Send + 'static,
@@ -279,13 +281,14 @@ mod tests {
         struct RequireAuth;
 
         #[async_trait::async_trait]
-        impl<B> FromRequest<B> for RequireAuth
+        impl<S, B> FromRequest<S, B> for RequireAuth
         where
             B: Send,
+            S: Send,
         {
             type Rejection = StatusCode;
 
-            async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+            async fn from_request(req: &mut RequestParts<S, B>) -> Result<Self, Self::Rejection> {
                 if let Some(auth) = req
                     .headers()
                     .get(header::AUTHORIZATION)
