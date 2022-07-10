@@ -1,7 +1,7 @@
 [package]
 name = "axum"
 version = "0.5.11"
-categories = ["asynchronous", "network-programming", "web-programming"]
+categories = ["asynchronous", "network-programming", "web-programming::http-server"]
 description = "Web framework that focuses on ergonomics and modularity"
 edition = "2021"
 homepage = "https://github.com/tokio-rs/axum"
