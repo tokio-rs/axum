@@ -42,6 +42,7 @@ use crate::{
     routing::IntoMakeService,
     BoxError,
 };
+use axum_core::extract::{Mut, Once};
 use http::Request;
 use std::{fmt, future::Future, marker::PhantomData, pin::Pin};
 use tower::ServiceExt;
@@ -49,6 +50,7 @@ use tower_layer::Layer;
 use tower_service::Service;
 
 pub mod future;
+mod generated;
 mod into_service;
 
 pub use self::into_service::IntoService;
@@ -222,41 +224,6 @@ where
         Box::pin(async move { self().await.into_response() })
     }
 }
-
-macro_rules! impl_handler {
-    ( $($ty:ident),* $(,)? ) => {
-        #[allow(non_snake_case)]
-        impl<F, Fut, B, Res, $($ty,)*> Handler<($($ty,)*), B> for F
-        where
-            F: FnOnce($($ty,)*) -> Fut + Clone + Send + 'static,
-            Fut: Future<Output = Res> + Send,
-            B: Send + 'static,
-            Res: IntoResponse,
-            $( $ty: FromRequest<B> + Send,)*
-        {
-            type Future = Pin<Box<dyn Future<Output = Response> + Send>>;
-
-            fn call(self, req: Request<B>) -> Self::Future {
-                Box::pin(async move {
-                    let mut req = RequestParts::new(req);
-
-                    $(
-                        let $ty = match $ty::from_request(&mut req).await {
-                            Ok(value) => value,
-                            Err(rejection) => return rejection.into_response(),
-                        };
-                    )*
-
-                    let res = self($($ty,)*).await;
-
-                    res.into_response()
-                })
-            }
-        }
-    };
-}
-
-all_the_tuples!(impl_handler);
 
 /// A [`Service`] created from a [`Handler`] by applying a Tower middleware.
 ///

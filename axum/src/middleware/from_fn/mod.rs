@@ -20,6 +20,8 @@ use tower_http::ServiceBuilderExt;
 use tower_layer::Layer;
 use tower_service::Service;
 
+mod generated;
+
 /// Create a middleware from an async function.
 ///
 /// `from_fn` requires the function given to
@@ -253,66 +255,6 @@ where
 {
 }
 
-macro_rules! impl_service {
-    ( $($ty:ident),* $(,)? ) => {
-        #[allow(non_snake_case)]
-        impl<F, Fut, Out, S, ReqBody, ResBody, $($ty,)*> Service<Request<ReqBody>> for FromFn<F, S, ($($ty,)*)>
-        where
-            F: FnMut($($ty),*, Next<ReqBody>) -> Fut + Clone + Send + 'static,
-            $( $ty: FromRequest<ReqBody> + Send, )*
-            Fut: Future<Output = Out> + Send + 'static,
-            Out: IntoResponse + 'static,
-            S: Service<Request<ReqBody>, Response = Response<ResBody>, Error = Infallible>
-                + Clone
-                + Send
-                + 'static,
-            S::Future: Send + 'static,
-            ReqBody: Send + 'static,
-            ResBody: HttpBody<Data = Bytes> + Send + 'static,
-            ResBody::Error: Into<BoxError>,
-        {
-            type Response = Response;
-            type Error = Infallible;
-            type Future = ResponseFuture;
-
-            fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-                self.inner.poll_ready(cx)
-            }
-
-            fn call(&mut self, req: Request<ReqBody>) -> Self::Future {
-                let not_ready_inner = self.inner.clone();
-                let ready_inner = std::mem::replace(&mut self.inner, not_ready_inner);
-
-                let mut f = self.f.clone();
-
-                let future = Box::pin(async move {
-                    let mut parts = RequestParts::new(req);
-                    $(
-                        let $ty = match $ty::from_request(&mut parts).await {
-                            Ok(value) => value,
-                            Err(rejection) => return rejection.into_response(),
-                        };
-                    )*
-
-                    let inner = ServiceBuilder::new()
-                        .boxed_clone()
-                        .map_response_body(body::boxed)
-                        .service(ready_inner);
-                    let next = Next { inner };
-
-                    f($($ty),*, next).await.into_response()
-                });
-
-                ResponseFuture {
-                    inner: future
-                }
-            }
-        }
-    };
-}
-
-all_the_tuples!(impl_service);
-
 impl<F, S, T> fmt::Debug for FromFn<F, S, T>
 where
     S: fmt::Debug,
@@ -371,6 +313,8 @@ impl fmt::Debug for ResponseFuture {
 mod tests {
     use super::*;
     use crate::{body::Empty, routing::get, Router};
+    use async_trait::async_trait;
+    use axum_core::extract::{FromRequest, Mut, Once, RequestParts};
     use http::{HeaderMap, StatusCode};
     use tower::ServiceExt;
 
@@ -403,5 +347,63 @@ mod tests {
         assert_eq!(res.status(), StatusCode::OK);
         let body = hyper::body::to_bytes(res).await.unwrap();
         assert_eq!(&body[..], b"ok");
+    }
+
+    // this just needs to compile
+    #[allow(dead_code)]
+    fn running_extractor() {
+        struct MyExtractorAny;
+
+        #[async_trait]
+        impl<R, B> FromRequest<R, B> for MyExtractorAny
+        where
+            B: Send,
+        {
+            type Rejection = ();
+
+            async fn from_request(_req: &mut RequestParts<R, B>) -> Result<Self, Self::Rejection> {
+                Ok(Self)
+            }
+        }
+
+        struct MyExtractorOnce;
+
+        #[async_trait]
+        impl<B> FromRequest<Once, B> for MyExtractorOnce
+        where
+            B: Send,
+        {
+            type Rejection = ();
+
+            async fn from_request(
+                _req: &mut RequestParts<Once, B>,
+            ) -> Result<Self, Self::Rejection> {
+                Ok(Self)
+            }
+        }
+
+        async fn run_mut<B>(req: Request<B>, next: Next<B>) -> Response
+        where
+            B: Send,
+        {
+            let mut req = RequestParts::<Mut, _>::new(req);
+            let _: MyExtractorAny = req.extract::<MyExtractorAny>().await.unwrap();
+            let req = req.into_request();
+            next.run(req).await
+        }
+
+        async fn run_once<B>(req: Request<B>, next: Next<B>) -> Response
+        where
+            B: Send,
+        {
+            let mut req = RequestParts::<Once, _>::new(req);
+            let _: MyExtractorAny = req.extract::<MyExtractorAny>().await.unwrap();
+            let req = req.try_into_request().unwrap();
+            next.run(req).await
+        }
+
+        let _: Router = Router::new()
+            .layer(from_fn(run_mut))
+            .layer(from_fn(run_once));
     }
 }

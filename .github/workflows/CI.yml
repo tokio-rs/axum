@@ -121,7 +121,7 @@ jobs:
           -p axum
           -p axum-extra
           -p axum-core
-          -p internal-minimal-versions
+          -p minimal-versions
           --all-features
           --all-targets
           --locked
@@ -135,7 +135,7 @@ jobs:
         command: test
         args: >
           -p axum-macros
-          -p internal-minimal-versions
+          -p minimal-versions
           --doc
           --all-features
           --locked

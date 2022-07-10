@@ -4,6 +4,7 @@ use crate::{
     response::{IntoResponse, Response},
     BoxError,
 };
+use axum_core::extract::Mut;
 use futures_util::{future::BoxFuture, ready};
 use http::Request;
 use pin_project_lite::pin_project;
@@ -47,13 +48,13 @@ use tower_service::Service;
 /// struct RequireAuth;
 ///
 /// #[async_trait]
-/// impl<B> FromRequest<B> for RequireAuth
+/// impl<R, B> FromRequest<R, B> for RequireAuth
 /// where
 ///     B: Send,
 /// {
 ///     type Rejection = StatusCode;
 ///
-///     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+///     async fn from_request(req: &mut RequestParts<R, B>) -> Result<Self, Self::Rejection> {
 ///         let auth_header = req
 ///             .headers()
 ///             .get(header::AUTHORIZATION)
@@ -168,7 +169,7 @@ where
 
 impl<S, E, ReqBody, ResBody> Service<Request<ReqBody>> for FromExtractor<S, E>
 where
-    E: FromRequest<ReqBody> + 'static,
+    E: FromRequest<Mut, ReqBody> + 'static,
     ReqBody: Default + Send + 'static,
     S: Service<Request<ReqBody>, Response = Response<ResBody>> + Clone,
     ResBody: HttpBody<Data = Bytes> + Send + 'static,
@@ -185,7 +186,7 @@ where
 
     fn call(&mut self, req: Request<ReqBody>) -> Self::Future {
         let extract_future = Box::pin(async move {
-            let mut req = RequestParts::new(req);
+            let mut req = RequestParts::<Mut, ReqBody>::new(req);
             let extracted = E::from_request(&mut req).await;
             (req, extracted)
         });
@@ -204,7 +205,7 @@ pin_project! {
     #[allow(missing_debug_implementations)]
     pub struct ResponseFuture<ReqBody, S, E>
     where
-        E: FromRequest<ReqBody>,
+        E: FromRequest<Mut, ReqBody>,
         S: Service<Request<ReqBody>>,
     {
         #[pin]
@@ -217,17 +218,17 @@ pin_project! {
     #[project = StateProj]
     enum State<ReqBody, S, E>
     where
-        E: FromRequest<ReqBody>,
+        E: FromRequest<Mut, ReqBody>,
         S: Service<Request<ReqBody>>,
     {
-        Extracting { future: BoxFuture<'static, (RequestParts<ReqBody>, Result<E, E::Rejection>)> },
+        Extracting { future: BoxFuture<'static, (RequestParts<Mut, ReqBody>, Result<E, E::Rejection>)> },
         Call { #[pin] future: S::Future },
     }
 }
 
 impl<ReqBody, S, E, ResBody> Future for ResponseFuture<ReqBody, S, E>
 where
-    E: FromRequest<ReqBody>,
+    E: FromRequest<Mut, ReqBody>,
     S: Service<Request<ReqBody>, Response = Response<ResBody>>,
     ReqBody: Default,
     ResBody: HttpBody<Data = Bytes> + Send + 'static,
@@ -246,7 +247,7 @@ where
                     match extracted {
                         Ok(_) => {
                             let mut svc = this.svc.take().expect("future polled after completion");
-                            let req = req.try_into_request().unwrap_or_default();
+                            let req = req.into_request();
                             let future = svc.call(req);
                             State::Call { future }
                         }
@@ -279,13 +280,13 @@ mod tests {
         struct RequireAuth;
 
         #[async_trait::async_trait]
-        impl<B> FromRequest<B> for RequireAuth
+        impl<R, B> FromRequest<R, B> for RequireAuth
         where
             B: Send,
         {
             type Rejection = StatusCode;
 
-            async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+            async fn from_request(req: &mut RequestParts<R, B>) -> Result<Self, Self::Rejection> {
                 if let Some(auth) = req
                     .headers()
                     .get(header::AUTHORIZATION)

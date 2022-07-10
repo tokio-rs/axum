@@ -7,13 +7,13 @@ use axum_macros::debug_handler;
 struct A;
 
 #[async_trait]
-impl<B> FromRequest<B> for A
+impl<R, B> FromRequest<R, B> for A
 where
     B: Send + 'static,
 {
     type Rejection = ();
 
-    async fn from_request(_req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+    async fn from_request(_req: &mut RequestParts<R, B>) -> Result<Self, Self::Rejection> {
         unimplemented!()
     }
 }

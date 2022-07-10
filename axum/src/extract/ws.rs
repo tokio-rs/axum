@@ -244,13 +244,13 @@ impl WebSocketUpgrade {
 }
 
 #[async_trait]
-impl<B> FromRequest<B> for WebSocketUpgrade
+impl<B, R> FromRequest<R, B> for WebSocketUpgrade
 where
     B: Send,
 {
     type Rejection = WebSocketUpgradeRejection;
 
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts<R, B>) -> Result<Self, Self::Rejection> {
         if req.method() != Method::GET {
             return Err(MethodNotGet.into());
         }
@@ -267,14 +267,13 @@ where
             return Err(InvalidWebSocketVersionHeader.into());
         }
 
-        let sec_websocket_key =
-            if let Some(key) = req.headers_mut().remove(header::SEC_WEBSOCKET_KEY) {
-                key
-            } else {
-                return Err(WebSocketKeyHeaderMissing.into());
-            };
+        let sec_websocket_key = if let Some(key) = req.headers().get(header::SEC_WEBSOCKET_KEY) {
+            key.clone()
+        } else {
+            return Err(WebSocketKeyHeaderMissing.into());
+        };
 
-        let on_upgrade = req.extensions_mut().remove::<OnUpgrade>().unwrap();
+        let on_upgrade = req.remove_extension::<OnUpgrade>().unwrap();
 
         let sec_websocket_protocol = req.headers().get(header::SEC_WEBSOCKET_PROTOCOL).cloned();
 
@@ -288,7 +287,7 @@ where
     }
 }
 
-fn header_eq<B>(req: &RequestParts<B>, key: HeaderName, value: &'static str) -> bool {
+fn header_eq<R, B>(req: &RequestParts<R, B>, key: HeaderName, value: &'static str) -> bool {
     if let Some(header) = req.headers().get(&key) {
         header.as_bytes().eq_ignore_ascii_case(value.as_bytes())
     } else {
@@ -296,7 +295,7 @@ fn header_eq<B>(req: &RequestParts<B>, key: HeaderName, value: &'static str) -> 
     }
 }
 
-fn header_contains<B>(req: &RequestParts<B>, key: HeaderName, value: &'static str) -> bool {
+fn header_contains<R, B>(req: &RequestParts<R, B>, key: HeaderName, value: &'static str) -> bool {
     let header = if let Some(header) = req.headers().get(&key) {
         header
     } else {

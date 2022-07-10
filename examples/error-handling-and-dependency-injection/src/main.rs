@@ -68,8 +68,8 @@ async fn users_show(
 
 /// Handler for `POST /users`.
 async fn users_create(
-    Json(params): Json<CreateUser>,
     Extension(user_repo): Extension<DynUserRepo>,
+    Json(params): Json<CreateUser>,
 ) -> Result<Json<User>, AppError> {
     let user = user_repo.create(params).await?;
 

@@ -1,5 +1,5 @@
 [package]
-name = "internal-minimal-versions"
+name = "minimal-versions"
 version = "0.1.0"
 edition = "2021"
 publish = false

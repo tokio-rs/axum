@@ -88,13 +88,13 @@ pub struct CookieJar {
 }
 
 #[async_trait]
-impl<B> FromRequest<B> for CookieJar
+impl<R, B> FromRequest<R, B> for CookieJar
 where
     B: Send,
 {
     type Rejection = Infallible;
 
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts<R, B>) -> Result<Self, Self::Rejection> {
         let mut jar = cookie_lib::CookieJar::new();
         for cookie in cookies_from_request(req) {
             jar.add_original(cookie);
@@ -103,8 +103,8 @@ where
     }
 }
 
-fn cookies_from_request<B>(
-    req: &mut RequestParts<B>,
+fn cookies_from_request<R, B>(
+    req: &mut RequestParts<R, B>,
 ) -> impl Iterator<Item = Cookie<'static>> + '_ {
     req.headers()
         .get_all(COOKIE)
