@@ -9,6 +9,7 @@ use crate::{
     routing::{future::RouteFuture, Fallback, MethodFilter, Route},
     BoxError,
 };
+use axum_core::response::IntoResponse;
 use bytes::BytesMut;
 use std::{
     convert::Infallible,
@@ -16,8 +17,7 @@ use std::{
     marker::PhantomData,
     task::{Context, Poll},
 };
-use tower::{service_fn, ServiceBuilder, ServiceExt};
-use tower_http::map_response_body::MapResponseBodyLayer;
+use tower::{service_fn, util::MapResponseLayer, ServiceBuilder, ServiceExt};
 use tower_layer::Layer;
 use tower_service::Service;
 
@@ -731,23 +731,16 @@ impl<ReqBody, E> MethodRouter<ReqBody, E> {
     }
 
     #[doc = include_str!("../docs/method_routing/layer.md")]
-    pub fn layer<L, NewReqBody, NewResBody, NewError>(
-        self,
-        layer: L,
-    ) -> MethodRouter<NewReqBody, NewError>
+    pub fn layer<L, NewReqBody, NewError>(self, layer: L) -> MethodRouter<NewReqBody, NewError>
     where
         L: Layer<Route<ReqBody, E>>,
-        L::Service: Service<Request<NewReqBody>, Response = Response<NewResBody>, Error = NewError>
-            + Clone
-            + Send
-            + 'static,
+        L::Service: Service<Request<NewReqBody>, Error = NewError> + Clone + Send + 'static,
+        <L::Service as Service<Request<NewReqBody>>>::Response: IntoResponse + 'static,
         <L::Service as Service<Request<NewReqBody>>>::Future: Send + 'static,
-        NewResBody: HttpBody<Data = Bytes> + Send + 'static,
-        NewResBody::Error: Into<BoxError>,
     {
         let layer = ServiceBuilder::new()
             .layer_fn(Route::new)
-            .layer(MapResponseBodyLayer::new(boxed))
+            .layer(MapResponseLayer::new(IntoResponse::into_response))
             .layer(layer)
             .into_inner();
         let layer_fn = |s| layer.layer(s);
@@ -768,20 +761,16 @@ impl<ReqBody, E> MethodRouter<ReqBody, E> {
     }
 
     #[doc = include_str!("../docs/method_routing/route_layer.md")]
-    pub fn route_layer<L, NewResBody>(self, layer: L) -> MethodRouter<ReqBody, E>
+    pub fn route_layer<L>(self, layer: L) -> MethodRouter<ReqBody, E>
     where
         L: Layer<Route<ReqBody, E>>,
-        L::Service: Service<Request<ReqBody>, Response = Response<NewResBody>, Error = E>
-            + Clone
-            + Send
-            + 'static,
+        L::Service: Service<Request<ReqBody>, Error = E> + Clone + Send + 'static,
+        <L::Service as Service<Request<ReqBody>>>::Response: IntoResponse + 'static,
         <L::Service as Service<Request<ReqBody>>>::Future: Send + 'static,
-        NewResBody: HttpBody<Data = Bytes> + Send + 'static,
-        NewResBody::Error: Into<BoxError>,
     {
         let layer = ServiceBuilder::new()
             .layer_fn(Route::new)
-            .layer(MapResponseBodyLayer::new(boxed))
+            .layer(MapResponseLayer::new(IntoResponse::into_response))
             .layer(layer)
             .into_inner();
         let layer_fn = |s| layer.layer(s);

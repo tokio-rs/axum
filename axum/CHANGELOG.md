@@ -21,12 +21,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **added:** Added `debug_handler` which is an attribute macro that improves
   type errors when applied to handler function. It is re-exported from
   `axum-macros`
+- **added:** Support any middleware response that implements `IntoResponse` ([#1152])
 
 [#1077]: https://github.com/tokio-rs/axum/pull/1077
 [#1088]: https://github.com/tokio-rs/axum/pull/1088
 [#1102]: https://github.com/tokio-rs/axum/pull/1102
 [#1119]: https://github.com/tokio-rs/axum/pull/1119
 [#1130]: https://github.com/tokio-rs/axum/pull/1130
+[#1152]: https://github.com/tokio-rs/axum/pull/1152
 [#924]: https://github.com/tokio-rs/axum/pull/924
 
 # 0.5.10 (28. June, 2022)
