@@ -728,11 +728,14 @@ async fn limited_body_with_streaming_body() {
 async fn extracting_state() {
     #[derive(Clone)]
     struct AppState {
+        value: i32,
         inner: InnerState,
     }
 
     #[derive(Clone)]
-    struct InnerState {}
+    struct InnerState {
+        value: i32,
+    }
 
     impl From<AppState> for InnerState {
         fn from(state: AppState) -> Self {
@@ -740,10 +743,31 @@ async fn extracting_state() {
         }
     }
 
-    async fn handler(State(_): State<AppState>, State(_): State<InnerState>) {}
+    async fn handler(State(outer): State<AppState>, State(inner): State<InnerState>) {
+        assert_eq!(outer.value, 1);
+        assert_eq!(inner.value, 2);
+    }
 
     let state = AppState {
-        inner: InnerState {},
+        value: 1,
+        inner: InnerState { value: 2 },
     };
-    let _: Router<AppState> = Router::with_state(state).route("/", get(handler));
+
+    let app = Router::with_state(state).route("/", get(handler));
+    let client = TestClient::new(app);
+
+    let res = client.get("/").send().await;
+    assert_eq!(res.status(), StatusCode::OK);
+}
+
+#[tokio::test]
+async fn explicitly_setting_state() {
+    let app = Router::with_state("...").route_service(
+        "/",
+        get(|State(state): State<&'static str>| async move { state }).with_state("foo"),
+    );
+
+    let client = TestClient::new(app);
+    let res = client.get("/").send().await;
+    assert_eq!(res.text().await, "foo");
 }

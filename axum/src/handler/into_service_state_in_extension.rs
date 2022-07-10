@@ -68,21 +68,18 @@ where
         Poll::Ready(Ok(()))
     }
 
-    fn call(&mut self, req: Request<B>) -> Self::Future {
+    fn call(&mut self, mut req: Request<B>) -> Self::Future {
         use futures_util::future::FutureExt;
 
         let state = req
-            .extensions()
-            .get::<S>()
-            .expect("state extension missing. This is a bug in axum, please file an issue")
-            .clone();
+            .extensions_mut()
+            .remove::<S>()
+            .expect("state extension missing. This is a bug in axum, please file an issue");
 
-        todo!()
+        let handler = self.handler.clone();
+        let future = Handler::call(handler, state, req);
+        let future = future.map(Ok as _);
 
-        // let handler = self.handler.clone();
-        // let future = Handler::call(handler, req);
-        // let future = future.map(Ok as _);
-
-        // super::future::IntoServiceFuture::new(future)
+        super::future::IntoServiceFuture::new(future)
     }
 }

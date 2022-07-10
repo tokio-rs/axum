@@ -84,7 +84,7 @@ pub struct RequestParts<S, B> {
 }
 
 impl<S, B> RequestParts<S, B> {
-    /// Create a new `RequestParts`.
+    /// Create a new `RequestParts` with the given state.
     ///
     /// You generally shouldn't need to construct this type yourself, unless
     /// using extractors outside of axum for example to implement a
@@ -252,6 +252,7 @@ impl<S, B> RequestParts<S, B> {
         self.body.take()
     }
 
+    /// Get a reference to the state.
     pub fn state(&self) -> &S {
         &self.state
     }

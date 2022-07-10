@@ -2,8 +2,8 @@
 members = [
     "axum",
     "axum-core",
-    # "axum-extra",
-    # "axum-macros",
+    "axum-extra",
+    "axum-macros",
 
     # internal crate used to bump the minimum versions we
     # get for some dependencies which otherwise wouldn't build

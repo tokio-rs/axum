@@ -2,13 +2,11 @@
 
 use axum::{
     handler::Handler,
-    http::Request,
-    response::{Redirect, Response},
-    routing::MethodRouter,
+    response::Redirect,
+    routing::{any, MethodRouter},
     Router,
 };
-use std::{convert::Infallible, future::ready};
-use tower_service::Service;
+use std::future::ready;
 
 mod resource;
 
@@ -250,27 +248,22 @@ where
         self.route(P::PATH, axum::routing::trace(handler))
     }
 
-    fn route_with_tsr(self, path: &str, method_router: MethodRouter<S, B>) -> Self
+    fn route_with_tsr(mut self, path: &str, method_router: MethodRouter<S, B>) -> Self
     where
         Self: Sized,
     {
-        todo!()
+        self = self.route(path, method_router);
 
-        // self = self.route(path, service);
+        let redirect = Redirect::permanent(path);
 
-        // let redirect = Redirect::permanent(path);
-
-        // if let Some(path_without_trailing_slash) = path.strip_suffix('/') {
-        //     self.route(
-        //         path_without_trailing_slash,
-        //         (move || ready(redirect.clone())).into_service(),
-        //     )
-        // } else {
-        //     self.route(
-        //         &format!("{}/", path),
-        //         (move || ready(redirect.clone())).into_service(),
-        //     )
-        // }
+        if let Some(path_without_trailing_slash) = path.strip_suffix('/') {
+            self.route(
+                path_without_trailing_slash,
+                any(move || ready(redirect.clone())),
+            )
+        } else {
+            self.route(&format!("{}/", path), any(move || ready(redirect.clone())))
+        }
     }
 }
 

@@ -1,5 +1,4 @@
 use super::*;
-use crate::handler::Handler;
 
 #[tokio::test]
 async fn basic() {
@@ -46,4 +45,16 @@ async fn or() {
     let res = client.get("/does-not-exist").send().await;
     assert_eq!(res.status(), StatusCode::OK);
     assert_eq!(res.text().await, "fallback");
+}
+
+#[tokio::test]
+async fn fallback_accessing_state() {
+    let app = Router::with_state("state")
+        .fallback(|State(state): State<&'static str>| async move { state });
+
+    let client = TestClient::new(app);
+
+    let res = client.get("/does-not-exist").send().await;
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.text().await, "state");
 }

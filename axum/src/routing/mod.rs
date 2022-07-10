@@ -3,7 +3,7 @@
 use self::{future::RouteFuture, not_found::NotFound};
 use crate::{
     body::{boxed, Body, Bytes, HttpBody},
-    extract::connect_info::IntoMakeServiceWithConnectInfo,
+    extract::{connect_info::IntoMakeServiceWithConnectInfo, Extension},
     handler::Handler,
     response::Response,
     routing::strip_prefix::StripPrefix,
@@ -143,8 +143,39 @@ where
     }
 
     pub fn route(mut self, path: &str, method_router: MethodRouter<S, B>) -> Self {
-        // self.route_service(path, method_router.with_state(self.state.clone()))
-        todo!()
+        if path.is_empty() {
+            panic!("Paths must start with a `/`. Use \"/\" for root routes");
+        } else if !path.starts_with('/') {
+            panic!("Paths must start with a `/`");
+        }
+
+        let id = RouteId::next();
+
+        let endpoint = if let Some((route_id, Endpoint::MethodRouter(prev_method_router))) = self
+            .node
+            .path_to_route_id
+            .get(path)
+            .and_then(|route_id| self.routes.get(route_id).map(|svc| (*route_id, svc)))
+        {
+            // if we're adding a new `MethodRouter` to a route that already has one just
+            // merge them. This makes `.route("/", get(_)).route("/", post(_))` work
+            let service = Endpoint::MethodRouter(prev_method_router.clone().merge(method_router));
+            self.routes.insert(route_id, service);
+            return self;
+        } else {
+            Endpoint::MethodRouter(method_router)
+        };
+
+        let mut node =
+            Arc::try_unwrap(Arc::clone(&self.node)).unwrap_or_else(|node| (*node).clone());
+        if let Err(err) = node.insert(path, id) {
+            self.panic_on_matchit_error(err);
+        }
+        self.node = Arc::new(node);
+
+        self.routes.insert(id, endpoint);
+
+        self
     }
 
     #[doc = include_str!("../docs/routing/route.md")]
@@ -153,54 +184,33 @@ where
         T: Service<Request<B>, Response = Response, Error = Infallible> + Clone + Send + 'static,
         T::Future: Send + 'static,
     {
-        todo!()
+        if path.is_empty() {
+            panic!("Paths must start with a `/`. Use \"/\" for root routes");
+        } else if !path.starts_with('/') {
+            panic!("Paths must start with a `/`");
+        }
 
-        // if path.is_empty() {
-        //     panic!("Paths must start with a `/`. Use \"/\" for root routes");
-        // } else if !path.starts_with('/') {
-        //     panic!("Paths must start with a `/`");
-        // }
+        let service = match try_downcast::<Router<S, B>, _>(service) {
+            Ok(_) => {
+                panic!("Invalid route: `Router::route` cannot be used with `Router`s. Use `Router::nest` instead")
+            }
+            Err(svc) => svc,
+        };
 
-        // let service = match try_downcast::<Router<S, B>, _>(service) {
-        //     Ok(_) => {
-        //         panic!("Invalid route: `Router::route` cannot be used with `Router`s. Use `Router::nest` instead")
-        //     }
-        //     Err(svc) => svc,
-        // };
+        let id = RouteId::next();
 
-        // let id = RouteId::next();
+        let endpoint = Endpoint::Route(Route::new(service));
 
-        // let service = match try_downcast::<MethodRouterWithState<S, B, Infallible>, _>(service) {
-        //     Ok(method_router) => {
-        //         if let Some((route_id, Endpoint::MethodRouter(prev_method_router))) = self
-        //             .node
-        //             .path_to_route_id
-        //             .get(path)
-        //             .and_then(|route_id| self.routes.get(route_id).map(|svc| (*route_id, svc)))
-        //         {
-        //             // if we're adding a new `MethodRouter` to a route that already has one just
-        //             // merge them. This makes `.route("/", get(_)).route("/", post(_))` work
-        //             let service =
-        //                 Endpoint::MethodRouter(prev_method_router.clone().merge(method_router));
-        //             self.routes.insert(route_id, service);
-        //             return self;
-        //         } else {
-        //             Endpoint::MethodRouter(method_router)
-        //         }
-        //     }
-        //     Err(service) => Endpoint::Route(Route::new(service)),
-        // };
+        let mut node =
+            Arc::try_unwrap(Arc::clone(&self.node)).unwrap_or_else(|node| (*node).clone());
+        if let Err(err) = node.insert(path, id) {
+            self.panic_on_matchit_error(err);
+        }
+        self.node = Arc::new(node);
 
-        // let mut node =
-        //     Arc::try_unwrap(Arc::clone(&self.node)).unwrap_or_else(|node| (*node).clone());
-        // if let Err(err) = node.insert(path, id) {
-        //     self.panic_on_matchit_error(err);
-        // }
-        // self.node = Arc::new(node);
+        self.routes.insert(id, endpoint);
 
-        // self.routes.insert(id, service);
-
-        // self
+        self
     }
 
     #[doc = include_str!("../docs/routing/nest.md")]
@@ -230,7 +240,9 @@ where
             // front
             Ok(router) => {
                 let Router {
-                    state,
+                    // nesting has changed in https://github.com/tokio-rs/axum/pull/1086
+                    // so once that is merged we can make sure states work currectly with nesting
+                    state: _,
                     mut routes,
                     node,
                     fallback,
@@ -286,12 +298,11 @@ where
     #[doc = include_str!("../docs/routing/merge.md")]
     pub fn merge<S2, R>(mut self, other: R) -> Self
     where
-        // TODO(david): can we use a different state type here? Since the state cannot be changed
-        // and has already been provided?
         R: Into<Router<S2, B>>,
+        S2: Clone + Send + Sync + 'static,
     {
         let Router {
-            state: _,
+            state,
             routes,
             node,
             fallback,
@@ -304,9 +315,14 @@ where
                 .get(&id)
                 .expect("no path for route id. This is a bug in axum. Please file an issue");
             self = match route {
-                Endpoint::MethodRouter(method_router) => {
-                    self.route(path, method_router.downcast_state())
-                }
+                Endpoint::MethodRouter(method_router) => self.route(
+                    path,
+                    method_router
+                        // this will set the state for each route
+                        // such we don't override the inner state later in `MethodRouterWithState`
+                        .layer(Extension(state.clone()))
+                        .downcast_state(),
+                ),
                 Endpoint::Route(route) => self.route_service(path, route),
             };
         }
@@ -513,6 +529,10 @@ where
         } else {
             panic!("Invalid route: {}", err);
         }
+    }
+
+    pub fn state(&self) -> &S {
+        &self.state
     }
 }
 

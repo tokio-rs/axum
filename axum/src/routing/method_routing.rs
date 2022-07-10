@@ -391,7 +391,9 @@ where
     ResBody: HttpBody<Data = Bytes> + Send + 'static,
     ResBody::Error: Into<BoxError>,
 {
-    MethodRouter::new().fallback(svc).skip_allow_header()
+    MethodRouter::new()
+        .fallback_service(svc)
+        .skip_allow_header()
 }
 
 top_level_handler_fn!(delete, DELETE);
@@ -684,6 +686,15 @@ where
     pub fn into_make_service_with_connect_info<C>(self) -> IntoMakeServiceWithConnectInfo<Self, C> {
         IntoMakeServiceWithConnectInfo::new(self)
     }
+
+    pub fn fallback<H, T>(self, handler: H) -> Self
+    where
+        H: Handler<T, S, B>,
+        T: 'static,
+        S: Clone + Send + Sync + 'static,
+    {
+        self.fallback_service(IntoServiceStateInExtension::new(handler))
+    }
 }
 
 impl<S, ReqBody, E> MethodRouter<S, ReqBody, E> {
@@ -735,7 +746,7 @@ impl<S, ReqBody, E> MethodRouter<S, ReqBody, E> {
     chained_service_fn!(trace_service, TRACE);
 
     #[doc = include_str!("../docs/method_routing/fallback.md")]
-    pub fn fallback<T, ResBody>(mut self, svc: T) -> Self
+    pub fn fallback_service<T, ResBody>(mut self, svc: T) -> Self
     where
         T: Service<Request<ReqBody>, Response = Response<ResBody>, Error = E>
             + Clone
@@ -1069,6 +1080,12 @@ pub struct MethodRouterWithState<S, B, E> {
     state: S,
 }
 
+impl<S, B, E> MethodRouterWithState<S, B, E> {
+    pub fn state(&self) -> &S {
+        &self.state
+    }
+}
+
 impl<S, B, E> Clone for MethodRouterWithState<S, B, E>
 where
     S: Clone,
@@ -1096,6 +1113,7 @@ where
 impl<S, B, E> Service<Request<B>> for MethodRouterWithState<S, B, E>
 where
     B: HttpBody,
+    S: Clone + Send + Sync + 'static,
 {
     type Response = Response;
     type Error = E;
@@ -1106,7 +1124,7 @@ where
         Poll::Ready(Ok(()))
     }
 
-    fn call(&mut self, req: Request<B>) -> Self::Future {
+    fn call(&mut self, mut req: Request<B>) -> Self::Future {
         macro_rules! call {
             (
                 $req:expr,
@@ -1125,23 +1143,26 @@ where
 
         let method = req.method().clone();
 
-        // set state in request extensions
-        todo!();
-
         // written with a pattern match like this to ensure we call all routes
-        let MethodRouter {
-            get,
-            head,
-            delete,
-            options,
-            patch,
-            post,
-            put,
-            trace,
-            fallback,
-            allow_header,
-            _request_body: _,
-        } = self.method_router;
+        let Self {
+            state,
+            method_router:
+                MethodRouter {
+                    get,
+                    head,
+                    delete,
+                    options,
+                    patch,
+                    post,
+                    put,
+                    trace,
+                    fallback,
+                    allow_header,
+                    _request_body: _,
+                },
+        } = self;
+
+        req.extensions_mut().insert(state.clone());
 
         call!(req, method, HEAD, head);
         call!(req, method, HEAD, get);
@@ -1171,7 +1192,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{body::Body, error_handling::HandleErrorLayer};
+    use crate::{body::Body, error_handling::HandleErrorLayer, extract::State};
     use axum_core::response::IntoResponse;
     use http::{header::ALLOW, HeaderMap};
     use std::time::Duration;
@@ -1265,8 +1286,7 @@ mod tests {
                     delete_service(ServeDir::new("."))
                         .handle_error(|_| async { StatusCode::NOT_FOUND }),
                 )
-                // TODO(david): add `fallback` and `fallback_service`
-                // .fallback((|| async { StatusCode::NOT_FOUND }).into_service())
+                .fallback(|| async { StatusCode::NOT_FOUND })
                 .put(ok)
                 .layer(
                     ServiceBuilder::new()
@@ -1324,47 +1344,48 @@ mod tests {
         assert!(!headers.contains_key(ALLOW));
     }
 
-    // TODO(david): add `fallback` and `fallback_service`
-    // #[tokio::test]
-    // async fn allow_header_with_fallback() {
-    //     let mut svc = MethodRouter::new().get(ok).fallback(
-    //         (|| async { (StatusCode::METHOD_NOT_ALLOWED, "Method not allowed") }).into_service(),
-    //     );
+    #[tokio::test]
+    async fn allow_header_with_fallback() {
+        let mut svc = MethodRouter::new()
+            .get(ok)
+            .fallback(|| async { (StatusCode::METHOD_NOT_ALLOWED, "Method not allowed") })
+            .with_state(());
 
-    //     let (status, headers, _) = call(Method::DELETE, &mut svc).await;
-    //     assert_eq!(status, StatusCode::METHOD_NOT_ALLOWED);
-    //     assert_eq!(headers[ALLOW], "GET,HEAD");
-    // }
+        let (status, headers, _) = call(Method::DELETE, &mut svc).await;
+        assert_eq!(status, StatusCode::METHOD_NOT_ALLOWED);
+        assert_eq!(headers[ALLOW], "GET,HEAD");
+    }
 
-    // #[tokio::test]
-    // async fn allow_header_with_fallback_that_sets_allow() {
-    //     async fn fallback(method: Method) -> Response {
-    //         if method == Method::POST {
-    //             "OK".into_response()
-    //         } else {
-    //             (
-    //                 StatusCode::METHOD_NOT_ALLOWED,
-    //                 [(ALLOW, "GET,POST")],
-    //                 "Method not allowed",
-    //             )
-    //                 .into_response()
-    //         }
-    //     }
+    #[tokio::test]
+    async fn allow_header_with_fallback_that_sets_allow() {
+        async fn fallback(method: Method) -> Response {
+            if method == Method::POST {
+                "OK".into_response()
+            } else {
+                (
+                    StatusCode::METHOD_NOT_ALLOWED,
+                    [(ALLOW, "GET,POST")],
+                    "Method not allowed",
+                )
+                    .into_response()
+            }
+        }
 
-    //     let mut svc = MethodRouter::new()
-    //         .get(ok)
-    //         .fallback(fallback.into_service());
+        let mut svc = MethodRouter::new()
+            .get(ok)
+            .fallback(fallback)
+            .with_state(());
 
-    //     let (status, _, _) = call(Method::GET, &mut svc).await;
-    //     assert_eq!(status, StatusCode::OK);
+        let (status, _, _) = call(Method::GET, &mut svc).await;
+        assert_eq!(status, StatusCode::OK);
 
-    //     let (status, _, _) = call(Method::POST, &mut svc).await;
-    //     assert_eq!(status, StatusCode::OK);
+        let (status, _, _) = call(Method::POST, &mut svc).await;
+        assert_eq!(status, StatusCode::OK);
 
-    //     let (status, headers, _) = call(Method::DELETE, &mut svc).await;
-    //     assert_eq!(status, StatusCode::METHOD_NOT_ALLOWED);
-    //     assert_eq!(headers[ALLOW], "GET,POST");
-    // }
+        let (status, headers, _) = call(Method::DELETE, &mut svc).await;
+        assert_eq!(status, StatusCode::METHOD_NOT_ALLOWED);
+        assert_eq!(headers[ALLOW], "GET,POST");
+    }
 
     #[tokio::test]
     #[should_panic(
@@ -1391,6 +1412,18 @@ mod tests {
     #[tokio::test]
     async fn head_get_does_not_overlap() {
         let _: MethodRouter<()> = head(ok).get(ok);
+    }
+
+    #[tokio::test]
+    async fn fallback_accessing_state() {
+        let mut svc = MethodRouter::new()
+            .fallback(|State(state): State<&'static str>| async move { state })
+            .with_state("state");
+
+        let (status, _, text) = call(Method::GET, &mut svc).await;
+
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(text, "state");
     }
 
     async fn call<S>(method: Method, svc: &mut S) -> (StatusCode, HeaderMap, String)
