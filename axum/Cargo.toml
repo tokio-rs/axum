@@ -1,6 +1,6 @@
 [package]
 name = "axum"
-version = "0.5.11"
+version = "0.5.12"
 categories = ["asynchronous", "network-programming", "web-programming::http-server"]
 description = "Web framework that focuses on ergonomics and modularity"
 edition = "2021"

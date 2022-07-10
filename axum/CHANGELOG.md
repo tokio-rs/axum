@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+- None.
+
+# 0.5.12 (10. July, 2022)
+
 - **added:** Added `debug_handler` which is an attribute macro that improves
   type errors when applied to handler function. It is re-exported from
   `axum-macros` ([#1144])
