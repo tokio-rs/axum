@@ -460,3 +460,33 @@ nested_route_test!(nest_9, nest = "/a", route = "/a/", expected = "/a/a/");
 nested_route_test!(nest_11, nest = "/a/", route = "/", expected = "/a/");
 nested_route_test!(nest_12, nest = "/a/", route = "/a", expected = "/a/a");
 nested_route_test!(nest_13, nest = "/a/", route = "/a/", expected = "/a/a/");
+
+#[tokio::test]
+async fn nesting_with_different_state() {
+    let inner = Router::with_state("inner".to_owned()).route(
+        "/foo",
+        get(|State(state): State<String>| async move { state }),
+    );
+
+    let outer = Router::with_state("outer")
+        .route(
+            "/foo",
+            get(|State(state): State<&'static str>| async move { state }),
+        )
+        .nest("/nested", inner)
+        .route(
+            "/bar",
+            get(|State(state): State<&'static str>| async move { state }),
+        );
+
+    let client = TestClient::new(outer);
+
+    let res = client.get("/foo").send().await;
+    assert_eq!(res.text().await, "outer");
+
+    let res = client.get("/nested/foo").send().await;
+    assert_eq!(res.text().await, "inner");
+
+    let res = client.get("/bar").send().await;
+    assert_eq!(res.text().await, "outer");
+}
