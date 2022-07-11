@@ -75,13 +75,19 @@ impl<T> Deref for Query<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::body::Body;
     use crate::extract::RequestParts;
     use http::Request;
     use serde::Deserialize;
     use std::fmt::Debug;
 
     async fn check<T: DeserializeOwned + PartialEq + Debug>(uri: impl AsRef<str>, value: T) {
-        let mut req = RequestParts::new(Request::builder().uri(uri.as_ref()).body(()).unwrap());
+        let mut req = RequestParts::new(
+            Request::builder()
+                .uri(uri.as_ref())
+                .body(Body::empty())
+                .unwrap(),
+        );
         assert_eq!(Query::<T>::from_request(&mut req).await.unwrap().0, value);
     }
 

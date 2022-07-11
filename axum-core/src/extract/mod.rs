@@ -5,8 +5,9 @@
 //! [`axum::extract`]: https://docs.rs/axum/latest/axum/extract/index.html
 
 use self::rejection::*;
-use crate::response::IntoResponse;
+use crate::{response::IntoResponse, BoxError};
 use async_trait::async_trait;
+use bytes::Bytes;
 use http::{Extensions, HeaderMap, Method, Request, Uri, Version};
 use std::convert::Infallible;
 
@@ -90,7 +91,11 @@ impl<B> RequestParts<B> {
     /// [`tower::Service`].
     ///
     /// [`tower::Service`]: https://docs.rs/tower/lastest/tower/trait.Service.html
-    pub fn new(req: Request<B>) -> Self {
+    pub fn new(req: Request<B>) -> Self
+    where
+        B: http_body::Body<Data = Bytes> + Send + 'static,
+        B::Error: Into<BoxError>,
+    {
         let (
             http::request::Parts {
                 method,

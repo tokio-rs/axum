@@ -267,7 +267,8 @@ macro_rules! impl_service {
                 + Send
                 + 'static,
             S::Future: Send + 'static,
-            ReqBody: Send + 'static,
+            ReqBody: HttpBody<Data = Bytes> + Send + 'static,
+            ReqBody::Error: Into<BoxError>,
             ResBody: HttpBody<Data = Bytes> + Send + 'static,
             ResBody::Error: Into<BoxError>,
         {

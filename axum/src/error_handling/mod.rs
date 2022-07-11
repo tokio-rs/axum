@@ -164,7 +164,8 @@ macro_rules! impl_service {
             Fut: Future<Output = Res> + Send,
             Res: IntoResponse,
             $( $ty: FromRequest<ReqBody> + Send,)*
-            ReqBody: Send + 'static,
+            ReqBody: HttpBody<Data = Bytes> + Send + 'static,
+            ReqBody::Error: Into<BoxError>,
             ResBody: HttpBody<Data = Bytes> + Send + 'static,
             ResBody::Error: Into<BoxError>,
         {

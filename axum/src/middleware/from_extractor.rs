@@ -169,7 +169,8 @@ where
 impl<S, E, ReqBody, ResBody> Service<Request<ReqBody>> for FromExtractor<S, E>
 where
     E: FromRequest<ReqBody> + 'static,
-    ReqBody: Default + Send + 'static,
+    ReqBody: HttpBody<Data = Bytes> + Default + Send + 'static,
+    ReqBody::Error: Into<BoxError>,
     S: Service<Request<ReqBody>, Response = Response<ResBody>> + Clone,
     ResBody: HttpBody<Data = Bytes> + Send + 'static,
     ResBody::Error: Into<BoxError>,

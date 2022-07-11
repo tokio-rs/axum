@@ -230,7 +230,8 @@ macro_rules! impl_handler {
         where
             F: FnOnce($($ty,)*) -> Fut + Clone + Send + 'static,
             Fut: Future<Output = Res> + Send,
-            B: Send + 'static,
+            B: HttpBody<Data = Bytes> + Send + 'static,
+            B::Error: Into<BoxError>,
             Res: IntoResponse,
             $( $ty: FromRequest<B> + Send,)*
         {
