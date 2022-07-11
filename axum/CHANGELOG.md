@@ -16,6 +16,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `/foo/`). That is no longer supported and such requests will now be sent to
   the fallback. Consider using `axum_extra::routing::RouterExt::route_with_tsr`
   if you want the old behavior ([#1119])
+- **fixed:** If `WebSocketUpgrade` cannot upgrade the connection it will return a
+  `WebSocketUpgradeRejection::ConnectionNotUpgradable` rejection ([#1135])
+- **changed:** `WebSocketUpgradeRejection` has a new variant `ConnectionNotUpgradable`
+  variant ([#1135])
 - **added** Implement `TryFrom<http:: Method>` for `MethodFilter` and use new `NoMatchingMethodFilter` error in case of failure ([#1130])
 - **added:** Support running extractors from `middleware::from_fn` functions ([#1088])
 - **added:** Added `debug_handler` which is an attribute macro that improves
@@ -27,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#1102]: https://github.com/tokio-rs/axum/pull/1102
 [#1119]: https://github.com/tokio-rs/axum/pull/1119
 [#1130]: https://github.com/tokio-rs/axum/pull/1130
+[#1135]: https://github.com/tokio-rs/axum/pull/1135
 [#924]: https://github.com/tokio-rs/axum/pull/924
 
 # 0.5.10 (28. June, 2022)
