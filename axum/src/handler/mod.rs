@@ -42,7 +42,7 @@ use crate::{
     routing::IntoMakeService,
 };
 use http::Request;
-use std::{fmt, future::Future, marker::PhantomData, pin::Pin};
+use std::{convert::Infallible, fmt, future::Future, marker::PhantomData, pin::Pin};
 use tower::ServiceExt;
 use tower_layer::Layer;
 use tower_service::Service;
@@ -285,9 +285,8 @@ where
 
 impl<S, T, ReqBody> Handler<T, ReqBody> for Layered<S, T>
 where
-    S: Service<Request<ReqBody>> + Clone + Send + 'static,
+    S: Service<Request<ReqBody>, Error = Infallible> + Clone + Send + 'static,
     S::Response: IntoResponse,
-    S::Error: IntoResponse,
     S::Future: Send,
     T: 'static,
     ReqBody: Send + 'static,
@@ -300,7 +299,7 @@ where
         let future: Map<_, fn(Result<S::Response, S::Error>) -> _> =
             self.svc.oneshot(req).map(|result| match result {
                 Ok(res) => res.into_response(),
-                Err(res) => res.into_response(),
+                Err(err) => match err {},
             });
 
         future::LayeredFuture::new(future)

@@ -22,6 +22,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   type errors when applied to handler function. It is re-exported from
   `axum-macros`
 - **added:** Support any middleware response that implements `IntoResponse` ([#1152])
+- **breaking:** Require middleware added with `Handler::layer` to have
+  `Infallible` as the error type ([#1152])
 
 [#1077]: https://github.com/tokio-rs/axum/pull/1077
 [#1088]: https://github.com/tokio-rs/axum/pull/1088
