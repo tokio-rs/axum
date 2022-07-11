@@ -45,13 +45,14 @@ impl FailedToBufferBody {
     where
         E: Into<BoxError>,
     {
-        let err = match err.into().downcast::<crate::Error>() {
-            Ok(err) => err,
-            Err(err) => return Self::UnknownBodyError(UnknownBodyError::from_err(err)),
-        };
-        match err.downcast_inner::<http_body::LengthLimitError>() {
-            Ok(err) => Self::LengthLimitError(LengthLimitError::from_err(err)),
-            Err(err) => Self::UnknownBodyError(UnknownBodyError::from_err(err)),
+        let err = err.into();
+        if err
+            .source()
+            .map_or(false, |source| source.is::<http_body::LengthLimitError>())
+        {
+            Self::LengthLimitError(LengthLimitError::from_err(err))
+        } else {
+            Self::UnknownBodyError(UnknownBodyError::from_err(err))
         }
     }
 }

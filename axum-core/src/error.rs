@@ -14,13 +14,6 @@ impl Error {
             inner: error.into(),
         }
     }
-
-    pub(crate) fn downcast_inner<T>(self) -> Result<Box<T>, BoxError>
-    where
-        T: std::error::Error + 'static,
-    {
-        self.inner.downcast()
-    }
 }
 
 impl fmt::Display for Error {

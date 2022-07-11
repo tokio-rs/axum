@@ -1,7 +1,7 @@
 //! Additional types for defining routes.
 
 use axum::{
-    body::BoxBody,
+    body::Body,
     handler::Handler,
     http::Request,
     response::{Redirect, Response},
@@ -162,10 +162,7 @@ pub trait RouterExt: sealed::Sealed {
     /// ```
     fn route_with_tsr<T>(self, path: &str, service: T) -> Self
     where
-        T: Service<Request<BoxBody>, Response = Response, Error = Infallible>
-            + Clone
-            + Send
-            + 'static,
+        T: Service<Request<Body>, Response = Response, Error = Infallible> + Clone + Send + 'static,
         T::Future: Send + 'static,
         Self: Sized;
 }
@@ -253,10 +250,7 @@ impl RouterExt for Router {
 
     fn route_with_tsr<T>(mut self, path: &str, service: T) -> Self
     where
-        T: Service<Request<BoxBody>, Response = Response, Error = Infallible>
-            + Clone
-            + Send
-            + 'static,
+        T: Service<Request<Body>, Response = Response, Error = Infallible> + Clone + Send + 'static,
         T::Future: Send + 'static,
         Self: Sized,
     {

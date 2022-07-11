@@ -1,6 +1,6 @@
 #![doc = include_str!("../docs/extract.md")]
 
-use axum_core::body::BoxBody;
+use axum_core::body::Body;
 use http::header;
 use rejection::*;
 
@@ -17,7 +17,7 @@ mod raw_query;
 mod request_parts;
 
 #[doc(inline)]
-pub use axum_core::extract::{FromRequest, Request, RequestParts};
+pub use axum_core::extract::{FromRequest, RequestParts};
 
 #[doc(inline)]
 #[allow(deprecated)]
@@ -70,7 +70,7 @@ pub use self::ws::WebSocketUpgrade;
 #[doc(no_inline)]
 pub use crate::TypedHeader;
 
-pub(crate) fn take_body(req: &mut RequestParts) -> Result<BoxBody, BodyAlreadyExtracted> {
+pub(crate) fn take_body(req: &mut RequestParts) -> Result<Body, BodyAlreadyExtracted> {
     req.take_body().ok_or_else(BodyAlreadyExtracted::default)
 }
 

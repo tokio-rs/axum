@@ -108,7 +108,7 @@ impl<T> Deref for Form<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::body::{Empty, Full};
+    use crate::body::Body;
     use crate::extract::RequestParts;
     use http::Request;
     use serde::{Deserialize, Serialize};
@@ -124,7 +124,7 @@ mod tests {
         let mut req = RequestParts::new(
             Request::builder()
                 .uri(uri.as_ref())
-                .body(Empty::<Bytes>::new())
+                .body(Body::empty())
                 .unwrap(),
         );
         assert_eq!(Form::<T>::from_request(&mut req).await.unwrap().0, value);
@@ -139,9 +139,7 @@ mod tests {
                     http::header::CONTENT_TYPE,
                     mime::APPLICATION_WWW_FORM_URLENCODED.as_ref(),
                 )
-                .body(Full::<Bytes>::new(
-                    serde_urlencoded::to_string(&value).unwrap().into(),
-                ))
+                .body(Body::from(serde_urlencoded::to_string(&value).unwrap()))
                 .unwrap(),
         );
         assert_eq!(Form::<T>::from_request(&mut req).await.unwrap().0, value);
@@ -205,13 +203,12 @@ mod tests {
                 .uri("http://example.com/test")
                 .method(Method::POST)
                 .header(http::header::CONTENT_TYPE, mime::APPLICATION_JSON.as_ref())
-                .body(Full::<Bytes>::new(
+                .body(Body::from(
                     serde_urlencoded::to_string(&Pagination {
                         size: Some(10),
                         page: None,
                     })
-                    .unwrap()
-                    .into(),
+                    .unwrap(),
                 ))
                 .unwrap(),
         );

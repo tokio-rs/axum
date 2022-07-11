@@ -1,5 +1,5 @@
 use axum::{
-    body::BoxBody,
+    body::Body,
     error_handling::HandleError,
     response::Response,
     routing::{get_service, Route},
@@ -151,8 +151,8 @@ impl<F, T> From<SpaRouter<T, F>> for Router
 where
     F: Clone + Send + 'static,
     HandleError<Route<io::Error>, F, T>:
-        Service<Request<BoxBody>, Response = Response, Error = Infallible>,
-    <HandleError<Route<io::Error>, F, T> as Service<Request<BoxBody>>>::Future: Send,
+        Service<Request<Body>, Response = Response, Error = Infallible>,
+    <HandleError<Route<io::Error>, F, T> as Service<Request<Body>>>::Future: Send,
     T: 'static,
 {
     fn from(spa: SpaRouter<T, F>) -> Self {

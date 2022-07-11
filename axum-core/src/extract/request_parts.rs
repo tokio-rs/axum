@@ -1,12 +1,12 @@
 use super::{rejection::*, FromRequest, RequestParts};
-use crate::body::BoxBody;
+use crate::body::Body;
 use async_trait::async_trait;
 use bytes::Bytes;
 use http::{Extensions, HeaderMap, Method, Request, Uri, Version};
 use std::convert::Infallible;
 
 #[async_trait]
-impl FromRequest for Request<BoxBody> {
+impl FromRequest for Request<Body> {
     type Rejection = BodyAlreadyExtracted;
 
     async fn from_request(req: &mut RequestParts) -> Result<Self, Self::Rejection> {
@@ -68,7 +68,7 @@ impl FromRequest for HeaderMap {
 }
 
 #[async_trait]
-impl FromRequest for BoxBody {
+impl FromRequest for Body {
     type Rejection = BodyAlreadyExtracted;
 
     async fn from_request(req: &mut RequestParts) -> Result<Self, Self::Rejection> {
@@ -140,6 +140,6 @@ fn unwrap_infallible<T>(result: Result<T, Infallible>) -> T {
     }
 }
 
-pub(crate) fn take_body(req: &mut RequestParts) -> Result<BoxBody, BodyAlreadyExtracted> {
+pub(crate) fn take_body(req: &mut RequestParts) -> Result<Body, BodyAlreadyExtracted> {
     req.take_body().ok_or(BodyAlreadyExtracted)
 }

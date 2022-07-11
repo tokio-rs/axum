@@ -5,20 +5,16 @@
 //! [`axum::extract`]: https://docs.rs/axum/latest/axum/extract/index.html
 
 use self::rejection::*;
-use crate::{body::BoxBody, response::IntoResponse, BoxError};
+use crate::{body::Body, response::IntoResponse, BoxError};
 use async_trait::async_trait;
 use bytes::Bytes;
-use http::{Extensions, HeaderMap, Method, Uri, Version};
+use http::{Extensions, HeaderMap, Method, Request, Uri, Version};
 use std::convert::Infallible;
 
 pub mod rejection;
 
 mod request_parts;
 mod tuple;
-
-/// Type alias for [`http::Request`] whose body type defaults to [`BoxBody`], the most common body
-/// type used with axum.
-pub type Request<T = BoxBody> = http::Request<T>;
 
 /// Types that can be created from requests.
 ///
@@ -84,7 +80,7 @@ pub struct RequestParts {
     version: Version,
     headers: HeaderMap,
     extensions: Extensions,
-    body: Option<BoxBody>,
+    body: Option<Body>,
 }
 
 impl RequestParts {
@@ -112,15 +108,13 @@ impl RequestParts {
             body,
         ) = req.into_parts();
 
-        let body = crate::body::boxed(body);
-
         RequestParts {
             method,
             uri,
             version,
             headers,
             extensions,
-            body: Some(body),
+            body: Some(Body::wrap_body(body)),
         }
     }
 
@@ -165,7 +159,7 @@ impl RequestParts {
     /// been called.
     ///
     /// [`take_body`]: RequestParts::take_body
-    pub fn try_into_request(self) -> Result<Request<BoxBody>, BodyAlreadyExtracted> {
+    pub fn try_into_request(self) -> Result<Request<Body>, BodyAlreadyExtracted> {
         let Self {
             method,
             uri,
@@ -243,7 +237,7 @@ impl RequestParts {
     /// Gets a reference to the request body.
     ///
     /// Returns `None` if the body has been taken by another extractor.
-    pub fn body(&self) -> Option<&BoxBody> {
+    pub fn body(&self) -> Option<&Body> {
         self.body.as_ref()
     }
 
@@ -251,12 +245,12 @@ impl RequestParts {
     ///
     /// Returns `None` if the body has been taken by another extractor.
     // this returns `&mut Option<B>` rather than `Option<&mut B>` such that users can use it to set the body.
-    pub fn body_mut(&mut self) -> &mut Option<BoxBody> {
+    pub fn body_mut(&mut self) -> &mut Option<Body> {
         &mut self.body
     }
 
     /// Takes the body out of the request, leaving a `None` in its place.
-    pub fn take_body(&mut self) -> Option<BoxBody> {
+    pub fn take_body(&mut self) -> Option<Body> {
         self.body.take()
     }
 }

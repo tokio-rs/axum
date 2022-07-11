@@ -410,8 +410,8 @@ impl std::error::Error for FailedToDeserializePathParams {}
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{extract::Request, routing::get, test_helpers::*, Router};
-    use http::StatusCode;
+    use crate::{body::Body, routing::get, test_helpers::*, Router};
+    use http::{Request, StatusCode};
     use std::collections::HashMap;
 
     #[tokio::test]
@@ -518,7 +518,7 @@ mod tests {
 
     #[tokio::test]
     async fn when_extensions_are_missing() {
-        let app = Router::new().route("/:key", get(|_: Request, _: Path<String>| async {}));
+        let app = Router::new().route("/:key", get(|_: Request<Body>, _: Path<String>| async {}));
 
         let client = TestClient::new(app);
 

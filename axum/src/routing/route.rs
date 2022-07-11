@@ -1,8 +1,8 @@
 use crate::{
-    body::{boxed, Empty, HttpBody},
+    body::{boxed, Body, Empty, HttpBody},
     response::Response,
 };
-use axum_core::{body::BoxBody, BoxError};
+use axum_core::BoxError;
 use bytes::Bytes;
 use http::{
     header::{self, CONTENT_LENGTH},
@@ -26,12 +26,12 @@ use tower_service::Service;
 ///
 /// You normally shouldn't need to care about this type. It's used in
 /// [`Router::layer`](super::Router::layer).
-pub struct Route<E = Infallible>(BoxCloneService<Request<BoxBody>, Response, E>);
+pub struct Route<E = Infallible>(BoxCloneService<Request<Body>, Response, E>);
 
 impl<E> Route<E> {
     pub(super) fn new<T>(svc: T) -> Self
     where
-        T: Service<Request<BoxBody>, Response = Response, Error = E> + Clone + Send + 'static,
+        T: Service<Request<Body>, Response = Response, Error = E> + Clone + Send + 'static,
         T::Future: Send + 'static,
     {
         Self(BoxCloneService::new(svc))
@@ -39,8 +39,8 @@ impl<E> Route<E> {
 
     pub(crate) fn oneshot_inner(
         &mut self,
-        req: Request<BoxBody>,
-    ) -> Oneshot<BoxCloneService<Request<BoxBody>, Response, E>, Request<BoxBody>> {
+        req: Request<Body>,
+    ) -> Oneshot<BoxCloneService<Request<Body>, Response, E>, Request<Body>> {
         self.0.clone().oneshot(req)
     }
 }
@@ -73,7 +73,7 @@ where
 
     #[inline]
     fn call(&mut self, req: Request<B>) -> Self::Future {
-        let req = req.map(crate::body::boxed);
+        let req = req.map(Body::wrap_body);
         RouteFuture::from_future(self.oneshot_inner(req))
     }
 }
@@ -94,8 +94,8 @@ pin_project! {
         Future {
             #[pin]
             future: Oneshot<
-                BoxCloneService<Request<BoxBody>, Response, E>,
-                Request<BoxBody>,
+                BoxCloneService<Request<Body>, Response, E>,
+                Request<Body>,
             >,
         },
         Response {
@@ -106,7 +106,7 @@ pin_project! {
 
 impl<E> RouteFuture<E> {
     pub(crate) fn from_future(
-        future: Oneshot<BoxCloneService<Request<BoxBody>, Response, E>, Request<BoxBody>>,
+        future: Oneshot<BoxCloneService<Request<Body>, Response, E>, Request<Body>>,
     ) -> Self {
         Self {
             kind: RouteFutureKind::Future { future },

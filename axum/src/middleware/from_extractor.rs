@@ -4,7 +4,7 @@ use crate::{
     response::{IntoResponse, Response},
     BoxError,
 };
-use axum_core::body::BoxBody;
+use axum_core::body::Body;
 use futures_util::{future::BoxFuture, ready};
 use http::Request;
 use pin_project_lite::pin_project;
@@ -167,12 +167,10 @@ where
     }
 }
 
-impl<S, E, ReqBody, ResBody> Service<Request<ReqBody>> for FromExtractor<S, E>
+impl<S, E, ResBody> Service<Request<Body>> for FromExtractor<S, E>
 where
     E: FromRequest + 'static,
-    ReqBody: HttpBody<Data = Bytes> + Default + Send + 'static,
-    ReqBody::Error: Into<BoxError>,
-    S: Service<Request<BoxBody>, Response = Response<ResBody>> + Clone,
+    S: Service<Request<Body>, Response = Response<ResBody>> + Clone,
     ResBody: HttpBody<Data = Bytes> + Send + 'static,
     ResBody::Error: Into<BoxError>,
 {
@@ -185,7 +183,7 @@ where
         self.inner.poll_ready(cx)
     }
 
-    fn call(&mut self, req: Request<ReqBody>) -> Self::Future {
+    fn call(&mut self, req: Request<Body>) -> Self::Future {
         let extract_future = Box::pin(async move {
             let mut req = RequestParts::new(req);
             let extracted = E::from_request(&mut req).await;
@@ -207,7 +205,7 @@ pin_project! {
     pub struct ResponseFuture<S, E>
     where
         E: FromRequest,
-        S: Service<Request<BoxBody>>,
+        S: Service<Request<Body>>,
     {
         #[pin]
         state: State<S, E>,
@@ -220,7 +218,7 @@ pin_project! {
     enum State<S, E>
     where
         E: FromRequest,
-        S: Service<Request<BoxBody>>,
+        S: Service<Request<Body>>,
     {
         Extracting { future: BoxFuture<'static, (RequestParts, Result<E, E::Rejection>)> },
         Call { #[pin] future: S::Future },
@@ -230,7 +228,7 @@ pin_project! {
 impl<S, E, ResBody> Future for ResponseFuture<S, E>
 where
     E: FromRequest,
-    S: Service<Request<BoxBody>, Response = Response<ResBody>>,
+    S: Service<Request<Body>, Response = Response<ResBody>>,
     ResBody: HttpBody<Data = Bytes> + Send + 'static,
     ResBody::Error: Into<BoxError>,
 {

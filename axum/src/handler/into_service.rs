@@ -1,9 +1,5 @@
 use super::Handler;
-use crate::{
-    body::{self, Bytes, HttpBody},
-    response::Response,
-    BoxError,
-};
+use crate::{body::Body, response::Response};
 use http::Request;
 use std::{
     convert::Infallible,
@@ -57,11 +53,9 @@ where
     }
 }
 
-impl<H, T, B> Service<Request<B>> for IntoService<H, T>
+impl<H, T> Service<Request<Body>> for IntoService<H, T>
 where
     H: Handler<T> + Clone + Send + 'static,
-    B: HttpBody<Data = Bytes> + Send + 'static,
-    B::Error: Into<BoxError>,
 {
     type Response = Response;
     type Error = Infallible;
@@ -75,10 +69,9 @@ where
         Poll::Ready(Ok(()))
     }
 
-    fn call(&mut self, req: Request<B>) -> Self::Future {
+    fn call(&mut self, req: Request<Body>) -> Self::Future {
         use futures_util::future::FutureExt;
 
-        let req = req.map(body::boxed);
         let handler = self.handler.clone();
         let future = Handler::call(handler, req);
         let future = future.map(Ok as _);

@@ -1,5 +1,5 @@
 use crate::{
-    body::{self, Bytes, HttpBody},
+    body::{self, Body, Bytes, HttpBody},
     response::{IntoResponse, Response},
     BoxError,
 };
@@ -256,19 +256,17 @@ where
 macro_rules! impl_service {
     ( $($ty:ident),* $(,)? ) => {
         #[allow(non_snake_case)]
-        impl<F, Fut, Out, S, ReqBody, ResBody, $($ty,)*> Service<Request<ReqBody>> for FromFn<F, S, ($($ty,)*)>
+        impl<F, Fut, Out, S, ResBody, $($ty,)*> Service<Request<Body>> for FromFn<F, S, ($($ty,)*)>
         where
-            F: FnMut($($ty),*, Next<ReqBody>) -> Fut + Clone + Send + 'static,
+            F: FnMut($($ty),*, Next) -> Fut + Clone + Send + 'static,
             $( $ty: FromRequest + Send, )*
             Fut: Future<Output = Out> + Send + 'static,
             Out: IntoResponse + 'static,
-            S: Service<Request<ReqBody>, Response = Response<ResBody>, Error = Infallible>
+            S: Service<Request<Body>, Response = Response<ResBody>, Error = Infallible>
                 + Clone
                 + Send
                 + 'static,
             S::Future: Send + 'static,
-            ReqBody: HttpBody<Data = Bytes> + Send + 'static,
-            ReqBody::Error: Into<BoxError>,
             ResBody: HttpBody<Data = Bytes> + Send + 'static,
             ResBody::Error: Into<BoxError>,
         {
@@ -280,7 +278,7 @@ macro_rules! impl_service {
                 self.inner.poll_ready(cx)
             }
 
-            fn call(&mut self, req: Request<ReqBody>) -> Self::Future {
+            fn call(&mut self, req: Request<Body>) -> Self::Future {
                 let not_ready_inner = self.inner.clone();
                 let ready_inner = std::mem::replace(&mut self.inner, not_ready_inner);
 
@@ -327,25 +325,18 @@ where
 }
 
 /// The remainder of a middleware stack, including the handler.
-pub struct Next<ReqBody> {
-    inner: BoxCloneService<Request<ReqBody>, Response, Infallible>,
+#[derive(Debug)]
+pub struct Next {
+    inner: BoxCloneService<Request<Body>, Response, Infallible>,
 }
 
-impl<ReqBody> Next<ReqBody> {
+impl Next {
     /// Execute the remaining middleware stack.
-    pub async fn run(mut self, req: Request<ReqBody>) -> Response {
+    pub async fn run(mut self, req: Request<Body>) -> Response {
         match self.inner.call(req).await {
             Ok(res) => res,
             Err(err) => match err {},
         }
-    }
-}
-
-impl<ReqBody> fmt::Debug for Next<ReqBody> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("FromFnLayer")
-            .field("inner", &self.inner)
-            .finish()
     }
 }
 
@@ -371,13 +362,13 @@ impl fmt::Debug for ResponseFuture {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{body::Empty, routing::get, Router};
+    use crate::{routing::get, Router};
     use http::{HeaderMap, StatusCode};
     use tower::ServiceExt;
 
     #[tokio::test]
     async fn basic() {
-        async fn insert_header<B>(mut req: Request<B>, next: Next<B>) -> impl IntoResponse {
+        async fn insert_header(mut req: Request<Body>, next: Next) -> impl IntoResponse {
             req.headers_mut()
                 .insert("x-axum-test", "ok".parse().unwrap());
 
@@ -393,12 +384,7 @@ mod tests {
             .layer(from_fn(insert_header));
 
         let res = app
-            .oneshot(
-                Request::builder()
-                    .uri("/")
-                    .body(body::boxed(Empty::new()))
-                    .unwrap(),
-            )
+            .oneshot(Request::builder().uri("/").body(Body::empty()).unwrap())
             .await
             .unwrap();
         assert_eq!(res.status(), StatusCode::OK);

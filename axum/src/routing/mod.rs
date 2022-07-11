@@ -2,7 +2,7 @@
 
 use self::{future::RouteFuture, not_found::NotFound};
 use crate::{
-    body::{boxed, BoxBody, Bytes, HttpBody},
+    body::{boxed, Body, Bytes, HttpBody},
     extract::connect_info::IntoMakeServiceWithConnectInfo,
     response::Response,
     routing::strip_prefix::StripPrefix,
@@ -96,10 +96,7 @@ impl Router {
     #[doc = include_str!("../docs/routing/route.md")]
     pub fn route<T>(mut self, path: &str, service: T) -> Self
     where
-        T: Service<Request<BoxBody>, Response = Response, Error = Infallible>
-            + Clone
-            + Send
-            + 'static,
+        T: Service<Request<Body>, Response = Response, Error = Infallible> + Clone + Send + 'static,
         T::Future: Send + 'static,
     {
         if path.is_empty() {
@@ -153,10 +150,7 @@ impl Router {
     #[doc = include_str!("../docs/routing/nest.md")]
     pub fn nest<T>(mut self, mut path: &str, svc: T) -> Self
     where
-        T: Service<Request<BoxBody>, Response = Response, Error = Infallible>
-            + Clone
-            + Send
-            + 'static,
+        T: Service<Request<Body>, Response = Response, Error = Infallible> + Clone + Send + 'static,
         T::Future: Send + 'static,
     {
         if path.is_empty() {
@@ -274,9 +268,9 @@ impl Router {
     where
         L: Layer<Route>,
         L::Service:
-            Service<Request<BoxBody>, Response = Response<NewResBody>> + Clone + Send + 'static,
-        <L::Service as Service<Request<BoxBody>>>::Error: Into<Infallible> + 'static,
-        <L::Service as Service<Request<BoxBody>>>::Future: Send + 'static,
+            Service<Request<Body>, Response = Response<NewResBody>> + Clone + Send + 'static,
+        <L::Service as Service<Request<Body>>>::Error: Into<Infallible> + 'static,
+        <L::Service as Service<Request<Body>>>::Future: Send + 'static,
         NewResBody: HttpBody<Data = Bytes> + Send + 'static,
         NewResBody::Error: Into<BoxError>,
     {
@@ -315,9 +309,9 @@ impl Router {
     where
         L: Layer<Route>,
         L::Service:
-            Service<Request<BoxBody>, Response = Response<NewResBody>> + Clone + Send + 'static,
-        <L::Service as Service<Request<BoxBody>>>::Error: Into<Infallible> + 'static,
-        <L::Service as Service<Request<BoxBody>>>::Future: Send + 'static,
+            Service<Request<Body>, Response = Response<NewResBody>> + Clone + Send + 'static,
+        <L::Service as Service<Request<Body>>>::Error: Into<Infallible> + 'static,
+        <L::Service as Service<Request<Body>>>::Future: Send + 'static,
         NewResBody: HttpBody<Data = Bytes> + Send + 'static,
         NewResBody::Error: Into<BoxError>,
     {
@@ -352,10 +346,7 @@ impl Router {
     #[doc = include_str!("../docs/routing/fallback.md")]
     pub fn fallback<T>(mut self, svc: T) -> Self
     where
-        T: Service<Request<BoxBody>, Response = Response, Error = Infallible>
-            + Clone
-            + Send
-            + 'static,
+        T: Service<Request<Body>, Response = Response, Error = Infallible> + Clone + Send + 'static,
         T::Future: Send + 'static,
     {
         self.fallback = Fallback::Custom(Route::new(svc));
@@ -398,7 +389,7 @@ impl Router {
     fn call_route(
         &self,
         match_: matchit::Match<&RouteId>,
-        mut req: Request<BoxBody>,
+        mut req: Request<Body>,
     ) -> RouteFuture<Infallible> {
         let id = *match_.value;
 
@@ -469,7 +460,7 @@ where
 
     #[inline]
     fn call(&mut self, req: Request<B>) -> Self::Future {
-        let mut req = req.map(boxed);
+        let mut req = req.map(Body::wrap_body);
 
         #[cfg(feature = "original-uri")]
         {

@@ -144,7 +144,7 @@ async fn nested_url_extractor() {
                 .route("/baz", get(|uri: Uri| async move { uri.to_string() }))
                 .route(
                     "/qux",
-                    get(|req: Request| async move { req.uri().to_string() }),
+                    get(|req: Request<Body>| async move { req.uri().to_string() }),
                 ),
         ),
     );
@@ -188,7 +188,7 @@ async fn nested_service_sees_stripped_uri() {
             "/bar",
             Router::new().route(
                 "/baz",
-                service_fn(|req: Request| async move {
+                service_fn(|req: Request<Body>| async move {
                     let body = boxed(Body::from(req.uri().to_string()));
                     Ok::<_, Infallible>(Response::new(body))
                 }),

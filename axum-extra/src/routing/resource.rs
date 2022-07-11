@@ -1,5 +1,5 @@
 use axum::{
-    body::BoxBody,
+    body::Body,
     handler::Handler,
     http::Request,
     response::Response,
@@ -138,10 +138,7 @@ impl Resource {
     /// The routes will be nested at `/{resource_name}/:{resource_name}_id`.
     pub fn nest<T>(mut self, svc: T) -> Self
     where
-        T: Service<Request<BoxBody>, Response = Response, Error = Infallible>
-            + Clone
-            + Send
-            + 'static,
+        T: Service<Request<Body>, Response = Response, Error = Infallible> + Clone + Send + 'static,
         T::Future: Send + 'static,
     {
         let path = self.show_update_destroy_path();
@@ -154,10 +151,7 @@ impl Resource {
     /// The routes will be nested at `/{resource_name}`.
     pub fn nest_collection<T>(mut self, svc: T) -> Self
     where
-        T: Service<Request<BoxBody>, Response = Response, Error = Infallible>
-            + Clone
-            + Send
-            + 'static,
+        T: Service<Request<Body>, Response = Response, Error = Infallible> + Clone + Send + 'static,
         T::Future: Send + 'static,
     {
         let path = self.index_create_path();
@@ -175,10 +169,7 @@ impl Resource {
 
     fn route<T>(mut self, path: &str, svc: T) -> Self
     where
-        T: Service<Request<BoxBody>, Response = Response, Error = Infallible>
-            + Clone
-            + Send
-            + 'static,
+        T: Service<Request<Body>, Response = Response, Error = Infallible> + Clone + Send + 'static,
         T::Future: Send + 'static,
     {
         self.router = self.router.route(path, svc);

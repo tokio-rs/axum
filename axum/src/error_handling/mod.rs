@@ -1,7 +1,7 @@
 #![doc = include_str!("../docs/error_handling.md")]
 
 use crate::{
-    body::{boxed, BoxBody, Bytes, HttpBody},
+    body::{boxed, Body, Bytes, HttpBody},
     extract::{FromRequest, RequestParts},
     http::{Request, StatusCode},
     response::{IntoResponse, Response},
@@ -114,15 +114,14 @@ where
     }
 }
 
-impl<S, F, ReqBody, ResBody, Fut, Res> Service<Request<ReqBody>> for HandleError<S, F, ()>
+impl<S, F, ResBody, Fut, Res> Service<Request<Body>> for HandleError<S, F, ()>
 where
-    S: Service<Request<ReqBody>, Response = Response<ResBody>> + Clone + Send + 'static,
+    S: Service<Request<Body>, Response = Response<ResBody>> + Clone + Send + 'static,
     S::Error: Send,
     S::Future: Send,
     F: FnOnce(S::Error) -> Fut + Clone + Send + 'static,
     Fut: Future<Output = Res> + Send,
     Res: IntoResponse,
-    ReqBody: Send + 'static,
     ResBody: HttpBody<Data = Bytes> + Send + 'static,
     ResBody::Error: Into<BoxError>,
 {
@@ -134,7 +133,7 @@ where
         Poll::Ready(Ok(()))
     }
 
-    fn call(&mut self, req: Request<ReqBody>) -> Self::Future {
+    fn call(&mut self, req: Request<Body>) -> Self::Future {
         let f = self.f.clone();
 
         let clone = self.inner.clone();
@@ -154,18 +153,16 @@ where
 #[allow(unused_macros)]
 macro_rules! impl_service {
     ( $($ty:ident),* $(,)? ) => {
-        impl<S, F, ReqBody, ResBody, Res, Fut, $($ty,)*> Service<Request<ReqBody>>
+        impl<S, F, ResBody, Res, Fut, $($ty,)*> Service<Request<Body>>
             for HandleError<S, F, ($($ty,)*)>
         where
-            S: Service<Request<BoxBody>, Response = Response<ResBody>> + Clone + Send + 'static,
+            S: Service<Request<Body>, Response = Response<ResBody>> + Clone + Send + 'static,
             S::Error: Send,
             S::Future: Send,
             F: FnOnce($($ty),*, S::Error) -> Fut + Clone + Send + 'static,
             Fut: Future<Output = Res> + Send,
             Res: IntoResponse,
             $( $ty: FromRequest + Send,)*
-            ReqBody: HttpBody<Data = Bytes> + Send + 'static,
-            ReqBody::Error: Into<BoxError>,
             ResBody: HttpBody<Data = Bytes> + Send + 'static,
             ResBody::Error: Into<BoxError>,
         {
@@ -179,7 +176,7 @@ macro_rules! impl_service {
             }
 
             #[allow(non_snake_case)]
-            fn call(&mut self, req: Request<ReqBody>) -> Self::Future {
+            fn call(&mut self, req: Request<Body>) -> Self::Future {
                 let f = self.f.clone();
 
                 let clone = self.inner.clone();

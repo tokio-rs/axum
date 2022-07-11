@@ -36,7 +36,7 @@
 #![doc = include_str!("../docs/debugging_handler_type_errors.md")]
 
 use crate::{
-    body::{boxed, BoxBody, Bytes, HttpBody},
+    body::{boxed, Body, Bytes, HttpBody},
     extract::{connect_info::IntoMakeServiceWithConnectInfo, FromRequest, RequestParts},
     response::{IntoResponse, Response},
     routing::IntoMakeService,
@@ -66,7 +66,7 @@ pub trait Handler<T>: Clone + Send + Sized + 'static {
     type Future: Future<Output = Response> + Send + 'static;
 
     /// Call the handler with the given request.
-    fn call(self, req: Request<BoxBody>) -> Self::Future;
+    fn call(self, req: Request<Body>) -> Self::Future;
 
     /// Apply a [`tower::Layer`] to the handler.
     ///
@@ -217,7 +217,7 @@ where
 {
     type Future = Pin<Box<dyn Future<Output = Response> + Send>>;
 
-    fn call(self, _req: Request<BoxBody>) -> Self::Future {
+    fn call(self, _req: Request<Body>) -> Self::Future {
         Box::pin(async move { self().await.into_response() })
     }
 }
@@ -234,7 +234,7 @@ macro_rules! impl_handler {
         {
             type Future = Pin<Box<dyn Future<Output = Response> + Send>>;
 
-            fn call(self, req: Request<BoxBody>) -> Self::Future {
+            fn call(self, req: Request<Body>) -> Self::Future {
                 Box::pin(async move {
                     let mut req = RequestParts::new(req);
 
@@ -284,7 +284,7 @@ where
 
 impl<S, T, ResBody> Handler<T> for Layered<S, T>
 where
-    S: Service<Request<BoxBody>, Response = Response<ResBody>> + Clone + Send + 'static,
+    S: Service<Request<Body>, Response = Response<ResBody>> + Clone + Send + 'static,
     S::Error: IntoResponse,
     S::Future: Send,
     T: 'static,
@@ -293,7 +293,7 @@ where
 {
     type Future = future::LayeredFuture<S>;
 
-    fn call(self, req: Request<BoxBody>) -> Self::Future {
+    fn call(self, req: Request<Body>) -> Self::Future {
         use futures_util::future::{FutureExt, Map};
 
         let future: Map<_, fn(Result<S::Response, S::Error>) -> _> =

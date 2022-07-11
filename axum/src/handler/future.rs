@@ -1,6 +1,6 @@
 //! Handler future types.
 
-use crate::{body::BoxBody, response::Response};
+use crate::{body::Body, response::Response};
 use futures_util::future::Map;
 use http::Request;
 use pin_project_lite::pin_project;
@@ -21,19 +21,19 @@ pin_project! {
     /// The response future for [`Layered`](super::Layered).
     pub struct LayeredFuture<S>
     where
-        S: Service<Request<BoxBody>>,
+        S: Service<Request<Body>>,
     {
         #[pin]
-        inner: Map<Oneshot<S, Request<BoxBody>>, fn(Result<S::Response, S::Error>) -> Response>,
+        inner: Map<Oneshot<S, Request<Body>>, fn(Result<S::Response, S::Error>) -> Response>,
     }
 }
 
 impl<S> LayeredFuture<S>
 where
-    S: Service<Request<BoxBody>>,
+    S: Service<Request<Body>>,
 {
     pub(super) fn new(
-        inner: Map<Oneshot<S, Request<BoxBody>>, fn(Result<S::Response, S::Error>) -> Response>,
+        inner: Map<Oneshot<S, Request<Body>>, fn(Result<S::Response, S::Error>) -> Response>,
     ) -> Self {
         Self { inner }
     }
@@ -41,7 +41,7 @@ where
 
 impl<S> Future for LayeredFuture<S>
 where
-    S: Service<Request<BoxBody>>,
+    S: Service<Request<Body>>,
 {
     type Output = Response;
 

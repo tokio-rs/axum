@@ -45,7 +45,7 @@ mod for_services {
     async fn get_handles_head() {
         let app = Router::new().route(
             "/",
-            get_service(service_fn(|_req: Request| async move {
+            get_service(service_fn(|_req: Request<Body>| async move {
                 Ok::<_, Infallible>(
                     ([("x-some-header", "foobar")], "you shouldn't see this").into_response(),
                 )

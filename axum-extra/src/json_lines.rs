@@ -2,7 +2,7 @@
 
 use axum::{
     async_trait,
-    body::{BoxBody, Bytes, HttpBody, StreamBody},
+    body::{Body, Bytes, HttpBody, StreamBody},
     extract::{rejection::BodyAlreadyExtracted, FromRequest, RequestParts},
     response::{IntoResponse, Response},
     BoxError,
@@ -136,7 +136,7 @@ where
 pin_project! {
     struct BodyStream {
         #[pin]
-        body: BoxBody,
+        body: Body,
     }
 }
 
@@ -144,7 +144,9 @@ impl Stream for BodyStream {
     type Item = Result<Bytes, axum::Error>;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        Pin::new(&mut self.body).poll_data(cx)
+        Pin::new(&mut self.body)
+            .poll_data(cx)
+            .map_err(axum::Error::new)
     }
 }
 

@@ -141,7 +141,7 @@ impl FromRequest for BodyStream {
     type Rejection = BodyAlreadyExtracted;
 
     async fn from_request(req: &mut RequestParts) -> Result<Self, Self::Rejection> {
-        let body = take_body(req)?.map_data(Into::into);
+        let body = take_body(req)?.map_data(Into::into).map_err(Error::new);
         let stream = BodyStream(SyncWrapper::new(Box::pin(body)));
         Ok(stream)
     }
@@ -162,16 +162,17 @@ fn body_stream_traits() {
 #[cfg(test)]
 mod tests {
     use crate::{
-        extract::{Extension, Request},
+        body::Body,
+        extract::Extension,
         routing::{get, post},
         test_helpers::*,
         Router,
     };
-    use http::{Method, StatusCode};
+    use http::{Method, Request, StatusCode};
 
     #[tokio::test]
     async fn multiple_request_extractors() {
-        async fn handler(_: Request, _: Request) {}
+        async fn handler(_: Request<Body>, _: Request<Body>) {}
 
         let app = Router::new().route("/", post(handler));
 
