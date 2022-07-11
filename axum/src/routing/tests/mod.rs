@@ -1,5 +1,5 @@
 use crate::{
-    body::{Bytes, Empty},
+    body::{Body, Bytes, Empty},
     error_handling::HandleErrorLayer,
     extract::{self, Path},
     handler::Handler,
@@ -9,7 +9,6 @@ use crate::{
     BoxError, Json, Router,
 };
 use http::{header::CONTENT_LENGTH, HeaderMap, Method, Request, Response, StatusCode, Uri};
-use hyper::Body;
 use serde::Deserialize;
 use serde_json::{json, Value};
 use std::{
@@ -719,4 +718,15 @@ async fn limited_body_with_streaming_body() {
         .send()
         .await;
     assert_eq!(res.status(), StatusCode::PAYLOAD_TOO_LARGE);
+}
+
+#[allow(dead_code)]
+fn adding_middleware_dont_change_request_body_type() -> Router {
+    Router::new()
+        .route("/", get(|_: Body| async {}))
+        .route("/", get(|_: String| async {}))
+        .route("/", get(|_: Bytes| async {}))
+        .route("/", get(|_: Json<serde_json::Value>| async {}))
+        .route("/", get(|_: Request<Body>| async {}))
+        .layer(tower_http::limit::RequestBodyLimitLayer::new(1024))
 }

@@ -3,7 +3,10 @@
 use crate::{BoxError, Error};
 use bytes::Bytes;
 use bytes::{Buf, BufMut};
-use http_body::Body;
+use http_body::Body as _;
+
+#[doc(no_inline)]
+pub use hyper::Body;
 
 /// A boxed [`Body`] trait object.
 ///
@@ -55,7 +58,7 @@ where
 // THE SOFTWARE.
 pub(crate) async fn to_bytes<T>(body: T) -> Result<Bytes, T::Error>
 where
-    T: Body,
+    T: http_body::Body,
 {
     futures_util::pin_mut!(body);
 

@@ -106,16 +106,11 @@ fn impl_struct_by_extracting_each_field(
     Ok(quote! {
         #[::axum::async_trait]
         #[automatically_derived]
-        impl<B> ::axum::extract::FromRequest<B> for #ident
-        where
-            B: ::axum::body::HttpBody + ::std::marker::Send + 'static,
-            B::Data: ::std::marker::Send,
-            B::Error: ::std::convert::Into<::axum::BoxError>,
-        {
+        impl ::axum::extract::FromRequest for #ident {
             type Rejection = #rejection_ident;
 
             async fn from_request(
-                req: &mut ::axum::extract::RequestParts<B>,
+                req: &mut ::axum::extract::RequestParts,
             ) -> ::std::result::Result<Self, Self::Rejection> {
                 ::std::result::Result::Ok(Self {
                     #(#extract_fields)*
@@ -301,7 +296,7 @@ fn extract_each_field_rejection(
 
             Ok(quote_spanned! {ty_span=>
                 #[allow(non_camel_case_types)]
-                #variant_name(<#extractor_ty as ::axum::extract::FromRequest<::axum::body::Body>>::Rejection),
+                #variant_name(<#extractor_ty as ::axum::extract::FromRequest>::Rejection),
             })
         })
         .collect::<syn::Result<Vec<_>>>()?;
@@ -485,18 +480,13 @@ fn impl_struct_by_extracting_all_at_once(
     Ok(quote_spanned! {path_span=>
         #[::axum::async_trait]
         #[automatically_derived]
-        impl<B> ::axum::extract::FromRequest<B> for #ident
-        where
-            B: ::axum::body::HttpBody + ::std::marker::Send + 'static,
-            B::Data: ::std::marker::Send,
-            B::Error: ::std::convert::Into<::axum::BoxError>,
-        {
-            type Rejection = <#path<Self> as ::axum::extract::FromRequest<B>>::Rejection;
+        impl ::axum::extract::FromRequest for #ident {
+            type Rejection = <#path<Self> as ::axum::extract::FromRequest>::Rejection;
 
             async fn from_request(
-                req: &mut ::axum::extract::RequestParts<B>,
+                req: &mut ::axum::extract::RequestParts,
             ) -> ::std::result::Result<Self, Self::Rejection> {
-                ::axum::extract::FromRequest::<B>::from_request(req)
+                ::axum::extract::FromRequest::from_request(req)
                     .await
                     .map(|#path(inner)| inner)
             }
@@ -540,18 +530,13 @@ fn impl_enum_by_extracting_all_at_once(
     Ok(quote_spanned! {path_span=>
         #[::axum::async_trait]
         #[automatically_derived]
-        impl<B> ::axum::extract::FromRequest<B> for #ident
-        where
-            B: ::axum::body::HttpBody + ::std::marker::Send + 'static,
-            B::Data: ::std::marker::Send,
-            B::Error: ::std::convert::Into<::axum::BoxError>,
-        {
-            type Rejection = <#path<Self> as ::axum::extract::FromRequest<B>>::Rejection;
+        impl ::axum::extract::FromRequest for #ident {
+            type Rejection = <#path<Self> as ::axum::extract::FromRequest>::Rejection;
 
             async fn from_request(
-                req: &mut ::axum::extract::RequestParts<B>,
+                req: &mut ::axum::extract::RequestParts,
             ) -> ::std::result::Result<Self, Self::Rejection> {
-                ::axum::extract::FromRequest::<B>::from_request(req)
+                ::axum::extract::FromRequest::from_request(req)
                     .await
                     .map(|#path(inner)| inner)
             }

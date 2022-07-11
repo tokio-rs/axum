@@ -73,14 +73,13 @@ use tower_service::Service;
 pub struct Extension<T>(pub T);
 
 #[async_trait]
-impl<T, B> FromRequest<B> for Extension<T>
+impl<T> FromRequest for Extension<T>
 where
     T: Clone + Send + Sync + 'static,
-    B: Send,
 {
     type Rejection = ExtensionRejection;
 
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts) -> Result<Self, Self::Rejection> {
         let value = req
             .extensions()
             .get::<T>()

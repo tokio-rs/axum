@@ -1,4 +1,4 @@
-use axum::{body::Body, extract::Extension, http::Request};
+use axum::{extract::Extension, body::Body, http::Request};
 use axum_macros::debug_handler;
 
 #[debug_handler]

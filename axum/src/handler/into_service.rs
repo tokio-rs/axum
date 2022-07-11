@@ -1,5 +1,5 @@
 use super::Handler;
-use crate::response::Response;
+use crate::{body::Body, response::Response};
 use http::Request;
 use std::{
     convert::Infallible,
@@ -12,19 +12,19 @@ use tower_service::Service;
 /// An adapter that makes a [`Handler`] into a [`Service`].
 ///
 /// Created with [`Handler::into_service`].
-pub struct IntoService<H, T, B> {
+pub struct IntoService<H, T> {
     handler: H,
-    _marker: PhantomData<fn() -> (T, B)>,
+    _marker: PhantomData<fn() -> T>,
 }
 
 #[test]
 fn traits() {
     use crate::test_helpers::*;
-    assert_send::<IntoService<(), NotSendSync, NotSendSync>>();
-    assert_sync::<IntoService<(), NotSendSync, NotSendSync>>();
+    assert_send::<IntoService<(), NotSendSync>>();
+    assert_sync::<IntoService<(), NotSendSync>>();
 }
 
-impl<H, T, B> IntoService<H, T, B> {
+impl<H, T> IntoService<H, T> {
     pub(super) fn new(handler: H) -> Self {
         Self {
             handler,
@@ -33,7 +33,7 @@ impl<H, T, B> IntoService<H, T, B> {
     }
 }
 
-impl<H, T, B> fmt::Debug for IntoService<H, T, B> {
+impl<H, T> fmt::Debug for IntoService<H, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("IntoService")
             .field(&format_args!("..."))
@@ -41,7 +41,7 @@ impl<H, T, B> fmt::Debug for IntoService<H, T, B> {
     }
 }
 
-impl<H, T, B> Clone for IntoService<H, T, B>
+impl<H, T> Clone for IntoService<H, T>
 where
     H: Clone,
 {
@@ -53,10 +53,9 @@ where
     }
 }
 
-impl<H, T, B> Service<Request<B>> for IntoService<H, T, B>
+impl<H, T> Service<Request<Body>> for IntoService<H, T>
 where
-    H: Handler<T, B> + Clone + Send + 'static,
-    B: Send + 'static,
+    H: Handler<T> + Clone + Send + 'static,
 {
     type Response = Response;
     type Error = Infallible;
@@ -70,7 +69,7 @@ where
         Poll::Ready(Ok(()))
     }
 
-    fn call(&mut self, req: Request<B>) -> Self::Future {
+    fn call(&mut self, req: Request<Body>) -> Self::Future {
         use futures_util::future::FutureExt;
 
         let handler = self.handler.clone();

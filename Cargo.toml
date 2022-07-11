@@ -10,3 +10,6 @@ members = [
     # with `cargo +nightly update -Z minimal-versions`
     "internal-minimal-versions",
 ]
+
+[patch.crates-io]
+hyper = { git = "https://github.com/hyperium/hyper", branch = "david/body-wrap-body" }

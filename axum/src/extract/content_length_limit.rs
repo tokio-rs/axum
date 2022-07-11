@@ -36,15 +36,14 @@ use std::ops::Deref;
 pub struct ContentLengthLimit<T, const N: u64>(pub T);
 
 #[async_trait]
-impl<T, B, const N: u64> FromRequest<B> for ContentLengthLimit<T, N>
+impl<T, const N: u64> FromRequest for ContentLengthLimit<T, N>
 where
-    T: FromRequest<B>,
+    T: FromRequest,
     T::Rejection: IntoResponse,
-    B: Send,
 {
     type Rejection = ContentLengthLimitRejection<T::Rejection>;
 
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts) -> Result<Self, Self::Rejection> {
         let content_length = req
             .headers()
             .get(http::header::CONTENT_LENGTH)

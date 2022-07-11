@@ -64,7 +64,7 @@ async fn multiple_ors_balanced_differently() {
 
     async fn test<S, ResBody>(name: &str, app: S)
     where
-        S: Service<Request<Body>, Response = Response<ResBody>> + Clone + Send + 'static,
+        S: Service<Request<hyper::Body>, Response = Response<ResBody>> + Clone + Send + 'static,
         ResBody: HttpBody + Send + 'static,
         ResBody::Data: Send,
         ResBody::Error: Into<BoxError>,

@@ -1,6 +1,5 @@
-use crate::body::{Bytes, HttpBody};
+use crate::body::Bytes;
 use crate::extract::{has_content_type, rejection::*, FromRequest, RequestParts};
-use crate::BoxError;
 use async_trait::async_trait;
 use axum_core::response::{IntoResponse, Response};
 use http::header::CONTENT_TYPE;
@@ -56,16 +55,13 @@ use std::ops::Deref;
 pub struct Form<T>(pub T);
 
 #[async_trait]
-impl<T, B> FromRequest<B> for Form<T>
+impl<T> FromRequest for Form<T>
 where
     T: DeserializeOwned,
-    B: HttpBody + Send,
-    B::Data: Send,
-    B::Error: Into<BoxError>,
 {
     type Rejection = FormRejection;
 
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts) -> Result<Self, Self::Rejection> {
         if req.method() == Method::GET {
             let query = req.uri().query().unwrap_or_default();
             let value = serde_urlencoded::from_str(query)
@@ -112,7 +108,7 @@ impl<T> Deref for Form<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::body::{Empty, Full};
+    use crate::body::Body;
     use crate::extract::RequestParts;
     use http::Request;
     use serde::{Deserialize, Serialize};
@@ -128,7 +124,7 @@ mod tests {
         let mut req = RequestParts::new(
             Request::builder()
                 .uri(uri.as_ref())
-                .body(Empty::<Bytes>::new())
+                .body(Body::empty())
                 .unwrap(),
         );
         assert_eq!(Form::<T>::from_request(&mut req).await.unwrap().0, value);
@@ -143,9 +139,7 @@ mod tests {
                     http::header::CONTENT_TYPE,
                     mime::APPLICATION_WWW_FORM_URLENCODED.as_ref(),
                 )
-                .body(Full::<Bytes>::new(
-                    serde_urlencoded::to_string(&value).unwrap().into(),
-                ))
+                .body(Body::from(serde_urlencoded::to_string(&value).unwrap()))
                 .unwrap(),
         );
         assert_eq!(Form::<T>::from_request(&mut req).await.unwrap().0, value);
@@ -209,13 +203,12 @@ mod tests {
                 .uri("http://example.com/test")
                 .method(Method::POST)
                 .header(http::header::CONTENT_TYPE, mime::APPLICATION_JSON.as_ref())
-                .body(Full::<Bytes>::new(
+                .body(Body::from(
                     serde_urlencoded::to_string(&Pagination {
                         size: Some(10),
                         page: None,
                     })
-                    .unwrap()
-                    .into(),
+                    .unwrap(),
                 ))
                 .unwrap(),
         );

@@ -1,11 +1,9 @@
 use axum::{
     async_trait,
-    body::HttpBody,
     extract::{
         rejection::{FailedToDeserializeQueryString, FormRejection, InvalidFormContentType},
         FromRequest, RequestParts,
     },
-    BoxError,
 };
 use bytes::Bytes;
 use http::{header, Method};
@@ -54,16 +52,13 @@ impl<T> Deref for Form<T> {
 }
 
 #[async_trait]
-impl<T, B> FromRequest<B> for Form<T>
+impl<T> FromRequest for Form<T>
 where
     T: DeserializeOwned,
-    B: HttpBody + Send,
-    B::Data: Send,
-    B::Error: Into<BoxError>,
 {
     type Rejection = FormRejection;
 
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts) -> Result<Self, Self::Rejection> {
         if req.method() == Method::GET {
             let query = req.uri().query().unwrap_or_default();
             let value = serde_html_form::from_str(query)
@@ -84,7 +79,7 @@ where
 }
 
 // this is duplicated in `axum/src/extract/mod.rs`
-fn has_content_type<B>(req: &RequestParts<B>, expected_content_type: &mime::Mime) -> bool {
+fn has_content_type(req: &RequestParts, expected_content_type: &mime::Mime) -> bool {
     let content_type = if let Some(content_type) = req.headers().get(header::CONTENT_TYPE) {
         content_type
     } else {
