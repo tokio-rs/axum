@@ -510,7 +510,7 @@ async fn route_layer() {
 )]
 async fn good_error_message_if_using_nest_root() {
     let app = Router::new()
-        .nest("/", get(|| async {}).with_state(()))
+        .nest("/", get(|| async {}))
         .route("/", get(|| async {}));
     TestClient::new(app);
 }
@@ -523,7 +523,7 @@ async fn good_error_message_if_using_nest_root() {
     Use `Router::fallback` instead"
 )]
 async fn good_error_message_if_using_nest_root_when_merging() {
-    let one = Router::new().nest("/", get(|| async {}).with_state(()));
+    let one = Router::new().nest("/", get(|| async {}));
     let two = Router::new().route("/", get(|| async {}));
     let app = one.merge(two);
     TestClient::new(app);

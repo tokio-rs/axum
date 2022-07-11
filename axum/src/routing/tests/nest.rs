@@ -117,10 +117,7 @@ async fn nesting_router_at_empty_path() {
 
 #[tokio::test]
 async fn nesting_handler_at_root() {
-    let app = Router::new().nest(
-        "/",
-        get(|uri: Uri| async move { uri.to_string() }).with_state(()),
-    );
+    let app = Router::new().nest("/", get(|uri: Uri| async move { uri.to_string() }));
 
     let client = TestClient::new(app);
 
@@ -210,14 +207,12 @@ async fn nested_service_sees_stripped_uri() {
 async fn nest_static_file_server() {
     let app = Router::new().nest(
         "/static",
-        get_service(ServeDir::new("."))
-            .handle_error(|error| async move {
-                (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    format!("Unhandled internal error: {}", error),
-                )
-            })
-            .with_state(()),
+        get_service(ServeDir::new(".")).handle_error(|error| async move {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Unhandled internal error: {}", error),
+            )
+        }),
     );
 
     let client = TestClient::new(app);

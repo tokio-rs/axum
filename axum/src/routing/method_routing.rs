@@ -1048,6 +1048,24 @@ fn append_allow_header(allow_header: &mut AllowHeader, method: &'static str) {
     }
 }
 
+impl<B, E> Service<Request<B>> for MethodRouter<(), B, E>
+where
+    B: HttpBody,
+{
+    type Response = Response;
+    type Error = E;
+    type Future = RouteFuture<B, E>;
+
+    #[inline]
+    fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        Poll::Ready(Ok(()))
+    }
+
+    fn call(&mut self, req: Request<B>) -> Self::Future {
+        self.clone().with_state(()).call(req)
+    }
+}
+
 impl<S, B, E> Clone for MethodRouter<S, B, E> {
     fn clone(&self) -> Self {
         Self {
@@ -1201,15 +1219,28 @@ mod tests {
 
     #[tokio::test]
     async fn method_not_allowed_by_default() {
-        let mut svc = MethodRouter::new().with_state(());
+        let mut svc = MethodRouter::new();
         let (status, _, body) = call(Method::GET, &mut svc).await;
         assert_eq!(status, StatusCode::METHOD_NOT_ALLOWED);
         assert!(body.is_empty());
     }
 
     #[tokio::test]
+    async fn get_service_fn() {
+        async fn handle(_req: Request<Body>) -> Result<Response<Body>, Infallible> {
+            Ok(Response::new(Body::from("ok")))
+        }
+
+        let mut svc = get_service(service_fn(handle));
+
+        let (status, _, body) = call(Method::GET, &mut svc).await;
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(body, "ok");
+    }
+
+    #[tokio::test]
     async fn get_handler() {
-        let mut svc = MethodRouter::new().get(ok).with_state(());
+        let mut svc = MethodRouter::new().get(ok);
         let (status, _, body) = call(Method::GET, &mut svc).await;
         assert_eq!(status, StatusCode::OK);
         assert_eq!(body, "ok");
@@ -1217,7 +1248,7 @@ mod tests {
 
     #[tokio::test]
     async fn get_accepts_head() {
-        let mut svc = MethodRouter::new().get(ok).with_state(());
+        let mut svc = MethodRouter::new().get(ok);
         let (status, _, body) = call(Method::HEAD, &mut svc).await;
         assert_eq!(status, StatusCode::OK);
         assert!(body.is_empty());
@@ -1225,7 +1256,7 @@ mod tests {
 
     #[tokio::test]
     async fn head_takes_precedence_over_get() {
-        let mut svc = MethodRouter::new().head(created).get(ok).with_state(());
+        let mut svc = MethodRouter::new().head(created).get(ok);
         let (status, _, body) = call(Method::HEAD, &mut svc).await;
         assert_eq!(status, StatusCode::CREATED);
         assert!(body.is_empty());
@@ -1233,7 +1264,7 @@ mod tests {
 
     #[tokio::test]
     async fn merge() {
-        let mut svc = get(ok).merge(post(ok)).with_state(());
+        let mut svc = get(ok).merge(post(ok));
 
         let (status, _, _) = call(Method::GET, &mut svc).await;
         assert_eq!(status, StatusCode::OK);
@@ -1246,8 +1277,7 @@ mod tests {
     async fn layer() {
         let mut svc = MethodRouter::new()
             .get(|| async { std::future::pending::<()>().await })
-            .layer(RequireAuthorizationLayer::bearer("password"))
-            .with_state(());
+            .layer(RequireAuthorizationLayer::bearer("password"));
 
         // method with route
         let (status, _, _) = call(Method::GET, &mut svc).await;
@@ -1262,8 +1292,7 @@ mod tests {
     async fn route_layer() {
         let mut svc = MethodRouter::new()
             .get(|| async { std::future::pending::<()>().await })
-            .route_layer(RequireAuthorizationLayer::bearer("password"))
-            .with_state(());
+            .route_layer(RequireAuthorizationLayer::bearer("password"));
 
         // method with route
         let (status, _, _) = call(Method::GET, &mut svc).await;
@@ -1302,7 +1331,7 @@ mod tests {
 
     #[tokio::test]
     async fn sets_allow_header() {
-        let mut svc = MethodRouter::new().put(ok).patch(ok).with_state(());
+        let mut svc = MethodRouter::new().put(ok).patch(ok);
         let (status, headers, _) = call(Method::GET, &mut svc).await;
         assert_eq!(status, StatusCode::METHOD_NOT_ALLOWED);
         assert_eq!(headers[ALLOW], "PUT,PATCH");
@@ -1310,7 +1339,7 @@ mod tests {
 
     #[tokio::test]
     async fn sets_allow_header_get_head() {
-        let mut svc = MethodRouter::new().get(ok).head(ok).with_state(());
+        let mut svc = MethodRouter::new().get(ok).head(ok);
         let (status, headers, _) = call(Method::PUT, &mut svc).await;
         assert_eq!(status, StatusCode::METHOD_NOT_ALLOWED);
         assert_eq!(headers[ALLOW], "GET,HEAD");
@@ -1318,7 +1347,7 @@ mod tests {
 
     #[tokio::test]
     async fn empty_allow_header_by_default() {
-        let mut svc = MethodRouter::new().with_state(());
+        let mut svc = MethodRouter::new();
         let (status, headers, _) = call(Method::PATCH, &mut svc).await;
         assert_eq!(status, StatusCode::METHOD_NOT_ALLOWED);
         assert_eq!(headers[ALLOW], "");
@@ -1328,7 +1357,7 @@ mod tests {
     async fn allow_header_when_merging() {
         let a = put(ok).patch(ok);
         let b = get(ok).head(ok);
-        let mut svc = a.merge(b).with_state(());
+        let mut svc = a.merge(b);
 
         let (status, headers, _) = call(Method::DELETE, &mut svc).await;
         assert_eq!(status, StatusCode::METHOD_NOT_ALLOWED);
@@ -1337,7 +1366,7 @@ mod tests {
 
     #[tokio::test]
     async fn allow_header_any() {
-        let mut svc = any(ok).with_state(());
+        let mut svc = any(ok);
 
         let (status, headers, _) = call(Method::GET, &mut svc).await;
         assert_eq!(status, StatusCode::OK);
@@ -1348,8 +1377,7 @@ mod tests {
     async fn allow_header_with_fallback() {
         let mut svc = MethodRouter::new()
             .get(ok)
-            .fallback(|| async { (StatusCode::METHOD_NOT_ALLOWED, "Method not allowed") })
-            .with_state(());
+            .fallback(|| async { (StatusCode::METHOD_NOT_ALLOWED, "Method not allowed") });
 
         let (status, headers, _) = call(Method::DELETE, &mut svc).await;
         assert_eq!(status, StatusCode::METHOD_NOT_ALLOWED);
@@ -1371,10 +1399,7 @@ mod tests {
             }
         }
 
-        let mut svc = MethodRouter::new()
-            .get(ok)
-            .fallback(fallback)
-            .with_state(());
+        let mut svc = MethodRouter::new().get(ok).fallback(fallback);
 
         let (status, _, _) = call(Method::GET, &mut svc).await;
         assert_eq!(status, StatusCode::OK);
@@ -1412,6 +1437,18 @@ mod tests {
     #[tokio::test]
     async fn head_get_does_not_overlap() {
         let _: MethodRouter<()> = head(ok).get(ok);
+    }
+
+    #[tokio::test]
+    async fn accessing_state() {
+        let mut svc = MethodRouter::new()
+            .get(|State(state): State<&'static str>| async move { state })
+            .with_state("state");
+
+        let (status, _, text) = call(Method::GET, &mut svc).await;
+
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(text, "state");
     }
 
     #[tokio::test]

@@ -158,15 +158,12 @@ where
 {
     fn from(spa: SpaRouter<B, T, F>) -> Self {
         let assets_service = get_service(ServeDir::new(&spa.paths.assets_dir))
-            .handle_error(spa.handle_error.clone())
-            .with_state(());
+            .handle_error(spa.handle_error.clone());
 
         Router::new()
             .nest(&spa.paths.assets_path, assets_service)
             .fallback_service(
-                get_service(ServeFile::new(&spa.paths.index_file))
-                    .handle_error(spa.handle_error)
-                    .with_state(()),
+                get_service(ServeFile::new(&spa.paths.index_file)).handle_error(spa.handle_error),
             )
     }
 }
