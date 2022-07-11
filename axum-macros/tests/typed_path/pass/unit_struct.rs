@@ -5,7 +5,7 @@ use axum_extra::routing::TypedPath;
 struct MyPath;
 
 fn main() {
-    axum::Router::<axum::body::Body>::new()
+    axum::Router::<(), axum::body::Body>::new()
         .route("/", axum::routing::get(|_: MyPath| async {}));
 
     assert_eq!(MyPath::PATH, "/users");

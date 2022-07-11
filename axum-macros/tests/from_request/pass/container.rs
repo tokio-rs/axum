@@ -15,7 +15,7 @@ struct Extractor {
 
 fn assert_from_request()
 where
-    Extractor: FromRequest<Body, Rejection = JsonRejection>,
+    Extractor: FromRequest<(), Body, Rejection = JsonRejection>,
 {
 }
 
