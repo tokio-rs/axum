@@ -1,14 +1,14 @@
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote, quote_spanned};
-use syn::{parse::Parse, spanned::Spanned, FnArg, ItemFn, Token, Type};
+use syn::{parse::Parse, spanned::Spanned, FnArg, ItemFn, Type};
 
-pub(crate) fn expand(attr: Attrs, item_fn: ItemFn) -> TokenStream {
+pub(crate) fn expand(_attr: Attrs, item_fn: ItemFn) -> TokenStream {
     let check_extractor_count = check_extractor_count(&item_fn);
     let check_request_last_extractor = check_request_last_extractor(&item_fn);
     let check_path_extractor = check_path_extractor(&item_fn);
     let check_multiple_body_extractors = check_multiple_body_extractors(&item_fn);
 
-    let check_inputs_impls_from_request = check_inputs_impls_from_request(&item_fn, &attr.body_ty);
+    let check_inputs_impls_from_request = check_inputs_impls_from_request(&item_fn);
     let check_output_impls_into_response = check_output_impls_into_response(&item_fn);
     let check_future_send = check_future_send(&item_fn);
 
@@ -24,29 +24,11 @@ pub(crate) fn expand(attr: Attrs, item_fn: ItemFn) -> TokenStream {
     }
 }
 
-pub(crate) struct Attrs {
-    body_ty: Type,
-}
+pub(crate) struct Attrs {}
 
 impl Parse for Attrs {
-    fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
-        let mut body_ty = None;
-
-        while !input.is_empty() {
-            let ident = input.parse::<syn::Ident>()?;
-            if ident == "body" {
-                input.parse::<Token![=]>()?;
-                body_ty = Some(input.parse()?);
-            } else {
-                return Err(syn::Error::new_spanned(ident, "unknown argument"));
-            }
-
-            let _ = input.parse::<Token![,]>();
-        }
-
-        let body_ty = body_ty.unwrap_or_else(|| syn::parse_quote!(axum::body::Body));
-
-        Ok(Self { body_ty })
+    fn parse(_input: syn::parse::ParseStream) -> syn::Result<Self> {
+        Ok(Self {})
     }
 }
 
@@ -152,7 +134,7 @@ fn check_multiple_body_extractors(item_fn: &ItemFn) -> TokenStream {
     }
 }
 
-fn check_inputs_impls_from_request(item_fn: &ItemFn, body_ty: &Type) -> TokenStream {
+fn check_inputs_impls_from_request(item_fn: &ItemFn) -> TokenStream {
     if !item_fn.sig.generics.params.is_empty() {
         return syn::Error::new_spanned(
             &item_fn.sig.generics,
@@ -196,7 +178,7 @@ fn check_inputs_impls_from_request(item_fn: &ItemFn, body_ty: &Type) -> TokenStr
                 #[allow(warnings)]
                 fn #name()
                 where
-                    #ty: ::axum::extract::FromRequest<#body_ty> + Send,
+                    #ty: ::axum::extract::FromRequest + Send,
                 {}
             }
         })

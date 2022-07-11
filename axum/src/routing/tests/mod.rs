@@ -1,14 +1,15 @@
 use crate::{
     body::{Bytes, Empty},
     error_handling::HandleErrorLayer,
-    extract::{self, Path},
+    extract::{self, Path, Request},
     handler::Handler,
     response::IntoResponse,
     routing::{delete, get, get_service, on, on_service, patch, patch_service, post, MethodFilter},
     test_helpers::*,
     BoxError, Json, Router,
 };
-use http::{header::CONTENT_LENGTH, HeaderMap, Method, Request, Response, StatusCode, Uri};
+use axum_core::body::BoxBody;
+use http::{header::CONTENT_LENGTH, HeaderMap, Method, Response, StatusCode, Uri};
 use hyper::Body;
 use serde::Deserialize;
 use serde_json::{json, Value};
@@ -31,15 +32,15 @@ mod nest;
 
 #[tokio::test]
 async fn hello_world() {
-    async fn root(_: Request<Body>) -> &'static str {
+    async fn root(_: Request) -> &'static str {
         "Hello, World!"
     }
 
-    async fn foo(_: Request<Body>) -> &'static str {
+    async fn foo(_: Request) -> &'static str {
         "foo"
     }
 
-    async fn users_create(_: Request<Body>) -> &'static str {
+    async fn users_create(_: Request) -> &'static str {
         "users#create"
     }
 
@@ -67,13 +68,12 @@ async fn routing() {
     let app = Router::new()
         .route(
             "/users",
-            get(|_: Request<Body>| async { "users#index" })
-                .post(|_: Request<Body>| async { "users#create" }),
+            get(|_: Request| async { "users#index" }).post(|_: Request| async { "users#create" }),
         )
-        .route("/users/:id", get(|_: Request<Body>| async { "users#show" }))
+        .route("/users/:id", get(|_: Request| async { "users#show" }))
         .route(
             "/users/:id/action",
-            get(|_: Request<Body>| async { "users#action" }),
+            get(|_: Request| async { "users#action" }),
         );
 
     let client = TestClient::new(app);
@@ -103,12 +103,8 @@ async fn router_type_doesnt_change() {
     let app: Router = Router::new()
         .route(
             "/",
-            on(MethodFilter::GET, |_: Request<Body>| async {
-                "hi from GET"
-            })
-            .on(MethodFilter::POST, |_: Request<Body>| async {
-                "hi from POST"
-            }),
+            on(MethodFilter::GET, |_: Request| async { "hi from GET" })
+                .on(MethodFilter::POST, |_: Request| async { "hi from POST" }),
         )
         .layer(tower_http::compression::CompressionLayer::new());
 
@@ -128,22 +124,22 @@ async fn routing_between_services() {
     use std::convert::Infallible;
     use tower::service_fn;
 
-    async fn handle(_: Request<Body>) -> &'static str {
+    async fn handle(_: Request) -> &'static str {
         "handler"
     }
 
     let app = Router::new()
         .route(
             "/one",
-            get_service(service_fn(|_: Request<Body>| async {
+            get_service(service_fn(|_: Request| async {
                 Ok::<_, Infallible>(Response::new(Body::from("one get")))
             }))
-            .post_service(service_fn(|_: Request<Body>| async {
+            .post_service(service_fn(|_: Request| async {
                 Ok::<_, Infallible>(Response::new(Body::from("one post")))
             }))
             .on_service(
                 MethodFilter::PUT,
-                service_fn(|_: Request<Body>| async {
+                service_fn(|_: Request| async {
                     Ok::<_, Infallible>(Response::new(Body::from("one put")))
                 }),
             ),
@@ -174,7 +170,7 @@ async fn middleware_on_single_route() {
     use tower::ServiceBuilder;
     use tower_http::{compression::CompressionLayer, trace::TraceLayer};
 
-    async fn handle(_: Request<Body>) -> &'static str {
+    async fn handle(_: Request) -> &'static str {
         "Hello, World!"
     }
 
@@ -198,7 +194,7 @@ async fn middleware_on_single_route() {
 
 #[tokio::test]
 async fn service_in_bottom() {
-    async fn handler(_req: Request<Body>) -> Result<Response<Body>, Infallible> {
+    async fn handler(_req: Request) -> Result<Response<Body>, Infallible> {
         Ok(Response::new(hyper::Body::empty()))
     }
 
@@ -268,7 +264,7 @@ async fn wrong_method_service() {
 
 #[tokio::test]
 async fn multiple_methods_for_one_handler() {
-    async fn root(_: Request<Body>) -> &'static str {
+    async fn root(_: Request) -> &'static str {
         "Hello, World!"
     }
 
@@ -719,4 +715,15 @@ async fn limited_body_with_streaming_body() {
         .send()
         .await;
     assert_eq!(res.status(), StatusCode::PAYLOAD_TOO_LARGE);
+}
+
+#[allow(dead_code)]
+fn adding_middleware_dont_change_request_body_type() -> Router {
+    Router::new()
+        .route("/", get(|_: BoxBody| async {}))
+        .route("/", get(|_: String| async {}))
+        .route("/", get(|_: Bytes| async {}))
+        .route("/", get(|_: Json<serde_json::Value>| async {}))
+        .route("/", get(|_: Request<BoxBody>| async {}))
+        .layer(tower_http::limit::RequestBodyLimitLayer::new(1024))
 }

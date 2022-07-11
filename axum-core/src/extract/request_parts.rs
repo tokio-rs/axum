@@ -1,18 +1,15 @@
 use super::{rejection::*, FromRequest, RequestParts};
-use crate::BoxError;
+use crate::body::BoxBody;
 use async_trait::async_trait;
 use bytes::Bytes;
 use http::{Extensions, HeaderMap, Method, Request, Uri, Version};
 use std::convert::Infallible;
 
 #[async_trait]
-impl<B> FromRequest<B> for Request<B>
-where
-    B: Send,
-{
+impl FromRequest for Request<BoxBody> {
     type Rejection = BodyAlreadyExtracted;
 
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts) -> Result<Self, Self::Rejection> {
         let req = std::mem::replace(
             req,
             RequestParts {
@@ -30,37 +27,28 @@ where
 }
 
 #[async_trait]
-impl<B> FromRequest<B> for Method
-where
-    B: Send,
-{
+impl FromRequest for Method {
     type Rejection = Infallible;
 
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts) -> Result<Self, Self::Rejection> {
         Ok(req.method().clone())
     }
 }
 
 #[async_trait]
-impl<B> FromRequest<B> for Uri
-where
-    B: Send,
-{
+impl FromRequest for Uri {
     type Rejection = Infallible;
 
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts) -> Result<Self, Self::Rejection> {
         Ok(req.uri().clone())
     }
 }
 
 #[async_trait]
-impl<B> FromRequest<B> for Version
-where
-    B: Send,
-{
+impl FromRequest for Version {
     type Rejection = Infallible;
 
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts) -> Result<Self, Self::Rejection> {
         Ok(req.version())
     }
 }
@@ -71,27 +59,28 @@ where
 ///
 /// [`TypedHeader`]: https://docs.rs/axum/latest/axum/extract/struct.TypedHeader.html
 #[async_trait]
-impl<B> FromRequest<B> for HeaderMap
-where
-    B: Send,
-{
+impl FromRequest for HeaderMap {
     type Rejection = Infallible;
 
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts) -> Result<Self, Self::Rejection> {
         Ok(req.headers().clone())
     }
 }
 
 #[async_trait]
-impl<B> FromRequest<B> for Bytes
-where
-    B: http_body::Body + Send,
-    B::Data: Send,
-    B::Error: Into<BoxError>,
-{
+impl FromRequest for BoxBody {
+    type Rejection = BodyAlreadyExtracted;
+
+    async fn from_request(req: &mut RequestParts) -> Result<Self, Self::Rejection> {
+        Ok(take_body(req)?)
+    }
+}
+
+#[async_trait]
+impl FromRequest for Bytes {
     type Rejection = BytesRejection;
 
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts) -> Result<Self, Self::Rejection> {
         let body = take_body(req)?;
 
         let bytes = crate::body::to_bytes(body)
@@ -103,15 +92,10 @@ where
 }
 
 #[async_trait]
-impl<B> FromRequest<B> for String
-where
-    B: http_body::Body + Send,
-    B::Data: Send,
-    B::Error: Into<BoxError>,
-{
+impl FromRequest for String {
     type Rejection = StringRejection;
 
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts) -> Result<Self, Self::Rejection> {
         let body = take_body(req)?;
 
         let bytes = crate::body::to_bytes(body)
@@ -126,13 +110,10 @@ where
 }
 
 #[async_trait]
-impl<B> FromRequest<B> for http::request::Parts
-where
-    B: Send,
-{
+impl FromRequest for http::request::Parts {
     type Rejection = Infallible;
 
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts) -> Result<Self, Self::Rejection> {
         let method = unwrap_infallible(Method::from_request(req).await);
         let uri = unwrap_infallible(Uri::from_request(req).await);
         let version = unwrap_infallible(Version::from_request(req).await);
@@ -159,6 +140,6 @@ fn unwrap_infallible<T>(result: Result<T, Infallible>) -> T {
     }
 }
 
-pub(crate) fn take_body<B>(req: &mut RequestParts<B>) -> Result<B, BodyAlreadyExtracted> {
+pub(crate) fn take_body(req: &mut RequestParts) -> Result<BoxBody, BodyAlreadyExtracted> {
     req.take_body().ok_or(BodyAlreadyExtracted)
 }

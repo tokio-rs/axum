@@ -1,7 +1,8 @@
 use crate::{
-    body::{boxed, Body, Empty, HttpBody},
+    body::{boxed, Empty, HttpBody},
     response::Response,
 };
+use axum_core::{body::BoxBody, BoxError};
 use bytes::Bytes;
 use http::{
     header::{self, CONTENT_LENGTH},
@@ -25,12 +26,12 @@ use tower_service::Service;
 ///
 /// You normally shouldn't need to care about this type. It's used in
 /// [`Router::layer`](super::Router::layer).
-pub struct Route<B = Body, E = Infallible>(BoxCloneService<Request<B>, Response, E>);
+pub struct Route<E = Infallible>(BoxCloneService<Request<BoxBody>, Response, E>);
 
-impl<B, E> Route<B, E> {
+impl<E> Route<E> {
     pub(super) fn new<T>(svc: T) -> Self
     where
-        T: Service<Request<B>, Response = Response, Error = E> + Clone + Send + 'static,
+        T: Service<Request<BoxBody>, Response = Response, Error = E> + Clone + Send + 'static,
         T::Future: Send + 'static,
     {
         Self(BoxCloneService::new(svc))
@@ -38,31 +39,32 @@ impl<B, E> Route<B, E> {
 
     pub(crate) fn oneshot_inner(
         &mut self,
-        req: Request<B>,
-    ) -> Oneshot<BoxCloneService<Request<B>, Response, E>, Request<B>> {
+        req: Request<BoxBody>,
+    ) -> Oneshot<BoxCloneService<Request<BoxBody>, Response, E>, Request<BoxBody>> {
         self.0.clone().oneshot(req)
     }
 }
 
-impl<ReqBody, E> Clone for Route<ReqBody, E> {
+impl<E> Clone for Route<E> {
     fn clone(&self) -> Self {
         Self(self.0.clone())
     }
 }
 
-impl<ReqBody, E> fmt::Debug for Route<ReqBody, E> {
+impl<E> fmt::Debug for Route<E> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Route").finish()
     }
 }
 
-impl<B, E> Service<Request<B>> for Route<B, E>
+impl<B, E> Service<Request<B>> for Route<E>
 where
-    B: HttpBody,
+    B: HttpBody<Data = Bytes> + Send + 'static,
+    B::Error: Into<BoxError>,
 {
     type Response = Response;
     type Error = E;
-    type Future = RouteFuture<B, E>;
+    type Future = RouteFuture<E>;
 
     #[inline]
     fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
@@ -71,15 +73,16 @@ where
 
     #[inline]
     fn call(&mut self, req: Request<B>) -> Self::Future {
+        let req = req.map(crate::body::boxed);
         RouteFuture::from_future(self.oneshot_inner(req))
     }
 }
 
 pin_project! {
     /// Response future for [`Route`].
-    pub struct RouteFuture<B, E> {
+    pub struct RouteFuture<E> {
         #[pin]
-        kind: RouteFutureKind<B, E>,
+        kind: RouteFutureKind<E>,
         strip_body: bool,
         allow_header: Option<Bytes>,
     }
@@ -87,12 +90,12 @@ pin_project! {
 
 pin_project! {
     #[project = RouteFutureKindProj]
-    enum RouteFutureKind<B, E> {
+    enum RouteFutureKind<E> {
         Future {
             #[pin]
             future: Oneshot<
-                BoxCloneService<Request<B>, Response, E>,
-                Request<B>,
+                BoxCloneService<Request<BoxBody>, Response, E>,
+                Request<BoxBody>,
             >,
         },
         Response {
@@ -101,9 +104,9 @@ pin_project! {
     }
 }
 
-impl<B, E> RouteFuture<B, E> {
+impl<E> RouteFuture<E> {
     pub(crate) fn from_future(
-        future: Oneshot<BoxCloneService<Request<B>, Response, E>, Request<B>>,
+        future: Oneshot<BoxCloneService<Request<BoxBody>, Response, E>, Request<BoxBody>>,
     ) -> Self {
         Self {
             kind: RouteFutureKind::Future { future },
@@ -123,10 +126,7 @@ impl<B, E> RouteFuture<B, E> {
     }
 }
 
-impl<B, E> Future for RouteFuture<B, E>
-where
-    B: HttpBody,
-{
+impl<E> Future for RouteFuture<E> {
     type Output = Result<Response, E>;
 
     #[inline]

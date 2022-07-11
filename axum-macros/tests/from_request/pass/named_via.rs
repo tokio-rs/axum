@@ -1,5 +1,4 @@
 use axum::{
-    body::Body,
     extract::{
         rejection::{ExtensionRejection, TypedHeaderRejection},
         Extension, FromRequest, TypedHeader,
@@ -25,7 +24,7 @@ struct Extractor {
 
 fn assert_from_request()
 where
-    Extractor: FromRequest<Body, Rejection = ExtractorRejection>,
+    Extractor: FromRequest<Rejection = ExtractorRejection>,
 {
 }
 

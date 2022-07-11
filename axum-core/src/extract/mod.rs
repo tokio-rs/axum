@@ -5,16 +5,20 @@
 //! [`axum::extract`]: https://docs.rs/axum/latest/axum/extract/index.html
 
 use self::rejection::*;
-use crate::{response::IntoResponse, BoxError};
+use crate::{body::BoxBody, response::IntoResponse, BoxError};
 use async_trait::async_trait;
 use bytes::Bytes;
-use http::{Extensions, HeaderMap, Method, Request, Uri, Version};
+use http::{Extensions, HeaderMap, Method, Uri, Version};
 use std::convert::Infallible;
 
 pub mod rejection;
 
 mod request_parts;
 mod tuple;
+
+/// Type alias for [`http::Request`] whose body type defaults to [`BoxBody`], the most common body
+/// type used with axum.
+pub type Request<T = BoxBody> = http::Request<T>;
 
 /// Types that can be created from requests.
 ///
@@ -61,29 +65,29 @@ mod tuple;
 /// [`http::Request<B>`]: http::Request
 /// [`axum::extract`]: https://docs.rs/axum/latest/axum/extract/index.html
 #[async_trait]
-pub trait FromRequest<B>: Sized {
+pub trait FromRequest: Sized {
     /// If the extractor fails it'll use this "rejection" type. A rejection is
     /// a kind of error that can be converted into a response.
     type Rejection: IntoResponse;
 
     /// Perform the extraction.
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection>;
+    async fn from_request(req: &mut RequestParts) -> Result<Self, Self::Rejection>;
 }
 
 /// The type used with [`FromRequest`] to extract data from requests.
 ///
 /// Has several convenience methods for getting owned parts of the request.
 #[derive(Debug)]
-pub struct RequestParts<B> {
+pub struct RequestParts {
     method: Method,
     uri: Uri,
     version: Version,
     headers: HeaderMap,
     extensions: Extensions,
-    body: Option<B>,
+    body: Option<BoxBody>,
 }
 
-impl<B> RequestParts<B> {
+impl RequestParts {
     /// Create a new `RequestParts`.
     ///
     /// You generally shouldn't need to construct this type yourself, unless
@@ -91,7 +95,7 @@ impl<B> RequestParts<B> {
     /// [`tower::Service`].
     ///
     /// [`tower::Service`]: https://docs.rs/tower/lastest/tower/trait.Service.html
-    pub fn new(req: Request<B>) -> Self
+    pub fn new<B>(req: Request<B>) -> Self
     where
         B: http_body::Body<Data = Bytes> + Send + 'static,
         B::Error: Into<BoxError>,
@@ -107,6 +111,8 @@ impl<B> RequestParts<B> {
             },
             body,
         ) = req.into_parts();
+
+        let body = crate::body::boxed(body);
 
         RequestParts {
             method,
@@ -146,7 +152,10 @@ impl<B> RequestParts<B> {
     ///     }
     /// }
     /// ```
-    pub async fn extract<E: FromRequest<B>>(&mut self) -> Result<E, E::Rejection> {
+    pub async fn extract<E>(&mut self) -> Result<E, E::Rejection>
+    where
+        E: FromRequest,
+    {
         E::from_request(self).await
     }
 
@@ -156,7 +165,7 @@ impl<B> RequestParts<B> {
     /// been called.
     ///
     /// [`take_body`]: RequestParts::take_body
-    pub fn try_into_request(self) -> Result<Request<B>, BodyAlreadyExtracted> {
+    pub fn try_into_request(self) -> Result<Request<BoxBody>, BodyAlreadyExtracted> {
         let Self {
             method,
             uri,
@@ -234,7 +243,7 @@ impl<B> RequestParts<B> {
     /// Gets a reference to the request body.
     ///
     /// Returns `None` if the body has been taken by another extractor.
-    pub fn body(&self) -> Option<&B> {
+    pub fn body(&self) -> Option<&BoxBody> {
         self.body.as_ref()
     }
 
@@ -242,38 +251,36 @@ impl<B> RequestParts<B> {
     ///
     /// Returns `None` if the body has been taken by another extractor.
     // this returns `&mut Option<B>` rather than `Option<&mut B>` such that users can use it to set the body.
-    pub fn body_mut(&mut self) -> &mut Option<B> {
+    pub fn body_mut(&mut self) -> &mut Option<BoxBody> {
         &mut self.body
     }
 
     /// Takes the body out of the request, leaving a `None` in its place.
-    pub fn take_body(&mut self) -> Option<B> {
+    pub fn take_body(&mut self) -> Option<BoxBody> {
         self.body.take()
     }
 }
 
 #[async_trait]
-impl<T, B> FromRequest<B> for Option<T>
+impl<T> FromRequest for Option<T>
 where
-    T: FromRequest<B>,
-    B: Send,
+    T: FromRequest,
 {
     type Rejection = Infallible;
 
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Option<T>, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts) -> Result<Option<T>, Self::Rejection> {
         Ok(T::from_request(req).await.ok())
     }
 }
 
 #[async_trait]
-impl<T, B> FromRequest<B> for Result<T, T::Rejection>
+impl<T> FromRequest for Result<T, T::Rejection>
 where
-    T: FromRequest<B>,
-    B: Send,
+    T: FromRequest,
 {
     type Rejection = Infallible;
 
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts) -> Result<Self, Self::Rejection> {
         Ok(T::from_request(req).await)
     }
 }

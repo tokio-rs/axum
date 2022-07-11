@@ -1,7 +1,7 @@
 #![doc = include_str!("../docs/error_handling.md")]
 
 use crate::{
-    body::{boxed, Bytes, HttpBody},
+    body::{boxed, BoxBody, Bytes, HttpBody},
     extract::{FromRequest, RequestParts},
     http::{Request, StatusCode},
     response::{IntoResponse, Response},
@@ -157,13 +157,13 @@ macro_rules! impl_service {
         impl<S, F, ReqBody, ResBody, Res, Fut, $($ty,)*> Service<Request<ReqBody>>
             for HandleError<S, F, ($($ty,)*)>
         where
-            S: Service<Request<ReqBody>, Response = Response<ResBody>> + Clone + Send + 'static,
+            S: Service<Request<BoxBody>, Response = Response<ResBody>> + Clone + Send + 'static,
             S::Error: Send,
             S::Future: Send,
             F: FnOnce($($ty),*, S::Error) -> Fut + Clone + Send + 'static,
             Fut: Future<Output = Res> + Send,
             Res: IntoResponse,
-            $( $ty: FromRequest<ReqBody> + Send,)*
+            $( $ty: FromRequest + Send,)*
             ReqBody: HttpBody<Data = Bytes> + Send + 'static,
             ReqBody::Error: Into<BoxError>,
             ResBody: HttpBody<Data = Bytes> + Send + 'static,

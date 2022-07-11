@@ -74,14 +74,13 @@ impl<K> fmt::Debug for PrivateCookieJar<K> {
 }
 
 #[async_trait]
-impl<B, K> FromRequest<B> for PrivateCookieJar<K>
+impl<K> FromRequest for PrivateCookieJar<K>
 where
-    B: Send,
     K: Into<Key> + Clone + Send + Sync + 'static,
 {
-    type Rejection = <axum::Extension<K> as FromRequest<B>>::Rejection;
+    type Rejection = <axum::Extension<K> as FromRequest>::Rejection;
 
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts) -> Result<Self, Self::Rejection> {
         let key = Extension::<K>::from_request(req).await?.0.into();
 
         let mut jar = cookie_lib::CookieJar::new();

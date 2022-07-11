@@ -88,13 +88,10 @@ pub struct CookieJar {
 }
 
 #[async_trait]
-impl<B> FromRequest<B> for CookieJar
-where
-    B: Send,
-{
+impl FromRequest for CookieJar {
     type Rejection = Infallible;
 
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts) -> Result<Self, Self::Rejection> {
         let mut jar = cookie_lib::CookieJar::new();
         for cookie in cookies_from_request(req) {
             jar.add_original(cookie);
@@ -103,9 +100,7 @@ where
     }
 }
 
-fn cookies_from_request<B>(
-    req: &mut RequestParts<B>,
-) -> impl Iterator<Item = Cookie<'static>> + '_ {
+fn cookies_from_request(req: &mut RequestParts) -> impl Iterator<Item = Cookie<'static>> + '_ {
     req.headers()
         .get_all(COOKIE)
         .into_iter()
@@ -226,7 +221,7 @@ mod tests {
                     jar.remove(Cookie::named("key"))
                 }
 
-                let app = Router::<Body>::new()
+                let app = Router::new()
                     .route("/set", get(set_cookie))
                     .route("/get", get(get_cookie))
                     .route("/remove", get(remove_cookie))
@@ -294,7 +289,7 @@ mod tests {
             format!("{:?}", jar.get("key"))
         }
 
-        let app = Router::<Body>::new()
+        let app = Router::new()
             .route("/get", get(get_cookie))
             .layer(Extension(Key::generate()));
 

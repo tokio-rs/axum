@@ -61,7 +61,7 @@ impl<T> From<T> for Html<T> {
 #[cfg(test)]
 mod tests {
     use crate::extract::Extension;
-    use crate::{body::Body, routing::get, Router};
+    use crate::{routing::get, Router};
     use axum_core::response::IntoResponse;
     use http::HeaderMap;
     use http::{StatusCode, Uri};
@@ -93,7 +93,7 @@ mod tests {
             }
         }
 
-        Router::<Body>::new()
+        Router::new()
             .route("/", get(impl_trait_ok))
             .route("/", get(impl_trait_err))
             .route("/", get(impl_trait_both))
@@ -203,7 +203,7 @@ mod tests {
             )
         }
 
-        Router::<Body>::new()
+        Router::new()
             .route("/", get(status))
             .route("/", get(status_headermap))
             .route("/", get(status_header_array))

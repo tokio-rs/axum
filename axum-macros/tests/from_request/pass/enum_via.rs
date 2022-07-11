@@ -1,4 +1,4 @@
-use axum::{body::Body, routing::get, Extension, Router};
+use axum::{routing::get, Extension, Router};
 use axum_macros::FromRequest;
 
 #[derive(FromRequest, Clone)]
@@ -8,5 +8,5 @@ enum Extractor {}
 async fn foo(_: Extractor) {}
 
 fn main() {
-    Router::<Body>::new().route("/", get(foo));
+    Router::new().route("/", get(foo));
 }

@@ -163,14 +163,13 @@ impl<T> DerefMut for Path<T> {
 }
 
 #[async_trait]
-impl<T, B> FromRequest<B> for Path<T>
+impl<T> FromRequest for Path<T>
 where
     T: DeserializeOwned + Send,
-    B: Send,
 {
     type Rejection = PathRejection;
 
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts) -> Result<Self, Self::Rejection> {
         let params = match req.extensions_mut().get::<UrlParams>() {
             Some(UrlParams::Params(params)) => params,
             Some(UrlParams::InvalidUtf8InPathParam { key }) => {
@@ -411,9 +410,8 @@ impl std::error::Error for FailedToDeserializePathParams {}
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{routing::get, test_helpers::*, Router};
-    use http::{Request, StatusCode};
-    use hyper::Body;
+    use crate::{extract::Request, routing::get, test_helpers::*, Router};
+    use http::StatusCode;
     use std::collections::HashMap;
 
     #[tokio::test]
@@ -520,7 +518,7 @@ mod tests {
 
     #[tokio::test]
     async fn when_extensions_are_missing() {
-        let app = Router::new().route("/:key", get(|_: Request<Body>, _: Path<String>| async {}));
+        let app = Router::new().route("/:key", get(|_: Request, _: Path<String>| async {}));
 
         let client = TestClient::new(app);
 

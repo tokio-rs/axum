@@ -1,5 +1,6 @@
 #![doc = include_str!("../docs/extract.md")]
 
+use axum_core::body::BoxBody;
 use http::header;
 use rejection::*;
 
@@ -16,17 +17,13 @@ mod raw_query;
 mod request_parts;
 
 #[doc(inline)]
-pub use axum_core::extract::{FromRequest, RequestParts};
+pub use axum_core::extract::{FromRequest, Request, RequestParts};
 
 #[doc(inline)]
 #[allow(deprecated)]
 pub use self::{
-    connect_info::ConnectInfo,
-    content_length_limit::ContentLengthLimit,
-    host::Host,
-    path::Path,
-    raw_query::RawQuery,
-    request_parts::{BodyStream, RawBody},
+    connect_info::ConnectInfo, content_length_limit::ContentLengthLimit, host::Host, path::Path,
+    raw_query::RawQuery, request_parts::BodyStream,
 };
 
 #[doc(no_inline)]
@@ -73,15 +70,12 @@ pub use self::ws::WebSocketUpgrade;
 #[doc(no_inline)]
 pub use crate::TypedHeader;
 
-pub(crate) fn take_body<B>(req: &mut RequestParts<B>) -> Result<B, BodyAlreadyExtracted> {
+pub(crate) fn take_body(req: &mut RequestParts) -> Result<BoxBody, BodyAlreadyExtracted> {
     req.take_body().ok_or_else(BodyAlreadyExtracted::default)
 }
 
 // this is duplicated in `axum-extra/src/extract/form.rs`
-pub(super) fn has_content_type<B>(
-    req: &RequestParts<B>,
-    expected_content_type: &mime::Mime,
-) -> bool {
+pub(super) fn has_content_type(req: &RequestParts, expected_content_type: &mime::Mime) -> bool {
     let content_type = if let Some(content_type) = req.headers().get(header::CONTENT_TYPE) {
         content_type
     } else {

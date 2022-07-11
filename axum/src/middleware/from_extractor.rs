@@ -4,6 +4,7 @@ use crate::{
     response::{IntoResponse, Response},
     BoxError,
 };
+use axum_core::body::BoxBody;
 use futures_util::{future::BoxFuture, ready};
 use http::Request;
 use pin_project_lite::pin_project;
@@ -168,16 +169,16 @@ where
 
 impl<S, E, ReqBody, ResBody> Service<Request<ReqBody>> for FromExtractor<S, E>
 where
-    E: FromRequest<ReqBody> + 'static,
+    E: FromRequest + 'static,
     ReqBody: HttpBody<Data = Bytes> + Default + Send + 'static,
     ReqBody::Error: Into<BoxError>,
-    S: Service<Request<ReqBody>, Response = Response<ResBody>> + Clone,
+    S: Service<Request<BoxBody>, Response = Response<ResBody>> + Clone,
     ResBody: HttpBody<Data = Bytes> + Send + 'static,
     ResBody::Error: Into<BoxError>,
 {
     type Response = Response;
     type Error = S::Error;
-    type Future = ResponseFuture<ReqBody, S, E>;
+    type Future = ResponseFuture<S, E>;
 
     #[inline]
     fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
@@ -203,34 +204,33 @@ where
 pin_project! {
     /// Response future for [`FromExtractor`].
     #[allow(missing_debug_implementations)]
-    pub struct ResponseFuture<ReqBody, S, E>
+    pub struct ResponseFuture<S, E>
     where
-        E: FromRequest<ReqBody>,
-        S: Service<Request<ReqBody>>,
+        E: FromRequest,
+        S: Service<Request<BoxBody>>,
     {
         #[pin]
-        state: State<ReqBody, S, E>,
+        state: State<S, E>,
         svc: Option<S>,
     }
 }
 
 pin_project! {
     #[project = StateProj]
-    enum State<ReqBody, S, E>
+    enum State<S, E>
     where
-        E: FromRequest<ReqBody>,
-        S: Service<Request<ReqBody>>,
+        E: FromRequest,
+        S: Service<Request<BoxBody>>,
     {
-        Extracting { future: BoxFuture<'static, (RequestParts<ReqBody>, Result<E, E::Rejection>)> },
+        Extracting { future: BoxFuture<'static, (RequestParts, Result<E, E::Rejection>)> },
         Call { #[pin] future: S::Future },
     }
 }
 
-impl<ReqBody, S, E, ResBody> Future for ResponseFuture<ReqBody, S, E>
+impl<S, E, ResBody> Future for ResponseFuture<S, E>
 where
-    E: FromRequest<ReqBody>,
-    S: Service<Request<ReqBody>, Response = Response<ResBody>>,
-    ReqBody: Default,
+    E: FromRequest,
+    S: Service<Request<BoxBody>, Response = Response<ResBody>>,
     ResBody: HttpBody<Data = Bytes> + Send + 'static,
     ResBody::Error: Into<BoxError>,
 {
@@ -280,13 +280,10 @@ mod tests {
         struct RequireAuth;
 
         #[async_trait::async_trait]
-        impl<B> FromRequest<B> for RequireAuth
-        where
-            B: Send,
-        {
+        impl FromRequest for RequireAuth {
             type Rejection = StatusCode;
 
-            async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+            async fn from_request(req: &mut RequestParts) -> Result<Self, Self::Rejection> {
                 if let Some(auth) = req
                     .headers()
                     .get(header::AUTHORIZATION)

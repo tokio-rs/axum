@@ -36,7 +36,7 @@
 #![doc = include_str!("../docs/debugging_handler_type_errors.md")]
 
 use crate::{
-    body::{boxed, Body, Bytes, HttpBody},
+    body::{boxed, BoxBody, Bytes, HttpBody},
     extract::{connect_info::IntoMakeServiceWithConnectInfo, FromRequest, RequestParts},
     response::{IntoResponse, Response},
     routing::IntoMakeService,
@@ -61,12 +61,12 @@ pub use self::into_service::IntoService;
 /// See the [module docs](crate::handler) for more details.
 ///
 #[doc = include_str!("../docs/debugging_handler_type_errors.md")]
-pub trait Handler<T, B = Body>: Clone + Send + Sized + 'static {
+pub trait Handler<T>: Clone + Send + Sized + 'static {
     /// The type of future calling this handler returns.
     type Future: Future<Output = Response> + Send + 'static;
 
     /// Call the handler with the given request.
-    fn call(self, req: Request<B>) -> Self::Future;
+    fn call(self, req: Request<BoxBody>) -> Self::Future;
 
     /// Apply a [`tower::Layer`] to the handler.
     ///
@@ -106,7 +106,7 @@ pub trait Handler<T, B = Body>: Clone + Send + Sized + 'static {
     /// ```
     fn layer<L>(self, layer: L) -> Layered<L::Service, T>
     where
-        L: Layer<IntoService<Self, T, B>>,
+        L: Layer<IntoService<Self, T>>,
     {
         Layered::new(layer.layer(self.into_service()))
     }
@@ -143,7 +143,7 @@ pub trait Handler<T, B = Body>: Clone + Send + Sized + 'static {
     /// ```
     ///
     /// [`Router::fallback`]: crate::routing::Router::fallback
-    fn into_service(self) -> IntoService<Self, T, B> {
+    fn into_service(self) -> IntoService<Self, T> {
         IntoService::new(self)
     }
 
@@ -170,7 +170,7 @@ pub trait Handler<T, B = Body>: Clone + Send + Sized + 'static {
     /// ```
     ///
     /// [`MakeService`]: tower::make::MakeService
-    fn into_make_service(self) -> IntoMakeService<IntoService<Self, T, B>> {
+    fn into_make_service(self) -> IntoMakeService<IntoService<Self, T>> {
         IntoMakeService::new(self.into_service())
     }
 
@@ -204,21 +204,20 @@ pub trait Handler<T, B = Body>: Clone + Send + Sized + 'static {
     /// [`Router::into_make_service_with_connect_info`]: crate::routing::Router::into_make_service_with_connect_info
     fn into_make_service_with_connect_info<C>(
         self,
-    ) -> IntoMakeServiceWithConnectInfo<IntoService<Self, T, B>, C> {
+    ) -> IntoMakeServiceWithConnectInfo<IntoService<Self, T>, C> {
         IntoMakeServiceWithConnectInfo::new(self.into_service())
     }
 }
 
-impl<F, Fut, Res, B> Handler<(), B> for F
+impl<F, Fut, Res> Handler<()> for F
 where
     F: FnOnce() -> Fut + Clone + Send + 'static,
     Fut: Future<Output = Res> + Send,
     Res: IntoResponse,
-    B: Send + 'static,
 {
     type Future = Pin<Box<dyn Future<Output = Response> + Send>>;
 
-    fn call(self, _req: Request<B>) -> Self::Future {
+    fn call(self, _req: Request<BoxBody>) -> Self::Future {
         Box::pin(async move { self().await.into_response() })
     }
 }
@@ -226,18 +225,16 @@ where
 macro_rules! impl_handler {
     ( $($ty:ident),* $(,)? ) => {
         #[allow(non_snake_case)]
-        impl<F, Fut, B, Res, $($ty,)*> Handler<($($ty,)*), B> for F
+        impl<F, Fut, Res, $($ty,)*> Handler<($($ty,)*)> for F
         where
             F: FnOnce($($ty,)*) -> Fut + Clone + Send + 'static,
             Fut: Future<Output = Res> + Send,
-            B: HttpBody<Data = Bytes> + Send + 'static,
-            B::Error: Into<BoxError>,
             Res: IntoResponse,
-            $( $ty: FromRequest<B> + Send,)*
+            $( $ty: FromRequest + Send,)*
         {
             type Future = Pin<Box<dyn Future<Output = Response> + Send>>;
 
-            fn call(self, req: Request<B>) -> Self::Future {
+            fn call(self, req: Request<BoxBody>) -> Self::Future {
                 Box::pin(async move {
                     let mut req = RequestParts::new(req);
 
@@ -285,19 +282,18 @@ where
     }
 }
 
-impl<S, T, ReqBody, ResBody> Handler<T, ReqBody> for Layered<S, T>
+impl<S, T, ResBody> Handler<T> for Layered<S, T>
 where
-    S: Service<Request<ReqBody>, Response = Response<ResBody>> + Clone + Send + 'static,
+    S: Service<Request<BoxBody>, Response = Response<ResBody>> + Clone + Send + 'static,
     S::Error: IntoResponse,
     S::Future: Send,
     T: 'static,
-    ReqBody: Send + 'static,
     ResBody: HttpBody<Data = Bytes> + Send + 'static,
     ResBody::Error: Into<BoxError>,
 {
-    type Future = future::LayeredFuture<S, ReqBody>;
+    type Future = future::LayeredFuture<S>;
 
-    fn call(self, req: Request<ReqBody>) -> Self::Future {
+    fn call(self, req: Request<BoxBody>) -> Self::Future {
         use futures_util::future::{FutureExt, Map};
 
         let future: Map<_, fn(Result<S::Response, S::Error>) -> _> =

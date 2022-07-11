@@ -1,5 +1,5 @@
 use axum::{
-    body::Body,
+    body::BoxBody,
     handler::Handler,
     http::Request,
     response::Response,
@@ -47,15 +47,12 @@ use tower_service::Service;
 /// let app = Router::new().merge(users);
 /// # let _: Router<axum::body::Body> = app;
 /// ```
-pub struct Resource<B = Body> {
+pub struct Resource {
     pub(crate) name: String,
-    pub(crate) router: Router<B>,
+    pub(crate) router: Router,
 }
 
-impl<B> Resource<B>
-where
-    B: axum::body::HttpBody + Send + 'static,
-{
+impl Resource {
     /// Create a `Resource` with the given name.
     ///
     /// All routes will be nested at `/{resource_name}`.
@@ -69,7 +66,7 @@ where
     /// Add a handler at `GET /{resource_name}`.
     pub fn index<H, T>(self, handler: H) -> Self
     where
-        H: Handler<T, B>,
+        H: Handler<T>,
         T: 'static,
     {
         let path = self.index_create_path();
@@ -79,7 +76,7 @@ where
     /// Add a handler at `POST /{resource_name}`.
     pub fn create<H, T>(self, handler: H) -> Self
     where
-        H: Handler<T, B>,
+        H: Handler<T>,
         T: 'static,
     {
         let path = self.index_create_path();
@@ -89,7 +86,7 @@ where
     /// Add a handler at `GET /{resource_name}/new`.
     pub fn new<H, T>(self, handler: H) -> Self
     where
-        H: Handler<T, B>,
+        H: Handler<T>,
         T: 'static,
     {
         let path = format!("/{}/new", self.name);
@@ -99,7 +96,7 @@ where
     /// Add a handler at `GET /{resource_name}/:{resource_name}_id`.
     pub fn show<H, T>(self, handler: H) -> Self
     where
-        H: Handler<T, B>,
+        H: Handler<T>,
         T: 'static,
     {
         let path = self.show_update_destroy_path();
@@ -109,7 +106,7 @@ where
     /// Add a handler at `GET /{resource_name}/:{resource_name}_id/edit`.
     pub fn edit<H, T>(self, handler: H) -> Self
     where
-        H: Handler<T, B>,
+        H: Handler<T>,
         T: 'static,
     {
         let path = format!("/{0}/:{0}_id/edit", self.name);
@@ -119,7 +116,7 @@ where
     /// Add a handler at `PUT or PATCH /resource_name/:{resource_name}_id`.
     pub fn update<H, T>(self, handler: H) -> Self
     where
-        H: Handler<T, B>,
+        H: Handler<T>,
         T: 'static,
     {
         let path = self.show_update_destroy_path();
@@ -129,7 +126,7 @@ where
     /// Add a handler at `DELETE /{resource_name}/:{resource_name}_id`.
     pub fn destroy<H, T>(self, handler: H) -> Self
     where
-        H: Handler<T, B>,
+        H: Handler<T>,
         T: 'static,
     {
         let path = self.show_update_destroy_path();
@@ -141,7 +138,10 @@ where
     /// The routes will be nested at `/{resource_name}/:{resource_name}_id`.
     pub fn nest<T>(mut self, svc: T) -> Self
     where
-        T: Service<Request<B>, Response = Response, Error = Infallible> + Clone + Send + 'static,
+        T: Service<Request<BoxBody>, Response = Response, Error = Infallible>
+            + Clone
+            + Send
+            + 'static,
         T::Future: Send + 'static,
     {
         let path = self.show_update_destroy_path();
@@ -154,7 +154,10 @@ where
     /// The routes will be nested at `/{resource_name}`.
     pub fn nest_collection<T>(mut self, svc: T) -> Self
     where
-        T: Service<Request<B>, Response = Response, Error = Infallible> + Clone + Send + 'static,
+        T: Service<Request<BoxBody>, Response = Response, Error = Infallible>
+            + Clone
+            + Send
+            + 'static,
         T::Future: Send + 'static,
     {
         let path = self.index_create_path();
@@ -172,7 +175,10 @@ where
 
     fn route<T>(mut self, path: &str, svc: T) -> Self
     where
-        T: Service<Request<B>, Response = Response, Error = Infallible> + Clone + Send + 'static,
+        T: Service<Request<BoxBody>, Response = Response, Error = Infallible>
+            + Clone
+            + Send
+            + 'static,
         T::Future: Send + 'static,
     {
         self.router = self.router.route(path, svc);
@@ -180,13 +186,13 @@ where
     }
 }
 
-impl<B> From<Resource<B>> for Router<B> {
-    fn from(resource: Resource<B>) -> Self {
+impl From<Resource> for Router {
+    fn from(resource: Resource) -> Self {
         resource.router
     }
 }
 
-impl<B> fmt::Debug for Resource<B> {
+impl fmt::Debug for Resource {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Resource")
             .field("name", &self.name)
@@ -199,7 +205,7 @@ impl<B> fmt::Debug for Resource<B> {
 mod tests {
     #[allow(unused_imports)]
     use super::*;
-    use axum::{extract::Path, http::Method, Router};
+    use axum::{body::Body, extract::Path, http::Method, Router};
     use tower::ServiceExt;
 
     #[tokio::test]
@@ -220,65 +226,60 @@ mod tests {
                 Router::new().route("/featured", get(|| async move { "users#featured" })),
             );
 
-        let mut app = Router::new().merge(users);
+        let app = Router::new().merge(users);
+
+        assert_eq!(call_route(&app, Method::GET, "/users").await, "users#index");
 
         assert_eq!(
-            call_route(&mut app, Method::GET, "/users").await,
-            "users#index"
-        );
-
-        assert_eq!(
-            call_route(&mut app, Method::POST, "/users").await,
+            call_route(&app, Method::POST, "/users").await,
             "users#create"
         );
 
         assert_eq!(
-            call_route(&mut app, Method::GET, "/users/new").await,
+            call_route(&app, Method::GET, "/users/new").await,
             "users#new"
         );
 
         assert_eq!(
-            call_route(&mut app, Method::GET, "/users/1").await,
+            call_route(&app, Method::GET, "/users/1").await,
             "users#show id=1"
         );
 
         assert_eq!(
-            call_route(&mut app, Method::GET, "/users/1/edit").await,
+            call_route(&app, Method::GET, "/users/1/edit").await,
             "users#edit id=1"
         );
 
         assert_eq!(
-            call_route(&mut app, Method::PATCH, "/users/1").await,
+            call_route(&app, Method::PATCH, "/users/1").await,
             "users#update id=1"
         );
 
         assert_eq!(
-            call_route(&mut app, Method::PUT, "/users/1").await,
+            call_route(&app, Method::PUT, "/users/1").await,
             "users#update id=1"
         );
 
         assert_eq!(
-            call_route(&mut app, Method::DELETE, "/users/1").await,
+            call_route(&app, Method::DELETE, "/users/1").await,
             "users#destroy id=1"
         );
 
         assert_eq!(
-            call_route(&mut app, Method::GET, "/users/1/tweets").await,
+            call_route(&app, Method::GET, "/users/1/tweets").await,
             "users#tweets id=1"
         );
 
         assert_eq!(
-            call_route(&mut app, Method::GET, "/users/featured").await,
+            call_route(&app, Method::GET, "/users/featured").await,
             "users#featured"
         );
     }
 
-    async fn call_route(app: &mut Router, method: Method, uri: &str) -> String {
+    async fn call_route(app: &Router, method: Method, uri: &str) -> String {
         let res = app
-            .ready()
-            .await
-            .unwrap()
-            .call(
+            .clone()
+            .oneshot(
                 Request::builder()
                     .method(method)
                     .uri(uri)

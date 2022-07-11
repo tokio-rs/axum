@@ -45,7 +45,11 @@ impl FailedToBufferBody {
     where
         E: Into<BoxError>,
     {
-        match err.into().downcast::<http_body::LengthLimitError>() {
+        let err = match err.into().downcast::<crate::Error>() {
+            Ok(err) => err,
+            Err(err) => return Self::UnknownBodyError(UnknownBodyError::from_err(err)),
+        };
+        match err.downcast_inner::<http_body::LengthLimitError>() {
             Ok(err) => Self::LengthLimitError(LengthLimitError::from_err(err)),
             Err(err) => Self::UnknownBodyError(UnknownBodyError::from_err(err)),
         }

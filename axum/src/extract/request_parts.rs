@@ -1,7 +1,7 @@
 use super::{rejection::*, take_body, Extension, FromRequest, RequestParts};
 use crate::{
-    body::{Body, Bytes, HttpBody},
-    BoxError, Error,
+    body::{Bytes, HttpBody},
+    Error,
 };
 use async_trait::async_trait;
 use futures_util::stream::Stream;
@@ -86,13 +86,10 @@ pub struct OriginalUri(pub Uri);
 
 #[cfg(feature = "original-uri")]
 #[async_trait]
-impl<B> FromRequest<B> for OriginalUri
-where
-    B: Send,
-{
+impl FromRequest for OriginalUri {
     type Rejection = Infallible;
 
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts) -> Result<Self, Self::Rejection> {
         let uri = Extension::<Self>::from_request(req)
             .await
             .unwrap_or_else(|_| Extension(OriginalUri(req.uri().clone())))
@@ -140,18 +137,11 @@ impl Stream for BodyStream {
 }
 
 #[async_trait]
-impl<B> FromRequest<B> for BodyStream
-where
-    B: HttpBody + Send + 'static,
-    B::Data: Into<Bytes>,
-    B::Error: Into<BoxError>,
-{
+impl FromRequest for BodyStream {
     type Rejection = BodyAlreadyExtracted;
 
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-        let body = take_body(req)?
-            .map_data(Into::into)
-            .map_err(|err| Error::new(err.into()));
+    async fn from_request(req: &mut RequestParts) -> Result<Self, Self::Rejection> {
+        let body = take_body(req)?.map_data(Into::into);
         let stream = BodyStream(SyncWrapper::new(Box::pin(body)));
         Ok(stream)
     }
@@ -169,59 +159,19 @@ fn body_stream_traits() {
     crate::test_helpers::assert_sync::<BodyStream>();
 }
 
-/// Extractor that extracts the raw request body.
-///
-/// # Example
-///
-/// ```rust,no_run
-/// use axum::{
-///     extract::RawBody,
-///     routing::get,
-///     Router,
-/// };
-/// use futures::StreamExt;
-///
-/// async fn handler(RawBody(body): RawBody) {
-///     // ...
-/// }
-///
-/// let app = Router::new().route("/users", get(handler));
-/// # async {
-/// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-/// # };
-/// ```
-///
-/// [`body::Body`]: crate::body::Body
-#[derive(Debug, Default, Clone)]
-pub struct RawBody<B = Body>(pub B);
-
-#[async_trait]
-impl<B> FromRequest<B> for RawBody<B>
-where
-    B: Send,
-{
-    type Rejection = BodyAlreadyExtracted;
-
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-        let body = take_body(req)?;
-        Ok(Self(body))
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use crate::{
-        body::Body,
-        extract::Extension,
+        extract::{Extension, Request},
         routing::{get, post},
         test_helpers::*,
         Router,
     };
-    use http::{Method, Request, StatusCode};
+    use http::{Method, StatusCode};
 
     #[tokio::test]
     async fn multiple_request_extractors() {
-        async fn handler(_: Request<Body>, _: Request<Body>) {}
+        async fn handler(_: Request, _: Request) {}
 
         let app = Router::new().route("/", post(handler));
 

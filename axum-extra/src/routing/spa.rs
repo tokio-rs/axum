@@ -1,5 +1,5 @@
 use axum::{
-    body::{Body, HttpBody},
+    body::BoxBody,
     error_handling::HandleError,
     response::Response,
     routing::{get_service, Route},
@@ -50,10 +50,10 @@ use tower_service::Service;
 /// - `GET /some/other/path` will serve `index.html` since there isn't another
 ///   route for it
 /// - `GET /api/foo` will serve the `api_foo` handler function
-pub struct SpaRouter<B = Body, T = (), F = fn(io::Error) -> Ready<StatusCode>> {
+pub struct SpaRouter<T = (), F = fn(io::Error) -> Ready<StatusCode>> {
     paths: Arc<Paths>,
     handle_error: F,
-    _marker: PhantomData<fn() -> (B, T)>,
+    _marker: PhantomData<fn() -> T>,
 }
 
 #[derive(Debug)]
@@ -63,7 +63,7 @@ struct Paths {
     index_file: PathBuf,
 }
 
-impl<B> SpaRouter<B, (), fn(io::Error) -> Ready<StatusCode>> {
+impl SpaRouter<(), fn(io::Error) -> Ready<StatusCode>> {
     /// Create a new `SpaRouter`.
     ///
     /// Assets will be served at `GET /{serve_assets_at}` from the directory at `assets_dir`.
@@ -86,7 +86,7 @@ impl<B> SpaRouter<B, (), fn(io::Error) -> Ready<StatusCode>> {
     }
 }
 
-impl<B, T, F> SpaRouter<B, T, F> {
+impl<T, F> SpaRouter<T, F> {
     /// Set the path to the index file.
     ///
     /// `path` must be relative to `assets_dir` passed to [`SpaRouter::new`].
@@ -138,7 +138,7 @@ impl<B, T, F> SpaRouter<B, T, F> {
     /// let app = Router::new().merge(spa);
     /// # let _: Router<axum::body::Body> = app;
     /// ```
-    pub fn handle_error<T2, F2>(self, f: F2) -> SpaRouter<B, T2, F2> {
+    pub fn handle_error<T2, F2>(self, f: F2) -> SpaRouter<T2, F2> {
         SpaRouter {
             paths: self.paths,
             handle_error: f,
@@ -147,16 +147,15 @@ impl<B, T, F> SpaRouter<B, T, F> {
     }
 }
 
-impl<B, F, T> From<SpaRouter<B, T, F>> for Router<B>
+impl<F, T> From<SpaRouter<T, F>> for Router
 where
     F: Clone + Send + 'static,
-    HandleError<Route<B, io::Error>, F, T>:
-        Service<Request<B>, Response = Response, Error = Infallible>,
-    <HandleError<Route<B, io::Error>, F, T> as Service<Request<B>>>::Future: Send,
-    B: HttpBody + Send + 'static,
+    HandleError<Route<io::Error>, F, T>:
+        Service<Request<BoxBody>, Response = Response, Error = Infallible>,
+    <HandleError<Route<io::Error>, F, T> as Service<Request<BoxBody>>>::Future: Send,
     T: 'static,
 {
-    fn from(spa: SpaRouter<B, T, F>) -> Self {
+    fn from(spa: SpaRouter<T, F>) -> Self {
         let assets_service = get_service(ServeDir::new(&spa.paths.assets_dir))
             .handle_error(spa.handle_error.clone());
 
@@ -168,7 +167,7 @@ where
     }
 }
 
-impl<B, T, F> fmt::Debug for SpaRouter<B, T, F> {
+impl<T, F> fmt::Debug for SpaRouter<T, F> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let Self {
             paths,
@@ -179,7 +178,6 @@ impl<B, T, F> fmt::Debug for SpaRouter<B, T, F> {
         f.debug_struct("SpaRouter")
             .field("paths", &paths)
             .field("handle_error", &format_args!("{}", type_name::<F>()))
-            .field("request_body_type", &format_args!("{}", type_name::<B>()))
             .field(
                 "extractor_input_type",
                 &format_args!("{}", type_name::<T>()),
@@ -188,7 +186,7 @@ impl<B, T, F> fmt::Debug for SpaRouter<B, T, F> {
     }
 }
 
-impl<B, T, F> Clone for SpaRouter<B, T, F>
+impl<T, F> Clone for SpaRouter<T, F>
 where
     F: Clone,
 {
@@ -264,6 +262,6 @@ mod tests {
 
         let spa = SpaRouter::new("/assets", "test_files").handle_error(handle_error);
 
-        Router::<Body>::new().merge(spa);
+        Router::new().merge(spa);
     }
 }

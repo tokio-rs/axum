@@ -2,12 +2,12 @@
 
 use axum::{
     async_trait,
-    body::{HttpBody, StreamBody},
+    body::{BoxBody, Bytes, HttpBody, StreamBody},
     extract::{rejection::BodyAlreadyExtracted, FromRequest, RequestParts},
     response::{IntoResponse, Response},
     BoxError,
 };
-use bytes::{BufMut, Bytes, BytesMut};
+use bytes::{BufMut, BytesMut};
 use futures_util::stream::{BoxStream, Stream, TryStream, TryStreamExt};
 use pin_project_lite::pin_project;
 use serde::{de::DeserializeOwned, Serialize};
@@ -98,25 +98,20 @@ impl<S> JsonLines<S, AsResponse> {
 }
 
 #[async_trait]
-impl<B, T> FromRequest<B> for JsonLines<T, AsExtractor>
+impl<T> FromRequest for JsonLines<T, AsExtractor>
 where
-    B: HttpBody + Send + 'static,
-    B::Data: Into<Bytes>,
-    B::Error: Into<BoxError>,
     T: DeserializeOwned,
 {
     type Rejection = BodyAlreadyExtracted;
 
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts) -> Result<Self, Self::Rejection> {
         // `Stream::lines` isn't a thing so we have to convert it into an `AsyncRead`
         // so we can call `AsyncRead::lines` and then convert it back to a `Stream`
 
         let body = req.take_body().ok_or_else(BodyAlreadyExtracted::default)?;
         let body = BodyStream { body };
 
-        let stream = body
-            .map_ok(Into::into)
-            .map_err(|err| io::Error::new(io::ErrorKind::Other, err));
+        let stream = body.map_err(|err| io::Error::new(io::ErrorKind::Other, err));
         let read = StreamReader::new(stream);
         let lines_stream = LinesStream::new(read.lines());
 
@@ -139,29 +134,27 @@ where
 // like `axum::extract::BodyStream` except it doesn't box the inner body
 // we don't need that since we box the final stream in `Inner::Extractor`
 pin_project! {
-    struct BodyStream<B> {
+    struct BodyStream {
         #[pin]
-        body: B,
+        body: BoxBody,
     }
 }
 
-impl<B> Stream for BodyStream<B>
-where
-    B: HttpBody + Send + 'static,
-{
-    type Item = Result<B::Data, B::Error>;
+impl Stream for BodyStream {
+    type Item = Result<Bytes, axum::Error>;
 
-    fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        self.project().body.poll_data(cx)
+    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        Pin::new(&mut self.body).poll_data(cx)
     }
 }
 
 impl<T> Stream for JsonLines<T, AsExtractor> {
     type Item = Result<T, axum::Error>;
 
-    fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+    #[allow(warnings)]
+    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         match self.project().inner.project() {
-            InnerProj::Extractor { stream } => stream.poll_next(cx),
+            InnerProj::Extractor { mut stream } => stream.as_mut().poll_next(cx),
             // `JsonLines<_, AsExtractor>` can only be constructed via `FromRequest`
             // which doesn't use this variant
             InnerProj::Response { .. } => unreachable!(),
