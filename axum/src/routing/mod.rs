@@ -61,44 +61,14 @@ impl RouteId {
     }
 }
 
-/// The router type for composing handlers and services.
-pub struct Router<B = Body> {
-    routes: HashMap<RouteId, Endpoint<B>>,
-    node: Arc<Node>,
-    fallback: Fallback<B>,
-}
-
-impl<B> Clone for Router<B> {
-    fn clone(&self) -> Self {
-        Self {
-            routes: self.routes.clone(),
-            node: Arc::clone(&self.node),
-            fallback: self.fallback.clone(),
-        }
-    }
-}
-
-impl<B> Default for Router<B>
-where
-    B: HttpBody + Send + 'static,
-{
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl<B> fmt::Debug for Router<B> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Router")
-            .field("routes", &self.routes)
-            .field("node", &self.node)
-            .field("fallback", &self.fallback)
-            .finish()
-    }
-}
-
 pub(crate) const NEST_TAIL_PARAM: &str = "__private__axum_nest_tail_param";
 const NEST_TAIL_PARAM_CAPTURE: &str = "/*__private__axum_nest_tail_param";
+
+/// The router type for composing handlers and services.
+pub struct Router<B = Body> {
+    routes: InnerRoutes<Endpoint<B>>,
+    fallback: Fallback<B>,
+}
 
 impl<B> Router<B>
 where
@@ -111,7 +81,6 @@ where
     pub fn new() -> Self {
         Self {
             routes: Default::default(),
-            node: Default::default(),
             fallback: Fallback::Default(Route::new(NotFound)),
         }
     }
@@ -140,16 +109,22 @@ where
         let service = match try_downcast::<MethodRouter<B, Infallible>, _>(service) {
             Ok(method_router) => {
                 if let Some((route_id, Endpoint::MethodRouter(prev_method_router))) = self
+                    .routes
                     .node
                     .path_to_route_id
                     .get(path)
-                    .and_then(|route_id| self.routes.get(route_id).map(|svc| (*route_id, svc)))
+                    .and_then(|route_id| {
+                        self.routes
+                            .route_id_to_endpoint
+                            .get(route_id)
+                            .map(|svc| (*route_id, svc))
+                    })
                 {
                     // if we're adding a new `MethodRouter` to a route that already has one just
                     // merge them. This makes `.route("/", get(_)).route("/", post(_))` work
                     let service =
                         Endpoint::MethodRouter(prev_method_router.clone().merge(method_router));
-                    self.routes.insert(route_id, service);
+                    self.routes.route_id_to_endpoint.insert(route_id, service);
                     return self;
                 } else {
                     Endpoint::MethodRouter(method_router)
@@ -159,13 +134,13 @@ where
         };
 
         let mut node =
-            Arc::try_unwrap(Arc::clone(&self.node)).unwrap_or_else(|node| (*node).clone());
+            Arc::try_unwrap(Arc::clone(&self.routes.node)).unwrap_or_else(|node| (*node).clone());
         if let Err(err) = node.insert(path, id) {
             panic!("Invalid route: {}", err);
         }
-        self.node = Arc::new(node);
+        self.routes.node = Arc::new(node);
 
-        self.routes.insert(id, service);
+        self.routes.route_id_to_endpoint.insert(id, service);
 
         self
     }
@@ -185,7 +160,6 @@ where
 
         let Router {
             mut routes,
-            node,
             fallback,
         } = router;
 
@@ -193,8 +167,8 @@ where
             panic!("Cannot nest `Router`s that has a fallback");
         }
 
-        for (id, nested_path) in &node.route_id_to_path {
-            let route = routes.remove(id).unwrap();
+        for (id, nested_path) in &routes.node.route_id_to_path {
+            let route = routes.route_id_to_endpoint.remove(id).unwrap();
             let full_path: Cow<str> = if &**nested_path == "/" {
                 path.into()
             } else if path == "/" {
@@ -213,7 +187,7 @@ where
             };
         }
 
-        debug_assert!(routes.is_empty());
+        debug_assert!(routes.route_id_to_endpoint.is_empty());
 
         self
     }
@@ -260,12 +234,15 @@ where
         R: Into<Router<B>>,
     {
         let Router {
-            routes,
-            node,
+            routes:
+                InnerRoutes {
+                    route_id_to_endpoint,
+                    node,
+                },
             fallback,
         } = other.into();
 
-        for (id, route) in routes {
+        for (id, route) in route_id_to_endpoint {
             let path = node
                 .route_id_to_path
                 .get(&id)
@@ -305,8 +282,9 @@ where
             .layer(layer)
             .into_inner();
 
-        let routes = self
+        let route_id_to_endpoint = self
             .routes
+            .route_id_to_endpoint
             .into_iter()
             .map(|(id, route)| {
                 let route = match route {
@@ -322,8 +300,10 @@ where
         let fallback = self.fallback.map(|svc| Route::new(layer.layer(svc)));
 
         Router {
-            routes,
-            node: self.node,
+            routes: InnerRoutes {
+                route_id_to_endpoint,
+                node: self.routes.node,
+            },
             fallback,
         }
     }
@@ -344,8 +324,9 @@ where
             .layer(layer)
             .into_inner();
 
-        let routes = self
+        let route_id_to_endpoint = self
             .routes
+            .route_id_to_endpoint
             .into_iter()
             .map(|(id, route)| {
                 let route = match route {
@@ -359,8 +340,10 @@ where
             .collect();
 
         Router {
-            routes,
-            node: self.node,
+            routes: InnerRoutes {
+                route_id_to_endpoint,
+                node: self.routes.node,
+            },
             fallback: self.fallback,
         }
     }
@@ -416,7 +399,7 @@ where
         let id = *match_.value;
 
         #[cfg(feature = "matched-path")]
-        if let Some(matched_path) = self.node.route_id_to_path.get(&id) {
+        if let Some(matched_path) = self.routes.node.route_id_to_path.get(&id) {
             use crate::extract::MatchedPath;
 
             let matched_path = if let Some(previous) = req.extensions_mut().get::<MatchedPath>() {
@@ -444,6 +427,7 @@ where
 
         let mut route = self
             .routes
+            .route_id_to_endpoint
             .get(&id)
             .expect("no route for id. This is a bug in axum. Please file an issue")
             .clone();
@@ -452,6 +436,33 @@ where
             Endpoint::MethodRouter(inner) => inner.call(req),
             Endpoint::Route(inner) => inner.call(req),
         }
+    }
+}
+
+impl<B> Clone for Router<B> {
+    fn clone(&self) -> Self {
+        Self {
+            routes: self.routes.clone(),
+            fallback: self.fallback.clone(),
+        }
+    }
+}
+
+impl<B> Default for Router<B>
+where
+    B: HttpBody + Send + 'static,
+{
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl<B> fmt::Debug for Router<B> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Router")
+            .field("routes", &self.routes)
+            .field("fallback", &self.fallback)
+            .finish()
     }
 }
 
@@ -482,7 +493,7 @@ where
 
         let path = req.uri().path().to_owned();
 
-        match self.node.at(&path) {
+        match self.routes.node.at(&path) {
             Ok(match_) => self.call_route(match_, req),
             Err(
                 MatchError::NotFound
@@ -493,6 +504,44 @@ where
                 Fallback::Custom(inner) => inner.clone().call(req),
             },
         }
+    }
+}
+
+struct InnerRoutes<T> {
+    route_id_to_endpoint: HashMap<RouteId, T>,
+    node: Arc<Node>,
+}
+
+impl<T> Default for InnerRoutes<T> {
+    fn default() -> Self {
+        Self {
+            route_id_to_endpoint: Default::default(),
+            node: Default::default(),
+        }
+    }
+}
+
+impl<T> Clone for InnerRoutes<T>
+where
+    T: Clone,
+{
+    fn clone(&self) -> Self {
+        Self {
+            route_id_to_endpoint: self.route_id_to_endpoint.clone(),
+            node: Arc::clone(&self.node),
+        }
+    }
+}
+
+impl<T> fmt::Debug for InnerRoutes<T>
+where
+    T: fmt::Debug,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("InnerRoutes")
+            .field("route_id_to_endpoint", &self.route_id_to_endpoint)
+            .field("node", &self.node)
+            .finish()
     }
 }
 
