@@ -416,13 +416,16 @@ mod test_helpers;
 
 #[doc(no_inline)]
 pub use async_trait::async_trait;
+use axum_core::response::Response;
 #[cfg(feature = "headers")]
 #[doc(no_inline)]
 pub use headers;
 #[doc(no_inline)]
 pub use http;
+use http::Request;
 #[doc(no_inline)]
 pub use hyper::Server;
+use tower::util::BoxCloneService;
 
 #[doc(inline)]
 pub use self::extension::Extension;
@@ -442,3 +445,5 @@ pub use self::form::Form;
 
 #[doc(inline)]
 pub use axum_core::{BoxError, Error};
+
+type BoxService<B, E> = BoxCloneService<Request<B>, Response, E>;

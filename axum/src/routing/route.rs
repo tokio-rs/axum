@@ -1,6 +1,7 @@
 use crate::{
     body::{boxed, Body, Empty, HttpBody},
     response::Response,
+    BoxService,
 };
 use bytes::Bytes;
 use http::{
@@ -19,13 +20,14 @@ use tower::{
     util::{BoxCloneService, Oneshot},
     ServiceExt,
 };
+use tower_layer::Layer;
 use tower_service::Service;
 
 /// How routes are stored inside a [`Router`](super::Router).
 ///
 /// You normally shouldn't need to care about this type. It's used in
 /// [`Router::layer`](super::Router::layer).
-pub struct Route<B = Body, E = Infallible>(BoxCloneService<Request<B>, Response, E>);
+pub struct Route<B = Body, E = Infallible>(BoxService<B, E>);
 
 impl<B, E> Route<B, E> {
     pub(super) fn new<T>(svc: T) -> Self
@@ -39,7 +41,7 @@ impl<B, E> Route<B, E> {
     pub(crate) fn oneshot_inner(
         &mut self,
         req: Request<B>,
-    ) -> Oneshot<BoxCloneService<Request<B>, Response, E>, Request<B>> {
+    ) -> Oneshot<BoxService<B, E>, Request<B>> {
         self.0.clone().oneshot(req)
     }
 }

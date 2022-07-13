@@ -6,7 +6,7 @@ use crate::{
     handler::Handler,
     http::{Method, Request, StatusCode},
     response::Response,
-    routing::{future::RouteFuture, Fallback, MethodFilter, Route},
+    routing::{future::RouteFuture, FallbackKind, MethodFilter, Route},
     BoxError,
 };
 use bytes::BytesMut;
@@ -488,7 +488,7 @@ pub struct MethodRouter<B = Body, E = Infallible> {
     post: Option<Route<B, E>>,
     put: Option<Route<B, E>>,
     trace: Option<Route<B, E>>,
-    fallback: Fallback<B, E>,
+    fallback: FallbackKind<B, E>,
     allow_header: AllowHeader,
     _request_body: PhantomData<fn() -> (B, E)>,
 }
@@ -539,7 +539,7 @@ impl<B, E> MethodRouter<B, E> {
             put: None,
             trace: None,
             allow_header: AllowHeader::None,
-            fallback: Fallback::Default(fallback),
+            fallback: FallbackKind::Default(fallback),
             _request_body: PhantomData,
         }
     }
@@ -717,7 +717,7 @@ impl<ReqBody, E> MethodRouter<ReqBody, E> {
         ResBody: HttpBody<Data = Bytes> + Send + 'static,
         ResBody::Error: Into<BoxError>,
     {
-        self.fallback = Fallback::Custom(Route::new(svc.map_response(|res| res.map(boxed))));
+        self.fallback = FallbackKind::Custom(Route::new(svc.map_response(|res| res.map(boxed))));
         self
     }
 
@@ -726,7 +726,7 @@ impl<ReqBody, E> MethodRouter<ReqBody, E> {
         S: Service<Request<ReqBody>, Response = Response, Error = E> + Clone + Send + 'static,
         S::Future: Send + 'static,
     {
-        self.fallback = Fallback::Custom(Route::new(svc));
+        self.fallback = FallbackKind::Custom(Route::new(svc));
         self
     }
 
@@ -856,10 +856,10 @@ impl<ReqBody, E> MethodRouter<ReqBody, E> {
         let trace = merge!(trace, trace_other);
 
         let fallback = match (fallback, fallback_other) {
-            (pick @ Fallback::Default(_), Fallback::Default(_)) => pick,
-            (Fallback::Default(_), pick @ Fallback::Custom(_)) => pick,
-            (pick @ Fallback::Custom(_), Fallback::Default(_)) => pick,
-            (Fallback::Custom(_), Fallback::Custom(_)) => {
+            (pick @ FallbackKind::Default(_), FallbackKind::Default(_)) => pick,
+            (FallbackKind::Default(_), pick @ FallbackKind::Custom(_)) => pick,
+            (pick @ FallbackKind::Custom(_), FallbackKind::Default(_)) => pick,
+            (FallbackKind::Custom(_), FallbackKind::Custom(_)) => {
                 panic!("Cannot merge two `MethodRouter`s that both have a fallback")
             }
         };
@@ -1094,9 +1094,11 @@ where
         call!(req, method, TRACE, trace);
 
         let future = match fallback {
-            Fallback::Default(fallback) => RouteFuture::from_future(fallback.oneshot_inner(req))
-                .strip_body(method == Method::HEAD),
-            Fallback::Custom(fallback) => RouteFuture::from_future(fallback.oneshot_inner(req))
+            FallbackKind::Default(fallback) => {
+                RouteFuture::from_future(fallback.oneshot_inner(req))
+                    .strip_body(method == Method::HEAD)
+            }
+            FallbackKind::Custom(fallback) => RouteFuture::from_future(fallback.oneshot_inner(req))
                 .strip_body(method == Method::HEAD),
         };
 

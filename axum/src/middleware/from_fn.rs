@@ -1,7 +1,7 @@
 use crate::{
     body::{self, Bytes, HttpBody},
     response::{IntoResponse, Response},
-    BoxError,
+    BoxError, BoxService,
 };
 use axum_core::extract::{FromRequest, RequestParts};
 use futures_util::future::BoxFuture;
@@ -15,7 +15,7 @@ use std::{
     pin::Pin,
     task::{Context, Poll},
 };
-use tower::{util::BoxCloneService, ServiceBuilder};
+use tower::ServiceBuilder;
 use tower_http::ServiceBuilderExt;
 use tower_layer::Layer;
 use tower_service::Service;
@@ -327,7 +327,7 @@ where
 
 /// The remainder of a middleware stack, including the handler.
 pub struct Next<ReqBody> {
-    inner: BoxCloneService<Request<ReqBody>, Response, Infallible>,
+    inner: BoxService<ReqBody, Infallible>,
 }
 
 impl<ReqBody> Next<ReqBody> {
