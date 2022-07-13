@@ -13,7 +13,7 @@ pub mod ws;
 mod content_length_limit;
 mod host;
 mod raw_query;
-mod request_parts;
+pub(crate) mod request_parts;
 
 #[doc(inline)]
 pub use axum_core::extract::{FromRequest, RequestParts};
@@ -41,7 +41,7 @@ pub use crate::Extension;
 pub use crate::form::Form;
 
 #[cfg(feature = "matched-path")]
-mod matched_path;
+pub(crate) mod matched_path;
 
 #[cfg(feature = "matched-path")]
 #[doc(inline)]

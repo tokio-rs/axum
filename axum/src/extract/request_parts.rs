@@ -5,7 +5,7 @@ use crate::{
 };
 use async_trait::async_trait;
 use futures_util::stream::Stream;
-use http::Uri;
+use http::{Request, Uri};
 use std::{
     convert::Infallible,
     fmt,
@@ -98,6 +98,14 @@ where
             .unwrap_or_else(|_| Extension(OriginalUri(req.uri().clone())))
             .0;
         Ok(uri)
+    }
+}
+
+#[cfg(feature = "original-uri")]
+pub(crate) fn insert_original_uri<B>(req: &mut Request<B>) {
+    if req.extensions().get::<OriginalUri>().is_none() {
+        let original_uri = OriginalUri(req.uri().clone());
+        req.extensions_mut().insert(original_uri);
     }
 }
 

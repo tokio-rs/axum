@@ -20,7 +20,6 @@ use tower::{
     util::{BoxCloneService, Oneshot},
     ServiceExt,
 };
-use tower_layer::Layer;
 use tower_service::Service;
 
 /// How routes are stored inside a [`Router`](super::Router).

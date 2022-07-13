@@ -384,10 +384,10 @@ async fn middleware_that_return_early() {
     let private = Router::new()
         .route("/", get(|| async {}))
         .layer(RequireAuthorizationLayer::bearer("password"));
-
     let public = Router::new().route("/public", get(|| async {}));
+    let app = Router::new().merge(public).merge(private);
 
-    let client = TestClient::new(private.merge(public));
+    let client = TestClient::new(app);
 
     assert_eq!(
         client.get("/").send().await.status(),

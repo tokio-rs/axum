@@ -1,5 +1,8 @@
+use crate::routing::NEST_TAIL_PARAM_CAPTURE;
+
 use super::{rejection::*, FromRequest, RequestParts};
 use async_trait::async_trait;
+use http::Request;
 use std::sync::Arc;
 
 /// Access the path in the router that matches the request.
@@ -79,6 +82,25 @@ where
 
         Ok(matched_path)
     }
+}
+
+pub(crate) fn insert_matched_path<B>(matched_path: &Arc<str>, req: &mut Request<B>) {
+    let matched_path = if let Some(previous) = req.extensions_mut().get::<MatchedPath>() {
+        // a previous `MatchedPath` might exist if we're inside a nested Router
+        let previous =
+            if let Some(previous) = previous.as_str().strip_suffix(NEST_TAIL_PARAM_CAPTURE) {
+                previous
+            } else {
+                previous.as_str()
+            };
+
+        let matched_path = format!("{}{}", previous, matched_path);
+        matched_path.into()
+    } else {
+        Arc::clone(matched_path)
+    };
+
+    req.extensions_mut().insert(MatchedPath(matched_path));
 }
 
 #[cfg(test)]

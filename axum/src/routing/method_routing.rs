@@ -6,7 +6,7 @@ use crate::{
     handler::Handler,
     http::{Method, Request, StatusCode},
     response::Response,
-    routing::{future::RouteFuture, FallbackKind, MethodFilter, Route},
+    routing::{future::RouteFuture, MethodFilter, Route},
     BoxError,
 };
 use bytes::BytesMut;
@@ -488,7 +488,7 @@ pub struct MethodRouter<B = Body, E = Infallible> {
     post: Option<Route<B, E>>,
     put: Option<Route<B, E>>,
     trace: Option<Route<B, E>>,
-    fallback: FallbackKind<B, E>,
+    fallback: Fallback<B, E>,
     allow_header: AllowHeader,
     _request_body: PhantomData<fn() -> (B, E)>,
 }
@@ -539,7 +539,7 @@ impl<B, E> MethodRouter<B, E> {
             put: None,
             trace: None,
             allow_header: AllowHeader::None,
-            fallback: FallbackKind::Default(fallback),
+            fallback: Fallback::Default(fallback),
             _request_body: PhantomData,
         }
     }
@@ -717,7 +717,7 @@ impl<ReqBody, E> MethodRouter<ReqBody, E> {
         ResBody: HttpBody<Data = Bytes> + Send + 'static,
         ResBody::Error: Into<BoxError>,
     {
-        self.fallback = FallbackKind::Custom(Route::new(svc.map_response(|res| res.map(boxed))));
+        self.fallback = Fallback::Custom(Route::new(svc.map_response(|res| res.map(boxed))));
         self
     }
 
@@ -726,7 +726,7 @@ impl<ReqBody, E> MethodRouter<ReqBody, E> {
         S: Service<Request<ReqBody>, Response = Response, Error = E> + Clone + Send + 'static,
         S::Future: Send + 'static,
     {
-        self.fallback = FallbackKind::Custom(Route::new(svc));
+        self.fallback = Fallback::Custom(Route::new(svc));
         self
     }
 
@@ -856,10 +856,10 @@ impl<ReqBody, E> MethodRouter<ReqBody, E> {
         let trace = merge!(trace, trace_other);
 
         let fallback = match (fallback, fallback_other) {
-            (pick @ FallbackKind::Default(_), FallbackKind::Default(_)) => pick,
-            (FallbackKind::Default(_), pick @ FallbackKind::Custom(_)) => pick,
-            (pick @ FallbackKind::Custom(_), FallbackKind::Default(_)) => pick,
-            (FallbackKind::Custom(_), FallbackKind::Custom(_)) => {
+            (pick @ Fallback::Default(_), Fallback::Default(_)) => pick,
+            (Fallback::Default(_), pick @ Fallback::Custom(_)) => pick,
+            (pick @ Fallback::Custom(_), Fallback::Default(_)) => pick,
+            (Fallback::Custom(_), Fallback::Custom(_)) => {
                 panic!("Cannot merge two `MethodRouter`s that both have a fallback")
             }
         };
@@ -1094,11 +1094,9 @@ where
         call!(req, method, TRACE, trace);
 
         let future = match fallback {
-            FallbackKind::Default(fallback) => {
-                RouteFuture::from_future(fallback.oneshot_inner(req))
-                    .strip_body(method == Method::HEAD)
-            }
-            FallbackKind::Custom(fallback) => RouteFuture::from_future(fallback.oneshot_inner(req))
+            Fallback::Default(fallback) => RouteFuture::from_future(fallback.oneshot_inner(req))
+                .strip_body(method == Method::HEAD),
+            Fallback::Custom(fallback) => RouteFuture::from_future(fallback.oneshot_inner(req))
                 .strip_body(method == Method::HEAD),
         };
 
@@ -1106,6 +1104,41 @@ where
             AllowHeader::None => future.allow_header(Bytes::new()),
             AllowHeader::Skip => future,
             AllowHeader::Bytes(allow_header) => future.allow_header(allow_header.clone().freeze()),
+        }
+    }
+}
+
+enum Fallback<B, E = Infallible> {
+    Default(Route<B, E>),
+    Custom(Route<B, E>),
+}
+
+impl<B, E> Fallback<B, E> {
+    fn map<F, B2, E2>(self, f: F) -> Fallback<B2, E2>
+    where
+        F: FnOnce(Route<B, E>) -> Route<B2, E2>,
+    {
+        match self {
+            Self::Default(inner) => Fallback::Default(f(inner)),
+            Self::Custom(inner) => Fallback::Custom(f(inner)),
+        }
+    }
+}
+
+impl<B, E> Clone for Fallback<B, E> {
+    fn clone(&self) -> Self {
+        match self {
+            Self::Default(inner) => Self::Default(inner.clone()),
+            Self::Custom(inner) => Self::Custom(inner.clone()),
+        }
+    }
+}
+
+impl<B, E> fmt::Debug for Fallback<B, E> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Default(inner) => f.debug_tuple("Default").field(inner).finish(),
+            Self::Custom(inner) => f.debug_tuple("Custom").field(inner).finish(),
         }
     }
 }

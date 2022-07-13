@@ -517,24 +517,6 @@ async fn different_methods_added_in_different_routes_deeply_nested() {
 }
 
 #[tokio::test]
-#[should_panic(expected = "Cannot merge two `Router`s that both have a fallback")]
-async fn merging_routers_with_fallbacks_panics() {
-    async fn fallback() {}
-    let one = Router::new().fallback(fallback.into_service());
-    let two = Router::new().fallback(fallback.into_service());
-    TestClient::new(one.merge(two));
-}
-
-#[tokio::test]
-#[should_panic(expected = "Cannot nest `Router`s that has a fallback")]
-async fn nesting_router_with_fallbacks_panics() {
-    async fn fallback() {}
-    let one = Router::new().fallback(fallback.into_service());
-    let app = Router::new().nest("/", one);
-    TestClient::new(app);
-}
-
-#[tokio::test]
 async fn merging_routers_with_same_paths_but_different_methods() {
     let one = Router::new().route("/", get(|| async { "GET" }));
     let two = Router::new().route("/", post(|| async { "POST" }));

@@ -379,6 +379,23 @@ async fn nest_with_and_without_trailing() {
     assert_eq!(res.status(), StatusCode::OK);
 }
 
+#[tokio::test]
+async fn nesting_at_trailing_slash_doesnt_add_route_without_trailing_slash() {
+    let api = Router::new()
+        .route("/", get(|| async {}))
+        .route("/users", get(|| async {}));
+    let app = Router::new().nest("/api/", api);
+
+    let client = TestClient::new(app);
+
+    let res = client.get("/api/").send().await;
+    assert_eq!(res.status(), StatusCode::OK);
+
+    // since we nest at `/api/` this shouldn't match anything
+    let res = client.get("/api").send().await;
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+}
+
 macro_rules! nested_route_test {
     (
         $name:ident,
