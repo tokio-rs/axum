@@ -1,8 +1,11 @@
 use async_trait::async_trait;
 use axum_core::extract::{FromRequest, RequestParts};
-use std::convert::Infallible;
+use std::{
+    convert::Infallible,
+    ops::{Deref, DerefMut},
+};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, Clone, Copy)]
 pub struct State<S>(pub S);
 
 #[async_trait]
@@ -17,5 +20,19 @@ where
         let outer_state = req.state().clone();
         let inner_state = outer_state.into();
         Ok(Self(inner_state))
+    }
+}
+
+impl<S> Deref for State<S> {
+    type Target = S;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl<S> DerefMut for State<S> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
     }
 }
