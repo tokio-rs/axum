@@ -1,0 +1,10 @@
+[package]
+name = "local-addr"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+axum = "0.5.11"
+tokio = { version = "1.19.2", features = ["full"] }
