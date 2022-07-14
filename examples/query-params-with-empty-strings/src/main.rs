@@ -16,7 +16,7 @@ async fn main() {
         .unwrap();
 }
 
-fn app() -> Router {
+fn app() -> Router<()> {
     Router::new().route("/", get(handler))
 }
 

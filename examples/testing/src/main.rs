@@ -34,7 +34,7 @@ async fn main() {
 /// Having a function that produces our app makes it easy to call it from tests
 /// without having to create an HTTP server.
 #[allow(dead_code)]
-fn app() -> Router {
+fn app() -> Router<()> {
     Router::new()
         .route("/", get(|| async { "Hello, World!" }))
         .route(

@@ -13,14 +13,14 @@ use async_graphql::{
     EmptyMutation, EmptySubscription, Request, Response, Schema,
 };
 use axum::{
-    extract::Extension,
+    extract::State,
     response::{Html, IntoResponse},
     routing::get,
     Json, Router,
 };
 use starwars::{QueryRoot, StarWars, StarWarsSchema};
 
-async fn graphql_handler(schema: Extension<StarWarsSchema>, req: Json<Request>) -> Json<Response> {
+async fn graphql_handler(schema: State<StarWarsSchema>, req: Json<Request>) -> Json<Response> {
     schema.execute(req.0).await.into()
 }
 
@@ -34,9 +34,7 @@ async fn main() {
         .data(StarWars::new())
         .finish();
 
-    let app = Router::new()
-        .route("/", get(graphql_playground).post(graphql_handler))
-        .layer(Extension(schema));
+    let app = Router::with_state(schema).route("/", get(graphql_playground).post(graphql_handler));
 
     println!("Playground: http://localhost:3000");
 

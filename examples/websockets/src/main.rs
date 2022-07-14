@@ -37,7 +37,7 @@ async fn main() {
 
     // build our application with some routes
     let app = Router::new()
-        .fallback(
+        .fallback_service(
             get_service(ServeDir::new(assets_dir).append_index_html_on_directories(true))
                 .handle_error(|error: std::io::Error| async move {
                     (
