@@ -64,13 +64,13 @@ async fn handler() -> Html<&'static str> {
 }
 
 async fn redirect() {
-    let redirect_app = Router::new().fallback(fallback.into_service());
+    let app = Router::new().fallback(fallback.into_service());
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 7878));
     tracing::debug!("http redirect listening on {}", addr);
 
     axum::Server::bind(&addr)
-        .serve(redirect_app.into_make_service())
+        .serve(app.into_make_service())
         .await
         .unwrap()
 }
