@@ -122,7 +122,8 @@ where
     #[doc = include_str!("../docs/routing/route.md")]
     pub fn route<T>(mut self, path: &str, service: T) -> Self
     where
-        T: Service<Request<B>, Response = Response, Error = Infallible> + Clone + Send + 'static,
+        T: Service<Request<B>, Error = Infallible> + Clone + Send + 'static,
+        T::Response: IntoResponse,
         T::Future: Send + 'static,
     {
         if path.is_empty() {
@@ -176,7 +177,8 @@ where
     #[doc = include_str!("../docs/routing/nest.md")]
     pub fn nest<T>(mut self, mut path: &str, svc: T) -> Self
     where
-        T: Service<Request<B>, Response = Response, Error = Infallible> + Clone + Send + 'static,
+        T: Service<Request<B>, Error = Infallible> + Clone + Send + 'static,
+        T::Response: IntoResponse,
         T::Future: Send + 'static,
     {
         if path.is_empty() {
@@ -368,7 +370,8 @@ where
     #[doc = include_str!("../docs/routing/fallback.md")]
     pub fn fallback<T>(mut self, svc: T) -> Self
     where
-        T: Service<Request<B>, Response = Response, Error = Infallible> + Clone + Send + 'static,
+        T: Service<Request<B>, Error = Infallible> + Clone + Send + 'static,
+        T::Response: IntoResponse,
         T::Future: Send + 'static,
     {
         self.fallback = Fallback::Custom(Route::new(svc));

@@ -3,7 +3,7 @@
 use axum::{
     handler::Handler,
     http::Request,
-    response::{Redirect, Response},
+    response::{IntoResponse, Redirect},
     Router,
 };
 use std::{convert::Infallible, future::ready};
@@ -161,7 +161,8 @@ pub trait RouterExt<B>: sealed::Sealed {
     /// ```
     fn route_with_tsr<T>(self, path: &str, service: T) -> Self
     where
-        T: Service<Request<B>, Response = Response, Error = Infallible> + Clone + Send + 'static,
+        T: Service<Request<B>, Error = Infallible> + Clone + Send + 'static,
+        T::Response: IntoResponse,
         T::Future: Send + 'static,
         Self: Sized;
 }
@@ -252,7 +253,8 @@ where
 
     fn route_with_tsr<T>(mut self, path: &str, service: T) -> Self
     where
-        T: Service<Request<B>, Response = Response, Error = Infallible> + Clone + Send + 'static,
+        T: Service<Request<B>, Error = Infallible> + Clone + Send + 'static,
+        T::Response: IntoResponse,
         T::Future: Send + 'static,
         Self: Sized,
     {

@@ -1,8 +1,6 @@
 use crate::{
-    body::{Bytes, HttpBody},
     extract::{FromRequest, RequestParts},
     response::{IntoResponse, Response},
-    BoxError,
 };
 use futures_util::{future::BoxFuture, ready};
 use http::Request;
@@ -166,13 +164,12 @@ where
     }
 }
 
-impl<S, E, ReqBody, ResBody> Service<Request<ReqBody>> for FromExtractor<S, E>
+impl<S, E, ReqBody> Service<Request<ReqBody>> for FromExtractor<S, E>
 where
     E: FromRequest<ReqBody> + 'static,
     ReqBody: Default + Send + 'static,
-    S: Service<Request<ReqBody>, Response = Response<ResBody>> + Clone,
-    ResBody: HttpBody<Data = Bytes> + Send + 'static,
-    ResBody::Error: Into<BoxError>,
+    S: Service<Request<ReqBody>> + Clone,
+    S::Response: IntoResponse,
 {
     type Response = Response;
     type Error = S::Error;
@@ -225,13 +222,12 @@ pin_project! {
     }
 }
 
-impl<ReqBody, S, E, ResBody> Future for ResponseFuture<ReqBody, S, E>
+impl<ReqBody, S, E> Future for ResponseFuture<ReqBody, S, E>
 where
     E: FromRequest<ReqBody>,
-    S: Service<Request<ReqBody>, Response = Response<ResBody>>,
+    S: Service<Request<ReqBody>>,
+    S::Response: IntoResponse,
     ReqBody: Default,
-    ResBody: HttpBody<Data = Bytes> + Send + 'static,
-    ResBody::Error: Into<BoxError>,
 {
     type Output = Result<Response, S::Error>;
 
@@ -259,7 +255,7 @@ where
                 StateProj::Call { future } => {
                     return future
                         .poll(cx)
-                        .map(|result| result.map(|response| response.map(crate::body::boxed)));
+                        .map(|result| result.map(IntoResponse::into_response));
                 }
             };
 
