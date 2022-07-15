@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+- None.
+
+# 0.5.13 (15. July, 2022)
+
 - **fixed:** If `WebSocketUpgrade` cannot upgrade the connection it will return a
   `WebSocketUpgradeRejection::ConnectionNotUpgradable` rejection ([#1135])
 - **changed:** `WebSocketUpgradeRejection` has a new variant `ConnectionNotUpgradable`
