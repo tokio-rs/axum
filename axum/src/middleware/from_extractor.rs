@@ -88,6 +88,8 @@ use tower_service::Service;
 /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 /// # };
 /// ```
+///
+/// [`Bytes`]: bytes::Bytes
 pub fn from_extractor<E>() -> FromExtractorLayer<E> {
     FromExtractorLayer(PhantomData)
 }
