@@ -112,6 +112,10 @@
 //! async fn json(Json(payload): Json<serde_json::Value>) {}
 //! ```
 //!
+//! If an extraction fails, axum [`rejects`](crate::extract::rejection) requests
+//! and responds with an appropriate status code and the respective error message.
+//! This behavior can be adapted by customizing extractor responses.
+//!
 //! See [`extract`](crate::extract) for more details on extractors.
 //!
 //! # Responses
