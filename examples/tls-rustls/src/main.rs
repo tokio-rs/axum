@@ -97,5 +97,5 @@ async fn redirect_http_to_https(ports: Ports) {
     axum::Server::bind(&addr)
         .serve(redirect.into_make_service())
         .await
-        .unwrap()
+        .unwrap();
 }
