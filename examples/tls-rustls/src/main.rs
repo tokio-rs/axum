@@ -7,20 +7,14 @@
 use axum::{
     extract::Host,
     handler::Handler,
-    http::{StatusCode, Uri},
+    http::Uri,
     response::Redirect,
     routing::get,
-    BoxError, Router,
+    Router,
 };
 use axum_server::tls_rustls::RustlsConfig;
 use std::{net::SocketAddr, path::PathBuf};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
-
-#[derive(Clone, Copy)]
-struct Ports {
-    http: u16,
-    https: u16,
-}
 
 #[tokio::main]
 async fn main() {
@@ -31,12 +25,8 @@ async fn main() {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    let ports = Ports {
-        http: 7878,
-        https: 3000,
-    };
     // optional: spawn a second server to redirect http requests to this server
-    tokio::spawn(redirect_http_to_https(ports));
+    tokio::spawn(redirect());
 
     // configure certificate and private key used by https
     let config = RustlsConfig::from_pem_file(
@@ -53,7 +43,7 @@ async fn main() {
     let app = Router::new().route("/", get(handler));
 
     // run https server
-    let addr = SocketAddr::from(([127, 0, 0, 1], ports.https));
+    let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
     tracing::debug!("listening on {}", addr);
     axum_server::bind_rustls(addr, config)
         .serve(app.into_make_service())
@@ -65,37 +55,24 @@ async fn handler() -> &'static str {
     "Hello, World!"
 }
 
-async fn redirect_http_to_https(ports: Ports) {
-    fn make_https(host: String, uri: Uri, ports: Ports) -> Result<Uri, BoxError> {
-        let mut parts = uri.into_parts();
-
-        parts.scheme = Some(axum::http::uri::Scheme::HTTPS);
-
-        if parts.path_and_query.is_none() {
-            parts.path_and_query = Some("/".parse().unwrap());
-        }
-
-        let https_host = host.replace(&ports.http.to_string(), &ports.https.to_string());
-        parts.authority = Some(https_host.parse()?);
-
-        Ok(Uri::from_parts(parts)?)
-    }
-
-    let redirect = move |Host(host): Host, uri: Uri| async move {
-        match make_https(host, uri, ports) {
-            Ok(uri) => Ok(Redirect::permanent(&uri.to_string())),
-            Err(error) => {
-                tracing::warn!(%error, "failed to convert URI to HTTPS");
-                Err(StatusCode::BAD_REQUEST)
-            }
-        }
-    };
-
-    let addr = SocketAddr::from(([127, 0, 0, 1], ports.http));
+async fn redirect() {
+    let addr = SocketAddr::from(([127, 0, 0, 1], 7878));
     tracing::debug!("http redirect listening on {}", addr);
 
     axum::Server::bind(&addr)
-        .serve(redirect.into_make_service())
+        .serve(fallback.into_make_service())
         .await
         .unwrap()
+}
+
+async fn fallback(Host(host): Host, uri: Uri) -> Redirect {
+    tracing::debug!("308: Permanent Redirect");
+
+    // Can remove call to `.replace()` if using default
+    // ports for http (80) and https (443).
+    Redirect::permanent(&*format!(
+        "https://{}{}",
+        &host.replace("7878", "3000"),
+        &uri
+    ))
 }
