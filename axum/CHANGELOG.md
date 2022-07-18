@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- **fixed:** `QueryRejection` response exposes type names through public interface ([#1171])
+- **fixed:** Don't expose internal type names in `QueryRejection` response. ([#1171])
 - **breaking:** Remove `extractor_middleware` which was previously deprecated.
   Use `axum::middleware::from_extractor` instead ([#1077])
 - **breaking:** Allow `Error: Into<Infallible>` for `Route::{layer, route_layer}` ([#924])
