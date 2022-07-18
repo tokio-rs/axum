@@ -59,7 +59,7 @@ where
     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
         let query = req.uri().query().unwrap_or_default();
         let value = serde_urlencoded::from_str(query)
-            .map_err(FailedToDeserializeQueryString::__private_new::<_>)?;
+            .map_err(FailedToDeserializeQueryString::__private_new)?;
         Ok(Query(value))
     }
 }
