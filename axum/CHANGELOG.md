@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- None.
+- **fixed:** Don't expose internal type names in `QueryRejection` response. ([#1171])
+
+[#1171]: https://github.com/tokio-rs/axum/pull/1171
 
 # 0.5.13 (15. July, 2022)
 
@@ -32,6 +34,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `NoMatchingMethodFilter` error in case of failure ([#1130])
 - **added:** Document how to run extractors from middleware ([#1140])
 
+=======
+  `axum-macros`
+- **added:** Support any middleware response that implements `IntoResponse` ([#1152])
+- **breaking:** Require middleware added with `Handler::layer` to have
+  `Infallible` as the error type ([#1152])
+
+[#1171]: https://github.com/tokio-rs/axum/pull/1171
+[#1077]: https://github.com/tokio-rs/axum/pull/1077
+[#1088]: https://github.com/tokio-rs/axum/pull/1088
+[#1102]: https://github.com/tokio-rs/axum/pull/1102
+[#1119]: https://github.com/tokio-rs/axum/pull/1119
+>>>>>>> 73041c8 (Avoid exposure of type names by QueryRejection (#1171))
 [#1130]: https://github.com/tokio-rs/axum/pull/1130
 [#1140]: https://github.com/tokio-rs/axum/pull/1140
 
