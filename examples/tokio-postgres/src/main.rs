@@ -26,7 +26,7 @@ async fn main() {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    // setup connection pool
+    // set up connection pool
     let manager =
         PostgresConnectionManager::new_from_stringlike("host=localhost user=postgres", NoTls)
             .unwrap();
@@ -51,7 +51,7 @@ async fn main() {
 
 type ConnectionPool = Pool<PostgresConnectionManager<NoTls>>;
 
-// we can exact the connection pool with `Extension`
+// we can extract the connection pool with `Extension`
 async fn using_connection_pool_extractor(
     Extension(pool): Extension<ConnectionPool>,
 ) -> Result<String, (StatusCode, String)> {
