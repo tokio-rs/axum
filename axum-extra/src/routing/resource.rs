@@ -136,29 +136,21 @@ where
         self.route(&path, delete(handler))
     }
 
-    /// Nest another route at the "member level".
+    /// Nest another router at the "member level".
     ///
     /// The routes will be nested at `/{resource_name}/:{resource_name}_id`.
-    pub fn nest<T>(mut self, svc: T) -> Self
-    where
-        T: Service<Request<B>, Response = Response, Error = Infallible> + Clone + Send + 'static,
-        T::Future: Send + 'static,
-    {
+    pub fn nest(mut self, router: Router<B>) -> Self {
         let path = self.show_update_destroy_path();
-        self.router = self.router.nest(&path, svc);
+        self.router = self.router.nest(&path, router);
         self
     }
 
-    /// Nest another route at the "collection level".
+    /// Nest another router at the "collection level".
     ///
     /// The routes will be nested at `/{resource_name}`.
-    pub fn nest_collection<T>(mut self, svc: T) -> Self
-    where
-        T: Service<Request<B>, Response = Response, Error = Infallible> + Clone + Send + 'static,
-        T::Future: Send + 'static,
-    {
+    pub fn nest_collection(mut self, router: Router<B>) -> Self {
         let path = self.index_create_path();
-        self.router = self.router.nest(&path, svc);
+        self.router = self.router.nest(&path, router);
         self
     }
 

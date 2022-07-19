@@ -149,12 +149,14 @@ mod tests {
                 "/public",
                 Router::new().route("/assets/*path", get(handler)),
             )
-            .nest("/foo", handler.into_service())
+            .nest_service("/foo", handler.into_service())
             .layer(tower::layer::layer_fn(SetMatchedPathExtension));
 
         let client = TestClient::new(app);
 
-        let res = client.get("/foo").send().await;
+        // we cannot call `/foo` because `nest_service("/foo", _)` registers routes
+        // for `/foo/*rest` and `/foo`
+        let res = client.get("/public").send().await;
         assert_eq!(res.text().await, "/:key");
 
         let res = client.get("/api/users/123").send().await;
@@ -175,5 +177,21 @@ mod tests {
                 crate::routing::NEST_TAIL_PARAM,
             ),
         );
+    }
+
+    #[tokio::test]
+    async fn nested_opaque_routers_append_to_matched_path() {
+        let app = Router::new().nest_service(
+            "/:a",
+            Router::new().route(
+                "/:b",
+                get(|path: MatchedPath| async move { path.as_str().to_owned() }),
+            ),
+        );
+
+        let client = TestClient::new(app);
+
+        let res = client.get("/foo/bar").send().await;
+        assert_eq!(res.text().await, "/:a/:b");
     }
 }

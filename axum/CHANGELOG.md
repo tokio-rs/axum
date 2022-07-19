@@ -12,6 +12,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Use `axum::middleware::from_extractor` instead ([#1077])
 - **breaking:** Allow `Error: Into<Infallible>` for `Route::{layer, route_layer}` ([#924])
 - **breaking:** `MethodRouter` now panics on overlapping routes ([#1102])
+- **breaking:** `Router::nest` now only accepts `Router`s. Use
+  `Router::nest_service` to nest opaque services ([#1086])
+- **added:** Add `Router::nest_service` for nesting opaque services. Use this to
+  nest services like `tower::services::ServeDir` ([#1086])
+- **breaking:** The request `/foo/` no longer matches `/foo/*rest`. If you want
+  to match `/foo/` you have to add a route specifically for that ([#1086])
+- **breaking:** Path params for wildcard routes no longer include the prefix
+  `/`. e.g. `/foo.js` will match `/*filepath` with a value of `foo.js`, _not_
+  `/foo.js` ([#1086])
+- **fixed:** Routes like `/foo` and `/*rest` are no longer considered
+  overlapping. `/foo` will take priority ([#1086])
 - **breaking:** Remove trailing slash redirects. Previously if you added a route
   for `/foo`, axum would redirect calls to `/foo/` to `/foo` (or vice versa for
   `/foo/`). That is no longer supported and such requests will now be sent to
@@ -32,6 +43,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 [#1171]: https://github.com/tokio-rs/axum/pull/1171
 [#1077]: https://github.com/tokio-rs/axum/pull/1077
+[#1086]: https://github.com/tokio-rs/axum/pull/1086
 [#1088]: https://github.com/tokio-rs/axum/pull/1088
 [#1102]: https://github.com/tokio-rs/axum/pull/1102
 [#1119]: https://github.com/tokio-rs/axum/pull/1119
