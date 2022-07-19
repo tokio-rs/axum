@@ -2,6 +2,7 @@ use crate::{
     body::{boxed, Body, Empty, HttpBody},
     response::Response,
 };
+use axum_core::response::IntoResponse;
 use bytes::Bytes;
 use http::{
     header::{self, CONTENT_LENGTH},
@@ -30,10 +31,13 @@ pub struct Route<B = Body, E = Infallible>(BoxCloneService<Request<B>, Response,
 impl<B, E> Route<B, E> {
     pub(super) fn new<T>(svc: T) -> Self
     where
-        T: Service<Request<B>, Response = Response, Error = E> + Clone + Send + 'static,
+        T: Service<Request<B>, Error = E> + Clone + Send + 'static,
+        T::Response: IntoResponse + 'static,
         T::Future: Send + 'static,
     {
-        Self(BoxCloneService::new(svc))
+        Self(BoxCloneService::new(
+            svc.map_response(IntoResponse::into_response),
+        ))
     }
 
     pub(crate) fn oneshot_inner(

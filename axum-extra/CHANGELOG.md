@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning].
 
 - **added:** Add `RouterExt::route_with_tsr` for adding routes with an
   additional "trailing slash redirect" route ([#1119])
+- **changed:** For methods that accept some `S: Service`, the bounds have been
+  relaxed so the response type must implement `IntoResponse` rather than being a
+  literal `Response`
 
 [#1119]: https://github.com/tokio-rs/axum/pull/1119
 
