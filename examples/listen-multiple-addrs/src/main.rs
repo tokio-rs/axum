@@ -1,6 +1,6 @@
 //! Showcases how listening on multiple addrs is possible by
 //! implementing Accept for a custom struct.
-//! 
+//!
 //! This may be useful in cases where the platform does not
 //! listen on both IPv4 and IPv6 when the IPv6 catch-all listener is used (`::`),
 //! [like older versions of Windows.](https://docs.microsoft.com/en-us/windows/win32/winsock/dual-stack-sockets)
