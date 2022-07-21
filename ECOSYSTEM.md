@@ -49,7 +49,7 @@ If your project isn't listed here and you would like it to be, please feel free 
 - [axum-tutorial] ([website][axum-tutorial-website]): Axum web framework tutorial for beginners.
 - [demo-rust-axum]: Demo of Rust and axum web framework
 - [Introduction to axum (talk)]: Talk about axum from the Copenhagen Rust Meetup.
-- [Getting Started with Axum](https://carlosmv.hashnode.dev/getting-started-with-axum-rust): Axum tutorial, GET, POST endpoints and serving files.
+- [Getting Started with Axum]: Axum tutorial, GET, POST endpoints and serving files.
 
 [axum-tutorial]: https://github.com/programatik29/axum-tutorial
 [axum-tutorial-website]: https://programatik29.github.io/axum-tutorial/
