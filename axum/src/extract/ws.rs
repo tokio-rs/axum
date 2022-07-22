@@ -39,6 +39,8 @@
 //! # Passing data and/or state to an on_upgrade callback
 //!
 //! ```
+//! use std::sync::Arc;
+//!
 //! use axum::{
 //!     extract::ws::{WebSocketUpgrade, WebSocket},
 //!     response::Response,
@@ -59,7 +61,7 @@
 //! }
 //!
 //! let app = Router::new()
-//!     .router("/ws", get(handler))
+//!     .route("/ws", get(handler))
 //!     .layer(Extension(Arc::new(State { /* ... */ })));
 //! ```
 //!
