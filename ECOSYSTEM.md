@@ -55,4 +55,4 @@ If your project isn't listed here and you would like it to be, please feel free 
 [axum-tutorial-website]: https://programatik29.github.io/axum-tutorial/
 [demo-rust-axum]: https://github.com/joelparkerhenderson/demo-rust-axum
 [Introduction to axum (talk)]: https://www.youtube.com/watch?v=ETdmhh7OQpA
-[Getting Started witn Axum]: https://carlosmv.hashnode.dev/getting-started-with-axum-rust
+[Getting Started with Axum]: https://carlosmv.hashnode.dev/getting-started-with-axum-rust
