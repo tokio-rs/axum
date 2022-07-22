@@ -63,6 +63,10 @@
 //! let app = Router::new()
 //!     .route("/ws", get(handler))
 //!     .layer(Extension(Arc::new(State { /* ... */ })));
+//!
+//! # async {
+//! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+//! # };
 //! ```
 //!
 //! # Read and write concurrently
