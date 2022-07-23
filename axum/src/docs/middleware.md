@@ -61,12 +61,12 @@ let app = Router::new()
 
 Some commonly used middleware are:
 
-- [`TraceLayer`](tower_http::trace) for high level tracing/logging.
-- [`CorsLayer`](tower_http::cors) for handling CORS.
-- [`CompressionLayer`](tower_http::compression) for automatic compression of
+- [`TraceLayer`](tower_http::trace::TraceLayer) for high level tracing/logging.
+- [`CorsLayer`](tower_http::cors::CorsLayer) for handling CORS.
+- [`CompressionLayer`](tower_http::compression::CompressionLayer) for automatic compression of
   responses.
-- [`RequestIdLayer`](tower_http::request_id) and
-  [`PropagateRequestIdLayer`](tower_http::request_id) set and propagate request
+- [`SetRequestIdLayer`](tower_http::request_id::SetRequestIdLayer) and
+  [`PropagateRequestIdLayer`](tower_http::request_id::PropagateRequestIdLayer) set and propagate request
   ids.
 - [`TimeoutLayer`](tower::timeout::TimeoutLayer) for timeouts. Note this
   requires using [`HandleErrorLayer`](crate::error_handling::HandleErrorLayer)
@@ -170,18 +170,18 @@ mentally which is one of the reasons `ServiceBuilder` is recommended.
 axum offers many ways of writing middleware, at different levels of abstraction
 and with different pros and cons.
 
-## `axum::middleware::from_fn`
+## `middleware::from_fn`
 
-Use [`axum::middleware::from_fn`] to write your middleware when:
+Use [`middleware::from_fn`] to write your middleware when:
 
 - You're not comfortable with implementing your own futures and would rather use
   the familiar `async`/`await` syntax.
 - You don't intend to publish your middleware as a crate for others to use.
   Middleware written like this are only compatible with axum.
 
-## `axum::middleware::from_extractor`
+## `middleware::from_extractor`
 
-Use [`axum::middleware::from_extractor`] to write your middleware when:
+Use [`middleware::from_extractor`] to write your middleware when:
 
 - You have a type that you sometimes want to use as an extractor and sometimes
   as a middleware. If you only need your type as a middleware prefer
@@ -210,7 +210,7 @@ by implementing [`tower::Service`]:
 Use [`tower::Service`] with `Pin<Box<dyn Future>>` to write your middleware when:
 
 - Your middleware needs to be configurable for example via builder methods on
-  your [`tower::Layer`] such as [`tower_http::trace::TraceLayer`].
+  your [`tower::Layer`] such as [`TraceLayer`](tower_http::trace::TraceLayer).
 - You do intend to publish your middleware as a crate for others to use.
 - You're not comfortable with implementing your own futures.
 
@@ -275,7 +275,7 @@ Use [`tower::Service`] with manual futures to write your middleware when:
 
 - You want your middleware to have the lowest possible overhead.
 - Your middleware needs to be configurable for example via builder methods on
-  your [`tower::Layer`] such as [`tower_http::trace::TraceLayer`].
+  your [`tower::Layer`] such as [`TraceLayer`](tower_http::trace::TraceLayer).
 - You do intend to publish your middleware as a crate for others to use, perhaps
   as part of tower-http.
 - You're comfortable with implementing your own futures, or want to learn how
@@ -446,14 +446,13 @@ extensions you need.
 [`tower`]: https://crates.io/crates/tower
 [`tower-http`]: https://crates.io/crates/tower-http
 [tower-guides]: https://github.com/tower-rs/tower/tree/master/guides
-[`axum::middleware::from_fn`]: crate::middleware::from_fn
 [`middleware::from_fn`]: crate::middleware::from_fn
+[`middleware::from_extractor`]: crate::middleware::from_extractor
 [tower-from-scratch-guide]: https://github.com/tower-rs/tower/blob/master/guides/building-a-middleware-from-scratch.md
 [`ServiceBuilder::map_request`]: tower::ServiceBuilder::map_request
 [`ServiceBuilder::map_response`]: tower::ServiceBuilder::map_response
 [`ServiceBuilder::then`]: tower::ServiceBuilder::then
 [`ServiceBuilder::and_then`]: tower::ServiceBuilder::and_then
-[`axum::middleware::from_extractor`]: crate::middleware::from_extractor
 [`Handler::layer`]: crate::handler::Handler::layer
 [`Router::layer`]: crate::routing::Router::layer
 [`MethodRouter::layer`]: crate::routing::MethodRouter::layer
