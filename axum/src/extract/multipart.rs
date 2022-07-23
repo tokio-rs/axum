@@ -87,7 +87,7 @@ impl Multipart {
 }
 
 /// A single field in a multipart stream.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Field<'a> {
     inner: multer::Field<'static>,
     // multer requires there to only be one live `multer::Field` at any point. This enforces that
