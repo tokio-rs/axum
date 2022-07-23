@@ -50,11 +50,11 @@
 //!     // ...
 //! }
 //!
-//! async fn handler(ws: WebSocketUpgrade, Extension(state): Extension<Arc<State>>) -> Response {
+//! async fn handler(ws: WebSocketUpgrade, Extension(state): Extension<State>) -> Response {
 //!     ws.on_upgrade(|socket| handle_socket(socket, state))
 //! }
 //!
-//! async fn handle_socket(socket: WebSocket, state: Arc<State>) {
+//! async fn handle_socket(socket: WebSocket, state: State) {
 //!     // ...
 //! }
 //!
