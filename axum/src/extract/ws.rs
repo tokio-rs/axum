@@ -46,6 +46,7 @@
 //!     Extension, Router,
 //! };
 //!
+//! #[derive(Clone)]
 //! struct State {
 //!     // ...
 //! }
