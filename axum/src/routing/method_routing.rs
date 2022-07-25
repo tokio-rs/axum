@@ -777,19 +777,47 @@ impl<ReqBody, E> MethodRouter<ReqBody, E> {
 
     #[doc = include_str!("../docs/method_routing/merge.md")]
     pub fn merge(self, other: MethodRouter<ReqBody, E>) -> Self {
-        macro_rules! merge {
-            ( $first:ident, $second:ident ) => {
-                match ($first, $second) {
-                    (Some(_), Some(_)) => panic!(concat!(
-                        "Overlapping method route. Cannot merge two method routes that both define `",
-                        stringify!($first),
-                        "`"
-                    )),
-                    (Some(svc), None) => Some(svc),
-                    (None, Some(svc)) => Some(svc),
-                    (None, None) => None,
+        // written using inner functions to generate less IR
+        fn merge_inner<T>(name: &str, first: Option<T>, second: Option<T>) -> Option<T> {
+            match (first, second) {
+                (Some(_), Some(_)) => panic!(
+                    "Overlapping method route. Cannot merge two method routes that both define `{}`", name
+                ),
+                (Some(svc), None) => Some(svc),
+                (None, Some(svc)) => Some(svc),
+                (None, None) => None,
+            }
+        }
+
+        fn merge_allow_header(
+            allow_header: AllowHeader,
+            allow_header_other: AllowHeader,
+        ) -> AllowHeader {
+            match (allow_header, allow_header_other) {
+                (AllowHeader::Skip, _) | (_, AllowHeader::Skip) => AllowHeader::Skip,
+                (AllowHeader::None, AllowHeader::None) => AllowHeader::None,
+                (AllowHeader::None, AllowHeader::Bytes(pick)) => AllowHeader::Bytes(pick),
+                (AllowHeader::Bytes(pick), AllowHeader::None) => AllowHeader::Bytes(pick),
+                (AllowHeader::Bytes(mut a), AllowHeader::Bytes(b)) => {
+                    a.extend_from_slice(b",");
+                    a.extend_from_slice(&b);
+                    AllowHeader::Bytes(a)
                 }
-            };
+            }
+        }
+
+        fn merge_fallback<B, E>(
+            fallback: Fallback<B, E>,
+            fallback_other: Fallback<B, E>,
+        ) -> Fallback<B, E> {
+            match (fallback, fallback_other) {
+                (pick @ Fallback::Default(_), Fallback::Default(_)) => pick,
+                (Fallback::Default(_), pick @ Fallback::Custom(_)) => pick,
+                (pick @ Fallback::Custom(_), Fallback::Default(_)) => pick,
+                (Fallback::Custom(_), Fallback::Custom(_)) => {
+                    panic!("Cannot merge two `MethodRouter`s that both have a fallback")
+                }
+            }
         }
 
         let Self {
@@ -820,35 +848,18 @@ impl<ReqBody, E> MethodRouter<ReqBody, E> {
             _request_body: _,
         } = other;
 
-        let get = merge!(get, get_other);
-        let head = merge!(head, head_other);
-        let delete = merge!(delete, delete_other);
-        let options = merge!(options, options_other);
-        let patch = merge!(patch, patch_other);
-        let post = merge!(post, post_other);
-        let put = merge!(put, put_other);
-        let trace = merge!(trace, trace_other);
+        let get = merge_inner("get", get, get_other);
+        let head = merge_inner("head", head, head_other);
+        let delete = merge_inner("delete", delete, delete_other);
+        let options = merge_inner("options", options, options_other);
+        let patch = merge_inner("patch", patch, patch_other);
+        let post = merge_inner("post", post, post_other);
+        let put = merge_inner("put", put, put_other);
+        let trace = merge_inner("trace", trace, trace_other);
 
-        let fallback = match (fallback, fallback_other) {
-            (pick @ Fallback::Default(_), Fallback::Default(_)) => pick,
-            (Fallback::Default(_), pick @ Fallback::Custom(_)) => pick,
-            (pick @ Fallback::Custom(_), Fallback::Default(_)) => pick,
-            (Fallback::Custom(_), Fallback::Custom(_)) => {
-                panic!("Cannot merge two `MethodRouter`s that both have a fallback")
-            }
-        };
+        let fallback = merge_fallback(fallback, fallback_other);
 
-        let allow_header = match (allow_header, allow_header_other) {
-            (AllowHeader::Skip, _) | (_, AllowHeader::Skip) => AllowHeader::Skip,
-            (AllowHeader::None, AllowHeader::None) => AllowHeader::None,
-            (AllowHeader::None, AllowHeader::Bytes(pick)) => AllowHeader::Bytes(pick),
-            (AllowHeader::Bytes(pick), AllowHeader::None) => AllowHeader::Bytes(pick),
-            (AllowHeader::Bytes(mut a), AllowHeader::Bytes(b)) => {
-                a.extend_from_slice(b",");
-                a.extend_from_slice(&b);
-                AllowHeader::Bytes(a)
-            }
-        };
+        let allow_header = merge_allow_header(allow_header, allow_header_other);
 
         Self {
             get,
