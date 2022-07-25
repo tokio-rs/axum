@@ -8,8 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 # Unreleased
 
 - **fixed:** Don't expose internal type names in `QueryRejection` response. ([#1171])
+- **fixed:** Improve performance of JSON serialization ([#1178])
+- **fixed:** Improve build times by generating less IR ([#1192])
 
 [#1171]: https://github.com/tokio-rs/axum/pull/1171
+[#1178]: https://github.com/tokio-rs/axum/pull/1178
+[#1192]: https://github.com/tokio-rs/axum/pull/1192
 
 # 0.5.13 (15. July, 2022)
 
