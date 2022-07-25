@@ -776,7 +776,7 @@ impl<ReqBody, E> MethodRouter<ReqBody, E> {
     }
 
     #[doc = include_str!("../docs/method_routing/merge.md")]
-    pub fn merge(self, other: MethodRouter<ReqBody, E>) -> Self {
+    pub fn merge(mut self, other: MethodRouter<ReqBody, E>) -> Self {
         // written using inner functions to generate less IR
         fn merge_inner<T>(name: &str, first: Option<T>, second: Option<T>) -> Option<T> {
             match (first, second) {
@@ -820,60 +820,20 @@ impl<ReqBody, E> MethodRouter<ReqBody, E> {
             }
         }
 
-        let Self {
-            get,
-            head,
-            delete,
-            options,
-            patch,
-            post,
-            put,
-            trace,
-            fallback,
-            allow_header,
-            _request_body: _,
-        } = self;
+        self.get = merge_inner("get", self.get, other.get);
+        self.head = merge_inner("head", self.head, other.head);
+        self.delete = merge_inner("delete", self.delete, other.delete);
+        self.options = merge_inner("options", self.options, other.options);
+        self.patch = merge_inner("patch", self.patch, other.patch);
+        self.post = merge_inner("post", self.post, other.post);
+        self.put = merge_inner("put", self.put, other.put);
+        self.trace = merge_inner("trace", self.trace, other.trace);
 
-        let Self {
-            get: get_other,
-            head: head_other,
-            delete: delete_other,
-            options: options_other,
-            patch: patch_other,
-            post: post_other,
-            put: put_other,
-            trace: trace_other,
-            fallback: fallback_other,
-            allow_header: allow_header_other,
-            _request_body: _,
-        } = other;
+        self.fallback = merge_fallback(self.fallback, other.fallback);
 
-        let get = merge_inner("get", get, get_other);
-        let head = merge_inner("head", head, head_other);
-        let delete = merge_inner("delete", delete, delete_other);
-        let options = merge_inner("options", options, options_other);
-        let patch = merge_inner("patch", patch, patch_other);
-        let post = merge_inner("post", post, post_other);
-        let put = merge_inner("put", put, put_other);
-        let trace = merge_inner("trace", trace, trace_other);
+        self.allow_header = merge_allow_header(self.allow_header, other.allow_header);
 
-        let fallback = merge_fallback(fallback, fallback_other);
-
-        let allow_header = merge_allow_header(allow_header, allow_header_other);
-
-        Self {
-            get,
-            head,
-            delete,
-            options,
-            patch,
-            post,
-            put,
-            trace,
-            fallback,
-            allow_header,
-            _request_body: PhantomData,
-        }
+        self
     }
 
     /// Apply a [`HandleErrorLayer`].
