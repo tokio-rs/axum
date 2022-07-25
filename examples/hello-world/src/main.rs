@@ -4,17 +4,23 @@
 //! cd examples && cargo run -p example-hello-world
 //! ```
 
-use axum::{response::Html, routing::get, Router};
+use axum::{handler::Handler, response::Html, routing::get, Router};
 use std::net::SocketAddr;
+use tower::layer::util::Identity;
 
 #[tokio::main]
 async fn main() {
-    // build our application with a route
-    let app = Router::new().route("/", get(handler));
+    let app = Router::new()
+        .route(
+            "/",
+            get(handler.layer(Identity::new()))
+                .layer(Identity::new())
+                .route_layer(Identity::new()),
+        )
+        .layer(Identity::new())
+        .route_layer(Identity::new());
 
-    // run it
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
-    println!("listening on {}", addr);
     axum::Server::bind(&addr)
         .serve(app.into_make_service())
         .await
