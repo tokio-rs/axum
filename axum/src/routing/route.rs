@@ -5,7 +5,7 @@ use crate::{
 use bytes::Bytes;
 use http::{
     header::{self, CONTENT_LENGTH},
-    HeaderValue, Request,
+    HeaderMap, HeaderValue, Request,
 };
 use pin_project_lite::pin_project;
 use std::{
@@ -167,10 +167,10 @@ where
             res.extensions_mut().insert(AlreadyPassedThroughRouteFuture);
         }
 
-        set_allow_header(&mut res, this.allow_header);
+        set_allow_header(res.headers_mut(), this.allow_header);
 
         // make sure to set content-length before removing the body
-        set_content_length(&mut res);
+        set_content_length(res.size_hint(), res.headers_mut());
 
         let res = if *this.strip_body {
             res.map(|_| boxed(Empty::new()))
@@ -182,10 +182,10 @@ where
     }
 }
 
-fn set_allow_header<B>(res: &mut Response<B>, allow_header: &mut Option<Bytes>) {
+fn set_allow_header(headers: &mut HeaderMap, allow_header: &mut Option<Bytes>) {
     match allow_header.take() {
-        Some(allow_header) if !res.headers().contains_key(header::ALLOW) => {
-            res.headers_mut().insert(
+        Some(allow_header) if !headers.contains_key(header::ALLOW) => {
+            headers.insert(
                 header::ALLOW,
                 HeaderValue::from_maybe_shared(allow_header).expect("invalid `Allow` header"),
             );
@@ -194,15 +194,12 @@ fn set_allow_header<B>(res: &mut Response<B>, allow_header: &mut Option<Bytes>) 
     }
 }
 
-fn set_content_length<B>(res: &mut Response<B>)
-where
-    B: HttpBody,
-{
-    if res.headers().contains_key(CONTENT_LENGTH) {
+fn set_content_length(size_hint: http_body::SizeHint, headers: &mut HeaderMap) {
+    if headers.contains_key(CONTENT_LENGTH) {
         return;
     }
 
-    if let Some(size) = res.size_hint().exact() {
+    if let Some(size) = size_hint.exact() {
         let header_value = if size == 0 {
             #[allow(clippy::declare_interior_mutable_const)]
             const ZERO: HeaderValue = HeaderValue::from_static("0");
@@ -213,7 +210,7 @@ where
             HeaderValue::from_str(buffer.format(size)).unwrap()
         };
 
-        res.headers_mut().insert(CONTENT_LENGTH, header_value);
+        headers.insert(CONTENT_LENGTH, header_value);
     }
 }
 
