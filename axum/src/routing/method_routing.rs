@@ -853,7 +853,7 @@ impl<ReqBody, E> MethodRouter<ReqBody, E> {
         self.layer(HandleErrorLayer::new(f))
     }
 
-    fn on_service_boxed_response_body<S>(self, filter: MethodFilter, svc: S) -> Self
+    fn on_service_boxed_response_body<S>(mut self, filter: MethodFilter, svc: S) -> Self
     where
         S: Service<Request<ReqBody>, Error = E> + Clone + Send + 'static,
         S::Response: IntoResponse + 'static,
@@ -882,116 +882,104 @@ impl<ReqBody, E> MethodRouter<ReqBody, E> {
             }
         }
 
-        // written with a pattern match like this to ensure we update all fields
-        let Self {
-            mut get,
-            mut head,
-            mut delete,
-            mut options,
-            mut patch,
-            mut post,
-            mut put,
-            mut trace,
-            fallback,
-            mut allow_header,
-            _request_body: _,
-        } = self;
+        // // written with a pattern match like this to ensure we update all fields
+        // let Self {
+        //     mut get,
+        //     mut head,
+        //     mut delete,
+        //     mut options,
+        //     mut patch,
+        //     mut post,
+        //     mut put,
+        //     mut trace,
+        //     fallback,
+        //     mut allow_header,
+        //     _request_body: _,
+        // } = self;
 
         let svc = Route::new(svc);
 
         set_service(
             "GET",
-            &mut get,
+            &mut self.get,
             &svc,
             filter,
             MethodFilter::GET,
-            &mut allow_header,
+            &mut self.allow_header,
             &["GET", "HEAD"],
         );
 
         set_service(
             "HEAD",
-            &mut head,
+            &mut self.head,
             &svc,
             filter,
             MethodFilter::HEAD,
-            &mut allow_header,
+            &mut self.allow_header,
             &["HEAD"],
         );
 
         set_service(
             "TRACE",
-            &mut trace,
+            &mut self.trace,
             &svc,
             filter,
             MethodFilter::TRACE,
-            &mut allow_header,
+            &mut self.allow_header,
             &["TRACE"],
         );
 
         set_service(
             "PUT",
-            &mut put,
+            &mut self.put,
             &svc,
             filter,
             MethodFilter::PUT,
-            &mut allow_header,
+            &mut self.allow_header,
             &["PUT"],
         );
 
         set_service(
             "POST",
-            &mut post,
+            &mut self.post,
             &svc,
             filter,
             MethodFilter::POST,
-            &mut allow_header,
+            &mut self.allow_header,
             &["POST"],
         );
 
         set_service(
             "PATCH",
-            &mut patch,
+            &mut self.patch,
             &svc,
             filter,
             MethodFilter::PATCH,
-            &mut allow_header,
+            &mut self.allow_header,
             &["PATCH"],
         );
 
         set_service(
             "OPTIONS",
-            &mut options,
+            &mut self.options,
             &svc,
             filter,
             MethodFilter::OPTIONS,
-            &mut allow_header,
+            &mut self.allow_header,
             &["OPTIONS"],
         );
 
         set_service(
             "DELETE",
-            &mut delete,
+            &mut self.delete,
             &svc,
             filter,
             MethodFilter::DELETE,
-            &mut allow_header,
+            &mut self.allow_header,
             &["DELETE"],
         );
 
-        Self {
-            get,
-            head,
-            delete,
-            options,
-            patch,
-            post,
-            put,
-            trace,
-            fallback,
-            allow_header,
-            _request_body: PhantomData,
-        }
+        self
     }
 
     fn skip_allow_header(mut self) -> Self {
