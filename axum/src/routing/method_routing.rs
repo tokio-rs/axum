@@ -493,6 +493,22 @@ enum AllowHeader {
     Bytes(BytesMut),
 }
 
+impl AllowHeader {
+    fn merge(self, other: Self) -> Self {
+        match (self, other) {
+            (AllowHeader::Skip, _) | (_, AllowHeader::Skip) => AllowHeader::Skip,
+            (AllowHeader::None, AllowHeader::None) => AllowHeader::None,
+            (AllowHeader::None, AllowHeader::Bytes(pick)) => AllowHeader::Bytes(pick),
+            (AllowHeader::Bytes(pick), AllowHeader::None) => AllowHeader::Bytes(pick),
+            (AllowHeader::Bytes(mut a), AllowHeader::Bytes(b)) => {
+                a.extend_from_slice(b",");
+                a.extend_from_slice(&b);
+                AllowHeader::Bytes(a)
+            }
+        }
+    }
+}
+
 impl<B, E> fmt::Debug for MethodRouter<B, E> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("MethodRouter")
@@ -780,23 +796,6 @@ impl<ReqBody, E> MethodRouter<ReqBody, E> {
             }
         }
 
-        fn merge_allow_header(
-            allow_header: AllowHeader,
-            allow_header_other: AllowHeader,
-        ) -> AllowHeader {
-            match (allow_header, allow_header_other) {
-                (AllowHeader::Skip, _) | (_, AllowHeader::Skip) => AllowHeader::Skip,
-                (AllowHeader::None, AllowHeader::None) => AllowHeader::None,
-                (AllowHeader::None, AllowHeader::Bytes(pick)) => AllowHeader::Bytes(pick),
-                (AllowHeader::Bytes(pick), AllowHeader::None) => AllowHeader::Bytes(pick),
-                (AllowHeader::Bytes(mut a), AllowHeader::Bytes(b)) => {
-                    a.extend_from_slice(b",");
-                    a.extend_from_slice(&b);
-                    AllowHeader::Bytes(a)
-                }
-            }
-        }
-
         fn merge_fallback<B, E>(
             fallback: Fallback<B, E>,
             fallback_other: Fallback<B, E>,
@@ -822,7 +821,7 @@ impl<ReqBody, E> MethodRouter<ReqBody, E> {
 
         self.fallback = merge_fallback(self.fallback, other.fallback);
 
-        self.allow_header = merge_allow_header(self.allow_header, other.allow_header);
+        self.allow_header = self.allow_header.merge(other.allow_header);
 
         self
     }
