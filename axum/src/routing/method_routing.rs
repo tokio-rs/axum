@@ -882,21 +882,6 @@ impl<ReqBody, E> MethodRouter<ReqBody, E> {
             }
         }
 
-        // // written with a pattern match like this to ensure we update all fields
-        // let Self {
-        //     mut get,
-        //     mut head,
-        //     mut delete,
-        //     mut options,
-        //     mut patch,
-        //     mut post,
-        //     mut put,
-        //     mut trace,
-        //     fallback,
-        //     mut allow_header,
-        //     _request_body: _,
-        // } = self;
-
         let svc = Route::new(svc);
 
         set_service(
