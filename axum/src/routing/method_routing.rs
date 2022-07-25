@@ -1088,7 +1088,7 @@ mod tests {
     use axum_core::response::IntoResponse;
     use http::{header::ALLOW, HeaderMap};
     use std::time::Duration;
-    use tower::{timeout::TimeoutLayer, Service, ServiceExt};
+    use tower::{timeout::TimeoutLayer, Service, ServiceBuilder, ServiceExt};
     use tower_http::{auth::RequireAuthorizationLayer, services::fs::ServeDir};
 
     #[tokio::test]
