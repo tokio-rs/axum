@@ -13,10 +13,9 @@ use bytes::BytesMut;
 use std::{
     convert::Infallible,
     fmt,
-    marker::PhantomData,
     task::{Context, Poll},
 };
-use tower::{service_fn, util::MapResponseLayer, ServiceBuilder};
+use tower::{service_fn, util::MapResponseLayer};
 use tower_layer::Layer;
 use tower_service::Service;
 
@@ -482,7 +481,6 @@ pub struct MethodRouter<B = Body, E = Infallible> {
     trace: Option<Route<B, E>>,
     fallback: Fallback<B, E>,
     allow_header: AllowHeader,
-    _request_body: PhantomData<fn() -> (B, E)>,
 }
 
 #[derive(Clone)]
@@ -532,7 +530,6 @@ impl<B, E> MethodRouter<B, E> {
             trace: None,
             allow_header: AllowHeader::None,
             fallback: Fallback::Default(fallback),
-            _request_body: PhantomData,
         }
     }
 }
@@ -723,12 +720,11 @@ impl<ReqBody, E> MethodRouter<ReqBody, E> {
         <L::Service as Service<Request<NewReqBody>>>::Response: IntoResponse + 'static,
         <L::Service as Service<Request<NewReqBody>>>::Future: Send + 'static,
     {
-        let layer = ServiceBuilder::new()
-            .layer_fn(Route::new)
-            .layer(MapResponseLayer::new(IntoResponse::into_response))
-            .layer(layer)
-            .into_inner();
-        let layer_fn = |s| layer.layer(s);
+        let layer_fn = |svc| {
+            let svc = layer.layer(svc);
+            let svc = MapResponseLayer::new(IntoResponse::into_response).layer(svc);
+            Route::new(svc)
+        };
 
         MethodRouter {
             get: self.get.map(layer_fn),
@@ -741,38 +737,33 @@ impl<ReqBody, E> MethodRouter<ReqBody, E> {
             trace: self.trace.map(layer_fn),
             fallback: self.fallback.map(layer_fn),
             allow_header: self.allow_header,
-            _request_body: PhantomData,
         }
     }
 
     #[doc = include_str!("../docs/method_routing/route_layer.md")]
-    pub fn route_layer<L>(self, layer: L) -> MethodRouter<ReqBody, E>
+    pub fn route_layer<L>(mut self, layer: L) -> MethodRouter<ReqBody, E>
     where
         L: Layer<Route<ReqBody, E>>,
         L::Service: Service<Request<ReqBody>, Error = E> + Clone + Send + 'static,
         <L::Service as Service<Request<ReqBody>>>::Response: IntoResponse + 'static,
         <L::Service as Service<Request<ReqBody>>>::Future: Send + 'static,
     {
-        let layer = ServiceBuilder::new()
-            .layer_fn(Route::new)
-            .layer(MapResponseLayer::new(IntoResponse::into_response))
-            .layer(layer)
-            .into_inner();
-        let layer_fn = |s| layer.layer(s);
+        let layer_fn = |svc| {
+            let svc = layer.layer(svc);
+            let svc = MapResponseLayer::new(IntoResponse::into_response).layer(svc);
+            Route::new(svc)
+        };
 
-        MethodRouter {
-            get: self.get.map(layer_fn),
-            head: self.head.map(layer_fn),
-            delete: self.delete.map(layer_fn),
-            options: self.options.map(layer_fn),
-            patch: self.patch.map(layer_fn),
-            post: self.post.map(layer_fn),
-            put: self.put.map(layer_fn),
-            trace: self.trace.map(layer_fn),
-            fallback: self.fallback,
-            allow_header: self.allow_header,
-            _request_body: PhantomData,
-        }
+        self.get = self.get.map(layer_fn);
+        self.head = self.head.map(layer_fn);
+        self.delete = self.delete.map(layer_fn);
+        self.options = self.options.map(layer_fn);
+        self.patch = self.patch.map(layer_fn);
+        self.post = self.post.map(layer_fn);
+        self.put = self.put.map(layer_fn);
+        self.trace = self.trace.map(layer_fn);
+
+        self
     }
 
     #[doc = include_str!("../docs/method_routing/merge.md")]
@@ -1006,7 +997,6 @@ impl<B, E> Clone for MethodRouter<B, E> {
             trace: self.trace.clone(),
             fallback: self.fallback.clone(),
             allow_header: self.allow_header.clone(),
-            _request_body: PhantomData,
         }
     }
 }
@@ -1064,7 +1054,6 @@ where
             trace,
             fallback,
             allow_header,
-            _request_body: _,
         } = self;
 
         call!(req, method, HEAD, head);
