@@ -126,11 +126,15 @@ where
         T::Response: IntoResponse,
         T::Future: Send + 'static,
     {
-        if path.is_empty() {
-            panic!("Paths must start with a `/`. Use \"/\" for root routes");
-        } else if !path.starts_with('/') {
-            panic!("Paths must start with a `/`");
+        fn validate_path(path: &str) {
+            if path.is_empty() {
+                panic!("Paths must start with a `/`. Use \"/\" for root routes");
+            } else if !path.starts_with('/') {
+                panic!("Paths must start with a `/`");
+            }
         }
+
+        validate_path(path);
 
         let service = match try_downcast::<Router<B>, _>(service) {
             Ok(_) => {
@@ -162,16 +166,20 @@ where
             Err(service) => Endpoint::Route(Route::new(service)),
         };
 
+        self.set_node(path, id);
+
+        self.routes.insert(id, service);
+
+        self
+    }
+
+    fn set_node(&mut self, path: &str, id: RouteId) {
         let mut node =
             Arc::try_unwrap(Arc::clone(&self.node)).unwrap_or_else(|node| (*node).clone());
         if let Err(err) = node.insert(path, id) {
             self.panic_on_matchit_error(err);
         }
         self.node = Arc::new(node);
-
-        self.routes.insert(id, service);
-
-        self
     }
 
     #[doc = include_str!("../docs/routing/nest.md")]
