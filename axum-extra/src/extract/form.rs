@@ -43,6 +43,7 @@ use std::ops::Deref;
 ///
 /// [`serde_html_form`]: https://crates.io/crates/serde_html_form
 #[derive(Debug, Clone, Copy, Default)]
+#[cfg(feature = "form")]
 pub struct Form<T>(pub T);
 
 impl<T> Deref for Form<T> {
