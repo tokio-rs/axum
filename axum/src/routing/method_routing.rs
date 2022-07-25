@@ -899,29 +899,26 @@ impl<ReqBody, E> MethodRouter<ReqBody, E> {
         S::Response: IntoResponse + 'static,
         S::Future: Send + 'static,
     {
-        macro_rules! set_service {
-            (
-                $filter:ident,
-                $svc:ident,
-                $allow_header:ident,
-                [
-                    $(
-                        ($out:ident, $variant:ident, [$($method:literal),+])
-                    ),+
-                    $(,)?
-                ]
-            ) => {
-                $(
-                    if $filter.contains(MethodFilter::$variant) {
-                        if $out.is_some() {
-                            panic!("Overlapping method route. Cannot add two method routes that both handle `{}`", stringify!($variant))
-                        }
-                        $out = $svc.clone();
-                        $(
-                            append_allow_header(&mut $allow_header, $method);
-                        )+
-                    }
-                )+
+        // written using an inner function to generate less IR
+        fn set_service<T>(
+            method_name: &str,
+            out: &mut Option<T>,
+            svc: &T,
+            svc_filter: MethodFilter,
+            filter: MethodFilter,
+            allow_header: &mut AllowHeader,
+            methods: &[&'static str],
+        ) where
+            T: Clone,
+        {
+            if svc_filter.contains(filter) {
+                if out.is_some() {
+                    panic!("Overlapping method route. Cannot add two method routes that both handle `{}`", method_name)
+                }
+                *out = Some(svc.clone());
+                for method in methods {
+                    append_allow_header(allow_header, method);
+                }
             }
         }
 
@@ -939,22 +936,89 @@ impl<ReqBody, E> MethodRouter<ReqBody, E> {
             mut allow_header,
             _request_body: _,
         } = self;
-        let svc = Some(Route::new(svc));
-        set_service!(
+
+        let svc = Route::new(svc);
+
+        set_service(
+            "GET",
+            &mut get,
+            &svc,
             filter,
-            svc,
-            allow_header,
-            [
-                (get, GET, ["GET", "HEAD"]),
-                (head, HEAD, ["HEAD"]),
-                (delete, DELETE, ["DELETE"]),
-                (options, OPTIONS, ["OPTIONS"]),
-                (patch, PATCH, ["PATCH"]),
-                (post, POST, ["POST"]),
-                (put, PUT, ["PUT"]),
-                (trace, TRACE, ["TRACE"]),
-            ]
+            MethodFilter::GET,
+            &mut allow_header,
+            &["GET", "HEAD"],
         );
+
+        set_service(
+            "HEAD",
+            &mut head,
+            &svc,
+            filter,
+            MethodFilter::HEAD,
+            &mut allow_header,
+            &["HEAD"],
+        );
+
+        set_service(
+            "TRACE",
+            &mut trace,
+            &svc,
+            filter,
+            MethodFilter::TRACE,
+            &mut allow_header,
+            &["TRACE"],
+        );
+
+        set_service(
+            "PUT",
+            &mut put,
+            &svc,
+            filter,
+            MethodFilter::PUT,
+            &mut allow_header,
+            &["PUT"],
+        );
+
+        set_service(
+            "POST",
+            &mut post,
+            &svc,
+            filter,
+            MethodFilter::POST,
+            &mut allow_header,
+            &["POST"],
+        );
+
+        set_service(
+            "PATCH",
+            &mut patch,
+            &svc,
+            filter,
+            MethodFilter::PATCH,
+            &mut allow_header,
+            &["PATCH"],
+        );
+
+        set_service(
+            "OPTIONS",
+            &mut options,
+            &svc,
+            filter,
+            MethodFilter::OPTIONS,
+            &mut allow_header,
+            &["OPTIONS"],
+        );
+
+        set_service(
+            "DELETE",
+            &mut delete,
+            &svc,
+            filter,
+            MethodFilter::DELETE,
+            &mut allow_header,
+            &["DELETE"],
+        );
+
         Self {
             get,
             head,
