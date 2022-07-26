@@ -21,12 +21,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **added:** Added `debug_handler` which is an attribute macro that improves
   type errors when applied to handler function. It is re-exported from
   `axum-macros`
+- **added:** Added new type safe `State` extractor. This can be used with
+  `Router::with_state` and gives compile errors for missing states, whereas
+  `Extension` would result in runtime errors ([#1155])
+- **breaking:** The following types or traits have a new `S` type param
+  (`()` by default) which represents the state ([#1155]):
+  - `FromRequest`
+  - `RequestParts`
+  - `Router`
+  - `MethodRouter`
+  - `Handler`
+  - `Resource`
+- **breaking:** `RequestParts::new` takes the state and the request rather than
+  just the request ([#1155])
+- **breaking:** `Router::route` now only accepts `MethodRouter`s created with
+  `get`, `post`, etc ([#1155])
+- **added:** `Router::route_service` for routing to arbitrary `Service`s ([#1155])
 
 [#1077]: https://github.com/tokio-rs/axum/pull/1077
 [#1088]: https://github.com/tokio-rs/axum/pull/1088
 [#1102]: https://github.com/tokio-rs/axum/pull/1102
 [#1119]: https://github.com/tokio-rs/axum/pull/1119
 [#1130]: https://github.com/tokio-rs/axum/pull/1130
+[#1155]: https://github.com/tokio-rs/axum/pull/1155
 [#924]: https://github.com/tokio-rs/axum/pull/924
 
 # 0.5.10 (28. June, 2022)
