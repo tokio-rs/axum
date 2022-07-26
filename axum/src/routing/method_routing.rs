@@ -76,9 +76,9 @@ macro_rules! top_level_service_fn {
         $name:ident, $method:ident
     ) => {
         $(#[$m])+
-        pub fn $name<T, S, ReqBody, ResBody>(svc: T) -> MethodRouter<S, ReqBody, T::Error>
+        pub fn $name<T, S, B, ResBody>(svc: T) -> MethodRouter<S, B, T::Error>
         where
-            T: Service<Request<ReqBody>, Response = Response<ResBody>> + Clone + Send + 'static,
+            T: Service<Request<B>, Response = Response<ResBody>> + Clone + Send + 'static,
             T::Future: Send + 'static,
             ResBody: HttpBody<Data = Bytes> + Send + 'static,
             ResBody::Error: Into<BoxError>,
@@ -211,7 +211,7 @@ macro_rules! chained_service_fn {
         $(#[$m])+
         pub fn $name<T, ResBody>(self, svc: T) -> Self
         where
-            T: Service<Request<ReqBody>, Response = Response<ResBody>, Error = E>
+            T: Service<Request<B>, Response = Response<ResBody>, Error = E>
                 + Clone
                 + Send
                 + 'static,
@@ -318,12 +318,9 @@ top_level_service_fn!(trace_service, TRACE);
 /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 /// # };
 /// ```
-pub fn on_service<T, S, ReqBody, ResBody>(
-    filter: MethodFilter,
-    svc: T,
-) -> MethodRouter<S, ReqBody, T::Error>
+pub fn on_service<T, S, B, ResBody>(filter: MethodFilter, svc: T) -> MethodRouter<S, B, T::Error>
 where
-    T: Service<Request<ReqBody>, Response = Response<ResBody>> + Clone + Send + 'static,
+    T: Service<Request<B>, Response = Response<ResBody>> + Clone + Send + 'static,
     T::Future: Send + 'static,
     ResBody: HttpBody<Data = Bytes> + Send + 'static,
     ResBody::Error: Into<BoxError>,
@@ -384,9 +381,9 @@ where
 /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 /// # };
 /// ```
-pub fn any_service<T, S, ReqBody, ResBody>(svc: T) -> MethodRouter<S, ReqBody, T::Error>
+pub fn any_service<T, S, B, ResBody>(svc: T) -> MethodRouter<S, B, T::Error>
 where
-    T: Service<Request<ReqBody>, Response = Response<ResBody>> + Clone + Send + 'static,
+    T: Service<Request<B>, Response = Response<ResBody>> + Clone + Send + 'static,
     T::Future: Send + 'static,
     ResBody: HttpBody<Data = Bytes> + Send + 'static,
     ResBody::Error: Into<BoxError>,
@@ -697,7 +694,7 @@ where
     }
 }
 
-impl<S, ReqBody, E> MethodRouter<S, ReqBody, E> {
+impl<S, B, E> MethodRouter<S, B, E> {
     /// Chain an additional service that will accept requests matching the given
     /// `MethodFilter`.
     ///
@@ -725,10 +722,7 @@ impl<S, ReqBody, E> MethodRouter<S, ReqBody, E> {
     /// ```
     pub fn on_service<T, ResBody>(self, filter: MethodFilter, svc: T) -> Self
     where
-        T: Service<Request<ReqBody>, Response = Response<ResBody>, Error = E>
-            + Clone
-            + Send
-            + 'static,
+        T: Service<Request<B>, Response = Response<ResBody>, Error = E> + Clone + Send + 'static,
         T::Future: Send + 'static,
         ResBody: HttpBody<Data = Bytes> + Send + 'static,
         ResBody::Error: Into<BoxError>,
@@ -748,10 +742,7 @@ impl<S, ReqBody, E> MethodRouter<S, ReqBody, E> {
     #[doc = include_str!("../docs/method_routing/fallback.md")]
     pub fn fallback_service<T, ResBody>(mut self, svc: T) -> Self
     where
-        T: Service<Request<ReqBody>, Response = Response<ResBody>, Error = E>
-            + Clone
-            + Send
-            + 'static,
+        T: Service<Request<B>, Response = Response<ResBody>, Error = E> + Clone + Send + 'static,
         T::Future: Send + 'static,
         ResBody: HttpBody<Data = Bytes> + Send + 'static,
         ResBody::Error: Into<BoxError>,
@@ -762,7 +753,7 @@ impl<S, ReqBody, E> MethodRouter<S, ReqBody, E> {
 
     fn fallback_boxed_response_body<T>(mut self, svc: T) -> Self
     where
-        T: Service<Request<ReqBody>, Response = Response, Error = E> + Clone + Send + 'static,
+        T: Service<Request<B>, Response = Response, Error = E> + Clone + Send + 'static,
         T::Future: Send + 'static,
     {
         self.fallback = Fallback::Custom(Route::new(svc));
@@ -775,7 +766,7 @@ impl<S, ReqBody, E> MethodRouter<S, ReqBody, E> {
         layer: L,
     ) -> MethodRouter<S, NewReqBody, NewError>
     where
-        L: Layer<Route<ReqBody, E>>,
+        L: Layer<Route<B, E>>,
         L::Service: Service<Request<NewReqBody>, Response = Response<NewResBody>, Error = NewError>
             + Clone
             + Send
@@ -807,14 +798,14 @@ impl<S, ReqBody, E> MethodRouter<S, ReqBody, E> {
     }
 
     #[doc = include_str!("../docs/method_routing/route_layer.md")]
-    pub fn route_layer<L, NewResBody>(self, layer: L) -> MethodRouter<S, ReqBody, E>
+    pub fn route_layer<L, NewResBody>(self, layer: L) -> MethodRouter<S, B, E>
     where
-        L: Layer<Route<ReqBody, E>>,
-        L::Service: Service<Request<ReqBody>, Response = Response<NewResBody>, Error = E>
+        L: Layer<Route<B, E>>,
+        L::Service: Service<Request<B>, Response = Response<NewResBody>, Error = E>
             + Clone
             + Send
             + 'static,
-        <L::Service as Service<Request<ReqBody>>>::Future: Send + 'static,
+        <L::Service as Service<Request<B>>>::Future: Send + 'static,
         NewResBody: HttpBody<Data = Bytes> + Send + 'static,
         NewResBody::Error: Into<BoxError>,
     {
@@ -841,7 +832,7 @@ impl<S, ReqBody, E> MethodRouter<S, ReqBody, E> {
     }
 
     #[doc = include_str!("../docs/method_routing/merge.md")]
-    pub fn merge(self, other: MethodRouter<S, ReqBody, E>) -> Self {
+    pub fn merge(self, other: MethodRouter<S, B, E>) -> Self {
         macro_rules! merge {
             ( $first:ident, $second:ident ) => {
                 match ($first, $second) {
@@ -933,22 +924,22 @@ impl<S, ReqBody, E> MethodRouter<S, ReqBody, E> {
     /// Apply a [`HandleErrorLayer`].
     ///
     /// This is a convenience method for doing `self.layer(HandleErrorLayer::new(f))`.
-    pub fn handle_error<F, T>(self, f: F) -> MethodRouter<S, ReqBody, Infallible>
+    pub fn handle_error<F, T>(self, f: F) -> MethodRouter<S, B, Infallible>
     where
         F: Clone + Send + 'static,
-        HandleError<Route<ReqBody, E>, F, T>:
-            Service<Request<ReqBody>, Response = Response, Error = Infallible>,
-        <HandleError<Route<ReqBody, E>, F, T> as Service<Request<ReqBody>>>::Future: Send,
+        HandleError<Route<B, E>, F, T>:
+            Service<Request<B>, Response = Response, Error = Infallible>,
+        <HandleError<Route<B, E>, F, T> as Service<Request<B>>>::Future: Send,
         T: 'static,
         E: 'static,
-        ReqBody: 'static,
+        B: 'static,
     {
         self.layer(HandleErrorLayer::new(f))
     }
 
     fn on_service_boxed_response_body<T>(self, filter: MethodFilter, svc: T) -> Self
     where
-        T: Service<Request<ReqBody>, Response = Response, Error = E> + Clone + Send + 'static,
+        T: Service<Request<B>, Response = Response, Error = E> + Clone + Send + 'static,
         T::Future: Send + 'static,
     {
         macro_rules! set_service {
