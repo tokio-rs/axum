@@ -36,6 +36,37 @@
 //! # };
 //! ```
 //!
+//! # Passing data and/or state to an `on_upgrade` callback
+//!
+//! ```
+//! use axum::{
+//!     extract::ws::{WebSocketUpgrade, WebSocket},
+//!     response::Response,
+//!     routing::get,
+//!     Extension, Router,
+//! };
+//!
+//! #[derive(Clone)]
+//! struct State {
+//!     // ...
+//! }
+//!
+//! async fn handler(ws: WebSocketUpgrade, Extension(state): Extension<State>) -> Response {
+//!     ws.on_upgrade(|socket| handle_socket(socket, state))
+//! }
+//!
+//! async fn handle_socket(socket: WebSocket, state: State) {
+//!     // ...
+//! }
+//!
+//! let app = Router::new()
+//!     .route("/ws", get(handler))
+//!     .layer(Extension(State { /* ... */ }));
+//! # async {
+//! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+//! # };
+//! ```
+//!
 //! # Read and write concurrently
 //!
 //! If you need to read and write concurrently from a [`WebSocket`] you can use

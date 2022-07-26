@@ -43,6 +43,7 @@ use std::ops::Deref;
 ///
 /// [`serde_html_form`]: https://crates.io/crates/serde_html_form
 #[derive(Debug, Clone, Copy, Default)]
+#[cfg(feature = "form")]
 pub struct Form<T>(pub T);
 
 impl<T> Deref for Form<T> {
@@ -67,7 +68,7 @@ where
         if req.method() == Method::GET {
             let query = req.uri().query().unwrap_or_default();
             let value = serde_html_form::from_str(query)
-                .map_err(FailedToDeserializeQueryString::__private_new::<T, _>)?;
+                .map_err(FailedToDeserializeQueryString::__private_new)?;
             Ok(Form(value))
         } else {
             if !has_content_type(req, &mime::APPLICATION_WWW_FORM_URLENCODED) {
@@ -76,7 +77,7 @@ where
 
             let bytes = Bytes::from_request(req).await?;
             let value = serde_html_form::from_bytes(&bytes)
-                .map_err(FailedToDeserializeQueryString::__private_new::<T, _>)?;
+                .map_err(FailedToDeserializeQueryString::__private_new)?;
 
             Ok(Form(value))
         }

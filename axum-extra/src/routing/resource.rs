@@ -2,7 +2,7 @@ use axum::{
     body::Body,
     handler::Handler,
     http::Request,
-    response::Response,
+    response::IntoResponse,
     routing::{delete, get, on, post, MethodFilter},
     Router,
 };
@@ -141,7 +141,8 @@ where
     /// The routes will be nested at `/{resource_name}/:{resource_name}_id`.
     pub fn nest<T>(mut self, svc: T) -> Self
     where
-        T: Service<Request<B>, Response = Response, Error = Infallible> + Clone + Send + 'static,
+        T: Service<Request<B>, Error = Infallible> + Clone + Send + 'static,
+        T::Response: IntoResponse,
         T::Future: Send + 'static,
     {
         let path = self.show_update_destroy_path();
@@ -154,7 +155,8 @@ where
     /// The routes will be nested at `/{resource_name}`.
     pub fn nest_collection<T>(mut self, svc: T) -> Self
     where
-        T: Service<Request<B>, Response = Response, Error = Infallible> + Clone + Send + 'static,
+        T: Service<Request<B>, Error = Infallible> + Clone + Send + 'static,
+        T::Response: IntoResponse,
         T::Future: Send + 'static,
     {
         let path = self.index_create_path();
@@ -172,7 +174,8 @@ where
 
     fn route<T>(mut self, path: &str, svc: T) -> Self
     where
-        T: Service<Request<B>, Response = Response, Error = Infallible> + Clone + Send + 'static,
+        T: Service<Request<B>, Error = Infallible> + Clone + Send + 'static,
+        T::Response: IntoResponse,
         T::Future: Send + 'static,
     {
         self.router = self.router.route(path, svc);

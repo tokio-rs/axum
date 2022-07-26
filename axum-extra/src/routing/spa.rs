@@ -1,7 +1,7 @@
 use axum::{
     body::{Body, HttpBody},
     error_handling::HandleError,
-    response::Response,
+    response::IntoResponse,
     routing::{get_service, Route},
     Router,
 };
@@ -150,8 +150,8 @@ impl<B, T, F> SpaRouter<B, T, F> {
 impl<B, F, T> From<SpaRouter<B, T, F>> for Router<B>
 where
     F: Clone + Send + 'static,
-    HandleError<Route<B, io::Error>, F, T>:
-        Service<Request<B>, Response = Response, Error = Infallible>,
+    HandleError<Route<B, io::Error>, F, T>: Service<Request<B>, Error = Infallible>,
+    <HandleError<Route<B, io::Error>, F, T> as Service<Request<B>>>::Response: IntoResponse + Send,
     <HandleError<Route<B, io::Error>, F, T> as Service<Request<B>>>::Future: Send,
     B: HttpBody + Send + 'static,
     T: 'static,

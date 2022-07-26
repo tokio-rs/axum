@@ -5,6 +5,7 @@ use crate::{
 };
 use async_trait::async_trait;
 use axum_core::response::{IntoResponse, Response};
+use bytes::{BufMut, BytesMut};
 use http::{
     header::{self, HeaderValue},
     StatusCode,
@@ -185,13 +186,16 @@ where
     T: Serialize,
 {
     fn into_response(self) -> Response {
-        match serde_json::to_vec(&self.0) {
-            Ok(bytes) => (
+        // Use a small initial capacity of 128 bytes like serde_json::to_vec
+        // https://docs.rs/serde_json/1.0.82/src/serde_json/ser.rs.html#2189
+        let mut buf = BytesMut::with_capacity(128).writer();
+        match serde_json::to_writer(&mut buf, &self.0) {
+            Ok(()) => (
                 [(
                     header::CONTENT_TYPE,
                     HeaderValue::from_static(mime::APPLICATION_JSON.as_ref()),
                 )],
-                bytes,
+                buf.into_inner().freeze(),
             )
                 .into_response(),
             Err(err) => (

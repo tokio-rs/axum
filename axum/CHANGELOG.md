@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+- **fixed:** Don't expose internal type names in `QueryRejection` response. ([#1171])
 - **breaking:** Remove `extractor_middleware` which was previously deprecated.
   Use `axum::middleware::from_extractor` instead ([#1077])
 - **breaking:** Allow `Error: Into<Infallible>` for `Route::{layer, route_layer}` ([#924])
@@ -28,7 +29,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **added:** Support any middleware response that implements `IntoResponse` ([#1152])
 - **breaking:** Require middleware added with `Handler::layer` to have
   `Infallible` as the error type ([#1152])
+- **changed:** For methods that accept some `S: Service`, the bounds have been
+  relaxed so the response type must implement `IntoResponse` rather than being a
+  literal `Response`
 
+[#1171]: https://github.com/tokio-rs/axum/pull/1171
 [#1077]: https://github.com/tokio-rs/axum/pull/1077
 [#1088]: https://github.com/tokio-rs/axum/pull/1088
 [#1102]: https://github.com/tokio-rs/axum/pull/1102
