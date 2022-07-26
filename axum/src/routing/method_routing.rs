@@ -547,6 +547,7 @@ impl<S, B, E> MethodRouter<S, B, E> {
         }
     }
 
+    /// Provide the state.
     pub fn with_state(self, state: S) -> MethodRouterWithState<S, B, E> {
         MethodRouterWithState {
             method_router: self,
@@ -616,6 +617,21 @@ where
     chained_handler_fn!(put, PUT);
     chained_handler_fn!(trace, TRACE);
 
+    /// Add a fallback [`Handler`] to the router.
+    pub fn fallback<H, T>(self, handler: H) -> Self
+    where
+        H: Handler<T, S, B>,
+        T: 'static,
+        S: Clone + Send + Sync + 'static,
+    {
+        self.fallback_service(IntoServiceStateInExtension::new(handler))
+    }
+}
+
+impl<B> MethodRouter<(), B, Infallible>
+where
+    B: Send + 'static,
+{
     /// Convert the handler into a [`MakeService`].
     ///
     /// This allows you to serve a single handler if you don't need any routing:
@@ -682,15 +698,6 @@ where
     /// [`Router::into_make_service_with_connect_info`]: crate::routing::Router::into_make_service_with_connect_info
     pub fn into_make_service_with_connect_info<C>(self) -> IntoMakeServiceWithConnectInfo<Self, C> {
         IntoMakeServiceWithConnectInfo::new(self)
-    }
-
-    pub fn fallback<H, T>(self, handler: H) -> Self
-    where
-        H: Handler<T, S, B>,
-        T: 'static,
-        S: Clone + Send + Sync + 'static,
-    {
-        self.fallback_service(IntoServiceStateInExtension::new(handler))
     }
 }
 
@@ -1084,14 +1091,39 @@ where
     }
 }
 
+/// A [`MethodRouter`] which has access to some state.
+///
+/// The state can be extracted with [`State`](crate::extract::State).
+///
+/// Created with [`MethodRouter::with_state`]
 pub struct MethodRouterWithState<S, B, E> {
     method_router: MethodRouter<S, B, E>,
     state: S,
 }
 
 impl<S, B, E> MethodRouterWithState<S, B, E> {
+    /// Get a reference to the state.
     pub fn state(&self) -> &S {
         &self.state
+    }
+
+    /// Convert the handler into a [`MakeService`].
+    ///
+    /// See [`MethodRouter::into_make_service`] for more details.
+    ///
+    /// [`MakeService`]: tower::make::MakeService
+    pub fn into_make_service(self) -> IntoMakeService<Self> {
+        IntoMakeService::new(self)
+    }
+
+    /// Convert the router into a [`MakeService`] which stores information
+    /// about the incoming connection.
+    ///
+    /// See [`MethodRouter::into_make_service_with_connect_info`] for more details.
+    ///
+    /// [`MakeService`]: tower::make::MakeService
+    pub fn into_make_service_with_connect_info<C>(self) -> IntoMakeServiceWithConnectInfo<Self, C> {
+        IntoMakeServiceWithConnectInfo::new(self)
     }
 }
 

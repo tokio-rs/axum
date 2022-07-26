@@ -51,9 +51,10 @@ use tower_service::Service;
 pub mod future;
 mod into_service;
 mod into_service_state_in_extension;
+mod with_state;
 
-pub use self::into_service::IntoService;
 pub(crate) use self::into_service_state_in_extension::IntoServiceStateInExtension;
+pub use self::{into_service::IntoService, with_state::WithState};
 
 /// Trait for async functions that can be used to handle requests.
 ///
@@ -108,7 +109,7 @@ pub trait Handler<T, S = (), B = Body>: Clone + Send + Sized + 'static {
     /// ```
     fn layer<L>(self, layer: L) -> Layered<L, Self, T, S, B>
     where
-        L: Layer<IntoService<Self, T, S, B>>,
+        L: Layer<WithState<Self, T, S, B>>,
     {
         Layered {
             layer,
@@ -117,102 +118,11 @@ pub trait Handler<T, S = (), B = Body>: Clone + Send + Sized + 'static {
         }
     }
 
-    /// Convert the handler into a [`Service`].
-    ///
-    /// This is commonly used together with [`Router::fallback`]:
-    ///
-    /// ```rust
-    /// use axum::{
-    ///     Server,
-    ///     handler::HandlerWithoutStateExt,
-    ///     http::{Uri, Method, StatusCode},
-    ///     response::IntoResponse,
-    ///     routing::{get, Router},
-    /// };
-    /// use tower::make::Shared;
-    /// use std::net::SocketAddr;
-    ///
-    /// async fn handler(method: Method, uri: Uri) -> (StatusCode, String) {
-    ///     (StatusCode::NOT_FOUND, format!("Nothing to see at {} {}", method, uri))
-    /// }
-    ///
-    /// let app = Router::new()
-    ///     .route("/", get(|| async {}))
-    ///     .fallback(handler);
-    ///
-    /// # async {
-    /// Server::bind(&SocketAddr::from(([127, 0, 0, 1], 3000)))
-    ///     .serve(app.into_make_service())
-    ///     .await?;
-    /// # Ok::<_, hyper::Error>(())
-    /// # };
-    /// ```
-    ///
-    /// [`Router::fallback`]: crate::routing::Router::fallback
-    fn into_service_with(self, state: S) -> IntoService<Self, T, S, B> {
-        IntoService::new(self, state)
-    }
-
-    /// Convert the handler into a [`MakeService`].
-    ///
-    /// This allows you to serve a single handler if you don't need any routing:
-    ///
-    /// ```rust
-    /// use axum::{
-    ///     Server, handler::Handler, http::{Uri, Method}, response::IntoResponse,
-    /// };
-    /// use std::net::SocketAddr;
-    ///
-    /// async fn handler(method: Method, uri: Uri, body: String) -> String {
-    ///     format!("received `{} {}` with body `{:?}`", method, uri, body)
-    /// }
-    ///
-    /// # async {
-    /// Server::bind(&SocketAddr::from(([127, 0, 0, 1], 3000)))
-    ///     .serve(handler.into_make_service_with(()))
-    ///     .await?;
-    /// # Ok::<_, hyper::Error>(())
-    /// # };
-    /// ```
-    ///
-    /// [`MakeService`]: tower::make::MakeService
-    fn into_make_service_with(self, state: S) -> IntoMakeService<IntoService<Self, T, S, B>> {
-        IntoMakeService::new(self.into_service_with(state))
-    }
-
-    /// Convert the handler into a [`MakeService`] which stores information
-    /// about the incoming connection.
-    ///
-    /// See [`Router::into_make_service_with_connect_info`] for more details.
-    ///
-    /// ```rust
-    /// use axum::{
-    ///     Server,
-    ///     handler::Handler,
-    ///     response::IntoResponse,
-    ///     extract::ConnectInfo,
-    /// };
-    /// use std::net::SocketAddr;
-    ///
-    /// async fn handler(ConnectInfo(addr): ConnectInfo<SocketAddr>) -> String {
-    ///     format!("Hello {}", addr)
-    /// }
-    ///
-    /// # async {
-    /// Server::bind(&SocketAddr::from(([127, 0, 0, 1], 3000)))
-    ///     .serve(handler.into_make_service_with_connect_info_and_state::<SocketAddr>(()))
-    ///     .await?;
-    /// # Ok::<_, hyper::Error>(())
-    /// # };
-    /// ```
-    ///
-    /// [`MakeService`]: tower::make::MakeService
-    /// [`Router::into_make_service_with_connect_info`]: crate::routing::Router::into_make_service_with_connect_info
-    fn into_make_service_with_connect_info_and_state<C>(
-        self,
-        state: S,
-    ) -> IntoMakeServiceWithConnectInfo<IntoService<Self, T, S, B>, C> {
-        IntoMakeServiceWithConnectInfo::new(self.into_service_with(state))
+    /// Convert the handler into a [`Service`] by providing the state
+    fn with_state(self, state: S) -> WithState<Self, T, S, B> {
+        WithState {
+            service: IntoService::new(self, state),
+        }
     }
 }
 
@@ -302,7 +212,7 @@ where
 
 impl<H, S, T, B, ResBody, L> Handler<T, S, B> for Layered<L, H, T, S, B>
 where
-    L: Layer<IntoService<H, T, S, B>> + Clone + Send + 'static,
+    L: Layer<WithState<H, T, S, B>> + Clone + Send + 'static,
     H: Handler<T, S, B>,
     L::Service: Service<Request<B>, Response = Response<ResBody>> + Clone + Send + 'static,
     <L::Service as Service<Request<B>>>::Error: IntoResponse,
@@ -318,7 +228,7 @@ where
     fn call(self, state: S, req: Request<B>) -> Self::Future {
         use futures_util::future::{FutureExt, Map};
 
-        let svc = self.handler.into_service_with(state);
+        let svc = self.handler.with_state(state);
         let svc = self.layer.layer(svc);
 
         let future: Map<
@@ -338,15 +248,20 @@ where
     }
 }
 
+/// Extension trait for [`Handler`]s who doesn't have state.
+///
+/// This provides convenience methods to convert the [`Handler`] into a [`Service`] or [`MakeService`].
+///
+/// [`MakeService`]: tower::make::MakeService
 pub trait HandlerWithoutStateExt<T, B>: Handler<T, (), B> {
     /// Convert the handler into a [`Service`] and no state.
     ///
-    /// See [`Handler::into_service_with`] for more details.
-    fn into_service(self) -> IntoService<Self, T, (), B>;
+    /// See [`WithState::into_service_with_state`] for more details.
+    fn into_service(self) -> WithState<Self, T, (), B>;
 
     /// Convert the handler into a [`MakeService`] and no state.
     ///
-    /// See [`Handler::into_make_service_with`] for more details.
+    /// See [`WithState::into_make_service_with_state`] for more details.
     ///
     /// [`MakeService`]: tower::make::MakeService
     fn into_make_service(self) -> IntoMakeService<IntoService<Self, T, (), B>>;
@@ -354,7 +269,7 @@ pub trait HandlerWithoutStateExt<T, B>: Handler<T, (), B> {
     /// Convert the handler into a [`MakeService`] which stores information
     /// about the incoming connection and has no state.
     ///
-    /// See [`Handler::into_make_service_with_connect_info_and_state`] for more details.
+    /// See [`WithState::into_make_service_with_connect_info_and_state`] for more details.
     ///
     /// [`MakeService`]: tower::make::MakeService
     fn into_make_service_with_connect_info<C>(
@@ -366,18 +281,18 @@ impl<H, T, B> HandlerWithoutStateExt<T, B> for H
 where
     H: Handler<T, (), B>,
 {
-    fn into_service(self) -> IntoService<Self, T, (), B> {
-        self.into_service_with(())
+    fn into_service(self) -> WithState<Self, T, (), B> {
+        self.with_state(())
     }
 
     fn into_make_service(self) -> IntoMakeService<IntoService<Self, T, (), B>> {
-        self.into_make_service_with(())
+        self.with_state(()).into_make_service()
     }
 
     fn into_make_service_with_connect_info<C>(
         self,
     ) -> IntoMakeServiceWithConnectInfo<IntoService<Self, T, (), B>, C> {
-        self.into_make_service_with_connect_info_and_state(())
+        self.with_state(()).into_make_service_with_connect_info()
     }
 }
 

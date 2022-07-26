@@ -132,6 +132,12 @@ where
     B: HttpBody + Send + 'static,
     S: Clone + Send + Sync + 'static,
 {
+    /// Create a new `Router` with the given state.
+    ///
+    /// See [`State`](crate::extract::State) for more details about accessing state.
+    ///
+    /// Unless you add additional routes this will respond with `404 Not Found` to
+    /// all requests.
     pub fn with_state(state: S) -> Self {
         Self {
             state,
@@ -430,7 +436,7 @@ where
         T: 'static,
     {
         let state = self.state.clone();
-        self.fallback_service(handler.into_service_with(state))
+        self.fallback_service(handler.with_state(state))
     }
 
     /// Add a fallback [`Service`] to the router.
@@ -535,6 +541,7 @@ where
         }
     }
 
+    /// Get a reference to the state.
     pub fn state(&self) -> &S {
         &self.state
     }

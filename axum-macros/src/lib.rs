@@ -275,9 +275,7 @@ mod typed_path;
 /// [`axum::extract::rejection::ExtensionRejection`]: https://docs.rs/axum/latest/axum/extract/rejection/enum.ExtensionRejection.html
 #[proc_macro_derive(FromRequest, attributes(from_request))]
 pub fn derive_from_request(item: TokenStream) -> TokenStream {
-    let tokens = expand_with(item, from_request::expand);
-    // panic!("{}", tokens);
-    tokens
+    expand_with(item, from_request::expand)
 }
 
 /// Generates better error messages when applied handler functions.
