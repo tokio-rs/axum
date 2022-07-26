@@ -26,10 +26,10 @@ use tower_layer::Layer;
 use tower_service::Service;
 
 pub mod future;
+pub mod method_routing;
 
 mod into_make_service;
 mod method_filter;
-mod method_routing;
 mod not_found;
 mod route;
 mod strip_prefix;
@@ -43,7 +43,7 @@ pub use self::{into_make_service::IntoMakeService, method_filter::MethodFilter, 
 pub use self::method_routing::{
     any, any_service, delete, delete_service, get, get_service, head, head_service, on, on_service,
     options, options_service, patch, patch_service, post, post_service, put, put_service, trace,
-    trace_service, MethodRouter, MethodRouterWithState,
+    trace_service, MethodRouter,
 };
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]

@@ -255,13 +255,11 @@ where
 /// [`MakeService`]: tower::make::MakeService
 pub trait HandlerWithoutStateExt<T, B>: Handler<T, (), B> {
     /// Convert the handler into a [`Service`] and no state.
-    ///
-    /// See [`WithState::into_service_with_state`] for more details.
     fn into_service(self) -> WithState<Self, T, (), B>;
 
     /// Convert the handler into a [`MakeService`] and no state.
     ///
-    /// See [`WithState::into_make_service_with_state`] for more details.
+    /// See [`WithState::into_make_service`] for more details.
     ///
     /// [`MakeService`]: tower::make::MakeService
     fn into_make_service(self) -> IntoMakeService<IntoService<Self, T, (), B>>;
@@ -269,7 +267,7 @@ pub trait HandlerWithoutStateExt<T, B>: Handler<T, (), B> {
     /// Convert the handler into a [`MakeService`] which stores information
     /// about the incoming connection and has no state.
     ///
-    /// See [`WithState::into_make_service_with_connect_info_and_state`] for more details.
+    /// See [`WithState::into_make_service_with_connect_info`] for more details.
     ///
     /// [`MakeService`]: tower::make::MakeService
     fn into_make_service_with_connect_info<C>(

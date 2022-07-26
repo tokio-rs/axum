@@ -9,7 +9,7 @@ use std::{
 ///
 /// # Examples
 ///
-/// ## With [`Router`]
+/// ## With `Router`
 ///
 /// ```
 /// use axum::{Router, routing::get, extract::State};
@@ -83,7 +83,7 @@ use std::{
 /// # let _: Router<AppState> = app;
 /// ```
 ///
-/// ## With [`MethodRouter`]
+/// ## With `MethodRouter`
 ///
 /// ```
 /// use axum::{routing::get, extract::State};
@@ -105,7 +105,7 @@ use std::{
 /// # };
 /// ```
 ///
-/// ## With [`Handler`]
+/// ## With `Handler`
 ///
 /// ```
 /// use axum::{routing::get, handler::Handler, extract::State};

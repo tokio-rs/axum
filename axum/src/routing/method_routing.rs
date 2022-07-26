@@ -1,3 +1,5 @@
+//! Route to services and handlers based on HTTP methods.
+
 use super::IntoMakeService;
 use crate::{
     body::{boxed, Body, Bytes, Empty, HttpBody},

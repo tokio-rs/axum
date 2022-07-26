@@ -20,17 +20,26 @@ impl<H, T, S, B> WithState<H, T, S, B> {
     ///
     /// ```rust
     /// use axum::{
-    ///     Server, handler::Handler, http::{Uri, Method}, response::IntoResponse,
+    ///     Server,
+    ///     handler::Handler,
+    ///     extract::State,
+    ///     http::{Uri, Method},
+    ///     response::IntoResponse,
     /// };
     /// use std::net::SocketAddr;
     ///
-    /// async fn handler(method: Method, uri: Uri, body: String) -> String {
-    ///     format!("received `{} {}` with body `{:?}`", method, uri, body)
+    /// #[derive(Clone)]
+    /// struct AppState {}
+    ///
+    /// async fn handler(State(state): State<AppState>) {
+    ///     // ...
     /// }
+    ///
+    /// let app = handler.with_state(AppState {});
     ///
     /// # async {
     /// Server::bind(&SocketAddr::from(([127, 0, 0, 1], 3000)))
-    ///     .serve(handler.with_state(()).into_make_service())
+    ///     .serve(app.into_make_service())
     ///     .await?;
     /// # Ok::<_, hyper::Error>(())
     /// # };
@@ -51,17 +60,25 @@ impl<H, T, S, B> WithState<H, T, S, B> {
     ///     Server,
     ///     handler::Handler,
     ///     response::IntoResponse,
-    ///     extract::ConnectInfo,
+    ///     extract::{ConnectInfo, State},
     /// };
     /// use std::net::SocketAddr;
     ///
-    /// async fn handler(ConnectInfo(addr): ConnectInfo<SocketAddr>) -> String {
+    /// #[derive(Clone)]
+    /// struct AppState {};
+    ///
+    /// async fn handler(
+    ///     ConnectInfo(addr): ConnectInfo<SocketAddr>,
+    ///     State(state): State<AppState>,
+    /// ) -> String {
     ///     format!("Hello {}", addr)
     /// }
     ///
+    /// let app = handler.with_state(AppState {});
+    ///
     /// # async {
     /// Server::bind(&SocketAddr::from(([127, 0, 0, 1], 3000)))
-    ///     .serve(handler.with_state(()).into_make_service_with_connect_info::<SocketAddr>())
+    ///     .serve(app.into_make_service_with_connect_info::<SocketAddr>())
     ///     .await?;
     /// # Ok::<_, hyper::Error>(())
     /// # };
