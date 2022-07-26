@@ -187,7 +187,7 @@ where
 {
     fn into_response(self) -> Response {
         // Use a small initial capacity of 128 bytes like serde_json::to_vec
-        // https://github.com/serde-rs/json/blob/v1.0.82/src/ser.rs#L2189
+        // https://docs.rs/serde_json/1.0.82/src/serde_json/ser.rs.html#2189
         let mut buf = BytesMut::with_capacity(128).writer();
         match serde_json::to_writer(&mut buf, &self.0) {
             Ok(()) => (
