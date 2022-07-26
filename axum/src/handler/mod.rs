@@ -63,7 +63,7 @@ pub(crate) use self::into_service_state_in_extension::IntoServiceStateInExtensio
 /// See the [module docs](crate::handler) for more details.
 ///
 #[doc = include_str!("../docs/debugging_handler_type_errors.md")]
-pub trait Handler<T, S, B = Body>: Clone + Send + Sized + 'static {
+pub trait Handler<T, S = (), B = Body>: Clone + Send + Sized + 'static {
     /// The type of future calling this handler returns.
     type Future: Future<Output = Response> + Send + 'static;
 

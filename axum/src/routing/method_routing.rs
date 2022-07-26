@@ -482,7 +482,7 @@ where
 
 /// A [`Service`] that accepts requests based on a [`MethodFilter`] and
 /// allows chaining additional handlers and services.
-pub struct MethodRouter<S, B = Body, E = Infallible> {
+pub struct MethodRouter<S = (), B = Body, E = Infallible> {
     get: Option<Route<B, E>>,
     head: Option<Route<B, E>>,
     delete: Option<Route<B, E>>,

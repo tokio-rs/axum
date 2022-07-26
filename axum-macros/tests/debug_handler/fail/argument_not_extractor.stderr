@@ -1,8 +1,8 @@
-error[E0277]: the trait bound `bool: FromRequest<Body, ()>` is not satisfied
+error[E0277]: the trait bound `bool: FromRequest<Body>` is not satisfied
  --> tests/debug_handler/fail/argument_not_extractor.rs:4:23
   |
 4 | async fn handler(foo: bool) {}
-  |                       ^^^^ the trait `FromRequest<Body, ()>` is not implemented for `bool`
+  |                       ^^^^ the trait `FromRequest<Body>` is not implemented for `bool`
   |
   = help: the following other types implement trait `FromRequest<B, S>`:
             <() as FromRequest<B, S>>

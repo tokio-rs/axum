@@ -48,7 +48,7 @@ use tower_service::Service;
 /// # let _: Router<()> = app;
 /// ```
 #[derive(Debug)]
-pub struct Resource<S, B = Body> {
+pub struct Resource<S = (), B = Body> {
     pub(crate) name: String,
     pub(crate) router: Router<S, B>,
 }
