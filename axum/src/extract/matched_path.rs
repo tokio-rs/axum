@@ -160,17 +160,24 @@ mod tests {
 
         let client = TestClient::new(app);
 
-        let res = client.get("/public").send().await;
-        assert_eq!(res.status(), StatusCode::NOT_FOUND);
-
         let res = client.get("/api/users/123").send().await;
         assert_eq!(res.text().await, "/api/users/:id");
+
+        // the router nested at `/public` doesn't handle `/`
+        let res = client.get("/public").send().await;
+        assert_eq!(res.status(), StatusCode::NOT_FOUND);
 
         let res = client.get("/public/assets/css/style.css").send().await;
         assert_eq!(
             res.text().await,
             "extractor = /public/assets/*path, middleware = /public/assets/*path"
         );
+
+        let res = client.get("/foo").send().await;
+        assert_eq!(res.text().await, "extractor = /foo, middleware = /foo");
+
+        let res = client.get("/foo/").send().await;
+        assert_eq!(res.text().await, "extractor = /foo/, middleware = /foo/");
 
         let res = client.get("/foo/bar/baz").send().await;
         assert_eq!(
