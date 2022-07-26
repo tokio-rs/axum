@@ -186,7 +186,9 @@ where
     T: Serialize,
 {
     fn into_response(self) -> Response {
-        let mut buf = BytesMut::new().writer();
+        // Use a small initial capacity of 128 bytes like serde_json::to_vec
+        // https://docs.rs/serde_json/1.0.82/src/serde_json/ser.rs.html#2189
+        let mut buf = BytesMut::with_capacity(128).writer();
         match serde_json::to_writer(&mut buf, &self.0) {
             Ok(()) => (
                 [(
