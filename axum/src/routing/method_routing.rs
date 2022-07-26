@@ -577,6 +577,8 @@ impl<S, B, E> MethodRouter<S, B, E> {
     }
 
     /// Provide the state.
+    ///
+    /// See [`State`](crate::extract::State) for more details about accessing state.
     pub fn with_state(self, state: S) -> WithState<S, B, E> {
         WithState {
             method_router: self,
