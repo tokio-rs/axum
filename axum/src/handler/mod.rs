@@ -124,7 +124,7 @@ pub trait Handler<T, S, B = Body>: Clone + Send + Sized + 'static {
     /// ```rust
     /// use axum::{
     ///     Server,
-    ///     handler::Handler,
+    ///     handler::HandlerWithoutStateExt,
     ///     http::{Uri, Method, StatusCode},
     ///     response::IntoResponse,
     ///     routing::{get, Router},
@@ -138,7 +138,7 @@ pub trait Handler<T, S, B = Body>: Clone + Send + Sized + 'static {
     ///
     /// let app = Router::new()
     ///     .route("/", get(|| async {}))
-    ///     .fallback(handler.into_service());
+    ///     .fallback(handler);
     ///
     /// # async {
     /// Server::bind(&SocketAddr::from(([127, 0, 0, 1], 3000)))
@@ -149,7 +149,7 @@ pub trait Handler<T, S, B = Body>: Clone + Send + Sized + 'static {
     /// ```
     ///
     /// [`Router::fallback`]: crate::routing::Router::fallback
-    fn into_service(self, state: S) -> IntoService<Self, T, S, B> {
+    fn into_service_with(self, state: S) -> IntoService<Self, T, S, B> {
         IntoService::new(self, state)
     }
 
@@ -169,15 +169,15 @@ pub trait Handler<T, S, B = Body>: Clone + Send + Sized + 'static {
     ///
     /// # async {
     /// Server::bind(&SocketAddr::from(([127, 0, 0, 1], 3000)))
-    ///     .serve(handler.into_make_service())
+    ///     .serve(handler.into_make_service_with(()))
     ///     .await?;
     /// # Ok::<_, hyper::Error>(())
     /// # };
     /// ```
     ///
     /// [`MakeService`]: tower::make::MakeService
-    fn into_make_service(self, state: S) -> IntoMakeService<IntoService<Self, T, S, B>> {
-        IntoMakeService::new(self.into_service(state))
+    fn into_make_service_with(self, state: S) -> IntoMakeService<IntoService<Self, T, S, B>> {
+        IntoMakeService::new(self.into_service_with(state))
     }
 
     /// Convert the handler into a [`MakeService`] which stores information
@@ -200,7 +200,7 @@ pub trait Handler<T, S, B = Body>: Clone + Send + Sized + 'static {
     ///
     /// # async {
     /// Server::bind(&SocketAddr::from(([127, 0, 0, 1], 3000)))
-    ///     .serve(handler.into_make_service_with_connect_info::<SocketAddr>())
+    ///     .serve(handler.into_make_service_with_connect_info_and_state::<SocketAddr>(()))
     ///     .await?;
     /// # Ok::<_, hyper::Error>(())
     /// # };
@@ -208,11 +208,11 @@ pub trait Handler<T, S, B = Body>: Clone + Send + Sized + 'static {
     ///
     /// [`MakeService`]: tower::make::MakeService
     /// [`Router::into_make_service_with_connect_info`]: crate::routing::Router::into_make_service_with_connect_info
-    fn into_make_service_with_connect_info<C>(
+    fn into_make_service_with_connect_info_and_state<C>(
         self,
         state: S,
     ) -> IntoMakeServiceWithConnectInfo<IntoService<Self, T, S, B>, C> {
-        IntoMakeServiceWithConnectInfo::new(self.into_service(state))
+        IntoMakeServiceWithConnectInfo::new(self.into_service_with(state))
     }
 }
 
@@ -240,7 +240,7 @@ macro_rules! impl_handler {
             B: Send + 'static,
             S: Send + 'static,
             Res: IntoResponse,
-            $( $ty: FromRequest<S, B> + Send,)*
+            $( $ty: FromRequest<B, S> + Send,)*
         {
             type Future = Pin<Box<dyn Future<Output = Response> + Send>>;
 
@@ -313,12 +313,12 @@ where
     ResBody: HttpBody<Data = Bytes> + Send + 'static,
     ResBody::Error: Into<BoxError>,
 {
-    type Future = future::LayeredFuture<L::Service, B>;
+    type Future = future::LayeredFuture<B, L::Service>;
 
     fn call(self, state: S, req: Request<B>) -> Self::Future {
         use futures_util::future::{FutureExt, Map};
 
-        let svc = self.handler.into_service(state);
+        let svc = self.handler.into_service_with(state);
         let svc = self.layer.layer(svc);
 
         let future: Map<
@@ -338,6 +338,45 @@ where
     }
 }
 
+pub trait HandlerWithoutStateExt<T, B>: Handler<T, (), B> {
+    /// Convert the handler into a [`Service`] and no state.
+    ///
+    /// See [`Handler::into_service`] for more details.
+    fn into_service(self) -> IntoService<Self, T, (), B>;
+
+    /// Convert the handler into a [`MakeService`] and no state.
+    ///
+    /// See [`Handler::into_make_service`] for more details.
+    fn into_make_service(self) -> IntoMakeService<IntoService<Self, T, (), B>>;
+
+    /// Convert the handler into a [`MakeService`] which stores information
+    /// about the incoming connection and has no state.
+    ///
+    /// See [`Handler::into_make_service_with_connect_info_and_state`] for more details.
+    fn into_make_service_with_connect_info<C>(
+        self,
+    ) -> IntoMakeServiceWithConnectInfo<IntoService<Self, T, (), B>, C>;
+}
+
+impl<H, T, B> HandlerWithoutStateExt<T, B> for H
+where
+    H: Handler<T, (), B>,
+{
+    fn into_service(self) -> IntoService<Self, T, (), B> {
+        self.into_service_with(())
+    }
+
+    fn into_make_service(self) -> IntoMakeService<IntoService<Self, T, (), B>> {
+        self.into_make_service_with(())
+    }
+
+    fn into_make_service_with_connect_info<C>(
+        self,
+    ) -> IntoMakeServiceWithConnectInfo<IntoService<Self, T, (), B>, C> {
+        self.into_make_service_with_connect_info_and_state(())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -350,7 +389,7 @@ mod tests {
             format!("you said: {}", body)
         }
 
-        let client = TestClient::new(handle.into_service(()));
+        let client = TestClient::new(handle.into_service());
 
         let res = client.post("/").body("hi there!").send().await;
         assert_eq!(res.status(), StatusCode::OK);

@@ -2,7 +2,7 @@ use crate::{
     body::{Bytes, Empty},
     error_handling::HandleErrorLayer,
     extract::{self, Path, State},
-    handler::Handler,
+    handler::{Handler, HandlerWithoutStateExt},
     response::IntoResponse,
     routing::{delete, get, get_service, on, on_service, patch, patch_service, post, MethodFilter},
     test_helpers::*,
@@ -148,10 +148,7 @@ async fn routing_between_services() {
                 }),
             ),
         )
-        .route(
-            "/two",
-            on_service(MethodFilter::GET, handle.into_service(())),
-        );
+        .route("/two", on_service(MethodFilter::GET, handle.into_service()));
 
     let client = TestClient::new(app);
 

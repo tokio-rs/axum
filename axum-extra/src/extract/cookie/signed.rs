@@ -72,7 +72,7 @@ use std::{convert::Infallible, fmt, marker::PhantomData};
 ///     .route("/me", get(me))
 ///     // add extension with the key so `SignedCookieJar` can access it
 ///     .layer(Extension(key));
-/// # let app: Router<axum::body::Body> = app;
+/// # let app: Router<()> = app;
 /// ```
 pub struct SignedCookieJar<K = Key> {
     jar: cookie_lib::CookieJar,
@@ -92,15 +92,15 @@ impl<K> fmt::Debug for SignedCookieJar<K> {
 }
 
 #[async_trait]
-impl<S, B, K> FromRequest<S, B> for SignedCookieJar<K>
+impl<S, B, K> FromRequest<B, S> for SignedCookieJar<K>
 where
     B: Send,
     S: Send,
     K: Into<Key> + Clone + Send + Sync + 'static,
 {
-    type Rejection = <axum::Extension<K> as FromRequest<S, B>>::Rejection;
+    type Rejection = <axum::Extension<K> as FromRequest<B, S>>::Rejection;
 
-    async fn from_request(req: &mut RequestParts<S, B>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts<B, S>) -> Result<Self, Self::Rejection> {
         let key = Extension::<K>::from_request(req).await?.0.into();
 
         let mut jar = cookie_lib::CookieJar::new();

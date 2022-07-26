@@ -142,6 +142,7 @@ where
         }
     }
 
+    #[doc = include_str!("../docs/routing/route.md")]
     pub fn route(mut self, path: &str, method_router: MethodRouter<S, B>) -> Self {
         if path.is_empty() {
             panic!("Paths must start with a `/`. Use \"/\" for root routes");
@@ -178,7 +179,7 @@ where
         self
     }
 
-    #[doc = include_str!("../docs/routing/route.md")]
+    #[doc = include_str!("../docs/routing/route_service.md")]
     pub fn route_service<T>(mut self, path: &str, service: T) -> Self
     where
         T: Service<Request<B>, Response = Response, Error = Infallible> + Clone + Send + 'static,
@@ -429,9 +430,12 @@ where
         T: 'static,
     {
         let state = self.state.clone();
-        self.fallback_service(handler.into_service(state))
+        self.fallback_service(handler.into_service_with(state))
     }
 
+    /// Add a fallback [`Service`] to the router.
+    ///
+    /// See [`Router::fallback`] for more details.
     pub fn fallback_service<T>(mut self, svc: T) -> Self
     where
         T: Service<Request<B>, Response = Response, Error = Infallible> + Clone + Send + 'static,

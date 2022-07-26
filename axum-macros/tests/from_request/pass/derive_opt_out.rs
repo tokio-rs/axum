@@ -14,14 +14,14 @@ struct Extractor {
 struct OtherExtractor;
 
 #[async_trait]
-impl<S, B> FromRequest<S, B> for OtherExtractor
+impl<B, S> FromRequest<B, S> for OtherExtractor
 where
     B: Send,
     S: Send,
 {
     type Rejection = OtherExtractorRejection;
 
-    async fn from_request(_req: &mut RequestParts<(), B>) -> Result<Self, Self::Rejection> {
+    async fn from_request(_req: &mut RequestParts<B, S>) -> Result<Self, Self::Rejection> {
         unimplemented!()
     }
 }

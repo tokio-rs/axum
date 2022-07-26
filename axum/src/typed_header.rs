@@ -52,7 +52,7 @@ use std::{convert::Infallible, ops::Deref};
 pub struct TypedHeader<T>(pub T);
 
 #[async_trait]
-impl<T, S, B> FromRequest<S, B> for TypedHeader<T>
+impl<T, S, B> FromRequest<B, S> for TypedHeader<T>
 where
     T: headers::Header,
     B: Send,
@@ -60,7 +60,7 @@ where
 {
     type Rejection = TypedHeaderRejection;
 
-    async fn from_request(req: &mut RequestParts<S, B>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts<B, S>) -> Result<Self, Self::Rejection> {
         match req.headers().typed_try_get::<T>() {
             Ok(Some(value)) => Ok(Self(value)),
             Ok(None) => Err(TypedHeaderRejection {

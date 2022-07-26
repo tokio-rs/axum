@@ -571,7 +571,7 @@ impl<S, B, E> MethodRouter<S, B, E> {
     }
 }
 
-impl<S, B> MethodRouter<S, B, Infallible>
+impl<B, S> MethodRouter<S, B, Infallible>
 where
     B: Send + 'static,
 {

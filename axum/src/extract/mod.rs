@@ -75,13 +75,13 @@ pub use self::ws::WebSocketUpgrade;
 #[doc(no_inline)]
 pub use crate::TypedHeader;
 
-pub(crate) fn take_body<S, B>(req: &mut RequestParts<S, B>) -> Result<B, BodyAlreadyExtracted> {
+pub(crate) fn take_body<B, S>(req: &mut RequestParts<B, S>) -> Result<B, BodyAlreadyExtracted> {
     req.take_body().ok_or_else(BodyAlreadyExtracted::default)
 }
 
 // this is duplicated in `axum-extra/src/extract/form.rs`
-pub(super) fn has_content_type<S, B>(
-    req: &RequestParts<S, B>,
+pub(super) fn has_content_type<B, S>(
+    req: &RequestParts<B, S>,
     expected_content_type: &mime::Mime,
 ) -> bool {
     let content_type = if let Some(content_type) = req.headers().get(header::CONTENT_TYPE) {

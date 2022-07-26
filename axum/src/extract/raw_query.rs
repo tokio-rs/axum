@@ -27,14 +27,14 @@ use std::convert::Infallible;
 pub struct RawQuery(pub Option<String>);
 
 #[async_trait]
-impl<S, B> FromRequest<S, B> for RawQuery
+impl<B, S> FromRequest<B, S> for RawQuery
 where
     B: Send,
     S: Send,
 {
     type Rejection = Infallible;
 
-    async fn from_request(req: &mut RequestParts<S, B>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts<B, S>) -> Result<Self, Self::Rejection> {
         let query = req.uri().query().map(|query| query.to_owned());
         Ok(Self(query))
     }

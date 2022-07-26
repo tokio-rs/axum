@@ -20,7 +20,7 @@ impl<S> StripPrefix<S> {
     }
 }
 
-impl<S, B> Service<Request<B>> for StripPrefix<S>
+impl<B, S> Service<Request<B>> for StripPrefix<S>
 where
     S: Service<Request<B>>,
 {

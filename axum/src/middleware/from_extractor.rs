@@ -47,13 +47,14 @@ use tower_service::Service;
 /// struct RequireAuth;
 ///
 /// #[async_trait]
-/// impl<B> FromRequest<B> for RequireAuth
+/// impl<B, S> FromRequest<B, S> for RequireAuth
 /// where
 ///     B: Send,
+///     S: Send,
 /// {
 ///     type Rejection = StatusCode;
 ///
-///     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+///     async fn from_request(req: &mut RequestParts<B, S>) -> Result<Self, Self::Rejection> {
 ///         let auth_header = req
 ///             .headers()
 ///             .get(header::AUTHORIZATION)
@@ -166,24 +167,24 @@ where
     }
 }
 
-impl<S, E, ReqBody, ResBody> Service<Request<ReqBody>> for FromExtractor<S, E>
+impl<S, E, B, ResBody> Service<Request<B>> for FromExtractor<S, E>
 where
-    E: FromRequest<(), ReqBody> + 'static,
-    ReqBody: Default + Send + 'static,
-    S: Service<Request<ReqBody>, Response = Response<ResBody>> + Clone,
+    E: FromRequest<B, ()> + 'static,
+    B: Default + Send + 'static,
+    S: Service<Request<B>, Response = Response<ResBody>> + Clone,
     ResBody: HttpBody<Data = Bytes> + Send + 'static,
     ResBody::Error: Into<BoxError>,
 {
     type Response = Response;
     type Error = S::Error;
-    type Future = ResponseFuture<ReqBody, S, E>;
+    type Future = ResponseFuture<B, S, E>;
 
     #[inline]
     fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         self.inner.poll_ready(cx)
     }
 
-    fn call(&mut self, req: Request<ReqBody>) -> Self::Future {
+    fn call(&mut self, req: Request<B>) -> Self::Future {
         let extract_future = Box::pin(async move {
             let mut req = RequestParts::new((), req);
             let extracted = E::from_request(&mut req).await;
@@ -202,36 +203,36 @@ where
 pin_project! {
     /// Response future for [`FromExtractor`].
     #[allow(missing_debug_implementations)]
-    pub struct ResponseFuture<ReqBody, S, E>
+    pub struct ResponseFuture<B, S, E>
     where
-        E: FromRequest<(), ReqBody>,
-        S: Service<Request<ReqBody>>,
+        E: FromRequest<B, ()>,
+        S: Service<Request<B>>,
     {
         #[pin]
-        state: State<ReqBody, S, E>,
+        state: State<B, S, E>,
         svc: Option<S>,
     }
 }
 
 pin_project! {
     #[project = StateProj]
-    enum State<ReqBody, S, E>
+    enum State<B, S, E>
     where
-        E: FromRequest<(), ReqBody>,
-        S: Service<Request<ReqBody>>,
+        E: FromRequest<B, ()>,
+        S: Service<Request<B>>,
     {
         Extracting {
-            future: BoxFuture<'static, (RequestParts<(), ReqBody>, Result<E, E::Rejection>)>,
+            future: BoxFuture<'static, (RequestParts<B, ()>, Result<E, E::Rejection>)>,
         },
         Call { #[pin] future: S::Future },
     }
 }
 
-impl<ReqBody, S, E, ResBody> Future for ResponseFuture<ReqBody, S, E>
+impl<B, S, E, ResBody> Future for ResponseFuture<B, S, E>
 where
-    E: FromRequest<(), ReqBody>,
-    S: Service<Request<ReqBody>, Response = Response<ResBody>>,
-    ReqBody: Default,
+    E: FromRequest<B, ()>,
+    S: Service<Request<B>, Response = Response<ResBody>>,
+    B: Default,
     ResBody: HttpBody<Data = Bytes> + Send + 'static,
     ResBody::Error: Into<BoxError>,
 {
@@ -281,14 +282,14 @@ mod tests {
         struct RequireAuth;
 
         #[async_trait::async_trait]
-        impl<S, B> FromRequest<S, B> for RequireAuth
+        impl<B, S> FromRequest<B, S> for RequireAuth
         where
             B: Send,
             S: Send,
         {
             type Rejection = StatusCode;
 
-            async fn from_request(req: &mut RequestParts<S, B>) -> Result<Self, Self::Rejection> {
+            async fn from_request(req: &mut RequestParts<B, S>) -> Result<Self, Self::Rejection> {
                 if let Some(auth) = req
                     .headers()
                     .get(header::AUTHORIZATION)

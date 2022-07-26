@@ -64,14 +64,14 @@ impl MatchedPath {
 }
 
 #[async_trait]
-impl<S, B> FromRequest<S, B> for MatchedPath
+impl<B, S> FromRequest<B, S> for MatchedPath
 where
     B: Send,
     S: Send,
 {
     type Rejection = MatchedPathRejection;
 
-    async fn from_request(req: &mut RequestParts<S, B>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts<B, S>) -> Result<Self, Self::Rejection> {
         let matched_path = req
             .extensions()
             .get::<Self>()
@@ -85,7 +85,9 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{extract::Extension, handler::Handler, routing::get, test_helpers::*, Router};
+    use crate::{
+        extract::Extension, handler::HandlerWithoutStateExt, routing::get, test_helpers::*, Router,
+    };
     use http::Request;
     use std::task::{Context, Poll};
     use tower_service::Service;
@@ -150,7 +152,7 @@ mod tests {
                 "/public",
                 Router::new().route("/assets/*path", get(handler)),
             )
-            .nest("/foo", handler.into_service(()))
+            .nest("/foo", handler.into_service())
             .layer(tower::layer::layer_fn(SetMatchedPathExtension));
 
         let client = TestClient::new(app);

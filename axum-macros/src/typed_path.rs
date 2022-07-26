@@ -127,14 +127,14 @@ fn expand_named_fields(
     let from_request_impl = quote! {
         #[::axum::async_trait]
         #[automatically_derived]
-        impl<S, B> ::axum::extract::FromRequest<S, B> for #ident
+        impl<B, S> ::axum::extract::FromRequest<B, S> for #ident
         where
             B: Send,
             S: Send,
         {
             type Rejection = #rejection_assoc_type;
 
-            async fn from_request(req: &mut ::axum::extract::RequestParts<S, B>) -> ::std::result::Result<Self, Self::Rejection> {
+            async fn from_request(req: &mut ::axum::extract::RequestParts<B, S>) -> ::std::result::Result<Self, Self::Rejection> {
                 ::axum::extract::Path::from_request(req)
                     .await
                     .map(|path| path.0)
@@ -230,14 +230,14 @@ fn expand_unnamed_fields(
     let from_request_impl = quote! {
         #[::axum::async_trait]
         #[automatically_derived]
-        impl<S, B> ::axum::extract::FromRequest<S, B> for #ident
+        impl<B, S> ::axum::extract::FromRequest<B, S> for #ident
         where
             B: Send,
             S: Send,
         {
             type Rejection = #rejection_assoc_type;
 
-            async fn from_request(req: &mut ::axum::extract::RequestParts<S, B>) -> ::std::result::Result<Self, Self::Rejection> {
+            async fn from_request(req: &mut ::axum::extract::RequestParts<B, S>) -> ::std::result::Result<Self, Self::Rejection> {
                 ::axum::extract::Path::from_request(req)
                     .await
                     .map(|path| path.0)
@@ -312,14 +312,14 @@ fn expand_unit_fields(
     let from_request_impl = quote! {
         #[::axum::async_trait]
         #[automatically_derived]
-        impl<S, B> ::axum::extract::FromRequest<S, B> for #ident
+        impl<B, S> ::axum::extract::FromRequest<B, S> for #ident
         where
             B: Send,
             S: Send,
         {
             type Rejection = #rejection_assoc_type;
 
-            async fn from_request(req: &mut ::axum::extract::RequestParts<S, B>) -> ::std::result::Result<Self, Self::Rejection> {
+            async fn from_request(req: &mut ::axum::extract::RequestParts<B, S>) -> ::std::result::Result<Self, Self::Rejection> {
                 if req.uri().path() == <Self as ::axum_extra::routing::TypedPath>::PATH {
                     Ok(Self)
                 } else {
@@ -390,7 +390,7 @@ enum Segment {
 
 fn path_rejection() -> TokenStream {
     quote! {
-        <::axum::extract::Path<Self> as ::axum::extract::FromRequest<S, B>>::Rejection
+        <::axum::extract::Path<Self> as ::axum::extract::FromRequest<B, S>>::Rejection
     }
 }
 

@@ -50,7 +50,7 @@ pub struct Multipart {
 }
 
 #[async_trait]
-impl<S, B> FromRequest<S, B> for Multipart
+impl<B, S> FromRequest<B, S> for Multipart
 where
     B: HttpBody<Data = Bytes> + Default + Unpin + Send + 'static,
     B::Error: Into<BoxError>,
@@ -58,7 +58,7 @@ where
 {
     type Rejection = MultipartRejection;
 
-    async fn from_request(req: &mut RequestParts<S, B>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts<B, S>) -> Result<Self, Self::Rejection> {
         let stream = BodyStream::from_request(req).await?;
         let headers = req.headers();
         let boundary = parse_boundary(headers).ok_or(InvalidBoundary)?;
@@ -180,7 +180,7 @@ impl<'a> Field<'a> {
     /// }
     ///
     /// let app = Router::new().route("/upload", post(upload));
-    /// # let _: Router<axum::body::Body> = app;
+    /// # let _: Router<()> = app;
     /// ```
     pub async fn chunk(&mut self) -> Result<Option<Bytes>, MultipartError> {
         self.inner

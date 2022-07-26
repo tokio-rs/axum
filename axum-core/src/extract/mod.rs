@@ -42,13 +42,15 @@ mod tuple;
 /// struct MyExtractor;
 ///
 /// #[async_trait]
-/// impl<B> FromRequest<B> for MyExtractor
+/// impl<B, S> FromRequest<B, S> for MyExtractor
 /// where
-///     B: Send, // required by `async_trait`
+///     // these bounds are required by `async_trait`
+///     B: Send,
+///     S: Send,
 /// {
 ///     type Rejection = http::StatusCode;
 ///
-///     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+///     async fn from_request(req: &mut RequestParts<B, S>) -> Result<Self, Self::Rejection> {
 ///         // ...
 ///         # unimplemented!()
 ///     }
@@ -60,20 +62,20 @@ mod tuple;
 /// [`http::Request<B>`]: http::Request
 /// [`axum::extract`]: https://docs.rs/axum/latest/axum/extract/index.html
 #[async_trait]
-pub trait FromRequest<S, B>: Sized {
+pub trait FromRequest<B, S>: Sized {
     /// If the extractor fails it'll use this "rejection" type. A rejection is
     /// a kind of error that can be converted into a response.
     type Rejection: IntoResponse;
 
     /// Perform the extraction.
-    async fn from_request(req: &mut RequestParts<S, B>) -> Result<Self, Self::Rejection>;
+    async fn from_request(req: &mut RequestParts<B, S>) -> Result<Self, Self::Rejection>;
 }
 
 /// The type used with [`FromRequest`] to extract data from requests.
 ///
 /// Has several convenience methods for getting owned parts of the request.
 #[derive(Debug)]
-pub struct RequestParts<S, B> {
+pub struct RequestParts<B, S> {
     state: S,
     method: Method,
     uri: Uri,
@@ -83,7 +85,7 @@ pub struct RequestParts<S, B> {
     body: Option<B>,
 }
 
-impl<S, B> RequestParts<S, B> {
+impl<B, S> RequestParts<B, S> {
     /// Create a new `RequestParts` with the given state.
     ///
     /// You generally shouldn't need to construct this type yourself, unless
@@ -132,10 +134,14 @@ impl<S, B> RequestParts<S, B> {
     /// use http::{Method, Uri};
     ///
     /// #[async_trait]
-    /// impl<B: Send> FromRequest<B> for MyExtractor {
+    /// impl<B, S> FromRequest<B, S> for MyExtractor
+    /// where
+    ///     B: Send,
+    ///     S: Send,
+    /// {
     ///     type Rejection = Infallible;
     ///
-    ///     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Infallible> {
+    ///     async fn from_request(req: &mut RequestParts<B, S>) -> Result<Self, Infallible> {
     ///         let method = req.extract::<Method>().await?;
     ///         let path = req.extract::<Uri>().await?.path().to_owned();
     ///
@@ -145,7 +151,7 @@ impl<S, B> RequestParts<S, B> {
     /// ```
     pub async fn extract<E>(&mut self) -> Result<E, E::Rejection>
     where
-        E: FromRequest<S, B>,
+        E: FromRequest<B, S>,
     {
         E::from_request(self).await
     }
@@ -259,29 +265,29 @@ impl<S, B> RequestParts<S, B> {
 }
 
 #[async_trait]
-impl<S, T, B> FromRequest<S, B> for Option<T>
+impl<S, T, B> FromRequest<B, S> for Option<T>
 where
-    T: FromRequest<S, B>,
+    T: FromRequest<B, S>,
     B: Send,
     S: Send,
 {
     type Rejection = Infallible;
 
-    async fn from_request(req: &mut RequestParts<S, B>) -> Result<Option<T>, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts<B, S>) -> Result<Option<T>, Self::Rejection> {
         Ok(T::from_request(req).await.ok())
     }
 }
 
 #[async_trait]
-impl<S, T, B> FromRequest<S, B> for Result<T, T::Rejection>
+impl<S, T, B> FromRequest<B, S> for Result<T, T::Rejection>
 where
-    T: FromRequest<S, B>,
+    T: FromRequest<B, S>,
     B: Send,
     S: Send,
 {
     type Rejection = Infallible;
 
-    async fn from_request(req: &mut RequestParts<S, B>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts<B, S>) -> Result<Self, Self::Rejection> {
         Ok(T::from_request(req).await)
     }
 }

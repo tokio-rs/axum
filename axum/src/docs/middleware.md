@@ -94,7 +94,7 @@ let app = Router::new()
     .layer(layer_one)
     .layer(layer_two)
     .layer(layer_three);
-# let app: Router<axum::body::Body> = app;
+# let _: Router<(), axum::body::Body> = app;
 ```
 
 Think of the middleware as being layered like an onion where each new layer
@@ -153,7 +153,7 @@ let app = Router::new()
             .layer(layer_two)
             .layer(layer_three),
     );
-# let app: Router<axum::body::Body> = app;
+# let _: Router<(), axum::body::Body> = app;
 ```
 
 `ServiceBuilder` works by composing all layers into one such that they run top
@@ -436,7 +436,7 @@ async fn handler(
 let app = Router::new()
     .route("/", get(handler))
     .route_layer(middleware::from_fn(auth));
-# let app: Router = app;
+# let _: Router<()> = app;
 ```
 
 [Response extensions] can also be used but note that request extensions are not

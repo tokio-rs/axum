@@ -61,7 +61,7 @@ use tower_service::Service;
 /// let app = Router::new()
 ///     .route("/", get(|| async { /* ... */ }))
 ///     .route_layer(middleware::from_fn(auth));
-/// # let app: Router = app;
+/// # let app: Router<()> = app;
 /// ```
 ///
 /// # Running extractors
@@ -92,7 +92,7 @@ use tower_service::Service;
 /// let app = Router::new()
 ///     .route("/", get(|| async { /* ... */ }))
 ///     .route_layer(middleware::from_fn(my_middleware));
-/// # let app: Router = app;
+/// # let app: Router<()> = app;
 /// ```
 ///
 /// # Passing state
@@ -127,7 +127,7 @@ use tower_service::Service;
 ///     .route_layer(middleware::from_fn(move |req, next| {
 ///         my_middleware(req, next, state.clone())
 ///     }));
-/// # let app: Router = app;
+/// # let app: Router<()> = app;
 /// ```
 ///
 /// Or via extensions:
@@ -164,7 +164,7 @@ use tower_service::Service;
 ///             .layer(Extension(state))
 ///             .layer(middleware::from_fn(my_middleware)),
 ///     );
-/// # let app: Router = app;
+/// # let app: Router<()> = app;
 /// ```
 ///
 /// [extractors]: crate::extract::FromRequest
@@ -256,18 +256,18 @@ where
 macro_rules! impl_service {
     ( $($ty:ident),* $(,)? ) => {
         #[allow(non_snake_case)]
-        impl<F, Fut, Out, S, ReqBody, ResBody, $($ty,)*> Service<Request<ReqBody>> for FromFn<F, S, ($($ty,)*)>
+        impl<F, Fut, Out, S, B, ResBody, $($ty,)*> Service<Request<B>> for FromFn<F, S, ($($ty,)*)>
         where
-            F: FnMut($($ty),*, Next<ReqBody>) -> Fut + Clone + Send + 'static,
-            $( $ty: FromRequest<(), ReqBody> + Send, )*
+            F: FnMut($($ty),*, Next<B>) -> Fut + Clone + Send + 'static,
+            $( $ty: FromRequest<B, ()> + Send, )*
             Fut: Future<Output = Out> + Send + 'static,
             Out: IntoResponse + 'static,
-            S: Service<Request<ReqBody>, Response = Response<ResBody>, Error = Infallible>
+            S: Service<Request<B>, Response = Response<ResBody>, Error = Infallible>
                 + Clone
                 + Send
                 + 'static,
             S::Future: Send + 'static,
-            ReqBody: Send + 'static,
+            B: Send + 'static,
             ResBody: HttpBody<Data = Bytes> + Send + 'static,
             ResBody::Error: Into<BoxError>,
         {
@@ -279,7 +279,7 @@ macro_rules! impl_service {
                 self.inner.poll_ready(cx)
             }
 
-            fn call(&mut self, req: Request<ReqBody>) -> Self::Future {
+            fn call(&mut self, req: Request<B>) -> Self::Future {
                 let not_ready_inner = self.inner.clone();
                 let ready_inner = std::mem::replace(&mut self.inner, not_ready_inner);
 
@@ -326,13 +326,13 @@ where
 }
 
 /// The remainder of a middleware stack, including the handler.
-pub struct Next<ReqBody> {
-    inner: BoxCloneService<Request<ReqBody>, Response, Infallible>,
+pub struct Next<B> {
+    inner: BoxCloneService<Request<B>, Response, Infallible>,
 }
 
-impl<ReqBody> Next<ReqBody> {
+impl<B> Next<B> {
     /// Execute the remaining middleware stack.
-    pub async fn run(mut self, req: Request<ReqBody>) -> Response {
+    pub async fn run(mut self, req: Request<B>) -> Response {
         match self.inner.call(req).await {
             Ok(res) => res,
             Err(err) => match err {},
@@ -340,7 +340,7 @@ impl<ReqBody> Next<ReqBody> {
     }
 }
 
-impl<ReqBody> fmt::Debug for Next<ReqBody> {
+impl<B> fmt::Debug for Next<B> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("FromFnLayer")
             .field("inner", &self.inner)

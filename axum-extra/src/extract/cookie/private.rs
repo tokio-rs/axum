@@ -54,7 +54,7 @@ use std::{convert::Infallible, fmt, marker::PhantomData};
 ///     .route("/get", get(get_secret))
 ///     // add extension with the key so `PrivateCookieJar` can access it
 ///     .layer(Extension(key));
-/// # let app: Router<axum::body::Body> = app;
+/// # let app: Router<()> = app;
 /// ```
 pub struct PrivateCookieJar<K = Key> {
     jar: cookie_lib::CookieJar,
@@ -74,15 +74,15 @@ impl<K> fmt::Debug for PrivateCookieJar<K> {
 }
 
 #[async_trait]
-impl<S, B, K> FromRequest<S, B> for PrivateCookieJar<K>
+impl<S, B, K> FromRequest<B, S> for PrivateCookieJar<K>
 where
     B: Send,
     S: Send,
     K: Into<Key> + Clone + Send + Sync + 'static,
 {
-    type Rejection = <axum::Extension<K> as FromRequest<S, B>>::Rejection;
+    type Rejection = <axum::Extension<K> as FromRequest<B, S>>::Rejection;
 
-    async fn from_request(req: &mut RequestParts<S, B>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts<B, S>) -> Result<Self, Self::Rejection> {
         let key = Extension::<K>::from_request(req).await?.0.into();
 
         let mut jar = cookie_lib::CookieJar::new();

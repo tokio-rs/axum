@@ -196,7 +196,7 @@ fn check_inputs_impls_from_request(item_fn: &ItemFn, body_ty: &Type) -> TokenStr
                 #[allow(warnings)]
                 fn #name()
                 where
-                    #ty: ::axum::extract::FromRequest<(), #body_ty> + Send,
+                    #ty: ::axum::extract::FromRequest<#body_ty, ()> + Send,
                 {}
             }
         })

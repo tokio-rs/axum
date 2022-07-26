@@ -80,7 +80,7 @@ pub use cookie_lib::Key;
 /// let app = Router::new()
 ///     .route("/sessions", post(create_session))
 ///     .route("/me", get(me));
-/// # let app: Router<axum::body::Body> = app;
+/// # let app: Router<()> = app;
 /// ```
 #[derive(Debug)]
 pub struct CookieJar {
@@ -88,14 +88,14 @@ pub struct CookieJar {
 }
 
 #[async_trait]
-impl<S, B> FromRequest<S, B> for CookieJar
+impl<B, S> FromRequest<B, S> for CookieJar
 where
     B: Send,
     S: Send,
 {
     type Rejection = Infallible;
 
-    async fn from_request(req: &mut RequestParts<S, B>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts<B, S>) -> Result<Self, Self::Rejection> {
         let mut jar = cookie_lib::CookieJar::new();
         for cookie in cookies_from_request(req) {
             jar.add_original(cookie);
@@ -104,8 +104,8 @@ where
     }
 }
 
-fn cookies_from_request<S, B>(
-    req: &mut RequestParts<S, B>,
+fn cookies_from_request<B, S>(
+    req: &mut RequestParts<B, S>,
 ) -> impl Iterator<Item = Cookie<'static>> + '_ {
     req.headers()
         .get_all(COOKIE)

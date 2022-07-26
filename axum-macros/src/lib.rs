@@ -125,7 +125,7 @@ mod typed_path;
 /// ```
 /// pub struct ViaExtractor<T>(pub T);
 ///
-/// // impl<T, B> FromRequest<B> for ViaExtractor<T> { ... }
+/// // impl<T, B, S> FromRequest<B, S> for ViaExtractor<T> { ... }
 /// ```
 ///
 /// More complex via extractors are not supported and require writing a manual implementation.
@@ -223,14 +223,15 @@ mod typed_path;
 /// struct OtherExtractor;
 ///
 /// #[async_trait]
-/// impl<B> FromRequest<B> for OtherExtractor
+/// impl<B, S> FromRequest<B, S> for OtherExtractor
 /// where
-///     B: Send + 'static,
+///     B: Send,
+///     S: Send,
 /// {
 ///     // this rejection doesn't implement `Display` and `Error`
 ///     type Rejection = (StatusCode, String);
 ///
-///     async fn from_request(_req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+///     async fn from_request(_req: &mut RequestParts<B, S>) -> Result<Self, Self::Rejection> {
 ///         // ...
 ///         # unimplemented!()
 ///     }
@@ -274,7 +275,9 @@ mod typed_path;
 /// [`axum::extract::rejection::ExtensionRejection`]: https://docs.rs/axum/latest/axum/extract/rejection/enum.ExtensionRejection.html
 #[proc_macro_derive(FromRequest, attributes(from_request))]
 pub fn derive_from_request(item: TokenStream) -> TokenStream {
-    expand_with(item, from_request::expand)
+    let tokens = expand_with(item, from_request::expand);
+    // panic!("{}", tokens);
+    tokens
 }
 
 /// Generates better error messages when applied handler functions.

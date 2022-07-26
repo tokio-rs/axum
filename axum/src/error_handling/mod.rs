@@ -114,15 +114,15 @@ where
     }
 }
 
-impl<S, F, ReqBody, ResBody, Fut, Res> Service<Request<ReqBody>> for HandleError<S, F, ()>
+impl<S, F, B, ResBody, Fut, Res> Service<Request<B>> for HandleError<S, F, ()>
 where
-    S: Service<Request<ReqBody>, Response = Response<ResBody>> + Clone + Send + 'static,
+    S: Service<Request<B>, Response = Response<ResBody>> + Clone + Send + 'static,
     S::Error: Send,
     S::Future: Send,
     F: FnOnce(S::Error) -> Fut + Clone + Send + 'static,
     Fut: Future<Output = Res> + Send,
     Res: IntoResponse,
-    ReqBody: Send + 'static,
+    B: Send + 'static,
     ResBody: HttpBody<Data = Bytes> + Send + 'static,
     ResBody::Error: Into<BoxError>,
 {
@@ -134,7 +134,7 @@ where
         Poll::Ready(Ok(()))
     }
 
-    fn call(&mut self, req: Request<ReqBody>) -> Self::Future {
+    fn call(&mut self, req: Request<B>) -> Self::Future {
         let f = self.f.clone();
 
         let clone = self.inner.clone();
@@ -154,17 +154,17 @@ where
 #[allow(unused_macros)]
 macro_rules! impl_service {
     ( $($ty:ident),* $(,)? ) => {
-        impl<S, F, ReqBody, ResBody, Res, Fut, $($ty,)*> Service<Request<ReqBody>>
+        impl<S, F, B, ResBody, Res, Fut, $($ty,)*> Service<Request<B>>
             for HandleError<S, F, ($($ty,)*)>
         where
-            S: Service<Request<ReqBody>, Response = Response<ResBody>> + Clone + Send + 'static,
+            S: Service<Request<B>, Response = Response<ResBody>> + Clone + Send + 'static,
             S::Error: Send,
             S::Future: Send,
             F: FnOnce($($ty),*, S::Error) -> Fut + Clone + Send + 'static,
             Fut: Future<Output = Res> + Send,
             Res: IntoResponse,
-            $( $ty: FromRequest<(), ReqBody> + Send,)*
-            ReqBody: Send + 'static,
+            $( $ty: FromRequest<B, ()> + Send,)*
+            B: Send + 'static,
             ResBody: HttpBody<Data = Bytes> + Send + 'static,
             ResBody::Error: Into<BoxError>,
         {
@@ -178,7 +178,7 @@ macro_rules! impl_service {
             }
 
             #[allow(non_snake_case)]
-            fn call(&mut self, req: Request<ReqBody>) -> Self::Future {
+            fn call(&mut self, req: Request<B>) -> Self::Future {
                 let f = self.f.clone();
 
                 let clone = self.inner.clone();

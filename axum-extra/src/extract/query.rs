@@ -58,7 +58,7 @@ use std::ops::Deref;
 pub struct Query<T>(pub T);
 
 #[async_trait]
-impl<T, S, B> FromRequest<S, B> for Query<T>
+impl<T, S, B> FromRequest<B, S> for Query<T>
 where
     T: DeserializeOwned,
     B: Send,
@@ -66,7 +66,7 @@ where
 {
     type Rejection = QueryRejection;
 
-    async fn from_request(req: &mut RequestParts<S, B>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts<B, S>) -> Result<Self, Self::Rejection> {
         let query = req.uri().query().unwrap_or_default();
         let value = serde_html_form::from_str(query)
             .map_err(FailedToDeserializeQueryString::__private_new::<T, _>)?;
