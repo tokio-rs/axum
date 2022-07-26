@@ -88,62 +88,56 @@ let app = Router::new()
 # };
 ```
 
-# Differences between `nest` and `nest_service`
+# Fallbacks
 
-When [fallbacks] are called differs between `nest` and `nested_service`. Routers
-nested with `nest` will delegate to the outer router's fallback if they don't
-have a matching route, whereas `nested_service` will not.
+If a request matches the prefix but the nested router doesn't have matching
+route the outer fallback will _not_ be called:
 
 ```rust
-use axum::{
-    Router,
-    routing::get,
-    handler::Handler,
-};
+use axum::{routing::get, http::StatusCode, handler::Handler, Router};
 
-let nested_router = Router::new().route("/users", get(|| async {}));
+async fn fallback() -> (StatusCode, &'static str) {
+    (StatusCode::NOT_FOUND, "Not Found")
+}
 
-let nested_service = Router::new().route("/app.js", get(|| async {}));
+let api_routes = Router::new().nest("/users", get(|| async {}));
 
 let app = Router::new()
-    .nest("/api", nested_router)
-    .nest_service("/assets", nested_service)
-    // the fallback is not called for request starting with `/assets` but will be
-    // called for requests starting with `/api` if `nested_router` doesn't have
-    // a matching route
+    .nest("/api", api_routes)
     .fallback(fallback.into_service());
 # let _: Router = app;
-
-async fn fallback() {}
 ```
 
-You can still add fallbacks explicitly to the inner router:
+Here requests like `GET /api/not-found` will go into `api_routes` and then to
+the fallback of `api_routes` which will return an empty `404 Not Found`
+response. The outer fallback declared on `app` will _not_ be called.
+
+Think of nested services as swallowing requests that matches the prefix and
+not falling back to outer router even if they don't have a matching route.
+
+You can still add separate fallbacks to nested routers:
 
 ```rust
-use axum::{
-    Router,
-    routing::get,
-    handler::Handler,
-};
+use axum::{routing::get, http::StatusCode, handler::Handler, Json, Router};
+use serde_json::{json, Value};
 
-let nested_service = Router::new()
-    .route("/app.js", get(|| async {}))
-    .fallback(nested_service_fallback.into_service());
+async fn fallback() -> (StatusCode, &'static str) {
+    (StatusCode::NOT_FOUND, "Not Found")
+}
+
+async fn api_fallback() -> (StatusCode, Json<Value>) {
+    (StatusCode::NOT_FOUND, Json(json!({ "error": "Not Found" })))
+}
+
+let api_routes = Router::new()
+    .nest("/users", get(|| async {}))
+    // add dedicated fallback for requests starting with `/api`
+    .fallback(api_fallback.into_service());
 
 let app = Router::new()
-    .nest_service("/assets", nested_service)
-    .fallback(outer_router_fallback.into_service());
+    .nest("/api", api_routes)
+    .fallback(fallback.into_service());
 # let _: Router = app;
-
-// this handler is used for `nested_service`
-async fn nested_service_fallback() {
-    // ..
-}
-
-// this handler is used for the outer router
-async fn outer_router_fallback() {
-    // ...
-}
 ```
 
 # Panics

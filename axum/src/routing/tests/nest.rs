@@ -14,7 +14,6 @@ async fn nesting_apps() {
             "/users/:id",
             get(
                 |params: extract::Path<HashMap<String, String>>| async move {
-                    dbg!(&params);
                     format!(
                         "{}: users#show ({})",
                         params.get("version").unwrap(),
@@ -114,7 +113,7 @@ async fn nesting_router_at_empty_path() {
 
 #[tokio::test]
 async fn nesting_handler_at_root() {
-    let app = Router::new().nest_service("/", get(|uri: Uri| async move { uri.to_string() }));
+    let app = Router::new().nest("/", get(|uri: Uri| async move { uri.to_string() }));
 
     let client = TestClient::new(app);
 
@@ -202,7 +201,7 @@ async fn nested_service_sees_stripped_uri() {
 
 #[tokio::test]
 async fn nest_static_file_server() {
-    let app = Router::new().nest_service(
+    let app = Router::new().nest(
         "/static",
         get_service(ServeDir::new(".")).handle_error(|error| async move {
             (
@@ -236,38 +235,12 @@ async fn nested_multiple_routes() {
     assert_eq!(client.get("/api/teams").send().await.text().await, "teams");
 }
 
-#[tokio::test]
-async fn nested_with_other_route_also_matching_with_route_first() {
-    let app = Router::new().route("/api", get(|| async { "api" })).nest(
-        "/api",
-        Router::new()
-            .route("/users", get(|| async { "users" }))
-            .route("/teams", get(|| async { "teams" })),
-    );
-
-    let client = TestClient::new(app);
-
-    assert_eq!(client.get("/api").send().await.text().await, "api");
-    assert_eq!(client.get("/api/users").send().await.text().await, "users");
-    assert_eq!(client.get("/api/teams").send().await.text().await, "teams");
-}
-
-#[tokio::test]
-async fn nested_with_other_route_also_matching_with_route_last() {
-    let app = Router::new()
-        .nest(
-            "/api",
-            Router::new()
-                .route("/users", get(|| async { "users" }))
-                .route("/teams", get(|| async { "teams" })),
-        )
-        .route("/api", get(|| async { "api" }));
-
-    let client = TestClient::new(app);
-
-    assert_eq!(client.get("/api").send().await.text().await, "api");
-    assert_eq!(client.get("/api/users").send().await.text().await, "users");
-    assert_eq!(client.get("/api/teams").send().await.text().await, "teams");
+#[test]
+#[should_panic = "Invalid route \"/\". insertion failed due to conflict with previously registered route: /*__private__axum_nest_tail_param"]
+fn nested_at_root_with_other_routes() {
+    let _: Router = Router::new()
+        .nest("/", Router::new().route("/users", get(|| async {})))
+        .route("/", get(|| async {}));
 }
 
 #[tokio::test]
@@ -354,7 +327,7 @@ async fn nest_at_capture() {
         )
         .boxed_clone();
 
-    let app = Router::new().nest_service("/:a", api_routes);
+    let app = Router::new().nest("/:a", api_routes);
 
     let client = TestClient::new(app);
 
@@ -365,7 +338,7 @@ async fn nest_at_capture() {
 
 #[tokio::test]
 async fn nest_with_and_without_trailing() {
-    let app = Router::new().nest_service("/foo", get(|| async {}));
+    let app = Router::new().nest("/foo", get(|| async {}));
 
     let client = TestClient::new(app);
 
@@ -377,6 +350,61 @@ async fn nest_with_and_without_trailing() {
 
     let res = client.get("/foo/bar").send().await;
     assert_eq!(res.status(), StatusCode::OK);
+}
+
+#[tokio::test]
+async fn doesnt_call_outer_fallback() {
+    let app = Router::new()
+        .nest("/foo", Router::new().route("/", get(|| async {})))
+        .fallback((|| async { (StatusCode::NOT_FOUND, "outer fallback") }).into_service());
+
+    let client = TestClient::new(app);
+
+    let res = client.get("/foo").send().await;
+    assert_eq!(res.status(), StatusCode::OK);
+
+    let res = client.get("/foo/not-found").send().await;
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    // the default fallback returns an empty body
+    assert_eq!(res.text().await, "");
+}
+
+#[tokio::test]
+async fn nesting_with_root_inner_router() {
+    let app = Router::new().nest(
+        "/foo",
+        Router::new().route("/", get(|| async { "inner route" })),
+    );
+
+    let client = TestClient::new(app);
+
+    // `/foo/` does match the `/foo` prefix and the remaining path is technically
+    // empty, which is the same as `/` which matches `.route("/", _)`
+    let res = client.get("/foo").send().await;
+    assert_eq!(res.status(), StatusCode::OK);
+
+    // `/foo/` does match the `/foo` prefix and the remaining path is `/`
+    // which matches `.route("/", _)`
+    let res = client.get("/foo/").send().await;
+    assert_eq!(res.status(), StatusCode::OK);
+}
+
+#[tokio::test]
+async fn fallback_on_inner() {
+    let app = Router::new()
+        .nest(
+            "/foo",
+            Router::new()
+                .route("/", get(|| async {}))
+                .fallback((|| async { (StatusCode::NOT_FOUND, "inner fallback") }).into_service()),
+        )
+        .fallback((|| async { (StatusCode::NOT_FOUND, "outer fallback") }).into_service());
+
+    let client = TestClient::new(app);
+
+    let res = client.get("/foo/not-found").send().await;
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    assert_eq!(res.text().await, "inner fallback");
 }
 
 macro_rules! nested_route_test {
@@ -397,12 +425,6 @@ macro_rules! nested_route_test {
             let res = client.get($expected_path).send().await;
             let status = res.status();
             assert_eq!(status, StatusCode::OK, "Router");
-
-            let inner = Router::new().route($route_path, get(|| async {}));
-            let app = Router::new().nest_service($nested_path, inner);
-            let client = TestClient::new(app);
-            let res = client.get(dbg!($expected_path)).send().await;
-            assert_eq!(res.status(), StatusCode::OK, "opaque");
         }
     };
 }

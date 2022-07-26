@@ -5,21 +5,19 @@ use crate::{
     body::{boxed, Body, Bytes, HttpBody},
     extract::connect_info::IntoMakeServiceWithConnectInfo,
     response::Response,
-    routing::strip_prefix::StripPrefix,
     util::try_downcast,
     BoxError,
 };
 use http::Request;
 use matchit::MatchError;
 use std::{
-    borrow::Cow,
     collections::HashMap,
     convert::Infallible,
     fmt,
     sync::Arc,
     task::{Context, Poll},
 };
-use tower::{layer::layer_fn, ServiceBuilder};
+use tower::ServiceBuilder;
 use tower_http::map_response_body::MapResponseBodyLayer;
 use tower_layer::Layer;
 use tower_service::Service;
@@ -161,7 +159,7 @@ where
         let mut node =
             Arc::try_unwrap(Arc::clone(&self.node)).unwrap_or_else(|node| (*node).clone());
         if let Err(err) = node.insert(path, id) {
-            panic!("Invalid route: {}", err);
+            panic!("Invalid route {:?}. {}", path, err);
         }
         self.node = Arc::new(node);
 
@@ -171,55 +169,7 @@ where
     }
 
     #[doc = include_str!("../docs/routing/nest.md")]
-    pub fn nest(mut self, mut path: &str, router: Router<B>) -> Self {
-        if path.is_empty() {
-            // nesting at `""` and `"/"` should mean the same thing
-            path = "/";
-        }
-
-        if path.contains('*') {
-            panic!("Invalid route: nested routes cannot contain wildcards (*)");
-        }
-
-        let prefix = path;
-
-        let Router {
-            mut routes,
-            node,
-            fallback,
-        } = router;
-
-        if let Fallback::Custom(_) = fallback {
-            panic!("Cannot nest `Router`s that has a fallback");
-        }
-
-        for (id, nested_path) in &node.route_id_to_path {
-            let route = routes.remove(id).unwrap();
-            let full_path: Cow<str> = if &**nested_path == "/" {
-                path.into()
-            } else if path == "/" {
-                (&**nested_path).into()
-            } else if let Some(path) = path.strip_suffix('/') {
-                format!("{}{}", path, nested_path).into()
-            } else {
-                format!("{}{}", path, nested_path).into()
-            };
-            self = match route {
-                Endpoint::MethodRouter(method_router) => self.route(
-                    &full_path,
-                    method_router.layer(layer_fn(|s| StripPrefix::new(s, prefix))),
-                ),
-                Endpoint::Route(route) => self.route(&full_path, StripPrefix::new(route, prefix)),
-            };
-        }
-
-        debug_assert!(routes.is_empty());
-
-        self
-    }
-
-    #[doc = include_str!("../docs/routing/nest_service.md")]
-    pub fn nest_service<T>(mut self, mut path: &str, svc: T) -> Self
+    pub fn nest<T>(mut self, mut path: &str, svc: T) -> Self
     where
         T: Service<Request<B>, Response = Response, Error = Infallible> + Clone + Send + 'static,
         T::Future: Send + 'static,
@@ -248,8 +198,10 @@ where
         // prefix itself. Otherwise if you were to nest at `/foo` then `/foo` itself
         // wouldn't match, which it should
         self = self.route(prefix, svc.clone());
-        // same goes for `/foo/`, that should also match
-        self = self.route(&format!("{}/", prefix), svc);
+        if !prefix.ends_with('/') {
+            // same goes for `/foo/`, that should also match
+            self = self.route(&format!("{}/", prefix), svc);
+        }
 
         self
     }

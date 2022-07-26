@@ -85,8 +85,9 @@ where
 mod tests {
     use super::*;
     use crate::{extract::Extension, handler::Handler, routing::get, test_helpers::*, Router};
-    use http::Request;
+    use http::{Request, StatusCode};
     use std::task::{Context, Poll};
+    use tower::layer::layer_fn;
     use tower_service::Service;
 
     #[derive(Clone)]
@@ -139,7 +140,7 @@ mod tests {
             )
         }
 
-        let app = Router::new()
+        let app: _ = Router::new()
             .route(
                 "/:key",
                 get(|path: MatchedPath| async move { path.as_str().to_owned() }),
@@ -147,17 +148,20 @@ mod tests {
             .nest("/api", api)
             .nest(
                 "/public",
-                Router::new().route("/assets/*path", get(handler)),
+                Router::new()
+                    .route("/assets/*path", get(handler))
+                    // have to set the middleware here since otherwise the
+                    // matched path is just `/public/*` since we're nesting
+                    // this router
+                    .layer(layer_fn(SetMatchedPathExtension)),
             )
-            .nest_service("/foo", handler.into_service())
-            .layer(tower::layer::layer_fn(SetMatchedPathExtension));
+            .nest("/foo", handler.into_service())
+            .layer(layer_fn(SetMatchedPathExtension));
 
         let client = TestClient::new(app);
 
-        // we cannot call `/foo` because `nest_service("/foo", _)` registers routes
-        // for `/foo/*rest` and `/foo`
         let res = client.get("/public").send().await;
-        assert_eq!(res.text().await, "/:key");
+        assert_eq!(res.status(), StatusCode::NOT_FOUND);
 
         let res = client.get("/api/users/123").send().await;
         assert_eq!(res.text().await, "/api/users/:id");
@@ -181,7 +185,7 @@ mod tests {
 
     #[tokio::test]
     async fn nested_opaque_routers_append_to_matched_path() {
-        let app = Router::new().nest_service(
+        let app = Router::new().nest(
             "/:a",
             Router::new().route(
                 "/:b",

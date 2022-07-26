@@ -11,10 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Use `axum::middleware::from_extractor` instead ([#1077])
 - **breaking:** Allow `Error: Into<Infallible>` for `Route::{layer, route_layer}` ([#924])
 - **breaking:** `MethodRouter` now panics on overlapping routes ([#1102])
-- **breaking:** `Router::nest` now only accepts `Router`s. Use
-  `Router::nest_service` to nest opaque services ([#1086])
-- **added:** Add `Router::nest_service` for nesting opaque services. Use this to
-  nest services like `tower::services::ServeDir` ([#1086])
+- **breaking:** Nested `Router`s will no longer delegate to the outer `Router`'s
+  fallback. Instead you must explicitly set a fallback on the inner `Router` ([#1086])
 - **breaking:** The request `/foo/` no longer matches `/foo/*rest`. If you want
   to match `/foo/` you have to add a route specifically for that ([#1086])
 - **breaking:** Path params for wildcard routes no longer include the prefix
