@@ -11,7 +11,7 @@ use tower_service::Service;
 
 /// An adapter that makes a [`Handler`] into a [`Service`].
 ///
-/// Created with [`Handler::into_service`].
+/// Created with [`Handler::into_service_with`].
 pub struct IntoService<H, T, S, B> {
     handler: H,
     state: S,
