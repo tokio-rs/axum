@@ -1,4 +1,4 @@
-Nest a router at some path.
+Nest a [`Service`] at some path.
 
 This allows you to break your application into smaller pieces and compose
 them together.
