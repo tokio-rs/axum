@@ -33,6 +33,68 @@ pub trait HandlerCallWithExtractors<T, B>: Sized {
         }
     }
 
+    /// Chain two handlers together, running the second one if the first one rejects.
+    ///
+    /// Note that this only moves to the next handler if an extractor fails. The response from
+    /// handlers are not considered.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use axum_extra::handler::HandlerCallWithExtractors;
+    /// use axum::{
+    ///     Router,
+    ///     async_trait,
+    ///     routing::get,
+    ///     extract::FromRequest,
+    /// };
+    ///
+    /// // handlers for varying levels of access
+    /// async fn admin(admin: AdminPermissions) {
+    ///     // request came from an admin
+    /// }
+    ///
+    /// async fn user(user: User) {
+    ///     // we have a `User`
+    /// }
+    ///
+    /// async fn guest() {
+    ///     // `AdminPermissions` and `User` failed, so we're just a guest
+    /// }
+    ///
+    /// // extractors for checking permissions
+    /// struct AdminPermissions {}
+    ///
+    /// #[async_trait]
+    /// impl<B: Send> FromRequest<B> for AdminPermissions {
+    ///     // check for admin permissions...
+    ///     # type Rejection = ();
+    ///     # async fn from_request(req: &mut axum::extract::RequestParts<B>) -> Result<Self, Self::Rejection> {
+    ///     #     todo!()
+    ///     # }
+    /// }
+    ///
+    /// struct User {}
+    ///
+    /// #[async_trait]
+    /// impl<B: Send> FromRequest<B> for User {
+    ///     // check for a logged in user...
+    ///     # type Rejection = ();
+    ///     # async fn from_request(req: &mut axum::extract::RequestParts<B>) -> Result<Self, Self::Rejection> {
+    ///     #     todo!()
+    ///     # }
+    /// }
+    ///
+    /// let app = Router::new().route(
+    ///     "/users/:id",
+    ///     get(
+    ///         // first try `admin`, if that rejects run `user`, finally falling back
+    ///         // to `guest`
+    ///         admin.or(user).or(guest)
+    ///     )
+    /// );
+    /// # let _: Router = app;
+    /// ```
     fn or<R, Rt>(self, rhs: R) -> Or<Self, R, T, Rt, B>
     where
         R: HandlerCallWithExtractors<Rt, B>,

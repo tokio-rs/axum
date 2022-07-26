@@ -9,6 +9,10 @@ use axum::{
 use http::StatusCode;
 use std::{future::Future, marker::PhantomData, pin::Pin};
 
+/// [`Handler`] that runs one [`Handler`] and if that rejects it'll fallback to another
+/// [`Handler`].
+///
+/// Created with [`HandlerCallWithExtractors::or`](super::HandlerCallWithExtractors::or).
 #[allow(missing_debug_implementations)]
 pub struct Or<L, R, Lt, Rt, B> {
     pub(super) lhs: L,
