@@ -1,0 +1,13 @@
+[package]
+name = "example-handle-head-request"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+axum = { path = "../../axum" }
+tokio = { version = "1.0", features = ["full"] }
+
+[dev-dependencies]
+hyper = { version = "0.14", features = ["full"] }
+tower = { version = "0.4", features = ["util"] }

@@ -202,7 +202,7 @@ jobs:
           -p axum-macros
           --target armv5te-unknown-linux-musleabi
 
-  dependecies-are-sorted:
+  dependencies-are-sorted:
     runs-on: ubuntu-latest
     strategy:
       matrix:
