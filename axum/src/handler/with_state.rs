@@ -4,13 +4,22 @@ use http::Request;
 use std::task::{Context, Poll};
 use tower_service::Service;
 
-/// A [`Handler`] with state provided.
+/// A [`Handler`] which has access to some state.
 ///
 /// Implements [`Service`].
+///
+/// The state can be extracted with [`State`](crate::extract::State).
 ///
 /// Created with [`Handler::with_state`].
 pub struct WithState<H, T, S, B> {
     pub(super) service: IntoService<H, T, S, B>,
+}
+
+impl<H, T, S, B> WithState<H, T, S, B> {
+    /// Get a reference to the state.
+    pub fn state(&self) -> &S {
+        self.service.state()
+    }
 }
 
 impl<H, T, S, B> WithState<H, T, S, B> {

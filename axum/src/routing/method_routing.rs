@@ -550,8 +550,8 @@ impl<S, B, E> MethodRouter<S, B, E> {
     }
 
     /// Provide the state.
-    pub fn with_state(self, state: S) -> MethodRouterWithState<S, B, E> {
-        MethodRouterWithState {
+    pub fn with_state(self, state: S) -> WithState<S, B, E> {
+        WithState {
             method_router: self,
             state,
         }
@@ -1095,15 +1095,17 @@ where
 
 /// A [`MethodRouter`] which has access to some state.
 ///
+/// Implements [`Service`].
+///
 /// The state can be extracted with [`State`](crate::extract::State).
 ///
 /// Created with [`MethodRouter::with_state`]
-pub struct MethodRouterWithState<S, B, E> {
+pub struct WithState<S, B, E> {
     method_router: MethodRouter<S, B, E>,
     state: S,
 }
 
-impl<S, B, E> MethodRouterWithState<S, B, E> {
+impl<S, B, E> WithState<S, B, E> {
     /// Get a reference to the state.
     pub fn state(&self) -> &S {
         &self.state
@@ -1129,7 +1131,7 @@ impl<S, B, E> MethodRouterWithState<S, B, E> {
     }
 }
 
-impl<S, B, E> Clone for MethodRouterWithState<S, B, E>
+impl<S, B, E> Clone for WithState<S, B, E>
 where
     S: Clone,
 {
@@ -1141,19 +1143,19 @@ where
     }
 }
 
-impl<S, B, E> fmt::Debug for MethodRouterWithState<S, B, E>
+impl<S, B, E> fmt::Debug for WithState<S, B, E>
 where
     S: fmt::Debug,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("MethodRouterWithState")
+        f.debug_struct("WithState")
             .field("method_router", &self.method_router)
             .field("state", &self.state)
             .finish()
     }
 }
 
-impl<S, B, E> Service<Request<B>> for MethodRouterWithState<S, B, E>
+impl<S, B, E> Service<Request<B>> for WithState<S, B, E>
 where
     B: HttpBody,
     S: Clone + Send + Sync + 'static,

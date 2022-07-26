@@ -20,6 +20,13 @@ pub struct IntoService<H, T, S, B> {
     _marker: PhantomData<fn() -> (T, B)>,
 }
 
+impl<H, T, S, B> IntoService<H, T, S, B> {
+    /// Get a reference to the state.
+    pub fn state(&self) -> &S {
+        &self.state
+    }
+}
+
 #[test]
 fn traits() {
     use crate::test_helpers::*;
