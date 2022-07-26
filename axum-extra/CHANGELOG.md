@@ -12,6 +12,9 @@ and this project adheres to [Semantic Versioning].
 - **breaking:** `Resource::nest` and `Resource::nest_collection` has been
   removed. You can instead convert the `Resource` into a `Router` and
   add additional routes as necessary ([#1086])
+- **changed:** For methods that accept some `S: Service`, the bounds have been
+  relaxed so the response type must implement `IntoResponse` rather than being a
+  literal `Response`
 
 [#1086]: https://github.com/tokio-rs/axum/pull/1086
 [#1119]: https://github.com/tokio-rs/axum/pull/1119

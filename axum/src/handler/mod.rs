@@ -36,14 +36,13 @@
 #![doc = include_str!("../docs/debugging_handler_type_errors.md")]
 
 use crate::{
-    body::{boxed, Body, Bytes, HttpBody},
+    body::Body,
     extract::{connect_info::IntoMakeServiceWithConnectInfo, FromRequest, RequestParts},
     response::{IntoResponse, Response},
     routing::IntoMakeService,
-    BoxError,
 };
 use http::Request;
-use std::{fmt, future::Future, marker::PhantomData, pin::Pin};
+use std::{convert::Infallible, fmt, future::Future, marker::PhantomData, pin::Pin};
 use tower::ServiceExt;
 use tower_layer::Layer;
 use tower_service::Service;
@@ -284,15 +283,13 @@ where
     }
 }
 
-impl<S, T, ReqBody, ResBody> Handler<T, ReqBody> for Layered<S, T>
+impl<S, T, ReqBody> Handler<T, ReqBody> for Layered<S, T>
 where
-    S: Service<Request<ReqBody>, Response = Response<ResBody>> + Clone + Send + 'static,
-    S::Error: IntoResponse,
+    S: Service<Request<ReqBody>, Error = Infallible> + Clone + Send + 'static,
+    S::Response: IntoResponse,
     S::Future: Send,
     T: 'static,
     ReqBody: Send + 'static,
-    ResBody: HttpBody<Data = Bytes> + Send + 'static,
-    ResBody::Error: Into<BoxError>,
 {
     type Future = future::LayeredFuture<S, ReqBody>;
 
@@ -301,8 +298,8 @@ where
 
         let future: Map<_, fn(Result<S::Response, S::Error>) -> _> =
             self.svc.oneshot(req).map(|result| match result {
-                Ok(res) => res.map(boxed),
-                Err(res) => res.into_response(),
+                Ok(res) => res.into_response(),
+                Err(err) => match err {},
             });
 
         future::LayeredFuture::new(future)

@@ -100,18 +100,16 @@ define_rejection! {
 #[derive(Debug)]
 pub struct FailedToDeserializeQueryString {
     error: Error,
-    type_name: &'static str,
 }
 
 impl FailedToDeserializeQueryString {
     #[doc(hidden)]
-    pub fn __private_new<T, E>(error: E) -> Self
+    pub fn __private_new<E>(error: E) -> Self
     where
         E: Into<BoxError>,
     {
         FailedToDeserializeQueryString {
             error: Error::new(error),
-            type_name: std::any::type_name::<T>(),
         }
     }
 }
@@ -124,11 +122,7 @@ impl IntoResponse for FailedToDeserializeQueryString {
 
 impl std::fmt::Display for FailedToDeserializeQueryString {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "Failed to deserialize query string. Expected something of type `{}`. Error: {}",
-            self.type_name, self.error,
-        )
+        write!(f, "Failed to deserialize query string: {}", self.error,)
     }
 }
 

@@ -2,11 +2,11 @@ use axum::{
     body::Body,
     handler::Handler,
     http::Request,
-    response::Response,
+    response::IntoResponse,
     routing::{delete, get, on, post, MethodFilter},
     Router,
 };
-use std::convert::Infallible;
+use std::{convert::Infallible, fmt};
 use tower_service::Service;
 
 /// A resource which defines a set of conventional CRUD routes.
@@ -36,7 +36,6 @@ use tower_service::Service;
 /// let app = Router::new().merge(users);
 /// # let _: Router<axum::body::Body> = app;
 /// ```
-#[derive(Debug)]
 pub struct Resource<B = Body> {
     pub(crate) name: String,
     pub(crate) router: Router<B>,
@@ -136,7 +135,8 @@ where
 
     fn route<T>(mut self, path: &str, svc: T) -> Self
     where
-        T: Service<Request<B>, Response = Response, Error = Infallible> + Clone + Send + 'static,
+        T: Service<Request<B>, Error = Infallible> + Clone + Send + 'static,
+        T::Response: IntoResponse,
         T::Future: Send + 'static,
     {
         self.router = self.router.route(path, svc);
@@ -147,6 +147,15 @@ where
 impl<B> From<Resource<B>> for Router<B> {
     fn from(resource: Resource<B>) -> Self {
         resource.router
+    }
+}
+
+impl<B> fmt::Debug for Resource<B> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Resource")
+            .field("name", &self.name)
+            .field("router", &self.router)
+            .finish()
     }
 }
 

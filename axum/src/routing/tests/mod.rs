@@ -18,7 +18,9 @@ use std::{
     task::{Context, Poll},
     time::Duration,
 };
-use tower::{service_fn, timeout::TimeoutLayer, ServiceBuilder, ServiceExt};
+use tower::{
+    service_fn, timeout::TimeoutLayer, util::MapResponseLayer, ServiceBuilder, ServiceExt,
+};
 use tower_http::{auth::RequireAuthorizationLayer, limit::RequestBodyLimitLayer};
 use tower_service::Service;
 
@@ -637,4 +639,23 @@ async fn limited_body_with_streaming_body() {
         .send()
         .await;
     assert_eq!(res.status(), StatusCode::PAYLOAD_TOO_LARGE);
+}
+
+#[tokio::test]
+async fn layer_response_into_response() {
+    fn map_response<B>(_res: Response<B>) -> Result<Response<B>, impl IntoResponse> {
+        let headers = [("x-foo", "bar")];
+        let status = StatusCode::IM_A_TEAPOT;
+        Err((headers, status))
+    }
+
+    let app = Router::new()
+        .route("/", get(|| async {}))
+        .layer(MapResponseLayer::new(map_response));
+
+    let client = TestClient::new(app);
+
+    let res = client.get("/").send().await;
+    assert_eq!(res.headers()["x-foo"], "bar");
+    assert_eq!(res.status(), StatusCode::IM_A_TEAPOT);
 }

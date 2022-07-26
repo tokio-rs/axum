@@ -2,12 +2,12 @@
 
 use self::{future::RouteFuture, not_found::NotFound};
 use crate::{
-    body::{boxed, Body, Bytes, HttpBody},
+    body::{Body, HttpBody},
     extract::connect_info::IntoMakeServiceWithConnectInfo,
     response::Response,
     util::try_downcast,
-    BoxError,
 };
+use axum_core::response::IntoResponse;
 use http::Request;
 use matchit::MatchError;
 use std::{
@@ -17,8 +17,7 @@ use std::{
     sync::Arc,
     task::{Context, Poll},
 };
-use tower::ServiceBuilder;
-use tower_http::map_response_body::MapResponseBodyLayer;
+use tower::{util::MapResponseLayer, ServiceBuilder};
 use tower_layer::Layer;
 use tower_service::Service;
 
@@ -117,14 +116,19 @@ where
     #[doc = include_str!("../docs/routing/route.md")]
     pub fn route<T>(mut self, path: &str, service: T) -> Self
     where
-        T: Service<Request<B>, Response = Response, Error = Infallible> + Clone + Send + 'static,
+        T: Service<Request<B>, Error = Infallible> + Clone + Send + 'static,
+        T::Response: IntoResponse,
         T::Future: Send + 'static,
     {
-        if path.is_empty() {
-            panic!("Paths must start with a `/`. Use \"/\" for root routes");
-        } else if !path.starts_with('/') {
-            panic!("Paths must start with a `/`");
+        fn validate_path(path: &str) {
+            if path.is_empty() {
+                panic!("Paths must start with a `/`. Use \"/\" for root routes");
+            } else if !path.starts_with('/') {
+                panic!("Paths must start with a `/`");
+            }
         }
+
+        validate_path(path);
 
         let service = match try_downcast::<Router<B>, _>(service) {
             Ok(_) => {
@@ -156,22 +160,27 @@ where
             Err(service) => Endpoint::Route(Route::new(service)),
         };
 
-        let mut node =
-            Arc::try_unwrap(Arc::clone(&self.node)).unwrap_or_else(|node| (*node).clone());
-        if let Err(err) = node.insert(path, id) {
-            panic!("Invalid route {:?}. {}", path, err);
-        }
-        self.node = Arc::new(node);
+        self.set_node(path, id);
 
         self.routes.insert(id, service);
 
         self
     }
 
+    fn set_node(&mut self, path: &str, id: RouteId) {
+        let mut node =
+            Arc::try_unwrap(Arc::clone(&self.node)).unwrap_or_else(|node| (*node).clone());
+        if let Err(err) = node.insert(path, id) {
+            panic!("Invalid route {:?}. {}", path, err);
+        }
+        self.node = Arc::new(node);
+    }
+
     #[doc = include_str!("../docs/routing/nest.md")]
     pub fn nest<T>(mut self, mut path: &str, svc: T) -> Self
     where
-        T: Service<Request<B>, Response = Response, Error = Infallible> + Clone + Send + 'static,
+        T: Service<Request<B>, Error = Infallible> + Clone + Send + 'static,
+        T::Response: IntoResponse,
         T::Future: Send + 'static,
     {
         if path.is_empty() {
@@ -241,19 +250,17 @@ where
     }
 
     #[doc = include_str!("../docs/routing/layer.md")]
-    pub fn layer<L, NewReqBody, NewResBody>(self, layer: L) -> Router<NewReqBody>
+    pub fn layer<L, NewReqBody>(self, layer: L) -> Router<NewReqBody>
     where
         L: Layer<Route<B>>,
-        L::Service:
-            Service<Request<NewReqBody>, Response = Response<NewResBody>> + Clone + Send + 'static,
+        L::Service: Service<Request<NewReqBody>> + Clone + Send + 'static,
+        <L::Service as Service<Request<NewReqBody>>>::Response: IntoResponse + 'static,
         <L::Service as Service<Request<NewReqBody>>>::Error: Into<Infallible> + 'static,
         <L::Service as Service<Request<NewReqBody>>>::Future: Send + 'static,
-        NewResBody: HttpBody<Data = Bytes> + Send + 'static,
-        NewResBody::Error: Into<BoxError>,
     {
         let layer = ServiceBuilder::new()
             .map_err(Into::into)
-            .layer(MapResponseBodyLayer::new(boxed))
+            .layer(MapResponseLayer::new(IntoResponse::into_response))
             .layer(layer)
             .into_inner();
 
@@ -281,18 +288,17 @@ where
     }
 
     #[doc = include_str!("../docs/routing/route_layer.md")]
-    pub fn route_layer<L, NewResBody>(self, layer: L) -> Self
+    pub fn route_layer<L>(self, layer: L) -> Self
     where
         L: Layer<Route<B>>,
-        L::Service: Service<Request<B>, Response = Response<NewResBody>> + Clone + Send + 'static,
+        L::Service: Service<Request<B>> + Clone + Send + 'static,
+        <L::Service as Service<Request<B>>>::Response: IntoResponse + 'static,
         <L::Service as Service<Request<B>>>::Error: Into<Infallible> + 'static,
         <L::Service as Service<Request<B>>>::Future: Send + 'static,
-        NewResBody: HttpBody<Data = Bytes> + Send + 'static,
-        NewResBody::Error: Into<BoxError>,
     {
         let layer = ServiceBuilder::new()
             .map_err(Into::into)
-            .layer(MapResponseBodyLayer::new(boxed))
+            .layer(MapResponseLayer::new(IntoResponse::into_response))
             .layer(layer)
             .into_inner();
 
@@ -320,7 +326,8 @@ where
     #[doc = include_str!("../docs/routing/fallback.md")]
     pub fn fallback<T>(mut self, svc: T) -> Self
     where
-        T: Service<Request<B>, Response = Response, Error = Infallible> + Clone + Send + 'static,
+        T: Service<Request<B>, Error = Infallible> + Clone + Send + 'static,
+        T::Response: IntoResponse,
         T::Future: Send + 'static,
     {
         self.fallback = Fallback::Custom(Route::new(svc));
@@ -368,28 +375,38 @@ where
         let id = *match_.value;
 
         #[cfg(feature = "matched-path")]
-        if let Some(matched_path) = self.node.route_id_to_path.get(&id) {
-            use crate::extract::MatchedPath;
+        {
+            fn set_matched_path(
+                id: RouteId,
+                route_id_to_path: &HashMap<RouteId, Arc<str>>,
+                extensions: &mut http::Extensions,
+            ) {
+                if let Some(matched_path) = route_id_to_path.get(&id) {
+                    use crate::extract::MatchedPath;
 
-            let matched_path = if let Some(previous) = req.extensions_mut().get::<MatchedPath>() {
-                // a previous `MatchedPath` might exist if we're inside a nested Router
-                let previous = if let Some(previous) =
-                    previous.as_str().strip_suffix(NEST_TAIL_PARAM_CAPTURE)
-                {
-                    previous
+                    let matched_path = if let Some(previous) = extensions.get::<MatchedPath>() {
+                        // a previous `MatchedPath` might exist if we're inside a nested Router
+                        let previous = if let Some(previous) =
+                            previous.as_str().strip_suffix(NEST_TAIL_PARAM_CAPTURE)
+                        {
+                            previous
+                        } else {
+                            previous.as_str()
+                        };
+
+                        let matched_path = format!("{}{}", previous, matched_path);
+                        matched_path.into()
+                    } else {
+                        Arc::clone(matched_path)
+                    };
+                    extensions.insert(MatchedPath(matched_path));
                 } else {
-                    previous.as_str()
-                };
+                    #[cfg(debug_assertions)]
+                    panic!("should always have a matched path for a route id");
+                }
+            }
 
-                let matched_path = format!("{}{}", previous, matched_path);
-                matched_path.into()
-            } else {
-                Arc::clone(matched_path)
-            };
-            req.extensions_mut().insert(MatchedPath(matched_path));
-        } else {
-            #[cfg(debug_assertions)]
-            panic!("should always have a matched path for a route id");
+            set_matched_path(id, &self.node.route_id_to_path, req.extensions_mut());
         }
 
         url_params::insert_url_params(req.extensions_mut(), match_.params);

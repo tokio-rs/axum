@@ -1,11 +1,10 @@
 #![doc = include_str!("../docs/error_handling.md")]
 
 use crate::{
-    body::{boxed, Bytes, HttpBody},
+    body::boxed,
     extract::{FromRequest, RequestParts},
     http::{Request, StatusCode},
     response::{IntoResponse, Response},
-    BoxError,
 };
 use std::{
     convert::Infallible,
@@ -114,17 +113,16 @@ where
     }
 }
 
-impl<S, F, ReqBody, ResBody, Fut, Res> Service<Request<ReqBody>> for HandleError<S, F, ()>
+impl<S, F, ReqBody, Fut, Res> Service<Request<ReqBody>> for HandleError<S, F, ()>
 where
-    S: Service<Request<ReqBody>, Response = Response<ResBody>> + Clone + Send + 'static,
+    S: Service<Request<ReqBody>> + Clone + Send + 'static,
+    S::Response: IntoResponse + Send,
     S::Error: Send,
     S::Future: Send,
     F: FnOnce(S::Error) -> Fut + Clone + Send + 'static,
     Fut: Future<Output = Res> + Send,
     Res: IntoResponse,
     ReqBody: Send + 'static,
-    ResBody: HttpBody<Data = Bytes> + Send + 'static,
-    ResBody::Error: Into<BoxError>,
 {
     type Response = Response;
     type Error = Infallible;
@@ -142,7 +140,7 @@ where
 
         let future = Box::pin(async move {
             match inner.oneshot(req).await {
-                Ok(res) => Ok(res.map(boxed)),
+                Ok(res) => Ok(res.into_response()),
                 Err(err) => Ok(f(err).await.into_response()),
             }
         });
@@ -154,10 +152,11 @@ where
 #[allow(unused_macros)]
 macro_rules! impl_service {
     ( $($ty:ident),* $(,)? ) => {
-        impl<S, F, ReqBody, ResBody, Res, Fut, $($ty,)*> Service<Request<ReqBody>>
+        impl<S, F, ReqBody, Res, Fut, $($ty,)*> Service<Request<ReqBody>>
             for HandleError<S, F, ($($ty,)*)>
         where
-            S: Service<Request<ReqBody>, Response = Response<ResBody>> + Clone + Send + 'static,
+            S: Service<Request<ReqBody>> + Clone + Send + 'static,
+            S::Response: IntoResponse + Send,
             S::Error: Send,
             S::Future: Send,
             F: FnOnce($($ty),*, S::Error) -> Fut + Clone + Send + 'static,
@@ -165,8 +164,6 @@ macro_rules! impl_service {
             Res: IntoResponse,
             $( $ty: FromRequest<ReqBody> + Send,)*
             ReqBody: Send + 'static,
-            ResBody: HttpBody<Data = Bytes> + Send + 'static,
-            ResBody::Error: Into<BoxError>,
         {
             type Response = Response;
             type Error = Infallible;
@@ -202,7 +199,7 @@ macro_rules! impl_service {
                     };
 
                     match inner.oneshot(req).await {
-                        Ok(res) => Ok(res.map(boxed)),
+                        Ok(res) => Ok(res.into_response()),
                         Err(err) => Ok(f($($ty),*, err).await.into_response().map(boxed)),
                     }
                 });

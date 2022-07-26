@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+- **fixed:** Don't expose internal type names in `QueryRejection` response. ([#1171])
 - **breaking:** Remove `extractor_middleware` which was previously deprecated.
   Use `axum::middleware::from_extractor` instead ([#1077])
 - **breaking:** Allow `Error: Into<Infallible>` for `Route::{layer, route_layer}` ([#924])
@@ -25,15 +26,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `/foo/`). That is no longer supported and such requests will now be sent to
   the fallback. Consider using `axum_extra::routing::RouterExt::route_with_tsr`
   if you want the old behavior ([#1119])
+- **fixed:** If `WebSocketUpgrade` cannot upgrade the connection it will return a
+  `WebSocketUpgradeRejection::ConnectionNotUpgradable` rejection ([#1135])
+- **changed:** `WebSocketUpgradeRejection` has a new variant `ConnectionNotUpgradable`
+  variant ([#1135])
 - **added** Implement `TryFrom<http:: Method>` for `MethodFilter` and use new `NoMatchingMethodFilter` error in case of failure ([#1130])
 - **added:** Support running extractors from `middleware::from_fn` functions ([#1088])
+- **added:** Added `debug_handler` which is an attribute macro that improves
+  type errors when applied to handler function. It is re-exported from
+  `axum-macros`
+- **added:** Support any middleware response that implements `IntoResponse` ([#1152])
+- **breaking:** Require middleware added with `Handler::layer` to have
+  `Infallible` as the error type ([#1152])
+- **changed:** For methods that accept some `S: Service`, the bounds have been
+  relaxed so the response type must implement `IntoResponse` rather than being a
+  literal `Response`
 
+[#1171]: https://github.com/tokio-rs/axum/pull/1171
 [#1077]: https://github.com/tokio-rs/axum/pull/1077
 [#1086]: https://github.com/tokio-rs/axum/pull/1086
 [#1088]: https://github.com/tokio-rs/axum/pull/1088
 [#1102]: https://github.com/tokio-rs/axum/pull/1102
 [#1119]: https://github.com/tokio-rs/axum/pull/1119
 [#1130]: https://github.com/tokio-rs/axum/pull/1130
+[#1135]: https://github.com/tokio-rs/axum/pull/1135
+[#1152]: https://github.com/tokio-rs/axum/pull/1152
 [#924]: https://github.com/tokio-rs/axum/pull/924
 
 # 0.5.10 (28. June, 2022)
