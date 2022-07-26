@@ -484,6 +484,33 @@ where
 
 /// A [`Service`] that accepts requests based on a [`MethodFilter`] and
 /// allows chaining additional handlers and services.
+///
+/// # When does `MethodRouter` implement [`Service`]?
+///
+/// Whether or not `MethodRouter` implements [`Service`] depends on the state type it requires.
+///
+/// ```
+/// use tower::Service;
+/// use axum::{routing::get, extract::State, body::Body, http::Request};
+///
+/// // this `MethodRouter` doesn't require any state, i.e. the state is `()`,
+/// let method_router = get(|| async {});
+/// // and thus it implements `Service`
+/// assert_service(method_router);
+///
+/// // this requires a `String` and doesn't implement `Service`
+/// let method_router = get(|_: State<String>| async {});
+/// // until you provide the `String` with `.with_state(...)`
+/// let method_router_with_state = method_router.with_state(String::new());
+/// // and then it implements `Service`
+/// assert_service(method_router_with_state);
+///
+/// // helper to check that a value implements `Service`
+/// fn assert_service<S>(service: S)
+/// where
+///     S: Service<Request<Body>>,
+/// {}
+/// ```
 pub struct MethodRouter<S = (), B = Body, E = Infallible> {
     get: Option<Route<B, E>>,
     head: Option<Route<B, E>>,
