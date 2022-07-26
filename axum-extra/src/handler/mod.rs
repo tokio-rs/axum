@@ -5,7 +5,8 @@ use axum::{
     handler::Handler,
     response::{IntoResponse, Response},
 };
-use std::{future::Future, marker::PhantomData, pin::Pin};
+use futures_util::future::{BoxFuture, FutureExt, Map};
+use std::{future::Future, marker::PhantomData};
 
 mod or;
 
@@ -116,14 +117,14 @@ macro_rules! impl_handler_call_with {
             Fut: Future + Send + 'static,
             Fut::Output: IntoResponse,
         {
-            type Future = Pin<Box<dyn Future<Output = Response> + Send>>;
+            // this puts `futures_util` in our public API but thats fine in axum-extra
+            type Future = Map<Fut, fn(Fut::Output) -> Response>;
 
             fn call(
                 self,
                 ($($ty,)*): ($($ty,)*),
             ) -> <Self as HandlerCallWithExtractors<($($ty,)*), B>>::Future {
-                let future = self($($ty,)*);
-                Box::pin(async move { future.await.into_response() })
+                self($($ty,)*).map(IntoResponse::into_response)
             }
         }
     };
@@ -163,7 +164,7 @@ where
     T::Rejection: Send,
     B: Send + 'static,
 {
-    type Future = Pin<Box<dyn Future<Output = Response> + Send>>;
+    type Future = BoxFuture<'static, Response>;
 
     fn call(self, req: http::Request<B>) -> Self::Future {
         Box::pin(async move {

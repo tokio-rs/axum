@@ -6,8 +6,9 @@ use axum::{
     http::Request,
     response::{IntoResponse, Response},
 };
+use futures_util::future::{BoxFuture, Either as EitherFuture, FutureExt, Map};
 use http::StatusCode;
-use std::{future::Future, marker::PhantomData, pin::Pin};
+use std::{future::Future, marker::PhantomData};
 
 /// [`Handler`] that runs one [`Handler`] and if that rejects it'll fallback to another
 /// [`Handler`].
@@ -28,18 +29,28 @@ where
     Lt: Send + 'static,
     B: Send + 'static,
 {
-    type Future = Pin<Box<dyn Future<Output = Response> + Send>>;
+    // this puts `futures_util` in our public API but thats fine in axum-extra
+    type Future = EitherFuture<
+        Map<L::Future, fn(<L::Future as Future>::Output) -> Response>,
+        Map<R::Future, fn(<R::Future as Future>::Output) -> Response>,
+    >;
 
     fn call(
         self,
         extractors: Either<Lt, Rt>,
     ) -> <Self as HandlerCallWithExtractors<Either<Lt, Rt>, B>>::Future {
-        Box::pin(async move {
-            match extractors {
-                Either::Left(lt) => self.lhs.call(lt).await.into_response(),
-                Either::Right(rt) => self.rhs.call(rt).await.into_response(),
-            }
-        })
+        match extractors {
+            Either::Left(lt) => self
+                .lhs
+                .call(lt)
+                .map(IntoResponse::into_response as _)
+                .left_future(),
+            Either::Right(rt) => self
+                .rhs
+                .call(rt)
+                .map(IntoResponse::into_response as _)
+                .right_future(),
+        }
     }
 }
 
@@ -53,7 +64,8 @@ where
     Rt::Rejection: Send,
     B: Send + 'static,
 {
-    type Future = Pin<Box<dyn Future<Output = Response> + Send>>;
+    // this puts `futures_util` in our public API but thats fine in axum-extra
+    type Future = BoxFuture<'static, Response>;
 
     fn call(self, req: Request<B>) -> Self::Future {
         Box::pin(async move {
