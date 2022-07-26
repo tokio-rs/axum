@@ -61,7 +61,7 @@ use tower_service::Service;
 /// let app = Router::new()
 ///     .route("/", get(|| async { /* ... */ }))
 ///     .route_layer(middleware::from_fn(auth));
-/// # let app: Router<()> = app;
+/// # let app: Router = app;
 /// ```
 ///
 /// # Running extractors
@@ -92,7 +92,7 @@ use tower_service::Service;
 /// let app = Router::new()
 ///     .route("/", get(|| async { /* ... */ }))
 ///     .route_layer(middleware::from_fn(my_middleware));
-/// # let app: Router<()> = app;
+/// # let app: Router = app;
 /// ```
 ///
 /// # Passing state
@@ -127,7 +127,7 @@ use tower_service::Service;
 ///     .route_layer(middleware::from_fn(move |req, next| {
 ///         my_middleware(req, next, state.clone())
 ///     }));
-/// # let app: Router<()> = app;
+/// # let app: Router = app;
 /// ```
 ///
 /// Or via extensions:
@@ -164,7 +164,7 @@ use tower_service::Service;
 ///             .layer(Extension(state))
 ///             .layer(middleware::from_fn(my_middleware)),
 ///     );
-/// # let app: Router<()> = app;
+/// # let app: Router = app;
 /// ```
 ///
 /// [extractors]: crate::extract::FromRequest

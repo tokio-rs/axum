@@ -54,7 +54,7 @@ use std::{convert::Infallible, fmt, marker::PhantomData};
 ///     .route("/get", get(get_secret))
 ///     // add extension with the key so `PrivateCookieJar` can access it
 ///     .layer(Extension(key));
-/// # let app: Router<()> = app;
+/// # let app: Router = app;
 /// ```
 pub struct PrivateCookieJar<K = Key> {
     jar: cookie_lib::CookieJar,

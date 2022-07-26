@@ -45,7 +45,7 @@ use tower_service::Service;
 ///     );
 ///
 /// let app = Router::new().merge(users);
-/// # let _: Router<()> = app;
+/// # let _: Router = app;
 /// ```
 #[derive(Debug)]
 pub struct Resource<S = (), B = Body> {

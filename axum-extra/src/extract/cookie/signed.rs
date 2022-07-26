@@ -72,7 +72,7 @@ use std::{convert::Infallible, fmt, marker::PhantomData};
 ///     .route("/me", get(me))
 ///     // add extension with the key so `SignedCookieJar` can access it
 ///     .layer(Extension(key));
-/// # let app: Router<()> = app;
+/// # let app: Router = app;
 /// ```
 pub struct SignedCookieJar<K = Key> {
     jar: cookie_lib::CookieJar,

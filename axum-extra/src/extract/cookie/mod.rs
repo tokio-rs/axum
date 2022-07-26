@@ -80,7 +80,7 @@ pub use cookie_lib::Key;
 /// let app = Router::new()
 ///     .route("/sessions", post(create_session))
 ///     .route("/me", get(me));
-/// # let app: Router<()> = app;
+/// # let app: Router = app;
 /// ```
 #[derive(Debug)]
 pub struct CookieJar {

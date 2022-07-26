@@ -156,7 +156,7 @@ pub trait RouterExt<S, B>: sealed::Sealed {
     ///     .route_with_tsr("/foo", get(|| async {}))
     ///     // `/bar` will redirect to `/bar/`
     ///     .route_with_tsr("/bar/", get(|| async {}));
-    /// # let _: Router<()> = app;
+    /// # let _: Router = app;
     /// ```
     fn route_with_tsr(self, path: &str, method_router: MethodRouter<S, B>) -> Self
     where

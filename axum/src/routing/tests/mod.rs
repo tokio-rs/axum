@@ -100,7 +100,7 @@ async fn routing() {
 
 #[tokio::test]
 async fn router_type_doesnt_change() {
-    let app: Router<()> = Router::new()
+    let app: Router = Router::new()
         .route(
             "/",
             on(MethodFilter::GET, |_: Request<Body>| async {
@@ -365,7 +365,7 @@ async fn wildcard_with_trailing_slash() {
         path: String,
     }
 
-    let app: Router<()> = Router::new().route(
+    let app: Router = Router::new().route(
         "/:user/:repo/tree/*path",
         get(|Path(tree): Path<Tree>| async move { Json(tree) }),
     );

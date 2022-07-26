@@ -60,7 +60,7 @@ use http::Uri;
 /// async fn users_destroy(_: UsersCollection) { /* ... */ }
 ///
 /// #
-/// # let app: Router<()> = app;
+/// # let app: Router = app;
 /// ```
 ///
 /// # Using `#[derive(TypedPath)]`

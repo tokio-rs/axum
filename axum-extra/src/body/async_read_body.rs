@@ -42,7 +42,7 @@ pin_project! {
     /// }
     ///
     /// let app = Router::new().route("/Cargo.toml", get(cargo_toml));
-    /// # let _: Router<()> = app;
+    /// # let _: Router = app;
     /// ```
     #[cfg(feature = "async-read-body")]
     #[derive(Debug)]

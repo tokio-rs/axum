@@ -180,7 +180,7 @@ impl<'a> Field<'a> {
     /// }
     ///
     /// let app = Router::new().route("/upload", post(upload));
-    /// # let _: Router<()> = app;
+    /// # let _: Router = app;
     /// ```
     pub async fn chunk(&mut self) -> Result<Option<Bytes>, MultipartError> {
         self.inner

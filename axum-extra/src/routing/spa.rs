@@ -36,7 +36,7 @@ use tower_service::Service;
 ///     .merge(spa)
 ///     // we can still add other routes
 ///     .route("/api/foo", get(api_foo));
-/// # let _: Router<()> = app;
+/// # let _: Router = app;
 ///
 /// async fn api_foo() {}
 /// ```
@@ -101,7 +101,7 @@ impl<B, T, F> SpaRouter<B, T, F> {
     ///     .index_file("another_file.html");
     ///
     /// let app = Router::new().merge(spa);
-    /// # let _: Router<()> = app;
+    /// # let _: Router = app;
     /// ```
     pub fn index_file<P>(mut self, path: P) -> Self
     where
@@ -136,7 +136,7 @@ impl<B, T, F> SpaRouter<B, T, F> {
     /// }
     ///
     /// let app = Router::new().merge(spa);
-    /// # let _: Router<()> = app;
+    /// # let _: Router = app;
     /// ```
     pub fn handle_error<T2, F2>(self, f: F2) -> SpaRouter<B, T2, F2> {
         SpaRouter {
