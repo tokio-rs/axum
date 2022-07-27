@@ -62,7 +62,7 @@ mod tuple;
 /// [`http::Request<B>`]: http::Request
 /// [`axum::extract`]: https://docs.rs/axum/latest/axum/extract/index.html
 #[async_trait]
-pub trait FromRequest<B, S = ()>: Sized {
+pub trait FromRequest<B, S>: Sized {
     /// If the extractor fails it'll use this "rejection" type. A rejection is
     /// a kind of error that can be converted into a response.
     type Rejection: IntoResponse;
@@ -75,7 +75,7 @@ pub trait FromRequest<B, S = ()>: Sized {
 ///
 /// Has several convenience methods for getting owned parts of the request.
 #[derive(Debug)]
-pub struct RequestParts<B, S = ()> {
+pub struct RequestParts<B, S> {
     state: S,
     method: Method,
     uri: Uri,
