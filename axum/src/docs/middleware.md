@@ -61,14 +61,12 @@ let app = Router::new()
 
 Some commonly used middleware are:
 
-- [`TraceLayer`](tower_http::trace::TraceLayer) for high level tracing/logging.
+- [`TraceLayer`] for high level tracing/logging.
 - [`CorsLayer`](tower_http::cors::CorsLayer) for handling CORS.
-- [`CompressionLayer`](tower_http::compression::CompressionLayer) for automatic compression of
-  responses.
-- [`SetRequestIdLayer`](tower_http::request_id::SetRequestIdLayer) and
-  [`PropagateRequestIdLayer`](tower_http::request_id::PropagateRequestIdLayer) set and propagate request
+- [`CompressionLayer`](tower_http::compression::CompressionLayer) for automatic compression of responses.
+- [`RequestIdLayer`] set and propagate request
   ids.
-- [`TimeoutLayer`](tower::timeout::TimeoutLayer) for timeouts. Note this
+- [`TimeoutLayer`] for timeouts. Note this
   requires using [`HandleErrorLayer`](crate::error_handling::HandleErrorLayer)
   to convert timeouts to responses.
 
@@ -170,22 +168,22 @@ mentally which is one of the reasons `ServiceBuilder` is recommended.
 axum offers many ways of writing middleware, at different levels of abstraction
 and with different pros and cons.
 
-## `middleware::from_fn`
+## `axum::middleware::from_fn`
 
-Use [`middleware::from_fn`] to write your middleware when:
+Use [`axum::middleware::from_fn`] to write your middleware when:
 
 - You're not comfortable with implementing your own futures and would rather use
   the familiar `async`/`await` syntax.
 - You don't intend to publish your middleware as a crate for others to use.
   Middleware written like this are only compatible with axum.
 
-## `middleware::from_extractor`
+## `axum::middleware::from_extractor`
 
-Use [`middleware::from_extractor`] to write your middleware when:
+Use [`axum::middleware::from_extractor`] to write your middleware when:
 
 - You have a type that you sometimes want to use as an extractor and sometimes
   as a middleware. If you only need your type as a middleware prefer
-  [`middleware::from_fn`].
+  [`axum::middleware::from_fn`].
 
 ## tower's combinators
 
@@ -210,7 +208,7 @@ by implementing [`tower::Service`]:
 Use [`tower::Service`] with `Pin<Box<dyn Future>>` to write your middleware when:
 
 - Your middleware needs to be configurable for example via builder methods on
-  your [`tower::Layer`] such as [`TraceLayer`](tower_http::trace::TraceLayer).
+  your [`tower::Layer`] such as [`TraceLayer`].
 - You do intend to publish your middleware as a crate for others to use.
 - You're not comfortable with implementing your own futures.
 
@@ -275,7 +273,7 @@ Use [`tower::Service`] with manual futures to write your middleware when:
 
 - You want your middleware to have the lowest possible overhead.
 - Your middleware needs to be configurable for example via builder methods on
-  your [`tower::Layer`] such as [`TraceLayer`](tower_http::trace::TraceLayer).
+  your [`tower::Layer`] such as [`TraceLayer`].
 - You do intend to publish your middleware as a crate for others to use, perhaps
   as part of tower-http.
 - You're comfortable with implementing your own futures, or want to learn how
@@ -445,9 +443,14 @@ extensions you need.
 
 [`tower`]: https://crates.io/crates/tower
 [`tower-http`]: https://crates.io/crates/tower-http
+[`TraceLayer`]: tower_http::trace
+[`CorsLayer`]: tower_http::cors
+[`CompressionLayer`]: tower_http::compression
+[`RequestIdLayer`]: tower_http::request_id
+[`TimeoutLayer`]: tower_http::timeout
 [tower-guides]: https://github.com/tower-rs/tower/tree/master/guides
-[`middleware::from_fn`]: crate::middleware::from_fn
-[`middleware::from_extractor`]: crate::middleware::from_extractor
+[`axum::middleware::from_fn`]: crate::middleware::from_fn
+[`axum::middleware::from_extractor`]: crate::middleware::from_extractor
 [tower-from-scratch-guide]: https://github.com/tower-rs/tower/blob/master/guides/building-a-middleware-from-scratch.md
 [`ServiceBuilder::map_request`]: tower::ServiceBuilder::map_request
 [`ServiceBuilder::map_response`]: tower::ServiceBuilder::map_response
