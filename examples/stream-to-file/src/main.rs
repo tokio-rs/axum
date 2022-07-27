@@ -29,7 +29,7 @@ async fn main() {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    // save files to a separte directory to not override files in the current directory
+    // save files to a separate directory to not override files in the current directory
     tokio::fs::create_dir(UPLOADS_DIRECTORY)
         .await
         .expect("failed to create `uploads` directory");
@@ -128,7 +128,7 @@ where
     .map_err(|err| (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()))
 }
 
-// to prevent directory traversal attacks we ensure the path conists of exactly one normal
+// to prevent directory traversal attacks we ensure the path consists of exactly one normal
 // component
 fn path_is_valid(path: &str) -> bool {
     let path = std::path::Path::new(&*path);
