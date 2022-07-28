@@ -10,3 +10,4 @@ members = [
     # with `cargo +nightly update -Z minimal-versions`
     "internal-minimal-versions",
 ]
+resolver = "2"
