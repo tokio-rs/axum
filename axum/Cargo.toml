@@ -25,6 +25,9 @@ query = ["serde_urlencoded"]
 tower-log = ["tower/log"]
 ws = ["tokio-tungstenite", "sha-1", "base64"]
 
+# Required for intra-doc links to resolve correctly
+__private_docs = ["tower/full", "tower-http/full"]
+
 [dependencies]
 async-trait = "0.1.43"
 axum-core = { path = "../axum-core", version = "0.2.6" }
@@ -43,7 +46,7 @@ pin-project-lite = "0.2.7"
 serde = "1.0"
 sync_wrapper = "0.1.1"
 tokio = { version = "1", features = ["time"] }
-tower = { version = "0.4.11", default-features = false, features = ["util", "make"] }
+tower = { version = "0.4.13", default-features = false, features = ["util", "make"] }
 tower-http = { version = "0.3.0", features = ["util", "map-response-body"] }
 tower-layer = "0.3"
 tower-service = "0.3"
@@ -56,7 +59,7 @@ multer = { version = "2.0.0", optional = true }
 serde_json = { version = "1.0", features = ["raw_value"], optional = true }
 serde_urlencoded = { version = "0.7", optional = true }
 sha-1 = { version = "0.10", optional = true }
-tokio-tungstenite = { version = "0.17", optional = true }
+tokio-tungstenite = { version = "0.17.2", optional = true }
 
 [dev-dependencies]
 anyhow = "1.0"
