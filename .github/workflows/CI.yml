@@ -2,7 +2,7 @@ name: CI
 
 env:
   CARGO_TERM_COLOR: always
-  MSRV: 1.56.0
+  MSRV: 1.56
 
 on:
   push:
@@ -113,6 +113,12 @@ jobs:
         command: update
         args: -Z minimal-versions
         toolchain: nightly
+    - name: Fix up Cargo.lock
+      uses: actions-rs/cargo@v1
+      with:
+        command: update
+        args: -p crc32fast --precise 1.1.1
+        toolchain: nightly
     - name: Run tests
       uses: actions-rs/cargo@v1
       with:
@@ -121,7 +127,6 @@ jobs:
           -p axum
           -p axum-extra
           -p axum-core
-          -p internal-minimal-versions
           --all-features
           --all-targets
           --locked
