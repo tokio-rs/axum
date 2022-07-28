@@ -46,7 +46,7 @@ pin-project-lite = "0.2.7"
 serde = "1.0"
 sync_wrapper = "0.1.1"
 tokio = { version = "1", features = ["time"] }
-tower = { version = "0.4.11", default-features = false, features = ["util", "make"] }
+tower = { version = "0.4.13", default-features = false, features = ["util", "make"] }
 tower-http = { version = "0.3.0", features = ["util", "map-response-body"] }
 tower-layer = "0.3"
 tower-service = "0.3"
