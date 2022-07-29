@@ -19,6 +19,7 @@
 //! `query` | Enables the `Query` extractor | No
 //! `spa` | Enables the `Spa` router | No
 //! `typed-routing` | Enables the `TypedPath` routing utilities | No
+//! `json-stream-body` | Enables JSON streaming body | No
 //!
 //! [`axum`]: https://crates.io/crates/axum
 

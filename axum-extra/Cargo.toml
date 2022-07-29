@@ -24,6 +24,7 @@ json-lines = ["serde_json", "serde", "tokio-util/io", "tokio-stream/io-util"]
 query = ["serde", "serde_html_form"]
 spa = ["tower-http/fs"]
 typed-routing = ["axum-macros", "serde", "percent-encoding"]
+json-stream-body = ["serde", "serde_json", "tokio-stream"]
 
 [dependencies]
 axum = { path = "../axum", version = "0.5", default-features = false }
