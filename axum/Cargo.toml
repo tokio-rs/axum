@@ -24,6 +24,7 @@ original-uri = []
 query = ["serde_urlencoded"]
 tower-log = ["tower/log"]
 ws = ["tokio-tungstenite", "sha-1", "base64"]
+exhaustive = []
 
 # Required for intra-doc links to resolve correctly
 __private_docs = ["tower/full", "tower-http/full"]

@@ -54,7 +54,7 @@ macro_rules! define_rejection {
     ) => {
         $(#[$m])*
         #[derive(Debug)]
-        #[non_exhaustive]
+        #[cfg_attr(not(exhaustive), non_exhaustive)]
         pub struct $name;
 
         impl $crate::response::IntoResponse for $name {
@@ -130,7 +130,7 @@ macro_rules! composite_rejection {
     ) => {
         $(#[$m])*
         #[derive(Debug)]
-        #[non_exhaustive]
+        #[cfg_attr(not(exhaustive), non_exhaustive)]
         pub enum $name {
             $(
                 #[allow(missing_docs)]

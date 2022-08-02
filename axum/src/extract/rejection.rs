@@ -221,7 +221,7 @@ composite_rejection! {
 /// Contains one variant for each way the
 /// [`ContentLengthLimit`](super::ContentLengthLimit) extractor can fail.
 #[derive(Debug)]
-#[non_exhaustive]
+#[cfg_attr(not(exhaustive), non_exhaustive)]
 pub enum ContentLengthLimitRejection<T> {
     #[allow(missing_docs)]
     PayloadTooLarge(PayloadTooLarge),

@@ -128,7 +128,7 @@ impl TypedHeaderRejection {
 /// Additional information regarding a [`TypedHeaderRejection`]
 #[cfg(feature = "headers")]
 #[derive(Debug)]
-#[non_exhaustive]
+#[cfg_attr(not(exhaustive), non_exhaustive)]
 pub enum TypedHeaderRejectionReason {
     /// The header was missing from the HTTP request
     Missing,
