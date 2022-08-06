@@ -61,15 +61,15 @@ let app = Router::new()
 
 Some commonly used middleware are:
 
-- [`TraceLayer`](tower_http::trace) for high level tracing/logging.
-- [`CorsLayer`](tower_http::cors) for handling CORS.
-- [`CompressionLayer`](tower_http::compression) for automatic compression of
+- [`TraceLayer`] for high level tracing/logging.
+- [`CorsLayer`] for handling CORS.
+- [`CompressionLayer`] for automatic compression of
   responses.
-- [`RequestIdLayer`](tower_http::request_id) and
-  [`PropagateRequestIdLayer`](tower_http::request_id) set and propagate request
+- [`RequestIdLayer`] and
+  [`PropagateRequestIdLayer`] set and propagate request
   ids.
-- [`TimeoutLayer`](tower::timeout::TimeoutLayer) for timeouts. Note this
-  requires using [`HandleErrorLayer`](crate::error_handling::HandleErrorLayer)
+- [`TimeoutLayer`] for timeouts. Note this
+  requires using [`HandleErrorLayer`]
   to convert timeouts to responses.
 
 # Ordering
@@ -133,7 +133,7 @@ return early and not call the next layer, for example if a request cannot be
 authorized, but its a useful mental model to have.
 
 As previously mentioned its recommended to add multiple middleware using
-`tower::ServiceBuilder`, however this impacts ordering:
+[`tower::ServiceBuilder`], however this impacts ordering:
 
 ```rust
 use tower::ServiceBuilder;
@@ -320,7 +320,7 @@ let app = Router::new()
 # };
 ```
 
-See [`error_handling`](crate::error_handling) for more details on axum's error
+See [`error_handling`] for more details on axum's error
 handling model.
 
 # Routing to services/middleware and backpressure
@@ -461,3 +461,11 @@ extensions you need.
 [`MethodRouter::route_layer`]: crate::routing::MethodRouter::route_layer
 [request extensions]: https://docs.rs/http/latest/http/request/struct.Request.html#method.extensions
 [Response extensions]: https://docs.rs/http/latest/http/response/struct.Response.html#method.extensions
+[`TraceLayer`]: tower_http::trace::TraceLayer
+[`CorsLayer`]: tower_http::cors::CorsLayer
+[`CompressionLayer`]: tower_http::compression::CompressionLayer
+[`RequestIdLayer`]: tower_http::request_id::SetRequestIdLayer
+[`PropagateRequestIdLayer`]: tower_http::request_id::PropagateRequestIdLayer
+[`TimeoutLayer`]: tower::timeout::TimeoutLayer
+[`HandleErrorLayer`]: crate::error_handling::HandleErrorLayer
+[`error_handling`]: crate::error_handling
