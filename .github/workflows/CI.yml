@@ -26,7 +26,10 @@ jobs:
         override: true
         profile: minimal
         components: clippy, rustfmt
-    - uses: Swatinem/rust-cache@v1
+    - uses: Swatinem/rust-cache@v2
+      with:
+        key: ${{ matrix.pwd }}
+        workspaces: ${{ matrix.pwd }}
     - name: Check
       working-directory: ${{ matrix.pwd }}
       run: |
