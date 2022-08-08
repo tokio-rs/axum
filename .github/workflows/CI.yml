@@ -223,7 +223,10 @@ jobs:
         toolchain: beta
         override: true
         profile: minimal
-    - uses: Swatinem/rust-cache@v1
+    - uses: Swatinem/rust-cache@v2
+      with:
+        key: ${{ matrix.pwd }}
+        workspaces: ${{ matrix.pwd }}
     - name: Install cargo-sort
       run: |
         cargo install cargo-sort
