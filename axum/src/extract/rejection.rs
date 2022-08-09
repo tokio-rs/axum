@@ -104,7 +104,7 @@ pub struct FailedToDeserializeQueryString {
 
 impl FailedToDeserializeQueryString {
     #[doc(hidden)]
-    pub fn __private_new<E>(error: E) -> Self
+    pub fn __private_new<T, E>(error: E) -> Self
     where
         E: Into<BoxError>,
     {
