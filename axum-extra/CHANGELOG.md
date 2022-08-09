@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning].
 
 - None.
 
+# 0.3.7 (09. August, 2022)
+
+- **fixed:** Depend on axum 0.5.15 which contains a fix for an accidental breaking change.
+
 # 0.3.6 (02. July, 2022)
 
 - **fixed:** Fix feature labels missing in generated docs ([#1137])
