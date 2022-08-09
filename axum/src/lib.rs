@@ -232,17 +232,11 @@
 //! let app = Router::new()
 //!     .route(
 //!         "/users",
-//!         post({
-//!             let shared_state = Arc::clone(&shared_state);
-//!             move |body| create_user(body, Arc::clone(&shared_state))
-//!         }),
+//!         post(move |body| create_user(body, Arc::clone(&shared_state))),
 //!     )
 //!     .route(
 //!         "/users/:id",
-//!         get({
-//!             let shared_state = Arc::clone(&shared_state);
-//!             move |path| get_user(path, Arc::clone(&shared_state))
-//!         }),
+//!         get(move |path| get_user(path, Arc::clone(&shared_state))),
 //!     );
 //!
 //! async fn get_user(Path(user_id): Path<String>, state: Arc<State>) {
