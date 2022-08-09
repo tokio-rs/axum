@@ -5,8 +5,8 @@ use axum::{
     response::{IntoResponse, IntoResponseParts, Response, ResponseParts},
     Extension,
 };
-use cookie_lib::SignedJar;
-use cookie_lib::{Cookie, Key};
+use cookie::SignedJar;
+use cookie::{Cookie, Key};
 use std::{convert::Infallible, fmt, marker::PhantomData};
 
 /// Extractor that grabs signed cookies from the request and manages the jar.
@@ -75,7 +75,7 @@ use std::{convert::Infallible, fmt, marker::PhantomData};
 /// # let app: Router<axum::body::Body> = app;
 /// ```
 pub struct SignedCookieJar<K = Key> {
-    jar: cookie_lib::CookieJar,
+    jar: cookie::CookieJar,
     key: Key,
     // The key used to extract the key extension. Allows users to use multiple keys for different
     // jars. Maybe a library wants its own key.
@@ -102,7 +102,7 @@ where
     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
         let key = Extension::<K>::from_request(req).await?.0.into();
 
-        let mut jar = cookie_lib::CookieJar::new();
+        let mut jar = cookie::CookieJar::new();
         let mut signed_jar = jar.signed_mut(&key);
         for cookie in cookies_from_request(req) {
             if let Some(cookie) = signed_jar.verify(cookie) {
@@ -195,11 +195,11 @@ impl<K> SignedCookieJar<K> {
         }
     }
 
-    fn signed_jar(&self) -> SignedJar<&'_ cookie_lib::CookieJar> {
+    fn signed_jar(&self) -> SignedJar<&'_ cookie::CookieJar> {
         self.jar.signed(&self.key)
     }
 
-    fn signed_jar_mut(&mut self) -> SignedJar<&'_ mut cookie_lib::CookieJar> {
+    fn signed_jar_mut(&mut self) -> SignedJar<&'_ mut cookie::CookieJar> {
         self.jar.signed_mut(&self.key)
     }
 }
@@ -221,7 +221,7 @@ impl<K> IntoResponse for SignedCookieJar<K> {
 
 struct SignedCookieJarIter<'a, K> {
     jar: &'a SignedCookieJar<K>,
-    iter: cookie_lib::Iter<'a>,
+    iter: cookie::Iter<'a>,
 }
 
 impl<'a, K> Iterator for SignedCookieJarIter<'a, K> {
