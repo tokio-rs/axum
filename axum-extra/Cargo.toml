@@ -8,7 +8,7 @@ license = "MIT"
 name = "axum-extra"
 readme = "README.md"
 repository = "https://github.com/tokio-rs/axum"
-version = "0.3.6"
+version = "0.3.7"
 
 [features]
 default = []
