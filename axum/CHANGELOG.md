@@ -32,6 +32,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **changed:** For methods that accept some `S: Service`, the bounds have been
   relaxed so the response type must implement `IntoResponse` rather than being a
   literal `Response`
+- **change:** axum's MSRV is now 1.60 ([#1239])
 
 [#1171]: https://github.com/tokio-rs/axum/pull/1171
 [#1077]: https://github.com/tokio-rs/axum/pull/1077
@@ -41,6 +42,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#1130]: https://github.com/tokio-rs/axum/pull/1130
 [#1135]: https://github.com/tokio-rs/axum/pull/1135
 [#1152]: https://github.com/tokio-rs/axum/pull/1152
+[#1239]: https://github.com/tokio-rs/axum/pull/1239
 [#924]: https://github.com/tokio-rs/axum/pull/924
 
 # 0.5.10 (28. June, 2022)
