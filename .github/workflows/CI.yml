@@ -230,6 +230,9 @@ jobs:
     - name: Install cargo-sort
       run: |
         cargo install cargo-sort
+    - name: Remove non-crate folder
+      run: rm -rf async-graphql || true
+      working-directory: ${{ matrix.pwd }}
     - name: Check dependecy tables
       working-directory: ${{ matrix.pwd }}
       run: |
