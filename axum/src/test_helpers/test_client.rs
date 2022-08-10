@@ -121,6 +121,11 @@ pub(crate) struct TestResponse {
 }
 
 impl TestResponse {
+    #[allow(dead_code)]
+    pub(crate) async fn bytes(self) -> Bytes {
+        self.response.bytes().await.unwrap()
+    }
+
     pub(crate) async fn text(self) -> String {
         self.response.text().await.unwrap()
     }
