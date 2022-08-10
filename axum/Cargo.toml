@@ -102,3 +102,7 @@ features = [
     "multipart",
     "ws",
 ]
+
+[[bench]]
+name = "benches"
+harness = false
