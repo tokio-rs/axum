@@ -63,13 +63,60 @@
 #![cfg_attr(docsrs, feature(doc_cfg, doc_auto_cfg))]
 #![cfg_attr(test, allow(clippy::float_cmp))]
 
+use axum::{
+    async_trait,
+    extract::{FromRequest, RequestParts},
+    response::IntoResponse,
+};
+
 pub mod body;
 pub mod extract;
+pub mod handler;
 pub mod response;
 pub mod routing;
 
 #[cfg(feature = "json-lines")]
 pub mod json_lines;
+
+/// Combines two extractors or responses into a single type.
+#[derive(Debug, Copy, Clone)]
+pub enum Either<L, R> {
+    /// A value of type L.
+    Left(L),
+    /// A value of type R.
+    Right(R),
+}
+
+#[async_trait]
+impl<L, R, B> FromRequest<B> for Either<L, R>
+where
+    L: FromRequest<B>,
+    R: FromRequest<B>,
+    B: Send,
+{
+    type Rejection = R::Rejection;
+
+    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+        if let Ok(l) = req.extract().await {
+            return Ok(Either::Left(l));
+        }
+
+        Ok(Either::Right(req.extract().await?))
+    }
+}
+
+impl<L, R> IntoResponse for Either<L, R>
+where
+    L: IntoResponse,
+    R: IntoResponse,
+{
+    fn into_response(self) -> axum::response::Response {
+        match self {
+            Self::Left(inner) => inner.into_response(),
+            Self::Right(inner) => inner.into_response(),
+        }
+    }
+}
 
 #[cfg(feature = "typed-routing")]
 #[doc(hidden)]
