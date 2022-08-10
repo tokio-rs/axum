@@ -204,8 +204,6 @@ impl Event {
     ///
     /// This corresponds to [`MessageEvent`'s data field].
     ///
-    /// Note that events with an empty data field will be ignored by the browser.
-    ///
     /// # Panics
     ///
     /// Panics if `data` or `json_data` have already been called.
