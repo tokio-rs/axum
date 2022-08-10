@@ -3,6 +3,7 @@
 - [Intro](#intro)
 - [Applying middleware](#applying-middleware)
 - [Commonly used middleware](#commonly-used-middleware)
+- [Ordering](#ordering)
 - [Writing middleware](#writing-middleware)
 - [Routing to services/middleware and backpressure](#routing-to-servicesmiddleware-and-backpressure)
 - [Sharing state between handlers and middleware](#sharing-state-between-handlers-and-middleware)
