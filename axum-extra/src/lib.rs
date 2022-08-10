@@ -78,6 +78,9 @@ pub mod routing;
 #[cfg(feature = "json-lines")]
 pub mod json_lines;
 
+#[cfg(feature = "protobuf")]
+pub mod protobuf;
+
 /// Combines two extractors or responses into a single type.
 #[derive(Debug, Copy, Clone)]
 pub enum Either<L, R> {
