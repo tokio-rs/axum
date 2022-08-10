@@ -2,6 +2,7 @@
 categories = ["asynchronous", "network-programming", "web-programming"]
 description = "Macros for axum"
 edition = "2021"
+rust-version = "1.60"
 homepage = "https://github.com/tokio-rs/axum"
 keywords = ["axum"]
 license = "MIT"
