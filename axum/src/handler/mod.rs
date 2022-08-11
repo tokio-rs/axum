@@ -65,7 +65,7 @@ pub use self::{into_service::IntoService, with_state::WithState};
 /// # Converting `Handler`s into [`Service`]s
 ///
 /// To convert `Handler`s into [`Service`]s you have to call either
-/// [`HandlerWithoutStateExt::into_service`] or [`WithState::into_service`]:
+/// [`HandlerWithoutStateExt::into_service`] or [`Handler::with_state`]:
 ///
 /// ```
 /// use tower::Service;
