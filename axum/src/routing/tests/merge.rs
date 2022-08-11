@@ -452,3 +452,28 @@ async fn merging_routes_different_method_different_states() {
     let res = client.post("/").send().await;
     assert_eq!(res.text().await, "post state");
 }
+
+#[tokio::test]
+async fn merging_routes_different_paths_different_states() {
+    let foo = Router::with_state("foo state").route(
+        "/foo",
+        get(|State(state): State<&'static str>| async move { state }),
+    );
+
+    let bar = Router::with_state("bar state").route(
+        "/bar",
+        get(|State(state): State<&'static str>| async move { state }),
+    );
+
+    let app = Router::new().merge(foo).merge(bar);
+
+    let client = TestClient::new(app);
+
+    let res = client.get("/foo").send().await;
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.text().await, "foo state");
+
+    let res = client.get("/bar").send().await;
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.text().await, "bar state");
+}
