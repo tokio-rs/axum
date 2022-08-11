@@ -171,7 +171,7 @@ where
         let mut node =
             Arc::try_unwrap(Arc::clone(&self.node)).unwrap_or_else(|node| (*node).clone());
         if let Err(err) = node.insert(path, id) {
-            panic!("Invalid route {:?}. {}", path, err);
+            panic!("Invalid route {path:?}: {err}");
         }
         self.node = Arc::new(node);
     }
@@ -195,9 +195,9 @@ where
         let prefix = path;
 
         let path = if path.ends_with('/') {
-            format!("{}*{}", path, NEST_TAIL_PARAM)
+            format!("{path}*{NEST_TAIL_PARAM}")
         } else {
-            format!("{}/*{}", path, NEST_TAIL_PARAM)
+            format!("{path}/*{NEST_TAIL_PARAM}")
         };
 
         let svc = strip_prefix::StripPrefix::new(svc, prefix);
@@ -209,7 +209,7 @@ where
         self = self.route(prefix, svc.clone());
         if !prefix.ends_with('/') {
             // same goes for `/foo/`, that should also match
-            self = self.route(&format!("{}/", prefix), svc);
+            self = self.route(&format!("{prefix}/"), svc);
         }
 
         self
