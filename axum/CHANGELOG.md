@@ -7,7 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- None.
+- **fixed:** Annotate panicking functions with `#[track_caller]` so the error
+  message points to where the user added the invalid router, rather than
+  somewhere internally in axum ([#1248])
+
+[#1248]: https://github.com/tokio-rs/axum/pull/1248
 
 # 0.5.16 (10. September, 2022)
 
