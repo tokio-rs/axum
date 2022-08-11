@@ -2,7 +2,7 @@
 
 use super::IntoMakeService;
 use crate::{
-    body::{boxed, Body, Bytes, Empty, HttpBody},
+    body::{Body, Bytes, HttpBody},
     error_handling::{HandleError, HandleErrorLayer},
     extract::connect_info::IntoMakeServiceWithConnectInfo,
     handler::{Handler, IntoServiceStateInExtension},
@@ -82,6 +82,7 @@ macro_rules! top_level_service_fn {
             T: Service<Request<B>> + Clone + Send + 'static,
             T::Response: IntoResponse + 'static,
             T::Future: Send + 'static,
+            B: Send + 'static,
         {
             on_service(MethodFilter::$method, svc)
         }
@@ -324,6 +325,7 @@ where
     T: Service<Request<B>> + Clone + Send + 'static,
     T::Response: IntoResponse + 'static,
     T::Future: Send + 'static,
+    B: Send + 'static,
 {
     MethodRouter::new().on_service(filter, svc)
 }
@@ -386,6 +388,7 @@ where
     T: Service<Request<B>> + Clone + Send + 'static,
     T::Response: IntoResponse + 'static,
     T::Future: Send + 'static,
+    B: Send + 'static,
 {
     MethodRouter::new()
         .fallback_service(svc)
@@ -564,58 +567,6 @@ impl<S, B, E> fmt::Debug for MethodRouter<S, B, E> {
     }
 }
 
-impl<S, B, E> MethodRouter<S, B, E> {
-    /// Create a default `MethodRouter` that will respond with `405 Method Not Allowed` to all
-    /// requests.
-    pub fn new() -> Self {
-        let fallback = Route::new(service_fn(|_: Request<B>| async {
-            let mut response = Response::new(boxed(Empty::new()));
-            *response.status_mut() = StatusCode::METHOD_NOT_ALLOWED;
-            Ok(response)
-        }));
-
-        Self {
-            get: None,
-            head: None,
-            delete: None,
-            options: None,
-            patch: None,
-            post: None,
-            put: None,
-            trace: None,
-            allow_header: AllowHeader::None,
-            fallback: Fallback::Default(fallback),
-            _marker: PhantomData,
-        }
-    }
-
-    /// Provide the state.
-    ///
-    /// See [`State`](crate::extract::State) for more details about accessing state.
-    pub fn with_state(self, state: S) -> WithState<S, B, E> {
-        WithState {
-            method_router: self,
-            state,
-        }
-    }
-
-    pub(crate) fn downcast_state<S2>(self) -> MethodRouter<S2, B, E> {
-        MethodRouter {
-            get: self.get,
-            head: self.head,
-            delete: self.delete,
-            options: self.options,
-            patch: self.patch,
-            post: self.post,
-            put: self.put,
-            trace: self.trace,
-            fallback: self.fallback,
-            allow_header: self.allow_header,
-            _marker: PhantomData,
-        }
-    }
-}
-
 impl<B, S> MethodRouter<S, B, Infallible>
 where
     B: Send + 'static,
@@ -746,7 +697,58 @@ where
     }
 }
 
-impl<S, B, E> MethodRouter<S, B, E> {
+impl<S, B, E> MethodRouter<S, B, E>
+where
+    B: Send + 'static,
+{
+    /// Create a default `MethodRouter` that will respond with `405 Method Not Allowed` to all
+    /// requests.
+    pub fn new() -> Self {
+        let fallback = Route::new(service_fn(|_: Request<B>| async {
+            Ok(StatusCode::METHOD_NOT_ALLOWED.into_response())
+        }));
+
+        Self {
+            get: None,
+            head: None,
+            delete: None,
+            options: None,
+            patch: None,
+            post: None,
+            put: None,
+            trace: None,
+            allow_header: AllowHeader::None,
+            fallback: Fallback::Default(fallback),
+            _marker: PhantomData,
+        }
+    }
+
+    /// Provide the state.
+    ///
+    /// See [`State`](crate::extract::State) for more details about accessing state.
+    pub fn with_state(self, state: S) -> WithState<S, B, E> {
+        WithState {
+            method_router: self,
+            state,
+        }
+    }
+
+    pub(crate) fn downcast_state<S2>(self) -> MethodRouter<S2, B, E> {
+        MethodRouter {
+            get: self.get,
+            head: self.head,
+            delete: self.delete,
+            options: self.options,
+            patch: self.patch,
+            post: self.post,
+            put: self.put,
+            trace: self.trace,
+            fallback: self.fallback,
+            allow_header: self.allow_header,
+            _marker: PhantomData,
+        }
+    }
+
     /// Chain an additional service that will accept requests matching the given
     /// `MethodFilter`.
     ///
@@ -1073,7 +1075,7 @@ fn append_allow_header(allow_header: &mut AllowHeader, method: &'static str) {
 
 impl<B, E> Service<Request<B>> for MethodRouter<(), B, E>
 where
-    B: HttpBody,
+    B: HttpBody + Send + 'static,
 {
     type Response = Response;
     type Error = E;
