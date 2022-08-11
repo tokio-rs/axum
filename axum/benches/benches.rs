@@ -101,6 +101,7 @@ impl BenchmarkBuilder {
         // cargo bench -- routing send-json
         // ```
         let args = std::env::args().collect::<Vec<_>>();
+        dbg!(&args);
         let names = &args[1..args.len() - 1];
         if !names.is_empty() && !names.contains(&self.name.to_owned()) {
             return;
