@@ -68,14 +68,14 @@ async fn using_connection_pool_extractor(
 struct DatabaseConnection(PooledConnection<'static, PostgresConnectionManager<NoTls>>);
 
 #[async_trait]
-impl<B> FromRequest<ConnectionPool, B> for DatabaseConnection
+impl<B> FromRequest<B, ConnectionPool> for DatabaseConnection
 where
     B: Send,
 {
     type Rejection = (StatusCode, String);
 
     async fn from_request(
-        req: &mut RequestParts<ConnectionPool, B>,
+        req: &mut RequestParts<B, ConnectionPool>,
     ) -> Result<Self, Self::Rejection> {
         let pool = req.state().clone();
 

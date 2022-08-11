@@ -80,13 +80,13 @@ async fn handler(_: PrintRequestBody, body: Bytes) {
 struct PrintRequestBody;
 
 #[async_trait]
-impl<S> FromRequest<S, BoxBody> for PrintRequestBody
+impl<S> FromRequest<BoxBody, S> for PrintRequestBody
 where
     S: Send + Clone,
 {
     type Rejection = Response;
 
-    async fn from_request(req: &mut RequestParts<S, BoxBody>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts<BoxBody, S>) -> Result<Self, Self::Rejection> {
         let state = req.state().clone();
 
         let request = Request::from_request(req)
@@ -95,7 +95,7 @@ where
 
         let request = buffer_request_body(request).await?;
 
-        *req = RequestParts::new(state, request);
+        *req = RequestParts::new(request, state);
 
         Ok(Self)
     }

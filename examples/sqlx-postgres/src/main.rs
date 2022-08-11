@@ -75,13 +75,13 @@ async fn using_connection_pool_extractor(
 struct DatabaseConnection(sqlx::pool::PoolConnection<sqlx::Postgres>);
 
 #[async_trait]
-impl<B> FromRequest<PgPool, B> for DatabaseConnection
+impl<B> FromRequest<B, PgPool> for DatabaseConnection
 where
     B: Send,
 {
     type Rejection = (StatusCode, String);
 
-    async fn from_request(req: &mut RequestParts<PgPool, B>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts<B, PgPool>) -> Result<Self, Self::Rejection> {
         let pool = req.state().clone();
 
         let conn = pool.acquire().await.map_err(internal_error)?;
