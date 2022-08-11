@@ -109,6 +109,7 @@ impl RequestBuilder {
         self
     }
 
+    #[allow(dead_code)]
     pub(crate) fn multipart(mut self, form: reqwest::multipart::Form) -> Self {
         self.builder = self.builder.multipart(form);
         self
