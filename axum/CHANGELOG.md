@@ -42,6 +42,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   relaxed so the response type must implement `IntoResponse` rather than being a
   literal `Response`
 - **change:** axum's MSRV is now 1.60 ([#1239])
+- **fixed:** Annotate panicking functions with `#[track_caller]` so the error
+  message points to where the user added the invalid router, rather than
+  somewhere internally in axum
 
 [#1171]: https://github.com/tokio-rs/axum/pull/1171
 [#1077]: https://github.com/tokio-rs/axum/pull/1077
