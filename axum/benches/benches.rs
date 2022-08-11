@@ -134,11 +134,7 @@ impl BenchmarkBuilder {
         cmd.stdout(Stdio::piped());
 
         cmd.arg("--host");
-        if let Some(path) = self.path {
-            cmd.arg(format!("http://{}{}", addr, path));
-        } else {
-            cmd.arg(format!("http://{}", addr));
-        }
+        cmd.arg(format!("http://{}{}", addr, self.path.unwrap_or("")));
 
         cmd.args(&["--connections", "10"]);
         cmd.args(&["--threads", "10"]);
@@ -152,8 +148,7 @@ impl BenchmarkBuilder {
         }
 
         if let Some(method) = self.method {
-            cmd.arg("--method");
-            cmd.arg(method);
+            cmd.args(&["--method", method]);
         }
 
         for (key, value) in self.headers.into_iter().flatten() {
@@ -162,8 +157,7 @@ impl BenchmarkBuilder {
         }
 
         if let Some(body) = self.body {
-            cmd.arg("--body");
-            cmd.arg(body);
+            cmd.args(&["--body", body]);
         }
 
         eprintln!("Running {:?} benchmark", self.name);
