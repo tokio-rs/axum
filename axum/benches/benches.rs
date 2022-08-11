@@ -10,6 +10,10 @@ use std::{
 };
 
 fn main() {
+    for (key, value) in std::env::vars() {
+        eprintln!("ENV: {:?} = {:?}", key, value);
+    }
+
     ensure_rewrk_is_installed();
 
     benchmark("minimal").run(Router::new);
