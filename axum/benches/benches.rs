@@ -10,11 +10,11 @@ use std::{
 };
 
 fn main() {
-    for (key, value) in std::env::vars() {
-        eprintln!("ENV: {:?} = {:?}", key, value);
+    if on_ci() {
+        install_rewrk();
+    } else {
+        ensure_rewrk_is_installed();
     }
-
-    ensure_rewrk_is_installed();
 
     benchmark("minimal").run(Router::new);
 
@@ -140,7 +140,14 @@ impl BenchmarkBuilder {
 
         cmd.args(&["--connections", "10"]);
         cmd.args(&["--threads", "10"]);
-        cmd.args(&["--duration", "10s"]);
+
+        if on_ci() {
+            // don't slow down CI by running the benchmarks for too long
+            // but do run them for a bit
+            cmd.args(&["--duration", "1s"]);
+        } else {
+            cmd.args(&["--duration", "10s"]);
+        }
 
         if let Some(method) = self.method {
             cmd.arg("--method");
@@ -177,6 +184,23 @@ impl BenchmarkBuilder {
     }
 }
 
+fn install_rewrk() {
+    println!("installing rewrk");
+    let mut cmd = Command::new("cargo");
+    cmd.args(&[
+        "install",
+        "rewrk",
+        "--git",
+        "https://github.com/ChillFish8/rewrk.git",
+    ]);
+    let status = cmd
+        .status()
+        .unwrap_or_else(|_| panic!("failed to install rewrk"));
+    if !status.success() {
+        panic!("failed to install rewrk");
+    }
+}
+
 fn ensure_rewrk_is_installed() {
     let mut cmd = Command::new("rewrk");
     cmd.arg("--help");
@@ -185,4 +209,8 @@ fn ensure_rewrk_is_installed() {
     cmd.status().unwrap_or_else(|_| {
         panic!("rewrk is not installed. See https://github.com/lnx-search/rewrk")
     });
+}
+
+fn on_ci() -> bool {
+    std::env::var("GITHUB_ACTIONS").is_ok()
 }
