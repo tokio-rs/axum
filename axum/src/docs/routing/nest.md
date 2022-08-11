@@ -1,4 +1,4 @@
-Nest a group of routes (or a [`Service`]) at some path.
+Nest a [`Service`] at some path.
 
 This allows you to break your application into smaller pieces and compose
 them together.
@@ -64,36 +64,6 @@ let app = Router::new().nest("/:version/api", users_api);
 # };
 ```
 
-# Nesting services
-
-`nest` also accepts any [`Service`]. This can for example be used with
-[`tower_http::services::ServeDir`] to serve static files from a directory:
-
-```rust
-use axum::{
-    Router,
-    routing::get_service,
-    http::StatusCode,
-    error_handling::HandleErrorLayer,
-};
-use std::{io, convert::Infallible};
-use tower_http::services::ServeDir;
-
-// Serves files inside the `public` directory at `GET /public/*`
-let serve_dir_service = get_service(ServeDir::new("public"))
-    .handle_error(|error: io::Error| async move {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            format!("Unhandled internal error: {}", error),
-        )
-    });
-
-let app = Router::new().nest("/public", serve_dir_service);
-# async {
-# axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-# };
-```
-
 # Differences to wildcard routes
 
 Nested routes are similar to wildcard routes. The difference is that
@@ -103,16 +73,71 @@ the prefix stripped:
 ```rust
 use axum::{routing::get, http::Uri, Router};
 
+let nested_router = Router::new()
+    .route("/", get(|uri: Uri| async {
+        // `uri` will _not_ contain `/bar`
+    }));
+
 let app = Router::new()
     .route("/foo/*rest", get(|uri: Uri| async {
         // `uri` will contain `/foo`
     }))
-    .nest("/bar", get(|uri: Uri| async {
-        // `uri` will _not_ contain `/bar`
-    }));
+    .nest("/bar", nested_router);
 # async {
 # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 # };
+```
+
+# Fallbacks
+
+When nesting a router, if a request matches the prefix but the nested router doesn't have a matching
+route, the outer fallback will _not_ be called:
+
+```rust
+use axum::{routing::get, http::StatusCode, handler::Handler, Router};
+
+async fn fallback() -> (StatusCode, &'static str) {
+    (StatusCode::NOT_FOUND, "Not Found")
+}
+
+let api_routes = Router::new().nest("/users", get(|| async {}));
+
+let app = Router::new()
+    .nest("/api", api_routes)
+    .fallback(fallback);
+# let _: Router = app;
+```
+
+Here requests like `GET /api/not-found` will go into `api_routes` and then to
+the fallback of `api_routes` which will return an empty `404 Not Found`
+response. The outer fallback declared on `app` will _not_ be called.
+
+Think of nested services as swallowing requests that matches the prefix and
+not falling back to outer router even if they don't have a matching route.
+
+You can still add separate fallbacks to nested routers:
+
+```rust
+use axum::{routing::get, http::StatusCode, handler::Handler, Json, Router};
+use serde_json::{json, Value};
+
+async fn fallback() -> (StatusCode, &'static str) {
+    (StatusCode::NOT_FOUND, "Not Found")
+}
+
+async fn api_fallback() -> (StatusCode, Json<Value>) {
+    (StatusCode::NOT_FOUND, Json(json!({ "error": "Not Found" })))
+}
+
+let api_routes = Router::new()
+    .nest("/users", get(|| async {}))
+    // add dedicated fallback for requests starting with `/api`
+    .fallback(api_fallback);
+
+let app = Router::new()
+    .nest("/api", api_routes)
+    .fallback(fallback);
+# let _: Router = app;
 ```
 
 # Panics
@@ -125,3 +150,4 @@ for more details.
   `Router` only allows a single fallback.
 
 [`OriginalUri`]: crate::extract::OriginalUri
+[fallbacks]: Router::fallback

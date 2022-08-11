@@ -1,8 +1,6 @@
 use crate::{
-    body::{Bytes, HttpBody},
     extract::{FromRequest, RequestParts},
     response::{IntoResponse, Response},
-    BoxError,
 };
 use futures_util::{future::BoxFuture, ready};
 use http::Request;
@@ -91,6 +89,8 @@ use tower_service::Service;
 /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 /// # };
 /// ```
+///
+/// [`Bytes`]: bytes::Bytes
 pub fn from_extractor<E>() -> FromExtractorLayer<E> {
     FromExtractorLayer(PhantomData)
 }
@@ -167,13 +167,12 @@ where
     }
 }
 
-impl<S, E, B, ResBody> Service<Request<B>> for FromExtractor<S, E>
+impl<S, E, B> Service<Request<B>> for FromExtractor<S, E>
 where
     E: FromRequest<B, ()> + 'static,
     B: Default + Send + 'static,
-    S: Service<Request<B>, Response = Response<ResBody>> + Clone,
-    ResBody: HttpBody<Data = Bytes> + Send + 'static,
-    ResBody::Error: Into<BoxError>,
+    S: Service<Request<B>> + Clone,
+    S::Response: IntoResponse,
 {
     type Response = Response;
     type Error = S::Error;
@@ -186,7 +185,7 @@ where
 
     fn call(&mut self, req: Request<B>) -> Self::Future {
         let extract_future = Box::pin(async move {
-            let mut req = RequestParts::new((), req);
+            let mut req = RequestParts::new(req, ());
             let extracted = E::from_request(&mut req).await;
             (req, extracted)
         });
@@ -228,13 +227,12 @@ pin_project! {
     }
 }
 
-impl<B, S, E, ResBody> Future for ResponseFuture<B, S, E>
+impl<B, S, E> Future for ResponseFuture<B, S, E>
 where
     E: FromRequest<B, ()>,
-    S: Service<Request<B>, Response = Response<ResBody>>,
+    S: Service<Request<B>>,
+    S::Response: IntoResponse,
     B: Default,
-    ResBody: HttpBody<Data = Bytes> + Send + 'static,
-    ResBody::Error: Into<BoxError>,
 {
     type Output = Result<Response, S::Error>;
 
@@ -262,7 +260,7 @@ where
                 StateProj::Call { future } => {
                     return future
                         .poll(cx)
-                        .map(|result| result.map(|response| response.map(crate::body::boxed)));
+                        .map(|result| result.map(IntoResponse::into_response));
                 }
             };
 

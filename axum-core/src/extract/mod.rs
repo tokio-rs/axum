@@ -93,7 +93,7 @@ impl<B, S> RequestParts<B, S> {
     /// [`tower::Service`].
     ///
     /// [`tower::Service`]: https://docs.rs/tower/lastest/tower/trait.Service.html
-    pub fn new(state: S, req: Request<B>) -> Self {
+    pub fn new(req: Request<B>, state: S) -> Self {
         let (
             http::request::Parts {
                 method,

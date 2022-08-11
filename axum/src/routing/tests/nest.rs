@@ -1,8 +1,5 @@
 use super::*;
-use crate::{
-    body::boxed,
-    extract::{Extension, MatchedPath},
-};
+use crate::{body::boxed, extract::Extension};
 use std::collections::HashMap;
 use tower_http::services::ServeDir;
 
@@ -17,7 +14,6 @@ async fn nesting_apps() {
             "/users/:id",
             get(
                 |params: extract::Path<HashMap<String, String>>| async move {
-                    dbg!(&params);
                     format!(
                         "{}: users#show ({})",
                         params.get("version").unwrap(),
@@ -239,38 +235,12 @@ async fn nested_multiple_routes() {
     assert_eq!(client.get("/api/teams").send().await.text().await, "teams");
 }
 
-#[tokio::test]
-async fn nested_with_other_route_also_matching_with_route_first() {
-    let app = Router::new().route("/api", get(|| async { "api" })).nest(
-        "/api",
-        Router::new()
-            .route("/users", get(|| async { "users" }))
-            .route("/teams", get(|| async { "teams" })),
-    );
-
-    let client = TestClient::new(app);
-
-    assert_eq!(client.get("/api").send().await.text().await, "api");
-    assert_eq!(client.get("/api/users").send().await.text().await, "users");
-    assert_eq!(client.get("/api/teams").send().await.text().await, "teams");
-}
-
-#[tokio::test]
-async fn nested_with_other_route_also_matching_with_route_last() {
-    let app = Router::new()
-        .nest(
-            "/api",
-            Router::new()
-                .route("/users", get(|| async { "users" }))
-                .route("/teams", get(|| async { "teams" })),
-        )
-        .route("/api", get(|| async { "api" }));
-
-    let client = TestClient::new(app);
-
-    assert_eq!(client.get("/api").send().await.text().await, "api");
-    assert_eq!(client.get("/api/users").send().await.text().await, "users");
-    assert_eq!(client.get("/api/teams").send().await.text().await, "teams");
+#[test]
+#[should_panic = "Invalid route \"/\": insertion failed due to conflict with previously registered route: /*__private__axum_nest_tail_param"]
+fn nested_at_root_with_other_routes() {
+    let _: Router = Router::new()
+        .nest("/", Router::new().route("/users", get(|| async {})))
+        .route("/", get(|| async {}));
 }
 
 #[tokio::test]
@@ -366,63 +336,96 @@ async fn nest_at_capture() {
     assert_eq!(res.text().await, "a=foo b=bar");
 }
 
+#[tokio::test]
+async fn nest_with_and_without_trailing() {
+    let app = Router::new().nest("/foo", get(|| async {}));
+
+    let client = TestClient::new(app);
+
+    let res = client.get("/foo").send().await;
+    assert_eq!(res.status(), StatusCode::OK);
+
+    let res = client.get("/foo/").send().await;
+    assert_eq!(res.status(), StatusCode::OK);
+
+    let res = client.get("/foo/bar").send().await;
+    assert_eq!(res.status(), StatusCode::OK);
+}
+
+#[tokio::test]
+async fn doesnt_call_outer_fallback() {
+    let app = Router::new()
+        .nest("/foo", Router::new().route("/", get(|| async {})))
+        .fallback(|| async { (StatusCode::NOT_FOUND, "outer fallback") });
+
+    let client = TestClient::new(app);
+
+    let res = client.get("/foo").send().await;
+    assert_eq!(res.status(), StatusCode::OK);
+
+    let res = client.get("/foo/not-found").send().await;
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    // the default fallback returns an empty body
+    assert_eq!(res.text().await, "");
+}
+
+#[tokio::test]
+async fn nesting_with_root_inner_router() {
+    let app = Router::new().nest(
+        "/foo",
+        Router::new().route("/", get(|| async { "inner route" })),
+    );
+
+    let client = TestClient::new(app);
+
+    // `/foo/` does match the `/foo` prefix and the remaining path is technically
+    // empty, which is the same as `/` which matches `.route("/", _)`
+    let res = client.get("/foo").send().await;
+    assert_eq!(res.status(), StatusCode::OK);
+
+    // `/foo/` does match the `/foo` prefix and the remaining path is `/`
+    // which matches `.route("/", _)`
+    let res = client.get("/foo/").send().await;
+    assert_eq!(res.status(), StatusCode::OK);
+}
+
+#[tokio::test]
+async fn fallback_on_inner() {
+    let app = Router::new()
+        .nest(
+            "/foo",
+            Router::new()
+                .route("/", get(|| async {}))
+                .fallback(|| async { (StatusCode::NOT_FOUND, "inner fallback") }),
+        )
+        .fallback(|| async { (StatusCode::NOT_FOUND, "outer fallback") });
+
+    let client = TestClient::new(app);
+
+    let res = client.get("/foo/not-found").send().await;
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    assert_eq!(res.text().await, "inner fallback");
+}
+
 macro_rules! nested_route_test {
     (
         $name:ident,
+        // the path we nest the inner router at
         nest = $nested_path:literal,
+        // the route the inner router accepts
         route = $route_path:literal,
-        expected = $expected_path:literal,
-        opaque_redirect = $opaque_redirect:expr $(,)?
+        // the route we expect to be able to call
+        expected = $expected_path:literal $(,)?
     ) => {
         #[tokio::test]
         async fn $name() {
-            let inner = Router::new().route(
-                $route_path,
-                get(|matched: MatchedPath| async move { matched.as_str().to_owned() }),
-            );
+            let inner = Router::new().route($route_path, get(|| async {}));
             let app = Router::new().nest($nested_path, inner);
             let client = TestClient::new(app);
             let res = client.get($expected_path).send().await;
             let status = res.status();
-            let matched_path = res.text().await;
             assert_eq!(status, StatusCode::OK, "Router");
-
-            let inner = Router::new()
-                .route(
-                    $route_path,
-                    get(|matched: MatchedPath| async move { matched.as_str().to_owned() }),
-                )
-                .boxed_clone();
-            let app = Router::new().nest($nested_path, inner);
-            let client = TestClient::new(app);
-            let res = client.get($expected_path).send().await;
-            if $opaque_redirect {
-                assert_eq!(res.status(), StatusCode::PERMANENT_REDIRECT, "opaque");
-
-                let location = res.headers()[http::header::LOCATION].to_str().unwrap();
-                let res = client.get(location).send().await;
-                assert_eq!(res.status(), StatusCode::OK, "opaque with redirect");
-                assert_eq!(res.text().await, location);
-            } else {
-                assert_eq!(res.status(), StatusCode::OK, "opaque");
-                assert_eq!(res.text().await, matched_path);
-            }
         }
-    };
-
-    (
-        $name:ident,
-        nest = $nested_path:literal,
-        route = $route_path:literal,
-        expected = $expected_path:literal $(,)?
-    ) => {
-        nested_route_test!(
-            $name,
-            nest = $nested_path,
-            route = $route_path,
-            expected = $expected_path,
-            opaque_redirect = false,
-        );
     };
 }
 
@@ -433,23 +436,7 @@ nested_route_test!(nest_3, nest = "", route = "/a/", expected = "/a/");
 nested_route_test!(nest_4, nest = "/", route = "/", expected = "/");
 nested_route_test!(nest_5, nest = "/", route = "/a", expected = "/a");
 nested_route_test!(nest_6, nest = "/", route = "/a/", expected = "/a/");
-
-// TODO(david): we'll revisit this in https://github.com/tokio-rs/axum/pull/1086
-//// This case is different for opaque services.
-////
-//// The internal route becomes `/a/*__private__axum_nest_tail_param` which, according to matchit
-//// doesn't match `/a`. However matchit detects that a route for `/a/` exists and so it issues a
-//// redirect to `/a/`, which ends up calling the inner route as expected.
-////
-//// So while the behavior isn't identical, the outcome is the same
-//nested_route_test!(
-//    nest_7,
-//    nest = "/a",
-//    route = "/",
-//    expected = "/a",
-//    opaque_redirect = true,
-//);
-
+nested_route_test!(nest_7, nest = "/a", route = "/", expected = "/a");
 nested_route_test!(nest_8, nest = "/a", route = "/a", expected = "/a/a");
 nested_route_test!(nest_9, nest = "/a", route = "/a/", expected = "/a/a/");
 nested_route_test!(nest_11, nest = "/a/", route = "/", expected = "/a/");

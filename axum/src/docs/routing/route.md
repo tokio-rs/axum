@@ -51,6 +51,8 @@ Examples:
 - `/:id/:repo/*tree`
 
 Wildcard captures can also be extracted using [`Path`](crate::extract::Path).
+Note that the leading slash is not included, i.e. for the route `/foo/*rest` and
+the path `/foo/bar/baz` the value of `rest` will be `bar/baz`.
 
 # Accepting multiple methods
 
@@ -120,21 +122,5 @@ let app = Router::new()
 
 The static route `/foo` and the dynamic route `/:key` are not considered to
 overlap and `/foo` will take precedence.
-
-Take care when using [`Router::nest`] as it behaves like a wildcard route.
-Therefore this setup panics:
-
-```rust,should_panic
-use axum::{routing::get, Router};
-
-let app = Router::new()
-    // this is similar to `/api/*`
-    .nest("/api", get(|| async {}))
-    // which overlaps with this route
-    .route("/api/users", get(|| async {}));
-# async {
-# axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-# };
-```
 
 Also panics if `path` is empty.

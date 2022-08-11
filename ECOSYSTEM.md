@@ -19,9 +19,12 @@ If your project isn't listed here and you would like it to be, please feel free 
 - [axum-tungstenite](https://github.com/davidpdrsn/axum-tungstenite): WebSocket connections for axum directly using tungstenite
 - [axum-jrpc](https://github.com/0xdeafbeef/axum-jrpc): Json-rpc extractor for axum
 - [axum-tracing-opentelemetry](https://crates.io/crates/axum-tracing-opentelemetry): Middlewares and tools to integrate axum + tracing + opentelemetry
+- [svelte-axum-project](https://github.com/jbertovic/svelte-axum-project): Template and example for Svelte frontend app with Axum as backend
+- [axum-streams](https://github.com/abdolence/axum-streams-rs): Streaming HTTP body with different formats: JSON, CSV, Protobuf.
 
 ## Project showcase
 
+- [HomeDisk](https://github.com/MedzikUser/HomeDisk): ☁️ Fast, lightweight and Open Source local cloud for your data.
 - [Houseflow](https://github.com/gbaranski/houseflow): House automation platform written in Rust.
 - [JWT Auth](https://github.com/Z4RX/axum_jwt_example): JWT auth service for educational purposes.
 - [ROAPI](https://github.com/roapi/roapi): Create full-fledged APIs for static datasets without writing a single line of code.
@@ -37,6 +40,8 @@ If your project isn't listed here and you would like it to be, please feel free 
 - [Pinging.net](https://www.pinging.net) ([repository](https://github.com/benhansenslc/pinging)): A new way to check and monitor your internet connection.
 - [wastebin](https://github.com/matze/wastebin): A minimalist pastebin service.
 - [sandbox_axum_observability](https://github.com/davidB/sandbox_axum_observability) A Sandbox/showcase project to experiment axum and observability (tracing, opentelemetry, jaeger, grafana tempo,...)
+- [axum_admin](https://github.com/lingdu1234/axum_admin): An admin panel built with **axum**, Sea-orm and Vue 3.
+- [rgit](https://git.inept.dev/~doyle/rgit.git/about): A blazingly fast Git repository browser, compatible with- and heavily inspired by cgit.
 
 [Realworld]: https://github.com/gothinkster/realworld
 [SQLx]: https://github.com/launchbadge/sqlx
@@ -47,8 +52,10 @@ If your project isn't listed here and you would like it to be, please feel free 
 - [axum-tutorial] ([website][axum-tutorial-website]): Axum web framework tutorial for beginners.
 - [demo-rust-axum]: Demo of Rust and axum web framework
 - [Introduction to axum (talk)]: Talk about axum from the Copenhagen Rust Meetup.
+- [Getting Started with Axum]: Axum tutorial, GET, POST endpoints and serving files.
 
 [axum-tutorial]: https://github.com/programatik29/axum-tutorial
 [axum-tutorial-website]: https://programatik29.github.io/axum-tutorial/
 [demo-rust-axum]: https://github.com/joelparkerhenderson/demo-rust-axum
 [Introduction to axum (talk)]: https://www.youtube.com/watch?v=ETdmhh7OQpA
+[Getting Started with Axum]: https://carlosmv.hashnode.dev/getting-started-with-axum-rust

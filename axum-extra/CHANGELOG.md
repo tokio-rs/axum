@@ -9,13 +9,24 @@ and this project adheres to [Semantic Versioning].
 
 - **added:** Add `RouterExt::route_with_tsr` for adding routes with an
   additional "trailing slash redirect" route ([#1119])
+- **breaking:** `Resource::nest` and `Resource::nest_collection` has been
+  removed. You can instead convert the `Resource` into a `Router` and
+  add additional routes as necessary ([#1086])
+- **changed:** For methods that accept some `S: Service`, the bounds have been
+  relaxed so the response type must implement `IntoResponse` rather than being a
+  literal `Response`
+- **added:** Support chaining handlers with `HandlerCallWithExtractors::or` ([#1170])
+- **change:** axum-extra's MSRV is now 1.60 ([#1239])
 
+[#1086]: https://github.com/tokio-rs/axum/pull/1086
 [#1119]: https://github.com/tokio-rs/axum/pull/1119
+[#1170]: https://github.com/tokio-rs/axum/pull/1170
+[#1239]: https://github.com/tokio-rs/axum/pull/1239
 
 # 0.3.5 (27. June, 2022)
 
 - **added:** Add `JsonLines` for streaming newline delimited JSON ([#1093])
-- **change:** axum's MSRV is now 1.56 ([#1098])
+- **change:** axum-extra's MSRV is now 1.56 ([#1098])
 
 [#1093]: https://github.com/tokio-rs/axum/pull/1093
 [#1098]: https://github.com/tokio-rs/axum/pull/1098

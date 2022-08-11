@@ -36,14 +36,13 @@
 #![doc = include_str!("../docs/debugging_handler_type_errors.md")]
 
 use crate::{
-    body::{boxed, Body, Bytes, HttpBody},
+    body::Body,
     extract::{connect_info::IntoMakeServiceWithConnectInfo, FromRequest, RequestParts},
     response::{IntoResponse, Response},
     routing::IntoMakeService,
-    BoxError,
 };
 use http::Request;
-use std::{fmt, future::Future, marker::PhantomData, pin::Pin};
+use std::{convert::Infallible, fmt, future::Future, marker::PhantomData, pin::Pin};
 use tower::ServiceExt;
 use tower_layer::Layer;
 use tower_service::Service;
@@ -156,7 +155,7 @@ macro_rules! impl_handler {
 
             fn call(self, state: S, req: Request<B>) -> Self::Future {
                 Box::pin(async move {
-                    let mut req = RequestParts::new(state, req);
+                    let mut req = RequestParts::new(req, state);
 
                     $(
                         let $ty = match $ty::from_request(&mut req).await {
@@ -210,18 +209,16 @@ where
     }
 }
 
-impl<H, S, T, B, ResBody, L> Handler<T, S, B> for Layered<L, H, T, S, B>
+impl<H, S, T, B, L> Handler<T, S, B> for Layered<L, H, T, S, B>
 where
     L: Layer<WithState<H, T, S, B>> + Clone + Send + 'static,
     H: Handler<T, S, B>,
-    L::Service: Service<Request<B>, Response = Response<ResBody>> + Clone + Send + 'static,
-    <L::Service as Service<Request<B>>>::Error: IntoResponse,
+    L::Service: Service<Request<B>, Error = Infallible> + Clone + Send + 'static,
+    <L::Service as Service<Request<B>>>::Response: IntoResponse,
     <L::Service as Service<Request<B>>>::Future: Send,
     T: 'static,
     S: 'static,
     B: Send + 'static,
-    ResBody: HttpBody<Data = Bytes> + Send + 'static,
-    ResBody::Error: Into<BoxError>,
 {
     type Future = future::LayeredFuture<B, L::Service>;
 
@@ -240,8 +237,8 @@ where
                 >,
             ) -> _,
         > = svc.oneshot(req).map(|result| match result {
-            Ok(res) => res.map(boxed),
-            Err(res) => res.into_response(),
+            Ok(res) => res.into_response(),
+            Err(err) => match err {},
         });
 
         future::LayeredFuture::new(future)

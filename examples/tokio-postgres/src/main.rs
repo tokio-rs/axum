@@ -26,7 +26,7 @@ async fn main() {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    // setup connection pool
+    // set up connection pool
     let manager =
         PostgresConnectionManager::new_from_stringlike("host=localhost user=postgres", NoTls)
             .unwrap();

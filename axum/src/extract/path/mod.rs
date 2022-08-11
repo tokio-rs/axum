@@ -500,10 +500,10 @@ mod tests {
         let client = TestClient::new(app);
 
         let res = client.get("/foo/bar/baz").send().await;
-        assert_eq!(res.text().await, "/bar/baz");
+        assert_eq!(res.text().await, "bar/baz");
 
         let res = client.get("/bar/baz/qux").send().await;
-        assert_eq!(res.text().await, "/baz/qux");
+        assert_eq!(res.text().await, "baz/qux");
     }
 
     #[tokio::test]

@@ -12,7 +12,7 @@ use std::ops::Deref;
 ///
 /// `T` is expected to implement [`serde::Deserialize`].
 ///
-/// # Differences from `axum::extract::Form`
+/// # Differences from `axum::extract::Query`
 ///
 /// This extractor uses [`serde_html_form`] under-the-hood which supports multi-value items. These
 /// are sent by multiple `<input>` attributes of the same name (e.g. checkboxes) and `<select>`s
@@ -69,7 +69,7 @@ where
     async fn from_request(req: &mut RequestParts<B, S>) -> Result<Self, Self::Rejection> {
         let query = req.uri().query().unwrap_or_default();
         let value = serde_html_form::from_str(query)
-            .map_err(FailedToDeserializeQueryString::__private_new::<T, _>)?;
+            .map_err(FailedToDeserializeQueryString::__private_new)?;
         Ok(Query(value))
     }
 }

@@ -5,7 +5,7 @@ use axum::{
     response::{IntoResponse, IntoResponseParts, Response, ResponseParts},
     Extension,
 };
-use cookie_lib::PrivateJar;
+use cookie::PrivateJar;
 use std::{convert::Infallible, fmt, marker::PhantomData};
 
 /// Extractor that grabs private cookies from the request and manages the jar.
@@ -57,7 +57,7 @@ use std::{convert::Infallible, fmt, marker::PhantomData};
 /// # let app: Router = app;
 /// ```
 pub struct PrivateCookieJar<K = Key> {
-    jar: cookie_lib::CookieJar,
+    jar: cookie::CookieJar,
     key: Key,
     // The key used to extract the key extension. Allows users to use multiple keys for different
     // jars. Maybe a library wants its own key.
@@ -85,7 +85,7 @@ where
     async fn from_request(req: &mut RequestParts<B, S>) -> Result<Self, Self::Rejection> {
         let key = Extension::<K>::from_request(req).await?.0.into();
 
-        let mut jar = cookie_lib::CookieJar::new();
+        let mut jar = cookie::CookieJar::new();
         let mut private_jar = jar.private_mut(&key);
         for cookie in cookies_from_request(req) {
             if let Some(cookie) = private_jar.decrypt(cookie) {
@@ -177,11 +177,11 @@ impl<K> PrivateCookieJar<K> {
         }
     }
 
-    fn private_jar(&self) -> PrivateJar<&'_ cookie_lib::CookieJar> {
+    fn private_jar(&self) -> PrivateJar<&'_ cookie::CookieJar> {
         self.jar.private(&self.key)
     }
 
-    fn private_jar_mut(&mut self) -> PrivateJar<&'_ mut cookie_lib::CookieJar> {
+    fn private_jar_mut(&mut self) -> PrivateJar<&'_ mut cookie::CookieJar> {
         self.jar.private_mut(&self.key)
     }
 }
@@ -203,7 +203,7 @@ impl<K> IntoResponse for PrivateCookieJar<K> {
 
 struct PrivateCookieJarIter<'a, K> {
     jar: &'a PrivateCookieJar<K>,
-    iter: cookie_lib::Iter<'a>,
+    iter: cookie::Iter<'a>,
 }
 
 impl<'a, K> Iterator for PrivateCookieJarIter<'a, K> {

@@ -60,7 +60,7 @@ where
     async fn from_request(req: &mut RequestParts<B, S>) -> Result<Self, Self::Rejection> {
         let query = req.uri().query().unwrap_or_default();
         let value = serde_urlencoded::from_str(query)
-            .map_err(FailedToDeserializeQueryString::__private_new::<T, _>)?;
+            .map_err(FailedToDeserializeQueryString::__private_new)?;
         Ok(Query(value))
     }
 }
@@ -83,7 +83,7 @@ mod tests {
 
     async fn check<T: DeserializeOwned + PartialEq + Debug>(uri: impl AsRef<str>, value: T) {
         let req = Request::builder().uri(uri.as_ref()).body(()).unwrap();
-        let mut req = RequestParts::new((), req);
+        let mut req = RequestParts::new(req, ());
         assert_eq!(Query::<T>::from_request(&mut req).await.unwrap().0, value);
     }
 

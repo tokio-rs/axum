@@ -23,10 +23,10 @@ pub use self::private::PrivateCookieJar;
 #[cfg(feature = "cookie-signed")]
 pub use self::signed::SignedCookieJar;
 
-pub use cookie_lib::{Cookie, Expiration, SameSite};
+pub use cookie::{Cookie, Expiration, SameSite};
 
 #[cfg(any(feature = "cookie-signed", feature = "cookie-private"))]
-pub use cookie_lib::Key;
+pub use cookie::Key;
 
 /// Extractor that grabs cookies from the request and manages the jar.
 ///
@@ -84,7 +84,7 @@ pub use cookie_lib::Key;
 /// ```
 #[derive(Debug)]
 pub struct CookieJar {
-    jar: cookie_lib::CookieJar,
+    jar: cookie::CookieJar,
 }
 
 #[async_trait]
@@ -96,7 +96,7 @@ where
     type Rejection = Infallible;
 
     async fn from_request(req: &mut RequestParts<B, S>) -> Result<Self, Self::Rejection> {
-        let mut jar = cookie_lib::CookieJar::new();
+        let mut jar = cookie::CookieJar::new();
         for cookie in cookies_from_request(req) {
             jar.add_original(cookie);
         }
@@ -194,7 +194,7 @@ impl IntoResponse for CookieJar {
     }
 }
 
-fn set_cookies(jar: cookie_lib::CookieJar, headers: &mut HeaderMap) {
+fn set_cookies(jar: cookie::CookieJar, headers: &mut HeaderMap) {
     for cookie in jar.delta() {
         if let Ok(header_value) = cookie.encoded().to_string().parse() {
             headers.append(SET_COOKIE, header_value);

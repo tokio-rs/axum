@@ -1,8 +1,4 @@
-use crate::{
-    body::{self, Bytes, HttpBody},
-    response::{IntoResponse, Response},
-    BoxError,
-};
+use crate::response::{IntoResponse, Response};
 use axum_core::extract::{FromRequest, RequestParts};
 use futures_util::future::BoxFuture;
 use http::Request;
@@ -16,7 +12,6 @@ use std::{
     task::{Context, Poll},
 };
 use tower::{util::BoxCloneService, ServiceBuilder};
-use tower_http::ServiceBuilderExt;
 use tower_layer::Layer;
 use tower_service::Service;
 
@@ -256,20 +251,19 @@ where
 macro_rules! impl_service {
     ( $($ty:ident),* $(,)? ) => {
         #[allow(non_snake_case)]
-        impl<F, Fut, Out, S, B, ResBody, $($ty,)*> Service<Request<B>> for FromFn<F, S, ($($ty,)*)>
+        impl<F, Fut, Out, S, B, $($ty,)*> Service<Request<B>> for FromFn<F, S, ($($ty,)*)>
         where
             F: FnMut($($ty),*, Next<B>) -> Fut + Clone + Send + 'static,
             $( $ty: FromRequest<B, ()> + Send, )*
             Fut: Future<Output = Out> + Send + 'static,
             Out: IntoResponse + 'static,
-            S: Service<Request<B>, Response = Response<ResBody>, Error = Infallible>
+            S: Service<Request<B>, Error = Infallible>
                 + Clone
                 + Send
                 + 'static,
+            S::Response: IntoResponse,
             S::Future: Send + 'static,
             B: Send + 'static,
-            ResBody: HttpBody<Data = Bytes> + Send + 'static,
-            ResBody::Error: Into<BoxError>,
         {
             type Response = Response;
             type Error = Infallible;
@@ -286,7 +280,7 @@ macro_rules! impl_service {
                 let mut f = self.f.clone();
 
                 let future = Box::pin(async move {
-                    let mut parts = RequestParts::new((), req);
+                    let mut parts = RequestParts::new(req, ());
                     $(
                         let $ty = match $ty::from_request(&mut parts).await {
                             Ok(value) => value,
@@ -296,7 +290,7 @@ macro_rules! impl_service {
 
                     let inner = ServiceBuilder::new()
                         .boxed_clone()
-                        .map_response_body(body::boxed)
+                        .map_response(IntoResponse::into_response)
                         .service(ready_inner);
                     let next = Next { inner };
 
@@ -370,7 +364,7 @@ impl fmt::Debug for ResponseFuture {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{body::Empty, routing::get, Router};
+    use crate::{body::Body, routing::get, Router};
     use http::{HeaderMap, StatusCode};
     use tower::ServiceExt;
 
@@ -392,12 +386,7 @@ mod tests {
             .layer(from_fn(insert_header));
 
         let res = app
-            .oneshot(
-                Request::builder()
-                    .uri("/")
-                    .body(body::boxed(Empty::new()))
-                    .unwrap(),
-            )
+            .oneshot(Request::builder().uri("/").body(Body::empty()).unwrap())
             .await
             .unwrap();
         assert_eq!(res.status(), StatusCode::OK);

@@ -240,7 +240,7 @@ async fn all_the_uris(
 
 #[tokio::test]
 async fn nesting_and_seeing_the_right_uri() {
-    let one = Router::new().nest("/foo", Router::new().route("/bar", get(all_the_uris)));
+    let one = Router::new().nest("/foo/", Router::new().route("/bar", get(all_the_uris)));
     let two = Router::new().route("/foo", get(all_the_uris));
 
     let client = TestClient::new(one.merge(two));
@@ -271,7 +271,7 @@ async fn nesting_and_seeing_the_right_uri() {
 #[tokio::test]
 async fn nesting_and_seeing_the_right_uri_at_more_levels_of_nesting() {
     let one = Router::new().nest(
-        "/foo",
+        "/foo/",
         Router::new().nest("/bar", Router::new().route("/baz", get(all_the_uris))),
     );
     let two = Router::new().route("/foo", get(all_the_uris));

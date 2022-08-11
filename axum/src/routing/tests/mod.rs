@@ -8,10 +8,9 @@ use crate::{
     test_helpers::*,
     BoxError, Json, Router,
 };
-use http::{header::CONTENT_LENGTH, HeaderMap, Method, Request, Response, StatusCode, Uri};
+use http::{header::CONTENT_LENGTH, HeaderMap, Request, Response, StatusCode, Uri};
 use hyper::Body;
-use serde::Deserialize;
-use serde_json::{json, Value};
+use serde_json::json;
 use std::{
     convert::Infallible,
     future::{ready, Ready},
@@ -19,7 +18,9 @@ use std::{
     task::{Context, Poll},
     time::Duration,
 };
-use tower::{service_fn, timeout::TimeoutLayer, ServiceBuilder, ServiceExt};
+use tower::{
+    service_fn, timeout::TimeoutLayer, util::MapResponseLayer, ServiceBuilder, ServiceExt,
+};
 use tower_http::{auth::RequireAuthorizationLayer, limit::RequestBodyLimitLayer};
 use tower_service::Service;
 
@@ -357,44 +358,23 @@ async fn with_and_without_trailing_slash() {
 
 // for https://github.com/tokio-rs/axum/issues/420
 #[tokio::test]
-async fn wildcard_with_trailing_slash() {
-    #[derive(Deserialize, serde::Serialize)]
-    struct Tree {
-        user: String,
-        repo: String,
-        path: String,
-    }
-
-    let app: Router = Router::new().route(
-        "/:user/:repo/tree/*path",
-        get(|Path(tree): Path<Tree>| async move { Json(tree) }),
+async fn wildcard_doesnt_match_just_trailing_slash() {
+    let app = Router::new().route(
+        "/x/*path",
+        get(|Path(path): Path<String>| async move { path }),
     );
 
-    // low level check that the correct redirect happens
-    let res = app
-        .clone()
-        .oneshot(
-            Request::builder()
-                .method(Method::GET)
-                .uri("/user1/repo1/tree")
-                .body(Body::empty())
-                .unwrap(),
-        )
-        .await
-        .unwrap();
+    let client = TestClient::new(app);
+
+    let res = client.get("/x").send().await;
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
 
-    // check that the params are deserialized correctly
-    let client = TestClient::new(app);
-    let res = client.get("/user1/repo1/tree/").send().await;
-    assert_eq!(
-        res.json::<Value>().await,
-        json!({
-            "user": "user1",
-            "repo": "repo1",
-            "path": "/",
-        })
-    );
+    let res = client.get("/x/").send().await;
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+
+    let res = client.get("/x/foo/bar").send().await;
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.text().await, "foo/bar");
 }
 
 #[tokio::test]
@@ -464,7 +444,7 @@ async fn middleware_still_run_for_unmatched_requests() {
 
 #[tokio::test]
 #[should_panic(
-    expected = "Invalid route: `Router::route` cannot be used with `Router`s. Use `Router::nest` instead"
+    expected = "Invalid route: `Router::route_service` cannot be used with `Router`s. Use `Router::nest` instead"
 )]
 async fn routing_to_router_panics() {
     TestClient::new(Router::new().route_service("/", Router::new()));
@@ -499,34 +479,6 @@ async fn route_layer() {
 }
 
 #[tokio::test]
-#[should_panic(
-    expected = "Invalid route: insertion failed due to conflict with previously registered \
-    route: /*__private__axum_nest_tail_param. \
-    Note that `nest(\"/\", _)` conflicts with all routes. \
-    Use `Router::fallback` instead"
-)]
-async fn good_error_message_if_using_nest_root() {
-    let app = Router::new()
-        .nest("/", get(|| async {}))
-        .route("/", get(|| async {}));
-    TestClient::new(app);
-}
-
-#[tokio::test]
-#[should_panic(
-    expected = "Invalid route: insertion failed due to conflict with previously registered \
-    route: /*__private__axum_nest_tail_param. \
-    Note that `nest(\"/\", _)` conflicts with all routes. \
-    Use `Router::fallback` instead"
-)]
-async fn good_error_message_if_using_nest_root_when_merging() {
-    let one = Router::new().nest("/", get(|| async {}));
-    let two = Router::new().route("/", get(|| async {}));
-    let app = one.merge(two);
-    TestClient::new(app);
-}
-
-#[tokio::test]
 async fn different_methods_added_in_different_routes() {
     let app = Router::new()
         .route("/", get(|| async { "GET" }))
@@ -544,44 +496,12 @@ async fn different_methods_added_in_different_routes() {
 }
 
 #[tokio::test]
-async fn different_methods_added_in_different_routes_deeply_nested() {
-    let app = Router::new()
-        .route("/foo/bar/baz", get(|| async { "GET" }))
-        .nest(
-            "/foo",
-            Router::new().nest(
-                "/bar",
-                Router::new().route("/baz", post(|| async { "POST" })),
-            ),
-        );
-
-    let client = TestClient::new(app);
-
-    let res = client.get("/foo/bar/baz").send().await;
-    let body = res.text().await;
-    assert_eq!(body, "GET");
-
-    let res = client.post("/foo/bar/baz").send().await;
-    let body = res.text().await;
-    assert_eq!(body, "POST");
-}
-
-#[tokio::test]
 #[should_panic(expected = "Cannot merge two `Router`s that both have a fallback")]
 async fn merging_routers_with_fallbacks_panics() {
     async fn fallback() {}
     let one = Router::new().fallback(fallback);
     let two = Router::new().fallback(fallback);
     TestClient::new(one.merge(two));
-}
-
-#[tokio::test]
-#[should_panic(expected = "Cannot nest `Router`s that has a fallback")]
-async fn nesting_router_with_fallbacks_panics() {
-    async fn fallback() {}
-    let one = Router::new().fallback(fallback);
-    let app = Router::new().nest("/", one);
-    TestClient::new(app);
 }
 
 #[tokio::test]
@@ -767,4 +687,23 @@ async fn explicitly_setting_state() {
     let client = TestClient::new(app);
     let res = client.get("/").send().await;
     assert_eq!(res.text().await, "foo");
+}
+
+#[tokio::test]
+async fn layer_response_into_response() {
+    fn map_response<B>(_res: Response<B>) -> Result<Response<B>, impl IntoResponse> {
+        let headers = [("x-foo", "bar")];
+        let status = StatusCode::IM_A_TEAPOT;
+        Err((headers, status))
+    }
+
+    let app = Router::new()
+        .route("/", get(|| async {}))
+        .layer(MapResponseLayer::new(map_response));
+
+    let client = TestClient::new(app);
+
+    let res = client.get("/").send().await;
+    assert_eq!(res.headers()["x-foo"], "bar");
+    assert_eq!(res.status(), StatusCode::IM_A_TEAPOT);
 }
