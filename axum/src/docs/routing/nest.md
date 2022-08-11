@@ -90,8 +90,8 @@ let app = Router::new()
 
 # Fallbacks
 
-If a request matches the prefix but the nested router doesn't have matching
-route the outer fallback will _not_ be called:
+When nesting a router, if a request matches the prefix but the nested router doesn't have a matching
+route, the outer fallback will _not_ be called:
 
 ```rust
 use axum::{routing::get, http::StatusCode, handler::Handler, Router};
