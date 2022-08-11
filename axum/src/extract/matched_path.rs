@@ -85,8 +85,9 @@ where
 mod tests {
     use super::*;
     use crate::{extract::Extension, handler::Handler, routing::get, test_helpers::*, Router};
-    use http::Request;
+    use http::{Request, StatusCode};
     use std::task::{Context, Poll};
+    use tower::layer::layer_fn;
     use tower_service::Service;
 
     #[derive(Clone)]
@@ -147,24 +148,36 @@ mod tests {
             .nest("/api", api)
             .nest(
                 "/public",
-                Router::new().route("/assets/*path", get(handler)),
+                Router::new()
+                    .route("/assets/*path", get(handler))
+                    // have to set the middleware here since otherwise the
+                    // matched path is just `/public/*` since we're nesting
+                    // this router
+                    .layer(layer_fn(SetMatchedPathExtension)),
             )
             .nest("/foo", handler.into_service())
-            .layer(tower::layer::layer_fn(SetMatchedPathExtension));
+            .layer(layer_fn(SetMatchedPathExtension));
 
         let client = TestClient::new(app);
 
-        let res = client.get("/foo").send().await;
-        assert_eq!(res.text().await, "/:key");
-
         let res = client.get("/api/users/123").send().await;
         assert_eq!(res.text().await, "/api/users/:id");
+
+        // the router nested at `/public` doesn't handle `/`
+        let res = client.get("/public").send().await;
+        assert_eq!(res.status(), StatusCode::NOT_FOUND);
 
         let res = client.get("/public/assets/css/style.css").send().await;
         assert_eq!(
             res.text().await,
             "extractor = /public/assets/*path, middleware = /public/assets/*path"
         );
+
+        let res = client.get("/foo").send().await;
+        assert_eq!(res.text().await, "extractor = /foo, middleware = /foo");
+
+        let res = client.get("/foo/").send().await;
+        assert_eq!(res.text().await, "extractor = /foo/, middleware = /foo/");
 
         let res = client.get("/foo/bar/baz").send().await;
         assert_eq!(
@@ -175,5 +188,21 @@ mod tests {
                 crate::routing::NEST_TAIL_PARAM,
             ),
         );
+    }
+
+    #[tokio::test]
+    async fn nested_opaque_routers_append_to_matched_path() {
+        let app = Router::new().nest(
+            "/:a",
+            Router::new().route(
+                "/:b",
+                get(|path: MatchedPath| async move { path.as_str().to_owned() }),
+            ),
+        );
+
+        let client = TestClient::new(app);
+
+        let res = client.get("/foo/bar").send().await;
+        assert_eq!(res.text().await, "/:a/:b");
     }
 }

@@ -31,18 +31,7 @@ use tower_service::Service;
 ///     // `PUT or PATCH /users/:users_id`
 ///     .update(|Path(user_id): Path<u64>| async {})
 ///     // `DELETE /users/:users_id`
-///     .destroy(|Path(user_id): Path<u64>| async {})
-///     // Nest another router at the "member level"
-///     // This defines a route for `GET /users/:users_id/tweets`
-///     .nest(Router::new().route(
-///         "/tweets",
-///         get(|Path(user_id): Path<u64>| async {}),
-///     ))
-///     // Nest another router at the "collection level"
-///     // This defines a route for `GET /users/featured`
-///     .nest_collection(
-///         Router::new().route("/featured", get(|| async {})),
-///     );
+///     .destroy(|Path(user_id): Path<u64>| async {});
 ///
 /// let app = Router::new().merge(users);
 /// # let _: Router<axum::body::Body> = app;
@@ -136,34 +125,6 @@ where
         self.route(&path, delete(handler))
     }
 
-    /// Nest another route at the "member level".
-    ///
-    /// The routes will be nested at `/{resource_name}/:{resource_name}_id`.
-    pub fn nest<T>(mut self, svc: T) -> Self
-    where
-        T: Service<Request<B>, Error = Infallible> + Clone + Send + 'static,
-        T::Response: IntoResponse,
-        T::Future: Send + 'static,
-    {
-        let path = self.show_update_destroy_path();
-        self.router = self.router.nest(&path, svc);
-        self
-    }
-
-    /// Nest another route at the "collection level".
-    ///
-    /// The routes will be nested at `/{resource_name}`.
-    pub fn nest_collection<T>(mut self, svc: T) -> Self
-    where
-        T: Service<Request<B>, Error = Infallible> + Clone + Send + 'static,
-        T::Response: IntoResponse,
-        T::Future: Send + 'static,
-    {
-        let path = self.index_create_path();
-        self.router = self.router.nest(&path, svc);
-        self
-    }
-
     fn index_create_path(&self) -> String {
         format!("/{}", self.name)
     }
@@ -214,14 +175,7 @@ mod tests {
             .show(|Path(id): Path<u64>| async move { format!("users#show id={}", id) })
             .edit(|Path(id): Path<u64>| async move { format!("users#edit id={}", id) })
             .update(|Path(id): Path<u64>| async move { format!("users#update id={}", id) })
-            .destroy(|Path(id): Path<u64>| async move { format!("users#destroy id={}", id) })
-            .nest(Router::new().route(
-                "/tweets",
-                get(|Path(id): Path<u64>| async move { format!("users#tweets id={}", id) }),
-            ))
-            .nest_collection(
-                Router::new().route("/featured", get(|| async move { "users#featured" })),
-            );
+            .destroy(|Path(id): Path<u64>| async move { format!("users#destroy id={}", id) });
 
         let mut app = Router::new().merge(users);
 
@@ -263,16 +217,6 @@ mod tests {
         assert_eq!(
             call_route(&mut app, Method::DELETE, "/users/1").await,
             "users#destroy id=1"
-        );
-
-        assert_eq!(
-            call_route(&mut app, Method::GET, "/users/1/tweets").await,
-            "users#tweets id=1"
-        );
-
-        assert_eq!(
-            call_route(&mut app, Method::GET, "/users/featured").await,
-            "users#featured"
         );
     }
 
