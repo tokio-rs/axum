@@ -96,12 +96,12 @@ impl BenchmarkBuilder {
     where
         F: FnOnce() -> Router,
     {
-        if !on_ci() {
-            // support only running some benchmarks with
-            // ```
-            // cargo bench -- routing send-json
-            // ```
-            let args = std::env::args().collect::<Vec<_>>();
+        // support only running some benchmarks with
+        // ```
+        // cargo bench -- routing send-json
+        // ```
+        let args = std::env::args().collect::<Vec<_>>();
+        if !args.len() == 1 {
             let names = &args[1..args.len() - 1];
             if !names.is_empty() && !names.contains(&self.name.to_owned()) {
                 return;
