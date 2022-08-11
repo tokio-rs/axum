@@ -4,6 +4,7 @@ version = "0.5.10"
 categories = ["asynchronous", "network-programming", "web-programming::http-server"]
 description = "Web framework that focuses on ergonomics and modularity"
 edition = "2021"
+rust-version = "1.60"
 homepage = "https://github.com/tokio-rs/axum"
 keywords = ["http", "web", "framework"]
 license = "MIT"
@@ -12,17 +13,20 @@ repository = "https://github.com/tokio-rs/axum"
 
 [features]
 default = ["form", "http1", "json", "matched-path", "original-uri", "query", "tower-log"]
-form = ["serde_urlencoded"]
+form = ["dep:serde_urlencoded"]
 http1 = ["hyper/http1"]
 http2 = ["hyper/http2"]
-json = ["serde_json"]
-macros = ["axum-macros"]
+json = ["dep:serde_json"]
+macros = ["dep:axum-macros"]
 matched-path = []
-multipart = ["multer"]
+multipart = ["dep:multer"]
 original-uri = []
-query = ["serde_urlencoded"]
+query = ["dep:serde_urlencoded"]
 tower-log = ["tower/log"]
-ws = ["tokio-tungstenite", "sha-1", "base64"]
+ws = ["dep:tokio-tungstenite", "dep:sha-1", "dep:base64"]
+
+# Required for intra-doc links to resolve correctly
+__private_docs = ["tower/full", "tower-http/full"]
 
 [dependencies]
 async-trait = "0.1.43"
@@ -42,7 +46,7 @@ pin-project-lite = "0.2.7"
 serde = "1.0"
 sync_wrapper = "0.1.1"
 tokio = { version = "1", features = ["time"] }
-tower = { version = "0.4.11", default-features = false, features = ["util", "make"] }
+tower = { version = "0.4.13", default-features = false, features = ["util", "make"] }
 tower-http = { version = "0.3.0", features = ["util", "map-response-body"] }
 tower-layer = "0.3"
 tower-service = "0.3"
@@ -55,7 +59,7 @@ multer = { version = "2.0.0", optional = true }
 serde_json = { version = "1.0", features = ["raw_value"], optional = true }
 serde_urlencoded = { version = "0.7", optional = true }
 sha-1 = { version = "0.10", optional = true }
-tokio-tungstenite = { version = "0.17", optional = true }
+tokio-tungstenite = { version = "0.17.2", optional = true }
 
 [dev-dependencies]
 anyhow = "1.0"
@@ -98,3 +102,7 @@ features = [
     "multipart",
     "ws",
 ]
+
+[[bench]]
+name = "benches"
+harness = false

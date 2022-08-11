@@ -234,14 +234,14 @@
 //!         "/users",
 //!         post({
 //!             let shared_state = Arc::clone(&shared_state);
-//!             move |body| create_user(body, Arc::clone(&shared_state))
+//!             move |body| create_user(body, shared_state)
 //!         }),
 //!     )
 //!     .route(
 //!         "/users/:id",
 //!         get({
 //!             let shared_state = Arc::clone(&shared_state);
-//!             move |path| get_user(path, Arc::clone(&shared_state))
+//!             move |path| get_user(path, shared_state)
 //!         }),
 //!     );
 //!

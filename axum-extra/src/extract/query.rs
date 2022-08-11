@@ -12,7 +12,7 @@ use std::ops::Deref;
 ///
 /// `T` is expected to implement [`serde::Deserialize`].
 ///
-/// # Differences from `axum::extract::Form`
+/// # Differences from `axum::extract::Query`
 ///
 /// This extractor uses [`serde_html_form`] under-the-hood which supports multi-value items. These
 /// are sent by multiple `<input>` attributes of the same name (e.g. checkboxes) and `<select>`s

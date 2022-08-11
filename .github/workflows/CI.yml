@@ -2,7 +2,7 @@ name: CI
 
 env:
   CARGO_TERM_COLOR: always
-  MSRV: 1.56.0
+  MSRV: '1.60'
 
 on:
   push:
@@ -26,7 +26,10 @@ jobs:
         override: true
         profile: minimal
         components: clippy, rustfmt
-    - uses: Swatinem/rust-cache@v1
+    - uses: Swatinem/rust-cache@v2
+      with:
+        key: ${{ matrix.pwd }}
+        workspaces: ${{ matrix.pwd }}
     - name: Check
       working-directory: ${{ matrix.pwd }}
       run: |
@@ -113,6 +116,12 @@ jobs:
         command: update
         args: -Z minimal-versions
         toolchain: nightly
+    - name: Fix up Cargo.lock
+      uses: actions-rs/cargo@v1
+      with:
+        command: update
+        args: -p crc32fast --precise 1.1.1
+        toolchain: nightly
     - name: Run tests
       uses: actions-rs/cargo@v1
       with:
@@ -121,7 +130,6 @@ jobs:
           -p axum
           -p axum-extra
           -p axum-core
-          -p internal-minimal-versions
           --all-features
           --all-targets
           --locked
@@ -135,7 +143,6 @@ jobs:
         command: test
         args: >
           -p axum-macros
-          -p internal-minimal-versions
           --doc
           --all-features
           --locked
@@ -216,11 +223,17 @@ jobs:
         toolchain: beta
         override: true
         profile: minimal
-    - uses: Swatinem/rust-cache@v1
+    - uses: Swatinem/rust-cache@v2
+      with:
+        key: ${{ matrix.pwd }}
+        workspaces: ${{ matrix.pwd }}
     - name: Install cargo-sort
       run: |
         cargo install cargo-sort
-    - name: Check dependecy tables
+    - name: Remove non-crate folder
+      run: rm -rf async-graphql || true
+      working-directory: ${{ matrix.pwd }}
+    - name: Check dependency tables
       working-directory: ${{ matrix.pwd }}
       run: |
         cargo sort --workspace --grouped --check
