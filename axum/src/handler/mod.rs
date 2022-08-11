@@ -62,6 +62,38 @@ pub use self::{into_service::IntoService, with_state::WithState};
 ///
 /// See the [module docs](crate::handler) for more details.
 ///
+/// # Converting `Handler`s into [`Service`]s
+///
+/// To convert `Handler`s into [`Service`]s you have to call either
+/// [`HandlerWithoutStateExt::into_service`] or [`WithState::into_service`]:
+///
+/// ```
+/// use tower::Service;
+/// use axum::{
+///     extract::State,
+///     body::Body,
+///     http::Request,
+///     handler::{HandlerWithoutStateExt, Handler},
+/// };
+///
+/// // this handler doesn't require any state
+/// async fn one() {}
+/// // so it can be converted to a service with `HandlerWithoutStateExt::into_service`
+/// assert_service(one.into_service());
+///
+/// // this handler requires state
+/// async fn two(_: State<String>) {}
+/// // so we have to provide it
+/// let handler_with_state = two.with_state(String::new());
+/// // which gives us a `Service`
+/// assert_service(handler_with_state);
+///
+/// // helper to check that a value implements `Service`
+/// fn assert_service<S>(service: S)
+/// where
+///     S: Service<Request<Body>>,
+/// {}
+/// ```
 #[doc = include_str!("../docs/debugging_handler_type_errors.md")]
 pub trait Handler<T, S = (), B = Body>: Clone + Send + Sized + 'static {
     /// The type of future calling this handler returns.
