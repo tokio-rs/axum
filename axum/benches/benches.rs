@@ -178,9 +178,7 @@ fn ensure_rewrk_is_installed() {
     cmd.arg("--help");
     cmd.stdout(Stdio::null());
     cmd.stderr(Stdio::null());
-    let status = cmd.status().unwrap();
-    if !status.success() {
-        eprintln!("rewrk is not installed. See https://github.com/lnx-search/rewrk");
-        std::process::exit(1);
-    }
+    cmd.status().unwrap_or_else(|_| {
+        panic!("rewrk is not installed. See https://github.com/lnx-search/rewrk")
+    });
 }
