@@ -1515,6 +1515,22 @@ mod tests {
         assert_eq!(text, "state");
     }
 
+    #[tokio::test]
+    async fn merge_accessing_state() {
+        let one = get(|State(state): State<&'static str>| async move { state });
+        let two = post(|State(state): State<&'static str>| async move { state });
+
+        let mut svc = one.merge(two).with_state("state");
+
+        let (status, _, text) = call(Method::GET, &mut svc).await;
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(text, "state");
+
+        let (status, _, _) = call(Method::POST, &mut svc).await;
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(text, "state");
+    }
+
     async fn call<S>(method: Method, svc: &mut S) -> (StatusCode, HeaderMap, String)
     where
         S: Service<Request<Body>, Error = Infallible>,
