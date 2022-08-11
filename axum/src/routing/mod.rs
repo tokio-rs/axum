@@ -114,6 +114,7 @@ where
     }
 
     #[doc = include_str!("../docs/routing/route.md")]
+    #[track_caller]
     pub fn route<T>(mut self, path: &str, service: T) -> Self
     where
         T: Service<Request<B>, Error = Infallible> + Clone + Send + 'static,
@@ -167,6 +168,7 @@ where
         self
     }
 
+    #[track_caller]
     fn set_node(&mut self, path: &str, id: RouteId) {
         let mut node =
             Arc::try_unwrap(Arc::clone(&self.node)).unwrap_or_else(|node| (*node).clone());
@@ -177,6 +179,7 @@ where
     }
 
     #[doc = include_str!("../docs/routing/nest.md")]
+    #[track_caller]
     pub fn nest<T>(mut self, mut path: &str, svc: T) -> Self
     where
         T: Service<Request<B>, Error = Infallible> + Clone + Send + 'static,
@@ -216,6 +219,7 @@ where
     }
 
     #[doc = include_str!("../docs/routing/merge.md")]
+    #[track_caller]
     pub fn merge<R>(mut self, other: R) -> Self
     where
         R: Into<Router<B>>,

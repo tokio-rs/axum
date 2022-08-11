@@ -205,6 +205,7 @@ macro_rules! chained_service_fn {
         $name:ident, $method:ident
     ) => {
         $(#[$m])+
+        #[track_caller]
         pub fn $name<S>(self, svc: S) -> Self
         where
             S: Service<Request<ReqBody>, Error = E>
@@ -268,6 +269,7 @@ macro_rules! chained_handler_fn {
         $name:ident, $method:ident
     ) => {
         $(#[$m])+
+        #[track_caller]
         pub fn $name<H, T>(self, handler: H) -> Self
         where
             H: Handler<T, B>,
@@ -577,6 +579,7 @@ where
     /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
     /// # };
     /// ```
+    #[track_caller]
     pub fn on<H, T>(self, filter: MethodFilter, handler: H) -> Self
     where
         H: Handler<T, B>,
@@ -689,6 +692,7 @@ impl<ReqBody, E> MethodRouter<ReqBody, E> {
     /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
     /// # };
     /// ```
+    #[track_caller]
     pub fn on_service<S>(self, filter: MethodFilter, svc: S) -> Self
     where
         S: Service<Request<ReqBody>, Error = E> + Clone + Send + 'static,
@@ -783,8 +787,10 @@ impl<ReqBody, E> MethodRouter<ReqBody, E> {
     }
 
     #[doc = include_str!("../docs/method_routing/merge.md")]
+    #[track_caller]
     pub fn merge(mut self, other: MethodRouter<ReqBody, E>) -> Self {
         // written using inner functions to generate less IR
+        #[track_caller]
         fn merge_inner<T>(name: &str, first: Option<T>, second: Option<T>) -> Option<T> {
             match (first, second) {
                 (Some(_), Some(_)) => panic!(
@@ -796,6 +802,7 @@ impl<ReqBody, E> MethodRouter<ReqBody, E> {
             }
         }
 
+        #[track_caller]
         fn merge_fallback<B, E>(
             fallback: Fallback<B, E>,
             fallback_other: Fallback<B, E>,
@@ -843,6 +850,7 @@ impl<ReqBody, E> MethodRouter<ReqBody, E> {
         self.layer(HandleErrorLayer::new(f))
     }
 
+    #[track_caller]
     fn on_service_boxed_response_body<S>(mut self, filter: MethodFilter, svc: S) -> Self
     where
         S: Service<Request<ReqBody>, Error = E> + Clone + Send + 'static,
