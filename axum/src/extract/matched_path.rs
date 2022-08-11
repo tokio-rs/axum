@@ -140,7 +140,7 @@ mod tests {
             )
         }
 
-        let app: _ = Router::new()
+        let app = Router::new()
             .route(
                 "/:key",
                 get(|path: MatchedPath| async move { path.as_str().to_owned() }),
