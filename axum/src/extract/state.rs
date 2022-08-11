@@ -93,7 +93,7 @@ use std::{
 ///
 /// let state = AppState {};
 ///
-/// let app = get(handler)
+/// let method_router_with_state = get(handler)
 ///     // provide the state so the handler can access it
 ///     .with_state(state);
 ///
@@ -101,7 +101,7 @@ use std::{
 ///     // use `state`...
 /// }
 /// # async {
-/// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+/// # axum::Server::bind(&"".parse().unwrap()).serve(method_router_with_state.into_make_service()).await.unwrap();
 /// # };
 /// ```
 ///
@@ -115,15 +115,16 @@ use std::{
 ///
 /// let state = AppState {};
 ///
-/// let app = handler.with_state(state);
-///
 /// async fn handler(State(state): State<AppState>) {
 ///     // use `state`...
 /// }
 ///
+/// // provide the state so the handler can access it
+/// let handler_with_state = handler.with_state(state);
+///
 /// # async {
 /// axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())
-///     .serve(app.into_make_service())
+///     .serve(handler_with_state.into_make_service())
 ///     .await
 ///     .expect("server failed");
 /// # };
