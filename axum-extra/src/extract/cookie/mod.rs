@@ -208,7 +208,7 @@ fn set_cookies(jar: cookie::CookieJar, headers: &mut HeaderMap) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use axum::{body::Body, http::Request, routing::get, Extension, Router};
+    use axum::{body::Body, http::Request, routing::get, Router};
     use tower::ServiceExt;
 
     macro_rules! cookie_test {
@@ -227,12 +227,15 @@ mod tests {
                     jar.remove(Cookie::named("key"))
                 }
 
-                let app = Router::<_, Body>::new()
+                let state = AppState {
+                    key: Key::generate(),
+                    custom_key: CustomKey(Key::generate()),
+                };
+
+                let app = Router::<_, Body>::with_state(state)
                     .route("/set", get(set_cookie))
                     .route("/get", get(get_cookie))
-                    .route("/remove", get(remove_cookie))
-                    .layer(Extension(Key::generate()))
-                    .layer(Extension(CustomKey(Key::generate())));
+                    .route("/remove", get(remove_cookie));
 
                 let res = app
                     .clone()
@@ -281,6 +284,24 @@ mod tests {
     cookie_test!(private_cookies_with_custom_key, PrivateCookieJar<CustomKey>);
 
     #[derive(Clone)]
+    struct AppState {
+        key: Key,
+        custom_key: CustomKey,
+    }
+
+    impl From<AppState> for Key {
+        fn from(state: AppState) -> Key {
+            state.key
+        }
+    }
+
+    impl From<AppState> for CustomKey {
+        fn from(state: AppState) -> CustomKey {
+            state.custom_key
+        }
+    }
+
+    #[derive(Clone)]
     struct CustomKey(Key);
 
     impl From<CustomKey> for Key {
@@ -295,9 +316,12 @@ mod tests {
             format!("{:?}", jar.get("key"))
         }
 
-        let app = Router::<_, Body>::new()
-            .route("/get", get(get_cookie))
-            .layer(Extension(Key::generate()));
+        let state = AppState {
+            key: Key::generate(),
+            custom_key: CustomKey(Key::generate()),
+        };
+
+        let app = Router::<_, Body>::with_state(state).route("/get", get(get_cookie));
 
         let res = app
             .clone()

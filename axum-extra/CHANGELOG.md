@@ -17,6 +17,8 @@ and this project adheres to [Semantic Versioning].
   literal `Response`
 - **added:** Support chaining handlers with `HandlerCallWithExtractors::or` ([#1170])
 - **change:** axum-extra's MSRV is now 1.60 ([#1239])
+- **breaking:** `SignedCookieJar` and `PrivateCookieJar` now extracts the keys
+  from the router's state, rather than extensions
 
 [#1086]: https://github.com/tokio-rs/axum/pull/1086
 [#1119]: https://github.com/tokio-rs/axum/pull/1119
