@@ -38,20 +38,26 @@ pub(crate) fn expand(item: syn::Item) -> syn::Result<TokenStream> {
                 }
                 FromRequestContainerAttr::RejectionDerive(_, opt_outs) => {
                     // TODO(david): check `generic_ident`
-                    impl_struct_by_extracting_each_field(ident, fields, vis, opt_outs)
+                    impl_struct_by_extracting_each_field(ident, fields, vis, opt_outs, None)
                 }
                 FromRequestContainerAttr::Rejection(rejection) => {
                     // TODO(david): check `generic_ident`
-                    todo!()
-                }
-                FromRequestContainerAttr::None => {
-                    // TODO(david): check `generic_ident`
-
                     impl_struct_by_extracting_each_field(
                         ident,
                         fields,
                         vis,
                         RejectionDeriveOptOuts::default(),
+                        Some(rejection),
+                    )
+                }
+                FromRequestContainerAttr::None => {
+                    // TODO(david): check `generic_ident`
+                    impl_struct_by_extracting_each_field(
+                        ident,
+                        fields,
+                        vis,
+                        RejectionDeriveOptOuts::default(),
+                        None,
                     )
                 }
             }
@@ -88,7 +94,7 @@ pub(crate) fn expand(item: syn::Item) -> syn::Result<TokenStream> {
                     ))
                 }
                 FromRequestContainerAttr::Rejection(rejection) => {
-                    todo!()
+                    todo!("{} {}", file!(), line!())
                 }
                 FromRequestContainerAttr::None => Err(syn::Error::new(
                     Span::call_site(),
@@ -180,10 +186,15 @@ fn impl_struct_by_extracting_each_field(
     fields: syn::Fields,
     vis: syn::Visibility,
     rejection_derive_opt_outs: RejectionDeriveOptOuts,
+    rejection: Option<syn::Path>,
 ) -> syn::Result<TokenStream> {
-    let extract_fields = extract_fields(&fields)?;
+    let extract_fields = extract_fields(&fields, &rejection)?;
 
-    let (rejection_ident, rejection) = if has_no_fields(&fields) {
+    let (rejection_ident, rejection) = if let Some(rejection) = rejection {
+        let rejection_ident = syn::parse_quote!(#rejection);
+        let rejection = quote! { #rejection };
+        (rejection_ident, None)
+    } else if has_no_fields(&fields) {
         (syn::parse_quote!(::std::convert::Infallible), None)
     } else {
         let rejection_ident = rejection_ident(&ident);
@@ -229,7 +240,10 @@ fn rejection_ident(ident: &syn::Ident) -> syn::Type {
     syn::parse_quote!(#ident)
 }
 
-fn extract_fields(fields: &syn::Fields) -> syn::Result<Vec<TokenStream>> {
+fn extract_fields(
+    fields: &syn::Fields,
+    rejection: &Option<syn::Path>,
+) -> syn::Result<Vec<TokenStream>> {
     fields
         .iter()
         .enumerate()
@@ -279,12 +293,18 @@ fn extract_fields(fields: &syn::Fields) -> syn::Result<Vec<TokenStream>> {
                     },
                 })
             } else {
+                let map_err = if let Some(rejection) = rejection {
+                    quote! { <#rejection as ::std::convert::From<_>>::from }
+                } else {
+                    quote! { Self::Rejection::#rejection_variant_name }
+                };
+
                 Ok(quote_spanned! {ty_span=>
                     #member: {
                         ::axum::extract::FromRequest::from_request(req)
                             .await
                             .map(#into_inner)
-                            .map_err(Self::Rejection::#rejection_variant_name)?
+                            .map_err(#map_err)?
                     },
                 })
             }
@@ -641,6 +661,10 @@ fn impl_enum_by_extracting_all_at_once(
     path: syn::Path,
     rejection: Option<syn::Path>,
 ) -> syn::Result<TokenStream> {
+    if rejection.is_some() {
+        todo!("bingo")
+    }
+
     for variant in variants {
         let FromRequestFieldAttr { via } = parse_field_attrs(&variant.attrs)?;
         if let Some((via, _)) = via {
@@ -707,9 +731,6 @@ fn ui() {
             t.compile_fail("tests/from_request/fail/*.rs");
             t.pass("tests/from_request/pass/*.rs");
         }
-
-        // t.pass("tests/from_request/pass/override_rejection.rs");
-        // t.compile_fail("tests/from_request/fail/generic.rs");
     }
 
     #[rustversion::not(stable)]

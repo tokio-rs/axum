@@ -1,40 +1,60 @@
 use axum::{
-    extract::rejection::JsonRejection,
+    async_trait,
+    extract::{rejection::ExtensionRejection, FromRequest, RequestParts},
+    http::StatusCode,
     response::{IntoResponse, Response},
     routing::get,
-    Router,
+    Extension, Router,
 };
 use axum_macros::FromRequest;
-use serde::Deserialize;
 
 fn main() {
     let _: Router = Router::new().route("/", get(handler).post(handler_result));
 }
 
-#[derive(Deserialize)]
-struct Payload {}
+async fn handler(_: MyExtractor) {}
 
-async fn handler(_: MyJson<Payload>) {}
-
-async fn handler_result(_: Result<MyJson<Payload>, MyJsonRejection>) {}
+async fn handler_result(_: Result<MyExtractor, MyRejection>) {}
 
 #[derive(FromRequest)]
-#[from_request(
-    // TODO(david): `rejection(...)` without `via(...)`
-    via(axum::Json),
-    rejection(MyJsonRejection),
-)]
-struct MyJson<T>(T);
+#[from_request(rejection(MyRejection))]
+struct MyExtractor {
+    one: Extension<String>,
+    #[from_request(via(Extension))]
+    two: String,
+    three: OtherExtractor,
+}
 
-struct MyJsonRejection {}
+struct OtherExtractor;
 
-impl From<JsonRejection> for MyJsonRejection {
-    fn from(_: JsonRejection) -> Self {
+#[async_trait]
+impl<B> FromRequest<B> for OtherExtractor
+where
+    B: Send + 'static,
+{
+    // this rejection doesn't implement `Display` and `Error`
+    type Rejection = (StatusCode, String);
+
+    async fn from_request(_req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
         todo!()
     }
 }
 
-impl IntoResponse for MyJsonRejection {
+struct MyRejection {}
+
+impl From<ExtensionRejection> for MyRejection {
+    fn from(_: ExtensionRejection) -> Self {
+        todo!()
+    }
+}
+
+impl From<(StatusCode, String)> for MyRejection {
+    fn from(_: (StatusCode, String)) -> Self {
+        todo!()
+    }
+}
+
+impl IntoResponse for MyRejection {
     fn into_response(self) -> Response {
         todo!()
     }
