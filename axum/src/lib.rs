@@ -201,7 +201,7 @@
 //! # };
 //! ```
 //!
-//! You should prefer using [`State`] if possible since its more type safe. The downside is that
+//! You should prefer using [`State`] if possible since it's more type safe. The downside is that
 //! its less dynamic than request extensions.
 //!
 //! See [`State`] for more details about accessing state.
