@@ -25,6 +25,7 @@ axum = { path = "../axum", version = "0.5", features = ["headers"] }
 axum-extra = { path = "../axum-extra", version = "0.3", features = ["typed-routing"] }
 rustversion = "1.0"
 serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
 syn = { version = "1.0", features = ["full", "extra-traits"] }
 tokio = { version = "1.0", features = ["full"] }
 trybuild = "1.0.63"

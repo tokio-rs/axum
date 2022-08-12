@@ -614,8 +614,14 @@ fn impl_struct_by_extracting_all_at_once(
     };
 
     let rejection_bound = rejection.as_ref().map(|rejection| {
-        quote! {
-            #rejection: ::std::convert::From<<#path<T> as ::axum::extract::FromRequest<B>>::Rejection>,
+        if generic_ident.is_some() {
+            quote! {
+                #rejection: ::std::convert::From<<#path<T> as ::axum::extract::FromRequest<B>>::Rejection>,
+            }
+        } else {
+            quote! {
+                #rejection: ::std::convert::From<<#path<Self> as ::axum::extract::FromRequest<B>>::Rejection>,
+            }
         }
     }).unwrap_or_default();
 
