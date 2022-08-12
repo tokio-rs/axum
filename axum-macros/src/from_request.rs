@@ -93,9 +93,10 @@ pub(crate) fn expand(item: syn::Item) -> syn::Result<TokenStream> {
                         "cannot use `rejection_derive` on enums",
                     ))
                 }
-                FromRequestContainerAttr::Rejection(rejection) => {
-                    todo!("{} {}", file!(), line!())
-                }
+                FromRequestContainerAttr::Rejection(rejection) => Err(syn::Error::new_spanned(
+                    rejection,
+                    "cannot use `rejection` without `via`",
+                )),
                 FromRequestContainerAttr::None => Err(syn::Error::new(
                     Span::call_site(),
                     "missing `#[from_request(via(...))]`",
@@ -661,10 +662,6 @@ fn impl_enum_by_extracting_all_at_once(
     path: syn::Path,
     rejection: Option<syn::Path>,
 ) -> syn::Result<TokenStream> {
-    if rejection.is_some() {
-        todo!("bingo")
-    }
-
     for variant in variants {
         let FromRequestFieldAttr { via } = parse_field_attrs(&variant.attrs)?;
         if let Some((via, _)) = via {
@@ -691,6 +688,14 @@ fn impl_enum_by_extracting_all_at_once(
         }
     }
 
+    let associated_rejection_type = if let Some(rejection) = rejection {
+        quote! { #rejection }
+    } else {
+        quote! {
+            <#path<Self> as ::axum::extract::FromRequest<B>>::Rejection
+        }
+    };
+
     let path_span = path.span();
 
     Ok(quote_spanned! {path_span=>
@@ -702,7 +707,7 @@ fn impl_enum_by_extracting_all_at_once(
             B::Data: ::std::marker::Send,
             B::Error: ::std::convert::Into<::axum::BoxError>,
         {
-            type Rejection = <#path<Self> as ::axum::extract::FromRequest<B>>::Rejection;
+            type Rejection = #associated_rejection_type;
 
             async fn from_request(
                 req: &mut ::axum::extract::RequestParts<B>,
@@ -710,6 +715,7 @@ fn impl_enum_by_extracting_all_at_once(
                 ::axum::extract::FromRequest::<B>::from_request(req)
                     .await
                     .map(|#path(inner)| inner)
+                    .map_err(::std::convert::From::from)
             }
         }
     })
