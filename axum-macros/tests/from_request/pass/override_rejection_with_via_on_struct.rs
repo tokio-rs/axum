@@ -20,7 +20,6 @@ async fn handler_result(_: Result<MyJson<Payload>, MyJsonRejection>) {}
 
 #[derive(FromRequest)]
 #[from_request(
-    // TODO(david): `rejection(...)` without `via(...)`
     via(axum::Json),
     rejection(MyJsonRejection),
 )]
