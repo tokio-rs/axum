@@ -7,10 +7,26 @@ pub(crate) fn expand(attr: Attrs, item_fn: ItemFn) -> TokenStream {
     let check_request_last_extractor = check_request_last_extractor(&item_fn);
     let check_path_extractor = check_path_extractor(&item_fn);
     let check_multiple_body_extractors = check_multiple_body_extractors(&item_fn);
-
-    let check_inputs_impls_from_request = check_inputs_impls_from_request(&item_fn, &attr.body_ty);
     let check_output_impls_into_response = check_output_impls_into_response(&item_fn);
-    let check_future_send = check_future_send(&item_fn);
+
+    // If the function is generic, we can't reliably check its inputs or whether the future it
+    // returns is `Send`. Skip those checks to avoid unhelpful additional compiler errors.
+    let check_inputs_and_future_send = if item_fn.sig.generics.params.is_empty() {
+        let check_inputs_impls_from_request =
+            check_inputs_impls_from_request(&item_fn, &attr.body_ty);
+        let check_future_send = check_future_send(&item_fn);
+
+        quote! {
+            #check_inputs_impls_from_request
+            #check_future_send
+        }
+    } else {
+        syn::Error::new_spanned(
+            &item_fn.sig.generics,
+            "`#[axum_macros::debug_handler]` doesn't support generic functions",
+        )
+        .into_compile_error()
+    };
 
     quote! {
         #item_fn
@@ -18,9 +34,8 @@ pub(crate) fn expand(attr: Attrs, item_fn: ItemFn) -> TokenStream {
         #check_request_last_extractor
         #check_path_extractor
         #check_multiple_body_extractors
-        #check_inputs_impls_from_request
         #check_output_impls_into_response
-        #check_future_send
+        #check_inputs_and_future_send
     }
 }
 
@@ -153,14 +168,6 @@ fn check_multiple_body_extractors(item_fn: &ItemFn) -> TokenStream {
 }
 
 fn check_inputs_impls_from_request(item_fn: &ItemFn, body_ty: &Type) -> TokenStream {
-    if !item_fn.sig.generics.params.is_empty() {
-        return syn::Error::new_spanned(
-            &item_fn.sig.generics,
-            "`#[axum_macros::debug_handler]` doesn't support generic functions",
-        )
-        .into_compile_error();
-    }
-
     item_fn
         .sig
         .inputs
