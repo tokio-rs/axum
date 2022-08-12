@@ -7,6 +7,11 @@ use std::{
 
 /// Extractor for state.
 ///
+/// Note this extractor is not available to middleware. See ["Accessing state in
+/// middleware"][state-from-middleware] for how to access state in middleware.
+///
+/// [state-from-middleware]: ../middleware/index.html#accessing-state-in-middleware
+///
 /// # Examples
 ///
 /// ## With `Router`
