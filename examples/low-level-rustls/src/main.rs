@@ -50,6 +50,8 @@ async fn main() {
     let listener = TcpListener::bind("127.0.0.1:3000").await.unwrap();
     let mut listener = AddrIncoming::from_listener(listener).unwrap();
 
+    let protocol = Arc::new(Http::new());
+
     let mut app = Router::new()
         .route("/", get(handler))
         .into_make_service_with_connect_info::<SocketAddr>();
@@ -62,11 +64,13 @@ async fn main() {
 
         let acceptor = acceptor.clone();
 
-        let app = app.make_service(&stream).await.unwrap();
+        let protocol = protocol.clone();
+
+        let svc = app.make_service(&stream);
 
         tokio::spawn(async move {
             if let Ok(stream) = acceptor.accept(stream).await {
-                let _ = Http::new().serve_connection(stream, app).await;
+                let _ = protocol.serve_connection(stream, svc.await.unwrap()).await;
             }
         });
     }
