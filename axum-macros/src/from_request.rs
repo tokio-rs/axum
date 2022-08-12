@@ -37,11 +37,13 @@ pub(crate) fn expand(item: syn::Item) -> syn::Result<TokenStream> {
                     )
                 }
                 FromRequestContainerAttr::RejectionDerive(_, opt_outs) => {
-                    // TODO(david): check `generic_ident`
+                    error_on_generic_ident(generic_ident)?;
+
                     impl_struct_by_extracting_each_field(ident, fields, vis, opt_outs, None)
                 }
                 FromRequestContainerAttr::Rejection(rejection) => {
-                    // TODO(david): check `generic_ident`
+                    error_on_generic_ident(generic_ident)?;
+
                     impl_struct_by_extracting_each_field(
                         ident,
                         fields,
@@ -51,7 +53,8 @@ pub(crate) fn expand(item: syn::Item) -> syn::Result<TokenStream> {
                     )
                 }
                 FromRequestContainerAttr::None => {
-                    // TODO(david): check `generic_ident`
+                    error_on_generic_ident(generic_ident)?;
+
                     impl_struct_by_extracting_each_field(
                         ident,
                         fields,
@@ -179,6 +182,17 @@ fn parse_single_generic_type_on_struct(
             generics,
             "#[derive(FromRequest)] only supports 0 or 1 generic type parameters",
         )),
+    }
+}
+
+fn error_on_generic_ident(generic_ident: Option<Ident>) -> syn::Result<()> {
+    if let Some(generic_ident) = generic_ident {
+        Err(syn::Error::new_spanned(
+            generic_ident,
+            "#[derive(FromRequest)] only supports generics when used with #[from_request(via)]",
+        ))
+    } else {
+        Ok(())
     }
 }
 
