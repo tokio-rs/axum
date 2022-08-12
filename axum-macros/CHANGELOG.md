@@ -8,8 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 # Unreleased
 
 - **change:** axum-macro's MSRV is now 1.60 ([#1239])
+- **added:** Support using a different rejection for `#[derive(FromRequest)]`
+  with `#[from_request(rejection(MyRejection))]` ([#1256])
 
 [#1239]: https://github.com/tokio-rs/axum/pull/1239
+[#1256]: https://github.com/tokio-rs/axum/pull/1256
 
 # 0.2.3 (27. June, 2022)
 

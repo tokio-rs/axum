@@ -237,6 +237,56 @@ mod typed_path;
 /// }
 /// ```
 ///
+/// You can also use your own rejection type with `#[from_request(rejection(YourType))]`:
+///
+/// ```
+/// use axum_macros::FromRequest;
+/// use axum::{
+///     extract::{
+///         rejection::{ExtensionRejection, StringRejection},
+///         FromRequest, RequestParts,
+///     },
+///     Extension,
+///     response::{Response, IntoResponse},
+///     http::StatusCode,
+///     headers::ContentType,
+///     body::Bytes,
+///     async_trait,
+/// };
+///
+/// #[derive(FromRequest)]
+/// #[from_request(rejection(MyRejection))]
+/// struct MyExtractor {
+///     state: Extension<String>,
+///     body: String,
+/// }
+///
+/// struct MyRejection(Response);
+///
+/// // This tells axum how to convert `Extension`'s rejections into `MyRejection`
+/// impl From<ExtensionRejection> for MyRejection {
+///     fn from(rejection: ExtensionRejection) -> Self {
+///         // ...
+///         # todo!()
+///     }
+/// }
+///
+/// // This tells axum how to convert `String`'s rejections into `MyRejection`
+/// impl From<StringRejection> for MyRejection {
+///     fn from(rejection: StringRejection) -> Self {
+///         // ...
+///         # todo!()
+///     }
+/// }
+///
+/// // All rejections must implement `IntoResponse`
+/// impl IntoResponse for MyRejection {
+///     fn into_response(self) -> Response {
+///         self.0
+///     }
+/// }
+/// ```
+///
 /// # The whole type at once
 ///
 /// By using `#[from_request(via(...))]` on the container you can extract the whole type at once,
@@ -259,9 +309,101 @@ mod typed_path;
 /// The rejection will be the "via extractors"'s rejection. For the previous example that would be
 /// [`axum::extract::rejection::ExtensionRejection`].
 ///
+/// You can use a different rejection type with `#[from_request(rejection(YourType))]`:
+///
+/// ```
+/// use axum_macros::FromRequest;
+/// use axum::{
+///     extract::{Extension, rejection::ExtensionRejection},
+///     response::{IntoResponse, Response},
+///     Json,
+///     http::StatusCode,
+/// };
+/// use serde_json::json;
+///
+/// // This will extracted via `Extension::<State>::from_request`
+/// #[derive(Clone, FromRequest)]
+/// #[from_request(
+///     via(Extension),
+///     // Use your own rejection type
+///     rejection(MyRejection),
+/// )]
+/// struct State {
+///     // ...
+/// }
+///
+/// struct MyRejection(Response);
+///
+/// // This tells axum how to convert `Extension`'s rejections into `MyRejection`
+/// impl From<ExtensionRejection> for MyRejection {
+///     fn from(rejection: ExtensionRejection) -> Self {
+///         let response = (
+///             StatusCode::INTERNAL_SERVER_ERROR,
+///             Json(json!({ "error": "Something went wrong..." })),
+///         ).into_response();
+///
+///         MyRejection(response)
+///     }
+/// }
+///
+/// // All rejections must implement `IntoResponse`
+/// impl IntoResponse for MyRejection {
+///     fn into_response(self) -> Response {
+///         self.0
+///     }
+/// }
+///
+/// async fn handler(state: State) {}
+/// ```
+///
+/// This allows you to wrap other extractors and easily customize the rejection:
+///
+/// ```
+/// use axum_macros::FromRequest;
+/// use axum::{
+///     extract::{Extension, rejection::JsonRejection},
+///     response::{IntoResponse, Response},
+///     http::StatusCode,
+/// };
+/// use serde_json::json;
+/// use serde::Deserialize;
+///
+/// // create an extractor that internally uses `axum::Json` but has a custom rejection
+/// #[derive(FromRequest)]
+/// #[from_request(via(axum::Json), rejection(MyRejection))]
+/// struct MyJson<T>(T);
+///
+/// struct MyRejection(Response);
+///
+/// impl From<JsonRejection> for MyRejection {
+///     fn from(rejection: JsonRejection) -> Self {
+///         let response = (
+///             StatusCode::INTERNAL_SERVER_ERROR,
+///             axum::Json(json!({ "error": rejection.to_string() })),
+///         ).into_response();
+///
+///         MyRejection(response)
+///     }
+/// }
+///
+/// impl IntoResponse for MyRejection {
+///     fn into_response(self) -> Response {
+///         self.0
+///     }
+/// }
+///
+/// #[derive(Deserialize)]
+/// struct Payload {}
+///
+/// async fn handler(
+///     // make sure to use `MyJson` and not `axum::Json`
+///     MyJson(payload): MyJson<Payload>,
+/// ) {}
+/// ```
+///
 /// # Known limitations
 ///
-/// Generics are currently not supported:
+/// Generics are only supported on tuple structs with exactly on field. Thus this doesn't work
 ///
 /// ```compile_fail
 /// #[derive(axum_macros::FromRequest)]
