@@ -1,5 +1,3 @@
-#![allow(unused_variables, clippy::todo)]
-
 use self::attr::{
     parse_container_attrs, parse_field_attrs, FromRequestContainerAttr, FromRequestFieldAttr,
     RejectionDeriveOptOuts,
@@ -207,7 +205,6 @@ fn impl_struct_by_extracting_each_field(
 
     let (rejection_ident, rejection) = if let Some(rejection) = rejection {
         let rejection_ident = syn::parse_quote!(#rejection);
-        let rejection = quote! { #rejection };
         (rejection_ident, None)
     } else if has_no_fields(&fields) {
         (syn::parse_quote!(::std::convert::Infallible), None)
@@ -740,17 +737,8 @@ fn ui() {
     #[rustversion::stable]
     fn go() {
         let t = trybuild::TestCases::new();
-
-        if let Ok(var) = std::env::var("ONLY") {
-            if var.contains("pass") {
-                t.pass(var);
-            } else {
-                t.compile_fail(var);
-            }
-        } else {
-            t.compile_fail("tests/from_request/fail/*.rs");
-            t.pass("tests/from_request/pass/*.rs");
-        }
+        t.compile_fail("tests/from_request/fail/*.rs");
+        t.pass("tests/from_request/pass/*.rs");
     }
 
     #[rustversion::not(stable)]
