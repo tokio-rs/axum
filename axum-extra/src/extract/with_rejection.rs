@@ -5,16 +5,16 @@ use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
 
 /// Extractor for customizing extractor rejections
-/// 
-/// `WithRejection` wraps another extractor and gives you the result. If the 
-/// extraction fails, the `Rejection` is transformed into `R` and returned as a 
+///
+/// `WithRejection` wraps another extractor and gives you the result. If the
+/// extraction fails, the `Rejection` is transformed into `R` and returned as a
 /// response
-/// 
+///
 /// `E` is expected to implement [`FromRequest`]
-/// 
+///
 /// `R` is expected to implement [`IntoResponse`] and [`From<E::Rejection>`]
-/// 
-/// 
+///
+///
 /// # Example
 ///
 /// ```rust
@@ -48,9 +48,9 @@ use std::ops::{Deref, DerefMut};
 ///     WithRejection(Json(Person), _): WithRejection<Json<Person>, MyRejection>
 /// ) { /* ... */ }
 /// ```
-/// 
+///
 /// For a full example see the [customize-extractor-error] example
-/// 
+///
 /// [customize-extractor-error]: https://github.com/tokio-rs/axum/blob/main/examples/customize-extractor-error/src/main.rs
 /// [`FromRequest`]: axum::extract::FromRequest
 /// [`IntoResponse`]: axum::response::IntoResponse
