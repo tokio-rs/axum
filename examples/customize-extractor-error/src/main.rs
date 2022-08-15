@@ -5,10 +5,8 @@
 //! ```
 
 use axum::{
-    extract::rejection::JsonRejection,
-    http::StatusCode,
-    response::IntoResponse,
-    routing::post, Json, Router,
+    extract::rejection::JsonRejection, http::StatusCode, response::IntoResponse, routing::post,
+    Json, Router,
 };
 use axum_extra::extract::WithRejection;
 use serde::Deserialize;
@@ -42,7 +40,7 @@ async fn handler(
     // `WithRejection` will extract `Json<User>` from the request. If the
     // extraction fails, a `MyRejection` will be created from `JsonResponse` and
     // returned to the client
-    WithRejection(Json(user), _): WithRejection<Json<User>, MyRejection>
+    WithRejection(Json(user), _): WithRejection<Json<User>, MyRejection>,
 ) {
     dbg!(&user);
 }
