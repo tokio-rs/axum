@@ -4,10 +4,62 @@ use axum::response::IntoResponse;
 use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
 
+/// Extractor for customizing extractor rejections
+/// 
+/// `WithRejection` wraps another extractor and gives you the result. If the 
+/// extraction fails, the `Rejection` is transformed into `R` and returned as a 
+/// response
+/// 
+/// `E` is expected to implement [`FromRequest`]
+/// 
+/// `R` is expected to implement [`IntoResponse`] and [`From<E::Rejection>`]
+/// 
+/// 
+/// # Example
+///
+/// ```rust
+/// use axum::extract::rejection::JsonRejection;
+/// use axum::response::{Response, IntoResponse};
+/// use axum::Json;
+/// use axum_extra::extract::WithRejection;
+/// use serde::Deserialize;
+///
+/// struct MyRejection { /* ... */ }
+///
+/// impl From<JsonRejection> for MyRejection {
+///     fn from(_:JsonRejection) -> MyRejection {
+///         // ...
+///         # todo!()
+///     }
+/// }
+///
+/// impl IntoResponse for MyRejection {
+///     fn into_response(self) -> Response {
+///         // ...
+///         # todo!()
+///     }
+/// }
+/// #[derive(Debug, Deserialize)]
+/// struct Person { /* ... */ }
+///
+/// async fn handler(
+///     // If the `Json` extractor ever fails, `MyRejection` will be sent to the
+///     // client using the `IntoResponse` impl
+///     WithRejection(Json(Person), _): WithRejection<Json<Person>, MyRejection>
+/// ) { /* ... */ }
+/// ```
+/// 
+/// For a full example see the [customize-extractor-error] example
+/// 
+/// [customize-extractor-error]: https://github.com/tokio-rs/axum/blob/main/examples/customize-extractor-error/src/main.rs
+/// [`FromRequest`]: axum::extract::FromRequest
+/// [`IntoResponse`]: axum::response::IntoResponse
+/// [`From<E::Rejection>`]: std::convert::From
 #[derive(Debug, Clone, Copy, Default)]
 pub struct WithRejection<E, R>(pub E, pub PhantomData<R>);
 
 impl<E, R> WithRejection<E, R> {
+    /// Returns the wrapped extractor
     fn into_inner(self) -> E {
         self.0
     }
