@@ -12,9 +12,7 @@ use std::{
 ///
 /// [state-from-middleware]: ../middleware/index.html#accessing-state-in-middleware
 ///
-/// # Examples
-///
-/// ## With `Router`
+/// # With `Router`
 ///
 /// ```
 /// use axum::{Router, routing::get, extract::State};
@@ -41,7 +39,54 @@ use std::{
 /// # let _: Router<AppState> = app;
 /// ```
 ///
-/// ### Substates
+/// # With `MethodRouter`
+///
+/// ```
+/// use axum::{routing::get, extract::State};
+///
+/// #[derive(Clone)]
+/// struct AppState {}
+///
+/// let state = AppState {};
+///
+/// let method_router_with_state = get(handler)
+///     // provide the state so the handler can access it
+///     .with_state(state);
+///
+/// async fn handler(State(state): State<AppState>) {
+///     // use `state`...
+/// }
+/// # async {
+/// # axum::Server::bind(&"".parse().unwrap()).serve(method_router_with_state.into_make_service()).await.unwrap();
+/// # };
+/// ```
+///
+/// # With `Handler`
+///
+/// ```
+/// use axum::{routing::get, handler::Handler, extract::State};
+///
+/// #[derive(Clone)]
+/// struct AppState {}
+///
+/// let state = AppState {};
+///
+/// async fn handler(State(state): State<AppState>) {
+///     // use `state`...
+/// }
+///
+/// // provide the state so the handler can access it
+/// let handler_with_state = handler.with_state(state);
+///
+/// # async {
+/// axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())
+///     .serve(handler_with_state.into_make_service())
+///     .await
+///     .expect("server failed");
+/// # };
+/// ```
+///
+/// # Substates
 ///
 /// [`State`] only allows a single state type but you can use [`From`] to extract "substates":
 ///
@@ -88,52 +133,46 @@ use std::{
 /// # let _: Router<AppState> = app;
 /// ```
 ///
-/// ## With `MethodRouter`
+/// # For library authors
 ///
-/// ```
-/// use axum::{routing::get, extract::State};
+/// If you're writing a library that has an extractor that needs state, this is the recommended way
+/// to do it:
 ///
-/// #[derive(Clone)]
-/// struct AppState {}
+/// ```rust
+/// use axum_core::extract::{FromRequest, RequestParts};
+/// use async_trait::async_trait;
+/// use std::convert::Infallible;
 ///
-/// let state = AppState {};
+/// // the extractor your library provides
+/// struct MyLibraryExtractor;
 ///
-/// let method_router_with_state = get(handler)
-///     // provide the state so the handler can access it
-///     .with_state(state);
+/// #[async_trait]
+/// impl<B, S> FromRequest<B, S> for MyLibraryExtractor
+/// where
+///     B: Send,
+///     // keep `S` generic but require that it can produce a `MyLibraryState`
+///     // this means users will have to implement `From<UserState> for MyLibraryState`
+///     S: Into<MyLibraryState> + Clone + Send,
+/// {
+///     type Rejection = Infallible;
 ///
-/// async fn handler(State(state): State<AppState>) {
-///     // use `state`...
-/// }
-/// # async {
-/// # axum::Server::bind(&"".parse().unwrap()).serve(method_router_with_state.into_make_service()).await.unwrap();
-/// # };
-/// ```
+///     async fn from_request(req: &mut RequestParts<B, S>) -> Result<Self, Self::Rejection> {
+///         // get a `MyLibraryState` from the shared application state
+///         let state: MyLibraryState = req.state().clone().into();
 ///
-/// ## With `Handler`
-///
-/// ```
-/// use axum::{routing::get, handler::Handler, extract::State};
-///
-/// #[derive(Clone)]
-/// struct AppState {}
-///
-/// let state = AppState {};
-///
-/// async fn handler(State(state): State<AppState>) {
-///     // use `state`...
+///         // ...
+///         # todo!()
+///     }
 /// }
 ///
-/// // provide the state so the handler can access it
-/// let handler_with_state = handler.with_state(state);
-///
-/// # async {
-/// axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())
-///     .serve(handler_with_state.into_make_service())
-///     .await
-///     .expect("server failed");
-/// # };
+/// // the state your library needs
+/// struct MyLibraryState {
+///     // ...
+/// }
 /// ```
+///
+/// Note that you don't need to use the `State` extractor since you can access the state directly
+/// from [`RequestParts`].
 #[derive(Debug, Default, Clone, Copy)]
 pub struct State<S>(pub S);
 
