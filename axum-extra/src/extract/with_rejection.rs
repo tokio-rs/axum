@@ -27,7 +27,7 @@ use std::ops::{Deref, DerefMut};
 /// struct MyRejection { /* ... */ }
 ///
 /// impl From<JsonRejection> for MyRejection {
-///     fn from(_:JsonRejection) -> MyRejection {
+///     fn from(rejection: JsonRejection) -> MyRejection {
 ///         // ...
 ///         # todo!()
 ///     }
