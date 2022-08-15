@@ -41,3 +41,46 @@ where
         Ok(WithRejection(extractor, PhantomData))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use axum::http::Request;
+    use axum::response::Response;
+
+    use super::*;
+
+    #[tokio::test]
+    async fn extractor_rejection_is_transformed() {
+        struct TestExtractor;
+        struct TestRejection;
+
+        #[async_trait]
+        impl<B: Send> FromRequest<B> for TestExtractor {
+            type Rejection = ();
+
+            async fn from_request(_: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+                Err(())
+            }
+        }
+
+        impl IntoResponse for TestRejection {
+            fn into_response(self) -> Response {
+                ().into_response()
+            }
+        }
+
+        impl From<()> for TestRejection {
+            fn from(_: ()) -> Self {
+                TestRejection
+            }
+        }
+
+        let mut req = RequestParts::new(Request::new(()));
+
+        let result = req
+            .extract::<WithRejection<TestExtractor, TestRejection>>()
+            .await;
+
+        assert!(matches!(result, Err(TestRejection)))
+    }
+}
