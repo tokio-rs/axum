@@ -17,10 +17,12 @@ and this project adheres to [Semantic Versioning].
   literal `Response`
 - **added:** Support chaining handlers with `HandlerCallWithExtractors::or` ([#1170])
 - **change:** axum-extra's MSRV is now 1.60 ([#1239])
+- **added:** Add Protocol Buffer extractor and response ([#1239])
 
 [#1086]: https://github.com/tokio-rs/axum/pull/1086
 [#1119]: https://github.com/tokio-rs/axum/pull/1119
 [#1170]: https://github.com/tokio-rs/axum/pull/1170
+[#1214]: https://github.com/tokio-rs/axum/pull/1214
 [#1239]: https://github.com/tokio-rs/axum/pull/1239
 
 # 0.3.5 (27. June, 2022)
