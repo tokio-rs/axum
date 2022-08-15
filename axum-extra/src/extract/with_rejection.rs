@@ -47,6 +47,7 @@ use std::ops::{Deref, DerefMut};
 ///     // client using the `IntoResponse` impl
 ///     WithRejection(Json(Person), _): WithRejection<Json<Person>, MyRejection>
 /// ) { /* ... */ }
+# let _: Router = Router::new().route("/", get(handler));
 /// ```
 ///
 /// For a full example see the [customize-extractor-error] example
