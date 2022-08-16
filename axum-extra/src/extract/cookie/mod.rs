@@ -95,7 +95,7 @@ where
     type Rejection = Infallible;
 
     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-        Ok(Self::from(req.headers()))
+        Ok(Self::from_headers(req.headers()))
     }
 }
 
@@ -108,18 +108,22 @@ fn cookies_from_request(headers: &HeaderMap) -> impl Iterator<Item = Cookie<'sta
         .filter_map(|cookie| Cookie::parse_encoded(cookie.to_owned()).ok())
 }
 
-impl<'a> From<&'a HeaderMap> for CookieJar {
-    fn from(headers: &'a HeaderMap) -> Self {
+impl CookieJar {
+    /// Create a new `CookieJar` from a map of request headers.
+    ///
+    /// The cookies in `headers` will be added to the jar.
+    ///
+    /// This is inteded to be used in middleware and other places where it might be difficult to
+    /// run extractors. Normally you should create `CookieJar`s through [`FromRequest`].
+    pub fn from_headers(headers: &HeaderMap) -> Self {
         let mut jar = cookie::CookieJar::new();
         for cookie in cookies_from_request(headers) {
             jar.add_original(cookie);
         }
         Self { jar }
     }
-}
 
-impl CookieJar {
-    /// Create a new empty `CookieJar` from a map of request headers.
+    /// Create a new empty `CookieJar`.
     ///
     /// This is inteded to be used in middleware and other places where it might be difficult to
     /// run extractors. Normally you should create `CookieJar`s through [`FromRequest`].
