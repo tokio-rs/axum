@@ -1,6 +1,7 @@
 use axum::async_trait;
 use axum::extract::{FromRequest, RequestParts};
 use axum::response::IntoResponse;
+use std::fmt::Debug;
 use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
 
@@ -56,7 +57,6 @@ use std::ops::{Deref, DerefMut};
 /// [`FromRequest`]: axum::extract::FromRequest
 /// [`IntoResponse`]: axum::response::IntoResponse
 /// [`From<E::Rejection>`]: std::convert::From
-#[derive(Debug, Clone, Copy, Default)]
 pub struct WithRejection<E, R>(pub E, pub PhantomData<R>);
 
 impl<E, R> WithRejection<E, R> {
@@ -65,6 +65,29 @@ impl<E, R> WithRejection<E, R> {
         self.0
     }
 }
+
+impl<E, R> Debug for WithRejection<E,R> where E: Debug {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_tuple("WithRejection").field(&self.0).field(&self.1).finish()
+    }
+}
+
+impl<E, R> Clone for WithRejection<E,R> where E: Clone {
+    fn clone(&self) -> Self {
+        Self(self.0.clone(), self.1.clone())
+    }
+}
+
+impl <E, R> Copy for WithRejection<E,R> where E: Copy {
+
+}
+
+impl <E: Default, R> Default for WithRejection<E,R> {
+    fn default() -> Self {
+        Self(Default::default(), Default::default())
+    }
+}
+
 
 impl<E, R> Deref for WithRejection<E, R> {
     type Target = E;
