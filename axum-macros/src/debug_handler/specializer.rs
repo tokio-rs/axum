@@ -1,5 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
+use itertools::Itertools;
 use proc_macro2::TokenStream;
 use syn::{
     parse_quote,
@@ -11,30 +12,17 @@ use quote::quote;
 
 struct GenericFinder<'a> {
     found_idents: HashSet<&'a syn::Ident>,
-    generic_param_idents: &'a HashSet<syn::Ident>,
+    generic_param_set: HashSet<&'a syn::Ident>,
 }
 
 impl<'ast, 'a> Visit<'ast> for GenericFinder<'a> {
     fn visit_ident(&mut self, ident: &'ast syn::Ident) {
-        if let Some(a) = self.generic_param_idents.get(ident) {
+        if let Some(a) = self.generic_param_set.get(ident) {
             self.found_idents.insert(a);
         }
         // Delegate to the default impl to visit nested expressions.
         visit::visit_ident(self, ident);
     }
-}
-
-/// find which generic_param_idents are present in typ
-fn find_generic_args_in_type<'a, 'b>(
-    typ: &'a syn::Type,
-    generic_param_idents: &'b HashSet<syn::Ident>,
-) -> HashSet<&'b syn::Ident> {
-    let mut finder = GenericFinder {
-        found_idents: HashSet::new(),
-        generic_param_idents: generic_param_idents,
-    };
-    finder.visit_type(typ);
-    finder.found_idents
 }
 
 struct TypeSpecializer<'a> {
@@ -53,7 +41,6 @@ impl<'a> VisitMut for TypeSpecializer<'a> {
 
 pub(crate) struct Specializer {
     generic_params: Vec<syn::Ident>,
-    generic_param_set: HashSet<syn::Ident>,
     specializations: HashMap<syn::Ident, Vec<syn::Type>>,
 }
 
@@ -62,12 +49,35 @@ impl Specializer {
         generic_params: Vec<syn::Ident>,
         specializations: HashMap<syn::Ident, Vec<syn::Type>>,
     ) -> Self {
-        let generic_param_set = HashSet::from_iter(generic_params.iter().cloned());
         Specializer {
             generic_params,
-            generic_param_set,
             specializations,
         }
+    }
+
+    /// find which generic_param_idents are present in typ
+    // fn find_generic_args_in_type<'a, 'b>(
+    //     typ: &'a syn::Type,
+    //     generic_param_idents: &'b HashSet<syn::Ident>,
+    // ) -> HashSet<&'b syn::Ident> {
+
+    // }
+
+    /// Return vector of generic param identities found in the given type.
+    ///
+    /// Each param will be present in the returned vec at most once, and will be in order
+    /// of appearance from self.generic_params
+    fn find_generic_params<'a>(&'a self, typ: &'_ syn::Type) -> Vec<&'a syn::Ident> {
+        let generic_param_set = HashSet::from_iter(self.generic_params.iter());
+        let mut finder = GenericFinder {
+            found_idents: HashSet::new(),
+            generic_param_set,
+        };
+        finder.visit_type(typ);
+        self.generic_params
+            .iter()
+            .filter(|i| finder.found_idents.contains(i))
+            .collect()
     }
 
     fn compute_specializations<'a>(
@@ -78,27 +88,28 @@ impl Specializer {
         // the function we first iterate over the type to find which generic
         // params are involed, then we generate the cross product
         // using the specializations of those params only.
-        let generic_params = find_generic_args_in_type(typ, &self.generic_param_set);
-        if generic_params.is_empty() {
+        let ty_params = self.find_generic_params(typ);
+        if ty_params.is_empty() {
             return None;
         }
-        if generic_params.len() != 1 {
-            // TODO
-            unimplemented!();
-        }
-        // assume the expression contains the identity of a single generic expression
-        let generic_param_ident = *generic_params.iter().next().unwrap();
-        let specializations = self.specializations.get(generic_param_ident).unwrap();
-
-        Some(specializations.into_iter().map(move |specialized_typ| {
-            let param_specs = HashMap::from([(generic_param_ident, specialized_typ)]);
-            let mut specializer = TypeSpecializer {
-                specializations: &param_specs,
-            };
-            let mut new_typ = typ.clone();
-            specializer.visit_type_mut(&mut new_typ);
-            new_typ
-        }))
+        let ty_param_specializations = ty_params
+            .iter()
+            .map(|param| self.specializations.get(param).unwrap().iter());
+        Some(
+            ty_param_specializations
+                .multi_cartesian_product()
+                .map(move |specializations| {
+                    let param_specs: HashMap<&syn::Ident, &syn::Type> = HashMap::from_iter(
+                        std::iter::zip(ty_params.iter().map(|f| *f), specializations),
+                    );
+                    let mut specializer = TypeSpecializer {
+                        specializations: &param_specs,
+                    };
+                    let mut new_typ = typ.clone();
+                    specializer.visit_type_mut(&mut new_typ);
+                    new_typ
+                }),
+        )
     }
 
     /// For a given type, parameterized by the generics of item_fn, return all possible
