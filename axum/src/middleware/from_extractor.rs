@@ -185,7 +185,7 @@ where
 
     fn call(&mut self, req: Request<B>) -> Self::Future {
         let extract_future = Box::pin(async move {
-            let mut req = RequestParts::new(req, ());
+            let mut req = RequestParts::new(req);
             let extracted = E::from_request(&mut req).await;
             (req, extracted)
         });

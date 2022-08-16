@@ -46,8 +46,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `MethodRouter`
   - `Handler`
   - `Resource`
-- **breaking:** `RequestParts::new` takes the state and the request rather than
-  just the request ([#1155])
 - **breaking:** `Router::route` now only accepts `MethodRouter`s created with
   `get`, `post`, etc ([#1155])
 - **added:** `Router::route_service` for routing to arbitrary `Service`s ([#1155])

@@ -181,7 +181,7 @@ macro_rules! impl_service {
                 let inner = std::mem::replace(&mut self.inner, clone);
 
                 let future = Box::pin(async move {
-                    let mut req = RequestParts::new(req, ());
+                    let mut req = RequestParts::new(req);
 
                     $(
                         let $ty = match $ty::from_request(&mut req).await {

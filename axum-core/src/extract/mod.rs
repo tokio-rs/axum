@@ -85,6 +85,19 @@ pub struct RequestParts<B, S> {
     body: Option<B>,
 }
 
+impl<B> RequestParts<B, ()> {
+    /// Create a new `RequestParts` without any state.
+    ///
+    /// You generally shouldn't need to construct this type yourself, unless
+    /// using extractors outside of axum for example to implement a
+    /// [`tower::Service`].
+    ///
+    /// [`tower::Service`]: https://docs.rs/tower/lastest/tower/trait.Service.html
+    pub fn new(req: Request<B>) -> Self {
+        Self::with_state(req, ())
+    }
+}
+
 impl<B, S> RequestParts<B, S> {
     /// Create a new `RequestParts` with the given state.
     ///
@@ -93,7 +106,7 @@ impl<B, S> RequestParts<B, S> {
     /// [`tower::Service`].
     ///
     /// [`tower::Service`]: https://docs.rs/tower/lastest/tower/trait.Service.html
-    pub fn new(req: Request<B>, state: S) -> Self {
+    pub fn with_state(req: Request<B>, state: S) -> Self {
         let (
             http::request::Parts {
                 method,

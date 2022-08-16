@@ -280,7 +280,7 @@ macro_rules! impl_service {
                 let mut f = self.f.clone();
 
                 let future = Box::pin(async move {
-                    let mut parts = RequestParts::new(req, ());
+                    let mut parts = RequestParts::new(req);
                     $(
                         let $ty = match $ty::from_request(&mut parts).await {
                             Ok(value) => value,

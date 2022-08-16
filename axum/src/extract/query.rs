@@ -83,7 +83,7 @@ mod tests {
 
     async fn check<T: DeserializeOwned + PartialEq + Debug>(uri: impl AsRef<str>, value: T) {
         let req = Request::builder().uri(uri.as_ref()).body(()).unwrap();
-        let mut req = RequestParts::new(req, ());
+        let mut req = RequestParts::new(req);
         assert_eq!(Query::<T>::from_request(&mut req).await.unwrap().0, value);
     }
 

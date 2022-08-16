@@ -71,7 +71,7 @@ where
 
     fn call(self, state: S, req: Request<B>) -> Self::Future {
         Box::pin(async move {
-            let mut req = RequestParts::new(req, state.clone());
+            let mut req = RequestParts::with_state(req, state.clone());
 
             if let Ok(lt) = req.extract::<Lt>().await {
                 return self.lhs.call(state, lt).await;

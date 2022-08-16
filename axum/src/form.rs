@@ -130,7 +130,7 @@ mod tests {
             .uri(uri.as_ref())
             .body(Empty::<Bytes>::new())
             .unwrap();
-        let mut req = RequestParts::new(req, ());
+        let mut req = RequestParts::new(req);
         assert_eq!(Form::<T>::from_request(&mut req).await.unwrap().0, value);
     }
 
@@ -146,7 +146,7 @@ mod tests {
                 serde_urlencoded::to_string(&value).unwrap().into(),
             ))
             .unwrap();
-        let mut req = RequestParts::new(req, ());
+        let mut req = RequestParts::new(req);
         assert_eq!(Form::<T>::from_request(&mut req).await.unwrap().0, value);
     }
 
@@ -216,7 +216,7 @@ mod tests {
                 .into(),
             ))
             .unwrap();
-        let mut req = RequestParts::new(req, ());
+        let mut req = RequestParts::new(req);
         assert!(matches!(
             Form::<Pagination>::from_request(&mut req)
                 .await
