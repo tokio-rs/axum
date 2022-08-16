@@ -1,32 +1,57 @@
+use std::collections::HashMap;
+
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote, quote_spanned};
-use syn::{parse::Parse, spanned::Spanned, FnArg, ItemFn, Token, Type};
+use syn::{
+    parse::Parse, punctuated::Punctuated, spanned::Spanned, FnArg, GenericParam, ItemFn, Token,
+    Type,
+};
+
+use self::specializer::Specializer;
+
+mod specializer;
 
 pub(crate) fn expand(attr: Attrs, item_fn: ItemFn) -> TokenStream {
+    let generic_param_idents = item_fn
+        .sig
+        .generics
+        .params
+        .iter()
+        .enumerate()
+        .flat_map(|(_idx, param)| {
+            match param {
+                GenericParam::Type(t) => Some(t.ident.clone()),
+                _ => {
+                    // TODO should we flag an error here
+                    None
+                }
+            }
+        })
+        .collect::<Vec<_>>();
+
+    let specializer = Specializer::new(generic_param_idents, attr.compute_specializations());
+
     let check_extractor_count = check_extractor_count(&item_fn);
     let check_request_last_extractor = check_request_last_extractor(&item_fn);
     let check_path_extractor = check_path_extractor(&item_fn);
     let check_multiple_body_extractors = check_multiple_body_extractors(&item_fn);
-    let check_output_impls_into_response = check_output_impls_into_response(&item_fn);
+    let check_output_impls_into_response = check_output_impls_into_response(&item_fn, &specializer);
+    let check_inputs_impls_from_request =
+        check_inputs_impls_from_request(&item_fn, &attr.body_ty, &specializer);
+    let check_future_send = check_future_send(&item_fn, &specializer);
 
+    // TODO error on const generics and liftetimes
     // If the function is generic, we can't reliably check its inputs or whether the future it
     // returns is `Send`. Skip those checks to avoid unhelpful additional compiler errors.
-    let check_inputs_and_future_send = if item_fn.sig.generics.params.is_empty() {
-        let check_inputs_impls_from_request =
-            check_inputs_impls_from_request(&item_fn, &attr.body_ty);
-        let check_future_send = check_future_send(&item_fn);
+    // let check_inputs_and_future_send = if item_fn.sig.generics.params.is_empty() {
 
-        quote! {
-            #check_inputs_impls_from_request
-            #check_future_send
-        }
-    } else {
-        syn::Error::new_spanned(
-            &item_fn.sig.generics,
-            "`#[axum_macros::debug_handler]` doesn't support generic functions",
-        )
-        .into_compile_error()
-    };
+    // } else {
+    //     syn::Error::new_spanned(
+    //         &item_fn.sig.generics,
+    //         "`#[axum_macros::debug_handler]` doesn't support generic functions",
+    //     )
+    //     .into_compile_error()
+    // };
 
     quote! {
         #item_fn
@@ -34,24 +59,32 @@ pub(crate) fn expand(attr: Attrs, item_fn: ItemFn) -> TokenStream {
         #check_request_last_extractor
         #check_path_extractor
         #check_multiple_body_extractors
+
         #check_output_impls_into_response
-        #check_inputs_and_future_send
+        #check_inputs_impls_from_request
+        #check_future_send
     }
 }
 
 pub(crate) struct Attrs {
     body_ty: Type,
+    with_tys: Punctuated<GenericArgSpecializationAttr, Token![,]>,
 }
 
 impl Parse for Attrs {
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
         let mut body_ty = None;
+        let mut with_tys = Default::default();
 
         while !input.is_empty() {
             let ident = input.parse::<syn::Ident>()?;
             if ident == "body" {
                 input.parse::<Token![=]>()?;
                 body_ty = Some(input.parse()?);
+            } else if ident == "with" {
+                let content;
+                syn::parenthesized!(content in input);
+                with_tys = content.parse_terminated(GenericArgSpecializationAttr::parse)?;
             } else {
                 return Err(syn::Error::new_spanned(ident, "unknown argument"));
             }
@@ -61,7 +94,43 @@ impl Parse for Attrs {
 
         let body_ty = body_ty.unwrap_or_else(|| syn::parse_quote!(axum::body::Body));
 
-        Ok(Self { body_ty })
+        Ok(Self { body_ty, with_tys })
+    }
+}
+
+impl Attrs {
+    fn compute_specializations(&self) -> HashMap<syn::Ident, Vec<syn::Type>> {
+        let mut grouped: HashMap<syn::Ident, Vec<syn::Type>> = HashMap::new();
+        for GenericArgSpecializationAttr {
+            arg_name,
+            specialization_ty,
+        } in self.with_tys.iter()
+        {
+            let specialization_ty = specialization_ty.clone();
+            if let Some(specializations) = grouped.get_mut(arg_name) {
+                specializations.push(specialization_ty);
+            } else {
+                grouped.insert(arg_name.clone(), vec![specialization_ty]);
+            }
+        }
+        grouped
+    }
+}
+
+pub(crate) struct GenericArgSpecializationAttr {
+    arg_name: syn::Ident,
+    specialization_ty: syn::Type,
+}
+
+impl Parse for GenericArgSpecializationAttr {
+    fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
+        let arg_name = input.parse()?;
+        input.parse::<syn::Token![=]>()?;
+        let specialization_ty = input.parse()?;
+        Ok(Self {
+            arg_name,
+            specialization_ty,
+        })
     }
 }
 
@@ -167,13 +236,17 @@ fn check_multiple_body_extractors(item_fn: &ItemFn) -> TokenStream {
     }
 }
 
-fn check_inputs_impls_from_request(item_fn: &ItemFn, body_ty: &Type) -> TokenStream {
+fn check_inputs_impls_from_request(
+    item_fn: &ItemFn,
+    body_ty: &Type,
+    specializer: &Specializer,
+) -> TokenStream {
     item_fn
         .sig
         .inputs
         .iter()
         .enumerate()
-        .map(|(idx, arg)| {
+        .map(|(arg_idx, arg)| {
             let (span, ty) = match arg {
                 FnArg::Receiver(receiver) => {
                     if receiver.reference.is_some() {
@@ -194,23 +267,31 @@ fn check_inputs_impls_from_request(item_fn: &ItemFn, body_ty: &Type) -> TokenStr
                 }
             };
 
-            let name = format_ident!(
-                "__axum_macros_check_{}_{}_from_request",
-                item_fn.sig.ident,
-                idx
-            );
-            quote_spanned! {span=>
-                #[allow(warnings)]
-                fn #name()
-                where
-                    #ty: ::axum::extract::FromRequest<#body_ty> + Send,
-                {}
-            }
+            specializer
+                .all_specializations(&ty)
+                .iter()
+                .enumerate()
+                .map(|(specialization_idx, specialized_ty)| {
+                    let name = format_ident!(
+                        "__axum_macros_check_{}_{}_{}_from_request",
+                        item_fn.sig.ident,
+                        arg_idx,
+                        specialization_idx,
+                    );
+                    quote_spanned! {span=>
+                        #[allow(warnings)]
+                        fn #name()
+                        where
+                            #specialized_ty: ::axum::extract::FromRequest<#body_ty> + Send,
+                        {}
+                    }
+                })
+                .collect::<TokenStream>()
         })
         .collect::<TokenStream>()
 }
 
-fn check_output_impls_into_response(item_fn: &ItemFn) -> TokenStream {
+fn check_output_impls_into_response(item_fn: &ItemFn, specializer: &Specializer) -> TokenStream {
     let ty = match &item_fn.sig.output {
         syn::ReturnType::Default => return quote! {},
         syn::ReturnType::Type(_, ty) => ty,
@@ -225,7 +306,7 @@ fn check_output_impls_into_response(item_fn: &ItemFn) -> TokenStream {
             FnArg::Receiver(_) => None,
             FnArg::Typed(pat_ty) => {
                 let pat = &pat_ty.pat;
-                let ty = &pat_ty.ty;
+                let ty = specializer.specialize_default(&pat_ty.ty);
                 Some(quote! {
                     let #pat: #ty = panic!();
                 })
@@ -291,7 +372,7 @@ fn check_output_impls_into_response(item_fn: &ItemFn) -> TokenStream {
     }
 }
 
-fn check_future_send(item_fn: &ItemFn) -> TokenStream {
+fn check_future_send(item_fn: &ItemFn, specializer: &Specializer) -> TokenStream {
     if item_fn.sig.asyncness.is_none() {
         match &item_fn.sig.output {
             syn::ReturnType::Default => {
@@ -315,6 +396,9 @@ fn check_future_send(item_fn: &ItemFn) -> TokenStream {
 
     let name = format_ident!("__axum_macros_check_{}_future", item_fn.sig.ident);
 
+    let default_handler_specialization = specializer.make_turbofish_with_default_specializations();
+
+    // TODO generics test for receiver
     if let Some(receiver) = self_receiver(item_fn) {
         quote_spanned! {span=>
             #[allow(warnings)]
@@ -332,7 +416,7 @@ fn check_future_send(item_fn: &ItemFn) -> TokenStream {
             fn #name() {
                 #item_fn
 
-                let future = #handler_name(#(#args),*);
+                let future = #handler_name #default_handler_specialization (#(#args),*);
                 fn check<T>(_: T)
                     where T: ::std::future::Future + Send
                 {}
@@ -378,6 +462,9 @@ fn ui() {
         let t = trybuild::TestCases::new();
         t.compile_fail("tests/debug_handler/fail/*.rs");
         t.pass("tests/debug_handler/pass/*.rs");
+
+        // t.compile_fail("tests/debug_handler/pass/generics_with.rs");
+        // t.pass("tests/generics_with.rs");
     }
 
     #[rustversion::not(stable)]
