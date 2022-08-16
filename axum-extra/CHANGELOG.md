@@ -18,6 +18,8 @@ and this project adheres to [Semantic Versioning].
 - **added:** Support chaining handlers with `HandlerCallWithExtractors::or` ([#1170])
 - **change:** axum-extra's MSRV is now 1.60 ([#1239])
 - **added:** Add Protocol Buffer extractor and response ([#1239])
+- **added:** Add sync constructors to `CookieJar`, `PrivateCookieJar`, and
+  `SignedCookieJar` so they're easier to use in custom middleware
 
 [#1086]: https://github.com/tokio-rs/axum/pull/1086
 [#1119]: https://github.com/tokio-rs/axum/pull/1119

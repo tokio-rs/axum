@@ -82,7 +82,7 @@ pub use cookie::Key;
 ///     .route("/me", get(me));
 /// # let app: Router<axum::body::Body> = app;
 /// ```
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct CookieJar {
     jar: cookie::CookieJar,
 }
@@ -95,18 +95,12 @@ where
     type Rejection = Infallible;
 
     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-        let mut jar = cookie::CookieJar::new();
-        for cookie in cookies_from_request(req) {
-            jar.add_original(cookie);
-        }
-        Ok(Self { jar })
+        Ok(Self::from(req.headers()))
     }
 }
 
-fn cookies_from_request<B>(
-    req: &mut RequestParts<B>,
-) -> impl Iterator<Item = Cookie<'static>> + '_ {
-    req.headers()
+fn cookies_from_request(headers: &HeaderMap) -> impl Iterator<Item = Cookie<'static>> + '_ {
+    headers
         .get_all(COOKIE)
         .into_iter()
         .filter_map(|value| value.to_str().ok())
@@ -114,7 +108,28 @@ fn cookies_from_request<B>(
         .filter_map(|cookie| Cookie::parse_encoded(cookie.to_owned()).ok())
 }
 
+impl<'a> From<&'a HeaderMap> for CookieJar {
+    fn from(headers: &'a HeaderMap) -> Self {
+        let mut jar = cookie::CookieJar::new();
+        for cookie in cookies_from_request(headers) {
+            jar.add_original(cookie);
+        }
+        Self { jar }
+    }
+}
+
 impl CookieJar {
+    /// Create a new empty `CookieJar` from a map of request headers.
+    ///
+    /// This is inteded to be used in middleware and other places where it might be difficult to
+    /// run extractors. Normally you should create `CookieJar`s through [`FromRequest`].
+    ///
+    /// If you need a jar that contains the headers from a request use `impl From<&HeaderMap> for
+    /// CookieJar`.
+    pub fn new() -> Self {
+        Self::default()
+    }
+
     /// Get a cookie from the jar.
     ///
     /// # Example
