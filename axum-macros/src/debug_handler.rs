@@ -12,6 +12,9 @@ use self::specializer::Specializer;
 mod specializer;
 
 pub(crate) fn expand(attr: Attrs, item_fn: ItemFn) -> TokenStream {
+    // TODO error on const generics and liftetimes
+    // TODO error on not all generic params specified using with
+
     let generic_param_idents = item_fn
         .sig
         .generics
@@ -36,22 +39,27 @@ pub(crate) fn expand(attr: Attrs, item_fn: ItemFn) -> TokenStream {
     let check_path_extractor = check_path_extractor(&item_fn);
     let check_multiple_body_extractors = check_multiple_body_extractors(&item_fn);
     let check_output_impls_into_response = check_output_impls_into_response(&item_fn, &specializer);
-    let check_inputs_impls_from_request =
-        check_inputs_impls_from_request(&item_fn, &attr.body_ty, &specializer);
-    let check_future_send = check_future_send(&item_fn, &specializer);
 
-    // TODO error on const generics and liftetimes
-    // If the function is generic, we can't reliably check its inputs or whether the future it
-    // returns is `Send`. Skip those checks to avoid unhelpful additional compiler errors.
-    // let check_inputs_and_future_send = if item_fn.sig.generics.params.is_empty() {
-
-    // } else {
-    //     syn::Error::new_spanned(
-    //         &item_fn.sig.generics,
-    //         "`#[axum_macros::debug_handler]` doesn't support generic functions",
-    //     )
-    //     .into_compile_error()
-    // };
+    // If the function is generic and no with statement was provided, we can't reliably check its
+    // inputs or whether the future it returns is `Send`. Skip those checks to avoid unhelpful additional
+    // compiler errors.
+    let check_inputs_and_future_send = if item_fn.sig.generics.params.is_empty()
+        || attr.with_tys.is_some()
+    {
+        let check_inputs_impls_from_request =
+            check_inputs_impls_from_request(&item_fn, &attr.body_ty, &specializer);
+        let check_future_send = check_future_send(&item_fn, &specializer);
+        quote! {
+            #check_inputs_impls_from_request
+            #check_future_send
+        }
+    } else {
+        syn::Error::new_spanned(
+                &item_fn.sig.generics,
+                "`#[axum_macros::debug_handler]` use with 'with' attribute to support debugging generic functions",
+            )
+            .into_compile_error()
+    };
 
     quote! {
         #item_fn
@@ -61,20 +69,19 @@ pub(crate) fn expand(attr: Attrs, item_fn: ItemFn) -> TokenStream {
         #check_multiple_body_extractors
 
         #check_output_impls_into_response
-        #check_inputs_impls_from_request
-        #check_future_send
+        #check_inputs_and_future_send
     }
 }
 
 pub(crate) struct Attrs {
     body_ty: Type,
-    with_tys: Punctuated<GenericArgSpecializationAttr, Token![,]>,
+    with_tys: Option<Punctuated<GenericArgSpecializationAttr, Token![,]>>,
 }
 
 impl Parse for Attrs {
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
         let mut body_ty = None;
-        let mut with_tys = Default::default();
+        let mut with_tys = None;
 
         while !input.is_empty() {
             let ident = input.parse::<syn::Ident>()?;
@@ -84,7 +91,7 @@ impl Parse for Attrs {
             } else if ident == "with" {
                 let content;
                 syn::parenthesized!(content in input);
-                with_tys = content.parse_terminated(GenericArgSpecializationAttr::parse)?;
+                with_tys = Some(content.parse_terminated(GenericArgSpecializationAttr::parse)?);
             } else {
                 return Err(syn::Error::new_spanned(ident, "unknown argument"));
             }
@@ -101,16 +108,18 @@ impl Parse for Attrs {
 impl Attrs {
     fn compute_specializations(&self) -> HashMap<syn::Ident, Vec<syn::Type>> {
         let mut grouped: HashMap<syn::Ident, Vec<syn::Type>> = HashMap::new();
-        for GenericArgSpecializationAttr {
-            arg_name,
-            specialization_ty,
-        } in self.with_tys.iter()
-        {
-            let specialization_ty = specialization_ty.clone();
-            if let Some(specializations) = grouped.get_mut(arg_name) {
-                specializations.push(specialization_ty);
-            } else {
-                grouped.insert(arg_name.clone(), vec![specialization_ty]);
+        if let Some(with_tys) = &self.with_tys {
+            for GenericArgSpecializationAttr {
+                arg_name,
+                specialization_ty,
+            } in with_tys.iter()
+            {
+                let specialization_ty = specialization_ty.clone();
+                if let Some(specializations) = grouped.get_mut(arg_name) {
+                    specializations.push(specialization_ty);
+                } else {
+                    grouped.insert(arg_name.clone(), vec![specialization_ty]);
+                }
             }
         }
         grouped
@@ -462,9 +471,6 @@ fn ui() {
         let t = trybuild::TestCases::new();
         t.compile_fail("tests/debug_handler/fail/*.rs");
         t.pass("tests/debug_handler/pass/*.rs");
-
-        // t.compile_fail("tests/debug_handler/pass/generics_with.rs");
-        // t.pass("tests/generics_with.rs");
     }
 
     #[rustversion::not(stable)]
