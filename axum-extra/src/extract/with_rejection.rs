@@ -63,28 +63,34 @@ impl<E, R> WithRejection<E, R> {
     }
 }
 
-impl<E, R> Debug for WithRejection<E,R> where E: Debug {
+impl<E, R> Debug for WithRejection<E, R>
+where
+    E: Debug,
+{
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_tuple("WithRejection").field(&self.0).field(&self.1).finish()
+        f.debug_tuple("WithRejection")
+            .field(&self.0)
+            .field(&self.1)
+            .finish()
     }
 }
 
-impl<E, R> Clone for WithRejection<E,R> where E: Clone {
+impl<E, R> Clone for WithRejection<E, R>
+where
+    E: Clone,
+{
     fn clone(&self) -> Self {
         Self(self.0.clone(), self.1.clone())
     }
 }
 
-impl <E, R> Copy for WithRejection<E,R> where E: Copy {
+impl<E, R> Copy for WithRejection<E, R> where E: Copy {}
 
-}
-
-impl <E: Default, R> Default for WithRejection<E,R> {
+impl<E: Default, R> Default for WithRejection<E, R> {
     fn default() -> Self {
         Self(Default::default(), Default::default())
     }
 }
-
 
 impl<E, R> Deref for WithRejection<E, R> {
     type Target = E;
