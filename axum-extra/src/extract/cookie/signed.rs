@@ -101,7 +101,7 @@ where
     type Rejection = <axum::Extension<K> as FromRequest<B>>::Rejection;
 
     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-        let key = Extension::<K>::from_request(req).await?.0.into();
+        let key = req.extract::<Extension<K>>().await?.0.into();
         let SignedCookieJar {
             jar,
             key,
