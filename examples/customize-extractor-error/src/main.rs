@@ -5,13 +5,15 @@
 //! ```
 
 use axum::{
-    extract::rejection::JsonRejection, http::StatusCode, response::IntoResponse, routing::post,
-    Json, Router,
+    async_trait,
+    extract::{rejection::JsonRejection, FromRequest, RequestParts},
+    http::StatusCode,
+    routing::post,
+    BoxError, Router,
 };
-use axum_extra::extract::WithRejection;
-use serde::Deserialize;
-use serde_json::json;
-use std::net::SocketAddr;
+use serde::{de::DeserializeOwned, Deserialize};
+use serde_json::{json, Value};
+use std::{borrow::Cow, net::SocketAddr};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[tokio::main]
@@ -36,12 +38,7 @@ async fn main() {
         .unwrap();
 }
 
-async fn handler(
-    // `WithRejection` will extract `Json<User>` from the request. If the
-    // extraction fails, a `MyRejection` will be created from `JsonResponse` and
-    // returned to the client
-    WithRejection(Json(user), _): WithRejection<Json<User>, MyRejection>,
-) {
+async fn handler(Json(user): Json<User>) {
     dbg!(&user);
 }
 
@@ -52,44 +49,46 @@ struct User {
     username: String,
 }
 
-// Define your own custom rejection
-#[derive(Debug)]
-struct MyRejection {
-    body: String,
-    status: StatusCode,
-}
+// We define our own `Json` extractor that customizes the error from `axum::Json`
+struct Json<T>(T);
 
-// `IntoResponse` is required for your custom rejection type
-impl IntoResponse for MyRejection {
-    fn into_response(self) -> axum::response::Response {
-        let Self { body, status } = self;
-        (
-            status,
-            // we use `axum::Json` here to generate a JSON response
-            // body but you can use whatever response you want
-            axum::Json(json!({ "error": body })),
-        )
-            .into_response()
-    }
-}
+#[async_trait]
+impl<B, T> FromRequest<B> for Json<T>
+where
+    // these trait bounds are copied from `impl FromRequest for axum::Json`
+    T: DeserializeOwned,
+    B: axum::body::HttpBody + Send,
+    B::Data: Send,
+    B::Error: Into<BoxError>,
+{
+    type Rejection = (StatusCode, axum::Json<Value>);
 
-// Implement `From` for any Rejection type you want
-impl From<JsonRejection> for MyRejection {
-    fn from(rejection: JsonRejection) -> Self {
-        // convert the error from `axum::Json` into whatever we want
-        let (status, body) = match rejection {
-            JsonRejection::JsonDataError(err) => (
-                StatusCode::BAD_REQUEST,
-                format!("Invalid JSON request: {}", err),
-            ),
-            JsonRejection::MissingJsonContentType(err) => {
-                (StatusCode::BAD_REQUEST, err.to_string())
+    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+        match axum::Json::<T>::from_request(req).await {
+            Ok(value) => Ok(Self(value.0)),
+            Err(rejection) => {
+                // convert the error from `axum::Json` into whatever we want
+                let (status, body): (_, Cow<'_, str>) = match rejection {
+                    JsonRejection::JsonDataError(err) => (
+                        StatusCode::BAD_REQUEST,
+                        format!("Invalid JSON request: {}", err).into(),
+                    ),
+                    JsonRejection::MissingJsonContentType(err) => {
+                        (StatusCode::BAD_REQUEST, err.to_string().into())
+                    }
+                    err => (
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        format!("Unknown internal error: {}", err).into(),
+                    ),
+                };
+
+                Err((
+                    status,
+                    // we use `axum::Json` here to generate a JSON response
+                    // body but you can use whatever response you want
+                    axum::Json(json!({ "error": body })),
+                ))
             }
-            err => (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Unknown internal error: {}", err),
-            ),
-        };
-        Self { body, status }
+        }
     }
 }
