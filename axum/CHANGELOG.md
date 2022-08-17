@@ -45,7 +45,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `Router`
   - `MethodRouter`
   - `Handler`
-  - `Resource`
 - **breaking:** `Router::route` now only accepts `MethodRouter`s created with
   `get`, `post`, etc ([#1155])
 - **added:** `Router::route_service` for routing to arbitrary `Service`s ([#1155])
