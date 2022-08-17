@@ -2,11 +2,13 @@
 
 use axum::{
     handler::Handler,
-    response::Redirect,
+    http::Request,
+    response::{IntoResponse, Redirect},
     routing::{any, MethodRouter},
     Router,
 };
-use std::future::ready;
+use std::{convert::Infallible, future::ready};
+use tower_service::Service;
 
 mod resource;
 
@@ -161,6 +163,16 @@ pub trait RouterExt<S, B>: sealed::Sealed {
     fn route_with_tsr(self, path: &str, method_router: MethodRouter<S, B>) -> Self
     where
         Self: Sized;
+
+    /// Add another route to the router with an additional "trailing slash redirect" route.
+    ///
+    /// This works like [`RouterExt::route_with_tsr`] but accepts any [`Service`].
+    fn route_service_with_tsr<T>(self, path: &str, service: T) -> Self
+    where
+        T: Service<Request<B>, Error = Infallible> + Clone + Send + 'static,
+        T::Response: IntoResponse,
+        T::Future: Send + 'static,
+        Self: Sized;
 }
 
 impl<S, B> RouterExt<S, B> for Router<S, B>
@@ -253,6 +265,27 @@ where
         Self: Sized,
     {
         self = self.route(path, method_router);
+
+        let redirect = Redirect::permanent(path);
+
+        if let Some(path_without_trailing_slash) = path.strip_suffix('/') {
+            self.route(
+                path_without_trailing_slash,
+                any(move || ready(redirect.clone())),
+            )
+        } else {
+            self.route(&format!("{}/", path), any(move || ready(redirect.clone())))
+        }
+    }
+
+    fn route_service_with_tsr<T>(mut self, path: &str, service: T) -> Self
+    where
+        T: Service<Request<B>, Error = Infallible> + Clone + Send + 'static,
+        T::Response: IntoResponse,
+        T::Future: Send + 'static,
+        Self: Sized,
+    {
+        self = self.route_service(path, service);
 
         let redirect = Redirect::permanent(path);
 

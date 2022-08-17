@@ -26,6 +26,8 @@ and this project adheres to [Semantic Versioning].
 - **added:** Add sync constructors to `CookieJar`, `PrivateCookieJar`, and
   `SignedCookieJar` so they're easier to use in custom middleware
 - **breaking:** `Resource` has a new `S` type param which represents the state ([#1155])
+- **breaking:** `RouterExt::route_with_tsr` now only accepts `MethodRouter`s ([#1155])
+- **added:** `RouterExt::route_service_with_tsr` for routing to any `Service` ([#1155])
 
 [#1086]: https://github.com/tokio-rs/axum/pull/1086
 [#1119]: https://github.com/tokio-rs/axum/pull/1119
