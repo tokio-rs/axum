@@ -9,7 +9,7 @@ use std::{convert::Infallible, sync::Arc};
 impl<S, B> FromRequest<S, B> for Request<B>
 where
     B: Send,
-    S: Clone + Send + Sync,
+    S: Send + Sync,
 {
     type Rejection = BodyAlreadyExtracted;
 

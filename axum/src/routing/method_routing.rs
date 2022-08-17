@@ -144,7 +144,7 @@ macro_rules! top_level_handler_fn {
             H: Handler<T, S, B>,
             B: Send + 'static,
             T: 'static,
-            S: Clone + Send + Sync + 'static,
+            S: Send + Sync + 'static,
         {
             on(MethodFilter::$method, handler)
         }
@@ -280,7 +280,7 @@ macro_rules! chained_handler_fn {
         where
             H: Handler<T, S, B>,
             T: 'static,
-            S: Clone + Send + Sync + 'static,
+            S: Send + Sync + 'static,
         {
             self.on(MethodFilter::$method, handler)
         }
@@ -429,7 +429,7 @@ where
     H: Handler<T, S, B>,
     B: Send + 'static,
     T: 'static,
-    S: Clone + Send + Sync + 'static,
+    S: Send + Sync + 'static,
 {
     MethodRouter::new().on(filter, handler)
 }
@@ -476,7 +476,7 @@ where
     H: Handler<T, S, B>,
     B: Send + 'static,
     T: 'static,
-    S: Clone + Send + Sync + 'static,
+    S: Send + Sync + 'static,
 {
     MethodRouter::new()
         .fallback_boxed_response_body(IntoServiceStateInExtension::new(handler))
@@ -600,7 +600,7 @@ where
     where
         H: Handler<T, S, B>,
         T: 'static,
-        S: Clone + Send + Sync + 'static,
+        S: Send + Sync + 'static,
     {
         self.on_service_boxed_response_body(filter, IntoServiceStateInExtension::new(handler))
     }
@@ -619,7 +619,7 @@ where
     where
         H: Handler<T, S, B>,
         T: 'static,
-        S: Clone + Send + Sync + 'static,
+        S: Send + Sync + 'static,
     {
         self.fallback_service(IntoServiceStateInExtension::new(handler))
     }

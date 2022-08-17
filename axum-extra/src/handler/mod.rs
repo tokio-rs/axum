@@ -176,7 +176,7 @@ where
     T: FromRequest<S, B> + Send + 'static,
     T::Rejection: Send,
     B: Send + 'static,
-    S: Clone + Send + Sync + 'static,
+    S: Send + Sync + 'static,
 {
     type Future = BoxFuture<'static, Response>;
 
