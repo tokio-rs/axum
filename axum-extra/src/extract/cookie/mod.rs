@@ -227,7 +227,7 @@ fn set_cookies(jar: cookie::CookieJar, headers: &mut HeaderMap) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use axum::{body::Body, http::Request, routing::get, Router, extract::FromRef};
+    use axum::{body::Body, extract::FromRef, http::Request, routing::get, Router};
     use tower::ServiceExt;
 
     macro_rules! cookie_test {

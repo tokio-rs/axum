@@ -1,7 +1,7 @@
 use super::{cookies_from_request, set_cookies, Cookie, Key};
 use axum::{
     async_trait,
-    extract::{FromRequest, RequestParts, FromRef},
+    extract::{FromRef, FromRequest, RequestParts},
     response::{IntoResponse, IntoResponseParts, Response, ResponseParts},
 };
 use cookie::PrivateJar;
