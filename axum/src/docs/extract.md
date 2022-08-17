@@ -605,7 +605,7 @@ where
     B: Send,
 {
     // running extractors requires a `RequestParts`
-    let mut request_parts = RequestParts::new(request, ());
+    let mut request_parts = RequestParts::new(request);
 
     // `TypedHeader<Authorization<Bearer>>` extracts the auth token but
     // `RequestParts::extract` works with anything that implements `FromRequest`

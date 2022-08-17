@@ -5,6 +5,7 @@ use axum::{
     response::{IntoResponse, IntoResponseParts, Response, ResponseParts},
 };
 use cookie::PrivateJar;
+use http::HeaderMap;
 use std::{convert::Infallible, fmt, marker::PhantomData};
 
 /// Extractor that grabs private cookies from the request and manages the jar.
@@ -98,20 +99,52 @@ where
         let state = req.state().clone();
         let key: K = state.into();
         let key: Key = key.into();
+        let PrivateCookieJar {
+            jar,
+            key,
+            _marker: _,
+        } = PrivateCookieJar::from_headers(req.headers(), key);
+        Ok(PrivateCookieJar {
+            jar,
+            key,
+            _marker: PhantomData,
+        })
+    }
+}
 
+impl PrivateCookieJar {
+    /// Create a new `PrivateCookieJar` from a map of request headers.
+    ///
+    /// The valid cookies in `headers` will be added to the jar.
+    ///
+    /// This is inteded to be used in middleware and other where places it might be difficult to
+    /// run extractors. Normally you should create `PrivateCookieJar`s through [`FromRequest`].
+    pub fn from_headers(headers: &HeaderMap, key: Key) -> Self {
         let mut jar = cookie::CookieJar::new();
         let mut private_jar = jar.private_mut(&key);
-        for cookie in cookies_from_request(req) {
+        for cookie in cookies_from_request(headers) {
             if let Some(cookie) = private_jar.decrypt(cookie) {
                 private_jar.add_original(cookie);
             }
         }
 
-        Ok(Self {
+        Self {
             jar,
             key,
             _marker: PhantomData,
-        })
+        }
+    }
+
+    /// Create a new empty `PrivateCookieJarIter`.
+    ///
+    /// This is inteded to be used in middleware and other places where it might be difficult to
+    /// run extractors. Normally you should create `PrivateCookieJar`s through [`FromRequest`].
+    pub fn new(key: Key) -> Self {
+        Self {
+            jar: Default::default(),
+            key,
+            _marker: PhantomData,
+        }
     }
 }
 
