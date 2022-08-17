@@ -68,7 +68,7 @@ use axum::{
 ///
 /// See the [module docs](self) for examples.
 #[derive(Debug, Clone)]
-pub enum Either2<E1, E2> {
+pub enum Either<E1, E2> {
     #[allow(missing_docs)]
     E1(E1),
     #[allow(missing_docs)]
@@ -224,7 +224,7 @@ macro_rules! impl_traits_for_either {
     };
 }
 
-impl_traits_for_either!(Either2 => [E1], E2);
+impl_traits_for_either!(Either => [E1], E2);
 impl_traits_for_either!(Either3 => [E1, E2], E3);
 impl_traits_for_either!(Either4 => [E1, E2, E3], E4);
 impl_traits_for_either!(Either5 => [E1, E2, E3, E4], E5);

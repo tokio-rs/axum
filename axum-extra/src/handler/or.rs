@@ -1,5 +1,5 @@
 use super::HandlerCallWithExtractors;
-use crate::either::Either2;
+use crate::either::Either;
 use axum::{
     extract::{FromRequest, RequestParts},
     handler::Handler,
@@ -21,7 +21,7 @@ pub struct Or<L, R, Lt, Rt, B> {
     pub(super) _marker: PhantomData<fn() -> (Lt, Rt, B)>,
 }
 
-impl<B, L, R, Lt, Rt> HandlerCallWithExtractors<Either2<Lt, Rt>, B> for Or<L, R, Lt, Rt, B>
+impl<B, L, R, Lt, Rt> HandlerCallWithExtractors<Either<Lt, Rt>, B> for Or<L, R, Lt, Rt, B>
 where
     L: HandlerCallWithExtractors<Lt, B> + Send + 'static,
     R: HandlerCallWithExtractors<Rt, B> + Send + 'static,
@@ -37,15 +37,15 @@ where
 
     fn call(
         self,
-        extractors: Either2<Lt, Rt>,
-    ) -> <Self as HandlerCallWithExtractors<Either2<Lt, Rt>, B>>::Future {
+        extractors: Either<Lt, Rt>,
+    ) -> <Self as HandlerCallWithExtractors<Either<Lt, Rt>, B>>::Future {
         match extractors {
-            Either2::E1(lt) => self
+            Either::E1(lt) => self
                 .lhs
                 .call(lt)
                 .map(IntoResponse::into_response as _)
                 .left_future(),
-            Either2::E2(rt) => self
+            Either::E2(rt) => self
                 .rhs
                 .call(rt)
                 .map(IntoResponse::into_response as _)
