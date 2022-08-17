@@ -535,6 +535,7 @@ pub fn derive_from_request(item: TokenStream) -> TokenStream {
 ///
 /// [`axum`]: https://docs.rs/axum/latest
 /// [`Handler`]: https://docs.rs/axum/latest/axum/handler/trait.Handler.html
+/// [`axum::extract::State`]: https://docs.rs/axum/0.6/axum/extract/struct.State.html
 /// [`debug_handler`]: macro@debug_handler
 #[proc_macro_attribute]
 pub fn debug_handler(_attr: TokenStream, input: TokenStream) -> TokenStream {
