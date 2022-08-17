@@ -12,7 +12,8 @@ use async_session::{MemoryStore, Session, SessionStore};
 use axum::{
     async_trait,
     extract::{
-        rejection::TypedHeaderRejectionReason, FromRequest, Query, RequestParts, State, FromRef, TypedHeader,
+        rejection::TypedHeaderRejectionReason, FromRef, FromRequest, Query, RequestParts, State,
+        TypedHeader,
     },
     http::{header::SET_COOKIE, HeaderMap},
     response::{IntoResponse, Redirect, Response},
