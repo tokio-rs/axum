@@ -7,6 +7,7 @@ use axum::{
 };
 use cookie::SignedJar;
 use cookie::{Cookie, Key};
+use http::HeaderMap;
 use std::{convert::Infallible, fmt, marker::PhantomData};
 
 /// Extractor that grabs signed cookies from the request and manages the jar.
@@ -100,21 +101,53 @@ where
     type Rejection = <axum::Extension<K> as FromRequest<B>>::Rejection;
 
     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-        let key = Extension::<K>::from_request(req).await?.0.into();
+        let key = req.extract::<Extension<K>>().await?.0.into();
+        let SignedCookieJar {
+            jar,
+            key,
+            _marker: _,
+        } = SignedCookieJar::from_headers(req.headers(), key);
+        Ok(SignedCookieJar {
+            jar,
+            key,
+            _marker: PhantomData,
+        })
+    }
+}
 
+impl SignedCookieJar {
+    /// Create a new `SignedCookieJar` from a map of request headers.
+    ///
+    /// The valid cookies in `headers` will be added to the jar.
+    ///
+    /// This is inteded to be used in middleware and other places where it might be difficult to
+    /// run extractors. Normally you should create `SignedCookieJar`s through [`FromRequest`].
+    pub fn from_headers(headers: &HeaderMap, key: Key) -> Self {
         let mut jar = cookie::CookieJar::new();
         let mut signed_jar = jar.signed_mut(&key);
-        for cookie in cookies_from_request(req) {
+        for cookie in cookies_from_request(headers) {
             if let Some(cookie) = signed_jar.verify(cookie) {
                 signed_jar.add_original(cookie);
             }
         }
 
-        Ok(Self {
+        Self {
             jar,
             key,
             _marker: PhantomData,
-        })
+        }
+    }
+
+    /// Create a new empty `SignedCookieJar`.
+    ///
+    /// This is inteded to be used in middleware and other places where it might be difficult to
+    /// run extractors. Normally you should create `SignedCookieJar`s through [`FromRequest`].
+    pub fn new(key: Key) -> Self {
+        Self {
+            jar: Default::default(),
+            key,
+            _marker: PhantomData,
+        }
     }
 }
 
