@@ -8,5 +8,5 @@ enum Extractor {}
 async fn foo(_: Extractor) {}
 
 fn main() {
-    Router::<Body>::new().route("/", get(foo));
+    Router::<(), Body>::new().route("/", get(foo));
 }

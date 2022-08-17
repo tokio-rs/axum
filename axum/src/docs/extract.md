@@ -421,13 +421,14 @@ use http::{StatusCode, header::{HeaderValue, USER_AGENT}};
 struct ExtractUserAgent(HeaderValue);
 
 #[async_trait]
-impl<B> FromRequest<B> for ExtractUserAgent
+impl<S, B> FromRequest<S, B> for ExtractUserAgent
 where
     B: Send,
+    S: Send,
 {
     type Rejection = (StatusCode, &'static str);
 
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts<S, B>) -> Result<Self, Self::Rejection> {
         if let Some(user_agent) = req.headers().get(USER_AGENT) {
             Ok(ExtractUserAgent(user_agent.clone()))
         } else {
@@ -472,13 +473,14 @@ struct AuthenticatedUser {
 }
 
 #[async_trait]
-impl<B> FromRequest<B> for AuthenticatedUser
+impl<S, B> FromRequest<S, B> for AuthenticatedUser
 where
     B: Send,
+    S: Send,
 {
     type Rejection = Response;
 
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts<S, B>) -> Result<Self, Self::Rejection> {
         let TypedHeader(Authorization(token)) = 
             TypedHeader::<Authorization<Bearer>>::from_request(req)
                 .await
@@ -633,7 +635,7 @@ fn token_is_valid(token: &str) -> bool {
 }
 
 let app = Router::new().layer(middleware::from_fn(auth_middleware));
-# let _: Router = app;
+# let _: Router<()> = app;
 ```
 
 [`body::Body`]: crate::body::Body

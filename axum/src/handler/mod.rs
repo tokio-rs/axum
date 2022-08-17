@@ -49,8 +49,11 @@ use tower_service::Service;
 
 pub mod future;
 mod into_service;
+mod into_service_state_in_extension;
+mod with_state;
 
-pub use self::into_service::IntoService;
+pub(crate) use self::into_service_state_in_extension::IntoServiceStateInExtension;
+pub use self::{into_service::IntoService, with_state::WithState};
 
 /// Trait for async functions that can be used to handle requests.
 ///
@@ -59,13 +62,45 @@ pub use self::into_service::IntoService;
 ///
 /// See the [module docs](crate::handler) for more details.
 ///
+/// # Converting `Handler`s into [`Service`]s
+///
+/// To convert `Handler`s into [`Service`]s you have to call either
+/// [`HandlerWithoutStateExt::into_service`] or [`Handler::with_state`]:
+///
+/// ```
+/// use tower::Service;
+/// use axum::{
+///     extract::State,
+///     body::Body,
+///     http::Request,
+///     handler::{HandlerWithoutStateExt, Handler},
+/// };
+///
+/// // this handler doesn't require any state
+/// async fn one() {}
+/// // so it can be converted to a service with `HandlerWithoutStateExt::into_service`
+/// assert_service(one.into_service());
+///
+/// // this handler requires state
+/// async fn two(_: State<String>) {}
+/// // so we have to provide it
+/// let handler_with_state = two.with_state(String::new());
+/// // which gives us a `Service`
+/// assert_service(handler_with_state);
+///
+/// // helper to check that a value implements `Service`
+/// fn assert_service<S>(service: S)
+/// where
+///     S: Service<Request<Body>>,
+/// {}
+/// ```
 #[doc = include_str!("../docs/debugging_handler_type_errors.md")]
-pub trait Handler<T, B = Body>: Clone + Send + Sized + 'static {
+pub trait Handler<T, S = (), B = Body>: Clone + Send + Sized + 'static {
     /// The type of future calling this handler returns.
     type Future: Future<Output = Response> + Send + 'static;
 
     /// Call the handler with the given request.
-    fn call(self, req: Request<B>) -> Self::Future;
+    fn call(self, state: S, req: Request<B>) -> Self::Future;
 
     /// Apply a [`tower::Layer`] to the handler.
     ///
@@ -103,112 +138,26 @@ pub trait Handler<T, B = Body>: Clone + Send + Sized + 'static {
     /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
     /// # };
     /// ```
-    fn layer<L>(self, layer: L) -> Layered<L::Service, T>
+    fn layer<L>(self, layer: L) -> Layered<L, Self, T, S, B>
     where
-        L: Layer<IntoService<Self, T, B>>,
+        L: Layer<WithState<Self, T, S, B>>,
     {
-        Layered::new(layer.layer(self.into_service()))
+        Layered {
+            layer,
+            handler: self,
+            _marker: PhantomData,
+        }
     }
 
-    /// Convert the handler into a [`Service`].
-    ///
-    /// This is commonly used together with [`Router::fallback`]:
-    ///
-    /// ```rust
-    /// use axum::{
-    ///     Server,
-    ///     handler::Handler,
-    ///     http::{Uri, Method, StatusCode},
-    ///     response::IntoResponse,
-    ///     routing::{get, Router},
-    /// };
-    /// use tower::make::Shared;
-    /// use std::net::SocketAddr;
-    ///
-    /// async fn handler(method: Method, uri: Uri) -> (StatusCode, String) {
-    ///     (StatusCode::NOT_FOUND, format!("Nothing to see at {} {}", method, uri))
-    /// }
-    ///
-    /// let app = Router::new()
-    ///     .route("/", get(|| async {}))
-    ///     .fallback(handler.into_service());
-    ///
-    /// # async {
-    /// Server::bind(&SocketAddr::from(([127, 0, 0, 1], 3000)))
-    ///     .serve(app.into_make_service())
-    ///     .await?;
-    /// # Ok::<_, hyper::Error>(())
-    /// # };
-    /// ```
-    ///
-    /// [`Router::fallback`]: crate::routing::Router::fallback
-    fn into_service(self) -> IntoService<Self, T, B> {
-        IntoService::new(self)
-    }
-
-    /// Convert the handler into a [`MakeService`].
-    ///
-    /// This allows you to serve a single handler if you don't need any routing:
-    ///
-    /// ```rust
-    /// use axum::{
-    ///     Server, handler::Handler, http::{Uri, Method}, response::IntoResponse,
-    /// };
-    /// use std::net::SocketAddr;
-    ///
-    /// async fn handler(method: Method, uri: Uri, body: String) -> String {
-    ///     format!("received `{} {}` with body `{:?}`", method, uri, body)
-    /// }
-    ///
-    /// # async {
-    /// Server::bind(&SocketAddr::from(([127, 0, 0, 1], 3000)))
-    ///     .serve(handler.into_make_service())
-    ///     .await?;
-    /// # Ok::<_, hyper::Error>(())
-    /// # };
-    /// ```
-    ///
-    /// [`MakeService`]: tower::make::MakeService
-    fn into_make_service(self) -> IntoMakeService<IntoService<Self, T, B>> {
-        IntoMakeService::new(self.into_service())
-    }
-
-    /// Convert the handler into a [`MakeService`] which stores information
-    /// about the incoming connection.
-    ///
-    /// See [`Router::into_make_service_with_connect_info`] for more details.
-    ///
-    /// ```rust
-    /// use axum::{
-    ///     Server,
-    ///     handler::Handler,
-    ///     response::IntoResponse,
-    ///     extract::ConnectInfo,
-    /// };
-    /// use std::net::SocketAddr;
-    ///
-    /// async fn handler(ConnectInfo(addr): ConnectInfo<SocketAddr>) -> String {
-    ///     format!("Hello {}", addr)
-    /// }
-    ///
-    /// # async {
-    /// Server::bind(&SocketAddr::from(([127, 0, 0, 1], 3000)))
-    ///     .serve(handler.into_make_service_with_connect_info::<SocketAddr>())
-    ///     .await?;
-    /// # Ok::<_, hyper::Error>(())
-    /// # };
-    /// ```
-    ///
-    /// [`MakeService`]: tower::make::MakeService
-    /// [`Router::into_make_service_with_connect_info`]: crate::routing::Router::into_make_service_with_connect_info
-    fn into_make_service_with_connect_info<C>(
-        self,
-    ) -> IntoMakeServiceWithConnectInfo<IntoService<Self, T, B>, C> {
-        IntoMakeServiceWithConnectInfo::new(self.into_service())
+    /// Convert the handler into a [`Service`] by providing the state
+    fn with_state(self, state: S) -> WithState<Self, T, S, B> {
+        WithState {
+            service: IntoService::new(self, state),
+        }
     }
 }
 
-impl<F, Fut, Res, B> Handler<(), B> for F
+impl<F, Fut, Res, S, B> Handler<(), S, B> for F
 where
     F: FnOnce() -> Fut + Clone + Send + 'static,
     Fut: Future<Output = Res> + Send,
@@ -217,7 +166,7 @@ where
 {
     type Future = Pin<Box<dyn Future<Output = Response> + Send>>;
 
-    fn call(self, _req: Request<B>) -> Self::Future {
+    fn call(self, _state: S, _req: Request<B>) -> Self::Future {
         Box::pin(async move { self().await.into_response() })
     }
 }
@@ -225,19 +174,20 @@ where
 macro_rules! impl_handler {
     ( $($ty:ident),* $(,)? ) => {
         #[allow(non_snake_case)]
-        impl<F, Fut, B, Res, $($ty,)*> Handler<($($ty,)*), B> for F
+        impl<F, Fut, S, B, Res, $($ty,)*> Handler<($($ty,)*), S, B> for F
         where
             F: FnOnce($($ty,)*) -> Fut + Clone + Send + 'static,
             Fut: Future<Output = Res> + Send,
             B: Send + 'static,
+            S: Send + 'static,
             Res: IntoResponse,
-            $( $ty: FromRequest<B> + Send,)*
+            $( $ty: FromRequest<S, B> + Send,)*
         {
             type Future = Pin<Box<dyn Future<Output = Response> + Send>>;
 
-            fn call(self, req: Request<B>) -> Self::Future {
+            fn call(self, state: S, req: Request<B>) -> Self::Future {
                 Box::pin(async move {
-                    let mut req = RequestParts::new(req);
+                    let mut req = RequestParts::with_state(state, req);
 
                     $(
                         let $ty = match $ty::from_request(&mut req).await {
@@ -260,58 +210,116 @@ all_the_tuples!(impl_handler);
 /// A [`Service`] created from a [`Handler`] by applying a Tower middleware.
 ///
 /// Created with [`Handler::layer`]. See that method for more details.
-pub struct Layered<S, T> {
-    svc: S,
-    _input: PhantomData<fn() -> T>,
+pub struct Layered<L, H, T, S, B> {
+    layer: L,
+    handler: H,
+    _marker: PhantomData<fn() -> (T, S, B)>,
 }
 
-impl<S, T> fmt::Debug for Layered<S, T>
+impl<L, H, T, S, B> fmt::Debug for Layered<L, H, T, S, B>
 where
-    S: fmt::Debug,
+    L: fmt::Debug,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Layered").field("svc", &self.svc).finish()
+        f.debug_struct("Layered")
+            .field("layer", &self.layer)
+            .finish()
     }
 }
 
-impl<S, T> Clone for Layered<S, T>
+impl<L, H, T, S, B> Clone for Layered<L, H, T, S, B>
 where
-    S: Clone,
+    L: Clone,
+    H: Clone,
 {
     fn clone(&self) -> Self {
-        Self::new(self.svc.clone())
+        Self {
+            layer: self.layer.clone(),
+            handler: self.handler.clone(),
+            _marker: PhantomData,
+        }
     }
 }
 
-impl<S, T, ReqBody> Handler<T, ReqBody> for Layered<S, T>
+impl<H, S, T, B, L> Handler<T, S, B> for Layered<L, H, T, S, B>
 where
-    S: Service<Request<ReqBody>, Error = Infallible> + Clone + Send + 'static,
-    S::Response: IntoResponse,
-    S::Future: Send,
+    L: Layer<WithState<H, T, S, B>> + Clone + Send + 'static,
+    H: Handler<T, S, B>,
+    L::Service: Service<Request<B>, Error = Infallible> + Clone + Send + 'static,
+    <L::Service as Service<Request<B>>>::Response: IntoResponse,
+    <L::Service as Service<Request<B>>>::Future: Send,
     T: 'static,
-    ReqBody: Send + 'static,
+    S: 'static,
+    B: Send + 'static,
 {
-    type Future = future::LayeredFuture<S, ReqBody>;
+    type Future = future::LayeredFuture<B, L::Service>;
 
-    fn call(self, req: Request<ReqBody>) -> Self::Future {
+    fn call(self, state: S, req: Request<B>) -> Self::Future {
         use futures_util::future::{FutureExt, Map};
 
-        let future: Map<_, fn(Result<S::Response, S::Error>) -> _> =
-            self.svc.oneshot(req).map(|result| match result {
-                Ok(res) => res.into_response(),
-                Err(err) => match err {},
-            });
+        let svc = self.handler.with_state(state);
+        let svc = self.layer.layer(svc);
+
+        let future: Map<
+            _,
+            fn(
+                Result<
+                    <L::Service as Service<Request<B>>>::Response,
+                    <L::Service as Service<Request<B>>>::Error,
+                >,
+            ) -> _,
+        > = svc.oneshot(req).map(|result| match result {
+            Ok(res) => res.into_response(),
+            Err(err) => match err {},
+        });
 
         future::LayeredFuture::new(future)
     }
 }
 
-impl<S, T> Layered<S, T> {
-    pub(crate) fn new(svc: S) -> Self {
-        Self {
-            svc,
-            _input: PhantomData,
-        }
+/// Extension trait for [`Handler`]s that don't have state.
+///
+/// This provides convenience methods to convert the [`Handler`] into a [`Service`] or [`MakeService`].
+///
+/// [`MakeService`]: tower::make::MakeService
+pub trait HandlerWithoutStateExt<T, B>: Handler<T, (), B> {
+    /// Convert the handler into a [`Service`] and no state.
+    fn into_service(self) -> WithState<Self, T, (), B>;
+
+    /// Convert the handler into a [`MakeService`] and no state.
+    ///
+    /// See [`WithState::into_make_service`] for more details.
+    ///
+    /// [`MakeService`]: tower::make::MakeService
+    fn into_make_service(self) -> IntoMakeService<IntoService<Self, T, (), B>>;
+
+    /// Convert the handler into a [`MakeService`] which stores information
+    /// about the incoming connection and has no state.
+    ///
+    /// See [`WithState::into_make_service_with_connect_info`] for more details.
+    ///
+    /// [`MakeService`]: tower::make::MakeService
+    fn into_make_service_with_connect_info<C>(
+        self,
+    ) -> IntoMakeServiceWithConnectInfo<IntoService<Self, T, (), B>, C>;
+}
+
+impl<H, T, B> HandlerWithoutStateExt<T, B> for H
+where
+    H: Handler<T, (), B>,
+{
+    fn into_service(self) -> WithState<Self, T, (), B> {
+        self.with_state(())
+    }
+
+    fn into_make_service(self) -> IntoMakeService<IntoService<Self, T, (), B>> {
+        self.with_state(()).into_make_service()
+    }
+
+    fn into_make_service_with_connect_info<C>(
+        self,
+    ) -> IntoMakeServiceWithConnectInfo<IntoService<Self, T, (), B>, C> {
+        self.with_state(()).into_make_service_with_connect_info()
     }
 }
 

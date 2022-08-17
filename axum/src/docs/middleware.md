@@ -6,7 +6,8 @@
 - [Ordering](#ordering)
 - [Writing middleware](#writing-middleware)
 - [Routing to services/middleware and backpressure](#routing-to-servicesmiddleware-and-backpressure)
-- [Sharing state between handlers and middleware](#sharing-state-between-handlers-and-middleware)
+- [Accessing state in middleware](#accessing-state-in-middleware)
+- [Passing state from middleware to handlers](#passing-state-from-middleware-to-handlers)
 
 # Intro
 
@@ -95,7 +96,7 @@ let app = Router::new()
     .layer(layer_one)
     .layer(layer_two)
     .layer(layer_three);
-# let app: Router<axum::body::Body> = app;
+# let _: Router<(), axum::body::Body> = app;
 ```
 
 Think of the middleware as being layered like an onion where each new layer
@@ -154,7 +155,7 @@ let app = Router::new()
             .layer(layer_two)
             .layer(layer_three),
     );
-# let app: Router<axum::body::Body> = app;
+# let _: Router<(), axum::body::Body> = app;
 ```
 
 `ServiceBuilder` works by composing all layers into one such that they run top
@@ -386,9 +387,119 @@ Also note that handlers created from async functions don't care about
 backpressure and are always ready. So if you're not using any Tower
 middleware you don't have to worry about any of this.
 
-# Sharing state between handlers and middleware
+# Accessing state in middleware
 
-State can be shared between middleware and handlers using [request extensions]:
+Handlers can access state using the [`State`] extractor but this isn't available
+to middleware. Instead you have to pass the state directly to middleware using
+either closure captures (for [`axum::middleware::from_fn`]) or regular struct
+fields (if you're implementing a [`tower::Layer`])
+
+## Accessing state in `axum::middleware::from_fn`
+
+```rust
+use axum::{
+    Router,
+    routing::get,
+    middleware::{self, Next},
+    response::Response,
+    extract::State,
+    http::Request,
+};
+
+#[derive(Clone)]
+struct AppState {}
+
+async fn my_middleware<B>(
+    state: AppState,
+    req: Request<B>,
+    next: Next<B>,
+) -> Response {
+    next.run(req).await
+}
+
+async fn handler(_: State<AppState>) {}
+
+let state = AppState {};
+
+let app = Router::with_state(state.clone())
+    .route("/", get(handler))
+    .layer(middleware::from_fn(move |req, next| {
+        my_middleware(state.clone(), req, next)
+    }));
+# let _: Router<_> = app;
+```
+
+## Accessing state in custom `tower::Layer`s
+
+```rust
+use axum::{
+    Router,
+    routing::get,
+    middleware::{self, Next},
+    response::Response,
+    extract::State,
+    http::Request,
+};
+use tower::{Layer, Service};
+use std::task::{Context, Poll};
+
+#[derive(Clone)]
+struct AppState {}
+
+#[derive(Clone)]
+struct MyLayer {
+    state: AppState,
+}
+
+impl<S> Layer<S> for MyLayer {
+    type Service = MyService<S>;
+
+    fn layer(&self, inner: S) -> Self::Service {
+        MyService {
+            inner,
+            state: self.state.clone(),
+        }
+    }
+}
+
+#[derive(Clone)]
+struct MyService<S> {
+    inner: S,
+    state: AppState,
+}
+
+impl<S, B> Service<Request<B>> for MyService<S>
+where
+    S: Service<Request<B>>,
+{
+    type Response = S::Response;
+    type Error = S::Error;
+    type Future = S::Future;
+
+    fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        self.inner.poll_ready(cx)
+    }
+
+    fn call(&mut self, req: Request<B>) -> Self::Future {
+        // do something with `self.state`
+
+        self.inner.call(req)
+    }
+}
+
+async fn handler(_: State<AppState>) {}
+
+let state = AppState {};
+
+let app = Router::with_state(state.clone())
+    .route("/", get(handler))
+    .layer(MyLayer { state });
+# let _: Router<_> = app;
+```
+
+# Passing state from middleware to handlers
+
+State can be passed from middleware to handlers using [request extensions]:
 
 ```rust
 use axum::{
@@ -415,6 +526,8 @@ async fn auth<B>(mut req: Request<B>, next: Next<B>) -> Result<Response, StatusC
     };
 
     if let Some(current_user) = authorize_current_user(auth_header).await {
+        // insert the current user into a request extension so the handler can
+        // extract it
         req.extensions_mut().insert(current_user);
         Ok(next.run(req).await)
     } else {
@@ -437,7 +550,7 @@ async fn handler(
 let app = Router::new()
     .route("/", get(handler))
     .route_layer(middleware::from_fn(auth));
-# let app: Router = app;
+# let _: Router<()> = app;
 ```
 
 [Response extensions] can also be used but note that request extensions are not
@@ -462,3 +575,4 @@ extensions you need.
 [`MethodRouter::route_layer`]: crate::routing::MethodRouter::route_layer
 [request extensions]: https://docs.rs/http/latest/http/request/struct.Request.html#method.extensions
 [Response extensions]: https://docs.rs/http/latest/http/response/struct.Response.html#method.extensions
+[`State`]: crate::extract::State

@@ -9,7 +9,7 @@
 use axum::{
     extract::{
         ws::{Message, WebSocket, WebSocketUpgrade},
-        Extension,
+        State,
     },
     response::{Html, IntoResponse},
     routing::get,
@@ -44,10 +44,9 @@ async fn main() {
 
     let app_state = Arc::new(AppState { user_set, tx });
 
-    let app = Router::new()
+    let app = Router::with_state(app_state)
         .route("/", get(index))
-        .route("/websocket", get(websocket_handler))
-        .layer(Extension(app_state));
+        .route("/websocket", get(websocket_handler));
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
     tracing::debug!("listening on {}", addr);
@@ -59,7 +58,7 @@ async fn main() {
 
 async fn websocket_handler(
     ws: WebSocketUpgrade,
-    Extension(state): Extension<Arc<AppState>>,
+    State(state): State<Arc<AppState>>,
 ) -> impl IntoResponse {
     ws.on_upgrade(|socket| websocket(socket, state))
 }

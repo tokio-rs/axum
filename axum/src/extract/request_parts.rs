@@ -86,13 +86,14 @@ pub struct OriginalUri(pub Uri);
 
 #[cfg(feature = "original-uri")]
 #[async_trait]
-impl<B> FromRequest<B> for OriginalUri
+impl<S, B> FromRequest<S, B> for OriginalUri
 where
     B: Send,
+    S: Send,
 {
     type Rejection = Infallible;
 
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts<S, B>) -> Result<Self, Self::Rejection> {
         let uri = Extension::<Self>::from_request(req)
             .await
             .unwrap_or_else(|_| Extension(OriginalUri(req.uri().clone())))
@@ -140,15 +141,16 @@ impl Stream for BodyStream {
 }
 
 #[async_trait]
-impl<B> FromRequest<B> for BodyStream
+impl<S, B> FromRequest<S, B> for BodyStream
 where
     B: HttpBody + Send + 'static,
     B::Data: Into<Bytes>,
     B::Error: Into<BoxError>,
+    S: Send,
 {
     type Rejection = BodyAlreadyExtracted;
 
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts<S, B>) -> Result<Self, Self::Rejection> {
         let body = take_body(req)?
             .map_data(Into::into)
             .map_err(|err| Error::new(err.into()));
@@ -196,13 +198,14 @@ fn body_stream_traits() {
 pub struct RawBody<B = Body>(pub B);
 
 #[async_trait]
-impl<B> FromRequest<B> for RawBody<B>
+impl<S, B> FromRequest<S, B> for RawBody<B>
 where
     B: Send,
+    S: Send,
 {
     type Rejection = BodyAlreadyExtracted;
 
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts<S, B>) -> Result<Self, Self::Rejection> {
         let body = take_body(req)?;
         Ok(Self(body))
     }

@@ -80,7 +80,7 @@ pub use cookie::Key;
 /// let app = Router::new()
 ///     .route("/sessions", post(create_session))
 ///     .route("/me", get(me));
-/// # let app: Router<axum::body::Body> = app;
+/// # let app: Router = app;
 /// ```
 #[derive(Debug, Default)]
 pub struct CookieJar {
@@ -88,13 +88,14 @@ pub struct CookieJar {
 }
 
 #[async_trait]
-impl<B> FromRequest<B> for CookieJar
+impl<S, B> FromRequest<S, B> for CookieJar
 where
     B: Send,
+    S: Send,
 {
     type Rejection = Infallible;
 
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts<S, B>) -> Result<Self, Self::Rejection> {
         Ok(Self::from_headers(req.headers()))
     }
 }
@@ -226,7 +227,7 @@ fn set_cookies(jar: cookie::CookieJar, headers: &mut HeaderMap) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use axum::{body::Body, http::Request, routing::get, Extension, Router};
+    use axum::{body::Body, extract::FromRef, http::Request, routing::get, Router};
     use tower::ServiceExt;
 
     macro_rules! cookie_test {
@@ -245,12 +246,15 @@ mod tests {
                     jar.remove(Cookie::named("key"))
                 }
 
-                let app = Router::<Body>::new()
+                let state = AppState {
+                    key: Key::generate(),
+                    custom_key: CustomKey(Key::generate()),
+                };
+
+                let app = Router::<_, Body>::with_state(state)
                     .route("/set", get(set_cookie))
                     .route("/get", get(get_cookie))
-                    .route("/remove", get(remove_cookie))
-                    .layer(Extension(Key::generate()))
-                    .layer(Extension(CustomKey(Key::generate())));
+                    .route("/remove", get(remove_cookie));
 
                 let res = app
                     .clone()
@@ -299,6 +303,24 @@ mod tests {
     cookie_test!(private_cookies_with_custom_key, PrivateCookieJar<CustomKey>);
 
     #[derive(Clone)]
+    struct AppState {
+        key: Key,
+        custom_key: CustomKey,
+    }
+
+    impl FromRef<AppState> for Key {
+        fn from_ref(state: &AppState) -> Key {
+            state.key.clone()
+        }
+    }
+
+    impl FromRef<AppState> for CustomKey {
+        fn from_ref(state: &AppState) -> CustomKey {
+            state.custom_key.clone()
+        }
+    }
+
+    #[derive(Clone)]
     struct CustomKey(Key);
 
     impl From<CustomKey> for Key {
@@ -313,9 +335,12 @@ mod tests {
             format!("{:?}", jar.get("key"))
         }
 
-        let app = Router::<Body>::new()
-            .route("/get", get(get_cookie))
-            .layer(Extension(Key::generate()));
+        let state = AppState {
+            key: Key::generate(),
+            custom_key: CustomKey(Key::generate()),
+        };
+
+        let app = Router::<_, Body>::with_state(state).route("/get", get(get_cookie));
 
         let res = app
             .clone()

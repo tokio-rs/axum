@@ -28,14 +28,15 @@ struct MyExtractor {
 struct OtherExtractor;
 
 #[async_trait]
-impl<B> FromRequest<B> for OtherExtractor
+impl<S, B> FromRequest<S, B> for OtherExtractor
 where
     B: Send + 'static,
+    S: Send,
 {
     // this rejection doesn't implement `Display` and `Error`
     type Rejection = (StatusCode, String);
 
-    async fn from_request(_req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+    async fn from_request(_req: &mut RequestParts<S, B>) -> Result<Self, Self::Rejection> {
         todo!()
     }
 }

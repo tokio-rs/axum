@@ -104,7 +104,7 @@ let api_routes = Router::new().nest("/users", get(|| async {}));
 
 let app = Router::new()
     .nest("/api", api_routes)
-    .fallback(fallback.into_service());
+    .fallback(fallback);
 # let _: Router = app;
 ```
 
@@ -132,11 +132,11 @@ async fn api_fallback() -> (StatusCode, Json<Value>) {
 let api_routes = Router::new()
     .nest("/users", get(|| async {}))
     // add dedicated fallback for requests starting with `/api`
-    .fallback(api_fallback.into_service());
+    .fallback(api_fallback);
 
 let app = Router::new()
     .nest("/api", api_routes)
-    .fallback(fallback.into_service());
+    .fallback(fallback);
 # let _: Router = app;
 ```
 

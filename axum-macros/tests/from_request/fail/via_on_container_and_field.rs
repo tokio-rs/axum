@@ -1,9 +1,8 @@
 use axum_macros::FromRequest;
-use axum::extract::Extension;
 
 #[derive(FromRequest)]
-#[from_request(via(Extension))]
-struct Extractor(#[from_request(via(Extension))] State);
+#[from_request(via(axum::Extension))]
+struct Extractor(#[from_request(via(axum::Extension))] State);
 
 #[derive(Clone)]
 struct State;

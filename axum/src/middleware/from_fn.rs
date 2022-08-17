@@ -251,19 +251,19 @@ where
 macro_rules! impl_service {
     ( $($ty:ident),* $(,)? ) => {
         #[allow(non_snake_case)]
-        impl<F, Fut, Out, S, ReqBody, $($ty,)*> Service<Request<ReqBody>> for FromFn<F, S, ($($ty,)*)>
+        impl<F, Fut, Out, S, B, $($ty,)*> Service<Request<B>> for FromFn<F, S, ($($ty,)*)>
         where
-            F: FnMut($($ty),*, Next<ReqBody>) -> Fut + Clone + Send + 'static,
-            $( $ty: FromRequest<ReqBody> + Send, )*
+            F: FnMut($($ty),*, Next<B>) -> Fut + Clone + Send + 'static,
+            $( $ty: FromRequest<(), B> + Send, )*
             Fut: Future<Output = Out> + Send + 'static,
             Out: IntoResponse + 'static,
-            S: Service<Request<ReqBody>, Error = Infallible>
+            S: Service<Request<B>, Error = Infallible>
                 + Clone
                 + Send
                 + 'static,
             S::Response: IntoResponse,
             S::Future: Send + 'static,
-            ReqBody: Send + 'static,
+            B: Send + 'static,
         {
             type Response = Response;
             type Error = Infallible;
@@ -273,7 +273,7 @@ macro_rules! impl_service {
                 self.inner.poll_ready(cx)
             }
 
-            fn call(&mut self, req: Request<ReqBody>) -> Self::Future {
+            fn call(&mut self, req: Request<B>) -> Self::Future {
                 let not_ready_inner = self.inner.clone();
                 let ready_inner = std::mem::replace(&mut self.inner, not_ready_inner);
 
@@ -320,13 +320,13 @@ where
 }
 
 /// The remainder of a middleware stack, including the handler.
-pub struct Next<ReqBody> {
-    inner: BoxCloneService<Request<ReqBody>, Response, Infallible>,
+pub struct Next<B> {
+    inner: BoxCloneService<Request<B>, Response, Infallible>,
 }
 
-impl<ReqBody> Next<ReqBody> {
+impl<B> Next<B> {
     /// Execute the remaining middleware stack.
-    pub async fn run(mut self, req: Request<ReqBody>) -> Response {
+    pub async fn run(mut self, req: Request<B>) -> Response {
         match self.inner.call(req).await {
             Ok(res) => res,
             Err(err) => match err {},
@@ -334,7 +334,7 @@ impl<ReqBody> Next<ReqBody> {
     }
 }
 
-impl<ReqBody> fmt::Debug for Next<ReqBody> {
+impl<B> fmt::Debug for Next<B> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("FromFnLayer")
             .field("inner", &self.inner)

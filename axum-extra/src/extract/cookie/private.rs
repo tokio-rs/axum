@@ -1,9 +1,8 @@
 use super::{cookies_from_request, set_cookies, Cookie, Key};
 use axum::{
     async_trait,
-    extract::{FromRequest, RequestParts},
+    extract::{FromRef, FromRequest, RequestParts},
     response::{IntoResponse, IntoResponseParts, Response, ResponseParts},
-    Extension,
 };
 use cookie::PrivateJar;
 use http::HeaderMap;
@@ -23,9 +22,8 @@ use std::{convert::Infallible, fmt, marker::PhantomData};
 /// ```rust
 /// use axum::{
 ///     Router,
-///     Extension,
 ///     routing::{post, get},
-///     extract::TypedHeader,
+///     extract::{TypedHeader, FromRef},
 ///     response::{IntoResponse, Redirect},
 ///     headers::authorization::{Authorization, Bearer},
 ///     http::StatusCode,
@@ -45,22 +43,36 @@ use std::{convert::Infallible, fmt, marker::PhantomData};
 ///     }
 /// }
 ///
-/// // Generate a secure key
-/// //
-/// // You probably don't wanna generate a new one each time the app starts though
-/// let key = Key::generate();
+/// // our application state
+/// #[derive(Clone)]
+/// struct AppState {
+///     // that holds the key used to sign cookies
+///     key: Key,
+/// }
 ///
-/// let app = Router::new()
+/// // this impl tells `SignedCookieJar` how to access the key from our state
+/// impl FromRef<AppState> for Key {
+///     fn from_ref(state: &AppState) -> Self {
+///         state.key.clone()
+///     }
+/// }
+///
+/// let state = AppState {
+///     // Generate a secure key
+///     //
+///     // You probably don't wanna generate a new one each time the app starts though
+///     key: Key::generate(),
+/// };
+///
+/// let app = Router::with_state(state)
 ///     .route("/set", post(set_secret))
-///     .route("/get", get(get_secret))
-///     // add extension with the key so `PrivateCookieJar` can access it
-///     .layer(Extension(key));
-/// # let app: Router<axum::body::Body> = app;
+///     .route("/get", get(get_secret));
+/// # let app: Router<_> = app;
 /// ```
 pub struct PrivateCookieJar<K = Key> {
     jar: cookie::CookieJar,
     key: Key,
-    // The key used to extract the key extension. Allows users to use multiple keys for different
+    // The key used to extract the key. Allows users to use multiple keys for different
     // jars. Maybe a library wants its own key.
     _marker: PhantomData<K>,
 }
@@ -75,15 +87,17 @@ impl<K> fmt::Debug for PrivateCookieJar<K> {
 }
 
 #[async_trait]
-impl<B, K> FromRequest<B> for PrivateCookieJar<K>
+impl<S, B, K> FromRequest<S, B> for PrivateCookieJar<K>
 where
     B: Send,
-    K: Into<Key> + Clone + Send + Sync + 'static,
+    S: Send,
+    K: FromRef<S> + Into<Key>,
 {
-    type Rejection = <axum::Extension<K> as FromRequest<B>>::Rejection;
+    type Rejection = Infallible;
 
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-        let key = req.extract::<Extension<K>>().await?.0.into();
+    async fn from_request(req: &mut RequestParts<S, B>) -> Result<Self, Self::Rejection> {
+        let k = K::from_ref(req.state());
+        let key = k.into();
         let PrivateCookieJar {
             jar,
             key,

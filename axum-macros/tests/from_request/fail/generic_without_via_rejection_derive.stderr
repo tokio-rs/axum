@@ -4,23 +4,15 @@ error: #[derive(FromRequest)] only supports generics when used with #[from_reque
 6 | struct Extractor<T>(T);
   |                  ^
 
-warning: unused import: `Extension`
- --> tests/from_request/fail/generic_without_via_rejection_derive.rs:1:38
-  |
-1 | use axum::{body::Body, routing::get, Extension, Router};
-  |                                      ^^^^^^^^^
-  |
-  = note: `#[warn(unused_imports)]` on by default
-
-error[E0277]: the trait bound `fn(Extractor<()>) -> impl Future<Output = ()> {foo}: Handler<_, _>` is not satisfied
-   --> tests/from_request/fail/generic_without_via_rejection_derive.rs:11:42
+error[E0277]: the trait bound `fn(Extractor<()>) -> impl Future<Output = ()> {foo}: Handler<_, _, _>` is not satisfied
+   --> tests/from_request/fail/generic_without_via_rejection_derive.rs:11:46
     |
-11  |     Router::<Body>::new().route("/", get(foo));
-    |                                      --- ^^^ the trait `Handler<_, _>` is not implemented for `fn(Extractor<()>) -> impl Future<Output = ()> {foo}`
-    |                                      |
-    |                                      required by a bound introduced by this call
+11  |     Router::<(), Body>::new().route("/", get(foo));
+    |                                          --- ^^^ the trait `Handler<_, _, _>` is not implemented for `fn(Extractor<()>) -> impl Future<Output = ()> {foo}`
+    |                                          |
+    |                                          required by a bound introduced by this call
     |
-    = help: the trait `Handler<T, ReqBody>` is implemented for `Layered<S, T>`
+    = help: the trait `Handler<T, S, B>` is implemented for `Layered<L, H, T, S, B>`
 note: required by a bound in `axum::routing::get`
    --> $WORKSPACE/axum/src/routing/method_routing.rs
     |

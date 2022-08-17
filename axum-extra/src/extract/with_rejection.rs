@@ -107,15 +107,16 @@ impl<E, R> DerefMut for WithRejection<E, R> {
 }
 
 #[async_trait]
-impl<B, E, R> FromRequest<B> for WithRejection<E, R>
+impl<B, E, R, S> FromRequest<S, B> for WithRejection<E, R>
 where
     B: Send,
-    E: FromRequest<B>,
+    S: Send,
+    E: FromRequest<S, B>,
     R: From<E::Rejection> + IntoResponse,
 {
     type Rejection = R;
 
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts<S, B>) -> Result<Self, Self::Rejection> {
         let extractor = req.extract::<E>().await?;
         Ok(WithRejection(extractor, PhantomData))
     }
@@ -134,10 +135,14 @@ mod tests {
         struct TestRejection;
 
         #[async_trait]
-        impl<B: Send> FromRequest<B> for TestExtractor {
+        impl<S, B> FromRequest<S, B> for TestExtractor
+        where
+            B: Send,
+            S: Send,
+        {
             type Rejection = ();
 
-            async fn from_request(_: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+            async fn from_request(_: &mut RequestParts<S, B>) -> Result<Self, Self::Rejection> {
                 Err(())
             }
         }

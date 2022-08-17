@@ -1,7 +1,6 @@
 #![doc = include_str!("../docs/error_handling.md")]
 
 use crate::{
-    body::boxed,
     extract::{FromRequest, RequestParts},
     http::{Request, StatusCode},
     response::{IntoResponse, Response},
@@ -113,16 +112,16 @@ where
     }
 }
 
-impl<S, F, ReqBody, Fut, Res> Service<Request<ReqBody>> for HandleError<S, F, ()>
+impl<S, F, B, Fut, Res> Service<Request<B>> for HandleError<S, F, ()>
 where
-    S: Service<Request<ReqBody>> + Clone + Send + 'static,
+    S: Service<Request<B>> + Clone + Send + 'static,
     S::Response: IntoResponse + Send,
     S::Error: Send,
     S::Future: Send,
     F: FnOnce(S::Error) -> Fut + Clone + Send + 'static,
     Fut: Future<Output = Res> + Send,
     Res: IntoResponse,
-    ReqBody: Send + 'static,
+    B: Send + 'static,
 {
     type Response = Response;
     type Error = Infallible;
@@ -132,7 +131,7 @@ where
         Poll::Ready(Ok(()))
     }
 
-    fn call(&mut self, req: Request<ReqBody>) -> Self::Future {
+    fn call(&mut self, req: Request<B>) -> Self::Future {
         let f = self.f.clone();
 
         let clone = self.inner.clone();
@@ -152,18 +151,18 @@ where
 #[allow(unused_macros)]
 macro_rules! impl_service {
     ( $($ty:ident),* $(,)? ) => {
-        impl<S, F, ReqBody, Res, Fut, $($ty,)*> Service<Request<ReqBody>>
+        impl<S, F, B, Res, Fut, $($ty,)*> Service<Request<B>>
             for HandleError<S, F, ($($ty,)*)>
         where
-            S: Service<Request<ReqBody>> + Clone + Send + 'static,
+            S: Service<Request<B>> + Clone + Send + 'static,
             S::Response: IntoResponse + Send,
             S::Error: Send,
             S::Future: Send,
             F: FnOnce($($ty),*, S::Error) -> Fut + Clone + Send + 'static,
             Fut: Future<Output = Res> + Send,
             Res: IntoResponse,
-            $( $ty: FromRequest<ReqBody> + Send,)*
-            ReqBody: Send + 'static,
+            $( $ty: FromRequest<(), B> + Send,)*
+            B: Send + 'static,
         {
             type Response = Response;
             type Error = Infallible;
@@ -175,7 +174,7 @@ macro_rules! impl_service {
             }
 
             #[allow(non_snake_case)]
-            fn call(&mut self, req: Request<ReqBody>) -> Self::Future {
+            fn call(&mut self, req: Request<B>) -> Self::Future {
                 let f = self.f.clone();
 
                 let clone = self.inner.clone();
@@ -187,7 +186,7 @@ macro_rules! impl_service {
                     $(
                         let $ty = match $ty::from_request(&mut req).await {
                             Ok(value) => value,
-                            Err(rejection) => return Ok(rejection.into_response().map(boxed)),
+                            Err(rejection) => return Ok(rejection.into_response()),
                         };
                     )*
 
@@ -200,7 +199,7 @@ macro_rules! impl_service {
 
                     match inner.oneshot(req).await {
                         Ok(res) => Ok(res.into_response()),
-                        Err(err) => Ok(f($($ty),*, err).await.into_response().map(boxed)),
+                        Err(err) => Ok(f($($ty),*, err).await.into_response()),
                     }
                 });
 

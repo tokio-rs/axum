@@ -97,16 +97,17 @@ use std::ops::{Deref, DerefMut};
 pub struct ProtoBuf<T>(pub T);
 
 #[async_trait]
-impl<T, B> FromRequest<B> for ProtoBuf<T>
+impl<T, S, B> FromRequest<S, B> for ProtoBuf<T>
 where
     T: Message + Default,
     B: HttpBody + Send,
     B::Data: Send,
     B::Error: Into<BoxError>,
+    S: Send,
 {
     type Rejection = ProtoBufRejection;
 
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts<S, B>) -> Result<Self, Self::Rejection> {
         let mut bytes = Bytes::from_request(req).await?;
 
         match T::decode(&mut bytes) {

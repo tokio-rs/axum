@@ -15,7 +15,7 @@
 
 use axum::{
     async_trait,
-    extract::{Extension, FromRequest, RequestParts},
+    extract::{FromRequest, RequestParts, State},
     http::StatusCode,
     routing::get,
     Router,
@@ -46,12 +46,10 @@ async fn main() {
         .expect("can connect to database");
 
     // build our application with some routes
-    let app = Router::new()
-        .route(
-            "/",
-            get(using_connection_pool_extractor).post(using_connection_extractor),
-        )
-        .layer(Extension(pool));
+    let app = Router::with_state(pool).route(
+        "/",
+        get(using_connection_pool_extractor).post(using_connection_extractor),
+    );
 
     // run it with hyper
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
@@ -62,9 +60,9 @@ async fn main() {
         .unwrap();
 }
 
-// we can extract the connection pool with `Extension`
+// we can extract the connection pool with `State`
 async fn using_connection_pool_extractor(
-    Extension(pool): Extension<PgPool>,
+    State(pool): State<PgPool>,
 ) -> Result<String, (StatusCode, String)> {
     sqlx::query_scalar("select 'hello world from pg'")
         .fetch_one(&pool)
@@ -77,16 +75,14 @@ async fn using_connection_pool_extractor(
 struct DatabaseConnection(sqlx::pool::PoolConnection<sqlx::Postgres>);
 
 #[async_trait]
-impl<B> FromRequest<B> for DatabaseConnection
+impl<B> FromRequest<PgPool, B> for DatabaseConnection
 where
     B: Send,
 {
     type Rejection = (StatusCode, String);
 
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-        let Extension(pool) = Extension::<PgPool>::from_request(req)
-            .await
-            .map_err(internal_error)?;
+    async fn from_request(req: &mut RequestParts<PgPool, B>) -> Result<Self, Self::Rejection> {
+        let pool = req.state().clone();
 
         let conn = pool.acquire().await.map_err(internal_error)?;
 

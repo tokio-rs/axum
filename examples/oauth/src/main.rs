@@ -12,7 +12,7 @@ use async_session::{MemoryStore, Session, SessionStore};
 use axum::{
     async_trait,
     extract::{
-        rejection::TypedHeaderRejectionReason, Extension, FromRequest, Query, RequestParts,
+        rejection::TypedHeaderRejectionReason, FromRef, FromRequest, Query, RequestParts, State,
         TypedHeader,
     },
     http::{header::SET_COOKIE, HeaderMap},
@@ -42,17 +42,18 @@ async fn main() {
 
     // `MemoryStore` is just used as an example. Don't use this in production.
     let store = MemoryStore::new();
-
     let oauth_client = oauth_client();
+    let app_state = AppState {
+        store,
+        oauth_client,
+    };
 
-    let app = Router::new()
+    let app = Router::with_state(app_state)
         .route("/", get(index))
         .route("/auth/discord", get(discord_auth))
         .route("/auth/authorized", get(login_authorized))
         .route("/protected", get(protected))
-        .route("/logout", get(logout))
-        .layer(Extension(store))
-        .layer(Extension(oauth_client));
+        .route("/logout", get(logout));
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
     tracing::debug!("listening on {}", addr);
@@ -61,6 +62,24 @@ async fn main() {
         .serve(app.into_make_service())
         .await
         .unwrap();
+}
+
+#[derive(Clone)]
+struct AppState {
+    store: MemoryStore,
+    oauth_client: BasicClient,
+}
+
+impl FromRef<AppState> for MemoryStore {
+    fn from_ref(state: &AppState) -> Self {
+        state.store.clone()
+    }
+}
+
+impl FromRef<AppState> for BasicClient {
+    fn from_ref(state: &AppState) -> Self {
+        state.oauth_client.clone()
+    }
 }
 
 fn oauth_client() -> BasicClient {
@@ -113,7 +132,7 @@ async fn index(user: Option<User>) -> impl IntoResponse {
     }
 }
 
-async fn discord_auth(Extension(client): Extension<BasicClient>) -> impl IntoResponse {
+async fn discord_auth(State(client): State<BasicClient>) -> impl IntoResponse {
     let (auth_url, _csrf_token) = client
         .authorize_url(CsrfToken::new_random)
         .add_scope(Scope::new("identify".to_string()))
@@ -132,7 +151,7 @@ async fn protected(user: User) -> impl IntoResponse {
 }
 
 async fn logout(
-    Extension(store): Extension<MemoryStore>,
+    State(store): State<MemoryStore>,
     TypedHeader(cookies): TypedHeader<headers::Cookie>,
 ) -> impl IntoResponse {
     let cookie = cookies.get(COOKIE_NAME).unwrap();
@@ -156,8 +175,8 @@ struct AuthRequest {
 
 async fn login_authorized(
     Query(query): Query<AuthRequest>,
-    Extension(store): Extension<MemoryStore>,
-    Extension(oauth_client): Extension<BasicClient>,
+    State(store): State<MemoryStore>,
+    State(oauth_client): State<BasicClient>,
 ) -> impl IntoResponse {
     // Get an auth token
     let token = oauth_client
@@ -205,17 +224,15 @@ impl IntoResponse for AuthRedirect {
 }
 
 #[async_trait]
-impl<B> FromRequest<B> for User
+impl<B> FromRequest<AppState, B> for User
 where
     B: Send,
 {
     // If anything goes wrong or no session is found, redirect to the auth page
     type Rejection = AuthRedirect;
 
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-        let Extension(store) = Extension::<MemoryStore>::from_request(req)
-            .await
-            .expect("`MemoryStore` extension is missing");
+    async fn from_request(req: &mut RequestParts<AppState, B>) -> Result<Self, Self::Rejection> {
+        let store = req.state().clone().store;
 
         let cookies = TypedHeader::<headers::Cookie>::from_request(req)
             .await

@@ -15,16 +15,16 @@ use std::{future::Future, marker::PhantomData};
 ///
 /// Created with [`HandlerCallWithExtractors::or`](super::HandlerCallWithExtractors::or).
 #[allow(missing_debug_implementations)]
-pub struct Or<L, R, Lt, Rt, B> {
+pub struct Or<L, R, Lt, Rt, S, B> {
     pub(super) lhs: L,
     pub(super) rhs: R,
-    pub(super) _marker: PhantomData<fn() -> (Lt, Rt, B)>,
+    pub(super) _marker: PhantomData<fn() -> (Lt, Rt, S, B)>,
 }
 
-impl<B, L, R, Lt, Rt> HandlerCallWithExtractors<Either<Lt, Rt>, B> for Or<L, R, Lt, Rt, B>
+impl<S, B, L, R, Lt, Rt> HandlerCallWithExtractors<Either<Lt, Rt>, S, B> for Or<L, R, Lt, Rt, S, B>
 where
-    L: HandlerCallWithExtractors<Lt, B> + Send + 'static,
-    R: HandlerCallWithExtractors<Rt, B> + Send + 'static,
+    L: HandlerCallWithExtractors<Lt, S, B> + Send + 'static,
+    R: HandlerCallWithExtractors<Rt, S, B> + Send + 'static,
     Rt: Send + 'static,
     Lt: Send + 'static,
     B: Send + 'static,
@@ -37,46 +37,48 @@ where
 
     fn call(
         self,
+        state: S,
         extractors: Either<Lt, Rt>,
-    ) -> <Self as HandlerCallWithExtractors<Either<Lt, Rt>, B>>::Future {
+    ) -> <Self as HandlerCallWithExtractors<Either<Lt, Rt>, S, B>>::Future {
         match extractors {
             Either::E1(lt) => self
                 .lhs
-                .call(lt)
+                .call(state, lt)
                 .map(IntoResponse::into_response as _)
                 .left_future(),
             Either::E2(rt) => self
                 .rhs
-                .call(rt)
+                .call(state, rt)
                 .map(IntoResponse::into_response as _)
                 .right_future(),
         }
     }
 }
 
-impl<B, L, R, Lt, Rt> Handler<(Lt, Rt), B> for Or<L, R, Lt, Rt, B>
+impl<S, B, L, R, Lt, Rt> Handler<(Lt, Rt), S, B> for Or<L, R, Lt, Rt, S, B>
 where
-    L: HandlerCallWithExtractors<Lt, B> + Clone + Send + 'static,
-    R: HandlerCallWithExtractors<Rt, B> + Clone + Send + 'static,
-    Lt: FromRequest<B> + Send + 'static,
-    Rt: FromRequest<B> + Send + 'static,
+    L: HandlerCallWithExtractors<Lt, S, B> + Clone + Send + 'static,
+    R: HandlerCallWithExtractors<Rt, S, B> + Clone + Send + 'static,
+    Lt: FromRequest<S, B> + Send + 'static,
+    Rt: FromRequest<S, B> + Send + 'static,
     Lt::Rejection: Send,
     Rt::Rejection: Send,
     B: Send + 'static,
+    S: Clone + Send + 'static,
 {
     // this puts `futures_util` in our public API but thats fine in axum-extra
     type Future = BoxFuture<'static, Response>;
 
-    fn call(self, req: Request<B>) -> Self::Future {
+    fn call(self, state: S, req: Request<B>) -> Self::Future {
         Box::pin(async move {
-            let mut req = RequestParts::new(req);
+            let mut req = RequestParts::with_state(state.clone(), req);
 
             if let Ok(lt) = req.extract::<Lt>().await {
-                return self.lhs.call(lt).await;
+                return self.lhs.call(state, lt).await;
             }
 
             if let Ok(rt) = req.extract::<Rt>().await {
-                return self.rhs.call(rt).await;
+                return self.rhs.call(state, rt).await;
             }
 
             StatusCode::NOT_FOUND.into_response()
@@ -84,14 +86,14 @@ where
     }
 }
 
-impl<L, R, Lt, Rt, B> Copy for Or<L, R, Lt, Rt, B>
+impl<L, R, Lt, Rt, S, B> Copy for Or<L, R, Lt, Rt, S, B>
 where
     L: Copy,
     R: Copy,
 {
 }
 
-impl<L, R, Lt, Rt, B> Clone for Or<L, R, Lt, Rt, B>
+impl<L, R, Lt, Rt, S, B> Clone for Or<L, R, Lt, Rt, S, B>
 where
     L: Clone,
     R: Clone,

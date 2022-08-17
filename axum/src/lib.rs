@@ -168,13 +168,48 @@
 //! pool of database connections or clients to other services.
 //!
 //! The two most common ways of doing that are:
+//! - Using the [`State`] extractor.
 //! - Using request extensions
 //! - Using closure captures
 //!
+//! ## Using the [`State`] extractor
+//!
+//! ```rust,no_run
+//! use axum::{
+//!     extract::State,
+//!     routing::get,
+//!     Router,
+//! };
+//! use std::sync::Arc;
+//!
+//! struct AppState {
+//!     // ...
+//! }
+//!
+//! let shared_state = Arc::new(AppState { /* ... */ });
+//!
+//! let app = Router::with_state(shared_state)
+//!     .route("/", get(handler));
+//!
+//! async fn handler(
+//!     State(state): State<Arc<AppState>>,
+//! ) {
+//!     // ...
+//! }
+//! # async {
+//! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+//! # };
+//! ```
+//!
+//! You should prefer using [`State`] if possible since it's more type safe. The downside is that
+//! its less dynamic than request extensions.
+//!
+//! See [`State`] for more details about accessing state.
+//!
 //! ## Using request extensions
 //!
-//! The easiest way to extract state in handlers is using [`Extension`](crate::extract::Extension)
-//! as layer and extractor:
+//! Another way to extract state in handlers is using [`Extension`](crate::extract::Extension) as
+//! layer and extractor:
 //!
 //! ```rust,no_run
 //! use axum::{
@@ -184,18 +219,18 @@
 //! };
 //! use std::sync::Arc;
 //!
-//! struct State {
+//! struct AppState {
 //!     // ...
 //! }
 //!
-//! let shared_state = Arc::new(State { /* ... */ });
+//! let shared_state = Arc::new(AppState { /* ... */ });
 //!
 //! let app = Router::new()
 //!     .route("/", get(handler))
 //!     .layer(Extension(shared_state));
 //!
 //! async fn handler(
-//!     Extension(state): Extension<Arc<State>>,
+//!     Extension(state): Extension<Arc<AppState>>,
 //! ) {
 //!     // ...
 //! }
@@ -223,11 +258,11 @@
 //! use std::sync::Arc;
 //! use serde::Deserialize;
 //!
-//! struct State {
+//! struct AppState {
 //!     // ...
 //! }
 //!
-//! let shared_state = Arc::new(State { /* ... */ });
+//! let shared_state = Arc::new(AppState { /* ... */ });
 //!
 //! let app = Router::new()
 //!     .route(
@@ -245,11 +280,11 @@
 //!         }),
 //!     );
 //!
-//! async fn get_user(Path(user_id): Path<String>, state: Arc<State>) {
+//! async fn get_user(Path(user_id): Path<String>, state: Arc<AppState>) {
 //!     // ...
 //! }
 //!
-//! async fn create_user(Json(payload): Json<CreateUserPayload>, state: Arc<State>) {
+//! async fn create_user(Json(payload): Json<CreateUserPayload>, state: Arc<AppState>) {
 //!     // ...
 //! }
 //!
@@ -263,7 +298,7 @@
 //! ```
 //!
 //! The downside to this approach is that it's a little more verbose than using
-//! extensions.
+//! [`State`] or extensions.
 //!
 //! # Building integrations for axum
 //!
@@ -350,6 +385,7 @@
 //! [`Infallible`]: std::convert::Infallible
 //! [load shed]: tower::load_shed
 //! [`axum-core`]: http://crates.io/crates/axum-core
+//! [`State`]: crate::extract::State
 
 #![warn(
     clippy::all,
