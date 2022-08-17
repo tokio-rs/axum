@@ -12,8 +12,11 @@ use std::convert::Infallible;
 
 pub mod rejection;
 
+mod from_ref;
 mod request_parts;
 mod tuple;
+
+pub use self::from_ref::FromRef;
 
 /// Types that can be created from requests.
 ///

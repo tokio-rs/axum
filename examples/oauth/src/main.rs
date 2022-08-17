@@ -12,7 +12,7 @@ use async_session::{MemoryStore, Session, SessionStore};
 use axum::{
     async_trait,
     extract::{
-        rejection::TypedHeaderRejectionReason, FromRequest, Query, RequestParts, State, TypedHeader,
+        rejection::TypedHeaderRejectionReason, FromRequest, Query, RequestParts, State, FromRef, TypedHeader,
     },
     http::{header::SET_COOKIE, HeaderMap},
     response::{IntoResponse, Redirect, Response},
@@ -69,15 +69,15 @@ struct AppState {
     oauth_client: BasicClient,
 }
 
-impl From<AppState> for MemoryStore {
-    fn from(state: AppState) -> Self {
-        state.store
+impl FromRef<AppState> for MemoryStore {
+    fn from_ref(state: &AppState) -> Self {
+        state.store.clone()
     }
 }
 
-impl From<AppState> for BasicClient {
-    fn from(state: AppState) -> Self {
-        state.oauth_client
+impl FromRef<AppState> for BasicClient {
+    fn from_ref(state: &AppState) -> Self {
+        state.oauth_client.clone()
     }
 }
 

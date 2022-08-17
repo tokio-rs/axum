@@ -17,7 +17,7 @@ mod request_parts;
 mod state;
 
 #[doc(inline)]
-pub use axum_core::extract::{FromRequest, RequestParts};
+pub use axum_core::extract::{FromRequest, RequestParts, FromRef};
 
 #[doc(inline)]
 #[allow(deprecated)]

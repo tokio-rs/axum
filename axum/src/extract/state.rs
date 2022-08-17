@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use axum_core::extract::{FromRequest, RequestParts};
+use axum_core::extract::{FromRequest, FromRef, RequestParts};
 use std::{
     convert::Infallible,
     ops::{Deref, DerefMut},
@@ -91,7 +91,7 @@ use std::{
 /// [`State`] only allows a single state type but you can use [`From`] to extract "substates":
 ///
 /// ```
-/// use axum::{Router, routing::get, extract::State};
+/// use axum::{Router, routing::get, extract::{State, FromRef}};
 ///
 /// // the application state
 /// #[derive(Clone)]
@@ -105,9 +105,9 @@ use std::{
 /// struct ApiState {}
 ///
 /// // support converting an `AppState` in an `ApiState`
-/// impl From<AppState> for ApiState {
-///     fn from(app_state: AppState) -> ApiState {
-///         app_state.api_state
+/// impl FromRef<AppState> for ApiState {
+///     fn from_ref(app_state: &AppState) -> ApiState {
+///         app_state.api_state.clone()
 ///     }
 /// }
 ///
@@ -139,7 +139,7 @@ use std::{
 /// to do it:
 ///
 /// ```rust
-/// use axum_core::extract::{FromRequest, RequestParts};
+/// use axum_core::extract::{FromRequest, RequestParts, FromRef};
 /// use async_trait::async_trait;
 /// use std::convert::Infallible;
 ///
@@ -151,14 +151,15 @@ use std::{
 /// where
 ///     B: Send,
 ///     // keep `S` generic but require that it can produce a `MyLibraryState`
-///     // this means users will have to implement `From<UserState> for MyLibraryState`
-///     S: Into<MyLibraryState> + Clone + Send,
+///     // this means users will have to implement `FromRef<UserState> for MyLibraryState`
+///     MyLibraryState: FromRef<S>,
+///     S: Send,
 /// {
 ///     type Rejection = Infallible;
 ///
 ///     async fn from_request(req: &mut RequestParts<S, B>) -> Result<Self, Self::Rejection> {
-///         // get a `MyLibraryState` from the shared application state
-///         let state: MyLibraryState = req.state().clone().into();
+///         // get a `MyLibraryState` from a reference to the state
+///         let state = MyLibraryState::from_ref(req.state());
 ///
 ///         // ...
 ///         # todo!()
@@ -180,13 +181,13 @@ pub struct State<S>(pub S);
 impl<B, OuterState, InnerState> FromRequest<OuterState, B> for State<InnerState>
 where
     B: Send,
-    OuterState: Clone + Into<InnerState> + Send,
+    InnerState: FromRef<OuterState>,
+    OuterState: Send,
 {
     type Rejection = Infallible;
 
     async fn from_request(req: &mut RequestParts<OuterState, B>) -> Result<Self, Self::Rejection> {
-        let outer_state = req.state().clone();
-        let inner_state = outer_state.into();
+        let inner_state = InnerState::from_ref(req.state());
         Ok(Self(inner_state))
     }
 }

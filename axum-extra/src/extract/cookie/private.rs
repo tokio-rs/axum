@@ -1,7 +1,7 @@
 use super::{cookies_from_request, set_cookies, Cookie, Key};
 use axum::{
     async_trait,
-    extract::{FromRequest, RequestParts},
+    extract::{FromRequest, RequestParts, FromRef},
     response::{IntoResponse, IntoResponseParts, Response, ResponseParts},
 };
 use cookie::PrivateJar;
@@ -23,7 +23,7 @@ use std::{convert::Infallible, fmt, marker::PhantomData};
 /// use axum::{
 ///     Router,
 ///     routing::{post, get},
-///     extract::TypedHeader,
+///     extract::{TypedHeader, FromRef},
 ///     response::{IntoResponse, Redirect},
 ///     headers::authorization::{Authorization, Bearer},
 ///     http::StatusCode,
@@ -51,9 +51,9 @@ use std::{convert::Infallible, fmt, marker::PhantomData};
 /// }
 ///
 /// // this impl tells `SignedCookieJar` how to access the key from our state
-/// impl From<AppState> for Key {
-///     fn from(state: AppState) -> Self {
-///         state.key
+/// impl FromRef<AppState> for Key {
+///     fn from_ref(state: &AppState) -> Self {
+///         state.key.clone()
 ///     }
 /// }
 ///
@@ -90,15 +90,14 @@ impl<K> fmt::Debug for PrivateCookieJar<K> {
 impl<S, B, K> FromRequest<S, B> for PrivateCookieJar<K>
 where
     B: Send,
-    S: Into<K> + Clone + Send,
-    K: Into<Key> + Clone + Send + Sync + 'static,
+    S: Send,
+    K: FromRef<S> + Into<Key>,
 {
     type Rejection = Infallible;
 
     async fn from_request(req: &mut RequestParts<S, B>) -> Result<Self, Self::Rejection> {
-        let state = req.state().clone();
-        let key: K = state.into();
-        let key: Key = key.into();
+        let k = K::from_ref(req.state());
+        let key = k.into();
         let PrivateCookieJar {
             jar,
             key,
