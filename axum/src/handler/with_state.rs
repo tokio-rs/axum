@@ -37,6 +37,7 @@ impl<H, T, S, B> WithState<H, T, S, B> {
     /// };
     /// use std::net::SocketAddr;
     ///
+    /// #[derive(Clone)]
     /// struct AppState {}
     ///
     /// async fn handler(State(state): State<AppState>) {
@@ -72,6 +73,7 @@ impl<H, T, S, B> WithState<H, T, S, B> {
     /// };
     /// use std::net::SocketAddr;
     ///
+    /// #[derive(Clone)]
     /// struct AppState {};
     ///
     /// async fn handler(
