@@ -218,7 +218,7 @@ fn impl_struct_by_extracting_each_field(
     Ok(quote! {
         #[::axum::async_trait]
         #[automatically_derived]
-        impl<B, S> ::axum::extract::FromRequest<B, S> for #ident
+        impl<S, B> ::axum::extract::FromRequest<S, B> for #ident
         where
             B: ::axum::body::HttpBody + ::std::marker::Send + 'static,
             B::Data: ::std::marker::Send,
@@ -228,7 +228,7 @@ fn impl_struct_by_extracting_each_field(
             type Rejection = #rejection_ident;
 
             async fn from_request(
-                req: &mut ::axum::extract::RequestParts<B, S>,
+                req: &mut ::axum::extract::RequestParts<S, B>,
             ) -> ::std::result::Result<Self, Self::Rejection> {
                 ::std::result::Result::Ok(Self {
                     #(#extract_fields)*
@@ -423,7 +423,7 @@ fn extract_each_field_rejection(
 
             Ok(quote_spanned! {ty_span=>
                 #[allow(non_camel_case_types)]
-                #variant_name(<#extractor_ty as ::axum::extract::FromRequest<::axum::body::Body, ()>>::Rejection),
+                #variant_name(<#extractor_ty as ::axum::extract::FromRequest<(), ::axum::body::Body>>::Rejection),
             })
         })
         .collect::<syn::Result<Vec<_>>>()?;
@@ -610,26 +610,26 @@ fn impl_struct_by_extracting_all_at_once(
         quote! { #rejection }
     } else {
         quote! {
-            <#path<Self> as ::axum::extract::FromRequest<B, S>>::Rejection
+            <#path<Self> as ::axum::extract::FromRequest<S, B>>::Rejection
         }
     };
 
     let rejection_bound = rejection.as_ref().map(|rejection| {
         if generic_ident.is_some() {
             quote! {
-                #rejection: ::std::convert::From<<#path<T> as ::axum::extract::FromRequest<B, S>>::Rejection>,
+                #rejection: ::std::convert::From<<#path<T> as ::axum::extract::FromRequest<S, B>>::Rejection>,
             }
         } else {
             quote! {
-                #rejection: ::std::convert::From<<#path<Self> as ::axum::extract::FromRequest<B, S>>::Rejection>,
+                #rejection: ::std::convert::From<<#path<Self> as ::axum::extract::FromRequest<S, B>>::Rejection>,
             }
         }
     }).unwrap_or_default();
 
     let impl_generics = if generic_ident.is_some() {
-        quote! { B, S, T }
+        quote! { S, B, T }
     } else {
-        quote! { B, S }
+        quote! { S, B }
     };
 
     let type_generics = generic_ident
@@ -654,9 +654,9 @@ fn impl_struct_by_extracting_all_at_once(
     Ok(quote_spanned! {path_span=>
         #[::axum::async_trait]
         #[automatically_derived]
-        impl<#impl_generics> ::axum::extract::FromRequest<B, S> for #ident #type_generics
+        impl<#impl_generics> ::axum::extract::FromRequest<S, B> for #ident #type_generics
         where
-            #path<#via_type_generics>: ::axum::extract::FromRequest<B, S>,
+            #path<#via_type_generics>: ::axum::extract::FromRequest<S, B>,
             #rejection_bound
             B: ::std::marker::Send,
             S: ::std::marker::Send,
@@ -664,9 +664,9 @@ fn impl_struct_by_extracting_all_at_once(
             type Rejection = #associated_rejection_type;
 
             async fn from_request(
-                req: &mut ::axum::extract::RequestParts<B, S>,
+                req: &mut ::axum::extract::RequestParts<S, B>,
             ) -> ::std::result::Result<Self, Self::Rejection> {
-                ::axum::extract::FromRequest::<B, S>::from_request(req)
+                ::axum::extract::FromRequest::<S, B>::from_request(req)
                     .await
                     .map(|#path(value)| #value_to_self)
                     .map_err(::std::convert::From::from)
@@ -711,7 +711,7 @@ fn impl_enum_by_extracting_all_at_once(
         quote! { #rejection }
     } else {
         quote! {
-            <#path<Self> as ::axum::extract::FromRequest<B, S>>::Rejection
+            <#path<Self> as ::axum::extract::FromRequest<S, B>>::Rejection
         }
     };
 
@@ -720,7 +720,7 @@ fn impl_enum_by_extracting_all_at_once(
     Ok(quote_spanned! {path_span=>
         #[::axum::async_trait]
         #[automatically_derived]
-        impl<B, S> ::axum::extract::FromRequest<B, S> for #ident
+        impl<S, B> ::axum::extract::FromRequest<S, B> for #ident
         where
             B: ::axum::body::HttpBody + ::std::marker::Send + 'static,
             B::Data: ::std::marker::Send,
@@ -730,9 +730,9 @@ fn impl_enum_by_extracting_all_at_once(
             type Rejection = #associated_rejection_type;
 
             async fn from_request(
-                req: &mut ::axum::extract::RequestParts<B, S>,
+                req: &mut ::axum::extract::RequestParts<S, B>,
             ) -> ::std::result::Result<Self, Self::Rejection> {
-                ::axum::extract::FromRequest::<B, S>::from_request(req)
+                ::axum::extract::FromRequest::<S, B>::from_request(req)
                     .await
                     .map(|#path(inner)| inner)
                     .map_err(::std::convert::From::from)

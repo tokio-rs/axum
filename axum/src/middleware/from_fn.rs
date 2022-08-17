@@ -254,7 +254,7 @@ macro_rules! impl_service {
         impl<F, Fut, Out, S, B, $($ty,)*> Service<Request<B>> for FromFn<F, S, ($($ty,)*)>
         where
             F: FnMut($($ty),*, Next<B>) -> Fut + Clone + Send + 'static,
-            $( $ty: FromRequest<B, ()> + Send, )*
+            $( $ty: FromRequest<(), B> + Send, )*
             Fut: Future<Output = Out> + Send + 'static,
             Out: IntoResponse + 'static,
             S: Service<Request<B>, Error = Infallible>

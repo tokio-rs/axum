@@ -190,16 +190,16 @@ macro_rules! impl_traits_for_either {
         $last:ident $(,)?
     ) => {
         #[async_trait]
-        impl<B, S, $($ident),*, $last> FromRequest<B, S> for $either<$($ident),*, $last>
+        impl<S, B, $($ident),*, $last> FromRequest<S, B> for $either<$($ident),*, $last>
         where
-            $($ident: FromRequest<B, S>),*,
-            $last: FromRequest<B, S>,
+            $($ident: FromRequest<S, B>),*,
+            $last: FromRequest<S, B>,
             B: Send,
             S: Send,
         {
             type Rejection = $last::Rejection;
 
-            async fn from_request(req: &mut RequestParts<B, S>) -> Result<Self, Self::Rejection> {
+            async fn from_request(req: &mut RequestParts<S, B>) -> Result<Self, Self::Rejection> {
                 $(
                     if let Ok(value) = req.extract().await {
                         return Ok(Self::$ident(value));

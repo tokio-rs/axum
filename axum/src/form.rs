@@ -56,7 +56,7 @@ use std::ops::Deref;
 pub struct Form<T>(pub T);
 
 #[async_trait]
-impl<T, B, S> FromRequest<B, S> for Form<T>
+impl<T, S, B> FromRequest<S, B> for Form<T>
 where
     T: DeserializeOwned,
     B: HttpBody + Send,
@@ -66,7 +66,7 @@ where
 {
     type Rejection = FormRejection;
 
-    async fn from_request(req: &mut RequestParts<B, S>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts<S, B>) -> Result<Self, Self::Rejection> {
         if req.method() == Method::GET {
             let query = req.uri().query().unwrap_or_default();
             let value = serde_urlencoded::from_str(query)

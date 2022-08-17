@@ -67,14 +67,14 @@ pub trait HandlerCallWithExtractors<T, S, B>: Sized {
     /// struct AdminPermissions {}
     ///
     /// #[async_trait]
-    /// impl<B, S> FromRequest<B, S> for AdminPermissions
+    /// impl<S, B> FromRequest<S, B> for AdminPermissions
     /// where
     ///     B: Send,
     ///     S: Send,
     /// {
     ///     // check for admin permissions...
     ///     # type Rejection = ();
-    ///     # async fn from_request(req: &mut axum::extract::RequestParts<B, S>) -> Result<Self, Self::Rejection> {
+    ///     # async fn from_request(req: &mut axum::extract::RequestParts<S, B>) -> Result<Self, Self::Rejection> {
     ///     #     todo!()
     ///     # }
     /// }
@@ -82,14 +82,14 @@ pub trait HandlerCallWithExtractors<T, S, B>: Sized {
     /// struct User {}
     ///
     /// #[async_trait]
-    /// impl<B, S> FromRequest<B, S> for User
+    /// impl<S, B> FromRequest<S, B> for User
     /// where
     ///     B: Send,
     ///     S: Send,
     /// {
     ///     // check for a logged in user...
     ///     # type Rejection = ();
-    ///     # async fn from_request(req: &mut axum::extract::RequestParts<B, S>) -> Result<Self, Self::Rejection> {
+    ///     # async fn from_request(req: &mut axum::extract::RequestParts<S, B>) -> Result<Self, Self::Rejection> {
     ///     #     todo!()
     ///     # }
     /// }
@@ -119,7 +119,7 @@ pub trait HandlerCallWithExtractors<T, S, B>: Sized {
 macro_rules! impl_handler_call_with {
     ( $($ty:ident),* $(,)? ) => {
         #[allow(non_snake_case)]
-        impl<F, Fut, B, S, $($ty,)*> HandlerCallWithExtractors<($($ty,)*), S, B> for F
+        impl<F, Fut, S, B, $($ty,)*> HandlerCallWithExtractors<($($ty,)*), S, B> for F
         where
             F: FnOnce($($ty,)*) -> Fut,
             Fut: Future + Send + 'static,
@@ -169,7 +169,7 @@ pub struct IntoHandler<H, T, S, B> {
 impl<H, T, S, B> Handler<T, S, B> for IntoHandler<H, T, S, B>
 where
     H: HandlerCallWithExtractors<T, S, B> + Clone + Send + 'static,
-    T: FromRequest<B, S> + Send + 'static,
+    T: FromRequest<S, B> + Send + 'static,
     T::Rejection: Send,
     B: Send + 'static,
     S: Clone + Send + 'static,

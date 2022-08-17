@@ -18,7 +18,7 @@ struct Extractor {
 
 fn assert_from_request()
 where
-    Extractor: FromRequest<Body, (), Rejection = ExtractorRejection>,
+    Extractor: FromRequest<(), Body, Rejection = ExtractorRejection>,
 {
 }
 

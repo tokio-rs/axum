@@ -223,14 +223,14 @@ impl IntoResponse for AuthRedirect {
 }
 
 #[async_trait]
-impl<B> FromRequest<B, AppState> for User
+impl<B> FromRequest<AppState, B> for User
 where
     B: Send,
 {
     // If anything goes wrong or no session is found, redirect to the auth page
     type Rejection = AuthRedirect;
 
-    async fn from_request(req: &mut RequestParts<B, AppState>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts<AppState, B>) -> Result<Self, Self::Rejection> {
         let store = req.state().clone().store;
 
         let cookies = TypedHeader::<headers::Cookie>::from_request(req)

@@ -567,7 +567,7 @@ impl<S, B, E> fmt::Debug for MethodRouter<S, B, E> {
     }
 }
 
-impl<B, S> MethodRouter<S, B, Infallible>
+impl<S, B> MethodRouter<S, B, Infallible>
 where
     B: Send + 'static,
 {

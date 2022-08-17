@@ -147,7 +147,7 @@ use std::{
 /// struct MyLibraryExtractor;
 ///
 /// #[async_trait]
-/// impl<B, S> FromRequest<B, S> for MyLibraryExtractor
+/// impl<S, B> FromRequest<S, B> for MyLibraryExtractor
 /// where
 ///     B: Send,
 ///     // keep `S` generic but require that it can produce a `MyLibraryState`
@@ -156,7 +156,7 @@ use std::{
 /// {
 ///     type Rejection = Infallible;
 ///
-///     async fn from_request(req: &mut RequestParts<B, S>) -> Result<Self, Self::Rejection> {
+///     async fn from_request(req: &mut RequestParts<S, B>) -> Result<Self, Self::Rejection> {
 ///         // get a `MyLibraryState` from the shared application state
 ///         let state: MyLibraryState = req.state().clone().into();
 ///
@@ -177,14 +177,14 @@ use std::{
 pub struct State<S>(pub S);
 
 #[async_trait]
-impl<B, OuterState, InnerState> FromRequest<B, OuterState> for State<InnerState>
+impl<B, OuterState, InnerState> FromRequest<OuterState, B> for State<InnerState>
 where
     B: Send,
     OuterState: Clone + Into<InnerState> + Send,
 {
     type Rejection = Infallible;
 
-    async fn from_request(req: &mut RequestParts<B, OuterState>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts<OuterState, B>) -> Result<Self, Self::Rejection> {
         let outer_state = req.state().clone();
         let inner_state = outer_state.into();
         Ok(Self(inner_state))

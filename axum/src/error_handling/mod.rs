@@ -161,7 +161,7 @@ macro_rules! impl_service {
             F: FnOnce($($ty),*, S::Error) -> Fut + Clone + Send + 'static,
             Fut: Future<Output = Res> + Send,
             Res: IntoResponse,
-            $( $ty: FromRequest<B, ()> + Send,)*
+            $( $ty: FromRequest<(), B> + Send,)*
             B: Send + 'static,
         {
             type Response = Response;

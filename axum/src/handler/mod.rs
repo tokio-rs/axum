@@ -174,14 +174,14 @@ where
 macro_rules! impl_handler {
     ( $($ty:ident),* $(,)? ) => {
         #[allow(non_snake_case)]
-        impl<F, Fut, B, S, Res, $($ty,)*> Handler<($($ty,)*), S, B> for F
+        impl<F, Fut, S, B, Res, $($ty,)*> Handler<($($ty,)*), S, B> for F
         where
             F: FnOnce($($ty,)*) -> Fut + Clone + Send + 'static,
             Fut: Future<Output = Res> + Send,
             B: Send + 'static,
             S: Send + 'static,
             Res: IntoResponse,
-            $( $ty: FromRequest<B, S> + Send,)*
+            $( $ty: FromRequest<S, B> + Send,)*
         {
             type Future = Pin<Box<dyn Future<Output = Response> + Send>>;
 

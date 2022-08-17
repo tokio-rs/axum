@@ -60,7 +60,7 @@ async fn handler(ValidatedForm(input): ValidatedForm<NameInput>) -> Html<String>
 pub struct ValidatedForm<T>(pub T);
 
 #[async_trait]
-impl<T, S, B> FromRequest<B, S> for ValidatedForm<T>
+impl<T, S, B> FromRequest<S, B> for ValidatedForm<T>
 where
     T: DeserializeOwned + Validate,
     S: Send,
@@ -70,7 +70,7 @@ where
 {
     type Rejection = ServerError;
 
-    async fn from_request(req: &mut RequestParts<B, S>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts<S, B>) -> Result<Self, Self::Rejection> {
         let Form(value) = Form::<T>::from_request(req).await?;
         value.validate()?;
         Ok(ValidatedForm(value))

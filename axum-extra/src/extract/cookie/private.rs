@@ -87,7 +87,7 @@ impl<K> fmt::Debug for PrivateCookieJar<K> {
 }
 
 #[async_trait]
-impl<S, B, K> FromRequest<B, S> for PrivateCookieJar<K>
+impl<S, B, K> FromRequest<S, B> for PrivateCookieJar<K>
 where
     B: Send,
     S: Into<K> + Clone + Send,
@@ -95,7 +95,7 @@ where
 {
     type Rejection = Infallible;
 
-    async fn from_request(req: &mut RequestParts<B, S>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts<S, B>) -> Result<Self, Self::Rejection> {
         let state = req.state().clone();
         let key: K = state.into();
         let key: Key = key.into();

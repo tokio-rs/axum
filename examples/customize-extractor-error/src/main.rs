@@ -56,7 +56,7 @@ struct User {
 struct Json<T>(T);
 
 #[async_trait]
-impl<S, B, T> FromRequest<B, S> for Json<T>
+impl<S, B, T> FromRequest<S, B> for Json<T>
 where
     S: Send,
     // these trait bounds are copied from `impl FromRequest for axum::Json`
@@ -67,7 +67,7 @@ where
 {
     type Rejection = (StatusCode, axum::Json<Value>);
 
-    async fn from_request(req: &mut RequestParts<B, S>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts<S, B>) -> Result<Self, Self::Rejection> {
         match axum::Json::<T>::from_request(req).await {
             Ok(value) => Ok(Self(value.0)),
             Err(rejection) => {

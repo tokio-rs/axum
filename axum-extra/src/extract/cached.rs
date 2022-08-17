@@ -30,14 +30,14 @@ use std::ops::{Deref, DerefMut};
 /// struct Session { /* ... */ }
 ///
 /// #[async_trait]
-/// impl<B, S> FromRequest<B, S> for Session
+/// impl<S, B> FromRequest<S, B> for Session
 /// where
 ///     B: Send,
 ///     S: Send,
 /// {
 ///     type Rejection = (StatusCode, String);
 ///
-///     async fn from_request(req: &mut RequestParts<B, S>) -> Result<Self, Self::Rejection> {
+///     async fn from_request(req: &mut RequestParts<S, B>) -> Result<Self, Self::Rejection> {
 ///         // load session...
 ///         # unimplemented!()
 ///     }
@@ -46,14 +46,14 @@ use std::ops::{Deref, DerefMut};
 /// struct CurrentUser { /* ... */ }
 ///
 /// #[async_trait]
-/// impl<B, S> FromRequest<B, S> for CurrentUser
+/// impl<S, B> FromRequest<S, B> for CurrentUser
 /// where
 ///     B: Send,
 ///     S: Send,
 /// {
 ///     type Rejection = Response;
 ///
-///     async fn from_request(req: &mut RequestParts<B, S>) -> Result<Self, Self::Rejection> {
+///     async fn from_request(req: &mut RequestParts<S, B>) -> Result<Self, Self::Rejection> {
 ///         // loading a `CurrentUser` requires first loading the `Session`
 ///         //
 ///         // by using `Cached<Session>` we avoid extracting the session more than
@@ -90,15 +90,15 @@ pub struct Cached<T>(pub T);
 struct CachedEntry<T>(T);
 
 #[async_trait]
-impl<S, B, T> FromRequest<B, S> for Cached<T>
+impl<S, B, T> FromRequest<S, B> for Cached<T>
 where
     B: Send,
     S: Send,
-    T: FromRequest<B, S> + Clone + Send + Sync + 'static,
+    T: FromRequest<S, B> + Clone + Send + Sync + 'static,
 {
     type Rejection = T::Rejection;
 
-    async fn from_request(req: &mut RequestParts<B, S>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts<S, B>) -> Result<Self, Self::Rejection> {
         match Extension::<CachedEntry<T>>::from_request(req).await {
             Ok(Extension(CachedEntry(value))) => Ok(Self(value)),
             Err(_) => {
@@ -142,14 +142,14 @@ mod tests {
         struct Extractor(Instant);
 
         #[async_trait]
-        impl<B, S> FromRequest<B, S> for Extractor
+        impl<S, B> FromRequest<S, B> for Extractor
         where
             B: Send,
             S: Send,
         {
             type Rejection = Infallible;
 
-            async fn from_request(_req: &mut RequestParts<B, S>) -> Result<Self, Self::Rejection> {
+            async fn from_request(_req: &mut RequestParts<S, B>) -> Result<Self, Self::Rejection> {
                 COUNTER.fetch_add(1, Ordering::SeqCst);
                 Ok(Self(Instant::now()))
             }

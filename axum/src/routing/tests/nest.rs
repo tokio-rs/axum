@@ -275,7 +275,7 @@ async fn outer_middleware_still_see_whole_url() {
     #[derive(Clone)]
     struct Uri(http::Uri);
 
-    impl<B, S> Service<Request<B>> for SetUriExtension<S>
+    impl<S, B> Service<Request<B>> for SetUriExtension<S>
     where
         S: Service<Request<B>>,
     {

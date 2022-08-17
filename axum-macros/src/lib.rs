@@ -125,7 +125,7 @@ mod typed_path;
 /// ```
 /// pub struct ViaExtractor<T>(pub T);
 ///
-/// // impl<T, B, S> FromRequest<B, S> for ViaExtractor<T> { ... }
+/// // impl<T, S, B> FromRequest<S, B> for ViaExtractor<T> { ... }
 /// ```
 ///
 /// More complex via extractors are not supported and require writing a manual implementation.
@@ -223,7 +223,7 @@ mod typed_path;
 /// struct OtherExtractor;
 ///
 /// #[async_trait]
-/// impl<B, S> FromRequest<B, S> for OtherExtractor
+/// impl<S, B> FromRequest<S, B> for OtherExtractor
 /// where
 ///     B: Send,
 ///     S: Send,
@@ -231,7 +231,7 @@ mod typed_path;
 ///     // this rejection doesn't implement `Display` and `Error`
 ///     type Rejection = (StatusCode, String);
 ///
-///     async fn from_request(_req: &mut RequestParts<B, S>) -> Result<Self, Self::Rejection> {
+///     async fn from_request(_req: &mut RequestParts<S, B>) -> Result<Self, Self::Rejection> {
 ///         // ...
 ///         # unimplemented!()
 ///     }

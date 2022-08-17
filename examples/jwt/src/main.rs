@@ -122,14 +122,14 @@ impl AuthBody {
 }
 
 #[async_trait]
-impl<B, S> FromRequest<B, S> for Claims
+impl<S, B> FromRequest<S, B> for Claims
 where
     S: Send,
     B: Send,
 {
     type Rejection = AuthError;
 
-    async fn from_request(req: &mut RequestParts<B, S>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts<S, B>) -> Result<Self, Self::Rejection> {
         // Extract the token from the authorization header
         let TypedHeader(Authorization(bearer)) =
             TypedHeader::<Authorization<Bearer>>::from_request(req)

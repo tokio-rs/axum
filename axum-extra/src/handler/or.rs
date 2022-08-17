@@ -55,12 +55,12 @@ where
     }
 }
 
-impl<B, S, L, R, Lt, Rt> Handler<(Lt, Rt), S, B> for Or<L, R, Lt, Rt, S, B>
+impl<S, B, L, R, Lt, Rt> Handler<(Lt, Rt), S, B> for Or<L, R, Lt, Rt, S, B>
 where
     L: HandlerCallWithExtractors<Lt, S, B> + Clone + Send + 'static,
     R: HandlerCallWithExtractors<Rt, S, B> + Clone + Send + 'static,
-    Lt: FromRequest<B, S> + Send + 'static,
-    Rt: FromRequest<B, S> + Send + 'static,
+    Lt: FromRequest<S, B> + Send + 'static,
+    Rt: FromRequest<S, B> + Send + 'static,
     Lt::Rejection: Send,
     Rt::Rejection: Send,
     B: Send + 'static,

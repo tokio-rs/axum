@@ -80,13 +80,13 @@ enum UserIdFromSession {
 }
 
 #[async_trait]
-impl<B> FromRequest<B, MemoryStore> for UserIdFromSession
+impl<B> FromRequest<MemoryStore, B> for UserIdFromSession
 where
     B: Send,
 {
     type Rejection = (StatusCode, &'static str);
 
-    async fn from_request(req: &mut RequestParts<B, MemoryStore>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts<MemoryStore, B>) -> Result<Self, Self::Rejection> {
         let store = req.state().clone();
 
         let cookie = req.extract::<Option<TypedHeader<Cookie>>>().await.unwrap();
