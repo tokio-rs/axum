@@ -3,7 +3,7 @@ use crate::BoxError;
 use async_trait::async_trait;
 use bytes::Bytes;
 use http::{Extensions, HeaderMap, Method, Request, Uri, Version};
-use std::convert::Infallible;
+use std::{convert::Infallible, sync::Arc};
 
 #[async_trait]
 impl<S, B> FromRequest<S, B> for Request<B>
@@ -17,7 +17,7 @@ where
         let req = std::mem::replace(
             req,
             RequestParts {
-                state: req.state.clone(),
+                state: Arc::clone(&req.state),
                 method: req.method.clone(),
                 version: req.version,
                 uri: req.uri.clone(),
