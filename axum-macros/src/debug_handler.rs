@@ -39,6 +39,11 @@ pub(crate) fn expand(attr: Attrs, item_fn: ItemFn) -> TokenStream {
     }
 }
 
+mod kw {
+    syn::custom_keyword!(body);
+    syn::custom_keyword!(state);
+}
+
 pub(crate) struct Attrs {
     body_ty: Type,
     state_ty: Type,
@@ -49,17 +54,31 @@ impl Parse for Attrs {
         let mut body_ty = None;
         let mut state_ty = None;
 
-        // TODO(david): port to lookahead1
         while !input.is_empty() {
-            let ident = input.parse::<syn::Ident>()?;
-            if ident == "body" {
+            let lh = input.lookahead1();
+
+            if lh.peek(kw::body) {
+                let kw = input.parse::<kw::body>()?;
+                if body_ty.is_some() {
+                    return Err(syn::Error::new_spanned(
+                        kw,
+                        "`body` specified more than once",
+                    ));
+                }
                 input.parse::<Token![=]>()?;
                 body_ty = Some(input.parse()?);
-            } else if ident == "state" {
+            } else if lh.peek(kw::state) {
+                let kw = input.parse::<kw::state>()?;
+                if state_ty.is_some() {
+                    return Err(syn::Error::new_spanned(
+                        kw,
+                        "`state` specified more than once",
+                    ));
+                }
                 input.parse::<Token![=]>()?;
                 state_ty = Some(input.parse()?);
             } else {
-                return Err(syn::Error::new_spanned(ident, "unknown argument"));
+                return Err(lh.error());
             }
 
             let _ = input.parse::<Token![,]>();

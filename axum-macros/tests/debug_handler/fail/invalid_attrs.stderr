@@ -1,4 +1,4 @@
-error: unknown argument
+error: expected `body` or `state`
  --> tests/debug_handler/fail/invalid_attrs.rs:3:17
   |
 3 | #[debug_handler(foo)]
