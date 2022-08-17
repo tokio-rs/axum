@@ -4,30 +4,13 @@ error: #[derive(FromRequest)] only supports generics when used with #[from_reque
 6 | struct Extractor<T>(T);
   |                  ^
 
-warning: unused import: `Extension`
- --> tests/from_request/fail/generic_without_via_rejection.rs:1:38
-  |
-1 | use axum::{body::Body, routing::get, Extension, Router};
-  |                                      ^^^^^^^^^
-  |
-  = note: `#[warn(unused_imports)]` on by default
-
-error[E0599]: no function or associated item named `new` found for struct `Router<Body>` in the current scope
-  --> tests/from_request/fail/generic_without_via_rejection.rs:11:21
-   |
-11 |     Router::<Body>::new().route("/", get(foo));
-   |                     ^^^ function or associated item not found in `Router<Body>`
-   |
-   = note: the function or associated item was found for
-           - `Router<(), B>`
-
 error[E0277]: the trait bound `fn(Extractor<()>) -> impl Future<Output = ()> {foo}: Handler<_, _, _>` is not satisfied
-   --> tests/from_request/fail/generic_without_via_rejection.rs:11:42
+   --> tests/from_request/fail/generic_without_via_rejection.rs:11:46
     |
-11  |     Router::<Body>::new().route("/", get(foo));
-    |                                      --- ^^^ the trait `Handler<_, _, _>` is not implemented for `fn(Extractor<()>) -> impl Future<Output = ()> {foo}`
-    |                                      |
-    |                                      required by a bound introduced by this call
+11  |     Router::<(), Body>::new().route("/", get(foo));
+    |                                          --- ^^^ the trait `Handler<_, _, _>` is not implemented for `fn(Extractor<()>) -> impl Future<Output = ()> {foo}`
+    |                                          |
+    |                                          required by a bound introduced by this call
     |
     = help: the trait `Handler<T, S, B>` is implemented for `Layered<L, H, T, S, B>`
 note: required by a bound in `axum::routing::get`

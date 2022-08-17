@@ -1,8 +1,7 @@
 use axum_macros::FromRequest;
-use axum::extract::Extension;
 
 #[derive(FromRequest, Clone)]
-#[from_request(rejection_derive(!Error), via(Extension))]
+#[from_request(rejection_derive(!Error), via(axum::Extension))]
 struct Extractor {
     config: String,
 }

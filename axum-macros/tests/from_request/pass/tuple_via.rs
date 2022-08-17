@@ -1,4 +1,4 @@
-use axum::extract::Extension;
+use axum::Extension;
 use axum_macros::FromRequest;
 
 #[derive(FromRequest)]
