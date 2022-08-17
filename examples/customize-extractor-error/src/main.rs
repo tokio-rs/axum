@@ -3,6 +3,9 @@
 //! ```not_rust
 //! cd examples && cargo run -p example-customize-extractor-error
 //! ```
+//!
+//! See https://docs.rs/axum-extra/0.3.7/axum_extra/extract/struct.WithRejection.html
+//! example for creating custom errors from already existing extractors
 
 use axum::{
     async_trait,

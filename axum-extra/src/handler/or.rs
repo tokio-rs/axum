@@ -1,5 +1,5 @@
 use super::HandlerCallWithExtractors;
-use crate::Either;
+use crate::either::Either;
 use axum::{
     extract::{FromRequest, RequestParts},
     handler::Handler,
@@ -41,12 +41,12 @@ where
         extractors: Either<Lt, Rt>,
     ) -> <Self as HandlerCallWithExtractors<Either<Lt, Rt>, S, B>>::Future {
         match extractors {
-            Either::Left(lt) => self
+            Either::E1(lt) => self
                 .lhs
                 .call(state, lt)
                 .map(IntoResponse::into_response as _)
                 .left_future(),
-            Either::Right(rt) => self
+            Either::E2(rt) => self
                 .rhs
                 .call(state, rt)
                 .map(IntoResponse::into_response as _)

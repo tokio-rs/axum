@@ -248,7 +248,6 @@ mod tests {
         let res = client.post("/").body(r#"{ "foo": "bar" }"#).send().await;
 
         let status = res.status();
-        dbg!(res.text().await);
 
         assert_eq!(status, StatusCode::UNSUPPORTED_MEDIA_TYPE);
     }
