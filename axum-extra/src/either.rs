@@ -16,7 +16,7 @@
 //!     }
 //! }
 //! #
-//! # let _ = axum::routing::get(handler);
+//! # let _: axum::routing::MethodRouter = axum::routing::get(handler);
 //! ```
 //!
 //! Note that if all the inner extractors reject the request, the rejection from the last
@@ -49,7 +49,7 @@
 //!     # false
 //! }
 //! #
-//! # let _: axum::Router = axum::Router::new().route("/", axum::routing::get(handler));
+//! # let _: axum::routing::MethodRouter = axum::routing::get(handler);
 //! ```
 //!
 //! The general recommendation is to use [`IntoResponse::into_response`] to return different response
