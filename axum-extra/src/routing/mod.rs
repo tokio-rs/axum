@@ -1,13 +1,13 @@
 //! Additional types for defining routes.
 
 use axum::{
-    handler::Handler,
+    handler::{Handler, HandlerWithoutStateExt},
     http::Request,
     response::{IntoResponse, Redirect},
     routing::{any, MethodRouter},
     Router,
 };
-use std::{convert::Infallible, future::ready};
+use std::{convert::Infallible, future::ready, sync::Arc};
 use tower_service::Service;
 
 mod resource;
@@ -266,15 +266,15 @@ where
     {
         self = self.route(path, method_router);
 
-        let redirect = Redirect::permanent(path);
+        let redirect_service = {
+            let path: Arc<str> = path.into();
+            (move || ready(Redirect::permanent(&path))).into_service()
+        };
 
         if let Some(path_without_trailing_slash) = path.strip_suffix('/') {
-            self.route(
-                path_without_trailing_slash,
-                any(move || ready(redirect.clone())),
-            )
+            self.route_service(path_without_trailing_slash, redirect_service)
         } else {
-            self.route(&format!("{}/", path), any(move || ready(redirect.clone())))
+            self.route_service(&format!("{}/", path), redirect_service)
         }
     }
 
