@@ -16,10 +16,10 @@
 //!     }
 //! }
 //! #
-//! # let _: axum::Router = axum::Router::new().route("/", axum::routing::get(handler));
+//! # let _ = axum::routing::get(handler);
 //! ```
 //!
-//! Note that if all the inner extractors rejects the request then the rejection from the last
+//! Note that if all the inner extractors reject the request, the rejection from the last
 //! extractor will be returned. For the example above that would be [`BytesRejection`].
 //!
 //! # As a response
@@ -56,7 +56,7 @@
 //! types, but if you need to preserve the extract type then `Either*` works as well.
 //!
 //! [`BytesRejection`]: axum::extract::rejection::BytesRejection
-//! [`IntoResponse::into_response`]: https://docs.rs/axum/latest/axum/response/index.html#returning-different-response-types
+//! [`IntoResponse::into_response`]: https://docs.rs/axum/0.5/axum/response/index.html#returning-different-response-types
 
 use axum::{
     async_trait,
