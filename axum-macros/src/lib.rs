@@ -513,6 +513,22 @@ pub fn derive_from_request(item: TokenStream) -> TokenStream {
 /// async fn handler(request: Request<BoxBody>) {}
 /// ```
 ///
+/// # Changing state type
+///
+/// By default `#[debug_handler]` assumes your state type is `()`. Thus if you're using
+/// [`axum::extract::State`] you must change the state type to match:
+///
+/// ```
+/// use axum::extract::State;
+/// # use axum_macros::debug_handler;
+///
+/// #[debug_handler(state = AppState)]
+/// async fn handler(State(staste): State<AppState>) {}
+///
+/// #[derive(Clone)]
+/// struct AppState {}
+/// ```
+///
 /// # Performance
 ///
 /// This macro has no effect when compiled with the release profile. (eg. `cargo build --release`)

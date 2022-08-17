@@ -13,7 +13,7 @@ pub(crate) fn expand(attr: Attrs, item_fn: ItemFn) -> TokenStream {
     // returns is `Send`. Skip those checks to avoid unhelpful additional compiler errors.
     let check_inputs_and_future_send = if item_fn.sig.generics.params.is_empty() {
         let check_inputs_impls_from_request =
-            check_inputs_impls_from_request(&item_fn, &attr.body_ty);
+            check_inputs_impls_from_request(&item_fn, &attr.body_ty, &attr.state_ty);
         let check_future_send = check_future_send(&item_fn);
 
         quote! {
@@ -41,17 +41,23 @@ pub(crate) fn expand(attr: Attrs, item_fn: ItemFn) -> TokenStream {
 
 pub(crate) struct Attrs {
     body_ty: Type,
+    state_ty: Type,
 }
 
 impl Parse for Attrs {
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
         let mut body_ty = None;
+        let mut state_ty = None;
 
+        // TODO(david): port to lookahead1
         while !input.is_empty() {
             let ident = input.parse::<syn::Ident>()?;
             if ident == "body" {
                 input.parse::<Token![=]>()?;
                 body_ty = Some(input.parse()?);
+            } else if ident == "state" {
+                input.parse::<Token![=]>()?;
+                state_ty = Some(input.parse()?);
             } else {
                 return Err(syn::Error::new_spanned(ident, "unknown argument"));
             }
@@ -60,8 +66,9 @@ impl Parse for Attrs {
         }
 
         let body_ty = body_ty.unwrap_or_else(|| syn::parse_quote!(axum::body::Body));
+        let state_ty = state_ty.unwrap_or_else(|| syn::parse_quote!(()));
 
-        Ok(Self { body_ty })
+        Ok(Self { body_ty, state_ty })
     }
 }
 
@@ -167,7 +174,11 @@ fn check_multiple_body_extractors(item_fn: &ItemFn) -> TokenStream {
     }
 }
 
-fn check_inputs_impls_from_request(item_fn: &ItemFn, body_ty: &Type) -> TokenStream {
+fn check_inputs_impls_from_request(
+    item_fn: &ItemFn,
+    body_ty: &Type,
+    state_ty: &Type,
+) -> TokenStream {
     item_fn
         .sig
         .inputs
@@ -203,7 +214,7 @@ fn check_inputs_impls_from_request(item_fn: &ItemFn, body_ty: &Type) -> TokenStr
                 #[allow(warnings)]
                 fn #name()
                 where
-                    #ty: ::axum::extract::FromRequest<(), #body_ty> + Send,
+                    #ty: ::axum::extract::FromRequest<#state_ty, #body_ty> + Send,
                 {}
             }
         })
