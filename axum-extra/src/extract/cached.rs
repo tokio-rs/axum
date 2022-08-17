@@ -155,7 +155,7 @@ mod tests {
             }
         }
 
-        let mut req = RequestParts::with_state(Request::new(()), ());
+        let mut req = RequestParts::new(Request::new(()));
 
         let first = Cached::<Extractor>::from_request(&mut req).await.unwrap().0;
         assert_eq!(COUNTER.load(Ordering::SeqCst), 1);

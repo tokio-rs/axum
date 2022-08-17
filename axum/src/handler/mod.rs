@@ -277,7 +277,7 @@ where
     }
 }
 
-/// Extension trait for [`Handler`]s who doesn't have state.
+/// Extension trait for [`Handler`]s that don't have state.
 ///
 /// This provides convenience methods to convert the [`Handler`] into a [`Service`] or [`MakeService`].
 ///
