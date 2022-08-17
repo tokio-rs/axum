@@ -58,7 +58,7 @@ pub struct WithRejection<E, R>(pub E, pub PhantomData<R>);
 
 impl<E, R> WithRejection<E, R> {
     /// Returns the wrapped extractor
-    fn into_inner(self) -> E {
+    pub fn into_inner(self) -> E {
         self.0
     }
 }
