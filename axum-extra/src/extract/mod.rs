@@ -11,6 +11,8 @@ pub mod cookie;
 #[cfg(feature = "query")]
 mod query;
 
+mod with_rejection;
+
 pub use self::cached::Cached;
 
 #[cfg(feature = "cookie")]
@@ -31,3 +33,5 @@ pub use self::query::Query;
 #[cfg(feature = "json-lines")]
 #[doc(no_inline)]
 pub use crate::json_lines::JsonLines;
+
+pub use self::with_rejection::WithRejection;

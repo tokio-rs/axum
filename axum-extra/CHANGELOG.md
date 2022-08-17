@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning].
 - **added:** Add Protocol Buffer extractor and response ([#1239])
 - **added:** Add `Either*` types for combining extractors and responses into a
   single type ([#1263])
+- **added:** `WithRejection` extractor for customizing other extractors' rejections ([#1262])
 - **added:** Add sync constructors to `CookieJar`, `PrivateCookieJar`, and
   `SignedCookieJar` so they're easier to use in custom middleware
 
@@ -28,6 +29,7 @@ and this project adheres to [Semantic Versioning].
 [#1170]: https://github.com/tokio-rs/axum/pull/1170
 [#1214]: https://github.com/tokio-rs/axum/pull/1214
 [#1239]: https://github.com/tokio-rs/axum/pull/1239
+[#1262]: https://github.com/tokio-rs/axum/pull/1262
 [#1263]: https://github.com/tokio-rs/axum/pull/1263
 
 # 0.3.5 (27. June, 2022)
