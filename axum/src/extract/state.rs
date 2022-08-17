@@ -153,7 +153,7 @@ use std::{
 ///     // keep `S` generic but require that it can produce a `MyLibraryState`
 ///     // this means users will have to implement `FromRef<UserState> for MyLibraryState`
 ///     MyLibraryState: FromRef<S>,
-///     S: Send,
+///     S: Send + Sync,
 /// {
 ///     type Rejection = Infallible;
 ///
@@ -182,7 +182,7 @@ impl<B, OuterState, InnerState> FromRequest<OuterState, B> for State<InnerState>
 where
     B: Send,
     InnerState: FromRef<OuterState>,
-    OuterState: Send,
+    OuterState: Send + Sync,
 {
     type Rejection = Infallible;
 

@@ -62,7 +62,7 @@ impl<T, S, B> FromRequest<S, B> for Query<T>
 where
     T: DeserializeOwned,
     B: Send,
-    S: Send,
+    S: Send + Sync,
 {
     type Rejection = QueryRejection;
 

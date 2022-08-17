@@ -58,7 +58,7 @@ struct Json<T>(T);
 #[async_trait]
 impl<S, B, T> FromRequest<S, B> for Json<T>
 where
-    S: Send,
+    S: Send + Sync,
     // these trait bounds are copied from `impl FromRequest for axum::Json`
     T: DeserializeOwned,
     B: axum::body::HttpBody + Send,

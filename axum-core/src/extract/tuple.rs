@@ -7,7 +7,7 @@ use std::convert::Infallible;
 impl<S, B> FromRequest<S, B> for ()
 where
     B: Send,
-    S: Send,
+    S: Send + Sync,
 {
     type Rejection = Infallible;
 
@@ -26,7 +26,7 @@ macro_rules! impl_from_request {
         where
             $( $ty: FromRequest<S, B> + Send, )*
             B: Send,
-            S: Send,
+            S: Send + Sync,
         {
             type Rejection = Response;
 

@@ -9,7 +9,7 @@ use std::convert::Infallible;
 impl<S, B> FromRequest<S, B> for Request<B>
 where
     B: Send,
-    S: Clone + Send,
+    S: Clone + Send + Sync,
 {
     type Rejection = BodyAlreadyExtracted;
 
@@ -17,7 +17,7 @@ where
         let req = std::mem::replace(
             req,
             RequestParts {
-                state: req.state().clone(),
+                state: req.state.clone(),
                 method: req.method.clone(),
                 version: req.version,
                 uri: req.uri.clone(),
@@ -35,7 +35,7 @@ where
 impl<S, B> FromRequest<S, B> for Method
 where
     B: Send,
-    S: Send,
+    S: Send + Sync,
 {
     type Rejection = Infallible;
 
@@ -48,7 +48,7 @@ where
 impl<S, B> FromRequest<S, B> for Uri
 where
     B: Send,
-    S: Send,
+    S: Send + Sync,
 {
     type Rejection = Infallible;
 
@@ -61,7 +61,7 @@ where
 impl<S, B> FromRequest<S, B> for Version
 where
     B: Send,
-    S: Send,
+    S: Send + Sync,
 {
     type Rejection = Infallible;
 
@@ -79,7 +79,7 @@ where
 impl<S, B> FromRequest<S, B> for HeaderMap
 where
     B: Send,
-    S: Send,
+    S: Send + Sync,
 {
     type Rejection = Infallible;
 
@@ -94,7 +94,7 @@ where
     B: http_body::Body + Send,
     B::Data: Send,
     B::Error: Into<BoxError>,
-    S: Send,
+    S: Send + Sync,
 {
     type Rejection = BytesRejection;
 
@@ -115,7 +115,7 @@ where
     B: http_body::Body + Send,
     B::Data: Send,
     B::Error: Into<BoxError>,
-    S: Send,
+    S: Send + Sync,
 {
     type Rejection = StringRejection;
 
@@ -137,7 +137,7 @@ where
 impl<S, B> FromRequest<S, B> for http::request::Parts
 where
     B: Send,
-    S: Send,
+    S: Send + Sync,
 {
     type Rejection = Infallible;
 

@@ -223,7 +223,7 @@ fn impl_struct_by_extracting_each_field(
             B: ::axum::body::HttpBody + ::std::marker::Send + 'static,
             B::Data: ::std::marker::Send,
             B::Error: ::std::convert::Into<::axum::BoxError>,
-            S: Send,
+            S: ::std::marker::Send + ::std::marker::Sync,
         {
             type Rejection = #rejection_ident;
 
@@ -659,7 +659,7 @@ fn impl_struct_by_extracting_all_at_once(
             #path<#via_type_generics>: ::axum::extract::FromRequest<S, B>,
             #rejection_bound
             B: ::std::marker::Send,
-            S: ::std::marker::Send,
+            S: ::std::marker::Send + ::std::marker::Sync,
         {
             type Rejection = #associated_rejection_type;
 
@@ -725,7 +725,7 @@ fn impl_enum_by_extracting_all_at_once(
             B: ::axum::body::HttpBody + ::std::marker::Send + 'static,
             B::Data: ::std::marker::Send,
             B::Error: ::std::convert::Into<::axum::BoxError>,
-            S: ::std::marker::Send,
+            S: ::std::marker::Send + ::std::marker::Sync,
         {
             type Rejection = #associated_rejection_type;
 

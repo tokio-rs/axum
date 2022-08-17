@@ -108,7 +108,7 @@ impl<K> fmt::Debug for SignedCookieJar<K> {
 impl<S, B, K> FromRequest<S, B> for SignedCookieJar<K>
 where
     B: Send,
-    S: Send,
+    S: Send + Sync,
     K: FromRef<S> + Into<Key>,
 {
     type Rejection = Infallible;

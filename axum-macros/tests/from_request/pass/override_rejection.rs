@@ -31,7 +31,7 @@ struct OtherExtractor;
 impl<S, B> FromRequest<S, B> for OtherExtractor
 where
     B: Send + 'static,
-    S: Send,
+    S: Send + Sync,
 {
     // this rejection doesn't implement `Display` and `Error`
     type Rejection = (StatusCode, String);

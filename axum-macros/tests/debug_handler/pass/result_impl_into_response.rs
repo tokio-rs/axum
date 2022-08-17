@@ -123,7 +123,7 @@ impl A {
 impl<S, B> FromRequest<S, B> for A
 where
     B: Send,
-    S: Send,
+    S: Send + Sync,
 {
     type Rejection = ();
 

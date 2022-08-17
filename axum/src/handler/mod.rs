@@ -179,7 +179,7 @@ macro_rules! impl_handler {
             F: FnOnce($($ty,)*) -> Fut + Clone + Send + 'static,
             Fut: Future<Output = Res> + Send,
             B: Send + 'static,
-            S: Send + 'static,
+            S: Send + Sync + 'static,
             Res: IntoResponse,
             $( $ty: FromRequest<S, B> + Send,)*
         {

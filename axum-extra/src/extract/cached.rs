@@ -33,7 +33,7 @@ use std::ops::{Deref, DerefMut};
 /// impl<S, B> FromRequest<S, B> for Session
 /// where
 ///     B: Send,
-///     S: Send,
+///     S: Send + Sync,
 /// {
 ///     type Rejection = (StatusCode, String);
 ///
@@ -49,7 +49,7 @@ use std::ops::{Deref, DerefMut};
 /// impl<S, B> FromRequest<S, B> for CurrentUser
 /// where
 ///     B: Send,
-///     S: Send,
+///     S: Send + Sync,
 /// {
 ///     type Rejection = Response;
 ///
@@ -93,7 +93,7 @@ struct CachedEntry<T>(T);
 impl<S, B, T> FromRequest<S, B> for Cached<T>
 where
     B: Send,
-    S: Send,
+    S: Send + Sync,
     T: FromRequest<S, B> + Clone + Send + Sync + 'static,
 {
     type Rejection = T::Rejection;
@@ -145,7 +145,7 @@ mod tests {
         impl<S, B> FromRequest<S, B> for Extractor
         where
             B: Send,
-            S: Send,
+            S: Send + Sync,
         {
             type Rejection = Infallible;
 

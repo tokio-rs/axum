@@ -56,7 +56,7 @@ impl<T, S, B> FromRequest<S, B> for TypedHeader<T>
 where
     T: headers::Header,
     B: Send,
-    S: Send,
+    S: Send + Sync,
 {
     type Rejection = TypedHeaderRejection;
 

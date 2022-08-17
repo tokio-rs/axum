@@ -167,7 +167,7 @@ impl<T, S, B> FromRequest<S, B> for Path<T>
 where
     T: DeserializeOwned + Send,
     B: Send,
-    S: Send,
+    S: Send + Sync,
 {
     type Rejection = PathRejection;
 

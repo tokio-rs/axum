@@ -17,7 +17,7 @@ struct OtherExtractor;
 impl<S, B> FromRequest<S, B> for OtherExtractor
 where
     B: Send,
-    S: Send,
+    S: Send + Sync,
 {
     type Rejection = OtherExtractorRejection;
 

@@ -64,7 +64,7 @@ where
     Lt::Rejection: Send,
     Rt::Rejection: Send,
     B: Send + 'static,
-    S: Clone + Send + 'static,
+    S: Clone + Send + Sync + 'static,
 {
     // this puts `futures_util` in our public API but thats fine in axum-extra
     type Future = BoxFuture<'static, Response>;

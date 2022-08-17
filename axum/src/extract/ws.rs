@@ -278,7 +278,7 @@ impl WebSocketUpgrade {
 impl<S, B> FromRequest<S, B> for WebSocketUpgrade
 where
     B: Send,
-    S: Send,
+    S: Send + Sync,
 {
     type Rejection = WebSocketUpgradeRejection;
 

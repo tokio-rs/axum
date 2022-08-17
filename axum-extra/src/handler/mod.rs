@@ -70,7 +70,7 @@ pub trait HandlerCallWithExtractors<T, S, B>: Sized {
     /// impl<S, B> FromRequest<S, B> for AdminPermissions
     /// where
     ///     B: Send,
-    ///     S: Send,
+    ///     S: Send + Sync,
     /// {
     ///     // check for admin permissions...
     ///     # type Rejection = ();
@@ -85,7 +85,7 @@ pub trait HandlerCallWithExtractors<T, S, B>: Sized {
     /// impl<S, B> FromRequest<S, B> for User
     /// where
     ///     B: Send,
-    ///     S: Send,
+    ///     S: Send + Sync,
     /// {
     ///     // check for a logged in user...
     ///     # type Rejection = ();
@@ -172,7 +172,7 @@ where
     T: FromRequest<S, B> + Send + 'static,
     T::Rejection: Send,
     B: Send + 'static,
-    S: Clone + Send + 'static,
+    S: Clone + Send + Sync + 'static,
 {
     type Future = BoxFuture<'static, Response>;
 

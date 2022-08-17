@@ -67,7 +67,7 @@ impl MatchedPath {
 impl<S, B> FromRequest<S, B> for MatchedPath
 where
     B: Send,
-    S: Send,
+    S: Send + Sync,
 {
     type Rejection = MatchedPathRejection;
 

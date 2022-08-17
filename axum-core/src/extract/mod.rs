@@ -8,7 +8,7 @@ use self::rejection::*;
 use crate::response::IntoResponse;
 use async_trait::async_trait;
 use http::{Extensions, HeaderMap, Method, Request, Uri, Version};
-use std::convert::Infallible;
+use std::{convert::Infallible, sync::Arc};
 
 pub mod rejection;
 
@@ -49,7 +49,7 @@ pub use self::from_ref::FromRef;
 /// where
 ///     // these bounds are required by `async_trait`
 ///     B: Send,
-///     S: Send,
+///     S: Send + Sync,
 /// {
 ///     type Rejection = http::StatusCode;
 ///
@@ -79,7 +79,7 @@ pub trait FromRequest<S, B>: Sized {
 /// Has several convenience methods for getting owned parts of the request.
 #[derive(Debug)]
 pub struct RequestParts<S, B> {
-    state: S,
+    pub(crate) state: Arc<S>,
     method: Method,
     uri: Uri,
     version: Version,
@@ -110,6 +110,17 @@ impl<S, B> RequestParts<S, B> {
     ///
     /// [`tower::Service`]: https://docs.rs/tower/lastest/tower/trait.Service.html
     pub fn with_state(state: S, req: Request<B>) -> Self {
+        Self::with_state_arc(Arc::new(state), req)
+    }
+
+    /// Create a new `RequestParts` with the given [`Arc`]'ed state.
+    ///
+    /// You generally shouldn't need to construct this type yourself, unless
+    /// using extractors outside of axum for example to implement a
+    /// [`tower::Service`].
+    ///
+    /// [`tower::Service`]: https://docs.rs/tower/lastest/tower/trait.Service.html
+    pub fn with_state_arc(state: Arc<S>, req: Request<B>) -> Self {
         let (
             http::request::Parts {
                 method,
@@ -153,7 +164,7 @@ impl<S, B> RequestParts<S, B> {
     /// impl<S, B> FromRequest<S, B> for MyExtractor
     /// where
     ///     B: Send,
-    ///     S: Send,
+    ///     S: Send + Sync,
     /// {
     ///     type Rejection = Infallible;
     ///
@@ -285,7 +296,7 @@ impl<S, T, B> FromRequest<S, B> for Option<T>
 where
     T: FromRequest<S, B>,
     B: Send,
-    S: Send,
+    S: Send + Sync,
 {
     type Rejection = Infallible;
 
@@ -299,7 +310,7 @@ impl<S, T, B> FromRequest<S, B> for Result<T, T::Rejection>
 where
     T: FromRequest<S, B>,
     B: Send,
-    S: Send,
+    S: Send + Sync,
 {
     type Rejection = Infallible;
 
