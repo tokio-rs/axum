@@ -236,7 +236,7 @@ mod tests {
         );
 
         let input = Input {
-            foo: "bar".to_string(),
+            foo: "bar".to_owned(),
         };
 
         let client = TestClient::new(app);
@@ -264,7 +264,7 @@ mod tests {
         let app = Router::new().route("/", post(|_: ProtoBuf<Expected>| async {}));
 
         let input = Input {
-            foo: "bar".to_string(),
+            foo: "bar".to_owned(),
         };
 
         let client = TestClient::new(app);
@@ -299,7 +299,7 @@ mod tests {
         );
 
         let input = Input {
-            foo: "bar".to_string(),
+            foo: "bar".to_owned(),
         };
 
         let client = TestClient::new(app);
