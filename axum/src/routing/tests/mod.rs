@@ -642,7 +642,7 @@ async fn limited_body_with_streaming_body() {
 }
 
 #[tokio::test]
-async fn extracting_state() {
+async fn extract_state() {
     #[derive(Clone)]
     struct AppState {
         value: i32,
@@ -678,7 +678,7 @@ async fn extracting_state() {
 }
 
 #[tokio::test]
-async fn explicitly_setting_state() {
+async fn explicitly_set_state() {
     let app = Router::with_state("...").route_service(
         "/",
         get(|State(state): State<&'static str>| async move { state }).with_state("foo"),
