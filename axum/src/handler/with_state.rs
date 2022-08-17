@@ -106,7 +106,7 @@ impl<H, T, S, B> Service<Request<B>> for WithState<H, T, S, B>
 where
     H: Handler<T, S, B> + Clone + Send + 'static,
     B: Send + 'static,
-    S: Clone,
+    S: Send + Sync,
 {
     type Response = <IntoService<H, T, S, B> as Service<Request<B>>>::Response;
     type Error = <IntoService<H, T, S, B> as Service<Request<B>>>::Error;
@@ -134,7 +134,6 @@ impl<H, T, S, B> std::fmt::Debug for WithState<H, T, S, B> {
 impl<H, T, S, B> Clone for WithState<H, T, S, B>
 where
     H: Clone,
-    S: Clone,
 {
     fn clone(&self) -> Self {
         Self {

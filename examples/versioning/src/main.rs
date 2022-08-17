@@ -51,7 +51,7 @@ enum Version {
 impl<S, B> FromRequest<S, B> for Version
 where
     B: Send,
-    S: Send,
+    S: Send + Sync,
 {
     type Rejection = Response;
 

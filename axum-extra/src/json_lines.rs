@@ -104,7 +104,7 @@ where
     B::Data: Into<Bytes>,
     B::Error: Into<BoxError>,
     T: DeserializeOwned,
-    S: Send,
+    S: Send + Sync,
 {
     type Rejection = BodyAlreadyExtracted;
 

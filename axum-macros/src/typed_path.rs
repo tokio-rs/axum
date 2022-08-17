@@ -130,7 +130,7 @@ fn expand_named_fields(
         impl<S, B> ::axum::extract::FromRequest<S, B> for #ident
         where
             B: Send,
-            S: Send,
+            S: Send + Sync,
         {
             type Rejection = #rejection_assoc_type;
 
@@ -233,7 +233,7 @@ fn expand_unnamed_fields(
         impl<S, B> ::axum::extract::FromRequest<S, B> for #ident
         where
             B: Send,
-            S: Send,
+            S: Send + Sync,
         {
             type Rejection = #rejection_assoc_type;
 
@@ -315,7 +315,7 @@ fn expand_unit_fields(
         impl<S, B> ::axum::extract::FromRequest<S, B> for #ident
         where
             B: Send,
-            S: Send,
+            S: Send + Sync,
         {
             type Rejection = #rejection_assoc_type;
 

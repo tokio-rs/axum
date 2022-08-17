@@ -89,7 +89,7 @@ pub struct OriginalUri(pub Uri);
 impl<S, B> FromRequest<S, B> for OriginalUri
 where
     B: Send,
-    S: Send,
+    S: Send + Sync,
 {
     type Rejection = Infallible;
 
@@ -146,7 +146,7 @@ where
     B: HttpBody + Send + 'static,
     B::Data: Into<Bytes>,
     B::Error: Into<BoxError>,
-    S: Send,
+    S: Send + Sync,
 {
     type Rejection = BodyAlreadyExtracted;
 
@@ -201,7 +201,7 @@ pub struct RawBody<B = Body>(pub B);
 impl<S, B> FromRequest<S, B> for RawBody<B>
 where
     B: Send,
-    S: Send,
+    S: Send + Sync,
 {
     type Rejection = BodyAlreadyExtracted;
 

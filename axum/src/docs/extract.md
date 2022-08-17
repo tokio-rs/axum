@@ -424,7 +424,7 @@ struct ExtractUserAgent(HeaderValue);
 impl<S, B> FromRequest<S, B> for ExtractUserAgent
 where
     B: Send,
-    S: Send,
+    S: Send + Sync,
 {
     type Rejection = (StatusCode, &'static str);
 
@@ -476,7 +476,7 @@ struct AuthenticatedUser {
 impl<S, B> FromRequest<S, B> for AuthenticatedUser
 where
     B: Send,
-    S: Send,
+    S: Send + Sync,
 {
     type Rejection = Response;
 

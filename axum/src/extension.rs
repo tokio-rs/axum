@@ -77,7 +77,7 @@ impl<T, S, B> FromRequest<S, B> for Extension<T>
 where
     T: Clone + Send + Sync + 'static,
     B: Send,
-    S: Send,
+    S: Send + Sync,
 {
     type Rejection = ExtensionRejection;
 

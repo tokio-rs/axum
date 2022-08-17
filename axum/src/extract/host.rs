@@ -24,7 +24,7 @@ pub struct Host(pub String);
 impl<S, B> FromRequest<S, B> for Host
 where
     B: Send,
-    S: Send,
+    S: Send + Sync,
 {
     type Rejection = HostRejection;
 

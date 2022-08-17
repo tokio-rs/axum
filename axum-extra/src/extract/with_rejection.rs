@@ -110,7 +110,7 @@ impl<E, R> DerefMut for WithRejection<E, R> {
 impl<B, E, R, S> FromRequest<S, B> for WithRejection<E, R>
 where
     B: Send,
-    S: Send,
+    S: Send + Sync,
     E: FromRequest<S, B>,
     R: From<E::Rejection> + IntoResponse,
 {
@@ -138,7 +138,7 @@ mod tests {
         impl<S, B> FromRequest<S, B> for TestExtractor
         where
             B: Send,
-            S: Send,
+            S: Send + Sync,
         {
             type Rejection = ();
 

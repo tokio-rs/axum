@@ -5,6 +5,7 @@ use std::{
     convert::Infallible,
     fmt,
     marker::PhantomData,
+    sync::Arc,
     task::{Context, Poll},
 };
 use tower_service::Service;
@@ -54,7 +55,7 @@ impl<H, T, S, B> Service<Request<B>> for IntoServiceStateInExtension<H, T, S, B>
 where
     H: Handler<T, S, B> + Clone + Send + 'static,
     B: Send + 'static,
-    S: Clone + Send + Sync + 'static,
+    S: Send + Sync + 'static,
 {
     type Response = Response;
     type Error = Infallible;
@@ -73,7 +74,7 @@ where
 
         let state = req
             .extensions_mut()
-            .remove::<S>()
+            .remove::<Arc<S>>()
             .expect("state extension missing. This is a bug in axum, please file an issue");
 
         let handler = self.handler.clone();

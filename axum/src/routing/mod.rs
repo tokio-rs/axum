@@ -62,19 +62,16 @@ impl RouteId {
 
 /// The router type for composing handlers and services.
 pub struct Router<S = (), B = Body> {
-    state: S,
+    state: Arc<S>,
     routes: HashMap<RouteId, Endpoint<S, B>>,
     node: Arc<Node>,
     fallback: Fallback<B>,
 }
 
-impl<S, B> Clone for Router<S, B>
-where
-    S: Clone,
-{
+impl<S, B> Clone for Router<S, B> {
     fn clone(&self) -> Self {
         Self {
-            state: self.state.clone(),
+            state: Arc::clone(&self.state),
             routes: self.routes.clone(),
             node: Arc::clone(&self.node),
             fallback: self.fallback.clone(),
@@ -85,7 +82,7 @@ where
 impl<S, B> Default for Router<S, B>
 where
     B: HttpBody + Send + 'static,
-    S: Default + Clone + Send + Sync + 'static,
+    S: Default + Send + Sync + 'static,
 {
     fn default() -> Self {
         Self::with_state(S::default())
@@ -125,7 +122,7 @@ where
 impl<S, B> Router<S, B>
 where
     B: HttpBody + Send + 'static,
-    S: Clone + Send + Sync + 'static,
+    S: Send + Sync + 'static,
 {
     /// Create a new `Router` with the given state.
     ///
@@ -134,6 +131,16 @@ where
     /// Unless you add additional routes this will respond with `404 Not Found` to
     /// all requests.
     pub fn with_state(state: S) -> Self {
+        Self::with_state_arc(Arc::new(state))
+    }
+
+    /// Create a new `Router` with the given [`Arc`]'ed state.
+    ///
+    /// See [`State`](crate::extract::State) for more details about accessing state.
+    ///
+    /// Unless you add additional routes this will respond with `404 Not Found` to
+    /// all requests.
+    pub fn with_state_arc(state: Arc<S>) -> Self {
         Self {
             state,
             routes: Default::default(),
@@ -262,7 +269,7 @@ where
     pub fn merge<S2, R>(mut self, other: R) -> Self
     where
         R: Into<Router<S2, B>>,
-        S2: Clone + Send + Sync + 'static,
+        S2: Send + Sync + 'static,
     {
         let Router {
             state,
@@ -282,7 +289,7 @@ where
                     method_router
                         // this will set the state for each route
                         // such we don't override the inner state later in `MethodRouterWithState`
-                        .layer(Extension(state.clone()))
+                        .layer(Extension(Arc::clone(&state)))
                         .downcast_state(),
                 ),
                 Endpoint::Route(route) => self.route_service(path, route),
@@ -383,8 +390,8 @@ where
         H: Handler<T, S, B>,
         T: 'static,
     {
-        let state = self.state.clone();
-        self.fallback_service(handler.with_state(state))
+        let state = Arc::clone(&self.state);
+        self.fallback_service(handler.with_state_arc(state))
     }
 
     /// Add a fallback [`Service`] to the router.
@@ -484,7 +491,10 @@ where
             .clone();
 
         match &mut route {
-            Endpoint::MethodRouter(inner) => inner.clone().with_state(self.state.clone()).call(req),
+            Endpoint::MethodRouter(inner) => inner
+                .clone()
+                .with_state_arc(Arc::clone(&self.state))
+                .call(req),
             Endpoint::Route(inner) => inner.call(req),
         }
     }
@@ -498,7 +508,7 @@ where
 impl<S, B> Service<Request<B>> for Router<S, B>
 where
     B: HttpBody + Send + 'static,
-    S: Clone + Send + Sync + 'static,
+    S: Send + Sync + 'static,
 {
     type Response = Response;
     type Error = Infallible;
@@ -618,10 +628,7 @@ enum Endpoint<S, B> {
     Route(Route<B>),
 }
 
-impl<S, B> Clone for Endpoint<S, B>
-where
-    S: Clone,
-{
+impl<S, B> Clone for Endpoint<S, B> {
     fn clone(&self) -> Self {
         match self {
             Endpoint::MethodRouter(inner) => Endpoint::MethodRouter(inner.clone()),

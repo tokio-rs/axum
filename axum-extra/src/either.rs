@@ -195,7 +195,7 @@ macro_rules! impl_traits_for_either {
             $($ident: FromRequest<S, B>),*,
             $last: FromRequest<S, B>,
             B: Send,
-            S: Send,
+            S: Send + Sync,
         {
             type Rejection = $last::Rejection;
 

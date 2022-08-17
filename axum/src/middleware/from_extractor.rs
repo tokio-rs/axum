@@ -48,7 +48,7 @@ use tower_service::Service;
 /// impl<S, B> FromRequest<S, B> for RequireAuth
 /// where
 ///     B: Send,
-///     S: Send,
+///     S: Send + Sync,
 /// {
 ///     type Rejection = StatusCode;
 ///
@@ -283,7 +283,7 @@ mod tests {
         impl<S, B> FromRequest<S, B> for RequireAuth
         where
             B: Send,
-            S: Send,
+            S: Send + Sync,
         {
             type Rejection = StatusCode;
 

@@ -124,7 +124,7 @@ impl AuthBody {
 #[async_trait]
 impl<S, B> FromRequest<S, B> for Claims
 where
-    S: Send,
+    S: Send + Sync,
     B: Send,
 {
     type Rejection = AuthError;

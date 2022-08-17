@@ -131,7 +131,7 @@ pub struct ConnectInfo<T>(pub T);
 impl<S, B, T> FromRequest<S, B> for ConnectInfo<T>
 where
     B: Send,
-    S: Send,
+    S: Send + Sync,
     T: Clone + Send + Sync + 'static,
 {
     type Rejection = <Extension<Self> as FromRequest<S, B>>::Rejection;

@@ -57,7 +57,7 @@ where
     // these trait bounds are copied from `impl FromRequest for axum::extract::path::Path`
     T: DeserializeOwned + Send,
     B: Send,
-    S: Send,
+    S: Send + Sync,
 {
     type Rejection = (StatusCode, axum::Json<PathError>);
 
