@@ -53,7 +53,7 @@
 //! ```
 //!
 //! The general recommendation is to use [`IntoResponse::into_response`] to return different response
-//! types, but if you need to preserve the extract type then `Either*` works as well.
+//! types, but if you need to preserve the exact type then `Either*` works as well.
 //!
 //! [`BytesRejection`]: axum::extract::rejection::BytesRejection
 //! [`IntoResponse::into_response`]: https://docs.rs/axum/0.5/axum/response/index.html#returning-different-response-types
