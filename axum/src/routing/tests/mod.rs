@@ -1,7 +1,7 @@
 use crate::{
     body::{Bytes, Empty},
     error_handling::HandleErrorLayer,
-    extract::{self, Path, State},
+    extract::{self, FromRef, Path, State},
     handler::{Handler, HandlerWithoutStateExt},
     response::IntoResponse,
     routing::{delete, get, get_service, on, on_service, patch, patch_service, post, MethodFilter},
@@ -654,9 +654,9 @@ async fn extracting_state() {
         value: i32,
     }
 
-    impl From<AppState> for InnerState {
-        fn from(state: AppState) -> Self {
-            state.inner
+    impl FromRef<AppState> for InnerState {
+        fn from_ref(state: &AppState) -> Self {
+            state.inner.clone()
         }
     }
 

@@ -227,7 +227,7 @@ fn set_cookies(jar: cookie::CookieJar, headers: &mut HeaderMap) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use axum::{body::Body, http::Request, routing::get, Router};
+    use axum::{body::Body, extract::FromRef, http::Request, routing::get, Router};
     use tower::ServiceExt;
 
     macro_rules! cookie_test {
@@ -308,15 +308,15 @@ mod tests {
         custom_key: CustomKey,
     }
 
-    impl From<AppState> for Key {
-        fn from(state: AppState) -> Key {
-            state.key
+    impl FromRef<AppState> for Key {
+        fn from_ref(state: &AppState) -> Key {
+            state.key.clone()
         }
     }
 
-    impl From<AppState> for CustomKey {
-        fn from(state: AppState) -> CustomKey {
-            state.custom_key
+    impl FromRef<AppState> for CustomKey {
+        fn from_ref(state: &AppState) -> CustomKey {
+            state.custom_key.clone()
         }
     }
 
