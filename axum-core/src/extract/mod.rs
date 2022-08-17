@@ -94,7 +94,7 @@ impl<B> RequestParts<(), B> {
     ///
     /// [`tower::Service`]: https://docs.rs/tower/lastest/tower/trait.Service.html
     pub fn new(req: Request<B>) -> Self {
-        Self::with_state(req, ())
+        Self::with_state((), req)
     }
 }
 
@@ -106,7 +106,7 @@ impl<S, B> RequestParts<S, B> {
     /// [`tower::Service`].
     ///
     /// [`tower::Service`]: https://docs.rs/tower/lastest/tower/trait.Service.html
-    pub fn with_state(req: Request<B>, state: S) -> Self {
+    pub fn with_state(state: S, req: Request<B>) -> Self {
         let (
             http::request::Parts {
                 method,

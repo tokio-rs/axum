@@ -95,7 +95,7 @@ where
 
         let request = buffer_request_body(request).await?;
 
-        *req = RequestParts::with_state(request, state);
+        *req = RequestParts::with_state(state, request);
 
         Ok(Self)
     }

@@ -178,7 +178,7 @@ where
 
     fn call(self, state: S, req: http::Request<B>) -> Self::Future {
         Box::pin(async move {
-            let mut req = RequestParts::with_state(req, state.clone());
+            let mut req = RequestParts::with_state(state.clone(), req);
             match req.extract::<T>().await {
                 Ok(t) => self.handler.call(state, t).await,
                 Err(rejection) => rejection.into_response(),

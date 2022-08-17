@@ -187,7 +187,7 @@ macro_rules! impl_handler {
 
             fn call(self, state: S, req: Request<B>) -> Self::Future {
                 Box::pin(async move {
-                    let mut req = RequestParts::with_state(req, state);
+                    let mut req = RequestParts::with_state(state, req);
 
                     $(
                         let $ty = match $ty::from_request(&mut req).await {
