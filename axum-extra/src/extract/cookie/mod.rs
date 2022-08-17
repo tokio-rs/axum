@@ -299,7 +299,7 @@ mod tests {
     cookie_test!(plaintext_cookies, CookieJar);
     cookie_test!(signed_cookies, SignedCookieJar);
     cookie_test!(signed_cookies_with_custom_key, SignedCookieJar<CustomKey>);
-    cookie_test!(private_cookies, PrivateCookieJar<Key>);
+    cookie_test!(private_cookies, PrivateCookieJar);
     cookie_test!(private_cookies_with_custom_key, PrivateCookieJar<CustomKey>);
 
     #[derive(Clone)]
