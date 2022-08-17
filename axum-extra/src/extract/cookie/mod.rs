@@ -82,7 +82,7 @@ pub use cookie::Key;
 ///     .route("/me", get(me));
 /// # let app: Router<axum::body::Body> = app;
 /// ```
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct CookieJar {
     jar: cookie::CookieJar,
 }
@@ -95,18 +95,12 @@ where
     type Rejection = Infallible;
 
     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-        let mut jar = cookie::CookieJar::new();
-        for cookie in cookies_from_request(req) {
-            jar.add_original(cookie);
-        }
-        Ok(Self { jar })
+        Ok(Self::from_headers(req.headers()))
     }
 }
 
-fn cookies_from_request<B>(
-    req: &mut RequestParts<B>,
-) -> impl Iterator<Item = Cookie<'static>> + '_ {
-    req.headers()
+fn cookies_from_request(headers: &HeaderMap) -> impl Iterator<Item = Cookie<'static>> + '_ {
+    headers
         .get_all(COOKIE)
         .into_iter()
         .filter_map(|value| value.to_str().ok())
@@ -115,6 +109,31 @@ fn cookies_from_request<B>(
 }
 
 impl CookieJar {
+    /// Create a new `CookieJar` from a map of request headers.
+    ///
+    /// The cookies in `headers` will be added to the jar.
+    ///
+    /// This is inteded to be used in middleware and other places where it might be difficult to
+    /// run extractors. Normally you should create `CookieJar`s through [`FromRequest`].
+    pub fn from_headers(headers: &HeaderMap) -> Self {
+        let mut jar = cookie::CookieJar::new();
+        for cookie in cookies_from_request(headers) {
+            jar.add_original(cookie);
+        }
+        Self { jar }
+    }
+
+    /// Create a new empty `CookieJar`.
+    ///
+    /// This is inteded to be used in middleware and other places where it might be difficult to
+    /// run extractors. Normally you should create `CookieJar`s through [`FromRequest`].
+    ///
+    /// If you need a jar that contains the headers from a request use `impl From<&HeaderMap> for
+    /// CookieJar`.
+    pub fn new() -> Self {
+        Self::default()
+    }
+
     /// Get a cookie from the jar.
     ///
     /// # Example
