@@ -266,4 +266,11 @@ mod tests {
 
         Router::<_, Body>::new().merge(spa);
     }
+
+    #[allow(dead_code)]
+    fn works_with_router_with_state() {
+        let _: Router<String> = Router::with_state(String::new())
+            .merge(SpaRouter::new("/assets", "test_files"))
+            .route("/", get(|_: axum::extract::State<String>| async {}));
+    }
 }
