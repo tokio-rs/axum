@@ -45,9 +45,9 @@ where
                 });
 
                 let code = match rejection {
-                    JsonRejection::JsonDataError(_) | JsonRejection::MissingJsonContentType(_) => {
-                        StatusCode::BAD_REQUEST
-                    }
+                    JsonRejection::JsonDataError(_) => StatusCode::UNPROCESSABLE_ENTITY,
+                    JsonRejection::JsonSyntaxError(_) => StatusCode::BAD_REQUEST,
+                    JsonRejection::MissingJsonContentType(_) => StatusCode::UNSUPPORTED_MEDIA_TYPE,
                     _ => StatusCode::INTERNAL_SERVER_ERROR,
                 };
                 Err((code, axum::Json(payload)))
