@@ -7,8 +7,10 @@
 use self::rejection::*;
 use crate::response::IntoResponse;
 use async_trait::async_trait;
-use http::{Extensions, HeaderMap, Method, Request, Uri, Version};
-use std::{convert::Infallible, sync::Arc};
+use http::{
+    header::IntoHeaderName, Extensions, HeaderMap, HeaderValue, Method, Request, Uri, Version,
+};
+use std::{convert::Infallible, marker::PhantomData, sync::Arc};
 
 pub mod rejection;
 
@@ -17,6 +19,21 @@ mod request_parts;
 mod tuple;
 
 pub use self::from_ref::FromRef;
+
+/// Marker type used to signal that a `FromRequest` implementation can run multiple times.
+///
+/// See [`FromRequest`] for more details.
+#[derive(Debug, Clone, Copy)]
+pub enum Mut {}
+
+/// Marker type used to signal that a `FromRequest` implementation can only run once.
+///
+/// Extractors that implement `FromRequest<Once, _, _>` must be the last argument to handler
+/// functions.
+///
+/// See [`FromRequest`] for more details.
+#[derive(Debug, Clone, Copy)]
+pub enum Once {}
 
 /// Types that can be created from requests.
 ///
@@ -65,20 +82,20 @@ pub use self::from_ref::FromRef;
 /// [`http::Request<B>`]: http::Request
 /// [`axum::extract`]: https://docs.rs/axum/latest/axum/extract/index.html
 #[async_trait]
-pub trait FromRequest<S, B>: Sized {
+pub trait FromRequest<M, S, B>: Sized {
     /// If the extractor fails it'll use this "rejection" type. A rejection is
     /// a kind of error that can be converted into a response.
     type Rejection: IntoResponse;
 
     /// Perform the extraction.
-    async fn from_request(req: &mut RequestParts<S, B>) -> Result<Self, Self::Rejection>;
+    async fn from_request(req: &mut RequestParts<M, S, B>) -> Result<Self, Self::Rejection>;
 }
 
 /// The type used with [`FromRequest`] to extract data from requests.
 ///
 /// Has several convenience methods for getting owned parts of the request.
 #[derive(Debug)]
-pub struct RequestParts<S, B> {
+pub struct RequestParts<M, S, B> {
     pub(crate) state: Arc<S>,
     method: Method,
     uri: Uri,
@@ -86,9 +103,10 @@ pub struct RequestParts<S, B> {
     headers: HeaderMap,
     extensions: Extensions,
     body: Option<B>,
+    _marker: PhantomData<fn() -> M>,
 }
 
-impl<B> RequestParts<(), B> {
+impl<M, B> RequestParts<M, (), B> {
     /// Create a new `RequestParts` without any state.
     ///
     /// You generally shouldn't need to construct this type yourself, unless
@@ -101,7 +119,7 @@ impl<B> RequestParts<(), B> {
     }
 }
 
-impl<S, B> RequestParts<S, B> {
+impl<M, S, B> RequestParts<M, S, B> {
     /// Create a new `RequestParts` with the given state.
     ///
     /// You generally shouldn't need to construct this type yourself, unless
@@ -141,6 +159,7 @@ impl<S, B> RequestParts<S, B> {
             headers,
             extensions,
             body: Some(body),
+            _marker: PhantomData,
         }
     }
 
@@ -178,12 +197,12 @@ impl<S, B> RequestParts<S, B> {
     /// ```
     pub async fn extract<E>(&mut self) -> Result<E, E::Rejection>
     where
-        E: FromRequest<S, B>,
+        E: FromRequest<M, S, B>,
     {
         E::from_request(self).await
     }
 
-    /// Convert this `RequestParts` back into a [`Request`].
+    /// Try and convert this `RequestParts` back into a [`Request`].
     ///
     /// Fails if The request body has been extracted, that is [`take_body`] has
     /// been called.
@@ -198,6 +217,7 @@ impl<S, B> RequestParts<S, B> {
             headers,
             extensions,
             mut body,
+            _marker,
         } = self;
 
         let mut req = if let Some(body) = body.take() {
@@ -250,19 +270,9 @@ impl<S, B> RequestParts<S, B> {
         &self.headers
     }
 
-    /// Gets a mutable reference to the request headers.
-    pub fn headers_mut(&mut self) -> &mut HeaderMap {
-        &mut self.headers
-    }
-
     /// Gets a reference to the request extensions.
     pub fn extensions(&self) -> &Extensions {
         &self.extensions
-    }
-
-    /// Gets a mutable reference to the request extensions.
-    pub fn extensions_mut(&mut self) -> &mut Extensions {
-        &mut self.extensions
     }
 
     /// Gets a reference to the request body.
@@ -270,6 +280,59 @@ impl<S, B> RequestParts<S, B> {
     /// Returns `None` if the body has been taken by another extractor.
     pub fn body(&self) -> Option<&B> {
         self.body.as_ref()
+    }
+
+    /// Get a reference to the state.
+    pub fn state(&self) -> &S {
+        &self.state
+    }
+
+    /// Inserts a header, overriding any previous value.
+    ///
+    /// The previous value is returned, if any.
+    pub fn insert_header<K>(&mut self, key: K, value: HeaderValue) -> Option<HeaderValue>
+    where
+        K: IntoHeaderName,
+    {
+        self.headers.insert(key, value)
+    }
+
+    /// Appends a header, without overriding any previous values.
+    ///
+    /// If the map did not previously have this key present, then false is returned.
+    pub fn append_header<K>(&mut self, key: K, value: HeaderValue) -> bool
+    where
+        K: IntoHeaderName,
+    {
+        self.headers.append(key, value)
+    }
+
+    /// Insert a new request extension.
+    pub fn insert_extension<T>(&mut self, extension: T)
+    where
+        T: Send + Sync + 'static,
+    {
+        self.extensions.insert(extension);
+    }
+}
+
+impl<S, B> RequestParts<Mut, S, B> {
+    /// Convert this `RequestParts` back into a [`Request`].
+    pub fn into_request(self) -> Request<B> {
+        self.try_into_request()
+            .expect("body removed from `RequestParts<Mut, _, _>`. This should never happen")
+    }
+}
+
+impl<S, B> RequestParts<Once, S, B> {
+    /// Gets a mutable reference to the request headers.
+    pub fn headers_mut(&mut self) -> &mut HeaderMap {
+        &mut self.headers
+    }
+
+    /// Gets a mutable reference to the request extensions.
+    pub fn extensions_mut(&mut self) -> &mut Extensions {
+        &mut self.extensions
     }
 
     /// Gets a mutable reference to the request body.
@@ -284,37 +347,32 @@ impl<S, B> RequestParts<S, B> {
     pub fn take_body(&mut self) -> Option<B> {
         self.body.take()
     }
-
-    /// Get a reference to the state.
-    pub fn state(&self) -> &S {
-        &self.state
-    }
 }
 
 #[async_trait]
-impl<S, T, B> FromRequest<S, B> for Option<T>
+impl<M, S, T, B> FromRequest<M, S, B> for Option<T>
 where
-    T: FromRequest<S, B>,
+    T: FromRequest<M, S, B>,
     B: Send,
     S: Send + Sync,
 {
     type Rejection = Infallible;
 
-    async fn from_request(req: &mut RequestParts<S, B>) -> Result<Option<T>, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts<M, S, B>) -> Result<Option<T>, Self::Rejection> {
         Ok(T::from_request(req).await.ok())
     }
 }
 
 #[async_trait]
-impl<S, T, B> FromRequest<S, B> for Result<T, T::Rejection>
+impl<M, S, T, B> FromRequest<M, S, B> for Result<T, T::Rejection>
 where
-    T: FromRequest<S, B>,
+    T: FromRequest<M, S, B>,
     B: Send,
     S: Send + Sync,
 {
     type Rejection = Infallible;
 
-    async fn from_request(req: &mut RequestParts<S, B>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts<M, S, B>) -> Result<Self, Self::Rejection> {
         Ok(T::from_request(req).await)
     }
 }

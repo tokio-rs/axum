@@ -1,19 +1,19 @@
-use super::{rejection::*, FromRequest, RequestParts};
+use super::{rejection::*, FromRequest, Once, RequestParts};
 use crate::BoxError;
 use async_trait::async_trait;
 use bytes::Bytes;
 use http::{Extensions, HeaderMap, Method, Request, Uri, Version};
-use std::{convert::Infallible, sync::Arc};
+use std::{convert::Infallible, marker::PhantomData, sync::Arc};
 
 #[async_trait]
-impl<S, B> FromRequest<S, B> for Request<B>
+impl<S, B> FromRequest<Once, S, B> for Request<B>
 where
     B: Send,
     S: Send + Sync,
 {
     type Rejection = BodyAlreadyExtracted;
 
-    async fn from_request(req: &mut RequestParts<S, B>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts<Once, S, B>) -> Result<Self, Self::Rejection> {
         let req = std::mem::replace(
             req,
             RequestParts {
@@ -24,6 +24,7 @@ where
                 headers: HeaderMap::new(),
                 extensions: Extensions::default(),
                 body: None,
+                _marker: PhantomData,
             },
         );
 
@@ -32,40 +33,40 @@ where
 }
 
 #[async_trait]
-impl<S, B> FromRequest<S, B> for Method
+impl<M, S, B> FromRequest<M, S, B> for Method
 where
     B: Send,
     S: Send + Sync,
 {
     type Rejection = Infallible;
 
-    async fn from_request(req: &mut RequestParts<S, B>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts<M, S, B>) -> Result<Self, Self::Rejection> {
         Ok(req.method().clone())
     }
 }
 
 #[async_trait]
-impl<S, B> FromRequest<S, B> for Uri
+impl<M, S, B> FromRequest<M, S, B> for Uri
 where
     B: Send,
     S: Send + Sync,
 {
     type Rejection = Infallible;
 
-    async fn from_request(req: &mut RequestParts<S, B>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts<M, S, B>) -> Result<Self, Self::Rejection> {
         Ok(req.uri().clone())
     }
 }
 
 #[async_trait]
-impl<S, B> FromRequest<S, B> for Version
+impl<M, S, B> FromRequest<M, S, B> for Version
 where
     B: Send,
     S: Send + Sync,
 {
     type Rejection = Infallible;
 
-    async fn from_request(req: &mut RequestParts<S, B>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts<M, S, B>) -> Result<Self, Self::Rejection> {
         Ok(req.version())
     }
 }
@@ -76,20 +77,20 @@ where
 ///
 /// [`TypedHeader`]: https://docs.rs/axum/latest/axum/extract/struct.TypedHeader.html
 #[async_trait]
-impl<S, B> FromRequest<S, B> for HeaderMap
+impl<M, S, B> FromRequest<M, S, B> for HeaderMap
 where
     B: Send,
     S: Send + Sync,
 {
     type Rejection = Infallible;
 
-    async fn from_request(req: &mut RequestParts<S, B>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts<M, S, B>) -> Result<Self, Self::Rejection> {
         Ok(req.headers().clone())
     }
 }
 
 #[async_trait]
-impl<S, B> FromRequest<S, B> for Bytes
+impl<S, B> FromRequest<Once, S, B> for Bytes
 where
     B: http_body::Body + Send,
     B::Data: Send,
@@ -98,7 +99,7 @@ where
 {
     type Rejection = BytesRejection;
 
-    async fn from_request(req: &mut RequestParts<S, B>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts<Once, S, B>) -> Result<Self, Self::Rejection> {
         let body = take_body(req)?;
 
         let bytes = crate::body::to_bytes(body)
@@ -110,7 +111,7 @@ where
 }
 
 #[async_trait]
-impl<S, B> FromRequest<S, B> for String
+impl<S, B> FromRequest<Once, S, B> for String
 where
     B: http_body::Body + Send,
     B::Data: Send,
@@ -119,7 +120,7 @@ where
 {
     type Rejection = StringRejection;
 
-    async fn from_request(req: &mut RequestParts<S, B>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts<Once, S, B>) -> Result<Self, Self::Rejection> {
         let body = take_body(req)?;
 
         let bytes = crate::body::to_bytes(body)
@@ -134,14 +135,14 @@ where
 }
 
 #[async_trait]
-impl<S, B> FromRequest<S, B> for http::request::Parts
+impl<S, B> FromRequest<Once, S, B> for http::request::Parts
 where
     B: Send,
     S: Send + Sync,
 {
     type Rejection = Infallible;
 
-    async fn from_request(req: &mut RequestParts<S, B>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: &mut RequestParts<Once, S, B>) -> Result<Self, Self::Rejection> {
         let method = unwrap_infallible(Method::from_request(req).await);
         let uri = unwrap_infallible(Uri::from_request(req).await);
         let version = unwrap_infallible(Version::from_request(req).await);
@@ -168,6 +169,8 @@ fn unwrap_infallible<T>(result: Result<T, Infallible>) -> T {
     }
 }
 
-pub(crate) fn take_body<S, B>(req: &mut RequestParts<S, B>) -> Result<B, BodyAlreadyExtracted> {
+pub(crate) fn take_body<S, B>(
+    req: &mut RequestParts<Once, S, B>,
+) -> Result<B, BodyAlreadyExtracted> {
     req.take_body().ok_or(BodyAlreadyExtracted)
 }
