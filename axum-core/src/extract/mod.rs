@@ -17,10 +17,15 @@ mod tuple;
 
 pub use self::from_ref::FromRef;
 
-mod __private {
+#[doc(hidden)]
+pub mod private {
+    /// Private APIs
+
+    #[doc(hidden)]
     #[derive(Debug, Clone, Copy)]
     pub enum Mut {}
 
+    #[doc(hidden)]
     #[derive(Debug, Clone, Copy)]
     pub enum Once {}
 }
@@ -72,7 +77,7 @@ mod __private {
 /// [`http::Request<B>`]: http::Request
 /// [`axum::extract`]: https://docs.rs/axum/latest/axum/extract/index.html
 #[async_trait]
-pub trait FromRequestParts<S, B>: Sized {
+pub trait FromRequestParts<S>: Sized {
     /// If the extractor fails it'll use this "rejection" type. A rejection is
     /// a kind of error that can be converted into a response.
     type Rejection: IntoResponse;
@@ -83,7 +88,7 @@ pub trait FromRequestParts<S, B>: Sized {
 
 /// TODO
 #[async_trait]
-pub trait FromRequest<S, B, M = __private::Once>: Sized {
+pub trait FromRequest<S, B, M = private::Once>: Sized {
     /// TODO
     type Rejection: IntoResponse;
 
@@ -92,13 +97,13 @@ pub trait FromRequest<S, B, M = __private::Once>: Sized {
 }
 
 #[async_trait]
-impl<S, B, T> FromRequest<S, B, __private::Mut> for T
+impl<S, B, T> FromRequest<S, B, private::Mut> for T
 where
     B: Send + 'static,
     S: Send + Sync,
-    T: FromRequestParts<S, B>,
+    T: FromRequestParts<S>,
 {
-    type Rejection = <Self as FromRequestParts<S, B>>::Rejection;
+    type Rejection = <Self as FromRequestParts<S>>::Rejection;
 
     async fn from_request(req: Request<B>, state: &S) -> Result<Self, Self::Rejection> {
         let (mut parts, _) = req.into_parts();
@@ -107,10 +112,9 @@ where
 }
 
 #[async_trait]
-impl<S, T, B> FromRequestParts<S, B> for Option<T>
+impl<S, T> FromRequestParts<S> for Option<T>
 where
-    T: FromRequestParts<S, B>,
-    B: http_body::Body + Send + Unpin,
+    T: FromRequestParts<S>,
     S: Send + Sync,
 {
     type Rejection = Infallible;
@@ -138,10 +142,9 @@ where
 }
 
 #[async_trait]
-impl<S, T, B> FromRequestParts<S, B> for Result<T, T::Rejection>
+impl<S, T> FromRequestParts<S> for Result<T, T::Rejection>
 where
-    T: FromRequestParts<S, B>,
-    B: Send,
+    T: FromRequestParts<S>,
     S: Send + Sync,
 {
     type Rejection = Infallible;

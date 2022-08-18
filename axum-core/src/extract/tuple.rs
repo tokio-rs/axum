@@ -5,9 +5,8 @@ use http::request::{Parts, Request};
 use std::convert::Infallible;
 
 #[async_trait]
-impl<S, B> FromRequestParts<S, B> for ()
+impl<S> FromRequestParts<S> for ()
 where
-    B: Send,
     S: Send + Sync,
 {
     type Rejection = Infallible;
@@ -25,7 +24,7 @@ macro_rules! impl_from_request {
         #[allow(non_snake_case, unused_mut, unused_variables)]
         impl<S, B, $($ty,)* $last> FromRequest<S, B> for ($($ty,)* $last,)
         where
-            $( $ty: FromRequestParts<S, B> + Send, )*
+            $( $ty: FromRequestParts<S> + Send, )*
             $last: FromRequest<S, B> + Send,
             B: Send + 'static,
             S: Send + Sync,

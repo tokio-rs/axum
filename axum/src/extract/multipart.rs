@@ -2,12 +2,13 @@
 //!
 //! See [`Multipart`] for more details.
 
-use super::{rejection::*, BodyStream, FromRequest, RequestParts};
+use super::{BodyStream, FromRequest};
 use crate::body::{Bytes, HttpBody};
 use crate::BoxError;
 use async_trait::async_trait;
 use futures_util::stream::Stream;
 use http::header::{HeaderMap, CONTENT_TYPE};
+use http::Request;
 use std::{
     fmt,
     pin::Pin,
@@ -58,10 +59,12 @@ where
 {
     type Rejection = MultipartRejection;
 
-    async fn from_request(req: &mut RequestParts<S, B>) -> Result<Self, Self::Rejection> {
-        let stream = BodyStream::from_request(req).await?;
-        let headers = req.headers();
-        let boundary = parse_boundary(headers).ok_or(InvalidBoundary)?;
+    async fn from_request(req: Request<B>, state: &S) -> Result<Self, Self::Rejection> {
+        let boundary = parse_boundary(req.headers()).ok_or(InvalidBoundary)?;
+        let stream = match BodyStream::from_request(req, state).await {
+            Ok(stream) => stream,
+            Err(err) => match err {},
+        };
         let multipart = multer::Multipart::new(stream, boundary);
         Ok(Self { inner: multipart })
     }
@@ -224,7 +227,6 @@ composite_rejection! {
     ///
     /// Contains one variant for each way the [`Multipart`] extractor can fail.
     pub enum MultipartRejection {
-        BodyAlreadyExtracted,
         InvalidBoundary,
     }
 }

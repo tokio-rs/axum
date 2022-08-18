@@ -1,5 +1,5 @@
 use crate::response::{IntoResponse, Response};
-use axum_core::extract::{FromRequest, RequestParts};
+use axum_core::extract::{FromRequest, FromRequestParts};
 use futures_util::future::BoxFuture;
 use http::Request;
 use std::{
@@ -249,12 +249,15 @@ where
 }
 
 macro_rules! impl_service {
-    ( $($ty:ident),* $(,)? ) => {
+    (
+        [$($ty:ident),*], $last:ident
+    ) => {
         #[allow(non_snake_case)]
-        impl<F, Fut, Out, S, B, $($ty,)*> Service<Request<B>> for FromFn<F, S, ($($ty,)*)>
+        impl<F, Fut, Out, S, B, $($ty,)* $last> Service<Request<B>> for FromFn<F, S, ($($ty,)* $last,)>
         where
-            F: FnMut($($ty),*, Next<B>) -> Fut + Clone + Send + 'static,
-            $( $ty: FromRequest<(), B> + Send, )*
+            F: FnMut($($ty,)* $last, Next<B>) -> Fut + Clone + Send + 'static,
+            $( $ty: FromRequestParts<()> + Send, )*
+            $last: FromRequest<(), B> + Send,
             Fut: Future<Output = Out> + Send + 'static,
             Out: IntoResponse + 'static,
             S: Service<Request<B>, Error = Infallible>
@@ -280,13 +283,21 @@ macro_rules! impl_service {
                 let mut f = self.f.clone();
 
                 let future = Box::pin(async move {
-                    let mut parts = RequestParts::new(req);
+                    let (mut parts, body) = req.into_parts();
+
                     $(
-                        let $ty = match $ty::from_request(&mut parts).await {
+                        let $ty = match $ty::from_request_parts(&mut parts, &()).await {
                             Ok(value) => value,
                             Err(rejection) => return rejection.into_response(),
                         };
                     )*
+
+                    let req = Request::from_parts(parts, body);
+
+                    let $last = match $last::from_request(req, &()).await {
+                        Ok(value) => value,
+                        Err(rejection) => return rejection.into_response(),
+                    };
 
                     let inner = ServiceBuilder::new()
                         .boxed_clone()
@@ -294,7 +305,7 @@ macro_rules! impl_service {
                         .service(ready_inner);
                     let next = Next { inner };
 
-                    f($($ty),*, next).await.into_response()
+                    f($($ty,)* $last, next).await.into_response()
                 });
 
                 ResponseFuture {
@@ -305,7 +316,31 @@ macro_rules! impl_service {
     };
 }
 
-all_the_tuples!(impl_service);
+impl_service!([], T1);
+impl_service!([T1], T2);
+impl_service!([T1, T2], T3);
+impl_service!([T1, T2, T3], T4);
+impl_service!([T1, T2, T3, T4], T5);
+impl_service!([T1, T2, T3, T4, T5], T6);
+impl_service!([T1, T2, T3, T4, T5, T6], T7);
+impl_service!([T1, T2, T3, T4, T5, T6, T7], T8);
+impl_service!([T1, T2, T3, T4, T5, T6, T7, T8], T9);
+impl_service!([T1, T2, T3, T4, T5, T6, T7, T8, T9], T10);
+impl_service!([T1, T2, T3, T4, T5, T6, T7, T8, T9, T10], T11);
+impl_service!([T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11], T12);
+impl_service!([T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12], T13);
+impl_service!(
+    [T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13],
+    T14
+);
+impl_service!(
+    [T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14],
+    T15
+);
+impl_service!(
+    [T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15],
+    T16
+);
 
 impl<F, S, T> fmt::Debug for FromFn<F, S, T>
 where

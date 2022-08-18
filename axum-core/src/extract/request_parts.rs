@@ -19,9 +19,8 @@ where
 }
 
 #[async_trait]
-impl<S, B> FromRequestParts<S, B> for Method
+impl<S> FromRequestParts<S> for Method
 where
-    B: Send,
     S: Send + Sync,
 {
     type Rejection = Infallible;
@@ -32,9 +31,8 @@ where
 }
 
 #[async_trait]
-impl<S, B> FromRequestParts<S, B> for Uri
+impl<S> FromRequestParts<S> for Uri
 where
-    B: Send,
     S: Send + Sync,
 {
     type Rejection = Infallible;
@@ -45,9 +43,8 @@ where
 }
 
 #[async_trait]
-impl<S, B> FromRequestParts<S, B> for Version
+impl<S> FromRequestParts<S> for Version
 where
-    B: Send,
     S: Send + Sync,
 {
     type Rejection = Infallible;
@@ -63,9 +60,8 @@ where
 ///
 /// [`TypedHeader`]: https://docs.rs/axum/latest/axum/extract/struct.TypedHeader.html
 #[async_trait]
-impl<S, B> FromRequestParts<S, B> for HeaderMap
+impl<S> FromRequestParts<S> for HeaderMap
 where
-    B: Send,
     S: Send + Sync,
 {
     type Rejection = Infallible;

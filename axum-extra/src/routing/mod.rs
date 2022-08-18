@@ -38,9 +38,9 @@ pub trait RouterExt<S, B>: sealed::Sealed {
     ///
     /// See [`TypedPath`] for more details and examples.
     #[cfg(feature = "typed-routing")]
-    fn typed_get<H, T, P>(self, handler: H) -> Self
+    fn typed_get<H, T, M, P>(self, handler: H) -> Self
     where
-        H: Handler<T, S, B>,
+        H: Handler<T, M, S, B>,
         T: FirstElementIs<P> + 'static,
         P: TypedPath;
 
@@ -51,9 +51,9 @@ pub trait RouterExt<S, B>: sealed::Sealed {
     ///
     /// See [`TypedPath`] for more details and examples.
     #[cfg(feature = "typed-routing")]
-    fn typed_delete<H, T, P>(self, handler: H) -> Self
+    fn typed_delete<H, T, M, P>(self, handler: H) -> Self
     where
-        H: Handler<T, S, B>,
+        H: Handler<T, M, S, B>,
         T: FirstElementIs<P> + 'static,
         P: TypedPath;
 
@@ -64,9 +64,9 @@ pub trait RouterExt<S, B>: sealed::Sealed {
     ///
     /// See [`TypedPath`] for more details and examples.
     #[cfg(feature = "typed-routing")]
-    fn typed_head<H, T, P>(self, handler: H) -> Self
+    fn typed_head<H, T, M, P>(self, handler: H) -> Self
     where
-        H: Handler<T, S, B>,
+        H: Handler<T, M, S, B>,
         T: FirstElementIs<P> + 'static,
         P: TypedPath;
 
@@ -77,9 +77,9 @@ pub trait RouterExt<S, B>: sealed::Sealed {
     ///
     /// See [`TypedPath`] for more details and examples.
     #[cfg(feature = "typed-routing")]
-    fn typed_options<H, T, P>(self, handler: H) -> Self
+    fn typed_options<H, T, M, P>(self, handler: H) -> Self
     where
-        H: Handler<T, S, B>,
+        H: Handler<T, M, S, B>,
         T: FirstElementIs<P> + 'static,
         P: TypedPath;
 
@@ -90,9 +90,9 @@ pub trait RouterExt<S, B>: sealed::Sealed {
     ///
     /// See [`TypedPath`] for more details and examples.
     #[cfg(feature = "typed-routing")]
-    fn typed_patch<H, T, P>(self, handler: H) -> Self
+    fn typed_patch<H, T, M, P>(self, handler: H) -> Self
     where
-        H: Handler<T, S, B>,
+        H: Handler<T, M, S, B>,
         T: FirstElementIs<P> + 'static,
         P: TypedPath;
 
@@ -103,9 +103,9 @@ pub trait RouterExt<S, B>: sealed::Sealed {
     ///
     /// See [`TypedPath`] for more details and examples.
     #[cfg(feature = "typed-routing")]
-    fn typed_post<H, T, P>(self, handler: H) -> Self
+    fn typed_post<H, T, M, P>(self, handler: H) -> Self
     where
-        H: Handler<T, S, B>,
+        H: Handler<T, M, S, B>,
         T: FirstElementIs<P> + 'static,
         P: TypedPath;
 
@@ -116,9 +116,9 @@ pub trait RouterExt<S, B>: sealed::Sealed {
     ///
     /// See [`TypedPath`] for more details and examples.
     #[cfg(feature = "typed-routing")]
-    fn typed_put<H, T, P>(self, handler: H) -> Self
+    fn typed_put<H, T, M, P>(self, handler: H) -> Self
     where
-        H: Handler<T, S, B>,
+        H: Handler<T, M, S, B>,
         T: FirstElementIs<P> + 'static,
         P: TypedPath;
 
@@ -129,9 +129,9 @@ pub trait RouterExt<S, B>: sealed::Sealed {
     ///
     /// See [`TypedPath`] for more details and examples.
     #[cfg(feature = "typed-routing")]
-    fn typed_trace<H, T, P>(self, handler: H) -> Self
+    fn typed_trace<H, T, M, P>(self, handler: H) -> Self
     where
-        H: Handler<T, S, B>,
+        H: Handler<T, M, S, B>,
         T: FirstElementIs<P> + 'static,
         P: TypedPath;
 
@@ -181,9 +181,9 @@ where
     S: Send + Sync + 'static,
 {
     #[cfg(feature = "typed-routing")]
-    fn typed_get<H, T, P>(self, handler: H) -> Self
+    fn typed_get<H, T, M, P>(self, handler: H) -> Self
     where
-        H: Handler<T, S, B>,
+        H: Handler<T, M, S, B>,
         T: FirstElementIs<P> + 'static,
         P: TypedPath,
     {
@@ -191,9 +191,9 @@ where
     }
 
     #[cfg(feature = "typed-routing")]
-    fn typed_delete<H, T, P>(self, handler: H) -> Self
+    fn typed_delete<H, T, M, P>(self, handler: H) -> Self
     where
-        H: Handler<T, S, B>,
+        H: Handler<T, M, S, B>,
         T: FirstElementIs<P> + 'static,
         P: TypedPath,
     {
@@ -201,9 +201,9 @@ where
     }
 
     #[cfg(feature = "typed-routing")]
-    fn typed_head<H, T, P>(self, handler: H) -> Self
+    fn typed_head<H, T, M, P>(self, handler: H) -> Self
     where
-        H: Handler<T, S, B>,
+        H: Handler<T, M, S, B>,
         T: FirstElementIs<P> + 'static,
         P: TypedPath,
     {
@@ -211,9 +211,9 @@ where
     }
 
     #[cfg(feature = "typed-routing")]
-    fn typed_options<H, T, P>(self, handler: H) -> Self
+    fn typed_options<H, T, M, P>(self, handler: H) -> Self
     where
-        H: Handler<T, S, B>,
+        H: Handler<T, M, S, B>,
         T: FirstElementIs<P> + 'static,
         P: TypedPath,
     {
@@ -221,9 +221,9 @@ where
     }
 
     #[cfg(feature = "typed-routing")]
-    fn typed_patch<H, T, P>(self, handler: H) -> Self
+    fn typed_patch<H, T, M, P>(self, handler: H) -> Self
     where
-        H: Handler<T, S, B>,
+        H: Handler<T, M, S, B>,
         T: FirstElementIs<P> + 'static,
         P: TypedPath,
     {
@@ -231,9 +231,9 @@ where
     }
 
     #[cfg(feature = "typed-routing")]
-    fn typed_post<H, T, P>(self, handler: H) -> Self
+    fn typed_post<H, T, M, P>(self, handler: H) -> Self
     where
-        H: Handler<T, S, B>,
+        H: Handler<T, M, S, B>,
         T: FirstElementIs<P> + 'static,
         P: TypedPath,
     {
@@ -241,9 +241,9 @@ where
     }
 
     #[cfg(feature = "typed-routing")]
-    fn typed_put<H, T, P>(self, handler: H) -> Self
+    fn typed_put<H, T, M, P>(self, handler: H) -> Self
     where
-        H: Handler<T, S, B>,
+        H: Handler<T, M, S, B>,
         T: FirstElementIs<P> + 'static,
         P: TypedPath,
     {
@@ -251,9 +251,9 @@ where
     }
 
     #[cfg(feature = "typed-routing")]
-    fn typed_trace<H, T, P>(self, handler: H) -> Self
+    fn typed_trace<H, T, M, P>(self, handler: H) -> Self
     where
-        H: Handler<T, S, B>,
+        H: Handler<T, M, S, B>,
         T: FirstElementIs<P> + 'static,
         P: TypedPath,
     {

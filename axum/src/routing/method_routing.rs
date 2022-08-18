@@ -139,12 +139,13 @@ macro_rules! top_level_handler_fn {
         $name:ident, $method:ident
     ) => {
         $(#[$m])+
-        pub fn $name<H, T, S, B>(handler: H) -> MethodRouter<S, B, Infallible>
+        pub fn $name<H, T, M, S, B>(handler: H) -> MethodRouter<S, B, Infallible>
         where
-            H: Handler<T, S, B>,
+            H: Handler<T, M, S, B>,
             B: Send + 'static,
             T: 'static,
             S: Send + Sync + 'static,
+            M: 'static,
         {
             on(MethodFilter::$method, handler)
         }
@@ -276,11 +277,12 @@ macro_rules! chained_handler_fn {
     ) => {
         $(#[$m])+
         #[track_caller]
-        pub fn $name<H, T>(self, handler: H) -> Self
+        pub fn $name<H, T, M>(self, handler: H) -> Self
         where
-            H: Handler<T, S, B>,
+            H: Handler<T, M, S, B>,
             T: 'static,
             S: Send + Sync + 'static,
+            M: 'static,
         {
             self.on(MethodFilter::$method, handler)
         }
@@ -424,12 +426,13 @@ top_level_handler_fn!(trace, TRACE);
 /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 /// # };
 /// ```
-pub fn on<H, T, S, B>(filter: MethodFilter, handler: H) -> MethodRouter<S, B, Infallible>
+pub fn on<H, T, M, S, B>(filter: MethodFilter, handler: H) -> MethodRouter<S, B, Infallible>
 where
-    H: Handler<T, S, B>,
+    H: Handler<T, M, S, B>,
     B: Send + 'static,
     T: 'static,
     S: Send + Sync + 'static,
+    M: 'static,
 {
     MethodRouter::new().on(filter, handler)
 }
@@ -471,12 +474,13 @@ where
 /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 /// # };
 /// ```
-pub fn any<H, T, S, B>(handler: H) -> MethodRouter<S, B, Infallible>
+pub fn any<H, T, M, S, B>(handler: H) -> MethodRouter<S, B, Infallible>
 where
-    H: Handler<T, S, B>,
+    H: Handler<T, M, S, B>,
     B: Send + 'static,
     T: 'static,
     S: Send + Sync + 'static,
+    M: 'static,
 {
     MethodRouter::new()
         .fallback_boxed_response_body(IntoServiceStateInExtension::new(handler))
@@ -596,11 +600,12 @@ where
     /// # };
     /// ```
     #[track_caller]
-    pub fn on<H, T>(self, filter: MethodFilter, handler: H) -> Self
+    pub fn on<H, T, M>(self, filter: MethodFilter, handler: H) -> Self
     where
-        H: Handler<T, S, B>,
+        H: Handler<T, M, S, B>,
         T: 'static,
         S: Send + Sync + 'static,
+        M: 'static,
     {
         self.on_service_boxed_response_body(filter, IntoServiceStateInExtension::new(handler))
     }
@@ -615,11 +620,12 @@ where
     chained_handler_fn!(trace, TRACE);
 
     /// Add a fallback [`Handler`] to the router.
-    pub fn fallback<H, T>(self, handler: H) -> Self
+    pub fn fallback<H, T, M>(self, handler: H) -> Self
     where
-        H: Handler<T, S, B>,
+        H: Handler<T, M, S, B>,
         T: 'static,
         S: Send + Sync + 'static,
+        M: 'static,
     {
         self.fallback_service(IntoServiceStateInExtension::new(handler))
     }
@@ -1482,8 +1488,9 @@ mod tests {
         expected = "Overlapping method route. Cannot add two method routes that both handle `POST`"
     )]
     async fn service_overlaps() {
-        let _: MethodRouter<()> = post_service(IntoServiceStateInExtension::<_, _, (), _>::new(ok))
-            .post_service(IntoServiceStateInExtension::<_, _, (), _>::new(ok));
+        let _: MethodRouter<()> =
+            post_service(IntoServiceStateInExtension::<_, _, _, (), _>::new(ok))
+                .post_service(IntoServiceStateInExtension::<_, _, _, (), _>::new(ok));
     }
 
     #[tokio::test]

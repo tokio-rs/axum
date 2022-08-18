@@ -37,7 +37,7 @@
 
 use crate::{
     body::Body,
-    extract::{connect_info::IntoMakeServiceWithConnectInfo, FromRequest, RequestParts},
+    extract::{connect_info::IntoMakeServiceWithConnectInfo, FromRequest, FromRequestParts},
     response::{IntoResponse, Response},
     routing::IntoMakeService,
 };
@@ -95,7 +95,7 @@ pub use self::{into_service::IntoService, with_state::WithState};
 /// {}
 /// ```
 #[doc = include_str!("../docs/debugging_handler_type_errors.md")]
-pub trait Handler<T, S = (), B = Body>: Clone + Send + Sized + 'static {
+pub trait Handler<T, M, S = (), B = Body>: Clone + Send + Sized + 'static {
     /// The type of future calling this handler returns.
     type Future: Future<Output = Response> + Send + 'static;
 
@@ -138,9 +138,9 @@ pub trait Handler<T, S = (), B = Body>: Clone + Send + Sized + 'static {
     /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
     /// # };
     /// ```
-    fn layer<L>(self, layer: L) -> Layered<L, Self, T, S, B>
+    fn layer<L>(self, layer: L) -> Layered<L, Self, T, M, S, B>
     where
-        L: Layer<WithState<Self, T, S, B>>,
+        L: Layer<WithState<Self, T, M, S, B>>,
     {
         Layered {
             layer,
@@ -150,19 +150,19 @@ pub trait Handler<T, S = (), B = Body>: Clone + Send + Sized + 'static {
     }
 
     /// Convert the handler into a [`Service`] by providing the state
-    fn with_state(self, state: S) -> WithState<Self, T, S, B> {
+    fn with_state(self, state: S) -> WithState<Self, T, M, S, B> {
         self.with_state_arc(Arc::new(state))
     }
 
     /// Convert the handler into a [`Service`] by providing the state
-    fn with_state_arc(self, state: Arc<S>) -> WithState<Self, T, S, B> {
+    fn with_state_arc(self, state: Arc<S>) -> WithState<Self, T, M, S, B> {
         WithState {
             service: IntoService::new(self, state),
         }
     }
 }
 
-impl<F, Fut, Res, S, B> Handler<(), S, B> for F
+impl<F, Fut, Res, S, B> Handler<(), axum_core::extract::private::Once, S, B> for F
 where
     F: FnOnce() -> Fut + Clone + Send + 'static,
     Fut: Future<Output = Res> + Send,
@@ -177,31 +177,42 @@ where
 }
 
 macro_rules! impl_handler {
-    ( $($ty:ident),* $(,)? ) => {
+    (
+        [$($ty:ident),*], $last:ident
+    ) => {
         #[allow(non_snake_case)]
-        impl<F, Fut, S, B, Res, $($ty,)*> Handler<($($ty,)*), S, B> for F
+        impl<F, Fut, S, B, Res, M, $($ty,)* $last> Handler<($($ty,)* $last,), M, S, B> for F
         where
-            F: FnOnce($($ty,)*) -> Fut + Clone + Send + 'static,
+            F: FnOnce($($ty,)* $last,) -> Fut + Clone + Send + 'static,
             Fut: Future<Output = Res> + Send,
             B: Send + 'static,
             S: Send + Sync + 'static,
             Res: IntoResponse,
-            $( $ty: FromRequest<S, B> + Send,)*
+            $( $ty: FromRequestParts<S> + Send, )*
+            $last: FromRequest<S, B, M> + Send,
         {
             type Future = Pin<Box<dyn Future<Output = Response> + Send>>;
 
             fn call(self, state: Arc<S>, req: Request<B>) -> Self::Future {
                 Box::pin(async move {
-                    let mut req = RequestParts::with_state_arc(state, req);
+                    let (mut parts, body) = req.into_parts();
+                    let state = &state;
 
                     $(
-                        let $ty = match $ty::from_request(&mut req).await {
+                        let $ty = match $ty::from_request_parts(&mut parts, state).await {
                             Ok(value) => value,
                             Err(rejection) => return rejection.into_response(),
                         };
                     )*
 
-                    let res = self($($ty,)*).await;
+                    let req = Request::from_parts(parts, body);
+
+                    let $last = match $last::from_request(req, state).await {
+                        Ok(value) => value,
+                        Err(rejection) => return rejection.into_response(),
+                    };
+
+                    let res = self($($ty,)* $last,).await;
 
                     res.into_response()
                 })
@@ -210,18 +221,42 @@ macro_rules! impl_handler {
     };
 }
 
-all_the_tuples!(impl_handler);
+impl_handler!([], T1);
+impl_handler!([T1], T2);
+impl_handler!([T1, T2], T3);
+impl_handler!([T1, T2, T3], T4);
+impl_handler!([T1, T2, T3, T4], T5);
+impl_handler!([T1, T2, T3, T4, T5], T6);
+impl_handler!([T1, T2, T3, T4, T5, T6], T7);
+impl_handler!([T1, T2, T3, T4, T5, T6, T7], T8);
+impl_handler!([T1, T2, T3, T4, T5, T6, T7, T8], T9);
+impl_handler!([T1, T2, T3, T4, T5, T6, T7, T8, T9], T10);
+impl_handler!([T1, T2, T3, T4, T5, T6, T7, T8, T9, T10], T11);
+impl_handler!([T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11], T12);
+impl_handler!([T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12], T13);
+impl_handler!(
+    [T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13],
+    T14
+);
+impl_handler!(
+    [T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14],
+    T15
+);
+impl_handler!(
+    [T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15],
+    T16
+);
 
 /// A [`Service`] created from a [`Handler`] by applying a Tower middleware.
 ///
 /// Created with [`Handler::layer`]. See that method for more details.
-pub struct Layered<L, H, T, S, B> {
+pub struct Layered<L, H, T, M, S, B> {
     layer: L,
     handler: H,
-    _marker: PhantomData<fn() -> (T, S, B)>,
+    _marker: PhantomData<fn() -> (T, M, S, B)>,
 }
 
-impl<L, H, T, S, B> fmt::Debug for Layered<L, H, T, S, B>
+impl<L, H, T, M, S, B> fmt::Debug for Layered<L, H, T, M, S, B>
 where
     L: fmt::Debug,
 {
@@ -232,7 +267,7 @@ where
     }
 }
 
-impl<L, H, T, S, B> Clone for Layered<L, H, T, S, B>
+impl<L, H, T, M, S, B> Clone for Layered<L, H, T, M, S, B>
 where
     L: Clone,
     H: Clone,
@@ -246,16 +281,17 @@ where
     }
 }
 
-impl<H, S, T, B, L> Handler<T, S, B> for Layered<L, H, T, S, B>
+impl<H, S, T, M, B, L> Handler<T, M, S, B> for Layered<L, H, T, M, S, B>
 where
-    L: Layer<WithState<H, T, S, B>> + Clone + Send + 'static,
-    H: Handler<T, S, B>,
+    L: Layer<WithState<H, T, M, S, B>> + Clone + Send + 'static,
+    H: Handler<T, M, S, B>,
     L::Service: Service<Request<B>, Error = Infallible> + Clone + Send + 'static,
     <L::Service as Service<Request<B>>>::Response: IntoResponse,
     <L::Service as Service<Request<B>>>::Future: Send,
     T: 'static,
     S: 'static,
     B: Send + 'static,
+    M: 'static,
 {
     type Future = future::LayeredFuture<B, L::Service>;
 
@@ -287,16 +323,16 @@ where
 /// This provides convenience methods to convert the [`Handler`] into a [`Service`] or [`MakeService`].
 ///
 /// [`MakeService`]: tower::make::MakeService
-pub trait HandlerWithoutStateExt<T, B>: Handler<T, (), B> {
+pub trait HandlerWithoutStateExt<T, M, B>: Handler<T, M, (), B> {
     /// Convert the handler into a [`Service`] and no state.
-    fn into_service(self) -> WithState<Self, T, (), B>;
+    fn into_service(self) -> WithState<Self, T, M, (), B>;
 
     /// Convert the handler into a [`MakeService`] and no state.
     ///
     /// See [`WithState::into_make_service`] for more details.
     ///
     /// [`MakeService`]: tower::make::MakeService
-    fn into_make_service(self) -> IntoMakeService<IntoService<Self, T, (), B>>;
+    fn into_make_service(self) -> IntoMakeService<IntoService<Self, T, M, (), B>>;
 
     /// Convert the handler into a [`MakeService`] which stores information
     /// about the incoming connection and has no state.
@@ -306,24 +342,24 @@ pub trait HandlerWithoutStateExt<T, B>: Handler<T, (), B> {
     /// [`MakeService`]: tower::make::MakeService
     fn into_make_service_with_connect_info<C>(
         self,
-    ) -> IntoMakeServiceWithConnectInfo<IntoService<Self, T, (), B>, C>;
+    ) -> IntoMakeServiceWithConnectInfo<IntoService<Self, T, M, (), B>, C>;
 }
 
-impl<H, T, B> HandlerWithoutStateExt<T, B> for H
+impl<H, T, M, B> HandlerWithoutStateExt<T, M, B> for H
 where
-    H: Handler<T, (), B>,
+    H: Handler<T, M, (), B>,
 {
-    fn into_service(self) -> WithState<Self, T, (), B> {
+    fn into_service(self) -> WithState<Self, T, M, (), B> {
         self.with_state(())
     }
 
-    fn into_make_service(self) -> IntoMakeService<IntoService<Self, T, (), B>> {
+    fn into_make_service(self) -> IntoMakeService<IntoService<Self, T, M, (), B>> {
         self.with_state(()).into_make_service()
     }
 
     fn into_make_service_with_connect_info<C>(
         self,
-    ) -> IntoMakeServiceWithConnectInfo<IntoService<Self, T, (), B>, C> {
+    ) -> IntoMakeServiceWithConnectInfo<IntoService<Self, T, M, (), B>, C> {
         self.with_state(()).into_make_service_with_connect_info()
     }
 }

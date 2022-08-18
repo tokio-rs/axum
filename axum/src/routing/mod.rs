@@ -385,10 +385,11 @@ where
     }
 
     #[doc = include_str!("../docs/routing/fallback.md")]
-    pub fn fallback<H, T>(self, handler: H) -> Self
+    pub fn fallback<H, T, M>(self, handler: H) -> Self
     where
-        H: Handler<T, S, B>,
+        H: Handler<T, M, S, B>,
         T: 'static,
+        M: 'static,
     {
         let state = Arc::clone(&self.state);
         self.fallback_service(handler.with_state_arc(state))

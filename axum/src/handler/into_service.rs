@@ -15,13 +15,13 @@ use tower_service::Service;
 /// Created with [`HandlerWithoutStateExt::into_service`].
 ///
 /// [`HandlerWithoutStateExt::into_service`]: super::HandlerWithoutStateExt::into_service
-pub struct IntoService<H, T, S, B> {
+pub struct IntoService<H, T, M, S, B> {
     handler: H,
     state: Arc<S>,
-    _marker: PhantomData<fn() -> (T, B)>,
+    _marker: PhantomData<fn() -> (T, M, B)>,
 }
 
-impl<H, T, S, B> IntoService<H, T, S, B> {
+impl<H, T, M, S, B> IntoService<H, T, M, S, B> {
     /// Get a reference to the state.
     pub fn state(&self) -> &S {
         &self.state
@@ -31,11 +31,11 @@ impl<H, T, S, B> IntoService<H, T, S, B> {
 #[test]
 fn traits() {
     use crate::test_helpers::*;
-    assert_send::<IntoService<(), NotSendSync, (), NotSendSync>>();
-    assert_sync::<IntoService<(), NotSendSync, (), NotSendSync>>();
+    assert_send::<IntoService<(), NotSendSync, NotSendSync, (), NotSendSync>>();
+    assert_sync::<IntoService<(), NotSendSync, NotSendSync, (), NotSendSync>>();
 }
 
-impl<H, T, S, B> IntoService<H, T, S, B> {
+impl<H, T, M, S, B> IntoService<H, T, M, S, B> {
     pub(super) fn new(handler: H, state: Arc<S>) -> Self {
         Self {
             handler,
@@ -45,7 +45,7 @@ impl<H, T, S, B> IntoService<H, T, S, B> {
     }
 }
 
-impl<H, T, S, B> fmt::Debug for IntoService<H, T, S, B> {
+impl<H, T, M, S, B> fmt::Debug for IntoService<H, T, M, S, B> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("IntoService")
             .field(&format_args!("..."))
@@ -53,7 +53,7 @@ impl<H, T, S, B> fmt::Debug for IntoService<H, T, S, B> {
     }
 }
 
-impl<H, T, S, B> Clone for IntoService<H, T, S, B>
+impl<H, T, M, S, B> Clone for IntoService<H, T, M, S, B>
 where
     H: Clone,
 {
@@ -66,9 +66,9 @@ where
     }
 }
 
-impl<H, T, S, B> Service<Request<B>> for IntoService<H, T, S, B>
+impl<H, T, M, S, B> Service<Request<B>> for IntoService<H, T, M, S, B>
 where
-    H: Handler<T, S, B> + Clone + Send + 'static,
+    H: Handler<T, M, S, B> + Clone + Send + 'static,
     B: Send + 'static,
     S: Send + Sync,
 {

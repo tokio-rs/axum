@@ -73,7 +73,7 @@ define_rejection! {
 
 define_rejection! {
     #[status = INTERNAL_SERVER_ERROR]
-    #[body = "No paths parameters found for matched route. Are you also extracting `Request<_>`?"]
+    #[body = "No paths parameters found for matched route"]
     /// Rejection type used if axum's internal representation of path parameters
     /// is missing. This is commonly caused by extracting `Request<_>`. `Path`
     /// must be extracted first.
