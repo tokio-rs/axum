@@ -1,4 +1,4 @@
-use axum::{extract::rejection::JsonRejection, response::IntoResponse, Json};
+use axum::{extract::rejection::JsonRejection, http::StatusCode, response::IntoResponse, Json};
 use axum_extra::extract::WithRejection;
 use chrono::Utc;
 use serde_json::{json, Value};
@@ -7,7 +7,7 @@ use thiserror::Error;
 pub async fn handler(
     WithRejection(Json(value), _): WithRejection<Json<Value>, ApiError>,
 ) -> impl IntoResponse {
-    dbg!(value);
+    Json(dbg!(value))
 }
 
 #[derive(Debug, Error)]
@@ -23,6 +23,14 @@ impl IntoResponse for ApiError {
             "timestamp": Utc::now(),
             "origin": "with_rejection"
         });
-        Json(payload).into_response()
+        let code = match self {
+            ApiError::JsonExtractorRejection(x) => match x {
+                JsonRejection::JsonDataError(_) | JsonRejection::MissingJsonContentType(_) => {
+                    StatusCode::BAD_REQUEST
+                }
+                _ => StatusCode::INTERNAL_SERVER_ERROR,
+            },
+        };
+        (code, Json(payload)).into_response()
     }
 }
