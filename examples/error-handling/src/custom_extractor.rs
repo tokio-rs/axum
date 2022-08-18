@@ -6,7 +6,6 @@ use axum::{
     response::IntoResponse,
     BoxError,
 };
-use chrono::Utc;
 use serde::de::DeserializeOwned;
 use serde_json::{json, Value};
 
@@ -41,7 +40,6 @@ where
 
                 let payload = json!({
                     "message": rejection.to_string(),
-                    "timestamp": Utc::now(),
                     "origin": "custom_extractor",
                     "path": path,
                 });

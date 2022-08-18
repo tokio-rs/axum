@@ -1,6 +1,5 @@
 use axum::{extract::rejection::JsonRejection, http::StatusCode, response::IntoResponse, Json};
 use axum_extra::extract::WithRejection;
-use chrono::Utc;
 use serde_json::{json, Value};
 use thiserror::Error;
 
@@ -20,7 +19,6 @@ impl IntoResponse for ApiError {
     fn into_response(self) -> axum::response::Response {
         let payload = json!({
             "message": self.to_string(),
-            "timestamp": Utc::now(),
             "origin": "with_rejection"
         });
         let code = match self {

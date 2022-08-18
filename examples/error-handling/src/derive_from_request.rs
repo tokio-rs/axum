@@ -1,6 +1,5 @@
 use axum::{extract::rejection::JsonRejection, http::StatusCode, response::IntoResponse};
 use axum_macros::FromRequest;
-use chrono::Utc;
 use serde_json::{json, Value};
 
 pub async fn handler(Json(value): Json<Value>) -> impl IntoResponse {
@@ -37,7 +36,6 @@ impl IntoResponse for ApiError {
     fn into_response(self) -> axum::response::Response {
         let payload = json!({
             "message": self.message,
-            "timestamp": Utc::now(),
             "origin": "derive_from_request"
         });
 
