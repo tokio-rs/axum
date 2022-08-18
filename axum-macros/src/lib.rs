@@ -515,18 +515,49 @@ pub fn derive_from_request(item: TokenStream) -> TokenStream {
 ///
 /// # Changing state type
 ///
-/// By default `#[debug_handler]` assumes your state type is `()`. Thus if you're using
-/// [`axum::extract::State`] you must change the state type to match:
+/// By default `#[debug_handler]` assumes your state type is `()` unless your handler has a
+/// [`axum::extract::State`] argument:
 ///
 /// ```
 /// use axum::extract::State;
 /// # use axum_macros::debug_handler;
 ///
-/// #[debug_handler(state = AppState)]
-/// async fn handler(State(staste): State<AppState>) {}
+/// #[debug_handler]
+/// async fn handler(
+///     // this makes `#[debug_handler]` use `AppState`
+///     State(state): State<AppState>,
+/// ) {}
 ///
 /// #[derive(Clone)]
 /// struct AppState {}
+/// ```
+///
+/// If your handler takes multiple [`axum::extract::State`] arguments or you need to otherwise
+/// customize the state type you can set it with `#[debug_handler(state = ...)]`:
+///
+/// ```
+/// use axum::extract::{State, FromRef};
+/// # use axum_macros::debug_handler;
+///
+/// #[debug_handler(state = AppState)]
+/// async fn handler(
+///     State(app_state): State<AppState>,
+///     State(inner_state): State<InnerState>,
+/// ) {}
+///
+/// #[derive(Clone)]
+/// struct AppState {
+///     inner: InnerState,
+/// }
+///
+/// #[derive(Clone)]
+/// struct InnerState {}
+///
+/// impl FromRef<AppState> for InnerState {
+///     fn from_ref(state: &AppState) -> Self {
+///         state.inner.clone()
+///     }
+/// }
 /// ```
 ///
 /// # Performance

@@ -1,8 +1,10 @@
+use std::collections::HashSet;
+
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote, quote_spanned};
 use syn::{parse::Parse, spanned::Spanned, FnArg, ItemFn, Token, Type};
 
-pub(crate) fn expand(attr: Attrs, item_fn: ItemFn) -> TokenStream {
+pub(crate) fn expand(mut attr: Attrs, item_fn: ItemFn) -> TokenStream {
     let check_extractor_count = check_extractor_count(&item_fn);
     let check_request_last_extractor = check_request_last_extractor(&item_fn);
     let check_path_extractor = check_path_extractor(&item_fn);
@@ -12,8 +14,14 @@ pub(crate) fn expand(attr: Attrs, item_fn: ItemFn) -> TokenStream {
     // If the function is generic, we can't reliably check its inputs or whether the future it
     // returns is `Send`. Skip those checks to avoid unhelpful additional compiler errors.
     let check_inputs_and_future_send = if item_fn.sig.generics.params.is_empty() {
+        if attr.state_ty.is_none() {
+            attr.state_ty = state_type_from_args(&item_fn);
+        }
+
+        let state_ty = attr.state_ty.unwrap_or_else(|| syn::parse_quote!(()));
+
         let check_inputs_impls_from_request =
-            check_inputs_impls_from_request(&item_fn, &attr.body_ty, &attr.state_ty);
+            check_inputs_impls_from_request(&item_fn, &attr.body_ty, state_ty);
         let check_future_send = check_future_send(&item_fn);
 
         quote! {
@@ -46,7 +54,7 @@ mod kw {
 
 pub(crate) struct Attrs {
     body_ty: Type,
-    state_ty: Type,
+    state_ty: Option<Type>,
 }
 
 impl Parse for Attrs {
@@ -85,7 +93,6 @@ impl Parse for Attrs {
         }
 
         let body_ty = body_ty.unwrap_or_else(|| syn::parse_quote!(axum::body::Body));
-        let state_ty = state_ty.unwrap_or_else(|| syn::parse_quote!(()));
 
         Ok(Self { body_ty, state_ty })
     }
@@ -196,7 +203,7 @@ fn check_multiple_body_extractors(item_fn: &ItemFn) -> TokenStream {
 fn check_inputs_impls_from_request(
     item_fn: &ItemFn,
     body_ty: &Type,
-    state_ty: &Type,
+    state_ty: Type,
 ) -> TokenStream {
     item_fn
         .sig
@@ -399,6 +406,68 @@ fn self_receiver(item_fn: &ItemFn) -> Option<TokenStream> {
     }
 
     None
+}
+
+/// Given a signature like
+///
+/// ```skip
+/// #[debug_handler]
+/// async fn handler(
+///     _: axum::extract::State<AppState>,
+///     _: State<AppState>,
+/// ) {}
+/// ```
+///
+/// This will extract `AppState`.
+///
+/// Returns `None` if there are no `State` args or multiple of different types.
+fn state_type_from_args(item_fn: &ItemFn) -> Option<Type> {
+    let state_inputs = item_fn
+        .sig
+        .inputs
+        .iter()
+        .filter_map(|input| match input {
+            FnArg::Receiver(_) => None,
+            FnArg::Typed(pat_type) => Some(pat_type),
+        })
+        .map(|pat_type| &pat_type.ty)
+        .filter_map(|ty| {
+            if let Type::Path(path) = &**ty {
+                Some(&path.path)
+            } else {
+                None
+            }
+        })
+        .filter_map(|path| {
+            if let Some(last_segment) = path.segments.last() {
+                if last_segment.ident != "State" {
+                    return None;
+                }
+
+                match &last_segment.arguments {
+                    syn::PathArguments::AngleBracketed(args) if args.args.len() == 1 => {
+                        Some(args.args.first().unwrap())
+                    }
+                    _ => None,
+                }
+            } else {
+                None
+            }
+        })
+        .filter_map(|generic_arg| {
+            if let syn::GenericArgument::Type(ty) = generic_arg {
+                Some(ty)
+            } else {
+                None
+            }
+        })
+        .collect::<HashSet<_>>();
+
+    if state_inputs.len() == 1 {
+        state_inputs.iter().next().map(|&ty| ty.clone())
+    } else {
+        None
+    }
 }
 
 #[test]
