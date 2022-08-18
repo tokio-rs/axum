@@ -121,7 +121,7 @@ where
 }
 
 #[async_trait]
-impl<S, B> FromRequest<S, B> for http::request::Parts
+impl<S, B> FromRequest<S, B> for Parts
 where
     B: Send + 'static,
     S: Send + Sync,
