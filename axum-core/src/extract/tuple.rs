@@ -1,18 +1,18 @@
-use super::FromRequestMut;
+use super::FromRequestParts;
 //use crate::response::{IntoResponse, Response};
 use async_trait::async_trait;
-use http::Request;
+use http::request::Parts;
 use std::convert::Infallible;
 
 #[async_trait]
-impl<S, B> FromRequestMut<S, B> for ()
+impl<S, B> FromRequestParts<S, B> for ()
 where
     B: Send,
     S: Send + Sync,
 {
     type Rejection = Infallible;
 
-    async fn from_request_mut(_: &mut Request<B>, _: &S) -> Result<(), Self::Rejection> {
+    async fn from_request_parts(_: &mut Parts, _: &S) -> Result<(), Self::Rejection> {
         Ok(())
     }
 }

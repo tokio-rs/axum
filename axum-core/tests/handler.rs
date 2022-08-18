@@ -1,5 +1,5 @@
 use axum_core::{
-    extract::{FromRequestMut, FromRequestOnce},
+    extract::{FromRequest, FromRequestParts},
     response::{IntoResponse, Response},
 };
 use http::Request;
@@ -36,7 +36,7 @@ where
     B: Send + 'static,
     S: Send + Sync + 'static,
     Res: IntoResponse,
-    T1: FromRequestOnce<S, B, M> + Send,
+    T1: FromRequest<S, B, M> + Send,
 {
     type Future = Pin<Box<dyn Future<Output = Response> + Send>>;
     fn call(self, state: Arc<S>, req: Request<B>) -> Self::Future {
@@ -59,8 +59,8 @@ where
     B: Send + 'static,
     S: Send + Sync + 'static,
     Res: IntoResponse,
-    T1: FromRequestMut<S, B> + Send,
-    T2: FromRequestMut<S, B> + Send,
+    T1: FromRequestParts<S, B> + Send,
+    T2: FromRequestParts<S, B> + Send,
 {
     type Future = Pin<Box<dyn Future<Output = Response> + Send>>;
     fn call(self, state: Arc<S>, mut req: Request<B>) -> Self::Future {
@@ -87,9 +87,9 @@ where
     B: Send + 'static,
     S: Send + Sync + 'static,
     Res: IntoResponse,
-    T1: FromRequestMut<S, B> + Send,
-    T2: FromRequestMut<S, B> + Send,
-    T3: FromRequestMut<S, B> + Send,
+    T1: FromRequestParts<S, B> + Send,
+    T2: FromRequestParts<S, B> + Send,
+    T3: FromRequestParts<S, B> + Send,
 {
     type Future = Pin<Box<dyn Future<Output = Response> + Send>>;
     fn call(self, state: Arc<S>, mut req: Request<B>) -> Self::Future {
@@ -120,10 +120,10 @@ where
     B: Send + 'static,
     S: Send + Sync + 'static,
     Res: IntoResponse,
-    T1: FromRequestMut<S, B> + Send,
-    T2: FromRequestMut<S, B> + Send,
-    T3: FromRequestMut<S, B> + Send,
-    T4: FromRequestMut<S, B> + Send,
+    T1: FromRequestParts<S, B> + Send,
+    T2: FromRequestParts<S, B> + Send,
+    T3: FromRequestParts<S, B> + Send,
+    T4: FromRequestParts<S, B> + Send,
 {
     type Future = Pin<Box<dyn Future<Output = Response> + Send>>;
     fn call(self, state: Arc<S>, mut req: Request<B>) -> Self::Future {

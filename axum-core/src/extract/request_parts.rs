@@ -1,59 +1,59 @@
-use super::{rejection::*, FromRequestMut, FromRequestOnce};
+use super::{rejection::*, FromRequest, FromRequestParts};
 use crate::BoxError;
 use async_trait::async_trait;
 use bytes::Bytes;
-use http::{HeaderMap, Method, Request, Uri, Version};
+use http::{request::Parts, HeaderMap, Method, Request, Uri, Version};
 use std::convert::Infallible;
 
 #[async_trait]
-impl<S, B> FromRequestOnce<S, B> for Request<B>
+impl<S, B> FromRequest<S, B> for Request<B>
 where
     B: Send,
     S: Send + Sync,
 {
     type Rejection = Infallible;
 
-    async fn from_request_once(req: Request<B>, _: &S) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: Request<B>, _: &S) -> Result<Self, Self::Rejection> {
         Ok(req)
     }
 }
 
 #[async_trait]
-impl<S, B> FromRequestMut<S, B> for Method
+impl<S, B> FromRequestParts<S, B> for Method
 where
     B: Send,
     S: Send + Sync,
 {
     type Rejection = Infallible;
 
-    async fn from_request_mut(req: &mut Request<B>, _: &S) -> Result<Self, Self::Rejection> {
-        Ok(req.method().clone())
+    async fn from_request_parts(parts: &mut Parts, _: &S) -> Result<Self, Self::Rejection> {
+        Ok(parts.method.clone())
     }
 }
 
 #[async_trait]
-impl<S, B> FromRequestMut<S, B> for Uri
+impl<S, B> FromRequestParts<S, B> for Uri
 where
     B: Send,
     S: Send + Sync,
 {
     type Rejection = Infallible;
 
-    async fn from_request_mut(req: &mut Request<B>, _: &S) -> Result<Self, Self::Rejection> {
-        Ok(req.uri().clone())
+    async fn from_request_parts(parts: &mut Parts, _: &S) -> Result<Self, Self::Rejection> {
+        Ok(parts.uri.clone())
     }
 }
 
 #[async_trait]
-impl<S, B> FromRequestMut<S, B> for Version
+impl<S, B> FromRequestParts<S, B> for Version
 where
     B: Send,
     S: Send + Sync,
 {
     type Rejection = Infallible;
 
-    async fn from_request_mut(req: &mut Request<B>, _: &S) -> Result<Self, Self::Rejection> {
-        Ok(req.version())
+    async fn from_request_parts(parts: &mut Parts, _: &S) -> Result<Self, Self::Rejection> {
+        Ok(parts.version)
     }
 }
 
@@ -63,20 +63,20 @@ where
 ///
 /// [`TypedHeader`]: https://docs.rs/axum/latest/axum/extract/struct.TypedHeader.html
 #[async_trait]
-impl<S, B> FromRequestMut<S, B> for HeaderMap
+impl<S, B> FromRequestParts<S, B> for HeaderMap
 where
     B: Send,
     S: Send + Sync,
 {
     type Rejection = Infallible;
 
-    async fn from_request_mut(req: &mut Request<B>, _: &S) -> Result<Self, Self::Rejection> {
-        Ok(req.headers().clone())
+    async fn from_request_parts(parts: &mut Parts, _: &S) -> Result<Self, Self::Rejection> {
+        Ok(parts.headers.clone())
     }
 }
 
 #[async_trait]
-impl<S, B> FromRequestOnce<S, B> for Bytes
+impl<S, B> FromRequest<S, B> for Bytes
 where
     B: http_body::Body + Send + 'static,
     B::Data: Send,
@@ -85,7 +85,7 @@ where
 {
     type Rejection = BytesRejection;
 
-    async fn from_request_once(req: Request<B>, _: &S) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: Request<B>, _: &S) -> Result<Self, Self::Rejection> {
         let body = req.into_body();
 
         let bytes = crate::body::to_bytes(body)
@@ -97,7 +97,7 @@ where
 }
 
 #[async_trait]
-impl<S, B> FromRequestOnce<S, B> for String
+impl<S, B> FromRequest<S, B> for String
 where
     B: http_body::Body + Send + 'static,
     B::Data: Send,
@@ -106,7 +106,7 @@ where
 {
     type Rejection = StringRejection;
 
-    async fn from_request_once(req: Request<B>, _: &S) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: Request<B>, _: &S) -> Result<Self, Self::Rejection> {
         let body = req.into_body();
 
         let bytes = crate::body::to_bytes(body)
@@ -121,21 +121,14 @@ where
 }
 
 #[async_trait]
-impl<S, B> FromRequestOnce<S, B> for http::request::Parts
+impl<S, B> FromRequest<S, B> for http::request::Parts
 where
     B: Send + 'static,
     S: Send + Sync,
 {
     type Rejection = Infallible;
 
-    async fn from_request_once(req: Request<B>, _: &S) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: Request<B>, _: &S) -> Result<Self, Self::Rejection> {
         Ok(req.into_parts().0)
-    }
-}
-
-fn unwrap_infallible<T>(result: Result<T, Infallible>) -> T {
-    match result {
-        Ok(value) => value,
-        Err(err) => match err {},
     }
 }

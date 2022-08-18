@@ -6,7 +6,7 @@
 
 use crate::response::IntoResponse;
 use async_trait::async_trait;
-use http::Request;
+use http::{request::Parts, Request};
 use std::convert::Infallible;
 
 pub mod rejection;
@@ -17,13 +17,13 @@ mod tuple;
 
 pub use self::from_ref::FromRef;
 
-#[doc(hidden)]
-#[derive(Debug, Clone, Copy)]
-pub enum Mut {}
+mod __private {
+    #[derive(Debug, Clone, Copy)]
+    pub enum Mut {}
 
-#[doc(hidden)]
-#[derive(Debug, Clone, Copy)]
-pub enum Once {}
+    #[derive(Debug, Clone, Copy)]
+    pub enum Once {}
+}
 
 /// Types that can be created from requests.
 ///
@@ -72,91 +72,95 @@ pub enum Once {}
 /// [`http::Request<B>`]: http::Request
 /// [`axum::extract`]: https://docs.rs/axum/latest/axum/extract/index.html
 #[async_trait]
-pub trait FromRequestMut<S, B>: Sized {
+pub trait FromRequestParts<S, B>: Sized {
     /// If the extractor fails it'll use this "rejection" type. A rejection is
     /// a kind of error that can be converted into a response.
     type Rejection: IntoResponse;
 
     /// Perform the extraction.
-    async fn from_request_mut(req: &mut Request<B>, state: &S) -> Result<Self, Self::Rejection>;
+    async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection>;
 }
 
+/// TODO
 #[async_trait]
-pub trait FromRequestOnce<S, B, M = Once>: Sized {
+pub trait FromRequest<S, B, M = __private::Once>: Sized {
+    /// TODO
     type Rejection: IntoResponse;
 
-    async fn from_request_once(req: Request<B>, state: &S) -> Result<Self, Self::Rejection>;
+    /// TODO
+    async fn from_request(req: Request<B>, state: &S) -> Result<Self, Self::Rejection>;
 }
 
 #[async_trait]
-impl<S, B, T> FromRequestOnce<S, B, Mut> for T
+impl<S, B, T> FromRequest<S, B, __private::Mut> for T
 where
     B: Send + 'static,
     S: Send + Sync,
-    T: FromRequestMut<S, B>,
+    T: FromRequestParts<S, B>,
 {
-    type Rejection = <Self as FromRequestMut<S, B>>::Rejection;
+    type Rejection = <Self as FromRequestParts<S, B>>::Rejection;
 
-    async fn from_request_once(mut req: Request<B>, state: &S) -> Result<Self, Self::Rejection> {
-        Self::from_request_mut(&mut req, state).await
+    async fn from_request(req: Request<B>, state: &S) -> Result<Self, Self::Rejection> {
+        let (mut parts, _) = req.into_parts();
+        Self::from_request_parts(&mut parts, state).await
     }
 }
 
 #[async_trait]
-impl<S, T, B> FromRequestMut<S, B> for Option<T>
+impl<S, T, B> FromRequestParts<S, B> for Option<T>
 where
-    T: FromRequestMut<S, B>,
-    B: Send,
+    T: FromRequestParts<S, B>,
+    B: http_body::Body + Send + Unpin,
     S: Send + Sync,
 {
     type Rejection = Infallible;
 
-    async fn from_request_mut(
-        req: &mut Request<B>,
+    async fn from_request_parts(
+        parts: &mut Parts,
         state: &S,
     ) -> Result<Option<T>, Self::Rejection> {
-        Ok(T::from_request_mut(req, state).await.ok())
+        Ok(T::from_request_parts(parts, state).await.ok())
     }
 }
 
 #[async_trait]
-impl<S, T, B> FromRequestOnce<S, B> for Option<T>
+impl<S, T, B> FromRequest<S, B> for Option<T>
 where
-    T: FromRequestOnce<S, B>,
+    T: FromRequest<S, B>,
     B: Send + 'static,
     S: Send + Sync,
 {
     type Rejection = Infallible;
 
-    async fn from_request_once(req: Request<B>, state: &S) -> Result<Option<T>, Self::Rejection> {
-        Ok(T::from_request_once(req, state).await.ok())
+    async fn from_request(req: Request<B>, state: &S) -> Result<Option<T>, Self::Rejection> {
+        Ok(T::from_request(req, state).await.ok())
     }
 }
 
 #[async_trait]
-impl<S, T, B> FromRequestMut<S, B> for Result<T, T::Rejection>
+impl<S, T, B> FromRequestParts<S, B> for Result<T, T::Rejection>
 where
-    T: FromRequestMut<S, B>,
+    T: FromRequestParts<S, B>,
     B: Send,
     S: Send + Sync,
 {
     type Rejection = Infallible;
 
-    async fn from_request_mut(req: &mut Request<B>, state: &S) -> Result<Self, Self::Rejection> {
-        Ok(T::from_request_mut(req, state).await)
+    async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
+        Ok(T::from_request_parts(parts, state).await)
     }
 }
 
 #[async_trait]
-impl<S, T, B> FromRequestOnce<S, B> for Result<T, T::Rejection>
+impl<S, T, B> FromRequest<S, B> for Result<T, T::Rejection>
 where
-    T: FromRequestOnce<S, B>,
+    T: FromRequest<S, B>,
     B: Send + 'static,
     S: Send + Sync,
 {
     type Rejection = Infallible;
 
-    async fn from_request_once(req: Request<B>, state: &S) -> Result<Self, Self::Rejection> {
-        Ok(T::from_request_once(req, state).await)
+    async fn from_request(req: Request<B>, state: &S) -> Result<Self, Self::Rejection> {
+        Ok(T::from_request(req, state).await)
     }
 }
