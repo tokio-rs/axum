@@ -8,7 +8,7 @@ use axum::{
 };
 use futures_util::future::{BoxFuture, Either as EitherFuture, FutureExt, Map};
 use http::StatusCode;
-use std::{future::Future, marker::PhantomData};
+use std::{future::Future, marker::PhantomData, sync::Arc};
 
 /// [`Handler`] that runs one [`Handler`] and if that rejects it'll fallback to another
 /// [`Handler`].
@@ -37,7 +37,7 @@ where
 
     fn call(
         self,
-        state: S,
+        state: Arc<S>,
         extractors: Either<Lt, Rt>,
     ) -> <Self as HandlerCallWithExtractors<Either<Lt, Rt>, S, B>>::Future {
         match extractors {
@@ -64,14 +64,14 @@ where
     Lt::Rejection: Send,
     Rt::Rejection: Send,
     B: Send + 'static,
-    S: Clone + Send + 'static,
+    S: Send + Sync + 'static,
 {
     // this puts `futures_util` in our public API but thats fine in axum-extra
     type Future = BoxFuture<'static, Response>;
 
-    fn call(self, state: S, req: Request<B>) -> Self::Future {
+    fn call(self, state: Arc<S>, req: Request<B>) -> Self::Future {
         Box::pin(async move {
-            let mut req = RequestParts::with_state(state.clone(), req);
+            let mut req = RequestParts::with_state_arc(Arc::clone(&state), req);
 
             if let Ok(lt) = req.extract::<Lt>().await {
                 return self.lhs.call(state, lt).await;

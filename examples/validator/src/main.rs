@@ -63,7 +63,7 @@ pub struct ValidatedForm<T>(pub T);
 impl<T, S, B> FromRequest<S, B> for ValidatedForm<T>
 where
     T: DeserializeOwned + Validate,
-    S: Send,
+    S: Send + Sync,
     B: http_body::Body + Send,
     B::Data: Send,
     B::Error: Into<BoxError>,

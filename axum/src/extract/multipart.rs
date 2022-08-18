@@ -54,7 +54,7 @@ impl<S, B> FromRequest<S, B> for Multipart
 where
     B: HttpBody<Data = Bytes> + Default + Unpin + Send + 'static,
     B::Error: Into<BoxError>,
-    S: Send,
+    S: Send + Sync,
 {
     type Rejection = MultipartRejection;
 

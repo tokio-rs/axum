@@ -30,7 +30,7 @@ pub struct RawQuery(pub Option<String>);
 impl<S, B> FromRequest<S, B> for RawQuery
 where
     B: Send,
-    S: Send,
+    S: Send + Sync,
 {
     type Rejection = Infallible;
 

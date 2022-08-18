@@ -90,7 +90,7 @@ impl<K> fmt::Debug for PrivateCookieJar<K> {
 impl<S, B, K> FromRequest<S, B> for PrivateCookieJar<K>
 where
     B: Send,
-    S: Send,
+    S: Send + Sync,
     K: FromRef<S> + Into<Key>,
 {
     type Rejection = Infallible;

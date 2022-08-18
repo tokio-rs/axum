@@ -53,7 +53,7 @@ where
 impl<S, B> Resource<S, B>
 where
     B: axum::body::HttpBody + Send + 'static,
-    S: Clone + Send + Sync + 'static,
+    S: Send + Sync + 'static,
 {
     /// Create a `Resource` with the given name and state.
     ///

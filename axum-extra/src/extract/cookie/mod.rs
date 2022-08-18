@@ -91,7 +91,7 @@ pub struct CookieJar {
 impl<S, B> FromRequest<S, B> for CookieJar
 where
     B: Send,
-    S: Send,
+    S: Send + Sync,
 {
     type Rejection = Infallible;
 

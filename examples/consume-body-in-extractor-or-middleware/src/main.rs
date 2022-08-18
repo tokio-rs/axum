@@ -82,7 +82,7 @@ struct PrintRequestBody;
 #[async_trait]
 impl<S> FromRequest<S, BoxBody> for PrintRequestBody
 where
-    S: Send + Clone,
+    S: Clone + Send + Sync,
 {
     type Rejection = Response;
 

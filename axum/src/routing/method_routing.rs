@@ -16,6 +16,7 @@ use std::{
     convert::Infallible,
     fmt,
     marker::PhantomData,
+    sync::Arc,
     task::{Context, Poll},
 };
 use tower::{service_fn, util::MapResponseLayer};
@@ -143,7 +144,7 @@ macro_rules! top_level_handler_fn {
             H: Handler<T, S, B>,
             B: Send + 'static,
             T: 'static,
-            S: Clone + Send + Sync + 'static,
+            S: Send + Sync + 'static,
         {
             on(MethodFilter::$method, handler)
         }
@@ -279,7 +280,7 @@ macro_rules! chained_handler_fn {
         where
             H: Handler<T, S, B>,
             T: 'static,
-            S: Clone + Send + Sync + 'static,
+            S: Send + Sync + 'static,
         {
             self.on(MethodFilter::$method, handler)
         }
@@ -428,7 +429,7 @@ where
     H: Handler<T, S, B>,
     B: Send + 'static,
     T: 'static,
-    S: Clone + Send + Sync + 'static,
+    S: Send + Sync + 'static,
 {
     MethodRouter::new().on(filter, handler)
 }
@@ -475,7 +476,7 @@ where
     H: Handler<T, S, B>,
     B: Send + 'static,
     T: 'static,
-    S: Clone + Send + Sync + 'static,
+    S: Send + Sync + 'static,
 {
     MethodRouter::new()
         .fallback_boxed_response_body(IntoServiceStateInExtension::new(handler))
@@ -599,7 +600,7 @@ where
     where
         H: Handler<T, S, B>,
         T: 'static,
-        S: Clone + Send + Sync + 'static,
+        S: Send + Sync + 'static,
     {
         self.on_service_boxed_response_body(filter, IntoServiceStateInExtension::new(handler))
     }
@@ -618,7 +619,7 @@ where
     where
         H: Handler<T, S, B>,
         T: 'static,
-        S: Clone + Send + Sync + 'static,
+        S: Send + Sync + 'static,
     {
         self.fallback_service(IntoServiceStateInExtension::new(handler))
     }
@@ -727,6 +728,13 @@ where
     ///
     /// See [`State`](crate::extract::State) for more details about accessing state.
     pub fn with_state(self, state: S) -> WithState<S, B, E> {
+        self.with_state_arc(Arc::new(state))
+    }
+
+    /// Provide the [`Arc`]'ed state.
+    ///
+    /// See [`State`](crate::extract::State) for more details about accessing state.
+    pub fn with_state_arc(self, state: Arc<S>) -> WithState<S, B, E> {
         WithState {
             method_router: self,
             state,
@@ -1127,7 +1135,7 @@ where
 /// Created with [`MethodRouter::with_state`]
 pub struct WithState<S, B, E> {
     method_router: MethodRouter<S, B, E>,
-    state: S,
+    state: Arc<S>,
 }
 
 impl<S, B, E> WithState<S, B, E> {
@@ -1156,14 +1164,11 @@ impl<S, B, E> WithState<S, B, E> {
     }
 }
 
-impl<S, B, E> Clone for WithState<S, B, E>
-where
-    S: Clone,
-{
+impl<S, B, E> Clone for WithState<S, B, E> {
     fn clone(&self) -> Self {
         Self {
             method_router: self.method_router.clone(),
-            state: self.state.clone(),
+            state: Arc::clone(&self.state),
         }
     }
 }
@@ -1183,7 +1188,7 @@ where
 impl<S, B, E> Service<Request<B>> for WithState<S, B, E>
 where
     B: HttpBody,
-    S: Clone + Send + Sync + 'static,
+    S: Send + Sync + 'static,
 {
     type Response = Response;
     type Error = E;
@@ -1232,7 +1237,7 @@ where
                 },
         } = self;
 
-        req.extensions_mut().insert(state.clone());
+        req.extensions_mut().insert(Arc::clone(state));
 
         call!(req, method, HEAD, head);
         call!(req, method, HEAD, get);

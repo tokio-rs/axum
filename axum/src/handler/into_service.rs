@@ -5,6 +5,7 @@ use std::{
     convert::Infallible,
     fmt,
     marker::PhantomData,
+    sync::Arc,
     task::{Context, Poll},
 };
 use tower_service::Service;
@@ -16,7 +17,7 @@ use tower_service::Service;
 /// [`HandlerWithoutStateExt::into_service`]: super::HandlerWithoutStateExt::into_service
 pub struct IntoService<H, T, S, B> {
     handler: H,
-    state: S,
+    state: Arc<S>,
     _marker: PhantomData<fn() -> (T, B)>,
 }
 
@@ -35,7 +36,7 @@ fn traits() {
 }
 
 impl<H, T, S, B> IntoService<H, T, S, B> {
-    pub(super) fn new(handler: H, state: S) -> Self {
+    pub(super) fn new(handler: H, state: Arc<S>) -> Self {
         Self {
             handler,
             state,
@@ -55,12 +56,11 @@ impl<H, T, S, B> fmt::Debug for IntoService<H, T, S, B> {
 impl<H, T, S, B> Clone for IntoService<H, T, S, B>
 where
     H: Clone,
-    S: Clone,
 {
     fn clone(&self) -> Self {
         Self {
             handler: self.handler.clone(),
-            state: self.state.clone(),
+            state: Arc::clone(&self.state),
             _marker: PhantomData,
         }
     }
@@ -70,7 +70,7 @@ impl<H, T, S, B> Service<Request<B>> for IntoService<H, T, S, B>
 where
     H: Handler<T, S, B> + Clone + Send + 'static,
     B: Send + 'static,
-    S: Clone,
+    S: Send + Sync,
 {
     type Response = Response;
     type Error = Infallible;
@@ -88,7 +88,7 @@ where
         use futures_util::future::FutureExt;
 
         let handler = self.handler.clone();
-        let future = Handler::call(handler, self.state.clone(), req);
+        let future = Handler::call(handler, Arc::clone(&self.state), req);
         let future = future.map(Ok as _);
 
         super::future::IntoServiceFuture::new(future)

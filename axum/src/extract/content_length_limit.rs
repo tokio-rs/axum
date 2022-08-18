@@ -41,7 +41,7 @@ where
     T: FromRequest<S, B>,
     T::Rejection: IntoResponse,
     B: Send,
-    S: Send,
+    S: Send + Sync,
 {
     type Rejection = ContentLengthLimitRejection<T::Rejection>;
 

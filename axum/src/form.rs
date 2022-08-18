@@ -62,7 +62,7 @@ where
     B: HttpBody + Send,
     B::Data: Send,
     B::Error: Into<BoxError>,
-    S: Send,
+    S: Send + Sync,
 {
     type Rejection = FormRejection;
 
