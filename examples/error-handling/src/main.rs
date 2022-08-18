@@ -17,9 +17,9 @@ async fn main() {
 
     // Build our application with some routes
     let app = Router::new()
-        .route("/withRejection", post(with_rejection::handler))
-        .route("/customExtractor", post(custom_extractor::handler))
-        .route("/deriveFromRequest", post(derive_from_request::handler));
+        .route("/with-rejection", post(with_rejection::handler))
+        .route("/custom-extractor", post(custom_extractor::handler))
+        .route("/derive-from-request", post(derive_from_request::handler));
 
     // Run our application
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
