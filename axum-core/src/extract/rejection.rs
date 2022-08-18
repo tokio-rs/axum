@@ -85,7 +85,7 @@ composite_rejection! {
     /// Contains one variant for each way the [`Bytes`](bytes::Bytes) extractor
     /// can fail.
     pub enum BytesRejection {
-        BodyAlreadyExtracted,
+        //BodyAlreadyExtracted,
         FailedToBufferBody,
     }
 }
