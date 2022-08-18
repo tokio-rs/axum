@@ -1,41 +1,76 @@
-use super::{FromRequest, RequestParts};
+use super::{FromRequest, FromRequestParts};
 use crate::response::{IntoResponse, Response};
 use async_trait::async_trait;
+use http::request::{Parts, Request};
 use std::convert::Infallible;
 
 #[async_trait]
-impl<S, B> FromRequest<S, B> for ()
+impl<S, B> FromRequestParts<S, B> for ()
 where
     B: Send,
     S: Send + Sync,
 {
     type Rejection = Infallible;
 
-    async fn from_request(_: &mut RequestParts<S, B>) -> Result<(), Self::Rejection> {
+    async fn from_request_parts(_: &mut Parts, _: &S) -> Result<(), Self::Rejection> {
         Ok(())
     }
 }
 
 macro_rules! impl_from_request {
-    () => {};
-
-    ( $($ty:ident),* $(,)? ) => {
+    (
+        [$($ty:ident),*], $last:ident
+    ) => {
         #[async_trait]
-        #[allow(non_snake_case)]
-        impl<S, B, $($ty,)*> FromRequest<S, B> for ($($ty,)*)
+        #[allow(non_snake_case, unused_mut, unused_variables)]
+        impl<S, B, $($ty,)* $last> FromRequest<S, B> for ($($ty,)* $last,)
         where
-            $( $ty: FromRequest<S, B> + Send, )*
-            B: Send,
+            $( $ty: FromRequestParts<S, B> + Send, )*
+            $last: FromRequest<S, B> + Send,
+            B: Send + 'static,
             S: Send + Sync,
         {
             type Rejection = Response;
 
-            async fn from_request(req: &mut RequestParts<S, B>) -> Result<Self, Self::Rejection> {
-                $( let $ty = $ty::from_request(req).await.map_err(|err| err.into_response())?; )*
-                Ok(($($ty,)*))
+            async fn from_request(req: Request<B>, state: &S) -> Result<Self, Self::Rejection> {
+                let (mut parts, body) = req.into_parts();
+
+                $(
+                    let $ty = $ty::from_request_parts(&mut parts, state).await.map_err(|err| err.into_response())?;
+                )*
+
+                let req = Request::from_parts(parts, body);
+
+                let $last = $last::from_request(req, state).await.map_err(|err| err.into_response())?;
+
+                Ok(($($ty,)* $last,))
             }
         }
     };
 }
 
-all_the_tuples!(impl_from_request);
+impl_from_request!([], T1);
+impl_from_request!([T1], T2);
+impl_from_request!([T1, T2], T3);
+impl_from_request!([T1, T2, T3], T4);
+impl_from_request!([T1, T2, T3, T4], T5);
+impl_from_request!([T1, T2, T3, T4, T5], T6);
+impl_from_request!([T1, T2, T3, T4, T5, T6], T7);
+impl_from_request!([T1, T2, T3, T4, T5, T6, T7], T8);
+impl_from_request!([T1, T2, T3, T4, T5, T6, T7, T8], T9);
+impl_from_request!([T1, T2, T3, T4, T5, T6, T7, T8, T9], T10);
+impl_from_request!([T1, T2, T3, T4, T5, T6, T7, T8, T9, T10], T11);
+impl_from_request!([T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11], T12);
+impl_from_request!([T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12], T13);
+impl_from_request!(
+    [T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13],
+    T14
+);
+impl_from_request!(
+    [T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14],
+    T15
+);
+impl_from_request!(
+    [T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15],
+    T16
+);
