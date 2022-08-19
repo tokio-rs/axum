@@ -1,10 +1,10 @@
 use crate::body::{Bytes, HttpBody};
-use crate::extract::{has_content_type, rejection::*, FromRequest, RequestParts};
+use crate::extract::{has_content_type, rejection::*, FromRequest};
 use crate::BoxError;
 use async_trait::async_trait;
 use axum_core::response::{IntoResponse, Response};
 use http::header::CONTENT_TYPE;
-use http::{Method, StatusCode};
+use http::{Method, Request, StatusCode};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::ops::Deref;
@@ -59,25 +59,25 @@ pub struct Form<T>(pub T);
 impl<T, S, B> FromRequest<S, B> for Form<T>
 where
     T: DeserializeOwned,
-    B: HttpBody + Send,
+    B: HttpBody + Send + 'static,
     B::Data: Send,
     B::Error: Into<BoxError>,
     S: Send + Sync,
 {
     type Rejection = FormRejection;
 
-    async fn from_request(req: &mut RequestParts<S, B>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: Request<B>, state: &S) -> Result<Self, Self::Rejection> {
         if req.method() == Method::GET {
             let query = req.uri().query().unwrap_or_default();
             let value = serde_urlencoded::from_str(query)
                 .map_err(FailedToDeserializeQueryString::__private_new)?;
             Ok(Form(value))
         } else {
-            if !has_content_type(req, &mime::APPLICATION_WWW_FORM_URLENCODED) {
+            if !has_content_type(req.headers(), &mime::APPLICATION_WWW_FORM_URLENCODED) {
                 return Err(InvalidFormContentType.into());
             }
 
-            let bytes = Bytes::from_request(req).await?;
+            let bytes = Bytes::from_request(req, state).await?;
             let value = serde_urlencoded::from_bytes(&bytes)
                 .map_err(FailedToDeserializeQueryString::__private_new)?;
 
@@ -114,7 +114,6 @@ impl<T> Deref for Form<T> {
 mod tests {
     use super::*;
     use crate::body::{Empty, Full};
-    use crate::extract::RequestParts;
     use http::Request;
     use serde::{Deserialize, Serialize};
     use std::fmt::Debug;
@@ -130,8 +129,7 @@ mod tests {
             .uri(uri.as_ref())
             .body(Empty::<Bytes>::new())
             .unwrap();
-        let mut req = RequestParts::new(req);
-        assert_eq!(Form::<T>::from_request(&mut req).await.unwrap().0, value);
+        assert_eq!(Form::<T>::from_request(req, &()).await.unwrap().0, value);
     }
 
     async fn check_body<T: Serialize + DeserializeOwned + PartialEq + Debug>(value: T) {
@@ -146,8 +144,7 @@ mod tests {
                 serde_urlencoded::to_string(&value).unwrap().into(),
             ))
             .unwrap();
-        let mut req = RequestParts::new(req);
-        assert_eq!(Form::<T>::from_request(&mut req).await.unwrap().0, value);
+        assert_eq!(Form::<T>::from_request(req, &()).await.unwrap().0, value);
     }
 
     #[tokio::test]
@@ -216,9 +213,8 @@ mod tests {
                 .into(),
             ))
             .unwrap();
-        let mut req = RequestParts::new(req);
         assert!(matches!(
-            Form::<Pagination>::from_request(&mut req)
+            Form::<Pagination>::from_request(req, &())
                 .await
                 .unwrap_err(),
             FormRejection::InvalidFormContentType(InvalidFormContentType)

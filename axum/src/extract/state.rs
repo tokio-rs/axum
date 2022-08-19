@@ -1,5 +1,6 @@
 use async_trait::async_trait;
-use axum_core::extract::{FromRef, FromRequest, RequestParts};
+use axum_core::extract::{FromRef, FromRequestParts};
+use http::request::Parts;
 use std::{
     convert::Infallible,
     ops::{Deref, DerefMut},
@@ -178,16 +179,18 @@ use std::{
 pub struct State<S>(pub S);
 
 #[async_trait]
-impl<B, OuterState, InnerState> FromRequest<OuterState, B> for State<InnerState>
+impl<OuterState, InnerState> FromRequestParts<OuterState> for State<InnerState>
 where
-    B: Send,
     InnerState: FromRef<OuterState>,
     OuterState: Send + Sync,
 {
     type Rejection = Infallible;
 
-    async fn from_request(req: &mut RequestParts<OuterState, B>) -> Result<Self, Self::Rejection> {
-        let inner_state = InnerState::from_ref(req.state());
+    async fn from_request_parts(
+        parts: &mut Parts,
+        state: &OuterState,
+    ) -> Result<Self, Self::Rejection> {
+        let inner_state = InnerState::from_ref(state);
         Ok(Self(inner_state))
     }
 }

@@ -4,11 +4,12 @@
 
 use axum::{
     async_trait,
-    extract::{FromRequest, RequestParts},
+    extract::FromRequestParts,
     response::{IntoResponse, IntoResponseParts, Response, ResponseParts},
 };
 use http::{
     header::{COOKIE, SET_COOKIE},
+    request::Parts,
     HeaderMap,
 };
 use std::convert::Infallible;
@@ -88,15 +89,14 @@ pub struct CookieJar {
 }
 
 #[async_trait]
-impl<S, B> FromRequest<S, B> for CookieJar
+impl<S> FromRequestParts<S> for CookieJar
 where
-    B: Send,
     S: Send + Sync,
 {
     type Rejection = Infallible;
 
-    async fn from_request(req: &mut RequestParts<S, B>) -> Result<Self, Self::Rejection> {
-        Ok(Self::from_headers(req.headers()))
+    async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
+        Ok(Self::from_headers(&parts.headers))
     }
 }
 

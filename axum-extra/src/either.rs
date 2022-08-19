@@ -60,9 +60,10 @@
 
 use axum::{
     async_trait,
-    extract::{FromRequest, RequestParts},
+    extract::{FromRequest, FromRequestParts},
     response::{IntoResponse, Response},
 };
+use http::request::{Parts, Request};
 
 /// Combines two extractors or responses into a single type.
 ///
@@ -192,21 +193,44 @@ macro_rules! impl_traits_for_either {
         #[async_trait]
         impl<S, B, $($ident),*, $last> FromRequest<S, B> for $either<$($ident),*, $last>
         where
-            $($ident: FromRequest<S, B>),*,
+            $($ident: FromRequestParts<S>),*,
             $last: FromRequest<S, B>,
             B: Send,
             S: Send + Sync,
         {
             type Rejection = $last::Rejection;
 
-            async fn from_request(req: &mut RequestParts<S, B>) -> Result<Self, Self::Rejection> {
+            async fn from_request(req: Request<B>, state: &S) -> Result<Self, Self::Rejection> {
+                let (mut parts, body) = req.into_parts();
+
                 $(
-                    if let Ok(value) = req.extract().await {
+                    if let Ok(value) = FromRequestParts::from_request_parts(&mut parts, state).await {
                         return Ok(Self::$ident(value));
                     }
                 )*
 
-                req.extract().await.map(Self::$last)
+                let req = Request::from_parts(parts, body);
+                FromRequest::from_request(req, state).await.map(Self::$last)
+            }
+        }
+
+        #[async_trait]
+        impl<S, $($ident),*, $last> FromRequestParts<S> for $either<$($ident),*, $last>
+        where
+            $($ident: FromRequestParts<S>),*,
+            $last: FromRequestParts<S>,
+            S: Send + Sync,
+        {
+            type Rejection = $last::Rejection;
+
+            async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
+                $(
+                    if let Ok(value) = FromRequestParts::from_request_parts(&mut parts, state).await {
+                        return Ok(Self::$ident(value));
+                    }
+                )*
+
+                FromRequestParts::from_request_parts(parts, state).await.map(Self::$last)
             }
         }
 

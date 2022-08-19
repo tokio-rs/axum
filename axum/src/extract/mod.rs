@@ -1,7 +1,6 @@
 #![doc = include_str!("../docs/extract.md")]
 
-use http::header;
-use rejection::*;
+use http::header::{self, HeaderMap};
 
 pub mod connect_info;
 pub mod path;
@@ -17,7 +16,7 @@ mod request_parts;
 mod state;
 
 #[doc(inline)]
-pub use axum_core::extract::{FromRef, FromRequest, RequestParts};
+pub use axum_core::extract::{FromRef, FromRequest, FromRequestParts};
 
 #[doc(inline)]
 #[allow(deprecated)]
@@ -75,16 +74,9 @@ pub use self::ws::WebSocketUpgrade;
 #[doc(no_inline)]
 pub use crate::TypedHeader;
 
-pub(crate) fn take_body<S, B>(req: &mut RequestParts<S, B>) -> Result<B, BodyAlreadyExtracted> {
-    req.take_body().ok_or_else(BodyAlreadyExtracted::default)
-}
-
 // this is duplicated in `axum-extra/src/extract/form.rs`
-pub(super) fn has_content_type<S, B>(
-    req: &RequestParts<S, B>,
-    expected_content_type: &mime::Mime,
-) -> bool {
-    let content_type = if let Some(content_type) = req.headers().get(header::CONTENT_TYPE) {
+pub(super) fn has_content_type(headers: &HeaderMap, expected_content_type: &mime::Mime) -> bool {
+    let content_type = if let Some(content_type) = headers.get(header::CONTENT_TYPE) {
         content_type
     } else {
         return false;
