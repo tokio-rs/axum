@@ -11,18 +11,18 @@ use tower_service::Service;
 /// The state can be extracted with [`State`](crate::extract::State).
 ///
 /// Created with [`Handler::with_state`].
-pub struct WithState<H, T, M, S, B> {
-    pub(super) service: IntoService<H, T, M, S, B>,
+pub struct WithState<H, T, S, B> {
+    pub(super) service: IntoService<H, T, S, B>,
 }
 
-impl<H, T, M, S, B> WithState<H, T, M, S, B> {
+impl<H, T, S, B> WithState<H, T, S, B> {
     /// Get a reference to the state.
     pub fn state(&self) -> &S {
         self.service.state()
     }
 }
 
-impl<H, T, M, S, B> WithState<H, T, M, S, B> {
+impl<H, T, S, B> WithState<H, T, S, B> {
     /// Convert the handler into a [`MakeService`].
     ///
     /// This allows you to serve a single handler if you don't need any routing:
@@ -55,7 +55,7 @@ impl<H, T, M, S, B> WithState<H, T, M, S, B> {
     /// ```
     ///
     /// [`MakeService`]: tower::make::MakeService
-    pub fn into_make_service(self) -> IntoMakeService<IntoService<H, T, M, S, B>> {
+    pub fn into_make_service(self) -> IntoMakeService<IntoService<H, T, S, B>> {
         IntoMakeService::new(self.service)
     }
 
@@ -97,20 +97,20 @@ impl<H, T, M, S, B> WithState<H, T, M, S, B> {
     /// [`Router::into_make_service_with_connect_info`]: crate::routing::Router::into_make_service_with_connect_info
     pub fn into_make_service_with_connect_info<C>(
         self,
-    ) -> IntoMakeServiceWithConnectInfo<IntoService<H, T, M, S, B>, C> {
+    ) -> IntoMakeServiceWithConnectInfo<IntoService<H, T, S, B>, C> {
         IntoMakeServiceWithConnectInfo::new(self.service)
     }
 }
 
-impl<H, T, M, S, B> Service<Request<B>> for WithState<H, T, M, S, B>
+impl<H, T, S, B> Service<Request<B>> for WithState<H, T, S, B>
 where
-    H: Handler<T, M, S, B> + Clone + Send + 'static,
+    H: Handler<T, S, B> + Clone + Send + 'static,
     B: Send + 'static,
     S: Send + Sync,
 {
-    type Response = <IntoService<H, T, M, S, B> as Service<Request<B>>>::Response;
-    type Error = <IntoService<H, T, M, S, B> as Service<Request<B>>>::Error;
-    type Future = <IntoService<H, T, M, S, B> as Service<Request<B>>>::Future;
+    type Response = <IntoService<H, T, S, B> as Service<Request<B>>>::Response;
+    type Error = <IntoService<H, T, S, B> as Service<Request<B>>>::Error;
+    type Future = <IntoService<H, T, S, B> as Service<Request<B>>>::Future;
 
     #[inline]
     fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
@@ -123,7 +123,7 @@ where
     }
 }
 
-impl<H, T, M, S, B> std::fmt::Debug for WithState<H, T, M, S, B> {
+impl<H, T, S, B> std::fmt::Debug for WithState<H, T, S, B> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("WithState")
             .field("service", &self.service)
@@ -131,7 +131,7 @@ impl<H, T, M, S, B> std::fmt::Debug for WithState<H, T, M, S, B> {
     }
 }
 
-impl<H, T, M, S, B> Clone for WithState<H, T, M, S, B>
+impl<H, T, S, B> Clone for WithState<H, T, S, B>
 where
     H: Clone,
 {

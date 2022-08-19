@@ -10,19 +10,19 @@ use std::{
 };
 use tower_service::Service;
 
-pub(crate) struct IntoServiceStateInExtension<H, T, M, S, B> {
+pub(crate) struct IntoServiceStateInExtension<H, T, S, B> {
     handler: H,
-    _marker: PhantomData<fn() -> (T, M, S, B)>,
+    _marker: PhantomData<fn() -> (T, S, B)>,
 }
 
 #[test]
 fn traits() {
     use crate::test_helpers::*;
-    assert_send::<IntoServiceStateInExtension<(), NotSendSync, NotSendSync, (), NotSendSync>>();
-    assert_sync::<IntoServiceStateInExtension<(), NotSendSync, NotSendSync, (), NotSendSync>>();
+    assert_send::<IntoServiceStateInExtension<(), NotSendSync, (), NotSendSync>>();
+    assert_sync::<IntoServiceStateInExtension<(), NotSendSync, (), NotSendSync>>();
 }
 
-impl<H, T, M, S, B> IntoServiceStateInExtension<H, T, M, S, B> {
+impl<H, T, S, B> IntoServiceStateInExtension<H, T, S, B> {
     pub(crate) fn new(handler: H) -> Self {
         Self {
             handler,
@@ -31,7 +31,7 @@ impl<H, T, M, S, B> IntoServiceStateInExtension<H, T, M, S, B> {
     }
 }
 
-impl<H, T, M, S, B> fmt::Debug for IntoServiceStateInExtension<H, T, M, S, B> {
+impl<H, T, S, B> fmt::Debug for IntoServiceStateInExtension<H, T, S, B> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("IntoServiceStateInExtension")
             .field(&format_args!("..."))
@@ -39,7 +39,7 @@ impl<H, T, M, S, B> fmt::Debug for IntoServiceStateInExtension<H, T, M, S, B> {
     }
 }
 
-impl<H, T, M, S, B> Clone for IntoServiceStateInExtension<H, T, M, S, B>
+impl<H, T, S, B> Clone for IntoServiceStateInExtension<H, T, S, B>
 where
     H: Clone,
 {
@@ -51,9 +51,9 @@ where
     }
 }
 
-impl<H, T, M, S, B> Service<Request<B>> for IntoServiceStateInExtension<H, T, M, S, B>
+impl<H, T, S, B> Service<Request<B>> for IntoServiceStateInExtension<H, T, S, B>
 where
-    H: Handler<T, M, S, B> + Clone + Send + 'static,
+    H: Handler<T, S, B> + Clone + Send + 'static,
     B: Send + 'static,
     S: Send + Sync + 'static,
 {

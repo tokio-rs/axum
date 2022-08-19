@@ -66,9 +66,9 @@ where
     }
 
     /// Add a handler at `GET /{resource_name}`.
-    pub fn index<H, T, M>(self, handler: H) -> Self
+    pub fn index<H, T>(self, handler: H) -> Self
     where
-        H: Handler<T, M, S, B>,
+        H: Handler<T, S, B>,
         T: 'static,
     {
         let path = self.index_create_path();
@@ -76,9 +76,9 @@ where
     }
 
     /// Add a handler at `POST /{resource_name}`.
-    pub fn create<H, T, M>(self, handler: H) -> Self
+    pub fn create<H, T>(self, handler: H) -> Self
     where
-        H: Handler<T, M, S, B>,
+        H: Handler<T, S, B>,
         T: 'static,
     {
         let path = self.index_create_path();
@@ -86,9 +86,9 @@ where
     }
 
     /// Add a handler at `GET /{resource_name}/new`.
-    pub fn new<H, T, M>(self, handler: H) -> Self
+    pub fn new<H, T>(self, handler: H) -> Self
     where
-        H: Handler<T, M, S, B>,
+        H: Handler<T, S, B>,
         T: 'static,
     {
         let path = format!("/{}/new", self.name);
@@ -96,9 +96,9 @@ where
     }
 
     /// Add a handler at `GET /{resource_name}/:{resource_name}_id`.
-    pub fn show<H, T, M>(self, handler: H) -> Self
+    pub fn show<H, T>(self, handler: H) -> Self
     where
-        H: Handler<T, M, S, B>,
+        H: Handler<T, S, B>,
         T: 'static,
     {
         let path = self.show_update_destroy_path();
@@ -106,9 +106,9 @@ where
     }
 
     /// Add a handler at `GET /{resource_name}/:{resource_name}_id/edit`.
-    pub fn edit<H, T, M>(self, handler: H) -> Self
+    pub fn edit<H, T>(self, handler: H) -> Self
     where
-        H: Handler<T, M, S, B>,
+        H: Handler<T, S, B>,
         T: 'static,
     {
         let path = format!("/{0}/:{0}_id/edit", self.name);
@@ -116,9 +116,9 @@ where
     }
 
     /// Add a handler at `PUT or PATCH /resource_name/:{resource_name}_id`.
-    pub fn update<H, T, M>(self, handler: H) -> Self
+    pub fn update<H, T>(self, handler: H) -> Self
     where
-        H: Handler<T, M, S, B>,
+        H: Handler<T, S, B>,
         T: 'static,
     {
         let path = self.show_update_destroy_path();
@@ -126,9 +126,9 @@ where
     }
 
     /// Add a handler at `DELETE /{resource_name}/:{resource_name}_id`.
-    pub fn destroy<H, T, M>(self, handler: H) -> Self
+    pub fn destroy<H, T>(self, handler: H) -> Self
     where
-        H: Handler<T, M, S, B>,
+        H: Handler<T, S, B>,
         T: 'static,
     {
         let path = self.show_update_destroy_path();
