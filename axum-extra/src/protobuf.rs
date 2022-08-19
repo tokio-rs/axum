@@ -100,7 +100,7 @@ pub struct ProtoBuf<T>(pub T);
 impl<T, S, B> FromRequest<S, B> for ProtoBuf<T>
 where
     T: Message + Default,
-    B: HttpBody + Send,
+    B: HttpBody + Send + 'static,
     B::Data: Send,
     B::Error: Into<BoxError>,
     S: Send + Sync,

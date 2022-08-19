@@ -111,7 +111,7 @@ impl<E, R> DerefMut for WithRejection<E, R> {
 #[async_trait]
 impl<B, E, R, S> FromRequest<S, B> for WithRejection<E, R>
 where
-    B: Send,
+    B: Send + 'static,
     S: Send + Sync,
     E: FromRequest<S, B>,
     R: From<E::Rejection> + IntoResponse,
@@ -161,8 +161,8 @@ mod tests {
             type Rejection = ();
 
             async fn from_request_parts(
-                parts: &mut Parts,
-                state: &S,
+                _parts: &mut Parts,
+                _state: &S,
             ) -> Result<Self, Self::Rejection> {
                 Err(())
             }

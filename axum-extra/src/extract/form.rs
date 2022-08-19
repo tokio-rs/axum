@@ -58,7 +58,7 @@ impl<T> Deref for Form<T> {
 impl<T, S, B> FromRequest<S, B> for Form<T>
 where
     T: DeserializeOwned,
-    B: HttpBody + Send,
+    B: HttpBody + Send + 'static,
     B::Data: Send,
     B::Error: Into<BoxError>,
     S: Send + Sync,
