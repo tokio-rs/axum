@@ -6,7 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-axum = { path = "../../axum", features=["matched-path"] }
+axum = { path = "../../axum" }
 axum-extra = { path = "../../axum-extra" }
 axum-macros = { path = "../../axum-macros" }
 serde = { version = "1.0", features = ["derive"] }
