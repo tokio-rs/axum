@@ -154,7 +154,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   fallback ([#1155])
 - **breaking:** Allow `Error: Into<Infallible>` for `Route::{layer, route_layer}` ([#924])
 - **breaking:** `MethodRouter` now panics on overlapping routes ([#1102])
-- **added** Implement `TryFrom<http:: Method>` for `MethodFilter` and use new `NoMatchingMethodFilter` error in case of failure ([#1130])
 - **breaking:** `Router::route` now only accepts `MethodRouter`s created with
   `get`, `post`, etc ([#1155])
 - **added:** `Router::route_service` for routing to arbitrary `Service`s ([#1155])
@@ -283,12 +282,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   }
   ```
 
-- **fixed:** Don't expose internal type names in `QueryRejection` response. ([#1171])
-- **fixed:** If `WebSocketUpgrade` cannot upgrade the connection it will return a
-  `WebSocketUpgradeRejection::ConnectionNotUpgradable` rejection ([#1135])
-- **changed:** `WebSocketUpgradeRejection` has a new variant `ConnectionNotUpgradable`
-  variant ([#1135])
-
 ## Middleware
 
 - **breaking:** Remove `extractor_middleware` which was previously deprecated.
@@ -316,14 +309,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#1088]: https://github.com/tokio-rs/axum/pull/1088
 [#1102]: https://github.com/tokio-rs/axum/pull/1102
 [#1119]: https://github.com/tokio-rs/axum/pull/1119
-[#1130]: https://github.com/tokio-rs/axum/pull/1130
-[#1135]: https://github.com/tokio-rs/axum/pull/1135
 [#1152]: https://github.com/tokio-rs/axum/pull/1152
 [#1155]: https://github.com/tokio-rs/axum/pull/1155
-[#1171]: https://github.com/tokio-rs/axum/pull/1171
 [#1239]: https://github.com/tokio-rs/axum/pull/1239
 [#1248]: https://github.com/tokio-rs/axum/pull/1248
 [#924]: https://github.com/tokio-rs/axum/pull/924
+
+# 0.5.15 (9. August, 2022)
+
+- **fixed:** Don't expose internal type names in `QueryRejection` response. ([#1171])
+- **fixed:** Improve performance of JSON serialization ([#1178])
+- **fixed:** Improve build times by generating less IR ([#1192])
+
+[#1171]: https://github.com/tokio-rs/axum/pull/1171
+[#1178]: https://github.com/tokio-rs/axum/pull/1178
+[#1192]: https://github.com/tokio-rs/axum/pull/1192
+
+# 0.5.14 (25. July, 2022)
+
+Yanked, as it contained an accidental breaking change.
+
+# 0.5.13 (15. July, 2022)
+
+- **fixed:** If `WebSocketUpgrade` cannot upgrade the connection it will return a
+  `WebSocketUpgradeRejection::ConnectionNotUpgradable` rejection ([#1135])
+- **changed:** `WebSocketUpgradeRejection` has a new variant `ConnectionNotUpgradable`
+  variant ([#1135])
+
+[#1135]: https://github.com/tokio-rs/axum/pull/1135
+
+# 0.5.12 (10. July, 2022)
+
+- **added:** Added `debug_handler` which is an attribute macro that improves
+  type errors when applied to handler function. It is re-exported from
+  `axum-macros` ([#1144])
+
+[#1144]: https://github.com/tokio-rs/axum/pull/1144
+
+# 0.5.11 (02. July, 2022)
+
+- **added:** Implement `TryFrom<http:: Method>` for `MethodFilter` and use new
+  `NoMatchingMethodFilter` error in case of failure ([#1130])
+- **added:** Document how to run extractors from middleware ([#1140])
+
+[#1130]: https://github.com/tokio-rs/axum/pull/1130
+[#1140]: https://github.com/tokio-rs/axum/pull/1140
 
 # 0.5.10 (28. June, 2022)
 
