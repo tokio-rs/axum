@@ -100,7 +100,7 @@ pub trait Handler<T, S = (), B = Body>: Clone + Send + Sized + 'static {
     type Future: Future<Output = Response> + Send + 'static;
 
     /// Call the handler with the given request.
-    fn call(self, state: Arc<S>, req: Request<B>) -> Self::Future;
+    fn call(self, req: Request<B>, state: Arc<S>) -> Self::Future;
 
     /// Apply a [`tower::Layer`] to the handler.
     ///
@@ -171,7 +171,7 @@ where
 {
     type Future = Pin<Box<dyn Future<Output = Response> + Send>>;
 
-    fn call(self, _state: Arc<S>, _req: Request<B>) -> Self::Future {
+    fn call(self, _req: Request<B>, _state: Arc<S>) -> Self::Future {
         Box::pin(async move { self().await.into_response() })
     }
 }
@@ -193,7 +193,7 @@ macro_rules! impl_handler {
         {
             type Future = Pin<Box<dyn Future<Output = Response> + Send>>;
 
-            fn call(self, state: Arc<S>, req: Request<B>) -> Self::Future {
+            fn call(self, req: Request<B>, state: Arc<S>) -> Self::Future {
                 Box::pin(async move {
                     let (mut parts, body) = req.into_parts();
                     let state = &state;
@@ -294,7 +294,7 @@ where
 {
     type Future = future::LayeredFuture<B, L::Service>;
 
-    fn call(self, state: Arc<S>, req: Request<B>) -> Self::Future {
+    fn call(self, req: Request<B>, state: Arc<S>) -> Self::Future {
         use futures_util::future::{FutureExt, Map};
 
         let svc = self.handler.with_state_arc(state);

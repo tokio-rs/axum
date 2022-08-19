@@ -78,7 +78,7 @@ where
             .expect("state extension missing. This is a bug in axum, please file an issue");
 
         let handler = self.handler.clone();
-        let future = Handler::call(handler, state, req);
+        let future = Handler::call(handler, req, state);
         let future = future.map(Ok as _);
 
         super::future::IntoServiceFuture::new(future)
