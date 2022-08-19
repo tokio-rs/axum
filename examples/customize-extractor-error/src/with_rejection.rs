@@ -32,7 +32,7 @@ pub async fn handler(
 // We derive `thiserror::Error`
 #[derive(Debug, Error)]
 pub enum ApiError {
-    // The `#[ƒrom]` attribute generates `From<JsonRejection> for ApiError`
+    // The `#[from]` attribute generates `From<JsonRejection> for ApiError`
     // implementation. See `thiserror` docs for more information
     #[error(transparent)]
     JsonExtractorRejection(#[from] JsonRejection),
