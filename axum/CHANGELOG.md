@@ -128,7 +128,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ```
 
 - **breaking:** `Router::fallback` now only accepts `Handler`s (similarly to
-  what `get`, `post`, etc accept) ([#1155])
+  what `get`, `post`, etc accept). Use the new `Router::fallback_service` for
+  setting any `Service` as the fallback ([#1155])
 
   This fallback on 0.5:
 
@@ -150,13 +151,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   async fn fallback() {}
   ```
 
-- **added:** `Router::fallback_service` for setting any `Service` as the
-  fallback ([#1155])
 - **breaking:** Allow `Error: Into<Infallible>` for `Route::{layer, route_layer}` ([#924])
 - **breaking:** `MethodRouter` now panics on overlapping routes ([#1102])
 - **breaking:** `Router::route` now only accepts `MethodRouter`s created with
-  `get`, `post`, etc ([#1155])
-- **added:** `Router::route_service` for routing to arbitrary `Service`s ([#1155])
+  `get`, `post`, etc. Use the new `Router::route_service` for routing to
+  any `Service`s ([#1155])
 
 ## Extractors
 
@@ -202,11 +201,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ```rust
   use axum::{extract::{State, FromRef}, routing::get, Router};
 
-  let app = Router::with_state(AppState {
+  let state = AppState {
       client: HttpClient {},
       database: Database {},
-  })
-  .route("/", get(handler));
+  };
+
+  let app = Router::with_state(state).route("/", get(handler));
   
   async fn handler(
       State(client): State<HttpClient>,
@@ -286,17 +286,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **breaking:** Remove `extractor_middleware` which was previously deprecated.
   Use `axum::middleware::from_extractor` instead ([#1077])
-- **added:** Support running extractors from `middleware::from_fn` functions ([#1088])
-- **added:** Added `debug_handler` which is an attribute macro that improves
-  type errors when applied to handler function. It is re-exported from
-  `axum-macros`
+- **added:** Support running extractors on `middleware::from_fn` functions ([#1088])
 - **added:** Support any middleware response that implements `IntoResponse` ([#1152])
 - **breaking:** Require middleware added with `Handler::layer` to have
   `Infallible` as the error type ([#1152])
 
 ## Misc
 
-- **change:** axum's MSRV is now 1.60 ([#1239])
+- **changed:** axum's MSRV is now 1.60 ([#1239])
 - **changed:** For methods that accept some `S: Service`, the bounds have been
   relaxed so the response type must implement `IntoResponse` rather than being a
   literal `Response`
@@ -348,7 +345,7 @@ Yanked, as it contained an accidental breaking change.
 
 # 0.5.11 (02. July, 2022)
 
-- **added:** Implement `TryFrom<http:: Method>` for `MethodFilter` and use new
+- **added:** Implement `TryFrom<http::Method>` for `MethodFilter` and use new
   `NoMatchingMethodFilter` error in case of failure ([#1130])
 - **added:** Document how to run extractors from middleware ([#1140])
 
@@ -375,7 +372,7 @@ Yanked, as it contained an accidental breaking change.
 - **added:** Support resolving host name via `Forwarded` header in `Host`
   extractor ([#1078])
 - **added:** Implement `IntoResponse` for `Form` ([#1095])
-- **change:** axum's MSRV is now 1.56 ([#1098])
+- **changed:** axum's MSRV is now 1.56 ([#1098])
 
 [#1078]: https://github.com/tokio-rs/axum/pull/1078
 [#1095]: https://github.com/tokio-rs/axum/pull/1095
@@ -694,7 +691,7 @@ Yanked, as it contained an accidental breaking change.
 
 # 0.3.4 (13. November, 2021)
 
-- **change:** `box_body` has been renamed to `boxed`. `box_body` still exists
+- **changed:** `box_body` has been renamed to `boxed`. `box_body` still exists
   but is deprecated ([#530])
 
 [#530]: https://github.com/tokio-rs/axum/pull/530
