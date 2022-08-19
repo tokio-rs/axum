@@ -27,7 +27,8 @@ impl<S, B, T> FromRequest<S, B> for Json<T>
 where
     S: Send + Sync,
     // these trait bounds are copied from `impl FromRequest for axum::Json`
-    T: DeserializeOwned,
+    // `T: Send` is required to send this future across an await
+    T: DeserializeOwned + Send,
     B: axum::body::HttpBody + Send,
     B::Data: Send,
     B::Error: Into<BoxError>,
@@ -40,9 +41,10 @@ where
             // convert the error from `axum::Json` into whatever we want
             Err(rejection) => {
                 let path = req
-                    .extensions()
-                    .get::<MatchedPath>()
-                    .map(|x| x.as_str().to_owned());
+                    .extract::<MatchedPath>()
+                    .await
+                    .map(|x| x.as_str().to_owned())
+                    .ok();
 
                 // We can use other extractors to provide better rejection
                 // messages. For example, here we are using
