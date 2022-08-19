@@ -16,7 +16,8 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 async fn main() {
     tracing_subscriber::registry()
         .with(tracing_subscriber::EnvFilter::new(
-            std::env::var("RUST_LOG").unwrap_or_else(|_| "customize_extractor_error=trace".into()),
+            std::env::var("RUST_LOG")
+                .unwrap_or_else(|_| "example_customize_extractor_error=trace".into()),
         ))
         .with(tracing_subscriber::fmt::layer())
         .init();
