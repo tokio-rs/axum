@@ -195,7 +195,7 @@ macro_rules! impl_traits_for_either {
         where
             $($ident: FromRequestParts<S>),*,
             $last: FromRequest<S, B>,
-            B: Send,
+            B: Send + 'static,
             S: Send + Sync,
         {
             type Rejection = $last::Rejection;
@@ -225,7 +225,7 @@ macro_rules! impl_traits_for_either {
 
             async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
                 $(
-                    if let Ok(value) = FromRequestParts::from_request_parts(&mut parts, state).await {
+                    if let Ok(value) = FromRequestParts::from_request_parts(parts, state).await {
                         return Ok(Self::$ident(value));
                     }
                 )*
