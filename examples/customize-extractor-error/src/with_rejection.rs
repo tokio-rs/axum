@@ -2,7 +2,7 @@
 //!  another
 //!
 //! + Easy learning curve: `WithRejection` acts as a wrapper for another
-//!   already existing rejection type. You only need to provide a `From` impl
+//!   already existing extractor You only need to provide a `From` impl
 //!   between the original rejection type and the target rejection. Crates like
 //!   `thiserror` can provide such conversion using derive macros. See
 //!   [`thiserror`]
