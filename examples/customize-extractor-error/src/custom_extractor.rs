@@ -2,6 +2,7 @@
 //!
 //! + Powerful API: Implementing `FromRequest` grants access to `RequestParts`
 //!   and `async/await`. This means that you can create more powerful rejections
+//! - Boilerplate: Requires creating a new extractor for every custom rejection
 //! - Complexity: Manually implementing `FromRequest` results on more complex code
 //!
 use axum::extract::MatchedPath;
