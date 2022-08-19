@@ -20,7 +20,7 @@ pub async fn handler(Json(value): Json<Value>) -> impl IntoResponse {
 }
 
 // We define our own `Json` extractor that customizes the error from `axum::Json`
-pub struct Json<T>(T);
+pub struct Json<T>(pub T);
 
 #[async_trait]
 impl<S, B, T> FromRequest<S, B> for Json<T>
