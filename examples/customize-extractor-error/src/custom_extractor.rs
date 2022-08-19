@@ -1,3 +1,9 @@
+//! Manual implementation of `FromRequest` that wraps another extractor
+//!
+//! + Powerful API: Implementing `FromRequest` grants access to `RequestParts`
+//!   and `async/await`. This means that you can create more powerful rejections
+//! - Complexity: Manually implementing `FromRequest` results on more complex code
+//!
 use axum::extract::MatchedPath;
 use axum::{
     async_trait,
@@ -31,13 +37,17 @@ where
     async fn from_request(req: &mut RequestParts<S, B>) -> Result<Self, Self::Rejection> {
         match axum::Json::<T>::from_request(req).await {
             Ok(value) => Ok(Self(value.0)),
+            // convert the error from `axum::Json` into whatever we want
             Err(rejection) => {
-                // convert the error from `axum::Json` into whatever we want
                 let path = req
                     .extensions()
                     .get::<MatchedPath>()
                     .map(|x| x.as_str().to_owned());
 
+                // We can use other extractors to provide better rejection
+                // messages. For example, here we are using
+                // `axum::extract::MatchedPath` to provide a better error
+                // message
                 let payload = json!({
                     "message": rejection.to_string(),
                     "origin": "custom_extractor",
