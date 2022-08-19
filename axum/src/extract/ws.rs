@@ -282,7 +282,7 @@ where
 {
     type Rejection = WebSocketUpgradeRejection;
 
-    async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
+    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
         if parts.method != Method::GET {
             return Err(MethodNotGet.into());
         }

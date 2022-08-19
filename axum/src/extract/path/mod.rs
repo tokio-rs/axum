@@ -170,7 +170,7 @@ where
 {
     type Rejection = PathRejection;
 
-    async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
+    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
         let params = match parts.extensions.get::<UrlParams>() {
             Some(UrlParams::Params(params)) => params,
             Some(UrlParams::InvalidUtf8InPathParam { key }) => {
@@ -412,8 +412,7 @@ impl std::error::Error for FailedToDeserializePathParams {}
 mod tests {
     use super::*;
     use crate::{routing::get, test_helpers::*, Router};
-    use http::{Request, StatusCode};
-    use hyper::Body;
+    use http::StatusCode;
     use std::collections::HashMap;
 
     #[tokio::test]

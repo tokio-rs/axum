@@ -80,7 +80,7 @@ where
 {
     type Rejection = ExtensionRejection;
 
-    async fn from_request_parts(req: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
+    async fn from_request_parts(req: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
         let value = req
             .extensions
             .get::<T>()

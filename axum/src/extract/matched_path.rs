@@ -71,7 +71,7 @@ where
 {
     type Rejection = MatchedPathRejection;
 
-    async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
+    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
         let matched_path = parts
             .extensions
             .get::<Self>()

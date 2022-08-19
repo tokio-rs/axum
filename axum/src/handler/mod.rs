@@ -180,7 +180,7 @@ macro_rules! impl_handler {
     (
         [$($ty:ident),*], $last:ident
     ) => {
-        #[allow(non_snake_case)]
+        #[allow(non_snake_case, unused_mut)]
         impl<F, Fut, S, B, Res, M, $($ty,)* $last> Handler<(M, $($ty,)* $last,), S, B> for F
         where
             F: FnOnce($($ty,)* $last,) -> Fut + Clone + Send + 'static,

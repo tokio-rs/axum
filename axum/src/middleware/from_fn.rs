@@ -252,7 +252,7 @@ macro_rules! impl_service {
     (
         [$($ty:ident),*], $last:ident
     ) => {
-        #[allow(non_snake_case)]
+        #[allow(non_snake_case, unused_mut)]
         impl<F, Fut, Out, S, B, $($ty,)* $last> Service<Request<B>> for FromFn<F, S, ($($ty,)* $last,)>
         where
             F: FnMut($($ty,)* $last, Next<B>) -> Fut + Clone + Send + 'static,

@@ -34,7 +34,7 @@ where
 {
     type Rejection = Infallible;
 
-    async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
+    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
         let query = parts.uri.query().map(|query| query.to_owned());
         Ok(Self(query))
     }

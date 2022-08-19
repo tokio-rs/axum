@@ -149,7 +149,7 @@ where
 {
     type Rejection = Infallible;
 
-    async fn from_request(req: Request<B>, state: &S) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: Request<B>, _state: &S) -> Result<Self, Self::Rejection> {
         let body = req
             .into_body()
             .map_data(Into::into)
@@ -205,21 +205,15 @@ where
 {
     type Rejection = Infallible;
 
-    async fn from_request(req: Request<B>, state: &S) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: Request<B>, _state: &S) -> Result<Self, Self::Rejection> {
         Ok(Self(req.into_body()))
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        body::Body,
-        extract::Extension,
-        routing::{get, post},
-        test_helpers::*,
-        Router,
-    };
-    use http::{Method, Request, StatusCode};
+    use crate::{extract::Extension, routing::get, test_helpers::*, Router};
+    use http::{Method, StatusCode};
 
     #[tokio::test]
     async fn extract_request_parts() {

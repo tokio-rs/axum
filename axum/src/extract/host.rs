@@ -30,7 +30,7 @@ where
 {
     type Rejection = HostRejection;
 
-    async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
+    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
         if let Some(host) = parse_forwarded(&parts.headers) {
             return Ok(Host(host.to_owned()));
         }

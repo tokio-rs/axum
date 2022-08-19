@@ -288,7 +288,7 @@ mod tests {
 
             async fn from_request_parts(
                 parts: &mut Parts,
-                state: &S,
+                _state: &S,
             ) -> Result<Self, Self::Rejection> {
                 if let Some(auth) = parts
                     .headers
