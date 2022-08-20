@@ -38,6 +38,16 @@ and this project adheres to [Semantic Versioning].
 [#1262]: https://github.com/tokio-rs/axum/pull/1262
 [#1263]: https://github.com/tokio-rs/axum/pull/1263
 
+# 0.3.7 (09. August, 2022)
+
+- **fixed:** Depend on axum 0.5.15 which contains a fix for an accidental breaking change.
+
+# 0.3.6 (02. July, 2022)
+
+- **fixed:** Fix feature labels missing in generated docs ([#1137])
+
+[#1137]: https://github.com/tokio-rs/axum/pull/1137
+
 # 0.3.5 (27. June, 2022)
 
 - **added:** Add `JsonLines` for streaming newline delimited JSON ([#1093])
