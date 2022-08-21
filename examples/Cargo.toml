@@ -1,4 +1,5 @@
 [workspace]
-members = ["*"]
+# members = ["*"]
+members = ["hello-world"]
 exclude = ["async-graphql", "target"]
 resolver = "2"

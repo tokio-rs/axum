@@ -1,4 +1,4 @@
-error: expected one of: `via`, `rejection_derive`, `rejection`
+error: expected `via` or `rejection`
  --> tests/from_request/fail/unknown_attr_container.rs:4:16
   |
 4 | #[from_request(foo)]

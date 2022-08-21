@@ -6,4 +6,6 @@ publish = false
 
 [dependencies]
 axum = { path = "../../axum" }
+axum-macros = { path = "../../axum-macros" }
 tokio = { version = "1.0", features = ["full"] }
+serde = { version = "1.0", features = ["derive"] }
