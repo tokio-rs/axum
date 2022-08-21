@@ -348,6 +348,7 @@ mod typed_path;
 /// ```
 ///
 /// [`FromRequest`]: https://docs.rs/axum/latest/axum/extract/trait.FromRequest.html
+/// [`axum::response::Response`]: https://docs.rs/axum/0.6/axum/response/type.Response.html
 /// [`axum::extract::rejection::ExtensionRejection`]: https://docs.rs/axum/latest/axum/extract/rejection/enum.ExtensionRejection.html
 #[proc_macro_derive(FromRequest, attributes(from_request))]
 pub fn derive_from_request(item: TokenStream) -> TokenStream {
