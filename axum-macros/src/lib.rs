@@ -513,12 +513,60 @@ pub fn derive_from_request(item: TokenStream) -> TokenStream {
 /// async fn handler(request: Request<BoxBody>) {}
 /// ```
 ///
+/// # Changing state type
+///
+/// By default `#[debug_handler]` assumes your state type is `()` unless your handler has a
+/// [`axum::extract::State`] argument:
+///
+/// ```
+/// use axum::extract::State;
+/// # use axum_macros::debug_handler;
+///
+/// #[debug_handler]
+/// async fn handler(
+///     // this makes `#[debug_handler]` use `AppState`
+///     State(state): State<AppState>,
+/// ) {}
+///
+/// #[derive(Clone)]
+/// struct AppState {}
+/// ```
+///
+/// If your handler takes multiple [`axum::extract::State`] arguments or you need to otherwise
+/// customize the state type you can set it with `#[debug_handler(state = ...)]`:
+///
+/// ```
+/// use axum::extract::{State, FromRef};
+/// # use axum_macros::debug_handler;
+///
+/// #[debug_handler(state = AppState)]
+/// async fn handler(
+///     State(app_state): State<AppState>,
+///     State(inner_state): State<InnerState>,
+/// ) {}
+///
+/// #[derive(Clone)]
+/// struct AppState {
+///     inner: InnerState,
+/// }
+///
+/// #[derive(Clone)]
+/// struct InnerState {}
+///
+/// impl FromRef<AppState> for InnerState {
+///     fn from_ref(state: &AppState) -> Self {
+///         state.inner.clone()
+///     }
+/// }
+/// ```
+///
 /// # Performance
 ///
 /// This macro has no effect when compiled with the release profile. (eg. `cargo build --release`)
 ///
 /// [`axum`]: https://docs.rs/axum/latest
 /// [`Handler`]: https://docs.rs/axum/latest/axum/handler/trait.Handler.html
+/// [`axum::extract::State`]: https://docs.rs/axum/0.6/axum/extract/struct.State.html
 /// [`debug_handler`]: macro@debug_handler
 #[proc_macro_attribute]
 pub fn debug_handler(_attr: TokenStream, input: TokenStream) -> TokenStream {
