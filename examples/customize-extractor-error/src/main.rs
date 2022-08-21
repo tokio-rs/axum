@@ -3,20 +3,13 @@
 //! ```not_rust
 //! cd examples && cargo run -p example-customize-extractor-error
 //! ```
-//!
-//! See https://docs.rs/axum-extra/0.3.7/axum_extra/extract/struct.WithRejection.html
-//! example for creating custom errors from already existing extractors
 
-use axum::{
-    async_trait,
-    extract::{rejection::JsonRejection, FromRequest, RequestParts},
-    http::StatusCode,
-    routing::post,
-    BoxError, Router,
-};
-use serde::{de::DeserializeOwned, Deserialize};
-use serde_json::{json, Value};
-use std::{borrow::Cow, net::SocketAddr};
+mod custom_extractor;
+mod derive_from_request;
+mod with_rejection;
+
+use axum::{routing::post, Router};
+use std::net::SocketAddr;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[tokio::main]
@@ -29,70 +22,17 @@ async fn main() {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    // build our application with a route
-    let app = Router::new().route("/users", post(handler));
+    // Build our application with some routes
+    let app = Router::new()
+        .route("/with-rejection", post(with_rejection::handler))
+        .route("/custom-extractor", post(custom_extractor::handler))
+        .route("/derive-from-request", post(derive_from_request::handler));
 
-    // run it
+    // Run our application
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
-    println!("listening on {}", addr);
+    tracing::debug!("listening on {}", addr);
     axum::Server::bind(&addr)
         .serve(app.into_make_service())
         .await
         .unwrap();
-}
-
-async fn handler(Json(user): Json<User>) {
-    dbg!(&user);
-}
-
-#[derive(Debug, Deserialize)]
-#[allow(dead_code)]
-struct User {
-    id: i64,
-    username: String,
-}
-
-// We define our own `Json` extractor that customizes the error from `axum::Json`
-struct Json<T>(T);
-
-#[async_trait]
-impl<S, B, T> FromRequest<S, B> for Json<T>
-where
-    S: Send + Sync,
-    // these trait bounds are copied from `impl FromRequest for axum::Json`
-    T: DeserializeOwned,
-    B: axum::body::HttpBody + Send,
-    B::Data: Send,
-    B::Error: Into<BoxError>,
-{
-    type Rejection = (StatusCode, axum::Json<Value>);
-
-    async fn from_request(req: &mut RequestParts<S, B>) -> Result<Self, Self::Rejection> {
-        match axum::Json::<T>::from_request(req).await {
-            Ok(value) => Ok(Self(value.0)),
-            Err(rejection) => {
-                // convert the error from `axum::Json` into whatever we want
-                let (status, body): (_, Cow<'_, str>) = match rejection {
-                    JsonRejection::JsonDataError(err) => (
-                        StatusCode::BAD_REQUEST,
-                        format!("Invalid JSON request: {}", err).into(),
-                    ),
-                    JsonRejection::MissingJsonContentType(err) => {
-                        (StatusCode::BAD_REQUEST, err.to_string().into())
-                    }
-                    err => (
-                        StatusCode::INTERNAL_SERVER_ERROR,
-                        format!("Unknown internal error: {}", err).into(),
-                    ),
-                };
-
-                Err((
-                    status,
-                    // we use `axum::Json` here to generate a JSON response
-                    // body but you can use whatever response you want
-                    axum::Json(json!({ "error": body })),
-                ))
-            }
-        }
-    }
 }

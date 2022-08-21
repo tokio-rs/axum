@@ -7,37 +7,236 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- **fixed:** Don't expose internal type names in `QueryRejection` response. ([#1171])
-- **breaking:** Remove `extractor_middleware` which was previously deprecated.
-  Use `axum::middleware::from_extractor` instead ([#1077])
-- **breaking:** Allow `Error: Into<Infallible>` for `Route::{layer, route_layer}` ([#924])
-- **breaking:** `MethodRouter` now panics on overlapping routes ([#1102])
+## Routing
+
 - **breaking:** Nested `Router`s will no longer delegate to the outer `Router`'s
   fallback. Instead you must explicitly set a fallback on the inner `Router` ([#1086])
+
+  This nested router on 0.5:
+
+  ```rust
+  use axum::{Router, handler::Handler};
+
+  let api_routes = Router::new();
+
+  let app = Router::new()
+      .nest("/api", api_routes)
+      .fallback(fallback.into_service());
+
+  async fn fallback() {}
+  ```
+
+  Becomes this in 0.6:
+
+  ```rust
+  use axum::Router;
+
+  let api_routes = Router::new()
+      // we have to explicitly set the fallback here
+      // since nested routers no longer delegate to the outer
+      // router's fallback
+      .fallback(fallback);
+
+  let app = Router::new()
+      .nest("/api", api_routes)
+      .fallback(fallback);
+
+  async fn fallback() {}
+  ```
+
 - **breaking:** The request `/foo/` no longer matches `/foo/*rest`. If you want
   to match `/foo/` you have to add a route specifically for that ([#1086])
+
+  For example:
+
+  ```rust
+  use axum::{Router, routing::get, extract::Path};
+
+  let app = Router::new()
+      // this will match `/foo/bar/baz`
+      .route("/foo/*rest", get(handler))
+      // this will match `/foo/`
+      .route("/foo/", get(handler))
+      // if you want `/foo` to match you must also add an explicit route for it
+      .route("/foo", get(handler));
+
+  async fn handler(
+      // use an `Option` because `/foo/` and `/foo` don't have any path params
+      params: Option<Path<String>>,
+  ) {}
+  ```
+
 - **breaking:** Path params for wildcard routes no longer include the prefix
   `/`. e.g. `/foo.js` will match `/*filepath` with a value of `foo.js`, _not_
   `/foo.js` ([#1086])
+
+  For example:
+
+  ```rust
+  use axum::{Router, routing::get, extract::Path};
+
+  let app = Router::new().route("/foo/*rest", get(handler));
+
+  async fn handler(
+      Path(params): Path<String>,
+  ) {
+      // for the request `/foo/bar/baz` the value of `params` will be `bar/baz`
+      //
+      // on 0.5 it would be `/bar/baz`
+  }
+  ```
+
 - **fixed:** Routes like `/foo` and `/*rest` are no longer considered
   overlapping. `/foo` will take priority ([#1086])
-- **breaking:** Remove trailing slash redirects. Previously if you added a route
-  for `/foo`, axum would redirect calls to `/foo/` to `/foo` (or vice versa for
-  `/foo/`). That is no longer supported and such requests will now be sent to
-  the fallback. Consider using `axum_extra::routing::RouterExt::route_with_tsr`
-  if you want the old behavior ([#1119])
-- **fixed:** If `WebSocketUpgrade` cannot upgrade the connection it will return a
-  `WebSocketUpgradeRejection::ConnectionNotUpgradable` rejection ([#1135])
-- **changed:** `WebSocketUpgradeRejection` has a new variant `ConnectionNotUpgradable`
-  variant ([#1135])
-- **added** Implement `TryFrom<http:: Method>` for `MethodFilter` and use new `NoMatchingMethodFilter` error in case of failure ([#1130])
-- **added:** Support running extractors from `middleware::from_fn` functions ([#1088])
-- **added:** Added `debug_handler` which is an attribute macro that improves
-  type errors when applied to handler function. It is re-exported from
-  `axum-macros`
+
+  For example:
+
+  ```rust
+  use axum::{Router, routing::get};
+
+  let app = Router::new()
+      // this used to not be allowed but now just works
+      .route("/foo/*rest", get(foo))
+      .route("/foo/bar", get(bar));
+
+  async fn foo() {}
+
+  async fn bar() {}
+  ```
+
+- **breaking:** Trailing slash redirects have been removed. Previously if you
+  added a route for `/foo`, axum would redirect calls to `/foo/` to `/foo` (or
+  vice versa for `/foo/`). That is no longer supported and such requests will
+  now be sent to the fallback. Consider using
+  `axum_extra::routing::RouterExt::route_with_tsr` if you want the old behavior
+  ([#1119])
+
+  For example:
+
+  ```rust
+  use axum::{Router, routing::get};
+
+  let app = Router::new()
+      // a request to `GET /foo/` will now get `404 Not Found`
+      // whereas in 0.5 axum would redirect to `/foo`
+      //
+      // same goes the other way if you had the route `/foo/`
+      // axum will no longer redirect from `/foo` to `/foo/`
+      .route("/foo", get(handler));
+
+  async fn handler() {}
+  ```
+
+- **breaking:** `Router::fallback` now only accepts `Handler`s (similarly to
+  what `get`, `post`, etc accept). Use the new `Router::fallback_service` for
+  setting any `Service` as the fallback ([#1155])
+
+  This fallback on 0.5:
+
+  ```rust
+  use axum::{Router, handler::Handler};
+
+  let app = Router::new().fallback(fallback.into_service());
+
+  async fn fallback() {}
+  ```
+
+  Becomes this in 0.6
+
+  ```rust
+  use axum::Router;
+
+  let app = Router::new().fallback(fallback);
+
+  async fn fallback() {}
+  ```
+
+- **breaking:** Allow `Error: Into<Infallible>` for `Route::{layer, route_layer}` ([#924])
+- **breaking:** `MethodRouter` now panics on overlapping routes ([#1102])
+- **breaking:** `Router::route` now only accepts `MethodRouter`s created with
+  `get`, `post`, etc. Use the new `Router::route_service` for routing to
+  any `Service`s ([#1155])
+
+## Extractors
+
 - **added:** Added new type safe `State` extractor. This can be used with
   `Router::with_state` and gives compile errors for missing states, whereas
   `Extension` would result in runtime errors ([#1155])
+
+  We recommend migrating from `Extension` to `State` since that is more type
+  safe and faster. That is done by using `Router::with_state` and `State`.
+
+  This setup in 0.5
+
+  ```rust
+  use axum::{routing::get, Extension, Router};
+
+  let app = Router::new()
+      .route("/", get(handler))
+      .layer(Extension(AppState {}));
+  
+  async fn handler(Extension(app_state): Extension<AppState>) {}
+  
+  #[derive(Clone)]
+  struct AppState {}
+  ```
+
+  Becomes this in 0.6 using `State`:
+
+  ```rust
+  use axum::{routing::get, extract::State, Router};
+
+  let app = Router::with_state(AppState {})
+      .route("/", get(handler));
+  
+  async fn handler(State(app_state): State<AppState>) {}
+  
+  #[derive(Clone)]
+  struct AppState {}
+  ```
+
+  If you have multiple extensions you can use fields on `AppState` and implement
+  `FromRef`:
+
+  ```rust
+  use axum::{extract::{State, FromRef}, routing::get, Router};
+
+  let state = AppState {
+      client: HttpClient {},
+      database: Database {},
+  };
+
+  let app = Router::with_state(state).route("/", get(handler));
+  
+  async fn handler(
+      State(client): State<HttpClient>,
+      State(database): State<Database>,
+  ) {}
+  
+  #[derive(Clone)]
+  struct AppState {
+      client: HttpClient,
+      database: Database,
+  }
+  
+  #[derive(Clone)]
+  struct HttpClient {}
+  
+  impl FromRef<AppState> for HttpClient {
+      fn from_ref(state: &AppState) -> Self {
+          state.client.clone()
+      }
+  }
+  
+  #[derive(Clone)]
+  struct Database {}
+  
+  impl FromRef<AppState> for Database {
+      fn from_ref(state: &AppState) -> Self {
+          state.database.clone()
+      }
+  }
+  ```
 - **breaking:** The following types or traits have a new `S` type param
   (`()` by default) which represents the state ([#1155]):
   - `FromRequest`
@@ -45,18 +244,61 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `Router`
   - `MethodRouter`
   - `Handler`
-- **breaking:** `Router::route` now only accepts `MethodRouter`s created with
-  `get`, `post`, etc ([#1155])
-- **added:** `Router::route_service` for routing to arbitrary `Service`s ([#1155])
+
+  This extractor in 0.5:
+
+  ```rust
+  struct MyExtractor;
+
+  #[async_trait]
+  impl<B> FromRequest<B> for MyExtractor
+  where
+      B: Send,
+  {
+      type Rejection = StatusCode;
+  
+      async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+          // ...
+      }
+  }
+  ```
+
+  Becomes this in 0.6:
+
+  ```rust
+  struct MyExtractor;
+
+  #[async_trait]
+  impl<S, B> FromRequest<S, B> for MyExtractor
+  where
+      S: Send + Sync,
+      B: Send,
+  {
+      type Rejection = StatusCode;
+  
+      async fn from_request(req: &mut RequestParts<S, B>) -> Result<Self, Self::Rejection> {
+          // ...
+      }
+  }
+  ```
+
+## Middleware
+
+- **breaking:** Remove `extractor_middleware` which was previously deprecated.
+  Use `axum::middleware::from_extractor` instead ([#1077])
+- **added:** Support running extractors on `middleware::from_fn` functions ([#1088])
 - **added:** Support any middleware response that implements `IntoResponse` ([#1152])
 - **breaking:** Require middleware added with `Handler::layer` to have
   `Infallible` as the error type ([#1152])
+
+## Misc
+
+- **changed:** axum's MSRV is now 1.60 ([#1239])
 - **changed:** For methods that accept some `S: Service`, the bounds have been
   relaxed so the response type must implement `IntoResponse` rather than being a
   literal `Response`
-- **change:** axum's MSRV is now 1.60 ([#1239])
 - **fixed:** Annotate panicking functions with `#[track_caller]` so the error
-  message points to where the user added the invalid router, rather than
+  message points to where the user added the invalid route, rather than
   somewhere internally in axum ([#1248])
 
 [#1077]: https://github.com/tokio-rs/axum/pull/1077
@@ -64,14 +306,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#1088]: https://github.com/tokio-rs/axum/pull/1088
 [#1102]: https://github.com/tokio-rs/axum/pull/1102
 [#1119]: https://github.com/tokio-rs/axum/pull/1119
-[#1130]: https://github.com/tokio-rs/axum/pull/1130
-[#1135]: https://github.com/tokio-rs/axum/pull/1135
 [#1152]: https://github.com/tokio-rs/axum/pull/1152
 [#1155]: https://github.com/tokio-rs/axum/pull/1155
-[#1171]: https://github.com/tokio-rs/axum/pull/1171
 [#1239]: https://github.com/tokio-rs/axum/pull/1239
 [#1248]: https://github.com/tokio-rs/axum/pull/1248
 [#924]: https://github.com/tokio-rs/axum/pull/924
+
+# 0.5.15 (9. August, 2022)
+
+- **fixed:** Don't expose internal type names in `QueryRejection` response. ([#1171])
+- **fixed:** Improve performance of JSON serialization ([#1178])
+- **fixed:** Improve build times by generating less IR ([#1192])
+
+[#1171]: https://github.com/tokio-rs/axum/pull/1171
+[#1178]: https://github.com/tokio-rs/axum/pull/1178
+[#1192]: https://github.com/tokio-rs/axum/pull/1192
+
+# 0.5.14 (25. July, 2022)
+
+Yanked, as it contained an accidental breaking change.
+
+# 0.5.13 (15. July, 2022)
+
+- **fixed:** If `WebSocketUpgrade` cannot upgrade the connection it will return a
+  `WebSocketUpgradeRejection::ConnectionNotUpgradable` rejection ([#1135])
+- **changed:** `WebSocketUpgradeRejection` has a new variant `ConnectionNotUpgradable`
+  variant ([#1135])
+
+[#1135]: https://github.com/tokio-rs/axum/pull/1135
+
+# 0.5.12 (10. July, 2022)
+
+- **added:** Added `debug_handler` which is an attribute macro that improves
+  type errors when applied to handler function. It is re-exported from
+  `axum-macros` ([#1144])
+
+[#1144]: https://github.com/tokio-rs/axum/pull/1144
+
+# 0.5.11 (02. July, 2022)
+
+- **added:** Implement `TryFrom<http::Method>` for `MethodFilter` and use new
+  `NoMatchingMethodFilter` error in case of failure ([#1130])
+- **added:** Document how to run extractors from middleware ([#1140])
+
+[#1130]: https://github.com/tokio-rs/axum/pull/1130
+[#1140]: https://github.com/tokio-rs/axum/pull/1140
 
 # 0.5.10 (28. June, 2022)
 
@@ -93,7 +372,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **added:** Support resolving host name via `Forwarded` header in `Host`
   extractor ([#1078])
 - **added:** Implement `IntoResponse` for `Form` ([#1095])
-- **change:** axum's MSRV is now 1.56 ([#1098])
+- **changed:** axum's MSRV is now 1.56 ([#1098])
 
 [#1078]: https://github.com/tokio-rs/axum/pull/1078
 [#1095]: https://github.com/tokio-rs/axum/pull/1095
@@ -412,7 +691,7 @@ Yanked, as it contained an accidental breaking change.
 
 # 0.3.4 (13. November, 2021)
 
-- **change:** `box_body` has been renamed to `boxed`. `box_body` still exists
+- **changed:** `box_body` has been renamed to `boxed`. `box_body` still exists
   but is deprecated ([#530])
 
 [#530]: https://github.com/tokio-rs/axum/pull/530

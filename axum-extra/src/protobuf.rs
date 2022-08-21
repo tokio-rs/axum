@@ -188,6 +188,7 @@ impl IntoResponse for ProtoBufDecodeError {
 /// Contains one variant for each way the [`ProtoBuf`] extractor
 /// can fail.
 #[derive(Debug)]
+#[non_exhaustive]
 pub enum ProtoBufRejection {
     #[allow(missing_docs)]
     ProtoBufDecodeError(ProtoBufDecodeError),

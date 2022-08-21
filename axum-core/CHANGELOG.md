@@ -12,6 +12,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 [#1155]: https://github.com/tokio-rs/axum/pull/1155
 
+# 0.2.7 (10. July, 2022)
+
+- **fix:** Fix typos in `RequestParts` docs ([#1147])
+
+[#1147]: https://github.com/tokio-rs/axum/pull/1147
+
 # 0.2.6 (18. June, 2022)
 
 - **change:** axum-core's MSRV is now 1.56 ([#1098])
