@@ -1,7 +1,7 @@
 use axum::{
     async_trait,
-    extract::{rejection::ExtensionRejection, FromRequest, RequestParts},
-    http::StatusCode,
+    extract::{rejection::ExtensionRejection, FromRequest},
+    http::{StatusCode, Request},
     response::{IntoResponse, Response},
     routing::get,
     Extension, Router,
@@ -36,7 +36,7 @@ where
     // this rejection doesn't implement `Display` and `Error`
     type Rejection = (StatusCode, String);
 
-    async fn from_request(_req: &mut RequestParts<S, B>) -> Result<Self, Self::Rejection> {
+    async fn from_request(_req: Request<B>, _state: &S) -> Result<Self, Self::Rejection> {
         todo!()
     }
 }

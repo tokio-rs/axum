@@ -79,8 +79,7 @@ async fn handler(BufferRequestBody(body): BufferRequestBody) {
 // extractor that shows how to consume the request body upfront
 struct BufferRequestBody(Bytes);
 
-// only once extractor can consume the body so we must implement `FromRequest` and not
-// `FromRequestParts`
+// we must implement `FromRequest` (and not `FromRequestParts`) to consume the body
 #[async_trait]
 impl<S> FromRequest<S, BoxBody> for BufferRequestBody
 where
