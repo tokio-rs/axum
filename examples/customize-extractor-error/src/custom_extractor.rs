@@ -11,7 +11,6 @@ use axum::{
     http::StatusCode,
     response::IntoResponse,
 };
-use serde::de::DeserializeOwned;
 use serde_json::{json, Value};
 
 pub async fn handler(Json(value): Json<Value>) -> impl IntoResponse {
