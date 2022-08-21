@@ -15,7 +15,6 @@ error[E0277]: the trait bound `bool: FromRequestParts<()>` is not satisfied
             <OriginalUri as FromRequestParts<S>>
           and 9 others
   = note: required because of the requirements on the impl of `FromRequest<(), Body, axum_core::extract::private::Mut>` for `bool`
-  = note: required because of the requirements on the impl of `AssertFromRequest<(), Body, axum_core::extract::private::Mut>` for `bool`
 note: required by a bound in `__axum_macros_check_handler_0_from_request_check`
  --> tests/debug_handler/fail/argument_not_extractor.rs:4:23
   |
