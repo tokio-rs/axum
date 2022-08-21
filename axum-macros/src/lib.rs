@@ -86,6 +86,20 @@ mod typed_path;
 ///
 /// This requires that each field is an extractor (i.e. implements [`FromRequest`]).
 ///
+/// ```compile_fail
+/// use axum_macros::FromRequest;
+/// use axum::body::Bytes;
+///
+/// #[derive(FromRequest)]
+/// struct MyExtractor {
+///     // only the last field can implement `FromRequest`
+///     // other fields must only implement `FromRequestParts`
+///     bytes: Bytes,
+///     string: String,
+/// }
+/// ```
+/// Note that only the last field can consume the request body. Therefore this doesn't compile:
+///
 /// ## Extracting via another extractor
 ///
 /// You can use `#[from_request(via(...))]` to extract a field via another extractor, meaning the
@@ -157,95 +171,15 @@ mod typed_path;
 ///
 /// ## The rejection
 ///
-/// A rejection enum is also generated. It has a variant for each field:
-///
-/// ```
-/// use axum_macros::FromRequest;
-/// use axum::{
-///     extract::{Extension, TypedHeader},
-///     headers::ContentType,
-///     body::Bytes,
-/// };
-///
-/// #[derive(FromRequest)]
-/// struct MyExtractor {
-///     #[from_request(via(Extension))]
-///     state: State,
-///     #[from_request(via(TypedHeader))]
-///     content_type: ContentType,
-///     request_body: Bytes,
-/// }
-///
-/// // also generates
-/// //
-/// // #[derive(Debug)]
-/// // enum MyExtractorRejection {
-/// //     State(ExtensionRejection),
-/// //     ContentType(TypedHeaderRejection),
-/// //     RequestBody(BytesRejection),
-/// // }
-/// //
-/// // impl axum::response::IntoResponse for MyExtractor { ... }
-/// //
-/// // impl std::fmt::Display for MyExtractor { ... }
-/// //
-/// // impl std::error::Error for MyExtractor { ... }
-///
-/// #[derive(Clone)]
-/// struct State {
-///     // ...
-/// }
-/// ```
-///
-/// The rejection's `std::error::Error::source` implementation returns the inner rejection. This
-/// can be used to access source errors for example to customize rejection responses. Note this
-/// means the inner rejection types must themselves implement `std::error::Error`. All extractors
-/// in axum does this.
-///
-/// You can opt out of this using `#[from_request(rejection_derive(...))]`:
-///
-/// ```
-/// use axum_macros::FromRequest;
-/// use axum::{
-///     extract::{FromRequest, RequestParts},
-///     http::StatusCode,
-///     headers::ContentType,
-///     body::Bytes,
-///     async_trait,
-/// };
-///
-/// #[derive(FromRequest)]
-/// #[from_request(rejection_derive(!Display, !Error))]
-/// struct MyExtractor {
-///     other: OtherExtractor,
-/// }
-///
-/// struct OtherExtractor;
-///
-/// #[async_trait]
-/// impl<S, B> FromRequest<S, B> for OtherExtractor
-/// where
-///     B: Send,
-///     S: Send + Sync,
-/// {
-///     // this rejection doesn't implement `Display` and `Error`
-///     type Rejection = (StatusCode, String);
-///
-///     async fn from_request(_req: &mut RequestParts<S, B>) -> Result<Self, Self::Rejection> {
-///         // ...
-///         # unimplemented!()
-///     }
-/// }
-/// ```
-///
-/// You can also use your own rejection type with `#[from_request(rejection(YourType))]`:
+/// By default [`axum::response::Response`] will be used as the rejection. You can also use your own
+/// rejection type with `#[from_request(rejection(YourType))]`:
 ///
 /// ```
 /// use axum_macros::FromRequest;
 /// use axum::{
 ///     extract::{
 ///         rejection::{ExtensionRejection, StringRejection},
-///         FromRequest, RequestParts,
+///         FromRequest,
 ///     },
 ///     Extension,
 ///     response::{Response, IntoResponse},
@@ -414,6 +348,7 @@ mod typed_path;
 /// ```
 ///
 /// [`FromRequest`]: https://docs.rs/axum/latest/axum/extract/trait.FromRequest.html
+/// [`axum::response::Response`]: https://docs.rs/axum/0.6/axum/response/type.Response.html
 /// [`axum::extract::rejection::ExtensionRejection`]: https://docs.rs/axum/latest/axum/extract/rejection/enum.ExtensionRejection.html
 #[proc_macro_derive(FromRequest, attributes(from_request))]
 pub fn derive_from_request(item: TokenStream) -> TokenStream {

@@ -1,5 +1,0 @@
-error: cannot use both `via` and `rejection_derive`
- --> tests/from_request/fail/via_and_rejection_derive.rs:4:38
-  |
-4 | #[from_request(via(axum::Extension), rejection_derive(!Error))]
-  |                                      ^^^^^^^^^^^^^^^^
