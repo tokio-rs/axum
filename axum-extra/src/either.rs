@@ -95,10 +95,10 @@
 
 use axum::{
     async_trait,
-    extract::{FromRequest, FromRequestParts},
+    extract::FromRequestParts,
     response::{IntoResponse, Response},
 };
-use http::request::{Parts, Request};
+use http::request::Parts;
 
 /// Combines two extractors or responses into a single type.
 ///
@@ -219,41 +219,12 @@ pub enum Either8<E1, E2, E3, E4, E5, E6, E7, E8> {
     E8(E8),
 }
 
-mod private {
-    #[derive(Debug, Clone, Copy)]
-    pub enum EitherOnce {}
-}
-
 macro_rules! impl_traits_for_either {
     (
         $either:ident =>
         [$($ident:ident),* $(,)?],
         $last:ident $(,)?
     ) => {
-        #[async_trait]
-        impl<S, B, $($ident),*, $last> FromRequest<S, B, private::EitherOnce> for $either<$($ident),*, $last>
-        where
-            $($ident: FromRequestParts<S>),*,
-            $last: FromRequest<S, B, axum_core::extract::private::Once>,
-            B: Send + 'static,
-            S: Send + Sync,
-        {
-            type Rejection = $last::Rejection;
-
-            async fn from_request(req: Request<B>, state: &S) -> Result<Self, Self::Rejection> {
-                let (mut parts, body) = req.into_parts();
-
-                $(
-                    if let Ok(value) = FromRequestParts::from_request_parts(&mut parts, state).await {
-                        return Ok(Self::$ident(value));
-                    }
-                )*
-
-                let req = Request::from_parts(parts, body);
-                FromRequest::from_request(req, state).await.map(Self::$last)
-            }
-        }
-
         #[async_trait]
         impl<S, $($ident),*, $last> FromRequestParts<S> for $either<$($ident),*, $last>
         where
