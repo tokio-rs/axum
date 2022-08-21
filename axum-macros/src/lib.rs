@@ -86,6 +86,20 @@ mod typed_path;
 ///
 /// This requires that each field is an extractor (i.e. implements [`FromRequest`]).
 ///
+/// ```compile_fail
+/// use axum_macros::FromRequest;
+/// use axum::body::Bytes;
+///
+/// #[derive(FromRequest)]
+/// struct MyExtractor {
+///     // only the last field can implement `FromRequest`
+///     // other fields must only implement `FromRequestParts`
+///     bytes: Bytes,
+///     string: String,
+/// }
+/// ```
+/// Note that only the last field can consume the request body. Therefore this doesn't compile:
+///
 /// ## Extracting via another extractor
 ///
 /// You can use `#[from_request(via(...))]` to extract a field via another extractor, meaning the
