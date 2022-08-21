@@ -17,15 +17,10 @@ mod tuple;
 
 pub use self::from_ref::FromRef;
 
-#[doc(hidden)]
-pub mod private {
-    /// Private APIs
-
-    #[doc(hidden)]
+mod private {
     #[derive(Debug, Clone, Copy)]
     pub enum Mut {}
 
-    #[doc(hidden)]
     #[derive(Debug, Clone, Copy)]
     pub enum Once {}
 }
