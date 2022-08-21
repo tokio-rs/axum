@@ -159,6 +159,12 @@ fn check_inputs_impls_from_request(
     body_ty: &Type,
     state_ty: Type,
 ) -> TokenStream {
+    let takes_self = item_fn
+        .sig
+        .inputs
+        .first()
+        .map_or(false, |arg| matches!(arg, FnArg::Receiver(_)));
+
     item_fn
         .sig
         .inputs
@@ -185,26 +191,44 @@ fn check_inputs_impls_from_request(
                 }
             };
 
-            let name = format_ident!(
-                "__axum_macros_check_{}_{}_from_request",
+            let check_fn = format_ident!(
+                "__axum_macros_check_{}_{}_from_request_check",
                 item_fn.sig.ident,
-                idx
+                idx,
+                span = span,
             );
+
+            let call_check_fn = format_ident!(
+                "__axum_macros_check_{}_{}_from_request_call_check",
+                item_fn.sig.ident,
+                idx,
+                span = span,
+            );
+
+            let call_check_fn_body = if takes_self {
+                quote_spanned! {span=>
+                    Self::#check_fn();
+                }
+            } else {
+                quote_spanned! {span=>
+                    #check_fn();
+                }
+            };
+
             quote_spanned! {span=>
                 #[allow(warnings)]
-                fn #name()
+                fn #check_fn<M>()
                 where
-                    // TODO: we don't know which `FromRequest` impl to use
-                    // for example `String` impls `FromRequest<_, _, Once>`
-                    // but `HeaderMap` impls `FromRequest<_, _, Mut>`
-                    //
-                    // we cannot make this function generic (`fn #name<M>()`)
-                    // because that doesn't trigger any compile errors
-                    // because `M` isn't actually instantiated
-                    // i.e. `bool: FromRequest<_, _, M>` type checks, because
-                    // we don't know what `M` is
-                    #ty: ::axum::extract::FromRequest<#state_ty, #body_ty> + Send,
+                    #ty: ::axum::extract::FromRequest<#state_ty, #body_ty, M>,
                 {}
+
+                // we have to call the function to actually trigger a compile error
+                // since the function is generic, just defining it is not enough
+                #[allow(warnings)]
+                fn #call_check_fn()
+                {
+                    #call_check_fn_body
+                }
             }
         })
         .collect::<TokenStream>()

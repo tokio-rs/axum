@@ -1,6 +1,7 @@
 use axum_macros::debug_handler;
-use axum::extract::{FromRef, FromRequest, RequestParts};
+use axum::extract::{FromRef, FromRequest};
 use axum::async_trait;
+use axum::http::Request;
 
 #[debug_handler(state = AppState)]
 async fn handler(_: A) {}
@@ -13,13 +14,13 @@ struct A;
 #[async_trait]
 impl<S, B> FromRequest<S, B> for A
 where
-    B: Send,
+    B: Send + 'static,
     S: Send + Sync,
     AppState: FromRef<S>,
 {
     type Rejection = ();
 
-    async fn from_request(_req: &mut RequestParts<S, B>) -> Result<Self, Self::Rejection> {
+    async fn from_request(_req: Request<B>, _state: &S) -> Result<Self, Self::Rejection> {
         unimplemented!()
     }
 }
