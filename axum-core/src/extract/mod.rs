@@ -30,9 +30,36 @@ pub mod private {
     pub enum Once {}
 }
 
+/// Types that can be created from request parts.
+///
+/// Extractors that implement `FromRequestParts` cannot consume the request body and can thus be
+/// run in any order for handlers.
+///
+/// If your extractor needs to consume the request body then you should implement [`FromRequest`]
+/// and not [`FromRequestParts`].
+///
+/// See [`axum::extract`] for more general docs about extraxtors.
+///
+/// [`axum::extract`]: https://docs.rs/axum/0.6/axum/extract/index.html
+#[async_trait]
+pub trait FromRequestParts<S>: Sized {
+    /// If the extractor fails it'll use this "rejection" type. A rejection is
+    /// a kind of error that can be converted into a response.
+    type Rejection: IntoResponse;
+
+    /// Perform the extraction.
+    async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection>;
+}
+
 /// Types that can be created from requests.
 ///
-/// See [`axum::extract`] for more details.
+/// Extractors that implement `FromRequest` can consume the request body and can thus only be run
+/// once for handlers.
+///
+/// If your extractor doesn't need to consume the request body then you should implement
+/// [`FromRequestParts`] and not [`FromRequest`].
+///
+/// See [`axum::extract`] for more general docs about extraxtors.
 ///
 /// # What is the `B` type parameter?
 ///
@@ -51,7 +78,8 @@ pub mod private {
 /// ```rust
 /// use axum::{
 ///     async_trait,
-///     extract::{FromRequest, RequestParts},
+///     extract::FromRequest,
+///     http::Request,
 /// };
 ///
 /// struct MyExtractor;
@@ -60,12 +88,12 @@ pub mod private {
 /// impl<S, B> FromRequest<S, B> for MyExtractor
 /// where
 ///     // these bounds are required by `async_trait`
-///     B: Send,
+///     B: Send + 'static,
 ///     S: Send + Sync,
 /// {
 ///     type Rejection = http::StatusCode;
 ///
-///     async fn from_request(req: &mut RequestParts<S, B>) -> Result<Self, Self::Rejection> {
+///     async fn from_request(req: Request<B>, state: &S) -> Result<Self, Self::Rejection> {
 ///         // ...
 ///         # unimplemented!()
 ///     }
@@ -75,24 +103,14 @@ pub mod private {
 /// This ensures your extractor is as flexible as possible.
 ///
 /// [`http::Request<B>`]: http::Request
-/// [`axum::extract`]: https://docs.rs/axum/latest/axum/extract/index.html
+/// [`axum::extract`]: https://docs.rs/axum/0.6/axum/extract/index.html
 #[async_trait]
-pub trait FromRequestParts<S>: Sized {
+pub trait FromRequest<S, B, M = private::Once>: Sized {
     /// If the extractor fails it'll use this "rejection" type. A rejection is
     /// a kind of error that can be converted into a response.
     type Rejection: IntoResponse;
 
     /// Perform the extraction.
-    async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection>;
-}
-
-/// TODO
-#[async_trait]
-pub trait FromRequest<S, B, M = private::Once>: Sized {
-    /// TODO
-    type Rejection: IntoResponse;
-
-    /// TODO
     async fn from_request(req: Request<B>, state: &S) -> Result<Self, Self::Rejection>;
 }
 
