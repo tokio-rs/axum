@@ -219,7 +219,7 @@ async fn handler(
 ```
 
 axum enforces this by requiring the last extractor implements [`FromRequest`]
-and all others implements [`FromRequestParts`].
+and all others implement [`FromRequestParts`].
 
 # Optional extractors
 
