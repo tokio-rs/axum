@@ -4,10 +4,10 @@
 //!   and `async/await`. This means that you can create more powerful rejections
 //! - Boilerplate: Requires creating a new extractor for every custom rejection
 //! - Complexity: Manually implementing `FromRequest` results on more complex code
-use axum::extract::MatchedPath;
 use axum::{
     async_trait,
-    extract::{rejection::JsonRejection, FromRequest, RequestParts},
+    extract::{rejection::JsonRejection, FromRequest, FromRequestParts, MatchedPath},
+    http::Request,
     http::StatusCode,
     response::IntoResponse,
     BoxError,
@@ -35,17 +35,18 @@ where
 {
     type Rejection = (StatusCode, axum::Json<Value>);
 
-    async fn from_request(req: &mut RequestParts<S, B>) -> Result<Self, Self::Rejection> {
-        match axum::Json::<T>::from_request(req).await {
+    async fn from_request(req: Request<B>, state: &S) -> Result<Self, Self::Rejection> {
+        let (mut parts, body) = req.into_parts();
+        let path = MatchedPath::from_request_parts(&mut parts, state)
+            .await
+            .map(|path| path.as_str().to_owned())
+            .ok();
+        let req = Request::from_parts(parts, body);
+
+        match axum::Json::<T>::from_request(req, state).await {
             Ok(value) => Ok(Self(value.0)),
             // convert the error from `axum::Json` into whatever we want
             Err(rejection) => {
-                let path = req
-                    .extract::<MatchedPath>()
-                    .await
-                    .map(|x| x.as_str().to_owned())
-                    .ok();
-
                 // We can use other extractors to provide better rejection
                 // messages. For example, here we are using
                 // `axum::extract::MatchedPath` to provide a better error

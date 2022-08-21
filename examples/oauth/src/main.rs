@@ -12,15 +12,14 @@ use async_session::{MemoryStore, Session, SessionStore};
 use axum::{
     async_trait,
     extract::{
-        rejection::TypedHeaderRejectionReason, FromRef, FromRequest, Query, RequestParts, State,
-        TypedHeader,
+        rejection::TypedHeaderRejectionReason, FromRef, FromRequestParts, Query, State, TypedHeader,
     },
     http::{header::SET_COOKIE, HeaderMap},
     response::{IntoResponse, Redirect, Response},
     routing::get,
     Router,
 };
-use http::header;
+use http::{header, request::Parts};
 use oauth2::{
     basic::BasicClient, reqwest::async_http_client, AuthUrl, AuthorizationCode, ClientId,
     ClientSecret, CsrfToken, RedirectUrl, Scope, TokenResponse, TokenUrl,
@@ -139,7 +138,7 @@ async fn discord_auth(State(client): State<BasicClient>) -> impl IntoResponse {
         .url();
 
     // Redirect to Discord's oauth service
-    Redirect::to(&auth_url.to_string())
+    Redirect::to(auth_url.as_ref())
 }
 
 // Valid user session required. If there is none, redirect to the auth page
@@ -224,17 +223,18 @@ impl IntoResponse for AuthRedirect {
 }
 
 #[async_trait]
-impl<B> FromRequest<AppState, B> for User
+impl<S> FromRequestParts<S> for User
 where
-    B: Send,
+    MemoryStore: FromRef<S>,
+    S: Send + Sync,
 {
     // If anything goes wrong or no session is found, redirect to the auth page
     type Rejection = AuthRedirect;
 
-    async fn from_request(req: &mut RequestParts<AppState, B>) -> Result<Self, Self::Rejection> {
-        let store = req.state().clone().store;
+    async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
+        let store = MemoryStore::from_ref(state);
 
-        let cookies = TypedHeader::<headers::Cookie>::from_request(req)
+        let cookies = TypedHeader::<headers::Cookie>::from_request_parts(parts, state)
             .await
             .map_err(|e| match *e.name() {
                 header::COOKIE => match e.reason() {

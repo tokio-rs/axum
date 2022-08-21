@@ -7,7 +7,7 @@
 use axum::{
     async_trait,
     body::{self, BoxBody, Bytes, Full},
-    extract::{FromRequest, RequestParts},
+    extract::FromRequest,
     http::{Request, StatusCode},
     middleware::{self, Next},
     response::{IntoResponse, Response},
@@ -72,31 +72,29 @@ fn do_thing_with_request_body(bytes: Bytes) {
     tracing::debug!(body = ?bytes);
 }
 
-async fn handler(_: PrintRequestBody, body: Bytes) {
+async fn handler(BufferRequestBody(body): BufferRequestBody) {
     tracing::debug!(?body, "handler received body");
 }
 
 // extractor that shows how to consume the request body upfront
-struct PrintRequestBody;
+struct BufferRequestBody(Bytes);
 
+// only once extractor can consume the body so we must implement `FromRequest` and not
+// `FromRequestParts`
 #[async_trait]
-impl<S> FromRequest<S, BoxBody> for PrintRequestBody
+impl<S> FromRequest<S, BoxBody> for BufferRequestBody
 where
-    S: Clone + Send + Sync,
+    S: Send + Sync,
 {
     type Rejection = Response;
 
-    async fn from_request(req: &mut RequestParts<S, BoxBody>) -> Result<Self, Self::Rejection> {
-        let state = req.state().clone();
-
-        let request = Request::from_request(req)
+    async fn from_request(req: Request<BoxBody>, state: &S) -> Result<Self, Self::Rejection> {
+        let body = Bytes::from_request(req, state)
             .await
             .map_err(|err| err.into_response())?;
 
-        let request = buffer_request_body(request).await?;
+        do_thing_with_request_body(body.clone());
 
-        *req = RequestParts::with_state(state, request);
-
-        Ok(Self)
+        Ok(Self(body))
     }
 }

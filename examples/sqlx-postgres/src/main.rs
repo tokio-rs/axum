@@ -15,8 +15,8 @@
 
 use axum::{
     async_trait,
-    extract::{FromRequest, RequestParts, State},
-    http::StatusCode,
+    extract::{FromRef, FromRequestParts, State},
+    http::{request::Parts, StatusCode},
     routing::get,
     Router,
 };
@@ -75,14 +75,15 @@ async fn using_connection_pool_extractor(
 struct DatabaseConnection(sqlx::pool::PoolConnection<sqlx::Postgres>);
 
 #[async_trait]
-impl<B> FromRequest<PgPool, B> for DatabaseConnection
+impl<S> FromRequestParts<S> for DatabaseConnection
 where
-    B: Send,
+    PgPool: FromRef<S>,
+    S: Send + Sync,
 {
     type Rejection = (StatusCode, String);
 
-    async fn from_request(req: &mut RequestParts<PgPool, B>) -> Result<Self, Self::Rejection> {
-        let pool = req.state().clone();
+    async fn from_request_parts(_parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
+        let pool = PgPool::from_ref(state);
 
         let conn = pool.acquire().await.map_err(internal_error)?;
 

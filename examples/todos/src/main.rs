@@ -105,7 +105,7 @@ struct CreateTodo {
     text: String,
 }
 
-async fn todos_create(Json(input): Json<CreateTodo>, State(db): State<Db>) -> impl IntoResponse {
+async fn todos_create(State(db): State<Db>, Json(input): Json<CreateTodo>) -> impl IntoResponse {
     let todo = Todo {
         id: Uuid::new_v4(),
         text: input.text,
@@ -125,8 +125,8 @@ struct UpdateTodo {
 
 async fn todos_update(
     Path(id): Path<Uuid>,
-    Json(input): Json<UpdateTodo>,
     State(db): State<Db>,
+    Json(input): Json<UpdateTodo>,
 ) -> Result<impl IntoResponse, StatusCode> {
     let mut todo = db
         .read()
