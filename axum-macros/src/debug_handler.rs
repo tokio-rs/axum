@@ -219,7 +219,7 @@ fn check_inputs_impls_from_request(
                 #[allow(warnings)]
                 fn #check_fn<M>()
                 where
-                    #ty: ::axum::extract::FromRequest<#state_ty, #body_ty, M>,
+                    #ty: ::axum::extract::FromRequest<#state_ty, #body_ty, M> + Send,
                 {}
 
                 // we have to call the function to actually trigger a compile error
