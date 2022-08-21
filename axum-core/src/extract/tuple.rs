@@ -16,11 +16,6 @@ where
     }
 }
 
-mod private {
-    #[derive(Debug, Clone, Copy)]
-    pub enum TupleOnce {}
-}
-
 macro_rules! impl_from_request {
     (
         [$($ty:ident),*], $last:ident
@@ -53,7 +48,7 @@ macro_rules! impl_from_request {
         // implementation of `FromRequest<S, B, Mut>` for `T: FromRequestParts<S>`.
         #[async_trait]
         #[allow(non_snake_case, unused_mut, unused_variables)]
-        impl<S, B, $($ty,)* $last> FromRequest<S, B, private::TupleOnce> for ($($ty,)* $last,)
+        impl<S, B, $($ty,)* $last> FromRequest<S, B> for ($($ty,)* $last,)
         where
             $( $ty: FromRequestParts<S> + Send, )*
             $last: FromRequest<S, B> + Send,
@@ -138,5 +133,11 @@ mod tests {
         assert_from_request_parts::<((), ())>();
         assert_from_request::<_, ((), ())>();
         assert_from_request::<_, (Method, Bytes)>();
+    }
+
+    #[test]
+    fn nested_tuple() {
+        assert_from_request_parts::<(((Method,),),)>();
+        assert_from_request::<_, ((((Bytes,),),),)>();
     }
 }
