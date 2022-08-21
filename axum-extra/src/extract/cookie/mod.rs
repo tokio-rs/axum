@@ -115,7 +115,9 @@ impl CookieJar {
     /// The cookies in `headers` will be added to the jar.
     ///
     /// This is inteded to be used in middleware and other places where it might be difficult to
-    /// run extractors. Normally you should create `CookieJar`s through [`FromRequest`].
+    /// run extractors. Normally you should create `CookieJar`s through [`FromRequestParts`].
+    ///
+    /// [`FromRequestParts`]: axum::extract::FromRequestParts
     pub fn from_headers(headers: &HeaderMap) -> Self {
         let mut jar = cookie::CookieJar::new();
         for cookie in cookies_from_request(headers) {
@@ -127,10 +129,12 @@ impl CookieJar {
     /// Create a new empty `CookieJar`.
     ///
     /// This is inteded to be used in middleware and other places where it might be difficult to
-    /// run extractors. Normally you should create `CookieJar`s through [`FromRequest`].
+    /// run extractors. Normally you should create `CookieJar`s through [`FromRequestParts`].
     ///
     /// If you need a jar that contains the headers from a request use `impl From<&HeaderMap> for
     /// CookieJar`.
+    ///
+    /// [`FromRequestParts`]: axum::extract::FromRequestParts
     pub fn new() -> Self {
         Self::default()
     }

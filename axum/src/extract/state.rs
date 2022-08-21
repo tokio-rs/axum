@@ -172,9 +172,6 @@ use std::{
 ///     // ...
 /// }
 /// ```
-///
-/// Note that you don't need to use the `State` extractor since you can access the state directly
-/// from [`RequestParts`].
 #[derive(Debug, Default, Clone, Copy)]
 pub struct State<S>(pub S);
 
