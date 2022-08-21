@@ -377,7 +377,7 @@
 //! [tower-guides]: https://github.com/tower-rs/tower/tree/master/guides
 //! [`Uuid`]: https://docs.rs/uuid/latest/uuid/
 //! [`FromRequest`]: crate::extract::FromRequest
-//! [`FromRequetsParts`]: crate::extract::FromRequetsParts
+//! [`FromRequestParts`]: crate::extract::FromRequestParts
 //! [`HeaderMap`]: http::header::HeaderMap
 //! [`Request`]: http::Request
 //! [customize-extractor-error]: https://github.com/tokio-rs/axum/blob/main/examples/customize-extractor-error/src/main.rs
