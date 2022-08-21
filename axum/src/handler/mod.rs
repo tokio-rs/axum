@@ -162,7 +162,7 @@ pub trait Handler<T, S = (), B = Body>: Clone + Send + Sized + 'static {
     }
 }
 
-impl<F, Fut, Res, S, B> Handler<(axum_core::extract::private::Once,), S, B> for F
+impl<F, Fut, Res, S, B> Handler<((),), S, B> for F
 where
     F: FnOnce() -> Fut + Clone + Send + 'static,
     Fut: Future<Output = Res> + Send,

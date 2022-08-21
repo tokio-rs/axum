@@ -56,7 +56,7 @@ macro_rules! impl_from_request {
         impl<S, B, $($ty,)* $last> FromRequest<S, B, private::TupleOnce> for ($($ty,)* $last,)
         where
             $( $ty: FromRequestParts<S> + Send, )*
-            $last: FromRequest<S, B, super::private::Once> + Send,
+            $last: FromRequest<S, B> + Send,
             B: Send + 'static,
             S: Send + Sync,
         {
