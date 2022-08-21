@@ -116,7 +116,9 @@ impl PrivateCookieJar {
     /// The valid cookies in `headers` will be added to the jar.
     ///
     /// This is inteded to be used in middleware and other where places it might be difficult to
-    /// run extractors. Normally you should create `PrivateCookieJar`s through [`FromRequest`].
+    /// run extractors. Normally you should create `PrivateCookieJar`s through [`FromRequestParts`].
+    ///
+    /// [`FromRequestParts`]: axum::extract::FromRequestParts
     pub fn from_headers(headers: &HeaderMap, key: Key) -> Self {
         let mut jar = cookie::CookieJar::new();
         let mut private_jar = jar.private_mut(&key);
@@ -136,7 +138,9 @@ impl PrivateCookieJar {
     /// Create a new empty `PrivateCookieJarIter`.
     ///
     /// This is inteded to be used in middleware and other places where it might be difficult to
-    /// run extractors. Normally you should create `PrivateCookieJar`s through [`FromRequest`].
+    /// run extractors. Normally you should create `PrivateCookieJar`s through [`FromRequestParts`].
+    ///
+    /// [`FromRequestParts`]: axum::extract::FromRequestParts
     pub fn new(key: Key) -> Self {
         Self {
             jar: Default::default(),
