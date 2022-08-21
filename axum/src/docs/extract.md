@@ -5,12 +5,12 @@ Types and traits for extracting data from requests.
 - [Intro](#intro)
 - [Common extractors](#common-extractors)
 - [Applying multiple extractors](#applying-multiple-extractors)
-- [Be careful when extracting `Request`](#be-careful-when-extracting-request)
+- [The order of extractors](#the-order-of-extractors)
 - [Optional extractors](#optional-extractors)
 - [Customizing extractor responses](#customizing-extractor-responses)
 - [Accessing inner errors](#accessing-inner-errors)
 - [Defining custom extractors](#defining-custom-extractors)
-- [Accessing other extractors in `FromRequest` implementations](#accessing-other-extractors-in-fromrequest-implementations)
+- [Accessing other extractors in `FromRequest` or `FromRequestParts` implementations](#accessing-other-extractors-in-fromrequest-or-fromrequestparts-implementations)
 - [Request body extractors](#request-body-extractors)
 - [Running extractors from middleware](#running-extractors-from-middleware)
 
@@ -152,83 +152,74 @@ async fn get_user_things(
 # };
 ```
 
+# The order of extractors
+
 Extractors always run in the order of the function parameters that is from
 left to right.
 
-# Be careful when extracting `Request`
+The request body is an asynchronous stream that can only be consumed once.
+Therefore you can only have one extractor that consumes the request body. axum
+enforces by that requiring such extractors to be the _last_ argument your
+handler takes.
 
-[`Request`] is itself an extractor:
+For example
 
-```rust,no_run
-use axum::{http::Request, body::Body};
+```rust
+use axum::http::{Method, HeaderMap};
 
-async fn handler(request: Request<Body>) {
+async fn handler(
+    // `Method` and `HeaderMap` don't consume the request body so they can
+    // put anywhere in the argument list
+    method: Method,
+    headers: HeaderMap,
+    // `String` consumes the request body and thus must be the last extractor
+    body: String,
+) {
     // ...
 }
+#
+# let _: axum::routing::MethodRouter = axum::routing::get(handler);
 ```
 
-However be careful when combining it with other extractors since it will consume
-all extensions and the request body. Therefore it is recommended to always apply
-the request extractor last:
+We get a compile error if `String` isn't the last extractor:
 
-```rust,no_run
-use axum::{http::Request, Extension, body::Body};
+```rust,compile_fail
+use axum::http::Method;
 
-// this will fail at runtime since `Request<Body>` will have consumed all the
-// extensions so `Extension<State>` will be missing
-async fn broken(
-    request: Request<Body>,
-    Extension(state): Extension<State>,
+async fn handler(
+    // this doesn't work since `String` must be the last argument
+    body: String,
+    method: Method,
 ) {
     // ...
 }
-
-// this will work since we extract `Extension<State>` before `Request<Body>`
-async fn works(
-    Extension(state): Extension<State>,
-    request: Request<Body>,
-) {
-    // ...
-}
-
-#[derive(Clone)]
-struct State {};
+#
+# let _: axum::routing::MethodRouter = axum::routing::get(handler);
 ```
 
-# Extracting request bodies
+This also means you cannot consume the request body twice:
 
-Since request bodies are asynchronous streams they can only be extracted once:
+```rust,compile_fail
+use axum::Json;
+use serde::Deserialize;
 
-```rust,no_run
-use axum::{Json, http::Request, body::{Bytes, Body}};
-use serde_json::Value;
+#[derive(Deserialize)]
+struct Payload {}
 
-// this will fail at runtime since `Json<Value>` and `Bytes` both attempt to extract
-// the body
-//
-// the solution is to only extract the body once so remove either
-// `body_json: Json<Value>` or `body_bytes: Bytes`
-async fn broken(
-    body_json: Json<Value>,
-    body_bytes: Bytes,
+async fn handler(
+    // `String` and `Json` both consume the request body
+    // so they cannot both be used
+    string_body: String,
+    json_body: Json<Payload>,
 ) {
     // ...
 }
-
-// this doesn't work either for the same reason: `Bytes` and `Request<Body>`
-// both extract the body
-async fn also_broken(
-    body_json: Json<Value>,
-    request: Request<Body>,
-) {
-    // ...
-}
+#
+# let _: axum::routing::MethodRouter = axum::routing::get(handler);
 ```
 
-Also keep this in mind if you extract or otherwise consume the body in
-middleware. You either need to not extract the body in handlers or make sure
-your middleware reinserts the body using [`RequestParts::body_mut`] so it's
-available to handlers.
+axum enforces this by requiring the last extractor implements [`FromRequest`]
+and all others implement [`FromRequestParts`].
 
 # Optional extractors
 
@@ -407,29 +398,38 @@ happen without major breaking versions.
 
 # Defining custom extractors
 
-You can also define your own extractors by implementing [`FromRequest`]:
+You can also define your own extractors by implementing either
+[`FromRequestParts`] or [`FromRequest`].
+
+## Implementing `FromRequestParts`
+
+Implement `FromRequestParts` if your extractor doesn't need access to the
+request body:
 
 ```rust,no_run
 use axum::{
     async_trait,
-    extract::{FromRequest, RequestParts},
+    extract::FromRequestParts,
     routing::get,
     Router,
+    http::{
+        StatusCode,
+        header::{HeaderValue, USER_AGENT},
+        request::Parts,
+    },
 };
-use http::{StatusCode, header::{HeaderValue, USER_AGENT}};
 
 struct ExtractUserAgent(HeaderValue);
 
 #[async_trait]
-impl<S, B> FromRequest<S, B> for ExtractUserAgent
+impl<S> FromRequestParts<S> for ExtractUserAgent
 where
-    B: Send,
     S: Send + Sync,
 {
     type Rejection = (StatusCode, &'static str);
 
-    async fn from_request(req: &mut RequestParts<S, B>) -> Result<Self, Self::Rejection> {
-        if let Some(user_agent) = req.headers().get(USER_AGENT) {
+    async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
+        if let Some(user_agent) = parts.headers.get(USER_AGENT) {
             Ok(ExtractUserAgent(user_agent.clone()))
         } else {
             Err((StatusCode::BAD_REQUEST, "`User-Agent` header is missing"))
@@ -447,7 +447,58 @@ let app = Router::new().route("/foo", get(handler));
 # };
 ```
 
-# Accessing other extractors in [`FromRequest`] implementations
+## Implementing `FromRequest`
+
+If your extractor needs to consume the request body you must implement [`FromRequest`]
+
+```rust,no_run
+use axum::{
+    async_trait,
+    extract::FromRequest,
+    response::{Response, IntoResponse},
+    body::Bytes,
+    routing::get,
+    Router,
+    http::{
+        StatusCode,
+        header::{HeaderValue, USER_AGENT},
+        Request,
+    },
+};
+
+struct ValidatedBody(Bytes);
+
+#[async_trait]
+impl<S, B> FromRequest<S, B> for ValidatedBody
+where
+    Bytes: FromRequest<S, B>,
+    B: Send + 'static,
+    S: Send + Sync,
+{
+    type Rejection = Response;
+
+    async fn from_request(req: Request<B>, state: &S) -> Result<Self, Self::Rejection> {
+        let body = Bytes::from_request(req, state)
+            .await
+            .map_err(IntoResponse::into_response)?;
+
+        // do validation...
+
+        Ok(Self(body))
+    }
+}
+
+async fn handler(ValidatedBody(body): ValidatedBody) {
+    // ...
+}
+
+let app = Router::new().route("/foo", get(handler));
+# async {
+# axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+# };
+```
+
+# Accessing other extractors in `FromRequest` or `FromRequestParts` implementations
 
 When defining custom extractors you often need to access another extractors
 in your implementation.
@@ -455,9 +506,9 @@ in your implementation.
 ```rust
 use axum::{
     async_trait,
-    extract::{Extension, FromRequest, RequestParts, TypedHeader},
+    extract::{Extension, FromRequestParts, TypedHeader},
     headers::{authorization::Bearer, Authorization},
-    http::StatusCode,
+    http::{StatusCode, request::Parts},
     response::{IntoResponse, Response},
     routing::get,
     Router,
@@ -473,20 +524,19 @@ struct AuthenticatedUser {
 }
 
 #[async_trait]
-impl<S, B> FromRequest<S, B> for AuthenticatedUser
+impl<S> FromRequestParts<S> for AuthenticatedUser
 where
-    B: Send,
     S: Send + Sync,
 {
     type Rejection = Response;
 
-    async fn from_request(req: &mut RequestParts<S, B>) -> Result<Self, Self::Rejection> {
+    async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
         let TypedHeader(Authorization(token)) = 
-            TypedHeader::<Authorization<Bearer>>::from_request(req)
+            TypedHeader::<Authorization<Bearer>>::from_request_parts(parts, state)
                 .await
                 .map_err(|err| err.into_response())?;
 
-        let Extension(state): Extension<State> = Extension::from_request(req)
+        let Extension(state): Extension<State> = Extension::from_request_parts(parts, state)
             .await
             .map_err(|err| err.into_response())?;
 
@@ -584,14 +634,13 @@ let app = Router::new()
 
 # Running extractors from middleware
 
-Extractors can also be run from middleware by making a [`RequestParts`] and
-running your extractor:
+Extractors can also be run from middleware:
 
 ```rust
 use axum::{
     Router,
     middleware::{self, Next},
-    extract::{RequestParts, TypedHeader},
+    extract::{TypedHeader, FromRequestParts},
     http::{Request, StatusCode},
     response::Response,
     headers::authorization::{Authorization, Bearer},
@@ -604,12 +653,11 @@ async fn auth_middleware<B>(
 where
     B: Send,
 {
-    // running extractors requires a `RequestParts`
-    let mut request_parts = RequestParts::new(request);
+    // running extractors requires a `axum::http::request::Parts`
+    let (mut parts, body) = request.into_parts();
 
-    // `TypedHeader<Authorization<Bearer>>` extracts the auth token but
-    // `RequestParts::extract` works with anything that implements `FromRequest`
-    let auth = request_parts.extract::<TypedHeader<Authorization<Bearer>>>()
+    // `TypedHeader<Authorization<Bearer>>` extracts the auth token
+    let auth = TypedHeader::<Authorization<Bearer>>::from_request_parts(&mut parts, &())
         .await
         .map_err(|_| StatusCode::UNAUTHORIZED)?;
 
@@ -617,14 +665,8 @@ where
         return Err(StatusCode::UNAUTHORIZED);
     }
 
-    // get the request back so we can run `next`
-    //
-    // `try_into_request` will fail if you have extracted the request body. We
-    // know that `TypedHeader` never does that.
-    //
-    // see the `consume-body-in-extractor-or-middleware` example if you need to
-    // extract the body
-    let request = request_parts.try_into_request().expect("body extracted");
+    // reconstruct the request
+    let request = Request::from_parts(parts, body);
 
     Ok(next.run(request).await)
 }

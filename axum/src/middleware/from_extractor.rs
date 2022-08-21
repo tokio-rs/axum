@@ -33,28 +33,27 @@ use tower_service::Service;
 ///
 /// ```rust
 /// use axum::{
-///     extract::{FromRequest, RequestParts},
+///     extract::FromRequestParts,
 ///     middleware::from_extractor,
 ///     routing::{get, post},
 ///     Router,
+///     http::{header, StatusCode, request::Parts},
 /// };
-/// use http::{header, StatusCode};
 /// use async_trait::async_trait;
 ///
 /// // An extractor that performs authorization.
 /// struct RequireAuth;
 ///
 /// #[async_trait]
-/// impl<S, B> FromRequest<S, B> for RequireAuth
+/// impl<S> FromRequestParts<S> for RequireAuth
 /// where
-///     B: Send,
 ///     S: Send + Sync,
 /// {
 ///     type Rejection = StatusCode;
 ///
-///     async fn from_request(req: &mut RequestParts<S, B>) -> Result<Self, Self::Rejection> {
-///         let auth_header = req
-///             .headers()
+///     async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
+///         let auth_header = parts
+///             .headers
 ///             .get(header::AUTHORIZATION)
 ///             .and_then(|value| value.to_str().ok());
 ///

@@ -93,8 +93,8 @@
 //!
 //! # Extractors
 //!
-//! An extractor is a type that implements [`FromRequest`]. Extractors is how
-//! you pick apart the incoming request to get the parts your handler needs.
+//! An extractor is a type that implements [`FromRequest`] or [`FromRequestParts`]. Extractors is
+//! how you pick apart the incoming request to get the parts your handler needs.
 //!
 //! ```rust
 //! use axum::extract::{Path, Query, Json};
@@ -302,9 +302,10 @@
 //!
 //! # Building integrations for axum
 //!
-//! Libraries authors that want to provide [`FromRequest`] or [`IntoResponse`] implementations
-//! should depend on the [`axum-core`] crate, instead of `axum` if possible. [`axum-core`] contains
-//! core types and traits and is less likely to receive breaking changes.
+//! Libraries authors that want to provide [`FromRequest`], [`FromRequestParts`], or
+//! [`IntoResponse`] implementations should depend on the [`axum-core`] crate, instead of `axum` if
+//! possible. [`axum-core`] contains core types and traits and is less likely to receive breaking
+//! changes.
 //!
 //! # Required dependencies
 //!
@@ -376,6 +377,7 @@
 //! [tower-guides]: https://github.com/tower-rs/tower/tree/master/guides
 //! [`Uuid`]: https://docs.rs/uuid/latest/uuid/
 //! [`FromRequest`]: crate::extract::FromRequest
+//! [`FromRequestParts`]: crate::extract::FromRequestParts
 //! [`HeaderMap`]: http::header::HeaderMap
 //! [`Request`]: http::Request
 //! [customize-extractor-error]: https://github.com/tokio-rs/axum/blob/main/examples/customize-extractor-error/src/main.rs
