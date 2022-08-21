@@ -21,24 +21,23 @@ use std::ops::{Deref, DerefMut};
 /// use axum_extra::extract::Cached;
 /// use axum::{
 ///     async_trait,
-///     extract::{FromRequest, RequestParts},
+///     extract::FromRequestParts,
 ///     body::BoxBody,
 ///     response::{IntoResponse, Response},
-///     http::StatusCode,
+///     http::{StatusCode, request::Parts},
 /// };
 ///
 /// #[derive(Clone)]
 /// struct Session { /* ... */ }
 ///
 /// #[async_trait]
-/// impl<S, B> FromRequest<S, B> for Session
+/// impl<S> FromRequestParts<S> for Session
 /// where
-///     B: Send,
 ///     S: Send + Sync,
 /// {
 ///     type Rejection = (StatusCode, String);
 ///
-///     async fn from_request(req: &mut RequestParts<S, B>) -> Result<Self, Self::Rejection> {
+///     async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
 ///         // load session...
 ///         # unimplemented!()
 ///     }
@@ -47,19 +46,18 @@ use std::ops::{Deref, DerefMut};
 /// struct CurrentUser { /* ... */ }
 ///
 /// #[async_trait]
-/// impl<S, B> FromRequest<S, B> for CurrentUser
+/// impl<S> FromRequestParts<S> for CurrentUser
 /// where
-///     B: Send,
 ///     S: Send + Sync,
 /// {
 ///     type Rejection = Response;
 ///
-///     async fn from_request(req: &mut RequestParts<S, B>) -> Result<Self, Self::Rejection> {
+///     async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
 ///         // loading a `CurrentUser` requires first loading the `Session`
 ///         //
 ///         // by using `Cached<Session>` we avoid extracting the session more than
 ///         // once, in case other extractors for the same request also loads the session
-///         let session: Session = Cached::<Session>::from_request(req)
+///         let session: Session = Cached::<Session>::from_request_parts(parts, state)
 ///             .await
 ///             .map_err(|err| err.into_response())?
 ///             .0;
