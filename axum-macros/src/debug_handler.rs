@@ -1,7 +1,6 @@
-use std::collections::HashSet;
-
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote, quote_spanned};
+use std::collections::HashSet;
 use syn::{parse::Parse, spanned::Spanned, FnArg, ItemFn, Token, Type};
 
 pub(crate) fn expand(mut attr: Attrs, item_fn: ItemFn) -> TokenStream {
@@ -154,16 +153,25 @@ fn check_path_extractor(item_fn: &ItemFn) -> TokenStream {
     }
 }
 
+fn is_self_pat_type(typed: &syn::PatType) -> bool {
+    let ident = if let syn::Pat::Ident(ident) = &*typed.pat {
+        &ident.ident
+    } else {
+        return false;
+    };
+
+    ident == "self"
+}
+
 fn check_inputs_impls_from_request(
     item_fn: &ItemFn,
     body_ty: &Type,
     state_ty: Type,
 ) -> TokenStream {
-    let takes_self = item_fn
-        .sig
-        .inputs
-        .first()
-        .map_or(false, |arg| matches!(arg, FnArg::Receiver(_)));
+    let takes_self = item_fn.sig.inputs.first().map_or(false, |arg| match arg {
+        FnArg::Receiver(_) => true,
+        FnArg::Typed(typed) => is_self_pat_type(typed),
+    });
 
     item_fn
         .sig
@@ -187,7 +195,12 @@ fn check_inputs_impls_from_request(
                 FnArg::Typed(typed) => {
                     let ty = &typed.ty;
                     let span = ty.span();
-                    (span, ty.clone())
+
+                    if is_self_pat_type(typed) {
+                        (span, syn::parse_quote!(Self))
+                    } else {
+                        (span, ty.clone())
+                    }
                 }
             };
 
@@ -367,11 +380,11 @@ fn check_future_send(item_fn: &ItemFn) -> TokenStream {
 }
 
 fn self_receiver(item_fn: &ItemFn) -> Option<TokenStream> {
-    let takes_self = item_fn
-        .sig
-        .inputs
-        .iter()
-        .any(|arg| matches!(arg, syn::FnArg::Receiver(_)));
+    let takes_self = item_fn.sig.inputs.iter().any(|arg| match arg {
+        FnArg::Receiver(_) => true,
+        FnArg::Typed(typed) => is_self_pat_type(typed),
+    });
+
     if takes_self {
         return Some(quote! { Self:: });
     }
