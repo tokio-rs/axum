@@ -472,15 +472,5 @@ fn state_type_from_args(item_fn: &ItemFn) -> Option<Type> {
 
 #[test]
 fn ui() {
-    #[rustversion::stable]
-    fn go() {
-        let t = trybuild::TestCases::new();
-        t.compile_fail("tests/debug_handler/fail/*.rs");
-        t.pass("tests/debug_handler/pass/*.rs");
-    }
-
-    #[rustversion::not(stable)]
-    fn go() {}
-
-    go();
+    crate::run_ui_tests("debug_handler");
 }

@@ -561,3 +561,37 @@ where
         Err(err) => err.into_compile_error().into(),
     }
 }
+
+#[cfg(test)]
+fn run_ui_tests(directory: &str) {
+    #[rustversion::stable]
+    fn go(directory: &str) {
+        let t = trybuild::TestCases::new();
+
+        if let Ok(mut path) = std::env::var("AXUM_TEST_ONLY") {
+            if let Some(path_without_prefix) = path.strip_prefix("axum-macros/") {
+                path = path_without_prefix.to_owned();
+            }
+
+            if !path.contains(&format!("/{}/", directory)) {
+                return;
+            }
+
+            if path.contains("/fail/") {
+                t.compile_fail(path);
+            } else if path.contains("/pass/") {
+                t.pass(path);
+            } else {
+                panic!()
+            }
+        } else {
+            t.compile_fail(format!("tests/{}/fail/*.rs", directory));
+            t.pass(format!("tests/{}/pass/*.rs", directory));
+        }
+    }
+
+    #[rustversion::not(stable)]
+    fn go(directory: &str) {}
+
+    go(directory);
+}
