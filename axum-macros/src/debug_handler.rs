@@ -1,3 +1,4 @@
+use itertools::{Itertools, Position};
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote, quote_spanned};
 use std::collections::HashSet;
@@ -177,8 +178,16 @@ fn check_inputs_impls_from_request(
         .sig
         .inputs
         .iter()
+        .with_position()
         .enumerate()
         .map(|(idx, arg)| {
+            let must_impl_from_request_parts = match &arg {
+                Position::First(_) | Position::Middle(_) => true,
+                Position::Last(_) | Position::Only(_) => false,
+            };
+
+            let arg = arg.into_inner();
+
             let (span, ty) = match arg {
                 FnArg::Receiver(receiver) => {
                     if receiver.reference.is_some() {
@@ -228,11 +237,27 @@ fn check_inputs_impls_from_request(
                 }
             };
 
+            let check_fn_generics = if must_impl_from_request_parts {
+                quote! {}
+            } else {
+                quote! { <M> }
+            };
+
+            let from_request_bound = if must_impl_from_request_parts {
+                quote! {
+                    #ty: ::axum::extract::FromRequestParts<#state_ty> + Send
+                }
+            } else {
+                quote! {
+                    #ty: ::axum::extract::FromRequest<#state_ty, #body_ty, M> + Send
+                }
+            };
+
             quote_spanned! {span=>
                 #[allow(warnings)]
-                fn #check_fn<M>()
+                fn #check_fn #check_fn_generics()
                 where
-                    #ty: ::axum::extract::FromRequest<#state_ty, #body_ty, M> + Send,
+                    #from_request_bound,
                 {}
 
                 // we have to call the function to actually trigger a compile error
