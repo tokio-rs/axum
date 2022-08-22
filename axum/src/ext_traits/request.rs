@@ -1,5 +1,5 @@
-use async_trait::async_trait;
 use axum_core::extract::{FromRequest, FromRequestParts};
+use futures_util::future::BoxFuture;
 use http::Request;
 
 mod sealed {
@@ -8,7 +8,6 @@ mod sealed {
 }
 
 /// Extension trait that adds additional methods to [`Request`].
-#[async_trait]
 pub trait RequestExt<B>: sealed::Sealed<B> + Sized {
     /// Apply an extractor to this `Request`.
     ///
@@ -16,9 +15,10 @@ pub trait RequestExt<B>: sealed::Sealed<B> + Sized {
     ///
     /// Note this consumes the request. Use [`RequestExt::extract_parts`] if you're not extracting
     /// the body and don't want to consume the request.
-    async fn extract<E, M>(self) -> Result<E, E::Rejection>
+    fn extract<E, M>(self) -> BoxFuture<'static, Result<E, E::Rejection>>
     where
-        E: FromRequest<(), B, M>;
+        E: FromRequest<(), B, M> + 'static,
+        M: 'static;
 
     /// Apply an extractor that requires some state to this `Request`.
     ///
@@ -26,57 +26,63 @@ pub trait RequestExt<B>: sealed::Sealed<B> + Sized {
     ///
     /// Note this consumes the request. Use [`RequestExt::extract_parts_with_state`] if you're not
     /// extracting the body and don't want to consume the request.
-    async fn extract_with_state<E, S, M>(self, state: &S) -> Result<E, E::Rejection>
+    fn extract_with_state<E, S, M>(self, state: &S) -> BoxFuture<'_, Result<E, E::Rejection>>
     where
-        E: FromRequest<S, B, M>,
+        E: FromRequest<S, B, M> + 'static,
         S: Send + Sync;
 
     /// Apply a parts extractor to this `Request`.
     ///
     /// This is just a convenience for `E::from_request_parts(parts, state)`.
-    async fn extract_parts<E>(&mut self) -> Result<E, E::Rejection>
+    fn extract_parts<E>(&mut self) -> BoxFuture<'_, Result<E, E::Rejection>>
     where
-        E: FromRequestParts<()>;
+        E: FromRequestParts<()> + 'static;
 
     /// Apply a parts extractor that requires some state to this `Request`.
     ///
     /// This is just a convenience for `E::from_request_parts(parts, state)`.
-    async fn extract_parts_with_state<E, S>(&mut self, state: &S) -> Result<E, E::Rejection>
+    fn extract_parts_with_state<'a, E, S>(
+        &'a mut self,
+        state: &'a S,
+    ) -> BoxFuture<'a, Result<E, E::Rejection>>
     where
-        E: FromRequestParts<S>,
+        E: FromRequestParts<S> + 'static,
         S: Send + Sync;
 }
 
-#[async_trait]
 impl<B> RequestExt<B> for Request<B>
 where
-    B: Send,
+    B: Send + 'static,
 {
-    async fn extract<E, M>(self) -> Result<E, E::Rejection>
+    fn extract<E, M>(self) -> BoxFuture<'static, Result<E, E::Rejection>>
     where
-        E: FromRequest<(), B, M>,
+        E: FromRequest<(), B, M> + 'static,
+        M: 'static,
     {
-        self.extract_with_state(&()).await
+        self.extract_with_state(&())
     }
 
-    async fn extract_with_state<E, S, M>(self, state: &S) -> Result<E, E::Rejection>
+    fn extract_with_state<E, S, M>(self, state: &S) -> BoxFuture<'_, Result<E, E::Rejection>>
     where
-        E: FromRequest<S, B, M>,
+        E: FromRequest<S, B, M> + 'static,
         S: Send + Sync,
     {
-        E::from_request(self, state).await
+        E::from_request(self, state)
     }
 
-    async fn extract_parts<E>(&mut self) -> Result<E, E::Rejection>
+    fn extract_parts<E>(&mut self) -> BoxFuture<'_, Result<E, E::Rejection>>
     where
-        E: FromRequestParts<()>,
+        E: FromRequestParts<()> + 'static,
     {
-        self.extract_parts_with_state(&()).await
+        self.extract_parts_with_state(&())
     }
 
-    async fn extract_parts_with_state<E, S>(&mut self, state: &S) -> Result<E, E::Rejection>
+    fn extract_parts_with_state<'a, E, S>(
+        &'a mut self,
+        state: &'a S,
+    ) -> BoxFuture<'a, Result<E, E::Rejection>>
     where
-        E: FromRequestParts<S>,
+        E: FromRequestParts<S> + 'static,
         S: Send + Sync,
     {
         let mut req = Request::new(());
@@ -87,15 +93,17 @@ where
         *req.extensions_mut() = std::mem::take(self.extensions_mut());
         let (mut parts, _) = req.into_parts();
 
-        let result = E::from_request_parts(&mut parts, state).await;
+        Box::pin(async move {
+            let result = E::from_request_parts(&mut parts, state).await;
 
-        *self.version_mut() = parts.version;
-        *self.method_mut() = parts.method.clone();
-        *self.uri_mut() = parts.uri.clone();
-        *self.headers_mut() = std::mem::take(&mut parts.headers);
-        *self.extensions_mut() = std::mem::take(&mut parts.extensions);
+            *self.version_mut() = parts.version;
+            *self.method_mut() = parts.method.clone();
+            *self.uri_mut() = parts.uri.clone();
+            *self.headers_mut() = std::mem::take(&mut parts.headers);
+            *self.extensions_mut() = std::mem::take(&mut parts.extensions);
 
-        result
+            result
+        })
     }
 }
 
@@ -103,6 +111,7 @@ where
 mod tests {
     use super::*;
     use crate::{ext_traits::tests::RequiresState, extract::State};
+    use async_trait::async_trait;
     use axum_core::extract::FromRef;
     use http::Method;
     use hyper::Body;

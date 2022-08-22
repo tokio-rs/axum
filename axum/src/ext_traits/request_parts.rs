@@ -1,5 +1,5 @@
-use async_trait::async_trait;
 use axum_core::extract::FromRequestParts;
+use futures_util::future::BoxFuture;
 use http::request::Parts;
 
 mod sealed {
@@ -8,39 +8,43 @@ mod sealed {
 }
 
 /// Extension trait that adds additional methods to [`Parts`].
-#[async_trait]
 pub trait RequestPartsExt: sealed::Sealed + Sized {
     /// Apply an extractor to this `Parts`.
     ///
     /// This is just a convenience for `E::from_request_parts(parts, &())`.
-    async fn extract<E>(&mut self) -> Result<E, E::Rejection>
+    fn extract<E>(&mut self) -> BoxFuture<'_, Result<E, E::Rejection>>
     where
-        E: FromRequestParts<()>;
+        E: FromRequestParts<()> + 'static;
 
     /// Apply an extractor that requires some state to this `Parts`.
     ///
     /// This is just a convenience for `E::from_request_parts(parts, state)`.
-    async fn extract_with_state<E, S>(&mut self, state: &S) -> Result<E, E::Rejection>
+    fn extract_with_state<'a, E, S>(
+        &'a mut self,
+        state: &'a S,
+    ) -> BoxFuture<'a, Result<E, E::Rejection>>
     where
-        E: FromRequestParts<S>,
+        E: FromRequestParts<S> + 'static,
         S: Send + Sync;
 }
 
-#[async_trait]
 impl RequestPartsExt for Parts {
-    async fn extract<E>(&mut self) -> Result<E, E::Rejection>
+    fn extract<E>(&mut self) -> BoxFuture<'_, Result<E, E::Rejection>>
     where
-        E: FromRequestParts<()>,
+        E: FromRequestParts<()> + 'static,
     {
-        self.extract_with_state(&()).await
+        self.extract_with_state(&())
     }
 
-    async fn extract_with_state<E, S>(&mut self, state: &S) -> Result<E, E::Rejection>
+    fn extract_with_state<'a, E, S>(
+        &'a mut self,
+        state: &'a S,
+    ) -> BoxFuture<'a, Result<E, E::Rejection>>
     where
-        E: FromRequestParts<S>,
+        E: FromRequestParts<S> + 'static,
         S: Send + Sync,
     {
-        E::from_request_parts(self, state).await
+        E::from_request_parts(self, state)
     }
 }
 
@@ -50,6 +54,7 @@ mod tests {
 
     use super::*;
     use crate::{ext_traits::tests::RequiresState, extract::State};
+    use async_trait::async_trait;
     use axum_core::extract::FromRef;
     use http::{Method, Request};
 
