@@ -501,8 +501,9 @@ let app = Router::new().route("/foo", get(handler));
 
 ## Cannot implement both `FromRequest` and `FromRequestParts`
 
-Note that you will make your extractor unusable by implementing both `FromRequest` and `FromRequestParts` directly for the
-same type, unless it is wrapping another extractor:
+Note that you will make your extractor unusable by implementing both
+`FromRequest` and `FromRequestParts` directly for the same type, unless it is
+wrapping another extractor:
 
 ```rust,compile_fail
 use axum::{
