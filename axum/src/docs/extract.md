@@ -499,6 +499,68 @@ let app = Router::new().route("/foo", get(handler));
 # };
 ```
 
+## Cannot implement both `FromRequest` and `FromRequestParts`
+
+Note that you will make your extractor unusable by implementing both
+`FromRequest` and `FromRequestParts` directly for the same type, unless it is
+wrapping another extractor:
+
+```rust,compile_fail
+use axum::{
+    Router,
+    routing::get,
+    extract::{FromRequest, FromRequestParts},
+    http::{Request, request::Parts},
+    async_trait,
+};
+use std::convert::Infallible;
+
+// Some extractor that doesn't wrap another extractor
+struct MyExtractor;
+
+// `MyExtractor` implements both `FromRequest`
+#[async_trait]
+impl<S, B> FromRequest<S, B> for MyExtractor
+where
+    S: Send + Sync,
+    B: Send + 'static,
+{
+    type Rejection = Infallible;
+
+    async fn from_request(req: Request<B>, state: &S) -> Result<Self, Self::Rejection> {
+        // ...
+        # todo!()
+    }
+}
+
+// and `FromRequestParts`
+#[async_trait]
+impl<S> FromRequestParts<S> for MyExtractor
+where
+    S: Send + Sync,
+{
+    type Rejection = Infallible;
+
+    async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
+        // ...
+        # todo!()
+    }
+}
+
+let app = Router::new().route(
+    "/",
+    // This fails when we go to actually use `MyExtractor` in a handler function.
+    // This is due to a limit in Rust's type system.
+    //
+    // The workaround is to implement either `FromRequest` or `FromRequestParts`
+    // but not both, if your extractor doesn't wrap another extractor.
+    //
+    // See "Wrapping extractors" for how to wrap other extractors.
+    get(|_: MyExtractor| async {}),
+);
+# let _: Router = app;
+```
+
 # Accessing other extractors in `FromRequest` or `FromRequestParts` implementations
 
 When defining custom extractors you often need to access another extractors
@@ -532,7 +594,7 @@ where
     type Rejection = Response;
 
     async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
-        let TypedHeader(Authorization(token)) = 
+        let TypedHeader(Authorization(token)) =
             TypedHeader::<Authorization<Bearer>>::from_request_parts(parts, state)
                 .await
                 .map_err(|err| err.into_response())?;
