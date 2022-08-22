@@ -249,20 +249,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ```rust
   use axum::{Json, http::HeaderMap};
 
-  // this wont compile on 0.6 because both `Json` and `String` needs to consume
-  // the request body. You must use either `Json` or `String` but not both.
+  // This wont compile on 0.6 because both `Json` and `String` need to consume
+  // the request body. You can use either `Json` or `String`, but not both.
   async fn handler_1(
       json: Json<serde_json::Value>,
       string: String,
   ) {}
 
-  // this wont either since `Json` is not the last extractor
+  // This won't work either since `Json` is not the last extractor.
   async fn handler_2(
       json: Json<serde_json::Value>,
       headers: HeaderMap,
   ) {}
 
-  // this works!
+  // This works!
   async fn handler_3(
       headers: HeaderMap,
       json: Json<serde_json::Value>,
