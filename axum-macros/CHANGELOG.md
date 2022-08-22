@@ -10,9 +10,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **change:** axum-macro's MSRV is now 1.60 ([#1239])
 - **added:** Support using a different rejection for `#[derive(FromRequest)]`
   with `#[from_request(rejection(MyRejection))]` ([#1256])
+- **breaking:** `#[derive(FromRequest)]` will no longer generate a rejection
+  enum but instead generate `type Rejection = axum::response::Response`. Use the
+  new `#[from_request(rejection(MyRejection))]` attribute to change this.
+  The `rejection_derive` attribute has also been removed ([#1272])
 
 [#1239]: https://github.com/tokio-rs/axum/pull/1239
 [#1256]: https://github.com/tokio-rs/axum/pull/1256
+[#1272]: https://github.com/tokio-rs/axum/pull/1272
 
 # 0.2.3 (27. June, 2022)
 
