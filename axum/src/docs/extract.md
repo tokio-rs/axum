@@ -13,6 +13,7 @@ Types and traits for extracting data from requests.
 - [Accessing other extractors in `FromRequest` or `FromRequestParts` implementations](#accessing-other-extractors-in-fromrequest-or-fromrequestparts-implementations)
 - [Request body extractors](#request-body-extractors)
 - [Running extractors from middleware](#running-extractors-from-middleware)
+- [Wrapping extractors](#wrapping-extractors)
 
 # Intro
 
@@ -678,6 +679,78 @@ fn token_is_valid(token: &str) -> bool {
 
 let app = Router::new().layer(middleware::from_fn(auth_middleware));
 # let _: Router<()> = app;
+```
+
+# Wrapping extractors
+
+If you want write an extractor that generically wraps another extractor (that
+may or may not consume the request body) you should implement both
+[`FromRequest`] and [`FromRequestParts`]:
+
+```rust
+use axum::{
+    Router,
+    routing::get,
+    extract::{FromRequest, FromRequestParts},
+    http::{Request, HeaderMap, request::Parts},
+    async_trait,
+};
+use std::time::{Instant, Duration};
+
+// an extractor that wraps another and measures how long time it takes to run
+struct Timing<E> {
+    extractor: E,
+    duration: Duration,
+}
+
+// we must implement both `FromRequestParts`
+#[async_trait]
+impl<S, T> FromRequestParts<S> for Timing<T>
+where
+    S: Send + Sync,
+    T: FromRequestParts<S>,
+{
+    type Rejection = T::Rejection;
+
+    async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
+        let start = Instant::now();
+        let extractor = T::from_request_parts(parts, state).await?;
+        let duration = start.elapsed();
+        Ok(Timing {
+            extractor,
+            duration,
+        })
+    }
+}
+
+// and `FromRequest`
+#[async_trait]
+impl<S, B, T> FromRequest<S, B> for Timing<T>
+where
+    B: Send + 'static,
+    S: Send + Sync,
+    T: FromRequest<S, B>,
+{
+    type Rejection = T::Rejection;
+
+    async fn from_request(req: Request<B>, state: &S) -> Result<Self, Self::Rejection> {
+        let start = Instant::now();
+        let extractor = T::from_request(req, state).await?;
+        let duration = start.elapsed();
+        Ok(Timing {
+            extractor,
+            duration,
+        })
+    }
+}
+
+async fn handler(
+    // this uses the `FromRequestParts` impl
+    _: Timing<HeaderMap>,
+    // this uses the `FromRequest` impl
+    _: Timing<String>,
+) {}
+# let _: axum::routing::MethodRouter = axum::routing::get(handler);
 ```
 
 [`body::Body`]: crate::body::Body
