@@ -1,5 +1,6 @@
 use async_trait::async_trait;
-use axum_core::extract::{FromRef, FromRequest, RequestParts};
+use axum_core::extract::{FromRef, FromRequestParts};
+use http::request::Parts;
 use std::{
     convert::Infallible,
     ops::{Deref, DerefMut},
@@ -139,7 +140,8 @@ use std::{
 /// to do it:
 ///
 /// ```rust
-/// use axum_core::extract::{FromRequest, RequestParts, FromRef};
+/// use axum_core::extract::{FromRequestParts, FromRef};
+/// use http::request::Parts;
 /// use async_trait::async_trait;
 /// use std::convert::Infallible;
 ///
@@ -147,9 +149,8 @@ use std::{
 /// struct MyLibraryExtractor;
 ///
 /// #[async_trait]
-/// impl<S, B> FromRequest<S, B> for MyLibraryExtractor
+/// impl<S> FromRequestParts<S> for MyLibraryExtractor
 /// where
-///     B: Send,
 ///     // keep `S` generic but require that it can produce a `MyLibraryState`
 ///     // this means users will have to implement `FromRef<UserState> for MyLibraryState`
 ///     MyLibraryState: FromRef<S>,
@@ -157,9 +158,9 @@ use std::{
 /// {
 ///     type Rejection = Infallible;
 ///
-///     async fn from_request(req: &mut RequestParts<S, B>) -> Result<Self, Self::Rejection> {
+///     async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
 ///         // get a `MyLibraryState` from a reference to the state
-///         let state = MyLibraryState::from_ref(req.state());
+///         let state = MyLibraryState::from_ref(state);
 ///
 ///         // ...
 ///         # todo!()
@@ -171,23 +172,22 @@ use std::{
 ///     // ...
 /// }
 /// ```
-///
-/// Note that you don't need to use the `State` extractor since you can access the state directly
-/// from [`RequestParts`].
 #[derive(Debug, Default, Clone, Copy)]
 pub struct State<S>(pub S);
 
 #[async_trait]
-impl<B, OuterState, InnerState> FromRequest<OuterState, B> for State<InnerState>
+impl<OuterState, InnerState> FromRequestParts<OuterState> for State<InnerState>
 where
-    B: Send,
     InnerState: FromRef<OuterState>,
     OuterState: Send + Sync,
 {
     type Rejection = Infallible;
 
-    async fn from_request(req: &mut RequestParts<OuterState, B>) -> Result<Self, Self::Rejection> {
-        let inner_state = InnerState::from_ref(req.state());
+    async fn from_request_parts(
+        _parts: &mut Parts,
+        state: &OuterState,
+    ) -> Result<Self, Self::Rejection> {
+        let inner_state = InnerState::from_ref(state);
         Ok(Self(inner_state))
     }
 }

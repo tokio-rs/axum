@@ -1,7 +1,7 @@
 //! Additional handler utilities.
 
 use axum::{
-    extract::{FromRequest, RequestParts},
+    extract::FromRequest,
     handler::Handler,
     response::{IntoResponse, Response},
 };
@@ -26,8 +26,8 @@ pub trait HandlerCallWithExtractors<T, S, B>: Sized {
     /// Call the handler with the extracted inputs.
     fn call(
         self,
-        state: Arc<S>,
         extractors: T,
+        state: Arc<S>,
     ) -> <Self as HandlerCallWithExtractors<T, S, B>>::Future;
 
     /// Conver this `HandlerCallWithExtractors` into [`Handler`].
@@ -51,7 +51,7 @@ pub trait HandlerCallWithExtractors<T, S, B>: Sized {
     ///     Router,
     ///     async_trait,
     ///     routing::get,
-    ///     extract::FromRequest,
+    ///     extract::FromRequestParts,
     /// };
     ///
     /// // handlers for varying levels of access
@@ -71,14 +71,13 @@ pub trait HandlerCallWithExtractors<T, S, B>: Sized {
     /// struct AdminPermissions {}
     ///
     /// #[async_trait]
-    /// impl<S, B> FromRequest<S, B> for AdminPermissions
+    /// impl<S> FromRequestParts<S> for AdminPermissions
     /// where
-    ///     B: Send,
     ///     S: Send + Sync,
     /// {
     ///     // check for admin permissions...
     ///     # type Rejection = ();
-    ///     # async fn from_request(req: &mut axum::extract::RequestParts<S, B>) -> Result<Self, Self::Rejection> {
+    ///     # async fn from_request_parts(parts: &mut http::request::Parts, state: &S) -> Result<Self, Self::Rejection> {
     ///     #     todo!()
     ///     # }
     /// }
@@ -86,14 +85,13 @@ pub trait HandlerCallWithExtractors<T, S, B>: Sized {
     /// struct User {}
     ///
     /// #[async_trait]
-    /// impl<S, B> FromRequest<S, B> for User
+    /// impl<S> FromRequestParts<S> for User
     /// where
-    ///     B: Send,
     ///     S: Send + Sync,
     /// {
     ///     // check for a logged in user...
     ///     # type Rejection = ();
-    ///     # async fn from_request(req: &mut axum::extract::RequestParts<S, B>) -> Result<Self, Self::Rejection> {
+    ///     # async fn from_request_parts(parts: &mut http::request::Parts, state: &S) -> Result<Self, Self::Rejection> {
     ///     #     todo!()
     ///     # }
     /// }
@@ -121,27 +119,27 @@ pub trait HandlerCallWithExtractors<T, S, B>: Sized {
 }
 
 macro_rules! impl_handler_call_with {
-    ( $($ty:ident),* $(,)? ) => {
-        #[allow(non_snake_case)]
-        impl<F, Fut, S, B, $($ty,)*> HandlerCallWithExtractors<($($ty,)*), S, B> for F
-        where
-            F: FnOnce($($ty,)*) -> Fut,
-            Fut: Future + Send + 'static,
-            Fut::Output: IntoResponse,
-        {
-            // this puts `futures_util` in our public API but thats fine in axum-extra
-            type Future = Map<Fut, fn(Fut::Output) -> Response>;
+     ( $($ty:ident),* $(,)? ) => {
+         #[allow(non_snake_case)]
+         impl<F, Fut, S, B, $($ty,)*> HandlerCallWithExtractors<($($ty,)*), S, B> for F
+         where
+             F: FnOnce($($ty,)*) -> Fut,
+             Fut: Future + Send + 'static,
+             Fut::Output: IntoResponse,
+         {
+             // this puts `futures_util` in our public API but thats fine in axum-extra
+             type Future = Map<Fut, fn(Fut::Output) -> Response>;
 
-            fn call(
-                self,
-                _state: Arc<S>,
-                ($($ty,)*): ($($ty,)*),
-            ) -> <Self as HandlerCallWithExtractors<($($ty,)*), S, B>>::Future {
-                self($($ty,)*).map(IntoResponse::into_response)
-            }
-        }
-    };
-}
+             fn call(
+                 self,
+                 ($($ty,)*): ($($ty,)*),
+                 _state: Arc<S>,
+             ) -> <Self as HandlerCallWithExtractors<($($ty,)*), S, B>>::Future {
+                 self($($ty,)*).map(IntoResponse::into_response)
+             }
+         }
+     };
+ }
 
 impl_handler_call_with!();
 impl_handler_call_with!(T1);
@@ -180,11 +178,10 @@ where
 {
     type Future = BoxFuture<'static, Response>;
 
-    fn call(self, state: Arc<S>, req: http::Request<B>) -> Self::Future {
+    fn call(self, req: http::Request<B>, state: Arc<S>) -> Self::Future {
         Box::pin(async move {
-            let mut req = RequestParts::with_state_arc(Arc::clone(&state), req);
-            match req.extract::<T>().await {
-                Ok(t) => self.handler.call(state, t).await,
+            match T::from_request(req, &state).await {
+                Ok(t) => self.handler.call(t, state).await,
                 Err(rejection) => rejection.into_response(),
             }
         })

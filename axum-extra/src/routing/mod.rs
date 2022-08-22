@@ -24,7 +24,7 @@ pub use self::resource::Resource;
 pub use axum_macros::TypedPath;
 
 #[cfg(feature = "typed-routing")]
-pub use self::typed::{FirstElementIs, TypedPath};
+pub use self::typed::{SecondElementIs, TypedPath};
 
 #[cfg(feature = "spa")]
 pub use self::spa::SpaRouter;
@@ -41,7 +41,7 @@ pub trait RouterExt<S, B>: sealed::Sealed {
     fn typed_get<H, T, P>(self, handler: H) -> Self
     where
         H: Handler<T, S, B>,
-        T: FirstElementIs<P> + 'static,
+        T: SecondElementIs<P> + 'static,
         P: TypedPath;
 
     /// Add a typed `DELETE` route to the router.
@@ -54,7 +54,7 @@ pub trait RouterExt<S, B>: sealed::Sealed {
     fn typed_delete<H, T, P>(self, handler: H) -> Self
     where
         H: Handler<T, S, B>,
-        T: FirstElementIs<P> + 'static,
+        T: SecondElementIs<P> + 'static,
         P: TypedPath;
 
     /// Add a typed `HEAD` route to the router.
@@ -67,7 +67,7 @@ pub trait RouterExt<S, B>: sealed::Sealed {
     fn typed_head<H, T, P>(self, handler: H) -> Self
     where
         H: Handler<T, S, B>,
-        T: FirstElementIs<P> + 'static,
+        T: SecondElementIs<P> + 'static,
         P: TypedPath;
 
     /// Add a typed `OPTIONS` route to the router.
@@ -80,7 +80,7 @@ pub trait RouterExt<S, B>: sealed::Sealed {
     fn typed_options<H, T, P>(self, handler: H) -> Self
     where
         H: Handler<T, S, B>,
-        T: FirstElementIs<P> + 'static,
+        T: SecondElementIs<P> + 'static,
         P: TypedPath;
 
     /// Add a typed `PATCH` route to the router.
@@ -93,7 +93,7 @@ pub trait RouterExt<S, B>: sealed::Sealed {
     fn typed_patch<H, T, P>(self, handler: H) -> Self
     where
         H: Handler<T, S, B>,
-        T: FirstElementIs<P> + 'static,
+        T: SecondElementIs<P> + 'static,
         P: TypedPath;
 
     /// Add a typed `POST` route to the router.
@@ -106,7 +106,7 @@ pub trait RouterExt<S, B>: sealed::Sealed {
     fn typed_post<H, T, P>(self, handler: H) -> Self
     where
         H: Handler<T, S, B>,
-        T: FirstElementIs<P> + 'static,
+        T: SecondElementIs<P> + 'static,
         P: TypedPath;
 
     /// Add a typed `PUT` route to the router.
@@ -119,7 +119,7 @@ pub trait RouterExt<S, B>: sealed::Sealed {
     fn typed_put<H, T, P>(self, handler: H) -> Self
     where
         H: Handler<T, S, B>,
-        T: FirstElementIs<P> + 'static,
+        T: SecondElementIs<P> + 'static,
         P: TypedPath;
 
     /// Add a typed `TRACE` route to the router.
@@ -132,7 +132,7 @@ pub trait RouterExt<S, B>: sealed::Sealed {
     fn typed_trace<H, T, P>(self, handler: H) -> Self
     where
         H: Handler<T, S, B>,
-        T: FirstElementIs<P> + 'static,
+        T: SecondElementIs<P> + 'static,
         P: TypedPath;
 
     /// Add another route to the router with an additional "trailing slash redirect" route.
@@ -184,7 +184,7 @@ where
     fn typed_get<H, T, P>(self, handler: H) -> Self
     where
         H: Handler<T, S, B>,
-        T: FirstElementIs<P> + 'static,
+        T: SecondElementIs<P> + 'static,
         P: TypedPath,
     {
         self.route(P::PATH, axum::routing::get(handler))
@@ -194,7 +194,7 @@ where
     fn typed_delete<H, T, P>(self, handler: H) -> Self
     where
         H: Handler<T, S, B>,
-        T: FirstElementIs<P> + 'static,
+        T: SecondElementIs<P> + 'static,
         P: TypedPath,
     {
         self.route(P::PATH, axum::routing::delete(handler))
@@ -204,7 +204,7 @@ where
     fn typed_head<H, T, P>(self, handler: H) -> Self
     where
         H: Handler<T, S, B>,
-        T: FirstElementIs<P> + 'static,
+        T: SecondElementIs<P> + 'static,
         P: TypedPath,
     {
         self.route(P::PATH, axum::routing::head(handler))
@@ -214,7 +214,7 @@ where
     fn typed_options<H, T, P>(self, handler: H) -> Self
     where
         H: Handler<T, S, B>,
-        T: FirstElementIs<P> + 'static,
+        T: SecondElementIs<P> + 'static,
         P: TypedPath,
     {
         self.route(P::PATH, axum::routing::options(handler))
@@ -224,7 +224,7 @@ where
     fn typed_patch<H, T, P>(self, handler: H) -> Self
     where
         H: Handler<T, S, B>,
-        T: FirstElementIs<P> + 'static,
+        T: SecondElementIs<P> + 'static,
         P: TypedPath,
     {
         self.route(P::PATH, axum::routing::patch(handler))
@@ -234,7 +234,7 @@ where
     fn typed_post<H, T, P>(self, handler: H) -> Self
     where
         H: Handler<T, S, B>,
-        T: FirstElementIs<P> + 'static,
+        T: SecondElementIs<P> + 'static,
         P: TypedPath,
     {
         self.route(P::PATH, axum::routing::post(handler))
@@ -244,7 +244,7 @@ where
     fn typed_put<H, T, P>(self, handler: H) -> Self
     where
         H: Handler<T, S, B>,
-        T: FirstElementIs<P> + 'static,
+        T: SecondElementIs<P> + 'static,
         P: TypedPath,
     {
         self.route(P::PATH, axum::routing::put(handler))
@@ -254,7 +254,7 @@ where
     fn typed_trace<H, T, P>(self, handler: H) -> Self
     where
         H: Handler<T, S, B>,
-        T: FirstElementIs<P> + 'static,
+        T: SecondElementIs<P> + 'static,
         P: TypedPath,
     {
         self.route(P::PATH, axum::routing::trace(handler))

@@ -3,12 +3,12 @@ use axum::{
     body::HttpBody,
     extract::{
         rejection::{FailedToDeserializeQueryString, FormRejection, InvalidFormContentType},
-        FromRequest, RequestParts,
+        FromRequest,
     },
     BoxError,
 };
 use bytes::Bytes;
-use http::{header, Method};
+use http::{header, HeaderMap, Method, Request};
 use serde::de::DeserializeOwned;
 use std::ops::Deref;
 
@@ -58,25 +58,25 @@ impl<T> Deref for Form<T> {
 impl<T, S, B> FromRequest<S, B> for Form<T>
 where
     T: DeserializeOwned,
-    B: HttpBody + Send,
+    B: HttpBody + Send + 'static,
     B::Data: Send,
     B::Error: Into<BoxError>,
     S: Send + Sync,
 {
     type Rejection = FormRejection;
 
-    async fn from_request(req: &mut RequestParts<S, B>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: Request<B>, state: &S) -> Result<Self, Self::Rejection> {
         if req.method() == Method::GET {
             let query = req.uri().query().unwrap_or_default();
             let value = serde_html_form::from_str(query)
                 .map_err(FailedToDeserializeQueryString::__private_new)?;
             Ok(Form(value))
         } else {
-            if !has_content_type(req, &mime::APPLICATION_WWW_FORM_URLENCODED) {
+            if !has_content_type(req.headers(), &mime::APPLICATION_WWW_FORM_URLENCODED) {
                 return Err(InvalidFormContentType::default().into());
             }
 
-            let bytes = Bytes::from_request(req).await?;
+            let bytes = Bytes::from_request(req, state).await?;
             let value = serde_html_form::from_bytes(&bytes)
                 .map_err(FailedToDeserializeQueryString::__private_new)?;
 
@@ -86,8 +86,8 @@ where
 }
 
 // this is duplicated in `axum/src/extract/mod.rs`
-fn has_content_type<S, B>(req: &RequestParts<S, B>, expected_content_type: &mime::Mime) -> bool {
-    let content_type = if let Some(content_type) = req.headers().get(header::CONTENT_TYPE) {
+fn has_content_type(headers: &HeaderMap, expected_content_type: &mime::Mime) -> bool {
+    let content_type = if let Some(content_type) = headers.get(header::CONTENT_TYPE) {
         content_type
     } else {
         return false;

@@ -1,14 +1,14 @@
 use crate::{
     body::{Bytes, HttpBody},
-    extract::{rejection::*, FromRequest, RequestParts},
+    extract::{rejection::*, FromRequest},
     BoxError,
 };
 use async_trait::async_trait;
 use axum_core::response::{IntoResponse, Response};
 use bytes::{BufMut, BytesMut};
 use http::{
-    header::{self, HeaderValue},
-    StatusCode,
+    header::{self, HeaderMap, HeaderValue},
+    Request, StatusCode,
 };
 use serde::{de::DeserializeOwned, Serialize};
 use std::ops::{Deref, DerefMut};
@@ -97,16 +97,16 @@ pub struct Json<T>(pub T);
 impl<T, S, B> FromRequest<S, B> for Json<T>
 where
     T: DeserializeOwned,
-    B: HttpBody + Send,
+    B: HttpBody + Send + 'static,
     B::Data: Send,
     B::Error: Into<BoxError>,
     S: Send + Sync,
 {
     type Rejection = JsonRejection;
 
-    async fn from_request(req: &mut RequestParts<S, B>) -> Result<Self, Self::Rejection> {
-        if json_content_type(req) {
-            let bytes = Bytes::from_request(req).await?;
+    async fn from_request(req: Request<B>, state: &S) -> Result<Self, Self::Rejection> {
+        if json_content_type(req.headers()) {
+            let bytes = Bytes::from_request(req, state).await?;
 
             let value = match serde_json::from_slice(&bytes) {
                 Ok(value) => value,
@@ -137,8 +137,8 @@ where
     }
 }
 
-fn json_content_type<S, B>(req: &RequestParts<S, B>) -> bool {
-    let content_type = if let Some(content_type) = req.headers().get(header::CONTENT_TYPE) {
+fn json_content_type(headers: &HeaderMap) -> bool {
+    let content_type = if let Some(content_type) = headers.get(header::CONTENT_TYPE) {
         content_type
     } else {
         return false;

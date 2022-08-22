@@ -1,12 +1,12 @@
 use super::{cookies_from_request, set_cookies};
 use axum::{
     async_trait,
-    extract::{FromRef, FromRequest, RequestParts},
+    extract::{FromRef, FromRequestParts},
     response::{IntoResponse, IntoResponseParts, Response, ResponseParts},
 };
 use cookie::SignedJar;
 use cookie::{Cookie, Key};
-use http::HeaderMap;
+use http::{request::Parts, HeaderMap};
 use std::{convert::Infallible, fmt, marker::PhantomData};
 
 /// Extractor that grabs signed cookies from the request and manages the jar.
@@ -105,22 +105,21 @@ impl<K> fmt::Debug for SignedCookieJar<K> {
 }
 
 #[async_trait]
-impl<S, B, K> FromRequest<S, B> for SignedCookieJar<K>
+impl<S, K> FromRequestParts<S> for SignedCookieJar<K>
 where
-    B: Send,
     S: Send + Sync,
     K: FromRef<S> + Into<Key>,
 {
     type Rejection = Infallible;
 
-    async fn from_request(req: &mut RequestParts<S, B>) -> Result<Self, Self::Rejection> {
-        let k = K::from_ref(req.state());
+    async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
+        let k = K::from_ref(state);
         let key = k.into();
         let SignedCookieJar {
             jar,
             key,
             _marker: _,
-        } = SignedCookieJar::from_headers(req.headers(), key);
+        } = SignedCookieJar::from_headers(&parts.headers, key);
         Ok(SignedCookieJar {
             jar,
             key,
@@ -135,7 +134,9 @@ impl SignedCookieJar {
     /// The valid cookies in `headers` will be added to the jar.
     ///
     /// This is inteded to be used in middleware and other places where it might be difficult to
-    /// run extractors. Normally you should create `SignedCookieJar`s through [`FromRequest`].
+    /// run extractors. Normally you should create `SignedCookieJar`s through [`FromRequestParts`].
+    ///
+    /// [`FromRequestParts`]: axum::extract::FromRequestParts
     pub fn from_headers(headers: &HeaderMap, key: Key) -> Self {
         let mut jar = cookie::CookieJar::new();
         let mut signed_jar = jar.signed_mut(&key);
@@ -155,7 +156,9 @@ impl SignedCookieJar {
     /// Create a new empty `SignedCookieJar`.
     ///
     /// This is inteded to be used in middleware and other places where it might be difficult to
-    /// run extractors. Normally you should create `SignedCookieJar`s through [`FromRequest`].
+    /// run extractors. Normally you should create `SignedCookieJar`s through [`FromRequestParts`].
+    ///
+    /// [`FromRequestParts`]: axum::extract::FromRequestParts
     pub fn new(key: Key) -> Self {
         Self {
             jar: Default::default(),

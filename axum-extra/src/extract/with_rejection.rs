@@ -1,6 +1,8 @@
 use axum::async_trait;
-use axum::extract::{FromRequest, RequestParts};
+use axum::extract::{FromRequest, FromRequestParts};
 use axum::response::IntoResponse;
+use http::request::Parts;
+use http::Request;
 use std::fmt::Debug;
 use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
@@ -109,23 +111,40 @@ impl<E, R> DerefMut for WithRejection<E, R> {
 #[async_trait]
 impl<B, E, R, S> FromRequest<S, B> for WithRejection<E, R>
 where
-    B: Send,
+    B: Send + 'static,
     S: Send + Sync,
     E: FromRequest<S, B>,
     R: From<E::Rejection> + IntoResponse,
 {
     type Rejection = R;
 
-    async fn from_request(req: &mut RequestParts<S, B>) -> Result<Self, Self::Rejection> {
-        let extractor = req.extract::<E>().await?;
+    async fn from_request(req: Request<B>, state: &S) -> Result<Self, Self::Rejection> {
+        let extractor = E::from_request(req, state).await?;
+        Ok(WithRejection(extractor, PhantomData))
+    }
+}
+
+#[async_trait]
+impl<E, R, S> FromRequestParts<S> for WithRejection<E, R>
+where
+    S: Send + Sync,
+    E: FromRequestParts<S>,
+    R: From<E::Rejection> + IntoResponse,
+{
+    type Rejection = R;
+
+    async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
+        let extractor = E::from_request_parts(parts, state).await?;
         Ok(WithRejection(extractor, PhantomData))
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use axum::extract::FromRequestParts;
     use axum::http::Request;
     use axum::response::Response;
+    use http::request::Parts;
 
     use super::*;
 
@@ -135,14 +154,16 @@ mod tests {
         struct TestRejection;
 
         #[async_trait]
-        impl<S, B> FromRequest<S, B> for TestExtractor
+        impl<S> FromRequestParts<S> for TestExtractor
         where
-            B: Send,
             S: Send + Sync,
         {
             type Rejection = ();
 
-            async fn from_request(_: &mut RequestParts<S, B>) -> Result<Self, Self::Rejection> {
+            async fn from_request_parts(
+                _parts: &mut Parts,
+                _state: &S,
+            ) -> Result<Self, Self::Rejection> {
                 Err(())
             }
         }
@@ -159,12 +180,14 @@ mod tests {
             }
         }
 
-        let mut req = RequestParts::new(Request::new(()));
+        let req = Request::new(());
+        let result = WithRejection::<TestExtractor, TestRejection>::from_request(req, &()).await;
+        assert!(matches!(result, Err(TestRejection)));
 
-        let result = req
-            .extract::<WithRejection<TestExtractor, TestRejection>>()
-            .await;
-
-        assert!(matches!(result, Err(TestRejection)))
+        let (mut parts, _) = Request::new(()).into_parts();
+        let result =
+            WithRejection::<TestExtractor, TestRejection>::from_request_parts(&mut parts, &())
+                .await;
+        assert!(matches!(result, Err(TestRejection)));
     }
 }

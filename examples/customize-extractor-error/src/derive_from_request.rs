@@ -47,7 +47,7 @@ impl From<JsonRejection> for ApiError {
     }
 }
 
-// We implement `IntoResponse` so ApiError can be used as a response
+// We implement `IntoResponse` so `ApiError` can be used as a response
 impl IntoResponse for ApiError {
     fn into_response(self) -> axum::response::Response {
         let payload = json!({

@@ -1,13 +1,12 @@
 use super::HandlerCallWithExtractors;
 use crate::either::Either;
 use axum::{
-    extract::{FromRequest, RequestParts},
+    extract::{FromRequest, FromRequestParts},
     handler::Handler,
     http::Request,
     response::{IntoResponse, Response},
 };
 use futures_util::future::{BoxFuture, Either as EitherFuture, FutureExt, Map};
-use http::StatusCode;
 use std::{future::Future, marker::PhantomData, sync::Arc};
 
 /// [`Handler`] that runs one [`Handler`] and if that rejects it'll fallback to another
@@ -37,30 +36,30 @@ where
 
     fn call(
         self,
-        state: Arc<S>,
         extractors: Either<Lt, Rt>,
+        state: Arc<S>,
     ) -> <Self as HandlerCallWithExtractors<Either<Lt, Rt>, S, B>>::Future {
         match extractors {
             Either::E1(lt) => self
                 .lhs
-                .call(state, lt)
+                .call(lt, state)
                 .map(IntoResponse::into_response as _)
                 .left_future(),
             Either::E2(rt) => self
                 .rhs
-                .call(state, rt)
+                .call(rt, state)
                 .map(IntoResponse::into_response as _)
                 .right_future(),
         }
     }
 }
 
-impl<S, B, L, R, Lt, Rt> Handler<(Lt, Rt), S, B> for Or<L, R, Lt, Rt, S, B>
+impl<S, B, L, R, Lt, Rt, M> Handler<(M, Lt, Rt), S, B> for Or<L, R, Lt, Rt, S, B>
 where
     L: HandlerCallWithExtractors<Lt, S, B> + Clone + Send + 'static,
     R: HandlerCallWithExtractors<Rt, S, B> + Clone + Send + 'static,
-    Lt: FromRequest<S, B> + Send + 'static,
-    Rt: FromRequest<S, B> + Send + 'static,
+    Lt: FromRequestParts<S> + Send + 'static,
+    Rt: FromRequest<S, B, M> + Send + 'static,
     Lt::Rejection: Send,
     Rt::Rejection: Send,
     B: Send + 'static,
@@ -69,19 +68,20 @@ where
     // this puts `futures_util` in our public API but thats fine in axum-extra
     type Future = BoxFuture<'static, Response>;
 
-    fn call(self, state: Arc<S>, req: Request<B>) -> Self::Future {
+    fn call(self, req: Request<B>, state: Arc<S>) -> Self::Future {
         Box::pin(async move {
-            let mut req = RequestParts::with_state_arc(Arc::clone(&state), req);
+            let (mut parts, body) = req.into_parts();
 
-            if let Ok(lt) = req.extract::<Lt>().await {
-                return self.lhs.call(state, lt).await;
+            if let Ok(lt) = Lt::from_request_parts(&mut parts, &state).await {
+                return self.lhs.call(lt, state).await;
             }
 
-            if let Ok(rt) = req.extract::<Rt>().await {
-                return self.rhs.call(state, rt).await;
-            }
+            let req = Request::from_parts(parts, body);
 
-            StatusCode::NOT_FOUND.into_response()
+            match Rt::from_request(req, &state).await {
+                Ok(rt) => self.rhs.call(rt, state).await,
+                Err(rejection) => rejection.into_response(),
+            }
         })
     }
 }

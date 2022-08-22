@@ -4,15 +4,50 @@
 //!
 //! ```
 //! use axum_extra::either::Either3;
-//! use axum::{body::Bytes, Json};
+//! use axum::{
+//!     body::Bytes,
+//!     Router,
+//!     async_trait,
+//!     routing::get,
+//!     extract::FromRequestParts,
+//! };
+//!
+//! // extractors for checking permissions
+//! struct AdminPermissions {}
+//!
+//! #[async_trait]
+//! impl<S> FromRequestParts<S> for AdminPermissions
+//! where
+//!     S: Send + Sync,
+//! {
+//!     // check for admin permissions...
+//!     # type Rejection = ();
+//!     # async fn from_request_parts(parts: &mut axum::http::request::Parts, state: &S) -> Result<Self, Self::Rejection> {
+//!     #     todo!()
+//!     # }
+//! }
+//!
+//! struct User {}
+//!
+//! #[async_trait]
+//! impl<S> FromRequestParts<S> for User
+//! where
+//!     S: Send + Sync,
+//! {
+//!     // check for a logged in user...
+//!     # type Rejection = ();
+//!     # async fn from_request_parts(parts: &mut axum::http::request::Parts, state: &S) -> Result<Self, Self::Rejection> {
+//!     #     todo!()
+//!     # }
+//! }
 //!
 //! async fn handler(
-//!     body: Either3<Json<serde_json::Value>, String, Bytes>,
+//!     body: Either3<AdminPermissions, User, ()>,
 //! ) {
 //!     match body {
-//!         Either3::E1(json) => { /* ... */ }
-//!         Either3::E2(string) => { /* ... */ }
-//!         Either3::E3(bytes) => { /* ... */ }
+//!         Either3::E1(admin) => { /* ... */ }
+//!         Either3::E2(user) => { /* ... */ }
+//!         Either3::E3(guest) => { /* ... */ }
 //!     }
 //! }
 //! #
@@ -60,9 +95,10 @@
 
 use axum::{
     async_trait,
-    extract::{FromRequest, RequestParts},
+    extract::FromRequestParts,
     response::{IntoResponse, Response},
 };
+use http::request::Parts;
 
 /// Combines two extractors or responses into a single type.
 ///
@@ -190,23 +226,22 @@ macro_rules! impl_traits_for_either {
         $last:ident $(,)?
     ) => {
         #[async_trait]
-        impl<S, B, $($ident),*, $last> FromRequest<S, B> for $either<$($ident),*, $last>
+        impl<S, $($ident),*, $last> FromRequestParts<S> for $either<$($ident),*, $last>
         where
-            $($ident: FromRequest<S, B>),*,
-            $last: FromRequest<S, B>,
-            B: Send,
+            $($ident: FromRequestParts<S>),*,
+            $last: FromRequestParts<S>,
             S: Send + Sync,
         {
             type Rejection = $last::Rejection;
 
-            async fn from_request(req: &mut RequestParts<S, B>) -> Result<Self, Self::Rejection> {
+            async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
                 $(
-                    if let Ok(value) = req.extract().await {
+                    if let Ok(value) = FromRequestParts::from_request_parts(parts, state).await {
                         return Ok(Self::$ident(value));
                     }
                 )*
 
-                req.extract().await.map(Self::$last)
+                FromRequestParts::from_request_parts(parts, state).await.map(Self::$last)
             }
         }
 

@@ -4,11 +4,12 @@
 
 use axum::{
     async_trait,
-    extract::{FromRequest, RequestParts},
+    extract::FromRequestParts,
     response::{IntoResponse, IntoResponseParts, Response, ResponseParts},
 };
 use http::{
     header::{COOKIE, SET_COOKIE},
+    request::Parts,
     HeaderMap,
 };
 use std::convert::Infallible;
@@ -88,15 +89,14 @@ pub struct CookieJar {
 }
 
 #[async_trait]
-impl<S, B> FromRequest<S, B> for CookieJar
+impl<S> FromRequestParts<S> for CookieJar
 where
-    B: Send,
     S: Send + Sync,
 {
     type Rejection = Infallible;
 
-    async fn from_request(req: &mut RequestParts<S, B>) -> Result<Self, Self::Rejection> {
-        Ok(Self::from_headers(req.headers()))
+    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
+        Ok(Self::from_headers(&parts.headers))
     }
 }
 
@@ -115,7 +115,9 @@ impl CookieJar {
     /// The cookies in `headers` will be added to the jar.
     ///
     /// This is inteded to be used in middleware and other places where it might be difficult to
-    /// run extractors. Normally you should create `CookieJar`s through [`FromRequest`].
+    /// run extractors. Normally you should create `CookieJar`s through [`FromRequestParts`].
+    ///
+    /// [`FromRequestParts`]: axum::extract::FromRequestParts
     pub fn from_headers(headers: &HeaderMap) -> Self {
         let mut jar = cookie::CookieJar::new();
         for cookie in cookies_from_request(headers) {
@@ -127,10 +129,12 @@ impl CookieJar {
     /// Create a new empty `CookieJar`.
     ///
     /// This is inteded to be used in middleware and other places where it might be difficult to
-    /// run extractors. Normally you should create `CookieJar`s through [`FromRequest`].
+    /// run extractors. Normally you should create `CookieJar`s through [`FromRequestParts`].
     ///
     /// If you need a jar that contains the headers from a request use `impl From<&HeaderMap> for
     /// CookieJar`.
+    ///
+    /// [`FromRequestParts`]: axum::extract::FromRequestParts
     pub fn new() -> Self {
         Self::default()
     }

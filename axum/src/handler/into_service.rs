@@ -88,7 +88,7 @@ where
         use futures_util::future::FutureExt;
 
         let handler = self.handler.clone();
-        let future = Handler::call(handler, Arc::clone(&self.state), req);
+        let future = Handler::call(handler, req, Arc::clone(&self.state));
         let future = future.map(Ok as _);
 
         super::future::IntoServiceFuture::new(future)

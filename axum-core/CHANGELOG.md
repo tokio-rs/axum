@@ -7,10 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- **breaking:** `FromRequest` and `RequestParts` has a new `S` type param which
-  represents the state ([#1155])
+- **breaking:** `FromRequest` has been reworked and `RequestParts` has been
+  removed. See axum's changelog for more details ([#1272])
+- **added:** Added new `FromRequestParts` trait. See axum's changelog for more
+  details ([#1272])
+- **breaking:** `BodyAlreadyExtracted` has been removed ([#1272])
 
 [#1155]: https://github.com/tokio-rs/axum/pull/1155
+[#1272]: https://github.com/tokio-rs/axum/pull/1272
 
 # 0.2.7 (10. July, 2022)
 

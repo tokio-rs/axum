@@ -16,7 +16,6 @@ async fn result_handler(_: Result<UsersShow, PathRejection>) {}
 #[typed_path("/users")]
 struct UsersIndex;
 
-#[axum_macros::debug_handler]
 async fn result_handler_unit_struct(_: Result<UsersIndex, StatusCode>) {}
 
 fn main() {

@@ -237,18 +237,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
       }
   }
   ```
-- **breaking:** The following types or traits have a new `S` type param
-  (`()` by default) which represents the state ([#1155]):
-  - `FromRequest`
-  - `RequestParts`
-  - `Router`
-  - `MethodRouter`
-  - `Handler`
+- **breaking:** It is now only possible for one extractor per handler to consume
+  the request body. In 0.5 doing so would result in runtime errors but in 0.6 it
+  is a compile error ([#1272])
+
+  axum enforces this by only allowing the _last_ extractor to consume the
+  request.
+
+  For example:
+
+  ```rust
+  use axum::{Json, http::HeaderMap};
+
+  // This wont compile on 0.6 because both `Json` and `String` need to consume
+  // the request body. You can use either `Json` or `String`, but not both.
+  async fn handler_1(
+      json: Json<serde_json::Value>,
+      string: String,
+  ) {}
+
+  // This won't work either since `Json` is not the last extractor.
+  async fn handler_2(
+      json: Json<serde_json::Value>,
+      headers: HeaderMap,
+  ) {}
+
+  // This works!
+  async fn handler_3(
+      headers: HeaderMap,
+      json: Json<serde_json::Value>,
+  ) {}
+  ```
+
+  This is done by reworking the `FromRequest` trait and introducing a new
+  `FromRequestParts` trait.
+
+  If your extractor needs to consume the request body then you should implement
+  `FromRequest`, otherwise implement `FromRequestParts`.
 
   This extractor in 0.5:
 
   ```rust
-  struct MyExtractor;
+  struct MyExtractor { /* ... */ }
 
   #[async_trait]
   impl<B> FromRequest<B> for MyExtractor
@@ -266,21 +296,52 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Becomes this in 0.6:
 
   ```rust
-  struct MyExtractor;
+  use axum::{
+      extract::{FromRequest, FromRequestParts},
+      http::{StatusCode, Request, request::Parts},
+      async_trait,
+  };
 
+  struct MyExtractor { /* ... */ }
+
+  // implement `FromRequestParts` if you don't need to consume the request body
+  #[async_trait]
+  impl<S> FromRequestParts<S> for MyExtractor
+  where
+      S: Send + Sync,
+      B: Send + 'static,
+  {
+      type Rejection = StatusCode;
+  
+      async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
+          // ...
+      }
+  }
+
+  // implement `FromRequest` if you do need to consume the request body
   #[async_trait]
   impl<S, B> FromRequest<S, B> for MyExtractor
   where
       S: Send + Sync,
-      B: Send,
+      B: Send + 'static,
   {
       type Rejection = StatusCode;
   
-      async fn from_request(req: &mut RequestParts<S, B>) -> Result<Self, Self::Rejection> {
+      async fn from_request(req: Request<B>, state: &S) -> Result<Self, Self::Rejection> {
           // ...
       }
   }
   ```
+
+- **breaking:** `RequestParts` has been removed as part of the `FromRequest`
+  rework ([#1272])
+- **breaking:** `BodyAlreadyExtracted` has been removed ([#1272])
+- **breaking:** The following types or traits have a new `S` type param
+  which represents the state ([#1155]):
+  - `Router`, defaults to `()`
+  - `MethodRouter`, defaults to `()`
+  - `FromRequest`, no default
+  - `Handler`, no default
 
 ## Middleware
 
@@ -310,6 +371,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#1155]: https://github.com/tokio-rs/axum/pull/1155
 [#1239]: https://github.com/tokio-rs/axum/pull/1239
 [#1248]: https://github.com/tokio-rs/axum/pull/1248
+[#1272]: https://github.com/tokio-rs/axum/pull/1272
 [#924]: https://github.com/tokio-rs/axum/pull/924
 
 # 0.5.15 (9. August, 2022)

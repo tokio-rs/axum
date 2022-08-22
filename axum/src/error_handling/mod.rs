@@ -1,8 +1,8 @@
 #![doc = include_str!("../docs/error_handling.md")]
 
 use crate::{
-    extract::{FromRequest, RequestParts},
-    http::{Request, StatusCode},
+    extract::FromRequestParts,
+    http::Request,
     response::{IntoResponse, Response},
 };
 use std::{
@@ -161,7 +161,7 @@ macro_rules! impl_service {
             F: FnOnce($($ty),*, S::Error) -> Fut + Clone + Send + 'static,
             Fut: Future<Output = Res> + Send,
             Res: IntoResponse,
-            $( $ty: FromRequest<(), B> + Send,)*
+            $( $ty: FromRequestParts<()> + Send,)*
             B: Send + 'static,
         {
             type Response = Response;
@@ -181,21 +181,16 @@ macro_rules! impl_service {
                 let inner = std::mem::replace(&mut self.inner, clone);
 
                 let future = Box::pin(async move {
-                    let mut req = RequestParts::new(req);
+                    let (mut parts, body) = req.into_parts();
 
                     $(
-                        let $ty = match $ty::from_request(&mut req).await {
+                        let $ty = match $ty::from_request_parts(&mut parts, &()).await {
                             Ok(value) => value,
                             Err(rejection) => return Ok(rejection.into_response()),
                         };
                     )*
 
-                    let req = match req.try_into_request() {
-                        Ok(req) => req,
-                        Err(err) => {
-                            return Ok((StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response());
-                        }
-                    };
+                    let req = Request::from_parts(parts, body);
 
                     match inner.oneshot(req).await {
                         Ok(res) => Ok(res.into_response()),

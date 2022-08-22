@@ -1,7 +1,8 @@
 use axum::{
     async_trait,
-    extract::{Extension, FromRequest, RequestParts},
+    extract::{Extension, FromRequest, FromRequestParts},
 };
+use http::{request::Parts, Request};
 use std::ops::{Deref, DerefMut};
 
 /// Cache results of other extractors.
@@ -20,24 +21,23 @@ use std::ops::{Deref, DerefMut};
 /// use axum_extra::extract::Cached;
 /// use axum::{
 ///     async_trait,
-///     extract::{FromRequest, RequestParts},
+///     extract::FromRequestParts,
 ///     body::BoxBody,
 ///     response::{IntoResponse, Response},
-///     http::StatusCode,
+///     http::{StatusCode, request::Parts},
 /// };
 ///
 /// #[derive(Clone)]
 /// struct Session { /* ... */ }
 ///
 /// #[async_trait]
-/// impl<S, B> FromRequest<S, B> for Session
+/// impl<S> FromRequestParts<S> for Session
 /// where
-///     B: Send,
 ///     S: Send + Sync,
 /// {
 ///     type Rejection = (StatusCode, String);
 ///
-///     async fn from_request(req: &mut RequestParts<S, B>) -> Result<Self, Self::Rejection> {
+///     async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
 ///         // load session...
 ///         # unimplemented!()
 ///     }
@@ -46,19 +46,18 @@ use std::ops::{Deref, DerefMut};
 /// struct CurrentUser { /* ... */ }
 ///
 /// #[async_trait]
-/// impl<S, B> FromRequest<S, B> for CurrentUser
+/// impl<S> FromRequestParts<S> for CurrentUser
 /// where
-///     B: Send,
 ///     S: Send + Sync,
 /// {
 ///     type Rejection = Response;
 ///
-///     async fn from_request(req: &mut RequestParts<S, B>) -> Result<Self, Self::Rejection> {
+///     async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
 ///         // loading a `CurrentUser` requires first loading the `Session`
 ///         //
 ///         // by using `Cached<Session>` we avoid extracting the session more than
 ///         // once, in case other extractors for the same request also loads the session
-///         let session: Session = Cached::<Session>::from_request(req)
+///         let session: Session = Cached::<Session>::from_request_parts(parts, state)
 ///             .await
 ///             .map_err(|err| err.into_response())?
 ///             .0;
@@ -92,18 +91,40 @@ struct CachedEntry<T>(T);
 #[async_trait]
 impl<S, B, T> FromRequest<S, B> for Cached<T>
 where
-    B: Send,
+    B: Send + 'static,
     S: Send + Sync,
-    T: FromRequest<S, B> + Clone + Send + Sync + 'static,
+    T: FromRequestParts<S> + Clone + Send + Sync + 'static,
 {
     type Rejection = T::Rejection;
 
-    async fn from_request(req: &mut RequestParts<S, B>) -> Result<Self, Self::Rejection> {
-        match Extension::<CachedEntry<T>>::from_request(req).await {
+    async fn from_request(req: Request<B>, state: &S) -> Result<Self, Self::Rejection> {
+        let (mut parts, _) = req.into_parts();
+
+        match Extension::<CachedEntry<T>>::from_request_parts(&mut parts, state).await {
             Ok(Extension(CachedEntry(value))) => Ok(Self(value)),
             Err(_) => {
-                let value = T::from_request(req).await?;
-                req.extensions_mut().insert(CachedEntry(value.clone()));
+                let value = T::from_request_parts(&mut parts, state).await?;
+                parts.extensions.insert(CachedEntry(value.clone()));
+                Ok(Self(value))
+            }
+        }
+    }
+}
+
+#[async_trait]
+impl<S, T> FromRequestParts<S> for Cached<T>
+where
+    S: Send + Sync,
+    T: FromRequestParts<S> + Clone + Send + Sync + 'static,
+{
+    type Rejection = T::Rejection;
+
+    async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
+        match Extension::<CachedEntry<T>>::from_request_parts(parts, state).await {
+            Ok(Extension(CachedEntry(value))) => Ok(Self(value)),
+            Err(_) => {
+                let value = T::from_request_parts(parts, state).await?;
+                parts.extensions.insert(CachedEntry(value.clone()));
                 Ok(Self(value))
             }
         }
@@ -127,7 +148,8 @@ impl<T> DerefMut for Cached<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use axum::http::Request;
+    use axum::{extract::FromRequestParts, http::Request};
+    use http::request::Parts;
     use std::{
         convert::Infallible,
         sync::atomic::{AtomicU32, Ordering},
@@ -142,25 +164,33 @@ mod tests {
         struct Extractor(Instant);
 
         #[async_trait]
-        impl<S, B> FromRequest<S, B> for Extractor
+        impl<S> FromRequestParts<S> for Extractor
         where
-            B: Send,
             S: Send + Sync,
         {
             type Rejection = Infallible;
 
-            async fn from_request(_req: &mut RequestParts<S, B>) -> Result<Self, Self::Rejection> {
+            async fn from_request_parts(
+                _parts: &mut Parts,
+                _state: &S,
+            ) -> Result<Self, Self::Rejection> {
                 COUNTER.fetch_add(1, Ordering::SeqCst);
                 Ok(Self(Instant::now()))
             }
         }
 
-        let mut req = RequestParts::new(Request::new(()));
+        let (mut parts, _) = Request::new(()).into_parts();
 
-        let first = Cached::<Extractor>::from_request(&mut req).await.unwrap().0;
+        let first = Cached::<Extractor>::from_request_parts(&mut parts, &())
+            .await
+            .unwrap()
+            .0;
         assert_eq!(COUNTER.load(Ordering::SeqCst), 1);
 
-        let second = Cached::<Extractor>::from_request(&mut req).await.unwrap().0;
+        let second = Cached::<Extractor>::from_request_parts(&mut parts, &())
+            .await
+            .unwrap()
+            .0;
         assert_eq!(COUNTER.load(Ordering::SeqCst), 1);
 
         assert_eq!(first, second);

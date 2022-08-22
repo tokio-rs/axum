@@ -231,10 +231,10 @@ pub trait TypedPath: std::fmt::Display {
     }
 }
 
-/// Utility trait used with [`RouterExt`] to ensure the first element of a tuple type is a
+/// Utility trait used with [`RouterExt`] to ensure the second element of a tuple type is a
 /// given type.
 ///
-/// If you see it in type errors its most likely because the first argument to your handler doesn't
+/// If you see it in type errors its most likely because the second argument to your handler doesn't
 /// implement [`TypedPath`].
 ///
 /// You normally shouldn't have to use this trait directly.
@@ -242,56 +242,56 @@ pub trait TypedPath: std::fmt::Display {
 /// It is sealed such that it cannot be implemented outside this crate.
 ///
 /// [`RouterExt`]: super::RouterExt
-pub trait FirstElementIs<P>: Sealed {}
+pub trait SecondElementIs<P>: Sealed {}
 
-macro_rules! impl_first_element_is {
+macro_rules! impl_second_element_is {
     ( $($ty:ident),* $(,)? ) => {
-        impl<P, $($ty,)*> FirstElementIs<P> for (P, $($ty,)*)
+        impl<M, P, $($ty,)*> SecondElementIs<P> for (M, P, $($ty,)*)
         where
             P: TypedPath
         {}
 
-        impl<P, $($ty,)*> Sealed for (P, $($ty,)*)
+        impl<M, P, $($ty,)*> Sealed for (M, P, $($ty,)*)
         where
             P: TypedPath
         {}
 
-        impl<P, $($ty,)*> FirstElementIs<P> for (Option<P>, $($ty,)*)
+        impl<M, P, $($ty,)*> SecondElementIs<P> for (M, Option<P>, $($ty,)*)
         where
             P: TypedPath
         {}
 
-        impl<P, $($ty,)*> Sealed for (Option<P>, $($ty,)*)
+        impl<M, P, $($ty,)*> Sealed for (M, Option<P>, $($ty,)*)
         where
             P: TypedPath
         {}
 
-        impl<P, E, $($ty,)*> FirstElementIs<P> for (Result<P, E>, $($ty,)*)
+        impl<M, P, E, $($ty,)*> SecondElementIs<P> for (M, Result<P, E>, $($ty,)*)
         where
             P: TypedPath
         {}
 
-        impl<P, E, $($ty,)*> Sealed for (Result<P, E>, $($ty,)*)
+        impl<M, P, E, $($ty,)*> Sealed for (M, Result<P, E>, $($ty,)*)
         where
             P: TypedPath
         {}
     };
 }
 
-impl_first_element_is!();
-impl_first_element_is!(T1);
-impl_first_element_is!(T1, T2);
-impl_first_element_is!(T1, T2, T3);
-impl_first_element_is!(T1, T2, T3, T4);
-impl_first_element_is!(T1, T2, T3, T4, T5);
-impl_first_element_is!(T1, T2, T3, T4, T5, T6);
-impl_first_element_is!(T1, T2, T3, T4, T5, T6, T7);
-impl_first_element_is!(T1, T2, T3, T4, T5, T6, T7, T8);
-impl_first_element_is!(T1, T2, T3, T4, T5, T6, T7, T8, T9);
-impl_first_element_is!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10);
-impl_first_element_is!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11);
-impl_first_element_is!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12);
-impl_first_element_is!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13);
-impl_first_element_is!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14);
-impl_first_element_is!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15);
-impl_first_element_is!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16);
+impl_second_element_is!();
+impl_second_element_is!(T1);
+impl_second_element_is!(T1, T2);
+impl_second_element_is!(T1, T2, T3);
+impl_second_element_is!(T1, T2, T3, T4);
+impl_second_element_is!(T1, T2, T3, T4, T5);
+impl_second_element_is!(T1, T2, T3, T4, T5, T6);
+impl_second_element_is!(T1, T2, T3, T4, T5, T6, T7);
+impl_second_element_is!(T1, T2, T3, T4, T5, T6, T7, T8);
+impl_second_element_is!(T1, T2, T3, T4, T5, T6, T7, T8, T9);
+impl_second_element_is!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10);
+impl_second_element_is!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11);
+impl_second_element_is!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12);
+impl_second_element_is!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13);
+impl_second_element_is!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14);
+impl_second_element_is!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15);
+impl_second_element_is!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16);

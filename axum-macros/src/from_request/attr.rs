@@ -16,13 +16,11 @@ pub(crate) enum FromRequestContainerAttr {
         rejection: Option<syn::Path>,
     },
     Rejection(syn::Path),
-    RejectionDerive(kw::rejection_derive, RejectionDeriveOptOuts),
     None,
 }
 
 pub(crate) mod kw {
     syn::custom_keyword!(via);
-    syn::custom_keyword!(rejection_derive);
     syn::custom_keyword!(rejection);
     syn::custom_keyword!(Display);
     syn::custom_keyword!(Debug);
@@ -55,7 +53,6 @@ pub(crate) fn parse_container_attrs(
     let attrs = parse_attrs::<ContainerAttr>(attrs)?;
 
     let mut out_via = None;
-    let mut out_rejection_derive = None;
     let mut out_rejection = None;
 
     // we track the index of the attribute to know which comes last
@@ -69,16 +66,6 @@ pub(crate) fn parse_container_attrs(
                     out_via = Some((idx, via, path));
                 }
             }
-            ContainerAttr::RejectionDerive {
-                rejection_derive,
-                opt_outs,
-            } => {
-                if out_rejection_derive.is_some() {
-                    return Err(double_attr_error("rejection_derive", rejection_derive));
-                } else {
-                    out_rejection_derive = Some((idx, rejection_derive, opt_outs));
-                }
-            }
             ContainerAttr::Rejection { rejection, path } => {
                 if out_rejection.is_some() {
                     return Err(double_attr_error("rejection", rejection));
@@ -89,55 +76,20 @@ pub(crate) fn parse_container_attrs(
         }
     }
 
-    match (out_via, out_rejection_derive, out_rejection) {
-        (Some((via_idx, via, _)), Some((rejection_derive_idx, rejection_derive, _)), _) => {
-            if via_idx > rejection_derive_idx {
-                Err(syn::Error::new_spanned(
-                    via,
-                    "cannot use both `rejection_derive` and `via`",
-                ))
-            } else {
-                Err(syn::Error::new_spanned(
-                    rejection_derive,
-                    "cannot use both `via` and `rejection_derive`",
-                ))
-            }
-        }
-
-        (
-            _,
-            Some((rejection_derive_idx, rejection_derive, _)),
-            Some((rejection_idx, rejection, _)),
-        ) => {
-            if rejection_idx > rejection_derive_idx {
-                Err(syn::Error::new_spanned(
-                    rejection,
-                    "cannot use both `rejection_derive` and `rejection`",
-                ))
-            } else {
-                Err(syn::Error::new_spanned(
-                    rejection_derive,
-                    "cannot use both `rejection` and `rejection_derive`",
-                ))
-            }
-        }
-
-        (Some((_, _, path)), None, None) => Ok(FromRequestContainerAttr::Via {
+    match (out_via, out_rejection) {
+        (Some((_, _, path)), None) => Ok(FromRequestContainerAttr::Via {
             path,
             rejection: None,
         }),
-        (Some((_, _, path)), None, Some((_, _, rejection))) => Ok(FromRequestContainerAttr::Via {
+
+        (Some((_, _, path)), Some((_, _, rejection))) => Ok(FromRequestContainerAttr::Via {
             path,
             rejection: Some(rejection),
         }),
 
-        (None, Some((_, rejection_derive, opt_outs)), _) => Ok(
-            FromRequestContainerAttr::RejectionDerive(rejection_derive, opt_outs),
-        ),
+        (None, Some((_, _, rejection))) => Ok(FromRequestContainerAttr::Rejection(rejection)),
 
-        (None, None, Some((_, _, rejection))) => Ok(FromRequestContainerAttr::Rejection(rejection)),
-
-        (None, None, None) => Ok(FromRequestContainerAttr::None),
+        (None, None) => Ok(FromRequestContainerAttr::None),
     }
 }
 
@@ -172,10 +124,6 @@ enum ContainerAttr {
         rejection: kw::rejection,
         path: syn::Path,
     },
-    RejectionDerive {
-        rejection_derive: kw::rejection_derive,
-        opt_outs: RejectionDeriveOptOuts,
-    },
 }
 
 impl Parse for ContainerAttr {
@@ -186,14 +134,6 @@ impl Parse for ContainerAttr {
             let content;
             syn::parenthesized!(content in input);
             content.parse().map(|path| Self::Via { via, path })
-        } else if lh.peek(kw::rejection_derive) {
-            let rejection_derive = input.parse::<kw::rejection_derive>()?;
-            let content;
-            syn::parenthesized!(content in input);
-            content.parse().map(|opt_outs| Self::RejectionDerive {
-                rejection_derive,
-                opt_outs,
-            })
         } else if lh.peek(kw::rejection) {
             let rejection = input.parse::<kw::rejection>()?;
             let content;
@@ -222,84 +162,5 @@ impl Parse for FieldAttr {
         } else {
             Err(lh.error())
         }
-    }
-}
-
-#[derive(Default)]
-pub(crate) struct RejectionDeriveOptOuts {
-    debug: Option<kw::Debug>,
-    display: Option<kw::Display>,
-    error: Option<kw::Error>,
-}
-
-impl RejectionDeriveOptOuts {
-    pub(crate) fn derive_debug(&self) -> bool {
-        self.debug.is_none()
-    }
-
-    pub(crate) fn derive_display(&self) -> bool {
-        self.display.is_none()
-    }
-
-    pub(crate) fn derive_error(&self) -> bool {
-        self.error.is_none()
-    }
-}
-
-impl Parse for RejectionDeriveOptOuts {
-    fn parse(input: ParseStream) -> syn::Result<Self> {
-        fn parse_opt_out<T>(out: &mut Option<T>, ident: &str, input: ParseStream) -> syn::Result<()>
-        where
-            T: Parse,
-        {
-            if out.is_some() {
-                Err(input.error(format!("`{}` opt out specified more than once", ident)))
-            } else {
-                *out = Some(input.parse()?);
-                Ok(())
-            }
-        }
-
-        let mut debug = None::<kw::Debug>;
-        let mut display = None::<kw::Display>;
-        let mut error = None::<kw::Error>;
-
-        while !input.is_empty() {
-            input.parse::<Token![!]>()?;
-
-            let lh = input.lookahead1();
-            if lh.peek(kw::Debug) {
-                parse_opt_out(&mut debug, "Debug", input)?;
-            } else if lh.peek(kw::Display) {
-                parse_opt_out(&mut display, "Display", input)?;
-            } else if lh.peek(kw::Error) {
-                parse_opt_out(&mut error, "Error", input)?;
-            } else {
-                return Err(lh.error());
-            }
-
-            input.parse::<Token![,]>().ok();
-        }
-
-        if error.is_none() {
-            match (debug, display) {
-                (Some(debug), Some(_)) => {
-                    return Err(syn::Error::new_spanned(debug, "opt out of `Debug` and `Display` requires also opting out of `Error`. Use `#[from_request(rejection_derive(!Debug, !Display, !Error))]`"));
-                }
-                (Some(debug), None) => {
-                    return Err(syn::Error::new_spanned(debug, "opt out of `Debug` requires also opting out of `Error`. Use `#[from_request(rejection_derive(!Debug, !Error))]`"));
-                }
-                (None, Some(display)) => {
-                    return Err(syn::Error::new_spanned(display, "opt out of `Display` requires also opting out of `Error`. Use `#[from_request(rejection_derive(!Display, !Error))]`"));
-                }
-                (None, None) => {}
-            }
-        }
-
-        Ok(Self {
-            debug,
-            display,
-            error,
-        })
     }
 }

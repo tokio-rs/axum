@@ -95,7 +95,7 @@
 //! [`StreamExt::split`]: https://docs.rs/futures/0.3.17/futures/stream/trait.StreamExt.html#method.split
 
 use self::rejection::*;
-use super::{FromRequest, RequestParts};
+use super::FromRequestParts;
 use crate::{
     body::{self, Bytes},
     response::Response,
@@ -107,7 +107,8 @@ use futures_util::{
     stream::{Stream, StreamExt},
 };
 use http::{
-    header::{self, HeaderName, HeaderValue},
+    header::{self, HeaderMap, HeaderName, HeaderValue},
+    request::Parts,
     Method, StatusCode,
 };
 use hyper::upgrade::{OnUpgrade, Upgraded};
@@ -275,41 +276,40 @@ impl WebSocketUpgrade {
 }
 
 #[async_trait]
-impl<S, B> FromRequest<S, B> for WebSocketUpgrade
+impl<S> FromRequestParts<S> for WebSocketUpgrade
 where
-    B: Send,
     S: Send + Sync,
 {
     type Rejection = WebSocketUpgradeRejection;
 
-    async fn from_request(req: &mut RequestParts<S, B>) -> Result<Self, Self::Rejection> {
-        if req.method() != Method::GET {
+    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
+        if parts.method != Method::GET {
             return Err(MethodNotGet.into());
         }
 
-        if !header_contains(req, header::CONNECTION, "upgrade") {
+        if !header_contains(&parts.headers, header::CONNECTION, "upgrade") {
             return Err(InvalidConnectionHeader.into());
         }
 
-        if !header_eq(req, header::UPGRADE, "websocket") {
+        if !header_eq(&parts.headers, header::UPGRADE, "websocket") {
             return Err(InvalidUpgradeHeader.into());
         }
 
-        if !header_eq(req, header::SEC_WEBSOCKET_VERSION, "13") {
+        if !header_eq(&parts.headers, header::SEC_WEBSOCKET_VERSION, "13") {
             return Err(InvalidWebSocketVersionHeader.into());
         }
 
-        let sec_websocket_key = req
-            .headers_mut()
+        let sec_websocket_key = parts
+            .headers
             .remove(header::SEC_WEBSOCKET_KEY)
             .ok_or(WebSocketKeyHeaderMissing)?;
 
-        let on_upgrade = req
-            .extensions_mut()
+        let on_upgrade = parts
+            .extensions
             .remove::<OnUpgrade>()
             .ok_or(ConnectionNotUpgradable)?;
 
-        let sec_websocket_protocol = req.headers().get(header::SEC_WEBSOCKET_PROTOCOL).cloned();
+        let sec_websocket_protocol = parts.headers.get(header::SEC_WEBSOCKET_PROTOCOL).cloned();
 
         Ok(Self {
             config: Default::default(),
@@ -321,16 +321,16 @@ where
     }
 }
 
-fn header_eq<S, B>(req: &RequestParts<S, B>, key: HeaderName, value: &'static str) -> bool {
-    if let Some(header) = req.headers().get(&key) {
+fn header_eq(headers: &HeaderMap, key: HeaderName, value: &'static str) -> bool {
+    if let Some(header) = headers.get(&key) {
         header.as_bytes().eq_ignore_ascii_case(value.as_bytes())
     } else {
         false
     }
 }
 
-fn header_contains<S, B>(req: &RequestParts<S, B>, key: HeaderName, value: &'static str) -> bool {
-    let header = if let Some(header) = req.headers().get(&key) {
+fn header_contains(headers: &HeaderMap, key: HeaderName, value: &'static str) -> bool {
+    let header = if let Some(header) = headers.get(&key) {
         header
     } else {
         return false;
