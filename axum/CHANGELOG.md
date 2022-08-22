@@ -342,6 +342,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `MethodRouter`, defaults to `()`
   - `FromRequest`, no default
   - `Handler`, no default
+- **added:** Add `RequestExt` and `RequestPartsExt` which adds convenience
+  methods for running extractors to `http::Request` and `http::request::Parts`
 
 ## Middleware
 
