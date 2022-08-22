@@ -1,4 +1,4 @@
-use itertools::{Itertools, Position};
+use crate::with_position::{Position, WithPosition};
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote, quote_spanned};
 use std::collections::HashSet;
@@ -174,11 +174,7 @@ fn check_inputs_impls_from_request(
         FnArg::Typed(typed) => is_self_pat_type(typed),
     });
 
-    item_fn
-        .sig
-        .inputs
-        .iter()
-        .with_position()
+    WithPosition::new(item_fn.sig.inputs.iter())
         .enumerate()
         .map(|(idx, arg)| {
             let must_impl_from_request_parts = match &arg {

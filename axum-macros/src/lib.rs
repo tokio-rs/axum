@@ -50,6 +50,7 @@ use syn::parse::Parse;
 mod debug_handler;
 mod from_request;
 mod typed_path;
+mod with_position;
 
 /// Derive an implementation of [`FromRequest`].
 ///
