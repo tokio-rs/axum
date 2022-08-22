@@ -8,7 +8,7 @@ use crate::{
     test_helpers::*,
     BoxError, Json, Router,
 };
-use http::{header::CONTENT_LENGTH, HeaderMap, Method, Request, Response, StatusCode, Uri};
+use http::{header::CONTENT_LENGTH, HeaderMap, Request, Response, StatusCode, Uri};
 use hyper::Body;
 use serde_json::json;
 use std::{
