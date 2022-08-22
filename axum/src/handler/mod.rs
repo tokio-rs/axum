@@ -95,7 +95,7 @@ pub use self::{into_service::IntoService, with_state::WithState};
 /// {}
 /// ```
 #[doc = include_str!("../docs/debugging_handler_type_errors.md")]
-pub trait Handler<T, S = (), B = Body>: Clone + Send + Sized + 'static {
+pub trait Handler<T, S, B = Body>: Clone + Send + Sized + 'static {
     /// The type of future calling this handler returns.
     type Future: Future<Output = Response> + Send + 'static;
 
