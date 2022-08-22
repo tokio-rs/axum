@@ -6,8 +6,8 @@
 
 use axum::{
     async_trait,
-    extract::{FromRequest, Path, RequestParts},
-    http::StatusCode,
+    extract::{FromRequestParts, Path},
+    http::{request::Parts, StatusCode},
     response::{IntoResponse, Response},
     routing::get,
     Router,
@@ -48,15 +48,14 @@ enum Version {
 }
 
 #[async_trait]
-impl<S, B> FromRequest<S, B> for Version
+impl<S> FromRequestParts<S> for Version
 where
-    B: Send,
     S: Send + Sync,
 {
     type Rejection = Response;
 
-    async fn from_request(req: &mut RequestParts<S, B>) -> Result<Self, Self::Rejection> {
-        let params = Path::<HashMap<String, String>>::from_request(req)
+    async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
+        let params = Path::<HashMap<String, String>>::from_request_parts(parts, state)
             .await
             .map_err(IntoResponse::into_response)?;
 

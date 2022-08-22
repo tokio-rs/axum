@@ -7,11 +7,12 @@
 use async_session::{MemoryStore, Session, SessionStore as _};
 use axum::{
     async_trait,
-    extract::{FromRequest, RequestParts, TypedHeader},
+    extract::{FromRef, FromRequestParts, TypedHeader},
     headers::Cookie,
     http::{
         self,
         header::{HeaderMap, HeaderValue},
+        request::Parts,
         StatusCode,
     },
     response::IntoResponse,
@@ -80,16 +81,19 @@ enum UserIdFromSession {
 }
 
 #[async_trait]
-impl<B> FromRequest<MemoryStore, B> for UserIdFromSession
+impl<S> FromRequestParts<S> for UserIdFromSession
 where
-    B: Send,
+    MemoryStore: FromRef<S>,
+    S: Send + Sync,
 {
     type Rejection = (StatusCode, &'static str);
 
-    async fn from_request(req: &mut RequestParts<MemoryStore, B>) -> Result<Self, Self::Rejection> {
-        let store = req.state().clone();
+    async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
+        let store = MemoryStore::from_ref(state);
 
-        let cookie = req.extract::<Option<TypedHeader<Cookie>>>().await.unwrap();
+        let cookie = Option::<TypedHeader<Cookie>>::from_request_parts(parts, state)
+            .await
+            .unwrap();
 
         let session_cookie = cookie
             .as_ref()

@@ -8,9 +8,9 @@
 
 use axum::{
     async_trait,
-    extract::{FromRequest, RequestParts, TypedHeader},
+    extract::{FromRequestParts, TypedHeader},
     headers::{authorization::Bearer, Authorization},
-    http::StatusCode,
+    http::{request::Parts, StatusCode},
     response::{IntoResponse, Response},
     routing::{get, post},
     Json, Router,
@@ -122,17 +122,16 @@ impl AuthBody {
 }
 
 #[async_trait]
-impl<S, B> FromRequest<S, B> for Claims
+impl<S> FromRequestParts<S> for Claims
 where
     S: Send + Sync,
-    B: Send,
 {
     type Rejection = AuthError;
 
-    async fn from_request(req: &mut RequestParts<S, B>) -> Result<Self, Self::Rejection> {
+    async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
         // Extract the token from the authorization header
         let TypedHeader(Authorization(bearer)) =
-            TypedHeader::<Authorization<Bearer>>::from_request(req)
+            TypedHeader::<Authorization<Bearer>>::from_request_parts(parts, state)
                 .await
                 .map_err(|_| AuthError::InvalidToken)?;
         // Decode the user data
