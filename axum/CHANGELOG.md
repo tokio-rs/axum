@@ -337,11 +337,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   rework ([#1272])
 - **breaking:** `BodyAlreadyExtracted` has been removed ([#1272])
 - **breaking:** The following types or traits have a new `S` type param
-  (`()` by default) which represents the state ([#1155]):
-  - `FromRequest`
-  - `Router`
-  - `MethodRouter`
-  - `Handler`
+  which represents the state ([#1155]):
+  - `Router`, defaults to `()`
+  - `MethodRouter`, defaults to `()`
+  - `FromRequest`, no default
+  - `Handler`, no default
 
 ## Middleware
 
