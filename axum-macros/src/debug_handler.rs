@@ -1,3 +1,4 @@
+use crate::with_position::{Position, WithPosition};
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote, quote_spanned};
 use std::collections::HashSet;
@@ -173,12 +174,16 @@ fn check_inputs_impls_from_request(
         FnArg::Typed(typed) => is_self_pat_type(typed),
     });
 
-    item_fn
-        .sig
-        .inputs
-        .iter()
+    WithPosition::new(item_fn.sig.inputs.iter())
         .enumerate()
         .map(|(idx, arg)| {
+            let must_impl_from_request_parts = match &arg {
+                Position::First(_) | Position::Middle(_) => true,
+                Position::Last(_) | Position::Only(_) => false,
+            };
+
+            let arg = arg.into_inner();
+
             let (span, ty) = match arg {
                 FnArg::Receiver(receiver) => {
                     if receiver.reference.is_some() {
@@ -228,11 +233,27 @@ fn check_inputs_impls_from_request(
                 }
             };
 
+            let check_fn_generics = if must_impl_from_request_parts {
+                quote! {}
+            } else {
+                quote! { <M> }
+            };
+
+            let from_request_bound = if must_impl_from_request_parts {
+                quote! {
+                    #ty: ::axum::extract::FromRequestParts<#state_ty> + Send
+                }
+            } else {
+                quote! {
+                    #ty: ::axum::extract::FromRequest<#state_ty, #body_ty, M> + Send
+                }
+            };
+
             quote_spanned! {span=>
                 #[allow(warnings)]
-                fn #check_fn<M>()
+                fn #check_fn #check_fn_generics()
                 where
-                    #ty: ::axum::extract::FromRequest<#state_ty, #body_ty, M> + Send,
+                    #from_request_bound,
                 {}
 
                 // we have to call the function to actually trigger a compile error
@@ -472,15 +493,5 @@ fn state_type_from_args(item_fn: &ItemFn) -> Option<Type> {
 
 #[test]
 fn ui() {
-    #[rustversion::stable]
-    fn go() {
-        let t = trybuild::TestCases::new();
-        t.compile_fail("tests/debug_handler/fail/*.rs");
-        t.pass("tests/debug_handler/pass/*.rs");
-    }
-
-    #[rustversion::not(stable)]
-    fn go() {}
-
-    go();
+    crate::run_ui_tests("debug_handler");
 }

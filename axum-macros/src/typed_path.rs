@@ -423,15 +423,5 @@ fn map_err_rejection(rejection: &Option<syn::Path>) -> TokenStream {
 
 #[test]
 fn ui() {
-    #[rustversion::stable]
-    fn go() {
-        let t = trybuild::TestCases::new();
-        t.compile_fail("tests/typed_path/fail/*.rs");
-        t.pass("tests/typed_path/pass/*.rs");
-    }
-
-    #[rustversion::not(stable)]
-    fn go() {}
-
-    go();
+    crate::run_ui_tests("typed_path");
 }

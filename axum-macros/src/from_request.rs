@@ -564,17 +564,7 @@ fn impl_enum_by_extracting_all_at_once(
 
 #[test]
 fn ui() {
-    #[rustversion::stable]
-    fn go() {
-        let t = trybuild::TestCases::new();
-        t.compile_fail("tests/from_request/fail/*.rs");
-        t.pass("tests/from_request/pass/*.rs");
-    }
-
-    #[rustversion::not(stable)]
-    fn go() {}
-
-    go();
+    crate::run_ui_tests("from_request");
 }
 
 /// For some reason the compiler error for this is different locally and on CI. No idea why... So
