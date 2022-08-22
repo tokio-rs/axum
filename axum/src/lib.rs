@@ -486,4 +486,6 @@ pub use axum_core::{BoxError, Error};
 #[cfg(feature = "macros")]
 pub use axum_macros::debug_handler;
 
-pub use self::ext_traits::service::ServiceExt;
+pub use self::ext_traits::{
+    request::RequestExt, request_parts::RequestPartsExt, service::ServiceExt,
+};
