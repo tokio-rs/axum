@@ -19,10 +19,10 @@ pub use self::from_ref::FromRef;
 
 mod private {
     #[derive(Debug, Clone, Copy)]
-    pub enum Mut {}
+    pub enum ViaParts {}
 
     #[derive(Debug, Clone, Copy)]
-    pub enum Once {}
+    pub enum ViaRequest {}
 }
 
 /// Types that can be created from request parts.
@@ -100,7 +100,7 @@ pub trait FromRequestParts<S>: Sized {
 /// [`http::Request<B>`]: http::Request
 /// [`axum::extract`]: https://docs.rs/axum/0.6/axum/extract/index.html
 #[async_trait]
-pub trait FromRequest<S, B, M = private::Once>: Sized {
+pub trait FromRequest<S, B, M = private::ViaRequest>: Sized {
     /// If the extractor fails it'll use this "rejection" type. A rejection is
     /// a kind of error that can be converted into a response.
     type Rejection: IntoResponse;
@@ -110,7 +110,7 @@ pub trait FromRequest<S, B, M = private::Once>: Sized {
 }
 
 #[async_trait]
-impl<S, B, T> FromRequest<S, B, private::Mut> for T
+impl<S, B, T> FromRequest<S, B, private::ViaParts> for T
 where
     B: Send + 'static,
     S: Send + Sync,
