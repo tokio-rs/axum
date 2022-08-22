@@ -361,6 +361,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **fixed:** Annotate panicking functions with `#[track_caller]` so the error
   message points to where the user added the invalid route, rather than
   somewhere internally in axum ([#1248])
+- **added:** Add `ServiceExt` with methods for turning any `Service` into a
+  `MakeService` similarly to `Router::into_make_service`
 
 [#1077]: https://github.com/tokio-rs/axum/pull/1077
 [#1086]: https://github.com/tokio-rs/axum/pull/1086

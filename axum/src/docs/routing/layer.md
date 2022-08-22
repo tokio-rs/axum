@@ -9,6 +9,11 @@ of routes.
 Note this differs from [`Handler::layer`](crate::handler::Handler::layer)
 which adds a middleware to a single handler.
 
+Middleware added with this method will run _after_ routing and thus cannot be
+used to rewrite the request URI. See ["Rewriting request URI in
+middleware"](crate::middleware#rewriting-request-uri-in-middleware) for more
+details and a workaround.
+
 # Example
 
 Adding the [`tower::limit::ConcurrencyLimit`] middleware to a group of

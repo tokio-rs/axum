@@ -433,6 +433,7 @@
 #[macro_use]
 pub(crate) mod macros;
 
+mod ext_traits;
 mod extension;
 #[cfg(feature = "form")]
 mod form;
@@ -484,3 +485,5 @@ pub use axum_core::{BoxError, Error};
 
 #[cfg(feature = "macros")]
 pub use axum_macros::debug_handler;
+
+pub use self::ext_traits::service::ServiceExt;

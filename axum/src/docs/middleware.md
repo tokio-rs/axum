@@ -8,6 +8,7 @@
 - [Routing to services/middleware and backpressure](#routing-to-servicesmiddleware-and-backpressure)
 - [Accessing state in middleware](#accessing-state-in-middleware)
 - [Passing state from middleware to handlers](#passing-state-from-middleware-to-handlers)
+- [Rewriting request URI in middleware](#rewriting-request-uri-in-middleware)
 
 # Intro
 
@@ -557,6 +558,47 @@ let app = Router::new()
 automatically moved to response extensions. You need to manually do that for the
 extensions you need.
 
+# Rewriting request URI in middleware
+
+Middleware added with [`Router::layer`] will run after routing. That means it
+cannot be used to run middleware that rewrites the request URI. By the time the
+middleware runs the routing is already done.
+
+The workaround is to wrap the middleware around the entire `Router` (this works
+because `Router` implements [`Service`]):
+
+```rust
+use tower::Layer;
+use axum::{
+    Router,
+    ServiceExt, // for `into_make_service`
+    response::Response,
+    middleware::Next,
+    http::Request,
+};
+
+async fn rewrite_request_uri<B>(req: Request<B>, next: Next<B>) -> Response {
+    // ...
+    # next.run(req).await
+}
+
+// this can be any `tower::Layer`
+let middleware = axum::middleware::from_fn(rewrite_request_uri);
+
+let app = Router::new();
+
+// apply the layer around the whole `Router`
+// this way the middleware will run before `Router` receives the request
+let app_with_middleware = middleware.layer(app);
+
+# async {
+axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())
+    .serve(app_with_middleware.into_make_service())
+    .await
+    .unwrap();
+# };
+```
+
 [`tower`]: https://crates.io/crates/tower
 [`tower-http`]: https://crates.io/crates/tower-http
 [tower-guides]: https://github.com/tower-rs/tower/tree/master/guides
@@ -576,3 +618,4 @@ extensions you need.
 [request extensions]: https://docs.rs/http/latest/http/request/struct.Request.html#method.extensions
 [Response extensions]: https://docs.rs/http/latest/http/response/struct.Response.html#method.extensions
 [`State`]: crate::extract::State
+[`Service`]: tower::Service
