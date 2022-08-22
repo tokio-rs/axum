@@ -342,6 +342,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `MethodRouter`, defaults to `()`
   - `FromRequest`, no default
   - `Handler`, no default
+- **added:** Add `RequestExt` and `RequestPartsExt` which adds convenience
+  methods for running extractors to `http::Request` and `http::request::Parts` ([#1301])
 
 ## Middleware
 
@@ -372,6 +374,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#1239]: https://github.com/tokio-rs/axum/pull/1239
 [#1248]: https://github.com/tokio-rs/axum/pull/1248
 [#1272]: https://github.com/tokio-rs/axum/pull/1272
+[#1301]: https://github.com/tokio-rs/axum/pull/1301
 [#924]: https://github.com/tokio-rs/axum/pull/924
 
 # 0.5.15 (9. August, 2022)
