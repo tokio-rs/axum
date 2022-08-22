@@ -553,6 +553,8 @@ let app = Router::new().route(
     //
     // The workaround is to implement either `FromRequest` or `FromRequestParts`
     // but not both, if your extractor doesn't wrap another extractor.
+    //
+    // See "Wrapping extractors" for how to wrap other extractors.
     get(|_: MyExtractor| async {}),
 );
 # let _: Router = app;
