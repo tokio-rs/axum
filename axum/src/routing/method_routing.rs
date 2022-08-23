@@ -877,16 +877,30 @@ where
         self
     }
 
-    #[doc = include_str!("../docs/method_routing/merge.md")]
     #[track_caller]
-    pub fn merge(mut self, other: MethodRouter<S, B, E>) -> Self {
+    pub(crate) fn merge_for_path(
+        mut self,
+        path: Option<&str>,
+        other: MethodRouter<S, B, E>,
+    ) -> Self {
         // written using inner functions to generate less IR
         #[track_caller]
-        fn merge_inner<T>(name: &str, first: Option<T>, second: Option<T>) -> Option<T> {
+        fn merge_inner<T>(
+            path: Option<&str>,
+            name: &str,
+            first: Option<T>,
+            second: Option<T>,
+        ) -> Option<T> {
             match (first, second) {
-                (Some(_), Some(_)) => panic!(
-                    "Overlapping method route. Cannot merge two method routes that both define `{}`", name
-                ),
+                (Some(_), Some(_)) => {
+                    if let Some(path) = path {
+                        panic!(
+                            "Overlapping method route. Handler for `{name} {path}` already exists"
+                        )
+                    } else {
+                        panic!("Overlapping method route. Cannot merge two method routes that both define `{name}`")
+                    }
+                }
                 (Some(svc), None) => Some(svc),
                 (None, Some(svc)) => Some(svc),
                 (None, None) => None,
@@ -908,20 +922,26 @@ where
             }
         }
 
-        self.get = merge_inner("get", self.get, other.get);
-        self.head = merge_inner("head", self.head, other.head);
-        self.delete = merge_inner("delete", self.delete, other.delete);
-        self.options = merge_inner("options", self.options, other.options);
-        self.patch = merge_inner("patch", self.patch, other.patch);
-        self.post = merge_inner("post", self.post, other.post);
-        self.put = merge_inner("put", self.put, other.put);
-        self.trace = merge_inner("trace", self.trace, other.trace);
+        self.get = merge_inner(path, "GET", self.get, other.get);
+        self.head = merge_inner(path, "HEAD", self.head, other.head);
+        self.delete = merge_inner(path, "DELETE", self.delete, other.delete);
+        self.options = merge_inner(path, "OPTIONS", self.options, other.options);
+        self.patch = merge_inner(path, "PATCH", self.patch, other.patch);
+        self.post = merge_inner(path, "POST", self.post, other.post);
+        self.put = merge_inner(path, "PUT", self.put, other.put);
+        self.trace = merge_inner(path, "TRACE", self.trace, other.trace);
 
         self.fallback = merge_fallback(self.fallback, other.fallback);
 
         self.allow_header = self.allow_header.merge(other.allow_header);
 
         self
+    }
+
+    #[doc = include_str!("../docs/method_routing/merge.md")]
+    #[track_caller]
+    pub fn merge(self, other: MethodRouter<S, B, E>) -> Self {
+        self.merge_for_path(None, other)
     }
 
     /// Apply a [`HandleErrorLayer`].
@@ -948,6 +968,7 @@ where
         T::Future: Send + 'static,
     {
         // written using an inner function to generate less IR
+        #[track_caller]
         fn set_service<T>(
             method_name: &str,
             out: &mut Option<T>,

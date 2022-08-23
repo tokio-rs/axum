@@ -504,6 +504,23 @@ async fn merging_routers_with_fallbacks_panics() {
     TestClient::new(one.merge(two));
 }
 
+#[test]
+#[should_panic(expected = "Overlapping method route. Handler for `GET /foo/bar` already exists")]
+fn routes_with_overlapping_method_routes() {
+    async fn handler() {}
+    let _: Router = Router::new()
+        .route("/foo/bar", get(handler))
+        .route("/foo/bar", get(handler));
+}
+
+#[test]
+#[should_panic(expected = "Overlapping method route. Handler for `GET /foo/bar` already exists")]
+fn merging_with_overlapping_method_routes() {
+    async fn handler() {}
+    let app: Router = Router::new().route("/foo/bar", get(handler));
+    app.clone().merge(app);
+}
+
 #[tokio::test]
 async fn merging_routers_with_same_paths_but_different_methods() {
     let one = Router::new().route("/", get(|| async { "GET" }));
