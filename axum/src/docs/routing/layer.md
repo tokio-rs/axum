@@ -1,69 +1,52 @@
-Apply a [`tower::Layer`] to the router.
-
-All requests to the router will be processed by the layer's
-corresponding middleware.
+Apply a [`tower::Layer`] to all routes in the router.
 
 This can be used to add additional processing to a request for a group
 of routes.
 
-Note this differs from [`Handler::layer`](crate::handler::Handler::layer)
-which adds a middleware to a single handler.
+Note that the middleware is only applied to existing routes. So you have to
+first add your routes (and / or fallback) and then call `layer` afterwards. Additional
+routes added after `layer` is called will not have the middleware added.
+
+If you want to add middleware to a single handler you can either use
+[`MethodRouter::layer`] or [`Handler::layer`].
 
 # Example
 
-Adding the [`tower::limit::ConcurrencyLimit`] middleware to a group of
-routes can be done like so:
+Adding the [`tower_http::trace::TraceLayer`]:
 
 ```rust
-use axum::{
-    routing::get,
-    Router,
-};
-use tower::limit::{ConcurrencyLimitLayer, ConcurrencyLimit};
-
-async fn first_handler() {}
-
-async fn second_handler() {}
-
-async fn third_handler() {}
-
-// All requests to `first_handler` and `second_handler` will be sent through
-// `ConcurrencyLimit`
-let app = Router::new().route("/", get(first_handler))
-    .route("/foo", get(second_handler))
-    .layer(ConcurrencyLimitLayer::new(64))
-    // Request to `GET /bar` will go directly to `third_handler` and
-    // wont be sent through `ConcurrencyLimit`
-    .route("/bar", get(third_handler));
-# async {
-# axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-# };
-```
-
-This is commonly used to add middleware such as tracing/logging to your
-entire app:
-
-```rust
-use axum::{
-    routing::get,
-    Router,
-};
+use axum::{routing::get, Router};
 use tower_http::trace::TraceLayer;
 
-async fn first_handler() {}
-
-async fn second_handler() {}
-
-async fn third_handler() {}
-
 let app = Router::new()
-    .route("/", get(first_handler))
-    .route("/foo", get(second_handler))
-    .route("/bar", get(third_handler))
+    .route("/foo", get(|| async {}))
+    .route("/bar", get(|| async {}))
     .layer(TraceLayer::new_for_http());
-# async {
-# axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-# };
+# let _: Router = app;
+```
+
+If you need to write your own middleware see ["Writing
+middleware"](crate::middleware#writing-middleware) for the different options.
+
+If you only want middleware on some routes you can use [`Router::merge`]:
+
+```rust
+use axum::{routing::get, Router};
+use tower_http::{trace::TraceLayer, compression::CompressionLayer};
+
+let with_tracing = Router::new()
+    .route("/foo", get(|| async {}))
+    .layer(TraceLayer::new_for_http());
+
+let with_compression = Router::new()
+    .route("/bar", get(|| async {}))
+    .layer(CompressionLayer::new());
+
+// Merge everything into one `Router`
+let app = Router::new()
+    .merge(with_tracing)
+    .merge(with_compression);
+# let _: Router = app;
 ```
 
 # Multiple middleware
@@ -71,7 +54,16 @@ let app = Router::new()
 It's recommended to use [`tower::ServiceBuilder`] when applying multiple
 middleware. See [`middleware`](crate::middleware) for more details.
 
+# Runs after routing
+
+Middleware added with this method will run _after_ routing and thus cannot be
+used to rewrite the request URI. See ["Rewriting request URI in
+middleware"](crate::middleware#rewriting-request-uri-in-middleware) for more
+details and a workaround.
+
 # Error handling
 
 See [`middleware`](crate::middleware) for details on how error handling impacts
 middleware.
+
+[`Handler::layer`]: crate::handler::Handler::layer
