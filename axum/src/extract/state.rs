@@ -89,7 +89,7 @@ use std::{
 ///
 /// # Substates
 ///
-/// [`State`] only allows a single state type but you can use [`From`] to extract "substates":
+/// [`State`] only allows a single state type but you can use [`FromRef`] to extract "substates":
 ///
 /// ```
 /// use axum::{Router, routing::get, extract::{State, FromRef}};
