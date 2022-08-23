@@ -173,7 +173,11 @@ where
         {
             // if we're adding a new `MethodRouter` to a route that already has one just
             // merge them. This makes `.route("/", get(_)).route("/", post(_))` work
-            let service = Endpoint::MethodRouter(prev_method_router.clone().merge(method_router));
+            let service = Endpoint::MethodRouter(
+                prev_method_router
+                    .clone()
+                    .merge_for_path(Some(path), method_router),
+            );
             self.routes.insert(route_id, service);
             return self;
         } else {
