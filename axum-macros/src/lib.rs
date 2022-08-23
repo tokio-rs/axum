@@ -52,6 +52,8 @@ mod from_request;
 mod typed_path;
 mod with_position;
 
+use from_request::Trait::{FromRequest, FromRequestParts};
+
 /// Derive an implementation of [`FromRequest`].
 ///
 /// Supports generating two kinds of implementations:
@@ -87,6 +89,8 @@ mod with_position;
 ///
 /// This requires that each field is an extractor (i.e. implements [`FromRequest`]).
 ///
+/// Note that only the last field can consume the request body. Therefore this doesn't compile:
+///
 /// ```compile_fail
 /// use axum_macros::FromRequest;
 /// use axum::body::Bytes;
@@ -99,7 +103,6 @@ mod with_position;
 ///     string: String,
 /// }
 /// ```
-/// Note that only the last field can consume the request body. Therefore this doesn't compile:
 ///
 /// ## Extracting via another extractor
 ///
@@ -353,7 +356,53 @@ mod with_position;
 /// [`axum::extract::rejection::ExtensionRejection`]: https://docs.rs/axum/latest/axum/extract/rejection/enum.ExtensionRejection.html
 #[proc_macro_derive(FromRequest, attributes(from_request))]
 pub fn derive_from_request(item: TokenStream) -> TokenStream {
-    expand_with(item, from_request::expand)
+    expand_with(item, |item| from_request::expand(item, FromRequest))
+}
+
+/// Derive an implementation of [`FromRequestParts`].
+///
+/// This works similarly to `#[derive(FromRequest)]` except it uses [`FromRequestParts`]. All the
+/// same options are supported.
+///
+/// # Example
+///
+/// ```
+/// use axum_macros::FromRequestParts;
+/// use axum::{
+///     extract::{Query, TypedHeader},
+///     headers::ContentType,
+/// };
+/// use std::collections::HashMap;
+///
+/// #[derive(FromRequestParts)]
+/// struct MyExtractor {
+///     #[from_request(via(Query))]
+///     query_params: HashMap<String, String>,
+///     content_type: TypedHeader<ContentType>,
+/// }
+///
+/// async fn handler(extractor: MyExtractor) {}
+/// ```
+///
+/// # Cannot extract the body
+///
+/// [`FromRequestParts`] cannot extract the request body:
+///
+/// ```compile_fail
+/// use axum_macros::FromRequestParts;
+///
+/// #[derive(FromRequestParts)]
+/// struct MyExtractor {
+///     body: String,
+/// }
+/// ```
+///
+/// Use `#[derive(FromRequest)]` for that.
+///
+/// [`FromRequestParts`]: https://docs.rs/axum/0.6/axum/extract/trait.FromRequestParts.html
+#[proc_macro_derive(FromRequestParts, attributes(from_request))]
+pub fn derive_from_request_parts(item: TokenStream) -> TokenStream {
+    expand_with(item, |item| from_request::expand(item, FromRequestParts))
 }
 
 /// Generates better error messages when applied handler functions.
