@@ -397,7 +397,7 @@ pub fn derive_from_request(item: TokenStream) -> TokenStream {
 /// }
 /// ```
 ///
-/// Use `#[derive(FromRequest)]` instead.
+/// Use `#[derive(FromRequest)]` for that.
 ///
 /// [`FromRequestParts`]: https://docs.rs/axum/0.6/axum/extract/trait.FromRequestParts.html
 #[proc_macro_derive(FromRequestParts, attributes(from_request))]
