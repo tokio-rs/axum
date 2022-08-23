@@ -52,6 +52,8 @@ mod from_request;
 mod typed_path;
 mod with_position;
 
+use from_request::Trait::{FromRequest, FromRequestParts};
+
 /// Derive an implementation of [`FromRequest`].
 ///
 /// Supports generating two kinds of implementations:
@@ -353,7 +355,12 @@ mod with_position;
 /// [`axum::extract::rejection::ExtensionRejection`]: https://docs.rs/axum/latest/axum/extract/rejection/enum.ExtensionRejection.html
 #[proc_macro_derive(FromRequest, attributes(from_request))]
 pub fn derive_from_request(item: TokenStream) -> TokenStream {
-    expand_with(item, from_request::expand)
+    expand_with(item, |item| from_request::expand(item, FromRequest))
+}
+
+#[proc_macro_derive(FromRequestParts, attributes(from_request))]
+pub fn derive_from_request_parts(item: TokenStream) -> TokenStream {
+    expand_with(item, |item| from_request::expand(item, FromRequestParts))
 }
 
 /// Generates better error messages when applied handler functions.

@@ -1,3 +1,5 @@
+use std::fmt;
+
 use self::attr::{
     parse_container_attrs, parse_field_attrs, FromRequestContainerAttr, FromRequestFieldAttr,
 };
@@ -7,7 +9,22 @@ use syn::{punctuated::Punctuated, spanned::Spanned, Ident, Token};
 
 mod attr;
 
-pub(crate) fn expand(item: syn::Item) -> syn::Result<TokenStream> {
+#[derive(Clone, Copy)]
+pub(crate) enum Trait {
+    FromRequest,
+    FromRequestParts,
+}
+
+impl fmt::Display for Trait {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Trait::FromRequest => f.write_str("FromRequest"),
+            Trait::FromRequestParts => f.write_str("FromRequestParts"),
+        }
+    }
+}
+
+pub(crate) fn expand(item: syn::Item, tr: Trait) -> syn::Result<TokenStream> {
     match item {
         syn::Item::Struct(item) => {
             let syn::ItemStruct {
@@ -20,7 +37,7 @@ pub(crate) fn expand(item: syn::Item) -> syn::Result<TokenStream> {
                 struct_token: _,
             } = item;
 
-            let generic_ident = parse_single_generic_type_on_struct(generics, &fields)?;
+            let generic_ident = parse_single_generic_type_on_struct(generics, &fields, tr)?;
 
             match parse_container_attrs(&attrs)? {
                 FromRequestContainerAttr::Via { path, rejection } => {
@@ -33,14 +50,14 @@ pub(crate) fn expand(item: syn::Item) -> syn::Result<TokenStream> {
                     )
                 }
                 FromRequestContainerAttr::Rejection(rejection) => {
-                    error_on_generic_ident(generic_ident)?;
+                    error_on_generic_ident(generic_ident, tr)?;
 
-                    impl_struct_by_extracting_each_field(ident, fields, Some(rejection))
+                    impl_struct_by_extracting_each_field(ident, fields, Some(rejection), tr)
                 }
                 FromRequestContainerAttr::None => {
-                    error_on_generic_ident(generic_ident)?;
+                    error_on_generic_ident(generic_ident, tr)?;
 
-                    impl_struct_by_extracting_each_field(ident, fields, None)
+                    impl_struct_by_extracting_each_field(ident, fields, None, tr)
                 }
             }
         }
@@ -55,14 +72,14 @@ pub(crate) fn expand(item: syn::Item) -> syn::Result<TokenStream> {
                 variants,
             } = item;
 
-            const GENERICS_ERROR: &str = "`#[derive(FromRequest)] on enums don't support generics";
+            let generics_error = format!("`#[derive({tr})] on enums don't support generics");
 
             if !generics.params.is_empty() {
-                return Err(syn::Error::new_spanned(generics, GENERICS_ERROR));
+                return Err(syn::Error::new_spanned(generics, generics_error));
             }
 
             if let Some(where_clause) = generics.where_clause {
-                return Err(syn::Error::new_spanned(where_clause, GENERICS_ERROR));
+                return Err(syn::Error::new_spanned(where_clause, generics_error));
             }
 
             match parse_container_attrs(&attrs)? {
@@ -86,11 +103,12 @@ pub(crate) fn expand(item: syn::Item) -> syn::Result<TokenStream> {
 fn parse_single_generic_type_on_struct(
     generics: syn::Generics,
     fields: &syn::Fields,
+    tr: Trait,
 ) -> syn::Result<Option<Ident>> {
     if let Some(where_clause) = generics.where_clause {
         return Err(syn::Error::new_spanned(
             where_clause,
-            "#[derive(FromRequest)] doesn't support structs with `where` clauses",
+            format_args!("#[derive({tr})] doesn't support structs with `where` clauses"),
         ));
     }
 
@@ -103,13 +121,19 @@ fn parse_single_generic_type_on_struct(
                 syn::GenericParam::Lifetime(lifetime) => {
                     return Err(syn::Error::new_spanned(
                         lifetime,
-                        "#[derive(FromRequest)] doesn't support structs that are generic over lifetimes",
+                        format_args!(
+                            "#[derive({tr})] doesn't support structs \
+                             that are generic over lifetimes"
+                        ),
                     ));
                 }
                 syn::GenericParam::Const(konst) => {
                     return Err(syn::Error::new_spanned(
                         konst,
-                        "#[derive(FromRequest)] doesn't support structs that have const generics",
+                        format_args!(
+                            "#[derive({tr})] doesn't support structs \
+                             that have const generics"
+                        ),
                     ));
                 }
             };
@@ -118,14 +142,20 @@ fn parse_single_generic_type_on_struct(
                 syn::Fields::Named(fields_named) => {
                     return Err(syn::Error::new_spanned(
                         fields_named,
-                        "#[derive(FromRequest)] doesn't support named fields for generic structs. Use a tuple struct instead",
+                        format_args!(
+                            "#[derive({tr})] doesn't support named fields \
+                             for generic structs. Use a tuple struct instead"
+                        ),
                     ));
                 }
                 syn::Fields::Unnamed(fields_unnamed) => {
                     if fields_unnamed.unnamed.len() != 1 {
                         return Err(syn::Error::new_spanned(
                             fields_unnamed,
-                            "#[derive(FromRequest)] only supports generics on tuple structs that have exactly one field",
+                            format_args!(
+                                "#[derive({tr})] only supports generics on \
+                                 tuple structs that have exactly one field"
+                            ),
                         ));
                     }
 
@@ -139,7 +169,10 @@ fn parse_single_generic_type_on_struct(
                         {
                             return Err(syn::Error::new_spanned(
                                 type_path,
-                                "#[derive(FromRequest)] only supports generics on tuple structs that have exactly one field of the generic type",
+                                format_args!(
+                                    "#[derive({tr})] only supports generics on \
+                                     tuple structs that have exactly one field of the generic type"
+                                ),
                             ));
                         }
                     } else {
@@ -153,16 +186,18 @@ fn parse_single_generic_type_on_struct(
         }
         _ => Err(syn::Error::new_spanned(
             generics,
-            "#[derive(FromRequest)] only supports 0 or 1 generic type parameters",
+            format_args!("#[derive({tr})] only supports 0 or 1 generic type parameters"),
         )),
     }
 }
 
-fn error_on_generic_ident(generic_ident: Option<Ident>) -> syn::Result<()> {
+fn error_on_generic_ident(generic_ident: Option<Ident>, tr: Trait) -> syn::Result<()> {
     if let Some(generic_ident) = generic_ident {
         Err(syn::Error::new_spanned(
             generic_ident,
-            "#[derive(FromRequest)] only supports generics when used with #[from_request(via)]",
+            format_args!(
+                "#[derive({tr})] only supports generics when used with #[from_request(via)]"
+            ),
         ))
     } else {
         Ok(())
@@ -173,8 +208,9 @@ fn impl_struct_by_extracting_each_field(
     ident: syn::Ident,
     fields: syn::Fields,
     rejection: Option<syn::Path>,
+    tr: Trait,
 ) -> syn::Result<TokenStream> {
-    let extract_fields = extract_fields(&fields, &rejection)?;
+    let extract_fields = extract_fields(&fields, &rejection, tr)?;
 
     let rejection_ident = if let Some(rejection) = rejection {
         quote!(#rejection)
@@ -184,27 +220,48 @@ fn impl_struct_by_extracting_each_field(
         quote!(::axum::response::Response)
     };
 
-    Ok(quote! {
-        #[::axum::async_trait]
-        #[automatically_derived]
-        impl<S, B> ::axum::extract::FromRequest<S, B> for #ident
-        where
-            B: ::axum::body::HttpBody + ::std::marker::Send + 'static,
-            B::Data: ::std::marker::Send,
-            B::Error: ::std::convert::Into<::axum::BoxError>,
-            S: ::std::marker::Send + ::std::marker::Sync,
-        {
-            type Rejection = #rejection_ident;
+    Ok(match tr {
+        Trait::FromRequest => quote! {
+            #[::axum::async_trait]
+            #[automatically_derived]
+            impl<S, B> ::axum::extract::FromRequest<S, B> for #ident
+            where
+                B: ::axum::body::HttpBody + ::std::marker::Send + 'static,
+                B::Data: ::std::marker::Send,
+                B::Error: ::std::convert::Into<::axum::BoxError>,
+                S: ::std::marker::Send + ::std::marker::Sync,
+            {
+                type Rejection = #rejection_ident;
 
-            async fn from_request(
-                mut req: ::axum::http::Request<B>,
-                state: &S,
-            ) -> ::std::result::Result<Self, Self::Rejection> {
-                ::std::result::Result::Ok(Self {
-                    #(#extract_fields)*
-                })
+                async fn from_request(
+                    mut req: ::axum::http::Request<B>,
+                    state: &S,
+                ) -> ::std::result::Result<Self, Self::Rejection> {
+                    ::std::result::Result::Ok(Self {
+                        #(#extract_fields)*
+                    })
+                }
             }
-        }
+        },
+        Trait::FromRequestParts => quote! {
+            #[::axum::async_trait]
+            #[automatically_derived]
+            impl<S> ::axum::extract::FromRequestParts<S> for #ident
+            where
+                S: ::std::marker::Send + ::std::marker::Sync,
+            {
+                type Rejection = #rejection_ident;
+
+                async fn from_request_parts(
+                    parts: &mut ::axum::http::request::Parts,
+                    state: &S,
+                ) -> ::std::result::Result<Self, Self::Rejection> {
+                    ::std::result::Result::Ok(Self {
+                        #(#extract_fields)*
+                    })
+                }
+            }
+        },
     })
 }
 
@@ -219,6 +276,7 @@ fn has_no_fields(fields: &syn::Fields) -> bool {
 fn extract_fields(
     fields: &syn::Fields,
     rejection: &Option<syn::Path>,
+    tr: Trait,
 ) -> syn::Result<Vec<TokenStream>> {
     fn member(field: &syn::Field, index: usize) -> TokenStream {
         match &field.ident {
@@ -248,8 +306,13 @@ fn extract_fields(
 
     let mut fields_iter = fields.iter();
 
-    // Handle all elements except the last
-    let last = fields_iter.next_back();
+    let last = match tr {
+        // Use FromRequestParts for all elements except the last
+        Trait::FromRequest => fields_iter.next_back(),
+        // Use FromRequestParts for all elements
+        Trait::FromRequestParts => None,
+    };
+
     let mut res: Vec<_> = fields_iter
         .enumerate()
         .map(|(index, field)| {
@@ -316,7 +379,7 @@ fn extract_fields(
         })
         .collect::<syn::Result<_>>()?;
 
-    // Handle the last element
+    // Handle the last element, if deriving FromRequest
     if let Some(field) = last {
         let FromRequestFieldAttr { via } = parse_field_attrs(&field.attrs)?;
 
