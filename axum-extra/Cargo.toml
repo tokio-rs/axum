@@ -9,7 +9,7 @@ license = "MIT"
 name = "axum-extra"
 readme = "README.md"
 repository = "https://github.com/tokio-rs/axum"
-version = "0.3.5"
+version = "0.4.0-rc.1"
 
 [features]
 default = []
@@ -34,7 +34,7 @@ spa = ["tower-http/fs"]
 typed-routing = ["dep:axum-macros", "dep:serde", "dep:percent-encoding"]
 
 [dependencies]
-axum = { path = "../axum", version = "0.5", default-features = false }
+axum = { path = "../axum", version = "0.6.0-rc.1", default-features = false }
 bytes = "1.1.0"
 futures-util = { version = "0.3", default-features = false, features = ["alloc"] }
 http = "0.2"
@@ -47,7 +47,7 @@ tower-layer = "0.3"
 tower-service = "0.3"
 
 # optional dependencies
-axum-macros = { path = "../axum-macros", version = "0.2.2", optional = true }
+axum-macros = { path = "../axum-macros", version = "0.3.0-rc.1", optional = true }
 cookie = { package = "cookie", version = "0.16", features = ["percent-encode"], optional = true }
 percent-encoding = { version = "2.1", optional = true }
 prost = { version = "0.11", optional = true }
@@ -58,7 +58,7 @@ tokio-stream = { version = "0.1.9", optional = true }
 tokio-util = { version = "0.7", optional = true }
 
 [dev-dependencies]
-axum = { path = "../axum", version = "0.5", features = ["headers"] }
+axum = { path = "../axum", version = "0.6.0-rc.1", features = ["headers"] }
 futures = "0.3"
 hyper = "0.14"
 reqwest = { version = "0.11", default-features = false, features = ["json", "stream", "multipart"] }

@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning].
 
 # Unreleased
 
+- None.
+
+# 0.4.0-rc.1 (23. August, 2022)
+
 - **added:** Add `RouterExt::route_with_tsr` for adding routes with an
   additional "trailing slash redirect" route ([#1119])
 - **breaking:** `Resource::nest` and `Resource::nest_collection` has been
