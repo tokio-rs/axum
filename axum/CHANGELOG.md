@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+- None
+
+# 0.6.0-rc.1 (23. August, 2022)
+
 ## Routing
 
 - **breaking:** Nested `Router`s will no longer delegate to the outer `Router`'s

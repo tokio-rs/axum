@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+- None.
+
+# 0.3.0-rc.1 (23. August, 2022)
+
 - **breaking:** `FromRequest` has been reworked and `RequestParts` has been
   removed. See axum's changelog for more details ([#1272])
 - **added:** Added new `FromRequestParts` trait. See axum's changelog for more
