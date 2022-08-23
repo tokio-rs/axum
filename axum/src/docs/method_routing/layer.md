@@ -1,10 +1,11 @@
-Apply a [`tower::Layer`] to the router.
-
-All requests to the router will be processed by the layer's
-corresponding middleware.
+Apply a [`tower::Layer`] to all routes in the router.
 
 This can be used to add additional processing to a request for a group
 of routes.
+
+Note that the middleware is only applied to existing routes. So you have to
+first add your routes (and / or fallback) and then call `layer` afterwards. Additional
+routes added after `layer` is called will not have the middleware added.
 
 Works similarly to [`Router::layer`](super::Router::layer). See that method for
 more details.
