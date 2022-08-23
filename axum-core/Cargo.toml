@@ -20,7 +20,7 @@ http-body = "0.4.5"
 mime = "0.3.16"
 
 [dev-dependencies]
-axum = { path = "../axum", version = "0.5" }
+axum = { path = "../axum", version = "0.6.0-rc.1" }
 futures-util = "0.3"
 hyper = "0.14"
 tokio = { version = "1.0", features = ["macros"] }
