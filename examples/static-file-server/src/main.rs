@@ -34,7 +34,7 @@ async fn main() {
     // as the fallback to a `Router`
     let app: _ = Router::new()
         .route("/foo", get(|| async { "Hi from /foo" }))
-        .fallback_service(get_service(ServeDir::new(".")).handle_error(handle_error))
+        .fallback(get_service(ServeDir::new(".")).handle_error(handle_error))
         .layer(TraceLayer::new_for_http());
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
