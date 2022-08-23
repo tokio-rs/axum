@@ -197,7 +197,7 @@ fn impl_struct_by_extracting_each_field(
             type Rejection = #rejection_ident;
 
             async fn from_request(
-                mut req: axum::http::Request<B>,
+                mut req: ::axum::http::Request<B>,
                 state: &S,
             ) -> ::std::result::Result<Self, Self::Rejection> {
                 ::std::result::Result::Ok(Self {
