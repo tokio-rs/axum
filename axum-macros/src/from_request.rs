@@ -220,81 +220,76 @@ fn extract_fields(
     fields: &syn::Fields,
     rejection: &Option<syn::Path>,
 ) -> syn::Result<Vec<TokenStream>> {
-    fields
-        .iter()
-        .enumerate()
-        .map(|(index, field)| {
-            let is_last = fields.len() - 1 == index;
-
-            let FromRequestFieldAttr { via } = parse_field_attrs(&field.attrs)?;
-
-            let member = if let Some(ident) = &field.ident {
-                quote! { #ident }
-            } else {
+    fn member(field: &syn::Field, index: usize) -> TokenStream {
+        match &field.ident {
+            Some(ident) => quote! { #ident },
+            _ => {
                 let member = syn::Member::Unnamed(syn::Index {
                     index: index as u32,
                     span: field.span(),
                 });
                 quote! { #member }
-            };
+            }
+        }
+    }
 
+    fn into_inner(via: Option<(attr::kw::via, syn::Path)>, ty_span: Span) -> TokenStream {
+        if let Some((_, path)) = via {
+            let span = path.span();
+            quote_spanned! {span=>
+                |#path(inner)| inner
+            }
+        } else {
+            quote_spanned! {ty_span=>
+                ::std::convert::identity
+            }
+        }
+    }
+
+    let mut fields_iter = fields.iter();
+
+    // Handle all elements except the last
+    let last = fields_iter.next_back();
+    let mut res: Vec<_> = fields_iter
+        .enumerate()
+        .map(|(index, field)| {
+            let FromRequestFieldAttr { via } = parse_field_attrs(&field.attrs)?;
+
+            let member = member(field, index);
             let ty_span = field.ty.span();
-
-            let into_inner = if let Some((_, path)) = via {
-                let span = path.span();
-                quote_spanned! {span=>
-                    |#path(inner)| inner
-                }
-            } else {
-                quote_spanned! {ty_span=>
-                    ::std::convert::identity
-                }
-            };
+            let into_inner = into_inner(via, ty_span);
 
             if peel_option(&field.ty).is_some() {
-                if is_last {
-                    Ok(quote_spanned! {ty_span=>
-                        #member: {
-                            ::axum::extract::FromRequest::from_request(req, state)
-                                .await
-                                .ok()
-                                .map(#into_inner)
-                        },
-                    })
-                } else {
-                    Ok(quote_spanned! {ty_span=>
-                        #member: {
-                            let (mut parts, body) = req.into_parts();
-                            let value = ::axum::extract::FromRequestParts::from_request_parts(&mut parts, state)
-                                .await
-                                .ok()
-                                .map(#into_inner);
-                            req = ::axum::http::Request::from_parts(parts, body);
-                            value
-                        },
-                    })
-                }
+                Ok(quote_spanned! {ty_span=>
+                    #member: {
+                        let (mut parts, body) = req.into_parts();
+                        let value =
+                            ::axum::extract::FromRequestParts::from_request_parts(
+                                &mut parts,
+                                state,
+                            )
+                            .await
+                            .ok()
+                            .map(#into_inner);
+                        req = ::axum::http::Request::from_parts(parts, body);
+                        value
+                    },
+                })
             } else if peel_result_ok(&field.ty).is_some() {
-                if is_last {
-                    Ok(quote_spanned! {ty_span=>
-                        #member: {
-                            ::axum::extract::FromRequest::from_request(req, state)
-                                .await
-                                .map(#into_inner)
-                        },
-                    })
-                } else {
-                    Ok(quote_spanned! {ty_span=>
-                        #member: {
-                            let (mut parts, body) = req.into_parts();
-                            let value = ::axum::extract::FromRequestParts::from_request_parts(&mut parts, state)
-                                .await
-                                .map(#into_inner);
-                            req = ::axum::http::Request::from_parts(parts, body);
-                            value
-                        },
-                    })
-                }
+                Ok(quote_spanned! {ty_span=>
+                    #member: {
+                        let (mut parts, body) = req.into_parts();
+                        let value =
+                            ::axum::extract::FromRequestParts::from_request_parts(
+                                &mut parts,
+                                state,
+                            )
+                            .await
+                            .map(#into_inner);
+                        req = ::axum::http::Request::from_parts(parts, body);
+                        value
+                    },
+                })
             } else {
                 let map_err = if let Some(rejection) = rejection {
                     quote! { <#rejection as ::std::convert::From<_>>::from }
@@ -302,31 +297,71 @@ fn extract_fields(
                     quote! { ::axum::response::IntoResponse::into_response }
                 };
 
-                if is_last {
-                    Ok(quote_spanned! {ty_span=>
-                        #member: {
-                            ::axum::extract::FromRequest::from_request(req, state)
-                                .await
-                                .map(#into_inner)
-                                .map_err(#map_err)?
-                        },
-                    })
-                } else {
-                    Ok(quote_spanned! {ty_span=>
-                        #member: {
-                            let (mut parts, body) = req.into_parts();
-                            let value = ::axum::extract::FromRequestParts::from_request_parts(&mut parts, state)
-                                .await
-                                .map(#into_inner)
-                                .map_err(#map_err)?;
-                            req = ::axum::http::Request::from_parts(parts, body);
-                            value
-                        },
-                    })
-                }
+                Ok(quote_spanned! {ty_span=>
+                    #member: {
+                        let (mut parts, body) = req.into_parts();
+                        let value =
+                            ::axum::extract::FromRequestParts::from_request_parts(
+                                &mut parts,
+                                state,
+                            )
+                            .await
+                            .map(#into_inner)
+                            .map_err(#map_err)?;
+                        req = ::axum::http::Request::from_parts(parts, body);
+                        value
+                    },
+                })
             }
         })
-        .collect()
+        .collect::<syn::Result<_>>()?;
+
+    // Handle the last element
+    if let Some(field) = last {
+        let FromRequestFieldAttr { via } = parse_field_attrs(&field.attrs)?;
+
+        let member = member(field, fields.len() - 1);
+        let ty_span = field.ty.span();
+        let into_inner = into_inner(via, ty_span);
+
+        let item = if peel_option(&field.ty).is_some() {
+            quote_spanned! {ty_span=>
+                #member: {
+                    ::axum::extract::FromRequest::from_request(req, state)
+                        .await
+                        .ok()
+                        .map(#into_inner)
+                },
+            }
+        } else if peel_result_ok(&field.ty).is_some() {
+            quote_spanned! {ty_span=>
+                #member: {
+                    ::axum::extract::FromRequest::from_request(req, state)
+                        .await
+                        .map(#into_inner)
+                },
+            }
+        } else {
+            let map_err = if let Some(rejection) = rejection {
+                quote! { <#rejection as ::std::convert::From<_>>::from }
+            } else {
+                quote! { ::axum::response::IntoResponse::into_response }
+            };
+
+            quote_spanned! {ty_span=>
+                #member: {
+                    ::axum::extract::FromRequest::from_request(req, state)
+                        .await
+                        .map(#into_inner)
+                        .map_err(#map_err)?
+                },
+            }
+        };
+
+        res.push(item);
+    }
+
+    Ok(res)
 }
 
 fn peel_option(ty: &syn::Type) -> Option<&syn::Type> {
