@@ -25,7 +25,9 @@ use std::{
 ///
 /// # Example
 ///
-/// These examples assume the "serde" feature of the `uuid` crate is enabled.
+/// These examples assume the `serde` feature of the [`uuid`] crate is enabled.
+///
+/// [`uuid`]: https://crates.io/crates/uuid
 ///
 /// ```rust,no_run
 /// use axum::{
