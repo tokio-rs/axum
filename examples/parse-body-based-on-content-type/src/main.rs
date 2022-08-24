@@ -18,7 +18,8 @@ use axum::{
     extract::FromRequest,
     http::{header::CONTENT_TYPE, Request, StatusCode},
     response::{IntoResponse, Response},
-    Form, Json, RequestExt, Router, routing::post,
+    routing::post,
+    Form, Json, RequestExt, Router,
 };
 use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
