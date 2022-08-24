@@ -313,7 +313,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   impl<S> FromRequestParts<S> for MyExtractor
   where
       S: Send + Sync,
-      B: Send + 'static,
   {
       type Rejection = StatusCode;
   
