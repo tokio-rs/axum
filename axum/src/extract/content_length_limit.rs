@@ -6,7 +6,6 @@ use std::ops::Deref;
 
 /// Extractor that will reject requests with a body larger than some size.
 ///
-///
 /// `GET`, `HEAD`, and `OPTIONS` requests are rejected if they have a `Content-Length` header,
 /// otherwise they're accepted without the body being checked.
 ///
