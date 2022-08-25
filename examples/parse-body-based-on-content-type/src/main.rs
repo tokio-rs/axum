@@ -57,14 +57,14 @@ enum JsonOrForm<T, K = T> {
 }
 
 #[async_trait]
-impl<S, B, T, K> FromRequest<S, B> for JsonOrForm<T, K>
+impl<S, B, T, U> FromRequest<S, B> for JsonOrForm<T, U>
 where
     B: Send + 'static,
     S: Send + Sync,
     Json<T>: FromRequest<(), B>,
-    Form<K>: FromRequest<(), B>,
+    Form<U>: FromRequest<(), B>,
     T: 'static,
-    K: 'static,
+    U: 'static,
 {
     type Rejection = Response;
 
