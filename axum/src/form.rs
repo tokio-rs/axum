@@ -16,6 +16,11 @@ use std::ops::Deref;
 /// If used as an extractor `Form` will deserialize `application/x-www-form-urlencoded` request
 /// bodies into some target type via [`serde::Deserialize`].
 ///
+/// Since parsing form data requires consuming the request body, the `Form` extractor must be
+/// *last* if there are multiple extractors in a handler. See ["the order of extractors"][order-of-extractors]
+///
+/// [order-of-extractors]: extract/index.html#the-order-of-extractors
+///
 /// ```rust
 /// use axum::Form;
 /// use serde::Deserialize;
