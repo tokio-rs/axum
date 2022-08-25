@@ -7,7 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- None
+## Routing
+
+- **breaking:** Adding a `.route_layer` onto a `Router` or `MethodRouter`
+  without any routes will now result in a panic. Previously, this just did
+  nothing. [#1327]
+
+[#1327]: https://github.com/tokio-rs/axum/pull/1327
 
 # 0.6.0-rc.1 (23. August, 2022)
 

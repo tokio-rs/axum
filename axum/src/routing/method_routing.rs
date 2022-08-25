@@ -852,6 +852,7 @@ where
     }
 
     #[doc = include_str!("../docs/method_routing/route_layer.md")]
+    #[track_caller]
     pub fn route_layer<L>(mut self, layer: L) -> MethodRouter<S, B, E>
     where
         L: Layer<Route<B, E>>,
@@ -859,6 +860,21 @@ where
         <L::Service as Service<Request<B>>>::Response: IntoResponse + 'static,
         <L::Service as Service<Request<B>>>::Future: Send + 'static,
     {
+        if self.get.is_none()
+            && self.head.is_none()
+            && self.delete.is_none()
+            && self.options.is_none()
+            && self.patch.is_none()
+            && self.post.is_none()
+            && self.put.is_none()
+            && self.trace.is_none()
+        {
+            panic!(
+                "Adding a route_layer before any routes is a no-op. \
+                 Add the routes you want the layer to apply to first."
+            );
+        }
+
         let layer_fn = |svc| {
             let svc = layer.layer(svc);
             let svc = MapResponseLayer::new(IntoResponse::into_response).layer(svc);

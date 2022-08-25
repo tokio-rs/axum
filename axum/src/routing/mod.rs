@@ -352,6 +352,7 @@ where
     }
 
     #[doc = include_str!("../docs/routing/route_layer.md")]
+    #[track_caller]
     pub fn route_layer<L>(self, layer: L) -> Self
     where
         L: Layer<Route<B>>,
@@ -360,6 +361,13 @@ where
         <L::Service as Service<Request<B>>>::Error: Into<Infallible> + 'static,
         <L::Service as Service<Request<B>>>::Future: Send + 'static,
     {
+        if self.routes.is_empty() {
+            panic!(
+                "Adding a route_layer before any routes is a no-op. \
+                 Add the routes you want the layer to apply to first."
+            );
+        }
+
         let layer = ServiceBuilder::new()
             .map_err(Into::into)
             .layer(MapResponseLayer::new(IntoResponse::into_response))
