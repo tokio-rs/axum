@@ -136,10 +136,32 @@ where
 
     /// Create a new `Router` with the given [`Arc`]'ed state.
     ///
-    /// See [`State`](crate::extract::State) for more details about accessing state.
+    /// See [`State`] for more details about accessing state.
     ///
     /// Unless you add additional routes this will respond with `404 Not Found` to
     /// all requests.
+    ///
+    /// Note that the state type you extract with [`State`] must implement [`FromRef<S>`]. If
+    /// you're extracting `S` itself that requires `S` to implement `Clone`. That is still the
+    /// case, even if you're using this method:
+    ///
+    /// ```
+    /// use axum::{Router, routing::get};
+    ///
+    /// // `AppState` must implement `Clone` to be extracted...
+    /// #[derive(Clone)]
+    /// struct AppState {}
+    ///
+    /// // ...even though we're wrapping it an an `Arc`
+    /// let state = Arc::new(AppState {});
+    ///
+    /// let app: Router<AppState> = Router::with_state_arc(state).route("/", get(handler));
+    ///
+    /// async fn handler(state: State<AppState>) {}
+    /// ```
+    ///
+    /// [`FromRef<S>`]: crate::extract::FromRef
+    /// [`State`]: crate::extract::State
     pub fn with_state_arc(state: Arc<S>) -> Self {
         Self {
             state,
