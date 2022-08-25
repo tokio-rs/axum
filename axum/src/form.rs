@@ -19,7 +19,7 @@ use std::ops::Deref;
 /// Since parsing form data requires consuming the request body, the `Form` extractor must be
 /// *last* if there are multiple extractors in a handler. See ["the order of extractors"][order-of-extractors]
 ///
-/// [order-of-extractors]: extract/index.html#the-order-of-extractors
+/// [order-of-extractors]: crate::extract#the-order-of-extractors
 ///
 /// ```rust
 /// use axum::Form;

@@ -6,8 +6,16 @@ use std::ops::Deref;
 
 /// Extractor that will reject requests with a body larger than some size.
 ///
+///
 /// `GET`, `HEAD`, and `OPTIONS` requests are rejected if they have a `Content-Length` header,
 /// otherwise they're accepted without the body being checked.
+///
+/// Note: `ContentLengthLimit` can wrap types that extract the body (for example, Form or Json)
+/// if that is the case, the inner type will consume the request's body, which means the
+/// ContentLengthLimit must come *last* if the handler uses several extractors. See
+/// ["the order of extractors"][order-of-extractors]
+///
+/// [order-of-extractors]: crate::extract#the-order-of-extractors
 ///
 /// # Example
 ///
