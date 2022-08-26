@@ -146,7 +146,8 @@ where
     /// case, even if you're using this method:
     ///
     /// ```
-    /// use axum::{Router, routing::get};
+    /// use axum::{Router, routing::get, extract::State};
+    /// use std::sync::Arc;
     ///
     /// // `AppState` must implement `Clone` to be extracted...
     /// #[derive(Clone)]
