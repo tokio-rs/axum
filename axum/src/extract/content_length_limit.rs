@@ -15,6 +15,8 @@ use std::ops::Deref;
 /// ["the order of extractors"][order-of-extractors]
 ///
 /// [order-of-extractors]: crate::extract#the-order-of-extractors
+/// [`Form`]: crate::form::Form
+/// [`Json`]: crate::json::Json
 ///
 /// # Example
 ///
