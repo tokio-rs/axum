@@ -167,7 +167,7 @@
 //! It is common to share some state between handlers for example to share a
 //! pool of database connections or clients to other services.
 //!
-//! The two most common ways of doing that are:
+//! The three most common ways of doing that are:
 //! - Using the [`State`] extractor.
 //! - Using request extensions
 //! - Using closure captures
