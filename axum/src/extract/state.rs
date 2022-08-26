@@ -11,7 +11,7 @@ use std::{
 /// Note this extractor is not available to middleware. See ["Accessing state in
 /// middleware"][state-from-middleware] for how to access state in middleware.
 ///
-/// [state-from-middleware]: ../middleware/index.html#accessing-state-in-middleware
+/// [state-from-middleware]: crate::middleware#accessing-state-in-middleware
 ///
 /// # With `Router`
 ///
@@ -22,6 +22,7 @@ use std::{
 /// //
 /// // here you can put configuration, database connection pools, or whatever
 /// // state you need
+/// // Note: the application state *must* derive `Clone` (or be wrapped in e.g. `Arc`)
 /// #[derive(Clone)]
 /// struct AppState {}
 ///

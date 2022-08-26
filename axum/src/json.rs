@@ -25,6 +25,12 @@ use std::ops::{Deref, DerefMut};
 /// type.
 /// - Buffering the request body fails.
 ///
+/// Since parsing JSON requires consuming the request body, the `Json` extractor must be
+/// *last* if there are multiple extractors in a handler.
+/// See ["the order of extractors"][order-of-extractors]
+///
+/// [order-of-extractors]: crate::extract#the-order-of-extractors
+///
 /// See [`JsonRejection`] for more details.
 ///
 /// # Extractor example

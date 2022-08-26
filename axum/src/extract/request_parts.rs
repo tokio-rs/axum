@@ -103,6 +103,12 @@ where
 
 /// Extractor that extracts the request body as a [`Stream`].
 ///
+/// Since extracting the request body requires consuming it, the `BodyStream` extractor must be
+/// *last* if there are multiple extractors in a handler.
+/// See ["the order of extractors"][order-of-extractors]
+///
+/// [order-of-extractors]: crate::extract#the-order-of-extractors
+///
 /// # Example
 ///
 /// ```rust,no_run
@@ -172,6 +178,11 @@ fn body_stream_traits() {
 }
 
 /// Extractor that extracts the raw request body.
+///
+/// Since extracting the raw request body requires consuming it, the `RawBody` extractor must be
+/// *last* if there are multiple extractors in a handler. See ["the order of extractors"][order-of-extractors]
+///
+/// [order-of-extractors]: crate::extract#the-order-of-extractors
 ///
 /// # Example
 ///
