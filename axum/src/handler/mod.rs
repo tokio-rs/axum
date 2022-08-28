@@ -140,7 +140,7 @@ pub trait Handler<T, S, B = Body>: Clone + Send + Sized + 'static {
     /// ```
     fn layer<L>(self, layer: L) -> Layered<L, Self, T, S, B>
     where
-        L: Layer<WithState<Self, T, S, B>>,
+        L: Layer<WithState<Self, T, S, B>> + Clone,
     {
         Layered {
             layer,
