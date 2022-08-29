@@ -1,5 +1,6 @@
-use self::attr::{
-    parse_container_attrs, parse_field_attrs, FromRequestContainerAttr, FromRequestFieldAttr,
+use crate::{
+    from_request::attr::{ContainerAttrs, FieldAttrs, RawContainerAttrs},
+    ParseAttrs,
 };
 use proc_macro2::{Span, TokenStream};
 use quote::{quote, quote_spanned};
@@ -38,25 +39,21 @@ pub(crate) fn expand(item: syn::Item, tr: Trait) -> syn::Result<TokenStream> {
 
             let generic_ident = parse_single_generic_type_on_struct(generics, &fields, tr)?;
 
-            match parse_container_attrs(&attrs)? {
-                FromRequestContainerAttr::Via { path, rejection } => {
-                    impl_struct_by_extracting_all_at_once(
-                        ident,
-                        fields,
-                        path,
-                        rejection,
-                        generic_ident,
-                        tr,
-                    )
-                }
-                FromRequestContainerAttr::Rejection(rejection) => {
+            match RawContainerAttrs::parse_attrs(&attrs)?.validate()? {
+                ContainerAttrs::Via { path, rejection } => impl_struct_by_extracting_all_at_once(
+                    ident,
+                    fields,
+                    path,
+                    rejection,
+                    generic_ident,
+                    tr,
+                ),
+                ContainerAttrs::Rejection { path: rejection } => {
                     error_on_generic_ident(generic_ident, tr)?;
-
                     impl_struct_by_extracting_each_field(ident, fields, Some(rejection), tr)
                 }
-                FromRequestContainerAttr::None => {
+                ContainerAttrs::Default => {
                     error_on_generic_ident(generic_ident, tr)?;
-
                     impl_struct_by_extracting_each_field(ident, fields, None, tr)
                 }
             }
@@ -82,15 +79,15 @@ pub(crate) fn expand(item: syn::Item, tr: Trait) -> syn::Result<TokenStream> {
                 return Err(syn::Error::new_spanned(where_clause, generics_error));
             }
 
-            match parse_container_attrs(&attrs)? {
-                FromRequestContainerAttr::Via { path, rejection } => {
+            match RawContainerAttrs::parse_attrs(&attrs)?.validate()? {
+                ContainerAttrs::Via { path, rejection } => {
                     impl_enum_by_extracting_all_at_once(ident, variants, path, rejection, tr)
                 }
-                FromRequestContainerAttr::Rejection(rejection) => Err(syn::Error::new_spanned(
+                ContainerAttrs::Rejection { path: rejection } => Err(syn::Error::new_spanned(
                     rejection,
                     "cannot use `rejection` without `via`",
                 )),
-                FromRequestContainerAttr::None => Err(syn::Error::new(
+                ContainerAttrs::Default => Err(syn::Error::new(
                     Span::call_site(),
                     "missing `#[from_request(via(...))]`",
                 )),
@@ -291,8 +288,8 @@ fn extract_fields(
         }
     }
 
-    fn into_inner(via: Option<(attr::kw::via, syn::Path)>, ty_span: Span) -> TokenStream {
-        if let Some((_, path)) = via {
+    fn into_inner(via: Option<syn::Path>, ty_span: Span) -> TokenStream {
+        if let Some(path) = via {
             let span = path.span();
             quote_spanned! {span=>
                 |#path(inner)| inner
@@ -316,7 +313,10 @@ fn extract_fields(
     let mut res: Vec<_> = fields_iter
         .enumerate()
         .map(|(index, field)| {
-            let FromRequestFieldAttr { via } = parse_field_attrs(&field.attrs)?;
+            let via = match FieldAttrs::parse_attrs(&field.attrs)? {
+                FieldAttrs::Via { path, .. } => Some(path),
+                FieldAttrs::Default => None,
+            };
 
             let member = member(field, index);
             let ty_span = field.ty.span();
@@ -434,7 +434,10 @@ fn extract_fields(
 
     // Handle the last element, if deriving FromRequest
     if let Some(field) = last {
-        let FromRequestFieldAttr { via } = parse_field_attrs(&field.attrs)?;
+        let via = match FieldAttrs::parse_attrs(&field.attrs)? {
+            FieldAttrs::Via { path, .. } => Some(path),
+            FieldAttrs::Default => None,
+        };
 
         let member = member(field, fields.len() - 1);
         let ty_span = field.ty.span();
@@ -557,14 +560,16 @@ fn impl_struct_by_extracting_all_at_once(
     };
 
     for field in fields {
-        let FromRequestFieldAttr { via } = parse_field_attrs(&field.attrs)?;
-        if let Some((via, _)) = via {
-            return Err(syn::Error::new_spanned(
-                via,
-                "`#[from_request(via(...))]` on a field cannot be used \
-                together with `#[from_request(...)]` on the container",
-            ));
-        }
+        match FieldAttrs::parse_attrs(&field.attrs)? {
+            FieldAttrs::Via { kw, .. } => {
+                return Err(syn::Error::new_spanned(
+                    kw,
+                    "`#[from_request(via(...))]` on a field cannot be used \
+                    together with `#[from_request(...)]` on the container",
+                ));
+            }
+            FieldAttrs::Default => {}
+        };
     }
 
     let path_span = path.span();
@@ -695,13 +700,15 @@ fn impl_enum_by_extracting_all_at_once(
     tr: Trait,
 ) -> syn::Result<TokenStream> {
     for variant in variants {
-        let FromRequestFieldAttr { via } = parse_field_attrs(&variant.attrs)?;
-        if let Some((via, _)) = via {
-            return Err(syn::Error::new_spanned(
-                via,
-                "`#[from_request(via(...))]` cannot be used on variants",
-            ));
-        }
+        match FieldAttrs::parse_attrs(&variant.attrs)? {
+            FieldAttrs::Via { kw, .. } => {
+                return Err(syn::Error::new_spanned(
+                    kw,
+                    "`#[from_request(via(...))]` cannot be used on variants",
+                ));
+            }
+            FieldAttrs::Default => {}
+        };
 
         let fields = match variant.fields {
             syn::Fields::Named(fields) => fields.named.into_iter(),
@@ -710,13 +717,15 @@ fn impl_enum_by_extracting_all_at_once(
         };
 
         for field in fields {
-            let FromRequestFieldAttr { via } = parse_field_attrs(&field.attrs)?;
-            if let Some((via, _)) = via {
-                return Err(syn::Error::new_spanned(
-                    via,
-                    "`#[from_request(via(...))]` cannot be used inside variants",
-                ));
-            }
+            match FieldAttrs::parse_attrs(&field.attrs)? {
+                FieldAttrs::Via { kw, .. } => {
+                    return Err(syn::Error::new_spanned(
+                        kw,
+                        "`#[from_request(via(...))]` cannot be used inside variants",
+                    ));
+                }
+                FieldAttrs::Default => {}
+            };
         }
     }
 

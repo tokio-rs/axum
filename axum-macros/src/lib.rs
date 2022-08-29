@@ -86,7 +86,7 @@ macro_rules! parse_arg {
     ( $ident:ident: $kw:ident ( $arg:ty ) ) => {
         parse_arg!(@setup $ident: $kw = $arg);
 
-        impl Parse for $ident {
+        impl syn::parse::Parse for $ident {
             fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
                 let kw = input.parse::<$kw::$kw>()?;
                 let content;
@@ -111,8 +111,8 @@ macro_rules! parse_args_enum {
             $( $variant($variant), )*
         }
 
-        impl Parse for $ident {
-            fn parse(input: ParseStream) -> syn::Result<Self> {
+        impl syn::parse::Parse for $ident {
+            fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
                 let lh = input.lookahead1();
 
                 $(

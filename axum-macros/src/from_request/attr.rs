@@ -1,166 +1,109 @@
-use quote::ToTokens;
-use syn::{
-    parse::{Parse, ParseStream},
-    punctuated::Punctuated,
-    Token,
-};
+use crate::ParseAttrs;
+use syn::Path;
 
-#[derive(Default)]
-pub(crate) struct FromRequestFieldAttr {
-    pub(crate) via: Option<(kw::via, syn::Path)>,
+parse_arg!(Via: via(Path));
+parse_arg!(Rejection: rejection(Path));
+
+#[derive(Debug)]
+pub(super) enum ContainerAttrs {
+    Via { path: Path, rejection: Option<Path> },
+    Rejection { path: Path },
+    Default,
 }
 
-pub(crate) enum FromRequestContainerAttr {
-    Via {
-        path: syn::Path,
-        rejection: Option<syn::Path>,
-    },
-    Rejection(syn::Path),
-    None,
+#[derive(Debug, Default)]
+pub(super) struct RawContainerAttrs {
+    via: Option<Path>,
+    rejection: Option<Path>,
 }
 
-pub(crate) mod kw {
-    syn::custom_keyword!(via);
-    syn::custom_keyword!(rejection);
-    syn::custom_keyword!(Display);
-    syn::custom_keyword!(Debug);
-    syn::custom_keyword!(Error);
+impl RawContainerAttrs {
+    pub(super) fn validate(self) -> syn::Result<ContainerAttrs> {
+        let Self { via, rejection } = self;
+        match (via, rejection) {
+            (None, None) => Ok(ContainerAttrs::Default),
+            (None, Some(rejection)) => Ok(ContainerAttrs::Rejection { path: rejection }),
+            (Some(via), None) => Ok(ContainerAttrs::Via {
+                path: via,
+                rejection: None,
+            }),
+            (Some(via), Some(rejection)) => Ok(ContainerAttrs::Via {
+                path: via,
+                rejection: Some(rejection),
+            }),
+        }
+    }
 }
 
-pub(crate) fn parse_field_attrs(attrs: &[syn::Attribute]) -> syn::Result<FromRequestFieldAttr> {
-    let attrs = parse_attrs(attrs)?;
+impl ParseAttrs for RawContainerAttrs {
+    const IDENT: &'static str = "from_request";
 
-    let mut out = FromRequestFieldAttr::default();
+    type Arg = ContainerAttrArg;
 
-    for from_request_attr in attrs {
-        match from_request_attr {
-            FieldAttr::Via { via, path } => {
-                if out.via.is_some() {
-                    return Err(double_attr_error("via", via));
-                } else {
-                    out.via = Some((via, path));
+    fn merge(mut self, attr: Self::Arg) -> syn::Result<Self> {
+        match attr {
+            ContainerAttrArg::Via(Via { kw, via }) => {
+                if self.via.is_some() {
+                    return Err(syn::Error::new_spanned(
+                        kw,
+                        "`via` specified more than once",
+                    ));
                 }
+                self.via = Some(via);
+            }
+            ContainerAttrArg::Rejection(Rejection { kw, rejection }) => {
+                if self.rejection.is_some() {
+                    return Err(syn::Error::new_spanned(
+                        kw,
+                        "`rejection` specified more than once",
+                    ));
+                }
+                self.rejection = Some(rejection);
             }
         }
-    }
 
-    Ok(out)
+        Ok(self)
+    }
 }
 
-pub(crate) fn parse_container_attrs(
-    attrs: &[syn::Attribute],
-) -> syn::Result<FromRequestContainerAttr> {
-    let attrs = parse_attrs::<ContainerAttr>(attrs)?;
+parse_args_enum! {
+    pub(crate) enum ContainerAttrArg {
+        Via,
+        Rejection,
+    }
+}
 
-    let mut out_via = None;
-    let mut out_rejection = None;
+#[derive(Debug)]
+pub(super) enum FieldAttrs {
+    Via { path: Path, kw: via::via },
+    Default,
+}
 
-    // we track the index of the attribute to know which comes last
-    // used to give more accurate error messages
-    for (idx, from_request_attr) in attrs.into_iter().enumerate() {
-        match from_request_attr {
-            ContainerAttr::Via { via, path } => {
-                if out_via.is_some() {
-                    return Err(double_attr_error("via", via));
-                } else {
-                    out_via = Some((idx, via, path));
-                }
+impl Default for FieldAttrs {
+    fn default() -> Self {
+        Self::Default
+    }
+}
+
+impl ParseAttrs for FieldAttrs {
+    const IDENT: &'static str = "from_request";
+
+    type Arg = FieldAttrArg;
+
+    fn merge(self, attr: Self::Arg) -> syn::Result<Self> {
+        match (self, attr) {
+            (FieldAttrs::Default, FieldAttrArg::Via(Via { via, kw })) => {
+                Ok(Self::Via { path: via, kw })
             }
-            ContainerAttr::Rejection { rejection, path } => {
-                if out_rejection.is_some() {
-                    return Err(double_attr_error("rejection", rejection));
-                } else {
-                    out_rejection = Some((idx, rejection, path));
-                }
-            }
-        }
-    }
-
-    match (out_via, out_rejection) {
-        (Some((_, _, path)), None) => Ok(FromRequestContainerAttr::Via {
-            path,
-            rejection: None,
-        }),
-
-        (Some((_, _, path)), Some((_, _, rejection))) => Ok(FromRequestContainerAttr::Via {
-            path,
-            rejection: Some(rejection),
-        }),
-
-        (None, Some((_, _, rejection))) => Ok(FromRequestContainerAttr::Rejection(rejection)),
-
-        (None, None) => Ok(FromRequestContainerAttr::None),
-    }
-}
-
-pub(crate) fn parse_attrs<T>(attrs: &[syn::Attribute]) -> syn::Result<Punctuated<T, Token![,]>>
-where
-    T: Parse,
-{
-    let attrs = attrs
-        .iter()
-        .filter(|attr| attr.path.is_ident("from_request"))
-        .map(|attr| attr.parse_args_with(Punctuated::<T, Token![,]>::parse_terminated))
-        .collect::<syn::Result<Vec<_>>>()?
-        .into_iter()
-        .flatten()
-        .collect::<Punctuated<T, Token![,]>>();
-    Ok(attrs)
-}
-
-fn double_attr_error<T>(ident: &str, spanned: T) -> syn::Error
-where
-    T: ToTokens,
-{
-    syn::Error::new_spanned(spanned, format!("`{}` specified more than once", ident))
-}
-
-enum ContainerAttr {
-    Via {
-        via: kw::via,
-        path: syn::Path,
-    },
-    Rejection {
-        rejection: kw::rejection,
-        path: syn::Path,
-    },
-}
-
-impl Parse for ContainerAttr {
-    fn parse(input: ParseStream) -> syn::Result<Self> {
-        let lh = input.lookahead1();
-        if lh.peek(kw::via) {
-            let via = input.parse::<kw::via>()?;
-            let content;
-            syn::parenthesized!(content in input);
-            content.parse().map(|path| Self::Via { via, path })
-        } else if lh.peek(kw::rejection) {
-            let rejection = input.parse::<kw::rejection>()?;
-            let content;
-            syn::parenthesized!(content in input);
-            content
-                .parse()
-                .map(|path| Self::Rejection { rejection, path })
-        } else {
-            Err(lh.error())
+            (FieldAttrs::Via { .. }, FieldAttrArg::Via(Via { kw, .. })) => Err(
+                syn::Error::new_spanned(kw, "`via` specified more than once"),
+            ),
         }
     }
 }
 
-enum FieldAttr {
-    Via { via: kw::via, path: syn::Path },
-}
-
-impl Parse for FieldAttr {
-    fn parse(input: ParseStream) -> syn::Result<Self> {
-        let lh = input.lookahead1();
-        if lh.peek(kw::via) {
-            let via = input.parse::<kw::via>()?;
-            let content;
-            syn::parenthesized!(content in input);
-            content.parse().map(|path| Self::Via { via, path })
-        } else {
-            Err(lh.error())
-        }
+parse_args_enum! {
+    pub(crate) enum FieldAttrArg {
+        Via,
     }
 }

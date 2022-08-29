@@ -5,11 +5,7 @@ use crate::{
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote, quote_spanned};
 use std::collections::HashSet;
-use syn::{
-    parse::{Parse, ParseStream},
-    spanned::Spanned,
-    FnArg, ItemFn, Token, Type,
-};
+use syn::{parse::Parse, spanned::Spanned, FnArg, ItemFn, Token, Type};
 
 pub(crate) fn expand(mut attr: Attrs, item_fn: ItemFn) -> TokenStream {
     let check_extractor_count = check_extractor_count(&item_fn);
