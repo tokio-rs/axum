@@ -1,8 +1,15 @@
-use crate::with_position::{Position, WithPosition};
+use crate::{
+    with_position::{Position, WithPosition},
+    ParseAttrs,
+};
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote, quote_spanned};
 use std::collections::HashSet;
-use syn::{parse::Parse, spanned::Spanned, FnArg, ItemFn, Token, Type};
+use syn::{
+    parse::{Parse, ParseStream},
+    spanned::Spanned,
+    FnArg, ItemFn, Token, Type,
+};
 
 pub(crate) fn expand(mut attr: Attrs, item_fn: ItemFn) -> TokenStream {
     let check_extractor_count = check_extractor_count(&item_fn);
@@ -18,8 +25,12 @@ pub(crate) fn expand(mut attr: Attrs, item_fn: ItemFn) -> TokenStream {
 
         let state_ty = attr.state_ty.unwrap_or_else(|| syn::parse_quote!(()));
 
+        let body_ty = attr
+            .body_ty
+            .unwrap_or_else(|| syn::parse_quote!(::axum::body::Body));
+
         let check_inputs_impls_from_request =
-            check_inputs_impls_from_request(&item_fn, &attr.body_ty, state_ty);
+            check_inputs_impls_from_request(&item_fn, &body_ty, state_ty);
         let check_future_send = check_future_send(&item_fn);
 
         quote! {
@@ -48,49 +59,50 @@ mod kw {
     syn::custom_keyword!(state);
 }
 
+#[derive(Default)]
 pub(crate) struct Attrs {
-    body_ty: Type,
+    body_ty: Option<Type>,
     state_ty: Option<Type>,
 }
 
-impl Parse for Attrs {
-    fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
-        let mut body_ty = None;
-        let mut state_ty = None;
+impl ParseAttrs for Attrs {
+    const IDENT: &'static str = "debug_handler";
 
-        while !input.is_empty() {
-            let lh = input.lookahead1();
+    type Arg = AttrArg;
 
-            if lh.peek(kw::body) {
-                let kw = input.parse::<kw::body>()?;
-                if body_ty.is_some() {
+    fn merge(mut self, attr: Self::Arg) -> syn::Result<Self> {
+        match attr {
+            AttrArg::Body(Body { kw, body }) => {
+                if self.body_ty.is_some() {
                     return Err(syn::Error::new_spanned(
                         kw,
                         "`body` specified more than once",
                     ));
                 }
-                input.parse::<Token![=]>()?;
-                body_ty = Some(input.parse()?);
-            } else if lh.peek(kw::state) {
-                let kw = input.parse::<kw::state>()?;
-                if state_ty.is_some() {
+                self.body_ty = Some(body);
+                Ok(self)
+            }
+            AttrArg::State(State { kw, state }) => {
+                if self.state_ty.is_some() {
                     return Err(syn::Error::new_spanned(
                         kw,
                         "`state` specified more than once",
                     ));
                 }
-                input.parse::<Token![=]>()?;
-                state_ty = Some(input.parse()?);
-            } else {
-                return Err(lh.error());
+                self.state_ty = Some(state);
+                Ok(self)
             }
-
-            let _ = input.parse::<Token![,]>();
         }
+    }
+}
 
-        let body_ty = body_ty.unwrap_or_else(|| syn::parse_quote!(axum::body::Body));
+parse_arg!(Body: body = Type);
+parse_arg!(State: state = Type);
 
-        Ok(Self { body_ty, state_ty })
+parse_args_enum! {
+    pub(crate) enum AttrArg {
+        Body,
+        State,
     }
 }
 

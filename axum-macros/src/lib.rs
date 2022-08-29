@@ -45,7 +45,68 @@
 
 use proc_macro::TokenStream;
 use quote::{quote, ToTokens};
-use syn::parse::Parse;
+use syn::{parse::Parse, punctuated::Punctuated, Token};
+
+macro_rules! parse_arg {
+    (
+        $ident:ident: $kw:ident = $arg:ty
+    ) => {
+        mod $kw {
+            syn::custom_keyword!($kw);
+        }
+
+        #[allow(dead_code)]
+        pub(crate) struct $ident {
+            kw: $kw::$kw,
+            $kw: $arg,
+        }
+
+        impl $ident {
+            #[allow(dead_code)]
+            fn kw() -> impl syn::parse::Peek {
+                $kw::$kw
+            }
+        }
+
+        impl Parse for $ident {
+            fn parse(input: ParseStream) -> syn::Result<Self> {
+                let kw = input.parse::<$kw::$kw>()?;
+                input.parse::<Token![=]>()?;
+                let $kw = input.parse()?;
+                Ok(Self {
+                    kw,
+                    $kw,
+                })
+            }
+        }
+    };
+}
+
+macro_rules! parse_args_enum {
+    (
+        pub(crate) enum $ident:ident {
+            $( $variant:ident ),* $(,)?
+        }
+    ) => {
+        pub(crate) enum $ident {
+            $( $variant($variant), )*
+        }
+
+        impl Parse for $ident {
+            fn parse(input: ParseStream) -> syn::Result<Self> {
+                let lh = input.lookahead1();
+
+                $(
+                    if lh.peek($variant::kw()) {
+                        return Ok(Self::$variant(input.parse()?));
+                    }
+                )*
+
+                Err(lh.error())
+            }
+        }
+    };
+}
 
 mod debug_handler;
 mod from_request;
@@ -584,12 +645,12 @@ where
 fn expand_attr_with<F, A, I, K>(attr: TokenStream, input: TokenStream, f: F) -> TokenStream
 where
     F: FnOnce(A, I) -> K,
-    A: Parse,
+    A: ParseAttrs,
     I: Parse,
     K: ToTokens,
 {
     let expand_result = (|| {
-        let attr = syn::parse(attr)?;
+        let attr = A::parse(attr)?;
         let input = syn::parse(input)?;
         Ok(f(attr, input))
     })();
@@ -609,6 +670,31 @@ where
             tokens
         }
         Err(err) => err.into_compile_error().into(),
+    }
+}
+
+trait ParseAttrs: Default + Sized {
+    const IDENT: &'static str;
+
+    type Arg: Parse;
+
+    fn merge(self, attr: Self::Arg) -> syn::Result<Self>;
+
+    fn parse(tokens: TokenStream) -> syn::Result<Self> {
+        syn::parse::Parser::parse(Punctuated::<Self::Arg, Token![,]>::parse_terminated, tokens)?
+            .into_iter()
+            .try_fold(Self::default(), Self::merge)
+    }
+
+    fn parse_attrs(attrs: &[syn::Attribute]) -> syn::Result<Self> {
+        attrs
+            .iter()
+            .filter(|attr| attr.path.is_ident(Self::IDENT))
+            .map(|attr| attr.parse_args_with(Punctuated::<Self::Arg, Token![,]>::parse_terminated))
+            .try_fold(Self::default(), |acc, attr| {
+                let attr = attr?;
+                attr.into_iter().try_fold(acc, Self::merge)
+            })
     }
 }
 
