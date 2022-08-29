@@ -47,6 +47,7 @@ use proc_macro::TokenStream;
 use quote::{quote, ToTokens};
 use syn::{parse::Parse, punctuated::Punctuated, Token};
 
+/// Helper macro for generating parsers for syntax like `rejection(Foo)` or `body = Bar`.
 macro_rules! parse_arg {
     ( @setup $ident:ident: $kw:ident = $arg:ty ) => {
         mod $kw {
@@ -101,6 +102,9 @@ macro_rules! parse_arg {
     }
 }
 
+/// Helper macro for generating parsers for lists of attributes like `via(Foo), rejection(Bar)`
+///
+/// Designed to be used with parsers generated with `parse_arg!`.
 macro_rules! parse_args_enum {
     (
         pub(crate) enum $ident:ident {
@@ -692,19 +696,31 @@ where
     }
 }
 
+/// Helper trait for attributes.
 trait ParseAttrs: Default + Sized {
+    /// The attribute ident.
+    ///
+    /// In `#[from_request(...)]` this would be "from_request".
     const IDENT: &'static str;
 
+    /// The types of arguments this attribute supports.
     type Arg: Parse;
 
+    /// Merge self and the next argument.
+    ///
+    /// This is allowed to fail in case of duplicate args and such.
     fn merge(self, attr: Self::Arg) -> syn::Result<Self>;
 
+    /// Parse from a comma separated token stream of arguments.
+    ///
+    /// This is intended to be used with attribute proc-macros.
     fn parse(tokens: TokenStream) -> syn::Result<Self> {
         syn::parse::Parser::parse(Punctuated::<Self::Arg, Token![,]>::parse_terminated, tokens)?
             .into_iter()
             .try_fold(Self::default(), Self::merge)
     }
 
+    /// Parse from a list of attributes.
     fn parse_attrs(attrs: &[syn::Attribute]) -> syn::Result<Self> {
         attrs
             .iter()
