@@ -1,6 +1,7 @@
+use crate::ParseAttrs;
 use proc_macro2::{Span, TokenStream};
 use quote::{format_ident, quote, quote_spanned};
-use syn::{parse::Parse, ItemStruct, LitStr, Token};
+use syn::{parse::Parse, ItemStruct, LitStr, Path};
 
 pub(crate) fn expand(item_struct: ItemStruct) -> syn::Result<TokenStream> {
     let ItemStruct {
@@ -18,7 +19,8 @@ pub(crate) fn expand(item_struct: ItemStruct) -> syn::Result<TokenStream> {
         ));
     }
 
-    let Attrs { path, rejection } = parse_attrs(attrs)?;
+    let Attrs { path, rejection } = Attrs::parse_attrs(attrs)?;
+    let path = path.ok_or_else(|| syn::Error::new(Span::call_site(), "Missing path"))?;
 
     match fields {
         syn::Fields::Named(_) => {
@@ -37,53 +39,62 @@ mod kw {
     syn::custom_keyword!(rejection);
 }
 
+#[derive(Default)]
 struct Attrs {
-    path: LitStr,
+    path: Option<LitStr>,
     rejection: Option<syn::Path>,
 }
 
-impl Parse for Attrs {
-    fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
-        let path = input.parse()?;
+impl ParseAttrs for Attrs {
+    const IDENT: &'static str = "typed_path";
 
-        let rejection = if input.is_empty() {
-            None
-        } else {
-            let _: Token![,] = input.parse()?;
-            let _: kw::rejection = input.parse()?;
+    type Arg = AttrArg;
 
-            let content;
-            syn::parenthesized!(content in input);
-            Some(content.parse()?)
-        };
-
-        Ok(Self { path, rejection })
-    }
-}
-
-fn parse_attrs(attrs: &[syn::Attribute]) -> syn::Result<Attrs> {
-    let mut out = None;
-
-    for attr in attrs {
-        if attr.path.is_ident("typed_path") {
-            if out.is_some() {
-                return Err(syn::Error::new_spanned(
-                    attr,
-                    "`typed_path` specified more than once",
-                ));
-            } else {
-                out = Some(attr.parse_args()?);
+    fn merge(mut self, attr: Self::Arg) -> syn::Result<Self> {
+        match attr {
+            AttrArg::Path(path) => {
+                if self.path.is_some() {
+                    return Err(syn::Error::new_spanned(
+                        path,
+                        "path specified more than once",
+                    ));
+                }
+                self.path = Some(path);
+                Ok(self)
+            }
+            AttrArg::Rejection(Rejection { kw, rejection }) => {
+                if self.rejection.is_some() {
+                    return Err(syn::Error::new_spanned(
+                        kw,
+                        "`rejection` specified more than once",
+                    ));
+                }
+                self.rejection = Some(rejection);
+                Ok(self)
             }
         }
     }
-
-    out.ok_or_else(|| {
-        syn::Error::new(
-            Span::call_site(),
-            "missing `#[typed_path(\"...\")]` attribute",
-        )
-    })
 }
+
+enum AttrArg {
+    Path(LitStr),
+    Rejection(Rejection),
+}
+
+impl Parse for AttrArg {
+    fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
+        let lh = input.lookahead1();
+        if lh.peek(LitStr) {
+            Ok(Self::Path(input.parse()?))
+        } else if lh.peek(Rejection::kw()) {
+            Ok(Self::Rejection(input.parse()?))
+        } else {
+            Err(lh.error())
+        }
+    }
+}
+
+parse_arg!(Rejection: rejection(Path));
 
 fn expand_named_fields(
     ident: &syn::Ident,

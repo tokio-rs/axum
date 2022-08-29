@@ -48,9 +48,7 @@ use quote::{quote, ToTokens};
 use syn::{parse::Parse, punctuated::Punctuated, Token};
 
 macro_rules! parse_arg {
-    (
-        $ident:ident: $kw:ident = $arg:ty
-    ) => {
+    ( @setup $ident:ident: $kw:ident = $arg:ty ) => {
         mod $kw {
             syn::custom_keyword!($kw);
         }
@@ -67,9 +65,13 @@ macro_rules! parse_arg {
                 $kw::$kw
             }
         }
+    };
+
+    ( $ident:ident: $kw:ident = $arg:ty ) => {
+        parse_arg!(@setup $ident: $kw = $arg);
 
         impl Parse for $ident {
-            fn parse(input: ParseStream) -> syn::Result<Self> {
+            fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
                 let kw = input.parse::<$kw::$kw>()?;
                 input.parse::<Token![=]>()?;
                 let $kw = input.parse()?;
@@ -80,6 +82,23 @@ macro_rules! parse_arg {
             }
         }
     };
+
+    ( $ident:ident: $kw:ident ( $arg:ty ) ) => {
+        parse_arg!(@setup $ident: $kw = $arg);
+
+        impl Parse for $ident {
+            fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
+                let kw = input.parse::<$kw::$kw>()?;
+                let content;
+                syn::parenthesized!(content in input);
+                let $kw = content.parse()?;
+                Ok(Self {
+                    kw,
+                    $kw,
+                })
+            }
+        }
+    }
 }
 
 macro_rules! parse_args_enum {
