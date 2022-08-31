@@ -390,45 +390,12 @@ middleware you don't have to worry about any of this.
 
 # Accessing state in middleware
 
-Handlers can access state using the [`State`] extractor but this isn't available
-to middleware. Instead you have to pass the state directly to middleware using
-either closure captures (for [`axum::middleware::from_fn`]) or regular struct
-fields (if you're implementing a [`tower::Layer`])
+How to make state available to middleware depends on how the middleware is
+written.
 
 ## Accessing state in `axum::middleware::from_fn`
 
-```rust
-use axum::{
-    Router,
-    routing::get,
-    middleware::{self, Next},
-    response::Response,
-    extract::State,
-    http::Request,
-};
-
-#[derive(Clone)]
-struct AppState {}
-
-async fn my_middleware<B>(
-    state: AppState,
-    req: Request<B>,
-    next: Next<B>,
-) -> Response {
-    next.run(req).await
-}
-
-async fn handler(_: State<AppState>) {}
-
-let state = AppState {};
-
-let app = Router::with_state(state.clone())
-    .route("/", get(handler))
-    .layer(middleware::from_fn(move |req, next| {
-        my_middleware(state.clone(), req, next)
-    }));
-# let _: Router<_> = app;
-```
+Use [`axum::middleware::from_fn_with_state`](crate::middleware::from_fn_with_state).
 
 ## Accessing state in custom `tower::Layer`s
 
@@ -482,7 +449,10 @@ where
     }
 
     fn call(&mut self, req: Request<B>) -> Self::Future {
-        // do something with `self.state`
+        // Do something with `self.state`.
+        //
+        // See `axum::RequestExt` for how to run extractors directly from
+        // a `Request`.
 
         self.inner.call(req)
     }
