@@ -13,6 +13,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   without any routes will now result in a panic. Previously, this just did
   nothing. [#1327]
 
+## Middleware
+
+- **added**: Add `middleware::from_fn_with_state` and
+  `middleware::from_fn_with_state_arc` to enable running extractors that require
+  state
+
 [#1327]: https://github.com/tokio-rs/axum/pull/1327
 
 # 0.6.0-rc.1 (23. August, 2022)

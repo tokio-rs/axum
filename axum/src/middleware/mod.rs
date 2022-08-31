@@ -6,7 +6,9 @@ mod from_extractor;
 mod from_fn;
 
 pub use self::from_extractor::{from_extractor, FromExtractor, FromExtractorLayer};
-pub use self::from_fn::{from_fn, FromFn, FromFnLayer, Next};
+pub use self::from_fn::{
+    from_fn, from_fn_with_state, from_fn_with_state_arc, FromFn, FromFnLayer, Next,
+};
 pub use crate::extension::AddExtension;
 
 pub mod future {
