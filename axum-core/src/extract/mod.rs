@@ -11,11 +11,15 @@ use std::convert::Infallible;
 
 pub mod rejection;
 
+mod default_body_limit;
 mod from_ref;
 mod request_parts;
 mod tuple;
 
-pub use self::from_ref::FromRef;
+pub use self::{
+    default_body_limit::{DefaultBodyLimit, DefaultBodyLimitService},
+    from_ref::FromRef,
+};
 
 mod private {
     #[derive(Debug, Clone, Copy)]

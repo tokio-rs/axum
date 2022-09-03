@@ -1,4 +1,6 @@
-use super::{rejection::*, FromRequest, FromRequestParts};
+use super::{
+    default_body_limit::DefaultBodyLimitDisabled, rejection::*, FromRequest, FromRequestParts,
+};
 use crate::BoxError;
 use async_trait::async_trait;
 use bytes::Bytes;
@@ -84,11 +86,16 @@ where
     async fn from_request(req: Request<B>, _: &S) -> Result<Self, Self::Rejection> {
         const DEFAULT_LIMIT: usize = 2_097_152; // 2 mb
 
-        let body = http_body::Limited::new(req.into_body(), DEFAULT_LIMIT);
-
-        let bytes = crate::body::to_bytes(body)
-            .await
-            .map_err(FailedToBufferBody::from_err)?;
+        let bytes = if req.extensions().get::<DefaultBodyLimitDisabled>().is_some() {
+            crate::body::to_bytes(req.into_body())
+                .await
+                .map_err(FailedToBufferBody::from_err)?
+        } else {
+            let body = http_body::Limited::new(req.into_body(), DEFAULT_LIMIT);
+            crate::body::to_bytes(body)
+                .await
+                .map_err(FailedToBufferBody::from_err)?
+        };
 
         Ok(bytes)
     }

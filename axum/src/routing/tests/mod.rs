@@ -1,7 +1,7 @@
 use crate::{
     body::{Bytes, Empty},
     error_handling::HandleErrorLayer,
-    extract::{self, FromRef, Path, State},
+    extract::{self, DefaultBodyLimit, FromRef, Path, State},
     handler::{Handler, HandlerWithoutStateExt},
     response::IntoResponse,
     routing::{delete, get, get_service, on, on_service, patch, patch_service, post, MethodFilter},
@@ -633,7 +633,21 @@ async fn body_limited_by_default() {
     }
 }
 
-// TODO(david): disabling the default limit
+#[tokio::test]
+async fn disabling_the_default_limit() {
+    let app = Router::new()
+        .route("/", post(|_: Bytes| async {}))
+        .layer(DefaultBodyLimit::disable());
+
+    let client = TestClient::new(app);
+
+    // `DEFAULT_LIMIT` is 2mb so make a body larger than that
+    let body = Body::from("a".repeat(3_000_000));
+
+    let res = client.post("/").body(body).send().await;
+
+    assert_eq!(res.status(), StatusCode::OK);
+}
 
 #[tokio::test]
 async fn limited_body_with_content_length() {
