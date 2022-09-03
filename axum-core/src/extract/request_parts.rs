@@ -82,7 +82,9 @@ where
     type Rejection = BytesRejection;
 
     async fn from_request(req: Request<B>, _: &S) -> Result<Self, Self::Rejection> {
-        let body = req.into_body();
+        const DEFAULT_LIMIT: usize = 2_097_152; // 2 mb
+
+        let body = http_body::Limited::new(req.into_body(), DEFAULT_LIMIT);
 
         let bytes = crate::body::to_bytes(body)
             .await
@@ -102,15 +104,18 @@ where
 {
     type Rejection = StringRejection;
 
-    async fn from_request(req: Request<B>, _: &S) -> Result<Self, Self::Rejection> {
-        let body = req.into_body();
-
-        let bytes = crate::body::to_bytes(body)
+    async fn from_request(req: Request<B>, state: &S) -> Result<Self, Self::Rejection> {
+        let bytes = Bytes::from_request(req, state)
             .await
-            .map_err(FailedToBufferBody::from_err)?
-            .to_vec();
+            .map_err(|err| match err {
+                BytesRejection::FailedToBufferBody(inner) => {
+                    StringRejection::FailedToBufferBody(inner)
+                }
+            })?;
 
-        let string = String::from_utf8(bytes).map_err(InvalidUtf8::from_err)?;
+        let string = std::str::from_utf8(&bytes)
+            .map_err(InvalidUtf8::from_err)?
+            .to_owned();
 
         Ok(string)
     }
