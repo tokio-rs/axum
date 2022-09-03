@@ -84,6 +84,8 @@ where
     type Rejection = BytesRejection;
 
     async fn from_request(req: Request<B>, _: &S) -> Result<Self, Self::Rejection> {
+        // update docs in `axum-core/src/extract/default_body_limit.rs` and
+        // `axum/src/docs/extract.md` if this changes
         const DEFAULT_LIMIT: usize = 2_097_152; // 2 mb
 
         let bytes = if req.extensions().get::<DefaultBodyLimitDisabled>().is_some() {
