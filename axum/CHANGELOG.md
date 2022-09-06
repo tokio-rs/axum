@@ -13,6 +13,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   without any routes will now result in a panic. Previously, this just did
   nothing. [#1327]
 
+## Extractors
+
+- **added:** `FromRequest` and `FromRequestParts` derive macro re-exports from [`axum-macros`] behind the `macros` feature ([#1352])
+
+[`axum-macros`]: https://docs.rs/axum-macros/latest/axum_macros/
+[#1352]: https://github.com/tokio-rs/axum/pull/1352
+
 ## Middleware
 
 - **added**: Add `middleware::from_fn_with_state` and
