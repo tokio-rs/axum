@@ -178,7 +178,7 @@ macro_rules! chained_service_fn {
             ///     Ok::<_, Infallible>(Response::new(Body::empty()))
             /// });
             ///
-            /// // Requests to `GET /` will go to `service` and `POST /` will go to
+            /// // Requests to `POST /` will go to `service` and `GET /` will go to
             /// // `other_service`.
             /// let app = Router::new().route("/", post_service(service).get_service(other_service));
             /// # async {
@@ -242,7 +242,7 @@ macro_rules! chained_handler_fn {
             ///
             /// async fn other_handler() {}
             ///
-            /// // Requests to `GET /` will go to `handler` and `POST /` will go to
+            /// // Requests to `POST /` will go to `handler` and `GET /` will go to
             /// // `other_handler`.
             /// let app = Router::new().route("/", post(handler).get(other_handler));
             /// # async {
