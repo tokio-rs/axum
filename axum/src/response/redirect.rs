@@ -19,6 +19,7 @@ use http::{header::LOCATION, HeaderValue, StatusCode};
 /// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 /// # };
 /// ```
+#[must_use = "needs to be returned from a handler or otherwise turned into a Response to be useful"]
 #[derive(Debug, Clone)]
 pub struct Redirect {
     status_code: StatusCode,
