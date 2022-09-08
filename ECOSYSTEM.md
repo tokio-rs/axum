@@ -24,7 +24,7 @@ If your project isn't listed here and you would like it to be, please feel free 
 - [axum-template](https://github.com/Altair-Bueno/axum-template): Layers, extractors and template engine wrappers for axum based Web MVC applications
 - [axum-guard-logic](https://github.com/sjud/axum_guard_logic): Use AND/OR logic to extract types and check their values against `Service` inputs.
 - [aide](https://docs.rs/aide): Code-first Open API documentation generator with [axum integration](https://docs.rs/aide/latest/aide/axum/index.html).
-- [axum-jsonschema](https://docs.rs/aide): A `Json<T>` extractor that does JSON schema validation of requests.
+- [axum-jsonschema](https://docs.rs/axum-jsonschema/): A `Json<T>` extractor that does JSON schema validation of requests.
 
 ## Project showcase
 
