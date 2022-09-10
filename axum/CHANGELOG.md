@@ -7,7 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- None.
+## Security
+
+- **breaking:** Added default limit to how much data `Bytes::from_request` will
+  consume. Previously it would attempt to consume the entire request body
+  without checking its length. This meant if a malicious peer sent an large (or
+  infinite) request body your server might run out of memory and crash.
+
+  The default limit is at 2 MB and can be disabled by adding the new
+  `DefaultBodyLimit::disable()` middleware. See its documentation for more
+  details.
+
+  This also applies to these extractors which used `Bytes::from_request`
+  internally:
+  - `Form`
+  - `Json`
+  - `String`
+
+  ([#1346])
 
 # 0.5.15 (9. August, 2022)
 

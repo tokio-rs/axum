@@ -1,4 +1,6 @@
-use super::{rejection::*, FromRequest, RequestParts};
+use super::{
+    default_body_limit::DefaultBodyLimitDisabled, rejection::*, FromRequest, RequestParts,
+};
 use crate::BoxError;
 use async_trait::async_trait;
 use bytes::Bytes;
@@ -92,11 +94,22 @@ where
     type Rejection = BytesRejection;
 
     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+        // update docs in `axum-core/src/extract/default_body_limit.rs` and
+        // `axum/src/docs/extract.md` if this changes
+        const DEFAULT_LIMIT: usize = 2_097_152; // 2 mb
+
         let body = take_body(req)?;
 
-        let bytes = crate::body::to_bytes(body)
-            .await
-            .map_err(FailedToBufferBody::from_err)?;
+        let bytes = if req.extensions().get::<DefaultBodyLimitDisabled>().is_some() {
+            crate::body::to_bytes(body)
+                .await
+                .map_err(FailedToBufferBody::from_err)?
+        } else {
+            let body = http_body::Limited::new(body, DEFAULT_LIMIT);
+            crate::body::to_bytes(body)
+                .await
+                .map_err(FailedToBufferBody::from_err)?
+        };
 
         Ok(bytes)
     }
@@ -112,14 +125,16 @@ where
     type Rejection = StringRejection;
 
     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-        let body = take_body(req)?;
+        let bytes = Bytes::from_request(req).await.map_err(|err| match err {
+            BytesRejection::FailedToBufferBody(inner) => StringRejection::FailedToBufferBody(inner),
+            BytesRejection::BodyAlreadyExtracted(inner) => {
+                StringRejection::BodyAlreadyExtracted(inner)
+            }
+        })?;
 
-        let bytes = crate::body::to_bytes(body)
-            .await
-            .map_err(FailedToBufferBody::from_err)?
-            .to_vec();
-
-        let string = String::from_utf8(bytes).map_err(InvalidUtf8::from_err)?;
+        let string = std::str::from_utf8(&bytes)
+            .map_err(InvalidUtf8::from_err)?
+            .to_owned();
 
         Ok(string)
     }

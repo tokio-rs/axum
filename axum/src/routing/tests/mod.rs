@@ -1,13 +1,14 @@
 use crate::{
     body::{Bytes, Empty},
     error_handling::HandleErrorLayer,
-    extract::{self, Path},
+    extract::{self, DefaultBodyLimit, Path},
     handler::Handler,
     response::IntoResponse,
     routing::{delete, get, get_service, on, on_service, patch, patch_service, post, MethodFilter},
     test_helpers::*,
     BoxError, Json, Router,
 };
+use futures_util::stream::StreamExt;
 use http::{header::CONTENT_LENGTH, HeaderMap, Method, Request, Response, StatusCode, Uri};
 use hyper::Body;
 use serde::Deserialize;
@@ -698,6 +699,50 @@ async fn head_with_middleware_applied() {
 async fn routes_must_start_with_slash() {
     let app = Router::new().route(":foo", get(|| async {}));
     TestClient::new(app);
+}
+
+#[tokio::test]
+async fn body_limited_by_default() {
+    let app = Router::new()
+        .route("/bytes", post(|_: Bytes| async {}))
+        .route("/string", post(|_: String| async {}))
+        .route("/json", post(|_: Json<serde_json::Value>| async {}));
+
+    let client = TestClient::new(app);
+
+    for uri in ["/bytes", "/string", "/json"] {
+        println!("calling {}", uri);
+
+        let stream = futures_util::stream::repeat("a".repeat(1000)).map(Ok::<_, hyper::Error>);
+        let body = Body::wrap_stream(stream);
+
+        let res_future = client
+            .post(uri)
+            .header("content-type", "application/json")
+            .body(body)
+            .send();
+        let res = tokio::time::timeout(Duration::from_secs(3), res_future)
+            .await
+            .expect("never got response");
+
+        assert_eq!(res.status(), StatusCode::PAYLOAD_TOO_LARGE);
+    }
+}
+
+#[tokio::test]
+async fn disabling_the_default_limit() {
+    let app = Router::new()
+        .route("/", post(|_: Bytes| async {}))
+        .layer(DefaultBodyLimit::disable());
+
+    let client = TestClient::new(app);
+
+    // `DEFAULT_LIMIT` is 2mb so make a body larger than that
+    let body = Body::from("a".repeat(3_000_000));
+
+    let res = client.post("/").body(body).send().await;
+
+    assert_eq!(res.status(), StatusCode::OK);
 }
 
 #[tokio::test]

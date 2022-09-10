@@ -12,8 +12,11 @@ use std::convert::Infallible;
 
 pub mod rejection;
 
+mod default_body_limit;
 mod request_parts;
 mod tuple;
+
+pub use self::default_body_limit::DefaultBodyLimit;
 
 /// Types that can be created from requests.
 ///
