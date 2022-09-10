@@ -47,7 +47,7 @@ tower-layer = "0.3"
 tower-service = "0.3"
 
 # optional dependencies
-axum-macros = { path = "../axum-macros", version = "0.3.0-rc.2", optional = true }
+axum-macros = { path = "../axum-macros", version = "0.3.0-rc.1", optional = true }
 cookie = { package = "cookie", version = "0.16", features = ["percent-encode"], optional = true }
 percent-encoding = { version = "2.1", optional = true }
 prost = { version = "0.11", optional = true }
