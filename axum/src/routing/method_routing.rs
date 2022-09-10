@@ -808,7 +808,7 @@ where
         T::Response: IntoResponse + 'static,
         T::Future: Send + 'static,
     {
-        self.fallback = Fallback::Custom(Route::new(svc));
+        self.fallback = Fallback::Service(Route::new(svc));
         self
     }
 
@@ -818,7 +818,7 @@ where
         T::Response: IntoResponse + 'static,
         T::Future: Send + 'static,
     {
-        self.fallback = Fallback::Custom(Route::new(svc));
+        self.fallback = Fallback::Service(Route::new(svc));
         self
     }
 
@@ -1276,7 +1276,7 @@ where
         let future = match fallback {
             Fallback::Default(fallback) => RouteFuture::from_future(fallback.oneshot_inner(req))
                 .strip_body(method == Method::HEAD),
-            Fallback::Custom(fallback) => RouteFuture::from_future(fallback.oneshot_inner(req))
+            Fallback::Service(fallback) => RouteFuture::from_future(fallback.oneshot_inner(req))
                 .strip_body(method == Method::HEAD),
         };
 

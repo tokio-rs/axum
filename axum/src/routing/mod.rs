@@ -434,7 +434,7 @@ where
         T::Response: IntoResponse,
         T::Future: Send + 'static,
     {
-        self.fallback = Fallback::Custom(Route::new(svc));
+        self.fallback = Fallback::Service(Route::new(svc));
         self
     }
 
@@ -572,7 +572,7 @@ where
                 | MatchError::MissingTrailingSlash,
             ) => match &self.fallback {
                 Fallback::Default(inner) => inner.clone().call(req),
-                Fallback::Custom(inner) => inner.clone().call(req),
+                Fallback::Service(inner) => inner.clone().call(req),
             },
         }
     }
@@ -621,7 +621,7 @@ impl fmt::Debug for Node {
 
 enum Fallback<B, E = Infallible> {
     Default(Route<B, E>),
-    Custom(Route<B, E>),
+    Service(Route<B, E>),
 }
 
 impl<B, E> Fallback<B, E> {
@@ -638,7 +638,7 @@ impl<B, E> Clone for Fallback<B, E> {
     fn clone(&self) -> Self {
         match self {
             Self::Default(inner) => Self::Default(inner.clone()),
-            Self::Custom(inner) => Self::Custom(inner.clone()),
+            Self::Service(inner) => Self::Service(inner.clone()),
         }
     }
 }
@@ -647,7 +647,7 @@ impl<B, E> fmt::Debug for Fallback<B, E> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Default(inner) => f.debug_tuple("Default").field(inner).finish(),
-            Self::Custom(inner) => f.debug_tuple("Custom").field(inner).finish(),
+            Self::Service(inner) => f.debug_tuple("Service").field(inner).finish(),
         }
     }
 }
@@ -659,7 +659,7 @@ impl<B, E> Fallback<B, E> {
     {
         match self {
             Self::Default(inner) => Fallback::Default(f(inner)),
-            Self::Custom(inner) => Fallback::Custom(f(inner)),
+            Self::Service(inner) => Fallback::Service(f(inner)),
         }
     }
 }
