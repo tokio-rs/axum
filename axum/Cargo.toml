@@ -30,7 +30,7 @@ __private_docs = ["tower/full", "tower-http/full"]
 
 [dependencies]
 async-trait = "0.1.43"
-axum-core = { path = "../axum-core", version = "0.3.0-rc.2" }
+axum-core = { path = "../axum-core", version = "=0.3.0-rc.2" }
 bitflags = "1.0"
 bytes = "1.0"
 futures-util = { version = "0.3", default-features = false, features = ["alloc"] }
