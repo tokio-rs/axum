@@ -637,8 +637,8 @@ impl<B, E> Fallback<B, E> {
 impl<B, E> Clone for Fallback<B, E> {
     fn clone(&self) -> Self {
         match self {
-            Fallback::Default(inner) => Fallback::Default(inner.clone()),
-            Fallback::Custom(inner) => Fallback::Custom(inner.clone()),
+            Self::Default(inner) => Self::Default(inner.clone()),
+            Self::Custom(inner) => Self::Custom(inner.clone()),
         }
     }
 }
@@ -658,8 +658,8 @@ impl<B, E> Fallback<B, E> {
         F: FnOnce(Route<B, E>) -> Route<B2, E2>,
     {
         match self {
-            Fallback::Default(inner) => Fallback::Default(f(inner)),
-            Fallback::Custom(inner) => Fallback::Custom(f(inner)),
+            Self::Default(inner) => Fallback::Default(f(inner)),
+            Self::Custom(inner) => Fallback::Custom(f(inner)),
         }
     }
 }
@@ -672,8 +672,8 @@ enum Endpoint<S, B> {
 impl<S, B> Clone for Endpoint<S, B> {
     fn clone(&self) -> Self {
         match self {
-            Endpoint::MethodRouter(inner) => Endpoint::MethodRouter(inner.clone()),
-            Endpoint::Route(inner) => Endpoint::Route(inner.clone()),
+            Self::MethodRouter(inner) => Self::MethodRouter(inner.clone()),
+            Self::Route(inner) => Self::Route(inner.clone()),
         }
     }
 }
