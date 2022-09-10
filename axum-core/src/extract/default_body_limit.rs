@@ -40,7 +40,7 @@ impl DefaultBodyLimit {
     /// use tower_http::limit::RequestBodyLimitLayer;
     /// use http_body::Limited;
     ///
-    /// let app: Router<_, Limited<Body>> = Router::new()
+    /// let app: Router<Limited<Body>> = Router::new()
     ///     .route("/", get(|body: Bytes| async {}))
     ///     // Disable the default limit
     ///     .layer(DefaultBodyLimit::disable())
