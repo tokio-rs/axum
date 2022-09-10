@@ -917,8 +917,7 @@ where
                         panic!("Overlapping method route. Cannot merge two method routes that both define `{name}`")
                     }
                 }
-                (Some(svc), None) => Some(svc),
-                (None, Some(svc)) => Some(svc),
+                (Some(svc), None) | (None, Some(svc)) => Some(svc),
                 (None, None) => None,
             }
         }
