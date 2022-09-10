@@ -323,14 +323,10 @@ where
             };
         }
 
-        self.fallback = match (self.fallback, fallback) {
-            (Fallback::Default(_), pick @ Fallback::Default(_)) => pick,
-            (Fallback::Default(_), pick @ Fallback::Custom(_)) => pick,
-            (pick @ Fallback::Custom(_), Fallback::Default(_)) => pick,
-            (Fallback::Custom(_), Fallback::Custom(_)) => {
-                panic!("Cannot merge two `Router`s that both have a fallback")
-            }
-        };
+        self.fallback = self
+            .fallback
+            .merge(fallback)
+            .expect("Cannot merge two `Router`s that both have a fallback");
 
         self
     }
@@ -626,6 +622,16 @@ impl fmt::Debug for Node {
 enum Fallback<B, E = Infallible> {
     Default(Route<B, E>),
     Custom(Route<B, E>),
+}
+
+impl<B, E> Fallback<B, E> {
+    fn merge(self, other: Self) -> Option<Self> {
+        match (self, other) {
+            (Self::Default(_), pick @ Self::Default(_)) => Some(pick),
+            (Self::Default(_), pick) | (pick, Self::Default(_)) => Some(pick),
+            _ => None,
+        }
+    }
 }
 
 impl<B, E> Clone for Fallback<B, E> {
