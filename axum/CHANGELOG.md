@@ -30,6 +30,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
   ([#1346])
 
+[#1346]: https://github.com/tokio-rs/axum/pull/1346
+
 # 0.5.15 (9. August, 2022)
 
 - **fixed:** Don't expose internal type names in `QueryRejection` response. ([#1171])
