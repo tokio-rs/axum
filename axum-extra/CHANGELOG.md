@@ -9,10 +9,6 @@ and this project adheres to [Semantic Versioning].
 
 - None.
 
-# 0.4.0-rc.2 (10. September, 2022)
-
-- Depend on 0.6.0-rc.2.
-
 # 0.4.0-rc.1 (23. August, 2022)
 
 - **added:** Add `RouterExt::route_with_tsr` for adding routes with an
