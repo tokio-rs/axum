@@ -13,8 +13,8 @@ use tower_layer::Layer;
 ///
 /// [`Body::data`]: http_body::Body::data
 /// [`Bytes`]: bytes::Bytes
-/// [`Json`]: https://docs.rs/axum/0.6.0-rc.1/axum/struct.Json.html
-/// [`Form`]: https://docs.rs/axum/0.6.0-rc.1/axum/struct.Form.html
+/// [`Json`]: https://docs.rs/axum/0.5/axum/struct.Json.html
+/// [`Form`]: https://docs.rs/axum/0.5/axum/struct.Form.html
 #[derive(Debug, Clone)]
 #[non_exhaustive]
 pub struct DefaultBodyLimit;
@@ -50,8 +50,8 @@ impl DefaultBodyLimit {
     ///
     /// [`tower_http::limit`]: https://docs.rs/tower-http/0.3.4/tower_http/limit/index.html
     /// [`Bytes`]: bytes::Bytes
-    /// [`Json`]: https://docs.rs/axum/0.6.0-rc.1/axum/struct.Json.html
-    /// [`Form`]: https://docs.rs/axum/0.6.0-rc.1/axum/struct.Form.html
+    /// [`Json`]: https://docs.rs/axum/0.5/axum/struct.Json.html
+    /// [`Form`]: https://docs.rs/axum/0.5/axum/struct.Form.html
     pub fn disable() -> Self {
         Self
     }
