@@ -17,7 +17,7 @@ mod raw_query;
 mod request_parts;
 
 #[doc(inline)]
-pub use axum_core::extract::{FromRequest, RequestParts};
+pub use axum_core::extract::{DefaultBodyLimit, FromRequest, RequestParts};
 
 #[doc(inline)]
 #[allow(deprecated)]

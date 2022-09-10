@@ -8,6 +8,9 @@ error[E0282]: type annotations needed
  --> tests/debug_handler/fail/generics.rs:4:10
   |
 4 | async fn handler<T>() {}
-  | -----    ^^^^^^^ cannot infer type for type parameter `T` declared on the function `handler`
-  | |
-  | consider giving `future` a type
+  |          ^^^^^^^ cannot infer type of the type parameter `T` declared on the function `handler`
+  |
+help: consider specifying the generic argument
+  |
+4 | async fn handler::<T><T>() {}
+  |                 +++++

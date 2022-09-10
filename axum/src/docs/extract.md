@@ -11,6 +11,7 @@ Types and traits for extracting data from requests.
 - [Accessing inner errors](#accessing-inner-errors)
 - [Defining custom extractors](#defining-custom-extractors)
 - [Accessing other extractors in `FromRequest` implementations](#accessing-other-extractors-in-fromrequest-implementations)
+- [Request body limits](#request-body-limits)
 - [Request body extractors](#request-body-extractors)
 - [Running extractors from middleware](#running-extractors-from-middleware)
 
@@ -505,6 +506,14 @@ let app = Router::new().route("/", get(handler)).layer(Extension(state));
 # };
 ```
 
+# Request body limits
+
+For security reasons, [`Bytes`] will, by default, not accept bodies larger than
+2MB. This also applies to extractors that uses [`Bytes`] internally such as
+`String`, [`Json`], and [`Form`].
+
+For more details, including how to disable this limit, see [`DefaultBodyLimit`].
+
 # Request body extractors
 
 Most of the time your request body type will be [`body::Body`] (a re-export
@@ -637,6 +646,7 @@ let app = Router::new().layer(middleware::from_fn(auth_middleware));
 ```
 
 [`body::Body`]: crate::body::Body
+[`Bytes`]: crate::body::Bytes
 [customize-extractor-error]: https://github.com/tokio-rs/axum/blob/main/examples/customize-extractor-error/src/main.rs
 [`HeaderMap`]: https://docs.rs/http/latest/http/header/struct.HeaderMap.html
 [`Request`]: https://docs.rs/http/latest/http/struct.Request.html
