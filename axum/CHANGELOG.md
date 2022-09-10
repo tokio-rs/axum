@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+- None.
+
+# 0.5.16 (10. September, 2022)
+
 ## Security
 
 - **breaking:** Added default limit to how much data `Bytes::from_request` will
