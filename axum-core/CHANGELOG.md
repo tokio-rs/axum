@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+- None.
+
+# 0.3.0-rc.2 (10. September, 2022)
+
 - **breaking:** Added default limit to how much data `Bytes::from_request` will
   consume. Previously it would attempt to consume the entire request body
   without checking its length. This meant if a malicious peer sent an large (or

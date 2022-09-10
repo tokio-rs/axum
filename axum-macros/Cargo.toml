@@ -9,7 +9,7 @@ license = "MIT"
 name = "axum-macros"
 readme = "README.md"
 repository = "https://github.com/tokio-rs/axum"
-version = "0.3.0-rc.1" # remember to also bump the version that axum and axum-extra depends on
+version = "0.3.0-rc.2" # remember to also bump the version that axum and axum-extra depends on
 
 [lib]
 proc-macro = true
@@ -25,8 +25,8 @@ syn = { version = "1.0", features = [
 ] }
 
 [dev-dependencies]
-axum = { path = "../axum", version = "0.6.0-rc.1", features = ["headers"] }
-axum-extra = { path = "../axum-extra", version = "0.4.0-rc.1", features = ["typed-routing"] }
+axum = { path = "../axum", version = "0.6.0-rc.2", features = ["headers"] }
+axum-extra = { path = "../axum-extra", version = "0.4.0-rc.2", features = ["typed-routing"] }
 rustversion = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
