@@ -1278,6 +1278,7 @@ where
                 .strip_body(method == Method::HEAD),
             Fallback::Service(fallback) => RouteFuture::from_future(fallback.oneshot_inner(req))
                 .strip_body(method == Method::HEAD),
+            _ => todo!(),
         };
 
         match allow_header {

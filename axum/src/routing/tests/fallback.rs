@@ -4,7 +4,8 @@ use super::*;
 async fn basic() {
     let app = Router::new()
         .route("/foo", get(|| async {}))
-        .fallback(|| async { "fallback" });
+        .fallback(|| async { "fallback" })
+        .into_service();
 
     let client = TestClient::new(app);
 
@@ -49,8 +50,10 @@ async fn or() {
 
 #[tokio::test]
 async fn fallback_accessing_state() {
-    let app = Router::with_state("state")
-        .fallback(|State(state): State<&'static str>| async move { state });
+    let app = Router::new()
+        .with_state("state")
+        .fallback(|State(state): State<&'static str>| async move { state })
+        .into_service();
 
     let client = TestClient::new(app);
 
