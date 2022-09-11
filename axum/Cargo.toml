@@ -1,6 +1,6 @@
 [package]
 name = "axum"
-version = "0.6.0-rc.1"
+version = "0.6.0-rc.2"
 categories = ["asynchronous", "network-programming", "web-programming::http-server"]
 description = "Web framework that focuses on ergonomics and modularity"
 edition = "2021"
@@ -30,7 +30,7 @@ __private_docs = ["tower/full", "tower-http/full"]
 
 [dependencies]
 async-trait = "0.1.43"
-axum-core = { path = "../axum-core", version = "0.3.0-rc.1" }
+axum-core = { path = "../axum-core", version = "=0.3.0-rc.2" }
 bitflags = "1.0"
 bytes = "1.0"
 futures-util = { version = "0.3", default-features = false, features = ["alloc"] }
