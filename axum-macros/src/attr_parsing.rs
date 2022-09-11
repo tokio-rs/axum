@@ -1,0 +1,61 @@
+use quote::ToTokens;
+use syn::parse::{Parse, ParseStream};
+
+pub(crate) fn parse_parenthesized_attribute<K, T>(
+    input: ParseStream,
+    out: &mut Option<(K, T)>,
+) -> syn::Result<()>
+where
+    K: Parse + ToTokens,
+    T: Parse,
+{
+    let kw = input.parse()?;
+
+    let content;
+    syn::parenthesized!(content in input);
+    let inner = content.parse()?;
+
+    if out.is_some() {
+        let kw_name = std::any::type_name::<K>().split("::").last().unwrap();
+        let msg = format!("`{}` specified more than once", kw_name);
+        return Err(syn::Error::new_spanned(kw, msg));
+    }
+
+    *out = Some((kw, inner));
+
+    Ok(())
+}
+
+pub(crate) trait Combine: Sized {
+    fn combine(self, other: Self) -> syn::Result<Self>;
+}
+
+pub(crate) fn parse_attrs<T>(ident: &str, attrs: &[syn::Attribute]) -> syn::Result<T>
+where
+    T: Combine + Default + Parse,
+{
+    attrs
+        .iter()
+        .filter(|attr| attr.path.is_ident(ident))
+        .map(|attr| attr.parse_args::<T>())
+        .try_fold(T::default(), |out, next| out.combine(next?))
+}
+
+pub(crate) fn combine_attribute<K, T>(a: &mut Option<(K, T)>, b: Option<(K, T)>) -> syn::Result<()>
+where
+    K: ToTokens,
+{
+    if let Some((kw, inner)) = b {
+        if a.is_some() {
+            let kw_name = std::any::type_name::<K>().split("::").last().unwrap();
+            let msg = format!("`{}` specified more than once", kw_name);
+            return Err(syn::Error::new_spanned(kw, msg));
+        }
+        *a = Some((kw, inner));
+    }
+    Ok(())
+}
+
+pub(crate) fn second<T, K>(tuple: (T, K)) -> K {
+    tuple.1
+}
