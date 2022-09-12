@@ -80,12 +80,16 @@ pub(crate) fn expand(item: syn::Item, tr: Trait) -> syn::Result<TokenStream> {
 
             let FromRequestContainerAttrs { via, rejection } = parse_attrs("from_request", &attrs)?;
 
-            match (via.map(second), rejection.map(second)) {
-                (Some(via), rejection) => {
-                    impl_enum_by_extracting_all_at_once(ident, variants, via, rejection, tr)
-                }
-                (None, Some(rejection)) => Err(syn::Error::new_spanned(
-                    rejection,
+            match (via.map(second), rejection) {
+                (Some(via), rejection) => impl_enum_by_extracting_all_at_once(
+                    ident,
+                    variants,
+                    via,
+                    rejection.map(second),
+                    tr,
+                ),
+                (None, Some((rejection_kw, _))) => Err(syn::Error::new_spanned(
+                    rejection_kw,
                     "cannot use `rejection` without `via`",
                 )),
                 (None, _) => Err(syn::Error::new(
