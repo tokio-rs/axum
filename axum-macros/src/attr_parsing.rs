@@ -1,5 +1,8 @@
 use quote::ToTokens;
-use syn::parse::{Parse, ParseStream};
+use syn::{
+    parse::{Parse, ParseStream},
+    Token,
+};
 
 pub(crate) fn parse_parenthesized_attribute<K, T>(
     input: ParseStream,
@@ -14,6 +17,29 @@ where
     let content;
     syn::parenthesized!(content in input);
     let inner = content.parse()?;
+
+    if out.is_some() {
+        let kw_name = std::any::type_name::<K>().split("::").last().unwrap();
+        let msg = format!("`{}` specified more than once", kw_name);
+        return Err(syn::Error::new_spanned(kw, msg));
+    }
+
+    *out = Some((kw, inner));
+
+    Ok(())
+}
+
+pub(crate) fn parse_assignment_attribute<K, T>(
+    input: ParseStream,
+    out: &mut Option<(K, T)>,
+) -> syn::Result<()>
+where
+    K: Parse + ToTokens,
+    T: Parse,
+{
+    let kw = input.parse()?;
+    input.parse::<Token![=]>()?;
+    let inner = input.parse()?;
 
     if out.is_some() {
         let kw_name = std::any::type_name::<K>().split("::").last().unwrap();
