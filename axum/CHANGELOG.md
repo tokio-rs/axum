@@ -7,7 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- None.
+- **changed**: The inner error of a `JsonRejection` is now
+  `serde_path_to_error::Error<serde_json::Error>`.  Previously it was
+  `serde_json::Error` ([#1371])
+- **added**: `JsonRejection` now displays the path at which a deserialization
+  error occurred too ([#1371])
+
+[#1371]: https://github.com/tokio-rs/axum/pull/1371
 
 # 0.6.0-rc.2 (10. September, 2022)
 

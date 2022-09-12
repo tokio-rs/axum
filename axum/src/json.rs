@@ -113,11 +113,12 @@ where
     async fn from_request(req: Request<B>, state: &S) -> Result<Self, Self::Rejection> {
         if json_content_type(req.headers()) {
             let bytes = Bytes::from_request(req, state).await?;
+            let deserializer = &mut serde_json::Deserializer::from_slice(&bytes);
 
-            let value = match serde_json::from_slice(&bytes) {
+            let value = match serde_path_to_error::deserialize(deserializer) {
                 Ok(value) => value,
                 Err(err) => {
-                    let rejection = match err.classify() {
+                    let rejection = match err.inner().classify() {
                         serde_json::error::Category::Data => JsonDataError::from_err(err).into(),
                         serde_json::error::Category::Syntax | serde_json::error::Category::Eof => {
                             JsonSyntaxError::from_err(err).into()
@@ -295,5 +296,41 @@ mod tests {
             .await;
 
         assert_eq!(res.status(), StatusCode::BAD_REQUEST);
+    }
+
+    #[derive(Deserialize)]
+    struct Foo {
+        #[allow(dead_code)]
+        a: i32,
+        #[allow(dead_code)]
+        b: Vec<Bar>,
+    }
+
+    #[derive(Deserialize)]
+    struct Bar {
+        #[allow(dead_code)]
+        x: i32,
+        #[allow(dead_code)]
+        y: i32,
+    }
+
+    #[tokio::test]
+    async fn invalid_json_data() {
+        let app = Router::new().route("/", post(|_: Json<Foo>| async {}));
+
+        let client = TestClient::new(app);
+        let res = client
+            .post("/")
+            .body("{\"a\": 1, \"b\": [{\"x\": 2}]}")
+            .header("content-type", "application/json")
+            .send()
+            .await;
+
+        assert_eq!(res.status(), StatusCode::UNPROCESSABLE_ENTITY);
+        let body_text = res.text().await;
+        assert_eq!(
+            body_text,
+            "Failed to deserialize the JSON body into the target type: b[0]: missing field `y` at line 1 column 23"
+        );
     }
 }
