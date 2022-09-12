@@ -1,10 +1,21 @@
-use crate::with_position::{Position, WithPosition};
+use crate::{
+    attr_parsing::{parse_assignment_attribute, second},
+    with_position::{Position, WithPosition},
+};
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote, quote_spanned};
 use std::collections::HashSet;
-use syn::{parse::Parse, spanned::Spanned, FnArg, ItemFn, Token, Type};
+use syn::{parse::Parse, parse_quote, spanned::Spanned, FnArg, ItemFn, Token, Type};
 
-pub(crate) fn expand(mut attr: Attrs, item_fn: ItemFn) -> TokenStream {
+pub(crate) fn expand(attr: Attrs, item_fn: ItemFn) -> TokenStream {
+    let Attrs { body_ty, state_ty } = attr;
+
+    let body_ty = body_ty
+        .map(second)
+        .unwrap_or_else(|| parse_quote!(axum::body::Body));
+
+    let mut state_ty = state_ty.map(second);
+
     let check_extractor_count = check_extractor_count(&item_fn);
     let check_path_extractor = check_path_extractor(&item_fn);
     let check_output_impls_into_response = check_output_impls_into_response(&item_fn);
@@ -12,14 +23,14 @@ pub(crate) fn expand(mut attr: Attrs, item_fn: ItemFn) -> TokenStream {
     // If the function is generic, we can't reliably check its inputs or whether the future it
     // returns is `Send`. Skip those checks to avoid unhelpful additional compiler errors.
     let check_inputs_and_future_send = if item_fn.sig.generics.params.is_empty() {
-        if attr.state_ty.is_none() {
-            attr.state_ty = state_type_from_args(&item_fn);
+        if state_ty.is_none() {
+            state_ty = state_type_from_args(&item_fn);
         }
 
-        let state_ty = attr.state_ty.unwrap_or_else(|| syn::parse_quote!(()));
+        let state_ty = state_ty.unwrap_or_else(|| syn::parse_quote!(()));
 
         let check_inputs_impls_from_request =
-            check_inputs_impls_from_request(&item_fn, &attr.body_ty, state_ty);
+            check_inputs_impls_from_request(&item_fn, &body_ty, state_ty);
         let check_future_send = check_future_send(&item_fn);
 
         quote! {
@@ -49,8 +60,8 @@ mod kw {
 }
 
 pub(crate) struct Attrs {
-    body_ty: Type,
-    state_ty: Option<Type>,
+    body_ty: Option<(kw::body, Type)>,
+    state_ty: Option<(kw::state, Type)>,
 }
 
 impl Parse for Attrs {
@@ -60,35 +71,16 @@ impl Parse for Attrs {
 
         while !input.is_empty() {
             let lh = input.lookahead1();
-
             if lh.peek(kw::body) {
-                let kw = input.parse::<kw::body>()?;
-                if body_ty.is_some() {
-                    return Err(syn::Error::new_spanned(
-                        kw,
-                        "`body` specified more than once",
-                    ));
-                }
-                input.parse::<Token![=]>()?;
-                body_ty = Some(input.parse()?);
+                parse_assignment_attribute(input, &mut body_ty)?;
             } else if lh.peek(kw::state) {
-                let kw = input.parse::<kw::state>()?;
-                if state_ty.is_some() {
-                    return Err(syn::Error::new_spanned(
-                        kw,
-                        "`state` specified more than once",
-                    ));
-                }
-                input.parse::<Token![=]>()?;
-                state_ty = Some(input.parse()?);
+                parse_assignment_attribute(input, &mut state_ty)?;
             } else {
                 return Err(lh.error());
             }
 
             let _ = input.parse::<Token![,]>();
         }
-
-        let body_ty = body_ty.unwrap_or_else(|| syn::parse_quote!(axum::body::Body));
 
         Ok(Self { body_ty, state_ty })
     }
