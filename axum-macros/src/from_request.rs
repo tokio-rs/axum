@@ -25,7 +25,6 @@ impl fmt::Display for Trait {
     }
 }
 
-#[allow(warnings)]
 pub(crate) fn expand(item: syn::Item, tr: Trait) -> syn::Result<TokenStream> {
     match item {
         syn::Item::Struct(item) => {
@@ -89,7 +88,7 @@ pub(crate) fn expand(item: syn::Item, tr: Trait) -> syn::Result<TokenStream> {
                     rejection,
                     "cannot use `rejection` without `via`",
                 )),
-                (None, rejection) => Err(syn::Error::new(
+                (None, _) => Err(syn::Error::new(
                     Span::call_site(),
                     "missing `#[from_request(via(...))]`",
                 )),
