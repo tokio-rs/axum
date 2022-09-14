@@ -38,7 +38,7 @@ where
     }
 }
 
-#[debug_handler(with(T = String, T = u64, U = i32, U = i16))]
+#[debug_handler(with(T = String, T = u64; U = i32, U = i16))]
 async fn handler<T, U>(_foo: ExampleExtract<T, U>) -> impl IntoResponse
 where
     T: std::fmt::Display,

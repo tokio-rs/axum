@@ -1,0 +1,5 @@
+error: Duplicate argument name specified. Each argument can only appear in one group. Groups are separated by semicolons. (e.g. `T = Foo, T = Bar; U = i64` is valid, but `T = Foo, T = Bar; T = i64` is not).
+ --> tests/debug_handler/fail/invalid_attrs_with_duplicate_group.rs:3:52
+  |
+3 | #[debug_handler(with(T = String, T = u64; U = i64; T = u32))]
+  |                                                    ^

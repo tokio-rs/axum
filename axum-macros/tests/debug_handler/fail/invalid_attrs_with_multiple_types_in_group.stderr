@@ -1,0 +1,5 @@
+error: All argument names in a group must match. Groups should be separated by `;`. (e.g. `T = Foo, T = Bar; U = i64` is valid, but `T = Foo, U = Bar` is not).
+ --> tests/debug_handler/fail/invalid_attrs_with_multiple_types_in_group.rs:3:34
+  |
+3 | #[debug_handler(with(T = String, U = u64))]
+  |                                  ^

@@ -48,7 +48,10 @@ pub(crate) struct Specializer {
 
 impl Specializer {
     pub(crate) fn new(attr: &Attrs, item_fn: &ItemFn) -> Result<Self, syn::Error> {
-        let specializations = attr.compute_specializations();
+        let specializations = attr
+            .specializations()
+            .map(|s| s.clone())
+            .unwrap_or_default();
 
         let generic_params = item_fn
             .sig
