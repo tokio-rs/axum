@@ -1,64 +1,41 @@
-use std::collections::HashMap;
-
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote, quote_spanned};
-use syn::{
-    parse::Parse, punctuated::Punctuated, spanned::Spanned, FnArg, GenericParam, ItemFn, Token,
-    Type,
-};
+use syn::{spanned::Spanned, FnArg, ItemFn, Type};
 
+use self::attr::Attrs;
 use self::specializer::Specializer;
 
+mod attr;
 mod specializer;
 
 pub(crate) fn expand(attr: Attrs, item_fn: ItemFn) -> TokenStream {
     // TODO error on const generics and liftetimes
     // TODO error on not all generic params specified using with
 
-    let generic_param_idents = item_fn
-        .sig
-        .generics
-        .params
-        .iter()
-        .enumerate()
-        .flat_map(|(_idx, param)| {
-            match param {
-                GenericParam::Type(t) => Some(t.ident.clone()),
-                _ => {
-                    // TODO should we flag an error here
-                    None
-                }
-            }
-        })
-        .collect::<Vec<_>>();
-
-    let specializer = Specializer::new(generic_param_idents, attr.compute_specializations());
-
+    // these checks don't require the specializer, so we can generate code for them regardless
+    // of whether we can successfully create one
     let check_extractor_count = check_extractor_count(&item_fn);
     let check_request_last_extractor = check_request_last_extractor(&item_fn);
     let check_path_extractor = check_path_extractor(&item_fn);
     let check_multiple_body_extractors = check_multiple_body_extractors(&item_fn);
-    let check_output_impls_into_response = check_output_impls_into_response(&item_fn, &specializer);
 
-    // If the function is generic and no with statement was provided, we can't reliably check its
-    // inputs or whether the future it returns is `Send`. Skip those checks to avoid unhelpful additional
-    // compiler errors.
-    let check_inputs_and_future_send = if item_fn.sig.generics.params.is_empty()
-        || attr.with_tys.is_some()
-    {
-        let check_inputs_impls_from_request =
-            check_inputs_impls_from_request(&item_fn, &attr.body_ty, &specializer);
-        let check_future_send = check_future_send(&item_fn, &specializer);
-        quote! {
-            #check_inputs_impls_from_request
-            #check_future_send
+    // If the function is generic and and improper `with` statement was provided to the macro, we can't
+    // reliably check its inputs or outputs. This will result in an error. We skip those checks to avoid
+    // unhelpful additional compiler errors.
+    let specializer_checks = match Specializer::new(&attr, &item_fn) {
+        Ok(specializer) => {
+            let check_output_impls_into_response =
+                check_output_impls_into_response(&item_fn, &specializer);
+            let check_inputs_impls_from_request =
+                check_inputs_impls_from_request(&item_fn, attr.body_ty(), &specializer);
+            let check_future_send = check_future_send(&item_fn, &specializer);
+            quote! {
+                #check_output_impls_into_response
+                #check_inputs_impls_from_request
+                #check_future_send
+            }
         }
-    } else {
-        syn::Error::new_spanned(
-                &item_fn.sig.generics,
-                "`#[axum_macros::debug_handler]` use with 'with' attribute to support debugging generic functions",
-            )
-            .into_compile_error()
+        Err(err) => err.into_compile_error(),
     };
 
     quote! {
@@ -67,79 +44,7 @@ pub(crate) fn expand(attr: Attrs, item_fn: ItemFn) -> TokenStream {
         #check_request_last_extractor
         #check_path_extractor
         #check_multiple_body_extractors
-
-        #check_output_impls_into_response
-        #check_inputs_and_future_send
-    }
-}
-
-pub(crate) struct Attrs {
-    body_ty: Type,
-    with_tys: Option<Punctuated<GenericArgSpecializationAttr, Token![,]>>,
-}
-
-impl Parse for Attrs {
-    fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
-        let mut body_ty = None;
-        let mut with_tys = None;
-
-        while !input.is_empty() {
-            let ident = input.parse::<syn::Ident>()?;
-            if ident == "body" {
-                input.parse::<Token![=]>()?;
-                body_ty = Some(input.parse()?);
-            } else if ident == "with" {
-                let content;
-                syn::parenthesized!(content in input);
-                with_tys = Some(content.parse_terminated(GenericArgSpecializationAttr::parse)?);
-            } else {
-                return Err(syn::Error::new_spanned(ident, "unknown argument"));
-            }
-
-            let _ = input.parse::<Token![,]>();
-        }
-
-        let body_ty = body_ty.unwrap_or_else(|| syn::parse_quote!(axum::body::Body));
-
-        Ok(Self { body_ty, with_tys })
-    }
-}
-
-impl Attrs {
-    fn compute_specializations(&self) -> HashMap<syn::Ident, Vec<syn::Type>> {
-        let mut grouped: HashMap<syn::Ident, Vec<syn::Type>> = HashMap::new();
-        if let Some(with_tys) = &self.with_tys {
-            for GenericArgSpecializationAttr {
-                arg_name,
-                specialization_ty,
-            } in with_tys.iter()
-            {
-                let specialization_ty = specialization_ty.clone();
-                if let Some(specializations) = grouped.get_mut(arg_name) {
-                    specializations.push(specialization_ty);
-                } else {
-                    grouped.insert(arg_name.clone(), vec![specialization_ty]);
-                }
-            }
-        }
-        grouped
-    }
-}
-
-pub(crate) struct GenericArgSpecializationAttr {
-    arg_name: syn::Ident,
-    specialization_ty: syn::Type,
-}
-
-impl Parse for GenericArgSpecializationAttr {
-    fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
-        let arg_name = input.parse()?;
-        input.parse::<syn::Token![=]>()?;
-        let specialization_ty = input.parse()?;
-        Ok(Self {
-            arg_name,
-            specialization_ty,
-        })
+        #specializer_checks
     }
 }
 

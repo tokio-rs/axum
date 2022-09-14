@@ -1,5 +1,0 @@
-error: `#[axum_macros::debug_handler]` use with 'with' attribute to support debugging generic functions
- --> tests/debug_handler/fail/generics.rs:4:17
-  |
-4 | async fn handler<T>(extract: T) {}
-  |                 ^^^

@@ -6,9 +6,12 @@ use syn::{
     parse_quote,
     visit::{self, Visit},
     visit_mut::{self, VisitMut},
+    GenericParam, ItemFn,
 };
 
 use quote::quote;
+
+use super::attr::Attrs;
 
 struct GenericFinder<'a> {
     found_idents: HashSet<&'a syn::Ident>,
@@ -38,21 +41,49 @@ impl<'a> VisitMut for TypeSpecializer<'a> {
         visit_mut::visit_ident_mut(self, ident);
     }
 }
-
 pub(crate) struct Specializer {
     generic_params: Vec<syn::Ident>,
     specializations: HashMap<syn::Ident, Vec<syn::Type>>,
 }
 
 impl Specializer {
-    pub(crate) fn new(
-        generic_params: Vec<syn::Ident>,
-        specializations: HashMap<syn::Ident, Vec<syn::Type>>,
-    ) -> Self {
-        Specializer {
+    pub(crate) fn new(attr: &Attrs, item_fn: &ItemFn) -> Result<Self, syn::Error> {
+        let specializations = attr.compute_specializations();
+
+        let generic_params = item_fn
+            .sig
+            .generics
+            .params
+            .iter()
+            .enumerate()
+            .flat_map(|(_idx, param)| {
+                match param {
+                    GenericParam::Type(t) => Some(t.ident.clone()),
+                    _ => {
+                        // TODO should we flag an error here
+                        None
+                    }
+                }
+            })
+            .collect::<Vec<_>>();
+
+        // let a = attr.wi
+
+        for param in &generic_params {
+            if !specializations.contains_key(param) {
+                return Err(
+                    syn::Error::new_spanned(
+                        param,
+                        "Generic param is missing a specialization in `#[axum_macros::debug_handler]`. Specify each generic param at least once using the 'with' attribute to support debugging generic functions.",
+                    )
+                );
+            }
+        }
+
+        Ok(Specializer {
             generic_params,
             specializations,
-        }
+        })
     }
 
     /// find which generic_param_idents are present in typ
@@ -92,9 +123,16 @@ impl Specializer {
         if ty_params.is_empty() {
             return None;
         }
-        let ty_param_specializations = ty_params
-            .iter()
-            .map(|param| self.specializations.get(param).unwrap().iter());
+
+        let ty_param_specializations = ty_params.iter().map(|param| {
+            // safety: we can unwrap here due to the initializer invariant
+            // that all generic params have at least one specialization
+            self.specializations
+                .get(param)
+                .expect("there should be at least one specialization per generic type param")
+                .iter()
+        });
+
         Some(
             ty_param_specializations
                 .multi_cartesian_product()
@@ -165,6 +203,8 @@ impl Specializer {
             self.specializations
                 .get(f)
                 .and_then(|v| v.first())
+                // safety: we can unwrap here due to the initializer invariant
+                // that all generic params have at least one specialization
                 .expect("there should be at least one specialization per generic type param")
         });
         quote! { ::<#(#default_handler_specializations),*> }
