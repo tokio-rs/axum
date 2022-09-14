@@ -9,9 +9,6 @@ mod attr;
 mod specializer;
 
 pub(crate) fn expand(attr: Attrs, item_fn: ItemFn) -> TokenStream {
-    // TODO error on const generics and liftetimes
-    // TODO error on not all generic params specified using with
-
     // these checks don't require the specializer, so we can generate code for them regardless
     // of whether we can successfully create one
     let check_extractor_count = check_extractor_count(&item_fn);
@@ -182,7 +179,7 @@ fn check_inputs_impls_from_request(
             };
 
             specializer
-                .all_specializations(&ty)
+                .all_specializations_of_type(&ty)
                 .iter()
                 .enumerate()
                 .map(|(specialization_idx, specialized_ty)| {
@@ -212,78 +209,85 @@ fn check_output_impls_into_response(item_fn: &ItemFn, specializer: &Specializer)
     };
     let span = ty.span();
 
-    let declare_inputs = item_fn
-        .sig
-        .inputs
-        .iter()
-        .filter_map(|arg| match arg {
-            FnArg::Receiver(_) => None,
-            FnArg::Typed(pat_ty) => {
-                let pat = &pat_ty.pat;
-                let ty = specializer.specialize_default(&pat_ty.ty);
-                Some(quote! {
-                    let #pat: #ty = panic!();
+    specializer
+        .all_specializations_of_fn(item_fn.clone())
+        .enumerate()
+        .map(|(specialization_idx, specialized_fn)| {
+            let declare_inputs = specialized_fn
+                .sig
+                .inputs
+                .iter()
+                .filter_map(|arg| match arg {
+                    FnArg::Receiver(_) => None,
+                    FnArg::Typed(pat_ty) => {
+                        let pat = &pat_ty.pat;
+                        let ty = &pat_ty.ty;
+                        Some(quote! {
+                            let #pat: #ty = panic!();
+                        })
+                    }
                 })
+                .collect::<TokenStream>();
+
+            let block = &item_fn.block;
+            let make_value_name = format_ident!(
+                "__axum_macros_check_{}_{}_into_response_make_value",
+                item_fn.sig.ident,
+                specialization_idx,
+            );
+            let make = if item_fn.sig.asyncness.is_some() {
+                quote_spanned! {span=>
+                    #[allow(warnings)]
+                    async fn #make_value_name() -> #ty {
+                        #declare_inputs
+                        #block
+                    }
+                }
+            } else {
+                quote_spanned! {span=>
+                    #[allow(warnings)]
+                    fn #make_value_name() -> #ty {
+                        #declare_inputs
+                        #block
+                    }
+                }
+            };
+            let name = format_ident!(
+                "__axum_macros_check_{}_{}_into_response",
+                item_fn.sig.ident,
+                specialization_idx
+            );
+            if let Some(receiver) = self_receiver(item_fn) {
+                quote_spanned! {span=>
+                    #make
+
+                    #[allow(warnings)]
+                    async fn #name() {
+                        let value = #receiver #make_value_name().await;
+                        fn check<T>(_: T)
+                            where T: ::axum::response::IntoResponse
+                        {}
+                        check(value);
+                    }
+                }
+            } else {
+                quote_spanned! {span=>
+                    #[allow(warnings)]
+                    async fn #name() {
+                        #make
+
+                        let value = #make_value_name().await;
+
+                        fn check<T>(_: T)
+                        where T: ::axum::response::IntoResponse
+                        {}
+
+                        check(value);
+                    }
+                }
             }
         })
-        .collect::<TokenStream>();
-
-    let block = &item_fn.block;
-
-    let make_value_name = format_ident!(
-        "__axum_macros_check_{}_into_response_make_value",
-        item_fn.sig.ident
-    );
-
-    let make = if item_fn.sig.asyncness.is_some() {
-        quote_spanned! {span=>
-            #[allow(warnings)]
-            async fn #make_value_name() -> #ty {
-                #declare_inputs
-                #block
-            }
-        }
-    } else {
-        quote_spanned! {span=>
-            #[allow(warnings)]
-            fn #make_value_name() -> #ty {
-                #declare_inputs
-                #block
-            }
-        }
-    };
-
-    let name = format_ident!("__axum_macros_check_{}_into_response", item_fn.sig.ident);
-
-    if let Some(receiver) = self_receiver(item_fn) {
-        quote_spanned! {span=>
-            #make
-
-            #[allow(warnings)]
-            async fn #name() {
-                let value = #receiver #make_value_name().await;
-                fn check<T>(_: T)
-                    where T: ::axum::response::IntoResponse
-                {}
-                check(value);
-            }
-        }
-    } else {
-        quote_spanned! {span=>
-            #[allow(warnings)]
-            async fn #name() {
-                #make
-
-                let value = #make_value_name().await;
-
-                fn check<T>(_: T)
-                where T: ::axum::response::IntoResponse
-                {}
-
-                check(value);
-            }
-        }
-    }
+        .collect::<TokenStream>()
 }
 
 fn check_future_send(item_fn: &ItemFn, specializer: &Specializer) -> TokenStream {
@@ -376,6 +380,8 @@ fn ui() {
         let t = trybuild::TestCases::new();
         t.compile_fail("tests/debug_handler/fail/*.rs");
         t.pass("tests/debug_handler/pass/*.rs");
+
+        // t.compile_fail("tests/debug_handler/fail/wrong_return_type.rs");
     }
 
     #[rustversion::not(stable)]
