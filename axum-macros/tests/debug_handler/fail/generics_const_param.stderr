@@ -1,0 +1,5 @@
+error: Only type params are supported by `#[axum_macros::debug_handler]`.
+  --> tests/debug_handler/fail/generics_const_param.rs:12:12
+   |
+12 | fn handler<const N: usize>(extract_n: Json<Hello<N>>) -> &'static str {
+   |            ^^^^^^^^^^^^^^
