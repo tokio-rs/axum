@@ -1,0 +1,5 @@
+error: Only type params are supported by `#[axum_macros::debug_handler]`.
+ --> tests/debug_handler/fail/generics_lifetime_param.rs:5:18
+  |
+5 | async fn handler<'a, T>(_extract_t: Path<T>) -> &'a str {
+  |                  ^^

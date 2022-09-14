@@ -56,16 +56,14 @@ impl Specializer {
             .params
             .iter()
             .enumerate()
-            .flat_map(|(_idx, param)| {
-                match param {
-                    GenericParam::Type(t) => Some(t.ident.clone()),
-                    _ => {
-                        // TODO should we flag an error here
-                        None
-                    }
-                }
+            .map(|(_idx, param)| match param {
+                GenericParam::Type(t) => Ok(t.ident.clone()),
+                _ => Err(syn::Error::new_spanned(
+                    param,
+                    "Only type params are supported by `#[axum_macros::debug_handler]`.",
+                )),
             })
-            .collect::<Vec<_>>();
+            .collect::<Result<Vec<_>, _>>()?;
 
         // let a = attr.wi
 
