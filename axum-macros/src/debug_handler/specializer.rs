@@ -3,7 +3,6 @@ use std::collections::{HashMap, HashSet};
 use itertools::Itertools;
 use proc_macro2::TokenStream;
 use syn::{
-    parse_quote,
     visit::{self, Visit},
     visit_mut::{self, VisitMut},
     GenericParam, ItemFn,
@@ -33,12 +32,20 @@ struct TypeSpecializer<'a> {
 }
 
 impl<'a> VisitMut for TypeSpecializer<'a> {
-    fn visit_ident_mut(&mut self, ident: &mut syn::Ident) {
-        if let Some(specialized) = self.specializations.get(ident) {
-            *ident = parse_quote!(#specialized);
-        }
-        // Delegate to the default impl to visit nested expressions.
-        visit_mut::visit_ident_mut(self, ident);
+    fn visit_type_mut(&mut self, ty: &mut syn::Type) {
+        match ty {
+            syn::Type::Path(ty_path) => {
+                if ty_path.path.segments.len() == 1 {
+                    let ident = &ty_path.path.segments[0].ident;
+                    if let Some(specialized) = self.specializations.get(ident) {
+                        *ty = (*specialized).clone();
+                        return; // don't recuresively visit substituted values
+                    }
+                }
+            }
+            _ => (),
+        };
+        visit_mut::visit_type_mut(self, ty);
     }
 }
 pub(crate) struct Specializer {
@@ -113,7 +120,11 @@ impl Specializer {
                 generic_params
                     .into_iter()
                     // SAFETY: we can unwrap here due the invariant in the constructor
-                    .map(|p| self.specializations.get(p).unwrap())
+                    .map(|p| {
+                        self.specializations
+                            .get(p)
+                            .expect("should be specialization per param")
+                    })
                     .multi_cartesian_product(),
             )
         }

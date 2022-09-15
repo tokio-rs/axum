@@ -1,0 +1,10 @@
+error[E0277]: the trait bound `&'static str: FromRequest<Body>` is not satisfied
+ --> tests/debug_handler/fail/generics_fail_from_request.rs:5:26
+  |
+5 |   #[debug_handler(with(T = &'static str, T = Path<String>))]
+  |  __________________________^
+6 | | async fn handler<T>(_foo: T) -> impl IntoResponse {
+  | |___________________________^ the trait `FromRequest<Body>` is not implemented for `&'static str`
+  |
+  = help: the trait `FromRequest<B>` is implemented for `String`
+  = help: see issue #48214
