@@ -119,27 +119,6 @@ impl Specializer {
         }
     }
 
-    /// Produce a specialized version of the function for each possible specialization of the generic
-    /// params The number of specialized functions produced is equal to the number of possible combinations
-    /// of the specializations (ie the cartesian product of the param sets passed to this Specializer).
-    ///
-    /// If no generic params, this will produce a single specialization of the function, equal to the one passed in.
-    pub(crate) fn all_specializations_of_fn<'a>(
-        &'a self,
-        item_fn: ItemFn,
-    ) -> impl Iterator<Item = syn::ItemFn> + 'a {
-        self.all_specializations(None).map(move |specializations| {
-            let param_specs: HashMap<&syn::Ident, &syn::Type> =
-                HashMap::from_iter(std::iter::zip(self.generic_params.iter(), specializations));
-            let mut type_specializer = TypeSpecializer {
-                specializations: &param_specs,
-            };
-            let mut item_fn = item_fn.clone();
-            type_specializer.visit_item_fn_mut(&mut item_fn);
-            item_fn
-        })
-    }
-
     /// Like `all_specializations_of_fn` but produces turbofishes of each specialization, rather than modified ItemFn.
     pub(crate) fn all_specializations_as_turbofish<'a>(
         &'a self,

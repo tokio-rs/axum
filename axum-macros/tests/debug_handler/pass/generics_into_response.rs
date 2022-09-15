@@ -5,4 +5,13 @@ async fn handler<T>() -> Result<T, ()> {
     Err(())
 }
 
+struct A;
+
+impl A {
+    #[debug_handler(with(T = String))]
+    async fn handler<T>() -> Result<T, ()> {
+        Err(())
+    }
+}
+
 fn main() {}

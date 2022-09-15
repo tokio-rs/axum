@@ -1,6 +1,5 @@
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote, quote_spanned};
-use syn::parse_quote;
 use syn::{spanned::Spanned, FnArg, ItemFn, Type};
 
 use self::attr::Attrs;
@@ -202,93 +201,64 @@ fn check_inputs_impls_from_request(
         .collect::<TokenStream>()
 }
 
+/// generates specialized calls to the handler fn with each possible specialization. The
+/// argument for each function param is a panic. This can be used to check that the handler output
+/// value. The handler will have the proper receiver prepended to it if necessary (for instance Self::).
+fn generate_mock_handler_calls<'a>(
+    item_fn: &'a ItemFn,
+    specializer: &'a Specializer,
+) -> impl Iterator<Item = TokenStream> + 'a {
+    let span = item_fn.span();
+    let handler_name = &item_fn.sig.ident;
+    specializer
+        .all_specializations_as_turbofish()
+        .map(move |turbofish| {
+            // generic panics to use as the value for each argument to the handler function
+            let args = item_fn.sig.inputs.iter().map(|_| {
+                quote_spanned! {span=> panic!() }
+            });
+            if let Some(receiver) = self_receiver(item_fn) {
+                quote_spanned! {span=>
+                    #receiver #handler_name #turbofish (#(#args),*)
+                }
+            } else {
+                // we have to repeat the item_fn in here as a dirty hack to
+                // get around the situation where the handler fn is an associated
+                // fn with no receiver -- we have no way to detect to use Self:: here
+                quote_spanned! {span=>
+                    {
+                        #item_fn
+                        #handler_name #turbofish (#(#args),*)
+                    }
+                }
+            }
+        })
+}
+
 fn check_output_impls_into_response(item_fn: &ItemFn, specializer: &Specializer) -> TokenStream {
     let return_ty_span = match &item_fn.sig.output {
         syn::ReturnType::Default => return quote! {},
         syn::ReturnType::Type(_, ty) => ty,
     }
     .span();
-
-    specializer
-        .all_specializations_of_fn(item_fn.clone())
+    generate_mock_handler_calls(item_fn, specializer)
         .enumerate()
-        .map(|(specialization_idx, specialized_fn)| {
-            let declare_inputs = specialized_fn
-                .sig
-                .inputs
-                .iter()
-                .filter_map(|arg| match arg {
-                    FnArg::Receiver(_) => None,
-                    FnArg::Typed(pat_ty) => {
-                        let pat = &pat_ty.pat;
-                        let ty = &pat_ty.ty;
-                        Some(quote! {
-                            let #pat: #ty = panic!();
-                        })
-                    }
-                })
-                .collect::<TokenStream>();
-
-            let specialized_ret_ty = match specialized_fn.sig.output {
-                syn::ReturnType::Default => parse_quote!(()),
-                syn::ReturnType::Type(_, ty) => ty,
-            };
-
-            let block = &item_fn.block;
-            let make_value_name = format_ident!(
-                "__axum_macros_check_{}_{}_into_response_make_value",
-                item_fn.sig.ident,
-                specialization_idx,
-            );
-            let make = if item_fn.sig.asyncness.is_some() {
-                quote_spanned! {return_ty_span=>
-                    #[allow(warnings)]
-                    async fn #make_value_name() -> #specialized_ret_ty {
-                        #declare_inputs
-                        #block
-                    }
-                }
-            } else {
-                quote_spanned! {return_ty_span=>
-                    #[allow(warnings)]
-                    fn #make_value_name() -> #specialized_ret_ty {
-                        #declare_inputs
-                        #block
-                    }
-                }
-            };
+        .map(|(specialization_idx, handler_call)| {
             let name = format_ident!(
                 "__axum_macros_check_{}_{}_into_response",
                 item_fn.sig.ident,
                 specialization_idx
             );
-            if let Some(receiver) = self_receiver(item_fn) {
-                quote_spanned! {return_ty_span=>
-                    #make
+            quote_spanned! {return_ty_span=>
+                #[allow(warnings)]
+                async fn #name() {
+                    let value = #handler_call.await;
 
-                    #[allow(warnings)]
-                    async fn #name() {
-                        let value = #receiver #make_value_name().await;
-                        fn check<T>(_: T)
-                            where T: ::axum::response::IntoResponse
-                        {}
-                        check(value);
-                    }
-                }
-            } else {
-                quote_spanned! {return_ty_span=>
-                    #[allow(warnings)]
-                    async fn #name() {
-                        #make
-
-                        let value = #make_value_name().await;
-
-                        fn check<T>(_: T)
+                    fn check<T>(_: T)
                         where T: ::axum::response::IntoResponse
-                        {}
+                    {}
 
-                        check(value);
-                    }
+                    check(value);
                 }
             }
         })
@@ -308,48 +278,23 @@ fn check_future_send(item_fn: &ItemFn, specializer: &Specializer) -> TokenStream
             syn::ReturnType::Type(_, ty) => ty,
         };
     }
-
     let span = item_fn.span();
-    let handler_name = &item_fn.sig.ident;
-
-    specializer
-        .all_specializations_as_turbofish()
+    generate_mock_handler_calls(item_fn, specializer)
         .enumerate()
-        .map(|(specialization_idx, turbofish)| {
+        .map(|(specialization_idx, handler_call)| {
             let name = format_ident!(
                 "__axum_macros_check_{}_{}_future",
                 item_fn.sig.ident,
                 specialization_idx
             );
-
-            let args = item_fn.sig.inputs.iter().map(|_| {
-                quote_spanned! {span=> panic!() }
-            });
-
-            // TODO generics test for receiver
-            if let Some(receiver) = self_receiver(item_fn) {
-                quote_spanned! {span=>
-                    #[allow(warnings)]
-                    fn #name() {
-                        let future = #receiver #handler_name(#(#args),*);
-                        fn check<T>(_: T)
-                            where T: ::std::future::Future + Send
-                        {}
-                        check(future);
-                    }
-                }
-            } else {
-                quote_spanned! {span=>
-                    #[allow(warnings)]
-                    fn #name() {
-                        #item_fn
-
-                        let future = #handler_name #turbofish (#(#args),*);
-                        fn check<T>(_: T)
-                            where T: ::std::future::Future + Send
-                        {}
-                        check(future);
-                    }
+            quote_spanned! {span=>
+                #[allow(warnings)]
+                fn #name() {
+                    let future = #handler_call;
+                    fn check<T>(_: T)
+                        where T: ::std::future::Future + Send
+                    {}
+                    check(future);
                 }
             }
         })
