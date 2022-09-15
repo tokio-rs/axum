@@ -392,8 +392,6 @@ fn ui() {
         let t = trybuild::TestCases::new();
         t.compile_fail("tests/debug_handler/fail/*.rs");
         t.pass("tests/debug_handler/pass/*.rs");
-
-        // t.pass("tests/debug_handler/pass/generics_into_response.rs");
     }
 
     #[rustversion::not(stable)]
