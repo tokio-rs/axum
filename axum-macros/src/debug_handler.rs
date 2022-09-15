@@ -1,5 +1,6 @@
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote, quote_spanned};
+use syn::parse_quote;
 use syn::{spanned::Spanned, FnArg, ItemFn, Type};
 
 use self::attr::Attrs;
@@ -203,11 +204,11 @@ fn check_inputs_impls_from_request(
 }
 
 fn check_output_impls_into_response(item_fn: &ItemFn, specializer: &Specializer) -> TokenStream {
-    let ty = match &item_fn.sig.output {
+    let return_ty_span = match &item_fn.sig.output {
         syn::ReturnType::Default => return quote! {},
         syn::ReturnType::Type(_, ty) => ty,
-    };
-    let span = ty.span();
+    }
+    .span();
 
     specializer
         .all_specializations_of_fn(item_fn.clone())
@@ -229,6 +230,11 @@ fn check_output_impls_into_response(item_fn: &ItemFn, specializer: &Specializer)
                 })
                 .collect::<TokenStream>();
 
+            let specialized_ret_ty = match specialized_fn.sig.output {
+                syn::ReturnType::Default => parse_quote!(()),
+                syn::ReturnType::Type(_, ty) => ty,
+            };
+
             let block = &item_fn.block;
             let make_value_name = format_ident!(
                 "__axum_macros_check_{}_{}_into_response_make_value",
@@ -236,17 +242,17 @@ fn check_output_impls_into_response(item_fn: &ItemFn, specializer: &Specializer)
                 specialization_idx,
             );
             let make = if item_fn.sig.asyncness.is_some() {
-                quote_spanned! {span=>
+                quote_spanned! {return_ty_span=>
                     #[allow(warnings)]
-                    async fn #make_value_name() -> #ty {
+                    async fn #make_value_name() -> #specialized_ret_ty {
                         #declare_inputs
                         #block
                     }
                 }
             } else {
-                quote_spanned! {span=>
+                quote_spanned! {return_ty_span=>
                     #[allow(warnings)]
-                    fn #make_value_name() -> #ty {
+                    fn #make_value_name() -> #specialized_ret_ty {
                         #declare_inputs
                         #block
                     }
@@ -258,7 +264,7 @@ fn check_output_impls_into_response(item_fn: &ItemFn, specializer: &Specializer)
                 specialization_idx
             );
             if let Some(receiver) = self_receiver(item_fn) {
-                quote_spanned! {span=>
+                quote_spanned! {return_ty_span=>
                     #make
 
                     #[allow(warnings)]
@@ -271,7 +277,7 @@ fn check_output_impls_into_response(item_fn: &ItemFn, specializer: &Specializer)
                     }
                 }
             } else {
-                quote_spanned! {span=>
+                quote_spanned! {return_ty_span=>
                     #[allow(warnings)]
                     async fn #name() {
                         #make
@@ -305,15 +311,11 @@ fn check_future_send(item_fn: &ItemFn, specializer: &Specializer) -> TokenStream
     }
 
     let span = item_fn.span();
-
     let handler_name = &item_fn.sig.ident;
-
     let args = item_fn.sig.inputs.iter().map(|_| {
         quote_spanned! {span=> panic!() }
     });
-
     let name = format_ident!("__axum_macros_check_{}_future", item_fn.sig.ident);
-
     let default_handler_specialization = specializer.make_turbofish_with_default_specializations();
 
     // TODO generics test for receiver
@@ -381,7 +383,7 @@ fn ui() {
         t.compile_fail("tests/debug_handler/fail/*.rs");
         t.pass("tests/debug_handler/pass/*.rs");
 
-        // t.compile_fail("tests/debug_handler/fail/wrong_return_type.rs");
+        // t.pass("tests/debug_handler/pass/generics_into_response.rs");
     }
 
     #[rustversion::not(stable)]

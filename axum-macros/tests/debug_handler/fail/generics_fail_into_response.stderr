@@ -1,0 +1,22 @@
+error[E0277]: the trait bound `i64: IntoResponse` is not satisfied
+ --> tests/debug_handler/fail/generics_fail_into_response.rs:4:26
+  |
+4 | async fn handler<T>() -> Result<T, ()> {
+  |                          ^^^^^^ the trait `IntoResponse` is not implemented for `i64`
+  |
+  = help: the following other types implement trait `IntoResponse`:
+            &'static [u8]
+            &'static str
+            ()
+            (Response<()>, R)
+            (Response<()>, T1, R)
+            (Response<()>, T1, T2, R)
+            (Response<()>, T1, T2, T3, R)
+            (Response<()>, T1, T2, T3, T4, R)
+          and 123 others
+  = note: required because of the requirements on the impl of `IntoResponse` for `Result<i64, ()>`
+note: required by a bound in `__axum_macros_check_handler_1_into_response::{closure#0}::check`
+ --> tests/debug_handler/fail/generics_fail_into_response.rs:4:26
+  |
+4 | async fn handler<T>() -> Result<T, ()> {
+  |                          ^^^^^^ required by this bound in `__axum_macros_check_handler_1_into_response::{closure#0}::check`
