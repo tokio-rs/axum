@@ -181,7 +181,6 @@ fn check_inputs_impls_from_request(
 
             specializer
                 .all_specializations_of_type(&ty)
-                .iter()
                 .enumerate()
                 .map(|(specialization_idx, specialized_ty)| {
                     let name = format_ident!(
@@ -312,38 +311,49 @@ fn check_future_send(item_fn: &ItemFn, specializer: &Specializer) -> TokenStream
 
     let span = item_fn.span();
     let handler_name = &item_fn.sig.ident;
-    let args = item_fn.sig.inputs.iter().map(|_| {
-        quote_spanned! {span=> panic!() }
-    });
-    let name = format_ident!("__axum_macros_check_{}_future", item_fn.sig.ident);
-    let default_handler_specialization = specializer.make_turbofish_with_default_specializations();
 
-    // TODO generics test for receiver
-    if let Some(receiver) = self_receiver(item_fn) {
-        quote_spanned! {span=>
-            #[allow(warnings)]
-            fn #name() {
-                let future = #receiver #handler_name(#(#args),*);
-                fn check<T>(_: T)
-                    where T: ::std::future::Future + Send
-                {}
-                check(future);
-            }
-        }
-    } else {
-        quote_spanned! {span=>
-            #[allow(warnings)]
-            fn #name() {
-                #item_fn
+    specializer
+        .all_specializations_as_turbofish()
+        .enumerate()
+        .map(|(specialization_idx, turbofish)| {
+            let name = format_ident!(
+                "__axum_macros_check_{}_{}_future",
+                item_fn.sig.ident,
+                specialization_idx
+            );
 
-                let future = #handler_name #default_handler_specialization (#(#args),*);
-                fn check<T>(_: T)
-                    where T: ::std::future::Future + Send
-                {}
-                check(future);
+            let args = item_fn.sig.inputs.iter().map(|_| {
+                quote_spanned! {span=> panic!() }
+            });
+
+            // TODO generics test for receiver
+            if let Some(receiver) = self_receiver(item_fn) {
+                quote_spanned! {span=>
+                    #[allow(warnings)]
+                    fn #name() {
+                        let future = #receiver #handler_name(#(#args),*);
+                        fn check<T>(_: T)
+                            where T: ::std::future::Future + Send
+                        {}
+                        check(future);
+                    }
+                }
+            } else {
+                quote_spanned! {span=>
+                    #[allow(warnings)]
+                    fn #name() {
+                        #item_fn
+
+                        let future = #handler_name #turbofish (#(#args),*);
+                        fn check<T>(_: T)
+                            where T: ::std::future::Future + Send
+                        {}
+                        check(future);
+                    }
+                }
             }
-        }
-    }
+        })
+        .collect::<TokenStream>()
 }
 
 fn self_receiver(item_fn: &ItemFn) -> Option<TokenStream> {

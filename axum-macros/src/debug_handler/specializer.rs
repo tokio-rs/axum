@@ -85,6 +85,40 @@ impl Specializer {
         })
     }
 
+    /// Returns iterator that moves through all possible specializations of generic parameters.
+    ///
+    /// Each specialization is a vector of concrete types. The order of the types in the vector
+    /// corresponds to the order of the generic parameters in the function signature. If the function
+    /// has no generic parameters, the iterator will return a single empty vector.
+    ///
+    /// If filter is specified, the cross product is only taken over the specified generic params. Otherwise
+    /// it is taken over all generic params. Specifying a generic param in filter that is not in self.generic_params
+    /// is UB.
+    fn all_specializations<'a>(
+        &'a self,
+        filter: Option<HashSet<&syn::Ident>>,
+    ) -> Box<dyn Iterator<Item = Vec<&'a syn::Type>> + 'a> {
+        let generic_params = match filter {
+            Some(filter) => self
+                .generic_params
+                .iter()
+                .filter(|param| filter.contains(param))
+                .collect::<Vec<_>>(),
+            None => self.generic_params.iter().collect::<Vec<_>>(),
+        };
+        if generic_params.is_empty() {
+            Box::new(std::iter::once(vec![]))
+        } else {
+            Box::new(
+                generic_params
+                    .into_iter()
+                    // SAFETY: we can unwrap here due the invariant in the constructor
+                    .map(|p| self.specializations.get(p).unwrap())
+                    .multi_cartesian_product(),
+            )
+        }
+    }
+
     /// Produce a specialized version of the function for each possible specialization of the generic
     /// params The number of specialized functions produced is equal to the number of possible combinations
     /// of the specializations (ie the cartesian product of the param sets passed to this Specializer).
@@ -93,84 +127,39 @@ impl Specializer {
     pub(crate) fn all_specializations_of_fn<'a>(
         &'a self,
         item_fn: ItemFn,
-    ) -> Box<dyn Iterator<Item = syn::ItemFn> + 'a> {
-        if self.generic_params.is_empty() {
-            return Box::new(std::iter::once(item_fn));
-        }
-        Box::new(
-            self.generic_params
-                .iter()
-                // SAFETY: we can unwrap here due the invariant in the constructor
-                .map(|p| self.specializations.get(p).unwrap())
-                .multi_cartesian_product()
-                .map(move |specialized_values| {
-                    let param_specs: HashMap<&syn::Ident, &syn::Type> = HashMap::from_iter(
-                        std::iter::zip(self.generic_params.iter(), specialized_values),
-                    );
-                    let mut type_specializer = TypeSpecializer {
-                        specializations: &param_specs,
-                    };
-                    let mut item_fn = item_fn.clone();
-                    type_specializer.visit_item_fn_mut(&mut item_fn);
-                    item_fn
-                }),
-        )
+    ) -> impl Iterator<Item = syn::ItemFn> + 'a {
+        self.all_specializations(None).map(move |specializations| {
+            let param_specs: HashMap<&syn::Ident, &syn::Type> =
+                HashMap::from_iter(std::iter::zip(self.generic_params.iter(), specializations));
+            let mut type_specializer = TypeSpecializer {
+                specializations: &param_specs,
+            };
+            let mut item_fn = item_fn.clone();
+            type_specializer.visit_item_fn_mut(&mut item_fn);
+            item_fn
+        })
+    }
+
+    /// Like `all_specializations_of_fn` but produces turbofishes of each specialization, rather than modified ItemFn.
+    pub(crate) fn all_specializations_as_turbofish<'a>(
+        &'a self,
+    ) -> impl Iterator<Item = TokenStream> + 'a {
+        self.all_specializations(None)
+            .map(move |specializations| quote! { ::<#(#specializations),*> })
     }
 
     /// Return vector of generic param identities found in the given type.
     ///
     /// Each param will be present in the returned vec at most once, and will be in order
     /// of appearance from self.generic_params
-    fn find_generic_params<'a>(&'a self, typ: &'_ syn::Type) -> Vec<&'a syn::Ident> {
+    fn find_generic_params<'a>(&'a self, typ: &'_ syn::Type) -> HashSet<&'a syn::Ident> {
         let generic_param_set = HashSet::from_iter(self.generic_params.iter());
         let mut finder = GenericFinder {
             found_idents: HashSet::new(),
             generic_param_set,
         };
         finder.visit_type(typ);
-        self.generic_params
-            .iter()
-            .filter(|i| finder.found_idents.contains(i))
-            .collect()
-    }
-
-    fn compute_specializations_of_type<'a>(
-        &'a self,
-        typ: &'a syn::Type,
-    ) -> Option<impl Iterator<Item = syn::Type> + 'a> {
-        // to avoid generating the cross product of all generic params on
-        // the function we first iterate over the type to find which generic
-        // params are involed, then we generate the cross product
-        // using the specializations of those params only.
-        let ty_params = self.find_generic_params(typ);
-        if ty_params.is_empty() {
-            return None;
-        }
-
-        let ty_param_specializations = ty_params.iter().map(|param| {
-            // safety: we can unwrap here due to the initializer invariant
-            // that all generic params have at least one specialization
-            self.specializations
-                .get(param)
-                .expect("there should be at least one specialization per generic type param")
-                .iter()
-        });
-
-        Some(
-            ty_param_specializations
-                .multi_cartesian_product()
-                .map(move |specializations| {
-                    let param_specs: HashMap<&syn::Ident, &syn::Type> = HashMap::from_iter(
-                        std::iter::zip(ty_params.iter().map(|f| *f), specializations),
-                    );
-                    let mut specializer = TypeSpecializer {
-                        specializations: &param_specs,
-                    };
-                    let mut new_typ = typ.clone();
-                    specializer.visit_type_mut(&mut new_typ);
-                    new_typ
-                }),
-        )
+        finder.found_idents
     }
 
     /// For a given type, parameterized by the generics of item_fn, return all possible
@@ -199,29 +188,22 @@ impl Specializer {
     ///     compute_all_specializations(U) would yield [i32]
     ///     compute_all_specializations(String) would yield [String]
     ///     
-    pub(crate) fn all_specializations_of_type(&self, typ: &syn::Type) -> Vec<syn::Type> {
-        self.compute_specializations_of_type(typ)
-            .map(|i| i.collect())
-            .unwrap_or_else(|| vec![typ.clone()])
-    }
-
-    /// Create a token stream with the default generic arg specializations
-    /// for the handler, in turbofish syntax.
-    ///
-    /// For instance, for `fn handler<T, U>(t: Path<T>, u: Path<U>)` with `#[debug_handler(with(T = String, T = u64, U = i32))]`
-    /// this would return `::<String, i32>`. The choice of the "default" specialization for each variable type
-    /// is made by choosing the first specialization to appear in the `with` attribute.
-    ///
-    /// For a non-generic function, this returns the empty turbofish `::<>`.
-    pub(crate) fn make_turbofish_with_default_specializations(&self) -> TokenStream {
-        let default_handler_specializations = self.generic_params.iter().map(|f| {
-            self.specializations
-                .get(f)
-                .and_then(|v| v.first())
-                // safety: we can unwrap here due to the initializer invariant
-                // that all generic params have at least one specialization
-                .expect("there should be at least one specialization per generic type param")
-        });
-        quote! { ::<#(#default_handler_specializations),*> }
+    pub(crate) fn all_specializations_of_type<'a>(
+        &'a self,
+        typ: &'a syn::Type,
+    ) -> impl Iterator<Item = syn::Type> + 'a {
+        let ty_params = self.find_generic_params(typ);
+        self.all_specializations(Some(ty_params.clone()))
+            .map(move |specializations| {
+                let param_specs: HashMap<&syn::Ident, &syn::Type> = HashMap::from_iter(
+                    std::iter::zip(ty_params.iter().map(|f| *f), specializations),
+                );
+                let mut specializer = TypeSpecializer {
+                    specializations: &param_specs,
+                };
+                let mut new_typ = typ.clone();
+                specializer.visit_type_mut(&mut new_typ);
+                new_typ
+            })
     }
 }
