@@ -24,7 +24,7 @@ macro_rules! opaque_future {
 
         impl<$($param),*> std::fmt::Debug for $name<$($param),*> {
             fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                f.debug_tuple(stringify!($name)).field(&format_args!("...")).finish()
+                f.debug_struct(stringify!($name)).finish_non_exhaustive()
             }
         }
 
