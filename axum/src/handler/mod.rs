@@ -47,12 +47,15 @@ use tower::ServiceExt;
 use tower_layer::Layer;
 use tower_service::Service;
 
+mod boxed;
 pub mod future;
 mod into_service;
 mod into_service_state_in_extension;
 mod with_state;
 
-pub(crate) use self::into_service_state_in_extension::IntoServiceStateInExtension;
+pub(crate) use self::{
+    boxed::BoxedHandler, into_service_state_in_extension::IntoServiceStateInExtension,
+};
 pub use self::{into_service::IntoService, with_state::WithState};
 
 /// Trait for async functions that can be used to handle requests.

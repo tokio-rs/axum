@@ -149,7 +149,7 @@ impl<B, T, F> SpaRouter<B, T, F> {
 
 impl<B, F, T> From<SpaRouter<B, T, F>> for Router<(), B>
 where
-    F: Clone + Send + 'static,
+    F: Clone + Send + Sync + 'static,
     HandleError<Route<B, io::Error>, F, T>: Service<Request<B>, Error = Infallible>,
     <HandleError<Route<B, io::Error>, F, T> as Service<Request<B>>>::Response: IntoResponse + Send,
     <HandleError<Route<B, io::Error>, F, T> as Service<Request<B>>>::Future: Send,
