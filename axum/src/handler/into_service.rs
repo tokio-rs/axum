@@ -47,9 +47,7 @@ impl<H, T, S, B> IntoService<H, T, S, B> {
 
 impl<H, T, S, B> fmt::Debug for IntoService<H, T, S, B> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("IntoService")
-            .field(&format_args!("..."))
-            .finish()
+        f.debug_struct("IntoService").finish_non_exhaustive()
     }
 }
 

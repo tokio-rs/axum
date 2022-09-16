@@ -33,9 +33,8 @@ impl<H, T, S, B> IntoServiceStateInExtension<H, T, S, B> {
 
 impl<H, T, S, B> fmt::Debug for IntoServiceStateInExtension<H, T, S, B> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("IntoServiceStateInExtension")
-            .field(&format_args!("..."))
-            .finish()
+        f.debug_struct("IntoServiceStateInExtension")
+            .finish_non_exhaustive()
     }
 }
 
