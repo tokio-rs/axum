@@ -249,7 +249,7 @@ define_rejection! {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{response::IntoResponse, routing::post, test_helpers::*, Router};
+    use crate::{body::Body, response::IntoResponse, routing::post, test_helpers::*, Router};
 
     #[tokio::test]
     async fn content_type_with_encoding() {
@@ -280,5 +280,11 @@ mod tests {
         );
 
         client.post("/").multipart(form).send().await;
+    }
+
+    // No need for this to be a #[test], we just want to make sure it compiles
+    fn _multipart_from_request_limited() {
+        async fn handler(_: Multipart) {}
+        let _app: Router<(), http_body::Limited<Body>> = Router::new().route("/", post(handler));
     }
 }
