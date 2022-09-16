@@ -659,7 +659,7 @@ impl<B, E> Fallback<B, E> {
 }
 
 enum Endpoint<S, B> {
-    MethodRouter(MethodRouter<S, B, Infallible>),
+    MethodRouter(MethodRouter<S, B>),
     Route(Route<B>),
 }
 
