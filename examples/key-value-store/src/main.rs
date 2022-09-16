@@ -52,7 +52,7 @@ async fn main() {
         )
         .route("/keys", get(list_keys))
         // Nest our admin routes under `/admin`
-        .nest("/admin", admin_routes(shared_state))
+        .nest("/admin", admin_routes(shared_state).into_service())
         // Add middleware to all routes
         .layer(
             ServiceBuilder::new()

@@ -5,7 +5,7 @@
 //! ```
 
 use axum::response::{IntoResponse, Response};
-use axum::{http, routing::get, Router};
+use axum::{http, routing::get, Router, RouterService};
 use std::net::SocketAddr;
 
 fn app() -> Router {
@@ -50,7 +50,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_get() {
-        let app = app();
+        let app = app().into_service();
 
         let response = app
             .oneshot(Request::get("/get-head").body(Body::empty()).unwrap())
@@ -66,7 +66,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_implicit_head() {
-        let app = app();
+        let app = app().into_service();
 
         let response = app
             .oneshot(Request::head("/get-head").body(Body::empty()).unwrap())
