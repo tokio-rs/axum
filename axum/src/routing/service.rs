@@ -54,7 +54,7 @@ where
             node: router.node,
             fallback: match router.fallback {
                 Fallback::Default(route) => route,
-                Fallback::Custom(route) => route,
+                Fallback::Service(route) => route,
             },
         }
     }
