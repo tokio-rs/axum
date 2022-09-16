@@ -59,7 +59,8 @@ pub struct Multipart {
 #[async_trait]
 impl<S, B> FromRequest<S, B> for Multipart
 where
-    B: HttpBody<Data = Bytes> + Send + 'static,
+    B: HttpBody + Send + 'static,
+    B::Data: Into<Bytes>,
     B::Error: Into<BoxError>,
     S: Send + Sync,
 {
