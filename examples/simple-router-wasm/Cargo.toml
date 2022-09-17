@@ -1,10 +1,11 @@
 [package]
-name = "simple-router-wasm"
+name = "example-simple-router-wasm"
 version = "0.1.0"
 edition = "2018"
 publish = false
 
 [dependencies]
+# `default-features = false` to not depend on tokio which doesn't support compiling to wasm
 axum = { path = "../../axum", default-features = false }
 futures-executor = "0.3.21"
 http = "0.2.7"
