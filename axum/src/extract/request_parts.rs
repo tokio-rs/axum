@@ -1,11 +1,11 @@
-use super::{rejection::*, take_body, Extension, FromRequest, RequestParts};
+use super::{Extension, FromRequest, FromRequestParts};
 use crate::{
     body::{Body, Bytes, HttpBody},
     BoxError, Error,
 };
 use async_trait::async_trait;
 use futures_util::stream::Stream;
-use http::Uri;
+use http::{request::Parts, Request, Uri};
 use std::{
     convert::Infallible,
     fmt,
@@ -86,22 +86,28 @@ pub struct OriginalUri(pub Uri);
 
 #[cfg(feature = "original-uri")]
 #[async_trait]
-impl<B> FromRequest<B> for OriginalUri
+impl<S> FromRequestParts<S> for OriginalUri
 where
-    B: Send,
+    S: Send + Sync,
 {
     type Rejection = Infallible;
 
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-        let uri = Extension::<Self>::from_request(req)
+    async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
+        let uri = Extension::<Self>::from_request_parts(parts, state)
             .await
-            .unwrap_or_else(|_| Extension(OriginalUri(req.uri().clone())))
+            .unwrap_or_else(|_| Extension(OriginalUri(parts.uri.clone())))
             .0;
         Ok(uri)
     }
 }
 
 /// Extractor that extracts the request body as a [`Stream`].
+///
+/// Since extracting the request body requires consuming it, the `BodyStream` extractor must be
+/// *last* if there are multiple extractors in a handler.
+/// See ["the order of extractors"][order-of-extractors]
+///
+/// [order-of-extractors]: crate::extract#the-order-of-extractors
 ///
 /// # Example
 ///
@@ -140,16 +146,18 @@ impl Stream for BodyStream {
 }
 
 #[async_trait]
-impl<B> FromRequest<B> for BodyStream
+impl<S, B> FromRequest<S, B> for BodyStream
 where
     B: HttpBody + Send + 'static,
     B::Data: Into<Bytes>,
     B::Error: Into<BoxError>,
+    S: Send + Sync,
 {
-    type Rejection = BodyAlreadyExtracted;
+    type Rejection = Infallible;
 
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-        let body = take_body(req)?
+    async fn from_request(req: Request<B>, _state: &S) -> Result<Self, Self::Rejection> {
+        let body = req
+            .into_body()
             .map_data(Into::into)
             .map_err(|err| Error::new(err.into()));
         let stream = BodyStream(SyncWrapper::new(Box::pin(body)));
@@ -170,6 +178,11 @@ fn body_stream_traits() {
 }
 
 /// Extractor that extracts the raw request body.
+///
+/// Since extracting the raw request body requires consuming it, the `RawBody` extractor must be
+/// *last* if there are multiple extractors in a handler. See ["the order of extractors"][order-of-extractors]
+///
+/// [order-of-extractors]: crate::extract#the-order-of-extractors
 ///
 /// # Example
 ///
@@ -196,44 +209,22 @@ fn body_stream_traits() {
 pub struct RawBody<B = Body>(pub B);
 
 #[async_trait]
-impl<B> FromRequest<B> for RawBody<B>
+impl<S, B> FromRequest<S, B> for RawBody<B>
 where
     B: Send,
+    S: Send + Sync,
 {
-    type Rejection = BodyAlreadyExtracted;
+    type Rejection = Infallible;
 
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-        let body = take_body(req)?;
-        Ok(Self(body))
+    async fn from_request(req: Request<B>, _state: &S) -> Result<Self, Self::Rejection> {
+        Ok(Self(req.into_body()))
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        body::Body,
-        extract::Extension,
-        routing::{get, post},
-        test_helpers::*,
-        Router,
-    };
-    use http::{Method, Request, StatusCode};
-
-    #[tokio::test]
-    async fn multiple_request_extractors() {
-        async fn handler(_: Request<Body>, _: Request<Body>) {}
-
-        let app = Router::new().route("/", post(handler));
-
-        let client = TestClient::new(app);
-
-        let res = client.post("/").body("hi there").send().await;
-        assert_eq!(res.status(), StatusCode::INTERNAL_SERVER_ERROR);
-        assert_eq!(
-            res.text().await,
-            "Cannot have two request body extractors for a single handler"
-        );
-    }
+    use crate::{extract::Extension, routing::get, test_helpers::*, Router};
+    use http::{Method, StatusCode};
 
     #[tokio::test]
     async fn extract_request_parts() {
@@ -251,21 +242,6 @@ mod tests {
         let client = TestClient::new(Router::new().route("/", get(handler)).layer(Extension(Ext)));
 
         let res = client.get("/").header("x-foo", "123").send().await;
-        assert_eq!(res.status(), StatusCode::OK);
-    }
-
-    #[tokio::test]
-    async fn extract_request_parts_doesnt_consume_the_body() {
-        #[derive(Clone)]
-        struct Ext;
-
-        async fn handler(_parts: http::request::Parts, body: String) {
-            assert_eq!(body, "foo");
-        }
-
-        let client = TestClient::new(Router::new().route("/", get(handler)));
-
-        let res = client.get("/").body("foo").send().await;
         assert_eq!(res.status(), StatusCode::OK);
     }
 }

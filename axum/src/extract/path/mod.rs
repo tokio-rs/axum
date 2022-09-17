@@ -4,12 +4,12 @@
 mod de;
 
 use crate::{
-    extract::{rejection::*, FromRequest, RequestParts},
+    extract::{rejection::*, FromRequestParts},
     routing::url_params::UrlParams,
 };
 use async_trait::async_trait;
 use axum_core::response::{IntoResponse, Response};
-use http::StatusCode;
+use http::{request::Parts, StatusCode};
 use serde::de::DeserializeOwned;
 use std::{
     fmt,
@@ -24,6 +24,10 @@ use std::{
 /// Bad Request` response.
 ///
 /// # Example
+///
+/// These examples assume the `serde` feature of the [`uuid`] crate is enabled.
+///
+/// [`uuid`]: https://crates.io/crates/uuid
 ///
 /// ```rust,no_run
 /// use axum::{
@@ -163,15 +167,15 @@ impl<T> DerefMut for Path<T> {
 }
 
 #[async_trait]
-impl<T, B> FromRequest<B> for Path<T>
+impl<T, S> FromRequestParts<S> for Path<T>
 where
     T: DeserializeOwned + Send,
-    B: Send,
+    S: Send + Sync,
 {
     type Rejection = PathRejection;
 
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-        let params = match req.extensions_mut().get::<UrlParams>() {
+    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
+        let params = match parts.extensions.get::<UrlParams>() {
             Some(UrlParams::Params(params)) => params,
             Some(UrlParams::InvalidUtf8InPathParam { key }) => {
                 let err = PathDeserializationError {
@@ -187,7 +191,7 @@ where
             }
         };
 
-        T::deserialize(de::PathDeserializer::new(&*params))
+        T::deserialize(de::PathDeserializer::new(params))
             .map_err(|err| {
                 PathRejection::FailedToDeserializePathParams(FailedToDeserializePathParams(err))
             })
@@ -260,7 +264,7 @@ impl std::error::Error for PathDeserializationError {}
 ///
 /// This type is obtained through [`FailedToDeserializePathParams::into_kind`] and is useful for building
 /// more precise error messages.
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum ErrorKind {
     /// The URI contained the wrong number of parameters.
@@ -412,8 +416,7 @@ impl std::error::Error for FailedToDeserializePathParams {}
 mod tests {
     use super::*;
     use crate::{routing::get, test_helpers::*, Router};
-    use http::{Request, StatusCode};
-    use hyper::Body;
+    use http::StatusCode;
     use std::collections::HashMap;
 
     #[tokio::test]
@@ -499,10 +502,10 @@ mod tests {
         let client = TestClient::new(app);
 
         let res = client.get("/foo/bar/baz").send().await;
-        assert_eq!(res.text().await, "/bar/baz");
+        assert_eq!(res.text().await, "bar/baz");
 
         let res = client.get("/bar/baz/qux").send().await;
-        assert_eq!(res.text().await, "/baz/qux");
+        assert_eq!(res.text().await, "baz/qux");
     }
 
     #[tokio::test]
@@ -516,20 +519,6 @@ mod tests {
 
         let res = client.get("/foo").send().await;
         assert_eq!(res.status(), StatusCode::OK);
-    }
-
-    #[tokio::test]
-    async fn when_extensions_are_missing() {
-        let app = Router::new().route("/:key", get(|_: Request<Body>, _: Path<String>| async {}));
-
-        let client = TestClient::new(app);
-
-        let res = client.get("/foo").send().await;
-        assert_eq!(res.status(), StatusCode::INTERNAL_SERVER_ERROR);
-        assert_eq!(
-            res.text().await,
-            "No paths parameters found for matched route. Are you also extracting `Request<_>`?"
-        );
     }
 
     #[tokio::test]

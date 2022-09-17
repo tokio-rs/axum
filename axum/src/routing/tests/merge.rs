@@ -240,7 +240,7 @@ async fn all_the_uris(
 
 #[tokio::test]
 async fn nesting_and_seeing_the_right_uri() {
-    let one = Router::new().nest("/foo", Router::new().route("/bar", get(all_the_uris)));
+    let one = Router::new().nest("/foo/", Router::new().route("/bar", get(all_the_uris)));
     let two = Router::new().route("/foo", get(all_the_uris));
 
     let client = TestClient::new(one.merge(two));
@@ -271,7 +271,7 @@ async fn nesting_and_seeing_the_right_uri() {
 #[tokio::test]
 async fn nesting_and_seeing_the_right_uri_at_more_levels_of_nesting() {
     let one = Router::new().nest(
-        "/foo",
+        "/foo/",
         Router::new().nest("/bar", Router::new().route("/baz", get(all_the_uris))),
     );
     let two = Router::new().route("/foo", get(all_the_uris));
@@ -407,4 +407,73 @@ async fn middleware_that_return_early() {
         StatusCode::NOT_FOUND
     );
     assert_eq!(client.get("/public").send().await.status(), StatusCode::OK);
+}
+
+#[tokio::test]
+async fn merge_with_different_state_type() {
+    let inner = Router::with_state("inner".to_owned()).route(
+        "/foo",
+        get(|State(state): State<String>| async move { state }),
+    );
+
+    let app = Router::with_state("outer").merge(inner).route(
+        "/bar",
+        get(|State(state): State<&'static str>| async move { state }),
+    );
+
+    let client = TestClient::new(app);
+
+    let res = client.get("/foo").send().await;
+    assert_eq!(res.text().await, "inner");
+
+    let res = client.get("/bar").send().await;
+    assert_eq!(res.text().await, "outer");
+}
+
+#[tokio::test]
+async fn merging_routes_different_method_different_states() {
+    let get = Router::with_state("get state").route(
+        "/",
+        get(|State(state): State<&'static str>| async move { state }),
+    );
+
+    let post = Router::with_state("post state").route(
+        "/",
+        post(|State(state): State<&'static str>| async move { state }),
+    );
+
+    let app = Router::new().merge(get).merge(post);
+
+    let client = TestClient::new(app);
+
+    let res = client.get("/").send().await;
+    assert_eq!(res.text().await, "get state");
+
+    let res = client.post("/").send().await;
+    assert_eq!(res.text().await, "post state");
+}
+
+#[tokio::test]
+async fn merging_routes_different_paths_different_states() {
+    let foo = Router::with_state("foo state").route(
+        "/foo",
+        get(|State(state): State<&'static str>| async move { state }),
+    );
+
+    let bar = Router::with_state("bar state").route(
+        "/bar",
+        get(|State(state): State<&'static str>| async move { state }),
+    );
+
+    let app = Router::new().merge(foo).merge(bar);
+
+    let client = TestClient::new(app);
+
+    let res = client.get("/foo").send().await;
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.text().await, "foo state");
+
+    let res = client.get("/bar").send().await;
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.text().await, "bar state");
 }

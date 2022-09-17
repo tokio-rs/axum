@@ -2,10 +2,11 @@ use crate::{
     body::{boxed, Body, Empty, HttpBody},
     response::Response,
 };
+use axum_core::response::IntoResponse;
 use bytes::Bytes;
 use http::{
     header::{self, CONTENT_LENGTH},
-    HeaderValue, Request,
+    HeaderMap, HeaderValue, Request,
 };
 use pin_project_lite::pin_project;
 use std::{
@@ -30,10 +31,13 @@ pub struct Route<B = Body, E = Infallible>(BoxCloneService<Request<B>, Response,
 impl<B, E> Route<B, E> {
     pub(super) fn new<T>(svc: T) -> Self
     where
-        T: Service<Request<B>, Response = Response, Error = E> + Clone + Send + 'static,
+        T: Service<Request<B>, Error = E> + Clone + Send + 'static,
+        T::Response: IntoResponse + 'static,
         T::Future: Send + 'static,
     {
-        Self(BoxCloneService::new(svc))
+        Self(BoxCloneService::new(
+            svc.map_response(IntoResponse::into_response),
+        ))
     }
 
     pub(crate) fn oneshot_inner(
@@ -44,13 +48,13 @@ impl<B, E> Route<B, E> {
     }
 }
 
-impl<ReqBody, E> Clone for Route<ReqBody, E> {
+impl<B, E> Clone for Route<B, E> {
     fn clone(&self) -> Self {
         Self(self.0.clone())
     }
 }
 
-impl<ReqBody, E> fmt::Debug for Route<ReqBody, E> {
+impl<B, E> fmt::Debug for Route<B, E> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Route").finish()
     }
@@ -112,16 +116,6 @@ impl<B, E> RouteFuture<B, E> {
         }
     }
 
-    pub(super) fn from_response(response: Response) -> Self {
-        Self {
-            kind: RouteFutureKind::Response {
-                response: Some(response),
-            },
-            strip_body: false,
-            allow_header: None,
-        }
-    }
-
     pub(crate) fn strip_body(mut self, strip_body: bool) -> Self {
         self.strip_body = strip_body;
         self
@@ -167,10 +161,10 @@ where
             res.extensions_mut().insert(AlreadyPassedThroughRouteFuture);
         }
 
-        set_allow_header(&mut res, this.allow_header);
+        set_allow_header(res.headers_mut(), this.allow_header);
 
         // make sure to set content-length before removing the body
-        set_content_length(&mut res);
+        set_content_length(res.size_hint(), res.headers_mut());
 
         let res = if *this.strip_body {
             res.map(|_| boxed(Empty::new()))
@@ -182,10 +176,10 @@ where
     }
 }
 
-fn set_allow_header<B>(res: &mut Response<B>, allow_header: &mut Option<Bytes>) {
+fn set_allow_header(headers: &mut HeaderMap, allow_header: &mut Option<Bytes>) {
     match allow_header.take() {
-        Some(allow_header) if !res.headers().contains_key(header::ALLOW) => {
-            res.headers_mut().insert(
+        Some(allow_header) if !headers.contains_key(header::ALLOW) => {
+            headers.insert(
                 header::ALLOW,
                 HeaderValue::from_maybe_shared(allow_header).expect("invalid `Allow` header"),
             );
@@ -194,15 +188,12 @@ fn set_allow_header<B>(res: &mut Response<B>, allow_header: &mut Option<Bytes>) 
     }
 }
 
-fn set_content_length<B>(res: &mut Response<B>)
-where
-    B: HttpBody,
-{
-    if res.headers().contains_key(CONTENT_LENGTH) {
+fn set_content_length(size_hint: http_body::SizeHint, headers: &mut HeaderMap) {
+    if headers.contains_key(CONTENT_LENGTH) {
         return;
     }
 
-    if let Some(size) = res.size_hint().exact() {
+    if let Some(size) = size_hint.exact() {
         let header_value = if size == 0 {
             #[allow(clippy::declare_interior_mutable_const)]
             const ZERO: HeaderValue = HeaderValue::from_static("0");
@@ -213,7 +204,7 @@ where
             HeaderValue::from_str(buffer.format(size)).unwrap()
         };
 
-        res.headers_mut().insert(CONTENT_LENGTH, header_value);
+        headers.insert(CONTENT_LENGTH, header_value);
     }
 }
 

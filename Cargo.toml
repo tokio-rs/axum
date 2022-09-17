@@ -5,3 +5,4 @@ members = [
     "axum-extra",
     "axum-macros",
 ]
+resolver = "2"

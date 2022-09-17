@@ -56,7 +56,8 @@ mod tests {
     };
     use serde_json::{json, Value};
     use std::net::{SocketAddr, TcpListener};
-    use tower::ServiceExt; // for `app.oneshot()`
+    use tower::Service; // for `call`
+    use tower::ServiceExt; // for `oneshot` and `ready`
 
     #[tokio::test]
     async fn hello_world() {
@@ -147,5 +148,20 @@ mod tests {
 
         let body = hyper::body::to_bytes(response.into_body()).await.unwrap();
         assert_eq!(&body[..], b"Hello, World!");
+    }
+
+    // You can use `ready()` and `call()` to avoid using `clone()`
+    // in multiple request
+    #[tokio::test]
+    async fn multiple_request() {
+        let mut app = app();
+
+        let request = Request::builder().uri("/").body(Body::empty()).unwrap();
+        let response = app.ready().await.unwrap().call(request).await.unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+
+        let request = Request::builder().uri("/").body(Body::empty()).unwrap();
+        let response = app.ready().await.unwrap().call(request).await.unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
     }
 }

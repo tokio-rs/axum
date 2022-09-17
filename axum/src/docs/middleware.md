@@ -1,3 +1,17 @@
+# Table of contents
+
+- [Intro](#intro)
+- [Applying middleware](#applying-middleware)
+- [Commonly used middleware](#commonly-used-middleware)
+- [Ordering](#ordering)
+- [Writing middleware](#writing-middleware)
+- [Routing to services/middleware and backpressure](#routing-to-servicesmiddleware-and-backpressure)
+- [Accessing state in middleware](#accessing-state-in-middleware)
+- [Passing state from middleware to handlers](#passing-state-from-middleware-to-handlers)
+- [Rewriting request URI in middleware](#rewriting-request-uri-in-middleware)
+
+# Intro
+
 axum is unique in that it doesn't have its own bespoke middleware system and
 instead integrates with [`tower`]. This means the ecosystem of [`tower`] and
 [`tower-http`] middleware all work with axum.
@@ -83,7 +97,7 @@ let app = Router::new()
     .layer(layer_one)
     .layer(layer_two)
     .layer(layer_three);
-# let app: Router<axum::body::Body> = app;
+# let _: Router<(), axum::body::Body> = app;
 ```
 
 Think of the middleware as being layered like an onion where each new layer
@@ -142,7 +156,7 @@ let app = Router::new()
             .layer(layer_two)
             .layer(layer_three),
     );
-# let app: Router<axum::body::Body> = app;
+# let _: Router<(), axum::body::Body> = app;
 ```
 
 `ServiceBuilder` works by composing all layers into one such that they run top
@@ -374,9 +388,89 @@ Also note that handlers created from async functions don't care about
 backpressure and are always ready. So if you're not using any Tower
 middleware you don't have to worry about any of this.
 
-# Sharing state between handlers and middleware
+# Accessing state in middleware
 
-State can be shared between middleware and handlers using [request extensions]:
+How to make state available to middleware depends on how the middleware is
+written.
+
+## Accessing state in `axum::middleware::from_fn`
+
+Use [`axum::middleware::from_fn_with_state`](crate::middleware::from_fn_with_state).
+
+## Accessing state in custom `tower::Layer`s
+
+```rust
+use axum::{
+    Router,
+    routing::get,
+    middleware::{self, Next},
+    response::Response,
+    extract::State,
+    http::Request,
+};
+use tower::{Layer, Service};
+use std::task::{Context, Poll};
+
+#[derive(Clone)]
+struct AppState {}
+
+#[derive(Clone)]
+struct MyLayer {
+    state: AppState,
+}
+
+impl<S> Layer<S> for MyLayer {
+    type Service = MyService<S>;
+
+    fn layer(&self, inner: S) -> Self::Service {
+        MyService {
+            inner,
+            state: self.state.clone(),
+        }
+    }
+}
+
+#[derive(Clone)]
+struct MyService<S> {
+    inner: S,
+    state: AppState,
+}
+
+impl<S, B> Service<Request<B>> for MyService<S>
+where
+    S: Service<Request<B>>,
+{
+    type Response = S::Response;
+    type Error = S::Error;
+    type Future = S::Future;
+
+    fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        self.inner.poll_ready(cx)
+    }
+
+    fn call(&mut self, req: Request<B>) -> Self::Future {
+        // Do something with `self.state`.
+        //
+        // See `axum::RequestExt` for how to run extractors directly from
+        // a `Request`.
+
+        self.inner.call(req)
+    }
+}
+
+async fn handler(_: State<AppState>) {}
+
+let state = AppState {};
+
+let app = Router::with_state(state.clone())
+    .route("/", get(handler))
+    .layer(MyLayer { state });
+# let _: Router<_> = app;
+```
+
+# Passing state from middleware to handlers
+
+State can be passed from middleware to handlers using [request extensions]:
 
 ```rust
 use axum::{
@@ -403,6 +497,8 @@ async fn auth<B>(mut req: Request<B>, next: Next<B>) -> Result<Response, StatusC
     };
 
     if let Some(current_user) = authorize_current_user(auth_header).await {
+        // insert the current user into a request extension so the handler can
+        // extract it
         req.extensions_mut().insert(current_user);
         Ok(next.run(req).await)
     } else {
@@ -425,12 +521,53 @@ async fn handler(
 let app = Router::new()
     .route("/", get(handler))
     .route_layer(middleware::from_fn(auth));
-# let app: Router = app;
+# let _: Router<()> = app;
 ```
 
 [Response extensions] can also be used but note that request extensions are not
 automatically moved to response extensions. You need to manually do that for the
 extensions you need.
+
+# Rewriting request URI in middleware
+
+Middleware added with [`Router::layer`] will run after routing. That means it
+cannot be used to run middleware that rewrites the request URI. By the time the
+middleware runs the routing is already done.
+
+The workaround is to wrap the middleware around the entire `Router` (this works
+because `Router` implements [`Service`]):
+
+```rust
+use tower::Layer;
+use axum::{
+    Router,
+    ServiceExt, // for `into_make_service`
+    response::Response,
+    middleware::Next,
+    http::Request,
+};
+
+async fn rewrite_request_uri<B>(req: Request<B>, next: Next<B>) -> Response {
+    // ...
+    # next.run(req).await
+}
+
+// this can be any `tower::Layer`
+let middleware = axum::middleware::from_fn(rewrite_request_uri);
+
+let app = Router::new();
+
+// apply the layer around the whole `Router`
+// this way the middleware will run before `Router` receives the request
+let app_with_middleware = middleware.layer(app);
+
+# async {
+axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())
+    .serve(app_with_middleware.into_make_service())
+    .await
+    .unwrap();
+# };
+```
 
 [`tower`]: https://crates.io/crates/tower
 [`tower-http`]: https://crates.io/crates/tower-http
@@ -450,3 +587,5 @@ extensions you need.
 [`MethodRouter::route_layer`]: crate::routing::MethodRouter::route_layer
 [request extensions]: https://docs.rs/http/latest/http/request/struct.Request.html#method.extensions
 [Response extensions]: https://docs.rs/http/latest/http/response/struct.Response.html#method.extensions
+[`State`]: crate::extract::State
+[`Service`]: tower::Service

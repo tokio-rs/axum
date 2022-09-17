@@ -47,9 +47,13 @@ use proc_macro::TokenStream;
 use quote::{quote, ToTokens};
 use syn::parse::Parse;
 
+mod attr_parsing;
 mod debug_handler;
 mod from_request;
 mod typed_path;
+mod with_position;
+
+use from_request::Trait::{FromRequest, FromRequestParts};
 
 /// Derive an implementation of [`FromRequest`].
 ///
@@ -85,6 +89,21 @@ mod typed_path;
 /// ```
 ///
 /// This requires that each field is an extractor (i.e. implements [`FromRequest`]).
+///
+/// Note that only the last field can consume the request body. Therefore this doesn't compile:
+///
+/// ```compile_fail
+/// use axum_macros::FromRequest;
+/// use axum::body::Bytes;
+///
+/// #[derive(FromRequest)]
+/// struct MyExtractor {
+///     // only the last field can implement `FromRequest`
+///     // other fields must only implement `FromRequestParts`
+///     bytes: Bytes,
+///     string: String,
+/// }
+/// ```
 ///
 /// ## Extracting via another extractor
 ///
@@ -125,7 +144,7 @@ mod typed_path;
 /// ```
 /// pub struct ViaExtractor<T>(pub T);
 ///
-/// // impl<T, B> FromRequest<B> for ViaExtractor<T> { ... }
+/// // impl<T, S, B> FromRequest<S, B> for ViaExtractor<T> { ... }
 /// ```
 ///
 /// More complex via extractors are not supported and require writing a manual implementation.
@@ -157,57 +176,18 @@ mod typed_path;
 ///
 /// ## The rejection
 ///
-/// A rejection enum is also generated. It has a variant for each field:
+/// By default [`axum::response::Response`] will be used as the rejection. You can also use your own
+/// rejection type with `#[from_request(rejection(YourType))]`:
 ///
 /// ```
 /// use axum_macros::FromRequest;
 /// use axum::{
-///     extract::{Extension, TypedHeader},
-///     headers::ContentType,
-///     body::Bytes,
-/// };
-///
-/// #[derive(FromRequest)]
-/// struct MyExtractor {
-///     #[from_request(via(Extension))]
-///     state: State,
-///     #[from_request(via(TypedHeader))]
-///     content_type: ContentType,
-///     request_body: Bytes,
-/// }
-///
-/// // also generates
-/// //
-/// // #[derive(Debug)]
-/// // enum MyExtractorRejection {
-/// //     State(ExtensionRejection),
-/// //     ContentType(TypedHeaderRejection),
-/// //     RequestBody(BytesRejection),
-/// // }
-/// //
-/// // impl axum::response::IntoResponse for MyExtractor { ... }
-/// //
-/// // impl std::fmt::Display for MyExtractor { ... }
-/// //
-/// // impl std::error::Error for MyExtractor { ... }
-///
-/// #[derive(Clone)]
-/// struct State {
-///     // ...
-/// }
-/// ```
-///
-/// The rejection's `std::error::Error::source` implementation returns the inner rejection. This
-/// can be used to access source errors for example to customize rejection responses. Note this
-/// means the inner rejection types must themselves implement `std::error::Error`. All extractors
-/// in axum does this.
-///
-/// You can opt out of this using `#[from_request(rejection_derive(...))]`:
-///
-/// ```
-/// use axum_macros::FromRequest;
-/// use axum::{
-///     extract::{FromRequest, RequestParts},
+///     extract::{
+///         rejection::{ExtensionRejection, StringRejection},
+///         FromRequest,
+///     },
+///     Extension,
+///     response::{Response, IntoResponse},
 ///     http::StatusCode,
 ///     headers::ContentType,
 ///     body::Bytes,
@@ -215,24 +195,34 @@ mod typed_path;
 /// };
 ///
 /// #[derive(FromRequest)]
-/// #[from_request(rejection_derive(!Display, !Error))]
+/// #[from_request(rejection(MyRejection))]
 /// struct MyExtractor {
-///     other: OtherExtractor,
+///     state: Extension<String>,
+///     body: String,
 /// }
 ///
-/// struct OtherExtractor;
+/// struct MyRejection(Response);
 ///
-/// #[async_trait]
-/// impl<B> FromRequest<B> for OtherExtractor
-/// where
-///     B: Send + 'static,
-/// {
-///     // this rejection doesn't implement `Display` and `Error`
-///     type Rejection = (StatusCode, String);
-///
-///     async fn from_request(_req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+/// // This tells axum how to convert `Extension`'s rejections into `MyRejection`
+/// impl From<ExtensionRejection> for MyRejection {
+///     fn from(rejection: ExtensionRejection) -> Self {
 ///         // ...
-///         # unimplemented!()
+///         # todo!()
+///     }
+/// }
+///
+/// // This tells axum how to convert `String`'s rejections into `MyRejection`
+/// impl From<StringRejection> for MyRejection {
+///     fn from(rejection: StringRejection) -> Self {
+///         // ...
+///         # todo!()
+///     }
+/// }
+///
+/// // All rejections must implement `IntoResponse`
+/// impl IntoResponse for MyRejection {
+///     fn into_response(self) -> Response {
+///         self.0
 ///     }
 /// }
 /// ```
@@ -259,9 +249,101 @@ mod typed_path;
 /// The rejection will be the "via extractors"'s rejection. For the previous example that would be
 /// [`axum::extract::rejection::ExtensionRejection`].
 ///
+/// You can use a different rejection type with `#[from_request(rejection(YourType))]`:
+///
+/// ```
+/// use axum_macros::FromRequest;
+/// use axum::{
+///     extract::{Extension, rejection::ExtensionRejection},
+///     response::{IntoResponse, Response},
+///     Json,
+///     http::StatusCode,
+/// };
+/// use serde_json::json;
+///
+/// // This will extracted via `Extension::<State>::from_request`
+/// #[derive(Clone, FromRequest)]
+/// #[from_request(
+///     via(Extension),
+///     // Use your own rejection type
+///     rejection(MyRejection),
+/// )]
+/// struct State {
+///     // ...
+/// }
+///
+/// struct MyRejection(Response);
+///
+/// // This tells axum how to convert `Extension`'s rejections into `MyRejection`
+/// impl From<ExtensionRejection> for MyRejection {
+///     fn from(rejection: ExtensionRejection) -> Self {
+///         let response = (
+///             StatusCode::INTERNAL_SERVER_ERROR,
+///             Json(json!({ "error": "Something went wrong..." })),
+///         ).into_response();
+///
+///         MyRejection(response)
+///     }
+/// }
+///
+/// // All rejections must implement `IntoResponse`
+/// impl IntoResponse for MyRejection {
+///     fn into_response(self) -> Response {
+///         self.0
+///     }
+/// }
+///
+/// async fn handler(state: State) {}
+/// ```
+///
+/// This allows you to wrap other extractors and easily customize the rejection:
+///
+/// ```
+/// use axum_macros::FromRequest;
+/// use axum::{
+///     extract::{Extension, rejection::JsonRejection},
+///     response::{IntoResponse, Response},
+///     http::StatusCode,
+/// };
+/// use serde_json::json;
+/// use serde::Deserialize;
+///
+/// // create an extractor that internally uses `axum::Json` but has a custom rejection
+/// #[derive(FromRequest)]
+/// #[from_request(via(axum::Json), rejection(MyRejection))]
+/// struct MyJson<T>(T);
+///
+/// struct MyRejection(Response);
+///
+/// impl From<JsonRejection> for MyRejection {
+///     fn from(rejection: JsonRejection) -> Self {
+///         let response = (
+///             StatusCode::INTERNAL_SERVER_ERROR,
+///             axum::Json(json!({ "error": rejection.to_string() })),
+///         ).into_response();
+///
+///         MyRejection(response)
+///     }
+/// }
+///
+/// impl IntoResponse for MyRejection {
+///     fn into_response(self) -> Response {
+///         self.0
+///     }
+/// }
+///
+/// #[derive(Deserialize)]
+/// struct Payload {}
+///
+/// async fn handler(
+///     // make sure to use `MyJson` and not `axum::Json`
+///     MyJson(payload): MyJson<Payload>,
+/// ) {}
+/// ```
+///
 /// # Known limitations
 ///
-/// Generics are currently not supported:
+/// Generics are only supported on tuple structs with exactly on field. Thus this doesn't work
 ///
 /// ```compile_fail
 /// #[derive(axum_macros::FromRequest)]
@@ -271,10 +353,57 @@ mod typed_path;
 /// ```
 ///
 /// [`FromRequest`]: https://docs.rs/axum/latest/axum/extract/trait.FromRequest.html
+/// [`axum::response::Response`]: https://docs.rs/axum/0.6/axum/response/type.Response.html
 /// [`axum::extract::rejection::ExtensionRejection`]: https://docs.rs/axum/latest/axum/extract/rejection/enum.ExtensionRejection.html
 #[proc_macro_derive(FromRequest, attributes(from_request))]
 pub fn derive_from_request(item: TokenStream) -> TokenStream {
-    expand_with(item, from_request::expand)
+    expand_with(item, |item| from_request::expand(item, FromRequest))
+}
+
+/// Derive an implementation of [`FromRequestParts`].
+///
+/// This works similarly to `#[derive(FromRequest)]` except it uses [`FromRequestParts`]. All the
+/// same options are supported.
+///
+/// # Example
+///
+/// ```
+/// use axum_macros::FromRequestParts;
+/// use axum::{
+///     extract::{Query, TypedHeader},
+///     headers::ContentType,
+/// };
+/// use std::collections::HashMap;
+///
+/// #[derive(FromRequestParts)]
+/// struct MyExtractor {
+///     #[from_request(via(Query))]
+///     query_params: HashMap<String, String>,
+///     content_type: TypedHeader<ContentType>,
+/// }
+///
+/// async fn handler(extractor: MyExtractor) {}
+/// ```
+///
+/// # Cannot extract the body
+///
+/// [`FromRequestParts`] cannot extract the request body:
+///
+/// ```compile_fail
+/// use axum_macros::FromRequestParts;
+///
+/// #[derive(FromRequestParts)]
+/// struct MyExtractor {
+///     body: String,
+/// }
+/// ```
+///
+/// Use `#[derive(FromRequest)]` for that.
+///
+/// [`FromRequestParts`]: https://docs.rs/axum/0.6/axum/extract/trait.FromRequestParts.html
+#[proc_macro_derive(FromRequestParts, attributes(from_request))]
+pub fn derive_from_request_parts(item: TokenStream) -> TokenStream {
+    expand_with(item, |item| from_request::expand(item, FromRequestParts))
 }
 
 /// Generates better error messages when applied handler functions.
@@ -370,12 +499,60 @@ pub fn derive_from_request(item: TokenStream) -> TokenStream {
 /// async fn handler(request: Request<BoxBody>) {}
 /// ```
 ///
+/// # Changing state type
+///
+/// By default `#[debug_handler]` assumes your state type is `()` unless your handler has a
+/// [`axum::extract::State`] argument:
+///
+/// ```
+/// use axum::extract::State;
+/// # use axum_macros::debug_handler;
+///
+/// #[debug_handler]
+/// async fn handler(
+///     // this makes `#[debug_handler]` use `AppState`
+///     State(state): State<AppState>,
+/// ) {}
+///
+/// #[derive(Clone)]
+/// struct AppState {}
+/// ```
+///
+/// If your handler takes multiple [`axum::extract::State`] arguments or you need to otherwise
+/// customize the state type you can set it with `#[debug_handler(state = ...)]`:
+///
+/// ```
+/// use axum::extract::{State, FromRef};
+/// # use axum_macros::debug_handler;
+///
+/// #[debug_handler(state = AppState)]
+/// async fn handler(
+///     State(app_state): State<AppState>,
+///     State(inner_state): State<InnerState>,
+/// ) {}
+///
+/// #[derive(Clone)]
+/// struct AppState {
+///     inner: InnerState,
+/// }
+///
+/// #[derive(Clone)]
+/// struct InnerState {}
+///
+/// impl FromRef<AppState> for InnerState {
+///     fn from_ref(state: &AppState) -> Self {
+///         state.inner.clone()
+///     }
+/// }
+/// ```
+///
 /// # Performance
 ///
 /// This macro has no effect when compiled with the release profile. (eg. `cargo build --release`)
 ///
 /// [`axum`]: https://docs.rs/axum/latest
 /// [`Handler`]: https://docs.rs/axum/latest/axum/handler/trait.Handler.html
+/// [`axum::extract::State`]: https://docs.rs/axum/0.6/axum/extract/struct.State.html
 /// [`debug_handler`]: macro@debug_handler
 #[proc_macro_attribute]
 pub fn debug_handler(_attr: TokenStream, input: TokenStream) -> TokenStream {
@@ -434,4 +611,38 @@ where
         }
         Err(err) => err.into_compile_error().into(),
     }
+}
+
+#[cfg(test)]
+fn run_ui_tests(directory: &str) {
+    #[rustversion::stable]
+    fn go(directory: &str) {
+        let t = trybuild::TestCases::new();
+
+        if let Ok(mut path) = std::env::var("AXUM_TEST_ONLY") {
+            if let Some(path_without_prefix) = path.strip_prefix("axum-macros/") {
+                path = path_without_prefix.to_owned();
+            }
+
+            if !path.contains(&format!("/{}/", directory)) {
+                return;
+            }
+
+            if path.contains("/fail/") {
+                t.compile_fail(path);
+            } else if path.contains("/pass/") {
+                t.pass(path);
+            } else {
+                panic!()
+            }
+        } else {
+            t.compile_fail(format!("tests/{}/fail/*.rs", directory));
+            t.pass(format!("tests/{}/pass/*.rs", directory));
+        }
+    }
+
+    #[rustversion::not(stable)]
+    fn go(directory: &str) {}
+
+    go(directory);
 }

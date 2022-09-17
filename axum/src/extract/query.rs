@@ -1,5 +1,6 @@
-use super::{rejection::*, FromRequest, RequestParts};
+use super::{rejection::*, FromRequestParts};
 use async_trait::async_trait;
+use http::request::Parts;
 use serde::de::DeserializeOwned;
 use std::ops::Deref;
 
@@ -49,17 +50,17 @@ use std::ops::Deref;
 pub struct Query<T>(pub T);
 
 #[async_trait]
-impl<T, B> FromRequest<B> for Query<T>
+impl<T, S> FromRequestParts<S> for Query<T>
 where
     T: DeserializeOwned,
-    B: Send,
+    S: Send + Sync,
 {
     type Rejection = QueryRejection;
 
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-        let query = req.uri().query().unwrap_or_default();
+    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
+        let query = parts.uri.query().unwrap_or_default();
         let value = serde_urlencoded::from_str(query)
-            .map_err(FailedToDeserializeQueryString::__private_new::<T, _>)?;
+            .map_err(FailedToDeserializeQueryString::__private_new)?;
         Ok(Query(value))
     }
 }
@@ -75,14 +76,17 @@ impl<T> Deref for Query<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::extract::RequestParts;
+    use axum_core::extract::FromRequest;
     use http::Request;
     use serde::Deserialize;
     use std::fmt::Debug;
 
-    async fn check<T: DeserializeOwned + PartialEq + Debug>(uri: impl AsRef<str>, value: T) {
-        let mut req = RequestParts::new(Request::builder().uri(uri.as_ref()).body(()).unwrap());
-        assert_eq!(Query::<T>::from_request(&mut req).await.unwrap().0, value);
+    async fn check<T>(uri: impl AsRef<str>, value: T)
+    where
+        T: DeserializeOwned + PartialEq + Debug,
+    {
+        let req = Request::builder().uri(uri.as_ref()).body(()).unwrap();
+        assert_eq!(Query::<T>::from_request(req, &()).await.unwrap().0, value);
     }
 
     #[tokio::test]

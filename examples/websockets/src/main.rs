@@ -16,7 +16,7 @@ use axum::{
     routing::{get, get_service},
     Router,
 };
-use std::net::SocketAddr;
+use std::{net::SocketAddr, path::PathBuf};
 use tower_http::{
     services::ServeDir,
     trace::{DefaultMakeSpan, TraceLayer},
@@ -33,18 +33,18 @@ async fn main() {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
+    let assets_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("assets");
+
     // build our application with some routes
     let app = Router::new()
-        .fallback(
-            get_service(
-                ServeDir::new("examples/websockets/assets").append_index_html_on_directories(true),
-            )
-            .handle_error(|error: std::io::Error| async move {
-                (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    format!("Unhandled internal error: {}", error),
-                )
-            }),
+        .fallback_service(
+            get_service(ServeDir::new(assets_dir).append_index_html_on_directories(true))
+                .handle_error(|error: std::io::Error| async move {
+                    (
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        format!("Unhandled internal error: {}", error),
+                    )
+                }),
         )
         // routes are matched from bottom to top, so we have to put `nest` at the
         // top since it matches all routes

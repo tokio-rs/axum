@@ -15,6 +15,7 @@
 //! `cookie-signed` | Enables the `SignedCookieJar` extractor | No
 //! `erased-json` | Enables the `ErasedJson` response | No
 //! `form` | Enables the `Form` extractor | No
+//! `json-lines` | Enables the `json-lines` extractor and response | No
 //! `query` | Enables the `Query` extractor | No
 //! `spa` | Enables the `Spa` router | No
 //! `typed-routing` | Enables the `TypedPath` routing utilities | No
@@ -63,9 +64,17 @@
 #![cfg_attr(test, allow(clippy::float_cmp))]
 
 pub mod body;
+pub mod either;
 pub mod extract;
+pub mod handler;
 pub mod response;
 pub mod routing;
+
+#[cfg(feature = "json-lines")]
+pub mod json_lines;
+
+#[cfg(feature = "protobuf")]
+pub mod protobuf;
 
 #[cfg(feature = "typed-routing")]
 #[doc(hidden)]

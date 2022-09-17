@@ -1,17 +1,17 @@
 use crate::{
     body::{Bytes, Empty},
     error_handling::HandleErrorLayer,
-    extract::{self, Path},
-    handler::Handler,
+    extract::{self, DefaultBodyLimit, FromRef, Path, State},
+    handler::{Handler, HandlerWithoutStateExt},
     response::IntoResponse,
     routing::{delete, get, get_service, on, on_service, patch, patch_service, post, MethodFilter},
     test_helpers::*,
     BoxError, Json, Router,
 };
-use http::{header::CONTENT_LENGTH, HeaderMap, Method, Request, Response, StatusCode, Uri};
+use futures_util::stream::StreamExt;
+use http::{header::CONTENT_LENGTH, HeaderMap, Request, Response, StatusCode, Uri};
 use hyper::Body;
-use serde::Deserialize;
-use serde_json::{json, Value};
+use serde_json::json;
 use std::{
     convert::Infallible,
     future::{ready, Ready},
@@ -19,7 +19,9 @@ use std::{
     task::{Context, Poll},
     time::Duration,
 };
-use tower::{service_fn, timeout::TimeoutLayer, ServiceBuilder, ServiceExt};
+use tower::{
+    service_fn, timeout::TimeoutLayer, util::MapResponseLayer, ServiceBuilder, ServiceExt,
+};
 use tower_http::{auth::RequireAuthorizationLayer, limit::RequestBodyLimitLayer};
 use tower_service::Service;
 
@@ -316,33 +318,26 @@ async fn middleware_applies_to_routes_above() {
 }
 
 #[tokio::test]
-async fn with_trailing_slash() {
+async fn not_found_for_extra_trailing_slash() {
     let app = Router::new().route("/foo", get(|| async {}));
 
     let client = TestClient::new(app);
 
     let res = client.get("/foo/").send().await;
-    assert_eq!(res.status(), StatusCode::PERMANENT_REDIRECT);
-    assert_eq!(res.headers().get("location").unwrap(), "/foo");
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
 
-    let res = client.get("/foo/?bar=baz").send().await;
-    assert_eq!(res.status(), StatusCode::PERMANENT_REDIRECT);
-    assert_eq!(res.headers().get("location").unwrap(), "/foo?bar=baz");
+    let res = client.get("/foo").send().await;
+    assert_eq!(res.status(), StatusCode::OK);
 }
 
 #[tokio::test]
-async fn without_trailing_slash() {
+async fn not_found_for_missing_trailing_slash() {
     let app = Router::new().route("/foo/", get(|| async {}));
 
     let client = TestClient::new(app);
 
     let res = client.get("/foo").send().await;
-    assert_eq!(res.status(), StatusCode::PERMANENT_REDIRECT);
-    assert_eq!(res.headers().get("location").unwrap(), "/foo/");
-
-    let res = client.get("/foo?bar=baz").send().await;
-    assert_eq!(res.status(), StatusCode::PERMANENT_REDIRECT);
-    assert_eq!(res.headers().get("location").unwrap(), "/foo/?bar=baz");
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
 }
 
 #[tokio::test]
@@ -362,72 +357,25 @@ async fn with_and_without_trailing_slash() {
     assert_eq!(res.text().await, "without tsr");
 }
 
-// for https://github.com/tokio-rs/axum/issues/681
-#[tokio::test]
-async fn with_trailing_slash_post() {
-    let app = Router::new().route("/foo", post(|| async {}));
-
-    let client = TestClient::new(app);
-
-    // `TestClient` automatically follows redirects
-    let res = client.post("/foo/").send().await;
-    assert_eq!(res.status(), StatusCode::PERMANENT_REDIRECT);
-    assert_eq!(res.headers().get("location").unwrap(), "/foo");
-}
-
-// for https://github.com/tokio-rs/axum/issues/681
-#[tokio::test]
-async fn without_trailing_slash_post() {
-    let app = Router::new().route("/foo/", post(|| async {}));
-
-    let client = TestClient::new(app);
-
-    let res = client.post("/foo").send().await;
-    assert_eq!(res.status(), StatusCode::PERMANENT_REDIRECT);
-    assert_eq!(res.headers().get("location").unwrap(), "/foo/");
-}
-
 // for https://github.com/tokio-rs/axum/issues/420
 #[tokio::test]
-async fn wildcard_with_trailing_slash() {
-    #[derive(Deserialize, serde::Serialize)]
-    struct Tree {
-        user: String,
-        repo: String,
-        path: String,
-    }
-
-    let app: Router = Router::new().route(
-        "/:user/:repo/tree/*path",
-        get(|Path(tree): Path<Tree>| async move { Json(tree) }),
+async fn wildcard_doesnt_match_just_trailing_slash() {
+    let app = Router::new().route(
+        "/x/*path",
+        get(|Path(path): Path<String>| async move { path }),
     );
 
-    // low level check that the correct redirect happens
-    let res = app
-        .clone()
-        .oneshot(
-            Request::builder()
-                .method(Method::GET)
-                .uri("/user1/repo1/tree")
-                .body(Body::empty())
-                .unwrap(),
-        )
-        .await
-        .unwrap();
-    assert_eq!(res.status(), StatusCode::PERMANENT_REDIRECT);
-    assert_eq!(res.headers()["location"], "/user1/repo1/tree/");
-
-    // check that the params are deserialized correctly
     let client = TestClient::new(app);
-    let res = client.get("/user1/repo1/tree/").send().await;
-    assert_eq!(
-        res.json::<Value>().await,
-        json!({
-            "user": "user1",
-            "repo": "repo1",
-            "path": "/",
-        })
-    );
+
+    let res = client.get("/x").send().await;
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+
+    let res = client.get("/x/").send().await;
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+
+    let res = client.get("/x/foo/bar").send().await;
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.text().await, "foo/bar");
 }
 
 #[tokio::test]
@@ -497,10 +445,10 @@ async fn middleware_still_run_for_unmatched_requests() {
 
 #[tokio::test]
 #[should_panic(
-    expected = "Invalid route: `Router::route` cannot be used with `Router`s. Use `Router::nest` instead"
+    expected = "Invalid route: `Router::route_service` cannot be used with `Router`s. Use `Router::nest` instead"
 )]
 async fn routing_to_router_panics() {
-    TestClient::new(Router::new().route("/", Router::new()));
+    TestClient::new(Router::new().route_service("/", Router::new()));
 }
 
 #[tokio::test]
@@ -532,34 +480,6 @@ async fn route_layer() {
 }
 
 #[tokio::test]
-#[should_panic(
-    expected = "Invalid route: insertion failed due to conflict with previously registered \
-    route: /*__private__axum_nest_tail_param. \
-    Note that `nest(\"/\", _)` conflicts with all routes. \
-    Use `Router::fallback` instead"
-)]
-async fn good_error_message_if_using_nest_root() {
-    let app = Router::new()
-        .nest("/", get(|| async {}))
-        .route("/", get(|| async {}));
-    TestClient::new(app);
-}
-
-#[tokio::test]
-#[should_panic(
-    expected = "Invalid route: insertion failed due to conflict with previously registered \
-    route: /*__private__axum_nest_tail_param. \
-    Note that `nest(\"/\", _)` conflicts with all routes. \
-    Use `Router::fallback` instead"
-)]
-async fn good_error_message_if_using_nest_root_when_merging() {
-    let one = Router::new().nest("/", get(|| async {}));
-    let two = Router::new().route("/", get(|| async {}));
-    let app = one.merge(two);
-    TestClient::new(app);
-}
-
-#[tokio::test]
 async fn different_methods_added_in_different_routes() {
     let app = Router::new()
         .route("/", get(|| async { "GET" }))
@@ -577,44 +497,29 @@ async fn different_methods_added_in_different_routes() {
 }
 
 #[tokio::test]
-async fn different_methods_added_in_different_routes_deeply_nested() {
-    let app = Router::new()
-        .route("/foo/bar/baz", get(|| async { "GET" }))
-        .nest(
-            "/foo",
-            Router::new().nest(
-                "/bar",
-                Router::new().route("/baz", post(|| async { "POST" })),
-            ),
-        );
-
-    let client = TestClient::new(app);
-
-    let res = client.get("/foo/bar/baz").send().await;
-    let body = res.text().await;
-    assert_eq!(body, "GET");
-
-    let res = client.post("/foo/bar/baz").send().await;
-    let body = res.text().await;
-    assert_eq!(body, "POST");
-}
-
-#[tokio::test]
 #[should_panic(expected = "Cannot merge two `Router`s that both have a fallback")]
 async fn merging_routers_with_fallbacks_panics() {
     async fn fallback() {}
-    let one = Router::new().fallback(fallback.into_service());
-    let two = Router::new().fallback(fallback.into_service());
+    let one = Router::new().fallback(fallback);
+    let two = Router::new().fallback(fallback);
     TestClient::new(one.merge(two));
 }
 
-#[tokio::test]
-#[should_panic(expected = "Cannot nest `Router`s that has a fallback")]
-async fn nesting_router_with_fallbacks_panics() {
-    async fn fallback() {}
-    let one = Router::new().fallback(fallback.into_service());
-    let app = Router::new().nest("/", one);
-    TestClient::new(app);
+#[test]
+#[should_panic(expected = "Overlapping method route. Handler for `GET /foo/bar` already exists")]
+fn routes_with_overlapping_method_routes() {
+    async fn handler() {}
+    let _: Router = Router::new()
+        .route("/foo/bar", get(handler))
+        .route("/foo/bar", get(handler));
+}
+
+#[test]
+#[should_panic(expected = "Overlapping method route. Handler for `GET /foo/bar` already exists")]
+fn merging_with_overlapping_method_routes() {
+    async fn handler() {}
+    let app: Router = Router::new().route("/foo/bar", get(handler));
+    app.clone().merge(app);
 }
 
 #[tokio::test]
@@ -652,7 +557,7 @@ async fn head_content_length_through_hyper_server() {
 
 #[tokio::test]
 async fn head_content_length_through_hyper_server_that_hits_fallback() {
-    let app = Router::new().fallback((|| async { "foo" }).into_service());
+    let app = Router::new().fallback(|| async { "foo" });
 
     let client = TestClient::new(app);
 
@@ -698,6 +603,50 @@ async fn head_with_middleware_applied() {
 async fn routes_must_start_with_slash() {
     let app = Router::new().route(":foo", get(|| async {}));
     TestClient::new(app);
+}
+
+#[tokio::test]
+async fn body_limited_by_default() {
+    let app = Router::new()
+        .route("/bytes", post(|_: Bytes| async {}))
+        .route("/string", post(|_: String| async {}))
+        .route("/json", post(|_: Json<serde_json::Value>| async {}));
+
+    let client = TestClient::new(app);
+
+    for uri in ["/bytes", "/string", "/json"] {
+        println!("calling {}", uri);
+
+        let stream = futures_util::stream::repeat("a".repeat(1000)).map(Ok::<_, hyper::Error>);
+        let body = Body::wrap_stream(stream);
+
+        let res_future = client
+            .post(uri)
+            .header("content-type", "application/json")
+            .body(body)
+            .send();
+        let res = tokio::time::timeout(Duration::from_secs(3), res_future)
+            .await
+            .expect("never got response");
+
+        assert_eq!(res.status(), StatusCode::PAYLOAD_TOO_LARGE);
+    }
+}
+
+#[tokio::test]
+async fn disabling_the_default_limit() {
+    let app = Router::new()
+        .route("/", post(|_: Bytes| async {}))
+        .layer(DefaultBodyLimit::disable());
+
+    let client = TestClient::new(app);
+
+    // `DEFAULT_LIMIT` is 2mb so make a body larger than that
+    let body = Body::from("a".repeat(3_000_000));
+
+    let res = client.post("/").body(body).send().await;
+
+    assert_eq!(res.status(), StatusCode::OK);
 }
 
 #[tokio::test]
@@ -752,4 +701,71 @@ async fn limited_body_with_streaming_body() {
         .send()
         .await;
     assert_eq!(res.status(), StatusCode::PAYLOAD_TOO_LARGE);
+}
+
+#[tokio::test]
+async fn extract_state() {
+    #[derive(Clone)]
+    struct AppState {
+        value: i32,
+        inner: InnerState,
+    }
+
+    #[derive(Clone)]
+    struct InnerState {
+        value: i32,
+    }
+
+    impl FromRef<AppState> for InnerState {
+        fn from_ref(state: &AppState) -> Self {
+            state.inner.clone()
+        }
+    }
+
+    async fn handler(State(outer): State<AppState>, State(inner): State<InnerState>) {
+        assert_eq!(outer.value, 1);
+        assert_eq!(inner.value, 2);
+    }
+
+    let state = AppState {
+        value: 1,
+        inner: InnerState { value: 2 },
+    };
+
+    let app = Router::with_state(state).route("/", get(handler));
+    let client = TestClient::new(app);
+
+    let res = client.get("/").send().await;
+    assert_eq!(res.status(), StatusCode::OK);
+}
+
+#[tokio::test]
+async fn explicitly_set_state() {
+    let app = Router::with_state("...").route_service(
+        "/",
+        get(|State(state): State<&'static str>| async move { state }).with_state("foo"),
+    );
+
+    let client = TestClient::new(app);
+    let res = client.get("/").send().await;
+    assert_eq!(res.text().await, "foo");
+}
+
+#[tokio::test]
+async fn layer_response_into_response() {
+    fn map_response<B>(_res: Response<B>) -> Result<Response<B>, impl IntoResponse> {
+        let headers = [("x-foo", "bar")];
+        let status = StatusCode::IM_A_TEAPOT;
+        Err((headers, status))
+    }
+
+    let app = Router::new()
+        .route("/", get(|| async {}))
+        .layer(MapResponseLayer::new(map_response));
+
+    let client = TestClient::new(app);
+
+    let res = client.get("/").send().await;
+    assert_eq!(res.headers()["x-foo"], "bar");
+    assert_eq!(res.status(), StatusCode::IM_A_TEAPOT);
 }

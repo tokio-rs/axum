@@ -4,11 +4,12 @@
 
 use axum::{
     async_trait,
-    extract::{FromRequest, RequestParts},
+    extract::FromRequestParts,
     response::{IntoResponse, IntoResponseParts, Response, ResponseParts},
 };
 use http::{
     header::{COOKIE, SET_COOKIE},
+    request::Parts,
     HeaderMap,
 };
 use std::convert::Infallible;
@@ -23,10 +24,10 @@ pub use self::private::PrivateCookieJar;
 #[cfg(feature = "cookie-signed")]
 pub use self::signed::SignedCookieJar;
 
-pub use cookie_lib::{Cookie, Expiration, SameSite};
+pub use cookie::{Cookie, Expiration, SameSite};
 
 #[cfg(any(feature = "cookie-signed", feature = "cookie-private"))]
-pub use cookie_lib::Key;
+pub use cookie::Key;
 
 /// Extractor that grabs cookies from the request and manages the jar.
 ///
@@ -80,33 +81,27 @@ pub use cookie_lib::Key;
 /// let app = Router::new()
 ///     .route("/sessions", post(create_session))
 ///     .route("/me", get(me));
-/// # let app: Router<axum::body::Body> = app;
+/// # let app: Router = app;
 /// ```
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct CookieJar {
-    jar: cookie_lib::CookieJar,
+    jar: cookie::CookieJar,
 }
 
 #[async_trait]
-impl<B> FromRequest<B> for CookieJar
+impl<S> FromRequestParts<S> for CookieJar
 where
-    B: Send,
+    S: Send + Sync,
 {
     type Rejection = Infallible;
 
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-        let mut jar = cookie_lib::CookieJar::new();
-        for cookie in cookies_from_request(req) {
-            jar.add_original(cookie);
-        }
-        Ok(Self { jar })
+    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
+        Ok(Self::from_headers(&parts.headers))
     }
 }
 
-fn cookies_from_request<B>(
-    req: &mut RequestParts<B>,
-) -> impl Iterator<Item = Cookie<'static>> + '_ {
-    req.headers()
+fn cookies_from_request(headers: &HeaderMap) -> impl Iterator<Item = Cookie<'static>> + '_ {
+    headers
         .get_all(COOKIE)
         .into_iter()
         .filter_map(|value| value.to_str().ok())
@@ -115,6 +110,35 @@ fn cookies_from_request<B>(
 }
 
 impl CookieJar {
+    /// Create a new `CookieJar` from a map of request headers.
+    ///
+    /// The cookies in `headers` will be added to the jar.
+    ///
+    /// This is inteded to be used in middleware and other places where it might be difficult to
+    /// run extractors. Normally you should create `CookieJar`s through [`FromRequestParts`].
+    ///
+    /// [`FromRequestParts`]: axum::extract::FromRequestParts
+    pub fn from_headers(headers: &HeaderMap) -> Self {
+        let mut jar = cookie::CookieJar::new();
+        for cookie in cookies_from_request(headers) {
+            jar.add_original(cookie);
+        }
+        Self { jar }
+    }
+
+    /// Create a new empty `CookieJar`.
+    ///
+    /// This is inteded to be used in middleware and other places where it might be difficult to
+    /// run extractors. Normally you should create `CookieJar`s through [`FromRequestParts`].
+    ///
+    /// If you need a jar that contains the headers from a request use `impl From<&HeaderMap> for
+    /// CookieJar`.
+    ///
+    /// [`FromRequestParts`]: axum::extract::FromRequestParts
+    pub fn new() -> Self {
+        Self::default()
+    }
+
     /// Get a cookie from the jar.
     ///
     /// # Example
@@ -193,7 +217,7 @@ impl IntoResponse for CookieJar {
     }
 }
 
-fn set_cookies(jar: cookie_lib::CookieJar, headers: &mut HeaderMap) {
+fn set_cookies(jar: cookie::CookieJar, headers: &mut HeaderMap) {
     for cookie in jar.delta() {
         if let Ok(header_value) = cookie.encoded().to_string().parse() {
             headers.append(SET_COOKIE, header_value);
@@ -207,7 +231,7 @@ fn set_cookies(jar: cookie_lib::CookieJar, headers: &mut HeaderMap) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use axum::{body::Body, http::Request, routing::get, Extension, Router};
+    use axum::{body::Body, extract::FromRef, http::Request, routing::get, Router};
     use tower::ServiceExt;
 
     macro_rules! cookie_test {
@@ -226,12 +250,15 @@ mod tests {
                     jar.remove(Cookie::named("key"))
                 }
 
-                let app = Router::<Body>::new()
+                let state = AppState {
+                    key: Key::generate(),
+                    custom_key: CustomKey(Key::generate()),
+                };
+
+                let app = Router::<_, Body>::with_state(state)
                     .route("/set", get(set_cookie))
                     .route("/get", get(get_cookie))
-                    .route("/remove", get(remove_cookie))
-                    .layer(Extension(Key::generate()))
-                    .layer(Extension(CustomKey(Key::generate())));
+                    .route("/remove", get(remove_cookie));
 
                 let res = app
                     .clone()
@@ -280,6 +307,24 @@ mod tests {
     cookie_test!(private_cookies_with_custom_key, PrivateCookieJar<CustomKey>);
 
     #[derive(Clone)]
+    struct AppState {
+        key: Key,
+        custom_key: CustomKey,
+    }
+
+    impl FromRef<AppState> for Key {
+        fn from_ref(state: &AppState) -> Key {
+            state.key.clone()
+        }
+    }
+
+    impl FromRef<AppState> for CustomKey {
+        fn from_ref(state: &AppState) -> CustomKey {
+            state.custom_key.clone()
+        }
+    }
+
+    #[derive(Clone)]
     struct CustomKey(Key);
 
     impl From<CustomKey> for Key {
@@ -294,9 +339,12 @@ mod tests {
             format!("{:?}", jar.get("key"))
         }
 
-        let app = Router::<Body>::new()
-            .route("/get", get(get_cookie))
-            .layer(Extension(Key::generate()));
+        let state = AppState {
+            key: Key::generate(),
+            custom_key: CustomKey(Key::generate()),
+        };
+
+        let app = Router::<_, Body>::with_state(state).route("/get", get(get_cookie));
 
         let res = app
             .clone()

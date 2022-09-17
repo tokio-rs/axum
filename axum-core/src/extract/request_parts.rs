@@ -1,67 +1,58 @@
-use super::{rejection::*, FromRequest, RequestParts};
+use super::{
+    default_body_limit::DefaultBodyLimitDisabled, rejection::*, FromRequest, FromRequestParts,
+};
 use crate::BoxError;
 use async_trait::async_trait;
 use bytes::Bytes;
-use http::{Extensions, HeaderMap, Method, Request, Uri, Version};
+use http::{request::Parts, HeaderMap, Method, Request, Uri, Version};
 use std::convert::Infallible;
 
 #[async_trait]
-impl<B> FromRequest<B> for Request<B>
+impl<S, B> FromRequest<S, B> for Request<B>
 where
     B: Send,
+    S: Send + Sync,
 {
-    type Rejection = BodyAlreadyExtracted;
+    type Rejection = Infallible;
 
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-        let req = std::mem::replace(
-            req,
-            RequestParts {
-                method: req.method.clone(),
-                version: req.version,
-                uri: req.uri.clone(),
-                headers: HeaderMap::new(),
-                extensions: Extensions::default(),
-                body: None,
-            },
-        );
-
-        req.try_into_request()
+    async fn from_request(req: Request<B>, _: &S) -> Result<Self, Self::Rejection> {
+        Ok(req)
     }
 }
 
 #[async_trait]
-impl<B> FromRequest<B> for Method
+impl<S> FromRequestParts<S> for Method
 where
-    B: Send,
+    S: Send + Sync,
 {
     type Rejection = Infallible;
 
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-        Ok(req.method().clone())
+    async fn from_request_parts(parts: &mut Parts, _: &S) -> Result<Self, Self::Rejection> {
+        Ok(parts.method.clone())
     }
 }
 
 #[async_trait]
-impl<B> FromRequest<B> for Uri
+impl<S> FromRequestParts<S> for Uri
 where
-    B: Send,
+    S: Send + Sync,
 {
     type Rejection = Infallible;
 
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-        Ok(req.uri().clone())
+    async fn from_request_parts(parts: &mut Parts, _: &S) -> Result<Self, Self::Rejection> {
+        Ok(parts.uri.clone())
     }
 }
 
 #[async_trait]
-impl<B> FromRequest<B> for Version
+impl<S> FromRequestParts<S> for Version
 where
-    B: Send,
+    S: Send + Sync,
 {
     type Rejection = Infallible;
 
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-        Ok(req.version())
+    async fn from_request_parts(parts: &mut Parts, _: &S) -> Result<Self, Self::Rejection> {
+        Ok(parts.version)
     }
 }
 
@@ -71,94 +62,83 @@ where
 ///
 /// [`TypedHeader`]: https://docs.rs/axum/latest/axum/extract/struct.TypedHeader.html
 #[async_trait]
-impl<B> FromRequest<B> for HeaderMap
+impl<S> FromRequestParts<S> for HeaderMap
 where
-    B: Send,
+    S: Send + Sync,
 {
     type Rejection = Infallible;
 
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-        Ok(req.headers().clone())
+    async fn from_request_parts(parts: &mut Parts, _: &S) -> Result<Self, Self::Rejection> {
+        Ok(parts.headers.clone())
     }
 }
 
 #[async_trait]
-impl<B> FromRequest<B> for Bytes
+impl<S, B> FromRequest<S, B> for Bytes
 where
-    B: http_body::Body + Send,
+    B: http_body::Body + Send + 'static,
     B::Data: Send,
     B::Error: Into<BoxError>,
+    S: Send + Sync,
 {
     type Rejection = BytesRejection;
 
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-        let body = take_body(req)?;
+    async fn from_request(req: Request<B>, _: &S) -> Result<Self, Self::Rejection> {
+        // update docs in `axum-core/src/extract/default_body_limit.rs` and
+        // `axum/src/docs/extract.md` if this changes
+        const DEFAULT_LIMIT: usize = 2_097_152; // 2 mb
 
-        let bytes = crate::body::to_bytes(body)
-            .await
-            .map_err(FailedToBufferBody::from_err)?;
+        let bytes = if req.extensions().get::<DefaultBodyLimitDisabled>().is_some() {
+            crate::body::to_bytes(req.into_body())
+                .await
+                .map_err(FailedToBufferBody::from_err)?
+        } else {
+            let body = http_body::Limited::new(req.into_body(), DEFAULT_LIMIT);
+            crate::body::to_bytes(body)
+                .await
+                .map_err(FailedToBufferBody::from_err)?
+        };
 
         Ok(bytes)
     }
 }
 
 #[async_trait]
-impl<B> FromRequest<B> for String
+impl<S, B> FromRequest<S, B> for String
 where
-    B: http_body::Body + Send,
+    B: http_body::Body + Send + 'static,
     B::Data: Send,
     B::Error: Into<BoxError>,
+    S: Send + Sync,
 {
     type Rejection = StringRejection;
 
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-        let body = take_body(req)?;
-
-        let bytes = crate::body::to_bytes(body)
+    async fn from_request(req: Request<B>, state: &S) -> Result<Self, Self::Rejection> {
+        let bytes = Bytes::from_request(req, state)
             .await
-            .map_err(FailedToBufferBody::from_err)?
-            .to_vec();
+            .map_err(|err| match err {
+                BytesRejection::FailedToBufferBody(inner) => {
+                    StringRejection::FailedToBufferBody(inner)
+                }
+            })?;
 
-        let string = String::from_utf8(bytes).map_err(InvalidUtf8::from_err)?;
+        let string = std::str::from_utf8(&bytes)
+            .map_err(InvalidUtf8::from_err)?
+            .to_owned();
 
         Ok(string)
     }
 }
 
 #[async_trait]
-impl<B> FromRequest<B> for http::request::Parts
+impl<S, B> FromRequest<S, B> for Parts
 where
-    B: Send,
+    B: Send + 'static,
+    S: Send + Sync,
 {
     type Rejection = Infallible;
 
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-        let method = unwrap_infallible(Method::from_request(req).await);
-        let uri = unwrap_infallible(Uri::from_request(req).await);
-        let version = unwrap_infallible(Version::from_request(req).await);
-        let headers = unwrap_infallible(HeaderMap::from_request(req).await);
-        let extensions = std::mem::take(req.extensions_mut());
-
-        let mut temp_request = Request::new(());
-        *temp_request.method_mut() = method;
-        *temp_request.uri_mut() = uri;
-        *temp_request.version_mut() = version;
-        *temp_request.headers_mut() = headers;
-        *temp_request.extensions_mut() = extensions;
-
-        let (parts, _) = temp_request.into_parts();
-
-        Ok(parts)
+    async fn from_request(req: Request<B>, _: &S) -> Result<Self, Self::Rejection> {
+        Ok(req.into_parts().0)
     }
-}
-
-fn unwrap_infallible<T>(result: Result<T, Infallible>) -> T {
-    match result {
-        Ok(value) => value,
-        Err(err) => match err {},
-    }
-}
-
-pub(crate) fn take_body<B>(req: &mut RequestParts<B>) -> Result<B, BodyAlreadyExtracted> {
-    req.take_body().ok_or(BodyAlreadyExtracted)
 }

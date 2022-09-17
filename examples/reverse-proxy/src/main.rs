@@ -8,13 +8,13 @@
 //! ```
 
 use axum::{
-    extract::Extension,
+    extract::State,
     http::{uri::Uri, Request, Response},
     routing::get,
     Router,
 };
 use hyper::{client::HttpConnector, Body};
-use std::{convert::TryFrom, net::SocketAddr};
+use std::net::SocketAddr;
 
 type Client = hyper::client::Client<HttpConnector, Body>;
 
@@ -24,9 +24,7 @@ async fn main() {
 
     let client = Client::new();
 
-    let app = Router::new()
-        .route("/", get(handler))
-        .layer(Extension(client));
+    let app = Router::with_state(client).route("/", get(handler));
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 4000));
     println!("reverse proxy listening on {}", addr);
@@ -36,12 +34,7 @@ async fn main() {
         .unwrap();
 }
 
-async fn handler(
-    Extension(client): Extension<Client>,
-    // NOTE: Make sure to put the request extractor last because once the request
-    // is extracted, extensions can't be extracted anymore.
-    mut req: Request<Body>,
-) -> Response<Body> {
+async fn handler(State(client): State<Client>, mut req: Request<Body>) -> Response<Body> {
     let path = req.uri().path();
     let path_query = req
         .uri()

@@ -36,6 +36,37 @@
 //! # };
 //! ```
 //!
+//! # Passing data and/or state to an `on_upgrade` callback
+//!
+//! ```
+//! use axum::{
+//!     extract::ws::{WebSocketUpgrade, WebSocket},
+//!     response::Response,
+//!     routing::get,
+//!     Extension, Router,
+//! };
+//!
+//! #[derive(Clone)]
+//! struct State {
+//!     // ...
+//! }
+//!
+//! async fn handler(ws: WebSocketUpgrade, Extension(state): Extension<State>) -> Response {
+//!     ws.on_upgrade(|socket| handle_socket(socket, state))
+//! }
+//!
+//! async fn handle_socket(socket: WebSocket, state: State) {
+//!     // ...
+//! }
+//!
+//! let app = Router::new()
+//!     .route("/ws", get(handler))
+//!     .layer(Extension(State { /* ... */ }));
+//! # async {
+//! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+//! # };
+//! ```
+//!
 //! # Read and write concurrently
 //!
 //! If you need to read and write concurrently from a [`WebSocket`] you can use
@@ -66,7 +97,7 @@
 //! [`StreamExt::split`]: https://docs.rs/futures/0.3.17/futures/stream/trait.StreamExt.html#method.split
 
 use self::rejection::*;
-use super::{FromRequest, RequestParts};
+use super::FromRequestParts;
 use crate::{
     body::{self, Bytes},
     response::Response,
@@ -78,7 +109,8 @@ use futures_util::{
     stream::{Stream, StreamExt},
 };
 use http::{
-    header::{self, HeaderName, HeaderValue},
+    header::{self, HeaderMap, HeaderName, HeaderValue},
+    request::Parts,
     Method, StatusCode,
 };
 use hyper::upgrade::{OnUpgrade, Upgraded};
@@ -246,39 +278,40 @@ impl WebSocketUpgrade {
 }
 
 #[async_trait]
-impl<B> FromRequest<B> for WebSocketUpgrade
+impl<S> FromRequestParts<S> for WebSocketUpgrade
 where
-    B: Send,
+    S: Send + Sync,
 {
     type Rejection = WebSocketUpgradeRejection;
 
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-        if req.method() != Method::GET {
+    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
+        if parts.method != Method::GET {
             return Err(MethodNotGet.into());
         }
 
-        if !header_contains(req, header::CONNECTION, "upgrade") {
+        if !header_contains(&parts.headers, header::CONNECTION, "upgrade") {
             return Err(InvalidConnectionHeader.into());
         }
 
-        if !header_eq(req, header::UPGRADE, "websocket") {
+        if !header_eq(&parts.headers, header::UPGRADE, "websocket") {
             return Err(InvalidUpgradeHeader.into());
         }
 
-        if !header_eq(req, header::SEC_WEBSOCKET_VERSION, "13") {
+        if !header_eq(&parts.headers, header::SEC_WEBSOCKET_VERSION, "13") {
             return Err(InvalidWebSocketVersionHeader.into());
         }
 
-        let sec_websocket_key =
-            if let Some(key) = req.headers_mut().remove(header::SEC_WEBSOCKET_KEY) {
-                key
-            } else {
-                return Err(WebSocketKeyHeaderMissing.into());
-            };
+        let sec_websocket_key = parts
+            .headers
+            .remove(header::SEC_WEBSOCKET_KEY)
+            .ok_or(WebSocketKeyHeaderMissing)?;
 
-        let on_upgrade = req.extensions_mut().remove::<OnUpgrade>().unwrap();
+        let on_upgrade = parts
+            .extensions
+            .remove::<OnUpgrade>()
+            .ok_or(ConnectionNotUpgradable)?;
 
-        let sec_websocket_protocol = req.headers().get(header::SEC_WEBSOCKET_PROTOCOL).cloned();
+        let sec_websocket_protocol = parts.headers.get(header::SEC_WEBSOCKET_PROTOCOL).cloned();
 
         Ok(Self {
             config: Default::default(),
@@ -290,16 +323,16 @@ where
     }
 }
 
-fn header_eq<B>(req: &RequestParts<B>, key: HeaderName, value: &'static str) -> bool {
-    if let Some(header) = req.headers().get(&key) {
+fn header_eq(headers: &HeaderMap, key: HeaderName, value: &'static str) -> bool {
+    if let Some(header) = headers.get(&key) {
         header.as_bytes().eq_ignore_ascii_case(value.as_bytes())
     } else {
         false
     }
 }
 
-fn header_contains<B>(req: &RequestParts<B>, key: HeaderName, value: &'static str) -> bool {
-    let header = if let Some(header) = req.headers().get(&key) {
+fn header_contains(headers: &HeaderMap, key: HeaderName, value: &'static str) -> bool {
+    let header = if let Some(header) = headers.get(&key) {
         header
     } else {
         return false;
@@ -566,6 +599,20 @@ pub mod rejection {
         pub struct WebSocketKeyHeaderMissing;
     }
 
+    define_rejection! {
+        #[status = UPGRADE_REQUIRED]
+        #[body = "WebSocket request couldn't be upgraded since no upgrade state was present"]
+        /// Rejection type for [`WebSocketUpgrade`](super::WebSocketUpgrade).
+        ///
+        /// This rejection is returned if the connection cannot be upgraded for example if the
+        /// request is HTTP/1.0.
+        ///
+        /// See [MDN] for more details about connection upgrades.
+        ///
+        /// [MDN]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Upgrade
+        pub struct ConnectionNotUpgradable;
+    }
+
     composite_rejection! {
         /// Rejection used for [`WebSocketUpgrade`](super::WebSocketUpgrade).
         ///
@@ -577,6 +624,7 @@ pub mod rejection {
             InvalidUpgradeHeader,
             InvalidWebSocketVersionHeader,
             WebSocketKeyHeaderMissing,
+            ConnectionNotUpgradable,
         }
     }
 }
@@ -641,4 +689,38 @@ pub mod close_code {
     /// IP (when multiple targets exist), or reconnect to the same IP when a user has performed an
     /// action.
     pub const AGAIN: u16 = 1013;
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{body::Body, routing::get};
+    use http::{Request, Version};
+    use tower::ServiceExt;
+
+    #[tokio::test]
+    async fn rejects_http_1_0_requests() {
+        let svc = get(|ws: Result<WebSocketUpgrade, WebSocketUpgradeRejection>| {
+            let rejection = ws.unwrap_err();
+            assert!(matches!(
+                rejection,
+                WebSocketUpgradeRejection::ConnectionNotUpgradable(_)
+            ));
+            std::future::ready(())
+        });
+
+        let req = Request::builder()
+            .version(Version::HTTP_10)
+            .method(Method::GET)
+            .header("upgrade", "websocket")
+            .header("connection", "Upgrade")
+            .header("sec-websocket-key", "6D69KGBOr4Re+Nj6zx9aQA==")
+            .header("sec-websocket-version", "13")
+            .body(Body::empty())
+            .unwrap();
+
+        let res = svc.oneshot(req).await.unwrap();
+
+        assert_eq!(res.status(), StatusCode::OK);
+    }
 }

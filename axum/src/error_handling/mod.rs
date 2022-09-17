@@ -1,11 +1,9 @@
 #![doc = include_str!("../docs/error_handling.md")]
 
 use crate::{
-    body::{boxed, Bytes, HttpBody},
-    extract::{FromRequest, RequestParts},
-    http::{Request, StatusCode},
+    extract::FromRequestParts,
+    http::Request,
     response::{IntoResponse, Response},
-    BoxError,
 };
 use std::{
     convert::Infallible,
@@ -114,17 +112,16 @@ where
     }
 }
 
-impl<S, F, ReqBody, ResBody, Fut, Res> Service<Request<ReqBody>> for HandleError<S, F, ()>
+impl<S, F, B, Fut, Res> Service<Request<B>> for HandleError<S, F, ()>
 where
-    S: Service<Request<ReqBody>, Response = Response<ResBody>> + Clone + Send + 'static,
+    S: Service<Request<B>> + Clone + Send + 'static,
+    S::Response: IntoResponse + Send,
     S::Error: Send,
     S::Future: Send,
     F: FnOnce(S::Error) -> Fut + Clone + Send + 'static,
     Fut: Future<Output = Res> + Send,
     Res: IntoResponse,
-    ReqBody: Send + 'static,
-    ResBody: HttpBody<Data = Bytes> + Send + 'static,
-    ResBody::Error: Into<BoxError>,
+    B: Send + 'static,
 {
     type Response = Response;
     type Error = Infallible;
@@ -134,7 +131,7 @@ where
         Poll::Ready(Ok(()))
     }
 
-    fn call(&mut self, req: Request<ReqBody>) -> Self::Future {
+    fn call(&mut self, req: Request<B>) -> Self::Future {
         let f = self.f.clone();
 
         let clone = self.inner.clone();
@@ -142,7 +139,7 @@ where
 
         let future = Box::pin(async move {
             match inner.oneshot(req).await {
-                Ok(res) => Ok(res.map(boxed)),
+                Ok(res) => Ok(res.into_response()),
                 Err(err) => Ok(f(err).await.into_response()),
             }
         });
@@ -154,19 +151,18 @@ where
 #[allow(unused_macros)]
 macro_rules! impl_service {
     ( $($ty:ident),* $(,)? ) => {
-        impl<S, F, ReqBody, ResBody, Res, Fut, $($ty,)*> Service<Request<ReqBody>>
+        impl<S, F, B, Res, Fut, $($ty,)*> Service<Request<B>>
             for HandleError<S, F, ($($ty,)*)>
         where
-            S: Service<Request<ReqBody>, Response = Response<ResBody>> + Clone + Send + 'static,
+            S: Service<Request<B>> + Clone + Send + 'static,
+            S::Response: IntoResponse + Send,
             S::Error: Send,
             S::Future: Send,
             F: FnOnce($($ty),*, S::Error) -> Fut + Clone + Send + 'static,
             Fut: Future<Output = Res> + Send,
             Res: IntoResponse,
-            $( $ty: FromRequest<ReqBody> + Send,)*
-            ReqBody: Send + 'static,
-            ResBody: HttpBody<Data = Bytes> + Send + 'static,
-            ResBody::Error: Into<BoxError>,
+            $( $ty: FromRequestParts<()> + Send,)*
+            B: Send + 'static,
         {
             type Response = Response;
             type Error = Infallible;
@@ -178,32 +174,27 @@ macro_rules! impl_service {
             }
 
             #[allow(non_snake_case)]
-            fn call(&mut self, req: Request<ReqBody>) -> Self::Future {
+            fn call(&mut self, req: Request<B>) -> Self::Future {
                 let f = self.f.clone();
 
                 let clone = self.inner.clone();
                 let inner = std::mem::replace(&mut self.inner, clone);
 
                 let future = Box::pin(async move {
-                    let mut req = RequestParts::new(req);
+                    let (mut parts, body) = req.into_parts();
 
                     $(
-                        let $ty = match $ty::from_request(&mut req).await {
+                        let $ty = match $ty::from_request_parts(&mut parts, &()).await {
                             Ok(value) => value,
-                            Err(rejection) => return Ok(rejection.into_response().map(boxed)),
+                            Err(rejection) => return Ok(rejection.into_response()),
                         };
                     )*
 
-                    let req = match req.try_into_request() {
-                        Ok(req) => req,
-                        Err(err) => {
-                            return Ok((StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response());
-                        }
-                    };
+                    let req = Request::from_parts(parts, body);
 
                     match inner.oneshot(req).await {
-                        Ok(res) => Ok(res.map(boxed)),
-                        Err(err) => Ok(f($($ty),*, err).await.into_response().map(boxed)),
+                        Ok(res) => Ok(res.into_response()),
+                        Err(err) => Ok(f($($ty),*, err).await.into_response()),
                     }
                 });
 

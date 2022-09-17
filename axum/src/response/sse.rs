@@ -175,12 +175,14 @@ impl Event {
     ///
     /// This corresponds to [`MessageEvent`'s data field].
     ///
-    /// [`MessageEvent`'s data field]: https://developer.mozilla.org/en-US/docs/Web/API/MessageEvent/data
+    /// Note that events with an empty data field will be ignored by the browser.
     ///
     /// # Panics
     ///
     /// - Panics if `data` contains any carriage returns, as they cannot be transmitted over SSE.
     /// - Panics if `data` or `json_data` have already been called.
+    ///
+    /// [`MessageEvent`'s data field]: https://developer.mozilla.org/en-US/docs/Web/API/MessageEvent/data
     pub fn data<T>(mut self, data: T) -> Event
     where
         T: AsRef<str>,
@@ -202,11 +204,11 @@ impl Event {
     ///
     /// This corresponds to [`MessageEvent`'s data field].
     ///
-    /// [`MessageEvent`'s data field]: https://developer.mozilla.org/en-US/docs/Web/API/MessageEvent/data
-    ///
     /// # Panics
     ///
     /// Panics if `data` or `json_data` have already been called.
+    ///
+    /// [`MessageEvent`'s data field]: https://developer.mozilla.org/en-US/docs/Web/API/MessageEvent/data
     #[cfg(feature = "json")]
     pub fn json_data<T>(mut self, data: T) -> serde_json::Result<Event>
     where

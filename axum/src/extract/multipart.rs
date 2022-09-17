@@ -2,12 +2,13 @@
 //!
 //! See [`Multipart`] for more details.
 
-use super::{rejection::*, BodyStream, FromRequest, RequestParts};
+use super::{BodyStream, FromRequest};
 use crate::body::{Bytes, HttpBody};
 use crate::BoxError;
 use async_trait::async_trait;
 use futures_util::stream::Stream;
 use http::header::{HeaderMap, CONTENT_TYPE};
+use http::Request;
 use std::{
     fmt,
     pin::Pin,
@@ -15,6 +16,12 @@ use std::{
 };
 
 /// Extractor that parses `multipart/form-data` requests (commonly used with file uploads).
+///
+/// Since extracting multipart form data from the request requires consuming the body, the
+/// `Multipart` extractor must be *last* if there are multiple extractors in a handler.
+/// See ["the order of extractors"][order-of-extractors]
+///
+/// [order-of-extractors]: crate::extract#the-order-of-extractors
 ///
 /// # Example
 ///
@@ -50,17 +57,21 @@ pub struct Multipart {
 }
 
 #[async_trait]
-impl<B> FromRequest<B> for Multipart
+impl<S, B> FromRequest<S, B> for Multipart
 where
-    B: HttpBody<Data = Bytes> + Default + Unpin + Send + 'static,
+    B: HttpBody + Send + 'static,
+    B::Data: Into<Bytes>,
     B::Error: Into<BoxError>,
+    S: Send + Sync,
 {
     type Rejection = MultipartRejection;
 
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-        let stream = BodyStream::from_request(req).await?;
-        let headers = req.headers();
-        let boundary = parse_boundary(headers).ok_or(InvalidBoundary)?;
+    async fn from_request(req: Request<B>, state: &S) -> Result<Self, Self::Rejection> {
+        let boundary = parse_boundary(req.headers()).ok_or(InvalidBoundary)?;
+        let stream = match BodyStream::from_request(req, state).await {
+            Ok(stream) => stream,
+            Err(err) => match err {},
+        };
         let multipart = multer::Multipart::new(stream, boundary);
         Ok(Self { inner: multipart })
     }
@@ -179,7 +190,7 @@ impl<'a> Field<'a> {
     /// }
     ///
     /// let app = Router::new().route("/upload", post(upload));
-    /// # let _: Router<axum::body::Body> = app;
+    /// # let _: Router = app;
     /// ```
     pub async fn chunk(&mut self) -> Result<Option<Bytes>, MultipartError> {
         self.inner
@@ -223,7 +234,6 @@ composite_rejection! {
     ///
     /// Contains one variant for each way the [`Multipart`] extractor can fail.
     pub enum MultipartRejection {
-        BodyAlreadyExtracted,
         InvalidBoundary,
     }
 }
@@ -239,7 +249,7 @@ define_rejection! {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{response::IntoResponse, routing::post, test_helpers::*, Router};
+    use crate::{body::Body, response::IntoResponse, routing::post, test_helpers::*, Router};
 
     #[tokio::test]
     async fn content_type_with_encoding() {
@@ -270,5 +280,11 @@ mod tests {
         );
 
         client.post("/").multipart(form).send().await;
+    }
+
+    // No need for this to be a #[test], we just want to make sure it compiles
+    fn _multipart_from_request_limited() {
+        async fn handler(_: Multipart) {}
+        let _app: Router<(), http_body::Limited<Body>> = Router::new().route("/", post(handler));
     }
 }

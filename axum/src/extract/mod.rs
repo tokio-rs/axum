@@ -1,11 +1,9 @@
 #![doc = include_str!("../docs/extract.md")]
 
-use http::header;
-use rejection::*;
+use http::header::{self, HeaderMap};
 
 #[cfg(feature = "tokio")]
 pub mod connect_info;
-pub mod extractor_middleware;
 pub mod path;
 pub mod rejection;
 
@@ -16,19 +14,20 @@ mod content_length_limit;
 mod host;
 mod raw_query;
 mod request_parts;
+mod state;
 
 #[doc(inline)]
-pub use axum_core::extract::{FromRequest, RequestParts};
+pub use axum_core::extract::{DefaultBodyLimit, FromRef, FromRequest, FromRequestParts};
 
 #[doc(inline)]
 #[allow(deprecated)]
 pub use self::{
     content_length_limit::ContentLengthLimit,
-    extractor_middleware::extractor_middleware,
     host::Host,
     path::Path,
     raw_query::RawQuery,
     request_parts::{BodyStream, RawBody},
+    state::State,
 };
 
 #[doc(inline)]
@@ -43,11 +42,8 @@ pub use crate::Json;
 pub use crate::Extension;
 
 #[cfg(feature = "form")]
-mod form;
-
-#[cfg(feature = "form")]
-#[doc(inline)]
-pub use self::form::Form;
+#[doc(no_inline)]
+pub use crate::form::Form;
 
 #[cfg(feature = "matched-path")]
 mod matched_path;
@@ -82,16 +78,9 @@ pub use self::ws::WebSocketUpgrade;
 #[doc(no_inline)]
 pub use crate::TypedHeader;
 
-pub(crate) fn take_body<B>(req: &mut RequestParts<B>) -> Result<B, BodyAlreadyExtracted> {
-    req.take_body().ok_or_else(BodyAlreadyExtracted::default)
-}
-
 // this is duplicated in `axum-extra/src/extract/form.rs`
-pub(super) fn has_content_type<B>(
-    req: &RequestParts<B>,
-    expected_content_type: &mime::Mime,
-) -> bool {
-    let content_type = if let Some(content_type) = req.headers().get(header::CONTENT_TYPE) {
+pub(super) fn has_content_type(headers: &HeaderMap, expected_content_type: &mime::Mime) -> bool {
+    let content_type = if let Some(content_type) = headers.get(header::CONTENT_TYPE) {
         content_type
     } else {
         return false;

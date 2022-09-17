@@ -11,7 +11,7 @@ use http_body::{
 };
 use std::{
     borrow::Cow,
-    convert::{Infallible, TryInto},
+    convert::Infallible,
     fmt,
     pin::Pin,
     task::{Context, Poll},

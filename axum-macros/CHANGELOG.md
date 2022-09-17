@@ -7,7 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- None.
+- None
+
+# 0.3.0-rc.1 (23. August, 2022)
+
+- **change:** axum-macro's MSRV is now 1.60 ([#1239])
+- **added:** Support using a different rejection for `#[derive(FromRequest)]`
+  with `#[from_request(rejection(MyRejection))]` ([#1256])
+- **breaking:** `#[derive(FromRequest)]` will no longer generate a rejection
+  enum but instead generate `type Rejection = axum::response::Response`. Use the
+  new `#[from_request(rejection(MyRejection))]` attribute to change this.
+  The `rejection_derive` attribute has also been removed ([#1272])
+- **added:** Add `#[derive(FromRequestParts)]` for deriving an implementation of
+  `FromRequestParts`, similarly to `#[derive(FromRequest)]` ([#1305])
+
+[#1239]: https://github.com/tokio-rs/axum/pull/1239
+[#1256]: https://github.com/tokio-rs/axum/pull/1256
+[#1272]: https://github.com/tokio-rs/axum/pull/1272
+[#1305]: https://github.com/tokio-rs/axum/pull/1305
+
+# 0.2.3 (27. June, 2022)
+
+- **change:** axum-macros's MSRV is now 1.56 ([#1098])
+- **fixed:** Silence "unnecessary use of `to_string`" lint for `#[derive(TypedPath)]` ([#1117])
+
+[#1098]: https://github.com/tokio-rs/axum/pull/1098
+[#1117]: https://github.com/tokio-rs/axum/pull/1117
 
 # 0.2.2 (18. May, 2022)
 

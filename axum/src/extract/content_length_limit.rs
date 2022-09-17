@@ -1,13 +1,22 @@
-use super::{rejection::*, FromRequest, RequestParts};
+use super::{rejection::*, FromRequest};
 use async_trait::async_trait;
-use axum_core::response::IntoResponse;
-use http::Method;
+use axum_core::{extract::FromRequestParts, response::IntoResponse};
+use http::{request::Parts, Method, Request};
 use std::ops::Deref;
 
 /// Extractor that will reject requests with a body larger than some size.
 ///
 /// `GET`, `HEAD`, and `OPTIONS` requests are rejected if they have a `Content-Length` header,
 /// otherwise they're accepted without the body being checked.
+///
+/// Note: `ContentLengthLimit` can wrap types that extract the body (for example, [`Form`] or [`Json`])
+/// if that is the case, the inner type will consume the request's body, which means the
+/// `ContentLengthLimit` must come *last* if the handler uses several extractors. See
+/// ["the order of extractors"][order-of-extractors]
+///
+/// [order-of-extractors]: crate::extract#the-order-of-extractors
+/// [`Form`]: crate::form::Form
+/// [`Json`]: crate::json::Json
 ///
 /// # Example
 ///
@@ -36,51 +45,80 @@ use std::ops::Deref;
 pub struct ContentLengthLimit<T, const N: u64>(pub T);
 
 #[async_trait]
-impl<T, B, const N: u64> FromRequest<B> for ContentLengthLimit<T, N>
+impl<T, S, B, const N: u64> FromRequest<S, B> for ContentLengthLimit<T, N>
 where
-    T: FromRequest<B>,
+    T: FromRequest<S, B>,
     T::Rejection: IntoResponse,
-    B: Send,
+    B: Send + 'static,
+    S: Send + Sync,
 {
     type Rejection = ContentLengthLimitRejection<T::Rejection>;
 
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-        let content_length = req
-            .headers()
-            .get(http::header::CONTENT_LENGTH)
-            .and_then(|value| value.to_str().ok()?.parse::<u64>().ok());
+    async fn from_request(req: Request<B>, state: &S) -> Result<Self, Self::Rejection> {
+        let (parts, body) = req.into_parts();
+        validate::<_, N>(&parts)?;
 
-        match (content_length, req.method()) {
-            (content_length, &(Method::GET | Method::HEAD | Method::OPTIONS)) => {
-                if content_length.is_some() {
-                    return Err(ContentLengthLimitRejection::ContentLengthNotAllowed(
-                        ContentLengthNotAllowed,
-                    ));
-                } else if req
-                    .headers()
-                    .get(http::header::TRANSFER_ENCODING)
-                    .map_or(false, |value| value.as_bytes() == b"chunked")
-                {
-                    return Err(ContentLengthLimitRejection::LengthRequired(LengthRequired));
-                }
-            }
-            (Some(content_length), _) if content_length > N => {
-                return Err(ContentLengthLimitRejection::PayloadTooLarge(
-                    PayloadTooLarge,
-                ));
-            }
-            (None, _) => {
-                return Err(ContentLengthLimitRejection::LengthRequired(LengthRequired));
-            }
-            _ => {}
-        }
-
-        let value = T::from_request(req)
+        let req = Request::from_parts(parts, body);
+        let value = T::from_request(req, state)
             .await
             .map_err(ContentLengthLimitRejection::Inner)?;
 
         Ok(Self(value))
     }
+}
+
+#[async_trait]
+impl<T, S, const N: u64> FromRequestParts<S> for ContentLengthLimit<T, N>
+where
+    T: FromRequestParts<S>,
+    T::Rejection: IntoResponse,
+    S: Send + Sync,
+{
+    type Rejection = ContentLengthLimitRejection<T::Rejection>;
+
+    async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
+        validate::<_, N>(parts)?;
+
+        let value = T::from_request_parts(parts, state)
+            .await
+            .map_err(ContentLengthLimitRejection::Inner)?;
+
+        Ok(Self(value))
+    }
+}
+
+fn validate<E, const N: u64>(parts: &Parts) -> Result<(), ContentLengthLimitRejection<E>> {
+    let content_length = parts
+        .headers
+        .get(http::header::CONTENT_LENGTH)
+        .and_then(|value| value.to_str().ok()?.parse::<u64>().ok());
+
+    match (content_length, &parts.method) {
+        (content_length, &(Method::GET | Method::HEAD | Method::OPTIONS)) => {
+            if content_length.is_some() {
+                return Err(ContentLengthLimitRejection::ContentLengthNotAllowed(
+                    ContentLengthNotAllowed,
+                ));
+            } else if parts
+                .headers
+                .get(http::header::TRANSFER_ENCODING)
+                .map_or(false, |value| value.as_bytes() == b"chunked")
+            {
+                return Err(ContentLengthLimitRejection::LengthRequired(LengthRequired));
+            }
+        }
+        (Some(content_length), _) if content_length > N => {
+            return Err(ContentLengthLimitRejection::PayloadTooLarge(
+                PayloadTooLarge,
+            ));
+        }
+        (None, _) => {
+            return Err(ContentLengthLimitRejection::LengthRequired(LengthRequired));
+        }
+        _ => {}
+    }
+
+    Ok(())
 }
 
 impl<T, const N: u64> Deref for ContentLengthLimit<T, N> {

@@ -1,6 +1,5 @@
 use axum_core::response::{IntoResponse, Response};
 use http::{header::LOCATION, HeaderValue, StatusCode};
-use std::convert::TryFrom;
 
 /// Response that redirects the request to another location.
 ///
@@ -20,6 +19,7 @@ use std::convert::TryFrom;
 /// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 /// # };
 /// ```
+#[must_use = "needs to be returned from a handler or otherwise turned into a Response to be useful"]
 #[derive(Debug, Clone)]
 pub struct Redirect {
     status_code: StatusCode,

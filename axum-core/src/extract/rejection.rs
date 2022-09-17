@@ -1,35 +1,6 @@
 //! Rejection response types.
 
-use crate::{
-    response::{IntoResponse, Response},
-    BoxError,
-};
-use http::StatusCode;
-use std::fmt;
-
-/// Rejection type used if you try and extract the request body more than
-/// once.
-#[derive(Debug, Default)]
-#[non_exhaustive]
-pub struct BodyAlreadyExtracted;
-
-impl BodyAlreadyExtracted {
-    const BODY: &'static str = "Cannot have two request body extractors for a single handler";
-}
-
-impl IntoResponse for BodyAlreadyExtracted {
-    fn into_response(self) -> Response {
-        (StatusCode::INTERNAL_SERVER_ERROR, Self::BODY).into_response()
-    }
-}
-
-impl fmt::Display for BodyAlreadyExtracted {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", Self::BODY)
-    }
-}
-
-impl std::error::Error for BodyAlreadyExtracted {}
+use crate::BoxError;
 
 composite_rejection! {
     /// Rejection type for extractors that buffer the request body. Used if the
@@ -85,7 +56,6 @@ composite_rejection! {
     /// Contains one variant for each way the [`Bytes`](bytes::Bytes) extractor
     /// can fail.
     pub enum BytesRejection {
-        BodyAlreadyExtracted,
         FailedToBufferBody,
     }
 }
@@ -95,7 +65,6 @@ composite_rejection! {
     ///
     /// Contains one variant for each way the [`String`] extractor can fail.
     pub enum StringRejection {
-        BodyAlreadyExtracted,
         FailedToBufferBody,
         InvalidUtf8,
     }

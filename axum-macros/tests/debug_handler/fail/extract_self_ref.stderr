@@ -1,5 +1,5 @@
 error: Handlers must only take owned values
-  --> tests/debug_handler/fail/extract_self_ref.rs:23:22
+  --> tests/debug_handler/fail/extract_self_ref.rs:25:22
    |
-23 |     async fn handler(&self) {}
+25 |     async fn handler(&self) {}
    |                      ^^^^^

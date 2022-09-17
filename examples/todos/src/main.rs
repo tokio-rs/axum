@@ -15,7 +15,7 @@
 
 use axum::{
     error_handling::HandleErrorLayer,
-    extract::{Extension, Path, Query},
+    extract::{Path, Query, State},
     http::StatusCode,
     response::IntoResponse,
     routing::{get, patch},
@@ -46,7 +46,7 @@ async fn main() {
     let db = Db::default();
 
     // Compose the routes
-    let app = Router::new()
+    let app = Router::with_state(db)
         .route("/todos", get(todos_index).post(todos_create))
         .route("/todos/:id", patch(todos_update).delete(todos_delete))
         // Add middleware to all routes
@@ -64,7 +64,6 @@ async fn main() {
                 }))
                 .timeout(Duration::from_secs(10))
                 .layer(TraceLayer::new_for_http())
-                .layer(Extension(db))
                 .into_inner(),
         );
 
@@ -85,7 +84,7 @@ pub struct Pagination {
 
 async fn todos_index(
     pagination: Option<Query<Pagination>>,
-    Extension(db): Extension<Db>,
+    State(db): State<Db>,
 ) -> impl IntoResponse {
     let todos = db.read().unwrap();
 
@@ -106,10 +105,7 @@ struct CreateTodo {
     text: String,
 }
 
-async fn todos_create(
-    Json(input): Json<CreateTodo>,
-    Extension(db): Extension<Db>,
-) -> impl IntoResponse {
+async fn todos_create(State(db): State<Db>, Json(input): Json<CreateTodo>) -> impl IntoResponse {
     let todo = Todo {
         id: Uuid::new_v4(),
         text: input.text,
@@ -129,8 +125,8 @@ struct UpdateTodo {
 
 async fn todos_update(
     Path(id): Path<Uuid>,
+    State(db): State<Db>,
     Json(input): Json<UpdateTodo>,
-    Extension(db): Extension<Db>,
 ) -> Result<impl IntoResponse, StatusCode> {
     let mut todo = db
         .read()
@@ -152,7 +148,7 @@ async fn todos_update(
     Ok(Json(todo))
 }
 
-async fn todos_delete(Path(id): Path<Uuid>, Extension(db): Extension<Db>) -> impl IntoResponse {
+async fn todos_delete(Path(id): Path<Uuid>, State(db): State<Db>) -> impl IntoResponse {
     if db.write().unwrap().remove(&id).is_some() {
         StatusCode::NO_CONTENT
     } else {

@@ -1,8 +1,6 @@
 use crate::{
-    body::{Bytes, HttpBody},
-    extract::{FromRequest, RequestParts},
+    extract::FromRequestParts,
     response::{IntoResponse, Response},
-    BoxError,
 };
 use futures_util::{future::BoxFuture, ready};
 use http::Request;
@@ -35,27 +33,27 @@ use tower_service::Service;
 ///
 /// ```rust
 /// use axum::{
-///     extract::{FromRequest, RequestParts},
+///     extract::FromRequestParts,
 ///     middleware::from_extractor,
 ///     routing::{get, post},
 ///     Router,
+///     http::{header, StatusCode, request::Parts},
 /// };
-/// use http::{header, StatusCode};
 /// use async_trait::async_trait;
 ///
 /// // An extractor that performs authorization.
 /// struct RequireAuth;
 ///
 /// #[async_trait]
-/// impl<B> FromRequest<B> for RequireAuth
+/// impl<S> FromRequestParts<S> for RequireAuth
 /// where
-///     B: Send,
+///     S: Send + Sync,
 /// {
 ///     type Rejection = StatusCode;
 ///
-///     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-///         let auth_header = req
-///             .headers()
+///     async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
+///         let auth_header = parts
+///             .headers
 ///             .get(header::AUTHORIZATION)
 ///             .and_then(|value| value.to_str().ok());
 ///
@@ -90,6 +88,8 @@ use tower_service::Service;
 /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 /// # };
 /// ```
+///
+/// [`Bytes`]: bytes::Bytes
 pub fn from_extractor<E>() -> FromExtractorLayer<E> {
     FromExtractorLayer(PhantomData)
 }
@@ -166,27 +166,27 @@ where
     }
 }
 
-impl<S, E, ReqBody, ResBody> Service<Request<ReqBody>> for FromExtractor<S, E>
+impl<S, E, B> Service<Request<B>> for FromExtractor<S, E>
 where
-    E: FromRequest<ReqBody> + 'static,
-    ReqBody: Default + Send + 'static,
-    S: Service<Request<ReqBody>, Response = Response<ResBody>> + Clone,
-    ResBody: HttpBody<Data = Bytes> + Send + 'static,
-    ResBody::Error: Into<BoxError>,
+    E: FromRequestParts<()> + 'static,
+    B: Default + Send + 'static,
+    S: Service<Request<B>> + Clone,
+    S::Response: IntoResponse,
 {
     type Response = Response;
     type Error = S::Error;
-    type Future = ResponseFuture<ReqBody, S, E>;
+    type Future = ResponseFuture<B, S, E>;
 
     #[inline]
     fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         self.inner.poll_ready(cx)
     }
 
-    fn call(&mut self, req: Request<ReqBody>) -> Self::Future {
+    fn call(&mut self, req: Request<B>) -> Self::Future {
         let extract_future = Box::pin(async move {
-            let mut req = RequestParts::new(req);
-            let extracted = E::from_request(&mut req).await;
+            let (mut parts, body) = req.into_parts();
+            let extracted = E::from_request_parts(&mut parts, &()).await;
+            let req = Request::from_parts(parts, body);
             (req, extracted)
         });
 
@@ -202,36 +202,37 @@ where
 pin_project! {
     /// Response future for [`FromExtractor`].
     #[allow(missing_debug_implementations)]
-    pub struct ResponseFuture<ReqBody, S, E>
+    pub struct ResponseFuture<B, S, E>
     where
-        E: FromRequest<ReqBody>,
-        S: Service<Request<ReqBody>>,
+        E: FromRequestParts<()>,
+        S: Service<Request<B>>,
     {
         #[pin]
-        state: State<ReqBody, S, E>,
+        state: State<B, S, E>,
         svc: Option<S>,
     }
 }
 
 pin_project! {
     #[project = StateProj]
-    enum State<ReqBody, S, E>
+    enum State<B, S, E>
     where
-        E: FromRequest<ReqBody>,
-        S: Service<Request<ReqBody>>,
+        E: FromRequestParts<()>,
+        S: Service<Request<B>>,
     {
-        Extracting { future: BoxFuture<'static, (RequestParts<ReqBody>, Result<E, E::Rejection>)> },
+        Extracting {
+            future: BoxFuture<'static, (Request<B>, Result<E, E::Rejection>)>,
+        },
         Call { #[pin] future: S::Future },
     }
 }
 
-impl<ReqBody, S, E, ResBody> Future for ResponseFuture<ReqBody, S, E>
+impl<B, S, E> Future for ResponseFuture<B, S, E>
 where
-    E: FromRequest<ReqBody>,
-    S: Service<Request<ReqBody>, Response = Response<ResBody>>,
-    ReqBody: Default,
-    ResBody: HttpBody<Data = Bytes> + Send + 'static,
-    ResBody::Error: Into<BoxError>,
+    E: FromRequestParts<()>,
+    S: Service<Request<B>>,
+    S::Response: IntoResponse,
+    B: Default,
 {
     type Output = Result<Response, S::Error>;
 
@@ -246,7 +247,6 @@ where
                     match extracted {
                         Ok(_) => {
                             let mut svc = this.svc.take().expect("future polled after completion");
-                            let req = req.try_into_request().unwrap_or_default();
                             let future = svc.call(req);
                             State::Call { future }
                         }
@@ -259,7 +259,7 @@ where
                 StateProj::Call { future } => {
                     return future
                         .poll(cx)
-                        .map(|result| result.map(|response| response.map(crate::body::boxed)));
+                        .map(|result| result.map(IntoResponse::into_response));
                 }
             };
 
@@ -272,22 +272,25 @@ where
 mod tests {
     use super::*;
     use crate::{handler::Handler, routing::get, test_helpers::*, Router};
-    use http::{header, StatusCode};
+    use http::{header, request::Parts, StatusCode};
 
     #[tokio::test]
     async fn test_from_extractor() {
         struct RequireAuth;
 
         #[async_trait::async_trait]
-        impl<B> FromRequest<B> for RequireAuth
+        impl<S> FromRequestParts<S> for RequireAuth
         where
-            B: Send,
+            S: Send + Sync,
         {
             type Rejection = StatusCode;
 
-            async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-                if let Some(auth) = req
-                    .headers()
+            async fn from_request_parts(
+                parts: &mut Parts,
+                _state: &S,
+            ) -> Result<Self, Self::Rejection> {
+                if let Some(auth) = parts
+                    .headers
                     .get(header::AUTHORIZATION)
                     .and_then(|v| v.to_str().ok())
                 {

@@ -1,9 +1,12 @@
 use super::{
     rejection::{FailedToResolveHost, HostRejection},
-    FromRequest, RequestParts,
+    FromRequestParts,
 };
 use async_trait::async_trait;
-use http::header::{HeaderMap, FORWARDED};
+use http::{
+    header::{HeaderMap, FORWARDED},
+    request::Parts,
+};
 
 const X_FORWARDED_HOST_HEADER_KEY: &str = "X-Forwarded-Host";
 
@@ -21,34 +24,34 @@ const X_FORWARDED_HOST_HEADER_KEY: &str = "X-Forwarded-Host";
 pub struct Host(pub String);
 
 #[async_trait]
-impl<B> FromRequest<B> for Host
+impl<S> FromRequestParts<S> for Host
 where
-    B: Send,
+    S: Send + Sync,
 {
     type Rejection = HostRejection;
 
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-        if let Some(host) = parse_forwarded(req.headers()) {
+    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
+        if let Some(host) = parse_forwarded(&parts.headers) {
             return Ok(Host(host.to_owned()));
         }
 
-        if let Some(host) = req
-            .headers()
+        if let Some(host) = parts
+            .headers
             .get(X_FORWARDED_HOST_HEADER_KEY)
             .and_then(|host| host.to_str().ok())
         {
             return Ok(Host(host.to_owned()));
         }
 
-        if let Some(host) = req
-            .headers()
+        if let Some(host) = parts
+            .headers
             .get(http::header::HOST)
             .and_then(|host| host.to_str().ok())
         {
             return Ok(Host(host.to_owned()));
         }
 
-        if let Some(host) = req.uri().host() {
+        if let Some(host) = parts.uri.host() {
             return Ok(Host(host.to_owned()));
         }
 

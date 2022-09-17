@@ -1,5 +1,6 @@
-use super::{FromRequest, RequestParts};
+use super::FromRequestParts;
 use async_trait::async_trait;
+use http::request::Parts;
 use std::convert::Infallible;
 
 /// Extractor that extracts the raw query string, without parsing it.
@@ -27,14 +28,14 @@ use std::convert::Infallible;
 pub struct RawQuery(pub Option<String>);
 
 #[async_trait]
-impl<B> FromRequest<B> for RawQuery
+impl<S> FromRequestParts<S> for RawQuery
 where
-    B: Send,
+    S: Send + Sync,
 {
     type Rejection = Infallible;
 
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-        let query = req.uri().query().map(|query| query.to_owned());
+    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
+        let query = parts.uri.query().map(|query| query.to_owned());
         Ok(Self(query))
     }
 }

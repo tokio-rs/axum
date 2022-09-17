@@ -12,11 +12,11 @@
 
 use async_trait::async_trait;
 use axum::{
-    extract::{Form, FromRequest, RequestParts},
-    http::StatusCode,
+    extract::{rejection::FormRejection, Form, FromRequest},
+    http::{Request, StatusCode},
     response::{Html, IntoResponse, Response},
     routing::get,
-    BoxError, Router,
+    Router,
 };
 use serde::{de::DeserializeOwned, Deserialize};
 use std::net::SocketAddr;
@@ -60,17 +60,17 @@ async fn handler(ValidatedForm(input): ValidatedForm<NameInput>) -> Html<String>
 pub struct ValidatedForm<T>(pub T);
 
 #[async_trait]
-impl<T, B> FromRequest<B> for ValidatedForm<T>
+impl<T, S, B> FromRequest<S, B> for ValidatedForm<T>
 where
     T: DeserializeOwned + Validate,
-    B: http_body::Body + Send,
-    B::Data: Send,
-    B::Error: Into<BoxError>,
+    S: Send + Sync,
+    Form<T>: FromRequest<S, B, Rejection = FormRejection>,
+    B: Send + 'static,
 {
     type Rejection = ServerError;
 
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-        let Form(value) = Form::<T>::from_request(req).await?;
+    async fn from_request(req: Request<B>, state: &S) -> Result<Self, Self::Rejection> {
+        let Form(value) = Form::<T>::from_request(req, state).await?;
         value.validate()?;
         Ok(ValidatedForm(value))
     }
@@ -82,7 +82,7 @@ pub enum ServerError {
     ValidationError(#[from] validator::ValidationErrors),
 
     #[error(transparent)]
-    AxumFormRejection(#[from] axum::extract::rejection::FormRejection),
+    AxumFormRejection(#[from] FormRejection),
 }
 
 impl IntoResponse for ServerError {

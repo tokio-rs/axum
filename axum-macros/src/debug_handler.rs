@@ -1,52 +1,88 @@
+use crate::{
+    attr_parsing::{parse_assignment_attribute, second},
+    with_position::{Position, WithPosition},
+};
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote, quote_spanned};
-use syn::{parse::Parse, spanned::Spanned, FnArg, ItemFn, Token, Type};
+use std::collections::HashSet;
+use syn::{parse::Parse, parse_quote, spanned::Spanned, FnArg, ItemFn, Token, Type};
 
 pub(crate) fn expand(attr: Attrs, item_fn: ItemFn) -> TokenStream {
-    let check_extractor_count = check_extractor_count(&item_fn);
-    let check_request_last_extractor = check_request_last_extractor(&item_fn);
-    let check_path_extractor = check_path_extractor(&item_fn);
-    let check_multiple_body_extractors = check_multiple_body_extractors(&item_fn);
+    let Attrs { body_ty, state_ty } = attr;
 
-    let check_inputs_impls_from_request = check_inputs_impls_from_request(&item_fn, &attr.body_ty);
+    let body_ty = body_ty
+        .map(second)
+        .unwrap_or_else(|| parse_quote!(axum::body::Body));
+
+    let mut state_ty = state_ty.map(second);
+
+    let check_extractor_count = check_extractor_count(&item_fn);
+    let check_path_extractor = check_path_extractor(&item_fn);
     let check_output_impls_into_response = check_output_impls_into_response(&item_fn);
-    let check_future_send = check_future_send(&item_fn);
+
+    // If the function is generic, we can't reliably check its inputs or whether the future it
+    // returns is `Send`. Skip those checks to avoid unhelpful additional compiler errors.
+    let check_inputs_and_future_send = if item_fn.sig.generics.params.is_empty() {
+        if state_ty.is_none() {
+            state_ty = state_type_from_args(&item_fn);
+        }
+
+        let state_ty = state_ty.unwrap_or_else(|| syn::parse_quote!(()));
+
+        let check_inputs_impls_from_request =
+            check_inputs_impls_from_request(&item_fn, &body_ty, state_ty);
+        let check_future_send = check_future_send(&item_fn);
+
+        quote! {
+            #check_inputs_impls_from_request
+            #check_future_send
+        }
+    } else {
+        syn::Error::new_spanned(
+            &item_fn.sig.generics,
+            "`#[axum_macros::debug_handler]` doesn't support generic functions",
+        )
+        .into_compile_error()
+    };
 
     quote! {
         #item_fn
         #check_extractor_count
-        #check_request_last_extractor
         #check_path_extractor
-        #check_multiple_body_extractors
-        #check_inputs_impls_from_request
         #check_output_impls_into_response
-        #check_future_send
+        #check_inputs_and_future_send
     }
 }
 
+mod kw {
+    syn::custom_keyword!(body);
+    syn::custom_keyword!(state);
+}
+
 pub(crate) struct Attrs {
-    body_ty: Type,
+    body_ty: Option<(kw::body, Type)>,
+    state_ty: Option<(kw::state, Type)>,
 }
 
 impl Parse for Attrs {
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
         let mut body_ty = None;
+        let mut state_ty = None;
 
         while !input.is_empty() {
-            let ident = input.parse::<syn::Ident>()?;
-            if ident == "body" {
-                input.parse::<Token![=]>()?;
-                body_ty = Some(input.parse()?);
+            let lh = input.lookahead1();
+            if lh.peek(kw::body) {
+                parse_assignment_attribute(input, &mut body_ty)?;
+            } else if lh.peek(kw::state) {
+                parse_assignment_attribute(input, &mut state_ty)?;
             } else {
-                return Err(syn::Error::new_spanned(ident, "unknown argument"));
+                return Err(lh.error());
             }
 
             let _ = input.parse::<Token![,]>();
         }
 
-        let body_ty = body_ty.unwrap_or_else(|| syn::parse_quote!(axum::body::Body));
-
-        Ok(Self { body_ty })
+        Ok(Self { body_ty, state_ty })
     }
 }
 
@@ -87,22 +123,6 @@ fn extractor_idents(item_fn: &ItemFn) -> impl Iterator<Item = (usize, &syn::FnAr
         })
 }
 
-fn check_request_last_extractor(item_fn: &ItemFn) -> Option<TokenStream> {
-    let request_extractor_ident =
-        extractor_idents(item_fn).find(|(_, _, ident)| *ident == "Request");
-
-    if let Some((idx, fn_arg, _)) = request_extractor_ident {
-        if idx != item_fn.sig.inputs.len() - 1 {
-            return Some(
-                syn::Error::new_spanned(fn_arg, "`Request` extractor should always be last")
-                    .to_compile_error(),
-            );
-        }
-    }
-
-    None
-}
-
 fn check_path_extractor(item_fn: &ItemFn) -> TokenStream {
     let path_extractors = extractor_idents(item_fn)
         .filter(|(_, _, ident)| *ident == "Path")
@@ -126,47 +146,36 @@ fn check_path_extractor(item_fn: &ItemFn) -> TokenStream {
     }
 }
 
-fn check_multiple_body_extractors(item_fn: &ItemFn) -> TokenStream {
-    let body_extractors = extractor_idents(item_fn)
-        .filter(|(_, _, ident)| {
-            *ident == "String"
-                || *ident == "Bytes"
-                || *ident == "Json"
-                || *ident == "RawBody"
-                || *ident == "BodyStream"
-                || *ident == "Multipart"
-                || *ident == "Request"
-        })
-        .collect::<Vec<_>>();
-
-    if body_extractors.len() > 1 {
-        body_extractors
-            .into_iter()
-            .map(|(_, arg, _)| {
-                syn::Error::new_spanned(arg, "Only one body extractor can be applied")
-                    .to_compile_error()
-            })
-            .collect()
+fn is_self_pat_type(typed: &syn::PatType) -> bool {
+    let ident = if let syn::Pat::Ident(ident) = &*typed.pat {
+        &ident.ident
     } else {
-        quote! {}
-    }
+        return false;
+    };
+
+    ident == "self"
 }
 
-fn check_inputs_impls_from_request(item_fn: &ItemFn, body_ty: &Type) -> TokenStream {
-    if !item_fn.sig.generics.params.is_empty() {
-        return syn::Error::new_spanned(
-            &item_fn.sig.generics,
-            "`#[axum_macros::debug_handler]` doesn't support generic functions",
-        )
-        .into_compile_error();
-    }
+fn check_inputs_impls_from_request(
+    item_fn: &ItemFn,
+    body_ty: &Type,
+    state_ty: Type,
+) -> TokenStream {
+    let takes_self = item_fn.sig.inputs.first().map_or(false, |arg| match arg {
+        FnArg::Receiver(_) => true,
+        FnArg::Typed(typed) => is_self_pat_type(typed),
+    });
 
-    item_fn
-        .sig
-        .inputs
-        .iter()
+    WithPosition::new(item_fn.sig.inputs.iter())
         .enumerate()
         .map(|(idx, arg)| {
+            let must_impl_from_request_parts = match &arg {
+                Position::First(_) | Position::Middle(_) => true,
+                Position::Last(_) | Position::Only(_) => false,
+            };
+
+            let arg = arg.into_inner();
+
             let (span, ty) = match arg {
                 FnArg::Receiver(receiver) => {
                     if receiver.reference.is_some() {
@@ -183,21 +192,69 @@ fn check_inputs_impls_from_request(item_fn: &ItemFn, body_ty: &Type) -> TokenStr
                 FnArg::Typed(typed) => {
                     let ty = &typed.ty;
                     let span = ty.span();
-                    (span, ty.clone())
+
+                    if is_self_pat_type(typed) {
+                        (span, syn::parse_quote!(Self))
+                    } else {
+                        (span, ty.clone())
+                    }
                 }
             };
 
-            let name = format_ident!(
-                "__axum_macros_check_{}_{}_from_request",
+            let check_fn = format_ident!(
+                "__axum_macros_check_{}_{}_from_request_check",
                 item_fn.sig.ident,
-                idx
+                idx,
+                span = span,
             );
+
+            let call_check_fn = format_ident!(
+                "__axum_macros_check_{}_{}_from_request_call_check",
+                item_fn.sig.ident,
+                idx,
+                span = span,
+            );
+
+            let call_check_fn_body = if takes_self {
+                quote_spanned! {span=>
+                    Self::#check_fn();
+                }
+            } else {
+                quote_spanned! {span=>
+                    #check_fn();
+                }
+            };
+
+            let check_fn_generics = if must_impl_from_request_parts {
+                quote! {}
+            } else {
+                quote! { <M> }
+            };
+
+            let from_request_bound = if must_impl_from_request_parts {
+                quote! {
+                    #ty: ::axum::extract::FromRequestParts<#state_ty> + Send
+                }
+            } else {
+                quote! {
+                    #ty: ::axum::extract::FromRequest<#state_ty, #body_ty, M> + Send
+                }
+            };
+
             quote_spanned! {span=>
                 #[allow(warnings)]
-                fn #name()
+                fn #check_fn #check_fn_generics()
                 where
-                    #ty: ::axum::extract::FromRequest<#body_ty> + Send,
+                    #from_request_bound,
                 {}
+
+                // we have to call the function to actually trigger a compile error
+                // since the function is generic, just defining it is not enough
+                #[allow(warnings)]
+                fn #call_check_fn()
+                {
+                    #call_check_fn_body
+                }
             }
         })
         .collect::<TokenStream>()
@@ -336,11 +393,11 @@ fn check_future_send(item_fn: &ItemFn) -> TokenStream {
 }
 
 fn self_receiver(item_fn: &ItemFn) -> Option<TokenStream> {
-    let takes_self = item_fn
-        .sig
-        .inputs
-        .iter()
-        .any(|arg| matches!(arg, syn::FnArg::Receiver(_)));
+    let takes_self = item_fn.sig.inputs.iter().any(|arg| match arg {
+        FnArg::Receiver(_) => true,
+        FnArg::Typed(typed) => is_self_pat_type(typed),
+    });
+
     if takes_self {
         return Some(quote! { Self:: });
     }
@@ -364,17 +421,69 @@ fn self_receiver(item_fn: &ItemFn) -> Option<TokenStream> {
     None
 }
 
+/// Given a signature like
+///
+/// ```skip
+/// #[debug_handler]
+/// async fn handler(
+///     _: axum::extract::State<AppState>,
+///     _: State<AppState>,
+/// ) {}
+/// ```
+///
+/// This will extract `AppState`.
+///
+/// Returns `None` if there are no `State` args or multiple of different types.
+fn state_type_from_args(item_fn: &ItemFn) -> Option<Type> {
+    let state_inputs = item_fn
+        .sig
+        .inputs
+        .iter()
+        .filter_map(|input| match input {
+            FnArg::Receiver(_) => None,
+            FnArg::Typed(pat_type) => Some(pat_type),
+        })
+        .map(|pat_type| &pat_type.ty)
+        .filter_map(|ty| {
+            if let Type::Path(path) = &**ty {
+                Some(&path.path)
+            } else {
+                None
+            }
+        })
+        .filter_map(|path| {
+            if let Some(last_segment) = path.segments.last() {
+                if last_segment.ident != "State" {
+                    return None;
+                }
+
+                match &last_segment.arguments {
+                    syn::PathArguments::AngleBracketed(args) if args.args.len() == 1 => {
+                        Some(args.args.first().unwrap())
+                    }
+                    _ => None,
+                }
+            } else {
+                None
+            }
+        })
+        .filter_map(|generic_arg| {
+            if let syn::GenericArgument::Type(ty) = generic_arg {
+                Some(ty)
+            } else {
+                None
+            }
+        })
+        .collect::<HashSet<_>>();
+
+    if state_inputs.len() == 1 {
+        state_inputs.iter().next().map(|&ty| ty.clone())
+    } else {
+        None
+    }
+}
+
 #[test]
 fn ui() {
-    #[rustversion::stable]
-    fn go() {
-        let t = trybuild::TestCases::new();
-        t.compile_fail("tests/debug_handler/fail/*.rs");
-        t.pass("tests/debug_handler/pass/*.rs");
-    }
-
-    #[rustversion::not(stable)]
-    fn go() {}
-
-    go();
+    crate::run_ui_tests("debug_handler");
 }

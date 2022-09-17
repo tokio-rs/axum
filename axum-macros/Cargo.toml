@@ -1,14 +1,15 @@
 [package]
 categories = ["asynchronous", "network-programming", "web-programming"]
 description = "Macros for axum"
-edition = "2018"
+edition = "2021"
+rust-version = "1.60"
 homepage = "https://github.com/tokio-rs/axum"
 keywords = ["axum"]
 license = "MIT"
 name = "axum-macros"
 readme = "README.md"
 repository = "https://github.com/tokio-rs/axum"
-version = "0.2.2"
+version = "0.3.0-rc.1" # remember to also bump the version that axum and axum-extra depends on
 
 [lib]
 proc-macro = true
@@ -17,13 +18,18 @@ proc-macro = true
 heck = "0.4"
 proc-macro2 = "1.0"
 quote = "1.0"
-syn = { version = "1.0", features = ["full"] }
+syn = { version = "1.0", features = [
+    "full",
+    # needed for `Hash` impls
+    "extra-traits",
+] }
 
 [dev-dependencies]
-axum = { path = "../axum", version = "0.5", features = ["headers"] }
-axum-extra = { path = "../axum-extra", version = "0.3", features = ["typed-routing"] }
+axum = { path = "../axum", version = "0.6.0-rc.2", features = ["headers"] }
+axum-extra = { path = "../axum-extra", version = "0.4.0-rc.1", features = ["typed-routing"] }
 rustversion = "1.0"
 serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
 syn = { version = "1.0", features = ["full", "extra-traits"] }
 tokio = { version = "1.0", features = ["full"] }
-trybuild = "1.0"
+trybuild = "1.0.63"

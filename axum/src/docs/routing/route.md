@@ -3,10 +3,10 @@ Add another route to the router.
 `path` is a string of path segments separated by `/`. Each segment
 can be either static, a capture, or a wildcard.
 
-`service` is the [`Service`] that should receive the request if the path matches
-`path`. `service` will commonly be a handler wrapped in a method router like
-[`get`](crate::routing::get). See [`handler`](crate::handler) for more details
-on handlers.
+`method_router` is the [`MethodRouter`] that should receive the request if the
+path matches `path`. `method_router` will commonly be a handler wrapped in a method
+router like [`get`](crate::routing::get). See [`handler`](crate::handler) for
+more details on handlers.
 
 # Static paths
 
@@ -51,6 +51,8 @@ Examples:
 - `/:id/:repo/*tree`
 
 Wildcard captures can also be extracted using [`Path`](crate::extract::Path).
+Note that the leading slash is not included, i.e. for the route `/foo/*rest` and
+the path `/foo/bar/baz` the value of `rest` will be `bar/baz`.
 
 # Accepting multiple methods
 
@@ -103,69 +105,6 @@ async fn serve_asset(Path(path): Path<String>) {}
 # };
 ```
 
-# Routing to any [`Service`]
-
-axum also supports routing to general [`Service`]s:
-
-```rust,no_run
-use axum::{
-    Router,
-    body::Body,
-    routing::{any_service, get_service},
-    http::{Request, StatusCode},
-    error_handling::HandleErrorLayer,
-};
-use tower_http::services::ServeFile;
-use http::Response;
-use std::{convert::Infallible, io};
-use tower::service_fn;
-
-let app = Router::new()
-    .route(
-        // Any request to `/` goes to a service
-        "/",
-        // Services whose response body is not `axum::body::BoxBody`
-        // can be wrapped in `axum::routing::any_service` (or one of the other routing filters)
-        // to have the response body mapped
-        any_service(service_fn(|_: Request<Body>| async {
-            let res = Response::new(Body::from("Hi from `GET /`"));
-            Ok::<_, Infallible>(res)
-        }))
-    )
-    .route(
-        "/foo",
-        // This service's response body is `axum::body::BoxBody` so
-        // it can be routed to directly.
-        service_fn(|req: Request<Body>| async move {
-            let body = Body::from(format!("Hi from `{} /foo`", req.method()));
-            let body = axum::body::boxed(body);
-            let res = Response::new(body);
-            Ok::<_, Infallible>(res)
-        })
-    )
-    .route(
-        // GET `/static/Cargo.toml` goes to a service from tower-http
-        "/static/Cargo.toml",
-        get_service(ServeFile::new("Cargo.toml"))
-            // though we must handle any potential errors
-            .handle_error(|error: io::Error| async move {
-                (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    format!("Unhandled internal error: {}", error),
-                )
-            })
-    );
-# async {
-# axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-# };
-```
-
-Routing to arbitrary services in this way has complications for backpressure
-([`Service::poll_ready`]). See the [Routing to services and backpressure] module
-for more details.
-
-[Routing to services and backpressure]: middleware/index.html#routing-to-servicesmiddleware-and-backpressure
-
 # Panics
 
 Panics if the route overlaps with another route:
@@ -184,38 +123,4 @@ let app = Router::new()
 The static route `/foo` and the dynamic route `/:key` are not considered to
 overlap and `/foo` will take precedence.
 
-Take care when using [`Router::nest`] as it behaves like a wildcard route.
-Therefore this setup panics:
-
-```rust,should_panic
-use axum::{routing::get, Router};
-
-let app = Router::new()
-    // this is similar to `/api/*`
-    .nest("/api", get(|| async {}))
-    // which overlaps with this route
-    .route("/api/users", get(|| async {}));
-# async {
-# axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-# };
-```
-
 Also panics if `path` is empty.
-
-## Nesting
-
-`route` cannot be used to nest `Router`s. Instead use [`Router::nest`].
-
-Attempting to will result in a panic:
-
-```rust,should_panic
-use axum::{routing::get, Router};
-
-let app = Router::new().route(
-    "/",
-    Router::new().route("/foo", get(|| async {})),
-);
-# async {
-# axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-# };
-```
