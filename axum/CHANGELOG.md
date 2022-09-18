@@ -12,9 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `serde_json::Error` ([#1371])
 - **added**: `JsonRejection` now displays the path at which a deserialization
   error occurred too ([#1371])
-- **fixed:** Support streaming/chunked requests in `ContentLengthLimit`
+- **fixed:** Support streaming/chunked requests in `ContentLengthLimit` ([#1389])
 
 [#1371]: https://github.com/tokio-rs/axum/pull/1371
+[#1389]: https://github.com/tokio-rs/axum/pull/1389
 
 # 0.6.0-rc.2 (10. September, 2022)
 
