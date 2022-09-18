@@ -220,7 +220,7 @@ use std::{
 /// }
 /// ```
 ///
-/// In general however we recommend you implement `Clone` to all your state types to avoid
+/// In general however we recommend you implement `Clone` for all your state types to avoid
 /// potential type errors.
 #[derive(Debug, Default, Clone, Copy)]
 pub struct State<S>(pub S);
