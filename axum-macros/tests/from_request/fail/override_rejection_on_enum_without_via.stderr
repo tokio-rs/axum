@@ -1,8 +1,8 @@
 error: cannot use `rejection` without `via`
-  --> tests/from_request/fail/override_rejection_on_enum_without_via.rs:18:26
+  --> tests/from_request/fail/override_rejection_on_enum_without_via.rs:18:16
    |
 18 | #[from_request(rejection(MyRejection))]
-   |                          ^^^^^^^^^^^
+   |                ^^^^^^^^^
 
 error[E0277]: the trait bound `fn(MyExtractor) -> impl Future<Output = ()> {handler}: Handler<_, _, _>` is not satisfied
    --> tests/from_request/fail/override_rejection_on_enum_without_via.rs:10:50

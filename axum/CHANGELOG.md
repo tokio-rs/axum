@@ -7,11 +7,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+- **changed**: The inner error of a `JsonRejection` is now
+  `serde_path_to_error::Error<serde_json::Error>`.  Previously it was
+  `serde_json::Error` ([#1371])
+- **added**: `JsonRejection` now displays the path at which a deserialization
+  error occurred too ([#1371])
+- **fixed:** Used `400 Bad Request` for `FailedToDeserializeQueryString`
+  rejections, instead of `422 Unprocessable Entity` ([#1387])
+
+[#1371]: https://github.com/tokio-rs/axum/pull/1371
+[#1387]: https://github.com/tokio-rs/axum/pull/1387
+
+# 0.6.0-rc.2 (10. September, 2022)
+
+## Security
+
+- **breaking:** Added default limit to how much data `Bytes::from_request` will
+  consume. Previously it would attempt to consume the entire request body
+  without checking its length. This meant if a malicious peer sent an large (or
+  infinite) request body your server might run out of memory and crash.
+
+  The default limit is at 2 MB and can be disabled by adding the new
+  `DefaultBodyLimit::disable()` middleware. See its documentation for more
+  details.
+
+  This also applies to these extractors which used `Bytes::from_request`
+  internally:
+  - `Form`
+  - `Json`
+  - `String`
+
+  ([#1346])
+
 ## Routing
 
 - **breaking:** Adding a `.route_layer` onto a `Router` or `MethodRouter`
   without any routes will now result in a panic. Previously, this just did
   nothing. [#1327]
+
+## Extractors
+
+- **added:** `FromRequest` and `FromRequestParts` derive macro re-exports from [`axum-macros`] behind the `macros` feature ([#1352])
+
+[`axum-macros`]: https://docs.rs/axum-macros/latest/axum_macros/
+[#1352]: https://github.com/tokio-rs/axum/pull/1352
 
 ## Middleware
 
@@ -21,6 +60,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 [#1327]: https://github.com/tokio-rs/axum/pull/1327
 [#1342]: https://github.com/tokio-rs/axum/pull/1342
+[#1346]: https://github.com/tokio-rs/axum/pull/1346
 
 # 0.6.0-rc.1 (23. August, 2022)
 

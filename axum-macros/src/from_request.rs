@@ -1,5 +1,7 @@
-use self::attr::{
-    parse_container_attrs, parse_field_attrs, FromRequestContainerAttr, FromRequestFieldAttr,
+use self::attr::FromRequestContainerAttrs;
+use crate::{
+    attr_parsing::{parse_attrs, second},
+    from_request::attr::FromRequestFieldAttrs,
 };
 use proc_macro2::{Span, TokenStream};
 use quote::{quote, quote_spanned};
@@ -38,26 +40,20 @@ pub(crate) fn expand(item: syn::Item, tr: Trait) -> syn::Result<TokenStream> {
 
             let generic_ident = parse_single_generic_type_on_struct(generics, &fields, tr)?;
 
-            match parse_container_attrs(&attrs)? {
-                FromRequestContainerAttr::Via { path, rejection } => {
-                    impl_struct_by_extracting_all_at_once(
-                        ident,
-                        fields,
-                        path,
-                        rejection,
-                        generic_ident,
-                        tr,
-                    )
-                }
-                FromRequestContainerAttr::Rejection(rejection) => {
-                    error_on_generic_ident(generic_ident, tr)?;
+            let FromRequestContainerAttrs { via, rejection } = parse_attrs("from_request", &attrs)?;
 
-                    impl_struct_by_extracting_each_field(ident, fields, Some(rejection), tr)
-                }
-                FromRequestContainerAttr::None => {
+            match (via.map(second), rejection.map(second)) {
+                (Some(via), rejection) => impl_struct_by_extracting_all_at_once(
+                    ident,
+                    fields,
+                    via,
+                    rejection,
+                    generic_ident,
+                    tr,
+                ),
+                (None, rejection) => {
                     error_on_generic_ident(generic_ident, tr)?;
-
-                    impl_struct_by_extracting_each_field(ident, fields, None, tr)
+                    impl_struct_by_extracting_each_field(ident, fields, rejection, tr)
                 }
             }
         }
@@ -82,15 +78,21 @@ pub(crate) fn expand(item: syn::Item, tr: Trait) -> syn::Result<TokenStream> {
                 return Err(syn::Error::new_spanned(where_clause, generics_error));
             }
 
-            match parse_container_attrs(&attrs)? {
-                FromRequestContainerAttr::Via { path, rejection } => {
-                    impl_enum_by_extracting_all_at_once(ident, variants, path, rejection, tr)
-                }
-                FromRequestContainerAttr::Rejection(rejection) => Err(syn::Error::new_spanned(
-                    rejection,
+            let FromRequestContainerAttrs { via, rejection } = parse_attrs("from_request", &attrs)?;
+
+            match (via.map(second), rejection) {
+                (Some(via), rejection) => impl_enum_by_extracting_all_at_once(
+                    ident,
+                    variants,
+                    via,
+                    rejection.map(second),
+                    tr,
+                ),
+                (None, Some((rejection_kw, _))) => Err(syn::Error::new_spanned(
+                    rejection_kw,
                     "cannot use `rejection` without `via`",
                 )),
-                FromRequestContainerAttr::None => Err(syn::Error::new(
+                (None, _) => Err(syn::Error::new(
                     Span::call_site(),
                     "missing `#[from_request(via(...))]`",
                 )),
@@ -316,7 +318,7 @@ fn extract_fields(
     let mut res: Vec<_> = fields_iter
         .enumerate()
         .map(|(index, field)| {
-            let FromRequestFieldAttr { via } = parse_field_attrs(&field.attrs)?;
+            let FromRequestFieldAttrs { via } = parse_attrs("from_request", &field.attrs)?;
 
             let member = member(field, index);
             let ty_span = field.ty.span();
@@ -434,7 +436,7 @@ fn extract_fields(
 
     // Handle the last element, if deriving FromRequest
     if let Some(field) = last {
-        let FromRequestFieldAttr { via } = parse_field_attrs(&field.attrs)?;
+        let FromRequestFieldAttrs { via } = parse_attrs("from_request", &field.attrs)?;
 
         let member = member(field, fields.len() - 1);
         let ty_span = field.ty.span();
@@ -557,7 +559,8 @@ fn impl_struct_by_extracting_all_at_once(
     };
 
     for field in fields {
-        let FromRequestFieldAttr { via } = parse_field_attrs(&field.attrs)?;
+        let FromRequestFieldAttrs { via } = parse_attrs("from_request", &field.attrs)?;
+
         if let Some((via, _)) = via {
             return Err(syn::Error::new_spanned(
                 via,
@@ -695,7 +698,8 @@ fn impl_enum_by_extracting_all_at_once(
     tr: Trait,
 ) -> syn::Result<TokenStream> {
     for variant in variants {
-        let FromRequestFieldAttr { via } = parse_field_attrs(&variant.attrs)?;
+        let FromRequestFieldAttrs { via } = parse_attrs("from_request", &variant.attrs)?;
+
         if let Some((via, _)) = via {
             return Err(syn::Error::new_spanned(
                 via,
@@ -710,7 +714,7 @@ fn impl_enum_by_extracting_all_at_once(
         };
 
         for field in fields {
-            let FromRequestFieldAttr { via } = parse_field_attrs(&field.attrs)?;
+            let FromRequestFieldAttrs { via } = parse_attrs("from_request", &field.attrs)?;
             if let Some((via, _)) = via {
                 return Err(syn::Error::new_spanned(
                     via,

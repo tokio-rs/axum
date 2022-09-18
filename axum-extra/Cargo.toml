@@ -34,7 +34,7 @@ spa = ["tower-http/fs"]
 typed-routing = ["dep:axum-macros", "dep:serde", "dep:percent-encoding"]
 
 [dependencies]
-axum = { path = "../axum", version = "0.6.0-rc.1", default-features = false }
+axum = { path = "../axum", version = "0.6.0-rc.2", default-features = false }
 bytes = "1.1.0"
 futures-util = { version = "0.3", default-features = false, features = ["alloc"] }
 http = "0.2"
@@ -58,7 +58,7 @@ tokio-stream = { version = "0.1.9", optional = true }
 tokio-util = { version = "0.7", optional = true }
 
 [dev-dependencies]
-axum = { path = "../axum", version = "0.6.0-rc.1", features = ["headers"] }
+axum = { path = "../axum", version = "0.6.0-rc.2", features = ["headers"] }
 futures = "0.3"
 hyper = "0.14"
 reqwest = { version = "0.11", default-features = false, features = ["json", "stream", "multipart"] }
