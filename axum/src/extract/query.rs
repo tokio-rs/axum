@@ -75,9 +75,11 @@ impl<T> Deref for Query<T> {
 
 #[cfg(test)]
 mod tests {
+    use crate::{routing::get, test_helpers::TestClient, Router};
+
     use super::*;
     use axum_core::extract::FromRequest;
-    use http::Request;
+    use http::{Request, StatusCode};
     use serde::Deserialize;
     use std::fmt::Debug;
 
@@ -123,5 +125,22 @@ mod tests {
             },
         )
         .await;
+    }
+
+    #[tokio::test]
+    async fn correct_rejection_status_code() {
+        #[derive(Deserialize)]
+        #[allow(dead_code)]
+        struct Params {
+            n: i32,
+        }
+
+        async fn handler(_: Query<Params>) {}
+
+        let app = Router::new().route("/", get(handler));
+        let client = TestClient::new(app);
+
+        let res = client.get("/?n=hi").send().await;
+        assert_eq!(res.status(), StatusCode::BAD_REQUEST);
     }
 }

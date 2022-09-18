@@ -116,7 +116,7 @@ impl FailedToDeserializeQueryString {
 
 impl IntoResponse for FailedToDeserializeQueryString {
     fn into_response(self) -> Response {
-        (http::StatusCode::UNPROCESSABLE_ENTITY, self.to_string()).into_response()
+        (http::StatusCode::BAD_REQUEST, self.to_string()).into_response()
     }
 }
 
