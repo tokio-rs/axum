@@ -4,9 +4,11 @@ use crate::{
     from_request::attr::FromRequestFieldAttrs,
 };
 use proc_macro2::{Span, TokenStream};
-use quote::{quote, quote_spanned};
-use std::fmt;
-use syn::{punctuated::Punctuated, spanned::Spanned, Ident, Token};
+use quote::{quote, quote_spanned, ToTokens};
+use std::{collections::HashSet, fmt, iter};
+use syn::{
+    parse_quote, punctuated::Punctuated, spanned::Spanned, Fields, Ident, Path, Token, Type,
+};
 
 mod attr;
 
@@ -16,11 +18,76 @@ pub(crate) enum Trait {
     FromRequestParts,
 }
 
+impl Trait {
+    fn body_type(&self) -> impl Iterator<Item = Type> {
+        match self {
+            Trait::FromRequest => Some(parse_quote!(B)).into_iter(),
+            Trait::FromRequestParts => None.into_iter(),
+        }
+    }
+
+    fn via_marker_type(&self) -> Option<Type> {
+        match self {
+            Trait::FromRequest => Some(parse_quote!(M)),
+            Trait::FromRequestParts => None,
+        }
+    }
+}
+
 impl fmt::Display for Trait {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Trait::FromRequest => f.write_str("FromRequest"),
             Trait::FromRequestParts => f.write_str("FromRequestParts"),
+        }
+    }
+}
+
+#[derive(Debug)]
+enum State {
+    Custom(syn::Type),
+    Default(syn::Type),
+}
+
+impl State {
+    /// ```not_rust
+    /// impl<T> A for B {}
+    ///      ^ this type
+    /// ```
+    fn impl_generics(&self) -> impl Iterator<Item = Type> {
+        match self {
+            State::Default(inner) => Some(inner.clone()),
+            State::Custom(_) => None,
+        }
+        .into_iter()
+    }
+
+    /// ```not_rust
+    /// impl<T> A<T> for B {}
+    ///           ^ this type
+    /// ```
+    fn trait_generics(&self) -> impl Iterator<Item = Type> {
+        match self {
+            State::Default(inner) => iter::once(inner.clone()),
+            State::Custom(inner) => iter::once(inner.clone()),
+        }
+    }
+
+    fn bounds(&self) -> TokenStream {
+        match self {
+            State::Custom(_) => quote! {},
+            State::Default(inner) => quote! {
+                #inner: ::std::marker::Send + ::std::marker::Sync,
+            },
+        }
+    }
+}
+
+impl ToTokens for State {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        match self {
+            State::Custom(inner) => inner.to_tokens(tokens),
+            State::Default(inner) => inner.to_tokens(tokens),
         }
     }
 }
@@ -40,7 +107,23 @@ pub(crate) fn expand(item: syn::Item, tr: Trait) -> syn::Result<TokenStream> {
 
             let generic_ident = parse_single_generic_type_on_struct(generics, &fields, tr)?;
 
-            let FromRequestContainerAttrs { via, rejection } = parse_attrs("from_request", &attrs)?;
+            let FromRequestContainerAttrs {
+                via,
+                rejection,
+                state,
+            } = parse_attrs("from_request", &attrs)?;
+
+            let state = match state {
+                Some((_, state)) => State::Custom(state),
+                None => infer_state_type_from_field_types(&fields)
+                    .map(State::Custom)
+                    .or_else(|| infer_state_type_from_field_attributes(&fields).map(State::Custom))
+                    .or_else(|| {
+                        let via = via.as_ref().map(|(_, via)| via)?;
+                        state_from_via(&ident, via).map(State::Custom)
+                    })
+                    .unwrap_or_else(|| State::Default(syn::parse_quote!(S))),
+            };
 
             match (via.map(second), rejection.map(second)) {
                 (Some(via), rejection) => impl_struct_by_extracting_all_at_once(
@@ -49,11 +132,12 @@ pub(crate) fn expand(item: syn::Item, tr: Trait) -> syn::Result<TokenStream> {
                     via,
                     rejection,
                     generic_ident,
+                    state,
                     tr,
                 ),
                 (None, rejection) => {
                     error_on_generic_ident(generic_ident, tr)?;
-                    impl_struct_by_extracting_each_field(ident, fields, rejection, tr)
+                    impl_struct_by_extracting_each_field(ident, fields, rejection, state, tr)
                 }
             }
         }
@@ -78,7 +162,20 @@ pub(crate) fn expand(item: syn::Item, tr: Trait) -> syn::Result<TokenStream> {
                 return Err(syn::Error::new_spanned(where_clause, generics_error));
             }
 
-            let FromRequestContainerAttrs { via, rejection } = parse_attrs("from_request", &attrs)?;
+            let FromRequestContainerAttrs {
+                via,
+                rejection,
+                state,
+            } = parse_attrs("from_request", &attrs)?;
+
+            let state = match state {
+                Some((_, state)) => State::Custom(state),
+                None => (|| {
+                    let via = via.as_ref().map(|(_, via)| via)?;
+                    state_from_via(&ident, via).map(State::Custom)
+                })()
+                .unwrap_or_else(|| State::Default(syn::parse_quote!(S))),
+            };
 
             match (via.map(second), rejection) {
                 (Some(via), rejection) => impl_enum_by_extracting_all_at_once(
@@ -86,6 +183,7 @@ pub(crate) fn expand(item: syn::Item, tr: Trait) -> syn::Result<TokenStream> {
                     variants,
                     via,
                     rejection.map(second),
+                    state,
                     tr,
                 ),
                 (None, Some((rejection_kw, _))) => Err(syn::Error::new_spanned(
@@ -210,6 +308,7 @@ fn impl_struct_by_extracting_each_field(
     ident: syn::Ident,
     fields: syn::Fields,
     rejection: Option<syn::Path>,
+    state: State,
     tr: Trait,
 ) -> syn::Result<TokenStream> {
     let extract_fields = extract_fields(&fields, &rejection, tr)?;
@@ -222,22 +321,34 @@ fn impl_struct_by_extracting_each_field(
         quote!(::axum::response::Response)
     };
 
+    let impl_generics = tr
+        .body_type()
+        .chain(state.impl_generics())
+        .collect::<Punctuated<Type, Token![,]>>();
+
+    let trait_generics = state
+        .trait_generics()
+        .chain(tr.body_type())
+        .collect::<Punctuated<Type, Token![,]>>();
+
+    let state_bounds = state.bounds();
+
     Ok(match tr {
         Trait::FromRequest => quote! {
             #[::axum::async_trait]
             #[automatically_derived]
-            impl<S, B> ::axum::extract::FromRequest<S, B> for #ident
+            impl<#impl_generics> ::axum::extract::FromRequest<#trait_generics> for #ident
             where
                 B: ::axum::body::HttpBody + ::std::marker::Send + 'static,
                 B::Data: ::std::marker::Send,
                 B::Error: ::std::convert::Into<::axum::BoxError>,
-                S: ::std::marker::Send + ::std::marker::Sync,
+                #state_bounds
             {
                 type Rejection = #rejection_ident;
 
                 async fn from_request(
                     mut req: ::axum::http::Request<B>,
-                    state: &S,
+                    state: &#state,
                 ) -> ::std::result::Result<Self, Self::Rejection> {
                     ::std::result::Result::Ok(Self {
                         #(#extract_fields)*
@@ -248,15 +359,15 @@ fn impl_struct_by_extracting_each_field(
         Trait::FromRequestParts => quote! {
             #[::axum::async_trait]
             #[automatically_derived]
-            impl<S> ::axum::extract::FromRequestParts<S> for #ident
+            impl<#impl_generics> ::axum::extract::FromRequestParts<#trait_generics> for #ident
             where
-                S: ::std::marker::Send + ::std::marker::Sync,
+                #state_bounds
             {
                 type Rejection = #rejection_ident;
 
                 async fn from_request_parts(
                     parts: &mut ::axum::http::request::Parts,
-                    state: &S,
+                    state: &#state,
                 ) -> ::std::result::Result<Self, Self::Rejection> {
                     ::std::result::Result::Ok(Self {
                         #(#extract_fields)*
@@ -547,9 +658,10 @@ fn peel_result_ok(ty: &syn::Type) -> Option<&syn::Type> {
 fn impl_struct_by_extracting_all_at_once(
     ident: syn::Ident,
     fields: syn::Fields,
-    path: syn::Path,
+    via_path: syn::Path,
     rejection: Option<syn::Path>,
     generic_ident: Option<Ident>,
+    state: State,
     tr: Trait,
 ) -> syn::Result<TokenStream> {
     let fields = match fields {
@@ -570,7 +682,7 @@ fn impl_struct_by_extracting_all_at_once(
         }
     }
 
-    let path_span = path.span();
+    let path_span = via_path.span();
 
     let (associated_rejection_type, map_err) = if let Some(rejection) = &rejection {
         let rejection = quote! { #rejection };
@@ -584,42 +696,67 @@ fn impl_struct_by_extracting_all_at_once(
         (rejection, map_err)
     };
 
+    // for something like
+    //
+    // ```
+    // #[derive(Clone, Default, FromRequest)]
+    // #[from_request(via(State))]
+    // struct AppState {}
+    // ```
+    //
+    // we need to implement `impl<B, M> FromRequest<AppState, B, M>` but only for
+    // - `#[derive(FromRequest)]`, not `#[derive(FromRequestParts)]`
+    // - `State`, not other extractors
+    //
+    // honestly not sure why but the tests all pass
+    let via_marker_type = if path_ident_is_state(&via_path) {
+        tr.via_marker_type()
+    } else {
+        None
+    };
+
+    let impl_generics = tr
+        .body_type()
+        .chain(via_marker_type.clone())
+        .chain(state.impl_generics())
+        .chain(generic_ident.is_some().then(|| parse_quote!(T)))
+        .collect::<Punctuated<Type, Token![,]>>();
+
+    let trait_generics = state
+        .trait_generics()
+        .chain(tr.body_type())
+        .chain(via_marker_type)
+        .collect::<Punctuated<Type, Token![,]>>();
+
+    let ident_generics = generic_ident
+        .is_some()
+        .then(|| quote! { <T> })
+        .unwrap_or_default();
+
     let rejection_bound = rejection.as_ref().map(|rejection| {
         match (tr, generic_ident.is_some()) {
             (Trait::FromRequest, true) => {
                 quote! {
-                    #rejection: ::std::convert::From<<#path<T> as ::axum::extract::FromRequest<S, B>>::Rejection>,
+                    #rejection: ::std::convert::From<<#via_path<T> as ::axum::extract::FromRequest<#trait_generics>>::Rejection>,
                 }
             },
             (Trait::FromRequest, false) => {
                 quote! {
-                    #rejection: ::std::convert::From<<#path<Self> as ::axum::extract::FromRequest<S, B>>::Rejection>,
+                    #rejection: ::std::convert::From<<#via_path<Self> as ::axum::extract::FromRequest<#trait_generics>>::Rejection>,
                 }
             },
             (Trait::FromRequestParts, true) => {
                 quote! {
-                    #rejection: ::std::convert::From<<#path<T> as ::axum::extract::FromRequestParts<S>>::Rejection>,
+                    #rejection: ::std::convert::From<<#via_path<T> as ::axum::extract::FromRequestParts<#trait_generics>>::Rejection>,
                 }
             },
             (Trait::FromRequestParts, false) => {
                 quote! {
-                    #rejection: ::std::convert::From<<#path<Self> as ::axum::extract::FromRequestParts<S>>::Rejection>,
+                    #rejection: ::std::convert::From<<#via_path<Self> as ::axum::extract::FromRequestParts<#trait_generics>>::Rejection>,
                 }
             }
         }
     }).unwrap_or_default();
-
-    let impl_generics = match (tr, generic_ident.is_some()) {
-        (Trait::FromRequest, true) => quote! { S, B, T },
-        (Trait::FromRequest, false) => quote! { S, B },
-        (Trait::FromRequestParts, true) => quote! { S, T },
-        (Trait::FromRequestParts, false) => quote! { S },
-    };
-
-    let type_generics = generic_ident
-        .is_some()
-        .then(|| quote! { <T> })
-        .unwrap_or_default();
 
     let via_type_generics = if generic_ident.is_some() {
         quote! { T }
@@ -635,27 +772,29 @@ fn impl_struct_by_extracting_all_at_once(
         quote! { value }
     };
 
+    let state_bounds = state.bounds();
+
     let tokens = match tr {
         Trait::FromRequest => {
             quote_spanned! {path_span=>
                 #[::axum::async_trait]
                 #[automatically_derived]
-                impl<#impl_generics> ::axum::extract::FromRequest<S, B> for #ident #type_generics
+                impl<#impl_generics> ::axum::extract::FromRequest<#trait_generics> for #ident #ident_generics
                 where
-                    #path<#via_type_generics>: ::axum::extract::FromRequest<S, B>,
+                    #via_path<#via_type_generics>: ::axum::extract::FromRequest<#trait_generics>,
                     #rejection_bound
                     B: ::std::marker::Send + 'static,
-                    S: ::std::marker::Send + ::std::marker::Sync,
+                    #state_bounds
                 {
                     type Rejection = #associated_rejection_type;
 
                     async fn from_request(
                         req: ::axum::http::Request<B>,
-                        state: &S
+                        state: &#state,
                     ) -> ::std::result::Result<Self, Self::Rejection> {
                         ::axum::extract::FromRequest::from_request(req, state)
                             .await
-                            .map(|#path(value)| #value_to_self)
+                            .map(|#via_path(value)| #value_to_self)
                             .map_err(#map_err)
                     }
                 }
@@ -665,21 +804,21 @@ fn impl_struct_by_extracting_all_at_once(
             quote_spanned! {path_span=>
                 #[::axum::async_trait]
                 #[automatically_derived]
-                impl<#impl_generics> ::axum::extract::FromRequestParts<S> for #ident #type_generics
+                impl<#impl_generics> ::axum::extract::FromRequestParts<#trait_generics> for #ident #ident_generics
                 where
-                    #path<#via_type_generics>: ::axum::extract::FromRequestParts<S>,
+                    #via_path<#via_type_generics>: ::axum::extract::FromRequestParts<#trait_generics>,
                     #rejection_bound
-                    S: ::std::marker::Send + ::std::marker::Sync,
+                    #state_bounds
                 {
                     type Rejection = #associated_rejection_type;
 
                     async fn from_request_parts(
                         parts: &mut ::axum::http::request::Parts,
-                        state: &S
+                        state: &#state,
                     ) -> ::std::result::Result<Self, Self::Rejection> {
                         ::axum::extract::FromRequestParts::from_request_parts(parts, state)
                             .await
-                            .map(|#path(value)| #value_to_self)
+                            .map(|#via_path(value)| #value_to_self)
                             .map_err(#map_err)
                     }
                 }
@@ -695,6 +834,7 @@ fn impl_enum_by_extracting_all_at_once(
     variants: Punctuated<syn::Variant, Token![,]>,
     path: syn::Path,
     rejection: Option<syn::Path>,
+    state: State,
     tr: Trait,
 ) -> syn::Result<TokenStream> {
     for variant in variants {
@@ -738,23 +878,35 @@ fn impl_enum_by_extracting_all_at_once(
 
     let path_span = path.span();
 
+    let impl_generics = tr
+        .body_type()
+        .chain(state.impl_generics())
+        .collect::<Punctuated<Type, Token![,]>>();
+
+    let trait_generics = state
+        .trait_generics()
+        .chain(tr.body_type())
+        .collect::<Punctuated<Type, Token![,]>>();
+
+    let state_bounds = state.bounds();
+
     let tokens = match tr {
         Trait::FromRequest => {
             quote_spanned! {path_span=>
                 #[::axum::async_trait]
                 #[automatically_derived]
-                impl<S, B> ::axum::extract::FromRequest<S, B> for #ident
+                impl<#impl_generics> ::axum::extract::FromRequest<#trait_generics> for #ident
                 where
                     B: ::axum::body::HttpBody + ::std::marker::Send + 'static,
                     B::Data: ::std::marker::Send,
                     B::Error: ::std::convert::Into<::axum::BoxError>,
-                    S: ::std::marker::Send + ::std::marker::Sync,
+                    #state_bounds
                 {
                     type Rejection = #associated_rejection_type;
 
                     async fn from_request(
                         req: ::axum::http::Request<B>,
-                        state: &S
+                        state: &#state,
                     ) -> ::std::result::Result<Self, Self::Rejection> {
                         ::axum::extract::FromRequest::from_request(req, state)
                             .await
@@ -768,15 +920,15 @@ fn impl_enum_by_extracting_all_at_once(
             quote_spanned! {path_span=>
                 #[::axum::async_trait]
                 #[automatically_derived]
-                impl<S> ::axum::extract::FromRequestParts<S> for #ident
+                impl<#impl_generics> ::axum::extract::FromRequestParts<#trait_generics> for #ident
                 where
-                    S: ::std::marker::Send + ::std::marker::Sync,
+                    #state_bounds
                 {
                     type Rejection = #associated_rejection_type;
 
                     async fn from_request_parts(
                         parts: &mut ::axum::http::request::Parts,
-                        state: &S
+                        state: &#state,
                     ) -> ::std::result::Result<Self, Self::Rejection> {
                         ::axum::extract::FromRequestParts::from_request_parts(parts, state)
                             .await
@@ -789,6 +941,90 @@ fn impl_enum_by_extracting_all_at_once(
     };
 
     Ok(tokens)
+}
+
+/// For a struct like
+///
+/// ```skip
+/// struct Extractor {
+///     state: State<AppState>,
+/// }
+/// ```
+///
+/// We can infer the state type to be `AppState` because it appears inside a `State`
+fn infer_state_type_from_field_types(fields: &Fields) -> Option<Type> {
+    match fields {
+        Fields::Named(fields_named) => {
+            crate::infer_state_type(fields_named.named.iter().map(|field| &field.ty))
+        }
+        Fields::Unnamed(fields_unnamed) => {
+            crate::infer_state_type(fields_unnamed.unnamed.iter().map(|field| &field.ty))
+        }
+        Fields::Unit => None,
+    }
+}
+
+/// For a struct like
+///
+/// ```skip
+/// struct Extractor {
+///     #[from_request(via(State))]
+///     state: AppState,
+/// }
+/// ```
+///
+/// We can infer the state type to be `AppState` because it has `via(State)` and thus can be
+/// extracted with `State<AppState>`
+fn infer_state_type_from_field_attributes(fields: &Fields) -> Option<Type> {
+    let state_inputs = match fields {
+        Fields::Named(fields_named) => {
+            fields_named
+                .named
+                .iter()
+                .filter_map(|field| {
+                    // TODO(david): its a little wasteful to parse the attributes again here
+                    // ideally we should parse things once and pass the data down
+                    let FromRequestFieldAttrs { via } =
+                        parse_attrs("from_request", &field.attrs).ok()?;
+                    let (_, via_path) = via?;
+                    path_ident_is_state(&via_path).then(|| &field.ty)
+                })
+                .collect::<HashSet<_>>()
+        }
+        Fields::Unnamed(fields_unnamed) => {
+            fields_unnamed
+                .unnamed
+                .iter()
+                .filter_map(|field| {
+                    // TODO(david): its a little wasteful to parse the attributes again here
+                    // ideally we should parse things once and pass the data down
+                    let FromRequestFieldAttrs { via } =
+                        parse_attrs("from_request", &field.attrs).ok()?;
+                    let (_, via_path) = via?;
+                    path_ident_is_state(&via_path).then(|| &field.ty)
+                })
+                .collect::<HashSet<_>>()
+        }
+        Fields::Unit => return None,
+    };
+
+    if state_inputs.len() == 1 {
+        state_inputs.iter().next().map(|&ty| ty.clone())
+    } else {
+        None
+    }
+}
+
+fn path_ident_is_state(path: &Path) -> bool {
+    if let Some(last_segment) = path.segments.last() {
+        last_segment.ident == "State"
+    } else {
+        false
+    }
+}
+
+fn state_from_via(ident: &Ident, via: &Path) -> Option<Type> {
+    path_ident_is_state(via).then(|| parse_quote!(#ident))
 }
 
 #[test]
