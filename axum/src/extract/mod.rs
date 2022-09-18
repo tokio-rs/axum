@@ -18,6 +18,9 @@ mod state;
 #[doc(inline)]
 pub use axum_core::extract::{DefaultBodyLimit, FromRef, FromRequest, FromRequestParts};
 
+#[cfg(feature = "macros")]
+pub use axum_macros::{FromRequest, FromRequestParts};
+
 #[doc(inline)]
 #[allow(deprecated)]
 pub use self::{
