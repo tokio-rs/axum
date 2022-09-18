@@ -260,6 +260,7 @@ where
         self.route(P::PATH, axum::routing::trace(handler))
     }
 
+    #[track_caller]
     fn route_with_tsr(mut self, path: &str, method_router: MethodRouter<S, B>) -> Self
     where
         Self: Sized,
@@ -278,6 +279,7 @@ where
         }
     }
 
+    #[track_caller]
     fn route_service_with_tsr<T>(mut self, path: &str, service: T) -> Self
     where
         T: Service<Request<B>, Error = Infallible> + Clone + Send + 'static,
