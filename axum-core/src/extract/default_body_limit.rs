@@ -88,6 +88,10 @@ impl DefaultBodyLimit {
     ///     // Replace the default of 2MB with 1024 bytes.
     ///     .layer(DefaultBodyLimit::max(1024));
     /// ```
+    ///
+    /// [`Bytes::from_request`]: bytes::Bytes
+    /// [`Json`]: https://docs.rs/axum/0.6.0-rc.2/axum/struct.Json.html
+    /// [`Form`]: https://docs.rs/axum/0.6.0-rc.2/axum/struct.Form.html
     pub fn max(limit: usize) -> Self {
         Self {
             kind: DefaultBodyLimitKind::Limit(limit),
