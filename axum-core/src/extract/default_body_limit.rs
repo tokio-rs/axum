@@ -16,8 +16,14 @@ use tower_layer::Layer;
 /// [`Json`]: https://docs.rs/axum/0.6.0-rc.2/axum/struct.Json.html
 /// [`Form`]: https://docs.rs/axum/0.6.0-rc.2/axum/struct.Form.html
 #[derive(Debug, Clone)]
-#[non_exhaustive]
-pub struct DefaultBodyLimit;
+pub struct DefaultBodyLimit {
+    kind: DefaultBodyLimitKind,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub(crate) enum DefaultBodyLimitKind {
+    Disable,
+}
 
 impl DefaultBodyLimit {
     /// Disable the default request body limit.
@@ -53,7 +59,9 @@ impl DefaultBodyLimit {
     /// [`Json`]: https://docs.rs/axum/0.6.0-rc.2/axum/struct.Json.html
     /// [`Form`]: https://docs.rs/axum/0.6.0-rc.2/axum/struct.Form.html
     pub fn disable() -> Self {
-        Self
+        Self {
+            kind: DefaultBodyLimitKind::Disable,
+        }
     }
 }
 
@@ -61,15 +69,15 @@ impl<S> Layer<S> for DefaultBodyLimit {
     type Service = DefaultBodyLimitService<S>;
 
     fn layer(&self, inner: S) -> Self::Service {
-        DefaultBodyLimitService { inner }
+        DefaultBodyLimitService {
+            inner,
+            kind: self.kind,
+        }
     }
 }
 
-#[derive(Copy, Clone, Debug)]
-pub(crate) struct DefaultBodyLimitDisabled;
-
 mod private {
-    use super::DefaultBodyLimitDisabled;
+    use super::DefaultBodyLimitKind;
     use http::Request;
     use std::task::Context;
     use tower_service::Service;
@@ -77,6 +85,7 @@ mod private {
     #[derive(Debug, Clone, Copy)]
     pub struct DefaultBodyLimitService<S> {
         pub(super) inner: S,
+        pub(super) kind: DefaultBodyLimitKind,
     }
 
     impl<B, S> Service<Request<B>> for DefaultBodyLimitService<S>
@@ -94,7 +103,7 @@ mod private {
 
         #[inline]
         fn call(&mut self, mut req: Request<B>) -> Self::Future {
-            req.extensions_mut().insert(DefaultBodyLimitDisabled);
+            req.extensions_mut().insert(self.kind);
             self.inner.call(req)
         }
     }

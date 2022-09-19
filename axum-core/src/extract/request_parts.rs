@@ -1,5 +1,5 @@
 use super::{
-    default_body_limit::DefaultBodyLimitDisabled, rejection::*, FromRequest, FromRequestParts,
+    default_body_limit::DefaultBodyLimitKind, rejection::*, FromRequest, FromRequestParts,
 };
 use crate::BoxError;
 use async_trait::async_trait;
@@ -88,15 +88,17 @@ where
         // `axum/src/docs/extract.md` if this changes
         const DEFAULT_LIMIT: usize = 2_097_152; // 2 mb
 
-        let bytes = if req.extensions().get::<DefaultBodyLimitDisabled>().is_some() {
-            crate::body::to_bytes(req.into_body())
+        let limit_kind = req.extensions().get::<DefaultBodyLimitKind>();
+        let bytes = match limit_kind {
+            Some(DefaultBodyLimitKind::Disable) => crate::body::to_bytes(req.into_body())
                 .await
-                .map_err(FailedToBufferBody::from_err)?
-        } else {
-            let body = http_body::Limited::new(req.into_body(), DEFAULT_LIMIT);
-            crate::body::to_bytes(body)
-                .await
-                .map_err(FailedToBufferBody::from_err)?
+                .map_err(FailedToBufferBody::from_err)?,
+            None => {
+                let body = http_body::Limited::new(req.into_body(), DEFAULT_LIMIT);
+                crate::body::to_bytes(body)
+                    .await
+                    .map_err(FailedToBufferBody::from_err)?
+            }
         };
 
         Ok(bytes)
