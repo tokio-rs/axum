@@ -5,7 +5,10 @@
 mod from_extractor;
 mod from_fn;
 
-pub use self::from_extractor::{from_extractor, FromExtractor, FromExtractorLayer};
+pub use self::from_extractor::{
+    from_extractor, from_extractor_with_state, from_extractor_with_state_arc, FromExtractor,
+    FromExtractorLayer,
+};
 pub use self::from_fn::{
     from_fn, from_fn_with_state, from_fn_with_state_arc, FromFn, FromFnLayer, Next,
 };

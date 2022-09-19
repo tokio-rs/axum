@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **fixed:** Support streaming/chunked requests in `ContentLengthLimit` ([#1389])
 - **fixed:** Used `400 Bad Request` for `FailedToDeserializeQueryString`
   rejections, instead of `422 Unprocessable Entity` ([#1387])
+- **added:** Add `middleware::from_extractor_with_state` and
+  `middleware::from_extractor_with_state_arc`
 
 [#1371]: https://github.com/tokio-rs/axum/pull/1371
 [#1387]: https://github.com/tokio-rs/axum/pull/1387
