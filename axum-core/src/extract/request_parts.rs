@@ -88,11 +88,17 @@ where
         // `axum/src/docs/extract.md` if this changes
         const DEFAULT_LIMIT: usize = 2_097_152; // 2 mb
 
-        let limit_kind = req.extensions().get::<DefaultBodyLimitKind>();
+        let limit_kind = req.extensions().get::<DefaultBodyLimitKind>().copied();
         let bytes = match limit_kind {
             Some(DefaultBodyLimitKind::Disable) => crate::body::to_bytes(req.into_body())
                 .await
                 .map_err(FailedToBufferBody::from_err)?,
+            Some(DefaultBodyLimitKind::Limit(limit)) => {
+                let body = http_body::Limited::new(req.into_body(), limit);
+                crate::body::to_bytes(body)
+                    .await
+                    .map_err(FailedToBufferBody::from_err)?
+            }
             None => {
                 let body = http_body::Limited::new(req.into_body(), DEFAULT_LIMIT);
                 crate::body::to_bytes(body)

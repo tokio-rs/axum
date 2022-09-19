@@ -23,6 +23,7 @@ pub struct DefaultBodyLimit {
 #[derive(Debug, Clone, Copy)]
 pub(crate) enum DefaultBodyLimitKind {
     Disable,
+    Limit(usize),
 }
 
 impl DefaultBodyLimit {
@@ -61,6 +62,35 @@ impl DefaultBodyLimit {
     pub fn disable() -> Self {
         Self {
             kind: DefaultBodyLimitKind::Disable,
+        }
+    }
+
+    /// Set the default request body limit.
+    ///
+    /// By default the limit of request body sizes that [`Bytes::from_request`] (and other
+    /// extractors built on top of it such as `String`, [`Json`], and [`Form`]) is 2MB. This method
+    /// can be used to change that limit.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use axum::{
+    ///     Router,
+    ///     routing::get,
+    ///     body::{Bytes, Body},
+    ///     extract::DefaultBodyLimit,
+    /// };
+    /// use tower_http::limit::RequestBodyLimitLayer;
+    /// use http_body::Limited;
+    ///
+    /// let app: Router<_, Limited<Body>> = Router::new()
+    ///     .route("/", get(|body: Bytes| async {}))
+    ///     // Replace the default of 2MB with 1024 bytes.
+    ///     .layer(DefaultBodyLimit::max(1024));
+    /// ```
+    pub fn max(limit: usize) -> Self {
+        Self {
+            kind: DefaultBodyLimitKind::Limit(limit),
         }
     }
 }
