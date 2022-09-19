@@ -5,8 +5,7 @@ use axum::{
 };
 use axum_macros::FromRequest;
 
-#[tokio::main]
-async fn main() {
+fn main() {
     let _: Router<AppState> = Router::with_state(AppState::default())
         .route("/", get(|_: Extractor| async {}));
 }

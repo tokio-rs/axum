@@ -5,8 +5,7 @@ use axum::{
 };
 use axum_macros::FromRequestParts;
 
-#[tokio::main]
-async fn main() {
+fn main() {
     let _: Router<AppState> = Router::with_state(AppState::default())
         .route("/a", get(|_: AppState| async {}))
         .route("/b", get(|_: InnerState| async {}))

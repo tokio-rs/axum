@@ -6,8 +6,7 @@ use axum::{
 };
 use std::collections::HashMap;
 
-#[tokio::main]
-async fn main() {
+fn main() {
     let _: Router<AppState> = Router::with_state(AppState::default())
         .route("/b", get(|_: Extractor| async {}));
 }
