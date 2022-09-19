@@ -768,6 +768,31 @@ async fn limited_body_with_content_length() {
 }
 
 #[tokio::test]
+async fn changing_the_default_limit() {
+    let new_limit = 2;
+
+    let app = Router::new()
+        .route("/", post(|_: Bytes| async {}))
+        .layer(DefaultBodyLimit::max(new_limit));
+
+    let client = TestClient::new(app);
+
+    let res = client
+        .post("/")
+        .body(Body::from("a".repeat(new_limit)))
+        .send()
+        .await;
+    assert_eq!(res.status(), StatusCode::OK);
+
+    let res = client
+        .post("/")
+        .body(Body::from("a".repeat(new_limit + 1)))
+        .send()
+        .await;
+    assert_eq!(res.status(), StatusCode::PAYLOAD_TOO_LARGE);
+}
+
+#[tokio::test]
 async fn limited_body_with_streaming_body() {
     const LIMIT: usize = 3;
 

@@ -16,8 +16,15 @@ use tower_layer::Layer;
 /// [`Json`]: https://docs.rs/axum/0.5/axum/struct.Json.html
 /// [`Form`]: https://docs.rs/axum/0.5/axum/struct.Form.html
 #[derive(Debug, Clone)]
-#[non_exhaustive]
-pub struct DefaultBodyLimit;
+pub struct DefaultBodyLimit {
+    kind: DefaultBodyLimitKind,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub(crate) enum DefaultBodyLimitKind {
+    Disable,
+    Limit(usize),
+}
 
 impl DefaultBodyLimit {
     /// Disable the default request body limit.
@@ -53,7 +60,42 @@ impl DefaultBodyLimit {
     /// [`Json`]: https://docs.rs/axum/0.5/axum/struct.Json.html
     /// [`Form`]: https://docs.rs/axum/0.5/axum/struct.Form.html
     pub fn disable() -> Self {
-        Self
+        Self {
+            kind: DefaultBodyLimitKind::Disable,
+        }
+    }
+
+    /// Set the default request body limit.
+    ///
+    /// By default the limit of request body sizes that [`Bytes::from_request`] (and other
+    /// extractors built on top of it such as `String`, [`Json`], and [`Form`]) is 2MB. This method
+    /// can be used to change that limit.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use axum::{
+    ///     Router,
+    ///     routing::get,
+    ///     body::{Bytes, Body},
+    ///     extract::DefaultBodyLimit,
+    /// };
+    /// use tower_http::limit::RequestBodyLimitLayer;
+    /// use http_body::Limited;
+    ///
+    /// let app: Router<_, Limited<Body>> = Router::new()
+    ///     .route("/", get(|body: Bytes| async {}))
+    ///     // Replace the default of 2MB with 1024 bytes.
+    ///     .layer(DefaultBodyLimit::max(1024));
+    /// ```
+    ///
+    /// [`Bytes::from_request`]: bytes::Bytes
+    /// [`Json`]: https://docs.rs/axum/0.6.0-rc.2/axum/struct.Json.html
+    /// [`Form`]: https://docs.rs/axum/0.6.0-rc.2/axum/struct.Form.html
+    pub fn max(limit: usize) -> Self {
+        Self {
+            kind: DefaultBodyLimitKind::Limit(limit),
+        }
     }
 }
 
@@ -61,15 +103,15 @@ impl<S> Layer<S> for DefaultBodyLimit {
     type Service = DefaultBodyLimitService<S>;
 
     fn layer(&self, inner: S) -> Self::Service {
-        DefaultBodyLimitService { inner }
+        DefaultBodyLimitService {
+            inner,
+            kind: self.kind,
+        }
     }
 }
 
-#[derive(Copy, Clone, Debug)]
-pub(crate) struct DefaultBodyLimitDisabled;
-
 mod private {
-    use super::DefaultBodyLimitDisabled;
+    use super::DefaultBodyLimitKind;
     use http::Request;
     use std::task::Context;
     use tower_service::Service;
@@ -77,6 +119,7 @@ mod private {
     #[derive(Debug, Clone, Copy)]
     pub struct DefaultBodyLimitService<S> {
         pub(super) inner: S,
+        pub(super) kind: DefaultBodyLimitKind,
     }
 
     impl<B, S> Service<Request<B>> for DefaultBodyLimitService<S>
@@ -94,7 +137,7 @@ mod private {
 
         #[inline]
         fn call(&mut self, mut req: Request<B>) -> Self::Future {
-            req.extensions_mut().insert(DefaultBodyLimitDisabled);
+            req.extensions_mut().insert(self.kind);
             self.inner.call(req)
         }
     }

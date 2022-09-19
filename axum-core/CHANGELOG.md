@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- None.
+- **added:** Add `DefaultBodyLimit::max` for changing the default body limit ([#1397])
+
+[#1397]: https://github.com/tokio-rs/axum/pull/1397
 
 # 0.2.8 (10. September, 2022)
 

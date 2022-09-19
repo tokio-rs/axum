@@ -1,6 +1,4 @@
-use super::{
-    default_body_limit::DefaultBodyLimitDisabled, rejection::*, FromRequest, RequestParts,
-};
+use super::{default_body_limit::DefaultBodyLimitKind, rejection::*, FromRequest, RequestParts};
 use crate::BoxError;
 use async_trait::async_trait;
 use bytes::Bytes;
@@ -100,15 +98,23 @@ where
 
         let body = take_body(req)?;
 
-        let bytes = if req.extensions().get::<DefaultBodyLimitDisabled>().is_some() {
-            crate::body::to_bytes(body)
+        let limit_kind = req.extensions().get::<DefaultBodyLimitKind>().copied();
+        let bytes = match limit_kind {
+            Some(DefaultBodyLimitKind::Disable) => crate::body::to_bytes(body)
                 .await
-                .map_err(FailedToBufferBody::from_err)?
-        } else {
-            let body = http_body::Limited::new(body, DEFAULT_LIMIT);
-            crate::body::to_bytes(body)
-                .await
-                .map_err(FailedToBufferBody::from_err)?
+                .map_err(FailedToBufferBody::from_err)?,
+            Some(DefaultBodyLimitKind::Limit(limit)) => {
+                let body = http_body::Limited::new(body, limit);
+                crate::body::to_bytes(body)
+                    .await
+                    .map_err(FailedToBufferBody::from_err)?
+            }
+            None => {
+                let body = http_body::Limited::new(body, DEFAULT_LIMIT);
+                crate::body::to_bytes(body)
+                    .await
+                    .map_err(FailedToBufferBody::from_err)?
+            }
         };
 
         Ok(bytes)
