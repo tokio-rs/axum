@@ -1,5 +1,15 @@
 use axum_macros::FromRequest;
-use axum::extract::{FromRef, State};
+use axum::{
+    extract::{FromRef, State},
+    Router,
+    routing::get,
+};
+
+#[tokio::main]
+async fn main() {
+    let _: Router<AppState> = Router::with_state(AppState::default())
+        .route("/b", get(|_: Extractor| async {}));
+}
 
 #[derive(FromRequest)]
 #[from_request(state(AppState))]
@@ -7,15 +17,16 @@ struct Extractor {
     app_state: State<AppState>,
     one: State<One>,
     two: State<Two>,
+    other_extractor: String,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 struct AppState {
     one: One,
     two: Two,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 struct One {}
 
 impl FromRef<AppState> for One {
@@ -24,7 +35,7 @@ impl FromRef<AppState> for One {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 struct Two {}
 
 impl FromRef<AppState> for Two {
@@ -32,11 +43,3 @@ impl FromRef<AppState> for Two {
         input.two.clone()
     }
 }
-
-fn assert_from_request()
-where
-    Extractor: axum::extract::FromRequest<AppState, axum::body::Body, Rejection = axum::response::Response>,
-{
-}
-
-fn main() {}

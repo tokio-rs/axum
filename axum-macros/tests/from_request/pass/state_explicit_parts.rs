@@ -1,17 +1,30 @@
 use axum_macros::FromRequestParts;
-use axum::extract::{FromRef, State};
+use axum::{
+    extract::{FromRef, State, Query},
+    Router,
+    routing::get,
+};
+use std::collections::HashMap;
+
+#[tokio::main]
+async fn main() {
+    let _: Router<AppState> = Router::with_state(AppState::default())
+        .route("/b", get(|_: Extractor| async {}));
+}
 
 #[derive(FromRequestParts)]
 #[from_request(state(AppState))]
 struct Extractor {
     inner_state: State<InnerState>,
+    other: Query<HashMap<String, String>>,
 }
 
+#[derive(Default)]
 struct AppState {
     inner: InnerState,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 struct InnerState {}
 
 impl FromRef<AppState> for InnerState {
@@ -19,11 +32,3 @@ impl FromRef<AppState> for InnerState {
         input.inner.clone()
     }
 }
-
-fn assert_from_request()
-where
-    Extractor: axum::extract::FromRequestParts<AppState, Rejection = axum::response::Response>,
-{
-}
-
-fn main() {}
