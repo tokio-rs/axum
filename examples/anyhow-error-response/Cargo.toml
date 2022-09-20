@@ -1,0 +1,10 @@
+[package]
+name = "example-anyhow-error-response"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+anyhow = "1.0"
+axum = { path = "../../axum" }
+tokio = { version = "1.0", features = ["full"] }

@@ -117,11 +117,14 @@ pub fn from_fn<F, T>(f: F) -> FromFnLayer<F, (), T> {
 ///
 /// async fn my_middleware<B>(
 ///     State(state): State<AppState>,
+///     // you can add more extractors here...
 ///     req: Request<B>,
 ///     next: Next<B>,
 /// ) -> Response {
-///     // ...
-///     # ().into_response()
+///     // do something with `req`...
+///     let res = next.run(req).await;
+///     // do something with `res`...
+///     res
 /// }
 ///
 /// let state = AppState { /* ... */ };
