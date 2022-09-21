@@ -9,7 +9,7 @@
 use axum::{
     body::Bytes,
     error_handling::HandleErrorLayer,
-    extract::{ContentLengthLimit, Path, State},
+    extract::{DefaultBodyLimit, Path, State},
     handler::Handler,
     http::StatusCode,
     response::IntoResponse,
@@ -61,6 +61,7 @@ async fn main() {
                 .load_shed()
                 .concurrency_limit(1024)
                 .timeout(Duration::from_secs(10))
+                .layer(DefaultBodyLimit::max(1024 * 5_000 /* ~5mb */))
                 .layer(TraceLayer::new_for_http())
                 .into_inner(),
         );
@@ -94,11 +95,7 @@ async fn kv_get(
     }
 }
 
-async fn kv_set(
-    Path(key): Path<String>,
-    State(state): State<SharedState>,
-    ContentLengthLimit(bytes): ContentLengthLimit<Bytes, { 1024 * 5_000 }>, // ~5mb
-) {
+async fn kv_set(Path(key): Path<String>, State(state): State<SharedState>, bytes: Bytes) {
     state.write().unwrap().db.insert(key, bytes);
 }
 

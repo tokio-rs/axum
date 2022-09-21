@@ -9,7 +9,6 @@ pub mod rejection;
 #[cfg(feature = "ws")]
 pub mod ws;
 
-mod content_length_limit;
 mod host;
 mod raw_query;
 mod request_parts;
@@ -25,7 +24,6 @@ pub use axum_macros::{FromRequest, FromRequestParts};
 #[allow(deprecated)]
 pub use self::{
     connect_info::ConnectInfo,
-    content_length_limit::ContentLengthLimit,
     host::Host,
     path::Path,
     raw_query::RawQuery,
