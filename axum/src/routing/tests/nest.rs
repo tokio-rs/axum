@@ -37,7 +37,7 @@ async fn nesting_apps() {
 
     let app = Router::new()
         .route("/", get(|| async { "hi" }))
-        .nest("/:version/api", api_routes);
+        .nest("/:version/api", api_routes.into_service());
 
     let client = TestClient::new(app);
 
@@ -61,7 +61,7 @@ async fn nesting_apps() {
 #[tokio::test]
 async fn wrong_method_nest() {
     let nested_app = Router::new().route("/", get(|| async {}));
-    let app = Router::new().nest("/", nested_app);
+    let app = Router::new().nest("/", nested_app.into_service());
 
     let client = TestClient::new(app);
 
@@ -78,7 +78,7 @@ async fn wrong_method_nest() {
 #[tokio::test]
 async fn nesting_router_at_root() {
     let nested = Router::new().route("/foo", get(|uri: Uri| async move { uri.to_string() }));
-    let app = Router::new().nest("/", nested);
+    let app = Router::new().nest("/", nested.into_service());
 
     let client = TestClient::new(app);
 
@@ -96,7 +96,7 @@ async fn nesting_router_at_root() {
 #[tokio::test]
 async fn nesting_router_at_empty_path() {
     let nested = Router::new().route("/foo", get(|uri: Uri| async move { uri.to_string() }));
-    let app = Router::new().nest("", nested);
+    let app = Router::new().nest("", nested.into_service());
 
     let client = TestClient::new(app);
 
@@ -134,15 +134,18 @@ async fn nesting_handler_at_root() {
 async fn nested_url_extractor() {
     let app = Router::new().nest(
         "/foo",
-        Router::new().nest(
-            "/bar",
-            Router::new()
-                .route("/baz", get(|uri: Uri| async move { uri.to_string() }))
-                .route(
-                    "/qux",
-                    get(|req: Request<Body>| async move { req.uri().to_string() }),
-                ),
-        ),
+        Router::new()
+            .nest(
+                "/bar",
+                Router::new()
+                    .route("/baz", get(|uri: Uri| async move { uri.to_string() }))
+                    .route(
+                        "/qux",
+                        get(|req: Request<Body>| async move { req.uri().to_string() }),
+                    )
+                    .into_service(),
+            )
+            .into_service(),
     );
 
     let client = TestClient::new(app);
@@ -160,13 +163,17 @@ async fn nested_url_extractor() {
 async fn nested_url_original_extractor() {
     let app = Router::new().nest(
         "/foo",
-        Router::new().nest(
-            "/bar",
-            Router::new().route(
-                "/baz",
-                get(|uri: extract::OriginalUri| async move { uri.0.to_string() }),
-            ),
-        ),
+        Router::new()
+            .nest(
+                "/bar",
+                Router::new()
+                    .route(
+                        "/baz",
+                        get(|uri: extract::OriginalUri| async move { uri.0.to_string() }),
+                    )
+                    .into_service(),
+            )
+            .into_service(),
     );
 
     let client = TestClient::new(app);
@@ -180,16 +187,20 @@ async fn nested_url_original_extractor() {
 async fn nested_service_sees_stripped_uri() {
     let app = Router::new().nest(
         "/foo",
-        Router::new().nest(
-            "/bar",
-            Router::new().route_service(
-                "/baz",
-                service_fn(|req: Request<Body>| async move {
-                    let body = boxed(Body::from(req.uri().to_string()));
-                    Ok::<_, Infallible>(Response::new(body))
-                }),
-            ),
-        ),
+        Router::new()
+            .nest(
+                "/bar",
+                Router::new()
+                    .route_service(
+                        "/baz",
+                        service_fn(|req: Request<Body>| async move {
+                            let body = boxed(Body::from(req.uri().to_string()));
+                            Ok::<_, Infallible>(Response::new(body))
+                        }),
+                    )
+                    .into_service(),
+            )
+            .into_service(),
     );
 
     let client = TestClient::new(app);
@@ -224,7 +235,8 @@ async fn nested_multiple_routes() {
             "/api",
             Router::new()
                 .route("/users", get(|| async { "users" }))
-                .route("/teams", get(|| async { "teams" })),
+                .route("/teams", get(|| async { "teams" }))
+                .into_service(),
         )
         .route("/", get(|| async { "root" }));
 
@@ -239,7 +251,12 @@ async fn nested_multiple_routes() {
 #[should_panic = "Invalid route \"/\": insertion failed due to conflict with previously registered route: /*__private__axum_nest_tail_param"]
 fn nested_at_root_with_other_routes() {
     let _: Router = Router::new()
-        .nest("/", Router::new().route("/users", get(|| async {})))
+        .nest(
+            "/",
+            Router::new()
+                .route("/users", get(|| async {}))
+                .into_service(),
+        )
         .route("/", get(|| async {}));
 }
 
@@ -248,11 +265,15 @@ async fn multiple_top_level_nests() {
     let app = Router::new()
         .nest(
             "/one",
-            Router::new().route("/route", get(|| async { "one" })),
+            Router::new()
+                .route("/route", get(|| async { "one" }))
+                .into_service(),
         )
         .nest(
             "/two",
-            Router::new().route("/route", get(|| async { "two" })),
+            Router::new()
+                .route("/route", get(|| async { "two" }))
+                .into_service(),
         );
 
     let client = TestClient::new(app);
@@ -264,7 +285,7 @@ async fn multiple_top_level_nests() {
 #[tokio::test]
 #[should_panic(expected = "Invalid route: nested routes cannot contain wildcards (*)")]
 async fn nest_cannot_contain_wildcards() {
-    Router::<_, Body>::new().nest("/one/*rest", Router::new());
+    Router::<_, Body>::new().nest("/one/*rest", Router::new().into_service());
 }
 
 #[tokio::test]
@@ -302,7 +323,10 @@ async fn outer_middleware_still_see_whole_url() {
         .route("/", get(handler))
         .route("/foo", get(handler))
         .route("/foo/bar", get(handler))
-        .nest("/one", Router::new().route("/two", get(handler)))
+        .nest(
+            "/one",
+            Router::new().route("/two", get(handler)).into_service(),
+        )
         .fallback(handler)
         .layer(tower::layer::layer_fn(SetUriExtension));
 
@@ -325,6 +349,7 @@ async fn nest_at_capture() {
             "/:b",
             get(|Path((a, b)): Path<(String, String)>| async move { format!("a={} b={}", a, b) }),
         )
+        .into_service()
         .boxed_clone();
 
     let app = Router::new().nest("/:a", api_routes);
@@ -355,7 +380,10 @@ async fn nest_with_and_without_trailing() {
 #[tokio::test]
 async fn doesnt_call_outer_fallback() {
     let app = Router::new()
-        .nest("/foo", Router::new().route("/", get(|| async {})))
+        .nest(
+            "/foo",
+            Router::new().route("/", get(|| async {})).into_service(),
+        )
         .fallback(|| async { (StatusCode::NOT_FOUND, "outer fallback") });
 
     let client = TestClient::new(app);
@@ -373,7 +401,9 @@ async fn doesnt_call_outer_fallback() {
 async fn nesting_with_root_inner_router() {
     let app = Router::new().nest(
         "/foo",
-        Router::new().route("/", get(|| async { "inner route" })),
+        Router::new()
+            .route("/", get(|| async { "inner route" }))
+            .into_service(),
     );
 
     let client = TestClient::new(app);
@@ -396,7 +426,8 @@ async fn fallback_on_inner() {
             "/foo",
             Router::new()
                 .route("/", get(|| async {}))
-                .fallback(|| async { (StatusCode::NOT_FOUND, "inner fallback") }),
+                .fallback(|| async { (StatusCode::NOT_FOUND, "inner fallback") })
+                .into_service(),
         )
         .fallback(|| async { (StatusCode::NOT_FOUND, "outer fallback") });
 
@@ -420,7 +451,7 @@ macro_rules! nested_route_test {
         #[tokio::test]
         async fn $name() {
             let inner = Router::new().route($route_path, get(|| async {}));
-            let app = Router::new().nest($nested_path, inner);
+            let app = Router::new().nest($nested_path, inner.into_service());
             let client = TestClient::new(app);
             let res = client.get($expected_path).send().await;
             let status = res.status();
@@ -455,7 +486,7 @@ async fn nesting_with_different_state() {
             "/foo",
             get(|State(state): State<&'static str>| async move { state }),
         )
-        .nest("/nested", inner)
+        .nest("/nested", inner.into_service())
         .route(
             "/bar",
             get(|State(state): State<&'static str>| async move { state }),

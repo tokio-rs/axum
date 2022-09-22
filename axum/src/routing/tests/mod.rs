@@ -444,11 +444,12 @@ async fn middleware_still_run_for_unmatched_requests() {
 }
 
 #[tokio::test]
-#[should_panic(
-    expected = "Invalid route: `Router::route_service` cannot be used with `Router`s. Use `Router::nest` instead"
-)]
+#[should_panic(expected = "\
+    Invalid route: `Router::route_service` cannot be used with `RouterService`s. \
+    Use `Router::nest` instead\
+")]
 async fn routing_to_router_panics() {
-    TestClient::new(Router::new().route_service("/", Router::new()));
+    TestClient::new(Router::new().route_service("/", Router::new().into_service()));
 }
 
 #[tokio::test]

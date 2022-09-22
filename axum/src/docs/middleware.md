@@ -555,7 +555,7 @@ async fn rewrite_request_uri<B>(req: Request<B>, next: Next<B>) -> Response {
 // this can be any `tower::Layer`
 let middleware = axum::middleware::from_fn(rewrite_request_uri);
 
-let app = Router::new();
+let app = Router::new().into_service();
 
 // apply the layer around the whole `Router`
 // this way the middleware will run before `Router` receives the request

@@ -69,7 +69,7 @@ use axum::{routing::get, Router};
 
 let app = Router::new().route_service(
     "/",
-    Router::new().route("/foo", get(|| async {})),
+    Router::new().route("/foo", get(|| async {})).into_service(),
 );
 # async {
 # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();

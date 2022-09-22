@@ -38,7 +38,7 @@ use sync_wrapper::SyncWrapper;
 ///         }),
 ///     );
 ///
-/// let app = Router::new().nest("/api", api_routes);
+/// let app = Router::new().nest("/api", api_routes.into_service());
 /// # async {
 /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 /// # };
@@ -75,7 +75,7 @@ use sync_wrapper::SyncWrapper;
 ///         }),
 ///     );
 ///
-/// let app = Router::new().nest("/api", api_routes);
+/// let app = Router::new().nest("/api", api_routes.into_service());
 /// # async {
 /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 /// # };

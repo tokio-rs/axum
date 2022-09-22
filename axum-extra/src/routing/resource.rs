@@ -159,7 +159,7 @@ impl<B> From<Resource<B>> for Router<B> {
 mod tests {
     #[allow(unused_imports)]
     use super::*;
-    use axum::{extract::Path, http::Method, Router};
+    use axum::{extract::Path, http::Method, routing::RouterService, Router};
     use http::Request;
     use tower::{Service, ServiceExt};
 
@@ -174,7 +174,7 @@ mod tests {
             .update(|Path(id): Path<u64>| async move { format!("users#update id={}", id) })
             .destroy(|Path(id): Path<u64>| async move { format!("users#destroy id={}", id) });
 
-        let mut app = Router::new().merge(users);
+        let mut app = Router::new().merge(users).into_service();
 
         assert_eq!(
             call_route(&mut app, Method::GET, "/users").await,
@@ -217,7 +217,7 @@ mod tests {
         );
     }
 
-    async fn call_route(app: &mut Router<()>, method: Method, uri: &str) -> String {
+    async fn call_route(app: &mut RouterService, method: Method, uri: &str) -> String {
         let res = app
             .ready()
             .await

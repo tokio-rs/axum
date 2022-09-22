@@ -1,6 +1,6 @@
 #![allow(clippy::blacklisted_name)]
 
-use crate::{body::HttpBody, BoxError};
+use crate::{body::HttpBody, BoxError, Router};
 
 mod test_client;
 pub(crate) use self::test_client::*;
