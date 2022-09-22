@@ -917,24 +917,8 @@ where
                         panic!("Overlapping method route. Cannot merge two method routes that both define `{name}`")
                     }
                 }
-                (Some(svc), None) => Some(svc),
-                (None, Some(svc)) => Some(svc),
+                (Some(svc), None) | (None, Some(svc)) => Some(svc),
                 (None, None) => None,
-            }
-        }
-
-        #[track_caller]
-        fn merge_fallback<B, E>(
-            fallback: Fallback<B, E>,
-            fallback_other: Fallback<B, E>,
-        ) -> Fallback<B, E> {
-            match (fallback, fallback_other) {
-                (pick @ Fallback::Default(_), Fallback::Default(_)) => pick,
-                (Fallback::Default(_), pick @ Fallback::Custom(_)) => pick,
-                (pick @ Fallback::Custom(_), Fallback::Default(_)) => pick,
-                (Fallback::Custom(_), Fallback::Custom(_)) => {
-                    panic!("Cannot merge two `MethodRouter`s that both have a fallback")
-                }
             }
         }
 
@@ -947,7 +931,10 @@ where
         self.put = merge_inner(path, "PUT", self.put, other.put);
         self.trace = merge_inner(path, "TRACE", self.trace, other.trace);
 
-        self.fallback = merge_fallback(self.fallback, other.fallback);
+        self.fallback = self
+            .fallback
+            .merge(other.fallback)
+            .expect("Cannot merge two `MethodRouter`s that both have a fallback");
 
         self.allow_header = self.allow_header.merge(other.allow_header);
 
