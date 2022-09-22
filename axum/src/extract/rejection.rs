@@ -48,30 +48,6 @@ define_rejection! {
 }
 
 define_rejection! {
-    #[status = PAYLOAD_TOO_LARGE]
-    #[body = "Request payload is too large"]
-    /// Rejection type for [`ContentLengthLimit`](super::ContentLengthLimit) if
-    /// the request body is too large.
-    pub struct PayloadTooLarge;
-}
-
-define_rejection! {
-    #[status = LENGTH_REQUIRED]
-    #[body = "Content length header is required"]
-    /// Rejection type for [`ContentLengthLimit`](super::ContentLengthLimit) if
-    /// the request is missing the `Content-Length` header or it is invalid.
-    pub struct LengthRequired;
-}
-
-define_rejection! {
-    #[status = BAD_REQUEST]
-    #[body = "`GET`, `HEAD`, `OPTIONS` requests are not allowed to have a `Content-Length` header"]
-    /// Rejection type for [`ContentLengthLimit`](super::ContentLengthLimit) if
-    /// the request is `GET`, `HEAD`, or `OPTIONS` and has a `Content-Length` header.
-    pub struct ContentLengthNotAllowed;
-}
-
-define_rejection! {
     #[status = INTERNAL_SERVER_ERROR]
     #[body = "No paths parameters found for matched route"]
     /// Rejection type used if axum's internal representation of path parameters
