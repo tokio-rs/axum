@@ -1,24 +1,17 @@
 //! Routing between [`Service`]s and handlers.
 
-use self::{future::RouteFuture, not_found::NotFound};
+use self::not_found::NotFound;
 use crate::{
     body::{Body, HttpBody},
     extract::connect_info::IntoMakeServiceWithConnectInfo,
     handler::Handler,
-    response::Response,
     util::try_downcast,
     Extension,
 };
 use axum_core::response::IntoResponse;
 use http::Request;
 use matchit::MatchError;
-use std::{
-    collections::HashMap,
-    convert::Infallible,
-    fmt,
-    sync::Arc,
-    task::{Context, Poll},
-};
+use std::{collections::HashMap, convert::Infallible, fmt, sync::Arc};
 use tower::{util::MapResponseLayer, ServiceBuilder};
 use tower_layer::Layer;
 use tower_service::Service;
@@ -33,10 +26,14 @@ mod route;
 mod strip_prefix;
 pub(crate) mod url_params;
 
+mod service;
 #[cfg(test)]
 mod tests;
 
-pub use self::{into_make_service::IntoMakeService, method_filter::MethodFilter, route::Route};
+pub use self::{
+    into_make_service::IntoMakeService, method_filter::MethodFilter, route::Route,
+    service::RouterService,
+};
 
 pub use self::method_routing::{
     any, any_service, delete, delete_service, get, get_service, head, head_service, on, on_service,
@@ -226,9 +223,12 @@ where
             panic!("Paths must start with a `/`");
         }
 
-        let service = match try_downcast::<Router<S, B>, _>(service) {
+        let service = match try_downcast::<RouterService<B>, _>(service) {
             Ok(_) => {
-                panic!("Invalid route: `Router::route_service` cannot be used with `Router`s. Use `Router::nest` instead")
+                panic!(
+                    "Invalid route: `Router::route_service` cannot be used with `RouterService`s. \
+                     Use `Router::nest` instead"
+                );
             }
             Err(svc) => svc,
         };
@@ -323,14 +323,10 @@ where
             };
         }
 
-        self.fallback = match (self.fallback, fallback) {
-            (Fallback::Default(_), pick @ Fallback::Default(_)) => pick,
-            (Fallback::Default(_), pick @ Fallback::Custom(_)) => pick,
-            (pick @ Fallback::Custom(_), Fallback::Default(_)) => pick,
-            (Fallback::Custom(_), Fallback::Custom(_)) => {
-                panic!("Cannot merge two `Router`s that both have a fallback")
-            }
-        };
+        self.fallback = self
+            .fallback
+            .merge(fallback)
+            .expect("Cannot merge two `Router`s that both have a fallback");
 
         self
     }
@@ -442,6 +438,11 @@ where
         self
     }
 
+    /// Convert this router into a [`RouterService`].
+    pub fn into_service(self) -> RouterService<B> {
+        RouterService::new(self)
+    }
+
     /// Convert this router into a [`MakeService`], that is a [`Service`] whose
     /// response is another service.
     ///
@@ -465,120 +466,20 @@ where
     /// ```
     ///
     /// [`MakeService`]: tower::make::MakeService
-    pub fn into_make_service(self) -> IntoMakeService<Self> {
-        IntoMakeService::new(self)
+    pub fn into_make_service(self) -> IntoMakeService<RouterService<B>> {
+        IntoMakeService::new(self.into_service())
     }
 
     #[doc = include_str!("../docs/routing/into_make_service_with_connect_info.md")]
-    pub fn into_make_service_with_connect_info<C>(self) -> IntoMakeServiceWithConnectInfo<Self, C> {
-        IntoMakeServiceWithConnectInfo::new(self)
-    }
-
-    #[inline]
-    fn call_route(
-        &self,
-        match_: matchit::Match<&RouteId>,
-        mut req: Request<B>,
-    ) -> RouteFuture<B, Infallible> {
-        let id = *match_.value;
-
-        #[cfg(feature = "matched-path")]
-        {
-            fn set_matched_path(
-                id: RouteId,
-                route_id_to_path: &HashMap<RouteId, Arc<str>>,
-                extensions: &mut http::Extensions,
-            ) {
-                if let Some(matched_path) = route_id_to_path.get(&id) {
-                    use crate::extract::MatchedPath;
-
-                    let matched_path = if let Some(previous) = extensions.get::<MatchedPath>() {
-                        // a previous `MatchedPath` might exist if we're inside a nested Router
-                        let previous = if let Some(previous) =
-                            previous.as_str().strip_suffix(NEST_TAIL_PARAM_CAPTURE)
-                        {
-                            previous
-                        } else {
-                            previous.as_str()
-                        };
-
-                        let matched_path = format!("{}{}", previous, matched_path);
-                        matched_path.into()
-                    } else {
-                        Arc::clone(matched_path)
-                    };
-                    extensions.insert(MatchedPath(matched_path));
-                } else {
-                    #[cfg(debug_assertions)]
-                    panic!("should always have a matched path for a route id");
-                }
-            }
-
-            set_matched_path(id, &self.node.route_id_to_path, req.extensions_mut());
-        }
-
-        url_params::insert_url_params(req.extensions_mut(), match_.params);
-
-        let mut route = self
-            .routes
-            .get(&id)
-            .expect("no route for id. This is a bug in axum. Please file an issue")
-            .clone();
-
-        match &mut route {
-            Endpoint::MethodRouter(inner) => inner
-                .clone()
-                .with_state_arc(Arc::clone(&self.state))
-                .call(req),
-            Endpoint::Route(inner) => inner.call(req),
-        }
+    pub fn into_make_service_with_connect_info<C>(
+        self,
+    ) -> IntoMakeServiceWithConnectInfo<RouterService<B>, C> {
+        IntoMakeServiceWithConnectInfo::new(self.into_service())
     }
 
     /// Get a reference to the state.
     pub fn state(&self) -> &S {
         &self.state
-    }
-}
-
-impl<S, B> Service<Request<B>> for Router<S, B>
-where
-    B: HttpBody + Send + 'static,
-    S: Send + Sync + 'static,
-{
-    type Response = Response;
-    type Error = Infallible;
-    type Future = RouteFuture<B, Infallible>;
-
-    #[inline]
-    fn poll_ready(&mut self, _: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        Poll::Ready(Ok(()))
-    }
-
-    #[inline]
-    fn call(&mut self, mut req: Request<B>) -> Self::Future {
-        #[cfg(feature = "original-uri")]
-        {
-            use crate::extract::OriginalUri;
-
-            if req.extensions().get::<OriginalUri>().is_none() {
-                let original_uri = OriginalUri(req.uri().clone());
-                req.extensions_mut().insert(original_uri);
-            }
-        }
-
-        let path = req.uri().path().to_owned();
-
-        match self.node.at(&path) {
-            Ok(match_) => self.call_route(match_, req),
-            Err(
-                MatchError::NotFound
-                | MatchError::ExtraTrailingSlash
-                | MatchError::MissingTrailingSlash,
-            ) => match &self.fallback {
-                Fallback::Default(inner) => inner.clone().call(req),
-                Fallback::Custom(inner) => inner.clone().call(req),
-            },
-        }
     }
 }
 
@@ -628,11 +529,21 @@ enum Fallback<B, E = Infallible> {
     Custom(Route<B, E>),
 }
 
+impl<B, E> Fallback<B, E> {
+    fn merge(self, other: Self) -> Option<Self> {
+        match (self, other) {
+            (Self::Default(_), pick @ Self::Default(_)) => Some(pick),
+            (Self::Default(_), pick) | (pick, Self::Default(_)) => Some(pick),
+            _ => None,
+        }
+    }
+}
+
 impl<B, E> Clone for Fallback<B, E> {
     fn clone(&self) -> Self {
         match self {
-            Fallback::Default(inner) => Fallback::Default(inner.clone()),
-            Fallback::Custom(inner) => Fallback::Custom(inner.clone()),
+            Self::Default(inner) => Self::Default(inner.clone()),
+            Self::Custom(inner) => Self::Custom(inner.clone()),
         }
     }
 }
@@ -652,22 +563,22 @@ impl<B, E> Fallback<B, E> {
         F: FnOnce(Route<B, E>) -> Route<B2, E2>,
     {
         match self {
-            Fallback::Default(inner) => Fallback::Default(f(inner)),
-            Fallback::Custom(inner) => Fallback::Custom(f(inner)),
+            Self::Default(inner) => Fallback::Default(f(inner)),
+            Self::Custom(inner) => Fallback::Custom(f(inner)),
         }
     }
 }
 
 enum Endpoint<S, B> {
-    MethodRouter(MethodRouter<S, B, Infallible>),
+    MethodRouter(MethodRouter<S, B>),
     Route(Route<B>),
 }
 
 impl<S, B> Clone for Endpoint<S, B> {
     fn clone(&self) -> Self {
         match self {
-            Endpoint::MethodRouter(inner) => Endpoint::MethodRouter(inner.clone()),
-            Endpoint::Route(inner) => Endpoint::Route(inner.clone()),
+            Self::MethodRouter(inner) => Self::MethodRouter(inner.clone()),
+            Self::Route(inner) => Self::Route(inner.clone()),
         }
     }
 }

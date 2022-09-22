@@ -35,15 +35,17 @@ async fn main() {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    let router = Router::new().route("/", get(|| async { "Hello, World!" }));
+    let router_svc = Router::new()
+        .route("/", get(|| async { "Hello, World!" }))
+        .into_service();
 
     let service = tower::service_fn(move |req: Request<Body>| {
-        let router = router.clone();
+        let router_svc = router_svc.clone();
         async move {
             if req.method() == Method::CONNECT {
                 proxy(req).await
             } else {
-                router.oneshot(req).await.map_err(|err| match err {})
+                router_svc.oneshot(req).await.map_err(|err| match err {})
             }
         }
     });

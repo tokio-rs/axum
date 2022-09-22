@@ -18,7 +18,10 @@ async fn basic() {
 #[tokio::test]
 async fn nest() {
     let app = Router::new()
-        .nest("/foo", Router::new().route("/bar", get(|| async {})))
+        .nest(
+            "/foo",
+            Router::new().route("/bar", get(|| async {})).into_service(),
+        )
         .fallback(|| async { "fallback" });
 
     let client = TestClient::new(app);

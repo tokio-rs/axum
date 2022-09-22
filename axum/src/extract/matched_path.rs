@@ -148,7 +148,7 @@ mod tests {
                 "/:key",
                 get(|path: MatchedPath| async move { path.as_str().to_owned() }),
             )
-            .nest("/api", api)
+            .nest("/api", api.into_service())
             .nest(
                 "/public",
                 Router::new()
@@ -156,7 +156,8 @@ mod tests {
                     // have to set the middleware here since otherwise the
                     // matched path is just `/public/*` since we're nesting
                     // this router
-                    .layer(layer_fn(SetMatchedPathExtension)),
+                    .layer(layer_fn(SetMatchedPathExtension))
+                    .into_service(),
             )
             .nest("/foo", handler.into_service())
             .layer(layer_fn(SetMatchedPathExtension));
@@ -197,10 +198,12 @@ mod tests {
     async fn nested_opaque_routers_append_to_matched_path() {
         let app = Router::new().nest(
             "/:a",
-            Router::new().route(
-                "/:b",
-                get(|path: MatchedPath| async move { path.as_str().to_owned() }),
-            ),
+            Router::new()
+                .route(
+                    "/:b",
+                    get(|path: MatchedPath| async move { path.as_str().to_owned() }),
+                )
+                .into_service(),
         );
 
         let client = TestClient::new(app);

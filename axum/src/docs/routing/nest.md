@@ -16,10 +16,10 @@ let user_routes = Router::new().route("/:id", get(|| async {}));
 let team_routes = Router::new().route("/", post(|| async {}));
 
 let api_routes = Router::new()
-    .nest("/users", user_routes)
-    .nest("/teams", team_routes);
+    .nest("/users", user_routes.into_service())
+    .nest("/teams", team_routes.into_service());
 
-let app = Router::new().nest("/api", api_routes);
+let app = Router::new().nest("/api", api_routes.into_service());
 
 // Our app now accepts
 // - GET /api/users/:id
@@ -58,7 +58,7 @@ async fn users_get(Path(params): Path<HashMap<String, String>>) {
 
 let users_api = Router::new().route("/users/:id", get(users_get));
 
-let app = Router::new().nest("/:version/api", users_api);
+let app = Router::new().nest("/:version/api", users_api.into_service());
 # async {
 # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 # };
@@ -82,7 +82,7 @@ let app = Router::new()
     .route("/foo/*rest", get(|uri: Uri| async {
         // `uri` will contain `/foo`
     }))
-    .nest("/bar", nested_router);
+    .nest("/bar", nested_router.into_service());
 # async {
 # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 # };
@@ -103,7 +103,7 @@ async fn fallback() -> (StatusCode, &'static str) {
 let api_routes = Router::new().nest("/users", get(|| async {}));
 
 let app = Router::new()
-    .nest("/api", api_routes)
+    .nest("/api", api_routes.into_service())
     .fallback(fallback);
 # let _: Router = app;
 ```
@@ -135,7 +135,7 @@ let api_routes = Router::new()
     .fallback(api_fallback);
 
 let app = Router::new()
-    .nest("/api", api_routes)
+    .nest("/api", api_routes.into_service())
     .fallback(fallback);
 # let _: Router = app;
 ```
