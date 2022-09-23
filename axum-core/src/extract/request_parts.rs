@@ -94,6 +94,16 @@ where
                 .await
                 .map_err(FailedToBufferBody::from_err)?,
             Some(DefaultBodyLimitKind::Limit(limit)) => {
+                let content_length: usize = req
+                    .headers()
+                    .get(http::header::CONTENT_LENGTH)
+                    .and_then(|val| val.to_str().ok()?.parse().ok())
+                    .unwrap();
+
+                if content_length > limit {
+                    todo!()
+                }
+
                 let body = http_body::Limited::new(req.into_body(), limit);
                 crate::body::to_bytes(body)
                     .await
