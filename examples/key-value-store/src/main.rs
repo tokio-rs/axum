@@ -9,7 +9,7 @@
 use axum::{
     body::Bytes,
     error_handling::HandleErrorLayer,
-    extract::{Path, State},
+    extract::{DefaultBodyLimit, Path, State},
     handler::Handler,
     http::StatusCode,
     response::IntoResponse,
@@ -49,7 +49,12 @@ async fn main() {
             // Add compression to `kv_get`
             get(kv_get.layer(CompressionLayer::new()))
                 // But don't compress `kv_set`
-                .post(kv_set),
+                .post_service(
+                    ServiceBuilder::new()
+                        .layer(DefaultBodyLimit::disable())
+                        .layer(RequestBodyLimitLayer::new(1024 * 5_000 /* ~5mb */))
+                        .service(kv_set.with_state(Arc::clone(&shared_state))),
+                ),
         )
         .route("/keys", get(list_keys))
         // Nest our admin routes under `/admin`
@@ -62,7 +67,6 @@ async fn main() {
                 .load_shed()
                 .concurrency_limit(1024)
                 .timeout(Duration::from_secs(10))
-                .layer(RequestBodyLimitLayer::new(1024 * 5_000 /* ~5mb */))
                 .layer(TraceLayer::new_for_http())
                 .into_inner(),
         );
