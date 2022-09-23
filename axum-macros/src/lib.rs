@@ -43,9 +43,11 @@
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![cfg_attr(test, allow(clippy::float_cmp))]
 
+use std::collections::HashSet;
+
 use proc_macro::TokenStream;
 use quote::{quote, ToTokens};
-use syn::parse::Parse;
+use syn::{parse::Parse, Type};
 
 mod attr_parsing;
 mod debug_handler;
@@ -610,6 +612,50 @@ where
             tokens
         }
         Err(err) => err.into_compile_error().into(),
+    }
+}
+
+fn infer_state_type<'a, I>(types: I) -> Option<Type>
+where
+    I: Iterator<Item = &'a Type>,
+{
+    let state_inputs = types
+        .filter_map(|ty| {
+            if let Type::Path(path) = ty {
+                Some(&path.path)
+            } else {
+                None
+            }
+        })
+        .filter_map(|path| {
+            if let Some(last_segment) = path.segments.last() {
+                if last_segment.ident != "State" {
+                    return None;
+                }
+
+                match &last_segment.arguments {
+                    syn::PathArguments::AngleBracketed(args) if args.args.len() == 1 => {
+                        Some(args.args.first().unwrap())
+                    }
+                    _ => None,
+                }
+            } else {
+                None
+            }
+        })
+        .filter_map(|generic_arg| {
+            if let syn::GenericArgument::Type(ty) = generic_arg {
+                Some(ty)
+            } else {
+                None
+            }
+        })
+        .collect::<HashSet<_>>();
+
+    if state_inputs.len() == 1 {
+        state_inputs.iter().next().map(|&ty| ty.clone())
+    } else {
+        None
     }
 }
 
