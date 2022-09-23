@@ -9,7 +9,7 @@
 use axum::{
     body::Bytes,
     error_handling::HandleErrorLayer,
-    extract::{DefaultBodyLimit, Path, State},
+    extract::{Path, State},
     handler::Handler,
     http::StatusCode,
     response::IntoResponse,
@@ -25,7 +25,8 @@ use std::{
 };
 use tower::{BoxError, ServiceBuilder};
 use tower_http::{
-    auth::RequireAuthorizationLayer, compression::CompressionLayer, trace::TraceLayer,
+    auth::RequireAuthorizationLayer, compression::CompressionLayer, limit::RequestBodyLimitLayer,
+    trace::TraceLayer,
 };
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
@@ -61,7 +62,7 @@ async fn main() {
                 .load_shed()
                 .concurrency_limit(1024)
                 .timeout(Duration::from_secs(10))
-                .layer(DefaultBodyLimit::max(1024 * 5_000 /* ~5mb */))
+                .layer(RequestBodyLimitLayer::new(1024 * 5_000 /* ~5mb */))
                 .layer(TraceLayer::new_for_http())
                 .into_inner(),
         );
