@@ -19,9 +19,7 @@ use std::{
     task::{Context, Poll},
     time::Duration,
 };
-use tower::{
-    service_fn, timeout::TimeoutLayer, util::MapResponseLayer, ServiceBuilder, ServiceExt,
-};
+use tower::{service_fn, timeout::TimeoutLayer, util::MapResponseLayer, ServiceBuilder};
 use tower_http::{auth::RequireAuthorizationLayer, limit::RequestBodyLimitLayer};
 use tower_service::Service;
 

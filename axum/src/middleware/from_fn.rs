@@ -396,7 +396,7 @@ mod tests {
         }
 
         async fn handle(headers: HeaderMap) -> String {
-            (&headers["x-axum-test"]).to_str().unwrap().to_owned()
+            (headers["x-axum-test"]).to_str().unwrap().to_owned()
         }
 
         let app = Router::new()
