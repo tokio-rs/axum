@@ -4,7 +4,12 @@
 //! cd examples && cargo run -p example-multipart-form
 //! ```
 
-use axum::{extract::Multipart, response::Html, routing::get, Router};
+use axum::{
+    extract::{DefaultBodyLimit, Multipart},
+    response::Html,
+    routing::get,
+    Router,
+};
 use std::net::SocketAddr;
 use tower_http::limit::RequestBodyLimitLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
@@ -22,6 +27,7 @@ async fn main() {
     // build our application with some routes
     let app = Router::new()
         .route("/", get(show_form).post(accept_form))
+        .layer(DefaultBodyLimit::disable())
         .layer(RequestBodyLimitLayer::new(
             250 * 1024 * 1024, /* 250mb */
         ))
