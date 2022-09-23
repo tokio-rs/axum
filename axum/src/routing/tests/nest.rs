@@ -470,3 +470,18 @@ async fn nesting_with_different_state() {
     let res = client.get("/bar").send().await;
     assert_eq!(res.text().await, "outer");
 }
+
+#[tokio::test]
+async fn inherit_state_via_nest() {
+    let foo = Router::inherit_state().route(
+        "/foo",
+        get(|State(state): State<&'static str>| async move { state }),
+    );
+
+    let app = Router::with_state("state").nest("/test", foo);
+    let client = TestClient::new(app);
+
+    let res = client.get("/test/foo").send().await;
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.text().await, "state");
+}
