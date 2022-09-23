@@ -82,7 +82,7 @@ async fn nested_or() {
     assert_eq!(client.get("/bar").send().await.text().await, "bar");
     assert_eq!(client.get("/baz").send().await.text().await, "baz");
 
-    let client = TestClient::new(Router::new().nest("/foo", bar_or_baz.into_service()));
+    let client = TestClient::new(Router::new().nest("/foo", bar_or_baz));
     assert_eq!(client.get("/foo/bar").send().await.text().await, "bar");
     assert_eq!(client.get("/foo/baz").send().await.text().await, "baz");
 }
@@ -145,10 +145,7 @@ async fn layer_and_handle_error() {
 #[tokio::test]
 async fn nesting() {
     let one = Router::new().route("/foo", get(|| async {}));
-    let two = Router::new().nest(
-        "/bar",
-        Router::new().route("/baz", get(|| async {})).into_service(),
-    );
+    let two = Router::new().nest("/bar", Router::new().route("/baz", get(|| async {})));
     let app = one.merge(two);
 
     let client = TestClient::new(app);
@@ -232,12 +229,7 @@ async fn all_the_uris(
 
 #[tokio::test]
 async fn nesting_and_seeing_the_right_uri() {
-    let one = Router::new().nest(
-        "/foo/",
-        Router::new()
-            .route("/bar", get(all_the_uris))
-            .into_service(),
-    );
+    let one = Router::new().nest("/foo/", Router::new().route("/bar", get(all_the_uris)));
     let two = Router::new().route("/foo", get(all_the_uris));
 
     let client = TestClient::new(one.merge(two));
@@ -269,14 +261,7 @@ async fn nesting_and_seeing_the_right_uri() {
 async fn nesting_and_seeing_the_right_uri_at_more_levels_of_nesting() {
     let one = Router::new().nest(
         "/foo/",
-        Router::new()
-            .nest(
-                "/bar",
-                Router::new()
-                    .route("/baz", get(all_the_uris))
-                    .into_service(),
-            )
-            .into_service(),
+        Router::new().nest("/bar", Router::new().route("/baz", get(all_the_uris))),
     );
     let two = Router::new().route("/foo", get(all_the_uris));
 
@@ -309,21 +294,9 @@ async fn nesting_and_seeing_the_right_uri_at_more_levels_of_nesting() {
 async fn nesting_and_seeing_the_right_uri_ors_with_nesting() {
     let one = Router::new().nest(
         "/one",
-        Router::new()
-            .nest(
-                "/bar",
-                Router::new()
-                    .route("/baz", get(all_the_uris))
-                    .into_service(),
-            )
-            .into_service(),
+        Router::new().nest("/bar", Router::new().route("/baz", get(all_the_uris))),
     );
-    let two = Router::new().nest(
-        "/two",
-        Router::new()
-            .route("/qux", get(all_the_uris))
-            .into_service(),
-    );
+    let two = Router::new().nest("/two", Router::new().route("/qux", get(all_the_uris)));
     let three = Router::new().route("/three", get(all_the_uris));
 
     let client = TestClient::new(one.merge(two).merge(three));
@@ -366,14 +339,7 @@ async fn nesting_and_seeing_the_right_uri_ors_with_nesting() {
 async fn nesting_and_seeing_the_right_uri_ors_with_multi_segment_uris() {
     let one = Router::new().nest(
         "/one",
-        Router::new()
-            .nest(
-                "/foo",
-                Router::new()
-                    .route("/bar", get(all_the_uris))
-                    .into_service(),
-            )
-            .into_service(),
+        Router::new().nest("/foo", Router::new().route("/bar", get(all_the_uris))),
     );
     let two = Router::new().route("/two/foo", get(all_the_uris));
 

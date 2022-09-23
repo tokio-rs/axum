@@ -270,7 +270,29 @@ where
 
     #[doc = include_str!("../docs/routing/nest.md")]
     #[track_caller]
-    pub fn nest<T>(mut self, mut path: &str, svc: T) -> Self
+    pub fn nest<S2>(self, path: &str, mut router: Router<S2, B>) -> Self
+    where
+        S2: Send + Sync + 'static,
+    {
+        if router.state.is_none() {
+            let s = self.state.clone();
+            router.state = match try_downcast::<Option<Arc<S2>>, Option<Arc<S>>>(s) {
+                Ok(state) => state,
+                Err(_) => panic!(
+                    "can't nest a `Router` that wants to inherit state of type `{}` \
+                     into a `Router` with a state type of `{}`",
+                    type_name::<S2>(),
+                    type_name::<S>(),
+                ),
+            };
+        }
+
+        self.nest_service(path, router.into_service())
+    }
+
+    /// Like [`nest`](Self::nest), but accepts an arbitrary `Service`.
+    #[track_caller]
+    pub fn nest_service<T>(mut self, mut path: &str, svc: T) -> Self
     where
         T: Service<Request<B>, Error = Infallible> + Clone + Send + 'static,
         T::Response: IntoResponse,
