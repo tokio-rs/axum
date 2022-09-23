@@ -439,6 +439,7 @@ where
     }
 
     /// Convert this router into a [`RouterService`].
+    #[track_caller]
     pub fn into_service(self) -> RouterService<B> {
         RouterService::new(self)
     }
@@ -466,6 +467,7 @@ where
     /// ```
     ///
     /// [`MakeService`]: tower::make::MakeService
+    #[track_caller]
     pub fn into_make_service(self) -> IntoMakeService<RouterService<B>> {
         IntoMakeService::new(self.into_service())
     }
