@@ -18,7 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **added:** Add `middleware::from_extractor_with_state` and
   `middleware::from_extractor_with_state_arc` ([#1396])
 - **added:** Add `DefaultBodyLimit::max` for changing the default body limit ([#1397])
-- **breaking:** `ContentLengthLimit` has been removed ([#1400])
+- **breaking:** `ContentLengthLimit` has been removed. `Use DefaultBodyLimit` instead ([#1400])
 
 [#1371]: https://github.com/tokio-rs/axum/pull/1371
 [#1387]: https://github.com/tokio-rs/axum/pull/1387
