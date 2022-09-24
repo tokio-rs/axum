@@ -18,12 +18,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **added:** Add `middleware::from_extractor_with_state` and
   `middleware::from_extractor_with_state_arc` ([#1396])
 - **added:** Add `DefaultBodyLimit::max` for changing the default body limit ([#1397])
+- **breaking:** `ContentLengthLimit` has been removed ([#1400])
 
 [#1371]: https://github.com/tokio-rs/axum/pull/1371
 [#1387]: https://github.com/tokio-rs/axum/pull/1387
 [#1389]: https://github.com/tokio-rs/axum/pull/1389
 [#1396]: https://github.com/tokio-rs/axum/pull/1396
 [#1397]: https://github.com/tokio-rs/axum/pull/1397
+[#1400]: https://github.com/tokio-rs/axum/pull/1400
 
 # 0.6.0-rc.2 (10. September, 2022)
 
