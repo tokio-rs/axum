@@ -5,6 +5,7 @@
 mod from_extractor;
 mod from_fn;
 mod map_request;
+mod map_response;
 
 pub use self::from_extractor::{
     from_extractor, from_extractor_with_state, from_extractor_with_state_arc, FromExtractor,
@@ -17,6 +18,10 @@ pub use self::map_request::{
     map_request, map_request_with_state, map_request_with_state_arc, IntoMapRequestResult,
     MapRequest, MapRequestLayer,
 };
+pub use self::map_response::{
+    map_response, map_response_with_state, map_response_with_state_arc, MapResponse,
+    MapResponseLayer,
+};
 pub use crate::extension::AddExtension;
 
 pub mod future {
@@ -25,4 +30,5 @@ pub mod future {
     pub use super::from_extractor::ResponseFuture as FromExtractorResponseFuture;
     pub use super::from_fn::ResponseFuture as FromFnResponseFuture;
     pub use super::map_request::ResponseFuture as MapRequestResponseFuture;
+    pub use super::map_response::ResponseFuture as MapResponseResponseFuture;
 }

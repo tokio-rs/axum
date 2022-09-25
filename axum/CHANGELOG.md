@@ -21,6 +21,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **added:** Add `map_request`, `map_request_with_state`, and
   `map_request_with_state_arc` for transforming the request with an async
   function ([#1408])
+- **added:** Add `map_response`, `map_response_with_state`, and
+  `map_response_with_state_arc` for transforming the response with an async
+  function
 - **breaking:** `ContentLengthLimit` has been removed. `Use DefaultBodyLimit` instead ([#1400])
 - **changed:** `Router` no longer implements `Service`, call `.into_service()`
   on it to obtain a `RouterService` that does ([#1368])
