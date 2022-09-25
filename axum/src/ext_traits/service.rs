@@ -1,7 +1,6 @@
-
 #[cfg(feature = "tokio")]
 use crate::extract::connect_info::IntoMakeServiceWithConnectInfo;
-use crate::{routing::IntoMakeService};
+use crate::routing::IntoMakeService;
 use tower_service::Service;
 
 /// Extension trait that adds additional methods to any [`Service`].

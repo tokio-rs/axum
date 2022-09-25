@@ -113,7 +113,7 @@ async fn nesting_router_at_empty_path() {
 
 #[tokio::test]
 async fn nesting_handler_at_root() {
-    let app = Router::new().nest("/", get(|uri: Uri| async move { uri.to_string() }));
+    let app = Router::new().nest_service("/", get(|uri: Uri| async move { uri.to_string() }));
 
     let client = TestClient::new(app);
 
@@ -201,7 +201,7 @@ async fn nested_service_sees_stripped_uri() {
 
 #[tokio::test]
 async fn nest_static_file_server() {
-    let app = Router::new().nest(
+    let app = Router::new().nest_service(
         "/static",
         get_service(ServeDir::new(".")).handle_error(|error| async move {
             (
@@ -320,12 +320,10 @@ async fn outer_middleware_still_see_whole_url() {
 
 #[tokio::test]
 async fn nest_at_capture() {
-    let api_routes = Router::new()
-        .route(
-            "/:b",
-            get(|Path((a, b)): Path<(String, String)>| async move { format!("a={} b={}", a, b) }),
-        )
-        .boxed_clone();
+    let api_routes = Router::new().route(
+        "/:b",
+        get(|Path((a, b)): Path<(String, String)>| async move { format!("a={} b={}", a, b) }),
+    );
 
     let app = Router::new().nest("/:a", api_routes);
 
@@ -338,7 +336,7 @@ async fn nest_at_capture() {
 
 #[tokio::test]
 async fn nest_with_and_without_trailing() {
-    let app = Router::new().nest("/foo", get(|| async {}));
+    let app = Router::new().nest_service("/foo", get(|| async {}));
 
     let client = TestClient::new(app);
 
@@ -471,4 +469,19 @@ async fn nesting_with_different_state() {
 
     let res = client.get("/bar").send().await;
     assert_eq!(res.text().await, "outer");
+}
+
+#[tokio::test]
+async fn inherit_state_via_nest() {
+    let foo = Router::inherit_state().route(
+        "/foo",
+        get(|State(state): State<&'static str>| async move { state }),
+    );
+
+    let app = Router::with_state("state").nest("/test", foo);
+    let client = TestClient::new(app);
+
+    let res = client.get("/test/foo").send().await;
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.text().await, "state");
 }

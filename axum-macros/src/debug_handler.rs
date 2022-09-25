@@ -4,7 +4,6 @@ use crate::{
 };
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote, quote_spanned};
-use std::collections::HashSet;
 use syn::{parse::Parse, parse_quote, spanned::Spanned, FnArg, ItemFn, Token, Type};
 
 pub(crate) fn expand(attr: Attrs, item_fn: ItemFn) -> TokenStream {
@@ -435,7 +434,7 @@ fn self_receiver(item_fn: &ItemFn) -> Option<TokenStream> {
 ///
 /// Returns `None` if there are no `State` args or multiple of different types.
 fn state_type_from_args(item_fn: &ItemFn) -> Option<Type> {
-    let state_inputs = item_fn
+    let types = item_fn
         .sig
         .inputs
         .iter()
@@ -443,44 +442,8 @@ fn state_type_from_args(item_fn: &ItemFn) -> Option<Type> {
             FnArg::Receiver(_) => None,
             FnArg::Typed(pat_type) => Some(pat_type),
         })
-        .map(|pat_type| &pat_type.ty)
-        .filter_map(|ty| {
-            if let Type::Path(path) = &**ty {
-                Some(&path.path)
-            } else {
-                None
-            }
-        })
-        .filter_map(|path| {
-            if let Some(last_segment) = path.segments.last() {
-                if last_segment.ident != "State" {
-                    return None;
-                }
-
-                match &last_segment.arguments {
-                    syn::PathArguments::AngleBracketed(args) if args.args.len() == 1 => {
-                        Some(args.args.first().unwrap())
-                    }
-                    _ => None,
-                }
-            } else {
-                None
-            }
-        })
-        .filter_map(|generic_arg| {
-            if let syn::GenericArgument::Type(ty) = generic_arg {
-                Some(ty)
-            } else {
-                None
-            }
-        })
-        .collect::<HashSet<_>>();
-
-    if state_inputs.len() == 1 {
-        state_inputs.iter().next().map(|&ty| ty.clone())
-    } else {
-        None
-    }
+        .map(|pat_type| &*pat_type.ty);
+    crate::infer_state_type(types)
 }
 
 #[test]

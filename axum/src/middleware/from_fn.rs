@@ -77,6 +77,9 @@ use tower_service::Service;
 /// async fn my_middleware<B>(
 ///     TypedHeader(auth): TypedHeader<Authorization<Bearer>>,
 ///     Query(query_params): Query<HashMap<String, String>>,
+///     // you can add more extractors here but the last
+///     // extractor must implement `FromRequest` which
+///     // `Request` does
 ///     req: Request<B>,
 ///     next: Next<B>,
 /// ) -> Response {
@@ -117,11 +120,16 @@ pub fn from_fn<F, T>(f: F) -> FromFnLayer<F, (), T> {
 ///
 /// async fn my_middleware<B>(
 ///     State(state): State<AppState>,
+///     // you can add more extractors here but the last
+///     // extractor must implement `FromRequest` which
+///     // `Request` does
 ///     req: Request<B>,
 ///     next: Next<B>,
 /// ) -> Response {
-///     // ...
-///     # ().into_response()
+///     // do something with `req`...
+///     let res = next.run(req).await;
+///     // do something with `res`...
+///     res
 /// }
 ///
 /// let state = AppState { /* ... */ };
@@ -136,6 +144,8 @@ pub fn from_fn_with_state<F, S, T>(state: S, f: F) -> FromFnLayer<F, S, T> {
 }
 
 /// Create a middleware from an async function with the given [`Arc`]'ed state.
+///
+/// See [`from_fn_with_state`] for an example.
 ///
 /// See [`State`](crate::extract::State) for more details about accessing state.
 pub fn from_fn_with_state_arc<F, S, T>(state: Arc<S>, f: F) -> FromFnLayer<F, S, T> {
@@ -294,31 +304,7 @@ macro_rules! impl_service {
     };
 }
 
-impl_service!([], T1);
-impl_service!([T1], T2);
-impl_service!([T1, T2], T3);
-impl_service!([T1, T2, T3], T4);
-impl_service!([T1, T2, T3, T4], T5);
-impl_service!([T1, T2, T3, T4, T5], T6);
-impl_service!([T1, T2, T3, T4, T5, T6], T7);
-impl_service!([T1, T2, T3, T4, T5, T6, T7], T8);
-impl_service!([T1, T2, T3, T4, T5, T6, T7, T8], T9);
-impl_service!([T1, T2, T3, T4, T5, T6, T7, T8, T9], T10);
-impl_service!([T1, T2, T3, T4, T5, T6, T7, T8, T9, T10], T11);
-impl_service!([T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11], T12);
-impl_service!([T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12], T13);
-impl_service!(
-    [T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13],
-    T14
-);
-impl_service!(
-    [T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14],
-    T15
-);
-impl_service!(
-    [T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15],
-    T16
-);
+all_the_tuples!(impl_service);
 
 impl<F, S, I, T> fmt::Debug for FromFn<F, S, I, T>
 where
@@ -393,7 +379,7 @@ mod tests {
         }
 
         async fn handle(headers: HeaderMap) -> String {
-            (&headers["x-axum-test"]).to_str().unwrap().to_owned()
+            headers["x-axum-test"].to_str().unwrap().to_owned()
         }
 
         let app = Router::new()
@@ -401,6 +387,7 @@ mod tests {
             .layer(from_fn(insert_header));
 
         let res = app
+            .into_service()
             .oneshot(Request::builder().uri("/").body(Body::empty()).unwrap())
             .await
             .unwrap();

@@ -1,8 +1,5 @@
 use super::*;
-use crate::{
-    body::HttpBody, error_handling::HandleErrorLayer, extract::OriginalUri, response::IntoResponse,
-    Json,
-};
+use crate::{error_handling::HandleErrorLayer, extract::OriginalUri, response::IntoResponse, Json};
 use serde_json::{json, Value};
 use tower::{limit::ConcurrencyLimitLayer, timeout::TimeoutLayer};
 
@@ -62,15 +59,7 @@ async fn multiple_ors_balanced_differently() {
 
     test("four", one.merge(two.merge(three.merge(four)))).await;
 
-    async fn test<S, ResBody>(name: &str, app: S)
-    where
-        S: Service<Request<Body>, Response = Response<ResBody>> + Clone + Send + 'static,
-        ResBody: HttpBody + Send + 'static,
-        ResBody::Data: Send,
-        ResBody::Error: Into<BoxError>,
-        S::Future: Send,
-        S::Error: Into<BoxError>,
-    {
+    async fn test(name: &str, app: Router) {
         let client = TestClient::new(app);
 
         for n in ["one", "two", "three", "four"].iter() {
@@ -476,4 +465,19 @@ async fn merging_routes_different_paths_different_states() {
     let res = client.get("/bar").send().await;
     assert_eq!(res.status(), StatusCode::OK);
     assert_eq!(res.text().await, "bar state");
+}
+
+#[tokio::test]
+async fn inherit_state_via_merge() {
+    let foo = Router::inherit_state().route(
+        "/foo",
+        get(|State(state): State<&'static str>| async move { state }),
+    );
+
+    let app = Router::with_state("state").merge(foo);
+    let client = TestClient::new(app);
+
+    let res = client.get("/foo").send().await;
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.text().await, "state");
 }

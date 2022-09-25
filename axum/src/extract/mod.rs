@@ -10,7 +10,6 @@ pub mod rejection;
 #[cfg(feature = "ws")]
 pub mod ws;
 
-mod content_length_limit;
 mod host;
 mod raw_query;
 mod request_parts;
@@ -19,10 +18,12 @@ mod state;
 #[doc(inline)]
 pub use axum_core::extract::{DefaultBodyLimit, FromRef, FromRequest, FromRequestParts};
 
+#[cfg(feature = "macros")]
+pub use axum_macros::{FromRequest, FromRequestParts};
+
 #[doc(inline)]
 #[allow(deprecated)]
 pub use self::{
-    content_length_limit::ContentLengthLimit,
     host::Host,
     path::Path,
     raw_query::RawQuery,

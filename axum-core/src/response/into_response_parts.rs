@@ -248,7 +248,7 @@ macro_rules! impl_into_response_parts {
     }
 }
 
-all_the_tuples!(impl_into_response_parts);
+all_the_tuples_no_last_special_case!(impl_into_response_parts);
 
 impl IntoResponseParts for Extensions {
     type Error = Infallible;

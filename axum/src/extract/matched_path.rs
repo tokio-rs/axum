@@ -158,7 +158,7 @@ mod tests {
                     // this router
                     .layer(layer_fn(SetMatchedPathExtension)),
             )
-            .nest("/foo", handler.into_service())
+            .nest_service("/foo", handler.into_service())
             .layer(layer_fn(SetMatchedPathExtension));
 
         let client = TestClient::new(app);

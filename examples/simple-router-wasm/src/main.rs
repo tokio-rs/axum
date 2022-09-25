@@ -39,8 +39,9 @@ fn main() {
     assert_eq!(200, response.status());
 }
 
+#[allow(clippy::let_and_return)]
 async fn app(request: Request<String>) -> Response {
-    let mut router = Router::new().route("/api/", get(index));
+    let mut router = Router::new().route("/api/", get(index)).into_service();
 
     let response = router.call(request).await.unwrap();
     response

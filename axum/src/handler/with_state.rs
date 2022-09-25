@@ -1,7 +1,7 @@
 use super::{Handler, IntoService};
 #[cfg(feature = "tokio")]
 use crate::extract::connect_info::IntoMakeServiceWithConnectInfo;
-use crate::{routing::IntoMakeService};
+use crate::routing::IntoMakeService;
 use http::Request;
 use std::task::{Context, Poll};
 use tower_service::Service;

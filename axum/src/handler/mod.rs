@@ -38,7 +38,7 @@
 #[cfg(feature = "tokio")]
 use crate::extract::connect_info::IntoMakeServiceWithConnectInfo;
 use crate::{
-    body::{boxed, Body, Bytes, HttpBody},
+    body::Body,
     extract::{FromRequest, FromRequestParts},
     response::{IntoResponse, Response},
     routing::IntoMakeService,
@@ -49,12 +49,15 @@ use tower::ServiceExt;
 use tower_layer::Layer;
 use tower_service::Service;
 
+mod boxed;
 pub mod future;
 mod into_service;
 mod into_service_state_in_extension;
 mod with_state;
 
-pub(crate) use self::into_service_state_in_extension::IntoServiceStateInExtension;
+pub(crate) use self::{
+    boxed::BoxedHandler, into_service_state_in_extension::IntoServiceStateInExtension,
+};
 pub use self::{into_service::IntoService, with_state::WithState};
 
 /// Trait for async functions that can be used to handle requests.
@@ -223,31 +226,7 @@ macro_rules! impl_handler {
     };
 }
 
-impl_handler!([], T1);
-impl_handler!([T1], T2);
-impl_handler!([T1, T2], T3);
-impl_handler!([T1, T2, T3], T4);
-impl_handler!([T1, T2, T3, T4], T5);
-impl_handler!([T1, T2, T3, T4, T5], T6);
-impl_handler!([T1, T2, T3, T4, T5, T6], T7);
-impl_handler!([T1, T2, T3, T4, T5, T6, T7], T8);
-impl_handler!([T1, T2, T3, T4, T5, T6, T7, T8], T9);
-impl_handler!([T1, T2, T3, T4, T5, T6, T7, T8, T9], T10);
-impl_handler!([T1, T2, T3, T4, T5, T6, T7, T8, T9, T10], T11);
-impl_handler!([T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11], T12);
-impl_handler!([T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12], T13);
-impl_handler!(
-    [T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13],
-    T14
-);
-impl_handler!(
-    [T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14],
-    T15
-);
-impl_handler!(
-    [T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15],
-    T16
-);
+all_the_tuples!(impl_handler);
 
 /// A [`Service`] created from a [`Handler`] by applying a Tower middleware.
 ///
@@ -379,7 +358,7 @@ mod tests {
             format!("you said: {}", body)
         }
 
-        let client = TestClient::new(handle.into_service());
+        let client = TestClient::from_service(handle.into_service());
 
         let res = client.post("/").body("hi there!").send().await;
         assert_eq!(res.status(), StatusCode::OK);

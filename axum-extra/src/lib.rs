@@ -95,7 +95,7 @@ pub mod __private {
 pub(crate) mod test_helpers {
     #![allow(unused_imports)]
 
-    use axum::{body::HttpBody, BoxError};
+    use axum::{body::HttpBody, BoxError, Router};
 
     mod test_client {
         #![allow(dead_code)]

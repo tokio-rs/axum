@@ -516,4 +516,4 @@ macro_rules! impl_into_response {
     }
 }
 
-all_the_tuples!(impl_into_response);
+all_the_tuples_no_last_special_case!(impl_into_response);

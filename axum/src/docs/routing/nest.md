@@ -100,7 +100,7 @@ async fn fallback() -> (StatusCode, &'static str) {
     (StatusCode::NOT_FOUND, "Not Found")
 }
 
-let api_routes = Router::new().nest("/users", get(|| async {}));
+let api_routes = Router::new().nest_service("/users", get(|| async {}));
 
 let app = Router::new()
     .nest("/api", api_routes)
@@ -130,7 +130,7 @@ async fn api_fallback() -> (StatusCode, Json<Value>) {
 }
 
 let api_routes = Router::new()
-    .nest("/users", get(|| async {}))
+    .nest_service("/users", get(|| async {}))
     // add dedicated fallback for requests starting with `/api`
     .fallback(api_fallback);
 

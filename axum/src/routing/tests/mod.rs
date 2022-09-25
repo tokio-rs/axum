@@ -19,9 +19,7 @@ use std::{
     task::{Context, Poll},
     time::Duration,
 };
-use tower::{
-    service_fn, timeout::TimeoutLayer, util::MapResponseLayer, ServiceBuilder, ServiceExt,
-};
+use tower::{service_fn, timeout::TimeoutLayer, util::MapResponseLayer, ServiceBuilder};
 use tower_http::{auth::RequireAuthorizationLayer, limit::RequestBodyLimitLayer};
 use tower_service::Service;
 
@@ -444,11 +442,12 @@ async fn middleware_still_run_for_unmatched_requests() {
 }
 
 #[tokio::test]
-#[should_panic(
-    expected = "Invalid route: `Router::route_service` cannot be used with `Router`s. Use `Router::nest` instead"
-)]
+#[should_panic(expected = "\
+    Invalid route: `Router::route_service` cannot be used with `RouterService`s. \
+    Use `Router::nest` instead\
+")]
 async fn routing_to_router_panics() {
-    TestClient::new(Router::new().route_service("/", Router::new()));
+    TestClient::new(Router::new().route_service("/", Router::new().into_service()));
 }
 
 #[tokio::test]
@@ -668,6 +667,31 @@ async fn limited_body_with_content_length() {
     assert_eq!(res.status(), StatusCode::OK);
 
     let res = client.post("/").body("a".repeat(LIMIT * 2)).send().await;
+    assert_eq!(res.status(), StatusCode::PAYLOAD_TOO_LARGE);
+}
+
+#[tokio::test]
+async fn changing_the_default_limit() {
+    let new_limit = 2;
+
+    let app = Router::new()
+        .route("/", post(|_: Bytes| async {}))
+        .layer(DefaultBodyLimit::max(new_limit));
+
+    let client = TestClient::new(app);
+
+    let res = client
+        .post("/")
+        .body(Body::from("a".repeat(new_limit)))
+        .send()
+        .await;
+    assert_eq!(res.status(), StatusCode::OK);
+
+    let res = client
+        .post("/")
+        .body(Body::from("a".repeat(new_limit + 1)))
+        .send()
+        .await;
     assert_eq!(res.status(), StatusCode::PAYLOAD_TOO_LARGE);
 }
 

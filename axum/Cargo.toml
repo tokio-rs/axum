@@ -22,9 +22,9 @@ matched-path = []
 multipart = ["dep:multer"]
 original-uri = []
 query = ["dep:serde_urlencoded"]
-tokio = ["dep:tokio_cr", "hyper/server", "hyper/tcp"]
+tokio = ["dep:tokio", "hyper/server", "hyper/tcp"]
 tower-log = ["tower/log"]
-ws = ["dep:tokio_cr", "dep:tokio-tungstenite", "dep:sha-1", "dep:base64"]
+ws = ["dep:tokio", "dep:tokio-tungstenite", "dep:sha-1", "dep:base64"]
 
 # Required for intra-doc links to resolve correctly
 __private_docs = ["tower/full", "tower-http/full"]
@@ -61,7 +61,7 @@ serde_path_to_error = { version = "0.1.8", optional = true }
 serde_urlencoded = { version = "0.7", optional = true }
 sha-1 = { version = "0.10", optional = true }
 tokio-tungstenite = { version = "0.17.2", optional = true }
-tokio_cr = { package = "tokio", version = "1", features = ["time"], optional = true }
+tokio = { package = "tokio", version = "1", features = ["time"], optional = true }
 
 [dev-dependencies]
 anyhow = "1.0"
@@ -72,7 +72,7 @@ reqwest = { version = "0.11.11", default-features = false, features = ["json", "
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 tokio-stream = "0.1"
-tokio_cr = { package = "tokio", version = "1.6.1", features = ["macros", "rt", "rt-multi-thread", "net", "test-util"] }
+tokio = { package = "tokio", version = "1.6.1", features = ["macros", "rt", "rt-multi-thread", "net", "test-util"] }
 tracing = "0.1"
 uuid = { version = "1.0", features = ["serde", "v4"] }
 

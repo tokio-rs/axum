@@ -433,11 +433,6 @@
 #![cfg_attr(docsrs, feature(doc_auto_cfg, doc_cfg))]
 #![cfg_attr(test, allow(clippy::float_cmp))]
 
-// TODO: Remove once MSRV hits 1.60 and we can
-// use "dep:tokio" instead of this hack.
-#[cfg(feature = "tokio")]
-extern crate tokio_cr as tokio;
-
 #[macro_use]
 pub(crate) mod macros;
 
@@ -479,7 +474,7 @@ pub use self::extension::Extension;
 #[cfg(feature = "json")]
 pub use self::json::Json;
 #[doc(inline)]
-pub use self::routing::Router;
+pub use self::routing::{Router, RouterService};
 
 #[doc(inline)]
 #[cfg(feature = "headers")]
