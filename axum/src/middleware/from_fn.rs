@@ -304,31 +304,7 @@ macro_rules! impl_service {
     };
 }
 
-impl_service!([], T1);
-impl_service!([T1], T2);
-impl_service!([T1, T2], T3);
-impl_service!([T1, T2, T3], T4);
-impl_service!([T1, T2, T3, T4], T5);
-impl_service!([T1, T2, T3, T4, T5], T6);
-impl_service!([T1, T2, T3, T4, T5, T6], T7);
-impl_service!([T1, T2, T3, T4, T5, T6, T7], T8);
-impl_service!([T1, T2, T3, T4, T5, T6, T7, T8], T9);
-impl_service!([T1, T2, T3, T4, T5, T6, T7, T8, T9], T10);
-impl_service!([T1, T2, T3, T4, T5, T6, T7, T8, T9, T10], T11);
-impl_service!([T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11], T12);
-impl_service!([T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12], T13);
-impl_service!(
-    [T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13],
-    T14
-);
-impl_service!(
-    [T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14],
-    T15
-);
-impl_service!(
-    [T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15],
-    T16
-);
+all_the_tuples!(impl_service);
 
 impl<F, S, I, T> fmt::Debug for FromFn<F, S, I, T>
 where
