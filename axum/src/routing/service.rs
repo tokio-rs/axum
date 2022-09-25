@@ -10,7 +10,7 @@ use matchit::MatchError;
 use tower::Service;
 
 use super::{
-    future::RouteFuture, url_params, Endpoint, Fallback, Node, Route, RouteId, Router,
+    future::RouteFuture, url_params, Endpoint, Node, Route, RouteId, Router,
     NEST_TAIL_PARAM_CAPTURE,
 };
 use crate::{
@@ -57,11 +57,7 @@ where
         Self {
             routes,
             node: router.node,
-            fallback: match router.fallback {
-                Fallback::Default(route) => route,
-                Fallback::Service(route) => route,
-                Fallback::BoxedHandler(handler) => handler.into_route(state),
-            },
+            fallback: router.fallback.into_route(state),
         }
     }
 

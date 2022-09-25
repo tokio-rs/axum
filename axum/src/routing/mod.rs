@@ -637,6 +637,14 @@ impl<S, B, E> Fallback<S, B, E> {
             _ => None,
         }
     }
+
+    fn into_route(self, state: Arc<S>) -> Route<B, E> {
+        match self {
+            Self::Default(route) => route,
+            Self::Service(route) => route,
+            Self::BoxedHandler(handler) => handler.into_route(state),
+        }
+    }
 }
 
 impl<S, B, E> Clone for Fallback<S, B, E> {
