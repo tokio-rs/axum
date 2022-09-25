@@ -1,9 +1,10 @@
 //! Routing between [`Service`]s and handlers.
 
 use self::not_found::NotFound;
+#[cfg(feature = "tokio")]
+use crate::extract::connect_info::IntoMakeServiceWithConnectInfo;
 use crate::{
     body::{Body, HttpBody},
-    extract::connect_info::IntoMakeServiceWithConnectInfo,
     handler::{BoxedHandler, Handler},
     util::try_downcast,
     Extension,
@@ -547,6 +548,7 @@ where
     }
 
     #[doc = include_str!("../docs/routing/into_make_service_with_connect_info.md")]
+    #[cfg(feature = "tokio")]
     pub fn into_make_service_with_connect_info<C>(
         self,
     ) -> IntoMakeServiceWithConnectInfo<RouterService<B>, C> {

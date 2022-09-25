@@ -1,10 +1,11 @@
 //! Route to services and handlers based on HTTP methods.
 
 use super::IntoMakeService;
+#[cfg(feature = "tokio")]
+use crate::extract::connect_info::IntoMakeServiceWithConnectInfo;
 use crate::{
     body::{Body, Bytes, HttpBody},
     error_handling::{HandleError, HandleErrorLayer},
-    extract::connect_info::IntoMakeServiceWithConnectInfo,
     handler::{Handler, IntoServiceStateInExtension},
     http::{Method, Request, StatusCode},
     response::Response,
@@ -689,6 +690,7 @@ where
     ///
     /// [`MakeService`]: tower::make::MakeService
     /// [`Router::into_make_service_with_connect_info`]: crate::routing::Router::into_make_service_with_connect_info
+    #[cfg(feature = "tokio")]
     pub fn into_make_service_with_connect_info<C>(self) -> IntoMakeServiceWithConnectInfo<Self, C> {
         IntoMakeServiceWithConnectInfo::new(self)
     }
@@ -1186,6 +1188,7 @@ impl<S, B, E> WithState<S, B, E> {
     /// See [`MethodRouter::into_make_service_with_connect_info`] for more details.
     ///
     /// [`MakeService`]: tower::make::MakeService
+    #[cfg(feature = "tokio")]
     pub fn into_make_service_with_connect_info<C>(self) -> IntoMakeServiceWithConnectInfo<Self, C> {
         IntoMakeServiceWithConnectInfo::new(self)
     }

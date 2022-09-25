@@ -1,4 +1,6 @@
-use crate::{extract::connect_info::IntoMakeServiceWithConnectInfo, routing::IntoMakeService};
+#[cfg(feature = "tokio")]
+use crate::extract::connect_info::IntoMakeServiceWithConnectInfo;
+use crate::routing::IntoMakeService;
 use tower_service::Service;
 
 /// Extension trait that adds additional methods to any [`Service`].
@@ -26,6 +28,7 @@ pub trait ServiceExt<R>: Service<R> + Sized {
     /// ["Rewriting request URI in middleware"]: crate::middleware#rewriting-request-uri-in-middleware
     /// [`Router`]: crate::Router
     /// [`ConnectInfo`]: crate::extract::connect_info::ConnectInfo
+    #[cfg(feature = "tokio")]
     fn into_make_service_with_connect_info<C>(self) -> IntoMakeServiceWithConnectInfo<Self, C>;
 }
 
@@ -37,6 +40,7 @@ where
         IntoMakeService::new(self)
     }
 
+    #[cfg(feature = "tokio")]
     fn into_make_service_with_connect_info<C>(self) -> IntoMakeServiceWithConnectInfo<Self, C> {
         IntoMakeServiceWithConnectInfo::new(self)
     }

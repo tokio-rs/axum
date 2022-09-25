@@ -1,0 +1,13 @@
+[package]
+name = "example-simple-router-wasm"
+version = "0.1.0"
+edition = "2018"
+publish = false
+
+[dependencies]
+# `default-features = false` to not depend on tokio features which don't support wasm
+# you can still pull in tokio manually and only add features that tokio supports for wasm
+axum = { path = "../../axum", default-features = false }
+futures-executor = "0.3.21"
+http = "0.2.7"
+tower-service = "0.3.1"

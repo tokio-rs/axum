@@ -33,9 +33,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   can be nested or merged into a `Router` with the same state type ([#1368])
 - **changed:** `Router::nest` now only accepts `Router`s, the general-purpose
   `Service` nesting method has been renamed to `nest_service` ([#1368])
+- **added:** Support compiling to WASM. See the `simple-router-wasm` example
+  for more details ([#1382])
+- **breaking:** New `tokio` default feature needed for WASM support. If you
+  don't need WASM support but have `default_features = false` for other reasons
+  you likely need to re-enable the `tokio` feature ([#1382])
 
 [#1368]: https://github.com/tokio-rs/axum/pull/1368
 [#1371]: https://github.com/tokio-rs/axum/pull/1371
+[#1382]: https://github.com/tokio-rs/axum/pull/1382
 [#1387]: https://github.com/tokio-rs/axum/pull/1387
 [#1389]: https://github.com/tokio-rs/axum/pull/1389
 [#1396]: https://github.com/tokio-rs/axum/pull/1396

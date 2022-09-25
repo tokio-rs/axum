@@ -1,5 +1,7 @@
 use super::{Handler, IntoService};
-use crate::{extract::connect_info::IntoMakeServiceWithConnectInfo, routing::IntoMakeService};
+#[cfg(feature = "tokio")]
+use crate::extract::connect_info::IntoMakeServiceWithConnectInfo;
+use crate::routing::IntoMakeService;
 use http::Request;
 use std::task::{Context, Poll};
 use tower_service::Service;
@@ -95,6 +97,7 @@ impl<H, T, S, B> WithState<H, T, S, B> {
     ///
     /// [`MakeService`]: tower::make::MakeService
     /// [`Router::into_make_service_with_connect_info`]: crate::routing::Router::into_make_service_with_connect_info
+    #[cfg(feature = "tokio")]
     pub fn into_make_service_with_connect_info<C>(
         self,
     ) -> IntoMakeServiceWithConnectInfo<IntoService<H, T, S, B>, C> {

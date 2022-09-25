@@ -35,9 +35,11 @@
 //!
 #![doc = include_str!("../docs/debugging_handler_type_errors.md")]
 
+#[cfg(feature = "tokio")]
+use crate::extract::connect_info::IntoMakeServiceWithConnectInfo;
 use crate::{
     body::Body,
-    extract::{connect_info::IntoMakeServiceWithConnectInfo, FromRequest, FromRequestParts},
+    extract::{FromRequest, FromRequestParts},
     response::{IntoResponse, Response},
     routing::IntoMakeService,
 };
@@ -318,6 +320,7 @@ pub trait HandlerWithoutStateExt<T, B>: Handler<T, (), B> {
     /// See [`WithState::into_make_service_with_connect_info`] for more details.
     ///
     /// [`MakeService`]: tower::make::MakeService
+    #[cfg(feature = "tokio")]
     fn into_make_service_with_connect_info<C>(
         self,
     ) -> IntoMakeServiceWithConnectInfo<IntoService<Self, T, (), B>, C>;
@@ -335,6 +338,7 @@ where
         self.with_state(()).into_make_service()
     }
 
+    #[cfg(feature = "tokio")]
     fn into_make_service_with_connect_info<C>(
         self,
     ) -> IntoMakeServiceWithConnectInfo<IntoService<Self, T, (), B>, C> {

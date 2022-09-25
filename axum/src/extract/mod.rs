@@ -2,6 +2,7 @@
 
 use http::header::{self, HeaderMap};
 
+#[cfg(feature = "tokio")]
 pub mod connect_info;
 pub mod path;
 pub mod rejection;
@@ -23,13 +24,16 @@ pub use axum_macros::{FromRequest, FromRequestParts};
 #[doc(inline)]
 #[allow(deprecated)]
 pub use self::{
-    connect_info::ConnectInfo,
     host::Host,
     path::Path,
     raw_query::RawQuery,
     request_parts::{BodyStream, RawBody},
     state::State,
 };
+
+#[doc(inline)]
+#[cfg(feature = "tokio")]
+pub use self::connect_info::ConnectInfo;
 
 #[doc(no_inline)]
 #[cfg(feature = "json")]
