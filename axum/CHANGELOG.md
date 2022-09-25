@@ -22,6 +22,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `map_request_with_state_arc` for transforming the request with an async
   function ([#1408])
 - **breaking:** `ContentLengthLimit` has been removed. `Use DefaultBodyLimit` instead ([#1400])
+- **changed:** `Router` no longer implements `Service`, call `.into_service()`
+  on it to obtain a `RouterService` that does
+- **added:** Add `Router::inherit_state`, which creates a `Router` with an
+  arbitrary state type without actually supplying the state; such a `Router`
+  can't be turned into a service directly (`.into_service()` will panic), but
+  can be nested or merged into a `Router` with the same state type
+- **changed:** `Router::nest` now only accepts `Router`s, the general-purpose
+  `Service` nesting method has been renamed to `nest_service`
 
 [#1371]: https://github.com/tokio-rs/axum/pull/1371
 [#1387]: https://github.com/tokio-rs/axum/pull/1387

@@ -30,17 +30,22 @@ impl<B> RouterService<B>
 where
     B: HttpBody + Send + 'static,
 {
+    #[track_caller]
     pub(super) fn new<S>(router: Router<S, B>) -> Self
     where
         S: Send + Sync + 'static,
     {
+        let state = router
+            .state
+            .expect("Can't turn a `Router` that wants to inherit state into a service");
+
         let routes = router
             .routes
             .into_iter()
             .map(|(route_id, endpoint)| {
                 let route = match endpoint {
                     Endpoint::MethodRouter(method_router) => {
-                        Route::new(method_router.with_state_arc(Arc::clone(&router.state)))
+                        Route::new(method_router.with_state_arc(Arc::clone(&state)))
                     }
                     Endpoint::Route(route) => route,
                 };
@@ -54,7 +59,8 @@ where
             node: router.node,
             fallback: match router.fallback {
                 Fallback::Default(route) => route,
-                Fallback::Custom(route) => route,
+                Fallback::Service(route) => route,
+                Fallback::BoxedHandler(handler) => handler.into_route(state),
             },
         }
     }
