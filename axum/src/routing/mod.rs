@@ -7,7 +7,6 @@ use crate::{
     body::{Body, HttpBody},
     handler::{BoxedHandler, Handler},
     util::try_downcast,
-    Extension,
 };
 use axum_core::response::IntoResponse;
 use http::Request;
@@ -350,9 +349,7 @@ where
             // other has its state set
             Some(state) => {
                 let fallback = fallback.map_state(&state);
-                cast_method_router_closure_slot = move |r: MethodRouter<_, _>| {
-                    r.layer(Extension(Arc::clone(&state))).map_state(&state)
-                };
+                cast_method_router_closure_slot = move |r: MethodRouter<_, _>| r.map_state(&state);
                 let cast_method_router = &cast_method_router_closure_slot
                     as &dyn Fn(MethodRouter<_, _>) -> MethodRouter<_, _>;
 
@@ -638,11 +635,11 @@ impl<S, B, E> Fallback<S, B, E> {
         }
     }
 
-    fn into_route(self, state: Arc<S>) -> Route<B, E> {
+    fn into_route(self, state: &Arc<S>) -> Route<B, E> {
         match self {
             Self::Default(route) => route,
             Self::Service(route) => route,
-            Self::BoxedHandler(handler) => handler.into_route(state),
+            Self::BoxedHandler(handler) => handler.into_route(state.clone()),
         }
     }
 }
@@ -685,6 +682,7 @@ impl<S, B, E> Fallback<S, B, E> {
     }
 }
 
+#[allow(clippy::large_enum_variant)] // This type is only used at init time, probably fine
 enum Endpoint<S, B> {
     MethodRouter(MethodRouter<S, B>),
     Route(Route<B>),

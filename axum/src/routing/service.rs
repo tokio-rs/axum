@@ -57,7 +57,7 @@ where
         Self {
             routes,
             node: router.node,
-            fallback: router.fallback.into_route(state),
+            fallback: router.fallback.into_route(&state),
         }
     }
 
