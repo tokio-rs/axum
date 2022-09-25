@@ -17,7 +17,7 @@ use tower_service::Service;
 
 /// Create a middleware from an async function that transforms a request.
 ///
-/// This differs from [`tower::util::MapRequest`] in that it allows you to easily run axum specific
+/// This differs from [`tower::util::MapRequest`] in that it allows you to easily run axum-specific
 /// extractors.
 ///
 /// # Example
@@ -48,7 +48,7 @@ use tower_service::Service;
 /// # Rejection the request
 ///
 /// The function given to `map_request` is allowed to also return a `Result` which can be used to
-/// rejection the request and return a response immediately, without calling the remaining
+/// reject the request and return a response immediately, without calling the remaining
 /// middleware.
 ///
 /// Specifically the valid return types are:
@@ -117,7 +117,7 @@ pub fn map_request<F, T>(f: F) -> MapRequestLayer<F, (), T> {
     map_request_with_state((), f)
 }
 
-/// Create a middleware from an async function, that transforms a request, with the given state.
+/// Create a middleware from an async function that transforms a request, with the given state.
 ///
 /// See [`State`](crate::extract::State) for more details about accessing state.
 ///
@@ -156,7 +156,7 @@ pub fn map_request_with_state<F, S, T>(state: S, f: F) -> MapRequestLayer<F, S, 
     map_request_with_state_arc(Arc::new(state), f)
 }
 
-/// Create a middleware from an async function, that transforms a request, with the given [`Arc`]'ed
+/// Create a middleware from an async function that transforms a request, with the given [`Arc`]'ed
 /// state.
 ///
 /// See [`map_request_with_state`] for an example.
