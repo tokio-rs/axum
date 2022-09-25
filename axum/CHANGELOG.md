@@ -23,7 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   function ([#1408])
 - **added:** Add `map_response`, `map_response_with_state`, and
   `map_response_with_state_arc` for transforming the response with an async
-  function
+  function ([#1414])
 - **breaking:** `ContentLengthLimit` has been removed. `Use DefaultBodyLimit` instead ([#1400])
 - **changed:** `Router` no longer implements `Service`, call `.into_service()`
   on it to obtain a `RouterService` that does ([#1368])
@@ -42,6 +42,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#1397]: https://github.com/tokio-rs/axum/pull/1397
 [#1400]: https://github.com/tokio-rs/axum/pull/1400
 [#1408]: https://github.com/tokio-rs/axum/pull/1408
+[#1414]: https://github.com/tokio-rs/axum/pull/1414
 
 # 0.6.0-rc.2 (10. September, 2022)
 
