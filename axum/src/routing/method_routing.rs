@@ -523,7 +523,7 @@ pub struct MethodRouter<S = (), B = Body, E = Infallible> {
     allow_header: AllowHeader,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 enum AllowHeader {
     /// No `Allow` header value has been built-up yet. This is the default state
     None,
@@ -561,6 +561,7 @@ impl<S, B, E> fmt::Debug for MethodRouter<S, B, E> {
             .field("put", &self.put)
             .field("trace", &self.trace)
             .field("fallback", &self.fallback)
+            .field("allow_header", &self.allow_header)
             .finish()
     }
 }
