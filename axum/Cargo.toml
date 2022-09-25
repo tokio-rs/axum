@@ -22,7 +22,7 @@ matched-path = []
 multipart = ["dep:multer"]
 original-uri = []
 query = ["dep:serde_urlencoded"]
-tokio = ["dep:tokio", "hyper/server", "hyper/tcp"]
+tokio = ["dep:tokio", "hyper/server", "hyper/tcp", "tower/make"]
 tower-log = ["tower/log"]
 ws = ["tokio", "dep:tokio-tungstenite", "dep:sha-1", "dep:base64"]
 
@@ -46,7 +46,7 @@ percent-encoding = "2.1"
 pin-project-lite = "0.2.7"
 serde = "1.0"
 sync_wrapper = "0.1.1"
-tower = { version = "0.4.13", default-features = false, features = ["util", "make"] }
+tower = { version = "0.4.13", default-features = false, features = ["util"] }
 tower-http = { version = "0.3.0", features = ["util", "map-response-body"] }
 tower-layer = "0.3"
 tower-service = "0.3"
