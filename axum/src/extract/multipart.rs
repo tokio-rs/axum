@@ -49,7 +49,8 @@ use std::{
 /// ```
 ///
 /// For security reasons it's recommended to combine this with
-/// [`ContentLengthLimit`](super::ContentLengthLimit) to limit the size of the request payload.
+/// [`RequestBodyLimitLayer`](tower_http::limit::RequestBodyLimitLayer)
+/// to limit the size of the request payload.
 #[cfg_attr(docsrs, doc(cfg(feature = "multipart")))]
 #[derive(Debug)]
 pub struct Multipart {

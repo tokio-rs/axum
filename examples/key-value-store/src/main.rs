@@ -9,7 +9,7 @@
 use axum::{
     body::Bytes,
     error_handling::HandleErrorLayer,
-    extract::{ContentLengthLimit, Path, State},
+    extract::{DefaultBodyLimit, Path, State},
     handler::Handler,
     http::StatusCode,
     response::IntoResponse,
@@ -25,7 +25,8 @@ use std::{
 };
 use tower::{BoxError, ServiceBuilder};
 use tower_http::{
-    auth::RequireAuthorizationLayer, compression::CompressionLayer, trace::TraceLayer,
+    auth::RequireAuthorizationLayer, compression::CompressionLayer, limit::RequestBodyLimitLayer,
+    trace::TraceLayer,
 };
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
@@ -48,7 +49,12 @@ async fn main() {
             // Add compression to `kv_get`
             get(kv_get.layer(CompressionLayer::new()))
                 // But don't compress `kv_set`
-                .post(kv_set),
+                .post_service(
+                    ServiceBuilder::new()
+                        .layer(DefaultBodyLimit::disable())
+                        .layer(RequestBodyLimitLayer::new(1024 * 5_000 /* ~5mb */))
+                        .service(kv_set.with_state(Arc::clone(&shared_state))),
+                ),
         )
         .route("/keys", get(list_keys))
         // Nest our admin routes under `/admin`
@@ -94,11 +100,7 @@ async fn kv_get(
     }
 }
 
-async fn kv_set(
-    Path(key): Path<String>,
-    State(state): State<SharedState>,
-    ContentLengthLimit(bytes): ContentLengthLimit<Bytes, { 1024 * 5_000 }>, // ~5mb
-) {
+async fn kv_set(Path(key): Path<String>, State(state): State<SharedState>, bytes: Bytes) {
     state.write().unwrap().db.insert(key, bytes);
 }
 
