@@ -18,6 +18,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **added:** Add `middleware::from_extractor_with_state` and
   `middleware::from_extractor_with_state_arc` ([#1396])
 - **added:** Add `DefaultBodyLimit::max` for changing the default body limit ([#1397])
+- **added:** Add `map_request`, `map_request_with_state`, and
+  `map_request_with_state_arc` for transforming the request with an async
+  function
 
 [#1371]: https://github.com/tokio-rs/axum/pull/1371
 [#1387]: https://github.com/tokio-rs/axum/pull/1387

@@ -1,5 +1,3 @@
-#![allow(missing_docs, unused_imports)]
-
 use crate::response::{IntoResponse, Response};
 use axum_core::extract::{FromRequest, FromRequestParts};
 use futures_util::future::BoxFuture;
@@ -14,38 +12,156 @@ use std::{
     sync::Arc,
     task::{Context, Poll},
 };
-use tower::{util::BoxCloneService, ServiceBuilder};
 use tower_layer::Layer;
 use tower_service::Service;
 
-// TODO(david): naming
-pub trait IntoResult<T> {
-    fn into_result(self) -> Result<T, Response>;
-}
-
-impl<T, E> IntoResult<T> for Result<T, E>
-where
-    E: IntoResponse,
-{
-    fn into_result(self) -> Result<T, Response> {
-        self.map_err(IntoResponse::into_response)
-    }
-}
-
-impl<B> IntoResult<Request<B>> for Request<B> {
-    fn into_result(self) -> Result<Request<B>, Response> {
-        Ok(self)
-    }
-}
-
+/// Create a middleware from an async function that transforms a request.
+///
+/// This differs from [`tower::util::MapRequest`] in that it allows you to easily run axum specific
+/// extractors.
+///
+/// # Example
+///
+/// ```
+/// use axum::{
+///     Router,
+///     routing::get,
+///     middleware::map_request,
+///     http::Request,
+/// };
+///
+/// async fn set_header<B>(mut request: Request<B>) -> Request<B> {
+///     request.headers_mut().insert("x-foo", "foo".parse().unwrap());
+///     request
+/// }
+///
+/// async fn handler<B>(request: Request<B>) {
+///     // `request` will have an `x-foo` header
+/// }
+///
+/// let app = Router::new()
+///     .route("/", get(handler))
+///     .layer(map_request(set_header));
+/// # let _: Router = app;
+/// ```
+///
+/// # Rejection the request
+///
+/// The function given to `map_request` is allowed to also return a `Result` which can be used to
+/// rejection the request and return a response immediately, without calling the remaining
+/// middleware.
+///
+/// Specifically the valid return types are:
+///
+/// - `Request<B>`
+/// - `Request<Request<B>, E> where E:  IntoResponse`
+///
+/// ```
+/// use axum::{
+///     Router,
+///     http::{Request, StatusCode},
+///     routing::get,
+///     middleware::map_request,
+/// };
+///
+/// async fn auth<B>(request: Request<B>) -> Result<Request<B>, StatusCode> {
+///     let auth_header = request.headers()
+///         .get(http::header::AUTHORIZATION)
+///         .and_then(|header| header.to_str().ok());
+///
+///     match auth_header {
+///         Some(auth_header) if token_is_valid(auth_header) => Ok(request),
+///         _ => Err(StatusCode::UNAUTHORIZED),
+///     }
+/// }
+///
+/// fn token_is_valid(token: &str) -> bool {
+///     // ...
+///     # false
+/// }
+///
+/// let app = Router::new()
+///     .route("/", get(|| async { /* ... */ }))
+///     .route_layer(map_request(auth));
+/// # let app: Router = app;
+/// ```
+///
+/// # Running extractors
+///
+/// ```
+/// use axum::{
+///     Router,
+///     routing::get,
+///     middleware::map_request,
+///     extract::Path,
+///     http::Request,
+/// };
+/// use std::collections::HashMap;
+///
+/// async fn log_path_params<B>(
+///     Path(path_params): Path<HashMap<String, String>>,
+///     request: Request<B>,
+/// ) -> Request<B> {
+///     tracing::debug!(?path_params);
+///     request
+/// }
+///
+/// let app = Router::new()
+///     .route("/", get(|| async { /* ... */ }))
+///     .layer(map_request(log_path_params));
+/// # let _: Router = app;
+/// ```
+///
+/// Note that to access state you must use either [`map_request_with_state`] or [`map_request_with_state_arc`].
 pub fn map_request<F, T>(f: F) -> MapRequestLayer<F, (), T> {
     map_request_with_state((), f)
 }
 
+/// Create a middleware from an async function, that transforms a request, with the given state.
+///
+/// See [`State`](crate::extract::State) for more details about accessing state.
+///
+/// # Example
+///
+/// ```rust
+/// use axum::{
+///     Router,
+///     http::{Request, StatusCode},
+///     routing::get,
+///     response::IntoResponse,
+///     middleware::map_request_with_state,
+///     extract::State,
+/// };
+///
+/// #[derive(Clone)]
+/// struct AppState { /* ... */ }
+///
+/// async fn my_middleware<B>(
+///     State(state): State<AppState>,
+///     // you can add more extractors here...
+///     request: Request<B>,
+/// ) -> Request<B> {
+///     // do something with `request`...
+///     request
+/// }
+///
+/// let state = AppState { /* ... */ };
+///
+/// let app = Router::with_state(state.clone())
+///     .route("/", get(|| async { /* ... */ }))
+///     .route_layer(map_request_with_state(state, my_middleware));
+/// # let app: Router<_> = app;
+/// ```
 pub fn map_request_with_state<F, S, T>(state: S, f: F) -> MapRequestLayer<F, S, T> {
     map_request_with_state_arc(Arc::new(state), f)
 }
 
+/// Create a middleware from an async function, that transforms a request, with the given [`Arc`]'ed
+/// state.
+///
+/// See [`map_request_with_state`] for an example.
+///
+/// See [`State`](crate::extract::State) for more details about accessing state.
 pub fn map_request_with_state_arc<F, S, T>(state: Arc<S>, f: F) -> MapRequestLayer<F, S, T> {
     MapRequestLayer {
         f,
@@ -54,6 +170,9 @@ pub fn map_request_with_state_arc<F, S, T>(state: Arc<S>, f: F) -> MapRequestLay
     }
 }
 
+/// A [`tower::Layer`] from an async function that transforms a request.
+///
+/// Created with [`map_request`]. See that function for more details.
 pub struct MapRequestLayer<F, S, T> {
     f: F,
     state: Arc<S>,
@@ -102,6 +221,9 @@ where
     }
 }
 
+/// A middleware created from an async function that transforms a request.
+///
+/// Created with [`map_request`]. See that function for more details.
 pub struct MapRequest<F, S, I, T> {
     f: F,
     inner: I,
@@ -135,7 +257,7 @@ macro_rules! impl_service {
             $( $ty: FromRequestParts<S> + Send, )*
             $last: FromRequest<S, B> + Send,
             Fut: Future + Send + 'static,
-            Fut::Output: IntoResult<Request<B>> + Send + 'static,
+            Fut::Output: IntoMapRequestResult<B> + Send + 'static,
             I: Service<Request<B>, Error = Infallible>
                 + Clone
                 + Send
@@ -177,7 +299,7 @@ macro_rules! impl_service {
                         Err(rejection) => return rejection.into_response(),
                     };
 
-                    match f($($ty,)* $last).await.into_result() {
+                    match f($($ty,)* $last).await.into_map_request_result() {
                         Ok(req) => {
                             ready_inner.call(req).await.into_response()
                         }
@@ -251,6 +373,38 @@ impl Future for ResponseFuture {
 impl fmt::Debug for ResponseFuture {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("ResponseFuture").finish()
+    }
+}
+
+mod private {
+    use crate::{http::Request, response::IntoResponse};
+
+    pub trait Sealed<B> {}
+    impl<B, E> Sealed<B> for Result<Request<B>, E> where E: IntoResponse {}
+    impl<B> Sealed<B> for Request<B> {}
+}
+
+/// Trait implemented by types that can be returned from [`map_request`],
+/// [`map_request_with_state`], and [`map_request_with_state_arc`].
+///
+/// This trait is sealed such that it cannot be implemented outside this crate.
+pub trait IntoMapRequestResult<B>: private::Sealed<B> {
+    /// Perform the conversion.
+    fn into_map_request_result(self) -> Result<Request<B>, Response>;
+}
+
+impl<B, E> IntoMapRequestResult<B> for Result<Request<B>, E>
+where
+    E: IntoResponse,
+{
+    fn into_map_request_result(self) -> Result<Request<B>, Response> {
+        self.map_err(IntoResponse::into_response)
+    }
+}
+
+impl<B> IntoMapRequestResult<B> for Request<B> {
+    fn into_map_request_result(self) -> Result<Request<B>, Response> {
+        Ok(self)
     }
 }
 

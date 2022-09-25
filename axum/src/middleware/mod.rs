@@ -14,8 +14,8 @@ pub use self::from_fn::{
     from_fn, from_fn_with_state, from_fn_with_state_arc, FromFn, FromFnLayer, Next,
 };
 pub use self::map_request::{
-    map_request, map_request_with_state, map_request_with_state_arc, IntoResult, MapRequest,
-    MapRequestLayer,
+    map_request, map_request_with_state, map_request_with_state_arc, IntoMapRequestResult,
+    MapRequest, MapRequestLayer,
 };
 pub use crate::extension::AddExtension;
 
