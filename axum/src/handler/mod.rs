@@ -51,14 +51,13 @@ use tower_service::Service;
 
 mod boxed;
 pub mod future;
-mod into_service;
 mod into_service_state_in_extension;
-mod with_state;
+mod service;
 
+pub use self::service::HandlerService;
 pub(crate) use self::{
     boxed::BoxedHandler, into_service_state_in_extension::IntoServiceStateInExtension,
 };
-pub use self::{into_service::IntoService, with_state::WithState};
 
 /// Trait for async functions that can be used to handle requests.
 ///
@@ -145,7 +144,7 @@ pub trait Handler<T, S, B = Body>: Clone + Send + Sized + 'static {
     /// ```
     fn layer<L>(self, layer: L) -> Layered<L, Self, T, S, B>
     where
-        L: Layer<WithState<Self, T, S, B>> + Clone,
+        L: Layer<HandlerService<Self, T, S, B>> + Clone,
     {
         Layered {
             layer,
@@ -155,15 +154,13 @@ pub trait Handler<T, S, B = Body>: Clone + Send + Sized + 'static {
     }
 
     /// Convert the handler into a [`Service`] by providing the state
-    fn with_state(self, state: S) -> WithState<Self, T, S, B> {
+    fn with_state(self, state: S) -> HandlerService<Self, T, S, B> {
         self.with_state_arc(Arc::new(state))
     }
 
     /// Convert the handler into a [`Service`] by providing the state
-    fn with_state_arc(self, state: Arc<S>) -> WithState<Self, T, S, B> {
-        WithState {
-            service: IntoService::new(self, state),
-        }
+    fn with_state_arc(self, state: Arc<S>) -> HandlerService<Self, T, S, B> {
+        HandlerService::new(self, state)
     }
 }
 
@@ -264,7 +261,7 @@ where
 
 impl<H, S, T, B, L> Handler<T, S, B> for Layered<L, H, T, S, B>
 where
-    L: Layer<WithState<H, T, S, B>> + Clone + Send + 'static,
+    L: Layer<HandlerService<H, T, S, B>> + Clone + Send + 'static,
     H: Handler<T, S, B>,
     L::Service: Service<Request<B>, Error = Infallible> + Clone + Send + 'static,
     <L::Service as Service<Request<B>>>::Response: IntoResponse,
@@ -305,14 +302,14 @@ where
 /// [`MakeService`]: tower::make::MakeService
 pub trait HandlerWithoutStateExt<T, B>: Handler<T, (), B> {
     /// Convert the handler into a [`Service`] and no state.
-    fn into_service(self) -> WithState<Self, T, (), B>;
+    fn into_service(self) -> HandlerService<Self, T, (), B>;
 
     /// Convert the handler into a [`MakeService`] and no state.
     ///
     /// See [`WithState::into_make_service`] for more details.
     ///
     /// [`MakeService`]: tower::make::MakeService
-    fn into_make_service(self) -> IntoMakeService<IntoService<Self, T, (), B>>;
+    fn into_make_service(self) -> IntoMakeService<HandlerService<Self, T, (), B>>;
 
     /// Convert the handler into a [`MakeService`] which stores information
     /// about the incoming connection and has no state.
@@ -323,25 +320,25 @@ pub trait HandlerWithoutStateExt<T, B>: Handler<T, (), B> {
     #[cfg(feature = "tokio")]
     fn into_make_service_with_connect_info<C>(
         self,
-    ) -> IntoMakeServiceWithConnectInfo<IntoService<Self, T, (), B>, C>;
+    ) -> IntoMakeServiceWithConnectInfo<HandlerService<Self, T, (), B>, C>;
 }
 
 impl<H, T, B> HandlerWithoutStateExt<T, B> for H
 where
     H: Handler<T, (), B>,
 {
-    fn into_service(self) -> WithState<Self, T, (), B> {
+    fn into_service(self) -> HandlerService<Self, T, (), B> {
         self.with_state(())
     }
 
-    fn into_make_service(self) -> IntoMakeService<IntoService<Self, T, (), B>> {
+    fn into_make_service(self) -> IntoMakeService<HandlerService<Self, T, (), B>> {
         self.with_state(()).into_make_service()
     }
 
     #[cfg(feature = "tokio")]
     fn into_make_service_with_connect_info<C>(
         self,
-    ) -> IntoMakeServiceWithConnectInfo<IntoService<Self, T, (), B>, C> {
+    ) -> IntoMakeServiceWithConnectInfo<HandlerService<Self, T, (), B>, C> {
         self.with_state(()).into_make_service_with_connect_info()
     }
 }
