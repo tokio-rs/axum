@@ -12,39 +12,65 @@ use std::{
     sync::Arc,
     task::{Context, Poll},
 };
-use tower::{util::BoxCloneService, ServiceBuilder};
 use tower_layer::Layer;
 use tower_service::Service;
 
-/// Create a middleware from an async function.
+/// Create a middleware from an async function that transforms a request.
 ///
-/// `from_fn` requires the function given to
-///
-/// 1. Be an `async fn`.
-/// 2. Take one or more [extractors] as the first arguments.
-/// 3. Take [`Next<B>`](Next) as the final argument.
-/// 4. Return something that implements [`IntoResponse`].
+/// This differs from [`tower::util::MapRequest`] in that it allows you to easily run axum-specific
+/// extractors.
 ///
 /// # Example
 ///
-/// ```rust
+/// ```
+/// use axum::{
+///     Router,
+///     routing::get,
+///     middleware::map_request,
+///     http::Request,
+/// };
+///
+/// async fn set_header<B>(mut request: Request<B>) -> Request<B> {
+///     request.headers_mut().insert("x-foo", "foo".parse().unwrap());
+///     request
+/// }
+///
+/// async fn handler<B>(request: Request<B>) {
+///     // `request` will have an `x-foo` header
+/// }
+///
+/// let app = Router::new()
+///     .route("/", get(handler))
+///     .layer(map_request(set_header));
+/// # let _: Router = app;
+/// ```
+///
+/// # Rejection the request
+///
+/// The function given to `map_request` is allowed to also return a `Result` which can be used to
+/// reject the request and return a response immediately, without calling the remaining
+/// middleware.
+///
+/// Specifically the valid return types are:
+///
+/// - `Request<B>`
+/// - `Request<Request<B>, E> where E:  IntoResponse`
+///
+/// ```
 /// use axum::{
 ///     Router,
 ///     http::{Request, StatusCode},
 ///     routing::get,
-///     response::{IntoResponse, Response},
-///     middleware::{self, Next},
+///     middleware::map_request,
 /// };
 ///
-/// async fn auth<B>(req: Request<B>, next: Next<B>) -> Result<Response, StatusCode> {
-///     let auth_header = req.headers()
+/// async fn auth<B>(request: Request<B>) -> Result<Request<B>, StatusCode> {
+///     let auth_header = request.headers()
 ///         .get(http::header::AUTHORIZATION)
 ///         .and_then(|header| header.to_str().ok());
 ///
 ///     match auth_header {
-///         Some(auth_header) if token_is_valid(auth_header) => {
-///             Ok(next.run(req).await)
-///         }
+///         Some(auth_header) if token_is_valid(auth_header) => Ok(request),
 ///         _ => Err(StatusCode::UNAUTHORIZED),
 ///     }
 /// }
@@ -56,50 +82,42 @@ use tower_service::Service;
 ///
 /// let app = Router::new()
 ///     .route("/", get(|| async { /* ... */ }))
-///     .route_layer(middleware::from_fn(auth));
+///     .route_layer(map_request(auth));
 /// # let app: Router = app;
 /// ```
 ///
 /// # Running extractors
 ///
-/// ```rust
+/// ```
 /// use axum::{
 ///     Router,
-///     extract::{TypedHeader, Query},
-///     headers::authorization::{Authorization, Bearer},
-///     http::Request,
-///     middleware::{self, Next},
-///     response::Response,
 ///     routing::get,
+///     middleware::map_request,
+///     extract::Path,
+///     http::Request,
 /// };
 /// use std::collections::HashMap;
 ///
-/// async fn my_middleware<B>(
-///     TypedHeader(auth): TypedHeader<Authorization<Bearer>>,
-///     Query(query_params): Query<HashMap<String, String>>,
-///     // you can add more extractors here but the last
-///     // extractor must implement `FromRequest` which
-///     // `Request` does
-///     req: Request<B>,
-///     next: Next<B>,
-/// ) -> Response {
-///     // do something with `auth` and `query_params`...
-///
-///     next.run(req).await
+/// async fn log_path_params<B>(
+///     Path(path_params): Path<HashMap<String, String>>,
+///     request: Request<B>,
+/// ) -> Request<B> {
+///     tracing::debug!(?path_params);
+///     request
 /// }
 ///
 /// let app = Router::new()
 ///     .route("/", get(|| async { /* ... */ }))
-///     .route_layer(middleware::from_fn(my_middleware));
-/// # let app: Router = app;
+///     .layer(map_request(log_path_params));
+/// # let _: Router = app;
 /// ```
 ///
-/// [extractors]: crate::extract::FromRequest
-pub fn from_fn<F, T>(f: F) -> FromFnLayer<F, (), T> {
-    from_fn_with_state((), f)
+/// Note that to access state you must use either [`map_request_with_state`] or [`map_request_with_state_arc`].
+pub fn map_request<F, T>(f: F) -> MapRequestLayer<F, (), T> {
+    map_request_with_state((), f)
 }
 
-/// Create a middleware from an async function with the given state.
+/// Create a middleware from an async function that transforms a request, with the given state.
 ///
 /// See [`State`](crate::extract::State) for more details about accessing state.
 ///
@@ -110,8 +128,8 @@ pub fn from_fn<F, T>(f: F) -> FromFnLayer<F, (), T> {
 ///     Router,
 ///     http::{Request, StatusCode},
 ///     routing::get,
-///     response::{IntoResponse, Response},
-///     middleware::{self, Next},
+///     response::IntoResponse,
+///     middleware::map_request_with_state,
 ///     extract::State,
 /// };
 ///
@@ -123,51 +141,47 @@ pub fn from_fn<F, T>(f: F) -> FromFnLayer<F, (), T> {
 ///     // you can add more extractors here but the last
 ///     // extractor must implement `FromRequest` which
 ///     // `Request` does
-///     req: Request<B>,
-///     next: Next<B>,
-/// ) -> Response {
-///     // do something with `req`...
-///     let res = next.run(req).await;
-///     // do something with `res`...
-///     res
+///     request: Request<B>,
+/// ) -> Request<B> {
+///     // do something with `state` and `request`...
+///     request
 /// }
 ///
 /// let state = AppState { /* ... */ };
 ///
 /// let app = Router::with_state(state.clone())
 ///     .route("/", get(|| async { /* ... */ }))
-///     .route_layer(middleware::from_fn_with_state(state, my_middleware));
+///     .route_layer(map_request_with_state(state, my_middleware));
 /// # let app: Router<_> = app;
 /// ```
-pub fn from_fn_with_state<F, S, T>(state: S, f: F) -> FromFnLayer<F, S, T> {
-    from_fn_with_state_arc(Arc::new(state), f)
+pub fn map_request_with_state<F, S, T>(state: S, f: F) -> MapRequestLayer<F, S, T> {
+    map_request_with_state_arc(Arc::new(state), f)
 }
 
-/// Create a middleware from an async function with the given [`Arc`]'ed state.
+/// Create a middleware from an async function that transforms a request, with the given [`Arc`]'ed
+/// state.
 ///
-/// See [`from_fn_with_state`] for an example.
+/// See [`map_request_with_state`] for an example.
 ///
 /// See [`State`](crate::extract::State) for more details about accessing state.
-pub fn from_fn_with_state_arc<F, S, T>(state: Arc<S>, f: F) -> FromFnLayer<F, S, T> {
-    FromFnLayer {
+pub fn map_request_with_state_arc<F, S, T>(state: Arc<S>, f: F) -> MapRequestLayer<F, S, T> {
+    MapRequestLayer {
         f,
         state,
         _extractor: PhantomData,
     }
 }
 
-/// A [`tower::Layer`] from an async function.
+/// A [`tower::Layer`] from an async function that transforms a request.
 ///
-/// [`tower::Layer`] is used to apply middleware to [`Router`](crate::Router)'s.
-///
-/// Created with [`from_fn`]. See that function for more details.
-pub struct FromFnLayer<F, S, T> {
+/// Created with [`map_request`]. See that function for more details.
+pub struct MapRequestLayer<F, S, T> {
     f: F,
     state: Arc<S>,
     _extractor: PhantomData<fn() -> T>,
 }
 
-impl<F, S, T> Clone for FromFnLayer<F, S, T>
+impl<F, S, T> Clone for MapRequestLayer<F, S, T>
 where
     F: Clone,
 {
@@ -180,14 +194,14 @@ where
     }
 }
 
-impl<S, I, F, T> Layer<I> for FromFnLayer<F, S, T>
+impl<S, I, F, T> Layer<I> for MapRequestLayer<F, S, T>
 where
     F: Clone,
 {
-    type Service = FromFn<F, S, I, T>;
+    type Service = MapRequest<F, S, I, T>;
 
     fn layer(&self, inner: I) -> Self::Service {
-        FromFn {
+        MapRequest {
             f: self.f.clone(),
             state: Arc::clone(&self.state),
             inner,
@@ -196,12 +210,12 @@ where
     }
 }
 
-impl<F, S, T> fmt::Debug for FromFnLayer<F, S, T>
+impl<F, S, T> fmt::Debug for MapRequestLayer<F, S, T>
 where
     S: fmt::Debug,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("FromFnLayer")
+        f.debug_struct("MapRequestLayer")
             // Write out the type name, without quoting it as `&type_name::<F>()` would
             .field("f", &format_args!("{}", type_name::<F>()))
             .field("state", &self.state)
@@ -209,17 +223,17 @@ where
     }
 }
 
-/// A middleware created from an async function.
+/// A middleware created from an async function that transforms a request.
 ///
-/// Created with [`from_fn`]. See that function for more details.
-pub struct FromFn<F, S, I, T> {
+/// Created with [`map_request`]. See that function for more details.
+pub struct MapRequest<F, S, I, T> {
     f: F,
     inner: I,
     state: Arc<S>,
     _extractor: PhantomData<fn() -> T>,
 }
 
-impl<F, S, I, T> Clone for FromFn<F, S, I, T>
+impl<F, S, I, T> Clone for MapRequest<F, S, I, T>
 where
     F: Clone,
     I: Clone,
@@ -239,13 +253,13 @@ macro_rules! impl_service {
         [$($ty:ident),*], $last:ident
     ) => {
         #[allow(non_snake_case, unused_mut)]
-        impl<F, Fut, Out, S, I, B, $($ty,)* $last> Service<Request<B>> for FromFn<F, S, I, ($($ty,)* $last,)>
+        impl<F, Fut, S, I, B, $($ty,)* $last> Service<Request<B>> for MapRequest<F, S, I, ($($ty,)* $last,)>
         where
-            F: FnMut($($ty,)* $last, Next<B>) -> Fut + Clone + Send + 'static,
+            F: FnMut($($ty,)* $last) -> Fut + Clone + Send + 'static,
             $( $ty: FromRequestParts<S> + Send, )*
             $last: FromRequest<S, B> + Send,
-            Fut: Future<Output = Out> + Send + 'static,
-            Out: IntoResponse + 'static,
+            Fut: Future + Send + 'static,
+            Fut::Output: IntoMapRequestResult<B> + Send + 'static,
             I: Service<Request<B>, Error = Infallible>
                 + Clone
                 + Send
@@ -265,7 +279,7 @@ macro_rules! impl_service {
 
             fn call(&mut self, req: Request<B>) -> Self::Future {
                 let not_ready_inner = self.inner.clone();
-                let ready_inner = std::mem::replace(&mut self.inner, not_ready_inner);
+                let mut ready_inner = std::mem::replace(&mut self.inner, not_ready_inner);
 
                 let mut f = self.f.clone();
                 let state = Arc::clone(&self.state);
@@ -287,13 +301,14 @@ macro_rules! impl_service {
                         Err(rejection) => return rejection.into_response(),
                     };
 
-                    let inner = ServiceBuilder::new()
-                        .boxed_clone()
-                        .map_response(IntoResponse::into_response)
-                        .service(ready_inner);
-                    let next = Next { inner };
-
-                    f($($ty,)* $last, next).await.into_response()
+                    match f($($ty,)* $last).await.into_map_request_result() {
+                        Ok(req) => {
+                            ready_inner.call(req).await.into_response()
+                        }
+                        Err(res) => {
+                            res
+                        }
+                    }
                 });
 
                 ResponseFuture {
@@ -330,13 +345,13 @@ impl_service!(
     T16
 );
 
-impl<F, S, I, T> fmt::Debug for FromFn<F, S, I, T>
+impl<F, S, I, T> fmt::Debug for MapRequest<F, S, I, T>
 where
     S: fmt::Debug,
     I: fmt::Debug,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("FromFnLayer")
+        f.debug_struct("MapRequest")
             .field("f", &format_args!("{}", type_name::<F>()))
             .field("inner", &self.inner)
             .field("state", &self.state)
@@ -344,30 +359,7 @@ where
     }
 }
 
-/// The remainder of a middleware stack, including the handler.
-pub struct Next<B> {
-    inner: BoxCloneService<Request<B>, Response, Infallible>,
-}
-
-impl<B> Next<B> {
-    /// Execute the remaining middleware stack.
-    pub async fn run(mut self, req: Request<B>) -> Response {
-        match self.inner.call(req).await {
-            Ok(res) => res,
-            Err(err) => match err {},
-        }
-    }
-}
-
-impl<B> fmt::Debug for Next<B> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("FromFnLayer")
-            .field("inner", &self.inner)
-            .finish()
-    }
-}
-
-/// Response future for [`FromFn`].
+/// Response future for [`MapRequest`].
 pub struct ResponseFuture {
     inner: BoxFuture<'static, Response>,
 }
@@ -386,37 +378,87 @@ impl fmt::Debug for ResponseFuture {
     }
 }
 
+mod private {
+    use crate::{http::Request, response::IntoResponse};
+
+    pub trait Sealed<B> {}
+    impl<B, E> Sealed<B> for Result<Request<B>, E> where E: IntoResponse {}
+    impl<B> Sealed<B> for Request<B> {}
+}
+
+/// Trait implemented by types that can be returned from [`map_request`],
+/// [`map_request_with_state`], and [`map_request_with_state_arc`].
+///
+/// This trait is sealed such that it cannot be implemented outside this crate.
+pub trait IntoMapRequestResult<B>: private::Sealed<B> {
+    /// Perform the conversion.
+    fn into_map_request_result(self) -> Result<Request<B>, Response>;
+}
+
+impl<B, E> IntoMapRequestResult<B> for Result<Request<B>, E>
+where
+    E: IntoResponse,
+{
+    fn into_map_request_result(self) -> Result<Request<B>, Response> {
+        self.map_err(IntoResponse::into_response)
+    }
+}
+
+impl<B> IntoMapRequestResult<B> for Request<B> {
+    fn into_map_request_result(self) -> Result<Request<B>, Response> {
+        Ok(self)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{body::Body, routing::get, Router};
+    use crate::{routing::get, test_helpers::TestClient, Router};
     use http::{HeaderMap, StatusCode};
-    use tower::ServiceExt;
 
     #[tokio::test]
-    async fn basic() {
-        async fn insert_header<B>(mut req: Request<B>, next: Next<B>) -> impl IntoResponse {
-            req.headers_mut()
-                .insert("x-axum-test", "ok".parse().unwrap());
-
-            next.run(req).await
+    async fn works() {
+        async fn add_header<B>(mut req: Request<B>) -> Request<B> {
+            req.headers_mut().insert("x-foo", "foo".parse().unwrap());
+            req
         }
 
-        async fn handle(headers: HeaderMap) -> String {
-            headers["x-axum-test"].to_str().unwrap().to_owned()
+        async fn handler(headers: HeaderMap) -> Response {
+            headers["x-foo"]
+                .to_str()
+                .unwrap()
+                .to_owned()
+                .into_response()
         }
 
         let app = Router::new()
-            .route("/", get(handle))
-            .layer(from_fn(insert_header));
+            .route("/", get(handler))
+            .layer(map_request(add_header));
+        let client = TestClient::new(app);
 
-        let res = app
-            .into_service()
-            .oneshot(Request::builder().uri("/").body(Body::empty()).unwrap())
-            .await
-            .unwrap();
-        assert_eq!(res.status(), StatusCode::OK);
-        let body = hyper::body::to_bytes(res).await.unwrap();
-        assert_eq!(&body[..], b"ok");
+        let res = client.get("/").send().await;
+
+        assert_eq!(res.text().await, "foo");
+    }
+
+    #[tokio::test]
+    async fn works_for_short_circutting() {
+        async fn add_header<B>(_req: Request<B>) -> Result<Request<B>, (StatusCode, &'static str)> {
+            Err((StatusCode::INTERNAL_SERVER_ERROR, "something went wrong"))
+        }
+
+        async fn handler(_headers: HeaderMap) -> Response {
+            unreachable!()
+        }
+
+        let app = Router::new()
+            .route("/", get(handler))
+            .layer(map_request(add_header));
+        let client = TestClient::new(app);
+
+        let res = client.get("/").send().await;
+
+        assert_eq!(res.status(), StatusCode::INTERNAL_SERVER_ERROR);
+        assert_eq!(res.text().await, "something went wrong");
     }
 }
