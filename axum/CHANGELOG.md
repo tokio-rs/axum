@@ -38,6 +38,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **breaking:** New `tokio` default feature needed for WASM support. If you
   don't need WASM support but have `default_features = false` for other reasons
   you likely need to re-enable the `tokio` feature ([#1382])
+- **breaking:** `handler::{WithState, IntoService}` are merged into one type,
+  named `HandlerService` ([#1418])
 
 [#1368]: https://github.com/tokio-rs/axum/pull/1368
 [#1371]: https://github.com/tokio-rs/axum/pull/1371
@@ -49,6 +51,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#1400]: https://github.com/tokio-rs/axum/pull/1400
 [#1408]: https://github.com/tokio-rs/axum/pull/1408
 [#1414]: https://github.com/tokio-rs/axum/pull/1414
+[#1418]: https://github.com/tokio-rs/axum/pull/1418
 
 # 0.6.0-rc.2 (10. September, 2022)
 

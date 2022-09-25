@@ -306,7 +306,7 @@ pub trait HandlerWithoutStateExt<T, B>: Handler<T, (), B> {
 
     /// Convert the handler into a [`MakeService`] and no state.
     ///
-    /// See [`WithState::into_make_service`] for more details.
+    /// See [`HandlerService::into_make_service`] for more details.
     ///
     /// [`MakeService`]: tower::make::MakeService
     fn into_make_service(self) -> IntoMakeService<HandlerService<Self, T, (), B>>;
@@ -314,7 +314,7 @@ pub trait HandlerWithoutStateExt<T, B>: Handler<T, (), B> {
     /// Convert the handler into a [`MakeService`] which stores information
     /// about the incoming connection and has no state.
     ///
-    /// See [`WithState::into_make_service_with_connect_info`] for more details.
+    /// See [`HandlerService::into_make_service_with_connect_info`] for more details.
     ///
     /// [`MakeService`]: tower::make::MakeService
     #[cfg(feature = "tokio")]
@@ -332,14 +332,14 @@ where
     }
 
     fn into_make_service(self) -> IntoMakeService<HandlerService<Self, T, (), B>> {
-        self.with_state(()).into_make_service()
+        self.into_service().into_make_service()
     }
 
     #[cfg(feature = "tokio")]
     fn into_make_service_with_connect_info<C>(
         self,
     ) -> IntoMakeServiceWithConnectInfo<HandlerService<Self, T, (), B>, C> {
-        self.with_state(()).into_make_service_with_connect_info()
+        self.into_service().into_make_service_with_connect_info()
     }
 }
 
