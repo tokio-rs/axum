@@ -23,14 +23,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   function ([#1408])
 - **breaking:** `ContentLengthLimit` has been removed. `Use DefaultBodyLimit` instead ([#1400])
 - **changed:** `Router` no longer implements `Service`, call `.into_service()`
-  on it to obtain a `RouterService` that does
+  on it to obtain a `RouterService` that does ([#1368])
 - **added:** Add `Router::inherit_state`, which creates a `Router` with an
   arbitrary state type without actually supplying the state; such a `Router`
   can't be turned into a service directly (`.into_service()` will panic), but
-  can be nested or merged into a `Router` with the same state type
+  can be nested or merged into a `Router` with the same state type ([#1368])
 - **changed:** `Router::nest` now only accepts `Router`s, the general-purpose
-  `Service` nesting method has been renamed to `nest_service`
+  `Service` nesting method has been renamed to `nest_service` ([#1368])
 
+[#1368]: https://github.com/tokio-rs/axum/pull/1368
 [#1371]: https://github.com/tokio-rs/axum/pull/1371
 [#1387]: https://github.com/tokio-rs/axum/pull/1387
 [#1389]: https://github.com/tokio-rs/axum/pull/1389
