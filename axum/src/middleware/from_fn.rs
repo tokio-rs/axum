@@ -77,6 +77,9 @@ use tower_service::Service;
 /// async fn my_middleware<B>(
 ///     TypedHeader(auth): TypedHeader<Authorization<Bearer>>,
 ///     Query(query_params): Query<HashMap<String, String>>,
+///     // you can add more extractors here but the last
+///     // extractor most implement `FromRequest` which
+///     // `Request` does
 ///     req: Request<B>,
 ///     next: Next<B>,
 /// ) -> Response {
@@ -117,7 +120,9 @@ pub fn from_fn<F, T>(f: F) -> FromFnLayer<F, (), T> {
 ///
 /// async fn my_middleware<B>(
 ///     State(state): State<AppState>,
-///     // you can add more extractors here...
+///     // you can add more extractors here but the last
+///     // extractor most implement `FromRequest` which
+///     // `Request` does
 ///     req: Request<B>,
 ///     next: Next<B>,
 /// ) -> Response {
@@ -139,6 +144,8 @@ pub fn from_fn_with_state<F, S, T>(state: S, f: F) -> FromFnLayer<F, S, T> {
 }
 
 /// Create a middleware from an async function with the given [`Arc`]'ed state.
+///
+/// See [`from_fn_with_state`] for an example.
 ///
 /// See [`State`](crate::extract::State) for more details about accessing state.
 pub fn from_fn_with_state_arc<F, S, T>(state: Arc<S>, f: F) -> FromFnLayer<F, S, T> {
