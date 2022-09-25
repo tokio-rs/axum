@@ -5,7 +5,8 @@ edition = "2018"
 publish = false
 
 [dependencies]
-# `default-features = false` to not depend on tokio which doesn't support compiling to wasm
+# `default-features = false` to not depend on tokio features which don't support wasm
+# you can still pull in tokio manually and only add features that tokio supports for wasm
 axum = { path = "../../axum", default-features = false }
 futures-executor = "0.3.21"
 http = "0.2.7"
