@@ -60,8 +60,8 @@ serde_json = { version = "1.0", features = ["raw_value"], optional = true }
 serde_path_to_error = { version = "0.1.8", optional = true }
 serde_urlencoded = { version = "0.7", optional = true }
 sha-1 = { version = "0.10", optional = true }
-tokio-tungstenite = { version = "0.17.2", optional = true }
 tokio = { package = "tokio", version = "1", features = ["time"], optional = true }
+tokio-tungstenite = { version = "0.17.2", optional = true }
 
 [dev-dependencies]
 anyhow = "1.0"
@@ -71,8 +71,8 @@ quickcheck_macros = "1.0"
 reqwest = { version = "0.11.11", default-features = false, features = ["json", "stream", "multipart"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-tokio-stream = "0.1"
 tokio = { package = "tokio", version = "1.6.1", features = ["macros", "rt", "rt-multi-thread", "net", "test-util"] }
+tokio-stream = "0.1"
 tracing = "0.1"
 uuid = { version = "1.0", features = ["serde", "v4"] }
 
