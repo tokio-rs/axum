@@ -477,9 +477,7 @@ where
     T: 'static,
     S: Send + Sync + 'static,
 {
-    MethodRouter::new()
-        .fallback_boxed_response_body(IntoServiceStateInExtension::new(handler))
-        .skip_allow_header()
+    MethodRouter::new().fallback(handler).skip_allow_header()
 }
 
 /// A [`Service`] that accepts requests based on a [`MethodFilter`] and
@@ -600,7 +598,7 @@ where
         T: 'static,
         S: Send + Sync + 'static,
     {
-        self.on_service_boxed_response_body(filter, IntoServiceStateInExtension::new(handler))
+        self.on_service(filter, IntoServiceStateInExtension::new(handler))
     }
 
     chained_handler_fn!(delete, DELETE);
@@ -804,13 +802,119 @@ where
     /// # };
     /// ```
     #[track_caller]
-    pub fn on_service<T>(self, filter: MethodFilter, svc: T) -> Self
+    pub fn on_service<T>(mut self, filter: MethodFilter, svc: T) -> Self
     where
         T: Service<Request<B>, Error = E> + Clone + Send + 'static,
         T::Response: IntoResponse + 'static,
         T::Future: Send + 'static,
     {
-        self.on_service_boxed_response_body(filter, svc)
+        // written using an inner function to generate less IR
+        #[track_caller]
+        fn set_service<T>(
+            method_name: &str,
+            out: &mut Option<T>,
+            svc: &T,
+            svc_filter: MethodFilter,
+            filter: MethodFilter,
+            allow_header: &mut AllowHeader,
+            methods: &[&'static str],
+        ) where
+            T: Clone,
+        {
+            if svc_filter.contains(filter) {
+                if out.is_some() {
+                    panic!("Overlapping method route. Cannot add two method routes that both handle `{}`", method_name)
+                }
+                *out = Some(svc.clone());
+                for method in methods {
+                    append_allow_header(allow_header, method);
+                }
+            }
+        }
+
+        let svc = Route::new(svc);
+
+        set_service(
+            "GET",
+            &mut self.get,
+            &svc,
+            filter,
+            MethodFilter::GET,
+            &mut self.allow_header,
+            &["GET", "HEAD"],
+        );
+
+        set_service(
+            "HEAD",
+            &mut self.head,
+            &svc,
+            filter,
+            MethodFilter::HEAD,
+            &mut self.allow_header,
+            &["HEAD"],
+        );
+
+        set_service(
+            "TRACE",
+            &mut self.trace,
+            &svc,
+            filter,
+            MethodFilter::TRACE,
+            &mut self.allow_header,
+            &["TRACE"],
+        );
+
+        set_service(
+            "PUT",
+            &mut self.put,
+            &svc,
+            filter,
+            MethodFilter::PUT,
+            &mut self.allow_header,
+            &["PUT"],
+        );
+
+        set_service(
+            "POST",
+            &mut self.post,
+            &svc,
+            filter,
+            MethodFilter::POST,
+            &mut self.allow_header,
+            &["POST"],
+        );
+
+        set_service(
+            "PATCH",
+            &mut self.patch,
+            &svc,
+            filter,
+            MethodFilter::PATCH,
+            &mut self.allow_header,
+            &["PATCH"],
+        );
+
+        set_service(
+            "OPTIONS",
+            &mut self.options,
+            &svc,
+            filter,
+            MethodFilter::OPTIONS,
+            &mut self.allow_header,
+            &["OPTIONS"],
+        );
+
+        set_service(
+            "DELETE",
+            &mut self.delete,
+            &svc,
+            filter,
+            MethodFilter::DELETE,
+            &mut self.allow_header,
+            &["DELETE"],
+        );
+
+        self
     }
 
     chained_service_fn!(delete_service, DELETE);
@@ -824,16 +928,6 @@ where
 
     #[doc = include_str!("../docs/method_routing/fallback.md")]
     pub fn fallback_service<T>(mut self, svc: T) -> Self
-    where
-        T: Service<Request<B>, Error = E> + Clone + Send + 'static,
-        T::Response: IntoResponse + 'static,
-        T::Future: Send + 'static,
-    {
-        self.fallback = Fallback::Service(Route::new(svc));
-        self
-    }
-
-    fn fallback_boxed_response_body<T>(mut self, svc: T) -> Self
     where
         T: Service<Request<B>, Error = E> + Clone + Send + 'static,
         T::Response: IntoResponse + 'static,
@@ -987,122 +1081,6 @@ where
         S: 'static,
     {
         self.layer(HandleErrorLayer::new(f))
-    }
-
-    #[track_caller]
-    fn on_service_boxed_response_body<T>(mut self, filter: MethodFilter, svc: T) -> Self
-    where
-        T: Service<Request<B>, Error = E> + Clone + Send + 'static,
-        T::Response: IntoResponse + 'static,
-        T::Future: Send + 'static,
-    {
-        // written using an inner function to generate less IR
-        #[track_caller]
-        fn set_service<T>(
-            method_name: &str,
-            out: &mut Option<T>,
-            svc: &T,
-            svc_filter: MethodFilter,
-            filter: MethodFilter,
-            allow_header: &mut AllowHeader,
-            methods: &[&'static str],
-        ) where
-            T: Clone,
-        {
-            if svc_filter.contains(filter) {
-                if out.is_some() {
-                    panic!("Overlapping method route. Cannot add two method routes that both handle `{}`", method_name)
-                }
-                *out = Some(svc.clone());
-                for method in methods {
-                    append_allow_header(allow_header, method);
-                }
-            }
-        }
-
-        let svc = Route::new(svc);
-
-        set_service(
-            "GET",
-            &mut self.get,
-            &svc,
-            filter,
-            MethodFilter::GET,
-            &mut self.allow_header,
-            &["GET", "HEAD"],
-        );
-
-        set_service(
-            "HEAD",
-            &mut self.head,
-            &svc,
-            filter,
-            MethodFilter::HEAD,
-            &mut self.allow_header,
-            &["HEAD"],
-        );
-
-        set_service(
-            "TRACE",
-            &mut self.trace,
-            &svc,
-            filter,
-            MethodFilter::TRACE,
-            &mut self.allow_header,
-            &["TRACE"],
-        );
-
-        set_service(
-            "PUT",
-            &mut self.put,
-            &svc,
-            filter,
-            MethodFilter::PUT,
-            &mut self.allow_header,
-            &["PUT"],
-        );
-
-        set_service(
-            "POST",
-            &mut self.post,
-            &svc,
-            filter,
-            MethodFilter::POST,
-            &mut self.allow_header,
-            &["POST"],
-        );
-
-        set_service(
-            "PATCH",
-            &mut self.patch,
-            &svc,
-            filter,
-            MethodFilter::PATCH,
-            &mut self.allow_header,
-            &["PATCH"],
-        );
-
-        set_service(
-            "OPTIONS",
-            &mut self.options,
-            &svc,
-            filter,
-            MethodFilter::OPTIONS,
-            &mut self.allow_header,
-            &["OPTIONS"],
-        );
-
-        set_service(
-            "DELETE",
-            &mut self.delete,
-            &svc,
-            filter,
-            MethodFilter::DELETE,
-            &mut self.allow_header,
-            &["DELETE"],
-        );
-
-        self
     }
 
     fn skip_allow_header(mut self) -> Self {
