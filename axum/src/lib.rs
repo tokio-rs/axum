@@ -42,8 +42,6 @@
 //! The "Hello, World!" of axum is:
 //!
 //! ```rust,no_run
-//! # use tokio_cr as tokio;
-//!
 //! use axum::{
 //!     routing::get,
 //!     Router,
