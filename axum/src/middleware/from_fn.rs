@@ -78,7 +78,7 @@ use tower_service::Service;
 ///     TypedHeader(auth): TypedHeader<Authorization<Bearer>>,
 ///     Query(query_params): Query<HashMap<String, String>>,
 ///     // you can add more extractors here but the last
-///     // extractor most implement `FromRequest` which
+///     // extractor must implement `FromRequest` which
 ///     // `Request` does
 ///     req: Request<B>,
 ///     next: Next<B>,
@@ -121,7 +121,7 @@ pub fn from_fn<F, T>(f: F) -> FromFnLayer<F, (), T> {
 /// async fn my_middleware<B>(
 ///     State(state): State<AppState>,
 ///     // you can add more extractors here but the last
-///     // extractor most implement `FromRequest` which
+///     // extractor must implement `FromRequest` which
 ///     // `Request` does
 ///     req: Request<B>,
 ///     next: Next<B>,

@@ -139,7 +139,7 @@ pub fn map_request<F, T>(f: F) -> MapRequestLayer<F, (), T> {
 /// async fn my_middleware<B>(
 ///     State(state): State<AppState>,
 ///     // you can add more extractors here but the last
-///     // extractor most implement `FromRequest` which
+///     // extractor must implement `FromRequest` which
 ///     // `Request` does
 ///     request: Request<B>,
 /// ) -> Request<B> {
