@@ -11,11 +11,10 @@
 //! `wasm32-unknown-unknown` target which is why this crate requires `default-features = false`
 //! for axum.
 //!
-//! Most "serverless" runtimes use Chrome's V8 engine for executing Javascript, and in our
-//! case, WASM Rust code. They generally expect an exported function that takes in a single
-//! request and returns a single response, much like axum's `Handler`. In this example, the
-//! handler function is `app` with `main` acting as the serverless runtime which originally
-//! receives the request and calls the app function.
+//! Most serverless runtimes expect an exported function that takes in a single request and returns
+//! a single response, much like axum's `Handler` trait. In this example, the handler function is
+//! `app` with `main` acting as the serverless runtime which originally receives the request and
+//! calls the app function.
 //!
 //! We can use axum's routing, extractors, tower services, and everything else to implement
 //! our serverless function, even though we are running axum in a wasm context.
