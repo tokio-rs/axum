@@ -1,6 +1,7 @@
-use crate::extract::{FromRequest, FromRequestParts};
+use crate::extract::{DefaultBodyLimitKind, FromRequest, FromRequestParts};
 use futures_util::future::BoxFuture;
 use http::Request;
+use http_body::Limited;
 
 mod sealed {
     pub trait Sealed<B> {}
@@ -48,6 +49,11 @@ pub trait RequestExt<B>: sealed::Sealed<B> + Sized {
     where
         E: FromRequestParts<S> + 'static,
         S: Send + Sync;
+
+    /// Consumes the request, returning the body wrapped in [`Limited`] if a
+    /// [default limit](crate::extract::DefaultBodyLimit) is in place, or not wrapped if the
+    /// default limit is disabled.
+    fn into_limited_body(self) -> Result<Limited<B>, B>;
 }
 
 impl<B> RequestExt<B> for Request<B>
@@ -104,6 +110,20 @@ where
 
             result
         })
+    }
+
+    fn into_limited_body(self) -> Result<Limited<B>, B> {
+        // update docs in `axum-core/src/extract/default_body_limit.rs` and
+        // `axum/src/docs/extract.md` if this changes
+        const DEFAULT_LIMIT: usize = 2_097_152; // 2 mb
+
+        match self.extensions().get::<DefaultBodyLimitKind>().copied() {
+            Some(DefaultBodyLimitKind::Disable) => Err(self.into_body()),
+            Some(DefaultBodyLimitKind::Limit(limit)) => {
+                Ok(http_body::Limited::new(self.into_body(), limit))
+            }
+            None => Ok(http_body::Limited::new(self.into_body(), DEFAULT_LIMIT)),
+        }
     }
 }
 

@@ -16,6 +16,7 @@ mod from_ref;
 mod request_parts;
 mod tuple;
 
+pub(crate) use self::default_body_limit::DefaultBodyLimitKind;
 pub use self::{default_body_limit::DefaultBodyLimit, from_ref::FromRef};
 
 mod private {
