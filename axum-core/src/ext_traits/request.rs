@@ -1,4 +1,4 @@
-use axum_core::extract::{FromRequest, FromRequestParts};
+use crate::extract::{FromRequest, FromRequestParts};
 use futures_util::future::BoxFuture;
 use http::Request;
 
@@ -110,9 +110,11 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{ext_traits::tests::RequiresState, extract::State};
+    use crate::{
+        ext_traits::tests::{RequiresState, State},
+        extract::FromRef,
+    };
     use async_trait::async_trait;
-    use axum_core::extract::FromRef;
     use http::Method;
     use hyper::Body;
 

@@ -52,6 +52,7 @@
 pub(crate) mod macros;
 
 mod error;
+mod ext_traits;
 pub use self::error::Error;
 
 pub mod body;
@@ -60,3 +61,5 @@ pub mod response;
 
 /// Alias for a type-erased error type.
 pub type BoxError = Box<dyn std::error::Error + Send + Sync>;
+
+pub use self::ext_traits::{request::RequestExt, request_parts::RequestPartsExt};
