@@ -50,6 +50,11 @@ pub trait RequestExt<B>: sealed::Sealed<B> + Sized {
         E: FromRequestParts<S> + 'static,
         S: Send + Sync;
 
+    /// Apply the [default body limit](crate::extract::DefaultBodyLimit).
+    ///
+    /// If it is disabled, return the request as-is in `Err`.
+    fn with_limited_body(self) -> Result<Request<Limited<B>>, Request<B>>;
+
     /// Consumes the request, returning the body wrapped in [`Limited`] if a
     /// [default limit](crate::extract::DefaultBodyLimit) is in place, or not wrapped if the
     /// default limit is disabled.
@@ -112,18 +117,24 @@ where
         })
     }
 
-    fn into_limited_body(self) -> Result<Limited<B>, B> {
+    fn with_limited_body(self) -> Result<Request<Limited<B>>, Request<B>> {
         // update docs in `axum-core/src/extract/default_body_limit.rs` and
         // `axum/src/docs/extract.md` if this changes
         const DEFAULT_LIMIT: usize = 2_097_152; // 2 mb
 
         match self.extensions().get::<DefaultBodyLimitKind>().copied() {
-            Some(DefaultBodyLimitKind::Disable) => Err(self.into_body()),
+            Some(DefaultBodyLimitKind::Disable) => Err(self),
             Some(DefaultBodyLimitKind::Limit(limit)) => {
-                Ok(http_body::Limited::new(self.into_body(), limit))
+                Ok(self.map(|b| http_body::Limited::new(b, limit)))
             }
-            None => Ok(http_body::Limited::new(self.into_body(), DEFAULT_LIMIT)),
+            None => Ok(self.map(|b| http_body::Limited::new(b, DEFAULT_LIMIT))),
         }
+    }
+
+    fn into_limited_body(self) -> Result<Limited<B>, B> {
+        self.with_limited_body()
+            .map(Request::into_body)
+            .map_err(Request::into_body)
     }
 }
 

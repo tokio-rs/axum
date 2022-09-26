@@ -40,6 +40,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   you likely need to re-enable the `tokio` feature ([#1382])
 - **breaking:** `handler::{WithState, IntoService}` are merged into one type,
   named `HandlerService` ([#1418])
+- **changed:** The default body limit now applies to the `Multipart` extractor
 
 [#1368]: https://github.com/tokio-rs/axum/pull/1368
 [#1371]: https://github.com/tokio-rs/axum/pull/1371
