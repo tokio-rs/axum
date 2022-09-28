@@ -125,7 +125,7 @@ impl<T> DerefMut for Cached<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use axum::{extract::FromRequestParts, http::Request};
+    use axum::{extract::FromRequestParts, http::Request, routing::get, Router};
     use http::request::Parts;
     use std::{
         convert::Infallible,
@@ -171,5 +171,11 @@ mod tests {
         assert_eq!(COUNTER.load(Ordering::SeqCst), 1);
 
         assert_eq!(first, second);
+    }
+
+    // Not a #[test], we just want to know this compiles
+    async fn _last_handler_argument() {
+        async fn handler(_: http::Method, _: Cached<http::HeaderMap>) {}
+        let _r: Router = Router::new().route("/", get(handler));
     }
 }
