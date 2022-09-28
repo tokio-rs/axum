@@ -18,6 +18,7 @@ async-read-body = ["dep:tokio-util", "tokio-util?/io"]
 cookie = ["dep:cookie"]
 cookie-private = ["cookie", "cookie?/private"]
 cookie-signed = ["cookie", "cookie?/signed"]
+cookie-key-expansion = ["cookie", "cookie?/key-expansion"]
 erased-json = ["dep:serde_json", "dep:serde"]
 form = ["dep:serde", "dep:serde_html_form"]
 json-lines = [
