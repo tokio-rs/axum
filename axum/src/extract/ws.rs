@@ -545,6 +545,30 @@ impl Message {
     }
 }
 
+impl From<String> for Message {
+    fn from(string: String) -> Self {
+        Message::Text(string)
+    }
+}
+
+impl<'s> From<&'s str> for Message {
+    fn from(string: &'s str) -> Self {
+        Message::Text(string.into())
+    }
+}
+
+impl<'b> From<&'b [u8]> for Message {
+    fn from(data: &'b [u8]) -> Self {
+        Message::Binary(data.into())
+    }
+}
+
+impl From<Vec<u8>> for Message {
+    fn from(data: Vec<u8>) -> Self {
+        Message::Binary(data)
+    }
+}
+
 impl From<Message> for Vec<u8> {
     fn from(msg: Message) -> Self {
         msg.into_data()

@@ -1,8 +1,8 @@
 use axum::{
     async_trait,
-    extract::{Extension, FromRequest, FromRequestParts},
+    extract::{Extension, FromRequestParts},
 };
-use http::{request::Parts, Request};
+use http::request::Parts;
 use std::ops::{Deref, DerefMut};
 
 /// Cache results of other extractors.
@@ -89,29 +89,6 @@ pub struct Cached<T>(pub T);
 struct CachedEntry<T>(T);
 
 #[async_trait]
-impl<S, B, T> FromRequest<S, B> for Cached<T>
-where
-    B: Send + 'static,
-    S: Send + Sync,
-    T: FromRequestParts<S> + Clone + Send + Sync + 'static,
-{
-    type Rejection = T::Rejection;
-
-    async fn from_request(req: Request<B>, state: &S) -> Result<Self, Self::Rejection> {
-        let (mut parts, _) = req.into_parts();
-
-        match Extension::<CachedEntry<T>>::from_request_parts(&mut parts, state).await {
-            Ok(Extension(CachedEntry(value))) => Ok(Self(value)),
-            Err(_) => {
-                let value = T::from_request_parts(&mut parts, state).await?;
-                parts.extensions.insert(CachedEntry(value.clone()));
-                Ok(Self(value))
-            }
-        }
-    }
-}
-
-#[async_trait]
 impl<S, T> FromRequestParts<S> for Cached<T>
 where
     S: Send + Sync,
@@ -148,7 +125,7 @@ impl<T> DerefMut for Cached<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use axum::{extract::FromRequestParts, http::Request};
+    use axum::{extract::FromRequestParts, http::Request, routing::get, Router};
     use http::request::Parts;
     use std::{
         convert::Infallible,
@@ -194,5 +171,11 @@ mod tests {
         assert_eq!(COUNTER.load(Ordering::SeqCst), 1);
 
         assert_eq!(first, second);
+    }
+
+    // Not a #[test], we just want to know this compiles
+    async fn _last_handler_argument() {
+        async fn handler(_: http::Method, _: Cached<http::HeaderMap>) {}
+        let _r: Router = Router::new().route("/", get(handler));
     }
 }
