@@ -51,6 +51,7 @@ use syn::{parse::Parse, Type};
 
 mod attr_parsing;
 mod debug_handler;
+mod from_ref;
 mod from_request;
 mod typed_path;
 mod with_position;
@@ -573,6 +574,11 @@ pub fn debug_handler(_attr: TokenStream, input: TokenStream) -> TokenStream {
 #[proc_macro_derive(TypedPath, attributes(typed_path))]
 pub fn derive_typed_path(input: TokenStream) -> TokenStream {
     expand_with(input, typed_path::expand)
+}
+
+#[proc_macro_derive(FromRef, attributes(from_ref))]
+pub fn derive_from_ref(item: TokenStream) -> TokenStream {
+    expand_with(item, |item| from_ref::expand(item))
 }
 
 fn expand_with<F, I, K>(input: TokenStream, f: F) -> TokenStream
