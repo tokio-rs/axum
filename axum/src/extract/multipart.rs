@@ -6,6 +6,7 @@ use super::{BodyStream, FromRequest};
 use crate::body::{Bytes, HttpBody};
 use crate::BoxError;
 use async_trait::async_trait;
+use axum_core::RequestExt;
 use futures_util::stream::Stream;
 use http::header::{HeaderMap, CONTENT_TYPE};
 use http::Request;
@@ -47,10 +48,6 @@ use std::{
 /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 /// # };
 /// ```
-///
-/// For security reasons it's recommended to combine this with
-/// [`RequestBodyLimitLayer`](tower_http::limit::RequestBodyLimitLayer)
-/// to limit the size of the request payload.
 #[cfg_attr(docsrs, doc(cfg(feature = "multipart")))]
 #[derive(Debug)]
 pub struct Multipart {
@@ -69,10 +66,11 @@ where
 
     async fn from_request(req: Request<B>, state: &S) -> Result<Self, Self::Rejection> {
         let boundary = parse_boundary(req.headers()).ok_or(InvalidBoundary)?;
-        let stream = match BodyStream::from_request(req, state).await {
-            Ok(stream) => stream,
-            Err(err) => match err {},
+        let stream_result = match req.with_limited_body() {
+            Ok(limited) => BodyStream::from_request(limited, state).await,
+            Err(unlimited) => BodyStream::from_request(unlimited, state).await,
         };
+        let stream = stream_result.unwrap_or_else(|err| match err {});
         let multipart = multer::Multipart::new(stream, boundary);
         Ok(Self { inner: multipart })
     }
