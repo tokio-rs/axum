@@ -36,7 +36,7 @@ use tower_service::Service;
 ///     .merge(spa)
 ///     // we can still add other routes
 ///     .route("/api/foo", get(api_foo));
-/// # let _: Router<axum::body::Body> = app;
+/// # let _: Router = app;
 ///
 /// async fn api_foo() {}
 /// ```
@@ -101,7 +101,7 @@ impl<B, T, F> SpaRouter<B, T, F> {
     ///     .index_file("another_file.html");
     ///
     /// let app = Router::new().merge(spa);
-    /// # let _: Router<axum::body::Body> = app;
+    /// # let _: Router = app;
     /// ```
     pub fn index_file<P>(mut self, path: P) -> Self
     where
@@ -136,7 +136,7 @@ impl<B, T, F> SpaRouter<B, T, F> {
     /// }
     ///
     /// let app = Router::new().merge(spa);
-    /// # let _: Router<axum::body::Body> = app;
+    /// # let _: Router = app;
     /// ```
     pub fn handle_error<T2, F2>(self, f: F2) -> SpaRouter<B, T2, F2> {
         SpaRouter {
@@ -147,9 +147,9 @@ impl<B, T, F> SpaRouter<B, T, F> {
     }
 }
 
-impl<B, F, T> From<SpaRouter<B, T, F>> for Router<B>
+impl<B, F, T> From<SpaRouter<B, T, F>> for Router<(), B>
 where
-    F: Clone + Send + 'static,
+    F: Clone + Send + Sync + 'static,
     HandleError<Route<B, io::Error>, F, T>: Service<Request<B>, Error = Infallible>,
     <HandleError<Route<B, io::Error>, F, T> as Service<Request<B>>>::Response: IntoResponse + Send,
     <HandleError<Route<B, io::Error>, F, T> as Service<Request<B>>>::Future: Send,
@@ -161,8 +161,8 @@ where
             .handle_error(spa.handle_error.clone());
 
         Router::new()
-            .nest(&spa.paths.assets_path, assets_service)
-            .fallback(
+            .nest_service(&spa.paths.assets_path, assets_service)
+            .fallback_service(
                 get_service(ServeFile::new(&spa.paths.index_file)).handle_error(spa.handle_error),
             )
     }
@@ -264,6 +264,13 @@ mod tests {
 
         let spa = SpaRouter::new("/assets", "test_files").handle_error(handle_error);
 
-        Router::<Body>::new().merge(spa);
+        Router::<_, Body>::new().merge(spa);
+    }
+
+    #[allow(dead_code)]
+    fn works_with_router_with_state() {
+        let _: Router<String> = Router::with_state(String::new())
+            .merge(SpaRouter::new("/assets", "test_files"))
+            .route("/", get(|_: axum::extract::State<String>| async {}));
     }
 }

@@ -209,6 +209,26 @@ jobs:
           -p axum-macros
           --target armv5te-unknown-linux-musleabi
 
+  wasm32-unknown-unknown:
+    needs: check
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@master
+    - uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        target: wasm32-unknown-unknown
+        override: true
+        profile: minimal
+    - uses: Swatinem/rust-cache@v1
+    - name: Check
+      uses: actions-rs/cargo@v1
+      with:
+        command: check
+        args: >
+          --manifest-path ./examples/simple-router-wasm/Cargo.toml
+          --target wasm32-unknown-unknown
+
   dependencies-are-sorted:
     runs-on: ubuntu-latest
     strategy:

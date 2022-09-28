@@ -1,9 +1,8 @@
 #![doc = include_str!("../docs/error_handling.md")]
 
 use crate::{
-    body::boxed,
-    extract::{FromRequest, RequestParts},
-    http::{Request, StatusCode},
+    extract::FromRequestParts,
+    http::Request,
     response::{IntoResponse, Response},
 };
 use std::{
@@ -113,16 +112,16 @@ where
     }
 }
 
-impl<S, F, ReqBody, Fut, Res> Service<Request<ReqBody>> for HandleError<S, F, ()>
+impl<S, F, B, Fut, Res> Service<Request<B>> for HandleError<S, F, ()>
 where
-    S: Service<Request<ReqBody>> + Clone + Send + 'static,
+    S: Service<Request<B>> + Clone + Send + 'static,
     S::Response: IntoResponse + Send,
     S::Error: Send,
     S::Future: Send,
     F: FnOnce(S::Error) -> Fut + Clone + Send + 'static,
     Fut: Future<Output = Res> + Send,
     Res: IntoResponse,
-    ReqBody: Send + 'static,
+    B: Send + 'static,
 {
     type Response = Response;
     type Error = Infallible;
@@ -132,7 +131,7 @@ where
         Poll::Ready(Ok(()))
     }
 
-    fn call(&mut self, req: Request<ReqBody>) -> Self::Future {
+    fn call(&mut self, req: Request<B>) -> Self::Future {
         let f = self.f.clone();
 
         let clone = self.inner.clone();
@@ -152,18 +151,18 @@ where
 #[allow(unused_macros)]
 macro_rules! impl_service {
     ( $($ty:ident),* $(,)? ) => {
-        impl<S, F, ReqBody, Res, Fut, $($ty,)*> Service<Request<ReqBody>>
+        impl<S, F, B, Res, Fut, $($ty,)*> Service<Request<B>>
             for HandleError<S, F, ($($ty,)*)>
         where
-            S: Service<Request<ReqBody>> + Clone + Send + 'static,
+            S: Service<Request<B>> + Clone + Send + 'static,
             S::Response: IntoResponse + Send,
             S::Error: Send,
             S::Future: Send,
             F: FnOnce($($ty),*, S::Error) -> Fut + Clone + Send + 'static,
             Fut: Future<Output = Res> + Send,
             Res: IntoResponse,
-            $( $ty: FromRequest<ReqBody> + Send,)*
-            ReqBody: Send + 'static,
+            $( $ty: FromRequestParts<()> + Send,)*
+            B: Send + 'static,
         {
             type Response = Response;
             type Error = Infallible;
@@ -175,32 +174,27 @@ macro_rules! impl_service {
             }
 
             #[allow(non_snake_case)]
-            fn call(&mut self, req: Request<ReqBody>) -> Self::Future {
+            fn call(&mut self, req: Request<B>) -> Self::Future {
                 let f = self.f.clone();
 
                 let clone = self.inner.clone();
                 let inner = std::mem::replace(&mut self.inner, clone);
 
                 let future = Box::pin(async move {
-                    let mut req = RequestParts::new(req);
+                    let (mut parts, body) = req.into_parts();
 
                     $(
-                        let $ty = match $ty::from_request(&mut req).await {
+                        let $ty = match $ty::from_request_parts(&mut parts, &()).await {
                             Ok(value) => value,
-                            Err(rejection) => return Ok(rejection.into_response().map(boxed)),
+                            Err(rejection) => return Ok(rejection.into_response()),
                         };
                     )*
 
-                    let req = match req.try_into_request() {
-                        Ok(req) => req,
-                        Err(err) => {
-                            return Ok((StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response());
-                        }
-                    };
+                    let req = Request::from_parts(parts, body);
 
                     match inner.oneshot(req).await {
                         Ok(res) => Ok(res.into_response()),
-                        Err(err) => Ok(f($($ty),*, err).await.into_response().map(boxed)),
+                        Err(err) => Ok(f($($ty),*, err).await.into_response()),
                     }
                 });
 
@@ -210,7 +204,22 @@ macro_rules! impl_service {
     }
 }
 
-all_the_tuples!(impl_service);
+impl_service!(T1);
+impl_service!(T1, T2);
+impl_service!(T1, T2, T3);
+impl_service!(T1, T2, T3, T4);
+impl_service!(T1, T2, T3, T4, T5);
+impl_service!(T1, T2, T3, T4, T5, T6);
+impl_service!(T1, T2, T3, T4, T5, T6, T7);
+impl_service!(T1, T2, T3, T4, T5, T6, T7, T8);
+impl_service!(T1, T2, T3, T4, T5, T6, T7, T8, T9);
+impl_service!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10);
+impl_service!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11);
+impl_service!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12);
+impl_service!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13);
+impl_service!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14);
+impl_service!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15);
+impl_service!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16);
 
 pub mod future {
     //! Future types.

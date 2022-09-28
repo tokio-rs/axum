@@ -10,7 +10,7 @@ use syn::{
 
 use quote::quote;
 
-use super::attr::Attrs;
+use super::attr::SpecializationsAttr;
 
 struct GenericFinder<'a> {
     found_idents: HashSet<&'a syn::Ident>,
@@ -54,11 +54,11 @@ pub(crate) struct Specializer {
 }
 
 impl Specializer {
-    pub(crate) fn new(attr: &Attrs, item_fn: &ItemFn) -> Result<Self, syn::Error> {
-        let specializations = attr
-            .specializations()
-            .map(|s| s.clone())
-            .unwrap_or_default();
+    pub(crate) fn new(
+        with_tys: Option<SpecializationsAttr>,
+        item_fn: &ItemFn,
+    ) -> Result<Self, syn::Error> {
+        let specializations = with_tys.map(|f| f.specializations).unwrap_or_default();
 
         let generic_params = item_fn
             .sig

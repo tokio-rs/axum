@@ -48,32 +48,8 @@ define_rejection! {
 }
 
 define_rejection! {
-    #[status = PAYLOAD_TOO_LARGE]
-    #[body = "Request payload is too large"]
-    /// Rejection type for [`ContentLengthLimit`](super::ContentLengthLimit) if
-    /// the request body is too large.
-    pub struct PayloadTooLarge;
-}
-
-define_rejection! {
-    #[status = LENGTH_REQUIRED]
-    #[body = "Content length header is required"]
-    /// Rejection type for [`ContentLengthLimit`](super::ContentLengthLimit) if
-    /// the request is missing the `Content-Length` header or it is invalid.
-    pub struct LengthRequired;
-}
-
-define_rejection! {
-    #[status = BAD_REQUEST]
-    #[body = "`GET`, `HEAD`, `OPTIONS` requests are not allowed to have a `Content-Length` header"]
-    /// Rejection type for [`ContentLengthLimit`](super::ContentLengthLimit) if
-    /// the request is `GET`, `HEAD`, or `OPTIONS` and has a `Content-Length` header.
-    pub struct ContentLengthNotAllowed;
-}
-
-define_rejection! {
     #[status = INTERNAL_SERVER_ERROR]
-    #[body = "No paths parameters found for matched route. Are you also extracting `Request<_>`?"]
+    #[body = "No paths parameters found for matched route"]
     /// Rejection type used if axum's internal representation of path parameters
     /// is missing. This is commonly caused by extracting `Request<_>`. `Path`
     /// must be extracted first.
@@ -116,7 +92,7 @@ impl FailedToDeserializeQueryString {
 
 impl IntoResponse for FailedToDeserializeQueryString {
     fn into_response(self) -> Response {
-        (http::StatusCode::UNPROCESSABLE_ENTITY, self.to_string()).into_response()
+        (http::StatusCode::BAD_REQUEST, self.to_string()).into_response()
     }
 }
 
@@ -213,65 +189,6 @@ composite_rejection! {
     #[cfg_attr(docsrs, doc(cfg(feature = "matched-path")))]
     pub enum MatchedPathRejection {
         MatchedPathMissing,
-    }
-}
-
-/// Rejection used for [`ContentLengthLimit`](super::ContentLengthLimit).
-///
-/// Contains one variant for each way the
-/// [`ContentLengthLimit`](super::ContentLengthLimit) extractor can fail.
-#[derive(Debug)]
-#[non_exhaustive]
-pub enum ContentLengthLimitRejection<T> {
-    #[allow(missing_docs)]
-    PayloadTooLarge(PayloadTooLarge),
-    #[allow(missing_docs)]
-    LengthRequired(LengthRequired),
-    #[allow(missing_docs)]
-    ContentLengthNotAllowed(ContentLengthNotAllowed),
-    #[allow(missing_docs)]
-    Inner(T),
-}
-
-impl<T> IntoResponse for ContentLengthLimitRejection<T>
-where
-    T: IntoResponse,
-{
-    fn into_response(self) -> Response {
-        match self {
-            Self::PayloadTooLarge(inner) => inner.into_response(),
-            Self::LengthRequired(inner) => inner.into_response(),
-            Self::ContentLengthNotAllowed(inner) => inner.into_response(),
-            Self::Inner(inner) => inner.into_response(),
-        }
-    }
-}
-
-impl<T> std::fmt::Display for ContentLengthLimitRejection<T>
-where
-    T: std::fmt::Display,
-{
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::PayloadTooLarge(inner) => inner.fmt(f),
-            Self::LengthRequired(inner) => inner.fmt(f),
-            Self::ContentLengthNotAllowed(inner) => inner.fmt(f),
-            Self::Inner(inner) => inner.fmt(f),
-        }
-    }
-}
-
-impl<T> std::error::Error for ContentLengthLimitRejection<T>
-where
-    T: std::error::Error + 'static,
-{
-    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        match self {
-            Self::PayloadTooLarge(inner) => Some(inner),
-            Self::LengthRequired(inner) => Some(inner),
-            Self::ContentLengthNotAllowed(inner) => Some(inner),
-            Self::Inner(inner) => Some(inner),
-        }
     }
 }
 

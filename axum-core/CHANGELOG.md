@@ -7,7 +7,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- None.
+- **added:** Add `DefaultBodyLimit::max` for changing the default body limit ([#1397])
+
+[#1397]: https://github.com/tokio-rs/axum/pull/1397
+
+# 0.3.0-rc.2 (10. September, 2022)
+
+- **breaking:** Added default limit to how much data `Bytes::from_request` will
+  consume. Previously it would attempt to consume the entire request body
+  without checking its length. This meant if a malicious peer sent an large (or
+  infinite) request body your server might run out of memory and crash.
+
+  The default limit is at 2 MB and can be disabled by adding the new
+  `DefaultBodyLimit::disable()` middleware. See its documentation for more
+  details.
+
+  This also applies to `String` which used `Bytes::from_request` internally.
+
+  ([#1346])
+
+[#1346]: https://github.com/tokio-rs/axum/pull/1346
+
+# 0.3.0-rc.1 (23. August, 2022)
+
+- **breaking:** `FromRequest` has been reworked and `RequestParts` has been
+  removed. See axum's changelog for more details ([#1272])
+- **added:** Added new `FromRequestParts` trait. See axum's changelog for more
+  details ([#1272])
+- **breaking:** `BodyAlreadyExtracted` has been removed ([#1272])
+
+[#1155]: https://github.com/tokio-rs/axum/pull/1155
+[#1272]: https://github.com/tokio-rs/axum/pull/1272
+
+# 0.2.7 (10. July, 2022)
+
+- **fix:** Fix typos in `RequestParts` docs ([#1147])
+
+[#1147]: https://github.com/tokio-rs/axum/pull/1147
 
 # 0.2.6 (18. June, 2022)
 

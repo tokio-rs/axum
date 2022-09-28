@@ -1,0 +1,11 @@
+error: `body` specified more than once
+ --> tests/debug_handler/fail/duplicate_args.rs:3:33
+  |
+3 | #[debug_handler(body = BoxBody, body = BoxBody)]
+  |                                 ^^^^
+
+error: `state` specified more than once
+ --> tests/debug_handler/fail/duplicate_args.rs:6:29
+  |
+6 | #[debug_handler(state = (), state = ())]
+  |                             ^^^^^

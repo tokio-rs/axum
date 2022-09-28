@@ -49,6 +49,6 @@ fn post_foo() -> Router {
     route("/foo", post(handler))
 }
 
-fn route(path: &str, method_router: MethodRouter) -> Router {
+fn route(path: &str, method_router: MethodRouter<()>) -> Router {
     Router::new().route(path, method_router)
 }

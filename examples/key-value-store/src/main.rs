@@ -9,7 +9,7 @@
 use axum::{
     body::Bytes,
     error_handling::HandleErrorLayer,
-    extract::{ContentLengthLimit, Extension, Path},
+    extract::{DefaultBodyLimit, Path, State},
     handler::Handler,
     http::StatusCode,
     response::IntoResponse,
@@ -25,7 +25,8 @@ use std::{
 };
 use tower::{BoxError, ServiceBuilder};
 use tower_http::{
-    auth::RequireAuthorizationLayer, compression::CompressionLayer, trace::TraceLayer,
+    auth::RequireAuthorizationLayer, compression::CompressionLayer, limit::RequestBodyLimitLayer,
+    trace::TraceLayer,
 };
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
@@ -39,18 +40,25 @@ async fn main() {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
+    let shared_state = SharedState::default();
+
     // Build our application by composing routes
-    let app = Router::new()
+    let app = Router::with_state(Arc::clone(&shared_state))
         .route(
             "/:key",
             // Add compression to `kv_get`
             get(kv_get.layer(CompressionLayer::new()))
                 // But don't compress `kv_set`
-                .post(kv_set),
+                .post_service(
+                    ServiceBuilder::new()
+                        .layer(DefaultBodyLimit::disable())
+                        .layer(RequestBodyLimitLayer::new(1024 * 5_000 /* ~5mb */))
+                        .service(kv_set.with_state(Arc::clone(&shared_state))),
+                ),
         )
         .route("/keys", get(list_keys))
         // Nest our admin routes under `/admin`
-        .nest("/admin", admin_routes())
+        .nest("/admin", admin_routes(shared_state))
         // Add middleware to all routes
         .layer(
             ServiceBuilder::new()
@@ -60,7 +68,6 @@ async fn main() {
                 .concurrency_limit(1024)
                 .timeout(Duration::from_secs(10))
                 .layer(TraceLayer::new_for_http())
-                .layer(Extension(SharedState::default()))
                 .into_inner(),
         );
 
@@ -73,16 +80,16 @@ async fn main() {
         .unwrap();
 }
 
-type SharedState = Arc<RwLock<State>>;
+type SharedState = Arc<RwLock<AppState>>;
 
 #[derive(Default)]
-struct State {
+struct AppState {
     db: HashMap<String, Bytes>,
 }
 
 async fn kv_get(
     Path(key): Path<String>,
-    Extension(state): Extension<SharedState>,
+    State(state): State<SharedState>,
 ) -> Result<Bytes, StatusCode> {
     let db = &state.read().unwrap().db;
 
@@ -93,15 +100,11 @@ async fn kv_get(
     }
 }
 
-async fn kv_set(
-    Path(key): Path<String>,
-    ContentLengthLimit(bytes): ContentLengthLimit<Bytes, { 1024 * 5_000 }>, // ~5mb
-    Extension(state): Extension<SharedState>,
-) {
+async fn kv_set(Path(key): Path<String>, State(state): State<SharedState>, bytes: Bytes) {
     state.write().unwrap().db.insert(key, bytes);
 }
 
-async fn list_keys(Extension(state): Extension<SharedState>) -> String {
+async fn list_keys(State(state): State<SharedState>) -> String {
     let db = &state.read().unwrap().db;
 
     db.keys()
@@ -110,16 +113,16 @@ async fn list_keys(Extension(state): Extension<SharedState>) -> String {
         .join("\n")
 }
 
-fn admin_routes() -> Router {
-    async fn delete_all_keys(Extension(state): Extension<SharedState>) {
+fn admin_routes(state: SharedState) -> Router<SharedState> {
+    async fn delete_all_keys(State(state): State<SharedState>) {
         state.write().unwrap().db.clear();
     }
 
-    async fn remove_key(Path(key): Path<String>, Extension(state): Extension<SharedState>) {
+    async fn remove_key(Path(key): Path<String>, State(state): State<SharedState>) {
         state.write().unwrap().db.remove(&key);
     }
 
-    Router::new()
+    Router::with_state(state)
         .route("/keys", delete(delete_all_keys))
         .route("/key/:key", delete(remove_key))
         // Require bearer auth for all admin routes

@@ -100,11 +100,11 @@ async fn fallback() -> (StatusCode, &'static str) {
     (StatusCode::NOT_FOUND, "Not Found")
 }
 
-let api_routes = Router::new().nest("/users", get(|| async {}));
+let api_routes = Router::new().nest_service("/users", get(|| async {}));
 
 let app = Router::new()
     .nest("/api", api_routes)
-    .fallback(fallback.into_service());
+    .fallback(fallback);
 # let _: Router = app;
 ```
 
@@ -130,13 +130,13 @@ async fn api_fallback() -> (StatusCode, Json<Value>) {
 }
 
 let api_routes = Router::new()
-    .nest("/users", get(|| async {}))
+    .nest_service("/users", get(|| async {}))
     // add dedicated fallback for requests starting with `/api`
-    .fallback(api_fallback.into_service());
+    .fallback(api_fallback);
 
 let app = Router::new()
     .nest("/api", api_routes)
-    .fallback(fallback.into_service());
+    .fallback(fallback);
 # let _: Router = app;
 ```
 
@@ -146,8 +146,6 @@ let app = Router::new()
 for more details.
 - If the route contains a wildcard (`*`).
 - If `path` is empty.
-- If the nested router has a [fallback](Router::fallback). This is because
-  `Router` only allows a single fallback.
 
 [`OriginalUri`]: crate::extract::OriginalUri
 [fallbacks]: Router::fallback

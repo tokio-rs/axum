@@ -1,14 +1,14 @@
 use crate::{
     body::{Bytes, HttpBody},
-    extract::{rejection::*, FromRequest, RequestParts},
+    extract::{rejection::*, FromRequest},
     BoxError,
 };
 use async_trait::async_trait;
 use axum_core::response::{IntoResponse, Response};
 use bytes::{BufMut, BytesMut};
 use http::{
-    header::{self, HeaderValue},
-    StatusCode,
+    header::{self, HeaderMap, HeaderValue},
+    Request, StatusCode,
 };
 use serde::{de::DeserializeOwned, Serialize};
 use std::ops::{Deref, DerefMut};
@@ -24,6 +24,12 @@ use std::ops::{Deref, DerefMut};
 /// - The body contains syntactically valid JSON but it couldn't be deserialized into the target
 /// type.
 /// - Buffering the request body fails.
+///
+/// Since parsing JSON requires consuming the request body, the `Json` extractor must be
+/// *last* if there are multiple extractors in a handler.
+/// See ["the order of extractors"][order-of-extractors]
+///
+/// [order-of-extractors]: crate::extract#the-order-of-extractors
 ///
 /// See [`JsonRejection`] for more details.
 ///
@@ -94,23 +100,25 @@ use std::ops::{Deref, DerefMut};
 pub struct Json<T>(pub T);
 
 #[async_trait]
-impl<T, B> FromRequest<B> for Json<T>
+impl<T, S, B> FromRequest<S, B> for Json<T>
 where
     T: DeserializeOwned,
-    B: HttpBody + Send,
+    B: HttpBody + Send + 'static,
     B::Data: Send,
     B::Error: Into<BoxError>,
+    S: Send + Sync,
 {
     type Rejection = JsonRejection;
 
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-        if json_content_type(req) {
-            let bytes = Bytes::from_request(req).await?;
+    async fn from_request(req: Request<B>, state: &S) -> Result<Self, Self::Rejection> {
+        if json_content_type(req.headers()) {
+            let bytes = Bytes::from_request(req, state).await?;
+            let deserializer = &mut serde_json::Deserializer::from_slice(&bytes);
 
-            let value = match serde_json::from_slice(&bytes) {
+            let value = match serde_path_to_error::deserialize(deserializer) {
                 Ok(value) => value,
                 Err(err) => {
-                    let rejection = match err.classify() {
+                    let rejection = match err.inner().classify() {
                         serde_json::error::Category::Data => JsonDataError::from_err(err).into(),
                         serde_json::error::Category::Syntax | serde_json::error::Category::Eof => {
                             JsonSyntaxError::from_err(err).into()
@@ -136,8 +144,8 @@ where
     }
 }
 
-fn json_content_type<B>(req: &RequestParts<B>) -> bool {
-    let content_type = if let Some(content_type) = req.headers().get(header::CONTENT_TYPE) {
+fn json_content_type(headers: &HeaderMap) -> bool {
+    let content_type = if let Some(content_type) = headers.get(header::CONTENT_TYPE) {
         content_type
     } else {
         return false;
@@ -247,7 +255,6 @@ mod tests {
         let res = client.post("/").body(r#"{ "foo": "bar" }"#).send().await;
 
         let status = res.status();
-        dbg!(res.text().await);
 
         assert_eq!(status, StatusCode::UNSUPPORTED_MEDIA_TYPE);
     }
@@ -289,5 +296,41 @@ mod tests {
             .await;
 
         assert_eq!(res.status(), StatusCode::BAD_REQUEST);
+    }
+
+    #[derive(Deserialize)]
+    struct Foo {
+        #[allow(dead_code)]
+        a: i32,
+        #[allow(dead_code)]
+        b: Vec<Bar>,
+    }
+
+    #[derive(Deserialize)]
+    struct Bar {
+        #[allow(dead_code)]
+        x: i32,
+        #[allow(dead_code)]
+        y: i32,
+    }
+
+    #[tokio::test]
+    async fn invalid_json_data() {
+        let app = Router::new().route("/", post(|_: Json<Foo>| async {}));
+
+        let client = TestClient::new(app);
+        let res = client
+            .post("/")
+            .body("{\"a\": 1, \"b\": [{\"x\": 2}]}")
+            .header("content-type", "application/json")
+            .send()
+            .await;
+
+        assert_eq!(res.status(), StatusCode::UNPROCESSABLE_ENTITY);
+        let body_text = res.text().await;
+        assert_eq!(
+            body_text,
+            "Failed to deserialize the JSON body into the target type: b[0]: missing field `y` at line 1 column 23"
+        );
     }
 }

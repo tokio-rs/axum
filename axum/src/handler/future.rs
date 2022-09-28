@@ -19,29 +19,29 @@ opaque_future! {
 
 pin_project! {
     /// The response future for [`Layered`](super::Layered).
-    pub struct LayeredFuture<S, ReqBody>
+    pub struct LayeredFuture<B, S>
     where
-        S: Service<Request<ReqBody>>,
+        S: Service<Request<B>>,
     {
         #[pin]
-        inner: Map<Oneshot<S, Request<ReqBody>>, fn(Result<S::Response, S::Error>) -> Response>,
+        inner: Map<Oneshot<S, Request<B>>, fn(Result<S::Response, S::Error>) -> Response>,
     }
 }
 
-impl<S, ReqBody> LayeredFuture<S, ReqBody>
+impl<B, S> LayeredFuture<B, S>
 where
-    S: Service<Request<ReqBody>>,
+    S: Service<Request<B>>,
 {
     pub(super) fn new(
-        inner: Map<Oneshot<S, Request<ReqBody>>, fn(Result<S::Response, S::Error>) -> Response>,
+        inner: Map<Oneshot<S, Request<B>>, fn(Result<S::Response, S::Error>) -> Response>,
     ) -> Self {
         Self { inner }
     }
 }
 
-impl<S, ReqBody> Future for LayeredFuture<S, ReqBody>
+impl<B, S> Future for LayeredFuture<B, S>
 where
-    S: Service<Request<ReqBody>>,
+    S: Service<Request<B>>,
 {
     type Output = Response;
 

@@ -3,12 +3,12 @@
 use axum::{
     async_trait,
     body::{Bytes, HttpBody},
-    extract::{rejection::BytesRejection, FromRequest, RequestParts},
+    extract::{rejection::BytesRejection, FromRequest},
     response::{IntoResponse, Response},
     BoxError,
 };
 use bytes::BytesMut;
-use http::StatusCode;
+use http::{Request, StatusCode};
 use prost::Message;
 use std::ops::{Deref, DerefMut};
 
@@ -97,17 +97,18 @@ use std::ops::{Deref, DerefMut};
 pub struct ProtoBuf<T>(pub T);
 
 #[async_trait]
-impl<T, B> FromRequest<B> for ProtoBuf<T>
+impl<T, S, B> FromRequest<S, B> for ProtoBuf<T>
 where
     T: Message + Default,
-    B: HttpBody + Send,
+    B: HttpBody + Send + 'static,
     B::Data: Send,
     B::Error: Into<BoxError>,
+    S: Send + Sync,
 {
     type Rejection = ProtoBufRejection;
 
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-        let mut bytes = Bytes::from_request(req).await?;
+    async fn from_request(req: Request<B>, state: &S) -> Result<Self, Self::Rejection> {
+        let mut bytes = Bytes::from_request(req, state).await?;
 
         match T::decode(&mut bytes) {
             Ok(value) => Ok(ProtoBuf(value)),
@@ -187,6 +188,7 @@ impl IntoResponse for ProtoBufDecodeError {
 /// Contains one variant for each way the [`ProtoBuf`] extractor
 /// can fail.
 #[derive(Debug)]
+#[non_exhaustive]
 pub enum ProtoBufRejection {
     #[allow(missing_docs)]
     ProtoBufDecodeError(ProtoBufDecodeError),
@@ -236,7 +238,7 @@ mod tests {
         );
 
         let input = Input {
-            foo: "bar".to_string(),
+            foo: "bar".to_owned(),
         };
 
         let client = TestClient::new(app);
@@ -264,7 +266,7 @@ mod tests {
         let app = Router::new().route("/", post(|_: ProtoBuf<Expected>| async {}));
 
         let input = Input {
-            foo: "bar".to_string(),
+            foo: "bar".to_owned(),
         };
 
         let client = TestClient::new(app);
@@ -299,7 +301,7 @@ mod tests {
         );
 
         let input = Input {
-            foo: "bar".to_string(),
+            foo: "bar".to_owned(),
         };
 
         let client = TestClient::new(app);

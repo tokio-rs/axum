@@ -2,6 +2,8 @@ use std::collections::HashMap;
 
 use syn::{parse::Parse, punctuated::Punctuated, Token, Type};
 
+use crate::attr_parsing::parse_assignment_attribute;
+
 struct GenericArgSpecializationAttr {
     arg_name: syn::Ident,
     specialization_ty: syn::Type,
@@ -19,8 +21,8 @@ impl Parse for GenericArgSpecializationAttr {
     }
 }
 
-struct SpecializationsAttr {
-    specializations: HashMap<syn::Ident, Vec<syn::Type>>,
+pub(crate) struct SpecializationsAttr {
+    pub(crate) specializations: HashMap<syn::Ident, Vec<syn::Type>>,
 }
 
 impl Parse for SpecializationsAttr {
@@ -57,43 +59,46 @@ impl Parse for SpecializationsAttr {
     }
 }
 
+mod kw {
+    syn::custom_keyword!(body);
+    syn::custom_keyword!(state);
+    syn::custom_keyword!(with);
+}
+
 pub(crate) struct Attrs {
-    body_ty: Type,
-    with_tys: Option<SpecializationsAttr>,
+    pub(crate) body_ty: Option<(kw::body, Type)>,
+    pub(crate) state_ty: Option<(kw::state, Type)>,
+    pub(crate) with_tys: Option<SpecializationsAttr>,
 }
 
 impl Parse for Attrs {
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
         let mut body_ty = None;
+        let mut state_ty = None;
         let mut with_tys = None;
 
         while !input.is_empty() {
-            let ident = input.parse::<syn::Ident>()?;
-            if ident == "body" {
-                input.parse::<Token![=]>()?;
-                body_ty = Some(input.parse()?);
-            } else if ident == "with" {
+            let lh = input.lookahead1();
+            if lh.peek(kw::body) {
+                parse_assignment_attribute(input, &mut body_ty)?;
+            } else if lh.peek(kw::state) {
+                parse_assignment_attribute(input, &mut state_ty)?;
+            } else if lh.peek(kw::with) {
+                let _: kw::with = input.parse()?;
                 let content;
                 syn::parenthesized!(content in input);
                 with_tys = Some(content.parse()?);
             } else {
-                return Err(syn::Error::new_spanned(ident, "unknown argument"));
+                return Err(lh.error());
             }
 
             let _ = input.parse::<Token![,]>();
         }
 
-        let body_ty = body_ty.unwrap_or_else(|| syn::parse_quote!(axum::body::Body));
-
-        Ok(Self { body_ty, with_tys })
-    }
-}
-
-impl Attrs {
-    pub(crate) fn body_ty(&self) -> &Type {
-        &self.body_ty
-    }
-    pub(crate) fn specializations(&self) -> Option<&HashMap<syn::Ident, Vec<syn::Type>>> {
-        self.with_tys.as_ref().map(|f| &f.specializations)
+        Ok(Self {
+            body_ty,
+            state_ty,
+            with_tys,
+        })
     }
 }

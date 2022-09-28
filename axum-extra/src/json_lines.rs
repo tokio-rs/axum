@@ -3,15 +3,17 @@
 use axum::{
     async_trait,
     body::{HttpBody, StreamBody},
-    extract::{rejection::BodyAlreadyExtracted, FromRequest, RequestParts},
+    extract::FromRequest,
     response::{IntoResponse, Response},
     BoxError,
 };
 use bytes::{BufMut, Bytes, BytesMut};
 use futures_util::stream::{BoxStream, Stream, TryStream, TryStreamExt};
+use http::Request;
 use pin_project_lite::pin_project;
 use serde::{de::DeserializeOwned, Serialize};
 use std::{
+    convert::Infallible,
     io::{self, Write},
     marker::PhantomData,
     pin::Pin,
@@ -98,21 +100,22 @@ impl<S> JsonLines<S, AsResponse> {
 }
 
 #[async_trait]
-impl<B, T> FromRequest<B> for JsonLines<T, AsExtractor>
+impl<S, B, T> FromRequest<S, B> for JsonLines<T, AsExtractor>
 where
     B: HttpBody + Send + 'static,
     B::Data: Into<Bytes>,
     B::Error: Into<BoxError>,
     T: DeserializeOwned,
+    S: Send + Sync,
 {
-    type Rejection = BodyAlreadyExtracted;
+    type Rejection = Infallible;
 
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: Request<B>, _state: &S) -> Result<Self, Self::Rejection> {
         // `Stream::lines` isn't a thing so we have to convert it into an `AsyncRead`
         // so we can call `AsyncRead::lines` and then convert it back to a `Stream`
-
-        let body = req.take_body().ok_or_else(BodyAlreadyExtracted::default)?;
-        let body = BodyStream { body };
+        let body = BodyStream {
+            body: req.into_body(),
+        };
 
         let stream = body
             .map_ok(Into::into)

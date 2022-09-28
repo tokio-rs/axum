@@ -29,7 +29,7 @@ use tower_service::Service;
 pub struct Route<B = Body, E = Infallible>(BoxCloneService<Request<B>, Response, E>);
 
 impl<B, E> Route<B, E> {
-    pub(super) fn new<T>(svc: T) -> Self
+    pub(crate) fn new<T>(svc: T) -> Self
     where
         T: Service<Request<B>, Error = E> + Clone + Send + 'static,
         T::Response: IntoResponse + 'static,
@@ -48,13 +48,13 @@ impl<B, E> Route<B, E> {
     }
 }
 
-impl<ReqBody, E> Clone for Route<ReqBody, E> {
+impl<B, E> Clone for Route<B, E> {
     fn clone(&self) -> Self {
         Self(self.0.clone())
     }
 }
 
-impl<ReqBody, E> fmt::Debug for Route<ReqBody, E> {
+impl<B, E> fmt::Debug for Route<B, E> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Route").finish()
     }

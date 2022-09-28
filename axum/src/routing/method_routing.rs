@@ -1,9 +1,12 @@
+//! Route to services and handlers based on HTTP methods.
+
 use super::IntoMakeService;
+#[cfg(feature = "tokio")]
+use crate::extract::connect_info::IntoMakeServiceWithConnectInfo;
 use crate::{
-    body::{boxed, Body, Bytes, Empty, HttpBody},
+    body::{Body, Bytes, HttpBody},
     error_handling::{HandleError, HandleErrorLayer},
-    extract::connect_info::IntoMakeServiceWithConnectInfo,
-    handler::Handler,
+    handler::{Handler, IntoServiceStateInExtension},
     http::{Method, Request, StatusCode},
     response::Response,
     routing::{future::RouteFuture, Fallback, MethodFilter, Route},
@@ -13,6 +16,7 @@ use bytes::BytesMut;
 use std::{
     convert::Infallible,
     fmt,
+    sync::Arc,
     task::{Context, Poll},
 };
 use tower::{service_fn, util::MapResponseLayer};
@@ -74,11 +78,12 @@ macro_rules! top_level_service_fn {
         $name:ident, $method:ident
     ) => {
         $(#[$m])+
-        pub fn $name<S, ReqBody>(svc: S) -> MethodRouter<ReqBody, S::Error>
+        pub fn $name<T, S, B>(svc: T) -> MethodRouter<S, B, T::Error>
         where
-            S: Service<Request<ReqBody>> + Clone + Send + 'static,
-            S::Response: IntoResponse + 'static,
-            S::Future: Send + 'static,
+            T: Service<Request<B>> + Clone + Send + 'static,
+            T::Response: IntoResponse + 'static,
+            T::Future: Send + 'static,
+            B: Send + 'static,
         {
             on_service(MethodFilter::$method, svc)
         }
@@ -134,11 +139,12 @@ macro_rules! top_level_handler_fn {
         $name:ident, $method:ident
     ) => {
         $(#[$m])+
-        pub fn $name<H, T, B>(handler: H) -> MethodRouter<B, Infallible>
+        pub fn $name<H, T, S, B>(handler: H) -> MethodRouter<S, B, Infallible>
         where
-            H: Handler<T, B>,
+            H: Handler<T, S, B>,
             B: Send + 'static,
             T: 'static,
+            S: Send + Sync + 'static,
         {
             on(MethodFilter::$method, handler)
         }
@@ -172,7 +178,7 @@ macro_rules! chained_service_fn {
             ///     Ok::<_, Infallible>(Response::new(Body::empty()))
             /// });
             ///
-            /// // Requests to `GET /` will go to `service` and `POST /` will go to
+            /// // Requests to `POST /` will go to `service` and `GET /` will go to
             /// // `other_service`.
             /// let app = Router::new().route("/", post_service(service).get_service(other_service));
             /// # async {
@@ -206,14 +212,14 @@ macro_rules! chained_service_fn {
     ) => {
         $(#[$m])+
         #[track_caller]
-        pub fn $name<S>(self, svc: S) -> Self
+        pub fn $name<T>(self, svc: T) -> Self
         where
-            S: Service<Request<ReqBody>, Error = E>
+            T: Service<Request<B>, Error = E>
                 + Clone
                 + Send
                 + 'static,
-            S::Response: IntoResponse + 'static,
-            S::Future: Send + 'static,
+            T::Response: IntoResponse + 'static,
+            T::Future: Send + 'static,
         {
             self.on_service(MethodFilter::$method, svc)
         }
@@ -236,7 +242,7 @@ macro_rules! chained_handler_fn {
             ///
             /// async fn other_handler() {}
             ///
-            /// // Requests to `GET /` will go to `handler` and `POST /` will go to
+            /// // Requests to `POST /` will go to `handler` and `GET /` will go to
             /// // `other_handler`.
             /// let app = Router::new().route("/", post(handler).get(other_handler));
             /// # async {
@@ -272,8 +278,9 @@ macro_rules! chained_handler_fn {
         #[track_caller]
         pub fn $name<H, T>(self, handler: H) -> Self
         where
-            H: Handler<T, B>,
+            H: Handler<T, S, B>,
             T: 'static,
+            S: Send + Sync + 'static,
         {
             self.on(MethodFilter::$method, handler)
         }
@@ -314,11 +321,12 @@ top_level_service_fn!(trace_service, TRACE);
 /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 /// # };
 /// ```
-pub fn on_service<S, ReqBody>(filter: MethodFilter, svc: S) -> MethodRouter<ReqBody, S::Error>
+pub fn on_service<T, S, B>(filter: MethodFilter, svc: T) -> MethodRouter<S, B, T::Error>
 where
-    S: Service<Request<ReqBody>> + Clone + Send + 'static,
-    S::Response: IntoResponse + 'static,
-    S::Future: Send + 'static,
+    T: Service<Request<B>> + Clone + Send + 'static,
+    T::Response: IntoResponse + 'static,
+    T::Future: Send + 'static,
+    B: Send + 'static,
 {
     MethodRouter::new().on_service(filter, svc)
 }
@@ -376,13 +384,16 @@ where
 /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 /// # };
 /// ```
-pub fn any_service<S, ReqBody>(svc: S) -> MethodRouter<ReqBody, S::Error>
+pub fn any_service<T, S, B>(svc: T) -> MethodRouter<S, B, T::Error>
 where
-    S: Service<Request<ReqBody>> + Clone + Send + 'static,
-    S::Response: IntoResponse + 'static,
-    S::Future: Send + 'static,
+    T: Service<Request<B>> + Clone + Send + 'static,
+    T::Response: IntoResponse + 'static,
+    T::Future: Send + 'static,
+    B: Send + 'static,
 {
-    MethodRouter::new().fallback(svc).skip_allow_header()
+    MethodRouter::new()
+        .fallback_service(svc)
+        .skip_allow_header()
 }
 
 top_level_handler_fn!(delete, DELETE);
@@ -413,11 +424,12 @@ top_level_handler_fn!(trace, TRACE);
 /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 /// # };
 /// ```
-pub fn on<H, T, B>(filter: MethodFilter, handler: H) -> MethodRouter<B, Infallible>
+pub fn on<H, T, S, B>(filter: MethodFilter, handler: H) -> MethodRouter<S, B, Infallible>
 where
-    H: Handler<T, B>,
+    H: Handler<T, S, B>,
     B: Send + 'static,
     T: 'static,
+    S: Send + Sync + 'static,
 {
     MethodRouter::new().on(filter, handler)
 }
@@ -459,20 +471,46 @@ where
 /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 /// # };
 /// ```
-pub fn any<H, T, B>(handler: H) -> MethodRouter<B, Infallible>
+pub fn any<H, T, S, B>(handler: H) -> MethodRouter<S, B, Infallible>
 where
-    H: Handler<T, B>,
+    H: Handler<T, S, B>,
     B: Send + 'static,
     T: 'static,
+    S: Send + Sync + 'static,
 {
-    MethodRouter::new()
-        .fallback_boxed_response_body(handler.into_service())
-        .skip_allow_header()
+    MethodRouter::new().fallback(handler).skip_allow_header()
 }
 
 /// A [`Service`] that accepts requests based on a [`MethodFilter`] and
 /// allows chaining additional handlers and services.
-pub struct MethodRouter<B = Body, E = Infallible> {
+///
+/// # When does `MethodRouter` implement [`Service`]?
+///
+/// Whether or not `MethodRouter` implements [`Service`] depends on the state type it requires.
+///
+/// ```
+/// use tower::Service;
+/// use axum::{routing::get, extract::State, body::Body, http::Request};
+///
+/// // this `MethodRouter` doesn't require any state, i.e. the state is `()`,
+/// let method_router = get(|| async {});
+/// // and thus it implements `Service`
+/// assert_service(method_router);
+///
+/// // this requires a `String` and doesn't implement `Service`
+/// let method_router = get(|_: State<String>| async {});
+/// // until you provide the `String` with `.with_state(...)`
+/// let method_router_with_state = method_router.with_state(String::new());
+/// // and then it implements `Service`
+/// assert_service(method_router_with_state);
+///
+/// // helper to check that a value implements `Service`
+/// fn assert_service<S>(service: S)
+/// where
+///     S: Service<Request<Body>>,
+/// {}
+/// ```
+pub struct MethodRouter<S = (), B = Body, E = Infallible> {
     get: Option<Route<B, E>>,
     head: Option<Route<B, E>>,
     delete: Option<Route<B, E>>,
@@ -481,7 +519,7 @@ pub struct MethodRouter<B = Body, E = Infallible> {
     post: Option<Route<B, E>>,
     put: Option<Route<B, E>>,
     trace: Option<Route<B, E>>,
-    fallback: Fallback<B, E>,
+    fallback: Fallback<S, B, E>,
     allow_header: AllowHeader,
 }
 
@@ -511,7 +549,7 @@ impl AllowHeader {
     }
 }
 
-impl<B, E> fmt::Debug for MethodRouter<B, E> {
+impl<S, B, E> fmt::Debug for MethodRouter<S, B, E> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("MethodRouter")
             .field("get", &self.get)
@@ -527,32 +565,7 @@ impl<B, E> fmt::Debug for MethodRouter<B, E> {
     }
 }
 
-impl<B, E> MethodRouter<B, E> {
-    /// Create a default `MethodRouter` that will respond with `405 Method Not Allowed` to all
-    /// requests.
-    pub fn new() -> Self {
-        let fallback = Route::new(service_fn(|_: Request<B>| async {
-            let mut response = Response::new(boxed(Empty::new()));
-            *response.status_mut() = StatusCode::METHOD_NOT_ALLOWED;
-            Ok(response)
-        }));
-
-        Self {
-            get: None,
-            head: None,
-            delete: None,
-            options: None,
-            patch: None,
-            post: None,
-            put: None,
-            trace: None,
-            allow_header: AllowHeader::None,
-            fallback: Fallback::Default(fallback),
-        }
-    }
-}
-
-impl<B> MethodRouter<B, Infallible>
+impl<S, B> MethodRouter<S, B, Infallible>
 where
     B: Send + 'static,
 {
@@ -582,10 +595,11 @@ where
     #[track_caller]
     pub fn on<H, T>(self, filter: MethodFilter, handler: H) -> Self
     where
-        H: Handler<T, B>,
+        H: Handler<T, S, B>,
         T: 'static,
+        S: Send + Sync + 'static,
     {
-        self.on_service_boxed_response_body(filter, handler.into_service())
+        self.on_service(filter, IntoServiceStateInExtension::new(handler))
     }
 
     chained_handler_fn!(delete, DELETE);
@@ -597,6 +611,21 @@ where
     chained_handler_fn!(put, PUT);
     chained_handler_fn!(trace, TRACE);
 
+    /// Add a fallback [`Handler`] to the router.
+    pub fn fallback<H, T>(self, handler: H) -> Self
+    where
+        H: Handler<T, S, B>,
+        T: 'static,
+        S: Send + Sync + 'static,
+    {
+        self.fallback_service(IntoServiceStateInExtension::new(handler))
+    }
+}
+
+impl<B> MethodRouter<(), B, Infallible>
+where
+    B: Send + 'static,
+{
     /// Convert the handler into a [`MakeService`].
     ///
     /// This allows you to serve a single handler if you don't need any routing:
@@ -661,12 +690,94 @@ where
     ///
     /// [`MakeService`]: tower::make::MakeService
     /// [`Router::into_make_service_with_connect_info`]: crate::routing::Router::into_make_service_with_connect_info
+    #[cfg(feature = "tokio")]
     pub fn into_make_service_with_connect_info<C>(self) -> IntoMakeServiceWithConnectInfo<Self, C> {
         IntoMakeServiceWithConnectInfo::new(self)
     }
 }
 
-impl<ReqBody, E> MethodRouter<ReqBody, E> {
+impl<S, B, E> MethodRouter<S, B, E>
+where
+    B: Send + 'static,
+{
+    /// Create a default `MethodRouter` that will respond with `405 Method Not Allowed` to all
+    /// requests.
+    pub fn new() -> Self {
+        let fallback = Route::new(service_fn(|_: Request<B>| async {
+            Ok(StatusCode::METHOD_NOT_ALLOWED.into_response())
+        }));
+
+        Self {
+            get: None,
+            head: None,
+            delete: None,
+            options: None,
+            patch: None,
+            post: None,
+            put: None,
+            trace: None,
+            allow_header: AllowHeader::None,
+            fallback: Fallback::Default(fallback),
+        }
+    }
+
+    /// Provide the state.
+    ///
+    /// See [`State`](crate::extract::State) for more details about accessing state.
+    pub fn with_state(self, state: S) -> WithState<S, B, E> {
+        self.with_state_arc(Arc::new(state))
+    }
+
+    /// Provide the [`Arc`]'ed state.
+    ///
+    /// See [`State`](crate::extract::State) for more details about accessing state.
+    pub fn with_state_arc(self, state: Arc<S>) -> WithState<S, B, E> {
+        WithState {
+            method_router: self,
+            state,
+        }
+    }
+
+    pub(crate) fn map_state<S2>(self, state: &Arc<S>) -> MethodRouter<S2, B, E>
+    where
+        E: 'static,
+        S: 'static,
+        S2: 'static,
+    {
+        MethodRouter {
+            get: self.get,
+            head: self.head,
+            delete: self.delete,
+            options: self.options,
+            patch: self.patch,
+            post: self.post,
+            put: self.put,
+            trace: self.trace,
+            fallback: self.fallback.map_state(state),
+            allow_header: self.allow_header,
+        }
+    }
+
+    pub(crate) fn downcast_state<S2>(self) -> Option<MethodRouter<S2, B, E>>
+    where
+        E: 'static,
+        S: 'static,
+        S2: 'static,
+    {
+        Some(MethodRouter {
+            get: self.get,
+            head: self.head,
+            delete: self.delete,
+            options: self.options,
+            patch: self.patch,
+            post: self.post,
+            put: self.put,
+            trace: self.trace,
+            fallback: self.fallback.downcast_state()?,
+            allow_header: self.allow_header,
+        })
+    }
+
     /// Chain an additional service that will accept requests matching the given
     /// `MethodFilter`.
     ///
@@ -693,171 +804,14 @@ impl<ReqBody, E> MethodRouter<ReqBody, E> {
     /// # };
     /// ```
     #[track_caller]
-    pub fn on_service<S>(self, filter: MethodFilter, svc: S) -> Self
+    pub fn on_service<T>(mut self, filter: MethodFilter, svc: T) -> Self
     where
-        S: Service<Request<ReqBody>, Error = E> + Clone + Send + 'static,
-        S::Response: IntoResponse + 'static,
-        S::Future: Send + 'static,
-    {
-        self.on_service_boxed_response_body(filter, svc)
-    }
-
-    chained_service_fn!(delete_service, DELETE);
-    chained_service_fn!(get_service, GET);
-    chained_service_fn!(head_service, HEAD);
-    chained_service_fn!(options_service, OPTIONS);
-    chained_service_fn!(patch_service, PATCH);
-    chained_service_fn!(post_service, POST);
-    chained_service_fn!(put_service, PUT);
-    chained_service_fn!(trace_service, TRACE);
-
-    #[doc = include_str!("../docs/method_routing/fallback.md")]
-    pub fn fallback<S>(mut self, svc: S) -> Self
-    where
-        S: Service<Request<ReqBody>, Error = E> + Clone + Send + 'static,
-        S::Response: IntoResponse + 'static,
-        S::Future: Send + 'static,
-    {
-        self.fallback = Fallback::Custom(Route::new(svc));
-        self
-    }
-
-    fn fallback_boxed_response_body<S>(mut self, svc: S) -> Self
-    where
-        S: Service<Request<ReqBody>, Error = E> + Clone + Send + 'static,
-        S::Response: IntoResponse + 'static,
-        S::Future: Send + 'static,
-    {
-        self.fallback = Fallback::Custom(Route::new(svc));
-        self
-    }
-
-    #[doc = include_str!("../docs/method_routing/layer.md")]
-    pub fn layer<L, NewReqBody, NewError>(self, layer: L) -> MethodRouter<NewReqBody, NewError>
-    where
-        L: Layer<Route<ReqBody, E>>,
-        L::Service: Service<Request<NewReqBody>, Error = NewError> + Clone + Send + 'static,
-        <L::Service as Service<Request<NewReqBody>>>::Response: IntoResponse + 'static,
-        <L::Service as Service<Request<NewReqBody>>>::Future: Send + 'static,
-    {
-        let layer_fn = |svc| {
-            let svc = layer.layer(svc);
-            let svc = MapResponseLayer::new(IntoResponse::into_response).layer(svc);
-            Route::new(svc)
-        };
-
-        MethodRouter {
-            get: self.get.map(layer_fn),
-            head: self.head.map(layer_fn),
-            delete: self.delete.map(layer_fn),
-            options: self.options.map(layer_fn),
-            patch: self.patch.map(layer_fn),
-            post: self.post.map(layer_fn),
-            put: self.put.map(layer_fn),
-            trace: self.trace.map(layer_fn),
-            fallback: self.fallback.map(layer_fn),
-            allow_header: self.allow_header,
-        }
-    }
-
-    #[doc = include_str!("../docs/method_routing/route_layer.md")]
-    pub fn route_layer<L>(mut self, layer: L) -> MethodRouter<ReqBody, E>
-    where
-        L: Layer<Route<ReqBody, E>>,
-        L::Service: Service<Request<ReqBody>, Error = E> + Clone + Send + 'static,
-        <L::Service as Service<Request<ReqBody>>>::Response: IntoResponse + 'static,
-        <L::Service as Service<Request<ReqBody>>>::Future: Send + 'static,
-    {
-        let layer_fn = |svc| {
-            let svc = layer.layer(svc);
-            let svc = MapResponseLayer::new(IntoResponse::into_response).layer(svc);
-            Route::new(svc)
-        };
-
-        self.get = self.get.map(layer_fn);
-        self.head = self.head.map(layer_fn);
-        self.delete = self.delete.map(layer_fn);
-        self.options = self.options.map(layer_fn);
-        self.patch = self.patch.map(layer_fn);
-        self.post = self.post.map(layer_fn);
-        self.put = self.put.map(layer_fn);
-        self.trace = self.trace.map(layer_fn);
-
-        self
-    }
-
-    #[doc = include_str!("../docs/method_routing/merge.md")]
-    #[track_caller]
-    pub fn merge(mut self, other: MethodRouter<ReqBody, E>) -> Self {
-        // written using inner functions to generate less IR
-        #[track_caller]
-        fn merge_inner<T>(name: &str, first: Option<T>, second: Option<T>) -> Option<T> {
-            match (first, second) {
-                (Some(_), Some(_)) => panic!(
-                    "Overlapping method route. Cannot merge two method routes that both define `{}`", name
-                ),
-                (Some(svc), None) => Some(svc),
-                (None, Some(svc)) => Some(svc),
-                (None, None) => None,
-            }
-        }
-
-        #[track_caller]
-        fn merge_fallback<B, E>(
-            fallback: Fallback<B, E>,
-            fallback_other: Fallback<B, E>,
-        ) -> Fallback<B, E> {
-            match (fallback, fallback_other) {
-                (pick @ Fallback::Default(_), Fallback::Default(_)) => pick,
-                (Fallback::Default(_), pick @ Fallback::Custom(_)) => pick,
-                (pick @ Fallback::Custom(_), Fallback::Default(_)) => pick,
-                (Fallback::Custom(_), Fallback::Custom(_)) => {
-                    panic!("Cannot merge two `MethodRouter`s that both have a fallback")
-                }
-            }
-        }
-
-        self.get = merge_inner("get", self.get, other.get);
-        self.head = merge_inner("head", self.head, other.head);
-        self.delete = merge_inner("delete", self.delete, other.delete);
-        self.options = merge_inner("options", self.options, other.options);
-        self.patch = merge_inner("patch", self.patch, other.patch);
-        self.post = merge_inner("post", self.post, other.post);
-        self.put = merge_inner("put", self.put, other.put);
-        self.trace = merge_inner("trace", self.trace, other.trace);
-
-        self.fallback = merge_fallback(self.fallback, other.fallback);
-
-        self.allow_header = self.allow_header.merge(other.allow_header);
-
-        self
-    }
-
-    /// Apply a [`HandleErrorLayer`].
-    ///
-    /// This is a convenience method for doing `self.layer(HandleErrorLayer::new(f))`.
-    pub fn handle_error<F, T>(self, f: F) -> MethodRouter<ReqBody, Infallible>
-    where
-        F: Clone + Send + 'static,
-        HandleError<Route<ReqBody, E>, F, T>: Service<Request<ReqBody>, Error = Infallible>,
-        <HandleError<Route<ReqBody, E>, F, T> as Service<Request<ReqBody>>>::Future: Send,
-        <HandleError<Route<ReqBody, E>, F, T> as Service<Request<ReqBody>>>::Response:
-            IntoResponse + Send,
-        T: 'static,
-        E: 'static,
-        ReqBody: 'static,
-    {
-        self.layer(HandleErrorLayer::new(f))
-    }
-
-    #[track_caller]
-    fn on_service_boxed_response_body<S>(mut self, filter: MethodFilter, svc: S) -> Self
-    where
-        S: Service<Request<ReqBody>, Error = E> + Clone + Send + 'static,
-        S::Response: IntoResponse + 'static,
-        S::Future: Send + 'static,
+        T: Service<Request<B>, Error = E> + Clone + Send + 'static,
+        T::Response: IntoResponse + 'static,
+        T::Future: Send + 'static,
     {
         // written using an inner function to generate less IR
+        #[track_caller]
         fn set_service<T>(
             method_name: &str,
             out: &mut Option<T>,
@@ -965,6 +919,172 @@ impl<ReqBody, E> MethodRouter<ReqBody, E> {
         self
     }
 
+    chained_service_fn!(delete_service, DELETE);
+    chained_service_fn!(get_service, GET);
+    chained_service_fn!(head_service, HEAD);
+    chained_service_fn!(options_service, OPTIONS);
+    chained_service_fn!(patch_service, PATCH);
+    chained_service_fn!(post_service, POST);
+    chained_service_fn!(put_service, PUT);
+    chained_service_fn!(trace_service, TRACE);
+
+    #[doc = include_str!("../docs/method_routing/fallback.md")]
+    pub fn fallback_service<T>(mut self, svc: T) -> Self
+    where
+        T: Service<Request<B>, Error = E> + Clone + Send + 'static,
+        T::Response: IntoResponse + 'static,
+        T::Future: Send + 'static,
+    {
+        self.fallback = Fallback::Service(Route::new(svc));
+        self
+    }
+
+    #[doc = include_str!("../docs/method_routing/layer.md")]
+    pub fn layer<L, NewReqBody: 'static, NewError: 'static>(
+        self,
+        layer: L,
+    ) -> MethodRouter<S, NewReqBody, NewError>
+    where
+        L: Layer<Route<B, E>> + Clone + Send + 'static,
+        L::Service: Service<Request<NewReqBody>, Error = NewError> + Clone + Send + 'static,
+        <L::Service as Service<Request<NewReqBody>>>::Response: IntoResponse + 'static,
+        <L::Service as Service<Request<NewReqBody>>>::Future: Send + 'static,
+        E: 'static,
+        S: 'static,
+    {
+        let layer_fn = move |svc| {
+            let svc = layer.layer(svc);
+            let svc = MapResponseLayer::new(IntoResponse::into_response).layer(svc);
+            Route::new(svc)
+        };
+
+        MethodRouter {
+            get: self.get.map(layer_fn.clone()),
+            head: self.head.map(layer_fn.clone()),
+            delete: self.delete.map(layer_fn.clone()),
+            options: self.options.map(layer_fn.clone()),
+            patch: self.patch.map(layer_fn.clone()),
+            post: self.post.map(layer_fn.clone()),
+            put: self.put.map(layer_fn.clone()),
+            trace: self.trace.map(layer_fn.clone()),
+            fallback: self.fallback.map(layer_fn),
+            allow_header: self.allow_header,
+        }
+    }
+
+    #[doc = include_str!("../docs/method_routing/route_layer.md")]
+    #[track_caller]
+    pub fn route_layer<L>(mut self, layer: L) -> MethodRouter<S, B, E>
+    where
+        L: Layer<Route<B, E>>,
+        L::Service: Service<Request<B>, Error = E> + Clone + Send + 'static,
+        <L::Service as Service<Request<B>>>::Response: IntoResponse + 'static,
+        <L::Service as Service<Request<B>>>::Future: Send + 'static,
+    {
+        if self.get.is_none()
+            && self.head.is_none()
+            && self.delete.is_none()
+            && self.options.is_none()
+            && self.patch.is_none()
+            && self.post.is_none()
+            && self.put.is_none()
+            && self.trace.is_none()
+        {
+            panic!(
+                "Adding a route_layer before any routes is a no-op. \
+                 Add the routes you want the layer to apply to first."
+            );
+        }
+
+        let layer_fn = |svc| {
+            let svc = layer.layer(svc);
+            let svc = MapResponseLayer::new(IntoResponse::into_response).layer(svc);
+            Route::new(svc)
+        };
+
+        self.get = self.get.map(layer_fn);
+        self.head = self.head.map(layer_fn);
+        self.delete = self.delete.map(layer_fn);
+        self.options = self.options.map(layer_fn);
+        self.patch = self.patch.map(layer_fn);
+        self.post = self.post.map(layer_fn);
+        self.put = self.put.map(layer_fn);
+        self.trace = self.trace.map(layer_fn);
+
+        self
+    }
+
+    #[track_caller]
+    pub(crate) fn merge_for_path(
+        mut self,
+        path: Option<&str>,
+        other: MethodRouter<S, B, E>,
+    ) -> Self {
+        // written using inner functions to generate less IR
+        #[track_caller]
+        fn merge_inner<T>(
+            path: Option<&str>,
+            name: &str,
+            first: Option<T>,
+            second: Option<T>,
+        ) -> Option<T> {
+            match (first, second) {
+                (Some(_), Some(_)) => {
+                    if let Some(path) = path {
+                        panic!(
+                            "Overlapping method route. Handler for `{name} {path}` already exists"
+                        )
+                    } else {
+                        panic!("Overlapping method route. Cannot merge two method routes that both define `{name}`")
+                    }
+                }
+                (Some(svc), None) | (None, Some(svc)) => Some(svc),
+                (None, None) => None,
+            }
+        }
+
+        self.get = merge_inner(path, "GET", self.get, other.get);
+        self.head = merge_inner(path, "HEAD", self.head, other.head);
+        self.delete = merge_inner(path, "DELETE", self.delete, other.delete);
+        self.options = merge_inner(path, "OPTIONS", self.options, other.options);
+        self.patch = merge_inner(path, "PATCH", self.patch, other.patch);
+        self.post = merge_inner(path, "POST", self.post, other.post);
+        self.put = merge_inner(path, "PUT", self.put, other.put);
+        self.trace = merge_inner(path, "TRACE", self.trace, other.trace);
+
+        self.fallback = self
+            .fallback
+            .merge(other.fallback)
+            .expect("Cannot merge two `MethodRouter`s that both have a fallback");
+
+        self.allow_header = self.allow_header.merge(other.allow_header);
+
+        self
+    }
+
+    #[doc = include_str!("../docs/method_routing/merge.md")]
+    #[track_caller]
+    pub fn merge(self, other: MethodRouter<S, B, E>) -> Self {
+        self.merge_for_path(None, other)
+    }
+
+    /// Apply a [`HandleErrorLayer`].
+    ///
+    /// This is a convenience method for doing `self.layer(HandleErrorLayer::new(f))`.
+    pub fn handle_error<F, T>(self, f: F) -> MethodRouter<S, B, Infallible>
+    where
+        F: Clone + Send + Sync + 'static,
+        HandleError<Route<B, E>, F, T>: Service<Request<B>, Error = Infallible>,
+        <HandleError<Route<B, E>, F, T> as Service<Request<B>>>::Future: Send,
+        <HandleError<Route<B, E>, F, T> as Service<Request<B>>>::Response: IntoResponse + Send,
+        T: 'static,
+        E: 'static,
+        B: 'static,
+        S: 'static,
+    {
+        self.layer(HandleErrorLayer::new(f))
+    }
+
     fn skip_allow_header(mut self) -> Self {
         self.allow_header = AllowHeader::Skip;
         self
@@ -991,7 +1111,25 @@ fn append_allow_header(allow_header: &mut AllowHeader, method: &'static str) {
     }
 }
 
-impl<B, E> Clone for MethodRouter<B, E> {
+impl<B, E> Service<Request<B>> for MethodRouter<(), B, E>
+where
+    B: HttpBody + Send + 'static,
+{
+    type Response = Response;
+    type Error = E;
+    type Future = RouteFuture<B, E>;
+
+    #[inline]
+    fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        Poll::Ready(Ok(()))
+    }
+
+    fn call(&mut self, req: Request<B>) -> Self::Future {
+        self.clone().with_state(()).call(req)
+    }
+}
+
+impl<S, B, E> Clone for MethodRouter<S, B, E> {
     fn clone(&self) -> Self {
         Self {
             get: self.get.clone(),
@@ -1008,7 +1146,7 @@ impl<B, E> Clone for MethodRouter<B, E> {
     }
 }
 
-impl<B, E> Default for MethodRouter<B, E>
+impl<S, B, E> Default for MethodRouter<S, B, E>
 where
     B: Send + 'static,
 {
@@ -1017,9 +1155,70 @@ where
     }
 }
 
-impl<B, E> Service<Request<B>> for MethodRouter<B, E>
+/// A [`MethodRouter`] which has access to some state.
+///
+/// Implements [`Service`].
+///
+/// The state can be extracted with [`State`](crate::extract::State).
+///
+/// Created with [`MethodRouter::with_state`]
+pub struct WithState<S, B, E> {
+    method_router: MethodRouter<S, B, E>,
+    state: Arc<S>,
+}
+
+impl<S, B, E> WithState<S, B, E> {
+    /// Get a reference to the state.
+    pub fn state(&self) -> &S {
+        &self.state
+    }
+
+    /// Convert the handler into a [`MakeService`].
+    ///
+    /// See [`MethodRouter::into_make_service`] for more details.
+    ///
+    /// [`MakeService`]: tower::make::MakeService
+    pub fn into_make_service(self) -> IntoMakeService<Self> {
+        IntoMakeService::new(self)
+    }
+
+    /// Convert the router into a [`MakeService`] which stores information
+    /// about the incoming connection.
+    ///
+    /// See [`MethodRouter::into_make_service_with_connect_info`] for more details.
+    ///
+    /// [`MakeService`]: tower::make::MakeService
+    #[cfg(feature = "tokio")]
+    pub fn into_make_service_with_connect_info<C>(self) -> IntoMakeServiceWithConnectInfo<Self, C> {
+        IntoMakeServiceWithConnectInfo::new(self)
+    }
+}
+
+impl<S, B, E> Clone for WithState<S, B, E> {
+    fn clone(&self) -> Self {
+        Self {
+            method_router: self.method_router.clone(),
+            state: Arc::clone(&self.state),
+        }
+    }
+}
+
+impl<S, B, E> fmt::Debug for WithState<S, B, E>
 where
-    B: HttpBody,
+    S: fmt::Debug,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("WithState")
+            .field("method_router", &self.method_router)
+            .field("state", &self.state)
+            .finish()
+    }
+}
+
+impl<S, B, E> Service<Request<B>> for WithState<S, B, E>
+where
+    B: HttpBody + Send,
+    S: Send + Sync + 'static,
 {
     type Response = Response;
     type Error = E;
@@ -1030,7 +1229,7 @@ where
         Poll::Ready(Ok(()))
     }
 
-    fn call(&mut self, req: Request<B>) -> Self::Future {
+    fn call(&mut self, mut req: Request<B>) -> Self::Future {
         macro_rules! call {
             (
                 $req:expr,
@@ -1051,17 +1250,23 @@ where
 
         // written with a pattern match like this to ensure we call all routes
         let Self {
-            get,
-            head,
-            delete,
-            options,
-            patch,
-            post,
-            put,
-            trace,
-            fallback,
-            allow_header,
+            state,
+            method_router:
+                MethodRouter {
+                    get,
+                    head,
+                    delete,
+                    options,
+                    patch,
+                    post,
+                    put,
+                    trace,
+                    fallback,
+                    allow_header,
+                },
         } = self;
+
+        req.extensions_mut().insert(Arc::clone(state));
 
         call!(req, method, HEAD, head);
         call!(req, method, HEAD, get);
@@ -1076,8 +1281,14 @@ where
         let future = match fallback {
             Fallback::Default(fallback) => RouteFuture::from_future(fallback.oneshot_inner(req))
                 .strip_body(method == Method::HEAD),
-            Fallback::Custom(fallback) => RouteFuture::from_future(fallback.oneshot_inner(req))
+            Fallback::Service(fallback) => RouteFuture::from_future(fallback.oneshot_inner(req))
                 .strip_body(method == Method::HEAD),
+            Fallback::BoxedHandler(fallback) => RouteFuture::from_future(
+                fallback
+                    .clone()
+                    .into_route(Arc::clone(state))
+                    .oneshot_inner(req),
+            ),
         };
 
         match allow_header {
@@ -1091,7 +1302,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{body::Body, error_handling::HandleErrorLayer};
+    use crate::{body::Body, error_handling::HandleErrorLayer, extract::State};
     use axum_core::response::IntoResponse;
     use http::{header::ALLOW, HeaderMap};
     use std::time::Duration;
@@ -1104,6 +1315,19 @@ mod tests {
         let (status, _, body) = call(Method::GET, &mut svc).await;
         assert_eq!(status, StatusCode::METHOD_NOT_ALLOWED);
         assert!(body.is_empty());
+    }
+
+    #[tokio::test]
+    async fn get_service_fn() {
+        async fn handle(_req: Request<Body>) -> Result<Response<Body>, Infallible> {
+            Ok(Response::new(Body::from("ok")))
+        }
+
+        let mut svc = get_service(service_fn(handle));
+
+        let (status, _, body) = call(Method::GET, &mut svc).await;
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(body, "ok");
     }
 
     #[tokio::test]
@@ -1183,7 +1407,7 @@ mod tests {
                     delete_service(ServeDir::new("."))
                         .handle_error(|_| async { StatusCode::NOT_FOUND }),
                 )
-                .fallback((|| async { StatusCode::NOT_FOUND }).into_service())
+                .fallback(|| async { StatusCode::NOT_FOUND })
                 .put(ok)
                 .layer(
                     ServiceBuilder::new()
@@ -1243,9 +1467,9 @@ mod tests {
 
     #[tokio::test]
     async fn allow_header_with_fallback() {
-        let mut svc = MethodRouter::new().get(ok).fallback(
-            (|| async { (StatusCode::METHOD_NOT_ALLOWED, "Method not allowed") }).into_service(),
-        );
+        let mut svc = MethodRouter::new()
+            .get(ok)
+            .fallback(|| async { (StatusCode::METHOD_NOT_ALLOWED, "Method not allowed") });
 
         let (status, headers, _) = call(Method::DELETE, &mut svc).await;
         assert_eq!(status, StatusCode::METHOD_NOT_ALLOWED);
@@ -1267,9 +1491,7 @@ mod tests {
             }
         }
 
-        let mut svc = MethodRouter::new()
-            .get(ok)
-            .fallback(fallback.into_service());
+        let mut svc = MethodRouter::new().get(ok).fallback(fallback);
 
         let (status, _, _) = call(Method::GET, &mut svc).await;
         assert_eq!(status, StatusCode::OK);
@@ -1287,7 +1509,7 @@ mod tests {
         expected = "Overlapping method route. Cannot add two method routes that both handle `GET`"
     )]
     async fn handler_overlaps() {
-        let _: MethodRouter = get(ok).get(ok);
+        let _: MethodRouter<()> = get(ok).get(ok);
     }
 
     #[tokio::test]
@@ -1295,17 +1517,58 @@ mod tests {
         expected = "Overlapping method route. Cannot add two method routes that both handle `POST`"
     )]
     async fn service_overlaps() {
-        let _: MethodRouter = post_service(ok.into_service()).post_service(ok.into_service());
+        let _: MethodRouter<()> = post_service(IntoServiceStateInExtension::<_, _, (), _>::new(ok))
+            .post_service(IntoServiceStateInExtension::<_, _, (), _>::new(ok));
     }
 
     #[tokio::test]
     async fn get_head_does_not_overlap() {
-        let _: MethodRouter = get(ok).head(ok);
+        let _: MethodRouter<()> = get(ok).head(ok);
     }
 
     #[tokio::test]
     async fn head_get_does_not_overlap() {
-        let _: MethodRouter = head(ok).get(ok);
+        let _: MethodRouter<()> = head(ok).get(ok);
+    }
+
+    #[tokio::test]
+    async fn accessing_state() {
+        let mut svc = MethodRouter::new()
+            .get(|State(state): State<&'static str>| async move { state })
+            .with_state("state");
+
+        let (status, _, text) = call(Method::GET, &mut svc).await;
+
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(text, "state");
+    }
+
+    #[tokio::test]
+    async fn fallback_accessing_state() {
+        let mut svc = MethodRouter::new()
+            .fallback(|State(state): State<&'static str>| async move { state })
+            .with_state("state");
+
+        let (status, _, text) = call(Method::GET, &mut svc).await;
+
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(text, "state");
+    }
+
+    #[tokio::test]
+    async fn merge_accessing_state() {
+        let one = get(|State(state): State<&'static str>| async move { state });
+        let two = post(|State(state): State<&'static str>| async move { state });
+
+        let mut svc = one.merge(two).with_state("state");
+
+        let (status, _, text) = call(Method::GET, &mut svc).await;
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(text, "state");
+
+        let (status, _, _) = call(Method::POST, &mut svc).await;
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(text, "state");
     }
 
     async fn call<S>(method: Method, svc: &mut S) -> (StatusCode, HeaderMap, String)

@@ -5,6 +5,7 @@ use http::{header, HeaderValue};
 
 mod redirect;
 
+#[cfg(feature = "tokio")]
 pub mod sse;
 
 #[doc(no_inline)]
@@ -28,7 +29,11 @@ pub use axum_core::response::{
 };
 
 #[doc(inline)]
-pub use self::{redirect::Redirect, sse::Sse};
+pub use self::redirect::Redirect;
+
+#[doc(inline)]
+#[cfg(feature = "tokio")]
+pub use sse::Sse;
 
 /// An HTML response.
 ///
@@ -93,7 +98,7 @@ mod tests {
             }
         }
 
-        Router::<Body>::new()
+        Router::<_, Body>::new()
             .route("/", get(impl_trait_ok))
             .route("/", get(impl_trait_err))
             .route("/", get(impl_trait_both))
@@ -203,7 +208,7 @@ mod tests {
             )
         }
 
-        Router::<Body>::new()
+        Router::<_, Body>::new()
             .route("/", get(status))
             .route("/", get(status_headermap))
             .route("/", get(status_header_array))

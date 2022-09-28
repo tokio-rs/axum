@@ -1,5 +1,6 @@
-use super::{rejection::*, FromRequest, RequestParts};
+use super::{rejection::*, FromRequestParts};
 use async_trait::async_trait;
+use http::request::Parts;
 use std::sync::Arc;
 
 /// Access the path in the router that matches the request.
@@ -64,15 +65,15 @@ impl MatchedPath {
 }
 
 #[async_trait]
-impl<B> FromRequest<B> for MatchedPath
+impl<S> FromRequestParts<S> for MatchedPath
 where
-    B: Send,
+    S: Send + Sync,
 {
     type Rejection = MatchedPathRejection;
 
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-        let matched_path = req
-            .extensions()
+    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
+        let matched_path = parts
+            .extensions
             .get::<Self>()
             .ok_or(MatchedPathRejection::MatchedPathMissing(MatchedPathMissing))?
             .clone();
@@ -84,7 +85,9 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{extract::Extension, handler::Handler, routing::get, test_helpers::*, Router};
+    use crate::{
+        extract::Extension, handler::HandlerWithoutStateExt, routing::get, test_helpers::*, Router,
+    };
     use http::{Request, StatusCode};
     use std::task::{Context, Poll};
     use tower::layer::layer_fn;
@@ -93,7 +96,7 @@ mod tests {
     #[derive(Clone)]
     struct SetMatchedPathExtension<S>(S);
 
-    impl<B, S> Service<Request<B>> for SetMatchedPathExtension<S>
+    impl<S, B> Service<Request<B>> for SetMatchedPathExtension<S>
     where
         S: Service<Request<B>>,
     {
@@ -155,7 +158,7 @@ mod tests {
                     // this router
                     .layer(layer_fn(SetMatchedPathExtension)),
             )
-            .nest("/foo", handler.into_service())
+            .nest_service("/foo", handler.into_service())
             .layer(layer_fn(SetMatchedPathExtension));
 
         let client = TestClient::new(app);

@@ -2,6 +2,8 @@ use proc_macro2::{Span, TokenStream};
 use quote::{format_ident, quote, quote_spanned};
 use syn::{parse::Parse, ItemStruct, LitStr, Token};
 
+use crate::attr_parsing::{combine_attribute, parse_parenthesized_attribute, second, Combine};
+
 pub(crate) fn expand(item_struct: ItemStruct) -> syn::Result<TokenStream> {
     let ItemStruct {
         attrs,
@@ -18,7 +20,16 @@ pub(crate) fn expand(item_struct: ItemStruct) -> syn::Result<TokenStream> {
         ));
     }
 
-    let Attrs { path, rejection } = parse_attrs(attrs)?;
+    let Attrs { path, rejection } = crate::attr_parsing::parse_attrs("typed_path", attrs)?;
+
+    let path = path.ok_or_else(|| {
+        syn::Error::new(
+            Span::call_site(),
+            "Missing path: `#[typed_path(\"/foo/bar\")]`",
+        )
+    })?;
+
+    let rejection = rejection.map(second);
 
     match fields {
         syn::Fields::Named(_) => {
@@ -37,52 +48,49 @@ mod kw {
     syn::custom_keyword!(rejection);
 }
 
+#[derive(Default)]
 struct Attrs {
-    path: LitStr,
-    rejection: Option<syn::Path>,
+    path: Option<LitStr>,
+    rejection: Option<(kw::rejection, syn::Path)>,
 }
 
 impl Parse for Attrs {
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
-        let path = input.parse()?;
+        let mut path = None;
+        let mut rejection = None;
 
-        let rejection = if input.is_empty() {
-            None
-        } else {
-            let _: Token![,] = input.parse()?;
-            let _: kw::rejection = input.parse()?;
+        while !input.is_empty() {
+            let lh = input.lookahead1();
+            if lh.peek(LitStr) {
+                path = Some(input.parse()?);
+            } else if lh.peek(kw::rejection) {
+                parse_parenthesized_attribute(input, &mut rejection)?;
+            } else {
+                return Err(lh.error());
+            }
 
-            let content;
-            syn::parenthesized!(content in input);
-            Some(content.parse()?)
-        };
+            let _ = input.parse::<Token![,]>();
+        }
 
         Ok(Self { path, rejection })
     }
 }
 
-fn parse_attrs(attrs: &[syn::Attribute]) -> syn::Result<Attrs> {
-    let mut out = None;
-
-    for attr in attrs {
-        if attr.path.is_ident("typed_path") {
-            if out.is_some() {
+impl Combine for Attrs {
+    fn combine(mut self, other: Self) -> syn::Result<Self> {
+        let Self { path, rejection } = other;
+        if let Some(path) = path {
+            if self.path.is_some() {
                 return Err(syn::Error::new_spanned(
-                    attr,
-                    "`typed_path` specified more than once",
+                    path,
+                    "path specified more than once",
                 ));
-            } else {
-                out = Some(attr.parse_args()?);
             }
+            self.path = Some(path);
         }
+        combine_attribute(&mut self.rejection, rejection)?;
+        Ok(self)
     }
-
-    out.ok_or_else(|| {
-        syn::Error::new(
-            Span::call_site(),
-            "missing `#[typed_path(\"...\")]` attribute",
-        )
-    })
 }
 
 fn expand_named_fields(
@@ -127,14 +135,17 @@ fn expand_named_fields(
     let from_request_impl = quote! {
         #[::axum::async_trait]
         #[automatically_derived]
-        impl<B> ::axum::extract::FromRequest<B> for #ident
+        impl<S> ::axum::extract::FromRequestParts<S> for #ident
         where
-            B: Send,
+            S: Send + Sync,
         {
             type Rejection = #rejection_assoc_type;
 
-            async fn from_request(req: &mut ::axum::extract::RequestParts<B>) -> ::std::result::Result<Self, Self::Rejection> {
-                ::axum::extract::Path::from_request(req)
+            async fn from_request_parts(
+                parts: &mut ::axum::http::request::Parts,
+                state: &S,
+            ) -> ::std::result::Result<Self, Self::Rejection> {
+                ::axum::extract::Path::from_request_parts(parts, state)
                     .await
                     .map(|path| path.0)
                     #map_err_rejection
@@ -229,14 +240,17 @@ fn expand_unnamed_fields(
     let from_request_impl = quote! {
         #[::axum::async_trait]
         #[automatically_derived]
-        impl<B> ::axum::extract::FromRequest<B> for #ident
+        impl<S> ::axum::extract::FromRequestParts<S> for #ident
         where
-            B: Send,
+            S: Send + Sync,
         {
             type Rejection = #rejection_assoc_type;
 
-            async fn from_request(req: &mut ::axum::extract::RequestParts<B>) -> ::std::result::Result<Self, Self::Rejection> {
-                ::axum::extract::Path::from_request(req)
+            async fn from_request_parts(
+                parts: &mut ::axum::http::request::Parts,
+                state: &S,
+            ) -> ::std::result::Result<Self, Self::Rejection> {
+                ::axum::extract::Path::from_request_parts(parts, state)
                     .await
                     .map(|path| path.0)
                     #map_err_rejection
@@ -310,14 +324,17 @@ fn expand_unit_fields(
     let from_request_impl = quote! {
         #[::axum::async_trait]
         #[automatically_derived]
-        impl<B> ::axum::extract::FromRequest<B> for #ident
+        impl<S> ::axum::extract::FromRequestParts<S> for #ident
         where
-            B: Send,
+            S: Send + Sync,
         {
             type Rejection = #rejection_assoc_type;
 
-            async fn from_request(req: &mut ::axum::extract::RequestParts<B>) -> ::std::result::Result<Self, Self::Rejection> {
-                if req.uri().path() == <Self as ::axum_extra::routing::TypedPath>::PATH {
+            async fn from_request_parts(
+                parts: &mut ::axum::http::request::Parts,
+                _state: &S,
+            ) -> ::std::result::Result<Self, Self::Rejection> {
+                if parts.uri.path() == <Self as ::axum_extra::routing::TypedPath>::PATH {
                     Ok(Self)
                 } else {
                     #create_rejection
@@ -387,7 +404,7 @@ enum Segment {
 
 fn path_rejection() -> TokenStream {
     quote! {
-        <::axum::extract::Path<Self> as ::axum::extract::FromRequest<B>>::Rejection
+        <::axum::extract::Path<Self> as ::axum::extract::FromRequestParts<S>>::Rejection
     }
 }
 
@@ -414,15 +431,5 @@ fn map_err_rejection(rejection: &Option<syn::Path>) -> TokenStream {
 
 #[test]
 fn ui() {
-    #[rustversion::stable]
-    fn go() {
-        let t = trybuild::TestCases::new();
-        t.compile_fail("tests/typed_path/fail/*.rs");
-        t.pass("tests/typed_path/pass/*.rs");
-    }
-
-    #[rustversion::not(stable)]
-    fn go() {}
-
-    go();
+    crate::run_ui_tests("typed_path");
 }

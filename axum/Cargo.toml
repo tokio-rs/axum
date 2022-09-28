@@ -1,6 +1,6 @@
 [package]
 name = "axum"
-version = "0.5.10"
+version = "0.6.0-rc.2"
 categories = ["asynchronous", "network-programming", "web-programming::http-server"]
 description = "Web framework that focuses on ergonomics and modularity"
 edition = "2021"
@@ -12,31 +12,32 @@ readme = "README.md"
 repository = "https://github.com/tokio-rs/axum"
 
 [features]
-default = ["form", "http1", "json", "matched-path", "original-uri", "query", "tower-log"]
+default = ["form", "http1", "json", "matched-path", "original-uri", "query", "tokio", "tower-log"]
 form = ["dep:serde_urlencoded"]
 http1 = ["hyper/http1"]
 http2 = ["hyper/http2"]
-json = ["dep:serde_json"]
+json = ["dep:serde_json", "dep:serde_path_to_error"]
 macros = ["dep:axum-macros"]
 matched-path = []
 multipart = ["dep:multer"]
 original-uri = []
 query = ["dep:serde_urlencoded"]
+tokio = ["dep:tokio", "hyper/server", "hyper/tcp", "tower/make"]
 tower-log = ["tower/log"]
-ws = ["dep:tokio-tungstenite", "dep:sha-1", "dep:base64"]
+ws = ["tokio", "dep:tokio-tungstenite", "dep:sha-1", "dep:base64"]
 
 # Required for intra-doc links to resolve correctly
 __private_docs = ["tower/full", "tower-http/full"]
 
 [dependencies]
 async-trait = "0.1.43"
-axum-core = { path = "../axum-core", version = "0.2.6" }
+axum-core = { path = "../axum-core", version = "=0.3.0-rc.2" }
 bitflags = "1.0"
 bytes = "1.0"
 futures-util = { version = "0.3", default-features = false, features = ["alloc"] }
 http = "0.2.5"
 http-body = "0.4.4"
-hyper = { version = "0.14.14", features = ["server", "tcp", "stream"] }
+hyper = { version = "0.14.14", features = ["stream"] }
 itoa = "1.0.1"
 matchit = "0.6"
 memchr = "2.4.1"
@@ -45,20 +46,21 @@ percent-encoding = "2.1"
 pin-project-lite = "0.2.7"
 serde = "1.0"
 sync_wrapper = "0.1.1"
-tokio = { version = "1", features = ["time"] }
-tower = { version = "0.4.13", default-features = false, features = ["util", "make"] }
+tower = { version = "0.4.13", default-features = false, features = ["util"] }
 tower-http = { version = "0.3.0", features = ["util", "map-response-body"] }
 tower-layer = "0.3"
 tower-service = "0.3"
 
 # optional dependencies
-axum-macros = { path = "../axum-macros", version = "0.2.3", optional = true }
+axum-macros = { path = "../axum-macros", version = "0.3.0-rc.1", optional = true }
 base64 = { version = "0.13", optional = true }
 headers = { version = "0.3.7", optional = true }
 multer = { version = "2.0.0", optional = true }
 serde_json = { version = "1.0", features = ["raw_value"], optional = true }
+serde_path_to_error = { version = "0.1.8", optional = true }
 serde_urlencoded = { version = "0.7", optional = true }
 sha-1 = { version = "0.10", optional = true }
+tokio = { package = "tokio", version = "1.21", features = ["time"], optional = true }
 tokio-tungstenite = { version = "0.17.2", optional = true }
 
 [dev-dependencies]
@@ -69,7 +71,7 @@ quickcheck_macros = "1.0"
 reqwest = { version = "0.11.11", default-features = false, features = ["json", "stream", "multipart"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-tokio = { version = "1.6.1", features = ["macros", "rt", "rt-multi-thread", "net", "test-util"] }
+tokio = { package = "tokio", version = "1.21", features = ["macros", "rt", "rt-multi-thread", "net", "test-util"] }
 tokio-stream = "0.1"
 tracing = "0.1"
 uuid = { version = "1.0", features = ["serde", "v4"] }

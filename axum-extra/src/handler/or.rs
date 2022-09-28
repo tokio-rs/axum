@@ -1,30 +1,29 @@
 use super::HandlerCallWithExtractors;
-use crate::Either;
+use crate::either::Either;
 use axum::{
-    extract::{FromRequest, RequestParts},
+    extract::{FromRequest, FromRequestParts},
     handler::Handler,
     http::Request,
     response::{IntoResponse, Response},
 };
 use futures_util::future::{BoxFuture, Either as EitherFuture, FutureExt, Map};
-use http::StatusCode;
-use std::{future::Future, marker::PhantomData};
+use std::{future::Future, marker::PhantomData, sync::Arc};
 
 /// [`Handler`] that runs one [`Handler`] and if that rejects it'll fallback to another
 /// [`Handler`].
 ///
 /// Created with [`HandlerCallWithExtractors::or`](super::HandlerCallWithExtractors::or).
 #[allow(missing_debug_implementations)]
-pub struct Or<L, R, Lt, Rt, B> {
+pub struct Or<L, R, Lt, Rt, S, B> {
     pub(super) lhs: L,
     pub(super) rhs: R,
-    pub(super) _marker: PhantomData<fn() -> (Lt, Rt, B)>,
+    pub(super) _marker: PhantomData<fn() -> (Lt, Rt, S, B)>,
 }
 
-impl<B, L, R, Lt, Rt> HandlerCallWithExtractors<Either<Lt, Rt>, B> for Or<L, R, Lt, Rt, B>
+impl<S, B, L, R, Lt, Rt> HandlerCallWithExtractors<Either<Lt, Rt>, S, B> for Or<L, R, Lt, Rt, S, B>
 where
-    L: HandlerCallWithExtractors<Lt, B> + Send + 'static,
-    R: HandlerCallWithExtractors<Rt, B> + Send + 'static,
+    L: HandlerCallWithExtractors<Lt, S, B> + Send + 'static,
+    R: HandlerCallWithExtractors<Rt, S, B> + Send + 'static,
     Rt: Send + 'static,
     Lt: Send + 'static,
     B: Send + 'static,
@@ -38,60 +37,63 @@ where
     fn call(
         self,
         extractors: Either<Lt, Rt>,
-    ) -> <Self as HandlerCallWithExtractors<Either<Lt, Rt>, B>>::Future {
+        state: Arc<S>,
+    ) -> <Self as HandlerCallWithExtractors<Either<Lt, Rt>, S, B>>::Future {
         match extractors {
-            Either::Left(lt) => self
+            Either::E1(lt) => self
                 .lhs
-                .call(lt)
+                .call(lt, state)
                 .map(IntoResponse::into_response as _)
                 .left_future(),
-            Either::Right(rt) => self
+            Either::E2(rt) => self
                 .rhs
-                .call(rt)
+                .call(rt, state)
                 .map(IntoResponse::into_response as _)
                 .right_future(),
         }
     }
 }
 
-impl<B, L, R, Lt, Rt> Handler<(Lt, Rt), B> for Or<L, R, Lt, Rt, B>
+impl<S, B, L, R, Lt, Rt, M> Handler<(M, Lt, Rt), S, B> for Or<L, R, Lt, Rt, S, B>
 where
-    L: HandlerCallWithExtractors<Lt, B> + Clone + Send + 'static,
-    R: HandlerCallWithExtractors<Rt, B> + Clone + Send + 'static,
-    Lt: FromRequest<B> + Send + 'static,
-    Rt: FromRequest<B> + Send + 'static,
+    L: HandlerCallWithExtractors<Lt, S, B> + Clone + Send + 'static,
+    R: HandlerCallWithExtractors<Rt, S, B> + Clone + Send + 'static,
+    Lt: FromRequestParts<S> + Send + 'static,
+    Rt: FromRequest<S, B, M> + Send + 'static,
     Lt::Rejection: Send,
     Rt::Rejection: Send,
     B: Send + 'static,
+    S: Send + Sync + 'static,
 {
     // this puts `futures_util` in our public API but thats fine in axum-extra
     type Future = BoxFuture<'static, Response>;
 
-    fn call(self, req: Request<B>) -> Self::Future {
+    fn call(self, req: Request<B>, state: Arc<S>) -> Self::Future {
         Box::pin(async move {
-            let mut req = RequestParts::new(req);
+            let (mut parts, body) = req.into_parts();
 
-            if let Ok(lt) = req.extract::<Lt>().await {
-                return self.lhs.call(lt).await;
+            if let Ok(lt) = Lt::from_request_parts(&mut parts, &state).await {
+                return self.lhs.call(lt, state).await;
             }
 
-            if let Ok(rt) = req.extract::<Rt>().await {
-                return self.rhs.call(rt).await;
-            }
+            let req = Request::from_parts(parts, body);
 
-            StatusCode::NOT_FOUND.into_response()
+            match Rt::from_request(req, &state).await {
+                Ok(rt) => self.rhs.call(rt, state).await,
+                Err(rejection) => rejection.into_response(),
+            }
         })
     }
 }
 
-impl<L, R, Lt, Rt, B> Copy for Or<L, R, Lt, Rt, B>
+impl<L, R, Lt, Rt, S, B> Copy for Or<L, R, Lt, Rt, S, B>
 where
     L: Copy,
     R: Copy,
 {
 }
 
-impl<L, R, Lt, Rt, B> Clone for Or<L, R, Lt, Rt, B>
+impl<L, R, Lt, Rt, S, B> Clone for Or<L, R, Lt, Rt, S, B>
 where
     L: Clone,
     R: Clone,

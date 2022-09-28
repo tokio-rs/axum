@@ -69,7 +69,7 @@ let some_fallible_service = tower::service_fn(|_req| async {
     Ok::<_, anyhow::Error>(Response::new(Body::empty()))
 });
 
-let app = Router::new().route(
+let app = Router::new().route_service(
     "/",
     // we cannot route to `some_fallible_service` directly since it might fail.
     // we have to use `handle_error` which converts its errors into responses

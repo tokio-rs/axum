@@ -5,7 +5,6 @@
 //! ```
 
 use axum::{
-    handler::Handler,
     http::StatusCode,
     response::{Html, IntoResponse},
     routing::get,
@@ -27,7 +26,7 @@ async fn main() {
     let app = Router::new().route("/", get(handler));
 
     // add a fallback service for handling routes to unknown paths
-    let app = app.fallback(handler_404.into_service());
+    let app = app.fallback(handler_404);
 
     // run it
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));

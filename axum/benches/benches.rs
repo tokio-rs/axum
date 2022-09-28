@@ -1,6 +1,7 @@
 use axum::{
+    extract::State,
     routing::{get, post},
-    Json, Router, Server,
+    Extension, Json, Router, Server,
 };
 use hyper::server::conn::AddrIncoming;
 use serde::{Deserialize, Serialize};
@@ -50,6 +51,30 @@ fn main() {
             }),
         )
     });
+
+    let state = AppState {
+        _string: "aaaaaaaaaaaaaaaaaa".to_owned(),
+        _vec: Vec::from([
+            "aaaaaaaaaaaaaaaaaa".to_owned(),
+            "bbbbbbbbbbbbbbbbbb".to_owned(),
+            "cccccccccccccccccc".to_owned(),
+        ]),
+    };
+
+    benchmark("extension").run(|| {
+        Router::new()
+            .route("/", get(|_: Extension<AppState>| async {}))
+            .layer(Extension(state.clone()))
+    });
+
+    benchmark("state")
+        .run(|| Router::with_state(state.clone()).route("/", get(|_: State<AppState>| async {})));
+}
+
+#[derive(Clone)]
+struct AppState {
+    _string: String,
+    _vec: Vec<String>,
 }
 
 #[derive(Deserialize, Serialize)]
@@ -92,9 +117,10 @@ impl BenchmarkBuilder {
     config_method!(headers, &'static [(&'static str, &'static str)]);
     config_method!(body, &'static str);
 
-    fn run<F>(self, f: F)
+    fn run<F, S>(self, f: F)
     where
-        F: FnOnce() -> Router,
+        F: FnOnce() -> Router<S>,
+        S: Clone + Send + Sync + 'static,
     {
         // support only running some benchmarks with
         // ```

@@ -11,7 +11,7 @@ use axum::{
     http::{StatusCode, Method, Uri},
 };
 
-let handler = get(|| async {}).fallback(fallback.into_service());
+let handler = get(|| async {}).fallback(fallback);
 
 let app = Router::new().route("/", handler);
 
@@ -36,11 +36,9 @@ use axum::{
     http::{StatusCode, Uri},
 };
 
-let one = get(|| async {})
-    .fallback(fallback_one.into_service());
+let one = get(|| async {}).fallback(fallback_one);
 
-let two = post(|| async {})
-    .fallback(fallback_two.into_service());
+let two = post(|| async {}).fallback(fallback_two);
 
 let method_route = one.merge(two);
 

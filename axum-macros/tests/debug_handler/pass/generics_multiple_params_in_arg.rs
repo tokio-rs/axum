@@ -1,7 +1,7 @@
 use axum::{
     async_trait,
-    extract::{FromRequest, RequestParts},
-    http::StatusCode,
+    extract::FromRequest,
+    http::{StatusCode, Request},
     response::IntoResponse,
 };
 use axum_macros::debug_handler;
@@ -25,15 +25,16 @@ where
 }
 
 #[async_trait]
-impl<B, T, U> FromRequest<B> for ExampleExtract<T, U>
+impl<S, B, T, U> FromRequest<S, B> for ExampleExtract<T, U>
 where
-    B: Send,
+    S: Send + Sync,
+    B: Send + 'static,
     T: Default,
     U: Default,
 {
     type Rejection = (StatusCode, &'static str);
 
-    async fn from_request(_req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+    async fn from_request(_req: Request<B>, _state: &S) -> Result<Self, Self::Rejection> {
         Ok(Default::default())
     }
 }

@@ -6,8 +6,8 @@
 
 use axum::{
     async_trait,
-    extract::{path::ErrorKind, rejection::PathRejection, FromRequest, RequestParts},
-    http::StatusCode,
+    extract::{path::ErrorKind, rejection::PathRejection, FromRequestParts},
+    http::{request::Parts, StatusCode},
     response::IntoResponse,
     routing::get,
     Router,
@@ -52,16 +52,16 @@ struct Params {
 struct Path<T>(T);
 
 #[async_trait]
-impl<B, T> FromRequest<B> for Path<T>
+impl<S, T> FromRequestParts<S> for Path<T>
 where
     // these trait bounds are copied from `impl FromRequest for axum::extract::path::Path`
     T: DeserializeOwned + Send,
-    B: Send,
+    S: Send + Sync,
 {
     type Rejection = (StatusCode, axum::Json<PathError>);
 
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-        match axum::extract::Path::<T>::from_request(req).await {
+    async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
+        match axum::extract::Path::<T>::from_request_parts(parts, state).await {
             Ok(value) => Ok(Self(value.0)),
             Err(rejection) => {
                 let (status, body) = match rejection {

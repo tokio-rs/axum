@@ -1,7 +1,8 @@
-use crate::extract::{FromRequest, RequestParts};
+use crate::extract::FromRequestParts;
 use async_trait::async_trait;
 use axum_core::response::{IntoResponse, IntoResponseParts, Response, ResponseParts};
 use headers::HeaderMapExt;
+use http::request::Parts;
 use std::{convert::Infallible, ops::Deref};
 
 /// Extractor and response that works with typed header values from [`headers`].
@@ -52,15 +53,15 @@ use std::{convert::Infallible, ops::Deref};
 pub struct TypedHeader<T>(pub T);
 
 #[async_trait]
-impl<T, B> FromRequest<B> for TypedHeader<T>
+impl<T, S> FromRequestParts<S> for TypedHeader<T>
 where
     T: headers::Header,
-    B: Send,
+    S: Send + Sync,
 {
     type Rejection = TypedHeaderRejection;
 
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-        match req.headers().typed_try_get::<T>() {
+    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
+        match parts.headers.typed_try_get::<T>() {
             Ok(Some(value)) => Ok(Self(value)),
             Ok(None) => Err(TypedHeaderRejection {
                 name: T::name(),

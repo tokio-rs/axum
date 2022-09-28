@@ -1,6 +1,10 @@
+use crate::{
+    attr_parsing::second,
+    with_position::{Position, WithPosition},
+};
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote, quote_spanned};
-use syn::{spanned::Spanned, FnArg, ItemFn, Type};
+use syn::{parse_quote, spanned::Spanned, FnArg, ItemFn, Type};
 
 use self::attr::Attrs;
 use self::specializer::Specializer;
@@ -9,22 +13,35 @@ mod attr;
 mod specializer;
 
 pub(crate) fn expand(attr: Attrs, item_fn: ItemFn) -> TokenStream {
+    let Attrs {
+        body_ty,
+        state_ty,
+        with_tys,
+    } = attr;
+    let body_ty = body_ty
+        .map(second)
+        .unwrap_or_else(|| parse_quote!(axum::body::Body));
+    let mut state_ty = state_ty.map(second);
+
     // these checks don't require the specializer, so we can generate code for them regardless
     // of whether we can successfully create one
     let check_extractor_count = check_extractor_count(&item_fn);
-    let check_request_last_extractor = check_request_last_extractor(&item_fn);
     let check_path_extractor = check_path_extractor(&item_fn);
-    let check_multiple_body_extractors = check_multiple_body_extractors(&item_fn);
+
+    if state_ty.is_none() {
+        state_ty = state_type_from_args(&item_fn);
+    }
+    let state_ty = state_ty.unwrap_or_else(|| syn::parse_quote!(()));
 
     // If the function is generic and and improper `with` statement was provided to the macro, we can't
     // reliably check its inputs or outputs. This will result in an error. We skip those checks to avoid
     // unhelpful additional compiler errors.
-    let specializer_checks = match Specializer::new(&attr, &item_fn) {
+    let specializer_checks = match Specializer::new(with_tys, &item_fn) {
         Ok(specializer) => {
             let check_output_impls_into_response =
                 check_output_impls_into_response(&item_fn, &specializer);
             let check_inputs_impls_from_request =
-                check_inputs_impls_from_request(&item_fn, attr.body_ty(), &specializer);
+                check_inputs_impls_from_request(&item_fn, &body_ty, state_ty, &specializer);
             let check_future_send = check_future_send(&item_fn, &specializer);
             quote! {
                 #check_output_impls_into_response
@@ -38,9 +55,7 @@ pub(crate) fn expand(attr: Attrs, item_fn: ItemFn) -> TokenStream {
     quote! {
         #item_fn
         #check_extractor_count
-        #check_request_last_extractor
         #check_path_extractor
-        #check_multiple_body_extractors
         #specializer_checks
     }
 }
@@ -82,22 +97,6 @@ fn extractor_idents(item_fn: &ItemFn) -> impl Iterator<Item = (usize, &syn::FnAr
         })
 }
 
-fn check_request_last_extractor(item_fn: &ItemFn) -> Option<TokenStream> {
-    let request_extractor_ident =
-        extractor_idents(item_fn).find(|(_, _, ident)| *ident == "Request");
-
-    if let Some((idx, fn_arg, _)) = request_extractor_ident {
-        if idx != item_fn.sig.inputs.len() - 1 {
-            return Some(
-                syn::Error::new_spanned(fn_arg, "`Request` extractor should always be last")
-                    .to_compile_error(),
-            );
-        }
-    }
-
-    None
-}
-
 fn check_path_extractor(item_fn: &ItemFn) -> TokenStream {
     let path_extractors = extractor_idents(item_fn)
         .filter(|(_, _, ident)| *ident == "Path")
@@ -121,43 +120,37 @@ fn check_path_extractor(item_fn: &ItemFn) -> TokenStream {
     }
 }
 
-fn check_multiple_body_extractors(item_fn: &ItemFn) -> TokenStream {
-    let body_extractors = extractor_idents(item_fn)
-        .filter(|(_, _, ident)| {
-            *ident == "String"
-                || *ident == "Bytes"
-                || *ident == "Json"
-                || *ident == "RawBody"
-                || *ident == "BodyStream"
-                || *ident == "Multipart"
-                || *ident == "Request"
-        })
-        .collect::<Vec<_>>();
-
-    if body_extractors.len() > 1 {
-        body_extractors
-            .into_iter()
-            .map(|(_, arg, _)| {
-                syn::Error::new_spanned(arg, "Only one body extractor can be applied")
-                    .to_compile_error()
-            })
-            .collect()
+fn is_self_pat_type(typed: &syn::PatType) -> bool {
+    let ident = if let syn::Pat::Ident(ident) = &*typed.pat {
+        &ident.ident
     } else {
-        quote! {}
-    }
+        return false;
+    };
+
+    ident == "self"
 }
 
 fn check_inputs_impls_from_request(
     item_fn: &ItemFn,
     body_ty: &Type,
+    state_ty: Type,
     specializer: &Specializer,
 ) -> TokenStream {
-    item_fn
-        .sig
-        .inputs
-        .iter()
+    let takes_self = item_fn.sig.inputs.first().map_or(false, |arg| match arg {
+        FnArg::Receiver(_) => true,
+        FnArg::Typed(typed) => is_self_pat_type(typed),
+    });
+
+    WithPosition::new(item_fn.sig.inputs.iter())
         .enumerate()
         .map(|(arg_idx, arg)| {
+            let must_impl_from_request_parts = match &arg {
+                Position::First(_) | Position::Middle(_) => true,
+                Position::Last(_) | Position::Only(_) => false,
+            };
+
+            let arg = arg.into_inner();
+
             let (span, ty) = match arg {
                 FnArg::Receiver(receiver) => {
                     if receiver.reference.is_some() {
@@ -174,26 +167,74 @@ fn check_inputs_impls_from_request(
                 FnArg::Typed(typed) => {
                     let ty = &typed.ty;
                     let span = ty.span();
-                    (span, ty.clone())
+
+                    if is_self_pat_type(typed) {
+                        (span, syn::parse_quote!(Self))
+                    } else {
+                        (span, ty.clone())
+                    }
                 }
             };
-
             specializer
                 .all_specializations_of_type(&ty)
                 .enumerate()
                 .map(|(specialization_idx, specialized_ty)| {
-                    let name = format_ident!(
-                        "__axum_macros_check_{}_{}_{}_from_request",
+                    let check_fn = format_ident!(
+                        "__axum_macros_check_{}_{}_{}_from_request_check",
                         item_fn.sig.ident,
                         arg_idx,
                         specialization_idx,
+                        span = span,
                     );
+
+                    let call_check_fn = format_ident!(
+                        "__axum_macros_check_{}_{}_{}_from_request_call_check",
+                        item_fn.sig.ident,
+                        arg_idx,
+                        specialization_idx,
+                        span = span,
+                    );                    
+
+                    let call_check_fn_body = if takes_self {
+                        quote_spanned! {span=>
+                            Self::#check_fn();
+                        }
+                    } else {
+                        quote_spanned! {span=>
+                            #check_fn();
+                        }
+                    };
+
+                    let check_fn_generics = if must_impl_from_request_parts {
+                        quote! {}
+                    } else {
+                        quote! { <M> }
+                    };
+        
+                    let from_request_bound = if must_impl_from_request_parts {
+                        quote! {
+                            #specialized_ty: ::axum::extract::FromRequestParts<#state_ty> + Send
+                        }
+                    } else {
+                        quote! {
+                            #specialized_ty: ::axum::extract::FromRequest<#state_ty, #body_ty, M> + Send
+                        }
+                    };
+
                     quote_spanned! {span=>
                         #[allow(warnings)]
-                        fn #name()
+                        fn #check_fn #check_fn_generics()
                         where
-                            #specialized_ty: ::axum::extract::FromRequest<#body_ty> + Send,
+                            #from_request_bound,
                         {}
+        
+                        // we have to call the function to actually trigger a compile error
+                        // since the function is generic, just defining it is not enough
+                        #[allow(warnings)]
+                        fn #call_check_fn()
+                        {
+                            #call_check_fn_body
+                        }
                     }
                 })
                 .collect::<TokenStream>()
@@ -302,11 +343,11 @@ fn check_future_send(item_fn: &ItemFn, specializer: &Specializer) -> TokenStream
 }
 
 fn self_receiver(item_fn: &ItemFn) -> Option<TokenStream> {
-    let takes_self = item_fn
-        .sig
-        .inputs
-        .iter()
-        .any(|arg| matches!(arg, syn::FnArg::Receiver(_)));
+    let takes_self = item_fn.sig.inputs.iter().any(|arg| match arg {
+        FnArg::Receiver(_) => true,
+        FnArg::Typed(typed) => is_self_pat_type(typed),
+    });
+
     if takes_self {
         return Some(quote! { Self:: });
     }
@@ -330,17 +371,33 @@ fn self_receiver(item_fn: &ItemFn) -> Option<TokenStream> {
     None
 }
 
+/// Given a signature like
+///
+/// ```skip
+/// #[debug_handler]
+/// async fn handler(
+///     _: axum::extract::State<AppState>,
+///     _: State<AppState>,
+/// ) {}
+/// ```
+///
+/// This will extract `AppState`.
+///
+/// Returns `None` if there are no `State` args or multiple of different types.
+fn state_type_from_args(item_fn: &ItemFn) -> Option<Type> {
+    let types = item_fn
+        .sig
+        .inputs
+        .iter()
+        .filter_map(|input| match input {
+            FnArg::Receiver(_) => None,
+            FnArg::Typed(pat_type) => Some(pat_type),
+        })
+        .map(|pat_type| &*pat_type.ty);
+    crate::infer_state_type(types)
+}
+
 #[test]
 fn ui() {
-    #[rustversion::stable]
-    fn go() {
-        let t = trybuild::TestCases::new();
-        t.compile_fail("tests/debug_handler/fail/*.rs");
-        t.pass("tests/debug_handler/pass/*.rs");
-    }
-
-    #[rustversion::not(stable)]
-    fn go() {}
-
-    go();
+    crate::run_ui_tests("debug_handler");
 }

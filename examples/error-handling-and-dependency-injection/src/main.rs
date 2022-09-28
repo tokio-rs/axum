@@ -9,7 +9,7 @@
 
 use axum::{
     async_trait,
-    extract::{Extension, Path},
+    extract::{Path, State},
     http::StatusCode,
     response::{IntoResponse, Response},
     routing::{get, post},
@@ -36,12 +36,9 @@ async fn main() {
     let user_repo = Arc::new(ExampleUserRepo) as DynUserRepo;
 
     // Build our application with some routes
-    let app = Router::new()
+    let app = Router::with_state(user_repo)
         .route("/users/:id", get(users_show))
-        .route("/users", post(users_create))
-        // Add our `user_repo` to all request's extensions so handlers can access
-        // it.
-        .layer(Extension(user_repo));
+        .route("/users", post(users_create));
 
     // Run our application
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
@@ -59,7 +56,7 @@ async fn main() {
 /// so it can be returned from handlers directly.
 async fn users_show(
     Path(user_id): Path<Uuid>,
-    Extension(user_repo): Extension<DynUserRepo>,
+    State(user_repo): State<DynUserRepo>,
 ) -> Result<Json<User>, AppError> {
     let user = user_repo.find(user_id).await?;
 
@@ -68,8 +65,8 @@ async fn users_show(
 
 /// Handler for `POST /users`.
 async fn users_create(
+    State(user_repo): State<DynUserRepo>,
     Json(params): Json<CreateUser>,
-    Extension(user_repo): Extension<DynUserRepo>,
 ) -> Result<Json<User>, AppError> {
     let user = user_repo.create(params).await?;
 

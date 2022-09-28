@@ -7,11 +7,12 @@
 use async_session::{MemoryStore, Session, SessionStore as _};
 use axum::{
     async_trait,
-    extract::{Extension, FromRequest, RequestParts, TypedHeader},
+    extract::{FromRef, FromRequestParts, TypedHeader},
     headers::Cookie,
     http::{
         self,
         header::{HeaderMap, HeaderValue},
+        request::Parts,
         StatusCode,
     },
     response::IntoResponse,
@@ -38,9 +39,7 @@ async fn main() {
     // `MemoryStore` just used as an example. Don't use this in production.
     let store = MemoryStore::new();
 
-    let app = Router::new()
-        .route("/", get(handler))
-        .layer(Extension(store));
+    let app = Router::with_state(store).route("/", get(handler));
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
     tracing::debug!("listening on {}", addr);
@@ -82,18 +81,17 @@ enum UserIdFromSession {
 }
 
 #[async_trait]
-impl<B> FromRequest<B> for UserIdFromSession
+impl<S> FromRequestParts<S> for UserIdFromSession
 where
-    B: Send,
+    MemoryStore: FromRef<S>,
+    S: Send + Sync,
 {
     type Rejection = (StatusCode, &'static str);
 
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-        let Extension(store) = Extension::<MemoryStore>::from_request(req)
-            .await
-            .expect("`MemoryStore` extension missing");
+    async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
+        let store = MemoryStore::from_ref(state);
 
-        let cookie = Option::<TypedHeader<Cookie>>::from_request(req)
+        let cookie = Option::<TypedHeader<Cookie>>::from_request_parts(parts, state)
             .await
             .unwrap();
 

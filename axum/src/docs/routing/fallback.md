@@ -1,4 +1,4 @@
-Add a fallback service to the router.
+Add a fallback [`Handler`] to the router.
 
 This service will be called if no routes matches the incoming request.
 
@@ -13,7 +13,7 @@ use axum::{
 
 let app = Router::new()
     .route("/foo", get(|| async { /* ... */ }))
-    .fallback(fallback.into_service());
+    .fallback(fallback);
 
 async fn fallback(uri: Uri) -> (StatusCode, String) {
     (StatusCode::NOT_FOUND, format!("No route for {}", uri))
