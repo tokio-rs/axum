@@ -47,6 +47,7 @@ impl fmt::Display for Trait {
 enum State {
     Custom(syn::Type),
     Default(syn::Type),
+    CannotInfer,
 }
 
 impl State {
@@ -58,6 +59,7 @@ impl State {
         match self {
             State::Default(inner) => Some(inner.clone()),
             State::Custom(_) => None,
+            State::CannotInfer => Some(parse_quote!(S)),
         }
         .into_iter()
     }
@@ -70,6 +72,7 @@ impl State {
         match self {
             State::Default(inner) => iter::once(inner.clone()),
             State::Custom(inner) => iter::once(inner.clone()),
+            State::CannotInfer => iter::once(parse_quote!(S)),
         }
     }
 
@@ -78,6 +81,9 @@ impl State {
             State::Custom(_) => quote! {},
             State::Default(inner) => quote! {
                 #inner: ::std::marker::Send + ::std::marker::Sync,
+            },
+            State::CannotInfer => quote! {
+                S: ::std::marker::Send + ::std::marker::Sync,
             },
         }
     }
@@ -88,6 +94,7 @@ impl ToTokens for State {
         match self {
             State::Custom(inner) => inner.to_tokens(tokens),
             State::Default(inner) => inner.to_tokens(tokens),
+            State::CannotInfer => quote! { S }.to_tokens(tokens),
         }
     }
 }
@@ -128,37 +135,47 @@ pub(crate) fn expand(item: syn::Item, tr: Trait) -> syn::Result<TokenStream> {
                     match inferred_state_types.len() {
                         0 => State::Default(syn::parse_quote!(S)),
                         1 => State::Custom(inferred_state_types.iter().next().unwrap().to_owned()),
-                        _ => {
-                            let attr_name = match tr {
-                                Trait::FromRequest => "from_request",
-                                Trait::FromRequestParts => "from_request_parts",
-                            };
-                            return Err(syn::Error::new(
-                                Span::call_site(),
-                                format_args!(
-                                    "can't infer state type, please add \
-                                     #[{attr_name}(state = StateType)] attribute",
-                                ),
-                            ));
-                        }
+                        _ => State::CannotInfer,
                     }
                 }
             };
 
-            match (via.map(second), rejection.map(second)) {
+            let trait_impl = match (via.map(second), rejection.map(second)) {
                 (Some(via), rejection) => impl_struct_by_extracting_all_at_once(
                     ident,
                     fields,
                     via,
                     rejection,
                     generic_ident,
-                    state,
+                    &state,
                     tr,
-                ),
+                )?,
                 (None, rejection) => {
                     error_on_generic_ident(generic_ident, tr)?;
-                    impl_struct_by_extracting_each_field(ident, fields, rejection, state, tr)
+                    impl_struct_by_extracting_each_field(ident, fields, rejection, &state, tr)?
                 }
+            };
+
+            if let State::CannotInfer = state {
+                let attr_name = match tr {
+                    Trait::FromRequest => "from_request",
+                    Trait::FromRequestParts => "from_request_parts",
+                };
+                let compile_error = syn::Error::new(
+                    Span::call_site(),
+                    format_args!(
+                        "can't infer state type, please add \
+                         #[{attr_name}(state = StateType)] attribute",
+                    ),
+                )
+                .into_compile_error();
+
+                Ok(quote! {
+                    #trait_impl
+                    #compile_error
+                })
+            } else {
+                Ok(trait_impl)
             }
         }
         syn::Item::Enum(item) => {
@@ -328,10 +345,22 @@ fn impl_struct_by_extracting_each_field(
     ident: syn::Ident,
     fields: syn::Fields,
     rejection: Option<syn::Path>,
-    state: State,
+    state: &State,
     tr: Trait,
 ) -> syn::Result<TokenStream> {
-    let extract_fields = extract_fields(&fields, &rejection, tr)?;
+    let trait_fn_body = match state {
+        State::CannotInfer => quote! {
+            ::std::unimplemented!()
+        },
+        _ => {
+            let extract_fields = extract_fields(&fields, &rejection, tr)?;
+            quote! {
+                ::std::result::Result::Ok(Self {
+                    #(#extract_fields)*
+                })
+            }
+        }
+    };
 
     let rejection_ident = if let Some(rejection) = rejection {
         quote!(#rejection)
@@ -370,9 +399,7 @@ fn impl_struct_by_extracting_each_field(
                     mut req: ::axum::http::Request<B>,
                     state: &#state,
                 ) -> ::std::result::Result<Self, Self::Rejection> {
-                    ::std::result::Result::Ok(Self {
-                        #(#extract_fields)*
-                    })
+                    #trait_fn_body
                 }
             }
         },
@@ -389,9 +416,7 @@ fn impl_struct_by_extracting_each_field(
                     parts: &mut ::axum::http::request::Parts,
                     state: &#state,
                 ) -> ::std::result::Result<Self, Self::Rejection> {
-                    ::std::result::Result::Ok(Self {
-                        #(#extract_fields)*
-                    })
+                    #trait_fn_body
                 }
             }
         },
@@ -681,7 +706,7 @@ fn impl_struct_by_extracting_all_at_once(
     via_path: syn::Path,
     rejection: Option<syn::Path>,
     generic_ident: Option<Ident>,
-    state: State,
+    state: &State,
     tr: Trait,
 ) -> syn::Result<TokenStream> {
     let fields = match fields {
