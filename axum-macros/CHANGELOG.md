@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- None
+- **added:** Add `#[derive(FromRef)]`
 
 # 0.3.0-rc.1 (23. August, 2022)
 
