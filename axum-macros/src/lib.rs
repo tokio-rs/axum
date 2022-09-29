@@ -576,9 +576,45 @@ pub fn derive_typed_path(input: TokenStream) -> TokenStream {
     expand_with(input, typed_path::expand)
 }
 
+/// Derive an implementation of [`FromRef`] for each field in a struct.
+///
+/// # Example
+///
+/// ```
+/// use axum_macros::FromRef;
+/// use axum::{Router, routing::get, extract::State};
+///
+/// #
+/// # type AuthToken = String;
+/// # type DatabasePool = ();
+/// #
+/// // This will implement `FromRef` for each field in the struct.
+/// #[derive(FromRef)]
+/// struct AppState {
+///     auth_token: AuthToken,
+///     database_pool: DatabasePool,
+/// }
+///
+/// // So those types can be extracted via `State`
+/// async fn handler(State(auth_token): State<AuthToken>) {}
+///
+/// async fn other_handler(State(database_pool): State<DatabasePool>) {}
+///
+/// # let auth_token = Default::default();
+/// # let database_pool = Default::default();
+/// let state = AppState {
+///     auth_token,
+///     database_pool,
+/// };
+///
+/// let app = Router::with_state(state).route("/", get(handler).post(other_handler));
+/// # let _: Router<AppState> = app;
+/// ```
+///
+/// [`FromRef`]: https://docs.rs/axum/latest/axum/extract/trait.FromRef.html
 #[proc_macro_derive(FromRef, attributes(from_ref))]
 pub fn derive_from_ref(item: TokenStream) -> TokenStream {
-    expand_with(item, |item| from_ref::expand(item))
+    expand_with(item, from_ref::expand)
 }
 
 fn expand_with<F, I, K>(input: TokenStream, f: F) -> TokenStream
