@@ -165,7 +165,7 @@ pub(crate) fn expand(item: syn::Item, tr: Trait) -> syn::Result<TokenStream> {
                     Span::call_site(),
                     format_args!(
                         "can't infer state type, please add \
-                         #[{attr_name}(state = StateType)] attribute",
+                         `#[{attr_name}(state = MyStateType)]` attribute",
                     ),
                 )
                 .into_compile_error();

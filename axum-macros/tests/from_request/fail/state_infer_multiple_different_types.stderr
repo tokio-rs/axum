@@ -1,4 +1,4 @@
-error: can't infer state type, please add #[from_request(state = StateType)] attribute
+error: can't infer state type, please add `#[from_request(state = MyStateType)]` attribute
  --> tests/from_request/fail/state_infer_multiple_different_types.rs:4:10
   |
 4 | #[derive(FromRequest)]
