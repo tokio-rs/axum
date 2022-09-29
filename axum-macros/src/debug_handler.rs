@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use crate::{
     attr_parsing::{parse_assignment_attribute, second},
     with_position::{Position, WithPosition},
@@ -23,7 +25,10 @@ pub(crate) fn expand(attr: Attrs, item_fn: ItemFn) -> TokenStream {
     // returns is `Send`. Skip those checks to avoid unhelpful additional compiler errors.
     let check_inputs_and_future_send = if item_fn.sig.generics.params.is_empty() {
         if state_ty.is_none() {
-            state_ty = state_type_from_args(&item_fn);
+            let state_types_from_args = state_types_from_args(&item_fn);
+            if state_types_from_args.len() == 1 {
+                state_ty = state_types_from_args.into_iter().next();
+            } // FIXME: if len > 1, error?
         }
 
         let state_ty = state_ty.unwrap_or_else(|| syn::parse_quote!(()));
@@ -433,7 +438,7 @@ fn self_receiver(item_fn: &ItemFn) -> Option<TokenStream> {
 /// This will extract `AppState`.
 ///
 /// Returns `None` if there are no `State` args or multiple of different types.
-fn state_type_from_args(item_fn: &ItemFn) -> Option<Type> {
+fn state_types_from_args(item_fn: &ItemFn) -> HashSet<Type> {
     let types = item_fn
         .sig
         .inputs
@@ -443,7 +448,7 @@ fn state_type_from_args(item_fn: &ItemFn) -> Option<Type> {
             FnArg::Typed(pat_type) => Some(pat_type),
         })
         .map(|pat_type| &*pat_type.ty);
-    crate::infer_state_type(types)
+    crate::infer_state_types(types).collect()
 }
 
 #[test]

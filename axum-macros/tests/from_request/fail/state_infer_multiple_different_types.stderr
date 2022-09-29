@@ -1,23 +1,25 @@
-error[E0277]: the trait bound `AppState: FromRef<S>` is not satisfied
- --> tests/from_request/fail/state_infer_multiple_different_types.rs:6:18
+error: can't infer state type, please add #[from_request(state = StateType)] attribute
+ --> tests/from_request/fail/state_infer_multiple_different_types.rs:4:10
   |
-6 |     inner_state: State<AppState>,
-  |                  ^^^^^ the trait `FromRef<S>` is not implemented for `AppState`
+4 | #[derive(FromRequest)]
+  |          ^^^^^^^^^^^
   |
-  = note: required because of the requirements on the impl of `FromRequestParts<S>` for `State<AppState>`
-help: consider extending the `where` clause, but there might be an alternative better way to express this requirement
-  |
-4 | #[derive(FromRequest, AppState: FromRef<S>)]
-  |                     ++++++++++++++++++++++
+  = note: this error originates in the derive macro `FromRequest` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0277]: the trait bound `OtherState: FromRef<S>` is not satisfied
- --> tests/from_request/fail/state_infer_multiple_different_types.rs:7:18
-  |
-7 |     other_state: State<OtherState>,
-  |                  ^^^^^ the trait `FromRef<S>` is not implemented for `OtherState`
-  |
-  = note: required because of the requirements on the impl of `FromRequestParts<S>` for `State<OtherState>`
-help: consider extending the `where` clause, but there might be an alternative better way to express this requirement
-  |
-4 | #[derive(FromRequest, OtherState: FromRef<S>)]
-  |                     ++++++++++++++++++++++++
+error[E0277]: the trait bound `Extractor: FromRequest<AppState, Body>` is not satisfied
+  --> tests/from_request/fail/state_infer_multiple_different_types.rs:18:5
+   |
+18 |     Extractor: axum::extract::FromRequest<AppState, axum::body::Body, Rejection = axum::response::Response>,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `FromRequest<AppState, Body>` is not implemented for `Extractor`
+   |
+   = help: the following other types implement trait `FromRequest<S, B, M>`:
+             (T1, T2)
+             (T1, T2, T3)
+             (T1, T2, T3, T4)
+             (T1, T2, T3, T4, T5)
+             (T1, T2, T3, T4, T5, T6)
+             (T1, T2, T3, T4, T5, T6, T7)
+             (T1, T2, T3, T4, T5, T6, T7, T8)
+             (T1, T2, T3, T4, T5, T6, T7, T8, T9)
+           and 18 others
+   = help: see issue #48214
