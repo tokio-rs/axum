@@ -4,27 +4,23 @@
 //! cd examples && cargo run -p example-hello-world
 //! ```
 
-use axum::{extract::State, routing::get, Router};
-use axum_macros::FromRef;
+use axum::{response::Html, routing::get, Router};
 use std::net::SocketAddr;
 
 #[tokio::main]
 async fn main() {
-    let app = Router::with_state(AppState::default()).route("/", get(|_: State<String>| async {}));
+    // build our application with a route
+    let app = Router::new().route("/", get(handler));
 
+    // run it
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
+    println!("listening on {}", addr);
     axum::Server::bind(&addr)
         .serve(app.into_make_service())
         .await
         .unwrap();
 }
 
-#[derive(FromRef, Default)]
-struct AppState {
-    token: String,
-    #[from_ref(skip)]
-    skip: NotClone,
+async fn handler() -> Html<&'static str> {
+    Html("<h1>Hello, World!</h1>")
 }
-
-#[derive(Default)]
-struct NotClone {}
