@@ -41,4 +41,7 @@ fn expand_field(state: &Ident, idx: usize, field: &Field) -> syn::Result<TokenSt
     })
 }
 
+#[test]
+fn ui() {
+    crate::run_ui_tests("from_ref");
 }
