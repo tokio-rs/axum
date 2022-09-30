@@ -473,7 +473,7 @@ async fn nesting_with_different_state() {
 
 #[tokio::test]
 async fn inherit_state_via_nest() {
-    let foo = Router::inherit_state().route(
+    let foo = Router::<&'static str>::inherit_state().route(
         "/foo",
         get(|State(state): State<&'static str>| async move { state }),
     );

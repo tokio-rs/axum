@@ -1,3 +1,5 @@
+use std::borrow::Borrow;
+
 /// Used to do reference-to-value conversions thus not consuming the input value.
 ///
 /// This is mainly used with [`State`] to extract "substates" from a reference to main application
@@ -13,11 +15,12 @@ pub trait FromRef<T> {
     fn from_ref(input: &T) -> Self;
 }
 
-impl<T> FromRef<T> for T
+impl<T, U> FromRef<T> for U
 where
-    T: Clone,
+    T: Borrow<U>,
+    U: Clone,
 {
     fn from_ref(input: &T) -> Self {
-        input.clone()
+        input.borrow().clone()
     }
 }

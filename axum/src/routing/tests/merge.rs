@@ -469,7 +469,7 @@ async fn merging_routes_different_paths_different_states() {
 
 #[tokio::test]
 async fn inherit_state_via_merge() {
-    let foo = Router::inherit_state().route(
+    let foo = Router::<&'static str>::inherit_state().route(
         "/foo",
         get(|State(state): State<&'static str>| async move { state }),
     );
