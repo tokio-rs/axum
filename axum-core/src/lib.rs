@@ -1,3 +1,4 @@
+#![cfg_attr(feature = "nightly-error-messages", feature(rustc_attrs))]
 //! Core types and traits for [`axum`].
 //!
 //! Libraries authors that want to provide [`FromRequest`] or [`IntoResponse`] implementations

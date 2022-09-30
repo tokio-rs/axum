@@ -1,3 +1,4 @@
+#![cfg_attr(feature = "nightly-error-messages", feature(rustc_attrs))]
 //! axum is a web application framework that focuses on ergonomics and modularity.
 //!
 //! # Table of contents

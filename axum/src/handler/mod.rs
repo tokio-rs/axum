@@ -96,6 +96,12 @@ pub use self::service::HandlerService;
 /// {}
 /// ```
 #[doc = include_str!("../docs/debugging_handler_type_errors.md")]
+#[cfg_attr(
+    feature = "nightly-error-messages",
+    rustc_on_unimplemented(
+        note = "Consider using `#[axum_macros::debug_handler]` to improve the error message"
+    )
+)]
 pub trait Handler<T, S, B = Body>: Clone + Send + Sized + 'static {
     /// The type of future calling this handler returns.
     type Future: Future<Output = Response> + Send + 'static;

@@ -25,6 +25,7 @@ query = ["dep:serde_urlencoded"]
 tokio = ["dep:tokio", "hyper/server", "hyper/tcp", "tower/make"]
 tower-log = ["tower/log"]
 ws = ["tokio", "dep:tokio-tungstenite", "dep:sha-1", "dep:base64"]
+nightly-error-messages = ["axum-core/nightly-error-messages"]
 
 # Required for intra-doc links to resolve correctly
 __private_docs = ["tower/full", "tower-http/full"]
