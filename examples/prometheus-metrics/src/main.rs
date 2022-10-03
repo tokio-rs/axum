@@ -25,9 +25,7 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 fn metrics_app() -> Router {
     let recorder_handle = setup_metrics_recorder();
-    Router::new()
-        .route("/metrics", get(move || ready(recorder_handle.render())))
-        .route_layer(middleware::from_fn(track_metrics))
+    Router::new().route("/metrics", get(move || ready(recorder_handle.render())))
 }
 
 fn main_app() -> Router {
