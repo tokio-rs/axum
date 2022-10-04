@@ -17,7 +17,7 @@ use axum::{
     },
     response::IntoResponse,
     routing::get,
-    Router,
+    RequestPartsExt, Router,
 };
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
@@ -91,9 +91,7 @@ where
     async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
         let store = MemoryStore::from_ref(state);
 
-        let cookie = Option::<TypedHeader<Cookie>>::from_request_parts(parts, state)
-            .await
-            .unwrap();
+        let cookie: Option<TypedHeader<Cookie>> = parts.extract().await.unwrap();
 
         let session_cookie = cookie
             .as_ref()
