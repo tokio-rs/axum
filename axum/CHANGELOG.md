@@ -43,7 +43,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **changed:** The default body limit now applies to the `Multipart` extractor ([#1420])
 - **added:** String and binary `From` impls have been added to `extract::ws::Message`
   to be more inline with `tungstenite` ([#1421])
+- **added:** `FromRequest` and `FromRequestParts` derive macro re-exports from
+  [`axum-macros`] behind the `macros` feature ([#1352])
 
+[#1352]: https://github.com/tokio-rs/axum/pull/1352
 [#1368]: https://github.com/tokio-rs/axum/pull/1368
 [#1371]: https://github.com/tokio-rs/axum/pull/1371
 [#1382]: https://github.com/tokio-rs/axum/pull/1382
@@ -85,12 +88,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   without any routes will now result in a panic. Previously, this just did
   nothing. [#1327]
 
-## Extractors
-
-- **added:** `FromRequest` and `FromRequestParts` derive macro re-exports from [`axum-macros`] behind the `macros` feature ([#1352])
 
 [`axum-macros`]: https://docs.rs/axum-macros/latest/axum_macros/
-[#1352]: https://github.com/tokio-rs/axum/pull/1352
 
 ## Middleware
 
