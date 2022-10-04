@@ -10,7 +10,7 @@ use axum::{
     http::{request::Parts, StatusCode},
     response::{IntoResponse, Response},
     routing::get,
-    Router,
+    RequestPartsExt, Router,
 };
 use std::{collections::HashMap, net::SocketAddr};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
@@ -54,10 +54,9 @@ where
 {
     type Rejection = Response;
 
-    async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
-        let params = Path::<HashMap<String, String>>::from_request_parts(parts, state)
-            .await
-            .map_err(IntoResponse::into_response)?;
+    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
+        let params: Path<HashMap<String, String>> =
+            parts.extract().await.map_err(IntoResponse::into_response)?;
 
         let version = params
             .get("version")

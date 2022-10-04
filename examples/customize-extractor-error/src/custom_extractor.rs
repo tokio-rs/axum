@@ -6,10 +6,11 @@
 //! - Complexity: Manually implementing `FromRequest` results on more complex code
 use axum::{
     async_trait,
-    extract::{rejection::JsonRejection, FromRequest, FromRequestParts, MatchedPath},
+    extract::{rejection::JsonRejection, FromRequest, MatchedPath},
     http::Request,
     http::StatusCode,
     response::IntoResponse,
+    RequestPartsExt,
 };
 use serde_json::{json, Value};
 
@@ -32,14 +33,13 @@ where
     async fn from_request(req: Request<B>, state: &S) -> Result<Self, Self::Rejection> {
         let (mut parts, body) = req.into_parts();
 
-        // We can use other extractors to provide better rejection
-        // messages. For example, here we are using
-        // `axum::extract::MatchedPath` to provide a better error
-        // message
+        // We can use other extractors to provide better rejection messages.
+        // For example, here we are using `axum::extract::MatchedPath` to
+        // provide a better error message.
         //
-        // Have to run that first since `Json::from_request` consumes
-        // the request
-        let path = MatchedPath::from_request_parts(&mut parts, state)
+        // Have to run that first since `Json` extraction consumes the request.
+        let path = parts
+            .extract::<MatchedPath>()
             .await
             .map(|path| path.as_str().to_owned())
             .ok();
