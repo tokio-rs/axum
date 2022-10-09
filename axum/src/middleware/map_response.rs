@@ -42,6 +42,9 @@ use tower_service::Service;
 ///
 /// # Running extractors
 ///
+/// It is also possible to run extractors that implement [`FromRequestParts`]. These will be run
+/// before calling the handler.
+///
 /// ```
 /// use axum::{
 ///     Router,
