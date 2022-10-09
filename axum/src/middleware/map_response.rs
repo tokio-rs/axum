@@ -42,6 +42,9 @@ use tower_service::Service;
 ///
 /// # Running extractors
 ///
+/// It is also possible to run extractors that implement [`FromRequestParts`]. These will be run
+/// before calling the handler.
+///
 /// ```
 /// use axum::{
 ///     Router,
@@ -67,6 +70,32 @@ use tower_service::Service;
 /// ```
 ///
 /// Note that to access state you must use either [`map_response_with_state`].
+///
+/// # Returning any `impl IntoResponse`
+///
+/// It is also possible to return anything that implements [`IntoResponse`]
+///
+/// ```
+/// use axum::{
+///     Router,
+///     routing::get,
+///     middleware::map_response,
+///     response::{Response, IntoResponse},
+/// };
+/// use std::collections::HashMap;
+///
+/// async fn set_header(response: Response) -> impl IntoResponse {
+///     (
+///         [("x-foo", "foo")],
+///         response,
+///     )
+/// }
+///
+/// let app = Router::new()
+///     .route("/", get(|| async { /* ... */ }))
+///     .layer(map_response(set_header));
+/// # let _: Router = app;
+/// ```
 pub fn map_response<F, T>(f: F) -> MapResponseLayer<F, (), T> {
     map_response_with_state((), f)
 }
