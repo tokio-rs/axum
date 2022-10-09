@@ -1,6 +1,5 @@
-use crate::routing::{RouteId, NEST_TAIL_PARAM_CAPTURE};
-
 use super::{rejection::*, FromRequestParts};
+use crate::routing::{RouteId, NEST_TAIL_PARAM_CAPTURE};
 use async_trait::async_trait;
 use http::request::Parts;
 use std::{collections::HashMap, sync::Arc};
@@ -84,7 +83,7 @@ where
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 struct MatchedNestedPath(Arc<str>);
 
 pub(crate) fn set_matched_path_for_request(
