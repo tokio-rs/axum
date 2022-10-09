@@ -16,7 +16,7 @@ use tower_layer::Layer;
 /// `DefaultBodyLimit` and [`RequestBodyLimit`] serve similar functions but in different ways.
 ///
 /// `DefaultBodyLimit` is local in that it only applies to [`FromRequest`] implementations that
-/// explicitly apply it (or call another extractor that does). You can apply for the limit with
+/// explicitly apply it (or call another extractor that does). You can apply the limit with
 /// [`RequestExt::with_limited_body`] or [`RequestExt::into_limited_body`]
 ///
 /// [`RequestBodyLimit`] is applied globally to all requests, regardless of which extractors are
