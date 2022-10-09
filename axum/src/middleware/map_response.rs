@@ -9,7 +9,6 @@ use std::{
     future::Future,
     marker::PhantomData,
     pin::Pin,
-    sync::Arc,
     task::{Context, Poll},
 };
 use tower_layer::Layer;
@@ -67,7 +66,7 @@ use tower_service::Service;
 /// # let _: Router = app;
 /// ```
 ///
-/// Note that to access state you must use either [`map_response_with_state`] or [`map_response_with_state_arc`].
+/// Note that to access state you must use either [`map_response_with_state`].
 pub fn map_response<F, T>(f: F) -> MapResponseLayer<F, (), T> {
     map_response_with_state((), f)
 }
@@ -110,16 +109,6 @@ pub fn map_response<F, T>(f: F) -> MapResponseLayer<F, (), T> {
 /// # let app: Router<_> = app;
 /// ```
 pub fn map_response_with_state<F, S, T>(state: S, f: F) -> MapResponseLayer<F, S, T> {
-    map_response_with_state_arc(Arc::new(state), f)
-}
-
-/// Create a middleware from an async function that transforms a response, with the given [`Arc`]'ed
-/// state.
-///
-/// See [`map_response_with_state`] for an example.
-///
-/// See [`State`](crate::extract::State) for more details about accessing state.
-pub fn map_response_with_state_arc<F, S, T>(state: Arc<S>, f: F) -> MapResponseLayer<F, S, T> {
     MapResponseLayer {
         f,
         state,
@@ -132,18 +121,19 @@ pub fn map_response_with_state_arc<F, S, T>(state: Arc<S>, f: F) -> MapResponseL
 /// Created with [`map_response`]. See that function for more details.
 pub struct MapResponseLayer<F, S, T> {
     f: F,
-    state: Arc<S>,
+    state: S,
     _extractor: PhantomData<fn() -> T>,
 }
 
 impl<F, S, T> Clone for MapResponseLayer<F, S, T>
 where
     F: Clone,
+    S: Clone,
 {
     fn clone(&self) -> Self {
         Self {
             f: self.f.clone(),
-            state: Arc::clone(&self.state),
+            state: self.state.clone(),
             _extractor: self._extractor,
         }
     }
@@ -152,13 +142,14 @@ where
 impl<S, I, F, T> Layer<I> for MapResponseLayer<F, S, T>
 where
     F: Clone,
+    S: Clone,
 {
     type Service = MapResponse<F, S, I, T>;
 
     fn layer(&self, inner: I) -> Self::Service {
         MapResponse {
             f: self.f.clone(),
-            state: Arc::clone(&self.state),
+            state: self.state.clone(),
             inner,
             _extractor: PhantomData,
         }
@@ -184,7 +175,7 @@ where
 pub struct MapResponse<F, S, I, T> {
     f: F,
     inner: I,
-    state: Arc<S>,
+    state: S,
     _extractor: PhantomData<fn() -> T>,
 }
 
@@ -192,12 +183,13 @@ impl<F, S, I, T> Clone for MapResponse<F, S, I, T>
 where
     F: Clone,
     I: Clone,
+    S: Clone,
 {
     fn clone(&self) -> Self {
         Self {
             f: self.f.clone(),
             inner: self.inner.clone(),
-            state: Arc::clone(&self.state),
+            state: self.state.clone(),
             _extractor: self._extractor,
         }
     }
@@ -221,7 +213,7 @@ macro_rules! impl_service {
             I::Future: Send + 'static,
             B: Send + 'static,
             ResBody: Send + 'static,
-            S: Send + Sync + 'static,
+            S: Clone + Send + Sync + 'static,
         {
             type Response = Response;
             type Error = Infallible;
@@ -237,7 +229,7 @@ macro_rules! impl_service {
                 let mut ready_inner = std::mem::replace(&mut self.inner, not_ready_inner);
 
                 let mut f = self.f.clone();
-                let _state = Arc::clone(&self.state);
+                let _state = self.state.clone();
 
                 let future = Box::pin(async move {
                     let (mut parts, body) = req.into_parts();

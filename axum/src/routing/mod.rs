@@ -66,13 +66,16 @@ impl RouteId {
 
 /// The router type for composing handlers and services.
 pub struct Router<S = (), B = Body> {
-    state: Option<Arc<S>>,
+    state: Option<S>,
     routes: HashMap<RouteId, Endpoint<S, B>>,
     node: Arc<Node>,
     fallback: Fallback<S, B>,
 }
 
-impl<S, B> Clone for Router<S, B> {
+impl<S, B> Clone for Router<S, B>
+where
+    S: Clone,
+{
     fn clone(&self) -> Self {
         Self {
             state: self.state.clone(),
@@ -86,7 +89,7 @@ impl<S, B> Clone for Router<S, B> {
 impl<S, B> Default for Router<S, B>
 where
     B: HttpBody + Send + 'static,
-    S: Default + Send + Sync + 'static,
+    S: Default + Clone + Send + Sync + 'static,
 {
     fn default() -> Self {
         Self::with_state(S::default())
@@ -126,7 +129,7 @@ where
 impl<S, B> Router<S, B>
 where
     B: HttpBody + Send + 'static,
-    S: Send + Sync + 'static,
+    S: Clone + Send + Sync + 'static,
 {
     /// Create a new `Router` with the given state.
     ///
@@ -135,39 +138,6 @@ where
     /// Unless you add additional routes this will respond with `404 Not Found` to
     /// all requests.
     pub fn with_state(state: S) -> Self {
-        Self::with_state_arc(Arc::new(state))
-    }
-
-    /// Create a new `Router` with the given [`Arc`]'ed state.
-    ///
-    /// See [`State`] for more details about accessing state.
-    ///
-    /// Unless you add additional routes this will respond with `404 Not Found` to
-    /// all requests.
-    ///
-    /// Note that the state type you extract with [`State`] must implement [`FromRef<S>`]. If
-    /// you're extracting `S` itself that requires `S` to implement `Clone`. That is still the
-    /// case, even if you're using this method:
-    ///
-    /// ```
-    /// use axum::{Router, routing::get, extract::State};
-    /// use std::sync::Arc;
-    ///
-    /// // `AppState` must implement `Clone` to be extracted...
-    /// #[derive(Clone)]
-    /// struct AppState {}
-    ///
-    /// // ...even though we're wrapping it an an `Arc`
-    /// let state = Arc::new(AppState {});
-    ///
-    /// let app: Router<AppState> = Router::with_state_arc(state).route("/", get(handler));
-    ///
-    /// async fn handler(state: State<AppState>) {}
-    /// ```
-    ///
-    /// [`FromRef<S>`]: crate::extract::FromRef
-    /// [`State`]: crate::extract::State
-    pub fn with_state_arc(state: Arc<S>) -> Self {
         Self {
             state: Some(state),
             routes: Default::default(),
@@ -273,11 +243,11 @@ where
     #[track_caller]
     pub fn nest<S2>(self, path: &str, mut router: Router<S2, B>) -> Self
     where
-        S2: Send + Sync + 'static,
+        S2: Clone + Send + Sync + 'static,
     {
         if router.state.is_none() {
             let s = self.state.clone();
-            router.state = match try_downcast::<Option<Arc<S2>>, Option<Arc<S>>>(s) {
+            router.state = match try_downcast::<Option<S2>, Option<S>>(s) {
                 Ok(state) => state,
                 Err(_) => panic!(
                     "can't nest a `Router` that wants to inherit state of type `{}` \
@@ -336,7 +306,7 @@ where
     pub fn merge<S2, R>(mut self, other: R) -> Self
     where
         R: Into<Router<S2, B>>,
-        S2: Send + Sync + 'static,
+        S2: Clone + Send + Sync + 'static,
     {
         let Router {
             state,
@@ -351,7 +321,7 @@ where
             Some(state) => {
                 let fallback = fallback.map_state(&state);
                 cast_method_router_closure_slot = move |r: MethodRouter<_, _>| {
-                    r.layer(Extension(Arc::clone(&state))).map_state(&state)
+                    r.layer(Extension(state.clone())).map_state(&state)
                 };
                 let cast_method_router = &cast_method_router_closure_slot
                     as &dyn Fn(MethodRouter<_, _>) -> MethodRouter<_, _>;
@@ -376,7 +346,7 @@ where
                 where
                     B: Send + 'static,
                     S: 'static,
-                    S2: 'static,
+                    S2: Clone + 'static,
                 {
                     r.downcast_state().unwrap()
                 }
@@ -604,7 +574,10 @@ enum Fallback<S, B, E = Infallible> {
 }
 
 impl<S, B, E> Fallback<S, B, E> {
-    fn map_state<S2>(self, state: &Arc<S>) -> Fallback<S2, B, E> {
+    fn map_state<S2>(self, state: &S) -> Fallback<S2, B, E>
+    where
+        S: Clone,
+    {
         match self {
             Self::Default(route) => Fallback::Default(route),
             Self::Service(route) => Fallback::Service(route),

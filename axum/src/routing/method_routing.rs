@@ -16,7 +16,6 @@ use bytes::BytesMut;
 use std::{
     convert::Infallible,
     fmt,
-    sync::Arc,
     task::{Context, Poll},
 };
 use tower::{service_fn, util::MapResponseLayer};
@@ -84,6 +83,7 @@ macro_rules! top_level_service_fn {
             T::Response: IntoResponse + 'static,
             T::Future: Send + 'static,
             B: Send + 'static,
+            S: Clone,
         {
             on_service(MethodFilter::$method, svc)
         }
@@ -144,7 +144,7 @@ macro_rules! top_level_handler_fn {
             H: Handler<T, S, B>,
             B: Send + 'static,
             T: 'static,
-            S: Send + Sync + 'static,
+            S: Clone + Send + Sync + 'static,
         {
             on(MethodFilter::$method, handler)
         }
@@ -327,6 +327,7 @@ where
     T::Response: IntoResponse + 'static,
     T::Future: Send + 'static,
     B: Send + 'static,
+    S: Clone,
 {
     MethodRouter::new().on_service(filter, svc)
 }
@@ -390,6 +391,7 @@ where
     T::Response: IntoResponse + 'static,
     T::Future: Send + 'static,
     B: Send + 'static,
+    S: Clone,
 {
     MethodRouter::new()
         .fallback_service(svc)
@@ -429,7 +431,7 @@ where
     H: Handler<T, S, B>,
     B: Send + 'static,
     T: 'static,
-    S: Send + Sync + 'static,
+    S: Clone + Send + Sync + 'static,
 {
     MethodRouter::new().on(filter, handler)
 }
@@ -476,7 +478,7 @@ where
     H: Handler<T, S, B>,
     B: Send + 'static,
     T: 'static,
-    S: Send + Sync + 'static,
+    S: Clone + Send + Sync + 'static,
 {
     MethodRouter::new().fallback(handler).skip_allow_header()
 }
@@ -568,6 +570,7 @@ impl<S, B, E> fmt::Debug for MethodRouter<S, B, E> {
 impl<S, B> MethodRouter<S, B, Infallible>
 where
     B: Send + 'static,
+    S: Clone,
 {
     /// Chain an additional handler that will accept requests matching the given
     /// `MethodFilter`.
@@ -699,6 +702,7 @@ where
 impl<S, B, E> MethodRouter<S, B, E>
 where
     B: Send + 'static,
+    S: Clone,
 {
     /// Create a default `MethodRouter` that will respond with `405 Method Not Allowed` to all
     /// requests.
@@ -725,20 +729,13 @@ where
     ///
     /// See [`State`](crate::extract::State) for more details about accessing state.
     pub fn with_state(self, state: S) -> WithState<S, B, E> {
-        self.with_state_arc(Arc::new(state))
-    }
-
-    /// Provide the [`Arc`]'ed state.
-    ///
-    /// See [`State`](crate::extract::State) for more details about accessing state.
-    pub fn with_state_arc(self, state: Arc<S>) -> WithState<S, B, E> {
         WithState {
             method_router: self,
             state,
         }
     }
 
-    pub(crate) fn map_state<S2>(self, state: &Arc<S>) -> MethodRouter<S2, B, E>
+    pub(crate) fn map_state<S2>(self, state: &S) -> MethodRouter<S2, B, E>
     where
         E: 'static,
         S: 'static,
@@ -1149,6 +1146,7 @@ impl<S, B, E> Clone for MethodRouter<S, B, E> {
 impl<S, B, E> Default for MethodRouter<S, B, E>
 where
     B: Send + 'static,
+    S: Clone,
 {
     fn default() -> Self {
         Self::new()
@@ -1164,7 +1162,7 @@ where
 /// Created with [`MethodRouter::with_state`]
 pub struct WithState<S, B, E> {
     method_router: MethodRouter<S, B, E>,
-    state: Arc<S>,
+    state: S,
 }
 
 impl<S, B, E> WithState<S, B, E> {
@@ -1194,11 +1192,14 @@ impl<S, B, E> WithState<S, B, E> {
     }
 }
 
-impl<S, B, E> Clone for WithState<S, B, E> {
+impl<S, B, E> Clone for WithState<S, B, E>
+where
+    S: Clone,
+{
     fn clone(&self) -> Self {
         Self {
             method_router: self.method_router.clone(),
-            state: Arc::clone(&self.state),
+            state: self.state.clone(),
         }
     }
 }
@@ -1218,7 +1219,7 @@ where
 impl<S, B, E> Service<Request<B>> for WithState<S, B, E>
 where
     B: HttpBody + Send,
-    S: Send + Sync + 'static,
+    S: Clone + Send + Sync + 'static,
 {
     type Response = Response;
     type Error = E;
@@ -1266,7 +1267,7 @@ where
                 },
         } = self;
 
-        req.extensions_mut().insert(Arc::clone(state));
+        req.extensions_mut().insert(state.clone());
 
         call!(req, method, HEAD, head);
         call!(req, method, HEAD, get);
@@ -1286,7 +1287,7 @@ where
             Fallback::BoxedHandler(fallback) => RouteFuture::from_future(
                 fallback
                     .clone()
-                    .into_route(Arc::clone(state))
+                    .into_route(state.clone())
                     .oneshot_inner(req),
             ),
         };
