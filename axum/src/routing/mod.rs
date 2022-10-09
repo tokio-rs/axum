@@ -7,7 +7,6 @@ use crate::{
     body::{Body, HttpBody},
     handler::{BoxedHandler, Handler},
     util::try_downcast,
-    Extension,
 };
 use axum_core::response::IntoResponse;
 use http::Request;
@@ -320,9 +319,7 @@ where
             // other has its state set
             Some(state) => {
                 let fallback = fallback.map_state(&state);
-                cast_method_router_closure_slot = move |r: MethodRouter<_, _>| {
-                    r.layer(Extension(state.clone())).map_state(&state)
-                };
+                cast_method_router_closure_slot = move |r: MethodRouter<_, _>| r.map_state(&state);
                 let cast_method_router = &cast_method_router_closure_slot
                     as &dyn Fn(MethodRouter<_, _>) -> MethodRouter<_, _>;
 
@@ -573,11 +570,11 @@ enum Fallback<S, B, E = Infallible> {
     BoxedHandler(BoxedHandler<S, B, E>),
 }
 
-impl<S, B, E> Fallback<S, B, E> {
-    fn map_state<S2>(self, state: &S) -> Fallback<S2, B, E>
-    where
-        S: Clone,
-    {
+impl<S, B, E> Fallback<S, B, E>
+where
+    S: Clone,
+{
+    fn map_state<S2>(self, state: &S) -> Fallback<S2, B, E> {
         match self {
             Self::Default(route) => Fallback::Default(route),
             Self::Service(route) => Fallback::Service(route),
@@ -608,6 +605,14 @@ impl<S, B, E> Fallback<S, B, E> {
             (Self::Default(_), pick @ Self::Default(_)) => Some(pick),
             (Self::Default(_), pick) | (pick, Self::Default(_)) => Some(pick),
             _ => None,
+        }
+    }
+
+    fn into_route(self, state: &S) -> Route<B, E> {
+        match self {
+            Self::Default(route) => route,
+            Self::Service(route) => route,
+            Self::BoxedHandler(handler) => handler.into_route(state.clone()),
         }
     }
 }
@@ -650,6 +655,7 @@ impl<S, B, E> Fallback<S, B, E> {
     }
 }
 
+#[allow(clippy::large_enum_variant)] // This type is only used at init time, probably fine
 enum Endpoint<S, B> {
     MethodRouter(MethodRouter<S, B>),
     Route(Route<B>),
@@ -664,10 +670,7 @@ impl<S, B> Clone for Endpoint<S, B> {
     }
 }
 
-impl<S, B> fmt::Debug for Endpoint<S, B>
-where
-    S: fmt::Debug,
-{
+impl<S, B> fmt::Debug for Endpoint<S, B> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::MethodRouter(inner) => inner.fmt(f),

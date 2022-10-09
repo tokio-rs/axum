@@ -51,13 +51,10 @@ use tower_service::Service;
 
 mod boxed;
 pub mod future;
-mod into_service_state_in_extension;
 mod service;
 
+pub(crate) use self::boxed::BoxedHandler;
 pub use self::service::HandlerService;
-pub(crate) use self::{
-    boxed::BoxedHandler, into_service_state_in_extension::IntoServiceStateInExtension,
-};
 
 /// Trait for async functions that can be used to handle requests.
 ///
