@@ -42,6 +42,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   named `HandlerService` ([#1418])
 - **added:** String and binary `From` impls have been added to `extract::ws::Message`
   to be more inline with `tungstenite` ([#1421])
+- **added:** Add `#[derive(axum::extract::FromRef)]` ([#1430])
 
 [#1368]: https://github.com/tokio-rs/axum/pull/1368
 [#1371]: https://github.com/tokio-rs/axum/pull/1371
