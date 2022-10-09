@@ -614,7 +614,7 @@ pub fn derive_typed_path(input: TokenStream) -> TokenStream {
 /// [`FromRef`]: https://docs.rs/axum/latest/axum/extract/trait.FromRef.html
 #[proc_macro_derive(FromRef, attributes(from_ref))]
 pub fn derive_from_ref(item: TokenStream) -> TokenStream {
-    expand_with(item, from_ref::expand)
+    expand_with(item, |item| Ok(from_ref::expand(item)))
 }
 
 fn expand_with<F, I, K>(input: TokenStream, f: F) -> TokenStream
