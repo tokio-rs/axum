@@ -7,7 +7,7 @@ use axum::{
     response::{IntoResponse, Response},
 };
 use futures_util::future::{BoxFuture, Either as EitherFuture, FutureExt, Map};
-use std::{future::Future, marker::PhantomData, sync::Arc};
+use std::{future::Future, marker::PhantomData};
 
 /// [`Handler`] that runs one [`Handler`] and if that rejects it'll fallback to another
 /// [`Handler`].
@@ -37,7 +37,7 @@ where
     fn call(
         self,
         extractors: Either<Lt, Rt>,
-        state: Arc<S>,
+        state: S,
     ) -> <Self as HandlerCallWithExtractors<Either<Lt, Rt>, S, B>>::Future {
         match extractors {
             Either::E1(lt) => self
@@ -68,7 +68,7 @@ where
     // this puts `futures_util` in our public API but thats fine in axum-extra
     type Future = BoxFuture<'static, Response>;
 
-    fn call(self, req: Request<B>, state: Arc<S>) -> Self::Future {
+    fn call(self, req: Request<B>, state: S) -> Self::Future {
         Box::pin(async move {
             let (mut parts, body) = req.into_parts();
 

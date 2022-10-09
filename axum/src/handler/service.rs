@@ -8,20 +8,18 @@ use std::{
     convert::Infallible,
     fmt,
     marker::PhantomData,
-    sync::Arc,
     task::{Context, Poll},
 };
 use tower_service::Service;
 
 /// An adapter that makes a [`Handler`] into a [`Service`].
 ///
-/// Created with [`Handler::with_state`], [`Handler::with_state_arc`] or
-/// [`HandlerWithoutStateExt::into_service`].
+/// Created with [`Handler::with_state`] or [`HandlerWithoutStateExt::into_service`].
 ///
 /// [`HandlerWithoutStateExt::into_service`]: super::HandlerWithoutStateExt::into_service
 pub struct HandlerService<H, T, S, B> {
     handler: H,
-    state: Arc<S>,
+    state: S,
     _marker: PhantomData<fn() -> (T, B)>,
 }
 
@@ -119,7 +117,7 @@ fn traits() {
 }
 
 impl<H, T, S, B> HandlerService<H, T, S, B> {
-    pub(super) fn new(handler: H, state: Arc<S>) -> Self {
+    pub(super) fn new(handler: H, state: S) -> Self {
         Self {
             handler,
             state,
@@ -137,11 +135,12 @@ impl<H, T, S, B> fmt::Debug for HandlerService<H, T, S, B> {
 impl<H, T, S, B> Clone for HandlerService<H, T, S, B>
 where
     H: Clone,
+    S: Clone,
 {
     fn clone(&self) -> Self {
         Self {
             handler: self.handler.clone(),
-            state: Arc::clone(&self.state),
+            state: self.state.clone(),
             _marker: PhantomData,
         }
     }
@@ -151,7 +150,7 @@ impl<H, T, S, B> Service<Request<B>> for HandlerService<H, T, S, B>
 where
     H: Handler<T, S, B> + Clone + Send + 'static,
     B: Send + 'static,
-    S: Send + Sync,
+    S: Clone + Send + Sync,
 {
     type Response = Response;
     type Error = Infallible;
@@ -169,7 +168,7 @@ where
         use futures_util::future::FutureExt;
 
         let handler = self.handler.clone();
-        let future = Handler::call(handler, req, Arc::clone(&self.state));
+        let future = Handler::call(handler, req, self.state.clone());
         let future = future.map(Ok as _);
 
         super::future::IntoServiceFuture::new(future)

@@ -44,7 +44,7 @@ use crate::{
     routing::IntoMakeService,
 };
 use http::Request;
-use std::{convert::Infallible, fmt, future::Future, marker::PhantomData, pin::Pin, sync::Arc};
+use std::{convert::Infallible, fmt, future::Future, marker::PhantomData, pin::Pin};
 use tower::ServiceExt;
 use tower_layer::Layer;
 use tower_service::Service;
@@ -101,7 +101,7 @@ pub trait Handler<T, S, B = Body>: Clone + Send + Sized + 'static {
     type Future: Future<Output = Response> + Send + 'static;
 
     /// Call the handler with the given request.
-    fn call(self, req: Request<B>, state: Arc<S>) -> Self::Future;
+    fn call(self, req: Request<B>, state: S) -> Self::Future;
 
     /// Apply a [`tower::Layer`] to the handler.
     ///
@@ -152,11 +152,6 @@ pub trait Handler<T, S, B = Body>: Clone + Send + Sized + 'static {
 
     /// Convert the handler into a [`Service`] by providing the state
     fn with_state(self, state: S) -> HandlerService<Self, T, S, B> {
-        self.with_state_arc(Arc::new(state))
-    }
-
-    /// Convert the handler into a [`Service`] by providing the state
-    fn with_state_arc(self, state: Arc<S>) -> HandlerService<Self, T, S, B> {
         HandlerService::new(self, state)
     }
 }
@@ -170,7 +165,7 @@ where
 {
     type Future = Pin<Box<dyn Future<Output = Response> + Send>>;
 
-    fn call(self, _req: Request<B>, _state: Arc<S>) -> Self::Future {
+    fn call(self, _req: Request<B>, _state: S) -> Self::Future {
         Box::pin(async move { self().await.into_response() })
     }
 }
@@ -192,7 +187,7 @@ macro_rules! impl_handler {
         {
             type Future = Pin<Box<dyn Future<Output = Response> + Send>>;
 
-            fn call(self, req: Request<B>, state: Arc<S>) -> Self::Future {
+            fn call(self, req: Request<B>, state: S) -> Self::Future {
                 Box::pin(async move {
                     let (mut parts, body) = req.into_parts();
                     let state = &state;
@@ -269,10 +264,10 @@ where
 {
     type Future = future::LayeredFuture<B, L::Service>;
 
-    fn call(self, req: Request<B>, state: Arc<S>) -> Self::Future {
+    fn call(self, req: Request<B>, state: S) -> Self::Future {
         use futures_util::future::{FutureExt, Map};
 
-        let svc = self.handler.with_state_arc(state);
+        let svc = self.handler.with_state(state);
         let svc = self.layer.layer(svc);
 
         let future: Map<
