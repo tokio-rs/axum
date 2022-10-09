@@ -18,7 +18,7 @@ use crate::{
     response::Response,
 };
 
-/// TOOD: Docs
+/// A [`Router`] converted into a [`Service`].
 #[derive(Debug)]
 pub struct RouterService<B = Body> {
     routes: HashMap<RouteId, Route<B>>,
@@ -129,7 +129,6 @@ impl<B> Clone for RouterService<B> {
 impl<B> Service<Request<B>> for RouterService<B>
 where
     B: HttpBody + Send + 'static,
-    //S: Send + Sync + 'static,
 {
     type Response = Response;
     type Error = Infallible;
