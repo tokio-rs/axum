@@ -1,4 +1,4 @@
-use super::{future::RouteFuture, url_params, Endpoint, Fallback, Node, Route, RouteId, Router};
+use super::{future::RouteFuture, url_params, Endpoint, Node, Route, RouteId, Router};
 use crate::{
     body::{Body, HttpBody},
     response::Response,
@@ -52,11 +52,7 @@ where
         Self {
             routes,
             node: router.node,
-            fallback: match router.fallback {
-                Fallback::Default(route) => route,
-                Fallback::Service(route) => route,
-                Fallback::BoxedHandler(handler) => handler.into_route(state),
-            },
+            fallback: router.fallback.into_route(&state),
         }
     }
 

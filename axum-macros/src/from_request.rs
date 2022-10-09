@@ -47,6 +47,7 @@ impl fmt::Display for Trait {
 enum State {
     Custom(syn::Type),
     Default(syn::Type),
+    CannotInfer,
 }
 
 impl State {
@@ -58,6 +59,7 @@ impl State {
         match self {
             State::Default(inner) => Some(inner.clone()),
             State::Custom(_) => None,
+            State::CannotInfer => Some(parse_quote!(S)),
         }
         .into_iter()
     }
@@ -70,6 +72,7 @@ impl State {
         match self {
             State::Default(inner) => iter::once(inner.clone()),
             State::Custom(inner) => iter::once(inner.clone()),
+            State::CannotInfer => iter::once(parse_quote!(S)),
         }
     }
 
@@ -78,6 +81,9 @@ impl State {
             State::Custom(_) => quote! {},
             State::Default(inner) => quote! {
                 #inner: ::std::marker::Send + ::std::marker::Sync,
+            },
+            State::CannotInfer => quote! {
+                S: ::std::marker::Send + ::std::marker::Sync,
             },
         }
     }
@@ -88,6 +94,7 @@ impl ToTokens for State {
         match self {
             State::Custom(inner) => inner.to_tokens(tokens),
             State::Default(inner) => inner.to_tokens(tokens),
+            State::CannotInfer => quote! { S }.to_tokens(tokens),
         }
     }
 }
@@ -115,30 +122,60 @@ pub(crate) fn expand(item: syn::Item, tr: Trait) -> syn::Result<TokenStream> {
 
             let state = match state {
                 Some((_, state)) => State::Custom(state),
-                None => infer_state_type_from_field_types(&fields)
-                    .map(State::Custom)
-                    .or_else(|| infer_state_type_from_field_attributes(&fields).map(State::Custom))
-                    .or_else(|| {
-                        let via = via.as_ref().map(|(_, via)| via)?;
-                        state_from_via(&ident, via).map(State::Custom)
-                    })
-                    .unwrap_or_else(|| State::Default(syn::parse_quote!(S))),
+                None => {
+                    let mut inferred_state_types: HashSet<_> =
+                        infer_state_type_from_field_types(&fields)
+                            .chain(infer_state_type_from_field_attributes(&fields))
+                            .collect();
+
+                    if let Some((_, via)) = &via {
+                        inferred_state_types.extend(state_from_via(&ident, via));
+                    }
+
+                    match inferred_state_types.len() {
+                        0 => State::Default(syn::parse_quote!(S)),
+                        1 => State::Custom(inferred_state_types.iter().next().unwrap().to_owned()),
+                        _ => State::CannotInfer,
+                    }
+                }
             };
 
-            match (via.map(second), rejection.map(second)) {
+            let trait_impl = match (via.map(second), rejection.map(second)) {
                 (Some(via), rejection) => impl_struct_by_extracting_all_at_once(
                     ident,
                     fields,
                     via,
                     rejection,
                     generic_ident,
-                    state,
+                    &state,
                     tr,
-                ),
+                )?,
                 (None, rejection) => {
                     error_on_generic_ident(generic_ident, tr)?;
-                    impl_struct_by_extracting_each_field(ident, fields, rejection, state, tr)
+                    impl_struct_by_extracting_each_field(ident, fields, rejection, &state, tr)?
                 }
+            };
+
+            if let State::CannotInfer = state {
+                let attr_name = match tr {
+                    Trait::FromRequest => "from_request",
+                    Trait::FromRequestParts => "from_request_parts",
+                };
+                let compile_error = syn::Error::new(
+                    Span::call_site(),
+                    format_args!(
+                        "can't infer state type, please add \
+                         `#[{attr_name}(state = MyStateType)]` attribute",
+                    ),
+                )
+                .into_compile_error();
+
+                Ok(quote! {
+                    #trait_impl
+                    #compile_error
+                })
+            } else {
+                Ok(trait_impl)
             }
         }
         syn::Item::Enum(item) => {
@@ -308,10 +345,22 @@ fn impl_struct_by_extracting_each_field(
     ident: syn::Ident,
     fields: syn::Fields,
     rejection: Option<syn::Path>,
-    state: State,
+    state: &State,
     tr: Trait,
 ) -> syn::Result<TokenStream> {
-    let extract_fields = extract_fields(&fields, &rejection, tr)?;
+    let trait_fn_body = match state {
+        State::CannotInfer => quote! {
+            ::std::unimplemented!()
+        },
+        _ => {
+            let extract_fields = extract_fields(&fields, &rejection, tr)?;
+            quote! {
+                ::std::result::Result::Ok(Self {
+                    #(#extract_fields)*
+                })
+            }
+        }
+    };
 
     let rejection_ident = if let Some(rejection) = rejection {
         quote!(#rejection)
@@ -350,9 +399,7 @@ fn impl_struct_by_extracting_each_field(
                     mut req: ::axum::http::Request<B>,
                     state: &#state,
                 ) -> ::std::result::Result<Self, Self::Rejection> {
-                    ::std::result::Result::Ok(Self {
-                        #(#extract_fields)*
-                    })
+                    #trait_fn_body
                 }
             }
         },
@@ -369,9 +416,7 @@ fn impl_struct_by_extracting_each_field(
                     parts: &mut ::axum::http::request::Parts,
                     state: &#state,
                 ) -> ::std::result::Result<Self, Self::Rejection> {
-                    ::std::result::Result::Ok(Self {
-                        #(#extract_fields)*
-                    })
+                    #trait_fn_body
                 }
             }
         },
@@ -661,7 +706,7 @@ fn impl_struct_by_extracting_all_at_once(
     via_path: syn::Path,
     rejection: Option<syn::Path>,
     generic_ident: Option<Ident>,
-    state: State,
+    state: &State,
     tr: Trait,
 ) -> syn::Result<TokenStream> {
     let fields = match fields {
@@ -952,15 +997,15 @@ fn impl_enum_by_extracting_all_at_once(
 /// ```
 ///
 /// We can infer the state type to be `AppState` because it appears inside a `State`
-fn infer_state_type_from_field_types(fields: &Fields) -> Option<Type> {
+fn infer_state_type_from_field_types(fields: &Fields) -> impl Iterator<Item = Type> + '_ {
     match fields {
-        Fields::Named(fields_named) => {
-            crate::infer_state_type(fields_named.named.iter().map(|field| &field.ty))
-        }
-        Fields::Unnamed(fields_unnamed) => {
-            crate::infer_state_type(fields_unnamed.unnamed.iter().map(|field| &field.ty))
-        }
-        Fields::Unit => None,
+        Fields::Named(fields_named) => Box::new(crate::infer_state_types(
+            fields_named.named.iter().map(|field| &field.ty),
+        )) as Box<dyn Iterator<Item = Type>>,
+        Fields::Unnamed(fields_unnamed) => Box::new(crate::infer_state_types(
+            fields_unnamed.unnamed.iter().map(|field| &field.ty),
+        )),
+        Fields::Unit => Box::new(iter::empty()),
     }
 }
 
@@ -975,43 +1020,29 @@ fn infer_state_type_from_field_types(fields: &Fields) -> Option<Type> {
 ///
 /// We can infer the state type to be `AppState` because it has `via(State)` and thus can be
 /// extracted with `State<AppState>`
-fn infer_state_type_from_field_attributes(fields: &Fields) -> Option<Type> {
-    let state_inputs = match fields {
+fn infer_state_type_from_field_attributes(fields: &Fields) -> impl Iterator<Item = Type> + '_ {
+    match fields {
         Fields::Named(fields_named) => {
-            fields_named
-                .named
-                .iter()
-                .filter_map(|field| {
-                    // TODO(david): its a little wasteful to parse the attributes again here
-                    // ideally we should parse things once and pass the data down
-                    let FromRequestFieldAttrs { via } =
-                        parse_attrs("from_request", &field.attrs).ok()?;
-                    let (_, via_path) = via?;
-                    path_ident_is_state(&via_path).then(|| &field.ty)
-                })
-                .collect::<HashSet<_>>()
+            Box::new(fields_named.named.iter().filter_map(|field| {
+                // TODO(david): its a little wasteful to parse the attributes again here
+                // ideally we should parse things once and pass the data down
+                let FromRequestFieldAttrs { via } =
+                    parse_attrs("from_request", &field.attrs).ok()?;
+                let (_, via_path) = via?;
+                path_ident_is_state(&via_path).then(|| field.ty.clone())
+            })) as Box<dyn Iterator<Item = Type>>
         }
         Fields::Unnamed(fields_unnamed) => {
-            fields_unnamed
-                .unnamed
-                .iter()
-                .filter_map(|field| {
-                    // TODO(david): its a little wasteful to parse the attributes again here
-                    // ideally we should parse things once and pass the data down
-                    let FromRequestFieldAttrs { via } =
-                        parse_attrs("from_request", &field.attrs).ok()?;
-                    let (_, via_path) = via?;
-                    path_ident_is_state(&via_path).then(|| &field.ty)
-                })
-                .collect::<HashSet<_>>()
+            Box::new(fields_unnamed.unnamed.iter().filter_map(|field| {
+                // TODO(david): its a little wasteful to parse the attributes again here
+                // ideally we should parse things once and pass the data down
+                let FromRequestFieldAttrs { via } =
+                    parse_attrs("from_request", &field.attrs).ok()?;
+                let (_, via_path) = via?;
+                path_ident_is_state(&via_path).then(|| field.ty.clone())
+            }))
         }
-        Fields::Unit => return None,
-    };
-
-    if state_inputs.len() == 1 {
-        state_inputs.iter().next().map(|&ty| ty.clone())
-    } else {
-        None
+        Fields::Unit => Box::new(iter::empty()),
     }
 }
 
