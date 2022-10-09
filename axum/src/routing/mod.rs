@@ -481,6 +481,10 @@ where
     }
 
     /// Convert this router into a [`RouterService`].
+    ///
+    /// # Panics
+    ///
+    /// Panics if the router was constructed with [`Router::inherit_state`].
     #[track_caller]
     pub fn into_service(self) -> RouterService<B> {
         RouterService::new(self)
