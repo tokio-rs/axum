@@ -47,7 +47,7 @@ pub use crate::Extension;
 pub use crate::form::Form;
 
 #[cfg(feature = "matched-path")]
-mod matched_path;
+pub(crate) mod matched_path;
 
 #[cfg(feature = "matched-path")]
 #[doc(inline)]

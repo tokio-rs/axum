@@ -49,7 +49,7 @@ pub use self::method_routing::{
 };
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-struct RouteId(u32);
+pub(crate) struct RouteId(u32);
 
 impl RouteId {
     fn next() -> Self {
@@ -108,7 +108,7 @@ where
 }
 
 pub(crate) const NEST_TAIL_PARAM: &str = "__private__axum_nest_tail_param";
-const NEST_TAIL_PARAM_CAPTURE: &str = "/*__private__axum_nest_tail_param";
+pub(crate) const NEST_TAIL_PARAM_CAPTURE: &str = "/*__private__axum_nest_tail_param";
 
 impl<B> Router<(), B>
 where

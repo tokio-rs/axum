@@ -16,6 +16,7 @@ use super::{
 use crate::{
     body::{Body, HttpBody},
     response::Response,
+    routing::NEST_TAIL_PARAM,
 };
 
 /// TOOD: Docs
@@ -74,39 +75,11 @@ where
         let id = *match_.value;
 
         #[cfg(feature = "matched-path")]
-        {
-            fn set_matched_path(
-                id: RouteId,
-                route_id_to_path: &HashMap<RouteId, Arc<str>>,
-                extensions: &mut http::Extensions,
-            ) {
-                if let Some(matched_path) = route_id_to_path.get(&id) {
-                    use crate::extract::MatchedPath;
-
-                    let matched_path = if let Some(previous) = extensions.get::<MatchedPath>() {
-                        // a previous `MatchedPath` might exist if we're inside a nested Router
-                        let previous = if let Some(previous) =
-                            previous.as_str().strip_suffix(NEST_TAIL_PARAM_CAPTURE)
-                        {
-                            previous
-                        } else {
-                            previous.as_str()
-                        };
-
-                        let matched_path = format!("{}{}", previous, matched_path);
-                        matched_path.into()
-                    } else {
-                        Arc::clone(matched_path)
-                    };
-                    extensions.insert(MatchedPath(matched_path));
-                } else {
-                    #[cfg(debug_assertions)]
-                    panic!("should always have a matched path for a route id");
-                }
-            }
-
-            set_matched_path(id, &self.node.route_id_to_path, req.extensions_mut());
-        }
+        crate::extract::matched_path::set_matched_path_for_request(
+            id,
+            &self.node.route_id_to_path,
+            req.extensions_mut(),
+        );
 
         url_params::insert_url_params(req.extensions_mut(), match_.params);
 
