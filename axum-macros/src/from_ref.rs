@@ -1,17 +1,13 @@
 use proc_macro2::{Ident, TokenStream};
-use quote::{quote, quote_spanned};
+use quote::quote_spanned;
 use syn::{spanned::Spanned, Field, ItemStruct};
 
 pub(crate) fn expand(item: ItemStruct) -> TokenStream {
-    let from_ref_impls = item
-        .fields
+    item.fields
         .iter()
         .enumerate()
-        .map(|(idx, field)| expand_field(&item.ident, idx, field));
-
-    quote! {
-        #(#from_ref_impls)*
-    }
+        .map(|(idx, field)| expand_field(&item.ident, idx, field))
+        .collect()
 }
 
 fn expand_field(state: &Ident, idx: usize, field: &Field) -> TokenStream {
