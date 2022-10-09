@@ -25,7 +25,10 @@ use std::{collections::HashMap, sync::Arc};
 /// # };
 /// ```
 ///
+/// # Accessing `MatchedPath` via extensions
+///
 /// `MatchedPath` can also be accessed from middleware via request extensions.
+///
 /// This is useful for example with [`Trace`](tower_http::trace::Trace) to
 /// create a span that contains the matched path:
 ///
@@ -50,10 +53,47 @@ use std::{collections::HashMap, sync::Arc};
 ///             tracing::info_span!("http-request", %path)
 ///         }),
 ///     );
-/// # async {
-/// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-/// # };
+/// # let _: Router = app;
 /// ```
+///
+/// # Matched path in nested routers
+///
+/// Because of how [nesting] works `MatchedPath` isn't accessible in middleware on nested routes:
+///
+/// ```
+/// use axum::{
+///     Router,
+///     RequestExt,
+///     routing::get,
+///     extract::{MatchedPath, rejection::MatchedPathRejection},
+///     middleware::map_request,
+///     http::Request,
+///     body::Body,
+/// };
+///
+/// async fn access_matched_path(mut request: Request<Body>) -> Request<Body> {
+///     // if `/foo/bar` is called this will be `Err(_)` since that matches
+///     // a nested route
+///     let matched_path: Result<MatchedPath, MatchedPathRejection> =
+///         request.extract_parts::<MatchedPath>().await;
+///
+///     request
+/// }
+///
+/// // `MatchedPath` is always accessible on handlers regardless
+/// // if its for a nested route or not
+/// async fn handler(matched_path: MatchedPath) {}
+///
+/// let app = Router::new()
+///     .nest(
+///         "/foo",
+///         Router::new().route("/bar", get(handler)),
+///     )
+///     .layer(map_request(access_matched_path));
+/// # let _: Router = app;
+/// ```
+///
+/// [nesting]: crate::Router::nest
 #[cfg_attr(docsrs, doc(cfg(feature = "matched-path")))]
 #[derive(Clone, Debug)]
 pub struct MatchedPath(pub(crate) Arc<str>);

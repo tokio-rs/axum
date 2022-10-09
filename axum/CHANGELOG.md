@@ -45,6 +45,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   to be more inline with `tungstenite` ([#1421])
 - **added:** `FromRequest` and `FromRequestParts` derive macro re-exports from
   [`axum-macros`] behind the `macros` feature ([#1352])
+- **breaking:** `MatchedPath` can now no longer be extracted in middleware for nested routes
 
 [#1352]: https://github.com/tokio-rs/axum/pull/1352
 [#1368]: https://github.com/tokio-rs/axum/pull/1368
