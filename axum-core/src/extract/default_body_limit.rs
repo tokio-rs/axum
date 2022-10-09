@@ -19,9 +19,8 @@ use tower_layer::Layer;
 /// explicitly apply it (or call another extractor that does). You can apply for the limit with
 /// [`RequestExt::with_limited_body`] or [`RequestExt::into_limited_body`]
 ///
-/// Whereas [`RequestBodyLimit`] is applied globally to all requests, regardless of which
-/// extractors are used or how the body is
-/// consumed.
+/// [`RequestBodyLimit`] is applied globally to all requests, regardless of which extractors are
+/// used or how the body is consumed.
 ///
 /// `DefaultBodyLimit` is also easier to integrate into an existing setup since it doesn't change
 /// the request body type:
