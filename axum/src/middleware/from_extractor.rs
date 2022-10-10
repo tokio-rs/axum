@@ -201,7 +201,7 @@ where
 impl<T, E, B, S> Service<Request<B>> for FromExtractor<T, E, S>
 where
     E: FromRequestParts<S> + 'static,
-    B: Default + Send + 'static,
+    B: Send + 'static,
     T: Service<Request<B>> + Clone,
     T::Response: IntoResponse,
     S: Clone + Send + Sync + 'static,
@@ -266,7 +266,6 @@ where
     E: FromRequestParts<S>,
     T: Service<Request<B>>,
     T::Response: IntoResponse,
-    B: Default,
 {
     type Output = Result<Response, T::Error>;
 
@@ -305,9 +304,10 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{handler::Handler, routing::get, test_helpers::*, Router};
+    use crate::{async_trait, handler::Handler, routing::get, test_helpers::*, Router};
     use axum_core::extract::FromRef;
     use http::{header, request::Parts, StatusCode};
+    use tower_http::limit::RequestBodyLimitLayer;
 
     #[tokio::test]
     async fn test_from_extractor() {
@@ -362,5 +362,30 @@ mod tests {
             .send()
             .await;
         assert_eq!(res.status(), StatusCode::OK);
+    }
+
+    // just needs to compile
+    #[allow(dead_code)]
+    fn works_with_request_body_limit() {
+        struct MyExtractor;
+
+        #[async_trait]
+        impl<S> FromRequestParts<S> for MyExtractor
+        where
+            S: Send + Sync,
+        {
+            type Rejection = std::convert::Infallible;
+
+            async fn from_request_parts(
+                _parts: &mut Parts,
+                _state: &S,
+            ) -> Result<Self, Self::Rejection> {
+                unimplemented!()
+            }
+        }
+
+        let _: Router = Router::new()
+            .layer(from_extractor::<MyExtractor>())
+            .layer(RequestBodyLimitLayer::new(1));
     }
 }
