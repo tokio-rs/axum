@@ -475,6 +475,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#1302]: https://github.com/tokio-rs/axum/pull/1302
 [#924]: https://github.com/tokio-rs/axum/pull/924
 
+# 0.5.16 (10. September, 2022)
+
+## Security
+
+- **breaking:** Added default limit to how much data `Bytes::from_request` will
+  consume. Previously it would attempt to consume the entire request body
+  without checking its length. This meant if a malicious peer sent an large (or
+  infinite) request body your server might run out of memory and crash.
+
+  The default limit is at 2 MB and can be disabled by adding the new
+  `DefaultBodyLimit::disable()` middleware. See its documentation for more
+  details.
+
+  This also applies to these extractors which used `Bytes::from_request`
+  internally:
+  - `Form`
+  - `Json`
+  - `String`
+
+  ([#1346])
+
+[#1346]: https://github.com/tokio-rs/axum/pull/1346
+
 # 0.5.15 (9. August, 2022)
 
 - **fixed:** Don't expose internal type names in `QueryRejection` response. ([#1171])
