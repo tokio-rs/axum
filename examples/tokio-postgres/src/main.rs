@@ -1,7 +1,7 @@
 //! Run with
 //!
 //! ```not_rust
-//! cd examples && cargo run -p example-tokio-postgres
+//! cargo run -p example-tokio-postgres
 //! ```
 
 use axum::{

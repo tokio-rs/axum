@@ -13,11 +13,6 @@ on:
 jobs:
   check:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        pwd:
-          - .
-          - examples
     steps:
     - uses: actions/checkout@master
     - uses: actions-rs/toolchain@v1
@@ -27,17 +22,16 @@ jobs:
         profile: minimal
         components: clippy, rustfmt
     - uses: Swatinem/rust-cache@v2
-      with:
-        key: ${{ matrix.pwd }}
-        workspaces: ${{ matrix.pwd }}
     - name: Check
-      working-directory: ${{ matrix.pwd }}
-      run: |
-        cargo clippy --all --all-targets --all-features
+      uses: actions-rs/cargo@v1
+      with:
+        command: clippy
+        args: --workspace --all-targets --all-features
     - name: rustfmt
-      working-directory: ${{ matrix.pwd }}
-      run: |
-        cargo fmt --all -- --check
+      uses: actions-rs/cargo@v1
+      with:
+        command: fmt
+        args: -- --check
 
   check-docs:
     runs-on: ubuntu-latest
@@ -92,8 +86,7 @@ jobs:
         command: test
         args: --all --all-features --all-targets
 
-  # some examples doesn't support our MSRV (such as async-graphql)
-  # so we only test axum itself on our MSRV
+  # some examples doesn't support our MSRV so we only test axum itself on our MSRV
   test-msrv:
     needs: check
     runs-on: ubuntu-latest
@@ -231,11 +224,6 @@ jobs:
 
   dependencies-are-sorted:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        pwd:
-          - .
-          - examples
     steps:
     - uses: actions/checkout@master
     - uses: actions-rs/toolchain@v1
@@ -244,16 +232,12 @@ jobs:
         override: true
         profile: minimal
     - uses: Swatinem/rust-cache@v2
-      with:
-        key: ${{ matrix.pwd }}
-        workspaces: ${{ matrix.pwd }}
     - name: Install cargo-sort
       run: |
         cargo install cargo-sort
+    # Work around cargo-sort not honoring workspace.exclude
     - name: Remove non-crate folder
-      run: rm -rf async-graphql || true
-      working-directory: ${{ matrix.pwd }}
+      run: rm -rf examples/async-graphql
     - name: Check dependency tables
-      working-directory: ${{ matrix.pwd }}
       run: |
         cargo sort --workspace --grouped --check

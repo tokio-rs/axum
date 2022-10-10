@@ -1,7 +1,7 @@
 //! Run with
 //!
 //! ```not_rust
-//! cd examples && cargo run -p example-validator
+//! cargo run -p example-validator
 //!
 //! curl '127.0.0.1:3000?name='
 //! -> Input validation error: [name: Can not be empty]

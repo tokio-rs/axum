@@ -1,7 +1,7 @@
 //! Run with
 //!
 //! ```not_rust
-//! cd examples && cargo run -p example-customize-path-rejection
+//! cargo run -p example-customize-path-rejection
 //! ```
 
 use axum::{

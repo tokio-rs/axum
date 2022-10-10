@@ -1,7 +1,7 @@
 //! Run with
 //!
 //! ```not_rust
-//! cd examples && cargo run -p example-tls-rustls
+//! cargo run -p example-tls-rustls
 //! ```
 
 use axum::{

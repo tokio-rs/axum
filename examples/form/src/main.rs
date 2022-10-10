@@ -1,7 +1,7 @@
 //! Run with
 //!
 //! ```not_rust
-//! cd examples && cargo run -p example-form
+//! cargo run -p example-form
 //! ```
 
 use axum::{extract::Form, response::Html, routing::get, Router};
