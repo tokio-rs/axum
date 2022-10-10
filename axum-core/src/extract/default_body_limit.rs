@@ -11,10 +11,64 @@ use tower_layer::Layer;
 /// Note that if an extractor consumes the body directly with [`Body::data`], or similar, the
 /// default limit is _not_ applied.
 ///
+/// # Difference between `DefaultBodyLimit` and [`RequestBodyLimit`]
+///
+/// `DefaultBodyLimit` and [`RequestBodyLimit`] serve similar functions but in different ways.
+///
+/// `DefaultBodyLimit` is local in that it only applies to [`FromRequest`] implementations that
+/// explicitly apply it (or call another extractor that does). You can currently only apply the
+/// limit by delegating to one of axum's `FromRequest` implementations, but this will change in
+/// v0.6.0.
+///
+/// [`RequestBodyLimit`] is applied globally to all requests, regardless of which extractors are
+/// used or how the body is consumed.
+///
+/// `DefaultBodyLimit` is also easier to integrate into an existing setup since it doesn't change
+/// the request body type:
+///
+/// ```
+/// use axum::{
+///     Router,
+///     routing::post,
+///     body::Body,
+///     extract::{DefaultBodyLimit, RawBody},
+///     http::Request,
+/// };
+///
+/// let router = Router::new()
+///     .route(
+///         "/",
+///         // even with `DefaultBodyLimit` the request body is still just `Body`
+///         post(|request: Request<Body>| async {}),
+///     )
+///     .layer(DefaultBodyLimit::max(1024));
+/// ```
+///
+/// ```
+/// use axum::{Router, routing::post, body::Body, extract::RawBody, http::Request};
+/// use tower_http::limit::RequestBodyLimitLayer;
+/// use http_body::Limited;
+///
+/// let router = Router::new()
+///     .route(
+///         "/",
+///         // `RequestBodyLimitLayer` changes the request body type to `Limited<Body>`
+///         // extracting a different body type wont work
+///         post(|request: Request<Limited<Body>>| async {}),
+///     )
+///     .layer(RequestBodyLimitLayer::new(1024));
+/// ```
+///
+/// In general using `DefaultBodyLimit` is recommended but if you need to use third party
+/// extractors and want to sure a limit is also applied there then [`RequestBodyLimit`] should be
+/// used.
+///
 /// [`Body::data`]: http_body::Body::data
 /// [`Bytes`]: bytes::Bytes
 /// [`Json`]: https://docs.rs/axum/0.5/axum/struct.Json.html
 /// [`Form`]: https://docs.rs/axum/0.5/axum/struct.Form.html
+/// [`FromRequest`]: crate::extract::FromRequest
+/// [`RequestBodyLimit`]: https://docs.rs/tower-http/latest/tower_http/limit/struct.RequestBodyLimit.html
 #[derive(Debug, Clone)]
 pub struct DefaultBodyLimit {
     kind: DefaultBodyLimitKind,
@@ -83,7 +137,7 @@ impl DefaultBodyLimit {
     /// use tower_http::limit::RequestBodyLimitLayer;
     /// use http_body::Limited;
     ///
-    /// let app: Router<_, Limited<Body>> = Router::new()
+    /// let app: Router<Limited<Body>> = Router::new()
     ///     .route("/", get(|body: Bytes| async {}))
     ///     // Replace the default of 2MB with 1024 bytes.
     ///     .layer(DefaultBodyLimit::max(1024));
