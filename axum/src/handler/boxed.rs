@@ -1,4 +1,4 @@
-use std::{convert::Infallible, sync::Arc};
+use std::convert::Infallible;
 
 use super::Handler;
 use crate::routing::Route;
@@ -7,7 +7,7 @@ pub(crate) struct BoxedHandler<S, B, E = Infallible>(Box<dyn ErasedHandler<S, B,
 
 impl<S, B> BoxedHandler<S, B>
 where
-    S: Send + Sync + 'static,
+    S: Clone + Send + Sync + 'static,
     B: Send + 'static,
 {
     pub(crate) fn new<H, T>(handler: H) -> Self
@@ -17,7 +17,7 @@ where
     {
         Self(Box::new(MakeErasedHandler {
             handler,
-            into_route: |handler, state| Route::new(Handler::with_state_arc(handler, state)),
+            into_route: |handler, state| Route::new(Handler::with_state(handler, state)),
         }))
     }
 }
@@ -38,7 +38,7 @@ impl<S, B, E> BoxedHandler<S, B, E> {
         }))
     }
 
-    pub(crate) fn into_route(self, state: Arc<S>) -> Route<B, E> {
+    pub(crate) fn into_route(self, state: S) -> Route<B, E> {
         self.0.into_route(state)
     }
 }
@@ -51,12 +51,13 @@ impl<S, B, E> Clone for BoxedHandler<S, B, E> {
 
 trait ErasedHandler<S, B, E = Infallible>: Send {
     fn clone_box(&self) -> Box<dyn ErasedHandler<S, B, E>>;
-    fn into_route(self: Box<Self>, state: Arc<S>) -> Route<B, E>;
+
+    fn into_route(self: Box<Self>, state: S) -> Route<B, E>;
 }
 
 struct MakeErasedHandler<H, S, B> {
     handler: H,
-    into_route: fn(H, Arc<S>) -> Route<B>,
+    into_route: fn(H, S) -> Route<B>,
 }
 
 impl<H, S, B> ErasedHandler<S, B> for MakeErasedHandler<H, S, B>
@@ -69,7 +70,7 @@ where
         Box::new(self.clone())
     }
 
-    fn into_route(self: Box<Self>, state: Arc<S>) -> Route<B> {
+    fn into_route(self: Box<Self>, state: S) -> Route<B> {
         (self.into_route)(self.handler, state)
     }
 }
@@ -103,7 +104,7 @@ where
         })
     }
 
-    fn into_route(self: Box<Self>, state: Arc<S>) -> Route<B2, E2> {
+    fn into_route(self: Box<Self>, state: S) -> Route<B2, E2> {
         (self.layer)(self.handler.into_route(state))
     }
 }

@@ -43,8 +43,6 @@
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![cfg_attr(test, allow(clippy::float_cmp))]
 
-use std::collections::HashSet;
-
 use proc_macro::TokenStream;
 use quote::{quote, ToTokens};
 use syn::{parse::Parse, Type};
@@ -657,11 +655,11 @@ where
     }
 }
 
-fn infer_state_type<'a, I>(types: I) -> Option<Type>
+fn infer_state_types<'a, I>(types: I) -> impl Iterator<Item = Type> + 'a
 where
-    I: Iterator<Item = &'a Type>,
+    I: Iterator<Item = &'a Type> + 'a,
 {
-    let state_inputs = types
+    types
         .filter_map(|ty| {
             if let Type::Path(path) = ty {
                 Some(&path.path)
@@ -692,13 +690,7 @@ where
                 None
             }
         })
-        .collect::<HashSet<_>>();
-
-    if state_inputs.len() == 1 {
-        state_inputs.iter().next().map(|&ty| ty.clone())
-    } else {
-        None
-    }
+        .cloned()
 }
 
 #[cfg(test)]

@@ -9,7 +9,6 @@ use std::{
     future::Future,
     marker::PhantomData,
     pin::Pin,
-    sync::Arc,
     task::{Context, Poll},
 };
 use tower_layer::Layer;
@@ -112,7 +111,7 @@ use tower_service::Service;
 /// # let _: Router = app;
 /// ```
 ///
-/// Note that to access state you must use either [`map_request_with_state`] or [`map_request_with_state_arc`].
+/// Note that to access state you must use either [`map_request_with_state`].
 pub fn map_request<F, T>(f: F) -> MapRequestLayer<F, (), T> {
     map_request_with_state((), f)
 }
@@ -155,16 +154,6 @@ pub fn map_request<F, T>(f: F) -> MapRequestLayer<F, (), T> {
 /// # let app: Router<_> = app;
 /// ```
 pub fn map_request_with_state<F, S, T>(state: S, f: F) -> MapRequestLayer<F, S, T> {
-    map_request_with_state_arc(Arc::new(state), f)
-}
-
-/// Create a middleware from an async function that transforms a request, with the given [`Arc`]'ed
-/// state.
-///
-/// See [`map_request_with_state`] for an example.
-///
-/// See [`State`](crate::extract::State) for more details about accessing state.
-pub fn map_request_with_state_arc<F, S, T>(state: Arc<S>, f: F) -> MapRequestLayer<F, S, T> {
     MapRequestLayer {
         f,
         state,
@@ -177,18 +166,19 @@ pub fn map_request_with_state_arc<F, S, T>(state: Arc<S>, f: F) -> MapRequestLay
 /// Created with [`map_request`]. See that function for more details.
 pub struct MapRequestLayer<F, S, T> {
     f: F,
-    state: Arc<S>,
+    state: S,
     _extractor: PhantomData<fn() -> T>,
 }
 
 impl<F, S, T> Clone for MapRequestLayer<F, S, T>
 where
     F: Clone,
+    S: Clone,
 {
     fn clone(&self) -> Self {
         Self {
             f: self.f.clone(),
-            state: Arc::clone(&self.state),
+            state: self.state.clone(),
             _extractor: self._extractor,
         }
     }
@@ -197,13 +187,14 @@ where
 impl<S, I, F, T> Layer<I> for MapRequestLayer<F, S, T>
 where
     F: Clone,
+    S: Clone,
 {
     type Service = MapRequest<F, S, I, T>;
 
     fn layer(&self, inner: I) -> Self::Service {
         MapRequest {
             f: self.f.clone(),
-            state: Arc::clone(&self.state),
+            state: self.state.clone(),
             inner,
             _extractor: PhantomData,
         }
@@ -229,7 +220,7 @@ where
 pub struct MapRequest<F, S, I, T> {
     f: F,
     inner: I,
-    state: Arc<S>,
+    state: S,
     _extractor: PhantomData<fn() -> T>,
 }
 
@@ -237,12 +228,13 @@ impl<F, S, I, T> Clone for MapRequest<F, S, I, T>
 where
     F: Clone,
     I: Clone,
+    S: Clone,
 {
     fn clone(&self) -> Self {
         Self {
             f: self.f.clone(),
             inner: self.inner.clone(),
-            state: Arc::clone(&self.state),
+            state: self.state.clone(),
             _extractor: self._extractor,
         }
     }
@@ -267,7 +259,7 @@ macro_rules! impl_service {
             I::Response: IntoResponse,
             I::Future: Send + 'static,
             B: Send + 'static,
-            S: Send + Sync + 'static,
+            S: Clone + Send + Sync + 'static,
         {
             type Response = Response;
             type Error = Infallible;
@@ -282,7 +274,7 @@ macro_rules! impl_service {
                 let mut ready_inner = std::mem::replace(&mut self.inner, not_ready_inner);
 
                 let mut f = self.f.clone();
-                let state = Arc::clone(&self.state);
+                let state = self.state.clone();
 
                 let future = Box::pin(async move {
                     let (mut parts, body) = req.into_parts();
@@ -363,7 +355,7 @@ mod private {
 }
 
 /// Trait implemented by types that can be returned from [`map_request`],
-/// [`map_request_with_state`], and [`map_request_with_state_arc`].
+/// [`map_request_with_state`].
 ///
 /// This trait is sealed such that it cannot be implemented outside this crate.
 pub trait IntoMapRequestResult<B>: private::Sealed<B> {

@@ -434,12 +434,12 @@
 #[macro_use]
 pub(crate) mod macros;
 
-mod ext_traits;
 mod extension;
 #[cfg(feature = "form")]
 mod form;
 #[cfg(feature = "json")]
 mod json;
+mod service_ext;
 #[cfg(feature = "headers")]
 mod typed_header;
 mod util;
@@ -483,11 +483,9 @@ pub use self::typed_header::TypedHeader;
 pub use self::form::Form;
 
 #[doc(inline)]
-pub use axum_core::{BoxError, Error};
+pub use axum_core::{BoxError, Error, RequestExt, RequestPartsExt};
 
 #[cfg(feature = "macros")]
 pub use axum_macros::debug_handler;
 
-pub use self::ext_traits::{
-    request::RequestExt, request_parts::RequestPartsExt, service::ServiceExt,
-};
+pub use self::service_ext::ServiceExt;

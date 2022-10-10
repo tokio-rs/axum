@@ -1,23 +1,7 @@
-error[E0277]: the trait bound `AppState: FromRef<S>` is not satisfied
- --> tests/from_request/fail/state_infer_multiple_different_types.rs:6:18
+error: can't infer state type, please add `#[from_request(state = MyStateType)]` attribute
+ --> tests/from_request/fail/state_infer_multiple_different_types.rs:4:10
   |
-6 |     inner_state: State<AppState>,
-  |                  ^^^^^ the trait `FromRef<S>` is not implemented for `AppState`
+4 | #[derive(FromRequest)]
+  |          ^^^^^^^^^^^
   |
-  = note: required because of the requirements on the impl of `FromRequestParts<S>` for `State<AppState>`
-help: consider extending the `where` clause, but there might be an alternative better way to express this requirement
-  |
-4 | #[derive(FromRequest, AppState: FromRef<S>)]
-  |                     ++++++++++++++++++++++
-
-error[E0277]: the trait bound `OtherState: FromRef<S>` is not satisfied
- --> tests/from_request/fail/state_infer_multiple_different_types.rs:7:18
-  |
-7 |     other_state: State<OtherState>,
-  |                  ^^^^^ the trait `FromRef<S>` is not implemented for `OtherState`
-  |
-  = note: required because of the requirements on the impl of `FromRequestParts<S>` for `State<OtherState>`
-help: consider extending the `where` clause, but there might be an alternative better way to express this requirement
-  |
-4 | #[derive(FromRequest, OtherState: FromRef<S>)]
-  |                     ++++++++++++++++++++++++
+  = note: this error originates in the derive macro `FromRequest` (in Nightly builds, run with -Z macro-backtrace for more info)

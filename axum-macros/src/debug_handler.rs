@@ -1,8 +1,10 @@
+use std::collections::HashSet;
+
 use crate::{
     attr_parsing::{parse_assignment_attribute, second},
     with_position::{Position, WithPosition},
 };
-use proc_macro2::TokenStream;
+use proc_macro2::{Span, TokenStream};
 use quote::{format_ident, quote, quote_spanned};
 use syn::{parse::Parse, parse_quote, spanned::Spanned, FnArg, ItemFn, Token, Type};
 
@@ -22,20 +24,38 @@ pub(crate) fn expand(attr: Attrs, item_fn: ItemFn) -> TokenStream {
     // If the function is generic, we can't reliably check its inputs or whether the future it
     // returns is `Send`. Skip those checks to avoid unhelpful additional compiler errors.
     let check_inputs_and_future_send = if item_fn.sig.generics.params.is_empty() {
+        let mut err = None;
+
         if state_ty.is_none() {
-            state_ty = state_type_from_args(&item_fn);
+            let state_types_from_args = state_types_from_args(&item_fn);
+
+            #[allow(clippy::comparison_chain)]
+            if state_types_from_args.len() == 1 {
+                state_ty = state_types_from_args.into_iter().next();
+            } else if state_types_from_args.len() > 1 {
+                err = Some(
+                    syn::Error::new(
+                        Span::call_site(),
+                        "can't infer state type, please add set it explicitly, as in \
+                         `#[debug_handler(state = MyStateType)]`",
+                    )
+                    .into_compile_error(),
+                );
+            }
         }
 
-        let state_ty = state_ty.unwrap_or_else(|| syn::parse_quote!(()));
+        err.unwrap_or_else(|| {
+            let state_ty = state_ty.unwrap_or_else(|| syn::parse_quote!(()));
 
-        let check_inputs_impls_from_request =
-            check_inputs_impls_from_request(&item_fn, &body_ty, state_ty);
-        let check_future_send = check_future_send(&item_fn);
+            let check_inputs_impls_from_request =
+                check_inputs_impls_from_request(&item_fn, &body_ty, state_ty);
+            let check_future_send = check_future_send(&item_fn);
 
-        quote! {
-            #check_inputs_impls_from_request
-            #check_future_send
-        }
+            quote! {
+                #check_inputs_impls_from_request
+                #check_future_send
+            }
+        })
     } else {
         syn::Error::new_spanned(
             &item_fn.sig.generics,
@@ -433,7 +453,7 @@ fn self_receiver(item_fn: &ItemFn) -> Option<TokenStream> {
 /// This will extract `AppState`.
 ///
 /// Returns `None` if there are no `State` args or multiple of different types.
-fn state_type_from_args(item_fn: &ItemFn) -> Option<Type> {
+fn state_types_from_args(item_fn: &ItemFn) -> HashSet<Type> {
     let types = item_fn
         .sig
         .inputs
@@ -443,7 +463,7 @@ fn state_type_from_args(item_fn: &ItemFn) -> Option<Type> {
             FnArg::Typed(pat_type) => Some(pat_type),
         })
         .map(|pat_type| &*pat_type.ty);
-    crate::infer_state_type(types)
+    crate::infer_state_types(types).collect()
 }
 
 #[test]
