@@ -587,7 +587,7 @@ pub fn derive_typed_path(input: TokenStream) -> TokenStream {
 /// # type DatabasePool = ();
 /// #
 /// // This will implement `FromRef` for each field in the struct.
-/// #[derive(FromRef)]
+/// #[derive(FromRef, Clone)]
 /// struct AppState {
 ///     auth_token: AuthToken,
 ///     database_pool: DatabasePool,
