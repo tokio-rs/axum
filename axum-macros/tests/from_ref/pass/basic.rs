@@ -2,7 +2,7 @@ use axum_macros::FromRef;
 use axum::{Router, routing::get, extract::State};
 
 // This will implement `FromRef` for each field in the struct.
-#[derive(FromRef)]
+#[derive(Clone, FromRef)]
 struct AppState {
     auth_token: String,
 }
