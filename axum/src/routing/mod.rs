@@ -743,4 +743,5 @@ struct SuperFallback<B>(SyncWrapper<Route<B>>);
 fn traits() {
     use crate::test_helpers::*;
     assert_send::<Router<(), ()>>();
+    assert_sync::<Router<(), ()>>();
 }
