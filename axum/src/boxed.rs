@@ -55,7 +55,7 @@ impl<S, B, E> BoxedIntoRoute<S, B, E> {
         S: 'static,
         B: 'static,
         E: 'static,
-        F: FnOnce(Route<B, E>) -> Route<B2, E2> + Clone + Send + 'static,
+        F: FnOnce(Route<B, E>) -> Route<B2, E2> + Clone + Send + Sync + 'static,
         B2: HttpBody + 'static,
         E2: 'static,
     {
@@ -82,7 +82,7 @@ impl<S, B, E> fmt::Debug for BoxedIntoRoute<S, B, E> {
     }
 }
 
-pub(crate) trait ErasedIntoRoute<S, B, E>: Send {
+pub(crate) trait ErasedIntoRoute<S, B, E>: Send + Sync {
     fn clone_box(&self) -> Box<dyn ErasedIntoRoute<S, B, E>>;
 
     fn into_route(self: Box<Self>, state: S) -> Route<B, E>;
@@ -97,7 +97,7 @@ pub(crate) struct MakeErasedHandler<H, S, B> {
 
 impl<H, S, B> ErasedIntoRoute<S, B, Infallible> for MakeErasedHandler<H, S, B>
 where
-    H: Clone + Send + 'static,
+    H: Clone + Send + Sync + 'static,
     S: 'static,
     B: HttpBody + 'static,
 {
@@ -198,13 +198,15 @@ where
     }
 }
 
-pub(crate) trait LayerFn<B, E, B2, E2>: FnOnce(Route<B, E>) -> Route<B2, E2> + Send {
+pub(crate) trait LayerFn<B, E, B2, E2>:
+    FnOnce(Route<B, E>) -> Route<B2, E2> + Send + Sync
+{
     fn clone_box(&self) -> Box<dyn LayerFn<B, E, B2, E2>>;
 }
 
 impl<F, B, E, B2, E2> LayerFn<B, E, B2, E2> for F
 where
-    F: FnOnce(Route<B, E>) -> Route<B2, E2> + Clone + Send + 'static,
+    F: FnOnce(Route<B, E>) -> Route<B2, E2> + Clone + Send + Sync + 'static,
 {
     fn clone_box(&self) -> Box<dyn LayerFn<B, E, B2, E2>> {
         Box::new(self.clone())

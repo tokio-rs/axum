@@ -1,6 +1,10 @@
 use pin_project_lite::pin_project;
 use std::{ops::Deref, sync::Arc};
 
+mod box_clone_sync_service;
+
+pub(crate) use box_clone_sync_service::BoxCloneSyncService;
+
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub(crate) struct PercentDecodedStr(Arc<str>);
 

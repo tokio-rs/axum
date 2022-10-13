@@ -56,8 +56,8 @@ where
 
 impl<S, B, L, R, Lt, Rt, M> Handler<(M, Lt, Rt), S, B> for Or<L, R, Lt, Rt, S, B>
 where
-    L: HandlerCallWithExtractors<Lt, S, B> + Clone + Send + 'static,
-    R: HandlerCallWithExtractors<Rt, S, B> + Clone + Send + 'static,
+    L: HandlerCallWithExtractors<Lt, S, B> + Clone + Send + Sync + 'static,
+    R: HandlerCallWithExtractors<Rt, S, B> + Clone + Send + Sync + 'static,
     Lt: FromRequestParts<S> + Send + 'static,
     Rt: FromRequest<S, B, M> + Send + 'static,
     Lt::Rejection: Send,

@@ -1,7 +1,8 @@
-use tower::ServiceExt;
-
 use super::*;
-use crate::middleware::{map_request, map_response};
+use crate::{
+    middleware::{map_request, map_response},
+    util::BoxCloneSyncService,
+};
 
 #[tokio::test]
 async fn basic() {
@@ -184,14 +185,15 @@ async fn fallback_inherited_into_nested_router_service() {
 
 #[tokio::test]
 async fn fallback_inherited_into_nested_opaque_service() {
-    let inner = Router::new()
+    let router = Router::new()
         .route(
             "/bar",
             get(|State(state): State<&'static str>| async move { state }),
         )
-        .with_state("inner")
-        // even if the service is made more opaque it should still inherit the fallback
-        .boxed_clone();
+        .with_state("inner");
+
+    // even if the service is made more opaque it should still inherit the fallback
+    let inner = BoxCloneSyncService::new(router);
 
     // with a different state
     let app = Router::<()>::new()

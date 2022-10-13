@@ -164,7 +164,7 @@ where
     #[doc = include_str!("../docs/routing/route_service.md")]
     pub fn route_service<T>(self, path: &str, service: T) -> Self
     where
-        T: Service<Request<B>, Error = Infallible> + Clone + Send + 'static,
+        T: Service<Request<B>, Error = Infallible> + Clone + Send + Sync + 'static,
         T::Response: IntoResponse,
         T::Future: Send + 'static,
     {
@@ -215,7 +215,7 @@ where
     #[track_caller]
     pub fn nest_service<T>(self, path: &str, svc: T) -> Self
     where
-        T: Service<Request<B>, Error = Infallible> + Clone + Send + 'static,
+        T: Service<Request<B>, Error = Infallible> + Clone + Send + Sync + 'static,
         T::Response: IntoResponse,
         T::Future: Send + 'static,
     {
@@ -229,7 +229,7 @@ where
         router_or_service: RouterOrService<S, B, T>,
     ) -> Self
     where
-        T: Service<Request<B>, Error = Infallible> + Clone + Send + 'static,
+        T: Service<Request<B>, Error = Infallible> + Clone + Send + Sync + 'static,
         T::Response: IntoResponse,
         T::Future: Send + 'static,
     {
@@ -313,8 +313,8 @@ where
     #[doc = include_str!("../docs/routing/layer.md")]
     pub fn layer<L, NewReqBody>(self, layer: L) -> Router<S, NewReqBody>
     where
-        L: Layer<Route<B>> + Clone + Send + 'static,
-        L::Service: Service<Request<NewReqBody>> + Clone + Send + 'static,
+        L: Layer<Route<B>> + Clone + Send + Sync + 'static,
+        L::Service: Service<Request<NewReqBody>> + Clone + Send + Sync + 'static,
         <L::Service as Service<Request<NewReqBody>>>::Response: IntoResponse + 'static,
         <L::Service as Service<Request<NewReqBody>>>::Error: Into<Infallible> + 'static,
         <L::Service as Service<Request<NewReqBody>>>::Future: Send + 'static,
@@ -342,8 +342,8 @@ where
     #[track_caller]
     pub fn route_layer<L>(self, layer: L) -> Self
     where
-        L: Layer<Route<B>> + Clone + Send + 'static,
-        L::Service: Service<Request<B>> + Clone + Send + 'static,
+        L: Layer<Route<B>> + Clone + Send + Sync + 'static,
+        L::Service: Service<Request<B>> + Clone + Send + Sync + 'static,
         <L::Service as Service<Request<B>>>::Response: IntoResponse + 'static,
         <L::Service as Service<Request<B>>>::Error: Into<Infallible> + 'static,
         <L::Service as Service<Request<B>>>::Future: Send + 'static,
@@ -386,7 +386,7 @@ where
     /// See [`Router::fallback`] for more details.
     pub fn fallback_service<T>(mut self, svc: T) -> Self
     where
-        T: Service<Request<B>, Error = Infallible> + Clone + Send + 'static,
+        T: Service<Request<B>, Error = Infallible> + Clone + Send + Sync + 'static,
         T::Response: IntoResponse,
         T::Future: Send + 'static,
     {
@@ -633,7 +633,7 @@ where
         S: 'static,
         B: 'static,
         E: 'static,
-        F: FnOnce(Route<B, E>) -> Route<B2, E2> + Clone + Send + 'static,
+        F: FnOnce(Route<B, E>) -> Route<B2, E2> + Clone + Send + Sync + 'static,
         B2: HttpBody + 'static,
         E2: 'static,
     {
@@ -687,8 +687,8 @@ where
 {
     fn layer<L, NewReqBody>(self, layer: L) -> Endpoint<S, NewReqBody>
     where
-        L: Layer<Route<B>> + Clone + Send + 'static,
-        L::Service: Service<Request<NewReqBody>> + Clone + Send + 'static,
+        L: Layer<Route<B>> + Clone + Send + Sync + 'static,
+        L::Service: Service<Request<NewReqBody>> + Clone + Send + Sync + 'static,
         <L::Service as Service<Request<NewReqBody>>>::Response: IntoResponse + 'static,
         <L::Service as Service<Request<NewReqBody>>>::Error: Into<Infallible> + 'static,
         <L::Service as Service<Request<NewReqBody>>>::Future: Send + 'static,

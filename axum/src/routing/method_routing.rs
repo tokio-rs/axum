@@ -80,7 +80,7 @@ macro_rules! top_level_service_fn {
         $(#[$m])+
         pub fn $name<T, S, B>(svc: T) -> MethodRouter<S, B, T::Error>
         where
-            T: Service<Request<B>> + Clone + Send + 'static,
+            T: Service<Request<B>> + Clone + Send + Sync + 'static,
             T::Response: IntoResponse + 'static,
             T::Future: Send + 'static,
             B: HttpBody + Send + 'static,
@@ -218,6 +218,7 @@ macro_rules! chained_service_fn {
             T: Service<Request<B>, Error = E>
                 + Clone
                 + Send
+                + Sync
                 + 'static,
             T::Response: IntoResponse + 'static,
             T::Future: Send + 'static,
@@ -324,7 +325,7 @@ top_level_service_fn!(trace_service, TRACE);
 /// ```
 pub fn on_service<T, S, B>(filter: MethodFilter, svc: T) -> MethodRouter<S, B, T::Error>
 where
-    T: Service<Request<B>> + Clone + Send + 'static,
+    T: Service<Request<B>> + Clone + Send + Sync + 'static,
     T::Response: IntoResponse + 'static,
     T::Future: Send + 'static,
     B: HttpBody + Send + 'static,
@@ -388,7 +389,7 @@ where
 /// ```
 pub fn any_service<T, S, B>(svc: T) -> MethodRouter<S, B, T::Error>
 where
-    T: Service<Request<B>> + Clone + Send + 'static,
+    T: Service<Request<B>> + Clone + Send + Sync + 'static,
     T::Response: IntoResponse + 'static,
     T::Future: Send + 'static,
     B: HttpBody + Send + 'static,
@@ -775,7 +776,7 @@ where
     #[track_caller]
     pub fn on_service<T>(self, filter: MethodFilter, svc: T) -> Self
     where
-        T: Service<Request<B>, Error = E> + Clone + Send + 'static,
+        T: Service<Request<B>, Error = E> + Clone + Send + Sync + 'static,
         T::Response: IntoResponse + 'static,
         T::Future: Send + 'static,
     {
@@ -907,7 +908,7 @@ where
     #[doc = include_str!("../docs/method_routing/fallback.md")]
     pub fn fallback_service<T>(mut self, svc: T) -> Self
     where
-        T: Service<Request<B>, Error = E> + Clone + Send + 'static,
+        T: Service<Request<B>, Error = E> + Clone + Send + Sync + 'static,
         T::Response: IntoResponse + 'static,
         T::Future: Send + 'static,
     {
@@ -918,8 +919,8 @@ where
     #[doc = include_str!("../docs/method_routing/layer.md")]
     pub fn layer<L, NewReqBody, NewError>(self, layer: L) -> MethodRouter<S, NewReqBody, NewError>
     where
-        L: Layer<Route<B, E>> + Clone + Send + 'static,
-        L::Service: Service<Request<NewReqBody>> + Clone + Send + 'static,
+        L: Layer<Route<B, E>> + Clone + Send + Sync + 'static,
+        L::Service: Service<Request<NewReqBody>> + Clone + Send + Sync + 'static,
         <L::Service as Service<Request<NewReqBody>>>::Response: IntoResponse + 'static,
         <L::Service as Service<Request<NewReqBody>>>::Error: Into<NewError> + 'static,
         <L::Service as Service<Request<NewReqBody>>>::Future: Send + 'static,
@@ -948,8 +949,8 @@ where
     #[track_caller]
     pub fn route_layer<L>(mut self, layer: L) -> MethodRouter<S, B, E>
     where
-        L: Layer<Route<B, E>> + Clone + Send + 'static,
-        L::Service: Service<Request<B>, Error = E> + Clone + Send + 'static,
+        L: Layer<Route<B, E>> + Clone + Send + Sync + 'static,
+        L::Service: Service<Request<B>, Error = E> + Clone + Send + Sync + 'static,
         <L::Service as Service<Request<B>>>::Response: IntoResponse + 'static,
         <L::Service as Service<Request<B>>>::Future: Send + 'static,
         E: 'static,
@@ -1206,7 +1207,7 @@ where
         S: 'static,
         B: 'static,
         E: 'static,
-        F: FnOnce(Route<B, E>) -> Route<B2, E2> + Clone + Send + 'static,
+        F: FnOnce(Route<B, E>) -> Route<B2, E2> + Clone + Send + Sync + 'static,
         B2: HttpBody + 'static,
         E2: 'static,
     {

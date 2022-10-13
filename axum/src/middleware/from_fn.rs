@@ -1,4 +1,7 @@
-use crate::response::{IntoResponse, Response};
+use crate::{
+    response::{IntoResponse, Response},
+    util::BoxCloneSyncService,
+};
 use axum_core::extract::{FromRequest, FromRequestParts};
 use futures_util::future::BoxFuture;
 use http::Request;
@@ -11,7 +14,7 @@ use std::{
     pin::Pin,
     task::{Context, Poll},
 };
-use tower::{util::BoxCloneService, ServiceBuilder};
+use tower::ServiceBuilder;
 use tower_layer::Layer;
 use tower_service::Service;
 
@@ -243,6 +246,7 @@ macro_rules! impl_service {
             I: Service<Request<B>, Error = Infallible>
                 + Clone
                 + Send
+                + Sync
                 + 'static,
             I::Response: IntoResponse,
             I::Future: Send + 'static,
@@ -281,10 +285,11 @@ macro_rules! impl_service {
                         Err(rejection) => return rejection.into_response(),
                     };
 
-                    let inner = ServiceBuilder::new()
-                        .boxed_clone()
-                        .map_response(IntoResponse::into_response)
-                        .service(ready_inner);
+                    let inner = BoxCloneSyncService::new(
+                        ServiceBuilder::new()
+                            .map_response(IntoResponse::into_response)
+                            .service(ready_inner)
+                    );
                     let next = Next { inner };
 
                     f($($ty,)* $last, next).await.into_response()
@@ -316,7 +321,7 @@ where
 
 /// The remainder of a middleware stack, including the handler.
 pub struct Next<B> {
-    inner: BoxCloneService<Request<B>, Response, Infallible>,
+    inner: BoxCloneSyncService<Request<B>, Response, Infallible>,
 }
 
 impl<B> Next<B> {
