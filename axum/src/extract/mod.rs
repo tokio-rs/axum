@@ -11,6 +11,7 @@ pub mod rejection;
 pub mod ws;
 
 mod host;
+mod raw_form;
 mod raw_query;
 mod request_parts;
 mod state;
@@ -26,6 +27,7 @@ pub use axum_macros::{FromRef, FromRequest, FromRequestParts};
 pub use self::{
     host::Host,
     path::Path,
+    raw_form::RawForm,
     raw_query::RawQuery,
     request_parts::{BodyStream, RawBody},
     state::State,

@@ -59,7 +59,9 @@ define_rejection! {
 define_rejection! {
     #[status = UNSUPPORTED_MEDIA_TYPE]
     #[body = "Form requests must have `Content-Type: application/x-www-form-urlencoded`"]
-    /// Rejection type used if you try and extract the request more than once.
+    /// Rejection type for [`Form`](super::Form) or [`RawForm`](super::RawForm)
+    /// used if the `Content-Type` header is missing
+    /// or its value is not `application/x-www-form-urlencoded`.
     pub struct InvalidFormContentType;
 }
 
@@ -123,6 +125,17 @@ composite_rejection! {
         InvalidFormContentType,
         FailedToDeserializeQueryString,
         BytesRejection,
+    }
+}
+
+composite_rejection! {
+    /// Rejection used for [`RawForm`](super::RawForm).
+    ///
+    /// Contains one variant for each way the [`RawForm`](super::RawForm) extractor
+    /// can fail.
+    pub enum RawFormRejection {
+        InvalidFormContentType,
+        StringRejection,
     }
 }
 
