@@ -1,4 +1,4 @@
-error: Generic param is missing a specialization in `#[axum_macros::debug_handler]`. Specify each generic param at least once using the 'with' attribute to support debugging generic functions.
+error: Generic param is missing a specialization in `#[axum_macros::debug_handler]`. Specify each generic param at least once using `#[debug_handler(with(T = ConcreteType))]`.
  --> tests/debug_handler/fail/generics_unspecified_param.rs:6:21
   |
 6 | async fn handler<T, U>(_extract_t: Path<T>, _u: Json<U>) -> impl IntoResponse

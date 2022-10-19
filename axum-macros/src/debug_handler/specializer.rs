@@ -76,24 +76,25 @@ impl Specializer {
             .iter()
             .enumerate()
             .map(|(_idx, param)| match param {
-                GenericParam::Type(t) => Ok(t.ident.clone()),
-                _ => Err(syn::Error::new_spanned(
-                    param,
-                    "Only type params are supported by `#[axum_macros::debug_handler]`.",
-                )),
-            })
-            .collect::<Result<Vec<_>, _>>()?;
-
-        for param in &generic_params {
-            if !specializations.contains_key(param) {
-                return Err(
-                    syn::Error::new_spanned(
+                    GenericParam::Type(t) => {
+                        if specializations.contains_key(&t.ident) {  
+                            Ok(t.ident.clone())
+                        } else {
+                            Err(                                
+                                syn::Error::new_spanned(
+                                    param,
+                                    "Generic param is missing a specialization in `#[axum_macros::debug_handler]`. Specify each generic param at least once using `#[debug_handler(with(T = ConcreteType))]`.",
+                                )
+                            )
+                        }                    
+                    },
+                    _ => Err(syn::Error::new_spanned(
                         param,
-                        "Generic param is missing a specialization in `#[axum_macros::debug_handler]`. Specify each generic param at least once using the 'with' attribute to support debugging generic functions.",
-                    )
-                );
-            }
-        }
+                        "Only type params are supported by `#[axum_macros::debug_handler]`.",
+                    )),
+                }
+            )
+            .collect::<Result<Vec<_>, _>>()?;        
 
         Ok(Specializer {
             item_fn,
