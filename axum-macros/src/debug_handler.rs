@@ -192,7 +192,7 @@ fn check_inputs_impls_from_request(
                         arg_idx,
                         specialization_idx,
                         span = span,
-                    );                    
+                    );
 
                     let call_check_fn_body = if takes_self {
                         quote_spanned! {span=>
