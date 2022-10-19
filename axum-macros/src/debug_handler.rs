@@ -26,18 +26,17 @@ pub(crate) fn expand(attr: Attrs, item_fn: ItemFn) -> TokenStream {
     // these checks don't require the specializer, so we can generate code for them regardless
     // of whether we can successfully create one
     let check_extractor_count = check_extractor_count(&item_fn);
-    let check_path_extractor = check_path_extractor(&item_fn);
-
-    if state_ty.is_none() {
-        state_ty = state_type_from_args(&item_fn);
-    }
-    let state_ty = state_ty.unwrap_or_else(|| syn::parse_quote!(()));
+    let check_path_extractor = check_path_extractor(&item_fn);    
 
     // If the function is generic and an improper `with` statement was provided to the macro, we can't
     // reliably check its inputs or outputs. This will result in an error. We skip those checks to avoid
     // unhelpful additional compiler errors.
     let specializer_checks = match Specializer::new(with_tys, &item_fn) {
         Ok(specializer) => {
+            if state_ty.is_none() {
+                state_ty = state_type_from_args(&item_fn);
+            }
+            let state_ty = state_ty.unwrap_or_else(|| syn::parse_quote!(()));
             let check_output_impls_into_response =
                 check_output_impls_into_response(&item_fn, &specializer);
             let check_inputs_impls_from_request =
