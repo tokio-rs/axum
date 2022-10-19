@@ -10,9 +10,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **fixed:** Annotate panicking functions with `#[track_caller]` so the error
   message points to where the user added the invalid router, rather than
   somewhere internally in axum ([#1248])
+- **fixed:** Make `Multipart` extractor work with `RequestBodyLimit` middleware ([#1379])
 - **added:** Add `DefaultBodyLimit::max` for changing the default body limit ([#1397])
+- **added:** Various documentation improvements
 
 [#1248]: https://github.com/tokio-rs/axum/pull/1248
+[#1379]: https://github.com/tokio-rs/axum/pull/1379
 [#1397]: https://github.com/tokio-rs/axum/pull/1397
 
 # 0.5.16 (10. September, 2022)
