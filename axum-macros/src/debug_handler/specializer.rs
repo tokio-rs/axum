@@ -48,6 +48,7 @@ impl<'a> VisitMut for TypeSpecializer<'a> {
         visit_mut::visit_type_mut(self, ty);
     }
 }
+
 pub(crate) struct Specializer {
     generic_params: Vec<syn::Ident>,
     specializations: HashMap<syn::Ident, Vec<syn::Type>>,

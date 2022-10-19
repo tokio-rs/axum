@@ -230,18 +230,17 @@ fn check_inputs_impls_from_request(
                         // we have to call the function to actually trigger a compile error
                         // since the function is generic, just defining it is not enough
                         #[allow(warnings)]
-                        fn #call_check_fn()
-                        {
+                        fn #call_check_fn() {
                             #call_check_fn_body
                         }
                     }
                 })
                 .collect::<TokenStream>()
         })
-        .collect::<TokenStream>()
+        .collect()
 }
 
-/// generates specialized calls to the handler fn with each possible specialization. The
+/// Generates specialized calls to the handler fn with each possible specialization. The
 /// argument for each function param is a panic. This can be used to check that the handler output
 /// value. The handler will have the proper receiver prepended to it if necessary (for instance Self::).
 fn generate_mock_handler_calls<'a>(
@@ -302,7 +301,7 @@ fn check_output_impls_into_response(item_fn: &ItemFn, specializer: &Specializer)
                 }
             }
         })
-        .collect::<TokenStream>()
+        .collect()
 }
 
 fn check_future_send(item_fn: &ItemFn, specializer: &Specializer) -> TokenStream {
@@ -338,7 +337,7 @@ fn check_future_send(item_fn: &ItemFn, specializer: &Specializer) -> TokenStream
                 }
             }
         })
-        .collect::<TokenStream>()
+        .collect()
 }
 
 fn self_receiver(item_fn: &ItemFn) -> Option<TokenStream> {
