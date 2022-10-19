@@ -3,12 +3,15 @@ use std::collections::{HashMap, HashSet};
 use itertools::Itertools;
 use proc_macro2::TokenStream;
 use syn::{
+    spanned::Spanned,
     visit::{self, Visit},
     visit_mut::{self, VisitMut},
-    GenericParam, ItemFn,
+    GenericParam, ItemFn, Type, FnArg,
 };
 
-use quote::quote;
+use quote::{format_ident, quote, quote_spanned};
+
+use crate::with_position::{WithPosition, Position};
 
 use super::attr::SpecializationsAttr;
 
@@ -50,14 +53,19 @@ impl<'a> VisitMut for TypeSpecializer<'a> {
 }
 
 pub(crate) struct Specializer {
+    item_fn: ItemFn,
     generic_params: Vec<syn::Ident>,
-    specializations: HashMap<syn::Ident, Vec<syn::Type>>,
+    specializations: HashMap<syn::Ident, Vec<syn::Type>>,    
+    body_ty: Type,
+    state_ty: Type,
 }
 
 impl Specializer {
     pub(crate) fn new(
         with_tys: Option<SpecializationsAttr>,
-        item_fn: &ItemFn,
+        item_fn: ItemFn,
+        body_ty: Type,
+        state_ty: Type,
     ) -> Result<Self, syn::Error> {
         let specializations = with_tys.map(|f| f.specializations).unwrap_or_default();
 
@@ -88,8 +96,11 @@ impl Specializer {
         }
 
         Ok(Specializer {
+            item_fn,
             generic_params,
-            specializations,
+            specializations,            
+            body_ty,
+            state_ty,
         })
     }
 
@@ -197,4 +208,255 @@ impl Specializer {
                 new_typ
             })
     }
+
+    /// Generates specialized calls to the handler fn with each possible specialization. The
+    /// argument for each function param is a panic. This can be used to check that the handler output
+    /// value. The handler will have the proper receiver prepended to it if necessary (for instance Self::).
+    fn generate_mock_handler_calls(&self) -> impl Iterator<Item = TokenStream> + '_ {
+        let span = self.item_fn.span();
+        let handler_name = &self.item_fn.sig.ident;
+        self.all_specializations_as_turbofish()
+            .map(move |turbofish| {
+                // generic panics to use as the value for each argument to the handler function
+                let args = self.item_fn.sig.inputs.iter().map(|_| {
+                    quote_spanned! {span=> panic!() }
+                });
+                if let Some(receiver) = self.generate_self_receiver() {
+                    quote_spanned! {span=>
+                        #receiver #handler_name #turbofish (#(#args),*)
+                    }
+                } else {
+                    let item_fn = &self.item_fn;
+                    // we have to repeat the item_fn in here as a dirty hack to
+                    // get around the situation where the handler fn is an associated
+                    // fn with no receiver -- we have no way to detect to use Self:: here
+                    quote_spanned! {span=>
+                        {
+                            #item_fn
+                            #handler_name #turbofish (#(#args),*)
+                        }
+                    }
+                }
+            })
+    }
+
+    /// Generate the receiver for the handler function, if necessary.
+    fn generate_self_receiver(&self) -> Option<TokenStream> {
+        let takes_self = self.item_fn.sig.inputs.iter().any(|arg| match arg {
+            FnArg::Receiver(_) => true,
+            FnArg::Typed(typed) => is_self_pat_type(typed),
+        });
+    
+        if takes_self {
+            return Some(quote! { Self:: });
+        }
+    
+        if let syn::ReturnType::Type(_, ty) = &self.item_fn.sig.output {
+            if let syn::Type::Path(path) = &**ty {
+                let segments = &path.path.segments;
+                if segments.len() == 1 {
+                    if let Some(last) = segments.last() {
+                        match &last.arguments {
+                            syn::PathArguments::None if last.ident == "Self" => {
+                                return Some(quote! { Self:: });
+                            }
+                            _ => {}
+                        }
+                    }
+                }
+            }
+        }
+    
+        None
+    }
+
+    /// Generates a series of of functions that will only compile if the output
+    /// of the handler function implements `::axum::response::IntoResponse`.
+    pub(crate) fn generate_check_output_impls_into_response(&self) -> TokenStream {
+        let return_ty_span = match &self.item_fn.sig.output {
+            syn::ReturnType::Default => return quote! {},
+            syn::ReturnType::Type(_, ty) => ty,
+        }
+        .span();
+        self.generate_mock_handler_calls()
+            .enumerate()
+            .map(|(specialization_idx, handler_call)| {
+                let name = format_ident!(
+                    "__axum_macros_check_{}_{}_into_response",
+                    self.item_fn.sig.ident,
+                    specialization_idx
+                );
+                quote_spanned! {return_ty_span=>
+                    #[allow(warnings)]
+                    async fn #name() {
+                        let value = #handler_call.await;
+
+                        fn check<T>(_: T)
+                            where T: ::axum::response::IntoResponse
+                        {}
+
+                        check(value);
+                    }
+                }
+            })
+            .collect()
+    }
+
+    /// Generates a series of of functions that will only compile if the output
+    /// of the handler function is `::std::future::Future + Send`.
+    pub(crate) fn generate_check_output_future_send(&self) -> TokenStream {
+        if self.item_fn.sig.asyncness.is_none() {
+            match &self.item_fn.sig.output {
+                syn::ReturnType::Default => {
+                    return syn::Error::new_spanned(
+                        &self.item_fn.sig.fn_token,
+                        "Handlers must be `async fn`s",
+                    )
+                    .into_compile_error();
+                }
+                syn::ReturnType::Type(_, ty) => ty,
+            };
+        }
+        let span = self.item_fn.span();
+        self.generate_mock_handler_calls()
+            .enumerate()
+            .map(|(specialization_idx, handler_call)| {
+                let name = format_ident!(
+                    "__axum_macros_check_{}_{}_future",
+                    self.item_fn.sig.ident,
+                    specialization_idx
+                );
+                quote_spanned! {span=>
+                    #[allow(warnings)]
+                    fn #name() {
+                        let future = #handler_call;
+                        fn check<T>(_: T)
+                            where T: ::std::future::Future + Send
+                        {}
+                        check(future);
+                    }
+                }
+            })
+            .collect()
+    }
+
+    /// Generates a series of of functions that will only compile if the arguments to item_fn
+    /// implement `::axum::extract::FromRequest` or `::axum::extract::FromRequestParts`.
+    pub(crate) fn generate_check_inputs_impl_from_request(&self) -> TokenStream {
+        let takes_self = self.item_fn.sig.inputs.first().map_or(false, |arg| match arg {
+            FnArg::Receiver(_) => true,
+            FnArg::Typed(typed) => is_self_pat_type(typed),
+        });
+    
+        WithPosition::new(self.item_fn.sig.inputs.iter())
+            .enumerate()
+            .map(|(arg_idx, arg)| {
+                let must_impl_from_request_parts = match &arg {
+                    Position::First(_) | Position::Middle(_) => true,
+                    Position::Last(_) | Position::Only(_) => false,
+                };
+    
+                let arg = arg.into_inner();
+    
+                let (span, ty) = match arg {
+                    FnArg::Receiver(receiver) => {
+                        if receiver.reference.is_some() {
+                            return syn::Error::new_spanned(
+                                receiver,
+                                "Handlers must only take owned values",
+                            )
+                            .into_compile_error();
+                        }
+    
+                        let span = receiver.span();
+                        (span, syn::parse_quote!(Self))
+                    }
+                    FnArg::Typed(typed) => {
+                        let ty = &typed.ty;
+                        let span = ty.span();
+    
+                        if is_self_pat_type(typed) {
+                            (span, syn::parse_quote!(Self))
+                        } else {
+                            (span, ty.clone())
+                        }
+                    }
+                };
+                self
+                    .all_specializations_of_type(&ty)
+                    .enumerate()
+                    .map(|(specialization_idx, specialized_ty)| {
+                        let check_fn = format_ident!(
+                            "__axum_macros_check_{}_{}_{}_from_request_check",
+                            self.item_fn.sig.ident,
+                            arg_idx,
+                            specialization_idx,
+                            span = span,
+                        );
+    
+                        let call_check_fn = format_ident!(
+                            "__axum_macros_check_{}_{}_{}_from_request_call_check",
+                            self.item_fn.sig.ident,
+                            arg_idx,
+                            specialization_idx,
+                            span = span,
+                        );
+    
+                        let call_check_fn_body = if takes_self {
+                            quote_spanned! {span=>
+                                Self::#check_fn();
+                            }
+                        } else {
+                            quote_spanned! {span=>
+                                #check_fn();
+                            }
+                        };
+    
+                        let check_fn_generics = if must_impl_from_request_parts {
+                            quote! {}
+                        } else {
+                            quote! { <M> }
+                        };
+                        
+                        let state_ty = &self.state_ty;
+                        let body_ty = &self.body_ty;
+                        let from_request_bound = if must_impl_from_request_parts {
+                            quote! {
+                                #specialized_ty: ::axum::extract::FromRequestParts<#state_ty> + Send
+                            }
+                        } else {
+                            quote! {
+                                #specialized_ty: ::axum::extract::FromRequest<#state_ty, #body_ty, M> + Send
+                            }
+                        };
+    
+                        quote_spanned! {span=>
+                            #[allow(warnings)]
+                            fn #check_fn #check_fn_generics()
+                            where
+                                #from_request_bound,
+                            {}
+            
+                            // we have to call the function to actually trigger a compile error
+                            // since the function is generic, just defining it is not enough
+                            #[allow(warnings)]
+                            fn #call_check_fn() {
+                                #call_check_fn_body
+                            }
+                        }
+                    })
+                    .collect::<TokenStream>()
+            })
+            .collect()
+    }
+}
+
+fn is_self_pat_type(typed: &syn::PatType) -> bool {
+    let ident = if let syn::Pat::Ident(ident) = &*typed.pat {
+        &ident.ident
+    } else {
+        return false;
+    };
+
+    ident == "self"
 }
