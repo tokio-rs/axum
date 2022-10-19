@@ -52,7 +52,7 @@ pub struct Multipart {
 #[async_trait]
 impl<B> FromRequest<B> for Multipart
 where
-    B: HttpBody<Data = Bytes> + Default + Unpin + Send + 'static,
+    B: HttpBody<Data = Bytes> + Send + 'static,
     B::Error: Into<BoxError>,
 {
     type Rejection = MultipartRejection;
