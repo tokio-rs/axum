@@ -12,6 +12,7 @@ use crate::{body::HttpBody, BoxError};
 /// Extractor that extracts the raw form string, without parsing it.
 ///
 /// # Example
+///
 /// ```rust,no_run
 /// use axum::{
 ///     extract::RawForm,
@@ -21,7 +22,10 @@ use crate::{body::HttpBody, BoxError};
 ///
 /// async fn handler(RawForm(form): RawForm) {}
 ///
-/// let router = Router::new().route("/", get(handler));
+/// let app = Router::new().route("/", get(handler));
+/// # async {
+/// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+/// # };
 /// ```
 #[derive(Debug)]
 pub struct RawForm(pub Option<String>);
