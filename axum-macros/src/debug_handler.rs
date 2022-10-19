@@ -33,7 +33,7 @@ pub(crate) fn expand(attr: Attrs, item_fn: ItemFn) -> TokenStream {
     }
     let state_ty = state_ty.unwrap_or_else(|| syn::parse_quote!(()));
 
-    // If the function is generic and and improper `with` statement was provided to the macro, we can't
+    // If the function is generic and an improper `with` statement was provided to the macro, we can't
     // reliably check its inputs or outputs. This will result in an error. We skip those checks to avoid
     // unhelpful additional compiler errors.
     let specializer_checks = match Specializer::new(with_tys, &item_fn) {
