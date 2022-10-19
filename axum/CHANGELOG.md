@@ -65,7 +65,7 @@ Yanked, as it contained an accidental breaking change.
 
 # 0.5.11 (02. July, 2022)
 
-- **added:** Implement `TryFrom<http:: Method>` for `MethodFilter` and use new
+- **added:** Implement `TryFrom<http::Method>` for `MethodFilter` and use new
   `NoMatchingMethodFilter` error in case of failure ([#1130])
 - **added:** Document how to run extractors from middleware ([#1140])
 
