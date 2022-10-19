@@ -24,7 +24,7 @@ use crate::{body::HttpBody, BoxError};
 /// let router = Router::new().route("/", get(handler));
 /// ```
 #[derive(Debug)]
-pub struct RawForm(pub String);
+pub struct RawForm(pub Option<String>);
 
 #[async_trait]
 impl<S, B> FromRequest<S, B> for RawForm
@@ -38,13 +38,13 @@ where
 
     async fn from_request(req: Request<B>, state: &S) -> Result<Self, Self::Rejection> {
         if req.method() == Method::GET {
-            Ok(Self(req.uri().query().unwrap_or_default().to_owned()))
+            Ok(Self(req.uri().query().map(String::from)))
         } else {
             if !has_content_type(req.headers(), &mime::APPLICATION_WWW_FORM_URLENCODED) {
                 return Err(InvalidFormContentType.into());
             }
 
-            Ok(Self(String::from_request(req, state).await?))
+            Ok(Self(Some(String::from_request(req, state).await?)))
         }
     }
 }
