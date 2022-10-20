@@ -140,7 +140,7 @@ pub(crate) fn set_matched_path_for_request(
 
     let matched_path = append_nested_matched_path(matched_path, extensions);
 
-    if matched_path.contains(NEST_TAIL_PARAM_CAPTURE) {
+    if matched_path.ends_with(NEST_TAIL_PARAM_CAPTURE) {
         extensions.insert(MatchedNestedPath(matched_path));
         extensions.remove::<MatchedPath>();
     } else {
@@ -156,11 +156,9 @@ fn append_nested_matched_path(matched_path: &Arc<str>, extensions: &http::Extens
         .map(|matched_path| matched_path.as_str())
         .or_else(|| Some(&extensions.get::<MatchedNestedPath>()?.0))
     {
-        let previous = if let Some(previous) = previous.strip_suffix(NEST_TAIL_PARAM_CAPTURE) {
-            previous
-        } else {
-            previous
-        };
+        let previous = previous
+            .strip_suffix(NEST_TAIL_PARAM_CAPTURE)
+            .unwrap_or(previous);
 
         let matched_path = format!("{}{}", previous, matched_path);
         matched_path.into()
