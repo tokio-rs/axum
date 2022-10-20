@@ -1,6 +1,6 @@
 use std::{
     cmp::Ordering,
-    collections::{HashMap, HashSet},
+    collections::{BTreeMap, HashMap, HashSet},
 };
 
 use itertools::Itertools;
@@ -54,10 +54,21 @@ impl<'a> VisitMut for TypeSpecializer<'a> {
 
 pub(crate) struct Specializer {
     item_fn: ItemFn,
-    generic_params: Vec<syn::Ident>,
-    specializations: HashMap<syn::Ident, Vec<syn::Type>>,
+    /// each generic params (in order of declaration) with a list of their provided specializations
+    /// the specializations are gauranteed to be non-empty in the constructor
+    generics: BTreeMap<syn::Ident, Vec<syn::Type>>,
     body_ty: Type,
     state_ty: Type,
+}
+
+// this is used in Specializer::new. for some reason inlining this into
+// the code breaks cargo fmt for the project with no output as to why so
+// it is broken out into a separate function here rather than a lambda
+fn mk_missing_param_err(param: &GenericParam) -> syn::Error {
+    syn::Error::new_spanned(
+        param,
+        "Generic param is missing a specialization in `#[axum_macros::debug_handler]`. Specify each generic param at least once using `#[debug_handler(with(T = ConcreteType))]`.",
+    )
 }
 
 impl Specializer {
@@ -67,41 +78,30 @@ impl Specializer {
         body_ty: Type,
         state_ty_param: Option<Type>,
     ) -> Result<Self, syn::Error> {
-        let specializations = with_tys.map(|f| f.specializations).unwrap_or_default();
-
-        let generic_params = item_fn
+        let mut specializations = with_tys.map(|f| f.specializations).unwrap_or_default();
+        let generics = item_fn
             .sig
             .generics
             .params
             .iter()
             .enumerate()
             .map(|(_idx, param)| match param {
-                    GenericParam::Type(t) => {
-                        if specializations.contains_key(&t.ident) {
-                            Ok(t.ident.clone())
-                        } else {
-                            Err(
-                                syn::Error::new_spanned(
-                                    param,
-                                    "Generic param is missing a specialization in `#[axum_macros::debug_handler]`. Specify each generic param at least once using `#[debug_handler(with(T = ConcreteType))]`.",
-                                )
-                            )
-                        }
-                    },
-                    _ => Err(syn::Error::new_spanned(
-                        param,
-                        "Only type params are supported by `#[axum_macros::debug_handler]`.",
-                    )),
-                }
-            )
-            .collect::<Result<Vec<_>, _>>()?;
+                GenericParam::Type(t) => specializations
+                    .remove_entry(&t.ident)
+                    .map(Ok)
+                    .unwrap_or_else(|| Err(mk_missing_param_err(param))),
+                _ => Err(syn::Error::new_spanned(
+                    param,
+                    "Only type params are supported by `#[axum_macros::debug_handler]`.",
+                )),
+            })
+            .collect::<Result<_, _>>()?;
 
         let state_ty = state_type_from_param(state_ty_param, &item_fn)?;
 
         Ok(Specializer {
             item_fn,
-            generic_params,
-            specializations,
+            generics,
             body_ty,
             state_ty,
         })
@@ -120,28 +120,19 @@ impl Specializer {
         &'a self,
         filter: Option<HashSet<&syn::Ident>>,
     ) -> Box<dyn Iterator<Item = Vec<&'a syn::Type>> + 'a> {
-        let generic_params = match filter {
+        let generic_params: Vec<_> = match filter {
             Some(filter) => self
-                .generic_params
+                .generics
                 .iter()
-                .filter(|param| filter.contains(param))
-                .collect::<Vec<_>>(),
-            None => self.generic_params.iter().collect::<Vec<_>>(),
+                .filter(|(param, _)| filter.contains(param))
+                .map(|(_, values)| values)
+                .collect(),
+            None => self.generics.values().collect(),
         };
         if generic_params.is_empty() {
             Box::new(std::iter::once(vec![]))
         } else {
-            Box::new(
-                generic_params
-                    .into_iter()
-                    // SAFETY: we can unwrap here due the invariant in the constructor
-                    .map(|p| {
-                        self.specializations
-                            .get(p)
-                            .expect("should be specialization per param")
-                    })
-                    .multi_cartesian_product(),
-            )
+            Box::new(generic_params.into_iter().multi_cartesian_product())
         }
     }
 
@@ -158,7 +149,7 @@ impl Specializer {
     /// Each param will be present in the returned vec at most once, and will be in order
     /// of appearance from self.generic_params
     fn find_generic_params<'a>(&'a self, typ: &'_ syn::Type) -> HashSet<&'a syn::Ident> {
-        let generic_param_set = HashSet::from_iter(self.generic_params.iter());
+        let generic_param_set = HashSet::from_iter(self.generics.keys());
         let mut finder = GenericFinder {
             found_idents: HashSet::new(),
             generic_param_set,
@@ -182,7 +173,7 @@ impl Specializer {
     /// as `<<T as Trait>::Foo as some_crate::OtherTrait<U>>::Bar`.
     ///
     /// This function will only search for generic params named in `generic_params`, everything
-    /// else will be assumed to be a concrete type.    
+    /// else will be assumed to be a concrete type.
     ///
     /// Example:
     /// Assume a handler with two generic arguments `T` and `U` and the  debug specializations
@@ -192,7 +183,7 @@ impl Specializer {
     ///     compute_all_specializations(Foo<T, U>) would yield [Foo<u32, i32>, Foo<String, i32>]
     ///     compute_all_specializations(U) would yield [i32]
     ///     compute_all_specializations(String) would yield [String]
-    ///     
+    ///
     pub(crate) fn all_specializations_of_type<'a>(
         &'a self,
         typ: &'a syn::Type,
