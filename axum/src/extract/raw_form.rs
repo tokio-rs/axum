@@ -10,8 +10,10 @@ use super::{
 
 use crate::{body::HttpBody, BoxError};
 
-/// Extractor that extracts the query bytes from the GET request or body in other methods
-/// with expecting `Content-Type` header value to be `application/x-www-form-urlencoded`.
+/// Extractor that extracts raw form requests.
+///
+/// For `GET` requests it will extract the raw query. For other methods it extracts the raw
+/// `application/x-www-form-urlencoded` encoded request body.
 ///
 /// # Example
 ///
