@@ -141,7 +141,7 @@ pub(crate) fn set_matched_path_for_request(
 
     if matched_path.contains(NEST_TAIL_PARAM_CAPTURE) {
         extensions.insert(MatchedNestedPath(matched_path));
-        extensions.remove::<MatchedPath>();
+        debug_assert!(extensions.remove::<MatchedPath>().is_none());
     } else {
         extensions.insert(MatchedPath(matched_path));
         extensions.remove::<MatchedNestedPath>();
