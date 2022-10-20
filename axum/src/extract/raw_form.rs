@@ -99,6 +99,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_from_body() {
+        check_body(b"").await;
+
         check_body(b"username=user&password=secure%20password").await;
     }
 
