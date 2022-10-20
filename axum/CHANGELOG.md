@@ -48,7 +48,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   [`axum-macros`] behind the `macros` feature ([#1352])
 - **added:** Add `extract::RawForm` for accessing raw urlencoded query bytes or request body ([#1487])
 - **breaking:** Rename `FormRejection::FailedToDeserializeQueryString` to
-  `FormRejection::FailedToDeserializeForm`
+  `FormRejection::FailedToDeserializeForm` ([#1496])
 
 [#1352]: https://github.com/tokio-rs/axum/pull/1352
 [#1368]: https://github.com/tokio-rs/axum/pull/1368
@@ -65,6 +65,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#1420]: https://github.com/tokio-rs/axum/pull/1420
 [#1421]: https://github.com/tokio-rs/axum/pull/1421
 [#1487]: https://github.com/tokio-rs/axum/pull/1487
+[#1496]: https://github.com/tokio-rs/axum/pull/1496
 
 # 0.6.0-rc.2 (10. September, 2022)
 
