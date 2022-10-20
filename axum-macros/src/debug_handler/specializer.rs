@@ -1,17 +1,17 @@
 use std::collections::{HashMap, HashSet};
 
 use itertools::Itertools;
-use proc_macro2::TokenStream;
+use proc_macro2::{Span, TokenStream};
 use syn::{
     spanned::Spanned,
     visit::{self, Visit},
     visit_mut::{self, VisitMut},
-    GenericParam, ItemFn, Type, FnArg,
+    FnArg, GenericParam, ItemFn, Type,
 };
 
 use quote::{format_ident, quote, quote_spanned};
 
-use crate::with_position::{WithPosition, Position};
+use crate::with_position::{Position, WithPosition};
 
 use super::attr::SpecializationsAttr;
 
@@ -55,7 +55,7 @@ impl<'a> VisitMut for TypeSpecializer<'a> {
 pub(crate) struct Specializer {
     item_fn: ItemFn,
     generic_params: Vec<syn::Ident>,
-    specializations: HashMap<syn::Ident, Vec<syn::Type>>,    
+    specializations: HashMap<syn::Ident, Vec<syn::Type>>,
     body_ty: Type,
     state_ty: Type,
 }
@@ -65,7 +65,7 @@ impl Specializer {
         with_tys: Option<SpecializationsAttr>,
         item_fn: ItemFn,
         body_ty: Type,
-        state_ty: Type,
+        state_ty_param: Option<Type>,
     ) -> Result<Self, syn::Error> {
         let specializations = with_tys.map(|f| f.specializations).unwrap_or_default();
 
@@ -94,12 +94,14 @@ impl Specializer {
                     )),
                 }
             )
-            .collect::<Result<Vec<_>, _>>()?;        
+            .collect::<Result<Vec<_>, _>>()?;
+
+        let state_ty = state_type_from_param(state_ty_param, &item_fn)?;
 
         Ok(Specializer {
             item_fn,
             generic_params,
-            specializations,            
+            specializations,
             body_ty,
             state_ty,
         })
@@ -247,11 +249,11 @@ impl Specializer {
             FnArg::Receiver(_) => true,
             FnArg::Typed(typed) => is_self_pat_type(typed),
         });
-    
+
         if takes_self {
             return Some(quote! { Self:: });
         }
-    
+
         if let syn::ReturnType::Type(_, ty) = &self.item_fn.sig.output {
             if let syn::Type::Path(path) = &**ty {
                 let segments = &path.path.segments;
@@ -267,7 +269,7 @@ impl Specializer {
                 }
             }
         }
-    
+
         None
     }
 
@@ -344,11 +346,16 @@ impl Specializer {
     /// Generates a series of of functions that will only compile if the arguments to item_fn
     /// implement `::axum::extract::FromRequest` or `::axum::extract::FromRequestParts`.
     pub(crate) fn generate_check_inputs_impl_from_request(&self) -> TokenStream {
-        let takes_self = self.item_fn.sig.inputs.first().map_or(false, |arg| match arg {
-            FnArg::Receiver(_) => true,
-            FnArg::Typed(typed) => is_self_pat_type(typed),
-        });
-    
+        let takes_self = self
+            .item_fn
+            .sig
+            .inputs
+            .first()
+            .map_or(false, |arg| match arg {
+                FnArg::Receiver(_) => true,
+                FnArg::Typed(typed) => is_self_pat_type(typed),
+            });
+
         WithPosition::new(self.item_fn.sig.inputs.iter())
             .enumerate()
             .map(|(arg_idx, arg)| {
@@ -460,4 +467,56 @@ fn is_self_pat_type(typed: &syn::PatType) -> bool {
     };
 
     ident == "self"
+}
+
+/// This tries to extract or infer the state type given the item_fn and the
+/// param supplied to the macro.
+fn state_type_from_param(
+    state_ty_param: Option<Type>,
+    item_fn: &ItemFn,
+) -> Result<Type, syn::Error> {
+    match state_ty_param {
+        Some(ty) => Ok(ty),
+        None => {
+            let state_types_from_args = state_types_from_args(item_fn);
+            let r = if state_types_from_args.len() == 1 {
+                Ok(state_types_from_args.into_iter().next())
+            } else if state_types_from_args.len() > 1 {
+                Err(syn::Error::new(
+                    Span::call_site(),
+                    "can't infer state type, please add set it explicitly, as in \
+                        `#[debug_handler(state = MyStateType)]`",
+                ))
+            } else {
+                Ok(None)
+            };
+            r.map(|t| t.unwrap_or_else(|| syn::parse_quote!(())))
+        }
+    }
+}
+
+/// Given a signature like
+///
+/// ```skip
+/// #[debug_handler]
+/// async fn handler(
+///     _: axum::extract::State<AppState>,
+///     _: State<AppState>,
+/// ) {}
+/// ```
+///
+/// This will extract `AppState`.
+///
+/// Returns `None` if there are no `State` args or multiple of different types.
+fn state_types_from_args(item_fn: &ItemFn) -> HashSet<Type> {
+    let types = item_fn
+        .sig
+        .inputs
+        .iter()
+        .filter_map(|input| match input {
+            FnArg::Receiver(_) => None,
+            FnArg::Typed(pat_type) => Some(pat_type),
+        })
+        .map(|pat_type| &*pat_type.ty);
+    crate::infer_state_types(types).collect()
 }

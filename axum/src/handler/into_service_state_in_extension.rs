@@ -5,7 +5,6 @@ use std::{
     convert::Infallible,
     fmt,
     marker::PhantomData,
-    sync::Arc,
     task::{Context, Poll},
 };
 use tower_service::Service;
@@ -73,7 +72,7 @@ where
 
         let state = req
             .extensions_mut()
-            .remove::<Arc<S>>()
+            .remove::<S>()
             .expect("state extension missing. This is a bug in axum, please file an issue");
 
         let handler = self.handler.clone();

@@ -10,7 +10,7 @@ use matchit::MatchError;
 use tower::Service;
 
 use super::{
-    future::RouteFuture, url_params, Endpoint, Fallback, Node, Route, RouteId, Router,
+    future::RouteFuture, url_params, Endpoint, Node, Route, RouteId, Router,
     NEST_TAIL_PARAM_CAPTURE,
 };
 use crate::{
@@ -18,7 +18,7 @@ use crate::{
     response::Response,
 };
 
-/// TOOD: Docs
+/// A [`Router`] converted into a [`Service`].
 #[derive(Debug)]
 pub struct RouterService<B = Body> {
     routes: HashMap<RouteId, Route<B>>,
@@ -33,7 +33,7 @@ where
     #[track_caller]
     pub(super) fn new<S>(router: Router<S, B>) -> Self
     where
-        S: Send + Sync + 'static,
+        S: Clone + Send + Sync + 'static,
     {
         let state = router
             .state
@@ -45,7 +45,7 @@ where
             .map(|(route_id, endpoint)| {
                 let route = match endpoint {
                     Endpoint::MethodRouter(method_router) => {
-                        Route::new(method_router.with_state_arc(Arc::clone(&state)))
+                        Route::new(method_router.with_state(state.clone()))
                     }
                     Endpoint::Route(route) => route,
                 };
@@ -57,11 +57,7 @@ where
         Self {
             routes,
             node: router.node,
-            fallback: match router.fallback {
-                Fallback::Default(route) => route,
-                Fallback::Service(route) => route,
-                Fallback::BoxedHandler(handler) => handler.into_route(state),
-            },
+            fallback: router.fallback.into_route(&state),
         }
     }
 
@@ -133,7 +129,6 @@ impl<B> Clone for RouterService<B> {
 impl<B> Service<Request<B>> for RouterService<B>
 where
     B: HttpBody + Send + 'static,
-    //S: Send + Sync + 'static,
 {
     type Response = Response;
     type Error = Infallible;

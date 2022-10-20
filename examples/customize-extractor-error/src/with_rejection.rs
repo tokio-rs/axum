@@ -19,7 +19,7 @@ use serde_json::{json, Value};
 use thiserror::Error;
 
 pub async fn handler(
-    // `WitRejection` will extract `Json<Value>` from the request. If it fails,
+    // `WithRejection` will extract `Json<Value>` from the request. If it fails,
     // `JsonRejection` will be transform into `ApiError` and returned as response
     // to the client.
     //

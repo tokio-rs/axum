@@ -6,7 +6,7 @@ use axum::{
     response::{IntoResponse, Response},
 };
 use futures_util::future::{BoxFuture, FutureExt, Map};
-use std::{future::Future, marker::PhantomData, sync::Arc};
+use std::{future::Future, marker::PhantomData};
 
 mod or;
 
@@ -24,11 +24,7 @@ pub trait HandlerCallWithExtractors<T, S, B>: Sized {
     type Future: Future<Output = Response> + Send + 'static;
 
     /// Call the handler with the extracted inputs.
-    fn call(
-        self,
-        extractors: T,
-        state: Arc<S>,
-    ) -> <Self as HandlerCallWithExtractors<T, S, B>>::Future;
+    fn call(self, extractors: T, state: S) -> <Self as HandlerCallWithExtractors<T, S, B>>::Future;
 
     /// Conver this `HandlerCallWithExtractors` into [`Handler`].
     fn into_handler(self) -> IntoHandler<Self, T, S, B> {
@@ -133,7 +129,7 @@ macro_rules! impl_handler_call_with {
              fn call(
                  self,
                  ($($ty,)*): ($($ty,)*),
-                 _state: Arc<S>,
+                 _state: S,
              ) -> <Self as HandlerCallWithExtractors<($($ty,)*), S, B>>::Future {
                  self($($ty,)*).map(IntoResponse::into_response)
              }
@@ -178,7 +174,7 @@ where
 {
     type Future = BoxFuture<'static, Response>;
 
-    fn call(self, req: http::Request<B>, state: Arc<S>) -> Self::Future {
+    fn call(self, req: http::Request<B>, state: S) -> Self::Future {
         Box::pin(async move {
             match T::from_request(req, &state).await {
                 Ok(t) => self.handler.call(t, state).await,

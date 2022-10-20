@@ -5,7 +5,7 @@
 //! ```
 
 use axum::response::{IntoResponse, Response};
-use axum::{http, routing::get, Router, RouterService};
+use axum::{http, routing::get, Router};
 use std::net::SocketAddr;
 
 fn app() -> Router {

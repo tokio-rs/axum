@@ -17,7 +17,7 @@ use axum::{
     http::{header::SET_COOKIE, HeaderMap},
     response::{IntoResponse, Redirect, Response},
     routing::get,
-    Router,
+    RequestPartsExt, Router,
 };
 use http::{header, request::Parts};
 use oauth2::{
@@ -234,7 +234,8 @@ where
     async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
         let store = MemoryStore::from_ref(state);
 
-        let cookies = TypedHeader::<headers::Cookie>::from_request_parts(parts, state)
+        let cookies = parts
+            .extract::<TypedHeader<headers::Cookie>>()
             .await
             .map_err(|e| match *e.name() {
                 header::COOKIE => match e.reason() {

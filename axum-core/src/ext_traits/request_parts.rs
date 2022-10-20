@@ -1,4 +1,4 @@
-use axum_core::extract::FromRequestParts;
+use crate::extract::FromRequestParts;
 use futures_util::future::BoxFuture;
 use http::request::Parts;
 
@@ -53,9 +53,11 @@ mod tests {
     use std::convert::Infallible;
 
     use super::*;
-    use crate::{ext_traits::tests::RequiresState, extract::State};
+    use crate::{
+        ext_traits::tests::{RequiresState, State},
+        extract::FromRef,
+    };
     use async_trait::async_trait;
-    use axum_core::extract::FromRef;
     use http::{Method, Request};
 
     #[tokio::test]
@@ -73,7 +75,10 @@ mod tests {
 
         let state = "state".to_owned();
 
-        let State(extracted_state): State<String> = parts.extract_with_state(&state).await.unwrap();
+        let State(extracted_state): State<String> = parts
+            .extract_with_state::<State<String>, String>(&state)
+            .await
+            .unwrap();
 
         assert_eq!(extracted_state, state);
     }

@@ -1,5 +1,8 @@
-use crate::attr_parsing::second;
-use proc_macro2::TokenStream;
+use crate::{
+    attr_parsing::{parse_assignment_attribute, second},
+    with_position::{Position, WithPosition},
+};
+use proc_macro2::{Span, TokenStream};
 use quote::quote;
 use syn::{parse_quote, FnArg, ItemFn, Type};
 
@@ -18,11 +21,7 @@ pub(crate) fn expand(attr: Attrs, item_fn: ItemFn) -> TokenStream {
     let body_ty = body_ty
         .map(second)
         .unwrap_or_else(|| parse_quote!(axum::body::Body));
-    let mut state_ty = state_ty.map(second);
-    if state_ty.is_none() {
-        state_ty = state_type_from_args(&item_fn);
-    }
-    let state_ty = state_ty.unwrap_or_else(|| syn::parse_quote!(()));
+    let state_ty = state_ty.map(second);
 
     // these checks don't require the specializer, so we can generate code for them regardless
     // of whether we can successfully create one
@@ -115,32 +114,6 @@ fn check_path_extractor(item_fn: &ItemFn) -> TokenStream {
     } else {
         quote! {}
     }
-}
-
-/// Given a signature like
-///
-/// ```skip
-/// #[debug_handler]
-/// async fn handler(
-///     _: axum::extract::State<AppState>,
-///     _: State<AppState>,
-/// ) {}
-/// ```
-///
-/// This will extract `AppState`.
-///
-/// Returns `None` if there are no `State` args or multiple of different types.
-fn state_type_from_args(item_fn: &ItemFn) -> Option<Type> {
-    let types = item_fn
-        .sig
-        .inputs
-        .iter()
-        .filter_map(|input| match input {
-            FnArg::Receiver(_) => None,
-            FnArg::Typed(pat_type) => Some(pat_type),
-        })
-        .map(|pat_type| &*pat_type.ty);
-    crate::infer_state_type(types)
 }
 
 #[test]

@@ -18,7 +18,7 @@ struct Extractor {
     other: Query<HashMap<String, String>>,
 }
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 struct AppState {
     inner: InnerState,
 }

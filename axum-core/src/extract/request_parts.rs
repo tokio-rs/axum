@@ -1,7 +1,5 @@
-use super::{
-    default_body_limit::DefaultBodyLimitKind, rejection::*, FromRequest, FromRequestParts,
-};
-use crate::BoxError;
+use super::{rejection::*, FromRequest, FromRequestParts};
+use crate::{BoxError, RequestExt};
 use async_trait::async_trait;
 use bytes::Bytes;
 use http::{request::Parts, HeaderMap, Method, Request, Uri, Version};
@@ -84,27 +82,13 @@ where
     type Rejection = BytesRejection;
 
     async fn from_request(req: Request<B>, _: &S) -> Result<Self, Self::Rejection> {
-        // update docs in `axum-core/src/extract/default_body_limit.rs` and
-        // `axum/src/docs/extract.md` if this changes
-        const DEFAULT_LIMIT: usize = 2_097_152; // 2 mb
-
-        let limit_kind = req.extensions().get::<DefaultBodyLimitKind>().copied();
-        let bytes = match limit_kind {
-            Some(DefaultBodyLimitKind::Disable) => crate::body::to_bytes(req.into_body())
+        let bytes = match req.into_limited_body() {
+            Ok(limited_body) => crate::body::to_bytes(limited_body)
                 .await
                 .map_err(FailedToBufferBody::from_err)?,
-            Some(DefaultBodyLimitKind::Limit(limit)) => {
-                let body = http_body::Limited::new(req.into_body(), limit);
-                crate::body::to_bytes(body)
-                    .await
-                    .map_err(FailedToBufferBody::from_err)?
-            }
-            None => {
-                let body = http_body::Limited::new(req.into_body(), DEFAULT_LIMIT);
-                crate::body::to_bytes(body)
-                    .await
-                    .map_err(FailedToBufferBody::from_err)?
-            }
+            Err(unlimited_body) => crate::body::to_bytes(unlimited_body)
+                .await
+                .map_err(FailedToBufferBody::from_err)?,
         };
 
         Ok(bytes)

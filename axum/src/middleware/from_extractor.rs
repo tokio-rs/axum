@@ -10,7 +10,6 @@ use std::{
     future::Future,
     marker::PhantomData,
     pin::Pin,
-    sync::Arc,
     task::{Context, Poll},
 };
 use tower_layer::Layer;
@@ -99,13 +98,6 @@ pub fn from_extractor<E>() -> FromExtractorLayer<E, ()> {
 ///
 /// See [`State`](crate::extract::State) for more details about accessing state.
 pub fn from_extractor_with_state<E, S>(state: S) -> FromExtractorLayer<E, S> {
-    from_extractor_with_state_arc(Arc::new(state))
-}
-
-/// Create a middleware from an extractor with the given [`Arc`]'ed state.
-///
-/// See [`State`](crate::extract::State) for more details about accessing state.
-pub fn from_extractor_with_state_arc<E, S>(state: Arc<S>) -> FromExtractorLayer<E, S> {
     FromExtractorLayer {
         state,
         _marker: PhantomData,
@@ -119,14 +111,17 @@ pub fn from_extractor_with_state_arc<E, S>(state: Arc<S>) -> FromExtractorLayer<
 ///
 /// [`Layer`]: tower::Layer
 pub struct FromExtractorLayer<E, S> {
-    state: Arc<S>,
+    state: S,
     _marker: PhantomData<fn() -> E>,
 }
 
-impl<E, S> Clone for FromExtractorLayer<E, S> {
+impl<E, S> Clone for FromExtractorLayer<E, S>
+where
+    S: Clone,
+{
     fn clone(&self) -> Self {
         Self {
-            state: Arc::clone(&self.state),
+            state: self.state.clone(),
             _marker: PhantomData,
         }
     }
@@ -144,13 +139,16 @@ where
     }
 }
 
-impl<E, T, S> Layer<T> for FromExtractorLayer<E, S> {
+impl<E, T, S> Layer<T> for FromExtractorLayer<E, S>
+where
+    S: Clone,
+{
     type Service = FromExtractor<T, E, S>;
 
     fn layer(&self, inner: T) -> Self::Service {
         FromExtractor {
             inner,
-            state: Arc::clone(&self.state),
+            state: self.state.clone(),
             _extractor: PhantomData,
         }
     }
@@ -161,7 +159,7 @@ impl<E, T, S> Layer<T> for FromExtractorLayer<E, S> {
 /// See [`from_extractor`] for more details.
 pub struct FromExtractor<T, E, S> {
     inner: T,
-    state: Arc<S>,
+    state: S,
     _extractor: PhantomData<fn() -> E>,
 }
 
@@ -175,11 +173,12 @@ fn traits() {
 impl<T, E, S> Clone for FromExtractor<T, E, S>
 where
     T: Clone,
+    S: Clone,
 {
     fn clone(&self) -> Self {
         Self {
             inner: self.inner.clone(),
-            state: Arc::clone(&self.state),
+            state: self.state.clone(),
             _extractor: PhantomData,
         }
     }
@@ -202,10 +201,10 @@ where
 impl<T, E, B, S> Service<Request<B>> for FromExtractor<T, E, S>
 where
     E: FromRequestParts<S> + 'static,
-    B: Default + Send + 'static,
+    B: Send + 'static,
     T: Service<Request<B>> + Clone,
     T::Response: IntoResponse,
-    S: Send + Sync + 'static,
+    S: Clone + Send + Sync + 'static,
 {
     type Response = Response;
     type Error = T::Error;
@@ -217,7 +216,7 @@ where
     }
 
     fn call(&mut self, req: Request<B>) -> Self::Future {
-        let state = Arc::clone(&self.state);
+        let state = self.state.clone();
         let extract_future = Box::pin(async move {
             let (mut parts, body) = req.into_parts();
             let extracted = E::from_request_parts(&mut parts, &state).await;
@@ -267,7 +266,6 @@ where
     E: FromRequestParts<S>,
     T: Service<Request<B>>,
     T::Response: IntoResponse,
-    B: Default,
 {
     type Output = Result<Response, T::Error>;
 
@@ -306,9 +304,10 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{handler::Handler, routing::get, test_helpers::*, Router};
+    use crate::{async_trait, handler::Handler, routing::get, test_helpers::*, Router};
     use axum_core::extract::FromRef;
     use http::{header, request::Parts, StatusCode};
+    use tower_http::limit::RequestBodyLimitLayer;
 
     #[tokio::test]
     async fn test_from_extractor() {
@@ -363,5 +362,30 @@ mod tests {
             .send()
             .await;
         assert_eq!(res.status(), StatusCode::OK);
+    }
+
+    // just needs to compile
+    #[allow(dead_code)]
+    fn works_with_request_body_limit() {
+        struct MyExtractor;
+
+        #[async_trait]
+        impl<S> FromRequestParts<S> for MyExtractor
+        where
+            S: Send + Sync,
+        {
+            type Rejection = std::convert::Infallible;
+
+            async fn from_request_parts(
+                _parts: &mut Parts,
+                _state: &S,
+            ) -> Result<Self, Self::Rejection> {
+                unimplemented!()
+            }
+        }
+
+        let _: Router = Router::new()
+            .layer(from_extractor::<MyExtractor>())
+            .layer(RequestBodyLimitLayer::new(1));
     }
 }

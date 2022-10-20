@@ -595,17 +595,19 @@ where
     type Rejection = Response;
 
     async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
+        // You can either call them directly...
         let TypedHeader(Authorization(token)) =
             TypedHeader::<Authorization<Bearer>>::from_request_parts(parts, state)
                 .await
                 .map_err(|err| err.into_response())?;
 
-        let Extension(state): Extension<State> = Extension::from_request_parts(parts, state)
+        // ... or use `extract` / `extract_with_state` from `RequestExt` / `RequestPartsExt`
+        use axum::RequestPartsExt;
+        let Extension(state) = parts.extract::<Extension<State>>()
             .await
             .map_err(|err| err.into_response())?;
 
-        // actually perform the authorization...
-        unimplemented!()
+        unimplemented!("actually perform the authorization")
     }
 }
 
@@ -710,12 +712,12 @@ Extractors can also be run from middleware:
 
 ```rust
 use axum::{
-    Router,
     middleware::{self, Next},
     extract::{TypedHeader, FromRequestParts},
     http::{Request, StatusCode},
     response::Response,
     headers::authorization::{Authorization, Bearer},
+    RequestPartsExt, Router,
 };
 
 async fn auth_middleware<B>(
@@ -729,7 +731,7 @@ where
     let (mut parts, body) = request.into_parts();
 
     // `TypedHeader<Authorization<Bearer>>` extracts the auth token
-    let auth = TypedHeader::<Authorization<Bearer>>::from_request_parts(&mut parts, &())
+    let auth: TypedHeader<Authorization<Bearer>> = parts.extract()
         .await
         .map_err(|_| StatusCode::UNAUTHORIZED)?;
 
