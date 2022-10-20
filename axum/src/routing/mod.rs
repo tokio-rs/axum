@@ -170,6 +170,8 @@ where
     ///     .route("/", get(|state: State<AppState>| async {}))
     ///     .nest("/foo", nested_router)
     ///     .merge(merged_router);
+    ///
+    /// `app` now has routes for `/`, `/foo/bar`, and `/baz` that all use the same state.
     /// # let _: Router<AppState> = app;
     /// ```
     pub fn inherit_state() -> Self {
