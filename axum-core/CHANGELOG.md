@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+- None.
+
+# 0.2.9 (20. October, 2022)
+
 - **added:** Add `DefaultBodyLimit::max` for changing the default body limit ([#1397])
 - **added:** Add `Error::into_inner` for converting `Error` to `BoxError` without allocating ([#1476])
 
