@@ -1,4 +1,7 @@
-use std::collections::{HashMap, HashSet};
+use std::{
+    cmp::Ordering,
+    collections::{HashMap, HashSet},
+};
 
 use itertools::Itertools;
 use proc_macro2::{Span, TokenStream};
@@ -36,18 +39,15 @@ struct TypeSpecializer<'a> {
 
 impl<'a> VisitMut for TypeSpecializer<'a> {
     fn visit_type_mut(&mut self, ty: &mut syn::Type) {
-        match ty {
-            syn::Type::Path(ty_path) => {
-                if ty_path.path.segments.len() == 1 {
-                    let ident = &ty_path.path.segments[0].ident;
-                    if let Some(specialized) = self.specializations.get(ident) {
-                        *ty = (*specialized).clone();
-                        return; // don't recuresively visit substituted values
-                    }
+        if let syn::Type::Path(ty_path) = ty {
+            if ty_path.path.segments.len() == 1 {
+                let ident = &ty_path.path.segments[0].ident;
+                if let Some(specialized) = self.specializations.get(ident) {
+                    *ty = (*specialized).clone();
+                    return; // don't recuresively visit substituted values
                 }
             }
-            _ => (),
-        };
+        }
         visit_mut::visit_type_mut(self, ty);
     }
 }
@@ -146,9 +146,9 @@ impl Specializer {
     }
 
     /// Like `all_specializations_of_fn` but produces turbofishes of each specialization, rather than modified ItemFn.
-    pub(crate) fn all_specializations_as_turbofish<'a>(
-        &'a self,
-    ) -> impl Iterator<Item = TokenStream> + 'a {
+    pub(crate) fn all_specializations_as_turbofish(
+        &self,
+    ) -> impl Iterator<Item = TokenStream> + '_ {
         self.all_specializations(None)
             .map(move |specializations| quote! { ::<#(#specializations),*> })
     }
@@ -200,9 +200,8 @@ impl Specializer {
         let ty_params = self.find_generic_params(typ);
         self.all_specializations(Some(ty_params.clone()))
             .map(move |specializations| {
-                let param_specs: HashMap<&syn::Ident, &syn::Type> = HashMap::from_iter(
-                    std::iter::zip(ty_params.iter().map(|f| *f), specializations),
-                );
+                let param_specs: HashMap<&syn::Ident, &syn::Type> =
+                    HashMap::from_iter(std::iter::zip(ty_params.iter().copied(), specializations));
                 let mut specializer = TypeSpecializer {
                     specializations: &param_specs,
                 };
@@ -479,18 +478,16 @@ fn state_type_from_param(
         Some(ty) => Ok(ty),
         None => {
             let state_types_from_args = state_types_from_args(item_fn);
-            let r = if state_types_from_args.len() == 1 {
-                Ok(state_types_from_args.into_iter().next())
-            } else if state_types_from_args.len() > 1 {
-                Err(syn::Error::new(
+            match state_types_from_args.len().cmp(&1) {
+                Ordering::Equal => Ok(state_types_from_args.into_iter().next()),
+                Ordering::Greater => Err(syn::Error::new(
                     Span::call_site(),
                     "can't infer state type, please add set it explicitly, as in \
                         `#[debug_handler(state = MyStateType)]`",
-                ))
-            } else {
-                Ok(None)
-            };
-            r.map(|t| t.unwrap_or_else(|| syn::parse_quote!(())))
+                )),
+                Ordering::Less => Ok(None),
+            }
+            .map(|t| t.unwrap_or_else(|| syn::parse_quote!(())))
         }
     }
 }

@@ -1,8 +1,5 @@
-use crate::{
-    attr_parsing::{parse_assignment_attribute, second},
-    with_position::{Position, WithPosition},
-};
-use proc_macro2::{Span, TokenStream};
+use crate::attr_parsing::second;
+use proc_macro2::TokenStream;
 use quote::quote;
 use syn::{parse_quote, FnArg, ItemFn, Type};
 
