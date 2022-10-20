@@ -135,7 +135,7 @@ composite_rejection! {
     /// can fail.
     pub enum RawFormRejection {
         InvalidFormContentType,
-        StringRejection,
+        BytesRejection,
     }
 }
 

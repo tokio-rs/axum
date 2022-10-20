@@ -1,5 +1,6 @@
 use async_trait::async_trait;
 use axum_core::extract::FromRequest;
+use bytes::{Bytes, BytesMut};
 use http::{Method, Request};
 
 use super::{
@@ -9,7 +10,8 @@ use super::{
 
 use crate::{body::HttpBody, BoxError};
 
-/// Extractor that extracts the raw form string, without parsing it.
+/// Extractor that extracts the query bytes from the GET request or body in other methods
+/// with expecting `Content-Type` header value to be `application/x-www-form-urlencoded`.
 ///
 /// # Example
 ///
@@ -28,7 +30,7 @@ use crate::{body::HttpBody, BoxError};
 /// # };
 /// ```
 #[derive(Debug)]
-pub struct RawForm(pub Option<String>);
+pub struct RawForm(pub Bytes);
 
 #[async_trait]
 impl<S, B> FromRequest<S, B> for RawForm
@@ -42,13 +44,73 @@ where
 
     async fn from_request(req: Request<B>, state: &S) -> Result<Self, Self::Rejection> {
         if req.method() == Method::GET {
-            Ok(Self(req.uri().query().map(String::from)))
+            let mut bytes = BytesMut::new();
+
+            if let Some(query) = req.uri().query() {
+                bytes.extend(query.as_bytes());
+            }
+
+            Ok(Self(bytes.freeze()))
         } else {
             if !has_content_type(req.headers(), &mime::APPLICATION_WWW_FORM_URLENCODED) {
                 return Err(InvalidFormContentType.into());
             }
 
-            Ok(Self(Some(String::from_request(req, state).await?)))
+            Ok(Self(Bytes::from_request(req, state).await?))
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use http::{header::CONTENT_TYPE, Request};
+
+    use super::{InvalidFormContentType, RawForm, RawFormRejection};
+
+    use crate::{
+        body::{Bytes, Empty, Full},
+        extract::FromRequest,
+    };
+
+    async fn check_query(uri: &str, value: &[u8]) {
+        let req = Request::builder()
+            .uri(uri)
+            .body(Empty::<Bytes>::new())
+            .unwrap();
+
+        assert_eq!(RawForm::from_request(req, &()).await.unwrap().0, value);
+    }
+
+    async fn check_body(body: &'static [u8]) {
+        let req = Request::post("http://example.com/test")
+            .header(CONTENT_TYPE, mime::APPLICATION_WWW_FORM_URLENCODED.as_ref())
+            .body(Full::new(Bytes::from(body)))
+            .unwrap();
+
+        assert_eq!(RawForm::from_request(req, &()).await.unwrap().0, body);
+    }
+
+    #[tokio::test]
+    async fn test_from_query() {
+        check_query("http://example.com/test", b"").await;
+
+        check_query("http://example.com/test?page=0&size=10", b"page=0&size=10").await;
+    }
+
+    #[tokio::test]
+    async fn test_from_body() {
+        check_body(b"username=user&password=secure%20password").await;
+    }
+
+    #[tokio::test]
+    async fn test_incorrect_content_type() {
+        let req = Request::post("http://example.com/test")
+            .body(Full::<Bytes>::from(Bytes::from("page=0&size=10")))
+            .unwrap();
+
+        assert!(matches!(
+            RawForm::from_request(req, &()).await.unwrap_err(),
+            RawFormRejection::InvalidFormContentType(InvalidFormContentType)
+        ))
     }
 }
