@@ -80,8 +80,7 @@ use std::{collections::HashMap, sync::Arc};
 ///     request
 /// }
 ///
-/// // `MatchedPath` is always accessible on handlers regardless
-/// // if its for a nested route or not
+/// // `MatchedPath` is always accessible on handlers added via `Router::route`
 /// async fn handler(matched_path: MatchedPath) {}
 ///
 /// let app = Router::new()
@@ -140,7 +139,7 @@ pub(crate) fn set_matched_path_for_request(
 
     let matched_path = append_nested_matched_path(matched_path, extensions);
 
-    if matched_path.ends_with(NEST_TAIL_PARAM_CAPTURE) {
+    if matched_path.contains(NEST_TAIL_PARAM_CAPTURE) {
         extensions.insert(MatchedNestedPath(matched_path));
         extensions.remove::<MatchedPath>();
     } else {
@@ -156,9 +155,11 @@ fn append_nested_matched_path(matched_path: &Arc<str>, extensions: &http::Extens
         .map(|matched_path| matched_path.as_str())
         .or_else(|| Some(&extensions.get::<MatchedNestedPath>()?.0))
     {
-        let previous = previous
-            .strip_suffix(NEST_TAIL_PARAM_CAPTURE)
-            .unwrap_or(previous);
+        let previous = if let Some(previous) = previous.strip_suffix(NEST_TAIL_PARAM_CAPTURE) {
+            previous
+        } else {
+            previous
+        };
 
         let matched_path = format!("{}{}", previous, matched_path);
         matched_path.into()
@@ -170,7 +171,10 @@ fn append_nested_matched_path(matched_path: &Arc<str>, extensions: &http::Extens
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{middleware::map_request, routing::get, test_helpers::*, Router};
+    use crate::{
+        handler::HandlerWithoutStateExt, middleware::map_request, routing::get, test_helpers::*,
+        Router,
+    };
     use http::{Request, StatusCode};
 
     #[tokio::test]
@@ -292,6 +296,20 @@ mod tests {
                 .route("/:b", get(|| async move {}))
                 .layer(map_request(extract_matched_path)),
         );
+
+        let client = TestClient::new(app);
+
+        let res = client.get("/foo/bar").send().await;
+        assert_eq!(res.status(), StatusCode::OK);
+    }
+
+    #[tokio::test]
+    async fn extracting_on_nested_handler() {
+        async fn handler(path: Option<MatchedPath>) {
+            assert!(path.is_none());
+        }
+
+        let app = Router::new().nest_service("/:a", handler.into_service());
 
         let client = TestClient::new(app);
 
