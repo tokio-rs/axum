@@ -77,16 +77,16 @@ impl Specializer {
             .enumerate()
             .map(|(_idx, param)| match param {
                     GenericParam::Type(t) => {
-                        if specializations.contains_key(&t.ident) {  
+                        if specializations.contains_key(&t.ident) {
                             Ok(t.ident.clone())
                         } else {
-                            Err(                                
+                            Err(
                                 syn::Error::new_spanned(
                                     param,
                                     "Generic param is missing a specialization in `#[axum_macros::debug_handler]`. Specify each generic param at least once using `#[debug_handler(with(T = ConcreteType))]`.",
                                 )
                             )
-                        }                    
+                        }
                     },
                     _ => Err(syn::Error::new_spanned(
                         param,
@@ -363,9 +363,9 @@ impl Specializer {
                     Position::First(_) | Position::Middle(_) => true,
                     Position::Last(_) | Position::Only(_) => false,
                 };
-    
+
                 let arg = arg.into_inner();
-    
+
                 let (span, ty) = match arg {
                     FnArg::Receiver(receiver) => {
                         if receiver.reference.is_some() {
@@ -375,14 +375,14 @@ impl Specializer {
                             )
                             .into_compile_error();
                         }
-    
+
                         let span = receiver.span();
                         (span, syn::parse_quote!(Self))
                     }
                     FnArg::Typed(typed) => {
                         let ty = &typed.ty;
                         let span = ty.span();
-    
+
                         if is_self_pat_type(typed) {
                             (span, syn::parse_quote!(Self))
                         } else {
@@ -401,7 +401,7 @@ impl Specializer {
                             specialization_idx,
                             span = span,
                         );
-    
+
                         let call_check_fn = format_ident!(
                             "__axum_macros_check_{}_{}_{}_from_request_call_check",
                             self.item_fn.sig.ident,
@@ -409,7 +409,7 @@ impl Specializer {
                             specialization_idx,
                             span = span,
                         );
-    
+
                         let call_check_fn_body = if takes_self {
                             quote_spanned! {span=>
                                 Self::#check_fn();
@@ -419,13 +419,13 @@ impl Specializer {
                                 #check_fn();
                             }
                         };
-    
+
                         let check_fn_generics = if must_impl_from_request_parts {
                             quote! {}
                         } else {
                             quote! { <M> }
                         };
-                        
+
                         let state_ty = &self.state_ty;
                         let body_ty = &self.body_ty;
                         let from_request_bound = if must_impl_from_request_parts {
@@ -437,14 +437,14 @@ impl Specializer {
                                 #specialized_ty: ::axum::extract::FromRequest<#state_ty, #body_ty, M> + Send
                             }
                         };
-    
+
                         quote_spanned! {span=>
                             #[allow(warnings)]
                             fn #check_fn #check_fn_generics()
                             where
                                 #from_request_bound,
                             {}
-            
+
                             // we have to call the function to actually trigger a compile error
                             // since the function is generic, just defining it is not enough
                             #[allow(warnings)]
