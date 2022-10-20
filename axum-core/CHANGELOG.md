@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **added:** Add `DefaultBodyLimit::max` for changing the default body limit ([#1397])
 - **added:** Add `Error::into_inner` for converting `Error` to `BoxError` without allocating ([#1476])
+- **breaking:** `AppendHeaders` now works on any `impl IntoIterator`
 
 [#1397]: https://github.com/tokio-rs/axum/pull/1397
 [#1476]: https://github.com/tokio-rs/axum/pull/1476
