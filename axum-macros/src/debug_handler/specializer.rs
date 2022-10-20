@@ -52,6 +52,7 @@ impl<'a> VisitMut for TypeSpecializer<'a> {
     }
 }
 
+/// A generic item function and all of it's specializations over generic parameters, body type and state type.
 pub(crate) struct Specializer {
     item_fn: ItemFn,
     /// each generic params (in order of declaration) with a list of their provided specializations
