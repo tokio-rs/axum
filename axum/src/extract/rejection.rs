@@ -73,6 +73,14 @@ define_rejection! {
     pub struct FailedToResolveHost;
 }
 
+define_rejection! {
+    #[status = BAD_REQUEST]
+    #[body = "Failed to deserialize form"]
+    /// Rejection type used if the [`Form`](super::Form) extractor is unable to
+    /// deserialize the form into the target type.
+    pub struct FailedToDeserializeForm(Error);
+}
+
 /// Rejection type for extractors that deserialize query strings if the input
 /// couldn't be deserialized into the target type.
 #[derive(Debug)]
@@ -123,7 +131,7 @@ composite_rejection! {
     /// can fail.
     pub enum FormRejection {
         InvalidFormContentType,
-        FailedToDeserializeQueryString,
+        FailedToDeserializeForm,
         BytesRejection,
     }
 }

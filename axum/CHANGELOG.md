@@ -47,6 +47,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **added:** `FromRequest` and `FromRequestParts` derive macro re-exports from
   [`axum-macros`] behind the `macros` feature ([#1352])
 - **added:** Add `extract::RawForm` for accessing raw urlencoded query bytes or request body ([#1487])
+- **breaking:** Rename `FormRejection::FailedToDeserializeQueryString` to
+  `FormRejection::FailedToDeserializeForm`
 
 [#1352]: https://github.com/tokio-rs/axum/pull/1352
 [#1368]: https://github.com/tokio-rs/axum/pull/1368
