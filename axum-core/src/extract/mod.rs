@@ -40,7 +40,7 @@ mod private {
 /// [`axum::extract`]: https://docs.rs/axum/0.6.0-rc.2/axum/extract/index.html
 #[async_trait]
 #[cfg_attr(
-    feature = "nightly-error-messages",
+    nightly_error_messages,
     rustc_on_unimplemented(
         on(
             _Self = "axum::http::Request<axum::body::Body>",

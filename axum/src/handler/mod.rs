@@ -97,7 +97,7 @@ pub use self::service::HandlerService;
 /// ```
 #[doc = include_str!("../docs/debugging_handler_type_errors.md")]
 #[cfg_attr(
-    feature = "nightly-error-messages",
+    nightly_error_messages,
     rustc_on_unimplemented(
         note = "Consider using `#[axum_macros::debug_handler]` to improve the error message"
     )

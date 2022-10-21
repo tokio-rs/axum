@@ -21,12 +21,12 @@ mime = "0.3.16"
 tower-layer = "0.3"
 tower-service = "0.3"
 
+[build-dependencies]
+rustversion = "1.0.9"
+
 [dev-dependencies]
 axum = { path = "../axum", version = "0.6.0-rc.2" }
 futures-util = "0.3"
 hyper = "0.14"
 tokio = { version = "1.0", features = ["macros"] }
 tower-http = { version = "0.3.4", features = ["limit"] }
-
-[features]
-nightly-error-messages = []
