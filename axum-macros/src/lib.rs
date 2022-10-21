@@ -695,7 +695,7 @@ where
 
 #[cfg(test)]
 fn run_ui_tests(directory: &str) {
-    #[rustversion::stable]
+    #[rustversion::nightly]
     fn go(directory: &str) {
         let t = trybuild::TestCases::new();
 
@@ -721,8 +721,8 @@ fn run_ui_tests(directory: &str) {
         }
     }
 
-    #[rustversion::not(stable)]
-    fn go(directory: &str) {}
+    #[rustversion::not(nightly)]
+    fn go(_directory: &str) {}
 
     go(directory);
 }
