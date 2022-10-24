@@ -6,6 +6,7 @@
 
 use axum::{
     body::Body,
+    handler::HandlerWithoutStateExt,
     http::{Request, StatusCode},
     response::IntoResponse,
     routing::{get, get_service},
@@ -35,8 +36,9 @@ async fn main() {
         serve(using_serve_dir(), 3001),
         serve(using_serve_dir_with_assets_fallback(), 3002),
         serve(using_serve_dir_only_from_root_via_fallback(), 3003),
-        serve(two_serve_dirs(), 3004),
-        serve(calling_serve_dir_from_a_handler(), 3005),
+        serve(using_serve_dir_with_handler_as_service(), 3004),
+        serve(two_serve_dirs(), 3005),
+        serve(calling_serve_dir_from_a_handler(), 3006),
     );
 }
 
@@ -84,6 +86,24 @@ fn using_serve_dir_only_from_root_via_fallback() -> Router {
     Router::new()
         .route("/foo", get(|| async { "Hi from /foo" }))
         .fallback_service(serve_dir)
+}
+
+fn using_serve_dir_with_handler_as_service() -> Router {
+    // you can convert handler function to service
+    async fn handler_404() -> impl IntoResponse {
+        (StatusCode::NOT_FOUND, "Not found")
+    }
+    
+    let service = handler_404
+        .into_service()
+        .map_err(|_| io::Error::from(io::ErrorKind::Other));
+
+    let serve_dir = ServeDir::new("assets").not_found_service(service);
+    let serve_dir = get_service(serve_dir).handle_error(handle_error);
+
+    Router::new()
+        .route("/foo", get(|| async { "Hi from /foo" }))
+        .fallback_service(serve_dir)    
 }
 
 fn two_serve_dirs() -> Router {
