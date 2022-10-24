@@ -25,6 +25,7 @@ syn = { version = "1.0", features = [
     "extra-traits",
     # needed for `debug_handler`
     "visit",
+    "visit-mut",
 ] }
 
 [dev-dependencies]
