@@ -89,12 +89,12 @@ fn using_serve_dir_only_from_root_via_fallback() -> Router {
 }
 
 fn using_serve_dir_with_handler_as_service() -> Router {
-    // you can convert handler function to service
-    async fn handler_404() -> impl IntoResponse {
+    async fn handle_404() -> (StatusCode, &'static str) {
         (StatusCode::NOT_FOUND, "Not found")
     }
-    
-    let service = handler_404
+
+    // you can convert handler function to service
+    let service = handle_404
         .into_service()
         .map_err(|_| io::Error::from(io::ErrorKind::Other));
 
