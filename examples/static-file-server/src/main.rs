@@ -103,7 +103,7 @@ fn using_serve_dir_with_handler_as_service() -> Router {
 
     Router::new()
         .route("/foo", get(|| async { "Hi from /foo" }))
-        .fallback_service(serve_dir)    
+        .fallback_service(serve_dir)
 }
 
 fn two_serve_dirs() -> Router {
