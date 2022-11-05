@@ -302,9 +302,15 @@ mod tests {
     }
 
     cookie_test!(plaintext_cookies, CookieJar);
+
+    #[cfg(feature = "cookie-signed")]
     cookie_test!(signed_cookies, SignedCookieJar);
+    #[cfg(feature = "cookie-signed")]
     cookie_test!(signed_cookies_with_custom_key, SignedCookieJar<CustomKey>);
+
+    #[cfg(feature = "cookie-private")]
     cookie_test!(private_cookies, PrivateCookieJar);
+    #[cfg(feature = "cookie-private")]
     cookie_test!(private_cookies_with_custom_key, PrivateCookieJar<CustomKey>);
 
     #[derive(Clone)]
@@ -334,6 +340,7 @@ mod tests {
         }
     }
 
+    #[cfg(feature = "cookie-signed")]
     #[tokio::test]
     async fn signed_cannot_access_invalid_cookies() {
         async fn get_cookie(jar: SignedCookieJar) -> impl IntoResponse {
