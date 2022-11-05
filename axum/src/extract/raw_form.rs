@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use axum_core::extract::FromRequest;
+use axum_core::{extract::FromRequest, RequestExt};
 use bytes::{Bytes, BytesMut};
 use http::{Method, Request};
 
@@ -40,11 +40,10 @@ where
     B: HttpBody + Send + 'static,
     B::Data: Send,
     B::Error: Into<BoxError>,
-    S: Send + Sync,
 {
     type Rejection = RawFormRejection;
 
-    async fn from_request(req: Request<B>, state: &S) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: Request<B>, _: &S) -> Result<Self, Self::Rejection> {
         if req.method() == Method::GET {
             let mut bytes = BytesMut::new();
 
@@ -58,7 +57,7 @@ where
                 return Err(InvalidFormContentType.into());
             }
 
-            Ok(Self(Bytes::from_request(req, state).await?))
+            Ok(Self(req.extract::<Bytes, _>().await?))
         }
     }
 }

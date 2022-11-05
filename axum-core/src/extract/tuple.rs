@@ -5,10 +5,7 @@ use http::request::{Parts, Request};
 use std::convert::Infallible;
 
 #[async_trait]
-impl<S> FromRequestParts<S> for ()
-where
-    S: Send + Sync,
-{
+impl<S> FromRequestParts<S> for () {
     type Rejection = Infallible;
 
     async fn from_request_parts(_: &mut Parts, _: &S) -> Result<(), Self::Rejection> {

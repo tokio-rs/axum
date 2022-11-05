@@ -76,11 +76,10 @@ pub struct Extension<T>(pub T);
 impl<T, S> FromRequestParts<S> for Extension<T>
 where
     T: Clone + Send + Sync + 'static,
-    S: Send + Sync,
 {
     type Rejection = ExtensionRejection;
 
-    async fn from_request_parts(req: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
+    async fn from_request_parts(req: &mut Parts, _: &S) -> Result<Self, Self::Rejection> {
         let value = req
             .extensions
             .get::<T>()

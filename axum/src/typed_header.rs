@@ -56,11 +56,10 @@ pub struct TypedHeader<T>(pub T);
 impl<T, S> FromRequestParts<S> for TypedHeader<T>
 where
     T: headers::Header,
-    S: Send + Sync,
 {
     type Rejection = TypedHeaderRejection;
 
-    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
+    async fn from_request_parts(parts: &mut Parts, _: &S) -> Result<Self, Self::Rejection> {
         match parts.headers.typed_try_get::<T>() {
             Ok(Some(value)) => Ok(Self(value)),
             Ok(None) => Err(TypedHeaderRejection {

@@ -5,7 +5,7 @@ use axum::{
     body::{Bytes, HttpBody},
     extract::{rejection::BytesRejection, FromRequest},
     response::{IntoResponse, Response},
-    BoxError,
+    BoxError, RequestExt,
 };
 use bytes::BytesMut;
 use http::{Request, StatusCode};
@@ -103,12 +103,11 @@ where
     B: HttpBody + Send + 'static,
     B::Data: Send,
     B::Error: Into<BoxError>,
-    S: Send + Sync,
 {
     type Rejection = ProtoBufRejection;
 
-    async fn from_request(req: Request<B>, state: &S) -> Result<Self, Self::Rejection> {
-        let mut bytes = Bytes::from_request(req, state).await?;
+    async fn from_request(req: Request<B>, _: &S) -> Result<Self, Self::Rejection> {
+        let mut bytes: Bytes = req.extract().await?;
 
         match T::decode(&mut bytes) {
             Ok(value) => Ok(ProtoBuf(value)),

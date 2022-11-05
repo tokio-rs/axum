@@ -84,8 +84,9 @@ pub trait FromRequestParts<S>: Sized {
 /// #[async_trait]
 /// impl<S, B> FromRequest<S, B> for MyExtractor
 /// where
-///     // these bounds are required by `async_trait`
+///     // this bound is required by `async_trait`
 ///     B: Send + 'static,
+///     // this bound is also required if the state parameter is not discarded with `_: &S`
 ///     S: Send + Sync,
 /// {
 ///     type Rejection = http::StatusCode;

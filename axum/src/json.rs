@@ -4,7 +4,10 @@ use crate::{
     BoxError,
 };
 use async_trait::async_trait;
-use axum_core::response::{IntoResponse, Response};
+use axum_core::{
+    response::{IntoResponse, Response},
+    RequestExt,
+};
 use bytes::{BufMut, BytesMut};
 use http::{
     header::{self, HeaderMap, HeaderValue},
@@ -106,13 +109,12 @@ where
     B: HttpBody + Send + 'static,
     B::Data: Send,
     B::Error: Into<BoxError>,
-    S: Send + Sync,
 {
     type Rejection = JsonRejection;
 
-    async fn from_request(req: Request<B>, state: &S) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: Request<B>, _: &S) -> Result<Self, Self::Rejection> {
         if json_content_type(req.headers()) {
-            let bytes = Bytes::from_request(req, state).await?;
+            let bytes: Bytes = req.extract().await?;
             let deserializer = &mut serde_json::Deserializer::from_slice(&bytes);
 
             let value = match serde_path_to_error::deserialize(deserializer) {

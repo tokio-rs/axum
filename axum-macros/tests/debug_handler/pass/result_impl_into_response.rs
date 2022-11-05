@@ -116,13 +116,10 @@ impl A {
 }
 
 #[async_trait]
-impl<S> FromRequestParts<S> for A
-where
-    S: Send + Sync,
-{
+impl<S> FromRequestParts<S> for A {
     type Rejection = ();
 
-    async fn from_request_parts(_parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
+    async fn from_request_parts(_parts: &mut Parts, _: &S) -> Result<Self, Self::Rejection> {
         unimplemented!()
     }
 }

@@ -106,11 +106,10 @@ where
     B::Data: Into<Bytes>,
     B::Error: Into<BoxError>,
     T: DeserializeOwned,
-    S: Send + Sync,
 {
     type Rejection = Infallible;
 
-    async fn from_request(req: Request<B>, _state: &S) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: Request<B>, _: &S) -> Result<Self, Self::Rejection> {
         // `Stream::lines` isn't a thing so we have to convert it into an `AsyncRead`
         // so we can call `AsyncRead::lines` and then convert it back to a `Stream`
         let body = BodyStream {

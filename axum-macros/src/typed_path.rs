@@ -135,17 +135,14 @@ fn expand_named_fields(
     let from_request_impl = quote! {
         #[::axum::async_trait]
         #[automatically_derived]
-        impl<S> ::axum::extract::FromRequestParts<S> for #ident
-        where
-            S: Send + Sync,
-        {
+        impl<S> ::axum::extract::FromRequestParts<S> for #ident {
             type Rejection = #rejection_assoc_type;
 
             async fn from_request_parts(
                 parts: &mut ::axum::http::request::Parts,
-                state: &S,
+                _: &S,
             ) -> ::std::result::Result<Self, Self::Rejection> {
-                ::axum::extract::Path::from_request_parts(parts, state)
+                ::axum::extract::Path::from_request_parts(parts, &())
                     .await
                     .map(|path| path.0)
                     #map_err_rejection
@@ -240,17 +237,14 @@ fn expand_unnamed_fields(
     let from_request_impl = quote! {
         #[::axum::async_trait]
         #[automatically_derived]
-        impl<S> ::axum::extract::FromRequestParts<S> for #ident
-        where
-            S: Send + Sync,
-        {
+        impl<S> ::axum::extract::FromRequestParts<S> for #ident {
             type Rejection = #rejection_assoc_type;
 
             async fn from_request_parts(
                 parts: &mut ::axum::http::request::Parts,
-                state: &S,
+                _: &S,
             ) -> ::std::result::Result<Self, Self::Rejection> {
-                ::axum::extract::Path::from_request_parts(parts, state)
+                ::axum::extract::Path::from_request_parts(parts, &())
                     .await
                     .map(|path| path.0)
                     #map_err_rejection
@@ -324,15 +318,12 @@ fn expand_unit_fields(
     let from_request_impl = quote! {
         #[::axum::async_trait]
         #[automatically_derived]
-        impl<S> ::axum::extract::FromRequestParts<S> for #ident
-        where
-            S: Send + Sync,
-        {
+        impl<S> ::axum::extract::FromRequestParts<S> for #ident {
             type Rejection = #rejection_assoc_type;
 
             async fn from_request_parts(
                 parts: &mut ::axum::http::request::Parts,
-                _state: &S,
+                _: &S,
             ) -> ::std::result::Result<Self, Self::Rejection> {
                 if parts.uri.path() == <Self as ::axum_extra::routing::TypedPath>::PATH {
                     Ok(Self)

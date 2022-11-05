@@ -62,11 +62,10 @@ pub struct Query<T>(pub T);
 impl<T, S> FromRequestParts<S> for Query<T>
 where
     T: DeserializeOwned,
-    S: Send + Sync,
 {
     type Rejection = QueryRejection;
 
-    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
+    async fn from_request_parts(parts: &mut Parts, _: &S) -> Result<Self, Self::Rejection> {
         let query = parts.uri.query().unwrap_or_default();
         let value = serde_html_form::from_str(query)
             .map_err(FailedToDeserializeQueryString::__private_new)?;

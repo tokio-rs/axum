@@ -276,13 +276,10 @@ impl WebSocketUpgrade {
 }
 
 #[async_trait]
-impl<S> FromRequestParts<S> for WebSocketUpgrade
-where
-    S: Send + Sync,
-{
+impl<S> FromRequestParts<S> for WebSocketUpgrade {
     type Rejection = WebSocketUpgradeRejection;
 
-    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
+    async fn from_request_parts(parts: &mut Parts, _: &S) -> Result<Self, Self::Rejection> {
         if parts.method != Method::GET {
             return Err(MethodNotGet.into());
         }

@@ -9,7 +9,6 @@ use std::convert::Infallible;
 impl<S, B> FromRequest<S, B> for Request<B>
 where
     B: Send,
-    S: Send + Sync,
 {
     type Rejection = Infallible;
 
@@ -19,10 +18,7 @@ where
 }
 
 #[async_trait]
-impl<S> FromRequestParts<S> for Method
-where
-    S: Send + Sync,
-{
+impl<S> FromRequestParts<S> for Method {
     type Rejection = Infallible;
 
     async fn from_request_parts(parts: &mut Parts, _: &S) -> Result<Self, Self::Rejection> {
@@ -31,10 +27,7 @@ where
 }
 
 #[async_trait]
-impl<S> FromRequestParts<S> for Uri
-where
-    S: Send + Sync,
-{
+impl<S> FromRequestParts<S> for Uri {
     type Rejection = Infallible;
 
     async fn from_request_parts(parts: &mut Parts, _: &S) -> Result<Self, Self::Rejection> {
@@ -43,10 +36,7 @@ where
 }
 
 #[async_trait]
-impl<S> FromRequestParts<S> for Version
-where
-    S: Send + Sync,
-{
+impl<S> FromRequestParts<S> for Version {
     type Rejection = Infallible;
 
     async fn from_request_parts(parts: &mut Parts, _: &S) -> Result<Self, Self::Rejection> {
@@ -60,10 +50,7 @@ where
 ///
 /// [`TypedHeader`]: https://docs.rs/axum/latest/axum/extract/struct.TypedHeader.html
 #[async_trait]
-impl<S> FromRequestParts<S> for HeaderMap
-where
-    S: Send + Sync,
-{
+impl<S> FromRequestParts<S> for HeaderMap {
     type Rejection = Infallible;
 
     async fn from_request_parts(parts: &mut Parts, _: &S) -> Result<Self, Self::Rejection> {
@@ -77,7 +64,6 @@ where
     B: http_body::Body + Send + 'static,
     B::Data: Send,
     B::Error: Into<BoxError>,
-    S: Send + Sync,
 {
     type Rejection = BytesRejection;
 
@@ -101,18 +87,13 @@ where
     B: http_body::Body + Send + 'static,
     B::Data: Send,
     B::Error: Into<BoxError>,
-    S: Send + Sync,
 {
     type Rejection = StringRejection;
 
-    async fn from_request(req: Request<B>, state: &S) -> Result<Self, Self::Rejection> {
-        let bytes = Bytes::from_request(req, state)
-            .await
-            .map_err(|err| match err {
-                BytesRejection::FailedToBufferBody(inner) => {
-                    StringRejection::FailedToBufferBody(inner)
-                }
-            })?;
+    async fn from_request(req: Request<B>, _: &S) -> Result<Self, Self::Rejection> {
+        let bytes: Bytes = req.extract().await.map_err(|err| match err {
+            BytesRejection::FailedToBufferBody(inner) => StringRejection::FailedToBufferBody(inner),
+        })?;
 
         let string = std::str::from_utf8(&bytes)
             .map_err(InvalidUtf8::from_err)?
@@ -126,7 +107,6 @@ where
 impl<S, B> FromRequest<S, B> for Parts
 where
     B: Send + 'static,
-    S: Send + Sync,
 {
     type Rejection = Infallible;
 

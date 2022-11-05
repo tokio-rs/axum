@@ -5,7 +5,7 @@ use axum::{
         rejection::{FailedToDeserializeQueryString, FormRejection, InvalidFormContentType},
         FromRequest,
     },
-    BoxError,
+    BoxError, RequestExt,
 };
 use bytes::Bytes;
 use http::{header, HeaderMap, Method, Request};
@@ -61,11 +61,10 @@ where
     B: HttpBody + Send + 'static,
     B::Data: Send,
     B::Error: Into<BoxError>,
-    S: Send + Sync,
 {
     type Rejection = FormRejection;
 
-    async fn from_request(req: Request<B>, state: &S) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: Request<B>, _: &S) -> Result<Self, Self::Rejection> {
         if req.method() == Method::GET {
             let query = req.uri().query().unwrap_or_default();
             let value = serde_html_form::from_str(query)
@@ -76,7 +75,7 @@ where
                 return Err(InvalidFormContentType::default().into());
             }
 
-            let bytes = Bytes::from_request(req, state).await?;
+            let bytes: Bytes = req.extract().await?;
             let value = serde_html_form::from_bytes(&bytes)
                 .map_err(FailedToDeserializeQueryString::__private_new)?;
 

@@ -81,16 +81,11 @@ struct BufferRequestBody(Bytes);
 
 // we must implement `FromRequest` (and not `FromRequestParts`) to consume the body
 #[async_trait]
-impl<S> FromRequest<S, BoxBody> for BufferRequestBody
-where
-    S: Send + Sync,
-{
+impl<S> FromRequest<S, BoxBody> for BufferRequestBody {
     type Rejection = Response;
 
-    async fn from_request(req: Request<BoxBody>, state: &S) -> Result<Self, Self::Rejection> {
-        let body = Bytes::from_request(req, state)
-            .await
-            .map_err(|err| err.into_response())?;
+    async fn from_request(req: Request<BoxBody>, _: &S) -> Result<Self, Self::Rejection> {
+        let body: Bytes = req.extract().await.map_err(|err| err.into_response())?;
 
         do_thing_with_request_body(body.clone());
 

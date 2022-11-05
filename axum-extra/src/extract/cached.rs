@@ -141,15 +141,12 @@ mod tests {
         struct Extractor(Instant);
 
         #[async_trait]
-        impl<S> FromRequestParts<S> for Extractor
-        where
-            S: Send + Sync,
-        {
+        impl<S> FromRequestParts<S> for Extractor {
             type Rejection = Infallible;
 
             async fn from_request_parts(
                 _parts: &mut Parts,
-                _state: &S,
+                _: &S,
             ) -> Result<Self, Self::Rejection> {
                 COUNTER.fetch_add(1, Ordering::SeqCst);
                 Ok(Self(Instant::now()))

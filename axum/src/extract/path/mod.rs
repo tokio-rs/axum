@@ -170,11 +170,10 @@ impl<T> DerefMut for Path<T> {
 impl<T, S> FromRequestParts<S> for Path<T>
 where
     T: DeserializeOwned + Send,
-    S: Send + Sync,
 {
     type Rejection = PathRejection;
 
-    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
+    async fn from_request_parts(parts: &mut Parts, _: &S) -> Result<Self, Self::Rejection> {
         let params = match parts.extensions.get::<UrlParams>() {
             Some(UrlParams::Params(params)) => params,
             Some(UrlParams::InvalidUtf8InPathParam { key }) => {

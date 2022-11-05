@@ -60,7 +60,6 @@ enum JsonOrForm<T, K = T> {
 impl<S, B, T, U> FromRequest<S, B> for JsonOrForm<T, U>
 where
     B: Send + 'static,
-    S: Send + Sync,
     Json<T>: FromRequest<(), B>,
     Form<U>: FromRequest<(), B>,
     T: 'static,
@@ -68,7 +67,7 @@ where
 {
     type Rejection = Response;
 
-    async fn from_request(req: Request<B>, _state: &S) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: Request<B>, _: &S) -> Result<Self, Self::Rejection> {
         let content_type_header = req.headers().get(CONTENT_TYPE);
         let content_type = content_type_header.and_then(|value| value.to_str().ok());
 

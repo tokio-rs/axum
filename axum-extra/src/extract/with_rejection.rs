@@ -154,15 +154,12 @@ mod tests {
         struct TestRejection;
 
         #[async_trait]
-        impl<S> FromRequestParts<S> for TestExtractor
-        where
-            S: Send + Sync,
-        {
+        impl<S> FromRequestParts<S> for TestExtractor {
             type Rejection = ();
 
             async fn from_request_parts(
                 _parts: &mut Parts,
-                _state: &S,
+                _: &S,
             ) -> Result<Self, Self::Rejection> {
                 Err(())
             }

@@ -45,13 +45,10 @@ use tower_service::Service;
 /// struct RequireAuth;
 ///
 /// #[async_trait]
-/// impl<S> FromRequestParts<S> for RequireAuth
-/// where
-///     S: Send + Sync,
-/// {
+/// impl<S> FromRequestParts<S> for RequireAuth {
 ///     type Rejection = StatusCode;
 ///
-///     async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
+///     async fn from_request_parts(parts: &mut Parts, _: &S) -> Result<Self, Self::Rejection> {
 ///         let auth_header = parts
 ///             .headers
 ///             .get(header::AUTHORIZATION)
@@ -370,15 +367,12 @@ mod tests {
         struct MyExtractor;
 
         #[async_trait]
-        impl<S> FromRequestParts<S> for MyExtractor
-        where
-            S: Send + Sync,
-        {
+        impl<S> FromRequestParts<S> for MyExtractor {
             type Rejection = std::convert::Infallible;
 
             async fn from_request_parts(
                 _parts: &mut Parts,
-                _state: &S,
+                _: &S,
             ) -> Result<Self, Self::Rejection> {
                 unimplemented!()
             }

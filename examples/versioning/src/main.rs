@@ -48,13 +48,10 @@ enum Version {
 }
 
 #[async_trait]
-impl<S> FromRequestParts<S> for Version
-where
-    S: Send + Sync,
-{
+impl<S> FromRequestParts<S> for Version {
     type Rejection = Response;
 
-    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
+    async fn from_request_parts(parts: &mut Parts, _: &S) -> Result<Self, Self::Rejection> {
         let params: Path<HashMap<String, String>> =
             parts.extract().await.map_err(IntoResponse::into_response)?;
 

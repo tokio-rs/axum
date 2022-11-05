@@ -424,13 +424,10 @@ use axum::{
 struct ExtractUserAgent(HeaderValue);
 
 #[async_trait]
-impl<S> FromRequestParts<S> for ExtractUserAgent
-where
-    S: Send + Sync,
-{
+impl<S> FromRequestParts<S> for ExtractUserAgent {
     type Rejection = (StatusCode, &'static str);
 
-    async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
+    async fn from_request_parts(parts: &mut Parts, _: &S) -> Result<Self, Self::Rejection> {
         if let Some(user_agent) = parts.headers.get(USER_AGENT) {
             Ok(ExtractUserAgent(user_agent.clone()))
         } else {
@@ -456,16 +453,15 @@ If your extractor needs to consume the request body you must implement [`FromReq
 ```rust,no_run
 use axum::{
     async_trait,
-    extract::FromRequest,
-    response::{Response, IntoResponse},
     body::Bytes,
-    routing::get,
-    Router,
+    extract::FromRequest,
     http::{
-        StatusCode,
         header::{HeaderValue, USER_AGENT},
-        Request,
+        Request, StatusCode,
     },
+    response::{IntoResponse, Response},
+    routing::get,
+    RequestExt, Router,
 };
 
 struct ValidatedBody(Bytes);
@@ -475,14 +471,11 @@ impl<S, B> FromRequest<S, B> for ValidatedBody
 where
     Bytes: FromRequest<S, B>,
     B: Send + 'static,
-    S: Send + Sync,
 {
     type Rejection = Response;
 
-    async fn from_request(req: Request<B>, state: &S) -> Result<Self, Self::Rejection> {
-        let body = Bytes::from_request(req, state)
-            .await
-            .map_err(IntoResponse::into_response)?;
+    async fn from_request(req: Request<B>, _: &S) -> Result<Self, Self::Rejection> {
+        let body: Bytes = req.extract().await.map_err(IntoResponse::into_response)?;
 
         // do validation...
 
@@ -523,12 +516,11 @@ struct MyExtractor;
 #[async_trait]
 impl<S, B> FromRequest<S, B> for MyExtractor
 where
-    S: Send + Sync,
     B: Send + 'static,
 {
     type Rejection = Infallible;
 
-    async fn from_request(req: Request<B>, state: &S) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: Request<B>, _: &S) -> Result<Self, Self::Rejection> {
         // ...
         # todo!()
     }
@@ -536,13 +528,10 @@ where
 
 // and `FromRequestParts`
 #[async_trait]
-impl<S> FromRequestParts<S> for MyExtractor
-where
-    S: Send + Sync,
-{
+impl<S> FromRequestParts<S> for MyExtractor {
     type Rejection = Infallible;
 
-    async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
+    async fn from_request_parts(parts: &mut Parts, _: &S) -> Result<Self, Self::Rejection> {
         // ...
         # todo!()
     }
@@ -588,16 +577,13 @@ struct AuthenticatedUser {
 }
 
 #[async_trait]
-impl<S> FromRequestParts<S> for AuthenticatedUser
-where
-    S: Send + Sync,
-{
+impl<S> FromRequestParts<S> for AuthenticatedUser {
     type Rejection = Response;
 
-    async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
+    async fn from_request_parts(parts: &mut Parts, _: &S) -> Result<Self, Self::Rejection> {
         // You can either call them directly...
         let TypedHeader(Authorization(token)) =
-            TypedHeader::<Authorization<Bearer>>::from_request_parts(parts, state)
+            TypedHeader::<Authorization<Bearer>>::from_request_parts(parts, &())
                 .await
                 .map_err(|err| err.into_response())?;
 

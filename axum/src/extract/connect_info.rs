@@ -7,6 +7,7 @@
 use super::{Extension, FromRequestParts};
 use crate::middleware::AddExtension;
 use async_trait::async_trait;
+use axum_core::RequestPartsExt;
 use http::request::Parts;
 use hyper::server::conn::AddrStream;
 use std::{
@@ -131,13 +132,12 @@ pub struct ConnectInfo<T>(pub T);
 #[async_trait]
 impl<S, T> FromRequestParts<S> for ConnectInfo<T>
 where
-    S: Send + Sync,
     T: Clone + Send + Sync + 'static,
 {
     type Rejection = <Extension<Self> as FromRequestParts<S>>::Rejection;
 
-    async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
-        let Extension(connect_info) = Extension::<Self>::from_request_parts(parts, state).await?;
+    async fn from_request_parts(parts: &mut Parts, _: &S) -> Result<Self, Self::Rejection> {
+        let Extension(connect_info): Extension<Self> = parts.extract().await?;
         Ok(connect_info)
     }
 }

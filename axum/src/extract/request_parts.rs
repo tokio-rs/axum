@@ -4,6 +4,7 @@ use crate::{
     BoxError, Error,
 };
 use async_trait::async_trait;
+use axum_core::RequestPartsExt;
 use futures_util::stream::Stream;
 use http::{request::Parts, Request, Uri};
 use std::{
@@ -86,14 +87,12 @@ pub struct OriginalUri(pub Uri);
 
 #[cfg(feature = "original-uri")]
 #[async_trait]
-impl<S> FromRequestParts<S> for OriginalUri
-where
-    S: Send + Sync,
-{
+impl<S> FromRequestParts<S> for OriginalUri {
     type Rejection = Infallible;
 
-    async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
-        let uri = Extension::<Self>::from_request_parts(parts, state)
+    async fn from_request_parts(parts: &mut Parts, _: &S) -> Result<Self, Self::Rejection> {
+        let uri = parts
+            .extract::<Extension<Self>>()
             .await
             .unwrap_or_else(|_| Extension(OriginalUri(parts.uri.clone())))
             .0;
@@ -151,11 +150,10 @@ where
     B: HttpBody + Send + 'static,
     B::Data: Into<Bytes>,
     B::Error: Into<BoxError>,
-    S: Send + Sync,
 {
     type Rejection = Infallible;
 
-    async fn from_request(req: Request<B>, _state: &S) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: Request<B>, _: &S) -> Result<Self, Self::Rejection> {
         let body = req
             .into_body()
             .map_data(Into::into)
@@ -212,11 +210,10 @@ pub struct RawBody<B = Body>(pub B);
 impl<S, B> FromRequest<S, B> for RawBody<B>
 where
     B: Send,
-    S: Send + Sync,
 {
     type Rejection = Infallible;
 
-    async fn from_request(req: Request<B>, _state: &S) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: Request<B>, _: &S) -> Result<Self, Self::Rejection> {
         Ok(Self(req.into_body()))
     }
 }

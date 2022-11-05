@@ -89,13 +89,10 @@ pub struct CookieJar {
 }
 
 #[async_trait]
-impl<S> FromRequestParts<S> for CookieJar
-where
-    S: Send + Sync,
-{
+impl<S> FromRequestParts<S> for CookieJar {
     type Rejection = Infallible;
 
-    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
+    async fn from_request_parts(parts: &mut Parts, _: &S) -> Result<Self, Self::Rejection> {
         Ok(Self::from_headers(&parts.headers))
     }
 }

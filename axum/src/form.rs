@@ -68,11 +68,10 @@ where
     B: HttpBody + Send + 'static,
     B::Data: Send,
     B::Error: Into<BoxError>,
-    S: Send + Sync,
 {
     type Rejection = FormRejection;
 
-    async fn from_request(req: Request<B>, _state: &S) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: Request<B>, _: &S) -> Result<Self, Self::Rejection> {
         match req.extract().await {
             Ok(RawForm(bytes)) => {
                 let value = serde_urlencoded::from_bytes(&bytes)
