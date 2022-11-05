@@ -365,7 +365,7 @@ fn check_future_send(item_fn: &ItemFn) -> TokenStream {
         match &item_fn.sig.output {
             syn::ReturnType::Default => {
                 return syn::Error::new_spanned(
-                    &item_fn.sig.fn_token,
+                    item_fn.sig.fn_token,
                     "Handlers must be `async fn`s",
                 )
                 .into_compile_error();
