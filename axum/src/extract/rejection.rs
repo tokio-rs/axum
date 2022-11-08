@@ -1,8 +1,5 @@
 //! Rejection response types.
 
-use crate::{BoxError, Error};
-use axum_core::response::{IntoResponse, Response};
-
 pub use crate::extract::path::FailedToDeserializePathParams;
 pub use axum_core::extract::rejection::*;
 
@@ -81,38 +78,13 @@ define_rejection! {
     pub struct FailedToDeserializeForm(Error);
 }
 
-/// Rejection type for extractors that deserialize query strings if the input
-/// couldn't be deserialized into the target type.
-#[derive(Debug)]
-pub struct FailedToDeserializeQueryString {
-    error: Error,
+define_rejection! {
+    #[status = BAD_REQUEST]
+    #[body = "Failed to deserialize query string"]
+    /// Rejection type used if the [`Query`](super::Query) extractor is unable to
+    /// deserialize the form into the target type.
+    pub struct FailedToDeserializeQueryString(Error);
 }
-
-impl FailedToDeserializeQueryString {
-    #[doc(hidden)]
-    pub fn __private_new<E>(error: E) -> Self
-    where
-        E: Into<BoxError>,
-    {
-        FailedToDeserializeQueryString {
-            error: Error::new(error),
-        }
-    }
-}
-
-impl IntoResponse for FailedToDeserializeQueryString {
-    fn into_response(self) -> Response {
-        (http::StatusCode::BAD_REQUEST, self.to_string()).into_response()
-    }
-}
-
-impl std::fmt::Display for FailedToDeserializeQueryString {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Failed to deserialize query string: {}", self.error,)
-    }
-}
-
-impl std::error::Error for FailedToDeserializeQueryString {}
 
 composite_rejection! {
     /// Rejection used for [`Query`](super::Query).
