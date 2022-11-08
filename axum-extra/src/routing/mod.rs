@@ -178,7 +178,7 @@ pub trait RouterExt<S, B>: sealed::Sealed {
 impl<S, B> RouterExt<S, B> for Router<S, B>
 where
     B: axum::body::HttpBody + Send + 'static,
-    S: Send + Sync + 'static,
+    S: Clone + Send + Sync + 'static,
 {
     #[cfg(feature = "typed-routing")]
     fn typed_get<H, T, P>(self, handler: H) -> Self

@@ -1,16 +1,13 @@
 use axum::{
     async_trait,
     body::HttpBody,
-    extract::{
-        rejection::{FailedToDeserializeQueryString, FormRejection, InvalidFormContentType},
-        FromRequest,
-    },
-    BoxError,
+    extract::{rejection::RawFormRejection, FromRequest, RawForm},
+    response::{IntoResponse, Response},
+    BoxError, Error, RequestExt,
 };
-use bytes::Bytes;
-use http::{header, HeaderMap, Method, Request};
+use http::{Request, StatusCode};
 use serde::de::DeserializeOwned;
-use std::ops::Deref;
+use std::{fmt, ops::Deref};
 
 /// Extractor that deserializes `application/x-www-form-urlencoded` requests
 /// into some type.
@@ -65,41 +62,60 @@ where
 {
     type Rejection = FormRejection;
 
-    async fn from_request(req: Request<B>, state: &S) -> Result<Self, Self::Rejection> {
-        if req.method() == Method::GET {
-            let query = req.uri().query().unwrap_or_default();
-            let value = serde_html_form::from_str(query)
-                .map_err(FailedToDeserializeQueryString::__private_new)?;
-            Ok(Form(value))
-        } else {
-            if !has_content_type(req.headers(), &mime::APPLICATION_WWW_FORM_URLENCODED) {
-                return Err(InvalidFormContentType::default().into());
-            }
+    async fn from_request(req: Request<B>, _state: &S) -> Result<Self, Self::Rejection> {
+        let RawForm(bytes) = req
+            .extract()
+            .await
+            .map_err(FormRejection::RawFormRejection)?;
 
-            let bytes = Bytes::from_request(req, state).await?;
-            let value = serde_html_form::from_bytes(&bytes)
-                .map_err(FailedToDeserializeQueryString::__private_new)?;
+        serde_html_form::from_bytes::<T>(&bytes)
+            .map(Self)
+            .map_err(|err| FormRejection::FailedToDeserializeForm(Error::new(err)))
+    }
+}
 
-            Ok(Form(value))
+/// Rejection used for [`Form`].
+///
+/// Contains one variant for each way the [`Form`] extractor can fail.
+#[derive(Debug)]
+#[non_exhaustive]
+#[cfg(feature = "form")]
+pub enum FormRejection {
+    #[allow(missing_docs)]
+    RawFormRejection(RawFormRejection),
+    #[allow(missing_docs)]
+    FailedToDeserializeForm(Error),
+}
+
+impl IntoResponse for FormRejection {
+    fn into_response(self) -> Response {
+        match self {
+            Self::RawFormRejection(inner) => inner.into_response(),
+            Self::FailedToDeserializeForm(inner) => (
+                StatusCode::BAD_REQUEST,
+                format!("Failed to deserialize form: {}", inner),
+            )
+                .into_response(),
         }
     }
 }
 
-// this is duplicated in `axum/src/extract/mod.rs`
-fn has_content_type(headers: &HeaderMap, expected_content_type: &mime::Mime) -> bool {
-    let content_type = if let Some(content_type) = headers.get(header::CONTENT_TYPE) {
-        content_type
-    } else {
-        return false;
-    };
+impl fmt::Display for FormRejection {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::RawFormRejection(inner) => inner.fmt(f),
+            Self::FailedToDeserializeForm(inner) => inner.fmt(f),
+        }
+    }
+}
 
-    let content_type = if let Ok(content_type) = content_type.to_str() {
-        content_type
-    } else {
-        return false;
-    };
-
-    content_type.starts_with(expected_content_type.as_ref())
+impl std::error::Error for FormRejection {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            Self::RawFormRejection(inner) => Some(inner),
+            Self::FailedToDeserializeForm(inner) => Some(inner),
+        }
+    }
 }
 
 #[cfg(test)]

@@ -8,19 +8,14 @@ mod map_request;
 mod map_response;
 
 pub use self::from_extractor::{
-    from_extractor, from_extractor_with_state, from_extractor_with_state_arc, FromExtractor,
-    FromExtractorLayer,
+    from_extractor, from_extractor_with_state, FromExtractor, FromExtractorLayer,
 };
-pub use self::from_fn::{
-    from_fn, from_fn_with_state, from_fn_with_state_arc, FromFn, FromFnLayer, Next,
-};
+pub use self::from_fn::{from_fn, from_fn_with_state, FromFn, FromFnLayer, Next};
 pub use self::map_request::{
-    map_request, map_request_with_state, map_request_with_state_arc, IntoMapRequestResult,
-    MapRequest, MapRequestLayer,
+    map_request, map_request_with_state, IntoMapRequestResult, MapRequest, MapRequestLayer,
 };
 pub use self::map_response::{
-    map_response, map_response_with_state, map_response_with_state_arc, MapResponse,
-    MapResponseLayer,
+    map_response, map_response_with_state, MapResponse, MapResponseLayer,
 };
 pub use crate::extension::AddExtension;
 

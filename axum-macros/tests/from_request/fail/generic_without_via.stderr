@@ -8,7 +8,7 @@ error[E0277]: the trait bound `fn(Extractor<()>) -> impl Future<Output = ()> {fo
    --> tests/from_request/fail/generic_without_via.rs:10:46
     |
 10  |     Router::<(), Body>::new().route("/", get(foo));
-    |                                          --- ^^^ the trait `Handler<_, _, _>` is not implemented for `fn(Extractor<()>) -> impl Future<Output = ()> {foo}`
+    |                                          --- ^^^ the trait `Handler<_, _, _>` is not implemented for fn item `fn(Extractor<()>) -> impl Future<Output = ()> {foo}`
     |                                          |
     |                                          required by a bound introduced by this call
     |

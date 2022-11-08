@@ -8,8 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 # Unreleased
 
 - **added:** Add `DefaultBodyLimit::max` for changing the default body limit ([#1397])
+- **added:** Add `Error::into_inner` for converting `Error` to `BoxError` without allocating ([#1476])
+- **breaking:** `AppendHeaders` now works on any `impl IntoIterator` ([#1495])
 
 [#1397]: https://github.com/tokio-rs/axum/pull/1397
+[#1476]: https://github.com/tokio-rs/axum/pull/1476
+[#1495]: https://github.com/tokio-rs/axum/pull/1495
 
 # 0.3.0-rc.2 (10. September, 2022)
 
@@ -38,6 +42,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 [#1155]: https://github.com/tokio-rs/axum/pull/1155
 [#1272]: https://github.com/tokio-rs/axum/pull/1272
+
+# 0.2.8 (10. September, 2022)
+
+- **breaking:** Added default limit to how much data `Bytes::from_request` will
+  consume. Previously it would attempt to consume the entire request body
+  without checking its length. This meant if a malicious peer sent an large (or
+  infinite) request body your server might run out of memory and crash.
+
+  The default limit is at 2 MB and can be disabled by adding the new
+  `DefaultBodyLimit::disable()` middleware. See its documentation for more
+  details.
+
+  This also applies to `String` which used `Bytes::from_request` internally.
+
+  ([#1346])
+
+[#1346]: https://github.com/tokio-rs/axum/pull/1346
 
 # 0.2.7 (10. July, 2022)
 

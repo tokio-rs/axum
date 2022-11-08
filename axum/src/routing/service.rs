@@ -13,7 +13,7 @@ use std::{
 };
 use tower::Service;
 
-/// TOOD: Docs
+/// A [`Router`] converted into a [`Service`].
 #[derive(Debug)]
 pub struct RouterService<B = Body> {
     routes: HashMap<RouteId, Route<B>>,
@@ -28,7 +28,7 @@ where
     #[track_caller]
     pub(super) fn new<S>(router: Router<S, B>) -> Self
     where
-        S: Send + Sync + 'static,
+        S: Clone + Send + Sync + 'static,
     {
         let state = router
             .state
@@ -40,7 +40,7 @@ where
             .map(|(route_id, endpoint)| {
                 let route = match endpoint {
                     Endpoint::MethodRouter(method_router) => {
-                        Route::new(method_router.with_state_arc(Arc::clone(&state)))
+                        Route::new(method_router.with_state(state.clone()))
                     }
                     Endpoint::Route(route) => route,
                 };
@@ -96,7 +96,6 @@ impl<B> Clone for RouterService<B> {
 impl<B> Service<Request<B>> for RouterService<B>
 where
     B: HttpBody + Send + 'static,
-    //S: Send + Sync + 'static,
 {
     type Response = Response;
     type Error = Infallible;

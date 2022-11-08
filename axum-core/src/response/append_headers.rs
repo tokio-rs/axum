@@ -30,10 +30,11 @@ use std::fmt;
 /// }
 /// ```
 #[derive(Debug)]
-pub struct AppendHeaders<K, V, const N: usize>(pub [(K, V); N]);
+pub struct AppendHeaders<I>(pub I);
 
-impl<K, V, const N: usize> IntoResponse for AppendHeaders<K, V, N>
+impl<I, K, V> IntoResponse for AppendHeaders<I>
 where
+    I: IntoIterator<Item = (K, V)>,
     K: TryInto<HeaderName>,
     K::Error: fmt::Display,
     V: TryInto<HeaderValue>,
@@ -44,8 +45,9 @@ where
     }
 }
 
-impl<K, V, const N: usize> IntoResponseParts for AppendHeaders<K, V, N>
+impl<I, K, V> IntoResponseParts for AppendHeaders<I>
 where
+    I: IntoIterator<Item = (K, V)>,
     K: TryInto<HeaderName>,
     K::Error: fmt::Display,
     V: TryInto<HeaderValue>,

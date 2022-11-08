@@ -25,10 +25,10 @@ pub use self::cookie::PrivateCookieJar;
 pub use self::cookie::SignedCookieJar;
 
 #[cfg(feature = "form")]
-pub use self::form::Form;
+pub use self::form::{Form, FormRejection};
 
 #[cfg(feature = "query")]
-pub use self::query::Query;
+pub use self::query::{Query, QueryRejection};
 
 #[cfg(feature = "json-lines")]
 #[doc(no_inline)]

@@ -43,10 +43,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **changed:** The default body limit now applies to the `Multipart` extractor ([#1420])
 - **added:** String and binary `From` impls have been added to `extract::ws::Message`
   to be more inline with `tungstenite` ([#1421])
+- **added:** Add `#[derive(axum::extract::FromRef)]` ([#1430])
 - **added:** `FromRequest` and `FromRequestParts` derive macro re-exports from
   [`axum-macros`] behind the `macros` feature ([#1352])
 - **breaking:** `MatchedPath` can now no longer be extracted in middleware for
   nested routes ([#1462])
+- **added:** Add `extract::RawForm` for accessing raw urlencoded query bytes or request body ([#1487])
+- **breaking:** Rename `FormRejection::FailedToDeserializeQueryString` to
+  `FormRejection::FailedToDeserializeForm` ([#1496])
 
 [#1352]: https://github.com/tokio-rs/axum/pull/1352
 [#1368]: https://github.com/tokio-rs/axum/pull/1368
@@ -63,6 +67,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#1420]: https://github.com/tokio-rs/axum/pull/1420
 [#1421]: https://github.com/tokio-rs/axum/pull/1421
 [#1462]: https://github.com/tokio-rs/axum/pull/1462
+[#1487]: https://github.com/tokio-rs/axum/pull/1487
+[#1496]: https://github.com/tokio-rs/axum/pull/1496
 
 # 0.6.0-rc.2 (10. September, 2022)
 
@@ -477,6 +483,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#1301]: https://github.com/tokio-rs/axum/pull/1301
 [#1302]: https://github.com/tokio-rs/axum/pull/1302
 [#924]: https://github.com/tokio-rs/axum/pull/924
+
+# 0.5.16 (10. September, 2022)
+
+## Security
+
+- **breaking:** Added default limit to how much data `Bytes::from_request` will
+  consume. Previously it would attempt to consume the entire request body
+  without checking its length. This meant if a malicious peer sent an large (or
+  infinite) request body your server might run out of memory and crash.
+
+  The default limit is at 2 MB and can be disabled by adding the new
+  `DefaultBodyLimit::disable()` middleware. See its documentation for more
+  details.
+
+  This also applies to these extractors which used `Bytes::from_request`
+  internally:
+  - `Form`
+  - `Json`
+  - `String`
+
+  ([#1346])
+
+[#1346]: https://github.com/tokio-rs/axum/pull/1346
 
 # 0.5.15 (9. August, 2022)
 

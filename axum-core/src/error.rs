@@ -14,6 +14,11 @@ impl Error {
             inner: error.into(),
         }
     }
+
+    /// Convert an `Error` back into the underlying boxed trait object.
+    pub fn into_inner(self) -> BoxError {
+        self.inner
+    }
 }
 
 impl fmt::Display for Error {

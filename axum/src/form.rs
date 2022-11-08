@@ -1,10 +1,11 @@
-use crate::body::{Bytes, HttpBody};
-use crate::extract::{has_content_type, rejection::*, FromRequest};
+use crate::body::HttpBody;
+use crate::extract::{rejection::*, FromRequest, RawForm};
 use crate::BoxError;
 use async_trait::async_trait;
 use axum_core::response::{IntoResponse, Response};
+use axum_core::RequestExt;
 use http::header::CONTENT_TYPE;
-use http::{Method, Request, StatusCode};
+use http::{Request, StatusCode};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::ops::Deref;
@@ -71,22 +72,17 @@ where
 {
     type Rejection = FormRejection;
 
-    async fn from_request(req: Request<B>, state: &S) -> Result<Self, Self::Rejection> {
-        if req.method() == Method::GET {
-            let query = req.uri().query().unwrap_or_default();
-            let value = serde_urlencoded::from_str(query)
-                .map_err(FailedToDeserializeQueryString::__private_new)?;
-            Ok(Form(value))
-        } else {
-            if !has_content_type(req.headers(), &mime::APPLICATION_WWW_FORM_URLENCODED) {
-                return Err(InvalidFormContentType.into());
+    async fn from_request(req: Request<B>, _state: &S) -> Result<Self, Self::Rejection> {
+        match req.extract().await {
+            Ok(RawForm(bytes)) => {
+                let value = serde_urlencoded::from_bytes(&bytes)
+                    .map_err(FailedToDeserializeForm::from_err)?;
+                Ok(Form(value))
             }
-
-            let bytes = Bytes::from_request(req, state).await?;
-            let value = serde_urlencoded::from_bytes(&bytes)
-                .map_err(FailedToDeserializeQueryString::__private_new)?;
-
-            Ok(Form(value))
+            Err(RawFormRejection::BytesRejection(r)) => Err(FormRejection::BytesRejection(r)),
+            Err(RawFormRejection::InvalidFormContentType(r)) => {
+                Err(FormRejection::InvalidFormContentType(r))
+            }
         }
     }
 }
@@ -119,7 +115,8 @@ impl<T> Deref for Form<T> {
 mod tests {
     use super::*;
     use crate::body::{Empty, Full};
-    use http::Request;
+    use bytes::Bytes;
+    use http::{Method, Request};
     use serde::{Deserialize, Serialize};
     use std::fmt::Debug;
 

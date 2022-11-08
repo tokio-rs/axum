@@ -9,7 +9,6 @@ use std::{
     future::Future,
     marker::PhantomData,
     pin::Pin,
-    sync::Arc,
     task::{Context, Poll},
 };
 use tower::{util::BoxCloneService, ServiceBuilder};
@@ -140,15 +139,6 @@ pub fn from_fn<F, T>(f: F) -> FromFnLayer<F, (), T> {
 /// # let app: Router<_> = app;
 /// ```
 pub fn from_fn_with_state<F, S, T>(state: S, f: F) -> FromFnLayer<F, S, T> {
-    from_fn_with_state_arc(Arc::new(state), f)
-}
-
-/// Create a middleware from an async function with the given [`Arc`]'ed state.
-///
-/// See [`from_fn_with_state`] for an example.
-///
-/// See [`State`](crate::extract::State) for more details about accessing state.
-pub fn from_fn_with_state_arc<F, S, T>(state: Arc<S>, f: F) -> FromFnLayer<F, S, T> {
     FromFnLayer {
         f,
         state,
@@ -163,18 +153,19 @@ pub fn from_fn_with_state_arc<F, S, T>(state: Arc<S>, f: F) -> FromFnLayer<F, S,
 /// Created with [`from_fn`]. See that function for more details.
 pub struct FromFnLayer<F, S, T> {
     f: F,
-    state: Arc<S>,
+    state: S,
     _extractor: PhantomData<fn() -> T>,
 }
 
 impl<F, S, T> Clone for FromFnLayer<F, S, T>
 where
     F: Clone,
+    S: Clone,
 {
     fn clone(&self) -> Self {
         Self {
             f: self.f.clone(),
-            state: Arc::clone(&self.state),
+            state: self.state.clone(),
             _extractor: self._extractor,
         }
     }
@@ -183,13 +174,14 @@ where
 impl<S, I, F, T> Layer<I> for FromFnLayer<F, S, T>
 where
     F: Clone,
+    S: Clone,
 {
     type Service = FromFn<F, S, I, T>;
 
     fn layer(&self, inner: I) -> Self::Service {
         FromFn {
             f: self.f.clone(),
-            state: Arc::clone(&self.state),
+            state: self.state.clone(),
             inner,
             _extractor: PhantomData,
         }
@@ -215,7 +207,7 @@ where
 pub struct FromFn<F, S, I, T> {
     f: F,
     inner: I,
-    state: Arc<S>,
+    state: S,
     _extractor: PhantomData<fn() -> T>,
 }
 
@@ -223,12 +215,13 @@ impl<F, S, I, T> Clone for FromFn<F, S, I, T>
 where
     F: Clone,
     I: Clone,
+    S: Clone,
 {
     fn clone(&self) -> Self {
         Self {
             f: self.f.clone(),
             inner: self.inner.clone(),
-            state: Arc::clone(&self.state),
+            state: self.state.clone(),
             _extractor: self._extractor,
         }
     }
@@ -253,7 +246,7 @@ macro_rules! impl_service {
             I::Response: IntoResponse,
             I::Future: Send + 'static,
             B: Send + 'static,
-            S: Send + Sync + 'static,
+            S: Clone + Send + Sync + 'static,
         {
             type Response = Response;
             type Error = Infallible;
@@ -268,7 +261,7 @@ macro_rules! impl_service {
                 let ready_inner = std::mem::replace(&mut self.inner, not_ready_inner);
 
                 let mut f = self.f.clone();
-                let state = Arc::clone(&self.state);
+                let state = self.state.clone();
 
                 let future = Box::pin(async move {
                     let (mut parts, body) = req.into_parts();

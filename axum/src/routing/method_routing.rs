@@ -17,7 +17,6 @@ use bytes::BytesMut;
 use std::{
     convert::Infallible,
     fmt,
-    sync::Arc,
     task::{Context, Poll},
 };
 use tower::{service_fn, util::MapResponseLayer};
@@ -85,6 +84,7 @@ macro_rules! top_level_service_fn {
             T::Response: IntoResponse + 'static,
             T::Future: Send + 'static,
             B: Send + 'static,
+            S: Clone,
         {
             on_service(MethodFilter::$method, svc)
         }
@@ -145,7 +145,7 @@ macro_rules! top_level_handler_fn {
             H: Handler<T, S, B>,
             B: Send + 'static,
             T: 'static,
-            S: Send + Sync + 'static,
+            S: Clone + Send + Sync + 'static,
         {
             on(MethodFilter::$method, handler)
         }
@@ -328,6 +328,7 @@ where
     T::Response: IntoResponse + 'static,
     T::Future: Send + 'static,
     B: Send + 'static,
+    S: Clone,
 {
     MethodRouter::new().on_service(filter, svc)
 }
@@ -391,6 +392,7 @@ where
     T::Response: IntoResponse + 'static,
     T::Future: Send + 'static,
     B: Send + 'static,
+    S: Clone,
 {
     MethodRouter::new()
         .fallback_service(svc)
@@ -430,7 +432,7 @@ where
     H: Handler<T, S, B>,
     B: Send + 'static,
     T: 'static,
-    S: Send + Sync + 'static,
+    S: Clone + Send + Sync + 'static,
 {
     MethodRouter::new().on(filter, handler)
 }
@@ -477,7 +479,7 @@ where
     H: Handler<T, S, B>,
     B: Send + 'static,
     T: 'static,
-    S: Send + Sync + 'static,
+    S: Clone + Send + Sync + 'static,
 {
     MethodRouter::new().fallback(handler).skip_allow_header()
 }
@@ -570,6 +572,7 @@ impl<S, B, E> fmt::Debug for MethodRouter<S, B, E> {
 impl<S, B> MethodRouter<S, B, Infallible>
 where
     B: Send + 'static,
+    S: Clone,
 {
     /// Chain an additional handler that will accept requests matching the given
     /// `MethodFilter`.
@@ -705,6 +708,7 @@ where
 impl<S, B, E> MethodRouter<S, B, E>
 where
     B: Send + 'static,
+    S: Clone,
 {
     /// Create a default `MethodRouter` that will respond with `405 Method Not Allowed` to all
     /// requests.
@@ -731,13 +735,6 @@ where
     ///
     /// See [`State`](crate::extract::State) for more details about accessing state.
     pub fn with_state(self, state: S) -> WithState<B, E> {
-        self.with_state_arc(Arc::new(state))
-    }
-
-    /// Provide the [`Arc`]'ed state.
-    ///
-    /// See [`State`](crate::extract::State) for more details about accessing state.
-    pub fn with_state_arc(self, state: Arc<S>) -> WithState<B, E> {
         WithState {
             get: self.get.into_route(&state),
             head: self.head.into_route(&state),
@@ -752,7 +749,7 @@ where
         }
     }
 
-    pub(crate) fn map_state<S2>(self, state: &Arc<S>) -> MethodRouter<S2, B, E>
+    pub(crate) fn map_state<S2>(self, state: &S) -> MethodRouter<S2, B, E>
     where
         E: 'static,
         S: 'static,
@@ -841,6 +838,7 @@ where
             methods: &[&'static str],
         ) where
             MethodEndpoint<S, B, E>: Clone,
+            S: Clone,
         {
             if endpoint_filter.contains(filter) {
                 if out.is_some() {
@@ -1174,6 +1172,7 @@ impl<S, B, E> Clone for MethodRouter<S, B, E> {
 impl<S, B, E> Default for MethodRouter<S, B, E>
 where
     B: Send + 'static,
+    S: Clone,
 {
     fn default() -> Self {
         Self::new()
@@ -1186,7 +1185,10 @@ enum MethodEndpoint<S, B, E> {
     BoxedHandler(BoxedHandler<S, B, E>),
 }
 
-impl<S, B, E> MethodEndpoint<S, B, E> {
+impl<S, B, E> MethodEndpoint<S, B, E>
+where
+    S: Clone,
+{
     fn is_some(&self) -> bool {
         matches!(self, Self::Route(_) | Self::BoxedHandler(_))
     }
@@ -1211,7 +1213,7 @@ impl<S, B, E> MethodEndpoint<S, B, E> {
         }
     }
 
-    fn map_state<S2>(self, state: &Arc<S>) -> MethodEndpoint<S2, B, E> {
+    fn map_state<S2>(self, state: &S) -> MethodEndpoint<S2, B, E> {
         match self {
             Self::None => MethodEndpoint::None,
             Self::Route(route) => MethodEndpoint::Route(route),
@@ -1237,7 +1239,7 @@ impl<S, B, E> MethodEndpoint<S, B, E> {
         }
     }
 
-    fn into_route(self, state: &Arc<S>) -> Option<Route<B, E>> {
+    fn into_route(self, state: &S) -> Option<Route<B, E>> {
         match self {
             Self::None => None,
             Self::Route(route) => Some(route),
