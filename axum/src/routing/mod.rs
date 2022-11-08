@@ -147,6 +147,33 @@ where
 
     /// Create a new `Router` that inherits its state from another `Router` that it is merged into
     /// or nested under.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use axum::{Router, routing::get, extract::State};
+    ///
+    /// #[derive(Clone)]
+    /// struct AppState {}
+    ///
+    /// // A router that will be nested under the `app` router.
+    /// //
+    /// // By using `inherit_state` we'll reuse the state from the `app` router.
+    /// let nested_router = Router::inherit_state()
+    ///     .route("/bar", get(|state: State<AppState>| async {}));
+    ///
+    /// // A router that will be merged into the `app` router.
+    /// let merged_router = Router::inherit_state()
+    ///     .route("/baz", get(|state: State<AppState>| async {}));
+    ///
+    /// let app = Router::with_state(AppState {})
+    ///     .route("/", get(|state: State<AppState>| async {}))
+    ///     .nest("/foo", nested_router)
+    ///     .merge(merged_router);
+    ///
+    /// // `app` now has routes for `/`, `/foo/bar`, and `/baz` that all use the same state.
+    /// # let _: Router<AppState> = app;
+    /// ```
     pub fn inherit_state() -> Self {
         Self {
             state: None,

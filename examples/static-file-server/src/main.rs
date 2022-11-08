@@ -6,6 +6,7 @@
 
 use axum::{
     body::Body,
+    handler::HandlerWithoutStateExt,
     http::{Request, StatusCode},
     response::IntoResponse,
     routing::{get, get_service},
@@ -35,8 +36,9 @@ async fn main() {
         serve(using_serve_dir(), 3001),
         serve(using_serve_dir_with_assets_fallback(), 3002),
         serve(using_serve_dir_only_from_root_via_fallback(), 3003),
-        serve(two_serve_dirs(), 3004),
-        serve(calling_serve_dir_from_a_handler(), 3005),
+        serve(using_serve_dir_with_handler_as_service(), 3004),
+        serve(two_serve_dirs(), 3005),
+        serve(calling_serve_dir_from_a_handler(), 3006),
     );
 }
 
@@ -79,6 +81,24 @@ fn using_serve_dir_only_from_root_via_fallback() -> Router {
     // you can also serve the assets directly from the root (not nested under `/assets`)
     // by only setting a `ServeDir` as the fallback
     let serve_dir = ServeDir::new("assets").not_found_service(ServeFile::new("assets/index.html"));
+    let serve_dir = get_service(serve_dir).handle_error(handle_error);
+
+    Router::new()
+        .route("/foo", get(|| async { "Hi from /foo" }))
+        .fallback_service(serve_dir)
+}
+
+fn using_serve_dir_with_handler_as_service() -> Router {
+    async fn handle_404() -> (StatusCode, &'static str) {
+        (StatusCode::NOT_FOUND, "Not found")
+    }
+
+    // you can convert handler function to service
+    let service = handle_404
+        .into_service()
+        .map_err(|err| -> std::io::Error { match err {} });
+
+    let serve_dir = ServeDir::new("assets").not_found_service(service);
     let serve_dir = get_service(serve_dir).handle_error(handle_error);
 
     Router::new()

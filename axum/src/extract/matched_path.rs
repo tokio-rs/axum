@@ -60,7 +60,7 @@ pub struct MatchedPath(pub(crate) Arc<str>);
 impl MatchedPath {
     /// Returns a `str` representation of the path.
     pub fn as_str(&self) -> &str {
-        &*self.0
+        &self.0
     }
 }
 
