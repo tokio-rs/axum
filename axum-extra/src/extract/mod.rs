@@ -25,7 +25,7 @@ pub use self::cookie::PrivateCookieJar;
 pub use self::cookie::SignedCookieJar;
 
 #[cfg(feature = "form")]
-pub use self::form::Form;
+pub use self::form::{Form, FormRejection};
 
 #[cfg(feature = "query")]
 pub use self::query::Query;
