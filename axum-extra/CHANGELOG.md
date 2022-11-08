@@ -7,7 +7,10 @@ and this project adheres to [Semantic Versioning].
 
 # Unreleased
 
-- None.
+- **breaking:** `Form` has a new rejection type ([#1496])
+- **breaking:** `Query` has a new rejection type ([#1496])
+
+[#1496]: https://github.com/tokio-rs/axum/pull/1496
 
 # 0.4.0-rc.1 (23. August, 2022)
 
