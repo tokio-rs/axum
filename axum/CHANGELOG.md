@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+- None.
+
+# 0.6.0-rc.3 (8. November, 2022)
+
 - **changed**: The inner error of a `JsonRejection` is now
   `serde_path_to_error::Error<serde_json::Error>`.  Previously it was
   `serde_json::Error` ([#1371])
