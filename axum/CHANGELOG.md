@@ -46,6 +46,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **added:** Add `#[derive(axum::extract::FromRef)]` ([#1430])
 - **added:** `FromRequest` and `FromRequestParts` derive macro re-exports from
   [`axum-macros`] behind the `macros` feature ([#1352])
+- **breaking:** `MatchedPath` can now no longer be extracted in middleware for
+  nested routes ([#1462])
 - **added:** Add `extract::RawForm` for accessing raw urlencoded query bytes or request body ([#1487])
 - **breaking:** Rename `FormRejection::FailedToDeserializeQueryString` to
   `FormRejection::FailedToDeserializeForm` ([#1496])
@@ -64,6 +66,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#1418]: https://github.com/tokio-rs/axum/pull/1418
 [#1420]: https://github.com/tokio-rs/axum/pull/1420
 [#1421]: https://github.com/tokio-rs/axum/pull/1421
+[#1462]: https://github.com/tokio-rs/axum/pull/1462
 [#1487]: https://github.com/tokio-rs/axum/pull/1487
 [#1496]: https://github.com/tokio-rs/axum/pull/1496
 
