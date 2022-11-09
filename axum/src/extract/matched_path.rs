@@ -135,6 +135,8 @@ pub(crate) fn set_matched_path_for_request(
     } else {
         #[cfg(debug_assertions)]
         panic!("should always have a matched path for a route id");
+        #[cfg(not(debug_assertions))]
+        return;
     };
 
     let matched_path = append_nested_matched_path(matched_path, extensions);
