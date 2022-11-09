@@ -7,11 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- **fixed:** Fix compile error in release mode ([#1517])
+- None.
 
-[#1517]: https://github.com/tokio-rs/axum/pull/1517
-
-# 0.6.0-rc.3 (8. November, 2022)
+# 0.6.0-rc.4 (9. November, 2022)
 
 - **changed**: The inner error of a `JsonRejection` is now
   `serde_path_to_error::Error<serde_json::Error>`.  Previously it was
@@ -73,6 +71,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#1462]: https://github.com/tokio-rs/axum/pull/1462
 [#1487]: https://github.com/tokio-rs/axum/pull/1487
 [#1496]: https://github.com/tokio-rs/axum/pull/1496
+
+# 0.6.0-rc.3 (8. November, 2022)
+
+Yanked, as it didn't compile in release mode.
 
 # 0.6.0-rc.2 (10. September, 2022)
 
