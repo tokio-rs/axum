@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning].
 
 # Unreleased
 
+- None.
+
+# 0.4.0-rc.2 (8. November, 2022)
+
 - **breaking:** `Form` has a new rejection type ([#1496])
 - **breaking:** `Query` has a new rejection type ([#1496])
 
