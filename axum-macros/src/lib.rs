@@ -722,7 +722,7 @@ fn run_ui_tests(directory: &str) {
     }
 
     #[rustversion::not(stable)]
-    fn go(directory: &str) {}
+    fn go(_directory: &str) {}
 
     go(directory);
 }
