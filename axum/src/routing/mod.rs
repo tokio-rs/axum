@@ -1,6 +1,6 @@
 //! Routing between [`Service`]s and handlers.
 
-use self::not_found::NotFound;
+use self::{future::RouteFuture, not_found::NotFound};
 #[cfg(feature = "tokio")]
 use crate::extract::connect_info::IntoMakeServiceWithConnectInfo;
 use crate::{
@@ -8,7 +8,7 @@ use crate::{
     handler::{BoxedHandler, Handler},
     util::try_downcast,
 };
-use axum_core::response::IntoResponse;
+use axum_core::response::{IntoResponse, Response};
 use http::Request;
 use matchit::MatchError;
 use std::{
@@ -17,8 +17,12 @@ use std::{
     convert::Infallible,
     fmt,
     sync::Arc,
+    task::{Context, Poll},
 };
-use tower::{util::MapResponseLayer, ServiceBuilder};
+use tower::{
+    util::{BoxCloneService, MapResponseLayer, Oneshot},
+    ServiceBuilder,
+};
 use tower_layer::Layer;
 use tower_service::Service;
 
@@ -639,11 +643,29 @@ where
         }
     }
 
-    fn into_route(self, state: &S) -> Route<B, E> {
+    fn into_fallback_route(self, state: &S) -> FallbackRoute<B, E> {
         match self {
-            Self::Default(route) => route,
-            Self::Service(route) => route,
-            Self::BoxedHandler(handler) => handler.into_route(state.clone()),
+            Self::Default(route) => FallbackRoute::Default(route),
+            Self::Service(route) => FallbackRoute::Service(route),
+            Self::BoxedHandler(handler) => {
+                FallbackRoute::Service(handler.into_route(state.clone()))
+            }
+        }
+    }
+
+    fn map<F, B2, E2>(self, f: F) -> Fallback<S, B2, E2>
+    where
+        S: 'static,
+        B: 'static,
+        E: 'static,
+        F: FnOnce(Route<B, E>) -> Route<B2, E2> + Clone + Send + 'static,
+        B2: 'static,
+        E2: 'static,
+    {
+        match self {
+            Self::Default(inner) => Fallback::Default(f(inner)),
+            Self::Service(inner) => Fallback::Service(f(inner)),
+            Self::BoxedHandler(inner) => Fallback::BoxedHandler(inner.map(f)),
         }
     }
 }
@@ -668,20 +690,60 @@ impl<S, B, E> fmt::Debug for Fallback<S, B, E> {
     }
 }
 
-impl<S, B, E> Fallback<S, B, E> {
-    fn map<F, B2, E2>(self, f: F) -> Fallback<S, B2, E2>
-    where
-        S: 'static,
-        B: 'static,
-        E: 'static,
-        F: FnOnce(Route<B, E>) -> Route<B2, E2> + Clone + Send + 'static,
-        B2: 'static,
-        E2: 'static,
-    {
+/// Like `Fallback` but without the `S` param so it can be stored in `RouterService`
+pub(crate) enum FallbackRoute<B, E = Infallible> {
+    Default(Route<B, E>),
+    Service(Route<B, E>),
+}
+
+impl<B, E> fmt::Debug for FallbackRoute<B, E> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Default(inner) => Fallback::Default(f(inner)),
-            Self::Service(inner) => Fallback::Service(f(inner)),
-            Self::BoxedHandler(inner) => Fallback::BoxedHandler(inner.map(f)),
+            Self::Default(inner) => f.debug_tuple("Default").field(inner).finish(),
+            Self::Service(inner) => f.debug_tuple("Service").field(inner).finish(),
+        }
+    }
+}
+
+impl<B, E> Clone for FallbackRoute<B, E> {
+    fn clone(&self) -> Self {
+        match self {
+            Self::Default(inner) => Self::Default(inner.clone()),
+            Self::Service(inner) => Self::Service(inner.clone()),
+        }
+    }
+}
+
+impl<B, E> FallbackRoute<B, E> {
+    pub(crate) fn oneshot_inner(
+        &mut self,
+        req: Request<B>,
+    ) -> Oneshot<BoxCloneService<Request<B>, Response, E>, Request<B>> {
+        match self {
+            FallbackRoute::Default(inner) => inner.oneshot_inner(req),
+            FallbackRoute::Service(inner) => inner.oneshot_inner(req),
+        }
+    }
+}
+
+impl<B, E> Service<Request<B>> for FallbackRoute<B, E>
+where
+    B: HttpBody + Send + 'static,
+{
+    type Response = Response;
+    type Error = E;
+    type Future = RouteFuture<B, E>;
+
+    #[inline]
+    fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        Poll::Ready(Ok(()))
+    }
+
+    #[inline]
+    fn call(&mut self, req: Request<B>) -> Self::Future {
+        match self {
+            FallbackRoute::Default(inner) => inner.call(req),
+            FallbackRoute::Service(inner) => inner.call(req),
         }
     }
 }

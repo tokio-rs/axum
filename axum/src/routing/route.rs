@@ -62,7 +62,7 @@ impl<B, E> fmt::Debug for Route<B, E> {
 
 impl<B, E> Service<Request<B>> for Route<B, E>
 where
-    B: HttpBody,
+    B: HttpBody + Send + 'static,
 {
     type Response = Response;
     type Error = E;
@@ -129,7 +129,7 @@ impl<B, E> RouteFuture<B, E> {
 
 impl<B, E> Future for RouteFuture<B, E>
 where
-    B: HttpBody,
+    B: HttpBody + Send + 'static,
 {
     type Output = Result<Response, E>;
 

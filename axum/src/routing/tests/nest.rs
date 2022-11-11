@@ -351,23 +351,6 @@ async fn nest_with_and_without_trailing() {
 }
 
 #[tokio::test]
-async fn doesnt_call_outer_fallback() {
-    let app = Router::new()
-        .nest("/foo", Router::new().route("/", get(|| async {})))
-        .fallback(|| async { (StatusCode::NOT_FOUND, "outer fallback") });
-
-    let client = TestClient::new(app);
-
-    let res = client.get("/foo").send().await;
-    assert_eq!(res.status(), StatusCode::OK);
-
-    let res = client.get("/foo/not-found").send().await;
-    assert_eq!(res.status(), StatusCode::NOT_FOUND);
-    // the default fallback returns an empty body
-    assert_eq!(res.text().await, "");
-}
-
-#[tokio::test]
 async fn nesting_with_root_inner_router() {
     let app = Router::new().nest(
         "/foo",
