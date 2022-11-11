@@ -3,6 +3,6 @@ members = [
     "axum",
     "axum-core",
     "axum-extra",
-    "axum-macros",
+    "axum-macros"
 ]
 resolver = "2"

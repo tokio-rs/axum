@@ -4,22 +4,21 @@
 //! cd examples && cargo run -p example-static-file-server
 //! ```
 
-use axum::{
-    body::Body,
-    handler::HandlerWithoutStateExt,
-    http::{Request, StatusCode},
-    response::IntoResponse,
-    routing::{get, get_service},
-    Router,
-};
-use axum_extra::routing::SpaRouter;
 use std::{io, net::SocketAddr};
+
 use tower::ServiceExt;
 use tower_http::{
     services::{ServeDir, ServeFile},
     trace::TraceLayer,
 };
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+
+use axum::{body::Body, Extension, handler::HandlerWithoutStateExt, http::{Request, StatusCode}, response::IntoResponse, Router, routing::{get, get_service}};
+use axum::async_trait;
+use axum::extract::{FromRef, FromRequestParts};
+use axum::http::request::Parts;
+use axum::response::{Redirect, Response};
+use axum_extra::routing::SpaRouter;
 
 #[tokio::main]
 async fn main() {
@@ -39,6 +38,7 @@ async fn main() {
         serve(using_serve_dir_with_handler_as_service(), 3004),
         serve(two_serve_dirs(), 3005),
         serve(calling_serve_dir_from_a_handler(), 3006),
+        serve(using_serve_dir_from_handlers_with_parameter_injection(), 3007)
     );
 }
 
@@ -128,6 +128,62 @@ fn calling_serve_dir_from_a_handler() -> Router {
             result
         }),
     )
+}
+
+fn using_serve_dir_from_handlers_with_parameter_injection() -> Router<> {
+    use tower_http::services::fs::ServeFileSystemResponseBody;
+    use tower_http::set_status::SetStatus;
+    use http::Response;
+    use tower::Service;
+
+    async fn file_handler<ReqBody>(_user: AuthenticatedUser, mut serve_dir: Extension<ServeDir<SetStatus<ServeFile>>>, req: Request<ReqBody>) -> Response<ServeFileSystemResponseBody>
+        where
+            ReqBody: 'static + Send {
+        serve_dir.0.call(req).await.unwrap()
+    }
+
+    let serve_dir = ServeDir::new("assets")
+        .not_found_service(ServeFile::new("assets/index.html"));
+
+    let service = get(file_handler);
+    let router_using_state = Router::with_state(AppState {})
+        .route("/", service.clone())
+        // This works with multiple segments
+        .route("/*path", service)
+        .layer(Extension(serve_dir));
+
+    // Nesting inside another router to supply the type expected by #serve
+    Router::new()
+        .nest("/", router_using_state)
+}
+
+#[derive(Clone)]
+struct AppState {}
+
+struct AuthenticatedUser {}
+
+struct AuthRejection {}
+
+impl IntoResponse for AuthRejection {
+    fn into_response(self) -> Response {
+        Redirect::temporary("/").into_response()
+    }
+}
+
+#[async_trait]
+impl<S> FromRequestParts<S> for AuthenticatedUser
+    where
+        AppState: FromRef<S>,
+        S: Send + Sync,
+{
+    // If anything goes wrong or no session is found, redirect to the auth page
+    type Rejection = AuthRejection;
+
+    async fn from_request_parts(_parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
+        let _app_state = AppState::from_ref(state);
+        // Map from app state to AuthenticatedUser
+        Ok(AuthenticatedUser {})
+    }
 }
 
 async fn handle_error(_err: io::Error) -> impl IntoResponse {

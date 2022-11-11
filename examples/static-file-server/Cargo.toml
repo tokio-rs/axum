@@ -10,5 +10,6 @@ axum-extra = { path = "../../axum-extra", features = ["spa"] }
 tokio = { version = "1.0", features = ["full"] }
 tower = { version = "0.4", features = ["util"] }
 tower-http = { version = "0.3.0", features = ["fs", "trace"] }
+http = "0.2.8"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
