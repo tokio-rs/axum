@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- None.
+- **fixed:** Nested routers will now inherit fallbacks from outer routers ([#1521])
+
+[#1521]: https://github.com/tokio-rs/axum/pull/1521
 
 # 0.6.0-rc.4 (9. November, 2022)
 
