@@ -1346,7 +1346,7 @@ impl<B, E> fmt::Debug for WithState<B, E> {
 
 impl<B, E> Service<Request<B>> for WithState<B, E>
 where
-    B: HttpBody + Send + 'static,
+    B: HttpBody + Send,
 {
     type Response = Response;
     type Error = E;

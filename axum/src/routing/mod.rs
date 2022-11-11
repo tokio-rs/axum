@@ -1,6 +1,6 @@
 //! Routing between [`Service`]s and handlers.
 
-use self::{future::RouteFuture, not_found::NotFound};
+use self::not_found::NotFound;
 #[cfg(feature = "tokio")]
 use crate::extract::connect_info::IntoMakeServiceWithConnectInfo;
 use crate::{
@@ -17,7 +17,6 @@ use std::{
     convert::Infallible,
     fmt,
     sync::Arc,
-    task::{Context, Poll},
 };
 use tower::{
     util::{BoxCloneService, MapResponseLayer, Oneshot},
@@ -663,9 +662,9 @@ where
         E2: 'static,
     {
         match self {
-            Self::Default(inner) => Fallback::Default(f(inner)),
-            Self::Service(inner) => Fallback::Service(f(inner)),
-            Self::BoxedHandler(inner) => Fallback::BoxedHandler(inner.map(f)),
+            Self::Default(route) => Fallback::Default(f(route)),
+            Self::Service(route) => Fallback::Service(f(route)),
+            Self::BoxedHandler(handler) => Fallback::BoxedHandler(handler.map(f)),
         }
     }
 }
@@ -722,28 +721,6 @@ impl<B, E> FallbackRoute<B, E> {
         match self {
             FallbackRoute::Default(inner) => inner.oneshot_inner(req),
             FallbackRoute::Service(inner) => inner.oneshot_inner(req),
-        }
-    }
-}
-
-impl<B, E> Service<Request<B>> for FallbackRoute<B, E>
-where
-    B: HttpBody + Send + 'static,
-{
-    type Response = Response;
-    type Error = E;
-    type Future = RouteFuture<B, E>;
-
-    #[inline]
-    fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        Poll::Ready(Ok(()))
-    }
-
-    #[inline]
-    fn call(&mut self, req: Request<B>) -> Self::Future {
-        match self {
-            FallbackRoute::Default(inner) => inner.call(req),
-            FallbackRoute::Service(inner) => inner.call(req),
         }
     }
 }
