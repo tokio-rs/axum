@@ -164,6 +164,12 @@ impl WebSocketUpgrade {
         self
     }
 
+    /// Allow server to accept unmasked frames (defaults to false)
+    pub fn accept_unmasked_frames(mut self, accept: bool) -> Self {
+        self.config.accept_unmasked_frames = accept;
+        self
+    }
+
     /// Set the known protocols.
     ///
     /// If the protocol name specified by `Sec-WebSocket-Protocol` header
