@@ -1,4 +1,4 @@
-use super::{future::RouteFuture, url_params, Endpoint, Node, Route, RouteId, Router};
+use super::{future::RouteFuture, url_params, IntoMakeService, Node, Route, RouteId, Router};
 use crate::{
     body::{Body, HttpBody},
     response::Response,
@@ -26,25 +26,17 @@ where
     B: HttpBody + Send + 'static,
 {
     #[track_caller]
-    pub(super) fn new<S>(router: Router<S, B>) -> Self
+    pub(super) fn new<S>(router: Router<S, B>, state: S) -> Self
     where
         S: Clone + Send + Sync + 'static,
     {
-        let state = router
-            .state
-            .expect("Can't turn a `Router` that wants to inherit state into a service");
+        let fallback = router.fallback.into_route(&state);
 
         let routes = router
             .routes
             .into_iter()
             .map(|(route_id, endpoint)| {
-                let route = match endpoint {
-                    Endpoint::MethodRouter(method_router) => {
-                        Route::new(method_router.with_state(state.clone()))
-                    }
-                    Endpoint::Route(route) => route,
-                };
-
+                let route = endpoint.into_route(state.clone());
                 (route_id, route)
             })
             .collect();
@@ -52,7 +44,7 @@ where
         Self {
             routes,
             node: router.node,
-            fallback: router.fallback.into_route(&state),
+            fallback,
         }
     }
 
@@ -80,6 +72,17 @@ where
             .clone();
 
         route.call(req)
+    }
+
+    pub fn into_make_service(self) -> IntoMakeService<RouterService<B>> {
+        IntoMakeService::new(self)
+    }
+
+    #[cfg(feature = "tokio")]
+    pub fn into_make_service_with_connect_info<C>(
+        self,
+    ) -> crate::extract::connect_info::IntoMakeServiceWithConnectInfo<RouterService<B>, C> {
+        crate::extract::connect_info::IntoMakeServiceWithConnectInfo::new(self)
     }
 }
 

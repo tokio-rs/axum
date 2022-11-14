@@ -380,7 +380,7 @@ mod tests {
             .layer(from_fn(insert_header));
 
         let res = app
-            .into_service()
+            .into_service(())
             .oneshot(Request::builder().uri("/").body(Body::empty()).unwrap())
             .await
             .unwrap();

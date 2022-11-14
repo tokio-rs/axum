@@ -1,7 +1,7 @@
 use axum::{
     extract::State,
     routing::{get, post},
-    Extension, Json, Router, Server,
+    Extension, Json, Router, RouterService, Server,
 };
 use hyper::server::conn::AddrIncoming;
 use serde::{Deserialize, Serialize};
@@ -17,9 +17,13 @@ fn main() {
         ensure_rewrk_is_installed();
     }
 
-    benchmark("minimal").run(Router::new);
+    benchmark("minimal").run(|| Router::new().into_service(()));
 
-    benchmark("basic").run(|| Router::new().route("/", get(|| async { "Hello, World!" })));
+    benchmark("basic").run(|| {
+        Router::new()
+            .route("/", get(|| async { "Hello, World!" }))
+            .into_service(())
+    });
 
     benchmark("routing").path("/foo/bar/baz").run(|| {
         let mut app = Router::new();
@@ -30,26 +34,32 @@ fn main() {
                 }
             }
         }
-        app.route("/foo/bar/baz", get(|| async {}))
+        app.route("/foo/bar/baz", get(|| async {})).into_service(())
     });
 
     benchmark("receive-json")
         .method("post")
         .headers(&[("content-type", "application/json")])
         .body(r#"{"n": 123, "s": "hi there", "b": false}"#)
-        .run(|| Router::new().route("/", post(|_: Json<Payload>| async {})));
+        .run(|| {
+            Router::new()
+                .route("/", post(|_: Json<Payload>| async {}))
+                .into_service(())
+        });
 
     benchmark("send-json").run(|| {
-        Router::new().route(
-            "/",
-            get(|| async {
-                Json(Payload {
-                    n: 123,
-                    s: "hi there".to_owned(),
-                    b: false,
-                })
-            }),
-        )
+        Router::new()
+            .route(
+                "/",
+                get(|| async {
+                    Json(Payload {
+                        n: 123,
+                        s: "hi there".to_owned(),
+                        b: false,
+                    })
+                }),
+            )
+            .into_service(())
     });
 
     let state = AppState {
@@ -65,10 +75,14 @@ fn main() {
         Router::new()
             .route("/", get(|_: Extension<AppState>| async {}))
             .layer(Extension(state.clone()))
+            .into_service(())
     });
 
-    benchmark("state")
-        .run(|| Router::with_state(state.clone()).route("/", get(|_: State<AppState>| async {})));
+    benchmark("state").run(|| {
+        Router::new()
+            .route("/", get(|_: State<AppState>| async {}))
+            .into_service(state.clone())
+    });
 }
 
 #[derive(Clone)]
@@ -117,10 +131,9 @@ impl BenchmarkBuilder {
     config_method!(headers, &'static [(&'static str, &'static str)]);
     config_method!(body, &'static str);
 
-    fn run<F, S>(self, f: F)
+    fn run<F>(self, f: F)
     where
-        F: FnOnce() -> Router<S>,
-        S: Clone + Send + Sync + 'static,
+        F: FnOnce() -> RouterService,
     {
         // support only running some benchmarks with
         // ```

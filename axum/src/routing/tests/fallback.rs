@@ -49,10 +49,11 @@ async fn or() {
 
 #[tokio::test]
 async fn fallback_accessing_state() {
-    let app = Router::with_state("state")
-        .fallback(|State(state): State<&'static str>| async move { state });
+    let app = Router::new()
+        .fallback(|State(state): State<&'static str>| async move { state })
+        .into_service("state");
 
-    let client = TestClient::new(app);
+    let client = TestClient::from_service(app);
 
     let res = client.get("/does-not-exist").send().await;
     assert_eq!(res.status(), StatusCode::OK);

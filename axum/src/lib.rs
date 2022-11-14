@@ -434,6 +434,7 @@
 #[macro_use]
 pub(crate) mod macros;
 
+mod boxed;
 mod extension;
 #[cfg(feature = "form")]
 mod form;

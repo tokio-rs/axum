@@ -255,11 +255,11 @@ mod tests {
                     custom_key: CustomKey(Key::generate()),
                 };
 
-                let app = Router::<_, Body>::with_state(state)
+                let app = Router::<_, Body>::new()
                     .route("/set", get(set_cookie))
                     .route("/get", get(get_cookie))
                     .route("/remove", get(remove_cookie))
-                    .into_service();
+                    .into_service(state);
 
                 let res = app
                     .clone()
@@ -352,9 +352,9 @@ mod tests {
             custom_key: CustomKey(Key::generate()),
         };
 
-        let app = Router::<_, Body>::with_state(state)
+        let app = Router::<_, Body>::new()
             .route("/get", get(get_cookie))
-            .into_service();
+            .into_service(state);
 
         let res = app
             .clone()

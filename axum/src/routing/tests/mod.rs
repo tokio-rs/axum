@@ -447,7 +447,7 @@ async fn middleware_still_run_for_unmatched_requests() {
     Use `Router::nest` instead\
 ")]
 async fn routing_to_router_panics() {
-    TestClient::new(Router::new().route_service("/", Router::new().into_service()));
+    TestClient::new(Router::new().route_service("/", Router::new().into_service(())));
 }
 
 #[tokio::test]
@@ -756,8 +756,8 @@ async fn extract_state() {
         inner: InnerState { value: 2 },
     };
 
-    let app = Router::with_state(state).route("/", get(handler));
-    let client = TestClient::new(app);
+    let app = Router::new().route("/", get(handler)).into_service(state);
+    let client = TestClient::from_service(app);
 
     let res = client.get("/").send().await;
     assert_eq!(res.status(), StatusCode::OK);
@@ -765,12 +765,14 @@ async fn extract_state() {
 
 #[tokio::test]
 async fn explicitly_set_state() {
-    let app = Router::with_state("...").route_service(
-        "/",
-        get(|State(state): State<&'static str>| async move { state }).with_state("foo"),
-    );
+    let app = Router::new()
+        .route_service(
+            "/",
+            get(|State(state): State<&'static str>| async move { state }).with_state("foo"),
+        )
+        .into_service("...");
 
-    let client = TestClient::new(app);
+    let client = TestClient::from_service(app);
     let res = client.get("/").send().await;
     assert_eq!(res.text().await, "foo");
 }
