@@ -5,8 +5,9 @@ use super::IntoMakeService;
 use crate::extract::connect_info::IntoMakeServiceWithConnectInfo;
 use crate::{
     body::{Body, Bytes, HttpBody},
+    boxed::BoxedIntoRoute,
     error_handling::{HandleError, HandleErrorLayer},
-    handler::{BoxedHandler, Handler},
+    handler::Handler,
     http::{Method, Request, StatusCode},
     response::Response,
     routing::{future::RouteFuture, Fallback, MethodFilter, Route},
@@ -606,7 +607,7 @@ where
     {
         self.on_endpoint(
             filter,
-            MethodEndpoint::BoxedHandler(BoxedHandler::new(handler)),
+            MethodEndpoint::BoxedHandler(BoxedIntoRoute::from_handler(handler)),
         )
     }
 
@@ -626,7 +627,7 @@ where
         T: 'static,
         S: Send + Sync + 'static,
     {
-        self.fallback = Fallback::BoxedHandler(BoxedHandler::new(handler));
+        self.fallback = Fallback::BoxedHandler(BoxedIntoRoute::from_handler(handler));
         self
     }
 }
@@ -964,17 +965,14 @@ where
     ) -> MethodRouter<S, NewReqBody, NewError>
     where
         L: Layer<Route<B, E>> + Clone + Send + 'static,
-        L::Service: Service<Request<NewReqBody>, Error = NewError> + Clone + Send + 'static,
+        L::Service: Service<Request<NewReqBody>> + Clone + Send + 'static,
         <L::Service as Service<Request<NewReqBody>>>::Response: IntoResponse + 'static,
+        <L::Service as Service<Request<NewReqBody>>>::Error: Into<NewError> + 'static,
         <L::Service as Service<Request<NewReqBody>>>::Future: Send + 'static,
         E: 'static,
         S: 'static,
     {
-        let layer_fn = move |svc| {
-            let svc = layer.layer(svc);
-            let svc = MapResponseLayer::new(IntoResponse::into_response).layer(svc);
-            Route::new(svc)
-        };
+        let layer_fn = move |route: Route<B, E>| route.layer(layer.clone());
 
         MethodRouter {
             get: self.get.map(layer_fn.clone()),
@@ -1182,7 +1180,7 @@ where
 enum MethodEndpoint<S, B, E> {
     None,
     Route(Route<B, E>),
-    BoxedHandler(BoxedHandler<S, B, E>),
+    BoxedHandler(BoxedIntoRoute<S, B, E>),
 }
 
 impl<S, B, E> MethodEndpoint<S, B, E>
@@ -1232,7 +1230,7 @@ where
             Self::None => Some(MethodEndpoint::None),
             Self::Route(route) => Some(MethodEndpoint::Route(route)),
             Self::BoxedHandler(handler) => {
-                try_downcast::<BoxedHandler<S2, B, E>, BoxedHandler<S, B, E>>(handler)
+                try_downcast::<BoxedIntoRoute<S2, B, E>, BoxedIntoRoute<S, B, E>>(handler)
                     .map(MethodEndpoint::BoxedHandler)
                     .ok()
             }

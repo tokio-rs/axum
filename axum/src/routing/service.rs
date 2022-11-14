@@ -1,4 +1,4 @@
-use super::{future::RouteFuture, url_params, Endpoint, Node, Route, RouteId, Router};
+use super::{future::RouteFuture, url_params, Node, Route, RouteId, Router};
 use crate::{
     body::{Body, HttpBody},
     response::Response,
@@ -34,17 +34,15 @@ where
             .state
             .expect("Can't turn a `Router` that wants to inherit state into a service");
 
+        let fallback = router.fallback.into_route(&state);
+
         let routes = router
             .routes
             .into_iter()
             .map(|(route_id, endpoint)| {
-                let route = match endpoint {
-                    Endpoint::MethodRouter(method_router) => {
-                        Route::new(method_router.with_state(state.clone()))
-                    }
-                    Endpoint::Route(route) => route,
-                };
-
+                let route = endpoint
+                    .inherit_fallback(fallback.clone())
+                    .into_route(state.clone());
                 (route_id, route)
             })
             .collect();
@@ -52,7 +50,7 @@ where
         Self {
             routes,
             node: router.node,
-            fallback: router.fallback.into_route(&state),
+            fallback,
         }
     }
 
