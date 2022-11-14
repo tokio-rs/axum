@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- None.
+- **added**: Add accept_unmasked_frames setting in WebSocketUpgrade ([#1529])
 
 # 0.6.0-rc.4 (9. November, 2022)
 
