@@ -180,6 +180,7 @@ where
         self.route_endpoint(path, Endpoint::Route(Route::new(service)))
     }
 
+    #[track_caller]
     fn route_endpoint(mut self, path: &str, endpoint: Endpoint<S, B>) -> Self {
         if path.is_empty() {
             panic!("Paths must start with a `/`. Use \"/\" for root routes");
@@ -396,7 +397,6 @@ where
     /// # Panics
     ///
     /// Panics if the router was constructed with [`Router::inherit_state`].
-    #[track_caller]
     pub fn into_service(self, state: S) -> RouterService<B> {
         RouterService::new(self, state)
     }
@@ -429,7 +429,6 @@ where
     /// ```
     ///
     /// [`MakeService`]: tower::make::MakeService
-    #[track_caller]
     pub fn into_make_service(self) -> IntoMakeService<RouterService<B>> {
         IntoMakeService::new(self.into_service(()))
     }

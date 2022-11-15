@@ -25,7 +25,6 @@ impl<B> RouterService<B>
 where
     B: HttpBody + Send + 'static,
 {
-    #[track_caller]
     pub(super) fn new<S>(router: Router<S, B>, state: S) -> Self
     where
         S: Clone + Send + Sync + 'static,
