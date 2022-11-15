@@ -24,7 +24,7 @@ async fn main() {
 
     let client = Client::new();
 
-    let app = Router::with_state(client).route("/", get(handler));
+    let app = Router::new().route("/", get(handler)).into_service(client);
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 4000));
     println!("reverse proxy listening on {}", addr);

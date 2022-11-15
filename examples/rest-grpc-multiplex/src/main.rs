@@ -55,7 +55,7 @@ async fn main() {
         .init();
 
     // build the rest service
-    let rest = Router::new().route("/", get(web_root)).into_service();
+    let rest = Router::new().route("/", get(web_root)).into_service(());
 
     // build the grpc service
     let grpc = GreeterServer::new(GrpcServiceImpl::default());

@@ -43,7 +43,7 @@ async fn main() {
     let shared_state = SharedState::default();
 
     // Build our application by composing routes
-    let app = Router::with_state(Arc::clone(&shared_state))
+    let app = Router::new()
         .route(
             "/:key",
             // Add compression to `kv_get`
@@ -58,7 +58,7 @@ async fn main() {
         )
         .route("/keys", get(list_keys))
         // Nest our admin routes under `/admin`
-        .nest("/admin", admin_routes(shared_state))
+        .nest("/admin", admin_routes())
         // Add middleware to all routes
         .layer(
             ServiceBuilder::new()
@@ -69,7 +69,8 @@ async fn main() {
                 .timeout(Duration::from_secs(10))
                 .layer(TraceLayer::new_for_http())
                 .into_inner(),
-        );
+        )
+        .into_service(Arc::clone(&shared_state));
 
     // Run our app with hyper
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
@@ -113,7 +114,7 @@ async fn list_keys(State(state): State<SharedState>) -> String {
         .join("\n")
 }
 
-fn admin_routes(state: SharedState) -> Router<SharedState> {
+fn admin_routes() -> Router<SharedState> {
     async fn delete_all_keys(State(state): State<SharedState>) {
         state.write().unwrap().db.clear();
     }
@@ -122,7 +123,7 @@ fn admin_routes(state: SharedState) -> Router<SharedState> {
         state.write().unwrap().db.remove(&key);
     }
 
-    Router::with_state(state)
+    Router::new()
         .route("/keys", delete(delete_all_keys))
         .route("/key/:key", delete(remove_key))
         // Require bearer auth for all admin routes

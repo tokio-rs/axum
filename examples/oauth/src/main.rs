@@ -47,12 +47,13 @@ async fn main() {
         oauth_client,
     };
 
-    let app = Router::with_state(app_state)
+    let app = Router::new()
         .route("/", get(index))
         .route("/auth/discord", get(discord_auth))
         .route("/auth/authorized", get(login_authorized))
         .route("/protected", get(protected))
-        .route("/logout", get(logout));
+        .route("/logout", get(logout))
+        .into_service(app_state);
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
     tracing::debug!("listening on {}", addr);

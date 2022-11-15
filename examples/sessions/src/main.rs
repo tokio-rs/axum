@@ -39,7 +39,7 @@ async fn main() {
     // `MemoryStore` just used as an example. Don't use this in production.
     let store = MemoryStore::new();
 
-    let app = Router::with_state(store).route("/", get(handler));
+    let app = Router::new().route("/", get(handler)).into_service(store);
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
     tracing::debug!("listening on {}", addr);

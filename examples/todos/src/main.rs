@@ -46,7 +46,7 @@ async fn main() {
     let db = Db::default();
 
     // Compose the routes
-    let app = Router::with_state(db)
+    let app = Router::new()
         .route("/todos", get(todos_index).post(todos_create))
         .route("/todos/:id", patch(todos_update).delete(todos_delete))
         // Add middleware to all routes
@@ -65,7 +65,8 @@ async fn main() {
                 .timeout(Duration::from_secs(10))
                 .layer(TraceLayer::new_for_http())
                 .into_inner(),
-        );
+        )
+        .into_service(db);
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
     tracing::debug!("listening on {}", addr);

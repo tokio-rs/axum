@@ -46,10 +46,12 @@ async fn main() {
         .expect("can connect to database");
 
     // build our application with some routes
-    let app = Router::with_state(pool).route(
-        "/",
-        get(using_connection_pool_extractor).post(using_connection_extractor),
-    );
+    let app = Router::new()
+        .route(
+            "/",
+            get(using_connection_pool_extractor).post(using_connection_extractor),
+        )
+        .into_service(pool);
 
     // run it with hyper
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
