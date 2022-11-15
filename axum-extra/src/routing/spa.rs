@@ -273,6 +273,6 @@ mod tests {
         let _: axum::RouterService = Router::new()
             .merge(SpaRouter::new("/assets", "test_files"))
             .route("/", get(|_: axum::extract::State<String>| async {}))
-            .into_service(String::new());
+            .with_state(String::new());
     }
 }

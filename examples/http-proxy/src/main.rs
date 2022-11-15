@@ -37,7 +37,7 @@ async fn main() {
 
     let router_svc = Router::new()
         .route("/", get(|| async { "Hello, World!" }))
-        .into_service(());
+        .into_service();
 
     let service = tower::service_fn(move |req: Request<Body>| {
         let router_svc = router_svc.clone();

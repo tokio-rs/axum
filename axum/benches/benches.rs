@@ -17,12 +17,12 @@ fn main() {
         ensure_rewrk_is_installed();
     }
 
-    benchmark("minimal").run(|| Router::new().into_service(()));
+    benchmark("minimal").run(|| Router::new().into_service());
 
     benchmark("basic").run(|| {
         Router::new()
             .route("/", get(|| async { "Hello, World!" }))
-            .into_service(())
+            .into_service()
     });
 
     benchmark("routing").path("/foo/bar/baz").run(|| {
@@ -34,7 +34,7 @@ fn main() {
                 }
             }
         }
-        app.route("/foo/bar/baz", get(|| async {})).into_service(())
+        app.route("/foo/bar/baz", get(|| async {})).into_service()
     });
 
     benchmark("receive-json")
@@ -44,7 +44,7 @@ fn main() {
         .run(|| {
             Router::new()
                 .route("/", post(|_: Json<Payload>| async {}))
-                .into_service(())
+                .into_service()
         });
 
     benchmark("send-json").run(|| {
@@ -59,7 +59,7 @@ fn main() {
                     })
                 }),
             )
-            .into_service(())
+            .into_service()
     });
 
     let state = AppState {
@@ -75,13 +75,13 @@ fn main() {
         Router::new()
             .route("/", get(|_: Extension<AppState>| async {}))
             .layer(Extension(state.clone()))
-            .into_service(())
+            .into_service()
     });
 
     benchmark("state").run(|| {
         Router::new()
             .route("/", get(|_: State<AppState>| async {}))
-            .into_service(state.clone())
+            .with_state(state.clone())
     });
 }
 

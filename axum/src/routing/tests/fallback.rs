@@ -51,7 +51,7 @@ async fn or() {
 async fn fallback_accessing_state() {
     let app = Router::new()
         .fallback(|State(state): State<&'static str>| async move { state })
-        .into_service("state");
+        .with_state("state");
 
     let client = TestClient::from_service(app);
 

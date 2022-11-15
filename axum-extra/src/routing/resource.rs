@@ -162,7 +162,7 @@ mod tests {
             .update(|Path(id): Path<u64>| async move { format!("users#update id={}", id) })
             .destroy(|Path(id): Path<u64>| async move { format!("users#destroy id={}", id) });
 
-        let mut app = Router::new().merge(users).into_service(());
+        let mut app = Router::new().merge(users).into_service();
 
         assert_eq!(
             call_route(&mut app, Method::GET, "/users").await,

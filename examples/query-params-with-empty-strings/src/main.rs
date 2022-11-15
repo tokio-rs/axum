@@ -104,7 +104,7 @@ mod tests {
 
     async fn send_request_get_body(query: &str) -> String {
         let body = app()
-            .into_service(())
+            .into_service()
             .oneshot(
                 Request::builder()
                     .uri(format!("/?{}", query))

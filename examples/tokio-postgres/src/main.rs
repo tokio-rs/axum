@@ -38,7 +38,7 @@ async fn main() {
             "/",
             get(using_connection_pool_extractor).post(using_connection_extractor),
         )
-        .into_service(pool);
+        .with_state(pool);
 
     // run it with hyper
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));

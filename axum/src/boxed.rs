@@ -27,7 +27,7 @@ where
     {
         Self(Box::new(MakeErasedRouter {
             router,
-            into_route: |router, state| Route::new(router.into_service(state)),
+            into_route: |router, state| Route::new(router.with_state(state)),
         }))
     }
 }

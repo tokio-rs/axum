@@ -16,7 +16,7 @@ pub(crate) struct TestClient {
 
 impl TestClient {
     pub(crate) fn new(router: Router<(), Body>) -> Self {
-        Self::from_service(router.into_service(()))
+        Self::from_service(router.into_service())
     }
 
     pub(crate) fn from_service<S, ResBody>(svc: S) -> Self

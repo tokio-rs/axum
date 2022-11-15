@@ -392,12 +392,8 @@ where
         self
     }
 
-    /// Convert this router into a [`RouterService`].
-    ///
-    /// # Panics
-    ///
-    /// Panics if the router was constructed with [`Router::inherit_state`].
-    pub fn into_service(self, state: S) -> RouterService<B> {
+    /// Convert this router into a [`RouterService`] by providing the state.
+    pub fn with_state(self, state: S) -> RouterService<B> {
         RouterService::new(self, state)
     }
 }
@@ -406,6 +402,11 @@ impl<B> Router<(), B>
 where
     B: HttpBody + Send + 'static,
 {
+    /// Convert this router into a [`RouterService`].
+    pub fn into_service(self) -> RouterService<B> {
+        RouterService::new(self, ())
+    }
+
     /// Convert this router into a [`MakeService`], that is a [`Service`] whose
     /// response is another service.
     ///
@@ -430,7 +431,7 @@ where
     ///
     /// [`MakeService`]: tower::make::MakeService
     pub fn into_make_service(self) -> IntoMakeService<RouterService<B>> {
-        IntoMakeService::new(self.into_service(()))
+        IntoMakeService::new(self.into_service())
     }
 
     #[doc = include_str!("../docs/routing/into_make_service_with_connect_info.md")]
@@ -438,7 +439,7 @@ where
     pub fn into_make_service_with_connect_info<C>(
         self,
     ) -> IntoMakeServiceWithConnectInfo<RouterService<B>, C> {
-        IntoMakeServiceWithConnectInfo::new(self.into_service(()))
+        IntoMakeServiceWithConnectInfo::new(self.into_service())
     }
 }
 

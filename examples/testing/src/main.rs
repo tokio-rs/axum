@@ -61,7 +61,7 @@ mod tests {
 
     #[tokio::test]
     async fn hello_world() {
-        let app = app().into_service(());
+        let app = app().into_service();
 
         // `Router` implements `tower::Service<Request<Body>>` so we can
         // call it like any tower service, no need to run an HTTP server.
@@ -78,7 +78,7 @@ mod tests {
 
     #[tokio::test]
     async fn json() {
-        let app = app().into_service(());
+        let app = app().into_service();
 
         let response = app
             .oneshot(
@@ -103,7 +103,7 @@ mod tests {
 
     #[tokio::test]
     async fn not_found() {
-        let app = app().into_service(());
+        let app = app().into_service();
 
         let response = app
             .oneshot(
@@ -154,7 +154,7 @@ mod tests {
     // in multiple request
     #[tokio::test]
     async fn multiple_request() {
-        let mut app = app().into_service(());
+        let mut app = app().into_service();
 
         let request = Request::builder().uri("/").body(Body::empty()).unwrap();
         let response = app.ready().await.unwrap().call(request).await.unwrap();

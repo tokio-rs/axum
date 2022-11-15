@@ -259,7 +259,7 @@ mod tests {
                     .route("/set", get(set_cookie))
                     .route("/get", get(get_cookie))
                     .route("/remove", get(remove_cookie))
-                    .into_service(state);
+                    .with_state(state);
 
                 let res = app
                     .clone()
@@ -354,7 +354,7 @@ mod tests {
 
         let app = Router::<_, Body>::new()
             .route("/get", get(get_cookie))
-            .into_service(state);
+            .with_state(state);
 
         let res = app
             .clone()

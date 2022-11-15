@@ -39,7 +39,7 @@ async fn main() {
     let app = Router::new()
         .route("/users/:id", get(users_show))
         .route("/users", post(users_create))
-        .into_service(user_repo);
+        .with_state(user_repo);
 
     // Run our application
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
