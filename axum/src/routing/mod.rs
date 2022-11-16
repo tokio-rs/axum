@@ -393,6 +393,8 @@ where
     }
 
     /// Convert this router into a [`RouterService`] by providing the state.
+    ///
+    /// Once this method has been called you cannot add more routes. So it must be called as last.
     pub fn with_state(self, state: S) -> RouterService<B> {
         RouterService::new(self, state)
     }
@@ -403,6 +405,11 @@ where
     B: HttpBody + Send + 'static,
 {
     /// Convert this router into a [`RouterService`].
+    ///
+    /// This is a convenience method for routers that don't have any state (i.e. the state type is
+    /// `()`). Use [`Router::with_state`] otherwise.
+    ///
+    /// Once this method has been called you cannot add more routes. So it must be called as last.
     pub fn into_service(self) -> RouterService<B> {
         RouterService::new(self, ())
     }
@@ -428,6 +435,9 @@ where
     ///     .expect("server failed");
     /// # };
     /// ```
+    ///
+    /// This is a convenience method for routers that don't have any state (i.e. the state type is
+    /// `()`). Use [`RouterService::into_make_service`] otherwise.
     ///
     /// [`MakeService`]: tower::make::MakeService
     pub fn into_make_service(self) -> IntoMakeService<RouterService<B>> {
