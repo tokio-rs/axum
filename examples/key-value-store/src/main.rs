@@ -68,9 +68,8 @@ async fn main() {
                 .concurrency_limit(1024)
                 .timeout(Duration::from_secs(10))
                 .layer(TraceLayer::new_for_http())
-                .into_inner(),
         )
-        .into_service(Arc::clone(&shared_state));
+        .with_state(Arc::clone(&shared_state));
 
     // Run our app with hyper
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
