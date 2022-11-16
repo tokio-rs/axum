@@ -140,6 +140,8 @@ use std::{
 /// # let _: axum::routing::RouterService = app;
 /// ```
 ///
+/// For convenience `FromRef` can also be derived using `#[derive(FromRef)]`.
+///
 /// # For library authors
 ///
 /// If you're writing a library that has an extractor that needs state, this is the recommended way

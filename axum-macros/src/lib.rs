@@ -181,7 +181,6 @@ use from_request::Trait::{FromRequest, FromRequestParts};
 /// rejection type with `#[from_request(rejection(YourType))]`:
 ///
 /// ```
-/// use axum_macros::FromRequest;
 /// use axum::{
 ///     extract::{
 ///         rejection::{ExtensionRejection, StringRejection},
@@ -463,8 +462,7 @@ pub fn derive_from_request_parts(item: TokenStream) -> TokenStream {
 /// As the error message says, handler function needs to be async.
 ///
 /// ```
-/// use axum::{routing::get, Router};
-/// use axum_macros::debug_handler;
+/// use axum::{routing::get, Router, debug_handler};
 ///
 /// #[tokio::main]
 /// async fn main() {
@@ -493,8 +491,7 @@ pub fn derive_from_request_parts(item: TokenStream) -> TokenStream {
 /// To work around that the request body type can be customized like so:
 ///
 /// ```
-/// use axum::{body::BoxBody, http::Request};
-/// # use axum_macros::debug_handler;
+/// use axum::{body::BoxBody, http::Request, debug_handler};
 ///
 /// #[debug_handler(body = BoxBody)]
 /// async fn handler(request: Request<BoxBody>) {}
@@ -506,8 +503,7 @@ pub fn derive_from_request_parts(item: TokenStream) -> TokenStream {
 /// [`axum::extract::State`] argument:
 ///
 /// ```
-/// use axum::extract::State;
-/// # use axum_macros::debug_handler;
+/// use axum::{debug_handler, extract::State};
 ///
 /// #[debug_handler]
 /// async fn handler(
@@ -523,8 +519,7 @@ pub fn derive_from_request_parts(item: TokenStream) -> TokenStream {
 /// customize the state type you can set it with `#[debug_handler(state = ...)]`:
 ///
 /// ```
-/// use axum::extract::{State, FromRef};
-/// # use axum_macros::debug_handler;
+/// use axum::{debug_handler, extract::{State, FromRef}};
 ///
 /// #[debug_handler(state = AppState)]
 /// async fn handler(
@@ -579,8 +574,11 @@ pub fn derive_typed_path(input: TokenStream) -> TokenStream {
 /// # Example
 ///
 /// ```
-/// use axum_macros::FromRef;
-/// use axum::{Router, routing::get, extract::State};
+/// use axum::{
+///     Router,
+///     routing::get,
+///     extract::{State, FromRef},
+/// };
 ///
 /// #
 /// # type AuthToken = String;
