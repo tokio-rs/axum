@@ -15,5 +15,7 @@ fn main() {
         auth_token: Default::default(),
     };
 
-    let _: Router<AppState> = Router::with_state(state).route("/", get(handler));
+    let _: Router<AppState> = Router::new()
+        .route("/", get(handler))
+        .with_state(state);
 }

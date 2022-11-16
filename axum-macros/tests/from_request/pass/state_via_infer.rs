@@ -6,8 +6,9 @@ use axum::{
 use axum_macros::FromRequest;
 
 fn main() {
-    let _: Router<AppState> = Router::with_state(AppState::default())
-        .route("/b", get(|_: AppState| async {}));
+    let _: Router<AppState> = Router::new()
+        .route("/b", get(|_: AppState| async {}))
+        .with_state(AppState::default());
 }
 
 // if we're extract "via" `State<AppState>` and not specifying state

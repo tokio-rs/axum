@@ -605,8 +605,10 @@ pub fn derive_typed_path(input: TokenStream) -> TokenStream {
 ///     database_pool,
 /// };
 ///
-/// let app = Router::with_state(state).route("/", get(handler).post(other_handler));
-/// # let _: Router<AppState> = app;
+/// let app = Router::new()
+///     .route("/", get(handler).post(other_handler))
+///     .with_state(state);
+/// # let _: axum::routing::RouterService = app;
 /// ```
 ///
 /// [`FromRef`]: https://docs.rs/axum/latest/axum/extract/trait.FromRef.html

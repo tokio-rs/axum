@@ -31,7 +31,9 @@ use std::{
 /// let state = AppState {};
 ///
 /// // create a `Router` that holds our state
-/// let app = Router::with_state(state).route("/", get(handler));
+/// let app = Router::new()
+///     .route("/", get(handler))
+///     .with_state(state);
 ///
 /// async fn handler(
 ///     // access the state via the `State` extractor
@@ -40,7 +42,7 @@ use std::{
 /// ) {
 ///     // use `state`...
 /// }
-/// # let _: Router<AppState> = app;
+/// # let _: axum::routing::RouterService = app;
 /// ```
 ///
 /// # With `MethodRouter`
@@ -119,9 +121,10 @@ use std::{
 ///     api_state: ApiState {},
 /// };
 ///
-/// let app = Router::with_state(state)
+/// let app = Router::new()
 ///     .route("/", get(handler))
-///     .route("/api/users", get(api_users));
+///     .route("/api/users", get(api_users))
+///     .with_state(state);
 ///
 /// async fn api_users(
 ///     // access the api specific state
@@ -134,7 +137,7 @@ use std::{
 ///     State(state): State<AppState>,
 /// ) {
 /// }
-/// # let _: Router<AppState> = app;
+/// # let _: axum::routing::RouterService = app;
 /// ```
 ///
 /// # For library authors

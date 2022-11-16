@@ -132,10 +132,11 @@ pub fn map_response<F, T>(f: F) -> MapResponseLayer<F, (), T> {
 ///
 /// let state = AppState { /* ... */ };
 ///
-/// let app = Router::with_state(state.clone())
+/// let app = Router::new()
 ///     .route("/", get(|| async { /* ... */ }))
-///     .route_layer(map_response_with_state(state, my_middleware));
-/// # let app: Router<_> = app;
+///     .route_layer(map_response_with_state(state.clone(), my_middleware))
+///     .with_state(state);
+/// # let _: axum::routing::RouterService = app;
 /// ```
 pub fn map_response_with_state<F, S, T>(state: S, f: F) -> MapResponseLayer<F, S, T> {
     MapResponseLayer {

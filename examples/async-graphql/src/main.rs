@@ -34,7 +34,9 @@ async fn main() {
         .data(StarWars::new())
         .finish();
 
-    let app = Router::with_state(schema).route("/", get(graphql_playground).post(graphql_handler));
+    let app = Router::new()
+        .route("/", get(graphql_playground).post(graphql_handler))
+        .with_state(schema);
 
     println!("Playground: http://localhost:3000");
 
