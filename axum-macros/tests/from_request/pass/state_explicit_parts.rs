@@ -7,7 +7,7 @@ use axum::{
 use std::collections::HashMap;
 
 fn main() {
-    let _: Router<AppState> = Router::new()
+    let _: axum::routing::RouterService = Router::new()
         .route("/b", get(|_: Extractor| async {}))
         .with_state(AppState::default());
 }
