@@ -7,7 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- None.
+- **breaking:** `Router::with_state` is no longer a constructor. It is instead
+  used to convert the router into a `RouterService` ([#1532])
+
+  This nested router on 0.6.0-rc.4
+
+  ```rust
+  Router::with_state(state).route(...);
+  ```
+
+  Becomes this in 0.6.0-rc.5
+
+  ```rust
+  Router::new().route(...).with_state(state);
+  ```
+
+- **breaking:**: `Router::nest` and `Router::merge` now only supports nesting
+  routers that use the same state type as the router they're being merged into.
+  Use `FromRef` for substates ([#1532])
+
+[#1532]: https://github.com/tokio-rs/axum/pull/1532
 
 # 0.6.0-rc.4 (9. November, 2022)
 
