@@ -67,7 +67,7 @@ async fn main() {
                 .load_shed()
                 .concurrency_limit(1024)
                 .timeout(Duration::from_secs(10))
-                .layer(TraceLayer::new_for_http())
+                .layer(TraceLayer::new_for_http()),
         )
         .with_state(Arc::clone(&shared_state));
 
