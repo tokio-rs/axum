@@ -26,7 +26,7 @@ use std::{
 use tower::{BoxError, ServiceBuilder};
 use tower_http::{
     auth::RequireAuthorizationLayer, compression::CompressionLayer, limit::RequestBodyLimitLayer,
-    trace::TraceLayer,
+    trace::TraceLayer, ServiceBuilderExt,
 };
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
@@ -50,10 +50,12 @@ async fn main() {
             get(kv_get.layer(CompressionLayer::new()))
                 // But don't compress `kv_set`
                 .post_service(
-                    ServiceBuilder::new()
-                        .layer(DefaultBodyLimit::disable())
-                        .layer(RequestBodyLimitLayer::new(1024 * 5_000 /* ~5mb */))
-                        .service(kv_set.with_state(Arc::clone(&shared_state))),
+                    kv_set
+                        .layer((
+                            DefaultBodyLimit::disable(),
+                            RequestBodyLimitLayer::new(1024 * 5_000 /* ~5mb */),
+                        ))
+                        .with_state(Arc::clone(&shared_state)),
                 ),
         )
         .route("/keys", get(list_keys))
