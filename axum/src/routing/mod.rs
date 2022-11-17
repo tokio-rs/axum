@@ -69,6 +69,7 @@ pub struct Router<S = (), B = Body> {
     routes: HashMap<RouteId, Endpoint<S, B>>,
     node: Arc<Node>,
     fallback: Fallback<S, B>,
+    service_nested_at_root: bool,
 }
 
 impl<S, B> Clone for Router<S, B>
@@ -81,6 +82,7 @@ where
             routes: self.routes.clone(),
             node: Arc::clone(&self.node),
             fallback: self.fallback.clone(),
+            service_nested_at_root: self.service_nested_at_root,
         }
     }
 }
@@ -105,6 +107,7 @@ where
             .field("routes", &self.routes)
             .field("node", &self.node)
             .field("fallback", &self.fallback)
+            .field("service_nested_at_root", &self.service_nested_at_root)
             .finish()
     }
 }
@@ -139,9 +142,7 @@ where
     pub fn with_state(state: S) -> Self {
         Self {
             state: Some(state),
-            routes: Default::default(),
-            node: Default::default(),
-            fallback: Fallback::Default(Route::new(NotFound)),
+            ..Self::inherit_state()
         }
     }
 
@@ -180,6 +181,7 @@ where
             routes: Default::default(),
             node: Default::default(),
             fallback: Fallback::Default(Route::new(NotFound)),
+            service_nested_at_root: false,
         }
     }
 
@@ -225,6 +227,7 @@ where
     }
 
     #[doc = include_str!("../docs/routing/route_service.md")]
+    #[track_caller]
     pub fn route_service<T>(mut self, path: &str, service: T) -> Self
     where
         T: Service<Request<B>, Error = Infallible> + Clone + Send + 'static,
@@ -300,6 +303,14 @@ where
             path = "/";
         }
 
+        if path == "/" {
+            if self.service_nested_at_root {
+                panic!("Cannot nest more than one service at `/`. Consider using `Router::merge` instead.");
+            } else {
+                self.service_nested_at_root = true;
+            }
+        }
+
         if path.contains('*') {
             panic!("Invalid route: nested routes cannot contain wildcards (*)");
         }
@@ -339,7 +350,10 @@ where
             routes,
             node,
             fallback,
+            service_nested_at_root,
         } = other.into();
+
+        self.service_nested_at_root = self.service_nested_at_root || service_nested_at_root;
 
         let cast_method_router_closure_slot;
         let (fallback, cast_method_router) = match state {
@@ -436,6 +450,7 @@ where
             routes,
             node: self.node,
             fallback,
+            service_nested_at_root: self.service_nested_at_root,
         }
     }
 
@@ -481,6 +496,7 @@ where
             routes,
             node: self.node,
             fallback: self.fallback,
+            service_nested_at_root: self.service_nested_at_root,
         }
     }
 

@@ -797,3 +797,13 @@ async fn layer_response_into_response() {
     assert_eq!(res.headers()["x-foo"], "bar");
     assert_eq!(res.status(), StatusCode::IM_A_TEAPOT);
 }
+
+#[should_panic(
+    expected = "Cannot nest more than one service at `/`. Consider using `Router::merge` instead."
+)]
+#[test]
+fn nesting_twice_at_root_hints_at_merge() {
+    let _: Router = Router::new()
+        .nest("/", Router::new())
+        .nest("/", Router::new());
+}
