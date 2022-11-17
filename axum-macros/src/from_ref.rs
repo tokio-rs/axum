@@ -1,6 +1,12 @@
 use proc_macro2::{Ident, TokenStream};
 use quote::quote_spanned;
-use syn::{spanned::Spanned, Field, ItemStruct};
+use syn::{
+    parse::{Parse, ParseStream},
+    spanned::Spanned,
+    Field, ItemStruct, Token,
+};
+
+use crate::attr_parsing::{combine_unary_attribute, parse_attrs, Combine};
 
 pub(crate) fn expand(item: ItemStruct) -> TokenStream {
     item.fields
@@ -11,6 +17,15 @@ pub(crate) fn expand(item: ItemStruct) -> TokenStream {
 }
 
 fn expand_field(state: &Ident, idx: usize, field: &Field) -> TokenStream {
+    let FieldAttrs { skip } = match parse_attrs("from_ref", &field.attrs) {
+        Ok(attrs) => attrs,
+        Err(err) => return err.into_compile_error(),
+    };
+
+    if skip.is_some() {
+        return TokenStream::default();
+    }
+
     let field_ty = &field.ty;
     let span = field.ty.span();
 
@@ -30,6 +45,42 @@ fn expand_field(state: &Ident, idx: usize, field: &Field) -> TokenStream {
                 #body
             }
         }
+    }
+}
+
+mod kw {
+    syn::custom_keyword!(skip);
+}
+
+#[derive(Default)]
+pub(super) struct FieldAttrs {
+    pub(super) skip: Option<kw::skip>,
+}
+
+impl Parse for FieldAttrs {
+    fn parse(input: ParseStream) -> syn::Result<Self> {
+        let mut skip = None;
+
+        while !input.is_empty() {
+            let lh = input.lookahead1();
+            if lh.peek(kw::skip) {
+                skip = Some(input.parse()?);
+            } else {
+                return Err(lh.error());
+            }
+
+            let _ = input.parse::<Token![,]>();
+        }
+
+        Ok(Self { skip })
+    }
+}
+
+impl Combine for FieldAttrs {
+    fn combine(mut self, other: Self) -> syn::Result<Self> {
+        let Self { skip } = other;
+        combine_unary_attribute(&mut self.skip, skip)?;
+        Ok(self)
     }
 }
 
