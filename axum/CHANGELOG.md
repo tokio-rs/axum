@@ -26,6 +26,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   routers that use the same state type as the router they're being merged into.
   Use `FromRef` for substates ([#1532])
 
+- **added:** Add `accept_unmasked_frames` setting in WebSocketUpgrade ([#1529])
+
+[#1529]: https://github.com/tokio-rs/axum/pull/1529
 [#1532]: https://github.com/tokio-rs/axum/pull/1532
 
 # 0.6.0-rc.4 (9. November, 2022)
