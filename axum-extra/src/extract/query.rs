@@ -1,13 +1,12 @@
 use axum::{
     async_trait,
-    extract::{
-        rejection::{FailedToDeserializeQueryString, QueryRejection},
-        FromRequestParts,
-    },
+    extract::FromRequestParts,
+    response::{IntoResponse, Response},
+    Error,
 };
-use http::request::Parts;
+use http::{request::Parts, StatusCode};
 use serde::de::DeserializeOwned;
-use std::ops::Deref;
+use std::{fmt, ops::Deref};
 
 /// Extractor that deserializes query strings into some type.
 ///
@@ -69,7 +68,7 @@ where
     async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
         let query = parts.uri.query().unwrap_or_default();
         let value = serde_html_form::from_str(query)
-            .map_err(FailedToDeserializeQueryString::__private_new)?;
+            .map_err(|err| QueryRejection::FailedToDeserializeQueryString(Error::new(err)))?;
         Ok(Query(value))
     }
 }
@@ -79,6 +78,45 @@ impl<T> Deref for Query<T> {
 
     fn deref(&self) -> &Self::Target {
         &self.0
+    }
+}
+
+/// Rejection used for [`Query`].
+///
+/// Contains one variant for each way the [`Query`] extractor can fail.
+#[derive(Debug)]
+#[non_exhaustive]
+#[cfg(feature = "query")]
+pub enum QueryRejection {
+    #[allow(missing_docs)]
+    FailedToDeserializeQueryString(Error),
+}
+
+impl IntoResponse for QueryRejection {
+    fn into_response(self) -> Response {
+        match self {
+            Self::FailedToDeserializeQueryString(inner) => (
+                StatusCode::BAD_REQUEST,
+                format!("Failed to deserialize query string: {}", inner),
+            )
+                .into_response(),
+        }
+    }
+}
+
+impl fmt::Display for QueryRejection {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::FailedToDeserializeQueryString(inner) => inner.fmt(f),
+        }
+    }
+}
+
+impl std::error::Error for QueryRejection {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            Self::FailedToDeserializeQueryString(inner) => Some(inner),
+        }
     }
 }
 

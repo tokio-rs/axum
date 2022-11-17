@@ -9,7 +9,7 @@ use crate::{
     BoxError, Json, Router,
 };
 use futures_util::stream::StreamExt;
-use http::{header::CONTENT_LENGTH, HeaderMap, Request, Response, StatusCode, Uri};
+use http::{header::ALLOW, header::CONTENT_LENGTH, HeaderMap, Request, Response, StatusCode, Uri};
 use hyper::Body;
 use serde_json::json;
 use std::{
@@ -217,12 +217,14 @@ async fn wrong_method_handler() {
 
     let res = client.patch("/").send().await;
     assert_eq!(res.status(), StatusCode::METHOD_NOT_ALLOWED);
+    assert_eq!(res.headers()[ALLOW], "GET,HEAD,POST");
 
     let res = client.patch("/foo").send().await;
     assert_eq!(res.status(), StatusCode::OK);
 
     let res = client.post("/foo").send().await;
     assert_eq!(res.status(), StatusCode::METHOD_NOT_ALLOWED);
+    assert_eq!(res.headers()[ALLOW], "PATCH");
 
     let res = client.get("/bar").send().await;
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
@@ -255,12 +257,14 @@ async fn wrong_method_service() {
 
     let res = client.patch("/").send().await;
     assert_eq!(res.status(), StatusCode::METHOD_NOT_ALLOWED);
+    assert_eq!(res.headers()[ALLOW], "GET,HEAD,POST");
 
     let res = client.patch("/foo").send().await;
     assert_eq!(res.status(), StatusCode::OK);
 
     let res = client.post("/foo").send().await;
     assert_eq!(res.status(), StatusCode::METHOD_NOT_ALLOWED);
+    assert_eq!(res.headers()[ALLOW], "PATCH");
 
     let res = client.get("/bar").send().await;
     assert_eq!(res.status(), StatusCode::NOT_FOUND);

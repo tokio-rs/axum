@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+- None.
+
+# 0.3.0-rc.2 (8. November, 2022)
+
 - **added:** Add `#[derive(FromRef)]` ([#1430])
 
 [#1430]: https://github.com/tokio-rs/axum/pull/1430

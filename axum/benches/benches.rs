@@ -162,19 +162,19 @@ impl BenchmarkBuilder {
         cmd.arg("--host");
         cmd.arg(format!("http://{}{}", addr, self.path.unwrap_or("")));
 
-        cmd.args(&["--connections", "10"]);
-        cmd.args(&["--threads", "10"]);
+        cmd.args(["--connections", "10"]);
+        cmd.args(["--threads", "10"]);
 
         if on_ci() {
             // don't slow down CI by running the benchmarks for too long
             // but do run them for a bit
-            cmd.args(&["--duration", "1s"]);
+            cmd.args(["--duration", "1s"]);
         } else {
-            cmd.args(&["--duration", "10s"]);
+            cmd.args(["--duration", "10s"]);
         }
 
         if let Some(method) = self.method {
-            cmd.args(&["--method", method]);
+            cmd.args(["--method", method]);
         }
 
         for (key, value) in self.headers.into_iter().flatten() {
@@ -183,7 +183,7 @@ impl BenchmarkBuilder {
         }
 
         if let Some(body) = self.body {
-            cmd.args(&["--body", body]);
+            cmd.args(["--body", body]);
         }
 
         eprintln!("Running {:?} benchmark", self.name);
@@ -209,7 +209,7 @@ impl BenchmarkBuilder {
 fn install_rewrk() {
     println!("installing rewrk");
     let mut cmd = Command::new("cargo");
-    cmd.args(&[
+    cmd.args([
         "install",
         "rewrk",
         "--git",

@@ -7,24 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+- **added:** Add `accept_unmasked_frames` setting in WebSocketUpgrade ([#1529])
+
+# 0.6.0-rc.4 (9. November, 2022)
+
 - **changed**: The inner error of a `JsonRejection` is now
   `serde_path_to_error::Error<serde_json::Error>`.  Previously it was
   `serde_json::Error` ([#1371])
 - **added**: `JsonRejection` now displays the path at which a deserialization
-  error occurred too ([#1371])
+  error occurred ([#1371])
 - **fixed:** Support streaming/chunked requests in `ContentLengthLimit` ([#1389])
 - **fixed:** Used `400 Bad Request` for `FailedToDeserializeQueryString`
   rejections, instead of `422 Unprocessable Entity` ([#1387])
-- **added:** Add `middleware::from_extractor_with_state` and
-  `middleware::from_extractor_with_state_arc` ([#1396])
+- **added:** Add `middleware::from_extractor_with_state` ([#1396])
 - **added:** Add `DefaultBodyLimit::max` for changing the default body limit ([#1397])
-- **added:** Add `map_request`, `map_request_with_state`, and
-  `map_request_with_state_arc` for transforming the request with an async
-  function ([#1408])
-- **added:** Add `map_response`, `map_response_with_state`, and
-  `map_response_with_state_arc` for transforming the response with an async
-  function ([#1414])
-- **breaking:** `ContentLengthLimit` has been removed. `Use DefaultBodyLimit` instead ([#1400])
+- **added:** Add `map_request`, `map_request_with_state` for transforming the
+  request with an async function ([#1408])
+- **added:** Add `map_response`, `map_response_with_state` for transforming the
+  response with an async function ([#1414])
+- **breaking:** `ContentLengthLimit` has been removed. Use `DefaultBodyLimit` instead ([#1400])
 - **changed:** `Router` no longer implements `Service`, call `.into_service()`
   on it to obtain a `RouterService` that does ([#1368])
 - **added:** Add `Router::inherit_state`, which creates a `Router` with an
@@ -46,7 +47,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **added:** Add `#[derive(axum::extract::FromRef)]` ([#1430])
 - **added:** `FromRequest` and `FromRequestParts` derive macro re-exports from
   [`axum-macros`] behind the `macros` feature ([#1352])
+- **breaking:** `MatchedPath` can now no longer be extracted in middleware for
+  nested routes ([#1462])
 - **added:** Add `extract::RawForm` for accessing raw urlencoded query bytes or request body ([#1487])
+- **breaking:** Rename `FormRejection::FailedToDeserializeQueryString` to
+  `FormRejection::FailedToDeserializeForm` ([#1496])
 
 [#1352]: https://github.com/tokio-rs/axum/pull/1352
 [#1368]: https://github.com/tokio-rs/axum/pull/1368
@@ -62,7 +67,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#1418]: https://github.com/tokio-rs/axum/pull/1418
 [#1420]: https://github.com/tokio-rs/axum/pull/1420
 [#1421]: https://github.com/tokio-rs/axum/pull/1421
+[#1430]: https://github.com/tokio-rs/axum/pull/1430
+[#1462]: https://github.com/tokio-rs/axum/pull/1462
 [#1487]: https://github.com/tokio-rs/axum/pull/1487
+[#1496]: https://github.com/tokio-rs/axum/pull/1496
+
+# 0.6.0-rc.3 (8. November, 2022)
+
+Yanked, as it didn't compile in release mode.
 
 # 0.6.0-rc.2 (10. September, 2022)
 

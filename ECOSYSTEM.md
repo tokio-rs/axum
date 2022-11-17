@@ -51,13 +51,14 @@ If your project isn't listed here and you would like it to be, please feel free 
 - [Petclinic](https://github.com/danipardo/petclinic): A port of Spring Framework's Petclinic showcase project to Axum
 - [axum-middleware-example](https://github.com/casbin-rs/axum-middleware-example): A authorization application using Axum-web, Casbin and Diesel, with JWT support.
 - [circleci-hook](https://github.com/DavidS/circleci-hook): Translate CircleCI WebHooks to OpenTelemetry traces to improve your test insights. Add detail with otel-cli to capture individual commands. Use the TRACEPARENT integration to add details from your tests.
+- [lishuuro.org](https://github.com/uros-5/backend-lishuuro): Small chess variant server that uses Rust as backend(Axum framework).
 
 [Realworld]: https://github.com/gothinkster/realworld
 [SQLx]: https://github.com/launchbadge/sqlx
 
 ## Tutorials
 
-- [Rust on Nails](https://cloak.software/blog/rust-on-nails/): A full stack architecture for Rust web applications (uses Axum)
+- [Rust on Nails](https://rust-on-nails.com/): A full stack architecture for Rust web applications (uses Axum)
 - [axum-tutorial] ([website][axum-tutorial-website]): Axum web framework tutorial for beginners.
 - [demo-rust-axum]: Demo of Rust and axum web framework
 - [Introduction to axum (talk)]: Talk about axum from the Copenhagen Rust Meetup.

@@ -76,7 +76,7 @@ where
         match req.extract().await {
             Ok(RawForm(bytes)) => {
                 let value = serde_urlencoded::from_bytes(&bytes)
-                    .map_err(FailedToDeserializeQueryString::__private_new)?;
+                    .map_err(FailedToDeserializeForm::from_err)?;
                 Ok(Form(value))
             }
             Err(RawFormRejection::BytesRejection(r)) => Err(FormRejection::BytesRejection(r)),

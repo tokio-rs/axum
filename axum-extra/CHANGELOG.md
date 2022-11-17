@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning].
 
 - None.
 
+# 0.4.0-rc.2 (8. November, 2022)
+
+- **breaking:** `Form` has a new rejection type ([#1496])
+- **breaking:** `Query` has a new rejection type ([#1496])
+
+[#1496]: https://github.com/tokio-rs/axum/pull/1496
+
 # 0.4.0-rc.1 (23. August, 2022)
 
 - **added:** Add `RouterExt::route_with_tsr` for adding routes with an
