@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+- None.
+
+# 0.3.0-rc.3 (18. November, 2022)
+
 - **added:** Add `#[from_ref(skip)]` to skip implementing `FromRef` for individual fields ([#1537])
 
 [#1537]: https://github.com/tokio-rs/axum/pull/1537
