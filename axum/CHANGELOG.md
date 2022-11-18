@@ -26,7 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Router::new().route(...).with_state(state);
   ```
 
-- **breaking:**: `Router::inherit_fallback` has been removed. Use
+- **breaking:**: `Router::inherit_state` has been removed. Use
   `Router::with_state` instead ([#1532])
 - **breaking:**: `Router::nest` and `Router::merge` now only supports nesting
   routers that use the same state type as the router they're being merged into.
