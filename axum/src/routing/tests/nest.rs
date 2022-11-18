@@ -70,6 +70,7 @@ async fn wrong_method_nest() {
 
     let res = client.post("/").send().await;
     assert_eq!(res.status(), StatusCode::METHOD_NOT_ALLOWED);
+    assert_eq!(res.headers()[ALLOW], "GET,HEAD");
 
     let res = client.patch("/foo").send().await;
     assert_eq!(res.status(), StatusCode::NOT_FOUND);

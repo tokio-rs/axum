@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 # Unreleased
 
 - **fixed:** Nested routers will now inherit fallbacks from outer routers ([#1521])
+- **added:** Add `accept_unmasked_frames` setting in WebSocketUpgrade ([#1529])
 
 [#1521]: https://github.com/tokio-rs/axum/pull/1521
 

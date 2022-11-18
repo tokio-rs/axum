@@ -58,7 +58,7 @@ If your project isn't listed here and you would like it to be, please feel free 
 
 ## Tutorials
 
-- [Rust on Nails](https://cloak.software/blog/rust-on-nails/): A full stack architecture for Rust web applications (uses Axum)
+- [Rust on Nails](https://rust-on-nails.com/): A full stack architecture for Rust web applications (uses Axum)
 - [axum-tutorial] ([website][axum-tutorial-website]): Axum web framework tutorial for beginners.
 - [demo-rust-axum]: Demo of Rust and axum web framework
 - [Introduction to axum (talk)]: Talk about axum from the Copenhagen Rust Meetup.
