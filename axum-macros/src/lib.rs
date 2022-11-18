@@ -589,6 +589,9 @@ pub fn derive_typed_path(input: TokenStream) -> TokenStream {
 /// struct AppState {
 ///     auth_token: AuthToken,
 ///     database_pool: DatabasePool,
+///     // fields can also be skipped
+///     #[from_ref(skip)]
+///     api_token: String,
 /// }
 ///
 /// // So those types can be extracted via `State`
@@ -601,6 +604,7 @@ pub fn derive_typed_path(input: TokenStream) -> TokenStream {
 /// let state = AppState {
 ///     auth_token,
 ///     database_pool,
+///     api_token: "secret".to_owned(),
 /// };
 ///
 /// let app = Router::new()
