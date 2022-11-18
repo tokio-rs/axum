@@ -1,6 +1,6 @@
 //! Route to services and handlers based on HTTP methods.
 
-use super::IntoMakeService;
+use super::{FallbackRoute, IntoMakeService};
 #[cfg(feature = "tokio")]
 use crate::extract::connect_info::IntoMakeServiceWithConnectInfo;
 use crate::{
@@ -744,7 +744,7 @@ where
             post: self.post.into_route(&state),
             put: self.put.into_route(&state),
             trace: self.trace.into_route(&state),
-            fallback: self.fallback.into_route(&state),
+            fallback: self.fallback.into_fallback_route(&state),
             allow_header: self.allow_header,
         }
     }
@@ -1284,7 +1284,7 @@ pub struct WithState<B, E> {
     post: Option<Route<B, E>>,
     put: Option<Route<B, E>>,
     trace: Option<Route<B, E>>,
-    fallback: Route<B, E>,
+    fallback: FallbackRoute<B, E>,
     allow_header: AllowHeader,
 }
 

@@ -1,4 +1,6 @@
-use super::{future::RouteFuture, url_params, Endpoint, Node, Route, RouteId, Router};
+use super::{
+    future::RouteFuture, url_params, Endpoint, FallbackRoute, Node, Route, RouteId, Router,
+};
 use crate::{
     body::{Body, HttpBody},
     response::Response,
@@ -11,6 +13,7 @@ use std::{
     sync::Arc,
     task::{Context, Poll},
 };
+use sync_wrapper::SyncWrapper;
 use tower::Service;
 
 /// A [`Router`] converted into a [`Service`].
@@ -18,7 +21,7 @@ use tower::Service;
 pub struct RouterService<B = Body> {
     routes: HashMap<RouteId, Route<B>>,
     node: Arc<Node>,
-    fallback: Route<B>,
+    fallback: FallbackRoute<B>,
 }
 
 impl<B> RouterService<B>
@@ -52,7 +55,7 @@ where
         Self {
             routes,
             node: router.node,
-            fallback: router.fallback.into_route(&state),
+            fallback: router.fallback.into_fallback_route(&state),
         }
     }
 
@@ -121,12 +124,35 @@ where
         let path = req.uri().path().to_owned();
 
         match self.node.at(&path) {
-            Ok(match_) => self.call_route(match_, req),
+            Ok(match_) => {
+                match &self.fallback {
+                    FallbackRoute::Default(_) => {}
+                    FallbackRoute::Service(fallback) => {
+                        req.extensions_mut()
+                            .insert(SuperFallback(SyncWrapper::new(fallback.clone())));
+                    }
+                }
+
+                self.call_route(match_, req)
+            }
             Err(
                 MatchError::NotFound
                 | MatchError::ExtraTrailingSlash
                 | MatchError::MissingTrailingSlash,
-            ) => self.fallback.clone().call(req),
+            ) => match &mut self.fallback {
+                FallbackRoute::Default(fallback) => {
+                    if let Some(super_fallback) = req.extensions_mut().remove::<SuperFallback<B>>()
+                    {
+                        let mut super_fallback = super_fallback.0.into_inner();
+                        super_fallback.call(req)
+                    } else {
+                        fallback.call(req)
+                    }
+                }
+                FallbackRoute::Service(fallback) => fallback.call(req),
+            },
         }
     }
 }
+
+struct SuperFallback<B>(SyncWrapper<Route<B>>);
