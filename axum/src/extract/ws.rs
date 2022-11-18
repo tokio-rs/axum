@@ -151,9 +151,8 @@ impl<F> std::fmt::Debug for WebSocketUpgrade<F> {
             .field("config", &self.config)
             .field("protocol", &self.protocol)
             .field("sec_websocket_key", &self.sec_websocket_key)
-            .field("on_upgrade", &self.on_upgrade)
             .field("sec_websocket_protocol", &self.sec_websocket_protocol)
-            .finish()
+            .finish_non_exhaustive()
     }
 }
 
