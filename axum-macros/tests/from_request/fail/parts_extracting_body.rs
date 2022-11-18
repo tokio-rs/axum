@@ -1,5 +1,4 @@
 use axum::{extract::FromRequestParts, response::Response};
-use axum_macros::FromRequestParts;
 
 #[derive(FromRequestParts)]
 struct Extractor {

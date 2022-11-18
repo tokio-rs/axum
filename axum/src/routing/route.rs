@@ -17,9 +17,10 @@ use std::{
     task::{Context, Poll},
 };
 use tower::{
-    util::{BoxCloneService, Oneshot},
-    ServiceExt,
+    util::{BoxCloneService, MapResponseLayer, Oneshot},
+    ServiceBuilder, ServiceExt,
 };
+use tower_layer::Layer;
 use tower_service::Service;
 
 /// How routes are stored inside a [`Router`](super::Router).
@@ -45,6 +46,25 @@ impl<B, E> Route<B, E> {
         req: Request<B>,
     ) -> Oneshot<BoxCloneService<Request<B>, Response, E>, Request<B>> {
         self.0.clone().oneshot(req)
+    }
+
+    pub(crate) fn layer<L, NewReqBody, NewError>(self, layer: L) -> Route<NewReqBody, NewError>
+    where
+        L: Layer<Route<B, E>> + Clone + Send + 'static,
+        L::Service: Service<Request<NewReqBody>> + Clone + Send + 'static,
+        <L::Service as Service<Request<NewReqBody>>>::Response: IntoResponse + 'static,
+        <L::Service as Service<Request<NewReqBody>>>::Error: Into<NewError> + 'static,
+        <L::Service as Service<Request<NewReqBody>>>::Future: Send + 'static,
+        NewReqBody: 'static,
+        NewError: 'static,
+    {
+        let layer = ServiceBuilder::new()
+            .map_err(Into::into)
+            .layer(MapResponseLayer::new(IntoResponse::into_response))
+            .layer(layer)
+            .into_inner();
+
+        Route::new(layer.layer(self))
     }
 }
 

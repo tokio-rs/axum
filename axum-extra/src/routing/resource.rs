@@ -38,30 +38,18 @@ pub struct Resource<S = (), B = Body> {
     pub(crate) router: Router<S, B>,
 }
 
-impl<B> Resource<(), B>
-where
-    B: axum::body::HttpBody + Send + 'static,
-{
-    /// Create a `Resource` with the given name.
-    ///
-    /// All routes will be nested at `/{resource_name}`.
-    pub fn named(resource_name: &str) -> Self {
-        Self::named_with((), resource_name)
-    }
-}
-
 impl<S, B> Resource<S, B>
 where
     B: axum::body::HttpBody + Send + 'static,
     S: Clone + Send + Sync + 'static,
 {
-    /// Create a `Resource` with the given name and state.
+    /// Create a `Resource` with the given name.
     ///
     /// All routes will be nested at `/{resource_name}`.
-    pub fn named_with(state: S, resource_name: &str) -> Self {
+    pub fn named(resource_name: &str) -> Self {
         Self {
             name: resource_name.to_owned(),
-            router: Router::with_state(state),
+            router: Router::new(),
         }
     }
 

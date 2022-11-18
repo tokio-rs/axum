@@ -188,8 +188,9 @@
 //!
 //! let shared_state = Arc::new(AppState { /* ... */ });
 //!
-//! let app = Router::with_state(shared_state)
-//!     .route("/", get(handler));
+//! let app = Router::new()
+//!     .route("/", get(handler))
+//!     .with_state(shared_state);
 //!
 //! async fn handler(
 //!     State(state): State<Arc<AppState>>,
@@ -434,6 +435,7 @@
 #[macro_use]
 pub(crate) mod macros;
 
+mod boxed;
 mod extension;
 #[cfg(feature = "form")]
 mod form;

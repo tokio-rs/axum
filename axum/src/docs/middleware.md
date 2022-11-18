@@ -462,10 +462,11 @@ async fn handler(_: State<AppState>) {}
 
 let state = AppState {};
 
-let app = Router::with_state(state.clone())
+let app = Router::new()
     .route("/", get(handler))
-    .layer(MyLayer { state });
-# let _: Router<_> = app;
+    .layer(MyLayer { state: state.clone() })
+    .with_state(state);
+# let _: axum::routing::RouterService = app;
 ```
 
 # Passing state from middleware to handlers

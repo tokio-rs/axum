@@ -15,10 +15,7 @@ pub(crate) struct TestClient {
 }
 
 impl TestClient {
-    pub(crate) fn new<S>(router: Router<S, Body>) -> Self
-    where
-        S: Clone + Send + Sync + 'static,
-    {
+    pub(crate) fn new(router: Router<(), Body>) -> Self {
         Self::from_service(router.into_service())
     }
 

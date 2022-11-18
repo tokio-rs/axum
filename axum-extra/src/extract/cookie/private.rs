@@ -64,10 +64,11 @@ use std::{convert::Infallible, fmt, marker::PhantomData};
 ///     key: Key::generate(),
 /// };
 ///
-/// let app = Router::with_state(state)
+/// let app = Router::new()
 ///     .route("/set", post(set_secret))
-///     .route("/get", get(get_secret));
-/// # let app: Router<_> = app;
+///     .route("/get", get(get_secret))
+///     .with_state(state);
+/// # let _: axum::routing::RouterService = app;
 /// ```
 pub struct PrivateCookieJar<K = Key> {
     jar: cookie::CookieJar,

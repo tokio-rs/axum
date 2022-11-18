@@ -1,5 +1,5 @@
 use super::{
-    future::RouteFuture, url_params, Endpoint, FallbackRoute, Node, Route, RouteId, Router,
+    future::RouteFuture, url_params, FallbackRoute, IntoMakeService, Node, Route, RouteId, Router,
 };
 use crate::{
     body::{Body, HttpBody},
@@ -28,26 +28,17 @@ impl<B> RouterService<B>
 where
     B: HttpBody + Send + 'static,
 {
-    #[track_caller]
-    pub(super) fn new<S>(router: Router<S, B>) -> Self
+    pub(super) fn new<S>(router: Router<S, B>, state: S) -> Self
     where
         S: Clone + Send + Sync + 'static,
     {
-        let state = router
-            .state
-            .expect("Can't turn a `Router` that wants to inherit state into a service");
+        let fallback = router.fallback.into_fallback_route(&state);
 
         let routes = router
             .routes
             .into_iter()
             .map(|(route_id, endpoint)| {
-                let route = match endpoint {
-                    Endpoint::MethodRouter(method_router) => {
-                        Route::new(method_router.with_state(state.clone()))
-                    }
-                    Endpoint::Route(route) => route,
-                };
-
+                let route = endpoint.into_route(state.clone());
                 (route_id, route)
             })
             .collect();
@@ -55,7 +46,7 @@ where
         Self {
             routes,
             node: router.node,
-            fallback: router.fallback.into_fallback_route(&state),
+            fallback,
         }
     }
 
@@ -83,6 +74,28 @@ where
             .clone();
 
         route.call(req)
+    }
+
+    /// Convert the router into a [`MakeService`] and no state.
+    ///
+    /// See [`Router::into_make_service`] for more details.
+    ///
+    /// [`MakeService`]: tower::make::MakeService
+    pub fn into_make_service(self) -> IntoMakeService<RouterService<B>> {
+        IntoMakeService::new(self)
+    }
+
+    /// Convert the router into a [`MakeService`] which stores information
+    /// about the incoming connection and has no state.
+    ///
+    /// See [`Router::into_make_service_with_connect_info`] for more details.
+    ///
+    /// [`MakeService`]: tower::make::MakeService
+    #[cfg(feature = "tokio")]
+    pub fn into_make_service_with_connect_info<C>(
+        self,
+    ) -> crate::extract::connect_info::IntoMakeServiceWithConnectInfo<RouterService<B>, C> {
+        crate::extract::connect_info::IntoMakeServiceWithConnectInfo::new(self)
     }
 }
 

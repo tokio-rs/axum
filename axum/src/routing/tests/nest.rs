@@ -265,7 +265,7 @@ async fn multiple_top_level_nests() {
 #[tokio::test]
 #[should_panic(expected = "Invalid route: nested routes cannot contain wildcards (*)")]
 async fn nest_cannot_contain_wildcards() {
-    Router::<_, Body>::new().nest("/one/*rest", Router::new());
+    Router::<(), Body>::new().nest("/one/*rest", Router::new());
 }
 
 #[tokio::test]
@@ -424,48 +424,3 @@ nested_route_test!(nest_9, nest = "/a", route = "/a/", expected = "/a/a/");
 nested_route_test!(nest_11, nest = "/a/", route = "/", expected = "/a/");
 nested_route_test!(nest_12, nest = "/a/", route = "/a", expected = "/a/a");
 nested_route_test!(nest_13, nest = "/a/", route = "/a/", expected = "/a/a/");
-
-#[tokio::test]
-async fn nesting_with_different_state() {
-    let inner = Router::with_state("inner".to_owned()).route(
-        "/foo",
-        get(|State(state): State<String>| async move { state }),
-    );
-
-    let outer = Router::with_state("outer")
-        .route(
-            "/foo",
-            get(|State(state): State<&'static str>| async move { state }),
-        )
-        .nest("/nested", inner)
-        .route(
-            "/bar",
-            get(|State(state): State<&'static str>| async move { state }),
-        );
-
-    let client = TestClient::new(outer);
-
-    let res = client.get("/foo").send().await;
-    assert_eq!(res.text().await, "outer");
-
-    let res = client.get("/nested/foo").send().await;
-    assert_eq!(res.text().await, "inner");
-
-    let res = client.get("/bar").send().await;
-    assert_eq!(res.text().await, "outer");
-}
-
-#[tokio::test]
-async fn inherit_state_via_nest() {
-    let foo = Router::inherit_state().route(
-        "/foo",
-        get(|State(state): State<&'static str>| async move { state }),
-    );
-
-    let app = Router::with_state("state").nest("/test", foo);
-    let client = TestClient::new(app);
-
-    let res = client.get("/test/foo").send().await;
-    assert_eq!(res.status(), StatusCode::OK);
-    assert_eq!(res.text().await, "state");
-}
