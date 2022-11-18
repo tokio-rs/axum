@@ -137,9 +137,10 @@ pub trait Handler<T, S, B = Body>: Clone + Send + Sized + 'static {
     /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
     /// # };
     /// ```
-    fn layer<L>(self, layer: L) -> Layered<L, Self, T, S, B>
+    fn layer<L, NewReqBody>(self, layer: L) -> Layered<L, Self, T, S, B, NewReqBody>
     where
         L: Layer<HandlerService<Self, T, S, B>> + Clone,
+        L::Service: Service<Request<NewReqBody>>,
     {
         Layered {
             layer,
@@ -218,13 +219,13 @@ all_the_tuples!(impl_handler);
 /// A [`Service`] created from a [`Handler`] by applying a Tower middleware.
 ///
 /// Created with [`Handler::layer`]. See that method for more details.
-pub struct Layered<L, H, T, S, B> {
+pub struct Layered<L, H, T, S, B, B2> {
     layer: L,
     handler: H,
-    _marker: PhantomData<fn() -> (T, S, B)>,
+    _marker: PhantomData<fn() -> (T, S, B, B2)>,
 }
 
-impl<L, H, T, S, B> fmt::Debug for Layered<L, H, T, S, B>
+impl<L, H, T, S, B, B2> fmt::Debug for Layered<L, H, T, S, B, B2>
 where
     L: fmt::Debug,
 {
@@ -235,7 +236,7 @@ where
     }
 }
 
-impl<L, H, T, S, B> Clone for Layered<L, H, T, S, B>
+impl<L, H, T, S, B, B2> Clone for Layered<L, H, T, S, B, B2>
 where
     L: Clone,
     H: Clone,
@@ -249,20 +250,21 @@ where
     }
 }
 
-impl<H, S, T, B, L> Handler<T, S, B> for Layered<L, H, T, S, B>
+impl<H, S, T, L, B, B2> Handler<T, S, B2> for Layered<L, H, T, S, B, B2>
 where
     L: Layer<HandlerService<H, T, S, B>> + Clone + Send + 'static,
     H: Handler<T, S, B>,
-    L::Service: Service<Request<B>, Error = Infallible> + Clone + Send + 'static,
-    <L::Service as Service<Request<B>>>::Response: IntoResponse,
-    <L::Service as Service<Request<B>>>::Future: Send,
+    L::Service: Service<Request<B2>, Error = Infallible> + Clone + Send + 'static,
+    <L::Service as Service<Request<B2>>>::Response: IntoResponse,
+    <L::Service as Service<Request<B2>>>::Future: Send,
     T: 'static,
     S: 'static,
     B: Send + 'static,
+    B2: Send + 'static,
 {
-    type Future = future::LayeredFuture<B, L::Service>;
+    type Future = future::LayeredFuture<B2, L::Service>;
 
-    fn call(self, req: Request<B>, state: S) -> Self::Future {
+    fn call(self, req: Request<B2>, state: S) -> Self::Future {
         use futures_util::future::{FutureExt, Map};
 
         let svc = self.handler.with_state(state);
@@ -272,8 +274,8 @@ where
             _,
             fn(
                 Result<
-                    <L::Service as Service<Request<B>>>::Response,
-                    <L::Service as Service<Request<B>>>::Error,
+                    <L::Service as Service<Request<B2>>>::Response,
+                    <L::Service as Service<Request<B2>>>::Error,
                 >,
             ) -> _,
         > = svc.oneshot(req).map(|result| match result {
@@ -336,8 +338,14 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test_helpers::*;
+    use crate::{body, extract::State, test_helpers::*};
     use http::StatusCode;
+    use std::time::Duration;
+    use tower_http::{
+        compression::CompressionLayer, limit::RequestBodyLimitLayer,
+        map_request_body::MapRequestBodyLayer, map_response_body::MapResponseBodyLayer,
+        timeout::TimeoutLayer,
+    };
 
     #[tokio::test]
     async fn handler_into_service() {
@@ -350,5 +358,26 @@ mod tests {
         let res = client.post("/").body("hi there!").send().await;
         assert_eq!(res.status(), StatusCode::OK);
         assert_eq!(res.text().await, "you said: hi there!");
+    }
+
+    #[tokio::test]
+    async fn with_layer_that_changes_request_body_and_state() {
+        async fn handle(State(state): State<&'static str>) -> &'static str {
+            state
+        }
+
+        let svc = handle
+            .layer((
+                RequestBodyLimitLayer::new(1024),
+                TimeoutLayer::new(Duration::from_secs(10)),
+                MapResponseBodyLayer::new(body::boxed),
+                CompressionLayer::new(),
+            ))
+            .layer(MapRequestBodyLayer::new(body::boxed))
+            .with_state("foo");
+
+        let client = TestClient::from_service(svc);
+        let res = client.get("/").send().await;
+        assert_eq!(res.text().await, "foo");
     }
 }

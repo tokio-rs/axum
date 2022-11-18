@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+<<<<<<< HEAD
 - **breaking:** `Router::with_state` is no longer a constructor. It is instead
   used to convert the router into a `RouterService` ([#1532])
 
@@ -30,6 +31,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 [#1529]: https://github.com/tokio-rs/axum/pull/1529
 [#1532]: https://github.com/tokio-rs/axum/pull/1532
+=======
+- **fixed:** Nested routers will now inherit fallbacks from outer routers ([#1521])
+- **added:** Add `accept_unmasked_frames` setting in WebSocketUpgrade ([#1529])
+
+[#1521]: https://github.com/tokio-rs/axum/pull/1521
+>>>>>>> main
 
 # 0.6.0-rc.4 (9. November, 2022)
 

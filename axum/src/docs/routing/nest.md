@@ -90,8 +90,8 @@ let app = Router::new()
 
 # Fallbacks
 
-When nesting a router, if a request matches the prefix but the nested router doesn't have a matching
-route, the outer fallback will _not_ be called:
+If a nested router doesn't have its own fallback then it will inherit the
+fallback from the outer router:
 
 ```rust
 use axum::{routing::get, http::StatusCode, handler::Handler, Router};
@@ -100,7 +100,7 @@ async fn fallback() -> (StatusCode, &'static str) {
     (StatusCode::NOT_FOUND, "Not Found")
 }
 
-let api_routes = Router::new().nest_service("/users", get(|| async {}));
+let api_routes = Router::new().route("/users", get(|| async {}));
 
 let app = Router::new()
     .nest("/api", api_routes)
@@ -108,30 +108,35 @@ let app = Router::new()
 # let _: Router = app;
 ```
 
-Here requests like `GET /api/not-found` will go into `api_routes` and then to
-the fallback of `api_routes` which will return an empty `404 Not Found`
-response. The outer fallback declared on `app` will _not_ be called.
+Here requests like `GET /api/not-found` will go into `api_routes` but because
+it doesn't have a matching route and doesn't have its own fallback it will call
+the fallback from the outer router, i.e. the `fallback` function.
 
-Think of nested services as swallowing requests that matches the prefix and
-not falling back to outer router even if they don't have a matching route.
-
-You can still add separate fallbacks to nested routers:
+If the nested router has its own fallback then the outer fallback will not be
+inherited:
 
 ```rust
-use axum::{routing::get, http::StatusCode, handler::Handler, Json, Router};
-use serde_json::{json, Value};
+use axum::{
+    routing::get,
+    http::StatusCode,
+    handler::Handler,
+    Json,
+    Router,
+};
 
 async fn fallback() -> (StatusCode, &'static str) {
     (StatusCode::NOT_FOUND, "Not Found")
 }
 
-async fn api_fallback() -> (StatusCode, Json<Value>) {
-    (StatusCode::NOT_FOUND, Json(json!({ "error": "Not Found" })))
+async fn api_fallback() -> (StatusCode, Json<serde_json::Value>) {
+    (
+        StatusCode::NOT_FOUND,
+        Json(serde_json::json!({ "status": "Not Found" })),
+    )
 }
 
 let api_routes = Router::new()
-    .nest_service("/users", get(|| async {}))
-    // add dedicated fallback for requests starting with `/api`
+    .route("/users", get(|| async {}))
     .fallback(api_fallback);
 
 let app = Router::new()
@@ -139,6 +144,8 @@ let app = Router::new()
     .fallback(fallback);
 # let _: Router = app;
 ```
+
+Here requests like `GET /api/not-found` will go to `api_fallback`.
 
 # Panics
 
