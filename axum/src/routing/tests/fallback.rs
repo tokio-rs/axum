@@ -1,3 +1,5 @@
+use tower::ServiceExt;
+
 use super::*;
 use crate::middleware::{map_request, map_response};
 
@@ -157,5 +159,47 @@ async fn also_inherits_default_layered_fallback() {
     let res = client.get("/foo/bar").send().await;
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
     assert_eq!(res.headers()["x-from-fallback"], "1");
+    assert_eq!(res.text().await, "outer");
+}
+
+#[tokio::test]
+async fn fallback_inherited_into_nested_router_service() {
+    let inner = Router::new()
+        .route(
+            "/bar",
+            get(|State(state): State<&'static str>| async move { state }),
+        )
+        .with_state("inner");
+
+    // with a different state
+    let app = Router::<()>::new()
+        .nest_service("/foo", inner)
+        .fallback(outer_fallback);
+
+    let client = TestClient::new(app);
+    let res = client.get("/foo/not-found").send().await;
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    assert_eq!(res.text().await, "outer");
+}
+
+#[tokio::test]
+async fn fallback_inherited_into_nested_opaque_service() {
+    let inner = Router::new()
+        .route(
+            "/bar",
+            get(|State(state): State<&'static str>| async move { state }),
+        )
+        .with_state("inner")
+        // even if the service is made more opaque it should still inherit the fallback
+        .boxed_clone();
+
+    // with a different state
+    let app = Router::<()>::new()
+        .nest_service("/foo", inner)
+        .fallback(outer_fallback);
+
+    let client = TestClient::new(app);
+    let res = client.get("/foo/not-found").send().await;
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
     assert_eq!(res.text().await, "outer");
 }
