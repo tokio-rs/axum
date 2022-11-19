@@ -6,8 +6,9 @@ use axum::{
 };
 
 fn main() {
-    let _: Router<AppState> = Router::with_state(AppState::default())
-        .route("/b", get(|_: Extractor| async {}));
+    let _: axum::routing::RouterService = Router::new()
+        .route("/b", get(|_: Extractor| async {}))
+        .with_state(AppState::default());
 }
 
 #[derive(FromRequest)]

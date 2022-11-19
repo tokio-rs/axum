@@ -1,16 +1,16 @@
 //! Route to services and handlers based on HTTP methods.
 
-use super::IntoMakeService;
+use super::{FallbackRoute, IntoMakeService};
 #[cfg(feature = "tokio")]
 use crate::extract::connect_info::IntoMakeServiceWithConnectInfo;
 use crate::{
     body::{Body, Bytes, HttpBody},
+    boxed::BoxedIntoRoute,
     error_handling::{HandleError, HandleErrorLayer},
-    handler::{BoxedHandler, Handler},
+    handler::Handler,
     http::{Method, Request, StatusCode},
     response::Response,
     routing::{future::RouteFuture, Fallback, MethodFilter, Route},
-    util::try_downcast,
 };
 use axum_core::response::IntoResponse;
 use bytes::BytesMut;
@@ -606,7 +606,7 @@ where
     {
         self.on_endpoint(
             filter,
-            MethodEndpoint::BoxedHandler(BoxedHandler::new(handler)),
+            MethodEndpoint::BoxedHandler(BoxedIntoRoute::from_handler(handler)),
         )
     }
 
@@ -626,7 +626,7 @@ where
         T: 'static,
         S: Send + Sync + 'static,
     {
-        self.fallback = Fallback::BoxedHandler(BoxedHandler::new(handler));
+        self.fallback = Fallback::BoxedHandler(BoxedIntoRoute::from_handler(handler));
         self
     }
 }
@@ -744,49 +744,9 @@ where
             post: self.post.into_route(&state),
             put: self.put.into_route(&state),
             trace: self.trace.into_route(&state),
-            fallback: self.fallback.into_route(&state),
+            fallback: self.fallback.into_fallback_route(&state),
             allow_header: self.allow_header,
         }
-    }
-
-    pub(crate) fn map_state<S2>(self, state: &S) -> MethodRouter<S2, B, E>
-    where
-        E: 'static,
-        S: 'static,
-        S2: 'static,
-    {
-        MethodRouter {
-            get: self.get.map_state(state),
-            head: self.head.map_state(state),
-            delete: self.delete.map_state(state),
-            options: self.options.map_state(state),
-            patch: self.patch.map_state(state),
-            post: self.post.map_state(state),
-            put: self.put.map_state(state),
-            trace: self.trace.map_state(state),
-            fallback: self.fallback.map_state(state),
-            allow_header: self.allow_header,
-        }
-    }
-
-    pub(crate) fn downcast_state<S2>(self) -> Option<MethodRouter<S2, B, E>>
-    where
-        E: 'static,
-        S: 'static,
-        S2: 'static,
-    {
-        Some(MethodRouter {
-            get: self.get.downcast_state()?,
-            head: self.head.downcast_state()?,
-            delete: self.delete.downcast_state()?,
-            options: self.options.downcast_state()?,
-            patch: self.patch.downcast_state()?,
-            post: self.post.downcast_state()?,
-            put: self.put.downcast_state()?,
-            trace: self.trace.downcast_state()?,
-            fallback: self.fallback.downcast_state()?,
-            allow_header: self.allow_header,
-        })
     }
 
     /// Chain an additional service that will accept requests matching the given
@@ -964,17 +924,14 @@ where
     ) -> MethodRouter<S, NewReqBody, NewError>
     where
         L: Layer<Route<B, E>> + Clone + Send + 'static,
-        L::Service: Service<Request<NewReqBody>, Error = NewError> + Clone + Send + 'static,
+        L::Service: Service<Request<NewReqBody>> + Clone + Send + 'static,
         <L::Service as Service<Request<NewReqBody>>>::Response: IntoResponse + 'static,
+        <L::Service as Service<Request<NewReqBody>>>::Error: Into<NewError> + 'static,
         <L::Service as Service<Request<NewReqBody>>>::Future: Send + 'static,
         E: 'static,
         S: 'static,
     {
-        let layer_fn = move |svc| {
-            let svc = layer.layer(svc);
-            let svc = MapResponseLayer::new(IntoResponse::into_response).layer(svc);
-            Route::new(svc)
-        };
+        let layer_fn = move |route: Route<B, E>| route.layer(layer.clone());
 
         MethodRouter {
             get: self.get.map(layer_fn.clone()),
@@ -1182,7 +1139,7 @@ where
 enum MethodEndpoint<S, B, E> {
     None,
     Route(Route<B, E>),
-    BoxedHandler(BoxedHandler<S, B, E>),
+    BoxedHandler(BoxedIntoRoute<S, B, E>),
 }
 
 impl<S, B, E> MethodEndpoint<S, B, E>
@@ -1210,32 +1167,6 @@ where
             Self::None => MethodEndpoint::None,
             Self::Route(route) => MethodEndpoint::Route(f(route)),
             Self::BoxedHandler(handler) => MethodEndpoint::BoxedHandler(handler.map(f)),
-        }
-    }
-
-    fn map_state<S2>(self, state: &S) -> MethodEndpoint<S2, B, E> {
-        match self {
-            Self::None => MethodEndpoint::None,
-            Self::Route(route) => MethodEndpoint::Route(route),
-            Self::BoxedHandler(handler) => MethodEndpoint::Route(handler.into_route(state.clone())),
-        }
-    }
-
-    fn downcast_state<S2>(self) -> Option<MethodEndpoint<S2, B, E>>
-    where
-        S: 'static,
-        B: 'static,
-        E: 'static,
-        S2: 'static,
-    {
-        match self {
-            Self::None => Some(MethodEndpoint::None),
-            Self::Route(route) => Some(MethodEndpoint::Route(route)),
-            Self::BoxedHandler(handler) => {
-                try_downcast::<BoxedHandler<S2, B, E>, BoxedHandler<S, B, E>>(handler)
-                    .map(MethodEndpoint::BoxedHandler)
-                    .ok()
-            }
         }
     }
 
@@ -1284,7 +1215,7 @@ pub struct WithState<B, E> {
     post: Option<Route<B, E>>,
     put: Option<Route<B, E>>,
     trace: Option<Route<B, E>>,
-    fallback: Route<B, E>,
+    fallback: FallbackRoute<B, E>,
     allow_header: AllowHeader,
 }
 

@@ -760,8 +760,8 @@ async fn extract_state() {
         inner: InnerState { value: 2 },
     };
 
-    let app = Router::with_state(state).route("/", get(handler));
-    let client = TestClient::new(app);
+    let app = Router::new().route("/", get(handler)).with_state(state);
+    let client = TestClient::from_service(app);
 
     let res = client.get("/").send().await;
     assert_eq!(res.status(), StatusCode::OK);
@@ -769,12 +769,14 @@ async fn extract_state() {
 
 #[tokio::test]
 async fn explicitly_set_state() {
-    let app = Router::with_state("...").route_service(
-        "/",
-        get(|State(state): State<&'static str>| async move { state }).with_state("foo"),
-    );
+    let app = Router::new()
+        .route_service(
+            "/",
+            get(|State(state): State<&'static str>| async move { state }).with_state("foo"),
+        )
+        .with_state("...");
 
-    let client = TestClient::new(app);
+    let client = TestClient::from_service(app);
     let res = client.get("/").send().await;
     assert_eq!(res.text().await, "foo");
 }

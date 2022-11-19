@@ -7,7 +7,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+- None.
+
+# 0.6.0-rc.5 (18. November, 2022)
+
+- **breaking:** `Router::with_state` is no longer a constructor. It is instead
+  used to convert the router into a `RouterService` ([#1532])
+
+  This nested router on 0.6.0-rc.4
+
+  ```rust
+  Router::with_state(state).route(...);
+  ```
+
+  Becomes this in 0.6.0-rc.5
+
+  ```rust
+  Router::new().route(...).with_state(state);
+  ```
+
+- **breaking:**: `Router::inherit_state` has been removed. Use
+  `Router::with_state` instead ([#1532])
+- **breaking:**: `Router::nest` and `Router::merge` now only supports nesting
+  routers that use the same state type as the router they're being merged into.
+  Use `FromRef` for substates ([#1532])
+
 - **added:** Add `accept_unmasked_frames` setting in WebSocketUpgrade ([#1529])
+- **fixed:** Nested routers will now inherit fallbacks from outer routers ([#1521])
+- **added:** Add `WebSocketUpgrade::on_failed_upgrade` to customize what to do
+  when upgrading a connection fails ([#1539])
+
+[#1521]: https://github.com/tokio-rs/axum/pull/1521
+[#1529]: https://github.com/tokio-rs/axum/pull/1529
+[#1532]: https://github.com/tokio-rs/axum/pull/1532
+[#1539]: https://github.com/tokio-rs/axum/pull/1539
 
 # 0.6.0-rc.4 (9. November, 2022)
 

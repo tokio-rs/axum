@@ -36,9 +36,10 @@ async fn main() {
     let user_repo = Arc::new(ExampleUserRepo) as DynUserRepo;
 
     // Build our application with some routes
-    let app = Router::with_state(user_repo)
+    let app = Router::new()
         .route("/users/:id", get(users_show))
-        .route("/users", post(users_create));
+        .route("/users", post(users_create))
+        .with_state(user_repo);
 
     // Run our application
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));

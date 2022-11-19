@@ -50,10 +50,10 @@ use tower_service::Service;
 /// - `GET /some/other/path` will serve `index.html` since there isn't another
 ///   route for it
 /// - `GET /api/foo` will serve the `api_foo` handler function
-pub struct SpaRouter<B = Body, T = (), F = fn(io::Error) -> Ready<StatusCode>> {
+pub struct SpaRouter<S = (), B = Body, T = (), F = fn(io::Error) -> Ready<StatusCode>> {
     paths: Arc<Paths>,
     handle_error: F,
-    _marker: PhantomData<fn() -> (B, T)>,
+    _marker: PhantomData<fn() -> (S, B, T)>,
 }
 
 #[derive(Debug)]
@@ -63,7 +63,7 @@ struct Paths {
     index_file: PathBuf,
 }
 
-impl<B> SpaRouter<B, (), fn(io::Error) -> Ready<StatusCode>> {
+impl<S, B> SpaRouter<S, B, (), fn(io::Error) -> Ready<StatusCode>> {
     /// Create a new `SpaRouter`.
     ///
     /// Assets will be served at `GET /{serve_assets_at}` from the directory at `assets_dir`.
@@ -86,7 +86,7 @@ impl<B> SpaRouter<B, (), fn(io::Error) -> Ready<StatusCode>> {
     }
 }
 
-impl<B, T, F> SpaRouter<B, T, F> {
+impl<S, B, T, F> SpaRouter<S, B, T, F> {
     /// Set the path to the index file.
     ///
     /// `path` must be relative to `assets_dir` passed to [`SpaRouter::new`].
@@ -138,7 +138,7 @@ impl<B, T, F> SpaRouter<B, T, F> {
     /// let app = Router::new().merge(spa);
     /// # let _: Router = app;
     /// ```
-    pub fn handle_error<T2, F2>(self, f: F2) -> SpaRouter<B, T2, F2> {
+    pub fn handle_error<T2, F2>(self, f: F2) -> SpaRouter<S, B, T2, F2> {
         SpaRouter {
             paths: self.paths,
             handle_error: f,
@@ -147,7 +147,7 @@ impl<B, T, F> SpaRouter<B, T, F> {
     }
 }
 
-impl<B, F, T> From<SpaRouter<B, T, F>> for Router<(), B>
+impl<S, B, F, T> From<SpaRouter<S, B, T, F>> for Router<S, B>
 where
     F: Clone + Send + Sync + 'static,
     HandleError<Route<B, io::Error>, F, T>: Service<Request<B>, Error = Infallible>,
@@ -155,8 +155,9 @@ where
     <HandleError<Route<B, io::Error>, F, T> as Service<Request<B>>>::Future: Send,
     B: HttpBody + Send + 'static,
     T: 'static,
+    S: Clone + Send + Sync + 'static,
 {
-    fn from(spa: SpaRouter<B, T, F>) -> Self {
+    fn from(spa: SpaRouter<S, B, T, F>) -> Router<S, B> {
         let assets_service = get_service(ServeDir::new(&spa.paths.assets_dir))
             .handle_error(spa.handle_error.clone());
 
@@ -195,7 +196,7 @@ where
     fn clone(&self) -> Self {
         Self {
             paths: self.paths.clone(),
-            handle_error: self.handle_error.clone(),
+            handle_error: self.handle_error,
             _marker: self._marker,
         }
     }
@@ -264,13 +265,14 @@ mod tests {
 
         let spa = SpaRouter::new("/assets", "test_files").handle_error(handle_error);
 
-        Router::<_, Body>::new().merge(spa);
+        Router::<(), Body>::new().merge(spa);
     }
 
     #[allow(dead_code)]
     fn works_with_router_with_state() {
-        let _: Router<String> = Router::with_state(String::new())
+        let _: axum::RouterService = Router::new()
             .merge(SpaRouter::new("/assets", "test_files"))
-            .route("/", get(|_: axum::extract::State<String>| async {}));
+            .route("/", get(|_: axum::extract::State<String>| async {}))
+            .with_state(String::new());
     }
 }

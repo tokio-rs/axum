@@ -148,10 +148,11 @@ pub fn map_request<F, T>(f: F) -> MapRequestLayer<F, (), T> {
 ///
 /// let state = AppState { /* ... */ };
 ///
-/// let app = Router::with_state(state.clone())
+/// let app = Router::new()
 ///     .route("/", get(|| async { /* ... */ }))
-///     .route_layer(map_request_with_state(state, my_middleware));
-/// # let app: Router<_> = app;
+///     .route_layer(map_request_with_state(state.clone(), my_middleware))
+///     .with_state(state);
+/// # let _: axum::routing::RouterService = app;
 /// ```
 pub fn map_request_with_state<F, S, T>(state: S, f: F) -> MapRequestLayer<F, S, T> {
     MapRequestLayer {

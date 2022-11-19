@@ -1,4 +1,6 @@
-use super::{future::RouteFuture, url_params, Endpoint, Node, Route, RouteId, Router};
+use super::{
+    future::RouteFuture, url_params, FallbackRoute, IntoMakeService, Node, Route, RouteId, Router,
+};
 use crate::{
     body::{Body, HttpBody},
     response::Response,
@@ -11,6 +13,7 @@ use std::{
     sync::Arc,
     task::{Context, Poll},
 };
+use sync_wrapper::SyncWrapper;
 use tower::Service;
 
 /// A [`Router`] converted into a [`Service`].
@@ -18,33 +21,24 @@ use tower::Service;
 pub struct RouterService<B = Body> {
     routes: HashMap<RouteId, Route<B>>,
     node: Arc<Node>,
-    fallback: Route<B>,
+    fallback: FallbackRoute<B>,
 }
 
 impl<B> RouterService<B>
 where
     B: HttpBody + Send + 'static,
 {
-    #[track_caller]
-    pub(super) fn new<S>(router: Router<S, B>) -> Self
+    pub(super) fn new<S>(router: Router<S, B>, state: S) -> Self
     where
         S: Clone + Send + Sync + 'static,
     {
-        let state = router
-            .state
-            .expect("Can't turn a `Router` that wants to inherit state into a service");
+        let fallback = router.fallback.into_fallback_route(&state);
 
         let routes = router
             .routes
             .into_iter()
             .map(|(route_id, endpoint)| {
-                let route = match endpoint {
-                    Endpoint::MethodRouter(method_router) => {
-                        Route::new(method_router.with_state(state.clone()))
-                    }
-                    Endpoint::Route(route) => route,
-                };
-
+                let route = endpoint.into_route(state.clone());
                 (route_id, route)
             })
             .collect();
@@ -52,7 +46,7 @@ where
         Self {
             routes,
             node: router.node,
-            fallback: router.fallback.into_route(&state),
+            fallback,
         }
     }
 
@@ -80,6 +74,28 @@ where
             .clone();
 
         route.call(req)
+    }
+
+    /// Convert the router into a [`MakeService`] and no state.
+    ///
+    /// See [`Router::into_make_service`] for more details.
+    ///
+    /// [`MakeService`]: tower::make::MakeService
+    pub fn into_make_service(self) -> IntoMakeService<RouterService<B>> {
+        IntoMakeService::new(self)
+    }
+
+    /// Convert the router into a [`MakeService`] which stores information
+    /// about the incoming connection and has no state.
+    ///
+    /// See [`Router::into_make_service_with_connect_info`] for more details.
+    ///
+    /// [`MakeService`]: tower::make::MakeService
+    #[cfg(feature = "tokio")]
+    pub fn into_make_service_with_connect_info<C>(
+        self,
+    ) -> crate::extract::connect_info::IntoMakeServiceWithConnectInfo<RouterService<B>, C> {
+        crate::extract::connect_info::IntoMakeServiceWithConnectInfo::new(self)
     }
 }
 
@@ -121,12 +137,35 @@ where
         let path = req.uri().path().to_owned();
 
         match self.node.at(&path) {
-            Ok(match_) => self.call_route(match_, req),
+            Ok(match_) => {
+                match &self.fallback {
+                    FallbackRoute::Default(_) => {}
+                    FallbackRoute::Service(fallback) => {
+                        req.extensions_mut()
+                            .insert(SuperFallback(SyncWrapper::new(fallback.clone())));
+                    }
+                }
+
+                self.call_route(match_, req)
+            }
             Err(
                 MatchError::NotFound
                 | MatchError::ExtraTrailingSlash
                 | MatchError::MissingTrailingSlash,
-            ) => self.fallback.clone().call(req),
+            ) => match &mut self.fallback {
+                FallbackRoute::Default(fallback) => {
+                    if let Some(super_fallback) = req.extensions_mut().remove::<SuperFallback<B>>()
+                    {
+                        let mut super_fallback = super_fallback.0.into_inner();
+                        super_fallback.call(req)
+                    } else {
+                        fallback.call(req)
+                    }
+                }
+                FallbackRoute::Service(fallback) => fallback.call(req),
+            },
         }
     }
 }
+
+struct SuperFallback<B>(SyncWrapper<Route<B>>);

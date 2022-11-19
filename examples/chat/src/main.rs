@@ -44,9 +44,10 @@ async fn main() {
 
     let app_state = Arc::new(AppState { user_set, tx });
 
-    let app = Router::with_state(app_state)
+    let app = Router::new()
         .route("/", get(index))
-        .route("/websocket", get(websocket_handler));
+        .route("/websocket", get(websocket_handler))
+        .with_state(app_state);
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
     tracing::debug!("listening on {}", addr);

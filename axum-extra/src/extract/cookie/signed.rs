@@ -82,10 +82,11 @@ use std::{convert::Infallible, fmt, marker::PhantomData};
 ///     key: Key::generate(),
 /// };
 ///
-/// let app = Router::with_state(state)
+/// let app = Router::new()
 ///     .route("/sessions", post(create_session))
-///     .route("/me", get(me));
-/// # let app: Router<_> = app;
+///     .route("/me", get(me))
+///     .with_state(state);
+/// # let _: axum::routing::RouterService = app;
 /// ```
 pub struct SignedCookieJar<K = Key> {
     jar: cookie::CookieJar,
