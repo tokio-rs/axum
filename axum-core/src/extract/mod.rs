@@ -39,17 +39,6 @@ mod private {
 ///
 /// [`axum::extract`]: https://docs.rs/axum/0.6.0-rc.2/axum/extract/index.html
 #[async_trait]
-#[cfg_attr(
-    nightly_error_messages,
-    rustc_on_unimplemented(
-        on(
-            _Self = "axum::http::Request<axum::body::Body>",
-            message = "Request must always be the last argument to a handler function",
-            label = "Move this argument to the end of the argument list",
-        ),
-        note = "Function argument is no valid axum extractor. \nSee `https://docs.rs/axum/latest/axum/extract/index.html` for details",
-    )
-)]
 pub trait FromRequestParts<S>: Sized {
     /// If the extractor fails it'll use this "rejection" type. A rejection is
     /// a kind of error that can be converted into a response.

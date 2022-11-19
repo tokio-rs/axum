@@ -97,7 +97,7 @@ pub use self::service::HandlerService;
 #[cfg_attr(
     nightly_error_messages,
     rustc_on_unimplemented(
-        note = "Consider using `#[axum_macros::debug_handler]` to improve the error message"
+        note = "Consider using `#[axum::debug_handler]` to improve the error message"
     )
 )]
 pub trait Handler<T, S, B = Body>: Clone + Send + Sized + 'static {
