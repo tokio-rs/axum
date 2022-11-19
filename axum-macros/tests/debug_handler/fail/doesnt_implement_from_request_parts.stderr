@@ -1,9 +1,11 @@
 error[E0277]: the trait bound `String: FromRequestParts<()>` is not satisfied
- --> tests/debug_handler/fail/doesnt_implement_from_request_parts.rs:4:1
+ --> tests/debug_handler/fail/doesnt_implement_from_request_parts.rs:5:21
   |
-4 | #[debug_handler]
-  | ^^^^^^^^^^^^^^^^ the trait `FromRequestParts<()>` is not implemented for `String`
+5 | async fn handler(_: String, _: Method) {}
+  |                     ^^^^^^ the trait `FromRequestParts<()>` is not implemented for `String`
   |
+  = note: Function argument is not a valid axum extractor.
+          See `https://docs.rs/axum/latest/axum/extract/index.html` for details
   = help: the following other types implement trait `FromRequestParts<S>`:
             <() as FromRequestParts<S>>
             <(T1, T2) as FromRequestParts<S>>
@@ -15,4 +17,4 @@ error[E0277]: the trait bound `String: FromRequestParts<()>` is not satisfied
             <(T1, T2, T3, T4, T5, T6, T7, T8) as FromRequestParts<S>>
           and 25 others
   = help: see issue #48214
-  = note: this error originates in the attribute macro `debug_handler` (in Nightly builds, run with -Z macro-backtrace for more info)
+  = help: add `#![feature(trivial_bounds)]` to the crate attributes to enable

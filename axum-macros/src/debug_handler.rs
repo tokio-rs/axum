@@ -251,11 +251,11 @@ fn check_inputs_impls_from_request(
             };
 
             let from_request_bound = if must_impl_from_request_parts {
-                quote! {
+                quote_spanned! {span=>
                     #ty: ::axum::extract::FromRequestParts<#state_ty> + Send
                 }
             } else {
-                quote! {
+                quote_spanned! {span=>
                     #ty: ::axum::extract::FromRequest<#state_ty, #body_ty, M> + Send
                 }
             };
