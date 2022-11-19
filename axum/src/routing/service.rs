@@ -5,6 +5,7 @@ use crate::{
     body::{Body, HttpBody},
     response::Response,
 };
+use axum_core::response::IntoResponse;
 use http::Request;
 use matchit::MatchError;
 use std::{
@@ -15,6 +16,7 @@ use std::{
 };
 use sync_wrapper::SyncWrapper;
 use tower::Service;
+use tower_layer::Layer;
 
 /// A [`Router`] converted into a [`Service`].
 #[derive(Debug)]
@@ -74,6 +76,58 @@ where
             .clone();
 
         route.call(req)
+    }
+
+    /// Apply a [`tower::Layer`] to all routes in the router.
+    ///
+    /// See [`Router::layer`] for more details.
+    pub fn layer<L, NewReqBody>(self, layer: L) -> RouterService<NewReqBody>
+    where
+        L: Layer<Route<B>> + Clone + Send + 'static,
+        L::Service: Service<Request<NewReqBody>> + Clone + Send + 'static,
+        <L::Service as Service<Request<NewReqBody>>>::Response: IntoResponse + 'static,
+        <L::Service as Service<Request<NewReqBody>>>::Error: Into<Infallible> + 'static,
+        <L::Service as Service<Request<NewReqBody>>>::Future: Send + 'static,
+        NewReqBody: 'static,
+    {
+        let routes = self
+            .routes
+            .into_iter()
+            .map(|(id, route)| (id, route.layer(layer.clone())))
+            .collect();
+
+        let fallback = self.fallback.layer(layer);
+
+        RouterService {
+            routes,
+            node: self.node,
+            fallback,
+        }
+    }
+
+    /// Apply a [`tower::Layer`] to the router that will only run if the request matches
+    /// a route.
+    ///
+    /// See [`Router::route_layer`] for more details.
+    pub fn route_layer<L>(self, layer: L) -> Self
+    where
+        L: Layer<Route<B>> + Clone + Send + 'static,
+        L::Service: Service<Request<B>> + Clone + Send + 'static,
+        <L::Service as Service<Request<B>>>::Response: IntoResponse + 'static,
+        <L::Service as Service<Request<B>>>::Error: Into<Infallible> + 'static,
+        <L::Service as Service<Request<B>>>::Future: Send + 'static,
+    {
+        let routes = self
+            .routes
+            .into_iter()
+            .map(|(id, route)| (id, route.layer(layer.clone())))
+            .collect();
+
+        Self {
+            routes,
+            node: self.node,
+            fallback: self.fallback,
+        }
     }
 
     /// Convert the `RouterService` into a [`MakeService`].

@@ -311,13 +311,14 @@ where
     }
 
     #[doc = include_str!("../docs/routing/layer.md")]
-    pub fn layer<L, NewReqBody: 'static>(self, layer: L) -> Router<S, NewReqBody>
+    pub fn layer<L, NewReqBody>(self, layer: L) -> Router<S, NewReqBody>
     where
         L: Layer<Route<B>> + Clone + Send + 'static,
         L::Service: Service<Request<NewReqBody>> + Clone + Send + 'static,
         <L::Service as Service<Request<NewReqBody>>>::Response: IntoResponse + 'static,
         <L::Service as Service<Request<NewReqBody>>>::Error: Into<Infallible> + 'static,
         <L::Service as Service<Request<NewReqBody>>>::Future: Send + 'static,
+        NewReqBody: 'static,
     {
         let routes = self
             .routes
@@ -564,6 +565,24 @@ impl<S, B, E> fmt::Debug for Fallback<S, B, E> {
 pub(crate) enum FallbackRoute<B, E = Infallible> {
     Default(Route<B, E>),
     Service(Route<B, E>),
+}
+
+impl<B, E> FallbackRoute<B, E> {
+    fn layer<L, NewReqBody, NewError>(self, layer: L) -> FallbackRoute<NewReqBody, NewError>
+    where
+        L: Layer<Route<B, E>> + Clone + Send + 'static,
+        L::Service: Service<Request<NewReqBody>> + Clone + Send + 'static,
+        <L::Service as Service<Request<NewReqBody>>>::Response: IntoResponse + 'static,
+        <L::Service as Service<Request<NewReqBody>>>::Error: Into<NewError> + 'static,
+        <L::Service as Service<Request<NewReqBody>>>::Future: Send + 'static,
+        NewReqBody: 'static,
+        NewError: 'static,
+    {
+        match self {
+            FallbackRoute::Default(route) => FallbackRoute::Default(route.layer(layer)),
+            FallbackRoute::Service(route) => FallbackRoute::Service(route.layer(layer)),
+        }
+    }
 }
 
 impl<B, E> fmt::Debug for FallbackRoute<B, E> {
