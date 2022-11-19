@@ -81,7 +81,7 @@ where
     /// See [`Router::into_make_service`] for more details.
     ///
     /// [`MakeService`]: tower::make::MakeService
-    pub fn into_make_service(self) -> IntoMakeService<RouterService<B>> {
+    pub fn into_make_service(self) -> IntoMakeService<Self> {
         IntoMakeService::new(self)
     }
 
@@ -94,7 +94,7 @@ where
     #[cfg(feature = "tokio")]
     pub fn into_make_service_with_connect_info<C>(
         self,
-    ) -> crate::extract::connect_info::IntoMakeServiceWithConnectInfo<RouterService<B>, C> {
+    ) -> crate::extract::connect_info::IntoMakeServiceWithConnectInfo<Self, C> {
         crate::extract::connect_info::IntoMakeServiceWithConnectInfo::new(self)
     }
 }
