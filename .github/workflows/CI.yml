@@ -11,87 +11,87 @@ on:
   pull_request: {}
 
 jobs:
-  # check:
-  #   runs-on: ubuntu-latest
-  #   strategy:
-  #     matrix:
-  #       pwd:
-  #         - .
-  #         - examples
-  #   steps:
-  #   - uses: actions/checkout@master
-  #   - uses: actions-rs/toolchain@v1
-  #     with:
-  #       toolchain: beta
-  #       override: true
-  #       profile: minimal
-  #       components: clippy, rustfmt
-  #   - uses: Swatinem/rust-cache@v2
-  #     with:
-  #       key: ${{ matrix.pwd }}
-  #       workspaces: ${{ matrix.pwd }}
-  #   - name: Check
-  #     working-directory: ${{ matrix.pwd }}
-  #     run: |
-  #       cargo clippy --all --all-targets --all-features
-  #   - name: rustfmt
-  #     working-directory: ${{ matrix.pwd }}
-  #     run: |
-  #       cargo fmt --all -- --check
+  check:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        pwd:
+          - .
+          - examples
+    steps:
+    - uses: actions/checkout@master
+    - uses: actions-rs/toolchain@v1
+      with:
+        toolchain: beta
+        override: true
+        profile: minimal
+        components: clippy, rustfmt
+    - uses: Swatinem/rust-cache@v2
+      with:
+        key: ${{ matrix.pwd }}
+        workspaces: ${{ matrix.pwd }}
+    - name: Check
+      working-directory: ${{ matrix.pwd }}
+      run: |
+        cargo clippy --all --all-targets --all-features
+    - name: rustfmt
+      working-directory: ${{ matrix.pwd }}
+      run: |
+        cargo fmt --all -- --check
 
-  # check-docs:
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #   - uses: actions/checkout@master
-  #   - uses: actions-rs/toolchain@v1
-  #     with:
-  #       toolchain: stable
-  #       override: true
-  #       profile: minimal
-  #   - uses: Swatinem/rust-cache@v1
-  #   - name: cargo doc
-  #     env:
-  #       RUSTDOCFLAGS: "-D broken-intra-doc-links"
-  #     run: cargo doc --all-features --no-deps
+  check-docs:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@master
+    - uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        override: true
+        profile: minimal
+    - uses: Swatinem/rust-cache@v1
+    - name: cargo doc
+      env:
+        RUSTDOCFLAGS: "-D broken-intra-doc-links"
+      run: cargo doc --all-features --no-deps
 
-  # cargo-hack:
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #   - uses: actions/checkout@master
-  #   - uses: actions-rs/toolchain@v1
-  #     with:
-  #       toolchain: stable
-  #       override: true
-  #       profile: minimal
-  #   - uses: Swatinem/rust-cache@v1
-  #   - name: Install cargo-hack
-  #     run: |
-  #       curl -LsSf https://github.com/taiki-e/cargo-hack/releases/latest/download/cargo-hack-x86_64-unknown-linux-gnu.tar.gz | tar xzf - -C ~/.cargo/bin
-  #   - name: cargo hack check
-  #     run: cargo hack check --each-feature --no-dev-deps --all
+  cargo-hack:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@master
+    - uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        override: true
+        profile: minimal
+    - uses: Swatinem/rust-cache@v1
+    - name: Install cargo-hack
+      run: |
+        curl -LsSf https://github.com/taiki-e/cargo-hack/releases/latest/download/cargo-hack-x86_64-unknown-linux-gnu.tar.gz | tar xzf - -C ~/.cargo/bin
+    - name: cargo hack check
+      run: cargo hack check --each-feature --no-dev-deps --all
 
-  # test-versions:
-  #   needs: check
-  #   runs-on: ubuntu-latest
-  #   strategy:
-  #     matrix:
-  #       rust: [stable, beta]
-  #   steps:
-  #   - uses: actions/checkout@master
-  #   - uses: actions-rs/toolchain@v1
-  #     with:
-  #       toolchain: ${{ matrix.rust }}
-  #       override: true
-  #       profile: minimal
-  #   - uses: Swatinem/rust-cache@v1
-  #   - name: Run tests
-  #     uses: actions-rs/cargo@v1
-  #     with:
-  #       command: test
-  #       args: --all --all-features --all-targets
+  test-versions:
+    needs: check
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        rust: [stable, beta]
+    steps:
+    - uses: actions/checkout@master
+    - uses: actions-rs/toolchain@v1
+      with:
+        toolchain: ${{ matrix.rust }}
+        override: true
+        profile: minimal
+    - uses: Swatinem/rust-cache@v1
+    - name: Run tests
+      uses: actions-rs/cargo@v1
+      with:
+        command: test
+        args: --all --all-features --all-targets
 
   test-nightly:
-    # needs: check
+    needs: check
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@master
@@ -102,178 +102,173 @@ jobs:
         override: true
         profile: minimal
     - uses: Swatinem/rust-cache@v1
-    # - name: Run tests
-    #   uses: actions-rs/cargo@v1
-    #   working-directory: axum-macros
-    #   with:
-    #     command: test
     - name: Run nightly tests
       working-directory: axum-macros
       run: |
         cargo test
 
-  # # some examples doesn't support our MSRV (such as async-graphql)
-  # # so we only test axum itself on our MSRV
-  # test-msrv:
-  #   needs: check
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #   - uses: actions/checkout@master
-  #   - uses: actions-rs/toolchain@v1
-  #     with:
-  #       toolchain: ${{ env.MSRV }}
-  #       override: true
-  #       profile: minimal
-  #   - name: "install Rust nightly"
-  #     uses: actions-rs/toolchain@v1
-  #     with:
-  #       toolchain: nightly
-  #       profile: minimal
-  #   - uses: Swatinem/rust-cache@v1
-  #   - name: Select minimal versions
-  #     uses: actions-rs/cargo@v1
-  #     with:
-  #       command: update
-  #       args: -Z minimal-versions
-  #       toolchain: nightly
-  #   - name: Fix up Cargo.lock
-  #     uses: actions-rs/cargo@v1
-  #     with:
-  #       command: update
-  #       args: -p crc32fast --precise 1.1.1
-  #       toolchain: nightly
-  #   - name: Run tests
-  #     uses: actions-rs/cargo@v1
-  #     with:
-  #       command: test
-  #       args: >
-  #         -p axum
-  #         -p axum-extra
-  #         -p axum-core
-  #         --all-features
-  #         --all-targets
-  #         --locked
-  #       toolchain: ${{ env.MSRV }}
-  #   # the compiler errors are different on our MSRV which makes
-  #   # the trybuild tests in axum-macros fail, so just run the doc
-  #   # tests
-  #   - name: Run axum-macros doc tests
-  #     uses: actions-rs/cargo@v1
-  #     with:
-  #       command: test
-  #       args: >
-  #         -p axum-macros
-  #         --doc
-  #         --all-features
-  #         --locked
-  #       toolchain: ${{ env.MSRV }}
+  # some examples doesn't support our MSRV (such as async-graphql)
+  # so we only test axum itself on our MSRV
+  test-msrv:
+    needs: check
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@master
+    - uses: actions-rs/toolchain@v1
+      with:
+        toolchain: ${{ env.MSRV }}
+        override: true
+        profile: minimal
+    - name: "install Rust nightly"
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: nightly
+        profile: minimal
+    - uses: Swatinem/rust-cache@v1
+    - name: Select minimal versions
+      uses: actions-rs/cargo@v1
+      with:
+        command: update
+        args: -Z minimal-versions
+        toolchain: nightly
+    - name: Fix up Cargo.lock
+      uses: actions-rs/cargo@v1
+      with:
+        command: update
+        args: -p crc32fast --precise 1.1.1
+        toolchain: nightly
+    - name: Run tests
+      uses: actions-rs/cargo@v1
+      with:
+        command: test
+        args: >
+          -p axum
+          -p axum-extra
+          -p axum-core
+          --all-features
+          --all-targets
+          --locked
+        toolchain: ${{ env.MSRV }}
+    # the compiler errors are different on our MSRV which makes
+    # the trybuild tests in axum-macros fail, so just run the doc
+    # tests
+    - name: Run axum-macros doc tests
+      uses: actions-rs/cargo@v1
+      with:
+        command: test
+        args: >
+          -p axum-macros
+          --doc
+          --all-features
+          --locked
+        toolchain: ${{ env.MSRV }}
 
-  # test-docs:
-  #   needs: check
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #   - uses: actions/checkout@master
-  #   - uses: actions-rs/toolchain@v1
-  #     with:
-  #       toolchain: stable
-  #       override: true
-  #       profile: minimal
-  #   - uses: Swatinem/rust-cache@v1
-  #   - name: Run doc tests
-  #     uses: actions-rs/cargo@v1
-  #     with:
-  #       command: test
-  #       args: --all-features --doc
+  test-docs:
+    needs: check
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@master
+    - uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        override: true
+        profile: minimal
+    - uses: Swatinem/rust-cache@v1
+    - name: Run doc tests
+      uses: actions-rs/cargo@v1
+      with:
+        command: test
+        args: --all-features --doc
 
-  # deny-check:
-  #   name: cargo-deny check
-  #   runs-on: ubuntu-latest
-  #   continue-on-error: ${{ matrix.checks == 'advisories' }}
-  #   strategy:
-  #     matrix:
-  #       checks:
-  #         - advisories
-  #         - bans licenses sources
-  #   steps:
-  #     - uses: actions/checkout@v2
-  #     - uses: EmbarkStudios/cargo-deny-action@v1
-  #       with:
-  #         command: check ${{ matrix.checks }}
-  #         arguments: --all-features --manifest-path axum/Cargo.toml
+  deny-check:
+    name: cargo-deny check
+    runs-on: ubuntu-latest
+    continue-on-error: ${{ matrix.checks == 'advisories' }}
+    strategy:
+      matrix:
+        checks:
+          - advisories
+          - bans licenses sources
+    steps:
+      - uses: actions/checkout@v2
+      - uses: EmbarkStudios/cargo-deny-action@v1
+        with:
+          command: check ${{ matrix.checks }}
+          arguments: --all-features --manifest-path axum/Cargo.toml
 
-  # armv5te-unknown-linux-musleabi:
-  #   needs: check
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #   - uses: actions/checkout@master
-  #   - uses: actions-rs/toolchain@v1
-  #     with:
-  #       toolchain: stable
-  #       target: armv5te-unknown-linux-musleabi
-  #       override: true
-  #       profile: minimal
-  #   - uses: Swatinem/rust-cache@v1
-  #   - name: Check
-  #     uses: actions-rs/cargo@v1
-  #     env:
-  #       # Clang has native cross-compilation support
-  #       CC: clang
-  #     with:
-  #       command: check
-  #       args: >
-  #         --all-targets
-  #         --all-features
-  #         -p axum
-  #         -p axum-core
-  #         -p axum-extra
-  #         -p axum-macros
-  #         --target armv5te-unknown-linux-musleabi
+  armv5te-unknown-linux-musleabi:
+    needs: check
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@master
+    - uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        target: armv5te-unknown-linux-musleabi
+        override: true
+        profile: minimal
+    - uses: Swatinem/rust-cache@v1
+    - name: Check
+      uses: actions-rs/cargo@v1
+      env:
+        # Clang has native cross-compilation support
+        CC: clang
+      with:
+        command: check
+        args: >
+          --all-targets
+          --all-features
+          -p axum
+          -p axum-core
+          -p axum-extra
+          -p axum-macros
+          --target armv5te-unknown-linux-musleabi
 
-  # wasm32-unknown-unknown:
-  #   needs: check
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #   - uses: actions/checkout@master
-  #   - uses: actions-rs/toolchain@v1
-  #     with:
-  #       toolchain: stable
-  #       target: wasm32-unknown-unknown
-  #       override: true
-  #       profile: minimal
-  #   - uses: Swatinem/rust-cache@v1
-  #   - name: Check
-  #     uses: actions-rs/cargo@v1
-  #     with:
-  #       command: check
-  #       args: >
-  #         --manifest-path ./examples/simple-router-wasm/Cargo.toml
-  #         --target wasm32-unknown-unknown
+  wasm32-unknown-unknown:
+    needs: check
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@master
+    - uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        target: wasm32-unknown-unknown
+        override: true
+        profile: minimal
+    - uses: Swatinem/rust-cache@v1
+    - name: Check
+      uses: actions-rs/cargo@v1
+      with:
+        command: check
+        args: >
+          --manifest-path ./examples/simple-router-wasm/Cargo.toml
+          --target wasm32-unknown-unknown
 
-  # dependencies-are-sorted:
-  #   runs-on: ubuntu-latest
-  #   strategy:
-  #     matrix:
-  #       pwd:
-  #         - .
-  #         - examples
-  #   steps:
-  #   - uses: actions/checkout@master
-  #   - uses: actions-rs/toolchain@v1
-  #     with:
-  #       toolchain: beta
-  #       override: true
-  #       profile: minimal
-  #   - uses: Swatinem/rust-cache@v2
-  #     with:
-  #       key: ${{ matrix.pwd }}
-  #       workspaces: ${{ matrix.pwd }}
-  #   - name: Install cargo-sort
-  #     run: |
-  #       cargo install cargo-sort
-  #   - name: Remove non-crate folder
-  #     run: rm -rf async-graphql || true
-  #     working-directory: ${{ matrix.pwd }}
-  #   - name: Check dependency tables
-  #     working-directory: ${{ matrix.pwd }}
-  #     run: |
-  #       cargo sort --workspace --grouped --check
+  dependencies-are-sorted:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        pwd:
+          - .
+          - examples
+    steps:
+    - uses: actions/checkout@master
+    - uses: actions-rs/toolchain@v1
+      with:
+        toolchain: beta
+        override: true
+        profile: minimal
+    - uses: Swatinem/rust-cache@v2
+      with:
+        key: ${{ matrix.pwd }}
+        workspaces: ${{ matrix.pwd }}
+    - name: Install cargo-sort
+      run: |
+        cargo install cargo-sort
+    - name: Remove non-crate folder
+      run: rm -rf async-graphql || true
+      working-directory: ${{ matrix.pwd }}
+    - name: Check dependency tables
+      working-directory: ${{ matrix.pwd }}
+      run: |
+        cargo sort --workspace --grouped --check
