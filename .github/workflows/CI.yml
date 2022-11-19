@@ -75,8 +75,6 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        # nightly has an ICE, so ignore it for now
-        # rust: [stable, beta, nightly]
         rust: [stable, beta]
     steps:
     - uses: actions/checkout@master
@@ -91,6 +89,23 @@ jobs:
       with:
         command: test
         args: --all --all-features --all-targets
+
+  test-nightly:
+    needs: check
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@master
+    - uses: actions-rs/toolchain@v1
+      with:
+        # same as `axum-macros/rust-toolchain`
+        toolchain: nightly-2022-11-18
+        override: true
+        profile: minimal
+    - uses: Swatinem/rust-cache@v1
+    - name: Run nightly tests
+      working-directory: axum-macros
+      run: |
+        cargo test
 
   # some examples doesn't support our MSRV (such as async-graphql)
   # so we only test axum itself on our MSRV
