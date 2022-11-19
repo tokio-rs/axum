@@ -76,17 +76,17 @@ where
         route.call(req)
     }
 
-    /// Convert the router into a [`MakeService`] and no state.
+    /// Convert the `RouterService` into a [`MakeService`].
     ///
     /// See [`Router::into_make_service`] for more details.
     ///
     /// [`MakeService`]: tower::make::MakeService
-    pub fn into_make_service(self) -> IntoMakeService<RouterService<B>> {
+    pub fn into_make_service(self) -> IntoMakeService<Self> {
         IntoMakeService::new(self)
     }
 
-    /// Convert the router into a [`MakeService`] which stores information
-    /// about the incoming connection and has no state.
+    /// Convert the `RouterService` into a [`MakeService`] which stores information
+    /// about the incoming connection.
     ///
     /// See [`Router::into_make_service_with_connect_info`] for more details.
     ///
@@ -94,7 +94,7 @@ where
     #[cfg(feature = "tokio")]
     pub fn into_make_service_with_connect_info<C>(
         self,
-    ) -> crate::extract::connect_info::IntoMakeServiceWithConnectInfo<RouterService<B>, C> {
+    ) -> crate::extract::connect_info::IntoMakeServiceWithConnectInfo<Self, C> {
         crate::extract::connect_info::IntoMakeServiceWithConnectInfo::new(self)
     }
 }
