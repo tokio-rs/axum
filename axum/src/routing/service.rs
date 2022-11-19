@@ -76,7 +76,7 @@ where
         route.call(req)
     }
 
-    /// Convert the router into a [`MakeService`] and no state.
+    /// Convert the `RouterService` into a [`MakeService`].
     ///
     /// See [`Router::into_make_service`] for more details.
     ///
@@ -85,8 +85,8 @@ where
         IntoMakeService::new(self)
     }
 
-    /// Convert the router into a [`MakeService`] which stores information
-    /// about the incoming connection and has no state.
+    /// Convert the `RouterService` into a [`MakeService`] which stores information
+    /// about the incoming connection.
     ///
     /// See [`Router::into_make_service_with_connect_info`] for more details.
     ///
