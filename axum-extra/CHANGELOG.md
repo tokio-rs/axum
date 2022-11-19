@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning].
 
 - None.
 
+# 0.4.0-rc.3 (19. November, 2022)
+
+- **breaking:** Depend axum 0.6.0-rc.5 and axum-macros 0.3.0-rc.3
+
 # 0.4.0-rc.2 (8. November, 2022)
 
 - **breaking:** `Form` has a new rejection type ([#1496])
