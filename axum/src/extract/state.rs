@@ -46,14 +46,13 @@ use std::{
 /// # let _: axum::routing::RouterService = app;
 /// ```
 ///
-/// [`Router`][router]s that are combined with [`Router::nest`][router-nest]
-/// or [`Router::merge`][router-merge] generally require the same type of state.
-/// See [`Router::nest`][router-nest] for how to combine routers with different
-/// types of state.
-///
-/// [router]: crate::Router
-/// [router-nest]: crate::Router::nest
-/// [router-merge]: crate::Router::merge
+/// [`Router`]s that are combined with [`Router::nest`] or [`Router::merge`]
+/// generally require the same type of state. See [`Router::nest`] for how to
+/// combine routers with different types of state.
+/// 
+/// [`Router`]: crate::Router
+/// [`Router::nest`]: crate::Router::nest
+/// [`Router::merge`]: crate::Router::merge
 ///
 /// # With `MethodRouter`
 ///
