@@ -1,4 +1,4 @@
-Nest a [`Service`] at some path.
+Nest a [`Router`] at some path.
 
 This allows you to break your application into smaller pieces and compose
 them together.
@@ -64,7 +64,7 @@ let app = Router::new().nest("/:version/api", users_api);
 # };
 ```
 
-# Differences to wildcard routes
+# Differences from wildcard routes
 
 Nested routes are similar to wildcard routes. The difference is that
 wildcard routes still see the whole URI whereas nested routes will have
