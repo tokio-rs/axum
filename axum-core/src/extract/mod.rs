@@ -82,7 +82,7 @@ pub trait FromRequestParts<S>: Sized {
 /// use axum::{
 ///     async_trait,
 ///     extract::FromRequest,
-///     http::Request,
+///     http::{self, Request},
 /// };
 ///
 /// struct MyExtractor;

@@ -5,8 +5,7 @@
 //! Some examples of handlers:
 //!
 //! ```rust
-//! use axum::body::Bytes;
-//! use http::StatusCode;
+//! use axum::{body::Bytes, http::StatusCode};
 //!
 //! // Handler that immediately returns an empty `200 OK` response.
 //! async fn unit_handler() {}
