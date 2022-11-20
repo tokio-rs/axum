@@ -1,6 +1,6 @@
 //! Routing between [`Service`]s and handlers.
 
-use self::{not_found::NotFound, strip_prefix::StripPrefix};
+use self::{future::RouteFuture, not_found::NotFound, strip_prefix::StripPrefix};
 #[cfg(feature = "tokio")]
 use crate::extract::connect_info::IntoMakeServiceWithConnectInfo;
 use crate::{
@@ -12,7 +12,14 @@ use crate::{
 use axum_core::response::{IntoResponse, Response};
 use http::Request;
 use matchit::MatchError;
-use std::{collections::HashMap, convert::Infallible, fmt, sync::Arc};
+use std::{
+    collections::HashMap,
+    convert::Infallible,
+    fmt,
+    sync::Arc,
+    task::{Context, Poll},
+};
+use sync_wrapper::SyncWrapper;
 use tower::util::{BoxCloneService, Oneshot};
 use tower_layer::Layer;
 use tower_service::Service;
@@ -488,6 +495,108 @@ where
     ) -> IntoMakeServiceWithConnectInfo<RouterService<B>, C> {
         IntoMakeServiceWithConnectInfo::new(self.into_service())
     }
+
+    // TODO(david): fix duplication
+    #[inline]
+    fn call_route(
+        &self,
+        match_: matchit::Match<&RouteId>,
+        mut req: Request<B>,
+    ) -> RouteFuture<B, Infallible> {
+        let id = *match_.value;
+
+        #[cfg(feature = "matched-path")]
+        crate::extract::matched_path::set_matched_path_for_request(
+            id,
+            &self.node.route_id_to_path,
+            req.extensions_mut(),
+        );
+
+        url_params::insert_url_params(req.extensions_mut(), match_.params);
+
+        let endpont = self
+            .routes
+            .get(&id)
+            .expect("no route for id. This is a bug in axum. Please file an issue")
+            .clone();
+
+        match endpont {
+            Endpoint::MethodRouter(mut method_router) => method_router.call(req),
+            Endpoint::Route(mut route) => route.call(req),
+            // TODO(david): optimize?
+            Endpoint::NestedRouter(router) => router.into_route(()).call(req),
+        }
+    }
+}
+
+// TODO(david): fix duplication
+impl<B> Service<Request<B>> for Router<(), B>
+where
+    B: HttpBody + Send + 'static,
+{
+    type Response = Response;
+    type Error = Infallible;
+    type Future = RouteFuture<B, Infallible>;
+
+    #[inline]
+    fn poll_ready(&mut self, _: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        Poll::Ready(Ok(()))
+    }
+
+    #[inline]
+    fn call(&mut self, mut req: Request<B>) -> Self::Future {
+        #[cfg(feature = "original-uri")]
+        {
+            use crate::extract::OriginalUri;
+
+            if req.extensions().get::<OriginalUri>().is_none() {
+                let original_uri = OriginalUri(req.uri().clone());
+                req.extensions_mut().insert(original_uri);
+            }
+        }
+
+        let path = req.uri().path().to_owned();
+
+        match self.node.at(&path) {
+            Ok(match_) => {
+                match &self.fallback {
+                    Fallback::Default(_) => {}
+                    Fallback::Service(fallback) => {
+                        req.extensions_mut()
+                            .insert(SuperFallback(SyncWrapper::new(fallback.clone())));
+                    }
+                    Fallback::BoxedHandler(fallback) => {
+                        req.extensions_mut().insert(SuperFallback(SyncWrapper::new(
+                            fallback.clone().into_route(()),
+                        )));
+                    }
+                }
+
+                self.call_route(match_, req)
+            }
+            Err(
+                MatchError::NotFound
+                | MatchError::ExtraTrailingSlash
+                | MatchError::MissingTrailingSlash,
+            ) => {
+                //
+                match &mut self.fallback {
+                    Fallback::Default(fallback) => {
+                        if let Some(super_fallback) =
+                            req.extensions_mut().remove::<SuperFallback<B>>()
+                        {
+                            let mut super_fallback = super_fallback.0.into_inner();
+                            super_fallback.call(req)
+                        } else {
+                            fallback.call(req)
+                        }
+                    }
+                    Fallback::Service(fallback) => fallback.call(req),
+                    Fallback::BoxedHandler(handler) => handler.clone().into_route(()).call(req),
+                }
+            }
+        }
+    }
 }
 
 /// Wrapper around `matchit::Router` that supports merging two `Router`s.
@@ -720,6 +829,8 @@ enum RouterOrService<S, B, T> {
     Router(Router<S, B>),
     Service(T),
 }
+
+struct SuperFallback<B>(SyncWrapper<Route<B>>);
 
 #[test]
 #[allow(warnings)]
