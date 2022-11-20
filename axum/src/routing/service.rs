@@ -1,5 +1,6 @@
 use super::{
     future::RouteFuture, url_params, FallbackRoute, IntoMakeService, Node, Route, RouteId, Router,
+    SuperFallback,
 };
 use crate::{
     body::{Body, HttpBody},
@@ -221,5 +222,3 @@ where
         }
     }
 }
-
-struct SuperFallback<B>(SyncWrapper<Route<B>>);
