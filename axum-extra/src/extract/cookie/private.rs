@@ -69,6 +69,38 @@ use std::{convert::Infallible, fmt, marker::PhantomData};
 ///     .route("/get", get(get_secret));
 /// # let app: Router<_> = app;
 /// ```
+///
+/// If you have been using `Arc<AppState>` you cannot implement `FromRef<Arc<AppState>> for Key`.
+/// You can use a new type instead:
+///
+/// ```rust
+/// # use axum::extract::FromRef;
+/// # use axum_extra::extract::cookie::{PrivateCookieJar, Cookie, Key};
+/// use std::sync::Arc;
+/// use std::ops::Deref;
+///
+/// #[derive(Clone)]
+/// struct AppState(Arc<InnerState>);
+///
+/// // deref so you can still access the inner fields easily
+/// impl Deref for AppState {
+///     type Target = InnerState;
+///
+///     fn deref(&self) -> &Self::Target {
+///         &*self.0
+///     }
+/// }
+///
+/// struct InnerState {
+///     key: Key
+/// }
+///
+/// impl FromRef<AppState> for Key {
+///     fn from_ref(state: &AppState) -> Self {
+///         state.0.key.clone()
+///     }
+/// }
+/// ```
 pub struct PrivateCookieJar<K = Key> {
     jar: cookie::CookieJar,
     key: Key,
