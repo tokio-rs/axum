@@ -46,13 +46,76 @@ use std::{
 /// # let _: axum::routing::RouterService = app;
 /// ```
 ///
-/// [`Router`]s that are combined with [`Router::nest`] or [`Router::merge`]
-/// generally require the same type of state. See [`Router::nest`] for how to
-/// combine routers with different types of state.
-/// 
+/// ## Combining stateful routers
+///
+/// Multiple [`Router`]s can be combined with [`Router::nest`] or [`Router::merge`]
+/// When combining [`Router`]s with one of these methods, the [`Router`]s must have
+/// the same state type. Generally, this can be inferred automatically:
+///
+/// ```
+/// use axum::{Router, routing::get, extract::State};
+///
+/// #[derive(Clone)]
+/// struct AppState {}
+///
+/// let state = AppState {};
+///
+/// // create a `Router` that will be nested within another
+/// let api = Router::new()
+///     .route("/posts", get(posts_handler));
+///
+/// let app = Router::new()
+///     .nest("/api", api)
+///     .with_state(state);
+///
+/// async fn posts_handler(State(state): State<AppState>) {
+///     // use `state`...
+/// }
+/// # let _: axum::routing::RouterService = app;
+/// ```
+///
+/// However, if you are composing [`Router`]s that are defined in separate scopes,
+/// you may need to annotate the [`State`] type explicitly:
+///
+/// ```
+/// use axum::{Router, RouterService, routing::get, extract::State};
+///
+/// #[derive(Clone)]
+/// struct AppState {}
+///
+/// fn make_app() -> RouterService {
+///     let state = AppState {};
+///
+///     Router::new()
+///         .nest("/api", make_api())
+///         .with_state(state) // the outer Router's state is inferred
+/// }
+///
+/// // the inner Router must specify its state type to compose with the
+/// // outer router
+/// fn make_api() -> Router<AppState> {
+///     Router::new()
+///         .route("/posts", get(posts_handler))
+/// }
+///
+/// async fn posts_handler(State(state): State<AppState>) {
+///     // use `state`...
+/// }
+/// # let _: axum::routing::RouterService = make_app();
+/// ```
+///
+/// In short, a [`Router`]'s generic state type defaults to `()`
+/// (no state) unless [`Router::with_state`] is called or the value
+/// of the generic type is given explicitly.
+///
+/// It's also possible to combine multiple axum services with different state
+/// types. See [`Router::nest_service`] for details.
+///
 /// [`Router`]: crate::Router
-/// [`Router::nest`]: crate::Router::nest
 /// [`Router::merge`]: crate::Router::merge
+/// [`Router::nest_service`]: crate::Router::nest_service
+/// [`Router::nest`]: crate::Router::nest
+/// [`Router::with_state`]: crate::Router::with_state
 ///
 /// # With `MethodRouter`
 ///
