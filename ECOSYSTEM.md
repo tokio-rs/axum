@@ -54,7 +54,7 @@ If your project isn't listed here and you would like it to be, please feel free 
 - [axum-middleware-example](https://github.com/casbin-rs/axum-middleware-example): A authorization application using Axum-web, Casbin and Diesel, with JWT support.
 - [circleci-hook](https://github.com/DavidS/circleci-hook): Translate CircleCI WebHooks to OpenTelemetry traces to improve your test insights. Add detail with otel-cli to capture individual commands. Use the TRACEPARENT integration to add details from your tests.
 - [lishuuro.org](https://github.com/uros-5/backend-lishuuro): Small chess variant server that uses Rust as backend(Axum framework).
-- [freedit](https://github.com/freedit-org/freedit): A forum powered by rust(Axum framework). 
+- [freedit](https://github.com/freedit-org/freedit): A forum powered by rust. 
 
 [Realworld]: https://github.com/gothinkster/realworld
 [SQLx]: https://github.com/launchbadge/sqlx
