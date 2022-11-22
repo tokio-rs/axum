@@ -212,6 +212,41 @@ where
     }
 
     /// Like [`nest`](Self::nest), but accepts an arbitrary `Service`.
+    ///
+    /// While [`nest`](Self::nest) requires [`Router`]s with the same type of
+    /// state, you can use this method to combine [`Router`]s with different
+    /// types of state:
+    ///
+    /// ```
+    /// use axum::{
+    ///     Router,
+    ///     routing::get,
+    ///     extract::State,
+    /// };
+    ///
+    /// #[derive(Clone)]
+    /// struct InnerState {}
+    ///
+    /// #[derive(Clone)]
+    /// struct OuterState {}
+    ///
+    /// async fn inner_handler(state: State<InnerState>) {}
+    ///
+    /// let inner_router = Router::new()
+    ///     .route("/bar", get(inner_handler))
+    ///     .with_state(InnerState {});
+    ///
+    /// async fn outer_handler(state: State<OuterState>) {}
+    ///
+    /// let app = Router::new()
+    ///     .route("/", get(outer_handler))
+    ///     .nest_service("/foo", inner_router)
+    ///     .with_state(OuterState {});
+    /// # let _: axum::routing::RouterService = app;
+    /// ```
+    ///
+    /// Note that the inner router will still inherit the fallback from the outer
+    /// router.
     #[track_caller]
     pub fn nest_service<T>(self, path: &str, svc: T) -> Self
     where

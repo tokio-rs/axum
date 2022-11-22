@@ -37,7 +37,15 @@ let app = Router::new()
 # };
 ```
 
-## Panics
+# Merging routers with state
+
+When combining [`Router`]s with this function, each [`Router`] must have the
+same type of state. See ["Combining stateful routers"][combining-stateful-routers]
+for details.
+
+# Panics
 
 - If two routers that each have a [fallback](Router::fallback) are merged. This
   is because `Router` only allows a single fallback.
+
+[combining-stateful-routers]: crate::extract::State#combining-stateful-routers
