@@ -442,6 +442,102 @@ where
     pub fn with_state(self, state: S) -> RouterService<B> {
         RouterService::new(self, state)
     }
+
+    pub(crate) fn call_with_state(
+        &mut self,
+        mut req: Request<B>,
+        state: S,
+    ) -> RouteFuture<B, Infallible> {
+        #[cfg(feature = "original-uri")]
+        {
+            use crate::extract::OriginalUri;
+
+            if req.extensions().get::<OriginalUri>().is_none() {
+                let original_uri = OriginalUri(req.uri().clone());
+                req.extensions_mut().insert(original_uri);
+            }
+        }
+
+        let path = req.uri().path().to_owned();
+
+        match self.node.at(&path) {
+            Ok(match_) => {
+                match &self.fallback {
+                    Fallback::Default(_) => {}
+                    Fallback::Service(fallback) => {
+                        req.extensions_mut()
+                            .insert(SuperFallback(SyncWrapper::new(fallback.clone())));
+                    }
+                    Fallback::BoxedHandler(fallback) => {
+                        req.extensions_mut().insert(SuperFallback(SyncWrapper::new(
+                            fallback.clone().into_route(state.clone()),
+                        )));
+                    }
+                }
+
+                self.call_route(match_, req, state)
+            }
+            Err(
+                MatchError::NotFound
+                | MatchError::ExtraTrailingSlash
+                | MatchError::MissingTrailingSlash,
+            ) => {
+                match &mut self.fallback {
+                    Fallback::Default(fallback) => {
+                        if let Some(super_fallback) =
+                            req.extensions_mut().remove::<SuperFallback<B>>()
+                        {
+                            let mut super_fallback = super_fallback.0.into_inner();
+                            super_fallback.call(req)
+                        } else {
+                            fallback.call(req)
+                        }
+                    }
+                    Fallback::Service(fallback) => fallback.call(req),
+                    Fallback::BoxedHandler(handler) => {
+                        todo!()
+                        // handler.clone().into_route(state).call(req)
+                    }
+                }
+            }
+        }
+    }
+
+    // TODO(david): fix duplication
+    #[inline]
+    fn call_route(
+        &self,
+        match_: matchit::Match<&RouteId>,
+        mut req: Request<B>,
+        state: S,
+    ) -> RouteFuture<B, Infallible> {
+        let id = *match_.value;
+
+        #[cfg(feature = "matched-path")]
+        crate::extract::matched_path::set_matched_path_for_request(
+            id,
+            &self.node.route_id_to_path,
+            req.extensions_mut(),
+        );
+
+        url_params::insert_url_params(req.extensions_mut(), match_.params);
+
+        let endpont = self
+            .routes
+            .get(&id)
+            .expect("no route for id. This is a bug in axum. Please file an issue")
+            .clone();
+
+        match endpont {
+            Endpoint::MethodRouter(method_router) => {
+                // method_router.call(req)
+                todo!()
+            }
+            Endpoint::Route(mut route) => route.call(req),
+            // TODO(david): optimize?
+            Endpoint::NestedRouter(router) => router.call_with_state(req, state),
+        }
+    }
 }
 
 impl<B> Router<(), B>
@@ -495,38 +591,6 @@ where
     ) -> IntoMakeServiceWithConnectInfo<RouterService<B>, C> {
         IntoMakeServiceWithConnectInfo::new(self.into_service())
     }
-
-    // TODO(david): fix duplication
-    #[inline]
-    fn call_route(
-        &self,
-        match_: matchit::Match<&RouteId>,
-        mut req: Request<B>,
-    ) -> RouteFuture<B, Infallible> {
-        let id = *match_.value;
-
-        #[cfg(feature = "matched-path")]
-        crate::extract::matched_path::set_matched_path_for_request(
-            id,
-            &self.node.route_id_to_path,
-            req.extensions_mut(),
-        );
-
-        url_params::insert_url_params(req.extensions_mut(), match_.params);
-
-        let endpont = self
-            .routes
-            .get(&id)
-            .expect("no route for id. This is a bug in axum. Please file an issue")
-            .clone();
-
-        match endpont {
-            Endpoint::MethodRouter(mut method_router) => method_router.call(req),
-            Endpoint::Route(mut route) => route.call(req),
-            // TODO(david): optimize?
-            Endpoint::NestedRouter(router) => router.into_route(()).call(req),
-        }
-    }
 }
 
 // TODO(david): fix duplication
@@ -544,58 +608,8 @@ where
     }
 
     #[inline]
-    fn call(&mut self, mut req: Request<B>) -> Self::Future {
-        #[cfg(feature = "original-uri")]
-        {
-            use crate::extract::OriginalUri;
-
-            if req.extensions().get::<OriginalUri>().is_none() {
-                let original_uri = OriginalUri(req.uri().clone());
-                req.extensions_mut().insert(original_uri);
-            }
-        }
-
-        let path = req.uri().path().to_owned();
-
-        match self.node.at(&path) {
-            Ok(match_) => {
-                match &self.fallback {
-                    Fallback::Default(_) => {}
-                    Fallback::Service(fallback) => {
-                        req.extensions_mut()
-                            .insert(SuperFallback(SyncWrapper::new(fallback.clone())));
-                    }
-                    Fallback::BoxedHandler(fallback) => {
-                        req.extensions_mut().insert(SuperFallback(SyncWrapper::new(
-                            fallback.clone().into_route(()),
-                        )));
-                    }
-                }
-
-                self.call_route(match_, req)
-            }
-            Err(
-                MatchError::NotFound
-                | MatchError::ExtraTrailingSlash
-                | MatchError::MissingTrailingSlash,
-            ) => {
-                //
-                match &mut self.fallback {
-                    Fallback::Default(fallback) => {
-                        if let Some(super_fallback) =
-                            req.extensions_mut().remove::<SuperFallback<B>>()
-                        {
-                            let mut super_fallback = super_fallback.0.into_inner();
-                            super_fallback.call(req)
-                        } else {
-                            fallback.call(req)
-                        }
-                    }
-                    Fallback::Service(fallback) => fallback.call(req),
-                    Fallback::BoxedHandler(handler) => handler.clone().into_route(()).call(req),
-                }
-            }
-        }
+    fn call(&mut self, req: Request<B>) -> Self::Future {
+        self.call_with_state(req, ())
     }
 }
 
@@ -674,7 +688,7 @@ where
         B: 'static,
         E: 'static,
         F: FnOnce(Route<B, E>) -> Route<B2, E2> + Clone + Send + 'static,
-        B2: 'static,
+        B2: HttpBody + 'static,
         E2: 'static,
     {
         match self {
