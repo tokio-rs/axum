@@ -43,9 +43,6 @@ When combining [`Router`]s with this function, each [`Router`] must have the
 same type of state. See ["Combining stateful routers"][combining-stateful-routers]
 for details.
 
-If you want to compose axum services with different types of state, use
-[`Router::nest_service`].
-
 # Panics
 
 - If two routers that each have a [fallback](Router::fallback) are merged. This
