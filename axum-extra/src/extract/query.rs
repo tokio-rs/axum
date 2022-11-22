@@ -49,7 +49,7 @@ use std::{fmt, ops::Deref};
 /// If the query string cannot be parsed it will reject the request with a `422
 /// Unprocessable Entity` response.
 ///
-/// For handling values being empty vs missing see the (query-params-with-empty-strings)[example]
+/// For handling values being empty vs missing see the [query-params-with-empty-strings][example]
 /// example.
 ///
 /// [example]: https://github.com/tokio-rs/axum/blob/main/examples/query-params-with-empty-strings/src/main.rs

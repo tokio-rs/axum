@@ -94,7 +94,7 @@
 //!
 //! # Extractors
 //!
-//! An extractor is a type that implements [`FromRequest`] or [`FromRequestParts`]. Extractors is
+//! An extractor is a type that implements [`FromRequest`] or [`FromRequestParts`]. Extractors are
 //! how you pick apart the incoming request to get the parts your handler needs.
 //!
 //! ```rust
@@ -204,7 +204,7 @@
 //! ```
 //!
 //! You should prefer using [`State`] if possible since it's more type safe. The downside is that
-//! its less dynamic than request extensions.
+//! it's less dynamic than request extensions.
 //!
 //! See [`State`] for more details about accessing state.
 //!

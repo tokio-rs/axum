@@ -8,7 +8,7 @@ use std::{
 
 /// Extractor for state.
 ///
-/// See ["Accessing state in middleware"][state-from-middleware] for how to  
+/// See ["Accessing state in middleware"][state-from-middleware] for how to
 /// access state in middleware.
 ///
 /// [state-from-middleware]: crate::middleware#accessing-state-in-middleware
