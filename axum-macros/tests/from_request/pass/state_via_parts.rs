@@ -6,7 +6,7 @@ use axum::{
 use axum_macros::FromRequestParts;
 
 fn main() {
-    let _: axum::routing::RouterService = Router::new()
+    let _: axum::Router = Router::new()
         .route("/a", get(|_: AppState, _: InnerState, _: String| async {}))
         .route("/b", get(|_: AppState, _: String| async {}))
         .route("/c", get(|_: InnerState, _: String| async {}))

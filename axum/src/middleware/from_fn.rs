@@ -137,7 +137,7 @@ pub fn from_fn<F, T>(f: F) -> FromFnLayer<F, (), T> {
 ///     .route("/", get(|| async { /* ... */ }))
 ///     .route_layer(middleware::from_fn_with_state(state.clone(), my_middleware))
 ///     .with_state(state);
-/// # let _: axum::routing::RouterService = app;
+/// # let _: axum::Router = app;
 /// ```
 pub fn from_fn_with_state<F, S, T>(state: S, f: F) -> FromFnLayer<F, S, T> {
     FromFnLayer {

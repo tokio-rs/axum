@@ -68,7 +68,7 @@ use std::{convert::Infallible, fmt, marker::PhantomData};
 ///     .route("/set", post(set_secret))
 ///     .route("/get", get(get_secret))
 ///     .with_state(state);
-/// # let _: axum::routing::RouterService = app;
+/// # let _: axum::Router = app;
 /// ```
 ///
 /// If you have been using `Arc<AppState>` you cannot implement `FromRef<Arc<AppState>> for Key`.
