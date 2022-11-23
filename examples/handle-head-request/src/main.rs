@@ -50,7 +50,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_get() {
-        let app = app().into_service();
+        let app = app();
 
         let response = app
             .oneshot(Request::get("/get-head").body(Body::empty()).unwrap())
@@ -66,7 +66,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_implicit_head() {
-        let app = app().into_service();
+        let app = app();
 
         let response = app
             .oneshot(Request::head("/get-head").body(Body::empty()).unwrap())

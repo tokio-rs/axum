@@ -26,7 +26,7 @@ use std::{
 use tower::{BoxError, ServiceBuilder};
 use tower_http::{
     auth::RequireAuthorizationLayer, compression::CompressionLayer, limit::RequestBodyLimitLayer,
-    trace::TraceLayer, ServiceBuilderExt,
+    trace::TraceLayer,
 };
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
