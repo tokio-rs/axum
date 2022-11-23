@@ -244,7 +244,7 @@ where
     ///     .route("/", get(outer_handler))
     ///     .nest_service("/foo", inner_router)
     ///     .with_state(OuterState {});
-    /// # let _: axum::routing::RouterService = app;
+    /// # let _: axum::Router = app;
     /// ```
     ///
     /// Note that the inner router will still inherit the fallback from the outer

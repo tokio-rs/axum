@@ -71,19 +71,19 @@ use std::{
 /// async fn posts_handler(State(state): State<AppState>) {
 ///     // use `state`...
 /// }
-/// # let _: axum::routing::RouterService = app;
+/// # let _: axum::Router = app;
 /// ```
 ///
 /// However, if you are composing [`Router`]s that are defined in separate scopes,
 /// you may need to annotate the [`State`] type explicitly:
 ///
 /// ```
-/// use axum::{Router, RouterService, routing::get, extract::State};
+/// use axum::{Router, routing::get, extract::State};
 ///
 /// #[derive(Clone)]
 /// struct AppState {}
 ///
-/// fn make_app() -> RouterService {
+/// fn make_app() -> Router {
 ///     let state = AppState {};
 ///
 ///     Router::new()
@@ -101,7 +101,7 @@ use std::{
 /// async fn posts_handler(State(state): State<AppState>) {
 ///     // use `state`...
 /// }
-/// # let _: axum::routing::RouterService = make_app();
+/// # let _: axum::Router = make_app();
 /// ```
 ///
 /// In short, a [`Router`]'s generic state type defaults to `()`
