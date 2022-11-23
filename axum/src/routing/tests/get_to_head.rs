@@ -19,7 +19,6 @@ mod for_handlers {
 
         // don't use reqwest because it always strips bodies from HEAD responses
         let res = app
-            .into_service()
             .oneshot(
                 Request::builder()
                     .uri("/")
@@ -55,7 +54,6 @@ mod for_services {
 
         // don't use reqwest because it always strips bodies from HEAD responses
         let res = app
-            .into_service()
             .oneshot(
                 Request::builder()
                     .uri("/")

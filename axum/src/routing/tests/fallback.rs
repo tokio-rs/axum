@@ -56,7 +56,7 @@ async fn fallback_accessing_state() {
         .fallback(|State(state): State<&'static str>| async move { state })
         .with_state("state");
 
-    let client = TestClient::from_service(app);
+    let client = TestClient::new(app);
 
     let res = client.get("/does-not-exist").send().await;
     assert_eq!(res.status(), StatusCode::OK);

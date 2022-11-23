@@ -447,11 +447,11 @@ async fn middleware_still_run_for_unmatched_requests() {
 
 #[tokio::test]
 #[should_panic(expected = "\
-    Invalid route: `Router::route_service` cannot be used with `RouterService`s. \
+    Invalid route: `Router::route_service` cannot be used with `Router`s. \
     Use `Router::nest` instead\
 ")]
 async fn routing_to_router_panics() {
-    TestClient::new(Router::new().route_service("/", Router::new().into_service()));
+    TestClient::new(Router::new().route_service("/", Router::new()));
 }
 
 #[tokio::test]
@@ -761,7 +761,7 @@ async fn extract_state() {
     };
 
     let app = Router::new().route("/", get(handler)).with_state(state);
-    let client = TestClient::from_service(app);
+    let client = TestClient::new(app);
 
     let res = client.get("/").send().await;
     assert_eq!(res.status(), StatusCode::OK);
@@ -776,7 +776,7 @@ async fn explicitly_set_state() {
         )
         .with_state("...");
 
-    let client = TestClient::from_service(app);
+    let client = TestClient::new(app);
     let res = client.get("/").send().await;
     assert_eq!(res.text().await, "foo");
 }

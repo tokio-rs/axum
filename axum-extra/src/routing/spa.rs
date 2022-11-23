@@ -270,7 +270,7 @@ mod tests {
 
     #[allow(dead_code)]
     fn works_with_router_with_state() {
-        let _: axum::RouterService = Router::new()
+        let _: Router = Router::new()
             .merge(SpaRouter::new("/assets", "test_files"))
             .route("/", get(|_: axum::extract::State<String>| async {}))
             .with_state(String::new());
