@@ -443,6 +443,7 @@ where
     ///     .route("/", get(|| async { /* ... */ }))
     ///     // even though we don't need any state, call `with_state(())` anyway
     ///     .with_state(());
+    /// # let _: Router = app;
     /// ```
     ///
     /// This is not required but it gives axum a chance to update some internals in the router
