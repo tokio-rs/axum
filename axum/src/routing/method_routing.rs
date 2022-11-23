@@ -665,7 +665,7 @@ where
     ///
     /// [`MakeService`]: tower::make::MakeService
     pub fn into_make_service(self) -> IntoMakeService<Self> {
-        IntoMakeService::new(self)
+        IntoMakeService::new(self.with_state(()))
     }
 
     /// Convert the router into a [`MakeService`] which stores information
@@ -701,7 +701,7 @@ where
     /// [`Router::into_make_service_with_connect_info`]: crate::routing::Router::into_make_service_with_connect_info
     #[cfg(feature = "tokio")]
     pub fn into_make_service_with_connect_info<C>(self) -> IntoMakeServiceWithConnectInfo<Self, C> {
-        IntoMakeServiceWithConnectInfo::new(self)
+        IntoMakeServiceWithConnectInfo::new(self.with_state(()))
     }
 }
 
