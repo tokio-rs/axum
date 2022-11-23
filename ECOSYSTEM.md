@@ -28,6 +28,7 @@ If your project isn't listed here and you would like it to be, please feel free 
 - [axum-jsonschema](https://docs.rs/axum-jsonschema/): A `Json<T>` extractor that does JSON schema validation of requests.
 - [axum-sessions](https://docs.rs/axum-sessions): Cookie-based sessions for axum via async-session.
 - [axum-login](https://docs.rs/axum-login): Session-based user authentication for axum.
+- [axum-csrf-sync-pattern](https://crates.io/crates/axum-csrf-sync-pattern): A middleware implementing CSRF STP for AJAX backends and API endpoints.
 
 ## Project showcase
 
