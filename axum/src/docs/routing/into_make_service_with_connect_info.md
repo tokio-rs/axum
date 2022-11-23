@@ -2,10 +2,6 @@ Convert this router into a [`MakeService`], that will store `C`'s
 associated `ConnectInfo` in a request extension such that [`ConnectInfo`]
 can extract it.
 
-This is a convenience method for routers that don't have any state (i.e. the
-state type is `()`). Use [`RouterService::into_make_service_with_connect_info`]
-otherwise.
-
 This enables extracting things like the client's remote address.
 
 Extracting [`std::net::SocketAddr`] is supported out of the box:

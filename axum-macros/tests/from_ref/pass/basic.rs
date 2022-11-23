@@ -14,7 +14,7 @@ fn main() {
         auth_token: Default::default(),
     };
 
-    let _: axum::routing::RouterService = Router::new()
+    let _: axum::Router = Router::new()
         .route("/", get(handler))
         .with_state(state);
 }

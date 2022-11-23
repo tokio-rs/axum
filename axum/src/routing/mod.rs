@@ -536,9 +536,6 @@ where
     /// # };
     /// ```
     ///
-    /// This is a convenience method for routers that don't have any state (i.e. the state type is
-    /// `()`). Use [`RouterService::into_make_service`] otherwise.
-    ///
     /// [`MakeService`]: tower::make::MakeService
     pub fn into_make_service(self) -> IntoMakeService<Self> {
         // call `Router::with_state` such that everything is turned into `Route` eagerly
@@ -679,31 +676,7 @@ impl<S, B, E> fmt::Debug for Fallback<S, B, E> {
     }
 }
 
-/// Like `Fallback` but without the `S` param so it can be stored in `RouterService`
-pub(crate) enum FallbackRoute<B, E = Infallible> {
-    Default(Route<B, E>),
-    Service(Route<B, E>),
-}
-
-impl<B, E> fmt::Debug for FallbackRoute<B, E> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Default(inner) => f.debug_tuple("Default").field(inner).finish(),
-            Self::Service(inner) => f.debug_tuple("Service").field(inner).finish(),
-        }
-    }
-}
-
-impl<B, E> Clone for FallbackRoute<B, E> {
-    fn clone(&self) -> Self {
-        match self {
-            Self::Default(inner) => Self::Default(inner.clone()),
-            Self::Service(inner) => Self::Service(inner.clone()),
-        }
-    }
-}
-
-#[allow(clippy::large_enum_variant)] // This type is only used at init time, probably fine
+#[allow(clippy::large_enum_variant)]
 enum Endpoint<S, B> {
     MethodRouter(MethodRouter<S, B>),
     Route(Route<B>),

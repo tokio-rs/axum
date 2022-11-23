@@ -86,7 +86,7 @@ use std::{convert::Infallible, fmt, marker::PhantomData};
 ///     .route("/sessions", post(create_session))
 ///     .route("/me", get(me))
 ///     .with_state(state);
-/// # let _: axum::routing::RouterService = app;
+/// # let _: axum::Router = app;
 /// ```
 pub struct SignedCookieJar<K = Key> {
     jar: cookie::CookieJar,

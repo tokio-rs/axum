@@ -43,7 +43,7 @@ use std::{
 /// ) {
 ///     // use `state`...
 /// }
-/// # let _: axum::routing::RouterService = app;
+/// # let _: axum::Router = app;
 /// ```
 ///
 /// # With `MethodRouter`
@@ -138,7 +138,7 @@ use std::{
 ///     State(state): State<AppState>,
 /// ) {
 /// }
-/// # let _: axum::routing::RouterService = app;
+/// # let _: axum::Router = app;
 /// ```
 ///
 /// For convenience `FromRef` can also be derived using `#[derive(FromRef)]`.
