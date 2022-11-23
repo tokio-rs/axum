@@ -214,41 +214,6 @@ where
     }
 
     /// Like [`nest`](Self::nest), but accepts an arbitrary `Service`.
-    ///
-    /// While [`nest`](Self::nest) requires [`Router`]s with the same type of
-    /// state, you can use this method to combine [`Router`]s with different
-    /// types of state:
-    ///
-    /// ```
-    /// use axum::{
-    ///     Router,
-    ///     routing::get,
-    ///     extract::State,
-    /// };
-    ///
-    /// #[derive(Clone)]
-    /// struct InnerState {}
-    ///
-    /// #[derive(Clone)]
-    /// struct OuterState {}
-    ///
-    /// async fn inner_handler(state: State<InnerState>) {}
-    ///
-    /// let inner_router = Router::new()
-    ///     .route("/bar", get(inner_handler))
-    ///     .with_state(InnerState {});
-    ///
-    /// async fn outer_handler(state: State<OuterState>) {}
-    ///
-    /// let app = Router::new()
-    ///     .route("/", get(outer_handler))
-    ///     .nest_service("/foo", inner_router)
-    ///     .with_state(OuterState {});
-    /// # let _: axum::Router = app;
-    /// ```
-    ///
-    /// Note that the inner router will still inherit the fallback from the outer
-    /// router.
     #[track_caller]
     pub fn nest_service<T>(self, path: &str, svc: T) -> Self
     where
@@ -431,7 +396,60 @@ where
         self
     }
 
-    /// TODO(david): docs
+    /// Provide the state for the router.
+    ///
+    /// This method returns a router with a different state type. This can be used to nest or merge
+    /// routers with different state types. See [`Router::nest`] and [`Router::merge`] for more
+    /// details.
+    ///
+    /// # Implementing `Service`
+    ///
+    /// This can also be used to get a `Router` that implements [`Service`], since it only does so
+    /// when the state is `()`:
+    ///
+    /// ```
+    /// use axum::{
+    ///     Router,
+    ///     body::Body,
+    ///     http::Request,
+    /// };
+    /// use tower::{Service, ServiceExt};
+    ///
+    /// #[derive(Clone)]
+    /// struct AppState {}
+    ///
+    /// // this router doesn't implement `Service` because its state isn't `()`
+    /// let router: Router<AppState> = Router::new();
+    ///
+    /// // by providing the state and setting the new state to `()`...
+    /// let router_service: Router<()> = router.with_state(AppState {});
+    ///
+    /// // ...makes it implement `Service`
+    /// # async {
+    /// router_service.oneshot(Request::new(Body::empty())).await;
+    /// # };
+    /// ```
+    ///
+    /// # A note about performance
+    ///
+    /// If you need a `Router` that implements `Service` but you don't need any state (perhaps
+    /// you're making a library that uses axum internally) then it is recommended to call this
+    /// method before you start serving requests:
+    ///
+    /// ```
+    /// use axum::{Router, routing::get};
+    ///
+    /// let app = Router::new()
+    ///     .route("/", get(|| async { /* ... */ }))
+    ///     // even though we don't need any state, call `with_state(())` anyway
+    ///     .with_state(());
+    /// ```
+    ///
+    /// This is not required but it gives axum a chance to update some internals in the router
+    /// which may impact performance and reduce allocations.
+    ///
+    /// Note that [`Router::into_make_service`] and [`Router::into_make_service_with_connect_info`]
+    /// does this automatically.
     pub fn with_state<S2>(self, state: S) -> Router<S2, B> {
         let routes = self
             .routes
@@ -587,7 +605,6 @@ where
     }
 }
 
-// TODO(david): fix duplication
 impl<B> Service<Request<B>> for Router<(), B>
 where
     B: HttpBody + Send + 'static,

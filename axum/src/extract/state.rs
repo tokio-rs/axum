@@ -108,12 +108,8 @@ use std::{
 /// (no state) unless [`Router::with_state`] is called or the value
 /// of the generic type is given explicitly.
 ///
-/// It's also possible to combine multiple axum services with different state
-/// types. See [`Router::nest_service`] for details.
-///
 /// [`Router`]: crate::Router
 /// [`Router::merge`]: crate::Router::merge
-/// [`Router::nest_service`]: crate::Router::nest_service
 /// [`Router::nest`]: crate::Router::nest
 /// [`Router::with_state`]: crate::Router::with_state
 ///

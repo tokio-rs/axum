@@ -731,7 +731,7 @@ where
         }
     }
 
-    /// TODO(david): docs
+    /// Provide the state for the router.
     pub fn with_state<S2>(self, state: S) -> MethodRouter<S2, B, E> {
         MethodRouter {
             get: self.get.with_state(state.clone()),

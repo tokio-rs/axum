@@ -149,12 +149,40 @@ Here requests like `GET /api/not-found` will go to `api_fallback`.
 
 # Nesting routers with state
 
-When combining [`Router`]s with this function, each [`Router`] must have the
-same type of state. See ["Combining stateful routers"][combining-stateful-routers]
-for details.
+When combining [`Router`]s with this method, each [`Router`] must have the
+same type of state. If your routers have different types you can use
+[`Router::with_state`] to provide the state and make the types match:
 
-If you want to compose axum services with different types of state, use
-[`Router::nest_service`].
+```rust
+use axum::{
+    Router,
+    routing::get,
+    extract::State,
+};
+
+#[derive(Clone)]
+struct InnerState {}
+
+#[derive(Clone)]
+struct OuterState {}
+
+async fn inner_handler(state: State<InnerState>) {}
+
+let inner_router = Router::new()
+    .route("/bar", get(inner_handler))
+    .with_state(InnerState {});
+
+async fn outer_handler(state: State<OuterState>) {}
+
+let app = Router::new()
+    .route("/", get(outer_handler))
+    .nest("/foo", inner_router)
+    .with_state(OuterState {});
+# let _: axum::Router = app;
+```
+
+Note that the inner router will still inherit the fallback from the outer
+router.
 
 # Panics
 
