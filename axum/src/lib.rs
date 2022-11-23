@@ -475,7 +475,7 @@ pub use self::extension::Extension;
 #[cfg(feature = "json")]
 pub use self::json::Json;
 #[doc(inline)]
-pub use self::routing::{Router, RouterService};
+pub use self::routing::Router;
 
 #[doc(inline)]
 #[cfg(feature = "headers")]

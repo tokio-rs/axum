@@ -359,7 +359,7 @@ mod tests {
             format!("you said: {}", body)
         }
 
-        let client = TestClient::from_service(handle.into_service());
+        let client = TestClient::new(handle.into_service());
 
         let res = client.post("/").body("hi there!").send().await;
         assert_eq!(res.status(), StatusCode::OK);
@@ -382,7 +382,7 @@ mod tests {
             .layer(MapRequestBodyLayer::new(body::boxed))
             .with_state("foo");
 
-        let client = TestClient::from_service(svc);
+        let client = TestClient::new(svc);
         let res = client.get("/").send().await;
         assert_eq!(res.text().await, "foo");
     }

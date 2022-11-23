@@ -20,7 +20,6 @@ use std::{
     task::{Context, Poll},
 };
 use sync_wrapper::SyncWrapper;
-use tower::util::{BoxCloneService, Oneshot};
 use tower_layer::Layer;
 use tower_service::Service;
 
@@ -34,14 +33,10 @@ mod route;
 mod strip_prefix;
 pub(crate) mod url_params;
 
-mod service;
 #[cfg(test)]
 mod tests;
 
-pub use self::{
-    into_make_service::IntoMakeService, method_filter::MethodFilter, route::Route,
-    service::RouterService,
-};
+pub use self::{into_make_service::IntoMakeService, method_filter::MethodFilter, route::Route};
 
 pub use self::method_routing::{
     any, any_service, delete, delete_service, get, get_service, head, head_service, on, on_service,
@@ -175,10 +170,10 @@ where
         T::Response: IntoResponse,
         T::Future: Send + 'static,
     {
-        let service = match try_downcast::<RouterService<B>, _>(service) {
+        let service = match try_downcast::<Router<S, B>, _>(service) {
             Ok(_) => {
                 panic!(
-                    "Invalid route: `Router::route_service` cannot be used with `RouterService`s. \
+                    "Invalid route: `Router::route_service` cannot be used with `Router`s. \
                      Use `Router::nest` instead"
                 );
             }
@@ -325,7 +320,7 @@ where
         <L::Service as Service<Request<NewReqBody>>>::Response: IntoResponse + 'static,
         <L::Service as Service<Request<NewReqBody>>>::Error: Into<Infallible> + 'static,
         <L::Service as Service<Request<NewReqBody>>>::Future: Send + 'static,
-        NewReqBody: 'static,
+        NewReqBody: HttpBody + 'static,
     {
         let routes = self
             .routes
@@ -401,11 +396,32 @@ where
         self
     }
 
-    /// Convert this router into a [`RouterService`] by providing the state.
-    ///
-    /// Once this method has been called you cannot add more routes. So it must be called as last.
-    pub fn with_state(self, state: S) -> RouterService<B> {
-        RouterService::new(self, state)
+    /// TODO(david): docs
+    pub fn with_state<S2>(self, state: S) -> Router<S2, B> {
+        let routes = self
+            .routes
+            .into_iter()
+            .map(|(id, endpoint)| {
+                let endpoint: Endpoint<S2, B> = match endpoint {
+                    Endpoint::MethodRouter(method_router) => {
+                        Endpoint::MethodRouter(method_router.with_state(state.clone()))
+                    }
+                    Endpoint::Route(route) => Endpoint::Route(route),
+                    Endpoint::NestedRouter(router) => {
+                        Endpoint::Route(router.into_route(state.clone()))
+                    }
+                };
+                (id, endpoint)
+            })
+            .collect();
+
+        let fallback = self.fallback.with_state(state);
+
+        Router {
+            routes,
+            node: self.node,
+            fallback,
+        }
     }
 
     pub(crate) fn call_with_state(
@@ -446,29 +462,22 @@ where
                 MatchError::NotFound
                 | MatchError::ExtraTrailingSlash
                 | MatchError::MissingTrailingSlash,
-            ) => {
-                match &mut self.fallback {
-                    Fallback::Default(fallback) => {
-                        if let Some(super_fallback) =
-                            req.extensions_mut().remove::<SuperFallback<B>>()
-                        {
-                            let mut super_fallback = super_fallback.0.into_inner();
-                            super_fallback.call(req)
-                        } else {
-                            fallback.call(req)
-                        }
-                    }
-                    Fallback::Service(fallback) => fallback.call(req),
-                    Fallback::BoxedHandler(handler) => {
-                        todo!()
-                        // handler.clone().into_route(state).call(req)
+            ) => match &mut self.fallback {
+                Fallback::Default(fallback) => {
+                    if let Some(super_fallback) = req.extensions_mut().remove::<SuperFallback<B>>()
+                    {
+                        let mut super_fallback = super_fallback.0.into_inner();
+                        super_fallback.call(req)
+                    } else {
+                        fallback.call(req)
                     }
                 }
-            }
+                Fallback::Service(fallback) => fallback.call(req),
+                Fallback::BoxedHandler(handler) => handler.clone().into_route(state).call(req),
+            },
         }
     }
 
-    // TODO(david): fix duplication
     #[inline]
     fn call_route(
         &self,
@@ -494,12 +503,8 @@ where
             .clone();
 
         match endpont {
-            Endpoint::MethodRouter(method_router) => {
-                // method_router.call(req)
-                todo!()
-            }
+            Endpoint::MethodRouter(mut method_router) => method_router.call_with_state(req, state),
             Endpoint::Route(mut route) => route.call(req),
-            // TODO(david): optimize?
             Endpoint::NestedRouter(router) => router.call_with_state(req, state),
         }
     }
@@ -509,16 +514,6 @@ impl<B> Router<(), B>
 where
     B: HttpBody + Send + 'static,
 {
-    /// Convert this router into a [`RouterService`].
-    ///
-    /// This is a convenience method for routers that don't have any state (i.e. the state type is
-    /// `()`). Use [`Router::with_state`] otherwise.
-    ///
-    /// Once this method has been called you cannot add more routes. So it must be called as last.
-    pub fn into_service(self) -> RouterService<B> {
-        RouterService::new(self, ())
-    }
-
     /// Convert this router into a [`MakeService`], that is a [`Service`] whose
     /// response is another service.
     ///
@@ -545,16 +540,18 @@ where
     /// `()`). Use [`RouterService::into_make_service`] otherwise.
     ///
     /// [`MakeService`]: tower::make::MakeService
-    pub fn into_make_service(self) -> IntoMakeService<RouterService<B>> {
-        IntoMakeService::new(self.into_service())
+    pub fn into_make_service(self) -> IntoMakeService<Self> {
+        // call `Router::with_state` such that everything is turned into `Route` eagerly
+        // rather than doing that per request
+        IntoMakeService::new(self.with_state(()))
     }
 
     #[doc = include_str!("../docs/routing/into_make_service_with_connect_info.md")]
     #[cfg(feature = "tokio")]
-    pub fn into_make_service_with_connect_info<C>(
-        self,
-    ) -> IntoMakeServiceWithConnectInfo<RouterService<B>, C> {
-        IntoMakeServiceWithConnectInfo::new(self.into_service())
+    pub fn into_make_service_with_connect_info<C>(self) -> IntoMakeServiceWithConnectInfo<Self, C> {
+        // call `Router::with_state` such that everything is turned into `Route` eagerly
+        // rather than doing that per request
+        IntoMakeServiceWithConnectInfo::new(self.with_state(()))
     }
 }
 
@@ -637,16 +634,6 @@ where
         }
     }
 
-    fn into_fallback_route(self, state: &S) -> FallbackRoute<B, E> {
-        match self {
-            Self::Default(route) => FallbackRoute::Default(route),
-            Self::Service(route) => FallbackRoute::Service(route),
-            Self::BoxedHandler(handler) => {
-                FallbackRoute::Service(handler.into_route(state.clone()))
-            }
-        }
-    }
-
     fn map<F, B2, E2>(self, f: F) -> Fallback<S, B2, E2>
     where
         S: 'static,
@@ -660,6 +647,14 @@ where
             Self::Default(route) => Fallback::Default(f(route)),
             Self::Service(route) => Fallback::Service(f(route)),
             Self::BoxedHandler(handler) => Fallback::BoxedHandler(handler.map(f)),
+        }
+    }
+
+    fn with_state<S2>(self, state: S) -> Fallback<S2, B, E> {
+        match self {
+            Fallback::Default(route) => Fallback::Default(route),
+            Fallback::Service(route) => Fallback::Service(route),
+            Fallback::BoxedHandler(handler) => Fallback::Service(handler.into_route(state)),
         }
     }
 }
@@ -690,24 +685,6 @@ pub(crate) enum FallbackRoute<B, E = Infallible> {
     Service(Route<B, E>),
 }
 
-impl<B, E> FallbackRoute<B, E> {
-    fn layer<L, NewReqBody, NewError>(self, layer: L) -> FallbackRoute<NewReqBody, NewError>
-    where
-        L: Layer<Route<B, E>> + Clone + Send + 'static,
-        L::Service: Service<Request<NewReqBody>> + Clone + Send + 'static,
-        <L::Service as Service<Request<NewReqBody>>>::Response: IntoResponse + 'static,
-        <L::Service as Service<Request<NewReqBody>>>::Error: Into<NewError> + 'static,
-        <L::Service as Service<Request<NewReqBody>>>::Future: Send + 'static,
-        NewReqBody: 'static,
-        NewError: 'static,
-    {
-        match self {
-            FallbackRoute::Default(route) => FallbackRoute::Default(route.layer(layer)),
-            FallbackRoute::Service(route) => FallbackRoute::Service(route.layer(layer)),
-        }
-    }
-}
-
 impl<B, E> fmt::Debug for FallbackRoute<B, E> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -726,18 +703,6 @@ impl<B, E> Clone for FallbackRoute<B, E> {
     }
 }
 
-impl<B, E> FallbackRoute<B, E> {
-    pub(crate) fn oneshot_inner(
-        &mut self,
-        req: Request<B>,
-    ) -> Oneshot<BoxCloneService<Request<B>, Response, E>, Request<B>> {
-        match self {
-            FallbackRoute::Default(inner) => inner.oneshot_inner(req),
-            FallbackRoute::Service(inner) => inner.oneshot_inner(req),
-        }
-    }
-}
-
 #[allow(clippy::large_enum_variant)] // This type is only used at init time, probably fine
 enum Endpoint<S, B> {
     MethodRouter(MethodRouter<S, B>),
@@ -750,14 +715,6 @@ where
     B: HttpBody + Send + 'static,
     S: Clone + Send + Sync + 'static,
 {
-    fn into_route(self, state: S) -> Route<B> {
-        match self {
-            Endpoint::MethodRouter(method_router) => Route::new(method_router.with_state(state)),
-            Endpoint::Route(route) => route,
-            Endpoint::NestedRouter(router) => router.into_route(state),
-        }
-    }
-
     fn layer<L, NewReqBody>(self, layer: L) -> Endpoint<S, NewReqBody>
     where
         L: Layer<Route<B>> + Clone + Send + 'static,
@@ -765,7 +722,7 @@ where
         <L::Service as Service<Request<NewReqBody>>>::Response: IntoResponse + 'static,
         <L::Service as Service<Request<NewReqBody>>>::Error: Into<Infallible> + 'static,
         <L::Service as Service<Request<NewReqBody>>>::Future: Send + 'static,
-        NewReqBody: 'static,
+        NewReqBody: HttpBody + 'static,
     {
         match self {
             Endpoint::MethodRouter(method_router) => {

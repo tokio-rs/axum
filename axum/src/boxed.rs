@@ -21,6 +21,7 @@ where
     where
         H: Handler<T, S, B>,
         T: 'static,
+        B: HttpBody,
     {
         Self(Box::new(MakeErasedHandler {
             handler,
@@ -98,7 +99,7 @@ impl<H, S, B> ErasedIntoRoute<S, B, Infallible> for MakeErasedHandler<H, S, B>
 where
     H: Clone + Send + 'static,
     S: 'static,
-    B: 'static,
+    B: HttpBody + 'static,
 {
     fn clone_box(&self) -> Box<dyn ErasedIntoRoute<S, B, Infallible>> {
         Box::new(self.clone())
@@ -113,7 +114,7 @@ where
         request: Request<B>,
         state: S,
     ) -> RouteFuture<B, Infallible> {
-        todo!()
+        self.into_route(state).call(request)
     }
 }
 
@@ -193,8 +194,7 @@ where
     }
 
     fn call_with_state(self: Box<Self>, request: Request<B2>, state: S) -> RouteFuture<B2, E2> {
-        let route = (self.layer)(self.inner.into_route(state));
-        route.call(request)
+        (self.layer)(self.inner.into_route(state)).call(request)
     }
 }
 
