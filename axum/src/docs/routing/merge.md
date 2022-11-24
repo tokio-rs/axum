@@ -75,5 +75,3 @@ let app = Router::new()
 
 - If two routers that each have a [fallback](Router::fallback) are merged. This
   is because `Router` only allows a single fallback.
-
-[combining-stateful-routers]: crate::extract::State#combining-stateful-routers

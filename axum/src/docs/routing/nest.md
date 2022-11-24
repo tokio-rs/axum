@@ -193,4 +193,3 @@ for more details.
 
 [`OriginalUri`]: crate::extract::OriginalUri
 [fallbacks]: Router::fallback
-[combining-stateful-routers]: crate::extract::State#combining-stateful-routers

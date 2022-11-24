@@ -450,7 +450,7 @@ where
     /// which may impact performance and reduce allocations.
     ///
     /// Note that [`Router::into_make_service`] and [`Router::into_make_service_with_connect_info`]
-    /// does this automatically.
+    /// do this automatically.
     pub fn with_state<S2>(self, state: S) -> Router<S2, B> {
         let routes = self
             .routes
