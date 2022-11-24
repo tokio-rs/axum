@@ -40,8 +40,7 @@ fn main() {
 
 #[allow(clippy::let_and_return)]
 async fn app(request: Request<String>) -> Response {
-    let mut router = Router::new().route("/api/", get(index)).into_service();
-
+    let mut router = Router::new().route("/api/", get(index));
     let response = router.call(request).await.unwrap();
     response
 }

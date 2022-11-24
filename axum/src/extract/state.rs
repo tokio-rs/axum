@@ -43,7 +43,7 @@ use std::{
 /// ) {
 ///     // use `state`...
 /// }
-/// # let _: axum::routing::RouterService = app;
+/// # let _: axum::Router = app;
 /// ```
 ///
 /// ## Combining stateful routers
@@ -71,19 +71,19 @@ use std::{
 /// async fn posts_handler(State(state): State<AppState>) {
 ///     // use `state`...
 /// }
-/// # let _: axum::routing::RouterService = app;
+/// # let _: axum::Router = app;
 /// ```
 ///
 /// However, if you are composing [`Router`]s that are defined in separate scopes,
 /// you may need to annotate the [`State`] type explicitly:
 ///
 /// ```
-/// use axum::{Router, RouterService, routing::get, extract::State};
+/// use axum::{Router, routing::get, extract::State};
 ///
 /// #[derive(Clone)]
 /// struct AppState {}
 ///
-/// fn make_app() -> RouterService {
+/// fn make_app() -> Router {
 ///     let state = AppState {};
 ///
 ///     Router::new()
@@ -101,19 +101,15 @@ use std::{
 /// async fn posts_handler(State(state): State<AppState>) {
 ///     // use `state`...
 /// }
-/// # let _: axum::routing::RouterService = make_app();
+/// # let _: axum::Router = make_app();
 /// ```
 ///
 /// In short, a [`Router`]'s generic state type defaults to `()`
 /// (no state) unless [`Router::with_state`] is called or the value
 /// of the generic type is given explicitly.
 ///
-/// It's also possible to combine multiple axum services with different state
-/// types. See [`Router::nest_service`] for details.
-///
 /// [`Router`]: crate::Router
 /// [`Router::merge`]: crate::Router::merge
-/// [`Router::nest_service`]: crate::Router::nest_service
 /// [`Router::nest`]: crate::Router::nest
 /// [`Router::with_state`]: crate::Router::with_state
 ///
@@ -209,7 +205,7 @@ use std::{
 ///     State(state): State<AppState>,
 /// ) {
 /// }
-/// # let _: axum::routing::RouterService = app;
+/// # let _: axum::Router = app;
 /// ```
 ///
 /// For convenience `FromRef` can also be derived using `#[derive(FromRef)]`.

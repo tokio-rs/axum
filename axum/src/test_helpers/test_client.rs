@@ -1,4 +1,4 @@
-use super::{BoxError, HttpBody, Router};
+use super::{BoxError, HttpBody};
 use bytes::Bytes;
 use http::{
     header::{HeaderName, HeaderValue},
@@ -15,11 +15,7 @@ pub(crate) struct TestClient {
 }
 
 impl TestClient {
-    pub(crate) fn new(router: Router<(), Body>) -> Self {
-        Self::from_service(router.into_service())
-    }
-
-    pub(crate) fn from_service<S, ResBody>(svc: S) -> Self
+    pub(crate) fn new<S, ResBody>(svc: S) -> Self
     where
         S: Service<Request<Body>, Response = http::Response<ResBody>> + Clone + Send + 'static,
         ResBody: HttpBody + Send + 'static,

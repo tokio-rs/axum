@@ -7,9 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- **added:** Add `RouterService::{layer, route_layer}` ([#1550])
+- **breaking:** `RouterService` has been removed since `Router` now implements
+  `Service` when the state is `()`. Use `Router::with_state` to provide the
+  state and get a `Router<()>` ([#1552])
 
-[#1550]: https://github.com/tokio-rs/axum/pull/1550
+[#1552]: https://github.com/tokio-rs/axum/pull/1552
 
 # 0.6.0-rc.5 (18. November, 2022)
 

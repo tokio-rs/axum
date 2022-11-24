@@ -1,6 +1,14 @@
 use std::{convert::Infallible, fmt};
 
-use crate::{body::HttpBody, handler::Handler, routing::Route, Router};
+use http::Request;
+use tower::Service;
+
+use crate::{
+    body::HttpBody,
+    handler::Handler,
+    routing::{future::RouteFuture, Route},
+    Router,
+};
 
 pub(crate) struct BoxedIntoRoute<S, B, E>(Box<dyn ErasedIntoRoute<S, B, E>>);
 
@@ -13,6 +21,7 @@ where
     where
         H: Handler<T, S, B>,
         T: 'static,
+        B: HttpBody,
     {
         Self(Box::new(MakeErasedHandler {
             handler,
@@ -30,6 +39,14 @@ where
             into_route: |router, state| Route::new(router.with_state(state)),
         }))
     }
+
+    pub(crate) fn call_with_state(
+        self,
+        request: Request<B>,
+        state: S,
+    ) -> RouteFuture<B, Infallible> {
+        self.0.call_with_state(request, state)
+    }
 }
 
 impl<S, B, E> BoxedIntoRoute<S, B, E> {
@@ -39,7 +56,7 @@ impl<S, B, E> BoxedIntoRoute<S, B, E> {
         B: 'static,
         E: 'static,
         F: FnOnce(Route<B, E>) -> Route<B2, E2> + Clone + Send + 'static,
-        B2: 'static,
+        B2: HttpBody + 'static,
         E2: 'static,
     {
         BoxedIntoRoute(Box::new(Map {
@@ -69,6 +86,8 @@ pub(crate) trait ErasedIntoRoute<S, B, E>: Send {
     fn clone_box(&self) -> Box<dyn ErasedIntoRoute<S, B, E>>;
 
     fn into_route(self: Box<Self>, state: S) -> Route<B, E>;
+
+    fn call_with_state(self: Box<Self>, request: Request<B>, state: S) -> RouteFuture<B, E>;
 }
 
 pub(crate) struct MakeErasedHandler<H, S, B> {
@@ -80,7 +99,7 @@ impl<H, S, B> ErasedIntoRoute<S, B, Infallible> for MakeErasedHandler<H, S, B>
 where
     H: Clone + Send + 'static,
     S: 'static,
-    B: 'static,
+    B: HttpBody + 'static,
 {
     fn clone_box(&self) -> Box<dyn ErasedIntoRoute<S, B, Infallible>> {
         Box::new(self.clone())
@@ -88,6 +107,14 @@ where
 
     fn into_route(self: Box<Self>, state: S) -> Route<B> {
         (self.into_route)(self.handler, state)
+    }
+
+    fn call_with_state(
+        self: Box<Self>,
+        request: Request<B>,
+        state: S,
+    ) -> RouteFuture<B, Infallible> {
+        self.into_route(state).call(request)
     }
 }
 
@@ -110,8 +137,8 @@ pub(crate) struct MakeErasedRouter<S, B> {
 
 impl<S, B> ErasedIntoRoute<S, B, Infallible> for MakeErasedRouter<S, B>
 where
-    S: Clone + Send + 'static,
-    B: 'static,
+    S: Clone + Send + Sync + 'static,
+    B: HttpBody + Send + 'static,
 {
     fn clone_box(&self) -> Box<dyn ErasedIntoRoute<S, B, Infallible>> {
         Box::new(self.clone())
@@ -119,6 +146,14 @@ where
 
     fn into_route(self: Box<Self>, state: S) -> Route<B> {
         (self.into_route)(self.router, state)
+    }
+
+    fn call_with_state(
+        mut self: Box<Self>,
+        request: Request<B>,
+        state: S,
+    ) -> RouteFuture<B, Infallible> {
+        self.router.call_with_state(request, state)
     }
 }
 
@@ -144,7 +179,7 @@ where
     S: 'static,
     B: 'static,
     E: 'static,
-    B2: 'static,
+    B2: HttpBody + 'static,
     E2: 'static,
 {
     fn clone_box(&self) -> Box<dyn ErasedIntoRoute<S, B2, E2>> {
@@ -156,6 +191,10 @@ where
 
     fn into_route(self: Box<Self>, state: S) -> Route<B2, E2> {
         (self.layer)(self.inner.into_route(state))
+    }
+
+    fn call_with_state(self: Box<Self>, request: Request<B2>, state: S) -> RouteFuture<B2, E2> {
+        (self.layer)(self.inner.into_route(state)).call(request)
     }
 }
 
