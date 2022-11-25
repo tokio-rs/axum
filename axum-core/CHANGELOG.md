@@ -11,10 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # 0.3.0 (25. November, 2022)
 
-- **breaking:** `FromRequest` has been reworked and `RequestParts` has been
-  removed. See axum's changelog for more details ([#1272])
 - **added:** Added new `FromRequestParts` trait. See axum's changelog for more
   details ([#1272])
+- **breaking:** `FromRequest` has been reworked and `RequestParts` has been
+  removed. See axum's changelog for more details ([#1272])
 - **breaking:** `BodyAlreadyExtracted` has been removed ([#1272])
 - **breaking:** `AppendHeaders` now works on any `impl IntoIterator` ([#1495])
 

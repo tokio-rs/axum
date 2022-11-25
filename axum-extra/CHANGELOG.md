@@ -11,26 +11,26 @@ and this project adheres to [Semantic Versioning].
 
 # 0.4.0 (25. November, 2022)
 
-- **breaking:** `Form` has a new rejection type ([#1496])
-- **breaking:** `Query` has a new rejection type ([#1496])
 - **added:** Add `RouterExt::route_with_tsr` for adding routes with an
   additional "trailing slash redirect" route ([#1119])
-- **breaking:** `Resource::nest` and `Resource::nest_collection` has been
-  removed. You can instead convert the `Resource` into a `Router` and
-  add additional routes as necessary ([#1086])
-- **changed:** For methods that accept some `S: Service`, the bounds have been
-  relaxed so the response type must implement `IntoResponse` rather than being a
-  literal `Response`
 - **added:** Support chaining handlers with `HandlerCallWithExtractors::or` ([#1170])
-- **change:** axum-extra's MSRV is now 1.60 ([#1239])
-- **breaking:** `SignedCookieJar` and `PrivateCookieJar` now extracts the keys
-  from the router's state, rather than extensions
 - **added:** Add Protocol Buffer extractor and response ([#1239])
 - **added:** Add `Either*` types for combining extractors and responses into a
   single type ([#1263])
 - **added:** `WithRejection` extractor for customizing other extractors' rejections ([#1262])
 - **added:** Add sync constructors to `CookieJar`, `PrivateCookieJar`, and
   `SignedCookieJar` so they're easier to use in custom middleware
+- **changed:** For methods that accept some `S: Service`, the bounds have been
+  relaxed so the response type must implement `IntoResponse` rather than being a
+  literal `Response`
+- **change:** axum-extra's MSRV is now 1.60 ([#1239])
+- **breaking:** `Form` has a new rejection type ([#1496])
+- **breaking:** `Query` has a new rejection type ([#1496])
+- **breaking:** `Resource::nest` and `Resource::nest_collection` has been
+  removed. You can instead convert the `Resource` into a `Router` and
+  add additional routes as necessary ([#1086])
+- **breaking:** `SignedCookieJar` and `PrivateCookieJar` now extracts the keys
+  from the router's state, rather than extensions
 - **breaking:** `Resource` has a new `S` type param which represents the state ([#1155])
 - **breaking:** `RouterExt::route_with_tsr` now only accepts `MethodRouter`s ([#1155])
 - **added:** `RouterExt::route_service_with_tsr` for routing to any `Service` ([#1155])

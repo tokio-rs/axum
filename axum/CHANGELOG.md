@@ -122,6 +122,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   async fn fallback() {}
   ```
 
+- **changed:** `Router::nest` now only accepts `Router`s, the general-purpose
+  `Service` nesting method has been renamed to `nest_service` ([#1368])
 - **breaking:** Allow `Error: Into<Infallible>` for `Route::{layer, route_layer}` ([#924])
 - **breaking:** `MethodRouter` now panics on overlapping routes ([#1102])
 - **breaking:** `Router::route` now only accepts `MethodRouter`s created with
@@ -130,8 +132,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **breaking:** Adding a `.route_layer` onto a `Router` or `MethodRouter`
   without any routes will now result in a panic. Previously, this just did
   nothing. [#1327]
-- **changed:** `Router::nest` now only accepts `Router`s, the general-purpose
-  `Service` nesting method has been renamed to `nest_service` ([#1368])
 - **breaking:** `RouterService` has been removed since `Router` now implements
   `Service` when the state is `()`. Use `Router::with_state` to provide the
   state and get a `Router<()>`. Note that `RouterService` only existed in the
@@ -303,6 +303,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   }
   ```
 
+- **added:** `FromRequest` and `FromRequestParts` derive macro re-exports from
+  [`axum-macros`] behind the `macros` feature ([#1352])
+- **added:** Add `RequestExt` and `RequestPartsExt` which adds convenience
+  methods for running extractors to `http::Request` and `http::request::Parts` ([#1301])
+- **added**: `JsonRejection` now displays the path at which a deserialization
+  error occurred ([#1371])
+- **added:** Add `extract::RawForm` for accessing raw urlencoded query bytes or request body ([#1487])
+- **fixed:** Used `400 Bad Request` for `FailedToDeserializeQueryString`
+  rejections, instead of `422 Unprocessable Entity` ([#1387])
+- **changed**: The inner error of a `JsonRejection` is now
+  `serde_path_to_error::Error<serde_json::Error>`.  Previously it was
+  `serde_json::Error` ([#1371])
+- **changed:** The default body limit now applies to the `Multipart` extractor ([#1420])
+- **breaking:** `ContentLengthLimit` has been removed. Use `DefaultBodyLimit` instead ([#1400])
 - **breaking:** `RequestParts` has been removed as part of the `FromRequest`
   rework ([#1272])
 - **breaking:** `BodyAlreadyExtracted` has been removed ([#1272])
@@ -312,35 +326,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `MethodRouter`, defaults to `()`
   - `FromRequest`, no default
   - `Handler`, no default
-- **added:** Add `RequestExt` and `RequestPartsExt` which adds convenience
-  methods for running extractors to `http::Request` and `http::request::Parts` ([#1301])
-- **changed**: The inner error of a `JsonRejection` is now
-  `serde_path_to_error::Error<serde_json::Error>`.  Previously it was
-  `serde_json::Error` ([#1371])
-- **added**: `JsonRejection` now displays the path at which a deserialization
-  error occurred ([#1371])
-- **fixed:** Used `400 Bad Request` for `FailedToDeserializeQueryString`
-  rejections, instead of `422 Unprocessable Entity` ([#1387])
-- **breaking:** `ContentLengthLimit` has been removed. Use `DefaultBodyLimit` instead ([#1400])
-- **changed:** The default body limit now applies to the `Multipart` extractor ([#1420])
-- **added:** `FromRequest` and `FromRequestParts` derive macro re-exports from
-  [`axum-macros`] behind the `macros` feature ([#1352])
 - **breaking:** `MatchedPath` can now no longer be extracted in middleware for
   nested routes. In previous versions it returned invalid data when extracted
   from a middleware applied to a nested router. `MatchedPath` can still be
   extracted from handlers and middleware that aren't on nested routers ([#1462])
-- **added:** Add `extract::RawForm` for accessing raw urlencoded query bytes or request body ([#1487])
 - **breaking:** Rename `FormRejection::FailedToDeserializeQueryString` to
   `FormRejection::FailedToDeserializeForm` ([#1496])
 
 ## Middleware
 
-- **breaking:** Remove `extractor_middleware` which was previously deprecated.
-  Use `axum::middleware::from_extractor` instead ([#1077])
 - **added:** Support running extractors on `middleware::from_fn` functions ([#1088])
-- **added:** Support any middleware response that implements `IntoResponse` ([#1152])
-- **breaking:** Require middleware added with `Handler::layer` to have
-  `Infallible` as the error type ([#1152])
 - **added**: Add `middleware::from_fn_with_state` and
   `middleware::from_fn_with_state_arc` to enable running extractors that require
   state ([#1342])
@@ -349,31 +344,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   request with an async function ([#1408])
 - **added:** Add `map_response`, `map_response_with_state` for transforming the
   response with an async function ([#1414])
+- **added:** Support any middleware response that implements `IntoResponse` ([#1152])
+- **breaking:** Remove `extractor_middleware` which was previously deprecated.
+  Use `axum::middleware::from_extractor` instead ([#1077])
+- **breaking:** Require middleware added with `Handler::layer` to have
+  `Infallible` as the error type ([#1152])
 
 ## Misc
 
-- **changed:** axum's MSRV is now 1.60 ([#1239])
-- **breaking:** New `tokio` default feature needed for WASM support. If you
-  don't need WASM support but have `default_features = false` for other reasons
-  you likely need to re-enable the `tokio` feature ([#1382])
 - **added:** Support compiling to WASM. See the `simple-router-wasm` example
   for more details ([#1382])
-- **changed:** For methods that accept some `S: Service`, the bounds have been
-  relaxed so the response type must implement `IntoResponse` rather than being a
-  literal `Response`
-- **fixed:** Annotate panicking functions with `#[track_caller]` so the error
-  message points to where the user added the invalid route, rather than
-  somewhere internally in axum ([#1248])
 - **added:** Add `ServiceExt` with methods for turning any `Service` into a
   `MakeService` similarly to `Router::into_make_service` ([#1302])
-- **breaking:** `handler::{WithState, IntoService}` are merged into one type,
-  named `HandlerService` ([#1418])
 - **added:** String and binary `From` impls have been added to `extract::ws::Message`
   to be more inline with `tungstenite` ([#1421])
 - **added:** Add `#[derive(axum::extract::FromRef)]` ([#1430])
 - **added:** Add `accept_unmasked_frames` setting in WebSocketUpgrade ([#1529])
 - **added:** Add `WebSocketUpgrade::on_failed_upgrade` to customize what to do
   when upgrading a connection fails ([#1539])
+- **fixed:** Annotate panicking functions with `#[track_caller]` so the error
+  message points to where the user added the invalid route, rather than
+  somewhere internally in axum ([#1248])
+- **changed:** axum's MSRV is now 1.60 ([#1239])
+- **changed:** For methods that accept some `S: Service`, the bounds have been
+  relaxed so the response type must implement `IntoResponse` rather than being a
+  literal `Response`
+- **breaking:** New `tokio` default feature needed for WASM support. If you
+  don't need WASM support but have `default_features = false` for other reasons
+  you likely need to re-enable the `tokio` feature ([#1382])
+- **breaking:** `handler::{WithState, IntoService}` are merged into one type,
+  named `HandlerService` ([#1418])
 
 [#924]: https://github.com/tokio-rs/axum/pull/924
 [#1077]: https://github.com/tokio-rs/axum/pull/1077
