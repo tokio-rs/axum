@@ -328,6 +328,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   }
   ```
 
+  For an example of how to write an extractor that accepts different
+  `Content-Types` see the [`parse-body-based-on-content-type`] example.
+
 - **added:** `FromRequest` and `FromRequestParts` derive macro re-exports from
   [`axum-macros`] behind the `macros` feature ([#1352])
 - **added:** Add `RequestExt` and `RequestPartsExt` which adds convenience
@@ -439,6 +442,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#1539]: https://github.com/tokio-rs/axum/pull/1539
 [#1552]: https://github.com/tokio-rs/axum/pull/1552
 [`axum-macros`]: https://docs.rs/axum-macros/latest/axum_macros/
+[`parse-body-based-on-content-type`]: https://github.com/tokio-rs/axum/blob/main/examples/parse-body-based-on-content-type/src/main.rs
 
 <details>
 <summary>0.6.0 Pre-Releases</summary>
