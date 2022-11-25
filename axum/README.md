@@ -23,12 +23,6 @@ In particular the last point is what sets `axum` apart from other frameworks.
 authorization, and more, for free. It also enables you to share middleware with
 applications written using [`hyper`] or [`tonic`].
 
-## Breaking changes
-
-We are currently working towards axum 0.6 so the `main` branch contains breaking
-changes. See the [`0.5.x`] branch for whats released to crates.io and up to date
-changelogs.
-
 ## Usage example
 
 ```rust
