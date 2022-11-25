@@ -66,8 +66,8 @@ use tower_layer::Layer;
 ///
 /// [`Body::data`]: http_body::Body::data
 /// [`Bytes`]: bytes::Bytes
-/// [`Json`]: https://docs.rs/axum/0.6.0-rc.2/axum/struct.Json.html
-/// [`Form`]: https://docs.rs/axum/0.6.0-rc.2/axum/struct.Form.html
+/// [`Json`]: https://docs.rs/axum/0.6.0/axum/struct.Json.html
+/// [`Form`]: https://docs.rs/axum/0.6.0/axum/struct.Form.html
 /// [`FromRequest`]: crate::extract::FromRequest
 /// [`RequestBodyLimit`]: https://docs.rs/tower-http/latest/tower_http/limit/struct.RequestBodyLimit.html
 /// [`RequestExt::with_limited_body`]: crate::RequestExt::with_limited_body
@@ -114,8 +114,8 @@ impl DefaultBodyLimit {
     ///
     /// [`tower_http::limit`]: https://docs.rs/tower-http/0.3.4/tower_http/limit/index.html
     /// [`Bytes`]: bytes::Bytes
-    /// [`Json`]: https://docs.rs/axum/0.6.0-rc.2/axum/struct.Json.html
-    /// [`Form`]: https://docs.rs/axum/0.6.0-rc.2/axum/struct.Form.html
+    /// [`Json`]: https://docs.rs/axum/0.6.0/axum/struct.Json.html
+    /// [`Form`]: https://docs.rs/axum/0.6.0/axum/struct.Form.html
     pub fn disable() -> Self {
         Self {
             kind: DefaultBodyLimitKind::Disable,
@@ -147,8 +147,8 @@ impl DefaultBodyLimit {
     /// ```
     ///
     /// [`Bytes::from_request`]: bytes::Bytes
-    /// [`Json`]: https://docs.rs/axum/0.6.0-rc.2/axum/struct.Json.html
-    /// [`Form`]: https://docs.rs/axum/0.6.0-rc.2/axum/struct.Form.html
+    /// [`Json`]: https://docs.rs/axum/0.6.0/axum/struct.Json.html
+    /// [`Form`]: https://docs.rs/axum/0.6.0/axum/struct.Form.html
     pub fn max(limit: usize) -> Self {
         Self {
             kind: DefaultBodyLimitKind::Limit(limit),
