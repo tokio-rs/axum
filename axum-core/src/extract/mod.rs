@@ -37,7 +37,7 @@ mod private {
 ///
 /// See [`axum::extract`] for more general docs about extraxtors.
 ///
-/// [`axum::extract`]: https://docs.rs/axum/0.6.0-rc.2/axum/extract/index.html
+/// [`axum::extract`]: https://docs.rs/axum/0.6.0/axum/extract/index.html
 #[async_trait]
 #[cfg_attr(
     nightly_error_messages,
@@ -106,7 +106,7 @@ pub trait FromRequestParts<S>: Sized {
 /// This ensures your extractor is as flexible as possible.
 ///
 /// [`http::Request<B>`]: http::Request
-/// [`axum::extract`]: https://docs.rs/axum/0.6.0-rc.2/axum/extract/index.html
+/// [`axum::extract`]: https://docs.rs/axum/0.6.0/axum/extract/index.html
 #[async_trait]
 #[cfg_attr(
     nightly_error_messages,

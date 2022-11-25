@@ -9,6 +9,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - None.
 
+# 0.3.0 (25. November, 2022)
+
+- **added:** Added new `FromRequestParts` trait. See axum's changelog for more
+  details ([#1272])
+- **breaking:** `FromRequest` has been reworked and `RequestParts` has been
+  removed. See axum's changelog for more details ([#1272])
+- **breaking:** `BodyAlreadyExtracted` has been removed ([#1272])
+- **breaking:** `AppendHeaders` now works on any `impl IntoIterator` ([#1495])
+
+[#1272]: https://github.com/tokio-rs/axum/pull/1272
+[#1495]: https://github.com/tokio-rs/axum/pull/1495
+
+<details>
+<summary>0.3.0 Pre-Releases</summary>
+
 # 0.3.0-rc.3 (8. November, 2022)
 
 - **added:** Add `DefaultBodyLimit::max` for changing the default body limit ([#1397])
@@ -46,6 +61,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 [#1155]: https://github.com/tokio-rs/axum/pull/1155
 [#1272]: https://github.com/tokio-rs/axum/pull/1272
+
+</details>
 
 # 0.2.8 (10. September, 2022)
 
