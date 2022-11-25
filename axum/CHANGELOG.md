@@ -101,14 +101,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   async fn bar() {}
   ```
 
-- **breaking:** Trailing slash redirects have been removed. Previously if you
-  added a route for `/foo`, axum would redirect calls to `/foo/` to `/foo` (or
-  vice versa for `/foo/`). That is no longer supported and such requests will
-  now be sent to the fallback. Consider using
-  `axum_extra::routing::RouterExt::route_with_tsr` if you want the old behavior
-  ([#1119])
-
-  For example:
+- **breaking:** Automatic trailing slash redirects have been removed.
+  Previously if you added a route for `/foo`, axum would redirect calls to
+  `/foo/` to `/foo` (or vice versa for `/foo/`):
 
   ```rust
   use axum::{Router, routing::get};
@@ -123,6 +118,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
   async fn handler() {}
   ```
+
+  Either explicitly add routes for `/foo` and `/foo/` or use
+  `axum_extra::routing::RouterExt::route_with_tsr` if you want the old behavior
+  ([#1119])
 
 - **breaking:** `Router::fallback` now only accepts `Handler`s (similarly to
   what `get`, `post`, etc. accept). Use the new `Router::fallback_service` for
