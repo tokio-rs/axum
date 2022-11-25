@@ -9,6 +9,45 @@ and this project adheres to [Semantic Versioning].
 
 - None.
 
+# 0.4.0 (25. November, 2022)
+
+- **breaking:** `Form` has a new rejection type ([#1496])
+- **breaking:** `Query` has a new rejection type ([#1496])
+- **added:** Add `RouterExt::route_with_tsr` for adding routes with an
+  additional "trailing slash redirect" route ([#1119])
+- **breaking:** `Resource::nest` and `Resource::nest_collection` has been
+  removed. You can instead convert the `Resource` into a `Router` and
+  add additional routes as necessary ([#1086])
+- **changed:** For methods that accept some `S: Service`, the bounds have been
+  relaxed so the response type must implement `IntoResponse` rather than being a
+  literal `Response`
+- **added:** Support chaining handlers with `HandlerCallWithExtractors::or` ([#1170])
+- **change:** axum-extra's MSRV is now 1.60 ([#1239])
+- **breaking:** `SignedCookieJar` and `PrivateCookieJar` now extracts the keys
+  from the router's state, rather than extensions
+- **added:** Add Protocol Buffer extractor and response ([#1239])
+- **added:** Add `Either*` types for combining extractors and responses into a
+  single type ([#1263])
+- **added:** `WithRejection` extractor for customizing other extractors' rejections ([#1262])
+- **added:** Add sync constructors to `CookieJar`, `PrivateCookieJar`, and
+  `SignedCookieJar` so they're easier to use in custom middleware
+- **breaking:** `Resource` has a new `S` type param which represents the state ([#1155])
+- **breaking:** `RouterExt::route_with_tsr` now only accepts `MethodRouter`s ([#1155])
+- **added:** `RouterExt::route_service_with_tsr` for routing to any `Service` ([#1155])
+
+[#1086]: https://github.com/tokio-rs/axum/pull/1086
+[#1119]: https://github.com/tokio-rs/axum/pull/1119
+[#1155]: https://github.com/tokio-rs/axum/pull/1155
+[#1170]: https://github.com/tokio-rs/axum/pull/1170
+[#1214]: https://github.com/tokio-rs/axum/pull/1214
+[#1239]: https://github.com/tokio-rs/axum/pull/1239
+[#1262]: https://github.com/tokio-rs/axum/pull/1262
+[#1263]: https://github.com/tokio-rs/axum/pull/1263
+[#1496]: https://github.com/tokio-rs/axum/pull/1496
+
+<details>
+<summary>0.4.0 Pre-Releases</summary>
+
 # 0.4.0-rc.3 (19. November, 2022)
 
 - **breaking:** Depend axum 0.6.0-rc.5 and axum-macros 0.3.0-rc.3
@@ -52,6 +91,8 @@ and this project adheres to [Semantic Versioning].
 [#1239]: https://github.com/tokio-rs/axum/pull/1239
 [#1262]: https://github.com/tokio-rs/axum/pull/1262
 [#1263]: https://github.com/tokio-rs/axum/pull/1263
+
+</details>
 
 # 0.3.7 (09. August, 2022)
 
