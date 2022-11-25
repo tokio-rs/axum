@@ -92,14 +92,14 @@ where
             let future = self.grpc.call(req);
             Box::pin(async move {
                 let res = future.await?;
-                Ok(res.into_response())
+                Ok::<Self::Response, Self::Error>(res.into_response())
             })
         } else {
             self.rest_ready = false;
             let future = self.rest.call(req);
             Box::pin(async move {
                 let res = future.await?;
-                Ok(res.into_response())
+                Ok::<Self::Response, Self::Error>(res.into_response())
             })
         }
     }
