@@ -99,7 +99,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ```
 
 - **breaking:** `Router::fallback` now only accepts `Handler`s (similarly to
-  what `get`, `post`, etc accept). Use the new `Router::fallback_service` for
+  what `get`, `post`, etc. accept). Use the new `Router::fallback_service` for
   setting any `Service` as the fallback ([#1155])
 
   This fallback on 0.5:
@@ -143,7 +143,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `Router::with_state` and gives compile errors for missing states, whereas
   `Extension` would result in runtime errors ([#1155])
 
-  We recommend migrating from `Extension` to `State` since that is more type
+  We recommend migrating from `Extension` to `State` for sharing application state since that is more type
   safe and faster. That is done by using `Router::with_state` and `State`.
 
   This setup in 0.5
@@ -176,7 +176,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   struct AppState {}
   ```
 
-  If you have multiple extensions you can use fields on `AppState` and implement
+  If you have multiple extensions, you can use fields on `AppState` and implement
   `FromRef`:
 
   ```rust
@@ -336,8 +336,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Middleware
 
 - **added:** Support running extractors on `middleware::from_fn` functions ([#1088])
-- **added**: Add `middleware::from_fn_with_state` and
-  `middleware::from_fn_with_state_arc` to enable running extractors that require
+- **added**: Add `middleware::from_fn_with_state` to enable running extractors that require
   state ([#1342])
 - **added:** Add `middleware::from_extractor_with_state` ([#1396])
 - **added:** Add `map_request`, `map_request_with_state` for transforming the

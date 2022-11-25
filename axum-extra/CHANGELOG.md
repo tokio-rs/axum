@@ -21,12 +21,12 @@ and this project adheres to [Semantic Versioning].
 - **added:** Add sync constructors to `CookieJar`, `PrivateCookieJar`, and
   `SignedCookieJar` so they're easier to use in custom middleware
 - **changed:** For methods that accept some `S: Service`, the bounds have been
-  relaxed so the response type must implement `IntoResponse` rather than being a
+  relaxed so the return type can be any type that implements `IntoResponse` rather than being a
   literal `Response`
 - **change:** axum-extra's MSRV is now 1.60 ([#1239])
 - **breaking:** `Form` has a new rejection type ([#1496])
 - **breaking:** `Query` has a new rejection type ([#1496])
-- **breaking:** `Resource::nest` and `Resource::nest_collection` has been
+- **breaking:** `Resource::nest` and `Resource::nest_collection` have been
   removed. You can instead convert the `Resource` into a `Router` and
   add additional routes as necessary ([#1086])
 - **breaking:** `SignedCookieJar` and `PrivateCookieJar` now extracts the keys
