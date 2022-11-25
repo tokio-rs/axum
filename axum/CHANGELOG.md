@@ -13,8 +13,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Routing
 
-- **fixed:** Nested routers will now inherit fallbacks from outer routers
-  unless they define their own fallback ([#1521])
+- **fixed:** Nested routers are now allowed to have fallbacks ([#1521]):
+
+  ```rust
+  let api_router = Router::new()
+      .route("/users", get(|| { ... }))
+      .fallback(api_fallback);
+
+  let app = Router::new()
+      // this would panic in 0.5 but in 0.6 it just works
+      //
+      // requests starting with `/api` but not handled by `api_router`
+      // will go to `/api_fallback`
+      .nest("/api", api_router);
+  ```
+
+  The outer router's fallback will still apply if a nested router doesn't have
+  its own fallback:
+
+  ```rust
+  // this time without a fallback
+  let api_router = Router::new().route("/users", get(|| { ... }));
+  
+  let app = Router::new()
+      .nest("/api", api_router)
+      // `api_fallback` will inherit this fallback
+      .fallback(app_fallback);
+  ```
+
 - **breaking:** The request `/foo/` no longer matches `/foo/*rest`. If you want
   to match `/foo/` you have to add a route specifically for that ([#1086])
 
