@@ -24,7 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
       // this would panic in 0.5 but in 0.6 it just works
       //
       // requests starting with `/api` but not handled by `api_router`
-      // will go to `/api_fallback`
+      // will go to `api_fallback`
       .nest("/api", api_router);
   ```
 
@@ -37,7 +37,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   
   let app = Router::new()
       .nest("/api", api_router)
-      // `api_fallback` will inherit this fallback
+      // `api_router` will inherit this fallback
       .fallback(app_fallback);
   ```
 
