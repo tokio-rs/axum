@@ -5,9 +5,10 @@ use http::{
     header::{self, HeaderMap, HeaderName, HeaderValue},
     Extensions, StatusCode,
 };
-use http_body::{
-    combinators::{MapData, MapErr},
-    Empty, Full, SizeHint,
+use http_body::SizeHint;
+use http_body_util::{
+    combinators::{MapErr, MapFrame},
+    Empty, Full,
 };
 use std::{
     borrow::Cow,
@@ -189,7 +190,7 @@ impl IntoResponse for Empty<Bytes> {
     }
 }
 
-impl<E> IntoResponse for http_body::combinators::BoxBody<Bytes, E>
+impl<E> IntoResponse for http_body_util::combinators::BoxBody<Bytes, E>
 where
     E: Into<BoxError> + 'static,
 {
@@ -198,7 +199,7 @@ where
     }
 }
 
-impl<E> IntoResponse for http_body::combinators::UnsyncBoxBody<Bytes, E>
+impl<E> IntoResponse for http_body_util::combinators::UnsyncBoxBody<Bytes, E>
 where
     E: Into<BoxError> + 'static,
 {
@@ -207,7 +208,7 @@ where
     }
 }
 
-impl<B, F> IntoResponse for MapData<B, F>
+impl<B, F> IntoResponse for MapFrame<B, F>
 where
     B: http_body::Body + Send + 'static,
     F: FnMut(B::Data) -> Bytes + Send + 'static,
@@ -301,7 +302,7 @@ where
     type Data = Bytes;
     type Error = Infallible;
 
-    fn poll_data(
+    fn poll_frame(
         mut self: Pin<&mut Self>,
         _cx: &mut Context<'_>,
     ) -> Poll<Option<Result<Self::Data, Self::Error>>> {
@@ -316,13 +317,6 @@ where
         }
 
         Poll::Ready(None)
-    }
-
-    fn poll_trailers(
-        self: Pin<&mut Self>,
-        _cx: &mut Context<'_>,
-    ) -> Poll<Result<Option<HeaderMap>, Self::Error>> {
-        Poll::Ready(Ok(None))
     }
 
     fn is_end_stream(&self) -> bool {
