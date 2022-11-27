@@ -1,7 +1,7 @@
 use crate::{
     body::{Bytes, Empty},
     error_handling::HandleErrorLayer,
-    extract::{self, DefaultBodyLimit, FromRef, Path, State},
+    extract::{self, DefaultBodyLimit, FromRef, MatchedPath, Path, State},
     handler::{Handler, HandlerWithoutStateExt},
     response::IntoResponse,
     routing::{delete, get, get_service, on, on_service, patch, patch_service, post, MethodFilter},
@@ -19,9 +19,13 @@ use std::{
     task::{Context, Poll},
     time::Duration,
 };
-use tower::{service_fn, timeout::TimeoutLayer, util::MapResponseLayer, ServiceBuilder};
+use tower::{
+    service_fn, timeout::TimeoutLayer, util::MapResponseLayer, ServiceBuilder, ServiceExt,
+};
 use tower_http::{auth::RequireAuthorizationLayer, limit::RequestBodyLimitLayer};
 use tower_service::Service;
+
+use super::any;
 
 mod fallback;
 mod get_to_head;
@@ -798,4 +802,24 @@ async fn layer_response_into_response() {
     let res = client.get("/").send().await;
     assert_eq!(res.headers()["x-foo"], "bar");
     assert_eq!(res.status(), StatusCode::IM_A_TEAPOT);
+}
+
+// https://github.com/tokio-rs/axum/issues/1579
+#[tokio::test]
+async fn routing_to_router() {
+    let inner = Router::new().route(
+        "/foobar",
+        get(|matched_path: MatchedPath| async move { matched_path.as_str().to_owned() }),
+    );
+
+    let app = Router::new().route(
+        "/*path",
+        any(|req| Router::new().nest("/", inner).oneshot(req)),
+    );
+
+    let client = TestClient::new(app);
+
+    let res = client.get("/foobar").send().await;
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.text().await, "/*path/foobar");
 }
