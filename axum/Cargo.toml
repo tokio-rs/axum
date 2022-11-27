@@ -39,7 +39,7 @@ http = "0.2.5"
 http-body = "0.4.4"
 hyper = { version = "0.14.14", features = ["stream"] }
 itoa = "1.0.1"
-matchit = "0.6"
+matchit = "0.7"
 memchr = "2.4.1"
 mime = "0.3.16"
 percent-encoding = "2.1"
