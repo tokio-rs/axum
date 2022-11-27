@@ -103,8 +103,6 @@ where
 pub(crate) const NEST_TAIL_PARAM: &str = "__private__axum_nest_tail_param";
 pub(crate) const NEST_TAIL_PARAM_CAPTURE: &str = "/*__private__axum_nest_tail_param";
 
-impl<B> Router<(), B> where B: HttpBody + Send + 'static {}
-
 impl<S, B> Router<S, B>
 where
     B: HttpBody + Send + 'static,
@@ -396,61 +394,7 @@ where
         self
     }
 
-    /// Provide the state for the router.
-    ///
-    /// This method returns a router with a different state type. This can be used to nest or merge
-    /// routers with different state types. See [`Router::nest`] and [`Router::merge`] for more
-    /// details.
-    ///
-    /// # Implementing `Service`
-    ///
-    /// This can also be used to get a `Router` that implements [`Service`], since it only does so
-    /// when the state is `()`:
-    ///
-    /// ```
-    /// use axum::{
-    ///     Router,
-    ///     body::Body,
-    ///     http::Request,
-    /// };
-    /// use tower::{Service, ServiceExt};
-    ///
-    /// #[derive(Clone)]
-    /// struct AppState {}
-    ///
-    /// // this router doesn't implement `Service` because its state isn't `()`
-    /// let router: Router<AppState> = Router::new();
-    ///
-    /// // by providing the state and setting the new state to `()`...
-    /// let router_service: Router<()> = router.with_state(AppState {});
-    ///
-    /// // ...makes it implement `Service`
-    /// # async {
-    /// router_service.oneshot(Request::new(Body::empty())).await;
-    /// # };
-    /// ```
-    ///
-    /// # A note about performance
-    ///
-    /// If you need a `Router` that implements `Service` but you don't need any state (perhaps
-    /// you're making a library that uses axum internally) then it is recommended to call this
-    /// method before you start serving requests:
-    ///
-    /// ```
-    /// use axum::{Router, routing::get};
-    ///
-    /// let app = Router::new()
-    ///     .route("/", get(|| async { /* ... */ }))
-    ///     // even though we don't need any state, call `with_state(())` anyway
-    ///     .with_state(());
-    /// # let _: Router = app;
-    /// ```
-    ///
-    /// This is not required but it gives axum a chance to update some internals in the router
-    /// which may impact performance and reduce allocations.
-    ///
-    /// Note that [`Router::into_make_service`] and [`Router::into_make_service_with_connect_info`]
-    /// do this automatically.
+    #[doc = include_str!("../docs/routing/with_state.md")]
     pub fn with_state<S2>(self, state: S) -> Router<S2, B> {
         let routes = self
             .routes
