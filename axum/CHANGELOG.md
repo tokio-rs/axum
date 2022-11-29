@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - None.
 
+# 0.6.1 (29. November, 2022)
+
+- **added:** Expand the docs for `Router::with_state` ([#1580])
+
+[#1580]: https://github.com/tokio-rs/axum/pull/1580
+
 # 0.6.0 (25. November, 2022)
 
 ## Routing
