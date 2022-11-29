@@ -137,8 +137,8 @@ where
     }
 }
 
-impl<B> From<Resource<B>> for Router<B> {
-    fn from(resource: Resource<B>) -> Self {
+impl<S, B> From<Resource<S, B>> for Router<S, B> {
+    fn from(resource: Resource<S, B>) -> Self {
         resource.router
     }
 }
