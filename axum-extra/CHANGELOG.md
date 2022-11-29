@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning].
 
 # Unreleased
 
-- None.
+- **changed:**  Change casing of `ProtoBuf` to `Protobuf` ([#1595])
 
 # 0.4.1 (29. November, 2022)
 
