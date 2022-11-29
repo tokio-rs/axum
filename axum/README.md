@@ -159,4 +159,3 @@ additional terms or conditions.
 [showcases]: https://github.com/tokio-rs/axum/blob/main/ECOSYSTEM.md#project-showcase
 [tutorials]: https://github.com/tokio-rs/axum/blob/main/ECOSYSTEM.md#tutorials
 [license]: https://github.com/tokio-rs/axum/blob/main/axum/LICENSE
-[`0.5.x`]: https://github.com/tokio-rs/axum/tree/0.5.x
