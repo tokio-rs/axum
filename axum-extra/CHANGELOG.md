@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning].
 
 # Unreleased
 
-- None.
+- **fixed:** Fix wrong `From` impl for `Resource` ([#1589])
+
+[#1589]: https://github.com/tokio-rs/axum/pull/1589
 
 # 0.4.0 (25. November, 2022)
 
