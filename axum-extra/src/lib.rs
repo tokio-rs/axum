@@ -16,7 +16,7 @@
 //! `cookie-key-expansion` | Enables the `Key::derive_from` method | No
 //! `erased-json` | Enables the `ErasedJson` response | No
 //! `form` | Enables the `Form` extractor | No
-//! `json-lines` | Enables the `json-lines` extractor and response | No
+//! `json-lines` | Enables the `JsonLines` extractor and response | No
 //! `protobuf` | Enables the `ProtoBuf` extractor and response | No
 //! `query` | Enables the `Query` extractor | No
 //! `spa` | Enables the `Spa` router | No
