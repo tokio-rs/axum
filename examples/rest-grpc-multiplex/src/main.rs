@@ -12,6 +12,7 @@ use proto::{
 };
 use std::net::SocketAddr;
 use tonic::{Response as TonicResponse, Status};
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 mod multiplex_service;
 
@@ -45,11 +46,12 @@ async fn web_root() -> &'static str {
 #[tokio::main]
 async fn main() {
     // initialize tracing
-    tracing_subscriber::fmt()
-        .with_env_filter(
-            tracing_subscriber::EnvFilter::try_from_default_env()
+    tracing_subscriber::registry()
+        .with(tracing_subscriber::EnvFilter::new(
+            std::env::var("RUST_LOG")
                 .unwrap_or_else(|_| "example_rest_grpc_multiplex=debug".into()),
-        )
+        ))
+        .with(tracing_subscriber::fmt::layer())
         .init();
 
     // build the rest service

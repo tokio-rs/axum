@@ -16,16 +16,17 @@ use futures::{Stream, TryStreamExt};
 use std::{io, net::SocketAddr};
 use tokio::{fs::File, io::BufWriter};
 use tokio_util::io::StreamReader;
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 const UPLOADS_DIRECTORY: &str = "uploads";
 
 #[tokio::main]
 async fn main() {
-    tracing_subscriber::fmt()
-        .with_env_filter(
-            tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "example_stream_to_file=debug".into()),
-        )
+    tracing_subscriber::registry()
+        .with(tracing_subscriber::EnvFilter::new(
+            std::env::var("RUST_LOG").unwrap_or_else(|_| "example_stream_to_file=debug".into()),
+        ))
+        .with(tracing_subscriber::fmt::layer())
         .init();
 
     // save files to a separate directory to not override files in the current directory

@@ -15,14 +15,16 @@ use futures::stream::{self, Stream};
 use std::{convert::Infallible, net::SocketAddr, path::PathBuf, time::Duration};
 use tokio_stream::StreamExt as _;
 use tower_http::{services::ServeDir, trace::TraceLayer};
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[tokio::main]
 async fn main() {
-    tracing_subscriber::fmt()
-        .with_env_filter(
-            tracing_subscriber::EnvFilter::try_from_default_env()
+    tracing_subscriber::registry()
+        .with(tracing_subscriber::EnvFilter::new(
+            std::env::var("RUST_LOG")
                 .unwrap_or_else(|_| "example_sse=debug,tower_http=debug".into()),
-        )
+        ))
+        .with(tracing_subscriber::fmt::layer())
         .init();
 
     let assets_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("assets");

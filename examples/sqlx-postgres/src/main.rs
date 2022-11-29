@@ -21,16 +21,17 @@ use axum::{
     Router,
 };
 use sqlx::postgres::{PgPool, PgPoolOptions};
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 use std::{net::SocketAddr, time::Duration};
 
 #[tokio::main]
 async fn main() {
-    tracing_subscriber::fmt()
-        .with_env_filter(
-            tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "example_tokio_postgres=debug".into()),
-        )
+    tracing_subscriber::registry()
+        .with(tracing_subscriber::EnvFilter::new(
+            std::env::var("RUST_LOG").unwrap_or_else(|_| "example_tokio_postgres=debug".into()),
+        ))
+        .with(tracing_subscriber::fmt::layer())
         .init();
 
     let db_connection_str = std::env::var("DATABASE_URL")
