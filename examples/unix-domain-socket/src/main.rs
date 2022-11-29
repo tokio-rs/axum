@@ -41,14 +41,13 @@ mod unix {
         net::{unix::UCred, UnixListener, UnixStream},
     };
     use tower::BoxError;
-    use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
     pub async fn server() {
-        tracing_subscriber::registry()
-            .with(tracing_subscriber::EnvFilter::new(
-                std::env::var("RUST_LOG").unwrap_or_else(|_| "debug".into()),
-            ))
-            .with(tracing_subscriber::fmt::layer())
+        tracing_subscriber::fmt()
+            .with_env_filter(
+                tracing_subscriber::EnvFilter::try_from_default_env()
+                    .unwrap_or_else(|_| "debug".into()),
+            )
             .init();
 
         let path = PathBuf::from("/tmp/axum/helloworld");

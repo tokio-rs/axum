@@ -22,7 +22,6 @@ use std::{
     sync::{Arc, Mutex},
 };
 use tokio::sync::broadcast;
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 // Our shared state
 struct AppState {
@@ -32,11 +31,11 @@ struct AppState {
 
 #[tokio::main]
 async fn main() {
-    tracing_subscriber::registry()
-        .with(tracing_subscriber::EnvFilter::new(
-            std::env::var("RUST_LOG").unwrap_or_else(|_| "example_chat=trace".into()),
-        ))
-        .with(tracing_subscriber::fmt::layer())
+    tracing_subscriber::fmt()
+        .with_env_filter(
+            tracing_subscriber::EnvFilter::try_from_default_env()
+                .unwrap_or_else(|_| "example_chat=trace".into()),
+        )
         .init();
 
     let user_set = Mutex::new(HashSet::new());

@@ -10,16 +10,14 @@ mod with_rejection;
 
 use axum::{routing::post, Router};
 use std::net::SocketAddr;
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[tokio::main]
 async fn main() {
-    tracing_subscriber::registry()
-        .with(tracing_subscriber::EnvFilter::new(
-            std::env::var("RUST_LOG")
+    tracing_subscriber::fmt()
+        .with_env_filter(
+            tracing_subscriber::EnvFilter::try_from_default_env()
                 .unwrap_or_else(|_| "example_customize_extractor_error=trace".into()),
-        ))
-        .with(tracing_subscriber::fmt::layer())
+        )
         .init();
 
     // Build our application with some routes

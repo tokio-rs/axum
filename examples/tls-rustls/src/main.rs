@@ -14,7 +14,6 @@ use axum::{
 };
 use axum_server::tls_rustls::RustlsConfig;
 use std::{net::SocketAddr, path::PathBuf};
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[derive(Clone, Copy)]
 struct Ports {
@@ -24,11 +23,11 @@ struct Ports {
 
 #[tokio::main]
 async fn main() {
-    tracing_subscriber::registry()
-        .with(tracing_subscriber::EnvFilter::new(
-            std::env::var("RUST_LOG").unwrap_or_else(|_| "example_tls_rustls=debug".into()),
-        ))
-        .with(tracing_subscriber::fmt::layer())
+    tracing_subscriber::fmt()
+        .with_env_filter(
+            tracing_subscriber::EnvFilter::try_from_default_env()
+                .unwrap_or_else(|_| "example_tls_rustls=debug".into()),
+        )
         .init();
 
     let ports = Ports {
