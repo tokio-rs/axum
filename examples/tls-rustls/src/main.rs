@@ -25,9 +25,10 @@ struct Ports {
 #[tokio::main]
 async fn main() {
     tracing_subscriber::registry()
-        .with(tracing_subscriber::EnvFilter::new(
-            std::env::var("RUST_LOG").unwrap_or_else(|_| "example_tls_rustls=debug".into()),
-        ))
+        .with(
+            tracing_subscriber::EnvFilter::try_from_default_env()
+                .unwrap_or_else(|_| "example_tls_rustls=debug".into()),
+        )
         .with(tracing_subscriber::fmt::layer())
         .init();
 
