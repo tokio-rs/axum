@@ -48,10 +48,10 @@ async fn web_root() -> &'static str {
 async fn main() {
     // initialize tracing
     tracing_subscriber::registry()
-        .with(tracing_subscriber::EnvFilter::new(
-            std::env::var("RUST_LOG")
+        .with(
+            tracing_subscriber::EnvFilter::try_from_default_env()
                 .unwrap_or_else(|_| "example_rest_grpc_multiplex=debug".into()),
-        ))
+        )
         .with(tracing_subscriber::fmt::layer())
         .init();
 
