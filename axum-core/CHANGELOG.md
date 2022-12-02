@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- **added:** Add `body_text` and `status` methods to built-in rejections
+- **added:** Add `body_text` and `status` methods to built-in rejections ([#1612])
+
+[#1612]: https://github.com/tokio-rs/axum/pull/1612
 
 # 0.3.0 (25. November, 2022)
 
