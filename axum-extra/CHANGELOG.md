@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning].
 
 # Unreleased
 
+- None.
+
+# 0.4.2 (02. December, 2022)
+
 - **fixed:** Bug fixes for `RouterExt:{route_with_tsr, route_service_with_tsr}` ([#1608]):
   - Redirects to the correct URI if the route contains path parameters
   - Keeps query parameters when redirecting
