@@ -29,7 +29,7 @@ use tower_service::Service;
 /// ```rust
 /// use axum::{
 ///     Router,
-///     http::{Request, StatusCode},
+///     http::{self, Request, StatusCode},
 ///     routing::get,
 ///     response::{IntoResponse, Response},
 ///     middleware::{self, Next},
