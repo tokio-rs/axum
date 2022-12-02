@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- None.
+- **added:** Add `body_text` and `status` methods to built-in rejections
 
 # 0.3.0 (25. November, 2022)
 

@@ -383,24 +383,39 @@ impl FailedToDeserializePathParams {
     pub fn into_kind(self) -> ErrorKind {
         self.0.kind
     }
-}
 
-impl IntoResponse for FailedToDeserializePathParams {
-    fn into_response(self) -> Response {
-        let (status, body) = match self.0.kind {
+    /// Get the response body text used for this rejection.
+    pub fn body_text(&self) -> String {
+        match self.0.kind {
             ErrorKind::Message(_)
             | ErrorKind::InvalidUtf8InPathParam { .. }
             | ErrorKind::ParseError { .. }
             | ErrorKind::ParseErrorAtIndex { .. }
-            | ErrorKind::ParseErrorAtKey { .. } => (
-                StatusCode::BAD_REQUEST,
-                format!("Invalid URL: {}", self.0.kind),
-            ),
+            | ErrorKind::ParseErrorAtKey { .. } => format!("Invalid URL: {}", self.0.kind),
             ErrorKind::WrongNumberOfParameters { .. } | ErrorKind::UnsupportedType { .. } => {
-                (StatusCode::INTERNAL_SERVER_ERROR, self.0.kind.to_string())
+                self.0.kind.to_string()
             }
-        };
-        (status, body).into_response()
+        }
+    }
+
+    /// Get the status code used for this rejection.
+    pub fn status(&self) -> StatusCode {
+        match self.0.kind {
+            ErrorKind::Message(_)
+            | ErrorKind::InvalidUtf8InPathParam { .. }
+            | ErrorKind::ParseError { .. }
+            | ErrorKind::ParseErrorAtIndex { .. }
+            | ErrorKind::ParseErrorAtKey { .. } => StatusCode::BAD_REQUEST,
+            ErrorKind::WrongNumberOfParameters { .. } | ErrorKind::UnsupportedType { .. } => {
+                StatusCode::INTERNAL_SERVER_ERROR
+            }
+        }
+    }
+}
+
+impl IntoResponse for FailedToDeserializePathParams {
+    fn into_response(self) -> Response {
+        (self.status(), self.body_text()).into_response()
     }
 }
 
