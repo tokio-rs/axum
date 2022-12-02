@@ -7,7 +7,12 @@ and this project adheres to [Semantic Versioning].
 
 # Unreleased
 
-- None.
+- **fixed:** Bug fixes for `RouterExt:{route_with_tsr, route_service_with_tsr}` ([#1608]):
+  - Redirects to the correct URI if the route contains path parameters
+  - Keeps query parameters when redirecting
+  - Better improved error message if adding route for `/`
+
+[#1608]: https://github.com/tokio-rs/axum/pull/1608
 
 # 0.4.1 (29. November, 2022)
 
