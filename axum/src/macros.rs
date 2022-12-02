@@ -59,7 +59,19 @@ macro_rules! define_rejection {
 
         impl $crate::response::IntoResponse for $name {
             fn into_response(self) -> $crate::response::Response {
-                (http::StatusCode::$status, $body).into_response()
+                (self.status(), $body).into_response()
+            }
+        }
+
+        impl $name {
+            /// Get the response body text used for this rejection.
+            pub fn body_text(&self) -> String {
+                $body.into()
+            }
+
+            /// Get the status code used for this rejection.
+            pub fn status(&self) -> http::StatusCode {
+                http::StatusCode::$status
             }
         }
 
@@ -99,10 +111,19 @@ macro_rules! define_rejection {
 
         impl crate::response::IntoResponse for $name {
             fn into_response(self) -> $crate::response::Response {
-                (
-                    http::StatusCode::$status,
-                    format!(concat!($body, ": {}"), self.0),
-                ).into_response()
+                (self.status(), self.body_text()).into_response()
+            }
+        }
+
+        impl $name {
+            /// Get the response body text used for this rejection.
+            pub fn body_text(&self) -> String {
+                format!(concat!($body, ": {}"), self.0).into()
+            }
+
+            /// Get the status code used for this rejection.
+            pub fn status(&self) -> http::StatusCode {
+                http::StatusCode::$status
             }
         }
 
@@ -143,6 +164,26 @@ macro_rules! composite_rejection {
                 match self {
                     $(
                         Self::$variant(inner) => inner.into_response(),
+                    )+
+                }
+            }
+        }
+
+        impl $name {
+            /// Get the response body text used for this rejection.
+            pub fn body_text(&self) -> String {
+                match self {
+                    $(
+                        Self::$variant(inner) => inner.body_text(),
+                    )+
+                }
+            }
+
+            /// Get the status code used for this rejection.
+            pub fn status(&self) -> http::StatusCode {
+                match self {
+                    $(
+                        Self::$variant(inner) => inner.status(),
                     )+
                 }
             }
