@@ -111,7 +111,7 @@ where
     type Rejection = JsonRejection;
 
     async fn from_request(req: Request<B>, state: &S) -> Result<Self, Self::Rejection> {
-        if json_content_type(req.headers()) {
+        if json_content_type(req.headers()).is_some() {
             let bytes = Bytes::from_request(req, state).await?;
             let deserializer = &mut serde_json::Deserializer::from_slice(&bytes);
 
@@ -144,29 +144,42 @@ where
     }
 }
 
-fn json_content_type(headers: &HeaderMap) -> bool {
-    let content_type = if let Some(content_type) = headers.get(header::CONTENT_TYPE) {
-        content_type
-    } else {
-        return false;
-    };
+fn json_content_type(headers: &HeaderMap) -> Option<mime::Mime> {
+    headers
+    .get(header::CONTENT_TYPE)
+    .map(|x| {
+        x.to_str().unwrap()
+    })
+    .and_then(|x| {
+        x.parse::<mime::Mime>().ok()
+    })
+    .and_then(|m| {
+        let suffix = m
+        .suffix()
+        .map_or(false, |name| {
+            name.eq(&mime::JSON)
+        })
+        .then_some(mime::JSON);
 
-    let content_type = if let Ok(content_type) = content_type.to_str() {
-        content_type
-    } else {
-        return false;
-    };
+        let type_ = m
+        .type_()
+        .eq(&mime::APPLICATION)
+        .then_some(mime::APPLICATION_JSON);
 
-    let mime = if let Ok(mime) = content_type.parse::<mime::Mime>() {
-        mime
-    } else {
-        return false;
-    };
+        let subtype = m
+        .subtype()
+        .eq(&mime::JSON)
+        .then_some(mime::JSON);
 
-    let is_json_content_type = mime.type_() == "application"
-        && (mime.subtype() == "json" || mime.suffix().map_or(false, |name| name == "json"));
-
-    is_json_content_type
+        [
+            subtype,
+            suffix,
+        ]
+        .iter()
+        .any(|x| x.is_some())
+        .then_some(type_)
+        .flatten()
+    })
 }
 
 impl<T> Deref for Json<T> {
