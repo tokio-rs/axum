@@ -44,7 +44,7 @@ use tower_service::Service;
 /// # let _: Router = app;
 /// ```
 ///
-/// # Rejection the request
+/// # Rejecting the request
 ///
 /// The function given to `map_request` is allowed to also return a `Result` which can be used to
 /// reject the request and return a response immediately, without calling the remaining
@@ -53,7 +53,7 @@ use tower_service::Service;
 /// Specifically the valid return types are:
 ///
 /// - `Request<B>`
-/// - `Request<Request<B>, E> where E:  IntoResponse`
+/// - `Result<Request<B>, E> where E:  IntoResponse`
 ///
 /// ```
 /// use axum::{
