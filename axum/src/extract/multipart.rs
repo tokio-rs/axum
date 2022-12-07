@@ -50,12 +50,12 @@ use std::{
 /// ```
 #[cfg_attr(docsrs, doc(cfg(feature = "multipart")))]
 #[derive(Debug)]
-pub struct Multipart {
+pub struct Multipart<const C: Constraints = { Constraints::DEFAULT }> {
     inner: multer::Multipart<'static>,
 }
 
 #[async_trait]
-impl<S, B> FromRequest<S, B> for Multipart
+impl<S, B, const C: Constraints> FromRequest<S, B> for Multipart<C>
 where
     B: HttpBody + Send + 'static,
     B::Data: Into<Bytes>,
@@ -71,12 +71,13 @@ where
             Err(unlimited) => BodyStream::from_request(unlimited, state).await,
         };
         let stream = stream_result.unwrap_or_else(|err| match err {});
-        let multipart = multer::Multipart::new(stream, boundary);
+        let multipart =
+            multer::Multipart::with_constraints(stream, boundary, C.to_multer_constraints());
         Ok(Self { inner: multipart })
     }
 }
 
-impl Multipart {
+impl<const C: Constraints> Multipart<C> {
     /// Yields the next [`Field`] if available.
     pub async fn next_field(&mut self) -> Result<Option<Field<'_>>, MultipartError> {
         let field = self
@@ -88,11 +89,33 @@ impl Multipart {
         if let Some(field) = field {
             Ok(Some(Field {
                 inner: field,
-                _multipart: self,
+                _multipart: &mut self.inner,
             }))
         } else {
             Ok(None)
         }
+    }
+}
+
+#[derive(PartialEq, Eq)]
+pub struct Constraints {
+    //size_limit: SizeLimit.
+    allowed_fields: &'static [&'static str],
+}
+
+impl Constraints {
+    pub const DEFAULT: Self = Self {
+        allowed_fields: &[],
+    };
+
+    pub const fn allowed_fields(self, value: &'static [&'static str]) -> Self {
+        Self {
+            allowed_fields: value,
+        }
+    }
+
+    fn to_multer_constraints(&self) -> multer::Constraints {
+        multer::Constraints::new().allowed_fields(self.allowed_fields.iter().copied().collect())
     }
 }
 
@@ -102,7 +125,7 @@ pub struct Field<'a> {
     inner: multer::Field<'static>,
     // multer requires there to only be one live `multer::Field` at any point. This enforces that
     // statically, which multer does not do, it returns an error instead.
-    _multipart: &'a mut Multipart,
+    _multipart: &'a mut multer::Multipart<'static>,
 }
 
 impl<'a> Stream for Field<'a> {

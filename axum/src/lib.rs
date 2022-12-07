@@ -429,7 +429,12 @@
     missing_docs
 )]
 #![deny(unreachable_pub, private_in_public)]
-#![allow(elided_lifetimes_in_paths, clippy::type_complexity)]
+#![allow(
+    elided_lifetimes_in_paths,
+    incomplete_features,
+    clippy::type_complexity
+)]
+#![feature(adt_const_params)]
 #![forbid(unsafe_code)]
 #![cfg_attr(docsrs, feature(doc_auto_cfg, doc_cfg))]
 #![cfg_attr(test, allow(clippy::float_cmp))]
