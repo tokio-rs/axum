@@ -146,40 +146,28 @@ where
 
 fn json_content_type(headers: &HeaderMap) -> Option<mime::Mime> {
     headers
-    .get(header::CONTENT_TYPE)
-    .map(|x| {
-        x.to_str().unwrap()
-    })
-    .and_then(|x| {
-        x.parse::<mime::Mime>().ok()
-    })
-    .and_then(|m| {
-        let suffix = m
-        .suffix()
-        .map_or(false, |name| {
-            name.eq(&mime::JSON)
+        .get(header::CONTENT_TYPE)
+        .map(|x| x.to_str().unwrap())
+        .and_then(|x| x.parse::<mime::Mime>().ok())
+        .and_then(|m| {
+            let suffix = m
+                .suffix()
+                .map_or(false, |name| name.eq(&mime::JSON))
+                .then_some(mime::JSON);
+
+            let type_ = m
+                .type_()
+                .eq(&mime::APPLICATION)
+                .then_some(mime::APPLICATION_JSON);
+
+            let subtype = m.subtype().eq(&mime::JSON).then_some(mime::JSON);
+
+            [subtype, suffix]
+                .iter()
+                .any(|x| x.is_some())
+                .then_some(type_)
+                .flatten()
         })
-        .then_some(mime::JSON);
-
-        let type_ = m
-        .type_()
-        .eq(&mime::APPLICATION)
-        .then_some(mime::APPLICATION_JSON);
-
-        let subtype = m
-        .subtype()
-        .eq(&mime::JSON)
-        .then_some(mime::JSON);
-
-        [
-            subtype,
-            suffix,
-        ]
-        .iter()
-        .any(|x| x.is_some())
-        .then_some(type_)
-        .flatten()
-    })
 }
 
 impl<T> Deref for Json<T> {
