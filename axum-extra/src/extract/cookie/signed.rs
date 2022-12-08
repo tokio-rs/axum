@@ -165,7 +165,7 @@ impl SignedCookieJar {
     ///
     /// The valid cookies in `headers` will be added to the jar.
     ///
-    /// This is inteded to be used in middleware and other places where it might be difficult to
+    /// This is intended to be used in middleware and other places where it might be difficult to
     /// run extractors. Normally you should create `SignedCookieJar`s through [`FromRequestParts`].
     ///
     /// [`FromRequestParts`]: axum::extract::FromRequestParts
