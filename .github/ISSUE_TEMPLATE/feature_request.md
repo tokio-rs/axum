@@ -1,8 +1,9 @@
 ---
 name: 💡 Feature Request
 about: I have a suggestion (and may want to implement it 🙂)!
-
 ---
+
+- [ ] I have looked for existing issues (including closed) about this
 
 ## Feature Request
 
