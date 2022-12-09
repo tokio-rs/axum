@@ -121,7 +121,7 @@ The [examples] folder contains various examples of how to use `axum`. The
 ## Getting Help
 
 In the `axum`'s repo we also have a [number of examples][examples] showing how
-to put everything together. Community-maintained [showcases] and [tutorials] also demonstrate how to use `axum` for real-world applications. You're also welcome to ask in the [Discord channel][chat] or open an [issue] with your question.
+to put everything together. Community-maintained [showcases] and [tutorials] also demonstrate how to use `axum` for real-world applications. You're also welcome to ask in the [Discord channel][chat] or open a [discussion] with your question.
 
 ## Community projects
 
@@ -153,7 +153,7 @@ additional terms or conditions.
 [`tonic`]: https://crates.io/crates/tonic
 [contributing]: https://github.com/tokio-rs/axum/blob/main/CONTRIBUTING.md
 [chat]: https://discord.gg/tokio
-[issue]: https://github.com/tokio-rs/axum/issues/new
+[discussion]: https://github.com/tokio-rs/axum/discussions/new?category=q-a
 [`tower::Service`]: https://docs.rs/tower/latest/tower/trait.Service.html
 [ecosystem]: https://github.com/tokio-rs/axum/blob/main/ECOSYSTEM.md
 [showcases]: https://github.com/tokio-rs/axum/blob/main/ECOSYSTEM.md#project-showcase
