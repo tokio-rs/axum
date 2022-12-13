@@ -18,6 +18,7 @@ use axum::{
     Router,
 };
 
+use std::borrow::Cow;
 use std::{net::SocketAddr, path::PathBuf};
 use tower_http::{
     services::ServeDir,
@@ -28,6 +29,7 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 //allows to extract the IP of connecting user
 use axum::extract::connect_info::ConnectInfo;
+use axum::extract::ws::CloseFrame;
 
 //allows to split the websocket stream into separate TX and RX branches
 use futures::{sink::SinkExt, stream::StreamExt};
@@ -36,8 +38,9 @@ use futures::{sink::SinkExt, stream::StreamExt};
 async fn main() {
     tracing_subscriber::registry()
         .with(
-            tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "example_websockets=debug,tower_http=debug".into()),
+            tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| {
+                "example_websockets=debug,tower_http=debug,tungstentite-rs=debug".into()
+            }),
         )
         .with(tracing_subscriber::fmt::layer())
         .init();
@@ -111,12 +114,15 @@ fn process_message(msg: Message, who: SocketAddr) -> bool {
             }
             return true;
         }
+
         Message::Pong(v) => {
             println!(">>> {} sent pong with {:?}", who, v);
         }
-        //Message::Ping() is handled by axum automatically, no need to handle it.
-        _ => {
-            println!(">>> {} sent unexpected message", who);
+        // You should never need to manually handle these, as tungstentite websocket library
+        // will do so for you automagically by replying with Pong and copying the v according to
+        // spec. But if you need the contents of the pings you can see them here.
+        Message::Ping(v) => {
+            println!(">>> {} sent ping with {:?}", who, v);
         }
     }
     return false;
@@ -166,23 +172,33 @@ async fn handle_socket(mut socket: WebSocket, who: SocketAddr) {
 
     // Spawn a task that will push 100 messages to the client (does not matter what client does)
     let mut send_task = tokio::spawn(async move {
-        let mut i = 30;
-        loop {
+        let mut i = 20;
+        while i > 0 {
             // In any websocket error, break loop.
             if sender
                 .send(Message::Text(format!("{} messages left...", i)))
                 .await
                 .is_err()
             {
-                break i;
+                break;
             }
 
             tokio::time::sleep(std::time::Duration::from_millis(300)).await;
             i -= 1;
-            if i == 0 {
-                break i;
+        }
+        if i == 0 {
+            println!("Sending close to {}...", who);
+            if let Err(e) = sender
+                .send(Message::Close(Some(CloseFrame {
+                    code: 1000,
+                    reason: Cow::from("Goodbye"),
+                })))
+                .await
+            {
+                println!("Could not send Close due to {}, probably it is ok?", e);
             }
         }
+        i
     });
 
     // This second task will receive messages from client and print them on server console
@@ -212,10 +228,10 @@ async fn handle_socket(mut socket: WebSocket, who: SocketAddr) {
                 Ok(b)=>println!("Received {} messages", b),
                 Err(b)=>println!("Error receiving messages {:?}", b)
             }
-            send_task.abort()
+            send_task.abort();
         }
     }
 
     // returning from the handler destroys the websocket context
-    println!("Websocket context destroyed");
+    println!("Websocket context {} destroyed", who);
 }
