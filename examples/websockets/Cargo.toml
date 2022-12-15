@@ -13,3 +13,16 @@ tower-http = { version = "0.3.0", features = ["fs", "trace"] }
 tracing = "0.1"
 futures = "0.3"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+futures-util = { version = "0.3", default-features = false, features = ["sink", "std"] }
+tokio-tungstenite = "0.18.0"
+url = "2.0.0"
+futures-channel = "0.3"
+clap = { version = "4.0.5", features = ["derive"] }
+
+[[bin]]
+name = "example-websockets"
+path="src/main.rs"
+
+[[bin]]
+name = "example-client"
+path="src/client.rs"

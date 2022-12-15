@@ -1,10 +1,15 @@
 //! Example websocket server.
 //!
-//! Run with
+//! Run the server with
 //!
 //! ```not_rust
-//! cd examples && cargo run -p example-websockets
+//! cargo run -p example-websockets
 //! firefox http://localhost:3000
+//! ```
+//!
+//! Alternatively you can run rust client with
+//! ```not_rust
+//! cargo run -p example-client
 //! ```
 
 use axum::{
@@ -39,7 +44,7 @@ async fn main() {
     tracing_subscriber::registry()
         .with(
             tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| {
-                "example_websockets=debug,tower_http=debug,tungstentite-rs=debug".into()
+                "example_websockets=debug,tower_http=debug,tungstenite-rs=debug".into()
             }),
         )
         .with(tracing_subscriber::fmt::layer())
@@ -95,39 +100,7 @@ async fn ws_handler(
     ws.on_upgrade(move |socket| handle_socket(socket, addr))
 }
 
-fn process_message(msg: Message, who: SocketAddr) -> bool {
-    match msg {
-        Message::Text(t) => {
-            println!(">>> {} sent str: {:?}", who, t);
-        }
-        Message::Binary(d) => {
-            println!(">>> {} sent {} bytes: {:?}", who, d.len(), d);
-        }
-        Message::Close(c) => {
-            if let Some(cf) = c {
-                println!(
-                    ">>> {} sent close with code {} and reason `{}`",
-                    who, cf.code, cf.reason
-                );
-            } else {
-                println!(">>> {} somehow sent close message without CloseFrame", who);
-            }
-            return true;
-        }
-
-        Message::Pong(v) => {
-            println!(">>> {} sent pong with {:?}", who, v);
-        }
-        // You should never need to manually handle these, as tungstentite websocket library
-        // will do so for you automagically by replying with Pong and copying the v according to
-        // spec. But if you need the contents of the pings you can see them here.
-        Message::Ping(v) => {
-            println!(">>> {} sent ping with {:?}", who, v);
-        }
-    }
-    return false;
-}
-
+/// Actual websocket statemachine (one will be spawned per connection)
 async fn handle_socket(mut socket: WebSocket, who: SocketAddr) {
     //send a ping (unsupported by some browsers) just to kick things off and get a response
     if let Ok(_) = socket.send(Message::Ping(vec![1, 2, 3])).await {
@@ -234,4 +207,38 @@ async fn handle_socket(mut socket: WebSocket, who: SocketAddr) {
 
     // returning from the handler destroys the websocket context
     println!("Websocket context {} destroyed", who);
+}
+
+/// helper to print contents of messages to stdout. special treatment for Close
+fn process_message(msg: Message, who: SocketAddr) -> bool {
+    match msg {
+        Message::Text(t) => {
+            println!(">>> {} sent str: {:?}", who, t);
+        }
+        Message::Binary(d) => {
+            println!(">>> {} sent {} bytes: {:?}", who, d.len(), d);
+        }
+        Message::Close(c) => {
+            if let Some(cf) = c {
+                println!(
+                    ">>> {} sent close with code {} and reason `{}`",
+                    who, cf.code, cf.reason
+                );
+            } else {
+                println!(">>> {} somehow sent close message without CloseFrame", who);
+            }
+            return true;
+        }
+
+        Message::Pong(v) => {
+            println!(">>> {} sent pong with {:?}", who, v);
+        }
+        // You should never need to manually handle these, as tungstenite websocket library
+        // will do so for you automagically by replying with Pong and copying the v according to
+        // spec. But if you need the contents of the pings you can see them here.
+        Message::Ping(v) => {
+            println!(">>> {} sent ping with {:?}", who, v);
+        }
+    }
+    return false;
 }
