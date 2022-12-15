@@ -7,7 +7,7 @@
 //! firefox http://localhost:3000
 //! ```
 //!
-//! Alternatively you can run rust client with
+//! Alternatively you can run the rust client with
 //! ```not_rust
 //! cargo run -p example-client
 //! ```
@@ -163,7 +163,7 @@ async fn handle_socket(mut socket: WebSocket, who: SocketAddr) {
             println!("Sending close to {}...", who);
             if let Err(e) = sender
                 .send(Message::Close(Some(CloseFrame {
-                    code: 1000,
+                    code: axum::extract::ws::close_code::NORMAL,
                     reason: Cow::from("Goodbye"),
                 })))
                 .await
@@ -205,7 +205,7 @@ async fn handle_socket(mut socket: WebSocket, who: SocketAddr) {
         }
     }
 
-    // returning from the handler destroys the websocket context
+    // returning from the handler closes the websocket connection
     println!("Websocket context {} destroyed", who);
 }
 
