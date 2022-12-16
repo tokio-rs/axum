@@ -244,5 +244,5 @@ fn process_message(msg: Message, who: SocketAddr) -> ControlFlow<(), ()> {
             println!(">>> {} sent ping with {:?}", who, v);
         }
     }
-    return ControlFlow::Continue(());
+    ControlFlow::Continue(())
 }

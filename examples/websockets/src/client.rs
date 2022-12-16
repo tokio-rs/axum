@@ -10,20 +10,17 @@
 //! websocket server and how the client-side and server-side code can be quite similar.
 //!
 
-//To measure time taken to run the example
-use std::time::Instant;
-
-//we will use tungstenite for websocket client impl (same library as what axum is using)
+use futures_util::{SinkExt, StreamExt};
 use std::borrow::Cow;
 use std::ops::ControlFlow;
+use std::time::Instant;
 use tokio::task::JoinHandle;
+
+// we will use tungstenite for websocket client impl (same library as what axum is using)
 use tokio_tungstenite::{
     connect_async,
     tungstenite::protocol::{frame::coding::CloseCode, CloseFrame, Message},
 };
-
-//stream splitting
-use futures_util::{SinkExt, StreamExt};
 
 const N_CLIENTS: usize = 2; //set to desired number
 const SERVER: &'static str = "ws://127.0.0.1:3000/ws";
@@ -32,13 +29,13 @@ const SERVER: &'static str = "ws://127.0.0.1:3000/ws";
 async fn main() {
     let start_time = Instant::now();
     //spawn several clients that will concurrently talk to the server
-    let clients: Vec<JoinHandle<_>> = (0..N_CLIENTS)
+    let clients = (0..N_CLIENTS)
         .into_iter()
-        .map(|cli| tokio::spawn(async move { spawn_client(cli).await }))
-        .collect();
+        .map(|cli| tokio::spawn(spawn_client(cli)))
+        .collect::<FuturesUnordered<_>>();
 
     //wait for all our clients to exit
-    futures::future::join_all(clients).await;
+    while clients.next().await.is_some() {}
     let end_time = Instant::now();
 
     //total time should be the same no matter how many clients we spawn
@@ -116,13 +113,13 @@ async fn spawn_client(who: usize) {
         _ = (&mut send_task) => {
             recv_task.abort();
         },
-        _ = (&mut recv_task) =>{
+        _ = (&mut recv_task) => {
             send_task.abort();
         }
     }
 }
 
-/// Familiar function to handle messages we get (with a slight twist that Frame variant is visible
+/// Function to handle messages we get (with a slight twist that Frame variant is visible
 /// since we are working with the underlying tungstenite library directly without axum here).
 fn process_message(msg: Message, who: usize) -> ControlFlow<(), ()> {
     match msg {
@@ -158,5 +155,5 @@ fn process_message(msg: Message, who: usize) -> ControlFlow<(), ()> {
             unreachable!("This is never supposed to happen")
         }
     }
-    return ControlFlow::Continue(());
+    ControlFlow::Continue(())
 }
