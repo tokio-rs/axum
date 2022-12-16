@@ -10,11 +10,11 @@
 //! websocket server and how the client-side and server-side code can be quite similar.
 //!
 
+use futures_util::stream::FuturesUnordered;
 use futures_util::{SinkExt, StreamExt};
 use std::borrow::Cow;
 use std::ops::ControlFlow;
 use std::time::Instant;
-use tokio::task::JoinHandle;
 
 // we will use tungstenite for websocket client impl (same library as what axum is using)
 use tokio_tungstenite::{
@@ -29,18 +29,19 @@ const SERVER: &'static str = "ws://127.0.0.1:3000/ws";
 async fn main() {
     let start_time = Instant::now();
     //spawn several clients that will concurrently talk to the server
-    let clients = (0..N_CLIENTS)
+    let mut clients = (0..N_CLIENTS)
         .into_iter()
         .map(|cli| tokio::spawn(spawn_client(cli)))
         .collect::<FuturesUnordered<_>>();
 
     //wait for all our clients to exit
     while clients.next().await.is_some() {}
+
     let end_time = Instant::now();
 
     //total time should be the same no matter how many clients we spawn
     println!(
-        "Total time taken {:#?} with {N_CLIENTS}, should be about 6.45 seconds.",
+        "Total time taken {:#?} with {N_CLIENTS} concurrent clients, should be about 6.45 seconds.",
         end_time - start_time
     );
 }
