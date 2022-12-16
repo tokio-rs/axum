@@ -24,29 +24,66 @@ use tower_service::Service;
 /// 3. Take [`Next<B>`](Next) as the final argument.
 /// 4. Return something that implements [`IntoResponse`].
 ///
-/// Note that this function doesn't support extracting [`State`]. For that [`from_request_parts`].
+/// Note that this function doesn't support extracting [`State`]. For that [`from_fn_with_state`].
 ///
 /// # Example
 ///
 /// ```rust
 /// use axum::{
 ///     Router,
-///     http::{self, Request, StatusCode},
+///     http::{self, Request},
 ///     routing::get,
-///     response::{IntoResponse, Response},
+///     response::Response,
 ///     middleware::{self, Next},
 /// };
 ///
-/// async fn auth<B>(req: Request<B>, next: Next<B>) -> Result<Response, StatusCode> {
-///     let auth_header = req.headers()
-///         .get(http::header::AUTHORIZATION)
-///         .and_then(|header| header.to_str().ok());
+/// async fn my_middleware<B>(
+///     request: Request<B>,
+///     next: Next<B>,
+/// ) -> Response {
+///     // do something with `request`...
 ///
-///     match auth_header {
-///         Some(auth_header) if token_is_valid(auth_header) => {
-///             Ok(next.run(req).await)
-///         }
-///         _ => Err(StatusCode::UNAUTHORIZED),
+///     let response = next.run(request).await;
+///
+///     // do something with `response`...
+///
+///     response
+/// }
+///
+/// let app = Router::new()
+///     .route("/", get(|| async { /* ... */ }))
+///     .layer(middleware::from_fn(my_middleware));
+/// # let app: Router = app;
+/// ```
+///
+/// # Running extractors
+///
+/// ```rust
+/// use axum::{
+///     Router,
+///     extract::TypedHeader,
+///     http::StatusCode,
+///     headers::authorization::{Authorization, Bearer},
+///     http::Request,
+///     middleware::{self, Next},
+///     response::Response,
+///     routing::get,
+/// };
+///
+/// async fn auth<B>(
+///     // run the `TypedHeader` extractor
+///     TypedHeader(auth): TypedHeader<Authorization<Bearer>>,
+///     // you can also add more extractors here but the last
+///     // extractor must implement `FromRequest` which
+///     // `Request` does
+///     request: Request<B>,
+///     next: Next<B>,
+/// ) -> Result<Response, StatusCode> {
+///     if token_is_valid(auth.token()) {
+///         let response = next.run(request).await;
+///         Ok(response)
+///     } else {
+///         Err(StatusCode::UNAUTHORIZED)
 ///     }
 /// }
 ///
@@ -61,41 +98,8 @@ use tower_service::Service;
 /// # let app: Router = app;
 /// ```
 ///
-/// # Running extractors
-///
-/// ```rust
-/// use axum::{
-///     Router,
-///     extract::{TypedHeader, Query},
-///     headers::authorization::{Authorization, Bearer},
-///     http::Request,
-///     middleware::{self, Next},
-///     response::Response,
-///     routing::get,
-/// };
-/// use std::collections::HashMap;
-///
-/// async fn my_middleware<B>(
-///     TypedHeader(auth): TypedHeader<Authorization<Bearer>>,
-///     Query(query_params): Query<HashMap<String, String>>,
-///     // you can add more extractors here but the last
-///     // extractor must implement `FromRequest` which
-///     // `Request` does
-///     req: Request<B>,
-///     next: Next<B>,
-/// ) -> Response {
-///     // do something with `auth` and `query_params`...
-///
-///     next.run(req).await
-/// }
-///
-/// let app = Router::new()
-///     .route("/", get(|| async { /* ... */ }))
-///     .route_layer(middleware::from_fn(my_middleware));
-/// # let app: Router = app;
-/// ```
-///
 /// [extractors]: crate::extract::FromRequest
+/// [`State`]: crate::extract::State
 pub fn from_fn<F, T>(f: F) -> FromFnLayer<F, (), T> {
     from_fn_with_state((), f)
 }
@@ -124,13 +128,16 @@ pub fn from_fn<F, T>(f: F) -> FromFnLayer<F, (), T> {
 ///     // you can add more extractors here but the last
 ///     // extractor must implement `FromRequest` which
 ///     // `Request` does
-///     req: Request<B>,
+///     request: Request<B>,
 ///     next: Next<B>,
 /// ) -> Response {
-///     // do something with `req`...
-///     let res = next.run(req).await;
-///     // do something with `res`...
-///     res
+///     // do something with `request`...
+///
+///     let response = next.run(request).await;
+///
+///     // do something with `response`...
+///
+///     response
 /// }
 ///
 /// let state = AppState { /* ... */ };
