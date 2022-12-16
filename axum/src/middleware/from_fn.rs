@@ -24,6 +24,8 @@ use tower_service::Service;
 /// 3. Take [`Next<B>`](Next) as the final argument.
 /// 4. Return something that implements [`IntoResponse`].
 ///
+/// Note that this function doesn't support extracting [`State`]. For that [`from_request_parts`].
+///
 /// # Example
 ///
 /// ```rust
