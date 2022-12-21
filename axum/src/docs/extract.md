@@ -65,14 +65,14 @@ use axum::{
     Router,
 };
 use serde_json::Value;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 // `Path` gives you the path parameters and deserializes them. See its docs for
 // more details
 async fn path(Path(user_id): Path<u32>) {}
 
 // `Query` gives you the query parameters and deserializes them.
-async fn query(Query(params): Query<HashMap<String, String>>) {}
+async fn query(Query(params): Query<BTreeMap<String, String>>) {}
 
 // `HeaderMap` gives you all the headers
 async fn headers(headers: HeaderMap) {}
