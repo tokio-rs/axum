@@ -329,6 +329,11 @@ impl<S> DerefMut for State<S> {
     }
 }
 
+/// Extractor for state that my fail.
+///
+/// If the extraction fails the [FromRequestParts::Rejection] type is returned.
+///
+/// Otherwise it behaves similarly to [State].
 #[derive(Debug, Default, Clone, Copy)]
 pub struct TryState<S>(pub S);
 

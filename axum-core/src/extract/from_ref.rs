@@ -28,7 +28,19 @@ where
     }
 }
 
+/// Used to do reference-to-value conversions (which might fail) thus not consuming the input value.
+///
+/// This is mainly used with [`TryState`] to extract "substates" from a reference to main application
+/// state.
+///
+/// See [`TryState`] for more details on how library authors should use this trait.
+///
+/// [`TryState`]: https://docs.rs/axum/0.6/axum/extract/struct.TryState.html
+// NOTE: This trait is defined in axum-core, even though it is mainly used with `TryState` which is
+// defined in axum. That allows crate authors to use it when implementing extractors.
 pub trait TryFromRef<T> {
+    /// If the conversion fails it'll use this "rejection" type. A rejection is
+    /// a kind of error that can be converted into a response.
     type Rejection: IntoResponse;
 
     /// Converts to this type from a reference to the input type.
