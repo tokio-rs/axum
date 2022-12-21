@@ -17,7 +17,9 @@ mod request_parts;
 mod state;
 
 #[doc(inline)]
-pub use axum_core::extract::{DefaultBodyLimit, FromRef, FromRequest, FromRequestParts};
+pub use axum_core::extract::{
+    DefaultBodyLimit, FromRef, FromRequest, FromRequestParts, TryFromRef,
+};
 
 #[cfg(feature = "macros")]
 pub use axum_macros::{FromRef, FromRequest, FromRequestParts};
@@ -30,7 +32,7 @@ pub use self::{
     raw_form::RawForm,
     raw_query::RawQuery,
     request_parts::{BodyStream, RawBody},
-    state::State,
+    state::{State, TryState},
 };
 
 #[doc(inline)]

@@ -1,3 +1,7 @@
+use std::convert::Infallible;
+
+use crate::response::IntoResponse;
+
 /// Used to do reference-to-value conversions thus not consuming the input value.
 ///
 /// This is mainly used with [`State`] to extract "substates" from a reference to main application
@@ -21,5 +25,25 @@ where
 {
     fn from_ref(input: &T) -> Self {
         input.clone()
+    }
+}
+
+pub trait TryFromRef<T> {
+    type Rejection: IntoResponse;
+
+    /// Converts to this type from a reference to the input type.
+    fn try_from_ref(input: &T) -> Result<Self, Self::Rejection>
+    where
+        Self: Sized;
+}
+
+impl<T> TryFromRef<T> for T
+where
+    T: Clone,
+{
+    type Rejection = Infallible;
+
+    fn try_from_ref(input: &T) -> Result<Self, Self::Rejection> {
+        Ok(input.clone())
     }
 }

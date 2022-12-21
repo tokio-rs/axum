@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use axum_core::extract::{FromRef, FromRequestParts};
+use axum_core::extract::{FromRef, FromRequestParts, TryFromRef};
 use http::request::Parts;
 use std::{
     convert::Infallible,
@@ -324,6 +324,40 @@ impl<S> Deref for State<S> {
 }
 
 impl<S> DerefMut for State<S> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+#[derive(Debug, Default, Clone, Copy)]
+pub struct TryState<S>(pub S);
+
+#[async_trait]
+impl<OuterState, InnerState> FromRequestParts<OuterState> for TryState<InnerState>
+where
+    InnerState: TryFromRef<OuterState>,
+    OuterState: Send + Sync,
+{
+    type Rejection = <InnerState as TryFromRef<OuterState>>::Rejection;
+
+    async fn from_request_parts(
+        _parts: &mut Parts,
+        state: &OuterState,
+    ) -> Result<Self, Self::Rejection> {
+        let inner_state = InnerState::try_from_ref(state)?;
+        Ok(Self(inner_state))
+    }
+}
+
+impl<S> Deref for TryState<S> {
+    type Target = S;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl<S> DerefMut for TryState<S> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
     }
