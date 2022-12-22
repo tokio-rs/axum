@@ -46,6 +46,7 @@
 //! use axum::{
 //!     routing::get,
 //!     Router,
+//!     RouterResolver
 //! };
 //!
 //! #[tokio::main]
@@ -477,6 +478,7 @@ pub use self::extension::Extension;
 pub use self::json::Json;
 #[doc(inline)]
 pub use self::routing::Router;
+pub use self::routing::RouteResolver;
 
 #[doc(inline)]
 #[cfg(feature = "headers")]

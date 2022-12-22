@@ -7,7 +7,7 @@ use crate::{
     body::HttpBody,
     handler::Handler,
     routing::{future::RouteFuture, Route},
-    Router,
+    Router, RouteResolver
 };
 
 pub(crate) struct BoxedIntoRoute<S, B, E>(Box<dyn ErasedIntoRoute<S, B, E>>);
@@ -15,7 +15,7 @@ pub(crate) struct BoxedIntoRoute<S, B, E>(Box<dyn ErasedIntoRoute<S, B, E>>);
 impl<S, B> BoxedIntoRoute<S, B, Infallible>
 where
     S: Clone + Send + Sync + 'static,
-    B: Send + 'static,
+    B: Send + 'static,        
 {
     pub(crate) fn from_handler<H, T>(handler: H) -> Self
     where
@@ -29,10 +29,11 @@ where
         }))
     }
 
-    pub(crate) fn from_router(router: Router<S, B>) -> Self
+    pub(crate) fn from_router<K>(router: Router<K, S, B>) -> Self
     where
         B: HttpBody + Send + 'static,
-        S: Clone + Send + Sync + 'static,
+        S: Clone + Send + Sync + 'static + Default,        
+        K: RouteResolver<S, B, Infallible> + Send + 'static 
     {
         Self(Box::new(MakeErasedRouter {
             router,
@@ -130,15 +131,20 @@ where
     }
 }
 
-pub(crate) struct MakeErasedRouter<S, B> {
-    pub(crate) router: Router<S, B>,
-    pub(crate) into_route: fn(Router<S, B>, S) -> Route<B>,
+pub(crate) struct MakeErasedRouter<K, S, B> where
+    S: Clone + 'static + Default,
+    B: HttpBody + Send + 'static,
+    K: RouteResolver<S, B, Infallible> + Send
+{
+    pub(crate) router: Router<K, S, B>,
+    pub(crate) into_route: fn(Router<K, S, B>, S) -> Route<B>,
 }
 
-impl<S, B> ErasedIntoRoute<S, B, Infallible> for MakeErasedRouter<S, B>
+impl<K, S, B> ErasedIntoRoute<S, B, Infallible> for MakeErasedRouter<K, S, B>
 where
-    S: Clone + Send + Sync + 'static,
+    S: Clone + Send + Sync + 'static + Default,
     B: HttpBody + Send + 'static,
+    K: RouteResolver<S, B, Infallible> + Send + 'static,
 {
     fn clone_box(&self) -> Box<dyn ErasedIntoRoute<S, B, Infallible>> {
         Box::new(self.clone())
@@ -157,9 +163,11 @@ where
     }
 }
 
-impl<S, B> Clone for MakeErasedRouter<S, B>
+impl<K, S, B> Clone for MakeErasedRouter<K, S, B>
 where
-    S: Clone,
+    S: Clone+ 'static + Default,
+    B: HttpBody + Send + 'static,
+    K: RouteResolver<S, B, Infallible> + Send
 {
     fn clone(&self) -> Self {
         Self {
@@ -210,3 +218,4 @@ where
         Box::new(self.clone())
     }
 }
+

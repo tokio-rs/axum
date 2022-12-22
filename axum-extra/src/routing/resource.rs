@@ -2,7 +2,7 @@ use axum::{
     body::Body,
     handler::Handler,
     routing::{delete, get, on, post, MethodFilter, MethodRouter},
-    Router,
+    Router, RouteResolver,
 };
 
 /// A resource which defines a set of conventional CRUD routes.
@@ -33,15 +33,18 @@ use axum::{
 /// # let _: Router = app;
 /// ```
 #[derive(Debug)]
-pub struct Resource<S = (), B = Body> {
+pub struct Resource<S, B> where 
+    S: Clone + Send + Sync + 'static + Default,
+    B: axum::body::HttpBody + Send + 'static
+{
     pub(crate) name: String,
-    pub(crate) router: Router<S, B>,
+    pub(crate) router: Router<MethodRouter<S,B>, S, B>,
 }
 
 impl<S, B> Resource<S, B>
 where
     B: axum::body::HttpBody + Send + 'static,
-    S: Clone + Send + Sync + 'static,
+    S: Clone + Send + Sync + 'static + Default,    
 {
     /// Create a `Resource` with the given name.
     ///
@@ -137,7 +140,10 @@ where
     }
 }
 
-impl<S, B> From<Resource<S, B>> for Router<S, B> {
+impl<S, B> From<Resource<S, B>> for Router<MethodRouter<S, B>, S, B> where 
+    S: Clone + Send + Sync + 'static + Default,
+    B: axum::body::HttpBody + Send + 'static
+{
     fn from(resource: Resource<S, B>) -> Self {
         resource.router
     }

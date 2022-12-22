@@ -4,7 +4,7 @@ use axum::{
     http::Request,
     response::{IntoResponse, Redirect, Response},
     routing::{any, MethodRouter},
-    Router,
+    Router, RouteResolver,
 };
 use http::{uri::PathAndQuery, StatusCode, Uri};
 use std::{borrow::Cow, convert::Infallible};
@@ -30,7 +30,7 @@ pub use self::typed::{SecondElementIs, TypedPath};
 pub use self::spa::SpaRouter;
 
 /// Extension trait that adds additional methods to [`Router`].
-pub trait RouterExt<S, B>: sealed::Sealed {
+pub trait RouterExt<K, S, B>: sealed::Sealed {
     /// Add a typed `GET` route to the router.
     ///
     /// The path will be inferred from the first argument to the handler function which must
@@ -162,7 +162,9 @@ pub trait RouterExt<S, B>: sealed::Sealed {
     /// ```
     fn route_with_tsr(self, path: &str, method_router: MethodRouter<S, B>) -> Self
     where
-        Self: Sized;
+        Self: Sized,        
+        B: axum::body::HttpBody + Send + 'static,
+        S: Clone + Send + Sync + 'static + Default;        
 
     /// Add another route to the router with an additional "trailing slash redirect" route.
     ///
@@ -175,10 +177,10 @@ pub trait RouterExt<S, B>: sealed::Sealed {
         Self: Sized;
 }
 
-impl<S, B> RouterExt<S, B> for Router<S, B>
+impl<S, B> RouterExt<MethodRouter<S,B>, S, B> for Router<MethodRouter<S,B>, S, B>
 where
     B: axum::body::HttpBody + Send + 'static,
-    S: Clone + Send + Sync + 'static,
+    S: Clone + Send + Sync + 'static + Default,    
 {
     #[cfg(feature = "typed-routing")]
     fn typed_get<H, T, P>(self, handler: H) -> Self
@@ -291,10 +293,10 @@ fn validate_tsr_path(path: &str) {
     }
 }
 
-fn add_tsr_redirect_route<S, B>(router: Router<S, B>, path: &str) -> Router<S, B>
+fn add_tsr_redirect_route<S, B>(router: Router<MethodRouter<S,B>, S, B>, path: &str) -> Router<MethodRouter<S,B>, S, B>
 where
     B: axum::body::HttpBody + Send + 'static,
-    S: Clone + Send + Sync + 'static,
+    S: Clone + Send + Sync + 'static + Default,    
 {
     async fn redirect_handler(uri: Uri) -> Response {
         let new_uri = map_path(uri, |path| {
@@ -340,8 +342,14 @@ where
 }
 
 mod sealed {
+    use axum::RouteResolver;
+
     pub trait Sealed {}
-    impl<S, B> Sealed for axum::Router<S, B> {}
+    impl<K, S, B> Sealed for axum::Router<K, S, B> 
+    where 
+    B: axum::body::HttpBody + Send + 'static,
+    S: Clone + Send + Sync + 'static + Default,
+    K: RouteResolver<S,B> + Send + 'static{}
 }
 
 #[cfg(test)]
