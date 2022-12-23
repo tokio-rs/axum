@@ -18,7 +18,10 @@ mod spa;
 #[cfg(feature = "typed-routing")]
 mod typed;
 
+mod feck_all_router;
+
 pub use self::resource::Resource;
+pub use self::feck_all_router::FeckAllRouter;
 
 #[cfg(feature = "typed-routing")]
 pub use axum_macros::TypedPath;
@@ -34,7 +37,7 @@ pub trait RouterExt<K, S, B>: sealed::Sealed {
     /// Add a typed `GET` route to the router.
     ///
     /// The path will be inferred from the first argument to the handler function which must
-    /// implement [`TypedPath`].
+    /// implement [`TypedPath`]. 
     ///
     /// See [`TypedPath`] for more details and examples.
     #[cfg(feature = "typed-routing")]
@@ -342,6 +345,8 @@ where
 }
 
 mod sealed {
+    use std::convert::Infallible;
+
     use axum::RouteResolver;
 
     pub trait Sealed {}
@@ -349,7 +354,8 @@ mod sealed {
     where 
     B: axum::body::HttpBody + Send + 'static,
     S: Clone + Send + Sync + 'static + Default,
-    K: RouteResolver<S,B> + Send + 'static{}
+    K: RouteResolver<S,B,Infallible> + Send + 'static + Clone
+    {}
 }
 
 #[cfg(test)]
@@ -429,3 +435,4 @@ mod tests {
         let _: Router = Router::new().route_with_tsr("/", get(|| async move {}));
     }
 }
+ 

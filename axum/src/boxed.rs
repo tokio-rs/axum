@@ -10,14 +10,14 @@ use crate::{
     Router, RouteResolver
 };
 
-pub(crate) struct BoxedIntoRoute<S, B, E>(Box<dyn ErasedIntoRoute<S, B, E>>);
+pub struct BoxedIntoRoute<S, B, E>(Box<dyn ErasedIntoRoute<S, B, E>>);
 
 impl<S, B> BoxedIntoRoute<S, B, Infallible>
 where
     S: Clone + Send + Sync + 'static,
     B: Send + 'static,        
 {
-    pub(crate) fn from_handler<H, T>(handler: H) -> Self
+    pub fn from_handler<H, T>(handler: H) -> Self
     where
         H: Handler<T, S, B>,
         T: 'static,
@@ -33,7 +33,7 @@ where
     where
         B: HttpBody + Send + 'static,
         S: Clone + Send + Sync + 'static + Default,        
-        K: RouteResolver<S, B, Infallible> + Send + 'static 
+        K: RouteResolver<S, B, Infallible> + Send + Clone + 'static 
     {
         Self(Box::new(MakeErasedRouter {
             router,
@@ -66,7 +66,7 @@ impl<S, B, E> BoxedIntoRoute<S, B, E> {
         }))
     }
 
-    pub(crate) fn into_route(self, state: S) -> Route<B, E> {
+    pub fn into_route(self, state: S) -> Route<B, E> {
         self.0.into_route(state)
     }
 }
@@ -134,7 +134,7 @@ where
 pub(crate) struct MakeErasedRouter<K, S, B> where
     S: Clone + 'static + Default,
     B: HttpBody + Send + 'static,
-    K: RouteResolver<S, B, Infallible> + Send
+    K: RouteResolver<S, B, Infallible> + Send + Clone
 {
     pub(crate) router: Router<K, S, B>,
     pub(crate) into_route: fn(Router<K, S, B>, S) -> Route<B>,
@@ -144,7 +144,7 @@ impl<K, S, B> ErasedIntoRoute<S, B, Infallible> for MakeErasedRouter<K, S, B>
 where
     S: Clone + Send + Sync + 'static + Default,
     B: HttpBody + Send + 'static,
-    K: RouteResolver<S, B, Infallible> + Send + 'static,
+    K: RouteResolver<S, B, Infallible> + Send + 'static + Clone,
 {
     fn clone_box(&self) -> Box<dyn ErasedIntoRoute<S, B, Infallible>> {
         Box::new(self.clone())
@@ -167,7 +167,7 @@ impl<K, S, B> Clone for MakeErasedRouter<K, S, B>
 where
     S: Clone+ 'static + Default,
     B: HttpBody + Send + 'static,
-    K: RouteResolver<S, B, Infallible> + Send
+    K: RouteResolver<S, B, Infallible> + Send + Clone
 {
     fn clone(&self) -> Self {
         Self {

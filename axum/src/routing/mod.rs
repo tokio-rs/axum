@@ -4,11 +4,11 @@ use self::{future::RouteFuture, not_found::NotFound, strip_prefix::StripPrefix};
 #[cfg(feature = "tokio")]
 use crate::extract::connect_info::IntoMakeServiceWithConnectInfo;
 use crate::{
-    body::{Body, HttpBody},
-    boxed::BoxedIntoRoute,
+    body::{Body, HttpBody},    
     handler::Handler,
     util::try_downcast,
 };
+pub use crate::boxed:: BoxedIntoRoute;
 use axum_core::response::{IntoResponse, Response};
 use http::Request;
 use matchit::MatchError;
@@ -31,6 +31,7 @@ mod method_filter;
 mod not_found;
 mod route;
 mod strip_prefix;
+
 pub(crate) mod url_params;
 
 #[cfg(test)]
@@ -47,7 +48,7 @@ pub use self::method_routing::{
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub(crate) struct RouteId(u32);
 
-pub trait RouteResolver<S, B ,E = Infallible>: Clone 
+pub trait RouteResolver<S, B ,E>
     where 
     S: Clone + 'static,
     B: HttpBody + Send,    
@@ -91,7 +92,7 @@ impl RouteId {
 pub struct Router<K, S, B = Body> where         
     S: Clone + 'static + Default,
     B: HttpBody + Send + 'static, 
-    K: RouteResolver<S,B,Infallible> + Send,    
+    K: RouteResolver<S,B,Infallible> + Send + Clone,    
     
 {
     state: S,
@@ -104,7 +105,7 @@ impl<K, S, B> Clone for Router< K, S, B>
     where
     S: Clone + 'static + Default,
     B: HttpBody + Send + 'static, 
-    K: RouteResolver<S, B, Infallible> + Send 
+    K: RouteResolver<S, B, Infallible> + Send + Clone
     {
     fn clone(&self) -> Self {
         Self {
@@ -118,7 +119,7 @@ impl<K, S, B> Clone for Router< K, S, B>
 
 impl<K, S, B> Default for Router<K, S, B>
     where 
-        K: RouteResolver<S, B, Infallible> + Send + 'static,     
+        K: RouteResolver<S, B, Infallible> + Send + 'static + Clone,     
         B: HttpBody + Send + 'static,
         S: Clone + Send + Sync + 'static + Default,    
 {
@@ -130,7 +131,7 @@ impl<K, S, B> Default for Router<K, S, B>
 impl<K ,S, B> fmt::Debug for Router<K, S, B>
 where
     B: HttpBody + Send + 'static, 
-    K: RouteResolver<S, B, Infallible> + fmt::Debug + Send,        
+    K: RouteResolver<S, B, Infallible> + fmt::Debug + Send + Clone,        
     S: Clone + 'static + fmt::Debug + Default,        
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -149,7 +150,7 @@ impl<K, S, B> Router<K, S, B>
 where 
     B: http_body::Body + Send +  'static,
     S: Clone + Send + Sync + 'static + Default,    
-    K: RouteResolver<S, B, Infallible> + Send + 'static 
+    K: RouteResolver<S, B, Infallible> + Send + 'static  + Clone
 {
     /// Create a new `Router`.
     ///
@@ -615,7 +616,7 @@ impl<K, S, B> Router<K, S, B>
 where
     B: HttpBody + Send + 'static,    
     S: Clone + Send + Sync + 'static + Default,
-    K: RouteResolver<S, B, Infallible> + Send + 'static,    
+    K: RouteResolver<S, B, Infallible> + Send + 'static +Clone,    
 {
     /// Convert this router into a [`MakeService`], that is a [`Service`] whose
     /// response is another service.
@@ -660,7 +661,7 @@ impl<K, S, B> Service<Request<B>> for Router<K, S, B>
 where
     B: HttpBody + Send + 'static,        
     S: Clone + Send + Sync + 'static+ Default,
-    K: RouteResolver<S,B,Infallible> + Send + 'static
+    K: RouteResolver<S,B,Infallible> + Send + 'static +Clone 
 {
     type Response = Response;
     type Error = Infallible;
@@ -783,7 +784,7 @@ impl fmt::Debug for Node {
     }
 }
 
-enum Fallback<S, B, E = Infallible> {
+pub enum Fallback<S, B, E = Infallible> {
     Default(Route<B, E>),
     Service(Route<B, E>),
     BoxedHandler(BoxedIntoRoute<S, B, E>),
@@ -910,7 +911,7 @@ where
 enum RouterOrService<K, S, B, T> where     
     S: Clone + 'static + Default,
     B: HttpBody + Send + 'static, 
-    K: RouteResolver<S, B, Infallible> + Send,
+    K: RouteResolver<S, B, Infallible> + Send + Clone,
 {
     Router(Router<K, S, B>),
     Service(T),

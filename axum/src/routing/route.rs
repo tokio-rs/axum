@@ -30,7 +30,7 @@ use tower_service::Service;
 pub struct Route<B = Body, E = Infallible>(BoxCloneService<Request<B>, Response, E>);
 
 impl<B, E> Route<B, E> {
-    pub(crate) fn new<T>(svc: T) -> Self
+    pub fn new<T>(svc: T) -> Self
     where
         T: Service<Request<B>, Error = E> + Clone + Send + 'static,
         T::Response: IntoResponse + 'static,
@@ -41,7 +41,7 @@ impl<B, E> Route<B, E> {
         ))
     }
 
-    pub(crate) fn oneshot_inner(
+    pub fn oneshot_inner(
         &mut self,
         req: Request<B>,
     ) -> Oneshot<BoxCloneService<Request<B>, Response, E>, Request<B>> {
@@ -126,7 +126,7 @@ pin_project! {
 }
 
 impl<B, E> RouteFuture<B, E> {
-    pub(crate) fn from_future(
+    pub fn from_future(
         future: Oneshot<BoxCloneService<Request<B>, Response, E>, Request<B>>,
     ) -> Self {
         Self {
@@ -134,7 +134,7 @@ impl<B, E> RouteFuture<B, E> {
             strip_body: false,
             allow_header: None,
         }
-    }
+    } 
 
     pub(crate) fn strip_body(mut self, strip_body: bool) -> Self {
         self.strip_body = strip_body;
