@@ -250,6 +250,31 @@ let app = Router::new().route("/users", post(create_user));
 # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 # };
 ```
+For `Path` extractors you would need to define separate routes with the same 
+handler to benefit from optional extractor:
+```rust,no_run
+use axum::{
+    extract::Path,
+    routing::get,
+    Router,
+};
+
+async fn get_user(id: Option<Path<String>>) {
+    if let Some(Path(id)) = id {
+        // route with a path parameter was used
+    } else {
+        // route without a path parameter was used
+    }
+}
+
+let app = Router::new()
+    .route("/users/:id", get(get_user))
+    .route("/users", get(get_user));
+
+# async {
+# axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+# };
+```
 
 Wrapping extractors in `Result` makes them optional and gives you the reason
 the extraction failed:
