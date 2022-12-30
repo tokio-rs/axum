@@ -250,31 +250,11 @@ let app = Router::new().route("/users", post(create_user));
 # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 # };
 ```
+
 For `Path` extractors you would need to define separate routes with the same 
-handler to benefit from optional extractor:
-```rust,no_run
-use axum::{
-    extract::Path,
-    routing::get,
-    Router,
-};
-
-async fn get_user(id: Option<Path<String>>) {
-    if let Some(Path(id)) = id {
-        // route with a path parameter was used
-    } else {
-        // route without a path parameter was used
-    }
-}
-
-let app = Router::new()
-    .route("/users/:id", get(get_user))
-    .route("/users", get(get_user));
-
-# async {
-# axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-# };
-```
+handler to benefit from the optional extractor, but doing so with an `Option`
+wrapper is discouraged since the extractor may fail in other ways than because
+of a missing parameter. See below for an example of how to handle this.
 
 Wrapping extractors in `Result` makes them optional and gives you the reason
 the extraction failed:
@@ -313,6 +293,43 @@ async fn create_user(payload: Result<Json<Value>, JsonRejection>) {
 }
 
 let app = Router::new().route("/users", post(create_user));
+# async {
+# axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+# };
+```
+
+Using separate routes to allow for the same function to handle both present
+and missing `Path` parameters, as well as bad requests:
+
+```rust,no_run
+use axum::{
+    extract::{Path, rejection::PathRejection},
+    routing::get,
+    Router,
+};
+
+async fn get_user(id: Result<Path<u128>, PathRejection>) {
+    match parameter {
+        Ok(Path(_)) => {
+            // Route with a valid path parameter was used
+        }
+        Err(PathRejection::MissingPathParams(_)) => {
+            // Route without a path parameter was used
+        }
+        Err(PathRejection::FailedToDeserializePathParams(_)) => {
+            // Route with an invalid path parameter was used
+        }
+        Err(_) => {
+            // `PathRejection` is marked `#[non_exhaustive]` so match must
+            // include a catch-all case.
+        }
+    }
+}
+
+let app = Router::new()
+    .route("/users/:id", get(get_user))
+    .route("/users", get(get_user));
+
 # async {
 # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 # };
