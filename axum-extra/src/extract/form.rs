@@ -92,7 +92,7 @@ impl IntoResponse for FormRejection {
         match self {
             Self::RawFormRejection(inner) => inner.into_response(),
             Self::FailedToDeserializeForm(inner) => (
-                StatusCode::BAD_REQUEST,
+                StatusCode::UNPROCESSABLE_ENTITY,
                 format!("Failed to deserialize form: {}", inner),
             )
                 .into_response(),

@@ -71,7 +71,7 @@ define_rejection! {
 }
 
 define_rejection! {
-    #[status = BAD_REQUEST]
+    #[status = UNPROCESSABLE_ENTITY]
     #[body = "Failed to deserialize form"]
     /// Rejection type used if the [`Form`](super::Form) extractor is unable to
     /// deserialize the form into the target type.
