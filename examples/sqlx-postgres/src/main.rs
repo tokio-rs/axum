@@ -44,7 +44,7 @@ async fn main() {
         .connect_timeout(Duration::from_secs(3))
         .connect(&db_connection_str)
         .await
-        .expect("can connect to database");
+        .expect("can't connect to database");
 
     // build our application with some routes
     let app = Router::new()
