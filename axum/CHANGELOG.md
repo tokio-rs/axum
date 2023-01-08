@@ -8,8 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 # Unreleased
 
 - **added:** Add `body_text` and `status` methods to built-in rejections ([#1612])
+- **added:** Enable the `runtime` feature of `hyper` when using `tokio` ([#1671])
 
 [#1612]: https://github.com/tokio-rs/axum/pull/1612
+[#1671]: https://github.com/tokio-rs/axum/pull/1671
+
 
 # 0.6.1 (29. November, 2022)
 
@@ -155,6 +158,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   async fn fallback() {}
   ```
 
+- **breaking:** It is no longer supported to `nest` twice at the same path, i.e.
+  `.nest("/foo", a).nest("/foo", b)` will panic. Instead use `.nest("/foo", a.merge(b))`
+- **breaking:** It is no longer supported to `nest` a router and add a route at
+  the same path, such as `.nest("/a", _).route("/a", _)`. Instead use
+  `.nest("/a/", _).route("/a", _)`.
 - **changed:** `Router::nest` now only accepts `Router`s, the general-purpose
   `Service` nesting method has been renamed to `nest_service` ([#1368])
 - **breaking:** Allow `Error: Into<Infallible>` for `Route::{layer, route_layer}` ([#924])
