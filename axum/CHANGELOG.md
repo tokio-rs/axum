@@ -7,12 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+- None.
+
+# 0.6.2 (9. January, 2023)
+
 - **added:** Add `body_text` and `status` methods to built-in rejections ([#1612])
 - **added:** Enable the `runtime` feature of `hyper` when using `tokio` ([#1671])
 
 [#1612]: https://github.com/tokio-rs/axum/pull/1612
 [#1671]: https://github.com/tokio-rs/axum/pull/1671
-
 
 # 0.6.1 (29. November, 2022)
 
