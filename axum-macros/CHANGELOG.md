@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - None.
 
+# 0.3.1 (9. January, 2022)
+
+- **fixed:** Fix warnings for cloning references in generated code ([#1676])
+
+[#1676]: https://github.com/tokio-rs/axum/pull/1676
+
 # 0.3.0 (25. November, 2022)
 
 - **added:** Add `#[derive(FromRequestParts)]` for deriving an implementation of
