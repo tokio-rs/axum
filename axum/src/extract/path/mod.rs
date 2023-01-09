@@ -144,6 +144,52 @@ use std::{
 /// If the URI cannot be deserialized into the target type the request will be rejected and an
 /// error response will be returned. See [`customize-path-rejection`] for an example of how to customize that error.
 ///
+/// # Optional path parameters
+///
+/// You can have a single handler for routes with different path parameters, but `Path` extractor
+/// will fail if a route does not match, so you would need to define separate routes with the same
+/// handler.
+///
+/// **Please note**: doing so with an `Option` wrapper is discouraged since the extractor may fail
+/// in other ways than because of a missing parameter, that is why you should use `Result` wrap
+/// and parse the resulting error:
+///
+/// ```rust,no_run
+/// use axum::{
+///     extract::{Path, rejection::PathRejection},
+///     routing::get,
+///     Router,
+/// };
+///
+/// async fn get_user(id: Result<Path<u128>, PathRejection>) {
+///     match parameter {
+///         Ok(Path(_)) => {
+///             // Route with a valid path parameter was used
+///         }
+///         Err(PathRejection::MissingPathParams(_)) => {
+///             // Route without a path parameter was used
+///         }
+///         Err(PathRejection::FailedToDeserializePathParams(_)) => {
+///             // Route with an invalid path parameter was used
+///         }
+///         Err(_) => {
+///             // `PathRejection` is marked `#[non_exhaustive]` so match must
+///             // include a catch-all case.
+///         }
+///     }
+/// }
+///
+/// let app = Router::new()
+///     .route("/users/:id", get(get_user))
+///     .route("/users", get(get_user));
+///
+/// # async {
+/// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+/// # };
+/// ```
+
+
+///
 /// [`serde`]: https://crates.io/crates/serde
 /// [`serde::Deserialize`]: https://docs.rs/serde/1.0.127/serde/trait.Deserialize.html
 /// [`customize-path-rejection`]: https://github.com/tokio-rs/axum/blob/main/examples/customize-path-rejection/src/main.rs
