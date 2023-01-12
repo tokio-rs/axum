@@ -356,7 +356,7 @@ impl<const N: usize> IntoResponse for &'static [u8; N] {
 
 impl<const N: usize> IntoResponse for [u8; N] {
     fn into_response(self) -> Response {
-        self.into_response()
+        self.to_vec().into_response()
     }
 }
 
