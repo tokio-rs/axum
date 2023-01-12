@@ -350,13 +350,13 @@ impl IntoResponse for &'static [u8] {
 
 impl<const N: usize> IntoResponse for &'static [u8; N] {
     fn into_response(self) -> Response {
-        Cow::Borrowed(self.as_slice()).into_response()
+        self.as_slice().into_response()
     }
 }
 
 impl<const N: usize> IntoResponse for [u8; N] {
     fn into_response(self) -> Response {
-        self.to_vec().into_response()
+        self.into_response()
     }
 }
 
