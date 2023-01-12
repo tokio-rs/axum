@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- None.
+- - **added** Implement IntoResponse for &'static [u8; N] and [u8; N] ([#1690])
 
 # 0.6.2 (9. January, 2023)
 
@@ -48,7 +48,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ```rust
   // this time without a fallback
   let api_router = Router::new().route("/users", get(|| { ... }));
-  
+
   let app = Router::new()
       .nest("/api", api_router)
       // `api_router` will inherit this fallback
@@ -198,9 +198,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   let app = Router::new()
       .route("/", get(handler))
       .layer(Extension(AppState {}));
-  
+
   async fn handler(Extension(app_state): Extension<AppState>) {}
-  
+
   #[derive(Clone)]
   struct AppState {}
   ```
@@ -213,9 +213,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   let app = Router::new()
       .route("/", get(handler))
       .with_state(AppState {});
-  
+
   async fn handler(State(app_state): State<AppState>) {}
-  
+
   #[derive(Clone)]
   struct AppState {}
   ```
@@ -232,22 +232,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   };
 
   let app = Router::new().route("/", get(handler)).with_state(state);
-  
+
   async fn handler(
       State(client): State<HttpClient>,
       State(database): State<Database>,
   ) {}
-  
+
   // the derive requires enabling the "macros" feature
   #[derive(Clone, FromRef)]
   struct AppState {
       client: HttpClient,
       database: Database,
   }
-  
+
   #[derive(Clone)]
   struct HttpClient {}
-  
+
   #[derive(Clone)]
   struct Database {}
   ```
@@ -301,7 +301,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
       B: Send,
   {
       type Rejection = StatusCode;
-  
+
       async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
           // ...
       }
@@ -326,7 +326,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
       S: Send + Sync,
   {
       type Rejection = StatusCode;
-  
+
       async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
           // ...
       }
@@ -340,7 +340,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
       B: Send + 'static,
   {
       type Rejection = StatusCode;
-  
+
       async fn from_request(req: Request<B>, state: &S) -> Result<Self, Self::Rejection> {
           // ...
       }
@@ -775,9 +775,9 @@ Yanked, as it didn't compile in release mode.
   let app = Router::new()
       .route("/", get(handler))
       .layer(Extension(AppState {}));
-  
+
   async fn handler(Extension(app_state): Extension<AppState>) {}
-  
+
   #[derive(Clone)]
   struct AppState {}
   ```
@@ -789,9 +789,9 @@ Yanked, as it didn't compile in release mode.
 
   let app = Router::with_state(AppState {})
       .route("/", get(handler));
-  
+
   async fn handler(State(app_state): State<AppState>) {}
-  
+
   #[derive(Clone)]
   struct AppState {}
   ```
@@ -808,30 +808,30 @@ Yanked, as it didn't compile in release mode.
   };
 
   let app = Router::with_state(state).route("/", get(handler));
-  
+
   async fn handler(
       State(client): State<HttpClient>,
       State(database): State<Database>,
   ) {}
-  
+
   #[derive(Clone)]
   struct AppState {
       client: HttpClient,
       database: Database,
   }
-  
+
   #[derive(Clone)]
   struct HttpClient {}
-  
+
   impl FromRef<AppState> for HttpClient {
       fn from_ref(state: &AppState) -> Self {
           state.client.clone()
       }
   }
-  
+
   #[derive(Clone)]
   struct Database {}
-  
+
   impl FromRef<AppState> for Database {
       fn from_ref(state: &AppState) -> Self {
           state.database.clone()
@@ -887,7 +887,7 @@ Yanked, as it didn't compile in release mode.
       B: Send,
   {
       type Rejection = StatusCode;
-  
+
       async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
           // ...
       }
@@ -912,7 +912,7 @@ Yanked, as it didn't compile in release mode.
       S: Send + Sync,
   {
       type Rejection = StatusCode;
-  
+
       async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
           // ...
       }
@@ -926,7 +926,7 @@ Yanked, as it didn't compile in release mode.
       B: Send + 'static,
   {
       type Rejection = StatusCode;
-  
+
       async fn from_request(req: Request<B>, state: &S) -> Result<Self, Self::Rejection> {
           // ...
       }

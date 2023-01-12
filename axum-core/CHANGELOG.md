@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- None.
+- **added** Implement IntoResponse for &'static [u8; N] and [u8; N] ([#1690])
 
 # 0.3.1 (9. January, 2023)
 
@@ -124,7 +124,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **added:** Add `response::ErrorResponse` and `response::Result` for
   `IntoResponse`-based error handling ([#921])
 
-[#921]: https://github.com/tokio-rs/axum/pull/921 
+[#921]: https://github.com/tokio-rs/axum/pull/921
 
 # 0.2.2 (19. April, 2022)
 
