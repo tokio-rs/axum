@@ -73,13 +73,14 @@ where
     type Rejection = FormRejection;
 
     async fn from_request(req: Request<B>, _state: &S) -> Result<Self, Self::Rejection> {
-        let is_get = req.method() == http::Method::GET;
+        let is_get_or_head =
+            req.method() == http::Method::GET || req.method() == http::Method::HEAD;
 
         match req.extract().await {
             Ok(RawForm(bytes)) => {
                 let value =
                     serde_urlencoded::from_bytes(&bytes).map_err(|err| -> FormRejection {
-                        if is_get {
+                        if is_get_or_head {
                             FailedToDeserializeForm::from_err(err).into()
                         } else {
                             FailedToDeserializeFormBody::from_err(err).into()
