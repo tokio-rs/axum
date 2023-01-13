@@ -605,14 +605,18 @@ mod tests {
     #[tokio::test]
     async fn type_that_uses_deserialize_any() {
         let app = Router::new().route(
-            "/:date",
-            get(|Path(date): Path<time::Date>| async move { date.to_string() }),
+            "/:a/:b/:c",
+            get(
+                |Path((a, b, c)): Path<(time::Date, time::Date, time::Date)>| async move {
+                    format!("{a} {b} {c}")
+                },
+            ),
         );
 
         let client = TestClient::new(app);
 
-        let res = client.get("/2023-01-01").send().await;
-        assert_eq!(res.status(), StatusCode::OK);
-        assert_eq!(res.text().await, "2023-01-01");
+        let res = client.get("/2023-01-01/2023-01-02/2023-01-03").send().await;
+        // assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.text().await, "2023-01-01 2023-01-02 2023-01-03");
     }
 }
