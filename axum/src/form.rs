@@ -14,8 +14,9 @@ use std::ops::Deref;
 ///
 /// # As extractor
 ///
-/// If used as an extractor `Form` will deserialize `application/x-www-form-urlencoded` request
-/// bodies into some target type via [`serde::Deserialize`].
+/// If used as an extractor `Form` will deserialize the query parameters for `GET` and `HEAD`
+/// requests and `application/x-www-form-urlencoded` encoded request bodies for other methods. It
+/// supports any type that implements [`serde::Deserialize`].
 ///
 /// Since parsing form data requires consuming the request body, the `Form` extractor must be
 /// *last* if there are multiple extractors in a handler. See ["the order of extractors"][order-of-extractors]
