@@ -348,6 +348,18 @@ impl IntoResponse for &'static [u8] {
     }
 }
 
+impl<const N: usize> IntoResponse for &'static [u8; N] {
+    fn into_response(self) -> Response {
+        self.as_slice().into_response()
+    }
+}
+
+impl<const N: usize> IntoResponse for [u8; N] {
+    fn into_response(self) -> Response {
+        self.to_vec().into_response()
+    }
+}
+
 impl IntoResponse for Vec<u8> {
     fn into_response(self) -> Response {
         Cow::<'static, [u8]>::Owned(self).into_response()
