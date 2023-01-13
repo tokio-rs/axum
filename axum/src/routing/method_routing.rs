@@ -1280,7 +1280,7 @@ mod tests {
     use tower::{timeout::TimeoutLayer, Service, ServiceBuilder, ServiceExt};
     use tower_http::{auth::RequireAuthorizationLayer, services::fs::ServeDir};
 
-    #[tokio::test]
+    #[axum_macros::__private_axum_test]
     async fn method_not_allowed_by_default() {
         let mut svc = MethodRouter::new();
         let (status, _, body) = call(Method::GET, &mut svc).await;
@@ -1288,7 +1288,7 @@ mod tests {
         assert!(body.is_empty());
     }
 
-    #[tokio::test]
+    #[axum_macros::__private_axum_test]
     async fn get_service_fn() {
         async fn handle(_req: Request<Body>) -> Result<Response<Body>, Infallible> {
             Ok(Response::new(Body::from("ok")))
@@ -1301,7 +1301,7 @@ mod tests {
         assert_eq!(body, "ok");
     }
 
-    #[tokio::test]
+    #[axum_macros::__private_axum_test]
     async fn get_handler() {
         let mut svc = MethodRouter::new().get(ok);
         let (status, _, body) = call(Method::GET, &mut svc).await;
@@ -1309,7 +1309,7 @@ mod tests {
         assert_eq!(body, "ok");
     }
 
-    #[tokio::test]
+    #[axum_macros::__private_axum_test]
     async fn get_accepts_head() {
         let mut svc = MethodRouter::new().get(ok);
         let (status, _, body) = call(Method::HEAD, &mut svc).await;
@@ -1317,7 +1317,7 @@ mod tests {
         assert!(body.is_empty());
     }
 
-    #[tokio::test]
+    #[axum_macros::__private_axum_test]
     async fn head_takes_precedence_over_get() {
         let mut svc = MethodRouter::new().head(created).get(ok);
         let (status, _, body) = call(Method::HEAD, &mut svc).await;
@@ -1325,7 +1325,7 @@ mod tests {
         assert!(body.is_empty());
     }
 
-    #[tokio::test]
+    #[axum_macros::__private_axum_test]
     async fn merge() {
         let mut svc = get(ok).merge(post(ok));
 
@@ -1336,7 +1336,7 @@ mod tests {
         assert_eq!(status, StatusCode::OK);
     }
 
-    #[tokio::test]
+    #[axum_macros::__private_axum_test]
     async fn layer() {
         let mut svc = MethodRouter::new()
             .get(|| async { std::future::pending::<()>().await })
@@ -1351,7 +1351,7 @@ mod tests {
         assert_eq!(status, StatusCode::UNAUTHORIZED);
     }
 
-    #[tokio::test]
+    #[axum_macros::__private_axum_test]
     async fn route_layer() {
         let mut svc = MethodRouter::new()
             .get(|| async { std::future::pending::<()>().await })
@@ -1392,7 +1392,7 @@ mod tests {
         crate::Server::bind(&"0.0.0.0:0".parse().unwrap()).serve(app.into_make_service());
     }
 
-    #[tokio::test]
+    #[axum_macros::__private_axum_test]
     async fn sets_allow_header() {
         let mut svc = MethodRouter::new().put(ok).patch(ok);
         let (status, headers, _) = call(Method::GET, &mut svc).await;
@@ -1400,7 +1400,7 @@ mod tests {
         assert_eq!(headers[ALLOW], "PUT,PATCH");
     }
 
-    #[tokio::test]
+    #[axum_macros::__private_axum_test]
     async fn sets_allow_header_get_head() {
         let mut svc = MethodRouter::new().get(ok).head(ok);
         let (status, headers, _) = call(Method::PUT, &mut svc).await;
@@ -1408,7 +1408,7 @@ mod tests {
         assert_eq!(headers[ALLOW], "GET,HEAD");
     }
 
-    #[tokio::test]
+    #[axum_macros::__private_axum_test]
     async fn empty_allow_header_by_default() {
         let mut svc = MethodRouter::new();
         let (status, headers, _) = call(Method::PATCH, &mut svc).await;
@@ -1416,7 +1416,7 @@ mod tests {
         assert_eq!(headers[ALLOW], "");
     }
 
-    #[tokio::test]
+    #[axum_macros::__private_axum_test]
     async fn allow_header_when_merging() {
         let a = put(ok).patch(ok);
         let b = get(ok).head(ok);
@@ -1427,7 +1427,7 @@ mod tests {
         assert_eq!(headers[ALLOW], "PUT,PATCH,GET,HEAD");
     }
 
-    #[tokio::test]
+    #[axum_macros::__private_axum_test]
     async fn allow_header_any() {
         let mut svc = any(ok);
 
@@ -1436,7 +1436,7 @@ mod tests {
         assert!(!headers.contains_key(ALLOW));
     }
 
-    #[tokio::test]
+    #[axum_macros::__private_axum_test]
     async fn allow_header_with_fallback() {
         let mut svc = MethodRouter::new()
             .get(ok)
@@ -1447,7 +1447,7 @@ mod tests {
         assert_eq!(headers[ALLOW], "GET,HEAD");
     }
 
-    #[tokio::test]
+    #[axum_macros::__private_axum_test]
     async fn allow_header_with_fallback_that_sets_allow() {
         async fn fallback(method: Method) -> Response {
             if method == Method::POST {
@@ -1475,7 +1475,7 @@ mod tests {
         assert_eq!(headers[ALLOW], "GET,POST");
     }
 
-    #[tokio::test]
+    #[axum_macros::__private_axum_test]
     #[should_panic(
         expected = "Overlapping method route. Cannot add two method routes that both handle `GET`"
     )]
@@ -1483,7 +1483,7 @@ mod tests {
         let _: MethodRouter<()> = get(ok).get(ok);
     }
 
-    #[tokio::test]
+    #[axum_macros::__private_axum_test]
     #[should_panic(
         expected = "Overlapping method route. Cannot add two method routes that both handle `POST`"
     )]
@@ -1491,17 +1491,17 @@ mod tests {
         let _: MethodRouter<()> = post_service(ok.into_service()).post_service(ok.into_service());
     }
 
-    #[tokio::test]
+    #[axum_macros::__private_axum_test]
     async fn get_head_does_not_overlap() {
         let _: MethodRouter<()> = get(ok).head(ok);
     }
 
-    #[tokio::test]
+    #[axum_macros::__private_axum_test]
     async fn head_get_does_not_overlap() {
         let _: MethodRouter<()> = head(ok).get(ok);
     }
 
-    #[tokio::test]
+    #[axum_macros::__private_axum_test]
     async fn accessing_state() {
         let mut svc = MethodRouter::new()
             .get(|State(state): State<&'static str>| async move { state })
@@ -1513,7 +1513,7 @@ mod tests {
         assert_eq!(text, "state");
     }
 
-    #[tokio::test]
+    #[axum_macros::__private_axum_test]
     async fn fallback_accessing_state() {
         let mut svc = MethodRouter::new()
             .fallback(|State(state): State<&'static str>| async move { state })
@@ -1525,7 +1525,7 @@ mod tests {
         assert_eq!(text, "state");
     }
 
-    #[tokio::test]
+    #[axum_macros::__private_axum_test]
     async fn merge_accessing_state() {
         let one = get(|State(state): State<&'static str>| async move { state });
         let two = post(|State(state): State<&'static str>| async move { state });

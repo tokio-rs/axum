@@ -148,7 +148,7 @@ mod tests {
     use crate::{routing::get, Router, Server};
     use std::net::{SocketAddr, TcpListener};
 
-    #[tokio::test]
+    #[axum_macros::__private_axum_test]
     async fn socket_addr() {
         async fn handler(ConnectInfo(addr): ConnectInfo<SocketAddr>) -> String {
             format!("{}", addr)
@@ -175,7 +175,7 @@ mod tests {
         assert!(body.starts_with("127.0.0.1:"));
     }
 
-    #[tokio::test]
+    #[axum_macros::__private_axum_test]
     async fn custom() {
         #[derive(Clone, Debug)]
         struct MyConnectInfo {

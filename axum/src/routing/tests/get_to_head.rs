@@ -6,7 +6,7 @@ mod for_handlers {
     use super::*;
     use http::HeaderMap;
 
-    #[tokio::test]
+    #[axum_macros::__private_axum_test]
     async fn get_handles_head() {
         let app = Router::new().route(
             "/",
@@ -41,7 +41,7 @@ mod for_services {
     use super::*;
     use crate::routing::get_service;
 
-    #[tokio::test]
+    #[axum_macros::__private_axum_test]
     async fn get_handles_head() {
         let app = Router::new().route(
             "/",

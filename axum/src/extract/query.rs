@@ -91,7 +91,7 @@ mod tests {
         assert_eq!(Query::<T>::from_request(req, &()).await.unwrap().0, value);
     }
 
-    #[tokio::test]
+    #[axum_macros::__private_axum_test]
     async fn test_query() {
         #[derive(Debug, PartialEq, Deserialize)]
         struct Pagination {
@@ -127,7 +127,7 @@ mod tests {
         .await;
     }
 
-    #[tokio::test]
+    #[axum_macros::__private_axum_test]
     async fn correct_rejection_status_code() {
         #[derive(Deserialize)]
         #[allow(dead_code)]

@@ -226,7 +226,7 @@ mod tests {
     use serde::Deserialize;
     use serde_json::{json, Value};
 
-    #[tokio::test]
+    #[axum_macros::__private_axum_test]
     async fn deserialize_body() {
         #[derive(Debug, Deserialize)]
         struct Input {
@@ -242,7 +242,7 @@ mod tests {
         assert_eq!(body, "bar");
     }
 
-    #[tokio::test]
+    #[axum_macros::__private_axum_test]
     async fn consume_body_to_json_requires_json_content_type() {
         #[derive(Debug, Deserialize)]
         struct Input {
@@ -259,7 +259,7 @@ mod tests {
         assert_eq!(status, StatusCode::UNSUPPORTED_MEDIA_TYPE);
     }
 
-    #[tokio::test]
+    #[axum_macros::__private_axum_test]
     async fn json_content_types() {
         async fn valid_json_content_type(content_type: &str) -> bool {
             println!("testing {:?}", content_type);
@@ -283,7 +283,7 @@ mod tests {
         assert!(!valid_json_content_type("text/json").await);
     }
 
-    #[tokio::test]
+    #[axum_macros::__private_axum_test]
     async fn invalid_json_syntax() {
         let app = Router::new().route("/", post(|_: Json<serde_json::Value>| async {}));
 
@@ -314,7 +314,7 @@ mod tests {
         y: i32,
     }
 
-    #[tokio::test]
+    #[axum_macros::__private_axum_test]
     async fn invalid_json_data() {
         let app = Router::new().route("/", post(|_: Json<Foo>| async {}));
 

@@ -3,7 +3,7 @@ use crate::{error_handling::HandleErrorLayer, extract::OriginalUri, response::In
 use serde_json::{json, Value};
 use tower::{limit::ConcurrencyLimitLayer, timeout::TimeoutLayer};
 
-#[tokio::test]
+#[axum_macros::__private_axum_test]
 async fn basic() {
     let one = Router::new()
         .route("/foo", get(|| async {}))
@@ -26,7 +26,7 @@ async fn basic() {
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
 }
 
-#[tokio::test]
+#[axum_macros::__private_axum_test]
 async fn multiple_ors_balanced_differently() {
     let one = Router::new().route("/one", get(|| async { "one" }));
     let two = Router::new().route("/two", get(|| async { "two" }));
@@ -71,7 +71,7 @@ async fn multiple_ors_balanced_differently() {
     }
 }
 
-#[tokio::test]
+#[axum_macros::__private_axum_test]
 async fn nested_or() {
     let bar = Router::new().route("/bar", get(|| async { "bar" }));
     let baz = Router::new().route("/baz", get(|| async { "baz" }));
@@ -87,7 +87,7 @@ async fn nested_or() {
     assert_eq!(client.get("/foo/baz").send().await.text().await, "baz");
 }
 
-#[tokio::test]
+#[axum_macros::__private_axum_test]
 async fn or_with_route_following() {
     let one = Router::new().route("/one", get(|| async { "one" }));
     let two = Router::new().route("/two", get(|| async { "two" }));
@@ -105,7 +105,7 @@ async fn or_with_route_following() {
     assert_eq!(res.status(), StatusCode::OK);
 }
 
-#[tokio::test]
+#[axum_macros::__private_axum_test]
 async fn layer() {
     let one = Router::new().route("/foo", get(|| async {}));
     let two = Router::new()
@@ -122,7 +122,7 @@ async fn layer() {
     assert_eq!(res.status(), StatusCode::OK);
 }
 
-#[tokio::test]
+#[axum_macros::__private_axum_test]
 async fn layer_and_handle_error() {
     let one = Router::new().route("/foo", get(|| async {}));
     let two = Router::new()
@@ -142,7 +142,7 @@ async fn layer_and_handle_error() {
     assert_eq!(res.status(), StatusCode::REQUEST_TIMEOUT);
 }
 
-#[tokio::test]
+#[axum_macros::__private_axum_test]
 async fn nesting() {
     let one = Router::new().route("/foo", get(|| async {}));
     let two = Router::new().nest("/bar", Router::new().route("/baz", get(|| async {})));
@@ -154,7 +154,7 @@ async fn nesting() {
     assert_eq!(res.status(), StatusCode::OK);
 }
 
-#[tokio::test]
+#[axum_macros::__private_axum_test]
 async fn boxed() {
     let one = Router::new().route("/foo", get(|| async {}));
     let two = Router::new().route("/bar", get(|| async {}));
@@ -166,7 +166,7 @@ async fn boxed() {
     assert_eq!(res.status(), StatusCode::OK);
 }
 
-#[tokio::test]
+#[axum_macros::__private_axum_test]
 async fn many_ors() {
     let app = Router::new()
         .route("/r1", get(|| async {}))
@@ -188,7 +188,7 @@ async fn many_ors() {
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
 }
 
-#[tokio::test]
+#[axum_macros::__private_axum_test]
 async fn services() {
     use crate::routing::get_service;
 
@@ -227,7 +227,7 @@ async fn all_the_uris(
     }))
 }
 
-#[tokio::test]
+#[axum_macros::__private_axum_test]
 async fn nesting_and_seeing_the_right_uri() {
     let one = Router::new().nest("/foo/", Router::new().route("/bar", get(all_the_uris)));
     let two = Router::new().route("/foo", get(all_the_uris));
@@ -257,7 +257,7 @@ async fn nesting_and_seeing_the_right_uri() {
     );
 }
 
-#[tokio::test]
+#[axum_macros::__private_axum_test]
 async fn nesting_and_seeing_the_right_uri_at_more_levels_of_nesting() {
     let one = Router::new().nest(
         "/foo/",
@@ -290,7 +290,7 @@ async fn nesting_and_seeing_the_right_uri_at_more_levels_of_nesting() {
     );
 }
 
-#[tokio::test]
+#[axum_macros::__private_axum_test]
 async fn nesting_and_seeing_the_right_uri_ors_with_nesting() {
     let one = Router::new().nest(
         "/one",
@@ -335,7 +335,7 @@ async fn nesting_and_seeing_the_right_uri_ors_with_nesting() {
     );
 }
 
-#[tokio::test]
+#[axum_macros::__private_axum_test]
 async fn nesting_and_seeing_the_right_uri_ors_with_multi_segment_uris() {
     let one = Router::new().nest(
         "/one",
@@ -368,7 +368,7 @@ async fn nesting_and_seeing_the_right_uri_ors_with_multi_segment_uris() {
     );
 }
 
-#[tokio::test]
+#[axum_macros::__private_axum_test]
 async fn middleware_that_return_early() {
     let private = Router::new()
         .route("/", get(|| async {}))

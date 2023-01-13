@@ -440,7 +440,7 @@ mod tests {
     use serde::Deserialize;
     use std::collections::HashMap;
 
-    #[tokio::test]
+    #[axum_macros::__private_axum_test]
     async fn extracting_url_params() {
         let app = Router::new().route(
             "/users/:id",
@@ -461,7 +461,7 @@ mod tests {
         assert_eq!(res.status(), StatusCode::OK);
     }
 
-    #[tokio::test]
+    #[axum_macros::__private_axum_test]
     async fn extracting_url_params_multiple_times() {
         let app = Router::new().route("/users/:id", get(|_: Path<i32>, _: Path<String>| async {}));
 
@@ -471,7 +471,7 @@ mod tests {
         assert_eq!(res.status(), StatusCode::OK);
     }
 
-    #[tokio::test]
+    #[axum_macros::__private_axum_test]
     async fn percent_decoding() {
         let app = Router::new().route(
             "/:key",
@@ -485,7 +485,7 @@ mod tests {
         assert_eq!(res.text().await, "one two");
     }
 
-    #[tokio::test]
+    #[axum_macros::__private_axum_test]
     async fn supports_128_bit_numbers() {
         let app = Router::new()
             .route(
@@ -506,7 +506,7 @@ mod tests {
         assert_eq!(res.text().await, "123");
     }
 
-    #[tokio::test]
+    #[axum_macros::__private_axum_test]
     async fn wildcard() {
         let app = Router::new()
             .route(
@@ -529,7 +529,7 @@ mod tests {
         assert_eq!(res.text().await, "baz/qux");
     }
 
-    #[tokio::test]
+    #[axum_macros::__private_axum_test]
     async fn captures_dont_match_empty_segments() {
         let app = Router::new().route("/:key", get(|| async {}));
 
@@ -542,7 +542,7 @@ mod tests {
         assert_eq!(res.status(), StatusCode::OK);
     }
 
-    #[tokio::test]
+    #[axum_macros::__private_axum_test]
     async fn str_reference_deserialize() {
         struct Param(String);
         impl<'de> serde::Deserialize<'de> for Param {
@@ -567,7 +567,7 @@ mod tests {
         assert_eq!(res.text().await, "foo bar");
     }
 
-    #[tokio::test]
+    #[axum_macros::__private_axum_test]
     async fn two_path_extractors() {
         let app = Router::new().route("/:a/:b", get(|_: Path<String>, _: Path<String>| async {}));
 
@@ -582,7 +582,7 @@ mod tests {
         );
     }
 
-    #[tokio::test]
+    #[axum_macros::__private_axum_test]
     async fn deserialize_into_vec_of_tuples() {
         let app = Router::new().route(
             "/:a/:b",
@@ -603,7 +603,7 @@ mod tests {
         assert_eq!(res.status(), StatusCode::OK);
     }
 
-    #[tokio::test]
+    #[axum_macros::__private_axum_test]
     async fn type_that_uses_deserialize_any() {
         use time::Date;
 
@@ -694,7 +694,7 @@ mod tests {
         assert_eq!(res.text().await, "struct: 2023-01-01 2023-01-02 2023-01-03");
     }
 
-    #[tokio::test]
+    #[axum_macros::__private_axum_test]
     async fn wrong_number_of_parameters_json() {
         use serde_json::Value;
 

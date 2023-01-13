@@ -385,7 +385,7 @@ mod tests {
     use crate::{routing::get, test_helpers::TestClient, Router};
     use http::{HeaderMap, StatusCode};
 
-    #[tokio::test]
+    #[axum_macros::__private_axum_test]
     async fn works() {
         async fn add_header<B>(mut req: Request<B>) -> Request<B> {
             req.headers_mut().insert("x-foo", "foo".parse().unwrap());
@@ -410,7 +410,7 @@ mod tests {
         assert_eq!(res.text().await, "foo");
     }
 
-    #[tokio::test]
+    #[axum_macros::__private_axum_test]
     async fn works_for_short_circutting() {
         async fn add_header<B>(_req: Request<B>) -> Result<Request<B>, (StatusCode, &'static str)> {
             Err((StatusCode::INTERNAL_SERVER_ERROR, "something went wrong"))
