@@ -693,4 +693,27 @@ mod tests {
             .await;
         assert_eq!(res.text().await, "struct: 2023-01-01 2023-01-02 2023-01-03");
     }
+
+    #[tokio::test]
+    async fn wrong_number_of_parameters_json() {
+        use serde_json::Value;
+
+        let app = Router::new()
+            .route("/one/:a", get(|_: Path<(Value, Value)>| async {}))
+            .route("/two/:a/:b", get(|_: Path<Value>| async {}));
+
+        let client = TestClient::new(app);
+
+        let res = client.get("/one/1").send().await;
+        assert!(res
+            .text()
+            .await
+            .starts_with("Wrong number of path arguments for `Path`. Expected 2 but got 1"));
+
+        let res = client.get("/two/1/2").send().await;
+        assert!(res
+            .text()
+            .await
+            .starts_with("Wrong number of path arguments for `Path`. Expected 1 but got 2"));
+    }
 }
