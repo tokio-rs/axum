@@ -214,13 +214,13 @@ impl PathDeserializationError {
         Self { kind }
     }
 
-    #[track_caller]
     pub(super) fn wrong_number_of_parameters() -> WrongNumberOfParameters<()> {
-        println!("{}", std::panic::Location::caller());
         WrongNumberOfParameters { got: () }
     }
 
+    #[track_caller]
     pub(super) fn unsupported_type(name: &'static str) -> Self {
+        println!("{}", std::panic::Location::caller());
         Self::new(ErrorKind::UnsupportedType { name })
     }
 }
@@ -437,6 +437,7 @@ mod tests {
     use super::*;
     use crate::{routing::get, test_helpers::*, Router};
     use http::StatusCode;
+    use serde::Deserialize;
     use std::collections::HashMap;
 
     #[tokio::test]
@@ -604,19 +605,92 @@ mod tests {
 
     #[tokio::test]
     async fn type_that_uses_deserialize_any() {
-        let app = Router::new().route(
-            "/:a/:b/:c",
-            get(
-                |Path((a, b, c)): Path<(time::Date, time::Date, time::Date)>| async move {
-                    format!("{a} {b} {c}")
-                },
-            ),
-        );
+        use time::Date;
+
+        #[derive(Deserialize)]
+        struct Params {
+            a: Date,
+            b: Date,
+            c: Date,
+        }
+
+        let app = Router::new()
+            .route(
+                "/single/:a",
+                get(|Path(a): Path<Date>| async move { format!("single: {a}") }),
+            )
+            .route(
+                "/tuple/:a/:b/:c",
+                get(|Path((a, b, c)): Path<(Date, Date, Date)>| async move {
+                    format!("tuple: {a} {b} {c}")
+                }),
+            )
+            .route(
+                "/vec/:a/:b/:c",
+                get(|Path(vec): Path<Vec<Date>>| async move {
+                    let [a, b, c]: [Date; 3] = vec.try_into().unwrap();
+                    format!("vec: {a} {b} {c}")
+                }),
+            )
+            .route(
+                "/vec_pairs/:a/:b/:c",
+                get(|Path(vec): Path<Vec<(String, Date)>>| async move {
+                    let [(_, a), (_, b), (_, c)]: [(String, Date); 3] = vec.try_into().unwrap();
+                    format!("vec_pairs: {a} {b} {c}")
+                }),
+            )
+            .route(
+                "/map/:a/:b/:c",
+                get(|Path(mut map): Path<HashMap<String, Date>>| async move {
+                    let a = map.remove("a").unwrap();
+                    let b = map.remove("b").unwrap();
+                    let c = map.remove("c").unwrap();
+                    format!("map: {a} {b} {c}")
+                }),
+            )
+            .route(
+                "/struct/:a/:b/:c",
+                get(|Path(params): Path<Params>| async move {
+                    format!("struct: {} {} {}", params.a, params.b, params.c)
+                }),
+            );
 
         let client = TestClient::new(app);
 
-        let res = client.get("/2023-01-01/2023-01-02/2023-01-03").send().await;
-        // assert_eq!(res.status(), StatusCode::OK);
-        assert_eq!(res.text().await, "2023-01-01 2023-01-02 2023-01-03");
+        let res = client.get("/single/2023-01-01").send().await;
+        assert_eq!(res.text().await, "single: 2023-01-01");
+
+        let res = client
+            .get("/tuple/2023-01-01/2023-01-02/2023-01-03")
+            .send()
+            .await;
+        assert_eq!(res.text().await, "tuple: 2023-01-01 2023-01-02 2023-01-03");
+
+        let res = client
+            .get("/vec/2023-01-01/2023-01-02/2023-01-03")
+            .send()
+            .await;
+        assert_eq!(res.text().await, "vec: 2023-01-01 2023-01-02 2023-01-03");
+
+        let res = client
+            .get("/vec_pairs/2023-01-01/2023-01-02/2023-01-03")
+            .send()
+            .await;
+        assert_eq!(
+            res.text().await,
+            "vec_pairs: 2023-01-01 2023-01-02 2023-01-03",
+        );
+
+        let res = client
+            .get("/map/2023-01-01/2023-01-02/2023-01-03")
+            .send()
+            .await;
+        assert_eq!(res.text().await, "map: 2023-01-01 2023-01-02 2023-01-03");
+
+        let res = client
+            .get("/struct/2023-01-01/2023-01-02/2023-01-03")
+            .send()
+            .await;
+        assert_eq!(res.text().await, "struct: 2023-01-01 2023-01-02 2023-01-03");
     }
 }

@@ -334,7 +334,6 @@ struct ValueDeserializer<'de> {
 impl<'de> Deserializer<'de> for ValueDeserializer<'de> {
     type Error = PathDeserializationError;
 
-    unsupported_type!(deserialize_any);
     unsupported_type!(deserialize_map);
     unsupported_type!(deserialize_identifier);
 
@@ -354,6 +353,13 @@ impl<'de> Deserializer<'de> for ValueDeserializer<'de> {
     parse_value!(deserialize_string, visit_string, "String");
     parse_value!(deserialize_byte_buf, visit_string, "String");
     parse_value!(deserialize_char, visit_char, "char");
+
+    fn deserialize_any<V>(self, v: V) -> Result<V::Value, Self::Error>
+    where
+        V: Visitor<'de>,
+    {
+        self.deserialize_str(v)
+    }
 
     fn deserialize_str<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where
