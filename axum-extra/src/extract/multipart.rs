@@ -81,6 +81,8 @@ use std::{
 ///
 /// `axum_extra::extract::Multipart` instead enforces field exclusivity at runtime which makes
 /// things easier to use at the cost of possible runtime errors.
+///
+/// [`next_field()`]: Multipart::next_field
 #[cfg_attr(docsrs, doc(cfg(feature = "multipart")))]
 #[derive(Debug)]
 pub struct Multipart {
