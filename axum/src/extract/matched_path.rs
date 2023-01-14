@@ -177,7 +177,7 @@ mod tests {
     };
     use http::{Request, StatusCode};
 
-    #[tokio::test]
+    #[crate::test]
     async fn extracting_on_handler() {
         let app = Router::new().route(
             "/:a",
@@ -190,7 +190,7 @@ mod tests {
         assert_eq!(res.text().await, "/:a");
     }
 
-    #[tokio::test]
+    #[crate::test]
     async fn extracting_on_handler_in_nested_router() {
         let app = Router::new().nest(
             "/:a",
@@ -206,7 +206,7 @@ mod tests {
         assert_eq!(res.text().await, "/:a/:b");
     }
 
-    #[tokio::test]
+    #[crate::test]
     async fn extracting_on_handler_in_deeply_nested_router() {
         let app = Router::new().nest(
             "/:a",
@@ -225,7 +225,7 @@ mod tests {
         assert_eq!(res.text().await, "/:a/:b/:c");
     }
 
-    #[tokio::test]
+    #[crate::test]
     async fn cannot_extract_nested_matched_path_in_middleware() {
         async fn extract_matched_path<B>(
             matched_path: Option<MatchedPath>,
@@ -245,7 +245,7 @@ mod tests {
         assert_eq!(res.status(), StatusCode::OK);
     }
 
-    #[tokio::test]
+    #[crate::test]
     async fn cannot_extract_nested_matched_path_in_middleware_via_extension() {
         async fn assert_no_matched_path<B>(req: Request<B>) -> Request<B> {
             assert!(req.extensions().get::<MatchedPath>().is_none());
@@ -262,7 +262,7 @@ mod tests {
         assert_eq!(res.status(), StatusCode::OK);
     }
 
-    #[tokio::test]
+    #[crate::test]
     async fn can_extract_nested_matched_path_in_middleware_on_nested_router() {
         async fn extract_matched_path<B>(matched_path: MatchedPath, req: Request<B>) -> Request<B> {
             assert_eq!(matched_path.as_str(), "/:a/:b");
@@ -282,7 +282,7 @@ mod tests {
         assert_eq!(res.status(), StatusCode::OK);
     }
 
-    #[tokio::test]
+    #[crate::test]
     async fn can_extract_nested_matched_path_in_middleware_on_nested_router_via_extension() {
         async fn extract_matched_path<B>(req: Request<B>) -> Request<B> {
             let matched_path = req.extensions().get::<MatchedPath>().unwrap();
@@ -303,7 +303,7 @@ mod tests {
         assert_eq!(res.status(), StatusCode::OK);
     }
 
-    #[tokio::test]
+    #[crate::test]
     async fn extracting_on_nested_handler() {
         async fn handler(path: Option<MatchedPath>) {
             assert!(path.is_none());
