@@ -102,7 +102,7 @@ pub(super) fn has_content_type(headers: &HeaderMap, expected_content_type: &mime
 mod tests {
     use crate::{routing::get, test_helpers::*, Router};
 
-    #[axum_macros::__private_axum_test]
+    #[crate::test]
     async fn consume_body() {
         let app = Router::new().route("/", get(|body: String| async { body }));
 

@@ -508,7 +508,7 @@ mod tests {
         assert_eq!(&*leading_space.finalize(), b"data:  foobar\n\n");
     }
 
-    #[axum_macros::__private_axum_test]
+    #[crate::test]
     async fn basic() {
         let app = Router::new().route(
             "/",

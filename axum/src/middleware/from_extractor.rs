@@ -309,7 +309,7 @@ mod tests {
     use http::{header, request::Parts, StatusCode};
     use tower_http::limit::RequestBodyLimitLayer;
 
-    #[axum_macros::__private_axum_test]
+    #[crate::test]
     async fn test_from_extractor() {
         #[derive(Clone)]
         struct Secret(&'static str);

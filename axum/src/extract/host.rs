@@ -90,7 +90,7 @@ mod tests {
         TestClient::new(Router::new().route("/", get(host_as_body)))
     }
 
-    #[axum_macros::__private_axum_test]
+    #[crate::test]
     async fn host_header() {
         let original_host = "some-domain:123";
         let host = test_client()
@@ -103,7 +103,7 @@ mod tests {
         assert_eq!(host, original_host);
     }
 
-    #[axum_macros::__private_axum_test]
+    #[crate::test]
     async fn x_forwarded_host_header() {
         let original_host = "some-domain:456";
         let host = test_client()
@@ -116,7 +116,7 @@ mod tests {
         assert_eq!(host, original_host);
     }
 
-    #[axum_macros::__private_axum_test]
+    #[crate::test]
     async fn x_forwarded_host_precedence_over_host_header() {
         let x_forwarded_host_header = "some-domain:456";
         let host_header = "some-domain:123";
@@ -131,7 +131,7 @@ mod tests {
         assert_eq!(host, x_forwarded_host_header);
     }
 
-    #[axum_macros::__private_axum_test]
+    #[crate::test]
     async fn uri_host() {
         let host = test_client().get("/").send().await.text().await;
         assert!(host.contains("127.0.0.1"));

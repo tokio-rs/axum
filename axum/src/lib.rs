@@ -493,3 +493,6 @@ pub use axum_core::{BoxError, Error, RequestExt, RequestPartsExt};
 pub use axum_macros::debug_handler;
 
 pub use self::service_ext::ServiceExt;
+
+#[cfg(test)]
+use axum_macros::__private_axum_test as test;

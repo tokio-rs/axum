@@ -346,7 +346,7 @@ mod tests {
     use super::*;
     use crate::{test_helpers::TestClient, Router};
 
-    #[axum_macros::__private_axum_test]
+    #[crate::test]
     async fn works() {
         async fn add_header<B>(mut res: Response<B>) -> Response<B> {
             res.headers_mut().insert("x-foo", "foo".parse().unwrap());

@@ -170,7 +170,7 @@ mod tests {
     use super::*;
     use crate::{response::IntoResponse, routing::get, test_helpers::*, Router};
 
-    #[axum_macros::__private_axum_test]
+    #[crate::test]
     async fn typed_header() {
         async fn handle(
             TypedHeader(user_agent): TypedHeader<headers::UserAgent>,

@@ -814,7 +814,7 @@ mod tests {
     use http::{Request, Version};
     use tower::ServiceExt;
 
-    #[axum_macros::__private_axum_test]
+    #[crate::test]
     async fn rejects_http_1_0_requests() {
         let svc = get(|ws: Result<WebSocketUpgrade, WebSocketUpgradeRejection>| {
             let rejection = ws.unwrap_err();

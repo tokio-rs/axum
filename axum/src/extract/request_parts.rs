@@ -226,7 +226,7 @@ mod tests {
     use crate::{extract::Extension, routing::get, test_helpers::*, Router};
     use http::{Method, StatusCode};
 
-    #[axum_macros::__private_axum_test]
+    #[crate::test]
     async fn extract_request_parts() {
         #[derive(Clone)]
         struct Ext;
