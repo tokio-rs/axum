@@ -48,6 +48,8 @@ use quote::{quote, ToTokens};
 use syn::{parse::Parse, Type};
 
 mod attr_parsing;
+#[cfg(feature = "__private")]
+mod axum_test;
 mod debug_handler;
 mod from_ref;
 mod from_request;
@@ -553,6 +555,22 @@ pub fn debug_handler(_attr: TokenStream, input: TokenStream) -> TokenStream {
 
     #[cfg(debug_assertions)]
     return expand_attr_with(_attr, input, debug_handler::expand);
+}
+
+/// Private API: Do no use this!
+///
+/// Attribute macro to be placed on test functions that'll generate two functions:
+///
+/// 1. One identical to the function it was placed on.
+/// 2. One where calls to `Router::nest` has been replaced with `Router::nest_service`
+///
+/// This makes it easy to that `nest` and `nest_service` behaves in the same way, without having to
+/// manually write identical tests for both methods.
+#[cfg(feature = "__private")]
+#[proc_macro_attribute]
+#[doc(hidden)]
+pub fn __private_axum_test(_attr: TokenStream, input: TokenStream) -> TokenStream {
+    expand_attr_with(_attr, input, axum_test::expand)
 }
 
 /// Derive an implementation of [`axum_extra::routing::TypedPath`].

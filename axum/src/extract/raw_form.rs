@@ -92,21 +92,21 @@ mod tests {
         assert_eq!(RawForm::from_request(req, &()).await.unwrap().0, body);
     }
 
-    #[tokio::test]
+    #[crate::test]
     async fn test_from_query() {
         check_query("http://example.com/test", b"").await;
 
         check_query("http://example.com/test?page=0&size=10", b"page=0&size=10").await;
     }
 
-    #[tokio::test]
+    #[crate::test]
     async fn test_from_body() {
         check_body(b"").await;
 
         check_body(b"username=user&password=secure%20password").await;
     }
 
-    #[tokio::test]
+    #[crate::test]
     async fn test_incorrect_content_type() {
         let req = Request::post("http://example.com/test")
             .body(Full::<Bytes>::from(Bytes::from("page=0&size=10")))

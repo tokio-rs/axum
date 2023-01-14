@@ -11,6 +11,10 @@ readme = "README.md"
 repository = "https://github.com/tokio-rs/axum"
 version = "0.3.1" # remember to also bump the version that axum and axum-extra depends on
 
+[features]
+default = []
+__private = ["syn/visit-mut"]
+
 [lib]
 proc-macro = true
 

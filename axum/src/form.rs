@@ -149,7 +149,7 @@ mod tests {
         assert_eq!(Form::<T>::from_request(req, &()).await.unwrap().0, value);
     }
 
-    #[tokio::test]
+    #[crate::test]
     async fn test_form_query() {
         check_query(
             "http://example.com/test",
@@ -179,7 +179,7 @@ mod tests {
         .await;
     }
 
-    #[tokio::test]
+    #[crate::test]
     async fn test_form_body() {
         check_body(Pagination {
             size: None,
@@ -200,7 +200,7 @@ mod tests {
         .await;
     }
 
-    #[tokio::test]
+    #[crate::test]
     async fn test_incorrect_content_type() {
         let req = Request::builder()
             .uri("http://example.com/test")

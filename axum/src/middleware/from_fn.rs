@@ -372,7 +372,7 @@ mod tests {
     use http::{HeaderMap, StatusCode};
     use tower::ServiceExt;
 
-    #[tokio::test]
+    #[crate::test]
     async fn basic() {
         async fn insert_header<B>(mut req: Request<B>, next: Next<B>) -> impl IntoResponse {
             req.headers_mut()
