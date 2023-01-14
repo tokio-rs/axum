@@ -7,7 +7,10 @@ and this project adheres to [Semantic Versioning].
 
 # Unreleased
 
-- None.
+- **added:** Add `option_layer` for converting an `Option<Layer>` into a `Layer` ([#1696])
+- **added:** Implement `Layer` and `Service` for `Either` ([#1696])
+
+[#1696]: https://github.com/tokio-rs/axum/pull/1696
 
 # 0.4.2 (02. December, 2022)
 
