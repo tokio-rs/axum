@@ -10,7 +10,7 @@ use tower_layer::Identity;
 /// # Example
 ///
 /// ```
-/// use axum_extra::either::option_layer;
+/// use axum_extra::middleware::option_layer;
 /// use axum::{Router, routing::get};
 /// use std::time::Duration;
 /// use tower_http::timeout::TimeoutLayer;
