@@ -1,11 +1,11 @@
 use crate::{
     body::{self, Bytes, HttpBody},
     response::{IntoResponse, Response},
-    BoxError, Error,
+    Error,
 };
 use futures_util::{
     ready,
-    stream::{self, TryStream},
+    stream::{self, Stream},
 };
 use http::HeaderMap;
 use pin_project_lite::pin_project;
@@ -35,8 +35,8 @@ pin_project! {
     /// use futures::stream::{self, Stream};
     /// use std::io;
     ///
-    /// async fn handler() -> StreamBody<impl Stream<Item = io::Result<&'static str>>> {
-    ///     let chunks: Vec<io::Result<_>> = vec![
+    /// async fn handler() -> StreamBody<impl Stream<Item = &'static str>> {
+    ///     let chunks: Vec<_> = vec![
     ///         Ok("Hello,"),
     ///         Ok(" "),
     ///         Ok("world!"),
@@ -50,8 +50,6 @@ pin_project! {
     /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
     /// # };
     /// ```
-    ///
-    /// [`Stream`]: futures_util::stream::Stream
     pub struct StreamBody<S> {
         #[pin]
         stream: SyncWrapper<S>,
@@ -60,9 +58,8 @@ pin_project! {
 
 impl<S> From<S> for StreamBody<S>
 where
-    S: TryStream + Send + 'static,
-    S::Ok: Into<Bytes>,
-    S::Error: Into<BoxError>,
+    S: Stream + Send + 'static,
+    S::Item: Into<Bytes>,
 {
     fn from(stream: S) -> Self {
         Self::new(stream)
@@ -71,13 +68,10 @@ where
 
 impl<S> StreamBody<S> {
     /// Create a new `StreamBody` from a [`Stream`].
-    ///
-    /// [`Stream`]: futures_util::stream::Stream
     pub fn new(stream: S) -> Self
     where
-        S: TryStream + Send + 'static,
-        S::Ok: Into<Bytes>,
-        S::Error: Into<BoxError>,
+        S: Stream + Send + 'static,
+        S::Item: Into<Bytes>,
     {
         Self {
             stream: SyncWrapper::new(stream),
@@ -87,16 +81,15 @@ impl<S> StreamBody<S> {
 
 impl<S> IntoResponse for StreamBody<S>
 where
-    S: TryStream + Send + 'static,
-    S::Ok: Into<Bytes>,
-    S::Error: Into<BoxError>,
+    S: Stream + Send + 'static,
+    S::Item: Into<Bytes>,
 {
     fn into_response(self) -> Response {
         Response::new(body::boxed(self))
     }
 }
 
-impl Default for StreamBody<futures_util::stream::Empty<Result<Bytes, Error>>> {
+impl Default for StreamBody<stream::Empty<Bytes>> {
     fn default() -> Self {
         Self::new(stream::empty())
     }
@@ -110,9 +103,8 @@ impl<S> fmt::Debug for StreamBody<S> {
 
 impl<S> HttpBody for StreamBody<S>
 where
-    S: TryStream,
-    S::Ok: Into<Bytes>,
-    S::Error: Into<BoxError>,
+    S: Stream,
+    S::Item: Into<Bytes>,
 {
     type Data = Bytes;
     type Error = Error;
@@ -122,9 +114,8 @@ where
         cx: &mut Context<'_>,
     ) -> Poll<Option<Result<Self::Data, Self::Error>>> {
         let stream = self.project().stream.get_pin_mut();
-        match ready!(stream.try_poll_next(cx)) {
-            Some(Ok(chunk)) => Poll::Ready(Some(Ok(chunk.into()))),
-            Some(Err(err)) => Poll::Ready(Some(Err(Error::new(err)))),
+        match ready!(stream.poll_next(cx)) {
+            Some(chunk) => Poll::Ready(Some(Ok(chunk.into()))),
             None => Poll::Ready(None),
         }
     }
@@ -137,13 +128,38 @@ where
     }
 }
 
-#[test]
-fn stream_body_traits() {
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{body::StreamBody, routing::get, Router};
+    use futures::stream::Stream;
     use futures_util::stream::Empty;
+    use http::Request;
+    use tower::ServiceExt;
 
-    type EmptyStream = StreamBody<Empty<Result<Bytes, BoxError>>>;
+    #[test]
+    fn stream_body_traits() {
+        type EmptyStream = StreamBody<Empty<Bytes>>;
 
-    crate::test_helpers::assert_send::<EmptyStream>();
-    crate::test_helpers::assert_sync::<EmptyStream>();
-    crate::test_helpers::assert_unpin::<EmptyStream>();
+        crate::test_helpers::assert_send::<EmptyStream>();
+        crate::test_helpers::assert_sync::<EmptyStream>();
+        crate::test_helpers::assert_unpin::<EmptyStream>();
+    }
+
+    #[tokio::test]
+    async fn body_streaming_works() {
+        async fn handler() -> StreamBody<impl Stream<Item = &'static str>> {
+            let stream = futures::stream::iter(["foo", " ", "bar"]);
+            StreamBody::new(stream)
+        }
+
+        let app = Router::new().route("/stream", get(handler));
+        let resp = app
+            .oneshot(Request::get("/stream").body(body::Body::empty()).unwrap())
+            .await
+            .unwrap();
+        let body = hyper::body::to_bytes(resp).await.unwrap();
+        let body = String::from_utf8(body.to_vec()).unwrap();
+        assert_eq!(body, "foo bar")
+    }
 }
