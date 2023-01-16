@@ -17,7 +17,6 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 mod multiplex_service;
 
 mod proto {
-    #![allow(clippy::derive_partial_eq_without_eq)]
     tonic::include_proto!("helloworld");
 }
 
