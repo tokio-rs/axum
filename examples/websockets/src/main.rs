@@ -1,15 +1,19 @@
 //! Example websocket server.
 //!
 //! Run the server with
-//!
 //! ```not_rust
-//! cargo run -p example-websockets
+//! cargo run -p example-websockets --bin example-websockets
+//! ```
+//!
+//! Run a browser client with
+//! ```not_rust
 //! firefox http://localhost:3000
 //! ```
 //!
-//! Alternatively you can run the rust client with
+//! Alternatively you can run the rust client (showing two
+//! concurrent websocket connections being established) with
 //! ```not_rust
-//! cargo run -p example-client
+//! cargo run -p example-websockets --bin example-client
 //! ```
 
 use axum::{
@@ -63,8 +67,7 @@ async fn main() {
                     )
                 }),
         )
-        // routes are matched from bottom to top, so we have to put `nest` at the
-        // top since it matches all routes
+        // routes are matched from bottom to top
         .route("/ws", get(ws_handler))
         // logging so we can see whats going on
         .layer(
@@ -82,7 +85,7 @@ async fn main() {
 }
 
 /// The handler for the HTTP request (this gets called when the HTTP GET lands at the start
-/// of websocket negotiation. After this completes, the actual switching from HTTP to
+/// of websocket negotiation). After this completes, the actual switching from HTTP to
 /// websocket protocol will occur.
 /// This is the last point where we can extract TCP/IP metadata such as IP address of the client
 /// as well as things from HTTP headers such as user-agent of the browser etc.
@@ -114,7 +117,7 @@ async fn handle_socket(mut socket: WebSocket, who: SocketAddr) {
         return;
     }
 
-    // receive single message form a client (we can either receive or send with socket).
+    // receive single message from a client (we can either receive or send with socket).
     // this will likely be the Pong for our Ping or a hello message from client.
     // waiting for message from a client will block this task, but will not block other client's
     // connections.
@@ -131,7 +134,7 @@ async fn handle_socket(mut socket: WebSocket, who: SocketAddr) {
 
     // Since each client gets individual statemachine, we can pause handling
     // when necessary to wait for some external event (in this case illustrated by sleeping).
-    // Waiting for this client to finish getting his greetings does not prevent other clients form
+    // Waiting for this client to finish getting their greetings does not prevent other clients from
     // connecting to server and receiving their greetings.
     for i in 1..5 {
         if socket
