@@ -134,7 +134,7 @@ async fn handle_socket(mut socket: WebSocket, who: SocketAddr) {
 
     // Since each client gets individual statemachine, we can pause handling
     // when necessary to wait for some external event (in this case illustrated by sleeping).
-    // Waiting for this client to finish getting their greetings does not prevent other clients from
+    // Waiting for this client to finish getting its greetings does not prevent other clients from
     // connecting to server and receiving their greetings.
     for i in 1..5 {
         if socket
