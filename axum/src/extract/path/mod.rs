@@ -334,12 +334,11 @@ impl fmt::Display for ErrorKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             ErrorKind::Message(error) => error.fmt(f),
-            ErrorKind::InvalidUtf8InPathParam { key } => write!(f, "Invalid UTF-8 in `{}`", key),
+            ErrorKind::InvalidUtf8InPathParam { key } => write!(f, "Invalid UTF-8 in `{key}`"),
             ErrorKind::WrongNumberOfParameters { got, expected } => {
                 write!(
                     f,
-                    "Wrong number of path arguments for `Path`. Expected {} but got {}",
-                    expected, got
+                    "Wrong number of path arguments for `Path`. Expected {expected} but got {got}"
                 )?;
 
                 if *expected == 1 {
@@ -348,28 +347,26 @@ impl fmt::Display for ErrorKind {
 
                 Ok(())
             }
-            ErrorKind::UnsupportedType { name } => write!(f, "Unsupported type `{}`", name),
+            ErrorKind::UnsupportedType { name } => write!(f, "Unsupported type `{name}`"),
             ErrorKind::ParseErrorAtKey {
                 key,
                 value,
                 expected_type,
             } => write!(
                 f,
-                "Cannot parse `{}` with value `{:?}` to a `{}`",
-                key, value, expected_type
+                "Cannot parse `{key}` with value `{value:?}` to a `{expected_type}`"
             ),
             ErrorKind::ParseError {
                 value,
                 expected_type,
-            } => write!(f, "Cannot parse `{:?}` to a `{}`", value, expected_type),
+            } => write!(f, "Cannot parse `{value:?}` to a `{expected_type}`"),
             ErrorKind::ParseErrorAtIndex {
                 index,
                 value,
                 expected_type,
             } => write!(
                 f,
-                "Cannot parse value at index {} with value `{:?}` to a `{}`",
-                index, value, expected_type
+                "Cannot parse value at index {index} with value `{value:?}` to a `{expected_type}`"
             ),
         }
     }

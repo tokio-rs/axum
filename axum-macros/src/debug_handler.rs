@@ -111,9 +111,8 @@ fn check_extractor_count(item_fn: &ItemFn) -> Option<TokenStream> {
         None
     } else {
         let error_message = format!(
-            "Handlers cannot take more than {} arguments. \
+            "Handlers cannot take more than {max_extractors} arguments. \
             Use `(a, b): (ExtractorA, ExtractorA)` to further nest extractors",
-            max_extractors,
         );
         let error = syn::Error::new_spanned(&item_fn.sig.inputs, error_message).to_compile_error();
         Some(error)

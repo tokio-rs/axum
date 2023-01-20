@@ -107,9 +107,9 @@ fn strip_prefix(uri: &Uri, prefix: &str) -> Option<Uri> {
 
     let new_path_and_query = match (after_prefix.starts_with('/'), path_and_query.query()) {
         (true, None) => after_prefix.parse().unwrap(),
-        (true, Some(query)) => format!("{}?{}", after_prefix, query).parse().unwrap(),
-        (false, None) => format!("/{}", after_prefix).parse().unwrap(),
-        (false, Some(query)) => format!("/{}?{}", after_prefix, query).parse().unwrap(),
+        (true, Some(query)) => format!("{after_prefix}?{query}").parse().unwrap(),
+        (false, None) => format!("/{after_prefix}").parse().unwrap(),
+        (false, Some(query)) => format!("/{after_prefix}?{query}").parse().unwrap(),
     };
 
     let mut parts = uri.clone().into_parts();
