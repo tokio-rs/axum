@@ -373,7 +373,7 @@ fn check_future_send(item_fn: &ItemFn) -> TokenStream {
         };
     }
 
-    let span = item_fn.span();
+    let span = item_fn.sig.ident.span();
 
     let handler_name = &item_fn.sig.ident;
 
@@ -383,28 +383,28 @@ fn check_future_send(item_fn: &ItemFn) -> TokenStream {
 
     let name = format_ident!("__axum_macros_check_{}_future", item_fn.sig.ident);
 
+    let do_check = quote! {
+        fn check<T>(_: T)
+            where T: ::std::future::Future + Send
+        {}
+        check(future);
+    };
+
     if let Some(receiver) = self_receiver(item_fn) {
-        quote_spanned! {span=>
+        quote! {
             #[allow(warnings)]
             fn #name() {
                 let future = #receiver #handler_name(#(#args),*);
-                fn check<T>(_: T)
-                    where T: ::std::future::Future + Send
-                {}
-                check(future);
+                #do_check
             }
         }
     } else {
-        quote_spanned! {span=>
+        quote! {
             #[allow(warnings)]
             fn #name() {
                 #item_fn
-
                 let future = #handler_name(#(#args),*);
-                fn check<T>(_: T)
-                    where T: ::std::future::Future + Send
-                {}
-                check(future);
+                #do_check
             }
         }
     }
