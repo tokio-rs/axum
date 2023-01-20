@@ -61,6 +61,9 @@
 //! }
 //! ```
 //!
+//! Note using `#[tokio::main]` requires you enable tokio's `macros` and `rt-multi-thread` features
+//! or just `full` to enable all features (`cargo add tokio --features macros,rt-multi-thread`).
+//!
 //! # Routing
 //!
 //! [`Router`] is used to setup which paths goes to which services:
