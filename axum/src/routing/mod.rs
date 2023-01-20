@@ -217,8 +217,11 @@ where
             fallback,
         } = router;
 
-        for (route_id, endpoint) in routes {
-            let inner_path = &*node.route_id_to_path[&route_id];
+        for (id, endpoint) in routes {
+            let inner_path = node
+                .route_id_to_path
+                .get(&id)
+                .expect("no path for route id. This is a bug in axum. Please file an issue");
 
             let path = path_for_nested_route(prefix, inner_path);
 
