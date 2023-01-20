@@ -262,7 +262,7 @@ mod tests {
     #[crate::test]
     async fn json_content_types() {
         async fn valid_json_content_type(content_type: &str) -> bool {
-            println!("testing {:?}", content_type);
+            println!("testing {content_type:?}");
 
             let app = Router::new().route("/", post(|Json(_): Json<Value>| async {}));
 

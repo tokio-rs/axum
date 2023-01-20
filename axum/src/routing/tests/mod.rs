@@ -385,7 +385,7 @@ async fn static_and_dynamic_paths() {
     let app = Router::new()
         .route(
             "/:key",
-            get(|Path(key): Path<String>| async move { format!("dynamic: {}", key) }),
+            get(|Path(key): Path<String>| async move { format!("dynamic: {key}") }),
         )
         .route("/foo", get(|| async { "static" }));
 
@@ -618,7 +618,7 @@ async fn body_limited_by_default() {
     let client = TestClient::new(app);
 
     for uri in ["/bytes", "/string", "/json"] {
-        println!("calling {}", uri);
+        println!("calling {uri}");
 
         let stream = futures_util::stream::repeat("a".repeat(1000)).map(Ok::<_, hyper::Error>);
         let body = Body::wrap_stream(stream);
