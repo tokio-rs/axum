@@ -65,16 +65,15 @@ async fn wrong_method_nest() {
 
     let client = TestClient::new(app);
 
-    // let res = client.get("/").send().await;
-    // assert_eq!(res.status(), StatusCode::OK);
+    let res = client.get("/").send().await;
+    assert_eq!(res.status(), StatusCode::OK);
 
     let res = client.post("/").send().await;
     assert_eq!(res.status(), StatusCode::METHOD_NOT_ALLOWED);
-    // dbg!(res.headers());
     assert_eq!(res.headers()[ALLOW], "GET,HEAD");
 
-    // let res = client.patch("/foo").send().await;
-    // assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    let res = client.patch("/foo").send().await;
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
 }
 
 #[crate::test]
