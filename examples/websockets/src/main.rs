@@ -67,7 +67,6 @@ async fn main() {
                     )
                 }),
         )
-        // routes are matched from bottom to top
         .route("/ws", get(ws_handler))
         // logging so we can see whats going on
         .layer(
