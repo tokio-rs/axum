@@ -191,11 +191,8 @@ where
             }
         };
 
-        // dbg!(&params);
-
         T::deserialize(de::PathDeserializer::new(params))
             .map_err(|err| {
-                // dbg!(&err);
                 PathRejection::FailedToDeserializePathParams(FailedToDeserializePathParams(err))
             })
             .map(Path)
