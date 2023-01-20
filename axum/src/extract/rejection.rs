@@ -1,6 +1,6 @@
 //! Rejection response types.
 
-pub use crate::extract::path::FailedToDeserializePathParams;
+pub use crate::extract::path::{FailedToDeserializePathParams, InvalidUtf8InPathParam};
 pub use axum_core::extract::rejection::*;
 
 #[cfg(feature = "json")]
@@ -151,6 +151,17 @@ composite_rejection! {
     /// can fail.
     pub enum PathRejection {
         FailedToDeserializePathParams,
+        MissingPathParams,
+    }
+}
+
+composite_rejection! {
+    /// Rejection used for [`RawPathParams`](super::RawPathParams).
+    ///
+    /// Contains one variant for each way the [`RawPathParams`](super::RawPathParams) extractor
+    /// can fail.
+    pub enum RawPathParamsRejection {
+        InvalidUtf8InPathParam,
         MissingPathParams,
     }
 }
