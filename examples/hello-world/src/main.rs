@@ -6,13 +6,14 @@
 
 use axum::{response::Html, routing::get, Router};
 use std::net::SocketAddr;
+use tower_http::compression::{predicate::SizeAbove, CompressionLayer};
 
 #[tokio::main]
 async fn main() {
-    // build our application with a route
-    let app = Router::new().route("/", get(handler));
+    let app = Router::new()
+        .nest("/", Router::new().route("/", get(|| async { "Hello, World!" })))
+        .layer(CompressionLayer::new().compress_when(SizeAbove::new(0)));
 
-    // run it
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
     println!("listening on {}", addr);
     axum::Server::bind(&addr)

@@ -13,6 +13,7 @@ use axum_core::response::{IntoResponse, Response};
 use http::Request;
 use matchit::MatchError;
 use std::{
+    borrow::Cow,
     collections::HashMap,
     convert::Infallible,
     fmt,
@@ -207,41 +208,48 @@ where
 
     #[doc = include_str!("../docs/routing/nest.md")]
     #[track_caller]
-    pub fn nest(self, path: &str, router: Router<S, B>) -> Self {
-        self.nest_endpoint(path, RouterOrService::<_, _, NotFound>::Router(router))
+    pub fn nest(mut self, path: &str, router: Router<S, B>) -> Self {
+        let prefix = validate_nest_path(path);
+
+        let Router {
+            routes,
+            node,
+            fallback,
+        } = router;
+
+        for (route_id, endpoint) in routes {
+            let inner_path = &*node.route_id_to_path[&route_id];
+
+            let path: Cow<str> = if prefix.ends_with('/') {
+                format!("{prefix}{}", inner_path.trim_start_matches('/')).into()
+            } else if inner_path == "/" {
+                prefix.into()
+            } else {
+                format!("{prefix}{inner_path}").into()
+            };
+
+            match endpoint.layer(StripPrefix::layer(prefix)) {
+                Endpoint::MethodRouter(method_router) => {
+                    self = self.route(&path, method_router);
+                }
+                Endpoint::Route(route) => {
+                    self = self.route_endpoint(&path, Endpoint::Route(route));
+                }
+            }
+        }
+
+        self
     }
 
     /// Like [`nest`](Self::nest), but accepts an arbitrary `Service`.
     #[track_caller]
-    pub fn nest_service<T>(self, path: &str, svc: T) -> Self
+    pub fn nest_service<T>(mut self, path: &str, svc: T) -> Self
     where
         T: Service<Request<B>, Error = Infallible> + Clone + Send + 'static,
         T::Response: IntoResponse,
         T::Future: Send + 'static,
     {
-        self.nest_endpoint(path, RouterOrService::Service(svc))
-    }
-
-    #[track_caller]
-    fn nest_endpoint<T>(
-        mut self,
-        mut path: &str,
-        router_or_service: RouterOrService<S, B, T>,
-    ) -> Self
-    where
-        T: Service<Request<B>, Error = Infallible> + Clone + Send + 'static,
-        T::Response: IntoResponse,
-        T::Future: Send + 'static,
-    {
-        if path.is_empty() {
-            // nesting at `""` and `"/"` should mean the same thing
-            path = "/";
-        }
-
-        if path.contains('*') {
-            panic!("Invalid route: nested routes cannot contain wildcards (*)");
-        }
-
+        let path = validate_nest_path(path);
         let prefix = path;
 
         let path = if path.ends_with('/') {
@@ -250,17 +258,7 @@ where
             format!("{path}/*{NEST_TAIL_PARAM}")
         };
 
-        let endpoint = match router_or_service {
-            RouterOrService::Router(router) => {
-                let prefix = prefix.to_owned();
-                let boxed = BoxedIntoRoute::from_router(router)
-                    .map(move |route| Route::new(StripPrefix::new(route, &prefix)));
-                Endpoint::NestedRouter(boxed)
-            }
-            RouterOrService::Service(svc) => {
-                Endpoint::Route(Route::new(StripPrefix::new(svc, prefix)))
-            }
-        };
+        let endpoint = Endpoint::Route(Route::new(StripPrefix::new(svc, prefix)));
 
         self = self.route_endpoint(&path, endpoint.clone());
 
@@ -296,9 +294,6 @@ where
             self = match route {
                 Endpoint::MethodRouter(method_router) => self.route(path, method_router),
                 Endpoint::Route(route) => self.route_service(path, route),
-                Endpoint::NestedRouter(router) => {
-                    self.route_endpoint(path, Endpoint::NestedRouter(router))
-                }
             };
         }
 
@@ -405,9 +400,6 @@ where
                         Endpoint::MethodRouter(method_router.with_state(state.clone()))
                     }
                     Endpoint::Route(route) => Endpoint::Route(route),
-                    Endpoint::NestedRouter(router) => {
-                        Endpoint::Route(router.into_route(state.clone()))
-                    }
                 };
                 (id, endpoint)
             })
@@ -503,7 +495,6 @@ where
         match endpont {
             Endpoint::MethodRouter(mut method_router) => method_router.call_with_state(req, state),
             Endpoint::Route(mut route) => route.call(req),
-            Endpoint::NestedRouter(router) => router.call_with_state(req, state),
         }
     }
 }
@@ -677,7 +668,6 @@ impl<S, B, E> fmt::Debug for Fallback<S, B, E> {
 enum Endpoint<S, B> {
     MethodRouter(MethodRouter<S, B>),
     Route(Route<B>),
-    NestedRouter(BoxedIntoRoute<S, B, Infallible>),
 }
 
 impl<S, B> Endpoint<S, B>
@@ -699,9 +689,6 @@ where
                 Endpoint::MethodRouter(method_router.layer(layer))
             }
             Endpoint::Route(route) => Endpoint::Route(route.layer(layer)),
-            Endpoint::NestedRouter(router) => {
-                Endpoint::NestedRouter(router.map(|route| route.layer(layer)))
-            }
         }
     }
 }
@@ -711,7 +698,6 @@ impl<S, B> Clone for Endpoint<S, B> {
         match self {
             Self::MethodRouter(inner) => Self::MethodRouter(inner.clone()),
             Self::Route(inner) => Self::Route(inner.clone()),
-            Self::NestedRouter(router) => Self::NestedRouter(router.clone()),
         }
     }
 }
@@ -726,14 +712,8 @@ where
                 f.debug_tuple("MethodRouter").field(method_router).finish()
             }
             Self::Route(route) => f.debug_tuple("Route").field(route).finish(),
-            Self::NestedRouter(router) => f.debug_tuple("NestedRouter").field(router).finish(),
         }
     }
-}
-
-enum RouterOrService<S, B, T> {
-    Router(Router<S, B>),
-    Service(T),
 }
 
 struct SuperFallback<B>(SyncWrapper<Route<B>>);
@@ -743,4 +723,18 @@ struct SuperFallback<B>(SyncWrapper<Route<B>>);
 fn traits() {
     use crate::test_helpers::*;
     assert_send::<Router<(), ()>>();
+}
+
+#[track_caller]
+fn validate_nest_path(path: &str) -> &str {
+    if path.is_empty() {
+        // nesting at `""` and `"/"` should mean the same thing
+        return "/";
+    }
+
+    if path.contains('*') {
+        panic!("Invalid route: nested routes cannot contain wildcards (*)");
+    }
+
+    path
 }

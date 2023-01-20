@@ -573,7 +573,10 @@ async fn head_with_middleware_applied() {
     use tower_http::compression::{predicate::SizeAbove, CompressionLayer};
 
     let app = Router::new()
-        .route("/", get(|| async { "Hello, World!" }))
+        .nest(
+            "/",
+            Router::new().route("/", get(|| async { "Hello, World!" })),
+        )
         .layer(CompressionLayer::new().compress_when(SizeAbove::new(0)));
 
     let client = TestClient::new(app);
