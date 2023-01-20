@@ -220,13 +220,7 @@ where
         for (route_id, endpoint) in routes {
             let inner_path = &*node.route_id_to_path[&route_id];
 
-            let path: Cow<str> = if prefix.ends_with('/') {
-                format!("{prefix}{}", inner_path.trim_start_matches('/')).into()
-            } else if inner_path == "/" {
-                prefix.into()
-            } else {
-                format!("{prefix}{inner_path}").into()
-            };
+            let path = path_for_nested_route(prefix, inner_path);
 
             match endpoint.layer(StripPrefix::layer(prefix)) {
                 Endpoint::MethodRouter(method_router) => {
@@ -723,6 +717,19 @@ struct SuperFallback<B>(SyncWrapper<Route<B>>);
 fn traits() {
     use crate::test_helpers::*;
     assert_send::<Router<(), ()>>();
+}
+
+fn path_for_nested_route<'a>(prefix: &'a str, path: &'a str) -> Cow<'a, str> {
+    debug_assert!(prefix.starts_with('/'));
+    debug_assert!(path.starts_with('/'));
+
+    if prefix.ends_with('/') {
+        format!("{prefix}{}", path.trim_start_matches('/')).into()
+    } else if path == "/" {
+        prefix.into()
+    } else {
+        format!("{prefix}{path}").into()
+    }
 }
 
 #[track_caller]
