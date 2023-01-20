@@ -9,12 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **added:** Implement `IntoResponse` for `&'static [u8; N]` and `[u8; N]` ([#1690])
 - **fixed:** Make `Path` support types uses `serde::Deserializer::deserialize_any` ([#1693])
+- **added:** Add `RawPathParams` ([#1713])
 - **added:** Implement `Clone` and `Service` for `axum::middleware::Next` ([#1712])
 - **fixed:** Document required tokio features to run "Hello, World!" example ([#1715])
 
 [#1690]: https://github.com/tokio-rs/axum/pull/1690
 [#1693]: https://github.com/tokio-rs/axum/pull/1693
 [#1712]: https://github.com/tokio-rs/axum/pull/1712
+[#1713]: https://github.com/tokio-rs/axum/pull/1713
 [#1715]: https://github.com/tokio-rs/axum/pull/1715
 
 # 0.6.2 (9. January, 2023)

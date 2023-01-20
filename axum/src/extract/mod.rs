@@ -26,7 +26,7 @@ pub use axum_macros::{FromRef, FromRequest, FromRequestParts};
 #[allow(deprecated)]
 pub use self::{
     host::Host,
-    path::Path,
+    path::{Path, RawPathParams},
     raw_form::RawForm,
     raw_query::RawQuery,
     request_parts::{BodyStream, RawBody},
