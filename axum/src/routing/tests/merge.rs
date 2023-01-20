@@ -63,8 +63,8 @@ async fn multiple_ors_balanced_differently() {
         let client = TestClient::new(app);
 
         for n in ["one", "two", "three", "four"].iter() {
-            println!("running: {} / {}", name, n);
-            let res = client.get(&format!("/{}", n)).send().await;
+            println!("running: {name} / {n}");
+            let res = client.get(&format!("/{n}")).send().await;
             assert_eq!(res.status(), StatusCode::OK);
             assert_eq!(res.text().await, *n);
         }
@@ -180,7 +180,7 @@ async fn many_ors() {
     let client = TestClient::new(app);
 
     for n in 1..=7 {
-        let res = client.get(&format!("/r{}", n)).send().await;
+        let res = client.get(&format!("/r{n}")).send().await;
         assert_eq!(res.status(), StatusCode::OK);
     }
 

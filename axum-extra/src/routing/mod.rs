@@ -313,7 +313,7 @@ where
     if let Some(path_without_trailing_slash) = path.strip_suffix('/') {
         router.route(path_without_trailing_slash, any(redirect_handler))
     } else {
-        router.route(&format!("{}/", path), any(redirect_handler))
+        router.route(&format!("{path}/"), any(redirect_handler))
     }
 }
 

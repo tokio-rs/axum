@@ -151,7 +151,7 @@ mod tests {
     #[crate::test]
     async fn socket_addr() {
         async fn handler(ConnectInfo(addr): ConnectInfo<SocketAddr>) -> String {
-            format!("{}", addr)
+            format!("{addr}")
         }
 
         let listener = TcpListener::bind("127.0.0.1:0").unwrap();
@@ -170,7 +170,7 @@ mod tests {
 
         let client = reqwest::Client::new();
 
-        let res = client.get(format!("http://{}", addr)).send().await.unwrap();
+        let res = client.get(format!("http://{addr}")).send().await.unwrap();
         let body = res.text().await.unwrap();
         assert!(body.starts_with("127.0.0.1:"));
     }
@@ -210,7 +210,7 @@ mod tests {
 
         let client = reqwest::Client::new();
 
-        let res = client.get(format!("http://{}", addr)).send().await.unwrap();
+        let res = client.get(format!("http://{addr}")).send().await.unwrap();
         let body = res.text().await.unwrap();
         assert_eq!(body, "it worked!");
     }
