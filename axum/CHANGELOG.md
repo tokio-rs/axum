@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - None.
 
+# 0.6.4 (22. January, 2023)
+
+- Depend on axum-macros 0.3.2
+
 # 0.6.3 (20. January, 2023)
 
 - **added:** Implement `IntoResponse` for `&'static [u8; N]` and `[u8; N]` ([#1690])

@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - None.
 
+# 0.3.2 (22. January, 2022)
+
+- No public API changes.
+
 # 0.3.1 (9. January, 2022)
 
 - **fixed:** Fix warnings for cloning references in generated code ([#1676])
