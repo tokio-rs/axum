@@ -335,10 +335,10 @@ fn check_output_impls_into_response(item_fn: &ItemFn) -> TokenStream {
             #[allow(warnings)]
             async fn #name() {
                 let value = #receiver #make_value_name().await;
-                fn check<T>(_: T)
+                fn debug_handler_check_into_response<T>(_: T)
                     where T: ::axum::response::IntoResponse
                 {}
-                check(value);
+                debug_handler_check_into_response(value);
             }
         }
     } else {
@@ -349,11 +349,11 @@ fn check_output_impls_into_response(item_fn: &ItemFn) -> TokenStream {
 
                 let value = #make_value_name().await;
 
-                fn check<T>(_: T)
+                fn debug_handler_check_into_response<T>(_: T)
                 where T: ::axum::response::IntoResponse
                 {}
 
-                check(value);
+                debug_handler_check_into_response(value);
             }
         }
     }
@@ -388,10 +388,10 @@ fn check_future_send(item_fn: &ItemFn) -> TokenStream {
             #[allow(warnings)]
             fn #name() {
                 let future = #receiver #handler_name(#(#args),*);
-                fn check<T>(_: T)
+                fn debug_handler_check_future<T>(_: T)
                     where T: ::std::future::Future + Send
                 {}
-                check(future);
+                debug_handler_check_future(future);
             }
         }
     } else {
@@ -401,10 +401,10 @@ fn check_future_send(item_fn: &ItemFn) -> TokenStream {
                 #item_fn
 
                 let future = #handler_name(#(#args),*);
-                fn check<T>(_: T)
+                fn debug_handler_check_future<T>(_: T)
                     where T: ::std::future::Future + Send
                 {}
-                check(future);
+                debug_handler_check_future(future);
             }
         }
     }

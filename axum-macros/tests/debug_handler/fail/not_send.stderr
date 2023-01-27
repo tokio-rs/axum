@@ -17,11 +17,11 @@ note: future is not `Send` as this value is used across an await
   |             ^^^^^^ await occurs here, with `rc` maybe used later
 7 | }
   | - `rc` is later dropped here
-note: required by a bound in `check`
+note: required by a bound in `debug_handler_check_future`
  --> tests/debug_handler/fail/not_send.rs:4:1
   |
 4 | / async fn handler() {
 5 | |     let rc = std::rc::Rc::new(());
 6 | |     async {}.await;
 7 | | }
-  | |_^ required by this bound in `check`
+  | |_^ required by this bound in `debug_handler_check_future`
