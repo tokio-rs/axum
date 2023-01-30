@@ -75,8 +75,8 @@ where
     async fn from_request(req: Request<B>, _state: &S) -> Result<Self, Self::Rejection> {
         match req.extract().await {
             Ok(RawForm(bytes)) => {
-                let value = serde_urlencoded::from_bytes(&bytes)
-                    .map_err(FailedToDeserializeForm::from_err)?;
+                let value =
+                    serde_qs::from_bytes(&bytes).map_err(FailedToDeserializeForm::from_err)?;
                 Ok(Form(value))
             }
             Err(RawFormRejection::BytesRejection(r)) => Err(FormRejection::BytesRejection(r)),
@@ -92,7 +92,7 @@ where
     T: Serialize,
 {
     fn into_response(self) -> Response {
-        match serde_urlencoded::to_string(&self.0) {
+        match serde_qs::to_string(&self.0) {
             Ok(body) => (
                 [(CONTENT_TYPE, mime::APPLICATION_WWW_FORM_URLENCODED.as_ref())],
                 body,
@@ -143,7 +143,7 @@ mod tests {
                 mime::APPLICATION_WWW_FORM_URLENCODED.as_ref(),
             )
             .body(Full::<Bytes>::new(
-                serde_urlencoded::to_string(&value).unwrap().into(),
+                serde_qs::to_string(&value).unwrap().into(),
             ))
             .unwrap();
         assert_eq!(Form::<T>::from_request(req, &()).await.unwrap().0, value);
@@ -207,7 +207,7 @@ mod tests {
             .method(Method::POST)
             .header(http::header::CONTENT_TYPE, mime::APPLICATION_JSON.as_ref())
             .body(Full::<Bytes>::new(
-                serde_urlencoded::to_string(&Pagination {
+                serde_qs::to_string(&Pagination {
                     size: Some(10),
                     page: None,
                 })
