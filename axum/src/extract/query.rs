@@ -127,6 +127,20 @@ mod tests {
     }
 
     #[crate::test]
+    async fn query_nested_fields() {
+        #[derive(Debug, PartialEq, Deserialize)]
+        struct Query {
+            foo: (u32, u32),
+        }
+
+        check(
+            "http://example.com/test?foo[0]=0&foo[1]=0",
+            Query { foo: (0, 0) },
+        )
+        .await;
+    }
+
+    #[crate::test]
     async fn correct_rejection_status_code() {
         #[derive(Deserialize)]
         #[allow(dead_code)]
