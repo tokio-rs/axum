@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- None.
+- **added:** Add `KeepAlive::event` for customizing the event sent for SSE keep alive
 
 # 0.6.4 (22. January, 2023)
 
