@@ -286,7 +286,7 @@ This is because `?` supports using the [`From`] trait to convert to a different
 error type but it doesn't know which type to convert to, because we only
 specified `impl IntoResponse` as the return type.
 
-`Result<impl IntoResponse, impl IntoResponse>` unfortunately doesn't work either:
+`Result<impl IntoResponse, impl IntoResponse>` doesn't always work either:
 
 ```rust,compile_fail
 use axum::{http::StatusCode, response::IntoResponse};
