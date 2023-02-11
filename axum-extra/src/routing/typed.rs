@@ -296,7 +296,7 @@ where
         }
         let mut urlencoder = form_urlencoded::Serializer::new(&mut out);
         self.params
-            .serialize(serde_urlencoded::ser::Serializer::new(&mut urlencoder))
+            .serialize(serde_html_form::ser::Serializer::new(&mut urlencoder))
             .unwrap_or_else(|err| {
                 panic!(
                     "failed to URL encode value of type `{}`: {}",
