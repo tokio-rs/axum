@@ -665,7 +665,7 @@ where
         Ok(tokens) => {
             let tokens = (quote! { #tokens }).into();
             if std::env::var_os("AXUM_MACROS_DEBUG").is_some() {
-                eprintln!("{}", tokens);
+                eprintln!("{tokens}");
             }
             tokens
         }
@@ -722,7 +722,7 @@ fn run_ui_tests(directory: &str) {
                 path = path_without_prefix.to_owned();
             }
 
-            if !path.contains(&format!("/{}/", directory)) {
+            if !path.contains(&format!("/{directory}/")) {
                 return;
             }
 
@@ -734,8 +734,8 @@ fn run_ui_tests(directory: &str) {
                 panic!()
             }
         } else {
-            t.compile_fail(format!("tests/{}/fail/*.rs", directory));
-            t.pass(format!("tests/{}/pass/*.rs", directory));
+            t.compile_fail(format!("tests/{directory}/fail/*.rs"));
+            t.pass(format!("tests/{directory}/pass/*.rs"));
         }
     }
 

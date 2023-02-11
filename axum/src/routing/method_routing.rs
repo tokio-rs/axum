@@ -1,6 +1,6 @@
 //! Route to services and handlers based on HTTP methods.
 
-use super::IntoMakeService;
+use super::{future::InfallibleRouteFuture, IntoMakeService};
 #[cfg(feature = "tokio")]
 use crate::extract::connect_info::IntoMakeServiceWithConnectInfo;
 use crate::{
@@ -734,14 +734,14 @@ where
     /// Provide the state for the router.
     pub fn with_state<S2>(self, state: S) -> MethodRouter<S2, B, E> {
         MethodRouter {
-            get: self.get.with_state(state.clone()),
-            head: self.head.with_state(state.clone()),
-            delete: self.delete.with_state(state.clone()),
-            options: self.options.with_state(state.clone()),
-            patch: self.patch.with_state(state.clone()),
-            post: self.post.with_state(state.clone()),
-            put: self.put.with_state(state.clone()),
-            trace: self.trace.with_state(state.clone()),
+            get: self.get.with_state(&state),
+            head: self.head.with_state(&state),
+            delete: self.delete.with_state(&state),
+            options: self.options.with_state(&state),
+            patch: self.patch.with_state(&state),
+            post: self.post.with_state(&state),
+            put: self.put.with_state(&state),
+            trace: self.trace.with_state(&state),
             allow_header: self.allow_header,
             fallback: self.fallback.with_state(state),
         }
@@ -1217,12 +1217,12 @@ where
         }
     }
 
-    fn with_state<S2>(self, state: S) -> MethodEndpoint<S2, B, E> {
+    fn with_state<S2>(self, state: &S) -> MethodEndpoint<S2, B, E> {
         match self {
             MethodEndpoint::None => MethodEndpoint::None,
             MethodEndpoint::Route(route) => MethodEndpoint::Route(route),
             MethodEndpoint::BoxedHandler(handler) => {
-                MethodEndpoint::Route(handler.into_route(state))
+                MethodEndpoint::Route(handler.into_route(state.clone()))
             }
         }
     }
@@ -1264,6 +1264,18 @@ where
     #[inline]
     fn call(&mut self, req: Request<B>) -> Self::Future {
         self.call_with_state(req, ())
+    }
+}
+
+impl<S, B> Handler<(), S, B> for MethodRouter<S, B>
+where
+    S: Clone + 'static,
+    B: HttpBody + Send + 'static,
+{
+    type Future = InfallibleRouteFuture<B>;
+
+    fn call(mut self, req: Request<B>, state: S) -> Self::Future {
+        InfallibleRouteFuture::new(self.call_with_state(req, state))
     }
 }
 

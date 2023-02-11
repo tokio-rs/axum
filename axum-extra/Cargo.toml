@@ -32,7 +32,7 @@ json-lines = [
 protobuf = ["dep:prost"]
 query = ["dep:serde", "dep:serde_html_form"]
 spa = ["tower-http/fs"]
-typed-routing = ["dep:axum-macros", "dep:serde", "dep:percent-encoding"]
+typed-routing = ["dep:axum-macros", "dep:serde", "dep:percent-encoding", "dep:serde_html_form", "dep:form_urlencoded"]
 
 [dependencies]
 axum = { path = "../axum", version = "0.6.0", default-features = false }
@@ -50,6 +50,7 @@ tower-service = "0.3"
 # optional dependencies
 axum-macros = { path = "../axum-macros", version = "0.3.1", optional = true }
 cookie = { package = "cookie", version = "0.16", features = ["percent-encode"], optional = true }
+form_urlencoded = { version = "1.1.0", optional = true }
 percent-encoding = { version = "2.1", optional = true }
 prost = { version = "0.11", optional = true }
 serde = { version = "1.0", optional = true }

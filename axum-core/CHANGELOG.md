@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+- None.
+
+# 0.3.2 (20. January, 2023)
+
 - **added:** Implement `IntoResponse` for `&'static [u8; N]` and `[u8; N]` ([#1690])
 
 [#1690]: https://github.com/tokio-rs/axum/pull/1690

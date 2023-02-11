@@ -385,7 +385,7 @@ async fn static_and_dynamic_paths() {
     let app = Router::new()
         .route(
             "/:key",
-            get(|Path(key): Path<String>| async move { format!("dynamic: {}", key) }),
+            get(|Path(key): Path<String>| async move { format!("dynamic: {key}") }),
         )
         .route("/foo", get(|| async { "static" }));
 
@@ -618,7 +618,7 @@ async fn body_limited_by_default() {
     let client = TestClient::new(app);
 
     for uri in ["/bytes", "/string", "/json"] {
-        println!("calling {}", uri);
+        println!("calling {uri}");
 
         let stream = futures_util::stream::repeat("a".repeat(1000)).map(Ok::<_, hyper::Error>);
         let body = Body::wrap_stream(stream);
@@ -798,4 +798,17 @@ async fn layer_response_into_response() {
     let res = client.get("/").send().await;
     assert_eq!(res.headers()["x-foo"], "bar");
     assert_eq!(res.status(), StatusCode::IM_A_TEAPOT);
+}
+
+#[allow(dead_code)]
+fn method_router_fallback_with_state() {
+    async fn fallback(_: State<&'static str>) {}
+
+    async fn not_found(_: State<&'static str>) {}
+
+    let state = "foo";
+
+    let _: Router = Router::new()
+        .fallback(get(fallback).fallback(not_found))
+        .with_state(state);
 }

@@ -20,6 +20,10 @@ jobs:
           - examples
     steps:
     - uses: actions/checkout@master
+    - uses: arduino/setup-protoc@v1
+      if: matrix.pwd == 'examples'
+      with:
+        repo-token: ${{ secrets.GITHUB_TOKEN }}
     - uses: dtolnay/rust-toolchain@stable
       with:
         toolchain: beta

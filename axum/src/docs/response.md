@@ -4,6 +4,7 @@ Types and traits for generating responses.
 
 - [Building responses](#building-responses)
 - [Returning different response types](#returning-different-response-types)
+- [Regarding `impl IntoResponse`](#regarding-impl-intoresponse)
 
 # Building responses
 
@@ -217,6 +218,108 @@ fn something_else() -> bool {
     # true
 }
 ```
+
+# Regarding `impl IntoResponse`
+
+You can use `impl IntoResponse` as the return type from handlers to avoid
+typing large types. For example
+
+```rust
+use axum::http::StatusCode;
+
+async fn handler() -> (StatusCode, [(&'static str, &'static str); 1], &'static str) {
+    (StatusCode::OK, [("x-foo", "bar")], "Hello, World!")
+}
+```
+
+Becomes easier using `impl IntoResponse`:
+
+```rust
+use axum::{http::StatusCode, response::IntoResponse};
+
+async fn impl_into_response() -> impl IntoResponse {
+    (StatusCode::OK, [("x-foo", "bar")], "Hello, World!")
+}
+```
+
+However `impl IntoResponse` has a few limitations. Firstly it can only be used
+to return a single type:
+
+```rust,compile_fail
+use axum::{http::StatusCode, response::IntoResponse};
+
+async fn handler() -> impl IntoResponse {
+    if check_something() {
+        StatusCode::NOT_FOUND
+    } else {
+        "Hello, World!"
+    }
+}
+
+fn check_something() -> bool {
+    # false
+    // ...
+}
+```
+
+This function returns either a `StatusCode` or a `&'static str` which `impl
+Trait` doesn't allow.
+
+Secondly `impl IntoResponse` can lead to type inference issues when used with
+`Result` and `?`:
+
+```rust,compile_fail
+use axum::{http::StatusCode, response::IntoResponse};
+
+async fn handler() -> impl IntoResponse {
+    create_thing()?;
+    Ok(StatusCode::CREATED)
+}
+
+fn create_thing() -> Result<(), StatusCode> {
+    # Ok(())
+    // ...
+}
+```
+
+This is because `?` supports using the [`From`] trait to convert to a different
+error type but it doesn't know which type to convert to, because we only
+specified `impl IntoResponse` as the return type.
+
+`Result<impl IntoResponse, impl IntoResponse>` doesn't always work either:
+
+```rust,compile_fail
+use axum::{http::StatusCode, response::IntoResponse};
+
+async fn handler() -> Result<impl IntoResponse, impl IntoResponse> {
+    create_thing()?;
+    Ok(StatusCode::CREATED)
+}
+
+fn create_thing() -> Result<(), StatusCode> {
+    # Ok(())
+    // ...
+}
+```
+
+The solution is to use a concrete error type, such as `Result<impl IntoResponse, StatusCode>`:
+
+```rust
+use axum::{http::StatusCode, response::IntoResponse};
+
+async fn handler() -> Result<impl IntoResponse, StatusCode> {
+    create_thing()?;
+    Ok(StatusCode::CREATED)
+}
+
+fn create_thing() -> Result<(), StatusCode> {
+    # Ok(())
+    // ...
+}
+```
+
+Because of this it is generally not recommended to use `impl IntoResponse`
+unless you're familiar with the details of how `impl Trait` works.
 
 [`IntoResponse`]: crate::response::IntoResponse
 [`IntoResponseParts`]: crate::response::IntoResponseParts

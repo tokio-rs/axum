@@ -355,7 +355,7 @@ mod tests {
     #[crate::test]
     async fn handler_into_service() {
         async fn handle(body: String) -> impl IntoResponse {
-            format!("you said: {}", body)
+            format!("you said: {body}")
         }
 
         let client = TestClient::new(handle.into_service());

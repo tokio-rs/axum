@@ -207,7 +207,7 @@ async fn nest_static_file_server() {
         get_service(ServeDir::new(".")).handle_error(|error| async move {
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Unhandled internal error: {}", error),
+                format!("Unhandled internal error: {error}"),
             )
         }),
     );
@@ -323,7 +323,7 @@ async fn outer_middleware_still_see_whole_url() {
 async fn nest_at_capture() {
     let api_routes = Router::new().route(
         "/:b",
-        get(|Path((a, b)): Path<(String, String)>| async move { format!("a={} b={}", a, b) }),
+        get(|Path((a, b)): Path<(String, String)>| async move { format!("a={a} b={b}") }),
     );
 
     let app = Router::new().nest("/:a", api_routes);

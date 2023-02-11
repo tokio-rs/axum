@@ -65,6 +65,9 @@
 #![cfg_attr(docsrs, feature(doc_cfg, doc_auto_cfg))]
 #![cfg_attr(test, allow(clippy::float_cmp))]
 
+#[allow(unused_extern_crates)]
+extern crate self as axum_extra;
+
 pub mod body;
 pub mod either;
 pub mod extract;

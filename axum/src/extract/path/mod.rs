@@ -6,6 +6,7 @@ mod de;
 use crate::{
     extract::{rejection::*, FromRequestParts},
     routing::url_params::UrlParams,
+    util::PercentDecodedStr,
 };
 use async_trait::async_trait;
 use axum_core::response::{IntoResponse, Response};
@@ -14,6 +15,7 @@ use serde::de::DeserializeOwned;
 use std::{
     fmt,
     ops::{Deref, DerefMut},
+    sync::Arc,
 };
 
 /// Extractor that will get captures from the URL and parse them using
@@ -191,11 +193,8 @@ where
             }
         };
 
-        // dbg!(&params);
-
         T::deserialize(de::PathDeserializer::new(params))
             .map_err(|err| {
-                // dbg!(&err);
                 PathRejection::FailedToDeserializePathParams(FailedToDeserializePathParams(err))
             })
             .map(Path)
@@ -337,12 +336,11 @@ impl fmt::Display for ErrorKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             ErrorKind::Message(error) => error.fmt(f),
-            ErrorKind::InvalidUtf8InPathParam { key } => write!(f, "Invalid UTF-8 in `{}`", key),
+            ErrorKind::InvalidUtf8InPathParam { key } => write!(f, "Invalid UTF-8 in `{key}`"),
             ErrorKind::WrongNumberOfParameters { got, expected } => {
                 write!(
                     f,
-                    "Wrong number of path arguments for `Path`. Expected {} but got {}",
-                    expected, got
+                    "Wrong number of path arguments for `Path`. Expected {expected} but got {got}"
                 )?;
 
                 if *expected == 1 {
@@ -351,28 +349,26 @@ impl fmt::Display for ErrorKind {
 
                 Ok(())
             }
-            ErrorKind::UnsupportedType { name } => write!(f, "Unsupported type `{}`", name),
+            ErrorKind::UnsupportedType { name } => write!(f, "Unsupported type `{name}`"),
             ErrorKind::ParseErrorAtKey {
                 key,
                 value,
                 expected_type,
             } => write!(
                 f,
-                "Cannot parse `{}` with value `{:?}` to a `{}`",
-                key, value, expected_type
+                "Cannot parse `{key}` with value `{value:?}` to a `{expected_type}`"
             ),
             ErrorKind::ParseError {
                 value,
                 expected_type,
-            } => write!(f, "Cannot parse `{:?}` to a `{}`", value, expected_type),
+            } => write!(f, "Cannot parse `{value:?}` to a `{expected_type}`"),
             ErrorKind::ParseErrorAtIndex {
                 index,
                 value,
                 expected_type,
             } => write!(
                 f,
-                "Cannot parse value at index {} with value `{:?}` to a `{}`",
-                index, value, expected_type
+                "Cannot parse value at index {index} with value `{value:?}` to a `{expected_type}`"
             ),
         }
     }
@@ -431,6 +427,125 @@ impl fmt::Display for FailedToDeserializePathParams {
 }
 
 impl std::error::Error for FailedToDeserializePathParams {}
+
+/// Extractor that will get captures from the URL without deserializing them.
+///
+/// In general you should prefer to use [`Path`] as it is higher level, however `RawPathParams` is
+/// suitable if just want the raw params without deserializing them and thus saving some
+/// allocations.
+///
+/// Any percent encoded parameters will be automatically decoded. The decoded parameters must be
+/// valid UTF-8, otherwise `RawPathParams` will fail and return a `400 Bad Request` response.
+///
+/// # Example
+///
+/// ```rust,no_run
+/// use axum::{
+///     extract::RawPathParams,
+///     routing::get,
+///     Router,
+/// };
+///
+/// async fn users_teams_show(params: RawPathParams) {
+///     for (key, value) in &params {
+///         println!("{key:?} = {value:?}");
+///     }
+/// }
+///
+/// let app = Router::new().route("/users/:user_id/team/:team_id", get(users_teams_show));
+/// # let _: Router = app;
+/// ```
+#[derive(Debug)]
+pub struct RawPathParams(Vec<(Arc<str>, PercentDecodedStr)>);
+
+#[async_trait]
+impl<S> FromRequestParts<S> for RawPathParams
+where
+    S: Send + Sync,
+{
+    type Rejection = RawPathParamsRejection;
+
+    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
+        let params = match parts.extensions.get::<UrlParams>() {
+            Some(UrlParams::Params(params)) => params,
+            Some(UrlParams::InvalidUtf8InPathParam { key }) => {
+                return Err(InvalidUtf8InPathParam {
+                    key: Arc::clone(key),
+                }
+                .into());
+            }
+            None => {
+                return Err(MissingPathParams.into());
+            }
+        };
+
+        Ok(Self(params.clone()))
+    }
+}
+
+impl RawPathParams {
+    /// Get an iterator over the path parameters.
+    pub fn iter(&self) -> RawPathParamsIter<'_> {
+        self.into_iter()
+    }
+}
+
+impl<'a> IntoIterator for &'a RawPathParams {
+    type Item = (&'a str, &'a str);
+    type IntoIter = RawPathParamsIter<'a>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        RawPathParamsIter(self.0.iter())
+    }
+}
+
+/// An iterator over raw path parameters.
+///
+/// Created with [`RawPathParams::iter`].
+#[derive(Debug)]
+pub struct RawPathParamsIter<'a>(std::slice::Iter<'a, (Arc<str>, PercentDecodedStr)>);
+
+impl<'a> Iterator for RawPathParamsIter<'a> {
+    type Item = (&'a str, &'a str);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let (key, value) = self.0.next()?;
+        Some((&**key, value.as_str()))
+    }
+}
+
+/// Rejection used by [`RawPathParams`] if a parameter contained text that, once percent decoded,
+/// wasn't valid UTF-8.
+#[derive(Debug)]
+pub struct InvalidUtf8InPathParam {
+    key: Arc<str>,
+}
+
+impl InvalidUtf8InPathParam {
+    /// Get the response body text used for this rejection.
+    pub fn body_text(&self) -> String {
+        self.to_string()
+    }
+
+    /// Get the status code used for this rejection.
+    pub fn status(&self) -> StatusCode {
+        StatusCode::BAD_REQUEST
+    }
+}
+
+impl fmt::Display for InvalidUtf8InPathParam {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Invalid UTF-8 in `{}`", self.key)
+    }
+}
+
+impl std::error::Error for InvalidUtf8InPathParam {}
+
+impl IntoResponse for InvalidUtf8InPathParam {
+    fn into_response(self) -> Response {
+        (self.status(), self.body_text()).into_response()
+    }
+}
 
 #[cfg(test)]
 mod tests {
@@ -715,5 +830,24 @@ mod tests {
             .text()
             .await
             .starts_with("Wrong number of path arguments for `Path`. Expected 1 but got 2"));
+    }
+
+    #[crate::test]
+    async fn raw_path_params() {
+        let app = Router::new().route(
+            "/:a/:b/:c",
+            get(|params: RawPathParams| async move {
+                params
+                    .into_iter()
+                    .map(|(key, value)| format!("{key}={value}"))
+                    .collect::<Vec<_>>()
+                    .join(" ")
+            }),
+        );
+
+        let client = TestClient::new(app);
+        let res = client.get("/foo/bar/baz").send().await;
+        let body = res.text().await;
+        assert_eq!(body, "a=foo b=bar c=baz");
     }
 }
