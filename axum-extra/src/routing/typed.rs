@@ -386,20 +386,13 @@ impl_second_element_is!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::routing::TypedPath;
+    use serde::Deserialize;
 
+    #[derive(TypedPath, Deserialize)]
+    #[typed_path("/users/:id")]
     struct UsersShow {
         id: i32,
-    }
-
-    // can't derive `TypedPath` because that references `::axum_extra` :(
-    impl fmt::Display for UsersShow {
-        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            write!(f, "/users/{}", self.id)
-        }
-    }
-
-    impl TypedPath for UsersShow {
-        const PATH: &'static str = "/users/:id";
     }
 
     #[derive(Serialize)]
