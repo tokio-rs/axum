@@ -1,6 +1,6 @@
 //! Route to services and handlers based on HTTP methods.
 
-use super::IntoMakeService;
+use super::{future::InfallibleRouteFuture, IntoMakeService};
 #[cfg(feature = "tokio")]
 use crate::extract::connect_info::IntoMakeServiceWithConnectInfo;
 use crate::{
@@ -1264,6 +1264,18 @@ where
     #[inline]
     fn call(&mut self, req: Request<B>) -> Self::Future {
         self.call_with_state(req, ())
+    }
+}
+
+impl<S, B> Handler<(), S, B> for MethodRouter<S, B>
+where
+    S: Clone + 'static,
+    B: HttpBody + Send + 'static,
+{
+    type Future = InfallibleRouteFuture<B>;
+
+    fn call(mut self, req: Request<B>, state: S) -> Self::Future {
+        InfallibleRouteFuture::new(self.call_with_state(req, state))
     }
 }
 
