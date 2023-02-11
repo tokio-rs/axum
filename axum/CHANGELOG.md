@@ -11,6 +11,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 [#1730]: https://github.com/tokio-rs/axum/pull/1730
 
+# 0.6.5 (11. February, 2023)
+
+- **fixed:** Fix `#[debug_handler]` sometimes giving wrong borrow related suggestions ([#1710])
+- Document gotchas related to using `impl IntoResponse` as the return type from handler functions ([#1736])
+
+[#1710]: https://github.com/tokio-rs/axum/pull/1710
+[#1736]: https://github.com/tokio-rs/axum/pull/1736
+
 # 0.6.4 (22. January, 2023)
 
 - Depend on axum-macros 0.3.2
