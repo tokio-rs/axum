@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning].
 
 # Unreleased
 
-- None.
+- **added:** Add `TypedPath::with_query_params` ([#1744])
+
+[#1744]: https://github.com/tokio-rs/axum/pull/1744
 
 # 0.4.2 (02. December, 2022)
 
