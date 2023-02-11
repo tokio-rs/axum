@@ -275,7 +275,9 @@ pub trait TypedPath: std::fmt::Display {
     }
 }
 
-#[allow(missing_docs)]
+/// A [`TypedPath`] with query params.
+///
+/// See [`TypedPath::with_query_params`] for more details.
 #[derive(Debug, Clone, Copy)]
 pub struct WithQueryParams<P, T> {
     path: P,
