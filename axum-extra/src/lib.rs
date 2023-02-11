@@ -72,6 +72,7 @@ pub mod body;
 pub mod either;
 pub mod extract;
 pub mod handler;
+pub mod middleware;
 pub mod response;
 pub mod routing;
 
