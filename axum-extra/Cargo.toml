@@ -50,13 +50,13 @@ tower-service = "0.3"
 # optional dependencies
 axum-macros = { path = "../axum-macros", version = "0.3.1", optional = true }
 cookie = { package = "cookie", version = "0.16", features = ["percent-encode"], optional = true }
+form_urlencoded = { version = "1.1.0", optional = true }
 percent-encoding = { version = "2.1", optional = true }
 prost = { version = "0.11", optional = true }
 serde = { version = "1.0", optional = true }
 serde_html_form = { version = "0.1", optional = true }
 serde_json = { version = "1.0.71", optional = true }
 serde_urlencoded = { version = "0.7", optional = true }
-form_urlencoded = { version = "1.1.0", optional = true }
 tokio-stream = { version = "0.1.9", optional = true }
 tokio-util = { version = "0.7", optional = true }
 
