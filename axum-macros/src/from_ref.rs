@@ -44,6 +44,7 @@ fn expand_field(state: &Ident, idx: usize, field: &Field) -> TokenStream {
     };
 
     quote_spanned! {span=>
+        #[allow(clippy::clone_on_copy)]
         impl ::axum::extract::FromRef<#state> for #field_ty {
             fn from_ref(state: &#state) -> Self {
                 #body
