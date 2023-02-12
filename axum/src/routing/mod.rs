@@ -61,10 +61,10 @@ impl RouteId {
 }
 
 /// The router type for composing handlers and services.
-pub struct Router<S = (), B = Body> {
-    routes: HashMap<RouteId, Endpoint<S, B>>,
+pub struct Router<S = ()> {
+    routes: HashMap<RouteId, Endpoint<S>>,
     node: Arc<Node>,
-    fallback: Fallback<S, B>,
+    fallback: Fallback<S>,
 }
 
 impl<S, B> Clone for Router<S, B> {
@@ -550,13 +550,14 @@ where
     }
 }
 
-impl<B> Service<Request<B>> for Router<(), B>
+impl<B> Service<Request<B>> for Router<()>
 where
-    B: HttpBody + Send + 'static,
+    B: HttpBody<Data = bytes::Bytes> + Send + 'static,
+    B::Error: Into<axum_core::BoxError>,
 {
     type Response = Response;
     type Error = Infallible;
-    type Future = RouteFuture<B, Infallible>;
+    type Future = RouteFuture<Infallible>;
 
     #[inline]
     fn poll_ready(&mut self, _: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
@@ -565,6 +566,7 @@ where
 
     #[inline]
     fn call(&mut self, req: Request<B>) -> Self::Future {
+        let req = req.map(Body::new);
         self.call_with_state(req, ())
     }
 }
