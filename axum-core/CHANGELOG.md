@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- None.
+- **added:** Add `Body::from_stream` ([#1752])
+
+[#1752]: https://github.com/tokio-rs/axum/pull/1752
 
 # 0.3.2 (20. January, 2023)
 
