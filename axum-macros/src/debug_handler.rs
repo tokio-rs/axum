@@ -6,14 +6,10 @@ use crate::{
 };
 use proc_macro2::{Span, TokenStream};
 use quote::{format_ident, quote, quote_spanned};
-use syn::{parse::Parse, parse_quote, spanned::Spanned, FnArg, ItemFn, Token, Type};
+use syn::{parse::Parse, spanned::Spanned, FnArg, ItemFn, Token, Type};
 
 pub(crate) fn expand(attr: Attrs, item_fn: ItemFn) -> TokenStream {
-    let Attrs { body_ty, state_ty } = attr;
-
-    let body_ty = body_ty
-        .map(second)
-        .unwrap_or_else(|| parse_quote!(axum::body::Body));
+    let Attrs { state_ty } = attr;
 
     let mut state_ty = state_ty.map(second);
 
@@ -48,7 +44,7 @@ pub(crate) fn expand(attr: Attrs, item_fn: ItemFn) -> TokenStream {
             let state_ty = state_ty.unwrap_or_else(|| syn::parse_quote!(()));
 
             let check_inputs_impls_from_request =
-                check_inputs_impls_from_request(&item_fn, &body_ty, state_ty);
+                check_inputs_impls_from_request(&item_fn, state_ty);
             let check_future_send = check_future_send(&item_fn);
 
             quote! {
@@ -79,20 +75,16 @@ mod kw {
 }
 
 pub(crate) struct Attrs {
-    body_ty: Option<(kw::body, Type)>,
     state_ty: Option<(kw::state, Type)>,
 }
 
 impl Parse for Attrs {
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
-        let mut body_ty = None;
         let mut state_ty = None;
 
         while !input.is_empty() {
             let lh = input.lookahead1();
-            if lh.peek(kw::body) {
-                parse_assignment_attribute(input, &mut body_ty)?;
-            } else if lh.peek(kw::state) {
+            if lh.peek(kw::state) {
                 parse_assignment_attribute(input, &mut state_ty)?;
             } else {
                 return Err(lh.error());
@@ -101,7 +93,7 @@ impl Parse for Attrs {
             let _ = input.parse::<Token![,]>();
         }
 
-        Ok(Self { body_ty, state_ty })
+        Ok(Self { state_ty })
     }
 }
 
@@ -174,11 +166,7 @@ fn is_self_pat_type(typed: &syn::PatType) -> bool {
     ident == "self"
 }
 
-fn check_inputs_impls_from_request(
-    item_fn: &ItemFn,
-    body_ty: &Type,
-    state_ty: Type,
-) -> TokenStream {
+fn check_inputs_impls_from_request(item_fn: &ItemFn, state_ty: Type) -> TokenStream {
     let takes_self = item_fn.sig.inputs.first().map_or(false, |arg| match arg {
         FnArg::Receiver(_) => true,
         FnArg::Typed(typed) => is_self_pat_type(typed),
@@ -255,7 +243,7 @@ fn check_inputs_impls_from_request(
                 }
             } else {
                 quote_spanned! {span=>
-                    #ty: ::axum::extract::FromRequest<#state_ty, #body_ty, M> + Send
+                    #ty: ::axum::extract::FromRequest<#state_ty, M> + Send
                 }
             };
 

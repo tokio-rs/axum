@@ -8,5 +8,5 @@ struct MyPath {
 }
 
 fn main() {
-    axum::Router::<(), axum::body::Body>::new().typed_get(|_: MyPath| async {});
+    axum::Router::<()>::new().typed_get(|_: MyPath| async {});
 }

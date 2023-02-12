@@ -19,13 +19,6 @@ pub(crate) enum Trait {
 }
 
 impl Trait {
-    fn body_type(&self) -> impl Iterator<Item = Type> {
-        match self {
-            Trait::FromRequest => Some(parse_quote!(B)).into_iter(),
-            Trait::FromRequestParts => None.into_iter(),
-        }
-    }
-
     fn via_marker_type(&self) -> Option<Type> {
         match self {
             Trait::FromRequest => Some(parse_quote!(M)),
@@ -370,14 +363,12 @@ fn impl_struct_by_extracting_each_field(
         quote!(::axum::response::Response)
     };
 
-    let impl_generics = tr
-        .body_type()
-        .chain(state.impl_generics())
+    let impl_generics = state
+        .impl_generics()
         .collect::<Punctuated<Type, Token![,]>>();
 
     let trait_generics = state
         .trait_generics()
-        .chain(tr.body_type())
         .collect::<Punctuated<Type, Token![,]>>();
 
     let state_bounds = state.bounds();
@@ -388,15 +379,12 @@ fn impl_struct_by_extracting_each_field(
             #[automatically_derived]
             impl<#impl_generics> ::axum::extract::FromRequest<#trait_generics> for #ident
             where
-                B: ::axum::body::HttpBody + ::std::marker::Send + 'static,
-                B::Data: ::std::marker::Send,
-                B::Error: ::std::convert::Into<::axum::BoxError>,
                 #state_bounds
             {
                 type Rejection = #rejection_ident;
 
                 async fn from_request(
-                    mut req: ::axum::http::Request<B>,
+                    mut req: ::axum::http::Request<::axum::body::Body>,
                     state: &#state,
                 ) -> ::std::result::Result<Self, Self::Rejection> {
                     #trait_fn_body
@@ -749,7 +737,7 @@ fn impl_struct_by_extracting_all_at_once(
     // struct AppState {}
     // ```
     //
-    // we need to implement `impl<B, M> FromRequest<AppState, B, M>` but only for
+    // we need to implement `impl<B, M> FromRequest<AppState, M>` but only for
     // - `#[derive(FromRequest)]`, not `#[derive(FromRequestParts)]`
     // - `State`, not other extractors
     //
@@ -760,16 +748,15 @@ fn impl_struct_by_extracting_all_at_once(
         None
     };
 
-    let impl_generics = tr
-        .body_type()
-        .chain(via_marker_type.clone())
+    let impl_generics = via_marker_type
+        .iter()
+        .cloned()
         .chain(state.impl_generics())
         .chain(generic_ident.is_some().then(|| parse_quote!(T)))
         .collect::<Punctuated<Type, Token![,]>>();
 
     let trait_generics = state
         .trait_generics()
-        .chain(tr.body_type())
         .chain(via_marker_type)
         .collect::<Punctuated<Type, Token![,]>>();
 
@@ -828,13 +815,12 @@ fn impl_struct_by_extracting_all_at_once(
                 where
                     #via_path<#via_type_generics>: ::axum::extract::FromRequest<#trait_generics>,
                     #rejection_bound
-                    B: ::std::marker::Send + 'static,
                     #state_bounds
                 {
                     type Rejection = #associated_rejection_type;
 
                     async fn from_request(
-                        req: ::axum::http::Request<B>,
+                        req: ::axum::http::Request<::axum::body::Body>,
                         state: &#state,
                     ) -> ::std::result::Result<Self, Self::Rejection> {
                         ::axum::extract::FromRequest::from_request(req, state)
@@ -923,14 +909,12 @@ fn impl_enum_by_extracting_all_at_once(
 
     let path_span = path.span();
 
-    let impl_generics = tr
-        .body_type()
-        .chain(state.impl_generics())
+    let impl_generics = state
+        .impl_generics()
         .collect::<Punctuated<Type, Token![,]>>();
 
     let trait_generics = state
         .trait_generics()
-        .chain(tr.body_type())
         .collect::<Punctuated<Type, Token![,]>>();
 
     let state_bounds = state.bounds();
@@ -942,15 +926,12 @@ fn impl_enum_by_extracting_all_at_once(
                 #[automatically_derived]
                 impl<#impl_generics> ::axum::extract::FromRequest<#trait_generics> for #ident
                 where
-                    B: ::axum::body::HttpBody + ::std::marker::Send + 'static,
-                    B::Data: ::std::marker::Send,
-                    B::Error: ::std::convert::Into<::axum::BoxError>,
                     #state_bounds
                 {
                     type Rejection = #associated_rejection_type;
 
                     async fn from_request(
-                        req: ::axum::http::Request<B>,
+                        req: ::axum::http::Request<::axum::body::Body>,
                         state: &#state,
                     ) -> ::std::result::Result<Self, Self::Rejection> {
                         ::axum::extract::FromRequest::from_request(req, state)

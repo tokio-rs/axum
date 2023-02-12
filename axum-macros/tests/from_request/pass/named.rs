@@ -1,5 +1,4 @@
 use axum::{
-    body::Body,
     extract::{FromRequest, TypedHeader, rejection::TypedHeaderRejection},
     response::Response,
     headers::{self, UserAgent},
@@ -17,7 +16,7 @@ struct Extractor {
 
 fn assert_from_request()
 where
-    Extractor: FromRequest<(), Body, Rejection = Response>,
+    Extractor: FromRequest<(), Rejection = Response>,
 {
 }
 

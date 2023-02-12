@@ -1,5 +1,4 @@
 use axum::{
-    body::Body,
     extract::{FromRequest, Json},
     response::Response,
 };
@@ -15,7 +14,7 @@ struct Extractor {
 
 fn assert_from_request()
 where
-    Extractor: FromRequest<(), Body, Rejection = Response>,
+    Extractor: FromRequest<(), Rejection = Response>,
 {
 }
 
