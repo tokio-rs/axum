@@ -114,13 +114,13 @@ pub trait FromRequestParts<S>: Sized {
         note = "Function argument is not a valid axum extractor. \nSee `https://docs.rs/axum/latest/axum/extract/index.html` for details",
     )
 )]
-pub trait FromRequest<S, B, M = private::ViaRequest>: Sized {
+pub trait FromRequest<S, M = private::ViaRequest>: Sized {
     /// If the extractor fails it'll use this "rejection" type. A rejection is
     /// a kind of error that can be converted into a response.
     type Rejection: IntoResponse;
 
     /// Perform the extraction.
-    async fn from_request(req: Request<B>, state: &S) -> Result<Self, Self::Rejection>;
+    async fn from_request(req: Request<Body>, state: &S) -> Result<Self, Self::Rejection>;
 }
 
 #[async_trait]
