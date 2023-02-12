@@ -513,16 +513,16 @@ where
 ///     S: Service<Request<Body>>,
 /// {}
 /// ```
-pub struct MethodRouter<S = (), B = Body, E = Infallible> {
-    get: MethodEndpoint<S, B, E>,
-    head: MethodEndpoint<S, B, E>,
-    delete: MethodEndpoint<S, B, E>,
-    options: MethodEndpoint<S, B, E>,
-    patch: MethodEndpoint<S, B, E>,
-    post: MethodEndpoint<S, B, E>,
-    put: MethodEndpoint<S, B, E>,
-    trace: MethodEndpoint<S, B, E>,
-    fallback: Fallback<S, B, E>,
+pub struct MethodRouter<S = (), E = Infallible> {
+    get: MethodEndpoint<S, E>,
+    head: MethodEndpoint<S, E>,
+    delete: MethodEndpoint<S, E>,
+    options: MethodEndpoint<S, E>,
+    patch: MethodEndpoint<S, E>,
+    post: MethodEndpoint<S, E>,
+    put: MethodEndpoint<S, E>,
+    trace: MethodEndpoint<S, E>,
+    fallback: Fallback<S, E>,
     allow_header: AllowHeader,
 }
 
@@ -1248,13 +1248,14 @@ impl<S, B, E> fmt::Debug for MethodEndpoint<S, B, E> {
     }
 }
 
-impl<B, E> Service<Request<B>> for MethodRouter<(), B, E>
+impl<B, E> Service<Request<B>> for MethodRouter<(), E>
 where
-    B: HttpBody + Send + 'static,
+    B: HttpBody<Data = Bytes> + Send + 'static,
+    B::Error: Into<BoxError>,
 {
     type Response = Response;
     type Error = E;
-    type Future = RouteFuture<B, E>;
+    type Future = RouteFuture<E>;
 
     #[inline]
     fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
