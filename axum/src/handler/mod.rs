@@ -99,12 +99,12 @@ pub use self::service::HandlerService;
         note = "Consider using `#[axum::debug_handler]` to improve the error message"
     )
 )]
-pub trait Handler<T, S, B = Body>: Clone + Send + Sized + 'static {
+pub trait Handler<T, S>: Clone + Send + Sized + 'static {
     /// The type of future calling this handler returns.
     type Future: Future<Output = Response> + Send + 'static;
 
     /// Call the handler with the given request.
-    fn call(self, req: Request<B>, state: S) -> Self::Future;
+    fn call(self, req: Request<Body>, state: S) -> Self::Future;
 
     /// Apply a [`tower::Layer`] to the handler.
     ///
@@ -142,10 +142,10 @@ pub trait Handler<T, S, B = Body>: Clone + Send + Sized + 'static {
     /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
     /// # };
     /// ```
-    fn layer<L, NewReqBody>(self, layer: L) -> Layered<L, Self, T, S, B, NewReqBody>
+    fn layer<L>(self, layer: L) -> Layered<L, Self, T, S>
     where
-        L: Layer<HandlerService<Self, T, S, B>> + Clone,
-        L::Service: Service<Request<NewReqBody>>,
+        L: Layer<HandlerService<Self, T, S>> + Clone,
+        L::Service: Service<Request<Body>>,
     {
         Layered {
             layer,
@@ -155,21 +155,20 @@ pub trait Handler<T, S, B = Body>: Clone + Send + Sized + 'static {
     }
 
     /// Convert the handler into a [`Service`] by providing the state
-    fn with_state(self, state: S) -> HandlerService<Self, T, S, B> {
+    fn with_state(self, state: S) -> HandlerService<Self, T, S> {
         HandlerService::new(self, state)
     }
 }
 
-impl<F, Fut, Res, S, B> Handler<((),), S, B> for F
+impl<F, Fut, Res, S> Handler<((),), S> for F
 where
     F: FnOnce() -> Fut + Clone + Send + 'static,
     Fut: Future<Output = Res> + Send,
     Res: IntoResponse,
-    B: Send + 'static,
 {
     type Future = Pin<Box<dyn Future<Output = Response> + Send>>;
 
-    fn call(self, _req: Request<B>, _state: S) -> Self::Future {
+    fn call(self, _req: Request<Body>, _state: S) -> Self::Future {
         Box::pin(async move { self().await.into_response() })
     }
 }
@@ -179,19 +178,18 @@ macro_rules! impl_handler {
         [$($ty:ident),*], $last:ident
     ) => {
         #[allow(non_snake_case, unused_mut)]
-        impl<F, Fut, S, B, Res, M, $($ty,)* $last> Handler<(M, $($ty,)* $last,), S, B> for F
+        impl<F, Fut, S, Res, M, $($ty,)* $last> Handler<(M, $($ty,)* $last,), S> for F
         where
             F: FnOnce($($ty,)* $last,) -> Fut + Clone + Send + 'static,
             Fut: Future<Output = Res> + Send,
-            B: Send + 'static,
             S: Send + Sync + 'static,
             Res: IntoResponse,
             $( $ty: FromRequestParts<S> + Send, )*
-            $last: FromRequest<S, B, M> + Send,
+            $last: FromRequest<S, M> + Send,
         {
             type Future = Pin<Box<dyn Future<Output = Response> + Send>>;
 
-            fn call(self, req: Request<B>, state: S) -> Self::Future {
+            fn call(self, req: Request<Body>, state: S) -> Self::Future {
                 Box::pin(async move {
                     let (mut parts, body) = req.into_parts();
                     let state = &state;
