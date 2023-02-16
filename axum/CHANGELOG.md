@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- None.
+- **breaking:** Change `sse::Event::json_data` to use `axum_core::Error` as its error type ([#1762])
+
+[#1762]: https://github.com/tokio-rs/axum/pull/1762
 
 # 0.6.11 (13. March, 2023)
 
