@@ -80,7 +80,7 @@ jobs:
     - uses: actions/checkout@master
     - uses: dtolnay/rust-toolchain@stable
       with:
-        toolchain: stable
+        toolchain: nightly
         override: true
         profile: minimal
     - uses: Swatinem/rust-cache@v1
