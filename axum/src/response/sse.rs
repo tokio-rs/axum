@@ -212,7 +212,7 @@ impl Event {
     ///
     /// [`MessageEvent`'s data field]: https://developer.mozilla.org/en-US/docs/Web/API/MessageEvent/data
     #[cfg(feature = "json")]
-    pub fn json_data<T>(mut self, data: T) -> serde_json::Result<Event>
+    pub fn json_data<T>(mut self, data: T) -> Result<Event, axum_core::Error>
     where
         T: serde::Serialize,
     {
@@ -221,7 +221,7 @@ impl Event {
         }
 
         self.buffer.extend_from_slice(b"data:");
-        serde_json::to_writer((&mut self.buffer).writer(), &data)?;
+        serde_json::to_writer((&mut self.buffer).writer(), &data).map_err(axum_core::Error::new)?;
         self.buffer.put_u8(b'\n');
 
         self.flags.insert(EventFlags::HAS_DATA);
