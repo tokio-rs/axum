@@ -74,6 +74,22 @@ jobs:
     - name: cargo hack check
       run: cargo hack check --each-feature --no-dev-deps --all
 
+  cargo-public-api-crates:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@master
+    - uses: dtolnay/rust-toolchain@stable
+      with:
+        toolchain: stable
+        override: true
+        profile: minimal
+    - uses: Swatinem/rust-cache@v1
+    - name: Install cargo-public-api-crates
+      run: |
+        cargo install --git https://github.com/davidpdrsn/cargo-public-api-crates
+    - name: cargo public-api-crates check
+      run: cargo public-api-crates --manifest-path axum/Cargo.toml check
+
   test-versions:
     needs: check
     runs-on: ubuntu-latest
