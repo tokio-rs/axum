@@ -76,6 +76,9 @@ jobs:
 
   cargo-public-api-crates:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        crate: [axum, axum-core, axum-extra, axum-macros]
     steps:
     - uses: actions/checkout@master
     - uses: dtolnay/rust-toolchain@stable
@@ -88,7 +91,7 @@ jobs:
       run: |
         cargo install --git https://github.com/davidpdrsn/cargo-public-api-crates
     - name: cargo public-api-crates check
-      run: cargo public-api-crates --manifest-path axum/Cargo.toml check
+      run: cargo public-api-crates --manifest-path ${{ matrix.crate }}/Cargo.toml check
 
   test-versions:
     needs: check

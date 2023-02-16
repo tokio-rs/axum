@@ -73,3 +73,22 @@ tower-http = { version = "0.3", features = ["map-response-body", "timeout"] }
 [package.metadata.docs.rs]
 all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
+
+[package.metadata.cargo-public-api-crates]
+allowed = [
+    "axum",
+    "axum_core",
+    "bytes",
+    "cookie",
+    "futures_core",
+    "futures_util",
+    "http",
+    "http_body",
+    "hyper",
+    "percent_encoding",
+    "prost",
+    "serde",
+    "tokio",
+    "tower_layer",
+    "tower_service",
+]
