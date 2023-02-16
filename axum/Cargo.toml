@@ -122,7 +122,6 @@ allowed = [
     "http_body",
     "hyper",
     "serde",
-    "serde_json",
     "tower_layer",
     "tower_service",
 ]
