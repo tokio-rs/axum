@@ -108,37 +108,11 @@ instead for such data.
 # Mutable state
 
 As state is used across routes it is not mutable by default. To mutate a state
-you will need to use an `Arc<Mutex>` or similar. Note if accessing a mutable IO such as 
-a database connection using an async mutex is required. See 
-<a href="https://docs.rs/tokio/1.25.0/tokio/sync/struct.Mutex.html#which-kind-of-mutex-should-you-use">this</a>
-discussion for a more detailed conversation on the differences between an async mutex 
-and synchronous mutex. 
+you will need to use an `Arc<Mutex>` or similar. Accessing mutable IO such as 
+a database connection requires an async mutex or similar. See the
+<a href="https://docs.rs/tokio/1.25.0/tokio/sync/struct.Mutex.html#which-kind-of-mutex-should-you-use">
+tokio discussion on sync vs async mutex</a>. 
 
-For example:
-
-```rust
-# use axum::{Router, routing::get, extract::State, response::IntoResponse, http::StatusCode};
-use std::sync::{Arc, Mutex};
-// This AppState consists of a vec of mutable strings 
-#[derive(Clone)]
-struct AppState { mutable_state: Vec<String>, }
-async fn mutate_state(State(state): State<Arc<Mutex<AppState>>>) -> impl IntoResponse {
-    // Wait to get the state
-    let mutable_state = state.lock();
-    // Now the AppState can be mutated  
-    StatusCode::OK
-}
-// A mutable AppState
-let state = Arc::new(Mutex::new(AppState { mutable_state: Default::default(), } ));
-let router = Router::new()
-    .route("/", get(mutate_state))
-    .with_state(state);
-# async {
-axum::Server::bind( & "0.0.0.0:3000".parse().unwrap())
-    .serve(router.into_make_service())
-    .await;
-# };
-```
 
 # What `S` in `Router<S>` means
 
