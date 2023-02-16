@@ -105,6 +105,40 @@ receives. That means it is not suitable for holding state derived from a
 request, such as authorization data extracted in a middleware. Use [`Extension`]
 instead for such data.
 
+# Mutable state
+
+As state is used across routes it is not mutable by default. To mutate a state
+you will need to use an `Arc<Mutex>` or similar. Note that the Mutex must
+support async locks.
+
+For example:
+
+```rust
+# use axum::{Router, routing::get, extract::State, response::IntoResponse, http::StatusCode};
+// Note the use of the tokio Mutex
+use tokio::sync::Mutex;
+use std::sync::Arc;
+// This AppState consists of a vec of mutable strings 
+#[derive(Clone)]
+struct AppState { mutable_state: Vec<String>, }
+async fn mutate_state(State(state): State<Arc<Mutex<AppState>>>) -> impl IntoResponse {
+    // Wait to get the state
+    let mutable_state = state.lock().await;
+    // Now the AppState can be mutated  
+    StatusCode::OK
+}
+// A mutable AppState
+let state = Arc::new(Mutex::new(AppState { mutable_state: Default::default(), } ));
+let router = Router::new()
+    .route("/", get(mutate_state))
+    .with_state(state);
+# async {
+axum::Server::bind( & "0.0.0.0:3000".parse().unwrap())
+    .serve(router.into_make_service())
+    .await;
+# };
+```
+
 # What `S` in `Router<S>` means
 
 `Router<S>` means a router that is _missing_ a state of type `S` to be able to
