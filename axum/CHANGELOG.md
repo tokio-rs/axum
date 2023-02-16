@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 # Unreleased
 
 - **fixed:** Fix `Allow` missing from routers with middleware
+- **breaking:** Change `sse::Event::json_data` to use `axum_core::Error` as its error type ([#1762])
+
+[#1762]: https://github.com/tokio-rs/axum/pull/1762
 
 # 0.6.7 (17. February, 2023)
 
