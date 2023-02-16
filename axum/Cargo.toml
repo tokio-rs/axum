@@ -110,6 +110,22 @@ features = [
     "ws",
 ]
 
+[package.metadata.cargo-public-api-crates]
+allowed = [
+    "axum_core",
+    "bytes",
+    "futures_core",
+    "futures_sink",
+    "futures_util",
+    "headers_core",
+    "http",
+    "http_body",
+    "hyper",
+    "serde",
+    "tower_layer",
+    "tower_service",
+]
+
 [[bench]]
 name = "benches"
 harness = false
