@@ -109,9 +109,8 @@ instead for such data.
 
 As state is used across routes it is not mutable by default. To mutate a state
 you will need to use an `Arc<Mutex>` or similar. Accessing mutable IO such as 
-a database connection requires an async mutex or similar. See the
-<a href="https://docs.rs/tokio/1.25.0/tokio/sync/struct.Mutex.html#which-kind-of-mutex-should-you-use">
-tokio discussion on sync vs async mutex</a>. 
+a database connection requires an async mutex or similar. See the 
+[tokio discussion on sync vs async mutex](https://docs.rs/tokio/1.25.0/tokio/sync/struct.Mutex.html#which-kind-of-mutex-should-you-use). 
 
 
 # What `S` in `Router<S>` means
