@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+- None.
+
+# 0.6.7 (17. February, 2023)
+
 - **added:** Add `FormRejection::FailedToDeserializeFormBody` which is returned
   if the request body couldn't be deserialized into the target type, as opposed
   to `FailedToDeserializeForm` which is only for query parameters ([#1683])
