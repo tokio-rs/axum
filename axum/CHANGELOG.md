@@ -7,27 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+- **added:** Add `FormRejection::FailedToDeserializeFormBody` which is returned
+  if the request body couldn't be deserialized into the target type, as opposed
+  to `FailedToDeserializeForm` which is only for query parameters ([#1683])
 - **added:** Add `KeepAlive::event` for customizing the event sent for SSE keep alive ([#1729])
 
-[#1729]: https://github.com/tokio-rs/axum/pull/1729
-
-# 0.6.4 (22. January, 2023)
-
-- Depend on axum-macros 0.3.2
-
-# 0.6.3 (20. January, 2023)
-
-- **added:** Implement `IntoResponse` for `&'static [u8; N]` and `[u8; N]` ([#1690])
-- **fixed:** Make `Path` support types using `serde::Deserializer::deserialize_any` ([#1693])
-- **added:** Add `RawPathParams` ([#1713])
-- **added:** Implement `Clone` and `Service` for `axum::middleware::Next` ([#1712])
-- **fixed:** Document required tokio features to run "Hello, World!" example ([#1715])
-
+[#1683]: https://github.com/tokio-rs/axum/pull/1683
 [#1690]: https://github.com/tokio-rs/axum/pull/1690
 [#1693]: https://github.com/tokio-rs/axum/pull/1693
 [#1712]: https://github.com/tokio-rs/axum/pull/1712
 [#1713]: https://github.com/tokio-rs/axum/pull/1713
 [#1715]: https://github.com/tokio-rs/axum/pull/1715
+[#1729]: https://github.com/tokio-rs/axum/pull/1729
 
 # 0.6.2 (9. January, 2023)
 

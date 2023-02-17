@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - None.
 
+# 0.3.4 (12. February, 2022)
+
+- **fixed:** Fix `#[derive(FromRef)]` with `Copy` fields generating clippy warnings ([#1749])
+
+[#1749]: https://github.com/tokio-rs/axum/pull/1749
+
+# 0.3.3 (11. February, 2022)
+
+- **fixed:** Fix `#[debug_handler]` sometimes giving wrong borrow related suggestions ([#1710])
+
+[#1710]: https://github.com/tokio-rs/axum/pull/1710
+
 # 0.3.2 (22. January, 2022)
 
 - No public API changes.

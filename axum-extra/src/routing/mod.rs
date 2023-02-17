@@ -21,6 +21,8 @@ mod typed;
 pub use self::resource::Resource;
 
 #[cfg(feature = "typed-routing")]
+pub use self::typed::WithQueryParams;
+#[cfg(feature = "typed-routing")]
 pub use axum_macros::TypedPath;
 
 #[cfg(feature = "typed-routing")]
