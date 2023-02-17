@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **added:** Add `FormRejection::FailedToDeserializeFormBody` which is returned
   if the request body couldn't be deserialized into the target type, as opposed
   to `FailedToDeserializeForm` which is only for query parameters ([#1683])
+- **added:** Add `MockConnectInfo` for setting `ConnectInfo` during tests
 
 [#1683]: https://github.com/tokio-rs/axum/pull/1683
 [#1690]: https://github.com/tokio-rs/axum/pull/1690
