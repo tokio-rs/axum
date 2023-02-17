@@ -157,10 +157,10 @@ mod tests {
             .index(|| async { "users#index" })
             .create(|| async { "users#create" })
             .new(|| async { "users#new" })
-            .show(|Path(id): Path<u64>| async move { format!("users#show id={}", id) })
-            .edit(|Path(id): Path<u64>| async move { format!("users#edit id={}", id) })
-            .update(|Path(id): Path<u64>| async move { format!("users#update id={}", id) })
-            .destroy(|Path(id): Path<u64>| async move { format!("users#destroy id={}", id) });
+            .show(|Path(id): Path<u64>| async move { format!("users#show id={id}") })
+            .edit(|Path(id): Path<u64>| async move { format!("users#edit id={id}") })
+            .update(|Path(id): Path<u64>| async move { format!("users#update id={id}") })
+            .destroy(|Path(id): Path<u64>| async move { format!("users#destroy id={id}") });
 
         let mut app = Router::new().merge(users);
 

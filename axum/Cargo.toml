@@ -1,6 +1,6 @@
 [package]
 name = "axum"
-version = "0.6.2"
+version = "0.6.6"
 categories = ["asynchronous", "network-programming", "web-programming::http-server"]
 description = "Web framework that focuses on ergonomics and modularity"
 edition = "2021"
@@ -31,7 +31,7 @@ __private_docs = ["tower/full", "tower-http/full"]
 
 [dependencies]
 async-trait = "0.1.43"
-axum-core = { path = "../axum-core", version = "0.3.1" }
+axum-core = { path = "../axum-core", version = "0.3.2" }
 bitflags = "1.0"
 bytes = "1.0"
 futures-util = { version = "0.3", default-features = false, features = ["alloc"] }
@@ -52,8 +52,8 @@ tower-layer = "0.3.2"
 tower-service = "0.3"
 
 # optional dependencies
-axum-macros = { path = "../axum-macros", version = "0.3.1", optional = true }
-base64 = { version = "0.20", optional = true }
+axum-macros = { path = "../axum-macros", version = "0.3.4", optional = true }
+base64 = { version = "0.21.0", optional = true }
 headers = { version = "0.3.7", optional = true }
 multer = { version = "2.0.0", optional = true }
 serde_json = { version = "1.0", features = ["raw_value"], optional = true }
@@ -68,12 +68,14 @@ rustversion = "1.0.9"
 
 [dev-dependencies]
 anyhow = "1.0"
+axum-macros = { path = "../axum-macros", version = "0.3.4", features = ["__private"] }
 futures = "0.3"
 quickcheck = "1.0"
 quickcheck_macros = "1.0"
 reqwest = { version = "0.11.11", default-features = false, features = ["json", "stream", "multipart"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
+time = { version = "0.3", features = ["serde-human-readable"] }
 tokio = { package = "tokio", version = "1.21", features = ["macros", "rt", "rt-multi-thread", "net", "test-util"] }
 tokio-stream = "0.1"
 tracing = "0.1"
@@ -106,6 +108,23 @@ features = [
     "json",
     "multipart",
     "ws",
+]
+
+[package.metadata.cargo-public-api-crates]
+allowed = [
+    "axum_core",
+    "bytes",
+    "futures_core",
+    "futures_sink",
+    "futures_util",
+    "headers_core",
+    "http",
+    "http_body",
+    "hyper",
+    "serde",
+    "serde_json",
+    "tower_layer",
+    "tower_service",
 ]
 
 [[bench]]

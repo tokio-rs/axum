@@ -670,10 +670,12 @@ impl From<Message> for Vec<u8> {
 }
 
 fn sign(key: &[u8]) -> HeaderValue {
+    use base64::engine::Engine as _;
+
     let mut sha1 = Sha1::default();
     sha1.update(key);
     sha1.update(&b"258EAFA5-E914-47DA-95CA-C5AB0DC85B11"[..]);
-    let b64 = Bytes::from(base64::encode(sha1.finalize()));
+    let b64 = Bytes::from(base64::engine::general_purpose::STANDARD.encode(sha1.finalize()));
     HeaderValue::from_maybe_shared(b64).expect("base64 is a valid value")
 }
 
@@ -814,7 +816,7 @@ mod tests {
     use http::{Request, Version};
     use tower::ServiceExt;
 
-    #[tokio::test]
+    #[crate::test]
     async fn rejects_http_1_0_requests() {
         let svc = get(|ws: Result<WebSocketUpgrade, WebSocketUpgradeRejection>| {
             let rejection = ws.unwrap_err();

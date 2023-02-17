@@ -6,7 +6,7 @@ mod for_handlers {
     use super::*;
     use http::HeaderMap;
 
-    #[tokio::test]
+    #[crate::test]
     async fn get_handles_head() {
         let app = Router::new().route(
             "/",
@@ -41,7 +41,7 @@ mod for_services {
     use super::*;
     use crate::routing::get_service;
 
-    #[tokio::test]
+    #[crate::test]
     async fn get_handles_head() {
         let app = Router::new().route(
             "/",

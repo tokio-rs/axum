@@ -352,10 +352,10 @@ mod tests {
         timeout::TimeoutLayer,
     };
 
-    #[tokio::test]
+    #[crate::test]
     async fn handler_into_service() {
         async fn handle(body: String) -> impl IntoResponse {
-            format!("you said: {}", body)
+            format!("you said: {body}")
         }
 
         let client = TestClient::new(handle.into_service());
@@ -365,7 +365,7 @@ mod tests {
         assert_eq!(res.text().await, "you said: hi there!");
     }
 
-    #[tokio::test]
+    #[crate::test]
     async fn with_layer_that_changes_request_body_and_state() {
         async fn handle(State(state): State<&'static str>) -> &'static str {
             state

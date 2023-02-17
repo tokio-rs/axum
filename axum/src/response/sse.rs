@@ -508,7 +508,7 @@ mod tests {
         assert_eq!(&*leading_space.finalize(), b"data:  foobar\n\n");
     }
 
-    #[tokio::test]
+    #[crate::test]
     async fn basic() {
         let app = Router::new().route(
             "/",

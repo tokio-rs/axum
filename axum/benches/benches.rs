@@ -26,7 +26,7 @@ fn main() {
         for a in 0..10 {
             for b in 0..10 {
                 for c in 0..10 {
-                    app = app.route(&format!("/foo-{}/bar-{}/baz-{}", a, b, c), get(|| async {}));
+                    app = app.route(&format!("/foo-{a}/bar-{b}/baz-{c}"), get(|| async {}));
                 }
             }
         }
@@ -181,7 +181,7 @@ impl BenchmarkBuilder {
 
         for (key, value) in self.headers.into_iter().flatten() {
             cmd.arg("--header");
-            cmd.arg(format!("{}: {}", key, value));
+            cmd.arg(format!("{key}: {value}"));
         }
 
         if let Some(body) = self.body {
@@ -196,7 +196,7 @@ impl BenchmarkBuilder {
         let stdout = std::io::BufReader::new(stdout);
         for line in stdout.lines() {
             let line = line.unwrap();
-            println!("  {}", line);
+            println!("  {line}");
         }
 
         let status = child.wait().unwrap();
