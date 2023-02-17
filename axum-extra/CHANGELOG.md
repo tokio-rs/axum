@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning].
 
 # Unreleased
 
-- None.
+- **breaking:**  Change casing of `ProtoBuf` to `Protobuf` ([#1595])
+
+[#1595]: https://github.com/tokio-rs/axum/pull/1595
 
 # 0.5.0 (12. February, 2022)
 
