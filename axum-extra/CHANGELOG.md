@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning].
 
 # Unreleased
 
-- None.
+- **added:** Support setting a callback to call on errors with `JsonLines` and `AsyncReadBody`
 
 # 0.6.0 (24. February, 2022)
 

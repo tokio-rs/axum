@@ -22,12 +22,12 @@ cookie-key-expansion = ["cookie", "cookie?/key-expansion"]
 erased-json = ["dep:serde_json", "dep:serde"]
 form = ["dep:serde", "dep:serde_html_form"]
 json-lines = [
-    "dep:serde_json",
     "dep:serde",
-    "dep:tokio-util",
+    "dep:serde_json",
     "dep:tokio-stream",
+    "dep:tokio-util",
+    "tokio-stream?/io-util",
     "tokio-util?/io",
-    "tokio-stream?/io-util"
 ]
 protobuf = ["dep:prost"]
 query = ["dep:serde", "dep:serde_html_form"]

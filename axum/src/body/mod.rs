@@ -1,8 +1,8 @@
 //! HTTP body utilities.
 
-mod stream_body;
+pub mod stream_body;
 
-pub use self::stream_body::StreamBody;
+pub use self::stream_body::{StreamBody, TryStreamBody};
 
 #[doc(no_inline)]
 pub use http_body::{Body as HttpBody, Empty, Full};

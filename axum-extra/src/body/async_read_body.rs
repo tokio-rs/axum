@@ -1,11 +1,15 @@
 use axum::{
-    body::{self, Bytes, HttpBody, StreamBody},
+    body::{
+        self,
+        stream_body::{DefaultOnError, OnError, TryStreamBody},
+        Bytes, HttpBody,
+    },
     http::HeaderMap,
     response::{IntoResponse, Response},
-    Error,
 };
 use pin_project_lite::pin_project;
 use std::{
+    convert::Infallible,
     pin::Pin,
     task::{Context, Poll},
 };
@@ -46,30 +50,46 @@ pin_project! {
     /// ```
     #[cfg(feature = "async-read-body")]
     #[derive(Debug)]
-    pub struct AsyncReadBody<R> {
+    pub struct AsyncReadBody<R, T = DefaultOnError> {
         #[pin]
-        read: StreamBody<ReaderStream<R>>,
+        read: TryStreamBody<ReaderStream<R>, T>,
     }
 }
 
-impl<R> AsyncReadBody<R> {
+impl<R> AsyncReadBody<R, DefaultOnError> {
     /// Create a new `AsyncReadBody`.
     pub fn new(read: R) -> Self
     where
-        R: AsyncRead + Send + 'static,
+        R: AsyncRead,
     {
         Self {
-            read: StreamBody::new(ReaderStream::new(read)),
+            read: TryStreamBody::new(ReaderStream::new(read)),
         }
     }
 }
 
-impl<R> HttpBody for AsyncReadBody<R>
+impl<R, T> AsyncReadBody<R, T> {
+    /// Provide a callback to call if the underlying reader produces an error.
+    ///
+    /// By default any errors will be silently ignored.
+    pub fn on_error<C>(self, callback: C) -> AsyncReadBody<R, C>
+    where
+        R: AsyncRead,
+        C: OnError<std::io::Error>,
+    {
+        AsyncReadBody {
+            read: self.read.on_error(callback),
+        }
+    }
+}
+
+impl<R, T> HttpBody for AsyncReadBody<R, T>
 where
-    R: AsyncRead + Send + 'static,
+    R: AsyncRead,
+    T: OnError<std::io::Error>,
 {
     type Data = Bytes;
-    type Error = Error;
+    type Error = Infallible;
 
     fn poll_data(
         self: Pin<&mut Self>,
@@ -86,9 +106,10 @@ where
     }
 }
 
-impl<R> IntoResponse for AsyncReadBody<R>
+impl<R, T> IntoResponse for AsyncReadBody<R, T>
 where
     R: AsyncRead + Send + 'static,
+    T: OnError<std::io::Error> + Send + 'static,
 {
     fn into_response(self) -> Response {
         Response::new(body::boxed(self))

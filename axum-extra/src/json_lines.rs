@@ -2,10 +2,11 @@
 
 use axum::{
     async_trait,
-    body::{HttpBody, StreamBody},
+    body::stream_body::{DefaultOnError, OnError, TryStreamBody},
+    body::HttpBody,
     extract::FromRequest,
     response::{IntoResponse, Response},
-    BoxError,
+    BoxError, Error,
 };
 use bytes::{BufMut, Bytes, BytesMut};
 use futures_util::stream::{BoxStream, Stream, TryStream, TryStreamExt};
@@ -15,7 +16,6 @@ use serde::{de::DeserializeOwned, Serialize};
 use std::{
     convert::Infallible,
     io::{self, Write},
-    marker::PhantomData,
     pin::Pin,
     task::{Context, Poll},
 };
@@ -61,7 +61,7 @@ pin_project! {
     pub struct JsonLines<S, T = AsExtractor> {
         #[pin]
         inner: Inner<S>,
-        _marker: PhantomData<T>,
+        kind: T,
     }
 }
 
@@ -86,15 +86,37 @@ pub struct AsExtractor;
 
 /// Maker type used to prove that an `JsonLines` was constructed via `JsonLines::new`.
 #[derive(Debug)]
-#[non_exhaustive]
-pub struct AsResponse;
+pub struct AsResponse<T = DefaultOnError> {
+    on_error: T,
+}
 
-impl<S> JsonLines<S, AsResponse> {
+impl<S> JsonLines<S, AsResponse<DefaultOnError>> {
     /// Create a new `JsonLines` from a stream of items.
     pub fn new(stream: S) -> Self {
         Self {
             inner: Inner::Response { stream },
-            _marker: PhantomData,
+            kind: AsResponse {
+                on_error: DefaultOnError::default(),
+            },
+        }
+    }
+}
+
+impl<S, T> JsonLines<S, AsResponse<T>> {
+    /// Provide a callback to call if serialization fails.
+    ///
+    /// By default any errors will be silently ignored.
+    pub fn on_error<C>(self, callback: C) -> JsonLines<S, AsResponse<C>>
+    where
+        C: OnError<Error>,
+    {
+        match self.inner {
+            Inner::Response { stream } => JsonLines {
+                inner: Inner::Response { stream },
+                kind: AsResponse { on_error: callback },
+            },
+            // `AsResponse` always uses `Inner::Response`
+            Inner::Extractor { .. } => unreachable!(),
         }
     }
 }
@@ -134,7 +156,7 @@ where
             inner: Inner::Extractor {
                 stream: Box::pin(deserialized_stream),
             },
-            _marker: PhantomData,
+            kind: AsExtractor,
         })
     }
 }
@@ -172,11 +194,12 @@ impl<T> Stream for JsonLines<T, AsExtractor> {
     }
 }
 
-impl<S> IntoResponse for JsonLines<S, AsResponse>
+impl<S, T> IntoResponse for JsonLines<S, AsResponse<T>>
 where
     S: TryStream + Send + 'static,
     S::Ok: Serialize + Send,
     S::Error: Into<BoxError>,
+    T: OnError<Error> + Send + 'static,
 {
     fn into_response(self) -> Response {
         let inner = match self.inner {
@@ -186,13 +209,19 @@ where
             Inner::Extractor { .. } => unreachable!(),
         };
 
-        let stream = inner.map_err(Into::into).and_then(|value| async move {
-            let mut buf = BytesMut::new().writer();
-            serde_json::to_writer(&mut buf, &value)?;
-            buf.write_all(b"\n")?;
-            Ok::<_, BoxError>(buf.into_inner().freeze())
-        });
-        let stream = StreamBody::new(stream);
+        let AsResponse { on_error } = self.kind;
+
+        let stream = inner
+            .map_err(Into::into)
+            .and_then(|value| async move {
+                let mut buf = BytesMut::new().writer();
+                serde_json::to_writer(&mut buf, &value)?;
+                buf.write_all(b"\n")?;
+                Ok::<_, BoxError>(buf.into_inner().freeze())
+            })
+            .map_err(Error::new);
+
+        let stream = TryStreamBody::new(stream).on_error(on_error);
 
         // there is no consensus around mime type yet
         // https://github.com/wardi/jsonlines/issues/36
