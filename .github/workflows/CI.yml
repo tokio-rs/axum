@@ -20,6 +20,10 @@ jobs:
           - examples
     steps:
     - uses: actions/checkout@master
+    - uses: arduino/setup-protoc@v1
+      if: matrix.pwd == 'examples'
+      with:
+        repo-token: ${{ secrets.GITHUB_TOKEN }}
     - uses: dtolnay/rust-toolchain@stable
       with:
         toolchain: beta
@@ -69,6 +73,25 @@ jobs:
         curl -LsSf https://github.com/taiki-e/cargo-hack/releases/latest/download/cargo-hack-x86_64-unknown-linux-gnu.tar.gz | tar xzf - -C ~/.cargo/bin
     - name: cargo hack check
       run: cargo hack check --each-feature --no-dev-deps --all
+
+  cargo-public-api-crates:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        crate: [axum, axum-core, axum-extra, axum-macros]
+    steps:
+    - uses: actions/checkout@master
+    - uses: dtolnay/rust-toolchain@stable
+      with:
+        toolchain: nightly
+        override: true
+        profile: minimal
+    - uses: Swatinem/rust-cache@v1
+    - name: Install cargo-public-api-crates
+      run: |
+        cargo install --git https://github.com/davidpdrsn/cargo-public-api-crates
+    - name: cargo public-api-crates check
+      run: cargo public-api-crates --manifest-path ${{ matrix.crate }}/Cargo.toml check
 
   test-versions:
     needs: check

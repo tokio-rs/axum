@@ -61,6 +61,9 @@
 //! }
 //! ```
 //!
+//! Note using `#[tokio::main]` requires you enable tokio's `macros` and `rt-multi-thread` features
+//! or just `full` to enable all features (`cargo add tokio --features macros,rt-multi-thread`).
+//!
 //! # Routing
 //!
 //! [`Router`] is used to setup which paths goes to which services:
@@ -493,3 +496,6 @@ pub use axum_core::{BoxError, Error, RequestExt, RequestPartsExt};
 pub use axum_macros::debug_handler;
 
 pub use self::service_ext::ServiceExt;
+
+#[cfg(test)]
+use axum_macros::__private_axum_test as test;

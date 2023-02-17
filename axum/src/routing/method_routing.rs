@@ -1,6 +1,6 @@
 //! Route to services and handlers based on HTTP methods.
 
-use super::IntoMakeService;
+use super::{future::InfallibleRouteFuture, IntoMakeService};
 #[cfg(feature = "tokio")]
 use crate::extract::connect_info::IntoMakeServiceWithConnectInfo;
 use crate::{
@@ -734,14 +734,14 @@ where
     /// Provide the state for the router.
     pub fn with_state<S2>(self, state: S) -> MethodRouter<S2, B, E> {
         MethodRouter {
-            get: self.get.with_state(state.clone()),
-            head: self.head.with_state(state.clone()),
-            delete: self.delete.with_state(state.clone()),
-            options: self.options.with_state(state.clone()),
-            patch: self.patch.with_state(state.clone()),
-            post: self.post.with_state(state.clone()),
-            put: self.put.with_state(state.clone()),
-            trace: self.trace.with_state(state.clone()),
+            get: self.get.with_state(&state),
+            head: self.head.with_state(&state),
+            delete: self.delete.with_state(&state),
+            options: self.options.with_state(&state),
+            patch: self.patch.with_state(&state),
+            post: self.post.with_state(&state),
+            put: self.put.with_state(&state),
+            trace: self.trace.with_state(&state),
             allow_header: self.allow_header,
             fallback: self.fallback.with_state(state),
         }
@@ -1217,12 +1217,12 @@ where
         }
     }
 
-    fn with_state<S2>(self, state: S) -> MethodEndpoint<S2, B, E> {
+    fn with_state<S2>(self, state: &S) -> MethodEndpoint<S2, B, E> {
         match self {
             MethodEndpoint::None => MethodEndpoint::None,
             MethodEndpoint::Route(route) => MethodEndpoint::Route(route),
             MethodEndpoint::BoxedHandler(handler) => {
-                MethodEndpoint::Route(handler.into_route(state))
+                MethodEndpoint::Route(handler.into_route(state.clone()))
             }
         }
     }
@@ -1267,6 +1267,18 @@ where
     }
 }
 
+impl<S, B> Handler<(), S, B> for MethodRouter<S, B>
+where
+    S: Clone + 'static,
+    B: HttpBody + Send + 'static,
+{
+    type Future = InfallibleRouteFuture<B>;
+
+    fn call(mut self, req: Request<B>, state: S) -> Self::Future {
+        InfallibleRouteFuture::new(self.call_with_state(req, state))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1280,7 +1292,7 @@ mod tests {
     use tower::{timeout::TimeoutLayer, Service, ServiceBuilder, ServiceExt};
     use tower_http::{auth::RequireAuthorizationLayer, services::fs::ServeDir};
 
-    #[tokio::test]
+    #[crate::test]
     async fn method_not_allowed_by_default() {
         let mut svc = MethodRouter::new();
         let (status, _, body) = call(Method::GET, &mut svc).await;
@@ -1288,7 +1300,7 @@ mod tests {
         assert!(body.is_empty());
     }
 
-    #[tokio::test]
+    #[crate::test]
     async fn get_service_fn() {
         async fn handle(_req: Request<Body>) -> Result<Response<Body>, Infallible> {
             Ok(Response::new(Body::from("ok")))
@@ -1301,7 +1313,7 @@ mod tests {
         assert_eq!(body, "ok");
     }
 
-    #[tokio::test]
+    #[crate::test]
     async fn get_handler() {
         let mut svc = MethodRouter::new().get(ok);
         let (status, _, body) = call(Method::GET, &mut svc).await;
@@ -1309,7 +1321,7 @@ mod tests {
         assert_eq!(body, "ok");
     }
 
-    #[tokio::test]
+    #[crate::test]
     async fn get_accepts_head() {
         let mut svc = MethodRouter::new().get(ok);
         let (status, _, body) = call(Method::HEAD, &mut svc).await;
@@ -1317,7 +1329,7 @@ mod tests {
         assert!(body.is_empty());
     }
 
-    #[tokio::test]
+    #[crate::test]
     async fn head_takes_precedence_over_get() {
         let mut svc = MethodRouter::new().head(created).get(ok);
         let (status, _, body) = call(Method::HEAD, &mut svc).await;
@@ -1325,7 +1337,7 @@ mod tests {
         assert!(body.is_empty());
     }
 
-    #[tokio::test]
+    #[crate::test]
     async fn merge() {
         let mut svc = get(ok).merge(post(ok));
 
@@ -1336,7 +1348,7 @@ mod tests {
         assert_eq!(status, StatusCode::OK);
     }
 
-    #[tokio::test]
+    #[crate::test]
     async fn layer() {
         let mut svc = MethodRouter::new()
             .get(|| async { std::future::pending::<()>().await })
@@ -1351,7 +1363,7 @@ mod tests {
         assert_eq!(status, StatusCode::UNAUTHORIZED);
     }
 
-    #[tokio::test]
+    #[crate::test]
     async fn route_layer() {
         let mut svc = MethodRouter::new()
             .get(|| async { std::future::pending::<()>().await })
@@ -1392,7 +1404,7 @@ mod tests {
         crate::Server::bind(&"0.0.0.0:0".parse().unwrap()).serve(app.into_make_service());
     }
 
-    #[tokio::test]
+    #[crate::test]
     async fn sets_allow_header() {
         let mut svc = MethodRouter::new().put(ok).patch(ok);
         let (status, headers, _) = call(Method::GET, &mut svc).await;
@@ -1400,7 +1412,7 @@ mod tests {
         assert_eq!(headers[ALLOW], "PUT,PATCH");
     }
 
-    #[tokio::test]
+    #[crate::test]
     async fn sets_allow_header_get_head() {
         let mut svc = MethodRouter::new().get(ok).head(ok);
         let (status, headers, _) = call(Method::PUT, &mut svc).await;
@@ -1408,7 +1420,7 @@ mod tests {
         assert_eq!(headers[ALLOW], "GET,HEAD");
     }
 
-    #[tokio::test]
+    #[crate::test]
     async fn empty_allow_header_by_default() {
         let mut svc = MethodRouter::new();
         let (status, headers, _) = call(Method::PATCH, &mut svc).await;
@@ -1416,7 +1428,7 @@ mod tests {
         assert_eq!(headers[ALLOW], "");
     }
 
-    #[tokio::test]
+    #[crate::test]
     async fn allow_header_when_merging() {
         let a = put(ok).patch(ok);
         let b = get(ok).head(ok);
@@ -1427,7 +1439,7 @@ mod tests {
         assert_eq!(headers[ALLOW], "PUT,PATCH,GET,HEAD");
     }
 
-    #[tokio::test]
+    #[crate::test]
     async fn allow_header_any() {
         let mut svc = any(ok);
 
@@ -1436,7 +1448,7 @@ mod tests {
         assert!(!headers.contains_key(ALLOW));
     }
 
-    #[tokio::test]
+    #[crate::test]
     async fn allow_header_with_fallback() {
         let mut svc = MethodRouter::new()
             .get(ok)
@@ -1447,7 +1459,7 @@ mod tests {
         assert_eq!(headers[ALLOW], "GET,HEAD");
     }
 
-    #[tokio::test]
+    #[crate::test]
     async fn allow_header_with_fallback_that_sets_allow() {
         async fn fallback(method: Method) -> Response {
             if method == Method::POST {
@@ -1475,7 +1487,7 @@ mod tests {
         assert_eq!(headers[ALLOW], "GET,POST");
     }
 
-    #[tokio::test]
+    #[crate::test]
     #[should_panic(
         expected = "Overlapping method route. Cannot add two method routes that both handle `GET`"
     )]
@@ -1483,7 +1495,7 @@ mod tests {
         let _: MethodRouter<()> = get(ok).get(ok);
     }
 
-    #[tokio::test]
+    #[crate::test]
     #[should_panic(
         expected = "Overlapping method route. Cannot add two method routes that both handle `POST`"
     )]
@@ -1491,17 +1503,17 @@ mod tests {
         let _: MethodRouter<()> = post_service(ok.into_service()).post_service(ok.into_service());
     }
 
-    #[tokio::test]
+    #[crate::test]
     async fn get_head_does_not_overlap() {
         let _: MethodRouter<()> = get(ok).head(ok);
     }
 
-    #[tokio::test]
+    #[crate::test]
     async fn head_get_does_not_overlap() {
         let _: MethodRouter<()> = head(ok).get(ok);
     }
 
-    #[tokio::test]
+    #[crate::test]
     async fn accessing_state() {
         let mut svc = MethodRouter::new()
             .get(|State(state): State<&'static str>| async move { state })
@@ -1513,7 +1525,7 @@ mod tests {
         assert_eq!(text, "state");
     }
 
-    #[tokio::test]
+    #[crate::test]
     async fn fallback_accessing_state() {
         let mut svc = MethodRouter::new()
             .fallback(|State(state): State<&'static str>| async move { state })
@@ -1525,7 +1537,7 @@ mod tests {
         assert_eq!(text, "state");
     }
 
-    #[tokio::test]
+    #[crate::test]
     async fn merge_accessing_state() {
         let one = get(|State(state): State<&'static str>| async move { state });
         let two = post(|State(state): State<&'static str>| async move { state });

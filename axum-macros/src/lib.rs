@@ -48,6 +48,8 @@ use quote::{quote, ToTokens};
 use syn::{parse::Parse, Type};
 
 mod attr_parsing;
+#[cfg(feature = "__private")]
+mod axum_test;
 mod debug_handler;
 mod from_ref;
 mod from_request;
@@ -555,6 +557,22 @@ pub fn debug_handler(_attr: TokenStream, input: TokenStream) -> TokenStream {
     return expand_attr_with(_attr, input, debug_handler::expand);
 }
 
+/// Private API: Do no use this!
+///
+/// Attribute macro to be placed on test functions that'll generate two functions:
+///
+/// 1. One identical to the function it was placed on.
+/// 2. One where calls to `Router::nest` has been replaced with `Router::nest_service`
+///
+/// This makes it easy to that `nest` and `nest_service` behaves in the same way, without having to
+/// manually write identical tests for both methods.
+#[cfg(feature = "__private")]
+#[proc_macro_attribute]
+#[doc(hidden)]
+pub fn __private_axum_test(_attr: TokenStream, input: TokenStream) -> TokenStream {
+    expand_attr_with(_attr, input, axum_test::expand)
+}
+
 /// Derive an implementation of [`axum_extra::routing::TypedPath`].
 ///
 /// See that trait for more details.
@@ -647,7 +665,7 @@ where
         Ok(tokens) => {
             let tokens = (quote! { #tokens }).into();
             if std::env::var_os("AXUM_MACROS_DEBUG").is_some() {
-                eprintln!("{}", tokens);
+                eprintln!("{tokens}");
             }
             tokens
         }
@@ -704,7 +722,7 @@ fn run_ui_tests(directory: &str) {
                 path = path_without_prefix.to_owned();
             }
 
-            if !path.contains(&format!("/{}/", directory)) {
+            if !path.contains(&format!("/{directory}/")) {
                 return;
             }
 
@@ -716,8 +734,8 @@ fn run_ui_tests(directory: &str) {
                 panic!()
             }
         } else {
-            t.compile_fail(format!("tests/{}/fail/*.rs", directory));
-            t.pass(format!("tests/{}/pass/*.rs", directory));
+            t.compile_fail(format!("tests/{directory}/fail/*.rs"));
+            t.pass(format!("tests/{directory}/pass/*.rs"));
         }
     }
 

@@ -346,6 +346,28 @@ impl<B> fmt::Debug for Next<B> {
     }
 }
 
+impl<B> Clone for Next<B> {
+    fn clone(&self) -> Self {
+        Self {
+            inner: self.inner.clone(),
+        }
+    }
+}
+
+impl<B> Service<Request<B>> for Next<B> {
+    type Response = Response;
+    type Error = Infallible;
+    type Future = Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>> + Send>>;
+
+    fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        self.inner.poll_ready(cx)
+    }
+
+    fn call(&mut self, req: Request<B>) -> Self::Future {
+        self.inner.call(req)
+    }
+}
+
 /// Response future for [`FromFn`].
 pub struct ResponseFuture {
     inner: BoxFuture<'static, Response>,
@@ -372,7 +394,7 @@ mod tests {
     use http::{HeaderMap, StatusCode};
     use tower::ServiceExt;
 
-    #[tokio::test]
+    #[crate::test]
     async fn basic() {
         async fn insert_header<B>(mut req: Request<B>, next: Next<B>) -> impl IntoResponse {
             req.headers_mut()

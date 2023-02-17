@@ -7,9 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- - **added** Implement IntoResponse for &'static [u8; N] and [u8; N] ([#1690])
+- None.
+
+# 0.6.6 (12. February, 2023)
+
+- **fixed:** Enable passing `MethodRouter` to `Router::fallback` ([#1730])
+
+[#1730]: https://github.com/tokio-rs/axum/pull/1730
+
+# 0.6.5 (11. February, 2023)
+
+- **fixed:** Fix `#[debug_handler]` sometimes giving wrong borrow related suggestions ([#1710])
+- Document gotchas related to using `impl IntoResponse` as the return type from handler functions ([#1736])
+
+[#1710]: https://github.com/tokio-rs/axum/pull/1710
+[#1736]: https://github.com/tokio-rs/axum/pull/1736
+
+# 0.6.4 (22. January, 2023)
+
+- Depend on axum-macros 0.3.2
+
+# 0.6.3 (20. January, 2023)
+
+- **added:** Implement `IntoResponse` for `&'static [u8; N]` and `[u8; N]` ([#1690])
+- **fixed:** Make `Path` support types using `serde::Deserializer::deserialize_any` ([#1693])
+- **added:** Add `RawPathParams` ([#1713])
+- **added:** Implement `Clone` and `Service` for `axum::middleware::Next` ([#1712])
+- **fixed:** Document required tokio features to run "Hello, World!" example ([#1715])
 
 [#1690]: https://github.com/tokio-rs/axum/pull/1690
+[#1693]: https://github.com/tokio-rs/axum/pull/1693
+[#1712]: https://github.com/tokio-rs/axum/pull/1712
+[#1713]: https://github.com/tokio-rs/axum/pull/1713
+[#1715]: https://github.com/tokio-rs/axum/pull/1715
 
 # 0.6.2 (9. January, 2023)
 

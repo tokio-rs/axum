@@ -1,5 +1,8 @@
+use std::{any::type_name, fmt};
+
 use super::sealed::Sealed;
 use http::Uri;
+use serde::Serialize;
 
 /// A type safe path.
 ///
@@ -219,7 +222,7 @@ pub trait TypedPath: std::fmt::Display {
     ///
     /// # Panics
     ///
-    /// The default implementation parses the required [`Display`] implemetation. If that fails it
+    /// The default implementation parses the required [`Display`] implementation. If that fails it
     /// will panic.
     ///
     /// Using `#[derive(TypedPath)]` will never result in a panic since it percent-encodes
@@ -229,6 +232,90 @@ pub trait TypedPath: std::fmt::Display {
     fn to_uri(&self) -> Uri {
         self.to_string().parse().unwrap()
     }
+
+    /// Add query parameters to a path.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use axum_extra::routing::TypedPath;
+    /// use serde::Serialize;
+    ///
+    /// #[derive(TypedPath)]
+    /// #[typed_path("/users")]
+    /// struct Users;
+    ///
+    /// #[derive(Serialize)]
+    /// struct Pagination {
+    ///     page: u32,
+    ///     per_page: u32,
+    /// }
+    ///
+    /// let path = Users.with_query_params(Pagination {
+    ///     page: 1,
+    ///     per_page: 10,
+    /// });
+    ///
+    /// assert_eq!(path.to_uri(), "/users?&page=1&per_page=10");
+    /// ```
+    ///
+    /// # Panics
+    ///
+    /// If `params` doesn't support being serialized as query params [`WithQueryParams`]'s [`Display`]
+    /// implementation will panic, and thus [`WithQueryParams::to_uri`] will also panic.
+    ///
+    /// [`WithQueryParams::to_uri`]: TypedPath::to_uri
+    /// [`Display`]: std::fmt::Display
+    fn with_query_params<T>(self, params: T) -> WithQueryParams<Self, T>
+    where
+        T: Serialize,
+        Self: Sized,
+    {
+        WithQueryParams { path: self, params }
+    }
+}
+
+/// A [`TypedPath`] with query params.
+///
+/// See [`TypedPath::with_query_params`] for more details.
+#[derive(Debug, Clone, Copy)]
+pub struct WithQueryParams<P, T> {
+    path: P,
+    params: T,
+}
+
+impl<P, T> fmt::Display for WithQueryParams<P, T>
+where
+    P: TypedPath,
+    T: Serialize,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut out = self.path.to_string();
+        if !out.contains('?') {
+            out.push('?');
+        }
+        let mut urlencoder = form_urlencoded::Serializer::new(&mut out);
+        self.params
+            .serialize(serde_html_form::ser::Serializer::new(&mut urlencoder))
+            .unwrap_or_else(|err| {
+                panic!(
+                    "failed to URL encode value of type `{}`: {}",
+                    type_name::<T>(),
+                    err
+                )
+            });
+        f.write_str(&out)?;
+
+        Ok(())
+    }
+}
+
+impl<P, T> TypedPath for WithQueryParams<P, T>
+where
+    P: TypedPath,
+    T: Serialize,
+{
+    const PATH: &'static str = P::PATH;
 }
 
 /// Utility trait used with [`RouterExt`] to ensure the second element of a tuple type is a
@@ -295,3 +382,56 @@ impl_second_element_is!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13);
 impl_second_element_is!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14);
 impl_second_element_is!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15);
 impl_second_element_is!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16);
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::routing::TypedPath;
+    use serde::Deserialize;
+
+    #[derive(TypedPath, Deserialize)]
+    #[typed_path("/users/:id")]
+    struct UsersShow {
+        id: i32,
+    }
+
+    #[derive(Serialize)]
+    struct Params {
+        foo: &'static str,
+        bar: i32,
+        baz: bool,
+    }
+
+    #[test]
+    fn with_params() {
+        let path = UsersShow { id: 1 }.with_query_params(Params {
+            foo: "foo",
+            bar: 123,
+            baz: true,
+        });
+
+        let uri = path.to_uri();
+
+        // according to [the spec] starting the params with `?&` is allowed specifically:
+        //
+        // > If bytes is the empty byte sequence, then continue.
+        //
+        // [the spec]: https://url.spec.whatwg.org/#urlencoded-parsing
+        assert_eq!(uri, "/users/1?&foo=foo&bar=123&baz=true");
+    }
+
+    #[test]
+    fn with_params_called_multiple_times() {
+        let path = UsersShow { id: 1 }
+            .with_query_params(Params {
+                foo: "foo",
+                bar: 123,
+                baz: true,
+            })
+            .with_query_params([("qux", 1337)]);
+
+        let uri = path.to_uri();
+
+        assert_eq!(uri, "/users/1?&foo=foo&bar=123&baz=true&qux=1337");
+    }
+}
