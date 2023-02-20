@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- None.
+- **fixed:** Fix `Allow` missing from routers with middleware
 
 # 0.6.7 (17. February, 2023)
 
