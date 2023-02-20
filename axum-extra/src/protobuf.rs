@@ -2,12 +2,11 @@
 
 use axum::{
     async_trait,
-    body::{Bytes, HttpBody},
+    body::Body,
     extract::{rejection::BytesRejection, FromRequest},
     response::{IntoResponse, Response},
-    BoxError,
 };
-use bytes::BytesMut;
+use bytes::{Bytes, BytesMut};
 use http::{Request, StatusCode};
 use prost::Message;
 use std::ops::{Deref, DerefMut};
@@ -97,17 +96,14 @@ use std::ops::{Deref, DerefMut};
 pub struct ProtoBuf<T>(pub T);
 
 #[async_trait]
-impl<T, S, B> FromRequest<S, B> for ProtoBuf<T>
+impl<T, S> FromRequest<S> for ProtoBuf<T>
 where
     T: Message + Default,
-    B: HttpBody + Send + 'static,
-    B::Data: Send,
-    B::Error: Into<BoxError>,
     S: Send + Sync,
 {
     type Rejection = ProtoBufRejection;
 
-    async fn from_request(req: Request<B>, state: &S) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: Request<Body>, state: &S) -> Result<Self, Self::Rejection> {
         let mut bytes = Bytes::from_request(req, state).await?;
 
         match T::decode(&mut bytes) {
