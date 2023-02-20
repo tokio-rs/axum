@@ -1,4 +1,5 @@
 use super::{FromRequest, FromRequestParts};
+use crate::body::Body;
 use crate::response::{IntoResponse, Response};
 use async_trait::async_trait;
 use http::request::{Parts, Request};
@@ -45,19 +46,18 @@ macro_rules! impl_from_request {
         }
 
         // This impl must not be generic over M, otherwise it would conflict with the blanket
-        // implementation of `FromRequest<S, B, Mut>` for `T: FromRequestParts<S>`.
+        // implementation of `FromRequest<S, Mut>` for `T: FromRequestParts<S>`.
         #[async_trait]
         #[allow(non_snake_case, unused_mut, unused_variables)]
-        impl<S, B, $($ty,)* $last> FromRequest<S, B> for ($($ty,)* $last,)
+        impl<S, $($ty,)* $last> FromRequest<S> for ($($ty,)* $last,)
         where
             $( $ty: FromRequestParts<S> + Send, )*
-            $last: FromRequest<S, B> + Send,
-            B: Send + 'static,
+            $last: FromRequest<S> + Send,
             S: Send + Sync,
         {
             type Rejection = Response;
 
-            async fn from_request(req: Request<B>, state: &S) -> Result<Self, Self::Rejection> {
+            async fn from_request(req: Request<Body>, state: &S) -> Result<Self, Self::Rejection> {
                 let (mut parts, body) = req.into_parts();
 
                 $(
@@ -85,7 +85,7 @@ mod tests {
 
     fn assert_from_request<M, T>()
     where
-        T: FromRequest<(), http_body::Full<Bytes>, M>,
+        T: FromRequest<(), M>,
     {
     }
 
