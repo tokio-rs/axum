@@ -523,7 +523,7 @@ async fn handler(
 let app = Router::new()
     .route("/", get(handler))
     .route_layer(middleware::from_fn(auth));
-# let _: Router<()> = app;
+# let _: Router = app;
 ```
 
 [Response extensions] can also be used but note that request extensions are not

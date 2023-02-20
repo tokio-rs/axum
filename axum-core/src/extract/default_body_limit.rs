@@ -41,7 +41,7 @@ use tower_layer::Layer;
 ///         post(|request: Request<Body>| async {}),
 ///     )
 ///     .layer(DefaultBodyLimit::max(1024));
-/// # let _: Router<()> = app;
+/// # let _: Router = app;
 /// ```
 ///
 /// ```
@@ -57,7 +57,7 @@ use tower_layer::Layer;
 ///         post(|request: Request<Body>| async {}),
 ///     )
 ///     .layer(RequestBodyLimitLayer::new(1024));
-/// # let _: Router<()> = app;
+/// # let _: Router = app;
 /// ```
 ///
 /// In general using `DefaultBodyLimit` is recommended but if you need to use third party

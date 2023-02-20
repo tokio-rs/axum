@@ -752,7 +752,7 @@ fn token_is_valid(token: &str) -> bool {
 }
 
 let app = Router::new().layer(middleware::from_fn(auth_middleware));
-# let _: Router<()> = app;
+# let _: Router = app;
 ```
 
 # Wrapping extractors
