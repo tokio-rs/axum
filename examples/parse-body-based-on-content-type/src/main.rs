@@ -8,6 +8,7 @@
 
 use axum::{
     async_trait,
+    body::Body,
     extract::FromRequest,
     http::{header::CONTENT_TYPE, Request, StatusCode},
     response::{IntoResponse, Response},
@@ -51,17 +52,16 @@ async fn handler(JsonOrForm(payload): JsonOrForm<Payload>) {
 struct JsonOrForm<T>(T);
 
 #[async_trait]
-impl<S, B, T> FromRequest<S, B> for JsonOrForm<T>
+impl<S, T> FromRequest<S> for JsonOrForm<T>
 where
-    B: Send + 'static,
     S: Send + Sync,
-    Json<T>: FromRequest<(), B>,
-    Form<T>: FromRequest<(), B>,
+    Json<T>: FromRequest<()>,
+    Form<T>: FromRequest<()>,
     T: 'static,
 {
     type Rejection = Response;
 
-    async fn from_request(req: Request<B>, _state: &S) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: Request<Body>, _state: &S) -> Result<Self, Self::Rejection> {
         let content_type_header = req.headers().get(CONTENT_TYPE);
         let content_type = content_type_header.and_then(|value| value.to_str().ok());
 

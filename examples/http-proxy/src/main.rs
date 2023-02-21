@@ -37,8 +37,9 @@ async fn main() {
 
     let router_svc = Router::new().route("/", get(|| async { "Hello, World!" }));
 
-    let service = tower::service_fn(move |req: Request<Body>| {
+    let service = tower::service_fn(move |req: Request<_>| {
         let router_svc = router_svc.clone();
+        let req = req.map(Body::new);
         async move {
             if req.method() == Method::CONNECT {
                 proxy(req).await
