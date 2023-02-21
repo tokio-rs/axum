@@ -97,7 +97,7 @@ let app = Router::new()
     .layer(layer_one)
     .layer(layer_two)
     .layer(layer_three);
-# let _: Router<()> = app;
+# let _: Router = app;
 ```
 
 Think of the middleware as being layered like an onion where each new layer
@@ -156,7 +156,7 @@ let app = Router::new()
             .layer(layer_two)
             .layer(layer_three),
     );
-# let _: Router<()> = app;
+# let _: Router = app;
 ```
 
 `ServiceBuilder` works by composing all layers into one such that they run top

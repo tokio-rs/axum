@@ -280,7 +280,7 @@ mod tests {
     // No need for this to be a #[test], we just want to make sure it compiles
     fn _multipart_from_request_limited() {
         async fn handler(_: Multipart) {}
-        let _app: Router<()> = Router::new()
+        let _app: Router = Router::new()
             .route("/", post(handler))
             .layer(tower_http::limit::RequestBodyLimitLayer::new(1024));
     }
