@@ -37,11 +37,11 @@
 #[cfg(feature = "tokio")]
 use crate::extract::connect_info::IntoMakeServiceWithConnectInfo;
 use crate::{
-    body::Body,
     extract::{FromRequest, FromRequestParts},
     response::{IntoResponse, Response},
     routing::IntoMakeService,
 };
+use axum_core::body::Body;
 use http::Request;
 use std::{convert::Infallible, fmt, future::Future, marker::PhantomData, pin::Pin};
 use tower::ServiceExt;
@@ -222,13 +222,13 @@ all_the_tuples!(impl_handler);
 /// A [`Service`] created from a [`Handler`] by applying a Tower middleware.
 ///
 /// Created with [`Handler::layer`]. See that method for more details.
-pub struct Layered<L, H, T, S, B, B2> {
+pub struct Layered<L, H, T, S> {
     layer: L,
     handler: H,
-    _marker: PhantomData<fn() -> (T, S, B, B2)>,
+    _marker: PhantomData<fn() -> (T, S)>,
 }
 
-impl<L, H, T, S, B, B2> fmt::Debug for Layered<L, H, T, S, B, B2>
+impl<L, H, T, S> fmt::Debug for Layered<L, H, T, S>
 where
     L: fmt::Debug,
 {
@@ -239,7 +239,7 @@ where
     }
 }
 
-impl<L, H, T, S, B, B2> Clone for Layered<L, H, T, S, B, B2>
+impl<L, H, T, S> Clone for Layered<L, H, T, S>
 where
     L: Clone,
     H: Clone,
@@ -253,21 +253,19 @@ where
     }
 }
 
-impl<H, S, T, L, B, B2> Handler<T, S, B2> for Layered<L, H, T, S, B, B2>
+impl<H, S, T, L> Handler<T, S> for Layered<L, H, T, S>
 where
-    L: Layer<HandlerService<H, T, S, B>> + Clone + Send + 'static,
-    H: Handler<T, S, B>,
-    L::Service: Service<Request<B2>, Error = Infallible> + Clone + Send + 'static,
-    <L::Service as Service<Request<B2>>>::Response: IntoResponse,
-    <L::Service as Service<Request<B2>>>::Future: Send,
+    L: Layer<HandlerService<H, T, S>> + Clone + Send + 'static,
+    H: Handler<T, S>,
+    L::Service: Service<Request<Body>, Error = Infallible> + Clone + Send + 'static,
+    <L::Service as Service<Request<Body>>>::Response: IntoResponse,
+    <L::Service as Service<Request<Body>>>::Future: Send,
     T: 'static,
     S: 'static,
-    B: Send + 'static,
-    B2: Send + 'static,
 {
-    type Future = future::LayeredFuture<B2, L::Service>;
+    type Future = future::LayeredFuture<L::Service>;
 
-    fn call(self, req: Request<B2>, state: S) -> Self::Future {
+    fn call(self, req: Request<Body>, state: S) -> Self::Future {
         use futures_util::future::{FutureExt, Map};
 
         let svc = self.handler.with_state(state);
@@ -277,8 +275,8 @@ where
             _,
             fn(
                 Result<
-                    <L::Service as Service<Request<B2>>>::Response,
-                    <L::Service as Service<Request<B2>>>::Error,
+                    <L::Service as Service<Request<Body>>>::Response,
+                    <L::Service as Service<Request<Body>>>::Error,
                 >,
             ) -> _,
         > = svc.oneshot(req).map(|result| match result {
@@ -295,16 +293,16 @@ where
 /// This provides convenience methods to convert the [`Handler`] into a [`Service`] or [`MakeService`].
 ///
 /// [`MakeService`]: tower::make::MakeService
-pub trait HandlerWithoutStateExt<T, B>: Handler<T, (), B> {
+pub trait HandlerWithoutStateExt<T>: Handler<T, ()> {
     /// Convert the handler into a [`Service`] and no state.
-    fn into_service(self) -> HandlerService<Self, T, (), B>;
+    fn into_service(self) -> HandlerService<Self, T, ()>;
 
     /// Convert the handler into a [`MakeService`] and no state.
     ///
     /// See [`HandlerService::into_make_service`] for more details.
     ///
     /// [`MakeService`]: tower::make::MakeService
-    fn into_make_service(self) -> IntoMakeService<HandlerService<Self, T, (), B>>;
+    fn into_make_service(self) -> IntoMakeService<HandlerService<Self, T, ()>>;
 
     /// Convert the handler into a [`MakeService`] which stores information
     /// about the incoming connection and has no state.
@@ -315,25 +313,25 @@ pub trait HandlerWithoutStateExt<T, B>: Handler<T, (), B> {
     #[cfg(feature = "tokio")]
     fn into_make_service_with_connect_info<C>(
         self,
-    ) -> IntoMakeServiceWithConnectInfo<HandlerService<Self, T, (), B>, C>;
+    ) -> IntoMakeServiceWithConnectInfo<HandlerService<Self, T, ()>, C>;
 }
 
-impl<H, T, B> HandlerWithoutStateExt<T, B> for H
+impl<H, T> HandlerWithoutStateExt<T> for H
 where
-    H: Handler<T, (), B>,
+    H: Handler<T, ()>,
 {
-    fn into_service(self) -> HandlerService<Self, T, (), B> {
+    fn into_service(self) -> HandlerService<Self, T, ()> {
         self.with_state(())
     }
 
-    fn into_make_service(self) -> IntoMakeService<HandlerService<Self, T, (), B>> {
+    fn into_make_service(self) -> IntoMakeService<HandlerService<Self, T, ()>> {
         self.into_service().into_make_service()
     }
 
     #[cfg(feature = "tokio")]
     fn into_make_service_with_connect_info<C>(
         self,
-    ) -> IntoMakeServiceWithConnectInfo<HandlerService<Self, T, (), B>, C> {
+    ) -> IntoMakeServiceWithConnectInfo<HandlerService<Self, T, ()>, C> {
         self.into_service().into_make_service_with_connect_info()
     }
 }
