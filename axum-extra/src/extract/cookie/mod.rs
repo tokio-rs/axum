@@ -352,7 +352,7 @@ mod tests {
             custom_key: CustomKey(Key::generate()),
         };
 
-        let app = Router::<_>::new()
+        let app = Router::new()
             .route("/get", get(get_cookie))
             .with_state(state);
 
