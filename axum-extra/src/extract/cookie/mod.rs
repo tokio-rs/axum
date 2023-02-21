@@ -255,7 +255,7 @@ mod tests {
                     custom_key: CustomKey(Key::generate()),
                 };
 
-                let app = Router::<_>::new()
+                let app = Router::new()
                     .route("/set", get(set_cookie))
                     .route("/get", get(get_cookie))
                     .route("/remove", get(remove_cookie))
