@@ -459,7 +459,7 @@ use axum::{
     async_trait,
     extract::FromRequest,
     response::{Response, IntoResponse},
-    body::Bytes,
+    body::{Bytes, Body},
     routing::get,
     Router,
     http::{
@@ -472,15 +472,14 @@ use axum::{
 struct ValidatedBody(Bytes);
 
 #[async_trait]
-impl<S, B> FromRequest<S, B> for ValidatedBody
+impl<S> FromRequest<S> for ValidatedBody
 where
-    Bytes: FromRequest<S, B>,
-    B: Send + 'static,
+    Bytes: FromRequest<S>,
     S: Send + Sync,
 {
     type Rejection = Response;
 
-    async fn from_request(req: Request<B>, state: &S) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: Request<Body>, state: &S) -> Result<Self, Self::Rejection> {
         let body = Bytes::from_request(req, state)
             .await
             .map_err(IntoResponse::into_response)?;
@@ -513,6 +512,7 @@ use axum::{
     routing::get,
     extract::{FromRequest, FromRequestParts},
     http::{Request, request::Parts},
+    body::Body,
     async_trait,
 };
 use std::convert::Infallible;
@@ -522,14 +522,13 @@ struct MyExtractor;
 
 // `MyExtractor` implements both `FromRequest`
 #[async_trait]
-impl<S, B> FromRequest<S, B> for MyExtractor
+impl<S> FromRequest<S> for MyExtractor
 where
     S: Send + Sync,
-    B: Send + 'static,
 {
     type Rejection = Infallible;
 
-    async fn from_request(req: Request<B>, state: &S) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: Request<Body>, state: &S) -> Result<Self, Self::Rejection> {
         // ...
         # todo!()
     }
@@ -632,81 +631,6 @@ For security reasons, [`Bytes`] will, by default, not accept bodies larger than
 
 For more details, including how to disable this limit, see [`DefaultBodyLimit`].
 
-# Request body extractors
-
-Most of the time your request body type will be [`body::Body`] (a re-export
-of [`hyper::Body`]), which is directly supported by all extractors.
-
-However if you're applying a tower middleware that changes the request body type
-you might have to apply a different body type to some extractors:
-
-```rust
-use std::{
-    task::{Context, Poll},
-    pin::Pin,
-};
-use tower_http::map_request_body::MapRequestBodyLayer;
-use axum::{
-    extract::{self, BodyStream},
-    body::{Body, HttpBody},
-    routing::get,
-    http::{header::HeaderMap, Request},
-    Router,
-};
-
-struct MyBody<B>(B);
-
-impl<B> HttpBody for MyBody<B>
-where
-    B: HttpBody + Unpin,
-{
-    type Data = B::Data;
-    type Error = B::Error;
-
-    fn poll_data(
-        mut self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-    ) -> Poll<Option<Result<Self::Data, Self::Error>>> {
-        Pin::new(&mut self.0).poll_data(cx)
-    }
-
-    fn poll_trailers(
-        mut self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-    ) -> Poll<Result<Option<HeaderMap>, Self::Error>> {
-        Pin::new(&mut self.0).poll_trailers(cx)
-    }
-}
-
-let app = Router::new()
-    .route(
-        "/string",
-        // `String` works directly with any body type
-        get(|_: String| async {})
-    )
-    .route(
-        "/body",
-        // `extract::Body` defaults to `axum::body::Body`
-        // but can be customized
-        get(|_: extract::RawBody<MyBody<Body>>| async {})
-    )
-    .route(
-        "/body-stream",
-        // same for `extract::BodyStream`
-        get(|_: extract::BodyStream| async {}),
-    )
-    .route(
-        // and `Request<_>`
-        "/request",
-        get(|_: Request<MyBody<Body>>| async {})
-    )
-    // middleware that changes the request body type
-    .layer(MapRequestBodyLayer::new(MyBody));
-# async {
-# axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-# };
-```
-
 # Running extractors from middleware
 
 Extractors can also be run from middleware:
@@ -764,6 +688,7 @@ may or may not consume the request body) you should implement both
 ```rust
 use axum::{
     Router,
+    body::Body,
     routing::get,
     extract::{FromRequest, FromRequestParts},
     http::{Request, HeaderMap, request::Parts},
@@ -799,15 +724,14 @@ where
 
 // and `FromRequest`
 #[async_trait]
-impl<S, B, T> FromRequest<S, B> for Timing<T>
+impl<S, T> FromRequest<S> for Timing<T>
 where
-    B: Send + 'static,
     S: Send + Sync,
-    T: FromRequest<S, B>,
+    T: FromRequest<S>,
 {
     type Rejection = T::Rejection;
 
-    async fn from_request(req: Request<B>, state: &S) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: Request<Body>, state: &S) -> Result<Self, Self::Rejection> {
         let start = Instant::now();
         let extractor = T::from_request(req, state).await?;
         let duration = start.elapsed();
