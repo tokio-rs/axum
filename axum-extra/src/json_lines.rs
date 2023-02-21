@@ -2,12 +2,12 @@
 
 use axum::{
     async_trait,
-    body::{HttpBody, StreamBody},
+    body::{Body, StreamBody},
     extract::FromRequest,
     response::{IntoResponse, Response},
     BoxError,
 };
-use bytes::{BufMut, Bytes, BytesMut};
+use bytes::{BufMut, BytesMut};
 use futures_util::stream::{BoxStream, Stream, TryStream, TryStreamExt};
 use http::Request;
 use pin_project_lite::pin_project;
@@ -100,26 +100,19 @@ impl<S> JsonLines<S, AsResponse> {
 }
 
 #[async_trait]
-impl<S, B, T> FromRequest<S, B> for JsonLines<T, AsExtractor>
+impl<S, T> FromRequest<S> for JsonLines<T, AsExtractor>
 where
-    B: HttpBody + Send + 'static,
-    B::Data: Into<Bytes>,
-    B::Error: Into<BoxError>,
     T: DeserializeOwned,
     S: Send + Sync,
 {
     type Rejection = Infallible;
 
-    async fn from_request(req: Request<B>, _state: &S) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: Request<Body>, _state: &S) -> Result<Self, Self::Rejection> {
         // `Stream::lines` isn't a thing so we have to convert it into an `AsyncRead`
         // so we can call `AsyncRead::lines` and then convert it back to a `Stream`
-        let body = BodyStream {
-            body: req.into_body(),
-        };
+        let body = req.into_body();
 
-        let stream = body
-            .map_ok(Into::into)
-            .map_err(|err| io::Error::new(io::ErrorKind::Other, err));
+        let stream = TryStreamExt::map_err(body, |err| io::Error::new(io::ErrorKind::Other, err));
         let read = StreamReader::new(stream);
         let lines_stream = LinesStream::new(read.lines());
 
@@ -136,26 +129,6 @@ where
             },
             _marker: PhantomData,
         })
-    }
-}
-
-// like `axum::extract::BodyStream` except it doesn't box the inner body
-// we don't need that since we box the final stream in `Inner::Extractor`
-pin_project! {
-    struct BodyStream<B> {
-        #[pin]
-        body: B,
-    }
-}
-
-impl<B> Stream for BodyStream<B>
-where
-    B: HttpBody + Send + 'static,
-{
-    type Item = Result<B::Data, B::Error>;
-
-    fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        self.project().body.poll_data(cx)
     }
 }
 
