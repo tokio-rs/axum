@@ -295,6 +295,22 @@ use std::{
 ///
 /// In general however we recommend you implement `Clone` for all your state types to avoid
 /// potential type errors.
+///
+/// # When mutable shared state is needed
+/// If this is the case, you may have to use `tokio::sync::Mutex` instead of `std::sync::Mutex`.
+/// ```
+/// use axum::extract::{State};
+///
+/// struct AppState {
+///     state: String,
+/// }
+///
+/// async fn api_users(State(appstate): State<std::sync::Arc<tokio::sync::Mutex<AppState>>>) {
+///     // ...
+/// }
+/// ```
+
+
 #[derive(Debug, Default, Clone, Copy)]
 pub struct State<S>(pub S);
 
