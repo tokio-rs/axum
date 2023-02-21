@@ -7,7 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- None.
+- **breaking:** `#[debug_handler]` no longer accepts a `body = _` argument. The
+  body type is always `axum::body::Body`
 
 # 0.3.4 (12. February, 2022)
 

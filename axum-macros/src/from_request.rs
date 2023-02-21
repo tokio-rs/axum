@@ -737,7 +737,7 @@ fn impl_struct_by_extracting_all_at_once(
     // struct AppState {}
     // ```
     //
-    // we need to implement `impl<B, M> FromRequest<AppState, M>` but only for
+    // we need to implement `impl<M> FromRequest<AppState, M>` but only for
     // - `#[derive(FromRequest)]`, not `#[derive(FromRequestParts)]`
     // - `State`, not other extractors
     //
