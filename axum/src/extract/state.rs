@@ -297,17 +297,28 @@ use std::{
 /// potential type errors.
 ///
 /// # When mutable shared state is needed
-/// If this is the case, you may have to use `tokio::sync::Mutex` instead of `std::sync::Mutex`.
+/// If this is the case, you may have to use `tokio::sync::Mutex` instead of `std::sync::Mutex`,
+/// since `std::sync::Mutex` is not safe for use across threads.
 /// ```
 /// use axum::extract::{State};
+/// use axum::{Router, routing::get};
+/// use std::ops::DerefMut;
 ///
-/// struct AppState {
-///     state: String,
-/// }
+/// struct AppState { data: String }
+/// let state = AppState { data: "foo".to_string() };
+/// let state = std::sync::Arc::new(tokio::sync::Mutex::new(state));
 ///
-/// async fn api_users(State(appstate): State<std::sync::Arc<tokio::sync::Mutex<AppState>>>) {
+/// let app = Router::new()
+///     .route("/", get(handler))
+///     .with_state(state);
+///
+/// async fn handler(State(state): State<std::sync::Arc<tokio::sync::Mutex<AppState>>>) {
+///     let mut guard = state.lock().await;
+///     let data = guard.deref_mut();
 ///     // ...
 /// }
+///
+/// # let _: axum::Router = app;
 /// ```
 
 
