@@ -2,10 +2,10 @@
 //!
 //! See [`Multipart`] for more details.
 
-use super::{BodyStream, FromRequest};
-use crate::body::{Bytes, HttpBody};
-use crate::BoxError;
+use super::FromRequest;
+use crate::body::Bytes;
 use async_trait::async_trait;
+use axum_core::body::Body;
 use axum_core::RequestExt;
 use futures_util::stream::Stream;
 use http::header::{HeaderMap, CONTENT_TYPE};
@@ -55,22 +55,18 @@ pub struct Multipart {
 }
 
 #[async_trait]
-impl<S, B> FromRequest<S, B> for Multipart
+impl<S> FromRequest<S> for Multipart
 where
-    B: HttpBody + Send + 'static,
-    B::Data: Into<Bytes>,
-    B::Error: Into<BoxError>,
     S: Send + Sync,
 {
     type Rejection = MultipartRejection;
 
-    async fn from_request(req: Request<B>, state: &S) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: Request<Body>, _state: &S) -> Result<Self, Self::Rejection> {
         let boundary = parse_boundary(req.headers()).ok_or(InvalidBoundary)?;
-        let stream_result = match req.with_limited_body() {
-            Ok(limited) => BodyStream::from_request(limited, state).await,
-            Err(unlimited) => BodyStream::from_request(unlimited, state).await,
+        let stream = match req.with_limited_body() {
+            Ok(limited) => Body::new(limited),
+            Err(unlimited) => Body::new(unlimited),
         };
-        let stream = stream_result.unwrap_or_else(|err| match err {});
         let multipart = multer::Multipart::new(stream, boundary);
         Ok(Self { inner: multipart })
     }
@@ -248,7 +244,7 @@ define_rejection! {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{body::Body, response::IntoResponse, routing::post, test_helpers::*, Router};
+    use crate::{response::IntoResponse, routing::post, test_helpers::*, Router};
 
     #[crate::test]
     async fn content_type_with_encoding() {
@@ -284,6 +280,8 @@ mod tests {
     // No need for this to be a #[test], we just want to make sure it compiles
     fn _multipart_from_request_limited() {
         async fn handler(_: Multipart) {}
-        let _app: Router<(), http_body::Limited<Body>> = Router::new().route("/", post(handler));
+        let _app: Router = Router::new()
+            .route("/", post(handler))
+            .layer(tower_http::limit::RequestBodyLimitLayer::new(1024));
     }
 }

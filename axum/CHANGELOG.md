@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- None.
+- **breaking:** `extract::BodyStream` has been removed as `body::Body` implements `Stream` directly
 
 # 0.6.6 (12. February, 2023)
 
