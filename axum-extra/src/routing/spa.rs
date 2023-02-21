@@ -263,7 +263,7 @@ mod tests {
 
         let spa = SpaRouter::new("/assets", "test_files").handle_error(handle_error);
 
-        Router::<()>::new().merge(spa);
+        Router::new().merge(spa);
     }
 
     #[allow(dead_code)]

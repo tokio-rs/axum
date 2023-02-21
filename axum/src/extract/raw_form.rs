@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use axum_core::extract::FromRequest;
+use axum_core::{body::Body, extract::FromRequest};
 use bytes::{Bytes, BytesMut};
 use http::{Method, Request};
 
@@ -7,8 +7,6 @@ use super::{
     has_content_type,
     rejection::{InvalidFormContentType, RawFormRejection},
 };
-
-use crate::{body::HttpBody, BoxError};
 
 /// Extractor that extracts raw form requests.
 ///
@@ -35,16 +33,13 @@ use crate::{body::HttpBody, BoxError};
 pub struct RawForm(pub Bytes);
 
 #[async_trait]
-impl<S, B> FromRequest<S, B> for RawForm
+impl<S> FromRequest<S> for RawForm
 where
-    B: HttpBody + Send + 'static,
-    B::Data: Send,
-    B::Error: Into<BoxError>,
     S: Send + Sync,
 {
     type Rejection = RawFormRejection;
 
-    async fn from_request(req: Request<B>, state: &S) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: Request<Body>, state: &S) -> Result<Self, Self::Rejection> {
         if req.method() == Method::GET {
             let mut bytes = BytesMut::new();
 
@@ -65,20 +60,15 @@ where
 
 #[cfg(test)]
 mod tests {
+    use axum_core::body::Body;
     use http::{header::CONTENT_TYPE, Request};
 
     use super::{InvalidFormContentType, RawForm, RawFormRejection};
 
-    use crate::{
-        body::{Bytes, Empty, Full},
-        extract::FromRequest,
-    };
+    use crate::extract::FromRequest;
 
     async fn check_query(uri: &str, value: &[u8]) {
-        let req = Request::builder()
-            .uri(uri)
-            .body(Empty::<Bytes>::new())
-            .unwrap();
+        let req = Request::builder().uri(uri).body(Body::empty()).unwrap();
 
         assert_eq!(RawForm::from_request(req, &()).await.unwrap().0, value);
     }
@@ -86,7 +76,7 @@ mod tests {
     async fn check_body(body: &'static [u8]) {
         let req = Request::post("http://example.com/test")
             .header(CONTENT_TYPE, mime::APPLICATION_WWW_FORM_URLENCODED.as_ref())
-            .body(Full::new(Bytes::from(body)))
+            .body(Body::from(body))
             .unwrap();
 
         assert_eq!(RawForm::from_request(req, &()).await.unwrap().0, body);
@@ -109,7 +99,7 @@ mod tests {
     #[crate::test]
     async fn test_incorrect_content_type() {
         let req = Request::post("http://example.com/test")
-            .body(Full::<Bytes>::from(Bytes::from("page=0&size=10")))
+            .body(Body::from("page=0&size=10"))
             .unwrap();
 
         assert!(matches!(

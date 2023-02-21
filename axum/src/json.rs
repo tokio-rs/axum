@@ -1,11 +1,10 @@
-use crate::{
-    body::{Bytes, HttpBody},
-    extract::{rejection::*, FromRequest},
-    BoxError,
-};
+use crate::extract::{rejection::*, FromRequest};
 use async_trait::async_trait;
-use axum_core::response::{IntoResponse, Response};
-use bytes::{BufMut, BytesMut};
+use axum_core::{
+    body::Body,
+    response::{IntoResponse, Response},
+};
+use bytes::{BufMut, Bytes, BytesMut};
 use http::{
     header::{self, HeaderMap, HeaderValue},
     Request, StatusCode,
@@ -100,17 +99,14 @@ use std::ops::{Deref, DerefMut};
 pub struct Json<T>(pub T);
 
 #[async_trait]
-impl<T, S, B> FromRequest<S, B> for Json<T>
+impl<T, S> FromRequest<S> for Json<T>
 where
     T: DeserializeOwned,
-    B: HttpBody + Send + 'static,
-    B::Data: Send,
-    B::Error: Into<BoxError>,
     S: Send + Sync,
 {
     type Rejection = JsonRejection;
 
-    async fn from_request(req: Request<B>, state: &S) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: Request<Body>, state: &S) -> Result<Self, Self::Rejection> {
         if json_content_type(req.headers()) {
             let bytes = Bytes::from_request(req, state).await?;
             let deserializer = &mut serde_json::Deserializer::from_slice(&bytes);
