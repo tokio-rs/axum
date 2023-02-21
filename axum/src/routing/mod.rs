@@ -500,7 +500,7 @@ where
     }
 }
 
-impl Router<()> {
+impl Router {
     /// Convert this router into a [`MakeService`], that is a [`Service`] whose
     /// response is another service.
     ///
