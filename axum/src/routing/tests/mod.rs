@@ -713,13 +713,13 @@ async fn limited_body_with_streaming_body() {
 
     let client = TestClient::new(app);
 
-    // let stream = futures_util::stream::iter(vec![Ok::<_, hyper::Error>("a".repeat(LIMIT))]);
-    // let res = client
-    //     .post("/")
-    //     .body(reqwest::Body::wrap_stream(stream))
-    //     .send()
-    //     .await;
-    // assert_eq!(res.status(), StatusCode::OK);
+    let stream = futures_util::stream::iter(vec![Ok::<_, hyper::Error>("a".repeat(LIMIT))]);
+    let res = client
+        .post("/")
+        .body(reqwest::Body::wrap_stream(stream))
+        .send()
+        .await;
+    assert_eq!(res.status(), StatusCode::OK);
 
     let stream = futures_util::stream::iter(vec![Ok::<_, hyper::Error>("a".repeat(LIMIT * 2))]);
     let res = client
