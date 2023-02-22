@@ -300,9 +300,10 @@ use std::{
 /// As state is used across routes it is not mutable by default. To mutate the state
 /// you will need to use an `Arc<Mutex>` or similar.
 /// You may have to use `tokio::sync::Mutex` instead of `std::sync::Mutex`,
-/// since `std::sync::Mutex` is not safe for use across threads, but this comes
-/// with performance cost. See the
-// [tokio discussion on sync vs async mutex](https://docs.rs/tokio/1.25.0/tokio/sync/struct.Mutex.html#which-kind-of-mutex-should-you-use).
+/// since `std::sync::Mutex` cannot be used across `.await` points,
+/// but this comes with performance cost.
+/// See the
+/// [tokio discussion on sync vs async mutex](https://docs.rs/tokio/1.25.0/tokio/sync/struct.Mutex.html#which-kind-of-mutex-should-you-use).
 /// for a detailed comparison.
 ///
 /// Be aware that many tasks that require an asynchronous mutex can lead to deadlocks
