@@ -295,6 +295,43 @@ use std::{
 ///
 /// In general however we recommend you implement `Clone` for all your state types to avoid
 /// potential type errors.
+///
+/// # When mutable shared state is needed
+/// As state is used across routes it is not mutable by default. To mutate a state
+/// you will need to use an `Arc<Mutex>` or similar.
+/// You may have to use `tokio::sync::Mutex` instead of `std::sync::Mutex`,
+/// since `std::sync::Mutex` is not safe for use across threads but this comes
+/// with performance cost, See the
+// [tokio discussion on sync vs async mutex](https://docs.rs/tokio/1.25.0/tokio/sync/struct.Mutex.html#which-kind-of-mutex-should-you-use).
+/// for a detailed comparison.
+///
+/// Be aware that many tasks that require an asynchronous mutex can lead to deadlocks
+/// if steps are not taken to prevent a situation where
+/// multiple tasks waiting for each other to release the resource.
+///
+/// ```
+/// use axum::extract::{State};
+/// use axum::{Router, routing::get};
+/// use std::ops::DerefMut;
+///
+/// struct AppState { data: String }
+/// let state = AppState { data: "foo".to_string() };
+/// let state = std::sync::Arc::new(tokio::sync::Mutex::new(state));
+///
+/// let app = Router::new()
+///     .route("/", get(handler))
+///     .with_state(state);
+///
+/// async fn handler(State(state): State<std::sync::Arc<tokio::sync::Mutex<AppState>>>) {
+///     let mut guard = state.lock().await;
+///     let data = guard.deref_mut();
+///     // ...
+/// }
+///
+/// # let _: axum::Router = app;
+/// ```
+
+
 #[derive(Debug, Default, Clone, Copy)]
 pub struct State<S>(pub S);
 

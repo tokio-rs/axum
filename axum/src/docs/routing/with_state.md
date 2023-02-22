@@ -105,14 +105,6 @@ receives. That means it is not suitable for holding state derived from a
 request, such as authorization data extracted in a middleware. Use [`Extension`]
 instead for such data.
 
-# Mutable state
-
-As state is used across routes it is not mutable by default. To mutate a state
-you will need to use an `Arc<Mutex>` or similar. Accessing mutable IO such as 
-a database connection requires an async mutex or similar. See the 
-[tokio discussion on sync vs async mutex](https://docs.rs/tokio/1.25.0/tokio/sync/struct.Mutex.html#which-kind-of-mutex-should-you-use). 
-
-
 # What `S` in `Router<S>` means
 
 `Router<S>` means a router that is _missing_ a state of type `S` to be able to
