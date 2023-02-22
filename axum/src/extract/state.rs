@@ -297,17 +297,17 @@ use std::{
 /// potential type errors.
 ///
 /// # When mutable shared state is needed
-/// As state is used across routes it is not mutable by default. To mutate a state
+/// As state is used across routes it is not mutable by default. To mutate the state
 /// you will need to use an `Arc<Mutex>` or similar.
 /// You may have to use `tokio::sync::Mutex` instead of `std::sync::Mutex`,
-/// since `std::sync::Mutex` is not safe for use across threads but this comes
-/// with performance cost, See the
+/// since `std::sync::Mutex` is not safe for use across threads, but this comes
+/// with performance cost. See the
 // [tokio discussion on sync vs async mutex](https://docs.rs/tokio/1.25.0/tokio/sync/struct.Mutex.html#which-kind-of-mutex-should-you-use).
 /// for a detailed comparison.
 ///
 /// Be aware that many tasks that require an asynchronous mutex can lead to deadlocks
 /// if steps are not taken to prevent a situation where
-/// multiple tasks waiting for each other to release the resource.
+/// multiple tasks are waiting for each other to release the resource.
 ///
 /// ```
 /// use axum::extract::{State};
@@ -324,7 +324,8 @@ use std::{
 ///
 /// async fn handler(State(state): State<std::sync::Arc<tokio::sync::Mutex<AppState>>>) {
 ///     let mut guard = state.lock().await;
-///     let data = guard.deref_mut();
+///     let state = guard.deref_mut();
+///     state.data = "updated foo".to_string();
 ///     // ...
 /// }
 ///
