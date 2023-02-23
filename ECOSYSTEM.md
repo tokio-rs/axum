@@ -58,6 +58,7 @@ If your project isn't listed here and you would like it to be, please feel free 
 - [lishuuro.org](https://github.com/uros-5/backend-lishuuro): Small chess variant server that uses Rust as backend(Axum framework).
 - [freedit](https://github.com/freedit-org/freedit): A forum powered by rust. 
 - [axum-http-auth-example](https://github.com/i0n/axum-http-auth-example): Axum http auth example using postgres and redis. 
+- [Deaftone](https://github.com/Deaftone/Deaftone): Lightweight music server. With a clean and simple API 
 
 [Realworld]: https://github.com/gothinkster/realworld
 [SQLx]: https://github.com/launchbadge/sqlx

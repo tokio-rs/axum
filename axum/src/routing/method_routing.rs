@@ -1488,6 +1488,17 @@ mod tests {
     }
 
     #[crate::test]
+    async fn allow_header_noop_middleware() {
+        let mut svc = MethodRouter::new()
+            .get(ok)
+            .layer(tower::layer::util::Identity::new());
+
+        let (status, headers, _) = call(Method::DELETE, &mut svc).await;
+        assert_eq!(status, StatusCode::METHOD_NOT_ALLOWED);
+        assert_eq!(headers[ALLOW], "GET,HEAD");
+    }
+
+    #[crate::test]
     #[should_panic(
         expected = "Overlapping method route. Cannot add two method routes that both handle `GET`"
     )]
