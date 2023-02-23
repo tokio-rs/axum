@@ -305,7 +305,7 @@ use std::{
 /// your use case. See [the tokio docs] for more details.
 ///
 /// Note that holding a locked `std::sync::Mutex` across `.await` points will result in `!Send`
-/// futures which are incompatible with axum. If you need to hold a mutex across `.await` points
+/// futures which are incompatible with axum. If you need to hold a mutex across `.await` points,
 /// consider using a `tokio::sync::Mutex` instead.
 ///
 /// ## Example
