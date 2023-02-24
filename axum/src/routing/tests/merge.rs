@@ -372,7 +372,7 @@ async fn nesting_and_seeing_the_right_uri_ors_with_multi_segment_uris() {
 async fn middleware_that_return_early() {
     let private = Router::new()
         .route("/", get(|| async {}))
-        .layer(RequireAuthorizationLayer::bearer("password"));
+        .layer(ValidateRequestHeaderLayer::bearer("password"));
 
     let public = Router::new().route("/public", get(|| async {}));
 

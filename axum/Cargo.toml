@@ -27,7 +27,38 @@ tower-log = ["tower/log"]
 ws = ["tokio", "dep:tokio-tungstenite", "dep:sha1", "dep:base64"]
 
 # Required for intra-doc links to resolve correctly
-__private_docs = ["tower/full", "tower-http/full"]
+__private_docs = [
+    "tower/full",
+    # all tower-http features except (de)?compression-zstd which doesn't
+    # build on `--target armv5te-unknown-linux-musleabi`
+    "tower-http/add-extension",
+    "tower-http/auth",
+    "tower-http/catch-panic",
+    "tower-http/compression-br",
+    "tower-http/compression-deflate",
+    "tower-http/compression-gzip",
+    "tower-http/cors",
+    "tower-http/decompression-br",
+    "tower-http/decompression-deflate",
+    "tower-http/decompression-gzip",
+    "tower-http/follow-redirect",
+    "tower-http/fs",
+    "tower-http/limit",
+    "tower-http/map-request-body",
+    "tower-http/map-response-body",
+    "tower-http/metrics",
+    "tower-http/normalize-path",
+    "tower-http/propagate-header",
+    "tower-http/redirect",
+    "tower-http/request-id",
+    "tower-http/sensitive-headers",
+    "tower-http/set-header",
+    "tower-http/set-status",
+    "tower-http/timeout",
+    "tower-http/trace",
+    "tower-http/util",
+    "tower-http/validate-request",
+]
 
 [dependencies]
 async-trait = "0.1.43"
@@ -47,7 +78,7 @@ pin-project-lite = "0.2.7"
 serde = "1.0"
 sync_wrapper = "0.1.1"
 tower = { version = "0.4.13", default-features = false, features = ["util"] }
-tower-http = { version = "0.3.0", features = ["util", "map-response-body"] }
+tower-http = { version = "0.4", features = ["util", "map-response-body"] }
 tower-layer = "0.3.2"
 tower-service = "0.3"
 
@@ -98,8 +129,38 @@ features = [
 ]
 
 [dev-dependencies.tower-http]
-version = "0.3.4"
-features = ["full"]
+version = "0.4"
+features = [
+    # all tower-http features except (de)?compression-zstd which doesn't
+    # build on `--target armv5te-unknown-linux-musleabi`
+    "add-extension",
+    "auth",
+    "catch-panic",
+    "compression-br",
+    "compression-deflate",
+    "compression-gzip",
+    "cors",
+    "decompression-br",
+    "decompression-deflate",
+    "decompression-gzip",
+    "follow-redirect",
+    "fs",
+    "limit",
+    "map-request-body",
+    "map-response-body",
+    "metrics",
+    "normalize-path",
+    "propagate-header",
+    "redirect",
+    "request-id",
+    "sensitive-headers",
+    "set-header",
+    "set-status",
+    "timeout",
+    "trace",
+    "util",
+    "validate-request",
+]
 
 [package.metadata.playground]
 features = [

@@ -23,7 +23,7 @@ use tokio_tungstenite::{
 };
 
 const N_CLIENTS: usize = 2; //set to desired number
-const SERVER: &'static str = "ws://127.0.0.1:3000/ws";
+const SERVER: &str = "ws://127.0.0.1:3000/ws";
 
 #[tokio::main]
 async fn main() {

@@ -7,8 +7,10 @@ and this project adheres to [Semantic Versioning].
 
 # Unreleased
 
+- **breaking:** `SpaRouter::handle_error` has been removed ([#1783])
 - **breaking:**  Change casing of `ProtoBuf` to `Protobuf` ([#1595])
 
+[#1783]: https://github.com/tokio-rs/axum/pull/1783
 [#1595]: https://github.com/tokio-rs/axum/pull/1595
 
 # 0.5.0 (12. February, 2022)

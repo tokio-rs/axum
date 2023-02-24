@@ -1290,7 +1290,7 @@ mod tests {
     use http::{header::ALLOW, HeaderMap};
     use std::time::Duration;
     use tower::{timeout::TimeoutLayer, Service, ServiceBuilder, ServiceExt};
-    use tower_http::{auth::RequireAuthorizationLayer, services::fs::ServeDir};
+    use tower_http::{services::fs::ServeDir, validate_request::ValidateRequestHeaderLayer};
 
     #[crate::test]
     async fn method_not_allowed_by_default() {
@@ -1352,7 +1352,7 @@ mod tests {
     async fn layer() {
         let mut svc = MethodRouter::new()
             .get(|| async { std::future::pending::<()>().await })
-            .layer(RequireAuthorizationLayer::bearer("password"));
+            .layer(ValidateRequestHeaderLayer::bearer("password"));
 
         // method with route
         let (status, _, _) = call(Method::GET, &mut svc).await;
@@ -1367,7 +1367,7 @@ mod tests {
     async fn route_layer() {
         let mut svc = MethodRouter::new()
             .get(|| async { std::future::pending::<()>().await })
-            .route_layer(RequireAuthorizationLayer::bearer("password"));
+            .route_layer(ValidateRequestHeaderLayer::bearer("password"));
 
         // method with route
         let (status, _, _) = call(Method::GET, &mut svc).await;
@@ -1385,11 +1385,8 @@ mod tests {
             // use the all the things :bomb:
             get(ok)
                 .post(ok)
-                .route_layer(RequireAuthorizationLayer::bearer("password"))
-                .merge(
-                    delete_service(ServeDir::new("."))
-                        .handle_error(|_| async { StatusCode::NOT_FOUND }),
-                )
+                .route_layer(ValidateRequestHeaderLayer::bearer("password"))
+                .merge(delete_service(ServeDir::new(".")))
                 .fallback(|| async { StatusCode::NOT_FOUND })
                 .put(ok)
                 .layer(
