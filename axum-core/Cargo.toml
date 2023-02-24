@@ -29,7 +29,7 @@ axum = { path = "../axum", version = "0.6.0", features = ["headers"] }
 futures-util = "0.3"
 hyper = "0.14"
 tokio = { version = "1.0", features = ["macros"] }
-tower-http = { version = "0.3.4", features = ["limit"] }
+tower-http = { version = "0.4", features = ["limit"] }
 
 [package.metadata.cargo-public-api-crates]
 allowed = [

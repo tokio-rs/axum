@@ -8,12 +8,11 @@ use axum::{
     body::Body,
     handler::HandlerWithoutStateExt,
     http::{Request, StatusCode},
-    response::IntoResponse,
-    routing::{get, get_service},
+    routing::get,
     Router,
 };
 use axum_extra::routing::SpaRouter;
-use std::{io, net::SocketAddr};
+use std::net::SocketAddr;
 use tower::ServiceExt;
 use tower_http::{
     services::{ServeDir, ServeFile},
@@ -56,7 +55,7 @@ fn using_serve_dir() -> Router {
     // `SpaRouter` is just a convenient wrapper around `ServeDir`
     //
     // You can use `ServeDir` directly to further customize your setup
-    let serve_dir = get_service(ServeDir::new("assets")).handle_error(handle_error);
+    let serve_dir = ServeDir::new("assets");
 
     Router::new()
         .route("/foo", get(|| async { "Hi from /foo" }))
@@ -69,7 +68,6 @@ fn using_serve_dir_with_assets_fallback() -> Router {
     // so with this `GET /assets/doesnt-exist.jpg` will return `index.html`
     // rather than a 404
     let serve_dir = ServeDir::new("assets").not_found_service(ServeFile::new("assets/index.html"));
-    let serve_dir = get_service(serve_dir).handle_error(handle_error);
 
     Router::new()
         .route("/foo", get(|| async { "Hi from /foo" }))
@@ -81,7 +79,6 @@ fn using_serve_dir_only_from_root_via_fallback() -> Router {
     // you can also serve the assets directly from the root (not nested under `/assets`)
     // by only setting a `ServeDir` as the fallback
     let serve_dir = ServeDir::new("assets").not_found_service(ServeFile::new("assets/index.html"));
-    let serve_dir = get_service(serve_dir).handle_error(handle_error);
 
     Router::new()
         .route("/foo", get(|| async { "Hi from /foo" }))
@@ -93,13 +90,7 @@ fn using_serve_dir_with_handler_as_service() -> Router {
         (StatusCode::NOT_FOUND, "Not found")
     }
 
-    // you can convert handler function to service
-    let service = handle_404
-        .into_service()
-        .map_err(|err| -> std::io::Error { match err {} });
-
-    let serve_dir = ServeDir::new("assets").not_found_service(service);
-    let serve_dir = get_service(serve_dir).handle_error(handle_error);
+    let serve_dir = ServeDir::new("assets").not_found_service(handle_404.into_service());
 
     Router::new()
         .route("/foo", get(|| async { "Hi from /foo" }))
@@ -108,8 +99,8 @@ fn using_serve_dir_with_handler_as_service() -> Router {
 
 fn two_serve_dirs() -> Router {
     // you can also have two `ServeDir`s nested at different paths
-    let serve_dir_from_assets = get_service(ServeDir::new("assets")).handle_error(handle_error);
-    let serve_dir_from_dist = get_service(ServeDir::new("dist")).handle_error(handle_error);
+    let serve_dir_from_assets = ServeDir::new("assets");
+    let serve_dir_from_dist = ServeDir::new("dist");
 
     Router::new()
         .nest_service("/assets", serve_dir_from_assets)
@@ -123,15 +114,11 @@ fn calling_serve_dir_from_a_handler() -> Router {
     Router::new().nest_service(
         "/foo",
         get(|request: Request<Body>| async {
-            let service = get_service(ServeDir::new("assets")).handle_error(handle_error);
+            let service = ServeDir::new("assets");
             let result = service.oneshot(request).await;
             result
         }),
     )
-}
-
-async fn handle_error(_err: io::Error) -> impl IntoResponse {
-    (StatusCode::INTERNAL_SERVER_ERROR, "Something went wrong...")
 }
 
 async fn serve(app: Router, port: u16) {

@@ -1,23 +1,15 @@
 use axum::{
     body::{Body, HttpBody},
-    error_handling::HandleError,
-    response::IntoResponse,
-    routing::{get_service, Route},
     Router,
 };
-use http::{Request, StatusCode};
 use std::{
     any::type_name,
-    convert::Infallible,
     fmt,
-    future::{ready, Ready},
-    io,
     marker::PhantomData,
     path::{Path, PathBuf},
     sync::Arc,
 };
 use tower_http::services::{ServeDir, ServeFile};
-use tower_service::Service;
 
 /// Router for single page applications.
 ///
@@ -50,10 +42,9 @@ use tower_service::Service;
 /// - `GET /some/other/path` will serve `index.html` since there isn't another
 ///   route for it
 /// - `GET /api/foo` will serve the `api_foo` handler function
-pub struct SpaRouter<S = (), B = Body, T = (), F = fn(io::Error) -> Ready<StatusCode>> {
+pub struct SpaRouter<S = (), B = Body> {
     paths: Arc<Paths>,
-    handle_error: F,
-    _marker: PhantomData<fn() -> (S, B, T)>,
+    _marker: PhantomData<fn() -> (S, B)>,
 }
 
 #[derive(Debug)]
@@ -63,7 +54,7 @@ struct Paths {
     index_file: PathBuf,
 }
 
-impl<S, B> SpaRouter<S, B, (), fn(io::Error) -> Ready<StatusCode>> {
+impl<S, B> SpaRouter<S, B> {
     /// Create a new `SpaRouter`.
     ///
     /// Assets will be served at `GET /{serve_assets_at}` from the directory at `assets_dir`.
@@ -80,13 +71,12 @@ impl<S, B> SpaRouter<S, B, (), fn(io::Error) -> Ready<StatusCode>> {
                 assets_dir: path.to_owned(),
                 index_file: path.join("index.html"),
             }),
-            handle_error: |_| ready(StatusCode::INTERNAL_SERVER_ERROR),
             _marker: PhantomData,
         }
     }
 }
 
-impl<S, B, T, F> SpaRouter<S, B, T, F> {
+impl<S, B> SpaRouter<S, B> {
     /// Set the path to the index file.
     ///
     /// `path` must be relative to `assets_dir` passed to [`SpaRouter::new`].
@@ -114,72 +104,27 @@ impl<S, B, T, F> SpaRouter<S, B, T, F> {
         });
         self
     }
-
-    /// Change the function used to handle unknown IO errors.
-    ///
-    /// `SpaRouter` automatically maps missing files and permission denied to
-    /// `404 Not Found`. The callback given here will be used for other IO errors.
-    ///
-    /// See [`axum::error_handling::HandleErrorLayer`] for more details.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// use std::io;
-    /// use axum_extra::routing::SpaRouter;
-    /// use axum::{Router, http::{Method, Uri}};
-    ///
-    /// let spa = SpaRouter::new("/assets", "dist").handle_error(handle_error);
-    ///
-    /// async fn handle_error(method: Method, uri: Uri, err: io::Error) -> String {
-    ///     format!("{} {} failed with {}", method, uri, err)
-    /// }
-    ///
-    /// let app = Router::new().merge(spa);
-    /// # let _: Router = app;
-    /// ```
-    pub fn handle_error<T2, F2>(self, f: F2) -> SpaRouter<S, B, T2, F2> {
-        SpaRouter {
-            paths: self.paths,
-            handle_error: f,
-            _marker: PhantomData,
-        }
-    }
 }
 
-impl<S, B, F, T> From<SpaRouter<S, B, T, F>> for Router<S, B>
+impl<S, B> From<SpaRouter<S, B>> for Router<S, B>
 where
-    F: Clone + Send + Sync + 'static,
-    HandleError<Route<B, io::Error>, F, T>: Service<Request<B>, Error = Infallible>,
-    <HandleError<Route<B, io::Error>, F, T> as Service<Request<B>>>::Response: IntoResponse + Send,
-    <HandleError<Route<B, io::Error>, F, T> as Service<Request<B>>>::Future: Send,
     B: HttpBody + Send + 'static,
-    T: 'static,
     S: Clone + Send + Sync + 'static,
 {
-    fn from(spa: SpaRouter<S, B, T, F>) -> Router<S, B> {
-        let assets_service = get_service(ServeDir::new(&spa.paths.assets_dir))
-            .handle_error(spa.handle_error.clone());
-
+    fn from(spa: SpaRouter<S, B>) -> Router<S, B> {
+        let assets_service = ServeDir::new(&spa.paths.assets_dir);
         Router::new()
             .nest_service(&spa.paths.assets_path, assets_service)
-            .fallback_service(
-                get_service(ServeFile::new(&spa.paths.index_file)).handle_error(spa.handle_error),
-            )
+            .fallback_service(ServeFile::new(&spa.paths.index_file))
     }
 }
 
-impl<B, T, F> fmt::Debug for SpaRouter<B, T, F> {
+impl<B, T> fmt::Debug for SpaRouter<B, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let Self {
-            paths,
-            handle_error: _,
-            _marker,
-        } = self;
+        let Self { paths, _marker } = self;
 
         f.debug_struct("SpaRouter")
             .field("paths", &paths)
-            .field("handle_error", &format_args!("{}", type_name::<F>()))
             .field("request_body_type", &format_args!("{}", type_name::<B>()))
             .field(
                 "extractor_input_type",
@@ -189,14 +134,10 @@ impl<B, T, F> fmt::Debug for SpaRouter<B, T, F> {
     }
 }
 
-impl<B, T, F> Clone for SpaRouter<B, T, F>
-where
-    F: Clone,
-{
+impl<B, T> Clone for SpaRouter<B, T> {
     fn clone(&self) -> Self {
         Self {
             paths: self.paths.clone(),
-            handle_error: self.handle_error,
             _marker: self._marker,
         }
     }
@@ -206,10 +147,8 @@ where
 mod tests {
     use super::*;
     use crate::test_helpers::*;
-    use axum::{
-        http::{Method, Uri},
-        routing::get,
-    };
+    use axum::routing::get;
+    use http::StatusCode;
 
     #[tokio::test]
     async fn basic() {
@@ -251,21 +190,6 @@ mod tests {
         let res = client.get("/some/random/path").send().await;
         assert_eq!(res.status(), StatusCode::OK);
         assert_eq!(res.text().await, "<strong>Hello, World!</strong>\n");
-    }
-
-    // this should just compile
-    #[allow(dead_code)]
-    fn setting_error_handler() {
-        async fn handle_error(method: Method, uri: Uri, err: io::Error) -> (StatusCode, String) {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("{} {} failed. Error: {}", method, uri, err),
-            )
-        }
-
-        let spa = SpaRouter::new("/assets", "test_files").handle_error(handle_error);
-
-        Router::<(), Body>::new().merge(spa);
     }
 
     #[allow(dead_code)]

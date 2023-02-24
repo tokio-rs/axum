@@ -47,7 +47,7 @@ pin-project-lite = "0.2.7"
 serde = "1.0"
 sync_wrapper = "0.1.1"
 tower = { version = "0.4.13", default-features = false, features = ["util"] }
-tower-http = { version = "0.3.0", features = ["util", "map-response-body"] }
+tower-http = { version = "0.4", features = ["util", "map-response-body"] }
 tower-layer = "0.3.2"
 tower-service = "0.3"
 
@@ -98,7 +98,8 @@ features = [
 ]
 
 [dev-dependencies.tower-http]
-version = "0.3.4"
+# version = "0.3.4"
+version = "0.4"
 features = ["full"]
 
 [package.metadata.playground]
