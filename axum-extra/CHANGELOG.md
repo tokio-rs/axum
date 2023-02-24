@@ -7,11 +7,33 @@ and this project adheres to [Semantic Versioning].
 
 # Unreleased
 
-- **breaking:** `SpaRouter::handle_error` has been removed ([#1783])
+- **breaking:** `SpaRouter` has been removed. Use `ServeDir` and `ServeFile`
+  from `tower-http` instead:
+
+  ```rust
+  // before
+  Router::new().merge(SpaRouter::new("/assets", "dist"));
+
+  // with ServeDir
+  Router::new().nest_service("/assets", ServeDir::new("dist"));
+
+  // before with `index_file`
+  Router::new().merge(SpaRouter::new("/assets", "dist").index_file("index.html"));
+
+  // with ServeDir + ServeFile
+  Router::new().nest_service(
+      "/assets",
+      ServeDir::new("dist").not_found_service(ServeFile::new("dist/index.html")),
+  );
+  ```
+
+  See the [static-file-server-example] for more examples.
+
 - **breaking:**  Change casing of `ProtoBuf` to `Protobuf` ([#1595])
 
 [#1783]: https://github.com/tokio-rs/axum/pull/1783
 [#1595]: https://github.com/tokio-rs/axum/pull/1595
+[static-file-server-example]: https://github.com/tokio-rs/axum/blob/main/examples/static-file-server/src/main.rs
 
 # 0.5.0 (12. February, 2022)
 
