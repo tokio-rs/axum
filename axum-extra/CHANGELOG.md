@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning].
 
 # Unreleased
 
-- None.
+- **breaking:** `SpaRouter::handle_error` has been removed ([#1783])
+
+[#1783]: https://github.com/tokio-rs/axum/pull/1783
 
 # 0.5.0 (12. February, 2022)
 
