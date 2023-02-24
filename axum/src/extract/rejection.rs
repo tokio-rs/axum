@@ -1,6 +1,6 @@
 //! Rejection response types.
 
-pub use crate::extract::path::FailedToDeserializePathParams;
+pub use crate::extract::path::{FailedToDeserializePathParams, InvalidUtf8InPathParam};
 pub use axum_core::extract::rejection::*;
 
 #[cfg(feature = "json")]
@@ -79,6 +79,14 @@ define_rejection! {
 }
 
 define_rejection! {
+    #[status = UNPROCESSABLE_ENTITY]
+    #[body = "Failed to deserialize form body"]
+    /// Rejection type used if the [`Form`](super::Form) extractor is unable to
+    /// deserialize the form body into the target type.
+    pub struct FailedToDeserializeFormBody(Error);
+}
+
+define_rejection! {
     #[status = BAD_REQUEST]
     #[body = "Failed to deserialize query string"]
     /// Rejection type used if the [`Query`](super::Query) extractor is unable to
@@ -104,6 +112,7 @@ composite_rejection! {
     pub enum FormRejection {
         InvalidFormContentType,
         FailedToDeserializeForm,
+        FailedToDeserializeFormBody,
         BytesRejection,
     }
 }
@@ -151,6 +160,17 @@ composite_rejection! {
     /// can fail.
     pub enum PathRejection {
         FailedToDeserializePathParams,
+        MissingPathParams,
+    }
+}
+
+composite_rejection! {
+    /// Rejection used for [`RawPathParams`](super::RawPathParams).
+    ///
+    /// Contains one variant for each way the [`RawPathParams`](super::RawPathParams) extractor
+    /// can fail.
+    pub enum RawPathParamsRejection {
+        InvalidUtf8InPathParam,
         MissingPathParams,
     }
 }

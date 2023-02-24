@@ -20,7 +20,11 @@ jobs:
           - examples
     steps:
     - uses: actions/checkout@master
-    - uses: actions-rs/toolchain@v1
+    - uses: arduino/setup-protoc@v1
+      if: matrix.pwd == 'examples'
+      with:
+        repo-token: ${{ secrets.GITHUB_TOKEN }}
+    - uses: dtolnay/rust-toolchain@stable
       with:
         toolchain: beta
         override: true
@@ -43,7 +47,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@master
-    - uses: actions-rs/toolchain@v1
+    - uses: dtolnay/rust-toolchain@stable
       with:
         toolchain: stable
         override: true
@@ -58,7 +62,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@master
-    - uses: actions-rs/toolchain@v1
+    - uses: dtolnay/rust-toolchain@stable
       with:
         toolchain: stable
         override: true
@@ -70,6 +74,25 @@ jobs:
     - name: cargo hack check
       run: cargo hack check --each-feature --no-dev-deps --all
 
+  cargo-public-api-crates:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        crate: [axum, axum-core, axum-extra, axum-macros]
+    steps:
+    - uses: actions/checkout@master
+    - uses: dtolnay/rust-toolchain@stable
+      with:
+        toolchain: nightly
+        override: true
+        profile: minimal
+    - uses: Swatinem/rust-cache@v1
+    - name: Install cargo-public-api-crates
+      run: |
+        cargo install --git https://github.com/davidpdrsn/cargo-public-api-crates
+    - name: cargo public-api-crates check
+      run: cargo public-api-crates --manifest-path ${{ matrix.crate }}/Cargo.toml check
+
   test-versions:
     needs: check
     runs-on: ubuntu-latest
@@ -78,7 +101,7 @@ jobs:
         rust: [stable, beta]
     steps:
     - uses: actions/checkout@master
-    - uses: actions-rs/toolchain@v1
+    - uses: dtolnay/rust-toolchain@stable
       with:
         toolchain: ${{ matrix.rust }}
         override: true
@@ -95,7 +118,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@master
-    - uses: actions-rs/toolchain@v1
+    - uses: dtolnay/rust-toolchain@stable
       with:
         # same as `axum-macros/rust-toolchain`
         toolchain: nightly-2022-11-18
@@ -114,13 +137,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@master
-    - uses: actions-rs/toolchain@v1
+    - uses: dtolnay/rust-toolchain@stable
       with:
         toolchain: ${{ env.MSRV }}
         override: true
         profile: minimal
     - name: "install Rust nightly"
-      uses: actions-rs/toolchain@v1
+      uses: dtolnay/rust-toolchain@stable
       with:
         toolchain: nightly
         profile: minimal
@@ -168,7 +191,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@master
-    - uses: actions-rs/toolchain@v1
+    - uses: dtolnay/rust-toolchain@stable
       with:
         toolchain: stable
         override: true
@@ -201,7 +224,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@master
-    - uses: actions-rs/toolchain@v1
+    - uses: dtolnay/rust-toolchain@stable
       with:
         toolchain: stable
         target: armv5te-unknown-linux-musleabi
@@ -229,7 +252,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@master
-    - uses: actions-rs/toolchain@v1
+    - uses: dtolnay/rust-toolchain@stable
       with:
         toolchain: stable
         target: wasm32-unknown-unknown
@@ -253,7 +276,7 @@ jobs:
           - examples
     steps:
     - uses: actions/checkout@master
-    - uses: actions-rs/toolchain@v1
+    - uses: dtolnay/rust-toolchain@stable
       with:
         toolchain: beta
         override: true

@@ -98,6 +98,13 @@ axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())
 # };
 ```
 
+# State is global within the router
+
+The state passed to this method will be used for all requests this router
+receives. That means it is not suitable for holding state derived from a
+request, such as authorization data extracted in a middleware. Use [`Extension`]
+instead for such data.
+
 # What `S` in `Router<S>` means
 
 `Router<S>` means a router that is _missing_ a state of type `S` to be able to
@@ -234,3 +241,5 @@ which may impact performance and reduce allocations.
 
 Note that [`Router::into_make_service`] and [`Router::into_make_service_with_connect_info`]
 do this automatically.
+
+[`Extension`]: crate::Extension

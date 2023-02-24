@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning].
 
 - None.
 
+# 0.5.0 (12. February, 2022)
+
+- **added:** Add `option_layer` for converting an `Option<Layer>` into a `Layer` ([#1696])
+- **added:** Implement `Layer` and `Service` for `Either` ([#1696])
+- **added:** Add `TypedPath::with_query_params` ([#1744])
+- **breaking:** Update to [`cookie`] 0.17 ([#1747])
+
+[#1696]: https://github.com/tokio-rs/axum/pull/1696
+[#1744]: https://github.com/tokio-rs/axum/pull/1744
+[#1747]: https://github.com/tokio-rs/axum/pull/1747
+[`cookie`]: https://crates.io/crates/cookie
+
 # 0.4.2 (02. December, 2022)
 
 - **fixed:** Bug fixes for `RouterExt:{route_with_tsr, route_service_with_tsr}` ([#1608]):

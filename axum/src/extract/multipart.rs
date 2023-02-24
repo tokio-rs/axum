@@ -250,7 +250,7 @@ mod tests {
     use super::*;
     use crate::{body::Body, response::IntoResponse, routing::post, test_helpers::*, Router};
 
-    #[tokio::test]
+    #[crate::test]
     async fn content_type_with_encoding() {
         const BYTES: &[u8] = "<!doctype html><title>🦀</title>".as_bytes();
         const FILE_NAME: &str = "index.html";

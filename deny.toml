@@ -16,8 +16,10 @@ confidence-threshold = 0.8
 multiple-versions = "deny"
 highlight = "all"
 skip-tree = [
-    # currently duplicated through mio & parking_lot_core
-    # https://github.com/tokio-rs/mio/pull/1624 will fix that
+    # currently duplicated through header, reqwest, tower-http and cookie
+    # C.f. https://github.com/tokio-rs/axum/pull/1641
+    { name = "base64" },
+    # parking_lot pulls in old versions of windows-sys
     { name = "windows-sys" },
 ]
 

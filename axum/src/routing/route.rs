@@ -155,9 +155,6 @@ where
 
     #[inline]
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        #[derive(Clone, Copy)]
-        struct AlreadyPassedThroughRouteFuture;
-
         let this = self.project();
 
         let mut res = match this.kind.project() {
@@ -170,16 +167,6 @@ where
                 response.take().expect("future polled after completion")
             }
         };
-
-        if res
-            .extensions()
-            .get::<AlreadyPassedThroughRouteFuture>()
-            .is_some()
-        {
-            return Poll::Ready(Ok(res));
-        } else {
-            res.extensions_mut().insert(AlreadyPassedThroughRouteFuture);
-        }
 
         set_allow_header(res.headers_mut(), this.allow_header);
 
@@ -225,6 +212,34 @@ fn set_content_length(size_hint: http_body::SizeHint, headers: &mut HeaderMap) {
         };
 
         headers.insert(CONTENT_LENGTH, header_value);
+    }
+}
+
+pin_project! {
+    /// A [`RouteFuture`] that always yields a [`Response`].
+    pub struct InfallibleRouteFuture<B> {
+        #[pin]
+        future: RouteFuture<B, Infallible>,
+    }
+}
+
+impl<B> InfallibleRouteFuture<B> {
+    pub(crate) fn new(future: RouteFuture<B, Infallible>) -> Self {
+        Self { future }
+    }
+}
+
+impl<B> Future for InfallibleRouteFuture<B>
+where
+    B: HttpBody,
+{
+    type Output = Response;
+
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        match futures_util::ready!(self.project().future.poll(cx)) {
+            Ok(response) => Poll::Ready(response),
+            Err(err) => match err {},
+        }
     }
 }
 

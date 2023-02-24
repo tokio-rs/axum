@@ -3,7 +3,7 @@ use quote::quote_spanned;
 use syn::{
     parse::{Parse, ParseStream},
     spanned::Spanned,
-    Field, ItemStruct, Token,
+    Field, ItemStruct, Token, Type,
 };
 
 use crate::attr_parsing::{combine_unary_attribute, parse_attrs, Combine};
@@ -30,7 +30,11 @@ fn expand_field(state: &Ident, idx: usize, field: &Field) -> TokenStream {
     let span = field.ty.span();
 
     let body = if let Some(field_ident) = &field.ident {
-        quote_spanned! {span=> state.#field_ident.clone() }
+        if matches!(field_ty, Type::Reference(_)) {
+            quote_spanned! {span=> state.#field_ident }
+        } else {
+            quote_spanned! {span=> state.#field_ident.clone() }
+        }
     } else {
         let idx = syn::Index {
             index: idx as _,
@@ -40,6 +44,7 @@ fn expand_field(state: &Ident, idx: usize, field: &Field) -> TokenStream {
     };
 
     quote_spanned! {span=>
+        #[allow(clippy::clone_on_copy)]
         impl ::axum::extract::FromRef<#state> for #field_ty {
             fn from_ref(state: &#state) -> Self {
                 #body

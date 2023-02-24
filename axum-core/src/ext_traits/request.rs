@@ -16,6 +16,58 @@ pub trait RequestExt<B>: sealed::Sealed<B> + Sized {
     ///
     /// Note this consumes the request. Use [`RequestExt::extract_parts`] if you're not extracting
     /// the body and don't want to consume the request.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use axum::{
+    ///     async_trait,
+    ///     extract::FromRequest,
+    ///     http::{header::CONTENT_TYPE, Request, StatusCode},
+    ///     response::{IntoResponse, Response},
+    ///     Form, Json, RequestExt,
+    /// };
+    ///
+    /// struct FormOrJson<T>(T);
+    ///
+    /// #[async_trait]
+    /// impl<S, B, T> FromRequest<S, B> for FormOrJson<T>
+    /// where
+    ///     Json<T>: FromRequest<(), B>,
+    ///     Form<T>: FromRequest<(), B>,
+    ///     T: 'static,
+    ///     B: Send + 'static,
+    ///     S: Send + Sync,
+    /// {
+    ///     type Rejection = Response;
+    ///
+    ///     async fn from_request(req: Request<B>, _state: &S) -> Result<Self, Self::Rejection> {
+    ///         let content_type = req
+    ///             .headers()
+    ///             .get(CONTENT_TYPE)
+    ///             .and_then(|value| value.to_str().ok())
+    ///             .ok_or_else(|| StatusCode::BAD_REQUEST.into_response())?;
+    ///
+    ///         if content_type.starts_with("application/json") {
+    ///             let Json(payload) = req
+    ///                 .extract::<Json<T>, _>()
+    ///                 .await
+    ///                 .map_err(|err| err.into_response())?;
+    ///
+    ///             Ok(Self(payload))
+    ///         } else if content_type.starts_with("application/x-www-form-urlencoded") {
+    ///             let Form(payload) = req
+    ///                 .extract::<Form<T>, _>()
+    ///                 .await
+    ///                 .map_err(|err| err.into_response())?;
+    ///
+    ///             Ok(Self(payload))
+    ///         } else {
+    ///             Err(StatusCode::BAD_REQUEST.into_response())
+    ///         }
+    ///     }
+    /// }
+    /// ```
     fn extract<E, M>(self) -> BoxFuture<'static, Result<E, E::Rejection>>
     where
         E: FromRequest<(), B, M> + 'static,
@@ -27,6 +79,54 @@ pub trait RequestExt<B>: sealed::Sealed<B> + Sized {
     ///
     /// Note this consumes the request. Use [`RequestExt::extract_parts_with_state`] if you're not
     /// extracting the body and don't want to consume the request.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use axum::{
+    ///     async_trait,
+    ///     extract::{FromRef, FromRequest},
+    ///     http::Request,
+    ///     RequestExt,
+    /// };
+    ///
+    /// struct MyExtractor {
+    ///     requires_state: RequiresState,
+    /// }
+    ///
+    /// #[async_trait]
+    /// impl<S, B> FromRequest<S, B> for MyExtractor
+    /// where
+    ///     String: FromRef<S>,
+    ///     S: Send + Sync,
+    ///     B: Send + 'static,
+    /// {
+    ///     type Rejection = std::convert::Infallible;
+    ///
+    ///     async fn from_request(req: Request<B>, state: &S) -> Result<Self, Self::Rejection> {
+    ///         let requires_state = req.extract_with_state::<RequiresState, _, _>(state).await?;
+    ///
+    ///         Ok(Self { requires_state })
+    ///     }
+    /// }
+    ///
+    /// // some extractor that consumes the request body and requires state
+    /// struct RequiresState { /* ... */ }
+    ///
+    /// #[async_trait]
+    /// impl<S, B> FromRequest<S, B> for RequiresState
+    /// where
+    ///     String: FromRef<S>,
+    ///     S: Send + Sync,
+    ///     B: Send + 'static,
+    /// {
+    ///     // ...
+    ///     # type Rejection = std::convert::Infallible;
+    ///     # async fn from_request(req: Request<B>, _state: &S) -> Result<Self, Self::Rejection> {
+    ///     #     todo!()
+    ///     # }
+    /// }
+    /// ```
     fn extract_with_state<E, S, M>(self, state: &S) -> BoxFuture<'_, Result<E, E::Rejection>>
     where
         E: FromRequest<S, B, M> + 'static,
@@ -35,6 +135,52 @@ pub trait RequestExt<B>: sealed::Sealed<B> + Sized {
     /// Apply a parts extractor to this `Request`.
     ///
     /// This is just a convenience for `E::from_request_parts(parts, state)`.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use axum::{
+    ///     async_trait,
+    ///     extract::FromRequest,
+    ///     headers::{authorization::Bearer, Authorization},
+    ///     http::Request,
+    ///     response::{IntoResponse, Response},
+    ///     Json, RequestExt, TypedHeader,
+    /// };
+    ///
+    /// struct MyExtractor<T> {
+    ///     bearer_token: String,
+    ///     payload: T,
+    /// }
+    ///
+    /// #[async_trait]
+    /// impl<S, B, T> FromRequest<S, B> for MyExtractor<T>
+    /// where
+    ///     B: Send + 'static,
+    ///     S: Send + Sync,
+    ///     Json<T>: FromRequest<(), B>,
+    ///     T: 'static,
+    /// {
+    ///     type Rejection = Response;
+    ///
+    ///     async fn from_request(mut req: Request<B>, _state: &S) -> Result<Self, Self::Rejection> {
+    ///         let TypedHeader(auth_header) = req
+    ///             .extract_parts::<TypedHeader<Authorization<Bearer>>>()
+    ///             .await
+    ///             .map_err(|err| err.into_response())?;
+    ///
+    ///         let Json(payload) = req
+    ///             .extract::<Json<T>, _>()
+    ///             .await
+    ///             .map_err(|err| err.into_response())?;
+    ///
+    ///         Ok(Self {
+    ///             bearer_token: auth_header.token().to_owned(),
+    ///             payload,
+    ///         })
+    ///     }
+    /// }
+    /// ```
     fn extract_parts<E>(&mut self) -> BoxFuture<'_, Result<E, E::Rejection>>
     where
         E: FromRequestParts<()> + 'static;
@@ -42,6 +188,67 @@ pub trait RequestExt<B>: sealed::Sealed<B> + Sized {
     /// Apply a parts extractor that requires some state to this `Request`.
     ///
     /// This is just a convenience for `E::from_request_parts(parts, state)`.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use axum::{
+    ///     async_trait,
+    ///     extract::{FromRef, FromRequest, FromRequestParts},
+    ///     http::{request::Parts, Request},
+    ///     response::{IntoResponse, Response},
+    ///     Json, RequestExt,
+    /// };
+    ///
+    /// struct MyExtractor<T> {
+    ///     requires_state: RequiresState,
+    ///     payload: T,
+    /// }
+    ///
+    /// #[async_trait]
+    /// impl<S, B, T> FromRequest<S, B> for MyExtractor<T>
+    /// where
+    ///     String: FromRef<S>,
+    ///     Json<T>: FromRequest<(), B>,
+    ///     T: 'static,
+    ///     S: Send + Sync,
+    ///     B: Send + 'static,
+    /// {
+    ///     type Rejection = Response;
+    ///
+    ///     async fn from_request(mut req: Request<B>, state: &S) -> Result<Self, Self::Rejection> {
+    ///         let requires_state = req
+    ///             .extract_parts_with_state::<RequiresState, _>(state)
+    ///             .await
+    ///             .map_err(|err| err.into_response())?;
+    ///
+    ///         let Json(payload) = req
+    ///             .extract::<Json<T>, _>()
+    ///             .await
+    ///             .map_err(|err| err.into_response())?;
+    ///
+    ///         Ok(Self {
+    ///             requires_state,
+    ///             payload,
+    ///         })
+    ///     }
+    /// }
+    ///
+    /// struct RequiresState {}
+    ///
+    /// #[async_trait]
+    /// impl<S> FromRequestParts<S> for RequiresState
+    /// where
+    ///     String: FromRef<S>,
+    ///     S: Send + Sync,
+    /// {
+    ///     // ...
+    ///     # type Rejection = std::convert::Infallible;
+    ///     # async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
+    ///     #     todo!()
+    ///     # }
+    /// }
+    /// ```
     fn extract_parts_with_state<'a, E, S>(
         &'a mut self,
         state: &'a S,

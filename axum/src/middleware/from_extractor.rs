@@ -309,7 +309,7 @@ mod tests {
     use http::{header, request::Parts, StatusCode};
     use tower_http::limit::RequestBodyLimitLayer;
 
-    #[tokio::test]
+    #[crate::test]
     async fn test_from_extractor() {
         #[derive(Clone)]
         struct Secret(&'static str);

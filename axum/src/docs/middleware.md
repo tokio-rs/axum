@@ -229,6 +229,7 @@ use futures::future::BoxFuture;
 use tower::{Service, Layer};
 use std::task::{Context, Poll};
 
+#[derive(Clone)]
 struct MyLayer;
 
 impl<S> Layer<S> for MyLayer {
@@ -258,7 +259,7 @@ where
         self.inner.poll_ready(cx)
     }
 
-    fn call(&mut self, mut request: Request<Body>) -> Self::Future {
+    fn call(&mut self, request: Request<Body>) -> Self::Future {
         let future = self.inner.call(request);
         Box::pin(async move {
             let response: Response = future.await?;

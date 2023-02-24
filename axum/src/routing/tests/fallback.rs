@@ -3,7 +3,7 @@ use tower::ServiceExt;
 use super::*;
 use crate::middleware::{map_request, map_response};
 
-#[tokio::test]
+#[crate::test]
 async fn basic() {
     let app = Router::new()
         .route("/foo", get(|| async {}))
@@ -18,7 +18,7 @@ async fn basic() {
     assert_eq!(res.text().await, "fallback");
 }
 
-#[tokio::test]
+#[crate::test]
 async fn nest() {
     let app = Router::new()
         .nest("/foo", Router::new().route("/bar", get(|| async {})))
@@ -33,7 +33,7 @@ async fn nest() {
     assert_eq!(res.text().await, "fallback");
 }
 
-#[tokio::test]
+#[crate::test]
 async fn or() {
     let one = Router::new().route("/one", get(|| async {}));
     let two = Router::new().route("/two", get(|| async {}));
@@ -50,7 +50,7 @@ async fn or() {
     assert_eq!(res.text().await, "fallback");
 }
 
-#[tokio::test]
+#[crate::test]
 async fn fallback_accessing_state() {
     let app = Router::new()
         .fallback(|State(state): State<&'static str>| async move { state })
@@ -71,7 +71,7 @@ async fn outer_fallback() -> impl IntoResponse {
     (StatusCode::NOT_FOUND, "outer")
 }
 
-#[tokio::test]
+#[crate::test]
 async fn nested_router_inherits_fallback() {
     let inner = Router::new();
     let app = Router::new().nest("/foo", inner).fallback(outer_fallback);
@@ -83,7 +83,7 @@ async fn nested_router_inherits_fallback() {
     assert_eq!(res.text().await, "outer");
 }
 
-#[tokio::test]
+#[crate::test]
 async fn doesnt_inherit_fallback_if_overriden() {
     let inner = Router::new().fallback(inner_fallback);
     let app = Router::new().nest("/foo", inner).fallback(outer_fallback);
@@ -95,7 +95,7 @@ async fn doesnt_inherit_fallback_if_overriden() {
     assert_eq!(res.text().await, "inner");
 }
 
-#[tokio::test]
+#[crate::test]
 async fn deeply_nested_inherit_from_top() {
     let app = Router::new()
         .nest("/foo", Router::new().nest("/bar", Router::new()))
@@ -108,7 +108,7 @@ async fn deeply_nested_inherit_from_top() {
     assert_eq!(res.text().await, "outer");
 }
 
-#[tokio::test]
+#[crate::test]
 async fn deeply_nested_inherit_from_middle() {
     let app = Router::new().nest(
         "/foo",
@@ -124,7 +124,7 @@ async fn deeply_nested_inherit_from_middle() {
     assert_eq!(res.text().await, "outer");
 }
 
-#[tokio::test]
+#[crate::test]
 async fn with_middleware_on_inner_fallback() {
     async fn never_called<B>(_: Request<B>) -> Request<B> {
         panic!("should never be called")
@@ -140,7 +140,7 @@ async fn with_middleware_on_inner_fallback() {
     assert_eq!(res.text().await, "outer");
 }
 
-#[tokio::test]
+#[crate::test]
 async fn also_inherits_default_layered_fallback() {
     async fn set_header<B>(mut res: Response<B>) -> Response<B> {
         res.headers_mut()
@@ -162,7 +162,7 @@ async fn also_inherits_default_layered_fallback() {
     assert_eq!(res.text().await, "outer");
 }
 
-#[tokio::test]
+#[crate::test]
 async fn fallback_inherited_into_nested_router_service() {
     let inner = Router::new()
         .route(
@@ -182,7 +182,7 @@ async fn fallback_inherited_into_nested_router_service() {
     assert_eq!(res.text().await, "outer");
 }
 
-#[tokio::test]
+#[crate::test]
 async fn fallback_inherited_into_nested_opaque_service() {
     let inner = Router::new()
         .route(

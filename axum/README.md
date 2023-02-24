@@ -66,7 +66,7 @@ async fn create_user(
     // this argument tells axum to parse the request body
     // as JSON into a `CreateUser` type
     Json(payload): Json<CreateUser>,
-) -> impl IntoResponse {
+) -> (StatusCode, Json<User>) {
     // insert your application logic here
     let user = User {
         id: 1337,
