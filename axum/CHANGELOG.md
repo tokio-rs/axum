@@ -8,8 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 # Unreleased
 
 - **breaking:** Change `sse::Event::json_data` to use `axum_core::Error` as its error type ([#1762])
+- **breaking:** Rename `DefaultOnFailedUpdgrade` to `DefaultOnFailedUpgrade` ([#1664])
+- **breaking:** Rename `OnFailedUpdgrade` to `OnFailedUpgrade` ([#1664])
 
 [#1762]: https://github.com/tokio-rs/axum/pull/1762
+[#1664]: https://github.com/tokio-rs/axum/pull/1664
 
 # 0.6.10 (03. March, 2023)
 
