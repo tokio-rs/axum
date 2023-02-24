@@ -38,7 +38,7 @@ let app = Router::new()
             Ok::<_, Infallible>(res)
         })
     )
-    .route(
+    .route_service(
         // GET `/static/Cargo.toml` goes to a service from tower-http
         "/static/Cargo.toml",
         ServeFile::new("Cargo.toml"),
