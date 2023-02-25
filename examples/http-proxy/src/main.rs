@@ -13,8 +13,9 @@
 //! Example is based on <https://github.com/hyperium/hyper/blob/master/examples/http_proxy.rs>
 
 use axum::{
-    body::{self, Body},
-    http::{Method, Request, StatusCode},
+    body::Body,
+    extract::Request,
+    http::{Method, StatusCode},
     response::{IntoResponse, Response},
     routing::get,
     Router,
@@ -74,7 +75,7 @@ async fn proxy(req: Request) -> Result<Response, hyper::Error> {
             }
         });
 
-        Ok(Response::new(body::boxed(body::Empty::new())))
+        Ok(Response::new(Body::empty()))
     } else {
         tracing::warn!("CONNECT host is not socket addr: {:?}", req.uri());
         Ok((

@@ -5,9 +5,9 @@
 //! ```
 
 use axum::{
-    body::{Body, Bytes},
-    extract::{Multipart, Path},
-    http::{Request, StatusCode},
+    body::Bytes,
+    extract::{Multipart, Path, Request},
+    http::StatusCode,
     response::{Html, Redirect},
     routing::{get, post},
     BoxError, Router,

@@ -12,9 +12,8 @@
 
 use async_trait::async_trait;
 use axum::{
-    body::Body,
-    extract::{rejection::FormRejection, Form, FromRequest},
-    http::{Request, StatusCode},
+    extract::{rejection::FormRejection, Form, FromRequest, Request},
+    http::StatusCode,
     response::{Html, IntoResponse, Response},
     routing::get,
     Router,

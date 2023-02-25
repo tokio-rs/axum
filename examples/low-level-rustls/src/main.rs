@@ -4,7 +4,7 @@
 //! cd examples && cargo run -p example-low-level-rustls
 //! ```
 
-use axum::{body::Body, extract::ConnectInfo, http::Request, routing::get, Router};
+use axum::{extract::ConnectInfo, extract::Request, routing::get, Router};
 use futures_util::future::poll_fn;
 use hyper::server::{
     accept::Accept,
@@ -67,7 +67,7 @@ async fn main() {
 
         let protocol = protocol.clone();
 
-        let svc = MakeService::<_, Request>::make_service(&mut app, &stream);
+        let svc = MakeService::<_, Request<hyper::Body>>::make_service(&mut app, &stream);
 
         tokio::spawn(async move {
             if let Ok(stream) = acceptor.accept(stream).await {

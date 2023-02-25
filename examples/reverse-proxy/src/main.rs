@@ -9,8 +9,8 @@
 
 use axum::{
     body::Body,
-    extract::State,
-    http::{uri::Uri, Request},
+    extract::{Request, State},
+    http::uri::Uri,
     response::{IntoResponse, Response},
     routing::get,
     Router,

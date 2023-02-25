@@ -6,7 +6,8 @@
 
 use axum::{
     body::{Body, Bytes},
-    http::{Request, StatusCode},
+    extract::Request,
+    http::StatusCode,
     middleware::{self, Next},
     response::{IntoResponse, Response},
     routing::post,
@@ -39,7 +40,7 @@ async fn main() {
 
 async fn print_request_response(
     req: Request,
-    next: Next<Body>,
+    next: Next,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
     let (parts, body) = req.into_parts();
     let bytes = buffer_and_print("request", body).await?;

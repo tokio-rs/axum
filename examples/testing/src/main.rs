@@ -52,7 +52,8 @@ mod tests {
     use super::*;
     use axum::{
         body::Body,
-        http::{self, Request, StatusCode},
+        extract::Request,
+        http::{self, StatusCode},
     };
     use serde_json::{json, Value};
     use std::net::{SocketAddr, TcpListener};

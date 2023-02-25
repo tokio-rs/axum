@@ -7,8 +7,8 @@
 use axum::{
     async_trait,
     body::{Body, Bytes},
-    extract::FromRequest,
-    http::{Request, StatusCode},
+    extract::{FromRequest, Request},
+    http::StatusCode,
     middleware::{self, Next},
     response::{IntoResponse, Response},
     routing::post,
@@ -41,10 +41,7 @@ async fn main() {
 }
 
 // middleware that shows how to consume the request body upfront
-async fn print_request_body(
-    request: Request,
-    next: Next<Body>,
-) -> Result<impl IntoResponse, Response> {
+async fn print_request_body(request: Request, next: Next) -> Result<impl IntoResponse, Response> {
     let request = buffer_request_body(request).await?;
 
     Ok(next.run(request).await)

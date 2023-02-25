@@ -5,9 +5,9 @@
 //! ```
 
 use axum::{
-    body::Body,
+    extract::Request,
     handler::HandlerWithoutStateExt,
-    http::{Request, StatusCode},
+    http::StatusCode,
     response::IntoResponse,
     routing::{get, get_service},
     Router,
@@ -94,10 +94,10 @@ fn using_serve_dir_with_handler_as_service() -> Router {
     }
 
     // you can convert handler function to service
-    let service = tower::ServiceExt::<Request>::map_err(
-        handle_404.into_service(),
-        |err| -> std::io::Error { match err {} },
-    );
+    let service =
+        tower::ServiceExt::<Request>::map_err(handle_404.into_service(), |err| -> std::io::Error {
+            match err {}
+        });
 
     let serve_dir = ServeDir::new("assets").not_found_service(service);
     let serve_dir = get_service(serve_dir).handle_error(handle_error);
