@@ -16,7 +16,7 @@ pub use self::{
     into_response_parts::{IntoResponseParts, ResponseParts, TryIntoHeaderError},
 };
 
-/// Type alias for [`http::Response`] whose body type defaults to [`BoxBody`], the most common body
+/// Type alias for [`http::Response`] whose body type defaults to [`Body`], the most common body
 /// type used with axum.
 pub type Response<T = Body> = http::Response<T>;
 
