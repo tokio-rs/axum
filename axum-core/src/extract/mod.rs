@@ -6,7 +6,7 @@
 
 use crate::{body::Body, response::IntoResponse};
 use async_trait::async_trait;
-use http::{request::Parts, Request};
+use http::request::Parts;
 use std::convert::Infallible;
 
 pub mod rejection;
@@ -18,6 +18,10 @@ mod tuple;
 
 pub(crate) use self::default_body_limit::DefaultBodyLimitKind;
 pub use self::{default_body_limit::DefaultBodyLimit, from_ref::FromRef};
+
+/// Type alias for [`http::Request`] whose body type defaults to [`Body`], the most common body
+/// type used with axum.
+pub type Request<T = Body> = http::Request<T>;
 
 mod private {
     #[derive(Debug, Clone, Copy)]
