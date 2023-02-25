@@ -1,5 +1,5 @@
 use axum::{
-    body::{self, Bytes, HttpBody, StreamBody},
+    body::{Body, Bytes, HttpBody, StreamBody},
     http::HeaderMap,
     response::{IntoResponse, Response},
     Error,
@@ -91,6 +91,6 @@ where
     R: AsyncRead + Send + 'static,
 {
     fn into_response(self) -> Response {
-        Response::new(body::boxed(self))
+        Response::new(Body::new(self))
     }
 }

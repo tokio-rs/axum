@@ -11,4 +11,4 @@ pub use http_body::{Body as HttpBody, Empty, Full};
 pub use bytes::Bytes;
 
 #[doc(inline)]
-pub use axum_core::body::{boxed, Body, BoxBody};
+pub use axum_core::body::Body;

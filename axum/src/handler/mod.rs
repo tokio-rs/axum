@@ -336,7 +336,8 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{body, extract::State, test_helpers::*};
+    use crate::{extract::State, test_helpers::*};
+    use axum_core::body::Body;
     use http::StatusCode;
     use std::time::Duration;
     use tower_http::{
@@ -368,10 +369,10 @@ mod tests {
             .layer((
                 RequestBodyLimitLayer::new(1024),
                 TimeoutLayer::new(Duration::from_secs(10)),
-                MapResponseBodyLayer::new(body::boxed),
+                MapResponseBodyLayer::new(Body::new),
                 CompressionLayer::new(),
             ))
-            .layer(MapRequestBodyLayer::new(body::boxed))
+            .layer(MapRequestBodyLayer::new(Body::new))
             .with_state("foo");
 
         let client = TestClient::new(svc);

@@ -4,7 +4,7 @@
 //!
 //! [`axum::response`]: https://docs.rs/axum/latest/axum/response/index.html
 
-use crate::body::BoxBody;
+use crate::body::Body;
 
 mod append_headers;
 mod into_response;
@@ -18,7 +18,7 @@ pub use self::{
 
 /// Type alias for [`http::Response`] whose body type defaults to [`BoxBody`], the most common body
 /// type used with axum.
-pub type Response<T = BoxBody> = http::Response<T>;
+pub type Response<T = Body> = http::Response<T>;
 
 /// An [`IntoResponse`]-based result type that uses [`ErrorResponse`] as the error type.
 ///

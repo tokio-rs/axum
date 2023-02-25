@@ -96,12 +96,9 @@
 
 use self::rejection::*;
 use super::FromRequestParts;
-use crate::{
-    body::{self, Bytes},
-    response::Response,
-    Error,
-};
+use crate::{body::Bytes, response::Response, Error};
 use async_trait::async_trait;
+use axum_core::body::Body;
 use futures_util::{
     sink::{Sink, SinkExt},
     stream::{Stream, StreamExt},
@@ -335,7 +332,7 @@ impl<F> WebSocketUpgrade<F> {
             builder = builder.header(header::SEC_WEBSOCKET_PROTOCOL, protocol);
         }
 
-        builder.body(body::boxed(body::Empty::new())).unwrap()
+        builder.body(Body::empty()).unwrap()
     }
 }
 

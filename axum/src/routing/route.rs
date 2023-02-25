@@ -1,5 +1,5 @@
 use crate::{
-    body::{boxed, Body, Empty, HttpBody},
+    body::{Body, HttpBody},
     response::Response,
 };
 use axum_core::{extract::Request, response::IntoResponse};
@@ -186,7 +186,7 @@ impl<E> Future for RouteFuture<E> {
         set_content_length(res.size_hint(), res.headers_mut());
 
         let res = if *this.strip_body {
-            res.map(|_| boxed(Empty::new()))
+            res.map(|_| Body::empty())
         } else {
             res
         };
