@@ -6,7 +6,7 @@
 //! - Complexity: Manually implementing `FromRequest` results on more complex code
 use axum::{
     async_trait,
-    extract::{rejection::JsonRejection, Request, FromRequest, MatchedPath},
+    extract::{rejection::JsonRejection, FromRequest, MatchedPath, Request},
     http::StatusCode,
     response::IntoResponse,
     RequestPartsExt,

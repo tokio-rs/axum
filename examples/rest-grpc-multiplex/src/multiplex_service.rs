@@ -1,7 +1,8 @@
 use axum::{
-    http::header::CONTENT_TYPE,
+    body::Body,
     extract::Request,
-    response::{IntoResponse, Response}, body::Body,
+    http::header::CONTENT_TYPE,
+    response::{IntoResponse, Response},
 };
 use futures::{future::BoxFuture, ready};
 use std::{
