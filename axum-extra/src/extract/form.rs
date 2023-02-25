@@ -1,11 +1,10 @@
 use axum::{
     async_trait,
-    body::Body,
-    extract::{rejection::RawFormRejection, FromRequest, RawForm},
+    extract::{rejection::RawFormRejection, FromRequest, RawForm, Request},
     response::{IntoResponse, Response},
     Error, RequestExt,
 };
-use http::{Request, StatusCode};
+use http::StatusCode;
 use serde::de::DeserializeOwned;
 use std::{fmt, ops::Deref};
 
@@ -59,7 +58,7 @@ where
 {
     type Rejection = FormRejection;
 
-    async fn from_request(req: Request<Body>, _state: &S) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: Request, _state: &S) -> Result<Self, Self::Rejection> {
         let RawForm(bytes) = req
             .extract()
             .await

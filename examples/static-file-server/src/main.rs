@@ -94,7 +94,7 @@ fn using_serve_dir_with_handler_as_service() -> Router {
     }
 
     // you can convert handler function to service
-    let service = tower::ServiceExt::<Request<Body>>::map_err(
+    let service = tower::ServiceExt::<Request>::map_err(
         handle_404.into_service(),
         |err| -> std::io::Error { match err {} },
     );
@@ -123,7 +123,7 @@ fn calling_serve_dir_from_a_handler() -> Router {
     // call `ServeDir` yourself from a handler
     Router::new().nest_service(
         "/foo",
-        get(|request: Request<Body>| async {
+        get(|request: Request| async {
             let service = get_service(ServeDir::new("assets")).handle_error(handle_error);
             let result = service.oneshot(request).await;
             result

@@ -82,7 +82,7 @@ pub trait FromRequest<S, M = private::ViaRequest>: Sized {
     type Rejection: IntoResponse;
 
     /// Perform the extraction.
-    async fn from_request(req: Request<Body>, state: &S) -> Result<Self, Self::Rejection>;
+    async fn from_request(req: Request, state: &S) -> Result<Self, Self::Rejection>;
 }
 
 #[async_trait]
@@ -93,7 +93,7 @@ where
 {
     type Rejection = <Self as FromRequestParts<S>>::Rejection;
 
-    async fn from_request(req: Request<Body>, state: &S) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: Request, state: &S) -> Result<Self, Self::Rejection> {
         let (mut parts, _) = req.into_parts();
         Self::from_request_parts(&mut parts, state).await
     }
@@ -123,7 +123,7 @@ where
 {
     type Rejection = Infallible;
 
-    async fn from_request(req: Request<Body>, state: &S) -> Result<Option<T>, Self::Rejection> {
+    async fn from_request(req: Request, state: &S) -> Result<Option<T>, Self::Rejection> {
         Ok(T::from_request(req, state).await.ok())
     }
 }
@@ -149,7 +149,7 @@ where
 {
     type Rejection = Infallible;
 
-    async fn from_request(req: Request<Body>, state: &S) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: Request, state: &S) -> Result<Self, Self::Rejection> {
         Ok(T::from_request(req, state).await)
     }
 }

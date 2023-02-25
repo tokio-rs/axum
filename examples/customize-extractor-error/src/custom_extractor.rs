@@ -30,7 +30,7 @@ where
 {
     type Rejection = (StatusCode, axum::Json<Value>);
 
-    async fn from_request(req: Request<Body>, state: &S) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: Request, state: &S) -> Result<Self, Self::Rejection> {
         let (mut parts, body) = req.into_parts();
 
         // We can use other extractors to provide better rejection messages.

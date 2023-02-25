@@ -195,13 +195,13 @@ async fn services() {
     let app = Router::new()
         .route(
             "/foo",
-            get_service(service_fn(|_: Request<Body>| async {
+            get_service(service_fn(|_: Request| async {
                 Ok::<_, Infallible>(Response::new(Body::empty()))
             })),
         )
         .merge(Router::new().route(
             "/bar",
-            get_service(service_fn(|_: Request<Body>| async {
+            get_service(service_fn(|_: Request| async {
                 Ok::<_, Infallible>(Response::new(Body::empty()))
             })),
         ));
@@ -218,7 +218,7 @@ async fn services() {
 async fn all_the_uris(
     uri: Uri,
     OriginalUri(original_uri): OriginalUri,
-    req: Request<Body>,
+    req: Request,
 ) -> impl IntoResponse {
     Json(json!({
         "uri": uri.to_string(),

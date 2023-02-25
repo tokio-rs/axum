@@ -59,7 +59,7 @@ async fn main() {
         .unwrap();
 }
 
-async fn proxy(req: Request<Body>) -> Result<Response, hyper::Error> {
+async fn proxy(req: Request) -> Result<Response, hyper::Error> {
     tracing::trace!(?req);
 
     if let Some(host_addr) = req.uri().authority().map(|auth| auth.to_string()) {

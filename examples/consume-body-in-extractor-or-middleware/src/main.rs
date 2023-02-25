@@ -42,7 +42,7 @@ async fn main() {
 
 // middleware that shows how to consume the request body upfront
 async fn print_request_body(
-    request: Request<Body>,
+    request: Request,
     next: Next<Body>,
 ) -> Result<impl IntoResponse, Response> {
     let request = buffer_request_body(request).await?;
@@ -52,7 +52,7 @@ async fn print_request_body(
 
 // the trick is to take the request apart, buffer the body, do what you need to do, then put
 // the request back together
-async fn buffer_request_body(request: Request<Body>) -> Result<Request<Body>, Response> {
+async fn buffer_request_body(request: Request) -> Result<Request, Response> {
     let (parts, body) = request.into_parts();
 
     // this wont work if the body is an long running stream
@@ -84,7 +84,7 @@ where
 {
     type Rejection = Response;
 
-    async fn from_request(req: Request<Body>, state: &S) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: Request, state: &S) -> Result<Self, Self::Rejection> {
         let body = Bytes::from_request(req, state)
             .await
             .map_err(|err| err.into_response())?;

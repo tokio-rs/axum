@@ -67,7 +67,7 @@ async fn main() {
 
         let protocol = protocol.clone();
 
-        let svc = MakeService::<_, Request<Body>>::make_service(&mut app, &stream);
+        let svc = MakeService::<_, Request>::make_service(&mut app, &stream);
 
         tokio::spawn(async move {
             if let Ok(stream) = acceptor.accept(stream).await {

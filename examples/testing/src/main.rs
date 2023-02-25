@@ -63,7 +63,7 @@ mod tests {
     async fn hello_world() {
         let app = app();
 
-        // `Router` implements `tower::Service<Request<Body>>` so we can
+        // `Router` implements `tower::Service<Request>` so we can
         // call it like any tower service, no need to run an HTTP server.
         let response = app
             .oneshot(Request::builder().uri("/").body(Body::empty()).unwrap())
@@ -157,7 +157,7 @@ mod tests {
         let mut app = app();
 
         let request = Request::builder().uri("/").body(Body::empty()).unwrap();
-        let response = ServiceExt::<Request<Body>>::ready(&mut app)
+        let response = ServiceExt::<Request>::ready(&mut app)
             .await
             .unwrap()
             .call(request)
@@ -166,7 +166,7 @@ mod tests {
         assert_eq!(response.status(), StatusCode::OK);
 
         let request = Request::builder().uri("/").body(Body::empty()).unwrap();
-        let response = ServiceExt::<Request<Body>>::ready(&mut app)
+        let response = ServiceExt::<Request>::ready(&mut app)
             .await
             .unwrap()
             .call(request)

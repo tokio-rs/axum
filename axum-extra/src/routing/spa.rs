@@ -1,11 +1,11 @@
 use axum::{
-    body::Body,
     error_handling::HandleError,
+    extract::Request,
     response::IntoResponse,
     routing::{get_service, Route},
     Router,
 };
-use http::{Request, StatusCode};
+use http::StatusCode;
 use std::{
     any::type_name,
     convert::Infallible,
@@ -150,9 +150,9 @@ impl<S, T, F> SpaRouter<S, T, F> {
 impl<S, F, T> From<SpaRouter<S, T, F>> for Router<S>
 where
     F: Clone + Send + Sync + 'static,
-    HandleError<Route<io::Error>, F, T>: Service<Request<Body>, Error = Infallible>,
-    <HandleError<Route<io::Error>, F, T> as Service<Request<Body>>>::Response: IntoResponse + Send,
-    <HandleError<Route<io::Error>, F, T> as Service<Request<Body>>>::Future: Send,
+    HandleError<Route<io::Error>, F, T>: Service<Request, Error = Infallible>,
+    <HandleError<Route<io::Error>, F, T> as Service<Request>>::Response: IntoResponse + Send,
+    <HandleError<Route<io::Error>, F, T> as Service<Request>>::Future: Send,
     T: 'static,
     S: Clone + Send + Sync + 'static,
 {

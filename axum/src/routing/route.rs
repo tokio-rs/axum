@@ -2,11 +2,11 @@ use crate::{
     body::{boxed, Body, Empty, HttpBody},
     response::Response,
 };
-use axum_core::response::IntoResponse;
+use axum_core::{extract::Request, response::IntoResponse};
 use bytes::Bytes;
 use http::{
     header::{self, CONTENT_LENGTH},
-    HeaderMap, HeaderValue, Request,
+    HeaderMap, HeaderValue,
 };
 use pin_project_lite::pin_project;
 use std::{
@@ -27,12 +27,12 @@ use tower_service::Service;
 ///
 /// You normally shouldn't need to care about this type. It's used in
 /// [`Router::layer`](super::Router::layer).
-pub struct Route<E = Infallible>(BoxCloneService<Request<Body>, Response, E>);
+pub struct Route<E = Infallible>(BoxCloneService<Request, Response, E>);
 
 impl<E> Route<E> {
     pub(crate) fn new<T>(svc: T) -> Self
     where
-        T: Service<Request<Body>, Error = E> + Clone + Send + 'static,
+        T: Service<Request, Error = E> + Clone + Send + 'static,
         T::Response: IntoResponse + 'static,
         T::Future: Send + 'static,
     {
@@ -43,18 +43,18 @@ impl<E> Route<E> {
 
     pub(crate) fn oneshot_inner(
         &mut self,
-        req: Request<Body>,
-    ) -> Oneshot<BoxCloneService<Request<Body>, Response, E>, Request<Body>> {
+        req: Request,
+    ) -> Oneshot<BoxCloneService<Request, Response, E>, Request> {
         self.0.clone().oneshot(req)
     }
 
     pub(crate) fn layer<L, NewError>(self, layer: L) -> Route<NewError>
     where
         L: Layer<Route<E>> + Clone + Send + 'static,
-        L::Service: Service<Request<Body>> + Clone + Send + 'static,
-        <L::Service as Service<Request<Body>>>::Response: IntoResponse + 'static,
-        <L::Service as Service<Request<Body>>>::Error: Into<NewError> + 'static,
-        <L::Service as Service<Request<Body>>>::Future: Send + 'static,
+        L::Service: Service<Request> + Clone + Send + 'static,
+        <L::Service as Service<Request>>::Response: IntoResponse + 'static,
+        <L::Service as Service<Request>>::Error: Into<NewError> + 'static,
+        <L::Service as Service<Request>>::Future: Send + 'static,
         NewError: 'static,
     {
         let layer = ServiceBuilder::new()
@@ -117,8 +117,8 @@ pin_project! {
         Future {
             #[pin]
             future: Oneshot<
-                BoxCloneService<Request<Body>, Response, E>,
-                Request<Body>,
+                BoxCloneService<Request, Response, E>,
+                Request,
             >,
         },
         Response {
@@ -129,7 +129,7 @@ pin_project! {
 
 impl<E> RouteFuture<E> {
     pub(crate) fn from_future(
-        future: Oneshot<BoxCloneService<Request<Body>, Response, E>, Request<Body>>,
+        future: Oneshot<BoxCloneService<Request, Response, E>, Request>,
     ) -> Self {
         Self {
             kind: RouteFutureKind::Future { future },

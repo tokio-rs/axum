@@ -38,7 +38,7 @@ async fn main() {
 }
 
 async fn print_request_response(
-    req: Request<Body>,
+    req: Request,
     next: Next<Body>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
     let (parts, body) = req.into_parts();

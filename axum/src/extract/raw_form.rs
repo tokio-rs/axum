@@ -1,7 +1,7 @@
 use async_trait::async_trait;
-use axum_core::{body::Body, extract::FromRequest};
+use axum_core::extract::{FromRequest, Request};
 use bytes::{Bytes, BytesMut};
-use http::{Method, Request};
+use http::Method;
 
 use super::{
     has_content_type,
@@ -39,7 +39,7 @@ where
 {
     type Rejection = RawFormRejection;
 
-    async fn from_request(req: Request<Body>, state: &S) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: Request, state: &S) -> Result<Self, Self::Rejection> {
         if req.method() == Method::GET {
             let mut bytes = BytesMut::new();
 

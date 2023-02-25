@@ -1,7 +1,8 @@
 use super::{Extension, FromRequest, FromRequestParts};
 use crate::body::Body;
 use async_trait::async_trait;
-use http::{request::Parts, Request, Uri};
+use axum_core::extract::Request;
+use http::{request::Parts, Uri};
 use std::convert::Infallible;
 
 /// Extractor that gets the original request URI regardless of nesting.
@@ -129,7 +130,7 @@ where
 {
     type Rejection = Infallible;
 
-    async fn from_request(req: Request<Body>, _state: &S) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: Request, _state: &S) -> Result<Self, Self::Rejection> {
         Ok(Self(req.into_body()))
     }
 }

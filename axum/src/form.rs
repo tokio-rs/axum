@@ -1,10 +1,10 @@
+use crate::extract::Request;
 use crate::extract::{rejection::*, FromRequest, RawForm};
 use async_trait::async_trait;
-use axum_core::body::Body;
 use axum_core::response::{IntoResponse, Response};
 use axum_core::RequestExt;
 use http::header::CONTENT_TYPE;
-use http::{Request, StatusCode};
+use http::StatusCode;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::ops::Deref;
@@ -68,7 +68,7 @@ where
 {
     type Rejection = FormRejection;
 
-    async fn from_request(req: Request<Body>, _state: &S) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: Request, _state: &S) -> Result<Self, Self::Rejection> {
         match req.extract().await {
             Ok(RawForm(bytes)) => {
                 let value = serde_urlencoded::from_bytes(&bytes)
@@ -110,6 +110,7 @@ impl<T> Deref for Form<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use axum_core::body::Body;
     use http::{Method, Request};
     use serde::{Deserialize, Serialize};
     use std::fmt::Debug;

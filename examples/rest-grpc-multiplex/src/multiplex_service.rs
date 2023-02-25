@@ -41,12 +41,12 @@ where
     }
 }
 
-impl<A, B> Service<Request<Body>> for MultiplexService<A, B>
+impl<A, B> Service<Request> for MultiplexService<A, B>
 where
-    A: Service<Request<Body>, Error = Infallible>,
+    A: Service<Request, Error = Infallible>,
     A::Response: IntoResponse,
     A::Future: Send + 'static,
-    B: Service<Request<Body>, Error = Infallible>,
+    B: Service<Request, Error = Infallible>,
     B::Response: IntoResponse,
     B::Future: Send + 'static,
 {
@@ -73,7 +73,7 @@ where
         }
     }
 
-    fn call(&mut self, req: Request<Body>) -> Self::Future {
+    fn call(&mut self, req: Request) -> Self::Future {
         // require users to call `poll_ready` first, if they don't we're allowed to panic
         // as per the `tower::Service` contract
         assert!(

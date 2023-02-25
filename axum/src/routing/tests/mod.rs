@@ -8,8 +8,9 @@ use crate::{
     test_helpers::*,
     BoxError, Json, Router,
 };
+use axum_core::extract::Request;
 use futures_util::stream::StreamExt;
-use http::{header::ALLOW, header::CONTENT_LENGTH, HeaderMap, Request, Response, StatusCode, Uri};
+use http::{header::ALLOW, header::CONTENT_LENGTH, HeaderMap, Response, StatusCode, Uri};
 use serde_json::json;
 use std::{
     convert::Infallible,
@@ -30,15 +31,15 @@ mod nest;
 
 #[crate::test]
 async fn hello_world() {
-    async fn root(_: Request<Body>) -> &'static str {
+    async fn root(_: Request) -> &'static str {
         "Hello, World!"
     }
 
-    async fn foo(_: Request<Body>) -> &'static str {
+    async fn foo(_: Request) -> &'static str {
         "foo"
     }
 
-    async fn users_create(_: Request<Body>) -> &'static str {
+    async fn users_create(_: Request) -> &'static str {
         "users#create"
     }
 
@@ -66,13 +67,12 @@ async fn routing() {
     let app = Router::new()
         .route(
             "/users",
-            get(|_: Request<Body>| async { "users#index" })
-                .post(|_: Request<Body>| async { "users#create" }),
+            get(|_: Request| async { "users#index" }).post(|_: Request| async { "users#create" }),
         )
-        .route("/users/:id", get(|_: Request<Body>| async { "users#show" }))
+        .route("/users/:id", get(|_: Request| async { "users#show" }))
         .route(
             "/users/:id/action",
-            get(|_: Request<Body>| async { "users#action" }),
+            get(|_: Request| async { "users#action" }),
         );
 
     let client = TestClient::new(app);
@@ -102,12 +102,8 @@ async fn router_type_doesnt_change() {
     let app: Router = Router::new()
         .route(
             "/",
-            on(MethodFilter::GET, |_: Request<Body>| async {
-                "hi from GET"
-            })
-            .on(MethodFilter::POST, |_: Request<Body>| async {
-                "hi from POST"
-            }),
+            on(MethodFilter::GET, |_: Request| async { "hi from GET" })
+                .on(MethodFilter::POST, |_: Request| async { "hi from POST" }),
         )
         .layer(tower_http::compression::CompressionLayer::new());
 
@@ -127,22 +123,22 @@ async fn routing_between_services() {
     use std::convert::Infallible;
     use tower::service_fn;
 
-    async fn handle(_: Request<Body>) -> &'static str {
+    async fn handle(_: Request) -> &'static str {
         "handler"
     }
 
     let app = Router::new()
         .route(
             "/one",
-            get_service(service_fn(|_: Request<Body>| async {
+            get_service(service_fn(|_: Request| async {
                 Ok::<_, Infallible>(Response::new(Body::from("one get")))
             }))
-            .post_service(service_fn(|_: Request<Body>| async {
+            .post_service(service_fn(|_: Request| async {
                 Ok::<_, Infallible>(Response::new(Body::from("one post")))
             }))
             .on_service(
                 MethodFilter::PUT,
-                service_fn(|_: Request<Body>| async {
+                service_fn(|_: Request| async {
                     Ok::<_, Infallible>(Response::new(Body::from("one put")))
                 }),
             ),
@@ -173,7 +169,7 @@ async fn middleware_on_single_route() {
     use tower::ServiceBuilder;
     use tower_http::{compression::CompressionLayer, trace::TraceLayer};
 
-    async fn handle(_: Request<Body>) -> &'static str {
+    async fn handle(_: Request) -> &'static str {
         "Hello, World!"
     }
 
@@ -197,7 +193,7 @@ async fn middleware_on_single_route() {
 
 #[crate::test]
 async fn service_in_bottom() {
-    async fn handler(_req: Request<Body>) -> Result<Response<Body>, Infallible> {
+    async fn handler(_req: Request) -> Result<Response<Body>, Infallible> {
         Ok(Response::new(Body::empty()))
     }
 
@@ -271,7 +267,7 @@ async fn wrong_method_service() {
 
 #[crate::test]
 async fn multiple_methods_for_one_handler() {
-    async fn root(_: Request<Body>) -> &'static str {
+    async fn root(_: Request) -> &'static str {
         "Hello, World!"
     }
 
