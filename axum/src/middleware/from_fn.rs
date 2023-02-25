@@ -1,4 +1,3 @@
-use crate::body::Body;
 use crate::response::{IntoResponse, Response};
 use axum_core::extract::{FromRequest, FromRequestParts, Request};
 use futures_util::future::BoxFuture;
@@ -266,8 +265,6 @@ macro_rules! impl_service {
             }
 
             fn call(&mut self, req: Request) -> Self::Future {
-                let req = req.map(Body::new);
-
                 let not_ready_inner = self.inner.clone();
                 let ready_inner = std::mem::replace(&mut self.inner, not_ready_inner);
 
