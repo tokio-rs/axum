@@ -46,6 +46,11 @@ use std::{
 /// # let _: axum::Router = app;
 /// ```
 ///
+/// Note that `State` is an extractor, so be sure to put it before any body
+/// extractors, see ["the order of extractors"][order-of-extractors].
+///
+/// [order-of-extractors]: crate::extract#the-order-of-extractors
+///
 /// ## Combining stateful routers
 ///
 /// Multiple [`Router`]s can be combined with [`Router::nest`] or [`Router::merge`]
