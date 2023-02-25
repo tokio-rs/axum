@@ -30,7 +30,7 @@ use tower_layer::Layer;
 ///     Router,
 ///     routing::post,
 ///     body::Body,
-///     extract::{Request, DefaultBodyLimit, RawBody},
+///     extract::{Request, DefaultBodyLimit},
 /// };
 ///
 /// let app = Router::new()
@@ -44,7 +44,7 @@ use tower_layer::Layer;
 /// ```
 ///
 /// ```
-/// use axum::{Router, routing::post, body::Body, extract::RawBody, extract::Request};
+/// use axum::{Router, routing::post, body::Body, extract::Request};
 /// use tower_http::limit::RequestBodyLimitLayer;
 /// use http_body::Limited;
 ///

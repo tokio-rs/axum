@@ -1,5 +1,5 @@
 use super::{rejection::*, FromRequest, FromRequestParts, Request};
-use crate::RequestExt;
+use crate::{body::Body, RequestExt};
 use async_trait::async_trait;
 use bytes::Bytes;
 use http::{request::Parts, HeaderMap, Method, Uri, Version};
@@ -124,5 +124,17 @@ where
 
     async fn from_request(req: Request, _: &S) -> Result<Self, Self::Rejection> {
         Ok(req.into_parts().0)
+    }
+}
+
+#[async_trait]
+impl<S> FromRequest<S> for Body
+where
+    S: Send + Sync,
+{
+    type Rejection = Infallible;
+
+    async fn from_request(req: Request, _: &S) -> Result<Self, Self::Rejection> {
+        Ok(req.into_body())
     }
 }
