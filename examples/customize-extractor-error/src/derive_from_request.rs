@@ -27,22 +27,16 @@ pub struct Json<T>(T);
 // We create our own rejection type
 #[derive(Debug)]
 pub struct ApiError {
-    code: StatusCode,
+    status: StatusCode,
     message: String,
 }
 
 // We implement `From<JsonRejection> for ApiError`
 impl From<JsonRejection> for ApiError {
     fn from(rejection: JsonRejection) -> Self {
-        let code = match rejection {
-            JsonRejection::JsonDataError(_) => StatusCode::UNPROCESSABLE_ENTITY,
-            JsonRejection::JsonSyntaxError(_) => StatusCode::BAD_REQUEST,
-            JsonRejection::MissingJsonContentType(_) => StatusCode::UNSUPPORTED_MEDIA_TYPE,
-            _ => StatusCode::INTERNAL_SERVER_ERROR,
-        };
         Self {
-            code,
-            message: rejection.to_string(),
+            status: rejection.status(),
+            message: rejection.body_text(),
         }
     }
 }
@@ -55,6 +49,6 @@ impl IntoResponse for ApiError {
             "origin": "derive_from_request"
         });
 
-        (self.code, axum::Json(payload)).into_response()
+        (self.status, axum::Json(payload)).into_response()
     }
 }

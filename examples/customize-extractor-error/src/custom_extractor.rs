@@ -51,18 +51,12 @@ where
             // convert the error from `axum::Json` into whatever we want
             Err(rejection) => {
                 let payload = json!({
-                    "message": rejection.to_string(),
+                    "message": rejection.body_text(),
                     "origin": "custom_extractor",
                     "path": path,
                 });
 
-                let code = match rejection {
-                    JsonRejection::JsonDataError(_) => StatusCode::UNPROCESSABLE_ENTITY,
-                    JsonRejection::JsonSyntaxError(_) => StatusCode::BAD_REQUEST,
-                    JsonRejection::MissingJsonContentType(_) => StatusCode::UNSUPPORTED_MEDIA_TYPE,
-                    _ => StatusCode::INTERNAL_SERVER_ERROR,
-                };
-                Err((code, axum::Json(payload)))
+                Err((rejection.status(), axum::Json(payload)))
             }
         }
     }
