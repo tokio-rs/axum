@@ -38,7 +38,7 @@ async fn main() {
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
     let tcp_listener = TcpListener::bind(addr).await.unwrap();
-    tracing::debug!("listening on {}", addr);
+    tracing::debug!("listening on {addr}");
     loop {
         let (tcp_stream, _) = tcp_listener.accept().await.unwrap();
         let service = service.clone();
@@ -48,7 +48,7 @@ async fn main() {
                 .serve_connection(tcp_stream, service)
                 .await
             {
-                eprintln!("Error while serving HTTP connection: {}", http_err);
+                eprintln!("Error while serving HTTP connection: {http_err}");
             }
         });
     }
