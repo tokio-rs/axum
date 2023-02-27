@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning].
 
 # Unreleased
 
+- None.
+
+# 0.6.0 (24. February, 2022)
+
+- **breaking:**  Change casing of `ProtoBuf` to `Protobuf` ([#1595])
 - **breaking:** `SpaRouter` has been removed. Use `ServeDir` and `ServeFile`
   from `tower-http` instead:
 
@@ -27,12 +32,10 @@ and this project adheres to [Semantic Versioning].
   );
   ```
 
-  See the [static-file-server-example] for more examples.
+  See the [static-file-server-example] for more examples ([#1784])
 
-- **breaking:**  Change casing of `ProtoBuf` to `Protobuf` ([#1595])
-
-[#1783]: https://github.com/tokio-rs/axum/pull/1783
 [#1595]: https://github.com/tokio-rs/axum/pull/1595
+[#1784]: https://github.com/tokio-rs/axum/pull/1784
 [static-file-server-example]: https://github.com/tokio-rs/axum/blob/main/examples/static-file-server/src/main.rs
 
 # 0.5.0 (12. February, 2022)
