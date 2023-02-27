@@ -35,7 +35,7 @@ rustversion = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 syn = { version = "1.0", features = ["full", "extra-traits"] }
-tokio = { version = "1.0", features = ["full"] }
+tokio = { version = "1.25.0", features = ["full"] }
 trybuild = "1.0.63"
 
 [package.metadata.cargo-public-api-crates]
