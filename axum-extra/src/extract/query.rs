@@ -46,8 +46,8 @@ use std::{fmt, ops::Deref};
 /// # };
 /// ```
 ///
-/// If the query string cannot be parsed it will reject the request with a `422
-/// Unprocessable Entity` response.
+/// If the query string cannot be parsed it will reject the request with a `400
+/// Bad Request` response.
 ///
 /// For handling values being empty vs missing see the [query-params-with-empty-strings][example]
 /// example.
