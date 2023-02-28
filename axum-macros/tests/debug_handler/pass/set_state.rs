@@ -1,7 +1,6 @@
 use axum_macros::debug_handler;
-use axum::extract::{FromRef, FromRequest};
+use axum::extract::{Request, FromRef, FromRequest};
 use axum::async_trait;
-use axum::http::Request;
 
 #[debug_handler(state = AppState)]
 async fn handler(_: A) {}

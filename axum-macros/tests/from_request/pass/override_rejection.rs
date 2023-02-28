@@ -1,10 +1,9 @@
 use axum::{
     async_trait,
-    extract::{rejection::ExtensionRejection, FromRequest},
-    http::{StatusCode, Request},
+    extract::{Request, rejection::ExtensionRejection, FromRequest},
+    http::StatusCode,
     response::{IntoResponse, Response},
     routing::get,
-    body::Body,
     Extension, Router,
 };
 

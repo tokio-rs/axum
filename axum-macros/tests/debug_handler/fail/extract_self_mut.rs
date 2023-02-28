@@ -1,7 +1,6 @@
 use axum::{
     async_trait,
-    extract::FromRequest,
-    http::Request,
+    extract::{Request, FromRequest},
 };
 use axum_macros::debug_handler;
 
