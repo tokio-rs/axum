@@ -49,10 +49,12 @@ pub(crate) fn expand(attr: Attrs, item_fn: ItemFn) -> TokenStream {
 
             let check_inputs_impls_from_request =
                 check_inputs_impls_from_request(&item_fn, &body_ty, state_ty);
+            let check_input_order = check_input_order(&item_fn);
             let check_future_send = check_future_send(&item_fn);
 
             quote! {
                 #check_inputs_impls_from_request
+                #check_input_order
                 #check_future_send
             }
         })
@@ -276,6 +278,103 @@ fn check_inputs_impls_from_request(
             }
         })
         .collect::<TokenStream>()
+}
+
+fn check_input_order(item_fn: &ItemFn) -> TokenStream {
+    let types_that_consume_the_request = item_fn
+        .sig
+        .inputs
+        .iter()
+        .enumerate()
+        .filter_map(|(idx, arg)| {
+            let ty = match arg {
+                FnArg::Typed(pat_type) => &*pat_type.ty,
+                FnArg::Receiver(_) => return None,
+            };
+            let span = ty.span();
+
+            let path = match ty {
+                Type::Path(type_path) => &type_path.path,
+                _ => return None,
+            };
+
+            let ident = match path.segments.last() {
+                Some(path_segment) => &path_segment.ident,
+                None => return None,
+            };
+
+            let type_name = match &*ident.to_string() {
+                "Json" => "Json<_>",
+                "BodyStream" => "BodyStream",
+                "RawBody" => "RawBody<_>",
+                "RawForm" => "RawForm",
+                "Multipart" => "Multipart",
+                "Protobuf" => "Protobuf",
+                "JsonLines" => "JsonLines<_>",
+                "Form" => "Form<_>",
+                "Request" => "Request<_>",
+                "Bytes" => "Bytes",
+                "String" => "String",
+                "Parts" => "Parts",
+                _ => return None,
+            };
+
+            Some((idx, type_name, span))
+        })
+        .collect::<Vec<_>>();
+
+    if types_that_consume_the_request.is_empty() {
+        return quote! {};
+    };
+
+    // exactly one type that consumes the request
+    if types_that_consume_the_request.len() == 1 {
+        // and that is not the last
+        if types_that_consume_the_request[0].0 != item_fn.sig.inputs.len() - 1 {
+            let (_idx, type_name, span) = &types_that_consume_the_request[0];
+            let error = format!(
+                "`{type_name}` consumes the request body and thus must be \
+            the last argument to the handler function"
+            );
+            return quote_spanned! {*span=>
+                compile_error!(#error);
+            };
+        } else {
+            return quote! {};
+        }
+    }
+
+    if types_that_consume_the_request.len() == 2 {
+        let (_, first, _) = &types_that_consume_the_request[0];
+        let (_, second, _) = &types_that_consume_the_request[1];
+        let error = format!(
+            "Can't have two extractors that consume the request body. \
+            `{first}` and `{second}` both do that.",
+        );
+        let span = item_fn.sig.inputs.span();
+        quote_spanned! {span=>
+            compile_error!(#error);
+        }
+    } else {
+        let types = WithPosition::new(types_that_consume_the_request.into_iter())
+            .map(|pos| match pos {
+                Position::First((_, type_name, _)) | Position::Middle((_, type_name, _)) => {
+                    format!("`{type_name}`, ")
+                }
+                Position::Last((_, type_name, _)) => format!("and `{type_name}`"),
+                Position::Only(_) => unreachable!(),
+            })
+            .collect::<String>();
+
+        let error = format!(
+            "Can't have more than one extractor that consume the request body. \
+            {types} all do that.",
+        );
+        let span = item_fn.sig.inputs.span();
+        quote_spanned! {span=>
+            compile_error!(#error);
+        }
+    }
 }
 
 fn check_output_impls_into_response(item_fn: &ItemFn) -> TokenStream {

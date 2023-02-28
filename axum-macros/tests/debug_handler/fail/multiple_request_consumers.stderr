@@ -1,0 +1,95 @@
+error: Can't have two extractors that consume the request body. `Json<_>` and `String` both do that.
+ --> tests/debug_handler/fail/multiple_request_consumers.rs:5:14
+  |
+5 | async fn one(_: Json<()>, _: String, _: Uri) {}
+  |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: Can't have more than one extractor that consume the request body. `Json<_>`, `Bytes`, and `String` all do that.
+ --> tests/debug_handler/fail/multiple_request_consumers.rs:8:14
+  |
+8 | async fn two(_: Json<()>, _: Method, _: Bytes, _: Uri, _: String) {}
+  |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0277]: the trait bound `Json<()>: FromRequestParts<()>` is not satisfied
+ --> tests/debug_handler/fail/multiple_request_consumers.rs:5:17
+  |
+5 | async fn one(_: Json<()>, _: String, _: Uri) {}
+  |                 ^^^^^^^^ the trait `FromRequestParts<()>` is not implemented for `Json<()>`
+  |
+  = note: Function argument is not a valid axum extractor.
+          See `https://docs.rs/axum/latest/axum/extract/index.html` for details
+  = help: the following other types implement trait `FromRequestParts<S>`:
+            <() as FromRequestParts<S>>
+            <(T1, T2) as FromRequestParts<S>>
+            <(T1, T2, T3) as FromRequestParts<S>>
+            <(T1, T2, T3, T4) as FromRequestParts<S>>
+            <(T1, T2, T3, T4, T5) as FromRequestParts<S>>
+            <(T1, T2, T3, T4, T5, T6) as FromRequestParts<S>>
+            <(T1, T2, T3, T4, T5, T6, T7) as FromRequestParts<S>>
+            <(T1, T2, T3, T4, T5, T6, T7, T8) as FromRequestParts<S>>
+          and $N others
+  = help: see issue #48214
+  = help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
+
+error[E0277]: the trait bound `String: FromRequestParts<()>` is not satisfied
+ --> tests/debug_handler/fail/multiple_request_consumers.rs:5:30
+  |
+5 | async fn one(_: Json<()>, _: String, _: Uri) {}
+  |                              ^^^^^^ the trait `FromRequestParts<()>` is not implemented for `String`
+  |
+  = note: Function argument is not a valid axum extractor.
+          See `https://docs.rs/axum/latest/axum/extract/index.html` for details
+  = help: the following other types implement trait `FromRequestParts<S>`:
+            <() as FromRequestParts<S>>
+            <(T1, T2) as FromRequestParts<S>>
+            <(T1, T2, T3) as FromRequestParts<S>>
+            <(T1, T2, T3, T4) as FromRequestParts<S>>
+            <(T1, T2, T3, T4, T5) as FromRequestParts<S>>
+            <(T1, T2, T3, T4, T5, T6) as FromRequestParts<S>>
+            <(T1, T2, T3, T4, T5, T6, T7) as FromRequestParts<S>>
+            <(T1, T2, T3, T4, T5, T6, T7, T8) as FromRequestParts<S>>
+          and $N others
+  = help: see issue #48214
+  = help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
+
+error[E0277]: the trait bound `Json<()>: FromRequestParts<()>` is not satisfied
+ --> tests/debug_handler/fail/multiple_request_consumers.rs:8:17
+  |
+8 | async fn two(_: Json<()>, _: Method, _: Bytes, _: Uri, _: String) {}
+  |                 ^^^^^^^^ the trait `FromRequestParts<()>` is not implemented for `Json<()>`
+  |
+  = note: Function argument is not a valid axum extractor.
+          See `https://docs.rs/axum/latest/axum/extract/index.html` for details
+  = help: the following other types implement trait `FromRequestParts<S>`:
+            <() as FromRequestParts<S>>
+            <(T1, T2) as FromRequestParts<S>>
+            <(T1, T2, T3) as FromRequestParts<S>>
+            <(T1, T2, T3, T4) as FromRequestParts<S>>
+            <(T1, T2, T3, T4, T5) as FromRequestParts<S>>
+            <(T1, T2, T3, T4, T5, T6) as FromRequestParts<S>>
+            <(T1, T2, T3, T4, T5, T6, T7) as FromRequestParts<S>>
+            <(T1, T2, T3, T4, T5, T6, T7, T8) as FromRequestParts<S>>
+          and $N others
+  = help: see issue #48214
+  = help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
+
+error[E0277]: the trait bound `axum::body::Bytes: FromRequestParts<()>` is not satisfied
+ --> tests/debug_handler/fail/multiple_request_consumers.rs:8:41
+  |
+8 | async fn two(_: Json<()>, _: Method, _: Bytes, _: Uri, _: String) {}
+  |                                         ^^^^^ the trait `FromRequestParts<()>` is not implemented for `axum::body::Bytes`
+  |
+  = note: Function argument is not a valid axum extractor.
+          See `https://docs.rs/axum/latest/axum/extract/index.html` for details
+  = help: the following other types implement trait `FromRequestParts<S>`:
+            <() as FromRequestParts<S>>
+            <(T1, T2) as FromRequestParts<S>>
+            <(T1, T2, T3) as FromRequestParts<S>>
+            <(T1, T2, T3, T4) as FromRequestParts<S>>
+            <(T1, T2, T3, T4, T5) as FromRequestParts<S>>
+            <(T1, T2, T3, T4, T5, T6) as FromRequestParts<S>>
+            <(T1, T2, T3, T4, T5, T6, T7) as FromRequestParts<S>>
+            <(T1, T2, T3, T4, T5, T6, T7, T8) as FromRequestParts<S>>
+          and $N others
+  = help: see issue #48214
+  = help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
