@@ -47,15 +47,22 @@ pub(crate) fn expand(attr: Attrs, item_fn: ItemFn) -> TokenStream {
         err.unwrap_or_else(|| {
             let state_ty = state_ty.unwrap_or_else(|| syn::parse_quote!(()));
 
-            let check_inputs_impls_from_request =
-                check_inputs_impls_from_request(&item_fn, &body_ty, state_ty);
             let check_input_order = check_input_order(&item_fn);
             let check_future_send = check_future_send(&item_fn);
 
-            quote! {
-                #check_inputs_impls_from_request
-                #check_input_order
-                #check_future_send
+            if let Some(check_input_order) = check_input_order {
+                quote! {
+                    #check_input_order
+                    #check_future_send
+                }
+            } else {
+                let check_inputs_impls_from_request =
+                    check_inputs_impls_from_request(&item_fn, &body_ty, state_ty);
+
+                quote! {
+                    #check_inputs_impls_from_request
+                    #check_future_send
+                }
             }
         })
     } else {
@@ -280,7 +287,7 @@ fn check_inputs_impls_from_request(
         .collect::<TokenStream>()
 }
 
-fn check_input_order(item_fn: &ItemFn) -> TokenStream {
+fn check_input_order(item_fn: &ItemFn) -> Option<TokenStream> {
     let types_that_consume_the_request = item_fn
         .sig
         .inputs
@@ -324,7 +331,7 @@ fn check_input_order(item_fn: &ItemFn) -> TokenStream {
         .collect::<Vec<_>>();
 
     if types_that_consume_the_request.is_empty() {
-        return quote! {};
+        return None;
     };
 
     // exactly one type that consumes the request
@@ -336,11 +343,11 @@ fn check_input_order(item_fn: &ItemFn) -> TokenStream {
                 "`{type_name}` consumes the request body and thus must be \
             the last argument to the handler function"
             );
-            return quote_spanned! {*span=>
+            return Some(quote_spanned! {*span=>
                 compile_error!(#error);
-            };
+            });
         } else {
-            return quote! {};
+            return None;
         }
     }
 
@@ -352,9 +359,9 @@ fn check_input_order(item_fn: &ItemFn) -> TokenStream {
             `{first}` and `{second}` both do that.",
         );
         let span = item_fn.sig.inputs.span();
-        quote_spanned! {span=>
+        Some(quote_spanned! {span=>
             compile_error!(#error);
-        }
+        })
     } else {
         let types = WithPosition::new(types_that_consume_the_request.into_iter())
             .map(|pos| match pos {
@@ -371,9 +378,9 @@ fn check_input_order(item_fn: &ItemFn) -> TokenStream {
             {types} all do that.",
         );
         let span = item_fn.sig.inputs.span();
-        quote_spanned! {span=>
+        Some(quote_spanned! {span=>
             compile_error!(#error);
-        }
+        })
     }
 }
 
