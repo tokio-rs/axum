@@ -12,6 +12,7 @@
 
 use async_trait::async_trait;
 use axum::{
+    body::Body,
     extract::{rejection::FormRejection, Form, FromRequest},
     http::{Request, StatusCode},
     response::{Html, IntoResponse, Response},
@@ -61,16 +62,15 @@ async fn handler(ValidatedForm(input): ValidatedForm<NameInput>) -> Html<String>
 pub struct ValidatedForm<T>(pub T);
 
 #[async_trait]
-impl<T, S, B> FromRequest<S, B> for ValidatedForm<T>
+impl<T, S> FromRequest<S> for ValidatedForm<T>
 where
     T: DeserializeOwned + Validate,
     S: Send + Sync,
-    Form<T>: FromRequest<S, B, Rejection = FormRejection>,
-    B: Send + 'static,
+    Form<T>: FromRequest<S, Rejection = FormRejection>,
 {
     type Rejection = ServerError;
 
-    async fn from_request(req: Request<B>, state: &S) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: Request<Body>, state: &S) -> Result<Self, Self::Rejection> {
         let Form(value) = Form::<T>::from_request(req, state).await?;
         value.validate()?;
         Ok(ValidatedForm(value))

@@ -140,7 +140,7 @@ mod tests {
             .request(
                 Request::builder()
                     .uri(format!("http://{}", addr))
-                    .body(Body::empty())
+                    .body(hyper::Body::empty())
                     .unwrap(),
             )
             .await
@@ -157,11 +157,21 @@ mod tests {
         let mut app = app();
 
         let request = Request::builder().uri("/").body(Body::empty()).unwrap();
-        let response = app.ready().await.unwrap().call(request).await.unwrap();
+        let response = ServiceExt::<Request<Body>>::ready(&mut app)
+            .await
+            .unwrap()
+            .call(request)
+            .await
+            .unwrap();
         assert_eq!(response.status(), StatusCode::OK);
 
         let request = Request::builder().uri("/").body(Body::empty()).unwrap();
-        let response = app.ready().await.unwrap().call(request).await.unwrap();
+        let response = ServiceExt::<Request<Body>>::ready(&mut app)
+            .await
+            .unwrap()
+            .call(request)
+            .await
+            .unwrap();
         assert_eq!(response.status(), StatusCode::OK);
     }
 }
