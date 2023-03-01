@@ -13,11 +13,13 @@ use std::ops::Deref;
 ///
 /// # As extractor
 ///
-/// If used as an extractor `Form` will deserialize `application/x-www-form-urlencoded` request
-/// bodies into some target type via [`serde::Deserialize`].
+/// If used as an extractor `Form` will deserialize the query parameters for `GET` and `HEAD`
+/// requests and `application/x-www-form-urlencoded` encoded request bodies for other methods. It
+/// supports any type that implements [`serde::Deserialize`].
 ///
-/// Since parsing form data requires consuming the request body, the `Form` extractor must be
-/// *last* if there are multiple extractors in a handler. See ["the order of extractors"][order-of-extractors]
+/// Since parsing form data might require consuming the request body, the `Form` extractor must be
+/// *last* if there are multiple extractors in a handler. See ["the order of
+/// extractors"][order-of-extractors]
 ///
 /// [order-of-extractors]: crate::extract#the-order-of-extractors
 ///
@@ -69,10 +71,19 @@ where
     type Rejection = FormRejection;
 
     async fn from_request(req: Request<Body>, _state: &S) -> Result<Self, Self::Rejection> {
+        let is_get_or_head =
+            req.method() == http::Method::GET || req.method() == http::Method::HEAD;
+
         match req.extract().await {
             Ok(RawForm(bytes)) => {
-                let value = serde_urlencoded::from_bytes(&bytes)
-                    .map_err(FailedToDeserializeForm::from_err)?;
+                let value =
+                    serde_urlencoded::from_bytes(&bytes).map_err(|err| -> FormRejection {
+                        if is_get_or_head {
+                            FailedToDeserializeForm::from_err(err).into()
+                        } else {
+                            FailedToDeserializeFormBody::from_err(err).into()
+                        }
+                    })?;
                 Ok(Form(value))
             }
             Err(RawFormRejection::BytesRejection(r)) => Err(FormRejection::BytesRejection(r)),
@@ -110,7 +121,14 @@ impl<T> Deref for Form<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use http::{Method, Request};
+    use crate::{
+        body::Body,
+        routing::{on, MethodFilter},
+        test_helpers::TestClient,
+        Router,
+    };
+    use http::{header::CONTENT_TYPE, Method, Request};
+    use mime::APPLICATION_WWW_FORM_URLENCODED;
     use serde::{Deserialize, Serialize};
     use std::fmt::Debug;
 
@@ -132,10 +150,7 @@ mod tests {
         let req = Request::builder()
             .uri("http://example.com/test")
             .method(Method::POST)
-            .header(
-                http::header::CONTENT_TYPE,
-                mime::APPLICATION_WWW_FORM_URLENCODED.as_ref(),
-            )
+            .header(CONTENT_TYPE, APPLICATION_WWW_FORM_URLENCODED.as_ref())
             .body(Body::from(serde_urlencoded::to_string(&value).unwrap()))
             .unwrap();
         assert_eq!(Form::<T>::from_request(req, &()).await.unwrap().0, value);
@@ -197,7 +212,7 @@ mod tests {
         let req = Request::builder()
             .uri("http://example.com/test")
             .method(Method::POST)
-            .header(http::header::CONTENT_TYPE, mime::APPLICATION_JSON.as_ref())
+            .header(CONTENT_TYPE, mime::APPLICATION_JSON.as_ref())
             .body(Body::from(
                 serde_urlencoded::to_string(&Pagination {
                     size: Some(10),
@@ -212,5 +227,35 @@ mod tests {
                 .unwrap_err(),
             FormRejection::InvalidFormContentType(InvalidFormContentType)
         ));
+    }
+
+    #[tokio::test]
+    async fn deserialize_error_status_codes() {
+        #[allow(dead_code)]
+        #[derive(Deserialize)]
+        struct Payload {
+            a: i32,
+        }
+
+        let app = Router::new().route(
+            "/",
+            on(
+                MethodFilter::GET | MethodFilter::POST,
+                |_: Form<Payload>| async {},
+            ),
+        );
+
+        let client = TestClient::new(app);
+
+        let res = client.get("/?a=false").send().await;
+        assert_eq!(res.status(), StatusCode::BAD_REQUEST);
+
+        let res = client
+            .post("/")
+            .header(CONTENT_TYPE, APPLICATION_WWW_FORM_URLENCODED.as_ref())
+            .body("a=false")
+            .send()
+            .await;
+        assert_eq!(res.status(), StatusCode::UNPROCESSABLE_ENTITY);
     }
 }

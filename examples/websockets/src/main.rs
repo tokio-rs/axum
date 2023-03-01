@@ -21,9 +21,8 @@ use axum::{
         ws::{Message, WebSocket, WebSocketUpgrade},
         TypedHeader,
     },
-    http::StatusCode,
     response::IntoResponse,
-    routing::{get, get_service},
+    routing::get,
     Router,
 };
 
@@ -58,15 +57,7 @@ async fn main() {
 
     // build our application with some routes
     let app = Router::new()
-        .fallback_service(
-            get_service(ServeDir::new(assets_dir).append_index_html_on_directories(true))
-                .handle_error(|error: std::io::Error| async move {
-                    (
-                        StatusCode::INTERNAL_SERVER_ERROR,
-                        format!("Unhandled internal error: {}", error),
-                    )
-                }),
-        )
+        .fallback_service(ServeDir::new(assets_dir).append_index_html_on_directories(true))
         .route("/ws", get(ws_handler))
         // logging so we can see whats going on
         .layer(
@@ -98,7 +89,7 @@ async fn ws_handler(
     } else {
         String::from("Unknown browser")
     };
-    println!("`{}` at {} connected.", user_agent, addr.to_string());
+    println!("`{user_agent}` at {addr} connected.");
     // finalize the upgrade process by returning upgrade callback.
     // we can customize the callback by sending additional info such as address.
     ws.on_upgrade(move |socket| handle_socket(socket, addr))
@@ -107,7 +98,7 @@ async fn ws_handler(
 /// Actual websocket statemachine (one will be spawned per connection)
 async fn handle_socket(mut socket: WebSocket, who: SocketAddr) {
     //send a ping (unsupported by some browsers) just to kick things off and get a response
-    if let Ok(_) = socket.send(Message::Ping(vec![1, 2, 3])).await {
+    if socket.send(Message::Ping(vec![1, 2, 3])).await.is_ok() {
         println!("Pinged {}...", who);
     } else {
         println!("Could not send ping {}!", who);
@@ -126,7 +117,7 @@ async fn handle_socket(mut socket: WebSocket, who: SocketAddr) {
                 return;
             }
         } else {
-            println!("client {} abruptly disconnected", who);
+            println!("client {who} abruptly disconnected");
             return;
         }
     }
@@ -137,11 +128,11 @@ async fn handle_socket(mut socket: WebSocket, who: SocketAddr) {
     // connecting to server and receiving their greetings.
     for i in 1..5 {
         if socket
-            .send(Message::Text(String::from(format!("Hi {} times!", i))))
+            .send(Message::Text(format!("Hi {i} times!")))
             .await
             .is_err()
         {
-            println!("client {} abruptly disconnected", who);
+            println!("client {who} abruptly disconnected");
             return;
         }
         tokio::time::sleep(std::time::Duration::from_millis(100)).await;
@@ -157,7 +148,7 @@ async fn handle_socket(mut socket: WebSocket, who: SocketAddr) {
         for i in 0..n_msg {
             // In case of any websocket error, we exit.
             if sender
-                .send(Message::Text(format!("Server message {} ...", i)))
+                .send(Message::Text(format!("Server message {i} ...")))
                 .await
                 .is_err()
             {
@@ -167,7 +158,7 @@ async fn handle_socket(mut socket: WebSocket, who: SocketAddr) {
             tokio::time::sleep(std::time::Duration::from_millis(300)).await;
         }
 
-        println!("Sending close to {}...", who);
+        println!("Sending close to {who}...");
         if let Err(e) = sender
             .send(Message::Close(Some(CloseFrame {
                 code: axum::extract::ws::close_code::NORMAL,

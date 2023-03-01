@@ -13,9 +13,6 @@ use tower_service::Service;
 
 mod resource;
 
-#[cfg(feature = "spa")]
-mod spa;
-
 #[cfg(feature = "typed-routing")]
 mod typed;
 
@@ -28,9 +25,6 @@ pub use axum_macros::TypedPath;
 
 #[cfg(feature = "typed-routing")]
 pub use self::typed::{SecondElementIs, TypedPath};
-
-#[cfg(feature = "spa")]
-pub use self::spa::SpaRouter;
 
 /// Extension trait that adds additional methods to [`Router`].
 pub trait RouterExt<S>: sealed::Sealed {

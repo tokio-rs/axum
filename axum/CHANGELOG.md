@@ -8,6 +8,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 # Unreleased
 
 - **breaking:** `extract::BodyStream` has been removed as `body::Body` implements `Stream` directly
+- **breaking:** Change `sse::Event::json_data` to use `axum_core::Error` as its error type ([#1762])
+- **breaking:** Rename `DefaultOnFailedUpdgrade` to `DefaultOnFailedUpgrade` ([#1664])
+- **breaking:** Rename `OnFailedUpdgrade` to `OnFailedUpgrade` ([#1664])
+
+[#1762]: https://github.com/tokio-rs/axum/pull/1762
+[#1664]: https://github.com/tokio-rs/axum/pull/1664
+
+# 0.6.9 (24. February, 2023)
+
+- **changed:** Update to tower-http 0.4. axum is still compatible with tower-http 0.3 ([#1783])
+
+[#1783]: https://github.com/tokio-rs/axum/pull/1783
+
+# 0.6.8 (24. February, 2023)
+
+- **fixed:** Fix `Allow` missing from routers with middleware ([#1773])
+- **added:** Add `KeepAlive::event` for customizing the event sent for SSE keep alive ([#1729])
+
+[#1729]: https://github.com/tokio-rs/axum/pull/1729
+[#1773]: https://github.com/tokio-rs/axum/pull/1773
+
+# 0.6.7 (17. February, 2023)
+
+- **added:** Add `FormRejection::FailedToDeserializeFormBody` which is returned
+  if the request body couldn't be deserialized into the target type, as opposed
+  to `FailedToDeserializeForm` which is only for query parameters ([#1683])
+- **added:** Add `MockConnectInfo` for setting `ConnectInfo` during tests ([#1767])
+
+[#1683]: https://github.com/tokio-rs/axum/pull/1683
+[#1767]: https://github.com/tokio-rs/axum/pull/1767
 
 # 0.6.6 (12. February, 2023)
 
