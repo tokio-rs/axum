@@ -31,7 +31,6 @@ json-lines = [
 ]
 protobuf = ["dep:prost"]
 query = ["dep:serde", "dep:serde_html_form"]
-spa = ["tower-http/fs"]
 typed-routing = ["dep:axum-macros", "dep:serde", "dep:percent-encoding", "dep:serde_html_form", "dep:form_urlencoded"]
 
 [dependencies]
