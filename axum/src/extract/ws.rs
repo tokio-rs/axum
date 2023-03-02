@@ -282,10 +282,7 @@ impl<F> WebSocketUpgrade<F> {
 
     /// Finalize upgrading the connection and call the provided callback with
     /// the stream.
-    ///
-    /// When using `WebSocketUpgrade`, the response produced by this method
-    /// should be returned from the handler. See the [module docs](self) for an
-    /// example.
+    #[must_use]
     pub fn on_upgrade<C, Fut>(self, callback: C) -> Response
     where
         C: FnOnce(WebSocket) -> Fut + Send + 'static,
