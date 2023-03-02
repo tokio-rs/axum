@@ -540,6 +540,29 @@ pub fn derive_from_request_parts(item: TokenStream) -> TokenStream {
 /// }
 /// ```
 ///
+/// # Limitations
+///
+/// This macro does not work for associated functions — functions defined in an impl block.
+///
+/// ```
+/// use axum::{debug_handler, extract::Path};
+/// struct App {}
+/// #[debug_handler]
+/// impl App {
+///     pub async fn handler(Path(_): Path(String)) {}
+/// }
+/// ```
+///
+/// This will yield an error similar to this:
+///
+/// ```text
+/// error[E0425]: cannot find function `__axum_macros_check_handler_0_from_request_check` in this scope
+//    --> src/main.rs:xx:xx
+//     |
+//  xx |     pub async fn handler(Path(_): Path<String>)  {}
+//     |                                   ^^^^ not found in this scope
+/// ```
+///
 /// # Performance
 ///
 /// This macro has no effect when compiled with the release profile. (eg. `cargo build --release`)
