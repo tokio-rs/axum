@@ -8,11 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 # Unreleased
 
 - **fixed:** Add `#[must_use]` to `WebSocketUpgrade::on_upgrade` ([#1801])
-
-[#1801]: https://github.com/tokio-rs/axum/pull/1801
-
 - **fixed:** Gracefully handle missing headers in the `TypedHeader` extractor ([#1810])
 
+[#1801]: https://github.com/tokio-rs/axum/pull/1801
 [#1810]: https://github.com/tokio-rs/axum/pull/1810
 
 # 0.6.9 (24. February, 2023)
