@@ -7,7 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- None.
+- **fixed:** In `#[debug_handler]` provide specific errors about `FromRequest`
+  extractors not being the last argument ([#1797])
+
+[#1797]: https://github.com/tokio-rs/axum/pull/1797
 
 # 0.3.4 (12. February, 2022)
 
