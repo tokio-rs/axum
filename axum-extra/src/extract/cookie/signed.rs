@@ -319,3 +319,13 @@ impl<'a, K> Iterator for SignedCookieJarIter<'a, K> {
         }
     }
 }
+
+impl<K> Clone for SignedCookieJar<K> {
+    fn clone(&self) -> Self {
+        Self {
+            jar: self.jar.clone(),
+            key: self.key.clone(),
+            _marker: self._marker,
+        }
+    }
+}

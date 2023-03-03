@@ -301,3 +301,13 @@ impl<'a, K> Iterator for PrivateCookieJarIter<'a, K> {
         }
     }
 }
+
+impl<K> Clone for PrivateCookieJar<K> {
+    fn clone(&self) -> Self {
+        Self {
+            jar: self.jar.clone(),
+            key: self.key.clone(),
+            _marker: self._marker,
+        }
+    }
+}
