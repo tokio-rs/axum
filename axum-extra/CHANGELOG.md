@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning].
 
 # Unreleased
 
-- None.
+- **added:** Add `Multipart`. This is similar to `axum::extract::Multipart`
+  except that it enforces field exclusivity at runtime instead of compile time,
+  as this improves usability.
 
 # 0.6.0 (24. February, 2022)
 
