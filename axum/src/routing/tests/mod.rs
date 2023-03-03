@@ -522,7 +522,7 @@ fn routes_with_overlapping_method_routes() {
 fn merging_with_overlapping_method_routes() {
     async fn handler() {}
     let app: Router = Router::new().route("/foo/bar", get(handler));
-    app.clone().merge(app);
+    _ = app.clone().merge(app);
 }
 
 #[crate::test]

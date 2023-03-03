@@ -61,6 +61,7 @@ impl RouteId {
 }
 
 /// The router type for composing handlers and services.
+#[must_use]
 pub struct Router<S = (), B = Body> {
     routes: HashMap<RouteId, Endpoint<S, B>>,
     node: Arc<Node>,

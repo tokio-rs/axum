@@ -33,6 +33,7 @@ use axum::{
 /// # let _: Router = app;
 /// ```
 #[derive(Debug)]
+#[must_use]
 pub struct Resource<S = (), B = Body> {
     pub(crate) name: String,
     pub(crate) router: Router<S, B>,
