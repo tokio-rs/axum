@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning].
   except that it enforces field exclusivity at runtime instead of compile time,
   as this improves usability.
 
+- **added:** Implement `Clone` for `CookieJar`, `PrivateCookieJar` and `SignedCookieJar` ([#1808])
+
+[#1808]: https://github.com/tokio-rs/axum/pull/1808
+
 # 0.6.0 (24. February, 2022)
 
 - **breaking:**  Change casing of `ProtoBuf` to `Protobuf` ([#1595])

@@ -102,6 +102,7 @@ use std::{convert::Infallible, fmt, marker::PhantomData};
 ///     }
 /// }
 /// ```
+#[derive(Clone)]
 pub struct PrivateCookieJar<K = Key> {
     jar: cookie::CookieJar,
     key: Key,
