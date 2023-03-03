@@ -62,17 +62,19 @@ where
     type Rejection = TypedHeaderRejection;
 
     async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
-        match parts.headers.typed_try_get::<T>() {
-            Ok(Some(value)) => Ok(Self(value)),
-            Ok(None) => Err(TypedHeaderRejection {
+        let mut values = parts.headers.get_all(T::name()).iter();
+        let is_missing = values.size_hint() == (0, Some(0));
+        T::decode(&mut values)
+            .map(Self)
+            .map_err(|err| TypedHeaderRejection {
                 name: T::name(),
-                reason: TypedHeaderRejectionReason::Missing,
-            }),
-            Err(err) => Err(TypedHeaderRejection {
-                name: T::name(),
-                reason: TypedHeaderRejectionReason::Error(err),
-            }),
-        }
+                reason: if is_missing {
+                    // Report a more precise rejection for the missing header case.
+                    TypedHeaderRejectionReason::Missing
+                } else {
+                    TypedHeaderRejectionReason::Error(err)
+                },
+            })
     }
 }
 
@@ -175,19 +177,35 @@ mod tests {
     async fn typed_header() {
         async fn handle(
             TypedHeader(user_agent): TypedHeader<headers::UserAgent>,
+            TypedHeader(cookies): TypedHeader<headers::Cookie>,
         ) -> impl IntoResponse {
-            user_agent.to_string()
+            let user_agent = user_agent.as_str();
+            let cookies = cookies.iter().collect::<Vec<_>>();
+            format!("User-Agent={user_agent:?}, Cookie={cookies:?}")
         }
 
         let app = Router::new().route("/", get(handle));
 
         let client = TestClient::new(app);
 
+        let res = client
+            .get("/")
+            .header("user-agent", "foobar")
+            .header("cookie", "a=1; b=2")
+            .header("cookie", "c=3")
+            .send()
+            .await;
+        let body = res.text().await;
+        assert_eq!(
+            body,
+            r#"User-Agent="foobar", Cookie=[("a", "1"), ("b", "2"), ("c", "3")]"#
+        );
+
         let res = client.get("/").header("user-agent", "foobar").send().await;
         let body = res.text().await;
-        assert_eq!(body, "foobar");
+        assert_eq!(body, r#"User-Agent="foobar", Cookie=[]"#);
 
-        let res = client.get("/").send().await;
+        let res = client.get("/").header("cookie", "a=1").send().await;
         let body = res.text().await;
         assert_eq!(body, "Header of type `user-agent` was missing");
     }
