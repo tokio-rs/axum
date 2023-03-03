@@ -282,7 +282,7 @@ impl<F> WebSocketUpgrade<F> {
 
     /// Finalize upgrading the connection and call the provided callback with
     /// the stream.
-    #[must_use]
+    #[must_use = "to setup the WebSocket connection, this response must be returned"]
     pub fn on_upgrade<C, Fut>(self, callback: C) -> Response
     where
         C: FnOnce(WebSocket) -> Fut + Send + 'static,
