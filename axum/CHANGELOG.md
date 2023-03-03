@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 [#1801]: https://github.com/tokio-rs/axum/pull/1801
 
+- **fixed:** Gracefully handle missing headers in the `TypedHeader` extractor ([#1810])
+
+[#1810]: https://github.com/tokio-rs/axum/pull/1810
+
 # 0.6.9 (24. February, 2023)
 
 - **changed:** Update to tower-http 0.4. axum is still compatible with tower-http 0.3 ([#1783])
