@@ -502,7 +502,8 @@ where
     }
 
     fn next_route_id(&mut self) -> RouteId {
-        let next_id = self.prev_route_id
+        let next_id = self
+            .prev_route_id
             .0
             .checked_add(1)
             .expect("Over `u32::MAX` routes created. If you need this, please file an issue.");
