@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning].
 
 # Unreleased
 
+- None.
+
+# 0.7.0 (03. March, 2023)
+
 - **breaking:** Remove the `spa` feature which should have been removed in 0.6.0 ([#1802])
 - **added:** Add `Multipart`. This is similar to `axum::extract::Multipart`
   except that it enforces field exclusivity at runtime instead of compile time,
