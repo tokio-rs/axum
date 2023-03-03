@@ -149,6 +149,7 @@ pub fn map_response_with_state<F, S, T>(state: S, f: F) -> MapResponseLayer<F, S
 /// A [`tower::Layer`] from an async function that transforms a response.
 ///
 /// Created with [`map_response`]. See that function for more details.
+#[must_use]
 pub struct MapResponseLayer<F, S, T> {
     f: F,
     state: S,

@@ -50,6 +50,7 @@ use std::{convert::Infallible, ops::Deref};
 /// ```
 #[cfg(feature = "headers")]
 #[derive(Debug, Clone, Copy)]
+#[must_use]
 pub struct TypedHeader<T>(pub T);
 
 #[async_trait]

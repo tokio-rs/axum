@@ -61,6 +61,7 @@ use std::ops::Deref;
 /// [`Multipart`]: crate::extract::Multipart
 #[cfg_attr(docsrs, doc(cfg(feature = "form")))]
 #[derive(Debug, Clone, Copy, Default)]
+#[must_use]
 pub struct Form<T>(pub T);
 
 #[async_trait]

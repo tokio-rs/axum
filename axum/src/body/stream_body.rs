@@ -52,6 +52,7 @@ pin_project! {
     /// ```
     ///
     /// [`Stream`]: futures_util::stream::Stream
+    #[must_use]
     pub struct StreamBody<S> {
         #[pin]
         stream: SyncWrapper<S>,

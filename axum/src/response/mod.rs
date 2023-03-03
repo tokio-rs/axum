@@ -39,6 +39,7 @@ pub use sse::Sse;
 ///
 /// Will automatically get `Content-Type: text/html`.
 #[derive(Clone, Copy, Debug)]
+#[must_use]
 pub struct Html<T>(pub T);
 
 impl<T> IntoResponse for Html<T>
@@ -98,7 +99,7 @@ mod tests {
             }
         }
 
-        Router::<(), Body>::new()
+        _ = Router::<(), Body>::new()
             .route("/", get(impl_trait_ok))
             .route("/", get(impl_trait_err))
             .route("/", get(impl_trait_both))
@@ -208,7 +209,7 @@ mod tests {
             )
         }
 
-        Router::<(), Body>::new()
+        _ = Router::<(), Body>::new()
             .route("/", get(status))
             .route("/", get(status_headermap))
             .route("/", get(status_header_array))

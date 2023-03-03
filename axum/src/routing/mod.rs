@@ -48,6 +48,7 @@ pub use self::method_routing::{
 pub(crate) struct RouteId(u32);
 
 /// The router type for composing handlers and services.
+#[must_use]
 pub struct Router<S = (), B = Body> {
     routes: HashMap<RouteId, Endpoint<S, B>>,
     node: Arc<Node>,
