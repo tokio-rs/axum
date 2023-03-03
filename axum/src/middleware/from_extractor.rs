@@ -110,6 +110,7 @@ pub fn from_extractor_with_state<E, S>(state: S) -> FromExtractorLayer<E, S> {
 /// See [`from_extractor`] for more details.
 ///
 /// [`Layer`]: tower::Layer
+#[must_use]
 pub struct FromExtractorLayer<E, S> {
     state: S,
     _marker: PhantomData<fn() -> E>,

@@ -7,10 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+- **fixed:** Add `#[must_use]` attributes to types that do nothing unless used ([#1809])
 - **fixed:** Add `#[must_use]` to `WebSocketUpgrade::on_upgrade` ([#1801])
 - **fixed:** Gracefully handle missing headers in the `TypedHeader` extractor ([#1810])
+- **fixed:** Fix routing issues when loading a `Router` via a dynamic library ([#1806])
 
 [#1801]: https://github.com/tokio-rs/axum/pull/1801
+[#1806]: https://github.com/tokio-rs/axum/pull/1806
+[#1809]: https://github.com/tokio-rs/axum/pull/1809
 [#1810]: https://github.com/tokio-rs/axum/pull/1810
 
 # 0.6.9 (24. February, 2023)

@@ -53,6 +53,7 @@ use tokio::time::Sleep;
 
 /// An SSE response
 #[derive(Clone)]
+#[must_use]
 pub struct Sse<S> {
     stream: S,
     keep_alive: Option<KeepAlive>,
@@ -163,6 +164,7 @@ where
 
 /// Server-sent event
 #[derive(Debug, Default, Clone)]
+#[must_use]
 pub struct Event {
     buffer: BytesMut,
     flags: EventFlags,
@@ -383,6 +385,7 @@ bitflags::bitflags! {
 /// Configure the interval between keep-alive messages, the content
 /// of each message, and the associated stream.
 #[derive(Debug, Clone)]
+#[must_use]
 pub struct KeepAlive {
     event: Bytes,
     max_interval: Duration,

@@ -30,6 +30,7 @@ use serde::Serialize;
 /// ```
 #[cfg_attr(docsrs, doc(cfg(feature = "erased-json")))]
 #[derive(Debug)]
+#[must_use]
 pub struct ErasedJson(serde_json::Result<Bytes>);
 
 impl ErasedJson {
