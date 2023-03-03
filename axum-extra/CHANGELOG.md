@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning].
 
 # Unreleased
 
+- **breaking:** Remove the `spa` feature which should have been removed in 0.6.0 ([#1802])
 - **added:** Add `Multipart`. This is similar to `axum::extract::Multipart`
   except that it enforces field exclusivity at runtime instead of compile time,
   as this improves usability ([#1692])
@@ -14,6 +15,7 @@ and this project adheres to [Semantic Versioning].
 - **fixed:** Add `#[must_use]` attributes to types that do nothing unless used ([#1809])
 
 [#1692]: https://github.com/tokio-rs/axum/pull/1692
+[#1802]: https://github.com/tokio-rs/axum/pull/1802
 [#1808]: https://github.com/tokio-rs/axum/pull/1808
 [#1809]: https://github.com/tokio-rs/axum/pull/1809
 
