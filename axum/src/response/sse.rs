@@ -409,16 +409,27 @@ impl KeepAlive {
     ///
     /// Default is an empty comment.
     ///
-    ///
     /// # Panics
     ///
     /// Panics if `text` contains any newline or carriage returns, as they are not allowed in SSE
     /// comments.
-    pub fn text<I>(mut self, text: I) -> Self
+    pub fn text<I>(self, text: I) -> Self
     where
         I: AsRef<str>,
     {
-        self.event = Event::default().comment(text).finalize();
+        self.event(Event::default().comment(text))
+    }
+
+    /// Customize the event of the keep-alive message.
+    ///
+    /// Default is an empty comment.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `event` contains any newline or carriage returns, as they are not allowed in SSE
+    /// comments.
+    pub fn event(mut self, event: Event) -> Self {
+        self.event = event.finalize();
         self
     }
 }

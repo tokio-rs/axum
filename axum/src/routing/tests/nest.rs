@@ -202,15 +202,7 @@ async fn nested_service_sees_stripped_uri() {
 
 #[crate::test]
 async fn nest_static_file_server() {
-    let app = Router::new().nest_service(
-        "/static",
-        get_service(ServeDir::new(".")).handle_error(|error| async move {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Unhandled internal error: {error}"),
-            )
-        }),
-    );
+    let app = Router::new().nest_service("/static", ServeDir::new("."));
 
     let client = TestClient::new(app);
 

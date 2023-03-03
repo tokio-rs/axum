@@ -438,6 +438,8 @@ fn header_contains(headers: &HeaderMap, key: HeaderName, value: &'static str) ->
 }
 
 /// A stream of WebSocket messages.
+///
+/// See [the module level documentation](self) for more details.
 #[derive(Debug)]
 pub struct WebSocket {
     inner: WebSocketStream<Upgraded>,

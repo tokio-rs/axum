@@ -1,0 +1,11 @@
+error: Can't have two extractors that consume the request body. `Json<_>` and `String` both do that.
+ --> tests/debug_handler/fail/multiple_request_consumers.rs:5:14
+  |
+5 | async fn one(_: Json<()>, _: String, _: Uri) {}
+  |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: Can't have more than one extractor that consume the request body. `Json<_>`, `Bytes`, and `String` all do that.
+ --> tests/debug_handler/fail/multiple_request_consumers.rs:8:14
+  |
+8 | async fn two(_: Json<()>, _: Method, _: Bytes, _: Uri, _: String) {}
+  |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

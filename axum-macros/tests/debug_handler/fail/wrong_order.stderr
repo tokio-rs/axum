@@ -1,0 +1,11 @@
+error: `Json<_>` consumes the request body and thus must be the last argument to the handler function
+ --> tests/debug_handler/fail/wrong_order.rs:5:17
+  |
+5 | async fn one(_: Json<()>, _: Uri) {}
+  |                 ^^^^^^^^
+
+error: `String` consumes the request body and thus must be the last argument to the handler function
+ --> tests/debug_handler/fail/wrong_order.rs:8:17
+  |
+8 | async fn two(_: String, _: Uri) {}
+  |                 ^^^^^^

@@ -9,7 +9,7 @@ license = "MIT"
 name = "axum-extra"
 readme = "README.md"
 repository = "https://github.com/tokio-rs/axum"
-version = "0.5.0"
+version = "0.6.0"
 
 [features]
 default = []
@@ -36,7 +36,7 @@ spa = ["tower-http/fs"]
 typed-routing = ["dep:axum-macros", "dep:serde", "dep:percent-encoding", "dep:serde_html_form", "dep:form_urlencoded"]
 
 [dependencies]
-axum = { path = "../axum", version = "0.6.0", default-features = false }
+axum = { path = "../axum", version = "0.6.9", default-features = false }
 bytes = "1.1.0"
 futures-util = { version = "0.3", default-features = false, features = ["alloc"] }
 http = "0.2"
@@ -44,7 +44,7 @@ mime = "0.3"
 pin-project-lite = "0.2"
 tokio = "1.19"
 tower = { version = "0.4", default_features = false, features = ["util"] }
-tower-http = { version = "0.3", features = ["map-response-body"] }
+tower-http = { version = "0.4", features = ["map-response-body"] }
 tower-layer = "0.3"
 tower-service = "0.3"
 
@@ -71,7 +71,7 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0.71"
 tokio = { version = "1.14", features = ["full"] }
 tower = { version = "0.4", features = ["util"] }
-tower-http = { version = "0.3", features = ["map-response-body", "timeout"] }
+tower-http = { version = "0.4", features = ["map-response-body", "timeout"] }
 
 [package.metadata.docs.rs]
 all-features = true
