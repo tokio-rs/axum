@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 # Unreleased
 
 - **fixed:** Add `#[must_use]` to `WebSocketUpgrade::on_upgrade` ([#1801])
+- **fixed:** Fix routing issues when loading a `Router` via a dynamic library ([#1806])
+
+[#1806]: https://github.com/tokio-rs/axum/pull/1806
 
 [#1801]: https://github.com/tokio-rs/axum/pull/1801
 
