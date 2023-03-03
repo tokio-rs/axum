@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning].
 
 # Unreleased
 
-- None.
+- **breaking:** Remove the `spa` feature which should have been removed in 0.6.0 ([#1802])
+
+[#1802]: https://github.com/tokio-rs/axum/pull/1802
 
 # 0.6.0 (24. February, 2022)
 
