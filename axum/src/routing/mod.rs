@@ -52,7 +52,7 @@ pub struct Router<S = (), B = Body> {
     routes: HashMap<RouteId, Endpoint<S, B>>,
     node: Arc<Node>,
     fallback: Fallback<S, B>,
-    prev_route_id: Option<RouteId>,
+    prev_route_id: RouteId,
 }
 
 impl<S, B> Clone for Router<S, B> {
@@ -106,7 +106,7 @@ where
             routes: Default::default(),
             node: Default::default(),
             fallback: Fallback::Default(Route::new(NotFound)),
-            prev_route_id: Default::default(),
+            prev_route_id: RouteId(0),
         }
     }
 
@@ -502,14 +502,12 @@ where
     }
 
     fn next_route_id(&mut self) -> RouteId {
-        let next_id = self.prev_route_id.map_or(RouteId(0), |RouteId(id)| {
-            let next = id
-                .checked_add(1)
-                .expect("Over `u32::MAX` routes created. If you need this, please file an issue.");
-            RouteId(next)
-        });
-        self.prev_route_id = Some(next_id);
-        next_id
+        let next_id = self.prev_route_id
+            .0
+            .checked_add(1)
+            .expect("Over `u32::MAX` routes created. If you need this, please file an issue.");
+        self.prev_route_id = RouteId(next_id);
+        self.prev_route_id
     }
 }
 
