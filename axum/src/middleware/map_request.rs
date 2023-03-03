@@ -165,6 +165,7 @@ pub fn map_request_with_state<F, S, T>(state: S, f: F) -> MapRequestLayer<F, S, 
 /// A [`tower::Layer`] from an async function that transforms a request.
 ///
 /// Created with [`map_request`]. See that function for more details.
+#[must_use]
 pub struct MapRequestLayer<F, S, T> {
     f: F,
     state: S,
