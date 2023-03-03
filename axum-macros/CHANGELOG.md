@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+- None.
+
+# 0.3.5 (03. March, 2023)
+
 - **fixed:** In `#[debug_handler]` provide specific errors about `FromRequest`
   extractors not being the last argument ([#1797])
 
