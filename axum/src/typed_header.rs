@@ -174,19 +174,37 @@ mod tests {
     async fn typed_header() {
         async fn handle(
             TypedHeader(user_agent): TypedHeader<headers::UserAgent>,
+            TypedHeader(content_encoding): TypedHeader<headers::ContentEncoding>,
         ) -> impl IntoResponse {
-            user_agent.to_string()
+            format!("{user_agent:?}, {content_encoding:?}")
         }
 
         let app = Router::new().route("/", get(handle));
 
         let client = TestClient::new(app);
 
+        let res = client
+            .get("/")
+            .header("user-agent", "foobar")
+            .header("content-encoding", "gzip, br")
+            .header("content-encoding", "deflate")
+            .send()
+            .await;
+        let body = res.text().await;
+        assert_eq!(
+            body,
+            r#"UserAgent("foobar"), ContentEncoding("gzip, br, deflate")"#
+        );
+
         let res = client.get("/").header("user-agent", "foobar").send().await;
         let body = res.text().await;
-        assert_eq!(body, "foobar");
+        assert_eq!(body, r#"UserAgent("foobar"), ContentEncoding("")"#);
 
-        let res = client.get("/").send().await;
+        let res = client
+            .get("/")
+            .header("content-encoding", "gzip")
+            .send()
+            .await;
         let body = res.text().await;
         assert_eq!(body, "Header of type `user-agent` was missing");
     }
