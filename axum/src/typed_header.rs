@@ -61,17 +61,19 @@ where
     type Rejection = TypedHeaderRejection;
 
     async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
-        match parts.headers.typed_try_get::<T>() {
-            Ok(Some(value)) => Ok(Self(value)),
-            Ok(None) => Err(TypedHeaderRejection {
+        let mut values = parts.headers.get_all(T::name()).iter();
+        let is_missing = values.size_hint() == (0, Some(0));
+        T::decode(&mut values)
+            .map(Self)
+            .map_err(|err| TypedHeaderRejection {
                 name: T::name(),
-                reason: TypedHeaderRejectionReason::Missing,
-            }),
-            Err(err) => Err(TypedHeaderRejection {
-                name: T::name(),
-                reason: TypedHeaderRejectionReason::Error(err),
-            }),
-        }
+                reason: if is_missing {
+                    // Report a more precise rejection for the missing header case.
+                    TypedHeaderRejectionReason::Missing
+                } else {
+                    TypedHeaderRejectionReason::Error(err)
+                },
+            })
     }
 }
 
