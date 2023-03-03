@@ -542,8 +542,7 @@ pub fn derive_from_request_parts(item: TokenStream) -> TokenStream {
 ///
 /// # Limitations
 ///
-/// This macro does not work for associated functions — functions defined in an `impl` block that
-/// don't take `self`:
+/// This macro does not work for functions in an `impl` block that don't have a `self` parameter:
 ///
 /// ```compile_fail
 /// use axum::{debug_handler, extract::Path};
