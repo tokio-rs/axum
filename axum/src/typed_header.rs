@@ -176,9 +176,11 @@ mod tests {
     async fn typed_header() {
         async fn handle(
             TypedHeader(user_agent): TypedHeader<headers::UserAgent>,
-            TypedHeader(content_encoding): TypedHeader<headers::ContentEncoding>,
+            TypedHeader(cookies): TypedHeader<headers::Cookie>,
         ) -> impl IntoResponse {
-            format!("{user_agent:?}, {content_encoding:?}")
+            let user_agent = user_agent.as_str();
+            let cookies = cookies.iter().collect::<Vec<_>>();
+            format!("User-Agent={user_agent:?}, Cookie={cookies:?}")
         }
 
         let app = Router::new().route("/", get(handle));
@@ -188,25 +190,21 @@ mod tests {
         let res = client
             .get("/")
             .header("user-agent", "foobar")
-            .header("content-encoding", "gzip, br")
-            .header("content-encoding", "deflate")
+            .header("cookie", "a=1; b=2")
+            .header("cookie", "c=3")
             .send()
             .await;
         let body = res.text().await;
         assert_eq!(
             body,
-            r#"UserAgent("foobar"), ContentEncoding("gzip, br, deflate")"#
+            r#"User-Agent="foobar", Cookie=[("a", "1"), ("b", "2"), ("c", "3")]"#
         );
 
         let res = client.get("/").header("user-agent", "foobar").send().await;
         let body = res.text().await;
-        assert_eq!(body, r#"UserAgent("foobar"), ContentEncoding("")"#);
+        assert_eq!(body, r#"User-Agent="foobar", Cookie=[]"#);
 
-        let res = client
-            .get("/")
-            .header("content-encoding", "gzip")
-            .send()
-            .await;
+        let res = client.get("/").header("cookie", "a=1").send().await;
         let body = res.text().await;
         assert_eq!(body, "Header of type `user-agent` was missing");
     }
