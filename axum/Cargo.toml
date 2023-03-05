@@ -69,7 +69,7 @@ futures-util = { version = "0.3", default-features = false, features = ["alloc"]
 http = "0.2.9"
 http-body = "0.4.4"
 hyper = { version = "0.14.24", features = ["stream"] }
-itoa = "=1.0.5"
+itoa = "1.0.5"
 matchit = "0.7"
 memchr = "2.4.1"
 mime = "0.3.16"
