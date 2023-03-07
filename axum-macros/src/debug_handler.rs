@@ -343,7 +343,7 @@ fn check_input_order(item_fn: &ItemFn) -> Option<TokenStream> {
             let (_idx, type_name, span) = &types_that_consume_the_request[0];
             let error = format!(
                 "`{type_name}` consumes the request body and thus must be \
-            the last argument to the handler function"
+                the last argument to the handler function"
             );
             return Some(quote_spanned! {*span=>
                 compile_error!(#error);
