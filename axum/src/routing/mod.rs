@@ -83,6 +83,7 @@ impl<S, B> fmt::Debug for Router<S, B> {
             .field("routes", &self.routes)
             .field("node", &self.node)
             .field("fallback", &self.fallback)
+            .field("prev_route_id", &self.prev_route_id)
             .finish()
     }
 }
