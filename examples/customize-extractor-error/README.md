@@ -12,5 +12,5 @@ already existing extractors
 Run with
 
 ```sh
-cd examples && cargo run -p example-customize-extractor-error
+cargo run -p example-customize-extractor-error
 ```

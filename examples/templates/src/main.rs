@@ -1,7 +1,7 @@
 //! Run with
 //!
 //! ```not_rust
-//! cd examples && cargo run -p example-templates
+//! cargo run -p example-templates
 //! ```
 
 use askama::Template;

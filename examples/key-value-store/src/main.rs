@@ -3,7 +3,7 @@
 //! Run with:
 //!
 //! ```not_rust
-//! cd examples && cargo run -p example-key-value-store
+//! cargo run -p example-key-value-store
 //! ```
 
 use axum::{

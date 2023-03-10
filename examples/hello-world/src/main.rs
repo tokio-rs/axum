@@ -1,7 +1,7 @@
 //! Run with
 //!
 //! ```not_rust
-//! cd examples && cargo run -p example-hello-world
+//! cargo run -p example-hello-world
 //! ```
 
 use axum::{response::Html, routing::get, Router};
