@@ -9,8 +9,8 @@ axum = { path = "../../axum" }
 futures-util = "0.3"
 hyper = { version = "0.14", features = ["full"] }
 openssl = "0.10"
-tokio-openssl = "0.6"
 tokio = { version = "1", features = ["full"] }
+tokio-openssl = "0.6"
 tower = { version = "0.4", features = ["make"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
