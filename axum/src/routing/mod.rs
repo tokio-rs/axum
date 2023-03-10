@@ -77,10 +77,7 @@ where
     }
 }
 
-impl<S, B> fmt::Debug for Router<S, B>
-where
-    S: fmt::Debug,
-{
+impl<S, B> fmt::Debug for Router<S, B> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Router")
             .field("routes", &self.routes)
@@ -721,10 +718,7 @@ impl<S, B> Clone for Endpoint<S, B> {
     }
 }
 
-impl<S, B> fmt::Debug for Endpoint<S, B>
-where
-    S: fmt::Debug,
-{
+impl<S, B> fmt::Debug for Endpoint<S, B> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::MethodRouter(method_router) => {

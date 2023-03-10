@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- None.
+- **fixed:** Don't require `S: Debug` for `impl Debug for Router<S>`
 
 # 0.6.10 (03. March, 2023)
 
