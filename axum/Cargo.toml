@@ -78,7 +78,6 @@ pin-project-lite = "0.2.7"
 serde = "1.0"
 sync_wrapper = "0.1.1"
 tower = { version = "0.4.13", default-features = false, features = ["util"] }
-tower-http = { version = "0.4", features = ["util", "map-response-body"] }
 tower-layer = "0.3.2"
 tower-service = "0.3"
 
@@ -93,6 +92,7 @@ serde_urlencoded = { version = "0.7", optional = true }
 sha1 = { version = "0.10", optional = true }
 tokio = { package = "tokio", version = "1.25.0", features = ["time"], optional = true }
 tokio-tungstenite = { version = "0.18.0", optional = true }
+tower-http = { version = "0.4", features = ["util", "map-response-body"], optional = true }
 
 [build-dependencies]
 rustversion = "1.0.9"
