@@ -1,7 +1,7 @@
 //! Run with
 //!
 //! ```not_rust
-//! cd examples && cargo run -p example-static-file-server
+//! cd examples/static-file-server && cargo run -p example-static-file-server
 //! ```
 
 use axum::{
