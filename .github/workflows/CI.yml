@@ -95,6 +95,7 @@ jobs:
         rust: [stable, beta]
     steps:
     - uses: actions/checkout@master
+    - uses: arduino/setup-protoc@v1
     - uses: dtolnay/rust-toolchain@stable
       with:
         toolchain: ${{ matrix.rust }}
