@@ -1,7 +1,7 @@
 //! Run with
 //!
 //! ```not_rust
-//! cd examples && cargo run -p example-handle-head-request
+//! cargo run -p example-handle-head-request
 //! ```
 
 use axum::response::{IntoResponse, Response};

@@ -1,7 +1,7 @@
 //! Run with
 //!
 //! ```not_rust
-//! cd examples && cargo run -p example-low-level-rustls
+//! cargo run -p example-low-level-rustls
 //! ```
 
 use axum::{extract::ConnectInfo, routing::get, Router};

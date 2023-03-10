@@ -1,7 +1,7 @@
 //! Run with
 //!
 //! ```not_rust
-//! cd examples && cargo run -p example-consume-body-in-extractor-or-middleware
+//! cargo run -p example-consume-body-in-extractor-or-middleware
 //! ```
 
 use axum::{
