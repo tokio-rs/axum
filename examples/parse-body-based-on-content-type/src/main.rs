@@ -3,7 +3,7 @@
 //! Run with
 //!
 //! ```not_rust
-//! cd examples && cargo run -p example-parse-body-based-on-content-type
+//! cargo run -p example-parse-body-based-on-content-type
 //! ```
 
 use axum::{

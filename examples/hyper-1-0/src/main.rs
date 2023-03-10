@@ -1,7 +1,7 @@
 //! Run with
 //!
 //! ```not_rust
-//! cd examples && cargo run -p example-hyper-1-0
+//! cargo run -p example-hyper-1-0
 //! ```
 
 use axum::{routing::get, Router};
