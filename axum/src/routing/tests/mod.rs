@@ -821,6 +821,7 @@ async fn state_isnt_cloned_too_much() {
     struct AppState;
 
     impl Clone for AppState {
+        #[rustversion::stable]
         fn clone(&self) -> Self {
             if SETUP_DONE.load(Ordering::SeqCst) {
                 let bt = std::backtrace::Backtrace::force_capture();
@@ -835,6 +836,12 @@ async fn state_isnt_cloned_too_much() {
                 COUNT.fetch_add(1, Ordering::SeqCst);
             }
 
+            Self
+        }
+
+        // our MSRV doesn't support backtrace
+        #[rustversion::not(stable)]
+        fn clone(&self) -> Self {
             Self
         }
     }
