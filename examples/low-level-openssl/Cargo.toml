@@ -1,5 +1,5 @@
 [package]
-name = "low-level-openssl"
+name = "example-low-level-openssl"
 version = "0.1.0"
 edition = "2021"
 publish = false
