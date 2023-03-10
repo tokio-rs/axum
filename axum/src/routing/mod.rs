@@ -16,6 +16,7 @@ use std::{
     collections::HashMap,
     convert::Infallible,
     fmt,
+    marker::PhantomData,
     sync::Arc,
     task::{Context, Poll},
 };
@@ -498,6 +499,66 @@ where
             Endpoint::NestedRouter(router) => router.call_with_state(req, state),
         }
     }
+
+    /// Convert the router into a [`Service`] with a fixed request body type, to aid type
+    /// inference.
+    ///
+    /// In some cases when calling methods from [`tower::ServiceExt`] on a [`Router`] you might get
+    /// type inference errors along the lines of
+    ///
+    /// ```not_rust
+    /// let response = router.ready().await?.call(request).await?;
+    ///                       ^^^^^ cannot infer type for type parameter `B`
+    /// ```
+    ///
+    /// This happens because `Router` implements [`Service`] with `impl<B> Service<Request<B>> for Router<()>`.
+    ///
+    /// For example:
+    ///
+    /// ```compile_fail
+    /// use axum::{
+    ///     Router,
+    ///     routing::get,
+    ///     http::Request,
+    ///     body::Body,
+    /// };
+    /// use tower::{Service, ServiceExt};
+    ///
+    /// # async fn async_main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let mut router = Router::new().route("/", get(|| async {}));
+    /// let request = Request::new(Body::empty());
+    /// let response = router.ready().await?.call(request).await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    ///
+    /// Calling `Router::as_service` fixes that:
+    ///
+    /// ```
+    /// use axum::{
+    ///     Router,
+    ///     routing::get,
+    ///     http::Request,
+    ///     body::Body,
+    /// };
+    /// use tower::{Service, ServiceExt};
+    ///
+    /// # async fn async_main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let mut router = Router::new().route("/", get(|| async {}));
+    /// let request = Request::new(Body::empty());
+    /// let response = router.as_service().ready().await?.call(request).await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    ///
+    /// This is mainly used when calling `Router` in tests. It shouldn't be necessary when running
+    /// the `Router` normally via [`Router::into_make_service`].
+    pub fn as_service<B>(&mut self) -> RouterAsService<'_, B, S> {
+        RouterAsService {
+            router: self,
+            _marker: PhantomData,
+        }
+    }
 }
 
 impl Router {
@@ -557,6 +618,45 @@ where
     fn call(&mut self, req: Request<B>) -> Self::Future {
         let req = req.map(Body::new);
         self.call_with_state(req, ())
+    }
+}
+
+/// A [`Router`] converted into a service with a fixed body type.
+///
+/// See [`Router::as_service`] for more details.
+pub struct RouterAsService<'a, B, S = ()> {
+    router: &'a mut Router<S>,
+    _marker: PhantomData<B>,
+}
+
+impl<'a, B> Service<Request<B>> for RouterAsService<'a, B, ()>
+where
+    B: HttpBody<Data = bytes::Bytes> + Send + 'static,
+    B::Error: Into<axum_core::BoxError>,
+{
+    type Response = Response;
+    type Error = Infallible;
+    type Future = RouteFuture<Infallible>;
+
+    #[inline]
+    fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        <Router as Service<Request<B>>>::poll_ready(self.router, cx)
+    }
+
+    #[inline]
+    fn call(&mut self, req: Request<B>) -> Self::Future {
+        self.router.call(req)
+    }
+}
+
+impl<'a, B, S> fmt::Debug for RouterAsService<'a, B, S>
+where
+    S: fmt::Debug,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("RouterAsService")
+            .field("router", &self.router)
+            .finish()
     }
 }
 

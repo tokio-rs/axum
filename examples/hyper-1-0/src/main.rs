@@ -8,13 +8,11 @@ use axum::{routing::get, Router};
 use std::net::SocketAddr;
 use tokio::net::TcpListener;
 use tower_http::trace::TraceLayer;
-use tower_hyper_http_body_compat::{
-    HttpBody1ToHttpBody04, TowerService03HttpServiceAsHyper1HttpService,
-};
+use tower_hyper_http_body_compat::TowerService03HttpServiceAsHyper1HttpService;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 // this is hyper 1.0
-use hyper::{body::Incoming, server::conn::http1};
+use hyper::server::conn::http1;
 
 #[tokio::main]
 async fn main() {
@@ -26,8 +24,7 @@ async fn main() {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    // you have to use `HttpBody1ToHttpBody04<Incoming>` as the second type parameter to `Router`
-    let app: Router<_, HttpBody1ToHttpBody04<Incoming>> = Router::new()
+    let app = Router::new()
         .route("/", get(|| async { "Hello, World!" }))
         // we can still add regular tower middleware
         .layer(TraceLayer::new_for_http());
