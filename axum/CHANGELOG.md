@@ -12,10 +12,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **breaking:** Rename `DefaultOnFailedUpdgrade` to `DefaultOnFailedUpgrade` ([#1664])
 - **breaking:** Rename `OnFailedUpdgrade` to `OnFailedUpgrade` ([#1664])
 - **added:** Add `Router::as_service` to workaround type inference issues when
-  calling `ServiceExt` methods on a `Router`
+  calling `ServiceExt` methods on a `Router` ([#1835])
 
 [#1762]: https://github.com/tokio-rs/axum/pull/1762
 [#1664]: https://github.com/tokio-rs/axum/pull/1664
+[#1835]: https://github.com/tokio-rs/axum/pull/1835
 
 # 0.6.9 (24. February, 2023)
 
