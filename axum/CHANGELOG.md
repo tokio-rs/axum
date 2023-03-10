@@ -8,8 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 # Unreleased
 
 - **fixed:** Don't require `S: Debug` for `impl Debug for Router<S>` ([#1836])
+- **fixed:** Clone state a bit less when handling requests ([#1837])
 
 [#1836]: https://github.com/tokio-rs/axum/pull/1836
+[#1837]: https://github.com/tokio-rs/axum/pull/1837
 
 # 0.6.10 (03. March, 2023)
 
