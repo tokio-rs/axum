@@ -26,7 +26,7 @@ fn main() {
         for a in 0..10 {
             for b in 0..10 {
                 for c in 0..10 {
-                    app = app.route(&format!("/foo-{}/bar-{}/baz-{}", a, b, c), get(|| async {}));
+                    app = app.route(&format!("/foo-{a}/bar-{b}/baz-{c}"), get(|| async {}));
                 }
             }
         }
@@ -67,8 +67,11 @@ fn main() {
             .layer(Extension(state.clone()))
     });
 
-    benchmark("state")
-        .run(|| Router::with_state(state.clone()).route("/", get(|_: State<AppState>| async {})));
+    benchmark("state").run(|| {
+        Router::new()
+            .route("/", get(|_: State<AppState>| async {}))
+            .with_state(state.clone())
+    });
 }
 
 #[derive(Clone)]
@@ -117,10 +120,9 @@ impl BenchmarkBuilder {
     config_method!(headers, &'static [(&'static str, &'static str)]);
     config_method!(body, &'static str);
 
-    fn run<F, S>(self, f: F)
+    fn run<F>(self, f: F)
     where
-        F: FnOnce() -> Router<S>,
-        S: Clone + Send + Sync + 'static,
+        F: FnOnce() -> Router<()>,
     {
         // support only running some benchmarks with
         // ```
@@ -162,28 +164,28 @@ impl BenchmarkBuilder {
         cmd.arg("--host");
         cmd.arg(format!("http://{}{}", addr, self.path.unwrap_or("")));
 
-        cmd.args(&["--connections", "10"]);
-        cmd.args(&["--threads", "10"]);
+        cmd.args(["--connections", "10"]);
+        cmd.args(["--threads", "10"]);
 
         if on_ci() {
             // don't slow down CI by running the benchmarks for too long
             // but do run them for a bit
-            cmd.args(&["--duration", "1s"]);
+            cmd.args(["--duration", "1s"]);
         } else {
-            cmd.args(&["--duration", "10s"]);
+            cmd.args(["--duration", "10s"]);
         }
 
         if let Some(method) = self.method {
-            cmd.args(&["--method", method]);
+            cmd.args(["--method", method]);
         }
 
         for (key, value) in self.headers.into_iter().flatten() {
             cmd.arg("--header");
-            cmd.arg(format!("{}: {}", key, value));
+            cmd.arg(format!("{key}: {value}"));
         }
 
         if let Some(body) = self.body {
-            cmd.args(&["--body", body]);
+            cmd.args(["--body", body]);
         }
 
         eprintln!("Running {:?} benchmark", self.name);
@@ -194,7 +196,7 @@ impl BenchmarkBuilder {
         let stdout = std::io::BufReader::new(stdout);
         for line in stdout.lines() {
             let line = line.unwrap();
-            println!("  {}", line);
+            println!("  {line}");
         }
 
         let status = child.wait().unwrap();
@@ -209,7 +211,7 @@ impl BenchmarkBuilder {
 fn install_rewrk() {
     println!("installing rewrk");
     let mut cmd = Command::new("cargo");
-    cmd.args(&[
+    cmd.args([
         "install",
         "rewrk",
         "--git",

@@ -132,10 +132,11 @@ pub fn map_response<F, T>(f: F) -> MapResponseLayer<F, (), T> {
 ///
 /// let state = AppState { /* ... */ };
 ///
-/// let app = Router::with_state(state.clone())
+/// let app = Router::new()
 ///     .route("/", get(|| async { /* ... */ }))
-///     .route_layer(map_response_with_state(state, my_middleware));
-/// # let app: Router<_> = app;
+///     .route_layer(map_response_with_state(state.clone(), my_middleware))
+///     .with_state(state);
+/// # let _: axum::Router = app;
 /// ```
 pub fn map_response_with_state<F, S, T>(state: S, f: F) -> MapResponseLayer<F, S, T> {
     MapResponseLayer {
@@ -148,6 +149,7 @@ pub fn map_response_with_state<F, S, T>(state: S, f: F) -> MapResponseLayer<F, S
 /// A [`tower::Layer`] from an async function that transforms a response.
 ///
 /// Created with [`map_response`]. See that function for more details.
+#[must_use]
 pub struct MapResponseLayer<F, S, T> {
     f: F,
     state: S,
@@ -345,7 +347,7 @@ mod tests {
     use super::*;
     use crate::{test_helpers::TestClient, Router};
 
-    #[tokio::test]
+    #[crate::test]
     async fn works() {
         async fn add_header<B>(mut res: Response<B>) -> Response<B> {
             res.headers_mut().insert("x-foo", "foo".parse().unwrap());

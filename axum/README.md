@@ -23,12 +23,6 @@ In particular the last point is what sets `axum` apart from other frameworks.
 authorization, and more, for free. It also enables you to share middleware with
 applications written using [`hyper`] or [`tonic`].
 
-## Breaking changes
-
-We are currently working towards axum 0.6 so the `main` branch contains breaking
-changes. See the [`0.5.x`] branch for whats released to crates.io and up to date
-changelogs.
-
 ## Usage example
 
 ```rust
@@ -72,7 +66,7 @@ async fn create_user(
     // this argument tells axum to parse the request body
     // as JSON into a `CreateUser` type
     Json(payload): Json<CreateUser>,
-) -> impl IntoResponse {
+) -> (StatusCode, Json<User>) {
     // insert your application logic here
     let user = User {
         id: 1337,
@@ -127,7 +121,7 @@ The [examples] folder contains various examples of how to use `axum`. The
 ## Getting Help
 
 In the `axum`'s repo we also have a [number of examples][examples] showing how
-to put everything together. Community-maintained [showcases] and [tutorials] also demonstrate how to use `axum` for real-world applications. You're also welcome to ask in the [Discord channel][chat] or open an [issue] with your question.
+to put everything together. Community-maintained [showcases] and [tutorials] also demonstrate how to use `axum` for real-world applications. You're also welcome to ask in the [Discord channel][chat] or open a [discussion] with your question.
 
 ## Community projects
 
@@ -159,10 +153,9 @@ additional terms or conditions.
 [`tonic`]: https://crates.io/crates/tonic
 [contributing]: https://github.com/tokio-rs/axum/blob/main/CONTRIBUTING.md
 [chat]: https://discord.gg/tokio
-[issue]: https://github.com/tokio-rs/axum/issues/new
+[discussion]: https://github.com/tokio-rs/axum/discussions/new?category=q-a
 [`tower::Service`]: https://docs.rs/tower/latest/tower/trait.Service.html
 [ecosystem]: https://github.com/tokio-rs/axum/blob/main/ECOSYSTEM.md
 [showcases]: https://github.com/tokio-rs/axum/blob/main/ECOSYSTEM.md#project-showcase
 [tutorials]: https://github.com/tokio-rs/axum/blob/main/ECOSYSTEM.md#tutorials
 [license]: https://github.com/tokio-rs/axum/blob/main/axum/LICENSE
-[`0.5.x`]: https://github.com/tokio-rs/axum/tree/0.5.x

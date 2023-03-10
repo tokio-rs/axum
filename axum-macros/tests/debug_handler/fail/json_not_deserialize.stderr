@@ -1,0 +1,20 @@
+error[E0277]: the trait bound `for<'de> Struct: serde::de::Deserialize<'de>` is not satisfied
+ --> tests/debug_handler/fail/json_not_deserialize.rs:7:23
+  |
+7 | async fn handler(foo: Json<Struct>) {}
+  |                       ^^^^^^^^^^^^ the trait `for<'de> serde::de::Deserialize<'de>` is not implemented for `Struct`
+  |
+  = help: the following other types implement trait `serde::de::Deserialize<'de>`:
+            &'a [u8]
+            &'a serde_json::raw::RawValue
+            &'a std::path::Path
+            &'a str
+            ()
+            (T0, T1)
+            (T0, T1, T2)
+            (T0, T1, T2, T3)
+          and $N others
+  = note: required for `Struct` to implement `serde::de::DeserializeOwned`
+  = note: required for `Json<Struct>` to implement `FromRequest<(), Body>`
+  = help: see issue #48214
+  = help: add `#![feature(trivial_bounds)]` to the crate attributes to enable

@@ -9,6 +9,126 @@ and this project adheres to [Semantic Versioning].
 
 - None.
 
+# 0.7.0 (03. March, 2023)
+
+- **breaking:** Remove the `spa` feature which should have been removed in 0.6.0 ([#1802])
+- **added:** Add `Multipart`. This is similar to `axum::extract::Multipart`
+  except that it enforces field exclusivity at runtime instead of compile time,
+  as this improves usability ([#1692])
+- **added:** Implement `Clone` for `CookieJar`, `PrivateCookieJar` and `SignedCookieJar` ([#1808])
+- **fixed:** Add `#[must_use]` attributes to types that do nothing unless used ([#1809])
+
+[#1692]: https://github.com/tokio-rs/axum/pull/1692
+[#1802]: https://github.com/tokio-rs/axum/pull/1802
+[#1808]: https://github.com/tokio-rs/axum/pull/1808
+[#1809]: https://github.com/tokio-rs/axum/pull/1809
+
+# 0.6.0 (24. February, 2022)
+
+- **breaking:**  Change casing of `ProtoBuf` to `Protobuf` ([#1595])
+- **breaking:** `SpaRouter` has been removed. Use `ServeDir` and `ServeFile`
+  from `tower-http` instead:
+
+  ```rust
+  // before
+  Router::new().merge(SpaRouter::new("/assets", "dist"));
+
+  // with ServeDir
+  Router::new().nest_service("/assets", ServeDir::new("dist"));
+
+  // before with `index_file`
+  Router::new().merge(SpaRouter::new("/assets", "dist").index_file("index.html"));
+
+  // with ServeDir + ServeFile
+  Router::new().nest_service(
+      "/assets",
+      ServeDir::new("dist").not_found_service(ServeFile::new("dist/index.html")),
+  );
+  ```
+
+  See the [static-file-server-example] for more examples ([#1784])
+
+[#1595]: https://github.com/tokio-rs/axum/pull/1595
+[#1784]: https://github.com/tokio-rs/axum/pull/1784
+[static-file-server-example]: https://github.com/tokio-rs/axum/blob/main/examples/static-file-server/src/main.rs
+
+# 0.5.0 (12. February, 2022)
+
+- **added:** Add `option_layer` for converting an `Option<Layer>` into a `Layer` ([#1696])
+- **added:** Implement `Layer` and `Service` for `Either` ([#1696])
+- **added:** Add `TypedPath::with_query_params` ([#1744])
+- **breaking:** Update to [`cookie`] 0.17 ([#1747])
+
+[#1696]: https://github.com/tokio-rs/axum/pull/1696
+[#1744]: https://github.com/tokio-rs/axum/pull/1744
+[#1747]: https://github.com/tokio-rs/axum/pull/1747
+[`cookie`]: https://crates.io/crates/cookie
+
+# 0.4.2 (02. December, 2022)
+
+- **fixed:** Bug fixes for `RouterExt:{route_with_tsr, route_service_with_tsr}` ([#1608]):
+  - Redirects to the correct URI if the route contains path parameters
+  - Keeps query parameters when redirecting
+  - Better improved error message if adding route for `/`
+
+[#1608]: https://github.com/tokio-rs/axum/pull/1608
+
+# 0.4.1 (29. November, 2022)
+
+- **fixed:** Fix wrong `From` impl for `Resource` ([#1589])
+
+[#1589]: https://github.com/tokio-rs/axum/pull/1589
+
+# 0.4.0 (25. November, 2022)
+
+- **added:** Add `RouterExt::route_with_tsr` for adding routes with an
+  additional "trailing slash redirect" route ([#1119])
+- **added:** Support chaining handlers with `HandlerCallWithExtractors::or` ([#1170])
+- **added:** Add Protocol Buffer extractor and response ([#1239])
+- **added:** Add `Either*` types for combining extractors and responses into a
+  single type ([#1263])
+- **added:** `WithRejection` extractor for customizing other extractors' rejections ([#1262])
+- **added:** Add sync constructors to `CookieJar`, `PrivateCookieJar`, and
+  `SignedCookieJar` so they're easier to use in custom middleware
+- **changed:** For methods that accept some `S: Service`, the bounds have been
+  relaxed so the return type can be any type that implements `IntoResponse` rather than being a
+  literal `Response`
+- **change:** axum-extra's MSRV is now 1.60 ([#1239])
+- **breaking:** `Form` has a new rejection type ([#1496])
+- **breaking:** `Query` has a new rejection type ([#1496])
+- **breaking:** `Resource::nest` and `Resource::nest_collection` have been
+  removed. You can instead convert the `Resource` into a `Router` and
+  add additional routes as necessary ([#1086])
+- **breaking:** `SignedCookieJar` and `PrivateCookieJar` now extracts the keys
+  from the router's state, rather than extensions
+- **breaking:** `Resource` has a new `S` type param which represents the state ([#1155])
+- **breaking:** `RouterExt::route_with_tsr` now only accepts `MethodRouter`s ([#1155])
+- **added:** `RouterExt::route_service_with_tsr` for routing to any `Service` ([#1155])
+
+[#1086]: https://github.com/tokio-rs/axum/pull/1086
+[#1119]: https://github.com/tokio-rs/axum/pull/1119
+[#1155]: https://github.com/tokio-rs/axum/pull/1155
+[#1170]: https://github.com/tokio-rs/axum/pull/1170
+[#1214]: https://github.com/tokio-rs/axum/pull/1214
+[#1239]: https://github.com/tokio-rs/axum/pull/1239
+[#1262]: https://github.com/tokio-rs/axum/pull/1262
+[#1263]: https://github.com/tokio-rs/axum/pull/1263
+[#1496]: https://github.com/tokio-rs/axum/pull/1496
+
+<details>
+<summary>0.4.0 Pre-Releases</summary>
+
+# 0.4.0-rc.3 (19. November, 2022)
+
+- **breaking:** Depend axum 0.6.0-rc.5 and axum-macros 0.3.0-rc.3
+
+# 0.4.0-rc.2 (8. November, 2022)
+
+- **breaking:** `Form` has a new rejection type ([#1496])
+- **breaking:** `Query` has a new rejection type ([#1496])
+
+[#1496]: https://github.com/tokio-rs/axum/pull/1496
+
 # 0.4.0-rc.1 (23. August, 2022)
 
 - **added:** Add `RouterExt::route_with_tsr` for adding routes with an
@@ -41,6 +161,8 @@ and this project adheres to [Semantic Versioning].
 [#1239]: https://github.com/tokio-rs/axum/pull/1239
 [#1262]: https://github.com/tokio-rs/axum/pull/1262
 [#1263]: https://github.com/tokio-rs/axum/pull/1263
+
+</details>
 
 # 0.3.7 (09. August, 2022)
 

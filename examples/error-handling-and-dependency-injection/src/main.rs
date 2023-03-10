@@ -24,10 +24,10 @@ use uuid::Uuid;
 #[tokio::main]
 async fn main() {
     tracing_subscriber::registry()
-        .with(tracing_subscriber::EnvFilter::new(
-            std::env::var("RUST_LOG")
+        .with(
+            tracing_subscriber::EnvFilter::try_from_default_env()
                 .unwrap_or_else(|_| "example_error_handling_and_dependency_injection=debug".into()),
-        ))
+        )
         .with(tracing_subscriber::fmt::layer())
         .init();
 
@@ -36,9 +36,10 @@ async fn main() {
     let user_repo = Arc::new(ExampleUserRepo) as DynUserRepo;
 
     // Build our application with some routes
-    let app = Router::with_state(user_repo)
+    let app = Router::new()
         .route("/users/:id", get(users_show))
-        .route("/users", post(users_create));
+        .route("/users", post(users_create))
+        .with_state(user_repo);
 
     // Run our application
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));

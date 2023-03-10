@@ -20,7 +20,7 @@ where
 
     if out.is_some() {
         let kw_name = std::any::type_name::<K>().split("::").last().unwrap();
-        let msg = format!("`{}` specified more than once", kw_name);
+        let msg = format!("`{kw_name}` specified more than once");
         return Err(syn::Error::new_spanned(kw, msg));
     }
 
@@ -43,7 +43,7 @@ where
 
     if out.is_some() {
         let kw_name = std::any::type_name::<K>().split("::").last().unwrap();
-        let msg = format!("`{}` specified more than once", kw_name);
+        let msg = format!("`{kw_name}` specified more than once");
         return Err(syn::Error::new_spanned(kw, msg));
     }
 
@@ -74,10 +74,25 @@ where
     if let Some((kw, inner)) = b {
         if a.is_some() {
             let kw_name = std::any::type_name::<K>().split("::").last().unwrap();
-            let msg = format!("`{}` specified more than once", kw_name);
+            let msg = format!("`{kw_name}` specified more than once");
             return Err(syn::Error::new_spanned(kw, msg));
         }
         *a = Some((kw, inner));
+    }
+    Ok(())
+}
+
+pub(crate) fn combine_unary_attribute<K>(a: &mut Option<K>, b: Option<K>) -> syn::Result<()>
+where
+    K: ToTokens,
+{
+    if let Some(kw) = b {
+        if a.is_some() {
+            let kw_name = std::any::type_name::<K>().split("::").last().unwrap();
+            let msg = format!("`{kw_name}` specified more than once");
+            return Err(syn::Error::new_spanned(kw, msg));
+        }
+        *a = Some(kw);
     }
     Ok(())
 }

@@ -44,7 +44,7 @@ use tower_service::Service;
 /// # let _: Router = app;
 /// ```
 ///
-/// # Rejection the request
+/// # Rejecting the request
 ///
 /// The function given to `map_request` is allowed to also return a `Result` which can be used to
 /// reject the request and return a response immediately, without calling the remaining
@@ -53,7 +53,7 @@ use tower_service::Service;
 /// Specifically the valid return types are:
 ///
 /// - `Request<B>`
-/// - `Request<Request<B>, E> where E:  IntoResponse`
+/// - `Result<Request<B>, E> where E:  IntoResponse`
 ///
 /// ```
 /// use axum::{
@@ -148,10 +148,11 @@ pub fn map_request<F, T>(f: F) -> MapRequestLayer<F, (), T> {
 ///
 /// let state = AppState { /* ... */ };
 ///
-/// let app = Router::with_state(state.clone())
+/// let app = Router::new()
 ///     .route("/", get(|| async { /* ... */ }))
-///     .route_layer(map_request_with_state(state, my_middleware));
-/// # let app: Router<_> = app;
+///     .route_layer(map_request_with_state(state.clone(), my_middleware))
+///     .with_state(state);
+/// # let _: axum::Router = app;
 /// ```
 pub fn map_request_with_state<F, S, T>(state: S, f: F) -> MapRequestLayer<F, S, T> {
     MapRequestLayer {
@@ -164,6 +165,7 @@ pub fn map_request_with_state<F, S, T>(state: S, f: F) -> MapRequestLayer<F, S, 
 /// A [`tower::Layer`] from an async function that transforms a request.
 ///
 /// Created with [`map_request`]. See that function for more details.
+#[must_use]
 pub struct MapRequestLayer<F, S, T> {
     f: F,
     state: S,
@@ -384,7 +386,7 @@ mod tests {
     use crate::{routing::get, test_helpers::TestClient, Router};
     use http::{HeaderMap, StatusCode};
 
-    #[tokio::test]
+    #[crate::test]
     async fn works() {
         async fn add_header<B>(mut req: Request<B>) -> Request<B> {
             req.headers_mut().insert("x-foo", "foo".parse().unwrap());
@@ -409,7 +411,7 @@ mod tests {
         assert_eq!(res.text().await, "foo");
     }
 
-    #[tokio::test]
+    #[crate::test]
     async fn works_for_short_circutting() {
         async fn add_header<B>(_req: Request<B>) -> Result<Request<B>, (StatusCode, &'static str)> {
             Err((StatusCode::INTERNAL_SERVER_ERROR, "something went wrong"))

@@ -3,7 +3,7 @@ use crate::{error_handling::HandleErrorLayer, extract::OriginalUri, response::In
 use serde_json::{json, Value};
 use tower::{limit::ConcurrencyLimitLayer, timeout::TimeoutLayer};
 
-#[tokio::test]
+#[crate::test]
 async fn basic() {
     let one = Router::new()
         .route("/foo", get(|| async {}))
@@ -26,7 +26,7 @@ async fn basic() {
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
 }
 
-#[tokio::test]
+#[crate::test]
 async fn multiple_ors_balanced_differently() {
     let one = Router::new().route("/one", get(|| async { "one" }));
     let two = Router::new().route("/two", get(|| async { "two" }));
@@ -63,15 +63,15 @@ async fn multiple_ors_balanced_differently() {
         let client = TestClient::new(app);
 
         for n in ["one", "two", "three", "four"].iter() {
-            println!("running: {} / {}", name, n);
-            let res = client.get(&format!("/{}", n)).send().await;
+            println!("running: {name} / {n}");
+            let res = client.get(&format!("/{n}")).send().await;
             assert_eq!(res.status(), StatusCode::OK);
             assert_eq!(res.text().await, *n);
         }
     }
 }
 
-#[tokio::test]
+#[crate::test]
 async fn nested_or() {
     let bar = Router::new().route("/bar", get(|| async { "bar" }));
     let baz = Router::new().route("/baz", get(|| async { "baz" }));
@@ -87,7 +87,7 @@ async fn nested_or() {
     assert_eq!(client.get("/foo/baz").send().await.text().await, "baz");
 }
 
-#[tokio::test]
+#[crate::test]
 async fn or_with_route_following() {
     let one = Router::new().route("/one", get(|| async { "one" }));
     let two = Router::new().route("/two", get(|| async { "two" }));
@@ -105,7 +105,7 @@ async fn or_with_route_following() {
     assert_eq!(res.status(), StatusCode::OK);
 }
 
-#[tokio::test]
+#[crate::test]
 async fn layer() {
     let one = Router::new().route("/foo", get(|| async {}));
     let two = Router::new()
@@ -122,7 +122,7 @@ async fn layer() {
     assert_eq!(res.status(), StatusCode::OK);
 }
 
-#[tokio::test]
+#[crate::test]
 async fn layer_and_handle_error() {
     let one = Router::new().route("/foo", get(|| async {}));
     let two = Router::new()
@@ -142,7 +142,7 @@ async fn layer_and_handle_error() {
     assert_eq!(res.status(), StatusCode::REQUEST_TIMEOUT);
 }
 
-#[tokio::test]
+#[crate::test]
 async fn nesting() {
     let one = Router::new().route("/foo", get(|| async {}));
     let two = Router::new().nest("/bar", Router::new().route("/baz", get(|| async {})));
@@ -154,7 +154,7 @@ async fn nesting() {
     assert_eq!(res.status(), StatusCode::OK);
 }
 
-#[tokio::test]
+#[crate::test]
 async fn boxed() {
     let one = Router::new().route("/foo", get(|| async {}));
     let two = Router::new().route("/bar", get(|| async {}));
@@ -166,7 +166,7 @@ async fn boxed() {
     assert_eq!(res.status(), StatusCode::OK);
 }
 
-#[tokio::test]
+#[crate::test]
 async fn many_ors() {
     let app = Router::new()
         .route("/r1", get(|| async {}))
@@ -180,7 +180,7 @@ async fn many_ors() {
     let client = TestClient::new(app);
 
     for n in 1..=7 {
-        let res = client.get(&format!("/r{}", n)).send().await;
+        let res = client.get(&format!("/r{n}")).send().await;
         assert_eq!(res.status(), StatusCode::OK);
     }
 
@@ -188,7 +188,7 @@ async fn many_ors() {
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
 }
 
-#[tokio::test]
+#[crate::test]
 async fn services() {
     use crate::routing::get_service;
 
@@ -227,7 +227,7 @@ async fn all_the_uris(
     }))
 }
 
-#[tokio::test]
+#[crate::test]
 async fn nesting_and_seeing_the_right_uri() {
     let one = Router::new().nest("/foo/", Router::new().route("/bar", get(all_the_uris)));
     let two = Router::new().route("/foo", get(all_the_uris));
@@ -257,7 +257,7 @@ async fn nesting_and_seeing_the_right_uri() {
     );
 }
 
-#[tokio::test]
+#[crate::test]
 async fn nesting_and_seeing_the_right_uri_at_more_levels_of_nesting() {
     let one = Router::new().nest(
         "/foo/",
@@ -290,7 +290,7 @@ async fn nesting_and_seeing_the_right_uri_at_more_levels_of_nesting() {
     );
 }
 
-#[tokio::test]
+#[crate::test]
 async fn nesting_and_seeing_the_right_uri_ors_with_nesting() {
     let one = Router::new().nest(
         "/one",
@@ -335,7 +335,7 @@ async fn nesting_and_seeing_the_right_uri_ors_with_nesting() {
     );
 }
 
-#[tokio::test]
+#[crate::test]
 async fn nesting_and_seeing_the_right_uri_ors_with_multi_segment_uris() {
     let one = Router::new().nest(
         "/one",
@@ -368,11 +368,11 @@ async fn nesting_and_seeing_the_right_uri_ors_with_multi_segment_uris() {
     );
 }
 
-#[tokio::test]
+#[crate::test]
 async fn middleware_that_return_early() {
     let private = Router::new()
         .route("/", get(|| async {}))
-        .layer(RequireAuthorizationLayer::bearer("password"));
+        .layer(ValidateRequestHeaderLayer::bearer("password"));
 
     let public = Router::new().route("/public", get(|| async {}));
 
@@ -396,88 +396,4 @@ async fn middleware_that_return_early() {
         StatusCode::NOT_FOUND
     );
     assert_eq!(client.get("/public").send().await.status(), StatusCode::OK);
-}
-
-#[tokio::test]
-async fn merge_with_different_state_type() {
-    let inner = Router::with_state("inner".to_owned()).route(
-        "/foo",
-        get(|State(state): State<String>| async move { state }),
-    );
-
-    let app = Router::with_state("outer").merge(inner).route(
-        "/bar",
-        get(|State(state): State<&'static str>| async move { state }),
-    );
-
-    let client = TestClient::new(app);
-
-    let res = client.get("/foo").send().await;
-    assert_eq!(res.text().await, "inner");
-
-    let res = client.get("/bar").send().await;
-    assert_eq!(res.text().await, "outer");
-}
-
-#[tokio::test]
-async fn merging_routes_different_method_different_states() {
-    let get = Router::with_state("get state").route(
-        "/",
-        get(|State(state): State<&'static str>| async move { state }),
-    );
-
-    let post = Router::with_state("post state").route(
-        "/",
-        post(|State(state): State<&'static str>| async move { state }),
-    );
-
-    let app = Router::new().merge(get).merge(post);
-
-    let client = TestClient::new(app);
-
-    let res = client.get("/").send().await;
-    assert_eq!(res.text().await, "get state");
-
-    let res = client.post("/").send().await;
-    assert_eq!(res.text().await, "post state");
-}
-
-#[tokio::test]
-async fn merging_routes_different_paths_different_states() {
-    let foo = Router::with_state("foo state").route(
-        "/foo",
-        get(|State(state): State<&'static str>| async move { state }),
-    );
-
-    let bar = Router::with_state("bar state").route(
-        "/bar",
-        get(|State(state): State<&'static str>| async move { state }),
-    );
-
-    let app = Router::new().merge(foo).merge(bar);
-
-    let client = TestClient::new(app);
-
-    let res = client.get("/foo").send().await;
-    assert_eq!(res.status(), StatusCode::OK);
-    assert_eq!(res.text().await, "foo state");
-
-    let res = client.get("/bar").send().await;
-    assert_eq!(res.status(), StatusCode::OK);
-    assert_eq!(res.text().await, "bar state");
-}
-
-#[tokio::test]
-async fn inherit_state_via_merge() {
-    let foo = Router::inherit_state().route(
-        "/foo",
-        get(|State(state): State<&'static str>| async move { state }),
-    );
-
-    let app = Router::with_state("state").merge(foo);
-    let client = TestClient::new(app);
-
-    let res = client.get("/foo").send().await;
-    assert_eq!(res.status(), StatusCode::OK);
-    assert_eq!(res.text().await, "state");
 }

@@ -134,18 +134,29 @@ use tokio_tungstenite::{
 /// rejected.
 ///
 /// See the [module docs](self) for an example.
-#[derive(Debug)]
 #[cfg_attr(docsrs, doc(cfg(feature = "ws")))]
-pub struct WebSocketUpgrade {
+pub struct WebSocketUpgrade<F = DefaultOnFailedUpdgrade> {
     config: WebSocketConfig,
     /// The chosen protocol sent in the `Sec-WebSocket-Protocol` header of the response.
     protocol: Option<HeaderValue>,
     sec_websocket_key: HeaderValue,
     on_upgrade: OnUpgrade,
+    on_failed_upgrade: F,
     sec_websocket_protocol: Option<HeaderValue>,
 }
 
-impl WebSocketUpgrade {
+impl<F> std::fmt::Debug for WebSocketUpgrade<F> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("WebSocketUpgrade")
+            .field("config", &self.config)
+            .field("protocol", &self.protocol)
+            .field("sec_websocket_key", &self.sec_websocket_key)
+            .field("sec_websocket_protocol", &self.sec_websocket_protocol)
+            .finish_non_exhaustive()
+    }
+}
+
+impl<F> WebSocketUpgrade<F> {
     /// Set the size of the internal message send queue.
     pub fn max_send_queue(mut self, max: usize) -> Self {
         self.config.max_send_queue = Some(max);
@@ -161,6 +172,12 @@ impl WebSocketUpgrade {
     /// Set the maximum frame size (defaults to 16 megabytes)
     pub fn max_frame_size(mut self, max: usize) -> Self {
         self.config.max_frame_size = Some(max);
+        self
+    }
+
+    /// Allow server to accept unmasked frames (defaults to false)
+    pub fn accept_unmasked_frames(mut self, accept: bool) -> Self {
+        self.config.accept_unmasked_frames = accept;
         self
     }
 
@@ -225,24 +242,68 @@ impl WebSocketUpgrade {
         self
     }
 
+    /// Provide a callback to call if upgrading the connection fails.
+    ///
+    /// The connection upgrade is performed in a background task. If that fails this callback
+    /// will be called.
+    ///
+    /// By default any errors will be silently ignored.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use axum::{
+    ///     extract::{WebSocketUpgrade},
+    ///     response::Response,
+    /// };
+    ///
+    /// async fn handler(ws: WebSocketUpgrade) -> Response {
+    ///     ws.on_failed_upgrade(|error| {
+    ///         report_error(error);
+    ///     })
+    ///     .on_upgrade(|socket| async { /* ... */ })
+    /// }
+    /// #
+    /// # fn report_error(_: axum::Error) {}
+    /// ```
+    pub fn on_failed_upgrade<C>(self, callback: C) -> WebSocketUpgrade<C>
+    where
+        C: OnFailedUpdgrade,
+    {
+        WebSocketUpgrade {
+            config: self.config,
+            protocol: self.protocol,
+            sec_websocket_key: self.sec_websocket_key,
+            on_upgrade: self.on_upgrade,
+            on_failed_upgrade: callback,
+            sec_websocket_protocol: self.sec_websocket_protocol,
+        }
+    }
+
     /// Finalize upgrading the connection and call the provided callback with
     /// the stream.
-    ///
-    /// When using `WebSocketUpgrade`, the response produced by this method
-    /// should be returned from the handler. See the [module docs](self) for an
-    /// example.
-    pub fn on_upgrade<F, Fut>(self, callback: F) -> Response
+    #[must_use = "to setup the WebSocket connection, this response must be returned"]
+    pub fn on_upgrade<C, Fut>(self, callback: C) -> Response
     where
-        F: FnOnce(WebSocket) -> Fut + Send + 'static,
+        C: FnOnce(WebSocket) -> Fut + Send + 'static,
         Fut: Future<Output = ()> + Send + 'static,
+        F: OnFailedUpdgrade,
     {
         let on_upgrade = self.on_upgrade;
         let config = self.config;
+        let on_failed_upgrade = self.on_failed_upgrade;
 
         let protocol = self.protocol.clone();
 
         tokio::spawn(async move {
-            let upgraded = on_upgrade.await.expect("connection upgrade failed");
+            let upgraded = match on_upgrade.await {
+                Ok(upgraded) => upgraded,
+                Err(err) => {
+                    on_failed_upgrade.call(Error::new(err));
+                    return;
+                }
+            };
+
             let socket =
                 WebSocketStream::from_raw_socket(upgraded, protocol::Role::Server, Some(config))
                     .await;
@@ -275,8 +336,37 @@ impl WebSocketUpgrade {
     }
 }
 
+/// What to do when a connection upgrade fails.
+///
+/// See [`WebSocketUpgrade::on_failed_upgrade`] for more details.
+pub trait OnFailedUpdgrade: Send + 'static {
+    /// Call the callback.
+    fn call(self, error: Error);
+}
+
+impl<F> OnFailedUpdgrade for F
+where
+    F: FnOnce(Error) + Send + 'static,
+{
+    fn call(self, error: Error) {
+        self(error)
+    }
+}
+
+/// The default `OnFailedUpdgrade` used by `WebSocketUpgrade`.
+///
+/// It simply ignores the error.
+#[non_exhaustive]
+#[derive(Debug)]
+pub struct DefaultOnFailedUpdgrade;
+
+impl OnFailedUpdgrade for DefaultOnFailedUpdgrade {
+    #[inline]
+    fn call(self, _error: Error) {}
+}
+
 #[async_trait]
-impl<S> FromRequestParts<S> for WebSocketUpgrade
+impl<S> FromRequestParts<S> for WebSocketUpgrade<DefaultOnFailedUpdgrade>
 where
     S: Send + Sync,
 {
@@ -317,6 +407,7 @@ where
             sec_websocket_key,
             on_upgrade,
             sec_websocket_protocol,
+            on_failed_upgrade: DefaultOnFailedUpdgrade,
         })
     }
 }
@@ -344,6 +435,8 @@ fn header_contains(headers: &HeaderMap, key: HeaderName, value: &'static str) ->
 }
 
 /// A stream of WebSocket messages.
+///
+/// See [the module level documentation](self) for more details.
 #[derive(Debug)]
 pub struct WebSocket {
     inner: WebSocketStream<Upgraded>,
@@ -576,10 +669,12 @@ impl From<Message> for Vec<u8> {
 }
 
 fn sign(key: &[u8]) -> HeaderValue {
+    use base64::engine::Engine as _;
+
     let mut sha1 = Sha1::default();
     sha1.update(key);
     sha1.update(&b"258EAFA5-E914-47DA-95CA-C5AB0DC85B11"[..]);
-    let b64 = Bytes::from(base64::encode(&sha1.finalize()));
+    let b64 = Bytes::from(base64::engine::general_purpose::STANDARD.encode(sha1.finalize()));
     HeaderValue::from_maybe_shared(b64).expect("base64 is a valid value")
 }
 
@@ -716,11 +811,11 @@ pub mod close_code {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{body::Body, routing::get};
+    use crate::{body::Body, routing::get, Router};
     use http::{Request, Version};
     use tower::ServiceExt;
 
-    #[tokio::test]
+    #[crate::test]
     async fn rejects_http_1_0_requests() {
         let svc = get(|ws: Result<WebSocketUpgrade, WebSocketUpgradeRejection>| {
             let rejection = ws.unwrap_err();
@@ -744,5 +839,22 @@ mod tests {
         let res = svc.oneshot(req).await.unwrap();
 
         assert_eq!(res.status(), StatusCode::OK);
+    }
+
+    #[allow(dead_code)]
+    fn default_on_failed_upgrade() {
+        async fn handler(ws: WebSocketUpgrade) -> Response {
+            ws.on_upgrade(|_| async {})
+        }
+        let _: Router = Router::new().route("/", get(handler));
+    }
+
+    #[allow(dead_code)]
+    fn on_failed_upgrade() {
+        async fn handler(ws: WebSocketUpgrade) -> Response {
+            ws.on_failed_upgrade(|_error: Error| println!("oops!"))
+                .on_upgrade(|_| async {})
+        }
+        let _: Router = Router::new().route("/", get(handler));
     }
 }

@@ -6,8 +6,20 @@ publish = false
 
 [dependencies]
 axum = { path = "../../axum", features = ["ws", "headers"] }
+futures = "0.3"
+futures-util = { version = "0.3", default-features = false, features = ["sink", "std"] }
 headers = "0.3"
 tokio = { version = "1.0", features = ["full"] }
-tower-http = { version = "0.3.0", features = ["fs", "trace"] }
+tokio-tungstenite = "0.18.0"
+tower = { version = "0.4", features = ["util"] }
+tower-http = { version = "0.4.0", features = ["fs", "trace"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+[[bin]]
+name = "example-websockets"
+path = "src/main.rs"
+
+[[bin]]
+name = "example-client"
+path = "src/client.rs"

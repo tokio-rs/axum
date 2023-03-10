@@ -93,17 +93,22 @@
 //! [`BytesRejection`]: axum::extract::rejection::BytesRejection
 //! [`IntoResponse::into_response`]: https://docs.rs/axum/0.5/axum/response/index.html#returning-different-response-types
 
+use std::task::{Context, Poll};
+
 use axum::{
     async_trait,
     extract::FromRequestParts,
     response::{IntoResponse, Response},
 };
 use http::request::Parts;
+use tower_layer::Layer;
+use tower_service::Service;
 
 /// Combines two extractors or responses into a single type.
 ///
 /// See the [module docs](self) for examples.
 #[derive(Debug, Clone)]
+#[must_use]
 pub enum Either<E1, E2> {
     #[allow(missing_docs)]
     E1(E1),
@@ -115,6 +120,7 @@ pub enum Either<E1, E2> {
 ///
 /// See the [module docs](self) for examples.
 #[derive(Debug, Clone)]
+#[must_use]
 pub enum Either3<E1, E2, E3> {
     #[allow(missing_docs)]
     E1(E1),
@@ -128,6 +134,7 @@ pub enum Either3<E1, E2, E3> {
 ///
 /// See the [module docs](self) for examples.
 #[derive(Debug, Clone)]
+#[must_use]
 pub enum Either4<E1, E2, E3, E4> {
     #[allow(missing_docs)]
     E1(E1),
@@ -143,6 +150,7 @@ pub enum Either4<E1, E2, E3, E4> {
 ///
 /// See the [module docs](self) for examples.
 #[derive(Debug, Clone)]
+#[must_use]
 pub enum Either5<E1, E2, E3, E4, E5> {
     #[allow(missing_docs)]
     E1(E1),
@@ -160,6 +168,7 @@ pub enum Either5<E1, E2, E3, E4, E5> {
 ///
 /// See the [module docs](self) for examples.
 #[derive(Debug, Clone)]
+#[must_use]
 pub enum Either6<E1, E2, E3, E4, E5, E6> {
     #[allow(missing_docs)]
     E1(E1),
@@ -179,6 +188,7 @@ pub enum Either6<E1, E2, E3, E4, E5, E6> {
 ///
 /// See the [module docs](self) for examples.
 #[derive(Debug, Clone)]
+#[must_use]
 pub enum Either7<E1, E2, E3, E4, E5, E6, E7> {
     #[allow(missing_docs)]
     E1(E1),
@@ -200,6 +210,7 @@ pub enum Either7<E1, E2, E3, E4, E5, E6, E7> {
 ///
 /// See the [module docs](self) for examples.
 #[derive(Debug, Clone)]
+#[must_use]
 pub enum Either8<E1, E2, E3, E4, E5, E6, E7, E8> {
     #[allow(missing_docs)]
     E1(E1),
@@ -267,3 +278,42 @@ impl_traits_for_either!(Either5 => [E1, E2, E3, E4], E5);
 impl_traits_for_either!(Either6 => [E1, E2, E3, E4, E5], E6);
 impl_traits_for_either!(Either7 => [E1, E2, E3, E4, E5, E6], E7);
 impl_traits_for_either!(Either8 => [E1, E2, E3, E4, E5, E6, E7], E8);
+
+impl<E1, E2, S> Layer<S> for Either<E1, E2>
+where
+    E1: Layer<S>,
+    E2: Layer<S>,
+{
+    type Service = Either<E1::Service, E2::Service>;
+
+    fn layer(&self, inner: S) -> Self::Service {
+        match self {
+            Either::E1(layer) => Either::E1(layer.layer(inner)),
+            Either::E2(layer) => Either::E2(layer.layer(inner)),
+        }
+    }
+}
+
+impl<R, E1, E2> Service<R> for Either<E1, E2>
+where
+    E1: Service<R>,
+    E2: Service<R, Response = E1::Response, Error = E1::Error>,
+{
+    type Response = E1::Response;
+    type Error = E1::Error;
+    type Future = futures_util::future::Either<E1::Future, E2::Future>;
+
+    fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        match self {
+            Either::E1(inner) => inner.poll_ready(cx),
+            Either::E2(inner) => inner.poll_ready(cx),
+        }
+    }
+
+    fn call(&mut self, req: R) -> Self::Future {
+        match self {
+            Either::E1(inner) => futures_util::future::Either::Left(inner.call(req)),
+            Either::E2(inner) => futures_util::future::Either::Right(inner.call(req)),
+        }
+    }
+}

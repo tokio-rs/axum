@@ -3,7 +3,6 @@ use axum::{
     extract::{FromRequest, Json},
     response::Response,
 };
-use axum_macros::FromRequest;
 use serde::Deserialize;
 
 #[derive(Deserialize, FromRequest)]

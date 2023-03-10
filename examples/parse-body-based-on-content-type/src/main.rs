@@ -21,11 +21,11 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 #[tokio::main]
 async fn main() {
     tracing_subscriber::registry()
-        .with(tracing_subscriber::EnvFilter::new(
-            std::env::var("RUST_LOG").unwrap_or_else(|_| {
+        .with(
+            tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| {
                 "example_parse_body_based_on_content_type=debug,tower_http=debug".into()
             }),
-        ))
+        )
         .with(tracing_subscriber::fmt::layer())
         .init();
 
@@ -39,32 +39,25 @@ async fn main() {
         .unwrap();
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 struct Payload {
     foo: String,
 }
 
-async fn handler(payload: JsonOrForm<Payload>) -> Response {
-    match payload {
-        JsonOrForm::Json(payload) => Json(payload).into_response(),
-        JsonOrForm::Form(payload) => Form(payload).into_response(),
-    }
+async fn handler(JsonOrForm(payload): JsonOrForm<Payload>) {
+    dbg!(payload);
 }
 
-enum JsonOrForm<T, K = T> {
-    Json(T),
-    Form(K),
-}
+struct JsonOrForm<T>(T);
 
 #[async_trait]
-impl<S, B, T, U> FromRequest<S, B> for JsonOrForm<T, U>
+impl<S, B, T> FromRequest<S, B> for JsonOrForm<T>
 where
     B: Send + 'static,
     S: Send + Sync,
     Json<T>: FromRequest<(), B>,
-    Form<U>: FromRequest<(), B>,
+    Form<T>: FromRequest<(), B>,
     T: 'static,
-    U: 'static,
 {
     type Rejection = Response;
 
@@ -75,12 +68,12 @@ where
         if let Some(content_type) = content_type {
             if content_type.starts_with("application/json") {
                 let Json(payload) = req.extract().await.map_err(IntoResponse::into_response)?;
-                return Ok(Self::Json(payload));
+                return Ok(Self(payload));
             }
 
             if content_type.starts_with("application/x-www-form-urlencoded") {
                 let Form(payload) = req.extract().await.map_err(IntoResponse::into_response)?;
-                return Ok(Self::Form(payload));
+                return Ok(Self(payload));
             }
         }
 

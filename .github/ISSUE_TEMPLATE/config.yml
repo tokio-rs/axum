@@ -1,0 +1,7 @@
+contact_links:
+  - name: 🙏 Q&A (GitHub Discussions)
+    url: https://github.com/tokio-rs/axum/discussions/categories/q-a
+    about: Q&A all around axum usage
+  - name: 💬 Tokio Discord
+    url: https://discord.gg/tokio
+    about: Community chat for Tokio (axum channel is under libs)

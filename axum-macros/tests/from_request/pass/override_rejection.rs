@@ -6,7 +6,6 @@ use axum::{
     routing::get,
     Extension, Router,
 };
-use axum_macros::FromRequest;
 
 fn main() {
     let _: Router = Router::new().route("/", get(handler).post(handler_result));

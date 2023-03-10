@@ -64,10 +64,43 @@ use std::{convert::Infallible, fmt, marker::PhantomData};
 ///     key: Key::generate(),
 /// };
 ///
-/// let app = Router::with_state(state)
+/// let app = Router::new()
 ///     .route("/set", post(set_secret))
-///     .route("/get", get(get_secret));
-/// # let app: Router<_> = app;
+///     .route("/get", get(get_secret))
+///     .with_state(state);
+/// # let _: axum::Router = app;
+/// ```
+///
+/// If you have been using `Arc<AppState>` you cannot implement `FromRef<Arc<AppState>> for Key`.
+/// You can use a new type instead:
+///
+/// ```rust
+/// # use axum::extract::FromRef;
+/// # use axum_extra::extract::cookie::{PrivateCookieJar, Cookie, Key};
+/// use std::sync::Arc;
+/// use std::ops::Deref;
+///
+/// #[derive(Clone)]
+/// struct AppState(Arc<InnerState>);
+///
+/// // deref so you can still access the inner fields easily
+/// impl Deref for AppState {
+///     type Target = InnerState;
+///
+///     fn deref(&self) -> &Self::Target {
+///         &*self.0
+///     }
+/// }
+///
+/// struct InnerState {
+///     key: Key
+/// }
+///
+/// impl FromRef<AppState> for Key {
+///     fn from_ref(state: &AppState) -> Self {
+///         state.0.key.clone()
+///     }
+/// }
 /// ```
 pub struct PrivateCookieJar<K = Key> {
     jar: cookie::CookieJar,
@@ -115,7 +148,7 @@ impl PrivateCookieJar {
     ///
     /// The valid cookies in `headers` will be added to the jar.
     ///
-    /// This is inteded to be used in middleware and other where places it might be difficult to
+    /// This is intended to be used in middleware and other where places it might be difficult to
     /// run extractors. Normally you should create `PrivateCookieJar`s through [`FromRequestParts`].
     ///
     /// [`FromRequestParts`]: axum::extract::FromRequestParts
@@ -265,6 +298,16 @@ impl<'a, K> Iterator for PrivateCookieJarIter<'a, K> {
             if let Some(cookie) = self.jar.get(cookie.name()) {
                 return Some(cookie);
             }
+        }
+    }
+}
+
+impl<K> Clone for PrivateCookieJar<K> {
+    fn clone(&self) -> Self {
+        Self {
+            jar: self.jar.clone(),
+            key: self.key.clone(),
+            _marker: self._marker,
         }
     }
 }

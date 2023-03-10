@@ -1,4 +1,4 @@
-Nest a [`Service`] at some path.
+Nest a [`Router`] at some path.
 
 This allows you to break your application into smaller pieces and compose
 them together.
@@ -64,7 +64,7 @@ let app = Router::new().nest("/:version/api", users_api);
 # };
 ```
 
-# Differences to wildcard routes
+# Differences from wildcard routes
 
 Nested routes are similar to wildcard routes. The difference is that
 wildcard routes still see the whole URI whereas nested routes will have
@@ -90,8 +90,8 @@ let app = Router::new()
 
 # Fallbacks
 
-When nesting a router, if a request matches the prefix but the nested router doesn't have a matching
-route, the outer fallback will _not_ be called:
+If a nested router doesn't have its own fallback then it will inherit the
+fallback from the outer router:
 
 ```rust
 use axum::{routing::get, http::StatusCode, handler::Handler, Router};
@@ -100,7 +100,7 @@ async fn fallback() -> (StatusCode, &'static str) {
     (StatusCode::NOT_FOUND, "Not Found")
 }
 
-let api_routes = Router::new().nest_service("/users", get(|| async {}));
+let api_routes = Router::new().route("/users", get(|| async {}));
 
 let app = Router::new()
     .nest("/api", api_routes)
@@ -108,30 +108,35 @@ let app = Router::new()
 # let _: Router = app;
 ```
 
-Here requests like `GET /api/not-found` will go into `api_routes` and then to
-the fallback of `api_routes` which will return an empty `404 Not Found`
-response. The outer fallback declared on `app` will _not_ be called.
+Here requests like `GET /api/not-found` will go into `api_routes` but because
+it doesn't have a matching route and doesn't have its own fallback it will call
+the fallback from the outer router, i.e. the `fallback` function.
 
-Think of nested services as swallowing requests that matches the prefix and
-not falling back to outer router even if they don't have a matching route.
-
-You can still add separate fallbacks to nested routers:
+If the nested router has its own fallback then the outer fallback will not be
+inherited:
 
 ```rust
-use axum::{routing::get, http::StatusCode, handler::Handler, Json, Router};
-use serde_json::{json, Value};
+use axum::{
+    routing::get,
+    http::StatusCode,
+    handler::Handler,
+    Json,
+    Router,
+};
 
 async fn fallback() -> (StatusCode, &'static str) {
     (StatusCode::NOT_FOUND, "Not Found")
 }
 
-async fn api_fallback() -> (StatusCode, Json<Value>) {
-    (StatusCode::NOT_FOUND, Json(json!({ "error": "Not Found" })))
+async fn api_fallback() -> (StatusCode, Json<serde_json::Value>) {
+    (
+        StatusCode::NOT_FOUND,
+        Json(serde_json::json!({ "status": "Not Found" })),
+    )
 }
 
 let api_routes = Router::new()
-    .nest_service("/users", get(|| async {}))
-    // add dedicated fallback for requests starting with `/api`
+    .route("/users", get(|| async {}))
     .fallback(api_fallback);
 
 let app = Router::new()
@@ -139,6 +144,45 @@ let app = Router::new()
     .fallback(fallback);
 # let _: Router = app;
 ```
+
+Here requests like `GET /api/not-found` will go to `api_fallback`.
+
+# Nesting routers with state
+
+When combining [`Router`]s with this method, each [`Router`] must have the
+same type of state. If your routers have different types you can use
+[`Router::with_state`] to provide the state and make the types match:
+
+```rust
+use axum::{
+    Router,
+    routing::get,
+    extract::State,
+};
+
+#[derive(Clone)]
+struct InnerState {}
+
+#[derive(Clone)]
+struct OuterState {}
+
+async fn inner_handler(state: State<InnerState>) {}
+
+let inner_router = Router::new()
+    .route("/bar", get(inner_handler))
+    .with_state(InnerState {});
+
+async fn outer_handler(state: State<OuterState>) {}
+
+let app = Router::new()
+    .route("/", get(outer_handler))
+    .nest("/foo", inner_router)
+    .with_state(OuterState {});
+# let _: axum::Router = app;
+```
+
+Note that the inner router will still inherit the fallback from the outer
+router.
 
 # Panics
 

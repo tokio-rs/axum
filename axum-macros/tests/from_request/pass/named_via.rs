@@ -7,7 +7,6 @@ use axum::{
     },
     headers::{self, UserAgent},
 };
-use axum_macros::FromRequest;
 
 #[derive(FromRequest)]
 struct Extractor {

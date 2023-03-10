@@ -11,6 +11,9 @@ pub mod cookie;
 #[cfg(feature = "query")]
 mod query;
 
+#[cfg(feature = "multipart")]
+pub mod multipart;
+
 mod with_rejection;
 
 pub use self::cached::Cached;
@@ -25,10 +28,13 @@ pub use self::cookie::PrivateCookieJar;
 pub use self::cookie::SignedCookieJar;
 
 #[cfg(feature = "form")]
-pub use self::form::Form;
+pub use self::form::{Form, FormRejection};
 
 #[cfg(feature = "query")]
-pub use self::query::Query;
+pub use self::query::{Query, QueryRejection};
+
+#[cfg(feature = "multipart")]
+pub use self::multipart::Multipart;
 
 #[cfg(feature = "json-lines")]
 #[doc(no_inline)]

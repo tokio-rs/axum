@@ -38,10 +38,10 @@ use std::ops::Deref;
 /// # };
 /// ```
 ///
-/// If the query string cannot be parsed it will reject the request with a `422
-/// Unprocessable Entity` response.
+/// If the query string cannot be parsed it will reject the request with a `400
+/// Bad Request` response.
 ///
-/// For handling values being empty vs missing see the (query-params-with-empty-strings)[example]
+/// For handling values being empty vs missing see the [query-params-with-empty-strings][example]
 /// example.
 ///
 /// [example]: https://github.com/tokio-rs/axum/blob/main/examples/query-params-with-empty-strings/src/main.rs
@@ -59,8 +59,8 @@ where
 
     async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
         let query = parts.uri.query().unwrap_or_default();
-        let value = serde_urlencoded::from_str(query)
-            .map_err(FailedToDeserializeQueryString::__private_new)?;
+        let value =
+            serde_urlencoded::from_str(query).map_err(FailedToDeserializeQueryString::from_err)?;
         Ok(Query(value))
     }
 }
@@ -91,7 +91,7 @@ mod tests {
         assert_eq!(Query::<T>::from_request(req, &()).await.unwrap().0, value);
     }
 
-    #[tokio::test]
+    #[crate::test]
     async fn test_query() {
         #[derive(Debug, PartialEq, Deserialize)]
         struct Pagination {
@@ -127,7 +127,7 @@ mod tests {
         .await;
     }
 
-    #[tokio::test]
+    #[crate::test]
     async fn correct_rejection_status_code() {
         #[derive(Deserialize)]
         #[allow(dead_code)]

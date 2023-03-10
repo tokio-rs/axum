@@ -107,9 +107,9 @@ fn strip_prefix(uri: &Uri, prefix: &str) -> Option<Uri> {
 
     let new_path_and_query = match (after_prefix.starts_with('/'), path_and_query.query()) {
         (true, None) => after_prefix.parse().unwrap(),
-        (true, Some(query)) => format!("{}?{}", after_prefix, query).parse().unwrap(),
-        (false, None) => format!("/{}", after_prefix).parse().unwrap(),
-        (false, Some(query)) => format!("/{}?{}", after_prefix, query).parse().unwrap(),
+        (true, Some(query)) => format!("{after_prefix}?{query}").parse().unwrap(),
+        (false, None) => format!("/{after_prefix}").parse().unwrap(),
+        (false, Some(query)) => format!("/{after_prefix}?{query}").parse().unwrap(),
     };
 
     let mut parts = uri.clone().into_parts();
@@ -137,15 +137,12 @@ where
 {
     let a = a.map(Some).chain(std::iter::repeat_with(|| None));
     let b = b.map(Some).chain(std::iter::repeat_with(|| None));
-    a.zip(b)
-        // use `map_while` when its stable in our MSRV (1.57)
-        .take_while(|(a, b)| a.is_some() || b.is_some())
-        .filter_map(|(a, b)| match (a, b) {
-            (Some(a), Some(b)) => Some(Item::Both(a, b)),
-            (Some(a), None) => Some(Item::First(a)),
-            (None, Some(b)) => Some(Item::Second(b)),
-            (None, None) => unreachable!("take_while removes these"),
-        })
+    a.zip(b).map_while(|(a, b)| match (a, b) {
+        (Some(a), Some(b)) => Some(Item::Both(a, b)),
+        (Some(a), None) => Some(Item::First(a)),
+        (None, Some(b)) => Some(Item::Second(b)),
+        (None, None) => None,
+    })
 }
 
 #[derive(Debug)]

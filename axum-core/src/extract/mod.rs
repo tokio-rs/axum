@@ -37,8 +37,14 @@ mod private {
 ///
 /// See [`axum::extract`] for more general docs about extraxtors.
 ///
-/// [`axum::extract`]: https://docs.rs/axum/0.6.0-rc.2/axum/extract/index.html
+/// [`axum::extract`]: https://docs.rs/axum/0.6.0/axum/extract/index.html
 #[async_trait]
+#[cfg_attr(
+    nightly_error_messages,
+    rustc_on_unimplemented(
+        note = "Function argument is not a valid axum extractor. \nSee `https://docs.rs/axum/latest/axum/extract/index.html` for details",
+    )
+)]
 pub trait FromRequestParts<S>: Sized {
     /// If the extractor fails it'll use this "rejection" type. A rejection is
     /// a kind of error that can be converted into a response.
@@ -76,7 +82,7 @@ pub trait FromRequestParts<S>: Sized {
 /// use axum::{
 ///     async_trait,
 ///     extract::FromRequest,
-///     http::Request,
+///     http::{self, Request},
 /// };
 ///
 /// struct MyExtractor;
@@ -100,8 +106,14 @@ pub trait FromRequestParts<S>: Sized {
 /// This ensures your extractor is as flexible as possible.
 ///
 /// [`http::Request<B>`]: http::Request
-/// [`axum::extract`]: https://docs.rs/axum/0.6.0-rc.2/axum/extract/index.html
+/// [`axum::extract`]: https://docs.rs/axum/0.6.0/axum/extract/index.html
 #[async_trait]
+#[cfg_attr(
+    nightly_error_messages,
+    rustc_on_unimplemented(
+        note = "Function argument is not a valid axum extractor. \nSee `https://docs.rs/axum/latest/axum/extract/index.html` for details",
+    )
+)]
 pub trait FromRequest<S, B, M = private::ViaRequest>: Sized {
     /// If the extractor fails it'll use this "rejection" type. A rejection is
     /// a kind of error that can be converted into a response.

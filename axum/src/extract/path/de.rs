@@ -56,7 +56,6 @@ impl<'de> PathDeserializer<'de> {
 impl<'de> Deserializer<'de> for PathDeserializer<'de> {
     type Error = PathDeserializationError;
 
-    unsupported_type!(deserialize_any);
     unsupported_type!(deserialize_bytes);
     unsupported_type!(deserialize_option);
     unsupported_type!(deserialize_identifier);
@@ -78,6 +77,13 @@ impl<'de> Deserializer<'de> for PathDeserializer<'de> {
     parse_single_value!(deserialize_string, visit_string, "String");
     parse_single_value!(deserialize_byte_buf, visit_string, "String");
     parse_single_value!(deserialize_char, visit_char, "char");
+
+    fn deserialize_any<V>(self, v: V) -> Result<V::Value, Self::Error>
+    where
+        V: Visitor<'de>,
+    {
+        self.deserialize_str(v)
+    }
 
     fn deserialize_str<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where
@@ -328,14 +334,13 @@ struct ValueDeserializer<'de> {
 impl<'de> Deserializer<'de> for ValueDeserializer<'de> {
     type Error = PathDeserializationError;
 
-    unsupported_type!(deserialize_any);
     unsupported_type!(deserialize_map);
     unsupported_type!(deserialize_identifier);
 
     parse_value!(deserialize_bool, visit_bool, "bool");
     parse_value!(deserialize_i8, visit_i8, "i8");
     parse_value!(deserialize_i16, visit_i16, "i16");
-    parse_value!(deserialize_i32, visit_i32, "i16");
+    parse_value!(deserialize_i32, visit_i32, "i32");
     parse_value!(deserialize_i64, visit_i64, "i64");
     parse_value!(deserialize_i128, visit_i128, "i128");
     parse_value!(deserialize_u8, visit_u8, "u8");
@@ -348,6 +353,13 @@ impl<'de> Deserializer<'de> for ValueDeserializer<'de> {
     parse_value!(deserialize_string, visit_string, "String");
     parse_value!(deserialize_byte_buf, visit_string, "String");
     parse_value!(deserialize_char, visit_char, "char");
+
+    fn deserialize_any<V>(self, v: V) -> Result<V::Value, Self::Error>
+    where
+        V: Visitor<'de>,
+    {
+        self.deserialize_str(v)
+    }
 
     fn deserialize_str<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where

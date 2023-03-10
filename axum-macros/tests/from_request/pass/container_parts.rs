@@ -2,7 +2,6 @@ use axum::{
     extract::{FromRequestParts, Extension},
     response::Response,
 };
-use axum_macros::FromRequestParts;
 
 #[derive(Clone, FromRequestParts)]
 #[from_request(via(Extension))]

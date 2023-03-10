@@ -16,7 +16,7 @@ impl PercentDecodedStr {
     }
 
     pub(crate) fn as_str(&self) -> &str {
-        &*self.0
+        &self.0
     }
 
     pub(crate) fn into_inner(self) -> Arc<str> {

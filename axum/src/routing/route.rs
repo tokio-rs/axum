@@ -17,9 +17,10 @@ use std::{
     task::{Context, Poll},
 };
 use tower::{
-    util::{BoxCloneService, Oneshot},
-    ServiceExt,
+    util::{BoxCloneService, MapResponseLayer, Oneshot},
+    ServiceBuilder, ServiceExt,
 };
+use tower_layer::Layer;
 use tower_service::Service;
 
 /// How routes are stored inside a [`Router`](super::Router).
@@ -45,6 +46,25 @@ impl<B, E> Route<B, E> {
         req: Request<B>,
     ) -> Oneshot<BoxCloneService<Request<B>, Response, E>, Request<B>> {
         self.0.clone().oneshot(req)
+    }
+
+    pub(crate) fn layer<L, NewReqBody, NewError>(self, layer: L) -> Route<NewReqBody, NewError>
+    where
+        L: Layer<Route<B, E>> + Clone + Send + 'static,
+        L::Service: Service<Request<NewReqBody>> + Clone + Send + 'static,
+        <L::Service as Service<Request<NewReqBody>>>::Response: IntoResponse + 'static,
+        <L::Service as Service<Request<NewReqBody>>>::Error: Into<NewError> + 'static,
+        <L::Service as Service<Request<NewReqBody>>>::Future: Send + 'static,
+        NewReqBody: 'static,
+        NewError: 'static,
+    {
+        let layer = ServiceBuilder::new()
+            .map_err(Into::into)
+            .layer(MapResponseLayer::new(IntoResponse::into_response))
+            .layer(layer)
+            .into_inner();
+
+        Route::new(layer.layer(self))
     }
 }
 
@@ -135,9 +155,6 @@ where
 
     #[inline]
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        #[derive(Clone, Copy)]
-        struct AlreadyPassedThroughRouteFuture;
-
         let this = self.project();
 
         let mut res = match this.kind.project() {
@@ -150,16 +167,6 @@ where
                 response.take().expect("future polled after completion")
             }
         };
-
-        if res
-            .extensions()
-            .get::<AlreadyPassedThroughRouteFuture>()
-            .is_some()
-        {
-            return Poll::Ready(Ok(res));
-        } else {
-            res.extensions_mut().insert(AlreadyPassedThroughRouteFuture);
-        }
 
         set_allow_header(res.headers_mut(), this.allow_header);
 
@@ -205,6 +212,34 @@ fn set_content_length(size_hint: http_body::SizeHint, headers: &mut HeaderMap) {
         };
 
         headers.insert(CONTENT_LENGTH, header_value);
+    }
+}
+
+pin_project! {
+    /// A [`RouteFuture`] that always yields a [`Response`].
+    pub struct InfallibleRouteFuture<B> {
+        #[pin]
+        future: RouteFuture<B, Infallible>,
+    }
+}
+
+impl<B> InfallibleRouteFuture<B> {
+    pub(crate) fn new(future: RouteFuture<B, Infallible>) -> Self {
+        Self { future }
+    }
+}
+
+impl<B> Future for InfallibleRouteFuture<B>
+where
+    B: HttpBody,
+{
+    type Output = Response;
+
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        match futures_util::ready!(self.project().future.poll(cx)) {
+            Ok(response) => Poll::Ready(response),
+            Err(err) => match err {},
+        }
     }
 }
 

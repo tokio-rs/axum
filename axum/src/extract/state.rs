@@ -8,7 +8,7 @@ use std::{
 
 /// Extractor for state.
 ///
-/// See ["Accessing state in middleware"][state-from-middleware] for how to  
+/// See ["Accessing state in middleware"][state-from-middleware] for how to
 /// access state in middleware.
 ///
 /// [state-from-middleware]: crate::middleware#accessing-state-in-middleware
@@ -31,7 +31,10 @@ use std::{
 /// let state = AppState {};
 ///
 /// // create a `Router` that holds our state
-/// let app = Router::with_state(state).route("/", get(handler));
+/// let app = Router::new()
+///     .route("/", get(handler))
+///     // provide the state so the router can access it
+///     .with_state(state);
 ///
 /// async fn handler(
 ///     // access the state via the `State` extractor
@@ -40,8 +43,80 @@ use std::{
 /// ) {
 ///     // use `state`...
 /// }
-/// # let _: Router<AppState> = app;
+/// # let _: axum::Router = app;
 /// ```
+///
+/// Note that `State` is an extractor, so be sure to put it before any body
+/// extractors, see ["the order of extractors"][order-of-extractors].
+///
+/// [order-of-extractors]: crate::extract#the-order-of-extractors
+///
+/// ## Combining stateful routers
+///
+/// Multiple [`Router`]s can be combined with [`Router::nest`] or [`Router::merge`]
+/// When combining [`Router`]s with one of these methods, the [`Router`]s must have
+/// the same state type. Generally, this can be inferred automatically:
+///
+/// ```
+/// use axum::{Router, routing::get, extract::State};
+///
+/// #[derive(Clone)]
+/// struct AppState {}
+///
+/// let state = AppState {};
+///
+/// // create a `Router` that will be nested within another
+/// let api = Router::new()
+///     .route("/posts", get(posts_handler));
+///
+/// let app = Router::new()
+///     .nest("/api", api)
+///     .with_state(state);
+///
+/// async fn posts_handler(State(state): State<AppState>) {
+///     // use `state`...
+/// }
+/// # let _: axum::Router = app;
+/// ```
+///
+/// However, if you are composing [`Router`]s that are defined in separate scopes,
+/// you may need to annotate the [`State`] type explicitly:
+///
+/// ```
+/// use axum::{Router, routing::get, extract::State};
+///
+/// #[derive(Clone)]
+/// struct AppState {}
+///
+/// fn make_app() -> Router {
+///     let state = AppState {};
+///
+///     Router::new()
+///         .nest("/api", make_api())
+///         .with_state(state) // the outer Router's state is inferred
+/// }
+///
+/// // the inner Router must specify its state type to compose with the
+/// // outer router
+/// fn make_api() -> Router<AppState> {
+///     Router::new()
+///         .route("/posts", get(posts_handler))
+/// }
+///
+/// async fn posts_handler(State(state): State<AppState>) {
+///     // use `state`...
+/// }
+/// # let _: axum::Router = make_app();
+/// ```
+///
+/// In short, a [`Router`]'s generic state type defaults to `()`
+/// (no state) unless [`Router::with_state`] is called or the value
+/// of the generic type is given explicitly.
+///
+/// [`Router`]: crate::Router
+/// [`Router::merge`]: crate::Router::merge
+/// [`Router::nest`]: crate::Router::nest
+/// [`Router::with_state`]: crate::Router::with_state
 ///
 /// # With `MethodRouter`
 ///
@@ -119,9 +194,10 @@ use std::{
 ///     api_state: ApiState {},
 /// };
 ///
-/// let app = Router::with_state(state)
+/// let app = Router::new()
 ///     .route("/", get(handler))
-///     .route("/api/users", get(api_users));
+///     .route("/api/users", get(api_users))
+///     .with_state(state);
 ///
 /// async fn api_users(
 ///     // access the api specific state
@@ -134,8 +210,10 @@ use std::{
 ///     State(state): State<AppState>,
 /// ) {
 /// }
-/// # let _: Router<AppState> = app;
+/// # let _: axum::Router = app;
 /// ```
+///
+/// For convenience `FromRef` can also be derived using `#[derive(FromRef)]`.
 ///
 /// # For library authors
 ///
@@ -222,6 +300,49 @@ use std::{
 ///
 /// In general however we recommend you implement `Clone` for all your state types to avoid
 /// potential type errors.
+///
+/// # Shared mutable state
+///
+/// [As state is global within a `Router`][global] you can't directly get a mutable reference to
+/// the state.
+///
+/// The most basic solution is to use an `Arc<Mutex<_>>`. Which kind of mutex you need depends on
+/// your use case. See [the tokio docs] for more details.
+///
+/// Note that holding a locked `std::sync::Mutex` across `.await` points will result in `!Send`
+/// futures which are incompatible with axum. If you need to hold a mutex across `.await` points,
+/// consider using a `tokio::sync::Mutex` instead.
+///
+/// ## Example
+///
+/// ```
+/// use axum::{Router, routing::get, extract::State};
+/// use std::sync::{Arc, Mutex};
+///
+/// #[derive(Clone)]
+/// struct AppState {
+///     data: Arc<Mutex<String>>,
+/// }
+///
+/// async fn handler(State(state): State<AppState>) {
+///     let mut data = state.data.lock().expect("mutex was poisoned");
+///     *data = "updated foo".to_owned();
+///
+///     // ...
+/// }
+///
+/// let state = AppState {
+///     data: Arc::new(Mutex::new("foo".to_owned())),
+/// };
+///
+/// let app = Router::new()
+///     .route("/", get(handler))
+///     .with_state(state);
+/// # let _: Router = app;
+/// ```
+///
+/// [global]: crate::Router::with_state
+/// [the tokio docs]: https://docs.rs/tokio/1.25.0/tokio/sync/struct.Mutex.html#which-kind-of-mutex-should-you-use
 #[derive(Debug, Default, Clone, Copy)]
 pub struct State<S>(pub S);
 

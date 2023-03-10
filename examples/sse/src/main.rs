@@ -6,9 +6,8 @@
 
 use axum::{
     extract::TypedHeader,
-    http::StatusCode,
     response::sse::{Event, Sse},
-    routing::{get, get_service},
+    routing::get,
     Router,
 };
 use futures::stream::{self, Stream};
@@ -20,24 +19,16 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 #[tokio::main]
 async fn main() {
     tracing_subscriber::registry()
-        .with(tracing_subscriber::EnvFilter::new(
-            std::env::var("RUST_LOG")
+        .with(
+            tracing_subscriber::EnvFilter::try_from_default_env()
                 .unwrap_or_else(|_| "example_sse=debug,tower_http=debug".into()),
-        ))
+        )
         .with(tracing_subscriber::fmt::layer())
         .init();
 
     let assets_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("assets");
 
-    let static_files_service = get_service(
-        ServeDir::new(assets_dir).append_index_html_on_directories(true),
-    )
-    .handle_error(|error: std::io::Error| async move {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            format!("Unhandled internal error: {}", error),
-        )
-    });
+    let static_files_service = ServeDir::new(assets_dir).append_index_html_on_directories(true);
 
     // build our application with a route
     let app = Router::new()

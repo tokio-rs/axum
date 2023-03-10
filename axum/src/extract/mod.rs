@@ -11,6 +11,7 @@ pub mod rejection;
 pub mod ws;
 
 mod host;
+mod raw_form;
 mod raw_query;
 mod request_parts;
 mod state;
@@ -19,13 +20,14 @@ mod state;
 pub use axum_core::extract::{DefaultBodyLimit, FromRef, FromRequest, FromRequestParts};
 
 #[cfg(feature = "macros")]
-pub use axum_macros::{FromRequest, FromRequestParts};
+pub use axum_macros::{FromRef, FromRequest, FromRequestParts};
 
 #[doc(inline)]
 #[allow(deprecated)]
 pub use self::{
     host::Host,
-    path::Path,
+    path::{Path, RawPathParams},
+    raw_form::RawForm,
     raw_query::RawQuery,
     request_parts::{BodyStream, RawBody},
     state::State,
@@ -47,7 +49,7 @@ pub use crate::Extension;
 pub use crate::form::Form;
 
 #[cfg(feature = "matched-path")]
-mod matched_path;
+pub(crate) mod matched_path;
 
 #[cfg(feature = "matched-path")]
 #[doc(inline)]
@@ -100,7 +102,7 @@ pub(super) fn has_content_type(headers: &HeaderMap, expected_content_type: &mime
 mod tests {
     use crate::{routing::get, test_helpers::*, Router};
 
-    #[tokio::test]
+    #[crate::test]
     async fn consume_body() {
         let app = Router::new().route("/", get(|body: String| async { body }));
 

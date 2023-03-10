@@ -20,7 +20,8 @@ Types and traits for extracting data from requests.
 
 A handler function is an async function that takes any number of
 "extractors" as arguments. An extractor is a type that implements
-[`FromRequest`](crate::extract::FromRequest).
+[`FromRequest`](crate::extract::FromRequest)
+or [`FromRequestParts`](crate::extract::FromRequestParts).
 
 For example, [`Json`] is an extractor that consumes the request body and
 deserializes it as JSON into some target type:
@@ -167,20 +168,26 @@ handler takes.
 For example
 
 ```rust
-use axum::http::{Method, HeaderMap};
+use axum::{extract::State, http::{Method, HeaderMap}};
+#
+# #[derive(Clone)]
+# struct AppState {
+# }
 
 async fn handler(
     // `Method` and `HeaderMap` don't consume the request body so they can
-    // put anywhere in the argument list
+    // put anywhere in the argument list (but before `body`)
     method: Method,
     headers: HeaderMap,
+    // `State` is also an extractor so it needs to be before `body`
+    State(state): State<AppState>,
     // `String` consumes the request body and thus must be the last extractor
     body: String,
 ) {
     // ...
 }
 #
-# let _: axum::routing::MethodRouter = axum::routing::get(handler);
+# let _: axum::routing::MethodRouter<AppState, String> = axum::routing::get(handler);
 ```
 
 We get a compile error if `String` isn't the last extractor:

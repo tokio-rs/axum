@@ -16,9 +16,10 @@
 //! `cookie-key-expansion` | Enables the `Key::derive_from` method | No
 //! `erased-json` | Enables the `ErasedJson` response | No
 //! `form` | Enables the `Form` extractor | No
-//! `json-lines` | Enables the `json-lines` extractor and response | No
+//! `json-lines` | Enables the `JsonLines` extractor and response | No
+//! `multipart` | Enables the `Multpart` extractor | No
+//! `protobuf` | Enables the `Protobuf` extractor and response | No
 //! `query` | Enables the `Query` extractor | No
-//! `spa` | Enables the `Spa` router | No
 //! `typed-routing` | Enables the `TypedPath` routing utilities | No
 //!
 //! [`axum`]: https://crates.io/crates/axum
@@ -64,10 +65,14 @@
 #![cfg_attr(docsrs, feature(doc_cfg, doc_auto_cfg))]
 #![cfg_attr(test, allow(clippy::float_cmp))]
 
+#[allow(unused_extern_crates)]
+extern crate self as axum_extra;
+
 pub mod body;
 pub mod either;
 pub mod extract;
 pub mod handler;
+pub mod middleware;
 pub mod response;
 pub mod routing;
 

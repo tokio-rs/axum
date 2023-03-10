@@ -26,6 +26,12 @@ If your project isn't listed here and you would like it to be, please feel free 
 - [axum-casbin-auth](https://github.com/casbin-rs/axum-casbin-auth): Casbin access control middleware for axum framework
 - [aide](https://docs.rs/aide): Code-first Open API documentation generator with [axum integration](https://docs.rs/aide/latest/aide/axum/index.html).
 - [axum-jsonschema](https://docs.rs/axum-jsonschema/): A `Json<T>` extractor that does JSON schema validation of requests.
+- [axum-sessions](https://docs.rs/axum-sessions): Cookie-based sessions for axum via async-session.
+- [axum-login](https://docs.rs/axum-login): Session-based user authentication for axum.
+- [axum-csrf-sync-pattern](https://crates.io/crates/axum-csrf-sync-pattern): A middleware implementing CSRF STP for AJAX backends and API endpoints.
+- [axum-otel-metrics](https://github.com/ttys3/axum-otel-metrics/): A axum OpenTelemetry Metrics middleware with prometheus exporter supported.
+- [jwt-authorizer](https://crates.io/crates/jwt-authorizer): JWT authorization layer for axum (oidc discovery, validation options, claims extraction, etc.) 
+- [axum-typed-multipart](https://crates.io/crates/axum_typed_multipart): Type safe wrapper for `axum::extract::Multipart`.
 
 ## Project showcase
 
@@ -37,6 +43,7 @@ If your project isn't listed here and you would like it to be, please feel free 
 - [turbo.fish](https://turbo.fish/) ([repository](https://github.com/jplatte/turbo.fish)): Find out for yourself 😉
 - [Book Management](https://github.com/lz1998/axum-book-management): CRUD system of book-management with ORM and JWT for educational purposes.
 - [realworld-axum-sqlx](https://github.com/launchbadge/realworld-axum-sqlx): A Rust implementation of the [Realworld] demo app spec using Axum and [SQLx].
+  See https://github.com/davidpdrsn/realworld-axum-sqlx for a fork with up to date dependencies.
 - [Rustapi](https://github.com/ndelvalle/rustapi): RESTful API template using MongoDB
 - [Jotsy](https://github.com/ohsayan/jotsy): Self-hosted notes app powered by Skytable, Axum and Tokio
 - [Svix](https://www.svix.com) ([repository](https://github.com/svix/svix-webhooks)): Enterprise-ready webhook service
@@ -50,13 +57,21 @@ If your project isn't listed here and you would like it to be, please feel free 
 - [Petclinic](https://github.com/danipardo/petclinic): A port of Spring Framework's Petclinic showcase project to Axum
 - [axum-middleware-example](https://github.com/casbin-rs/axum-middleware-example): A authorization application using Axum-web, Casbin and Diesel, with JWT support.
 - [circleci-hook](https://github.com/DavidS/circleci-hook): Translate CircleCI WebHooks to OpenTelemetry traces to improve your test insights. Add detail with otel-cli to capture individual commands. Use the TRACEPARENT integration to add details from your tests.
+- [lishuuro.org](https://github.com/uros-5/backend-lishuuro): Small chess variant server that uses Rust as backend(Axum framework).
+- [freedit](https://github.com/freedit-org/freedit): A forum powered by rust. 
+- [axum-http-auth-example](https://github.com/i0n/axum-http-auth-example): Axum http auth example using postgres and redis. 
+- [Deaftone](https://github.com/Deaftone/Deaftone): Lightweight music server. With a clean and simple API 
+- [dropit](https://github.com/scotow/dropit): Temporary file hosting.
+- [cobrust](https://github.com/scotow/cobrust): Multiplayer web based snake game.
+- [meta-cross](https://github.com/scotow/meta-cross): Tweaked version of Tic-Tac-Toe.
+- [httq](https://github.com/scotow/httq) HTTP to MQTT trivial proxy.
 
 [Realworld]: https://github.com/gothinkster/realworld
 [SQLx]: https://github.com/launchbadge/sqlx
 
 ## Tutorials
 
-- [Rust on Nails](https://cloak.software/blog/rust-on-nails/): A full stack architecture for Rust web applications (uses Axum)
+- [Rust on Nails](https://rust-on-nails.com/): A full stack architecture for Rust web applications (uses Axum)
 - [axum-tutorial] ([website][axum-tutorial-website]): Axum web framework tutorial for beginners.
 - [demo-rust-axum]: Demo of Rust and axum web framework
 - [Introduction to axum (talk)]: Talk about axum from the Copenhagen Rust Meetup.

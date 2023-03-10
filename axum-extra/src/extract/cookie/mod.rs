@@ -83,7 +83,7 @@ pub use cookie::Key;
 ///     .route("/me", get(me));
 /// # let app: Router = app;
 /// ```
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct CookieJar {
     jar: cookie::CookieJar,
 }
@@ -114,7 +114,7 @@ impl CookieJar {
     ///
     /// The cookies in `headers` will be added to the jar.
     ///
-    /// This is inteded to be used in middleware and other places where it might be difficult to
+    /// This is intended to be used in middleware and other places where it might be difficult to
     /// run extractors. Normally you should create `CookieJar`s through [`FromRequestParts`].
     ///
     /// [`FromRequestParts`]: axum::extract::FromRequestParts
@@ -255,11 +255,11 @@ mod tests {
                     custom_key: CustomKey(Key::generate()),
                 };
 
-                let app = Router::<_, Body>::with_state(state)
+                let app = Router::<_, Body>::new()
                     .route("/set", get(set_cookie))
                     .route("/get", get(get_cookie))
                     .route("/remove", get(remove_cookie))
-                    .into_service();
+                    .with_state(state);
 
                 let res = app
                     .clone()
@@ -302,9 +302,15 @@ mod tests {
     }
 
     cookie_test!(plaintext_cookies, CookieJar);
+
+    #[cfg(feature = "cookie-signed")]
     cookie_test!(signed_cookies, SignedCookieJar);
+    #[cfg(feature = "cookie-signed")]
     cookie_test!(signed_cookies_with_custom_key, SignedCookieJar<CustomKey>);
+
+    #[cfg(feature = "cookie-private")]
     cookie_test!(private_cookies, PrivateCookieJar);
+    #[cfg(feature = "cookie-private")]
     cookie_test!(private_cookies_with_custom_key, PrivateCookieJar<CustomKey>);
 
     #[derive(Clone)]
@@ -334,6 +340,7 @@ mod tests {
         }
     }
 
+    #[cfg(feature = "cookie-signed")]
     #[tokio::test]
     async fn signed_cannot_access_invalid_cookies() {
         async fn get_cookie(jar: SignedCookieJar) -> impl IntoResponse {
@@ -345,9 +352,9 @@ mod tests {
             custom_key: CustomKey(Key::generate()),
         };
 
-        let app = Router::<_, Body>::with_state(state)
+        let app = Router::<_, Body>::new()
             .route("/get", get(get_cookie))
-            .into_service();
+            .with_state(state);
 
         let res = app
             .clone()

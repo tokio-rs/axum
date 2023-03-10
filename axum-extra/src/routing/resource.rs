@@ -33,21 +33,10 @@ use axum::{
 /// # let _: Router = app;
 /// ```
 #[derive(Debug)]
+#[must_use]
 pub struct Resource<S = (), B = Body> {
     pub(crate) name: String,
     pub(crate) router: Router<S, B>,
-}
-
-impl<B> Resource<(), B>
-where
-    B: axum::body::HttpBody + Send + 'static,
-{
-    /// Create a `Resource` with the given name.
-    ///
-    /// All routes will be nested at `/{resource_name}`.
-    pub fn named(resource_name: &str) -> Self {
-        Self::named_with((), resource_name)
-    }
 }
 
 impl<S, B> Resource<S, B>
@@ -55,13 +44,13 @@ where
     B: axum::body::HttpBody + Send + 'static,
     S: Clone + Send + Sync + 'static,
 {
-    /// Create a `Resource` with the given name and state.
+    /// Create a `Resource` with the given name.
     ///
     /// All routes will be nested at `/{resource_name}`.
-    pub fn named_with(state: S, resource_name: &str) -> Self {
+    pub fn named(resource_name: &str) -> Self {
         Self {
             name: resource_name.to_owned(),
-            router: Router::with_state(state),
+            router: Router::new(),
         }
     }
 
@@ -149,8 +138,8 @@ where
     }
 }
 
-impl<B> From<Resource<B>> for Router<B> {
-    fn from(resource: Resource<B>) -> Self {
+impl<S, B> From<Resource<S, B>> for Router<S, B> {
+    fn from(resource: Resource<S, B>) -> Self {
         resource.router
     }
 }
@@ -159,7 +148,7 @@ impl<B> From<Resource<B>> for Router<B> {
 mod tests {
     #[allow(unused_imports)]
     use super::*;
-    use axum::{extract::Path, http::Method, routing::RouterService, Router};
+    use axum::{extract::Path, http::Method, Router};
     use http::Request;
     use tower::{Service, ServiceExt};
 
@@ -169,12 +158,12 @@ mod tests {
             .index(|| async { "users#index" })
             .create(|| async { "users#create" })
             .new(|| async { "users#new" })
-            .show(|Path(id): Path<u64>| async move { format!("users#show id={}", id) })
-            .edit(|Path(id): Path<u64>| async move { format!("users#edit id={}", id) })
-            .update(|Path(id): Path<u64>| async move { format!("users#update id={}", id) })
-            .destroy(|Path(id): Path<u64>| async move { format!("users#destroy id={}", id) });
+            .show(|Path(id): Path<u64>| async move { format!("users#show id={id}") })
+            .edit(|Path(id): Path<u64>| async move { format!("users#edit id={id}") })
+            .update(|Path(id): Path<u64>| async move { format!("users#update id={id}") })
+            .destroy(|Path(id): Path<u64>| async move { format!("users#destroy id={id}") });
 
-        let mut app = Router::new().merge(users).into_service();
+        let mut app = Router::new().merge(users);
 
         assert_eq!(
             call_route(&mut app, Method::GET, "/users").await,
@@ -217,7 +206,7 @@ mod tests {
         );
     }
 
-    async fn call_route(app: &mut RouterService, method: Method, uri: &str) -> String {
+    async fn call_route(app: &mut Router, method: Method, uri: &str) -> String {
         let res = app
             .ready()
             .await

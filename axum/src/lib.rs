@@ -1,3 +1,4 @@
+#![cfg_attr(nightly_error_messages, feature(rustc_attrs))]
 //! axum is a web application framework that focuses on ergonomics and modularity.
 //!
 //! # Table of contents
@@ -60,6 +61,9 @@
 //! }
 //! ```
 //!
+//! Note using `#[tokio::main]` requires you enable tokio's `macros` and `rt-multi-thread` features
+//! or just `full` to enable all features (`cargo add tokio --features macros,rt-multi-thread`).
+//!
 //! # Routing
 //!
 //! [`Router`] is used to setup which paths goes to which services:
@@ -93,7 +97,7 @@
 //!
 //! # Extractors
 //!
-//! An extractor is a type that implements [`FromRequest`] or [`FromRequestParts`]. Extractors is
+//! An extractor is a type that implements [`FromRequest`] or [`FromRequestParts`]. Extractors are
 //! how you pick apart the incoming request to get the parts your handler needs.
 //!
 //! ```rust
@@ -164,11 +168,12 @@
 //!
 //! # Sharing state with handlers
 //!
-//! It is common to share some state between handlers for example to share a
-//! pool of database connections or clients to other services.
+//! It is common to share some state between handlers. For example, a
+//! pool of database connections or clients to other services may need to
+//! be shared.
 //!
 //! The three most common ways of doing that are:
-//! - Using the [`State`] extractor.
+//! - Using the [`State`] extractor
 //! - Using request extensions
 //! - Using closure captures
 //!
@@ -188,8 +193,9 @@
 //!
 //! let shared_state = Arc::new(AppState { /* ... */ });
 //!
-//! let app = Router::with_state(shared_state)
-//!     .route("/", get(handler));
+//! let app = Router::new()
+//!     .route("/", get(handler))
+//!     .with_state(shared_state);
 //!
 //! async fn handler(
 //!     State(state): State<Arc<AppState>>,
@@ -202,7 +208,7 @@
 //! ```
 //!
 //! You should prefer using [`State`] if possible since it's more type safe. The downside is that
-//! its less dynamic than request extensions.
+//! it's less dynamic than request extensions.
 //!
 //! See [`State`] for more details about accessing state.
 //!
@@ -434,6 +440,7 @@
 #[macro_use]
 pub(crate) mod macros;
 
+mod boxed;
 mod extension;
 #[cfg(feature = "form")]
 mod form;
@@ -472,7 +479,7 @@ pub use self::extension::Extension;
 #[cfg(feature = "json")]
 pub use self::json::Json;
 #[doc(inline)]
-pub use self::routing::{Router, RouterService};
+pub use self::routing::Router;
 
 #[doc(inline)]
 #[cfg(feature = "headers")]
@@ -489,3 +496,6 @@ pub use axum_core::{BoxError, Error, RequestExt, RequestPartsExt};
 pub use axum_macros::debug_handler;
 
 pub use self::service_ext::ServiceExt;
+
+#[cfg(test)]
+use axum_macros::__private_axum_test as test;

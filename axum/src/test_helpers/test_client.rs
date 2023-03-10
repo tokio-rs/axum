@@ -1,4 +1,4 @@
-use super::{BoxError, HttpBody, Router};
+use super::{BoxError, HttpBody};
 use bytes::Bytes;
 use http::{
     header::{HeaderName, HeaderValue},
@@ -15,14 +15,7 @@ pub(crate) struct TestClient {
 }
 
 impl TestClient {
-    pub(crate) fn new<S>(router: Router<S, Body>) -> Self
-    where
-        S: Clone + Send + Sync + 'static,
-    {
-        Self::from_service(router.into_service())
-    }
-
-    pub(crate) fn from_service<S, ResBody>(svc: S) -> Self
+    pub(crate) fn new<S, ResBody>(svc: S) -> Self
     where
         S: Service<Request<Body>, Response = http::Response<ResBody>> + Clone + Send + 'static,
         ResBody: HttpBody + Send + 'static,
@@ -33,7 +26,7 @@ impl TestClient {
     {
         let listener = TcpListener::bind("127.0.0.1:0").expect("Could not bind ephemeral socket");
         let addr = listener.local_addr().unwrap();
-        println!("Listening on {}", addr);
+        println!("Listening on {addr}");
 
         tokio::spawn(async move {
             let server = Server::from_tcp(listener).unwrap().serve(Shared::new(svc));

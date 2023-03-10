@@ -7,9 +7,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+- None.
+
+# 0.3.3 (03. March, 2023)
+
+- **fixed:** Add `#[must_use]` attributes to types that do nothing unless used ([#1809])
+
+[#1809]: https://github.com/tokio-rs/axum/pull/1809
+
+# 0.3.2 (20. January, 2023)
+
+- **added:** Implement `IntoResponse` for `&'static [u8; N]` and `[u8; N]` ([#1690])
+
+[#1690]: https://github.com/tokio-rs/axum/pull/1690
+
+# 0.3.1 (9. January, 2023)
+
+- **added:** Add `body_text` and `status` methods to built-in rejections ([#1612])
+
+[#1612]: https://github.com/tokio-rs/axum/pull/1612
+
+# 0.3.0 (25. November, 2022)
+
+- **added:** Added new `FromRequestParts` trait. See axum's changelog for more
+  details ([#1272])
+- **breaking:** `FromRequest` has been reworked and `RequestParts` has been
+  removed. See axum's changelog for more details ([#1272])
+- **breaking:** `BodyAlreadyExtracted` has been removed ([#1272])
+- **breaking:** `AppendHeaders` now works on any `impl IntoIterator` ([#1495])
+
+[#1272]: https://github.com/tokio-rs/axum/pull/1272
+[#1495]: https://github.com/tokio-rs/axum/pull/1495
+
+<details>
+<summary>0.3.0 Pre-Releases</summary>
+
+# 0.3.0-rc.3 (8. November, 2022)
+
 - **added:** Add `DefaultBodyLimit::max` for changing the default body limit ([#1397])
+- **added:** Add `Error::into_inner` for converting `Error` to `BoxError` without allocating ([#1476])
+- **breaking:** `AppendHeaders` now works on any `impl IntoIterator` ([#1495])
 
 [#1397]: https://github.com/tokio-rs/axum/pull/1397
+[#1476]: https://github.com/tokio-rs/axum/pull/1476
+[#1495]: https://github.com/tokio-rs/axum/pull/1495
 
 # 0.3.0-rc.2 (10. September, 2022)
 
@@ -38,6 +79,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 [#1155]: https://github.com/tokio-rs/axum/pull/1155
 [#1272]: https://github.com/tokio-rs/axum/pull/1272
+
+</details>
+
+# 0.2.8 (10. September, 2022)
+
+- **breaking:** Added default limit to how much data `Bytes::from_request` will
+  consume. Previously it would attempt to consume the entire request body
+  without checking its length. This meant if a malicious peer sent an large (or
+  infinite) request body your server might run out of memory and crash.
+
+  The default limit is at 2 MB and can be disabled by adding the new
+  `DefaultBodyLimit::disable()` middleware. See its documentation for more
+  details.
+
+  This also applies to `String` which used `Bytes::from_request` internally.
+
+  ([#1346])
+
+[#1346]: https://github.com/tokio-rs/axum/pull/1346
 
 # 0.2.7 (10. July, 2022)
 
@@ -76,7 +136,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **added:** Add `response::ErrorResponse` and `response::Result` for
   `IntoResponse`-based error handling ([#921])
 
-[#921]: https://github.com/tokio-rs/axum/pull/921 
+[#921]: https://github.com/tokio-rs/axum/pull/921
 
 # 0.2.2 (19. April, 2022)
 

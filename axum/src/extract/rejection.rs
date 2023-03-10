@@ -1,9 +1,6 @@
 //! Rejection response types.
 
-use crate::{BoxError, Error};
-use axum_core::response::{IntoResponse, Response};
-
-pub use crate::extract::path::FailedToDeserializePathParams;
+pub use crate::extract::path::{FailedToDeserializePathParams, InvalidUtf8InPathParam};
 pub use axum_core::extract::rejection::*;
 
 #[cfg(feature = "json")]
@@ -59,7 +56,9 @@ define_rejection! {
 define_rejection! {
     #[status = UNSUPPORTED_MEDIA_TYPE]
     #[body = "Form requests must have `Content-Type: application/x-www-form-urlencoded`"]
-    /// Rejection type used if you try and extract the request more than once.
+    /// Rejection type for [`Form`](super::Form) or [`RawForm`](super::RawForm)
+    /// used if the `Content-Type` header is missing
+    /// or its value is not `application/x-www-form-urlencoded`.
     pub struct InvalidFormContentType;
 }
 
@@ -71,38 +70,29 @@ define_rejection! {
     pub struct FailedToResolveHost;
 }
 
-/// Rejection type for extractors that deserialize query strings if the input
-/// couldn't be deserialized into the target type.
-#[derive(Debug)]
-pub struct FailedToDeserializeQueryString {
-    error: Error,
+define_rejection! {
+    #[status = BAD_REQUEST]
+    #[body = "Failed to deserialize form"]
+    /// Rejection type used if the [`Form`](super::Form) extractor is unable to
+    /// deserialize the form into the target type.
+    pub struct FailedToDeserializeForm(Error);
 }
 
-impl FailedToDeserializeQueryString {
-    #[doc(hidden)]
-    pub fn __private_new<E>(error: E) -> Self
-    where
-        E: Into<BoxError>,
-    {
-        FailedToDeserializeQueryString {
-            error: Error::new(error),
-        }
-    }
+define_rejection! {
+    #[status = UNPROCESSABLE_ENTITY]
+    #[body = "Failed to deserialize form body"]
+    /// Rejection type used if the [`Form`](super::Form) extractor is unable to
+    /// deserialize the form body into the target type.
+    pub struct FailedToDeserializeFormBody(Error);
 }
 
-impl IntoResponse for FailedToDeserializeQueryString {
-    fn into_response(self) -> Response {
-        (http::StatusCode::BAD_REQUEST, self.to_string()).into_response()
-    }
+define_rejection! {
+    #[status = BAD_REQUEST]
+    #[body = "Failed to deserialize query string"]
+    /// Rejection type used if the [`Query`](super::Query) extractor is unable to
+    /// deserialize the form into the target type.
+    pub struct FailedToDeserializeQueryString(Error);
 }
-
-impl std::fmt::Display for FailedToDeserializeQueryString {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Failed to deserialize query string: {}", self.error,)
-    }
-}
-
-impl std::error::Error for FailedToDeserializeQueryString {}
 
 composite_rejection! {
     /// Rejection used for [`Query`](super::Query).
@@ -121,7 +111,19 @@ composite_rejection! {
     /// can fail.
     pub enum FormRejection {
         InvalidFormContentType,
-        FailedToDeserializeQueryString,
+        FailedToDeserializeForm,
+        FailedToDeserializeFormBody,
+        BytesRejection,
+    }
+}
+
+composite_rejection! {
+    /// Rejection used for [`RawForm`](super::RawForm).
+    ///
+    /// Contains one variant for each way the [`RawForm`](super::RawForm) extractor
+    /// can fail.
+    pub enum RawFormRejection {
+        InvalidFormContentType,
         BytesRejection,
     }
 }
@@ -158,6 +160,17 @@ composite_rejection! {
     /// can fail.
     pub enum PathRejection {
         FailedToDeserializePathParams,
+        MissingPathParams,
+    }
+}
+
+composite_rejection! {
+    /// Rejection used for [`RawPathParams`](super::RawPathParams).
+    ///
+    /// Contains one variant for each way the [`RawPathParams`](super::RawPathParams) extractor
+    /// can fail.
+    pub enum RawPathParamsRejection {
+        InvalidUtf8InPathParam,
         MissingPathParams,
     }
 }

@@ -267,9 +267,9 @@ fn expand_unnamed_fields(
 
 fn simple_pluralize(count: usize, word: &str) -> String {
     if count == 1 {
-        format!("{} {}", count, word)
+        format!("{count} {word}")
     } else {
-        format!("{} {}s", count, word)
+        format!("{count} {word}s")
     }
 }
 
@@ -354,7 +354,7 @@ fn format_str_from_path(segments: &[Segment]) -> String {
     segments
         .iter()
         .map(|segment| match segment {
-            Segment::Capture(capture, _) => format!("{{{}}}", capture),
+            Segment::Capture(capture, _) => format!("{{{capture}}}"),
             Segment::Static(segment) => segment.to_owned(),
         })
         .collect::<Vec<_>>()

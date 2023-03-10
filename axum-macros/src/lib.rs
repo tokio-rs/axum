@@ -48,7 +48,10 @@ use quote::{quote, ToTokens};
 use syn::{parse::Parse, Type};
 
 mod attr_parsing;
+#[cfg(feature = "__private")]
+mod axum_test;
 mod debug_handler;
+mod from_ref;
 mod from_request;
 mod typed_path;
 mod with_position;
@@ -180,7 +183,6 @@ use from_request::Trait::{FromRequest, FromRequestParts};
 /// rejection type with `#[from_request(rejection(YourType))]`:
 ///
 /// ```
-/// use axum_macros::FromRequest;
 /// use axum::{
 ///     extract::{
 ///         rejection::{ExtensionRejection, StringRejection},
@@ -188,10 +190,6 @@ use from_request::Trait::{FromRequest, FromRequestParts};
 ///     },
 ///     Extension,
 ///     response::{Response, IntoResponse},
-///     http::StatusCode,
-///     headers::ContentType,
-///     body::Bytes,
-///     async_trait,
 /// };
 ///
 /// #[derive(FromRequest)]
@@ -462,8 +460,7 @@ pub fn derive_from_request_parts(item: TokenStream) -> TokenStream {
 /// As the error message says, handler function needs to be async.
 ///
 /// ```
-/// use axum::{routing::get, Router};
-/// use axum_macros::debug_handler;
+/// use axum::{routing::get, Router, debug_handler};
 ///
 /// #[tokio::main]
 /// async fn main() {
@@ -492,8 +489,7 @@ pub fn derive_from_request_parts(item: TokenStream) -> TokenStream {
 /// To work around that the request body type can be customized like so:
 ///
 /// ```
-/// use axum::{body::BoxBody, http::Request};
-/// # use axum_macros::debug_handler;
+/// use axum::{body::BoxBody, http::Request, debug_handler};
 ///
 /// #[debug_handler(body = BoxBody)]
 /// async fn handler(request: Request<BoxBody>) {}
@@ -505,8 +501,7 @@ pub fn derive_from_request_parts(item: TokenStream) -> TokenStream {
 /// [`axum::extract::State`] argument:
 ///
 /// ```
-/// use axum::extract::State;
-/// # use axum_macros::debug_handler;
+/// use axum::{debug_handler, extract::State};
 ///
 /// #[debug_handler]
 /// async fn handler(
@@ -522,8 +517,7 @@ pub fn derive_from_request_parts(item: TokenStream) -> TokenStream {
 /// customize the state type you can set it with `#[debug_handler(state = ...)]`:
 ///
 /// ```
-/// use axum::extract::{State, FromRef};
-/// # use axum_macros::debug_handler;
+/// use axum::{debug_handler, extract::{State, FromRef}};
 ///
 /// #[debug_handler(state = AppState)]
 /// async fn handler(
@@ -546,6 +540,31 @@ pub fn derive_from_request_parts(item: TokenStream) -> TokenStream {
 /// }
 /// ```
 ///
+/// # Limitations
+///
+/// This macro does not work for functions in an `impl` block that don't have a `self` parameter:
+///
+/// ```compile_fail
+/// use axum::{debug_handler, extract::Path};
+///
+/// struct App {}
+///
+/// impl App {
+///     #[debug_handler]
+///     async fn handler(Path(_): Path<String>) {}
+/// }
+/// ```
+///
+/// This will yield an error similar to this:
+///
+/// ```text
+/// error[E0425]: cannot find function `__axum_macros_check_handler_0_from_request_check` in this scope
+//    --> src/main.rs:xx:xx
+//     |
+//  xx |     pub async fn handler(Path(_): Path<String>)  {}
+//     |                                   ^^^^ not found in this scope
+/// ```
+///
 /// # Performance
 ///
 /// This macro has no effect when compiled with the release profile. (eg. `cargo build --release`)
@@ -563,6 +582,22 @@ pub fn debug_handler(_attr: TokenStream, input: TokenStream) -> TokenStream {
     return expand_attr_with(_attr, input, debug_handler::expand);
 }
 
+/// Private API: Do no use this!
+///
+/// Attribute macro to be placed on test functions that'll generate two functions:
+///
+/// 1. One identical to the function it was placed on.
+/// 2. One where calls to `Router::nest` has been replaced with `Router::nest_service`
+///
+/// This makes it easy to that `nest` and `nest_service` behaves in the same way, without having to
+/// manually write identical tests for both methods.
+#[cfg(feature = "__private")]
+#[proc_macro_attribute]
+#[doc(hidden)]
+pub fn __private_axum_test(_attr: TokenStream, input: TokenStream) -> TokenStream {
+    expand_attr_with(_attr, input, axum_test::expand)
+}
+
 /// Derive an implementation of [`axum_extra::routing::TypedPath`].
 ///
 /// See that trait for more details.
@@ -571,6 +606,56 @@ pub fn debug_handler(_attr: TokenStream, input: TokenStream) -> TokenStream {
 #[proc_macro_derive(TypedPath, attributes(typed_path))]
 pub fn derive_typed_path(input: TokenStream) -> TokenStream {
     expand_with(input, typed_path::expand)
+}
+
+/// Derive an implementation of [`FromRef`] for each field in a struct.
+///
+/// # Example
+///
+/// ```
+/// use axum::{
+///     Router,
+///     routing::get,
+///     extract::{State, FromRef},
+/// };
+///
+/// #
+/// # type AuthToken = String;
+/// # type DatabasePool = ();
+/// #
+/// // This will implement `FromRef` for each field in the struct.
+/// #[derive(FromRef, Clone)]
+/// struct AppState {
+///     auth_token: AuthToken,
+///     database_pool: DatabasePool,
+///     // fields can also be skipped
+///     #[from_ref(skip)]
+///     api_token: String,
+/// }
+///
+/// // So those types can be extracted via `State`
+/// async fn handler(State(auth_token): State<AuthToken>) {}
+///
+/// async fn other_handler(State(database_pool): State<DatabasePool>) {}
+///
+/// # let auth_token = Default::default();
+/// # let database_pool = Default::default();
+/// let state = AppState {
+///     auth_token,
+///     database_pool,
+///     api_token: "secret".to_owned(),
+/// };
+///
+/// let app = Router::new()
+///     .route("/", get(handler).post(other_handler))
+///     .with_state(state);
+/// # let _: axum::Router = app;
+/// ```
+///
+/// [`FromRef`]: https://docs.rs/axum/latest/axum/extract/trait.FromRef.html
+#[proc_macro_derive(FromRef, attributes(from_ref))]
+pub fn derive_from_ref(item: TokenStream) -> TokenStream {
+    expand_with(item, |item| Ok(from_ref::expand(item)))
 }
 
 fn expand_with<F, I, K>(input: TokenStream, f: F) -> TokenStream
@@ -605,7 +690,7 @@ where
         Ok(tokens) => {
             let tokens = (quote! { #tokens }).into();
             if std::env::var_os("AXUM_MACROS_DEBUG").is_some() {
-                eprintln!("{}", tokens);
+                eprintln!("{tokens}");
             }
             tokens
         }
@@ -653,7 +738,7 @@ where
 
 #[cfg(test)]
 fn run_ui_tests(directory: &str) {
-    #[rustversion::stable]
+    #[rustversion::nightly]
     fn go(directory: &str) {
         let t = trybuild::TestCases::new();
 
@@ -662,7 +747,7 @@ fn run_ui_tests(directory: &str) {
                 path = path_without_prefix.to_owned();
             }
 
-            if !path.contains(&format!("/{}/", directory)) {
+            if !path.contains(&format!("/{directory}/")) {
                 return;
             }
 
@@ -674,13 +759,13 @@ fn run_ui_tests(directory: &str) {
                 panic!()
             }
         } else {
-            t.compile_fail(format!("tests/{}/fail/*.rs", directory));
-            t.pass(format!("tests/{}/pass/*.rs", directory));
+            t.compile_fail(format!("tests/{directory}/fail/*.rs"));
+            t.pass(format!("tests/{directory}/pass/*.rs"));
         }
     }
 
-    #[rustversion::not(stable)]
-    fn go(directory: &str) {}
+    #[rustversion::not(nightly)]
+    fn go(_directory: &str) {}
 
     go(directory);
 }

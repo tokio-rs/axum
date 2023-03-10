@@ -47,13 +47,22 @@ pub(crate) fn expand(attr: Attrs, item_fn: ItemFn) -> TokenStream {
         err.unwrap_or_else(|| {
             let state_ty = state_ty.unwrap_or_else(|| syn::parse_quote!(()));
 
-            let check_inputs_impls_from_request =
-                check_inputs_impls_from_request(&item_fn, &body_ty, state_ty);
+            let check_input_order = check_input_order(&item_fn);
             let check_future_send = check_future_send(&item_fn);
 
-            quote! {
-                #check_inputs_impls_from_request
-                #check_future_send
+            if let Some(check_input_order) = check_input_order {
+                quote! {
+                    #check_input_order
+                    #check_future_send
+                }
+            } else {
+                let check_inputs_impls_from_request =
+                    check_inputs_impls_from_request(&item_fn, &body_ty, state_ty);
+
+                quote! {
+                    #check_inputs_impls_from_request
+                    #check_future_send
+                }
             }
         })
     } else {
@@ -111,9 +120,8 @@ fn check_extractor_count(item_fn: &ItemFn) -> Option<TokenStream> {
         None
     } else {
         let error_message = format!(
-            "Handlers cannot take more than {} arguments. \
+            "Handlers cannot take more than {max_extractors} arguments. \
             Use `(a, b): (ExtractorA, ExtractorA)` to further nest extractors",
-            max_extractors,
         );
         let error = syn::Error::new_spanned(&item_fn.sig.inputs, error_message).to_compile_error();
         Some(error)
@@ -220,6 +228,8 @@ fn check_inputs_impls_from_request(
                 }
             };
 
+            let consumes_request = request_consuming_type_name(&ty).is_some();
+
             let check_fn = format_ident!(
                 "__axum_macros_check_{}_{}_from_request_check",
                 item_fn.sig.ident,
@@ -244,24 +254,29 @@ fn check_inputs_impls_from_request(
                 }
             };
 
-            let check_fn_generics = if must_impl_from_request_parts {
+            let check_fn_generics = if must_impl_from_request_parts || consumes_request {
                 quote! {}
             } else {
                 quote! { <M> }
             };
 
             let from_request_bound = if must_impl_from_request_parts {
-                quote! {
+                quote_spanned! {span=>
                     #ty: ::axum::extract::FromRequestParts<#state_ty> + Send
                 }
+            } else if consumes_request {
+                quote_spanned! {span=>
+                    #ty: ::axum::extract::FromRequest<#state_ty, #body_ty> + Send
+                }
             } else {
-                quote! {
+                quote_spanned! {span=>
                     #ty: ::axum::extract::FromRequest<#state_ty, #body_ty, M> + Send
                 }
             };
 
             quote_spanned! {span=>
                 #[allow(warnings)]
+                #[doc(hidden)]
                 fn #check_fn #check_fn_generics()
                 where
                     #from_request_bound,
@@ -270,6 +285,7 @@ fn check_inputs_impls_from_request(
                 // we have to call the function to actually trigger a compile error
                 // since the function is generic, just defining it is not enough
                 #[allow(warnings)]
+                #[doc(hidden)]
                 fn #call_check_fn()
                 {
                     #call_check_fn_body
@@ -277,6 +293,107 @@ fn check_inputs_impls_from_request(
             }
         })
         .collect::<TokenStream>()
+}
+
+fn check_input_order(item_fn: &ItemFn) -> Option<TokenStream> {
+    let types_that_consume_the_request = item_fn
+        .sig
+        .inputs
+        .iter()
+        .enumerate()
+        .filter_map(|(idx, arg)| {
+            let ty = match arg {
+                FnArg::Typed(pat_type) => &*pat_type.ty,
+                FnArg::Receiver(_) => return None,
+            };
+            let type_name = request_consuming_type_name(ty)?;
+
+            Some((idx, type_name, ty.span()))
+        })
+        .collect::<Vec<_>>();
+
+    if types_that_consume_the_request.is_empty() {
+        return None;
+    };
+
+    // exactly one type that consumes the request
+    if types_that_consume_the_request.len() == 1 {
+        // and that is not the last
+        if types_that_consume_the_request[0].0 != item_fn.sig.inputs.len() - 1 {
+            let (_idx, type_name, span) = &types_that_consume_the_request[0];
+            let error = format!(
+                "`{type_name}` consumes the request body and thus must be \
+                the last argument to the handler function"
+            );
+            return Some(quote_spanned! {*span=>
+                compile_error!(#error);
+            });
+        } else {
+            return None;
+        }
+    }
+
+    if types_that_consume_the_request.len() == 2 {
+        let (_, first, _) = &types_that_consume_the_request[0];
+        let (_, second, _) = &types_that_consume_the_request[1];
+        let error = format!(
+            "Can't have two extractors that consume the request body. \
+            `{first}` and `{second}` both do that.",
+        );
+        let span = item_fn.sig.inputs.span();
+        Some(quote_spanned! {span=>
+            compile_error!(#error);
+        })
+    } else {
+        let types = WithPosition::new(types_that_consume_the_request.into_iter())
+            .map(|pos| match pos {
+                Position::First((_, type_name, _)) | Position::Middle((_, type_name, _)) => {
+                    format!("`{type_name}`, ")
+                }
+                Position::Last((_, type_name, _)) => format!("and `{type_name}`"),
+                Position::Only(_) => unreachable!(),
+            })
+            .collect::<String>();
+
+        let error = format!(
+            "Can't have more than one extractor that consume the request body. \
+            {types} all do that.",
+        );
+        let span = item_fn.sig.inputs.span();
+        Some(quote_spanned! {span=>
+            compile_error!(#error);
+        })
+    }
+}
+
+fn request_consuming_type_name(ty: &Type) -> Option<&'static str> {
+    let path = match ty {
+        Type::Path(type_path) => &type_path.path,
+        _ => return None,
+    };
+
+    let ident = match path.segments.last() {
+        Some(path_segment) => &path_segment.ident,
+        None => return None,
+    };
+
+    let type_name = match &*ident.to_string() {
+        "Json" => "Json<_>",
+        "BodyStream" => "BodyStream",
+        "RawBody" => "RawBody<_>",
+        "RawForm" => "RawForm",
+        "Multipart" => "Multipart",
+        "Protobuf" => "Protobuf",
+        "JsonLines" => "JsonLines<_>",
+        "Form" => "Form<_>",
+        "Request" => "Request<_>",
+        "Bytes" => "Bytes",
+        "String" => "String",
+        "Parts" => "Parts",
+        _ => return None,
+    };
+
+    Some(type_name)
 }
 
 fn check_output_impls_into_response(item_fn: &ItemFn) -> TokenStream {
@@ -312,6 +429,7 @@ fn check_output_impls_into_response(item_fn: &ItemFn) -> TokenStream {
     let make = if item_fn.sig.asyncness.is_some() {
         quote_spanned! {span=>
             #[allow(warnings)]
+            #[doc(hidden)]
             async fn #make_value_name() -> #ty {
                 #declare_inputs
                 #block
@@ -320,6 +438,7 @@ fn check_output_impls_into_response(item_fn: &ItemFn) -> TokenStream {
     } else {
         quote_spanned! {span=>
             #[allow(warnings)]
+            #[doc(hidden)]
             fn #make_value_name() -> #ty {
                 #declare_inputs
                 #block
@@ -334,6 +453,7 @@ fn check_output_impls_into_response(item_fn: &ItemFn) -> TokenStream {
             #make
 
             #[allow(warnings)]
+            #[doc(hidden)]
             async fn #name() {
                 let value = #receiver #make_value_name().await;
                 fn check<T>(_: T)
@@ -345,6 +465,7 @@ fn check_output_impls_into_response(item_fn: &ItemFn) -> TokenStream {
     } else {
         quote_spanned! {span=>
             #[allow(warnings)]
+            #[doc(hidden)]
             async fn #name() {
                 #make
 
@@ -365,7 +486,7 @@ fn check_future_send(item_fn: &ItemFn) -> TokenStream {
         match &item_fn.sig.output {
             syn::ReturnType::Default => {
                 return syn::Error::new_spanned(
-                    &item_fn.sig.fn_token,
+                    item_fn.sig.fn_token,
                     "Handlers must be `async fn`s",
                 )
                 .into_compile_error();
@@ -374,7 +495,7 @@ fn check_future_send(item_fn: &ItemFn) -> TokenStream {
         };
     }
 
-    let span = item_fn.span();
+    let span = item_fn.sig.ident.span();
 
     let handler_name = &item_fn.sig.ident;
 
@@ -384,28 +505,30 @@ fn check_future_send(item_fn: &ItemFn) -> TokenStream {
 
     let name = format_ident!("__axum_macros_check_{}_future", item_fn.sig.ident);
 
+    let do_check = quote! {
+        fn check<T>(_: T)
+            where T: ::std::future::Future + Send
+        {}
+        check(future);
+    };
+
     if let Some(receiver) = self_receiver(item_fn) {
-        quote_spanned! {span=>
+        quote! {
             #[allow(warnings)]
+            #[doc(hidden)]
             fn #name() {
                 let future = #receiver #handler_name(#(#args),*);
-                fn check<T>(_: T)
-                    where T: ::std::future::Future + Send
-                {}
-                check(future);
+                #do_check
             }
         }
     } else {
-        quote_spanned! {span=>
+        quote! {
             #[allow(warnings)]
+            #[doc(hidden)]
             fn #name() {
                 #item_fn
-
                 let future = #handler_name(#(#args),*);
-                fn check<T>(_: T)
-                    where T: ::std::future::Future + Send
-                {}
-                check(future);
+                #do_check
             }
         }
     }

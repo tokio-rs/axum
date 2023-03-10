@@ -9,7 +9,7 @@ license = "MIT"
 name = "axum-extra"
 readme = "README.md"
 repository = "https://github.com/tokio-rs/axum"
-version = "0.4.0-rc.1"
+version = "0.7.0"
 
 [features]
 default = []
@@ -29,13 +29,13 @@ json-lines = [
     "tokio-util?/io",
     "tokio-stream?/io-util"
 ]
+multipart = ["dep:multer"]
 protobuf = ["dep:prost"]
 query = ["dep:serde", "dep:serde_html_form"]
-spa = ["tower-http/fs"]
-typed-routing = ["dep:axum-macros", "dep:serde", "dep:percent-encoding"]
+typed-routing = ["dep:axum-macros", "dep:serde", "dep:percent-encoding", "dep:serde_html_form", "dep:form_urlencoded"]
 
 [dependencies]
-axum = { path = "../axum", version = "0.6.0-rc.2", default-features = false }
+axum = { path = "../axum", version = "0.6.9", default-features = false }
 bytes = "1.1.0"
 futures-util = { version = "0.3", default-features = false, features = ["alloc"] }
 http = "0.2"
@@ -43,30 +43,54 @@ mime = "0.3"
 pin-project-lite = "0.2"
 tokio = "1.19"
 tower = { version = "0.4", default_features = false, features = ["util"] }
-tower-http = { version = "0.3", features = ["map-response-body"] }
+tower-http = { version = "0.4", features = ["map-response-body"] }
 tower-layer = "0.3"
 tower-service = "0.3"
 
 # optional dependencies
-axum-macros = { path = "../axum-macros", version = "0.3.0-rc.1", optional = true }
-cookie = { package = "cookie", version = "0.16", features = ["percent-encode"], optional = true }
+axum-macros = { path = "../axum-macros", version = "0.3.5", optional = true }
+cookie = { package = "cookie", version = "0.17", features = ["percent-encode"], optional = true }
+form_urlencoded = { version = "1.1.0", optional = true }
+multer = { version = "2.0.0", optional = true }
 percent-encoding = { version = "2.1", optional = true }
 prost = { version = "0.11", optional = true }
 serde = { version = "1.0", optional = true }
-serde_html_form = { version = "0.1", optional = true }
+serde_html_form = { version = "0.2.0", optional = true }
 serde_json = { version = "1.0.71", optional = true }
 tokio-stream = { version = "0.1.9", optional = true }
 tokio-util = { version = "0.7", optional = true }
 
 [dev-dependencies]
-axum = { path = "../axum", version = "0.6.0-rc.2", features = ["headers"] }
+axum = { path = "../axum", version = "0.6.0", features = ["headers"] }
 futures = "0.3"
+http-body = "0.4.4"
 hyper = "0.14"
 reqwest = { version = "0.11", default-features = false, features = ["json", "stream", "multipart"] }
 serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0.71"
 tokio = { version = "1.14", features = ["full"] }
 tower = { version = "0.4", features = ["util"] }
+tower-http = { version = "0.4", features = ["map-response-body", "timeout"] }
 
 [package.metadata.docs.rs]
 all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
+
+[package.metadata.cargo-public-api-crates]
+allowed = [
+    "axum",
+    "axum_core",
+    "bytes",
+    "cookie",
+    "futures_core",
+    "futures_util",
+    "http",
+    "http_body",
+    "hyper",
+    "percent_encoding",
+    "prost",
+    "serde",
+    "tokio",
+    "tower_layer",
+    "tower_service",
+]

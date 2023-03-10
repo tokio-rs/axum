@@ -4,7 +4,10 @@
 //! cargo test -p example-testing
 //! ```
 
+use std::net::SocketAddr;
+
 use axum::{
+    extract::ConnectInfo,
     routing::{get, post},
     Json, Router,
 };
@@ -14,10 +17,10 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 #[tokio::main]
 async fn main() {
     tracing_subscriber::registry()
-        .with(tracing_subscriber::EnvFilter::new(
-            std::env::var("RUST_LOG")
+        .with(
+            tracing_subscriber::EnvFilter::try_from_default_env()
                 .unwrap_or_else(|_| "example_testing=debug,tower_http=debug".into()),
-        ))
+        )
         .with(tracing_subscriber::fmt::layer())
         .init();
 
@@ -43,6 +46,10 @@ fn app() -> Router {
                 Json(serde_json::json!({ "data": payload.0 }))
             }),
         )
+        .route(
+            "/requires-connect-into",
+            get(|ConnectInfo(addr): ConnectInfo<SocketAddr>| async move { format!("Hi {addr}") }),
+        )
         // We can still add middleware
         .layer(TraceLayer::new_for_http())
 }
@@ -52,6 +59,7 @@ mod tests {
     use super::*;
     use axum::{
         body::Body,
+        extract::connect_info::MockConnectInfo,
         http::{self, Request, StatusCode},
     };
     use serde_json::{json, Value};
@@ -61,7 +69,7 @@ mod tests {
 
     #[tokio::test]
     async fn hello_world() {
-        let app = app().into_service();
+        let app = app();
 
         // `Router` implements `tower::Service<Request<Body>>` so we can
         // call it like any tower service, no need to run an HTTP server.
@@ -78,7 +86,7 @@ mod tests {
 
     #[tokio::test]
     async fn json() {
-        let app = app().into_service();
+        let app = app();
 
         let response = app
             .oneshot(
@@ -103,7 +111,7 @@ mod tests {
 
     #[tokio::test]
     async fn not_found() {
-        let app = app().into_service();
+        let app = app();
 
         let response = app
             .oneshot(
@@ -154,13 +162,30 @@ mod tests {
     // in multiple request
     #[tokio::test]
     async fn multiple_request() {
-        let mut app = app().into_service();
+        let mut app = app();
 
         let request = Request::builder().uri("/").body(Body::empty()).unwrap();
         let response = app.ready().await.unwrap().call(request).await.unwrap();
         assert_eq!(response.status(), StatusCode::OK);
 
         let request = Request::builder().uri("/").body(Body::empty()).unwrap();
+        let response = app.ready().await.unwrap().call(request).await.unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+    }
+
+    // Here we're calling `/requires-connect-into` which requires `ConnectInfo`
+    //
+    // That is normally set with `Router::into_make_service_with_connect_info` but we can't easily
+    // use that during tests. The solution is instead to set the `MockConnectInfo` layer during
+    // tests.
+    #[tokio::test]
+    async fn with_into_make_service_with_connect_info() {
+        let mut app = app().layer(MockConnectInfo(SocketAddr::from(([0, 0, 0, 0], 3000))));
+
+        let request = Request::builder()
+            .uri("/requires-connect-into")
+            .body(Body::empty())
+            .unwrap();
         let response = app.ready().await.unwrap().call(request).await.unwrap();
         assert_eq!(response.status(), StatusCode::OK);
     }
