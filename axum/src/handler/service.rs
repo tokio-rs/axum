@@ -1,8 +1,10 @@
 use super::Handler;
+use crate::body::{Body, Bytes, HttpBody};
 #[cfg(feature = "tokio")]
 use crate::extract::connect_info::IntoMakeServiceWithConnectInfo;
 use crate::response::Response;
 use crate::routing::IntoMakeService;
+use crate::BoxError;
 use http::Request;
 use std::{
     convert::Infallible,
@@ -17,13 +19,13 @@ use tower_service::Service;
 /// Created with [`Handler::with_state`] or [`HandlerWithoutStateExt::into_service`].
 ///
 /// [`HandlerWithoutStateExt::into_service`]: super::HandlerWithoutStateExt::into_service
-pub struct HandlerService<H, T, S, B> {
+pub struct HandlerService<H, T, S> {
     handler: H,
     state: S,
-    _marker: PhantomData<fn() -> (T, B)>,
+    _marker: PhantomData<fn() -> T>,
 }
 
-impl<H, T, S, B> HandlerService<H, T, S, B> {
+impl<H, T, S> HandlerService<H, T, S> {
     /// Get a reference to the state.
     pub fn state(&self) -> &S {
         &self.state
@@ -61,7 +63,7 @@ impl<H, T, S, B> HandlerService<H, T, S, B> {
     /// ```
     ///
     /// [`MakeService`]: tower::make::MakeService
-    pub fn into_make_service(self) -> IntoMakeService<HandlerService<H, T, S, B>> {
+    pub fn into_make_service(self) -> IntoMakeService<HandlerService<H, T, S>> {
         IntoMakeService::new(self)
     }
 
@@ -104,7 +106,7 @@ impl<H, T, S, B> HandlerService<H, T, S, B> {
     #[cfg(feature = "tokio")]
     pub fn into_make_service_with_connect_info<C>(
         self,
-    ) -> IntoMakeServiceWithConnectInfo<HandlerService<H, T, S, B>, C> {
+    ) -> IntoMakeServiceWithConnectInfo<HandlerService<H, T, S>, C> {
         IntoMakeServiceWithConnectInfo::new(self)
     }
 }
@@ -112,11 +114,11 @@ impl<H, T, S, B> HandlerService<H, T, S, B> {
 #[test]
 fn traits() {
     use crate::test_helpers::*;
-    assert_send::<HandlerService<(), NotSendSync, (), NotSendSync>>();
-    assert_sync::<HandlerService<(), NotSendSync, (), NotSendSync>>();
+    assert_send::<HandlerService<(), NotSendSync, ()>>();
+    assert_sync::<HandlerService<(), NotSendSync, ()>>();
 }
 
-impl<H, T, S, B> HandlerService<H, T, S, B> {
+impl<H, T, S> HandlerService<H, T, S> {
     pub(super) fn new(handler: H, state: S) -> Self {
         Self {
             handler,
@@ -126,13 +128,13 @@ impl<H, T, S, B> HandlerService<H, T, S, B> {
     }
 }
 
-impl<H, T, S, B> fmt::Debug for HandlerService<H, T, S, B> {
+impl<H, T, S> fmt::Debug for HandlerService<H, T, S> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("IntoService").finish_non_exhaustive()
     }
 }
 
-impl<H, T, S, B> Clone for HandlerService<H, T, S, B>
+impl<H, T, S> Clone for HandlerService<H, T, S>
 where
     H: Clone,
     S: Clone,
@@ -146,10 +148,11 @@ where
     }
 }
 
-impl<H, T, S, B> Service<Request<B>> for HandlerService<H, T, S, B>
+impl<H, T, S, B> Service<Request<B>> for HandlerService<H, T, S>
 where
-    H: Handler<T, S, B> + Clone + Send + 'static,
-    B: Send + 'static,
+    H: Handler<T, S> + Clone + Send + 'static,
+    B: HttpBody<Data = Bytes> + Send + 'static,
+    B::Error: Into<BoxError>,
     S: Clone + Send + Sync,
 {
     type Response = Response;
@@ -166,6 +169,8 @@ where
 
     fn call(&mut self, req: Request<B>) -> Self::Future {
         use futures_util::future::FutureExt;
+
+        let req = req.map(Body::new);
 
         let handler = self.handler.clone();
         let future = Handler::call(handler, req, self.state.clone());

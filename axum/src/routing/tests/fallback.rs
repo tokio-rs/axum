@@ -172,7 +172,7 @@ async fn fallback_inherited_into_nested_router_service() {
         .with_state("inner");
 
     // with a different state
-    let app = Router::<()>::new()
+    let app = Router::new()
         .nest_service("/foo", inner)
         .fallback(outer_fallback);
 
@@ -194,7 +194,7 @@ async fn fallback_inherited_into_nested_opaque_service() {
         .boxed_clone();
 
     // with a different state
-    let app = Router::<()>::new()
+    let app = Router::new()
         .nest_service("/foo", inner)
         .fallback(outer_fallback);
 

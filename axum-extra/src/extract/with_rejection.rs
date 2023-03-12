@@ -1,4 +1,5 @@
 use axum::async_trait;
+use axum::body::Body;
 use axum::extract::{FromRequest, FromRequestParts};
 use axum::response::IntoResponse;
 use http::request::Parts;
@@ -109,16 +110,15 @@ impl<E, R> DerefMut for WithRejection<E, R> {
 }
 
 #[async_trait]
-impl<B, E, R, S> FromRequest<S, B> for WithRejection<E, R>
+impl<E, R, S> FromRequest<S> for WithRejection<E, R>
 where
-    B: Send + 'static,
     S: Send + Sync,
-    E: FromRequest<S, B>,
+    E: FromRequest<S>,
     R: From<E::Rejection> + IntoResponse,
 {
     type Rejection = R;
 
-    async fn from_request(req: Request<B>, state: &S) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: Request<Body>, state: &S) -> Result<Self, Self::Rejection> {
         let extractor = E::from_request(req, state).await?;
         Ok(WithRejection(extractor, PhantomData))
     }
@@ -180,7 +180,7 @@ mod tests {
             }
         }
 
-        let req = Request::new(());
+        let req = Request::new(Body::empty());
         let result = WithRejection::<TestExtractor, TestRejection>::from_request(req, &()).await;
         assert!(matches!(result, Err(TestRejection)));
 

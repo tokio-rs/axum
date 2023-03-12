@@ -1,7 +1,7 @@
 use openssl::ssl::{Ssl, SslAcceptor, SslFiletype, SslMethod};
 use tokio_openssl::SslStream;
 
-use axum::{extract::ConnectInfo, routing::get, Router};
+use axum::{body::Body, extract::ConnectInfo, http::Request, routing::get, Router};
 use futures_util::future::poll_fn;
 use hyper::server::{
     accept::Accept,
@@ -68,7 +68,7 @@ async fn main() {
 
         let protocol = protocol.clone();
 
-        let svc = app.make_service(&stream);
+        let svc = MakeService::<_, Request<Body>>::make_service(&mut app, &stream);
 
         tokio::spawn(async move {
             let ssl = Ssl::new(acceptor.context()).unwrap();
