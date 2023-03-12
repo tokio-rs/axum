@@ -1,6 +1,6 @@
 //! Rejection response types.
 
-use crate::BoxError;
+use crate::{BoxError, Error};
 
 composite_rejection! {
     /// Rejection type for extractors that buffer the request body. Used if the
@@ -16,7 +16,11 @@ impl FailedToBufferBody {
     where
         E: Into<BoxError>,
     {
-        match err.into().downcast::<http_body::LengthLimitError>() {
+        let box_error = match err.into().downcast::<Error>() {
+            Ok(err) => err.into_inner(),
+            Err(err) => err,
+        };
+        match box_error.downcast::<http_body::LengthLimitError>() {
             Ok(err) => Self::LengthLimitError(LengthLimitError::from_err(err)),
             Err(err) => Self::UnknownBodyError(UnknownBodyError::from_err(err)),
         }

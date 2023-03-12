@@ -1,5 +1,5 @@
 use crate::{
-    body::{Bytes, Empty},
+    body::{Body, Bytes, Empty},
     error_handling::HandleErrorLayer,
     extract::{self, DefaultBodyLimit, FromRef, Path, State},
     handler::{Handler, HandlerWithoutStateExt},
@@ -10,7 +10,6 @@ use crate::{
 };
 use futures_util::stream::StreamExt;
 use http::{header::ALLOW, header::CONTENT_LENGTH, HeaderMap, Request, Response, StatusCode, Uri};
-use hyper::Body;
 use serde_json::json;
 use std::{
     convert::Infallible,
@@ -199,7 +198,7 @@ async fn middleware_on_single_route() {
 #[crate::test]
 async fn service_in_bottom() {
     async fn handler(_req: Request<Body>) -> Result<Response<Body>, Infallible> {
-        Ok(Response::new(hyper::Body::empty()))
+        Ok(Response::new(Body::empty()))
     }
 
     let app = Router::new().route("/", get_service(service_fn(handler)));
@@ -649,7 +648,7 @@ async fn body_limited_by_default() {
         println!("calling {uri}");
 
         let stream = futures_util::stream::repeat("a".repeat(1000)).map(Ok::<_, hyper::Error>);
-        let body = Body::wrap_stream(stream);
+        let body = reqwest::Body::wrap_stream(stream);
 
         let res_future = client
             .post(uri)
@@ -673,7 +672,7 @@ async fn disabling_the_default_limit() {
     let client = TestClient::new(app);
 
     // `DEFAULT_LIMIT` is 2mb so make a body larger than that
-    let body = Body::from("a".repeat(3_000_000));
+    let body = reqwest::Body::from("a".repeat(3_000_000));
 
     let res = client.post("/").body(body).send().await;
 
@@ -714,14 +713,14 @@ async fn changing_the_default_limit() {
 
     let res = client
         .post("/")
-        .body(Body::from("a".repeat(new_limit)))
+        .body(reqwest::Body::from("a".repeat(new_limit)))
         .send()
         .await;
     assert_eq!(res.status(), StatusCode::OK);
 
     let res = client
         .post("/")
-        .body(Body::from("a".repeat(new_limit + 1)))
+        .body(reqwest::Body::from("a".repeat(new_limit + 1)))
         .send()
         .await;
     assert_eq!(res.status(), StatusCode::PAYLOAD_TOO_LARGE);
@@ -745,7 +744,7 @@ async fn limited_body_with_streaming_body() {
     let stream = futures_util::stream::iter(vec![Ok::<_, hyper::Error>("a".repeat(LIMIT))]);
     let res = client
         .post("/")
-        .body(Body::wrap_stream(stream))
+        .body(reqwest::Body::wrap_stream(stream))
         .send()
         .await;
     assert_eq!(res.status(), StatusCode::OK);
@@ -753,7 +752,7 @@ async fn limited_body_with_streaming_body() {
     let stream = futures_util::stream::iter(vec![Ok::<_, hyper::Error>("a".repeat(LIMIT * 2))]);
     let res = client
         .post("/")
-        .body(Body::wrap_stream(stream))
+        .body(reqwest::Body::wrap_stream(stream))
         .send()
         .await;
     assert_eq!(res.status(), StatusCode::PAYLOAD_TOO_LARGE);

@@ -40,7 +40,7 @@ impl Default for MyRejection {
 }
 
 fn main() {
-    axum::Router::<(), axum::body::Body>::new()
+    _ = axum::Router::<()>::new()
         .typed_get(|_: Result<MyPathNamed, MyRejection>| async {})
         .typed_post(|_: Result<MyPathUnnamed, MyRejection>| async {})
         .typed_put(|_: Result<MyPathUnit, MyRejection>| async {});
