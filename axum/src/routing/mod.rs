@@ -505,7 +505,7 @@ where
         self.prev_route_id
     }
 
-    /// Convert the router into a [`Service`] with a fixed request body type, to aid type
+    /// Convert the router into a borrowed [`Service`] with a fixed request body type, to aid type
     /// inference.
     ///
     /// In some cases when calling methods from [`tower::ServiceExt`] on a [`Router`] you might get
@@ -560,6 +560,18 @@ where
     /// the `Router` normally via [`Router::into_make_service`].
     pub fn as_service<B>(&mut self) -> RouterAsService<'_, B, S> {
         RouterAsService {
+            router: self,
+            _marker: PhantomData,
+        }
+    }
+
+    /// Convert the router into an owned [`Service`] with a fixed request body type, to aid type
+    /// inference.
+    ///
+    /// This is the same as [`Router::as_service`] instead it returns an owned [`Service`]. See
+    /// that method for more details.
+    pub fn into_service<B>(self) -> RouterIntoService<B, S> {
+        RouterIntoService {
             router: self,
             _marker: PhantomData,
         }
@@ -626,7 +638,7 @@ where
     }
 }
 
-/// A [`Router`] converted into a service with a fixed body type.
+/// A [`Router`] converted into a borrowed [`Service`] with a fixed body type.
 ///
 /// See [`Router::as_service`] for more details.
 pub struct RouterAsService<'a, B, S = ()> {
@@ -660,6 +672,45 @@ where
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("RouterAsService")
+            .field("router", &self.router)
+            .finish()
+    }
+}
+
+/// A [`Router`] converted into an owned [`Service`] with a fixed body type.
+///
+/// See [`Router::into_service`] for more details.
+pub struct RouterIntoService<B, S = ()> {
+    router: Router<S>,
+    _marker: PhantomData<B>,
+}
+
+impl<B> Service<Request<B>> for RouterIntoService<B, ()>
+where
+    B: HttpBody<Data = bytes::Bytes> + Send + 'static,
+    B::Error: Into<axum_core::BoxError>,
+{
+    type Response = Response;
+    type Error = Infallible;
+    type Future = RouteFuture<Infallible>;
+
+    #[inline]
+    fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        <Router as Service<Request<B>>>::poll_ready(&mut self.router, cx)
+    }
+
+    #[inline]
+    fn call(&mut self, req: Request<B>) -> Self::Future {
+        self.router.call(req)
+    }
+}
+
+impl<B, S> fmt::Debug for RouterIntoService<B, S>
+where
+    S: fmt::Debug,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("RouterIntoService")
             .field("router", &self.router)
             .finish()
     }

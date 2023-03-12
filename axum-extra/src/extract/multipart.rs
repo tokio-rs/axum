@@ -4,7 +4,7 @@
 
 use axum::{
     async_trait,
-    body::{Body, Bytes, HttpBody},
+    body::{Body, Bytes},
     extract::FromRequest,
     response::{IntoResponse, Response},
     BoxError, RequestExt,
@@ -96,7 +96,7 @@ where
 {
     type Rejection = MultipartRejection;
 
-    async fn from_request(req: Request<Body>, state: &S) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: Request<Body>, _state: &S) -> Result<Self, Self::Rejection> {
         let boundary = parse_boundary(req.headers()).ok_or(InvalidBoundary)?;
         let stream = match req.with_limited_body() {
             Ok(limited) => Body::new(limited),
