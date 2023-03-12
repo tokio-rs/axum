@@ -12,7 +12,7 @@ use crate::{
     response::Response,
     routing::{future::RouteFuture, Fallback, MethodFilter, Route},
 };
-use axum_core::response::IntoResponse;
+use axum_core::{response::IntoResponse, BoxError};
 use bytes::BytesMut;
 use std::{
     convert::Infallible,
@@ -37,10 +37,10 @@ macro_rules! top_level_service_fn {
             ///     http::Request,
             ///     Router,
             ///     routing::get_service,
+            ///     body::Body,
             /// };
             /// use http::Response;
             /// use std::convert::Infallible;
-            /// use hyper::Body;
             ///
             /// let service = tower::service_fn(|request: Request<Body>| async {
             ///     Ok::<_, Infallible>(Response::new(Body::empty()))
@@ -78,12 +78,11 @@ macro_rules! top_level_service_fn {
         $name:ident, $method:ident
     ) => {
         $(#[$m])+
-        pub fn $name<T, S, B>(svc: T) -> MethodRouter<S, B, T::Error>
+        pub fn $name<T, S>(svc: T) -> MethodRouter<S, T::Error>
         where
-            T: Service<Request<B>> + Clone + Send + 'static,
+            T: Service<Request<Body>> + Clone + Send + 'static,
             T::Response: IntoResponse + 'static,
             T::Future: Send + 'static,
-            B: HttpBody + Send + 'static,
             S: Clone,
         {
             on_service(MethodFilter::$method, svc)
@@ -140,10 +139,9 @@ macro_rules! top_level_handler_fn {
         $name:ident, $method:ident
     ) => {
         $(#[$m])+
-        pub fn $name<H, T, S, B>(handler: H) -> MethodRouter<S, B, Infallible>
+        pub fn $name<H, T, S>(handler: H) -> MethodRouter<S, Infallible>
         where
-            H: Handler<T, S, B>,
-            B: HttpBody + Send + 'static,
+            H: Handler<T, S>,
             T: 'static,
             S: Clone + Send + Sync + 'static,
         {
@@ -166,10 +164,10 @@ macro_rules! chained_service_fn {
             ///     http::Request,
             ///     Router,
             ///     routing::post_service,
+            ///     body::Body,
             /// };
             /// use http::Response;
             /// use std::convert::Infallible;
-            /// use hyper::Body;
             ///
             /// let service = tower::service_fn(|request: Request<Body>| async {
             ///     Ok::<_, Infallible>(Response::new(Body::empty()))
@@ -215,7 +213,7 @@ macro_rules! chained_service_fn {
         #[track_caller]
         pub fn $name<T>(self, svc: T) -> Self
         where
-            T: Service<Request<B>, Error = E>
+            T: Service<Request<Body>, Error = E>
                 + Clone
                 + Send
                 + 'static,
@@ -279,7 +277,7 @@ macro_rules! chained_handler_fn {
         #[track_caller]
         pub fn $name<H, T>(self, handler: H) -> Self
         where
-            H: Handler<T, S, B>,
+            H: Handler<T, S>,
             T: 'static,
             S: Send + Sync + 'static,
         {
@@ -306,11 +304,11 @@ top_level_service_fn!(trace_service, TRACE);
 ///     http::Request,
 ///     routing::on,
 ///     Router,
+///     body::Body,
 ///     routing::{MethodFilter, on_service},
 /// };
 /// use http::Response;
 /// use std::convert::Infallible;
-/// use hyper::Body;
 ///
 /// let service = tower::service_fn(|request: Request<Body>| async {
 ///     Ok::<_, Infallible>(Response::new(Body::empty()))
@@ -322,12 +320,11 @@ top_level_service_fn!(trace_service, TRACE);
 /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 /// # };
 /// ```
-pub fn on_service<T, S, B>(filter: MethodFilter, svc: T) -> MethodRouter<S, B, T::Error>
+pub fn on_service<T, S>(filter: MethodFilter, svc: T) -> MethodRouter<S, T::Error>
 where
-    T: Service<Request<B>> + Clone + Send + 'static,
+    T: Service<Request<Body>> + Clone + Send + 'static,
     T::Response: IntoResponse + 'static,
     T::Future: Send + 'static,
-    B: HttpBody + Send + 'static,
     S: Clone,
 {
     MethodRouter::new().on_service(filter, svc)
@@ -342,10 +339,10 @@ where
 ///     http::Request,
 ///     Router,
 ///     routing::any_service,
+///     body::Body,
 /// };
 /// use http::Response;
 /// use std::convert::Infallible;
-/// use hyper::Body;
 ///
 /// let service = tower::service_fn(|request: Request<Body>| async {
 ///     Ok::<_, Infallible>(Response::new(Body::empty()))
@@ -365,10 +362,10 @@ where
 ///     http::Request,
 ///     Router,
 ///     routing::any_service,
+///     body::Body,
 /// };
 /// use http::Response;
 /// use std::convert::Infallible;
-/// use hyper::Body;
 ///
 /// let service = tower::service_fn(|request: Request<Body>| async {
 ///     # Ok::<_, Infallible>(Response::new(Body::empty()))
@@ -386,12 +383,11 @@ where
 /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 /// # };
 /// ```
-pub fn any_service<T, S, B>(svc: T) -> MethodRouter<S, B, T::Error>
+pub fn any_service<T, S>(svc: T) -> MethodRouter<S, T::Error>
 where
-    T: Service<Request<B>> + Clone + Send + 'static,
+    T: Service<Request<Body>> + Clone + Send + 'static,
     T::Response: IntoResponse + 'static,
     T::Future: Send + 'static,
-    B: HttpBody + Send + 'static,
     S: Clone,
 {
     MethodRouter::new()
@@ -427,10 +423,9 @@ top_level_handler_fn!(trace, TRACE);
 /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 /// # };
 /// ```
-pub fn on<H, T, S, B>(filter: MethodFilter, handler: H) -> MethodRouter<S, B, Infallible>
+pub fn on<H, T, S>(filter: MethodFilter, handler: H) -> MethodRouter<S, Infallible>
 where
-    H: Handler<T, S, B>,
-    B: HttpBody + Send + 'static,
+    H: Handler<T, S>,
     T: 'static,
     S: Clone + Send + Sync + 'static,
 {
@@ -474,10 +469,9 @@ where
 /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 /// # };
 /// ```
-pub fn any<H, T, S, B>(handler: H) -> MethodRouter<S, B, Infallible>
+pub fn any<H, T, S>(handler: H) -> MethodRouter<S, Infallible>
 where
-    H: Handler<T, S, B>,
-    B: HttpBody + Send + 'static,
+    H: Handler<T, S>,
     T: 'static,
     S: Clone + Send + Sync + 'static,
 {
@@ -514,16 +508,16 @@ where
 /// {}
 /// ```
 #[must_use]
-pub struct MethodRouter<S = (), B = Body, E = Infallible> {
-    get: MethodEndpoint<S, B, E>,
-    head: MethodEndpoint<S, B, E>,
-    delete: MethodEndpoint<S, B, E>,
-    options: MethodEndpoint<S, B, E>,
-    patch: MethodEndpoint<S, B, E>,
-    post: MethodEndpoint<S, B, E>,
-    put: MethodEndpoint<S, B, E>,
-    trace: MethodEndpoint<S, B, E>,
-    fallback: Fallback<S, B, E>,
+pub struct MethodRouter<S = (), E = Infallible> {
+    get: MethodEndpoint<S, E>,
+    head: MethodEndpoint<S, E>,
+    delete: MethodEndpoint<S, E>,
+    options: MethodEndpoint<S, E>,
+    patch: MethodEndpoint<S, E>,
+    post: MethodEndpoint<S, E>,
+    put: MethodEndpoint<S, E>,
+    trace: MethodEndpoint<S, E>,
+    fallback: Fallback<S, E>,
     allow_header: AllowHeader,
 }
 
@@ -553,7 +547,7 @@ impl AllowHeader {
     }
 }
 
-impl<S, B, E> fmt::Debug for MethodRouter<S, B, E> {
+impl<S, E> fmt::Debug for MethodRouter<S, E> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("MethodRouter")
             .field("get", &self.get)
@@ -570,9 +564,8 @@ impl<S, B, E> fmt::Debug for MethodRouter<S, B, E> {
     }
 }
 
-impl<S, B> MethodRouter<S, B, Infallible>
+impl<S> MethodRouter<S, Infallible>
 where
-    B: HttpBody + Send + 'static,
     S: Clone,
 {
     /// Chain an additional handler that will accept requests matching the given
@@ -601,7 +594,7 @@ where
     #[track_caller]
     pub fn on<H, T>(self, filter: MethodFilter, handler: H) -> Self
     where
-        H: Handler<T, S, B>,
+        H: Handler<T, S>,
         T: 'static,
         S: Send + Sync + 'static,
     {
@@ -623,7 +616,7 @@ where
     /// Add a fallback [`Handler`] to the router.
     pub fn fallback<H, T>(mut self, handler: H) -> Self
     where
-        H: Handler<T, S, B>,
+        H: Handler<T, S>,
         T: 'static,
         S: Send + Sync + 'static,
     {
@@ -632,10 +625,7 @@ where
     }
 }
 
-impl<B> MethodRouter<(), B, Infallible>
-where
-    B: HttpBody + Send + 'static,
-{
+impl MethodRouter<(), Infallible> {
     /// Convert the handler into a [`MakeService`].
     ///
     /// This allows you to serve a single handler if you don't need any routing:
@@ -706,15 +696,14 @@ where
     }
 }
 
-impl<S, B, E> MethodRouter<S, B, E>
+impl<S, E> MethodRouter<S, E>
 where
-    B: HttpBody + Send + 'static,
     S: Clone,
 {
     /// Create a default `MethodRouter` that will respond with `405 Method Not Allowed` to all
     /// requests.
     pub fn new() -> Self {
-        let fallback = Route::new(service_fn(|_: Request<B>| async {
+        let fallback = Route::new(service_fn(|_: Request<Body>| async {
             Ok(StatusCode::METHOD_NOT_ALLOWED.into_response())
         }));
 
@@ -733,7 +722,7 @@ where
     }
 
     /// Provide the state for the router.
-    pub fn with_state<S2>(self, state: S) -> MethodRouter<S2, B, E> {
+    pub fn with_state<S2>(self, state: S) -> MethodRouter<S2, E> {
         MethodRouter {
             get: self.get.with_state(&state),
             head: self.head.with_state(&state),
@@ -758,10 +747,10 @@ where
     ///     http::Request,
     ///     Router,
     ///     routing::{MethodFilter, on_service},
+    ///     body::Body,
     /// };
     /// use http::Response;
     /// use std::convert::Infallible;
-    /// use hyper::Body;
     ///
     /// let service = tower::service_fn(|request: Request<Body>| async {
     ///     Ok::<_, Infallible>(Response::new(Body::empty()))
@@ -776,7 +765,7 @@ where
     #[track_caller]
     pub fn on_service<T>(self, filter: MethodFilter, svc: T) -> Self
     where
-        T: Service<Request<B>, Error = E> + Clone + Send + 'static,
+        T: Service<Request<Body>, Error = E> + Clone + Send + 'static,
         T::Response: IntoResponse + 'static,
         T::Future: Send + 'static,
     {
@@ -784,19 +773,19 @@ where
     }
 
     #[track_caller]
-    fn on_endpoint(mut self, filter: MethodFilter, endpoint: MethodEndpoint<S, B, E>) -> Self {
+    fn on_endpoint(mut self, filter: MethodFilter, endpoint: MethodEndpoint<S, E>) -> Self {
         // written as a separate function to generate less IR
         #[track_caller]
-        fn set_endpoint<S, B, E>(
+        fn set_endpoint<S, E>(
             method_name: &str,
-            out: &mut MethodEndpoint<S, B, E>,
-            endpoint: &MethodEndpoint<S, B, E>,
+            out: &mut MethodEndpoint<S, E>,
+            endpoint: &MethodEndpoint<S, E>,
             endpoint_filter: MethodFilter,
             filter: MethodFilter,
             allow_header: &mut AllowHeader,
             methods: &[&'static str],
         ) where
-            MethodEndpoint<S, B, E>: Clone,
+            MethodEndpoint<S, E>: Clone,
             S: Clone,
         {
             if endpoint_filter.contains(filter) {
@@ -908,7 +897,7 @@ where
     #[doc = include_str!("../docs/method_routing/fallback.md")]
     pub fn fallback_service<T>(mut self, svc: T) -> Self
     where
-        T: Service<Request<B>, Error = E> + Clone + Send + 'static,
+        T: Service<Request<Body>, Error = E> + Clone + Send + 'static,
         T::Response: IntoResponse + 'static,
         T::Future: Send + 'static,
     {
@@ -917,19 +906,18 @@ where
     }
 
     #[doc = include_str!("../docs/method_routing/layer.md")]
-    pub fn layer<L, NewReqBody, NewError>(self, layer: L) -> MethodRouter<S, NewReqBody, NewError>
+    pub fn layer<L, NewError>(self, layer: L) -> MethodRouter<S, NewError>
     where
-        L: Layer<Route<B, E>> + Clone + Send + 'static,
-        L::Service: Service<Request<NewReqBody>> + Clone + Send + 'static,
-        <L::Service as Service<Request<NewReqBody>>>::Response: IntoResponse + 'static,
-        <L::Service as Service<Request<NewReqBody>>>::Error: Into<NewError> + 'static,
-        <L::Service as Service<Request<NewReqBody>>>::Future: Send + 'static,
+        L: Layer<Route<E>> + Clone + Send + 'static,
+        L::Service: Service<Request<Body>> + Clone + Send + 'static,
+        <L::Service as Service<Request<Body>>>::Response: IntoResponse + 'static,
+        <L::Service as Service<Request<Body>>>::Error: Into<NewError> + 'static,
+        <L::Service as Service<Request<Body>>>::Future: Send + 'static,
         E: 'static,
         S: 'static,
-        NewReqBody: HttpBody + 'static,
         NewError: 'static,
     {
-        let layer_fn = move |route: Route<B, E>| route.layer(layer.clone());
+        let layer_fn = move |route: Route<E>| route.layer(layer.clone());
 
         MethodRouter {
             get: self.get.map(layer_fn.clone()),
@@ -947,12 +935,12 @@ where
 
     #[doc = include_str!("../docs/method_routing/route_layer.md")]
     #[track_caller]
-    pub fn route_layer<L>(mut self, layer: L) -> MethodRouter<S, B, E>
+    pub fn route_layer<L>(mut self, layer: L) -> MethodRouter<S, E>
     where
-        L: Layer<Route<B, E>> + Clone + Send + 'static,
-        L::Service: Service<Request<B>, Error = E> + Clone + Send + 'static,
-        <L::Service as Service<Request<B>>>::Response: IntoResponse + 'static,
-        <L::Service as Service<Request<B>>>::Future: Send + 'static,
+        L: Layer<Route<E>> + Clone + Send + 'static,
+        L::Service: Service<Request<Body>, Error = E> + Clone + Send + 'static,
+        <L::Service as Service<Request<Body>>>::Response: IntoResponse + 'static,
+        <L::Service as Service<Request<Body>>>::Future: Send + 'static,
         E: 'static,
         S: 'static,
     {
@@ -990,19 +978,15 @@ where
     }
 
     #[track_caller]
-    pub(crate) fn merge_for_path(
-        mut self,
-        path: Option<&str>,
-        other: MethodRouter<S, B, E>,
-    ) -> Self {
+    pub(crate) fn merge_for_path(mut self, path: Option<&str>, other: MethodRouter<S, E>) -> Self {
         // written using inner functions to generate less IR
         #[track_caller]
-        fn merge_inner<S, B, E>(
+        fn merge_inner<S, E>(
             path: Option<&str>,
             name: &str,
-            first: MethodEndpoint<S, B, E>,
-            second: MethodEndpoint<S, B, E>,
-        ) -> MethodEndpoint<S, B, E> {
+            first: MethodEndpoint<S, E>,
+            second: MethodEndpoint<S, E>,
+        ) -> MethodEndpoint<S, E> {
             match (first, second) {
                 (MethodEndpoint::None, MethodEndpoint::None) => MethodEndpoint::None,
                 (pick, MethodEndpoint::None) | (MethodEndpoint::None, pick) => pick,
@@ -1042,22 +1026,21 @@ where
 
     #[doc = include_str!("../docs/method_routing/merge.md")]
     #[track_caller]
-    pub fn merge(self, other: MethodRouter<S, B, E>) -> Self {
+    pub fn merge(self, other: MethodRouter<S, E>) -> Self {
         self.merge_for_path(None, other)
     }
 
     /// Apply a [`HandleErrorLayer`].
     ///
     /// This is a convenience method for doing `self.layer(HandleErrorLayer::new(f))`.
-    pub fn handle_error<F, T>(self, f: F) -> MethodRouter<S, B, Infallible>
+    pub fn handle_error<F, T>(self, f: F) -> MethodRouter<S, Infallible>
     where
         F: Clone + Send + Sync + 'static,
-        HandleError<Route<B, E>, F, T>: Service<Request<B>, Error = Infallible>,
-        <HandleError<Route<B, E>, F, T> as Service<Request<B>>>::Future: Send,
-        <HandleError<Route<B, E>, F, T> as Service<Request<B>>>::Response: IntoResponse + Send,
+        HandleError<Route<E>, F, T>: Service<Request<Body>, Error = Infallible>,
+        <HandleError<Route<E>, F, T> as Service<Request<Body>>>::Future: Send,
+        <HandleError<Route<E>, F, T> as Service<Request<Body>>>::Response: IntoResponse + Send,
         T: 'static,
         E: 'static,
-        B: 'static,
         S: 'static,
     {
         self.layer(HandleErrorLayer::new(f))
@@ -1068,7 +1051,7 @@ where
         self
     }
 
-    pub(crate) fn call_with_state(&mut self, req: Request<B>, state: S) -> RouteFuture<B, E> {
+    pub(crate) fn call_with_state(&mut self, req: Request<Body>, state: S) -> RouteFuture<E> {
         macro_rules! call {
             (
                 $req:expr,
@@ -1157,7 +1140,7 @@ fn append_allow_header(allow_header: &mut AllowHeader, method: &'static str) {
     }
 }
 
-impl<S, B, E> Clone for MethodRouter<S, B, E> {
+impl<S, E> Clone for MethodRouter<S, E> {
     fn clone(&self) -> Self {
         Self {
             get: self.get.clone(),
@@ -1174,9 +1157,8 @@ impl<S, B, E> Clone for MethodRouter<S, B, E> {
     }
 }
 
-impl<S, B, E> Default for MethodRouter<S, B, E>
+impl<S, E> Default for MethodRouter<S, E>
 where
-    B: HttpBody + Send + 'static,
     S: Clone,
 {
     fn default() -> Self {
@@ -1184,13 +1166,13 @@ where
     }
 }
 
-enum MethodEndpoint<S, B, E> {
+enum MethodEndpoint<S, E> {
     None,
-    Route(Route<B, E>),
-    BoxedHandler(BoxedIntoRoute<S, B, E>),
+    Route(Route<E>),
+    BoxedHandler(BoxedIntoRoute<S, E>),
 }
 
-impl<S, B, E> MethodEndpoint<S, B, E>
+impl<S, E> MethodEndpoint<S, E>
 where
     S: Clone,
 {
@@ -1202,13 +1184,11 @@ where
         matches!(self, Self::None)
     }
 
-    fn map<F, B2, E2>(self, f: F) -> MethodEndpoint<S, B2, E2>
+    fn map<F, E2>(self, f: F) -> MethodEndpoint<S, E2>
     where
         S: 'static,
-        B: 'static,
         E: 'static,
-        F: FnOnce(Route<B, E>) -> Route<B2, E2> + Clone + Send + 'static,
-        B2: HttpBody + 'static,
+        F: FnOnce(Route<E>) -> Route<E2> + Clone + Send + 'static,
         E2: 'static,
     {
         match self {
@@ -1218,7 +1198,7 @@ where
         }
     }
 
-    fn with_state<S2>(self, state: &S) -> MethodEndpoint<S2, B, E> {
+    fn with_state<S2>(self, state: &S) -> MethodEndpoint<S2, E> {
         match self {
             MethodEndpoint::None => MethodEndpoint::None,
             MethodEndpoint::Route(route) => MethodEndpoint::Route(route),
@@ -1229,7 +1209,7 @@ where
     }
 }
 
-impl<S, B, E> Clone for MethodEndpoint<S, B, E> {
+impl<S, E> Clone for MethodEndpoint<S, E> {
     fn clone(&self) -> Self {
         match self {
             Self::None => Self::None,
@@ -1239,7 +1219,7 @@ impl<S, B, E> Clone for MethodEndpoint<S, B, E> {
     }
 }
 
-impl<S, B, E> fmt::Debug for MethodEndpoint<S, B, E> {
+impl<S, E> fmt::Debug for MethodEndpoint<S, E> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::None => f.debug_tuple("None").finish(),
@@ -1249,13 +1229,14 @@ impl<S, B, E> fmt::Debug for MethodEndpoint<S, B, E> {
     }
 }
 
-impl<B, E> Service<Request<B>> for MethodRouter<(), B, E>
+impl<B, E> Service<Request<B>> for MethodRouter<(), E>
 where
-    B: HttpBody + Send + 'static,
+    B: HttpBody<Data = Bytes> + Send + 'static,
+    B::Error: Into<BoxError>,
 {
     type Response = Response;
     type Error = E;
-    type Future = RouteFuture<B, E>;
+    type Future = RouteFuture<E>;
 
     #[inline]
     fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
@@ -1264,18 +1245,18 @@ where
 
     #[inline]
     fn call(&mut self, req: Request<B>) -> Self::Future {
+        let req = req.map(Body::new);
         self.call_with_state(req, ())
     }
 }
 
-impl<S, B> Handler<(), S, B> for MethodRouter<S, B>
+impl<S> Handler<(), S> for MethodRouter<S>
 where
     S: Clone + 'static,
-    B: HttpBody + Send + 'static,
 {
-    type Future = InfallibleRouteFuture<B>;
+    type Future = InfallibleRouteFuture;
 
-    fn call(mut self, req: Request<B>, state: S) -> Self::Future {
+    fn call(mut self, req: Request<Body>, state: S) -> Self::Future {
         InfallibleRouteFuture::new(self.call_with_state(req, state))
     }
 }

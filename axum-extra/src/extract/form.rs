@@ -1,9 +1,9 @@
 use axum::{
     async_trait,
-    body::HttpBody,
+    body::Body,
     extract::{rejection::RawFormRejection, FromRequest, RawForm},
     response::{IntoResponse, Response},
-    BoxError, Error, RequestExt,
+    Error, RequestExt,
 };
 use http::{Request, StatusCode};
 use serde::de::DeserializeOwned;
@@ -46,17 +46,14 @@ pub struct Form<T>(pub T);
 axum_core::__impl_deref!(Form);
 
 #[async_trait]
-impl<T, S, B> FromRequest<S, B> for Form<T>
+impl<T, S> FromRequest<S> for Form<T>
 where
     T: DeserializeOwned,
-    B: HttpBody + Send + 'static,
-    B::Data: Send,
-    B::Error: Into<BoxError>,
     S: Send + Sync,
 {
     type Rejection = FormRejection;
 
-    async fn from_request(req: Request<B>, _state: &S) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: Request<Body>, _state: &S) -> Result<Self, Self::Rejection> {
         let RawForm(bytes) = req
             .extract()
             .await

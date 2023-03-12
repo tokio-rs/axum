@@ -1,8 +1,8 @@
 use axum_macros::debug_handler;
-use axum::{body::BoxBody, extract::State, http::Request};
+use axum::{extract::State, http::Request};
 
-#[debug_handler(state = AppState, body = BoxBody)]
-async fn handler(_: State<AppState>, _: Request<BoxBody>) {}
+#[debug_handler(state = AppState)]
+async fn handler(_: State<AppState>, _: Request<axum::body::Body>) {}
 
 #[derive(Clone)]
 struct AppState;

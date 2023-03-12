@@ -4,7 +4,7 @@
 //! cargo run -p example-low-level-rustls
 //! ```
 
-use axum::{extract::ConnectInfo, routing::get, Router};
+use axum::{body::Body, extract::ConnectInfo, http::Request, routing::get, Router};
 use futures_util::future::poll_fn;
 use hyper::server::{
     accept::Accept,
@@ -24,7 +24,7 @@ use tokio_rustls::{
     rustls::{Certificate, PrivateKey, ServerConfig},
     TlsAcceptor,
 };
-use tower::MakeService;
+use tower::make::MakeService;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[tokio::main]
@@ -53,7 +53,7 @@ async fn main() {
 
     let protocol = Arc::new(Http::new());
 
-    let mut app = Router::new()
+    let mut app = Router::<()>::new()
         .route("/", get(handler))
         .into_make_service_with_connect_info::<SocketAddr>();
 
@@ -67,7 +67,7 @@ async fn main() {
 
         let protocol = protocol.clone();
 
-        let svc = app.make_service(&stream);
+        let svc = MakeService::<_, Request<Body>>::make_service(&mut app, &stream);
 
         tokio::spawn(async move {
             if let Ok(stream) = acceptor.accept(stream).await {
