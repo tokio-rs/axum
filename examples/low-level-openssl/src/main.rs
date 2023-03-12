@@ -1,7 +1,7 @@
 use openssl::ssl::{Ssl, SslAcceptor, SslFiletype, SslMethod};
 use tokio_openssl::SslStream;
 
-use axum::{body::Body, extract::ConnectInfo, routing::get, http::Request, Router};
+use axum::{body::Body, extract::ConnectInfo, http::Request, routing::get, Router};
 use futures_util::future::poll_fn;
 use hyper::server::{
     accept::Accept,
