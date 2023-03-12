@@ -5,7 +5,7 @@ mod stream_body;
 pub use self::stream_body::StreamBody;
 
 #[doc(no_inline)]
-pub use http_body::{Body as HttpBody, Empty, Full};
+pub use http_body::Body as HttpBody;
 
 #[doc(no_inline)]
 pub use bytes::Bytes;

@@ -1,16 +1,16 @@
 use crate::{
-    body::{Body, Bytes, Empty},
+    body::{Body, Bytes},
     error_handling::HandleErrorLayer,
     extract::{self, DefaultBodyLimit, FromRef, Path, State},
     handler::{Handler, HandlerWithoutStateExt},
-    response::IntoResponse,
+    response::{IntoResponse, Response},
     routing::{delete, get, get_service, on, on_service, patch, patch_service, post, MethodFilter},
     test_helpers::*,
     BoxError, Json, Router,
 };
 use axum_core::extract::Request;
 use futures_util::stream::StreamExt;
-use http::{header::ALLOW, header::CONTENT_LENGTH, HeaderMap, Response, StatusCode, Uri};
+use http::{header::ALLOW, header::CONTENT_LENGTH, HeaderMap, StatusCode, Uri};
 use serde_json::json;
 use std::{
     convert::Infallible,
@@ -231,7 +231,7 @@ async fn wrong_method_service() {
     struct Svc;
 
     impl<R> Service<R> for Svc {
-        type Response = Response<Empty<Bytes>>;
+        type Response = Response;
         type Error = Infallible;
         type Future = Ready<Result<Self::Response, Self::Error>>;
 
@@ -240,7 +240,7 @@ async fn wrong_method_service() {
         }
 
         fn call(&mut self, _req: R) -> Self::Future {
-            ready(Ok(Response::new(Empty::new())))
+            ready(Ok(().into_response()))
         }
     }
 
