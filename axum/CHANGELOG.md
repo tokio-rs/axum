@@ -7,15 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- **breaking:** `extract::BodyStream` has been removed as `body::Body` implements `Stream` directly
+- **breaking:** The following types/traits are no longer generic over the request body
+  (i.e. the `B` type param has been removed) ([#1751]):
+  - `FromRequest`
+  - `FromRequestParts`
+  - `Handler`
+  - `HandlerService`
+  - `HandlerWithoutStateExt`
+  - `Layered`
+  - `LayeredFuture`
+  - `MethodRouter`
+  - `RequestExt`
+  - `Route`
+  - `RouteFuture`
+  - `Router`
+- **breaking:** axum no longer re-exports `hyper::Body` as that type is removed
+  in hyper 1.0. Instead axum has its own body type at `axum::body::Body` ([#1751])
+- **breaking:** `extract::BodyStream` has been removed as `body::Body`
+  implements `Stream` and `FromRequest` directly ([#1751])
 - **breaking:** Change `sse::Event::json_data` to use `axum_core::Error` as its error type ([#1762])
 - **breaking:** Rename `DefaultOnFailedUpdgrade` to `DefaultOnFailedUpgrade` ([#1664])
 - **breaking:** Rename `OnFailedUpdgrade` to `OnFailedUpgrade` ([#1664])
 - **added:** Add `Router::as_service` and `Router::into_service` to workaround
   type inference issues when calling `ServiceExt` methods on a `Router` ([#1835])
 
-[#1762]: https://github.com/tokio-rs/axum/pull/1762
 [#1664]: https://github.com/tokio-rs/axum/pull/1664
+[#1751]: https://github.com/tokio-rs/axum/pull/1751
+[#1762]: https://github.com/tokio-rs/axum/pull/1762
 [#1835]: https://github.com/tokio-rs/axum/pull/1835
 
 # 0.6.10 (03. March, 2023)
