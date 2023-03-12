@@ -11,6 +11,9 @@ readme = "README.md"
 repository = "https://github.com/tokio-rs/axum"
 version = "0.3.3" # remember to also bump the version that axum depends on
 
+[features]
+__private_docs = ["dep:tower-http"]
+
 [dependencies]
 async-trait = "0.1"
 bytes = "1.0"
@@ -20,6 +23,9 @@ http-body = "0.4.5"
 mime = "0.3.16"
 tower-layer = "0.3"
 tower-service = "0.3"
+
+# optional dependencies
+tower-http = { version = "0.4", optional = true, features = ["limit"] }
 
 [build-dependencies]
 rustversion = "1.0.9"
