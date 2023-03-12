@@ -7,7 +7,7 @@ use axum::{
     body::{Body, Bytes},
     extract::FromRequest,
     response::{IntoResponse, Response},
-    BoxError, RequestExt,
+    RequestExt,
 };
 use futures_util::stream::Stream;
 use http::{
