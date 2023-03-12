@@ -72,10 +72,7 @@ fn using_serve_dir_with_handler_as_service() -> Router {
     }
 
     // you can convert handler function to service
-    let service = tower::ServiceExt::<Request<Body>>::map_err(
-        handle_404.into_service(),
-        |err| -> std::io::Error { match err {} },
-    );
+    let service = handle_404.into_service();
 
     let serve_dir = ServeDir::new("assets").not_found_service(service);
 
