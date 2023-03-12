@@ -17,12 +17,12 @@ use axum::{
     routing::get,
     Router,
 };
-use tower_http::auth::RequireAuthorizationLayer;
+use tower_http::validate_request::ValidateRequestHeaderLayer;
 
 let app = Router::new().route(
     "/foo",
     get(|| async {})
-        .route_layer(RequireAuthorizationLayer::bearer("password"))
+        .route_layer(ValidateRequestHeaderLayer::bearer("password"))
 );
 
 // `GET /foo` with a valid token will receive `200 OK`

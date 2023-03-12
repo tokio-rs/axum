@@ -46,6 +46,7 @@ pin_project! {
     /// ```
     #[cfg(feature = "async-read-body")]
     #[derive(Debug)]
+    #[must_use]
     pub struct AsyncReadBody<R> {
         #[pin]
         read: StreamBody<ReaderStream<R>>,

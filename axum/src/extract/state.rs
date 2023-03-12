@@ -46,6 +46,11 @@ use std::{
 /// # let _: axum::Router = app;
 /// ```
 ///
+/// Note that `State` is an extractor, so be sure to put it before any body
+/// extractors, see ["the order of extractors"][order-of-extractors].
+///
+/// [order-of-extractors]: crate::extract#the-order-of-extractors
+///
 /// ## Combining stateful routers
 ///
 /// Multiple [`Router`]s can be combined with [`Router::nest`] or [`Router::merge`]
@@ -295,6 +300,49 @@ use std::{
 ///
 /// In general however we recommend you implement `Clone` for all your state types to avoid
 /// potential type errors.
+///
+/// # Shared mutable state
+///
+/// [As state is global within a `Router`][global] you can't directly get a mutable reference to
+/// the state.
+///
+/// The most basic solution is to use an `Arc<Mutex<_>>`. Which kind of mutex you need depends on
+/// your use case. See [the tokio docs] for more details.
+///
+/// Note that holding a locked `std::sync::Mutex` across `.await` points will result in `!Send`
+/// futures which are incompatible with axum. If you need to hold a mutex across `.await` points,
+/// consider using a `tokio::sync::Mutex` instead.
+///
+/// ## Example
+///
+/// ```
+/// use axum::{Router, routing::get, extract::State};
+/// use std::sync::{Arc, Mutex};
+///
+/// #[derive(Clone)]
+/// struct AppState {
+///     data: Arc<Mutex<String>>,
+/// }
+///
+/// async fn handler(State(state): State<AppState>) {
+///     let mut data = state.data.lock().expect("mutex was poisoned");
+///     *data = "updated foo".to_owned();
+///
+///     // ...
+/// }
+///
+/// let state = AppState {
+///     data: Arc::new(Mutex::new("foo".to_owned())),
+/// };
+///
+/// let app = Router::new()
+///     .route("/", get(handler))
+///     .with_state(state);
+/// # let _: Router = app;
+/// ```
+///
+/// [global]: crate::Router::with_state
+/// [the tokio docs]: https://docs.rs/tokio/1.25.0/tokio/sync/struct.Mutex.html#which-kind-of-mutex-should-you-use
 #[derive(Debug, Default, Clone, Copy)]
 pub struct State<S>(pub S);
 

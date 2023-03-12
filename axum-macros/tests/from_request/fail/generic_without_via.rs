@@ -7,5 +7,5 @@ struct Extractor<T>(T);
 async fn foo(_: Extractor<()>) {}
 
 fn main() {
-    Router::<()>::new().route("/", get(foo));
+    _ = Router::<()>::new().route("/", get(foo));
 }

@@ -1,14 +1,13 @@
 //! Run with
 //!
 //! ```not_rust
-//! cd examples && cargo run -p example-sse
+//! cargo run -p example-sse
 //! ```
 
 use axum::{
     extract::TypedHeader,
-    http::StatusCode,
     response::sse::{Event, Sse},
-    routing::{get, get_service},
+    routing::get,
     Router,
 };
 use futures::stream::{self, Stream};
@@ -29,15 +28,7 @@ async fn main() {
 
     let assets_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("assets");
 
-    let static_files_service = get_service(
-        ServeDir::new(assets_dir).append_index_html_on_directories(true),
-    )
-    .handle_error(|error: std::io::Error| async move {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            format!("Unhandled internal error: {}", error),
-        )
-    });
+    let static_files_service = ServeDir::new(assets_dir).append_index_html_on_directories(true);
 
     // build our application with a route
     let app = Router::new()

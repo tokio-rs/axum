@@ -1,7 +1,7 @@
 //! Run with
 //!
 //! ```not_rust
-//! cd examples && cargo run -p example-routes-and-handlers-close-together
+//! cargo run -p example-routes-and-handlers-close-together
 //! ```
 
 use axum::{

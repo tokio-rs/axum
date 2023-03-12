@@ -9,6 +9,6 @@ axum = { path = "../../axum" }
 hyper = "0.14"
 tokio = { version = "1.0", features = ["full"] }
 tower = "0.4"
-tower-http = { version = "0.3", features = ["map-request-body", "util"] }
+tower-http = { version = "0.4.0", features = ["map-request-body", "util"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }

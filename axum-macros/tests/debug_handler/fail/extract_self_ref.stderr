@@ -1,5 +1,11 @@
 error: Handlers must only take owned values
+<<<<<<< HEAD
   --> tests/debug_handler/fail/extract_self_ref.rs:23:22
    |
 23 |     async fn handler(&self) {}
+=======
+  --> tests/debug_handler/fail/extract_self_ref.rs:24:22
+   |
+24 |     async fn handler(&self) {}
+>>>>>>> v0.7.0
    |                      ^^^^^

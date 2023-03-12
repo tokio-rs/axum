@@ -53,6 +53,7 @@ use tokio::time::Sleep;
 
 /// An SSE response
 #[derive(Clone)]
+#[must_use]
 pub struct Sse<S> {
     stream: S,
     keep_alive: Option<KeepAlive>,
@@ -163,6 +164,7 @@ where
 
 /// Server-sent event
 #[derive(Debug, Default, Clone)]
+#[must_use]
 pub struct Event {
     buffer: BytesMut,
     flags: EventFlags,
@@ -210,7 +212,7 @@ impl Event {
     ///
     /// [`MessageEvent`'s data field]: https://developer.mozilla.org/en-US/docs/Web/API/MessageEvent/data
     #[cfg(feature = "json")]
-    pub fn json_data<T>(mut self, data: T) -> serde_json::Result<Event>
+    pub fn json_data<T>(mut self, data: T) -> Result<Event, axum_core::Error>
     where
         T: serde::Serialize,
     {
@@ -219,7 +221,7 @@ impl Event {
         }
 
         self.buffer.extend_from_slice(b"data:");
-        serde_json::to_writer((&mut self.buffer).writer(), &data)?;
+        serde_json::to_writer((&mut self.buffer).writer(), &data).map_err(axum_core::Error::new)?;
         self.buffer.put_u8(b'\n');
 
         self.flags.insert(EventFlags::HAS_DATA);
@@ -383,6 +385,7 @@ bitflags::bitflags! {
 /// Configure the interval between keep-alive messages, the content
 /// of each message, and the associated stream.
 #[derive(Debug, Clone)]
+#[must_use]
 pub struct KeepAlive {
     event: Bytes,
     max_interval: Duration,
@@ -409,16 +412,27 @@ impl KeepAlive {
     ///
     /// Default is an empty comment.
     ///
-    ///
     /// # Panics
     ///
     /// Panics if `text` contains any newline or carriage returns, as they are not allowed in SSE
     /// comments.
-    pub fn text<I>(mut self, text: I) -> Self
+    pub fn text<I>(self, text: I) -> Self
     where
         I: AsRef<str>,
     {
-        self.event = Event::default().comment(text).finalize();
+        self.event(Event::default().comment(text))
+    }
+
+    /// Customize the event of the keep-alive message.
+    ///
+    /// Default is an empty comment.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `event` contains any newline or carriage returns, as they are not allowed in SSE
+    /// comments.
+    pub fn event(mut self, event: Event) -> Self {
+        self.event = event.finalize();
         self
     }
 }

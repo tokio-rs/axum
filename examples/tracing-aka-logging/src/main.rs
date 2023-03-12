@@ -1,7 +1,7 @@
 //! Run with
 //!
 //! ```not_rust
-//! cd examples && cargo run -p example-tracing-aka-logging
+//! cargo run -p example-tracing-aka-logging
 //! ```
 
 use axum::{

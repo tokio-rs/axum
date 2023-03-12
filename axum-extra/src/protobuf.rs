@@ -17,13 +17,13 @@ use std::ops::{Deref, DerefMut};
 /// # As extractor
 ///
 /// When used as an extractor, it can decode request bodies into some type that
-/// implements [`prost::Message`]. The request will be rejected (and a [`ProtoBufRejection`] will
+/// implements [`prost::Message`]. The request will be rejected (and a [`ProtobufRejection`] will
 /// be returned) if:
 ///
 /// - The body couldn't be decoded into the target Protocol Buffer message type.
 /// - Buffering the request body fails.
 ///
-/// See [`ProtoBufRejection`] for more details.
+/// See [`ProtobufRejection`] for more details.
 ///
 /// The extractor does not expect a `Content-Type` header to be present in the request.
 ///
@@ -31,7 +31,7 @@ use std::ops::{Deref, DerefMut};
 ///
 /// ```rust,no_run
 /// use axum::{routing::post, Router};
-/// use axum_extra::protobuf::ProtoBuf;
+/// use axum_extra::protobuf::Protobuf;
 ///
 /// #[derive(prost::Message)]
 /// struct CreateUser {
@@ -41,7 +41,7 @@ use std::ops::{Deref, DerefMut};
 ///     password: String,
 /// }
 ///
-/// async fn create_user(ProtoBuf(payload): ProtoBuf<CreateUser>) {
+/// async fn create_user(Protobuf(payload): Protobuf<CreateUser>) {
 ///     // payload is `CreateUser`
 /// }
 ///
@@ -67,7 +67,7 @@ use std::ops::{Deref, DerefMut};
 ///     routing::get,
 ///     Router,
 /// };
-/// use axum_extra::protobuf::ProtoBuf;
+/// use axum_extra::protobuf::Protobuf;
 ///
 /// #[derive(prost::Message)]
 /// struct User {
@@ -75,9 +75,9 @@ use std::ops::{Deref, DerefMut};
 ///     username: String,
 /// }
 ///
-/// async fn get_user(Path(user_id) : Path<String>) -> ProtoBuf<User> {
+/// async fn get_user(Path(user_id) : Path<String>) -> Protobuf<User> {
 ///     let user = find_user(user_id).await;
-///     ProtoBuf(user)
+///     Protobuf(user)
 /// }
 ///
 /// async fn find_user(user_id: String) -> User {
@@ -92,27 +92,28 @@ use std::ops::{Deref, DerefMut};
 /// ```
 #[derive(Debug, Clone, Copy, Default)]
 #[cfg_attr(docsrs, doc(cfg(feature = "protobuf")))]
-pub struct ProtoBuf<T>(pub T);
+#[must_use]
+pub struct Protobuf<T>(pub T);
 
 #[async_trait]
-impl<T, S> FromRequest<S> for ProtoBuf<T>
+impl<T, S> FromRequest<S> for Protobuf<T>
 where
     T: Message + Default,
     S: Send + Sync,
 {
-    type Rejection = ProtoBufRejection;
+    type Rejection = ProtobufRejection;
 
     async fn from_request(req: Request, state: &S) -> Result<Self, Self::Rejection> {
         let mut bytes = Bytes::from_request(req, state).await?;
 
         match T::decode(&mut bytes) {
-            Ok(value) => Ok(ProtoBuf(value)),
-            Err(err) => Err(ProtoBufDecodeError::from_err(err).into()),
+            Ok(value) => Ok(Protobuf(value)),
+            Err(err) => Err(ProtobufDecodeError::from_err(err).into()),
         }
     }
 }
 
-impl<T> Deref for ProtoBuf<T> {
+impl<T> Deref for Protobuf<T> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
@@ -120,19 +121,19 @@ impl<T> Deref for ProtoBuf<T> {
     }
 }
 
-impl<T> DerefMut for ProtoBuf<T> {
+impl<T> DerefMut for Protobuf<T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
     }
 }
 
-impl<T> From<T> for ProtoBuf<T> {
+impl<T> From<T> for Protobuf<T> {
     fn from(inner: T) -> Self {
         Self(inner)
     }
 }
 
-impl<T> IntoResponse for ProtoBuf<T>
+impl<T> IntoResponse for Protobuf<T>
 where
     T: Message + Default,
 {
@@ -145,13 +146,13 @@ where
     }
 }
 
-/// Rejection type for [`ProtoBuf`].
+/// Rejection type for [`Protobuf`].
 ///
 /// This rejection is used if the request body couldn't be decoded into the target type.
 #[derive(Debug)]
-pub struct ProtoBufDecodeError(pub(crate) axum::Error);
+pub struct ProtobufDecodeError(pub(crate) axum::Error);
 
-impl ProtoBufDecodeError {
+impl ProtobufDecodeError {
     pub(crate) fn from_err<E>(err: E) -> Self
     where
         E: Into<axum::BoxError>,
@@ -160,53 +161,53 @@ impl ProtoBufDecodeError {
     }
 }
 
-impl std::fmt::Display for ProtoBufDecodeError {
+impl std::fmt::Display for ProtobufDecodeError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "Failed to decode the body: {:?}", self.0)
     }
 }
 
-impl std::error::Error for ProtoBufDecodeError {
+impl std::error::Error for ProtobufDecodeError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         Some(&self.0)
     }
 }
 
-impl IntoResponse for ProtoBufDecodeError {
+impl IntoResponse for ProtobufDecodeError {
     fn into_response(self) -> Response {
         StatusCode::UNPROCESSABLE_ENTITY.into_response()
     }
 }
 
-/// Rejection used for [`ProtoBuf`].
+/// Rejection used for [`Protobuf`].
 ///
-/// Contains one variant for each way the [`ProtoBuf`] extractor
+/// Contains one variant for each way the [`Protobuf`] extractor
 /// can fail.
 #[derive(Debug)]
 #[non_exhaustive]
-pub enum ProtoBufRejection {
+pub enum ProtobufRejection {
     #[allow(missing_docs)]
-    ProtoBufDecodeError(ProtoBufDecodeError),
+    ProtobufDecodeError(ProtobufDecodeError),
     #[allow(missing_docs)]
     BytesRejection(BytesRejection),
 }
 
-impl From<ProtoBufDecodeError> for ProtoBufRejection {
-    fn from(inner: ProtoBufDecodeError) -> Self {
-        Self::ProtoBufDecodeError(inner)
+impl From<ProtobufDecodeError> for ProtobufRejection {
+    fn from(inner: ProtobufDecodeError) -> Self {
+        Self::ProtobufDecodeError(inner)
     }
 }
 
-impl From<BytesRejection> for ProtoBufRejection {
+impl From<BytesRejection> for ProtobufRejection {
     fn from(inner: BytesRejection) -> Self {
         Self::BytesRejection(inner)
     }
 }
 
-impl IntoResponse for ProtoBufRejection {
+impl IntoResponse for ProtobufRejection {
     fn into_response(self) -> Response {
         match self {
-            Self::ProtoBufDecodeError(inner) => inner.into_response(),
+            Self::ProtobufDecodeError(inner) => inner.into_response(),
             Self::BytesRejection(inner) => inner.into_response(),
         }
     }
@@ -229,7 +230,7 @@ mod tests {
 
         let app = Router::new().route(
             "/",
-            post(|input: ProtoBuf<Input>| async move { input.foo.to_owned() }),
+            post(|input: Protobuf<Input>| async move { input.foo.to_owned() }),
         );
 
         let input = Input {
@@ -258,7 +259,7 @@ mod tests {
             test: i32,
         }
 
-        let app = Router::new().route("/", post(|_: ProtoBuf<Expected>| async {}));
+        let app = Router::new().route("/", post(|_: Protobuf<Expected>| async {}));
 
         let input = Input {
             foo: "bar".to_owned(),
@@ -284,16 +285,16 @@ mod tests {
             result: String,
         }
 
-        let app = Router::new().route(
-            "/",
-            post(|input: ProtoBuf<Input>| async move {
-                let output = Output {
-                    result: input.foo.to_owned(),
-                };
+        #[axum::debug_handler]
+        async fn handler(input: Protobuf<Input>) -> Protobuf<Output> {
+            let output = Output {
+                result: input.foo.to_owned(),
+            };
 
-                ProtoBuf(output)
-            }),
-        );
+            Protobuf(output)
+        }
+
+        let app = Router::new().route("/", post(handler));
 
         let input = Input {
             foo: "bar".to_owned(),

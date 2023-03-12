@@ -4,7 +4,10 @@
 //! cargo test -p example-testing
 //! ```
 
+use std::net::SocketAddr;
+
 use axum::{
+    extract::ConnectInfo,
     routing::{get, post},
     Json, Router,
 };
@@ -42,6 +45,10 @@ fn app() -> Router {
             post(|payload: Json<serde_json::Value>| async move {
                 Json(serde_json::json!({ "data": payload.0 }))
             }),
+        )
+        .route(
+            "/requires-connect-into",
+            get(|ConnectInfo(addr): ConnectInfo<SocketAddr>| async move { format!("Hi {addr}") }),
         )
         // We can still add middleware
         .layer(TraceLayer::new_for_http())

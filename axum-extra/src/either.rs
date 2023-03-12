@@ -108,6 +108,7 @@ use tower_service::Service;
 ///
 /// See the [module docs](self) for examples.
 #[derive(Debug, Clone)]
+#[must_use]
 pub enum Either<E1, E2> {
     #[allow(missing_docs)]
     E1(E1),
@@ -119,6 +120,7 @@ pub enum Either<E1, E2> {
 ///
 /// See the [module docs](self) for examples.
 #[derive(Debug, Clone)]
+#[must_use]
 pub enum Either3<E1, E2, E3> {
     #[allow(missing_docs)]
     E1(E1),
@@ -132,6 +134,7 @@ pub enum Either3<E1, E2, E3> {
 ///
 /// See the [module docs](self) for examples.
 #[derive(Debug, Clone)]
+#[must_use]
 pub enum Either4<E1, E2, E3, E4> {
     #[allow(missing_docs)]
     E1(E1),
@@ -147,6 +150,7 @@ pub enum Either4<E1, E2, E3, E4> {
 ///
 /// See the [module docs](self) for examples.
 #[derive(Debug, Clone)]
+#[must_use]
 pub enum Either5<E1, E2, E3, E4, E5> {
     #[allow(missing_docs)]
     E1(E1),
@@ -164,6 +168,7 @@ pub enum Either5<E1, E2, E3, E4, E5> {
 ///
 /// See the [module docs](self) for examples.
 #[derive(Debug, Clone)]
+#[must_use]
 pub enum Either6<E1, E2, E3, E4, E5, E6> {
     #[allow(missing_docs)]
     E1(E1),
@@ -183,6 +188,7 @@ pub enum Either6<E1, E2, E3, E4, E5, E6> {
 ///
 /// See the [module docs](self) for examples.
 #[derive(Debug, Clone)]
+#[must_use]
 pub enum Either7<E1, E2, E3, E4, E5, E6, E7> {
     #[allow(missing_docs)]
     E1(E1),
@@ -204,6 +210,7 @@ pub enum Either7<E1, E2, E3, E4, E5, E6, E7> {
 ///
 /// See the [module docs](self) for examples.
 #[derive(Debug, Clone)]
+#[must_use]
 pub enum Either8<E1, E2, E3, E4, E5, E6, E7, E8> {
     #[allow(missing_docs)]
     E1(E1),

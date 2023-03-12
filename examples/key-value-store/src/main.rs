@@ -3,7 +3,7 @@
 //! Run with:
 //!
 //! ```not_rust
-//! cd examples && cargo run -p example-key-value-store
+//! cargo run -p example-key-value-store
 //! ```
 
 use axum::{
@@ -25,8 +25,8 @@ use std::{
 };
 use tower::{BoxError, ServiceBuilder};
 use tower_http::{
-    auth::RequireAuthorizationLayer, compression::CompressionLayer, limit::RequestBodyLimitLayer,
-    trace::TraceLayer,
+    compression::CompressionLayer, limit::RequestBodyLimitLayer, trace::TraceLayer,
+    validate_request::ValidateRequestHeaderLayer,
 };
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
@@ -128,7 +128,7 @@ fn admin_routes() -> Router<SharedState> {
         .route("/keys", delete(delete_all_keys))
         .route("/key/:key", delete(remove_key))
         // Require bearer auth for all admin routes
-        .layer(RequireAuthorizationLayer::bearer("secret-token"))
+        .layer(ValidateRequestHeaderLayer::bearer("secret-token"))
 }
 
 async fn handle_error(error: BoxError) -> impl IntoResponse {

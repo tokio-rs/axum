@@ -2,11 +2,11 @@
 //!
 //! See [`Multipart`] for more details.
 
-use super::FromRequest;
+use super::{FromRequest, Request};
 use crate::body::Bytes;
 use async_trait::async_trait;
 use axum_core::body::Body;
-use axum_core::{extract::Request, RequestExt};
+use axum_core::RequestExt;
 use futures_util::stream::Stream;
 use http::header::{HeaderMap, CONTENT_TYPE};
 use std::{

@@ -22,7 +22,7 @@ pin_project! {
     ///
     /// The purpose of this type is to be used in responses. If you want to
     /// extract the request body as a stream consider using
-    /// [`BodyStream`](crate::extract::BodyStream).
+    /// [`Body`](crate::body::Body).
     ///
     /// # Example
     ///
@@ -53,6 +53,7 @@ pin_project! {
     /// ```
     ///
     /// [`Stream`]: futures_util::stream::Stream
+    #[must_use]
     pub struct StreamBody<S> {
         #[pin]
         stream: SyncWrapper<S>,

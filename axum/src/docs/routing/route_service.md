@@ -38,17 +38,10 @@ let app = Router::new()
             Ok::<_, Infallible>(res)
         })
     )
-    .route(
+    .route_service(
         // GET `/static/Cargo.toml` goes to a service from tower-http
         "/static/Cargo.toml",
-        get_service(ServeFile::new("Cargo.toml"))
-            // though we must handle any potential errors
-            .handle_error(|error: io::Error| async move {
-                (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    format!("Unhandled internal error: {}", error),
-                )
-            })
+        ServeFile::new("Cargo.toml"),
     );
 # async {
 # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();

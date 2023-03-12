@@ -19,7 +19,7 @@ struct UsersIndex;
 async fn result_handler_unit_struct(_: Result<UsersIndex, StatusCode>) {}
 
 fn main() {
-    axum::Router::<()>::new()
+    _ = axum::Router::<()>::new()
         .typed_get(option_handler)
         .typed_post(result_handler)
         .typed_post(result_handler_unit_struct);

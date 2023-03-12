@@ -20,7 +20,7 @@ use std::{
     time::Duration,
 };
 use tower::{service_fn, timeout::TimeoutLayer, util::MapResponseLayer, ServiceBuilder};
-use tower_http::{auth::RequireAuthorizationLayer, limit::RequestBodyLimitLayer};
+use tower_http::{limit::RequestBodyLimitLayer, validate_request::ValidateRequestHeaderLayer};
 use tower_service::Service;
 
 mod fallback;
@@ -453,7 +453,7 @@ async fn routing_to_router_panics() {
 async fn route_layer() {
     let app = Router::new()
         .route("/foo", get(|| async {}))
-        .route_layer(RequireAuthorizationLayer::bearer("password"));
+        .route_layer(ValidateRequestHeaderLayer::bearer("password"));
 
     let client = TestClient::new(app);
 
@@ -517,7 +517,7 @@ fn routes_with_overlapping_method_routes() {
 fn merging_with_overlapping_method_routes() {
     async fn handler() {}
     let app: Router = Router::new().route("/foo/bar", get(handler));
-    app.clone().merge(app);
+    _ = app.clone().merge(app);
 }
 
 #[crate::test]

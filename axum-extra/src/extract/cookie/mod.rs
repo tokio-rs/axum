@@ -83,7 +83,7 @@ pub use cookie::Key;
 ///     .route("/me", get(me));
 /// # let app: Router = app;
 /// ```
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct CookieJar {
     jar: cookie::CookieJar,
 }

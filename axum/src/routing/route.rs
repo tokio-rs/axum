@@ -154,9 +154,6 @@ impl<E> Future for RouteFuture<E> {
 
     #[inline]
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        #[derive(Clone, Copy)]
-        struct AlreadyPassedThroughRouteFuture;
-
         let this = self.project();
 
         let mut res = match this.kind.project() {
@@ -169,16 +166,6 @@ impl<E> Future for RouteFuture<E> {
                 response.take().expect("future polled after completion")
             }
         };
-
-        if res
-            .extensions()
-            .get::<AlreadyPassedThroughRouteFuture>()
-            .is_some()
-        {
-            return Poll::Ready(Ok(res));
-        } else {
-            res.extensions_mut().insert(AlreadyPassedThroughRouteFuture);
-        }
 
         set_allow_header(res.headers_mut(), this.allow_header);
 

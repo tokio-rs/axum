@@ -8,6 +8,68 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 # Unreleased
 
 - **breaking:** `extract::BodyStream` has been removed as `body::Body` implements `Stream` directly
+- **breaking:** The following types/traits are no longer generic over the request body
+  (i.e. the `B` type param has been removed) ([#1751]):
+  - `FromRequest`
+  - `FromRequestParts`
+  - `Handler`
+  - `HandlerService`
+  - `HandlerWithoutStateExt`
+  - `Layered`
+  - `LayeredFuture`
+  - `MethodRouter`
+  - `RequestExt`
+  - `Route`
+  - `RouteFuture`
+  - `Router`
+- **breaking:** axum no longer re-exports `hyper::Body` as that type is removed
+  in hyper 1.0. Instead axum has its own body type at `axum::body::Body` ([#1751])
+- **breaking:** `extract::BodyStream` has been removed as `body::Body`
+  implements `Stream` and `FromRequest` directly ([#1751])
+- **breaking:** Change `sse::Event::json_data` to use `axum_core::Error` as its error type ([#1762])
+- **breaking:** Rename `DefaultOnFailedUpdgrade` to `DefaultOnFailedUpgrade` ([#1664])
+- **breaking:** Rename `OnFailedUpdgrade` to `OnFailedUpgrade` ([#1664])
+- **added:** Add `Router::as_service` and `Router::into_service` to workaround
+  type inference issues when calling `ServiceExt` methods on a `Router` ([#1835])
+
+[#1664]: https://github.com/tokio-rs/axum/pull/1664
+[#1751]: https://github.com/tokio-rs/axum/pull/1751
+[#1762]: https://github.com/tokio-rs/axum/pull/1762
+[#1835]: https://github.com/tokio-rs/axum/pull/1835
+
+# 0.6.10 (03. March, 2023)
+
+- **fixed:** Add `#[must_use]` attributes to types that do nothing unless used ([#1809])
+- **fixed:** Gracefully handle missing headers in the `TypedHeader` extractor ([#1810])
+- **fixed:** Fix routing issues when loading a `Router` via a dynamic library ([#1806])
+
+[#1806]: https://github.com/tokio-rs/axum/pull/1806
+[#1809]: https://github.com/tokio-rs/axum/pull/1809
+[#1810]: https://github.com/tokio-rs/axum/pull/1810
+
+# 0.6.9 (24. February, 2023)
+
+- **changed:** Update to tower-http 0.4. axum is still compatible with tower-http 0.3 ([#1783])
+
+[#1783]: https://github.com/tokio-rs/axum/pull/1783
+
+# 0.6.8 (24. February, 2023)
+
+- **fixed:** Fix `Allow` missing from routers with middleware ([#1773])
+- **added:** Add `KeepAlive::event` for customizing the event sent for SSE keep alive ([#1729])
+
+[#1729]: https://github.com/tokio-rs/axum/pull/1729
+[#1773]: https://github.com/tokio-rs/axum/pull/1773
+
+# 0.6.7 (17. February, 2023)
+
+- **added:** Add `FormRejection::FailedToDeserializeFormBody` which is returned
+  if the request body couldn't be deserialized into the target type, as opposed
+  to `FailedToDeserializeForm` which is only for query parameters ([#1683])
+- **added:** Add `MockConnectInfo` for setting `ConnectInfo` during tests ([#1767])
+
+[#1683]: https://github.com/tokio-rs/axum/pull/1683
+[#1767]: https://github.com/tokio-rs/axum/pull/1767
 
 # 0.6.6 (12. February, 2023)
 

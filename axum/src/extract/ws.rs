@@ -132,7 +132,7 @@ use tokio_tungstenite::{
 ///
 /// See the [module docs](self) for an example.
 #[cfg_attr(docsrs, doc(cfg(feature = "ws")))]
-pub struct WebSocketUpgrade<F = DefaultOnFailedUpdgrade> {
+pub struct WebSocketUpgrade<F = DefaultOnFailedUpgrade> {
     config: WebSocketConfig,
     /// The chosen protocol sent in the `Sec-WebSocket-Protocol` header of the response.
     protocol: Option<HeaderValue>,
@@ -265,7 +265,7 @@ impl<F> WebSocketUpgrade<F> {
     /// ```
     pub fn on_failed_upgrade<C>(self, callback: C) -> WebSocketUpgrade<C>
     where
-        C: OnFailedUpdgrade,
+        C: OnFailedUpgrade,
     {
         WebSocketUpgrade {
             config: self.config,
@@ -279,15 +279,12 @@ impl<F> WebSocketUpgrade<F> {
 
     /// Finalize upgrading the connection and call the provided callback with
     /// the stream.
-    ///
-    /// When using `WebSocketUpgrade`, the response produced by this method
-    /// should be returned from the handler. See the [module docs](self) for an
-    /// example.
+    #[must_use = "to setup the WebSocket connection, this response must be returned"]
     pub fn on_upgrade<C, Fut>(self, callback: C) -> Response
     where
         C: FnOnce(WebSocket) -> Fut + Send + 'static,
         Fut: Future<Output = ()> + Send + 'static,
-        F: OnFailedUpdgrade,
+        F: OnFailedUpgrade,
     {
         let on_upgrade = self.on_upgrade;
         let config = self.config;
@@ -339,12 +336,12 @@ impl<F> WebSocketUpgrade<F> {
 /// What to do when a connection upgrade fails.
 ///
 /// See [`WebSocketUpgrade::on_failed_upgrade`] for more details.
-pub trait OnFailedUpdgrade: Send + 'static {
+pub trait OnFailedUpgrade: Send + 'static {
     /// Call the callback.
     fn call(self, error: Error);
 }
 
-impl<F> OnFailedUpdgrade for F
+impl<F> OnFailedUpgrade for F
 where
     F: FnOnce(Error) + Send + 'static,
 {
@@ -353,20 +350,20 @@ where
     }
 }
 
-/// The default `OnFailedUpdgrade` used by `WebSocketUpgrade`.
+/// The default `OnFailedUpgrade` used by `WebSocketUpgrade`.
 ///
 /// It simply ignores the error.
 #[non_exhaustive]
 #[derive(Debug)]
-pub struct DefaultOnFailedUpdgrade;
+pub struct DefaultOnFailedUpgrade;
 
-impl OnFailedUpdgrade for DefaultOnFailedUpdgrade {
+impl OnFailedUpgrade for DefaultOnFailedUpgrade {
     #[inline]
     fn call(self, _error: Error) {}
 }
 
 #[async_trait]
-impl<S> FromRequestParts<S> for WebSocketUpgrade<DefaultOnFailedUpdgrade>
+impl<S> FromRequestParts<S> for WebSocketUpgrade<DefaultOnFailedUpgrade>
 where
     S: Send + Sync,
 {
@@ -407,7 +404,7 @@ where
             sec_websocket_key,
             on_upgrade,
             sec_websocket_protocol,
-            on_failed_upgrade: DefaultOnFailedUpdgrade,
+            on_failed_upgrade: DefaultOnFailedUpgrade,
         })
     }
 }
@@ -435,6 +432,8 @@ fn header_contains(headers: &HeaderMap, key: HeaderName, value: &'static str) ->
 }
 
 /// A stream of WebSocket messages.
+///
+/// See [the module level documentation](self) for more details.
 #[derive(Debug)]
 pub struct WebSocket {
     inner: WebSocketStream<Upgraded>,

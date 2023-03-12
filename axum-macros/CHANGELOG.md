@@ -9,6 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **breaking:** `#[debug_handler]` no longer accepts a `body = _` argument. The
   body type is always `axum::body::Body`
+  body type is always `axum::body::Body` ([#1751])
+- **fixed:** Improve `#[debug_handler]` message for known generic
+  request-consuming extractors ([#1826])
+
+[#1826]: https://github.com/tokio-rs/axum/pull/1826
+[#1751]: https://github.com/tokio-rs/axum/pull/1751
+
+# 0.3.5 (03. March, 2023)
+
+- **fixed:** In `#[debug_handler]` provide specific errors about `FromRequest`
+  extractors not being the last argument ([#1797])
+
+[#1797]: https://github.com/tokio-rs/axum/pull/1797
 
 # 0.3.4 (12. February, 2022)
 

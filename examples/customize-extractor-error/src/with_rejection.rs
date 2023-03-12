@@ -13,7 +13,7 @@
 //! [`thiserror`]: https://crates.io/crates/thiserror
 //! [#1116]: https://github.com/tokio-rs/axum/issues/1116#issuecomment-1186197684
 
-use axum::{extract::rejection::JsonRejection, http::StatusCode, response::IntoResponse, Json};
+use axum::{extract::rejection::JsonRejection, response::IntoResponse, Json};
 use axum_extra::extract::WithRejection;
 use serde_json::{json, Value};
 use thiserror::Error;
@@ -37,21 +37,21 @@ pub enum ApiError {
     #[error(transparent)]
     JsonExtractorRejection(#[from] JsonRejection),
 }
+
 // We implement `IntoResponse` so ApiError can be used as a response
 impl IntoResponse for ApiError {
     fn into_response(self) -> axum::response::Response {
+        let (status, message) = match self {
+            ApiError::JsonExtractorRejection(json_rejection) => {
+                (json_rejection.status(), json_rejection.body_text())
+            }
+        };
+
         let payload = json!({
-            "message": self.to_string(),
+            "message": message,
             "origin": "with_rejection"
         });
-        let code = match self {
-            ApiError::JsonExtractorRejection(x) => match x {
-                JsonRejection::JsonDataError(_) => StatusCode::UNPROCESSABLE_ENTITY,
-                JsonRejection::JsonSyntaxError(_) => StatusCode::BAD_REQUEST,
-                JsonRejection::MissingJsonContentType(_) => StatusCode::UNSUPPORTED_MEDIA_TYPE,
-                _ => StatusCode::INTERNAL_SERVER_ERROR,
-            },
-        };
-        (code, Json(payload)).into_response()
+
+        (status, Json(payload)).into_response()
     }
 }
