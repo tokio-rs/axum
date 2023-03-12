@@ -4,8 +4,8 @@
 
 use axum::{
     async_trait,
-    body::{Bytes, HttpBody},
-    extract::{BodyStream, FromRequest},
+    body::{Body, Bytes},
+    extract::FromRequest,
     response::{IntoResponse, Response},
     BoxError, RequestExt,
 };
@@ -90,22 +90,18 @@ pub struct Multipart {
 }
 
 #[async_trait]
-impl<S, B> FromRequest<S, B> for Multipart
+impl<S> FromRequest<S> for Multipart
 where
-    B: HttpBody + Send + 'static,
-    B::Data: Into<Bytes>,
-    B::Error: Into<BoxError>,
     S: Send + Sync,
 {
     type Rejection = MultipartRejection;
 
-    async fn from_request(req: Request<B>, state: &S) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: Request<Body>, _state: &S) -> Result<Self, Self::Rejection> {
         let boundary = parse_boundary(req.headers()).ok_or(InvalidBoundary)?;
-        let stream_result = match req.with_limited_body() {
-            Ok(limited) => BodyStream::from_request(limited, state).await,
-            Err(unlimited) => BodyStream::from_request(unlimited, state).await,
+        let stream = match req.with_limited_body() {
+            Ok(limited) => Body::new(limited),
+            Err(unlimited) => unlimited.into_body(),
         };
-        let stream = stream_result.unwrap_or_else(|err| match err {});
         let multipart = multer::Multipart::new(stream, boundary);
         Ok(Self { inner: multipart })
     }
@@ -393,6 +389,6 @@ mod tests {
     // No need for this to be a #[test], we just want to make sure it compiles
     fn _multipart_from_request_limited() {
         async fn handler(_: Multipart) {}
-        let _app: Router<(), http_body::Limited<Body>> = Router::new().route("/", post(handler));
+        let _app: Router<()> = Router::new().route("/", post(handler));
     }
 }

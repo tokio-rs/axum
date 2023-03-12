@@ -1,15 +1,16 @@
+use crate::body::Body;
 use crate::extract::{DefaultBodyLimitKind, FromRequest, FromRequestParts};
 use futures_util::future::BoxFuture;
 use http::Request;
 use http_body::Limited;
 
 mod sealed {
-    pub trait Sealed<B> {}
-    impl<B> Sealed<B> for http::Request<B> {}
+    pub trait Sealed {}
+    impl Sealed for http::Request<crate::body::Body> {}
 }
 
 /// Extension trait that adds additional methods to [`Request`].
-pub trait RequestExt<B>: sealed::Sealed<B> + Sized {
+pub trait RequestExt: sealed::Sealed + Sized {
     /// Apply an extractor to this `Request`.
     ///
     /// This is just a convenience for `E::from_request(req, &())`.
@@ -23,6 +24,7 @@ pub trait RequestExt<B>: sealed::Sealed<B> + Sized {
     /// use axum::{
     ///     async_trait,
     ///     extract::FromRequest,
+    ///     body::Body,
     ///     http::{header::CONTENT_TYPE, Request, StatusCode},
     ///     response::{IntoResponse, Response},
     ///     Form, Json, RequestExt,
@@ -31,17 +33,16 @@ pub trait RequestExt<B>: sealed::Sealed<B> + Sized {
     /// struct FormOrJson<T>(T);
     ///
     /// #[async_trait]
-    /// impl<S, B, T> FromRequest<S, B> for FormOrJson<T>
+    /// impl<S, T> FromRequest<S> for FormOrJson<T>
     /// where
-    ///     Json<T>: FromRequest<(), B>,
-    ///     Form<T>: FromRequest<(), B>,
+    ///     Json<T>: FromRequest<()>,
+    ///     Form<T>: FromRequest<()>,
     ///     T: 'static,
-    ///     B: Send + 'static,
     ///     S: Send + Sync,
     /// {
     ///     type Rejection = Response;
     ///
-    ///     async fn from_request(req: Request<B>, _state: &S) -> Result<Self, Self::Rejection> {
+    ///     async fn from_request(req: Request<Body>, _state: &S) -> Result<Self, Self::Rejection> {
     ///         let content_type = req
     ///             .headers()
     ///             .get(CONTENT_TYPE)
@@ -70,7 +71,7 @@ pub trait RequestExt<B>: sealed::Sealed<B> + Sized {
     /// ```
     fn extract<E, M>(self) -> BoxFuture<'static, Result<E, E::Rejection>>
     where
-        E: FromRequest<(), B, M> + 'static,
+        E: FromRequest<(), M> + 'static,
         M: 'static;
 
     /// Apply an extractor that requires some state to this `Request`.
@@ -85,6 +86,7 @@ pub trait RequestExt<B>: sealed::Sealed<B> + Sized {
     /// ```
     /// use axum::{
     ///     async_trait,
+    ///     body::Body,
     ///     extract::{FromRef, FromRequest},
     ///     http::Request,
     ///     RequestExt,
@@ -95,15 +97,14 @@ pub trait RequestExt<B>: sealed::Sealed<B> + Sized {
     /// }
     ///
     /// #[async_trait]
-    /// impl<S, B> FromRequest<S, B> for MyExtractor
+    /// impl<S> FromRequest<S> for MyExtractor
     /// where
     ///     String: FromRef<S>,
     ///     S: Send + Sync,
-    ///     B: Send + 'static,
     /// {
     ///     type Rejection = std::convert::Infallible;
     ///
-    ///     async fn from_request(req: Request<B>, state: &S) -> Result<Self, Self::Rejection> {
+    ///     async fn from_request(req: Request<Body>, state: &S) -> Result<Self, Self::Rejection> {
     ///         let requires_state = req.extract_with_state::<RequiresState, _, _>(state).await?;
     ///
     ///         Ok(Self { requires_state })
@@ -114,22 +115,21 @@ pub trait RequestExt<B>: sealed::Sealed<B> + Sized {
     /// struct RequiresState { /* ... */ }
     ///
     /// #[async_trait]
-    /// impl<S, B> FromRequest<S, B> for RequiresState
+    /// impl<S> FromRequest<S> for RequiresState
     /// where
     ///     String: FromRef<S>,
     ///     S: Send + Sync,
-    ///     B: Send + 'static,
     /// {
     ///     // ...
     ///     # type Rejection = std::convert::Infallible;
-    ///     # async fn from_request(req: Request<B>, _state: &S) -> Result<Self, Self::Rejection> {
+    ///     # async fn from_request(req: Request<Body>, _state: &S) -> Result<Self, Self::Rejection> {
     ///     #     todo!()
     ///     # }
     /// }
     /// ```
     fn extract_with_state<E, S, M>(self, state: &S) -> BoxFuture<'_, Result<E, E::Rejection>>
     where
-        E: FromRequest<S, B, M> + 'static,
+        E: FromRequest<S, M> + 'static,
         S: Send + Sync;
 
     /// Apply a parts extractor to this `Request`.
@@ -145,6 +145,7 @@ pub trait RequestExt<B>: sealed::Sealed<B> + Sized {
     ///     headers::{authorization::Bearer, Authorization},
     ///     http::Request,
     ///     response::{IntoResponse, Response},
+    ///     body::Body,
     ///     Json, RequestExt, TypedHeader,
     /// };
     ///
@@ -154,16 +155,15 @@ pub trait RequestExt<B>: sealed::Sealed<B> + Sized {
     /// }
     ///
     /// #[async_trait]
-    /// impl<S, B, T> FromRequest<S, B> for MyExtractor<T>
+    /// impl<S, T> FromRequest<S> for MyExtractor<T>
     /// where
-    ///     B: Send + 'static,
     ///     S: Send + Sync,
-    ///     Json<T>: FromRequest<(), B>,
+    ///     Json<T>: FromRequest<()>,
     ///     T: 'static,
     /// {
     ///     type Rejection = Response;
     ///
-    ///     async fn from_request(mut req: Request<B>, _state: &S) -> Result<Self, Self::Rejection> {
+    ///     async fn from_request(mut req: Request<Body>, _state: &S) -> Result<Self, Self::Rejection> {
     ///         let TypedHeader(auth_header) = req
     ///             .extract_parts::<TypedHeader<Authorization<Bearer>>>()
     ///             .await
@@ -197,6 +197,7 @@ pub trait RequestExt<B>: sealed::Sealed<B> + Sized {
     ///     extract::{FromRef, FromRequest, FromRequestParts},
     ///     http::{request::Parts, Request},
     ///     response::{IntoResponse, Response},
+    ///     body::Body,
     ///     Json, RequestExt,
     /// };
     ///
@@ -206,17 +207,16 @@ pub trait RequestExt<B>: sealed::Sealed<B> + Sized {
     /// }
     ///
     /// #[async_trait]
-    /// impl<S, B, T> FromRequest<S, B> for MyExtractor<T>
+    /// impl<S, T> FromRequest<S> for MyExtractor<T>
     /// where
     ///     String: FromRef<S>,
-    ///     Json<T>: FromRequest<(), B>,
+    ///     Json<T>: FromRequest<()>,
     ///     T: 'static,
     ///     S: Send + Sync,
-    ///     B: Send + 'static,
     /// {
     ///     type Rejection = Response;
     ///
-    ///     async fn from_request(mut req: Request<B>, state: &S) -> Result<Self, Self::Rejection> {
+    ///     async fn from_request(mut req: Request<Body>, state: &S) -> Result<Self, Self::Rejection> {
     ///         let requires_state = req
     ///             .extract_parts_with_state::<RequiresState, _>(state)
     ///             .await
@@ -260,21 +260,18 @@ pub trait RequestExt<B>: sealed::Sealed<B> + Sized {
     /// Apply the [default body limit](crate::extract::DefaultBodyLimit).
     ///
     /// If it is disabled, return the request as-is in `Err`.
-    fn with_limited_body(self) -> Result<Request<Limited<B>>, Request<B>>;
+    fn with_limited_body(self) -> Result<Request<Limited<Body>>, Request<Body>>;
 
     /// Consumes the request, returning the body wrapped in [`Limited`] if a
     /// [default limit](crate::extract::DefaultBodyLimit) is in place, or not wrapped if the
     /// default limit is disabled.
-    fn into_limited_body(self) -> Result<Limited<B>, B>;
+    fn into_limited_body(self) -> Result<Limited<Body>, Body>;
 }
 
-impl<B> RequestExt<B> for Request<B>
-where
-    B: Send + 'static,
-{
+impl RequestExt for Request<Body> {
     fn extract<E, M>(self) -> BoxFuture<'static, Result<E, E::Rejection>>
     where
-        E: FromRequest<(), B, M> + 'static,
+        E: FromRequest<(), M> + 'static,
         M: 'static,
     {
         self.extract_with_state(&())
@@ -282,7 +279,7 @@ where
 
     fn extract_with_state<E, S, M>(self, state: &S) -> BoxFuture<'_, Result<E, E::Rejection>>
     where
-        E: FromRequest<S, B, M> + 'static,
+        E: FromRequest<S, M> + 'static,
         S: Send + Sync,
     {
         E::from_request(self, state)
@@ -324,7 +321,7 @@ where
         })
     }
 
-    fn with_limited_body(self) -> Result<Request<Limited<B>>, Request<B>> {
+    fn with_limited_body(self) -> Result<Request<Limited<Body>>, Request<Body>> {
         // update docs in `axum-core/src/extract/default_body_limit.rs` and
         // `axum/src/docs/extract.md` if this changes
         const DEFAULT_LIMIT: usize = 2_097_152; // 2 mb
@@ -338,7 +335,7 @@ where
         }
     }
 
-    fn into_limited_body(self) -> Result<Limited<B>, B> {
+    fn into_limited_body(self) -> Result<Limited<Body>, Body> {
         self.with_limited_body()
             .map(Request::into_body)
             .map_err(Request::into_body)
@@ -354,11 +351,10 @@ mod tests {
     };
     use async_trait::async_trait;
     use http::Method;
-    use hyper::Body;
 
     #[tokio::test]
     async fn extract_without_state() {
-        let req = Request::new(());
+        let req = Request::new(Body::empty());
 
         let method: Method = req.extract().await.unwrap();
 
@@ -376,7 +372,7 @@ mod tests {
 
     #[tokio::test]
     async fn extract_with_state() {
-        let req = Request::new(());
+        let req = Request::new(Body::empty());
 
         let state = "state".to_owned();
 
@@ -387,7 +383,10 @@ mod tests {
 
     #[tokio::test]
     async fn extract_parts_without_state() {
-        let mut req = Request::builder().header("x-foo", "foo").body(()).unwrap();
+        let mut req = Request::builder()
+            .header("x-foo", "foo")
+            .body(Body::empty())
+            .unwrap();
 
         let method: Method = req.extract_parts().await.unwrap();
 
@@ -397,7 +396,10 @@ mod tests {
 
     #[tokio::test]
     async fn extract_parts_with_state() {
-        let mut req = Request::builder().header("x-foo", "foo").body(()).unwrap();
+        let mut req = Request::builder()
+            .header("x-foo", "foo")
+            .body(Body::empty())
+            .unwrap();
 
         let state = "state".to_owned();
 
@@ -417,15 +419,14 @@ mod tests {
     }
 
     #[async_trait]
-    impl<S, B> FromRequest<S, B> for WorksForCustomExtractor
+    impl<S> FromRequest<S> for WorksForCustomExtractor
     where
         S: Send + Sync,
-        B: Send + 'static,
-        String: FromRef<S> + FromRequest<(), B>,
+        String: FromRef<S> + FromRequest<()>,
     {
-        type Rejection = <String as FromRequest<(), B>>::Rejection;
+        type Rejection = <String as FromRequest<()>>::Rejection;
 
-        async fn from_request(mut req: Request<B>, state: &S) -> Result<Self, Self::Rejection> {
+        async fn from_request(mut req: Request<Body>, state: &S) -> Result<Self, Self::Rejection> {
             let RequiresState(from_state) = req.extract_parts_with_state(state).await.unwrap();
             let method = req.extract_parts().await.unwrap();
             let body = req.extract().await?;

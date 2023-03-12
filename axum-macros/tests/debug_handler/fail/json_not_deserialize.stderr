@@ -15,6 +15,6 @@ error[E0277]: the trait bound `for<'de> Struct: serde::de::Deserialize<'de>` is 
             (T0, T1, T2, T3)
           and $N others
   = note: required for `Struct` to implement `serde::de::DeserializeOwned`
-  = note: required for `Json<Struct>` to implement `FromRequest<(), Body>`
+  = note: required for `Json<Struct>` to implement `FromRequest<()>`
   = help: see issue #48214
   = help: add `#![feature(trivial_bounds)]` to the crate attributes to enable

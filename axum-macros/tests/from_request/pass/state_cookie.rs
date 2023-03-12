@@ -20,7 +20,7 @@ impl FromRef<AppState> for Key {
 
 fn assert_from_request()
 where
-    Extractor: axum::extract::FromRequest<AppState, axum::body::Body, Rejection = axum::response::Response>,
+    Extractor: axum::extract::FromRequest<AppState, Rejection = axum::response::Response>,
 {
 }
 
