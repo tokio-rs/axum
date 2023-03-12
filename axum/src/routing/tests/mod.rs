@@ -822,7 +822,7 @@ async fn state_isnt_cloned_too_much() {
 
     impl Clone for AppState {
         fn clone(&self) -> Self {
-            #[rustversion::stable]
+            #[rustversion::since(1.65)]
             #[track_caller]
             fn count() {
                 if SETUP_DONE.load(Ordering::SeqCst) {
@@ -838,7 +838,7 @@ async fn state_isnt_cloned_too_much() {
                 }
             }
 
-            #[rustversion::not(stable)]
+            #[rustversion::not(since(1.65))]
             fn count() {
                 if SETUP_DONE.load(Ordering::SeqCst) {
                     COUNT.fetch_add(1, Ordering::SeqCst);
