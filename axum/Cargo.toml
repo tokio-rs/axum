@@ -27,38 +27,7 @@ tower-log = ["tower/log"]
 ws = ["tokio", "dep:tokio-tungstenite", "dep:sha1", "dep:base64"]
 
 # Required for intra-doc links to resolve correctly
-__private_docs = [
-    "tower/full",
-    # all tower-http features except (de)?compression-zstd which doesn't
-    # build on `--target armv5te-unknown-linux-musleabi`
-    "tower-http/add-extension",
-    "tower-http/auth",
-    "tower-http/catch-panic",
-    "tower-http/compression-br",
-    "tower-http/compression-deflate",
-    "tower-http/compression-gzip",
-    "tower-http/cors",
-    "tower-http/decompression-br",
-    "tower-http/decompression-deflate",
-    "tower-http/decompression-gzip",
-    "tower-http/follow-redirect",
-    "tower-http/fs",
-    "tower-http/limit",
-    "tower-http/map-request-body",
-    "tower-http/map-response-body",
-    "tower-http/metrics",
-    "tower-http/normalize-path",
-    "tower-http/propagate-header",
-    "tower-http/redirect",
-    "tower-http/request-id",
-    "tower-http/sensitive-headers",
-    "tower-http/set-header",
-    "tower-http/set-status",
-    "tower-http/timeout",
-    "tower-http/trace",
-    "tower-http/util",
-    "tower-http/validate-request",
-]
+__private_docs = ["tower/full", "dep:tower-http"]
 
 [dependencies]
 async-trait = "0.1.43"
@@ -92,7 +61,41 @@ serde_urlencoded = { version = "0.7", optional = true }
 sha1 = { version = "0.10", optional = true }
 tokio = { package = "tokio", version = "1.25.0", features = ["time"], optional = true }
 tokio-tungstenite = { version = "0.18.0", optional = true }
-tower-http = { version = "0.4", features = ["util", "map-response-body"], optional = true }
+
+[dependencies.tower-http]
+version = "0.4"
+optional = true
+features = [
+    # all tower-http features except (de)?compression-zstd which doesn't
+    # build on `--target armv5te-unknown-linux-musleabi`
+    "add-extension",
+    "auth",
+    "catch-panic",
+    "compression-br",
+    "compression-deflate",
+    "compression-gzip",
+    "cors",
+    "decompression-br",
+    "decompression-deflate",
+    "decompression-gzip",
+    "follow-redirect",
+    "fs",
+    "limit",
+    "map-request-body",
+    "map-response-body",
+    "metrics",
+    "normalize-path",
+    "propagate-header",
+    "redirect",
+    "request-id",
+    "sensitive-headers",
+    "set-header",
+    "set-status",
+    "timeout",
+    "trace",
+    "util",
+    "validate-request",
+]
 
 [build-dependencies]
 rustversion = "1.0.9"

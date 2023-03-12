@@ -30,8 +30,6 @@ define_rejection! {
     ///
     /// This can  _only_ happen when you're using [`tower_http::limit::RequestBodyLimitLayer`] or
     /// otherwise wrapping request bodies in [`http_body::Limited`].
-    ///
-    /// [`tower_http::limit::RequestBodyLimitLayer`]: https://docs.rs/tower-http/0.3/tower_http/limit/struct.RequestBodyLimitLayer.html
     pub struct LengthLimitError(Error);
 }
 
