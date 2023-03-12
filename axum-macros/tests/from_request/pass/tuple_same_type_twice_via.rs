@@ -14,7 +14,7 @@ struct Payload {}
 
 fn assert_from_request()
 where
-    Extractor: axum::extract::FromRequest<(), axum::body::Body, Rejection = Response>,
+    Extractor: axum::extract::FromRequest<(), Rejection = Response>,
 {
 }
 

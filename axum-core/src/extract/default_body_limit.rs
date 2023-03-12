@@ -41,7 +41,7 @@ use tower_layer::Layer;
 ///         post(|request: Request<Body>| async {}),
 ///     )
 ///     .layer(DefaultBodyLimit::max(1024));
-/// # let _: Router<(), _> = app;
+/// # let _: Router = app;
 /// ```
 ///
 /// ```
@@ -54,10 +54,10 @@ use tower_layer::Layer;
 ///         "/",
 ///         // `RequestBodyLimitLayer` changes the request body type to `Limited<Body>`
 ///         // extracting a different body type wont work
-///         post(|request: Request<Limited<Body>>| async {}),
+///         post(|request: Request<Body>| async {}),
 ///     )
 ///     .layer(RequestBodyLimitLayer::new(1024));
-/// # let _: Router<(), _> = app;
+/// # let _: Router = app;
 /// ```
 ///
 /// In general using `DefaultBodyLimit` is recommended but if you need to use third party
@@ -105,7 +105,7 @@ impl DefaultBodyLimit {
     /// use tower_http::limit::RequestBodyLimitLayer;
     /// use http_body::Limited;
     ///
-    /// let app: Router<(), Limited<Body>> = Router::new()
+    /// let app: Router<()> = Router::new()
     ///     .route("/", get(|body: Bytes| async {}))
     ///     // Disable the default limit
     ///     .layer(DefaultBodyLimit::disable())
@@ -140,7 +140,7 @@ impl DefaultBodyLimit {
     /// use tower_http::limit::RequestBodyLimitLayer;
     /// use http_body::Limited;
     ///
-    /// let app: Router<(), Limited<Body>> = Router::new()
+    /// let app: Router<()> = Router::new()
     ///     .route("/", get(|body: Bytes| async {}))
     ///     // Replace the default of 2MB with 1024 bytes.
     ///     .layer(DefaultBodyLimit::max(1024));

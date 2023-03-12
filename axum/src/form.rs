@@ -1,7 +1,6 @@
-use crate::body::HttpBody;
 use crate::extract::{rejection::*, FromRequest, RawForm};
-use crate::BoxError;
 use async_trait::async_trait;
+use axum_core::body::Body;
 use axum_core::response::{IntoResponse, Response};
 use axum_core::RequestExt;
 use http::header::CONTENT_TYPE;
@@ -65,17 +64,14 @@ use std::ops::Deref;
 pub struct Form<T>(pub T);
 
 #[async_trait]
-impl<T, S, B> FromRequest<S, B> for Form<T>
+impl<T, S> FromRequest<S> for Form<T>
 where
     T: DeserializeOwned,
-    B: HttpBody + Send + 'static,
-    B::Data: Send,
-    B::Error: Into<BoxError>,
     S: Send + Sync,
 {
     type Rejection = FormRejection;
 
-    async fn from_request(req: Request<B>, _state: &S) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: Request<Body>, _state: &S) -> Result<Self, Self::Rejection> {
         let is_get_or_head =
             req.method() == http::Method::GET || req.method() == http::Method::HEAD;
 
@@ -127,12 +123,11 @@ impl<T> Deref for Form<T> {
 mod tests {
     use super::*;
     use crate::{
-        body::{Empty, Full},
+        body::Body,
         routing::{on, MethodFilter},
         test_helpers::TestClient,
         Router,
     };
-    use bytes::Bytes;
     use http::{header::CONTENT_TYPE, Method, Request};
     use mime::APPLICATION_WWW_FORM_URLENCODED;
     use serde::{Deserialize, Serialize};
@@ -147,7 +142,7 @@ mod tests {
     async fn check_query<T: DeserializeOwned + PartialEq + Debug>(uri: impl AsRef<str>, value: T) {
         let req = Request::builder()
             .uri(uri.as_ref())
-            .body(Empty::<Bytes>::new())
+            .body(Body::empty())
             .unwrap();
         assert_eq!(Form::<T>::from_request(req, &()).await.unwrap().0, value);
     }
@@ -157,9 +152,7 @@ mod tests {
             .uri("http://example.com/test")
             .method(Method::POST)
             .header(CONTENT_TYPE, APPLICATION_WWW_FORM_URLENCODED.as_ref())
-            .body(Full::<Bytes>::new(
-                serde_urlencoded::to_string(&value).unwrap().into(),
-            ))
+            .body(Body::from(serde_urlencoded::to_string(&value).unwrap()))
             .unwrap();
         assert_eq!(Form::<T>::from_request(req, &()).await.unwrap().0, value);
     }
@@ -221,13 +214,12 @@ mod tests {
             .uri("http://example.com/test")
             .method(Method::POST)
             .header(CONTENT_TYPE, mime::APPLICATION_JSON.as_ref())
-            .body(Full::<Bytes>::new(
+            .body(Body::from(
                 serde_urlencoded::to_string(&Pagination {
                     size: Some(10),
                     page: None,
                 })
-                .unwrap()
-                .into(),
+                .unwrap(),
             ))
             .unwrap();
         assert!(matches!(

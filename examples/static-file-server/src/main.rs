@@ -71,7 +71,10 @@ fn using_serve_dir_with_handler_as_service() -> Router {
         (StatusCode::NOT_FOUND, "Not found")
     }
 
-    let serve_dir = ServeDir::new("assets").not_found_service(handle_404.into_service());
+    // you can convert handler function to service
+    let service = handle_404.into_service();
+
+    let serve_dir = ServeDir::new("assets").not_found_service(service);
 
     Router::new()
         .route("/foo", get(|| async { "Hi from /foo" }))

@@ -1,6 +1,7 @@
 use super::HandlerCallWithExtractors;
 use crate::either::Either;
 use axum::{
+    body::Body,
     extract::{FromRequest, FromRequestParts},
     handler::Handler,
     http::Request,
@@ -14,19 +15,18 @@ use std::{future::Future, marker::PhantomData};
 ///
 /// Created with [`HandlerCallWithExtractors::or`](super::HandlerCallWithExtractors::or).
 #[allow(missing_debug_implementations)]
-pub struct Or<L, R, Lt, Rt, S, B> {
+pub struct Or<L, R, Lt, Rt, S> {
     pub(super) lhs: L,
     pub(super) rhs: R,
-    pub(super) _marker: PhantomData<fn() -> (Lt, Rt, S, B)>,
+    pub(super) _marker: PhantomData<fn() -> (Lt, Rt, S)>,
 }
 
-impl<S, B, L, R, Lt, Rt> HandlerCallWithExtractors<Either<Lt, Rt>, S, B> for Or<L, R, Lt, Rt, S, B>
+impl<S, L, R, Lt, Rt> HandlerCallWithExtractors<Either<Lt, Rt>, S> for Or<L, R, Lt, Rt, S>
 where
-    L: HandlerCallWithExtractors<Lt, S, B> + Send + 'static,
-    R: HandlerCallWithExtractors<Rt, S, B> + Send + 'static,
+    L: HandlerCallWithExtractors<Lt, S> + Send + 'static,
+    R: HandlerCallWithExtractors<Rt, S> + Send + 'static,
     Rt: Send + 'static,
     Lt: Send + 'static,
-    B: Send + 'static,
 {
     // this puts `futures_util` in our public API but thats fine in axum-extra
     type Future = EitherFuture<
@@ -38,7 +38,7 @@ where
         self,
         extractors: Either<Lt, Rt>,
         state: S,
-    ) -> <Self as HandlerCallWithExtractors<Either<Lt, Rt>, S, B>>::Future {
+    ) -> <Self as HandlerCallWithExtractors<Either<Lt, Rt>, S>>::Future {
         match extractors {
             Either::E1(lt) => self
                 .lhs
@@ -54,21 +54,20 @@ where
     }
 }
 
-impl<S, B, L, R, Lt, Rt, M> Handler<(M, Lt, Rt), S, B> for Or<L, R, Lt, Rt, S, B>
+impl<S, L, R, Lt, Rt, M> Handler<(M, Lt, Rt), S> for Or<L, R, Lt, Rt, S>
 where
-    L: HandlerCallWithExtractors<Lt, S, B> + Clone + Send + 'static,
-    R: HandlerCallWithExtractors<Rt, S, B> + Clone + Send + 'static,
+    L: HandlerCallWithExtractors<Lt, S> + Clone + Send + 'static,
+    R: HandlerCallWithExtractors<Rt, S> + Clone + Send + 'static,
     Lt: FromRequestParts<S> + Send + 'static,
-    Rt: FromRequest<S, B, M> + Send + 'static,
+    Rt: FromRequest<S, M> + Send + 'static,
     Lt::Rejection: Send,
     Rt::Rejection: Send,
-    B: Send + 'static,
     S: Send + Sync + 'static,
 {
     // this puts `futures_util` in our public API but thats fine in axum-extra
     type Future = BoxFuture<'static, Response>;
 
-    fn call(self, req: Request<B>, state: S) -> Self::Future {
+    fn call(self, req: Request<Body>, state: S) -> Self::Future {
         Box::pin(async move {
             let (mut parts, body) = req.into_parts();
 
@@ -86,14 +85,14 @@ where
     }
 }
 
-impl<L, R, Lt, Rt, S, B> Copy for Or<L, R, Lt, Rt, S, B>
+impl<L, R, Lt, Rt, S> Copy for Or<L, R, Lt, Rt, S>
 where
     L: Copy,
     R: Copy,
 {
 }
 
-impl<L, R, Lt, Rt, S, B> Clone for Or<L, R, Lt, Rt, S, B>
+impl<L, R, Lt, Rt, S> Clone for Or<L, R, Lt, Rt, S>
 where
     L: Clone,
     R: Clone,

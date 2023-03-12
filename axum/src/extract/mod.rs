@@ -29,7 +29,7 @@ pub use self::{
     path::{Path, RawPathParams},
     raw_form::RawForm,
     raw_query::RawQuery,
-    request_parts::{BodyStream, RawBody},
+    request_parts::RawBody,
     state::State,
 };
 
