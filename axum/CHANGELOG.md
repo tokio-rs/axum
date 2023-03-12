@@ -8,18 +8,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 # Unreleased
 
 - **breaking:** The following types/traits are no longer generic over the request body
-  (i.e. the `B` type param has been removed) ([#1751]):
-  - `FromRequest`
+  (i.e. the `B` type param has been removed) ([#1751] and [#1789]):
   - `FromRequestParts`
-  - `Handler`
+  - `FromRequest`
   - `HandlerService`
   - `HandlerWithoutStateExt`
-  - `Layered`
+  - `Handler`
   - `LayeredFuture`
+  - `Layered`
   - `MethodRouter`
+  - `Next`
   - `RequestExt`
-  - `Route`
   - `RouteFuture`
+  - `Route`
   - `Router`
 - **breaking:** axum no longer re-exports `hyper::Body` as that type is removed
   in hyper 1.0. Instead axum has its own body type at `axum::body::Body` ([#1751])
@@ -31,6 +32,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **breaking:** `extract::BodyStream` has been removed as `body::Body` implements `Stream` directly ([#1789])
 - **breaking:** Removed re-exports of `Empty` and `Full`. Use
   `axum::body::Body::empty` and `axum::body::Body::from` respectively ([#1789])
+- **breaking:** The response returned by `IntoResponse::into_response` must use
+  `axum::body::Body` as the body type. `axum::response::Response` does this
+  ([#1789])
+- **breaking:** Removed the `BoxBody` type alias and its `box_body`
+  constructor. Use `axum::body::Body::new` instead ([#1789])
+- **breaking:** Remove `RawBody` extractor. `axum::body::Body` implements `FromRequest` directly ([#1789])
+- **added:** Add `axum::extract::Request` type alias where the body is `axum::body::Body` ([#1789])
 - **added:** Add `Router::as_service` and `Router::into_service` to workaround
   type inference issues when calling `ServiceExt` methods on a `Router` ([#1835])
 
