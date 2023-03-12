@@ -821,27 +821,32 @@ async fn state_isnt_cloned_too_much() {
     struct AppState;
 
     impl Clone for AppState {
-        #[rustversion::stable]
         fn clone(&self) -> Self {
-            if SETUP_DONE.load(Ordering::SeqCst) {
-                let bt = std::backtrace::Backtrace::force_capture();
-                let bt = bt
-                    .to_string()
-                    .lines()
-                    .filter(|line| line.contains("axum") || line.contains("./src"))
-                    .collect::<Vec<_>>()
-                    .join("\n");
-                println!("AppState::Clone:\n===============\n{}\n", bt);
-
-                COUNT.fetch_add(1, Ordering::SeqCst);
+            #[rustversion::stable]
+            #[track_caller]
+            fn count() {
+                if SETUP_DONE.load(Ordering::SeqCst) {
+                    let bt = std::backtrace::Backtrace::force_capture();
+                    let bt = bt
+                        .to_string()
+                        .lines()
+                        .filter(|line| line.contains("axum") || line.contains("./src"))
+                        .collect::<Vec<_>>()
+                        .join("\n");
+                    println!("AppState::Clone:\n===============\n{}\n", bt);
+                    COUNT.fetch_add(1, Ordering::SeqCst);
+                }
             }
 
-            Self
-        }
+            #[rustversion::not(stable)]
+            fn count() {
+                if SETUP_DONE.load(Ordering::SeqCst) {
+                    COUNT.fetch_add(1, Ordering::SeqCst);
+                }
+            }
 
-        // our MSRV doesn't support backtrace
-        #[rustversion::not(stable)]
-        fn clone(&self) -> Self {
+            count();
+
             Self
         }
     }
