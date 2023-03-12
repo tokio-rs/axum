@@ -507,6 +507,7 @@ where
 ///     S: Service<Request<Body>>,
 /// {}
 /// ```
+#[must_use]
 pub struct MethodRouter<S = (), E = Infallible> {
     get: MethodEndpoint<S, E>,
     head: MethodEndpoint<S, E>,

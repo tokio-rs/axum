@@ -73,6 +73,7 @@ use tower_layer::Layer;
 /// [`RequestExt::with_limited_body`]: crate::RequestExt::with_limited_body
 /// [`RequestExt::into_limited_body`]: crate::RequestExt::into_limited_body
 #[derive(Debug, Clone)]
+#[must_use]
 pub struct DefaultBodyLimit {
     kind: DefaultBodyLimitKind,
 }

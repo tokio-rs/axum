@@ -1,7 +1,7 @@
 //! Run with
 //!
 //! ```not_rust
-//! cd examples && cargo run -p example-rest-grpc-multiplex
+//! cargo run -p example-rest-grpc-multiplex
 //! ```
 
 use self::multiplex_service::MultiplexService;

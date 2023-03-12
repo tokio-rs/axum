@@ -65,7 +65,7 @@ where
         let boundary = parse_boundary(req.headers()).ok_or(InvalidBoundary)?;
         let stream = match req.with_limited_body() {
             Ok(limited) => Body::new(limited),
-            Err(unlimited) => Body::new(unlimited),
+            Err(unlimited) => unlimited.into_body(),
         };
         let multipart = multer::Multipart::new(stream, boundary);
         Ok(Self { inner: multipart })

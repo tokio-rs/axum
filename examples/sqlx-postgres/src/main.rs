@@ -3,7 +3,7 @@
 //! Run with
 //!
 //! ```not_rust
-//! cd examples && cargo run -p example-sqlx-postgres
+//! cargo run -p example-sqlx-postgres
 //! ```
 //!
 //! Test with curl:

@@ -1,7 +1,7 @@
 //! Run with
 //!
 //! ```not_rust
-//! cd examples && cargo run -p example-customize-extractor-error
+//! cargo run -p example-customize-extractor-error
 //! ```
 
 mod custom_extractor;

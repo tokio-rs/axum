@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - None.
 
+# 0.3.3 (03. March, 2023)
+
+- **fixed:** Add `#[must_use]` attributes to types that do nothing unless used ([#1809])
+
+[#1809]: https://github.com/tokio-rs/axum/pull/1809
+
 # 0.3.2 (20. January, 2023)
 
 - **added:** Implement `IntoResponse` for `&'static [u8; N]` and `[u8; N]` ([#1690])

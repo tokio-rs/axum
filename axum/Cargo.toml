@@ -1,6 +1,6 @@
 [package]
 name = "axum"
-version = "0.6.9"
+version = "0.6.10"
 categories = ["asynchronous", "network-programming", "web-programming::http-server"]
 description = "Web framework that focuses on ergonomics and modularity"
 edition = "2021"
@@ -62,14 +62,14 @@ __private_docs = [
 
 [dependencies]
 async-trait = "0.1.43"
-axum-core = { path = "../axum-core", version = "0.3.2" }
+axum-core = { path = "../axum-core", version = "0.3.3" }
 bitflags = "1.0"
 bytes = "1.0"
 futures-util = { version = "0.3", default-features = false, features = ["alloc"] }
 http = "0.2.9"
 http-body = "0.4.4"
 hyper = { version = "0.14.24", features = ["stream"] }
-itoa = "=1.0.5"
+itoa = "1.0.5"
 matchit = "0.7"
 memchr = "2.4.1"
 mime = "0.3.16"
@@ -83,7 +83,7 @@ tower-layer = "0.3.2"
 tower-service = "0.3"
 
 # optional dependencies
-axum-macros = { path = "../axum-macros", version = "0.3.4", optional = true }
+axum-macros = { path = "../axum-macros", version = "0.3.5", optional = true }
 base64 = { version = "0.21.0", optional = true }
 headers = { version = "0.3.7", optional = true }
 multer = { version = "2.0.0", optional = true }

@@ -30,6 +30,8 @@ If your project isn't listed here and you would like it to be, please feel free 
 - [axum-login](https://docs.rs/axum-login): Session-based user authentication for axum.
 - [axum-csrf-sync-pattern](https://crates.io/crates/axum-csrf-sync-pattern): A middleware implementing CSRF STP for AJAX backends and API endpoints.
 - [axum-otel-metrics](https://github.com/ttys3/axum-otel-metrics/): A axum OpenTelemetry Metrics middleware with prometheus exporter supported.
+- [jwt-authorizer](https://crates.io/crates/jwt-authorizer): JWT authorization layer for axum (oidc discovery, validation options, claims extraction, etc.) 
+- [axum-typed-multipart](https://crates.io/crates/axum_typed_multipart): Type safe wrapper for `axum::extract::Multipart`.
 
 ## Project showcase
 
@@ -59,6 +61,10 @@ If your project isn't listed here and you would like it to be, please feel free 
 - [freedit](https://github.com/freedit-org/freedit): A forum powered by rust. 
 - [axum-http-auth-example](https://github.com/i0n/axum-http-auth-example): Axum http auth example using postgres and redis. 
 - [Deaftone](https://github.com/Deaftone/Deaftone): Lightweight music server. With a clean and simple API 
+- [dropit](https://github.com/scotow/dropit): Temporary file hosting.
+- [cobrust](https://github.com/scotow/cobrust): Multiplayer web based snake game.
+- [meta-cross](https://github.com/scotow/meta-cross): Tweaked version of Tic-Tac-Toe.
+- [httq](https://github.com/scotow/httq) HTTP to MQTT trivial proxy.
 
 [Realworld]: https://github.com/gothinkster/realworld
 [SQLx]: https://github.com/launchbadge/sqlx

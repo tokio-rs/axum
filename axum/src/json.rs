@@ -96,6 +96,7 @@ use std::ops::{Deref, DerefMut};
 /// ```
 #[derive(Debug, Clone, Copy, Default)]
 #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
+#[must_use]
 pub struct Json<T>(pub T);
 
 #[async_trait]

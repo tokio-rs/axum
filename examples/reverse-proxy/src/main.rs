@@ -4,7 +4,7 @@
 //! Run with
 //!
 //! ```not_rust
-//! cd examples && cargo run -p example-reverse-proxy
+//! cargo run -p example-reverse-proxy
 //! ```
 
 use axum::{

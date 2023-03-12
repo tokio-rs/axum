@@ -30,6 +30,7 @@ use std::fmt;
 /// }
 /// ```
 #[derive(Debug)]
+#[must_use]
 pub struct AppendHeaders<I>(pub I);
 
 impl<I, K, V> IntoResponse for AppendHeaders<I>
