@@ -8,12 +8,14 @@
 //! ```
 
 use axum::{
+    body::Body,
     extract::State,
-    http::{uri::Uri, Request, Response},
+    http::{uri::Uri, Request},
+    response::{IntoResponse, Response},
     routing::get,
     Router,
 };
-use hyper::{client::HttpConnector, Body};
+use hyper::client::HttpConnector;
 use std::net::SocketAddr;
 
 type Client = hyper::client::Client<HttpConnector, Body>;
@@ -22,7 +24,7 @@ type Client = hyper::client::Client<HttpConnector, Body>;
 async fn main() {
     tokio::spawn(server());
 
-    let client = Client::new();
+    let client: Client = hyper::Client::builder().build(HttpConnector::new());
 
     let app = Router::new().route("/", get(handler)).with_state(client);
 
@@ -34,7 +36,7 @@ async fn main() {
         .unwrap();
 }
 
-async fn handler(State(client): State<Client>, mut req: Request<Body>) -> Response<Body> {
+async fn handler(State(client): State<Client>, mut req: Request<Body>) -> Response {
     let path = req.uri().path();
     let path_query = req
         .uri()
@@ -46,7 +48,7 @@ async fn handler(State(client): State<Client>, mut req: Request<Body>) -> Respon
 
     *req.uri_mut() = Uri::try_from(uri).unwrap();
 
-    client.request(req).await.unwrap()
+    client.request(req).await.unwrap().into_response()
 }
 
 async fn server() {

@@ -8,27 +8,25 @@ use axum_macros::debug_handler;
 struct A;
 
 #[async_trait]
-impl<S, B> FromRequest<S, B> for A
+impl<S> FromRequest<S> for A
 where
-    B: Send + 'static,
     S: Send + Sync,
 {
     type Rejection = ();
 
-    async fn from_request(_req: Request<B>, _state: &S) -> Result<Self, Self::Rejection> {
+    async fn from_request(_req: Request<axum::body::Body>, _state: &S) -> Result<Self, Self::Rejection> {
         unimplemented!()
     }
 }
 
 #[async_trait]
-impl<S, B> FromRequest<S, B> for Box<A>
+impl<S> FromRequest<S> for Box<A>
 where
-    B: Send + 'static,
     S: Send + Sync,
 {
     type Rejection = ();
 
-    async fn from_request(_req: Request<B>, _state: &S) -> Result<Self, Self::Rejection> {
+    async fn from_request(_req: Request<axum::body::Body>, _state: &S) -> Result<Self, Self::Rejection> {
         unimplemented!()
     }
 }

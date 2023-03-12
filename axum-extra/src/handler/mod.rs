@@ -1,5 +1,6 @@
 //! Additional handler utilities.
 
+use axum::body::Body;
 use axum::{
     extract::FromRequest,
     handler::Handler,
@@ -19,15 +20,15 @@ pub use self::or::Or;
 ///
 /// The drawbacks of this trait is that you cannot apply middleware to individual handlers like you
 /// can with [`Handler::layer`].
-pub trait HandlerCallWithExtractors<T, S, B>: Sized {
+pub trait HandlerCallWithExtractors<T, S>: Sized {
     /// The type of future calling this handler returns.
     type Future: Future<Output = Response> + Send + 'static;
 
     /// Call the handler with the extracted inputs.
-    fn call(self, extractors: T, state: S) -> <Self as HandlerCallWithExtractors<T, S, B>>::Future;
+    fn call(self, extractors: T, state: S) -> <Self as HandlerCallWithExtractors<T, S>>::Future;
 
     /// Conver this `HandlerCallWithExtractors` into [`Handler`].
-    fn into_handler(self) -> IntoHandler<Self, T, S, B> {
+    fn into_handler(self) -> IntoHandler<Self, T, S> {
         IntoHandler {
             handler: self,
             _marker: PhantomData,
@@ -102,9 +103,9 @@ pub trait HandlerCallWithExtractors<T, S, B>: Sized {
     /// );
     /// # let _: Router = app;
     /// ```
-    fn or<R, Rt>(self, rhs: R) -> Or<Self, R, T, Rt, S, B>
+    fn or<R, Rt>(self, rhs: R) -> Or<Self, R, T, Rt, S>
     where
-        R: HandlerCallWithExtractors<Rt, S, B>,
+        R: HandlerCallWithExtractors<Rt, S>,
     {
         Or {
             lhs: self,
@@ -117,7 +118,7 @@ pub trait HandlerCallWithExtractors<T, S, B>: Sized {
 macro_rules! impl_handler_call_with {
      ( $($ty:ident),* $(,)? ) => {
          #[allow(non_snake_case)]
-         impl<F, Fut, S, B, $($ty,)*> HandlerCallWithExtractors<($($ty,)*), S, B> for F
+         impl<F, Fut, S, $($ty,)*> HandlerCallWithExtractors<($($ty,)*), S> for F
          where
              F: FnOnce($($ty,)*) -> Fut,
              Fut: Future + Send + 'static,
@@ -130,7 +131,7 @@ macro_rules! impl_handler_call_with {
                  self,
                  ($($ty,)*): ($($ty,)*),
                  _state: S,
-             ) -> <Self as HandlerCallWithExtractors<($($ty,)*), S, B>>::Future {
+             ) -> <Self as HandlerCallWithExtractors<($($ty,)*), S>>::Future {
                  self($($ty,)*).map(IntoResponse::into_response)
              }
          }
@@ -159,22 +160,22 @@ impl_handler_call_with!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, 
 ///
 /// Created with [`HandlerCallWithExtractors::into_handler`].
 #[allow(missing_debug_implementations)]
-pub struct IntoHandler<H, T, S, B> {
+pub struct IntoHandler<H, T, S> {
     handler: H,
-    _marker: PhantomData<fn() -> (T, S, B)>,
+    _marker: PhantomData<fn() -> (T, S)>,
 }
 
-impl<H, T, S, B> Handler<T, S, B> for IntoHandler<H, T, S, B>
+impl<H, T, S> Handler<T, S> for IntoHandler<H, T, S>
 where
-    H: HandlerCallWithExtractors<T, S, B> + Clone + Send + 'static,
-    T: FromRequest<S, B> + Send + 'static,
+    H: HandlerCallWithExtractors<T, S> + Clone + Send + 'static,
+    T: FromRequest<S> + Send + 'static,
     T::Rejection: Send,
-    B: Send + 'static,
     S: Send + Sync + 'static,
 {
     type Future = BoxFuture<'static, Response>;
 
-    fn call(self, req: http::Request<B>, state: S) -> Self::Future {
+    fn call(self, req: http::Request<Body>, state: S) -> Self::Future {
+        let req = req.map(Body::new);
         Box::pin(async move {
             match T::from_request(req, &state).await {
                 Ok(t) => self.handler.call(t, state).await,
@@ -184,9 +185,9 @@ where
     }
 }
 
-impl<H, T, S, B> Copy for IntoHandler<H, T, S, B> where H: Copy {}
+impl<H, T, S> Copy for IntoHandler<H, T, S> where H: Copy {}
 
-impl<H, T, S, B> Clone for IntoHandler<H, T, S, B>
+impl<H, T, S> Clone for IntoHandler<H, T, S>
 where
     H: Clone,
 {

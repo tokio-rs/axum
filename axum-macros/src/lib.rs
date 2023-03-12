@@ -148,7 +148,7 @@ use from_request::Trait::{FromRequest, FromRequestParts};
 /// ```
 /// pub struct ViaExtractor<T>(pub T);
 ///
-/// // impl<T, S, B> FromRequest<S, B> for ViaExtractor<T> { ... }
+/// // impl<T, S> FromRequest<S> for ViaExtractor<T> { ... }
 /// ```
 ///
 /// More complex via extractors are not supported and require writing a manual implementation.
@@ -479,21 +479,6 @@ pub fn derive_from_request_parts(item: TokenStream) -> TokenStream {
 /// async fn handler() -> &'static str {
 ///     "Hello, world"
 /// }
-/// ```
-///
-/// # Changing request body type
-///
-/// By default `#[debug_handler]` assumes your request body type is `axum::body::Body`. This will
-/// work for most extractors but, for example, it wont work for `Request<axum::body::BoxBody>`,
-/// which only implements `FromRequest<BoxBody>` and _not_ `FromRequest<Body>`.
-///
-/// To work around that the request body type can be customized like so:
-///
-/// ```
-/// use axum::{body::BoxBody, http::Request, debug_handler};
-///
-/// #[debug_handler(body = BoxBody)]
-/// async fn handler(request: Request<BoxBody>) {}
 /// ```
 ///
 /// # Changing state type

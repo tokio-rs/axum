@@ -119,9 +119,7 @@ use std::{
 ///
 /// // `MyBody` can now be returned from handlers.
 /// let app = Router::new().route("/", get(|| async { MyBody }));
-/// # async {
-/// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-/// # };
+/// # let _: Router = app;
 /// ```
 pub trait IntoResponse {
     /// Create a response.

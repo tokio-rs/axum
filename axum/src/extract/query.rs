@@ -71,7 +71,7 @@ mod tests {
     use crate::{routing::get, test_helpers::TestClient, Router};
 
     use super::*;
-    use axum_core::extract::FromRequest;
+    use axum_core::{body::Body, extract::FromRequest};
     use http::{Request, StatusCode};
     use serde::Deserialize;
     use std::fmt::Debug;
@@ -80,7 +80,10 @@ mod tests {
     where
         T: DeserializeOwned + PartialEq + Debug,
     {
-        let req = Request::builder().uri(uri.as_ref()).body(()).unwrap();
+        let req = Request::builder()
+            .uri(uri.as_ref())
+            .body(Body::empty())
+            .unwrap();
         assert_eq!(Query::<T>::from_request(req, &()).await.unwrap().0, value);
     }
 
