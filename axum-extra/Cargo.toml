@@ -86,6 +86,7 @@ allowed = [
     "cookie",
     "futures_core",
     "futures_util",
+    "headers_core",
     "http",
     "http_body",
     "hyper",

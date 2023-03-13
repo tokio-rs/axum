@@ -113,7 +113,7 @@ where
     }
 }
 
-/// Rejection used for [`TypedHeader`](super::TypedHeader).
+/// Rejection used for [`TypedHeader`](TypedHeader).
 #[cfg(feature = "typed-header")]
 #[derive(Debug)]
 pub struct TypedHeaderRejection {
