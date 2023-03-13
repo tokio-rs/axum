@@ -54,6 +54,9 @@ Wildcard captures can also be extracted using [`Path`](crate::extract::Path).
 Note that the leading slash is not included, i.e. for the route `/foo/*rest` and
 the path `/foo/bar/baz` the value of `rest` will be `bar/baz`.
 
+If you want root path to be bound to the same handler, add both routes (e.g.
+`/assets/` and `/assets/*path`) and use `Option<Path<T>>` extractor.
+
 # Accepting multiple methods
 
 To accept multiple methods for the same route you must add all handlers at the
