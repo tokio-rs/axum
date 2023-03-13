@@ -472,6 +472,9 @@ pub use http;
 #[cfg(feature = "tokio")]
 #[doc(no_inline)]
 pub use hyper::Server;
+#[cfg(feature = "multipart")]
+#[doc(no_inline)]
+pub use multer;
 
 #[doc(inline)]
 pub use self::extension::Extension;
