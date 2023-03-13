@@ -24,12 +24,17 @@ use std::{convert::Infallible, fmt, marker::PhantomData};
 /// use axum::{
 ///     Router,
 ///     routing::{post, get},
-///     extract::{TypedHeader, FromRef},
+///     extract::FromRef,
 ///     response::{IntoResponse, Redirect},
-///     headers::authorization::{Authorization, Bearer},
 ///     http::StatusCode,
 /// };
-/// use axum_extra::extract::cookie::{SignedCookieJar, Cookie, Key};
+/// use axum_extra::{
+///     typed_header::{
+///         TypedHeader,
+///         headers::authorization::{Authorization, Bearer},
+///     },
+///     extract::cookie::{SignedCookieJar, Cookie, Key},
+/// };
 ///
 /// async fn create_session(
 ///     TypedHeader(auth): TypedHeader<Authorization<Bearer>>,

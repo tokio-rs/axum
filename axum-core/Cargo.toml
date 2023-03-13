@@ -25,7 +25,8 @@ tower-service = "0.3"
 rustversion = "1.0.9"
 
 [dev-dependencies]
-axum = { path = "../axum", version = "0.6.0", features = ["headers"] }
+axum = { path = "../axum", version = "0.6.0" }
+axum-extra = { path = "../axum-extra", features = ["typed-header"] }
 futures-util = "0.3"
 hyper = "0.14.24"
 tokio = { version = "1.25.0", features = ["macros"] }

@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning].
 
 # Unreleased
 
-- None.
+- **added:** Added `TypedHeader` which used to be in `axum`
 
 # 0.7.0 (03. March, 2023)
 

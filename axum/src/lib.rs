@@ -348,7 +348,6 @@
 //!
 //! Name | Description | Default?
 //! ---|---|---
-//! `headers` | Enables extracting typed headers via [`TypedHeader`] | No
 //! `http1` | Enables hyper's `http1` feature | Yes
 //! `http2` | Enables hyper's `http2` feature | No
 //! `json` | Enables the [`Json`] type and some similar convenience functionality | Yes
@@ -447,8 +446,6 @@ mod form;
 #[cfg(feature = "json")]
 mod json;
 mod service_ext;
-#[cfg(feature = "headers")]
-mod typed_header;
 mod util;
 
 pub mod body;
@@ -464,9 +461,6 @@ mod test_helpers;
 
 #[doc(no_inline)]
 pub use async_trait::async_trait;
-#[cfg(feature = "headers")]
-#[doc(no_inline)]
-pub use headers;
 #[doc(no_inline)]
 pub use http;
 #[cfg(feature = "tokio")]
@@ -480,10 +474,6 @@ pub use self::extension::Extension;
 pub use self::json::Json;
 #[doc(inline)]
 pub use self::routing::Router;
-
-#[doc(inline)]
-#[cfg(feature = "headers")]
-pub use self::typed_header::TypedHeader;
 
 #[doc(inline)]
 #[cfg(feature = "form")]

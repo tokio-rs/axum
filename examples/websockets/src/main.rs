@@ -17,14 +17,12 @@
 //! ```
 
 use axum::{
-    extract::{
-        ws::{Message, WebSocket, WebSocketUpgrade},
-        TypedHeader,
-    },
+    extract::ws::{Message, WebSocket, WebSocketUpgrade},
     response::IntoResponse,
     routing::get,
     Router,
 };
+use axum_extra::typed_header::TypedHeader;
 
 use std::borrow::Cow;
 use std::ops::ControlFlow;

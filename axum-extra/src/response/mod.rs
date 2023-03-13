@@ -9,3 +9,7 @@ pub use erased_json::ErasedJson;
 #[cfg(feature = "json-lines")]
 #[doc(no_inline)]
 pub use crate::json_lines::JsonLines;
+
+#[cfg(feature = "typed-header")]
+#[doc(no_inline)]
+pub use crate::typed_header::TypedHeader;

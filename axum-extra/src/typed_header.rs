@@ -1,9 +1,15 @@
-use crate::extract::FromRequestParts;
-use async_trait::async_trait;
-use axum_core::response::{IntoResponse, IntoResponseParts, Response, ResponseParts};
-use headers::HeaderMapExt;
-use http::request::Parts;
+//! Extractor and response for typed headers.
+
+use axum::{
+    async_trait,
+    extract::FromRequestParts,
+    response::{IntoResponse, IntoResponseParts, Response, ResponseParts},
+};
+use headers::Header;
+use http::{request::Parts, HeaderValue};
 use std::{convert::Infallible, ops::Deref};
+
+pub use headers;
 
 /// Extractor and response that works with typed header values from [`headers`].
 ///
@@ -14,11 +20,11 @@ use std::{convert::Infallible, ops::Deref};
 ///
 /// ```rust,no_run
 /// use axum::{
-///     TypedHeader,
-///     headers::UserAgent,
 ///     routing::get,
 ///     Router,
 /// };
+/// use headers::UserAgent;
+/// use axum_extra::typed_header::TypedHeader;
 ///
 /// async fn users_teams_show(
 ///     TypedHeader(user_agent): TypedHeader<UserAgent>,
@@ -27,19 +33,17 @@ use std::{convert::Infallible, ops::Deref};
 /// }
 ///
 /// let app = Router::new().route("/users/:user_id/team/:team_id", get(users_teams_show));
-/// # async {
-/// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-/// # };
+/// # let _: Router = app;
 /// ```
 ///
 /// # As response
 ///
 /// ```rust
 /// use axum::{
-///     TypedHeader,
 ///     response::IntoResponse,
-///     headers::ContentType,
 /// };
+/// use headers::ContentType;
+/// use axum_extra::typed_header::TypedHeader;
 ///
 /// async fn handler() -> (TypedHeader<ContentType>, &'static str) {
 ///     (
@@ -48,7 +52,7 @@ use std::{convert::Infallible, ops::Deref};
 ///     )
 /// }
 /// ```
-#[cfg(feature = "headers")]
+#[cfg(feature = "typed-header")]
 #[derive(Debug, Clone, Copy)]
 #[must_use]
 pub struct TypedHeader<T>(pub T);
@@ -56,7 +60,7 @@ pub struct TypedHeader<T>(pub T);
 #[async_trait]
 impl<T, S> FromRequestParts<S> for TypedHeader<T>
 where
-    T: headers::Header,
+    T: Header,
     S: Send + Sync,
 {
     type Rejection = TypedHeaderRejection;
@@ -88,29 +92,29 @@ impl<T> Deref for TypedHeader<T> {
 
 impl<T> IntoResponseParts for TypedHeader<T>
 where
-    T: headers::Header,
+    T: Header,
 {
     type Error = Infallible;
 
     fn into_response_parts(self, mut res: ResponseParts) -> Result<ResponseParts, Self::Error> {
-        res.headers_mut().typed_insert(self.0);
+        typed_insert(res.headers_mut(), self.0);
         Ok(res)
     }
 }
 
 impl<T> IntoResponse for TypedHeader<T>
 where
-    T: headers::Header,
+    T: Header,
 {
     fn into_response(self) -> Response {
         let mut res = ().into_response();
-        res.headers_mut().typed_insert(self.0);
+        typed_insert(res.headers_mut(), self.0);
         res
     }
 }
 
 /// Rejection used for [`TypedHeader`](super::TypedHeader).
-#[cfg(feature = "headers")]
+#[cfg(feature = "typed-header")]
 #[derive(Debug)]
 pub struct TypedHeaderRejection {
     name: &'static http::header::HeaderName,
@@ -130,7 +134,7 @@ impl TypedHeaderRejection {
 }
 
 /// Additional information regarding a [`TypedHeaderRejection`]
-#[cfg(feature = "headers")]
+#[cfg(feature = "typed-header")]
 #[derive(Debug)]
 #[non_exhaustive]
 pub enum TypedHeaderRejectionReason {
@@ -168,12 +172,55 @@ impl std::error::Error for TypedHeaderRejection {
     }
 }
 
+// copied from https://docs.rs/headers/latest/src/headers/map_ext.rs.html#22-52
+fn typed_insert<H>(headers: &mut http::HeaderMap, header: H)
+where
+    H: Header,
+{
+    struct ToValues<'a> {
+        state: State<'a>,
+    }
+
+    enum State<'a> {
+        First(http::header::Entry<'a, HeaderValue>),
+        Latter(http::header::OccupiedEntry<'a, HeaderValue>),
+        Tmp,
+    }
+
+    impl<'a> Extend<HeaderValue> for ToValues<'a> {
+        fn extend<T: IntoIterator<Item = HeaderValue>>(&mut self, iter: T) {
+            for value in iter {
+                let entry = match ::std::mem::replace(&mut self.state, State::Tmp) {
+                    State::First(http::header::Entry::Occupied(mut e)) => {
+                        e.insert(value);
+                        e
+                    }
+                    State::First(http::header::Entry::Vacant(e)) => e.insert_entry(value),
+                    State::Latter(mut e) => {
+                        e.append(value);
+                        e
+                    }
+                    State::Tmp => unreachable!("ToValues State::Tmp"),
+                };
+                self.state = State::Latter(entry);
+            }
+        }
+    }
+
+    let entry = headers.entry(H::name());
+    let mut values = ToValues {
+        state: State::First(entry),
+    };
+    header.encode(&mut values);
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{response::IntoResponse, routing::get, test_helpers::*, Router};
+    use crate::test_helpers::*;
+    use axum::{response::IntoResponse, routing::get, Router};
 
-    #[crate::test]
+    #[tokio::test]
     async fn typed_header() {
         async fn handle(
             TypedHeader(user_agent): TypedHeader<headers::UserAgent>,

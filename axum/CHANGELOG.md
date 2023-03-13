@@ -28,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **breaking:** Change `sse::Event::json_data` to use `axum_core::Error` as its error type ([#1762])
 - **breaking:** Rename `DefaultOnFailedUpdgrade` to `DefaultOnFailedUpgrade` ([#1664])
 - **breaking:** Rename `OnFailedUpdgrade` to `OnFailedUpgrade` ([#1664])
+- **breaking:** `TypedHeader` has been move to `axum-extra`
 - **added:** Add `Router::as_service` and `Router::into_service` to workaround
   type inference issues when calling `ServiceExt` methods on a `Router` ([#1835])
 

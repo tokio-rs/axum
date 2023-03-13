@@ -141,16 +141,16 @@ pub trait RequestExt: sealed::Sealed + Sized {
     /// ```
     /// use axum::{
     ///     async_trait,
-    ///     extract::FromRequest,
-    ///     headers::{authorization::Bearer, Authorization},
+    ///     extract::{Path, FromRequest},
     ///     http::Request,
     ///     response::{IntoResponse, Response},
     ///     body::Body,
-    ///     Json, RequestExt, TypedHeader,
+    ///     Json, RequestExt,
     /// };
+    /// use std::collections::HashMap;
     ///
     /// struct MyExtractor<T> {
-    ///     bearer_token: String,
+    ///     path_params: HashMap<String, String>,
     ///     payload: T,
     /// }
     ///
@@ -164,9 +164,10 @@ pub trait RequestExt: sealed::Sealed + Sized {
     ///     type Rejection = Response;
     ///
     ///     async fn from_request(mut req: Request<Body>, _state: &S) -> Result<Self, Self::Rejection> {
-    ///         let TypedHeader(auth_header) = req
-    ///             .extract_parts::<TypedHeader<Authorization<Bearer>>>()
+    ///         let path_params = req
+    ///             .extract_parts::<Path<HashMap<String, String>>>()
     ///             .await
+    ///             .map(|Path(path_params)| path_params)
     ///             .map_err(|err| err.into_response())?;
     ///
     ///         let Json(payload) = req
@@ -174,10 +175,7 @@ pub trait RequestExt: sealed::Sealed + Sized {
     ///             .await
     ///             .map_err(|err| err.into_response())?;
     ///
-    ///         Ok(Self {
-    ///             bearer_token: auth_header.token().to_owned(),
-    ///             payload,
-    ///         })
+    ///         Ok(Self { path_params, payload })
     ///     }
     /// }
     /// ```
