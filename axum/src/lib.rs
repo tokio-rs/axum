@@ -361,7 +361,6 @@
 //! `form` | Enables the `Form` extractor | Yes
 //! `query` | Enables the `Query` extractor | Yes
 //!
-//! [`TypedHeader`]: crate::extract::TypedHeader
 //! [`MatchedPath`]: crate::extract::MatchedPath
 //! [`Multipart`]: crate::extract::Multipart
 //! [`OriginalUri`]: crate::extract::OriginalUri

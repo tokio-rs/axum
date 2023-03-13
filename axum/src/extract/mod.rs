@@ -77,10 +77,6 @@ pub use self::request_parts::OriginalUri;
 #[doc(inline)]
 pub use self::ws::WebSocketUpgrade;
 
-#[cfg(feature = "headers")]
-#[doc(no_inline)]
-pub use crate::TypedHeader;
-
 // this is duplicated in `axum-extra/src/extract/form.rs`
 pub(super) fn has_content_type(headers: &HeaderMap, expected_content_type: &mime::Mime) -> bool {
     let content_type = if let Some(content_type) = headers.get(header::CONTENT_TYPE) {
