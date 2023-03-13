@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning].
 
 - None.
 
+# 0.7.1 (13. March, 2023)
+
+- Updated to latest `axum-macros`
+
 # 0.7.0 (03. March, 2023)
 
 - **breaking:** Remove the `spa` feature which should have been removed in 0.6.0 ([#1802])
