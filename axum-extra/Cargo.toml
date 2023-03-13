@@ -9,7 +9,7 @@ license = "MIT"
 name = "axum-extra"
 readme = "README.md"
 repository = "https://github.com/tokio-rs/axum"
-version = "0.7.0"
+version = "0.7.1"
 
 [features]
 default = []
@@ -48,7 +48,7 @@ tower-layer = "0.3"
 tower-service = "0.3"
 
 # optional dependencies
-axum-macros = { path = "../axum-macros", version = "0.3.5", optional = true }
+axum-macros = { path = "../axum-macros", version = "0.3.6", optional = true }
 cookie = { package = "cookie", version = "0.17", features = ["percent-encode"], optional = true }
 form_urlencoded = { version = "1.1.0", optional = true }
 multer = { version = "2.0.0", optional = true }

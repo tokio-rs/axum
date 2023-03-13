@@ -7,9 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+- None.
+
+# 0.6.11 (13. March, 2023)
+
 - **fixed:** Don't require `S: Debug` for `impl Debug for Router<S>` ([#1836])
 - **fixed:** Clone state a bit less when handling requests ([#1837])
+- **fixed:** Unpin itoa dependency ([#1815])
 
+[#1815]: https://github.com/tokio-rs/axum/pull/1815
 [#1836]: https://github.com/tokio-rs/axum/pull/1836
 [#1837]: https://github.com/tokio-rs/axum/pull/1837
 
