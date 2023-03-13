@@ -206,8 +206,14 @@ pub struct MultipartError {
 }
 
 impl MultipartError {
-    fn from_multer(multer: multer::Error) -> Self {
+    /// Returns a MultipartError based on the multer error object.
+    pub fn from_multer(multer: multer::Error) -> Self {
         Self { source: multer }
+    }
+
+    /// Returns the inner multer object.
+    pub fn into_multer(self) -> multer::Error {
+        self.source
     }
 }
 
