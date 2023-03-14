@@ -7,7 +7,7 @@ use axum::{
     body::{Body, Bytes},
     extract::FromRequest,
     response::{IntoResponse, Response},
-    BoxError, RequestExt,
+    RequestExt,
 };
 use futures_util::stream::Stream;
 use http::{
@@ -410,9 +410,7 @@ impl std::error::Error for InvalidBoundary {}
 mod tests {
     use super::*;
     use crate::test_helpers::*;
-    use axum::{
-        body::Body, extract::DefaultBodyLimit, response::IntoResponse, routing::post, Router,
-    };
+    use axum::{extract::DefaultBodyLimit, response::IntoResponse, routing::post, Router};
 
     #[tokio::test]
     async fn content_type_with_encoding() {

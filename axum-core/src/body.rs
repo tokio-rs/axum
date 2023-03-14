@@ -1,13 +1,17 @@
 //! HTTP body utilities.
 
+use crate::response::{IntoResponse, Response};
 use crate::{BoxError, Error};
 use bytes::Bytes;
 use bytes::{Buf, BufMut};
 use futures_util::stream::Stream;
+use futures_util::TryStream;
 use http::HeaderMap;
 use http_body::Body as _;
+use pin_project_lite::pin_project;
 use std::pin::Pin;
 use std::task::{Context, Poll};
+use sync_wrapper::SyncWrapper;
 
 /// A boxed [`Body`] trait object.
 ///
@@ -107,6 +111,20 @@ impl Body {
     pub fn empty() -> Self {
         Self::new(http_body::Empty::new())
     }
+
+    /// Create a new `Body` from a [`Stream`].
+    ///
+    /// [`Stream`]: futures_util::stream::Stream
+    pub fn from_stream<S>(stream: S) -> Self
+    where
+        S: TryStream + Send + 'static,
+        S::Ok: Into<Bytes>,
+        S::Error: Into<BoxError>,
+    {
+        Self::new(StreamBody {
+            stream: SyncWrapper::new(stream),
+        })
+    }
 }
 
 impl Default for Body {
@@ -172,6 +190,49 @@ impl Stream for Body {
     #[inline]
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         self.poll_data(cx)
+    }
+}
+
+pin_project! {
+    struct StreamBody<S> {
+        #[pin]
+        stream: SyncWrapper<S>,
+    }
+}
+
+impl<S> http_body::Body for StreamBody<S>
+where
+    S: TryStream,
+    S::Ok: Into<Bytes>,
+    S::Error: Into<BoxError>,
+{
+    type Data = Bytes;
+    type Error = Error;
+
+    fn poll_data(
+        self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+    ) -> Poll<Option<Result<Self::Data, Self::Error>>> {
+        let stream = self.project().stream.get_pin_mut();
+        match futures_util::ready!(stream.try_poll_next(cx)) {
+            Some(Ok(chunk)) => Poll::Ready(Some(Ok(chunk.into()))),
+            Some(Err(err)) => Poll::Ready(Some(Err(Error::new(err)))),
+            None => Poll::Ready(None),
+        }
+    }
+
+    #[inline]
+    fn poll_trailers(
+        self: Pin<&mut Self>,
+        _cx: &mut Context<'_>,
+    ) -> Poll<Result<Option<HeaderMap>, Self::Error>> {
+        Poll::Ready(Ok(None))
+    }
+}
+
+impl IntoResponse for Body {
+    fn into_response(self) -> Response {
+        Response::new(self.0)
     }
 }
 
