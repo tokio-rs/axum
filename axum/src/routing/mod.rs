@@ -79,15 +79,13 @@ where
     }
 }
 
-impl<S> fmt::Debug for Router<S>
-where
-    S: fmt::Debug,
-{
+impl<S> fmt::Debug for Router<S> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Router")
             .field("routes", &self.routes)
             .field("node", &self.node)
             .field("fallback", &self.fallback)
+            .field("prev_route_id", &self.prev_route_id)
             .finish()
     }
 }
@@ -445,7 +443,29 @@ where
                     }
                 }
 
-                self.call_route(match_, req, state)
+                let id = *match_.value;
+
+                #[cfg(feature = "matched-path")]
+                crate::extract::matched_path::set_matched_path_for_request(
+                    id,
+                    &self.node.route_id_to_path,
+                    req.extensions_mut(),
+                );
+
+                url_params::insert_url_params(req.extensions_mut(), match_.params);
+
+                let endpont = self
+                    .routes
+                    .get_mut(&id)
+                    .expect("no route for id. This is a bug in axum. Please file an issue");
+
+                match endpont {
+                    Endpoint::MethodRouter(method_router) => {
+                        method_router.call_with_state(req, state)
+                    }
+                    Endpoint::Route(route) => route.call(req),
+                    Endpoint::NestedRouter(router) => router.clone().call_with_state(req, state),
+                }
             }
             Err(
                 MatchError::NotFound
@@ -463,37 +483,6 @@ where
                 Fallback::Service(fallback) => fallback.call(req),
                 Fallback::BoxedHandler(handler) => handler.clone().into_route(state).call(req),
             },
-        }
-    }
-
-    #[inline]
-    fn call_route(
-        &self,
-        match_: matchit::Match<&RouteId>,
-        mut req: Request,
-        state: S,
-    ) -> RouteFuture<Infallible> {
-        let id = *match_.value;
-
-        #[cfg(feature = "matched-path")]
-        crate::extract::matched_path::set_matched_path_for_request(
-            id,
-            &self.node.route_id_to_path,
-            req.extensions_mut(),
-        );
-
-        url_params::insert_url_params(req.extensions_mut(), match_.params);
-
-        let endpont = self
-            .routes
-            .get(&id)
-            .expect("no route for id. This is a bug in axum. Please file an issue")
-            .clone();
-
-        match endpont {
-            Endpoint::MethodRouter(mut method_router) => method_router.call_with_state(req, state),
-            Endpoint::Route(mut route) => route.call(req),
-            Endpoint::NestedRouter(router) => router.call_with_state(req, state),
         }
     }
 
@@ -861,10 +850,7 @@ impl<S> Clone for Endpoint<S> {
     }
 }
 
-impl<S> fmt::Debug for Endpoint<S>
-where
-    S: fmt::Debug,
-{
+impl<S> fmt::Debug for Endpoint<S> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::MethodRouter(method_router) => {

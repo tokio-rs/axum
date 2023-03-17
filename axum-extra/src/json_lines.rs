@@ -2,7 +2,7 @@
 
 use axum::{
     async_trait,
-    body::StreamBody,
+    body::Body,
     extract::{FromRequest, Request},
     response::{IntoResponse, Response},
     BoxError,
@@ -165,7 +165,7 @@ where
             buf.write_all(b"\n")?;
             Ok::<_, BoxError>(buf.into_inner().freeze())
         });
-        let stream = StreamBody::new(stream);
+        let stream = Body::from_stream(stream);
 
         // there is no consensus around mime type yet
         // https://github.com/wardi/jsonlines/issues/36

@@ -5,12 +5,7 @@
 //! ```
 
 use axum::{
-    extract::Request,
-    handler::HandlerWithoutStateExt,
-    http::StatusCode,
-    response::IntoResponse,
-    routing::{get, get_service},
-    Router,
+    extract::Request, handler::HandlerWithoutStateExt, http::StatusCode, routing::get, Router,
 };
 use std::net::SocketAddr;
 use tower::ServiceExt;

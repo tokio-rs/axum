@@ -1,5 +1,5 @@
 use axum::{
-    body::{Body, Bytes, HttpBody, StreamBody},
+    body::{Body, Bytes, HttpBody},
     http::HeaderMap,
     response::{IntoResponse, Response},
     Error,
@@ -47,28 +47,25 @@ pin_project! {
     #[cfg(feature = "async-read-body")]
     #[derive(Debug)]
     #[must_use]
-    pub struct AsyncReadBody<R> {
+    pub struct AsyncReadBody {
         #[pin]
-        read: StreamBody<ReaderStream<R>>,
+        body: Body,
     }
 }
 
-impl<R> AsyncReadBody<R> {
+impl AsyncReadBody {
     /// Create a new `AsyncReadBody`.
-    pub fn new(read: R) -> Self
+    pub fn new<R>(read: R) -> Self
     where
         R: AsyncRead + Send + 'static,
     {
         Self {
-            read: StreamBody::new(ReaderStream::new(read)),
+            body: Body::from_stream(ReaderStream::new(read)),
         }
     }
 }
 
-impl<R> HttpBody for AsyncReadBody<R>
-where
-    R: AsyncRead + Send + 'static,
-{
+impl HttpBody for AsyncReadBody {
     type Data = Bytes;
     type Error = Error;
 
@@ -76,22 +73,19 @@ where
         self: Pin<&mut Self>,
         cx: &mut Context<'_>,
     ) -> Poll<Option<Result<Self::Data, Self::Error>>> {
-        self.project().read.poll_data(cx)
+        self.project().body.poll_data(cx)
     }
 
     fn poll_trailers(
         self: Pin<&mut Self>,
-        _cx: &mut Context<'_>,
+        cx: &mut Context<'_>,
     ) -> Poll<Result<Option<HeaderMap>, Self::Error>> {
-        Poll::Ready(Ok(None))
+        self.project().body.poll_trailers(cx)
     }
 }
 
-impl<R> IntoResponse for AsyncReadBody<R>
-where
-    R: AsyncRead + Send + 'static,
-{
+impl IntoResponse for AsyncReadBody {
     fn into_response(self) -> Response {
-        Response::new(Body::new(self))
+        self.body.into_response()
     }
 }

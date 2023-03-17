@@ -165,11 +165,21 @@ mod tests {
         let mut app = app().into_service();
 
         let request = Request::builder().uri("/").body(Body::empty()).unwrap();
-        let response = app.ready().await.unwrap().call(request).await.unwrap();
+        let response = ServiceExt::<Request<Body>>::ready(&mut app)
+            .await
+            .unwrap()
+            .call(request)
+            .await
+            .unwrap();
         assert_eq!(response.status(), StatusCode::OK);
 
         let request = Request::builder().uri("/").body(Body::empty()).unwrap();
-        let response = app.ready().await.unwrap().call(request).await.unwrap();
+        let response = ServiceExt::<Request<Body>>::ready(&mut app)
+            .await
+            .unwrap()
+            .call(request)
+            .await
+            .unwrap();
         assert_eq!(response.status(), StatusCode::OK);
     }
 
