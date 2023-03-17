@@ -59,8 +59,8 @@ mod tests {
     use super::*;
     use axum::{
         body::Body,
-        extract::Request,
-        http::{self, StatusCode},
+        extract::connect_info::MockConnectInfo,
+        http::{self, Request, StatusCode},
     };
     use serde_json::{json, Value};
     use std::net::{SocketAddr, TcpListener};
@@ -71,7 +71,7 @@ mod tests {
     async fn hello_world() {
         let app = app();
 
-        // `Router` implements `tower::Service<Request>` so we can
+        // `Router` implements `tower::Service<Request<Body>>` so we can
         // call it like any tower service, no need to run an HTTP server.
         let response = app
             .oneshot(Request::builder().uri("/").body(Body::empty()).unwrap())
@@ -162,24 +162,33 @@ mod tests {
     // in multiple request
     #[tokio::test]
     async fn multiple_request() {
-        let mut app = app();
+        let mut app = app().into_service();
 
         let request = Request::builder().uri("/").body(Body::empty()).unwrap();
-        let response = ServiceExt::<Request>::ready(&mut app)
-            .await
-            .unwrap()
-            .call(request)
-            .await
-            .unwrap();
+        let response = app.ready().await.unwrap().call(request).await.unwrap();
         assert_eq!(response.status(), StatusCode::OK);
 
         let request = Request::builder().uri("/").body(Body::empty()).unwrap();
-        let response = ServiceExt::<Request>::ready(&mut app)
-            .await
-            .unwrap()
-            .call(request)
-            .await
+        let response = app.ready().await.unwrap().call(request).await.unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+    }
+
+    // Here we're calling `/requires-connect-into` which requires `ConnectInfo`
+    //
+    // That is normally set with `Router::into_make_service_with_connect_info` but we can't easily
+    // use that during tests. The solution is instead to set the `MockConnectInfo` layer during
+    // tests.
+    #[tokio::test]
+    async fn with_into_make_service_with_connect_info() {
+        let mut app = app()
+            .layer(MockConnectInfo(SocketAddr::from(([0, 0, 0, 0], 3000))))
+            .into_service();
+
+        let request = Request::builder()
+            .uri("/requires-connect-into")
+            .body(Body::empty())
             .unwrap();
+        let response = app.ready().await.unwrap().call(request).await.unwrap();
         assert_eq!(response.status(), StatusCode::OK);
     }
 }
