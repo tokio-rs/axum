@@ -8,7 +8,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 # Unreleased
 
 - **breaking:** `#[debug_handler]` no longer accepts a `body = _` argument. The
-  body type is always `axum::body::Body`
   body type is always `axum::body::Body` ([#1751])
 - **fixed:** Improve `#[debug_handler]` message for known generic
   request-consuming extractors ([#1826])
