@@ -62,7 +62,6 @@ tokio-util = { version = "0.7", optional = true }
 
 [dev-dependencies]
 axum = { path = "../axum", version = "0.6.0", features = ["headers"] }
-futures = "0.3"
 http-body = "0.4.4"
 hyper = "0.14"
 reqwest = { version = "0.11", default-features = false, features = ["json", "stream", "multipart"] }

@@ -117,7 +117,7 @@ where
 ///     routing::get,
 ///     Router,
 /// };
-/// use futures::StreamExt;
+/// use futures_util::StreamExt;
 ///
 /// async fn handler(mut stream: BodyStream) {
 ///     while let Some(chunk) = stream.next().await {
@@ -192,7 +192,7 @@ fn body_stream_traits() {
 ///     routing::get,
 ///     Router,
 /// };
-/// use futures::StreamExt;
+/// use futures_util::StreamExt;
 ///
 /// async fn handler(RawBody(body): RawBody) {
 ///     // ...

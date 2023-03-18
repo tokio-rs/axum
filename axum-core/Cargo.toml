@@ -15,7 +15,7 @@ version = "0.3.3" # remember to also bump the version that axum depends on
 __private_docs = ["dep:tower-http"]
 
 [dependencies]
-async-trait = "0.1"
+async-trait = "0.1.67"
 bytes = "1.0"
 futures-util = { version = "0.3", default-features = false, features = ["alloc"] }
 http = "0.2.7"
@@ -32,7 +32,7 @@ rustversion = "1.0.9"
 
 [dev-dependencies]
 axum = { path = "../axum", version = "0.6.0", features = ["headers"] }
-futures-util = "0.3"
+futures-util = { version = "0.3", default-features = false, features = ["alloc"] }
 hyper = "0.14.24"
 tokio = { version = "1.25.0", features = ["macros"] }
 tower-http = { version = "0.4", features = ["limit"] }

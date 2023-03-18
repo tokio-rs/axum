@@ -32,7 +32,7 @@ pin_project! {
     ///     body::StreamBody,
     ///     response::IntoResponse,
     /// };
-    /// use futures::stream::{self, Stream};
+    /// use futures_util::stream::{self, Stream};
     /// use std::io;
     ///
     /// async fn handler() -> StreamBody<impl Stream<Item = io::Result<&'static str>>> {

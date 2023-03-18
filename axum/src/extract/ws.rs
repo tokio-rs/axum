@@ -74,7 +74,7 @@
 //!
 //! ```rust,no_run
 //! use axum::{Error, extract::ws::{WebSocket, Message}};
-//! use futures::{sink::SinkExt, stream::{StreamExt, SplitSink, SplitStream}};
+//! use futures_util::{sink::SinkExt, stream::{StreamExt, SplitSink, SplitStream}};
 //!
 //! async fn handle_socket(mut socket: WebSocket) {
 //!     let (mut sender, mut receiver) = socket.split();

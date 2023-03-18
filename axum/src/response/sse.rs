@@ -10,7 +10,7 @@
 //! };
 //! use std::{time::Duration, convert::Infallible};
 //! use tokio_stream::StreamExt as _ ;
-//! use futures::stream::{self, Stream};
+//! use futures_util::stream::{self, Stream};
 //!
 //! let app = Router::new().route("/sse", get(sse_handler));
 //!
@@ -509,7 +509,7 @@ impl<'a> Iterator for MemchrSplit<'a> {
 mod tests {
     use super::*;
     use crate::{routing::get, test_helpers::*, Router};
-    use futures::stream;
+    use futures_util::stream;
     use std::{collections::HashMap, convert::Infallible};
     use tokio_stream::StreamExt as _;
 
