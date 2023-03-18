@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- None.
+- **change:** Update to syn 2.0 ([#1862])
+
+[#1862]: https://github.com/tokio-rs/axum/pull/1862
 
 # 0.3.6 (13. March, 2023)
 
