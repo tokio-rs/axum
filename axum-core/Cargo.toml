@@ -15,7 +15,7 @@ version = "0.3.3" # remember to also bump the version that axum depends on
 __private_docs = ["dep:tower-http"]
 
 [dependencies]
-async-trait = "0.1"
+async-trait = "0.1.67"
 bytes = "1.0"
 futures-util = { version = "0.3", default-features = false, features = ["alloc"] }
 http = "0.2.7"
