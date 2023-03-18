@@ -509,7 +509,7 @@ impl<'a> Iterator for MemchrSplit<'a> {
 mod tests {
     use super::*;
     use crate::{routing::get, test_helpers::*, Router};
-    use futures::stream;
+    use futures_util::stream;
     use std::{collections::HashMap, convert::Infallible};
     use tokio_stream::StreamExt as _;
 

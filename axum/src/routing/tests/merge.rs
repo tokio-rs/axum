@@ -126,7 +126,7 @@ async fn layer() {
 async fn layer_and_handle_error() {
     let one = Router::new().route("/foo", get(|| async {}));
     let two = Router::new()
-        .route("/timeout", get(futures::future::pending::<()>))
+        .route("/timeout", get(std::future::pending::<()>))
         .layer(
             ServiceBuilder::new()
                 .layer(HandleErrorLayer::new(|_| async {
