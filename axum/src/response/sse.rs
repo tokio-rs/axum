@@ -10,7 +10,7 @@
 //! };
 //! use std::{time::Duration, convert::Infallible};
 //! use tokio_stream::StreamExt as _ ;
-//! use futures::stream::{self, Stream};
+//! use futures_util::stream::{self, Stream};
 //!
 //! let app = Router::new().route("/sse", get(sse_handler));
 //!

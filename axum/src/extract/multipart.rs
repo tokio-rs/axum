@@ -32,7 +32,7 @@ use std::{
 ///     routing::post,
 ///     Router,
 /// };
-/// use futures::stream::StreamExt;
+/// use futures_util::stream::StreamExt;
 ///
 /// async fn upload(mut multipart: Multipart) {
 ///     while let Some(mut field) = multipart.next_field().await.unwrap() {

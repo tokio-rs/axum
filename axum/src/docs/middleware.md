@@ -225,7 +225,7 @@ use axum::{
     body::Body,
     http::Request,
 };
-use futures::future::BoxFuture;
+use futures_util::future::BoxFuture;
 use tower::{Service, Layer};
 use std::task::{Context, Poll};
 
