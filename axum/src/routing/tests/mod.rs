@@ -1,22 +1,16 @@
 use crate::{
-    body::{Body, Bytes, Empty},
+    body::{Body, Bytes},
     error_handling::HandleErrorLayer,
     extract::{self, DefaultBodyLimit, FromRef, Path, State},
     handler::{Handler, HandlerWithoutStateExt},
-    response::IntoResponse,
-    routing::{
-        delete, get, get_service, on, on_service, patch, patch_service,
-        path_router::path_for_nested_route, post, MethodFilter,
-    },
-    test_helpers::{
-        tracing_helpers::{capture_tracing, TracingEvent},
-        *,
-    },
-    BoxError, Extension, Json, Router,
+    response::{IntoResponse, Response},
+    routing::{delete, get, get_service, on, on_service, patch, patch_service, post, MethodFilter, path_router::path_for_nested_route},
+    test_helpers::{*, tracing_helpers::{capture_tracing, TracingEvent}},
+    BoxError, Json, Router, Extension,
 };
+use axum_core::extract::Request;
 use futures_util::stream::StreamExt;
-use http::{header::ALLOW, header::CONTENT_LENGTH, HeaderMap, Request, Response, StatusCode, Uri};
-use serde::Deserialize;
+use http::{header::ALLOW, header::CONTENT_LENGTH, HeaderMap, StatusCode, Uri};
 use serde_json::json;
 use std::{
     convert::Infallible,
@@ -28,6 +22,7 @@ use std::{
 use tower::{service_fn, timeout::TimeoutLayer, util::MapResponseLayer, ServiceBuilder};
 use tower_http::{limit::RequestBodyLimitLayer, validate_request::ValidateRequestHeaderLayer};
 use tower_service::Service;
+use serde::Deserialize;
 
 mod fallback;
 mod get_to_head;
@@ -37,15 +32,15 @@ mod nest;
 
 #[crate::test]
 async fn hello_world() {
-    async fn root(_: Request<Body>) -> &'static str {
+    async fn root(_: Request) -> &'static str {
         "Hello, World!"
     }
 
-    async fn foo(_: Request<Body>) -> &'static str {
+    async fn foo(_: Request) -> &'static str {
         "foo"
     }
 
-    async fn users_create(_: Request<Body>) -> &'static str {
+    async fn users_create(_: Request) -> &'static str {
         "users#create"
     }
 
@@ -73,13 +68,12 @@ async fn routing() {
     let app = Router::new()
         .route(
             "/users",
-            get(|_: Request<Body>| async { "users#index" })
-                .post(|_: Request<Body>| async { "users#create" }),
+            get(|_: Request| async { "users#index" }).post(|_: Request| async { "users#create" }),
         )
-        .route("/users/:id", get(|_: Request<Body>| async { "users#show" }))
+        .route("/users/:id", get(|_: Request| async { "users#show" }))
         .route(
             "/users/:id/action",
-            get(|_: Request<Body>| async { "users#action" }),
+            get(|_: Request| async { "users#action" }),
         );
 
     let client = TestClient::new(app);
@@ -109,12 +103,8 @@ async fn router_type_doesnt_change() {
     let app: Router = Router::new()
         .route(
             "/",
-            on(MethodFilter::GET, |_: Request<Body>| async {
-                "hi from GET"
-            })
-            .on(MethodFilter::POST, |_: Request<Body>| async {
-                "hi from POST"
-            }),
+            on(MethodFilter::GET, |_: Request| async { "hi from GET" })
+                .on(MethodFilter::POST, |_: Request| async { "hi from POST" }),
         )
         .layer(tower_http::compression::CompressionLayer::new());
 
@@ -134,22 +124,22 @@ async fn routing_between_services() {
     use std::convert::Infallible;
     use tower::service_fn;
 
-    async fn handle(_: Request<Body>) -> &'static str {
+    async fn handle(_: Request) -> &'static str {
         "handler"
     }
 
     let app = Router::new()
         .route(
             "/one",
-            get_service(service_fn(|_: Request<Body>| async {
+            get_service(service_fn(|_: Request| async {
                 Ok::<_, Infallible>(Response::new(Body::from("one get")))
             }))
-            .post_service(service_fn(|_: Request<Body>| async {
+            .post_service(service_fn(|_: Request| async {
                 Ok::<_, Infallible>(Response::new(Body::from("one post")))
             }))
             .on_service(
                 MethodFilter::PUT,
-                service_fn(|_: Request<Body>| async {
+                service_fn(|_: Request| async {
                     Ok::<_, Infallible>(Response::new(Body::from("one put")))
                 }),
             ),
@@ -180,7 +170,7 @@ async fn middleware_on_single_route() {
     use tower::ServiceBuilder;
     use tower_http::{compression::CompressionLayer, trace::TraceLayer};
 
-    async fn handle(_: Request<Body>) -> &'static str {
+    async fn handle(_: Request) -> &'static str {
         "Hello, World!"
     }
 
@@ -204,7 +194,7 @@ async fn middleware_on_single_route() {
 
 #[crate::test]
 async fn service_in_bottom() {
-    async fn handler(_req: Request<Body>) -> Result<Response<Body>, Infallible> {
+    async fn handler(_req: Request) -> Result<Response<Body>, Infallible> {
         Ok(Response::new(Body::empty()))
     }
 
@@ -242,7 +232,7 @@ async fn wrong_method_service() {
     struct Svc;
 
     impl<R> Service<R> for Svc {
-        type Response = Response<Empty<Bytes>>;
+        type Response = Response;
         type Error = Infallible;
         type Future = Ready<Result<Self::Response, Self::Error>>;
 
@@ -251,7 +241,7 @@ async fn wrong_method_service() {
         }
 
         fn call(&mut self, _req: R) -> Self::Future {
-            ready(Ok(Response::new(Empty::new())))
+            ready(Ok(().into_response()))
         }
     }
 
@@ -278,7 +268,7 @@ async fn wrong_method_service() {
 
 #[crate::test]
 async fn multiple_methods_for_one_handler() {
-    async fn root(_: Request<Body>) -> &'static str {
+    async fn root(_: Request) -> &'static str {
         "Hello, World!"
     }
 

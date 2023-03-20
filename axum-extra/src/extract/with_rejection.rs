@@ -1,9 +1,7 @@
 use axum::async_trait;
-use axum::body::Body;
-use axum::extract::{FromRequest, FromRequestParts};
+use axum::extract::{FromRequest, FromRequestParts, Request};
 use axum::response::IntoResponse;
 use http::request::Parts;
-use http::Request;
 use std::fmt::Debug;
 use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
@@ -118,7 +116,7 @@ where
 {
     type Rejection = R;
 
-    async fn from_request(req: Request<Body>, state: &S) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: Request, state: &S) -> Result<Self, Self::Rejection> {
         let extractor = E::from_request(req, state).await?;
         Ok(WithRejection(extractor, PhantomData))
     }
@@ -141,6 +139,7 @@ where
 
 #[cfg(test)]
 mod tests {
+    use axum::body::Body;
     use axum::extract::FromRequestParts;
     use axum::http::Request;
     use axum::response::Response;

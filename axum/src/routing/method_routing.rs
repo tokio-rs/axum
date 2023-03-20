@@ -8,11 +8,11 @@ use crate::{
     boxed::BoxedIntoRoute,
     error_handling::{HandleError, HandleErrorLayer},
     handler::Handler,
-    http::{Method, Request, StatusCode},
+    http::{Method, StatusCode},
     response::Response,
     routing::{future::RouteFuture, Fallback, MethodFilter, Route},
 };
-use axum_core::{response::IntoResponse, BoxError};
+use axum_core::{extract::Request, response::IntoResponse, BoxError};
 use bytes::BytesMut;
 use std::{
     convert::Infallible,
@@ -34,7 +34,7 @@ macro_rules! top_level_service_fn {
             ///
             /// ```rust
             /// use axum::{
-            ///     http::Request,
+            ///     extract::Request,
             ///     Router,
             ///     routing::get_service,
             ///     body::Body,
@@ -42,7 +42,7 @@ macro_rules! top_level_service_fn {
             /// use http::Response;
             /// use std::convert::Infallible;
             ///
-            /// let service = tower::service_fn(|request: Request<Body>| async {
+            /// let service = tower::service_fn(|request: Request| async {
             ///     Ok::<_, Infallible>(Response::new(Body::empty()))
             /// });
             ///
@@ -80,7 +80,7 @@ macro_rules! top_level_service_fn {
         $(#[$m])+
         pub fn $name<T, S>(svc: T) -> MethodRouter<S, T::Error>
         where
-            T: Service<Request<Body>> + Clone + Send + 'static,
+            T: Service<Request> + Clone + Send + 'static,
             T::Response: IntoResponse + 'static,
             T::Future: Send + 'static,
             S: Clone,
@@ -161,7 +161,7 @@ macro_rules! chained_service_fn {
             ///
             /// ```rust
             /// use axum::{
-            ///     http::Request,
+            ///     extract::Request,
             ///     Router,
             ///     routing::post_service,
             ///     body::Body,
@@ -169,11 +169,11 @@ macro_rules! chained_service_fn {
             /// use http::Response;
             /// use std::convert::Infallible;
             ///
-            /// let service = tower::service_fn(|request: Request<Body>| async {
+            /// let service = tower::service_fn(|request: Request| async {
             ///     Ok::<_, Infallible>(Response::new(Body::empty()))
             /// });
             ///
-            /// let other_service = tower::service_fn(|request: Request<Body>| async {
+            /// let other_service = tower::service_fn(|request: Request| async {
             ///     Ok::<_, Infallible>(Response::new(Body::empty()))
             /// });
             ///
@@ -213,7 +213,7 @@ macro_rules! chained_service_fn {
         #[track_caller]
         pub fn $name<T>(self, svc: T) -> Self
         where
-            T: Service<Request<Body>, Error = E>
+            T: Service<Request, Error = E>
                 + Clone
                 + Send
                 + 'static,
@@ -301,7 +301,7 @@ top_level_service_fn!(trace_service, TRACE);
 ///
 /// ```rust
 /// use axum::{
-///     http::Request,
+///     extract::Request,
 ///     routing::on,
 ///     Router,
 ///     body::Body,
@@ -310,7 +310,7 @@ top_level_service_fn!(trace_service, TRACE);
 /// use http::Response;
 /// use std::convert::Infallible;
 ///
-/// let service = tower::service_fn(|request: Request<Body>| async {
+/// let service = tower::service_fn(|request: Request| async {
 ///     Ok::<_, Infallible>(Response::new(Body::empty()))
 /// });
 ///
@@ -322,7 +322,7 @@ top_level_service_fn!(trace_service, TRACE);
 /// ```
 pub fn on_service<T, S>(filter: MethodFilter, svc: T) -> MethodRouter<S, T::Error>
 where
-    T: Service<Request<Body>> + Clone + Send + 'static,
+    T: Service<Request> + Clone + Send + 'static,
     T::Response: IntoResponse + 'static,
     T::Future: Send + 'static,
     S: Clone,
@@ -336,7 +336,7 @@ where
 ///
 /// ```rust
 /// use axum::{
-///     http::Request,
+///     extract::Request,
 ///     Router,
 ///     routing::any_service,
 ///     body::Body,
@@ -344,7 +344,7 @@ where
 /// use http::Response;
 /// use std::convert::Infallible;
 ///
-/// let service = tower::service_fn(|request: Request<Body>| async {
+/// let service = tower::service_fn(|request: Request| async {
 ///     Ok::<_, Infallible>(Response::new(Body::empty()))
 /// });
 ///
@@ -359,7 +359,7 @@ where
 ///
 /// ```rust
 /// use axum::{
-///     http::Request,
+///     extract::Request,
 ///     Router,
 ///     routing::any_service,
 ///     body::Body,
@@ -367,12 +367,12 @@ where
 /// use http::Response;
 /// use std::convert::Infallible;
 ///
-/// let service = tower::service_fn(|request: Request<Body>| async {
+/// let service = tower::service_fn(|request: Request| async {
 ///     # Ok::<_, Infallible>(Response::new(Body::empty()))
 ///     // ...
 /// });
 ///
-/// let other_service = tower::service_fn(|request: Request<Body>| async {
+/// let other_service = tower::service_fn(|request: Request| async {
 ///     # Ok::<_, Infallible>(Response::new(Body::empty()))
 ///     // ...
 /// });
@@ -385,7 +385,7 @@ where
 /// ```
 pub fn any_service<T, S>(svc: T) -> MethodRouter<S, T::Error>
 where
-    T: Service<Request<Body>> + Clone + Send + 'static,
+    T: Service<Request> + Clone + Send + 'static,
     T::Response: IntoResponse + 'static,
     T::Future: Send + 'static,
     S: Clone,
@@ -487,7 +487,7 @@ where
 ///
 /// ```
 /// use tower::Service;
-/// use axum::{routing::get, extract::State, body::Body, http::Request};
+/// use axum::{routing::get, extract::{State, Request}, body::Body};
 ///
 /// // this `MethodRouter` doesn't require any state, i.e. the state is `()`,
 /// let method_router = get(|| async {});
@@ -504,7 +504,7 @@ where
 /// // helper to check that a value implements `Service`
 /// fn assert_service<S>(service: S)
 /// where
-///     S: Service<Request<Body>>,
+///     S: Service<Request>,
 /// {}
 /// ```
 #[must_use]
@@ -703,7 +703,7 @@ where
     /// Create a default `MethodRouter` that will respond with `405 Method Not Allowed` to all
     /// requests.
     pub fn new() -> Self {
-        let fallback = Route::new(service_fn(|_: Request<Body>| async {
+        let fallback = Route::new(service_fn(|_: Request| async {
             Ok(StatusCode::METHOD_NOT_ALLOWED.into_response())
         }));
 
@@ -744,7 +744,7 @@ where
     ///
     /// ```rust
     /// use axum::{
-    ///     http::Request,
+    ///     extract::Request,
     ///     Router,
     ///     routing::{MethodFilter, on_service},
     ///     body::Body,
@@ -752,7 +752,7 @@ where
     /// use http::Response;
     /// use std::convert::Infallible;
     ///
-    /// let service = tower::service_fn(|request: Request<Body>| async {
+    /// let service = tower::service_fn(|request: Request| async {
     ///     Ok::<_, Infallible>(Response::new(Body::empty()))
     /// });
     ///
@@ -765,7 +765,7 @@ where
     #[track_caller]
     pub fn on_service<T>(self, filter: MethodFilter, svc: T) -> Self
     where
-        T: Service<Request<Body>, Error = E> + Clone + Send + 'static,
+        T: Service<Request, Error = E> + Clone + Send + 'static,
         T::Response: IntoResponse + 'static,
         T::Future: Send + 'static,
     {
@@ -897,7 +897,7 @@ where
     #[doc = include_str!("../docs/method_routing/fallback.md")]
     pub fn fallback_service<T>(mut self, svc: T) -> Self
     where
-        T: Service<Request<Body>, Error = E> + Clone + Send + 'static,
+        T: Service<Request, Error = E> + Clone + Send + 'static,
         T::Response: IntoResponse + 'static,
         T::Future: Send + 'static,
     {
@@ -909,10 +909,10 @@ where
     pub fn layer<L, NewError>(self, layer: L) -> MethodRouter<S, NewError>
     where
         L: Layer<Route<E>> + Clone + Send + 'static,
-        L::Service: Service<Request<Body>> + Clone + Send + 'static,
-        <L::Service as Service<Request<Body>>>::Response: IntoResponse + 'static,
-        <L::Service as Service<Request<Body>>>::Error: Into<NewError> + 'static,
-        <L::Service as Service<Request<Body>>>::Future: Send + 'static,
+        L::Service: Service<Request> + Clone + Send + 'static,
+        <L::Service as Service<Request>>::Response: IntoResponse + 'static,
+        <L::Service as Service<Request>>::Error: Into<NewError> + 'static,
+        <L::Service as Service<Request>>::Future: Send + 'static,
         E: 'static,
         S: 'static,
         NewError: 'static,
@@ -938,9 +938,9 @@ where
     pub fn route_layer<L>(mut self, layer: L) -> MethodRouter<S, E>
     where
         L: Layer<Route<E>> + Clone + Send + 'static,
-        L::Service: Service<Request<Body>, Error = E> + Clone + Send + 'static,
-        <L::Service as Service<Request<Body>>>::Response: IntoResponse + 'static,
-        <L::Service as Service<Request<Body>>>::Future: Send + 'static,
+        L::Service: Service<Request, Error = E> + Clone + Send + 'static,
+        <L::Service as Service<Request>>::Response: IntoResponse + 'static,
+        <L::Service as Service<Request>>::Future: Send + 'static,
         E: 'static,
         S: 'static,
     {
@@ -1036,9 +1036,9 @@ where
     pub fn handle_error<F, T>(self, f: F) -> MethodRouter<S, Infallible>
     where
         F: Clone + Send + Sync + 'static,
-        HandleError<Route<E>, F, T>: Service<Request<Body>, Error = Infallible>,
-        <HandleError<Route<E>, F, T> as Service<Request<Body>>>::Future: Send,
-        <HandleError<Route<E>, F, T> as Service<Request<Body>>>::Response: IntoResponse + Send,
+        HandleError<Route<E>, F, T>: Service<Request, Error = Infallible>,
+        <HandleError<Route<E>, F, T> as Service<Request>>::Future: Send,
+        <HandleError<Route<E>, F, T> as Service<Request>>::Response: IntoResponse + Send,
         T: 'static,
         E: 'static,
         S: 'static,
@@ -1051,7 +1051,7 @@ where
         self
     }
 
-    pub(crate) fn call_with_state(&mut self, req: Request<Body>, state: S) -> RouteFuture<E> {
+    pub(crate) fn call_with_state(&mut self, req: Request, state: S) -> RouteFuture<E> {
         macro_rules! call {
             (
                 $req:expr,
@@ -1256,7 +1256,7 @@ where
 {
     type Future = InfallibleRouteFuture;
 
-    fn call(mut self, req: Request<Body>, state: S) -> Self::Future {
+    fn call(mut self, req: Request, state: S) -> Self::Future {
         InfallibleRouteFuture::new(self.call_with_state(req, state))
     }
 }
@@ -1284,7 +1284,7 @@ mod tests {
 
     #[crate::test]
     async fn get_service_fn() {
-        async fn handle(_req: Request<Body>) -> Result<Response<Body>, Infallible> {
+        async fn handle(_req: Request) -> Result<Response<Body>, Infallible> {
             Ok(Response::new(Body::from("ok")))
         }
 
@@ -1545,7 +1545,7 @@ mod tests {
 
     async fn call<S>(method: Method, svc: &mut S) -> (StatusCode, HeaderMap, String)
     where
-        S: Service<Request<Body>, Error = Infallible>,
+        S: Service<Request, Error = Infallible>,
         S::Response: IntoResponse,
     {
         let request = Request::builder()

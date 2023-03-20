@@ -21,7 +21,6 @@ use http::request::Parts;
 /// use axum::{
 ///     async_trait,
 ///     extract::FromRequestParts,
-///     body::BoxBody,
 ///     response::{IntoResponse, Response},
 ///     http::{StatusCode, request::Parts},
 /// };

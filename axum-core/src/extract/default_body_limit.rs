@@ -30,22 +30,21 @@ use tower_layer::Layer;
 ///     Router,
 ///     routing::post,
 ///     body::Body,
-///     extract::{DefaultBodyLimit, RawBody},
-///     http::Request,
+///     extract::{Request, DefaultBodyLimit},
 /// };
 ///
 /// let app = Router::new()
 ///     .route(
 ///         "/",
 ///         // even with `DefaultBodyLimit` the request body is still just `Body`
-///         post(|request: Request<Body>| async {}),
+///         post(|request: Request| async {}),
 ///     )
 ///     .layer(DefaultBodyLimit::max(1024));
 /// # let _: Router = app;
 /// ```
 ///
 /// ```
-/// use axum::{Router, routing::post, body::Body, extract::RawBody, http::Request};
+/// use axum::{Router, routing::post, body::Body, extract::Request};
 /// use tower_http::limit::RequestBodyLimitLayer;
 /// use http_body::Limited;
 ///
@@ -54,7 +53,7 @@ use tower_layer::Layer;
 ///         "/",
 ///         // `RequestBodyLimitLayer` changes the request body type to `Limited<Body>`
 ///         // extracting a different body type wont work
-///         post(|request: Request<Body>| async {}),
+///         post(|request: Request| async {}),
 ///     )
 ///     .layer(RequestBodyLimitLayer::new(1024));
 /// # let _: Router = app;

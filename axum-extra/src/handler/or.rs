@@ -1,10 +1,8 @@
 use super::HandlerCallWithExtractors;
 use crate::either::Either;
 use axum::{
-    body::Body,
-    extract::{FromRequest, FromRequestParts},
+    extract::{FromRequest, FromRequestParts, Request},
     handler::Handler,
-    http::Request,
     response::{IntoResponse, Response},
 };
 use futures_util::future::{BoxFuture, Either as EitherFuture, FutureExt, Map};
@@ -67,7 +65,7 @@ where
     // this puts `futures_util` in our public API but thats fine in axum-extra
     type Future = BoxFuture<'static, Response>;
 
-    fn call(self, req: Request<Body>, state: S) -> Self::Future {
+    fn call(self, req: Request, state: S) -> Self::Future {
         Box::pin(async move {
             let (mut parts, body) = req.into_parts();
 

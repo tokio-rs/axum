@@ -5,11 +5,7 @@
 //! ```
 
 use axum::{
-    body::Body,
-    handler::HandlerWithoutStateExt,
-    http::{Request, StatusCode},
-    routing::get,
-    Router,
+    extract::Request, handler::HandlerWithoutStateExt, http::StatusCode, routing::get, Router,
 };
 use std::net::SocketAddr;
 use tower::ServiceExt;
@@ -97,7 +93,7 @@ fn calling_serve_dir_from_a_handler() -> Router {
     // call `ServeDir` yourself from a handler
     Router::new().nest_service(
         "/foo",
-        get(|request: Request<Body>| async {
+        get(|request: Request| async {
             let service = ServeDir::new("assets");
             let result = service.oneshot(request).await;
             result
