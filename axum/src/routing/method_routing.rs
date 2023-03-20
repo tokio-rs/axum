@@ -1361,7 +1361,7 @@ mod tests {
     }
 
     #[allow(dead_code)]
-    fn buiding_complex_router() {
+    async fn buiding_complex_router() {
         let app = crate::Router::new().route(
             "/",
             // use the all the things :bomb:
@@ -1380,7 +1380,8 @@ mod tests {
                 ),
         );
 
-        crate::Server::bind(&"0.0.0.0:0".parse().unwrap()).serve(app.into_make_service());
+        let listener = tokio::net::TcpListener::bind("0.0.0.0:0").await.unwrap();
+        crate::serve(listener, app).await.unwrap();
     }
 
     #[crate::test]

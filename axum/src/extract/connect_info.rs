@@ -218,8 +218,9 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{routing::get, test_helpers::TestClient, Router, Server};
-    use std::net::{SocketAddr, TcpListener};
+    use crate::{routing::get, test_helpers::TestClient, Router};
+    use std::net::SocketAddr;
+    use tokio::net::TcpListener;
 
     #[crate::test]
     async fn socket_addr() {
@@ -227,17 +228,14 @@ mod tests {
             format!("{addr}")
         }
 
-        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
         let addr = listener.local_addr().unwrap();
 
         let (tx, rx) = tokio::sync::oneshot::channel();
         tokio::spawn(async move {
             let app = Router::new().route("/", get(handler));
-            let server = Server::from_tcp(listener)
-                .unwrap()
-                .serve(app.into_make_service_with_connect_info::<SocketAddr>());
             tx.send(()).unwrap();
-            server.await.expect("server error");
+            crate::serve(listener, app.into_make_service_with_connect_info::<SocketAddr>()).await.unwrap();
         });
         rx.await.unwrap();
 
@@ -255,8 +253,8 @@ mod tests {
             value: &'static str,
         }
 
-        impl Connected<&AddrStream> for MyConnectInfo {
-            fn connect_info(_target: &AddrStream) -> Self {
+        impl Connected<&(TcpStream, SocketAddr)> for MyConnectInfo {
+            fn connect_info(_target: &(TcpStream, SocketAddr)) -> Self {
                 Self {
                     value: "it worked!",
                 }
@@ -267,17 +265,14 @@ mod tests {
             addr.value
         }
 
-        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
         let addr = listener.local_addr().unwrap();
 
         let (tx, rx) = tokio::sync::oneshot::channel();
         tokio::spawn(async move {
             let app = Router::new().route("/", get(handler));
-            let server = Server::from_tcp(listener)
-                .unwrap()
-                .serve(app.into_make_service_with_connect_info::<MyConnectInfo>());
             tx.send(()).unwrap();
-            server.await.expect("server error");
+            crate::serve(listener, app.into_make_service_with_connect_info::<MyConnectInfo>()).await.unwrap();
         });
         rx.await.unwrap();
 
@@ -311,7 +306,7 @@ mod tests {
             format!("{addr}")
         }
 
-        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
         let addr = listener.local_addr().unwrap();
 
         tokio::spawn(async move {
@@ -319,10 +314,7 @@ mod tests {
                 .route("/", get(handler))
                 .layer(MockConnectInfo(SocketAddr::from(([0, 0, 0, 0], 1337))));
 
-            let server = Server::from_tcp(listener)
-                .unwrap()
-                .serve(app.into_make_service_with_connect_info::<SocketAddr>());
-            server.await.expect("server error");
+            crate::serve(listener, app.into_make_service_with_connect_info::<SocketAddr>()).await.unwrap();
         });
 
         let client = reqwest::Client::new();

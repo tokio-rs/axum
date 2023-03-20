@@ -28,7 +28,7 @@ async fn main() {
         b: incoming_v6,
     };
 
-    axum::Server::builder(combined)
+    hyper::Server::builder(combined)
         .serve(app.into_make_service())
         .await
         .unwrap();

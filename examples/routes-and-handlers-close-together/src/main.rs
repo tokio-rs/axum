@@ -8,7 +8,6 @@ use axum::{
     routing::{get, post, MethodRouter},
     Router,
 };
-use std::net::SocketAddr;
 
 #[tokio::main]
 async fn main() {
@@ -17,12 +16,11 @@ async fn main() {
         .merge(get_foo())
         .merge(post_foo());
 
-    let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
-    println!("listening on {}", addr);
-    axum::Server::bind(&addr)
-        .serve(app.into_make_service())
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:3000")
         .await
         .unwrap();
+    println!("listening on {}", listener.local_addr().unwrap());
+    axum::serve(listener, app).await.unwrap();
 }
 
 fn root() -> Router {

@@ -13,7 +13,7 @@ use axum::{
     BoxError, Router,
 };
 use futures::{Stream, TryStreamExt};
-use std::{io, net::SocketAddr};
+use std::io;
 use tokio::{fs::File, io::BufWriter};
 use tokio_util::io::StreamReader;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
@@ -39,12 +39,11 @@ async fn main() {
         .route("/", get(show_form).post(accept_form))
         .route("/file/:file_name", post(save_request_body));
 
-    let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
-    tracing::debug!("listening on {}", addr);
-    axum::Server::bind(&addr)
-        .serve(app.into_make_service())
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:3000")
         .await
         .unwrap();
+    tracing::debug!("listening on {}", listener.local_addr().unwrap());
+    axum::serve(listener, app).await.unwrap();
 }
 
 // Handler that streams the request body to a file.

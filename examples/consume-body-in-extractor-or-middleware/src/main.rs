@@ -14,7 +14,6 @@ use axum::{
     routing::post,
     Router,
 };
-use std::net::SocketAddr;
 use tower::ServiceBuilder;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
@@ -32,12 +31,11 @@ async fn main() {
         .route("/", post(handler))
         .layer(ServiceBuilder::new().layer(middleware::from_fn(print_request_body)));
 
-    let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
-    tracing::debug!("listening on {}", addr);
-    axum::Server::bind(&addr)
-        .serve(app.into_make_service())
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:3000")
         .await
         .unwrap();
+    tracing::debug!("listening on {}", listener.local_addr().unwrap());
+    axum::serve(listener, app).await.unwrap();
 }
 
 // middleware that shows how to consume the request body upfront

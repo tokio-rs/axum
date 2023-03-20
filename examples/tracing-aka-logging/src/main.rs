@@ -11,7 +11,8 @@ use axum::{
     routing::get,
     Router,
 };
-use std::{net::SocketAddr, time::Duration};
+use std::time::Duration;
+use tokio::net::TcpListener;
 use tower_http::{classify::ServerErrorsFailureClass, trace::TraceLayer};
 use tracing::Span;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
@@ -61,12 +62,9 @@ async fn main() {
         );
 
     // run it
-    let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
-    tracing::debug!("listening on {}", addr);
-    axum::Server::bind(&addr)
-        .serve(app.into_make_service())
-        .await
-        .unwrap();
+    let listener = TcpListener::bind("127.0.0.1:3000").await.unwrap();
+    tracing::debug!("listening on {}", listener.local_addr().unwrap());
+    axum::serve(listener, app).await.unwrap();
 }
 
 async fn handler() -> Html<&'static str> {
