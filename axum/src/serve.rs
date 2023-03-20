@@ -42,8 +42,8 @@ where
 
             // doing this saves cloning the service just to await the service being ready
             //
-            // services like `Router` are always, so assume the service
-            // we're running here is also always ready..
+            // services like `Router` are always ready, so assume the service
+            // we're running here is also always ready...
             let waker = futures_util::task::noop_waker();
             let mut cx = Context::from_waker(&waker);
             match service.poll_ready(&mut cx) {
