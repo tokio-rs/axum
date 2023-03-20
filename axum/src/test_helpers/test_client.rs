@@ -1,4 +1,4 @@
-use super::{BoxError, HttpBody};
+use super::{serve, BoxError, HttpBody};
 use bytes::Bytes;
 use http::{
     header::{HeaderName, HeaderValue},

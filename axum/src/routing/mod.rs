@@ -14,13 +14,14 @@ use axum_core::{
     response::{IntoResponse, Response},
 };
 use matchit::MatchError;
+use tokio::net::TcpStream;
 use std::{
     collections::HashMap,
     convert::Infallible,
     fmt,
     marker::PhantomData,
     sync::Arc,
-    task::{Context, Poll},
+    task::{Context, Poll}, net::SocketAddr,
 };
 use sync_wrapper::SyncWrapper;
 use tower_layer::Layer;
@@ -605,6 +606,21 @@ impl Router {
         // call `Router::with_state` such that everything is turned into `Route` eagerly
         // rather than doing that per request
         IntoMakeServiceWithConnectInfo::new(self.with_state(()))
+    }
+}
+
+// for `axum::serve(listener, router)`
+impl Service<&(TcpStream, SocketAddr)> for Router<()> {
+    type Response = Self;
+    type Error = Infallible;
+    type Future = std::future::Ready<Result<Self::Response, Self::Error>>;
+
+    fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        Poll::Ready(Ok(()))
+    }
+
+    fn call(&mut self, _req: &(TcpStream, SocketAddr)) -> Self::Future {
+        std::future::ready(Ok(self.clone()))
     }
 }
 

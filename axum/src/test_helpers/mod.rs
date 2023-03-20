@@ -1,5 +1,6 @@
 #![allow(clippy::disallowed_names)]
 
+use crate::serve::serve;
 use crate::{body::HttpBody, BoxError};
 
 mod test_client;

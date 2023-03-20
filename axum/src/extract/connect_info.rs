@@ -17,6 +17,7 @@ use std::{
     net::SocketAddr,
     task::{Context, Poll},
 };
+use tokio::net::TcpStream;
 use tower_layer::Layer;
 use tower_service::Service;
 
@@ -86,6 +87,12 @@ pub trait Connected<T>: Clone + Send + Sync + 'static {
 impl Connected<&AddrStream> for SocketAddr {
     fn connect_info(target: &AddrStream) -> Self {
         target.remote_addr()
+    }
+}
+
+impl Connected<&(TcpStream, SocketAddr)> for SocketAddr {
+    fn connect_info(target: &(TcpStream, SocketAddr)) -> Self {
+        target.1
     }
 }
 

@@ -458,6 +458,7 @@ pub mod handler;
 pub mod middleware;
 pub mod response;
 pub mod routing;
+pub mod serve;
 
 #[cfg(test)]
 mod test_helpers;
@@ -495,7 +496,7 @@ pub use axum_core::{BoxError, Error, RequestExt, RequestPartsExt};
 #[cfg(feature = "macros")]
 pub use axum_macros::debug_handler;
 
-pub use self::service_ext::ServiceExt;
+pub use self::{serve::serve, service_ext::ServiceExt};
 
 #[cfg(test)]
 use axum_macros::__private_axum_test as test;
