@@ -1,10 +1,10 @@
+use crate::extract::Request;
 use crate::extract::{rejection::*, FromRequest, RawForm};
 use async_trait::async_trait;
-use axum_core::body::Body;
 use axum_core::response::{IntoResponse, Response};
 use axum_core::RequestExt;
 use http::header::CONTENT_TYPE;
-use http::{Request, StatusCode};
+use http::StatusCode;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::ops::Deref;
@@ -71,7 +71,7 @@ where
 {
     type Rejection = FormRejection;
 
-    async fn from_request(req: Request<Body>, _state: &S) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: Request, _state: &S) -> Result<Self, Self::Rejection> {
         let is_get_or_head =
             req.method() == http::Method::GET || req.method() == http::Method::HEAD;
 
@@ -121,14 +121,15 @@ impl<T> Deref for Form<T> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::{
-        body::Body,
         routing::{on, MethodFilter},
         test_helpers::TestClient,
         Router,
     };
-    use http::{header::CONTENT_TYPE, Method, Request};
+
+    use super::*;
+    use axum_core::body::Body;
+    use http::{Method, Request};
     use mime::APPLICATION_WWW_FORM_URLENCODED;
     use serde::{Deserialize, Serialize};
     use std::fmt::Debug;

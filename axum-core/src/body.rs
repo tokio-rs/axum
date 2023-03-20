@@ -1,6 +1,5 @@
 //! HTTP body utilities.
 
-use crate::response::{IntoResponse, Response};
 use crate::{BoxError, Error};
 use bytes::Bytes;
 use bytes::{Buf, BufMut};
@@ -13,14 +12,9 @@ use std::pin::Pin;
 use std::task::{Context, Poll};
 use sync_wrapper::SyncWrapper;
 
-/// A boxed [`Body`] trait object.
-///
-/// This is used in axum as the response body type for applications. It's
-/// necessary to unify multiple response bodies types into one.
-pub type BoxBody = http_body::combinators::UnsyncBoxBody<Bytes, Error>;
+type BoxBody = http_body::combinators::UnsyncBoxBody<Bytes, Error>;
 
-/// Convert a [`http_body::Body`] into a [`BoxBody`].
-pub fn boxed<B>(body: B) -> BoxBody
+fn boxed<B>(body: B) -> BoxBody
 where
     B: http_body::Body<Data = Bytes> + Send + 'static,
     B::Error: Into<BoxError>,
@@ -227,12 +221,6 @@ where
         _cx: &mut Context<'_>,
     ) -> Poll<Result<Option<HeaderMap>, Self::Error>> {
         Poll::Ready(Ok(None))
-    }
-}
-
-impl IntoResponse for Body {
-    fn into_response(self) -> Response {
-        Response::new(self.0)
     }
 }
 

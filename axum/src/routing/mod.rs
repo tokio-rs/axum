@@ -9,8 +9,10 @@ use crate::{
     handler::Handler,
     util::try_downcast,
 };
-use axum_core::response::{IntoResponse, Response};
-use http::Request;
+use axum_core::{
+    extract::Request,
+    response::{IntoResponse, Response},
+};
 use matchit::MatchError;
 use std::{
     collections::HashMap,
@@ -152,7 +154,7 @@ where
     #[doc = include_str!("../docs/routing/route_service.md")]
     pub fn route_service<T>(self, path: &str, service: T) -> Self
     where
-        T: Service<Request<Body>, Error = Infallible> + Clone + Send + 'static,
+        T: Service<Request, Error = Infallible> + Clone + Send + 'static,
         T::Response: IntoResponse,
         T::Future: Send + 'static,
     {
@@ -203,7 +205,7 @@ where
     #[track_caller]
     pub fn nest_service<T>(self, path: &str, svc: T) -> Self
     where
-        T: Service<Request<Body>, Error = Infallible> + Clone + Send + 'static,
+        T: Service<Request, Error = Infallible> + Clone + Send + 'static,
         T::Response: IntoResponse,
         T::Future: Send + 'static,
     {
@@ -213,7 +215,7 @@ where
     #[track_caller]
     fn nest_endpoint<T>(mut self, mut path: &str, router_or_service: RouterOrService<S, T>) -> Self
     where
-        T: Service<Request<Body>, Error = Infallible> + Clone + Send + 'static,
+        T: Service<Request, Error = Infallible> + Clone + Send + 'static,
         T::Response: IntoResponse,
         T::Future: Send + 'static,
     {
@@ -299,10 +301,10 @@ where
     pub fn layer<L>(self, layer: L) -> Router<S>
     where
         L: Layer<Route> + Clone + Send + 'static,
-        L::Service: Service<Request<Body>> + Clone + Send + 'static,
-        <L::Service as Service<Request<Body>>>::Response: IntoResponse + 'static,
-        <L::Service as Service<Request<Body>>>::Error: Into<Infallible> + 'static,
-        <L::Service as Service<Request<Body>>>::Future: Send + 'static,
+        L::Service: Service<Request> + Clone + Send + 'static,
+        <L::Service as Service<Request>>::Response: IntoResponse + 'static,
+        <L::Service as Service<Request>>::Error: Into<Infallible> + 'static,
+        <L::Service as Service<Request>>::Future: Send + 'static,
     {
         let routes = self
             .routes
@@ -328,10 +330,10 @@ where
     pub fn route_layer<L>(self, layer: L) -> Self
     where
         L: Layer<Route> + Clone + Send + 'static,
-        L::Service: Service<Request<Body>> + Clone + Send + 'static,
-        <L::Service as Service<Request<Body>>>::Response: IntoResponse + 'static,
-        <L::Service as Service<Request<Body>>>::Error: Into<Infallible> + 'static,
-        <L::Service as Service<Request<Body>>>::Future: Send + 'static,
+        L::Service: Service<Request> + Clone + Send + 'static,
+        <L::Service as Service<Request>>::Response: IntoResponse + 'static,
+        <L::Service as Service<Request>>::Error: Into<Infallible> + 'static,
+        <L::Service as Service<Request>>::Future: Send + 'static,
     {
         if self.routes.is_empty() {
             panic!(
@@ -372,7 +374,7 @@ where
     /// See [`Router::fallback`] for more details.
     pub fn fallback_service<T>(mut self, svc: T) -> Self
     where
-        T: Service<Request<Body>, Error = Infallible> + Clone + Send + 'static,
+        T: Service<Request, Error = Infallible> + Clone + Send + 'static,
         T::Response: IntoResponse,
         T::Future: Send + 'static,
     {
@@ -411,7 +413,7 @@ where
 
     pub(crate) fn call_with_state(
         &mut self,
-        mut req: Request<Body>,
+        mut req: Request,
         state: S,
     ) -> RouteFuture<Infallible> {
         #[cfg(feature = "original-uri")]
@@ -821,10 +823,10 @@ where
     fn layer<L>(self, layer: L) -> Endpoint<S>
     where
         L: Layer<Route> + Clone + Send + 'static,
-        L::Service: Service<Request<Body>> + Clone + Send + 'static,
-        <L::Service as Service<Request<Body>>>::Response: IntoResponse + 'static,
-        <L::Service as Service<Request<Body>>>::Error: Into<Infallible> + 'static,
-        <L::Service as Service<Request<Body>>>::Future: Send + 'static,
+        L::Service: Service<Request> + Clone + Send + 'static,
+        <L::Service as Service<Request>>::Response: IntoResponse + 'static,
+        <L::Service as Service<Request>>::Error: Into<Infallible> + 'static,
+        <L::Service as Service<Request>>::Future: Send + 'static,
     {
         match self {
             Endpoint::MethodRouter(method_router) => {

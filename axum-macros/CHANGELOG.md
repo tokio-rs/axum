@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   request-consuming extractors ([#1826])
 
 [#1826]: https://github.com/tokio-rs/axum/pull/1826
+[#1751]: https://github.com/tokio-rs/axum/pull/1751
 
 # 0.3.5 (03. March, 2023)
 

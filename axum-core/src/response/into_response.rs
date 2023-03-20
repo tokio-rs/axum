@@ -1,5 +1,5 @@
 use super::{IntoResponseParts, Response, ResponseParts};
-use crate::{body, BoxError};
+use crate::{body::Body, BoxError};
 use bytes::{buf::Chain, Buf, Bytes, BytesMut};
 use http::{
     header::{self, HeaderMap, HeaderName, HeaderValue},
@@ -74,9 +74,9 @@ use std::{
 ///     body,
 ///     routing::get,
 ///     response::{IntoResponse, Response},
+///     body::Body,
 ///     Router,
 /// };
-/// use http_body::Body;
 /// use http::HeaderMap;
 /// use bytes::Bytes;
 /// use std::{
@@ -89,7 +89,7 @@ use std::{
 ///
 /// // First implement `Body` for `MyBody`. This could for example use
 /// // some custom streaming protocol.
-/// impl Body for MyBody {
+/// impl http_body::Body for MyBody {
 ///     type Data = Bytes;
 ///     type Error = Infallible;
 ///
@@ -113,7 +113,7 @@ use std::{
 /// // Now we can implement `IntoResponse` directly for `MyBody`
 /// impl IntoResponse for MyBody {
 ///     fn into_response(self) -> Response {
-///         Response::new(body::boxed(self))
+///         Response::new(Body::new(self))
 ///     }
 /// }
 ///
@@ -165,25 +165,31 @@ where
     B::Error: Into<BoxError>,
 {
     fn into_response(self) -> Response {
-        self.map(body::boxed)
+        self.map(Body::new)
     }
 }
 
 impl IntoResponse for http::response::Parts {
     fn into_response(self) -> Response {
-        Response::from_parts(self, body::boxed(Empty::new()))
+        Response::from_parts(self, Body::empty())
     }
 }
 
 impl IntoResponse for Full<Bytes> {
     fn into_response(self) -> Response {
-        Response::new(body::boxed(self))
+        Response::new(Body::new(self))
     }
 }
 
 impl IntoResponse for Empty<Bytes> {
     fn into_response(self) -> Response {
-        Response::new(body::boxed(self))
+        Response::new(Body::new(self))
+    }
+}
+
+impl IntoResponse for Body {
+    fn into_response(self) -> Response {
+        Response::new(self)
     }
 }
 
@@ -192,7 +198,7 @@ where
     E: Into<BoxError> + 'static,
 {
     fn into_response(self) -> Response {
-        Response::new(body::boxed(self))
+        Response::new(Body::new(self))
     }
 }
 
@@ -201,7 +207,7 @@ where
     E: Into<BoxError> + 'static,
 {
     fn into_response(self) -> Response {
-        Response::new(body::boxed(self))
+        Response::new(Body::new(self))
     }
 }
 
@@ -212,7 +218,7 @@ where
     B::Error: Into<BoxError>,
 {
     fn into_response(self) -> Response {
-        Response::new(body::boxed(self))
+        Response::new(Body::new(self))
     }
 }
 
@@ -223,7 +229,7 @@ where
     E: Into<BoxError>,
 {
     fn into_response(self) -> Response {
-        Response::new(body::boxed(self))
+        Response::new(Body::new(self))
     }
 }
 
@@ -274,7 +280,7 @@ where
 {
     fn into_response(self) -> Response {
         let (first, second) = self.into_inner();
-        let mut res = Response::new(body::boxed(BytesChainBody {
+        let mut res = Response::new(Body::new(BytesChainBody {
             first: Some(first),
             second: Some(second),
         }));

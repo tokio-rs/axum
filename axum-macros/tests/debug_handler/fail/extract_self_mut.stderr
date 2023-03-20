@@ -1,5 +1,5 @@
 error: Handlers must only take owned values
-  --> tests/debug_handler/fail/extract_self_mut.rs:24:22
+  --> tests/debug_handler/fail/extract_self_mut.rs:23:22
    |
-24 |     async fn handler(&mut self) {}
+23 |     async fn handler(&mut self) {}
    |                      ^^^^^^^^^

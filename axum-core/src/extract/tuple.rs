@@ -1,8 +1,7 @@
-use super::{FromRequest, FromRequestParts};
-use crate::body::Body;
+use super::{FromRequest, FromRequestParts, Request};
 use crate::response::{IntoResponse, Response};
 use async_trait::async_trait;
-use http::request::{Parts, Request};
+use http::request::Parts;
 use std::convert::Infallible;
 
 #[async_trait]
@@ -57,7 +56,7 @@ macro_rules! impl_from_request {
         {
             type Rejection = Response;
 
-            async fn from_request(req: Request<Body>, state: &S) -> Result<Self, Self::Rejection> {
+            async fn from_request(req: Request, state: &S) -> Result<Self, Self::Rejection> {
                 let (mut parts, body) = req.into_parts();
 
                 $(
