@@ -2,7 +2,7 @@
 //!
 //! See [`Multipart`] for more details.
 
-use super::FromRequest;
+use super::{FromRequest, Request};
 use crate::body::Bytes;
 use async_trait::async_trait;
 use axum_core::__composite_rejection as composite_rejection;
@@ -12,7 +12,7 @@ use axum_core::body::Body;
 use axum_core::RequestExt;
 use futures_util::stream::Stream;
 use http::header::{HeaderMap, CONTENT_TYPE};
-use http::{Request, StatusCode};
+use http::StatusCode;
 use std::error::Error;
 use std::{
     fmt,
@@ -65,7 +65,7 @@ where
 {
     type Rejection = MultipartRejection;
 
-    async fn from_request(req: Request<Body>, _state: &S) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: Request, _state: &S) -> Result<Self, Self::Rejection> {
         let boundary = parse_boundary(req.headers()).ok_or(InvalidBoundary)?;
         let stream = match req.with_limited_body() {
             Ok(limited) => Body::new(limited),

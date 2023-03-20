@@ -1,8 +1,9 @@
 use crate::{
-    body::{self, Bytes, HttpBody},
+    body::{Bytes, HttpBody},
     response::{IntoResponse, Response},
     BoxError, Error,
 };
+use axum_core::body::Body;
 use futures_util::{
     ready,
     stream::{self, TryStream},
@@ -93,7 +94,7 @@ where
     S::Error: Into<BoxError>,
 {
     fn into_response(self) -> Response {
-        Response::new(body::boxed(self))
+        Response::new(Body::new(self))
     }
 }
 

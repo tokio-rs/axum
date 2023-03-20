@@ -5,9 +5,9 @@
 //! ```
 
 use axum::{
-    body::{Body, Bytes},
-    extract::{Multipart, Path},
-    http::{Request, StatusCode},
+    body::Bytes,
+    extract::{Multipart, Path, Request},
+    http::StatusCode,
     response::{Html, Redirect},
     routing::{get, post},
     BoxError, Router,
@@ -52,7 +52,7 @@ async fn main() {
 // POST'ing to `/file/foo.txt` will create a file called `foo.txt`.
 async fn save_request_body(
     Path(file_name): Path<String>,
-    request: Request<Body>,
+    request: Request,
 ) -> Result<(), (StatusCode, String)> {
     stream_to_file(&file_name, request.into_body()).await
 }

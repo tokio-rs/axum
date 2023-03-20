@@ -223,7 +223,7 @@ A decent template for such a middleware could be:
 use axum::{
     response::Response,
     body::Body,
-    http::Request,
+    extract::Request,
 };
 use futures_util::future::BoxFuture;
 use tower::{Service, Layer};
@@ -245,9 +245,9 @@ struct MyMiddleware<S> {
     inner: S,
 }
 
-impl<S> Service<Request<Body>> for MyMiddleware<S>
+impl<S> Service<Request> for MyMiddleware<S>
 where
-    S: Service<Request<Body>, Response = Response> + Send + 'static,
+    S: Service<Request, Response = Response> + Send + 'static,
     S::Future: Send + 'static,
 {
     type Response = S::Response;
@@ -259,7 +259,7 @@ where
         self.inner.poll_ready(cx)
     }
 
-    fn call(&mut self, request: Request<Body>) -> Self::Future {
+    fn call(&mut self, request: Request) -> Self::Future {
         let future = self.inner.call(request);
         Box::pin(async move {
             let response: Response = future.await?;
@@ -406,8 +406,7 @@ use axum::{
     routing::get,
     middleware::{self, Next},
     response::Response,
-    extract::State,
-    http::Request,
+    extract::{State, Request},
 };
 use tower::{Layer, Service};
 use std::task::{Context, Poll};
@@ -477,17 +476,17 @@ State can be passed from middleware to handlers using [request extensions]:
 ```rust
 use axum::{
     Router,
-    http::{Request, StatusCode},
+    http::StatusCode,
     routing::get,
     response::{IntoResponse, Response},
     middleware::{self, Next},
-    extract::Extension,
+    extract::{Request, Extension},
 };
 
 #[derive(Clone)]
 struct CurrentUser { /* ... */ }
 
-async fn auth<B>(mut req: Request<B>, next: Next<B>) -> Result<Response, StatusCode> {
+async fn auth(mut req: Request, next: Next) -> Result<Response, StatusCode> {
     let auth_header = req.headers()
         .get(http::header::AUTHORIZATION)
         .and_then(|header| header.to_str().ok());
@@ -546,7 +545,7 @@ use axum::{
     ServiceExt, // for `into_make_service`
     response::Response,
     middleware::Next,
-    http::Request,
+    extract::Request,
 };
 
 fn rewrite_request_uri<B>(req: Request<B>) -> Request<B> {

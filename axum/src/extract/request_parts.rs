@@ -1,7 +1,6 @@
-use super::{Extension, FromRequest, FromRequestParts};
-use crate::body::Body;
+use super::{Extension, FromRequestParts};
 use async_trait::async_trait;
-use http::{request::Parts, Request, Uri};
+use http::{request::Parts, Uri};
 use std::convert::Infallible;
 
 /// Extractor that gets the original request URI regardless of nesting.
@@ -93,49 +92,6 @@ where
 
 #[cfg(feature = "original-uri")]
 axum_core::__impl_deref!(OriginalUri: Uri);
-
-/// Extractor that extracts the raw request body.
-///
-/// Since extracting the raw request body requires consuming it, the `RawBody` extractor must be
-/// *last* if there are multiple extractors in a handler. See ["the order of extractors"][order-of-extractors]
-///
-/// [order-of-extractors]: crate::extract#the-order-of-extractors
-///
-/// # Example
-///
-/// ```rust,no_run
-/// use axum::{
-///     extract::RawBody,
-///     routing::get,
-///     Router,
-/// };
-/// use futures_util::StreamExt;
-///
-/// async fn handler(RawBody(body): RawBody) {
-///     // ...
-/// }
-///
-/// let app = Router::new().route("/users", get(handler));
-/// # async {
-/// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-/// # };
-/// ```
-///
-/// [`body::Body`]: crate::body::Body
-#[derive(Debug, Default)]
-pub struct RawBody(pub Body);
-
-#[async_trait]
-impl<S> FromRequest<S> for RawBody
-where
-    S: Send + Sync,
-{
-    type Rejection = Infallible;
-
-    async fn from_request(req: Request<Body>, _state: &S) -> Result<Self, Self::Rejection> {
-        Ok(Self(req.into_body()))
-    }
-}
 
 #[cfg(test)]
 mod tests {

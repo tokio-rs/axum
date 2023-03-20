@@ -8,9 +8,8 @@
 
 use axum::{
     async_trait,
-    body::Body,
-    extract::FromRequest,
-    http::{header::CONTENT_TYPE, Request, StatusCode},
+    extract::{FromRequest, Request},
+    http::{header::CONTENT_TYPE, StatusCode},
     response::{IntoResponse, Response},
     routing::post,
     Form, Json, RequestExt, Router,
@@ -61,7 +60,7 @@ where
 {
     type Rejection = Response;
 
-    async fn from_request(req: Request<Body>, _state: &S) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: Request, _state: &S) -> Result<Self, Self::Rejection> {
         let content_type_header = req.headers().get(CONTENT_TYPE);
         let content_type = content_type_header.and_then(|value| value.to_str().ok());
 

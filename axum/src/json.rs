@@ -1,13 +1,11 @@
+use crate::extract::Request;
 use crate::extract::{rejection::*, FromRequest};
 use async_trait::async_trait;
-use axum_core::{
-    body::Body,
-    response::{IntoResponse, Response},
-};
+use axum_core::response::{IntoResponse, Response};
 use bytes::{BufMut, Bytes, BytesMut};
 use http::{
     header::{self, HeaderMap, HeaderValue},
-    Request, StatusCode,
+    StatusCode,
 };
 use serde::{de::DeserializeOwned, Serialize};
 
@@ -106,7 +104,7 @@ where
 {
     type Rejection = JsonRejection;
 
-    async fn from_request(req: Request<Body>, state: &S) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: Request, state: &S) -> Result<Self, Self::Rejection> {
         if json_content_type(req.headers()) {
             let bytes = Bytes::from_request(req, state).await?;
             let deserializer = &mut serde_json::Deserializer::from_slice(&bytes);

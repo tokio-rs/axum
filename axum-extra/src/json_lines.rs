@@ -3,13 +3,12 @@
 use axum::{
     async_trait,
     body::Body,
-    extract::FromRequest,
+    extract::{FromRequest, Request},
     response::{IntoResponse, Response},
     BoxError,
 };
 use bytes::{BufMut, BytesMut};
 use futures_util::stream::{BoxStream, Stream, TryStream, TryStreamExt};
-use http::Request;
 use pin_project_lite::pin_project;
 use serde::{de::DeserializeOwned, Serialize};
 use std::{
@@ -108,7 +107,7 @@ where
 {
     type Rejection = Infallible;
 
-    async fn from_request(req: Request<Body>, _state: &S) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: Request, _state: &S) -> Result<Self, Self::Rejection> {
         // `Stream::lines` isn't a thing so we have to convert it into an `AsyncRead`
         // so we can call `AsyncRead::lines` and then convert it back to a `Stream`
         let body = req.into_body();

@@ -1,18 +1,18 @@
-use super::{rejection::*, FromRequest, FromRequestParts};
+use super::{rejection::*, FromRequest, FromRequestParts, Request};
 use crate::{body::Body, RequestExt};
 use async_trait::async_trait;
 use bytes::Bytes;
-use http::{request::Parts, HeaderMap, Method, Request, Uri, Version};
+use http::{request::Parts, HeaderMap, Method, Uri, Version};
 use std::convert::Infallible;
 
 #[async_trait]
-impl<S> FromRequest<S> for Request<Body>
+impl<S> FromRequest<S> for Request
 where
     S: Send + Sync,
 {
     type Rejection = Infallible;
 
-    async fn from_request(req: Request<Body>, _: &S) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: Request, _: &S) -> Result<Self, Self::Rejection> {
         Ok(req)
     }
 }
@@ -77,7 +77,7 @@ where
 {
     type Rejection = BytesRejection;
 
-    async fn from_request(req: Request<Body>, _: &S) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: Request, _: &S) -> Result<Self, Self::Rejection> {
         let bytes = match req.into_limited_body() {
             Ok(limited_body) => crate::body::to_bytes(limited_body)
                 .await
@@ -98,7 +98,7 @@ where
 {
     type Rejection = StringRejection;
 
-    async fn from_request(req: Request<Body>, state: &S) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: Request, state: &S) -> Result<Self, Self::Rejection> {
         let bytes = Bytes::from_request(req, state)
             .await
             .map_err(|err| match err {
@@ -122,7 +122,19 @@ where
 {
     type Rejection = Infallible;
 
-    async fn from_request(req: Request<Body>, _: &S) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: Request, _: &S) -> Result<Self, Self::Rejection> {
         Ok(req.into_parts().0)
+    }
+}
+
+#[async_trait]
+impl<S> FromRequest<S> for Body
+where
+    S: Send + Sync,
+{
+    type Rejection = Infallible;
+
+    async fn from_request(req: Request, _: &S) -> Result<Self, Self::Rejection> {
+        Ok(req.into_body())
     }
 }

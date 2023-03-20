@@ -1,6 +1,7 @@
 //! Additional handler utilities.
 
 use axum::body::Body;
+use axum::extract::Request;
 use axum::{
     extract::FromRequest,
     handler::Handler,
@@ -174,7 +175,7 @@ where
 {
     type Future = BoxFuture<'static, Response>;
 
-    fn call(self, req: http::Request<Body>, state: S) -> Self::Future {
+    fn call(self, req: Request, state: S) -> Self::Future {
         let req = req.map(Body::new);
         Box::pin(async move {
             match T::from_request(req, &state).await {

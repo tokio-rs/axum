@@ -1,7 +1,6 @@
 use std::{convert::Infallible, fmt};
 
-use axum_core::body::Body;
-use http::Request;
+use crate::extract::Request;
 use tower::Service;
 
 use crate::{
@@ -64,7 +63,7 @@ pub(crate) trait ErasedIntoRoute<S, E>: Send {
 
     fn into_route(self: Box<Self>, state: S) -> Route<E>;
 
-    fn call_with_state(self: Box<Self>, request: Request<Body>, state: S) -> RouteFuture<E>;
+    fn call_with_state(self: Box<Self>, request: Request, state: S) -> RouteFuture<E>;
 }
 
 pub(crate) struct MakeErasedHandler<H, S> {
@@ -85,11 +84,7 @@ where
         (self.into_route)(self.handler, state)
     }
 
-    fn call_with_state(
-        self: Box<Self>,
-        request: Request<Body>,
-        state: S,
-    ) -> RouteFuture<Infallible> {
+    fn call_with_state(self: Box<Self>, request: Request, state: S) -> RouteFuture<Infallible> {
         self.into_route(state).call(request)
     }
 }
@@ -123,11 +118,7 @@ where
         (self.into_route)(self.router, state)
     }
 
-    fn call_with_state(
-        mut self: Box<Self>,
-        request: Request<Body>,
-        state: S,
-    ) -> RouteFuture<Infallible> {
+    fn call_with_state(mut self: Box<Self>, request: Request, state: S) -> RouteFuture<Infallible> {
         self.router.call_with_state(request, state)
     }
 }
@@ -166,7 +157,7 @@ where
         (self.layer)(self.inner.into_route(state))
     }
 
-    fn call_with_state(self: Box<Self>, request: Request<Body>, state: S) -> RouteFuture<E2> {
+    fn call_with_state(self: Box<Self>, request: Request, state: S) -> RouteFuture<E2> {
         (self.layer)(self.inner.into_route(state)).call(request)
     }
 }

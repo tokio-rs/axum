@@ -162,7 +162,7 @@ mod tests {
     // in multiple request
     #[tokio::test]
     async fn multiple_request() {
-        let mut app = app();
+        let mut app = app().into_service();
 
         let request = Request::builder().uri("/").body(Body::empty()).unwrap();
         let response = ServiceExt::<Request<Body>>::ready(&mut app)
@@ -190,20 +190,15 @@ mod tests {
     // tests.
     #[tokio::test]
     async fn with_into_make_service_with_connect_info() {
-        let mut app = app().layer(MockConnectInfo(SocketAddr::from(([0, 0, 0, 0], 3000))));
+        let mut app = app()
+            .layer(MockConnectInfo(SocketAddr::from(([0, 0, 0, 0], 3000))))
+            .into_service();
 
         let request = Request::builder()
             .uri("/requires-connect-into")
             .body(Body::empty())
             .unwrap();
-        let response = app
-            .as_service()
-            .ready()
-            .await
-            .unwrap()
-            .call(request)
-            .await
-            .unwrap();
+        let response = app.ready().await.unwrap().call(request).await.unwrap();
         assert_eq!(response.status(), StatusCode::OK);
     }
 }

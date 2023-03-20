@@ -4,7 +4,7 @@ use http::{
     header::{HeaderName, HeaderValue},
     Request, StatusCode,
 };
-use hyper::{Body, Server};
+use hyper::Server;
 use std::net::{SocketAddr, TcpListener};
 use tower::make::Shared;
 use tower_service::Service;
@@ -17,7 +17,10 @@ pub(crate) struct TestClient {
 impl TestClient {
     pub(crate) fn new<S, ResBody>(svc: S) -> Self
     where
-        S: Service<Request<Body>, Response = http::Response<ResBody>> + Clone + Send + 'static,
+        S: Service<Request<hyper::Body>, Response = http::Response<ResBody>>
+            + Clone
+            + Send
+            + 'static,
         ResBody: HttpBody + Send + 'static,
         ResBody::Data: Send,
         ResBody::Error: Into<BoxError>,
