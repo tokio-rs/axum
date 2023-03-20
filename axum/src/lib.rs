@@ -446,6 +446,7 @@ mod extension;
 mod form;
 #[cfg(feature = "json")]
 mod json;
+#[cfg(feature = "tokio")]
 mod serve;
 mod service_ext;
 #[cfg(feature = "headers")]
@@ -493,7 +494,10 @@ pub use axum_core::{BoxError, Error, RequestExt, RequestPartsExt};
 #[cfg(feature = "macros")]
 pub use axum_macros::debug_handler;
 
-pub use self::{serve::serve, service_ext::ServiceExt};
+#[cfg(feature = "tokio")]
+pub use self::serve::serve;
+
+pub use self::service_ext::ServiceExt;
 
 #[cfg(test)]
 use axum_macros::__private_axum_test as test;

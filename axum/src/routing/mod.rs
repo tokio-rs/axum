@@ -24,7 +24,6 @@ use std::{
     task::{Context, Poll},
 };
 use sync_wrapper::SyncWrapper;
-use tokio::net::TcpStream;
 use tower_layer::Layer;
 use tower_service::Service;
 
@@ -611,19 +610,24 @@ impl Router {
 }
 
 // for `axum::serve(listener, router)`
-impl Service<&(TcpStream, SocketAddr)> for Router<()> {
-    type Response = Self;
-    type Error = Infallible;
-    type Future = std::future::Ready<Result<Self::Response, Self::Error>>;
+#[cfg(feature = "tokio")]
+const _: () = {
+    use tokio::net::TcpStream;
 
-    fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        Poll::Ready(Ok(()))
-    }
+    impl Service<&(TcpStream, SocketAddr)> for Router<()> {
+        type Response = Self;
+        type Error = Infallible;
+        type Future = std::future::Ready<Result<Self::Response, Self::Error>>;
 
-    fn call(&mut self, _req: &(TcpStream, SocketAddr)) -> Self::Future {
-        std::future::ready(Ok(self.clone()))
+        fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+            Poll::Ready(Ok(()))
+        }
+
+        fn call(&mut self, _req: &(TcpStream, SocketAddr)) -> Self::Future {
+            std::future::ready(Ok(self.clone()))
+        }
     }
-}
+};
 
 impl<B> Service<Request<B>> for Router<()>
 where
