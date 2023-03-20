@@ -19,8 +19,8 @@ use axum::{
     Router,
 };
 use serde::{de::DeserializeOwned, Deserialize};
-use tokio::net::TcpListener;
 use thiserror::Error;
+use tokio::net::TcpListener;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 use validator::Validate;
 

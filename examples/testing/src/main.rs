@@ -60,8 +60,8 @@ mod tests {
         http::{self, Request, StatusCode},
     };
     use serde_json::{json, Value};
-    use tokio::net::TcpListener;
     use std::net::SocketAddr;
+    use tokio::net::TcpListener;
     use tower::Service; // for `call`
     use tower::ServiceExt; // for `oneshot` and `ready`
 

@@ -235,7 +235,12 @@ mod tests {
         tokio::spawn(async move {
             let app = Router::new().route("/", get(handler));
             tx.send(()).unwrap();
-            crate::serve(listener, app.into_make_service_with_connect_info::<SocketAddr>()).await.unwrap();
+            crate::serve(
+                listener,
+                app.into_make_service_with_connect_info::<SocketAddr>(),
+            )
+            .await
+            .unwrap();
         });
         rx.await.unwrap();
 
@@ -272,7 +277,12 @@ mod tests {
         tokio::spawn(async move {
             let app = Router::new().route("/", get(handler));
             tx.send(()).unwrap();
-            crate::serve(listener, app.into_make_service_with_connect_info::<MyConnectInfo>()).await.unwrap();
+            crate::serve(
+                listener,
+                app.into_make_service_with_connect_info::<MyConnectInfo>(),
+            )
+            .await
+            .unwrap();
         });
         rx.await.unwrap();
 
@@ -314,7 +324,12 @@ mod tests {
                 .route("/", get(handler))
                 .layer(MockConnectInfo(SocketAddr::from(([0, 0, 0, 0], 1337))));
 
-            crate::serve(listener, app.into_make_service_with_connect_info::<SocketAddr>()).await.unwrap();
+            crate::serve(
+                listener,
+                app.into_make_service_with_connect_info::<SocketAddr>(),
+            )
+            .await
+            .unwrap();
         });
 
         let client = reqwest::Client::new();
