@@ -6,9 +6,7 @@
 //! - Complexity: Manually implementing `FromRequest` results on more complex code
 use axum::{
     async_trait,
-    body::Body,
-    extract::{rejection::JsonRejection, FromRequest, MatchedPath},
-    http::Request,
+    extract::{rejection::JsonRejection, FromRequest, MatchedPath, Request},
     http::StatusCode,
     response::IntoResponse,
     RequestPartsExt,
@@ -30,7 +28,7 @@ where
 {
     type Rejection = (StatusCode, axum::Json<Value>);
 
-    async fn from_request(req: Request<Body>, state: &S) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: Request, state: &S) -> Result<Self, Self::Rejection> {
         let (mut parts, body) = req.into_parts();
 
         // We can use other extractors to provide better rejection messages.

@@ -9,8 +9,8 @@
 
 use axum::{
     body::Body,
-    extract::State,
-    http::{uri::Uri, Request},
+    extract::{Request, State},
+    http::uri::Uri,
     response::{IntoResponse, Response},
     routing::get,
     Router,
@@ -36,7 +36,7 @@ async fn main() {
         .unwrap();
 }
 
-async fn handler(State(client): State<Client>, mut req: Request<Body>) -> Response {
+async fn handler(State(client): State<Client>, mut req: Request) -> Response {
     let path = req.uri().path();
     let path_query = req
         .uri()

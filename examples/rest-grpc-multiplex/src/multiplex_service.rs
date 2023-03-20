@@ -1,6 +1,10 @@
-use axum::{body::BoxBody, http::header::CONTENT_TYPE, response::IntoResponse};
+use axum::{
+    body::Body,
+    extract::Request,
+    http::header::CONTENT_TYPE,
+    response::{IntoResponse, Response},
+};
 use futures::{future::BoxFuture, ready};
-use hyper::{Body, Request, Response};
 use std::{
     convert::Infallible,
     task::{Context, Poll},
@@ -41,16 +45,16 @@ where
     }
 }
 
-impl<A, B> Service<Request<Body>> for MultiplexService<A, B>
+impl<A, B> Service<Request<hyper::Body>> for MultiplexService<A, B>
 where
-    A: Service<Request<Body>, Error = Infallible>,
+    A: Service<Request<hyper::Body>, Error = Infallible>,
     A::Response: IntoResponse,
     A::Future: Send + 'static,
-    B: Service<Request<Body>, Error = Infallible>,
+    B: Service<Request<hyper::Body>, Error = Infallible>,
     B::Response: IntoResponse,
     B::Future: Send + 'static,
 {
-    type Response = Response<BoxBody>;
+    type Response = Response<Body>;
     type Error = Infallible;
     type Future = BoxFuture<'static, Result<Self::Response, Self::Error>>;
 
@@ -73,7 +77,7 @@ where
         }
     }
 
-    fn call(&mut self, req: Request<Body>) -> Self::Future {
+    fn call(&mut self, req: Request<hyper::Body>) -> Self::Future {
         // require users to call `poll_ready` first, if they don't we're allowed to panic
         // as per the `tower::Service` contract
         assert!(

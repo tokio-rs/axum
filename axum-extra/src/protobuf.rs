@@ -2,12 +2,11 @@
 
 use axum::{
     async_trait,
-    body::Body,
-    extract::{rejection::BytesRejection, FromRequest},
+    extract::{rejection::BytesRejection, FromRequest, Request},
     response::{IntoResponse, Response},
 };
 use bytes::{Bytes, BytesMut};
-use http::{Request, StatusCode};
+use http::StatusCode;
 use prost::Message;
 use std::ops::{Deref, DerefMut};
 
@@ -104,7 +103,7 @@ where
 {
     type Rejection = ProtobufRejection;
 
-    async fn from_request(req: Request<Body>, state: &S) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: Request, state: &S) -> Result<Self, Self::Rejection> {
         let mut bytes = Bytes::from_request(req, state).await?;
 
         match T::decode(&mut bytes) {
@@ -286,16 +285,16 @@ mod tests {
             result: String,
         }
 
-        let app = Router::new().route(
-            "/",
-            post(|input: Protobuf<Input>| async move {
-                let output = Output {
-                    result: input.foo.to_owned(),
-                };
+        #[axum::debug_handler]
+        async fn handler(input: Protobuf<Input>) -> Protobuf<Output> {
+            let output = Output {
+                result: input.foo.to_owned(),
+            };
 
-                Protobuf(output)
-            }),
-        );
+            Protobuf(output)
+        }
+
+        let app = Router::new().route("/", post(handler));
 
         let input = Input {
             foo: "bar".to_owned(),

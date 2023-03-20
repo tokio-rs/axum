@@ -12,9 +12,8 @@
 
 use async_trait::async_trait;
 use axum::{
-    body::Body,
-    extract::{rejection::FormRejection, Form, FromRequest},
-    http::{Request, StatusCode},
+    extract::{rejection::FormRejection, Form, FromRequest, Request},
+    http::StatusCode,
     response::{Html, IntoResponse, Response},
     routing::get,
     Router,
@@ -70,7 +69,7 @@ where
 {
     type Rejection = ServerError;
 
-    async fn from_request(req: Request<Body>, state: &S) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: Request, state: &S) -> Result<Self, Self::Rejection> {
         let Form(value) = Form::<T>::from_request(req, state).await?;
         value.validate()?;
         Ok(ValidatedForm(value))

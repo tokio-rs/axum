@@ -57,10 +57,10 @@ Some commonly used extractors are:
 
 ```rust,no_run
 use axum::{
-    extract::{Json, TypedHeader, Path, Extension, Query},
+    extract::{Request, Json, TypedHeader, Path, Extension, Query},
     routing::post,
     headers::UserAgent,
-    http::{Request, header::HeaderMap},
+    http::header::HeaderMap,
     body::{Bytes, Body},
     Router,
 };
@@ -91,7 +91,7 @@ async fn bytes(body: Bytes) {}
 async fn json(Json(payload): Json<Value>) {}
 
 // `Request` gives you the whole request for maximum control
-async fn request(request: Request<Body>) {}
+async fn request(request: Request) {}
 
 // `Extension` extracts data from "request extensions"
 // This is commonly used to share state with handlers
@@ -463,7 +463,7 @@ If your extractor needs to consume the request body you must implement [`FromReq
 ```rust,no_run
 use axum::{
     async_trait,
-    extract::FromRequest,
+    extract::{Request, FromRequest},
     response::{Response, IntoResponse},
     body::{Bytes, Body},
     routing::get,
@@ -471,7 +471,6 @@ use axum::{
     http::{
         StatusCode,
         header::{HeaderValue, USER_AGENT},
-        Request,
     },
 };
 
@@ -485,7 +484,7 @@ where
 {
     type Rejection = Response;
 
-    async fn from_request(req: Request<Body>, state: &S) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: Request, state: &S) -> Result<Self, Self::Rejection> {
         let body = Bytes::from_request(req, state)
             .await
             .map_err(IntoResponse::into_response)?;
@@ -516,8 +515,8 @@ wrapping another extractor:
 use axum::{
     Router,
     routing::get,
-    extract::{FromRequest, FromRequestParts},
-    http::{Request, request::Parts},
+    extract::{FromRequest, Request, FromRequestParts},
+    http::request::Parts,
     body::Body,
     async_trait,
 };
@@ -534,7 +533,7 @@ where
 {
     type Rejection = Infallible;
 
-    async fn from_request(req: Request<Body>, state: &S) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: Request, state: &S) -> Result<Self, Self::Rejection> {
         // ...
         # todo!()
     }
@@ -644,20 +643,17 @@ Extractors can also be run from middleware:
 ```rust
 use axum::{
     middleware::{self, Next},
-    extract::{TypedHeader, FromRequestParts},
-    http::{Request, StatusCode},
+    extract::{TypedHeader, Request, FromRequestParts},
+    http::StatusCode,
     response::Response,
     headers::authorization::{Authorization, Bearer},
     RequestPartsExt, Router,
 };
 
-async fn auth_middleware<B>(
-    request: Request<B>,
-    next: Next<B>,
-) -> Result<Response, StatusCode>
-where
-    B: Send,
-{
+async fn auth_middleware(
+    request: Request,
+    next: Next,
+) -> Result<Response, StatusCode> {
     // running extractors requires a `axum::http::request::Parts`
     let (mut parts, body) = request.into_parts();
 
@@ -696,8 +692,8 @@ use axum::{
     Router,
     body::Body,
     routing::get,
-    extract::{FromRequest, FromRequestParts},
-    http::{Request, HeaderMap, request::Parts},
+    extract::{Request, FromRequest, FromRequestParts},
+    http::{HeaderMap, request::Parts},
     async_trait,
 };
 use std::time::{Instant, Duration};
@@ -737,7 +733,7 @@ where
 {
     type Rejection = T::Rejection;
 
-    async fn from_request(req: Request<Body>, state: &S) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: Request, state: &S) -> Result<Self, Self::Rejection> {
         let start = Instant::now();
         let extractor = T::from_request(req, state).await?;
         let duration = start.elapsed();

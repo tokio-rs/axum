@@ -1,7 +1,6 @@
 use crate::body::Body;
-use crate::extract::{DefaultBodyLimitKind, FromRequest, FromRequestParts};
+use crate::extract::{DefaultBodyLimitKind, FromRequest, FromRequestParts, Request};
 use futures_util::future::BoxFuture;
-use http::Request;
 use http_body::Limited;
 
 mod sealed {
@@ -23,9 +22,9 @@ pub trait RequestExt: sealed::Sealed + Sized {
     /// ```
     /// use axum::{
     ///     async_trait,
-    ///     extract::FromRequest,
+    ///     extract::{Request, FromRequest},
     ///     body::Body,
-    ///     http::{header::CONTENT_TYPE, Request, StatusCode},
+    ///     http::{header::CONTENT_TYPE, StatusCode},
     ///     response::{IntoResponse, Response},
     ///     Form, Json, RequestExt,
     /// };
@@ -42,7 +41,7 @@ pub trait RequestExt: sealed::Sealed + Sized {
     /// {
     ///     type Rejection = Response;
     ///
-    ///     async fn from_request(req: Request<Body>, _state: &S) -> Result<Self, Self::Rejection> {
+    ///     async fn from_request(req: Request, _state: &S) -> Result<Self, Self::Rejection> {
     ///         let content_type = req
     ///             .headers()
     ///             .get(CONTENT_TYPE)
@@ -87,8 +86,7 @@ pub trait RequestExt: sealed::Sealed + Sized {
     /// use axum::{
     ///     async_trait,
     ///     body::Body,
-    ///     extract::{FromRef, FromRequest},
-    ///     http::Request,
+    ///     extract::{Request, FromRef, FromRequest},
     ///     RequestExt,
     /// };
     ///
@@ -104,7 +102,7 @@ pub trait RequestExt: sealed::Sealed + Sized {
     /// {
     ///     type Rejection = std::convert::Infallible;
     ///
-    ///     async fn from_request(req: Request<Body>, state: &S) -> Result<Self, Self::Rejection> {
+    ///     async fn from_request(req: Request, state: &S) -> Result<Self, Self::Rejection> {
     ///         let requires_state = req.extract_with_state::<RequiresState, _, _>(state).await?;
     ///
     ///         Ok(Self { requires_state })
@@ -122,7 +120,7 @@ pub trait RequestExt: sealed::Sealed + Sized {
     /// {
     ///     // ...
     ///     # type Rejection = std::convert::Infallible;
-    ///     # async fn from_request(req: Request<Body>, _state: &S) -> Result<Self, Self::Rejection> {
+    ///     # async fn from_request(req: Request, _state: &S) -> Result<Self, Self::Rejection> {
     ///     #     todo!()
     ///     # }
     /// }
@@ -141,9 +139,8 @@ pub trait RequestExt: sealed::Sealed + Sized {
     /// ```
     /// use axum::{
     ///     async_trait,
-    ///     extract::FromRequest,
+    ///     extract::{Request, FromRequest},
     ///     headers::{authorization::Bearer, Authorization},
-    ///     http::Request,
     ///     response::{IntoResponse, Response},
     ///     body::Body,
     ///     Json, RequestExt, TypedHeader,
@@ -163,7 +160,7 @@ pub trait RequestExt: sealed::Sealed + Sized {
     /// {
     ///     type Rejection = Response;
     ///
-    ///     async fn from_request(mut req: Request<Body>, _state: &S) -> Result<Self, Self::Rejection> {
+    ///     async fn from_request(mut req: Request, _state: &S) -> Result<Self, Self::Rejection> {
     ///         let TypedHeader(auth_header) = req
     ///             .extract_parts::<TypedHeader<Authorization<Bearer>>>()
     ///             .await
@@ -194,8 +191,8 @@ pub trait RequestExt: sealed::Sealed + Sized {
     /// ```
     /// use axum::{
     ///     async_trait,
-    ///     extract::{FromRef, FromRequest, FromRequestParts},
-    ///     http::{request::Parts, Request},
+    ///     extract::{Request, FromRef, FromRequest, FromRequestParts},
+    ///     http::request::Parts,
     ///     response::{IntoResponse, Response},
     ///     body::Body,
     ///     Json, RequestExt,
@@ -216,7 +213,7 @@ pub trait RequestExt: sealed::Sealed + Sized {
     /// {
     ///     type Rejection = Response;
     ///
-    ///     async fn from_request(mut req: Request<Body>, state: &S) -> Result<Self, Self::Rejection> {
+    ///     async fn from_request(mut req: Request, state: &S) -> Result<Self, Self::Rejection> {
     ///         let requires_state = req
     ///             .extract_parts_with_state::<RequiresState, _>(state)
     ///             .await
@@ -260,7 +257,7 @@ pub trait RequestExt: sealed::Sealed + Sized {
     /// Apply the [default body limit](crate::extract::DefaultBodyLimit).
     ///
     /// If it is disabled, return the request as-is in `Err`.
-    fn with_limited_body(self) -> Result<Request<Limited<Body>>, Request<Body>>;
+    fn with_limited_body(self) -> Result<Request<Limited<Body>>, Request>;
 
     /// Consumes the request, returning the body wrapped in [`Limited`] if a
     /// [default limit](crate::extract::DefaultBodyLimit) is in place, or not wrapped if the
@@ -268,7 +265,7 @@ pub trait RequestExt: sealed::Sealed + Sized {
     fn into_limited_body(self) -> Result<Limited<Body>, Body>;
 }
 
-impl RequestExt for Request<Body> {
+impl RequestExt for Request {
     fn extract<E, M>(self) -> BoxFuture<'static, Result<E, E::Rejection>>
     where
         E: FromRequest<(), M> + 'static,
@@ -321,7 +318,7 @@ impl RequestExt for Request<Body> {
         })
     }
 
-    fn with_limited_body(self) -> Result<Request<Limited<Body>>, Request<Body>> {
+    fn with_limited_body(self) -> Result<Request<Limited<Body>>, Request> {
         // update docs in `axum-core/src/extract/default_body_limit.rs` and
         // `axum/src/docs/extract.md` if this changes
         const DEFAULT_LIMIT: usize = 2_097_152; // 2 mb
@@ -426,7 +423,7 @@ mod tests {
     {
         type Rejection = <String as FromRequest<()>>::Rejection;
 
-        async fn from_request(mut req: Request<Body>, state: &S) -> Result<Self, Self::Rejection> {
+        async fn from_request(mut req: Request, state: &S) -> Result<Self, Self::Rejection> {
             let RequiresState(from_state) = req.extract_parts_with_state(state).await.unwrap();
             let method = req.extract_parts().await.unwrap();
             let body = req.extract().await?;

@@ -1,7 +1,6 @@
 use axum_macros::debug_handler;
-use axum::extract::{FromRef, FromRequest};
+use axum::extract::{Request, FromRef, FromRequest};
 use axum::async_trait;
-use axum::http::Request;
 
 #[debug_handler(state = AppState)]
 async fn handler(_: A) {}
@@ -19,7 +18,7 @@ where
 {
     type Rejection = ();
 
-    async fn from_request(_req: Request<axum::body::Body>, _state: &S) -> Result<Self, Self::Rejection> {
+    async fn from_request(_req: Request, _state: &S) -> Result<Self, Self::Rejection> {
         unimplemented!()
     }
 }

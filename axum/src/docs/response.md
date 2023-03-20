@@ -171,15 +171,15 @@ Use [`Response`](crate::response::Response) for more low level control:
 use axum::{
     Json,
     response::{IntoResponse, Response},
-    body::{Full, Bytes},
+    body::Body,
     http::StatusCode,
 };
 
-async fn response() -> Response<Full<Bytes>> {
+async fn response() -> Response {
     Response::builder()
         .status(StatusCode::NOT_FOUND)
         .header("x-foo", "custom header")
-        .body(Full::from("not found"))
+        .body(Body::from("not found"))
         .unwrap()
 }
 ```
