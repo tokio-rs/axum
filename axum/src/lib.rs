@@ -446,6 +446,7 @@ mod extension;
 mod form;
 #[cfg(feature = "json")]
 mod json;
+mod serve;
 mod service_ext;
 #[cfg(feature = "headers")]
 mod typed_header;
@@ -458,7 +459,6 @@ pub mod handler;
 pub mod middleware;
 pub mod response;
 pub mod routing;
-pub mod serve;
 
 #[cfg(test)]
 mod test_helpers;

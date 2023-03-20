@@ -14,16 +14,17 @@ use axum_core::{
     response::{IntoResponse, Response},
 };
 use matchit::MatchError;
-use tokio::net::TcpStream;
 use std::{
     collections::HashMap,
     convert::Infallible,
     fmt,
     marker::PhantomData,
+    net::SocketAddr,
     sync::Arc,
-    task::{Context, Poll}, net::SocketAddr,
+    task::{Context, Poll},
 };
 use sync_wrapper::SyncWrapper;
+use tokio::net::TcpStream;
 use tower_layer::Layer;
 use tower_service::Service;
 
