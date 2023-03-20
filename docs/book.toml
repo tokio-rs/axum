@@ -1,0 +1,6 @@
+[book]
+authors = ["Liam Woodleigh-Hardinge"]
+language = "en"
+multilingual = false
+src = "src"
+title = "Axum Documentation"
