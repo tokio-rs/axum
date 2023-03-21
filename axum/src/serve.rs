@@ -1,3 +1,5 @@
+//! TODO(docs)
+
 use std::{
     convert::Infallible,
     io,
@@ -15,23 +17,24 @@ use tower_service::Service;
 /// TODO(david): docs
 pub async fn serve<M, S>(tcp_listener: TcpListener, mut make_service: M) -> io::Result<()>
 where
-    M: for<'a> Service<&'a (TcpStream, SocketAddr), Error = Infallible, Response = S>,
+    M: for<'a> Service<IncomingStream<'a>, Error = Infallible, Response = S>,
     S: Service<Request, Response = Response, Error = Infallible> + Clone + Send + 'static,
     S::Future: Send,
 {
     loop {
-        let target = tcp_listener.accept().await?;
+        let (tcp_stream, remote_addr) = tcp_listener.accept().await?;
 
         poll_fn(|cx| make_service.poll_ready(cx))
             .await
             .unwrap_or_else(|err| match err {});
 
         let mut service = make_service
-            .call(&target)
+            .call(IncomingStream {
+                tcp_stream: &tcp_stream,
+                remote_addr,
+            })
             .await
             .unwrap_or_else(|err| match err {});
-
-        let (tcp_stream, _) = target;
 
         let service = hyper1::service::service_fn(move |req: Request<hyper1::body::Incoming>| {
             let req = req.map(|body| {
@@ -82,6 +85,25 @@ where
                 }
             }
         });
+    }
+}
+
+/// TODO(david): docs
+#[derive(Debug)]
+pub struct IncomingStream<'a> {
+    tcp_stream: &'a TcpStream,
+    remote_addr: SocketAddr,
+}
+
+impl IncomingStream<'_> {
+    /// TODO(david): docs
+    pub fn local_addr(&self) -> std::io::Result<SocketAddr> {
+        self.tcp_stream.local_addr()
+    }
+
+    /// TODO(david): docs
+    pub fn remote_addr(&self) -> SocketAddr {
+        self.remote_addr
     }
 }
 

@@ -19,7 +19,6 @@ use std::{
     convert::Infallible,
     fmt,
     marker::PhantomData,
-    net::SocketAddr,
     sync::Arc,
     task::{Context, Poll},
 };
@@ -610,9 +609,9 @@ impl Router {
 // for `axum::serve(listener, router)`
 #[cfg(feature = "tokio")]
 const _: () = {
-    use tokio::net::TcpStream;
+    use crate::serve::IncomingStream;
 
-    impl Service<&(TcpStream, SocketAddr)> for Router<()> {
+    impl Service<IncomingStream<'_>> for Router<()> {
         type Response = Self;
         type Error = Infallible;
         type Future = std::future::Ready<Result<Self::Response, Self::Error>>;
@@ -621,7 +620,7 @@ const _: () = {
             Poll::Ready(Ok(()))
         }
 
-        fn call(&mut self, _req: &(TcpStream, SocketAddr)) -> Self::Future {
+        fn call(&mut self, _req: IncomingStream<'_>) -> Self::Future {
             std::future::ready(Ok(self.clone()))
         }
     }

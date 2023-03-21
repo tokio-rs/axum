@@ -32,10 +32,9 @@ You can implement custom a [`Connected`] like so:
 use axum::{
     extract::connect_info::{ConnectInfo, Connected},
     routing::get,
+    serve::IncomingStream,
     Router,
 };
-use tokio::net::TcpStream;
-use std::net::SocketAddr;
 
 let app = Router::new().route("/", get(handler));
 
@@ -50,8 +49,8 @@ struct MyConnectInfo {
     // ...
 }
 
-impl Connected<&(TcpStream, SocketAddr)> for MyConnectInfo {
-    fn connect_info(target: &(TcpStream, SocketAddr)) -> Self {
+impl Connected<IncomingStream<'_>> for MyConnectInfo {
+    fn connect_info(target: IncomingStream<'_>) -> Self {
         MyConnectInfo {
             // ...
         }

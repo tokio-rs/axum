@@ -433,8 +433,6 @@ mod extension;
 mod form;
 #[cfg(feature = "json")]
 mod json;
-#[cfg(feature = "tokio")]
-mod serve;
 mod service_ext;
 #[cfg(feature = "headers")]
 mod typed_header;
@@ -447,6 +445,8 @@ pub mod handler;
 pub mod middleware;
 pub mod response;
 pub mod routing;
+#[cfg(feature = "tokio")]
+pub mod serve;
 
 #[cfg(test)]
 mod test_helpers;

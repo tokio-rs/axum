@@ -5,7 +5,7 @@
 //! [`Router::into_make_service_with_connect_info`]: crate::routing::Router::into_make_service_with_connect_info
 
 use super::{Extension, FromRequestParts};
-use crate::middleware::AddExtension;
+use crate::{middleware::AddExtension, serve::IncomingStream};
 use async_trait::async_trait;
 use http::request::Parts;
 use hyper::server::conn::AddrStream;
@@ -17,7 +17,6 @@ use std::{
     net::SocketAddr,
     task::{Context, Poll},
 };
-use tokio::net::TcpStream;
 use tower_layer::Layer;
 use tower_service::Service;
 
@@ -90,9 +89,9 @@ impl Connected<&AddrStream> for SocketAddr {
     }
 }
 
-impl Connected<&(TcpStream, SocketAddr)> for SocketAddr {
-    fn connect_info(target: &(TcpStream, SocketAddr)) -> Self {
-        target.1
+impl Connected<IncomingStream<'_>> for SocketAddr {
+    fn connect_info(target: IncomingStream<'_>) -> Self {
+        target.remote_addr()
     }
 }
 
@@ -258,8 +257,8 @@ mod tests {
             value: &'static str,
         }
 
-        impl Connected<&(TcpStream, SocketAddr)> for MyConnectInfo {
-            fn connect_info(_target: &(TcpStream, SocketAddr)) -> Self {
+        impl Connected<IncomingStream<'_>> for MyConnectInfo {
+            fn connect_info(_target: IncomingStream<'_>) -> Self {
                 Self {
                     value: "it worked!",
                 }
