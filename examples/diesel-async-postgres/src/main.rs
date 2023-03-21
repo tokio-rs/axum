@@ -3,7 +3,7 @@
 //! ```sh
 //! export DATABASE_URL=postgres://localhost/your_db
 //! diesel migration run
-//! cargo0 run -p example-diesel-postgres//!
+//! cargo run -p example-diesel-async-postgres
 //! ```
 //!
 //! Checkout the [diesel webpage](https://diesel.rs) for
@@ -57,7 +57,7 @@ async fn main() {
     tracing_subscriber::registry()
         .with(
             tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "example_tokio_postgres=debug".into()),
+                .unwrap_or_else(|_| "example_diesel_async_postgres=debug".into()),
         )
         .with(tracing_subscriber::fmt::layer())
         .init();
@@ -83,7 +83,6 @@ async fn main() {
         .unwrap();
 }
 
-#[axum_macros::debug_handler]
 async fn create_user(
     State(pool): State<Pool>,
     Json(new_user): Json<NewUser>,
@@ -113,7 +112,7 @@ where
 {
     type Rejection = (StatusCode, String);
 
-    async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
+    async fn from_request_parts(_parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
         let pool = Pool::from_ref(state);
 
         let conn = pool.get_owned().await.map_err(internal_error)?;

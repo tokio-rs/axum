@@ -77,7 +77,6 @@ async fn main() {
         .unwrap();
 }
 
-#[axum_macros::debug_handler]
 async fn create_user(
     State(pool): State<deadpool_diesel::postgres::Pool>,
     Json(new_user): Json<NewUser>,
@@ -96,7 +95,6 @@ async fn create_user(
     Ok(Json(res))
 }
 
-#[axum_macros::debug_handler]
 async fn list_users(
     State(pool): State<deadpool_diesel::postgres::Pool>,
 ) -> Result<Json<Vec<User>>, (StatusCode, String)> {
