@@ -1,4 +1,4 @@
-//! TODO(docs)
+//! Serve services.
 
 use std::{
     convert::Infallible,
@@ -14,7 +14,66 @@ use tokio::net::{TcpListener, TcpStream};
 use tower_hyper_http_body_compat::{HttpBody04ToHttpBody1, HttpBody1ToHttpBody04};
 use tower_service::Service;
 
-/// TODO(david): docs
+/// Serve the service with the supplied listener.
+///
+/// This method of running a service is intentionally simple and doesn't support any configuration.
+/// Use hyper or hyper-util if you need configuration.
+///
+/// It only supports HTTP/1.
+///
+/// # Examples
+///
+/// Serving a `Router`:
+///
+/// ```
+/// use axum::{Router, routing::get};
+///
+/// # async {
+/// let router = Router::new().route("/", get(|| async { "Hello, World!" }));
+///
+/// let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
+/// axum::serve(listener, router).await.unwrap();
+/// # };
+/// ```
+///
+/// See also [`Router::into_make_service_with_connect_info`].
+///
+/// Serving a `MethodRouter`:
+///
+/// ```
+/// use axum::routing::get;
+///
+/// # async {
+/// let router = get(|| async { "Hello, World!" });
+///
+/// let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
+/// axum::serve(listener, router).await.unwrap();
+/// # };
+/// ```
+///
+/// See also [`MethodRouter::into_make_service_with_connect_info`].
+///
+/// Serving a `Handler`:
+///
+/// ```
+/// use axum::handler::HandlerWithoutStateExt;
+///
+/// # async {
+/// async fn handler() -> &'static str {
+///     "Hello, World!"
+/// }
+///
+/// let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
+/// axum::serve(listener, handler.into_make_service()).await.unwrap();
+/// # };
+/// ```
+///
+/// See also [`HandlerWithoutStateExt::into_make_service_with_connect_info`].
+///
+/// [`Router::into_make_service_with_connect_info`]: crate::Router::into_make_service_with_connect_info
+/// [`MethodRouter::into_make_service_with_connect_info`]: crate::routing::MethodRouter::into_make_service_with_connect_info
+/// [`HandlerWithoutStateExt::into_make_service_with_connect_info`]: crate::handler::HandlerWithoutStateExt::into_make_service_with_connect_info
+#[cfg(feature = "tokio")]
 pub async fn serve<M, S>(tcp_listener: TcpListener, mut make_service: M) -> io::Result<()>
 where
     M: for<'a> Service<IncomingStream<'a>, Error = Infallible, Response = S>,
@@ -90,7 +149,11 @@ where
     }
 }
 
-/// TODO(david): docs
+/// An incoming stream.
+///
+/// Used with [`serve`] and [`IntoMakeServiceWithConnectInfo`].
+///
+/// [`IntoMakeServiceWithConnectInfo`]: crate::extract::connect_info::IntoMakeServiceWithConnectInfo
 #[derive(Debug)]
 pub struct IncomingStream<'a> {
     tcp_stream: &'a TcpStream,
@@ -98,12 +161,12 @@ pub struct IncomingStream<'a> {
 }
 
 impl IncomingStream<'_> {
-    /// TODO(david): docs
+    /// Returns the local address that this stream is bound to.
     pub fn local_addr(&self) -> std::io::Result<SocketAddr> {
         self.tcp_stream.local_addr()
     }
 
-    /// TODO(david): docs
+    /// Returns the remote address that this stream is bound to.
     pub fn remote_addr(&self) -> SocketAddr {
         self.remote_addr
     }
