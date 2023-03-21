@@ -13,9 +13,8 @@ let routes = Router::new()
     .with_state(AppState {});
 
 # async {
-axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())
-    .serve(routes.into_make_service())
-    .await;
+let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
+axum::serve(listener, routes).await.unwrap();
 # };
 ```
 
@@ -40,9 +39,8 @@ fn routes() -> Router<AppState> {
 let routes = routes().with_state(AppState {});
 
 # async {
-axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())
-    .serve(routes.into_make_service())
-    .await;
+let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
+axum::serve(listener, routes).await.unwrap();
 # };
 ```
 
@@ -64,9 +62,8 @@ fn routes(state: AppState) -> Router {
 let routes = routes(AppState {});
 
 # async {
-axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())
-    .serve(routes.into_make_service())
-    .await;
+let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
+axum::serve(listener, routes).await.unwrap();
 # };
 ```
 
@@ -92,9 +89,8 @@ fn routes<S>(state: AppState) -> Router<S> {
 let routes = Router::new().nest("/api", routes(AppState {}));
 
 # async {
-axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())
-    .serve(routes.into_make_service())
-    .await;
+let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
+axum::serve(listener, routes).await.unwrap();
 # };
 ```
 
@@ -133,9 +129,8 @@ let router: Router<()> = router.with_state(AppState {});
 // You cannot call `into_make_service` on a `Router<AppState>`
 // because it is still missing an `AppState`.
 # async {
-axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())
-    .serve(router.into_make_service())
-    .await;
+let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
+axum::serve(listener, router).await.unwrap();
 # };
 ```
 
@@ -163,9 +158,8 @@ let final_router: Router<()> = string_router.with_state("foo".to_owned());
 
 // Since we have a `Router<()>` we can run it.
 # async {
-axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())
-    .serve(final_router.into_make_service())
-    .await;
+let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
+axum::serve(listener, final_router).await.unwrap();
 # };
 ```
 
@@ -190,9 +184,8 @@ let app = routes(AppState {});
 // We can only call `Router::into_make_service` on a `Router<()>`
 // but `app` is a `Router<AppState>`
 # async {
-axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())
-    .serve(app.into_make_service())
-    .await;
+let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
+axum::serve(listener, app).await.unwrap();
 # };
 ```
 
@@ -214,9 +207,8 @@ let app = routes(AppState {});
 
 // We can now call `Router::into_make_service`
 # async {
-axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())
-    .serve(app.into_make_service())
-    .await;
+let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
+axum::serve(listener, app).await.unwrap();
 # };
 ```
 

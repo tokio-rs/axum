@@ -20,9 +20,7 @@ use std::{collections::HashMap, sync::Arc};
 ///         // `path` will be "/users/:id"
 ///     })
 /// );
-/// # async {
-/// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-/// # };
+/// # let _: Router = app;
 /// ```
 ///
 /// # Accessing `MatchedPath` via extensions

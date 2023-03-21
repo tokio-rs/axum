@@ -55,9 +55,7 @@ let app = Router::new()
             .layer(TraceLayer::new_for_http())
             .layer(Extension(State {}))
     );
-# async {
-# axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-# };
+# let _: Router = app;
 ```
 
 # Commonly used middleware
@@ -319,9 +317,7 @@ let app = Router::new()
             }))
             .layer(TimeoutLayer::new(Duration::from_secs(10)))
     );
-# async {
-# axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-# };
+# let _: Router = app;
 ```
 
 See [`error_handling`](crate::error_handling) for more details on axum's error
@@ -376,9 +372,7 @@ let app = Router::new().route("/", get(handler));
 let app = ServiceBuilder::new()
     .layer(some_backpressure_sensitive_middleware)
     .service(app);
-# async {
-# axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-# };
+# let _: Router = app;
 ```
 
 However when applying middleware around your whole application in this way
@@ -563,10 +557,8 @@ let app = Router::new();
 let app_with_middleware = middleware.layer(app);
 
 # async {
-axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())
-    .serve(app_with_middleware.into_make_service())
-    .await
-    .unwrap();
+let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
+axum::serve(listener, app_with_middleware.into_make_service()).await.unwrap();
 # };
 ```
 

@@ -37,7 +37,6 @@ impl<H, T, S> HandlerService<H, T, S> {
     ///
     /// ```rust
     /// use axum::{
-    ///     Server,
     ///     handler::Handler,
     ///     extract::State,
     ///     http::{Uri, Method},
@@ -55,10 +54,8 @@ impl<H, T, S> HandlerService<H, T, S> {
     /// let app = handler.with_state(AppState {});
     ///
     /// # async {
-    /// Server::bind(&SocketAddr::from(([127, 0, 0, 1], 3000)))
-    ///     .serve(app.into_make_service())
-    ///     .await?;
-    /// # Ok::<_, hyper::Error>(())
+    /// let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
+    /// axum::serve(listener, app.into_make_service()).await.unwrap();
     /// # };
     /// ```
     ///
@@ -74,7 +71,6 @@ impl<H, T, S> HandlerService<H, T, S> {
     ///
     /// ```rust
     /// use axum::{
-    ///     Server,
     ///     handler::Handler,
     ///     response::IntoResponse,
     ///     extract::{ConnectInfo, State},
@@ -94,10 +90,11 @@ impl<H, T, S> HandlerService<H, T, S> {
     /// let app = handler.with_state(AppState {});
     ///
     /// # async {
-    /// Server::bind(&SocketAddr::from(([127, 0, 0, 1], 3000)))
-    ///     .serve(app.into_make_service_with_connect_info::<SocketAddr>())
-    ///     .await?;
-    /// # Ok::<_, hyper::Error>(())
+    /// let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
+    /// axum::serve(
+    ///     listener,
+    ///     app.into_make_service_with_connect_info::<SocketAddr>(),
+    /// ).await.unwrap();
     /// # };
     /// ```
     ///

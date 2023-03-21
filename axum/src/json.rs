@@ -51,9 +51,7 @@ use std::ops::{Deref, DerefMut};
 /// }
 ///
 /// let app = Router::new().route("/users", post(create_user));
-/// # async {
-/// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-/// # };
+/// # let _: Router = app;
 /// ```
 ///
 /// When used as a response, it can serialize any type that implements [`serde::Serialize`] to
@@ -88,9 +86,7 @@ use std::ops::{Deref, DerefMut};
 /// }
 ///
 /// let app = Router::new().route("/users/:id", get(get_user));
-/// # async {
-/// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-/// # };
+/// # let _: Router = app;
 /// ```
 #[derive(Debug, Clone, Copy, Default)]
 #[cfg_attr(docsrs, doc(cfg(feature = "json")))]

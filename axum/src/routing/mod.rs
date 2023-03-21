@@ -586,10 +586,8 @@ impl Router {
     /// let app = Router::new().route("/", get(|| async { "Hi!" }));
     ///
     /// # async {
-    /// axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())
-    ///     .serve(app.into_make_service())
-    ///     .await
-    ///     .expect("server failed");
+    /// let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
+    /// axum::serve(listener, app).await.unwrap();
     /// # };
     /// ```
     ///

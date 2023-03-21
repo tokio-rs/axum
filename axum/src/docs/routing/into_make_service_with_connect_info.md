@@ -21,12 +21,8 @@ async fn handler(ConnectInfo(addr): ConnectInfo<SocketAddr>) -> String {
 }
 
 # async {
-axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())
-    .serve(
-        app.into_make_service_with_connect_info::<SocketAddr>()
-    )
-    .await
-    .expect("server failed");
+let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
+axum::serve(listener, app.into_make_service_with_connect_info::<SocketAddr>()).await.unwrap();
 # };
 ```
 
@@ -38,7 +34,8 @@ use axum::{
     routing::get,
     Router,
 };
-use hyper::server::conn::AddrStream;
+use tokio::net::TcpStream;
+use std::net::SocketAddr;
 
 let app = Router::new().route("/", get(handler));
 
@@ -53,8 +50,8 @@ struct MyConnectInfo {
     // ...
 }
 
-impl Connected<&AddrStream> for MyConnectInfo {
-    fn connect_info(target: &AddrStream) -> Self {
+impl Connected<&(TcpStream, SocketAddr)> for MyConnectInfo {
+    fn connect_info(target: &(TcpStream, SocketAddr)) -> Self {
         MyConnectInfo {
             // ...
         }
@@ -62,12 +59,8 @@ impl Connected<&AddrStream> for MyConnectInfo {
 }
 
 # async {
-axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())
-    .serve(
-        app.into_make_service_with_connect_info::<MyConnectInfo>()
-    )
-    .await
-    .expect("server failed");
+let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
+axum::serve(listener, app.into_make_service_with_connect_info::<MyConnectInfo>()).await.unwrap();
 # };
 ```
 

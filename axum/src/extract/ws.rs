@@ -31,9 +31,7 @@
 //!         }
 //!     }
 //! }
-//! # async {
-//! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-//! # };
+//! # let _: Router = app;
 //! ```
 //!
 //! # Passing data and/or state to an `on_upgrade` callback
@@ -62,9 +60,7 @@
 //! let app = Router::new()
 //!     .route("/ws", get(handler))
 //!     .layer(Extension(State { /* ... */ }));
-//! # async {
-//! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-//! # };
+//! # let _: Router = app;
 //! ```
 //!
 //! # Read and write concurrently
@@ -206,9 +202,7 @@ impl<F> WebSocketUpgrade<F> {
     ///             // ...
     ///         })
     /// }
-    /// # async {
-    /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-    /// # };
+    /// # let _: Router = app;
     /// ```
     pub fn protocols<I>(mut self, protocols: I) -> Self
     where
