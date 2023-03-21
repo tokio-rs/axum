@@ -190,6 +190,7 @@ allowed = [
     "http_body",
     "hyper",
     "serde",
+    "tokio",
     "tower_layer",
     "tower_service",
 ]
