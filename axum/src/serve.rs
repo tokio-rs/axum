@@ -108,6 +108,7 @@ mod tests {
         );
 
         // method router
+        serve(TcpListener::bind(addr).await.unwrap(), get(handler));
         serve(
             TcpListener::bind(addr).await.unwrap(),
             get(handler).into_make_service(),

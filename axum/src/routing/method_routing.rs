@@ -1231,6 +1231,27 @@ where
     }
 }
 
+// for `axum::serve(listener, router)`
+#[cfg(feature = "tokio")]
+const _: () = {
+    use tokio::net::TcpStream;
+    use std::net::SocketAddr;
+
+    impl Service<&(TcpStream, SocketAddr)> for MethodRouter<()> {
+        type Response = Self;
+        type Error = Infallible;
+        type Future = std::future::Ready<Result<Self::Response, Self::Error>>;
+
+        fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+            Poll::Ready(Ok(()))
+        }
+
+        fn call(&mut self, _req: &(TcpStream, SocketAddr)) -> Self::Future {
+            std::future::ready(Ok(self.clone()))
+        }
+    }
+};
+
 #[cfg(test)]
 mod tests {
     use super::*;
