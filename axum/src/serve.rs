@@ -180,7 +180,11 @@ impl IncomingStream<'_> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{handler::HandlerWithoutStateExt, routing::get, Router};
+    use crate::{
+        handler::{Handler, HandlerWithoutStateExt},
+        routing::get,
+        Router,
+    };
 
     #[allow(dead_code, unused_must_use)]
     async fn if_it_compiles_it_works() {
@@ -211,6 +215,14 @@ mod tests {
         );
 
         // handler
+        serve(
+            TcpListener::bind(addr).await.unwrap(),
+            handler.into_service(),
+        );
+        serve(
+            TcpListener::bind(addr).await.unwrap(),
+            handler.with_state(()),
+        );
         serve(
             TcpListener::bind(addr).await.unwrap(),
             handler.into_make_service(),
