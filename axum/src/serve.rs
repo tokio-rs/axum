@@ -77,6 +77,8 @@ where
         tokio::task::spawn(async move {
             match http1::Builder::new()
                 .serve_connection(tcp_stream, service)
+                // for websockets
+                .with_upgrades()
                 .await
             {
                 Ok(()) => {}

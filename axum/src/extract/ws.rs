@@ -104,7 +104,6 @@ use http::{
     request::Parts,
     Method, StatusCode,
 };
-use hyper::upgrade::{OnUpgrade, Upgraded};
 use sha1::{Digest, Sha1};
 use std::{
     borrow::Cow,
@@ -133,7 +132,7 @@ pub struct WebSocketUpgrade<F = DefaultOnFailedUpgrade> {
     /// The chosen protocol sent in the `Sec-WebSocket-Protocol` header of the response.
     protocol: Option<HeaderValue>,
     sec_websocket_key: HeaderValue,
-    on_upgrade: OnUpgrade,
+    on_upgrade: hyper1::upgrade::OnUpgrade,
     on_failed_upgrade: F,
     sec_websocket_protocol: Option<HeaderValue>,
 }
@@ -387,7 +386,7 @@ where
 
         let on_upgrade = parts
             .extensions
-            .remove::<OnUpgrade>()
+            .remove::<hyper1::upgrade::OnUpgrade>()
             .ok_or(ConnectionNotUpgradable)?;
 
         let sec_websocket_protocol = parts.headers.get(header::SEC_WEBSOCKET_PROTOCOL).cloned();
@@ -430,7 +429,7 @@ fn header_contains(headers: &HeaderMap, key: HeaderName, value: &'static str) ->
 /// See [the module level documentation](self) for more details.
 #[derive(Debug)]
 pub struct WebSocket {
-    inner: WebSocketStream<Upgraded>,
+    inner: WebSocketStream<hyper1::upgrade::Upgraded>,
     protocol: Option<HeaderValue>,
 }
 
