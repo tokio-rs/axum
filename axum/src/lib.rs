@@ -482,6 +482,7 @@ pub use axum_core::{BoxError, Error, RequestExt, RequestPartsExt};
 pub use axum_macros::debug_handler;
 
 #[cfg(feature = "tokio")]
+#[doc(inline)]
 pub use self::serve::serve;
 
 pub use self::service_ext::ServiceExt;

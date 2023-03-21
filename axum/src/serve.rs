@@ -23,7 +23,7 @@ use tower_service::Service;
 ///
 /// # Examples
 ///
-/// Serving a `Router`:
+/// Serving a [`Router`]:
 ///
 /// ```
 /// use axum::{Router, routing::get};
@@ -38,7 +38,7 @@ use tower_service::Service;
 ///
 /// See also [`Router::into_make_service_with_connect_info`].
 ///
-/// Serving a `MethodRouter`:
+/// Serving a [`MethodRouter`]:
 ///
 /// ```
 /// use axum::routing::get;
@@ -53,7 +53,7 @@ use tower_service::Service;
 ///
 /// See also [`MethodRouter::into_make_service_with_connect_info`].
 ///
-/// Serving a `Handler`:
+/// Serving a [`Handler`]:
 ///
 /// ```
 /// use axum::handler::HandlerWithoutStateExt;
@@ -68,11 +68,16 @@ use tower_service::Service;
 /// # };
 /// ```
 ///
-/// See also [`HandlerWithoutStateExt::into_make_service_with_connect_info`].
+/// See also [`HandlerWithoutStateExt::into_make_service_with_connect_info`] and
+/// [`HandlerService::into_make_service_with_connect_info`].
 ///
+/// [`Router`]: crate::Router
 /// [`Router::into_make_service_with_connect_info`]: crate::Router::into_make_service_with_connect_info
+/// [`MethodRouter`]: crate::routing::MethodRouter
 /// [`MethodRouter::into_make_service_with_connect_info`]: crate::routing::MethodRouter::into_make_service_with_connect_info
+/// [`Handler`]: crate::handler::Handler
 /// [`HandlerWithoutStateExt::into_make_service_with_connect_info`]: crate::handler::HandlerWithoutStateExt::into_make_service_with_connect_info
+/// [`HandlerService::into_make_service_with_connect_info`]: crate::handler::HandlerService::into_make_service_with_connect_info
 #[cfg(feature = "tokio")]
 pub async fn serve<M, S>(tcp_listener: TcpListener, mut make_service: M) -> io::Result<()>
 where
