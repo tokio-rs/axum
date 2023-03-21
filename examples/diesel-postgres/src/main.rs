@@ -18,8 +18,13 @@ use axum::{
     Router,
 };
 use diesel::prelude::*;
+use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
 use std::net::SocketAddr;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+
+// this embeddes the migrations into the application binary
+// the migration path is releative to the `CARGO_MANIFEST_DIR`
+pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("migrations/");
 
 // normally part of your generated schema.rs file
 table! {
@@ -61,6 +66,15 @@ async fn main() {
     let pool = deadpool_diesel::postgres::Pool::builder(manager)
         .build()
         .unwrap();
+
+    // run the migrations on server startup
+    {
+        let conn = pool.get().await.unwrap();
+        conn.interact(|conn| conn.run_pending_migrations(MIGRATIONS).map(|_| ()))
+            .await
+            .unwrap()
+            .unwrap();
+    }
 
     // build our application with some routes
     let app = Router::new()
