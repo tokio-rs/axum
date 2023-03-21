@@ -274,7 +274,6 @@ fn status_code_from_multer_error(err: &multer::Error) -> StatusCode {
         multer::Error::FieldSizeExceeded { .. } | multer::Error::StreamSizeExceeded { .. } => {
             StatusCode::PAYLOAD_TOO_LARGE
         }
-        multer::Error::LockFailure => StatusCode::INTERNAL_SERVER_ERROR,
         multer::Error::StreamReadFailed(err) => {
             if let Some(err) = err.downcast_ref::<multer::Error>() {
                 return status_code_from_multer_error(err);
@@ -291,7 +290,7 @@ fn status_code_from_multer_error(err: &multer::Error) -> StatusCode {
 
             StatusCode::INTERNAL_SERVER_ERROR
         }
-        _ => StatusCode::BAD_REQUEST,
+        _ => StatusCode::INTERNAL_SERVER_ERROR,
     }
 }
 
