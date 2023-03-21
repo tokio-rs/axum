@@ -39,6 +39,7 @@ axum = { path = "../axum", version = "0.6.9", default-features = false }
 bytes = "1.1.0"
 futures-util = { version = "0.3", default-features = false, features = ["alloc"] }
 http = "0.2"
+http-body = "0.4.4"
 mime = "0.3"
 pin-project-lite = "0.2"
 tokio = "1.19"
