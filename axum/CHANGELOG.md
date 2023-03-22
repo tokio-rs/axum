@@ -40,12 +40,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **added:** Add `axum::extract::Request` type alias where the body is `axum::body::Body` ([#1789])
 - **added:** Add `Router::as_service` and `Router::into_service` to workaround
   type inference issues when calling `ServiceExt` methods on a `Router` ([#1835])
+- **breaking:** Removed `axum::Server` as it was removed in hyper 1.0. Instead
+  use `axum::serve(listener, service)` or hyper/hyper-util for more configuration options ([#1868])
 
 [#1664]: https://github.com/tokio-rs/axum/pull/1664
 [#1751]: https://github.com/tokio-rs/axum/pull/1751
 [#1762]: https://github.com/tokio-rs/axum/pull/1762
 [#1835]: https://github.com/tokio-rs/axum/pull/1835
 [#1789]: https://github.com/tokio-rs/axum/pull/1789
+[#1868]: https://github.com/tokio-rs/axum/pull/1868
 
 # 0.6.12 (22. March, 2023)
 

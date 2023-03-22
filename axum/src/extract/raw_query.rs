@@ -20,9 +20,7 @@ use std::convert::Infallible;
 /// }
 ///
 /// let app = Router::new().route("/users", get(handler));
-/// # async {
-/// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-/// # };
+/// # let _: Router = app;
 /// ```
 #[derive(Debug)]
 pub struct RawQuery(pub Option<String>);

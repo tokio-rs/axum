@@ -53,11 +53,9 @@
 //!     // build our application with a single route
 //!     let app = Router::new().route("/", get(|| async { "Hello, World!" }));
 //!
-//!     // run it with hyper on localhost:3000
-//!     axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())
-//!         .serve(app.into_make_service())
-//!         .await
-//!         .unwrap();
+//!     // run it on localhost:3000
+//!     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
+//!     axum::serve(listener, app).await.unwrap();
 //! }
 //! ```
 //!
@@ -82,9 +80,7 @@
 //! async fn get_foo() {}
 //! async fn post_foo() {}
 //! async fn foo_bar() {}
-//! # async {
-//! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-//! # };
+//! # let _: Router = app;
 //! ```
 //!
 //! See [`Router`] for more details on routing.
@@ -145,9 +141,7 @@
 //! let app = Router::new()
 //!     .route("/plain_text", get(plain_text))
 //!     .route("/json", get(json));
-//! # async {
-//! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-//! # };
+//! # let _: Router = app;
 //! ```
 //!
 //! See [`response`](crate::response) for more details on building responses.
@@ -202,9 +196,7 @@
 //! ) {
 //!     // ...
 //! }
-//! # async {
-//! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-//! # };
+//! # let _: Router = app;
 //! ```
 //!
 //! You should prefer using [`State`] if possible since it's more type safe. The downside is that
@@ -240,9 +232,7 @@
 //! ) {
 //!     // ...
 //! }
-//! # async {
-//! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-//! # };
+//! # let _: Router = app;
 //! ```
 //!
 //! The downside to this approach is that you'll get runtime errors
@@ -298,9 +288,7 @@
 //! struct CreateUserPayload {
 //!     // ...
 //! }
-//! # async {
-//! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-//! # };
+//! # let _: Router = app;
 //! ```
 //!
 //! The downside to this approach is that it's a little more verbose than using
@@ -356,7 +344,7 @@
 //! `matched-path` | Enables capturing of every request's router path and the [`MatchedPath`] extractor | Yes
 //! `multipart` | Enables parsing `multipart/form-data` requests with [`Multipart`] | No
 //! `original-uri` | Enables capturing of every request's original URI and the [`OriginalUri`] extractor | Yes
-//! `tokio` | Enables `tokio` as a dependency and `axum::Server`, `SSE` and `extract::connect_info` types. | Yes
+//! `tokio` | Enables `tokio` as a dependency and `axum::serve`, `SSE` and `extract::connect_info` types. | Yes
 //! `tower-log` | Enables `tower`'s `log` feature | Yes
 //! `ws` | Enables WebSockets support via [`extract::ws`] | No
 //! `form` | Enables the `Form` extractor | Yes
@@ -376,7 +364,6 @@
 //! [`Timeout`]: tower::timeout::Timeout
 //! [examples]: https://github.com/tokio-rs/axum/tree/main/examples
 //! [`Router::merge`]: crate::routing::Router::merge
-//! [`axum::Server`]: hyper::server::Server
 //! [`Service`]: tower::Service
 //! [`Service::poll_ready`]: tower::Service::poll_ready
 //! [`Service`'s]: tower::Service
@@ -458,6 +445,8 @@ pub mod handler;
 pub mod middleware;
 pub mod response;
 pub mod routing;
+#[cfg(feature = "tokio")]
+pub mod serve;
 
 #[cfg(test)]
 mod test_helpers;
@@ -469,9 +458,6 @@ pub use async_trait::async_trait;
 pub use headers;
 #[doc(no_inline)]
 pub use http;
-#[cfg(feature = "tokio")]
-#[doc(no_inline)]
-pub use hyper::Server;
 
 #[doc(inline)]
 pub use self::extension::Extension;
@@ -494,6 +480,10 @@ pub use axum_core::{BoxError, Error, RequestExt, RequestPartsExt};
 
 #[cfg(feature = "macros")]
 pub use axum_macros::debug_handler;
+
+#[cfg(feature = "tokio")]
+#[doc(inline)]
+pub use self::serve::serve;
 
 pub use self::service_ext::ServiceExt;
 

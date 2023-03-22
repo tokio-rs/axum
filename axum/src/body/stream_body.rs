@@ -47,9 +47,7 @@ pin_project! {
     /// }
     ///
     /// let app = Router::new().route("/", get(handler));
-    /// # async {
-    /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-    /// # };
+    /// # let _: Router = app;
     /// ```
     ///
     /// [`Stream`]: futures_util::stream::Stream

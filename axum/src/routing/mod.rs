@@ -585,10 +585,8 @@ impl Router {
     /// let app = Router::new().route("/", get(|| async { "Hi!" }));
     ///
     /// # async {
-    /// axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())
-    ///     .serve(app.into_make_service())
-    ///     .await
-    ///     .expect("server failed");
+    /// let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
+    /// axum::serve(listener, app).await.unwrap();
     /// # };
     /// ```
     ///
@@ -607,6 +605,26 @@ impl Router {
         IntoMakeServiceWithConnectInfo::new(self.with_state(()))
     }
 }
+
+// for `axum::serve(listener, router)`
+#[cfg(feature = "tokio")]
+const _: () = {
+    use crate::serve::IncomingStream;
+
+    impl Service<IncomingStream<'_>> for Router<()> {
+        type Response = Self;
+        type Error = Infallible;
+        type Future = std::future::Ready<Result<Self::Response, Self::Error>>;
+
+        fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+            Poll::Ready(Ok(()))
+        }
+
+        fn call(&mut self, _req: IncomingStream<'_>) -> Self::Future {
+            std::future::ready(Ok(self.clone()))
+        }
+    }
+};
 
 impl<B> Service<Request<B>> for Router<()>
 where

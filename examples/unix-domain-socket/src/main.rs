@@ -63,7 +63,7 @@ mod unix {
         tokio::spawn(async {
             let app = Router::new().route("/", get(handler));
 
-            axum::Server::builder(ServerAccept { uds })
+            hyper::Server::builder(ServerAccept { uds })
                 .serve(app.into_make_service_with_connect_info::<UdsConnectInfo>())
                 .await
                 .unwrap();

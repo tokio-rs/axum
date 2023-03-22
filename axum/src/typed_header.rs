@@ -27,9 +27,7 @@ use std::{convert::Infallible, ops::Deref};
 /// }
 ///
 /// let app = Router::new().route("/users/:user_id/team/:team_id", get(users_teams_show));
-/// # async {
-/// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-/// # };
+/// # let _: Router = app;
 /// ```
 ///
 /// # As response

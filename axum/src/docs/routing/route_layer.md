@@ -26,7 +26,5 @@ let app = Router::new()
 // `GET /foo` with a valid token will receive `200 OK`
 // `GET /foo` with a invalid token will receive `401 Unauthorized`
 // `GET /not-found` with a invalid token will receive `404 Not Found`
-# async {
-# axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-# };
+# let _: Router = app;
 ```
