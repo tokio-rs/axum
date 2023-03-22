@@ -381,6 +381,34 @@ async fn wildcard_doesnt_match_just_trailing_slash() {
 }
 
 #[crate::test]
+async fn what_matches_wildcard() {
+    let app = Router::new()
+        .route("/*key", get(|| async { "root" }))
+        .route("/x/*key", get(|| async { "x" }))
+        .fallback(|| async { "fallback" });
+
+    let client = TestClient::new(app);
+
+    let get = |path| {
+        let f = client.get(path).send();
+        async move { f.await.text().await }
+    };
+
+    assert_eq!(get("/").await, "fallback");
+    assert_eq!(get("/a").await, "root");
+    assert_eq!(get("/a/").await, "root");
+    assert_eq!(get("/a/b").await, "root");
+    assert_eq!(get("/a/b/").await, "root");
+
+    assert_eq!(get("/x").await, "root");
+    assert_eq!(get("/x/").await, "root");
+    assert_eq!(get("/x/a").await, "x");
+    assert_eq!(get("/x/a/").await, "x");
+    assert_eq!(get("/x/a/b").await, "x");
+    assert_eq!(get("/x/a/b/").await, "x");
+}
+
+#[crate::test]
 async fn static_and_dynamic_paths() {
     let app = Router::new()
         .route(
