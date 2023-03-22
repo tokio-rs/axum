@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning].
 
 # Unreleased
 
+- None.
+
+# 0.7.2 (22. March, 2023)
+
 - **added:** Implement `IntoResponse` for `MultipartError` ([#1861])
 
 # 0.7.1 (13. March, 2023)
