@@ -13,7 +13,6 @@ use axum::{
 };
 use bb8::{Pool, PooledConnection};
 use bb8_postgres::PostgresConnectionManager;
-use std::net::SocketAddr;
 use tokio_postgres::NoTls;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
@@ -41,13 +40,12 @@ async fn main() {
         )
         .with_state(pool);
 
-    // run it with hyper
-    let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
-    tracing::debug!("listening on {}", addr);
-    axum::Server::bind(&addr)
-        .serve(app.into_make_service())
+    // run it
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:3000")
         .await
         .unwrap();
+    tracing::debug!("listening on {}", listener.local_addr().unwrap());
+    axum::serve(listener, app).await.unwrap();
 }
 
 type ConnectionPool = Pool<PostgresConnectionManager<NoTls>>;

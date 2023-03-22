@@ -28,9 +28,7 @@ use std::convert::Infallible;
 ///     );
 ///
 /// let app = Router::new().nest("/api", api_routes);
-/// # async {
-/// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-/// # };
+/// # let _: Router = app;
 /// ```
 ///
 /// # Extracting via request extensions
@@ -65,9 +63,7 @@ use std::convert::Infallible;
 ///     );
 ///
 /// let app = Router::new().nest("/api", api_routes);
-/// # async {
-/// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-/// # };
+/// # let _: Router = app;
 /// ```
 #[cfg(feature = "original-uri")]
 #[derive(Debug, Clone)]

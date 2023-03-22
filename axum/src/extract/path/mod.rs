@@ -42,9 +42,7 @@ use std::{fmt, sync::Arc};
 /// }
 ///
 /// let app = Router::new().route("/users/:user_id/team/:team_id", get(users_teams_show));
-/// # async {
-/// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-/// # };
+/// # let _: Router = app;
 /// ```
 ///
 /// If the path contains only one parameter, then you can omit the tuple.
@@ -62,9 +60,7 @@ use std::{fmt, sync::Arc};
 /// }
 ///
 /// let app = Router::new().route("/users/:user_id", get(user_info));
-/// # async {
-/// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-/// # };
+/// # let _: Router = app;
 /// ```
 ///
 /// Path segments also can be deserialized into any type that implements
@@ -103,9 +99,7 @@ use std::{fmt, sync::Arc};
 ///     "/users/:user_id/team/:team_id",
 ///     get(users_teams_show).post(users_teams_create),
 /// );
-/// # async {
-/// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-/// # };
+/// # let _: Router = app;
 /// ```
 ///
 /// If you wish to capture all path parameters you can use `HashMap` or `Vec`:
@@ -132,9 +126,7 @@ use std::{fmt, sync::Arc};
 ///
 /// let app = Router::new()
 ///     .route("/users/:user_id/team/:team_id", get(params_map).post(params_vec));
-/// # async {
-/// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-/// # };
+/// # let _: Router = app;
 /// ```
 ///
 /// # Providing detailed rejection output

@@ -14,16 +14,14 @@ use axum::{
     Router,
 };
 use futures::{Sink, SinkExt, Stream, StreamExt};
-use std::net::SocketAddr;
 
 #[tokio::main]
 async fn main() {
-    let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
-    println!("listening on {addr}");
-    axum::Server::bind(&addr)
-        .serve(app().into_make_service())
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:3000")
         .await
         .unwrap();
+    println!("listening on {}", listener.local_addr().unwrap());
+    axum::serve(listener, app()).await.unwrap();
 }
 
 fn app() -> Router {
@@ -94,17 +92,18 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::net::Ipv4Addr;
+    use std::net::{Ipv4Addr, SocketAddr};
     use tokio_tungstenite::tungstenite;
 
     // We can integration test one handler by running the server in a background task and
     // connecting to it like any other client would.
     #[tokio::test]
     async fn integration_test() {
-        let server = axum::Server::bind(&SocketAddr::from((Ipv4Addr::UNSPECIFIED, 0)))
-            .serve(app().into_make_service());
-        let addr = server.local_addr();
-        tokio::spawn(server);
+        let listener = tokio::net::TcpListener::bind(SocketAddr::from((Ipv4Addr::UNSPECIFIED, 0)))
+            .await
+            .unwrap();
+        let addr = listener.local_addr().unwrap();
+        tokio::spawn(axum::serve(listener, app()));
 
         let (mut socket, _response) =
             tokio_tungstenite::connect_async(format!("ws://{addr}/integration-testable"))

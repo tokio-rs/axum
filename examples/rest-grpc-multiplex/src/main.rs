@@ -75,7 +75,7 @@ async fn main() {
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
     tracing::debug!("listening on {}", addr);
-    axum::Server::bind(&addr)
+    hyper::Server::bind(&addr)
         .serve(tower::make::Shared::new(service))
         .await
         .unwrap();

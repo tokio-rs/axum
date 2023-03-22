@@ -41,9 +41,7 @@ use std::fmt;
 /// }
 ///
 /// let app = Router::new().route("/list_things", get(list_things));
-/// # async {
-/// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-/// # };
+/// # let _: Router = app;
 /// ```
 ///
 /// If the query string cannot be parsed it will reject the request with a `400

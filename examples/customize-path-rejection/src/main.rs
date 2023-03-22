@@ -13,7 +13,6 @@ use axum::{
     Router,
 };
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
-use std::net::SocketAddr;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[tokio::main]
@@ -30,12 +29,11 @@ async fn main() {
     let app = Router::new().route("/users/:user_id/teams/:team_id", get(handler));
 
     // run it
-    let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
-    println!("listening on {}", addr);
-    axum::Server::bind(&addr)
-        .serve(app.into_make_service())
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:3000")
         .await
         .unwrap();
+    tracing::debug!("listening on {}", listener.local_addr().unwrap());
+    axum::serve(listener, app).await.unwrap();
 }
 
 async fn handler(Path(params): Path<Params>) -> impl IntoResponse {

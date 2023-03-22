@@ -9,7 +9,6 @@ mod derive_from_request;
 mod with_rejection;
 
 use axum::{routing::post, Router};
-use std::net::SocketAddr;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[tokio::main]
@@ -29,10 +28,9 @@ async fn main() {
         .route("/derive-from-request", post(derive_from_request::handler));
 
     // Run our application
-    let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
-    tracing::debug!("listening on {}", addr);
-    axum::Server::bind(&addr)
-        .serve(app.into_make_service())
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:3000")
         .await
         .unwrap();
+    tracing::debug!("listening on {}", listener.local_addr().unwrap());
+    axum::serve(listener, app).await.unwrap();
 }

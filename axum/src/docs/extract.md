@@ -47,9 +47,7 @@ async fn create_user(Json(payload): Json<CreateUser>) {
 }
 
 let app = Router::new().route("/users", post(create_user));
-# async {
-# axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-# };
+# let _: Router = app;
 ```
 
 # Common extractors
@@ -111,9 +109,7 @@ let app = Router::new()
     .route("/json", post(json))
     .route("/request", post(request))
     .route("/extension", post(extension));
-# async {
-# axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-# };
+# let _: Router = app;
 ```
 
 # Applying multiple extractors
@@ -151,9 +147,7 @@ async fn get_user_things(
 
     // ...
 }
-# async {
-# axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-# };
+# let _: Router = app;
 ```
 
 # The order of extractors
@@ -253,9 +247,7 @@ async fn create_user(payload: Option<Json<Value>>) {
 }
 
 let app = Router::new().route("/users", post(create_user));
-# async {
-# axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-# };
+# let _: Router = app;
 ```
 
 Wrapping extractors in `Result` makes them optional and gives you the reason
@@ -295,9 +287,7 @@ async fn create_user(payload: Result<Json<Value>, JsonRejection>) {
 }
 
 let app = Router::new().route("/users", post(create_user));
-# async {
-# axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-# };
+# let _: Router = app;
 ```
 
 # Customizing extractor responses
@@ -452,9 +442,7 @@ async fn handler(ExtractUserAgent(user_agent): ExtractUserAgent) {
 }
 
 let app = Router::new().route("/foo", get(handler));
-# async {
-# axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-# };
+# let _: Router = app;
 ```
 
 ## Implementing `FromRequest`
@@ -501,9 +489,7 @@ async fn handler(ValidatedBody(body): ValidatedBody) {
 }
 
 let app = Router::new().route("/foo", get(handler));
-# async {
-# axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-# };
+# let _: Router = app;
 ```
 
 ## Cannot implement both `FromRequest` and `FromRequestParts`
@@ -624,9 +610,7 @@ async fn handler(user: AuthenticatedUser) {
 let state = State { /* ... */ };
 
 let app = Router::new().route("/", get(handler)).layer(Extension(state));
-# async {
-# axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-# };
+# let _: Router = app;
 ```
 
 # Request body limits

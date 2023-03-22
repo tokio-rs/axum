@@ -19,7 +19,7 @@ use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation}
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use std::{fmt::Display, net::SocketAddr};
+use std::fmt::Display;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 // Quick instructions
@@ -67,13 +67,11 @@ async fn main() {
         .route("/protected", get(protected))
         .route("/authorize", post(authorize));
 
-    let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
-    tracing::debug!("listening on {}", addr);
-
-    axum::Server::bind(&addr)
-        .serve(app.into_make_service())
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:3000")
         .await
         .unwrap();
+    tracing::debug!("listening on {}", listener.local_addr().unwrap());
+    axum::serve(listener, app).await.unwrap();
 }
 
 async fn protected(claims: Claims) -> Result<String, AuthError> {

@@ -17,7 +17,7 @@ async fn main() {
     // run it
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
     println!("listening on {}", addr);
-    axum::Server::bind(&addr)
+    hyper::Server::bind(&addr)
         .serve(app.into_make_service())
         .with_graceful_shutdown(shutdown_signal())
         .await

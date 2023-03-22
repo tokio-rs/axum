@@ -23,7 +23,5 @@ let app = Router::new().route(
     // All requests to `GET /` will be sent through `ConcurrencyLimitLayer`
     get(hander).layer(ConcurrencyLimitLayer::new(64)),
 );
-# async {
-# axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-# };
+# let _: Router = app;
 ```
