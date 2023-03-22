@@ -8,8 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 # Unreleased
 
 - **change:** Update to syn 2.0 ([#1862])
+- **fixed:** Give better error if generics are used with `#[derive(FromRef)]` ([#1874])
 
 [#1862]: https://github.com/tokio-rs/axum/pull/1862
+[#1874]: https://github.com/tokio-rs/axum/pull/1874
 
 # 0.3.6 (13. March, 2023)
 
