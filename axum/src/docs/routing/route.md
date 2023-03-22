@@ -50,6 +50,11 @@ Examples:
 - `/assets/*path`
 - `/:id/:repo/*tree`
 
+Note that `/*key` doesn't match empty segments. Thus:
+
+- `/*key` doesn't match `/` but does match `/a`, `/a/`, etc.
+- `/x/*key` doesn't match `/x` or `/x/` but does match `/x/a`, `/x/a/`, etc.
+
 Wildcard captures can also be extracted using [`Path`](crate::extract::Path).
 Note that the leading slash is not included, i.e. for the route `/foo/*rest` and
 the path `/foo/bar/baz` the value of `rest` will be `bar/baz`.
