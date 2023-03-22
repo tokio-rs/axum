@@ -1,11 +1,6 @@
 //! Serve services.
 
-use std::{
-    convert::Infallible,
-    io,
-    net::SocketAddr,
-    task::{Context, Poll},
-};
+use std::{convert::Infallible, io, net::SocketAddr};
 
 use axum_core::{body::Body, extract::Request, response::Response};
 use futures_util::{future::poll_fn, FutureExt};
