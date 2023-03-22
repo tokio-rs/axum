@@ -1,0 +1,5 @@
+error: `#[derive(FromRef)]` doesn't support generics
+ --> tests/from_ref/fail/generics.rs:4:16
+  |
+4 | struct AppState<T> {
+  |                ^^^
