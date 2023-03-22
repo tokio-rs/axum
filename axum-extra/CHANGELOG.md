@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning].
 
 - **added:** Implement `IntoResponse` for `MultipartError` ([#1861])
 
+[#1861]: https://github.com/tokio-rs/axum/pull/1861
+
 # 0.7.1 (13. March, 2023)
 
 - Updated to latest `axum-macros`
