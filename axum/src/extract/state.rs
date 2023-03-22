@@ -131,13 +131,11 @@ use std::{
 /// let method_router_with_state = get(handler)
 ///     // provide the state so the handler can access it
 ///     .with_state(state);
+/// # let _: axum::routing::MethodRouter = method_router_with_state;
 ///
 /// async fn handler(State(state): State<AppState>) {
 ///     // use `state`...
 /// }
-/// # async {
-/// # axum::Server::bind(&"".parse().unwrap()).serve(method_router_with_state.into_make_service()).await.unwrap();
-/// # };
 /// ```
 ///
 /// # With `Handler`
@@ -158,10 +156,8 @@ use std::{
 /// let handler_with_state = handler.with_state(state);
 ///
 /// # async {
-/// axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())
-///     .serve(handler_with_state.into_make_service())
-///     .await
-///     .expect("server failed");
+/// let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
+/// axum::serve(listener, handler_with_state.into_make_service()).await.unwrap();
 /// # };
 /// ```
 ///

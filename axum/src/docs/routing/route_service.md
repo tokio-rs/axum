@@ -43,9 +43,7 @@ let app = Router::new()
         "/static/Cargo.toml",
         ServeFile::new("Cargo.toml"),
     );
-# async {
-# axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-# };
+# let _: Router = app;
 ```
 
 Routing to arbitrary services in this way has complications for backpressure
@@ -64,9 +62,7 @@ let app = Router::new().route_service(
     "/",
     Router::new().route("/foo", get(|| async {})),
 );
-# async {
-# axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-# };
+# let _: Router = app;
 ```
 
 Use [`Router::nest`] instead.

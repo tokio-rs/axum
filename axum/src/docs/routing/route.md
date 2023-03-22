@@ -77,9 +77,7 @@ async fn get_root() {}
 async fn post_root() {}
 
 async fn delete_root() {}
-# async {
-# axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-# };
+# let _: Router = app;
 ```
 
 # More examples
@@ -105,9 +103,7 @@ async fn show_user(Path(id): Path<u64>) {}
 async fn do_users_action(Path((version, id)): Path<(String, u64)>) {}
 
 async fn serve_asset(Path(path): Path<String>) {}
-# async {
-# axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-# };
+# let _: Router = app;
 ```
 
 # Panics
@@ -120,9 +116,7 @@ use axum::{routing::get, Router};
 let app = Router::new()
     .route("/", get(|| async {}))
     .route("/", get(|| async {}));
-# async {
-# axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-# };
+# let _: Router = app;
 ```
 
 The static route `/foo` and the dynamic route `/:key` are not considered to

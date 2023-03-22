@@ -28,7 +28,5 @@ let app = Router::new().route(
 // `GET /foo` with a valid token will receive `200 OK`
 // `GET /foo` with a invalid token will receive `401 Unauthorized`
 // `POST /FOO` with a invalid token will receive `405 Method Not Allowed`
-# async {
-# axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-# };
+# let _: Router = app;
 ```

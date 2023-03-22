@@ -51,6 +51,10 @@ tower = { version = "0.4.13", default-features = false, features = ["util"] }
 tower-layer = "0.3.2"
 tower-service = "0.3"
 
+# wont need this when axum uses http-body 1.0
+hyper1 = { package = "hyper", version = "1.0.0-rc.3", features = ["server", "http1"] }
+tower-hyper-http-body-compat = { version = "0.1.4", features = ["server", "http1"] }
+
 # optional dependencies
 axum-macros = { path = "../axum-macros", version = "0.3.7", optional = true }
 base64 = { version = "0.21.0", optional = true }
@@ -192,6 +196,7 @@ allowed = [
     "http_body",
     "hyper",
     "serde",
+    "tokio",
     "tower_layer",
     "tower_service",
 ]

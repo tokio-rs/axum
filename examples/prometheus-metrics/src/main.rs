@@ -17,7 +17,6 @@ use axum::{
 use metrics_exporter_prometheus::{Matcher, PrometheusBuilder, PrometheusHandle};
 use std::{
     future::ready,
-    net::SocketAddr,
     time::{Duration, Instant},
 };
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
@@ -42,24 +41,22 @@ fn main_app() -> Router {
 async fn start_main_server() {
     let app = main_app();
 
-    let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
-    tracing::debug!("listening on {}", addr);
-    axum::Server::bind(&addr)
-        .serve(app.into_make_service())
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:3000")
         .await
-        .unwrap()
+        .unwrap();
+    tracing::debug!("listening on {}", listener.local_addr().unwrap());
+    axum::serve(listener, app).await.unwrap();
 }
 
 async fn start_metrics_server() {
     let app = metrics_app();
 
     // NOTE: expose metrics enpoint on a different port
-    let addr = SocketAddr::from(([127, 0, 0, 1], 3001));
-    tracing::debug!("listening on {}", addr);
-    axum::Server::bind(&addr)
-        .serve(app.into_make_service())
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:3001")
         .await
-        .unwrap()
+        .unwrap();
+    tracing::debug!("listening on {}", listener.local_addr().unwrap());
+    axum::serve(listener, app).await.unwrap();
 }
 
 #[tokio::main]

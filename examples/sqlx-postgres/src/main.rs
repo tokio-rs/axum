@@ -21,9 +21,10 @@ use axum::{
     Router,
 };
 use sqlx::postgres::{PgPool, PgPoolOptions};
+use tokio::net::TcpListener;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
-use std::{net::SocketAddr, time::Duration};
+use std::time::Duration;
 
 #[tokio::main]
 async fn main() {
@@ -55,12 +56,9 @@ async fn main() {
         .with_state(pool);
 
     // run it with hyper
-    let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
-    tracing::debug!("listening on {}", addr);
-    axum::Server::bind(&addr)
-        .serve(app.into_make_service())
-        .await
-        .unwrap();
+    let listener = TcpListener::bind("127.0.0.1:3000").await.unwrap();
+    tracing::debug!("listening on {}", listener.local_addr().unwrap());
+    axum::serve(listener, app).await.unwrap();
 }
 
 // we can extract the connection pool with `State`

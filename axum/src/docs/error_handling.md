@@ -85,9 +85,7 @@ async fn handle_anyhow_error(err: anyhow::Error) -> (StatusCode, String) {
         format!("Something went wrong: {}", err),
     )
 }
-# async {
-# axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-# };
+# let _: Router = app;
 ```
 
 # Applying fallible middleware
@@ -129,9 +127,7 @@ async fn handle_timeout_error(err: BoxError) -> (StatusCode, String) {
         )
     }
 }
-# async {
-# axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-# };
+# let _: Router = app;
 ```
 
 # Running extractors for error handling
@@ -171,9 +167,7 @@ async fn handle_timeout_error(
         format!("`{} {}` failed with {}", method, uri, err),
     )
 }
-# async {
-# axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-# };
+# let _: Router = app;
 ```
 
 [`tower::Service`]: `tower::Service`

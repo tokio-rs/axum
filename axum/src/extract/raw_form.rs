@@ -25,9 +25,7 @@ use super::{
 /// async fn handler(RawForm(form): RawForm) {}
 ///
 /// let app = Router::new().route("/", get(handler));
-/// # async {
-/// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-/// # };
+/// # let _: Router = app;
 /// ```
 #[derive(Debug)]
 pub struct RawForm(pub Bytes);

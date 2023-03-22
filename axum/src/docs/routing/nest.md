@@ -24,9 +24,7 @@ let app = Router::new().nest("/api", api_routes);
 // Our app now accepts
 // - GET /api/users/:id
 // - POST /api/teams
-# async {
-# axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-# };
+# let _: Router = app;
 ```
 
 # How the URI changes
@@ -59,9 +57,7 @@ async fn users_get(Path(params): Path<HashMap<String, String>>) {
 let users_api = Router::new().route("/users/:id", get(users_get));
 
 let app = Router::new().nest("/:version/api", users_api);
-# async {
-# axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-# };
+# let _: Router = app;
 ```
 
 # Differences from wildcard routes
@@ -83,9 +79,7 @@ let app = Router::new()
         // `uri` will contain `/foo`
     }))
     .nest("/bar", nested_router);
-# async {
-# axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-# };
+# let _: Router = app;
 ```
 
 # Fallbacks

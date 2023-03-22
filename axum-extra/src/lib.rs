@@ -105,7 +105,7 @@ use axum_macros::__private_axum_test as test;
 pub(crate) mod test_helpers {
     #![allow(unused_imports)]
 
-    use axum::{body::HttpBody, BoxError, Router};
+    use axum::{extract::Request, response::Response, serve};
 
     mod test_client {
         #![allow(dead_code)]

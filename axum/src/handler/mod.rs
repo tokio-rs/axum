@@ -135,9 +135,7 @@ pub trait Handler<T, S>: Clone + Send + Sized + 'static {
     ///
     /// let layered_handler = handler.layer(ConcurrencyLimitLayer::new(64));
     /// let app = Router::new().route("/", get(layered_handler));
-    /// # async {
-    /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-    /// # };
+    /// # let _: Router = app;
     /// ```
     fn layer<L>(self, layer: L) -> Layered<L, Self, T, S>
     where

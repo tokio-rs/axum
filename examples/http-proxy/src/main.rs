@@ -52,7 +52,7 @@ async fn main() {
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
     tracing::debug!("listening on {}", addr);
-    axum::Server::bind(&addr)
+    hyper::Server::bind(&addr)
         .http1_preserve_header_case(true)
         .http1_title_case_headers(true)
         .serve(Shared::new(service))

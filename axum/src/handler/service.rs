@@ -37,7 +37,6 @@ impl<H, T, S> HandlerService<H, T, S> {
     ///
     /// ```rust
     /// use axum::{
-    ///     Server,
     ///     handler::Handler,
     ///     extract::State,
     ///     http::{Uri, Method},
@@ -55,10 +54,8 @@ impl<H, T, S> HandlerService<H, T, S> {
     /// let app = handler.with_state(AppState {});
     ///
     /// # async {
-    /// Server::bind(&SocketAddr::from(([127, 0, 0, 1], 3000)))
-    ///     .serve(app.into_make_service())
-    ///     .await?;
-    /// # Ok::<_, hyper::Error>(())
+    /// let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
+    /// axum::serve(listener, app.into_make_service()).await.unwrap();
     /// # };
     /// ```
     ///
@@ -74,7 +71,6 @@ impl<H, T, S> HandlerService<H, T, S> {
     ///
     /// ```rust
     /// use axum::{
-    ///     Server,
     ///     handler::Handler,
     ///     response::IntoResponse,
     ///     extract::{ConnectInfo, State},
@@ -94,10 +90,11 @@ impl<H, T, S> HandlerService<H, T, S> {
     /// let app = handler.with_state(AppState {});
     ///
     /// # async {
-    /// Server::bind(&SocketAddr::from(([127, 0, 0, 1], 3000)))
-    ///     .serve(app.into_make_service_with_connect_info::<SocketAddr>())
-    ///     .await?;
-    /// # Ok::<_, hyper::Error>(())
+    /// let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
+    /// axum::serve(
+    ///     listener,
+    ///     app.into_make_service_with_connect_info::<SocketAddr>(),
+    /// ).await.unwrap();
     /// # };
     /// ```
     ///
@@ -179,3 +176,27 @@ where
         super::future::IntoServiceFuture::new(future)
     }
 }
+
+// for `axum::serve(listener, handler)`
+#[cfg(feature = "tokio")]
+const _: () = {
+    use crate::serve::IncomingStream;
+
+    impl<H, T, S> Service<IncomingStream<'_>> for HandlerService<H, T, S>
+    where
+        H: Clone,
+        S: Clone,
+    {
+        type Response = Self;
+        type Error = Infallible;
+        type Future = std::future::Ready<Result<Self::Response, Self::Error>>;
+
+        fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+            Poll::Ready(Ok(()))
+        }
+
+        fn call(&mut self, _req: IncomingStream<'_>) -> Self::Future {
+            std::future::ready(Ok(self.clone()))
+        }
+    }
+};

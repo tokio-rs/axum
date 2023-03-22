@@ -48,9 +48,7 @@ macro_rules! top_level_service_fn {
             ///
             /// // Requests to `GET /` will go to `service`.
             /// let app = Router::new().route("/", get_service(service));
-            /// # async {
-            /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-            /// # };
+            /// # let _: Router = app;
             /// ```
             ///
             /// Note that `get` routes will also be called for `HEAD` requests but will have
@@ -109,9 +107,7 @@ macro_rules! top_level_handler_fn {
             ///
             /// // Requests to `GET /` will go to `handler`.
             /// let app = Router::new().route("/", get(handler));
-            /// # async {
-            /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-            /// # };
+            /// # let _: Router = app;
             /// ```
             ///
             /// Note that `get` routes will also be called for `HEAD` requests but will have
@@ -180,9 +176,7 @@ macro_rules! chained_service_fn {
             /// // Requests to `POST /` will go to `service` and `GET /` will go to
             /// // `other_service`.
             /// let app = Router::new().route("/", post_service(service).get_service(other_service));
-            /// # async {
-            /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-            /// # };
+            /// # let _: Router = app;
             /// ```
             ///
             /// Note that `get` routes will also be called for `HEAD` requests but will have
@@ -244,9 +238,7 @@ macro_rules! chained_handler_fn {
             /// // Requests to `POST /` will go to `handler` and `GET /` will go to
             /// // `other_handler`.
             /// let app = Router::new().route("/", post(handler).get(other_handler));
-            /// # async {
-            /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-            /// # };
+            /// # let _: Router = app;
             /// ```
             ///
             /// Note that `get` routes will also be called for `HEAD` requests but will have
@@ -316,9 +308,7 @@ top_level_service_fn!(trace_service, TRACE);
 ///
 /// // Requests to `POST /` will go to `service`.
 /// let app = Router::new().route("/", on_service(MethodFilter::POST, service));
-/// # async {
-/// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-/// # };
+/// # let _: Router = app;
 /// ```
 pub fn on_service<T, S>(filter: MethodFilter, svc: T) -> MethodRouter<S, T::Error>
 where
@@ -350,9 +340,7 @@ where
 ///
 /// // All requests to `/` will go to `service`.
 /// let app = Router::new().route("/", any_service(service));
-/// # async {
-/// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-/// # };
+/// # let _: Router = app;
 /// ```
 ///
 /// Additional methods can still be chained:
@@ -379,9 +367,7 @@ where
 ///
 /// // `POST /` goes to `other_service`. All other requests go to `service`
 /// let app = Router::new().route("/", any_service(service).post_service(other_service));
-/// # async {
-/// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-/// # };
+/// # let _: Router = app;
 /// ```
 pub fn any_service<T, S>(svc: T) -> MethodRouter<S, T::Error>
 where
@@ -419,9 +405,7 @@ top_level_handler_fn!(trace, TRACE);
 ///
 /// // Requests to `POST /` will go to `handler`.
 /// let app = Router::new().route("/", on(MethodFilter::POST, handler));
-/// # async {
-/// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-/// # };
+/// # let _: Router = app;
 /// ```
 pub fn on<H, T, S>(filter: MethodFilter, handler: H) -> MethodRouter<S, Infallible>
 where
@@ -446,9 +430,7 @@ where
 ///
 /// // All requests to `/` will go to `handler`.
 /// let app = Router::new().route("/", any(handler));
-/// # async {
-/// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-/// # };
+/// # let _: Router = app;
 /// ```
 ///
 /// Additional methods can still be chained:
@@ -465,9 +447,7 @@ where
 ///
 /// // `POST /` goes to `other_handler`. All other requests go to `handler`
 /// let app = Router::new().route("/", any(handler).post(other_handler));
-/// # async {
-/// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-/// # };
+/// # let _: Router = app;
 /// ```
 pub fn any<H, T, S>(handler: H) -> MethodRouter<S, Infallible>
 where
@@ -587,9 +567,7 @@ where
     /// // Requests to `GET /` will go to `handler` and `DELETE /` will go to
     /// // `other_handler`
     /// let app = Router::new().route("/", get(handler).on(MethodFilter::DELETE, other_handler));
-    /// # async {
-    /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-    /// # };
+    /// # let _: Router = app;
     /// ```
     #[track_caller]
     pub fn on<H, T>(self, filter: MethodFilter, handler: H) -> Self
@@ -632,7 +610,6 @@ impl MethodRouter<(), Infallible> {
     ///
     /// ```rust
     /// use axum::{
-    ///     Server,
     ///     handler::Handler,
     ///     http::{Uri, Method},
     ///     response::IntoResponse,
@@ -647,10 +624,8 @@ impl MethodRouter<(), Infallible> {
     /// let router = get(handler).post(handler);
     ///
     /// # async {
-    /// Server::bind(&SocketAddr::from(([127, 0, 0, 1], 3000)))
-    ///     .serve(router.into_make_service())
-    ///     .await?;
-    /// # Ok::<_, hyper::Error>(())
+    /// let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
+    /// axum::serve(listener, router.into_make_service()).await.unwrap();
     /// # };
     /// ```
     ///
@@ -666,7 +641,6 @@ impl MethodRouter<(), Infallible> {
     ///
     /// ```rust
     /// use axum::{
-    ///     Server,
     ///     handler::Handler,
     ///     response::IntoResponse,
     ///     extract::ConnectInfo,
@@ -681,10 +655,8 @@ impl MethodRouter<(), Infallible> {
     /// let router = get(handler).post(handler);
     ///
     /// # async {
-    /// Server::bind(&SocketAddr::from(([127, 0, 0, 1], 3000)))
-    ///     .serve(router.into_make_service_with_connect_info::<SocketAddr>())
-    ///     .await?;
-    /// # Ok::<_, hyper::Error>(())
+    /// let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
+    /// axum::serve(listener, router.into_make_service()).await.unwrap();
     /// # };
     /// ```
     ///
@@ -758,9 +730,7 @@ where
     ///
     /// // Requests to `DELETE /` will go to `service`
     /// let app = Router::new().route("/", on_service(MethodFilter::DELETE, service));
-    /// # async {
-    /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-    /// # };
+    /// # let _: Router = app;
     /// ```
     #[track_caller]
     pub fn on_service<T>(self, filter: MethodFilter, svc: T) -> Self
@@ -1261,6 +1231,26 @@ where
     }
 }
 
+// for `axum::serve(listener, router)`
+#[cfg(feature = "tokio")]
+const _: () = {
+    use crate::serve::IncomingStream;
+
+    impl Service<IncomingStream<'_>> for MethodRouter<()> {
+        type Response = Self;
+        type Error = Infallible;
+        type Future = std::future::Ready<Result<Self::Response, Self::Error>>;
+
+        fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+            Poll::Ready(Ok(()))
+        }
+
+        fn call(&mut self, _req: IncomingStream<'_>) -> Self::Future {
+            std::future::ready(Ok(self.clone()))
+        }
+    }
+};
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1361,7 +1351,7 @@ mod tests {
     }
 
     #[allow(dead_code)]
-    fn buiding_complex_router() {
+    async fn buiding_complex_router() {
         let app = crate::Router::new().route(
             "/",
             // use the all the things :bomb:
@@ -1380,7 +1370,8 @@ mod tests {
                 ),
         );
 
-        crate::Server::bind(&"0.0.0.0:0".parse().unwrap()).serve(app.into_make_service());
+        let listener = tokio::net::TcpListener::bind("0.0.0.0:0").await.unwrap();
+        crate::serve(listener, app).await.unwrap();
     }
 
     #[crate::test]

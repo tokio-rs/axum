@@ -19,7 +19,6 @@ use axum::{
 use std::{
     borrow::Cow,
     collections::HashMap,
-    net::SocketAddr,
     sync::{Arc, RwLock},
     time::Duration,
 };
@@ -74,12 +73,11 @@ async fn main() {
         .with_state(Arc::clone(&shared_state));
 
     // Run our app with hyper
-    let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
-    tracing::debug!("listening on {}", addr);
-    axum::Server::bind(&addr)
-        .serve(app.into_make_service())
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:3000")
         .await
         .unwrap();
+    tracing::debug!("listening on {}", listener.local_addr().unwrap());
+    axum::serve(listener, app).await.unwrap();
 }
 
 type SharedState = Arc<RwLock<AppState>>;
