@@ -162,7 +162,7 @@ left to right.
 
 The request body is an asynchronous stream that can only be consumed once.
 Therefore you can only have one extractor that consumes the request body. axum
-enforces by that requiring such extractors to be the _last_ argument your
+enforces this by requiring such extractors to be the _last_ argument your
 handler takes.
 
 For example
