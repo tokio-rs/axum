@@ -37,6 +37,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **breaking:** Removed the `BoxBody` type alias and its `box_body`
   constructor. Use `axum::body::Body::new` instead ([#1789])
 - **breaking:** Remove `RawBody` extractor. `axum::body::Body` implements `FromRequest` directly ([#1789])
+- **breaking:** The following types from `http-body` no longer implement `IntoResponse`:
+  - `Full`, use `Body::from` instead
+  - `Empty`, use `Body::empty` instead
+  - `BoxBody`, use `Body::new` instead
+  - `UnsyncBoxBody`, use `Body::new` instead
+  - `MapData`, use `Body::new` instead
+  - `MapErr`, use `Body::new` instead
 - **added:** Add `axum::extract::Request` type alias where the body is `axum::body::Body` ([#1789])
 - **added:** Add `Router::as_service` and `Router::into_service` to workaround
   type inference issues when calling `ServiceExt` methods on a `Router` ([#1835])
