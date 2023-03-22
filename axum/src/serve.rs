@@ -111,13 +111,11 @@ where
             //
             // services like `Router` are always ready, so assume the service
             // we're running here is also always ready...
-            let waker = futures_util::task::noop_waker();
-            let mut cx = Context::from_waker(&waker);
-            match service.poll_ready(&mut cx) {
-                Poll::Ready(Ok(())) => {}
-                Poll::Ready(Err(err)) => match err {},
-                // ...otherwise load shed
-                Poll::Pending => {
+            match futures_util::future::poll_fn(|cx| service.poll_ready(cx)).now_or_never() {
+                Some(Ok(())) => {}
+                Some(Err(err)) => match err {},
+                None => {
+                    // ...otherwise load shed
                     let mut res = Response::new(HttpBody04ToHttpBody1::new(Body::empty()));
                     *res.status_mut() = http::StatusCode::SERVICE_UNAVAILABLE;
                     return std::future::ready(Ok(res)).left_future();
@@ -146,9 +144,7 @@ where
                 .await
             {
                 Ok(()) => {}
-                Err(_err) => {
-                    // TODO(david): how to handle this error?
-                }
+                Err(_err) => {}
             }
         });
     }
