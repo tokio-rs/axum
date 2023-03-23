@@ -19,7 +19,7 @@ async-trait = "0.1.67"
 bytes = "1.0"
 futures-util = { version = "0.3", default-features = false, features = ["alloc"] }
 http = "0.2.7"
-http-body = "0.4.5"
+http-body = "1.0.0-rc.2"
 mime = "0.3.16"
 pin-project-lite = "0.2.7"
 sync_wrapper = "0.1.1"
@@ -35,7 +35,7 @@ rustversion = "1.0.9"
 [dev-dependencies]
 axum = { path = "../axum", version = "0.6.0", features = ["headers"] }
 futures-util = { version = "0.3", default-features = false, features = ["alloc"] }
-hyper = "0.14.24"
+hyper = "1.0.0-rc.3"
 tokio = { version = "1.25.0", features = ["macros"] }
 tower-http = { version = "0.4", features = ["limit"] }
 
