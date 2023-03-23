@@ -4,9 +4,8 @@ use std::{convert::Infallible, io, net::SocketAddr};
 
 use axum_core::{body::Body, extract::Request, response::Response};
 use futures_util::{future::poll_fn, FutureExt};
-use hyper1::server::conn::http1;
+use hyper::server::conn::http1;
 use tokio::net::{TcpListener, TcpStream};
-use tower_hyper_http_body_compat::{HttpBody04ToHttpBody1, HttpBody1ToHttpBody04};
 use tower_service::Service;
 
 /// Serve the service with the supplied listener.
@@ -95,13 +94,7 @@ where
             .await
             .unwrap_or_else(|err| match err {});
 
-        let service = hyper1::service::service_fn(move |req: Request<hyper1::body::Incoming>| {
-            let req = req.map(|body| {
-                // wont need this when axum uses http-body 1.0
-                let http_body_04 = HttpBody1ToHttpBody04::new(body);
-                Body::new(http_body_04)
-            });
-
+        let service = hyper::service::service_fn(move |req: Request<hyper::body::Incoming>| {
             // doing this saves cloning the service just to await the service being ready
             //
             // services like `Router` are always ready, so assume the service
@@ -111,20 +104,16 @@ where
                 Some(Err(err)) => match err {},
                 None => {
                     // ...otherwise load shed
-                    let mut res = Response::new(HttpBody04ToHttpBody1::new(Body::empty()));
+                    let mut res = Response::new(Body::empty());
                     *res.status_mut() = http::StatusCode::SERVICE_UNAVAILABLE;
                     return std::future::ready(Ok(res)).left_future();
                 }
             }
 
-            let future = service.call(req);
+            let future = service.call(req.map(Body::new));
 
             async move {
-                let response = future
-                    .await
-                    .unwrap_or_else(|err| match err {})
-                    // wont need this when axum uses http-body 1.0
-                    .map(HttpBody04ToHttpBody1::new);
+                let response = future.await.unwrap_or_else(|err| match err {});
 
                 Ok::<_, Infallible>(response)
             }

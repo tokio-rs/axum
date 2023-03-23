@@ -40,6 +40,7 @@ use futures_util::{
     ready,
     stream::{Stream, TryStream},
 };
+use http_body::Frame;
 use pin_project_lite::pin_project;
 use std::{
     fmt,
@@ -129,16 +130,16 @@ where
     type Data = Bytes;
     type Error = E;
 
-    fn poll_data(
+    fn poll_frame(
         self: Pin<&mut Self>,
         cx: &mut Context<'_>,
-    ) -> Poll<Option<Result<Self::Data, Self::Error>>> {
+    ) -> Poll<Option<Result<Frame<Self::Data>, Self::Error>>> {
         let this = self.project();
 
         match this.event_stream.get_pin_mut().poll_next(cx) {
             Poll::Pending => {
                 if let Some(keep_alive) = this.keep_alive.as_pin_mut() {
-                    keep_alive.poll_event(cx).map(|e| Some(Ok(e)))
+                    keep_alive.poll_event(cx).map(|e| Some(Ok(Frame::data(e))))
                 } else {
                     Poll::Pending
                 }
@@ -147,18 +148,11 @@ where
                 if let Some(keep_alive) = this.keep_alive.as_pin_mut() {
                     keep_alive.reset();
                 }
-                Poll::Ready(Some(Ok(event.finalize())))
+                Poll::Ready(Some(Ok(Frame::data(event.finalize()))))
             }
             Poll::Ready(Some(Err(error))) => Poll::Ready(Some(Err(error))),
             Poll::Ready(None) => Poll::Ready(None),
         }
-    }
-
-    fn poll_trailers(
-        self: Pin<&mut Self>,
-        _cx: &mut Context<'_>,
-    ) -> Poll<Result<Option<http::HeaderMap>, Self::Error>> {
-        Poll::Ready(Ok(None))
     }
 }
 

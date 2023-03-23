@@ -4,69 +4,74 @@
 //! cargo run -p example-rest-grpc-multiplex
 //! ```
 
-use self::multiplex_service::MultiplexService;
-use axum::{routing::get, Router};
-use proto::{
-    greeter_server::{Greeter, GreeterServer},
-    HelloReply, HelloRequest,
-};
-use std::net::SocketAddr;
-use tonic::{Response as TonicResponse, Status};
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
-
-mod multiplex_service;
-
-mod proto {
-    tonic::include_proto!("helloworld");
+// TODO: updating this example requires updating tonic
+fn main() {
+    eprint!("this example has not yet been updated to hyper 1.0");
 }
 
-#[derive(Default)]
-struct GrpcServiceImpl {}
+// use self::multiplex_service::MultiplexService;
+// use axum::{routing::get, Router};
+// use proto::{
+//     greeter_server::{Greeter, GreeterServer},
+//     HelloReply, HelloRequest,
+// };
+// use std::net::SocketAddr;
+// use tonic::{Response as TonicResponse, Status};
+// use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
-#[tonic::async_trait]
-impl Greeter for GrpcServiceImpl {
-    async fn say_hello(
-        &self,
-        request: tonic::Request<HelloRequest>,
-    ) -> Result<TonicResponse<HelloReply>, Status> {
-        tracing::info!("Got a request from {:?}", request.remote_addr());
+// mod multiplex_service;
 
-        let reply = HelloReply {
-            message: format!("Hello {}!", request.into_inner().name),
-        };
+// mod proto {
+//     tonic::include_proto!("helloworld");
+// }
 
-        Ok(TonicResponse::new(reply))
-    }
-}
+// #[derive(Default)]
+// struct GrpcServiceImpl {}
 
-async fn web_root() -> &'static str {
-    "Hello, World!"
-}
+// #[tonic::async_trait]
+// impl Greeter for GrpcServiceImpl {
+//     async fn say_hello(
+//         &self,
+//         request: tonic::Request<HelloRequest>,
+//     ) -> Result<TonicResponse<HelloReply>, Status> {
+//         tracing::info!("Got a request from {:?}", request.remote_addr());
 
-#[tokio::main]
-async fn main() {
-    // initialize tracing
-    tracing_subscriber::registry()
-        .with(
-            tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "example_rest_grpc_multiplex=debug".into()),
-        )
-        .with(tracing_subscriber::fmt::layer())
-        .init();
+//         let reply = HelloReply {
+//             message: format!("Hello {}!", request.into_inner().name),
+//         };
 
-    // build the rest service
-    let rest = Router::new().route("/", get(web_root));
+//         Ok(TonicResponse::new(reply))
+//     }
+// }
 
-    // build the grpc service
-    let grpc = GreeterServer::new(GrpcServiceImpl::default());
+// async fn web_root() -> &'static str {
+//     "Hello, World!"
+// }
 
-    // combine them into one service
-    let service = MultiplexService::new(rest, grpc);
+// #[tokio::main]
+// async fn main() {
+//     // initialize tracing
+//     tracing_subscriber::registry()
+//         .with(
+//             tracing_subscriber::EnvFilter::try_from_default_env()
+//                 .unwrap_or_else(|_| "example_rest_grpc_multiplex=debug".into()),
+//         )
+//         .with(tracing_subscriber::fmt::layer())
+//         .init();
 
-    let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
-    tracing::debug!("listening on {}", addr);
-    hyper::Server::bind(&addr)
-        .serve(tower::make::Shared::new(service))
-        .await
-        .unwrap();
-}
+//     // build the rest service
+//     let rest = Router::new().route("/", get(web_root));
+
+//     // build the grpc service
+//     let grpc = GreeterServer::new(GrpcServiceImpl::default());
+
+//     // combine them into one service
+//     let service = MultiplexService::new(rest, grpc);
+
+//     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
+//     tracing::debug!("listening on {}", addr);
+//     hyper::Server::bind(&addr)
+//         .serve(tower::make::Shared::new(service))
+//         .await
+//         .unwrap();
+// }

@@ -232,6 +232,7 @@ fn set_cookies(jar: cookie::CookieJar, headers: &mut HeaderMap) {
 mod tests {
     use super::*;
     use axum::{body::Body, extract::FromRef, http::Request, routing::get, Router};
+    use http_body_util::BodyExt;
     use tower::ServiceExt;
 
     macro_rules! cookie_test {
@@ -376,7 +377,7 @@ mod tests {
         B: axum::body::HttpBody,
         B::Error: std::fmt::Debug,
     {
-        let bytes = hyper::body::to_bytes(body).await.unwrap();
+        let bytes = body.collect().await.unwrap().to_bytes();
         String::from_utf8(bytes.to_vec()).unwrap()
     }
 }

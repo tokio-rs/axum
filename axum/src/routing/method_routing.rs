@@ -1260,6 +1260,7 @@ mod tests {
     };
     use axum_core::response::IntoResponse;
     use http::{header::ALLOW, HeaderMap};
+    use http_body_util::BodyExt;
     use std::time::Duration;
     use tower::{timeout::TimeoutLayer, Service, ServiceBuilder, ServiceExt};
     use tower_http::{services::fs::ServeDir, validate_request::ValidateRequestHeaderLayer};
@@ -1553,7 +1554,8 @@ mod tests {
             .unwrap()
             .into_response();
         let (parts, body) = response.into_parts();
-        let body = String::from_utf8(hyper::body::to_bytes(body).await.unwrap().to_vec()).unwrap();
+        let body =
+            String::from_utf8(BodyExt::collect(body).await.unwrap().to_bytes().to_vec()).unwrap();
         (parts.status, parts.headers, body)
     }
 

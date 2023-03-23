@@ -11,6 +11,7 @@ use crate::{
 use axum_core::extract::Request;
 use futures_util::stream::StreamExt;
 use http::{header::ALLOW, header::CONTENT_LENGTH, HeaderMap, StatusCode, Uri};
+use http_body_util::BodyExt;
 use serde_json::json;
 use std::{
     convert::Infallible,

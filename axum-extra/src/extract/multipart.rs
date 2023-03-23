@@ -278,7 +278,7 @@ fn status_code_from_multer_error(err: &multer::Error) -> StatusCode {
             if err
                 .downcast_ref::<axum::Error>()
                 .and_then(|err| err.source())
-                .and_then(|err| err.downcast_ref::<http_body::LengthLimitError>())
+                .and_then(|err| err.downcast_ref::<http_body_util::LengthLimitError>())
                 .is_some()
             {
                 return StatusCode::PAYLOAD_TOO_LARGE;

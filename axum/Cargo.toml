@@ -37,6 +37,7 @@ bytes = "1.0"
 futures-util = { version = "0.3", default-features = false, features = ["alloc"] }
 http = "0.2.9"
 http-body = "1.0.0-rc.2"
+http-body-util = "0.1.0-rc.2"
 hyper = "1.0.0-rc.3"
 itoa = "1.0.5"
 matchit = "0.7"

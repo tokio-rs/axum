@@ -40,6 +40,7 @@ bytes = "1.1.0"
 futures-util = { version = "0.3", default-features = false, features = ["alloc"] }
 http = "0.2"
 http-body = "1.0.0-rc.2"
+http-body-util = "0.1.0-rc.2"
 mime = "0.3"
 pin-project-lite = "0.2"
 tokio = "1.19"

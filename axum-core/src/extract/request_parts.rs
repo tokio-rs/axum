@@ -3,6 +3,7 @@ use crate::{body::Body, RequestExt};
 use async_trait::async_trait;
 use bytes::Bytes;
 use http::{request::Parts, HeaderMap, Method, Uri, Version};
+use http_body_util::BodyExt;
 use std::convert::Infallible;
 
 #[async_trait]
@@ -79,12 +80,16 @@ where
 
     async fn from_request(req: Request, _: &S) -> Result<Self, Self::Rejection> {
         let bytes = match req.into_limited_body() {
-            Ok(limited_body) => crate::body::to_bytes(limited_body)
+            Ok(limited_body) => limited_body
+                .collect()
                 .await
-                .map_err(FailedToBufferBody::from_err)?,
-            Err(unlimited_body) => crate::body::to_bytes(unlimited_body)
+                .map_err(FailedToBufferBody::from_err)?
+                .to_bytes(),
+            Err(unlimited_body) => unlimited_body
+                .collect()
                 .await
-                .map_err(FailedToBufferBody::from_err)?,
+                .map_err(FailedToBufferBody::from_err)?
+                .to_bytes(),
         };
 
         Ok(bytes)

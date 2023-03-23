@@ -8,7 +8,6 @@ use super::{Extension, FromRequestParts};
 use crate::{middleware::AddExtension, serve::IncomingStream};
 use async_trait::async_trait;
 use http::request::Parts;
-use hyper::server::conn::AddrStream;
 use std::{
     convert::Infallible,
     fmt,
@@ -81,12 +80,6 @@ where
 pub trait Connected<T>: Clone + Send + Sync + 'static {
     /// Create type holding information about the connection.
     fn connect_info(target: T) -> Self;
-}
-
-impl Connected<&AddrStream> for SocketAddr {
-    fn connect_info(target: &AddrStream) -> Self {
-        target.remote_addr()
-    }
 }
 
 impl Connected<IncomingStream<'_>> for SocketAddr {

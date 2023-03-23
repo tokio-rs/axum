@@ -59,11 +59,12 @@ mod tests {
         extract::connect_info::MockConnectInfo,
         http::{self, Request, StatusCode},
     };
+    use http_body_util::BodyExt;
     use serde_json::{json, Value};
     use std::net::SocketAddr;
     use tokio::net::TcpListener;
     use tower::Service; // for `call`
-    use tower::ServiceExt; // for `oneshot` and `ready`
+    use tower::ServiceExt; // for `oneshot` and `ready` // for `collect`
 
     #[tokio::test]
     async fn hello_world() {
@@ -78,7 +79,7 @@ mod tests {
 
         assert_eq!(response.status(), StatusCode::OK);
 
-        let body = hyper::body::to_bytes(response.into_body()).await.unwrap();
+        let body = response.into_body().collect().await.unwrap().to_bytes();
         assert_eq!(&body[..], b"Hello, World!");
     }
 
@@ -102,7 +103,7 @@ mod tests {
 
         assert_eq!(response.status(), StatusCode::OK);
 
-        let body = hyper::body::to_bytes(response.into_body()).await.unwrap();
+        let body = response.into_body().collect().await.unwrap().to_bytes();
         let body: Value = serde_json::from_slice(&body).unwrap();
         assert_eq!(body, json!({ "data": [1, 2, 3, 4] }));
     }
@@ -122,34 +123,36 @@ mod tests {
             .unwrap();
 
         assert_eq!(response.status(), StatusCode::NOT_FOUND);
-        let body = hyper::body::to_bytes(response.into_body()).await.unwrap();
+        let body = response.into_body().collect().await.unwrap().to_bytes();
         assert!(body.is_empty());
     }
 
     // You can also spawn a server and talk to it like any other HTTP server:
     #[tokio::test]
     async fn the_real_deal() {
-        let listener = TcpListener::bind("0.0.0.0:0").await.unwrap();
-        let addr = listener.local_addr().unwrap();
+        todo!();
 
-        tokio::spawn(async move {
-            axum::serve(listener, app()).await.unwrap();
-        });
+        // let listener = TcpListener::bind("0.0.0.0:0").await.unwrap();
+        // let addr = listener.local_addr().unwrap();
 
-        let client = hyper::Client::new();
+        // tokio::spawn(async move {
+        //     axum::serve(listener, app()).await.unwrap();
+        // });
 
-        let response = client
-            .request(
-                Request::builder()
-                    .uri(format!("http://{}", addr))
-                    .body(hyper::Body::empty())
-                    .unwrap(),
-            )
-            .await
-            .unwrap();
+        // let client = hyper::Client::new();
 
-        let body = hyper::body::to_bytes(response.into_body()).await.unwrap();
-        assert_eq!(&body[..], b"Hello, World!");
+        // let response = client
+        //     .request(
+        //         Request::builder()
+        //             .uri(format!("http://{}", addr))
+        //             .body(axum::Body::empty())
+        //             .unwrap(),
+        //     )
+        //     .await
+        //     .unwrap();
+
+        // let body = response.into_body().collect().await.unwrap().to_bytes();
+        // assert_eq!(&body[..], b"Hello, World!");
     }
 
     // You can use `ready()` and `call()` to avoid using `clone()`

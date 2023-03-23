@@ -1,7 +1,7 @@
 use crate::body::Body;
 use crate::extract::{DefaultBodyLimitKind, FromRequest, FromRequestParts, Request};
 use futures_util::future::BoxFuture;
-use http_body::Limited;
+use http_body_util::Limited;
 
 mod sealed {
     pub trait Sealed {}
@@ -326,9 +326,9 @@ impl RequestExt for Request {
         match self.extensions().get::<DefaultBodyLimitKind>().copied() {
             Some(DefaultBodyLimitKind::Disable) => Err(self),
             Some(DefaultBodyLimitKind::Limit(limit)) => {
-                Ok(self.map(|b| http_body::Limited::new(b, limit)))
+                Ok(self.map(|b| http_body_util::Limited::new(b, limit)))
             }
-            None => Ok(self.map(|b| http_body::Limited::new(b, DEFAULT_LIMIT))),
+            None => Ok(self.map(|b| http_body_util::Limited::new(b, DEFAULT_LIMIT))),
         }
     }
 
