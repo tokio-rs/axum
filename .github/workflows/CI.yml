@@ -48,7 +48,7 @@ jobs:
     - uses: Swatinem/rust-cache@v1
     - name: cargo doc
       env:
-        RUSTDOCFLAGS: "-D broken-intra-doc-links"
+        RUSTDOCFLAGS: "-D rustdoc::all"
       run: cargo doc --all-features --no-deps
 
   cargo-hack:
