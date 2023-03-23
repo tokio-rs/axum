@@ -48,7 +48,7 @@ jobs:
     - uses: Swatinem/rust-cache@v1
     - name: cargo doc
       env:
-        RUSTDOCFLAGS: "-D rustdoc::all"
+        RUSTDOCFLAGS: "-D rustdoc::all -A rustdoc::private-doc-tests"
       run: cargo doc --all-features --no-deps
 
   cargo-hack:
