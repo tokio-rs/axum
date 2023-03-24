@@ -22,9 +22,7 @@
 //!
 //!     Sse::new(stream).keep_alive(KeepAlive::default())
 //! }
-//! # async {
-//! # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-//! # };
+//! # let _: Router = app;
 //! ```
 
 use crate::{

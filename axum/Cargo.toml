@@ -22,7 +22,7 @@ matched-path = []
 multipart = ["dep:multer"]
 original-uri = []
 query = ["dep:serde_urlencoded"]
-tokio = ["dep:tokio", "hyper/server", "tower/make"]
+tokio = ["dep:tokio", "tokio/rt", "tokio/net", "hyper/server", "tower/make"]
 tower-log = ["tower/log"]
 ws = ["tokio", "dep:tokio-tungstenite", "dep:sha1", "dep:base64"]
 

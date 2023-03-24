@@ -46,7 +46,7 @@ use tower_layer::Layer;
 /// ```
 /// use axum::{Router, routing::post, body::Body, extract::Request};
 /// use tower_http::limit::RequestBodyLimitLayer;
-/// use http_body::Limited;
+/// use http_body_util::Limited;
 ///
 /// let app = Router::new()
 ///     .route(
@@ -102,7 +102,7 @@ impl DefaultBodyLimit {
     ///     extract::DefaultBodyLimit,
     /// };
     /// use tower_http::limit::RequestBodyLimitLayer;
-    /// use http_body::Limited;
+    /// use http_body_util::Limited;
     ///
     /// let app: Router<()> = Router::new()
     ///     .route("/", get(|body: Bytes| async {}))
@@ -137,7 +137,7 @@ impl DefaultBodyLimit {
     ///     extract::DefaultBodyLimit,
     /// };
     /// use tower_http::limit::RequestBodyLimitLayer;
-    /// use http_body::Limited;
+    /// use http_body_util::Limited;
     ///
     /// let app: Router<()> = Router::new()
     ///     .route("/", get(|body: Bytes| async {}))

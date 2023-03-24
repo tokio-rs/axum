@@ -58,9 +58,7 @@ use std::{
 /// async fn handler() -> Result<(), MyError> {
 ///     Err(MyError::SomethingWentWrong)
 /// }
-/// # async {
-/// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-/// # };
+/// # let _: Router = app;
 /// ```
 ///
 /// Or if you have a custom body type you'll also need to implement
@@ -76,6 +74,7 @@ use std::{
 /// };
 /// use http::HeaderMap;
 /// use bytes::Bytes;
+/// use http_body::Frame;
 /// use std::{
 ///     convert::Infallible,
 ///     task::{Poll, Context},
@@ -90,18 +89,10 @@ use std::{
 ///     type Data = Bytes;
 ///     type Error = Infallible;
 ///
-///     fn poll_data(
+///     fn poll_frame(
 ///         self: Pin<&mut Self>,
-///         cx: &mut Context<'_>
-///     ) -> Poll<Option<Result<Self::Data, Self::Error>>> {
-///         # unimplemented!()
-///         // ...
-///     }
-///
-///     fn poll_trailers(
-///         self: Pin<&mut Self>,
-///         cx: &mut Context<'_>
-///     ) -> Poll<Result<Option<HeaderMap>, Self::Error>> {
+///         cx: &mut Context<'_>,
+///     ) -> Poll<Option<Result<Frame<Self::Data>, Self::Error>>> {
 ///         # unimplemented!()
 ///         // ...
 ///     }
