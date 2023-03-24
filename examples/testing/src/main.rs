@@ -62,6 +62,7 @@ mod tests {
     use http_body_util::BodyExt;
     use serde_json::{json, Value};
     use std::net::SocketAddr;
+    use tokio::net::{TcpListener, TcpStream};
     use tower::Service; // for `call`
     use tower::ServiceExt; // for `oneshot` and `ready` // for `collect`
 
@@ -129,29 +130,36 @@ mod tests {
     // You can also spawn a server and talk to it like any other HTTP server:
     #[tokio::test]
     async fn the_real_deal() {
-        todo!();
+        // TODO(david): convert this to hyper-util when thats published
 
-        // let listener = TcpListener::bind("0.0.0.0:0").await.unwrap();
-        // let addr = listener.local_addr().unwrap();
+        use hyper::client::conn;
 
-        // tokio::spawn(async move {
-        //     axum::serve(listener, app()).await.unwrap();
-        // });
+        let listener = TcpListener::bind("0.0.0.0:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
 
-        // let client = hyper::Client::new();
+        tokio::spawn(async move {
+            axum::serve(listener, app()).await.unwrap();
+        });
 
-        // let response = client
-        //     .request(
-        //         Request::builder()
-        //             .uri(format!("http://{}", addr))
-        //             .body(axum::Body::empty())
-        //             .unwrap(),
-        //     )
-        //     .await
-        //     .unwrap();
+        let target_stream = TcpStream::connect(addr).await.unwrap();
 
-        // let body = response.into_body().collect().await.unwrap().to_bytes();
-        // assert_eq!(&body[..], b"Hello, World!");
+        let (mut request_sender, connection) = conn::http1::handshake(target_stream).await.unwrap();
+
+        tokio::spawn(async move { connection.await.unwrap() });
+
+        let response = request_sender
+            .send_request(
+                Request::builder()
+                    .uri(format!("http://{}", addr))
+                    .header("Host", "localhost")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        let body = response.into_body().collect().await.unwrap().to_bytes();
+        assert_eq!(&body[..], b"Hello, World!");
     }
 
     // You can use `ready()` and `call()` to avoid using `clone()`
