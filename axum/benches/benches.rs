@@ -148,7 +148,7 @@ impl BenchmarkBuilder {
         let addr = listener.local_addr().unwrap();
 
         std::thread::spawn(move || {
-            rt.block_on(axum::serve(listener, app));
+            rt.block_on(axum::serve(listener, app)).unwrap();
         });
 
         let mut cmd = Command::new("rewrk");
