@@ -1232,7 +1232,7 @@ where
 }
 
 // for `axum::serve(listener, router)`
-#[cfg(feature = "tokio")]
+#[cfg(all(feature = "tokio", feature = "http1"))]
 const _: () = {
     use crate::serve::IncomingStream;
 
