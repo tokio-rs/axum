@@ -8,7 +8,7 @@ use tower_layer::Layer;
 ///
 /// This middleware provides ways to configure that.
 ///
-/// Note that if an extractor consumes the body directly with [`Body::data`], or similar, the
+/// Note that if an extractor consumes the body directly with [`Body::poll_frame`], or similar, the
 /// default limit is _not_ applied.
 ///
 /// # Difference between `DefaultBodyLimit` and [`RequestBodyLimit`]
@@ -63,7 +63,7 @@ use tower_layer::Layer;
 /// extractors and want to sure a limit is also applied there then [`RequestBodyLimit`] should be
 /// used.
 ///
-/// [`Body::data`]: http_body::Body::data
+/// [`Body::poll_frame`]: http_body::Body::poll_frame
 /// [`Bytes`]: bytes::Bytes
 /// [`Json`]: https://docs.rs/axum/0.6.0/axum/struct.Json.html
 /// [`Form`]: https://docs.rs/axum/0.6.0/axum/struct.Form.html

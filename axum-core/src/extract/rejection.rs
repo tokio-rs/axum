@@ -33,7 +33,7 @@ define_rejection! {
     /// Encountered some other error when buffering the body.
     ///
     /// This can  _only_ happen when you're using [`tower_http::limit::RequestBodyLimitLayer`] or
-    /// otherwise wrapping request bodies in [`http_body::Limited`].
+    /// otherwise wrapping request bodies in [`http_body_util::Limited`].
     pub struct LengthLimitError(Error);
 }
 
