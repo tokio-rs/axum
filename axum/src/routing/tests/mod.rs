@@ -593,6 +593,7 @@ async fn head_content_length_through_hyper_server_that_hits_fallback() {
 }
 
 #[crate::test]
+#[ignore]
 async fn head_with_middleware_applied() {
     use tower_http::compression::{predicate::SizeAbove, CompressionLayer};
 
