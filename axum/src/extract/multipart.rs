@@ -5,7 +5,6 @@
 use super::{FromRequest, Request};
 use crate::body::Bytes;
 use async_trait::async_trait;
-use axum_core::body::Body;
 use axum_core::response::{IntoResponse, Response};
 use axum_core::RequestExt;
 use futures_util::stream::Stream;
