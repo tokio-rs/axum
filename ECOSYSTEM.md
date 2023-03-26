@@ -15,6 +15,7 @@ If your project isn't listed here and you would like it to be, please feel free 
 - [axum_session](https://github.com/AscendingCreations/AxumSessions): Database persistent sessions like pythons flask_sessionstore for Axum.
 - [axum_session_auth](https://github.com/AscendingCreations/AxumSessionsAuth): Persistant session based user login with rights management for Axum.
 - [axum-auth](https://crates.io/crates/axum-auth): High-level http auth extractors for axum.
+- [axum-keycloak-auth](https://github.com/lpotthast/axum-keycloak-auth): Protect axum routes with a JWT emitted by Keycloak.
 - [shuttle](https://github.com/getsynth/shuttle): A serverless platform built for Rust. Now with axum support.
 - [axum-tungstenite](https://github.com/davidpdrsn/axum-tungstenite): WebSocket connections for axum directly using tungstenite
 - [axum-jrpc](https://github.com/0xdeafbeef/axum-jrpc): Json-rpc extractor for axum
