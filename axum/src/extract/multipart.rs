@@ -6,6 +6,8 @@ use super::{BodyStream, FromRequest};
 use crate::body::{Bytes, HttpBody};
 use crate::BoxError;
 use async_trait::async_trait;
+use axum_core::__composite_rejection as composite_rejection;
+use axum_core::__define_rejection as define_rejection;
 use axum_core::response::{IntoResponse, Response};
 use axum_core::RequestExt;
 use futures_util::stream::Stream;

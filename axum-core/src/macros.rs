@@ -1,4 +1,51 @@
-macro_rules! define_rejection {
+/// Private API.
+#[doc(hidden)]
+#[macro_export]
+macro_rules! __define_rejection {
+    (
+        #[status = $status:ident]
+        #[body = $body:expr]
+        $(#[$m:meta])*
+        pub struct $name:ident;
+    ) => {
+        $(#[$m])*
+        #[derive(Debug)]
+        #[non_exhaustive]
+        pub struct $name;
+
+        impl $crate::response::IntoResponse for $name {
+            fn into_response(self) -> $crate::response::Response {
+                (self.status(), $body).into_response()
+            }
+        }
+
+        impl $name {
+            /// Get the response body text used for this rejection.
+            pub fn body_text(&self) -> String {
+                $body.into()
+            }
+
+            /// Get the status code used for this rejection.
+            pub fn status(&self) -> http::StatusCode {
+                http::StatusCode::$status
+            }
+        }
+
+        impl std::fmt::Display for $name {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                write!(f, "{}", $body)
+            }
+        }
+
+        impl std::error::Error for $name {}
+
+        impl Default for $name {
+            fn default() -> Self {
+                Self
+            }
+        }
+    };
+
     (
         #[status = $status:ident]
         #[body = $body:expr]
@@ -7,15 +54,20 @@ macro_rules! define_rejection {
     ) => {
         $(#[$m])*
         #[derive(Debug)]
-        pub struct $name(pub(crate) crate::Error);
+        pub struct $name(pub(crate) $crate::Error);
 
         impl $name {
-            #[allow(dead_code)]
             pub(crate) fn from_err<E>(err: E) -> Self
             where
-                E: Into<crate::BoxError>,
+                E: Into<$crate::BoxError>,
             {
-                Self(crate::Error::new(err))
+                Self($crate::Error::new(err))
+            }
+        }
+
+        impl $crate::response::IntoResponse for $name {
+            fn into_response(self) -> $crate::response::Response {
+                (self.status(), self.body_text()).into_response()
             }
         }
 
@@ -28,12 +80,6 @@ macro_rules! define_rejection {
             /// Get the status code used for this rejection.
             pub fn status(&self) -> http::StatusCode {
                 http::StatusCode::$status
-            }
-        }
-
-        impl crate::response::IntoResponse for $name {
-            fn into_response(self) -> $crate::response::Response {
-                (self.status(), self.body_text()).into_response()
             }
         }
 
@@ -51,7 +97,10 @@ macro_rules! define_rejection {
     };
 }
 
-macro_rules! composite_rejection {
+/// Private API.
+#[doc(hidden)]
+#[macro_export]
+macro_rules! __composite_rejection {
     (
         $(#[$m:meta])*
         pub enum $name:ident {
