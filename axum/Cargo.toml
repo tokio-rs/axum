@@ -24,6 +24,7 @@ original-uri = []
 query = ["dep:serde_urlencoded"]
 tokio = ["dep:tokio", "hyper/server", "hyper/tcp", "hyper/runtime", "tower/make"]
 tower-log = ["tower/log"]
+tracing = ["dep:tracing", "axum-core/tracing"]
 ws = ["tokio", "dep:tokio-tungstenite", "dep:sha1", "dep:base64"]
 
 # Required for intra-doc links to resolve correctly
@@ -61,6 +62,7 @@ serde_urlencoded = { version = "0.7", optional = true }
 sha1 = { version = "0.10", optional = true }
 tokio = { package = "tokio", version = "1.25.0", features = ["time"], optional = true }
 tokio-tungstenite = { version = "0.18.0", optional = true }
+tracing = { version = "0.1", default-features = false, optional = true }
 
 [dependencies.tower-http]
 version = "0.4"
@@ -113,6 +115,7 @@ time = { version = "0.3", features = ["serde-human-readable"] }
 tokio = { package = "tokio", version = "1.25.0", features = ["macros", "rt", "rt-multi-thread", "net", "test-util"] }
 tokio-stream = "0.1"
 tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["json"] }
 uuid = { version = "1.0", features = ["serde", "v4"] }
 
 [package.metadata.docs.rs]

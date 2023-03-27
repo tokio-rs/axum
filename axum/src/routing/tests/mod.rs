@@ -5,12 +5,16 @@ use crate::{
     handler::{Handler, HandlerWithoutStateExt},
     response::IntoResponse,
     routing::{delete, get, get_service, on, on_service, patch, patch_service, post, MethodFilter},
-    test_helpers::*,
-    BoxError, Json, Router,
+    test_helpers::{
+        tracing_helpers::{capture_tracing, TracingEvent},
+        *,
+    },
+    BoxError, Extension, Json, Router,
 };
 use futures_util::stream::StreamExt;
 use http::{header::ALLOW, header::CONTENT_LENGTH, HeaderMap, Request, Response, StatusCode, Uri};
 use hyper::Body;
+use serde::Deserialize;
 use serde_json::json;
 use std::{
     convert::Infallible,
@@ -891,4 +895,71 @@ async fn state_isnt_cloned_too_much() {
     client.get("/").send().await;
 
     assert_eq!(COUNT.load(Ordering::SeqCst), 4);
+}
+
+#[crate::test]
+async fn logging_rejections() {
+    #[derive(Deserialize, Eq, PartialEq, Debug)]
+    #[serde(deny_unknown_fields)]
+    struct RejectionEvent {
+        message: String,
+        status: u16,
+        body: String,
+        rejection_type: String,
+    }
+
+    let events = capture_tracing::<RejectionEvent, _, _>(|| async {
+        let app = Router::new()
+            .route("/extension", get(|_: Extension<Infallible>| async {}))
+            .route("/string", post(|_: String| async {}));
+
+        let client = TestClient::new(app);
+
+        assert_eq!(
+            client.get("/extension").send().await.status(),
+            StatusCode::INTERNAL_SERVER_ERROR
+        );
+
+        assert_eq!(
+            client
+                .post("/string")
+                .body(Vec::from([0, 159, 146, 150]))
+                .send()
+                .await
+                .status(),
+            StatusCode::BAD_REQUEST,
+        );
+    })
+    .await;
+
+    assert_eq!(
+        dbg!(events),
+        Vec::from([
+            TracingEvent {
+                fields: RejectionEvent {
+                    message: "rejecting request".to_owned(),
+                    status: 500,
+                    body: "Missing request extension: Extension of \
+                        type `core::convert::Infallible` was not found. \
+                        Perhaps you forgot to add it? See `axum::Extension`."
+                        .to_owned(),
+                    rejection_type: "axum::extract::rejection::MissingExtension".to_owned(),
+                },
+                target: "axum::rejection".to_owned(),
+                level: "TRACE".to_owned(),
+            },
+            TracingEvent {
+                fields: RejectionEvent {
+                    message: "rejecting request".to_owned(),
+                    status: 400,
+                    body: "Request body didn't contain valid UTF-8: \
+                        invalid utf-8 sequence of 1 bytes from index 1"
+                        .to_owned(),
+                    rejection_type: "axum_core::extract::rejection::InvalidUtf8".to_owned(),
+                },
+                target: "axum::rejection".to_owned(),
+                level: "TRACE".to_owned(),
+            },
+        ])
+    )
 }

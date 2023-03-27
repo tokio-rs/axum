@@ -12,6 +12,9 @@ repository = "https://github.com/tokio-rs/axum"
 version = "0.3.3" # remember to also bump the version that axum depends on
 
 [features]
+tracing = ["dep:tracing"]
+
+# Required for intra-doc links to resolve correctly
 __private_docs = ["dep:tower-http"]
 
 [dependencies]
@@ -26,6 +29,7 @@ tower-service = "0.3"
 
 # optional dependencies
 tower-http = { version = "0.4", optional = true, features = ["limit"] }
+tracing = { version = "0.1", default-features = false, optional = true }
 
 [build-dependencies]
 rustversion = "1.0.9"

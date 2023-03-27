@@ -1,6 +1,29 @@
 /// Private API.
 #[doc(hidden)]
 #[macro_export]
+macro_rules! __log_rejection {
+    (
+        rejection_type=$ty:ident,
+        body_text=$body_text:expr,
+        status=$status:expr,
+    ) => {
+        #[cfg(feature = "tracing")]
+        {
+            tracing::event!(
+                target: "axum::rejection",
+                tracing::Level::TRACE,
+                status = $status.as_u16(),
+                body = $body_text,
+                rejection_type = std::any::type_name::<$ty>(),
+                "rejecting request",
+            );
+        }
+    };
+}
+
+/// Private API.
+#[doc(hidden)]
+#[macro_export]
 macro_rules! __define_rejection {
     (
         #[status = $status:ident]
@@ -15,6 +38,11 @@ macro_rules! __define_rejection {
 
         impl $crate::response::IntoResponse for $name {
             fn into_response(self) -> $crate::response::Response {
+                $crate::__log_rejection!(
+                    rejection_type=$name,
+                    body_text=$body,
+                    status=http::StatusCode::$status,
+                );
                 (self.status(), $body).into_response()
             }
         }
@@ -67,6 +95,11 @@ macro_rules! __define_rejection {
 
         impl $crate::response::IntoResponse for $name {
             fn into_response(self) -> $crate::response::Response {
+                $crate::__log_rejection!(
+                    rejection_type=$name,
+                    body_text=self.body_text(),
+                    status=http::StatusCode::$status,
+                );
                 (self.status(), self.body_text()).into_response()
             }
         }
