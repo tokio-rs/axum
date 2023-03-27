@@ -98,6 +98,9 @@ pub mod __private {
 }
 
 #[cfg(test)]
+use axum_macros::__private_axum_test as test;
+
+#[cfg(test)]
 pub(crate) mod test_helpers {
     #![allow(unused_imports)]
 
