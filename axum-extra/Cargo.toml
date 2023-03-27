@@ -80,6 +80,7 @@ rustdoc-args = ["--cfg", "docsrs"]
 allowed = [
     "axum",
     "axum_core",
+    "axum_macros",
     "bytes",
     "cookie",
     "futures_core",
@@ -87,7 +88,6 @@ allowed = [
     "http",
     "http_body",
     "hyper",
-    "percent_encoding",
     "prost",
     "serde",
     "tokio",
