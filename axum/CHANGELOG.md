@@ -8,18 +8,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 # Unreleased
 
 - **breaking:** The following types/traits are no longer generic over the request body
-  (i.e. the `B` type param has been removed) ([#1751]):
-  - `FromRequest`
+  (i.e. the `B` type param has been removed) ([#1751] and [#1789]):
   - `FromRequestParts`
-  - `Handler`
+  - `FromRequest`
   - `HandlerService`
   - `HandlerWithoutStateExt`
-  - `Layered`
+  - `Handler`
   - `LayeredFuture`
+  - `Layered`
   - `MethodRouter`
+  - `Next`
   - `RequestExt`
-  - `Route`
   - `RouteFuture`
+  - `Route`
   - `Router`
 - **breaking:** axum no longer re-exports `hyper::Body` as that type is removed
   in hyper 1.0. Instead axum has its own body type at `axum::body::Body` ([#1751])
@@ -28,14 +29,53 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **breaking:** Change `sse::Event::json_data` to use `axum_core::Error` as its error type ([#1762])
 - **breaking:** Rename `DefaultOnFailedUpdgrade` to `DefaultOnFailedUpgrade` ([#1664])
 - **breaking:** Rename `OnFailedUpdgrade` to `OnFailedUpgrade` ([#1664])
-- **breaking:** `TypedHeader` has been move to `axum-extra`
+- **breaking:** `TypedHeader` has been move to `axum-extra` ([#1850])
+- **breaking:** Removed re-exports of `Empty` and `Full`. Use
+  `axum::body::Body::empty` and `axum::body::Body::from` respectively ([#1789])
+- **breaking:** The response returned by `IntoResponse::into_response` must use
+  `axum::body::Body` as the body type. `axum::response::Response` does this
+  ([#1789])
+- **breaking:** Removed the `BoxBody` type alias and its `box_body`
+  constructor. Use `axum::body::Body::new` instead ([#1789])
+- **breaking:** Remove `RawBody` extractor. `axum::body::Body` implements `FromRequest` directly ([#1789])
+- **breaking:** The following types from `http-body` no longer implement `IntoResponse`:
+  - `Full`, use `Body::from` instead
+  - `Empty`, use `Body::empty` instead
+  - `BoxBody`, use `Body::new` instead
+  - `UnsyncBoxBody`, use `Body::new` instead
+  - `MapData`, use `Body::new` instead
+  - `MapErr`, use `Body::new` instead
+- **added:** Add `axum::extract::Request` type alias where the body is `axum::body::Body` ([#1789])
 - **added:** Add `Router::as_service` and `Router::into_service` to workaround
   type inference issues when calling `ServiceExt` methods on a `Router` ([#1835])
+- **breaking:** Removed `axum::Server` as it was removed in hyper 1.0. Instead
+  use `axum::serve(listener, service)` or hyper/hyper-util for more configuration options ([#1868])
 
 [#1664]: https://github.com/tokio-rs/axum/pull/1664
 [#1751]: https://github.com/tokio-rs/axum/pull/1751
 [#1762]: https://github.com/tokio-rs/axum/pull/1762
+[#1789]: https://github.com/tokio-rs/axum/pull/1789
 [#1835]: https://github.com/tokio-rs/axum/pull/1835
+[#1850]: https://github.com/tokio-rs/axum/pull/1850
+[#1868]: https://github.com/tokio-rs/axum/pull/1868
+
+# 0.6.12 (22. March, 2023)
+
+- **added:** Implement `IntoResponse` for `MultipartError` ([#1861])
+- **fixed:** More clearly document what wildcards matches ([#1873])
+
+[#1861]: https://github.com/tokio-rs/axum/pull/1861
+[#1873]: https://github.com/tokio-rs/axum/pull/1873
+
+# 0.6.11 (13. March, 2023)
+
+- **fixed:** Don't require `S: Debug` for `impl Debug for Router<S>` ([#1836])
+- **fixed:** Clone state a bit less when handling requests ([#1837])
+- **fixed:** Unpin itoa dependency ([#1815])
+
+[#1815]: https://github.com/tokio-rs/axum/pull/1815
+[#1836]: https://github.com/tokio-rs/axum/pull/1836
+[#1837]: https://github.com/tokio-rs/axum/pull/1837
 
 # 0.6.10 (03. March, 2023)
 

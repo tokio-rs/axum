@@ -9,8 +9,10 @@ use crate::{
     handler::Handler,
     util::try_downcast,
 };
-use axum_core::response::{IntoResponse, Response};
-use http::Request;
+use axum_core::{
+    extract::Request,
+    response::{IntoResponse, Response},
+};
 use matchit::MatchError;
 use std::{
     collections::HashMap,
@@ -77,15 +79,13 @@ where
     }
 }
 
-impl<S> fmt::Debug for Router<S>
-where
-    S: fmt::Debug,
-{
+impl<S> fmt::Debug for Router<S> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Router")
             .field("routes", &self.routes)
             .field("node", &self.node)
             .field("fallback", &self.fallback)
+            .field("prev_route_id", &self.prev_route_id)
             .finish()
     }
 }
@@ -154,7 +154,7 @@ where
     #[doc = include_str!("../docs/routing/route_service.md")]
     pub fn route_service<T>(self, path: &str, service: T) -> Self
     where
-        T: Service<Request<Body>, Error = Infallible> + Clone + Send + 'static,
+        T: Service<Request, Error = Infallible> + Clone + Send + 'static,
         T::Response: IntoResponse,
         T::Future: Send + 'static,
     {
@@ -205,7 +205,7 @@ where
     #[track_caller]
     pub fn nest_service<T>(self, path: &str, svc: T) -> Self
     where
-        T: Service<Request<Body>, Error = Infallible> + Clone + Send + 'static,
+        T: Service<Request, Error = Infallible> + Clone + Send + 'static,
         T::Response: IntoResponse,
         T::Future: Send + 'static,
     {
@@ -215,7 +215,7 @@ where
     #[track_caller]
     fn nest_endpoint<T>(mut self, mut path: &str, router_or_service: RouterOrService<S, T>) -> Self
     where
-        T: Service<Request<Body>, Error = Infallible> + Clone + Send + 'static,
+        T: Service<Request, Error = Infallible> + Clone + Send + 'static,
         T::Response: IntoResponse,
         T::Future: Send + 'static,
     {
@@ -301,10 +301,10 @@ where
     pub fn layer<L>(self, layer: L) -> Router<S>
     where
         L: Layer<Route> + Clone + Send + 'static,
-        L::Service: Service<Request<Body>> + Clone + Send + 'static,
-        <L::Service as Service<Request<Body>>>::Response: IntoResponse + 'static,
-        <L::Service as Service<Request<Body>>>::Error: Into<Infallible> + 'static,
-        <L::Service as Service<Request<Body>>>::Future: Send + 'static,
+        L::Service: Service<Request> + Clone + Send + 'static,
+        <L::Service as Service<Request>>::Response: IntoResponse + 'static,
+        <L::Service as Service<Request>>::Error: Into<Infallible> + 'static,
+        <L::Service as Service<Request>>::Future: Send + 'static,
     {
         let routes = self
             .routes
@@ -330,10 +330,10 @@ where
     pub fn route_layer<L>(self, layer: L) -> Self
     where
         L: Layer<Route> + Clone + Send + 'static,
-        L::Service: Service<Request<Body>> + Clone + Send + 'static,
-        <L::Service as Service<Request<Body>>>::Response: IntoResponse + 'static,
-        <L::Service as Service<Request<Body>>>::Error: Into<Infallible> + 'static,
-        <L::Service as Service<Request<Body>>>::Future: Send + 'static,
+        L::Service: Service<Request> + Clone + Send + 'static,
+        <L::Service as Service<Request>>::Response: IntoResponse + 'static,
+        <L::Service as Service<Request>>::Error: Into<Infallible> + 'static,
+        <L::Service as Service<Request>>::Future: Send + 'static,
     {
         if self.routes.is_empty() {
             panic!(
@@ -374,7 +374,7 @@ where
     /// See [`Router::fallback`] for more details.
     pub fn fallback_service<T>(mut self, svc: T) -> Self
     where
-        T: Service<Request<Body>, Error = Infallible> + Clone + Send + 'static,
+        T: Service<Request, Error = Infallible> + Clone + Send + 'static,
         T::Response: IntoResponse,
         T::Future: Send + 'static,
     {
@@ -413,7 +413,7 @@ where
 
     pub(crate) fn call_with_state(
         &mut self,
-        mut req: Request<Body>,
+        mut req: Request,
         state: S,
     ) -> RouteFuture<Infallible> {
         #[cfg(feature = "original-uri")]
@@ -443,7 +443,29 @@ where
                     }
                 }
 
-                self.call_route(match_, req, state)
+                let id = *match_.value;
+
+                #[cfg(feature = "matched-path")]
+                crate::extract::matched_path::set_matched_path_for_request(
+                    id,
+                    &self.node.route_id_to_path,
+                    req.extensions_mut(),
+                );
+
+                url_params::insert_url_params(req.extensions_mut(), match_.params);
+
+                let endpont = self
+                    .routes
+                    .get_mut(&id)
+                    .expect("no route for id. This is a bug in axum. Please file an issue");
+
+                match endpont {
+                    Endpoint::MethodRouter(method_router) => {
+                        method_router.call_with_state(req, state)
+                    }
+                    Endpoint::Route(route) => route.call(req),
+                    Endpoint::NestedRouter(router) => router.clone().call_with_state(req, state),
+                }
             }
             Err(
                 MatchError::NotFound
@@ -461,37 +483,6 @@ where
                 Fallback::Service(fallback) => fallback.call(req),
                 Fallback::BoxedHandler(handler) => handler.clone().into_route(state).call(req),
             },
-        }
-    }
-
-    #[inline]
-    fn call_route(
-        &self,
-        match_: matchit::Match<&RouteId>,
-        mut req: Request<Body>,
-        state: S,
-    ) -> RouteFuture<Infallible> {
-        let id = *match_.value;
-
-        #[cfg(feature = "matched-path")]
-        crate::extract::matched_path::set_matched_path_for_request(
-            id,
-            &self.node.route_id_to_path,
-            req.extensions_mut(),
-        );
-
-        url_params::insert_url_params(req.extensions_mut(), match_.params);
-
-        let endpont = self
-            .routes
-            .get(&id)
-            .expect("no route for id. This is a bug in axum. Please file an issue")
-            .clone();
-
-        match endpont {
-            Endpoint::MethodRouter(mut method_router) => method_router.call_with_state(req, state),
-            Endpoint::Route(mut route) => route.call(req),
-            Endpoint::NestedRouter(router) => router.call_with_state(req, state),
         }
     }
 
@@ -594,10 +585,8 @@ impl Router {
     /// let app = Router::new().route("/", get(|| async { "Hi!" }));
     ///
     /// # async {
-    /// axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())
-    ///     .serve(app.into_make_service())
-    ///     .await
-    ///     .expect("server failed");
+    /// let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
+    /// axum::serve(listener, app).await.unwrap();
     /// # };
     /// ```
     ///
@@ -616,6 +605,26 @@ impl Router {
         IntoMakeServiceWithConnectInfo::new(self.with_state(()))
     }
 }
+
+// for `axum::serve(listener, router)`
+#[cfg(feature = "tokio")]
+const _: () = {
+    use crate::serve::IncomingStream;
+
+    impl Service<IncomingStream<'_>> for Router<()> {
+        type Response = Self;
+        type Error = Infallible;
+        type Future = std::future::Ready<Result<Self::Response, Self::Error>>;
+
+        fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+            Poll::Ready(Ok(()))
+        }
+
+        fn call(&mut self, _req: IncomingStream<'_>) -> Self::Future {
+            std::future::ready(Ok(self.clone()))
+        }
+    }
+};
 
 impl<B> Service<Request<B>> for Router<()>
 where
@@ -859,10 +868,7 @@ impl<S> Clone for Endpoint<S> {
     }
 }
 
-impl<S> fmt::Debug for Endpoint<S>
-where
-    S: fmt::Debug,
-{
+impl<S> fmt::Debug for Endpoint<S> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::MethodRouter(method_router) => {

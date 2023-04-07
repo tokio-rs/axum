@@ -1,11 +1,11 @@
-use super::{BoxError, HttpBody};
+use super::{serve, Request, Response};
 use bytes::Bytes;
 use http::{
     header::{HeaderName, HeaderValue},
-    Request, StatusCode,
+    StatusCode,
 };
-use hyper::{Body, Server};
-use std::net::{SocketAddr, TcpListener};
+use std::{convert::Infallible, net::SocketAddr};
+use tokio::net::TcpListener;
 use tower::make::Shared;
 use tower_service::Service;
 
@@ -15,22 +15,22 @@ pub(crate) struct TestClient {
 }
 
 impl TestClient {
-    pub(crate) fn new<S, ResBody>(svc: S) -> Self
+    pub(crate) fn new<S>(svc: S) -> Self
     where
-        S: Service<Request<Body>, Response = http::Response<ResBody>> + Clone + Send + 'static,
-        ResBody: HttpBody + Send + 'static,
-        ResBody::Data: Send,
-        ResBody::Error: Into<BoxError>,
+        S: Service<Request, Response = Response, Error = Infallible> + Clone + Send + 'static,
         S::Future: Send,
-        S::Error: Into<BoxError>,
     {
-        let listener = TcpListener::bind("127.0.0.1:0").expect("Could not bind ephemeral socket");
+        let std_listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        std_listener.set_nonblocking(true).unwrap();
+        let listener = TcpListener::from_std(std_listener).unwrap();
+
         let addr = listener.local_addr().unwrap();
         println!("Listening on {addr}");
 
         tokio::spawn(async move {
-            let server = Server::from_tcp(listener).unwrap().serve(Shared::new(svc));
-            server.await.expect("server error");
+            serve(listener, Shared::new(svc))
+                .await
+                .expect("server error")
         });
 
         let client = reqwest::Client::builder()

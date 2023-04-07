@@ -2,14 +2,13 @@
 
 use axum::{
     async_trait,
-    body::{Body, StreamBody},
-    extract::FromRequest,
+    body::Body,
+    extract::{FromRequest, Request},
     response::{IntoResponse, Response},
     BoxError,
 };
 use bytes::{BufMut, BytesMut};
 use futures_util::stream::{BoxStream, Stream, TryStream, TryStreamExt};
-use http::Request;
 use pin_project_lite::pin_project;
 use serde::{de::DeserializeOwned, Serialize};
 use std::{
@@ -32,7 +31,7 @@ pin_project! {
     ///
     /// ```rust
     /// use axum_extra::json_lines::JsonLines;
-    /// use futures::stream::StreamExt;
+    /// use futures_util::stream::StreamExt;
     ///
     /// async fn handler(mut stream: JsonLines<serde_json::Value>) {
     ///     while let Some(value) = stream.next().await {
@@ -46,10 +45,10 @@ pin_project! {
     /// ```rust
     /// use axum::{BoxError, response::{IntoResponse, Response}};
     /// use axum_extra::json_lines::JsonLines;
-    /// use futures::stream::Stream;
+    /// use futures_util::stream::Stream;
     ///
     /// fn stream_of_values() -> impl Stream<Item = Result<serde_json::Value, BoxError>> {
-    ///     # futures::stream::empty()
+    ///     # futures_util::stream::empty()
     /// }
     ///
     /// async fn handler() -> Response {
@@ -108,7 +107,7 @@ where
 {
     type Rejection = Infallible;
 
-    async fn from_request(req: Request<Body>, _state: &S) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: Request, _state: &S) -> Result<Self, Self::Rejection> {
         // `Stream::lines` isn't a thing so we have to convert it into an `AsyncRead`
         // so we can call `AsyncRead::lines` and then convert it back to a `Stream`
         let body = req.into_body();
@@ -166,7 +165,7 @@ where
             buf.write_all(b"\n")?;
             Ok::<_, BoxError>(buf.into_inner().freeze())
         });
-        let stream = StreamBody::new(stream);
+        let stream = Body::from_stream(stream);
 
         // there is no consensus around mime type yet
         // https://github.com/wardi/jsonlines/issues/36

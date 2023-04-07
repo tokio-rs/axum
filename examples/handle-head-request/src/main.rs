@@ -6,7 +6,6 @@
 
 use axum::response::{IntoResponse, Response};
 use axum::{http, routing::get, Router};
-use std::net::SocketAddr;
 
 fn app() -> Router {
     Router::new().route("/get-head", get(get_head_handler))
@@ -14,12 +13,11 @@ fn app() -> Router {
 
 #[tokio::main]
 async fn main() {
-    let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
-
-    axum::Server::bind(&addr)
-        .serve(app().into_make_service())
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:3000")
         .await
         .unwrap();
+    println!("listening on {}", listener.local_addr().unwrap());
+    axum::serve(listener, app()).await.unwrap();
 }
 
 // GET routes will also be called for HEAD requests but will have the response body removed.

@@ -2,8 +2,8 @@
 
 use crate::body::Body;
 use crate::response::Response;
+use axum_core::extract::Request;
 use futures_util::future::Map;
-use http::Request;
 use pin_project_lite::pin_project;
 use std::{convert::Infallible, future::Future, pin::Pin, task::Context};
 use tower::util::Oneshot;
@@ -22,19 +22,19 @@ pin_project! {
     /// The response future for [`Layered`](super::Layered).
     pub struct LayeredFuture<S>
     where
-        S: Service<Request<Body>>,
+        S: Service<Request>,
     {
         #[pin]
-        inner: Map<Oneshot<S, Request<Body>>, fn(Result<S::Response, S::Error>) -> Response>,
+        inner: Map<Oneshot<S, Request>, fn(Result<S::Response, S::Error>) -> Response>,
     }
 }
 
 impl<S> LayeredFuture<S>
 where
-    S: Service<Request<Body>>,
+    S: Service<Request>,
 {
     pub(super) fn new(
-        inner: Map<Oneshot<S, Request<Body>>, fn(Result<S::Response, S::Error>) -> Response>,
+        inner: Map<Oneshot<S, Request>, fn(Result<S::Response, S::Error>) -> Response>,
     ) -> Self {
         Self { inner }
     }
@@ -42,7 +42,7 @@ where
 
 impl<S> Future for LayeredFuture<S>
 where
-    S: Service<Request<Body>>,
+    S: Service<Request>,
 {
     type Output = Response;
 

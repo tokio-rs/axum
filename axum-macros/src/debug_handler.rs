@@ -43,10 +43,9 @@ pub(crate) fn expand(attr: Attrs, item_fn: ItemFn) -> TokenStream {
         err.unwrap_or_else(|| {
             let state_ty = state_ty.unwrap_or_else(|| syn::parse_quote!(()));
 
-            let check_input_order = check_input_order(&item_fn);
             let check_future_send = check_future_send(&item_fn);
 
-            if let Some(check_input_order) = check_input_order {
+            if let Some(check_input_order) = check_input_order(&item_fn) {
                 quote! {
                     #check_input_order
                     #check_future_send

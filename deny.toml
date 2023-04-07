@@ -23,6 +23,10 @@ skip-tree = [
     { name = "windows-sys" },
     # old version pulled in by rustls via ring
     { name = "spin" },
+    # lots still pulls in syn 1.x
+    { name = "syn" },
+    # until 1.0 is out we're pulling in both 0.14 and 1.0-rc.x
+    { name = "hyper" },
 ]
 
 [sources]

@@ -1,9 +1,7 @@
 use crate::body::{Body, Bytes, HttpBody};
 use crate::response::{IntoResponse, Response};
-use crate::BoxError;
-use axum_core::extract::{FromRequest, FromRequestParts};
+use axum_core::extract::{FromRequest, FromRequestParts, Request};
 use futures_util::future::BoxFuture;
-use http::Request;
 use std::{
     any::type_name,
     convert::Infallible,
@@ -23,7 +21,7 @@ use tower_service::Service;
 ///
 /// 1. Be an `async fn`.
 /// 2. Take one or more [extractors] as the first arguments.
-/// 3. Take [`Next<B>`](Next) as the final argument.
+/// 3. Take [`Next`](Next) as the final argument.
 /// 4. Return something that implements [`IntoResponse`].
 ///
 /// Note that this function doesn't support extracting [`State`]. For that, use [`from_fn_with_state`].
@@ -33,15 +31,16 @@ use tower_service::Service;
 /// ```rust
 /// use axum::{
 ///     Router,
-///     http::{self, Request},
+///     http,
 ///     routing::get,
 ///     response::Response,
 ///     middleware::{self, Next},
+///     extract::Request,
 /// };
 ///
-/// async fn my_middleware<B>(
-///     request: Request<B>,
-///     next: Next<B>,
+/// async fn my_middleware(
+///     request: Request,
+///     next: Next,
 /// ) -> Response {
 ///     // do something with `request`...
 ///
@@ -63,21 +62,21 @@ use tower_service::Service;
 /// ```rust
 /// use axum::{
 ///     Router,
-///     http::{StatusCode, HeaderMap},
-///     http::Request,
+///     extract::{Request, TypedHeader},
+///     http::StatusCode,
 ///     middleware::{self, Next},
 ///     response::Response,
 ///     routing::get,
 /// };
 ///
-/// async fn auth<B>(
+/// async fn auth(
 ///     // run the `HeaderMap` extractor
 ///     headers: HeaderMap,
 ///     // you can also add more extractors here but the last
 ///     // extractor must implement `FromRequest` which
 ///     // `Request` does
-///     request: Request<B>,
-///     next: Next<B>,
+///     request: Request,
+///     next: Next,
 /// ) -> Result<Response, StatusCode> {
 ///     match get_token(&headers) {
 ///         Some(token) if token_is_valid(token) => {
@@ -121,23 +120,23 @@ pub fn from_fn<F, T>(f: F) -> FromFnLayer<F, (), T> {
 /// ```rust
 /// use axum::{
 ///     Router,
-///     http::{Request, StatusCode},
+///     http::StatusCode,
 ///     routing::get,
 ///     response::{IntoResponse, Response},
 ///     middleware::{self, Next},
-///     extract::State,
+///     extract::{Request, State},
 /// };
 ///
 /// #[derive(Clone)]
 /// struct AppState { /* ... */ }
 ///
-/// async fn my_middleware<B>(
+/// async fn my_middleware(
 ///     State(state): State<AppState>,
 ///     // you can add more extractors here but the last
 ///     // extractor must implement `FromRequest` which
 ///     // `Request` does
-///     request: Request<B>,
-///     next: Next<B>,
+///     request: Request,
+///     next: Next,
 /// ) -> Response {
 ///     // do something with `request`...
 ///
@@ -251,21 +250,19 @@ macro_rules! impl_service {
         [$($ty:ident),*], $last:ident
     ) => {
         #[allow(non_snake_case, unused_mut)]
-        impl<F, Fut, Out, S, I, B, $($ty,)* $last> Service<Request<B>> for FromFn<F, S, I, ($($ty,)* $last,)>
+        impl<F, Fut, Out, S, I, $($ty,)* $last> Service<Request> for FromFn<F, S, I, ($($ty,)* $last,)>
         where
-            F: FnMut($($ty,)* $last, Next<B>) -> Fut + Clone + Send + 'static,
+            F: FnMut($($ty,)* $last, Next) -> Fut + Clone + Send + 'static,
             $( $ty: FromRequestParts<S> + Send, )*
             $last: FromRequest<S> + Send,
             Fut: Future<Output = Out> + Send + 'static,
             Out: IntoResponse + 'static,
-            I: Service<Request<B>, Error = Infallible>
+            I: Service<Request, Error = Infallible>
                 + Clone
                 + Send
                 + 'static,
             I::Response: IntoResponse,
             I::Future: Send + 'static,
-            B: HttpBody<Data = Bytes> + Send + 'static,
-            B::Error: Into<BoxError>,
             S: Clone + Send + Sync + 'static,
         {
             type Response = Response;
@@ -276,9 +273,7 @@ macro_rules! impl_service {
                 self.inner.poll_ready(cx)
             }
 
-            fn call(&mut self, req: Request<B>) -> Self::Future {
-                let req = req.map(Body::new);
-
+            fn call(&mut self, req: Request) -> Self::Future {
                 let not_ready_inner = self.inner.clone();
                 let ready_inner = std::mem::replace(&mut self.inner, not_ready_inner);
 
@@ -336,13 +331,14 @@ where
 }
 
 /// The remainder of a middleware stack, including the handler.
-pub struct Next<B> {
-    inner: BoxCloneService<Request<B>, Response, Infallible>,
+#[derive(Debug, Clone)]
+pub struct Next {
+    inner: BoxCloneService<Request, Response, Infallible>,
 }
 
-impl<B> Next<B> {
+impl Next {
     /// Execute the remaining middleware stack.
-    pub async fn run(mut self, req: Request<B>) -> Response {
+    pub async fn run(mut self, req: Request) -> Response {
         match self.inner.call(req).await {
             Ok(res) => res,
             Err(err) => match err {},
@@ -350,23 +346,7 @@ impl<B> Next<B> {
     }
 }
 
-impl<B> fmt::Debug for Next<B> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("FromFnLayer")
-            .field("inner", &self.inner)
-            .finish()
-    }
-}
-
-impl<B> Clone for Next<B> {
-    fn clone(&self) -> Self {
-        Self {
-            inner: self.inner.clone(),
-        }
-    }
-}
-
-impl<B> Service<Request<B>> for Next<B> {
+impl Service<Request> for Next {
     type Response = Response;
     type Error = Infallible;
     type Future = Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>> + Send>>;
@@ -375,7 +355,7 @@ impl<B> Service<Request<B>> for Next<B> {
         self.inner.poll_ready(cx)
     }
 
-    fn call(&mut self, req: Request<B>) -> Self::Future {
+    fn call(&mut self, req: Request) -> Self::Future {
         self.inner.call(req)
     }
 }
@@ -408,7 +388,7 @@ mod tests {
 
     #[crate::test]
     async fn basic() {
-        async fn insert_header<B>(mut req: Request<B>, next: Next<B>) -> impl IntoResponse {
+        async fn insert_header(mut req: Request, next: Next) -> impl IntoResponse {
             req.headers_mut()
                 .insert("x-axum-test", "ok".parse().unwrap());
 

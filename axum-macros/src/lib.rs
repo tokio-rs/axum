@@ -425,10 +425,8 @@ pub fn derive_from_request_parts(item: TokenStream) -> TokenStream {
 /// async fn main() {
 ///     let app = Router::new().route("/", get(handler));
 ///
-///     axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())
-///         .serve(app.into_make_service())
-///         .await
-///         .unwrap();
+///     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
+///     axum::serve(listener, app).await.unwrap();
 /// }
 ///
 /// fn handler() -> &'static str {
@@ -447,10 +445,8 @@ pub fn derive_from_request_parts(item: TokenStream) -> TokenStream {
 /// # async fn main() {
 /// #     let app = Router::new().route("/", get(handler));
 /// #
-/// #     axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())
-/// #         .serve(app.into_make_service())
-/// #         .await
-/// #         .unwrap();
+/// #     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
+/// #     axum::serve(listener, app).await.unwrap();
 /// # }
 /// #
 /// #[debug_handler]
@@ -477,10 +473,8 @@ pub fn derive_from_request_parts(item: TokenStream) -> TokenStream {
 ///     # async {
 ///     let app = Router::new().route("/", get(handler));
 ///
-///     axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())
-///         .serve(app.into_make_service())
-///         .await
-///         .unwrap();
+///     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
+///     axum::serve(listener, app).await.unwrap();
 ///     # };
 /// }
 ///
@@ -650,7 +644,7 @@ pub fn derive_typed_path(input: TokenStream) -> TokenStream {
 /// [`FromRef`]: https://docs.rs/axum/latest/axum/extract/trait.FromRef.html
 #[proc_macro_derive(FromRef, attributes(from_ref))]
 pub fn derive_from_ref(item: TokenStream) -> TokenStream {
-    expand_with(item, |item| Ok(from_ref::expand(item)))
+    expand_with(item, from_ref::expand)
 }
 
 fn expand_with<F, I, K>(input: TokenStream, f: F) -> TokenStream

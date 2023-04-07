@@ -6,13 +6,13 @@
 
 use axum::{
     body::{Body, Bytes},
-    http::{Request, StatusCode},
+    extract::Request,
+    http::StatusCode,
     middleware::{self, Next},
     response::{IntoResponse, Response},
     routing::post,
     Router,
 };
-use std::net::SocketAddr;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[tokio::main]
@@ -29,17 +29,16 @@ async fn main() {
         .route("/", post(|| async move { "Hello from `POST /`" }))
         .layer(middleware::from_fn(print_request_response));
 
-    let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
-    tracing::debug!("listening on {}", addr);
-    axum::Server::bind(&addr)
-        .serve(app.into_make_service())
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:3000")
         .await
         .unwrap();
+    tracing::debug!("listening on {}", listener.local_addr().unwrap());
+    axum::serve(listener, app).await.unwrap();
 }
 
 async fn print_request_response(
-    req: Request<Body>,
-    next: Next<Body>,
+    req: Request,
+    next: Next,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
     let (parts, body) = req.into_parts();
     let bytes = buffer_and_print("request", body).await?;

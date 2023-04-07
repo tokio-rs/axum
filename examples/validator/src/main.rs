@@ -12,16 +12,15 @@
 
 use async_trait::async_trait;
 use axum::{
-    body::Body,
-    extract::{rejection::FormRejection, Form, FromRequest},
-    http::{Request, StatusCode},
+    extract::{rejection::FormRejection, Form, FromRequest, Request},
+    http::StatusCode,
     response::{Html, IntoResponse, Response},
     routing::get,
     Router,
 };
 use serde::{de::DeserializeOwned, Deserialize};
-use std::net::SocketAddr;
 use thiserror::Error;
+use tokio::net::TcpListener;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 use validator::Validate;
 
@@ -39,13 +38,9 @@ async fn main() {
     let app = Router::new().route("/", get(handler));
 
     // run it
-    let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
-    tracing::debug!("listening on {}", addr);
-
-    axum::Server::bind(&addr)
-        .serve(app.into_make_service())
-        .await
-        .unwrap();
+    let listener = TcpListener::bind("127.0.0.1:3000").await.unwrap();
+    tracing::debug!("listening on {}", listener.local_addr().unwrap());
+    axum::serve(listener, app).await.unwrap();
 }
 
 #[derive(Debug, Deserialize, Validate)]
@@ -70,7 +65,7 @@ where
 {
     type Rejection = ServerError;
 
-    async fn from_request(req: Request<Body>, state: &S) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: Request, state: &S) -> Result<Self, Self::Rejection> {
         let Form(value) = Form::<T>::from_request(req, state).await?;
         value.validate()?;
         Ok(ValidatedForm(value))

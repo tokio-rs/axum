@@ -9,14 +9,13 @@
 
 use axum::{
     body::Body,
-    extract::State,
-    http::{uri::Uri, Request},
+    extract::{Request, State},
+    http::uri::Uri,
     response::{IntoResponse, Response},
     routing::get,
     Router,
 };
 use hyper::client::HttpConnector;
-use std::net::SocketAddr;
 
 type Client = hyper::client::Client<HttpConnector, Body>;
 
@@ -28,15 +27,14 @@ async fn main() {
 
     let app = Router::new().route("/", get(handler)).with_state(client);
 
-    let addr = SocketAddr::from(([127, 0, 0, 1], 4000));
-    println!("reverse proxy listening on {}", addr);
-    axum::Server::bind(&addr)
-        .serve(app.into_make_service())
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:4000")
         .await
         .unwrap();
+    println!("listening on {}", listener.local_addr().unwrap());
+    axum::serve(listener, app).await.unwrap();
 }
 
-async fn handler(State(client): State<Client>, mut req: Request<Body>) -> Response {
+async fn handler(State(client): State<Client>, mut req: Request) -> Response {
     let path = req.uri().path();
     let path_query = req
         .uri()
@@ -54,10 +52,9 @@ async fn handler(State(client): State<Client>, mut req: Request<Body>) -> Respon
 async fn server() {
     let app = Router::new().route("/", get(|| async { "Hello, world!" }));
 
-    let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
-    println!("server listening on {}", addr);
-    axum::Server::bind(&addr)
-        .serve(app.into_make_service())
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:3000")
         .await
         .unwrap();
+    println!("listening on {}", listener.local_addr().unwrap());
+    axum::serve(listener, app).await.unwrap();
 }

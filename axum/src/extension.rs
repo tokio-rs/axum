@@ -41,9 +41,7 @@ use tower_service::Service;
 ///     // Add middleware that inserts the state into all incoming request's
 ///     // extensions.
 ///     .layer(Extension(state));
-/// # async {
-/// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-/// # };
+/// # let _: Router = app;
 /// ```
 ///
 /// If the extension is missing it will reject the request with a `500 Internal

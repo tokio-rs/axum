@@ -6,7 +6,7 @@
 
 use crate::{body::Body, response::IntoResponse};
 use async_trait::async_trait;
-use http::{request::Parts, Request};
+use http::request::Parts;
 use std::convert::Infallible;
 
 pub mod rejection;
@@ -18,6 +18,10 @@ mod tuple;
 
 pub(crate) use self::default_body_limit::DefaultBodyLimitKind;
 pub use self::{default_body_limit::DefaultBodyLimit, from_ref::FromRef};
+
+/// Type alias for [`http::Request`] whose body type defaults to [`Body`], the most common body
+/// type used with axum.
+pub type Request<T = Body> = http::Request<T>;
 
 mod private {
     #[derive(Debug, Clone, Copy)]
@@ -35,7 +39,7 @@ mod private {
 /// If your extractor needs to consume the request body then you should implement [`FromRequest`]
 /// and not [`FromRequestParts`].
 ///
-/// See [`axum::extract`] for more general docs about extraxtors.
+/// See [`axum::extract`] for more general docs about extractors.
 ///
 /// [`axum::extract`]: https://docs.rs/axum/0.6.0/axum/extract/index.html
 #[async_trait]
@@ -62,7 +66,7 @@ pub trait FromRequestParts<S>: Sized {
 /// If your extractor doesn't need to consume the request body then you should implement
 /// [`FromRequestParts`] and not [`FromRequest`].
 ///
-/// See [`axum::extract`] for more general docs about extraxtors.
+/// See [`axum::extract`] for more general docs about extractors.
 ///
 /// [`axum::extract`]: https://docs.rs/axum/0.6.0/axum/extract/index.html
 #[async_trait]
@@ -78,7 +82,7 @@ pub trait FromRequest<S, M = private::ViaRequest>: Sized {
     type Rejection: IntoResponse;
 
     /// Perform the extraction.
-    async fn from_request(req: Request<Body>, state: &S) -> Result<Self, Self::Rejection>;
+    async fn from_request(req: Request, state: &S) -> Result<Self, Self::Rejection>;
 }
 
 #[async_trait]
@@ -89,7 +93,7 @@ where
 {
     type Rejection = <Self as FromRequestParts<S>>::Rejection;
 
-    async fn from_request(req: Request<Body>, state: &S) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: Request, state: &S) -> Result<Self, Self::Rejection> {
         let (mut parts, _) = req.into_parts();
         Self::from_request_parts(&mut parts, state).await
     }
@@ -119,7 +123,7 @@ where
 {
     type Rejection = Infallible;
 
-    async fn from_request(req: Request<Body>, state: &S) -> Result<Option<T>, Self::Rejection> {
+    async fn from_request(req: Request, state: &S) -> Result<Option<T>, Self::Rejection> {
         Ok(T::from_request(req, state).await.ok())
     }
 }
@@ -145,7 +149,7 @@ where
 {
     type Rejection = Infallible;
 
-    async fn from_request(req: Request<Body>, state: &S) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: Request, state: &S) -> Result<Self, Self::Rejection> {
         Ok(T::from_request(req, state).await)
     }
 }

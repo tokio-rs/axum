@@ -1,7 +1,7 @@
 use axum::{
     extract::State,
     routing::{get, post},
-    Extension, Json, Router, Server,
+    Extension, Json, Router,
 };
 use hyper::server::conn::AddrIncoming;
 use serde::{Deserialize, Serialize};
@@ -151,7 +151,7 @@ impl BenchmarkBuilder {
         std::thread::spawn(move || {
             rt.block_on(async move {
                 let incoming = AddrIncoming::from_listener(listener).unwrap();
-                Server::builder(incoming)
+                hyper::Server::builder(incoming)
                     .serve(app.into_make_service())
                     .await
                     .unwrap();

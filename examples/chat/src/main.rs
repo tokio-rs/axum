@@ -18,7 +18,6 @@ use axum::{
 use futures::{sink::SinkExt, stream::StreamExt};
 use std::{
     collections::HashSet,
-    net::SocketAddr,
     sync::{Arc, Mutex},
 };
 use tokio::sync::broadcast;
@@ -53,12 +52,11 @@ async fn main() {
         .route("/websocket", get(websocket_handler))
         .with_state(app_state);
 
-    let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
-    tracing::debug!("listening on {}", addr);
-    axum::Server::bind(&addr)
-        .serve(app.into_make_service())
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:3000")
         .await
         .unwrap();
+    tracing::debug!("listening on {}", listener.local_addr().unwrap());
+    axum::serve(listener, app).await.unwrap();
 }
 
 async fn websocket_handler(

@@ -24,14 +24,11 @@ async fn main() {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    let addr = std::net::SocketAddr::from(([127, 0, 0, 1], 3000));
-
-    tracing::debug!("listening on {}", addr);
-
-    axum::Server::bind(&addr)
-        .serve(app().into_make_service())
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:3000")
         .await
         .unwrap();
+    tracing::debug!("listening on {}", listener.local_addr().unwrap());
+    axum::serve(listener, app()).await.unwrap();
 }
 
 /// Having a function that produces our app makes it easy to call it from tests
@@ -63,7 +60,8 @@ mod tests {
         http::{self, Request, StatusCode},
     };
     use serde_json::{json, Value};
-    use std::net::{SocketAddr, TcpListener};
+    use std::net::SocketAddr;
+    use tokio::net::TcpListener;
     use tower::Service; // for `call`
     use tower::ServiceExt; // for `oneshot` and `ready`
 
@@ -131,15 +129,11 @@ mod tests {
     // You can also spawn a server and talk to it like any other HTTP server:
     #[tokio::test]
     async fn the_real_deal() {
-        let listener = TcpListener::bind("0.0.0.0:0".parse::<SocketAddr>().unwrap()).unwrap();
+        let listener = TcpListener::bind("0.0.0.0:0").await.unwrap();
         let addr = listener.local_addr().unwrap();
 
         tokio::spawn(async move {
-            axum::Server::from_tcp(listener)
-                .unwrap()
-                .serve(app().into_make_service())
-                .await
-                .unwrap();
+            axum::serve(listener, app()).await.unwrap();
         });
 
         let client = hyper::Client::new();
@@ -162,7 +156,7 @@ mod tests {
     // in multiple request
     #[tokio::test]
     async fn multiple_request() {
-        let mut app = app();
+        let mut app = app().into_service();
 
         let request = Request::builder().uri("/").body(Body::empty()).unwrap();
         let response = ServiceExt::<Request<Body>>::ready(&mut app)
@@ -190,7 +184,9 @@ mod tests {
     // tests.
     #[tokio::test]
     async fn with_into_make_service_with_connect_info() {
-        let mut app = app().layer(MockConnectInfo(SocketAddr::from(([0, 0, 0, 0], 3000))));
+        let mut app = app()
+            .layer(MockConnectInfo(SocketAddr::from(([0, 0, 0, 0], 3000))))
+            .into_service();
 
         let request = Request::builder()
             .uri("/requires-connect-into")

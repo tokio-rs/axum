@@ -20,9 +20,7 @@ use std::{collections::HashMap, sync::Arc};
 ///         // `path` will be "/users/:id"
 ///     })
 /// );
-/// # async {
-/// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-/// # };
+/// # let _: Router = app;
 /// ```
 ///
 /// # Accessing `MatchedPath` via extensions
@@ -35,8 +33,7 @@ use std::{collections::HashMap, sync::Arc};
 /// ```
 /// use axum::{
 ///     Router,
-///     extract::MatchedPath,
-///     http::Request,
+///     extract::{Request, MatchedPath},
 ///     routing::get,
 /// };
 /// use tower_http::trace::TraceLayer;
@@ -65,13 +62,12 @@ use std::{collections::HashMap, sync::Arc};
 ///     Router,
 ///     RequestExt,
 ///     routing::get,
-///     extract::{MatchedPath, rejection::MatchedPathRejection},
+///     extract::{Request, MatchedPath, rejection::MatchedPathRejection},
 ///     middleware::map_request,
-///     http::Request,
 ///     body::Body,
 /// };
 ///
-/// async fn access_matched_path(mut request: Request<Body>) -> Request<Body> {
+/// async fn access_matched_path(mut request: Request) -> Request {
 ///     // if `/foo/bar` is called this will be `Err(_)` since that matches
 ///     // a nested route
 ///     let matched_path: Result<MatchedPath, MatchedPathRejection> =

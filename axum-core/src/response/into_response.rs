@@ -1,14 +1,11 @@
 use super::{IntoResponseParts, Response, ResponseParts};
-use crate::{body, BoxError};
+use crate::{body::Body, BoxError};
 use bytes::{buf::Chain, Buf, Bytes, BytesMut};
 use http::{
     header::{self, HeaderMap, HeaderName, HeaderValue},
     Extensions, StatusCode,
 };
-use http_body::{
-    combinators::{MapData, MapErr},
-    Empty, Full, SizeHint,
-};
+use http_body::SizeHint;
 use std::{
     borrow::Cow,
     convert::Infallible,
@@ -74,9 +71,9 @@ use std::{
 ///     body,
 ///     routing::get,
 ///     response::{IntoResponse, Response},
+///     body::Body,
 ///     Router,
 /// };
-/// use http_body::Body;
 /// use http::HeaderMap;
 /// use bytes::Bytes;
 /// use std::{
@@ -89,7 +86,7 @@ use std::{
 ///
 /// // First implement `Body` for `MyBody`. This could for example use
 /// // some custom streaming protocol.
-/// impl Body for MyBody {
+/// impl http_body::Body for MyBody {
 ///     type Data = Bytes;
 ///     type Error = Infallible;
 ///
@@ -113,7 +110,7 @@ use std::{
 /// // Now we can implement `IntoResponse` directly for `MyBody`
 /// impl IntoResponse for MyBody {
 ///     fn into_response(self) -> Response {
-///         Response::new(body::boxed(self))
+///         Response::new(Body::new(self))
 ///     }
 /// }
 ///
@@ -136,7 +133,7 @@ impl IntoResponse for StatusCode {
 
 impl IntoResponse for () {
     fn into_response(self) -> Response {
-        Empty::new().into_response()
+        Body::empty().into_response()
     }
 }
 
@@ -165,65 +162,19 @@ where
     B::Error: Into<BoxError>,
 {
     fn into_response(self) -> Response {
-        self.map(body::boxed)
+        self.map(Body::new)
     }
 }
 
 impl IntoResponse for http::response::Parts {
     fn into_response(self) -> Response {
-        Response::from_parts(self, body::boxed(Empty::new()))
+        Response::from_parts(self, Body::empty())
     }
 }
 
-impl IntoResponse for Full<Bytes> {
+impl IntoResponse for Body {
     fn into_response(self) -> Response {
-        Response::new(body::boxed(self))
-    }
-}
-
-impl IntoResponse for Empty<Bytes> {
-    fn into_response(self) -> Response {
-        Response::new(body::boxed(self))
-    }
-}
-
-impl<E> IntoResponse for http_body::combinators::BoxBody<Bytes, E>
-where
-    E: Into<BoxError> + 'static,
-{
-    fn into_response(self) -> Response {
-        Response::new(body::boxed(self))
-    }
-}
-
-impl<E> IntoResponse for http_body::combinators::UnsyncBoxBody<Bytes, E>
-where
-    E: Into<BoxError> + 'static,
-{
-    fn into_response(self) -> Response {
-        Response::new(body::boxed(self))
-    }
-}
-
-impl<B, F> IntoResponse for MapData<B, F>
-where
-    B: http_body::Body + Send + 'static,
-    F: FnMut(B::Data) -> Bytes + Send + 'static,
-    B::Error: Into<BoxError>,
-{
-    fn into_response(self) -> Response {
-        Response::new(body::boxed(self))
-    }
-}
-
-impl<B, F, E> IntoResponse for MapErr<B, F>
-where
-    B: http_body::Body<Data = Bytes> + Send + 'static,
-    F: FnMut(B::Error) -> E + Send + 'static,
-    E: Into<BoxError>,
-{
-    fn into_response(self) -> Response {
-        Response::new(body::boxed(self))
+        Response::new(self)
     }
 }
 
@@ -241,7 +192,7 @@ impl IntoResponse for String {
 
 impl IntoResponse for Cow<'static, str> {
     fn into_response(self) -> Response {
-        let mut res = Full::from(self).into_response();
+        let mut res = Body::from(self).into_response();
         res.headers_mut().insert(
             header::CONTENT_TYPE,
             HeaderValue::from_static(mime::TEXT_PLAIN_UTF_8.as_ref()),
@@ -252,7 +203,7 @@ impl IntoResponse for Cow<'static, str> {
 
 impl IntoResponse for Bytes {
     fn into_response(self) -> Response {
-        let mut res = Full::from(self).into_response();
+        let mut res = Body::from(self).into_response();
         res.headers_mut().insert(
             header::CONTENT_TYPE,
             HeaderValue::from_static(mime::APPLICATION_OCTET_STREAM.as_ref()),
@@ -274,7 +225,7 @@ where
 {
     fn into_response(self) -> Response {
         let (first, second) = self.into_inner();
-        let mut res = Response::new(body::boxed(BytesChainBody {
+        let mut res = Response::new(Body::new(BytesChainBody {
             first: Some(first),
             second: Some(second),
         }));
@@ -366,7 +317,7 @@ impl IntoResponse for Vec<u8> {
 
 impl IntoResponse for Cow<'static, [u8]> {
     fn into_response(self) -> Response {
-        let mut res = Full::from(self).into_response();
+        let mut res = Body::from(self).into_response();
         res.headers_mut().insert(
             header::CONTENT_TYPE,
             HeaderValue::from_static(mime::APPLICATION_OCTET_STREAM.as_ref()),

@@ -21,7 +21,6 @@ use axum::{
 use axum_extra::{headers::Cookie, TypedHeader};
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
-use std::net::SocketAddr;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 use uuid::Uuid;
 
@@ -42,12 +41,11 @@ async fn main() {
 
     let app = Router::new().route("/", get(handler)).with_state(store);
 
-    let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
-    tracing::debug!("listening on {}", addr);
-    axum::Server::bind(&addr)
-        .serve(app.into_make_service())
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:3000")
         .await
         .unwrap();
+    tracing::debug!("listening on {}", listener.local_addr().unwrap());
+    axum::serve(listener, app).await.unwrap();
 }
 
 async fn handler(user_id: UserIdFromSession) -> impl IntoResponse {

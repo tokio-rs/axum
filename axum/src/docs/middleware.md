@@ -55,9 +55,7 @@ let app = Router::new()
             .layer(TraceLayer::new_for_http())
             .layer(Extension(State {}))
     );
-# async {
-# axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-# };
+# let _: Router = app;
 ```
 
 # Commonly used middleware
@@ -223,9 +221,9 @@ A decent template for such a middleware could be:
 use axum::{
     response::Response,
     body::Body,
-    http::Request,
+    extract::Request,
 };
-use futures::future::BoxFuture;
+use futures_util::future::BoxFuture;
 use tower::{Service, Layer};
 use std::task::{Context, Poll};
 
@@ -245,9 +243,9 @@ struct MyMiddleware<S> {
     inner: S,
 }
 
-impl<S> Service<Request<Body>> for MyMiddleware<S>
+impl<S> Service<Request> for MyMiddleware<S>
 where
-    S: Service<Request<Body>, Response = Response> + Send + 'static,
+    S: Service<Request, Response = Response> + Send + 'static,
     S::Future: Send + 'static,
 {
     type Response = S::Response;
@@ -259,7 +257,7 @@ where
         self.inner.poll_ready(cx)
     }
 
-    fn call(&mut self, request: Request<Body>) -> Self::Future {
+    fn call(&mut self, request: Request) -> Self::Future {
         let future = self.inner.call(request);
         Box::pin(async move {
             let response: Response = future.await?;
@@ -319,9 +317,7 @@ let app = Router::new()
             }))
             .layer(TimeoutLayer::new(Duration::from_secs(10)))
     );
-# async {
-# axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-# };
+# let _: Router = app;
 ```
 
 See [`error_handling`](crate::error_handling) for more details on axum's error
@@ -376,9 +372,7 @@ let app = Router::new().route("/", get(handler));
 let app = ServiceBuilder::new()
     .layer(some_backpressure_sensitive_middleware)
     .service(app);
-# async {
-# axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-# };
+# let _: Router = app;
 ```
 
 However when applying middleware around your whole application in this way
@@ -406,8 +400,7 @@ use axum::{
     routing::get,
     middleware::{self, Next},
     response::Response,
-    extract::State,
-    http::Request,
+    extract::{State, Request},
 };
 use tower::{Layer, Service};
 use std::task::{Context, Poll};
@@ -477,17 +470,17 @@ State can be passed from middleware to handlers using [request extensions]:
 ```rust
 use axum::{
     Router,
-    http::{Request, StatusCode},
+    http::StatusCode,
     routing::get,
     response::{IntoResponse, Response},
     middleware::{self, Next},
-    extract::Extension,
+    extract::{Request, Extension},
 };
 
 #[derive(Clone)]
 struct CurrentUser { /* ... */ }
 
-async fn auth<B>(mut req: Request<B>, next: Next<B>) -> Result<Response, StatusCode> {
+async fn auth(mut req: Request, next: Next) -> Result<Response, StatusCode> {
     let auth_header = req.headers()
         .get(http::header::AUTHORIZATION)
         .and_then(|header| header.to_str().ok());
@@ -546,7 +539,7 @@ use axum::{
     ServiceExt, // for `into_make_service`
     response::Response,
     middleware::Next,
-    http::Request,
+    extract::Request,
 };
 
 fn rewrite_request_uri<B>(req: Request<B>) -> Request<B> {
@@ -564,24 +557,22 @@ let app = Router::new();
 let app_with_middleware = middleware.layer(app);
 
 # async {
-axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())
-    .serve(app_with_middleware.into_make_service())
-    .await
-    .unwrap();
+let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
+axum::serve(listener, app_with_middleware.into_make_service()).await.unwrap();
 # };
 ```
 
 [`tower`]: https://crates.io/crates/tower
 [`tower-http`]: https://crates.io/crates/tower-http
 [tower-guides]: https://github.com/tower-rs/tower/tree/master/guides
-[`axum::middleware::from_fn`]: crate::middleware::from_fn
-[`middleware::from_fn`]: crate::middleware::from_fn
+[`axum::middleware::from_fn`]: fn@crate::middleware::from_fn
+[`middleware::from_fn`]: fn@crate::middleware::from_fn
 [tower-from-scratch-guide]: https://github.com/tower-rs/tower/blob/master/guides/building-a-middleware-from-scratch.md
 [`ServiceBuilder::map_request`]: tower::ServiceBuilder::map_request
 [`ServiceBuilder::map_response`]: tower::ServiceBuilder::map_response
 [`ServiceBuilder::then`]: tower::ServiceBuilder::then
 [`ServiceBuilder::and_then`]: tower::ServiceBuilder::and_then
-[`axum::middleware::from_extractor`]: crate::middleware::from_extractor
+[`axum::middleware::from_extractor`]: fn@crate::middleware::from_extractor
 [`Handler::layer`]: crate::handler::Handler::layer
 [`Router::layer`]: crate::routing::Router::layer
 [`MethodRouter::layer`]: crate::routing::MethodRouter::layer

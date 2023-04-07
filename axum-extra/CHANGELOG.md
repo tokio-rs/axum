@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning].
 
 - **added:** Added `TypedHeader` which used to be in `axum`
 
+# 0.7.2 (22. March, 2023)
+
+- **added:** Implement `IntoResponse` for `MultipartError` ([#1861])
+
+[#1861]: https://github.com/tokio-rs/axum/pull/1861
+
+# 0.7.1 (13. March, 2023)
+
+- Updated to latest `axum-macros`
+
 # 0.7.0 (03. March, 2023)
 
 - **breaking:** Remove the `spa` feature which should have been removed in 0.6.0 ([#1802])

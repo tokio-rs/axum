@@ -10,7 +10,7 @@
 //! };
 //! use std::{time::Duration, convert::Infallible};
 //! use tokio_stream::StreamExt as _ ;
-//! use futures::stream::{self, Stream};
+//! use futures_util::stream::{self, Stream};
 //!
 //! let app = Router::new().route("/sse", get(sse_handler));
 //!
@@ -32,7 +32,7 @@ use crate::{
     BoxError,
 };
 use axum_core::{
-    body,
+    body::Body,
     response::{IntoResponse, Response},
 };
 use bytes::{BufMut, BytesMut};
@@ -104,7 +104,7 @@ where
                 (http::header::CONTENT_TYPE, mime::TEXT_EVENT_STREAM.as_ref()),
                 (http::header::CACHE_CONTROL, "no-cache"),
             ],
-            body::boxed(Body {
+            Body::new(SseBody {
                 event_stream: SyncWrapper::new(self.stream),
                 keep_alive: self.keep_alive.map(KeepAliveStream::new),
             }),
@@ -114,7 +114,7 @@ where
 }
 
 pin_project! {
-    struct Body<S> {
+    struct SseBody<S> {
         #[pin]
         event_stream: SyncWrapper<S>,
         #[pin]
@@ -122,7 +122,7 @@ pin_project! {
     }
 }
 
-impl<S, E> HttpBody for Body<S>
+impl<S, E> HttpBody for SseBody<S>
 where
     S: Stream<Item = Result<Event, E>>,
 {
@@ -509,7 +509,7 @@ impl<'a> Iterator for MemchrSplit<'a> {
 mod tests {
     use super::*;
     use crate::{routing::get, test_helpers::*, Router};
-    use futures::stream;
+    use futures_util::stream;
     use std::{collections::HashMap, convert::Infallible};
     use tokio_stream::StreamExt as _;
 

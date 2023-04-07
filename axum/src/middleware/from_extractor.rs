@@ -84,9 +84,7 @@ use tower_service::Service;
 ///     .route("/foo", post(other_handler))
 ///     // The extractor will run before all routes
 ///     .route_layer(from_extractor::<RequireAuth>());
-/// # async {
-/// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-/// # };
+/// # let _: Router = app;
 /// ```
 ///
 /// [`Bytes`]: bytes::Bytes

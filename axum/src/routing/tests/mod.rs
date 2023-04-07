@@ -1,20 +1,21 @@
 use crate::{
-    body::{Body, Bytes, Empty},
+    body::{Body, Bytes},
     error_handling::HandleErrorLayer,
     extract::{self, DefaultBodyLimit, FromRef, Path, State},
     handler::{Handler, HandlerWithoutStateExt},
-    response::IntoResponse,
+    response::{IntoResponse, Response},
     routing::{delete, get, get_service, on, on_service, patch, patch_service, post, MethodFilter},
     test_helpers::*,
     BoxError, Json, Router,
 };
+use axum_core::extract::Request;
 use futures_util::stream::StreamExt;
-use http::{header::ALLOW, header::CONTENT_LENGTH, HeaderMap, Request, Response, StatusCode, Uri};
+use http::{header::ALLOW, header::CONTENT_LENGTH, HeaderMap, StatusCode, Uri};
 use serde_json::json;
 use std::{
     convert::Infallible,
     future::{ready, Ready},
-    sync::atomic::{AtomicUsize, Ordering},
+    sync::atomic::{AtomicBool, AtomicUsize, Ordering},
     task::{Context, Poll},
     time::Duration,
 };
@@ -30,15 +31,15 @@ mod nest;
 
 #[crate::test]
 async fn hello_world() {
-    async fn root(_: Request<Body>) -> &'static str {
+    async fn root(_: Request) -> &'static str {
         "Hello, World!"
     }
 
-    async fn foo(_: Request<Body>) -> &'static str {
+    async fn foo(_: Request) -> &'static str {
         "foo"
     }
 
-    async fn users_create(_: Request<Body>) -> &'static str {
+    async fn users_create(_: Request) -> &'static str {
         "users#create"
     }
 
@@ -66,13 +67,12 @@ async fn routing() {
     let app = Router::new()
         .route(
             "/users",
-            get(|_: Request<Body>| async { "users#index" })
-                .post(|_: Request<Body>| async { "users#create" }),
+            get(|_: Request| async { "users#index" }).post(|_: Request| async { "users#create" }),
         )
-        .route("/users/:id", get(|_: Request<Body>| async { "users#show" }))
+        .route("/users/:id", get(|_: Request| async { "users#show" }))
         .route(
             "/users/:id/action",
-            get(|_: Request<Body>| async { "users#action" }),
+            get(|_: Request| async { "users#action" }),
         );
 
     let client = TestClient::new(app);
@@ -102,12 +102,8 @@ async fn router_type_doesnt_change() {
     let app: Router = Router::new()
         .route(
             "/",
-            on(MethodFilter::GET, |_: Request<Body>| async {
-                "hi from GET"
-            })
-            .on(MethodFilter::POST, |_: Request<Body>| async {
-                "hi from POST"
-            }),
+            on(MethodFilter::GET, |_: Request| async { "hi from GET" })
+                .on(MethodFilter::POST, |_: Request| async { "hi from POST" }),
         )
         .layer(tower_http::compression::CompressionLayer::new());
 
@@ -127,22 +123,22 @@ async fn routing_between_services() {
     use std::convert::Infallible;
     use tower::service_fn;
 
-    async fn handle(_: Request<Body>) -> &'static str {
+    async fn handle(_: Request) -> &'static str {
         "handler"
     }
 
     let app = Router::new()
         .route(
             "/one",
-            get_service(service_fn(|_: Request<Body>| async {
+            get_service(service_fn(|_: Request| async {
                 Ok::<_, Infallible>(Response::new(Body::from("one get")))
             }))
-            .post_service(service_fn(|_: Request<Body>| async {
+            .post_service(service_fn(|_: Request| async {
                 Ok::<_, Infallible>(Response::new(Body::from("one post")))
             }))
             .on_service(
                 MethodFilter::PUT,
-                service_fn(|_: Request<Body>| async {
+                service_fn(|_: Request| async {
                     Ok::<_, Infallible>(Response::new(Body::from("one put")))
                 }),
             ),
@@ -173,7 +169,7 @@ async fn middleware_on_single_route() {
     use tower::ServiceBuilder;
     use tower_http::{compression::CompressionLayer, trace::TraceLayer};
 
-    async fn handle(_: Request<Body>) -> &'static str {
+    async fn handle(_: Request) -> &'static str {
         "Hello, World!"
     }
 
@@ -197,7 +193,7 @@ async fn middleware_on_single_route() {
 
 #[crate::test]
 async fn service_in_bottom() {
-    async fn handler(_req: Request<Body>) -> Result<Response<Body>, Infallible> {
+    async fn handler(_req: Request) -> Result<Response<Body>, Infallible> {
         Ok(Response::new(Body::empty()))
     }
 
@@ -235,7 +231,7 @@ async fn wrong_method_service() {
     struct Svc;
 
     impl<R> Service<R> for Svc {
-        type Response = Response<Empty<Bytes>>;
+        type Response = Response;
         type Error = Infallible;
         type Future = Ready<Result<Self::Response, Self::Error>>;
 
@@ -244,7 +240,7 @@ async fn wrong_method_service() {
         }
 
         fn call(&mut self, _req: R) -> Self::Future {
-            ready(Ok(Response::new(Empty::new())))
+            ready(Ok(().into_response()))
         }
     }
 
@@ -271,7 +267,7 @@ async fn wrong_method_service() {
 
 #[crate::test]
 async fn multiple_methods_for_one_handler() {
-    async fn root(_: Request<Body>) -> &'static str {
+    async fn root(_: Request) -> &'static str {
         "Hello, World!"
     }
 
@@ -377,6 +373,34 @@ async fn wildcard_doesnt_match_just_trailing_slash() {
     let res = client.get("/x/foo/bar").send().await;
     assert_eq!(res.status(), StatusCode::OK);
     assert_eq!(res.text().await, "foo/bar");
+}
+
+#[crate::test]
+async fn what_matches_wildcard() {
+    let app = Router::new()
+        .route("/*key", get(|| async { "root" }))
+        .route("/x/*key", get(|| async { "x" }))
+        .fallback(|| async { "fallback" });
+
+    let client = TestClient::new(app);
+
+    let get = |path| {
+        let f = client.get(path).send();
+        async move { f.await.text().await }
+    };
+
+    assert_eq!(get("/").await, "fallback");
+    assert_eq!(get("/a").await, "root");
+    assert_eq!(get("/a/").await, "root");
+    assert_eq!(get("/a/b").await, "root");
+    assert_eq!(get("/a/b/").await, "root");
+
+    assert_eq!(get("/x").await, "root");
+    assert_eq!(get("/x/").await, "root");
+    assert_eq!(get("/x/a").await, "x");
+    assert_eq!(get("/x/a/").await, "x");
+    assert_eq!(get("/x/a/b").await, "x");
+    assert_eq!(get("/x/a/b/").await, "x");
 }
 
 #[crate::test]
@@ -810,4 +834,56 @@ fn method_router_fallback_with_state() {
     let _: Router = Router::new()
         .fallback(get(fallback).fallback(not_found))
         .with_state(state);
+}
+
+#[crate::test]
+async fn state_isnt_cloned_too_much() {
+    static SETUP_DONE: AtomicBool = AtomicBool::new(false);
+    static COUNT: AtomicUsize = AtomicUsize::new(0);
+
+    struct AppState;
+
+    impl Clone for AppState {
+        fn clone(&self) -> Self {
+            #[rustversion::since(1.65)]
+            #[track_caller]
+            fn count() {
+                if SETUP_DONE.load(Ordering::SeqCst) {
+                    let bt = std::backtrace::Backtrace::force_capture();
+                    let bt = bt
+                        .to_string()
+                        .lines()
+                        .filter(|line| line.contains("axum") || line.contains("./src"))
+                        .collect::<Vec<_>>()
+                        .join("\n");
+                    println!("AppState::Clone:\n===============\n{}\n", bt);
+                    COUNT.fetch_add(1, Ordering::SeqCst);
+                }
+            }
+
+            #[rustversion::not(since(1.65))]
+            fn count() {
+                if SETUP_DONE.load(Ordering::SeqCst) {
+                    COUNT.fetch_add(1, Ordering::SeqCst);
+                }
+            }
+
+            count();
+
+            Self
+        }
+    }
+
+    let app = Router::new()
+        .route("/", get(|_: State<AppState>| async {}))
+        .with_state(AppState);
+
+    let client = TestClient::new(app);
+
+    // ignore clones made during setup
+    SETUP_DONE.store(true, Ordering::SeqCst);
+
+    client.get("/").send().await;
+
+    assert_eq!(COUNT.load(Ordering::SeqCst), 4);
 }

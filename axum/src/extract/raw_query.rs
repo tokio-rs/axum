@@ -13,16 +13,14 @@ use std::convert::Infallible;
 ///     routing::get,
 ///     Router,
 /// };
-/// use futures::StreamExt;
+/// use futures_util::StreamExt;
 ///
 /// async fn handler(RawQuery(query): RawQuery) {
 ///     // ...
 /// }
 ///
 /// let app = Router::new().route("/users", get(handler));
-/// # async {
-/// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-/// # };
+/// # let _: Router = app;
 /// ```
 #[derive(Debug)]
 pub struct RawQuery(pub Option<String>);

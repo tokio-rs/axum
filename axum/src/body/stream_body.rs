@@ -1,8 +1,9 @@
 use crate::{
-    body::{self, Bytes, HttpBody},
+    body::{Bytes, HttpBody},
     response::{IntoResponse, Response},
     BoxError, Error,
 };
+use axum_core::body::Body;
 use futures_util::{
     ready,
     stream::{self, TryStream},
@@ -32,7 +33,7 @@ pin_project! {
     ///     body::StreamBody,
     ///     response::IntoResponse,
     /// };
-    /// use futures::stream::{self, Stream};
+    /// use futures_util::stream::{self, Stream};
     /// use std::io;
     ///
     /// async fn handler() -> StreamBody<impl Stream<Item = io::Result<&'static str>>> {
@@ -46,9 +47,7 @@ pin_project! {
     /// }
     ///
     /// let app = Router::new().route("/", get(handler));
-    /// # async {
-    /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-    /// # };
+    /// # let _: Router = app;
     /// ```
     ///
     /// [`Stream`]: futures_util::stream::Stream
@@ -93,7 +92,7 @@ where
     S::Error: Into<BoxError>,
 {
     fn into_response(self) -> Response {
-        Response::new(body::boxed(self))
+        Response::new(Body::new(self))
     }
 }
 

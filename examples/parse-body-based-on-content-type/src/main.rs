@@ -8,15 +8,13 @@
 
 use axum::{
     async_trait,
-    body::Body,
-    extract::FromRequest,
-    http::{header::CONTENT_TYPE, Request, StatusCode},
+    extract::{FromRequest, Request},
+    http::{header::CONTENT_TYPE, StatusCode},
     response::{IntoResponse, Response},
     routing::post,
     Form, Json, RequestExt, Router,
 };
 use serde::{Deserialize, Serialize};
-use std::net::SocketAddr;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[tokio::main]
@@ -32,12 +30,11 @@ async fn main() {
 
     let app = Router::new().route("/", post(handler));
 
-    let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
-    tracing::debug!("listening on {}", addr);
-    axum::Server::bind(&addr)
-        .serve(app.into_make_service())
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:3000")
         .await
         .unwrap();
+    tracing::debug!("listening on {}", listener.local_addr().unwrap());
+    axum::serve(listener, app).await.unwrap();
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -61,7 +58,7 @@ where
 {
     type Rejection = Response;
 
-    async fn from_request(req: Request<Body>, _state: &S) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: Request, _state: &S) -> Result<Self, Self::Rejection> {
         let content_type_header = req.headers().get(CONTENT_TYPE);
         let content_type = content_type_header.and_then(|value| value.to_str().ok());
 

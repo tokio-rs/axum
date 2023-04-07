@@ -10,7 +10,6 @@ use axum::{
     routing::get,
     Router,
 };
-use std::net::SocketAddr;
 use tower_http::limit::RequestBodyLimitLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
@@ -34,12 +33,11 @@ async fn main() {
         .layer(tower_http::trace::TraceLayer::new_for_http());
 
     // run it with hyper
-    let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
-    tracing::debug!("listening on {}", addr);
-    axum::Server::bind(&addr)
-        .serve(app.into_make_service())
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:3000")
         .await
         .unwrap();
+    tracing::debug!("listening on {}", listener.local_addr().unwrap());
+    axum::serve(listener, app).await.unwrap();
 }
 
 async fn show_form() -> Html<&'static str> {

@@ -1,6 +1,6 @@
 #![doc = include_str!("../docs/response.md")]
 
-use crate::body::{Bytes, Full};
+use axum_core::body::Body;
 use http::{header, HeaderValue};
 
 mod redirect;
@@ -40,7 +40,7 @@ pub struct Html<T>(pub T);
 
 impl<T> IntoResponse for Html<T>
 where
-    T: Into<Full<Bytes>>,
+    T: Into<Body>,
 {
     fn into_response(self) -> Response {
         (

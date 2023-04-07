@@ -7,7 +7,8 @@ use axum::{
     Router,
     body::Body,
     routing::{any_service, get_service},
-    http::{Request, StatusCode},
+    extract::Request,
+    http::StatusCode,
     error_handling::HandleErrorLayer,
 };
 use tower_http::services::ServeFile;
@@ -22,7 +23,7 @@ let app = Router::new()
         // Services whose response body is not `axum::body::BoxBody`
         // can be wrapped in `axum::routing::any_service` (or one of the other routing filters)
         // to have the response body mapped
-        any_service(service_fn(|_: Request<Body>| async {
+        any_service(service_fn(|_: Request| async {
             let res = Response::new(Body::from("Hi from `GET /`"));
             Ok::<_, Infallible>(res)
         }))
@@ -31,9 +32,8 @@ let app = Router::new()
         "/foo",
         // This service's response body is `axum::body::BoxBody` so
         // it can be routed to directly.
-        service_fn(|req: Request<Body>| async move {
+        service_fn(|req: Request| async move {
             let body = Body::from(format!("Hi from `{} /foo`", req.method()));
-            let body = axum::body::boxed(body);
             let res = Response::new(body);
             Ok::<_, Infallible>(res)
         })
@@ -43,9 +43,7 @@ let app = Router::new()
         "/static/Cargo.toml",
         ServeFile::new("Cargo.toml"),
     );
-# async {
-# axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-# };
+# let _: Router = app;
 ```
 
 Routing to arbitrary services in this way has complications for backpressure
@@ -64,9 +62,7 @@ let app = Router::new().route_service(
     "/",
     Router::new().route("/foo", get(|| async {})),
 );
-# async {
-# axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-# };
+# let _: Router = app;
 ```
 
 Use [`Router::nest`] instead.

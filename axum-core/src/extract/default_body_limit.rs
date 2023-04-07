@@ -30,22 +30,21 @@ use tower_layer::Layer;
 ///     Router,
 ///     routing::post,
 ///     body::Body,
-///     extract::{DefaultBodyLimit, RawBody},
-///     http::Request,
+///     extract::{Request, DefaultBodyLimit},
 /// };
 ///
 /// let app = Router::new()
 ///     .route(
 ///         "/",
 ///         // even with `DefaultBodyLimit` the request body is still just `Body`
-///         post(|request: Request<Body>| async {}),
+///         post(|request: Request| async {}),
 ///     )
 ///     .layer(DefaultBodyLimit::max(1024));
 /// # let _: Router = app;
 /// ```
 ///
 /// ```
-/// use axum::{Router, routing::post, body::Body, extract::RawBody, http::Request};
+/// use axum::{Router, routing::post, body::Body, extract::Request};
 /// use tower_http::limit::RequestBodyLimitLayer;
 /// use http_body::Limited;
 ///
@@ -54,7 +53,7 @@ use tower_layer::Layer;
 ///         "/",
 ///         // `RequestBodyLimitLayer` changes the request body type to `Limited<Body>`
 ///         // extracting a different body type wont work
-///         post(|request: Request<Body>| async {}),
+///         post(|request: Request| async {}),
 ///     )
 ///     .layer(RequestBodyLimitLayer::new(1024));
 /// # let _: Router = app;
@@ -69,7 +68,7 @@ use tower_layer::Layer;
 /// [`Json`]: https://docs.rs/axum/0.6.0/axum/struct.Json.html
 /// [`Form`]: https://docs.rs/axum/0.6.0/axum/struct.Form.html
 /// [`FromRequest`]: crate::extract::FromRequest
-/// [`RequestBodyLimit`]: https://docs.rs/tower-http/latest/tower_http/limit/struct.RequestBodyLimit.html
+/// [`RequestBodyLimit`]: tower_http::limit::RequestBodyLimit
 /// [`RequestExt::with_limited_body`]: crate::RequestExt::with_limited_body
 /// [`RequestExt::into_limited_body`]: crate::RequestExt::into_limited_body
 #[derive(Debug, Clone)]
@@ -113,7 +112,6 @@ impl DefaultBodyLimit {
     ///     .layer(RequestBodyLimitLayer::new(10 * 1000 * 1000));
     /// ```
     ///
-    /// [`tower_http::limit`]: https://docs.rs/tower-http/0.3.4/tower_http/limit/index.html
     /// [`Bytes`]: bytes::Bytes
     /// [`Json`]: https://docs.rs/axum/0.6.0/axum/struct.Json.html
     /// [`Form`]: https://docs.rs/axum/0.6.0/axum/struct.Form.html

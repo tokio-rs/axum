@@ -10,10 +10,11 @@ use std::{fmt, str::FromStr};
 
 #[tokio::main]
 async fn main() {
-    axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())
-        .serve(app().into_make_service())
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:3000")
         .await
         .unwrap();
+    println!("listening on {}", listener.local_addr().unwrap());
+    axum::serve(listener, app()).await.unwrap();
 }
 
 fn app() -> Router {

@@ -9,7 +9,8 @@ use axum_core::body::Body;
 use axum_core::RequestExt;
 use futures_util::stream::Stream;
 use http::header::{HeaderMap, CONTENT_TYPE};
-use http::Request;
+use http::StatusCode;
+use std::error::Error;
 use std::{
     fmt,
     pin::Pin,
@@ -32,7 +33,7 @@ use std::{
 ///     routing::post,
 ///     Router,
 /// };
-/// use futures::stream::StreamExt;
+/// use futures_util::stream::StreamExt;
 ///
 /// async fn upload(mut multipart: Multipart) {
 ///     while let Some(mut field) = multipart.next_field().await.unwrap() {
@@ -44,9 +45,7 @@ use std::{
 /// }
 ///
 /// let app = Router::new().route("/upload", post(upload));
-/// # async {
-/// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-/// # };
+/// # let _: Router = app;
 /// ```
 #[cfg_attr(docsrs, doc(cfg(feature = "multipart")))]
 #[derive(Debug)]
@@ -205,6 +204,51 @@ impl MultipartError {
     fn from_multer(multer: multer::Error) -> Self {
         Self { source: multer }
     }
+
+    /// Get the response body text used for this rejection.
+    pub fn body_text(&self) -> String {
+        self.source.to_string()
+    }
+
+    /// Get the status code used for this rejection.
+    pub fn status(&self) -> http::StatusCode {
+        status_code_from_multer_error(&self.source)
+    }
+}
+
+fn status_code_from_multer_error(err: &multer::Error) -> StatusCode {
+    match err {
+        multer::Error::UnknownField { .. }
+        | multer::Error::IncompleteFieldData { .. }
+        | multer::Error::IncompleteHeaders
+        | multer::Error::ReadHeaderFailed(..)
+        | multer::Error::DecodeHeaderName { .. }
+        | multer::Error::DecodeContentType(..)
+        | multer::Error::NoBoundary
+        | multer::Error::DecodeHeaderValue { .. }
+        | multer::Error::NoMultipart
+        | multer::Error::IncompleteStream => StatusCode::BAD_REQUEST,
+        multer::Error::FieldSizeExceeded { .. } | multer::Error::StreamSizeExceeded { .. } => {
+            StatusCode::PAYLOAD_TOO_LARGE
+        }
+        multer::Error::StreamReadFailed(err) => {
+            if let Some(err) = err.downcast_ref::<multer::Error>() {
+                return status_code_from_multer_error(err);
+            }
+
+            if err
+                .downcast_ref::<crate::Error>()
+                .and_then(|err| err.source())
+                .and_then(|err| err.downcast_ref::<http_body::LengthLimitError>())
+                .is_some()
+            {
+                return StatusCode::PAYLOAD_TOO_LARGE;
+            }
+
+            StatusCode::INTERNAL_SERVER_ERROR
+        }
+        _ => StatusCode::INTERNAL_SERVER_ERROR,
+    }
 }
 
 impl fmt::Display for MultipartError {
@@ -216,6 +260,12 @@ impl fmt::Display for MultipartError {
 impl std::error::Error for MultipartError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         Some(&self.source)
+    }
+}
+
+impl IntoResponse for MultipartError {
+    fn into_response(self) -> Response {
+        (self.status(), self.body_text()).into_response()
     }
 }
 
@@ -243,6 +293,8 @@ define_rejection! {
 
 #[cfg(test)]
 mod tests {
+    use axum_core::extract::DefaultBodyLimit;
+
     use super::*;
     use crate::{response::IntoResponse, routing::post, test_helpers::*, Router};
 
@@ -283,5 +335,29 @@ mod tests {
         let _app: Router = Router::new()
             .route("/", post(handler))
             .layer(tower_http::limit::RequestBodyLimitLayer::new(1024));
+    }
+
+    #[crate::test]
+    async fn body_too_large() {
+        const BYTES: &[u8] = "<!doctype html><title>🦀</title>".as_bytes();
+
+        async fn handle(mut multipart: Multipart) -> Result<(), MultipartError> {
+            while let Some(field) = multipart.next_field().await? {
+                field.bytes().await?;
+            }
+            Ok(())
+        }
+
+        let app = Router::new()
+            .route("/", post(handle))
+            .layer(DefaultBodyLimit::max(BYTES.len() - 1));
+
+        let client = TestClient::new(app);
+
+        let form =
+            reqwest::multipart::Form::new().part("file", reqwest::multipart::Part::bytes(BYTES));
+
+        let res = client.post("/").multipart(form).send().await;
+        assert_eq!(res.status(), StatusCode::PAYLOAD_TOO_LARGE);
     }
 }

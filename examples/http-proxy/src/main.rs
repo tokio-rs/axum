@@ -13,8 +13,9 @@
 //! Example is based on <https://github.com/hyperium/hyper/blob/master/examples/http_proxy.rs>
 
 use axum::{
-    body::{self, Body},
-    http::{Method, Request, StatusCode},
+    body::Body,
+    extract::Request,
+    http::{Method, StatusCode},
     response::{IntoResponse, Response},
     routing::get,
     Router,
@@ -51,7 +52,7 @@ async fn main() {
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
     tracing::debug!("listening on {}", addr);
-    axum::Server::bind(&addr)
+    hyper::Server::bind(&addr)
         .http1_preserve_header_case(true)
         .http1_title_case_headers(true)
         .serve(Shared::new(service))
@@ -59,7 +60,7 @@ async fn main() {
         .unwrap();
 }
 
-async fn proxy(req: Request<Body>) -> Result<Response, hyper::Error> {
+async fn proxy(req: Request) -> Result<Response, hyper::Error> {
     tracing::trace!(?req);
 
     if let Some(host_addr) = req.uri().authority().map(|auth| auth.to_string()) {
@@ -74,7 +75,7 @@ async fn proxy(req: Request<Body>) -> Result<Response, hyper::Error> {
             }
         });
 
-        Ok(Response::new(body::boxed(body::Empty::new())))
+        Ok(Response::new(Body::empty()))
     } else {
         tracing::warn!("CONNECT host is not socket addr: {:?}", req.uri());
         Ok((

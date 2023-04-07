@@ -1,7 +1,7 @@
 use async_trait::async_trait;
-use axum_core::{body::Body, extract::FromRequest};
+use axum_core::extract::{FromRequest, Request};
 use bytes::{Bytes, BytesMut};
-use http::{Method, Request};
+use http::Method;
 
 use super::{
     has_content_type,
@@ -25,9 +25,7 @@ use super::{
 /// async fn handler(RawForm(form): RawForm) {}
 ///
 /// let app = Router::new().route("/", get(handler));
-/// # async {
-/// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-/// # };
+/// # let _: Router = app;
 /// ```
 #[derive(Debug)]
 pub struct RawForm(pub Bytes);
@@ -39,7 +37,7 @@ where
 {
     type Rejection = RawFormRejection;
 
-    async fn from_request(req: Request<Body>, state: &S) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: Request, state: &S) -> Result<Self, Self::Rejection> {
         if req.method() == Method::GET {
             let mut bytes = BytesMut::new();
 
