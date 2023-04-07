@@ -22,7 +22,7 @@ use axum::{
     routing::get,
     Router,
 };
-use axum_extra::typed_header::TypedHeader;
+use axum_extra::TypedHeader;
 
 use std::borrow::Cow;
 use std::ops::ControlFlow;

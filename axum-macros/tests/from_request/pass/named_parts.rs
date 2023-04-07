@@ -2,9 +2,9 @@ use axum::{
     extract::FromRequestParts,
     response::Response,
 };
-use axum_extra::typed_header::{
+use axum_extra::{
     TypedHeader,
-    TypedHeaderRejection,
+    typed_header::TypedHeaderRejection,
     headers::{self, UserAgent},
 };
 
