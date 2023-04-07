@@ -117,7 +117,7 @@ jobs:
     - uses: dtolnay/rust-toolchain@stable
       with:
         # same as `axum-macros/rust-toolchain`
-        toolchain: nightly-2022-11-18
+        toolchain: nightly-2023-04-06
         override: true
         profile: minimal
     - uses: Swatinem/rust-cache@v1
