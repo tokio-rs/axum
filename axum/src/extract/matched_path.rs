@@ -251,7 +251,7 @@ mod tests {
             matched_path: Option<MatchedPath>,
             req: Request<B>,
         ) -> Request<B> {
-            assert!(matched_path.is_some());
+            assert_eq!(matched_path.unwrap().as_str(), "/:a/:b");
             req
         }
 
