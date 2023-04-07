@@ -228,6 +228,8 @@ fn check_inputs_impls_from_request(
                 }
             };
 
+            let consumes_request = request_consuming_type_name(&ty).is_some();
+
             let check_fn = format_ident!(
                 "__axum_macros_check_{}_{}_from_request_check",
                 item_fn.sig.ident,
@@ -252,7 +254,7 @@ fn check_inputs_impls_from_request(
                 }
             };
 
-            let check_fn_generics = if must_impl_from_request_parts {
+            let check_fn_generics = if must_impl_from_request_parts || consumes_request {
                 quote! {}
             } else {
                 quote! { <M> }
@@ -262,6 +264,10 @@ fn check_inputs_impls_from_request(
                 quote_spanned! {span=>
                     #ty: ::axum::extract::FromRequestParts<#state_ty> + Send
                 }
+            } else if consumes_request {
+                quote_spanned! {span=>
+                    #ty: ::axum::extract::FromRequest<#state_ty, #body_ty> + Send
+                }
             } else {
                 quote_spanned! {span=>
                     #ty: ::axum::extract::FromRequest<#state_ty, #body_ty, M> + Send
@@ -270,6 +276,7 @@ fn check_inputs_impls_from_request(
 
             quote_spanned! {span=>
                 #[allow(warnings)]
+                #[doc(hidden)]
                 fn #check_fn #check_fn_generics()
                 where
                     #from_request_bound,
@@ -278,6 +285,7 @@ fn check_inputs_impls_from_request(
                 // we have to call the function to actually trigger a compile error
                 // since the function is generic, just defining it is not enough
                 #[allow(warnings)]
+                #[doc(hidden)]
                 fn #call_check_fn()
                 {
                     #call_check_fn_body
@@ -298,35 +306,9 @@ fn check_input_order(item_fn: &ItemFn) -> Option<TokenStream> {
                 FnArg::Typed(pat_type) => &*pat_type.ty,
                 FnArg::Receiver(_) => return None,
             };
-            let span = ty.span();
+            let type_name = request_consuming_type_name(ty)?;
 
-            let path = match ty {
-                Type::Path(type_path) => &type_path.path,
-                _ => return None,
-            };
-
-            let ident = match path.segments.last() {
-                Some(path_segment) => &path_segment.ident,
-                None => return None,
-            };
-
-            let type_name = match &*ident.to_string() {
-                "Json" => "Json<_>",
-                "BodyStream" => "BodyStream",
-                "RawBody" => "RawBody<_>",
-                "RawForm" => "RawForm",
-                "Multipart" => "Multipart",
-                "Protobuf" => "Protobuf",
-                "JsonLines" => "JsonLines<_>",
-                "Form" => "Form<_>",
-                "Request" => "Request<_>",
-                "Bytes" => "Bytes",
-                "String" => "String",
-                "Parts" => "Parts",
-                _ => return None,
-            };
-
-            Some((idx, type_name, span))
+            Some((idx, type_name, ty.span()))
         })
         .collect::<Vec<_>>();
 
@@ -341,7 +323,7 @@ fn check_input_order(item_fn: &ItemFn) -> Option<TokenStream> {
             let (_idx, type_name, span) = &types_that_consume_the_request[0];
             let error = format!(
                 "`{type_name}` consumes the request body and thus must be \
-            the last argument to the handler function"
+                the last argument to the handler function"
             );
             return Some(quote_spanned! {*span=>
                 compile_error!(#error);
@@ -384,6 +366,36 @@ fn check_input_order(item_fn: &ItemFn) -> Option<TokenStream> {
     }
 }
 
+fn request_consuming_type_name(ty: &Type) -> Option<&'static str> {
+    let path = match ty {
+        Type::Path(type_path) => &type_path.path,
+        _ => return None,
+    };
+
+    let ident = match path.segments.last() {
+        Some(path_segment) => &path_segment.ident,
+        None => return None,
+    };
+
+    let type_name = match &*ident.to_string() {
+        "Json" => "Json<_>",
+        "BodyStream" => "BodyStream",
+        "RawBody" => "RawBody<_>",
+        "RawForm" => "RawForm",
+        "Multipart" => "Multipart",
+        "Protobuf" => "Protobuf",
+        "JsonLines" => "JsonLines<_>",
+        "Form" => "Form<_>",
+        "Request" => "Request<_>",
+        "Bytes" => "Bytes",
+        "String" => "String",
+        "Parts" => "Parts",
+        _ => return None,
+    };
+
+    Some(type_name)
+}
+
 fn check_output_impls_into_response(item_fn: &ItemFn) -> TokenStream {
     let ty = match &item_fn.sig.output {
         syn::ReturnType::Default => return quote! {},
@@ -417,6 +429,7 @@ fn check_output_impls_into_response(item_fn: &ItemFn) -> TokenStream {
     let make = if item_fn.sig.asyncness.is_some() {
         quote_spanned! {span=>
             #[allow(warnings)]
+            #[doc(hidden)]
             async fn #make_value_name() -> #ty {
                 #declare_inputs
                 #block
@@ -425,6 +438,7 @@ fn check_output_impls_into_response(item_fn: &ItemFn) -> TokenStream {
     } else {
         quote_spanned! {span=>
             #[allow(warnings)]
+            #[doc(hidden)]
             fn #make_value_name() -> #ty {
                 #declare_inputs
                 #block
@@ -439,6 +453,7 @@ fn check_output_impls_into_response(item_fn: &ItemFn) -> TokenStream {
             #make
 
             #[allow(warnings)]
+            #[doc(hidden)]
             async fn #name() {
                 let value = #receiver #make_value_name().await;
                 fn check<T>(_: T)
@@ -450,6 +465,7 @@ fn check_output_impls_into_response(item_fn: &ItemFn) -> TokenStream {
     } else {
         quote_spanned! {span=>
             #[allow(warnings)]
+            #[doc(hidden)]
             async fn #name() {
                 #make
 
@@ -499,6 +515,7 @@ fn check_future_send(item_fn: &ItemFn) -> TokenStream {
     if let Some(receiver) = self_receiver(item_fn) {
         quote! {
             #[allow(warnings)]
+            #[doc(hidden)]
             fn #name() {
                 let future = #receiver #handler_name(#(#args),*);
                 #do_check
@@ -507,6 +524,7 @@ fn check_future_send(item_fn: &ItemFn) -> TokenStream {
     } else {
         quote! {
             #[allow(warnings)]
+            #[doc(hidden)]
             fn #name() {
                 #item_fn
                 let future = #handler_name(#(#args),*);

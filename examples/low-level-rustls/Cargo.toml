@@ -6,7 +6,7 @@ publish = false
 
 [dependencies]
 axum = { path = "../../axum" }
-futures-util = "0.3"
+futures-util = { version = "0.3", default-features = false, features = ["alloc"] }
 hyper = { version = "0.14", features = ["full"] }
 rustls-pemfile = "0.3"
 tokio = { version = "1", features = ["full"] }

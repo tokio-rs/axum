@@ -13,15 +13,9 @@ on:
 jobs:
   check:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        pwd:
-          - .
-          - examples
     steps:
     - uses: actions/checkout@master
     - uses: arduino/setup-protoc@v1
-      if: matrix.pwd == 'examples'
       with:
         repo-token: ${{ secrets.GITHUB_TOKEN }}
     - uses: dtolnay/rust-toolchain@stable
@@ -31,17 +25,16 @@ jobs:
         profile: minimal
         components: clippy, rustfmt
     - uses: Swatinem/rust-cache@v2
-      with:
-        key: ${{ matrix.pwd }}
-        workspaces: ${{ matrix.pwd }}
     - name: Check
-      working-directory: ${{ matrix.pwd }}
-      run: |
-        cargo clippy --all --all-targets --all-features
+      uses: actions-rs/cargo@v1
+      with:
+        command: clippy
+        args: --workspace --all-targets --all-features
     - name: rustfmt
-      working-directory: ${{ matrix.pwd }}
-      run: |
-        cargo fmt --all -- --check
+      uses: actions-rs/cargo@v1
+      with:
+        command: fmt
+        args: -- --check
 
   check-docs:
     runs-on: ubuntu-latest
@@ -55,13 +48,14 @@ jobs:
     - uses: Swatinem/rust-cache@v1
     - name: cargo doc
       env:
-        RUSTDOCFLAGS: "-D broken-intra-doc-links"
+        RUSTDOCFLAGS: "-D rustdoc::all -A rustdoc::private-doc-tests"
       run: cargo doc --all-features --no-deps
 
   cargo-hack:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@master
+    - uses: arduino/setup-protoc@v1
     - uses: dtolnay/rust-toolchain@stable
       with:
         toolchain: stable
@@ -101,6 +95,7 @@ jobs:
         rust: [stable, beta]
     steps:
     - uses: actions/checkout@master
+    - uses: arduino/setup-protoc@v1
     - uses: dtolnay/rust-toolchain@stable
       with:
         toolchain: ${{ matrix.rust }}
@@ -113,6 +108,7 @@ jobs:
         command: test
         args: --all --all-features --all-targets
 
+  # some examples doesn't support our MSRV so we only test axum itself on our MSRV
   test-nightly:
     needs: check
     runs-on: ubuntu-latest
@@ -269,11 +265,6 @@ jobs:
 
   dependencies-are-sorted:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        pwd:
-          - .
-          - examples
     steps:
     - uses: actions/checkout@master
     - uses: dtolnay/rust-toolchain@stable
@@ -282,16 +273,12 @@ jobs:
         override: true
         profile: minimal
     - uses: Swatinem/rust-cache@v2
-      with:
-        key: ${{ matrix.pwd }}
-        workspaces: ${{ matrix.pwd }}
     - name: Install cargo-sort
       run: |
         cargo install cargo-sort
+    # Work around cargo-sort not honoring workspace.exclude
     - name: Remove non-crate folder
-      run: rm -rf async-graphql || true
-      working-directory: ${{ matrix.pwd }}
+      run: rm -rf examples/async-graphql
     - name: Check dependency tables
-      working-directory: ${{ matrix.pwd }}
       run: |
         cargo sort --workspace --grouped --check

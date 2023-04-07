@@ -1,4 +1,0 @@
-[workspace]
-members = ["*"]
-exclude = ["async-graphql", "target"]
-resolver = "2"

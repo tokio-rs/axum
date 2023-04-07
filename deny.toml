@@ -21,6 +21,10 @@ skip-tree = [
     { name = "base64" },
     # parking_lot pulls in old versions of windows-sys
     { name = "windows-sys" },
+    # old version pulled in by rustls via ring
+    { name = "spin" },
+    # lots still pulls in syn 1.x
+    { name = "syn" },
 ]
 
 [sources]

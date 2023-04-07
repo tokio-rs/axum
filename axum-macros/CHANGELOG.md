@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+- None.
+
+# 0.3.7 (22. March, 2023)
+
+- **change:** Update to syn 2.0 ([#1862])
+- **fixed:** Give better error if generics are used with `#[derive(FromRef)]` ([#1874])
+
+[#1862]: https://github.com/tokio-rs/axum/pull/1862
+[#1874]: https://github.com/tokio-rs/axum/pull/1874
+
+# 0.3.6 (13. March, 2023)
+
+- **fixed:** Improve `#[debug_handler]` message for known generic
+  request-consuming extractors ([#1826])
+
+[#1826]: https://github.com/tokio-rs/axum/pull/1826
+
+# 0.3.5 (03. March, 2023)
+
 - **fixed:** In `#[debug_handler]` provide specific errors about `FromRequest`
   extractors not being the last argument ([#1797])
 

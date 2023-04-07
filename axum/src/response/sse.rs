@@ -10,7 +10,7 @@
 //! };
 //! use std::{time::Duration, convert::Infallible};
 //! use tokio_stream::StreamExt as _ ;
-//! use futures::stream::{self, Stream};
+//! use futures_util::stream::{self, Stream};
 //!
 //! let app = Router::new().route("/sse", get(sse_handler));
 //!
@@ -53,6 +53,7 @@ use tokio::time::Sleep;
 
 /// An SSE response
 #[derive(Clone)]
+#[must_use]
 pub struct Sse<S> {
     stream: S,
     keep_alive: Option<KeepAlive>,
@@ -163,6 +164,7 @@ where
 
 /// Server-sent event
 #[derive(Debug, Default, Clone)]
+#[must_use]
 pub struct Event {
     buffer: BytesMut,
     flags: EventFlags,
@@ -383,6 +385,7 @@ bitflags::bitflags! {
 /// Configure the interval between keep-alive messages, the content
 /// of each message, and the associated stream.
 #[derive(Debug, Clone)]
+#[must_use]
 pub struct KeepAlive {
     event: Bytes,
     max_interval: Duration,
@@ -506,7 +509,7 @@ impl<'a> Iterator for MemchrSplit<'a> {
 mod tests {
     use super::*;
     use crate::{routing::get, test_helpers::*, Router};
-    use futures::stream;
+    use futures_util::stream;
     use std::{collections::HashMap, convert::Infallible};
     use tokio_stream::StreamExt as _;
 

@@ -69,10 +69,11 @@ use tower_layer::Layer;
 /// [`Json`]: https://docs.rs/axum/0.6.0/axum/struct.Json.html
 /// [`Form`]: https://docs.rs/axum/0.6.0/axum/struct.Form.html
 /// [`FromRequest`]: crate::extract::FromRequest
-/// [`RequestBodyLimit`]: https://docs.rs/tower-http/latest/tower_http/limit/struct.RequestBodyLimit.html
+/// [`RequestBodyLimit`]: tower_http::limit::RequestBodyLimit
 /// [`RequestExt::with_limited_body`]: crate::RequestExt::with_limited_body
 /// [`RequestExt::into_limited_body`]: crate::RequestExt::into_limited_body
 #[derive(Debug, Clone)]
+#[must_use]
 pub struct DefaultBodyLimit {
     kind: DefaultBodyLimitKind,
 }
@@ -112,7 +113,6 @@ impl DefaultBodyLimit {
     ///     .layer(RequestBodyLimitLayer::new(10 * 1000 * 1000));
     /// ```
     ///
-    /// [`tower_http::limit`]: https://docs.rs/tower-http/0.3.4/tower_http/limit/index.html
     /// [`Bytes`]: bytes::Bytes
     /// [`Json`]: https://docs.rs/axum/0.6.0/axum/struct.Json.html
     /// [`Form`]: https://docs.rs/axum/0.6.0/axum/struct.Form.html

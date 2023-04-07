@@ -14,6 +14,7 @@ use super::{
 pub(super) struct PathRouter<S = (), B = Body> {
     routes: HashMap<RouteId, Endpoint<S, B>>,
     node: Arc<Node>,
+    prev_route_id: RouteId,
 }
 
 impl<S, B> PathRouter<S, B>
@@ -38,7 +39,7 @@ where
 
         validate_path(path)?;
 
-        let id = RouteId::next();
+        let id = self.next_route_id();
 
         let endpoint = if let Some((route_id, Endpoint::MethodRouter(prev_method_router))) = self
             .node
@@ -89,7 +90,7 @@ where
             return Err("Paths must start with a `/`".into());
         }
 
-        let id = RouteId::next();
+        let id = self.next_route_id();
         self.set_node(path, id)?;
         self.routes.insert(id, endpoint);
 
@@ -107,7 +108,11 @@ where
     }
 
     pub(super) fn merge(&mut self, other: PathRouter<S, B>) -> Result<(), Cow<'static, str>> {
-        let PathRouter { routes, node } = other;
+        let PathRouter {
+            routes,
+            node,
+            prev_route_id: _,
+        } = other;
 
         for (id, route) in routes {
             let path = node
@@ -130,7 +135,11 @@ where
     ) -> Result<(), Cow<'static, str>> {
         let prefix = validate_nest_path(path);
 
-        let PathRouter { routes, node } = router;
+        let PathRouter {
+            routes,
+            node,
+            prev_route_id: _,
+        } = router;
 
         for (id, endpoint) in routes {
             let inner_path = node
@@ -205,6 +214,7 @@ where
         PathRouter {
             routes,
             node: self.node,
+            prev_route_id: self.prev_route_id,
         }
     }
 
@@ -236,6 +246,7 @@ where
         PathRouter {
             routes,
             node: self.node,
+            prev_route_id: self.prev_route_id,
         }
     }
 
@@ -257,6 +268,7 @@ where
         PathRouter {
             routes,
             node: self.node,
+            prev_route_id: self.prev_route_id,
         }
     }
 
@@ -324,6 +336,16 @@ where
                 .expect("path wasn't matched so endpoint shouldn't exist"),
         }
     }
+
+    fn next_route_id(&mut self) -> RouteId {
+        let next_id = self
+            .prev_route_id
+            .0
+            .checked_add(1)
+            .expect("Over `u32::MAX` routes created. If you need this, please file an issue.");
+        self.prev_route_id = RouteId(next_id);
+        self.prev_route_id
+    }
 }
 
 impl<B, S> Default for PathRouter<S, B> {
@@ -331,6 +353,7 @@ impl<B, S> Default for PathRouter<S, B> {
         Self {
             routes: Default::default(),
             node: Default::default(),
+            prev_route_id: RouteId(0),
         }
     }
 }
@@ -349,6 +372,7 @@ impl<S, B> Clone for PathRouter<S, B> {
         Self {
             routes: self.routes.clone(),
             node: self.node.clone(),
+            prev_route_id: self.prev_route_id,
         }
     }
 }

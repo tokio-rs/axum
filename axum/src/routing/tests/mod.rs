@@ -18,7 +18,7 @@ use serde_json::json;
 use std::{
     convert::Infallible,
     future::{ready, Ready},
-    sync::atomic::{AtomicUsize, Ordering},
+    sync::atomic::{AtomicBool, AtomicUsize, Ordering},
     task::{Context, Poll},
     time::Duration,
 };
@@ -384,6 +384,34 @@ async fn wildcard_doesnt_match_just_trailing_slash() {
 }
 
 #[crate::test]
+async fn what_matches_wildcard() {
+    let app = Router::new()
+        .route("/*key", get(|| async { "root" }))
+        .route("/x/*key", get(|| async { "x" }))
+        .fallback(|| async { "fallback" });
+
+    let client = TestClient::new(app);
+
+    let get = |path| {
+        let f = client.get(path).send();
+        async move { f.await.text().await }
+    };
+
+    assert_eq!(get("/").await, "fallback");
+    assert_eq!(get("/a").await, "root");
+    assert_eq!(get("/a/").await, "root");
+    assert_eq!(get("/a/b").await, "root");
+    assert_eq!(get("/a/b/").await, "root");
+
+    assert_eq!(get("/x").await, "root");
+    assert_eq!(get("/x/").await, "root");
+    assert_eq!(get("/x/a").await, "x");
+    assert_eq!(get("/x/a/").await, "x");
+    assert_eq!(get("/x/a/b").await, "x");
+    assert_eq!(get("/x/a/b/").await, "x");
+}
+
+#[crate::test]
 async fn static_and_dynamic_paths() {
     let app = Router::new()
         .route(
@@ -525,7 +553,7 @@ fn routes_with_overlapping_method_routes() {
 fn merging_with_overlapping_method_routes() {
     async fn handler() {}
     let app: Router = Router::new().route("/foo/bar", get(handler));
-    app.clone().merge(app);
+    _ = app.clone().merge(app);
 }
 
 #[crate::test]
@@ -832,4 +860,56 @@ fn test_path_for_nested_route() {
     assert_eq!(path_for_nested_route("/a/", "/b"), "/a/b");
     assert_eq!(path_for_nested_route("/a", "/b/"), "/a/b/");
     assert_eq!(path_for_nested_route("/a/", "/b/"), "/a/b/");
+}
+
+#[crate::test]
+async fn state_isnt_cloned_too_much() {
+    static SETUP_DONE: AtomicBool = AtomicBool::new(false);
+    static COUNT: AtomicUsize = AtomicUsize::new(0);
+
+    struct AppState;
+
+    impl Clone for AppState {
+        fn clone(&self) -> Self {
+            #[rustversion::since(1.65)]
+            #[track_caller]
+            fn count() {
+                if SETUP_DONE.load(Ordering::SeqCst) {
+                    let bt = std::backtrace::Backtrace::force_capture();
+                    let bt = bt
+                        .to_string()
+                        .lines()
+                        .filter(|line| line.contains("axum") || line.contains("./src"))
+                        .collect::<Vec<_>>()
+                        .join("\n");
+                    println!("AppState::Clone:\n===============\n{}\n", bt);
+                    COUNT.fetch_add(1, Ordering::SeqCst);
+                }
+            }
+
+            #[rustversion::not(since(1.65))]
+            fn count() {
+                if SETUP_DONE.load(Ordering::SeqCst) {
+                    COUNT.fetch_add(1, Ordering::SeqCst);
+                }
+            }
+
+            count();
+
+            Self
+        }
+    }
+
+    let app = Router::new()
+        .route("/", get(|_: State<AppState>| async {}))
+        .with_state(AppState);
+
+    let client = TestClient::new(app);
+
+    // ignore clones made during setup
+    SETUP_DONE.store(true, Ordering::SeqCst);
+
+    client.get("/").send().await;
+
+    assert_eq!(COUNT.load(Ordering::SeqCst), 4);
 }

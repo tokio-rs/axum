@@ -1,7 +1,7 @@
 //! Run with
 //!
 //! ```not_rust
-//! cd examples && cargo run -p example-anyhow-error-response
+//! cargo run -p example-anyhow-error-response
 //! ```
 
 use axum::{

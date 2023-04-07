@@ -35,7 +35,7 @@ mod private {
 /// If your extractor needs to consume the request body then you should implement [`FromRequest`]
 /// and not [`FromRequestParts`].
 ///
-/// See [`axum::extract`] for more general docs about extraxtors.
+/// See [`axum::extract`] for more general docs about extractors.
 ///
 /// [`axum::extract`]: https://docs.rs/axum/0.6.0/axum/extract/index.html
 #[async_trait]
@@ -62,7 +62,7 @@ pub trait FromRequestParts<S>: Sized {
 /// If your extractor doesn't need to consume the request body then you should implement
 /// [`FromRequestParts`] and not [`FromRequest`].
 ///
-/// See [`axum::extract`] for more general docs about extraxtors.
+/// See [`axum::extract`] for more general docs about extractors.
 ///
 /// # What is the `B` type parameter?
 ///

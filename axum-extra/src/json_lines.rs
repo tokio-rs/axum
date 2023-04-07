@@ -32,7 +32,7 @@ pin_project! {
     ///
     /// ```rust
     /// use axum_extra::json_lines::JsonLines;
-    /// use futures::stream::StreamExt;
+    /// use futures_util::stream::StreamExt;
     ///
     /// async fn handler(mut stream: JsonLines<serde_json::Value>) {
     ///     while let Some(value) = stream.next().await {
@@ -46,10 +46,10 @@ pin_project! {
     /// ```rust
     /// use axum::{BoxError, response::{IntoResponse, Response}};
     /// use axum_extra::json_lines::JsonLines;
-    /// use futures::stream::Stream;
+    /// use futures_util::stream::Stream;
     ///
     /// fn stream_of_values() -> impl Stream<Item = Result<serde_json::Value, BoxError>> {
-    ///     # futures::stream::empty()
+    ///     # futures_util::stream::empty()
     /// }
     ///
     /// async fn handler() -> Response {
@@ -58,6 +58,7 @@ pin_project! {
     /// ```
     // we use `AsExtractor` as the default because you're more likely to name this type if its used
     // as an extractor
+    #[must_use]
     pub struct JsonLines<S, T = AsExtractor> {
         #[pin]
         inner: Inner<S>,

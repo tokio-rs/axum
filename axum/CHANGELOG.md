@@ -7,9 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- **fixed:** Add `#[must_use]` to `WebSocketUpgrade::on_upgrade` ([#1801])
+- None.
 
-[#1801]: https://github.com/tokio-rs/axum/pull/1801
+# 0.6.12 (22. March, 2023)
+
+- **added:** Implement `IntoResponse` for `MultipartError` ([#1861])
+- **fixed:** More clearly document what wildcards matches ([#1873])
+
+[#1861]: https://github.com/tokio-rs/axum/pull/1861
+[#1873]: https://github.com/tokio-rs/axum/pull/1873
+
+# 0.6.11 (13. March, 2023)
+
+- **fixed:** Don't require `S: Debug` for `impl Debug for Router<S>` ([#1836])
+- **fixed:** Clone state a bit less when handling requests ([#1837])
+- **fixed:** Unpin itoa dependency ([#1815])
+
+[#1815]: https://github.com/tokio-rs/axum/pull/1815
+[#1836]: https://github.com/tokio-rs/axum/pull/1836
+[#1837]: https://github.com/tokio-rs/axum/pull/1837
+
+# 0.6.10 (03. March, 2023)
+
+- **fixed:** Add `#[must_use]` attributes to types that do nothing unless used ([#1809])
+- **fixed:** Gracefully handle missing headers in the `TypedHeader` extractor ([#1810])
+- **fixed:** Fix routing issues when loading a `Router` via a dynamic library ([#1806])
+
+[#1806]: https://github.com/tokio-rs/axum/pull/1806
+[#1809]: https://github.com/tokio-rs/axum/pull/1809
+[#1810]: https://github.com/tokio-rs/axum/pull/1810
 
 # 0.6.9 (24. February, 2023)
 

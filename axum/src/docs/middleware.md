@@ -225,7 +225,7 @@ use axum::{
     body::Body,
     http::Request,
 };
-use futures::future::BoxFuture;
+use futures_util::future::BoxFuture;
 use tower::{Service, Layer};
 use std::task::{Context, Poll};
 
@@ -574,14 +574,14 @@ axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())
 [`tower`]: https://crates.io/crates/tower
 [`tower-http`]: https://crates.io/crates/tower-http
 [tower-guides]: https://github.com/tower-rs/tower/tree/master/guides
-[`axum::middleware::from_fn`]: crate::middleware::from_fn
-[`middleware::from_fn`]: crate::middleware::from_fn
+[`axum::middleware::from_fn`]: fn@crate::middleware::from_fn
+[`middleware::from_fn`]: fn@crate::middleware::from_fn
 [tower-from-scratch-guide]: https://github.com/tower-rs/tower/blob/master/guides/building-a-middleware-from-scratch.md
 [`ServiceBuilder::map_request`]: tower::ServiceBuilder::map_request
 [`ServiceBuilder::map_response`]: tower::ServiceBuilder::map_response
 [`ServiceBuilder::then`]: tower::ServiceBuilder::then
 [`ServiceBuilder::and_then`]: tower::ServiceBuilder::and_then
-[`axum::middleware::from_extractor`]: crate::middleware::from_extractor
+[`axum::middleware::from_extractor`]: fn@crate::middleware::from_extractor
 [`Handler::layer`]: crate::handler::Handler::layer
 [`Router::layer`]: crate::routing::Router::layer
 [`MethodRouter::layer`]: crate::routing::MethodRouter::layer

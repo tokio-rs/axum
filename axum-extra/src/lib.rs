@@ -20,7 +20,6 @@
 //! `multipart` | Enables the `Multpart` extractor | No
 //! `protobuf` | Enables the `Protobuf` extractor and response | No
 //! `query` | Enables the `Query` extractor | No
-//! `spa` | Enables the `Spa` router | No
 //! `typed-routing` | Enables the `TypedPath` routing utilities | No
 //!
 //! [`axum`]: https://crates.io/crates/axum

@@ -8,12 +8,22 @@ use syn::{
 
 use crate::attr_parsing::{combine_unary_attribute, parse_attrs, Combine};
 
-pub(crate) fn expand(item: ItemStruct) -> TokenStream {
-    item.fields
+pub(crate) fn expand(item: ItemStruct) -> syn::Result<TokenStream> {
+    if !item.generics.params.is_empty() {
+        return Err(syn::Error::new_spanned(
+            item.generics,
+            "`#[derive(FromRef)]` doesn't support generics",
+        ));
+    }
+
+    let tokens = item
+        .fields
         .iter()
         .enumerate()
         .map(|(idx, field)| expand_field(&item.ident, idx, field))
-        .collect()
+        .collect();
+
+    Ok(tokens)
 }
 
 fn expand_field(state: &Ident, idx: usize, field: &Field) -> TokenStream {

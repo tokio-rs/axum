@@ -54,20 +54,8 @@ macro_rules! panic_on_err {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub(crate) struct RouteId(u32);
 
-impl RouteId {
-    fn next() -> Self {
-        use std::sync::atomic::{AtomicU32, Ordering};
-        // `AtomicU64` isn't supported on all platforms
-        static ID: AtomicU32 = AtomicU32::new(0);
-        let id = ID.fetch_add(1, Ordering::Relaxed);
-        if id == u32::MAX {
-            panic!("Over `u32::MAX` routes created. If you need this, please file an issue.");
-        }
-        Self(id)
-    }
-}
-
 /// The router type for composing handlers and services.
+#[must_use]
 pub struct Router<S = (), B = Body> {
     path_router: PathRouter<S, B>,
     fallback_router: PathRouter<S, B>,
@@ -94,10 +82,7 @@ where
     }
 }
 
-impl<S, B> fmt::Debug for Router<S, B>
-where
-    S: fmt::Debug,
-{
+impl<S, B> fmt::Debug for Router<S, B> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Router")
             .field("path_router", &self.path_router)

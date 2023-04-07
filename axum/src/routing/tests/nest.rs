@@ -264,7 +264,7 @@ async fn multiple_top_level_nests() {
 #[crate::test]
 #[should_panic(expected = "Invalid route: nested routes cannot contain wildcards (*)")]
 async fn nest_cannot_contain_wildcards() {
-    Router::<(), Body>::new().nest("/one/*rest", Router::new());
+    _ = Router::<(), Body>::new().nest("/one/*rest", Router::new());
 }
 
 #[crate::test]

@@ -40,28 +40,28 @@
 //!
 //! ```
 //! use axum::{
-//!     extract::ws::{WebSocketUpgrade, WebSocket},
+//!     extract::{ws::{WebSocketUpgrade, WebSocket}, State},
 //!     response::Response,
 //!     routing::get,
-//!     Extension, Router,
+//!     Router,
 //! };
 //!
 //! #[derive(Clone)]
-//! struct State {
+//! struct AppState {
 //!     // ...
 //! }
 //!
-//! async fn handler(ws: WebSocketUpgrade, Extension(state): Extension<State>) -> Response {
+//! async fn handler(ws: WebSocketUpgrade, State(state): State<AppState>) -> Response {
 //!     ws.on_upgrade(|socket| handle_socket(socket, state))
 //! }
 //!
-//! async fn handle_socket(socket: WebSocket, state: State) {
+//! async fn handle_socket(socket: WebSocket, state: AppState) {
 //!     // ...
 //! }
 //!
 //! let app = Router::new()
 //!     .route("/ws", get(handler))
-//!     .layer(Extension(State { /* ... */ }));
+//!     .with_state(AppState { /* ... */ });
 //! # async {
 //! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 //! # };
@@ -74,7 +74,7 @@
 //!
 //! ```rust,no_run
 //! use axum::{Error, extract::ws::{WebSocket, Message}};
-//! use futures::{sink::SinkExt, stream::{StreamExt, SplitSink, SplitStream}};
+//! use futures_util::{sink::SinkExt, stream::{StreamExt, SplitSink, SplitStream}};
 //!
 //! async fn handle_socket(mut socket: WebSocket) {
 //!     let (mut sender, mut receiver) = socket.split();

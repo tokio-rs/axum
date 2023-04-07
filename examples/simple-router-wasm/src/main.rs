@@ -1,7 +1,7 @@
 //! Run with
 //!
 //! ```not_rust
-//! cd examples && cargo run -p example-simple-router-wasm
+//! cargo run -p example-simple-router-wasm
 //! ```
 //!
 //! This example shows what using axum in a wasm context might look like. This example should
