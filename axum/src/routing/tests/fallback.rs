@@ -93,6 +93,10 @@ async fn doesnt_inherit_fallback_if_overriden() {
     let res = client.get("/foo/bar").send().await;
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
     assert_eq!(res.text().await, "inner");
+
+    let res = client.get("/").send().await;
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    assert_eq!(res.text().await, "outer");
 }
 
 #[crate::test]

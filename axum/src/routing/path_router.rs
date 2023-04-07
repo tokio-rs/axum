@@ -312,6 +312,18 @@ where
             ) => Err((req, state)),
         }
     }
+
+    pub(super) fn replace_endpoint(&mut self, path: &str, endpoint: Endpoint<S, B>) {
+        match self.node.at(path) {
+            Ok(match_) => {
+                let id = *match_.value;
+                self.routes.insert(id, endpoint);
+            }
+            Err(_) => self
+                .route_endpoint(path, endpoint)
+                .expect("path wasn't matched so endpoint shouldn't exist"),
+        }
+    }
 }
 
 impl<B, S> Default for PathRouter<S, B> {

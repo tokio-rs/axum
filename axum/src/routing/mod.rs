@@ -16,6 +16,7 @@ use std::{
     fmt,
     task::{Context, Poll},
 };
+use sync_wrapper::SyncWrapper;
 use tower_layer::Layer;
 use tower_service::Service;
 
@@ -70,6 +71,7 @@ impl RouteId {
 pub struct Router<S = (), B = Body> {
     path_router: PathRouter<S, B>,
     fallback_router: PathRouter<S, B>,
+    default_fallback: bool,
 }
 
 impl<S, B> Clone for Router<S, B> {
@@ -77,6 +79,7 @@ impl<S, B> Clone for Router<S, B> {
         Self {
             path_router: self.path_router.clone(),
             fallback_router: self.fallback_router.clone(),
+            default_fallback: self.default_fallback,
         }
     }
 }
@@ -99,6 +102,7 @@ where
         f.debug_struct("Router")
             .field("path_router", &self.path_router)
             .field("fallback_router", &self.fallback_router)
+            .field("default_fallback", &self.default_fallback)
             .finish()
     }
 }
@@ -117,10 +121,14 @@ where
     /// Unless you add additional routes this will respond with `404 Not Found` to
     /// all requests.
     pub fn new() -> Self {
-        Self {
+        let mut this = Self {
             path_router: Default::default(),
             fallback_router: Default::default(),
-        }
+            default_fallback: true,
+        };
+        this = this.fallback_service(NotFound);
+        this.default_fallback = true;
+        this
     }
 
     #[doc = include_str!("../docs/routing/route.md")]
@@ -157,9 +165,14 @@ where
         let Router {
             path_router,
             fallback_router,
+            default_fallback,
         } = router;
 
         panic_on_err!(self.path_router.nest(path, path_router));
+
+        if !default_fallback {
+            panic_on_err!(self.fallback_router.nest(path, fallback_router));
+        }
 
         self
     }
@@ -184,14 +197,31 @@ where
     {
         let Router {
             path_router,
-            fallback_router,
+            fallback_router: other_fallback,
+            default_fallback,
         } = other.into();
 
         panic_on_err!(self.path_router.merge(path_router));
 
-        self.fallback_router
-            .merge(fallback_router)
-            .expect("Cannot merge two `Router`s that both have a fallback");
+        match (self.default_fallback, default_fallback) {
+            // both have the default fallback
+            // use the one from other
+            (true, true) => {
+                self.fallback_router = other_fallback;
+            }
+            // self has default fallback, other has a custom fallback
+            (true, false) => {
+                self.fallback_router = other_fallback;
+                self.default_fallback = false;
+            }
+            // self has a custom fallback, other has a default
+            // nothing to do
+            (false, true) => {}
+            // both have a custom fallback, not allowed
+            (false, false) => {
+                panic!("Cannot merge two `Router`s that both have a fallback")
+            }
+        };
 
         self
     }
@@ -209,6 +239,7 @@ where
         Router {
             path_router: self.path_router.layer(layer.clone()),
             fallback_router: self.fallback_router.layer(layer),
+            default_fallback: self.default_fallback,
         }
     }
 
@@ -225,48 +256,38 @@ where
         Router {
             path_router: self.path_router.route_layer(layer),
             fallback_router: self.fallback_router,
+            default_fallback: self.default_fallback,
         }
     }
 
     #[track_caller]
     #[doc = include_str!("../docs/routing/fallback.md")]
-    pub fn fallback<H, T>(mut self, handler: H) -> Self
+    pub fn fallback<H, T>(self, handler: H) -> Self
     where
         H: Handler<T, S, B>,
         T: 'static,
     {
         let endpoint = Endpoint::MethodRouter(any(handler));
-
-        match (
-            self.fallback_router.route_endpoint("/", endpoint.clone()),
-            self.fallback_router
-                .route_endpoint(&format!("/*{FALLBACK_PARAM}"), endpoint),
-        ) {
-            (Ok(()), Ok(())) => {}
-            (Err(err), Err(_)) => panic!("{err}"),
-            (_, Err(_)) | (Err(_), _) => {
-                // either none fail or both fail
-                unreachable!()
-            }
-        }
-
-        self
+        self.fallback_endpoint(endpoint)
     }
 
     /// Add a fallback [`Service`] to the router.
     ///
     /// See [`Router::fallback`] for more details.
-    pub fn fallback_service<T>(mut self, service: T) -> Self
+    pub fn fallback_service<T>(self, service: T) -> Self
     where
         T: Service<Request<B>, Error = Infallible> + Clone + Send + 'static,
         T::Response: IntoResponse,
         T::Future: Send + 'static,
     {
-        let endpoint = Endpoint::Route(Route::new(service));
-        panic_on_err!(self.fallback_router.route_endpoint("/", endpoint.clone()));
-        panic_on_err!(self
-            .fallback_router
-            .route_endpoint(&format!("/*{FALLBACK_PARAM}"), endpoint));
+        self.fallback_endpoint(Endpoint::Route(Route::new(service)))
+    }
+
+    fn fallback_endpoint(mut self, endpoint: Endpoint<S, B>) -> Self {
+        self.fallback_router.replace_endpoint("/", endpoint.clone());
+        self.fallback_router
+            .replace_endpoint(&format!("/*{FALLBACK_PARAM}"), endpoint);
+        self.default_fallback = false;
         self
     }
 
@@ -275,29 +296,47 @@ where
         Router {
             path_router: self.path_router.with_state(state.clone()),
             fallback_router: self.fallback_router.with_state(state),
+            default_fallback: self.default_fallback,
         }
     }
 
     pub(crate) fn call_with_state(
         &mut self,
-        req: Request<B>,
+        mut req: Request<B>,
         state: S,
     ) -> RouteFuture<B, Infallible> {
+        if !self.default_fallback {
+            req.extensions_mut().insert(SuperFallback(SyncWrapper::new(
+                self.fallback_router.clone(),
+            )));
+        }
+
         match self.path_router.call_with_state(req, state) {
-            Ok(future) => future,
-            Err((req, state)) => {
-                match self.fallback_router.call_with_state(req, state)  {
+            Ok(future) => {
+                println!("path_router hit");
+                future
+            }
+            Err((mut req, state)) => {
+                let super_fallback = req
+                    .extensions_mut()
+                    .remove::<SuperFallback<S, B>>()
+                    .map(|SuperFallback(path_router)| path_router.into_inner());
+
+                if let Some(mut super_fallback) = super_fallback {
+                    return super_fallback
+                        .call_with_state(req, state)
+                        .unwrap_or_else(|_| unreachable!());
+                }
+
+                match self.fallback_router.call_with_state(req, state) {
                     Ok(future) => future,
-                    Err((req, state)) => {
-                        todo!()
-                    },
+                    Err((_req, _state)) => {
+                        // the default fallback added in `Router::new` matches
+                        // everything
+                        unreachable!()
+                    }
                 }
             }
-            // Err((req, state)) => match &mut self.fallback {
-            //     Fallback::Default(fallback) => fallback.call(req),
-            //     Fallback::Service(fallback) => fallback.call(req),
-            //     Fallback::BoxedHandler(handler) => handler.clone().into_route(state).call(req),
-            // },
         }
     }
 }
@@ -474,6 +513,8 @@ impl<S, B> fmt::Debug for Endpoint<S, B> {
         }
     }
 }
+
+struct SuperFallback<S, B>(SyncWrapper<PathRouter<S, B>>);
 
 #[test]
 #[allow(warnings)]
