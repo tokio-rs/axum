@@ -305,6 +305,8 @@ where
         mut req: Request<B>,
         state: S,
     ) -> RouteFuture<B, Infallible> {
+        // required for opaque routers to still inherit the fallback
+        // TODO(david): remove this feature in 0.7
         if !self.default_fallback {
             req.extensions_mut().insert(SuperFallback(SyncWrapper::new(
                 self.fallback_router.clone(),
