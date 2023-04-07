@@ -304,15 +304,14 @@ where
 
                 let endpont = self
                     .routes
-                    .get(&id)
-                    .expect("no route for id. This is a bug in axum. Please file an issue")
-                    .clone();
+                    .get_mut(&id)
+                    .expect("no route for id. This is a bug in axum. Please file an issue");
 
                 match endpont {
-                    Endpoint::MethodRouter(mut method_router) => {
+                    Endpoint::MethodRouter(method_router) => {
                         Ok(method_router.call_with_state(req, state))
                     }
-                    Endpoint::Route(mut route) => Ok(route.call(req)),
+                    Endpoint::Route(route) => Ok(route.clone().call(req)),
                 }
             }
             // explicitly handle all variants in case matchit adds
