@@ -1,4 +1,3 @@
-use crate::body::{Body, Bytes, HttpBody};
 use crate::response::{IntoResponse, Response};
 use axum_core::extract::{FromRequest, FromRequestParts, Request};
 use futures_util::future::BoxFuture;
@@ -62,8 +61,8 @@ use tower_service::Service;
 /// ```rust
 /// use axum::{
 ///     Router,
-///     extract::{Request, TypedHeader},
-///     http::StatusCode,
+///     extract::Request,
+///     http::{StatusCode, HeaderMap},
 ///     middleware::{self, Next},
 ///     response::Response,
 ///     routing::get,

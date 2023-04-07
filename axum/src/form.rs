@@ -1,7 +1,6 @@
 use crate::extract::Request;
 use crate::extract::{rejection::*, FromRequest, RawForm};
 use async_trait::async_trait;
-use axum_core::body::Body;
 use axum_core::response::{IntoResponse, Response};
 use axum_core::RequestExt;
 use http::header::CONTENT_TYPE;

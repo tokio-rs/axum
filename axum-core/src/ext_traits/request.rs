@@ -139,7 +139,7 @@ pub trait RequestExt: sealed::Sealed + Sized {
     /// ```
     /// use axum::{
     ///     async_trait,
-    ///     extract::{Request, FromRequest},
+    ///     extract::{Path, Request, FromRequest},
     ///     response::{IntoResponse, Response},
     ///     body::Body,
     ///     Json, RequestExt,
@@ -165,8 +165,8 @@ pub trait RequestExt: sealed::Sealed + Sized {
     ///     type Rejection = Response;
     ///
     ///     async fn from_request(mut req: Request, _state: &S) -> Result<Self, Self::Rejection> {
-    ///         let TypedHeader(auth_header) = req
-    ///             .extract_parts::<TypedHeader<Authorization<Bearer>>>()
+    ///         let path_params = req
+    ///             .extract_parts::<Path<_>>()
     ///             .await
     ///             .map(|Path(path_params)| path_params)
     ///             .map_err(|err| err.into_response())?;

@@ -1,6 +1,5 @@
 //! Handler future types.
 
-use crate::body::Body;
 use crate::response::Response;
 use axum_core::extract::Request;
 use futures_util::future::Map;

@@ -54,9 +54,8 @@ Some commonly used extractors are:
 
 ```rust,no_run
 use axum::{
-    extract::{Request, Json, TypedHeader, Path, Extension, Query},
+    extract::{Request, Json, Path, Extension, Query},
     routing::post,
-    headers::UserAgent,
     http::header::HeaderMap,
     body::{Bytes, Body},
     Router,
