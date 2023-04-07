@@ -28,25 +28,6 @@ where
             into_route: |handler, state| Route::new(Handler::with_state(handler, state)),
         }))
     }
-
-    pub(crate) fn from_router(router: Router<S, B>) -> Self
-    where
-        B: HttpBody + Send + 'static,
-        S: Clone + Send + Sync + 'static,
-    {
-        Self(Box::new(MakeErasedRouter {
-            router,
-            into_route: |router, state| Route::new(router.with_state(state)),
-        }))
-    }
-
-    pub(crate) fn call_with_state(
-        self,
-        request: Request<B>,
-        state: S,
-    ) -> RouteFuture<B, Infallible> {
-        self.0.call_with_state(request, state)
-    }
 }
 
 impl<S, B, E> BoxedIntoRoute<S, B, E> {

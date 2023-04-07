@@ -5,8 +5,8 @@ use crate::{
     handler::{Handler, HandlerWithoutStateExt},
     response::IntoResponse,
     routing::{
-        delete, get, get_service, on, on_service, patch, patch_service, path_for_nested_route,
-        post, MethodFilter,
+        delete, get, get_service, on, on_service, patch, patch_service,
+        path_router::path_for_nested_route, post, MethodFilter,
     },
     test_helpers::*,
     BoxError, Json, Router,
