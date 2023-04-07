@@ -17,7 +17,7 @@ use axum::{
     routing::get,
     RequestPartsExt, Router,
 };
-use axum_extra::typed_header::{headers, TypedHeader, TypedHeaderRejectionReason};
+use axum_extra::{headers, typed_header::TypedHeaderRejectionReason, TypedHeader};
 use http::{header, request::Parts};
 use oauth2::{
     basic::BasicClient, reqwest::async_http_client, AuthUrl, AuthorizationCode, ClientId,

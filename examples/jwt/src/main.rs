@@ -14,7 +14,7 @@ use axum::{
     routing::{get, post},
     Json, RequestPartsExt, Router,
 };
-use axum_extra::typed_header::{
+use axum_extra::{
     headers::{authorization::Bearer, Authorization},
     TypedHeader,
 };

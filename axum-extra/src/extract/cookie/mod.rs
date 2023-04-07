@@ -45,10 +45,8 @@ pub use cookie::Key;
 ///     http::StatusCode,
 /// };
 /// use axum_extra::{
-///     typed_header::{
-///         TypedHeader,
-///         headers::authorization::{Authorization, Bearer},
-///     },
+///     TypedHeader,
+///     headers::authorization::{Authorization, Bearer},
 ///     extract::cookie::{CookieJar, Cookie},
 /// };
 ///

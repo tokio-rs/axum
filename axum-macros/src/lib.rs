@@ -74,7 +74,7 @@ use from_request::Trait::{FromRequest, FromRequestParts};
 ///     extract::Extension,
 ///     body::Bytes,
 /// };
-/// use axum_extra::typed_header::{
+/// use axum_extra::{
 ///     TypedHeader,
 ///     headers::ContentType,
 /// };
@@ -122,7 +122,7 @@ use from_request::Trait::{FromRequest, FromRequestParts};
 ///     extract::Extension,
 ///     body::Bytes,
 /// };
-/// use axum_extra::typed_header::{
+/// use axum_extra::{
 ///     TypedHeader,
 ///     headers::ContentType,
 /// };
@@ -164,10 +164,10 @@ use from_request::Trait::{FromRequest, FromRequestParts};
 ///
 /// ```
 /// use axum_macros::FromRequest;
-/// use axum_extra::typed_header::{
+/// use axum_extra::{
 ///     TypedHeader,
-///     TypedHeaderRejection,
 ///     headers::{ContentType, UserAgent},
+///     typed_header::TypedHeaderRejection,
 /// };
 ///
 /// #[derive(FromRequest)]
@@ -377,7 +377,7 @@ pub fn derive_from_request(item: TokenStream) -> TokenStream {
 /// use axum::{
 ///     extract::Query,
 /// };
-/// use axum_extra::typed_header::{
+/// use axum_extra::{
 ///     TypedHeader,
 ///     headers::ContentType,
 /// };

@@ -18,7 +18,7 @@ use axum::{
     routing::get,
     RequestPartsExt, Router,
 };
-use axum_extra::typed_header::{headers::Cookie, TypedHeader};
+use axum_extra::{headers::Cookie, TypedHeader};
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 use std::net::SocketAddr;

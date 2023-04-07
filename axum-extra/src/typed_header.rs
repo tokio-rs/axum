@@ -5,11 +5,9 @@ use axum::{
     extract::FromRequestParts,
     response::{IntoResponse, IntoResponseParts, Response, ResponseParts},
 };
-use headers::Header;
-use http::{request::Parts, HeaderValue};
+use headers::{Header, HeaderMapExt};
+use http::request::Parts;
 use std::{convert::Infallible, ops::Deref};
-
-pub use headers;
 
 /// Extractor and response that works with typed header values from [`headers`].
 ///
@@ -24,7 +22,7 @@ pub use headers;
 ///     Router,
 /// };
 /// use headers::UserAgent;
-/// use axum_extra::typed_header::TypedHeader;
+/// use axum_extra::TypedHeader;
 ///
 /// async fn users_teams_show(
 ///     TypedHeader(user_agent): TypedHeader<UserAgent>,
@@ -43,7 +41,7 @@ pub use headers;
 ///     response::IntoResponse,
 /// };
 /// use headers::ContentType;
-/// use axum_extra::typed_header::TypedHeader;
+/// use axum_extra::TypedHeader;
 ///
 /// async fn handler() -> (TypedHeader<ContentType>, &'static str) {
 ///     (
@@ -97,7 +95,7 @@ where
     type Error = Infallible;
 
     fn into_response_parts(self, mut res: ResponseParts) -> Result<ResponseParts, Self::Error> {
-        typed_insert(res.headers_mut(), self.0);
+        res.headers_mut().typed_insert(self.0);
         Ok(res)
     }
 }
@@ -108,7 +106,7 @@ where
 {
     fn into_response(self) -> Response {
         let mut res = ().into_response();
-        typed_insert(res.headers_mut(), self.0);
+        res.headers_mut().typed_insert(self.0);
         res
     }
 }
@@ -170,48 +168,6 @@ impl std::error::Error for TypedHeaderRejection {
             TypedHeaderRejectionReason::Missing => None,
         }
     }
-}
-
-// copied from https://docs.rs/headers/latest/src/headers/map_ext.rs.html#22-52
-fn typed_insert<H>(headers: &mut http::HeaderMap, header: H)
-where
-    H: Header,
-{
-    struct ToValues<'a> {
-        state: State<'a>,
-    }
-
-    enum State<'a> {
-        First(http::header::Entry<'a, HeaderValue>),
-        Latter(http::header::OccupiedEntry<'a, HeaderValue>),
-        Tmp,
-    }
-
-    impl<'a> Extend<HeaderValue> for ToValues<'a> {
-        fn extend<T: IntoIterator<Item = HeaderValue>>(&mut self, iter: T) {
-            for value in iter {
-                let entry = match ::std::mem::replace(&mut self.state, State::Tmp) {
-                    State::First(http::header::Entry::Occupied(mut e)) => {
-                        e.insert(value);
-                        e
-                    }
-                    State::First(http::header::Entry::Vacant(e)) => e.insert_entry(value),
-                    State::Latter(mut e) => {
-                        e.append(value);
-                        e
-                    }
-                    State::Tmp => unreachable!("ToValues State::Tmp"),
-                };
-                self.state = State::Latter(entry);
-            }
-        }
-    }
-
-    let entry = headers.entry(H::name());
-    let mut values = ToValues {
-        state: State::First(entry),
-    };
-    header.encode(&mut values);
 }
 
 #[cfg(test)]

@@ -9,7 +9,7 @@ use axum::{
     routing::get,
     Router,
 };
-use axum_extra::typed_header::{headers, TypedHeader};
+use axum_extra::{headers, TypedHeader};
 use futures::stream::{self, Stream};
 use std::{convert::Infallible, net::SocketAddr, path::PathBuf, time::Duration};
 use tokio_stream::StreamExt as _;

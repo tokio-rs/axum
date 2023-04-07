@@ -83,6 +83,14 @@ pub mod json_lines;
 #[cfg(feature = "typed-header")]
 pub mod typed_header;
 
+#[cfg(feature = "typed-header")]
+#[doc(no_inline)]
+pub use headers;
+
+#[cfg(feature = "typed-header")]
+#[doc(inline)]
+pub use typed_header::TypedHeader;
+
 #[cfg(feature = "protobuf")]
 pub mod protobuf;
 
