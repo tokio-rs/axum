@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- None.
+- **added:** Wasm response type for `application/wasm` ([#1920])
+
+[#1920]: https://github.com/tokio-rs/axum/pull/1920
 
 # 0.6.12 (22. March, 2023)
 
