@@ -7,7 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- None.
+- **added:** Log rejections from built-in extractors with the
+  `axum::rejection=trace` target ([#1890])
+
+[#1890]: https://github.com/tokio-rs/axum/pull/1890
 
 # 0.6.12 (22. March, 2023)
 
