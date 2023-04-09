@@ -416,6 +416,11 @@ impl FailedToDeserializePathParams {
 
 impl IntoResponse for FailedToDeserializePathParams {
     fn into_response(self) -> Response {
+        axum_core::__log_rejection!(
+            rejection_type = Self,
+            body_text = self.body_text(),
+            status = self.status(),
+        );
         (self.status(), self.body_text()).into_response()
     }
 }

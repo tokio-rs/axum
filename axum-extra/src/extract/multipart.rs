@@ -250,6 +250,11 @@ impl MultipartError {
 
     /// Get the response body text used for this rejection.
     pub fn body_text(&self) -> String {
+        axum_core::__log_rejection!(
+            rejection_type = Self,
+            body_text = self.body_text(),
+            status = self.status(),
+        );
         self.source.to_string()
     }
 
