@@ -7,10 +7,12 @@ and this project adheres to [Semantic Versioning].
 
 # Unreleased
 
-- **added:** Add `Html` response type.
-- **added:** Add `Css` response type.
-- **added:** Add `JavaScript` response type.
-- **added:** Add `Wasm` response type.
+- **added:** Add `Html` response type ([#1921])
+- **added:** Add `Css` response type ([#1921])
+- **added:** Add `JavaScript` response type ([#1921])
+- **added:** Add `Wasm` response type ([#1921])
+
+[#1921]: https://github.com/tokio-rs/axum/pull/1921
 
 # 0.7.2 (22. March, 2023)
 
