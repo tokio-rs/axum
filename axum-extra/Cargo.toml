@@ -36,6 +36,7 @@ typed-routing = ["dep:axum-macros", "dep:serde", "dep:percent-encoding", "dep:se
 
 [dependencies]
 axum = { path = "../axum", version = "0.6.9", default-features = false }
+axum-core = { path = "../axum-core", version = "0.3.3" }
 bytes = "1.1.0"
 futures-util = { version = "0.3", default-features = false, features = ["alloc"] }
 http = "0.2"

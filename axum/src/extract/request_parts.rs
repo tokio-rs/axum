@@ -101,6 +101,8 @@ where
     }
 }
 
+axum_core::__impl_deref!(OriginalUri: Uri);
+
 /// Extractor that extracts the request body as a [`Stream`].
 ///
 /// Since extracting the request body requires consuming it, the `BodyStream` extractor must be
@@ -220,6 +222,8 @@ where
         Ok(Self(req.into_body()))
     }
 }
+
+axum_core::__impl_deref!(RawBody);
 
 #[cfg(test)]
 mod tests {

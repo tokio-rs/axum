@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning].
 
 # Unreleased
 
-- None.
+- **added:** Implement `Deref` and `DerefMut` for built-in extractors
 
 # 0.7.2 (22. March, 2023)
 
