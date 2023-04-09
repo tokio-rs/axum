@@ -7,7 +7,10 @@ and this project adheres to [Semantic Versioning].
 
 # Unreleased
 
-- None.
+- **added:** Add `Html` response type.
+- **added:** Add `Css` response type.
+- **added:** Add `JavaScript` response type.
+- **added:** Add `Wasm` response type.
 
 # 0.7.2 (22. March, 2023)
 
