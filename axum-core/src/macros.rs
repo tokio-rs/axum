@@ -173,10 +173,10 @@ macro_rules! all_the_tuples_no_last_special_case {
 }
 
 /// Private API.
- #[doc(hidden)]
- #[macro_export]
- macro_rules! __impl_deref {
-     ($ident:ident) => {
+#[doc(hidden)]
+#[macro_export]
+macro_rules! __impl_deref {
+    ($ident:ident) => {
         impl<T> std::ops::Deref for $ident<T> {
             type Target = T;
 
@@ -192,9 +192,9 @@ macro_rules! all_the_tuples_no_last_special_case {
                 &mut self.0
             }
         }
-     };
+    };
 
-     ($ident:ident: $ty:ty) => {
+    ($ident:ident: $ty:ty) => {
         impl std::ops::Deref for $ident {
             type Target = $ty;
 
@@ -210,5 +210,5 @@ macro_rules! all_the_tuples_no_last_special_case {
                 &mut self.0
             }
         }
-     };
- }
+    };
+}

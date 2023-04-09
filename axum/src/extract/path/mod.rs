@@ -12,10 +12,7 @@ use async_trait::async_trait;
 use axum_core::response::{IntoResponse, Response};
 use http::{request::Parts, StatusCode};
 use serde::de::DeserializeOwned;
-use std::{
-    fmt,
-    sync::Arc,
-};
+use std::{fmt, sync::Arc};
 
 /// Extractor that will get captures from the URL and parse them using
 /// [`serde`].

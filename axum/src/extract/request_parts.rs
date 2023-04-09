@@ -101,6 +101,7 @@ where
     }
 }
 
+#[cfg(feature = "original-uri")]
 axum_core::__impl_deref!(OriginalUri: Uri);
 
 /// Extractor that extracts the request body as a [`Stream`].
