@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning].
 
 # Unreleased
 
-- None.
+- **added:** Add `OptionalPath` extractor ([#1889])
+
+[#1889]: https://github.com/tokio-rs/axum/pull/1889
 
 # 0.7.2 (22. March, 2023)
 
