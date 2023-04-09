@@ -31,7 +31,6 @@ use serde::de::DeserializeOwned;
 ///     .route("/blog", get(render_blog))
 ///     .route("/blog/:page", get(render_blog));
 /// # let app: Router = app;
-/// # app.into_make_service();
 /// ```
 #[derive(Debug)]
 pub struct OptionalPath<T>(pub Option<T>);
