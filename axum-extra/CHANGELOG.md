@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning].
 # Unreleased
 
 - **added:** Implement `Deref` and `DerefMut` for built-in extractors
+- **added:** Add `OptionalPath` extractor ([#1889])
+
+[#1889]: https://github.com/tokio-rs/axum/pull/1889
 
 # 0.7.2 (22. March, 2023)
 
