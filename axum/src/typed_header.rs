@@ -3,7 +3,7 @@ use async_trait::async_trait;
 use axum_core::response::{IntoResponse, IntoResponseParts, Response, ResponseParts};
 use headers::HeaderMapExt;
 use http::request::Parts;
-use std::{convert::Infallible, ops::Deref};
+use std::convert::Infallible;
 
 /// Extractor and response that works with typed header values from [`headers`].
 ///
@@ -78,13 +78,7 @@ where
     }
 }
 
-impl<T> Deref for TypedHeader<T> {
-    type Target = T;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
+axum_core::__impl_deref!(TypedHeader);
 
 impl<T> IntoResponseParts for TypedHeader<T>
 where

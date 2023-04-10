@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- None.
+- **added:** Implement `Deref` and `DerefMut` for built-in extractors
 
 # 0.6.12 (22. March, 2023)
 
