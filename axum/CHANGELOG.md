@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- **added:** Implement `Deref` and `DerefMut` for built-in extractors
+- **added:** Implement `Deref` and `DerefMut` for built-in extractors ([#1922])
+
+[#1922]: https://github.com/tokio-rs/axum/pull/1922
 
 # 0.6.12 (22. March, 2023)
 
