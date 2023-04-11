@@ -681,6 +681,9 @@ fn sign(key: &[u8]) -> HeaderValue {
 pub mod rejection {
     //! WebSocket specific rejections.
 
+    use axum_core::__composite_rejection as composite_rejection;
+    use axum_core::__define_rejection as define_rejection;
+
     define_rejection! {
         #[status = METHOD_NOT_ALLOWED]
         #[body = "Request method must be `GET`"]

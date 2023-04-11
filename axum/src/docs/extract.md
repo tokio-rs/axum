@@ -15,6 +15,7 @@ Types and traits for extracting data from requests.
 - [Request body extractors](#request-body-extractors)
 - [Running extractors from middleware](#running-extractors-from-middleware)
 - [Wrapping extractors](#wrapping-extractors)
+- [Logging rejections](#logging-rejections)
 
 # Intro
 
@@ -832,6 +833,13 @@ async fn handler(
 ) {}
 # let _: axum::routing::MethodRouter = axum::routing::get(handler);
 ```
+
+# Logging rejections
+
+All built-in extractors will log rejections for easier debugging. To see the
+logs, enable the `tracing` feature for axum and the `axum::rejection=trace`
+tracing target, for example with `RUST_LOG=info,axum::rejection=trace cargo
+run`.
 
 [`body::Body`]: crate::body::Body
 [`Bytes`]: crate::body::Bytes

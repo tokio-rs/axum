@@ -1,5 +1,8 @@
 //! Rejection response types.
 
+use crate::__composite_rejection as composite_rejection;
+use crate::__define_rejection as define_rejection;
+
 use crate::BoxError;
 
 composite_rejection! {

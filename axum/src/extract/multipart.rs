@@ -6,6 +6,8 @@ use super::{BodyStream, FromRequest};
 use crate::body::{Bytes, HttpBody};
 use crate::BoxError;
 use async_trait::async_trait;
+use axum_core::__composite_rejection as composite_rejection;
+use axum_core::__define_rejection as define_rejection;
 use axum_core::response::{IntoResponse, Response};
 use axum_core::RequestExt;
 use futures_util::stream::Stream;
@@ -272,6 +274,11 @@ impl std::error::Error for MultipartError {
 
 impl IntoResponse for MultipartError {
     fn into_response(self) -> Response {
+        axum_core::__log_rejection!(
+            rejection_type = Self,
+            body_text = self.body_text(),
+            status = self.status(),
+        );
         (self.status(), self.body_text()).into_response()
     }
 }
