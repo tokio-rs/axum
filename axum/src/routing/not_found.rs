@@ -29,7 +29,6 @@ where
     }
 
     fn call(&mut self, _req: Request<B>) -> Self::Future {
-        println!("NotFound hit");
         ready(Ok(StatusCode::NOT_FOUND.into_response()))
     }
 }
