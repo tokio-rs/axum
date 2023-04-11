@@ -318,9 +318,10 @@ where
                 match self.fallback_router.call_with_state(req, state) {
                     Ok(future) => future,
                     Err((_req, _state)) => {
-                        // the default fallback added in `Router::new` matches
-                        // everything
-                        unreachable!()
+                        unreachable!(
+                            "the default fallback added in `Router::new` \
+                             matches everything"
+                        )
                     }
                 }
             }
