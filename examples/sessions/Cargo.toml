@@ -6,7 +6,8 @@ publish = false
 
 [dependencies]
 async-session = "3.0.0"
-axum = { path = "../../axum", features = ["headers"] }
+axum = { path = "../../axum" }
+axum-extra = { path = "../../axum-extra", features = ["typed-header"] }
 serde = { version = "1.0", features = ["derive"] }
 tokio = { version = "1.0", features = ["full"] }
 tracing = "0.1"

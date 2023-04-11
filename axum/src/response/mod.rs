@@ -12,10 +12,6 @@ pub mod sse;
 #[cfg(feature = "json")]
 pub use crate::Json;
 
-#[doc(no_inline)]
-#[cfg(feature = "headers")]
-pub use crate::TypedHeader;
-
 #[cfg(feature = "form")]
 #[doc(no_inline)]
 pub use crate::form::Form;

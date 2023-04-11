@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning].
 
 # Unreleased
 
-- None.
+- **added:** Added `TypedHeader` which used to be in `axum` ([#1850])
+
+[#1850]: https://github.com/tokio-rs/axum/pull/1850
 
 # 0.7.4 (18. April, 2023)
 

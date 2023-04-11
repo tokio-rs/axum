@@ -58,7 +58,6 @@ tower-hyper-http-body-compat = { version = "0.1.4", features = ["server", "http1
 # optional dependencies
 axum-macros = { path = "../axum-macros", version = "0.3.7", optional = true }
 base64 = { version = "0.21.0", optional = true }
-headers = { version = "0.3.7", optional = true }
 multer = { version = "2.0.0", optional = true }
 serde_json = { version = "1.0", features = ["raw_value"], optional = true }
 serde_path_to_error = { version = "0.1.8", optional = true }
@@ -190,8 +189,6 @@ allowed = [
     "futures_core",
     "futures_sink",
     "futures_util",
-    "headers",
-    "headers_core",
     "http",
     "http_body",
     "hyper",

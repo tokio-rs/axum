@@ -7,8 +7,7 @@
 use async_session::{MemoryStore, Session, SessionStore as _};
 use axum::{
     async_trait,
-    extract::{FromRef, FromRequestParts, TypedHeader},
-    headers::Cookie,
+    extract::{FromRef, FromRequestParts},
     http::{
         self,
         header::{HeaderMap, HeaderValue},
@@ -19,6 +18,7 @@ use axum::{
     routing::get,
     RequestPartsExt, Router,
 };
+use axum_extra::{headers::Cookie, TypedHeader};
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};

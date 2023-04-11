@@ -21,6 +21,7 @@
 //! `protobuf` | Enables the `Protobuf` extractor and response | No
 //! `query` | Enables the `Query` extractor | No
 //! `typed-routing` | Enables the `TypedPath` routing utilities | No
+//! `typed-header` | Enables the `TypedHeader` extractor and response  | No
 //!
 //! [`axum`]: https://crates.io/crates/axum
 
@@ -79,6 +80,17 @@ pub mod routing;
 
 #[cfg(feature = "json-lines")]
 pub mod json_lines;
+
+#[cfg(feature = "typed-header")]
+pub mod typed_header;
+
+#[cfg(feature = "typed-header")]
+#[doc(no_inline)]
+pub use headers;
+
+#[cfg(feature = "typed-header")]
+#[doc(inline)]
+pub use typed_header::TypedHeader;
 
 #[cfg(feature = "protobuf")]
 pub mod protobuf;

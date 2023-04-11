@@ -1,9 +1,10 @@
 use axum::{
     response::Response,
-    extract::{
-        rejection::TypedHeaderRejection,
-        Extension, FromRequest, TypedHeader,
-    },
+    extract::{Extension, FromRequest},
+};
+use axum_extra::{
+    TypedHeader,
+    typed_header::TypedHeaderRejection,
     headers::{self, UserAgent},
 };
 

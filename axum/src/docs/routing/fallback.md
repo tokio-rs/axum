@@ -18,9 +18,7 @@ let app = Router::new()
 async fn fallback(uri: Uri) -> (StatusCode, String) {
     (StatusCode::NOT_FOUND, format!("No route for {}", uri))
 }
-# async {
-# hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-# };
+# let _: Router = app;
 ```
 
 Fallbacks only apply to routes that aren't matched by anything in the
@@ -40,10 +38,8 @@ async fn handler() {}
 let app = Router::new().fallback(handler);
 
 # async {
-axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())
-    .serve(app.into_make_service())
-    .await
-    .unwrap();
+let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
+axum::serve(listener, app).await.unwrap();
 # };
 ```
 
@@ -55,9 +51,7 @@ use axum::handler::HandlerWithoutStateExt;
 async fn handler() {}
 
 # async {
-axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())
-    .serve(handler.into_make_service())
-    .await
-    .unwrap();
+let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
+axum::serve(listener, handler.into_make_service()).await.unwrap();
 # };
 ```

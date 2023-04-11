@@ -88,3 +88,7 @@ mime_response! {
     Wasm,
     "application/wasm",
 }
+
+#[cfg(feature = "typed-header")]
+#[doc(no_inline)]
+pub use crate::typed_header::TypedHeader;
