@@ -4,7 +4,10 @@ use crate::{
     extract::{self, DefaultBodyLimit, FromRef, Path, State},
     handler::{Handler, HandlerWithoutStateExt},
     response::IntoResponse,
-    routing::{delete, get, get_service, on, on_service, patch, patch_service, post, MethodFilter},
+    routing::{
+        delete, get, get_service, on, on_service, patch, patch_service,
+        path_router::path_for_nested_route, post, MethodFilter,
+    },
     test_helpers::*,
     BoxError, Json, Router,
 };
@@ -601,7 +604,10 @@ async fn head_with_middleware_applied() {
     use tower_http::compression::{predicate::SizeAbove, CompressionLayer};
 
     let app = Router::new()
-        .route("/", get(|| async { "Hello, World!" }))
+        .nest(
+            "/",
+            Router::new().route("/", get(|| async { "Hello, World!" })),
+        )
         .layer(CompressionLayer::new().compress_when(SizeAbove::new(0)));
 
     let client = TestClient::new(app);
@@ -839,6 +845,21 @@ fn method_router_fallback_with_state() {
     let _: Router = Router::new()
         .fallback(get(fallback).fallback(not_found))
         .with_state(state);
+}
+
+#[test]
+fn test_path_for_nested_route() {
+    assert_eq!(path_for_nested_route("/", "/"), "/");
+
+    assert_eq!(path_for_nested_route("/a", "/"), "/a");
+    assert_eq!(path_for_nested_route("/", "/b"), "/b");
+    assert_eq!(path_for_nested_route("/a/", "/"), "/a/");
+    assert_eq!(path_for_nested_route("/", "/b/"), "/b/");
+
+    assert_eq!(path_for_nested_route("/a", "/b"), "/a/b");
+    assert_eq!(path_for_nested_route("/a/", "/b"), "/a/b");
+    assert_eq!(path_for_nested_route("/a", "/b/"), "/a/b/");
+    assert_eq!(path_for_nested_route("/a/", "/b/"), "/a/b/");
 }
 
 #[crate::test]

@@ -236,6 +236,26 @@ mod tests {
         }
 
         let app = Router::new()
+            .nest_service("/:a", Router::new().route("/:b", get(|| async move {})))
+            .layer(map_request(extract_matched_path));
+
+        let client = TestClient::new(app);
+
+        let res = client.get("/foo/bar").send().await;
+        assert_eq!(res.status(), StatusCode::OK);
+    }
+
+    #[crate::test]
+    async fn can_extract_nested_matched_path_in_middleware_using_nest() {
+        async fn extract_matched_path<B>(
+            matched_path: Option<MatchedPath>,
+            req: Request<B>,
+        ) -> Request<B> {
+            assert_eq!(matched_path.unwrap().as_str(), "/:a/:b");
+            req
+        }
+
+        let app = Router::new()
             .nest("/:a", Router::new().route("/:b", get(|| async move {})))
             .layer(map_request(extract_matched_path));
 
@@ -253,8 +273,25 @@ mod tests {
         }
 
         let app = Router::new()
-            .nest("/:a", Router::new().route("/:b", get(|| async move {})))
+            .nest_service("/:a", Router::new().route("/:b", get(|| async move {})))
             .layer(map_request(assert_no_matched_path));
+
+        let client = TestClient::new(app);
+
+        let res = client.get("/foo/bar").send().await;
+        assert_eq!(res.status(), StatusCode::OK);
+    }
+
+    #[tokio::test]
+    async fn can_extract_nested_matched_path_in_middleware_via_extension_using_nest() {
+        async fn assert_matched_path<B>(req: Request<B>) -> Request<B> {
+            assert!(req.extensions().get::<MatchedPath>().is_some());
+            req
+        }
+
+        let app = Router::new()
+            .nest("/:a", Router::new().route("/:b", get(|| async move {})))
+            .layer(map_request(assert_matched_path));
 
         let client = TestClient::new(app);
 

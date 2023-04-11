@@ -93,6 +93,10 @@ async fn doesnt_inherit_fallback_if_overriden() {
     let res = client.get("/foo/bar").send().await;
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
     assert_eq!(res.text().await, "inner");
+
+    let res = client.get("/").send().await;
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    assert_eq!(res.text().await, "outer");
 }
 
 #[crate::test]
@@ -202,4 +206,22 @@ async fn fallback_inherited_into_nested_opaque_service() {
     let res = client.get("/foo/not-found").send().await;
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
     assert_eq!(res.text().await, "outer");
+}
+
+#[crate::test]
+async fn nest_fallback_on_inner() {
+    let app = Router::new()
+        .nest(
+            "/foo",
+            Router::new()
+                .route("/", get(|| async {}))
+                .fallback(|| async { (StatusCode::NOT_FOUND, "inner fallback") }),
+        )
+        .fallback(|| async { (StatusCode::NOT_FOUND, "outer fallback") });
+
+    let client = TestClient::new(app);
+
+    let res = client.get("/foo/not-found").send().await;
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    assert_eq!(res.text().await, "inner fallback");
 }

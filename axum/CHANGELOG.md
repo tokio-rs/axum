@@ -7,8 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+- **fixed:** Fixed performance regression with `Router::nest` introduced in
+  0.6.0. `nest` now flattens the routes which performs better ([#1711])
+- **fixed:** Extracting `MatchedPath` in nested handlers now gives the full
+  matched path, including the nested path ([#1711])
 - **added:** Implement `Deref` and `DerefMut` for built-in extractors ([#1922])
 
+[#1711]: https://github.com/tokio-rs/axum/pull/1711
 [#1922]: https://github.com/tokio-rs/axum/pull/1922
 
 # 0.6.12 (22. March, 2023)
