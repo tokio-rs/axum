@@ -7,7 +7,6 @@ use axum_core::{
 use http::{request::Parts, Request};
 use std::{
     convert::Infallible,
-    ops::Deref,
     task::{Context, Poll},
 };
 use tower_service::Service;
@@ -97,13 +96,7 @@ where
     }
 }
 
-impl<T> Deref for Extension<T> {
-    type Target = T;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
+axum_core::__impl_deref!(Extension);
 
 impl<T> IntoResponseParts for Extension<T>
 where

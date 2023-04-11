@@ -7,7 +7,7 @@ use axum::{
 };
 use http::{Request, StatusCode};
 use serde::de::DeserializeOwned;
-use std::{fmt, ops::Deref};
+use std::fmt;
 
 /// Extractor that deserializes `application/x-www-form-urlencoded` requests
 /// into some type.
@@ -43,13 +43,7 @@ use std::{fmt, ops::Deref};
 #[cfg(feature = "form")]
 pub struct Form<T>(pub T);
 
-impl<T> Deref for Form<T> {
-    type Target = T;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
+axum_core::__impl_deref!(Form);
 
 #[async_trait]
 impl<T, S, B> FromRequest<S, B> for Form<T>

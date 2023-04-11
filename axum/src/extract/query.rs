@@ -2,7 +2,6 @@ use super::{rejection::*, FromRequestParts};
 use async_trait::async_trait;
 use http::request::Parts;
 use serde::de::DeserializeOwned;
-use std::ops::Deref;
 
 /// Extractor that deserializes query strings into some type.
 ///
@@ -65,13 +64,7 @@ where
     }
 }
 
-impl<T> Deref for Query<T> {
-    type Target = T;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
+axum_core::__impl_deref!(Query);
 
 #[cfg(test)]
 mod tests {

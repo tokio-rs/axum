@@ -79,9 +79,15 @@ If your project isn't listed here and you would like it to be, please feel free 
 - [demo-rust-axum]: Demo of Rust and axum web framework
 - [Introduction to axum (talk)]: Talk about axum from the Copenhagen Rust Meetup.
 - [Getting Started with Axum]: Axum tutorial, GET, POST endpoints and serving files.
+- [Using Rust, Axum, PostgreSQL, and Tokio to build a Blog]
+- [Introduction to axum]: YouTube playlist
+- [Rust Axum Full Course]: YouTube video
 
 [axum-tutorial]: https://github.com/programatik29/axum-tutorial
 [axum-tutorial-website]: https://programatik29.github.io/axum-tutorial/
 [demo-rust-axum]: https://github.com/joelparkerhenderson/demo-rust-axum
 [Introduction to axum (talk)]: https://www.youtube.com/watch?v=ETdmhh7OQpA
 [Getting Started with Axum]: https://carlosmv.hashnode.dev/getting-started-with-axum-rust
+[Using Rust, Axum, PostgreSQL, and Tokio to build a Blog]: https://spacedimp.com/blog/using-rust-axum-postgresql-and-tokio-to-build-a-blog/
+[Introduction to axum]: https://www.youtube.com/playlist?list=PLrmY5pVcnuE-_CP7XZ_44HN-mDrLQV4nS
+[Rust Axum Full Course]: https://www.youtube.com/watch?v=XZtlD_m59sM
