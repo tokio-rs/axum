@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - None.
 
+# 0.6.14 (11. April, 2023)
+
+- **fixed:** Removed leftover "path_router hit" debug message ([#1925])
+
+[#1925]: https://github.com/tokio-rs/axum/pull/1925
+
 # 0.6.13 (11. April, 2023)
 
 - **added:** Log rejections from built-in extractors with the
