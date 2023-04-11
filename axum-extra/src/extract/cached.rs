@@ -3,7 +3,6 @@ use axum::{
     extract::{Extension, FromRequestParts},
 };
 use http::request::Parts;
-use std::ops::{Deref, DerefMut};
 
 /// Cache results of other extractors.
 ///
@@ -108,19 +107,7 @@ where
     }
 }
 
-impl<T> Deref for Cached<T> {
-    type Target = T;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl<T> DerefMut for Cached<T> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
-}
+axum_core::__impl_deref!(Cached);
 
 #[cfg(test)]
 mod tests {

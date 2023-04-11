@@ -11,7 +11,6 @@ use http::{
     Request, StatusCode,
 };
 use serde::{de::DeserializeOwned, Serialize};
-use std::ops::{Deref, DerefMut};
 
 /// JSON Extractor / Response.
 ///
@@ -170,19 +169,7 @@ fn json_content_type(headers: &HeaderMap) -> bool {
     is_json_content_type
 }
 
-impl<T> Deref for Json<T> {
-    type Target = T;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl<T> DerefMut for Json<T> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
-}
+axum_core::__impl_deref!(Json);
 
 impl<T> From<T> for Json<T> {
     fn from(inner: T) -> Self {

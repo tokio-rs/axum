@@ -147,6 +147,8 @@ where
     }
 }
 
+axum_core::__impl_deref!(ConnectInfo);
+
 /// Middleware used to mock [`ConnectInfo`] during tests.
 ///
 /// If you're accidentally using [`MockConnectInfo`] and

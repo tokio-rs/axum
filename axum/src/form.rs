@@ -8,7 +8,6 @@ use http::header::CONTENT_TYPE;
 use http::{Request, StatusCode};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
-use std::ops::Deref;
 
 /// URL encoded extractor and response.
 ///
@@ -115,13 +114,7 @@ where
     }
 }
 
-impl<T> Deref for Form<T> {
-    type Target = T;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
+axum_core::__impl_deref!(Form);
 
 #[cfg(test)]
 mod tests {
