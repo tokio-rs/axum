@@ -299,10 +299,7 @@ where
         }
 
         match self.path_router.call_with_state(req, state) {
-            Ok(future) => {
-                println!("path_router hit");
-                future
-            }
+            Ok(future) => future,
             Err((mut req, state)) => {
                 let super_fallback = req
                     .extensions_mut()
