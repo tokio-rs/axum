@@ -13,7 +13,7 @@ macro_rules! __log_rejection {
                 target: "axum::rejection",
                 tracing::Level::TRACE,
                 status = $status.as_u16(),
-                body = %$body_text,
+                body = $body_text,
                 rejection_type = std::any::type_name::<$ty>(),
                 "rejecting request",
             );
