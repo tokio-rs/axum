@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning].
 
 # Unreleased
 
+- None.
+
+# 0.7.3 (11. April, 2023)
+
 - **added:** Implement `Deref` and `DerefMut` for built-in extractors ([#1922])
 - **added:** Add `OptionalPath` extractor ([#1889])
 

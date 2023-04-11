@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+- None.
+
+# 0.6.13 (11. April, 2023)
+
 - **added:** Log rejections from built-in extractors with the
   `axum::rejection=trace` target ([#1890])
 - **fixed:** Fixed performance regression with `Router::nest` introduced in
