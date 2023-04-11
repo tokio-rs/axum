@@ -29,6 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **breaking:** Change `sse::Event::json_data` to use `axum_core::Error` as its error type ([#1762])
 - **breaking:** Rename `DefaultOnFailedUpdgrade` to `DefaultOnFailedUpgrade` ([#1664])
 - **breaking:** Rename `OnFailedUpdgrade` to `OnFailedUpgrade` ([#1664])
+- **breaking:** `TypedHeader` has been move to `axum-extra` ([#1850])
 - **breaking:** Removed re-exports of `Empty` and `Full`. Use
   `axum::body::Body::empty` and `axum::body::Body::from` respectively ([#1789])
 - **breaking:** The response returned by `IntoResponse::into_response` must use
@@ -53,8 +54,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#1664]: https://github.com/tokio-rs/axum/pull/1664
 [#1751]: https://github.com/tokio-rs/axum/pull/1751
 [#1762]: https://github.com/tokio-rs/axum/pull/1762
-[#1835]: https://github.com/tokio-rs/axum/pull/1835
 [#1789]: https://github.com/tokio-rs/axum/pull/1789
+[#1835]: https://github.com/tokio-rs/axum/pull/1835
+[#1850]: https://github.com/tokio-rs/axum/pull/1850
 [#1868]: https://github.com/tokio-rs/axum/pull/1868
 
 # 0.6.16 (18. April, 2023)

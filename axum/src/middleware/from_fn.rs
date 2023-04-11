@@ -61,29 +61,36 @@ use tower_service::Service;
 /// ```rust
 /// use axum::{
 ///     Router,
-///     extract::{Request, TypedHeader},
-///     http::StatusCode,
-///     headers::authorization::{Authorization, Bearer},
+///     extract::Request,
+///     http::{StatusCode, HeaderMap},
 ///     middleware::{self, Next},
 ///     response::Response,
 ///     routing::get,
 /// };
 ///
 /// async fn auth(
-///     // run the `TypedHeader` extractor
-///     TypedHeader(auth): TypedHeader<Authorization<Bearer>>,
+///     // run the `HeaderMap` extractor
+///     headers: HeaderMap,
 ///     // you can also add more extractors here but the last
 ///     // extractor must implement `FromRequest` which
 ///     // `Request` does
 ///     request: Request,
 ///     next: Next,
 /// ) -> Result<Response, StatusCode> {
-///     if token_is_valid(auth.token()) {
-///         let response = next.run(request).await;
-///         Ok(response)
-///     } else {
-///         Err(StatusCode::UNAUTHORIZED)
+///     match get_token(&headers) {
+///         Some(token) if token_is_valid(token) => {
+///             let response = next.run(request).await;
+///             Ok(response)
+///         }
+///         _ => {
+///             Err(StatusCode::UNAUTHORIZED)
+///         }
 ///     }
+/// }
+///
+/// fn get_token(headers: &HeaderMap) -> Option<&str> {
+///     // ...
+///     # None
 /// }
 ///
 /// fn token_is_valid(token: &str) -> bool {

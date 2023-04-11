@@ -37,7 +37,8 @@ tracing = { version = "0.1.37", default-features = false, optional = true }
 rustversion = "1.0.9"
 
 [dev-dependencies]
-axum = { path = "../axum", version = "0.6.0", features = ["headers"] }
+axum = { path = "../axum", version = "0.6.0" }
+axum-extra = { path = "../axum-extra", features = ["typed-header"] }
 futures-util = { version = "0.3", default-features = false, features = ["alloc"] }
 hyper = "0.14.24"
 tokio = { version = "1.25.0", features = ["macros"] }

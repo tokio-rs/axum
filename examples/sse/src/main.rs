@@ -5,11 +5,11 @@
 //! ```
 
 use axum::{
-    extract::TypedHeader,
     response::sse::{Event, Sse},
     routing::get,
     Router,
 };
+use axum_extra::{headers, TypedHeader};
 use futures::stream::{self, Stream};
 use std::{convert::Infallible, path::PathBuf, time::Duration};
 use tokio_stream::StreamExt as _;

@@ -41,12 +41,14 @@ pub use cookie::Key;
 /// use axum::{
 ///     Router,
 ///     routing::{post, get},
-///     extract::TypedHeader,
 ///     response::{IntoResponse, Redirect},
-///     headers::authorization::{Authorization, Bearer},
 ///     http::StatusCode,
 /// };
-/// use axum_extra::extract::cookie::{CookieJar, Cookie};
+/// use axum_extra::{
+///     TypedHeader,
+///     headers::authorization::{Authorization, Bearer},
+///     extract::cookie::{CookieJar, Cookie},
+/// };
 ///
 /// async fn create_session(
 ///     TypedHeader(auth): TypedHeader<Authorization<Bearer>>,

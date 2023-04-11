@@ -6,8 +6,8 @@ publish = false
 
 [dependencies]
 async-session = "3.0.0"
-axum = { path = "../../axum", features = ["headers"] }
-headers = "0.3"
+axum = { path = "../../axum" }
+axum-extra = { path = "../../axum-extra", features = ["typed-header"] }
 http = "0.2"
 oauth2 = "4.1"
 # Use Rustls because it makes it easier to cross-compile on CI

@@ -5,7 +5,8 @@ edition = "2021"
 publish = false
 
 [dependencies]
-axum = { path = "../../axum", features = ["headers"] }
+axum = { path = "../../axum" }
+axum-extra = { path = "../../axum-extra", features = ["typed-header"] }
 futures = "0.3"
 headers = "0.3"
 tokio = { version = "1.0", features = ["full"] }

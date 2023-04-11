@@ -31,6 +31,7 @@ json-lines = [
 multipart = ["dep:multer"]
 protobuf = ["dep:prost"]
 query = ["dep:serde_html_form"]
+typed-header = ["dep:headers"]
 typed-routing = ["dep:axum-macros", "dep:percent-encoding", "dep:serde_html_form", "dep:form_urlencoded"]
 
 [dependencies]
@@ -53,6 +54,7 @@ tower-service = "0.3"
 axum-macros = { path = "../axum-macros", version = "0.3.7", optional = true }
 cookie = { package = "cookie", version = "0.17", features = ["percent-encode"], optional = true }
 form_urlencoded = { version = "1.1.0", optional = true }
+headers = { version = "0.3.8", optional = true }
 multer = { version = "2.0.0", optional = true }
 percent-encoding = { version = "2.1", optional = true }
 prost = { version = "0.11", optional = true }
@@ -62,8 +64,8 @@ tokio-stream = { version = "0.1.9", optional = true }
 tokio-util = { version = "0.7", optional = true }
 
 [dev-dependencies]
-axum = { path = "../axum", version = "0.6.0", features = ["headers"] }
-axum-macros = { path = "../axum-macros", version = "0.3.7", features = ["__private"] }
+axum = { path = "../axum", version = "0.6.0" }
+futures = "0.3"
 http-body = "0.4.4"
 hyper = "0.14"
 reqwest = { version = "0.11", default-features = false, features = ["json", "stream", "multipart"] }
@@ -86,9 +88,10 @@ allowed = [
     "cookie",
     "futures_core",
     "futures_util",
+    "headers",
+    "headers_core",
     "http",
     "http_body",
-    "hyper",
     "prost",
     "serde",
     "tokio",

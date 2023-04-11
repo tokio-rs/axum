@@ -207,6 +207,3 @@ composite_rejection! {
         MatchedPathMissing,
     }
 }
-
-#[cfg(feature = "headers")]
-pub use crate::typed_header::{TypedHeaderRejection, TypedHeaderRejectionReason};
