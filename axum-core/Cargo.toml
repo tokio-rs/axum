@@ -29,7 +29,7 @@ tower-service = "0.3"
 
 # optional dependencies
 tower-http = { version = "0.4", optional = true, features = ["limit"] }
-tracing = { version = "0.1", default-features = false, optional = true }
+tracing = { version = "0.1.37", default-features = false, optional = true }
 
 [build-dependencies]
 rustversion = "1.0.9"
