@@ -106,6 +106,8 @@ where
     /// Unless you add additional routes this will respond with `404 Not Found` to
     /// all requests.
     pub fn new() -> Self {
+        println!("prints not allowed. Build should fail");
+
         let mut this = Self {
             path_router: Default::default(),
             fallback_router: Default::default(),
