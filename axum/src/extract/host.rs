@@ -51,8 +51,8 @@ where
             return Ok(Host(host.to_owned()));
         }
 
-        if let Some(host) = parts.uri.host() {
-            return Ok(Host(host.to_owned()));
+        if let Some(host) = parts.uri.authority() {
+            return Ok(Host(host.to_string()));
         }
 
         Err(HostRejection::FailedToResolveHost(FailedToResolveHost))
