@@ -201,7 +201,6 @@ impl PathDeserializationError {
 
     #[track_caller]
     pub(super) fn unsupported_type(name: &'static str) -> Self {
-        println!("{}", std::panic::Location::caller());
         Self::new(ErrorKind::UnsupportedType { name })
     }
 }
