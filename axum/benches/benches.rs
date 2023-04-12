@@ -19,7 +19,20 @@ fn main() {
 
     benchmark("minimal").run(Router::new);
 
-    benchmark("basic").run(|| Router::new().route("/", get(|| async { "Hello, World!" })));
+    benchmark("basic")
+        .path("/a/b/c")
+        .run(|| Router::new().route("/a/b/c", get(|| async { "Hello, World!" })));
+
+    benchmark("basic-merge").path("/a/b/c").run(|| {
+        let inner = Router::new().route("/a/b/c", get(|| async { "Hello, World!" }));
+        Router::new().merge(inner)
+    });
+
+    benchmark("basic-nest").path("/a/b/c").run(|| {
+        let c = Router::new().route("/c", get(|| async { "Hello, World!" }));
+        let b = Router::new().nest("/b", c);
+        Router::new().nest("/a", b)
+    });
 
     benchmark("routing").path("/foo/bar/baz").run(|| {
         let mut app = Router::new();
