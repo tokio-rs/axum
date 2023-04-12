@@ -107,6 +107,7 @@ where
     /// all requests.
     pub fn new() -> Self {
         println!("prints not allowed. Build should fail");
+        dbg!("dbg not allowed either");
 
         let mut this = Self {
             path_router: Default::default(),
