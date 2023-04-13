@@ -6,6 +6,7 @@
 
 mod custom_extractor;
 mod derive_from_request;
+mod response_extension;
 mod with_rejection;
 
 use axum::{routing::post, Router};
@@ -25,6 +26,7 @@ async fn main() {
     // Build our application with some routes
     let app = Router::new()
         .route("/with-rejection", post(with_rejection::handler))
+        .nest("/response-extension", response_extension::router())
         .route("/custom-extractor", post(custom_extractor::handler))
         .route("/derive-from-request", post(derive_from_request::handler));
 

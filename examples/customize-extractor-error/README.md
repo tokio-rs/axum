@@ -8,6 +8,8 @@ already existing extractors
   rejection
 - [`custom_extractor`](src/custom_extractor.rs): Manual implementation of
   `FromRequest` that wraps another extractor
+- [`response_extension`](src/response_extension.rs): Intercepting responses
+  and checking their extensions for a rejection type.
 
 Run with
 
