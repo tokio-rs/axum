@@ -8,6 +8,7 @@ pub use axum_core::extract::rejection::*;
 
 #[cfg(feature = "json")]
 define_rejection! {
+    #[composite = JsonRejection]
     #[status = UNPROCESSABLE_ENTITY]
     #[body = "Failed to deserialize the JSON body into the target type"]
     #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
@@ -20,6 +21,7 @@ define_rejection! {
 
 #[cfg(feature = "json")]
 define_rejection! {
+    #[composite = JsonRejection]
     #[status = BAD_REQUEST]
     #[body = "Failed to parse the request body as JSON"]
     #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
@@ -31,6 +33,7 @@ define_rejection! {
 
 #[cfg(feature = "json")]
 define_rejection! {
+    #[composite = JsonRejection]
     #[status = UNSUPPORTED_MEDIA_TYPE]
     #[body = "Expected request with `Content-Type: application/json`"]
     #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
@@ -40,6 +43,7 @@ define_rejection! {
 }
 
 define_rejection! {
+    #[composite = ExtensionRejection]
     #[status = INTERNAL_SERVER_ERROR]
     #[body = "Missing request extension"]
     /// Rejection type for [`Extension`](super::Extension) if an expected
@@ -57,6 +61,7 @@ define_rejection! {
 }
 
 define_rejection! {
+    #[composite = FormRejection]
     #[status = UNSUPPORTED_MEDIA_TYPE]
     #[body = "Form requests must have `Content-Type: application/x-www-form-urlencoded`"]
     /// Rejection type for [`Form`](super::Form) or [`RawForm`](super::RawForm)
@@ -66,6 +71,7 @@ define_rejection! {
 }
 
 define_rejection! {
+    #[composite = HostRejection]
     #[status = BAD_REQUEST]
     #[body = "No host found in request"]
     /// Rejection type used if the [`Host`](super::Host) extractor is unable to
@@ -74,6 +80,7 @@ define_rejection! {
 }
 
 define_rejection! {
+    #[composite = FormRejection]
     #[status = BAD_REQUEST]
     #[body = "Failed to deserialize form"]
     /// Rejection type used if the [`Form`](super::Form) extractor is unable to
@@ -82,6 +89,7 @@ define_rejection! {
 }
 
 define_rejection! {
+    #[composite = FormRejection]
     #[status = UNPROCESSABLE_ENTITY]
     #[body = "Failed to deserialize form body"]
     /// Rejection type used if the [`Form`](super::Form) extractor is unable to
@@ -90,6 +98,7 @@ define_rejection! {
 }
 
 define_rejection! {
+    #[composite = QueryRejection]
     #[status = BAD_REQUEST]
     #[body = "Failed to deserialize query string"]
     /// Rejection type used if the [`Query`](super::Query) extractor is unable to

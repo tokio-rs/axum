@@ -26,6 +26,7 @@ macro_rules! __log_rejection {
 #[macro_export]
 macro_rules! __define_rejection {
     (
+        $(#[composite = $composite:ident])?
         #[status = $status:ident]
         #[body = $body:expr]
         $(#[$m:meta])*
@@ -38,12 +39,16 @@ macro_rules! __define_rejection {
 
         impl $crate::response::IntoResponse for $name {
             fn into_response(self) -> $crate::response::Response {
+                let mut resp = (self.status(), $body).into_response();
+
                 $crate::__log_rejection!(
                     rejection_type = $name,
                     body_text = $body,
                     status = http::StatusCode::$status,
                 );
-                (self.status(), $body).into_response()
+
+                resp.extensions_mut().insert($($composite::$name)?(self));
+                resp
             }
         }
 
@@ -75,6 +80,7 @@ macro_rules! __define_rejection {
     };
 
     (
+        $(#[composite = $composite:ident])?
         #[status = $status:ident]
         #[body = $body:expr]
         $(#[$m:meta])*
@@ -95,12 +101,16 @@ macro_rules! __define_rejection {
 
         impl $crate::response::IntoResponse for $name {
             fn into_response(self) -> $crate::response::Response {
+                let mut resp = (self.status(), self.body_text()).into_response();
+
                 $crate::__log_rejection!(
                     rejection_type = $name,
                     body_text = self.body_text(),
                     status = http::StatusCode::$status,
                 );
-                (self.status(), self.body_text()).into_response()
+
+                resp.extensions_mut().insert($($composite::$name)?(self));
+                resp
             }
         }
 
