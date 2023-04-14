@@ -176,6 +176,7 @@ mod tests {
         Router,
     };
     use http::{Request, StatusCode};
+    use hyper::Body;
 
     #[crate::test]
     async fn extracting_on_handler() {
@@ -347,6 +348,21 @@ mod tests {
         }
 
         let app = Router::new().nest_service("/:a", handler.into_service());
+
+        let client = TestClient::new(app);
+
+        let res = client.get("/foo/bar").send().await;
+        assert_eq!(res.status(), StatusCode::OK);
+    }
+
+    #[crate::test]
+    async fn cant_extract_in_fallback() {
+        async fn handler(path: Option<MatchedPath>, req: Request<Body>) {
+            assert!(path.is_none());
+            assert!(req.extensions().get::<MatchedPath>().is_none());
+        }
+
+        let app = Router::new().fallback(handler);
 
         let client = TestClient::new(app);
 
