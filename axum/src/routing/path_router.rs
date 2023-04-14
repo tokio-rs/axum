@@ -2,9 +2,7 @@ use crate::body::HttpBody;
 use axum_core::response::IntoResponse;
 use http::Request;
 use matchit::MatchError;
-use std::{
-    borrow::Cow, collections::HashMap, convert::Infallible, fmt, marker::PhantomData, sync::Arc,
-};
+use std::{borrow::Cow, collections::HashMap, convert::Infallible, fmt, sync::Arc};
 use tower_layer::Layer;
 use tower_service::Service;
 
@@ -13,16 +11,14 @@ use super::{
     RouteId, NEST_TAIL_PARAM,
 };
 
-pub(super) struct PathRouter<F, S, B> {
+pub(super) struct PathRouter<S, B, const IS_FALLBACK: bool> {
     routes: HashMap<RouteId, Endpoint<S, B>>,
     node: Arc<Node>,
     prev_route_id: RouteId,
-    _is_it_a_fallback: PhantomData<F>,
 }
 
-impl<F, S, B> PathRouter<F, S, B>
+impl<S, B, const IS_FALLBACK: bool> PathRouter<S, B, IS_FALLBACK>
 where
-    F: IsItAFallback,
     B: HttpBody + Send + 'static,
     S: Clone + Send + Sync + 'static,
 {
@@ -111,12 +107,14 @@ where
         Ok(())
     }
 
-    pub(super) fn merge(&mut self, other: PathRouter<F, S, B>) -> Result<(), Cow<'static, str>> {
+    pub(super) fn merge(
+        &mut self,
+        other: PathRouter<S, B, IS_FALLBACK>,
+    ) -> Result<(), Cow<'static, str>> {
         let PathRouter {
             routes,
             node,
             prev_route_id: _,
-            _is_it_a_fallback: _,
         } = other;
 
         for (id, route) in routes {
@@ -136,7 +134,7 @@ where
     pub(super) fn nest(
         &mut self,
         path: &str,
-        router: PathRouter<F, S, B>,
+        router: PathRouter<S, B, IS_FALLBACK>,
     ) -> Result<(), Cow<'static, str>> {
         let prefix = validate_nest_path(path);
 
@@ -144,7 +142,6 @@ where
             routes,
             node,
             prev_route_id: _,
-            _is_it_a_fallback: _,
         } = router;
 
         for (id, endpoint) in routes {
@@ -199,7 +196,7 @@ where
         Ok(())
     }
 
-    pub(super) fn layer<L, NewReqBody>(self, layer: L) -> PathRouter<F, S, NewReqBody>
+    pub(super) fn layer<L, NewReqBody>(self, layer: L) -> PathRouter<S, NewReqBody, IS_FALLBACK>
     where
         L: Layer<Route<B>> + Clone + Send + 'static,
         L::Service: Service<Request<NewReqBody>> + Clone + Send + 'static,
@@ -221,7 +218,6 @@ where
             routes,
             node: self.node,
             prev_route_id: self.prev_route_id,
-            _is_it_a_fallback: self._is_it_a_fallback,
         }
     }
 
@@ -254,11 +250,10 @@ where
             routes,
             node: self.node,
             prev_route_id: self.prev_route_id,
-            _is_it_a_fallback: self._is_it_a_fallback,
         }
     }
 
-    pub(super) fn with_state<S2>(self, state: S) -> PathRouter<F, S2, B> {
+    pub(super) fn with_state<S2>(self, state: S) -> PathRouter<S2, B, IS_FALLBACK> {
         let routes = self
             .routes
             .into_iter()
@@ -277,7 +272,6 @@ where
             routes,
             node: self.node,
             prev_route_id: self.prev_route_id,
-            _is_it_a_fallback: self._is_it_a_fallback,
         }
     }
 
@@ -302,7 +296,7 @@ where
             Ok(match_) => {
                 let id = *match_.value;
 
-                if !F::FALLBACK {
+                if !IS_FALLBACK {
                     #[cfg(feature = "matched-path")]
                     crate::extract::matched_path::set_matched_path_for_request(
                         id,
@@ -358,18 +352,17 @@ where
     }
 }
 
-impl<F, B, S> Default for PathRouter<F, S, B> {
+impl<B, S, const IS_FALLBACK: bool> Default for PathRouter<S, B, IS_FALLBACK> {
     fn default() -> Self {
         Self {
             routes: Default::default(),
             node: Default::default(),
             prev_route_id: RouteId(0),
-            _is_it_a_fallback: PhantomData,
         }
     }
 }
 
-impl<F, S, B> fmt::Debug for PathRouter<F, S, B> {
+impl<S, B, const IS_FALLBACK: bool> fmt::Debug for PathRouter<S, B, IS_FALLBACK> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("PathRouter")
             .field("routes", &self.routes)
@@ -378,13 +371,12 @@ impl<F, S, B> fmt::Debug for PathRouter<F, S, B> {
     }
 }
 
-impl<F, S, B> Clone for PathRouter<F, S, B> {
+impl<S, B, const IS_FALLBACK: bool> Clone for PathRouter<S, B, IS_FALLBACK> {
     fn clone(&self) -> Self {
         Self {
             routes: self.routes.clone(),
             node: self.node.clone(),
             prev_route_id: self.prev_route_id,
-            _is_it_a_fallback: self._is_it_a_fallback,
         }
     }
 }
@@ -455,24 +447,4 @@ pub(crate) fn path_for_nested_route<'a>(prefix: &'a str, path: &'a str) -> Cow<'
     } else {
         format!("{prefix}{path}").into()
     }
-}
-
-/// Used to statically enforce that we don't merge/nest a fallback `PathRouter` into a non-fallback
-/// `PathRouter`.
-pub(super) trait IsItAFallback {
-    const FALLBACK: bool;
-}
-
-#[derive(Copy, Clone)]
-pub(super) struct IsFallback;
-
-#[derive(Copy, Clone)]
-pub(super) struct IsNotFallback;
-
-impl IsItAFallback for IsFallback {
-    const FALLBACK: bool = true;
-}
-
-impl IsItAFallback for IsNotFallback {
-    const FALLBACK: bool = false;
 }

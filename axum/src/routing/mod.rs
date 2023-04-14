@@ -1,10 +1,6 @@
 //! Routing between [`Service`]s and handlers.
 
-use self::{
-    future::RouteFuture,
-    not_found::NotFound,
-    path_router::{IsFallback, IsNotFallback, PathRouter},
-};
+use self::{future::RouteFuture, not_found::NotFound, path_router::PathRouter};
 #[cfg(feature = "tokio")]
 use crate::extract::connect_info::IntoMakeServiceWithConnectInfo;
 use crate::{
@@ -61,8 +57,8 @@ pub(crate) struct RouteId(u32);
 /// The router type for composing handlers and services.
 #[must_use]
 pub struct Router<S = (), B = Body> {
-    path_router: PathRouter<IsNotFallback, S, B>,
-    fallback_router: PathRouter<IsFallback, S, B>,
+    path_router: PathRouter<S, B, false>,
+    fallback_router: PathRouter<S, B, true>,
     default_fallback: bool,
 }
 
@@ -503,7 +499,7 @@ impl<S, B> fmt::Debug for Endpoint<S, B> {
     }
 }
 
-struct SuperFallback<S, B>(SyncWrapper<PathRouter<IsFallback, S, B>>);
+struct SuperFallback<S, B>(SyncWrapper<PathRouter<S, B, true>>);
 
 #[test]
 #[allow(warnings)]
