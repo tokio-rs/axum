@@ -399,7 +399,6 @@
 
 #![warn(
     clippy::all,
-    clippy::dbg_macro,
     clippy::todo,
     clippy::empty_enum,
     clippy::enum_glob_use,
@@ -437,6 +436,7 @@
 #![forbid(unsafe_code)]
 #![cfg_attr(docsrs, feature(doc_auto_cfg, doc_cfg))]
 #![cfg_attr(test, allow(clippy::float_cmp))]
+#![cfg_attr(not(test), warn(clippy::print_stdout, clippy::dbg_macro))]
 
 #[macro_use]
 pub(crate) mod macros;
