@@ -21,8 +21,6 @@ jobs:
     - uses: dtolnay/rust-toolchain@stable
       with:
         toolchain: beta
-        override: true
-        profile: minimal
         components: clippy, rustfmt
     - uses: Swatinem/rust-cache@v2
     - name: Check
@@ -43,8 +41,6 @@ jobs:
     - uses: dtolnay/rust-toolchain@stable
       with:
         toolchain: stable
-        override: true
-        profile: minimal
     - uses: Swatinem/rust-cache@v1
     - name: cargo doc
       env:
@@ -59,8 +55,6 @@ jobs:
     - uses: dtolnay/rust-toolchain@stable
       with:
         toolchain: stable
-        override: true
-        profile: minimal
     - uses: Swatinem/rust-cache@v1
     - name: Install cargo-hack
       run: |
@@ -78,8 +72,6 @@ jobs:
     - uses: dtolnay/rust-toolchain@stable
       with:
         toolchain: nightly
-        override: true
-        profile: minimal
     - uses: Swatinem/rust-cache@v1
     - name: Install cargo-public-api-crates
       run: |
@@ -99,8 +91,6 @@ jobs:
     - uses: dtolnay/rust-toolchain@stable
       with:
         toolchain: ${{ matrix.rust }}
-        override: true
-        profile: minimal
     - uses: Swatinem/rust-cache@v1
     - name: Run tests
       uses: actions-rs/cargo@v1
@@ -118,8 +108,6 @@ jobs:
       with:
         # same as `axum-macros/rust-toolchain`
         toolchain: nightly-2022-11-18
-        override: true
-        profile: minimal
     - uses: Swatinem/rust-cache@v1
     - name: Run nightly tests
       working-directory: axum-macros
@@ -136,13 +124,10 @@ jobs:
     - uses: dtolnay/rust-toolchain@stable
       with:
         toolchain: ${{ env.MSRV }}
-        override: true
-        profile: minimal
     - name: "install Rust nightly"
       uses: dtolnay/rust-toolchain@stable
       with:
         toolchain: nightly
-        profile: minimal
     - uses: Swatinem/rust-cache@v1
     - name: Select minimal versions
       uses: actions-rs/cargo@v1
@@ -190,8 +175,6 @@ jobs:
     - uses: dtolnay/rust-toolchain@stable
       with:
         toolchain: stable
-        override: true
-        profile: minimal
     - uses: Swatinem/rust-cache@v1
     - name: Run doc tests
       uses: actions-rs/cargo@v1
@@ -224,8 +207,6 @@ jobs:
       with:
         toolchain: stable
         target: armv5te-unknown-linux-musleabi
-        override: true
-        profile: minimal
     - uses: Swatinem/rust-cache@v1
     - name: Check
       uses: actions-rs/cargo@v1
@@ -252,8 +233,6 @@ jobs:
       with:
         toolchain: stable
         target: wasm32-unknown-unknown
-        override: true
-        profile: minimal
     - uses: Swatinem/rust-cache@v1
     - name: Check
       uses: actions-rs/cargo@v1
@@ -270,8 +249,6 @@ jobs:
     - uses: dtolnay/rust-toolchain@stable
       with:
         toolchain: beta
-        override: true
-        profile: minimal
     - uses: Swatinem/rust-cache@v2
     - name: Install cargo-sort
       run: |
