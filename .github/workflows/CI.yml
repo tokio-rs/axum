@@ -18,9 +18,8 @@ jobs:
     - uses: arduino/setup-protoc@v1
       with:
         repo-token: ${{ secrets.GITHUB_TOKEN }}
-    - uses: dtolnay/rust-toolchain@stable
+    - uses: dtolnay/rust-toolchain@beta
       with:
-        toolchain: beta
         components: clippy, rustfmt
     - uses: Swatinem/rust-cache@v2
     - name: Check
@@ -39,8 +38,6 @@ jobs:
     steps:
     - uses: actions/checkout@master
     - uses: dtolnay/rust-toolchain@stable
-      with:
-        toolchain: stable
     - uses: Swatinem/rust-cache@v1
     - name: cargo doc
       env:
@@ -53,8 +50,6 @@ jobs:
     - uses: actions/checkout@master
     - uses: arduino/setup-protoc@v1
     - uses: dtolnay/rust-toolchain@stable
-      with:
-        toolchain: stable
     - uses: Swatinem/rust-cache@v1
     - name: Install cargo-hack
       run: |
@@ -69,9 +64,7 @@ jobs:
         crate: [axum, axum-core, axum-extra, axum-macros]
     steps:
     - uses: actions/checkout@master
-    - uses: dtolnay/rust-toolchain@stable
-      with:
-        toolchain: nightly
+    - uses: dtolnay/rust-toolchain@nightly
     - uses: Swatinem/rust-cache@v1
     - name: Install cargo-public-api-crates
       run: |
@@ -88,7 +81,7 @@ jobs:
     steps:
     - uses: actions/checkout@master
     - uses: arduino/setup-protoc@v1
-    - uses: dtolnay/rust-toolchain@stable
+    - uses: dtolnay/rust-toolchain@master
       with:
         toolchain: ${{ matrix.rust }}
     - uses: Swatinem/rust-cache@v1
@@ -104,7 +97,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@master
-    - uses: dtolnay/rust-toolchain@stable
+    - uses: dtolnay/rust-toolchain@master
       with:
         # same as `axum-macros/rust-toolchain`
         toolchain: nightly-2022-11-18
@@ -121,13 +114,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@master
-    - uses: dtolnay/rust-toolchain@stable
+    - uses: dtolnay/rust-toolchain@master
       with:
         toolchain: ${{ env.MSRV }}
     - name: "install Rust nightly"
-      uses: dtolnay/rust-toolchain@stable
-      with:
-        toolchain: nightly
+      uses: dtolnay/rust-toolchain@nightly
     - uses: Swatinem/rust-cache@v1
     - name: Select minimal versions
       uses: actions-rs/cargo@v1
@@ -173,8 +164,6 @@ jobs:
     steps:
     - uses: actions/checkout@master
     - uses: dtolnay/rust-toolchain@stable
-      with:
-        toolchain: stable
     - uses: Swatinem/rust-cache@v1
     - name: Run doc tests
       uses: actions-rs/cargo@v1
@@ -205,7 +194,6 @@ jobs:
     - uses: actions/checkout@master
     - uses: dtolnay/rust-toolchain@stable
       with:
-        toolchain: stable
         target: armv5te-unknown-linux-musleabi
     - uses: Swatinem/rust-cache@v1
     - name: Check
@@ -231,7 +219,6 @@ jobs:
     - uses: actions/checkout@master
     - uses: dtolnay/rust-toolchain@stable
       with:
-        toolchain: stable
         target: wasm32-unknown-unknown
     - uses: Swatinem/rust-cache@v1
     - name: Check
@@ -246,9 +233,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@master
-    - uses: dtolnay/rust-toolchain@stable
-      with:
-        toolchain: beta
+    - uses: dtolnay/rust-toolchain@beta
     - uses: Swatinem/rust-cache@v2
     - name: Install cargo-sort
       run: |
