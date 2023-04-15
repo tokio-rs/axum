@@ -38,7 +38,7 @@ jobs:
     steps:
     - uses: actions/checkout@master
     - uses: dtolnay/rust-toolchain@stable
-    - uses: Swatinem/rust-cache@v1
+    - uses: Swatinem/rust-cache@v2
     - name: cargo doc
       env:
         RUSTDOCFLAGS: "-D rustdoc::all -A rustdoc::private-doc-tests"
@@ -50,7 +50,7 @@ jobs:
     - uses: actions/checkout@master
     - uses: arduino/setup-protoc@v1
     - uses: dtolnay/rust-toolchain@stable
-    - uses: Swatinem/rust-cache@v1
+    - uses: Swatinem/rust-cache@v2
     - name: Install cargo-hack
       run: |
         curl -LsSf https://github.com/taiki-e/cargo-hack/releases/latest/download/cargo-hack-x86_64-unknown-linux-gnu.tar.gz | tar xzf - -C ~/.cargo/bin
@@ -65,7 +65,7 @@ jobs:
     steps:
     - uses: actions/checkout@master
     - uses: dtolnay/rust-toolchain@nightly
-    - uses: Swatinem/rust-cache@v1
+    - uses: Swatinem/rust-cache@v2
     - name: Install cargo-public-api-crates
       run: |
         cargo install --git https://github.com/davidpdrsn/cargo-public-api-crates
@@ -84,7 +84,7 @@ jobs:
     - uses: dtolnay/rust-toolchain@master
       with:
         toolchain: ${{ matrix.rust }}
-    - uses: Swatinem/rust-cache@v1
+    - uses: Swatinem/rust-cache@v2
     - name: Run tests
       uses: actions-rs/cargo@v1
       with:
@@ -101,7 +101,7 @@ jobs:
       with:
         # same as `axum-macros/rust-toolchain`
         toolchain: nightly-2022-11-18
-    - uses: Swatinem/rust-cache@v1
+    - uses: Swatinem/rust-cache@v2
     - name: Run nightly tests
       working-directory: axum-macros
       run: |
@@ -119,7 +119,7 @@ jobs:
         toolchain: ${{ env.MSRV }}
     - name: "install Rust nightly"
       uses: dtolnay/rust-toolchain@nightly
-    - uses: Swatinem/rust-cache@v1
+    - uses: Swatinem/rust-cache@v2
     - name: Select minimal versions
       uses: actions-rs/cargo@v1
       with:
@@ -164,7 +164,7 @@ jobs:
     steps:
     - uses: actions/checkout@master
     - uses: dtolnay/rust-toolchain@stable
-    - uses: Swatinem/rust-cache@v1
+    - uses: Swatinem/rust-cache@v2
     - name: Run doc tests
       uses: actions-rs/cargo@v1
       with:
@@ -195,7 +195,7 @@ jobs:
     - uses: dtolnay/rust-toolchain@stable
       with:
         target: armv5te-unknown-linux-musleabi
-    - uses: Swatinem/rust-cache@v1
+    - uses: Swatinem/rust-cache@v2
     - name: Check
       uses: actions-rs/cargo@v1
       env:
@@ -220,7 +220,7 @@ jobs:
     - uses: dtolnay/rust-toolchain@stable
       with:
         target: wasm32-unknown-unknown
-    - uses: Swatinem/rust-cache@v1
+    - uses: Swatinem/rust-cache@v2
     - name: Check
       uses: actions-rs/cargo@v1
       with:
