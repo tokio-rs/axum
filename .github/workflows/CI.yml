@@ -15,9 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@master
-    - uses: arduino/setup-protoc@v1
-      with:
-        repo-token: ${{ secrets.GITHUB_TOKEN }}
+    - uses: taiki-e/install-action@protoc
     - uses: dtolnay/rust-toolchain@beta
       with:
         components: clippy, rustfmt
@@ -48,7 +46,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@master
-    - uses: arduino/setup-protoc@v1
+    - uses: taiki-e/install-action@protoc
     - uses: dtolnay/rust-toolchain@stable
     - uses: Swatinem/rust-cache@v2
     - name: Install cargo-hack
@@ -80,7 +78,7 @@ jobs:
         rust: [stable, beta]
     steps:
     - uses: actions/checkout@master
-    - uses: arduino/setup-protoc@v1
+    - uses: taiki-e/install-action@protoc
     - uses: dtolnay/rust-toolchain@master
       with:
         toolchain: ${{ matrix.rust }}
