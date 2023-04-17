@@ -172,11 +172,14 @@ fn append_nested_matched_path(matched_path: &Arc<str>, extensions: &http::Extens
 mod tests {
     use super::*;
     use crate::{
-        handler::HandlerWithoutStateExt, middleware::map_request, routing::get, test_helpers::*,
+        body::Body,
+        handler::HandlerWithoutStateExt,
+        middleware::map_request,
+        routing::{any, get},
+        test_helpers::*,
         Router,
     };
     use http::{Request, StatusCode};
-    use hyper::Body;
 
     #[crate::test]
     async fn extracting_on_handler() {
@@ -352,6 +355,26 @@ mod tests {
         let client = TestClient::new(app);
 
         let res = client.get("/foo/bar").send().await;
+        assert_eq!(res.status(), StatusCode::OK);
+    }
+
+    // https://github.com/tokio-rs/axum/issues/1579
+    #[crate::test]
+    async fn doesnt_panic_if_router_called_from_wildcard_route() {
+        use tower::ServiceExt;
+
+        let app = Router::new().route(
+            "/*path",
+            any(|req: Request<Body>| {
+                Router::new()
+                    .nest("/", Router::new().route("/foo", get(|| async {})))
+                    .oneshot(req)
+            }),
+        );
+
+        let client = TestClient::new(app);
+
+        let res = client.get("/foo").send().await;
         assert_eq!(res.status(), StatusCode::OK);
     }
 
