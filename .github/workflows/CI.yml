@@ -86,10 +86,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
+    - name: Get rust-toolchain version
+      id: rust-toolchain
+      run: echo "version=$(cat axum-macros/rust-toolchain)" >> $GITHUB_OUTPUT
     - uses: dtolnay/rust-toolchain@master
       with:
-        # same as `axum-macros/rust-toolchain`
-        toolchain: nightly-2022-11-18
+        toolchain: ${{ steps.rust-toolchain.outputs.version }}
     - uses: Swatinem/rust-cache@v2
     - name: Run nightly tests
       working-directory: axum-macros
