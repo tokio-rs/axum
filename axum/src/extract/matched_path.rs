@@ -375,6 +375,7 @@ mod tests {
         let client = TestClient::new(app);
 
         let res = client.get("/foo").send().await;
+        assert_eq!(res.status(), StatusCode::OK);
     }
 
     #[crate::test]
