@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning].
 
 # Unreleased
 
+- None.
+
+# 0.7.4 (18. April, 2023)
+
 - **added:** Add `Html` response type ([#1921])
 - **added:** Add `Css` response type ([#1921])
 - **added:** Add `JavaScript` response type ([#1921])
