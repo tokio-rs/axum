@@ -16,7 +16,8 @@ use axum_core::{
 use std::{
     convert::Infallible,
     fmt,
-    task::{Context, Poll}, marker::PhantomData,
+    marker::PhantomData,
+    task::{Context, Poll},
 };
 use sync_wrapper::SyncWrapper;
 use tower_layer::Layer;
@@ -627,10 +628,10 @@ where
     fn layer<L>(self, layer: L) -> Endpoint<S>
     where
         L: Layer<Route> + Clone + Send + 'static,
-        L::Service: Service<Request<Body>> + Clone + Send + 'static,
-        <L::Service as Service<Request<Body>>>::Response: IntoResponse + 'static,
-        <L::Service as Service<Request<Body>>>::Error: Into<Infallible> + 'static,
-        <L::Service as Service<Request<Body>>>::Future: Send + 'static,
+        L::Service: Service<Request> + Clone + Send + 'static,
+        <L::Service as Service<Request>>::Response: IntoResponse + 'static,
+        <L::Service as Service<Request>>::Error: Into<Infallible> + 'static,
+        <L::Service as Service<Request>>::Future: Send + 'static,
     {
         match self {
             Endpoint::MethodRouter(method_router) => {

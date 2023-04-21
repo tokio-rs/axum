@@ -1,6 +1,5 @@
-use crate::body::Body;
+use crate::extract::Request;
 use axum_core::response::IntoResponse;
-use http::Request;
 use matchit::MatchError;
 use std::{borrow::Cow, collections::HashMap, convert::Infallible, fmt, sync::Arc};
 use tower_layer::Layer;
@@ -71,7 +70,7 @@ where
         service: T,
     ) -> Result<(), Cow<'static, str>>
     where
-        T: Service<Request<Body>, Error = Infallible> + Clone + Send + 'static,
+        T: Service<Request, Error = Infallible> + Clone + Send + 'static,
         T::Response: IntoResponse,
         T::Future: Send + 'static,
     {
@@ -166,7 +165,7 @@ where
 
     pub(super) fn nest_service<T>(&mut self, path: &str, svc: T) -> Result<(), Cow<'static, str>>
     where
-        T: Service<Request<Body>, Error = Infallible> + Clone + Send + 'static,
+        T: Service<Request, Error = Infallible> + Clone + Send + 'static,
         T::Response: IntoResponse,
         T::Future: Send + 'static,
     {
@@ -198,10 +197,10 @@ where
     pub(super) fn layer<L>(self, layer: L) -> PathRouter<S, IS_FALLBACK>
     where
         L: Layer<Route> + Clone + Send + 'static,
-        L::Service: Service<Request<Body>> + Clone + Send + 'static,
-        <L::Service as Service<Request<Body>>>::Response: IntoResponse + 'static,
-        <L::Service as Service<Request<Body>>>::Error: Into<Infallible> + 'static,
-        <L::Service as Service<Request<Body>>>::Future: Send + 'static,
+        L::Service: Service<Request> + Clone + Send + 'static,
+        <L::Service as Service<Request>>::Response: IntoResponse + 'static,
+        <L::Service as Service<Request>>::Error: Into<Infallible> + 'static,
+        <L::Service as Service<Request>>::Future: Send + 'static,
     {
         let routes = self
             .routes
@@ -223,10 +222,10 @@ where
     pub(super) fn route_layer<L>(self, layer: L) -> Self
     where
         L: Layer<Route> + Clone + Send + 'static,
-        L::Service: Service<Request<Body>> + Clone + Send + 'static,
-        <L::Service as Service<Request<Body>>>::Response: IntoResponse + 'static,
-        <L::Service as Service<Request<Body>>>::Error: Into<Infallible> + 'static,
-        <L::Service as Service<Request<Body>>>::Future: Send + 'static,
+        L::Service: Service<Request> + Clone + Send + 'static,
+        <L::Service as Service<Request>>::Response: IntoResponse + 'static,
+        <L::Service as Service<Request>>::Error: Into<Infallible> + 'static,
+        <L::Service as Service<Request>>::Future: Send + 'static,
     {
         if self.routes.is_empty() {
             panic!(
@@ -275,9 +274,9 @@ where
 
     pub(super) fn call_with_state(
         &mut self,
-        mut req: Request<Body>,
+        mut req: Request,
         state: S,
-    ) -> Result<RouteFuture<Infallible>, (Request<Body>, S)> {
+    ) -> Result<RouteFuture<Infallible>, (Request, S)> {
         #[cfg(feature = "original-uri")]
         {
             use crate::extract::OriginalUri;

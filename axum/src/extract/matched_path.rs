@@ -168,14 +168,14 @@ fn append_nested_matched_path(matched_path: &Arc<str>, extensions: &http::Extens
 mod tests {
     use super::*;
     use crate::{
-        body::Body,
+        extract::Request,
         handler::HandlerWithoutStateExt,
         middleware::map_request,
         routing::{any, get},
         test_helpers::*,
         Router,
     };
-    use http::{Request, StatusCode};
+    use http::StatusCode;
 
     #[crate::test]
     async fn extracting_on_handler() {
@@ -361,7 +361,7 @@ mod tests {
 
         let app = Router::new().route(
             "/*path",
-            any(|req: Request<Body>| {
+            any(|req: Request| {
                 Router::new()
                     .nest("/", Router::new().route("/foo", get(|| async {})))
                     .oneshot(req)
@@ -376,7 +376,7 @@ mod tests {
 
     #[crate::test]
     async fn cant_extract_in_fallback() {
-        async fn handler(path: Option<MatchedPath>, req: Request<Body>) {
+        async fn handler(path: Option<MatchedPath>, req: Request) {
             assert!(path.is_none());
             assert!(req.extensions().get::<MatchedPath>().is_none());
         }
