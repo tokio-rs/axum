@@ -4,7 +4,7 @@
 //! cargo run -p example-low-level-rustls
 //! ```
 
-use axum::{extract::ConnectInfo, extract::Request, routing::get, Router};
+use axum::{extract::Request, routing::get, Router};
 use futures_util::future::poll_fn;
 use hyper::server::{
     accept::Accept,
@@ -14,7 +14,6 @@ use rustls_pemfile::{certs, pkcs8_private_keys};
 use std::{
     fs::File,
     io::BufReader,
-    net::SocketAddr,
     path::{Path, PathBuf},
     pin::Pin,
     sync::Arc,
@@ -55,7 +54,7 @@ async fn main() {
 
     let mut app = Router::<()>::new()
         .route("/", get(handler))
-        .into_make_service_with_connect_info::<SocketAddr>();
+        .into_make_service();
 
     loop {
         let stream = poll_fn(|cx| Pin::new(&mut listener).poll_accept(cx))
@@ -77,8 +76,8 @@ async fn main() {
     }
 }
 
-async fn handler(ConnectInfo(addr): ConnectInfo<SocketAddr>) -> String {
-    addr.to_string()
+async fn handler() -> &'static str {
+    "Hello, World!"
 }
 
 fn rustls_server_config(key: impl AsRef<Path>, cert: impl AsRef<Path>) -> Arc<ServerConfig> {
