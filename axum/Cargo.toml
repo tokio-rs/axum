@@ -191,7 +191,6 @@ allowed = [
     "futures_util",
     "http",
     "http_body",
-    "hyper",
     "serde",
     "tokio",
     "tower_layer",
