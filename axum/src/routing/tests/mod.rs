@@ -4,13 +4,20 @@ use crate::{
     extract::{self, DefaultBodyLimit, FromRef, Path, State},
     handler::{Handler, HandlerWithoutStateExt},
     response::{IntoResponse, Response},
-    routing::{delete, get, get_service, on, on_service, patch, patch_service, post, MethodFilter, path_router::path_for_nested_route},
-    test_helpers::{*, tracing_helpers::{capture_tracing, TracingEvent}},
-    BoxError, Json, Router, Extension,
+    routing::{
+        delete, get, get_service, on, on_service, patch, patch_service,
+        path_router::path_for_nested_route, post, MethodFilter,
+    },
+    test_helpers::{
+        tracing_helpers::{capture_tracing, TracingEvent},
+        *,
+    },
+    BoxError, Extension, Json, Router,
 };
 use axum_core::extract::Request;
 use futures_util::stream::StreamExt;
 use http::{header::ALLOW, header::CONTENT_LENGTH, HeaderMap, StatusCode, Uri};
+use serde::Deserialize;
 use serde_json::json;
 use std::{
     convert::Infallible,
@@ -22,7 +29,6 @@ use std::{
 use tower::{service_fn, timeout::TimeoutLayer, util::MapResponseLayer, ServiceBuilder};
 use tower_http::{limit::RequestBodyLimitLayer, validate_request::ValidateRequestHeaderLayer};
 use tower_service::Service;
-use serde::Deserialize;
 
 mod fallback;
 mod get_to_head;
