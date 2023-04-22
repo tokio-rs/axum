@@ -50,6 +50,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   type inference issues when calling `ServiceExt` methods on a `Router` ([#1835])
 - **breaking:** Removed `axum::Server` as it was removed in hyper 1.0. Instead
   use `axum::serve(listener, service)` or hyper/hyper-util for more configuration options ([#1868])
+- **breaking:** Only inherit fallbacks for routers nested with `Router::nest`.
+  Routers nested with `Router::nest_service` will no longer inherit fallbacks ([#1956])
 
 [#1664]: https://github.com/tokio-rs/axum/pull/1664
 [#1751]: https://github.com/tokio-rs/axum/pull/1751
@@ -58,6 +60,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#1835]: https://github.com/tokio-rs/axum/pull/1835
 [#1850]: https://github.com/tokio-rs/axum/pull/1850
 [#1868]: https://github.com/tokio-rs/axum/pull/1868
+[#1956]: https://github.com/tokio-rs/axum/pull/1956
 
 # 0.6.16 (18. April, 2023)
 
