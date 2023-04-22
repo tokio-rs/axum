@@ -19,7 +19,6 @@ use std::{
     marker::PhantomData,
     task::{Context, Poll},
 };
-use sync_wrapper::SyncWrapper;
 use tower_layer::Layer;
 use tower_service::Service;
 
@@ -285,43 +284,15 @@ where
         }
     }
 
-    pub(crate) fn call_with_state(
-        &mut self,
-        mut req: Request,
-        state: S,
-    ) -> RouteFuture<Infallible> {
-        // required for opaque routers to still inherit the fallback
-        // TODO(david): remove this feature in 0.7
-        if !self.default_fallback {
-            req.extensions_mut().insert(SuperFallback(SyncWrapper::new(
-                self.fallback_router.clone(),
-            )));
-        }
-
+    pub(crate) fn call_with_state(&mut self, req: Request, state: S) -> RouteFuture<Infallible> {
         match self.path_router.call_with_state(req, state) {
             Ok(future) => future,
-            Err((mut req, state)) => {
-                let super_fallback = req
-                    .extensions_mut()
-                    .remove::<SuperFallback<S>>()
-                    .map(|SuperFallback(path_router)| path_router.into_inner());
-
-                if let Some(mut super_fallback) = super_fallback {
-                    return super_fallback
-                        .call_with_state(req, state)
-                        .unwrap_or_else(|_| unreachable!());
+            Err((req, state)) => match self.fallback_router.call_with_state(req, state) {
+                Ok(future) => future,
+                Err((_req, _state)) => {
+                    unreachable!("the default fallback added in `Router::new` matches everything")
                 }
-
-                match self.fallback_router.call_with_state(req, state) {
-                    Ok(future) => future,
-                    Err((_req, _state)) => {
-                        unreachable!(
-                            "the default fallback added in `Router::new` \
-                             matches everything"
-                        )
-                    }
-                }
-            }
+            },
         }
     }
 
@@ -661,8 +632,6 @@ impl<S> fmt::Debug for Endpoint<S> {
         }
     }
 }
-
-struct SuperFallback<S>(SyncWrapper<PathRouter<S, true>>);
 
 #[test]
 #[allow(warnings)]
