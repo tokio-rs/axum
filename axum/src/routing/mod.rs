@@ -306,13 +306,18 @@ where
                     .remove::<SuperFallback<S, B>>()
                     .map(|SuperFallback(path_router)| path_router.into_inner());
 
-                // simulate hitting `unreachable!()` below
-                unreachable!();
-
                 if let Some(mut super_fallback) = super_fallback {
                     return super_fallback
                         .call_with_state(req, state)
-                        .unwrap_or_else(|_| unreachable!());
+                        .unwrap_or_else(|(req, _)| {
+                            let version = req.version();
+                            let method = req.method();
+                            let uri = req.uri();
+                            let headers = req.headers();
+                            unreachable!(
+                                "version={version:?}; method={method:?}; uri={uri:?}; headers={headers:?}",
+                            )
+                        });
                 }
 
                 match self.fallback_router.call_with_state(req, state) {
