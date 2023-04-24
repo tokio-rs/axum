@@ -306,6 +306,9 @@ where
                     .remove::<SuperFallback<S, B>>()
                     .map(|SuperFallback(path_router)| path_router.into_inner());
 
+                // simulate hitting `unreachable!()` below
+                unreachable!();
+
                 if let Some(mut super_fallback) = super_fallback {
                     return super_fallback
                         .call_with_state(req, state)
