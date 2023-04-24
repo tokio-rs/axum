@@ -15,7 +15,11 @@ use crate::{
     BoxError, Extension, Json, Router,
 };
 use futures_util::stream::StreamExt;
-use http::{header::ALLOW, header::CONTENT_LENGTH, HeaderMap, Request, Response, StatusCode, Uri};
+use http::{
+    header::CONTENT_LENGTH,
+    header::{ALLOW, HOST},
+    HeaderMap, Method, Request, Response, StatusCode, Uri,
+};
 use hyper::Body;
 use serde::Deserialize;
 use serde_json::json;
@@ -26,7 +30,9 @@ use std::{
     task::{Context, Poll},
     time::Duration,
 };
-use tower::{service_fn, timeout::TimeoutLayer, util::MapResponseLayer, ServiceBuilder};
+use tower::{
+    service_fn, timeout::TimeoutLayer, util::MapResponseLayer, ServiceBuilder, ServiceExt,
+};
 use tower_http::{limit::RequestBodyLimitLayer, validate_request::ValidateRequestHeaderLayer};
 use tower_service::Service;
 
@@ -983,4 +989,20 @@ async fn logging_rejections() {
             },
         ])
     )
+}
+
+// https://github.com/tokio-rs/axum/issues/1955
+#[crate::test]
+async fn connect_going_to_fallback() {
+    let app = Router::new();
+
+    let req = Request::builder()
+        .uri("example.com:443")
+        .method(Method::CONNECT)
+        .header(HOST, "example.com:443")
+        .body(Body::empty())
+        .unwrap();
+
+    let res = app.oneshot(req).await.unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
 }
