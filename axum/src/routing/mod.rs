@@ -315,7 +315,7 @@ where
                             let uri = req.uri();
                             let headers = req.headers();
                             unreachable!(
-                                "version={version:?}; method={method:?}; uri={uri:?}; headers={headers:?}",
+                                "router={self:?}; version={version:?}; method={method:?}; uri={uri:?}; headers={headers:?}",
                             )
                         });
                 }
