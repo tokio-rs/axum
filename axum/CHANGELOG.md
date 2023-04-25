@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- None.
+- **fixed:** Fix fallbacks causing a panic on `CONNECT` requests ([#1958])
+
+[#1958]: https://github.com/tokio-rs/axum/pull/1958
 
 # 0.6.16 (18. April, 2023)
 
