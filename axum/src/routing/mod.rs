@@ -109,17 +109,12 @@ where
     /// Unless you add additional routes this will respond with `404 Not Found` to
     /// all requests.
     pub fn new() -> Self {
-        // TODO(david): refactor this. Having to set the fallback twice is kinda ugly
-        let mut this = Self {
+        Self {
             path_router: Default::default(),
-            fallback_router: Default::default(),
+            fallback_router: PathRouter::new_fallback(),
             default_fallback: true,
             catch_all_fallback: Fallback::Default(Route::new(NotFound)),
-        };
-        this = this.fallback_service(NotFound);
-        this.default_fallback = true;
-        this.catch_all_fallback = Fallback::Default(Route::new(NotFound));
-        this
+        }
     }
 
     #[doc = include_str!("../docs/routing/route.md")]
@@ -290,9 +285,7 @@ where
     }
 
     fn fallback_endpoint(mut self, endpoint: Endpoint<S, B>) -> Self {
-        self.fallback_router.replace_endpoint("/", endpoint.clone());
-        self.fallback_router
-            .replace_endpoint(&format!("/*{FALLBACK_PARAM}"), endpoint);
+        self.fallback_router.set_fallback(endpoint);
         self.default_fallback = false;
         self
     }

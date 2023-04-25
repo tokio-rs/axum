@@ -8,13 +8,30 @@ use tower_service::Service;
 
 use super::{
     future::RouteFuture, strip_prefix::StripPrefix, url_params, Endpoint, MethodRouter, Route,
-    RouteId, NEST_TAIL_PARAM,
+    RouteId, FALLBACK_PARAM, NEST_TAIL_PARAM, not_found::NotFound,
 };
 
 pub(super) struct PathRouter<S, B, const IS_FALLBACK: bool> {
     routes: HashMap<RouteId, Endpoint<S, B>>,
     node: Arc<Node>,
     prev_route_id: RouteId,
+}
+
+impl<S, B> PathRouter<S, B, true>
+where
+    B: HttpBody + Send + 'static,
+    S: Clone + Send + Sync + 'static,
+{
+    pub(super) fn new_fallback() -> Self {
+        let mut this = Self::default();
+        this.set_fallback(Endpoint::Route(Route::new(NotFound)));
+        this
+    }
+
+    pub(super) fn set_fallback(&mut self, endpoint: Endpoint<S, B>) {
+        self.replace_endpoint("/", endpoint.clone());
+        self.replace_endpoint(&format!("/*{FALLBACK_PARAM}"), endpoint);
+    }
 }
 
 impl<S, B, const IS_FALLBACK: bool> PathRouter<S, B, IS_FALLBACK>
