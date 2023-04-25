@@ -7,8 +7,8 @@ use tower_layer::Layer;
 use tower_service::Service;
 
 use super::{
-    future::RouteFuture, strip_prefix::StripPrefix, url_params, Endpoint, MethodRouter, Route,
-    RouteId, FALLBACK_PARAM, NEST_TAIL_PARAM, not_found::NotFound,
+    future::RouteFuture, not_found::NotFound, strip_prefix::StripPrefix, url_params, Endpoint,
+    MethodRouter, Route, RouteId, FALLBACK_PARAM, NEST_TAIL_PARAM,
 };
 
 pub(super) struct PathRouter<S, B, const IS_FALLBACK: bool> {
