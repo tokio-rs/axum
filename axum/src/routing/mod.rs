@@ -300,15 +300,17 @@ where
     }
 
     pub(crate) fn call_with_state(&mut self, req: Request, state: S) -> RouteFuture<Infallible> {
-        match self.path_router.call_with_state(req, state) {
-            Ok(future) => future,
-            Err((req, state)) => match self.fallback_router.call_with_state(req, state) {
-                Ok(future) => future,
-                Err((req, state)) => {
-                    return self.catch_all_fallback.call_with_state(req, state);
-                }
-            },
-        }
+        let (req, state) = match self.path_router.call_with_state(req, state) {
+            Ok(future) => return future,
+            Err((req, state)) => (req, state),
+        };
+
+        let (req, state) = match self.fallback_router.call_with_state(req, state) {
+            Ok(future) => return future,
+            Err((req, state)) => (req, state),
+        };
+
+        self.catch_all_fallback.call_with_state(req, state)
     }
 
     /// Convert the router into a borrowed [`Service`] with a fixed request body type, to aid type
