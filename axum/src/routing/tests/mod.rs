@@ -993,7 +993,25 @@ async fn logging_rejections() {
 
 // https://github.com/tokio-rs/axum/issues/1955
 #[crate::test]
-async fn connect_going_to_fallback() {
+async fn connect_going_to_custom_fallback() {
+    let app = Router::new().fallback(|| async { (StatusCode::NOT_FOUND, "custom fallback") });
+
+    let req = Request::builder()
+        .uri("example.com:443")
+        .method(Method::CONNECT)
+        .header(HOST, "example.com:443")
+        .body(Body::empty())
+        .unwrap();
+
+    let res = app.oneshot(req).await.unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    let text = String::from_utf8(hyper::body::to_bytes(res).await.unwrap().to_vec()).unwrap();
+    assert_eq!(text, "custom fallback");
+}
+
+// https://github.com/tokio-rs/axum/issues/1955
+#[crate::test]
+async fn connect_going_to_default_fallback() {
     let app = Router::new();
 
     let req = Request::builder()
@@ -1005,4 +1023,6 @@ async fn connect_going_to_fallback() {
 
     let res = app.oneshot(req).await.unwrap();
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    let body = hyper::body::to_bytes(res).await.unwrap();
+    assert!(body.is_empty());
 }
