@@ -62,6 +62,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#1868]: https://github.com/tokio-rs/axum/pull/1868
 [#1956]: https://github.com/tokio-rs/axum/pull/1956
 
+# 0.6.17 (25. April, 2023)
+
+- **fixed:** Fix fallbacks causing a panic on `CONNECT` requests ([#1958])
+
+[#1958]: https://github.com/tokio-rs/axum/pull/1958
+
 # 0.6.16 (18. April, 2023)
 
 - **fixed:** Don't allow extracting `MatchedPath` in fallbacks ([#1934])
