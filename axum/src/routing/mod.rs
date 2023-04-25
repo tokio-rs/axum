@@ -62,6 +62,7 @@ pub struct Router<S = ()> {
     path_router: PathRouter<S, false>,
     fallback_router: PathRouter<S, true>,
     default_fallback: bool,
+    catch_all_fallback: Fallback<S>,
 }
 
 impl<S> Clone for Router<S> {
@@ -70,6 +71,7 @@ impl<S> Clone for Router<S> {
             path_router: self.path_router.clone(),
             fallback_router: self.fallback_router.clone(),
             default_fallback: self.default_fallback,
+            catch_all_fallback: self.catch_all_fallback.clone(),
         }
     }
 }
@@ -89,6 +91,7 @@ impl<S> fmt::Debug for Router<S> {
             .field("path_router", &self.path_router)
             .field("fallback_router", &self.fallback_router)
             .field("default_fallback", &self.default_fallback)
+            .field("catch_all_fallback", &self.catch_all_fallback)
             .finish()
     }
 }
@@ -106,14 +109,12 @@ where
     /// Unless you add additional routes this will respond with `404 Not Found` to
     /// all requests.
     pub fn new() -> Self {
-        let mut this = Self {
+        Self {
             path_router: Default::default(),
-            fallback_router: Default::default(),
+            fallback_router: PathRouter::new_fallback(),
             default_fallback: true,
-        };
-        this = this.fallback_service(NotFound);
-        this.default_fallback = true;
-        this
+            catch_all_fallback: Fallback::Default(Route::new(NotFound)),
+        }
     }
 
     #[doc = include_str!("../docs/routing/route.md")]
@@ -151,6 +152,10 @@ where
             path_router,
             fallback_router,
             default_fallback,
+            // we don't need to inherit the catch-all fallback. It is only used for CONNECT
+            // requests with an empty path. If we were to inherit the catch-all fallback
+            // it would end up matching `/{path}/*` which doesn't match empty paths.
+            catch_all_fallback: _,
         } = router;
 
         panic_on_err!(self.path_router.nest(path, path_router));
@@ -184,6 +189,7 @@ where
             path_router,
             fallback_router: other_fallback,
             default_fallback,
+            catch_all_fallback,
         } = other.into();
 
         panic_on_err!(self.path_router.merge(path_router));
@@ -208,6 +214,11 @@ where
             }
         };
 
+        self.catch_all_fallback = self
+            .catch_all_fallback
+            .merge(catch_all_fallback)
+            .unwrap_or_else(|| panic!("Cannot merge two `Router`s that both have a fallback"));
+
         self
     }
 
@@ -222,8 +233,9 @@ where
     {
         Router {
             path_router: self.path_router.layer(layer.clone()),
-            fallback_router: self.fallback_router.layer(layer),
+            fallback_router: self.fallback_router.layer(layer.clone()),
             default_fallback: self.default_fallback,
+            catch_all_fallback: self.catch_all_fallback.map(|route| route.layer(layer)),
         }
     }
 
@@ -241,36 +253,38 @@ where
             path_router: self.path_router.route_layer(layer),
             fallback_router: self.fallback_router,
             default_fallback: self.default_fallback,
+            catch_all_fallback: self.catch_all_fallback,
         }
     }
 
     #[track_caller]
     #[doc = include_str!("../docs/routing/fallback.md")]
-    pub fn fallback<H, T>(self, handler: H) -> Self
+    pub fn fallback<H, T>(mut self, handler: H) -> Self
     where
         H: Handler<T, S>,
         T: 'static,
     {
-        let endpoint = Endpoint::MethodRouter(any(handler));
-        self.fallback_endpoint(endpoint)
+        self.catch_all_fallback =
+            Fallback::BoxedHandler(BoxedIntoRoute::from_handler(handler.clone()));
+        self.fallback_endpoint(Endpoint::MethodRouter(any(handler)))
     }
 
     /// Add a fallback [`Service`] to the router.
     ///
     /// See [`Router::fallback`] for more details.
-    pub fn fallback_service<T>(self, service: T) -> Self
+    pub fn fallback_service<T>(mut self, service: T) -> Self
     where
         T: Service<Request, Error = Infallible> + Clone + Send + 'static,
         T::Response: IntoResponse,
         T::Future: Send + 'static,
     {
-        self.fallback_endpoint(Endpoint::Route(Route::new(service)))
+        let route = Route::new(service);
+        self.catch_all_fallback = Fallback::Service(route.clone());
+        self.fallback_endpoint(Endpoint::Route(route))
     }
 
     fn fallback_endpoint(mut self, endpoint: Endpoint<S>) -> Self {
-        self.fallback_router.replace_endpoint("/", endpoint.clone());
-        self.fallback_router
-            .replace_endpoint(&format!("/*{FALLBACK_PARAM}"), endpoint);
+        self.fallback_router.set_fallback(endpoint);
         self.default_fallback = false;
         self
     }
@@ -279,8 +293,9 @@ where
     pub fn with_state<S2>(self, state: S) -> Router<S2> {
         Router {
             path_router: self.path_router.with_state(state.clone()),
-            fallback_router: self.fallback_router.with_state(state),
+            fallback_router: self.fallback_router.with_state(state.clone()),
             default_fallback: self.default_fallback,
+            catch_all_fallback: self.catch_all_fallback.with_state(state),
         }
     }
 
@@ -289,8 +304,8 @@ where
             Ok(future) => future,
             Err((req, state)) => match self.fallback_router.call_with_state(req, state) {
                 Ok(future) => future,
-                Err((_req, _state)) => {
-                    unreachable!("the default fallback added in `Router::new` matches everything")
+                Err((req, state)) => {
+                    return self.catch_all_fallback.call_with_state(req, state);
                 }
             },
         }
@@ -562,6 +577,18 @@ where
             Fallback::Default(route) => Fallback::Default(route),
             Fallback::Service(route) => Fallback::Service(route),
             Fallback::BoxedHandler(handler) => Fallback::Service(handler.into_route(state)),
+        }
+    }
+
+    fn call_with_state(&mut self, req: Request, state: S) -> RouteFuture<E> {
+        match self {
+            Fallback::Default(route) | Fallback::Service(route) => {
+                RouteFuture::from_future(route.oneshot_inner(req))
+            }
+            Fallback::BoxedHandler(handler) => {
+                let mut route = handler.clone().into_route(state);
+                RouteFuture::from_future(route.oneshot_inner(req))
+            }
         }
     }
 }
