@@ -25,6 +25,8 @@ skip-tree = [
     { name = "spin" },
     # lots still pulls in syn 1.x
     { name = "syn" },
+    # old version pulled in by tracing-subscriber in dev-deps and examples
+    { name = "regex-syntax" },
 ]
 
 [sources]
