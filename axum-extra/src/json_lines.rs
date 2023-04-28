@@ -79,12 +79,12 @@ pin_project! {
     }
 }
 
-/// Maker type used to prove that an `JsonLines` was constructed via `FromRequest`.
+/// Marker type used to prove that an `JsonLines` was constructed via `FromRequest`.
 #[derive(Debug)]
 #[non_exhaustive]
 pub struct AsExtractor;
 
-/// Maker type used to prove that an `JsonLines` was constructed via `JsonLines::new`.
+/// Marker type used to prove that an `JsonLines` was constructed via `JsonLines::new`.
 #[derive(Debug)]
 #[non_exhaustive]
 pub struct AsResponse;
