@@ -391,8 +391,9 @@ where
 
         let sec_websocket_key = parts
             .headers
-            .remove(header::SEC_WEBSOCKET_KEY)
-            .ok_or(WebSocketKeyHeaderMissing)?;
+            .get(header::SEC_WEBSOCKET_KEY)
+            .ok_or(WebSocketKeyHeaderMissing)?
+            .clone();
 
         let on_upgrade = parts
             .extensions

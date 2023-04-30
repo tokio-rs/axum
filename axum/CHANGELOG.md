@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- None.
+- **fixed:** Don't remove the `Sec-WebSocket-Key` header in `WebSocketUpgrade` ([#1972])
+
+[#1972]: https://github.com/tokio-rs/axum/pull/1972
 
 # 0.6.17 (25. April, 2023)
 
