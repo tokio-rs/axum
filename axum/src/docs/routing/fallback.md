@@ -38,7 +38,7 @@ async fn handler() {}
 let app = Router::new().fallback(handler);
 
 # async {
-let listener = tokio::net::TcpListener::bind("127.0.0.1:3000").await.unwrap();
+let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
 axum::serve(listener, app).await.unwrap();
 # };
 ```
@@ -51,7 +51,7 @@ use axum::handler::HandlerWithoutStateExt;
 async fn handler() {}
 
 # async {
-let listener = tokio::net::TcpListener::bind("127.0.0.1:3000").await.unwrap();
+let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
 axum::serve(listener, handler.into_make_service()).await.unwrap();
 # };
 ```

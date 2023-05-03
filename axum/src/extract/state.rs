@@ -156,7 +156,7 @@ use std::{
 /// let handler_with_state = handler.with_state(state);
 ///
 /// # async {
-/// let listener = tokio::net::TcpListener::bind("127.0.0.1:3000").await.unwrap();
+/// let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
 /// axum::serve(listener, handler_with_state.into_make_service()).await.unwrap();
 /// # };
 /// ```
