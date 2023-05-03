@@ -21,7 +21,7 @@ async fn handler(ConnectInfo(addr): ConnectInfo<SocketAddr>) -> String {
 }
 
 # async {
-let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
+let listener = tokio::net::TcpListener::bind("127.0.0.1:3000").await.unwrap();
 axum::serve(listener, app.into_make_service_with_connect_info::<SocketAddr>()).await.unwrap();
 # };
 ```
@@ -58,7 +58,7 @@ impl Connected<IncomingStream<'_>> for MyConnectInfo {
 }
 
 # async {
-let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
+let listener = tokio::net::TcpListener::bind("127.0.0.1:3000").await.unwrap();
 axum::serve(listener, app.into_make_service_with_connect_info::<MyConnectInfo>()).await.unwrap();
 # };
 ```
