@@ -216,5 +216,4 @@ jobs:
     - name: Remove non-crate folder
       run: rm -rf examples/async-graphql
     - name: Check dependency tables
-      run: |
-        cargo sort --workspace --grouped --check
+      run: cargo sort --workspace --grouped --check
