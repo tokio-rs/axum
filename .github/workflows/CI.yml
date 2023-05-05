@@ -42,10 +42,8 @@ jobs:
     - uses: actions/checkout@v3
     - uses: taiki-e/install-action@protoc
     - uses: dtolnay/rust-toolchain@stable
+    - uses: taiki-e/install-action@cargo-hack
     - uses: Swatinem/rust-cache@v2
-    - name: Install cargo-hack
-      run: |
-        curl -LsSf https://github.com/taiki-e/cargo-hack/releases/latest/download/cargo-hack-x86_64-unknown-linux-gnu.tar.gz | tar xzf - -C ~/.cargo/bin
     - name: cargo hack check
       run: cargo hack check --each-feature --no-dev-deps --all
 
