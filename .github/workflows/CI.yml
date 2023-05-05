@@ -2,7 +2,6 @@ name: CI
 
 env:
   CARGO_TERM_COLOR: always
-  MSRV: '1.60'
 
 on:
   push:
@@ -100,6 +99,8 @@ jobs:
   test-msrv:
     needs: check
     runs-on: ubuntu-latest
+    env:
+      MSRV: '1.60'
     steps:
     - uses: actions/checkout@v3
     - uses: dtolnay/rust-toolchain@master
