@@ -45,7 +45,7 @@ jobs:
     - uses: taiki-e/install-action@cargo-hack
     - uses: Swatinem/rust-cache@v2
     - name: cargo hack check
-      run: cargo hack check --each-feature --no-dev-deps --all
+      run: cargo hack check --workspace --each-feature --no-dev-deps
 
   cargo-public-api-crates:
     runs-on: ubuntu-latest
