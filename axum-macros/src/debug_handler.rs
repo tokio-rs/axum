@@ -67,7 +67,7 @@ pub(crate) fn expand(attr: Attrs, item_fn: ItemFn, kind: FunctionKind) -> TokenS
         syn::Error::new_spanned(
             &item_fn.sig.generics,
             format!(
-                "`#[axum_macros::debug_{}]` doesn't support generic functions",
+                "`#[debug_{}]` doesn't support generic functions",
                 kind.name()
             ),
         )
