@@ -8,7 +8,7 @@ use proc_macro2::{Span, TokenStream};
 use quote::{format_ident, quote, quote_spanned};
 use syn::{parse::Parse, spanned::Spanned, FnArg, ItemFn, Token, Type};
 
-pub(crate) fn expand(attr: Attrs, item_fn: ItemFn, kind: DebugKind) -> TokenStream {
+pub(crate) fn expand(attr: Attrs, item_fn: ItemFn, kind: FunctionKind) -> TokenStream {
     let Attrs { state_ty } = attr;
 
     let mut state_ty = state_ty.map(second);
@@ -75,7 +75,7 @@ pub(crate) fn expand(attr: Attrs, item_fn: ItemFn, kind: DebugKind) -> TokenStre
     };
 
     let middleware_takes_next_as_last_arg =
-        matches!(kind, DebugKind::Middleware).then(|| next_is_last_input(&item_fn));
+        matches!(kind, FunctionKind::Middleware).then(|| next_is_last_input(&item_fn));
 
     quote! {
         #item_fn
@@ -88,30 +88,30 @@ pub(crate) fn expand(attr: Attrs, item_fn: ItemFn, kind: DebugKind) -> TokenStre
 }
 
 #[derive(Clone, Copy)]
-pub(crate) enum DebugKind {
+pub(crate) enum FunctionKind {
     Handler,
     Middleware,
 }
 
-impl DebugKind {
+impl FunctionKind {
     fn name(&self) -> &'static str {
         match self {
-            DebugKind::Handler => "handler",
-            DebugKind::Middleware => "middleware",
+            FunctionKind::Handler => "handler",
+            FunctionKind::Middleware => "middleware",
         }
     }
 
     fn name_uppercase(&self) -> &'static str {
         match self {
-            DebugKind::Handler => "Handler",
-            DebugKind::Middleware => "Middleware",
+            FunctionKind::Handler => "Handler",
+            FunctionKind::Middleware => "Middleware",
         }
     }
 
     fn name_uppercase_plural(&self) -> &'static str {
         match self {
-            DebugKind::Handler => "Handlers",
-            DebugKind::Middleware => "Middleware",
+            FunctionKind::Handler => "Handlers",
+            FunctionKind::Middleware => "Middleware",
         }
     }
 }
@@ -143,7 +143,7 @@ impl Parse for Attrs {
     }
 }
 
-fn check_extractor_count(item_fn: &ItemFn, kind: DebugKind) -> Option<TokenStream> {
+fn check_extractor_count(item_fn: &ItemFn, kind: FunctionKind) -> Option<TokenStream> {
     let max_extractors = 16;
     let inputs = item_fn
         .sig
@@ -166,7 +166,7 @@ fn check_extractor_count(item_fn: &ItemFn, kind: DebugKind) -> Option<TokenStrea
 
 fn extractor_idents(
     item_fn: &ItemFn,
-    kind: DebugKind,
+    kind: FunctionKind,
 ) -> impl Iterator<Item = (usize, &syn::FnArg, &syn::Ident)> {
     item_fn
         .sig
@@ -190,7 +190,7 @@ fn extractor_idents(
         })
 }
 
-fn check_path_extractor(item_fn: &ItemFn, kind: DebugKind) -> TokenStream {
+fn check_path_extractor(item_fn: &ItemFn, kind: FunctionKind) -> TokenStream {
     let path_extractors = extractor_idents(item_fn, kind)
         .filter(|(_, _, ident)| *ident == "Path")
         .collect::<Vec<_>>();
@@ -226,7 +226,7 @@ fn is_self_pat_type(typed: &syn::PatType) -> bool {
 fn check_inputs_impls_from_request(
     item_fn: &ItemFn,
     state_ty: Type,
-    kind: DebugKind,
+    kind: FunctionKind,
 ) -> TokenStream {
     let takes_self = item_fn.sig.inputs.first().map_or(false, |arg| match arg {
         FnArg::Receiver(_) => true,
@@ -341,7 +341,7 @@ fn check_inputs_impls_from_request(
     .collect::<TokenStream>()
 }
 
-fn check_input_order(item_fn: &ItemFn, kind: DebugKind) -> Option<TokenStream> {
+fn check_input_order(item_fn: &ItemFn, kind: FunctionKind) -> Option<TokenStream> {
     let number_of_inputs = item_fn
         .sig
         .inputs
@@ -534,7 +534,7 @@ fn check_output_impls_into_response(item_fn: &ItemFn) -> TokenStream {
     }
 }
 
-fn check_future_send(item_fn: &ItemFn, kind: DebugKind) -> TokenStream {
+fn check_future_send(item_fn: &ItemFn, kind: FunctionKind) -> TokenStream {
     if item_fn.sig.asyncness.is_none() {
         match &item_fn.sig.output {
             syn::ReturnType::Default => {
@@ -648,7 +648,7 @@ fn next_is_last_input(item_fn: &ItemFn) -> TokenStream {
         .inputs
         .iter()
         .enumerate()
-        .filter(|(_, arg)| !skip_next_arg(arg, DebugKind::Middleware))
+        .filter(|(_, arg)| !skip_next_arg(arg, FunctionKind::Middleware))
         .collect::<Vec<_>>();
 
     if next_args.is_empty() {
@@ -679,10 +679,10 @@ fn next_is_last_input(item_fn: &ItemFn) -> TokenStream {
     quote! {}
 }
 
-fn skip_next_arg(arg: &FnArg, kind: DebugKind) -> bool {
+fn skip_next_arg(arg: &FnArg, kind: FunctionKind) -> bool {
     match kind {
-        DebugKind::Handler => true,
-        DebugKind::Middleware => match arg {
+        FunctionKind::Handler => true,
+        FunctionKind::Middleware => match arg {
             FnArg::Receiver(_) => true,
             FnArg::Typed(pat_type) => {
                 if let Type::Path(type_path) = &*pat_type.ty {

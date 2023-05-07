@@ -44,7 +44,7 @@
 #![cfg_attr(test, allow(clippy::float_cmp))]
 #![cfg_attr(not(test), warn(clippy::print_stdout, clippy::dbg_macro))]
 
-use debug_handler::DebugKind;
+use debug_handler::FunctionKind;
 use proc_macro::TokenStream;
 use quote::{quote, ToTokens};
 use syn::{parse::Parse, Type};
@@ -571,7 +571,7 @@ pub fn debug_handler(_attr: TokenStream, input: TokenStream) -> TokenStream {
 
     #[cfg(debug_assertions)]
     return expand_attr_with(_attr, input, |attrs, item_fn| {
-        debug_handler::expand(attrs, item_fn, DebugKind::Handler)
+        debug_handler::expand(attrs, item_fn, FunctionKind::Handler)
     });
 }
 
@@ -583,7 +583,7 @@ pub fn debug_middleware(_attr: TokenStream, input: TokenStream) -> TokenStream {
 
     #[cfg(debug_assertions)]
     return expand_attr_with(_attr, input, |attrs, item_fn| {
-        debug_handler::expand(attrs, item_fn, DebugKind::Middleware)
+        debug_handler::expand(attrs, item_fn, FunctionKind::Middleware)
     });
 }
 
