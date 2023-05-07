@@ -1,4 +1,4 @@
-error: `#[axum_macros::debug_handler]` doesn't support generic functions
+error: `#[debug_handler]` doesn't support generic functions
  --> tests/debug_handler/fail/generics.rs:4:17
   |
 4 | async fn handler<T>(_extract: T) {}
