@@ -117,7 +117,6 @@ impl DebugKind {
 }
 
 mod kw {
-    syn::custom_keyword!(body);
     syn::custom_keyword!(state);
 }
 
