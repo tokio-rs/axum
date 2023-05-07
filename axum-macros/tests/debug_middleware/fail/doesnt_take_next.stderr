@@ -1,0 +1,7 @@
+error: Middleware functions must take `axum::middleware::Next` as the last argument
+ --> tests/debug_middleware/fail/doesnt_take_next.rs:7:1
+  |
+7 | #[debug_middleware]
+  | ^^^^^^^^^^^^^^^^^^^
+  |
+  = note: this error originates in the attribute macro `debug_middleware` (in Nightly builds, run with -Z macro-backtrace for more info)
