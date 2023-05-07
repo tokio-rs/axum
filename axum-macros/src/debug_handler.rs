@@ -101,13 +101,6 @@ impl FunctionKind {
         }
     }
 
-    fn name_uppercase(&self) -> &'static str {
-        match self {
-            FunctionKind::Handler => "Handler",
-            FunctionKind::Middleware => "Middleware",
-        }
-    }
-
     fn name_uppercase_plural(&self) -> &'static str {
         match self {
             FunctionKind::Handler => "Handlers",
@@ -157,7 +150,7 @@ fn check_extractor_count(item_fn: &ItemFn, kind: FunctionKind) -> Option<TokenSt
         let error_message = format!(
             "{} cannot take more than {max_extractors} arguments. \
             Use `(a, b): (ExtractorA, ExtractorA)` to further nest extractors",
-            kind.name_uppercase(),
+            kind.name_uppercase_plural(),
         );
         let error = syn::Error::new_spanned(&item_fn.sig.inputs, error_message).to_compile_error();
         Some(error)
