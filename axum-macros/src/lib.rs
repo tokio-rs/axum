@@ -416,7 +416,7 @@ pub fn derive_from_request_parts(item: TokenStream) -> TokenStream {
     expand_with(item, |item| from_request::expand(item, FromRequestParts))
 }
 
-/// Generates better error messages when applied handler functions.
+/// Generates better error messages when applied to handler functions.
 ///
 /// While using [`axum`], you can get long error messages for simple mistakes. For example:
 ///
@@ -575,7 +575,41 @@ pub fn debug_handler(_attr: TokenStream, input: TokenStream) -> TokenStream {
     });
 }
 
-/// TODO(david): docs
+/// Generates better error messages when applied to middleware functions.
+///
+/// This works similarly to [`#[debug_handler]`](debug_handler) except for middleware using
+/// [`axum::middleware::from_fn`].
+///
+/// # Example
+///
+/// ```
+/// use axum::{
+///     routing::get,
+///     Router,
+///     middleware::{self, Next},
+///     debug_middleware,
+/// };
+///
+/// #[tokio::main]
+/// async fn main() {
+///     let app = Router::new()
+///         .route("/", get(|| async {}))
+///         .layer(middleware::from_fn(my_middleware));
+///
+///     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
+///     axum::serve(listener, app).await.unwrap();
+/// }
+///
+/// // if this wasn't a valid middleware function #[debug_middleware] will
+/// // improve compile error
+/// #[debug_middleware]
+/// async fn my_middleware(
+///     request: Request,
+///     next: Next,
+/// ) -> Response {
+///     next.run(request).await
+/// }
+/// ```
 #[proc_macro_attribute]
 pub fn debug_middleware(_attr: TokenStream, input: TokenStream) -> TokenStream {
     #[cfg(not(debug_assertions))]
