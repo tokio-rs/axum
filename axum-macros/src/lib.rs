@@ -577,7 +577,7 @@ pub fn debug_handler(_attr: TokenStream, input: TokenStream) -> TokenStream {
 
 /// Generates better error messages when applied to middleware functions.
 ///
-/// This works similarly to [`#[debug_handler]`](debug_handler) except for middleware using
+/// This works similarly to [`#[debug_handler]`](macro@debug_handler) except for middleware using
 /// [`axum::middleware::from_fn`].
 ///
 /// # Example
@@ -585,6 +585,8 @@ pub fn debug_handler(_attr: TokenStream, input: TokenStream) -> TokenStream {
 /// ```
 /// use axum::{
 ///     routing::get,
+///     extract::Request,
+///     response::Response,
 ///     Router,
 ///     middleware::{self, Next},
 ///     debug_middleware,
@@ -600,7 +602,7 @@ pub fn debug_handler(_attr: TokenStream, input: TokenStream) -> TokenStream {
 ///     axum::serve(listener, app).await.unwrap();
 /// }
 ///
-/// // if this wasn't a valid middleware function #[debug_middleware] will
+/// // if this wasn't a valid middleware function #[debug_middleware] would
 /// // improve compile error
 /// #[debug_middleware]
 /// async fn my_middleware(
@@ -610,6 +612,9 @@ pub fn debug_handler(_attr: TokenStream, input: TokenStream) -> TokenStream {
 ///     next.run(request).await
 /// }
 /// ```
+///
+/// [`axum`]: https://docs.rs/axum/latest
+/// [`axum::middleware::from_fn`]: https://docs.rs/axum/0.7/axum/middleware/fn.from_fn.html
 #[proc_macro_attribute]
 pub fn debug_middleware(_attr: TokenStream, input: TokenStream) -> TokenStream {
     #[cfg(not(debug_assertions))]
