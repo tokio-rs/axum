@@ -93,7 +93,7 @@ define_rejection! {
     #[status = BAD_REQUEST]
     #[body = "Failed to deserialize query string"]
     /// Rejection type used if the [`Query`](super::Query) extractor is unable to
-    /// deserialize the form into the target type.
+    /// deserialize the query string into the target type.
     pub struct FailedToDeserializeQueryString(Error);
 }
 
