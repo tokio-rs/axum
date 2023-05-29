@@ -50,6 +50,13 @@ use std::{
 /// let app = Router::new().route("/upload", post(upload));
 /// # let _: Router = app;
 /// ```
+/// 
+/// # Large Files
+/// 
+/// For security reasons, by default, all axum request bodies (including multipart uploads) are limited to 2MB. 
+/// To upload files larger than this, use [DefaultBodyLimit][default-body-limit].
+/// 
+/// [default-body-limit]: crate::extract::DefaultBodyLimit
 #[cfg_attr(docsrs, doc(cfg(feature = "multipart")))]
 #[derive(Debug)]
 pub struct Multipart {
