@@ -22,7 +22,7 @@ use std::{
 
 /// Extractor that parses `multipart/form-data` requests (commonly used with file uploads).
 ///
-/// Since extracting multipart form data from the request requires consuming the body, the
+/// ⚠️ Since extracting multipart form data from the request requires consuming the body, the
 /// `Multipart` extractor must be *last* if there are multiple extractors in a handler.
 /// See ["the order of extractors"][order-of-extractors]
 ///
