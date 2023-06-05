@@ -17,7 +17,7 @@ use serde::Serialize;
 /// requests and `application/x-www-form-urlencoded` encoded request bodies for other methods. It
 /// supports any type that implements [`serde::Deserialize`].
 ///
-/// Since parsing form data might require consuming the request body, the `Form` extractor must be
+/// ⚠️ Since parsing form data might require consuming the request body, the `Form` extractor must be
 /// *last* if there are multiple extractors in a handler. See ["the order of
 /// extractors"][order-of-extractors]
 ///
