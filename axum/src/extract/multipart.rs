@@ -53,8 +53,8 @@ use std::{
 /// 
 /// # Large Files
 /// 
-/// For security reasons, by default, all axum request bodies (including multipart uploads) are limited to 2MB. 
-/// To upload files larger than this, use [DefaultBodyLimit][default-body-limit].
+/// For security reasons, by default, `Multipart` limits the request body size to 2MB. 
+/// See [`DefaultBodyLimit`][default-body-limit] for how to configure this limit.
 /// 
 /// [default-body-limit]: crate::extract::DefaultBodyLimit
 #[cfg_attr(docsrs, doc(cfg(feature = "multipart")))]
