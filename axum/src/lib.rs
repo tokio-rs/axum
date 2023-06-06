@@ -469,7 +469,7 @@ pub use self::form::Form;
 pub use axum_core::{BoxError, Error, RequestExt, RequestPartsExt};
 
 #[cfg(feature = "macros")]
-pub use axum_macros::debug_handler;
+pub use axum_macros::{debug_handler, debug_middleware};
 
 #[cfg(feature = "tokio")]
 #[doc(inline)]
