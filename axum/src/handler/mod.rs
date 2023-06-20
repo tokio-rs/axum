@@ -30,6 +30,9 @@
 //!         Err(StatusCode::BAD_REQUEST)
 //!     }
 //! }
+//!
+//! // See "Error handling" section of the documentation for more examples of
+//! // of Result-returning handlers.
 //! ```
 //!
 #![doc = include_str!("../docs/debugging_handler_type_errors.md")]
