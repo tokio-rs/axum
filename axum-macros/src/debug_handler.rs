@@ -276,6 +276,7 @@ fn check_inputs_impls_from_request(
 
             quote_spanned! {span=>
                 #[allow(warnings)]
+                #[allow(unreachable_code)]
                 #[doc(hidden)]
                 fn #check_fn #check_fn_generics()
                 where
@@ -285,6 +286,7 @@ fn check_inputs_impls_from_request(
                 // we have to call the function to actually trigger a compile error
                 // since the function is generic, just defining it is not enough
                 #[allow(warnings)]
+                #[allow(unreachable_code)]
                 #[doc(hidden)]
                 fn #call_check_fn()
                 {
@@ -429,6 +431,7 @@ fn check_output_impls_into_response(item_fn: &ItemFn) -> TokenStream {
     let make = if item_fn.sig.asyncness.is_some() {
         quote_spanned! {span=>
             #[allow(warnings)]
+            #[allow(unreachable_code)]
             #[doc(hidden)]
             async fn #make_value_name() -> #ty {
                 #declare_inputs
@@ -438,6 +441,7 @@ fn check_output_impls_into_response(item_fn: &ItemFn) -> TokenStream {
     } else {
         quote_spanned! {span=>
             #[allow(warnings)]
+            #[allow(unreachable_code)]
             #[doc(hidden)]
             fn #make_value_name() -> #ty {
                 #declare_inputs
@@ -453,6 +457,7 @@ fn check_output_impls_into_response(item_fn: &ItemFn) -> TokenStream {
             #make
 
             #[allow(warnings)]
+            #[allow(unreachable_code)]
             #[doc(hidden)]
             async fn #name() {
                 let value = #receiver #make_value_name().await;
@@ -465,6 +470,7 @@ fn check_output_impls_into_response(item_fn: &ItemFn) -> TokenStream {
     } else {
         quote_spanned! {span=>
             #[allow(warnings)]
+            #[allow(unreachable_code)]
             #[doc(hidden)]
             async fn #name() {
                 #make
@@ -515,6 +521,7 @@ fn check_future_send(item_fn: &ItemFn) -> TokenStream {
     if let Some(receiver) = self_receiver(item_fn) {
         quote! {
             #[allow(warnings)]
+            #[allow(unreachable_code)]
             #[doc(hidden)]
             fn #name() {
                 let future = #receiver #handler_name(#(#args),*);
@@ -524,6 +531,7 @@ fn check_future_send(item_fn: &ItemFn) -> TokenStream {
     } else {
         quote! {
             #[allow(warnings)]
+            #[allow(unreachable_code)]
             #[doc(hidden)]
             fn #name() {
                 #item_fn
