@@ -91,7 +91,7 @@ use std::{convert::Infallible, fmt, marker::PhantomData};
 ///     type Target = InnerState;
 ///
 ///     fn deref(&self) -> &Self::Target {
-///         &*self.0
+///         &self.0
 ///     }
 /// }
 ///
