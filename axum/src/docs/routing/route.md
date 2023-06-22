@@ -61,7 +61,7 @@ the path `/foo/bar/baz` the value of `rest` will be `bar/baz`.
 
 # Accepting multiple methods
 
-To accept multiple methods for the same route you must add all handlers at the
+To accept multiple methods for the same route you can add all handlers at the
 same time:
 
 ```rust
@@ -78,6 +78,23 @@ async fn post_root() {}
 
 async fn delete_root() {}
 # let _: Router = app;
+```
+
+Or you can add them one by one:
+
+```rust
+# use axum::Router;
+# use axum::routing::{get, post, delete};
+#
+let app = Router::new()
+    .route("/", get(get_root))
+    .route("/", post(post_root))
+    .route("/", delete(delete_root));
+#
+# let _: Router = app;
+# async fn get_root() {}
+# async fn post_root() {}
+# async fn delete_root() {}
 ```
 
 # More examples
