@@ -50,12 +50,12 @@ use std::{
 /// let app = Router::new().route("/upload", post(upload));
 /// # let _: Router = app;
 /// ```
-/// 
+///
 /// # Large Files
-/// 
-/// For security reasons, by default, `Multipart` limits the request body size to 2MB. 
+///
+/// For security reasons, by default, `Multipart` limits the request body size to 2MB.
 /// See [`DefaultBodyLimit`][default-body-limit] for how to configure this limit.
-/// 
+///
 /// [default-body-limit]: crate::extract::DefaultBodyLimit
 #[cfg_attr(docsrs, doc(cfg(feature = "multipart")))]
 #[derive(Debug)]
