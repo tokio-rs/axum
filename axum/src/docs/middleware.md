@@ -127,7 +127,7 @@ That is:
 - It then does its thing and passes the request onto `layer_two`
 - Which passes the request onto `layer_one`
 - Which passes the request onto `handler` where a response is produced
-- That response is then passes to `layer_one`
+- That response is then passed to `layer_one`
 - Then to `layer_two`
 - And finally to `layer_three` where it's returned out of your app
 
