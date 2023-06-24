@@ -161,7 +161,9 @@ mod tests {
             bar: u32,
         }
         let uri: Uri = "http://example.com/path?foo=hello&bar=42".parse().unwrap();
-        let _: Query<TestQueryParams> = Query::try_from(&uri).unwrap();
+        let result: Query<TestQueryParams> = Query::try_from(&uri).unwrap();
+        assert_eq!(result.foo, String::from("hello"));
+        assert_eq!(result.bar, 42);
     }
 
     #[test]
