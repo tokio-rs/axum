@@ -1,6 +1,6 @@
 use super::{rejection::*, FromRequestParts};
 use async_trait::async_trait;
-use http::request::Parts;
+use http::{request::Parts, Uri};
 use serde::de::DeserializeOwned;
 
 /// Extractor that deserializes query strings into some type.
@@ -59,6 +59,20 @@ where
         let value =
             serde_urlencoded::from_str(query).map_err(FailedToDeserializeQueryString::from_err)?;
         Ok(Query(value))
+    }
+}
+
+impl<T> TryFrom<&Uri> for Query<T>
+where
+    T: DeserializeOwned,
+{
+    type Error = QueryRejection;
+
+    fn try_from(value: &Uri) -> Result<Self, QueryRejection> {
+        let query = value.query().unwrap_or_default();
+        let params: T =
+            serde_urlencoded::from_str(query).map_err(FailedToDeserializeQueryString::from_err)?;
+        Ok(Query(params))
     }
 }
 
@@ -136,5 +150,36 @@ mod tests {
 
         let res = client.get("/?n=hi").send().await;
         assert_eq!(res.status(), StatusCode::BAD_REQUEST);
+    }
+
+    #[test]
+    fn test_try_from_uri() {
+        #[derive(Deserialize)]
+        struct TestQueryParams {
+            foo: String,
+            bar: u32,
+        }
+        let uri: Uri = "http://example.com/path?foo=hello&bar=42".parse().unwrap();
+        let query: Result<Query<TestQueryParams>, _> = Query::try_from(&uri);
+        assert!(query.is_ok());
+
+        let query = query.unwrap();
+        assert_eq!(query.foo, "hello");
+        assert_eq!(query.bar, 42);
+    }
+
+    #[test]
+    fn test_try_from_uri_with_invalid_query() {
+        #[derive(Deserialize)]
+        struct TestQueryParams {
+            _foo: String,
+            _bar: u32,
+        }
+        let uri: Uri = "http://example.com/path?foo=hello&bar=invalid"
+            .parse()
+            .unwrap();
+        let result: Result<Query<TestQueryParams>, _> = Query::try_from(&uri);
+
+        assert!(result.is_err());
     }
 }
