@@ -241,6 +241,12 @@ impl IntoResponse for String {
     }
 }
 
+impl IntoResponse for Box<str> {
+    fn into_response(self) -> Response {
+        String::from(self).into_response()
+    }
+}
+
 impl IntoResponse for Cow<'static, str> {
     fn into_response(self) -> Response {
         let mut res = Full::from(self).into_response();
@@ -363,6 +369,12 @@ impl<const N: usize> IntoResponse for [u8; N] {
 impl IntoResponse for Vec<u8> {
     fn into_response(self) -> Response {
         Cow::<'static, [u8]>::Owned(self).into_response()
+    }
+}
+
+impl IntoResponse for Box<[u8]> {
+    fn into_response(self) -> Response {
+        Vec::from(self).into_response()
     }
 }
 
