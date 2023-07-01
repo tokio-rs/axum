@@ -7,6 +7,7 @@ use std::{
 
 bitflags! {
     /// A filter that matches one or more HTTP methods.
+    #[derive(Debug, Copy, Clone, PartialEq, Eq)]
     pub struct MethodFilter: u16 {
         /// Match `DELETE` requests.
         const DELETE =  0b000000010;
@@ -18,7 +19,7 @@ bitflags! {
         const OPTIONS = 0b000010000;
         /// Match `PATCH` requests.
         const PATCH =   0b000100000;
-        /// Match `POST` requests.
+        /// Match `POST` requests
         const POST =    0b001000000;
         /// Match `PUT` requests.
         const PUT =     0b010000000;

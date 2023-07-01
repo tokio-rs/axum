@@ -35,6 +35,7 @@ use axum_core::{
     body::Body,
     response::{IntoResponse, Response},
 };
+use bitflags::bitflags;
 use bytes::{BufMut, BytesMut};
 use futures_util::{
     ready,
@@ -372,8 +373,8 @@ impl Event {
     }
 }
 
-bitflags::bitflags! {
-    #[derive(Default)]
+bitflags! {
+    #[derive(Default, Debug, Clone)]
     struct EventFlags: u8 {
         const HAS_DATA  = 0b0001;
         const HAS_EVENT = 0b0010;
