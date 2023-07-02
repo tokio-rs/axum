@@ -86,7 +86,7 @@ async fn show_form() -> Html<&'static str> {
 
 // Handler that accepts a multipart form upload and streams each field to a file.
 async fn accept_form(mut multipart: Multipart) -> Result<Redirect, (StatusCode, String)> {
-    while let Some(field) = multipart.next_field().await.unwrap() {
+    while let Ok(Some(field)) = multipart.next_field().await {
         let file_name = if let Some(file_name) = field.file_name() {
             file_name.to_owned()
         } else {

@@ -15,7 +15,7 @@ use axum::{
     routing::get,
     Router,
 };
-use hyper::client::HttpConnector;
+use hyper::{client::HttpConnector, StatusCode};
 
 type Client = hyper::client::Client<HttpConnector, Body>;
 
@@ -34,7 +34,7 @@ async fn main() {
     axum::serve(listener, app).await.unwrap();
 }
 
-async fn handler(State(client): State<Client>, mut req: Request) -> Response {
+async fn handler(State(client): State<Client>, mut req: Request) -> Result<Response, StatusCode> {
     let path = req.uri().path();
     let path_query = req
         .uri()
@@ -46,7 +46,11 @@ async fn handler(State(client): State<Client>, mut req: Request) -> Response {
 
     *req.uri_mut() = Uri::try_from(uri).unwrap();
 
-    client.request(req).await.unwrap().into_response()
+    Ok(client
+        .request(req)
+        .await
+        .map_err(|_| StatusCode::BAD_REQUEST)?
+        .into_response())
 }
 
 async fn server() {
