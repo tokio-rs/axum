@@ -8,6 +8,7 @@
 //! CLIENT_ID=REPLACE_ME CLIENT_SECRET=REPLACE_ME cargo run -p example-oauth
 //! ```
 
+use anyhow::Result;
 use async_session::{MemoryStore, Session, SessionStore};
 use axum::{
     async_trait,
@@ -18,7 +19,7 @@ use axum::{
     RequestPartsExt, Router,
 };
 use axum_extra::{headers, typed_header::TypedHeaderRejectionReason, TypedHeader};
-use http::{header, request::Parts};
+use http::{header, request::Parts, StatusCode};
 use oauth2::{
     basic::BasicClient, reqwest::async_http_client, AuthUrl, AuthorizationCode, ClientId,
     ClientSecret, CsrfToken, RedirectUrl, Scope, TokenResponse, TokenUrl,
@@ -30,7 +31,7 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 static COOKIE_NAME: &str = "SESSION";
 
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<(), AppError> {
     tracing_subscriber::registry()
         .with(
             tracing_subscriber::EnvFilter::try_from_default_env()
@@ -41,7 +42,7 @@ async fn main() {
 
     // `MemoryStore` is just used as an example. Don't use this in production.
     let store = MemoryStore::new();
-    let oauth_client = oauth_client();
+    let oauth_client = oauth_client()?;
     let app_state = AppState {
         store,
         oauth_client,
@@ -55,11 +56,11 @@ async fn main() {
         .route("/logout", get(logout))
         .with_state(app_state);
 
-    let listener = tokio::net::TcpListener::bind("127.0.0.1:3000")
-        .await
-        .unwrap();
-    tracing::debug!("listening on {}", listener.local_addr().unwrap());
-    axum::serve(listener, app).await.unwrap();
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:3000").await?;
+    tracing::debug!("listening on {}", listener.local_addr()?);
+    axum::serve(listener, app).await?;
+
+    Ok(())
 }
 
 #[derive(Clone)]
@@ -80,7 +81,7 @@ impl FromRef<AppState> for BasicClient {
     }
 }
 
-fn oauth_client() -> BasicClient {
+fn oauth_client() -> Result<BasicClient, AppError> {
     // Environment variables (* = required):
     // *"CLIENT_ID"     "REPLACE_ME";
     // *"CLIENT_SECRET" "REPLACE_ME";
@@ -100,13 +101,13 @@ fn oauth_client() -> BasicClient {
     let token_url = env::var("TOKEN_URL")
         .unwrap_or_else(|_| "https://discord.com/api/oauth2/token".to_string());
 
-    BasicClient::new(
+    Ok(BasicClient::new(
         ClientId::new(client_id),
         Some(ClientSecret::new(client_secret)),
-        AuthUrl::new(auth_url).unwrap(),
-        Some(TokenUrl::new(token_url).unwrap()),
+        AuthUrl::new(auth_url)?,
+        Some(TokenUrl::new(token_url)?),
     )
-    .set_redirect_uri(RedirectUrl::new(redirect_url).unwrap())
+    .set_redirect_uri(RedirectUrl::new(redirect_url)?))
 }
 
 // The user data we'll get back from Discord.
@@ -151,17 +152,25 @@ async fn protected(user: User) -> impl IntoResponse {
 async fn logout(
     State(store): State<MemoryStore>,
     TypedHeader(cookies): TypedHeader<headers::Cookie>,
-) -> impl IntoResponse {
-    let cookie = cookies.get(COOKIE_NAME).unwrap();
-    let session = match store.load_session(cookie.to_string()).await.unwrap() {
-        Some(s) => s,
-        // No session active, just redirect
-        None => return Redirect::to("/"),
+) -> Result<impl IntoResponse, AppError> {
+    let cookie = match cookies.get(COOKIE_NAME) {
+        Some(cookie) => cookie,
+        None => {
+            return Err(AppError(anyhow::Error::msg(
+                "unexpected error getting cookie name",
+            )))
+        }
     };
 
-    store.destroy_session(session).await.unwrap();
+    let session = match store.load_session(cookie.to_string()).await? {
+        Some(s) => s,
+        // No session active, just redirect
+        None => return Ok(Redirect::to("/")),
+    };
 
-    Redirect::to("/")
+    store.destroy_session(session).await?;
+
+    Ok(Redirect::to("/"))
 }
 
 #[derive(Debug, Deserialize)]
@@ -175,13 +184,12 @@ async fn login_authorized(
     Query(query): Query<AuthRequest>,
     State(store): State<MemoryStore>,
     State(oauth_client): State<BasicClient>,
-) -> impl IntoResponse {
+) -> Result<impl IntoResponse, AppError> {
     // Get an auth token
     let token = oauth_client
         .exchange_code(AuthorizationCode::new(query.code.clone()))
         .request_async(async_http_client)
-        .await
-        .unwrap();
+        .await?;
 
     // Fetch user data from discord
     let client = reqwest::Client::new();
@@ -190,27 +198,32 @@ async fn login_authorized(
         .get("https://discordapp.com/api/users/@me")
         .bearer_auth(token.access_token().secret())
         .send()
-        .await
-        .unwrap()
+        .await?
         .json::<User>()
-        .await
-        .unwrap();
+        .await?;
 
     // Create a new session filled with user data
     let mut session = Session::new();
-    session.insert("user", &user_data).unwrap();
+    session.insert("user", &user_data)?;
 
     // Store session and get corresponding cookie
-    let cookie = store.store_session(session).await.unwrap().unwrap();
+    let cookie = match store.store_session(session).await? {
+        Some(cookie) => cookie,
+        None => {
+            return Err(AppError(async_session::Error::msg(
+                "unexpected error retrieving cookie value",
+            )))
+        }
+    };
 
     // Build the cookie
     let cookie = format!("{}={}; SameSite=Lax; Path=/", COOKIE_NAME, cookie);
 
     // Set cookie
     let mut headers = HeaderMap::new();
-    headers.insert(SET_COOKIE, cookie.parse().unwrap());
+    headers.insert(SET_COOKIE, cookie.parse()?);
 
-    (headers, Redirect::to("/"))
+    Ok((headers, Redirect::to("/")))
 }
 
 struct AuthRedirect;
@@ -254,5 +267,32 @@ where
         let user = session.get::<User>("user").ok_or(AuthRedirect)?;
 
         Ok(user)
+    }
+}
+
+// Use anyhow, define error and enable '?'
+// For a simplified example of using anyhow in axum check /examples/anyhow-error-response
+#[derive(Debug)]
+struct AppError(anyhow::Error);
+
+// Tell axum how to convert `AppError` into a response.
+impl IntoResponse for AppError {
+    fn into_response(self) -> Response {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Something went wrong: {}", self.0),
+        )
+            .into_response()
+    }
+}
+
+// This enables using `?` on functions that return `Result<_, anyhow::Error>` to turn them into
+// `Result<_, AppError>`. That way you don't need to do that manually.
+impl<E> From<E> for AppError
+where
+    E: Into<anyhow::Error>,
+{
+    fn from(err: E) -> Self {
+        Self(err.into())
     }
 }
