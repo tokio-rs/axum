@@ -81,13 +81,13 @@ where
     /// }
     ///
     /// let uri: Uri = "http://example.com/path?foo=hello&bar=42".parse().unwrap();
-    /// let result: Query<ExampleParams> = Query::from_uri(&uri).unwrap();
+    /// let result: Query<ExampleParams> = Query::try_from_uri(&uri).unwrap();
     /// assert_eq!(result.foo, String::from("hello"));
     /// assert_eq!(result.bar, 42);
     /// ```
-    pub fn from_uri(value: &Uri) -> Result<Self, QueryRejection> {
+    pub fn try_from_uri(value: &Uri) -> Result<Self, QueryRejection> {
         let query = value.query().unwrap_or_default();
-        let params: T =
+        let params =
             serde_urlencoded::from_str(query).map_err(FailedToDeserializeQueryString::from_err)?;
         Ok(Query(params))
     }
@@ -170,20 +170,20 @@ mod tests {
     }
 
     #[test]
-    fn test_from_uri() {
+    fn test_try_from_uri() {
         #[derive(Deserialize)]
         struct TestQueryParams {
             foo: String,
             bar: u32,
         }
         let uri: Uri = "http://example.com/path?foo=hello&bar=42".parse().unwrap();
-        let result: Query<TestQueryParams> = Query::from_uri(&uri).unwrap();
+        let result: Query<TestQueryParams> = Query::try_from_uri(&uri).unwrap();
         assert_eq!(result.foo, String::from("hello"));
         assert_eq!(result.bar, 42);
     }
 
     #[test]
-    fn test_from_uri_with_invalid_query() {
+    fn test_try_from_uri_with_invalid_query() {
         #[derive(Deserialize)]
         struct TestQueryParams {
             _foo: String,
@@ -192,7 +192,7 @@ mod tests {
         let uri: Uri = "http://example.com/path?foo=hello&bar=invalid"
             .parse()
             .unwrap();
-        let result: Result<Query<TestQueryParams>, _> = Query::from_uri(&uri);
+        let result: Result<Query<TestQueryParams>, _> = Query::try_from_uri(&uri);
 
         assert!(result.is_err());
     }
