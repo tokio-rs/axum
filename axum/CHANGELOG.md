@@ -53,6 +53,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **breaking:** Only inherit fallbacks for routers nested with `Router::nest`.
   Routers nested with `Router::nest_service` will no longer inherit fallbacks ([#1956])
 - **fixed:** Don't remove the `Sec-WebSocket-Key` header in `WebSocketUpgrade` ([#1972])
+- **added:** Add `axum::extract::Query::try_from_uri` ([#2058])
 - **added:** Implement `IntoResponse` for `Box<str>` and `Box<[u8]>` ([#2035])
 
 [#1664]: https://github.com/tokio-rs/axum/pull/1664
@@ -64,6 +65,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#1868]: https://github.com/tokio-rs/axum/pull/1868
 [#1956]: https://github.com/tokio-rs/axum/pull/1956
 [#1972]: https://github.com/tokio-rs/axum/pull/1972
+[#2058]: https://github.com/tokio-rs/axum/pull/2058
 
 # 0.6.17 (25. April, 2023)
 
