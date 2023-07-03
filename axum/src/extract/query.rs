@@ -1,6 +1,6 @@
 use super::{rejection::*, FromRequestParts};
 use async_trait::async_trait;
-use http::request::Parts;
+use http::{request::Parts, Uri};
 use serde::de::DeserializeOwned;
 
 /// Extractor that deserializes query strings into some type.
@@ -57,10 +57,38 @@ where
     type Rejection = QueryRejection;
 
     async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
-        let query = parts.uri.query().unwrap_or_default();
-        let value =
+        Self::try_from_uri(&parts.uri)
+    }
+}
+
+impl<T> Query<T>
+where
+    T: DeserializeOwned,
+{
+    /// Attempts to construct a [`Query`] from a reference to a [`Uri`].
+    ///
+    /// # Example
+    /// ```
+    /// use axum::extract::Query;
+    /// use http::Uri;
+    /// use serde::Deserialize;
+    ///
+    /// #[derive(Deserialize)]
+    /// struct ExampleParams {
+    ///     foo: String,
+    ///     bar: u32,
+    /// }
+    ///
+    /// let uri: Uri = "http://example.com/path?foo=hello&bar=42".parse().unwrap();
+    /// let result: Query<ExampleParams> = Query::try_from_uri(&uri).unwrap();
+    /// assert_eq!(result.foo, String::from("hello"));
+    /// assert_eq!(result.bar, 42);
+    /// ```
+    pub fn try_from_uri(value: &Uri) -> Result<Self, QueryRejection> {
+        let query = value.query().unwrap_or_default();
+        let params =
             serde_urlencoded::from_str(query).map_err(FailedToDeserializeQueryString::from_err)?;
-        Ok(Query(value))
+        Ok(Query(params))
     }
 }
 
@@ -135,5 +163,33 @@ mod tests {
 
         let res = client.get("/?n=hi").send().await;
         assert_eq!(res.status(), StatusCode::BAD_REQUEST);
+    }
+
+    #[test]
+    fn test_try_from_uri() {
+        #[derive(Deserialize)]
+        struct TestQueryParams {
+            foo: String,
+            bar: u32,
+        }
+        let uri: Uri = "http://example.com/path?foo=hello&bar=42".parse().unwrap();
+        let result: Query<TestQueryParams> = Query::try_from_uri(&uri).unwrap();
+        assert_eq!(result.foo, String::from("hello"));
+        assert_eq!(result.bar, 42);
+    }
+
+    #[test]
+    fn test_try_from_uri_with_invalid_query() {
+        #[derive(Deserialize)]
+        struct TestQueryParams {
+            _foo: String,
+            _bar: u32,
+        }
+        let uri: Uri = "http://example.com/path?foo=hello&bar=invalid"
+            .parse()
+            .unwrap();
+        let result: Result<Query<TestQueryParams>, _> = Query::try_from_uri(&uri);
+
+        assert!(result.is_err());
     }
 }
