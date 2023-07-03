@@ -31,7 +31,7 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 static COOKIE_NAME: &str = "SESSION";
 
 #[tokio::main]
-async fn main() -> Result<(), AppError> {
+async fn main() {
     tracing_subscriber::registry()
         .with(
             tracing_subscriber::EnvFilter::try_from_default_env()
@@ -42,7 +42,7 @@ async fn main() -> Result<(), AppError> {
 
     // `MemoryStore` is just used as an example. Don't use this in production.
     let store = MemoryStore::new();
-    let oauth_client = oauth_client()?;
+    let oauth_client = oauth_client().unwrap();
     let app_state = AppState {
         store,
         oauth_client,
@@ -73,8 +73,6 @@ async fn main() -> Result<(), AppError> {
         .await
         .context("failed to serve service")
         .unwrap();
-
-    Ok(())
 }
 
 #[derive(Clone)]
@@ -169,14 +167,9 @@ async fn logout(
     State(store): State<MemoryStore>,
     TypedHeader(cookies): TypedHeader<headers::Cookie>,
 ) -> Result<impl IntoResponse, AppError> {
-    let cookie = match cookies.get(COOKIE_NAME) {
-        Some(cookie) => cookie,
-        None => {
-            return Err(AppError(anyhow::Error::msg(
-                "unexpected error getting cookie name",
-            )))
-        }
-    };
+    let cookie = cookies
+        .get(COOKIE_NAME)
+        .context("unexpected error getting cookie name")?;
 
     let session = match store
         .load_session(cookie.to_string())
@@ -235,18 +228,11 @@ async fn login_authorized(
         .context("failed in inserting serialized value into session")?;
 
     // Store session and get corresponding cookie
-    let cookie = match store
+    let cookie = store
         .store_session(session)
         .await
         .context("failed to store session")?
-    {
-        Some(cookie) => cookie,
-        None => {
-            return Err(AppError(async_session::Error::msg(
-                "unexpected error retrieving cookie value",
-            )))
-        }
-    };
+        .context("unexpected error retrieving cookie value")?;
 
     // Build the cookie
     let cookie = format!("{}={}; SameSite=Lax; Path=/", COOKIE_NAME, cookie);
@@ -315,11 +301,7 @@ impl IntoResponse for AppError {
     fn into_response(self) -> Response {
         tracing::error!("Application error: {:#}", self.0);
 
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "Something went wrong".to_string(),
-        )
-            .into_response()
+        (StatusCode::INTERNAL_SERVER_ERROR, "Something went wrong").into_response()
     }
 }
 
