@@ -12,9 +12,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 # 0.6.18 (30. April, 2023)
 
 - **fixed:** Don't remove the `Sec-WebSocket-Key` header in `WebSocketUpgrade` ([#1972])
+- **added:** Add `axum::extract::Query::try_from_uri` ([#2058])
 - **added:** Implement `IntoResponse` for `Box<str>` and `Box<[u8]>` ([#2035])
 
 [#1972]: https://github.com/tokio-rs/axum/pull/1972
+[#2058]: https://github.com/tokio-rs/axum/pull/2058
 
 # 0.6.17 (25. April, 2023)
 
