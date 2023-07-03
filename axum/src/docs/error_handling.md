@@ -39,7 +39,7 @@ It doesn't matter whether you return `Err(StatusCode::NOT_FOUND)` or
 axum.
 
 Instead of a direct `StatusCode`, it makes sense to use intermediate error type
-that can ultimately be converted to `Reponse`. This allows using `?` operator
+that can ultimately be converted to `Response`. This allows using `?` operator
 in handlers. See those examples:
 
 * [`anyhow-error-response`][anyhow] for generic boxed errors
