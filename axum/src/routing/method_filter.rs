@@ -1,4 +1,3 @@
-// use bitflags::bitflags;
 use http::Method;
 use std::{
     fmt,
