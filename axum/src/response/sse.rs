@@ -383,32 +383,24 @@ impl EventFlags {
 
     const fn bits(&self) -> u8 {
         let bits = self;
-        {
-            bits.0
-        }
+        bits.0
     }
 
     const fn from_bits(bits: u8) -> Self {
         let bits = bits;
-        {
-            Self(bits)
-        }
+        Self(bits)
     }
 
     const fn contains(&self, other: Self) -> bool {
         let same = self;
         let other = other;
-        {
-            same.bits() & other.bits() == other.bits()
-        }
+        same.bits() & other.bits() == other.bits()
     }
 
     fn insert(&mut self, other: Self) {
         let same = self;
         let other = other;
-        {
-            *same = Self::from_bits(same.bits() | other.bits());
-        }
+        *same = Self::from_bits(same.bits() | other.bits());
     }
 }
 impl std::ops::BitOr for EventFlags {

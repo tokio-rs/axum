@@ -28,24 +28,18 @@ impl MethodFilter {
 
     const fn bits(&self) -> u16 {
         let bits = self;
-        {
-            bits.0
-        }
+        bits.0
     }
 
     const fn from_bits(bits: u16) -> Self {
         let bits = bits;
-        {
-            Self(bits)
-        }
+        Self(bits)
     }
 
     pub(crate) const fn contains(&self, other: Self) -> bool {
         let same = self;
         let other = other;
-        {
-            same.bits() & other.bits() == other.bits()
-        }
+        same.bits() & other.bits() == other.bits()
     }
 }
 impl std::ops::BitOr for MethodFilter {
