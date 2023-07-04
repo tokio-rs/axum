@@ -5,6 +5,7 @@ edition = "2021"
 publish = false
 
 [dependencies]
+anyhow = "1"
 async-session = "3.0.0"
 axum = { path = "../../axum" }
 axum-extra = { path = "../../axum-extra", features = ["typed-header"] }
@@ -16,4 +17,3 @@ serde = { version = "1.0", features = ["derive"] }
 tokio = { version = "1.0", features = ["full"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-anyhow = "1"
