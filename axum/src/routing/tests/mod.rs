@@ -284,7 +284,7 @@ async fn multiple_methods_for_one_handler() {
         "Hello, World!"
     }
 
-    let app = Router::new().route("/", on(MethodFilter::GET | MethodFilter::POST, root));
+    let app = Router::new().route("/", on(MethodFilter::GET.or(MethodFilter::POST), root));
 
     let client = TestClient::new(app);
 

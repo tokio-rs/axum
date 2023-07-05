@@ -41,12 +41,10 @@ impl MethodFilter {
         let other = other;
         same.bits() & other.bits() == other.bits()
     }
-}
-impl std::ops::BitOr for MethodFilter {
-    type Output = Self;
 
-    fn bitor(self, rhs: Self) -> Self::Output {
-        Self(self.0 | rhs.0)
+    /// Performs the OR operation between the [`MethodFilter`] in `self` with `other`.
+    pub const fn or(self, other: Self) -> Self {
+        Self(self.0 | other.0)
     }
 }
 

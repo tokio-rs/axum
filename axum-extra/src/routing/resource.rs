@@ -109,7 +109,10 @@ where
         T: 'static,
     {
         let path = self.show_update_destroy_path();
-        self.route(&path, on(MethodFilter::PUT | MethodFilter::PATCH, handler))
+        self.route(
+            &path,
+            on(MethodFilter::PUT.or(MethodFilter::PATCH), handler),
+        )
     }
 
     /// Add a handler at `DELETE /{resource_name}/:{resource_name}_id`.

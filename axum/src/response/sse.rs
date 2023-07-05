@@ -403,13 +403,6 @@ impl EventFlags {
         *same = Self::from_bits(same.bits() | other.bits());
     }
 }
-impl std::ops::BitOr for EventFlags {
-    type Output = Self;
-
-    fn bitor(self, rhs: Self) -> Self::Output {
-        Self(self.0 | rhs.0)
-    }
-}
 
 /// Configure the interval between keep-alive messages, the content
 /// of each message, and the associated stream.
