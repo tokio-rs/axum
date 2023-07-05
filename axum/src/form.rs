@@ -235,7 +235,7 @@ mod tests {
         let app = Router::new().route(
             "/",
             on(
-                MethodFilter::GET | MethodFilter::POST,
+                MethodFilter::GET.or(MethodFilter::POST),
                 |_: Form<Payload>| async {},
             ),
         );

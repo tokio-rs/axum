@@ -55,6 +55,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **fixed:** Don't remove the `Sec-WebSocket-Key` header in `WebSocketUpgrade` ([#1972])
 - **added:** Add `axum::extract::Query::try_from_uri` ([#2058])
 - **added:** Implement `IntoResponse` for `Box<str>` and `Box<[u8]>` ([#2035])
+- **breaking:** Simplify `MethodFilter`. It no longer uses bitflags ([#2073])
 
 [#1664]: https://github.com/tokio-rs/axum/pull/1664
 [#1751]: https://github.com/tokio-rs/axum/pull/1751
@@ -66,6 +67,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#1956]: https://github.com/tokio-rs/axum/pull/1956
 [#1972]: https://github.com/tokio-rs/axum/pull/1972
 [#2058]: https://github.com/tokio-rs/axum/pull/2058
+[#2073]: https://github.com/tokio-rs/axum/pull/2073
 
 # 0.6.17 (25. April, 2023)
 

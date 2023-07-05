@@ -372,13 +372,35 @@ impl Event {
     }
 }
 
-bitflags::bitflags! {
-    #[derive(Default)]
-    struct EventFlags: u8 {
-        const HAS_DATA  = 0b0001;
-        const HAS_EVENT = 0b0010;
-        const HAS_RETRY = 0b0100;
-        const HAS_ID    = 0b1000;
+#[derive(Default, Debug, Copy, Clone, PartialEq)]
+struct EventFlags(u8);
+
+impl EventFlags {
+    const HAS_DATA: Self = Self::from_bits(0b0001);
+    const HAS_EVENT: Self = Self::from_bits(0b0010);
+    const HAS_RETRY: Self = Self::from_bits(0b0100);
+    const HAS_ID: Self = Self::from_bits(0b1000);
+
+    const fn bits(&self) -> u8 {
+        let bits = self;
+        bits.0
+    }
+
+    const fn from_bits(bits: u8) -> Self {
+        let bits = bits;
+        Self(bits)
+    }
+
+    const fn contains(&self, other: Self) -> bool {
+        let same = self;
+        let other = other;
+        same.bits() & other.bits() == other.bits()
+    }
+
+    fn insert(&mut self, other: Self) {
+        let same = self;
+        let other = other;
+        *same = Self::from_bits(same.bits() | other.bits());
     }
 }
 
