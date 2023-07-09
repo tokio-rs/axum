@@ -31,7 +31,7 @@ let app = Router::new()
 // Our app now accepts
 // - GET /users
 // - GET /users/:id
-// - POST /teams
+// - GET /teams
 # async {
 # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
 # };
