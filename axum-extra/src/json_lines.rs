@@ -215,13 +215,11 @@ mod tests {
         let res = client
             .post("/")
             .body(
-                vec![
-                    "{\"id\":1}",
+                ["{\"id\":1}",
                     "{\"id\":2}",
                     "{\"id\":3}",
                     // to trigger an error for source downcasting
-                    "{\"id\":false}",
-                ]
+                    "{\"id\":false}"]
                 .join("\n"),
             )
             .send()
