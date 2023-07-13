@@ -215,7 +215,7 @@ mod tests {
         let res = client
             .post("/")
             .body(
-                vec![
+                [
                     "{\"id\":1}",
                     "{\"id\":2}",
                     "{\"id\":3}",
