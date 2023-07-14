@@ -1,4 +1,4 @@
-use super::{rejection::*, FromRequestParts};
+use super::{rejection::*, FromRequestParts, Request};
 use async_trait::async_trait;
 use http::{request::Parts, Uri};
 use serde::de::DeserializeOwned;
@@ -56,6 +56,10 @@ where
 
     async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
         Self::try_from_uri(&parts.uri)
+    }
+
+    fn can_accept_parts(req: &Request, _state: &S) -> bool {
+        Self::try_from_uri(req.uri()).is_ok()
     }
 }
 

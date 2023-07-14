@@ -54,6 +54,11 @@ where
             Ok(Self(Bytes::from_request(req, state).await?))
         }
     }
+
+    fn can_accept_request(req: &Request, _state: &S) -> bool {
+        req.method() == Method::GET
+            || has_content_type(req.headers(), &mime::APPLICATION_WWW_FORM_URLENCODED)
+    }
 }
 
 #[cfg(test)]

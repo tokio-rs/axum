@@ -132,6 +132,10 @@ where
             Err(MissingJsonContentType.into())
         }
     }
+
+    fn can_accept_request(req: &Request, _state: &S) -> bool {
+        json_content_type(req.headers())
+    }
 }
 
 fn json_content_type(headers: &HeaderMap) -> bool {

@@ -92,6 +92,10 @@ where
             }
         }
     }
+
+    fn can_accept_request(req: &Request, state: &S) -> bool {
+        RawForm::can_accept_request(req, state)
+    }
 }
 
 impl<T> IntoResponse for Form<T>

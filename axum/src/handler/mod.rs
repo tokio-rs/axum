@@ -58,6 +58,7 @@ use tower_service::Service;
 
 pub mod future;
 mod service;
+mod tuple;
 
 pub use self::service::HandlerService;
 
@@ -112,6 +113,12 @@ pub trait Handler<T, S>: Clone + Send + Sized + 'static {
 
     /// Call the handler with the given request.
     fn call(self, req: Request, state: S) -> Self::Future;
+
+    /// Optimistic estimation of whether this extractor can accept this request.
+    /// Used to allow multiple handlers on a single route.
+    fn can_accept(&self, _req: &Request, _state: &S) -> bool {
+        true
+    }
 
     /// Apply a [`tower::Layer`] to the handler.
     ///
@@ -217,6 +224,16 @@ macro_rules! impl_handler {
 
                     res.into_response()
                 })
+            }
+
+            fn can_accept(&self, req: &Request, state: &S) -> bool {
+                let mut can_accept = true;
+
+                $(
+                    can_accept = can_accept && $ty::can_accept_parts(req, state);
+                )*
+
+                can_accept && $last::can_accept_request(req, state)
             }
         }
     };

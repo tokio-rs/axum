@@ -56,6 +56,12 @@ pub trait FromRequestParts<S>: Sized {
 
     /// Perform the extraction.
     async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection>;
+
+    /// Optimistic estimation of whether this extractor can accept this request.
+    /// Used to allow multiple handlers on a single route.
+    fn can_accept_parts(_req: &Request, _state: &S) -> bool {
+        true
+    }
 }
 
 /// Types that can be created from requests.
@@ -83,6 +89,12 @@ pub trait FromRequest<S, M = private::ViaRequest>: Sized {
 
     /// Perform the extraction.
     async fn from_request(req: Request, state: &S) -> Result<Self, Self::Rejection>;
+
+    /// Optimistic estimation of whether this extractor can accept this request.
+    /// Used to allow multiple handlers on a single route.
+    fn can_accept_request(_req: &Request, _state: &S) -> bool {
+        true
+    }
 }
 
 #[async_trait]
@@ -96,6 +108,10 @@ where
     async fn from_request(req: Request, state: &S) -> Result<Self, Self::Rejection> {
         let (mut parts, _) = req.into_parts();
         Self::from_request_parts(&mut parts, state).await
+    }
+
+    fn can_accept_request(req: &Request, state: &S) -> bool {
+        Self::can_accept_parts(req, state)
     }
 }
 

@@ -79,6 +79,10 @@ where
         let multipart = multer::Multipart::new(stream, boundary);
         Ok(Self { inner: multipart })
     }
+
+    fn can_accept_request(req: &Request, _state: &S) -> bool {
+        parse_boundary(req.headers()).is_some()
+    }
 }
 
 impl Multipart {

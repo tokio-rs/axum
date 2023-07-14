@@ -42,6 +42,16 @@ macro_rules! impl_from_request {
 
                 Ok(($($ty,)* $last,))
             }
+
+            fn can_accept_parts(req: &Request, state: &S) -> bool {
+                let mut can_accept = true;
+
+                $(
+                    can_accept = can_accept && $ty::can_accept_parts(req, state);
+                )*
+
+                can_accept && $last::can_accept_parts(req, state)
+            }
         }
 
         // This impl must not be generic over M, otherwise it would conflict with the blanket
@@ -68,6 +78,16 @@ macro_rules! impl_from_request {
                 let $last = $last::from_request(req, state).await.map_err(|err| err.into_response())?;
 
                 Ok(($($ty,)* $last,))
+            }
+
+            fn can_accept_request(req: &Request, state: &S) -> bool {
+                let mut can_accept = true;
+
+                $(
+                    can_accept = can_accept && $ty::can_accept_parts(req, state);
+                )*
+
+                can_accept && $last::can_accept_request(req, state)
             }
         }
     };
