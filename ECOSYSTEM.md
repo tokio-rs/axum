@@ -69,7 +69,8 @@ If your project isn't listed here and you would like it to be, please feel free 
 - [cobrust](https://github.com/scotow/cobrust): Multiplayer web based snake game.
 - [meta-cross](https://github.com/scotow/meta-cross): Tweaked version of Tic-Tac-Toe.
 - [httq](https://github.com/scotow/httq) HTTP to MQTT trivial proxy.
-- [ReductStore](https://github.com/reductstore/reductstore): A time series database for storing and managing large amounts of blob data 
+- [ReductStore](https://github.com/reductstore/reductstore): A time series database for storing and managing large amounts of blob data
+- [randoku](https://github.com/stchris/randoku) A tiny web service which generates random numbers and shuffles lists randomly
 
 [Realworld]: https://github.com/gothinkster/realworld
 [SQLx]: https://github.com/launchbadge/sqlx
