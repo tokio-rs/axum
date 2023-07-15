@@ -99,6 +99,7 @@ impl<S> fmt::Debug for Router<S> {
 pub(crate) const NEST_TAIL_PARAM: &str = "__private__axum_nest_tail_param";
 pub(crate) const NEST_TAIL_PARAM_CAPTURE: &str = "/*__private__axum_nest_tail_param";
 pub(crate) const FALLBACK_PARAM: &str = "__private__axum_fallback";
+pub(crate) const FALLBACK_PARAM_PATH: &str = "/*__private__axum_fallback";
 
 impl<S> Router<S>
 where
@@ -187,7 +188,7 @@ where
     {
         let Router {
             path_router,
-            fallback_router: other_fallback,
+            fallback_router: mut other_fallback,
             default_fallback,
             catch_all_fallback,
         } = other.into();
@@ -198,16 +199,19 @@ where
             // both have the default fallback
             // use the one from other
             (true, true) => {
-                self.fallback_router = other_fallback;
+                panic_on_err!(self.fallback_router.merge(other_fallback));
             }
             // self has default fallback, other has a custom fallback
             (true, false) => {
-                self.fallback_router = other_fallback;
+                panic_on_err!(self.fallback_router.merge(other_fallback));
                 self.default_fallback = false;
             }
             // self has a custom fallback, other has a default
-            // nothing to do
-            (false, true) => {}
+            (false, true) => {
+                let fallback_router = std::mem::take(&mut self.fallback_router);
+                panic_on_err!(other_fallback.merge(fallback_router));
+                self.fallback_router = other_fallback;
+            }
             // both have a custom fallback, not allowed
             (false, false) => {
                 panic!("Cannot merge two `Router`s that both have a fallback")

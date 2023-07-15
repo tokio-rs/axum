@@ -56,6 +56,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **added:** Add `axum::extract::Query::try_from_uri` ([#2058])
 - **added:** Implement `IntoResponse` for `Box<str>` and `Box<[u8]>` ([#2035])
 - **breaking:** Simplify `MethodFilter`. It no longer uses bitflags ([#2073])
+- **fixed:** Fix bugs around merging routers with nested fallbacks
 
 [#1664]: https://github.com/tokio-rs/axum/pull/1664
 [#1751]: https://github.com/tokio-rs/axum/pull/1751
