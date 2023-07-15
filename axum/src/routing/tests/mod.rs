@@ -916,7 +916,7 @@ async fn state_isnt_cloned_too_much() {
 
     client.get("/").send().await;
 
-    assert_eq!(COUNT.load(Ordering::SeqCst), 4);
+    assert_eq!(COUNT.load(Ordering::SeqCst), 5);
 }
 
 #[crate::test]

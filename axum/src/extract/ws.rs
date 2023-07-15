@@ -92,7 +92,7 @@
 
 use self::rejection::*;
 use super::FromRequestParts;
-use crate::{body::Bytes, response::Response, Error};
+use crate::{body::Bytes, hyper1_tokio_io::TokioIo, response::Response, Error};
 use async_trait::async_trait;
 use axum_core::body::Body;
 use futures_util::{
@@ -293,6 +293,7 @@ impl<F> WebSocketUpgrade<F> {
                     return;
                 }
             };
+            let upgraded = TokioIo::new(upgraded);
 
             let socket =
                 WebSocketStream::from_raw_socket(upgraded, protocol::Role::Server, Some(config))
@@ -430,7 +431,7 @@ fn header_contains(headers: &HeaderMap, key: HeaderName, value: &'static str) ->
 /// See [the module level documentation](self) for more details.
 #[derive(Debug)]
 pub struct WebSocket {
-    inner: WebSocketStream<hyper1::upgrade::Upgraded>,
+    inner: WebSocketStream<TokioIo<hyper1::upgrade::Upgraded>>,
     protocol: Option<HeaderValue>,
 }
 

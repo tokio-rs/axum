@@ -2,6 +2,7 @@
 
 use std::{convert::Infallible, io, net::SocketAddr};
 
+use crate::hyper1_tokio_io::TokioIo;
 use axum_core::{body::Body, extract::Request, response::Response};
 use futures_util::{future::poll_fn, FutureExt};
 use hyper1::server::conn::http1;
@@ -82,12 +83,13 @@ where
 {
     loop {
         let (tcp_stream, remote_addr) = tcp_listener.accept().await?;
+        let tcp_stream = TokioIo::new(tcp_stream);
 
         poll_fn(|cx| make_service.poll_ready(cx))
             .await
             .unwrap_or_else(|err| match err {});
 
-        let mut service = make_service
+        let service = make_service
             .call(IncomingStream {
                 tcp_stream: &tcp_stream,
                 remote_addr,
@@ -96,6 +98,10 @@ where
             .unwrap_or_else(|err| match err {});
 
         let service = hyper1::service::service_fn(move |req: Request<hyper1::body::Incoming>| {
+            // `hyper1::service::service_fn` takes an `Fn` closure. So we need an owned service in
+            // order to call `poll_ready` and `call` which need `&mut self`
+            let mut service = service.clone();
+
             let req = req.map(|body| {
                 // wont need this when axum uses http-body 1.0
                 let http_body_04 = HttpBody1ToHttpBody04::new(body);
@@ -158,14 +164,14 @@ where
 /// [`IntoMakeServiceWithConnectInfo`]: crate::extract::connect_info::IntoMakeServiceWithConnectInfo
 #[derive(Debug)]
 pub struct IncomingStream<'a> {
-    tcp_stream: &'a TcpStream,
+    tcp_stream: &'a TokioIo<TcpStream>,
     remote_addr: SocketAddr,
 }
 
 impl IncomingStream<'_> {
     /// Returns the local address that this stream is bound to.
     pub fn local_addr(&self) -> std::io::Result<SocketAddr> {
-        self.tcp_stream.local_addr()
+        self.tcp_stream.inner().local_addr()
     }
 
     /// Returns the remote address that this stream is bound to.

@@ -38,6 +38,7 @@ async fn main() {
     tracing::debug!("listening on {addr}");
     loop {
         let (tcp_stream, _) = tcp_listener.accept().await.unwrap();
+        let tcp_stream = hyper_util::rt::TokioIo::new(tcp_stream);
         let service = service.clone();
         tokio::task::spawn(async move {
             if let Err(http_err) = http1::Builder::new()
