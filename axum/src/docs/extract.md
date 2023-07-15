@@ -366,13 +366,16 @@ async fn handler(
     }
 }
 
-// attempt to extract the inner `serde_json::Error`, if that succeeds we can
-// provide a more specific error
+// attempt to extract the inner `serde_path_to_error::Error<serde_json::Error>`,
+// if that succeeds we can provide a more specific error.
+//
+// `Json` uses `serde_path_to_error` so the error will be wrapped in `serde_path_to_error::Error`.
 fn serde_json_error_response<E>(err: E) -> (StatusCode, String)
 where
     E: Error + 'static,
 {
-    if let Some(serde_json_err) = find_error_source::<serde_json::Error>(&err) {
+    if let Some(err) = find_error_source::<serde_path_to_error::Error<serde_json::Error>>(&err) {
+        let serde_json_err = err.inner();
         (
             StatusCode::BAD_REQUEST,
             format!(
@@ -400,6 +403,24 @@ where
         None
     }
 }
+# 
+# #[tokio::main]
+# async fn main() {
+#     use axum::extract::FromRequest;
+# 
+#     let req = axum::http::Request::builder()
+#         .header("content-type", "application/json")
+#         .body(axum::body::Body::from("{"))
+#         .unwrap();
+# 
+#     let err = match Json::<serde_json::Value>::from_request(req, &()).await.unwrap_err() {
+#         JsonRejection::JsonSyntaxError(err) => err,
+#         _ => panic!(),
+#     };
+# 
+#     let (_, body) = serde_json_error_response(err);
+#     assert_eq!(body, "Invalid JSON at line 1 column 1");
+# }
 ```
 
 Note that while this approach works it might break in the future if axum changes
