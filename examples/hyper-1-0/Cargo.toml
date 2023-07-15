@@ -12,3 +12,4 @@ tower-http = { version = "0.4", features = ["trace"] }
 tower-hyper-http-body-compat = { version = "0.2", features = ["http1", "server"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+hyper-util = { git = "https://github.com/hyperium/hyper-util", features = ["full"] }

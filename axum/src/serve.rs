@@ -89,7 +89,7 @@ where
             .await
             .unwrap_or_else(|err| match err {});
 
-        let mut service = make_service
+        let service = make_service
             .call(IncomingStream {
                 tcp_stream: &tcp_stream,
                 remote_addr,
@@ -98,6 +98,10 @@ where
             .unwrap_or_else(|err| match err {});
 
         let service = hyper1::service::service_fn(move |req: Request<hyper1::body::Incoming>| {
+            // `hyper1::service::service_fn` takes an `Fn` closure. So we need an owned service in
+            // order to call `poll_ready` and `call` which need `&mut self`
+            let mut service = service.clone();
+
             let req = req.map(|body| {
                 // wont need this when axum uses http-body 1.0
                 let http_body_04 = HttpBody1ToHttpBody04::new(body);

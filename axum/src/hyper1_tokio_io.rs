@@ -31,11 +31,6 @@ impl<T> TokioIo<T> {
     pub(crate) fn inner(&self) -> &T {
         &self.inner
     }
-
-    /// Consume this wrapper and get the inner type.
-    pub(crate) fn into_inner(self) -> T {
-        self.inner
-    }
 }
 
 impl<T> hyper::rt::Read for TokioIo<T>
