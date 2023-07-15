@@ -432,6 +432,7 @@ mod boxed;
 mod extension;
 #[cfg(feature = "form")]
 mod form;
+#[cfg(feature = "tokio")]
 mod hyper1_tokio_io;
 #[cfg(feature = "json")]
 mod json;
