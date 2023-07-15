@@ -418,7 +418,9 @@
 )]
 #![deny(unreachable_pub, private_in_public)]
 #![allow(elided_lifetimes_in_paths, clippy::type_complexity)]
-#![forbid(unsafe_code)]
+// can't be `forbid` since we've vendored code from hyper-util that contains `unsafe`
+// when hyper-util is on crates.io we can stop vendoring it and go back to `forbid`
+#![deny(unsafe_code)]
 #![cfg_attr(docsrs, feature(doc_auto_cfg, doc_cfg))]
 #![cfg_attr(test, allow(clippy::float_cmp))]
 #![cfg_attr(not(test), warn(clippy::print_stdout, clippy::dbg_macro))]
@@ -430,6 +432,7 @@ mod boxed;
 mod extension;
 #[cfg(feature = "form")]
 mod form;
+mod hyper1_tokio_io;
 #[cfg(feature = "json")]
 mod json;
 mod service_ext;

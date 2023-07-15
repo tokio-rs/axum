@@ -2,6 +2,7 @@
 
 use std::{convert::Infallible, io, net::SocketAddr};
 
+use crate::hyper1_tokio_io::TokioIo;
 use axum_core::{body::Body, extract::Request, response::Response};
 use futures_util::{future::poll_fn, FutureExt};
 use hyper1::server::conn::http1;
@@ -82,6 +83,7 @@ where
 {
     loop {
         let (tcp_stream, remote_addr) = tcp_listener.accept().await?;
+        let tcp_stream = TokioIo::new(tcp_stream);
 
         poll_fn(|cx| make_service.poll_ready(cx))
             .await
@@ -158,14 +160,14 @@ where
 /// [`IntoMakeServiceWithConnectInfo`]: crate::extract::connect_info::IntoMakeServiceWithConnectInfo
 #[derive(Debug)]
 pub struct IncomingStream<'a> {
-    tcp_stream: &'a TcpStream,
+    tcp_stream: &'a TokioIo<TcpStream>,
     remote_addr: SocketAddr,
 }
 
 impl IncomingStream<'_> {
     /// Returns the local address that this stream is bound to.
     pub fn local_addr(&self) -> std::io::Result<SocketAddr> {
-        self.tcp_stream.local_addr()
+        self.tcp_stream.inner().local_addr()
     }
 
     /// Returns the remote address that this stream is bound to.
