@@ -9,8 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **breaking:** `#[debug_handler]` no longer accepts a `body = _` argument. The
   body type is always `axum::body::Body` ([#1751])
+- **fixed:** Allow unreachable code in `#[debug_handler]` ([#2014])
 
 [#1751]: https://github.com/tokio-rs/axum/pull/1751
+[#2014]: https://github.com/tokio-rs/axum/pull/2014
 
 # 0.3.7 (22. March, 2023)
 
