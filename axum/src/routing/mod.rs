@@ -670,7 +670,6 @@ impl<S> fmt::Debug for Endpoint<S> {
 }
 
 #[test]
-#[allow(warnings)]
 fn traits() {
     use crate::test_helpers::*;
     assert_send::<Router<()>>();
