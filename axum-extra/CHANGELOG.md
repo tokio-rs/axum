@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning].
 
 # Unreleased
 
-- None.
+- **fixed:** Remove explicit auto deref from PrivateCookieJar example ([#2028])
+
+[#2028]: https://github.com/tokio-rs/axum/pull/2028
 
 # 0.7.4 (18. April, 2023)
 
