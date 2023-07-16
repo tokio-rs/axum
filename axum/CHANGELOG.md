@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- None.
+- **fixed:** Fix bugs around merging routers with nested fallbacks ([#2096])
+
+[#2096]: https://github.com/tokio-rs/axum/pull/2096
 
 # 0.6.18 (30. April, 2023)
 
