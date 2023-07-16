@@ -186,6 +186,9 @@ where
     where
         R: Into<Router<S>>,
     {
+        const PANIC_MSG: &str =
+            "Failed to merge fallbacks. This is a bug in axum. Please file an issue";
+
         let Router {
             path_router,
             fallback_router: mut other_fallback,
@@ -199,17 +202,17 @@ where
             // both have the default fallback
             // use the one from other
             (true, true) => {
-                panic_on_err!(self.fallback_router.merge(other_fallback));
+                self.fallback_router.merge(other_fallback).expect(PANIC_MSG);
             }
             // self has default fallback, other has a custom fallback
             (true, false) => {
-                panic_on_err!(self.fallback_router.merge(other_fallback));
+                self.fallback_router.merge(other_fallback).expect(PANIC_MSG);
                 self.default_fallback = false;
             }
             // self has a custom fallback, other has a default
             (false, true) => {
                 let fallback_router = std::mem::take(&mut self.fallback_router);
-                panic_on_err!(other_fallback.merge(fallback_router));
+                other_fallback.merge(fallback_router).expect(PANIC_MSG);
                 self.fallback_router = other_fallback;
             }
             // both have a custom fallback, not allowed
