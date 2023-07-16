@@ -7,18 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+- **added:** Add `axum::extract::Query::try_from_uri` ([#2058])
+- **added:** Implement `IntoResponse` for `Box<str>` and `Box<[u8]>` ([#2035])
 - **fixed:** Fix bugs around merging routers with nested fallbacks ([#2096])
+- **fixed:** Fix `.source()` of composite rejections ([#2030])
+- **fixed:** Allow unreachable code in `#[debug_handler]` ([#2014])
+- **change:** Update tokio-tungstenite to 0.19 ([#2021])
+- **change:** axum's MSRV is now 1.63 ([#2021])
 
+[#2014]: https://github.com/tokio-rs/axum/pull/2014
+[#2021]: https://github.com/tokio-rs/axum/pull/2021
+[#2030]: https://github.com/tokio-rs/axum/pull/2030
+[#2035]: https://github.com/tokio-rs/axum/pull/2035
+[#2058]: https://github.com/tokio-rs/axum/pull/2058
 [#2096]: https://github.com/tokio-rs/axum/pull/2096
 
 # 0.6.18 (30. April, 2023)
 
 - **fixed:** Don't remove the `Sec-WebSocket-Key` header in `WebSocketUpgrade` ([#1972])
-- **added:** Add `axum::extract::Query::try_from_uri` ([#2058])
-- **added:** Implement `IntoResponse` for `Box<str>` and `Box<[u8]>` ([#2035])
 
 [#1972]: https://github.com/tokio-rs/axum/pull/1972
-[#2058]: https://github.com/tokio-rs/axum/pull/2058
 
 # 0.6.17 (25. April, 2023)
 
