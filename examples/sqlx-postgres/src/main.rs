@@ -93,11 +93,10 @@ where
 }
 
 async fn using_connection_extractor(
-    DatabaseConnection(conn): DatabaseConnection,
+    DatabaseConnection(mut conn): DatabaseConnection,
 ) -> Result<String, (StatusCode, String)> {
-    let mut conn = conn;
     sqlx::query_scalar("select 'hello world from pg'")
-        .fetch_one(&mut conn)
+        .fetch_one(&mut *conn)
         .await
         .map_err(internal_error)
 }
