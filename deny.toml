@@ -25,8 +25,14 @@ skip-tree = [
     { name = "spin" },
     # lots still pulls in syn 1.x
     { name = "syn" },
-    # old version pulled in by tracing-subscriber in dev-deps and examples
+    # pulled in by tracing-subscriber
     { name = "regex-syntax" },
+    # pulled in by tracing-subscriber
+    { name = "regex-automata" },
+    # pulled in by h2
+    { name = "indexmap" },
+    # pulled in by axum, can't update without breaking changes
+    { name = "bitflags" },
 ]
 
 [sources]
