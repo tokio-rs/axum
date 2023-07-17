@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+- None.
+
+# 0.6.19 (17. July, 2023)
+
 - **added:** Add `axum::extract::Query::try_from_uri` ([#2058])
 - **added:** Implement `IntoResponse` for `Box<str>` and `Box<[u8]>` ([#2035])
 - **fixed:** Fix bugs around merging routers with nested fallbacks ([#2096])
