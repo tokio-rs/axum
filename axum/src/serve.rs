@@ -112,7 +112,7 @@ where
             //
             // services like `Router` are always ready, so assume the service
             // we're running here is also always ready...
-            match futures_util::future::poll_fn(|cx| service.poll_ready(cx)).now_or_never() {
+            match poll_fn(|cx| service.poll_ready(cx)).now_or_never() {
                 Some(Ok(())) => {}
                 Some(Err(err)) => match err {},
                 None => {
