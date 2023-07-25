@@ -336,12 +336,12 @@ where
 
                 url_params::insert_url_params(req.extensions_mut(), match_.params);
 
-                let endpont = self
+                let endpoint = self
                     .routes
                     .get_mut(&id)
                     .expect("no route for id. This is a bug in axum. Please file an issue");
 
-                match endpont {
+                match endpoint {
                     Endpoint::MethodRouter(method_router) => {
                         Ok(method_router.call_with_state(req, state))
                     }
