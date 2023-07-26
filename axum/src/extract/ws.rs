@@ -149,12 +149,6 @@ impl<F> std::fmt::Debug for WebSocketUpgrade<F> {
 }
 
 impl<F> WebSocketUpgrade<F> {
-    /// Does nothing, instead use `max_write_buffer_size`.
-    #[deprecated]
-    pub fn max_send_queue(self, _: usize) -> Self {
-        self
-    }
-
     /// The target minimum size of the write buffer to reach before writing the data
     /// to the underlying stream.
     /// The default value is 128 KiB.
