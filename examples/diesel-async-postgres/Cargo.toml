@@ -5,8 +5,7 @@ edition = "2021"
 publish = false
 
 [dependencies]
-axum = { path = "../../axum" }
-axum-macros = { path = "../../axum-macros" }
+axum = { path = "../../axum", features = ["macros"] }
 bb8 = "0.8"
 diesel = "2"
 diesel-async = { version = "0.3", features = ["postgres", "bb8"] }
