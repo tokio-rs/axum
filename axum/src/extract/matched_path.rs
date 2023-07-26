@@ -52,43 +52,6 @@ use std::{collections::HashMap, sync::Arc};
 ///     );
 /// # let _: Router = app;
 /// ```
-///
-/// # Matched path in nested routers
-///
-/// Because of how [nesting] works `MatchedPath` isn't accessible in middleware on nested routes:
-///
-/// ```
-/// use axum::{
-///     Router,
-///     RequestExt,
-///     routing::get,
-///     extract::{Request, MatchedPath, rejection::MatchedPathRejection},
-///     middleware::map_request,
-///     body::Body,
-/// };
-///
-/// async fn access_matched_path(mut request: Request) -> Request {
-///     // if `/foo/bar` is called this will be `Err(_)` since that matches
-///     // a nested route
-///     let matched_path: Result<MatchedPath, MatchedPathRejection> =
-///         request.extract_parts::<MatchedPath>().await;
-///
-///     request
-/// }
-///
-/// // `MatchedPath` is always accessible on handlers added via `Router::route`
-/// async fn handler(matched_path: MatchedPath) {}
-///
-/// let app = Router::new()
-///     .nest(
-///         "/foo",
-///         Router::new().route("/bar", get(handler)),
-///     )
-///     .layer(map_request(access_matched_path));
-/// # let _: Router = app;
-/// ```
-///
-/// [nesting]: crate::Router::nest
 #[cfg_attr(docsrs, doc(cfg(feature = "matched-path")))]
 #[derive(Clone, Debug)]
 pub struct MatchedPath(pub(crate) Arc<str>);
