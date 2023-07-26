@@ -5,8 +5,7 @@ edition = "2021"
 publish = false
 
 [dependencies]
-axum = { path = "../../axum" }
-axum-macros = { path = "../../axum-macros" }
+axum = { path = "../../axum", features = ["macros"] }
 deadpool-diesel = { version = "0.4.1", features = ["postgres"] }
 diesel = { version = "2", features = ["postgres"] }
 diesel_migrations = "2"
