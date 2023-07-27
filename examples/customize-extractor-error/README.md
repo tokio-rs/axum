@@ -4,7 +4,7 @@ already existing extractors
 - [`with_rejection`](src/with_rejection.rs): Uses
   `axum_extra::extract::WithRejection` to transform one rejection into another
 - [`derive_from_request`](src/derive_from_request.rs): Uses the
-  `axum::extractr::FromRequest` derive macro to wrap another extractor and
+  `axum::extract::FromRequest` derive macro to wrap another extractor and
   customize the rejection
 - [`custom_extractor`](src/custom_extractor.rs): Manual implementation of
   `FromRequest` that wraps another extractor
