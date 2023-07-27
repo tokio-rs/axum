@@ -151,6 +151,7 @@ impl<F> std::fmt::Debug for WebSocketUpgrade<F> {
 impl<F> WebSocketUpgrade<F> {
     /// The target minimum size of the write buffer to reach before writing the data
     /// to the underlying stream.
+    ///
     /// The default value is 128 KiB.
     ///
     /// If set to `0` each message will be eagerly written to the underlying stream.
@@ -164,6 +165,7 @@ impl<F> WebSocketUpgrade<F> {
 
     /// The max size of the write buffer in bytes. Setting this can provide backpressure
     /// in the case the write buffer is filling up due to write errors.
+    ///
     /// The default value is unlimited.
     ///
     /// Note: The write buffer only builds up past [`write_buffer_size`](Self::write_buffer_size)
