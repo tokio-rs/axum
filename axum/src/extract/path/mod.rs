@@ -642,6 +642,51 @@ mod tests {
     }
 
     #[crate::test]
+    #[should_panic]
+    async fn captures_dont_include_path_with_inner_colon() {
+        let app = Router::new().route(
+            "/:instance/namespace_a:method_b",
+            get(|Path(param): Path<String>| async move { param }),
+        );
+
+        let client = TestClient::new(app);
+
+        let res = client.get("/default/namespace_a:method_b").send().await;
+        assert_eq!(res.text().await, "default"); // FAILS: extracted 2 path arguments
+    }
+
+    #[crate::test]
+    #[should_panic]
+    async fn captures_dont_include_path_with_inner_colon_encoded() {
+        let app = Router::new().route(
+            "/:instance/namespace_a:method_b",
+            get(|Path(param): Path<String>| async move { param }),
+        );
+
+        let client = TestClient::new(app);
+
+        let res = client.get("/default/namespace_a%3Amethod_b").send().await;
+        assert_eq!(res.text().await, "default"); // FAILS: extracted 2 path arguments
+    }
+
+    #[crate::test]
+    #[should_panic]
+    async fn captures_dont_include_path_with_inner_colon_percent_encoded() {
+        let app = Router::new().route(
+            "/:instance/namespace_a%3Amethod_b",
+            get(|Path(param): Path<String>| async move { param }),
+        );
+
+        let client = TestClient::new(app);
+
+        let res = client.get("/default/namespace_a%3Amethod_b").send().await;
+        assert_eq!(res.text().await, "default");
+
+        let res = client.get("/default/namespace_a:method_b").send().await;
+        assert_eq!(res.text().await, "default"); // FAILS: extracted 2 path arguments
+    }
+
+    #[crate::test]
     async fn str_reference_deserialize() {
         struct Param(String);
         impl<'de> serde::Deserialize<'de> for Param {
