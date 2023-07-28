@@ -642,7 +642,7 @@ mod tests {
     }
 
     #[crate::test]
-    #[should_panic]
+    #[should_panic] // TODO: #2128
     async fn captures_dont_include_path_with_inner_colon() {
         let app = Router::new().route(
             "/:instance/namespace_a:method_b",
@@ -656,7 +656,7 @@ mod tests {
     }
 
     #[crate::test]
-    #[should_panic]
+    #[should_panic] // TODO: #2128
     async fn captures_dont_include_path_with_inner_colon_encoded() {
         let app = Router::new().route(
             "/:instance/namespace_a:method_b",
@@ -670,7 +670,7 @@ mod tests {
     }
 
     #[crate::test]
-    #[should_panic]
+    #[should_panic] // TODO: #2128
     async fn captures_dont_include_path_with_inner_colon_percent_encoded() {
         let app = Router::new().route(
             "/:instance/namespace_a%3Amethod_b",
