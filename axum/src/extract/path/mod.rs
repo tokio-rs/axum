@@ -658,6 +658,25 @@ mod tests {
     }
 
     #[crate::test]
+    async fn captures_match_empty_inner_segments_near_end() {
+        let app = Router::new().route(
+            "/method/:key/",
+            get(|Path(param): Path<String>| async move { param.to_string() }),
+        );
+
+        let client = TestClient::new(app);
+
+        let res = client.get("/method/abc").send().await;
+        assert_eq!(res.status(), StatusCode::NOT_FOUND);
+
+        let res = client.get("/method/abc/").send().await;
+        assert_eq!(res.text().await, "abc");
+
+        let res = client.get("/method//").send().await;
+        assert_eq!(res.text().await, "");
+    }
+
+    #[crate::test]
     async fn captures_match_empty_trailing_segment() {
         let app = Router::new().route(
             "/method/:key",
@@ -665,6 +684,9 @@ mod tests {
         );
 
         let client = TestClient::new(app);
+
+        let res = client.get("/method/abc/").send().await;
+        assert_eq!(res.status(), StatusCode::NOT_FOUND);
 
         let res = client.get("/method/abc").send().await;
         assert_eq!(res.text().await, "abc");
