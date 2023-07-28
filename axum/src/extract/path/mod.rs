@@ -585,6 +585,40 @@ mod tests {
     }
 
     #[crate::test]
+    #[should_panic] // TODO: #2128
+    async fn percent_decoding_at_sign() {
+        let app = Router::new().route(
+            "/look@this",
+            get(|Path(param): Path<String>| async move { param }),
+        );
+
+        let client = TestClient::new(app);
+
+        let res = client.get("/look@this").send().await;
+        assert_eq!(res.status(), StatusCode::OK); // PANIC: actual code 500
+
+        let res = client.get("/look%40this").send().await;
+        assert_eq!(res.status(), StatusCode::OK);
+    }
+
+    #[crate::test]
+    #[should_panic] // TODO: #2128
+    async fn percent_decoding_sub_delims() {
+        let app = Router::new().route(
+            "/look!this",
+            get(|Path(param): Path<String>| async move { param }),
+        );
+
+        let client = TestClient::new(app);
+
+        let res = client.get("/look!this").send().await;
+        assert_eq!(res.status(), StatusCode::OK); // PANIC: actual code 500
+
+        let res = client.get("/look%21this").send().await;
+        assert_eq!(res.status(), StatusCode::OK);
+    }
+
+    #[crate::test]
     async fn supports_128_bit_numbers() {
         let app = Router::new()
             .route(
