@@ -132,7 +132,7 @@ impl TypedHeaderRejection {
 pub enum TypedHeaderRejectionReason {
     /// The header was missing from the HTTP request
     Missing,
-    /// An error occured when parsing the header from the HTTP request
+    /// An error occurred when parsing the header from the HTTP request
     Error(headers::Error),
 }
 
