@@ -100,6 +100,31 @@ pub use self::service::HandlerService;
 /// {}
 /// ```
 #[doc = include_str!("../docs/debugging_handler_type_errors.md")]
+///
+/// # Handlers that aren't functions
+///
+/// The `Handler` trait is also implemented for `T: IntoResponse`. That allows easily returning
+/// fixed data for routes:
+///
+/// ```
+/// use axum::{
+///     Router,
+///     routing::{get, post},
+///     Json,
+///     http::StatusCode,
+/// };
+/// use serde_json::json;
+///
+/// let app = Router::new()
+///     // respond with a fixed string
+///     .route("/", get("Hello, World!"))
+///     // or return some mock data
+///     .route("/users", post((
+///         StatusCode::CREATED,
+///         Json(json!({ "id": 1, "username": "alice" })),
+///     )));
+/// # let _: Router = app;
+/// ```
 #[cfg_attr(
     nightly_error_messages,
     rustc_on_unimplemented(
@@ -223,6 +248,23 @@ macro_rules! impl_handler {
 }
 
 all_the_tuples!(impl_handler);
+
+mod private {
+    // Marker type for `impl<T: IntoResponse> Handler for T`
+    #[allow(missing_debug_implementations)]
+    pub enum IntoResponseHandler {}
+}
+
+impl<T, S> Handler<private::IntoResponseHandler, S> for T
+where
+    T: IntoResponse + Clone + Send + 'static,
+{
+    type Future = std::future::Ready<Response>;
+
+    fn call(self, _req: Request, _state: S) -> Self::Future {
+        std::future::ready(self.into_response())
+    }
+}
 
 /// A [`Service`] created from a [`Handler`] by applying a Tower middleware.
 ///
