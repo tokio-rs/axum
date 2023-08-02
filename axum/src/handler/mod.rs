@@ -224,6 +224,23 @@ macro_rules! impl_handler {
 
 all_the_tuples!(impl_handler);
 
+mod private {
+    // Marker type for `impl<T: IntoResponse> Handler for T`
+    #[allow(missing_debug_implementations)]
+    pub enum IntoResponseHandler {}
+}
+
+impl<T, S> Handler<private::IntoResponseHandler, S> for T
+where
+    T: IntoResponse + Clone + Send + 'static,
+{
+    type Future = std::future::Ready<Response>;
+
+    fn call(self, _req: Request, _state: S) -> Self::Future {
+        std::future::ready(self.into_response())
+    }
+}
+
 /// A [`Service`] created from a [`Handler`] by applying a Tower middleware.
 ///
 /// Created with [`Handler::layer`]. See that method for more details.
