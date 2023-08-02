@@ -9,10 +9,17 @@ and this project adheres to [Semantic Versioning].
 
 - None.
 
+# 0.7.6 (02. August, 2023)
+
+- **fixed:** Remove unused dependency ([#2135])
+
+[#2135]: https://github.com/tokio-rs/axum/pull/2135
+
 # 0.7.5 (17. July, 2023)
 
 - **fixed:** Remove explicit auto deref from `PrivateCookieJar` example ([#2028])
 
+[#2028]: https://github.com/tokio-rs/axum/pull/2028
 [#2028]: https://github.com/tokio-rs/axum/pull/2028
 
 # 0.7.4 (18. April, 2023)
