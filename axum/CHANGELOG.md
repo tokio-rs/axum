@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **fixed:** Allow unreachable code in `#[debug_handler]` ([#2014])
 - **change:** Update tokio-tungstenite to 0.19 ([#2021])
 - **change:** axum's MSRV is now 1.63 ([#2021])
+- **added:** Implement `Handler` for `T: IntoResponse` ([#2140])
 
 [#2014]: https://github.com/tokio-rs/axum/pull/2014
 [#2021]: https://github.com/tokio-rs/axum/pull/2021
@@ -27,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#2035]: https://github.com/tokio-rs/axum/pull/2035
 [#2058]: https://github.com/tokio-rs/axum/pull/2058
 [#2096]: https://github.com/tokio-rs/axum/pull/2096
+[#2140]: https://github.com/tokio-rs/axum/pull/2140
 
 # 0.6.18 (30. April, 2023)
 

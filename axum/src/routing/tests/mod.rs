@@ -1026,3 +1026,14 @@ async fn connect_going_to_default_fallback() {
     let body = hyper::body::to_bytes(res).await.unwrap();
     assert!(body.is_empty());
 }
+
+#[crate::test]
+async fn impl_handler_for_into_response() {
+    let app = Router::new().route("/things", post((StatusCode::CREATED, "thing created")));
+
+    let client = TestClient::new(app);
+
+    let res = client.post("/things").send().await;
+    assert_eq!(res.status(), StatusCode::CREATED);
+    assert_eq!(res.text().await, "thing created");
+}
