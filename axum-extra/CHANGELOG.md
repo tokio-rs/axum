@@ -7,9 +7,11 @@ and this project adheres to [Semantic Versioning].
 
 # Unreleased
 
-- **added:** Added `TypedHeader` which used to be in `axum` ([#1850])
+- **added:** `TypedHeader` which used to be in `axum` ([#1850])
+- **added:** `Clone` implementation for `ErasedJson` ([#2142])
 
 [#1850]: https://github.com/tokio-rs/axum/pull/1850
+[#2142]: https://github.com/tokio-rs/axum/pull/2142
 
 # 0.7.4 (18. April, 2023)
 
