@@ -22,7 +22,8 @@ be called.
 # Captures
 
 Paths can contain segments like `/:key` which matches any single segment and
-will store the value captured at `key`.
+will store the value captured at `key`. The value captured can be zero-length
+except for in the invalid path `//`.
 
 Examples:
 

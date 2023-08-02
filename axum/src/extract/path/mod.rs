@@ -629,7 +629,7 @@ mod tests {
     }
 
     #[crate::test]
-    async fn captures_dont_match_empty_segments() {
+    async fn captures_dont_match_empty_path() {
         let app = Router::new().route("/:key", get(|| async {}));
 
         let client = TestClient::new(app);
@@ -639,6 +639,63 @@ mod tests {
 
         let res = client.get("/foo").send().await;
         assert_eq!(res.status(), StatusCode::OK);
+    }
+
+    #[crate::test]
+    async fn captures_match_empty_inner_segments() {
+        let app = Router::new().route(
+            "/:key/method",
+            get(|Path(param): Path<String>| async move { param.to_string() }),
+        );
+
+        let client = TestClient::new(app);
+
+        let res = client.get("/abc/method").send().await;
+        assert_eq!(res.text().await, "abc");
+
+        let res = client.get("//method").send().await;
+        assert_eq!(res.text().await, "");
+    }
+
+    #[crate::test]
+    async fn captures_match_empty_inner_segments_near_end() {
+        let app = Router::new().route(
+            "/method/:key/",
+            get(|Path(param): Path<String>| async move { param.to_string() }),
+        );
+
+        let client = TestClient::new(app);
+
+        let res = client.get("/method/abc").send().await;
+        assert_eq!(res.status(), StatusCode::NOT_FOUND);
+
+        let res = client.get("/method/abc/").send().await;
+        assert_eq!(res.text().await, "abc");
+
+        let res = client.get("/method//").send().await;
+        assert_eq!(res.text().await, "");
+    }
+
+    #[crate::test]
+    async fn captures_match_empty_trailing_segment() {
+        let app = Router::new().route(
+            "/method/:key",
+            get(|Path(param): Path<String>| async move { param.to_string() }),
+        );
+
+        let client = TestClient::new(app);
+
+        let res = client.get("/method/abc/").send().await;
+        assert_eq!(res.status(), StatusCode::NOT_FOUND);
+
+        let res = client.get("/method/abc").send().await;
+        assert_eq!(res.text().await, "abc");
+
+        let res = client.get("/method/").send().await;
+        assert_eq!(res.text().await, "");
+
+        let res = client.get("/method").send().await;
+        assert_eq!(res.status(), StatusCode::NOT_FOUND);
     }
 
     #[crate::test]
