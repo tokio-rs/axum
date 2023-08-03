@@ -45,8 +45,8 @@ in handlers. See those examples:
 * [`anyhow-error-response`][anyhow] for generic boxed errors
 * [`error-handling-and-dependency-injection`][ehdi] for application-specific detailed errors
 
-[anyhow]:https://github.com/tokio-rs/axum/blob/main/examples/anyhow-error-response/src/main.rs
-[ehdi]:https://github.com/tokio-rs/axum/blob/main/examples/error-handling-and-dependency-injection/src/main.rs
+[anyhow]: https://github.com/tokio-rs/axum/blob/main/examples/anyhow-error-response/src/main.rs
+[ehdi]: https://github.com/tokio-rs/axum/blob/main/examples/error-handling-and-dependency-injection/src/main.rs
 
 This also applies to extractors. If an extractor doesn't match the request the
 request will be rejected and a response will be returned without calling your

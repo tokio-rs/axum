@@ -131,7 +131,7 @@ built with `axum`.
 
 ## Contributing
 
-:balloon: Thanks for your help improving the project! We are so happy to have
+🎈 Thanks for your help improving the project! We are so happy to have
 you! We have a [contributing guide][contributing] to help you get involved in the
 `axum` project.
 
