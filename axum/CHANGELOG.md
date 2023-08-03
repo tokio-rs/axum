@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+- None.
+
+# 0.6.20 (03. August, 2023)
+
 - **added:** `WebSocketUpgrade::write_buffer_size` and `WebSocketUpgrade::max_write_buffer_size`
 - **changed:** Deprecate `WebSocketUpgrade::max_send_queue`
 - **change:** Update tokio-tungstenite to 0.20
