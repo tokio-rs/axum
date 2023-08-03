@@ -1,6 +1,6 @@
 # Contributing to axum
 
-:balloon: Thanks for your help improving the project! We are so happy to have
+🎈 Thanks for your help improving the project! We are so happy to have
 you!
 
 There are opportunities to contribute to `axum` at any level. It doesn't
