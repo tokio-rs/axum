@@ -1346,7 +1346,7 @@ mod tests {
     async fn buiding_complex_router() {
         let app = crate::Router::new().route(
             "/",
-            // use the all the things :bomb:
+            // use the all the things 💣️
             get(ok)
                 .post(ok)
                 .route_layer(ValidateRequestHeaderLayer::bearer("password"))
