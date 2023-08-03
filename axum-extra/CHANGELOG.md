@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning].
 
 # Unreleased
 
-- None.
+- **added:** `Clone` implementation for `ErasedJson` ([#2142])
+
+[#2142]: https://github.com/tokio-rs/axum/pull/2142
 
 # 0.7.6 (02. August, 2023)
 
