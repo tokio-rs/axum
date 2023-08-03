@@ -398,6 +398,16 @@ where
     }
 }
 
+impl<R> IntoResponse for (R,)
+where
+    R: IntoResponse,
+{
+    fn into_response(self) -> Response {
+        let (res,) = self;
+        res.into_response()
+    }
+}
+
 macro_rules! impl_into_response {
     ( $($ty:ident),* $(,)? ) => {
         #[allow(non_snake_case)]
