@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- None.
+- **added:** Implement `IntoResponse` for `(R,) where R: IntoResponse` ([#2143])
+
+[#2143]: https://github.com/tokio-rs/axum/pull/2143
 
 # 0.6.20 (03. August, 2023)
 
