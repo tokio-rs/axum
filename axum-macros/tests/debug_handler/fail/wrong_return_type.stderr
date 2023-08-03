@@ -9,10 +9,10 @@ error[E0277]: the trait bound `bool: IntoResponse` is not satisfied
             &'static [u8]
             &'static str
             ()
+            (R,)
             (Response<()>, R)
             (Response<()>, T1, R)
             (Response<()>, T1, T2, R)
-            (Response<()>, T1, T2, T3, R)
           and $N others
 note: required by a bound in `__axum_macros_check_handler_into_response::{closure#0}::check`
  --> tests/debug_handler/fail/wrong_return_type.rs:4:23
