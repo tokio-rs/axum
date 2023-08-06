@@ -149,9 +149,33 @@ impl<F> std::fmt::Debug for WebSocketUpgrade<F> {
 }
 
 impl<F> WebSocketUpgrade<F> {
-    /// Set the size of the internal message send queue.
-    pub fn max_send_queue(mut self, max: usize) -> Self {
-        self.config.max_send_queue = Some(max);
+    /// The target minimum size of the write buffer to reach before writing the data
+    /// to the underlying stream.
+    ///
+    /// The default value is 128 KiB.
+    ///
+    /// If set to `0` each message will be eagerly written to the underlying stream.
+    /// It is often more optimal to allow them to buffer a little, hence the default value.
+    ///
+    /// Note: [`flush`](SinkExt::flush) will always fully write the buffer regardless.
+    pub fn write_buffer_size(mut self, size: usize) -> Self {
+        self.config.write_buffer_size = size;
+        self
+    }
+
+    /// The max size of the write buffer in bytes. Setting this can provide backpressure
+    /// in the case the write buffer is filling up due to write errors.
+    ///
+    /// The default value is unlimited.
+    ///
+    /// Note: The write buffer only builds up past [`write_buffer_size`](Self::write_buffer_size)
+    /// when writes to the underlying stream are failing. So the **write buffer can not
+    /// fill up if you are not observing write errors even if not flushing**.
+    ///
+    /// Note: Should always be at least [`write_buffer_size + 1 message`](Self::write_buffer_size)
+    /// and probably a little more depending on error handling strategy.
+    pub fn max_write_buffer_size(mut self, max: usize) -> Self {
+        self.config.max_write_buffer_size = max;
         self
     }
 
@@ -293,6 +317,7 @@ impl<F> WebSocketUpgrade<F> {
                     return;
                 }
             };
+            let upgraded = TokioIo::new(upgraded);
 
             let socket =
                 WebSocketStream::from_raw_socket(upgraded, protocol::Role::Server, Some(config))
@@ -381,8 +406,9 @@ where
 
         let sec_websocket_key = parts
             .headers
-            .remove(header::SEC_WEBSOCKET_KEY)
-            .ok_or(WebSocketKeyHeaderMissing)?;
+            .get(header::SEC_WEBSOCKET_KEY)
+            .ok_or(WebSocketKeyHeaderMissing)?
+            .clone();
 
         let on_upgrade = parts
             .extensions
@@ -429,7 +455,7 @@ fn header_contains(headers: &HeaderMap, key: HeaderName, value: &'static str) ->
 /// See [the module level documentation](self) for more details.
 #[derive(Debug)]
 pub struct WebSocket {
-    inner: WebSocketStream<hyper::upgrade::Upgraded>,
+    inner: WebSocketStream<TokioIo<hyper::upgrade::Upgraded>>,
     protocol: Option<HeaderValue>,
 }
 
@@ -670,6 +696,9 @@ fn sign(key: &[u8]) -> HeaderValue {
 
 pub mod rejection {
     //! WebSocket specific rejections.
+
+    use axum_core::__composite_rejection as composite_rejection;
+    use axum_core::__define_rejection as define_rejection;
 
     define_rejection! {
         #[status = METHOD_NOT_ALLOWED]

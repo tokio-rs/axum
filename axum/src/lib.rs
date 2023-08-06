@@ -53,7 +53,7 @@
 //!     // build our application with a single route
 //!     let app = Router::new().route("/", get(|| async { "Hello, World!" }));
 //!
-//!     // run it on localhost:3000
+//!     // run our app with hyper, listening globally on port 3000
 //!     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
 //!     axum::serve(listener, app).await.unwrap();
 //! }
@@ -332,7 +332,6 @@
 //!
 //! Name | Description | Default?
 //! ---|---|---
-//! `headers` | Enables extracting typed headers via [`TypedHeader`] | No
 //! `http1` | Enables hyper's `http1` feature | Yes
 //! `http2` | Enables hyper's `http2` feature | No
 //! `json` | Enables the [`Json`] type and some similar convenience functionality | Yes
@@ -342,11 +341,11 @@
 //! `original-uri` | Enables capturing of every request's original URI and the [`OriginalUri`] extractor | Yes
 //! `tokio` | Enables `tokio` as a dependency and `axum::serve`, `SSE` and `extract::connect_info` types. | Yes
 //! `tower-log` | Enables `tower`'s `log` feature | Yes
+//! `tracing` | Log rejections from built-in extractors | No
 //! `ws` | Enables WebSockets support via [`extract::ws`] | No
 //! `form` | Enables the `Form` extractor | Yes
 //! `query` | Enables the `Query` extractor | Yes
 //!
-//! [`TypedHeader`]: crate::extract::TypedHeader
 //! [`MatchedPath`]: crate::extract::MatchedPath
 //! [`Multipart`]: crate::extract::Multipart
 //! [`OriginalUri`]: crate::extract::OriginalUri
@@ -381,7 +380,6 @@
 
 #![warn(
     clippy::all,
-    clippy::dbg_macro,
     clippy::todo,
     clippy::empty_enum,
     clippy::enum_glob_use,
@@ -416,9 +414,12 @@
 )]
 #![deny(unreachable_pub, private_in_public)]
 #![allow(elided_lifetimes_in_paths, clippy::type_complexity)]
-#![forbid(unsafe_code)]
+// can't be `forbid` since we've vendored code from hyper-util that contains `unsafe`
+// when hyper-util is on crates.io we can stop vendoring it and go back to `forbid`
+#![deny(unsafe_code)]
 #![cfg_attr(docsrs, feature(doc_auto_cfg, doc_cfg))]
 #![cfg_attr(test, allow(clippy::float_cmp))]
+#![cfg_attr(not(test), warn(clippy::print_stdout, clippy::dbg_macro))]
 
 #[macro_use]
 pub(crate) mod macros;
@@ -427,11 +428,11 @@ mod boxed;
 mod extension;
 #[cfg(feature = "form")]
 mod form;
+#[cfg(feature = "tokio")]
+mod hyper1_tokio_io;
 #[cfg(feature = "json")]
 mod json;
 mod service_ext;
-#[cfg(feature = "headers")]
-mod typed_header;
 mod util;
 
 pub mod body;
@@ -449,9 +450,6 @@ mod test_helpers;
 
 #[doc(no_inline)]
 pub use async_trait::async_trait;
-#[cfg(feature = "headers")]
-#[doc(no_inline)]
-pub use headers;
 #[doc(no_inline)]
 pub use http;
 
@@ -462,10 +460,6 @@ pub use self::extension::Extension;
 pub use self::json::Json;
 #[doc(inline)]
 pub use self::routing::Router;
-
-#[doc(inline)]
-#[cfg(feature = "headers")]
-pub use self::typed_header::TypedHeader;
 
 #[doc(inline)]
 #[cfg(feature = "form")]

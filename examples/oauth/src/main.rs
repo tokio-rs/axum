@@ -8,18 +8,18 @@
 //! CLIENT_ID=REPLACE_ME CLIENT_SECRET=REPLACE_ME cargo run -p example-oauth
 //! ```
 
+use anyhow::{Context, Result};
 use async_session::{MemoryStore, Session, SessionStore};
 use axum::{
     async_trait,
-    extract::{
-        rejection::TypedHeaderRejectionReason, FromRef, FromRequestParts, Query, State, TypedHeader,
-    },
+    extract::{FromRef, FromRequestParts, Query, State},
     http::{header::SET_COOKIE, HeaderMap},
     response::{IntoResponse, Redirect, Response},
     routing::get,
     RequestPartsExt, Router,
 };
-use http::{header, request::Parts};
+use axum_extra::{headers, typed_header::TypedHeaderRejectionReason, TypedHeader};
+use http::{header, request::Parts, StatusCode};
 use oauth2::{
     basic::BasicClient, reqwest::async_http_client, AuthUrl, AuthorizationCode, ClientId,
     ClientSecret, CsrfToken, RedirectUrl, Scope, TokenResponse, TokenUrl,
@@ -42,7 +42,7 @@ async fn main() {
 
     // `MemoryStore` is just used as an example. Don't use this in production.
     let store = MemoryStore::new();
-    let oauth_client = oauth_client();
+    let oauth_client = oauth_client().unwrap();
     let app_state = AppState {
         store,
         oauth_client,
@@ -58,6 +58,20 @@ async fn main() {
 
     let listener = tokio::net::TcpListener::bind("127.0.0.1:3000")
         .await
+        .context("failed to bind TcpListener")
+        .unwrap();
+
+    tracing::debug!(
+        "listening on {}",
+        listener
+            .local_addr()
+            .context("failed to return local address")
+            .unwrap()
+    );
+
+    axum::serve(listener, app)
+        .await
+        .context("failed to serve service")
         .unwrap();
     tracing::debug!("listening on {}", listener.local_addr().unwrap());
     axum::serve(listener, app).await.unwrap();
@@ -81,7 +95,7 @@ impl FromRef<AppState> for BasicClient {
     }
 }
 
-fn oauth_client() -> BasicClient {
+fn oauth_client() -> Result<BasicClient, AppError> {
     // Environment variables (* = required):
     // *"CLIENT_ID"     "REPLACE_ME";
     // *"CLIENT_SECRET" "REPLACE_ME";
@@ -89,8 +103,8 @@ fn oauth_client() -> BasicClient {
     //  "AUTH_URL"      "https://discord.com/api/oauth2/authorize?response_type=code";
     //  "TOKEN_URL"     "https://discord.com/api/oauth2/token";
 
-    let client_id = env::var("CLIENT_ID").expect("Missing CLIENT_ID!");
-    let client_secret = env::var("CLIENT_SECRET").expect("Missing CLIENT_SECRET!");
+    let client_id = env::var("CLIENT_ID").context("Missing CLIENT_ID!")?;
+    let client_secret = env::var("CLIENT_SECRET").context("Missing CLIENT_SECRET!")?;
     let redirect_url = env::var("REDIRECT_URL")
         .unwrap_or_else(|_| "http://127.0.0.1:3000/auth/authorized".to_string());
 
@@ -101,13 +115,15 @@ fn oauth_client() -> BasicClient {
     let token_url = env::var("TOKEN_URL")
         .unwrap_or_else(|_| "https://discord.com/api/oauth2/token".to_string());
 
-    BasicClient::new(
+    Ok(BasicClient::new(
         ClientId::new(client_id),
         Some(ClientSecret::new(client_secret)),
-        AuthUrl::new(auth_url).unwrap(),
-        Some(TokenUrl::new(token_url).unwrap()),
+        AuthUrl::new(auth_url).context("failed to create new authorization server URL")?,
+        Some(TokenUrl::new(token_url).context("failed to create new token endpoint URL")?),
     )
-    .set_redirect_uri(RedirectUrl::new(redirect_url).unwrap())
+    .set_redirect_uri(
+        RedirectUrl::new(redirect_url).context("failed to create new redirection URL")?,
+    ))
 }
 
 // The user data we'll get back from Discord.
@@ -152,17 +168,27 @@ async fn protected(user: User) -> impl IntoResponse {
 async fn logout(
     State(store): State<MemoryStore>,
     TypedHeader(cookies): TypedHeader<headers::Cookie>,
-) -> impl IntoResponse {
-    let cookie = cookies.get(COOKIE_NAME).unwrap();
-    let session = match store.load_session(cookie.to_string()).await.unwrap() {
+) -> Result<impl IntoResponse, AppError> {
+    let cookie = cookies
+        .get(COOKIE_NAME)
+        .context("unexpected error getting cookie name")?;
+
+    let session = match store
+        .load_session(cookie.to_string())
+        .await
+        .context("failed to load session")?
+    {
         Some(s) => s,
         // No session active, just redirect
-        None => return Redirect::to("/"),
+        None => return Ok(Redirect::to("/")),
     };
 
-    store.destroy_session(session).await.unwrap();
+    store
+        .destroy_session(session)
+        .await
+        .context("failed to destroy session")?;
 
-    Redirect::to("/")
+    Ok(Redirect::to("/"))
 }
 
 #[derive(Debug, Deserialize)]
@@ -176,13 +202,13 @@ async fn login_authorized(
     Query(query): Query<AuthRequest>,
     State(store): State<MemoryStore>,
     State(oauth_client): State<BasicClient>,
-) -> impl IntoResponse {
+) -> Result<impl IntoResponse, AppError> {
     // Get an auth token
     let token = oauth_client
         .exchange_code(AuthorizationCode::new(query.code.clone()))
         .request_async(async_http_client)
         .await
-        .unwrap();
+        .context("failed in sending request request to authorization server")?;
 
     // Fetch user data from discord
     let client = reqwest::Client::new();
@@ -192,26 +218,35 @@ async fn login_authorized(
         .bearer_auth(token.access_token().secret())
         .send()
         .await
-        .unwrap()
+        .context("failed in sending request to target Url")?
         .json::<User>()
         .await
-        .unwrap();
+        .context("failed to deserialize response as JSON")?;
 
     // Create a new session filled with user data
     let mut session = Session::new();
-    session.insert("user", &user_data).unwrap();
+    session
+        .insert("user", &user_data)
+        .context("failed in inserting serialized value into session")?;
 
     // Store session and get corresponding cookie
-    let cookie = store.store_session(session).await.unwrap().unwrap();
+    let cookie = store
+        .store_session(session)
+        .await
+        .context("failed to store session")?
+        .context("unexpected error retrieving cookie value")?;
 
     // Build the cookie
     let cookie = format!("{}={}; SameSite=Lax; Path=/", COOKIE_NAME, cookie);
 
     // Set cookie
     let mut headers = HeaderMap::new();
-    headers.insert(SET_COOKIE, cookie.parse().unwrap());
+    headers.insert(
+        SET_COOKIE,
+        cookie.parse().context("failed to parse cookie")?,
+    );
 
-    (headers, Redirect::to("/"))
+    Ok((headers, Redirect::to("/")))
 }
 
 struct AuthRedirect;
@@ -255,5 +290,30 @@ where
         let user = session.get::<User>("user").ok_or(AuthRedirect)?;
 
         Ok(user)
+    }
+}
+
+// Use anyhow, define error and enable '?'
+// For a simplified example of using anyhow in axum check /examples/anyhow-error-response
+#[derive(Debug)]
+struct AppError(anyhow::Error);
+
+// Tell axum how to convert `AppError` into a response.
+impl IntoResponse for AppError {
+    fn into_response(self) -> Response {
+        tracing::error!("Application error: {:#}", self.0);
+
+        (StatusCode::INTERNAL_SERVER_ERROR, "Something went wrong").into_response()
+    }
+}
+
+// This enables using `?` on functions that return `Result<_, anyhow::Error>` to turn them into
+// `Result<_, AppError>`. That way you don't need to do that manually.
+impl<E> From<E> for AppError
+where
+    E: Into<anyhow::Error>,
+{
+    fn from(err: E) -> Self {
+        Self(err.into())
     }
 }

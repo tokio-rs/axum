@@ -42,7 +42,7 @@ async fn main() {
     // setup connection pool
     let pool = PgPoolOptions::new()
         .max_connections(5)
-        .connect_timeout(Duration::from_secs(3))
+        .acquire_timeout(Duration::from_secs(3))
         .connect(&db_connection_str)
         .await
         .expect("can't connect to database");
@@ -93,11 +93,10 @@ where
 }
 
 async fn using_connection_extractor(
-    DatabaseConnection(conn): DatabaseConnection,
+    DatabaseConnection(mut conn): DatabaseConnection,
 ) -> Result<String, (StatusCode, String)> {
-    let mut conn = conn;
     sqlx::query_scalar("select 'hello world from pg'")
-        .fetch_one(&mut conn)
+        .fetch_one(&mut *conn)
         .await
         .map_err(internal_error)
 }

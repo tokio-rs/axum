@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+- **breaking:** Remove deprecated `WebSocketUpgrade::max_send_queue`
 - **breaking:** The following types/traits are no longer generic over the request body
   (i.e. the `B` type param has been removed) ([#1751] and [#1789]):
   - `FromRequestParts`
@@ -29,6 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **breaking:** Change `sse::Event::json_data` to use `axum_core::Error` as its error type ([#1762])
 - **breaking:** Rename `DefaultOnFailedUpdgrade` to `DefaultOnFailedUpgrade` ([#1664])
 - **breaking:** Rename `OnFailedUpdgrade` to `OnFailedUpgrade` ([#1664])
+- **breaking:** `TypedHeader` has been move to `axum-extra` ([#1850])
 - **breaking:** Removed re-exports of `Empty` and `Full`. Use
   `axum::body::Body::empty` and `axum::body::Body::from` respectively ([#1789])
 - **breaking:** The response returned by `IntoResponse::into_response` must use
@@ -49,13 +51,78 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   type inference issues when calling `ServiceExt` methods on a `Router` ([#1835])
 - **breaking:** Removed `axum::Server` as it was removed in hyper 1.0. Instead
   use `axum::serve(listener, service)` or hyper/hyper-util for more configuration options ([#1868])
+- **breaking:** Only inherit fallbacks for routers nested with `Router::nest`.
+  Routers nested with `Router::nest_service` will no longer inherit fallbacks ([#1956])
+- **fixed:** Don't remove the `Sec-WebSocket-Key` header in `WebSocketUpgrade` ([#1972])
+- **added:** Add `axum::extract::Query::try_from_uri` ([#2058])
+- **added:** Implement `IntoResponse` for `Box<str>` and `Box<[u8]>` ([#2035])
+- **breaking:** Simplify `MethodFilter`. It no longer uses bitflags ([#2073])
+- **fixed:** Fix bugs around merging routers with nested fallbacks ([#2096])
+- **fixed:** Fix `.source()` of composite rejections ([#2030])
+- **fixed:** Allow unreachable code in `#[debug_handler]` ([#2014])
+- **change:** Update tokio-tungstenite to 0.19 ([#2021])
+- **change:** axum's MSRV is now 1.63 ([#2021])
+- **added:** Implement `Handler` for `T: IntoResponse` ([#2140])
+- **added:** Implement `IntoResponse` for `(R,) where R: IntoResponse` ([#2143])
 
 [#1664]: https://github.com/tokio-rs/axum/pull/1664
 [#1751]: https://github.com/tokio-rs/axum/pull/1751
 [#1762]: https://github.com/tokio-rs/axum/pull/1762
-[#1835]: https://github.com/tokio-rs/axum/pull/1835
 [#1789]: https://github.com/tokio-rs/axum/pull/1789
+[#1835]: https://github.com/tokio-rs/axum/pull/1835
+[#1850]: https://github.com/tokio-rs/axum/pull/1850
 [#1868]: https://github.com/tokio-rs/axum/pull/1868
+[#1956]: https://github.com/tokio-rs/axum/pull/1956
+[#1972]: https://github.com/tokio-rs/axum/pull/1972
+[#2014]: https://github.com/tokio-rs/axum/pull/2014
+[#2021]: https://github.com/tokio-rs/axum/pull/2021
+[#2030]: https://github.com/tokio-rs/axum/pull/2030
+[#2058]: https://github.com/tokio-rs/axum/pull/2058
+[#2073]: https://github.com/tokio-rs/axum/pull/2073
+[#2096]: https://github.com/tokio-rs/axum/pull/2096
+[#2140]: https://github.com/tokio-rs/axum/pull/2140
+[#2143]: https://github.com/tokio-rs/axum/pull/2143
+
+# 0.6.17 (25. April, 2023)
+
+- **fixed:** Fix fallbacks causing a panic on `CONNECT` requests ([#1958])
+
+[#1958]: https://github.com/tokio-rs/axum/pull/1958
+
+# 0.6.16 (18. April, 2023)
+
+- **fixed:** Don't allow extracting `MatchedPath` in fallbacks ([#1934])
+- **fixed:** Fix panic if `Router` with something nested at `/` was used as a fallback ([#1934])
+- **added:** Document that `Router::new().fallback(...)` isn't optimal ([#1940])
+
+[#1934]: https://github.com/tokio-rs/axum/pull/1934
+[#1940]: https://github.com/tokio-rs/axum/pull/1940
+
+# 0.6.15 (12. April, 2023)
+
+- **fixed:** Removed additional leftover debug messages ([#1927])
+
+[#1927]: https://github.com/tokio-rs/axum/pull/1927
+
+# 0.6.14 (11. April, 2023)
+
+- **fixed:** Removed leftover "path_router hit" debug message ([#1925])
+
+[#1925]: https://github.com/tokio-rs/axum/pull/1925
+
+# 0.6.13 (11. April, 2023)
+
+- **added:** Log rejections from built-in extractors with the
+  `axum::rejection=trace` target ([#1890])
+- **fixed:** Fixed performance regression with `Router::nest` introduced in
+  0.6.0. `nest` now flattens the routes which performs better ([#1711])
+- **fixed:** Extracting `MatchedPath` in nested handlers now gives the full
+  matched path, including the nested path ([#1711])
+- **added:** Implement `Deref` and `DerefMut` for built-in extractors ([#1922])
+
+[#1711]: https://github.com/tokio-rs/axum/pull/1711
+[#1890]: https://github.com/tokio-rs/axum/pull/1890
+[#1922]: https://github.com/tokio-rs/axum/pull/1922
 
 # 0.6.12 (22. March, 2023)
 

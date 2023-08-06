@@ -1,5 +1,5 @@
 use axum::{
-    extract::{State, FromRef},
+    extract::{FromRef, State},
     routing::get,
     Router,
 };
@@ -31,6 +31,6 @@ enum InnerState {}
 
 impl FromRef<AppState> for InnerState {
     fn from_ref(_: &AppState) -> Self {
-        todo!(":shrug:")
+        todo!("🤷")
     }
 }

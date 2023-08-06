@@ -1,4 +1,4 @@
-//! Uses `axum_macros::FromRequest` to wrap another extractor and customize the
+//! Uses `axum::extract::FromRequest` to wrap another extractor and customize the
 //! rejection
 //!
 //! + Easy learning curve: Deriving `FromRequest` generates a `FromRequest`
@@ -11,8 +11,10 @@
 //!
 //! [`thiserror`]: https://crates.io/crates/thiserror
 //! [FromRequest#known-limitations]: https://docs.rs/axum-macros/*/axum_macros/derive.FromRequest.html#known-limitations
-use axum::{extract::rejection::JsonRejection, http::StatusCode, response::IntoResponse};
-use axum_macros::FromRequest;
+use axum::{
+    extract::rejection::JsonRejection, extract::FromRequest, http::StatusCode,
+    response::IntoResponse,
+};
 use serde_json::{json, Value};
 
 pub async fn handler(Json(value): Json<Value>) -> impl IntoResponse {

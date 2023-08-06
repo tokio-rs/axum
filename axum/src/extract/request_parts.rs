@@ -86,6 +86,9 @@ where
     }
 }
 
+#[cfg(feature = "original-uri")]
+axum_core::__impl_deref!(OriginalUri: Uri);
+
 #[cfg(test)]
 mod tests {
     use crate::{extract::Extension, routing::get, test_helpers::*, Router};

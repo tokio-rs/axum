@@ -3,6 +3,8 @@ use std::{
     sync::Arc,
     task::{Context, Poll},
 };
+use tower::Layer;
+use tower_layer::layer_fn;
 use tower_service::Service;
 
 #[derive(Clone)]
@@ -17,6 +19,14 @@ impl<S> StripPrefix<S> {
             inner,
             prefix: prefix.into(),
         }
+    }
+
+    pub(super) fn layer(prefix: &str) -> impl Layer<S, Service = Self> + Clone {
+        let prefix = Arc::from(prefix);
+        layer_fn(move |inner| Self {
+            inner,
+            prefix: Arc::clone(&prefix),
+        })
     }
 }
 

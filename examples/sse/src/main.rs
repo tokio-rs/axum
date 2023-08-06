@@ -5,11 +5,11 @@
 //! ```
 
 use axum::{
-    extract::TypedHeader,
     response::sse::{Event, Sse},
     routing::get,
     Router,
 };
+use axum_extra::{headers, TypedHeader};
 use futures::stream::{self, Stream};
 use std::{convert::Infallible, path::PathBuf, time::Duration};
 use tokio_stream::StreamExt as _;
@@ -50,6 +50,9 @@ async fn sse_handler(
     println!("`{}` connected", user_agent.as_str());
 
     // A `Stream` that repeats an event every second
+    //
+    // You can also create streams from tokio channels using the wrappers in
+    // https://docs.rs/tokio-stream
     let stream = stream::repeat_with(|| Event::default().data("hi!"))
         .map(Ok)
         .throttle(Duration::from_secs(1));

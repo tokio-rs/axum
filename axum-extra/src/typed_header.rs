@@ -1,9 +1,13 @@
-use crate::extract::FromRequestParts;
-use async_trait::async_trait;
-use axum_core::response::{IntoResponse, IntoResponseParts, Response, ResponseParts};
-use headers::HeaderMapExt;
+//! Extractor and response for typed headers.
+
+use axum::{
+    async_trait,
+    extract::FromRequestParts,
+    response::{IntoResponse, IntoResponseParts, Response, ResponseParts},
+};
+use headers::{Header, HeaderMapExt};
 use http::request::Parts;
-use std::{convert::Infallible, ops::Deref};
+use std::convert::Infallible;
 
 /// Extractor and response that works with typed header values from [`headers`].
 ///
@@ -14,11 +18,11 @@ use std::{convert::Infallible, ops::Deref};
 ///
 /// ```rust,no_run
 /// use axum::{
-///     TypedHeader,
-///     headers::UserAgent,
 ///     routing::get,
 ///     Router,
 /// };
+/// use headers::UserAgent;
+/// use axum_extra::TypedHeader;
 ///
 /// async fn users_teams_show(
 ///     TypedHeader(user_agent): TypedHeader<UserAgent>,
@@ -34,10 +38,10 @@ use std::{convert::Infallible, ops::Deref};
 ///
 /// ```rust
 /// use axum::{
-///     TypedHeader,
 ///     response::IntoResponse,
-///     headers::ContentType,
 /// };
+/// use headers::ContentType;
+/// use axum_extra::TypedHeader;
 ///
 /// async fn handler() -> (TypedHeader<ContentType>, &'static str) {
 ///     (
@@ -46,7 +50,7 @@ use std::{convert::Infallible, ops::Deref};
 ///     )
 /// }
 /// ```
-#[cfg(feature = "headers")]
+#[cfg(feature = "typed-header")]
 #[derive(Debug, Clone, Copy)]
 #[must_use]
 pub struct TypedHeader<T>(pub T);
@@ -54,7 +58,7 @@ pub struct TypedHeader<T>(pub T);
 #[async_trait]
 impl<T, S> FromRequestParts<S> for TypedHeader<T>
 where
-    T: headers::Header,
+    T: Header,
     S: Send + Sync,
 {
     type Rejection = TypedHeaderRejection;
@@ -76,17 +80,11 @@ where
     }
 }
 
-impl<T> Deref for TypedHeader<T> {
-    type Target = T;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
+axum_core::__impl_deref!(TypedHeader);
 
 impl<T> IntoResponseParts for TypedHeader<T>
 where
-    T: headers::Header,
+    T: Header,
 {
     type Error = Infallible;
 
@@ -98,7 +96,7 @@ where
 
 impl<T> IntoResponse for TypedHeader<T>
 where
-    T: headers::Header,
+    T: Header,
 {
     fn into_response(self) -> Response {
         let mut res = ().into_response();
@@ -107,8 +105,8 @@ where
     }
 }
 
-/// Rejection used for [`TypedHeader`](super::TypedHeader).
-#[cfg(feature = "headers")]
+/// Rejection used for [`TypedHeader`](TypedHeader).
+#[cfg(feature = "typed-header")]
 #[derive(Debug)]
 pub struct TypedHeaderRejection {
     name: &'static http::header::HeaderName,
@@ -128,13 +126,13 @@ impl TypedHeaderRejection {
 }
 
 /// Additional information regarding a [`TypedHeaderRejection`]
-#[cfg(feature = "headers")]
+#[cfg(feature = "typed-header")]
 #[derive(Debug)]
 #[non_exhaustive]
 pub enum TypedHeaderRejectionReason {
     /// The header was missing from the HTTP request
     Missing,
-    /// An error occured when parsing the header from the HTTP request
+    /// An error occurred when parsing the header from the HTTP request
     Error(headers::Error),
 }
 
@@ -169,9 +167,10 @@ impl std::error::Error for TypedHeaderRejection {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{response::IntoResponse, routing::get, test_helpers::*, Router};
+    use crate::test_helpers::*;
+    use axum::{response::IntoResponse, routing::get, Router};
 
-    #[crate::test]
+    #[tokio::test]
     async fn typed_header() {
         async fn handle(
             TypedHeader(user_agent): TypedHeader<headers::UserAgent>,

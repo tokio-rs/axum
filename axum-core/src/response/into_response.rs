@@ -181,6 +181,12 @@ impl IntoResponse for String {
     }
 }
 
+impl IntoResponse for Box<str> {
+    fn into_response(self) -> Response {
+        String::from(self).into_response()
+    }
+}
+
 impl IntoResponse for Cow<'static, str> {
     fn into_response(self) -> Response {
         let mut res = Body::from(self).into_response();
@@ -299,6 +305,12 @@ impl IntoResponse for Vec<u8> {
     }
 }
 
+impl IntoResponse for Box<[u8]> {
+    fn into_response(self) -> Response {
+        Vec::from(self).into_response()
+    }
+}
+
 impl IntoResponse for Cow<'static, [u8]> {
     fn into_response(self) -> Response {
         let mut res = Body::from(self).into_response();
@@ -367,6 +379,16 @@ where
         let (template, res) = self;
         let (parts, ()) = template.into_parts();
         (parts, res).into_response()
+    }
+}
+
+impl<R> IntoResponse for (R,)
+where
+    R: IntoResponse,
+{
+    fn into_response(self) -> Response {
+        let (res,) = self;
+        res.into_response()
     }
 }
 

@@ -15,6 +15,7 @@ If your project isn't listed here and you would like it to be, please feel free 
 - [axum_session](https://github.com/AscendingCreations/AxumSessions): Database persistent sessions like pythons flask_sessionstore for Axum.
 - [axum_session_auth](https://github.com/AscendingCreations/AxumSessionsAuth): Persistant session based user login with rights management for Axum.
 - [axum-auth](https://crates.io/crates/axum-auth): High-level http auth extractors for axum.
+- [axum-keycloak-auth](https://github.com/lpotthast/axum-keycloak-auth): Protect axum routes with a JWT emitted by Keycloak.
 - [shuttle](https://github.com/getsynth/shuttle): A serverless platform built for Rust. Now with axum support.
 - [axum-tungstenite](https://github.com/davidpdrsn/axum-tungstenite): WebSocket connections for axum directly using tungstenite
 - [axum-jrpc](https://github.com/0xdeafbeef/axum-jrpc): Json-rpc extractor for axum
@@ -33,6 +34,8 @@ If your project isn't listed here and you would like it to be, please feel free 
 - [jwt-authorizer](https://crates.io/crates/jwt-authorizer): JWT authorization layer for axum (oidc discovery, validation options, claims extraction, etc.) 
 - [axum-typed-multipart](https://crates.io/crates/axum_typed_multipart): Type safe wrapper for `axum::extract::Multipart`.
 - [tower-governor](https://crates.io/crates/tower_governor): A Tower service and layer that provides a rate-limiting backend by [governor](https://crates.io/crates/governor)
+- [axum-restful](https://github.com/gongzhengyang/axum-restful): A restful framework based on axum and sea-orm, inspired by django-rest-framework.
+- [springtime-web-axum](https://crates.io/crates/springtime-web-axum): A web framework built on Springtime and axum, leveraging dependency injection for easy app development.
 
 ## Project showcase
 
@@ -66,6 +69,8 @@ If your project isn't listed here and you would like it to be, please feel free 
 - [cobrust](https://github.com/scotow/cobrust): Multiplayer web based snake game.
 - [meta-cross](https://github.com/scotow/meta-cross): Tweaked version of Tic-Tac-Toe.
 - [httq](https://github.com/scotow/httq) HTTP to MQTT trivial proxy.
+- [ReductStore](https://github.com/reductstore/reductstore): A time series database for storing and managing large amounts of blob data
+- [randoku](https://github.com/stchris/randoku): A tiny web service which generates random numbers and shuffles lists randomly
 
 [Realworld]: https://github.com/gothinkster/realworld
 [SQLx]: https://github.com/launchbadge/sqlx
@@ -77,9 +82,16 @@ If your project isn't listed here and you would like it to be, please feel free 
 - [demo-rust-axum]: Demo of Rust and axum web framework
 - [Introduction to axum (talk)]: Talk about axum from the Copenhagen Rust Meetup.
 - [Getting Started with Axum]: Axum tutorial, GET, POST endpoints and serving files.
+- [Using Rust, Axum, PostgreSQL, and Tokio to build a Blog]
+- [Introduction to axum]: YouTube playlist
+- [Rust Axum Full Course]: YouTube video
 
 [axum-tutorial]: https://github.com/programatik29/axum-tutorial
 [axum-tutorial-website]: https://programatik29.github.io/axum-tutorial/
 [demo-rust-axum]: https://github.com/joelparkerhenderson/demo-rust-axum
 [Introduction to axum (talk)]: https://www.youtube.com/watch?v=ETdmhh7OQpA
 [Getting Started with Axum]: https://carlosmv.hashnode.dev/getting-started-with-axum-rust
+[Using Rust, Axum, PostgreSQL, and Tokio to build a Blog]: https://spacedimp.com/blog/using-rust-axum-postgresql-and-tokio-to-build-a-blog/
+[Introduction to axum]: https://www.youtube.com/playlist?list=PLrmY5pVcnuE-_CP7XZ_44HN-mDrLQV4nS
+[Rust Axum Full Course]: https://www.youtube.com/watch?v=XZtlD_m59sM
+[Building a SaaS with Rust & Next.js](https://joshmo.bearblog.dev/lets-build-a-saas-with-rust/) A tutorial for combining Next.js with Rust via Axum to make a SaaS.

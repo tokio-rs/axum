@@ -6,9 +6,13 @@ fn main() {
 // use openssl::ssl::{Ssl, SslAcceptor, SslFiletype, SslMethod};
 // use tokio_openssl::SslStream;
 
-// use axum::{body::Body, extract::ConnectInfo, http::Request, routing::get, Router};
+// use axum::{body::Body, http::Request, routing::get, Router};
 // use futures_util::future::poll_fn;
-// use std::{net::SocketAddr, path::PathBuf, pin::Pin, sync::Arc};
+// use hyper::server::{
+//     accept::Accept,
+//     conn::{AddrIncoming, Http},
+// };
+// use std::{path::PathBuf, pin::Pin, sync::Arc};
 // use tokio::net::TcpListener;
 // use tower::MakeService;
 
@@ -53,9 +57,7 @@ fn main() {
 
 //     let protocol = Arc::new(Http::new());
 
-//     let mut app = Router::new()
-//         .route("/", get(handler))
-//         .into_make_service_with_connect_info::<SocketAddr>();
+//     let mut app = Router::new().route("/", get(handler)).into_make_service();
 
 //     tracing::info!("listening on https://localhost:3000");
 
@@ -84,7 +86,6 @@ fn main() {
 //     }
 // }
 
-// #[allow(dead_code)]
-// async fn handler(ConnectInfo(addr): ConnectInfo<SocketAddr>) -> String {
-//     addr.to_string()
+// async fn handler() -> &'static str {
+//     "Hello, World!"
 // }

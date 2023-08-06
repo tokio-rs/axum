@@ -38,6 +38,16 @@ It doesn't matter whether you return `Err(StatusCode::NOT_FOUND)` or
 `Err(StatusCode::INTERNAL_SERVER_ERROR)`. These are not considered errors in
 axum.
 
+Instead of a direct `StatusCode`, it makes sense to use intermediate error type
+that can ultimately be converted to `Response`. This allows using `?` operator
+in handlers. See those examples:
+
+* [`anyhow-error-response`][anyhow] for generic boxed errors
+* [`error-handling-and-dependency-injection`][ehdi] for application-specific detailed errors
+
+[anyhow]: https://github.com/tokio-rs/axum/blob/main/examples/anyhow-error-response/src/main.rs
+[ehdi]: https://github.com/tokio-rs/axum/blob/main/examples/error-handling-and-dependency-injection/src/main.rs
+
 This also applies to extractors. If an extractor doesn't match the request the
 request will be rejected and a response will be returned without calling your
 handler. See [`extract`](crate::extract) to learn more about handling extractor

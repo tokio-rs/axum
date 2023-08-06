@@ -10,5 +10,5 @@ tokio = { version = "1.0", features = ["full"] }
 
 [dev-dependencies]
 http-body-util = "0.1.0-rc.2"
-hyper = { version = "1.0.0-rc.3", features = ["full"] }
+hyper = { version = "1.0.0-rc.4", features = ["full"] }
 tower = { version = "0.4", features = ["util"] }

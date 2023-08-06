@@ -20,7 +20,9 @@ use std::{
     task::{Context, Poll},
     time::Duration,
 };
-use tower::{service_fn, timeout::TimeoutLayer, util::MapResponseLayer, ServiceBuilder};
+use tower::{
+    service_fn, timeout::TimeoutLayer, util::MapResponseLayer, ServiceBuilder, ServiceExt,
+};
 use tower_http::{limit::RequestBodyLimitLayer, validate_request::ValidateRequestHeaderLayer};
 use tower_service::Service;
 
@@ -272,7 +274,7 @@ async fn multiple_methods_for_one_handler() {
         "Hello, World!"
     }
 
-    let app = Router::new().route("/", on(MethodFilter::GET | MethodFilter::POST, root));
+    let app = Router::new().route("/", on(MethodFilter::GET.or(MethodFilter::POST), root));
 
     let client = TestClient::new(app);
 
@@ -598,7 +600,10 @@ async fn head_with_middleware_applied() {
     use tower_http::compression::{predicate::SizeAbove, CompressionLayer};
 
     let app = Router::new()
-        .route("/", get(|| async { "Hello, World!" }))
+        .nest(
+            "/",
+            Router::new().route("/", get(|| async { "Hello, World!" })),
+        )
         .layer(CompressionLayer::new().compress_when(SizeAbove::new(0)));
 
     let client = TestClient::new(app);
@@ -838,6 +843,21 @@ fn method_router_fallback_with_state() {
         .with_state(state);
 }
 
+#[test]
+fn test_path_for_nested_route() {
+    assert_eq!(path_for_nested_route("/", "/"), "/");
+
+    assert_eq!(path_for_nested_route("/a", "/"), "/a");
+    assert_eq!(path_for_nested_route("/", "/b"), "/b");
+    assert_eq!(path_for_nested_route("/a/", "/"), "/a/");
+    assert_eq!(path_for_nested_route("/", "/b/"), "/b/");
+
+    assert_eq!(path_for_nested_route("/a", "/b"), "/a/b");
+    assert_eq!(path_for_nested_route("/a/", "/b"), "/a/b");
+    assert_eq!(path_for_nested_route("/a", "/b/"), "/a/b/");
+    assert_eq!(path_for_nested_route("/a/", "/b/"), "/a/b/");
+}
+
 #[crate::test]
 async fn state_isnt_cloned_too_much() {
     static SETUP_DONE: AtomicBool = AtomicBool::new(false);
@@ -887,5 +907,119 @@ async fn state_isnt_cloned_too_much() {
 
     client.get("/").send().await;
 
-    assert_eq!(COUNT.load(Ordering::SeqCst), 4);
+    assert_eq!(COUNT.load(Ordering::SeqCst), 5);
+}
+
+#[crate::test]
+async fn logging_rejections() {
+    #[derive(Deserialize, Eq, PartialEq, Debug)]
+    #[serde(deny_unknown_fields)]
+    struct RejectionEvent {
+        message: String,
+        status: u16,
+        body: String,
+        rejection_type: String,
+    }
+
+    let events = capture_tracing::<RejectionEvent, _, _>(|| async {
+        let app = Router::new()
+            .route("/extension", get(|_: Extension<Infallible>| async {}))
+            .route("/string", post(|_: String| async {}));
+
+        let client = TestClient::new(app);
+
+        assert_eq!(
+            client.get("/extension").send().await.status(),
+            StatusCode::INTERNAL_SERVER_ERROR
+        );
+
+        assert_eq!(
+            client
+                .post("/string")
+                .body(Vec::from([0, 159, 146, 150]))
+                .send()
+                .await
+                .status(),
+            StatusCode::BAD_REQUEST,
+        );
+    })
+    .await;
+
+    assert_eq!(
+        dbg!(events),
+        Vec::from([
+            TracingEvent {
+                fields: RejectionEvent {
+                    message: "rejecting request".to_owned(),
+                    status: 500,
+                    body: "Missing request extension: Extension of \
+                        type `core::convert::Infallible` was not found. \
+                        Perhaps you forgot to add it? See `axum::Extension`."
+                        .to_owned(),
+                    rejection_type: "axum::extract::rejection::MissingExtension".to_owned(),
+                },
+                target: "axum::rejection".to_owned(),
+                level: "TRACE".to_owned(),
+            },
+            TracingEvent {
+                fields: RejectionEvent {
+                    message: "rejecting request".to_owned(),
+                    status: 400,
+                    body: "Request body didn't contain valid UTF-8: \
+                        invalid utf-8 sequence of 1 bytes from index 1"
+                        .to_owned(),
+                    rejection_type: "axum_core::extract::rejection::InvalidUtf8".to_owned(),
+                },
+                target: "axum::rejection".to_owned(),
+                level: "TRACE".to_owned(),
+            },
+        ])
+    )
+}
+
+// https://github.com/tokio-rs/axum/issues/1955
+#[crate::test]
+async fn connect_going_to_custom_fallback() {
+    let app = Router::new().fallback(|| async { (StatusCode::NOT_FOUND, "custom fallback") });
+
+    let req = Request::builder()
+        .uri("example.com:443")
+        .method(Method::CONNECT)
+        .header(HOST, "example.com:443")
+        .body(Body::empty())
+        .unwrap();
+
+    let res = app.oneshot(req).await.unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    let text = String::from_utf8(hyper::body::to_bytes(res).await.unwrap().to_vec()).unwrap();
+    assert_eq!(text, "custom fallback");
+}
+
+// https://github.com/tokio-rs/axum/issues/1955
+#[crate::test]
+async fn connect_going_to_default_fallback() {
+    let app = Router::new();
+
+    let req = Request::builder()
+        .uri("example.com:443")
+        .method(Method::CONNECT)
+        .header(HOST, "example.com:443")
+        .body(Body::empty())
+        .unwrap();
+
+    let res = app.oneshot(req).await.unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    let body = hyper::body::to_bytes(res).await.unwrap();
+    assert!(body.is_empty());
+}
+
+#[crate::test]
+async fn impl_handler_for_into_response() {
+    let app = Router::new().route("/things", post((StatusCode::CREATED, "thing created")));
+
+    let client = TestClient::new(app);
+
+    let res = client.post("/things").send().await;
+    assert_eq!(res.status(), StatusCode::CREATED);
+    assert_eq!(res.text().await, "thing created");
 }

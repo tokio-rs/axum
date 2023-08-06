@@ -5,6 +5,9 @@
 use super::{FromRequest, Request};
 use crate::body::Bytes;
 use async_trait::async_trait;
+use axum_core::__composite_rejection as composite_rejection;
+use axum_core::__define_rejection as define_rejection;
+use axum_core::body::Body;
 use axum_core::response::{IntoResponse, Response};
 use axum_core::RequestExt;
 use futures_util::stream::Stream;
@@ -19,7 +22,7 @@ use std::{
 
 /// Extractor that parses `multipart/form-data` requests (commonly used with file uploads).
 ///
-/// Since extracting multipart form data from the request requires consuming the body, the
+/// ⚠️ Since extracting multipart form data from the request requires consuming the body, the
 /// `Multipart` extractor must be *last* if there are multiple extractors in a handler.
 /// See ["the order of extractors"][order-of-extractors]
 ///
@@ -47,6 +50,13 @@ use std::{
 /// let app = Router::new().route("/upload", post(upload));
 /// # let _: Router = app;
 /// ```
+///
+/// # Large Files
+///
+/// For security reasons, by default, `Multipart` limits the request body size to 2MB.
+/// See [`DefaultBodyLimit`][default-body-limit] for how to configure this limit.
+///
+/// [default-body-limit]: crate::extract::DefaultBodyLimit
 #[cfg_attr(docsrs, doc(cfg(feature = "multipart")))]
 #[derive(Debug)]
 pub struct Multipart {
@@ -265,6 +275,11 @@ impl std::error::Error for MultipartError {
 
 impl IntoResponse for MultipartError {
     fn into_response(self) -> Response {
+        axum_core::__log_rejection!(
+            rejection_type = Self,
+            body_text = self.body_text(),
+            status = self.status(),
+        );
         (self.status(), self.body_text()).into_response()
     }
 }

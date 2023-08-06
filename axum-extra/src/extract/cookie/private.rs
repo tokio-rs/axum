@@ -23,12 +23,15 @@ use std::{convert::Infallible, fmt, marker::PhantomData};
 /// use axum::{
 ///     Router,
 ///     routing::{post, get},
-///     extract::{TypedHeader, FromRef},
+///     extract::FromRef,
 ///     response::{IntoResponse, Redirect},
-///     headers::authorization::{Authorization, Bearer},
 ///     http::StatusCode,
 /// };
-/// use axum_extra::extract::cookie::{PrivateCookieJar, Cookie, Key};
+/// use axum_extra::{
+///     TypedHeader,
+///     headers::authorization::{Authorization, Bearer},
+///     extract::cookie::{PrivateCookieJar, Cookie, Key},
+/// };
 ///
 /// async fn set_secret(
 ///     jar: PrivateCookieJar,
@@ -88,7 +91,7 @@ use std::{convert::Infallible, fmt, marker::PhantomData};
 ///     type Target = InnerState;
 ///
 ///     fn deref(&self) -> &Self::Target {
-///         &*self.0
+///         &self.0
 ///     }
 /// }
 ///

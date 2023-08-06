@@ -8,7 +8,6 @@ use axum::{
 use bytes::{Bytes, BytesMut};
 use http::StatusCode;
 use prost::Message;
-use std::ops::{Deref, DerefMut};
 
 /// A Protocol Buffer message extractor and response.
 ///
@@ -109,19 +108,7 @@ where
     }
 }
 
-impl<T> Deref for Protobuf<T> {
-    type Target = T;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl<T> DerefMut for Protobuf<T> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
-}
+axum_core::__impl_deref!(Protobuf);
 
 impl<T> From<T> for Protobuf<T> {
     fn from(inner: T) -> Self {

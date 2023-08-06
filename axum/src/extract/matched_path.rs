@@ -52,43 +52,6 @@ use std::{collections::HashMap, sync::Arc};
 ///     );
 /// # let _: Router = app;
 /// ```
-///
-/// # Matched path in nested routers
-///
-/// Because of how [nesting] works `MatchedPath` isn't accessible in middleware on nested routes:
-///
-/// ```
-/// use axum::{
-///     Router,
-///     RequestExt,
-///     routing::get,
-///     extract::{Request, MatchedPath, rejection::MatchedPathRejection},
-///     middleware::map_request,
-///     body::Body,
-/// };
-///
-/// async fn access_matched_path(mut request: Request) -> Request {
-///     // if `/foo/bar` is called this will be `Err(_)` since that matches
-///     // a nested route
-///     let matched_path: Result<MatchedPath, MatchedPathRejection> =
-///         request.extract_parts::<MatchedPath>().await;
-///
-///     request
-/// }
-///
-/// // `MatchedPath` is always accessible on handlers added via `Router::route`
-/// async fn handler(matched_path: MatchedPath) {}
-///
-/// let app = Router::new()
-///     .nest(
-///         "/foo",
-///         Router::new().route("/bar", get(handler)),
-///     )
-///     .layer(map_request(access_matched_path));
-/// # let _: Router = app;
-/// ```
-///
-/// [nesting]: crate::Router::nest
 #[cfg_attr(docsrs, doc(cfg(feature = "matched-path")))]
 #[derive(Clone, Debug)]
 pub struct MatchedPath(pub(crate) Arc<str>);
@@ -139,7 +102,7 @@ pub(crate) fn set_matched_path_for_request(
 
     if matched_path.ends_with(NEST_TAIL_PARAM_CAPTURE) {
         extensions.insert(MatchedNestedPath(matched_path));
-        debug_assert!(matches!(extensions.remove::<MatchedPath>(), None));
+        debug_assert!(extensions.remove::<MatchedPath>().is_none());
     } else {
         extensions.insert(MatchedPath(matched_path));
         extensions.remove::<MatchedNestedPath>();
@@ -168,10 +131,14 @@ fn append_nested_matched_path(matched_path: &Arc<str>, extensions: &http::Extens
 mod tests {
     use super::*;
     use crate::{
-        handler::HandlerWithoutStateExt, middleware::map_request, routing::get, test_helpers::*,
+        extract::Request,
+        handler::HandlerWithoutStateExt,
+        middleware::map_request,
+        routing::{any, get},
+        test_helpers::*,
         Router,
     };
-    use http::{Request, StatusCode};
+    use http::StatusCode;
 
     #[crate::test]
     async fn extracting_on_handler() {
@@ -232,6 +199,26 @@ mod tests {
         }
 
         let app = Router::new()
+            .nest_service("/:a", Router::new().route("/:b", get(|| async move {})))
+            .layer(map_request(extract_matched_path));
+
+        let client = TestClient::new(app);
+
+        let res = client.get("/foo/bar").send().await;
+        assert_eq!(res.status(), StatusCode::OK);
+    }
+
+    #[crate::test]
+    async fn can_extract_nested_matched_path_in_middleware_using_nest() {
+        async fn extract_matched_path<B>(
+            matched_path: Option<MatchedPath>,
+            req: Request<B>,
+        ) -> Request<B> {
+            assert_eq!(matched_path.unwrap().as_str(), "/:a/:b");
+            req
+        }
+
+        let app = Router::new()
             .nest("/:a", Router::new().route("/:b", get(|| async move {})))
             .layer(map_request(extract_matched_path));
 
@@ -249,8 +236,25 @@ mod tests {
         }
 
         let app = Router::new()
-            .nest("/:a", Router::new().route("/:b", get(|| async move {})))
+            .nest_service("/:a", Router::new().route("/:b", get(|| async move {})))
             .layer(map_request(assert_no_matched_path));
+
+        let client = TestClient::new(app);
+
+        let res = client.get("/foo/bar").send().await;
+        assert_eq!(res.status(), StatusCode::OK);
+    }
+
+    #[tokio::test]
+    async fn can_extract_nested_matched_path_in_middleware_via_extension_using_nest() {
+        async fn assert_matched_path<B>(req: Request<B>) -> Request<B> {
+            assert!(req.extensions().get::<MatchedPath>().is_some());
+            req
+        }
+
+        let app = Router::new()
+            .nest("/:a", Router::new().route("/:b", get(|| async move {})))
+            .layer(map_request(assert_matched_path));
 
         let client = TestClient::new(app);
 
@@ -306,6 +310,41 @@ mod tests {
         }
 
         let app = Router::new().nest_service("/:a", handler.into_service());
+
+        let client = TestClient::new(app);
+
+        let res = client.get("/foo/bar").send().await;
+        assert_eq!(res.status(), StatusCode::OK);
+    }
+
+    // https://github.com/tokio-rs/axum/issues/1579
+    #[crate::test]
+    async fn doesnt_panic_if_router_called_from_wildcard_route() {
+        use tower::ServiceExt;
+
+        let app = Router::new().route(
+            "/*path",
+            any(|req: Request| {
+                Router::new()
+                    .nest("/", Router::new().route("/foo", get(|| async {})))
+                    .oneshot(req)
+            }),
+        );
+
+        let client = TestClient::new(app);
+
+        let res = client.get("/foo").send().await;
+        assert_eq!(res.status(), StatusCode::OK);
+    }
+
+    #[crate::test]
+    async fn cant_extract_in_fallback() {
+        async fn handler(path: Option<MatchedPath>, req: Request) {
+            assert!(path.is_none());
+            assert!(req.extensions().get::<MatchedPath>().is_none());
+        }
+
+        let app = Router::new().fallback(handler);
 
         let client = TestClient::new(app);
 

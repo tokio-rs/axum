@@ -27,6 +27,10 @@ skip-tree = [
     { name = "syn" },
     # until 1.0 is out we're pulling in both 0.14 and 1.0-rc.x
     { name = "hyper" },
+    # pulled in by tracing-subscriber
+    { name = "regex-syntax" },
+    # pulled in by tracing-subscriber
+    { name = "regex-automata" },
 ]
 
 [sources]

@@ -17,9 +17,8 @@ pub trait RequestPartsExt: sealed::Sealed + Sized {
     ///
     /// ```
     /// use axum::{
-    ///     extract::{Query, TypedHeader, FromRequestParts},
+    ///     extract::{Query, Path, FromRequestParts},
     ///     response::{Response, IntoResponse},
-    ///     headers::UserAgent,
     ///     http::request::Parts,
     ///     RequestPartsExt,
     ///     async_trait,
@@ -27,7 +26,7 @@ pub trait RequestPartsExt: sealed::Sealed + Sized {
     /// use std::collections::HashMap;
     ///
     /// struct MyExtractor {
-    ///     user_agent: String,
+    ///     path_params: HashMap<String, String>,
     ///     query_params: HashMap<String, String>,
     /// }
     ///
@@ -39,10 +38,10 @@ pub trait RequestPartsExt: sealed::Sealed + Sized {
     ///     type Rejection = Response;
     ///
     ///     async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
-    ///         let user_agent = parts
-    ///             .extract::<TypedHeader<UserAgent>>()
+    ///         let path_params = parts
+    ///             .extract::<Path<HashMap<String, String>>>()
     ///             .await
-    ///             .map(|user_agent| user_agent.as_str().to_owned())
+    ///             .map(|Path(path_params)| path_params)
     ///             .map_err(|err| err.into_response())?;
     ///
     ///         let query_params = parts
@@ -51,7 +50,7 @@ pub trait RequestPartsExt: sealed::Sealed + Sized {
     ///             .map(|Query(params)| params)
     ///             .map_err(|err| err.into_response())?;
     ///
-    ///         Ok(MyExtractor { user_agent, query_params })
+    ///         Ok(MyExtractor { path_params, query_params })
     ///     }
     /// }
     /// ```

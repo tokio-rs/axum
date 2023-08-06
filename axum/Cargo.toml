@@ -1,10 +1,10 @@
 [package]
 name = "axum"
-version = "0.6.12"
+version = "0.6.16"
 categories = ["asynchronous", "network-programming", "web-programming::http-server"]
 description = "Web framework that focuses on ergonomics and modularity"
 edition = "2021"
-rust-version = "1.60"
+rust-version = "1.63"
 homepage = "https://github.com/tokio-rs/axum"
 keywords = ["http", "web", "framework"]
 license = "MIT"
@@ -24,6 +24,7 @@ original-uri = []
 query = ["dep:serde_urlencoded"]
 tokio = ["dep:tokio", "tokio/rt", "tokio/net", "hyper/server", "tower/make"]
 tower-log = ["tower/log"]
+tracing = ["dep:tracing", "axum-core/tracing"]
 ws = ["tokio", "dep:tokio-tungstenite", "dep:sha1", "dep:base64"]
 
 # Required for intra-doc links to resolve correctly
@@ -31,14 +32,13 @@ __private_docs = ["tower/full", "dep:tower-http"]
 
 [dependencies]
 async-trait = "0.1.67"
-axum-core = { path = "../axum-core", version = "0.3.3" }
-bitflags = "1.0"
+axum-core = { path = "../axum-core", version = "0.3.4" }
 bytes = "1.0"
 futures-util = { version = "0.3", default-features = false, features = ["alloc"] }
 http = "0.2.9"
 http-body = "1.0.0-rc.2"
 http-body-util = "0.1.0-rc.2"
-hyper = "1.0.0-rc.3"
+hyper = "1.0.0-rc.4"
 itoa = "1.0.5"
 matchit = "0.7"
 memchr = "2.4.1"
@@ -51,17 +51,21 @@ tower = { version = "0.4.13", default-features = false, features = ["util"] }
 tower-layer = "0.3.2"
 tower-service = "0.3"
 
+# wont need this when axum uses http-body 1.0
+hyper1 = { package = "hyper", version = "=1.0.0-rc.4", features = ["server", "http1"] }
+tower-hyper-http-body-compat = { version = "0.2", features = ["server", "http1"] }
+
 # optional dependencies
 axum-macros = { path = "../axum-macros", version = "0.3.7", optional = true }
 base64 = { version = "0.21.0", optional = true }
-headers = { version = "0.3.7", optional = true }
 multer = { version = "2.0.0", optional = true }
 serde_json = { version = "1.0", features = ["raw_value"], optional = true }
 serde_path_to_error = { version = "0.1.8", optional = true }
 serde_urlencoded = { version = "0.7", optional = true }
 sha1 = { version = "0.10", optional = true }
 tokio = { package = "tokio", version = "1.25.0", features = ["time"], optional = true }
-tokio-tungstenite = { version = "0.18.0", optional = true }
+tokio-tungstenite = { version = "0.20", optional = true }
+tracing = { version = "0.1", default-features = false, optional = true }
 
 [dependencies.tower-http]
 version = "0.4"
@@ -114,6 +118,7 @@ time = { version = "0.3", features = ["serde-human-readable"] }
 tokio = { package = "tokio", version = "1.25.0", features = ["macros", "rt", "rt-multi-thread", "net", "test-util"] }
 tokio-stream = "0.1"
 tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["json"] }
 uuid = { version = "1.0", features = ["serde", "v4"] }
 
 [package.metadata.docs.rs]
@@ -177,15 +182,15 @@ features = [
 
 [package.metadata.cargo-public-api-crates]
 allowed = [
+    "async_trait",
     "axum_core",
+    "axum_macros",
     "bytes",
     "futures_core",
     "futures_sink",
     "futures_util",
-    "headers_core",
     "http",
     "http_body",
-    "hyper",
     "serde",
     "tokio",
     "tower_layer",

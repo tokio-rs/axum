@@ -50,12 +50,12 @@ where
     A: Service<Request<hyper::Body>, Error = Infallible>,
     A::Response: IntoResponse,
     A::Future: Send + 'static,
-    B: Service<Request<hyper::Body>, Error = Infallible>,
+    B: Service<Request<hyper::Body>>,
     B::Response: IntoResponse,
     B::Future: Send + 'static,
 {
-    type Response = Response<Body>;
-    type Error = Infallible;
+    type Response = Response;
+    type Error = B::Error;
     type Future = BoxFuture<'static, Result<Self::Response, Self::Error>>;
 
     fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
@@ -66,7 +66,7 @@ where
                     return Ok(()).into();
                 }
                 (false, _) => {
-                    ready!(self.rest.poll_ready(cx))?;
+                    ready!(self.rest.poll_ready(cx)).map_err(|err| match err {})?;
                     self.rest_ready = true;
                 }
                 (_, false) => {
@@ -102,7 +102,7 @@ where
             self.rest_ready = false;
             let future = self.rest.call(req);
             Box::pin(async move {
-                let res = future.await?;
+                let res = future.await.map_err(|err| match err {})?;
                 Ok(res.into_response())
             })
         }

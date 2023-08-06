@@ -1,29 +1,50 @@
-use bitflags::bitflags;
 use http::Method;
 use std::{
     fmt,
     fmt::{Debug, Formatter},
 };
 
-bitflags! {
-    /// A filter that matches one or more HTTP methods.
-    pub struct MethodFilter: u16 {
-        /// Match `DELETE` requests.
-        const DELETE =  0b000000010;
-        /// Match `GET` requests.
-        const GET =     0b000000100;
-        /// Match `HEAD` requests.
-        const HEAD =    0b000001000;
-        /// Match `OPTIONS` requests.
-        const OPTIONS = 0b000010000;
-        /// Match `PATCH` requests.
-        const PATCH =   0b000100000;
-        /// Match `POST` requests.
-        const POST =    0b001000000;
-        /// Match `PUT` requests.
-        const PUT =     0b010000000;
-        /// Match `TRACE` requests.
-        const TRACE =   0b100000000;
+/// A filter that matches one or more HTTP methods.
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub struct MethodFilter(u16);
+
+impl MethodFilter {
+    /// Match `DELETE` requests.
+    pub const DELETE: Self = Self::from_bits(0b000000010);
+    /// Match `GET` requests.
+    pub const GET: Self = Self::from_bits(0b000000100);
+    /// Match `HEAD` requests.
+    pub const HEAD: Self = Self::from_bits(0b000001000);
+    /// Match `OPTIONS` requests.
+    pub const OPTIONS: Self = Self::from_bits(0b000010000);
+    /// Match `PATCH` requests.
+    pub const PATCH: Self = Self::from_bits(0b000100000);
+    /// Match `POST` requests.
+    pub const POST: Self = Self::from_bits(0b001000000);
+    /// Match `PUT` requests.
+    pub const PUT: Self = Self::from_bits(0b010000000);
+    /// Match `TRACE` requests.
+    pub const TRACE: Self = Self::from_bits(0b100000000);
+
+    const fn bits(&self) -> u16 {
+        let bits = self;
+        bits.0
+    }
+
+    const fn from_bits(bits: u16) -> Self {
+        let bits = bits;
+        Self(bits)
+    }
+
+    pub(crate) const fn contains(&self, other: Self) -> bool {
+        let same = self;
+        let other = other;
+        same.bits() & other.bits() == other.bits()
+    }
+
+    /// Performs the OR operation between the [`MethodFilter`] in `self` with `other`.
+    pub const fn or(self, other: Self) -> Self {
+        Self(self.0 | other.0)
     }
 }
 

@@ -13,8 +13,8 @@ Types and traits for extracting data from requests.
 - [Accessing other extractors in `FromRequest` or `FromRequestParts` implementations](#accessing-other-extractors-in-fromrequest-or-fromrequestparts-implementations)
 - [Request body limits](#request-body-limits)
 - [Request body extractors](#request-body-extractors)
-- [Running extractors from middleware](#running-extractors-from-middleware)
 - [Wrapping extractors](#wrapping-extractors)
+- [Logging rejections](#logging-rejections)
 
 # Intro
 
@@ -55,9 +55,8 @@ Some commonly used extractors are:
 
 ```rust,no_run
 use axum::{
-    extract::{Request, Json, TypedHeader, Path, Extension, Query},
+    extract::{Request, Json, Path, Extension, Query},
     routing::post,
-    headers::UserAgent,
     http::header::HeaderMap,
     body::{Bytes, Body},
     Router,
@@ -74,10 +73,6 @@ async fn query(Query(params): Query<HashMap<String, String>>) {}
 
 // `HeaderMap` gives you all the headers
 async fn headers(headers: HeaderMap) {}
-
-// `TypedHeader` can be used to extract a single header
-// note this requires you've enabled axum's `headers` feature
-async fn user_agent(TypedHeader(user_agent): TypedHeader<UserAgent>) {}
 
 // `String` consumes the request body and ensures it is valid utf-8
 async fn string(body: String) {}
@@ -101,8 +96,6 @@ struct State { /* ... */ }
 let app = Router::new()
     .route("/path/:user_id", post(path))
     .route("/query", post(query))
-    .route("/user_agent", post(user_agent))
-    .route("/headers", post(headers))
     .route("/string", post(string))
     .route("/bytes", post(bytes))
     .route("/json", post(json))
@@ -355,13 +348,16 @@ async fn handler(
     }
 }
 
-// attempt to extract the inner `serde_json::Error`, if that succeeds we can
-// provide a more specific error
+// attempt to extract the inner `serde_path_to_error::Error<serde_json::Error>`,
+// if that succeeds we can provide a more specific error.
+//
+// `Json` uses `serde_path_to_error` so the error will be wrapped in `serde_path_to_error::Error`.
 fn serde_json_error_response<E>(err: E) -> (StatusCode, String)
 where
     E: Error + 'static,
 {
-    if let Some(serde_json_err) = find_error_source::<serde_json::Error>(&err) {
+    if let Some(err) = find_error_source::<serde_path_to_error::Error<serde_json::Error>>(&err) {
+        let serde_json_err = err.inner();
         (
             StatusCode::BAD_REQUEST,
             format!(
@@ -389,6 +385,24 @@ where
         None
     }
 }
+# 
+# #[tokio::main]
+# async fn main() {
+#     use axum::extract::FromRequest;
+# 
+#     let req = axum::http::Request::builder()
+#         .header("content-type", "application/json")
+#         .body(axum::body::Body::from("{"))
+#         .unwrap();
+# 
+#     let err = match Json::<serde_json::Value>::from_request(req, &()).await.unwrap_err() {
+#         JsonRejection::JsonSyntaxError(err) => err,
+#         _ => panic!(),
+#     };
+# 
+#     let (_, body) = serde_json_error_response(err);
+#     assert_eq!(body, "Invalid JSON at line 1 column 1");
+# }
 ```
 
 Note that while this approach works it might break in the future if axum changes
@@ -561,9 +575,8 @@ in your implementation.
 ```rust
 use axum::{
     async_trait,
-    extract::{Extension, FromRequestParts, TypedHeader},
-    headers::{authorization::Bearer, Authorization},
-    http::{StatusCode, request::Parts},
+    extract::{Extension, FromRequestParts},
+    http::{StatusCode, HeaderMap, request::Parts},
     response::{IntoResponse, Response},
     routing::get,
     Router,
@@ -587,10 +600,9 @@ where
 
     async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
         // You can either call them directly...
-        let TypedHeader(Authorization(token)) =
-            TypedHeader::<Authorization<Bearer>>::from_request_parts(parts, state)
-                .await
-                .map_err(|err| err.into_response())?;
+        let headers = HeaderMap::from_request_parts(parts, state)
+            .await
+            .map_err(|err| match err {})?;
 
         // ... or use `extract` / `extract_with_state` from `RequestExt` / `RequestPartsExt`
         use axum::RequestPartsExt;
@@ -619,51 +631,6 @@ For security reasons, [`Bytes`] will, by default, not accept bodies larger than
 `String`, [`Json`], and [`Form`].
 
 For more details, including how to disable this limit, see [`DefaultBodyLimit`].
-
-# Running extractors from middleware
-
-Extractors can also be run from middleware:
-
-```rust
-use axum::{
-    middleware::{self, Next},
-    extract::{TypedHeader, Request, FromRequestParts},
-    http::StatusCode,
-    response::Response,
-    headers::authorization::{Authorization, Bearer},
-    RequestPartsExt, Router,
-};
-
-async fn auth_middleware(
-    request: Request,
-    next: Next,
-) -> Result<Response, StatusCode> {
-    // running extractors requires a `axum::http::request::Parts`
-    let (mut parts, body) = request.into_parts();
-
-    // `TypedHeader<Authorization<Bearer>>` extracts the auth token
-    let auth: TypedHeader<Authorization<Bearer>> = parts.extract()
-        .await
-        .map_err(|_| StatusCode::UNAUTHORIZED)?;
-
-    if !token_is_valid(auth.token()) {
-        return Err(StatusCode::UNAUTHORIZED);
-    }
-
-    // reconstruct the request
-    let request = Request::from_parts(parts, body);
-
-    Ok(next.run(request).await)
-}
-
-fn token_is_valid(token: &str) -> bool {
-    // ...
-    # false
-}
-
-let app = Router::new().layer(middleware::from_fn(auth_middleware));
-# let _: Router = app;
-```
 
 # Wrapping extractors
 
@@ -736,6 +703,13 @@ async fn handler(
 ) {}
 # let _: axum::routing::MethodRouter = axum::routing::get(handler);
 ```
+
+# Logging rejections
+
+All built-in extractors will log rejections for easier debugging. To see the
+logs, enable the `tracing` feature for axum and the `axum::rejection=trace`
+tracing target, for example with `RUST_LOG=info,axum::rejection=trace cargo
+run`.
 
 [`body::Body`]: crate::body::Body
 [`Bytes`]: crate::body::Bytes

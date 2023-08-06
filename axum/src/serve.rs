@@ -72,7 +72,7 @@ use tower_service::Service;
 /// [`Handler`]: crate::handler::Handler
 /// [`HandlerWithoutStateExt::into_make_service_with_connect_info`]: crate::handler::HandlerWithoutStateExt::into_make_service_with_connect_info
 /// [`HandlerService::into_make_service_with_connect_info`]: crate::handler::HandlerService::into_make_service_with_connect_info
-#[cfg(feature = "tokio")]
+#[cfg(all(feature = "tokio", feature = "http1"))]
 pub async fn serve<M, S>(tcp_listener: TcpListener, mut make_service: M) -> io::Result<()>
 where
     M: for<'a> Service<IncomingStream<'a>, Error = Infallible, Response = S>,
@@ -81,12 +81,13 @@ where
 {
     loop {
         let (tcp_stream, remote_addr) = tcp_listener.accept().await?;
+        let tcp_stream = TokioIo::new(tcp_stream);
 
         poll_fn(|cx| make_service.poll_ready(cx))
             .await
             .unwrap_or_else(|err| match err {});
 
-        let mut service = make_service
+        let service = make_service
             .call(IncomingStream {
                 tcp_stream: &tcp_stream,
                 remote_addr,
@@ -99,7 +100,7 @@ where
             //
             // services like `Router` are always ready, so assume the service
             // we're running here is also always ready...
-            match futures_util::future::poll_fn(|cx| service.poll_ready(cx)).now_or_never() {
+            match poll_fn(|cx| service.poll_ready(cx)).now_or_never() {
                 Some(Ok(())) => {}
                 Some(Err(err)) => match err {},
                 None => {
@@ -147,14 +148,14 @@ where
 /// [`IntoMakeServiceWithConnectInfo`]: crate::extract::connect_info::IntoMakeServiceWithConnectInfo
 #[derive(Debug)]
 pub struct IncomingStream<'a> {
-    tcp_stream: &'a TcpStream,
+    tcp_stream: &'a TokioIo<TcpStream>,
     remote_addr: SocketAddr,
 }
 
 impl IncomingStream<'_> {
     /// Returns the local address that this stream is bound to.
     pub fn local_addr(&self) -> std::io::Result<SocketAddr> {
-        self.tcp_stream.local_addr()
+        self.tcp_stream.inner().local_addr()
     }
 
     /// Returns the remote address that this stream is bound to.

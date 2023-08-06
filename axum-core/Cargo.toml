@@ -9,9 +9,12 @@ license = "MIT"
 name = "axum-core"
 readme = "README.md"
 repository = "https://github.com/tokio-rs/axum"
-version = "0.3.3" # remember to also bump the version that axum depends on
+version = "0.3.4" # remember to also bump the version that axum and axum-extra depend on
 
 [features]
+tracing = ["dep:tracing"]
+
+# Required for intra-doc links to resolve correctly
 __private_docs = ["dep:tower-http"]
 
 [dependencies]
@@ -29,14 +32,16 @@ tower-service = "0.3"
 
 # optional dependencies
 tower-http = { version = "0.4", optional = true, features = ["limit"] }
+tracing = { version = "0.1.37", default-features = false, optional = true }
 
 [build-dependencies]
 rustversion = "1.0.9"
 
 [dev-dependencies]
-axum = { path = "../axum", version = "0.6.0", features = ["headers"] }
+axum = { path = "../axum", version = "0.6.0" }
+axum-extra = { path = "../axum-extra", features = ["typed-header"] }
 futures-util = { version = "0.3", default-features = false, features = ["alloc"] }
-hyper = "1.0.0-rc.3"
+hyper = "1.0.0-rc.4"
 tokio = { version = "1.25.0", features = ["macros"] }
 tower-http = { version = "0.4", features = ["limit"] }
 

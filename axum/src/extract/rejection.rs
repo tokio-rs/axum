@@ -1,5 +1,8 @@
 //! Rejection response types.
 
+use axum_core::__composite_rejection as composite_rejection;
+use axum_core::__define_rejection as define_rejection;
+
 pub use crate::extract::path::{FailedToDeserializePathParams, InvalidUtf8InPathParam};
 pub use axum_core::extract::rejection::*;
 
@@ -90,7 +93,7 @@ define_rejection! {
     #[status = BAD_REQUEST]
     #[body = "Failed to deserialize query string"]
     /// Rejection type used if the [`Query`](super::Query) extractor is unable to
-    /// deserialize the form into the target type.
+    /// deserialize the query string into the target type.
     pub struct FailedToDeserializeQueryString(Error);
 }
 
@@ -204,6 +207,3 @@ composite_rejection! {
         MatchedPathMissing,
     }
 }
-
-#[cfg(feature = "headers")]
-pub use crate::typed_header::{TypedHeaderRejection, TypedHeaderRejectionReason};

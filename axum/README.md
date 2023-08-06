@@ -8,6 +8,12 @@
 
 More information about this crate can be found in the [crate documentation][docs].
 
+## 🚨 The `main` branch has unpublished, breaking changes 🚨
+
+In preparation for `axum` 0.7 the `main` branch currently has unpublished,
+breaking changes. Please see the [v0.6.x](https://github.com/tokio-rs/axum/tree/v0.6.x)
+branch for the versions of `axum` published to crates.io.
+
 ## High level features
 
 - Route requests to handlers with a macro free API.
@@ -47,7 +53,7 @@ async fn main() {
         // `POST /users` goes to `create_user`
         .route("/users", post(create_user));
 
-    // run our app with hyper
+    // run our app with hyper, listening globally on port 3000
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
     axum::serve(listener, app).await.unwrap();
 }
@@ -106,7 +112,7 @@ This crate uses `#![forbid(unsafe_code)]` to ensure everything is implemented in
 
 ## Minimum supported Rust version
 
-axum's MSRV is 1.60.
+axum's MSRV is 1.63.
 
 ## Examples
 
@@ -125,7 +131,7 @@ built with `axum`.
 
 ## Contributing
 
-:balloon: Thanks for your help improving the project! We are so happy to have
+🎈 Thanks for your help improving the project! We are so happy to have
 you! We have a [contributing guide][contributing] to help you get involved in the
 `axum` project.
 

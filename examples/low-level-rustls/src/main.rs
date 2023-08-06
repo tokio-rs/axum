@@ -9,13 +9,16 @@ fn main() {
     eprint!("this example has not yet been updated to hyper 1.0");
 }
 
-// use axum::{extract::ConnectInfo, extract::Request, routing::get, Router};
+// use axum::{extract::Request, routing::get, Router};
 // use futures_util::future::poll_fn;
+// use hyper::server::{
+//     accept::Accept,
+//     conn::{AddrIncoming, Http},
+// };
 // use rustls_pemfile::{certs, pkcs8_private_keys};
 // use std::{
 //     fs::File,
 //     io::BufReader,
-//     net::SocketAddr,
 //     path::{Path, PathBuf},
 //     pin::Pin,
 //     sync::Arc,
@@ -56,7 +59,7 @@ fn main() {
 
 //     let mut app = Router::<()>::new()
 //         .route("/", get(handler))
-//         .into_make_service_with_connect_info::<SocketAddr>();
+//         .into_make_service();
 
 //     loop {
 //         let stream = poll_fn(|cx| Pin::new(&mut listener).poll_accept(cx))
@@ -78,12 +81,10 @@ fn main() {
 //     }
 // }
 
-// #[allow(dead_code)]
-// async fn handler(ConnectInfo(addr): ConnectInfo<SocketAddr>) -> String {
-//     addr.to_string()
+// async fn handler() -> &'static str {
+//     "Hello, World!"
 // }
 
-// #[allow(dead_code)]
 // fn rustls_server_config(key: impl AsRef<Path>, cert: impl AsRef<Path>) -> Arc<ServerConfig> {
 //     let mut key_reader = BufReader::new(File::open(key).unwrap());
 //     let mut cert_reader = BufReader::new(File::open(cert).unwrap());

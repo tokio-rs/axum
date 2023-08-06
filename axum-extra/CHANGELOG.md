@@ -7,7 +7,28 @@ and this project adheres to [Semantic Versioning].
 
 # Unreleased
 
-- None.
+- **added:** `TypedHeader` which used to be in `axum` ([#1850])
+- **added:** `Clone` implementation for `ErasedJson` ([#2142])
+
+[#1850]: https://github.com/tokio-rs/axum/pull/1850
+[#2142]: https://github.com/tokio-rs/axum/pull/2142
+
+# 0.7.4 (18. April, 2023)
+
+- **added:** Add `Html` response type ([#1921])
+- **added:** Add `Css` response type ([#1921])
+- **added:** Add `JavaScript` response type ([#1921])
+- **added:** Add `Wasm` response type ([#1921])
+
+[#1921]: https://github.com/tokio-rs/axum/pull/1921
+
+# 0.7.3 (11. April, 2023)
+
+- **added:** Implement `Deref` and `DerefMut` for built-in extractors ([#1922])
+- **added:** Add `OptionalPath` extractor ([#1889])
+
+[#1889]: https://github.com/tokio-rs/axum/pull/1889
+[#1922]: https://github.com/tokio-rs/axum/pull/1922
 
 # 0.7.2 (22. March, 2023)
 

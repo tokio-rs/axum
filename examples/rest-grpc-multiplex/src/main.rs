@@ -4,7 +4,7 @@
 //! cargo run -p example-rest-grpc-multiplex
 //! ```
 
-// TODO: updating this example requires updating tonic
+// TODO
 fn main() {
     eprint!("this example has not yet been updated to hyper 1.0");
 }
@@ -23,6 +23,9 @@ fn main() {
 
 // mod proto {
 //     tonic::include_proto!("helloworld");
+
+//     pub(crate) const FILE_DESCRIPTOR_SET: &[u8] =
+//         tonic::include_file_descriptor_set!("helloworld_descriptor");
 // }
 
 // #[derive(Default)]
@@ -63,7 +66,14 @@ fn main() {
 //     let rest = Router::new().route("/", get(web_root));
 
 //     // build the grpc service
-//     let grpc = GreeterServer::new(GrpcServiceImpl::default());
+//     let reflection_service = tonic_reflection::server::Builder::configure()
+//         .register_encoded_file_descriptor_set(proto::FILE_DESCRIPTOR_SET)
+//         .build()
+//         .unwrap();
+//     let grpc = tonic::transport::Server::builder()
+//         .add_service(reflection_service)
+//         .add_service(GreeterServer::new(GrpcServiceImpl::default()))
+//         .into_service();
 
 //     // combine them into one service
 //     let service = MultiplexService::new(rest, grpc);

@@ -21,6 +21,7 @@
 //! `protobuf` | Enables the `Protobuf` extractor and response | No
 //! `query` | Enables the `Query` extractor | No
 //! `typed-routing` | Enables the `TypedPath` routing utilities | No
+//! `typed-header` | Enables the `TypedHeader` extractor and response  | No
 //!
 //! [`axum`]: https://crates.io/crates/axum
 
@@ -64,6 +65,7 @@
 #![forbid(unsafe_code)]
 #![cfg_attr(docsrs, feature(doc_cfg, doc_auto_cfg))]
 #![cfg_attr(test, allow(clippy::float_cmp))]
+#![cfg_attr(not(test), warn(clippy::print_stdout, clippy::dbg_macro))]
 
 #[allow(unused_extern_crates)]
 extern crate self as axum_extra;
@@ -78,6 +80,17 @@ pub mod routing;
 
 #[cfg(feature = "json-lines")]
 pub mod json_lines;
+
+#[cfg(feature = "typed-header")]
+pub mod typed_header;
+
+#[cfg(feature = "typed-header")]
+#[doc(no_inline)]
+pub use headers;
+
+#[cfg(feature = "typed-header")]
+#[doc(inline)]
+pub use typed_header::TypedHeader;
 
 #[cfg(feature = "protobuf")]
 pub mod protobuf;
@@ -96,6 +109,9 @@ pub mod __private {
     const PATH: &AsciiSet = &FRAGMENT.add(b'#').add(b'?').add(b'{').add(b'}');
     pub const PATH_SEGMENT: &AsciiSet = &PATH.add(b'/').add(b'%');
 }
+
+#[cfg(test)]
+use axum_macros::__private_axum_test as test;
 
 #[cfg(test)]
 pub(crate) mod test_helpers {

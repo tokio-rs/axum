@@ -1072,15 +1072,7 @@ where
         call!(req, method, DELETE, delete);
         call!(req, method, TRACE, trace);
 
-        let future = match fallback {
-            Fallback::Default(route) | Fallback::Service(route) => {
-                RouteFuture::from_future(route.oneshot_inner(req))
-            }
-            Fallback::BoxedHandler(handler) => {
-                let mut route = handler.clone().into_route(state);
-                RouteFuture::from_future(route.oneshot_inner(req))
-            }
-        };
+        let future = fallback.call_with_state(req, state);
 
         match allow_header {
             AllowHeader::None => future.allow_header(Bytes::new()),
@@ -1355,7 +1347,7 @@ mod tests {
     async fn buiding_complex_router() {
         let app = crate::Router::new().route(
             "/",
-            // use the all the things :bomb:
+            // use the all the things 💣️
             get(ok)
                 .post(ok)
                 .route_layer(ValidateRequestHeaderLayer::bearer("password"))

@@ -7,7 +7,6 @@ use http::header::CONTENT_TYPE;
 use http::StatusCode;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
-use std::ops::Deref;
 
 /// URL encoded extractor and response.
 ///
@@ -17,7 +16,7 @@ use std::ops::Deref;
 /// requests and `application/x-www-form-urlencoded` encoded request bodies for other methods. It
 /// supports any type that implements [`serde::Deserialize`].
 ///
-/// Since parsing form data might require consuming the request body, the `Form` extractor must be
+/// ⚠️ Since parsing form data might require consuming the request body, the `Form` extractor must be
 /// *last* if there are multiple extractors in a handler. See ["the order of
 /// extractors"][order-of-extractors]
 ///
@@ -111,13 +110,7 @@ where
     }
 }
 
-impl<T> Deref for Form<T> {
-    type Target = T;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
+axum_core::__impl_deref!(Form);
 
 #[cfg(test)]
 mod tests {
@@ -242,7 +235,7 @@ mod tests {
         let app = Router::new().route(
             "/",
             on(
-                MethodFilter::GET | MethodFilter::POST,
+                MethodFilter::GET.or(MethodFilter::POST),
                 |_: Form<Payload>| async {},
             ),
         );

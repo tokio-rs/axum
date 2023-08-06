@@ -30,7 +30,6 @@ async fn main() {
     let start_time = Instant::now();
     //spawn several clients that will concurrently talk to the server
     let mut clients = (0..N_CLIENTS)
-        .into_iter()
         .map(|cli| tokio::spawn(spawn_client(cli)))
         .collect::<FuturesUnordered<_>>();
 
