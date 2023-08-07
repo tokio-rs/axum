@@ -63,6 +63,27 @@ use tower_layer::Layer;
 /// extractors and want to sure a limit is also applied there then [`RequestBodyLimit`] should be
 /// used.
 ///
+/// # Different limits for different routes
+///
+/// `DefaultBodyLimit` can also be selectively applied to have different limits for different
+/// routes:
+///
+/// ```
+/// use axum::{
+///     Router,
+///     routing::post,
+///     body::Body,
+///     extract::{Request, DefaultBodyLimit},
+/// };
+///
+/// let app = Router::new()
+///     // this route has a different limit
+///     .route("/", post(|request: Request| async {}).layer(DefaultBodyLimit::max(1024)))
+///     // this route still has the default limit
+///     .route("/foo", post(|request: Request| async {}));
+/// # let _: Router = app;
+/// ```
+///
 /// [`Body::data`]: http_body::Body::data
 /// [`Bytes`]: bytes::Bytes
 /// [`Json`]: https://docs.rs/axum/0.6.0/axum/struct.Json.html
