@@ -16,12 +16,12 @@ more details.
 use axum::{routing::get, Router};
 use tower::limit::ConcurrencyLimitLayer;
 
-async fn hander() {}
+async fn handler() {}
 
 let app = Router::new().route(
     "/",
     // All requests to `GET /` will be sent through `ConcurrencyLimitLayer`
-    get(hander).layer(ConcurrencyLimitLayer::new(64)),
+    get(handler).layer(ConcurrencyLimitLayer::new(64)),
 );
 # async {
 # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
