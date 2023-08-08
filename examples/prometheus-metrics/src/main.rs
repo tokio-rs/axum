@@ -51,7 +51,7 @@ async fn start_main_server() {
 async fn start_metrics_server() {
     let app = metrics_app();
 
-    // NOTE: expose metrics enpoint on a different port
+    // NOTE: expose metrics endpoint on a different port
     let listener = tokio::net::TcpListener::bind("127.0.0.1:3001")
         .await
         .unwrap();
