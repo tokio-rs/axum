@@ -82,7 +82,7 @@ async fn nested_router_inherits_fallback() {
 }
 
 #[crate::test]
-async fn doesnt_inherit_fallback_if_overriden() {
+async fn doesnt_inherit_fallback_if_overridden() {
     let inner = Router::new().fallback(inner_fallback);
     let app = Router::new().nest("/foo", inner).fallback(outer_fallback);
 
