@@ -22,8 +22,8 @@ use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
 use std::net::SocketAddr;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
-// this embeddes the migrations into the application binary
-// the migration path is releative to the `CARGO_MANIFEST_DIR`
+// this embeds the migrations into the application binary
+// the migration path is relative to the `CARGO_MANIFEST_DIR`
 pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("migrations/");
 
 // normally part of your generated schema.rs file
