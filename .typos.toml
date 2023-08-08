@@ -1,0 +1,4 @@
+[default.extend-identifiers]
+# Typos in previous type names, mentioned in changelog
+DefaultOnFailedUpdgrade = "DefaultOnFailedUpdgrade"
+OnFailedUpdgrade = "OnFailedUpdgrade"

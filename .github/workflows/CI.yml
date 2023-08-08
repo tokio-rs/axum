@@ -217,3 +217,15 @@ jobs:
     - name: Check dependency tables
       run: |
         cargo sort --workspace --grouped --check
+
+  typos:
+    name: Spell Check with Typos
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || !github.event.pull_request.draft
+
+    steps:
+      - name: Checkout Actions Repository
+        uses: actions/checkout@v3
+
+      - name: Check the spelling of the files in our repo
+        uses: crate-ci/typos@v1.16.2
