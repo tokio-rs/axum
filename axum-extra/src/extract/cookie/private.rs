@@ -173,7 +173,7 @@ impl PrivateCookieJar {
 
     /// Create a new empty `PrivateCookieJarIter`.
     ///
-    /// This is inteded to be used in middleware and other places where it might be difficult to
+    /// This is intended to be used in middleware and other places where it might be difficult to
     /// run extractors. Normally you should create `PrivateCookieJar`s through [`FromRequestParts`].
     ///
     /// [`FromRequestParts`]: axum::extract::FromRequestParts

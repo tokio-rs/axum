@@ -687,7 +687,7 @@ mod tests {
     }
 
     #[test]
-    fn memchr_spliting() {
+    fn memchr_splitting() {
         assert_eq!(
             memchr_split(2, &[]).collect::<Vec<_>>(),
             [&[]] as [&[u8]; 1]
