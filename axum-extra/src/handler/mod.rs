@@ -26,7 +26,7 @@ pub trait HandlerCallWithExtractors<T, S, B>: Sized {
     /// Call the handler with the extracted inputs.
     fn call(self, extractors: T, state: S) -> <Self as HandlerCallWithExtractors<T, S, B>>::Future;
 
-    /// Conver this `HandlerCallWithExtractors` into [`Handler`].
+    /// Convert this `HandlerCallWithExtractors` into [`Handler`].
     fn into_handler(self) -> IntoHandler<Self, T, S, B> {
         IntoHandler {
             handler: self,

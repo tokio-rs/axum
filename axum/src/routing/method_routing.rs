@@ -1372,7 +1372,7 @@ mod tests {
     }
 
     #[allow(dead_code)]
-    fn buiding_complex_router() {
+    async fn building_complex_router() {
         let app = crate::Router::new().route(
             "/",
             // use the all the things 💣️

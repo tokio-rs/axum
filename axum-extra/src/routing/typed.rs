@@ -145,7 +145,7 @@ use serde::Serialize;
 ///
 /// ## Customizing the rejection
 ///
-/// By default the rejection used in the [`FromRequest`] implemetation will be [`PathRejection`].
+/// By default the rejection used in the [`FromRequest`] implementation will be [`PathRejection`].
 ///
 /// That can be customized using `#[typed_path("...", rejection(YourType))]`:
 ///
