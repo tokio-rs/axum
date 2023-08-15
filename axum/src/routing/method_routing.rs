@@ -636,9 +636,10 @@ impl<B> MethodRouter<(), B, Infallible>
 where
     B: HttpBody + Send + 'static,
 {
-    /// Convert the handler into a [`MakeService`].
+    /// Convert the router into a [`MakeService`].
     ///
-    /// This allows you to serve a single handler if you don't need any routing:
+    /// This allows you to serve a single `MethodRouter` if you don't need any
+    /// routing based on the path:
     ///
     /// ```rust
     /// use axum::{
