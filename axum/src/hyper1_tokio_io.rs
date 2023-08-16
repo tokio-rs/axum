@@ -102,7 +102,6 @@ where
         cx: &mut Context<'_>,
         tbuf: &mut tokio::io::ReadBuf<'_>,
     ) -> Poll<Result<(), std::io::Error>> {
-        //let init = tbuf.initialized().len();
         let filled = tbuf.filled().len();
         let sub_filled = unsafe {
             let mut buf = hyper::rt::ReadBuf::uninit(tbuf.unfilled_mut());
