@@ -1,4 +1,4 @@
-Provide the state for the router.
+Provide the state for the router. This methods needs to be called last when building the router, or your code won't compile.
 
 ```rust
 use axum::{Router, routing::get, extract::State};

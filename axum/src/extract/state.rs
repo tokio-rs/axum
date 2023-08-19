@@ -51,6 +51,26 @@ use std::{
 ///
 /// [order-of-extractors]: crate::extract#the-order-of-extractors
 ///
+/// Note that `State` should be provided last when building a [`Router`]. This means this code won't compile:
+///
+/// ```compile_fail
+/// # use axum::{Router, routing::get, extract::State};
+/// # #[derive(Clone)]
+/// # struct AppState {}
+/// #
+/// # let state = AppState {};
+/// #
+/// let app = Router::new()
+///     // Dont do this! Place `with_state` after `route`, `nest` or `merge`.
+///     .with_state(state)
+///     .route("/", get(handler));
+/// #
+/// # async fn handler(State(state): State<AppState>) {}
+///
+/// // Compilation will fail here
+/// let service = app.into_make_service();
+/// ```
+///
 /// ## Combining stateful routers
 ///
 /// Multiple [`Router`]s can be combined with [`Router::nest`] or [`Router::merge`]
