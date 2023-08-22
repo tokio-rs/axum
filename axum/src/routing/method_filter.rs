@@ -32,14 +32,11 @@ impl MethodFilter {
     }
 
     const fn from_bits(bits: u16) -> Self {
-        let bits = bits;
         Self(bits)
     }
 
     pub(crate) const fn contains(&self, other: Self) -> bool {
-        let same = self;
-        let other = other;
-        same.bits() & other.bits() == other.bits()
+        self.bits() & other.bits() == other.bits()
     }
 
     /// Performs the OR operation between the [`MethodFilter`] in `self` with `other`.
