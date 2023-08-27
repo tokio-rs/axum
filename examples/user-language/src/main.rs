@@ -5,7 +5,10 @@
 //! ```
 
 use axum::{response::Html, routing::get, Extension, Router};
-use axum_extra::extract::{sources::QuerySource, UserLanguage};
+use axum_extra::extract::{
+    sources::{PathSource, QuerySource},
+    UserLanguage,
+};
 
 #[tokio::main]
 async fn main() {
@@ -16,6 +19,7 @@ async fn main() {
         .layer(Extension(
             UserLanguage::config()
                 .add_source(QuerySource::new("lang"))
+                .add_source(PathSource::new("lang"))
                 .build(),
         ));
 
@@ -37,6 +41,6 @@ async fn handler(lang: UserLanguage) -> Html<&'static str> {
         "de" => Html("<h1>Hallo, Welt!</h1>"),
         "es" => Html("<h1>Hola, Mundo!</h1>"),
         "fr" => Html("<h1>Bonjour, le monde!</h1>"),
-        _ => Html("<h1>Hello, World!</h1>"),
+        "en" | _ => Html("<h1>Hello, World!</h1>"),
     }
 }
