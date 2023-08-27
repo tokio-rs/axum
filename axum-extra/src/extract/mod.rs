@@ -20,7 +20,7 @@ pub mod multipart;
 pub use self::{
     cached::Cached,
     optional_path::OptionalPath,
-    user_lang::{sources, UserLanguage, UserLanguageSource},
+    user_lang::{sources, UserLanguage, UserLanguageConfig, UserLanguageSource},
     with_rejection::WithRejection,
 };
 

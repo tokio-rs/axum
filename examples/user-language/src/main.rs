@@ -4,15 +4,20 @@
 //! cargo run -p example-user-language
 //! ```
 
-use axum::{response::Html, routing::get, Router};
-use axum_extra::extract::UserLanguage;
+use axum::{response::Html, routing::get, Extension, Router};
+use axum_extra::extract::{sources::QuerySource, UserLanguage};
 
 #[tokio::main]
 async fn main() {
     // build our application with a route
     let app = Router::new()
         .route("/", get(handler))
-        .route("/:lang", get(handler));
+        .route("/:lang", get(handler))
+        .layer(Extension(
+            UserLanguage::config()
+                .add_source(QuerySource::new("lang"))
+                .build(),
+        ));
 
     // run it
     let listener = tokio::net::TcpListener::bind("127.0.0.1:3000")

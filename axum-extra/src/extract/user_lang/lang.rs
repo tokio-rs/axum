@@ -1,10 +1,13 @@
 use super::{
     sources::{AcceptLanguageSource, PathSource, QuerySource},
-    UserLanguageSource,
+    UserLanguageConfig, UserLanguageSource,
 };
-use axum::{async_trait, extract::FromRequestParts};
+use axum::{async_trait, extract::FromRequestParts, Extension, RequestPartsExt};
 use http::request::Parts;
-use std::convert::Infallible;
+use std::{
+    convert::Infallible,
+    sync::{Arc, OnceLock},
+};
 
 /// TBD
 #[derive(Debug, Clone)]
@@ -15,15 +18,16 @@ pub struct UserLanguage {
 
 impl UserLanguage {
     /// TBD
-    pub fn default_sources<S>() -> Vec<Box<dyn UserLanguageSource<S>>>
-    where
-        S: Send + Sync,
-    {
-        vec![
-            Box::new(QuerySource::new("lang")),
-            Box::new(PathSource::new("lang")),
-            Box::new(AcceptLanguageSource),
-        ]
+    pub fn default_sources() -> &'static Vec<Arc<dyn UserLanguageSource>> {
+        static DEFAULT_SOURCES: OnceLock<Vec<Arc<dyn UserLanguageSource>>> = OnceLock::new();
+
+        DEFAULT_SOURCES.get_or_init(|| {
+            vec![
+                Arc::new(QuerySource::new("lang")),
+                Arc::new(PathSource::new("lang")),
+                Arc::new(AcceptLanguageSource),
+            ]
+        })
     }
 
     /// TBD
@@ -51,19 +55,26 @@ where
 {
     type Rejection = Infallible;
 
-    async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
-        let sources = Self::default_sources::<S>();
+    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
+        let (sources, fallback_language) =
+            match parts.extract::<Extension<UserLanguageConfig>>().await {
+                Ok(Extension(config)) => (Some(config.sources), Some(config.fallback_language)),
+                Err(_) => (None, None),
+            };
+
+        let sources = sources.as_ref().unwrap_or(Self::default_sources());
+        let fallback_language = fallback_language.unwrap_or_else(|| "en".to_string());
 
         let mut preferred_languages = Vec::<String>::new();
 
         for source in sources {
-            let languages = source.languages_from_parts(parts, state).await;
+            let languages = source.languages_from_parts(parts).await;
             preferred_languages.extend(languages);
         }
 
         Ok(UserLanguage {
             preferred_languages,
-            fallback_language: "en".to_string(),
+            fallback_language,
         })
     }
 }

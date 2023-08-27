@@ -8,12 +8,8 @@ use axum::async_trait;
 pub struct AcceptLanguageSource;
 
 #[async_trait]
-impl<S> UserLanguageSource<S> for AcceptLanguageSource {
-    async fn languages_from_parts(
-        &self,
-        parts: &mut http::request::Parts,
-        _state: &S,
-    ) -> Vec<String> {
+impl UserLanguageSource for AcceptLanguageSource {
+    async fn languages_from_parts(&self, parts: &mut http::request::Parts) -> Vec<String> {
         let Some(accept_language) = parts.headers.get("Accept-Language") else {
             return vec![];
         };

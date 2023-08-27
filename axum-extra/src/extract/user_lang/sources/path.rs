@@ -17,12 +17,8 @@ impl PathSource {
 }
 
 #[async_trait]
-impl<S> UserLanguageSource<S> for PathSource {
-    async fn languages_from_parts(
-        &self,
-        parts: &mut http::request::Parts,
-        _state: &S,
-    ) -> Vec<String> {
+impl UserLanguageSource for PathSource {
+    async fn languages_from_parts(&self, parts: &mut http::request::Parts) -> Vec<String> {
         let Ok(path) = parts.extract::<Path<HashMap<String, String>>>().await else {
             return vec![];
         };

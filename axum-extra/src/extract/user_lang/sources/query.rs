@@ -17,12 +17,8 @@ impl QuerySource {
 }
 
 #[async_trait]
-impl<S> UserLanguageSource<S> for QuerySource {
-    async fn languages_from_parts(
-        &self,
-        parts: &mut http::request::Parts,
-        _state: &S,
-    ) -> Vec<String> {
+impl UserLanguageSource for QuerySource {
+    async fn languages_from_parts(&self, parts: &mut http::request::Parts) -> Vec<String> {
         let Ok(query) = parts.extract::<Query<HashMap<String, String>>>().await else {
             return vec![];
         };
