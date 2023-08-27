@@ -18,7 +18,9 @@ mod query;
 pub mod multipart;
 
 pub use self::{
-    cached::Cached, optional_path::OptionalPath, user_lang::UserLanguage,
+    cached::Cached,
+    optional_path::OptionalPath,
+    user_lang::{sources, UserLanguage, UserLanguageSource},
     with_rejection::WithRejection,
 };
 
