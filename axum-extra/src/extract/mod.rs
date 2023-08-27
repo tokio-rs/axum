@@ -2,7 +2,6 @@
 
 mod cached;
 mod optional_path;
-mod user_lang;
 mod with_rejection;
 
 #[cfg(feature = "form")]
@@ -17,12 +16,7 @@ mod query;
 #[cfg(feature = "multipart")]
 pub mod multipart;
 
-pub use self::{
-    cached::Cached,
-    optional_path::OptionalPath,
-    user_lang::{sources, UserLanguage, UserLanguageConfig, UserLanguageSource},
-    with_rejection::WithRejection,
-};
+pub use self::{cached::Cached, optional_path::OptionalPath, with_rejection::WithRejection};
 
 #[cfg(feature = "cookie")]
 pub use self::cookie::CookieJar;
@@ -49,3 +43,5 @@ pub use crate::json_lines::JsonLines;
 #[cfg(feature = "typed-header")]
 #[doc(no_inline)]
 pub use crate::typed_header::TypedHeader;
+
+pub use crate::user_lang::UserLanguage;

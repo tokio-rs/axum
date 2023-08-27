@@ -5,9 +5,9 @@
 //! ```
 
 use axum::{response::Html, routing::get, Extension, Router};
-use axum_extra::extract::{
-    sources::{PathSource, QuerySource},
-    UserLanguage,
+use axum_extra::{
+    extract::UserLanguage,
+    user_lang::{PathSource, QuerySource},
 };
 
 #[tokio::main]

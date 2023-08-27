@@ -1,6 +1,5 @@
+use crate::user_lang::{UserLanguage, UserLanguageSource};
 use std::sync::Arc;
-
-use super::{UserLanguage, UserLanguageSource};
 
 /// TBD
 #[derive(Debug, Clone)]
@@ -12,6 +11,7 @@ pub struct UserLanguageConfig {
     pub sources: Vec<Arc<dyn UserLanguageSource>>,
 }
 
+/// TBD
 #[derive(Debug, Clone)]
 pub struct UserLanguageConfigBuilder {
     fallback_language: String,
@@ -19,16 +19,19 @@ pub struct UserLanguageConfigBuilder {
 }
 
 impl UserLanguageConfigBuilder {
+    /// TBD
     pub fn fallback_language(mut self, fallback_language: impl Into<String>) -> Self {
         self.fallback_language = fallback_language.into();
         self
     }
 
+    /// TBD
     pub fn add_source(mut self, source: impl UserLanguageSource + 'static) -> Self {
         self.sources.push(Arc::new(source));
         self
     }
 
+    /// TBD
     pub fn build(self) -> UserLanguageConfig {
         UserLanguageConfig {
             fallback_language: self.fallback_language,
