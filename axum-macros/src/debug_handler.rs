@@ -343,7 +343,7 @@ fn check_output_tuples(item_fn: &ItemFn) -> Option<TokenStream> {
                     let name = _check_into_response_not_parts(ty);
                     match name {
                         Some(_) => {
-                            quote_spanned!{ty.span() => 
+                            quote_spanned!{ty.span()=>
                                 compile_error!("This type only implements IntoResponse but not IntoResponseParts, try moving it to the last element");
                             }
                         },
