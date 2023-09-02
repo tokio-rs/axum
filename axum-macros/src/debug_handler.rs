@@ -306,7 +306,7 @@ fn check_output_tuples(item_fn: &ItemFn) -> Option<TokenStream> {
         return None;
     }
     //Amount of IntoRequestParts
-    let mut parts_amount = 0;
+    let mut parts_amount: i8 = 0;
 
     let token_stream = WithPosition::new(elements.iter())
         .enumerate()
@@ -340,7 +340,15 @@ fn check_output_tuples(item_fn: &ItemFn) -> Option<TokenStream> {
                         .to_compile_error();
                     error
                 } else {
-                    check_into_response_parts(ty, parts_amount)
+                    let name = _check_into_response_not_parts(ty);
+                    match name {
+                        Some(_) => {
+                            quote_spanned!{ty.span() => 
+                                compile_error!("This type only implements IntoResponse but not IntoResponseParts, try moving it to the last element");
+                            }
+                        },
+                        None => check_into_response_parts(ty, parts_amount)
+                    }
                 }
             }
             _ => quote! {},

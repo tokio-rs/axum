@@ -1,18 +1,37 @@
-error[E0277]: the trait bound `Json<&'static str>: IntoResponseParts` is not satisfied
+error: This type only implements IntoResponse but not IntoResponseParts, try moving it to the last element
  --> tests/debug_handler/fail/wrong_return_tuple.rs:5:5
   |
 5 |     axum::Json<&'static str>,
-  |     ^^^^^^^^^^^^^^^^^^^^^^^^ the trait `IntoResponseParts` is not implemented for `Json<&'static str>`
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0277]: the trait bound `(StatusCode, Json<&str>, AppendHeaders<[(HeaderName, &str); 1]>): IntoResponse` is not satisfied
+ --> tests/debug_handler/fail/wrong_return_tuple.rs:3:23
   |
-  = help: the following other types implement trait `IntoResponseParts`:
-            (T1, T2)
-            (T1, T2, T3)
-            (T1, T2, T3, T4)
-            (T1, T2, T3, T4, T5)
-            (T1, T2, T3, T4, T5, T6)
-            (T1, T2, T3, T4, T5, T6, T7)
-            (T1, T2, T3, T4, T5, T6, T7, T8)
-            (T1, T2, T3, T4, T5, T6, T7, T8, T9)
+3 |   async fn handler() -> (
+  |  _______________________^
+4 | |     axum::http::StatusCode,
+5 | |     axum::Json<&'static str>,
+6 | |     axum::response::AppendHeaders<[( axum::http::HeaderName,&'static str); 1]>,
+7 | | ) {
+  | |_^ the trait `IntoResponse` is not implemented for `(StatusCode, Json<&str>, AppendHeaders<[(HeaderName, &str); 1]>)`
+  |
+  = help: the following other types implement trait `IntoResponse`:
+            ()
+            (R,)
+            (Response<()>, R)
+            (Response<()>, T1, R)
+            (Response<()>, T1, T2, R)
+            (Response<()>, T1, T2, T3, R)
+            (Response<()>, T1, T2, T3, T4, R)
+            (Response<()>, T1, T2, T3, T4, T5, R)
           and $N others
-  = help: see issue #48214
-  = help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
+note: required by a bound in `__axum_macros_check_handler_into_response::{closure#0}::check`
+ --> tests/debug_handler/fail/wrong_return_tuple.rs:3:23
+  |
+3 |   async fn handler() -> (
+  |  _______________________^
+4 | |     axum::http::StatusCode,
+5 | |     axum::Json<&'static str>,
+6 | |     axum::response::AppendHeaders<[( axum::http::HeaderName,&'static str); 1]>,
+7 | | ) {
+  | |_^ required by this bound in `check`
