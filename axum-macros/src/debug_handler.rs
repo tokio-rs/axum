@@ -4,7 +4,7 @@ use crate::{
     attr_parsing::{parse_assignment_attribute, second},
     with_position::{Position, WithPosition},
 };
-use proc_macro2::{Ident, Span, TokenStream};
+use proc_macro2::{Span, TokenStream};
 use quote::{format_ident, quote, quote_spanned};
 use syn::{parse::Parse, spanned::Spanned, FnArg, ItemFn, ReturnType, Token, Type};
 
@@ -311,6 +311,7 @@ fn check_output_tuples(item_fn: &ItemFn) -> Option<TokenStream> {
     let token_stream = WithPosition::new(elements.iter())
         .enumerate()
         .map(|(_idx, arg)| match &arg {
+            //First element type in the tuple
             Position::First(ty) => {
                 let typename = extract_clean_typename(ty);
                 if typename.is_none() {
@@ -325,7 +326,7 @@ fn check_output_tuples(item_fn: &ItemFn) -> Option<TokenStream> {
                         }
                         _ => {
                             parts_amount += 1;
-                            check_into_response_parts(ty)
+                            check_into_response_parts(ty, parts_amount)
                         }
                     }
                 }
@@ -333,20 +334,35 @@ fn check_output_tuples(item_fn: &ItemFn) -> Option<TokenStream> {
             Position::Last(ty) => check_into_response(ty),
             Position::Middle(ty) => {
                 parts_amount += 1;
-                if parts_amount >= 16 {
+                if parts_amount > 16 {
                     let error_message = format!("Output Tuple cannot have more than 16 arguments.");
                     let error = syn::Error::new_spanned(&item_fn.sig.output, error_message)
                         .to_compile_error();
                     error
                 } else {
-                    //todo check Named IntoResponse like Json, and hint that it should be placed last.
-                    check_into_response_parts(ty)
+                    check_into_response_parts(ty, parts_amount)
                 }
             }
             _ => quote! {},
         })
         .collect::<TokenStream>();
     Some(token_stream)
+}
+
+fn _check_into_response_not_parts(ty: &Type) -> Option<&'static str> {
+    let name = extract_clean_typename(ty);
+    match name {
+        Some(name) => {
+            let s = match &*name {
+                "Json" => "Json<_>",
+                "String" => "String",
+                //todo add more types that implement IntoResponse but not IntoResponseParts
+                _ => return None,
+            };
+            Some(s)
+        }
+        None => None,
+    }
 }
 
 fn check_into_response(ty: &Type) -> TokenStream {
@@ -384,13 +400,16 @@ fn check_into_response(ty: &Type) -> TokenStream {
     }
 }
 
-fn check_into_response_parts(ty: &Type) -> TokenStream {
+fn check_into_response_parts(ty: &Type, index: i8) -> TokenStream {
     let (span, ty) = (ty.span(), ty.clone());
 
-    let check_fn = format_ident!("__axum_macros_check_into_response_parts_check", span = span,);
+    let check_fn = format_ident!(
+        "__axum_macros_check_into_response_parts_{index}_check",
+        span = span,
+    );
 
     let call_check_fn = format_ident!(
-        "__axum_macros_check_into_response_parts_call_check",
+        "__axum_macros_check_into_response_parts_{index}_call_check",
         span = span,
     );
 
@@ -493,21 +512,21 @@ fn check_input_order(item_fn: &ItemFn) -> Option<TokenStream> {
     }
 }
 
-fn extract_clean_typename(ty: &Type) -> Option<&Ident> {
+fn extract_clean_typename(ty: &Type) -> Option<String> {
     let path = match ty {
         Type::Path(type_path) => &type_path.path,
         _ => return None,
     };
-    path.segments.last().map(|p| &p.ident)
+    path.segments.last().map(|p| p.ident.to_string())
 }
 
 fn request_consuming_type_name(ty: &Type) -> Option<&'static str> {
-    let ident = match extract_clean_typename(ty) {
-        Some(ident) => ident,
+    let typename = match extract_clean_typename(ty) {
+        Some(tn) => tn,
         None => return None,
     };
 
-    let type_name = match &*ident.to_string() {
+    let type_name = match &*typename {
         "Json" => "Json<_>",
         "RawBody" => "RawBody<_>",
         "RawForm" => "RawForm",

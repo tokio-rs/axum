@@ -1,0 +1,48 @@
+error: Output Tuple cannot have more than 16 arguments.
+  --> tests/debug_handler/fail/output_tuple_too_many.rs:5:3
+   |
+5  |   ) -> (
+   |  ___^
+6  | |     axum::http::StatusCode,
+7  | |     AppendHeaders<[(axum::http::HeaderName, &'static str); 1]>,
+8  | |     AppendHeaders<[(axum::http::HeaderName, &'static str); 1]>,
+...  |
+24 | |     axum::http::StatusCode,
+25 | | ) {
+   | |_^
+
+error[E0277]: the trait bound `(StatusCode, AppendHeaders<[(HeaderName, &str); 1]>, AppendHeaders<[(HeaderName, &str); 1]>, AppendHeaders<[(HeaderName, &str); 1]>, AppendHeaders<[(HeaderName, &str); 1]>, AppendHeaders<[(HeaderName, &str); 1]>, AppendHeaders<[(HeaderName, &str); 1]>, AppendHeaders<[(HeaderName, &str); 1]>, AppendHeaders<[(HeaderName, &str); 1]>, AppendHeaders<[(HeaderName, &str); 1]>, AppendHeaders<[(HeaderName, &str); 1]>, AppendHeaders<[(HeaderName, &str); 1]>, AppendHeaders<[(HeaderName, &str); 1]>, AppendHeaders<[(HeaderName, &str); 1]>, AppendHeaders<[(HeaderName, &str); 1]>, AppendHeaders<[(HeaderName, &str); 1]>, AppendHeaders<[(HeaderName, &str); 1]>, AppendHeaders<[(HeaderName, &str); 1]>, StatusCode): IntoResponse` is not satisfied
+  --> tests/debug_handler/fail/output_tuple_too_many.rs:5:6
+   |
+5  |   ) -> (
+   |  ______^
+6  | |     axum::http::StatusCode,
+7  | |     AppendHeaders<[(axum::http::HeaderName, &'static str); 1]>,
+8  | |     AppendHeaders<[(axum::http::HeaderName, &'static str); 1]>,
+...  |
+24 | |     axum::http::StatusCode,
+25 | | ) {
+   | |_^ the trait `IntoResponse` is not implemented for `(StatusCode, AppendHeaders<[(HeaderName, &str); 1]>, AppendHeaders<[(HeaderName, &str); 1]>, AppendHeaders<[(HeaderName, &str); 1]>, AppendHeaders<[(HeaderName, &str); 1]>, AppendHeaders<[(HeaderName, &str); 1]>, AppendHeaders<[(HeaderName, &str); 1]>, AppendHeaders<[(HeaderName, &str); 1]>, AppendHeaders<[(HeaderName, &str); 1]>, AppendHeaders<[(HeaderName, &str); 1]>, AppendHeaders<[(HeaderName, &str); 1]>, AppendHeaders<[(HeaderName, &str); 1]>, AppendHeaders<[(HeaderName, &str); 1]>, AppendHeaders<[(HeaderName, &str); 1]>, AppendHeaders<[(HeaderName, &str); 1]>, AppendHeaders<[(HeaderName, &str); 1]>, AppendHeaders<[(HeaderName, &str); 1]>, AppendHeaders<[(HeaderName, &str); 1]>, StatusCode)`
+   |
+   = help: the following other types implement trait `IntoResponse`:
+             ()
+             (R,)
+             (Response<()>, R)
+             (Response<()>, T1, R)
+             (Response<()>, T1, T2, R)
+             (Response<()>, T1, T2, T3, R)
+             (Response<()>, T1, T2, T3, T4, R)
+             (Response<()>, T1, T2, T3, T4, T5, R)
+           and $N others
+note: required by a bound in `__axum_macros_check_handler_into_response::{closure#0}::check`
+  --> tests/debug_handler/fail/output_tuple_too_many.rs:5:6
+   |
+5  |   ) -> (
+   |  ______^
+6  | |     axum::http::StatusCode,
+7  | |     AppendHeaders<[(axum::http::HeaderName, &'static str); 1]>,
+8  | |     AppendHeaders<[(axum::http::HeaderName, &'static str); 1]>,
+...  |
+24 | |     axum::http::StatusCode,
+25 | | ) {
+   | |_^ required by this bound in `check`
