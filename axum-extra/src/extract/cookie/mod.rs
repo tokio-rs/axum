@@ -24,7 +24,7 @@ pub use self::private::PrivateCookieJar;
 #[cfg(feature = "cookie-signed")]
 pub use self::signed::SignedCookieJar;
 
-pub use cookie::{Cookie, Duration, Expiration, SameSite};
+pub use cookie::{time::Duration, Cookie, Expiration, SameSite};
 
 #[cfg(any(feature = "cookie-signed", feature = "cookie-private"))]
 pub use cookie::Key;
