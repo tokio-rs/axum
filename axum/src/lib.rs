@@ -66,7 +66,7 @@
 //!
 //! # Routing
 //!
-//! [`Router`] is used to setup which paths goes to which services:
+//! [`Router`] is used to set up which paths goes to which services:
 //!
 //! ```rust
 //! use axum::{Router, routing::get};
