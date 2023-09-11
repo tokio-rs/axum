@@ -1,0 +1,21 @@
+error[E0277]: the trait bound `NotIntoResponse: IntoResponse` is not satisfied
+ --> tests/debug_handler/fail/single_wrong_return_tuple.rs:6:23
+  |
+6 | async fn handler() -> (NotIntoResponse) {
+  |                       ^^^^^^^^^^^^^^^^^ the trait `IntoResponse` is not implemented for `NotIntoResponse`
+  |
+  = help: the following other types implement trait `IntoResponse`:
+            &'static [u8; N]
+            &'static [u8]
+            &'static str
+            ()
+            (R,)
+            (Response<()>, R)
+            (Response<()>, T1, R)
+            (Response<()>, T1, T2, R)
+          and $N others
+note: required by a bound in `__axum_macros_check_handler_into_response::{closure#0}::check`
+ --> tests/debug_handler/fail/single_wrong_return_tuple.rs:6:23
+  |
+6 | async fn handler() -> (NotIntoResponse) {
+  |                       ^^^^^^^^^^^^^^^^^ required by this bound in `check`

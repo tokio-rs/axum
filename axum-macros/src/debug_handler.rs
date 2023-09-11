@@ -4,7 +4,7 @@ use crate::{
     attr_parsing::{parse_assignment_attribute, second},
     with_position::{Position, WithPosition},
 };
-use proc_macro2::{Span, TokenStream};
+use proc_macro2::{Ident, Span, TokenStream};
 use quote::{format_ident, quote, quote_spanned};
 use syn::{parse::Parse, spanned::Spanned, FnArg, ItemFn, ReturnType, Token, Type};
 
@@ -286,7 +286,7 @@ fn check_inputs_impls_from_request(item_fn: &ItemFn, state_ty: Type) -> TokenStr
         .collect::<TokenStream>()
 }
 
-///If the output is a tuple with 2 or more elements,
+///If the output is a tuple with 1 or more elements,
 /// it checks with the following pattern,
 /// first element => StatusCode || Parts || IntoResponseParts
 ///last element => IntoResponse
@@ -301,10 +301,18 @@ fn check_output_tuples(item_fn: &ItemFn) -> Option<TokenStream> {
         },
         _ => return None,
     };
+    let handler_ident = &item_fn.sig.ident;
 
-    if elements.len() < 2 {
+    if elements.len() == 0 {
         return None;
     }
+    if elements.len() == 1 {
+        return Some(check_into_response(
+            handler_ident,
+            elements.first().unwrap(),
+        ));
+    }
+
     //Amount of IntoRequestParts
     let mut parts_amount: i8 = 0;
 
@@ -313,25 +321,23 @@ fn check_output_tuples(item_fn: &ItemFn) -> Option<TokenStream> {
         .map(|(_idx, arg)| match &arg {
             //First element type in the tuple
             Position::First(ty) => {
-                let typename = extract_clean_typename(ty);
-                if typename.is_none() {
-                    quote! {}
-                } else {
-                    let typename = typename.unwrap();
-                    match &*typename.to_string() {
-                        "Parts" => quote! {},
-                        "Response" => quote! {},
+                extract_clean_typename(ty)
+                .filter(|typename| {
+                    match &**typename {
+                        "Parts" => false,
+                        "Response" => false,
                         "StatusCode" => {
-                            quote! {}
+                            false
                         }
-                        _ => {
-                            parts_amount += 1;
-                            check_into_response_parts(ty, parts_amount)
-                        }
+                        _ => true
                     }
-                }
+                })
+                .map(|_| {
+                    parts_amount += 1;
+                    check_into_response_parts(ty,handler_ident, parts_amount)
+                }).unwrap_or(quote!{})
             }
-            Position::Last(ty) => check_into_response(ty),
+            Position::Last(ty) => check_into_response(handler_ident,ty),
             Position::Middle(ty) => {
                 parts_amount += 1;
                 if parts_amount > 16 {
@@ -347,7 +353,7 @@ fn check_output_tuples(item_fn: &ItemFn) -> Option<TokenStream> {
                                 compile_error!("This type only implements IntoResponse but not IntoResponseParts, try moving it to the last element");
                             }
                         },
-                        None => check_into_response_parts(ty, parts_amount)
+                        None => check_into_response_parts(ty,handler_ident, parts_amount)
                     }
                 }
             }
@@ -373,12 +379,20 @@ fn _check_into_response_not_parts(ty: &Type) -> Option<&'static str> {
     }
 }
 
-fn check_into_response(ty: &Type) -> TokenStream {
+fn check_into_response(handler: &Ident, ty: &Type) -> TokenStream {
     let (span, ty) = (ty.span(), ty.clone());
 
-    let check_fn = format_ident!("__axum_macros_check_into_response_check", span = span,);
+    let check_fn = format_ident!(
+        "__axum_macros_check_{}_into_response_check",
+        handler,
+        span = span,
+    );
 
-    let call_check_fn = format_ident!("__axum_macros_check_into_response_call_check", span = span,);
+    let call_check_fn = format_ident!(
+        "__axum_macros_check_{}_into_response_call_check",
+        handler,
+        span = span,
+    );
 
     let call_check_fn_body = quote_spanned! {span=>
         #check_fn();
@@ -408,16 +422,18 @@ fn check_into_response(ty: &Type) -> TokenStream {
     }
 }
 
-fn check_into_response_parts(ty: &Type, index: i8) -> TokenStream {
+fn check_into_response_parts(ty: &Type, ident: &Ident, index: i8) -> TokenStream {
     let (span, ty) = (ty.span(), ty.clone());
 
     let check_fn = format_ident!(
-        "__axum_macros_check_into_response_parts_{index}_check",
+        "__axum_macros_check_{}_into_response_parts_{index}_check",
+        ident,
         span = span,
     );
 
     let call_check_fn = format_ident!(
-        "__axum_macros_check_into_response_parts_{index}_call_check",
+        "__axum_macros_check_{}_into_response_parts_{index}_call_check",
+        ident,
         span = span,
     );
 
