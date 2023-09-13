@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::{collections::HashSet, vec};
 
 use crate::{
     attr_parsing::{parse_assignment_attribute, second},
@@ -303,16 +303,6 @@ fn check_output_tuples(item_fn: &ItemFn) -> Option<TokenStream> {
     };
     let handler_ident = &item_fn.sig.ident;
 
-    if elements.len() == 0 {
-        return None;
-    }
-    if elements.len() == 1 {
-        return Some(check_into_response(
-            handler_ident,
-            elements.first().unwrap(),
-        ));
-    }
-
     //Amount of IntoRequestParts
     let mut parts_amount: i8 = 0;
 
@@ -356,8 +346,11 @@ fn check_output_tuples(item_fn: &ItemFn) -> Option<TokenStream> {
                         None => check_into_response_parts(ty,handler_ident, parts_amount)
                     }
                 }
-            }
-            _ => quote! {},
+            },
+            Position::Only(ty) => check_into_response(
+                handler_ident,
+                ty,
+            ),
         })
         .collect::<TokenStream>();
     Some(token_stream)
