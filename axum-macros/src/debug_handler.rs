@@ -1,4 +1,4 @@
-use std::{collections::HashSet, vec};
+use std::{collections::HashSet};
 
 use crate::{
     attr_parsing::{parse_assignment_attribute, second},
