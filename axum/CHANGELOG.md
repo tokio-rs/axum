@@ -9,9 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **added:** Implement `IntoResponse` for `(R,) where R: IntoResponse` ([#2143])
 - **changed:** For SSE, add space between field and value for compatibility ([#2149])
+- **fixed:** Clearly document applying `DefaultBodyLimit` to individual routes ([#2157])
 
 [#2143]: https://github.com/tokio-rs/axum/pull/2143
 [#2149]: https://github.com/tokio-rs/axum/pull/2149
+[#2157]: https://github.com/tokio-rs/axum/pull/2157
 
 # 0.6.20 (03. August, 2023)
 

@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- None.
+- **fixed:** Fix `rust-version` specific in Cargo.toml ([#2204])
+
+[#2204]: https://github.com/tokio-rs/axum/pull/2204
 
 # 0.3.8 (17. July, 2023)
 
