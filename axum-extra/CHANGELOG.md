@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning].
 
 # Unreleased
 
-- None.
+- **fixed:** Fix typos in docs
 
 # 0.8.0 (16. September, 2023)
 
