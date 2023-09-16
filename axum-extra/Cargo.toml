@@ -9,7 +9,7 @@ license = "MIT"
 name = "axum-extra"
 readme = "README.md"
 repository = "https://github.com/tokio-rs/axum"
-version = "0.7.7"
+version = "0.8.0"
 
 [features]
 default = []
@@ -54,7 +54,7 @@ cookie = { package = "cookie", version = "0.17", features = ["percent-encode"], 
 form_urlencoded = { version = "1.1.0", optional = true }
 multer = { version = "2.0.0", optional = true }
 percent-encoding = { version = "2.1", optional = true }
-prost = { version = "0.11", optional = true }
+prost = { version = "0.12", optional = true }
 serde_html_form = { version = "0.2.0", optional = true }
 serde_json = { version = "1.0.71", optional = true }
 tokio-stream = { version = "0.1.9", optional = true }
