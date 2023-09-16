@@ -54,7 +54,7 @@ async fn start_main_server() {
 async fn start_metrics_server() {
     let app = metrics_app();
 
-    // NOTE: expose metrics enpoint on a different port
+    // NOTE: expose metrics endpoint on a different port
     let addr = SocketAddr::from(([127, 0, 0, 1], 3001));
     tracing::debug!("listening on {}", addr);
     axum::Server::bind(&addr)
