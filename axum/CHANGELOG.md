@@ -64,6 +64,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **change:** axum's MSRV is now 1.63 ([#2021])
 - **added:** Implement `Handler` for `T: IntoResponse` ([#2140])
 - **added:** Implement `IntoResponse` for `(R,) where R: IntoResponse` ([#2143])
+- **changed:** For SSE, add space between field and value for compatibility ([#2149])
 
 [#2021]: https://github.com/tokio-rs/axum/pull/2021
 [#2014]: https://github.com/tokio-rs/axum/pull/2014
@@ -82,6 +83,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#2096]: https://github.com/tokio-rs/axum/pull/2096
 [#2140]: https://github.com/tokio-rs/axum/pull/2140
 [#2143]: https://github.com/tokio-rs/axum/pull/2143
+[#2149]: https://github.com/tokio-rs/axum/pull/2149
 
 # 0.6.17 (25. April, 2023)
 
