@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+- None.
+
+# 0.3.5 (16. September, 2023)
+
 - **added:** Implement `IntoResponse` for `(R,) where R: IntoResponse` ([#2143])
 - **fixed:** Fix broken docs links ([#2164])
 - **fixed:** Clearly document applying `DefaultBodyLimit` to individual routes ([#2157])

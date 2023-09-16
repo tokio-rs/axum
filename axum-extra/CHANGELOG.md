@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning].
 
 # Unreleased
 
+- None.
+
+# 0.8.1 (16. September, 2023)
+
 - **fixed:** Fix typos in docs
 
 # 0.8.0 (16. September, 2023)
