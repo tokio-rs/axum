@@ -164,50 +164,47 @@ mod tests {
             .update(|Path(id): Path<u64>| async move { format!("users#update id={id}") })
             .destroy(|Path(id): Path<u64>| async move { format!("users#destroy id={id}") });
 
-        let mut app = Router::new().merge(users);
+        let app = Router::new().merge(users);
+
+        assert_eq!(call_route(&app, Method::GET, "/users").await, "users#index");
 
         assert_eq!(
-            call_route(&mut app, Method::GET, "/users").await,
-            "users#index"
-        );
-
-        assert_eq!(
-            call_route(&mut app, Method::POST, "/users").await,
+            call_route(&app, Method::POST, "/users").await,
             "users#create"
         );
 
         assert_eq!(
-            call_route(&mut app, Method::GET, "/users/new").await,
+            call_route(&app, Method::GET, "/users/new").await,
             "users#new"
         );
 
         assert_eq!(
-            call_route(&mut app, Method::GET, "/users/1").await,
+            call_route(&app, Method::GET, "/users/1").await,
             "users#show id=1"
         );
 
         assert_eq!(
-            call_route(&mut app, Method::GET, "/users/1/edit").await,
+            call_route(&app, Method::GET, "/users/1/edit").await,
             "users#edit id=1"
         );
 
         assert_eq!(
-            call_route(&mut app, Method::PATCH, "/users/1").await,
+            call_route(&app, Method::PATCH, "/users/1").await,
             "users#update id=1"
         );
 
         assert_eq!(
-            call_route(&mut app, Method::PUT, "/users/1").await,
+            call_route(&app, Method::PUT, "/users/1").await,
             "users#update id=1"
         );
 
         assert_eq!(
-            call_route(&mut app, Method::DELETE, "/users/1").await,
+            call_route(&app, Method::DELETE, "/users/1").await,
             "users#destroy id=1"
         );
     }
 
-    async fn call_route(app: &mut Router, method: Method, uri: &str) -> String {
+    async fn call_route(app: &Router, method: Method, uri: &str) -> String {
         let res = app
             .clone()
             .oneshot(

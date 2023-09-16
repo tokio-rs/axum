@@ -36,6 +36,8 @@ If your project isn't listed here and you would like it to be, please feel free 
 - [tower-governor](https://crates.io/crates/tower_governor): A Tower service and layer that provides a rate-limiting backend by [governor](https://crates.io/crates/governor)
 - [axum-restful](https://github.com/gongzhengyang/axum-restful): A restful framework based on axum and sea-orm, inspired by django-rest-framework.
 - [springtime-web-axum](https://crates.io/crates/springtime-web-axum): A web framework built on Springtime and axum, leveraging dependency injection for easy app development.
+- [rust-axum-with-google-oauth](https://github.com/randommm/rust-axum-with-google-oauth): website template for Google OAuth authentication on Axum, using SQLite with SQLx or MongoDB and MiniJinja.
+- [axum-htmx](https://github.com/robertwayne/axum-htmx): Htmx extractors and request guards for axum. 
 
 ## Project showcase
 
