@@ -33,6 +33,8 @@ skip-tree = [
     { name = "indexmap" },
     # pulled in by axum, can't update without breaking changes
     { name = "bitflags" },
+    # pulled in by hyper
+    { name = "socket2" },
 ]
 
 [sources]
