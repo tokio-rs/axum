@@ -7,7 +7,11 @@ and this project adheres to [Semantic Versioning].
 
 # Unreleased
 
-- **breaking:** Update to prost 0.12. Used for the `Protobuf` extractor
+- None.
+
+# 0.8.0 (16. September, 2023)
+
+- **breaking:** Update to prost 0.12. Used for the `Protobuf` extractor ([#2224])
 
 [#2224]: https://github.com/tokio-rs/axum/pull/2224
 
