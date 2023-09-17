@@ -45,6 +45,13 @@ impl NestedPath {
     pub fn as_str(&self) -> &str {
         &self.0
     }
+
+    pub(crate) fn extract(parts: &mut Parts) -> Result<Self, NestedPathRejection> {
+        match parts.extensions.get::<Self>() {
+            Some(nested_path) => Ok(nested_path.clone()),
+            None => Err(NestedPathRejection),
+        }
+    }
 }
 
 #[async_trait]
@@ -55,10 +62,7 @@ where
     type Rejection = NestedPathRejection;
 
     async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
-        match parts.extensions.get::<Self>() {
-            Some(nested_path) => Ok(nested_path.clone()),
-            None => Err(NestedPathRejection),
-        }
+        Self::extract(parts)
     }
 }
 
