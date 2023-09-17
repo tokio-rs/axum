@@ -127,13 +127,10 @@ async fn layer_and_handle_error() {
     let one = Router::new().route("/foo", get(|| async {}));
     let two = Router::new()
         .route("/timeout", get(std::future::pending::<()>))
-        .layer(
-            ServiceBuilder::new()
-                .layer(HandleErrorLayer::new(|_| async {
-                    StatusCode::REQUEST_TIMEOUT
-                }))
-                .layer(TimeoutLayer::new(Duration::from_millis(10))),
-        );
+        .layer((
+            HandleErrorLayer::new(|_| async { StatusCode::REQUEST_TIMEOUT }),
+            TimeoutLayer::new(Duration::from_millis(10)),
+        ));
     let app = one.merge(two);
 
     let client = TestClient::new(app);
