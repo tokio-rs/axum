@@ -1247,15 +1247,14 @@ const _: () = {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{
-        body::Body, error_handling::HandleErrorLayer, extract::State,
-        handler::HandlerWithoutStateExt,
-    };
+    use crate::{body::Body, extract::State, handler::HandlerWithoutStateExt};
     use axum_core::response::IntoResponse;
     use http::{header::ALLOW, HeaderMap};
     use std::time::Duration;
-    use tower::{timeout::TimeoutLayer, Service, ServiceExt};
-    use tower_http::{services::fs::ServeDir, validate_request::ValidateRequestHeaderLayer};
+    use tower::{Service, ServiceExt};
+    use tower_http::{
+        services::fs::ServeDir, timeout::TimeoutLayer, validate_request::ValidateRequestHeaderLayer,
+    };
 
     #[crate::test]
     async fn method_not_allowed_by_default() {
@@ -1354,10 +1353,7 @@ mod tests {
                 .merge(delete_service(ServeDir::new(".")))
                 .fallback(|| async { StatusCode::NOT_FOUND })
                 .put(ok)
-                .layer((
-                    HandleErrorLayer::new(|_| async { StatusCode::REQUEST_TIMEOUT }),
-                    TimeoutLayer::new(Duration::from_secs(10)),
-                )),
+                .layer(TimeoutLayer::new(Duration::from_secs(10))),
         );
 
         let listener = tokio::net::TcpListener::bind("0.0.0.0:0").await.unwrap();

@@ -30,8 +30,11 @@ use std::{
     task::{Context, Poll},
     time::Duration,
 };
-use tower::{service_fn, timeout::TimeoutLayer, util::MapResponseLayer, ServiceExt};
-use tower_http::{limit::RequestBodyLimitLayer, validate_request::ValidateRequestHeaderLayer};
+use tower::{service_fn, util::MapResponseLayer, ServiceExt};
+use tower_http::{
+    limit::RequestBodyLimitLayer, timeout::TimeoutLayer,
+    validate_request::ValidateRequestHeaderLayer,
+};
 use tower_service::Service;
 
 mod fallback;
@@ -301,10 +304,7 @@ async fn wildcard_sees_whole_url() {
 async fn middleware_applies_to_routes_above() {
     let app = Router::new()
         .route("/one", get(std::future::pending::<()>))
-        .layer((
-            HandleErrorLayer::new(|_: BoxError| async move { StatusCode::REQUEST_TIMEOUT }),
-            TimeoutLayer::new(Duration::new(0, 0)),
-        ))
+        .layer(TimeoutLayer::new(Duration::ZERO))
         .route("/two", get(|| async {}));
 
     let client = TestClient::new(app);
