@@ -1254,7 +1254,7 @@ mod tests {
     use axum_core::response::IntoResponse;
     use http::{header::ALLOW, HeaderMap};
     use std::time::Duration;
-    use tower::{timeout::TimeoutLayer, Service, ServiceBuilder, ServiceExt};
+    use tower::{timeout::TimeoutLayer, Service, ServiceExt};
     use tower_http::{services::fs::ServeDir, validate_request::ValidateRequestHeaderLayer};
 
     #[crate::test]
@@ -1354,13 +1354,10 @@ mod tests {
                 .merge(delete_service(ServeDir::new(".")))
                 .fallback(|| async { StatusCode::NOT_FOUND })
                 .put(ok)
-                .layer(
-                    ServiceBuilder::new()
-                        .layer(HandleErrorLayer::new(|_| async {
-                            StatusCode::REQUEST_TIMEOUT
-                        }))
-                        .layer(TimeoutLayer::new(Duration::from_secs(10))),
-                ),
+                .layer((
+                    HandleErrorLayer::new(|_| async { StatusCode::REQUEST_TIMEOUT }),
+                    TimeoutLayer::new(Duration::from_secs(10)),
+                )),
         );
 
         let listener = tokio::net::TcpListener::bind("0.0.0.0:0").await.unwrap();

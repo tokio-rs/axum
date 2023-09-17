@@ -14,7 +14,6 @@ use axum::{
     routing::post,
     Router,
 };
-use tower::ServiceBuilder;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[tokio::main]
@@ -29,7 +28,7 @@ async fn main() {
 
     let app = Router::new()
         .route("/", post(handler))
-        .layer(ServiceBuilder::new().layer(middleware::from_fn(print_request_body)));
+        .layer(middleware::from_fn(print_request_body));
 
     let listener = tokio::net::TcpListener::bind("127.0.0.1:3000")
         .await
