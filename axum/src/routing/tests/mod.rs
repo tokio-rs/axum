@@ -12,7 +12,7 @@ use crate::{
         tracing_helpers::{capture_tracing, TracingEvent},
         *,
     },
-    BoxError, Extension, Json, Router,
+    BoxError, Extension, Json, Router, ServiceExt,
 };
 use axum_core::extract::Request;
 use futures_util::stream::StreamExt;
@@ -30,7 +30,7 @@ use std::{
     task::{Context, Poll},
     time::Duration,
 };
-use tower::{service_fn, util::MapResponseLayer, ServiceExt};
+use tower::{service_fn, util::MapResponseLayer, ServiceExt as TowerServiceExt};
 use tower_http::{
     limit::RequestBodyLimitLayer, timeout::TimeoutLayer,
     validate_request::ValidateRequestHeaderLayer,
