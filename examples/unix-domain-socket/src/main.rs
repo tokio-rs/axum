@@ -94,7 +94,7 @@ mod unix {
     }
 
     async fn handler(ConnectInfo(info): ConnectInfo<UdsConnectInfo>) -> &'static str {
-        println!("new connection from `{:?}`", info);
+        println!("new connection from `{info:?}`");
 
         "Hello, World!"
     }

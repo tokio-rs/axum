@@ -945,7 +945,7 @@ async fn state_isnt_cloned_too_much() {
                         .filter(|line| line.contains("axum") || line.contains("./src"))
                         .collect::<Vec<_>>()
                         .join("\n");
-                    println!("AppState::Clone:\n===============\n{}\n", bt);
+                    println!("AppState::Clone:\n===============\n{bt}\n");
                     COUNT.fetch_add(1, Ordering::SeqCst);
                 }
             }
