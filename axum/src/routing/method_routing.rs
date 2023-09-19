@@ -619,7 +619,7 @@ impl MethodRouter<(), Infallible> {
     /// use std::net::SocketAddr;
     ///
     /// async fn handler(method: Method, uri: Uri, body: String) -> String {
-    ///     format!("received `{} {}` with body `{:?}`", method, uri, body)
+    ///     format!("received `{method} {uri}` with body `{body:?}`")
     /// }
     ///
     /// let router = get(handler).post(handler);
@@ -650,7 +650,7 @@ impl MethodRouter<(), Infallible> {
     /// use std::net::SocketAddr;
     ///
     /// async fn handler(ConnectInfo(addr): ConnectInfo<SocketAddr>) -> String {
-    ///     format!("Hello {}", addr)
+    ///     format!("Hello {addr}")
     /// }
     ///
     /// let router = get(handler).post(handler);

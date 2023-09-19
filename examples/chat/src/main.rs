@@ -100,8 +100,8 @@ async fn websocket(stream: WebSocket, state: Arc<AppState>) {
     let mut rx = state.tx.subscribe();
 
     // Now send the "joined" message to all subscribers.
-    let msg = format!("{} joined.", username);
-    tracing::debug!("{}", msg);
+    let msg = format!("{username} joined.");
+    tracing::debug!("{msg}");
     let _ = state.tx.send(msg);
 
     // Spawn the first task that will receive broadcast messages and send text
@@ -124,7 +124,7 @@ async fn websocket(stream: WebSocket, state: Arc<AppState>) {
     let mut recv_task = tokio::spawn(async move {
         while let Some(Ok(Message::Text(text))) = receiver.next().await {
             // Add username before message.
-            let _ = tx.send(format!("{}: {}", name, text));
+            let _ = tx.send(format!("{name}: {text}"));
         }
     });
 
@@ -135,8 +135,8 @@ async fn websocket(stream: WebSocket, state: Arc<AppState>) {
     };
 
     // Send "user left" message (similar to "joined" above).
-    let msg = format!("{} left.", username);
-    tracing::debug!("{}", msg);
+    let msg = format!("{username} left.");
+    tracing::debug!("{msg}");
     let _ = state.tx.send(msg);
 
     // Remove username from map so new clients can take it again.

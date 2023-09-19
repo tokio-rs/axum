@@ -62,7 +62,7 @@ async fn main() {
 
     // run https server
     let addr = SocketAddr::from(([127, 0, 0, 1], ports.https));
-    tracing::debug!("listening on {}", addr);
+    tracing::debug!("listening on {addr}");
     axum_server::bind_rustls(addr, config)
         .handle(handle)
         .serve(app.into_make_service())
@@ -130,7 +130,7 @@ async fn redirect_http_to_https(ports: Ports, signal: impl Future<Output = ()>) 
 
     let addr = SocketAddr::from(([127, 0, 0, 1], ports.http));
     //let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
-    tracing::debug!("listening on {}", &addr);
+    tracing::debug!("listening on {addr}");
     hyper::Server::bind(&addr)
         .serve(redirect.into_make_service())
         .with_graceful_shutdown(signal)

@@ -89,7 +89,7 @@ impl IntoResponse for QueryRejection {
         match self {
             Self::FailedToDeserializeQueryString(inner) => (
                 StatusCode::BAD_REQUEST,
-                format!("Failed to deserialize query string: {}", inner),
+                format!("Failed to deserialize query string: {inner}"),
             )
                 .into_response(),
         }

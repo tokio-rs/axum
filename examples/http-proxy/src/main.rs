@@ -51,7 +51,7 @@ async fn main() {
     });
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
-    tracing::debug!("listening on {}", addr);
+    tracing::debug!("listening on {addr}");
     hyper::Server::bind(&addr)
         .http1_preserve_header_case(true)
         .http1_title_case_headers(true)
@@ -68,10 +68,10 @@ async fn proxy(req: Request) -> Result<Response, hyper::Error> {
             match hyper::upgrade::on(req).await {
                 Ok(upgraded) => {
                     if let Err(e) = tunnel(upgraded, host_addr).await {
-                        tracing::warn!("server io error: {}", e);
+                        tracing::warn!("server io error: {e}");
                     };
                 }
-                Err(e) => tracing::warn!("upgrade error: {}", e),
+                Err(e) => tracing::warn!("upgrade error: {e}"),
             }
         });
 
@@ -92,11 +92,7 @@ async fn tunnel(mut upgraded: Upgraded, addr: String) -> std::io::Result<()> {
     let (from_client, from_server) =
         tokio::io::copy_bidirectional(&mut upgraded, &mut server).await?;
 
-    tracing::debug!(
-        "client wrote {} bytes and received {} bytes",
-        from_client,
-        from_server
-    );
+    tracing::debug!("client wrote {from_client} bytes and received {from_server} bytes");
 
     Ok(())
 }
