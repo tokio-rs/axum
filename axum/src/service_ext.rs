@@ -39,7 +39,9 @@ pub trait ServiceExt<R>: Service<R> + Sized {
     ///
     /// [`HandleError`]: crate::error_handling::HandleError
     /// ["error handling model"]: crate::error_handling#axums-error-handling-model
-    fn handle_error<F, T>(self, f: F) -> HandleError<Self, F, T>;
+    fn handle_error<F, T>(self, f: F) -> HandleError<Self, F, T> {
+        HandleError::new(self, f)
+    }
 }
 
 impl<S, R> ServiceExt<R> for S
@@ -53,9 +55,5 @@ where
     #[cfg(feature = "tokio")]
     fn into_make_service_with_connect_info<C>(self) -> IntoMakeServiceWithConnectInfo<Self, C> {
         IntoMakeServiceWithConnectInfo::new(self)
-    }
-
-    fn handle_error<F, T>(self, f: F) -> HandleError<Self, F, T> {
-        HandleError::new(self, f)
     }
 }
