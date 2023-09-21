@@ -8,7 +8,7 @@ publish = false
 # `default-features = false` to not depend on tokio features which don't support wasm
 # you can still pull in tokio manually and only add features that tokio supports for wasm
 axum = { path = "../../axum", default-features = false }
-# we don't strictly need axum-extra for this example but wanna make sure that
+# we don't strictly use axum-extra in this example but wanna make sure that
 # works in wasm as well
 axum-extra = { path = "../../axum-extra", default-features = false }
 futures-executor = "0.3.21"
