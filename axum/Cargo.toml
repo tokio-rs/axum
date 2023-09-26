@@ -52,7 +52,7 @@ tower-service = "0.3"
 
 # wont need this when axum uses http-body 1.0
 hyper1 = { package = "hyper", version = "=1.0.0-rc.4", features = ["server", "http1", "http2"] }
-hyper-util = { git = "https://github.com/hyperium/hyper-util", features = ["auto"] }
+hyper-util = { git = "https://github.com/hyperium/hyper-util", rev = "eacb82d", features = ["auto"] }
 tower-hyper-http-body-compat = { version = "0.2", features = ["server", "http1"] }
 
 # optional dependencies
