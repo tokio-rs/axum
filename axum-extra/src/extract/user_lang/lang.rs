@@ -19,14 +19,18 @@ use std::{
 ///  * The path segment `:lang`
 ///  * The `Accept-Language` header
 /// 
-/// If no language could be read from the request, the fallback language
-/// is "en".
+/// This extractor never fails. If no language could be read from the request,
+/// the fallback language will be used. By default the fallback is `en`, but
+/// this can be configured.
 /// 
 /// # Configuration
 /// 
-/// To configure the sources for the languages see [`UserLanguage::config`].
-/// You can also create a custom source. See [`UserLanguageSource`] on how to
-/// implement one.
+/// To configure the sources for the languages or the fallback language, see [`UserLanguage::config`].
+/// 
+/// # Custom Sources
+/// 
+/// You can create custom user langauge sources. See
+/// [`UserLanguageSource`] for details.
 /// 
 /// # Example
 /// 
