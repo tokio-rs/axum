@@ -6,6 +6,7 @@ use async_trait::async_trait;
 use http::{
     header::{HeaderMap, FORWARDED},
     request::Parts,
+    uri::Authority,
 };
 
 const X_FORWARDED_HOST_HEADER_KEY: &str = "X-Forwarded-Host";
@@ -51,8 +52,8 @@ where
             return Ok(Host(host.to_owned()));
         }
 
-        if let Some(host) = parts.uri.host() {
-            return Ok(Host(host.to_owned()));
+        if let Some(authority) = parts.uri.authority() {
+            return Ok(Host(parse_authority(authority).to_owned()));
         }
 
         Err(HostRejection::FailedToResolveHost(FailedToResolveHost))
@@ -76,11 +77,18 @@ fn parse_forwarded(headers: &HeaderMap) -> Option<&str> {
     })
 }
 
+fn parse_authority(auth: &Authority) -> &str {
+    auth.as_str()
+        .rsplitn(2, '@')
+        .next()
+        .expect("split always has at least 1 item")
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::{routing::get, test_helpers::TestClient, Router};
-    use http::header::HeaderName;
+    use http::{header::HeaderName, Request};
 
     fn test_client() -> TestClient {
         async fn host_as_body(Host(host): Host) -> String {
@@ -133,8 +141,10 @@ mod tests {
 
     #[crate::test]
     async fn uri_host() {
-        let host = test_client().get("/").send().await.text().await;
-        assert!(host.contains("127.0.0.1"));
+        let mut parts = Request::new(()).into_parts().0;
+        parts.uri = "127.0.0.1:1234".parse().unwrap();
+        let host = Host::from_request_parts(&mut parts, &()).await.unwrap();
+        assert_eq!(host.0, "127.0.0.1:1234");
     }
 
     #[test]
