@@ -19,6 +19,9 @@ use std::{
 ///  * The path segment `:lang`
 ///  * The `Accept-Language` header
 /// 
+/// If no language could be read from the request, the fallback language
+/// is "en".
+/// 
 /// # Configuration
 /// 
 /// To configure the sources for the languages see [`UserLanguage::config`].

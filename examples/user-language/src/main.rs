@@ -5,10 +5,7 @@
 //! ```
 
 use axum::{response::Html, routing::get, Extension, Router};
-use axum_extra::{
-    extract::UserLanguage,
-    user_lang::{PathSource, QuerySource},
-};
+use axum_extra::extract::user_lang::{PathSource, QuerySource, UserLanguage};
 
 #[tokio::main]
 async fn main() {
