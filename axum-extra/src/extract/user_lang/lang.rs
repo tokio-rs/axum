@@ -15,20 +15,22 @@ use std::{
 /// configurable list of sources.
 /// 
 /// By default it will try to read from the following sources:
-///   * The query parameter `lang`
-///   * The path segment `:lang`
-///   * The `Accept-Language` header
+///  * The query parameter `lang`
+///  * The path segment `:lang`
+///  * The `Accept-Language` header
 /// 
 /// # Configuration
 /// 
-/// To configure the sources see [`UserLanguage::config`] for details.
+/// To configure the sources for the languages see [`UserLanguage::config`].
+/// You can also create a custom source. See [`UserLanguageSource`] on how to
+/// implement one.
 /// 
 /// # Example
 /// 
 /// ```rust
 /// use axum_extra::extract::UserLanguage;
 ///
-/// async fn handler(UserLanguage(lang): UserLanguage) {
+/// async fn handler(lang: UserLanguage) {
 ///     println!("Preferred languages: {:?}", lang.preferred_languages());
 /// }
 /// ```
@@ -39,7 +41,13 @@ pub struct UserLanguage {
 }
 
 impl UserLanguage {
-    /// TBD
+    /// The default sources for the preferred languages.
+    /// 
+    /// If you do not add a configuration for the [`UserLanguage`] extractor,
+    /// these sources will be used by default. They are in order:
+    ///  * The query parameter `lang`
+    ///  * The path segment `:lang`
+    ///  * The `Accept-Language` header
     pub fn default_sources() -> &'static Vec<Arc<dyn UserLanguageSource>> {
         static DEFAULT_SOURCES: OnceLock<Vec<Arc<dyn UserLanguageSource>>> = OnceLock::new();
 
@@ -52,19 +60,31 @@ impl UserLanguage {
         })
     }
 
-    /// TBD
+    /// The users most preferred language as read from the request.
+    /// 
+    /// This is the first language in the list of [`preferred_languages`].
+    /// If no language could be read from the request, the fallback language
+    /// will be returned.
     pub fn preferred_language(&self) -> &str {
         self.preferred_languages
             .first()
             .unwrap_or(&self.fallback_language)
     }
 
-    /// TBD
+    /// The users preferred languages in order of preference.
+    /// 
+    /// Preference is first determined by the order of the sources.
+    /// Within each source the languages are ordered by the users preference,
+    /// if applicable for the source. For example the `Accept-Language` header
+    /// source will order the languages by the `q` parameter.
+    /// 
+    /// This list may be empty if no language could be read from the request.
     pub fn preferred_languages(&self) -> &[String] {
         self.preferred_languages.as_slice()
     }
 
-    /// TBD
+    /// The language that will be used as a fallback if no language could be
+    /// read from the request.
     pub fn fallback_language(&self) -> &str {
         &self.fallback_language
     }

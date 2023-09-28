@@ -1,4 +1,4 @@
-//! User language extractor.
+//! Extractor that retrieves the preferred languages of the user.
 
 mod config;
 mod lang;
