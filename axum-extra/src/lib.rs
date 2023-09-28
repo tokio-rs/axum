@@ -77,7 +77,6 @@ pub mod handler;
 pub mod middleware;
 pub mod response;
 pub mod routing;
-pub mod user_lang;
 
 #[cfg(feature = "json-lines")]
 pub mod json_lines;

@@ -9,7 +9,29 @@ use std::{
     sync::{Arc, OnceLock},
 };
 
-/// TBD
+/// The users preferred languages, read from the request.
+///
+/// This extractor reads the users preferred languages from a
+/// configurable list of sources.
+/// 
+/// By default it will try to read from the following sources:
+///   * The query parameter `lang`
+///   * The path segment `:lang`
+///   * The `Accept-Language` header
+/// 
+/// # Configuration
+/// 
+/// To configure the sources see [`UserLanguage::config`] for details.
+/// 
+/// # Example
+/// 
+/// ```rust
+/// use axum_extra::extract::UserLanguage;
+///
+/// async fn handler(UserLanguage(lang): UserLanguage) {
+///     println!("Preferred languages: {:?}", lang.preferred_languages());
+/// }
+/// ```
 #[derive(Debug, Clone)]
 pub struct UserLanguage {
     preferred_languages: Vec<String>,

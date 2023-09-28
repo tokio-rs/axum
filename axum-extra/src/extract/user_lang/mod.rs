@@ -1,4 +1,4 @@
-//! TBD
+//! User language extractor.
 
 mod config;
 mod lang;

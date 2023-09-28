@@ -16,6 +16,8 @@ mod query;
 #[cfg(feature = "multipart")]
 pub mod multipart;
 
+pub mod user_lang;
+
 pub use self::{cached::Cached, optional_path::OptionalPath, with_rejection::WithRejection};
 
 #[cfg(feature = "cookie")]
@@ -36,6 +38,8 @@ pub use self::query::{Query, QueryRejection};
 #[cfg(feature = "multipart")]
 pub use self::multipart::Multipart;
 
+pub use self::user_lang::UserLanguage;
+
 #[cfg(feature = "json-lines")]
 #[doc(no_inline)]
 pub use crate::json_lines::JsonLines;
@@ -43,5 +47,3 @@ pub use crate::json_lines::JsonLines;
 #[cfg(feature = "typed-header")]
 #[doc(no_inline)]
 pub use crate::typed_header::TypedHeader;
-
-pub use crate::user_lang::UserLanguage;

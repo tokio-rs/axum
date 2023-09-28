@@ -12,13 +12,18 @@ use axum_extra::{
 
 #[tokio::main]
 async fn main() {
-    // build our application with a route
+    // build our application with some routes
     let app = Router::new()
         .route("/", get(handler))
         .route("/:lang", get(handler))
+        // Add configuration for the `UserLanguage` extractor.
+        // This step is optional, if omitted the default
+        // configuration will be used.
         .layer(Extension(
             UserLanguage::config()
+                // read the language from the `lang` query parameter
                 .add_source(QuerySource::new("lang"))
+                // read the language from the `:lang` segment of the path
                 .add_source(PathSource::new("lang"))
                 .build(),
         ));
