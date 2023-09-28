@@ -7,7 +7,7 @@ use crate::extract::user_lang::{UserLanguage, UserLanguageSource};
 /// By default the [`UserLanguage`] extractor will try to read the
 /// languages from the sources returned by [`UserLanguage::default_sources`].
 /// 
-/// You can override the default behaviour by adding a [`UserLanguageConfig`]
+/// You can override the default behaviour by adding a [`Config`]
 /// extension to your routes.
 /// 
 /// You can add sources and specify a fallback language.
@@ -33,15 +33,15 @@ use crate::extract::user_lang::{UserLanguage, UserLanguageSource};
 /// ```
 ///
 #[derive(Debug, Clone)]
-pub struct UserLanguageConfig {
+pub struct Config {
     pub(crate) fallback_language: String,
     pub(crate) sources: Vec<Arc<dyn UserLanguageSource>>,
 }
 
-/// Builder for [`UserLanguageConfig`].
+/// Builder to create a [`Config`] for the [`UserLanguage`] extractor.
 /// 
-/// Allows you to declaratively create a [`UserLanguageConfig`].
-/// You can create a [`UserLanguageConfigBuilder`] by calling
+/// Allows you to declaratively create a [`Config`].
+/// You can create a [`ConfigBuilder`] by calling
 /// [`UserLanguage::config`].
 /// 
 /// # Example
@@ -58,12 +58,12 @@ pub struct UserLanguageConfig {
 /// # }
 /// ```
 #[derive(Debug, Clone)]
-pub struct UserLanguageConfigBuilder {
+pub struct ConfigBuilder {
     fallback_language: String,
     sources: Vec<Arc<dyn UserLanguageSource>>,
 }
 
-impl UserLanguageConfigBuilder {
+impl ConfigBuilder {
     /// Set the fallback language.
     pub fn fallback_language(mut self, fallback_language: impl Into<String>) -> Self {
         self.fallback_language = fallback_language.into();
@@ -76,9 +76,9 @@ impl UserLanguageConfigBuilder {
         self
     }
 
-    /// Create a [`UserLanguageConfig`] from this builder.
-    pub fn build(self) -> UserLanguageConfig {
-        UserLanguageConfig {
+    /// Create a [`Config`] from this builder.
+    pub fn build(self) -> Config {
+        Config {
             fallback_language: self.fallback_language,
             sources: if !self.sources.is_empty() {
                 self.sources
@@ -90,9 +90,9 @@ impl UserLanguageConfigBuilder {
 }
 
 impl UserLanguage {
-    /// Returns a builder for [`UserLanguageConfig`].
-    pub fn config() -> UserLanguageConfigBuilder {
-        UserLanguageConfigBuilder {
+    /// Returns a builder for [`Config`].
+    pub fn config() -> ConfigBuilder {
+        ConfigBuilder {
             fallback_language: "en".to_string(),
             sources: vec![],
         }

@@ -1,6 +1,6 @@
 use super::{
     sources::{AcceptLanguageSource, PathSource, QuerySource},
-    UserLanguageConfig, UserLanguageSource,
+    Config, UserLanguageSource,
 };
 use axum::{async_trait, extract::FromRequestParts, Extension, RequestPartsExt};
 use http::request::Parts;
@@ -65,7 +65,7 @@ impl UserLanguage {
 
     /// The users most preferred language as read from the request.
     /// 
-    /// This is the first language in the list of [`preferred_languages`].
+    /// This is the first language in the list of [`UserLanguage::preferred_languages`].
     /// If no language could be read from the request, the fallback language
     /// will be returned.
     pub fn preferred_language(&self) -> &str {
@@ -102,7 +102,7 @@ where
 
     async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
         let (sources, fallback_language) =
-            match parts.extract::<Extension<UserLanguageConfig>>().await {
+            match parts.extract::<Extension<Config>>().await {
                 Ok(Extension(config)) => (Some(config.sources), Some(config.fallback_language)),
                 Err(_) => (None, None),
             };
