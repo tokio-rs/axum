@@ -142,9 +142,13 @@ mod tests {
     #[crate::test]
     async fn uri_host() {
         let mut parts = Request::new(()).into_parts().0;
-        parts.uri = "127.0.0.1:1234".parse().unwrap();
+        parts.uri = "https://127.0.0.1:1234/image.jpg".parse().unwrap();
         let host = Host::from_request_parts(&mut parts, &()).await.unwrap();
         assert_eq!(host.0, "127.0.0.1:1234");
+
+        parts.uri = "http://cool:user@[::1]:456/file.txt".parse().unwrap();
+        let host = Host::from_request_parts(&mut parts, &()).await.unwrap();
+        assert_eq!(host.0, "[::1]:456");
     }
 
     #[test]
