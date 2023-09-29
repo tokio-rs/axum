@@ -156,7 +156,7 @@ where
     /// it for metadata that may be useful in determining exactly what to do with the preserved
     /// bytes.
     pub fn from_bytes(bytes: &[u8]) -> Result<Self, JsonRejection> {
-        let deserializer = &mut serde_json::Deserializer::from_slice(&bytes);
+        let deserializer = &mut serde_json::Deserializer::from_slice(bytes);
 
         let value = match serde_path_to_error::deserialize(deserializer) {
             Ok(value) => value,
