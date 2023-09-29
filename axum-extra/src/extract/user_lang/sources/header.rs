@@ -4,12 +4,12 @@ use std::cmp::Ordering;
 use crate::extract::user_lang::UserLanguageSource;
 
 /// A [`UserLanguageSource`] that reads languages from the `Accept-Language` header.
-/// 
+///
 /// This source may return multiple languages. Languages are returned in order of their
 /// quality values.
-/// 
+///
 /// # Example
-/// 
+///
 /// ```rust
 /// # use axum::{Router, extract::Extension, routing::get};
 /// # use axum_extra::extract::user_lang::{UserLanguage, AcceptLanguageSource};
@@ -63,6 +63,11 @@ fn parse_quality_values(values: &str) -> Vec<(&str, f32)> {
             continue;
         };
 
+        if value.is_empty() {
+            // empty quality value entry
+            continue;
+        }
+
         let quality = if let Some(quality) = quality.and_then(|q| q.strip_prefix("q=")) {
             quality.parse::<f32>().unwrap_or(0.0)
         } else {
@@ -74,4 +79,56 @@ fn parse_quality_values(values: &str) -> Vec<(&str, f32)> {
 
     quality_values.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(Ordering::Equal));
     quality_values
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use http::{header::ACCEPT_LANGUAGE, Request};
+
+    #[tokio::test]
+    async fn reads_language_from_accept_header() {
+        let source = AcceptLanguageSource;
+
+        let request: Request<()> = Request::builder()
+            .header(ACCEPT_LANGUAGE, "fr,de;q=0.8,en;q=0.9")
+            .body(())
+            .unwrap();
+
+        let (mut parts, _) = request.into_parts();
+
+        let languages = source.languages_from_parts(&mut parts).await;
+
+        assert_eq!(
+            languages,
+            vec!["fr".to_string(), "en".to_string(), "de".to_string()]
+        );
+    }
+
+    #[test]
+    fn parsing_quality_values() {
+        let values = "fr-CH, fr;q=0.9, en;q=0.8, de;q=0.7, *;q=0.5";
+
+        let parsed = parse_quality_values(values);
+
+        assert_eq!(
+            parsed,
+            vec![
+                ("fr-CH", 1.0),
+                ("fr", 0.9),
+                ("en", 0.8),
+                ("de", 0.7),
+                ("*", 0.5),
+            ]
+        );
+    }
+
+    #[test]
+    fn empty_quality_values() {
+        let values = "";
+
+        let parsed = parse_quality_values(values);
+
+        assert_eq!(parsed, vec![]);
+    }
 }
