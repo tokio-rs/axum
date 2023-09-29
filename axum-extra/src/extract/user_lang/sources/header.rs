@@ -3,7 +3,31 @@ use std::cmp::Ordering;
 
 use crate::extract::user_lang::UserLanguageSource;
 
-/// TBD
+/// A [`UserLanguageSource`] that reads languages from the `Accept-Language` header.
+/// 
+/// This source may return multiple languages. Languages are returned in order of their
+/// quality values.
+/// 
+/// # Example
+/// 
+/// ```rust
+/// # use axum::{Router, extract::Extension, routing::get};
+/// # use axum_extra::extract::user_lang::{UserLanguage, AcceptLanguageSource};
+/// #
+/// let source = AcceptLanguageSource;
+///
+/// let app = Router::new()
+///    .route("/home", get(handler))
+///    .layer(
+///        Extension(
+///            UserLanguage::config()
+///                .add_source(source)
+///                .build(),
+///    ));
+///
+/// # let _: Router = app;  
+/// # async fn handler() {}
+/// ```
 #[derive(Debug, Clone)]
 pub struct AcceptLanguageSource;
 
@@ -25,6 +49,7 @@ impl UserLanguageSource for AcceptLanguageSource {
     }
 }
 
+/// Parse quality values from the `Accept-Language` header.
 fn parse_quality_values(values: &str) -> Vec<(&str, f32)> {
     let mut values = values.split(',');
     let mut quality_values = Vec::new();

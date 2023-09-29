@@ -3,15 +3,44 @@ use std::collections::HashMap;
 
 use crate::extract::user_lang::UserLanguageSource;
 
-/// TBD
+/// A [`UserLanguageSource`] that reads the language from a field in the
+/// query string.
+///
+/// When creating this source you specify the name of the query
+/// field to read the language from. You can add multiple `QuerySource`
+/// instances to read from different fields.
+///
+/// # Example
+///
+/// The following example will read the language from
+/// the query field `lang_id`.
+///
+/// ```rust
+/// # use axum::{Router, extract::Extension, routing::get};
+/// # use axum_extra::extract::user_lang::{UserLanguage, QuerySource};
+/// #
+/// // The query field name is `lang_id`.
+/// let source = QuerySource::new("lang_id");
+///
+/// let app = Router::new()
+///    .route("/home", get(handler))
+///    .layer(
+///        Extension(
+///            UserLanguage::config()
+///                .add_source(source)
+///                .build(),
+///    ));
+///
+/// # let _: Router = app;  
+/// # async fn handler() {}
+/// ```
 #[derive(Debug, Clone)]
 pub struct QuerySource {
-    /// TBD
     name: String,
 }
 
 impl QuerySource {
-    /// TBD
+    /// Create a new query source with a given query field name.
     pub fn new(name: impl Into<String>) -> Self {
         Self { name: name.into() }
     }
