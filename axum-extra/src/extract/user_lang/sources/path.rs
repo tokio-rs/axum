@@ -46,6 +46,14 @@ impl PathSource {
     pub fn new(name: impl Into<String>) -> Self {
         Self { name: name.into() }
     }
+
+    fn languages_from_path(&self, path: Path<HashMap<String, String>>) -> Vec<String> {
+        let Some(lang) = path.get(self.name.as_str()) else {
+            return vec![];
+        };
+
+        vec![lang.to_string()]
+    }
 }
 
 #[async_trait]
@@ -55,10 +63,30 @@ impl UserLanguageSource for PathSource {
             return vec![];
         };
 
-        let Some(lang) = path.get(self.name.as_str()) else {
-            return vec![];
-        };
+        self.languages_from_path(path)
+    }
+}
 
-        vec![lang.to_string()]
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn reads_language_from_path() {
+        let source = PathSource::new("lang");
+
+        // We cannot setup the Path extractor here, as it requires
+        // UrlParams in the request extensions, which is private to axum.
+        //
+        // Instead we test loading from the extracted path directly.
+        let path = Path({
+            let mut path_matches = HashMap::new();
+            path_matches.insert("lang".to_string(), "it".to_string());
+            path_matches
+        });
+
+        let languages = source.languages_from_path(path);
+
+        assert_eq!(languages, vec!["it".to_string()]);
     }
 }

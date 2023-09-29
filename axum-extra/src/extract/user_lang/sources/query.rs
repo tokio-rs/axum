@@ -60,3 +60,25 @@ impl UserLanguageSource for QuerySource {
         vec![lang.to_string()]
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use http::{Request, Uri};
+
+    #[tokio::test]
+    async fn reads_language_from_query() {
+        let source = QuerySource::new("lang");
+
+        let request: Request<()> = Request::builder()
+            .uri(Uri::builder().path_and_query("/?lang=de").build().unwrap())
+            .body(())
+            .unwrap();
+
+        let (mut parts, _) = request.into_parts();
+
+        let languages = source.languages_from_parts(&mut parts).await;
+
+        assert_eq!(languages, vec!["de".to_string()]);
+    }
+}
