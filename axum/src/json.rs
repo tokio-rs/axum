@@ -147,7 +147,7 @@ impl<T> Json<T>
 where
     T: DeserializeOwned,
 {
-    /// Construct a `Json<T>` from `&Bytes`. Most users should prefer to use the `FromRequest` impl
+    /// Construct a `Json<T>` from a byte slice. Most users should prefer to use the `FromRequest` impl
     /// but special cases may require first extracting a `Request` into `Bytes` then optionally
     /// constructing a `Json<T>`.
     pub fn from_bytes(bytes: &[u8]) -> Result<Self, JsonRejection> {
