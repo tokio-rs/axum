@@ -45,7 +45,7 @@ mod private {
 #[async_trait]
 #[cfg_attr(
     nightly_error_messages,
-    rustc_on_unimplemented(
+    diagnostic::on_unimplemented(
         note = "Function argument is not a valid axum extractor. \nSee `https://docs.rs/axum/latest/axum/extract/index.html` for details",
     )
 )]
@@ -72,7 +72,7 @@ pub trait FromRequestParts<S>: Sized {
 #[async_trait]
 #[cfg_attr(
     nightly_error_messages,
-    rustc_on_unimplemented(
+    diagnostic::on_unimplemented(
         note = "Function argument is not a valid axum extractor. \nSee `https://docs.rs/axum/latest/axum/extract/index.html` for details",
     )
 )]
