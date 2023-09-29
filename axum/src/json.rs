@@ -155,7 +155,7 @@ where
     /// or otherwise preserve the exact byte representation of the request while also interrogating
     /// it for metadata that may be useful in determining exactly what to do with the preserved
     /// bytes.
-    fn from_bytes(bytes: &Bytes) -> Result<Self, JsonRejection> {
+    pub fn from_bytes(bytes: &Bytes) -> Result<Self, JsonRejection> {
         let deserializer = &mut serde_json::Deserializer::from_slice(&bytes);
 
         let value = match serde_path_to_error::deserialize(deserializer) {
