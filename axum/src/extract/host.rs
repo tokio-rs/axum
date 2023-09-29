@@ -79,7 +79,7 @@ fn parse_forwarded(headers: &HeaderMap) -> Option<&str> {
 
 fn parse_authority(auth: &Authority) -> &str {
     auth.as_str()
-        .rsplitn(2, '@')
+        .rsplit('@')
         .next()
         .expect("split always has at least 1 item")
 }
