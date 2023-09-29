@@ -150,11 +150,6 @@ where
     /// Construct a `Json<T>` from `&Bytes`. Most users should prefer to use the `FromRequest` impl
     /// but special cases may require first extracting a `Request` into `Bytes` then optionally
     /// constructing a `Json<T>`.
-    ///
-    /// An example where this would be useful would be one in which a service needs to pass through
-    /// or otherwise preserve the exact byte representation of the request while also interrogating
-    /// it for metadata that may be useful in determining exactly what to do with the preserved
-    /// bytes.
     pub fn from_bytes(bytes: &[u8]) -> Result<Self, JsonRejection> {
         let deserializer = &mut serde_json::Deserializer::from_slice(bytes);
 
