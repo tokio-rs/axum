@@ -44,6 +44,7 @@ impl UserLanguageSource for AcceptLanguageSource {
 
         parse_quality_values(accept_language)
             .into_iter()
+            .filter(|(lang, _)| *lang != "*")
             .map(|(lang, _)| lang.to_string())
             .collect()
     }
@@ -103,6 +104,22 @@ mod tests {
             languages,
             vec!["fr".to_string(), "en".to_string(), "de".to_string()]
         );
+    }
+
+    #[tokio::test]
+    async fn ignores_wildcard_lang() {
+        let source = AcceptLanguageSource;
+
+        let request: Request<()> = Request::builder()
+            .header(ACCEPT_LANGUAGE, "fr,de;q=0.8,*;q=0.9")
+            .body(())
+            .unwrap();
+
+        let (mut parts, _) = request.into_parts();
+
+        let languages = source.languages_from_parts(&mut parts).await;
+
+        assert_eq!(languages, vec!["fr".to_string(), "de".to_string()]);
     }
 
     #[test]
