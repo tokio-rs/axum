@@ -141,7 +141,8 @@ where
 
         tokio::task::spawn(async move {
             match Builder::new(TokioExecutor::new())
-                .serve_connection(tcp_stream.into_inner(), service)
+                // upgrades needed for websockets
+                .serve_connection_with_upgrades(tcp_stream.into_inner(), service)
                 .await
             {
                 Ok(()) => {}
