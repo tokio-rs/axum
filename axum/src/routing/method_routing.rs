@@ -619,7 +619,7 @@ impl MethodRouter<(), Infallible> {
     /// use std::net::SocketAddr;
     ///
     /// async fn handler(method: Method, uri: Uri, body: String) -> String {
-    ///     format!("received `{} {}` with body `{:?}`", method, uri, body)
+    ///     format!("received `{method} {uri}` with body `{body:?}`")
     /// }
     ///
     /// let router = get(handler).post(handler);
@@ -650,7 +650,7 @@ impl MethodRouter<(), Infallible> {
     /// use std::net::SocketAddr;
     ///
     /// async fn handler(ConnectInfo(addr): ConnectInfo<SocketAddr>) -> String {
-    ///     format!("Hello {}", addr)
+    ///     format!("Hello {addr}")
     /// }
     ///
     /// let router = get(handler).post(handler);
@@ -1247,15 +1247,14 @@ const _: () = {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{
-        body::Body, error_handling::HandleErrorLayer, extract::State,
-        handler::HandlerWithoutStateExt,
-    };
+    use crate::{body::Body, extract::State, handler::HandlerWithoutStateExt};
     use axum_core::response::IntoResponse;
     use http::{header::ALLOW, HeaderMap};
     use std::time::Duration;
-    use tower::{timeout::TimeoutLayer, Service, ServiceBuilder, ServiceExt};
-    use tower_http::{services::fs::ServeDir, validate_request::ValidateRequestHeaderLayer};
+    use tower::{Service, ServiceExt};
+    use tower_http::{
+        services::fs::ServeDir, timeout::TimeoutLayer, validate_request::ValidateRequestHeaderLayer,
+    };
 
     #[crate::test]
     async fn method_not_allowed_by_default() {
@@ -1354,13 +1353,7 @@ mod tests {
                 .merge(delete_service(ServeDir::new(".")))
                 .fallback(|| async { StatusCode::NOT_FOUND })
                 .put(ok)
-                .layer(
-                    ServiceBuilder::new()
-                        .layer(HandleErrorLayer::new(|_| async {
-                            StatusCode::REQUEST_TIMEOUT
-                        }))
-                        .layer(TimeoutLayer::new(Duration::from_secs(10))),
-                ),
+                .layer(TimeoutLayer::new(Duration::from_secs(10))),
         );
 
         let listener = tokio::net::TcpListener::bind("0.0.0.0:0").await.unwrap();

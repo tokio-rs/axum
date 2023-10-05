@@ -2,10 +2,12 @@
 
 use std::{convert::Infallible, io, net::SocketAddr};
 
-use crate::hyper1_tokio_io::TokioIo;
 use axum_core::{body::Body, extract::Request, response::Response};
 use futures_util::{future::poll_fn, FutureExt};
-use hyper1::server::conn::http1;
+use hyper_util::{
+    rt::{TokioExecutor, TokioIo},
+    server::conn::auto::Builder,
+};
 use tokio::net::{TcpListener, TcpStream};
 use tower_hyper_http_body_compat::{HttpBody04ToHttpBody1, HttpBody1ToHttpBody04};
 use tower_service::Service;
@@ -15,7 +17,7 @@ use tower_service::Service;
 /// This method of running a service is intentionally simple and doesn't support any configuration.
 /// Use hyper or hyper-util if you need configuration.
 ///
-/// It only supports HTTP/1.
+/// It supports both HTTP/1 as well as HTTP/2.
 ///
 /// # Examples
 ///
@@ -138,10 +140,9 @@ where
         });
 
         tokio::task::spawn(async move {
-            match http1::Builder::new()
-                .serve_connection(tcp_stream, service)
-                // for websockets
-                .with_upgrades()
+            match Builder::new(TokioExecutor::new())
+                // upgrades needed for websockets
+                .serve_connection_with_upgrades(tcp_stream.into_inner(), service)
                 .await
             {
                 Ok(()) => {}

@@ -41,3 +41,7 @@ trybuild = "1.0.63"
 
 [package.metadata.cargo-public-api-crates]
 allowed = []
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]

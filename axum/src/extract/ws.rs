@@ -92,7 +92,7 @@
 
 use self::rejection::*;
 use super::FromRequestParts;
-use crate::{body::Bytes, hyper1_tokio_io::TokioIo, response::Response, Error};
+use crate::{body::Bytes, response::Response, Error};
 use async_trait::async_trait;
 use axum_core::body::Body;
 use futures_util::{
@@ -104,6 +104,7 @@ use http::{
     request::Parts,
     Method, StatusCode,
 };
+use hyper_util::rt::TokioIo;
 use sha1::{Digest, Sha1};
 use std::{
     borrow::Cow,

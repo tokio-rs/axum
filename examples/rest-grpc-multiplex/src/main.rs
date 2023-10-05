@@ -74,7 +74,7 @@ async fn main() {
     let service = MultiplexService::new(rest, grpc);
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
-    tracing::debug!("listening on {}", addr);
+    tracing::debug!("listening on {addr}");
     hyper::Server::bind(&addr)
         .serve(tower::make::Shared::new(service))
         .await

@@ -30,10 +30,11 @@ use std::{
     task::{Context, Poll},
     time::Duration,
 };
-use tower::{
-    service_fn, timeout::TimeoutLayer, util::MapResponseLayer, ServiceBuilder, ServiceExt,
+use tower::{service_fn, util::MapResponseLayer, ServiceExt};
+use tower_http::{
+    limit::RequestBodyLimitLayer, timeout::TimeoutLayer,
+    validate_request::ValidateRequestHeaderLayer,
 };
-use tower_http::{limit::RequestBodyLimitLayer, validate_request::ValidateRequestHeaderLayer};
 use tower_service::Service;
 
 mod fallback;
@@ -179,7 +180,6 @@ async fn routing_between_services() {
 
 #[crate::test]
 async fn middleware_on_single_route() {
-    use tower::ServiceBuilder;
     use tower_http::{compression::CompressionLayer, trace::TraceLayer};
 
     async fn handle(_: Request) -> &'static str {
@@ -188,12 +188,7 @@ async fn middleware_on_single_route() {
 
     let app = Router::new().route(
         "/",
-        get(handle.layer(
-            ServiceBuilder::new()
-                .layer(TraceLayer::new_for_http())
-                .layer(CompressionLayer::new())
-                .into_inner(),
-        )),
+        get(handle.layer((TraceLayer::new_for_http(), CompressionLayer::new()))),
     );
 
     let client = TestClient::new(app);
@@ -309,13 +304,7 @@ async fn wildcard_sees_whole_url() {
 async fn middleware_applies_to_routes_above() {
     let app = Router::new()
         .route("/one", get(std::future::pending::<()>))
-        .layer(
-            ServiceBuilder::new()
-                .layer(HandleErrorLayer::new(|_: BoxError| async move {
-                    StatusCode::REQUEST_TIMEOUT
-                }))
-                .layer(TimeoutLayer::new(Duration::new(0, 0))),
-        )
+        .layer(TimeoutLayer::new(Duration::ZERO))
         .route("/two", get(|| async {}));
 
     let client = TestClient::new(app);
@@ -956,7 +945,7 @@ async fn state_isnt_cloned_too_much() {
                         .filter(|line| line.contains("axum") || line.contains("./src"))
                         .collect::<Vec<_>>()
                         .join("\n");
-                    println!("AppState::Clone:\n===============\n{}\n", bt);
+                    println!("AppState::Clone:\n===============\n{bt}\n");
                     COUNT.fetch_add(1, Ordering::SeqCst);
                 }
             }

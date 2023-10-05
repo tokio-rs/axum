@@ -193,7 +193,7 @@ macro_rules! __composite_rejection {
             fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
                 match self {
                     $(
-                        Self::$variant(inner) => write!(f, "{}", inner),
+                        Self::$variant(inner) => write!(f, "{inner}"),
                     )+
                 }
             }

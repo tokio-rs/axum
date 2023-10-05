@@ -55,7 +55,7 @@ async fn main() {
 
     // run https server
     let addr = SocketAddr::from(([127, 0, 0, 1], ports.https));
-    tracing::debug!("listening on {}", addr);
+    tracing::debug!("listening on {addr}");
     axum_server::bind_rustls(addr, config)
         .serve(app.into_make_service())
         .await

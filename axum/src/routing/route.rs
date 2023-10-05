@@ -17,8 +17,8 @@ use std::{
     task::{Context, Poll},
 };
 use tower::{
-    util::{BoxCloneService, MapResponseLayer, Oneshot},
-    ServiceBuilder, ServiceExt,
+    util::{BoxCloneService, MapErrLayer, MapRequestLayer, MapResponseLayer, Oneshot},
+    ServiceExt,
 };
 use tower_layer::Layer;
 use tower_service::Service;
@@ -57,12 +57,12 @@ impl<E> Route<E> {
         <L::Service as Service<Request>>::Future: Send + 'static,
         NewError: 'static,
     {
-        let layer = ServiceBuilder::new()
-            .map_request(|req: Request<_>| req.map(Body::new))
-            .map_err(Into::into)
-            .layer(MapResponseLayer::new(IntoResponse::into_response))
-            .layer(layer)
-            .into_inner();
+        let layer = (
+            MapRequestLayer::new(|req: Request<_>| req.map(Body::new)),
+            MapErrLayer::new(Into::into),
+            MapResponseLayer::new(IntoResponse::into_response),
+            layer,
+        );
 
         Route::new(layer.layer(self))
     }

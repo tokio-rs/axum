@@ -22,7 +22,7 @@ matched-path = []
 multipart = ["dep:multer"]
 original-uri = []
 query = ["dep:serde_urlencoded"]
-tokio = ["dep:tokio", "hyper/server", "hyper/tcp", "hyper/runtime", "tower/make"]
+tokio = ["dep:tokio", "dep:hyper-util", "hyper/server", "hyper/tcp", "hyper/runtime", "tower/make"]
 tower-log = ["tower/log"]
 tracing = ["dep:tracing", "axum-core/tracing"]
 ws = ["tokio", "dep:tokio-tungstenite", "dep:sha1", "dep:base64"]
@@ -51,12 +51,13 @@ tower-layer = "0.3.2"
 tower-service = "0.3"
 
 # wont need this when axum uses http-body 1.0
-hyper1 = { package = "hyper", version = "=1.0.0-rc.4", features = ["server", "http1"] }
+hyper1 = { package = "hyper", version = "=1.0.0-rc.4", features = ["server", "http1", "http2"] }
 tower-hyper-http-body-compat = { version = "0.2", features = ["server", "http1"] }
 
 # optional dependencies
 axum-macros = { path = "../axum-macros", version = "0.3.7", optional = true }
 base64 = { version = "0.21.0", optional = true }
+hyper-util = { git = "https://github.com/hyperium/hyper-util", rev = "d97181a", features = ["auto"], optional = true }
 multer = { version = "2.0.0", optional = true }
 serde_json = { version = "1.0", features = ["raw_value"], optional = true }
 serde_path_to_error = { version = "0.1.8", optional = true }

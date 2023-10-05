@@ -109,7 +109,7 @@ where
                             },
 
                             _ => PathError {
-                                message: format!("Unhandled deserialization error: {}", kind),
+                                message: format!("Unhandled deserialization error: {kind}"),
                                 location: None,
                             },
                         };
@@ -126,7 +126,7 @@ where
                     _ => (
                         StatusCode::INTERNAL_SERVER_ERROR,
                         PathError {
-                            message: format!("Unhandled path rejection: {}", rejection),
+                            message: format!("Unhandled path rejection: {rejection}"),
                             location: None,
                         },
                     ),

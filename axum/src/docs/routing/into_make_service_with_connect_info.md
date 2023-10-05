@@ -17,7 +17,7 @@ use std::net::SocketAddr;
 let app = Router::new().route("/", get(handler));
 
 async fn handler(ConnectInfo(addr): ConnectInfo<SocketAddr>) -> String {
-    format!("Hello {}", addr)
+    format!("Hello {addr}")
 }
 
 # async {
@@ -41,7 +41,7 @@ let app = Router::new().route("/", get(handler));
 async fn handler(
     ConnectInfo(my_connect_info): ConnectInfo<MyConnectInfo>,
 ) -> String {
-    format!("Hello {:?}", my_connect_info)
+    format!("Hello {my_connect_info:?}")
 }
 
 #[derive(Clone, Debug)]

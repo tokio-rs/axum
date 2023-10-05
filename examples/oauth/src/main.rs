@@ -157,10 +157,7 @@ async fn discord_auth(State(client): State<BasicClient>) -> impl IntoResponse {
 
 // Valid user session required. If there is none, redirect to the auth page
 async fn protected(user: User) -> impl IntoResponse {
-    format!(
-        "Welcome to the protected area :)\nHere's your info:\n{:?}",
-        user
-    )
+    format!("Welcome to the protected area :)\nHere's your info:\n{user:?}")
 }
 
 async fn logout(
@@ -235,7 +232,7 @@ async fn login_authorized(
         .context("unexpected error retrieving cookie value")?;
 
     // Build the cookie
-    let cookie = format!("{}={}; SameSite=Lax; Path=/", COOKIE_NAME, cookie);
+    let cookie = format!("{COOKIE_NAME}={cookie}; SameSite=Lax; Path=/");
 
     // Set cookie
     let mut headers = HeaderMap::new();
@@ -273,9 +270,9 @@ where
             .map_err(|e| match *e.name() {
                 header::COOKIE => match e.reason() {
                     TypedHeaderRejectionReason::Missing => AuthRedirect,
-                    _ => panic!("unexpected error getting Cookie header(s): {}", e),
+                    _ => panic!("unexpected error getting Cookie header(s): {e}"),
                 },
-                _ => panic!("unexpected error getting cookies: {}", e),
+                _ => panic!("unexpected error getting cookies: {e}"),
             })?;
         let session_cookie = cookies.get(COOKIE_NAME).ok_or(AuthRedirect)?;
 

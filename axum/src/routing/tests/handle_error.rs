@@ -1,6 +1,6 @@
 use super::*;
 use std::future::{pending, ready};
-use tower::{timeout::TimeoutLayer, ServiceBuilder};
+use tower::timeout::TimeoutLayer;
 
 async fn unit() {}
 
@@ -33,13 +33,10 @@ impl<R> Service<R> for Svc {
 async fn handler() {
     let app = Router::new().route(
         "/",
-        get(forever.layer(
-            ServiceBuilder::new()
-                .layer(HandleErrorLayer::new(|_: BoxError| async {
-                    StatusCode::REQUEST_TIMEOUT
-                }))
-                .layer(timeout()),
-        )),
+        get(forever.layer((
+            HandleErrorLayer::new(|_: BoxError| async { StatusCode::REQUEST_TIMEOUT }),
+            timeout(),
+        ))),
     );
 
     let client = TestClient::new(app);
@@ -52,13 +49,10 @@ async fn handler() {
 async fn handler_multiple_methods_first() {
     let app = Router::new().route(
         "/",
-        get(forever.layer(
-            ServiceBuilder::new()
-                .layer(HandleErrorLayer::new(|_: BoxError| async {
-                    StatusCode::REQUEST_TIMEOUT
-                }))
-                .layer(timeout()),
-        ))
+        get(forever.layer((
+            HandleErrorLayer::new(|_: BoxError| async { StatusCode::REQUEST_TIMEOUT }),
+            timeout(),
+        )))
         .post(unit),
     );
 
@@ -73,15 +67,10 @@ async fn handler_multiple_methods_middle() {
     let app = Router::new().route(
         "/",
         delete(unit)
-            .get(
-                forever.layer(
-                    ServiceBuilder::new()
-                        .layer(HandleErrorLayer::new(|_: BoxError| async {
-                            StatusCode::REQUEST_TIMEOUT
-                        }))
-                        .layer(timeout()),
-                ),
-            )
+            .get(forever.layer((
+                HandleErrorLayer::new(|_: BoxError| async { StatusCode::REQUEST_TIMEOUT }),
+                timeout(),
+            )))
             .post(unit),
     );
 
@@ -95,15 +84,10 @@ async fn handler_multiple_methods_middle() {
 async fn handler_multiple_methods_last() {
     let app = Router::new().route(
         "/",
-        delete(unit).get(
-            forever.layer(
-                ServiceBuilder::new()
-                    .layer(HandleErrorLayer::new(|_: BoxError| async {
-                        StatusCode::REQUEST_TIMEOUT
-                    }))
-                    .layer(timeout()),
-            ),
-        ),
+        delete(unit).get(forever.layer((
+            HandleErrorLayer::new(|_: BoxError| async { StatusCode::REQUEST_TIMEOUT }),
+            timeout(),
+        ))),
     );
 
     let client = TestClient::new(app);

@@ -16,7 +16,7 @@ let handler = get(|| async {}).fallback(fallback);
 let app = Router::new().route("/", handler);
 
 async fn fallback(method: Method, uri: Uri) -> (StatusCode, String) {
-    (StatusCode::NOT_FOUND, format!("`{}` not allowed for {}", method, uri))
+    (StatusCode::NOT_FOUND, format!("`{method}` not allowed for {uri}"))
 }
 # async {
 # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
