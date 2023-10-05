@@ -1,4 +1,4 @@
-use std::{collections::HashSet};
+use std::collections::HashSet;
 
 use crate::{
     attr_parsing::{parse_assignment_attribute, second},
@@ -299,7 +299,7 @@ fn check_output_tuples(item_fn: &ItemFn) -> Option<TokenStream> {
             Type::Tuple(tuple) => &tuple.elems,
             _ => return None,
         },
-        _ => return None,
+        ReturnType::Default => return None,
     };
     let handler_ident = &item_fn.sig.ident;
 
@@ -313,28 +313,20 @@ fn check_output_tuples(item_fn: &ItemFn) -> Option<TokenStream> {
             Position::First(ty) => {
                 extract_clean_typename(ty)
                 .filter(|typename| {
-                    match &**typename {
-                        "Parts" => false,
-                        "Response" => false,
-                        "StatusCode" => {
-                            false
-                        }
-                        _ => true
-                    }
+                    matches!(&**typename, "Parts" | "Response" | "StatusCode")
                 })
                 .map(|_| {
                     parts_amount += 1;
                     check_into_response_parts(ty,handler_ident, parts_amount)
-                }).unwrap_or(quote!{})
+                }).unwrap_or_default()
             }
             Position::Last(ty) => check_into_response(handler_ident,ty),
             Position::Middle(ty) => {
                 parts_amount += 1;
                 if parts_amount > 16 {
-                    let error_message = format!("Output Tuple cannot have more than 16 arguments.");
-                    let error = syn::Error::new_spanned(&item_fn.sig.output, error_message)
-                        .to_compile_error();
-                    error
+                    let error_message = "Output Tuple cannot have more than 16 arguments.";
+                    syn::Error::new_spanned(&item_fn.sig.output, error_message)
+                        .to_compile_error()
                 } else {
                     let name = _check_into_response_not_parts(ty);
                     match name {
