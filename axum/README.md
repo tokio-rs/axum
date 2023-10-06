@@ -51,6 +51,7 @@ async fn main() {
         // `POST /users` goes to `create_user`
         .route("/users", post(create_user));
 
+    // run our app with hyper, listening globally on port 3000
     axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())
         .serve(app.into_make_service())
         .await
