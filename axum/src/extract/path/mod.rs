@@ -348,7 +348,7 @@ impl fmt::Display for ErrorKind {
     }
 }
 
-/// Rejection type for [`Path`](super::Path) if the captured routes params couldn't be deserialized
+/// Rejection type for [`Path`] if the captured routes params couldn't be deserialized
 /// into the expected type.
 #[derive(Debug)]
 pub struct FailedToDeserializePathParams(PathDeserializationError);
