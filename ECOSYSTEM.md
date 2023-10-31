@@ -39,6 +39,7 @@ If your project isn't listed here and you would like it to be, please feel free 
 - [rust-axum-with-google-oauth](https://github.com/randommm/rust-axum-with-google-oauth): website template for Google OAuth authentication on Axum, using SQLite with SQLx or MongoDB and MiniJinja.
 - [axum-htmx](https://github.com/robertwayne/axum-htmx): Htmx extractors and request guards for axum. 
 - [axum-prometheus](https://github.com/ptrskay3/axum-prometheus): A middleware library to collect HTTP metrics for axum applications, compatible with all [metrics.rs](https://metrics.rs) exporters.
+- [axum-valid](https://github.com/gengteng/axum-valid): Extractors for data validation using validator, garde, and validify.
 
 ## Project showcase
 
