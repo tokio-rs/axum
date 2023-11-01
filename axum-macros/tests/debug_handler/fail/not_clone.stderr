@@ -1,0 +1,14 @@
+error[E0277]: the trait bound `NonCloneType: Clone` is not satisfied
+ --> tests/debug_handler/fail/not_clone.rs:7:38
+  |
+7 | async fn test_extension_non_clone(_: Extension<NonCloneType>) {}
+  |                                      ^^^^^^^^^^^^^^^^^^^^^^^ the trait `Clone` is not implemented for `NonCloneType`
+  |
+  = note: required for `Extension<NonCloneType>` to implement `Clone`
+  = help: see issue #48214
+  = help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
+help: consider annotating `NonCloneType` with `#[derive(Clone)]`
+  |
+4 + #[derive(Clone)]
+5 | struct NonCloneType;
+  |

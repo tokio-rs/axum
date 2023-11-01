@@ -16,6 +16,7 @@ pub(crate) fn expand(attr: Attrs, item_fn: ItemFn) -> TokenStream {
     let check_extractor_count = check_extractor_count(&item_fn);
     let check_path_extractor = check_path_extractor(&item_fn);
     let check_output_impls_into_response = check_output_impls_into_response(&item_fn);
+    let check_extension_clone_response = check_extension_clone(&item_fn);
 
     // If the function is generic, we can't reliably check its inputs or whether the future it
     // returns is `Send`. Skip those checks to avoid unhelpful additional compiler errors.
@@ -73,6 +74,7 @@ pub(crate) fn expand(attr: Attrs, item_fn: ItemFn) -> TokenStream {
         #check_extractor_count
         #check_path_extractor
         #check_output_impls_into_response
+        #check_extension_clone_response
         #check_inputs_and_future_send
     }
 }
@@ -353,6 +355,52 @@ fn check_input_order(item_fn: &ItemFn) -> Option<TokenStream> {
             compile_error!(#error);
         })
     }
+}
+
+fn check_extension_clone(item_fn: &ItemFn) -> TokenStream {
+    let mut tokens = TokenStream::new();
+
+    for (idx, arg) in item_fn.sig.inputs.iter().enumerate() {
+        if let FnArg::Typed(pat_type) = arg {
+            let ty = &*pat_type.ty;
+            if is_extension_type(ty) {
+                let span = ty.span();
+                let check_fn = format_ident!("__check_{}_{}_clone", item_fn.sig.ident, idx, span = span);
+                let call_check_fn = format_ident!("__call_check_{}_{}_clone", item_fn.sig.ident, idx, span = span);
+
+                tokens.extend(quote_spanned! {span=>
+                    #[allow(warnings)]
+                    #[allow(unreachable_code)]
+                    #[doc(hidden)]
+                    fn #check_fn()
+                    where
+                        #ty: Clone,
+                    {}
+
+                    // we have to call the function to actually trigger a compile error
+                    // since the function is generic, just defining it is not enough
+                    #[allow(warnings)]
+                    #[allow(unreachable_code)]
+                    #[doc(hidden)]
+                    fn #call_check_fn()
+                    {
+                        #check_fn();
+                    }
+                });
+            }
+        }
+    }
+
+    tokens
+}
+
+fn is_extension_type(ty: &Type) -> bool {
+    if let Type::Path(type_path) = ty {
+        if let Some(segment) = type_path.path.segments.last() {
+            return segment.ident == "Extension";
+        }
+    }
+    false
 }
 
 fn request_consuming_type_name(ty: &Type) -> Option<&'static str> {
