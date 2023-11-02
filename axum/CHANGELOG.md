@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- None.
+- **fixed:** Include port number when parsing authority ([#2242])
+
+[#2242]: https://github.com/tokio-rs/axum/pull/2242
 
 # 0.7.1 (27. November, 2023)
 
