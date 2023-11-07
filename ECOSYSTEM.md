@@ -40,6 +40,7 @@ If your project isn't listed here and you would like it to be, please feel free 
 - [axum-htmx](https://github.com/robertwayne/axum-htmx): Htmx extractors and request guards for axum. 
 - [axum-prometheus](https://github.com/ptrskay3/axum-prometheus): A middleware library to collect HTTP metrics for axum applications, compatible with all [metrics.rs](https://metrics.rs) exporters.
 - [axum-valid](https://github.com/gengteng/axum-valid): Extractors for data validation using validator, garde, and validify.
+- [tower-sessions](https://github.com/maxcountryman/tower-sessions): Sessions as a `tower` and `axum` middleware.
 
 ## Project showcase
 
