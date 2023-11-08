@@ -129,6 +129,10 @@ to put everything together. Community-maintained [showcases] and [tutorials] als
 See [here][ecosystem] for a list of community maintained crates and projects
 built with `axum`.
 
+## Hosting
+
+You can host your Axum projects with using [Shuttle](https://www.shuttle.rs), see the example [here][shuttle-example].
+
 ## Contributing
 
 🎈 Thanks for your help improving the project! We are so happy to have
@@ -147,6 +151,7 @@ additional terms or conditions.
 
 [readme-example]: https://github.com/tokio-rs/axum/tree/main/examples/readme
 [examples]: https://github.com/tokio-rs/axum/tree/main/examples
+[shuttle-example]: https://github.com/tokio-rs/axum/tree/main/examples/hosting-on-shuttle
 [docs]: https://docs.rs/axum
 [`tower`]: https://crates.io/crates/tower
 [`hyper`]: https://crates.io/crates/hyper

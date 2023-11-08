@@ -1,0 +1,12 @@
+[package]
+name = "example-shuttle"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+axum = "0.6.20"
+tokio = { version = "1.0", features = ["full"] }
+shuttle-axum = "0.31"
+shuttle-runtime = "0.31"
+tracing = "0.1"

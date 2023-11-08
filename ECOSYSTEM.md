@@ -16,7 +16,6 @@ If your project isn't listed here and you would like it to be, please feel free 
 - [axum_session_auth](https://github.com/AscendingCreations/AxumSessionsAuth): Persistent session based user login with rights management for Axum.
 - [axum-auth](https://crates.io/crates/axum-auth): High-level http auth extractors for axum.
 - [axum-keycloak-auth](https://github.com/lpotthast/axum-keycloak-auth): Protect axum routes with a JWT emitted by Keycloak.
-- [shuttle](https://github.com/getsynth/shuttle): A serverless platform built for Rust. Now with axum support.
 - [axum-tungstenite](https://github.com/davidpdrsn/axum-tungstenite): WebSocket connections for axum directly using tungstenite
 - [axum-jrpc](https://github.com/0xdeafbeef/axum-jrpc): Json-rpc extractor for axum
 - [axum-tracing-opentelemetry](https://crates.io/crates/axum-tracing-opentelemetry): Middlewares and tools to integrate axum + tracing + opentelemetry
@@ -41,6 +40,7 @@ If your project isn't listed here and you would like it to be, please feel free 
 - [axum-prometheus](https://github.com/ptrskay3/axum-prometheus): A middleware library to collect HTTP metrics for axum applications, compatible with all [metrics.rs](https://metrics.rs) exporters.
 - [axum-valid](https://github.com/gengteng/axum-valid): Extractors for data validation using validator, garde, and validify.
 - [tower-sessions](https://github.com/maxcountryman/tower-sessions): Sessions as a `tower` and `axum` middleware.
+- [shuttle](https://github.com/shuttle-hq/shuttle): Build & ship backends without writing any infrastructure files. Now with Axum support.
 
 ## Project showcase
 
@@ -91,6 +91,7 @@ If your project isn't listed here and you would like it to be, please feel free 
 - [Using Rust, Axum, PostgreSQL, and Tokio to build a Blog]
 - [Introduction to axum]: YouTube playlist
 - [Rust Axum Full Course]: YouTube video
+- [Deploying Axum projects with Shuttle]
 
 [axum-tutorial]: https://github.com/programatik29/axum-tutorial
 [axum-tutorial-website]: https://programatik29.github.io/axum-tutorial/
@@ -100,4 +101,5 @@ If your project isn't listed here and you would like it to be, please feel free 
 [Using Rust, Axum, PostgreSQL, and Tokio to build a Blog]: https://spacedimp.com/blog/using-rust-axum-postgresql-and-tokio-to-build-a-blog/
 [Introduction to axum]: https://www.youtube.com/playlist?list=PLrmY5pVcnuE-_CP7XZ_44HN-mDrLQV4nS
 [Rust Axum Full Course]: https://www.youtube.com/watch?v=XZtlD_m59sM
+[Deploying Axum projects with Shuttle]: https://docs.shuttle.rs/examples/axum
 [Building a SaaS with Rust & Next.js](https://joshmo.bearblog.dev/lets-build-a-saas-with-rust/) A tutorial for combining Next.js with Rust via Axum to make a SaaS.
