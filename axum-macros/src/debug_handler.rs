@@ -365,8 +365,14 @@ fn check_extension_clone(item_fn: &ItemFn) -> TokenStream {
             let ty = &*pat_type.ty;
             if is_extension_type(ty) {
                 let span = ty.span();
-                let check_fn = format_ident!("__check_{}_{}_clone", item_fn.sig.ident, idx, span = span);
-                let call_check_fn = format_ident!("__call_check_{}_{}_clone", item_fn.sig.ident, idx, span = span);
+                let check_fn =
+                    format_ident!("__check_{}_{}_clone", item_fn.sig.ident, idx, span = span);
+                let call_check_fn = format_ident!(
+                    "__call_check_{}_{}_clone",
+                    item_fn.sig.ident,
+                    idx,
+                    span = span
+                );
 
                 tokens.extend(quote_spanned! {span=>
                     #[allow(warnings)]
