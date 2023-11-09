@@ -2,11 +2,15 @@
 //!
 #![doc = include_str!("../docs/middleware.md")]
 
+mod fix_nested_redirect;
 mod from_extractor;
 mod from_fn;
 mod map_request;
 mod map_response;
 
+pub use self::fix_nested_redirect::{
+    FixNestedRedirect, FixNestedRedirectLayer, FixNestedRedirectOptOut,
+};
 pub use self::from_extractor::{
     from_extractor, from_extractor_with_state, FromExtractor, FromExtractorLayer,
 };
@@ -22,6 +26,7 @@ pub use crate::extension::AddExtension;
 pub mod future {
     //! Future types.
 
+    pub use super::fix_nested_redirect::ResponseFuture as FixNestedRedirectFuture;
     pub use super::from_extractor::ResponseFuture as FromExtractorResponseFuture;
     pub use super::from_fn::ResponseFuture as FromFnResponseFuture;
     pub use super::map_request::ResponseFuture as MapRequestResponseFuture;

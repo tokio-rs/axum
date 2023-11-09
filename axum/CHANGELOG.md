@@ -66,6 +66,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **added:** Implement `IntoResponse` for `(R,) where R: IntoResponse` ([#2143])
 - **changed:** For SSE, add space between field and value for compatibility ([#2149])
 - **added:** Add `NestedPath` extractor ([#1924])
+- **added:** Add `FixNestedRedirect` middleware
 
 [#1664]: https://github.com/tokio-rs/axum/pull/1664
 [#1751]: https://github.com/tokio-rs/axum/pull/1751
