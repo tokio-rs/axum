@@ -569,7 +569,7 @@ let app = Router::new().route(
 
 # Accessing other extractors in `FromRequest` or `FromRequestParts` implementations
 
-When defining custom extractors you often need to access another extractors
+When defining custom extractors you often need to access another extractor
 in your implementation.
 
 ```rust

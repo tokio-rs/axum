@@ -105,7 +105,7 @@ where
     }
 }
 
-/// Rejection used for [`TypedHeader`](TypedHeader).
+/// Rejection used for [`TypedHeader`].
 #[cfg(feature = "typed-header")]
 #[derive(Debug)]
 pub struct TypedHeaderRejection {
