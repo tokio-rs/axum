@@ -16,6 +16,9 @@ pub(crate) fn expand(attr: Attrs, item_fn: ItemFn) -> TokenStream {
     let check_extractor_count = check_extractor_count(&item_fn);
     let check_path_extractor = check_path_extractor(&item_fn);
     let check_output_tuples = check_output_tuples(&item_fn);
+    if !check_output_tuples.is_empty() {
+        return check_output_tuples;
+    }
     let check_output_impls_into_response = check_output_impls_into_response(&item_fn);
 
     // If the function is generic, we can't reliably check its inputs or whether the future it
@@ -292,28 +295,28 @@ fn check_inputs_impls_from_request(item_fn: &ItemFn, state_ty: Type) -> TokenStr
 ///last element => IntoResponse
 ///other elements => IntoResponseParts
 ///the max numbers of IntoResponseParts(16)
-fn check_output_tuples(item_fn: &ItemFn) -> Option<TokenStream> {
+fn check_output_tuples(item_fn: &ItemFn) -> TokenStream {
     //Extract tuple types
     let elements = match &item_fn.sig.output {
         ReturnType::Type(_, ty) => match &**ty {
             Type::Tuple(tuple) => &tuple.elems,
-            _ => return None,
+            _ => return quote! {},
         },
-        ReturnType::Default => return None,
+        ReturnType::Default => return quote! {},
     };
     let handler_ident = &item_fn.sig.ident;
 
     //Amount of IntoRequestParts
     let mut parts_amount: i8 = 0;
-
-    let token_stream = WithPosition::new(elements.iter())
+    WithPosition::new(elements.iter())
         .enumerate()
         .map(|(_idx, arg)| match &arg {
             //First element type in the tuple
             Position::First(ty) => {
+
                 extract_clean_typename(ty)
                 .filter(|typename| {
-                    matches!(&**typename, "Parts" | "Response" | "StatusCode")
+                    !matches!(&**typename, "Parts" | "Response" | "StatusCode")
                 })
                 .map(|_| {
                     parts_amount += 1;
@@ -344,8 +347,7 @@ fn check_output_tuples(item_fn: &ItemFn) -> Option<TokenStream> {
                 ty,
             ),
         })
-        .collect::<TokenStream>();
-    Some(token_stream)
+        .collect::<TokenStream>()
 }
 
 fn _check_into_response_not_parts(ty: &Type) -> Option<&'static str> {
