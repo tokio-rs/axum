@@ -69,11 +69,6 @@ async fn main() {
             .unwrap()
     );
 
-    axum::serve(listener, app)
-        .await
-        .context("failed to serve service")
-        .unwrap();
-    tracing::debug!("listening on {}", listener.local_addr().unwrap());
     axum::serve(listener, app).await.unwrap();
 }
 

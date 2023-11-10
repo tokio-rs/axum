@@ -15,7 +15,6 @@ use axum::{
     Router,
 };
 use http_body_util::BodyExt;
-use tower::ServiceBuilder;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[tokio::main]

@@ -13,12 +13,10 @@ use axum_core::{
     extract::Request,
     response::{IntoResponse, Response},
 };
-use matchit::MatchError;
 use std::{
     convert::Infallible,
     fmt,
     marker::PhantomData,
-    sync::Arc,
     task::{Context, Poll},
 };
 use tower_layer::Layer;

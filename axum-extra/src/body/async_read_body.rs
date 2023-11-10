@@ -1,6 +1,5 @@
 use axum::{
     body::{Body, Bytes, HttpBody},
-    http::HeaderMap,
     response::{IntoResponse, Response},
     Error,
 };

@@ -11,7 +11,7 @@ tower = { version = "0.4", features = ["util", "timeout", "load-shed", "limit"] 
 tower-http = { version = "0.4.4", features = [
     "add-extension",
     "auth",
-    "compression-full",
+    # "compression-full",
     "limit",
     "trace",
 ] }

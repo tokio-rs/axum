@@ -120,7 +120,7 @@ async fn router_type_doesnt_change() {
             on(MethodFilter::GET, |_: Request| async { "hi from GET" })
                 .on(MethodFilter::POST, |_: Request| async { "hi from POST" }),
         )
-        .layer(tower_http::compression::CompressionLayer::new());
+        .layer(tower_http::trace::TraceLayer::new_for_http());
 
     let client = TestClient::new(app);
 
@@ -181,16 +181,13 @@ async fn routing_between_services() {
 
 #[crate::test]
 async fn middleware_on_single_route() {
-    use tower_http::{compression::CompressionLayer, trace::TraceLayer};
+    use tower_http::trace::TraceLayer;
 
     async fn handle(_: Request) -> &'static str {
         "Hello, World!"
     }
 
-    let app = Router::new().route(
-        "/",
-        get(handle.layer((TraceLayer::new_for_http(), CompressionLayer::new()))),
-    );
+    let app = Router::new().route("/", get(handle.layer(TraceLayer::new_for_http())));
 
     let client = TestClient::new(app);
 
@@ -594,42 +591,43 @@ async fn head_content_length_through_hyper_server_that_hits_fallback() {
     assert_eq!(res.headers()["content-length"], "3");
 }
 
-#[crate::test]
-#[ignore]
-async fn head_with_middleware_applied() {
-    use tower_http::compression::{predicate::SizeAbove, CompressionLayer};
+// TODO(david): bring this back when https://github.com/tower-rs/tower-http/pull/348 supports compression
+// #[crate::test]
+// #[ignore]
+// async fn head_with_middleware_applied() {
+//     use tower_http::compression::{predicate::SizeAbove, CompressionLayer};
 
-    let app = Router::new()
-        .nest(
-            "/",
-            Router::new().route("/", get(|| async { "Hello, World!" })),
-        )
-        .layer(CompressionLayer::new().compress_when(SizeAbove::new(0)));
+//     let app = Router::new()
+//         .nest(
+//             "/",
+//             Router::new().route("/", get(|| async { "Hello, World!" })),
+//         )
+//         .layer(CompressionLayer::new().compress_when(SizeAbove::new(0)));
 
-    let client = TestClient::new(app);
+//     let client = TestClient::new(app);
 
-    // send GET request
-    let res = client
-        .get("/")
-        .header("accept-encoding", "gzip")
-        .send()
-        .await;
-    assert_eq!(res.headers()["transfer-encoding"], "chunked");
-    // cannot have `transfer-encoding: chunked` and `content-length`
-    assert!(!res.headers().contains_key("content-length"));
+//     // send GET request
+//     let res = client
+//         .get("/")
+//         .header("accept-encoding", "gzip")
+//         .send()
+//         .await;
+//     assert_eq!(res.headers()["transfer-encoding"], "chunked");
+//     // cannot have `transfer-encoding: chunked` and `content-length`
+//     assert!(!res.headers().contains_key("content-length"));
 
-    // send HEAD request
-    let res = client
-        .head("/")
-        .header("accept-encoding", "gzip")
-        .send()
-        .await;
-    // no response body so no `transfer-encoding`
-    assert!(!res.headers().contains_key("transfer-encoding"));
-    // no content-length since we cannot know it since the response
-    // is compressed
-    assert!(!res.headers().contains_key("content-length"));
-}
+//     // send HEAD request
+//     let res = client
+//         .head("/")
+//         .header("accept-encoding", "gzip")
+//         .send()
+//         .await;
+//     // no response body so no `transfer-encoding`
+//     assert!(!res.headers().contains_key("transfer-encoding"));
+//     // no content-length since we cannot know it since the response
+//     // is compressed
+//     assert!(!res.headers().contains_key("content-length"));
+// }
 
 #[crate::test]
 #[should_panic(expected = "Paths must start with a `/`")]
