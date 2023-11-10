@@ -22,7 +22,7 @@ matched-path = []
 multipart = ["dep:multer"]
 original-uri = []
 query = ["dep:serde_urlencoded"]
-tokio = ["dep:hyper-util", "dep:tokio", "hyper/runtime", "hyper/server", "hyper/tcp", "tokio/net", "tokio/rt", "tower/make"]
+tokio = ["dep:hyper-util", "dep:tokio", "tokio/net", "tokio/rt", "tower/make"]
 tower-log = ["tower/log"]
 tracing = ["dep:tracing", "axum-core/tracing"]
 ws = ["tokio", "dep:tokio-tungstenite", "dep:sha1", "dep:base64"]
@@ -38,7 +38,7 @@ futures-util = { version = "0.3", default-features = false, features = ["alloc"]
 http = "0.2.9"
 http-body = "1.0.0-rc.2"
 http-body-util = "0.1.0-rc.2"
-hyper = "1.0.0-rc.4"
+hyper = { package = "hyper", version = "=1.0.0-rc.4", features = ["server", "http1"] }
 itoa = "1.0.5"
 matchit = "0.7"
 memchr = "2.4.1"
@@ -52,7 +52,6 @@ tower-layer = "0.3.2"
 tower-service = "0.3"
 
 # wont need this when axum uses http-body 1.0
-hyper1 = { package = "hyper", version = "=1.0.0-rc.4", features = ["server", "http1", "http2"] }
 tower-hyper-http-body-compat = { version = "0.2", features = ["server", "http1"] }
 
 # optional dependencies
