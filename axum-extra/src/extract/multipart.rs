@@ -72,7 +72,7 @@ use std::{
 /// ```
 ///
 /// In general you should consume `Multipart` by looping over the fields in order and make sure not
-/// to keep `Field`s around from previous loop iterations. That will mimimize the risk of runtime
+/// to keep `Field`s around from previous loop iterations. That will minimize the risk of runtime
 /// errors.
 ///
 /// # Differences between this and  `axum::extract::Multipart`

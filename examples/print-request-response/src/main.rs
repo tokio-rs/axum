@@ -64,13 +64,13 @@ where
         Err(err) => {
             return Err((
                 StatusCode::BAD_REQUEST,
-                format!("failed to read {} body: {}", direction, err),
+                format!("failed to read {direction} body: {err}"),
             ));
         }
     };
 
     if let Ok(body) = std::str::from_utf8(&bytes) {
-        tracing::debug!("{} body = {:?}", direction, body);
+        tracing::debug!("{direction} body = {body:?}");
     }
 
     Ok(bytes)

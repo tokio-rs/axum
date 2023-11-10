@@ -149,7 +149,7 @@ mod tests {
         let response = request_sender
             .send_request(
                 Request::builder()
-                    .uri(format!("http://{}", addr))
+                    .uri(format!("http://{addr}"))
                     .header("Host", "localhost")
                     .body(Body::empty())
                     .unwrap(),

@@ -33,7 +33,7 @@ pin_project! {
     ///     let file = File::open("Cargo.toml")
     ///         .await
     ///         .map_err(|err| {
-    ///             (StatusCode::NOT_FOUND, format!("File not found: {}", err))
+    ///             (StatusCode::NOT_FOUND, format!("File not found: {err}"))
     ///         })?;
     ///
     ///     let headers = [(CONTENT_TYPE, "text/x-toml")];

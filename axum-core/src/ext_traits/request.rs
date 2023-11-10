@@ -311,7 +311,7 @@ impl RequestExt for Request {
         *req.uri_mut() = self.uri().clone();
         *req.headers_mut() = std::mem::take(self.headers_mut());
         *req.extensions_mut() = std::mem::take(self.extensions_mut());
-        let (mut parts, _) = req.into_parts();
+        let (mut parts, ()) = req.into_parts();
 
         Box::pin(async move {
             let result = E::from_request_parts(&mut parts, state).await;

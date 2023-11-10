@@ -30,7 +30,7 @@ async fn main() {
 
     let app = Router::new()
         .route("/", post(handler))
-        .layer(ServiceBuilder::new().layer(middleware::from_fn(print_request_body)));
+        .layer(middleware::from_fn(print_request_body));
 
     let listener = tokio::net::TcpListener::bind("127.0.0.1:3000")
         .await

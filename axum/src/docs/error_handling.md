@@ -92,7 +92,7 @@ let app = Router::new().route_service(
 async fn handle_anyhow_error(err: anyhow::Error) -> (StatusCode, String) {
     (
         StatusCode::INTERNAL_SERVER_ERROR,
-        format!("Something went wrong: {}", err),
+        format!("Something went wrong: {err}"),
     )
 }
 # let _: Router = app;
@@ -133,7 +133,7 @@ async fn handle_timeout_error(err: BoxError) -> (StatusCode, String) {
     } else {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
-            format!("Unhandled internal error: {}", err),
+            format!("Unhandled internal error: {err}"),
         )
     }
 }
@@ -174,7 +174,7 @@ async fn handle_timeout_error(
 ) -> (StatusCode, String) {
     (
         StatusCode::INTERNAL_SERVER_ERROR,
-        format!("`{} {}` failed with {}", method, uri, err),
+        format!("`{method} {uri}` failed with {err}"),
     )
 }
 # let _: Router = app;

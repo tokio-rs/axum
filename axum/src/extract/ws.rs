@@ -104,6 +104,7 @@ use http::{
     request::Parts,
     Method, StatusCode,
 };
+use hyper_util::rt::TokioIo;
 use sha1::{Digest, Sha1};
 use std::{
     borrow::Cow,
@@ -296,7 +297,7 @@ impl<F> WebSocketUpgrade<F> {
 
     /// Finalize upgrading the connection and call the provided callback with
     /// the stream.
-    #[must_use = "to setup the WebSocket connection, this response must be returned"]
+    #[must_use = "to set up the WebSocket connection, this response must be returned"]
     pub fn on_upgrade<C, Fut>(self, callback: C) -> Response
     where
         C: FnOnce(WebSocket) -> Fut + Send + 'static,

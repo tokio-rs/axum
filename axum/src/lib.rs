@@ -1,4 +1,4 @@
-#![cfg_attr(nightly_error_messages, feature(rustc_attrs))]
+#![cfg_attr(nightly_error_messages, feature(diagnostic_namespace))]
 //! axum is a web application framework that focuses on ergonomics and modularity.
 //!
 //! # Table of contents
@@ -64,7 +64,7 @@
 //!
 //! # Routing
 //!
-//! [`Router`] is used to setup which paths goes to which services:
+//! [`Router`] is used to set up which paths goes to which services:
 //!
 //! ```rust
 //! use axum::{Router, routing::get};
@@ -412,7 +412,7 @@
     missing_debug_implementations,
     missing_docs
 )]
-#![deny(unreachable_pub, private_in_public)]
+#![deny(unreachable_pub)]
 #![allow(elided_lifetimes_in_paths, clippy::type_complexity)]
 // can't be `forbid` since we've vendored code from hyper-util that contains `unsafe`
 // when hyper-util is on crates.io we can stop vendoring it and go back to `forbid`
@@ -428,8 +428,6 @@ mod boxed;
 mod extension;
 #[cfg(feature = "form")]
 mod form;
-#[cfg(feature = "tokio")]
-mod hyper1_tokio_io;
 #[cfg(feature = "json")]
 mod json;
 mod service_ext;

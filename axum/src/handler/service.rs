@@ -84,7 +84,7 @@ impl<H, T, S> HandlerService<H, T, S> {
     ///     ConnectInfo(addr): ConnectInfo<SocketAddr>,
     ///     State(state): State<AppState>,
     /// ) -> String {
-    ///     format!("Hello {}", addr)
+    ///     format!("Hello {addr}")
     /// }
     ///
     /// let app = handler.with_state(AppState {});

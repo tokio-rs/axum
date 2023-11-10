@@ -1,7 +1,8 @@
 use super::*;
-use crate::{error_handling::HandleErrorLayer, extract::OriginalUri, response::IntoResponse, Json};
+use crate::{extract::OriginalUri, response::IntoResponse, Json};
 use serde_json::{json, Value};
-use tower::{limit::ConcurrencyLimitLayer, timeout::TimeoutLayer};
+use tower::limit::ConcurrencyLimitLayer;
+use tower_http::timeout::TimeoutLayer;
 
 #[crate::test]
 async fn basic() {
@@ -127,13 +128,7 @@ async fn layer_and_handle_error() {
     let one = Router::new().route("/foo", get(|| async {}));
     let two = Router::new()
         .route("/timeout", get(std::future::pending::<()>))
-        .layer(
-            ServiceBuilder::new()
-                .layer(HandleErrorLayer::new(|_| async {
-                    StatusCode::REQUEST_TIMEOUT
-                }))
-                .layer(TimeoutLayer::new(Duration::from_millis(10))),
-        );
+        .layer(TimeoutLayer::new(Duration::from_millis(10)));
     let app = one.merge(two);
 
     let client = TestClient::new(app);

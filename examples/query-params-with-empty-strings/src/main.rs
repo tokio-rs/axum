@@ -22,7 +22,7 @@ fn app() -> Router {
 }
 
 async fn handler(Query(params): Query<Params>) -> String {
-    format!("{:?}", params)
+    format!("{params:?}")
 }
 
 /// See the tests below for which combinations of `foo` and `bar` result in
@@ -108,7 +108,7 @@ mod tests {
         let body = app()
             .oneshot(
                 Request::builder()
-                    .uri(format!("/?{}", query))
+                    .uri(format!("/?{query}"))
                     .body(Body::empty())
                     .unwrap(),
             )

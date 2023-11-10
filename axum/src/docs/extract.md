@@ -291,7 +291,7 @@ options:
 1. Use `Result<T, T::Rejection>` as your extractor like shown in ["Optional
    extractors"](#optional-extractors). This works well if you're only using
    the extractor in a single handler.
-2. Create your own extractor that in its [`FromRequest`] implemention calls
+2. Create your own extractor that in its [`FromRequest`] implementation calls
    one of axum's built in extractors but returns a different response for
    rejections. See the [customize-extractor-error] example for more details.
 
@@ -569,7 +569,7 @@ let app = Router::new().route(
 
 # Accessing other extractors in `FromRequest` or `FromRequestParts` implementations
 
-When defining custom extractors you often need to access another extractors
+When defining custom extractors you often need to access another extractor
 in your implementation.
 
 ```rust

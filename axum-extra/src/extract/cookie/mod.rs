@@ -130,7 +130,7 @@ impl CookieJar {
 
     /// Create a new empty `CookieJar`.
     ///
-    /// This is inteded to be used in middleware and other places where it might be difficult to
+    /// This is intended to be used in middleware and other places where it might be difficult to
     /// run extractors. Normally you should create `CookieJar`s through [`FromRequestParts`].
     ///
     /// If you need a jar that contains the headers from a request use `impl From<&HeaderMap> for
