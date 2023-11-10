@@ -393,7 +393,7 @@ where
             return Err(MethodNotGet.into());
         }
 
-        if !header_contains(&parts.headers, header::CONNECTION, "upgrade") {
+        if !header_eq(&parts.headers, header::CONNECTION, "upgrade") {
             return Err(InvalidConnectionHeader.into());
         }
 
