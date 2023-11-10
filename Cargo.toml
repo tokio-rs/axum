@@ -8,7 +8,7 @@ resolver = "2"
 
 [patch.crates-io]
 # https://github.com/tower-rs/tower-http/pull/348
-tower-http = { git = "https://github.com/tower-rs/tower-http", rev = "8734fc4438828" }
+tower-http = { git = "https://github.com/tower-rs/tower-http", rev = "b7b33bbc40175" }
 
 # for `Frame::map_data`
 http-body = { git = "https://github.com/hyperium/http-body", rev = "7bf321acbb422" }
