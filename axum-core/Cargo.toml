@@ -31,7 +31,7 @@ tower-layer = "0.3"
 tower-service = "0.3"
 
 # optional dependencies
-tower-http = { version = "0.4", optional = true, features = ["limit"] }
+tower-http = { version = "0.4.4", optional = true, features = ["limit"] }
 tracing = { version = "0.1.37", default-features = false, optional = true }
 
 [build-dependencies]
@@ -43,7 +43,7 @@ axum-extra = { path = "../axum-extra", features = ["typed-header"] }
 futures-util = { version = "0.3", default-features = false, features = ["alloc"] }
 hyper = "=1.0.0-rc.4"
 tokio = { version = "1.25.0", features = ["macros"] }
-tower-http = { version = "0.4", features = ["limit"] }
+tower-http = { version = "0.4.4", features = ["limit"] }
 
 [package.metadata.cargo-public-api-crates]
 allowed = [

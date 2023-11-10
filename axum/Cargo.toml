@@ -65,7 +65,7 @@ tokio-tungstenite = { version = "0.20", optional = true }
 tracing = { version = "0.1", default-features = false, optional = true }
 
 [dependencies.tower-http]
-version = "0.4"
+version = "0.4.4"
 optional = true
 features = [
     # all tower-http features except (de)?compression-zstd which doesn't
@@ -135,7 +135,7 @@ features = [
 ]
 
 [dev-dependencies.tower-http]
-version = "0.4"
+version = "0.4.4"
 features = [
     # all tower-http features except (de)?compression-zstd which doesn't
     # build on `--target armv5te-unknown-linux-musleabi`
