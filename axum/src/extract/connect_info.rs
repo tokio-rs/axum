@@ -7,7 +7,6 @@
 use crate::extension::AddExtension;
 
 use super::{Extension, FromRequestParts};
-use crate::{middleware::AddExtension, serve::IncomingStream};
 use async_trait::async_trait;
 use http::request::Parts;
 use std::{

@@ -41,8 +41,8 @@ axum-core = { path = "../axum-core", version = "0.3.4" }
 bytes = "1.1.0"
 futures-util = { version = "0.3", default-features = false, features = ["alloc"] }
 http = "0.2"
-http-body = "1.0.0-rc.2"
-http-body-util = "0.1.0-rc.2"
+http-body = "=1.0.0-rc.2"
+http-body-util = "=0.1.0-rc.3"
 mime = "0.3"
 pin-project-lite = "0.2"
 serde = "1.0"
@@ -66,8 +66,7 @@ tokio-util = { version = "0.7", optional = true }
 
 [dev-dependencies]
 axum = { path = "../axum", version = "0.6.0" }
-http-body = "1.0.0-rc.2"
-hyper = "1.0.0-rc.4"
+hyper = "=1.0.0-rc.4"
 reqwest = { version = "0.11", default-features = false, features = ["json", "stream", "multipart"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0.71"

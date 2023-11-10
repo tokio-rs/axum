@@ -36,8 +36,8 @@ axum-core = { path = "../axum-core", version = "0.3.4" }
 bytes = "1.0"
 futures-util = { version = "0.3", default-features = false, features = ["alloc"] }
 http = "0.2.9"
-http-body = "1.0.0-rc.2"
-http-body-util = "0.1.0-rc.2"
+http-body = "=1.0.0-rc.2"
+http-body-util = "=0.1.0-rc.3"
 hyper = { package = "hyper", version = "=1.0.0-rc.4", features = ["server", "http1"] }
 itoa = "1.0.5"
 matchit = "0.7"
@@ -50,9 +50,6 @@ sync_wrapper = "0.1.1"
 tower = { version = "0.4.13", default-features = false, features = ["util"] }
 tower-layer = "0.3.2"
 tower-service = "0.3"
-
-# wont need this when axum uses http-body 1.0
-tower-hyper-http-body-compat = { version = "0.2", features = ["server", "http1"] }
 
 # optional dependencies
 axum-macros = { path = "../axum-macros", version = "0.3.7", optional = true }

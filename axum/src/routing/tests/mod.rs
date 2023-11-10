@@ -4,14 +4,25 @@ use crate::{
     extract::{self, DefaultBodyLimit, FromRef, Path, State},
     handler::{Handler, HandlerWithoutStateExt},
     response::{IntoResponse, Response},
-    routing::{delete, get, get_service, on, on_service, patch, patch_service, post, MethodFilter},
-    test_helpers::*,
-    BoxError, Json, Router,
+    routing::{
+        delete, get, get_service, on, on_service, patch, patch_service,
+        path_router::path_for_nested_route, post, MethodFilter,
+    },
+    test_helpers::{
+        tracing_helpers::{capture_tracing, TracingEvent},
+        *,
+    },
+    BoxError, Extension, Json, Router,
 };
 use axum_core::extract::Request;
 use futures_util::stream::StreamExt;
-use http::{header::ALLOW, header::CONTENT_LENGTH, HeaderMap, StatusCode, Uri};
+use http::{
+    header::ALLOW,
+    header::{CONTENT_LENGTH, HOST},
+    HeaderMap, Method, StatusCode, Uri,
+};
 use http_body_util::BodyExt;
+use serde::Deserialize;
 use serde_json::json;
 use std::{
     convert::Infallible,
@@ -1049,7 +1060,7 @@ async fn connect_going_to_custom_fallback() {
 
     let res = app.oneshot(req).await.unwrap();
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
-    let text = String::from_utf8(hyper::body::to_bytes(res).await.unwrap().to_vec()).unwrap();
+    let text = String::from_utf8(res.collect().await.unwrap().to_bytes().to_vec()).unwrap();
     assert_eq!(text, "custom fallback");
 }
 
@@ -1067,7 +1078,7 @@ async fn connect_going_to_default_fallback() {
 
     let res = app.oneshot(req).await.unwrap();
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
-    let body = hyper::body::to_bytes(res).await.unwrap();
+    let body = res.collect().await.unwrap().to_bytes();
     assert!(body.is_empty());
 }
 
