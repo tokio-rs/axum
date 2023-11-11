@@ -32,20 +32,21 @@ If you only want middleware on some routes you can use [`Router::merge`]:
 
 ```rust
 use axum::{routing::get, Router};
-use tower_http::{trace::TraceLayer, compression::CompressionLayer};
+use tower_http::{trace::TraceLayer, timeout::TimeoutLayer};
+use std::time::Duration;
 
 let with_tracing = Router::new()
     .route("/foo", get(|| async {}))
     .layer(TraceLayer::new_for_http());
 
-let with_compression = Router::new()
+let with_timeout = Router::new()
     .route("/bar", get(|| async {}))
-    .layer(CompressionLayer::new());
+    .layer(TimeoutLayer::new(Duration::from_secs(10)));
 
 // Merge everything into one `Router`
 let app = Router::new()
     .merge(with_tracing)
-    .merge(with_compression);
+    .merge(with_timeout);
 # let _: Router = app;
 ```
 

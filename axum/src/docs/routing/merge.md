@@ -32,9 +32,7 @@ let app = Router::new()
 // - GET /users
 // - GET /users/:id
 // - GET /teams
-# async {
-# hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-# };
+# let _: Router = app;
 ```
 
 # Merging routers with state
