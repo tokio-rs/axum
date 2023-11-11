@@ -61,7 +61,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **fixed:** Fix `.source()` of composite rejections ([#2030])
 - **fixed:** Allow unreachable code in `#[debug_handler]` ([#2014])
 - **change:** Update tokio-tungstenite to 0.19 ([#2021])
-- **change:** axum's MSRV is now 1.65 ([#2021])
+- **change:** axum's MSRV is now 1.66 ([#1882])
 - **added:** Implement `Handler` for `T: IntoResponse` ([#2140])
 - **added:** Implement `IntoResponse` for `(R,) where R: IntoResponse` ([#2143])
 - **changed:** For SSE, add space between field and value for compatibility ([#2149])
@@ -74,6 +74,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#1835]: https://github.com/tokio-rs/axum/pull/1835
 [#1850]: https://github.com/tokio-rs/axum/pull/1850
 [#1868]: https://github.com/tokio-rs/axum/pull/1868
+[#1882]: https://github.com/tokio-rs/axum/pull/1882
 [#1924]: https://github.com/tokio-rs/axum/pull/1924
 [#1956]: https://github.com/tokio-rs/axum/pull/1956
 [#1972]: https://github.com/tokio-rs/axum/pull/1972
