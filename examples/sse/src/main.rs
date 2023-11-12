@@ -4,13 +4,15 @@
 //! cargo run -p example-sse
 //! ```
 
+use axum::extract::TypedHeader;
 use axum::{
     response::sse::{Event, Sse},
     routing::get,
     Router,
 };
-use axum_extra::{headers, TypedHeader};
 use futures::stream::{self, Stream};
+use std::net::SocketAddr;
+use std::str::FromStr;
 use std::{convert::Infallible, path::PathBuf, time::Duration};
 use tokio_stream::StreamExt as _;
 use tower_http::{services::ServeDir, trace::TraceLayer};
@@ -37,11 +39,13 @@ async fn main() {
         .layer(TraceLayer::new_for_http());
 
     // run it
-    let listener = tokio::net::TcpListener::bind("127.0.0.1:3000")
+    let address = SocketAddr::from_str("127.0.0.1:3000").unwrap();
+    tracing::debug!("listening on {}", address);
+
+    axum::Server::bind(&address)
+        .serve(app.into_make_service())
         .await
         .unwrap();
-    tracing::debug!("listening on {}", listener.local_addr().unwrap());
-    axum::serve(listener, app).await.unwrap();
 }
 
 async fn sse_handler(
@@ -53,9 +57,14 @@ async fn sse_handler(
     //
     // You can also create streams from tokio channels using the wrappers in
     // https://docs.rs/tokio-stream
-    let stream = stream::repeat_with(|| Event::default().data("hi!"))
-        .map(Ok)
-        .throttle(Duration::from_secs(1));
+    let mut curr = 0;
+    let stream = stream::repeat_with(move || {
+        curr += 1;
+        // SSE supports only UTF-8. Therefore, conversion is required
+        Event::default().data(curr.to_string())
+    })
+    .map(Ok)
+    .throttle(Duration::from_secs(1));
 
     Sse::new(stream).keep_alive(
         axum::response::sse::KeepAlive::new()
