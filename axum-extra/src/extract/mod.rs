@@ -11,6 +11,9 @@ mod form;
 pub mod cookie;
 
 #[cfg(feature = "query")]
+mod optional_query;
+
+#[cfg(feature = "query")]
 mod query;
 
 #[cfg(feature = "multipart")]
@@ -29,6 +32,9 @@ pub use self::cookie::SignedCookieJar;
 
 #[cfg(feature = "form")]
 pub use self::form::{Form, FormRejection};
+
+#[cfg(feature = "query")]
+pub use self::optional_query::{OptionalQuery, OptionalQueryRejection};
 
 #[cfg(feature = "query")]
 pub use self::query::{Query, QueryRejection};
