@@ -25,6 +25,10 @@ use std::{fmt, sync::Arc};
 ///
 /// These examples assume the `serde` feature of the [`uuid`] crate is enabled.
 ///
+/// One `Path` argument extracts _all_ captures into a tuple. A function should
+/// not have multiple `Path` arguments---the first will extract all captures
+/// and subsequent ones will do nothing.
+///
 /// [`uuid`]: https://crates.io/crates/uuid
 ///
 /// ```rust,no_run
