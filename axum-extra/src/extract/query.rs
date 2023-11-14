@@ -276,7 +276,7 @@ mod tests {
             "/",
             post(|OptionalQuery(data): OptionalQuery<Data>| async move {
                 data.map(|Data { values }| values.join(","))
-                    .unwrap_or("None".to_string())
+                    .unwrap_or("None".to_owned())
             }),
         );
 
