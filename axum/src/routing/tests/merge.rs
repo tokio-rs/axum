@@ -135,6 +135,8 @@ async fn layer_and_handle_error() {
 
     let res = client.get("/timeout").send().await;
     assert_eq!(res.status(), StatusCode::REQUEST_TIMEOUT);
+    let res = client.get("/foo").send().await;
+    assert_eq!(res.status(), StatusCode::OK);
 }
 
 #[crate::test]
