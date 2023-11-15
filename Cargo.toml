@@ -5,3 +5,7 @@ default-members = ["axum", "axum-*"]
 # Example has been deleted, but README.md remains
 exclude = ["examples/async-graphql"]
 resolver = "2"
+
+[patch.crates-io]
+# https://github.com/tower-rs/tower-http/pull/348
+tower-http = { git = "https://github.com/tower-rs/tower-http", rev = "602f06f248211" }
