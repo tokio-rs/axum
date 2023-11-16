@@ -127,6 +127,7 @@ async fn with_status_extensions() -> impl IntoResponse {
     )
 }
 
+#[derive(Clone)]
 struct Foo(&'static str);
 
 // Or mix and match all the things

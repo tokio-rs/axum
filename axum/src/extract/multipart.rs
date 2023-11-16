@@ -13,7 +13,6 @@ use futures_util::stream::Stream;
 use http::header::{HeaderMap, CONTENT_TYPE};
 use http::StatusCode;
 use std::error::Error;
-use std::str::FromStr;
 use std::{
     fmt,
     pin::Pin,

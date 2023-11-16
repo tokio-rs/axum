@@ -7,5 +7,11 @@ exclude = ["examples/async-graphql"]
 resolver = "2"
 
 [patch.crates-io]
-# https://github.com/tower-rs/tower-http/pull/348
+# PR=https://github.com/tower-rs/tower-http/pull/348
 tower-http = { git = "https://github.com/tower-rs/tower-http", rev = "602f06f248211" }
+
+# for http 1.0. PR to update is merged but not published
+headers = { git = "https://github.com/hyperium/headers", rev = "4400aa90c47a7" }
+
+# for http 1.0. PR=https://github.com/rousan/multer-rs/pull/59
+multer = { git = "https://github.com/davidpdrsn/multer-rs", rev = "abe0e3a42a1fc" }
