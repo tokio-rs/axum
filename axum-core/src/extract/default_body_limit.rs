@@ -22,8 +22,7 @@ use tower_layer::Layer;
 /// [`RequestBodyLimit`] is applied globally to all requests, regardless of which extractors are
 /// used or how the body is consumed.
 ///
-/// `DefaultBodyLimit` is also easier to integrate into an existing setup since it doesn't change
-/// the request body type:
+/// # Example
 ///
 /// ```
 /// use axum::{
@@ -34,28 +33,9 @@ use tower_layer::Layer;
 /// };
 ///
 /// let app = Router::new()
-///     .route(
-///         "/",
-///         // even with `DefaultBodyLimit` the request body is still just `Body`
-///         post(|request: Request| async {}),
-///     )
+///     .route("/", post(|request: Request| async {}))
+///     // change the default limit
 ///     .layer(DefaultBodyLimit::max(1024));
-/// # let _: Router = app;
-/// ```
-///
-/// ```
-/// use axum::{Router, routing::post, body::Body, extract::Request};
-/// use tower_http::limit::RequestBodyLimitLayer;
-/// use http_body_util::Limited;
-///
-/// let app = Router::new()
-///     .route(
-///         "/",
-///         // `RequestBodyLimitLayer` changes the request body type to `Limited<Body>`
-///         // extracting a different body type wont work
-///         post(|request: Request| async {}),
-///     )
-///     .layer(RequestBodyLimitLayer::new(1024));
 /// # let _: Router = app;
 /// ```
 ///
