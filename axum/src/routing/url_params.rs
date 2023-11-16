@@ -3,6 +3,7 @@ use http::Extensions;
 use matchit::Params;
 use std::sync::Arc;
 
+#[derive(Clone)]
 pub(crate) enum UrlParams {
     Params(Vec<(Arc<str>, PercentDecodedStr)>),
     InvalidUtf8InPathParam { key: Arc<str> },
