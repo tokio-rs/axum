@@ -69,6 +69,17 @@ impl Redirect {
         Self::with_status_code(StatusCode::PERMANENT_REDIRECT, uri)
     }
 
+    /// Create a new [`Redirect`] that uses a [`302 Found`][mdn] status code.
+    ///
+    /// # Panics
+    ///
+    /// If `uri` isn't a valid [`HeaderValue`].
+    ///
+    /// [mdn]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/302
+    pub fn found(uri: &str) -> Self {
+        Self::with_status_code(StatusCode::FOUND, uri)
+    }
+
     // This is intentionally not public since other kinds of redirects might not
     // use the `Location` header, namely `304 Not Modified`.
     //
