@@ -1,4 +1,4 @@
-Merge the paths of two routers into a single [`Router`].
+Merge the paths and fallbacks of two routers into a single [`Router`].
 
 This is useful for breaking apps into smaller pieces and combining them
 into one.
