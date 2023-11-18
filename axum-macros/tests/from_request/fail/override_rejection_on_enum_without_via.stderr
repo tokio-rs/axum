@@ -1,13 +1,13 @@
 error: cannot use `rejection` without `via`
-  --> tests/from_request/fail/override_rejection_on_enum_without_via.rs:18:16
+  --> tests/from_request/fail/override_rejection_on_enum_without_via.rs:19:16
    |
-18 | #[from_request(rejection(MyRejection))]
+19 | #[from_request(rejection(MyRejection))]
    |                ^^^^^^^^^
 
 error[E0277]: the trait bound `fn(MyExtractor) -> impl Future<Output = ()> {handler}: Handler<_, _>` is not satisfied
-  --> tests/from_request/fail/override_rejection_on_enum_without_via.rs:10:50
+  --> tests/from_request/fail/override_rejection_on_enum_without_via.rs:11:50
    |
-10 |     let _: Router = Router::new().route("/", get(handler).post(handler_result));
+11 |     let _: Router = Router::new().route("/", get(handler).post(handler_result));
    |                                              --- ^^^^^^^ the trait `Handler<_, _>` is not implemented for fn item `fn(MyExtractor) -> impl Future<Output = ()> {handler}`
    |                                              |
    |                                              required by a bound introduced by this call
@@ -20,13 +20,16 @@ note: required by a bound in `axum::routing::get`
   --> $WORKSPACE/axum/src/routing/method_routing.rs
    |
    | top_level_handler_fn!(get, GET);
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `get`
+   | ^^^^^^^^^^^^^^^^^^^^^^---^^^^^^
+   | |                     |
+   | |                     required by a bound in this function
+   | required by this bound in `get`
    = note: this error originates in the macro `top_level_handler_fn` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: the trait bound `fn(Result<MyExtractor, MyRejection>) -> impl Future<Output = ()> {handler_result}: Handler<_, _>` is not satisfied
-  --> tests/from_request/fail/override_rejection_on_enum_without_via.rs:10:64
+  --> tests/from_request/fail/override_rejection_on_enum_without_via.rs:11:64
    |
-10 |     let _: Router = Router::new().route("/", get(handler).post(handler_result));
+11 |     let _: Router = Router::new().route("/", get(handler).post(handler_result));
    |                                                           ---- ^^^^^^^^^^^^^^ the trait `Handler<_, _>` is not implemented for fn item `fn(Result<MyExtractor, MyRejection>) -> impl Future<Output = ()> {handler_result}`
    |                                                           |
    |                                                           required by a bound introduced by this call
@@ -39,5 +42,8 @@ note: required by a bound in `MethodRouter::<S>::post`
   --> $WORKSPACE/axum/src/routing/method_routing.rs
    |
    |     chained_handler_fn!(post, POST);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `MethodRouter::<S>::post`
+   |     ^^^^^^^^^^^^^^^^^^^^----^^^^^^^
+   |     |                   |
+   |     |                   required by a bound in this associated function
+   |     required by this bound in `MethodRouter::<S>::post`
    = note: this error originates in the macro `chained_handler_fn` (in Nightly builds, run with -Z macro-backtrace for more info)

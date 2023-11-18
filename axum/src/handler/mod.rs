@@ -127,7 +127,7 @@ pub use self::service::HandlerService;
 /// ```
 #[cfg_attr(
     nightly_error_messages,
-    rustc_on_unimplemented(
+    diagnostic::on_unimplemented(
         note = "Consider using `#[axum::debug_handler]` to improve the error message"
     )
 )]

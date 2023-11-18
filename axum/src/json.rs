@@ -103,31 +103,7 @@ where
     async fn from_request(req: Request, state: &S) -> Result<Self, Self::Rejection> {
         if json_content_type(req.headers()) {
             let bytes = Bytes::from_request(req, state).await?;
-            let deserializer = &mut serde_json::Deserializer::from_slice(&bytes);
-
-            let value = match serde_path_to_error::deserialize(deserializer) {
-                Ok(value) => value,
-                Err(err) => {
-                    let rejection = match err.inner().classify() {
-                        serde_json::error::Category::Data => JsonDataError::from_err(err).into(),
-                        serde_json::error::Category::Syntax | serde_json::error::Category::Eof => {
-                            JsonSyntaxError::from_err(err).into()
-                        }
-                        serde_json::error::Category::Io => {
-                            if cfg!(debug_assertions) {
-                                // we don't use `serde_json::from_reader` and instead always buffer
-                                // bodies first, so we shouldn't encounter any IO errors
-                                unreachable!()
-                            } else {
-                                JsonSyntaxError::from_err(err).into()
-                            }
-                        }
-                    };
-                    return Err(rejection);
-                }
-            };
-
-            Ok(Json(value))
+            Self::from_bytes(&bytes)
         } else {
             Err(MissingJsonContentType.into())
         }
@@ -164,6 +140,42 @@ axum_core::__impl_deref!(Json);
 impl<T> From<T> for Json<T> {
     fn from(inner: T) -> Self {
         Self(inner)
+    }
+}
+
+impl<T> Json<T>
+where
+    T: DeserializeOwned,
+{
+    /// Construct a `Json<T>` from a byte slice. Most users should prefer to use the `FromRequest` impl
+    /// but special cases may require first extracting a `Request` into `Bytes` then optionally
+    /// constructing a `Json<T>`.
+    pub fn from_bytes(bytes: &[u8]) -> Result<Self, JsonRejection> {
+        let deserializer = &mut serde_json::Deserializer::from_slice(bytes);
+
+        let value = match serde_path_to_error::deserialize(deserializer) {
+            Ok(value) => value,
+            Err(err) => {
+                let rejection = match err.inner().classify() {
+                    serde_json::error::Category::Data => JsonDataError::from_err(err).into(),
+                    serde_json::error::Category::Syntax | serde_json::error::Category::Eof => {
+                        JsonSyntaxError::from_err(err).into()
+                    }
+                    serde_json::error::Category::Io => {
+                        if cfg!(debug_assertions) {
+                            // we don't use `serde_json::from_reader` and instead always buffer
+                            // bodies first, so we shouldn't encounter any IO errors
+                            unreachable!()
+                        } else {
+                            JsonSyntaxError::from_err(err).into()
+                        }
+                    }
+                };
+                return Err(rejection);
+            }
+        };
+
+        Ok(Json(value))
     }
 }
 
