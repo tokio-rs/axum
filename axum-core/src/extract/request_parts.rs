@@ -79,18 +79,12 @@ where
     type Rejection = BytesRejection;
 
     async fn from_request(req: Request, _: &S) -> Result<Self, Self::Rejection> {
-        let bytes = match req.into_limited_body() {
-            Ok(limited_body) => limited_body
-                .collect()
-                .await
-                .map_err(FailedToBufferBody::from_err)?
-                .to_bytes(),
-            Err(unlimited_body) => unlimited_body
-                .collect()
-                .await
-                .map_err(FailedToBufferBody::from_err)?
-                .to_bytes(),
-        };
+        let bytes = req
+            .into_limited_body()
+            .collect()
+            .await
+            .map_err(FailedToBufferBody::from_err)?
+            .to_bytes();
 
         Ok(bytes)
     }
