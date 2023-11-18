@@ -11,8 +11,8 @@ error[E0277]: the trait bound `bool: FromRequestParts<()>` is not satisfied
             <Extension<T> as FromRequestParts<S>>
             <Method as FromRequestParts<S>>
             <Uri as FromRequestParts<S>>
-            <Version as FromRequestParts<S>>
             <ConnectInfo<T> as FromRequestParts<S>>
+            <Version as FromRequestParts<S>>
             <axum::extract::Path<T> as FromRequestParts<S>>
             <RawPathParams as FromRequestParts<S>>
           and $N others
