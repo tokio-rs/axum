@@ -17,8 +17,7 @@ use crate::{
 use axum_core::extract::Request;
 use futures_util::stream::StreamExt;
 use http::{
-    header::ALLOW,
-    header::{CONTENT_LENGTH, HOST},
+    header::{ALLOW, CONTENT_LENGTH, HOST},
     HeaderMap, Method, StatusCode, Uri,
 };
 use http_body_util::BodyExt;
