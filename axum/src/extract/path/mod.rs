@@ -25,6 +25,9 @@ use std::{fmt, sync::Arc};
 ///
 /// These examples assume the `serde` feature of the [`uuid`] crate is enabled.
 ///
+/// One `Path` can extract multiple captures. It is not necessary (and does
+/// not work) to give a handler more than one `Path` argument.
+///
 /// [`uuid`]: https://crates.io/crates/uuid
 ///
 /// ```rust,no_run

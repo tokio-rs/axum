@@ -1,4 +1,4 @@
-Merge two routers into one.
+Merge the paths and fallbacks of two routers into a single [`Router`].
 
 This is useful for breaking apps into smaller pieces and combining them
 into one.
@@ -68,6 +68,11 @@ let app = Router::new()
     .with_state(OuterState {});
 # let _: axum::Router = app;
 ```
+
+# Merging routers with fallbacks
+
+When combining [`Router`]s with this method, the [fallback](Router::fallback) is also merged.
+However only one of the routers can have a fallback.
 
 # Panics
 
