@@ -8,7 +8,7 @@ resolver = "2"
 
 [patch.crates-io]
 # PR=https://github.com/tower-rs/tower-http/pull/348
-tower-http = { git = "https://github.com/tower-rs/tower-http", rev = "30a8cadece58f" }
+tower-http = { git = "https://github.com/tower-rs/tower-http", rev = "77ba9a8d03f23" }
 
 # for http 1.0. PR to update is merged but not published
 headers = { git = "https://github.com/hyperium/headers", rev = "4400aa90c47a7" }
