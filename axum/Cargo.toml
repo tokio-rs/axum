@@ -35,7 +35,7 @@ async-trait = "0.1.67"
 axum-core = { path = "../axum-core", version = "0.3.4" }
 bytes = "1.0"
 futures-util = { version = "0.3", default-features = false, features = ["alloc"] }
-http = "0.2.9"
+http = "1.0.0"
 http-body = "0.4.4"
 hyper = { version = "0.14.24", features = ["stream"] }
 itoa = "1.0.5"
