@@ -590,43 +590,41 @@ async fn head_content_length_through_hyper_server_that_hits_fallback() {
     assert_eq!(res.headers()["content-length"], "3");
 }
 
-// TODO(david): bring this back when https://github.com/tower-rs/tower-http/pull/348 supports compression
-// #[crate::test]
-// #[ignore]
-// async fn head_with_middleware_applied() {
-//     use tower_http::compression::{predicate::SizeAbove, CompressionLayer};
+#[crate::test]
+async fn head_with_middleware_applied() {
+    use tower_http::compression::{predicate::SizeAbove, CompressionLayer};
 
-//     let app = Router::new()
-//         .nest(
-//             "/",
-//             Router::new().route("/", get(|| async { "Hello, World!" })),
-//         )
-//         .layer(CompressionLayer::new().compress_when(SizeAbove::new(0)));
+    let app = Router::new()
+        .nest(
+            "/",
+            Router::new().route("/", get(|| async { "Hello, World!" })),
+        )
+        .layer(CompressionLayer::new().compress_when(SizeAbove::new(0)));
 
-//     let client = TestClient::new(app);
+    let client = TestClient::new(app);
 
-//     // send GET request
-//     let res = client
-//         .get("/")
-//         .header("accept-encoding", "gzip")
-//         .send()
-//         .await;
-//     assert_eq!(res.headers()["transfer-encoding"], "chunked");
-//     // cannot have `transfer-encoding: chunked` and `content-length`
-//     assert!(!res.headers().contains_key("content-length"));
+    // send GET request
+    let res = client
+        .get("/")
+        .header("accept-encoding", "gzip")
+        .send()
+        .await;
+    assert_eq!(res.headers()["transfer-encoding"], "chunked");
+    // cannot have `transfer-encoding: chunked` and `content-length`
+    assert!(!res.headers().contains_key("content-length"));
 
-//     // send HEAD request
-//     let res = client
-//         .head("/")
-//         .header("accept-encoding", "gzip")
-//         .send()
-//         .await;
-//     // no response body so no `transfer-encoding`
-//     assert!(!res.headers().contains_key("transfer-encoding"));
-//     // no content-length since we cannot know it since the response
-//     // is compressed
-//     assert!(!res.headers().contains_key("content-length"));
-// }
+    // send HEAD request
+    let res = client
+        .head("/")
+        .header("accept-encoding", "gzip")
+        .send()
+        .await;
+    // no response body so no `transfer-encoding`
+    assert!(!res.headers().contains_key("transfer-encoding"));
+    // no content-length since we cannot know it since the response
+    // is compressed
+    assert!(!res.headers().contains_key("content-length"));
+}
 
 #[crate::test]
 #[should_panic(expected = "Paths must start with a `/`")]

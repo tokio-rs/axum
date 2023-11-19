@@ -64,7 +64,7 @@ Some commonly used middleware are:
 
 - [`TraceLayer`](tower_http::trace) for high level tracing/logging.
 - [`CorsLayer`](tower_http::cors) for handling CORS.
-- `CompressionLayer` for automatic compression of responses.
+- [`CompressionLayer`](tower_http::compression) for automatic compression of responses.
 - [`RequestIdLayer`](tower_http::request_id) and
   [`PropagateRequestIdLayer`](tower_http::request_id) set and propagate request
   ids.
