@@ -112,6 +112,8 @@ jobs:
     - uses: Swatinem/rust-cache@v2
     - name: Select minimal version
       run: cargo +nightly update -Z minimal-versions
+    - name: Fix up Cargo.lock
+      run: cargo +nightly update -p crc32fast --precise 1.1.1
     - name: Run tests
       run: >
         cargo +${{ env.MSRV }}
