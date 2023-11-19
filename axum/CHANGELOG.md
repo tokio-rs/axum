@@ -69,6 +69,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **breaking:** `impl<T> IntoResponse(Parts) for Extension<T>` now requires
   `T: Clone`, as that is required by the http crate ([#1882])
 - **added:** Add `axum::Json::from_bytes` ([#2244])
+- **added:** Implement `FromRequestParts` for `http::request::Parts` ([#2328])
+- **added:** Implement `FromRequestParts` for `http::Extensions` ([#2328])
 
 [#1664]: https://github.com/tokio-rs/axum/pull/1664
 [#1751]: https://github.com/tokio-rs/axum/pull/1751
@@ -91,6 +93,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#2143]: https://github.com/tokio-rs/axum/pull/2143
 [#2149]: https://github.com/tokio-rs/axum/pull/2149
 [#2244]: https://github.com/tokio-rs/axum/pull/2244
+[#2328]: https://github.com/tokio-rs/axum/pull/2328
 
 # 0.6.17 (25. April, 2023)
 
