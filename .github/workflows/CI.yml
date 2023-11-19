@@ -111,7 +111,7 @@ jobs:
       uses: dtolnay/rust-toolchain@nightly
     - uses: Swatinem/rust-cache@v2
     - name: Select minimal version
-      run: cargo +nightly update -Z direct-minimal-versions
+      run: cargo +nightly update -Z minimal-versions
     - name: Run tests
       run: >
         cargo +${{ env.MSRV }}
