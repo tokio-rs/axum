@@ -72,7 +72,7 @@ where
     async fn from_request(req: Request, _state: &S) -> Result<Self, Self::Rejection> {
         let boundary = parse_boundary(req.headers()).ok_or(InvalidBoundary)?;
         let stream = req.with_limited_body().into_body();
-        let multipart = multer::Multipart::new(stream, boundary);
+        let multipart = multer::Multipart::new(stream.into_data_stream(), boundary);
         Ok(Self { inner: multipart })
     }
 }
