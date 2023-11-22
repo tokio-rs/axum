@@ -12,7 +12,7 @@ use axum::{
 use futures_util::stream::Stream;
 use http::{
     header::{HeaderMap, CONTENT_TYPE},
-    Request, StatusCode,
+    HeaderName, HeaderValue, Request, StatusCode,
 };
 use std::{
     error::Error,
@@ -115,7 +115,22 @@ impl Multipart {
             .map_err(MultipartError::from_multer)?;
 
         if let Some(field) = field {
-            Ok(Some(Field { inner: field }))
+            // multer still uses http 0.2 which means we cannot directly expose
+            // `multer::Field::headers`. Instead we have to eagerly convert the headers into http
+            // 1.0
+            //
+            // When the next major version of multer is published we can remove this.
+            let mut headers = HeaderMap::with_capacity(field.headers().len());
+            headers.extend(field.headers().clone().into_iter().map(|(name, value)| {
+                let name = name.map(|name| HeaderName::from_bytes(name.as_ref()).unwrap());
+                let value = HeaderValue::from_bytes(value.as_ref()).unwrap();
+                (name, value)
+            }));
+
+            Ok(Some(Field {
+                inner: field,
+                headers,
+            }))
         } else {
             Ok(None)
         }
@@ -134,6 +149,7 @@ impl Multipart {
 #[derive(Debug)]
 pub struct Field {
     inner: multer::Field<'static>,
+    headers: HeaderMap,
 }
 
 impl Stream for Field {
@@ -168,7 +184,7 @@ impl Field {
 
     /// Get a map of headers as [`HeaderMap`].
     pub fn headers(&self) -> &HeaderMap {
-        self.inner.headers()
+        &self.headers
     }
 
     /// Get the full data of the field as [`Bytes`].
