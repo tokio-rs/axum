@@ -5,17 +5,18 @@
 use super::{FromRequest, Request};
 use crate::body::Bytes;
 use async_trait::async_trait;
-use axum_core::__composite_rejection as composite_rejection;
-use axum_core::__define_rejection as define_rejection;
-use axum_core::response::{IntoResponse, Response};
-use axum_core::RequestExt;
+use axum_core::{
+    __composite_rejection as composite_rejection, __define_rejection as define_rejection,
+    response::{IntoResponse, Response},
+    RequestExt,
+};
 use futures_util::stream::Stream;
-use http::header::{HeaderMap, CONTENT_TYPE};
-use http::HeaderName;
-use http::HeaderValue;
-use http::StatusCode;
-use std::error::Error;
+use http::{
+    header::{HeaderMap, CONTENT_TYPE},
+    HeaderName, HeaderValue, StatusCode,
+};
 use std::{
+    error::Error,
     fmt,
     pin::Pin,
     task::{Context, Poll},
