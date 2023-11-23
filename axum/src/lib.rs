@@ -312,8 +312,7 @@
 //! tower = "<latest-version>"
 //! ```
 //!
-//! The `"full"` feature for tokio isn't strictly necessary but it's the easiest way to get
-//! started.
+//! The `"full"` feature for tokio isn't necessary but it's the easiest way to get started.
 //!
 //! Tower isn't strictly necessary either but helpful for testing. See the
 //! testing example in the repo to learn more about testing axum apps.
