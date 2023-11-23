@@ -5,7 +5,7 @@ use http::{
     header::{self, HeaderMap, HeaderName, HeaderValue},
     Extensions, StatusCode,
 };
-use http_body::SizeHint;
+use http_body::{Frame, SizeHint};
 use std::{
     borrow::Cow,
     convert::Infallible,
@@ -58,9 +58,7 @@ use std::{
 /// async fn handler() -> Result<(), MyError> {
 ///     Err(MyError::SomethingWentWrong)
 /// }
-/// # async {
-/// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-/// # };
+/// # let _: Router = app;
 /// ```
 ///
 /// Or if you have a custom body type you'll also need to implement
@@ -76,6 +74,7 @@ use std::{
 /// };
 /// use http::HeaderMap;
 /// use bytes::Bytes;
+/// use http_body::Frame;
 /// use std::{
 ///     convert::Infallible,
 ///     task::{Poll, Context},
@@ -90,18 +89,10 @@ use std::{
 ///     type Data = Bytes;
 ///     type Error = Infallible;
 ///
-///     fn poll_data(
+///     fn poll_frame(
 ///         self: Pin<&mut Self>,
-///         cx: &mut Context<'_>
-///     ) -> Poll<Option<Result<Self::Data, Self::Error>>> {
-///         # unimplemented!()
-///         // ...
-///     }
-///
-///     fn poll_trailers(
-///         self: Pin<&mut Self>,
-///         cx: &mut Context<'_>
-///     ) -> Poll<Result<Option<HeaderMap>, Self::Error>> {
+///         cx: &mut Context<'_>,
+///     ) -> Poll<Option<Result<Frame<Self::Data>, Self::Error>>> {
 ///         # unimplemented!()
 ///         // ...
 ///     }
@@ -256,28 +247,21 @@ where
     type Data = Bytes;
     type Error = Infallible;
 
-    fn poll_data(
+    fn poll_frame(
         mut self: Pin<&mut Self>,
         _cx: &mut Context<'_>,
-    ) -> Poll<Option<Result<Self::Data, Self::Error>>> {
+    ) -> Poll<Option<Result<Frame<Self::Data>, Self::Error>>> {
         if let Some(mut buf) = self.first.take() {
             let bytes = buf.copy_to_bytes(buf.remaining());
-            return Poll::Ready(Some(Ok(bytes)));
+            return Poll::Ready(Some(Ok(Frame::data(bytes))));
         }
 
         if let Some(mut buf) = self.second.take() {
             let bytes = buf.copy_to_bytes(buf.remaining());
-            return Poll::Ready(Some(Ok(bytes)));
+            return Poll::Ready(Some(Ok(Frame::data(bytes))));
         }
 
         Poll::Ready(None)
-    }
-
-    fn poll_trailers(
-        self: Pin<&mut Self>,
-        _cx: &mut Context<'_>,
-    ) -> Poll<Result<Option<HeaderMap>, Self::Error>> {
-        Poll::Ready(Ok(None))
     }
 
     fn is_end_stream(&self) -> bool {

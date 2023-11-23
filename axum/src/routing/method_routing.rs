@@ -1225,7 +1225,7 @@ where
 }
 
 // for `axum::serve(listener, router)`
-#[cfg(feature = "tokio")]
+#[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
 const _: () = {
     use crate::serve::IncomingStream;
 
@@ -1250,6 +1250,7 @@ mod tests {
     use crate::{body::Body, extract::State, handler::HandlerWithoutStateExt};
     use axum_core::response::IntoResponse;
     use http::{header::ALLOW, HeaderMap};
+    use http_body_util::BodyExt;
     use std::time::Duration;
     use tower::{Service, ServiceExt};
     use tower_http::{
@@ -1539,7 +1540,8 @@ mod tests {
             .unwrap()
             .into_response();
         let (parts, body) = response.into_parts();
-        let body = String::from_utf8(hyper::body::to_bytes(body).await.unwrap().to_vec()).unwrap();
+        let body =
+            String::from_utf8(BodyExt::collect(body).await.unwrap().to_bytes().to_vec()).unwrap();
         (parts.status, parts.headers, body)
     }
 

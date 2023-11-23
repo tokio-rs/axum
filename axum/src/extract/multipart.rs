@@ -5,16 +5,18 @@
 use super::{FromRequest, Request};
 use crate::body::Bytes;
 use async_trait::async_trait;
-use axum_core::__composite_rejection as composite_rejection;
-use axum_core::__define_rejection as define_rejection;
-use axum_core::body::Body;
-use axum_core::response::{IntoResponse, Response};
-use axum_core::RequestExt;
+use axum_core::{
+    __composite_rejection as composite_rejection, __define_rejection as define_rejection,
+    response::{IntoResponse, Response},
+    RequestExt,
+};
 use futures_util::stream::Stream;
-use http::header::{HeaderMap, CONTENT_TYPE};
-use http::StatusCode;
-use std::error::Error;
+use http::{
+    header::{HeaderMap, CONTENT_TYPE},
+    HeaderName, HeaderValue, StatusCode,
+};
 use std::{
+    error::Error,
     fmt,
     pin::Pin,
     task::{Context, Poll},
@@ -72,11 +74,8 @@ where
 
     async fn from_request(req: Request, _state: &S) -> Result<Self, Self::Rejection> {
         let boundary = parse_boundary(req.headers()).ok_or(InvalidBoundary)?;
-        let stream = match req.with_limited_body() {
-            Ok(limited) => Body::new(limited),
-            Err(unlimited) => unlimited.into_body(),
-        };
-        let multipart = multer::Multipart::new(stream, boundary);
+        let stream = req.with_limited_body().into_body();
+        let multipart = multer::Multipart::new(stream.into_data_stream(), boundary);
         Ok(Self { inner: multipart })
     }
 }
@@ -91,8 +90,21 @@ impl Multipart {
             .map_err(MultipartError::from_multer)?;
 
         if let Some(field) = field {
+            // multer still uses http 0.2 which means we cannot directly expose
+            // `multer::Field::headers`. Instead we have to eagerly convert the headers into http
+            // 1.0
+            //
+            // When the next major version of multer is published we can remove this.
+            let mut headers = HeaderMap::with_capacity(field.headers().len());
+            headers.extend(field.headers().into_iter().map(|(name, value)| {
+                let name = HeaderName::from_bytes(name.as_ref()).unwrap();
+                let value = HeaderValue::from_bytes(value.as_ref()).unwrap();
+                (name, value)
+            }));
+
             Ok(Some(Field {
                 inner: field,
+                headers,
                 _multipart: self,
             }))
         } else {
@@ -105,6 +117,7 @@ impl Multipart {
 #[derive(Debug)]
 pub struct Field<'a> {
     inner: multer::Field<'static>,
+    headers: HeaderMap,
     // multer requires there to only be one live `multer::Field` at any point. This enforces that
     // statically, which multer does not do, it returns an error instead.
     _multipart: &'a mut Multipart,
@@ -142,7 +155,7 @@ impl<'a> Field<'a> {
 
     /// Get a map of headers as [`HeaderMap`].
     pub fn headers(&self) -> &HeaderMap {
-        self.inner.headers()
+        &self.headers
     }
 
     /// Get the full data of the field as [`Bytes`].
@@ -249,7 +262,7 @@ fn status_code_from_multer_error(err: &multer::Error) -> StatusCode {
             if err
                 .downcast_ref::<crate::Error>()
                 .and_then(|err| err.source())
-                .and_then(|err| err.downcast_ref::<http_body::LengthLimitError>())
+                .and_then(|err| err.downcast_ref::<http_body_util::LengthLimitError>())
                 .is_some()
             {
                 return StatusCode::PAYLOAD_TOO_LARGE;
@@ -324,6 +337,7 @@ mod tests {
 
             assert_eq!(field.file_name().unwrap(), FILE_NAME);
             assert_eq!(field.content_type().unwrap(), CONTENT_TYPE);
+            assert_eq!(field.headers()["foo"], "bar");
             assert_eq!(field.bytes().await.unwrap(), BYTES);
 
             assert!(multipart.next_field().await.unwrap().is_none());
@@ -338,7 +352,11 @@ mod tests {
             reqwest::multipart::Part::bytes(BYTES)
                 .file_name(FILE_NAME)
                 .mime_str(CONTENT_TYPE)
-                .unwrap(),
+                .unwrap()
+                .headers(reqwest::header::HeaderMap::from_iter([(
+                    reqwest::header::HeaderName::from_static("foo"),
+                    reqwest::header::HeaderValue::from_static("bar"),
+                )])),
         );
 
         client.post("/").multipart(form).send().await;

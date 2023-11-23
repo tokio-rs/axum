@@ -2,7 +2,7 @@
 categories = ["asynchronous", "network-programming", "web-programming"]
 description = "Extra utilities for axum"
 edition = "2021"
-rust-version = "1.65"
+rust-version = "1.66"
 homepage = "https://github.com/tokio-rs/axum"
 keywords = ["http", "web", "framework"]
 license = "MIT"
@@ -40,8 +40,9 @@ axum = { path = "../axum", version = "0.6.13", default-features = false }
 axum-core = { path = "../axum-core", version = "0.3.4" }
 bytes = "1.1.0"
 futures-util = { version = "0.3", default-features = false, features = ["alloc"] }
-http = "0.2"
-http-body = "0.4.4"
+http = "1.0.0"
+http-body = "1.0.0"
+http-body-util = "0.1.0"
 mime = "0.3"
 pin-project-lite = "0.2"
 serde = "1.0"
@@ -65,15 +66,13 @@ tokio-util = { version = "0.7", optional = true }
 
 [dev-dependencies]
 axum = { path = "../axum", version = "0.6.0" }
-futures = "0.3"
-http-body = "0.4.4"
-hyper = "0.14"
+hyper = "1.0.0"
 reqwest = { version = "0.11", default-features = false, features = ["json", "stream", "multipart"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0.71"
 tokio = { version = "1.14", features = ["full"] }
 tower = { version = "0.4", features = ["util"] }
-tower-http = { version = "0.4", features = ["map-response-body", "timeout"] }
+tower-http = { version = "0.5.0", features = ["map-response-body", "timeout"] }
 
 [package.metadata.docs.rs]
 all-features = true

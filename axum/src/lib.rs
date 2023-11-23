@@ -308,16 +308,11 @@
 //! ```toml
 //! [dependencies]
 //! axum = "<latest-version>"
-//! hyper = { version = "<latest-version>", features = ["full"] }
 //! tokio = { version = "<latest-version>", features = ["full"] }
 //! tower = "<latest-version>"
 //! ```
 //!
-//! The `"full"` feature for hyper and tokio isn't strictly necessary but it's
-//! the easiest way to get started.
-//!
-//! Note that [`hyper::Server`] is re-exported by axum so if that's all you need
-//! then you don't have to explicitly depend on hyper.
+//! The `"full"` feature for tokio isn't necessary but it's the easiest way to get started.
 //!
 //! Tower isn't strictly necessary either but helpful for testing. See the
 //! testing example in the repo to learn more about testing axum apps.
@@ -444,7 +439,7 @@ pub mod handler;
 pub mod middleware;
 pub mod response;
 pub mod routing;
-#[cfg(feature = "tokio")]
+#[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
 pub mod serve;
 
 #[cfg(test)]
@@ -473,7 +468,7 @@ pub use axum_core::{BoxError, Error, RequestExt, RequestPartsExt};
 #[cfg(feature = "macros")]
 pub use axum_macros::debug_handler;
 
-#[cfg(feature = "tokio")]
+#[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
 #[doc(inline)]
 pub use self::serve::serve;
 

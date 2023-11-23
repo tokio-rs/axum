@@ -7,58 +7,63 @@
 //! cargo run -p example-reverse-proxy
 //! ```
 
-use axum::{
-    body::Body,
-    extract::{Request, State},
-    http::uri::Uri,
-    response::{IntoResponse, Response},
-    routing::get,
-    Router,
-};
-use hyper::{client::HttpConnector, StatusCode};
-
-type Client = hyper::client::Client<HttpConnector, Body>;
-
-#[tokio::main]
-async fn main() {
-    tokio::spawn(server());
-
-    let client: Client = hyper::Client::builder().build(HttpConnector::new());
-
-    let app = Router::new().route("/", get(handler)).with_state(client);
-
-    let listener = tokio::net::TcpListener::bind("127.0.0.1:4000")
-        .await
-        .unwrap();
-    println!("listening on {}", listener.local_addr().unwrap());
-    axum::serve(listener, app).await.unwrap();
+// TODO
+fn main() {
+    eprint!("this example has not yet been updated to hyper 1.0");
 }
 
-async fn handler(State(client): State<Client>, mut req: Request) -> Result<Response, StatusCode> {
-    let path = req.uri().path();
-    let path_query = req
-        .uri()
-        .path_and_query()
-        .map(|v| v.as_str())
-        .unwrap_or(path);
+// use axum::{
+//     body::Body,
+//     extract::{Request, State},
+//     http::uri::Uri,
+//     response::{IntoResponse, Response},
+//     routing::get,
+//     Router,
+// };
+// use hyper::{client::HttpConnector, StatusCode};
 
-    let uri = format!("http://127.0.0.1:3000{path_query}");
+// type Client = hyper::client::Client<HttpConnector, Body>;
 
-    *req.uri_mut() = Uri::try_from(uri).unwrap();
+// #[tokio::main]
+// async fn main() {
+//     tokio::spawn(server());
 
-    Ok(client
-        .request(req)
-        .await
-        .map_err(|_| StatusCode::BAD_REQUEST)?
-        .into_response())
-}
+//     let client: Client = hyper::Client::builder().build(HttpConnector::new());
 
-async fn server() {
-    let app = Router::new().route("/", get(|| async { "Hello, world!" }));
+//     let app = Router::new().route("/", get(handler)).with_state(client);
 
-    let listener = tokio::net::TcpListener::bind("127.0.0.1:3000")
-        .await
-        .unwrap();
-    println!("listening on {}", listener.local_addr().unwrap());
-    axum::serve(listener, app).await.unwrap();
-}
+//     let listener = tokio::net::TcpListener::bind("127.0.0.1:4000")
+//         .await
+//         .unwrap();
+//     println!("listening on {}", listener.local_addr().unwrap());
+//     axum::serve(listener, app).await.unwrap();
+// }
+
+// async fn handler(State(client): State<Client>, mut req: Request) -> Result<Response, StatusCode> {
+//     let path = req.uri().path();
+//     let path_query = req
+//         .uri()
+//         .path_and_query()
+//         .map(|v| v.as_str())
+//         .unwrap_or(path);
+
+//     let uri = format!("http://127.0.0.1:3000{}", path_query);
+
+//     *req.uri_mut() = Uri::try_from(uri).unwrap();
+
+//     Ok(client
+//         .request(req)
+//         .await
+//         .map_err(|_| StatusCode::BAD_REQUEST)?
+//         .into_response())
+// }
+
+// async fn server() {
+//     let app = Router::new().route("/", get(|| async { "Hello, world!" }));
+
+//     let listener = tokio::net::TcpListener::bind("127.0.0.1:3000")
+//         .await
+//         .unwrap();
+//     println!("listening on {}", listener.local_addr().unwrap());
+//     axum::serve(listener, app).await.unwrap();
+// }

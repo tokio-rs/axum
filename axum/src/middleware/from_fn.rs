@@ -383,6 +383,7 @@ mod tests {
     use super::*;
     use crate::{body::Body, routing::get, Router};
     use http::{HeaderMap, StatusCode};
+    use http_body_util::BodyExt;
     use tower::ServiceExt;
 
     #[crate::test]
@@ -407,7 +408,7 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(res.status(), StatusCode::OK);
-        let body = hyper::body::to_bytes(res).await.unwrap();
+        let body = res.collect().await.unwrap().to_bytes();
         assert_eq!(&body[..], b"ok");
     }
 }

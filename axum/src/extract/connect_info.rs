@@ -4,8 +4,9 @@
 //!
 //! [`Router::into_make_service_with_connect_info`]: crate::routing::Router::into_make_service_with_connect_info
 
+use crate::extension::AddExtension;
+
 use super::{Extension, FromRequestParts};
-use crate::{middleware::AddExtension, serve::IncomingStream};
 use async_trait::async_trait;
 use http::request::Parts;
 use std::{
@@ -82,11 +83,16 @@ pub trait Connected<T>: Clone + Send + Sync + 'static {
     fn connect_info(target: T) -> Self;
 }
 
-impl Connected<IncomingStream<'_>> for SocketAddr {
-    fn connect_info(target: IncomingStream<'_>) -> Self {
-        target.remote_addr()
+#[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
+const _: () = {
+    use crate::serve::IncomingStream;
+
+    impl Connected<IncomingStream<'_>> for SocketAddr {
+        fn connect_info(target: IncomingStream<'_>) -> Self {
+            target.remote_addr()
+        }
     }
-}
+};
 
 impl<S, C, T> Service<T> for IntoMakeServiceWithConnectInfo<S, C>
 where
@@ -212,7 +218,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{routing::get, test_helpers::TestClient, Router};
+    use crate::{routing::get, serve::IncomingStream, test_helpers::TestClient, Router};
     use std::net::SocketAddr;
     use tokio::net::TcpListener;
 
