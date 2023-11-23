@@ -95,8 +95,8 @@ impl Multipart {
             //
             // When the next major version of multer is published we can remove this.
             let mut headers = HeaderMap::with_capacity(field.headers().len());
-            headers.extend(field.headers().clone().into_iter().map(|(name, value)| {
-                let name = name.map(|name| HeaderName::from_bytes(name.as_ref()).unwrap());
+            headers.extend(field.headers().into_iter().map(|(name, value)| {
+                let name = HeaderName::from_bytes(name.as_ref()).unwrap();
                 let value = HeaderValue::from_bytes(value.as_ref()).unwrap();
                 (name, value)
             }));
