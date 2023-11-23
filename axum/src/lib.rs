@@ -440,7 +440,7 @@ pub mod handler;
 pub mod middleware;
 pub mod response;
 pub mod routing;
-#[cfg(all(feature = "tokio", feature = "http1"))]
+#[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
 pub mod serve;
 
 #[cfg(test)]
@@ -469,7 +469,7 @@ pub use axum_core::{BoxError, Error, RequestExt, RequestPartsExt};
 #[cfg(feature = "macros")]
 pub use axum_macros::debug_handler;
 
-#[cfg(all(feature = "tokio", feature = "http1"))]
+#[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
 #[doc(inline)]
 pub use self::serve::serve;
 

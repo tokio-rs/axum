@@ -85,7 +85,7 @@ use tower_service::Service;
 /// [`Handler`]: crate::handler::Handler
 /// [`HandlerWithoutStateExt::into_make_service_with_connect_info`]: crate::handler::HandlerWithoutStateExt::into_make_service_with_connect_info
 /// [`HandlerService::into_make_service_with_connect_info`]: crate::handler::HandlerService::into_make_service_with_connect_info
-#[cfg(all(feature = "tokio", feature = "http1"))]
+#[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
 pub async fn serve<M, S>(tcp_listener: TcpListener, mut make_service: M) -> io::Result<()>
 where
     M: for<'a> Service<IncomingStream<'a>, Error = Infallible, Response = S>,
