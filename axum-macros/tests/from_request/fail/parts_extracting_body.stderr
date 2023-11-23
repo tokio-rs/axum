@@ -11,8 +11,8 @@ error[E0277]: the trait bound `String: FromRequestParts<S>` is not satisfied
             <HeaderMap as FromRequestParts<S>>
             <Extension<T> as FromRequestParts<S>>
             <Method as FromRequestParts<S>>
+            <axum::http::request::Parts as FromRequestParts<S>>
             <Uri as FromRequestParts<S>>
             <ConnectInfo<T> as FromRequestParts<S>>
             <Version as FromRequestParts<S>>
-            <axum::extract::Path<T> as FromRequestParts<S>>
           and $N others
