@@ -1,0 +1,12 @@
+[package]
+name = "example-serve-with-hyper"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+axum = { path = "../../axum" }
+tokio = { version = "1.0", features = ["full"] }
+hyper-util = { version = "0.1", features = ["tokio", "server-auto", "http1"] }
+hyper = { version = "1.0", features = [] }
+tower = { version = "0.4", features  = ["util"] }
