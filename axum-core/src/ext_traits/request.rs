@@ -257,7 +257,7 @@ pub trait RequestExt: sealed::Sealed + Sized {
 
     /// Apply the [default body limit](crate::extract::DefaultBodyLimit).
     ///
-    /// If it is disabled, the request is return as-is.
+    /// If it is disabled, the request is returned as-is.
     fn with_limited_body(self) -> Request;
 
     /// Consumes the request, returning the body wrapped in [`http_body_util::Limited`] if a
