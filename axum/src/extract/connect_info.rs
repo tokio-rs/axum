@@ -94,6 +94,12 @@ const _: () = {
     }
 };
 
+impl Connected<SocketAddr> for SocketAddr {
+    fn connect_info(remote_addr: SocketAddr) -> Self {
+        remote_addr
+    }
+}
+
 impl<S, C, T> Service<T> for IntoMakeServiceWithConnectInfo<S, C>
 where
     S: Clone,
