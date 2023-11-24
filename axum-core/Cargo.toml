@@ -18,32 +18,32 @@ tracing = ["dep:tracing"]
 __private_docs = ["dep:tower-http"]
 
 [dependencies]
-async-trait = "0.1.67"
+async-trait = "0.1"
 bytes = "1.0"
 futures-util = { version = "0.3", default-features = false, features = ["alloc"] }
-http = "1.0.0"
-http-body = "1.0.0"
-http-body-util = "0.1.0"
-mime = "0.3.16"
-pin-project-lite = "0.2.7"
-sync_wrapper = "0.1.1"
+http = "1.0"
+http-body = "1.0"
+http-body-util = "0.1"
+mime = "0.3"
+pin-project-lite = "0.2"
+sync_wrapper = "0.1"
 tower-layer = "0.3"
 tower-service = "0.3"
 
 # optional dependencies
-tower-http = { version = "0.5.0", optional = true, features = ["limit"] }
-tracing = { version = "0.1.37", default-features = false, optional = true }
+tower-http = { version = "0.5", optional = true, features = ["limit"] }
+tracing = { version = "0.1", default-features = false, optional = true }
 
 [build-dependencies]
-rustversion = "1.0.9"
+rustversion = "1.0"
 
 [dev-dependencies]
-axum = { path = "../axum", version = "0.6.0" }
+axum = { path = "../axum", version = "0.6" }
 axum-extra = { path = "../axum-extra", features = ["typed-header"] }
 futures-util = { version = "0.3", default-features = false, features = ["alloc"] }
-hyper = "1.0.0"
-tokio = { version = "1.25.0", features = ["macros"] }
-tower-http = { version = "0.5.0", features = ["limit"] }
+hyper = "1.0"
+tokio = { version = "1.25", features = ["macros"] }
+tower-http = { version = "0.5", features = ["limit"] }
 
 [package.metadata.cargo-public-api-crates]
 allowed = [

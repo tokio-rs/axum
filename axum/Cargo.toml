@@ -31,41 +31,41 @@ ws = ["tokio", "dep:tokio-tungstenite", "dep:sha1", "dep:base64"]
 __private_docs = ["tower/full", "dep:tower-http"]
 
 [dependencies]
-async-trait = "0.1.67"
-axum-core = { path = "../axum-core", version = "0.3.4" }
+async-trait = "0.1"
+axum-core = { path = "../axum-core", version = "0.3" }
 bytes = "1.0"
 futures-util = { version = "0.3", default-features = false, features = ["alloc"] }
-http = "1.0.0"
-http-body = "1.0.0"
-http-body-util = "0.1.0"
-hyper = { package = "hyper", version = "1.0.0", features = ["server", "http1"] }
-itoa = "1.0.5"
+http = "1.0"
+http-body = "1.0"
+http-body-util = "0.1"
+hyper = { package = "hyper", version = "1.0", features = ["server", "http1"] }
+itoa = "1.0"
 matchit = "0.7"
-memchr = "2.4.1"
-mime = "0.3.16"
+memchr = "2.4"
+mime = "0.3"
 percent-encoding = "2.1"
-pin-project-lite = "0.2.7"
+pin-project-lite = "0.2"
 serde = "1.0"
-sync_wrapper = "0.1.1"
-tower = { version = "0.4.13", default-features = false, features = ["util"] }
-tower-layer = "0.3.2"
+sync_wrapper = "0.1"
+tower = { version = "0.4", default-features = false, features = ["util"] }
+tower-layer = "0.3"
 tower-service = "0.3"
 
 # optional dependencies
-axum-macros = { path = "../axum-macros", version = "0.3.7", optional = true }
-base64 = { version = "0.21.0", optional = true }
-hyper-util = { version = "0.1.1", features = ["tokio", "server", "server-auto"], optional = true }
-multer = { version = "2.0.0", optional = true }
+axum-macros = { path = "../axum-macros", version = "0.3", optional = true }
+base64 = { version = "0.21", optional = true }
+hyper-util = { version = "0.1", features = ["tokio", "server", "server-auto"], optional = true }
+multer = { version = "2.0", optional = true }
 serde_json = { version = "1.0", features = ["raw_value"], optional = true }
-serde_path_to_error = { version = "0.1.8", optional = true }
+serde_path_to_error = { version = "0.1", optional = true }
 serde_urlencoded = { version = "0.7", optional = true }
 sha1 = { version = "0.10", optional = true }
-tokio = { package = "tokio", version = "1.25.0", features = ["time"], optional = true }
+tokio = { package = "tokio", version = "1.25", features = ["time"], optional = true }
 tokio-tungstenite = { version = "0.20", optional = true }
 tracing = { version = "0.1", default-features = false, optional = true }
 
 [dependencies.tower-http]
-version = "0.5.0"
+version = "0.5"
 optional = true
 features = [
     # all tower-http features except (de)?compression-zstd which doesn't
@@ -100,19 +100,19 @@ features = [
 ]
 
 [build-dependencies]
-rustversion = "1.0.9"
+rustversion = "1.0"
 
 [dev-dependencies]
 anyhow = "1.0"
-axum-macros = { path = "../axum-macros", version = "0.3.7", features = ["__private"] }
+axum-macros = { path = "../axum-macros", version = "0.3", features = ["__private"] }
 quickcheck = "1.0"
 quickcheck_macros = "1.0"
-reqwest = { version = "0.11.14", default-features = false, features = ["json", "stream", "multipart"] }
-rustversion = "1.0.9"
+reqwest = { version = "0.11", default-features = false, features = ["json", "stream", "multipart"] }
+rustversion = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 time = { version = "0.3", features = ["serde-human-readable"] }
-tokio = { package = "tokio", version = "1.25.0", features = ["macros", "rt", "rt-multi-thread", "net", "test-util"] }
+tokio = { package = "tokio", version = "1.25", features = ["macros", "rt", "rt-multi-thread", "net", "test-util"] }
 tokio-stream = "0.1"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["json"] }
@@ -124,7 +124,7 @@ rustdoc-args = ["--cfg", "docsrs"]
 
 [dev-dependencies.tower]
 package = "tower"
-version = "0.4.10"
+version = "0.4"
 features = [
     "util",
     "timeout",
@@ -135,7 +135,7 @@ features = [
 ]
 
 [dev-dependencies.tower-http]
-version = "0.5.0"
+version = "0.5"
 features = [
     # all tower-http features except (de)?compression-zstd which doesn't
     # build on `--target armv5te-unknown-linux-musleabi`
