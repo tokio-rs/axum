@@ -61,13 +61,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **fixed:** Fix `.source()` of composite rejections ([#2030])
 - **fixed:** Allow unreachable code in `#[debug_handler]` ([#2014])
 - **change:** Update tokio-tungstenite to 0.19 ([#2021])
-- **change:** axum's MSRV is now 1.65 ([#2021])
+- **change:** axum's MSRV is now 1.66 ([#1882])
 - **added:** Implement `Handler` for `T: IntoResponse` ([#2140])
 - **added:** Implement `IntoResponse` for `(R,) where R: IntoResponse` ([#2143])
 - **changed:** For SSE, add space between field and value for compatibility ([#2149])
 - **added:** Add `NestedPath` extractor ([#1924])
 - **added:** Add `handle_error` function to existing `ServiceExt` trait ([#2235])
+- **breaking:** `impl<T> IntoResponse(Parts) for Extension<T>` now requires
+  `T: Clone`, as that is required by the http crate ([#1882])
 - **added:** Add `axum::Json::from_bytes` ([#2244])
+- **added:** Implement `FromRequestParts` for `http::request::Parts` ([#2328])
+- **added:** Implement `FromRequestParts` for `http::Extensions` ([#2328])
 
 [#1664]: https://github.com/tokio-rs/axum/pull/1664
 [#1751]: https://github.com/tokio-rs/axum/pull/1751
@@ -76,6 +80,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#1835]: https://github.com/tokio-rs/axum/pull/1835
 [#1850]: https://github.com/tokio-rs/axum/pull/1850
 [#1868]: https://github.com/tokio-rs/axum/pull/1868
+[#1882]: https://github.com/tokio-rs/axum/pull/1882
 [#1924]: https://github.com/tokio-rs/axum/pull/1924
 [#1956]: https://github.com/tokio-rs/axum/pull/1956
 [#1972]: https://github.com/tokio-rs/axum/pull/1972
@@ -90,6 +95,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#2149]: https://github.com/tokio-rs/axum/pull/2149
 [#2235]: https://github.com/tokio-rs/axum/pull/2235
 [#2244]: https://github.com/tokio-rs/axum/pull/2244
+[#2328]: https://github.com/tokio-rs/axum/pull/2328
 
 # 0.6.17 (25. April, 2023)
 

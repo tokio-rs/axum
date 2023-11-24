@@ -1,15 +1,24 @@
 //! Serve services.
 
-use std::{convert::Infallible, io, net::SocketAddr};
+use std::{
+    convert::Infallible,
+    future::Future,
+    io,
+    net::SocketAddr,
+    pin::Pin,
+    task::{Context, Poll},
+};
 
 use axum_core::{body::Body, extract::Request, response::Response};
-use futures_util::{future::poll_fn, FutureExt};
+use futures_util::future::poll_fn;
+use hyper::body::Incoming;
 use hyper_util::{
     rt::{TokioExecutor, TokioIo},
     server::conn::auto::Builder,
 };
+use pin_project_lite::pin_project;
 use tokio::net::{TcpListener, TcpStream};
-use tower_hyper_http_body_compat::{HttpBody04ToHttpBody1, HttpBody1ToHttpBody04};
+use tower::util::{Oneshot, ServiceExt};
 use tower_service::Service;
 
 /// Serve the service with the supplied listener.
@@ -76,7 +85,7 @@ use tower_service::Service;
 /// [`Handler`]: crate::handler::Handler
 /// [`HandlerWithoutStateExt::into_make_service_with_connect_info`]: crate::handler::HandlerWithoutStateExt::into_make_service_with_connect_info
 /// [`HandlerService::into_make_service_with_connect_info`]: crate::handler::HandlerService::into_make_service_with_connect_info
-#[cfg(feature = "tokio")]
+#[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
 pub async fn serve<M, S>(tcp_listener: TcpListener, mut make_service: M) -> io::Result<()>
 where
     M: for<'a> Service<IncomingStream<'a>, Error = Infallible, Response = S>,
@@ -91,7 +100,7 @@ where
             .await
             .unwrap_or_else(|err| match err {});
 
-        let service = make_service
+        let tower_service = make_service
             .call(IncomingStream {
                 tcp_stream: &tcp_stream,
                 remote_addr,
@@ -99,50 +108,14 @@ where
             .await
             .unwrap_or_else(|err| match err {});
 
-        let service = hyper1::service::service_fn(move |req: Request<hyper1::body::Incoming>| {
-            // `hyper1::service::service_fn` takes an `Fn` closure. So we need an owned service in
-            // order to call `poll_ready` and `call` which need `&mut self`
-            let mut service = service.clone();
-
-            let req = req.map(|body| {
-                // wont need this when axum uses http-body 1.0
-                let http_body_04 = HttpBody1ToHttpBody04::new(body);
-                Body::new(http_body_04)
-            });
-
-            // doing this saves cloning the service just to await the service being ready
-            //
-            // services like `Router` are always ready, so assume the service
-            // we're running here is also always ready...
-            match poll_fn(|cx| service.poll_ready(cx)).now_or_never() {
-                Some(Ok(())) => {}
-                Some(Err(err)) => match err {},
-                None => {
-                    // ...otherwise load shed
-                    let mut res = Response::new(HttpBody04ToHttpBody1::new(Body::empty()));
-                    *res.status_mut() = http::StatusCode::SERVICE_UNAVAILABLE;
-                    return std::future::ready(Ok(res)).left_future();
-                }
-            }
-
-            let future = service.call(req);
-
-            async move {
-                let response = future
-                    .await
-                    .unwrap_or_else(|err| match err {})
-                    // wont need this when axum uses http-body 1.0
-                    .map(HttpBody04ToHttpBody1::new);
-
-                Ok::<_, Infallible>(response)
-            }
-            .right_future()
-        });
+        let hyper_service = TowerToHyperService {
+            service: tower_service,
+        };
 
         tokio::task::spawn(async move {
             match Builder::new(TokioExecutor::new())
                 // upgrades needed for websockets
-                .serve_connection_with_upgrades(tcp_stream.into_inner(), service)
+                .serve_connection_with_upgrades(tcp_stream, hyper_service)
                 .await
             {
                 Ok(()) => {}
@@ -155,6 +128,49 @@ where
                 }
             }
         });
+    }
+}
+
+#[derive(Debug, Copy, Clone)]
+struct TowerToHyperService<S> {
+    service: S,
+}
+
+impl<S> hyper::service::Service<Request<Incoming>> for TowerToHyperService<S>
+where
+    S: tower_service::Service<Request> + Clone,
+{
+    type Response = S::Response;
+    type Error = S::Error;
+    type Future = TowerToHyperServiceFuture<S, Request>;
+
+    fn call(&self, req: Request<Incoming>) -> Self::Future {
+        let req = req.map(Body::new);
+        TowerToHyperServiceFuture {
+            future: self.service.clone().oneshot(req),
+        }
+    }
+}
+
+pin_project! {
+    struct TowerToHyperServiceFuture<S, R>
+    where
+        S: tower_service::Service<R>,
+    {
+        #[pin]
+        future: Oneshot<S, R>,
+    }
+}
+
+impl<S, R> Future for TowerToHyperServiceFuture<S, R>
+where
+    S: tower_service::Service<R>,
+{
+    type Output = Result<S::Response, S::Error>;
+
+    #[inline]
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        self.project().future.poll(cx)
     }
 }
 

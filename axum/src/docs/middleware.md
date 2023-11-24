@@ -64,14 +64,11 @@ Some commonly used middleware are:
 
 - [`TraceLayer`](tower_http::trace) for high level tracing/logging.
 - [`CorsLayer`](tower_http::cors) for handling CORS.
-- [`CompressionLayer`](tower_http::compression) for automatic compression of
-  responses.
+- [`CompressionLayer`](tower_http::compression) for automatic compression of responses.
 - [`RequestIdLayer`](tower_http::request_id) and
   [`PropagateRequestIdLayer`](tower_http::request_id) set and propagate request
   ids.
-- [`TimeoutLayer`](tower::timeout::TimeoutLayer) for timeouts. Note this
-  requires using [`HandleErrorLayer`](crate::error_handling::HandleErrorLayer)
-  to convert timeouts to responses.
+- [`TimeoutLayer`](tower_http::timeout::TimeoutLayer) for timeouts.
 
 # Ordering
 

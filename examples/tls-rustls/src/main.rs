@@ -4,6 +4,8 @@
 //! cargo run -p example-tls-rustls
 //! ```
 
+#![allow(unused_imports)]
+
 use axum::{
     extract::Host,
     handler::HandlerWithoutStateExt,
@@ -16,6 +18,7 @@ use axum_server::tls_rustls::RustlsConfig;
 use std::{net::SocketAddr, path::PathBuf};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
+#[allow(dead_code)]
 #[derive(Clone, Copy)]
 struct Ports {
     http: u16,
@@ -24,48 +27,52 @@ struct Ports {
 
 #[tokio::main]
 async fn main() {
-    tracing_subscriber::registry()
-        .with(
-            tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "example_tls_rustls=debug".into()),
-        )
-        .with(tracing_subscriber::fmt::layer())
-        .init();
+    // Updating this example to hyper 1.0 requires axum_server to update first
 
-    let ports = Ports {
-        http: 7878,
-        https: 3000,
-    };
-    // optional: spawn a second server to redirect http requests to this server
-    tokio::spawn(redirect_http_to_https(ports));
+    // tracing_subscriber::registry()
+    //     .with(
+    //         tracing_subscriber::EnvFilter::try_from_default_env()
+    //             .unwrap_or_else(|_| "example_tls_rustls=debug".into()),
+    //     )
+    //     .with(tracing_subscriber::fmt::layer())
+    //     .init();
 
-    // configure certificate and private key used by https
-    let config = RustlsConfig::from_pem_file(
-        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("self_signed_certs")
-            .join("cert.pem"),
-        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("self_signed_certs")
-            .join("key.pem"),
-    )
-    .await
-    .unwrap();
+    // let ports = Ports {
+    //     http: 7878,
+    //     https: 3000,
+    // };
+    // // optional: spawn a second server to redirect http requests to this server
+    // tokio::spawn(redirect_http_to_https(ports));
 
-    let app = Router::new().route("/", get(handler));
+    // // configure certificate and private key used by https
+    // let config = RustlsConfig::from_pem_file(
+    //     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+    //         .join("self_signed_certs")
+    //         .join("cert.pem"),
+    //     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+    //         .join("self_signed_certs")
+    //         .join("key.pem"),
+    // )
+    // .await
+    // .unwrap();
 
-    // run https server
-    let addr = SocketAddr::from(([127, 0, 0, 1], ports.https));
-    tracing::debug!("listening on {addr}");
-    axum_server::bind_rustls(addr, config)
-        .serve(app.into_make_service())
-        .await
-        .unwrap();
+    // let app = Router::new().route("/", get(handler));
+
+    // // run https server
+    // let addr = SocketAddr::from(([127, 0, 0, 1], ports.https));
+    // tracing::debug!("listening on {}", addr);
+    // axum_server::bind_rustls(addr, config)
+
+    //     .await
+    //     .unwrap();
 }
 
+#[allow(dead_code)]
 async fn handler() -> &'static str {
     "Hello, World!"
 }
 
+#[allow(dead_code)]
 async fn redirect_http_to_https(ports: Ports) {
     fn make_https(host: String, uri: Uri, ports: Ports) -> Result<Uri, BoxError> {
         let mut parts = uri.into_parts();

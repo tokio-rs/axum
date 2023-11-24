@@ -17,10 +17,10 @@ use crate::{
 use axum_core::extract::Request;
 use futures_util::stream::StreamExt;
 use http::{
-    header::CONTENT_LENGTH,
-    header::{ALLOW, HOST},
+    header::{ALLOW, CONTENT_LENGTH, HOST},
     HeaderMap, Method, StatusCode, Uri,
 };
+use http_body_util::BodyExt;
 use serde::Deserialize;
 use serde_json::json;
 use std::{
@@ -119,7 +119,7 @@ async fn router_type_doesnt_change() {
             on(MethodFilter::GET, |_: Request| async { "hi from GET" })
                 .on(MethodFilter::POST, |_: Request| async { "hi from POST" }),
         )
-        .layer(tower_http::compression::CompressionLayer::new());
+        .layer(tower_http::trace::TraceLayer::new_for_http());
 
     let client = TestClient::new(app);
 
@@ -180,16 +180,13 @@ async fn routing_between_services() {
 
 #[crate::test]
 async fn middleware_on_single_route() {
-    use tower_http::{compression::CompressionLayer, trace::TraceLayer};
+    use tower_http::trace::TraceLayer;
 
     async fn handle(_: Request) -> &'static str {
         "Hello, World!"
     }
 
-    let app = Router::new().route(
-        "/",
-        get(handle.layer((TraceLayer::new_for_http(), CompressionLayer::new()))),
-    );
+    let app = Router::new().route("/", get(handle.layer(TraceLayer::new_for_http())));
 
     let client = TestClient::new(app);
 
@@ -934,7 +931,7 @@ async fn state_isnt_cloned_too_much() {
 
     impl Clone for AppState {
         fn clone(&self) -> Self {
-            #[rustversion::since(1.65)]
+            #[rustversion::since(1.66)]
             #[track_caller]
             fn count() {
                 if SETUP_DONE.load(Ordering::SeqCst) {
@@ -950,7 +947,7 @@ async fn state_isnt_cloned_too_much() {
                 }
             }
 
-            #[rustversion::not(since(1.65))]
+            #[rustversion::not(since(1.66))]
             fn count() {
                 if SETUP_DONE.load(Ordering::SeqCst) {
                     COUNT.fetch_add(1, Ordering::SeqCst);
@@ -1058,7 +1055,7 @@ async fn connect_going_to_custom_fallback() {
 
     let res = app.oneshot(req).await.unwrap();
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
-    let text = String::from_utf8(hyper::body::to_bytes(res).await.unwrap().to_vec()).unwrap();
+    let text = String::from_utf8(res.collect().await.unwrap().to_bytes().to_vec()).unwrap();
     assert_eq!(text, "custom fallback");
 }
 
@@ -1076,7 +1073,7 @@ async fn connect_going_to_default_fallback() {
 
     let res = app.oneshot(req).await.unwrap();
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
-    let body = hyper::body::to_bytes(res).await.unwrap();
+    let body = res.collect().await.unwrap().to_bytes();
     assert!(body.is_empty());
 }
 

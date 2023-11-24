@@ -111,8 +111,8 @@ where
         // `Stream::lines` isn't a thing so we have to convert it into an `AsyncRead`
         // so we can call `AsyncRead::lines` and then convert it back to a `Stream`
         let body = req.into_body();
-
-        let stream = TryStreamExt::map_err(body, |err| io::Error::new(io::ErrorKind::Other, err));
+        let stream = body.into_data_stream();
+        let stream = stream.map_err(|err| io::Error::new(io::ErrorKind::Other, err));
         let read = StreamReader::new(stream);
         let lines_stream = LinesStream::new(read.lines());
 

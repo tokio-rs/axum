@@ -3,7 +3,6 @@ use axum::{
     routing::{get, post},
     Extension, Json, Router,
 };
-use hyper::server::conn::AddrIncoming;
 use serde::{Deserialize, Serialize};
 use std::{
     io::BufRead,
@@ -162,13 +161,7 @@ impl BenchmarkBuilder {
         let addr = listener.local_addr().unwrap();
 
         std::thread::spawn(move || {
-            rt.block_on(async move {
-                let incoming = AddrIncoming::from_listener(listener).unwrap();
-                hyper::Server::builder(incoming)
-                    .serve(app.into_make_service())
-                    .await
-                    .unwrap();
-            });
+            rt.block_on(axum::serve(listener, app)).unwrap();
         });
 
         let mut cmd = Command::new("rewrk");

@@ -397,9 +397,6 @@ impl Router {
     /// Convert this router into a [`MakeService`], that is a [`Service`] whose
     /// response is another service.
     ///
-    /// This is useful when running your application with hyper's
-    /// [`Server`](hyper::server::Server):
-    ///
     /// ```
     /// use axum::{
     ///     routing::get,
@@ -431,7 +428,7 @@ impl Router {
 }
 
 // for `axum::serve(listener, router)`
-#[cfg(feature = "tokio")]
+#[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
 const _: () = {
     use crate::serve::IncomingStream;
 

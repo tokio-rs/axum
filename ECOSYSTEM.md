@@ -22,6 +22,7 @@ If your project isn't listed here and you would like it to be, please feel free 
 - [svelte-axum-project](https://github.com/jbertovic/svelte-axum-project): Template and example for Svelte frontend app with Axum as backend
 - [axum-streams](https://github.com/abdolence/axum-streams-rs): Streaming HTTP body with different formats: JSON, CSV, Protobuf.
 - [axum-template](https://github.com/Altair-Bueno/axum-template): Layers, extractors and template engine wrappers for axum based Web MVC applications
+- [axum-template](https://github.com/janos-r/axum-template): GraphQL and REST API, SurrealDb, JWT auth, direct error handling, request logs
 - [axum-guard-logic](https://github.com/sjud/axum_guard_logic): Use AND/OR logic to extract types and check their values against `Service` inputs.
 - [axum-casbin-auth](https://github.com/casbin-rs/axum-casbin-auth): Casbin access control middleware for axum framework
 - [aide](https://docs.rs/aide): Code-first Open API documentation generator with [axum integration](https://docs.rs/aide/latest/aide/axum/index.html).
@@ -41,6 +42,7 @@ If your project isn't listed here and you would like it to be, please feel free 
 - [axum-valid](https://github.com/gengteng/axum-valid): Extractors for data validation using validator, garde, and validify.
 - [tower-sessions](https://github.com/maxcountryman/tower-sessions): Sessions as a `tower` and `axum` middleware.
 - [shuttle](https://github.com/shuttle-hq/shuttle): Build & ship backends without writing any infrastructure files. Now with Axum support.
+- [socketioxide](https://github.com/totodore/socketioxide): An easy to use socket.io server implementation working as a `tower` layer/service. 
 
 ## Project showcase
 

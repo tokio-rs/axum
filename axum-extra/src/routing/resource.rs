@@ -151,6 +151,7 @@ mod tests {
     use super::*;
     use axum::{body::Body, extract::Path, http::Method, Router};
     use http::Request;
+    use http_body_util::BodyExt;
     use tower::ServiceExt;
 
     #[tokio::test]
@@ -216,7 +217,7 @@ mod tests {
             )
             .await
             .unwrap();
-        let bytes = hyper::body::to_bytes(res).await.unwrap();
+        let bytes = res.collect().await.unwrap().to_bytes();
         String::from_utf8(bytes.to_vec()).unwrap()
     }
 }

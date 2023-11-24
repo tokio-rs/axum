@@ -44,6 +44,7 @@ mod tests {
     use super::*;
     use axum::body::Body;
     use axum::http::{Request, StatusCode};
+    use http_body_util::BodyExt;
     use tower::ServiceExt;
 
     #[tokio::test]
@@ -58,7 +59,7 @@ mod tests {
         assert_eq!(response.status(), StatusCode::OK);
         assert_eq!(response.headers()["x-some-header"], "header from GET");
 
-        let body = hyper::body::to_bytes(response.into_body()).await.unwrap();
+        let body = response.collect().await.unwrap().to_bytes();
         assert_eq!(&body[..], b"body from GET");
     }
 
@@ -74,7 +75,7 @@ mod tests {
         assert_eq!(response.status(), StatusCode::OK);
         assert_eq!(response.headers()["x-some-header"], "header from HEAD");
 
-        let body = hyper::body::to_bytes(response.into_body()).await.unwrap();
+        let body = response.collect().await.unwrap().to_bytes();
         assert!(body.is_empty());
     }
 }

@@ -4,7 +4,7 @@ use http::{
     header::{HeaderName, HeaderValue},
     StatusCode,
 };
-use std::{convert::Infallible, net::SocketAddr};
+use std::{convert::Infallible, net::SocketAddr, str::FromStr};
 use tokio::net::TcpListener;
 use tower::make::Shared;
 use tower_service::Service;
@@ -105,7 +105,15 @@ impl RequestBuilder {
         HeaderValue: TryFrom<V>,
         <HeaderValue as TryFrom<V>>::Error: Into<http::Error>,
     {
+        // reqwest still uses http 0.2
+        let key: HeaderName = key.try_into().map_err(Into::into).unwrap();
+        let key = reqwest::header::HeaderName::from_bytes(key.as_ref()).unwrap();
+
+        let value: HeaderValue = value.try_into().map_err(Into::into).unwrap();
+        let value = reqwest::header::HeaderValue::from_bytes(value.as_bytes()).unwrap();
+
         self.builder = self.builder.header(key, value);
+
         self
     }
 
@@ -140,11 +148,18 @@ impl TestResponse {
     }
 
     pub(crate) fn status(&self) -> StatusCode {
-        self.response.status()
+        StatusCode::from_u16(self.response.status().as_u16()).unwrap()
     }
 
-    pub(crate) fn headers(&self) -> &http::HeaderMap {
-        self.response.headers()
+    pub(crate) fn headers(&self) -> http::HeaderMap {
+        // reqwest still uses http 0.2 so have to convert into http 1.0
+        let mut headers = http::HeaderMap::new();
+        for (key, value) in self.response.headers() {
+            let key = http::HeaderName::from_str(key.as_str()).unwrap();
+            let value = http::HeaderValue::from_bytes(value.as_bytes()).unwrap();
+            headers.insert(key, value);
+        }
+        headers
     }
 
     pub(crate) async fn chunk(&mut self) -> Option<Bytes> {

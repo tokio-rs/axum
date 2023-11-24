@@ -12,7 +12,7 @@ use axum::{
 use futures_util::stream::Stream;
 use http::{
     header::{HeaderMap, CONTENT_TYPE},
-    Request, StatusCode,
+    HeaderName, HeaderValue, Request, StatusCode,
 };
 use std::{
     error::Error,
@@ -99,11 +99,8 @@ where
 
     async fn from_request(req: Request<Body>, _state: &S) -> Result<Self, Self::Rejection> {
         let boundary = parse_boundary(req.headers()).ok_or(InvalidBoundary)?;
-        let stream = match req.with_limited_body() {
-            Ok(limited) => Body::new(limited),
-            Err(unlimited) => unlimited.into_body(),
-        };
-        let multipart = multer::Multipart::new(stream, boundary);
+        let stream = req.with_limited_body().into_body();
+        let multipart = multer::Multipart::new(stream.into_data_stream(), boundary);
         Ok(Self { inner: multipart })
     }
 }
@@ -118,7 +115,22 @@ impl Multipart {
             .map_err(MultipartError::from_multer)?;
 
         if let Some(field) = field {
-            Ok(Some(Field { inner: field }))
+            // multer still uses http 0.2 which means we cannot directly expose
+            // `multer::Field::headers`. Instead we have to eagerly convert the headers into http
+            // 1.0
+            //
+            // When the next major version of multer is published we can remove this.
+            let mut headers = HeaderMap::with_capacity(field.headers().len());
+            headers.extend(field.headers().into_iter().map(|(name, value)| {
+                let name = HeaderName::from_bytes(name.as_ref()).unwrap();
+                let value = HeaderValue::from_bytes(value.as_ref()).unwrap();
+                (name, value)
+            }));
+
+            Ok(Some(Field {
+                inner: field,
+                headers,
+            }))
         } else {
             Ok(None)
         }
@@ -137,6 +149,7 @@ impl Multipart {
 #[derive(Debug)]
 pub struct Field {
     inner: multer::Field<'static>,
+    headers: HeaderMap,
 }
 
 impl Stream for Field {
@@ -171,7 +184,7 @@ impl Field {
 
     /// Get a map of headers as [`HeaderMap`].
     pub fn headers(&self) -> &HeaderMap {
-        self.inner.headers()
+        &self.headers
     }
 
     /// Get the full data of the field as [`Bytes`].
@@ -283,7 +296,7 @@ fn status_code_from_multer_error(err: &multer::Error) -> StatusCode {
             if err
                 .downcast_ref::<axum::Error>()
                 .and_then(|err| err.source())
-                .and_then(|err| err.downcast_ref::<http_body::LengthLimitError>())
+                .and_then(|err| err.downcast_ref::<http_body_util::LengthLimitError>())
                 .is_some()
             {
                 return StatusCode::PAYLOAD_TOO_LARGE;

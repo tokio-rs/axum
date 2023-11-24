@@ -391,9 +391,8 @@ mod tests {
     use http::StatusCode;
     use std::time::Duration;
     use tower_http::{
-        compression::CompressionLayer, limit::RequestBodyLimitLayer,
-        map_request_body::MapRequestBodyLayer, map_response_body::MapResponseBodyLayer,
-        timeout::TimeoutLayer,
+        limit::RequestBodyLimitLayer, map_request_body::MapRequestBodyLayer,
+        map_response_body::MapResponseBodyLayer, timeout::TimeoutLayer,
     };
 
     #[crate::test]
@@ -420,7 +419,6 @@ mod tests {
                 RequestBodyLimitLayer::new(1024),
                 TimeoutLayer::new(Duration::from_secs(10)),
                 MapResponseBodyLayer::new(Body::new),
-                CompressionLayer::new(),
             ))
             .layer(MapRequestBodyLayer::new(Body::new))
             .with_state("foo");

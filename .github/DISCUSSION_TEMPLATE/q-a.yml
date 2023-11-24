@@ -1,0 +1,21 @@
+body:
+  - type: textarea
+    attributes:
+      label: Summary
+      description: 'Your question:'
+    validations:
+      required: true
+  - type: input
+    attributes:
+      label: axum version
+      description: 'Please look it up in `Cargo.lock`, or as described below'
+    validations:
+      required: true
+  - type: markdown
+    attributes:
+      value: |
+        > If you have `jq` installed, you can look up the version by running
+        >
+        > ```bash
+        > cargo metadata --format-version=1 | jq -r '.packages[] | select(.name == "axum") | .version'
+        > ```
