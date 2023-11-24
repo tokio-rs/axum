@@ -1,4 +1,3 @@
-title: 'Q&A'
 body:
   - type: textarea
     attributes:
@@ -9,13 +8,12 @@ body:
   - type: input
     attributes:
       label: axum version
-      description: 'Please look it up in `Cargo.lock`'
+      description: 'Please look it up in `Cargo.lock`, or as described below'
     validations:
       required: true
   - type: markdown
     attributes:
       value: |
-        > [!NOTE]
         > If you have `jq` installed, you can look up the version by running
         >
         > ```bash
