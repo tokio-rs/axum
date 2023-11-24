@@ -12,10 +12,12 @@ and this project adheres to [Semantic Versioning].
 - **added:** `Clone` implementation for `ErasedJson` ([#2142])
 - **breaking:** Update to prost 0.12. Used for the `Protobuf` extractor
 - **breaking:** Make `tokio` an optional dependency
+- **breaking**: Functions and methods that previously accepted a `Cookie` now accept any `T: Into<Cookie>` ([#2348])
 
 [#1850]: https://github.com/tokio-rs/axum/pull/1850
 [#2142]: https://github.com/tokio-rs/axum/pull/2142
 [#2310]: https://github.com/tokio-rs/axum/pull/2310 
+[#2348]: https://github.com/tokio-rs/axum/pull/2348 
 
 # 0.7.4 (18. April, 2023)
 
