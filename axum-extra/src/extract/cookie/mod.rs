@@ -168,7 +168,7 @@ impl CookieJar {
     /// use axum::response::IntoResponse;
     ///
     /// async fn handle(jar: CookieJar) -> CookieJar {
-    ///     jar.remove(Cookie::named("foo"))
+    ///     jar.remove(Cookie::from("foo"))
     /// }
     /// ```
     #[must_use]
@@ -250,7 +250,7 @@ mod tests {
                 }
 
                 async fn remove_cookie(jar: $jar) -> impl IntoResponse {
-                    jar.remove(Cookie::named("key"))
+                    jar.remove(Cookie::from("key"))
                 }
 
                 let state = AppState {

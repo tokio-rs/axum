@@ -216,7 +216,7 @@ impl<K> PrivateCookieJar<K> {
     /// use axum::response::IntoResponse;
     ///
     /// async fn handle(jar: PrivateCookieJar) -> PrivateCookieJar {
-    ///     jar.remove(Cookie::named("foo"))
+    ///     jar.remove(Cookie::from("foo"))
     /// }
     /// ```
     #[must_use]

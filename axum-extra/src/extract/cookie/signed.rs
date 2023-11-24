@@ -234,7 +234,7 @@ impl<K> SignedCookieJar<K> {
     /// use axum::response::IntoResponse;
     ///
     /// async fn handle(jar: SignedCookieJar) -> SignedCookieJar {
-    ///     jar.remove(Cookie::named("foo"))
+    ///     jar.remove(Cookie::from("foo"))
     /// }
     /// ```
     #[must_use]
