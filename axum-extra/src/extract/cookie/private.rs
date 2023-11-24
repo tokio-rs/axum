@@ -220,7 +220,7 @@ impl<K> PrivateCookieJar<K> {
     /// }
     /// ```
     #[must_use]
-    pub fn remove(mut self, cookie: Cookie<'static>) -> Self {
+    pub fn remove<C: Into<Cookie<'static>>>(mut self, cookie: C) -> Self {
         self.private_jar_mut().remove(cookie);
         self
     }
@@ -241,7 +241,7 @@ impl<K> PrivateCookieJar<K> {
     /// ```
     #[must_use]
     #[allow(clippy::should_implement_trait)]
-    pub fn add(mut self, cookie: Cookie<'static>) -> Self {
+    pub fn add<C: Into<Cookie<'static>>>(mut self, cookie: C) -> Self {
         self.private_jar_mut().add(cookie);
         self
     }
