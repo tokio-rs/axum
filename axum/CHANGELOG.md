@@ -66,6 +66,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **added:** Implement `IntoResponse` for `(R,) where R: IntoResponse` ([#2143])
 - **changed:** For SSE, add space between field and value for compatibility ([#2149])
 - **added:** Add `NestedPath` extractor ([#1924])
+- **added:** Add `handle_error` function to existing `ServiceExt` trait ([#2235])
 - **breaking:** `impl<T> IntoResponse(Parts) for Extension<T>` now requires
   `T: Clone`, as that is required by the http crate ([#1882])
 - **added:** Add `axum::Json::from_bytes` ([#2244])
@@ -92,6 +93,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#2140]: https://github.com/tokio-rs/axum/pull/2140
 [#2143]: https://github.com/tokio-rs/axum/pull/2143
 [#2149]: https://github.com/tokio-rs/axum/pull/2149
+[#2235]: https://github.com/tokio-rs/axum/pull/2235
 [#2244]: https://github.com/tokio-rs/axum/pull/2244
 [#2328]: https://github.com/tokio-rs/axum/pull/2328
 
