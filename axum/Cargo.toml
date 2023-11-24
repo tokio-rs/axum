@@ -25,7 +25,7 @@ query = ["dep:serde_urlencoded"]
 tokio = ["dep:hyper-util", "dep:tokio", "tokio/net", "tokio/rt", "tower/make"]
 tower-log = ["tower/log"]
 tracing = ["dep:tracing", "axum-core/tracing"]
-ws = ["hyper", "tokio", "dep:tokio-tungstenite", "dep:sha1", "dep:base64"]
+ws = ["dep:hyper", "tokio", "dep:tokio-tungstenite", "dep:sha1", "dep:base64"]
 
 # Required for intra-doc links to resolve correctly
 __private_docs = ["tower/full", "dep:tower-http"]
