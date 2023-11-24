@@ -10,6 +10,8 @@ body:
     attributes:
       label: axum version
       description: 'Please look it up in `Cargo.lock`'
+    validations:
+      required: true
   - type: markdown
     attributes:
       value: |
@@ -19,5 +21,3 @@ body:
         > ```bash
         > cargo metadata --format-version=1 | jq -r '.packages[] | select(.name == "axum") | .version'
         > ```
-      validations:
-        required: true
