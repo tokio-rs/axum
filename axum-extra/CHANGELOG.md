@@ -9,7 +9,6 @@ and this project adheres to [Semantic Versioning].
 
 - **added:** `OptionalQuery` extractor ([#2310])
 - **added:** `TypedHeader` which used to be in `axum` ([#1850])
-- **added:** `Clone` implementation for `ErasedJson` ([#2142])
 - **breaking:** Update to prost 0.12. Used for the `Protobuf` extractor
 - **breaking:** Make `tokio` an optional dependency
 - **breaking:** Upgrade `cookie` dependency to 0.18 ([#2343])
@@ -17,10 +16,33 @@ and this project adheres to [Semantic Versioning].
   now accept any `T: Into<Cookie>` ([#2348])
 
 [#1850]: https://github.com/tokio-rs/axum/pull/1850
-[#2142]: https://github.com/tokio-rs/axum/pull/2142
 [#2310]: https://github.com/tokio-rs/axum/pull/2310
 [#2343]: https://github.com/tokio-rs/axum/pull/2343
 [#2348]: https://github.com/tokio-rs/axum/pull/2348
+
+# 0.8.0 (16. September, 2023)
+
+- **breaking:** Update to prost 0.12. Used for the `Protobuf` extractor ([#2224])
+
+[#2224]: https://github.com/tokio-rs/axum/pull/2224
+
+# 0.7.7 (03. August, 2023)
+
+- **added:** `Clone` implementation for `ErasedJson` ([#2142])
+
+[#2142]: https://github.com/tokio-rs/axum/pull/2142
+
+# 0.7.6 (02. August, 2023)
+
+- **fixed:** Remove unused dependency ([#2135])
+
+[#2135]: https://github.com/tokio-rs/axum/pull/2135
+
+# 0.7.5 (17. July, 2023)
+
+- **fixed:** Remove explicit auto deref from `PrivateCookieJar` example ([#2028])
+
+[#2028]: https://github.com/tokio-rs/axum/pull/2028
 
 # 0.7.4 (18. April, 2023)
 
