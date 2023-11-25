@@ -5,7 +5,3 @@ default-members = ["axum", "axum-*"]
 # Example has been deleted, but README.md remains
 exclude = ["examples/async-graphql"]
 resolver = "2"
-
-[patch.crates-io]
-# for http 1.0. PR to update is merged but not published
-headers = { git = "https://github.com/hyperium/headers", rev = "4400aa90c47a7" }
