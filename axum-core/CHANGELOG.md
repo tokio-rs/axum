@@ -7,7 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- None.
+- **added:** Implement `IntoResponse` for `(R,) where R: IntoResponse` ([#2143])
+- **fixed:** Fix broken docs links ([#2164])
+- **fixed:** Clearly document applying `DefaultBodyLimit` to individual routes ([#2157])
+
+[#2143]: https://github.com/tokio-rs/axum/pull/2143
+[#2164]: https://github.com/tokio-rs/axum/pull/2164
+[#2157]: https://github.com/tokio-rs/axum/pull/2157
 
 # 0.3.4 (11. April, 2023)
 
