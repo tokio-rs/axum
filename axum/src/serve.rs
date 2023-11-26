@@ -2,8 +2,9 @@
 
 use std::{
     convert::Infallible,
-    future::Future,
+    future::{Future, IntoFuture},
     io,
+    marker::PhantomData,
     net::SocketAddr,
     pin::Pin,
     task::{Context, Poll},
@@ -86,48 +87,129 @@ use tower_service::Service;
 /// [`HandlerWithoutStateExt::into_make_service_with_connect_info`]: crate::handler::HandlerWithoutStateExt::into_make_service_with_connect_info
 /// [`HandlerService::into_make_service_with_connect_info`]: crate::handler::HandlerService::into_make_service_with_connect_info
 #[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
-pub async fn serve<M, S>(tcp_listener: TcpListener, mut make_service: M) -> io::Result<()>
+pub fn serve<M, S>(tcp_listener: TcpListener, make_service: M) -> Serve<M, S>
 where
     M: for<'a> Service<IncomingStream<'a>, Error = Infallible, Response = S>,
     S: Service<Request, Response = Response, Error = Infallible> + Clone + Send + 'static,
     S::Future: Send,
 {
-    loop {
-        let (tcp_stream, remote_addr) = tcp_listener.accept().await?;
-        let tcp_stream = TokioIo::new(tcp_stream);
+    Serve {
+        tcp_listener,
+        make_service,
+        _marker: PhantomData,
+    }
+}
 
-        poll_fn(|cx| make_service.poll_ready(cx))
-            .await
-            .unwrap_or_else(|err| match err {});
+/// Future returned by [`serve`].
+#[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
+pub struct Serve<M, S> {
+    tcp_listener: TcpListener,
+    make_service: M,
+    _marker: PhantomData<S>,
+}
 
-        let tower_service = make_service
-            .call(IncomingStream {
-                tcp_stream: &tcp_stream,
-                remote_addr,
-            })
-            .await
-            .unwrap_or_else(|err| match err {});
+#[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
+impl<M, S> std::fmt::Debug for Serve<M, S>
+where
+    M: std::fmt::Debug,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Self {
+            tcp_listener,
+            make_service,
+            _marker: _,
+        } = self;
 
-        let hyper_service = TowerToHyperService {
-            service: tower_service,
-        };
+        f.debug_struct("Serve")
+            .field("tcp_listener", tcp_listener)
+            .field("make_service", make_service)
+            .finish()
+    }
+}
 
-        tokio::task::spawn(async move {
-            match Builder::new(TokioExecutor::new())
-                // upgrades needed for websockets
-                .serve_connection_with_upgrades(tcp_stream, hyper_service)
-                .await
-            {
-                Ok(()) => {}
-                Err(_err) => {
-                    // This error only appears when the client doesn't send a request and
-                    // terminate the connection.
-                    //
-                    // If client sends one request then terminate connection whenever, it doesn't
-                    // appear.
-                }
+#[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
+impl<M, S> IntoFuture for Serve<M, S>
+where
+    M: for<'a> Service<IncomingStream<'a>, Error = Infallible, Response = S> + Send + 'static,
+    for<'a> <M as Service<IncomingStream<'a>>>::Future: Send,
+    S: Service<Request, Response = Response, Error = Infallible> + Clone + Send + 'static,
+    S::Future: Send,
+{
+    type Output = io::Result<()>;
+    type IntoFuture = private::ServeFuture;
+
+    fn into_future(self) -> Self::IntoFuture {
+        private::ServeFuture(Box::pin(async move {
+            let Self {
+                tcp_listener,
+                mut make_service,
+                _marker: _,
+            } = self;
+
+            loop {
+                let (tcp_stream, remote_addr) = tcp_listener.accept().await?;
+                let tcp_stream = TokioIo::new(tcp_stream);
+
+                poll_fn(|cx| make_service.poll_ready(cx))
+                    .await
+                    .unwrap_or_else(|err| match err {});
+
+                let tower_service = make_service
+                    .call(IncomingStream {
+                        tcp_stream: &tcp_stream,
+                        remote_addr,
+                    })
+                    .await
+                    .unwrap_or_else(|err| match err {});
+
+                let hyper_service = TowerToHyperService {
+                    service: tower_service,
+                };
+
+                tokio::task::spawn(async move {
+                    match Builder::new(TokioExecutor::new())
+                        // upgrades needed for websockets
+                        .serve_connection_with_upgrades(tcp_stream, hyper_service)
+                        .await
+                    {
+                        Ok(()) => {}
+                        Err(_err) => {
+                            // This error only appears when the client doesn't send a request and
+                            // terminate the connection.
+                            //
+                            // If client sends one request then terminate connection whenever, it doesn't
+                            // appear.
+                        }
+                    }
+                });
             }
-        });
+        }))
+    }
+}
+
+mod private {
+    use std::{
+        future::Future,
+        io,
+        pin::Pin,
+        task::{Context, Poll},
+    };
+
+    pub struct ServeFuture(pub(super) futures_util::future::BoxFuture<'static, io::Result<()>>);
+
+    impl Future for ServeFuture {
+        type Output = io::Result<()>;
+
+        #[inline]
+        fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+            self.0.as_mut().poll(cx)
+        }
+    }
+
+    impl std::fmt::Debug for ServeFuture {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            f.debug_struct("ServeFuture").finish_non_exhaustive()
+        }
     }
 }
 

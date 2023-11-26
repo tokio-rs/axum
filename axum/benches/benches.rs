@@ -5,6 +5,7 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 use std::{
+    future::IntoFuture,
     io::BufRead,
     process::{Command, Stdio},
 };
@@ -161,7 +162,8 @@ impl BenchmarkBuilder {
         let addr = listener.local_addr().unwrap();
 
         std::thread::spawn(move || {
-            rt.block_on(axum::serve(listener, app)).unwrap();
+            rt.block_on(axum::serve(listener, app).into_future())
+                .unwrap();
         });
 
         let mut cmd = Command::new("rewrk");

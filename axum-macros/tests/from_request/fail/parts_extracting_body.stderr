@@ -13,6 +13,6 @@ error[E0277]: the trait bound `String: FromRequestParts<S>` is not satisfied
             <Method as FromRequestParts<S>>
             <axum::http::request::Parts as FromRequestParts<S>>
             <Uri as FromRequestParts<S>>
-            <ConnectInfo<T> as FromRequestParts<S>>
             <Version as FromRequestParts<S>>
+            <ConnectInfo<T> as FromRequestParts<S>>
           and $N others
