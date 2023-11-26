@@ -105,7 +105,8 @@ async fn main() {
 
             loop {
                 tokio::select! {
-                    // Poll the connection to process requests.
+                    // Poll the connection. This completes when the client has closed the
+                    // connection, graceful shutdown has completed, or we encounter a TCP error.
                     result = conn.as_mut() => {
                         if let Err(err) = result {
                             debug!("failed to serve connection: {err:#}");
