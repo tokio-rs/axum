@@ -74,7 +74,7 @@ async fn main() {
         // Clone the watch receiver and move it into the task.
         let close_rx = close_rx.clone();
 
-        // Spawn a task to handle the connection. That way we can multiple connections
+        // Spawn a task to handle the connection. That way we can serve multiple connections
         // concurrently.
         tokio::spawn(async move {
             // Hyper has its own `AsyncRead` and `AsyncWrite` traits and doesn't use tokio.
