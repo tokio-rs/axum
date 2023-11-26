@@ -7,9 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+- None.
+
+# 0.4.0 (27. November, 2023)
+
 - **added:** Implement `IntoResponse` for `(R,) where R: IntoResponse` ([#2143])
 - **fixed:** Fix broken docs links ([#2164])
 - **fixed:** Clearly document applying `DefaultBodyLimit` to individual routes ([#2157])
+- **breaking:** The following types/traits are no longer generic over the request body
+  (i.e. the `B` type param has been removed) ([#1751] and [#1789]):
+  - `FromRequestParts`
+  - `FromRequest`
+  - `RequestExt`
+- **breaking:** axum no longer re-exports `hyper::Body` as that type is removed
+  in hyper 1.0. Instead axum has its own body type at `axum_core::body::Body` ([#1751])
 
 [#2143]: https://github.com/tokio-rs/axum/pull/2143
 [#2164]: https://github.com/tokio-rs/axum/pull/2164

@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+- None.
+
+# 0.4.0 (27. November, 2023)
+
 - **breaking:** `#[debug_handler]` no longer accepts a `body = _` argument. The
   body type is always `axum::body::Body` ([#1751])
 - **fixed:** Fix `rust-version` specific in Cargo.toml ([#2204])

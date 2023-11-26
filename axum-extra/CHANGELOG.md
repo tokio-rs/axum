@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning].
 
 # Unreleased
 
+- None.
+
+# 0.9.0 (27. November, 2023)
+
 - **added:** `OptionalQuery` extractor ([#2310])
 - **added:** `TypedHeader` which used to be in `axum` ([#1850])
 - **breaking:** Update to prost 0.12. Used for the `Protobuf` extractor
