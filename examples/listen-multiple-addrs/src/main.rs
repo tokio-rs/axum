@@ -4,9 +4,12 @@
 //! listen on both IPv4 and IPv6 when the IPv6 catch-all listener is used (`::`),
 //! [like older versions of Windows.](https://docs.microsoft.com/en-us/windows/win32/winsock/dual-stack-sockets)
 
-use axum::{routing::get, Router, extract::Request};
+use axum::{extract::Request, routing::get, Router};
 use hyper::body::Incoming;
-use hyper_util::{rt::{TokioIo, TokioExecutor}, server};
+use hyper_util::{
+    rt::{TokioExecutor, TokioIo},
+    server,
+};
 use std::net::{Ipv4Addr, Ipv6Addr, SocketAddr};
 use tokio::net::TcpListener;
 use tower::Service;
