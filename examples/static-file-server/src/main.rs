@@ -103,8 +103,7 @@ fn calling_serve_dir_from_a_handler() -> Router {
 }
 
 fn using_serve_file_from_a_route() -> Router {
-    Router::new()
-        .route_service("/foo", ServeFile::new("assets/index.html"))
+    Router::new().route_service("/foo", ServeFile::new("assets/index.html"))
 }
 
 async fn serve(app: Router, port: u16) {
