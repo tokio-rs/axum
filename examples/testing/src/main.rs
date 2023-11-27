@@ -58,12 +58,11 @@ mod tests {
         extract::connect_info::MockConnectInfo,
         http::{self, Request, StatusCode},
     };
-    use http_body_util::BodyExt;
+    use http_body_util::BodyExt; // for `collect`
     use serde_json::{json, Value};
     use std::net::SocketAddr;
     use tokio::net::TcpListener;
-    use tower::Service; // for `call`
-    use tower::ServiceExt; // for `oneshot` and `ready` // for `collect`
+    use tower::{Service, ServiceExt}; // for `call`, `oneshot`, and `ready`
 
     #[tokio::test]
     async fn hello_world() {
