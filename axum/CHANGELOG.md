@@ -19,7 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - [hyper](https://crates.io/crates/hyper) 1.0
     - [http](https://crates.io/crates/http) 1.0
     - [http-body](https://crates.io/crates/http-body) 1.0
-    - [tower-http](https://crates.io/crates/tower-http) 0.5
+- **breaking:** axum now requires [tower-http](https://crates.io/crates/tower-http) 0.5
 - **breaking:** Remove deprecated `WebSocketUpgrade::max_send_queue`
 - **breaking:** The following types/traits are no longer generic over the request body
   (i.e. the `B` type param has been removed) ([#1751] and [#1789]):
