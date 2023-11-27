@@ -1,72 +1,54 @@
-//! Showcases how listening on multiple addrs is possible by
-//! implementing Accept for a custom struct.
+//! Showcases how listening on multiple addrs is possible.
 //!
 //! This may be useful in cases where the platform does not
 //! listen on both IPv4 and IPv6 when the IPv6 catch-all listener is used (`::`),
 //! [like older versions of Windows.](https://docs.microsoft.com/en-us/windows/win32/winsock/dual-stack-sockets)
 
-//! Showcases how listening on multiple addrs is possible by
-//! implementing Accept for a custom struct.
-//!
-//! This may be useful in cases where the platform does not
-//! listen on both IPv4 and IPv6 when the IPv6 catch-all listener is used (`::`),
-//! [like older versions of Windows.](https://docs.microsoft.com/en-us/windows/win32/winsock/dual-stack-sockets)
+use axum::{routing::get, Router, extract::Request};
+use hyper::body::Incoming;
+use hyper_util::{rt::{TokioIo, TokioExecutor}, server};
+use std::net::{Ipv4Addr, Ipv6Addr, SocketAddr};
+use tokio::net::TcpListener;
+use tower::Service;
 
-// TODO
-fn main() {
-    eprint!("this example has not yet been updated to hyper 1.0");
+#[tokio::main]
+async fn main() {
+    let app: Router = Router::new().route("/", get(|| async { "Hello, World!" }));
+
+    let localhost_v4 = SocketAddr::new(Ipv4Addr::LOCALHOST.into(), 8080);
+    let listener_v4 = TcpListener::bind(&localhost_v4).await.unwrap();
+
+    let localhost_v6 = SocketAddr::new(Ipv6Addr::LOCALHOST.into(), 8080);
+    let listener_v6 = TcpListener::bind(&localhost_v6).await.unwrap();
+
+    // See https://github.com/tokio-rs/axum/blob/main/examples/serve-with-hyper/src/main.rs for
+    // more details about this setup
+    loop {
+        // Accept connections from `listener_v4` and `listener_v6` at the same time
+        let (socket, _remote_addr) = tokio::select! {
+            result = listener_v4.accept() => {
+                result.unwrap()
+            }
+            result = listener_v6.accept() => {
+                result.unwrap()
+            }
+        };
+
+        let tower_service = app.clone();
+
+        tokio::spawn(async move {
+            let socket = TokioIo::new(socket);
+
+            let hyper_service = hyper::service::service_fn(move |request: Request<Incoming>| {
+                tower_service.clone().call(request)
+            });
+
+            if let Err(err) = server::conn::auto::Builder::new(TokioExecutor::new())
+                .serve_connection_with_upgrades(socket, hyper_service)
+                .await
+            {
+                eprintln!("failed to serve connection: {err:#}");
+            }
+        });
+    }
 }
-
-// use axum::{routing::get, Router};
-// use hyper::server::{accept::Accept, conn::AddrIncoming};
-// use std::{
-//     net::{Ipv4Addr, Ipv6Addr, SocketAddr},
-//     pin::Pin,
-//     task::{Context, Poll},
-// };
-
-// #[tokio::main]
-// async fn main() {
-//     let app = Router::new().route("/", get(|| async { "Hello, World!" }));
-
-//     let localhost_v4 = SocketAddr::new(Ipv4Addr::LOCALHOST.into(), 8080);
-//     let incoming_v4 = AddrIncoming::bind(&localhost_v4).unwrap();
-
-//     let localhost_v6 = SocketAddr::new(Ipv6Addr::LOCALHOST.into(), 8080);
-//     let incoming_v6 = AddrIncoming::bind(&localhost_v6).unwrap();
-
-//     let combined = CombinedIncoming {
-//         a: incoming_v4,
-//         b: incoming_v6,
-//     };
-
-//     hyper::Server::builder(combined)
-//         .serve(app.into_make_service())
-//         .await
-//         .unwrap();
-// }
-
-// struct CombinedIncoming {
-//     a: AddrIncoming,
-//     b: AddrIncoming,
-// }
-
-// impl Accept for CombinedIncoming {
-//     type Conn = <AddrIncoming as Accept>::Conn;
-//     type Error = <AddrIncoming as Accept>::Error;
-
-//     fn poll_accept(
-//         mut self: Pin<&mut Self>,
-//         cx: &mut Context<'_>,
-//     ) -> Poll<Option<Result<Self::Conn, Self::Error>>> {
-//         if let Poll::Ready(Some(value)) = Pin::new(&mut self.a).poll_accept(cx) {
-//             return Poll::Ready(Some(value));
-//         }
-
-//         if let Poll::Ready(Some(value)) = Pin::new(&mut self.b).poll_accept(cx) {
-//             return Poll::Ready(Some(value));
-//         }
-
-//         Poll::Pending
-//     }
-// }

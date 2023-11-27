@@ -8,3 +8,5 @@ publish = false
 axum = { path = "../../axum" }
 hyper = { version = "1.0.0", features = ["full"] }
 tokio = { version = "1", features = ["full"] }
+hyper-util = { version = "0.1", features = ["tokio", "server-auto", "http1"] }
+tower = { version = "0.4", features = ["util"] }
