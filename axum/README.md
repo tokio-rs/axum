@@ -8,12 +8,6 @@
 
 More information about this crate can be found in the [crate documentation][docs].
 
-## 🚨 The `main` branch has unpublished, breaking changes 🚨
-
-In preparation for `axum` 0.7 the `main` branch currently has unpublished,
-breaking changes. Please see the [v0.6.x](https://github.com/tokio-rs/axum/tree/v0.6.x)
-branch for the versions of `axum` published to crates.io.
-
 ## High level features
 
 - Route requests to handlers with a macro free API.
