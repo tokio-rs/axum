@@ -43,7 +43,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **breaking:** Change `sse::Event::json_data` to use `axum_core::Error` as its error type ([#1762])
 - **breaking:** Rename `DefaultOnFailedUpdgrade` to `DefaultOnFailedUpgrade` ([#1664])
 - **breaking:** Rename `OnFailedUpdgrade` to `OnFailedUpgrade` ([#1664])
-- **breaking:** `TypedHeader` has been move to `axum-extra` ([#1850])
+- **breaking:** `TypedHeader` has been moved to `axum-extra` as `axum_extra::TypedHeader` and requires enabling the `typed-header` feature on `axum-extra`. The `headers` feature has been removed from axum; what it provided under `axum::headers` is now found in `axum_extra::headers` by default. ([#1850])
 - **breaking:** Removed re-exports of `Empty` and `Full`. Use
   `axum::body::Body::empty` and `axum::body::Body::from` respectively ([#1789])
 - **breaking:** The response returned by `IntoResponse::into_response` must use
