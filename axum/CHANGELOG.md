@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+- None.
+
+# 0.7.0 (27. November, 2023)
+
 - **breaking:** Remove deprecated `WebSocketUpgrade::max_send_queue`
 - **breaking:** The following types/traits are no longer generic over the request body
   (i.e. the `B` type param has been removed) ([#1751] and [#1789]):

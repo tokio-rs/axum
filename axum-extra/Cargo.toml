@@ -9,7 +9,7 @@ license = "MIT"
 name = "axum-extra"
 readme = "README.md"
 repository = "https://github.com/tokio-rs/axum"
-version = "0.7.4"
+version = "0.9.0"
 
 [features]
 default = []
@@ -36,8 +36,8 @@ typed-header = ["dep:headers"]
 typed-routing = ["dep:axum-macros", "dep:percent-encoding", "dep:serde_html_form", "dep:form_urlencoded"]
 
 [dependencies]
-axum = { path = "../axum", version = "0.6.13", default-features = false }
-axum-core = { path = "../axum-core", version = "0.3.4" }
+axum = { path = "../axum", version = "0.7.0", default-features = false }
+axum-core = { path = "../axum-core", version = "0.4.0" }
 bytes = "1.1.0"
 futures-util = { version = "0.3", default-features = false, features = ["alloc"] }
 http = "1.0.0"
@@ -51,7 +51,7 @@ tower-layer = "0.3"
 tower-service = "0.3"
 
 # optional dependencies
-axum-macros = { path = "../axum-macros", version = "0.3.7", optional = true }
+axum-macros = { path = "../axum-macros", version = "0.4.0", optional = true }
 cookie = { package = "cookie", version = "0.18.0", features = ["percent-encode"], optional = true }
 form_urlencoded = { version = "1.1.0", optional = true }
 headers = { version = "0.4.0", optional = true }
@@ -65,7 +65,7 @@ tokio-stream = { version = "0.1.9", optional = true }
 tokio-util = { version = "0.7", optional = true }
 
 [dev-dependencies]
-axum = { path = "../axum", version = "0.6.0" }
+axum = { path = "../axum", version = "0.7.0" }
 hyper = "1.0.0"
 reqwest = { version = "0.11", default-features = false, features = ["json", "stream", "multipart"] }
 serde = { version = "1.0", features = ["derive"] }
