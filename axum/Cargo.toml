@@ -179,19 +179,24 @@ features = [
 
 [package.metadata.cargo-public-api-crates]
 allowed = [
-    "async_trait",
+    # our crates
     "axum_core",
     "axum_macros",
-    "bytes",
+
+    # not 1.0
     "futures_core",
     "futures_sink",
     "futures_util",
+    "tower_layer",
+    "tower_service",
+
+    # >=1.0
+    "async_trait",
+    "bytes",
     "http",
     "http_body",
     "serde",
     "tokio",
-    "tower_layer",
-    "tower_service",
 ]
 
 [[bench]]
