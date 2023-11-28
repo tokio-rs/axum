@@ -29,11 +29,9 @@ applications written using [`hyper`] or [`tonic`].
 use axum::{
     routing::{get, post},
     http::StatusCode,
-    response::IntoResponse,
     Json, Router,
 };
 use serde::{Deserialize, Serialize};
-use std::net::SocketAddr;
 
 #[tokio::main]
 async fn main() {
