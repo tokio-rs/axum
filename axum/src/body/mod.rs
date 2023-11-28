@@ -13,7 +13,7 @@ use http_body_util::BodyExt;
 
 /// Converts [`Body`] into [`Bytes`].
 /// ```rust
-/// # use axum::body::to_bytes;
+/// # use axum::body::{to_bytes, Body};
 /// async fn foo() {
 ///     let body = Body::from(vec![1, 2, 3]);
 ///     assert_eq!(&to_bytes(body).await.unwrap()[..], &[1, 2, 3]);
