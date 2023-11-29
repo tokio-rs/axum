@@ -2,7 +2,7 @@
 //!
 //! See [`axum::extract`] for more details.
 //!
-//! [`axum::extract`]: https://docs.rs/axum/latest/axum/extract/index.html
+//! [`axum::extract`]: https://docs.rs/axum/0.7/axum/extract/index.html
 
 use crate::{body::Body, response::IntoResponse};
 use async_trait::async_trait;
@@ -46,7 +46,7 @@ mod private {
 #[cfg_attr(
     nightly_error_messages,
     diagnostic::on_unimplemented(
-        note = "Function argument is not a valid axum extractor. \nSee `https://docs.rs/axum/latest/axum/extract/index.html` for details",
+        note = "Function argument is not a valid axum extractor. \nSee `https://docs.rs/axum/0.7/axum/extract/index.html` for details",
     )
 )]
 pub trait FromRequestParts<S>: Sized {
@@ -73,7 +73,7 @@ pub trait FromRequestParts<S>: Sized {
 #[cfg_attr(
     nightly_error_messages,
     diagnostic::on_unimplemented(
-        note = "Function argument is not a valid axum extractor. \nSee `https://docs.rs/axum/latest/axum/extract/index.html` for details",
+        note = "Function argument is not a valid axum extractor. \nSee `https://docs.rs/axum/0.7/axum/extract/index.html` for details",
     )
 )]
 pub trait FromRequest<S, M = private::ViaRequest>: Sized {

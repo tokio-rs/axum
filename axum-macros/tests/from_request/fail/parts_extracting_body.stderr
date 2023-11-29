@@ -5,7 +5,7 @@ error[E0277]: the trait bound `String: FromRequestParts<S>` is not satisfied
   |           ^^^^^^ the trait `FromRequestParts<S>` is not implemented for `String`
   |
   = note: Function argument is not a valid axum extractor.
-          See `https://docs.rs/axum/latest/axum/extract/index.html` for details
+          See `https://docs.rs/axum/0.7/axum/extract/index.html` for details
   = help: the following other types implement trait `FromRequestParts<S>`:
             <Extractor as FromRequestParts<S>>
             <HeaderMap as FromRequestParts<S>>
