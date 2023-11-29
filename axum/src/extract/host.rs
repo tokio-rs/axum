@@ -11,13 +11,16 @@ use http::{
 
 const X_FORWARDED_HOST_HEADER_KEY: &str = "X-Forwarded-Host";
 
-/// Extractor that resolves the hostname of the request.
+/// Extractor that resolves the host of the request.
 ///
-/// Hostname is resolved through the following, in order:
+/// Host is resolved through the following, in order:
 /// - `Forwarded` header
 /// - `X-Forwarded-Host` header
 /// - `Host` header
-/// - request target / URI
+/// - Authority of the request URI
+///
+/// See https://www.rfc-editor.org/rfc/rfc9110.html#name-host-and-authority for the definition of
+/// host.
 ///
 /// Note that user agents can set `X-Forwarded-Host` and `Host` headers to arbitrary values so make
 /// sure to validate them to avoid security issues.
