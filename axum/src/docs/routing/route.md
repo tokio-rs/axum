@@ -124,6 +124,23 @@ async fn serve_asset(Path(path): Path<String>) {}
 # let _: Router = app;
 ```
 
+# Shorthand
+
+You can call `get`, `post`, `delete`, and any other `method_router`s directly on a Router instance.
+
+```rust
+use axum::{Router, extract::Path};
+
+// appShorhand == appLonghand
+let appShorhand = Router::new()
+    .get("/", root);
+
+let appLonghand = Router::new()
+    .route("/", get(root));
+
+async fn root() {}
+```
+
 # Panics
 
 Panics if the route overlaps with another route:

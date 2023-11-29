@@ -125,6 +125,86 @@ where
         self
     }
 
+    #[doc = include_str!("../docs/routing/route.md")]
+    #[track_caller]
+    pub fn head<H, T>(self, path: &str, handler: H) -> Self
+    where
+        H: Handler<T, S>,
+        T: 'static,
+    {
+        self.route(path, head(handler))
+    }
+
+    #[doc = include_str!("../docs/routing/route.md")]
+    #[track_caller]
+    pub fn get<H, T>(self, path: &str, handler: H) -> Self
+    where
+        H: Handler<T, S>,
+        T: 'static,
+    {
+        self.route(path, get(handler))
+    }
+
+    #[doc = include_str!("../docs/routing/route.md")]
+    #[track_caller]
+    pub fn post<H, T>(self, path: &str, handler: H) -> Self
+    where
+        H: Handler<T, S>,
+        T: 'static,
+    {
+        self.route(path, post(handler))
+    }
+
+    #[doc = include_str!("../docs/routing/route.md")]
+    #[track_caller]
+    pub fn put<H, T>(self, path: &str, handler: H) -> Self
+    where
+        H: Handler<T, S>,
+        T: 'static,
+    {
+        self.route(path, put(handler))
+    }
+
+    #[doc = include_str!("../docs/routing/route.md")]
+    #[track_caller]
+    pub fn patch<H, T>(self, path: &str, handler: H) -> Self
+    where
+        H: Handler<T, S>,
+        T: 'static,
+    {
+        self.route(path, patch(handler))
+    }
+
+    #[doc = include_str!("../docs/routing/route.md")]
+    #[track_caller]
+    pub fn delete<H, T>(self, path: &str, handler: H) -> Self
+    where
+        H: Handler<T, S>,
+        T: 'static,
+    {
+        self.route(path, delete(handler))
+    }
+
+    #[doc = include_str!("../docs/routing/route.md")]
+    #[track_caller]
+    pub fn options<H, T>(self, path: &str, handler: H) -> Self
+    where
+        H: Handler<T, S>,
+        T: 'static,
+    {
+        self.route(path, options(handler))
+    }
+
+    #[doc = include_str!("../docs/routing/route.md")]
+    #[track_caller]
+    pub fn trace<H, T>(self, path: &str, handler: H) -> Self
+    where
+        H: Handler<T, S>,
+        T: 'static,
+    {
+        self.route(path, trace(handler))
+    }
+
     #[doc = include_str!("../docs/routing/route_service.md")]
     pub fn route_service<T>(mut self, path: &str, service: T) -> Self
     where

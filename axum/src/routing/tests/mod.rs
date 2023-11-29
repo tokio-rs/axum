@@ -112,6 +112,36 @@ async fn routing() {
 }
 
 #[crate::test]
+async fn routing_shorthand() {
+    let app = Router::new()
+        .get("/users", |_: Request| async { "users#index" })
+        .post("/users", |_: Request| async { "users#create" })
+        .get("/users/:id", |_: Request| async { "users#show" })
+        .get("/users/:id/action", |_: Request| async { "users#action" });
+
+    let client = TestClient::new(app);
+
+    let res = client.get("/").send().await;
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+
+    let res = client.get("/users").send().await;
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.text().await, "users#index");
+
+    let res = client.post("/users").send().await;
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.text().await, "users#create");
+
+    let res = client.get("/users/1").send().await;
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.text().await, "users#show");
+
+    let res = client.get("/users/1/action").send().await;
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.text().await, "users#action");
+}
+
+#[crate::test]
 async fn router_type_doesnt_change() {
     let app: Router = Router::new()
         .route(
