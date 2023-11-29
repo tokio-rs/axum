@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- None.
+- **added:** Add `axum::body::to_bytes` ([#2373])
+
+[#2373]: https://github.com/tokio-rs/axum/pull/2373
 
 # 0.7.1 (27. November, 2023)
 
