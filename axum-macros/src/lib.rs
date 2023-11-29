@@ -359,7 +359,7 @@ use from_request::Trait::{FromRequest, FromRequestParts};
 /// ```
 ///
 /// [`FromRequest`]: https://docs.rs/axum/latest/axum/extract/trait.FromRequest.html
-/// [`axum::response::Response`]: https://docs.rs/axum/0.6/axum/response/type.Response.html
+/// [`axum::response::Response`]: https://docs.rs/axum/0.7/axum/response/type.Response.html
 /// [`axum::extract::rejection::ExtensionRejection`]: https://docs.rs/axum/latest/axum/extract/rejection/enum.ExtensionRejection.html
 #[proc_macro_derive(FromRequest, attributes(from_request))]
 pub fn derive_from_request(item: TokenStream) -> TokenStream {
@@ -409,7 +409,7 @@ pub fn derive_from_request(item: TokenStream) -> TokenStream {
 ///
 /// Use `#[derive(FromRequest)]` for that.
 ///
-/// [`FromRequestParts`]: https://docs.rs/axum/0.6/axum/extract/trait.FromRequestParts.html
+/// [`FromRequestParts`]: https://docs.rs/axum/0.7/axum/extract/trait.FromRequestParts.html
 #[proc_macro_derive(FromRequestParts, attributes(from_request))]
 pub fn derive_from_request_parts(item: TokenStream) -> TokenStream {
     expand_with(item, |item| from_request::expand(item, FromRequestParts))
@@ -561,7 +561,7 @@ pub fn derive_from_request_parts(item: TokenStream) -> TokenStream {
 ///
 /// [`axum`]: https://docs.rs/axum/latest
 /// [`Handler`]: https://docs.rs/axum/latest/axum/handler/trait.Handler.html
-/// [`axum::extract::State`]: https://docs.rs/axum/0.6/axum/extract/struct.State.html
+/// [`axum::extract::State`]: https://docs.rs/axum/0.7/axum/extract/struct.State.html
 /// [`debug_handler`]: macro@debug_handler
 #[proc_macro_attribute]
 pub fn debug_handler(_attr: TokenStream, input: TokenStream) -> TokenStream {
