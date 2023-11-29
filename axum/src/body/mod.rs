@@ -26,6 +26,25 @@ use http_body_util::{BodyExt, Limited};
 /// # Ok(())
 /// # }
 /// ```
+///
+/// You can detect if the limit was hit by checking the source of the error:
+///
+/// ```rust
+/// use axum::body::{to_bytes, Body};
+/// use http_body_util::LengthLimitError;
+///
+/// # #[tokio::main]
+/// # async fn main() {
+/// let body = Body::from(vec![1, 2, 3]);
+/// match to_bytes(body, 1).await {
+///     Ok(_bytes) => panic!("should have hit the limit"),
+///     Err(err) => {
+///         let source = std::error::Error::source(&err).unwrap();
+///         assert!(source.is::<LengthLimitError>());
+///     }
+/// }
+/// # }
+/// ```
 pub async fn to_bytes(body: Body, limit: usize) -> Result<Bytes, axum_core::Error> {
     Limited::new(body, limit)
         .collect()
