@@ -128,6 +128,8 @@ async fn users_create(
 
 // Create our own JSON extractor by wrapping `axum::Json`. This makes it easy to override the
 // rejection and provide our own which formats errors to match our application.
+//
+// `axum::Json` responds with plain text if the input is invalid.
 #[derive(FromRequest)]
 #[from_request(via(axum::Json), rejection(AppError))]
 struct AppJson<T>(T);
@@ -150,6 +152,8 @@ enum AppError {
 }
 
 // Tell axum how `AppError` should be converted into a response.
+//
+// This is also a convenient place to log errors.
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
         // How we want errors responses to be serialized
@@ -164,10 +168,8 @@ impl IntoResponse for AppError {
                 (rejection.status(), rejection.body_text())
             }
             AppError::TimeError(err) => {
-                // This is also a convenient place to log errors.
-                //
                 // Because `TraceLayer` wraps each request in a span that contains the request
-                // method, uri, etc we don't need to include those details here.
+                // method, uri, etc we don't need to include those details here
                 tracing::error!(%err, "error from time_library");
 
                 // Don't expose any details about the error to the client
