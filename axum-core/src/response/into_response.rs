@@ -116,7 +116,7 @@ pub trait IntoResponse {
 
 impl IntoResponse for StatusCode {
     fn into_response(self) -> Response {
-        let mut res = ().into_response();
+        let mut res = Body::empty().into_response();
         *res.status_mut() = self;
         res
     }
@@ -124,13 +124,25 @@ impl IntoResponse for StatusCode {
 
 impl IntoResponse for () {
     fn into_response(self) -> Response {
-        Body::empty().into_response()
+        StatusCode::NO_CONTENT.into_response()
     }
 }
 
 impl IntoResponse for Infallible {
     fn into_response(self) -> Response {
         match self {}
+    }
+}
+
+impl<T> IntoResponse for Option<T>
+where
+    T: IntoResponse,
+{
+    fn into_response(self) -> Response {
+        match self {
+            Some(v) => v.into_response(),
+            None => StatusCode::NO_CONTENT.into_response(),
+        }
     }
 }
 
