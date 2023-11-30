@@ -858,7 +858,7 @@ mod tests {
 
         let res = svc.oneshot(req).await.unwrap();
 
-        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.status(), StatusCode::NO_CONTENT);
     }
 
     #[allow(dead_code)]

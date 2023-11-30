@@ -226,7 +226,7 @@ mod tests {
             )
             .send()
             .await;
-        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.status(), StatusCode::NO_CONTENT);
     }
 
     #[tokio::test]

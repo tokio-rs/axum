@@ -197,7 +197,7 @@ axum_core::__impl_deref!(ConnectInfo);
 ///
 ///     let request = Request::new(Body::empty());
 ///     let response = app.oneshot(request).await.unwrap();
-///     assert_eq!(response.status(), StatusCode::OK);
+///     assert_eq!(response.status(), StatusCode::NO_CONTENT);
 /// }
 /// #
 /// # #[tokio::main]

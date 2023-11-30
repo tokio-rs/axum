@@ -353,14 +353,14 @@ mod tests {
         let client = TestClient::new(app);
 
         let res = client.get("/foo").send().await;
-        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.status(), StatusCode::NO_CONTENT);
 
         let res = client.get("/foo/").send().await;
         assert_eq!(res.status(), StatusCode::PERMANENT_REDIRECT);
         assert_eq!(res.headers()["location"], "/foo");
 
         let res = client.get("/bar/").send().await;
-        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.status(), StatusCode::NO_CONTENT);
 
         let res = client.get("/bar").send().await;
         assert_eq!(res.status(), StatusCode::PERMANENT_REDIRECT);
