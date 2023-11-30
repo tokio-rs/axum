@@ -557,10 +557,10 @@ mod tests {
         let client = TestClient::new(app);
 
         let res = client.get("/users/42").send().await;
-        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.status(), StatusCode::NO_CONTENT);
 
         let res = client.post("/users/1337").send().await;
-        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.status(), StatusCode::NO_CONTENT);
     }
 
     #[crate::test]
@@ -570,7 +570,7 @@ mod tests {
         let client = TestClient::new(app);
 
         let res = client.get("/users/42").send().await;
-        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.status(), StatusCode::NO_CONTENT);
     }
 
     #[crate::test]
@@ -641,7 +641,7 @@ mod tests {
         assert_eq!(res.status(), StatusCode::NOT_FOUND);
 
         let res = client.get("/foo").send().await;
-        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.status(), StatusCode::NO_CONTENT);
     }
 
     #[crate::test]
@@ -759,7 +759,7 @@ mod tests {
         let client = TestClient::new(app);
 
         let res = client.get("/foo/bar").send().await;
-        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.status(), StatusCode::NO_CONTENT);
     }
 
     #[crate::test]

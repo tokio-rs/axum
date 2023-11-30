@@ -205,7 +205,7 @@ mod tests {
         let client = TestClient::new(app);
 
         let res = client.get("/foo/bar").send().await;
-        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.status(), StatusCode::NO_CONTENT);
     }
 
     #[crate::test]
@@ -225,7 +225,7 @@ mod tests {
         let client = TestClient::new(app);
 
         let res = client.get("/foo/bar").send().await;
-        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.status(), StatusCode::NO_CONTENT);
     }
 
     #[crate::test]
@@ -242,7 +242,7 @@ mod tests {
         let client = TestClient::new(app);
 
         let res = client.get("/foo/bar").send().await;
-        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.status(), StatusCode::NO_CONTENT);
     }
 
     #[tokio::test]
@@ -259,7 +259,7 @@ mod tests {
         let client = TestClient::new(app);
 
         let res = client.get("/foo/bar").send().await;
-        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.status(), StatusCode::NO_CONTENT);
     }
 
     #[crate::test]
@@ -279,7 +279,7 @@ mod tests {
         let client = TestClient::new(app);
 
         let res = client.get("/foo/bar").send().await;
-        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.status(), StatusCode::NO_CONTENT);
     }
 
     #[crate::test]
@@ -300,7 +300,7 @@ mod tests {
         let client = TestClient::new(app);
 
         let res = client.get("/foo/bar").send().await;
-        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.status(), StatusCode::NO_CONTENT);
     }
 
     #[crate::test]
@@ -314,7 +314,7 @@ mod tests {
         let client = TestClient::new(app);
 
         let res = client.get("/foo/bar").send().await;
-        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.status(), StatusCode::NO_CONTENT);
     }
 
     // https://github.com/tokio-rs/axum/issues/1579
@@ -334,7 +334,7 @@ mod tests {
         let client = TestClient::new(app);
 
         let res = client.get("/foo").send().await;
-        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.status(), StatusCode::NO_CONTENT);
     }
 
     #[crate::test]
@@ -349,6 +349,6 @@ mod tests {
         let client = TestClient::new(app);
 
         let res = client.get("/foo/bar").send().await;
-        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.status(), StatusCode::NO_CONTENT);
     }
 }

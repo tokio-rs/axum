@@ -263,7 +263,7 @@ mod tests {
                 .send()
                 .await;
 
-            res.status() == StatusCode::OK
+            res.status() == StatusCode::NO_CONTENT
         }
 
         assert!(valid_json_content_type("application/json").await);

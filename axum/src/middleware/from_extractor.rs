@@ -360,7 +360,7 @@ mod tests {
             .header(http::header::AUTHORIZATION, "secret")
             .send()
             .await;
-        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.status(), StatusCode::NO_CONTENT);
     }
 
     // just needs to compile

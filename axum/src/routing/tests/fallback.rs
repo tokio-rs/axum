@@ -9,7 +9,10 @@ async fn basic() {
 
     let client = TestClient::new(app);
 
-    assert_eq!(client.get("/foo").send().await.status(), StatusCode::OK);
+    assert_eq!(
+        client.get("/foo").send().await.status(),
+        StatusCode::NO_CONTENT
+    );
 
     let res = client.get("/does-not-exist").send().await;
     assert_eq!(res.status(), StatusCode::OK);
@@ -24,7 +27,10 @@ async fn nest() {
 
     let client = TestClient::new(app);
 
-    assert_eq!(client.get("/foo/bar").send().await.status(), StatusCode::OK);
+    assert_eq!(
+        client.get("/foo/bar").send().await.status(),
+        StatusCode::NO_CONTENT
+    );
 
     let res = client.get("/does-not-exist").send().await;
     assert_eq!(res.status(), StatusCode::OK);
@@ -40,8 +46,14 @@ async fn or() {
 
     let client = TestClient::new(app);
 
-    assert_eq!(client.get("/one").send().await.status(), StatusCode::OK);
-    assert_eq!(client.get("/two").send().await.status(), StatusCode::OK);
+    assert_eq!(
+        client.get("/one").send().await.status(),
+        StatusCode::NO_CONTENT
+    );
+    assert_eq!(
+        client.get("/two").send().await.status(),
+        StatusCode::NO_CONTENT
+    );
 
     let res = client.get("/does-not-exist").send().await;
     assert_eq!(res.status(), StatusCode::OK);
@@ -195,7 +207,7 @@ async fn doesnt_panic_if_used_with_nested_router() {
     let client = TestClient::new(routes_all);
 
     let res = client.get("/foobar").send().await;
-    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.status(), StatusCode::NO_CONTENT);
 }
 
 #[crate::test]

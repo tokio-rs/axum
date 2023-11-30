@@ -66,7 +66,7 @@ async fn wrong_method_nest() {
     let client = TestClient::new(app);
 
     let res = client.get("/").send().await;
-    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.status(), StatusCode::NO_CONTENT);
 
     let res = client.post("/").send().await;
     assert_eq!(res.status(), StatusCode::METHOD_NOT_ALLOWED);
@@ -341,13 +341,13 @@ async fn nest_with_and_without_trailing() {
     let client = TestClient::new(app);
 
     let res = client.get("/foo").send().await;
-    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.status(), StatusCode::NO_CONTENT);
 
     let res = client.get("/foo/").send().await;
-    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.status(), StatusCode::NO_CONTENT);
 
     let res = client.get("/foo/bar").send().await;
-    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.status(), StatusCode::NO_CONTENT);
 }
 
 #[tokio::test]
@@ -362,19 +362,19 @@ async fn nesting_with_root_inner_router() {
     // `/service/` does match the `/service` prefix and the remaining path is technically
     // empty, which is the same as `/` which matches `.route("/", _)`
     let res = client.get("/service").send().await;
-    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.status(), StatusCode::NO_CONTENT);
 
     // `/service/` does match the `/service` prefix and the remaining path is `/`
     // which matches `.route("/", _)`
     //
     // this is perhaps a little surprising but don't think there is much we can do
     let res = client.get("/service/").send().await;
-    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.status(), StatusCode::NO_CONTENT);
 
     // at least it does work like you'd expect when using `nest`
 
     let res = client.get("/router").send().await;
-    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.status(), StatusCode::NO_CONTENT);
 
     let res = client.get("/router/").send().await;
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
@@ -383,7 +383,7 @@ async fn nesting_with_root_inner_router() {
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
 
     let res = client.get("/router-slash/").send().await;
-    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.status(), StatusCode::NO_CONTENT);
 }
 
 macro_rules! nested_route_test {
@@ -403,7 +403,7 @@ macro_rules! nested_route_test {
             let client = TestClient::new(app);
             let res = client.get($expected_path).send().await;
             let status = res.status();
-            assert_eq!(status, StatusCode::OK, "Router");
+            assert_eq!(status, StatusCode::NO_CONTENT, "Router");
         }
     };
 }

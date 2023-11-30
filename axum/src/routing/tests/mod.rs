@@ -220,7 +220,7 @@ async fn wrong_method_handler() {
     assert_eq!(res.headers()[ALLOW], "GET,HEAD,POST");
 
     let res = client.patch("/foo").send().await;
-    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.status(), StatusCode::NO_CONTENT);
 
     let res = client.post("/foo").send().await;
     assert_eq!(res.status(), StatusCode::METHOD_NOT_ALLOWED);
@@ -260,7 +260,7 @@ async fn wrong_method_service() {
     assert_eq!(res.headers()[ALLOW], "GET,HEAD,POST");
 
     let res = client.patch("/foo").send().await;
-    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.status(), StatusCode::NO_CONTENT);
 
     let res = client.post("/foo").send().await;
     assert_eq!(res.status(), StatusCode::METHOD_NOT_ALLOWED);
@@ -310,7 +310,7 @@ async fn middleware_applies_to_routes_above() {
     assert_eq!(res.status(), StatusCode::REQUEST_TIMEOUT);
 
     let res = client.get("/two").send().await;
-    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.status(), StatusCode::NO_CONTENT);
 }
 
 #[crate::test]
@@ -323,7 +323,7 @@ async fn not_found_for_extra_trailing_slash() {
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
 
     let res = client.get("/foo").send().await;
-    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.status(), StatusCode::NO_CONTENT);
 }
 
 #[crate::test]
@@ -489,7 +489,7 @@ async fn route_layer() {
         .header("authorization", "Bearer password")
         .send()
         .await;
-    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.status(), StatusCode::NO_CONTENT);
 
     let res = client.get("/foo").send().await;
     assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
@@ -674,7 +674,7 @@ async fn disabling_the_default_limit() {
 
     let res = client.post("/").body(body).send().await;
 
-    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.status(), StatusCode::NO_CONTENT);
 }
 
 #[crate::test]
@@ -693,7 +693,7 @@ async fn limited_body_with_content_length() {
     let client = TestClient::new(app);
 
     let res = client.post("/").body("a".repeat(LIMIT)).send().await;
-    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.status(), StatusCode::NO_CONTENT);
 
     let res = client.post("/").body("a".repeat(LIMIT * 2)).send().await;
     assert_eq!(res.status(), StatusCode::PAYLOAD_TOO_LARGE);
@@ -714,7 +714,7 @@ async fn changing_the_default_limit() {
         .body(reqwest::Body::from("a".repeat(new_limit)))
         .send()
         .await;
-    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.status(), StatusCode::NO_CONTENT);
 
     let res = client
         .post("/")
@@ -747,7 +747,7 @@ async fn changing_the_default_limit_differently_on_different_routes() {
         .body(reqwest::Body::from("a".repeat(limit1)))
         .send()
         .await;
-    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.status(), StatusCode::NO_CONTENT);
 
     let res = client
         .post("/limit1")
@@ -761,14 +761,14 @@ async fn changing_the_default_limit_differently_on_different_routes() {
         .body(reqwest::Body::from("a".repeat(limit1)))
         .send()
         .await;
-    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.status(), StatusCode::NO_CONTENT);
 
     let res = client
         .post("/limit2")
         .body(reqwest::Body::from("a".repeat(limit2)))
         .send()
         .await;
-    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.status(), StatusCode::NO_CONTENT);
 
     let res = client
         .post("/limit2")
@@ -782,7 +782,7 @@ async fn changing_the_default_limit_differently_on_different_routes() {
         .body(reqwest::Body::from("a".repeat(limit1 + limit2)))
         .send()
         .await;
-    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.status(), StatusCode::NO_CONTENT);
 
     let res = client
         .post("/default")
@@ -814,7 +814,7 @@ async fn limited_body_with_streaming_body() {
         .body(reqwest::Body::wrap_stream(stream))
         .send()
         .await;
-    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.status(), StatusCode::NO_CONTENT);
 
     let stream = futures_util::stream::iter(vec![Ok::<_, hyper::Error>("a".repeat(LIMIT * 2))]);
     let res = client
@@ -858,7 +858,7 @@ async fn extract_state() {
     let client = TestClient::new(app);
 
     let res = client.get("/").send().await;
-    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.status(), StatusCode::NO_CONTENT);
 }
 
 #[crate::test]

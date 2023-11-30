@@ -136,7 +136,7 @@ mod tests {
         let client = TestClient::new(app);
 
         let res = client.get("/api/users").send().await;
-        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.status(), StatusCode::NO_CONTENT);
     }
 
     #[crate::test]
@@ -154,7 +154,7 @@ mod tests {
         let client = TestClient::new(app);
 
         let res = client.get("/api/users").send().await;
-        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.status(), StatusCode::NO_CONTENT);
     }
 
     #[crate::test]
@@ -172,7 +172,7 @@ mod tests {
         let client = TestClient::new(app);
 
         let res = client.get("/api/v2/users").send().await;
-        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.status(), StatusCode::NO_CONTENT);
     }
 
     #[crate::test]
@@ -190,7 +190,7 @@ mod tests {
         let client = TestClient::new(app);
 
         let res = client.get("/api/v2/users").send().await;
-        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.status(), StatusCode::NO_CONTENT);
     }
 
     #[crate::test]
@@ -208,7 +208,7 @@ mod tests {
         let client = TestClient::new(app);
 
         let res = client.get("/users").send().await;
-        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.status(), StatusCode::NO_CONTENT);
     }
 
     #[crate::test]
@@ -226,7 +226,7 @@ mod tests {
         let client = TestClient::new(app);
 
         let res = client.get("/api/users").send().await;
-        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.status(), StatusCode::NO_CONTENT);
     }
 
     #[crate::test]
@@ -241,7 +241,7 @@ mod tests {
         let client = TestClient::new(app);
 
         let res = client.get("/api/doesnt-exist").send().await;
-        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.status(), StatusCode::NO_CONTENT);
     }
 
     #[crate::test]
@@ -260,6 +260,6 @@ mod tests {
         let client = TestClient::new(app);
 
         let res = client.get("/api/users").send().await;
-        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.status(), StatusCode::NO_CONTENT);
     }
 }

@@ -15,13 +15,13 @@ async fn basic() {
     let client = TestClient::new(app);
 
     let res = client.get("/foo").send().await;
-    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.status(), StatusCode::NO_CONTENT);
 
     let res = client.get("/bar").send().await;
-    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.status(), StatusCode::NO_CONTENT);
 
     let res = client.get("/baz").send().await;
-    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.status(), StatusCode::NO_CONTENT);
 
     let res = client.get("/qux").send().await;
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
@@ -117,10 +117,10 @@ async fn layer() {
     let client = TestClient::new(app);
 
     let res = client.get("/foo").send().await;
-    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.status(), StatusCode::NO_CONTENT);
 
     let res = client.get("/bar").send().await;
-    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.status(), StatusCode::NO_CONTENT);
 }
 
 #[crate::test]
@@ -136,7 +136,7 @@ async fn layer_and_handle_error() {
     let res = client.get("/timeout").send().await;
     assert_eq!(res.status(), StatusCode::REQUEST_TIMEOUT);
     let res = client.get("/foo").send().await;
-    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.status(), StatusCode::NO_CONTENT);
 }
 
 #[crate::test]
@@ -148,7 +148,7 @@ async fn nesting() {
     let client = TestClient::new(app);
 
     let res = client.get("/bar/baz").send().await;
-    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.status(), StatusCode::NO_CONTENT);
 }
 
 #[crate::test]
@@ -160,7 +160,7 @@ async fn boxed() {
     let client = TestClient::new(app);
 
     let res = client.get("/bar").send().await;
-    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.status(), StatusCode::NO_CONTENT);
 }
 
 #[crate::test]
@@ -178,7 +178,7 @@ async fn many_ors() {
 
     for n in 1..=7 {
         let res = client.get(&format!("/r{n}")).send().await;
-        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.status(), StatusCode::NO_CONTENT);
     }
 
     let res = client.get("/r8").send().await;
@@ -386,11 +386,14 @@ async fn middleware_that_return_early() {
             .send()
             .await
             .status(),
-        StatusCode::OK
+        StatusCode::NO_CONTENT
     );
     assert_eq!(
         client.get("/doesnt-exist").send().await.status(),
         StatusCode::NOT_FOUND
     );
-    assert_eq!(client.get("/public").send().await.status(), StatusCode::OK);
+    assert_eq!(
+        client.get("/public").send().await.status(),
+        StatusCode::NO_CONTENT
+    );
 }
