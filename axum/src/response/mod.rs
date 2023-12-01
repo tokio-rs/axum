@@ -62,7 +62,8 @@ impl<T> From<T> for Html<T> {
 
 #[cfg(test)]
 mod tests {
-    use crate::extract::Extension;
+    use crate::extract::{Extension, Path};
+    use crate::test_helpers::TestClient;
     use crate::{routing::get, Router};
     use axum_core::response::IntoResponse;
     use http::HeaderMap;
@@ -223,5 +224,41 @@ mod tests {
             .route("/", get(header_array_impl_into_response))
             .route("/", get(header_array_extension_body))
             .route("/", get(header_array_extension_mixed_body));
+    }
+
+    #[tokio::test]
+    async fn test_unit_http204_response() {
+        async fn unit() {} // returns the unit () value
+
+        let app = Router::new().route("/unit", get(unit));
+        let client = TestClient::new(app);
+        let res = client.get("/unit").send().await;
+        assert_eq!(res.status(), StatusCode::NO_CONTENT)
+    }
+
+    #[tokio::test]
+    async fn test_option_http204_response() {
+        const SOMETHING: &str = "something";
+        async fn optional_value(Path(number): Path<usize>) -> Option<&'static str> {
+            if number % 2 == 0 {
+                None
+            } else {
+                Some(SOMETHING)
+            }
+        }
+
+        let app = Router::new().route("/optional/:number", get(optional_value));
+        let client = TestClient::new(app);
+        for i in 0..4 {
+            let url = format!("/optional/{i}");
+            let res = client.get(&url).send().await;
+            if i % 2 == 0 {
+                assert_eq!(res.status(), StatusCode::NO_CONTENT);
+                assert_eq!(res.text().await.len(), 0);
+            } else {
+                assert_eq!(res.status(), StatusCode::OK);
+                assert_eq!(res.text().await, SOMETHING);
+            }
+        }
     }
 }
