@@ -55,7 +55,7 @@ impl Body {
 
     /// Create a new `Body` from a [`Stream`].
     ///
-    /// [`Stream`]: futures_util::stream::Stream
+    /// [`Stream`]: https://docs.rs/futures-core/latest/futures_core/stream/trait.Stream.html
     pub fn from_stream<S>(stream: S) -> Self
     where
         S: TryStream + Send + 'static,
