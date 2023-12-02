@@ -43,6 +43,7 @@ If your project isn't listed here and you would like it to be, please feel free 
 - [tower-sessions](https://github.com/maxcountryman/tower-sessions): Sessions as a `tower` and `axum` middleware.
 - [shuttle](https://github.com/shuttle-hq/shuttle): Build & ship backends without writing any infrastructure files. Now with Axum support.
 - [socketioxide](https://github.com/totodore/socketioxide): An easy to use socket.io server implementation working as a `tower` layer/service. 
+- [axum-serde](https://github.com/gengteng/axum-serde): Provides multiple serde-based extractors / responses, also offers a macro to easily customize serde-based extractors / responses.
 
 ## Project showcase
 
