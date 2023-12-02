@@ -168,7 +168,7 @@ where
                         // > and then the listener will sleep for 1 second.
                         //
                         // hyper allowed customizing this but axum does not.
-                        error!("accept error: {}", e);
+                        error!("accept error: {e}");
                         tokio::time::sleep(Duration::from_secs(1)).await;
                         continue;
                     }
