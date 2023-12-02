@@ -40,8 +40,8 @@ use tower_layer::Layer;
 /// ```
 ///
 /// In general using `DefaultBodyLimit` is recommended but if you need to use third party
-/// extractors and want to sure a limit is also applied there then [`RequestBodyLimit`] should be
-/// used.
+/// extractors and want to make sure a limit is also applied there then [`RequestBodyLimit`] should
+/// be used.
 ///
 /// # Different limits for different routes
 ///
