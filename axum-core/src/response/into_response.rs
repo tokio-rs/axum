@@ -134,18 +134,6 @@ impl IntoResponse for Infallible {
     }
 }
 
-impl<T> IntoResponse for Option<T>
-where
-    T: IntoResponse,
-{
-    fn into_response(self) -> Response {
-        match self {
-            Some(v) => v.into_response(),
-            None => StatusCode::NO_CONTENT.into_response(),
-        }
-    }
-}
-
 impl<T, E> IntoResponse for Result<T, E>
 where
     T: IntoResponse,
