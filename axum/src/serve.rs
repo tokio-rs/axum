@@ -8,6 +8,7 @@ use std::{
     net::SocketAddr,
     pin::Pin,
     task::{Context, Poll},
+    time::Duration,
 };
 
 use axum_core::{body::Body, extract::Request, response::Response};
@@ -147,7 +148,31 @@ where
             } = self;
 
             loop {
-                let (tcp_stream, remote_addr) = tcp_listener.accept().await?;
+                let (tcp_stream, remote_addr) = match tcp_listener.accept().await {
+                    Ok(conn) => conn,
+                    Err(e) => {
+                        // Connection errors can be ignored directly, continue
+                        // by accepting the next request.
+                        if is_connection_error(&e) {
+                            continue;
+                        }
+
+                        // [From `hyper::Server` in 0.14](https://github.com/hyperium/hyper/blob/v0.14.27/src/server/tcp.rs#L186)
+                        //
+                        // > A possible scenario is that the process has hit the max open files
+                        // > allowed, and so trying to accept a new connection will fail with
+                        // > `EMFILE`. In some cases, it's preferable to just wait for some time, if
+                        // > the application will likely close some files (or connections), and try
+                        // > to accept the connection again. If this option is `true`, the error
+                        // > will be logged at the `error` level, since it is still a big deal,
+                        // > and then the listener will sleep for 1 second.
+                        //
+                        // hyper allowed customizing this but axum does not.
+                        error!("accept error: {}", e);
+                        tokio::time::sleep(Duration::from_secs(1)).await;
+                        continue;
+                    }
+                };
                 let tcp_stream = TokioIo::new(tcp_stream);
 
                 poll_fn(|cx| make_service.poll_ready(cx))
@@ -185,6 +210,15 @@ where
             }
         }))
     }
+}
+
+fn is_connection_error(e: &io::Error) -> bool {
+    matches!(
+        e.kind(),
+        io::ErrorKind::ConnectionRefused
+            | io::ErrorKind::ConnectionAborted
+            | io::ErrorKind::ConnectionReset
+    )
 }
 
 mod private {

@@ -8,8 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 # Unreleased
 
 - **added:** Add `axum::body::to_bytes` ([#2373])
+- **fixed:** Gracefully handle accept errors in `serve` ([#2400])
 
 [#2373]: https://github.com/tokio-rs/axum/pull/2373
+[#2400]: https://github.com/tokio-rs/axum/pull/2400
 
 # 0.7.1 (27. November, 2023)
 
