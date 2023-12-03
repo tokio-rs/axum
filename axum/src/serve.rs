@@ -7,13 +7,13 @@ use std::{
     io,
     marker::PhantomData,
     net::SocketAddr,
-    pin::{pin, Pin},
+    pin::Pin,
     sync::Arc,
     task::{Context, Poll},
 };
 
 use axum_core::{body::Body, extract::Request, response::Response};
-use futures_util::{future::poll_fn, FutureExt};
+use futures_util::{future::poll_fn, pin_mut, FutureExt};
 use hyper::body::Incoming;
 use hyper_util::{
     rt::{TokioExecutor, TokioIo},
@@ -308,9 +308,10 @@ where
                 tokio::spawn(async move {
                     let builder = Builder::new(TokioExecutor::new());
                     let conn = builder.serve_connection_with_upgrades(tcp_stream, hyper_service);
-                    let mut conn = pin!(conn);
+                    pin_mut!(conn);
 
-                    let mut signal_closed = pin!(signal_tx.closed().fuse());
+                    let signal_closed = signal_tx.closed().fuse();
+                    pin_mut!(signal_closed);
 
                     loop {
                         tokio::select! {
