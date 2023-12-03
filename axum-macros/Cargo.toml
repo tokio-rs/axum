@@ -30,7 +30,7 @@ syn = { version = "2.0", features = [
 ] }
 
 [dev-dependencies]
-axum = { path = "../axum", version = "0.7.0", features = ["macros"] }
+axum = { path = "../axum", version = "0.7.2", features = ["macros"] }
 axum-extra = { path = "../axum-extra", version = "0.9.0", features = ["typed-routing", "cookie-private", "typed-header"] }
 rustversion = "1.0"
 serde = { version = "1.0", features = ["derive"] }

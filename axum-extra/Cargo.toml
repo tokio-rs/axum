@@ -36,8 +36,8 @@ typed-header = ["dep:headers"]
 typed-routing = ["dep:axum-macros", "dep:percent-encoding", "dep:serde_html_form", "dep:form_urlencoded"]
 
 [dependencies]
-axum = { path = "../axum", version = "0.7.0", default-features = false }
-axum-core = { path = "../axum-core", version = "0.4.0" }
+axum = { path = "../axum", version = "0.7.2", default-features = false }
+axum-core = { path = "../axum-core", version = "0.4.1" }
 bytes = "1.1.0"
 futures-util = { version = "0.3", default-features = false, features = ["alloc"] }
 http = "1.0.0"
@@ -65,7 +65,7 @@ tokio-stream = { version = "0.1.9", optional = true }
 tokio-util = { version = "0.7", optional = true }
 
 [dev-dependencies]
-axum = { path = "../axum", version = "0.7.0" }
+axum = { path = "../axum", version = "0.7.2" }
 hyper = "1.0.0"
 reqwest = { version = "0.11", default-features = false, features = ["json", "stream", "multipart"] }
 serde = { version = "1.0", features = ["derive"] }

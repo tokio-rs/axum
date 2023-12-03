@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+- None.
+
+# 0.7.2 (03. December, 2023)
+
 - **added:** Add `axum::body::to_bytes` ([#2373])
 - **fixed:** Gracefully handle accept errors in `serve` ([#2400])
 
