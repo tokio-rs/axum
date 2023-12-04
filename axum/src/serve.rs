@@ -3,7 +3,7 @@
 use std::{
     convert::Infallible,
     fmt::Debug,
-    future::{Future, IntoFuture},
+    future::{Future, IntoFuture, poll_fn},
     io,
     marker::PhantomData,
     net::SocketAddr,
@@ -14,7 +14,7 @@ use std::{
 };
 
 use axum_core::{body::Body, extract::Request, response::Response};
-use futures_util::{future::poll_fn, pin_mut, FutureExt};
+use futures_util::{pin_mut, FutureExt};
 use hyper::body::Incoming;
 use hyper_util::{
     rt::{TokioExecutor, TokioIo},
