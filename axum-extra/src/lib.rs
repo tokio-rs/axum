@@ -17,7 +17,7 @@
 //! `erased-json` | Enables the `ErasedJson` response | No
 //! `form` | Enables the `Form` extractor | No
 //! `json-lines` | Enables the `JsonLines` extractor and response | No
-//! `multipart` | Enables the `Multpart` extractor | No
+//! `multipart` | Enables the `Multipart` extractor | No
 //! `protobuf` | Enables the `Protobuf` extractor and response | No
 //! `query` | Enables the `Query` extractor | No
 //! `typed-routing` | Enables the `TypedPath` routing utilities | No
