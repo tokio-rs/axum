@@ -42,6 +42,9 @@ pub use self::connect_info::ConnectInfo;
 #[cfg(feature = "json")]
 pub use crate::Json;
 
+#[cfg(feature = "json")]
+pub use crate::json::JsonDeserializer;
+
 #[doc(no_inline)]
 pub use crate::Extension;
 
