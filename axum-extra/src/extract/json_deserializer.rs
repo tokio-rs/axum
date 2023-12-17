@@ -8,7 +8,7 @@ use std::marker::PhantomData;
 ///
 /// Deserialize request bodies into some type that implements [`serde::Deserialize<'de>`].
 /// Parsing JSON is delayed until [`deserialize`](JsonDeserializer::deserialize) is called.
-/// If the type implements [`serde::de::DeserializeOwned`], the [`Json`] extractor should
+/// If the type implements [`serde::de::DeserializeOwned`], the [`Json`](axum::Json) extractor should
 /// be preferred.
 ///
 /// The request will be rejected (and a [`JsonRejection`] will be returned) if:
@@ -31,6 +31,10 @@ use std::marker::PhantomData;
 /// ⚠️ Since parsing JSON requires consuming the request body, the `Json` extractor must be
 /// *last* if there are multiple extractors in a handler.
 /// See ["the order of extractors"][order-of-extractors]
+///
+/// [order-of-extractors]: axum::extract#the-order-of-extractors
+///
+/// See [`JsonRejection`] for more details.
 ///
 /// # Example
 ///
