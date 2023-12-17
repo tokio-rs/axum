@@ -419,7 +419,7 @@ mod tests {
 
     #[tokio::test]
     async fn invalid_json_data() {
-        async fn handler(deserializer: JsonDeserializer<Value>) -> Response {
+        async fn handler(deserializer: JsonDeserializer<Foo>) -> Response {
             match deserializer.deserialize() {
                 Ok(_) => panic!("Should have matched `Err`"),
                 Err(e) => e.into_response(),
