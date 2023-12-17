@@ -40,7 +40,10 @@ pub use self::query::{OptionalQuery, OptionalQueryRejection, Query, QueryRejecti
 pub use self::multipart::Multipart;
 
 #[cfg(feature = "json-deserializer")]
-pub use self::json_deserializer::JsonDeserializer;
+pub use self::json_deserializer::{
+    JsonDataError, JsonDeserializer, JsonDeserializerRejection, JsonSyntaxError,
+    MissingJsonContentType,
+};
 
 #[cfg(feature = "json-lines")]
 #[doc(no_inline)]
