@@ -21,6 +21,7 @@ cookie-signed = ["cookie", "cookie?/signed"]
 cookie-key-expansion = ["cookie", "cookie?/key-expansion"]
 erased-json = ["dep:serde_json"]
 form = ["dep:serde_html_form"]
+json-deserializer = ["dep:serde_json", "axum/json", "axum/__private"]
 json-lines = [
     "dep:serde_json",
     "dep:tokio-util",

@@ -42,6 +42,19 @@ pub use self::connect_info::ConnectInfo;
 #[cfg(feature = "json")]
 pub use crate::Json;
 
+#[cfg(all(feature = "json", feature = "__private"))]
+pub mod json_helpers {
+    #![allow(missing_docs)]
+
+    use crate::extract::rejection::MissingJsonContentType;
+    pub use crate::json::{json_content_type, json_from_bytes};
+
+    #[inline(always)]
+    pub fn missing_json_content_type() -> MissingJsonContentType {
+        MissingJsonContentType
+    }
+}
+
 #[doc(no_inline)]
 pub use crate::Extension;
 
