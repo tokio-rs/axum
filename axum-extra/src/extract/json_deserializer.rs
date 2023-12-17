@@ -251,7 +251,7 @@ mod tests {
         assert_eq!(body, "bar");
     }
 
-    #[crate::test]
+    #[tokio::test]
     async fn deserialize_body_escaped_to_cow() {
         #[derive(Debug, Deserialize)]
         struct Input<'a> {
@@ -288,7 +288,7 @@ mod tests {
         assert_eq!(body, r#""bar""#);
     }
 
-    #[crate::test]
+    #[tokio::test]
     async fn deserialize_body_escaped_to_str() {
         #[derive(Debug, Deserialize)]
         struct Input<'a> {
@@ -329,7 +329,7 @@ mod tests {
         );
     }
 
-    #[crate::test]
+    #[tokio::test]
     async fn consume_body_to_json_requires_json_content_type() {
         #[derive(Debug, Deserialize)]
         struct Input<'a> {
@@ -351,7 +351,7 @@ mod tests {
         assert_eq!(status, StatusCode::UNSUPPORTED_MEDIA_TYPE);
     }
 
-    #[crate::test]
+    #[tokio::test]
     async fn json_content_types() {
         async fn valid_json_content_type(content_type: &str) -> bool {
             println!("testing {content_type:?}");
@@ -379,7 +379,7 @@ mod tests {
         assert!(!valid_json_content_type("text/json").await);
     }
 
-    #[crate::test]
+    #[tokio::test]
     async fn invalid_json_syntax() {
         async fn handler(deserializer: JsonDeserializer<Value>) -> Response {
             match deserializer.deserialize() {
@@ -417,10 +417,13 @@ mod tests {
         y: i32,
     }
 
-    #[crate::test]
+    #[tokio::test]
     async fn invalid_json_data() {
-        async fn handler(_deserializer: JsonDeserializer<Value>) -> Response {
-            panic!("This handler should not be called")
+        async fn handler(deserializer: JsonDeserializer<Value>) -> Response {
+            match deserializer.deserialize() {
+                Ok(_) => panic!("Should have matched `Err`"),
+                Err(e) => e.into_response(),
+            }
         }
 
         let app = Router::new().route("/", post(handler));
