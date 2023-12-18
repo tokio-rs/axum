@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **change:** Update tokio-tungstenite to 0.21 ([#2435])
 
 [#2433]: https://github.com/tokio-rs/axum/pull/2433
+[#2435]: https://github.com/tokio-rs/axum/pull/2435
 
 # 0.7.2 (03. December, 2023)
 
