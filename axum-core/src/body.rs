@@ -84,6 +84,12 @@ impl Default for Body {
     }
 }
 
+impl From<()> for Body {
+    fn from(_: ()) -> Self {
+        Self::empty()
+    }
+}
+
 macro_rules! body_from_impl {
     ($ty:ty) => {
         impl From<$ty> for Body {
