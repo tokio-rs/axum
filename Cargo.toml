@@ -5,7 +5,3 @@ default-members = ["axum", "axum-*"]
 # Example has been deleted, but README.md remains
 exclude = ["examples/async-graphql"]
 resolver = "2"
-
-[patch.crates-io]
-hyper = { git = "https://github.com/hyperium/hyper", rev = "cf68ea902749e" }
-hyper-util = { git = "https://github.com/hyperium/hyper-util", rev = "64f896695c0f1" }
