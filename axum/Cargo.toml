@@ -1,6 +1,6 @@
 [package]
 name = "axum"
-version = "0.7.1"
+version = "0.7.2"
 categories = ["asynchronous", "network-programming", "web-programming::http-server"]
 description = "Web framework that focuses on ergonomics and modularity"
 edition = "2021"
@@ -32,7 +32,7 @@ __private_docs = ["tower/full", "dep:tower-http"]
 
 [dependencies]
 async-trait = "0.1.67"
-axum-core = { path = "../axum-core", version = "0.4.0" }
+axum-core = { path = "../axum-core", version = "0.4.1" }
 bytes = "1.0"
 futures-util = { version = "0.3", default-features = false, features = ["alloc"] }
 http = "1.0.0"
@@ -55,13 +55,13 @@ axum-macros = { path = "../axum-macros", version = "0.4.0", optional = true }
 base64 = { version = "0.21.0", optional = true }
 hyper = { version = "1.1.0", optional = true }
 hyper-util = { version = "0.1.2", features = ["tokio", "server", "server-auto"], optional = true }
-multer = { version = "2.0.0", optional = true }
+multer = { version = "3.0.0", optional = true }
 serde_json = { version = "1.0", features = ["raw_value"], optional = true }
 serde_path_to_error = { version = "0.1.8", optional = true }
 serde_urlencoded = { version = "0.7", optional = true }
 sha1 = { version = "0.10", optional = true }
 tokio = { package = "tokio", version = "1.25.0", features = ["time"], optional = true }
-tokio-tungstenite = { version = "0.20", optional = true }
+tokio-tungstenite = { version = "0.21", optional = true }
 tracing = { version = "0.1", default-features = false, optional = true }
 
 [dependencies.tower-http]

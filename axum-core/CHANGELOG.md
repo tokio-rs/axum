@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - None.
 
+# 0.4.1 (03. December, 2023)
+
+- Fix from_stream doc link to `Stream` in docs ([#2391])
+
+[#2391]: https://github.com/tokio-rs/axum/pull/2391
+
 # 0.4.0 (27. November, 2023)
 
 - **added:** Implement `IntoResponse` for `(R,) where R: IntoResponse` ([#2143])

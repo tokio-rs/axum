@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning].
 
 # Unreleased
 
-- None.
+- **change:** Update version of multer used internally for multipart ([#2433])
+
+[#2433]: https://github.com/tokio-rs/axum/pull/2433
 
 # 0.9.0 (27. November, 2023)
 
