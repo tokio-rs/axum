@@ -8,7 +8,7 @@ rust-version = "1.66"
 homepage = "https://github.com/tokio-rs/axum"
 keywords = ["http", "web", "framework"]
 license = "MIT"
-readme = "README.md"
+readme = "../README.md"
 repository = "https://github.com/tokio-rs/axum"
 
 [features]
