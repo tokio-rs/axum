@@ -275,7 +275,7 @@ ServiceBuilder::new()
             StatusCode::BAD_REQUEST
         }))
         .layer(
-             // <you actual layer which DOES return an error>
+             // <your actual layer which DOES return an error>
         );
 ```
 
