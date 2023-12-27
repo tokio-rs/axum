@@ -34,7 +34,7 @@ axum allows you to add middleware just about anywhere
 Its recommended to use [`tower::ServiceBuilder`] to apply multiple middleware at
 once, instead of calling `layer` (or `route_layer`) repeatedly:
 
-```ignore
+```rust
 use axum::{
     routing::get,
     Extension,
@@ -268,7 +268,7 @@ Note that your error type being defined as `S::Error` means that your middleware
 
 If you choose to implement a custom error type such as `type Error = BoxError` (a boxed opaque error), or any other error type that is not `Infallible`, you must use a `HandleErrorLayer`, here is an example using a `ServiceBuilder`:
 
-```rust
+```ignore
 ServiceBuilder::new()
         .layer(HandleErrorLayer::new(|_: BoxError| async {
             // because Axum uses infallible errors, you must handle your custom error type from your middleware here
