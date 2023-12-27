@@ -34,7 +34,7 @@ axum allows you to add middleware just about anywhere
 Its recommended to use [`tower::ServiceBuilder`] to apply multiple middleware at
 once, instead of calling `layer` (or `route_layer`) repeatedly:
 
-```rust
+```ignore
 use axum::{
     routing::get,
     Extension,
