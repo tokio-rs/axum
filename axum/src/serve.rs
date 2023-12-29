@@ -116,7 +116,27 @@ pub struct Serve<M, S> {
 
 #[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
 impl<M, S> Serve<M, S> {
-    /// TODO
+    /// Prepares a server to handle graceful shutdown when the provided future completes.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use axum::{Router, routing::get};
+    ///
+    /// # async {
+    /// let router = Router::new().route("/", get(|| async { "Hello, World!" }));
+    ///
+    /// let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
+    /// axum::serve(listener, router)
+    ///     .with_graceful_shutdown(shutdown_signal())
+    ///     .await
+    ///     .unwrap();
+    /// # };
+    ///
+    /// async fn shutdown_signal() {
+    ///     // ...
+    /// }
+    /// ```
     pub fn with_graceful_shutdown<F>(self, signal: F) -> WithGracefulShutdown<M, S, F>
     where
         F: Future<Output = ()> + Send + 'static,
