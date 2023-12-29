@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning].
 
 # Unreleased
 
-- None.
+- **added:** `JsonDeserializer` extractor ([#2431])
 
 # 0.9.0 (27. November, 2023)
 
