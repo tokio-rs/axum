@@ -55,13 +55,13 @@ axum-macros = { path = "../axum-macros", version = "0.4.0", optional = true }
 base64 = { version = "0.21.0", optional = true }
 hyper = { version = "1.0.0", optional = true }
 hyper-util = { version = "0.1.1", features = ["tokio", "server", "server-auto"], optional = true }
-multer = { version = "2.0.0", optional = true }
+multer = { version = "3.0.0", optional = true }
 serde_json = { version = "1.0", features = ["raw_value"], optional = true }
 serde_path_to_error = { version = "0.1.8", optional = true }
 serde_urlencoded = { version = "0.7", optional = true }
 sha1 = { version = "0.10", optional = true }
 tokio = { package = "tokio", version = "1.25.0", features = ["time"], optional = true }
-tokio-tungstenite = { version = "0.20", optional = true }
+tokio-tungstenite = { version = "0.21", optional = true }
 tracing = { version = "0.1", default-features = false, optional = true }
 
 [dependencies.tower-http]

@@ -7,8 +7,10 @@ and this project adheres to [Semantic Versioning].
 
 # Unreleased
 
+- **change:** Update version of multer used internally for multipart ([#2433])
 - **added:** `JsonDeserializer` extractor ([#2431])
 
+[#2433]: https://github.com/tokio-rs/axum/pull/2433
 [#2431]: https://github.com/tokio-rs/axum/pull/2431
 
 # 0.9.0 (27. November, 2023)
