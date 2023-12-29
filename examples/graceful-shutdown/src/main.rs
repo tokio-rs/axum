@@ -4,9 +4,6 @@
 //! cargo run -p example-graceful-shutdown
 //! kill or ctrl-c
 //! ```
-//!
-//! Supporting graceful shutdown requires a bit of boilerplate. In the future hyper-util will
-//! provide convenience helpers but for now we have to use hyper directly.
 
 use std::time::Duration;
 
