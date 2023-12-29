@@ -1,6 +1,5 @@
 use super::{rejection::*, FromRequestParts};
 use crate::routing::{RouteId, NEST_TAIL_PARAM_CAPTURE};
-use async_trait::async_trait;
 use http::request::Parts;
 use std::{collections::HashMap, sync::Arc};
 
@@ -63,7 +62,6 @@ impl MatchedPath {
     }
 }
 
-#[async_trait]
 impl<S> FromRequestParts<S> for MatchedPath
 where
     S: Send + Sync,

@@ -5,7 +5,6 @@ publish = false
 version = "0.1.0"
 
 [dependencies]
-async-trait = "0.1.67"
 axum = { path = "../../axum" }
 http-body = "1.0.0"
 serde = { version = "1.0", features = ["derive"] }

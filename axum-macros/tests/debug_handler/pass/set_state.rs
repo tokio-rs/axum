@@ -1,6 +1,5 @@
+use axum::extract::{FromRef, FromRequest, Request};
 use axum_macros::debug_handler;
-use axum::extract::{Request, FromRef, FromRequest};
-use axum::async_trait;
 
 #[debug_handler(state = AppState)]
 async fn handler(_: A) {}
@@ -10,7 +9,6 @@ struct AppState;
 
 struct A;
 
-#[async_trait]
 impl<S> FromRequest<S> for A
 where
     S: Send + Sync,

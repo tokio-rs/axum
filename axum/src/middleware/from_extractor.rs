@@ -39,12 +39,10 @@ use tower_service::Service;
 ///     Router,
 ///     http::{header, StatusCode, request::Parts},
 /// };
-/// use async_trait::async_trait;
 ///
 /// // An extractor that performs authorization.
 /// struct RequireAuth;
 ///
-/// #[async_trait]
 /// impl<S> FromRequestParts<S> for RequireAuth
 /// where
 ///     S: Send + Sync,
@@ -303,7 +301,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{async_trait, handler::Handler, routing::get, test_helpers::*, Router};
+    use crate::{handler::Handler, routing::get, test_helpers::*, Router};
     use axum_core::extract::FromRef;
     use http::{header, request::Parts, StatusCode};
     use tower_http::limit::RequestBodyLimitLayer;
@@ -315,7 +313,6 @@ mod tests {
 
         struct RequireAuth;
 
-        #[async_trait::async_trait]
         impl<S> FromRequestParts<S> for RequireAuth
         where
             S: Send + Sync,
@@ -368,7 +365,6 @@ mod tests {
     fn works_with_request_body_limit() {
         struct MyExtractor;
 
-        #[async_trait]
         impl<S> FromRequestParts<S> for MyExtractor
         where
             S: Send + Sync,

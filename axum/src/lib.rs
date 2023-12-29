@@ -444,8 +444,6 @@ pub mod serve;
 mod test_helpers;
 
 #[doc(no_inline)]
-pub use async_trait::async_trait;
-#[doc(no_inline)]
 pub use http;
 
 #[doc(inline)]

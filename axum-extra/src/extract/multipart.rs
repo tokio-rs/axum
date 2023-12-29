@@ -3,7 +3,6 @@
 //! See [`Multipart`] for more details.
 
 use axum::{
-    async_trait,
     body::{Body, Bytes},
     extract::FromRequest,
     response::{IntoResponse, Response},
@@ -90,7 +89,6 @@ pub struct Multipart {
     inner: multer::Multipart<'static>,
 }
 
-#[async_trait]
 impl<S> FromRequest<S> for Multipart
 where
     S: Send + Sync,

@@ -1,4 +1,4 @@
-use axum::{async_trait, extract::FromRequestParts, http::request::Parts, response::IntoResponse};
+use axum::{extract::FromRequestParts, http::request::Parts, response::IntoResponse};
 use axum_macros::debug_handler;
 
 fn main() {}
@@ -115,7 +115,6 @@ impl A {
     }
 }
 
-#[async_trait]
 impl<S> FromRequestParts<S> for A
 where
     S: Send + Sync,

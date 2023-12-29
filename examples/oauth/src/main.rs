@@ -11,7 +11,6 @@
 use anyhow::{Context, Result};
 use async_session::{MemoryStore, Session, SessionStore};
 use axum::{
-    async_trait,
     extract::{FromRef, FromRequestParts, Query, State},
     http::{header::SET_COOKIE, HeaderMap},
     response::{IntoResponse, Redirect, Response},
@@ -249,7 +248,6 @@ impl IntoResponse for AuthRedirect {
     }
 }
 
-#[async_trait]
 impl<S> FromRequestParts<S> for User
 where
     MemoryStore: FromRef<S>,
