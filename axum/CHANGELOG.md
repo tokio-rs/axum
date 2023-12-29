@@ -11,11 +11,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **change:** Update version of multer used internally for multipart ([#2433])
 - **change:** Update tokio-tungstenite to 0.21 ([#2435])
 - **added:** Enable `tracing` feature by default ([#2460])
+- **added:** Support graceful shutdown on `serve` ([#2398])
 
 [#2411]: https://github.com/tokio-rs/axum/pull/2411
 [#2433]: https://github.com/tokio-rs/axum/pull/2433
 [#2435]: https://github.com/tokio-rs/axum/pull/2435
 [#2460]: https://github.com/tokio-rs/axum/pull/2460
+[#2398]: https://github.com/tokio-rs/axum/pull/2398
 
 # 0.7.2 (03. December, 2023)
 

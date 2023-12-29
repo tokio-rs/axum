@@ -1,15 +1,13 @@
 [package]
-name = "example-error-handling-and-dependency-injection"
+name = "example-error-handling"
 version = "0.1.0"
 edition = "2021"
 publish = false
 
 [dependencies]
-axum = { path = "../../axum" }
+axum = { path = "../../axum", features = ["macros"] }
 serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
 tokio = { version = "1.0", features = ["full"] }
-tower = { version = "0.4", features = ["util"] }
+tower-http = { version = "0.5", features = ["trace"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-uuid = { version = "1.0", features = ["v4", "serde"] }

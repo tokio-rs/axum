@@ -16,6 +16,7 @@
 //! `cookie-key-expansion` | Enables the `Key::derive_from` method | No
 //! `erased-json` | Enables the `ErasedJson` response | No
 //! `form` | Enables the `Form` extractor | No
+//! `json-deserializer` | Enables the `JsonDeserializer` extractor | No
 //! `json-lines` | Enables the `JsonLines` extractor and response | No
 //! `multipart` | Enables the `Multipart` extractor | No
 //! `protobuf` | Enables the `Protobuf` extractor and response | No

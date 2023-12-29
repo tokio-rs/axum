@@ -10,6 +10,9 @@ mod form;
 #[cfg(feature = "cookie")]
 pub mod cookie;
 
+#[cfg(feature = "json-deserializer")]
+mod json_deserializer;
+
 #[cfg(feature = "query")]
 mod query;
 
@@ -35,6 +38,12 @@ pub use self::query::{OptionalQuery, OptionalQueryRejection, Query, QueryRejecti
 
 #[cfg(feature = "multipart")]
 pub use self::multipart::Multipart;
+
+#[cfg(feature = "json-deserializer")]
+pub use self::json_deserializer::{
+    JsonDataError, JsonDeserializer, JsonDeserializerRejection, JsonSyntaxError,
+    MissingJsonContentType,
+};
 
 #[cfg(feature = "json-lines")]
 #[doc(no_inline)]
