@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+- None.
+
+# 0.7.3 (29. December, 2023)
+
 - **added:** `Body` implements `From<()>` now ([#2411])
 - **change:** Update version of multer used internally for multipart ([#2433])
 - **change:** Update tokio-tungstenite to 0.21 ([#2435])
