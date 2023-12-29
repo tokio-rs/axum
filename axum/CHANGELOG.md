@@ -10,10 +10,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **added:** `Body` implements `From<()>` now ([#2411])
 - **change:** Update version of multer used internally for multipart ([#2433])
 - **change:** Update tokio-tungstenite to 0.21 ([#2435])
+- **added:** Enable `tracing` feature by default ([#2460])
 
 [#2411]: https://github.com/tokio-rs/axum/pull/2411
 [#2433]: https://github.com/tokio-rs/axum/pull/2433
 [#2435]: https://github.com/tokio-rs/axum/pull/2435
+[#2460]: https://github.com/tokio-rs/axum/pull/2460
 
 # 0.7.2 (03. December, 2023)
 
