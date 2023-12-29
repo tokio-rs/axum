@@ -21,6 +21,7 @@ cookie-signed = ["cookie", "cookie?/signed"]
 cookie-key-expansion = ["cookie", "cookie?/key-expansion"]
 erased-json = ["dep:serde_json"]
 form = ["dep:serde_html_form"]
+json-deserializer = ["dep:serde_json", "dep:serde_path_to_error"]
 json-lines = [
     "dep:serde_json",
     "dep:tokio-util",
@@ -60,6 +61,7 @@ percent-encoding = { version = "2.1", optional = true }
 prost = { version = "0.12", optional = true }
 serde_html_form = { version = "0.2.0", optional = true }
 serde_json = { version = "1.0.71", optional = true }
+serde_path_to_error = { version = "0.1.8", optional = true }
 tokio = { version = "1.19", optional = true }
 tokio-stream = { version = "0.1.9", optional = true }
 tokio-util = { version = "0.7", optional = true }
