@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning].
 
 # Unreleased
 
+- None.
+
+# 0.9.1 (29. December, 2023)
+
 - **change:** Update version of multer used internally for multipart ([#2433])
 - **added:** `JsonDeserializer` extractor ([#2431])
 

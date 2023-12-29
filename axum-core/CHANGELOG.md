@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - None.
 
+# 0.4.2 (29. December, 2023)
+
+- **added:** `Body` implements `From<()>` now ([#2411])
+
+[#2411]: https://github.com/tokio-rs/axum/pull/2411
+
 # 0.4.1 (03. December, 2023)
 
 - Fix from_stream doc link to `Stream` in docs ([#2391])
