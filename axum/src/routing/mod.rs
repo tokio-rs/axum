@@ -515,6 +515,18 @@ pub struct RouterIntoService<B, S = ()> {
     _marker: PhantomData<B>,
 }
 
+impl<B, S> Clone for RouterIntoService<B, S>
+where
+    Router<S>: Clone,
+{
+    fn clone(&self) -> Self {
+        Self {
+            router: self.router.clone(),
+            _marker: PhantomData,
+        }
+    }
+}
+
 impl<B> Service<Request<B>> for RouterIntoService<B, ()>
 where
     B: HttpBody<Data = bytes::Bytes> + Send + 'static,
