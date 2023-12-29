@@ -22,7 +22,7 @@ matched-path = []
 multipart = ["dep:multer"]
 original-uri = []
 query = ["dep:serde_urlencoded"]
-tokio = ["dep:hyper-util", "dep:tokio", "tokio/net", "tokio/rt", "tower/make"]
+tokio = ["dep:hyper-util", "dep:tokio", "tokio/net", "tokio/rt", "tower/make", "tokio/macros"]
 tower-log = ["tower/log"]
 tracing = ["dep:tracing", "axum-core/tracing"]
 ws = ["dep:hyper", "tokio", "dep:tokio-tungstenite", "dep:sha1", "dep:base64"]
@@ -53,8 +53,8 @@ tower-service = "0.3"
 # optional dependencies
 axum-macros = { path = "../axum-macros", version = "0.4.0", optional = true }
 base64 = { version = "0.21.0", optional = true }
-hyper = { version = "1.0.0", optional = true }
-hyper-util = { version = "0.1.1", features = ["tokio", "server", "server-auto"], optional = true }
+hyper = { version = "1.1.0", optional = true }
+hyper-util = { version = "0.1.2", features = ["tokio", "server", "server-auto"], optional = true }
 multer = { version = "3.0.0", optional = true }
 serde_json = { version = "1.0", features = ["raw_value"], optional = true }
 serde_path_to_error = { version = "0.1.8", optional = true }

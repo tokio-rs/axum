@@ -68,10 +68,22 @@ macro_rules! all_the_tuples {
 }
 
 #[cfg(feature = "tracing")]
+macro_rules! trace {
+    ($($tt:tt)*) => {
+        tracing::trace!($($tt)*)
+    }
+}
+
+#[cfg(feature = "tracing")]
 macro_rules! error {
     ($($tt:tt)*) => {
         tracing::error!($($tt)*)
     };
+}
+
+#[cfg(not(feature = "tracing"))]
+macro_rules! trace {
+    ($($tt:tt)*) => {};
 }
 
 #[cfg(not(feature = "tracing"))]
