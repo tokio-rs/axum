@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning].
 
 - **added:** `JsonDeserializer` extractor ([#2431])
 
+[#2431]: https://github.com/tokio-rs/axum/pull/2431
+
 # 0.9.0 (27. November, 2023)
 
 - **added:** `OptionalQuery` extractor ([#2310])
