@@ -12,7 +12,7 @@ readme = "README.md"
 repository = "https://github.com/tokio-rs/axum"
 
 [features]
-default = ["form", "http1", "json", "matched-path", "original-uri", "query", "tokio", "tower-log"]
+default = ["form", "http1", "json", "matched-path", "original-uri", "query", "tokio", "tower-log", "tracing"]
 form = ["dep:serde_urlencoded"]
 http1 = ["dep:hyper", "hyper?/http1"]
 http2 = ["dep:hyper", "hyper?/http2"]
