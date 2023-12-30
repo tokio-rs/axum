@@ -365,7 +365,7 @@ fn check_into_response(handler: &Ident, ty: &Type) -> TokenStream {
     let from_request_bound = quote_spanned! {span=>
         #ty: ::axum::response::IntoResponse
     };
-    quote::quote_spanned! {span=>
+    quote_spanned! {span=>
         #[allow(warnings)]
         #[allow(unreachable_code)]
         #[doc(hidden)]
@@ -426,7 +426,7 @@ fn check_into_response_parts(ty: &Type, ident: &Ident, index: usize) -> TokenStr
     let from_request_bound = quote_spanned! {span=>
         #ty: ::axum::response::IntoResponseParts
     };
-    quote::quote_spanned! {span=>
+    quote_spanned! {span=>
         #[allow(warnings)]
         #[allow(unreachable_code)]
         #[doc(hidden)]
