@@ -84,7 +84,7 @@ mod tests {
         async fn spawn_app(host: impl Into<String>) -> String {
             let host = host.into();
             // Bind to localhost at the port 0, which will let the OS assign an available port to us
-            let listener = TcpListener::bind(format!("{}:0", _host)).await.unwrap();
+            let listener = TcpListener::bind(format!("{}:0", host)).await.unwrap();
             // Retrieve the port assigned to us by the OS
             let port = listener.local_addr().unwrap().port();
             tokio::spawn(async {
@@ -92,7 +92,7 @@ mod tests {
                 axum::serve(listener, app).await.unwrap();
             });
             // Returns address (e.g. http://127.0.0.1{random_port})
-            format!("http://{}:{}", _host, port)
+            format!("http://{}:{}", host, port)
         }
         let listening_url = spawn_app("127.0.0.1").await;
 
