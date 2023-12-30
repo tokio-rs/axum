@@ -69,10 +69,7 @@ async fn main() {
             .unwrap()
     );
 
-    axum::serve(listener, app)
-        .await
-        .context("failed to serve service")
-        .unwrap();
+    axum::serve(listener, app).await.unwrap();
 }
 
 #[derive(Clone)]

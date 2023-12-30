@@ -111,8 +111,8 @@ where
         // `Stream::lines` isn't a thing so we have to convert it into an `AsyncRead`
         // so we can call `AsyncRead::lines` and then convert it back to a `Stream`
         let body = req.into_body();
-
-        let stream = TryStreamExt::map_err(body, |err| io::Error::new(io::ErrorKind::Other, err));
+        let stream = body.into_data_stream();
+        let stream = stream.map_err(|err| io::Error::new(io::ErrorKind::Other, err));
         let read = StreamReader::new(stream);
         let lines_stream = LinesStream::new(read.lines());
 
@@ -224,7 +224,6 @@ mod tests {
                 ]
                 .join("\n"),
             )
-            .send()
             .await;
         assert_eq!(res.status(), StatusCode::OK);
     }
@@ -245,7 +244,7 @@ mod tests {
 
         let client = TestClient::new(app);
 
-        let res = client.get("/").send().await;
+        let res = client.get("/").await;
 
         let values = res
             .text()

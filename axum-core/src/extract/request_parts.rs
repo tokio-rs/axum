@@ -2,7 +2,8 @@ use super::{rejection::*, FromRequest, FromRequestParts, Request};
 use crate::{body::Body, RequestExt};
 use async_trait::async_trait;
 use bytes::Bytes;
-use http::{request::Parts, HeaderMap, Method, Uri, Version};
+use http::{request::Parts, Extensions, HeaderMap, Method, Uri, Version};
+use http_body_util::BodyExt;
 use std::convert::Infallible;
 
 #[async_trait]
@@ -57,7 +58,7 @@ where
 ///
 /// Prefer using [`TypedHeader`] to extract only the headers you need.
 ///
-/// [`TypedHeader`]: https://docs.rs/axum/latest/axum/extract/struct.TypedHeader.html
+/// [`TypedHeader`]: https://docs.rs/axum/0.7/axum/extract/struct.TypedHeader.html
 #[async_trait]
 impl<S> FromRequestParts<S> for HeaderMap
 where
@@ -78,14 +79,12 @@ where
     type Rejection = BytesRejection;
 
     async fn from_request(req: Request, _: &S) -> Result<Self, Self::Rejection> {
-        let bytes = match req.into_limited_body() {
-            Ok(limited_body) => crate::body::to_bytes(limited_body)
-                .await
-                .map_err(FailedToBufferBody::from_err)?,
-            Err(unlimited_body) => crate::body::to_bytes(unlimited_body)
-                .await
-                .map_err(FailedToBufferBody::from_err)?,
-        };
+        let bytes = req
+            .into_limited_body()
+            .collect()
+            .await
+            .map_err(FailedToBufferBody::from_err)?
+            .to_bytes();
 
         Ok(bytes)
     }
@@ -116,14 +115,26 @@ where
 }
 
 #[async_trait]
-impl<S> FromRequest<S> for Parts
+impl<S> FromRequestParts<S> for Parts
 where
     S: Send + Sync,
 {
     type Rejection = Infallible;
 
-    async fn from_request(req: Request, _: &S) -> Result<Self, Self::Rejection> {
-        Ok(req.into_parts().0)
+    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
+        Ok(parts.clone())
+    }
+}
+
+#[async_trait]
+impl<S> FromRequestParts<S> for Extensions
+where
+    S: Send + Sync,
+{
+    type Rejection = Infallible;
+
+    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
+        Ok(parts.extensions.clone())
     }
 }
 

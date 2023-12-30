@@ -58,11 +58,11 @@ mod tests {
         extract::connect_info::MockConnectInfo,
         http::{self, Request, StatusCode},
     };
+    use http_body_util::BodyExt; // for `collect`
     use serde_json::{json, Value};
     use std::net::SocketAddr;
     use tokio::net::TcpListener;
-    use tower::Service; // for `call`
-    use tower::ServiceExt; // for `oneshot` and `ready`
+    use tower::{Service, ServiceExt}; // for `call`, `oneshot`, and `ready`
 
     #[tokio::test]
     async fn hello_world() {
@@ -77,7 +77,7 @@ mod tests {
 
         assert_eq!(response.status(), StatusCode::OK);
 
-        let body = hyper::body::to_bytes(response.into_body()).await.unwrap();
+        let body = response.into_body().collect().await.unwrap().to_bytes();
         assert_eq!(&body[..], b"Hello, World!");
     }
 
@@ -101,7 +101,7 @@ mod tests {
 
         assert_eq!(response.status(), StatusCode::OK);
 
-        let body = hyper::body::to_bytes(response.into_body()).await.unwrap();
+        let body = response.into_body().collect().await.unwrap().to_bytes();
         let body: Value = serde_json::from_slice(&body).unwrap();
         assert_eq!(body, json!({ "data": [1, 2, 3, 4] }));
     }
@@ -121,7 +121,7 @@ mod tests {
             .unwrap();
 
         assert_eq!(response.status(), StatusCode::NOT_FOUND);
-        let body = hyper::body::to_bytes(response.into_body()).await.unwrap();
+        let body = response.into_body().collect().await.unwrap().to_bytes();
         assert!(body.is_empty());
     }
 
@@ -135,19 +135,22 @@ mod tests {
             axum::serve(listener, app()).await.unwrap();
         });
 
-        let client = hyper::Client::new();
+        let client =
+            hyper_util::client::legacy::Client::builder(hyper_util::rt::TokioExecutor::new())
+                .build_http();
 
         let response = client
             .request(
                 Request::builder()
                     .uri(format!("http://{addr}"))
-                    .body(hyper::Body::empty())
+                    .header("Host", "localhost")
+                    .body(Body::empty())
                     .unwrap(),
             )
             .await
             .unwrap();
 
-        let body = hyper::body::to_bytes(response.into_body()).await.unwrap();
+        let body = response.into_body().collect().await.unwrap().to_bytes();
         assert_eq!(&body[..], b"Hello, World!");
     }
 

@@ -8,9 +8,14 @@ publish = false
 axum = { path = "../../axum" }
 axum-extra = { path = "../../axum-extra", features = ["typed-header"] }
 futures = "0.3"
-headers = "0.3"
+headers = "0.4"
 tokio = { version = "1.0", features = ["full"] }
 tokio-stream = "0.1"
-tower-http = { version = "0.4.0", features = ["fs", "trace"] }
+tower-http = { version = "0.5.0", features = ["fs", "trace"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+[dev-dependencies]
+eventsource-stream = "0.2"
+reqwest = { version = "0.11", features = ["stream"] }
+reqwest-eventsource = "0.5"

@@ -2,7 +2,7 @@ name: CI
 
 env:
   CARGO_TERM_COLOR: always
-  MSRV: '1.65'
+  MSRV: '1.66'
 
 on:
   push:
@@ -122,7 +122,6 @@ jobs:
         -p axum-extra
         -p axum-core
         --all-features
-        --all-targets
         --locked
     # the compiler errors are different on our MSRV which makes
     # the trybuild tests in axum-macros fail, so just run the doc

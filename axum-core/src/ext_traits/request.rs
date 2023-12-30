@@ -1,7 +1,6 @@
 use crate::body::Body;
 use crate::extract::{DefaultBodyLimitKind, FromRequest, FromRequestParts, Request};
 use futures_util::future::BoxFuture;
-use http_body::Limited;
 
 mod sealed {
     pub trait Sealed {}
@@ -258,13 +257,13 @@ pub trait RequestExt: sealed::Sealed + Sized {
 
     /// Apply the [default body limit](crate::extract::DefaultBodyLimit).
     ///
-    /// If it is disabled, return the request as-is in `Err`.
-    fn with_limited_body(self) -> Result<Request<Limited<Body>>, Request>;
+    /// If it is disabled, the request is returned as-is.
+    fn with_limited_body(self) -> Request;
 
-    /// Consumes the request, returning the body wrapped in [`Limited`] if a
+    /// Consumes the request, returning the body wrapped in [`http_body_util::Limited`] if a
     /// [default limit](crate::extract::DefaultBodyLimit) is in place, or not wrapped if the
     /// default limit is disabled.
-    fn into_limited_body(self) -> Result<Limited<Body>, Body>;
+    fn into_limited_body(self) -> Body;
 }
 
 impl RequestExt for Request {
@@ -320,24 +319,22 @@ impl RequestExt for Request {
         })
     }
 
-    fn with_limited_body(self) -> Result<Request<Limited<Body>>, Request> {
+    fn with_limited_body(self) -> Request {
         // update docs in `axum-core/src/extract/default_body_limit.rs` and
         // `axum/src/docs/extract.md` if this changes
         const DEFAULT_LIMIT: usize = 2_097_152; // 2 mb
 
         match self.extensions().get::<DefaultBodyLimitKind>().copied() {
-            Some(DefaultBodyLimitKind::Disable) => Err(self),
+            Some(DefaultBodyLimitKind::Disable) => self,
             Some(DefaultBodyLimitKind::Limit(limit)) => {
-                Ok(self.map(|b| http_body::Limited::new(b, limit)))
+                self.map(|b| Body::new(http_body_util::Limited::new(b, limit)))
             }
-            None => Ok(self.map(|b| http_body::Limited::new(b, DEFAULT_LIMIT))),
+            None => self.map(|b| Body::new(http_body_util::Limited::new(b, DEFAULT_LIMIT))),
         }
     }
 
-    fn into_limited_body(self) -> Result<Limited<Body>, Body> {
-        self.with_limited_body()
-            .map(Request::into_body)
-            .map_err(Request::into_body)
+    fn into_limited_body(self) -> Body {
+        self.with_limited_body().into_body()
     }
 }
 

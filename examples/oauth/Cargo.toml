@@ -9,7 +9,7 @@ anyhow = "1"
 async-session = "3.0.0"
 axum = { path = "../../axum" }
 axum-extra = { path = "../../axum-extra", features = ["typed-header"] }
-http = "0.2"
+http = "1.0.0"
 oauth2 = "4.1"
 # Use Rustls because it makes it easier to cross-compile on CI
 reqwest = { version = "0.11", default-features = false, features = ["rustls-tls", "json"] }

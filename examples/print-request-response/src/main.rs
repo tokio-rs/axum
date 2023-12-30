@@ -13,6 +13,7 @@ use axum::{
     routing::post,
     Router,
 };
+use http_body_util::BodyExt;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[tokio::main]
@@ -58,8 +59,8 @@ where
     B: axum::body::HttpBody<Data = Bytes>,
     B::Error: std::fmt::Display,
 {
-    let bytes = match hyper::body::to_bytes(body).await {
-        Ok(bytes) => bytes,
+    let bytes = match body.collect().await {
+        Ok(collected) => collected.to_bytes(),
         Err(err) => {
             return Err((
                 StatusCode::BAD_REQUEST,

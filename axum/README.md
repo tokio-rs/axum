@@ -8,12 +8,6 @@
 
 More information about this crate can be found in the [crate documentation][docs].
 
-## 🚨 The `main` branch has unpublished, breaking changes 🚨
-
-In preparation for `axum` 0.7 the `main` branch currently has unpublished,
-breaking changes. Please see the [v0.6.x](https://github.com/tokio-rs/axum/tree/v0.6.x)
-branch for the versions of `axum` published to crates.io.
-
 ## High level features
 
 - Route requests to handlers with a macro free API.
@@ -35,11 +29,9 @@ applications written using [`hyper`] or [`tonic`].
 use axum::{
     routing::{get, post},
     http::StatusCode,
-    response::IntoResponse,
     Json, Router,
 };
 use serde::{Deserialize, Serialize};
-use std::net::SocketAddr;
 
 #[tokio::main]
 async fn main() {
@@ -112,7 +104,7 @@ This crate uses `#![forbid(unsafe_code)]` to ensure everything is implemented in
 
 ## Minimum supported Rust version
 
-axum's MSRV is 1.65.
+axum's MSRV is 1.66.
 
 ## Examples
 

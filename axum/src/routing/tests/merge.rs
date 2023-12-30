@@ -14,16 +14,16 @@ async fn basic() {
 
     let client = TestClient::new(app);
 
-    let res = client.get("/foo").send().await;
+    let res = client.get("/foo").await;
     assert_eq!(res.status(), StatusCode::OK);
 
-    let res = client.get("/bar").send().await;
+    let res = client.get("/bar").await;
     assert_eq!(res.status(), StatusCode::OK);
 
-    let res = client.get("/baz").send().await;
+    let res = client.get("/baz").await;
     assert_eq!(res.status(), StatusCode::OK);
 
-    let res = client.get("/qux").send().await;
+    let res = client.get("/qux").await;
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
 }
 
@@ -65,7 +65,7 @@ async fn multiple_ors_balanced_differently() {
 
         for n in ["one", "two", "three", "four"].iter() {
             println!("running: {name} / {n}");
-            let res = client.get(&format!("/{n}")).send().await;
+            let res = client.get(&format!("/{n}")).await;
             assert_eq!(res.status(), StatusCode::OK);
             assert_eq!(res.text().await, *n);
         }
@@ -80,12 +80,12 @@ async fn nested_or() {
     let bar_or_baz = bar.merge(baz);
 
     let client = TestClient::new(bar_or_baz.clone());
-    assert_eq!(client.get("/bar").send().await.text().await, "bar");
-    assert_eq!(client.get("/baz").send().await.text().await, "baz");
+    assert_eq!(client.get("/bar").await.text().await, "bar");
+    assert_eq!(client.get("/baz").await.text().await, "baz");
 
     let client = TestClient::new(Router::new().nest("/foo", bar_or_baz));
-    assert_eq!(client.get("/foo/bar").send().await.text().await, "bar");
-    assert_eq!(client.get("/foo/baz").send().await.text().await, "baz");
+    assert_eq!(client.get("/foo/bar").await.text().await, "bar");
+    assert_eq!(client.get("/foo/baz").await.text().await, "baz");
 }
 
 #[crate::test]
@@ -96,13 +96,13 @@ async fn or_with_route_following() {
 
     let client = TestClient::new(app);
 
-    let res = client.get("/one").send().await;
+    let res = client.get("/one").await;
     assert_eq!(res.status(), StatusCode::OK);
 
-    let res = client.get("/two").send().await;
+    let res = client.get("/two").await;
     assert_eq!(res.status(), StatusCode::OK);
 
-    let res = client.get("/three").send().await;
+    let res = client.get("/three").await;
     assert_eq!(res.status(), StatusCode::OK);
 }
 
@@ -116,10 +116,10 @@ async fn layer() {
 
     let client = TestClient::new(app);
 
-    let res = client.get("/foo").send().await;
+    let res = client.get("/foo").await;
     assert_eq!(res.status(), StatusCode::OK);
 
-    let res = client.get("/bar").send().await;
+    let res = client.get("/bar").await;
     assert_eq!(res.status(), StatusCode::OK);
 }
 
@@ -133,8 +133,10 @@ async fn layer_and_handle_error() {
 
     let client = TestClient::new(app);
 
-    let res = client.get("/timeout").send().await;
+    let res = client.get("/timeout").await;
     assert_eq!(res.status(), StatusCode::REQUEST_TIMEOUT);
+    let res = client.get("/foo").await;
+    assert_eq!(res.status(), StatusCode::OK);
 }
 
 #[crate::test]
@@ -145,7 +147,7 @@ async fn nesting() {
 
     let client = TestClient::new(app);
 
-    let res = client.get("/bar/baz").send().await;
+    let res = client.get("/bar/baz").await;
     assert_eq!(res.status(), StatusCode::OK);
 }
 
@@ -157,7 +159,7 @@ async fn boxed() {
 
     let client = TestClient::new(app);
 
-    let res = client.get("/bar").send().await;
+    let res = client.get("/bar").await;
     assert_eq!(res.status(), StatusCode::OK);
 }
 
@@ -175,11 +177,11 @@ async fn many_ors() {
     let client = TestClient::new(app);
 
     for n in 1..=7 {
-        let res = client.get(&format!("/r{n}")).send().await;
+        let res = client.get(&format!("/r{n}")).await;
         assert_eq!(res.status(), StatusCode::OK);
     }
 
-    let res = client.get("/r8").send().await;
+    let res = client.get("/r8").await;
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
 }
 
@@ -203,10 +205,10 @@ async fn services() {
 
     let client = TestClient::new(app);
 
-    let res = client.get("/foo").send().await;
+    let res = client.get("/foo").await;
     assert_eq!(res.status(), StatusCode::OK);
 
-    let res = client.get("/bar").send().await;
+    let res = client.get("/bar").await;
     assert_eq!(res.status(), StatusCode::OK);
 }
 
@@ -229,7 +231,7 @@ async fn nesting_and_seeing_the_right_uri() {
 
     let client = TestClient::new(one.merge(two));
 
-    let res = client.get("/foo/bar").send().await;
+    let res = client.get("/foo/bar").await;
     assert_eq!(res.status(), StatusCode::OK);
     assert_eq!(
         res.json::<Value>().await,
@@ -240,7 +242,7 @@ async fn nesting_and_seeing_the_right_uri() {
         })
     );
 
-    let res = client.get("/foo").send().await;
+    let res = client.get("/foo").await;
     assert_eq!(res.status(), StatusCode::OK);
     assert_eq!(
         res.json::<Value>().await,
@@ -262,7 +264,7 @@ async fn nesting_and_seeing_the_right_uri_at_more_levels_of_nesting() {
 
     let client = TestClient::new(one.merge(two));
 
-    let res = client.get("/foo/bar/baz").send().await;
+    let res = client.get("/foo/bar/baz").await;
     assert_eq!(res.status(), StatusCode::OK);
     assert_eq!(
         res.json::<Value>().await,
@@ -273,7 +275,7 @@ async fn nesting_and_seeing_the_right_uri_at_more_levels_of_nesting() {
         })
     );
 
-    let res = client.get("/foo").send().await;
+    let res = client.get("/foo").await;
     assert_eq!(res.status(), StatusCode::OK);
     assert_eq!(
         res.json::<Value>().await,
@@ -296,7 +298,7 @@ async fn nesting_and_seeing_the_right_uri_ors_with_nesting() {
 
     let client = TestClient::new(one.merge(two).merge(three));
 
-    let res = client.get("/one/bar/baz").send().await;
+    let res = client.get("/one/bar/baz").await;
     assert_eq!(res.status(), StatusCode::OK);
     assert_eq!(
         res.json::<Value>().await,
@@ -307,7 +309,7 @@ async fn nesting_and_seeing_the_right_uri_ors_with_nesting() {
         })
     );
 
-    let res = client.get("/two/qux").send().await;
+    let res = client.get("/two/qux").await;
     assert_eq!(res.status(), StatusCode::OK);
     assert_eq!(
         res.json::<Value>().await,
@@ -318,7 +320,7 @@ async fn nesting_and_seeing_the_right_uri_ors_with_nesting() {
         })
     );
 
-    let res = client.get("/three").send().await;
+    let res = client.get("/three").await;
     assert_eq!(res.status(), StatusCode::OK);
     assert_eq!(
         res.json::<Value>().await,
@@ -340,7 +342,7 @@ async fn nesting_and_seeing_the_right_uri_ors_with_multi_segment_uris() {
 
     let client = TestClient::new(one.merge(two));
 
-    let res = client.get("/one/foo/bar").send().await;
+    let res = client.get("/one/foo/bar").await;
     assert_eq!(res.status(), StatusCode::OK);
     assert_eq!(
         res.json::<Value>().await,
@@ -351,7 +353,7 @@ async fn nesting_and_seeing_the_right_uri_ors_with_multi_segment_uris() {
         })
     );
 
-    let res = client.get("/two/foo").send().await;
+    let res = client.get("/two/foo").await;
     assert_eq!(res.status(), StatusCode::OK);
     assert_eq!(
         res.json::<Value>().await,
@@ -373,22 +375,18 @@ async fn middleware_that_return_early() {
 
     let client = TestClient::new(private.merge(public));
 
-    assert_eq!(
-        client.get("/").send().await.status(),
-        StatusCode::UNAUTHORIZED
-    );
+    assert_eq!(client.get("/").await.status(), StatusCode::UNAUTHORIZED);
     assert_eq!(
         client
             .get("/")
             .header("authorization", "Bearer password")
-            .send()
             .await
             .status(),
         StatusCode::OK
     );
     assert_eq!(
-        client.get("/doesnt-exist").send().await.status(),
+        client.get("/doesnt-exist").await.status(),
         StatusCode::NOT_FOUND
     );
-    assert_eq!(client.get("/public").send().await.status(), StatusCode::OK);
+    assert_eq!(client.get("/public").await.status(), StatusCode::OK);
 }

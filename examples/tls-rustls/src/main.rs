@@ -4,6 +4,8 @@
 //! cargo run -p example-tls-rustls
 //! ```
 
+#![allow(unused_imports)]
+
 use axum::{
     extract::Host,
     handler::HandlerWithoutStateExt,
@@ -16,6 +18,7 @@ use axum_server::tls_rustls::RustlsConfig;
 use std::{net::SocketAddr, path::PathBuf};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
+#[allow(dead_code)]
 #[derive(Clone, Copy)]
 struct Ports {
     http: u16,
@@ -55,17 +58,19 @@ async fn main() {
 
     // run https server
     let addr = SocketAddr::from(([127, 0, 0, 1], ports.https));
-    tracing::debug!("listening on {addr}");
+    tracing::debug!("listening on {}", addr);
     axum_server::bind_rustls(addr, config)
         .serve(app.into_make_service())
         .await
         .unwrap();
 }
 
+#[allow(dead_code)]
 async fn handler() -> &'static str {
     "Hello, World!"
 }
 
+#[allow(dead_code)]
 async fn redirect_http_to_https(ports: Ports) {
     fn make_https(host: String, uri: Uri, ports: Ports) -> Result<Uri, BoxError> {
         let mut parts = uri.into_parts();

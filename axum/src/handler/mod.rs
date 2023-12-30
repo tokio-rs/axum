@@ -37,10 +37,10 @@
 //! in handlers. See those examples:
 //!
 //! * [`anyhow-error-response`][anyhow] for generic boxed errors
-//! * [`error-handling-and-dependency-injection`][ehdi] for application-specific detailed errors
+//! * [`error-handling`][error-handling] for application-specific detailed errors
 //!
 //! [anyhow]: https://github.com/tokio-rs/axum/blob/main/examples/anyhow-error-response/src/main.rs
-//! [ehdi]: https://github.com/tokio-rs/axum/blob/main/examples/error-handling-and-dependency-injection/src/main.rs
+//! [error-handling]: https://github.com/tokio-rs/axum/blob/main/examples/error-handling/src/main.rs
 //!
 #![doc = include_str!("../docs/debugging_handler_type_errors.md")]
 
@@ -391,9 +391,8 @@ mod tests {
     use http::StatusCode;
     use std::time::Duration;
     use tower_http::{
-        compression::CompressionLayer, limit::RequestBodyLimitLayer,
-        map_request_body::MapRequestBodyLayer, map_response_body::MapResponseBodyLayer,
-        timeout::TimeoutLayer,
+        limit::RequestBodyLimitLayer, map_request_body::MapRequestBodyLayer,
+        map_response_body::MapResponseBodyLayer, timeout::TimeoutLayer,
     };
 
     #[crate::test]
@@ -404,7 +403,7 @@ mod tests {
 
         let client = TestClient::new(handle.into_service());
 
-        let res = client.post("/").body("hi there!").send().await;
+        let res = client.post("/").body("hi there!").await;
         assert_eq!(res.status(), StatusCode::OK);
         assert_eq!(res.text().await, "you said: hi there!");
     }
@@ -420,13 +419,12 @@ mod tests {
                 RequestBodyLimitLayer::new(1024),
                 TimeoutLayer::new(Duration::from_secs(10)),
                 MapResponseBodyLayer::new(Body::new),
-                CompressionLayer::new(),
             ))
             .layer(MapRequestBodyLayer::new(Body::new))
             .with_state("foo");
 
         let client = TestClient::new(svc);
-        let res = client.get("/").send().await;
+        let res = client.get("/").await;
         assert_eq!(res.text().await, "foo");
     }
 }

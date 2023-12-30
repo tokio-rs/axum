@@ -135,7 +135,6 @@ mod tests {
             .post("/")
             .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
             .body("value=one&value=two")
-            .send()
             .await;
 
         assert_eq!(res.status(), StatusCode::OK);

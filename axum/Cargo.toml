@@ -1,10 +1,10 @@
 [package]
 name = "axum"
-version = "0.6.16"
+version = "0.7.3"
 categories = ["asynchronous", "network-programming", "web-programming::http-server"]
 description = "Web framework that focuses on ergonomics and modularity"
 edition = "2021"
-rust-version = "1.65"
+rust-version = "1.66"
 homepage = "https://github.com/tokio-rs/axum"
 keywords = ["http", "web", "framework"]
 license = "MIT"
@@ -12,32 +12,42 @@ readme = "README.md"
 repository = "https://github.com/tokio-rs/axum"
 
 [features]
-default = ["form", "http1", "json", "matched-path", "original-uri", "query", "tokio", "tower-log"]
+default = [
+    "form",
+    "http1",
+    "json",
+    "matched-path",
+    "original-uri",
+    "query",
+    "tokio",
+    "tower-log",
+    "tracing",
+]
 form = ["dep:serde_urlencoded"]
-http1 = ["hyper/http1"]
-http2 = ["hyper/http2"]
+http1 = ["dep:hyper", "hyper?/http1"]
+http2 = ["dep:hyper", "hyper?/http2"]
 json = ["dep:serde_json", "dep:serde_path_to_error"]
 macros = ["dep:axum-macros"]
 matched-path = []
 multipart = ["dep:multer"]
 original-uri = []
 query = ["dep:serde_urlencoded"]
-tokio = ["dep:tokio", "dep:hyper-util", "hyper/server", "hyper/tcp", "hyper/runtime", "tower/make"]
+tokio = ["dep:hyper-util", "dep:tokio", "tokio/net", "tokio/rt", "tower/make", "tokio/macros"]
 tower-log = ["tower/log"]
 tracing = ["dep:tracing", "axum-core/tracing"]
-ws = ["tokio", "dep:tokio-tungstenite", "dep:sha1", "dep:base64"]
+ws = ["dep:hyper", "tokio", "dep:tokio-tungstenite", "dep:sha1", "dep:base64"]
 
 # Required for intra-doc links to resolve correctly
 __private_docs = ["tower/full", "dep:tower-http"]
 
 [dependencies]
 async-trait = "0.1.67"
-axum-core = { path = "../axum-core", version = "0.3.4" }
+axum-core = { path = "../axum-core", version = "0.4.2" }
 bytes = "1.0"
 futures-util = { version = "0.3", default-features = false, features = ["alloc"] }
-http = "0.2.9"
-http-body = "0.4.4"
-hyper = { version = "0.14.24", features = ["stream"] }
+http = "1.0.0"
+http-body = "1.0.0"
+http-body-util = "0.1.0"
 itoa = "1.0.5"
 matchit = "0.7"
 memchr = "2.4.1"
@@ -50,25 +60,22 @@ tower = { version = "0.4.13", default-features = false, features = ["util"] }
 tower-layer = "0.3.2"
 tower-service = "0.3"
 
-# wont need this when axum uses http-body 1.0
-hyper1 = { package = "hyper", version = "=1.0.0-rc.4", features = ["server", "http1", "http2"] }
-tower-hyper-http-body-compat = { version = "0.2", features = ["server", "http1"] }
-
 # optional dependencies
-axum-macros = { path = "../axum-macros", version = "0.3.7", optional = true }
+axum-macros = { path = "../axum-macros", version = "0.4.0", optional = true }
 base64 = { version = "0.21.0", optional = true }
-hyper-util = { git = "https://github.com/hyperium/hyper-util", rev = "d97181a", features = ["auto"], optional = true }
-multer = { version = "2.0.0", optional = true }
+hyper = { version = "1.1.0", optional = true }
+hyper-util = { version = "0.1.2", features = ["tokio", "server", "server-auto"], optional = true }
+multer = { version = "3.0.0", optional = true }
 serde_json = { version = "1.0", features = ["raw_value"], optional = true }
 serde_path_to_error = { version = "0.1.8", optional = true }
 serde_urlencoded = { version = "0.7", optional = true }
 sha1 = { version = "0.10", optional = true }
 tokio = { package = "tokio", version = "1.25.0", features = ["time"], optional = true }
-tokio-tungstenite = { version = "0.20", optional = true }
+tokio-tungstenite = { version = "0.21", optional = true }
 tracing = { version = "0.1", default-features = false, optional = true }
 
 [dependencies.tower-http]
-version = "0.4"
+version = "0.5.0"
 optional = true
 features = [
     # all tower-http features except (de)?compression-zstd which doesn't
@@ -107,7 +114,7 @@ rustversion = "1.0.9"
 
 [dev-dependencies]
 anyhow = "1.0"
-axum-macros = { path = "../axum-macros", version = "0.3.7", features = ["__private"] }
+axum-macros = { path = "../axum-macros", version = "0.4.0", features = ["__private"] }
 quickcheck = "1.0"
 quickcheck_macros = "1.0"
 reqwest = { version = "0.11.14", default-features = false, features = ["json", "stream", "multipart"] }
@@ -138,7 +145,7 @@ features = [
 ]
 
 [dev-dependencies.tower-http]
-version = "0.4"
+version = "0.5.0"
 features = [
     # all tower-http features except (de)?compression-zstd which doesn't
     # build on `--target armv5te-unknown-linux-musleabi`
@@ -182,19 +189,24 @@ features = [
 
 [package.metadata.cargo-public-api-crates]
 allowed = [
-    "async_trait",
+    # our crates
     "axum_core",
     "axum_macros",
-    "bytes",
+
+    # not 1.0
     "futures_core",
     "futures_sink",
     "futures_util",
+    "tower_layer",
+    "tower_service",
+
+    # >=1.0
+    "async_trait",
+    "bytes",
     "http",
     "http_body",
     "serde",
     "tokio",
-    "tower_layer",
-    "tower_service",
 ]
 
 [[bench]]

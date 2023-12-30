@@ -5,27 +5,47 @@
 //! kill or ctrl-c
 //! ```
 
-use axum::{response::Html, routing::get, Router};
-use std::net::SocketAddr;
+use std::time::Duration;
+
+use axum::{routing::get, Router};
+use tokio::net::TcpListener;
 use tokio::signal;
+use tokio::time::sleep;
+use tower_http::timeout::TimeoutLayer;
+use tower_http::trace::TraceLayer;
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[tokio::main]
 async fn main() {
-    // build our application with a route
-    let app = Router::new().route("/", get(handler));
+    // Enable tracing.
+    tracing_subscriber::registry()
+        .with(
+            tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| {
+                "example_graceful_shutdown=debug,tower_http=debug,axum=trace".into()
+            }),
+        )
+        .with(tracing_subscriber::fmt::layer().without_time())
+        .init();
 
-    // run it
-    let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
-    println!("listening on {addr}");
-    hyper::Server::bind(&addr)
-        .serve(app.into_make_service())
+    // Create a regular axum app.
+    let app = Router::new()
+        .route("/slow", get(|| sleep(Duration::from_secs(5))))
+        .route("/forever", get(std::future::pending::<()>))
+        .layer((
+            TraceLayer::new_for_http(),
+            // Graceful shutdown will wait for outstanding requests to complete. Add a timeout so
+            // requests don't hang forever.
+            TimeoutLayer::new(Duration::from_secs(10)),
+        ));
+
+    // Create a `TcpListener` using tokio.
+    let listener = TcpListener::bind("0.0.0.0:3000").await.unwrap();
+
+    // Run the server with graceful shutdown
+    axum::serve(listener, app)
         .with_graceful_shutdown(shutdown_signal())
         .await
         .unwrap();
-}
-
-async fn handler() -> Html<&'static str> {
-    Html("<h1>Hello, World!</h1>")
 }
 
 async fn shutdown_signal() {
@@ -50,6 +70,4 @@ async fn shutdown_signal() {
         _ = ctrl_c => {},
         _ = terminate => {},
     }
-
-    println!("signal received, starting graceful shutdown");
 }

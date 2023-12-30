@@ -12,5 +12,5 @@ axum = { path = "../../axum", default-features = false }
 # works in wasm as well
 axum-extra = { path = "../../axum-extra", default-features = false }
 futures-executor = "0.3.21"
-http = "0.2.7"
+http = "1.0.0"
 tower-service = "0.3.1"

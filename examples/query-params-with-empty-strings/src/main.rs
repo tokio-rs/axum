@@ -58,6 +58,7 @@ where
 mod tests {
     use super::*;
     use axum::{body::Body, http::Request};
+    use http_body_util::BodyExt;
     use tower::ServiceExt;
 
     #[tokio::test]
@@ -114,7 +115,7 @@ mod tests {
             .await
             .unwrap()
             .into_body();
-        let bytes = hyper::body::to_bytes(body).await.unwrap();
+        let bytes = body.collect().await.unwrap().to_bytes();
         String::from_utf8(bytes.to_vec()).unwrap()
     }
 }

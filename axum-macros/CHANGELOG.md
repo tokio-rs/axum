@@ -7,11 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+- None.
+
+# 0.4.0 (27. November, 2023)
+
 - **breaking:** `#[debug_handler]` no longer accepts a `body = _` argument. The
   body type is always `axum::body::Body` ([#1751])
+- **fixed:** Fix `rust-version` specific in Cargo.toml ([#2204])
+
+[#2204]: https://github.com/tokio-rs/axum/pull/2204
+[#1751]: https://github.com/tokio-rs/axum/pull/1751
+
+# 0.3.8 (17. July, 2023)
+
 - **fixed:** Allow unreachable code in `#[debug_handler]` ([#2014])
 
-[#1751]: https://github.com/tokio-rs/axum/pull/1751
 [#2014]: https://github.com/tokio-rs/axum/pull/2014
 
 # 0.3.7 (22. March, 2023)
@@ -28,7 +38,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   request-consuming extractors ([#1826])
 
 [#1826]: https://github.com/tokio-rs/axum/pull/1826
-[#1751]: https://github.com/tokio-rs/axum/pull/1751
 
 # 0.3.5 (03. March, 2023)
 

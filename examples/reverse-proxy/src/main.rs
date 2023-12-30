@@ -15,15 +15,18 @@ use axum::{
     routing::get,
     Router,
 };
-use hyper::{client::HttpConnector, StatusCode};
+use hyper::StatusCode;
+use hyper_util::{client::legacy::connect::HttpConnector, rt::TokioExecutor};
 
-type Client = hyper::client::Client<HttpConnector, Body>;
+type Client = hyper_util::client::legacy::Client<HttpConnector, Body>;
 
 #[tokio::main]
 async fn main() {
     tokio::spawn(server());
 
-    let client: Client = hyper::Client::builder().build(HttpConnector::new());
+    let client: Client =
+        hyper_util::client::legacy::Client::<(), ()>::builder(TokioExecutor::new())
+            .build(HttpConnector::new());
 
     let app = Router::new().route("/", get(handler)).with_state(client);
 
@@ -42,7 +45,7 @@ async fn handler(State(client): State<Client>, mut req: Request) -> Result<Respo
         .map(|v| v.as_str())
         .unwrap_or(path);
 
-    let uri = format!("http://127.0.0.1:3000{path_query}");
+    let uri = format!("http://127.0.0.1:3000{}", path_query);
 
     *req.uri_mut() = Uri::try_from(uri).unwrap();
 

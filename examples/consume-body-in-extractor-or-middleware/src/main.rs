@@ -14,6 +14,7 @@ use axum::{
     routing::post,
     Router,
 };
+use http_body_util::BodyExt;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[tokio::main]
@@ -50,9 +51,11 @@ async fn buffer_request_body(request: Request) -> Result<Request, Response> {
     let (parts, body) = request.into_parts();
 
     // this wont work if the body is an long running stream
-    let bytes = hyper::body::to_bytes(body)
+    let bytes = body
+        .collect()
         .await
-        .map_err(|err| (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response())?;
+        .map_err(|err| (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response())?
+        .to_bytes();
 
     do_thing_with_request_body(bytes.clone());
 

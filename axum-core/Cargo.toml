@@ -9,7 +9,7 @@ license = "MIT"
 name = "axum-core"
 readme = "README.md"
 repository = "https://github.com/tokio-rs/axum"
-version = "0.3.4" # remember to also bump the version that axum and axum-extra depend on
+version = "0.4.2" # remember to also bump the version that axum and axum-extra depend on
 
 [features]
 tracing = ["dep:tracing"]
@@ -21,8 +21,9 @@ __private_docs = ["dep:tower-http"]
 async-trait = "0.1.67"
 bytes = "1.0"
 futures-util = { version = "0.3", default-features = false, features = ["alloc"] }
-http = "0.2.7"
-http-body = "0.4.5"
+http = "1.0.0"
+http-body = "1.0.0"
+http-body-util = "0.1.0"
 mime = "0.3.16"
 pin-project-lite = "0.2.7"
 sync_wrapper = "0.1.1"
@@ -30,27 +31,30 @@ tower-layer = "0.3"
 tower-service = "0.3"
 
 # optional dependencies
-tower-http = { version = "0.4", optional = true, features = ["limit"] }
+tower-http = { version = "0.5.0", optional = true, features = ["limit"] }
 tracing = { version = "0.1.37", default-features = false, optional = true }
 
 [build-dependencies]
 rustversion = "1.0.9"
 
 [dev-dependencies]
-axum = { path = "../axum", version = "0.6.0" }
+axum = { path = "../axum", version = "0.7.2" }
 axum-extra = { path = "../axum-extra", features = ["typed-header"] }
 futures-util = { version = "0.3", default-features = false, features = ["alloc"] }
-hyper = "0.14.24"
+hyper = "1.0.0"
 tokio = { version = "1.25.0", features = ["macros"] }
-tower-http = { version = "0.4", features = ["limit"] }
+tower-http = { version = "0.5.0", features = ["limit"] }
 
 [package.metadata.cargo-public-api-crates]
 allowed = [
+    # not 1.0
     "futures_core",
-    "http",
-    "bytes",
-    "http_body",
     "tower_layer",
+
+    # >=1.0
+    "bytes",
+    "http",
+    "http_body",
 ]
 
 [package.metadata.docs.rs]
