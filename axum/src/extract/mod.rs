@@ -104,7 +104,7 @@ mod tests {
         let app = Router::new().route("/", get(|body: String| async { body }));
 
         let client = TestClient::new(app);
-        let res = client.get("/").body("foo").send().await;
+        let res = client.get("/").body("foo").await;
         let body = res.text().await;
 
         assert_eq!(body, "foo");

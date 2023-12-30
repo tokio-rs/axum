@@ -224,7 +224,6 @@ mod tests {
                 ]
                 .join("\n"),
             )
-            .send()
             .await;
         assert_eq!(res.status(), StatusCode::OK);
     }
@@ -245,7 +244,7 @@ mod tests {
 
         let client = TestClient::new(app);
 
-        let res = client.get("/").send().await;
+        let res = client.get("/").await;
 
         let values = res
             .text()

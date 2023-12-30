@@ -41,19 +41,19 @@ async fn nesting_apps() {
 
     let client = TestClient::new(app);
 
-    let res = client.get("/").send().await;
+    let res = client.get("/").await;
     assert_eq!(res.status(), StatusCode::OK);
     assert_eq!(res.text().await, "hi");
 
-    let res = client.get("/v0/api/users").send().await;
+    let res = client.get("/v0/api/users").await;
     assert_eq!(res.status(), StatusCode::OK);
     assert_eq!(res.text().await, "users#index");
 
-    let res = client.get("/v0/api/users/123").send().await;
+    let res = client.get("/v0/api/users/123").await;
     assert_eq!(res.status(), StatusCode::OK);
     assert_eq!(res.text().await, "v0: users#show (123)");
 
-    let res = client.get("/v0/api/games/123").send().await;
+    let res = client.get("/v0/api/games/123").await;
     assert_eq!(res.status(), StatusCode::OK);
     assert_eq!(res.text().await, "v0: games#show (123)");
 }
@@ -65,14 +65,14 @@ async fn wrong_method_nest() {
 
     let client = TestClient::new(app);
 
-    let res = client.get("/").send().await;
+    let res = client.get("/").await;
     assert_eq!(res.status(), StatusCode::OK);
 
-    let res = client.post("/").send().await;
+    let res = client.post("/").await;
     assert_eq!(res.status(), StatusCode::METHOD_NOT_ALLOWED);
     assert_eq!(res.headers()[ALLOW], "GET,HEAD");
 
-    let res = client.patch("/foo").send().await;
+    let res = client.patch("/foo").await;
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
 }
 
@@ -83,14 +83,14 @@ async fn nesting_router_at_root() {
 
     let client = TestClient::new(app);
 
-    let res = client.get("/").send().await;
+    let res = client.get("/").await;
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
 
-    let res = client.get("/foo").send().await;
+    let res = client.get("/foo").await;
     assert_eq!(res.status(), StatusCode::OK);
     assert_eq!(res.text().await, "/foo");
 
-    let res = client.get("/foo/bar").send().await;
+    let res = client.get("/foo/bar").await;
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
 }
 
@@ -101,14 +101,14 @@ async fn nesting_router_at_empty_path() {
 
     let client = TestClient::new(app);
 
-    let res = client.get("/").send().await;
+    let res = client.get("/").await;
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
 
-    let res = client.get("/foo").send().await;
+    let res = client.get("/foo").await;
     assert_eq!(res.status(), StatusCode::OK);
     assert_eq!(res.text().await, "/foo");
 
-    let res = client.get("/foo/bar").send().await;
+    let res = client.get("/foo/bar").await;
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
 }
 
@@ -118,15 +118,15 @@ async fn nesting_handler_at_root() {
 
     let client = TestClient::new(app);
 
-    let res = client.get("/").send().await;
+    let res = client.get("/").await;
     assert_eq!(res.status(), StatusCode::OK);
     assert_eq!(res.text().await, "/");
 
-    let res = client.get("/foo").send().await;
+    let res = client.get("/foo").await;
     assert_eq!(res.status(), StatusCode::OK);
     assert_eq!(res.text().await, "/foo");
 
-    let res = client.get("/foo/bar").send().await;
+    let res = client.get("/foo/bar").await;
     assert_eq!(res.status(), StatusCode::OK);
     assert_eq!(res.text().await, "/foo/bar");
 }
@@ -148,11 +148,11 @@ async fn nested_url_extractor() {
 
     let client = TestClient::new(app);
 
-    let res = client.get("/foo/bar/baz").send().await;
+    let res = client.get("/foo/bar/baz").await;
     assert_eq!(res.status(), StatusCode::OK);
     assert_eq!(res.text().await, "/baz");
 
-    let res = client.get("/foo/bar/qux").send().await;
+    let res = client.get("/foo/bar/qux").await;
     assert_eq!(res.status(), StatusCode::OK);
     assert_eq!(res.text().await, "/qux");
 }
@@ -172,7 +172,7 @@ async fn nested_url_original_extractor() {
 
     let client = TestClient::new(app);
 
-    let res = client.get("/foo/bar/baz").send().await;
+    let res = client.get("/foo/bar/baz").await;
     assert_eq!(res.status(), StatusCode::OK);
     assert_eq!(res.text().await, "/foo/bar/baz");
 }
@@ -195,7 +195,7 @@ async fn nested_service_sees_stripped_uri() {
 
     let client = TestClient::new(app);
 
-    let res = client.get("/foo/bar/baz").send().await;
+    let res = client.get("/foo/bar/baz").await;
     assert_eq!(res.status(), StatusCode::OK);
     assert_eq!(res.text().await, "/baz");
 }
@@ -206,7 +206,7 @@ async fn nest_static_file_server() {
 
     let client = TestClient::new(app);
 
-    let res = client.get("/static/README.md").send().await;
+    let res = client.get("/static/README.md").await;
     assert_eq!(res.status(), StatusCode::OK);
 }
 
@@ -223,9 +223,9 @@ async fn nested_multiple_routes() {
 
     let client = TestClient::new(app);
 
-    assert_eq!(client.get("/").send().await.text().await, "root");
-    assert_eq!(client.get("/api/users").send().await.text().await, "users");
-    assert_eq!(client.get("/api/teams").send().await.text().await, "teams");
+    assert_eq!(client.get("/").await.text().await, "root");
+    assert_eq!(client.get("/api/users").await.text().await, "users");
+    assert_eq!(client.get("/api/teams").await.text().await, "teams");
 }
 
 #[test]
@@ -257,8 +257,8 @@ async fn multiple_top_level_nests() {
 
     let client = TestClient::new(app);
 
-    assert_eq!(client.get("/one/route").send().await.text().await, "one");
-    assert_eq!(client.get("/two/route").send().await.text().await, "two");
+    assert_eq!(client.get("/one/route").await.text().await, "one");
+    assert_eq!(client.get("/two/route").await.text().await, "two");
 }
 
 #[crate::test]
@@ -308,14 +308,11 @@ async fn outer_middleware_still_see_whole_url() {
 
     let client = TestClient::new(app);
 
-    assert_eq!(client.get("/").send().await.text().await, "/");
-    assert_eq!(client.get("/foo").send().await.text().await, "/foo");
-    assert_eq!(client.get("/foo/bar").send().await.text().await, "/foo/bar");
-    assert_eq!(
-        client.get("/not-found").send().await.text().await,
-        "/not-found"
-    );
-    assert_eq!(client.get("/one/two").send().await.text().await, "/one/two");
+    assert_eq!(client.get("/").await.text().await, "/");
+    assert_eq!(client.get("/foo").await.text().await, "/foo");
+    assert_eq!(client.get("/foo/bar").await.text().await, "/foo/bar");
+    assert_eq!(client.get("/not-found").await.text().await, "/not-found");
+    assert_eq!(client.get("/one/two").await.text().await, "/one/two");
 }
 
 #[crate::test]
@@ -329,7 +326,7 @@ async fn nest_at_capture() {
 
     let client = TestClient::new(app);
 
-    let res = client.get("/foo/bar").send().await;
+    let res = client.get("/foo/bar").await;
     assert_eq!(res.status(), StatusCode::OK);
     assert_eq!(res.text().await, "a=foo b=bar");
 }
@@ -340,13 +337,13 @@ async fn nest_with_and_without_trailing() {
 
     let client = TestClient::new(app);
 
-    let res = client.get("/foo").send().await;
+    let res = client.get("/foo").await;
     assert_eq!(res.status(), StatusCode::OK);
 
-    let res = client.get("/foo/").send().await;
+    let res = client.get("/foo/").await;
     assert_eq!(res.status(), StatusCode::OK);
 
-    let res = client.get("/foo/bar").send().await;
+    let res = client.get("/foo/bar").await;
     assert_eq!(res.status(), StatusCode::OK);
 }
 
@@ -361,28 +358,28 @@ async fn nesting_with_root_inner_router() {
 
     // `/service/` does match the `/service` prefix and the remaining path is technically
     // empty, which is the same as `/` which matches `.route("/", _)`
-    let res = client.get("/service").send().await;
+    let res = client.get("/service").await;
     assert_eq!(res.status(), StatusCode::OK);
 
     // `/service/` does match the `/service` prefix and the remaining path is `/`
     // which matches `.route("/", _)`
     //
     // this is perhaps a little surprising but don't think there is much we can do
-    let res = client.get("/service/").send().await;
+    let res = client.get("/service/").await;
     assert_eq!(res.status(), StatusCode::OK);
 
     // at least it does work like you'd expect when using `nest`
 
-    let res = client.get("/router").send().await;
+    let res = client.get("/router").await;
     assert_eq!(res.status(), StatusCode::OK);
 
-    let res = client.get("/router/").send().await;
+    let res = client.get("/router/").await;
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
 
-    let res = client.get("/router-slash").send().await;
+    let res = client.get("/router-slash").await;
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
 
-    let res = client.get("/router-slash/").send().await;
+    let res = client.get("/router-slash/").await;
     assert_eq!(res.status(), StatusCode::OK);
 }
 
@@ -401,7 +398,7 @@ macro_rules! nested_route_test {
             let inner = Router::new().route($route_path, get(|| async {}));
             let app = Router::new().nest($nested_path, inner);
             let client = TestClient::new(app);
-            let res = client.get($expected_path).send().await;
+            let res = client.get($expected_path).await;
             let status = res.status();
             assert_eq!(status, StatusCode::OK, "Router");
         }

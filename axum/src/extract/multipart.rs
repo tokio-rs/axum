@@ -345,7 +345,7 @@ mod tests {
                 )])),
         );
 
-        client.post("/").multipart(form).send().await;
+        client.post("/").multipart(form).await;
     }
 
     // No need for this to be a #[test], we just want to make sure it compiles
@@ -376,7 +376,7 @@ mod tests {
         let form =
             reqwest::multipart::Form::new().part("file", reqwest::multipart::Part::bytes(BYTES));
 
-        let res = client.post("/").multipart(form).send().await;
+        let res = client.post("/").multipart(form).await;
         assert_eq!(res.status(), StatusCode::PAYLOAD_TOO_LARGE);
     }
 }

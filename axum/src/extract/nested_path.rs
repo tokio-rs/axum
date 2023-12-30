@@ -135,7 +135,7 @@ mod tests {
 
         let client = TestClient::new(app);
 
-        let res = client.get("/api/users").send().await;
+        let res = client.get("/api/users").await;
         assert_eq!(res.status(), StatusCode::OK);
     }
 
@@ -153,7 +153,7 @@ mod tests {
 
         let client = TestClient::new(app);
 
-        let res = client.get("/api/users").send().await;
+        let res = client.get("/api/users").await;
         assert_eq!(res.status(), StatusCode::OK);
     }
 
@@ -171,7 +171,7 @@ mod tests {
 
         let client = TestClient::new(app);
 
-        let res = client.get("/api/v2/users").send().await;
+        let res = client.get("/api/v2/users").await;
         assert_eq!(res.status(), StatusCode::OK);
     }
 
@@ -189,7 +189,7 @@ mod tests {
 
         let client = TestClient::new(app);
 
-        let res = client.get("/api/v2/users").send().await;
+        let res = client.get("/api/v2/users").await;
         assert_eq!(res.status(), StatusCode::OK);
     }
 
@@ -207,7 +207,7 @@ mod tests {
 
         let client = TestClient::new(app);
 
-        let res = client.get("/users").send().await;
+        let res = client.get("/users").await;
         assert_eq!(res.status(), StatusCode::OK);
     }
 
@@ -225,7 +225,7 @@ mod tests {
 
         let client = TestClient::new(app);
 
-        let res = client.get("/api/users").send().await;
+        let res = client.get("/api/users").await;
         assert_eq!(res.status(), StatusCode::OK);
     }
 
@@ -240,7 +240,7 @@ mod tests {
 
         let client = TestClient::new(app);
 
-        let res = client.get("/api/doesnt-exist").send().await;
+        let res = client.get("/api/doesnt-exist").await;
         assert_eq!(res.status(), StatusCode::OK);
     }
 
@@ -259,7 +259,7 @@ mod tests {
 
         let client = TestClient::new(app);
 
-        let res = client.get("/api/users").send().await;
+        let res = client.get("/api/users").await;
         assert_eq!(res.status(), StatusCode::OK);
     }
 }

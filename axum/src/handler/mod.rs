@@ -403,7 +403,7 @@ mod tests {
 
         let client = TestClient::new(handle.into_service());
 
-        let res = client.post("/").body("hi there!").send().await;
+        let res = client.post("/").body("hi there!").await;
         assert_eq!(res.status(), StatusCode::OK);
         assert_eq!(res.text().await, "you said: hi there!");
     }
@@ -424,7 +424,7 @@ mod tests {
             .with_state("foo");
 
         let client = TestClient::new(svc);
-        let res = client.get("/").send().await;
+        let res = client.get("/").await;
         assert_eq!(res.text().await, "foo");
     }
 }

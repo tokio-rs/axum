@@ -311,7 +311,7 @@ mod tests {
 
         let client = TestClient::new(app);
 
-        let res = client.get("/").send().await;
+        let res = client.get("/").await;
         let body = res.text().await;
         assert!(body.starts_with("0.0.0.0:1337"));
     }

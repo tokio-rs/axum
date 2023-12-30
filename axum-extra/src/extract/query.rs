@@ -257,7 +257,6 @@ mod tests {
             .post("/?value=one&value=two")
             .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
             .body("")
-            .send()
             .await;
 
         assert_eq!(res.status(), StatusCode::OK);
@@ -286,7 +285,6 @@ mod tests {
             .post("/?value=one&value=two")
             .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
             .body("")
-            .send()
             .await;
 
         assert_eq!(res.status(), StatusCode::OK);
@@ -312,7 +310,7 @@ mod tests {
 
         let client = TestClient::new(app);
 
-        let res = client.post("/").body("").send().await;
+        let res = client.post("/").body("").await;
 
         assert_eq!(res.status(), StatusCode::OK);
         assert_eq!(res.text().await, "None");
@@ -341,7 +339,6 @@ mod tests {
             .post("/?other=something")
             .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
             .body("")
-            .send()
             .await;
 
         assert_eq!(res.status(), StatusCode::BAD_REQUEST);

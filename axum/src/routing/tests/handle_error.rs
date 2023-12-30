@@ -41,7 +41,7 @@ async fn handler() {
 
     let client = TestClient::new(app);
 
-    let res = client.get("/").send().await;
+    let res = client.get("/").await;
     assert_eq!(res.status(), StatusCode::REQUEST_TIMEOUT);
 }
 
@@ -58,7 +58,7 @@ async fn handler_multiple_methods_first() {
 
     let client = TestClient::new(app);
 
-    let res = client.get("/").send().await;
+    let res = client.get("/").await;
     assert_eq!(res.status(), StatusCode::REQUEST_TIMEOUT);
 }
 
@@ -76,7 +76,7 @@ async fn handler_multiple_methods_middle() {
 
     let client = TestClient::new(app);
 
-    let res = client.get("/").send().await;
+    let res = client.get("/").await;
     assert_eq!(res.status(), StatusCode::REQUEST_TIMEOUT);
 }
 
@@ -92,7 +92,7 @@ async fn handler_multiple_methods_last() {
 
     let client = TestClient::new(app);
 
-    let res = client.get("/").send().await;
+    let res = client.get("/").await;
     assert_eq!(res.status(), StatusCode::REQUEST_TIMEOUT);
 }
 
@@ -106,6 +106,6 @@ async fn handler_service_ext() {
 
     let client = TestClient::new(app);
 
-    let res = client.get("/").send().await;
+    let res = client.get("/").await;
     assert_eq!(res.status(), StatusCode::INTERNAL_SERVER_ERROR);
 }
