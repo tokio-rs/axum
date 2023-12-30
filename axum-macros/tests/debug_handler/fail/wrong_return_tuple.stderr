@@ -17,8 +17,8 @@ error[E0277]: the trait bound `CustomIntoResponse: IntoResponseParts` is not sat
              Extensions
              Option<T>
              [(K, V); N]
+             ()
              (T1,)
-             (T1, T2)
            and $N others
    = help: see issue #48214
    = help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
