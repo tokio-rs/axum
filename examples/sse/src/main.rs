@@ -98,7 +98,7 @@ mod tests {
             let listener = TcpListener::bind(format!("{}:0", _host)).await.unwrap();
             // Retrieve the port assigned to us by the OS
             let port = listener.local_addr().unwrap().port();
-            let _ = tokio::spawn(async move {
+            tokio::spawn(async move {
                 let app = app();
                 axum::serve(listener, app).await.unwrap();
             });
