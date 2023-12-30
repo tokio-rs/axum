@@ -24,9 +24,9 @@ pub mod multipart;
 #[cfg(feature = "scheme")]
 mod scheme;
 
-pub use self::{
-    cached::Cached, host::Host, optional_path::OptionalPath, with_rejection::WithRejection,
-};
+#[allow(deprecated)]
+pub use self::optional_path::OptionalPath;
+pub use self::{cached::Cached, host::Host, with_rejection::WithRejection};
 
 #[cfg(feature = "cookie")]
 pub use self::cookie::CookieJar;
