@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **fixed:** Improve `debug_handler` on tuple response types ([#2201])
 
 [#2201]: https://github.com/tokio-rs/axum/pull/2201
+[#2473]: https://github.com/tokio-rs/axum/pull/2473
 
 # 0.7.3 (29. December, 2023)
 

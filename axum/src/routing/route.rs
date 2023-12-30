@@ -43,7 +43,7 @@ impl<E> Route<E> {
     }
 
     pub(crate) fn oneshot_inner(
-        &mut self,
+        &self,
         req: Request,
     ) -> Oneshot<BoxCloneService<Request, Response, E>, Request> {
         self.0.get_mut().unwrap().clone().oneshot(req)

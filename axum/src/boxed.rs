@@ -118,7 +118,7 @@ where
         (self.into_route)(self.router, state)
     }
 
-    fn call_with_state(mut self: Box<Self>, request: Request, state: S) -> RouteFuture<Infallible> {
+    fn call_with_state(self: Box<Self>, request: Request, state: S) -> RouteFuture<Infallible> {
         self.router.call_with_state(request, state)
     }
 }
