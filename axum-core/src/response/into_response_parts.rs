@@ -237,7 +237,9 @@ macro_rules! impl_into_response_parts {
                     let res = match $ty.into_response_parts(res) {
                         Ok(res) => res,
                         Err(err) => {
-                            return Err(err.into_response());
+                            let mut err_res = err.into_response();
+                            err_res.extensions_mut().insert(super::IntoResponseFailed);
+                            return Err(err_res);
                         }
                     };
                 )*

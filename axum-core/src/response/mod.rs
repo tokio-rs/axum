@@ -4,6 +4,8 @@
 //!
 //! [`axum::response`]: https://docs.rs/axum/0.7/axum/response/index.html
 
+use std::convert::Infallible;
+
 use crate::body::Body;
 
 mod append_headers;
@@ -127,3 +129,30 @@ where
         Self(value.into_response())
     }
 }
+
+/// ```
+/// todo!();
+/// ```
+#[derive(Copy, Clone, Debug)]
+pub struct IntoResponseFailed;
+
+impl IntoResponseParts for IntoResponseFailed {
+    type Error = Infallible;
+
+    fn into_response_parts(self, mut res: ResponseParts) -> Result<ResponseParts, Self::Error> {
+        res.extensions_mut().insert(self);
+        Ok(res)
+    }
+}
+
+/// Not sure it makes sense to return `IntoResponseFailed` as the whole response. You should
+/// probably at least combine it with a status code.
+///
+/// ```compile_fail
+/// fn foo()
+/// where
+///     axum_core::response::IntoResponseFailed: axum_core::response::IntoResponse,
+/// {}
+/// ```
+#[allow(dead_code)]
+fn into_response_failed_doesnt_impl_into_response() {}
