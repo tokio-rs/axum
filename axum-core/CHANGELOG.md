@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- **added:** Implement `IntoResponseParts` `()` ([#2471])
+- **added:** Implement `IntoResponseParts` for `()` ([#2471])
 
 [#2471]: https://github.com/tokio-rs/axum/pull/2471
 
