@@ -1,4 +1,4 @@
-use super::{rejection::*, FromRequestParts};
+use super::{rejection::*, FromRequestParts, OptionalFromRequestParts};
 use http::{request::Parts, Uri};
 use serde::de::DeserializeOwned;
 
@@ -59,6 +59,27 @@ where
 
     async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
         Self::try_from_uri(&parts.uri)
+    }
+}
+
+impl<T, S> OptionalFromRequestParts<S> for Query<T>
+where
+    T: DeserializeOwned,
+    S: Send + Sync,
+{
+    type Rejection = QueryRejection;
+
+    async fn from_request_parts(
+        parts: &mut Parts,
+        _state: &S,
+    ) -> Result<Option<Self>, Self::Rejection> {
+        if let Some(query) = parts.uri.query() {
+            let value = serde_urlencoded::from_str(query)
+                .map_err(FailedToDeserializeQueryString::from_err)?;
+            Ok(Some(Self(value)))
+        } else {
+            Ok(None)
+        }
     }
 }
 

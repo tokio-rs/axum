@@ -202,26 +202,22 @@ and all others implement [`FromRequestParts`].
 
 # Optional extractors
 
-All extractors defined in axum will reject the request if it doesn't match.
-If you wish to make an extractor optional you can wrap it in `Option`:
+TODO: Docs, more realistic example
 
 ```rust,no_run
-use axum::{
-    extract::Json,
-    routing::post,
-    Router,
-};
+use axum::{routing::post, Router};
+use axum_extra::{headers::UserAgent, TypedHeader};
 use serde_json::Value;
 
-async fn create_user(payload: Option<Json<Value>>) {
-    if let Some(payload) = payload {
-        // We got a valid JSON payload
+async fn foo(user_agent: Option<TypedHeader<UserAgent>>) {
+    if let Some(TypedHeader(user_agent)) = user_agent {
+        // The client sent a user agent
     } else {
-        // Payload wasn't valid JSON
+        // No user agent header
     }
 }
 
-let app = Router::new().route("/users", post(create_user));
+let app = Router::new().route("/foo", post(foo));
 # let _: Router = app;
 ```
 

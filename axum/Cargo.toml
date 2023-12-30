@@ -116,6 +116,7 @@ features = [
 
 [dev-dependencies]
 anyhow = "1.0"
+axum-extra = { path = "../axum-extra", features = ["typed-header"] }
 axum-macros = { path = "../axum-macros", features = ["__private"] }
 hyper = { version = "1.1.0", features = ["client"] }
 quickcheck = "1.0"
