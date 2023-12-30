@@ -1,5 +1,6 @@
 use crate::{
     body::{Body, HttpBody},
+    box_clone_service::BoxCloneService,
     response::Response,
 };
 use axum_core::{extract::Request, response::IntoResponse};
@@ -17,7 +18,7 @@ use std::{
     task::{Context, Poll},
 };
 use tower::{
-    util::{BoxCloneService, MapErrLayer, MapRequestLayer, MapResponseLayer, Oneshot},
+    util::{MapErrLayer, MapRequestLayer, MapResponseLayer, Oneshot},
     ServiceExt,
 };
 use tower_layer::Layer;
@@ -32,7 +33,7 @@ pub struct Route<E = Infallible>(BoxCloneService<Request, Response, E>);
 impl<E> Route<E> {
     pub(crate) fn new<T>(svc: T) -> Self
     where
-        T: Service<Request, Error = E> + Clone + Send + 'static,
+        T: Service<Request, Error = E> + Clone + Send + Sync + 'static,
         T::Response: IntoResponse + 'static,
         T::Future: Send + 'static,
     {
@@ -51,7 +52,7 @@ impl<E> Route<E> {
     pub(crate) fn layer<L, NewError>(self, layer: L) -> Route<NewError>
     where
         L: Layer<Route<E>> + Clone + Send + 'static,
-        L::Service: Service<Request> + Clone + Send + 'static,
+        L::Service: Service<Request> + Clone + Send + Sync + 'static,
         <L::Service as Service<Request>>::Response: IntoResponse + 'static,
         <L::Service as Service<Request>>::Error: Into<NewError> + 'static,
         <L::Service as Service<Request>>::Future: Send + 'static,

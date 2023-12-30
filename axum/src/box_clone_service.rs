@@ -4,7 +4,6 @@ use std::{
     task::{Context, Poll},
 };
 use tower::ServiceExt;
-use tower_layer::{layer_fn, LayerFn};
 use tower_service::Service;
 
 /// Like `tower::BoxCloneService` but `Sync`
@@ -24,14 +23,6 @@ impl<T, U, E> BoxCloneService<T, U, E> {
     {
         let inner = inner.map_future(|f| Box::pin(f) as _);
         BoxCloneService(Box::new(inner))
-    }
-
-    pub(crate) fn layer<S>() -> LayerFn<fn(S) -> Self>
-    where
-        S: Service<T, Response = U, Error = E> + Clone + Send + Sync + 'static,
-        S::Future: Send + 'static,
-    {
-        layer_fn(Self::new)
     }
 }
 
