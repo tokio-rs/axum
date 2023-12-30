@@ -122,12 +122,23 @@ where
         }
     }
 
-    fn update_router<F, S2>(self, f: F) -> Router<S2>
+    fn map_inner<F, S2>(self, f: F) -> Router<S2>
     where
         F: FnOnce(RouterInner<S>) -> RouterInner<S2>,
     {
         Router {
             inner: Arc::new(f(self.into_inner())),
+        }
+    }
+
+    fn tap_inner_mut<F>(self, f: F) -> Self
+    where
+        F: FnOnce(&mut RouterInner<S>),
+    {
+        let mut inner = self.into_inner();
+        f(&mut inner);
+        Router {
+            inner: Arc::new(inner),
         }
     }
 
@@ -146,9 +157,8 @@ where
     #[doc = include_str!("../docs/routing/route.md")]
     #[track_caller]
     pub fn route(self, path: &str, method_router: MethodRouter<S>) -> Self {
-        self.update_router(|mut this| {
+        self.tap_inner_mut(|this| {
             panic_on_err!(this.path_router.route(path, method_router));
-            this
         })
     }
 
@@ -169,9 +179,8 @@ where
             Err(service) => service,
         };
 
-        self.update_router(|mut this| {
+        self.tap_inner_mut(|this| {
             panic_on_err!(this.path_router.route_service(path, service));
-            this
         })
     }
 
@@ -188,14 +197,12 @@ where
             catch_all_fallback: _,
         } = router.into_inner();
 
-        self.update_router(|mut this| {
+        self.tap_inner_mut(|this| {
             panic_on_err!(this.path_router.nest(path, path_router));
 
             if !default_fallback {
                 panic_on_err!(this.fallback_router.nest(path, fallback_router));
             }
-
-            this
         })
     }
 
@@ -207,9 +214,8 @@ where
         T::Response: IntoResponse,
         T::Future: Send + 'static,
     {
-        self.update_router(|mut this| {
+        self.tap_inner_mut(|this| {
             panic_on_err!(this.path_router.nest_service(path, service));
-            this
         })
     }
 
@@ -230,7 +236,7 @@ where
             catch_all_fallback,
         } = other.into_inner();
 
-        self.update_router(|mut this| {
+        self.map_inner(|mut this| {
             panic_on_err!(this.path_router.merge(path_router));
 
             match (this.default_fallback, default_fallback) {
@@ -274,7 +280,7 @@ where
         <L::Service as Service<Request>>::Error: Into<Infallible> + 'static,
         <L::Service as Service<Request>>::Future: Send + 'static,
     {
-        self.update_router(|this| RouterInner {
+        self.map_inner(|this| RouterInner {
             path_router: this.path_router.layer(layer.clone()),
             fallback_router: this.fallback_router.layer(layer.clone()),
             default_fallback: this.default_fallback,
@@ -292,7 +298,7 @@ where
         <L::Service as Service<Request>>::Error: Into<Infallible> + 'static,
         <L::Service as Service<Request>>::Future: Send + 'static,
     {
-        self.update_router(|this| RouterInner {
+        self.map_inner(|this| RouterInner {
             path_router: this.path_router.route_layer(layer),
             fallback_router: this.fallback_router,
             default_fallback: this.default_fallback,
@@ -307,10 +313,9 @@ where
         H: Handler<T, S>,
         T: 'static,
     {
-        self.update_router(|mut this| {
+        self.tap_inner_mut(|this| {
             this.catch_all_fallback =
                 Fallback::BoxedHandler(BoxedIntoRoute::from_handler(handler.clone()));
-            this
         })
         .fallback_endpoint(Endpoint::MethodRouter(any(handler)))
     }
@@ -325,24 +330,22 @@ where
         T::Future: Send + 'static,
     {
         let route = Route::new(service);
-        self.update_router(|mut this| {
+        self.tap_inner_mut(|this| {
             this.catch_all_fallback = Fallback::Service(route.clone());
-            this
         })
         .fallback_endpoint(Endpoint::Route(route))
     }
 
     fn fallback_endpoint(self, endpoint: Endpoint<S>) -> Self {
-        self.update_router(|mut this| {
+        self.tap_inner_mut(|this| {
             this.fallback_router.set_fallback(endpoint);
             this.default_fallback = false;
-            this
         })
     }
 
     #[doc = include_str!("../docs/routing/with_state.md")]
     pub fn with_state<S2>(self, state: S) -> Router<S2> {
-        self.update_router(|this| RouterInner {
+        self.map_inner(|this| RouterInner {
             path_router: this.path_router.with_state(state.clone()),
             fallback_router: this.fallback_router.with_state(state.clone()),
             default_fallback: this.default_fallback,
