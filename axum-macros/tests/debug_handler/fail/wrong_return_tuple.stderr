@@ -1,4 +1,4 @@
-error: This type only implements IntoResponse but not IntoResponseParts, try moving it to the last element
+error: `Json<_>` must be the last element in a response tuple
  --> tests/debug_handler/fail/wrong_return_tuple.rs:6:5
   |
 6 |     axum::Json<&'static str>,

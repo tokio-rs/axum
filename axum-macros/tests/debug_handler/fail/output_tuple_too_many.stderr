@@ -1,4 +1,4 @@
-error: Output Tuple cannot have more than 16 arguments.
+error: Cannot return tuples with more 17 elements
   --> tests/debug_handler/fail/output_tuple_too_many.rs:5:3
    |
 5  |   ) -> (
