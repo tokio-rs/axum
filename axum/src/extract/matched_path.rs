@@ -149,7 +149,7 @@ mod tests {
 
         let client = TestClient::new(app);
 
-        let res = client.get("/foo").send().await;
+        let res = client.get("/foo").await;
         assert_eq!(res.text().await, "/:a");
     }
 
@@ -165,7 +165,7 @@ mod tests {
 
         let client = TestClient::new(app);
 
-        let res = client.get("/foo/bar").send().await;
+        let res = client.get("/foo/bar").await;
         assert_eq!(res.text().await, "/:a/:b");
     }
 
@@ -184,7 +184,7 @@ mod tests {
 
         let client = TestClient::new(app);
 
-        let res = client.get("/foo/bar/baz").send().await;
+        let res = client.get("/foo/bar/baz").await;
         assert_eq!(res.text().await, "/:a/:b/:c");
     }
 
@@ -204,7 +204,7 @@ mod tests {
 
         let client = TestClient::new(app);
 
-        let res = client.get("/foo/bar").send().await;
+        let res = client.get("/foo/bar").await;
         assert_eq!(res.status(), StatusCode::OK);
     }
 
@@ -224,7 +224,7 @@ mod tests {
 
         let client = TestClient::new(app);
 
-        let res = client.get("/foo/bar").send().await;
+        let res = client.get("/foo/bar").await;
         assert_eq!(res.status(), StatusCode::OK);
     }
 
@@ -241,7 +241,7 @@ mod tests {
 
         let client = TestClient::new(app);
 
-        let res = client.get("/foo/bar").send().await;
+        let res = client.get("/foo/bar").await;
         assert_eq!(res.status(), StatusCode::OK);
     }
 
@@ -258,7 +258,7 @@ mod tests {
 
         let client = TestClient::new(app);
 
-        let res = client.get("/foo/bar").send().await;
+        let res = client.get("/foo/bar").await;
         assert_eq!(res.status(), StatusCode::OK);
     }
 
@@ -278,7 +278,7 @@ mod tests {
 
         let client = TestClient::new(app);
 
-        let res = client.get("/foo/bar").send().await;
+        let res = client.get("/foo/bar").await;
         assert_eq!(res.status(), StatusCode::OK);
     }
 
@@ -299,7 +299,7 @@ mod tests {
 
         let client = TestClient::new(app);
 
-        let res = client.get("/foo/bar").send().await;
+        let res = client.get("/foo/bar").await;
         assert_eq!(res.status(), StatusCode::OK);
     }
 
@@ -313,7 +313,7 @@ mod tests {
 
         let client = TestClient::new(app);
 
-        let res = client.get("/foo/bar").send().await;
+        let res = client.get("/foo/bar").await;
         assert_eq!(res.status(), StatusCode::OK);
     }
 
@@ -333,7 +333,7 @@ mod tests {
 
         let client = TestClient::new(app);
 
-        let res = client.get("/foo").send().await;
+        let res = client.get("/foo").await;
         assert_eq!(res.status(), StatusCode::OK);
     }
 
@@ -348,7 +348,7 @@ mod tests {
 
         let client = TestClient::new(app);
 
-        let res = client.get("/foo/bar").send().await;
+        let res = client.get("/foo/bar").await;
         assert_eq!(res.status(), StatusCode::OK);
     }
 }

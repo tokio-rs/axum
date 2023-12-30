@@ -1,10 +1,11 @@
 use super::{serve, Request, Response};
 use bytes::Bytes;
+use futures_util::future::BoxFuture;
 use http::{
     header::{HeaderName, HeaderValue},
     StatusCode,
 };
-use std::{convert::Infallible, net::SocketAddr, str::FromStr};
+use std::{convert::Infallible, future::IntoFuture, net::SocketAddr, str::FromStr};
 use tokio::net::TcpListener;
 use tower::make::Shared;
 use tower_service::Service;
@@ -79,12 +80,6 @@ pub(crate) struct RequestBuilder {
 }
 
 impl RequestBuilder {
-    pub(crate) async fn send(self) -> TestResponse {
-        TestResponse {
-            response: self.builder.send().await.unwrap(),
-        }
-    }
-
     pub(crate) fn body(mut self, body: impl Into<reqwest::Body>) -> Self {
         self.builder = self.builder.body(body);
         self
@@ -121,6 +116,19 @@ impl RequestBuilder {
     pub(crate) fn multipart(mut self, form: reqwest::multipart::Form) -> Self {
         self.builder = self.builder.multipart(form);
         self
+    }
+}
+
+impl IntoFuture for RequestBuilder {
+    type Output = TestResponse;
+    type IntoFuture = BoxFuture<'static, Self::Output>;
+
+    fn into_future(self) -> Self::IntoFuture {
+        Box::pin(async {
+            TestResponse {
+                response: self.builder.send().await.unwrap(),
+            }
+        })
     }
 }
 

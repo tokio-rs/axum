@@ -548,7 +548,7 @@ mod tests {
         );
 
         let client = TestClient::new(app);
-        let mut stream = client.get("/").send().await;
+        let mut stream = client.get("/").await;
 
         assert_eq!(stream.headers()["content-type"], "text/event-stream");
         assert_eq!(stream.headers()["cache-control"], "no-cache");
@@ -590,7 +590,7 @@ mod tests {
         );
 
         let client = TestClient::new(app);
-        let mut stream = client.get("/").send().await;
+        let mut stream = client.get("/").await;
 
         for _ in 0..5 {
             // first message should be an event
@@ -627,7 +627,7 @@ mod tests {
         );
 
         let client = TestClient::new(app);
-        let mut stream = client.get("/").send().await;
+        let mut stream = client.get("/").await;
 
         // first message should be an event
         let event_fields = parse_event(&stream.chunk_text().await.unwrap());
