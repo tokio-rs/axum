@@ -316,7 +316,7 @@ where
     }
 
     pub(super) fn call_with_state(
-        &mut self,
+        &self,
         mut req: Request,
         state: S,
     ) -> Result<RouteFuture<Infallible>, (Request, S)> {
@@ -349,7 +349,7 @@ where
 
                 let endpoint = self
                     .routes
-                    .get_mut(&id)
+                    .get(&id)
                     .expect("no route for id. This is a bug in axum. Please file an issue");
 
                 match endpoint {
