@@ -525,10 +525,7 @@ fn extract_clean_typename(ty: &Type) -> Option<String> {
 }
 
 fn request_consuming_type_name(ty: &Type) -> Option<&'static str> {
-    let typename = match extract_clean_typename(ty) {
-        Some(tn) => tn,
-        None => return None,
-    };
+    let typename = extract_clean_typename(ty)?;
 
     let type_name = match &*typename {
         "Json" => "Json<_>",
