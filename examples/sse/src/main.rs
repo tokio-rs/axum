@@ -82,7 +82,7 @@ mod tests {
     async fn integration_test() {
         // A helper function that spawns our application in the background
         async fn spawn_app(host: impl Into<String>) -> String {
-            let _host = host.into();
+            let host = host.into();
             // Bind to localhost at the port 0, which will let the OS assign an available port to us
             let listener = TcpListener::bind(format!("{}:0", _host)).await.unwrap();
             // Retrieve the port assigned to us by the OS
