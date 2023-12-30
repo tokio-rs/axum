@@ -9,14 +9,12 @@
 //! ```
 
 use axum::{
-    extract::Query,
     response::sse::{Event, Sse},
     routing::get,
     Router,
 };
 use axum_extra::{headers, TypedHeader};
 use futures::stream::{self, Stream};
-use serde::Deserialize;
 use std::{convert::Infallible, path::PathBuf, time::Duration};
 use tokio_stream::StreamExt as _;
 use tower_http::{services::ServeDir, trace::TraceLayer};
@@ -53,32 +51,23 @@ fn app() -> Router {
         .layer(TraceLayer::new_for_http())
 }
 
-#[derive(Deserialize)]
-struct Repeat {
-    take_n: Option<usize>,
-}
-
 async fn sse_handler(
     TypedHeader(user_agent): TypedHeader<headers::UserAgent>,
-    repeat: Query<Repeat>,
 ) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
     println!("`{}` connected", user_agent.as_str());
-    // default to repeating 100 times
-    let n = repeat.take_n.unwrap_or(100);
 
     // A `Stream` that repeats an event every second
     //
     // You can also create streams from tokio channels using the wrappers in
     // https://docs.rs/tokio-stream
     let stream = stream::repeat_with(|| Event::default().data("hi!"))
-        .take(n)
         .map(Ok)
         .throttle(Duration::from_secs(1));
 
     Sse::new(stream).keep_alive(
         axum::response::sse::KeepAlive::new()
             .interval(Duration::from_secs(1))
-            .text("keep-alive-text"),
+            .text("keep-alive-text")
     )
 }
 
@@ -98,7 +87,7 @@ mod tests {
             let listener = TcpListener::bind(format!("{}:0", _host)).await.unwrap();
             // Retrieve the port assigned to us by the OS
             let port = listener.local_addr().unwrap().port();
-            tokio::spawn(async move {
+            tokio::spawn(async {
                 let app = app();
                 axum::serve(listener, app).await.unwrap();
             });
@@ -107,15 +96,15 @@ mod tests {
         }
         let listening_url = spawn_app("127.0.0.1").await;
 
-        let take_n = 1;
         let mut event_stream = reqwest::Client::new()
-            .get(&format!("{}/sse?take_n={}", listening_url, take_n))
+            .get(&format!("{}/sse", listening_url))
             .header("User-Agent", "integration_test")
             .send()
             .await
             .unwrap()
             .bytes_stream()
-            .eventsource();
+            .eventsource()
+            .take(1);
 
         let mut event_data: Vec<String> = vec![];
         while let Some(event) = event_stream.next().await {
@@ -134,7 +123,6 @@ mod tests {
             }
         }
 
-        assert!(event_data.len() == take_n);
         assert!(event_data[0] == "hi!");
     }
 }
