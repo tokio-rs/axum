@@ -349,14 +349,12 @@ fn check_into_response(handler: &Ident, ty: &Type) -> TokenStream {
     let (span, ty) = (ty.span(), ty.clone());
 
     let check_fn = format_ident!(
-        "__axum_macros_check_{}_into_response_check",
-        handler,
+        "__axum_macros_check_{handler}_into_response_check",
         span = span,
     );
 
     let call_check_fn = format_ident!(
-        "__axum_macros_check_{}_into_response_call_check",
-        handler,
+        "__axum_macros_check_{handler}_into_response_call_check",
         span = span,
     );
 
