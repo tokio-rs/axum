@@ -27,4 +27,4 @@ async fn custom_type() -> (
     panic!()
 }
 
-fn main(){}
+fn main() {}

@@ -7,6 +7,4 @@ async fn handler() -> (NotIntoResponse) {
     panic!()
 }
 
-fn main(){
-
-}
+fn main() {}

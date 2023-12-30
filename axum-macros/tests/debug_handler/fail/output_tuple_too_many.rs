@@ -26,4 +26,4 @@ async fn handler(
     panic!()
 }
 
-fn main(){}
+fn main() {}
