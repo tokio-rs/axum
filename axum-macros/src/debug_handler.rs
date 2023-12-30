@@ -303,7 +303,7 @@ fn check_output_tuples(item_fn: &ItemFn) -> TokenStream {
         0 => quote! {},
         n if n > 17 => syn::Error::new_spanned(
             &item_fn.sig.output,
-            "Cannot return tuples with more 17 elements",
+            "Cannot return tuples with more than 17 elements",
         )
         .to_compile_error(),
         _ => WithPosition::new(elems)
