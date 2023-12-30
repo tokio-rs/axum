@@ -32,6 +32,18 @@ async fn nest() {
 }
 
 #[crate::test]
+async fn two() {
+    let app = Router::new()
+        .route("/first", get(|| async {}))
+        .route("/second", get(|| async {}))
+        .fallback(get(|| async { "fallback" }));
+    let client = TestClient::new(app);
+    let res = client.get("/does-not-exist").await;
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.text().await, "fallback");
+}
+
+#[crate::test]
 async fn or() {
     let one = Router::new().route("/one", get(|| async {}));
     let two = Router::new().route("/two", get(|| async {}));

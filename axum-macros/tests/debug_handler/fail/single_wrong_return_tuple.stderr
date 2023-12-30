@@ -1,0 +1,21 @@
+error[E0277]: the trait bound `NotIntoResponse: IntoResponse` is not satisfied
+ --> tests/debug_handler/fail/single_wrong_return_tuple.rs:6:23
+  |
+6 | async fn handler() -> (NotIntoResponse) {
+  |                       ^^^^^^^^^^^^^^^^^ the trait `IntoResponse` is not implemented for `NotIntoResponse`
+  |
+  = help: the following other types implement trait `IntoResponse`:
+            Box<str>
+            Box<[u8]>
+            axum::body::Bytes
+            Body
+            axum::extract::rejection::FailedToBufferBody
+            axum::extract::rejection::LengthLimitError
+            axum::extract::rejection::UnknownBodyError
+            bytes::bytes_mut::BytesMut
+          and $N others
+note: required by a bound in `__axum_macros_check_handler_into_response::{closure#0}::check`
+ --> tests/debug_handler/fail/single_wrong_return_tuple.rs:6:23
+  |
+6 | async fn handler() -> (NotIntoResponse) {
+  |                       ^^^^^^^^^^^^^^^^^ required by this bound in `check`

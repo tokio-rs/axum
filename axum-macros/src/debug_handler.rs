@@ -4,9 +4,9 @@ use crate::{
     attr_parsing::{parse_assignment_attribute, second},
     with_position::{Position, WithPosition},
 };
-use proc_macro2::{Span, TokenStream};
+use proc_macro2::{Ident, Span, TokenStream};
 use quote::{format_ident, quote, quote_spanned};
-use syn::{parse::Parse, spanned::Spanned, FnArg, ItemFn, Token, Type};
+use syn::{parse::Parse, spanned::Spanned, FnArg, ItemFn, ReturnType, Token, Type};
 
 pub(crate) fn expand(attr: Attrs, item_fn: ItemFn) -> TokenStream {
     let Attrs { state_ty } = attr;
@@ -15,7 +15,12 @@ pub(crate) fn expand(attr: Attrs, item_fn: ItemFn) -> TokenStream {
 
     let check_extractor_count = check_extractor_count(&item_fn);
     let check_path_extractor = check_path_extractor(&item_fn);
-    let check_output_impls_into_response = check_output_impls_into_response(&item_fn);
+    let check_output_tuples = check_output_tuples(&item_fn);
+    let check_output_impls_into_response = if check_output_tuples.is_empty() {
+        check_output_impls_into_response(&item_fn)
+    } else {
+        check_output_tuples
+    };
 
     // If the function is generic, we can't reliably check its inputs or whether the future it
     // returns is `Send`. Skip those checks to avoid unhelpful additional compiler errors.
@@ -180,7 +185,7 @@ fn check_inputs_impls_from_request(item_fn: &ItemFn, state_ty: Type) -> TokenStr
         FnArg::Typed(typed) => is_self_pat_type(typed),
     });
 
-    WithPosition::new(item_fn.sig.inputs.iter())
+    WithPosition::new(&item_fn.sig.inputs)
         .enumerate()
         .map(|(idx, arg)| {
             let must_impl_from_request_parts = match &arg {
@@ -275,13 +280,169 @@ fn check_inputs_impls_from_request(item_fn: &ItemFn, state_ty: Type) -> TokenStr
                 #[allow(warnings)]
                 #[allow(unreachable_code)]
                 #[doc(hidden)]
-                fn #call_check_fn()
-                {
+                fn #call_check_fn() {
                     #call_check_fn_body
                 }
             }
         })
         .collect::<TokenStream>()
+}
+
+fn check_output_tuples(item_fn: &ItemFn) -> TokenStream {
+    let elems = match &item_fn.sig.output {
+        ReturnType::Type(_, ty) => match &**ty {
+            Type::Tuple(tuple) => &tuple.elems,
+            _ => return quote! {},
+        },
+        ReturnType::Default => return quote! {},
+    };
+
+    let handler_ident = &item_fn.sig.ident;
+
+    match elems.len() {
+        0 => quote! {},
+        n if n > 17 => syn::Error::new_spanned(
+            &item_fn.sig.output,
+            "Cannot return tuples with more than 17 elements",
+        )
+        .to_compile_error(),
+        _ => WithPosition::new(elems)
+            .enumerate()
+            .map(|(idx, arg)| match arg {
+                Position::First(ty) => match extract_clean_typename(ty).as_deref() {
+                    Some("StatusCode" | "Response") => quote! {},
+                    Some("Parts") => check_is_response_parts(ty, handler_ident, idx),
+                    Some(_) | None => {
+                        if let Some(tn) = well_known_last_response_type(ty) {
+                            syn::Error::new_spanned(
+                                ty,
+                                format!(
+                                    "`{tn}` must be the last element \
+                                    in a response tuple"
+                                ),
+                            )
+                            .to_compile_error()
+                        } else {
+                            check_into_response_parts(ty, handler_ident, idx)
+                        }
+                    }
+                },
+                Position::Middle(ty) => {
+                    if let Some(tn) = well_known_last_response_type(ty) {
+                        syn::Error::new_spanned(
+                            ty,
+                            format!("`{tn}` must be the last element in a response tuple"),
+                        )
+                        .to_compile_error()
+                    } else {
+                        check_into_response_parts(ty, handler_ident, idx)
+                    }
+                }
+                Position::Last(ty) | Position::Only(ty) => check_into_response(handler_ident, ty),
+            })
+            .collect::<TokenStream>(),
+    }
+}
+
+fn check_into_response(handler: &Ident, ty: &Type) -> TokenStream {
+    let (span, ty) = (ty.span(), ty.clone());
+
+    let check_fn = format_ident!(
+        "__axum_macros_check_{handler}_into_response_check",
+        span = span,
+    );
+
+    let call_check_fn = format_ident!(
+        "__axum_macros_check_{handler}_into_response_call_check",
+        span = span,
+    );
+
+    let call_check_fn_body = quote_spanned! {span=>
+        #check_fn();
+    };
+
+    let from_request_bound = quote_spanned! {span=>
+        #ty: ::axum::response::IntoResponse
+    };
+    quote_spanned! {span=>
+        #[allow(warnings)]
+        #[allow(unreachable_code)]
+        #[doc(hidden)]
+        fn #check_fn()
+        where
+            #from_request_bound,
+        {}
+
+        // we have to call the function to actually trigger a compile error
+        // since the function is generic, just defining it is not enough
+        #[allow(warnings)]
+        #[allow(unreachable_code)]
+        #[doc(hidden)]
+        fn #call_check_fn() {
+            #call_check_fn_body
+        }
+    }
+}
+
+fn check_is_response_parts(ty: &Type, ident: &Ident, index: usize) -> TokenStream {
+    let (span, ty) = (ty.span(), ty.clone());
+
+    let check_fn = format_ident!(
+        "__axum_macros_check_{}_is_response_parts_{index}_check",
+        ident,
+        span = span,
+    );
+
+    quote_spanned! {span=>
+        #[allow(warnings)]
+        #[allow(unreachable_code)]
+        #[doc(hidden)]
+        fn #check_fn(parts: #ty) -> ::axum::http::response::Parts {
+            parts
+        }
+    }
+}
+
+fn check_into_response_parts(ty: &Type, ident: &Ident, index: usize) -> TokenStream {
+    let (span, ty) = (ty.span(), ty.clone());
+
+    let check_fn = format_ident!(
+        "__axum_macros_check_{}_into_response_parts_{index}_check",
+        ident,
+        span = span,
+    );
+
+    let call_check_fn = format_ident!(
+        "__axum_macros_check_{}_into_response_parts_{index}_call_check",
+        ident,
+        span = span,
+    );
+
+    let call_check_fn_body = quote_spanned! {span=>
+        #check_fn();
+    };
+
+    let from_request_bound = quote_spanned! {span=>
+        #ty: ::axum::response::IntoResponseParts
+    };
+    quote_spanned! {span=>
+        #[allow(warnings)]
+        #[allow(unreachable_code)]
+        #[doc(hidden)]
+        fn #check_fn()
+        where
+            #from_request_bound,
+        {}
+
+        // we have to call the function to actually trigger a compile error
+        // since the function is generic, just defining it is not enough
+        #[allow(warnings)]
+        #[allow(unreachable_code)]
+        #[doc(hidden)]
+        fn #call_check_fn() {
+            #call_check_fn_body
+        }
+    }
 }
 
 fn check_input_order(item_fn: &ItemFn) -> Option<TokenStream> {
@@ -334,7 +495,7 @@ fn check_input_order(item_fn: &ItemFn) -> Option<TokenStream> {
             compile_error!(#error);
         })
     } else {
-        let types = WithPosition::new(types_that_consume_the_request.into_iter())
+        let types = WithPosition::new(types_that_consume_the_request)
             .map(|pos| match pos {
                 Position::First((_, type_name, _)) | Position::Middle((_, type_name, _)) => {
                     format!("`{type_name}`, ")
@@ -355,18 +516,18 @@ fn check_input_order(item_fn: &ItemFn) -> Option<TokenStream> {
     }
 }
 
-fn request_consuming_type_name(ty: &Type) -> Option<&'static str> {
+fn extract_clean_typename(ty: &Type) -> Option<String> {
     let path = match ty {
         Type::Path(type_path) => &type_path.path,
         _ => return None,
     };
+    path.segments.last().map(|p| p.ident.to_string())
+}
 
-    let ident = match path.segments.last() {
-        Some(path_segment) => &path_segment.ident,
-        None => return None,
-    };
+fn request_consuming_type_name(ty: &Type) -> Option<&'static str> {
+    let typename = extract_clean_typename(ty)?;
 
-    let type_name = match &*ident.to_string() {
+    let type_name = match &*typename {
         "Json" => "Json<_>",
         "RawBody" => "RawBody<_>",
         "RawForm" => "RawForm",
@@ -378,6 +539,25 @@ fn request_consuming_type_name(ty: &Type) -> Option<&'static str> {
         "Bytes" => "Bytes",
         "String" => "String",
         "Parts" => "Parts",
+        _ => return None,
+    };
+
+    Some(type_name)
+}
+
+fn well_known_last_response_type(ty: &Type) -> Option<&'static str> {
+    let typename = match extract_clean_typename(ty) {
+        Some(tn) => tn,
+        None => return None,
+    };
+
+    let type_name = match &*typename {
+        "Json" => "Json<_>",
+        "Protobuf" => "Protobuf",
+        "JsonLines" => "JsonLines<_>",
+        "Form" => "Form<_>",
+        "Bytes" => "Bytes",
+        "String" => "String",
         _ => return None,
     };
 
