@@ -14,7 +14,7 @@ use std::{
 };
 
 use axum_core::{body::Body, extract::Request, response::Response};
-use futures_util::{pin_mut, FutureExt};
+use futures_lite::pin;
 use hyper::body::Incoming;
 use hyper_util::{
     rt::{TokioExecutor, TokioIo},
@@ -337,20 +337,38 @@ where
                 tokio::spawn(async move {
                     let builder = Builder::new(TokioExecutor::new());
                     let conn = builder.serve_connection_with_upgrades(tcp_stream, hyper_service);
-                    pin_mut!(conn);
+                    pin!(conn);
 
-                    let signal_closed = signal_tx.closed().fuse();
-                    pin_mut!(signal_closed);
+                    let signal_closed = Some(signal_tx.closed());
+                    pin!(signal_closed);
 
                     loop {
+                        // Wait for the connection.
+                        let connect = async { conn.as_mut().await };
+
+                        // Simultaneously wait for the signal to close us.
+                        let signal = async {
+                            match signal_closed.as_mut().as_pin_mut() {
+                                Some(signal) => {
+                                    signal.await;
+
+                                    // Fuse the signal after we close it.
+                                    signal_closed.set(None);
+                                }
+
+                                None => futures_lite::future::pending().await,
+                            }
+                        };
+
+                        // Poll these futures in parallel.
                         tokio::select! {
-                            result = conn.as_mut() => {
+                            result = connect => {
                                 if let Err(_err) = result {
                                     trace!("failed to serve connection: {_err:#}");
                                 }
                                 break;
                             }
-                            _ = &mut signal_closed => {
+                            _ = signal => {
                                 trace!("signal received in task, starting graceful shutdown");
                                 conn.as_mut().graceful_shutdown();
                             }
@@ -420,7 +438,7 @@ mod private {
         task::{Context, Poll},
     };
 
-    pub struct ServeFuture(pub(super) futures_util::future::BoxFuture<'static, io::Result<()>>);
+    pub struct ServeFuture(pub(super) futures_lite::future::Boxed<io::Result<()>>);
 
     impl Future for ServeFuture {
         type Output = io::Result<()>;

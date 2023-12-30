@@ -1,6 +1,6 @@
 use crate::response::{IntoResponse, Response};
 use axum_core::extract::{FromRequest, FromRequestParts, Request};
-use futures_util::future::BoxFuture;
+use futures_lite::future::Boxed;
 use std::{
     any::type_name,
     convert::Infallible,
@@ -361,7 +361,7 @@ impl Service<Request> for Next {
 
 /// Response future for [`FromFn`].
 pub struct ResponseFuture {
-    inner: BoxFuture<'static, Response>,
+    inner: Boxed<Response>,
 }
 
 impl Future for ResponseFuture {

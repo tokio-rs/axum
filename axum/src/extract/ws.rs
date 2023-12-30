@@ -95,10 +95,11 @@ use super::FromRequestParts;
 use crate::{body::Bytes, response::Response, Error};
 use async_trait::async_trait;
 use axum_core::body::Body;
-use futures_util::{
-    sink::{Sink, SinkExt},
+use futures_lite::{
+    future::poll_fn,
     stream::{Stream, StreamExt},
 };
+use futures_sink::Sink;
 use http::{
     header::{self, HeaderMap, HeaderName, HeaderValue},
     request::Parts,
@@ -470,8 +471,14 @@ impl WebSocket {
 
     /// Send a message.
     pub async fn send(&mut self, msg: Message) -> Result<(), Error> {
-        self.inner
-            .send(msg.into_tungstenite())
+        // Start sending the message.
+        poll_fn(|cx| Pin::new(&mut self.inner).poll_ready(cx))
+            .await
+            .map_err(Error::new)?;
+        Pin::new(&mut self.inner).start_send(msg.into_tungstenite()).map_err(Error::new)?;
+
+        // Send the message.
+        poll_fn(|cx| Pin::new(&mut self.inner).poll_flush(cx))
             .await
             .map_err(Error::new)
     }
@@ -492,7 +499,7 @@ impl Stream for WebSocket {
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         loop {
-            match futures_util::ready!(self.inner.poll_next_unpin(cx)) {
+            match futures_lite::ready!(self.inner.poll_next(cx)) {
                 Some(Ok(msg)) => {
                     if let Some(msg) = Message::from_tungstenite(msg) {
                         return Poll::Ready(Some(Ok(msg)));

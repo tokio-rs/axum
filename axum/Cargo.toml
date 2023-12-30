@@ -35,7 +35,7 @@ query = ["dep:serde_urlencoded"]
 tokio = ["dep:hyper-util", "dep:tokio", "tokio/net", "tokio/rt", "tower/make", "tokio/macros"]
 tower-log = ["tower/log"]
 tracing = ["dep:tracing", "axum-core/tracing"]
-ws = ["dep:hyper", "tokio", "dep:tokio-tungstenite", "dep:sha1", "dep:base64"]
+ws = ["dep:hyper", "tokio", "dep:tokio-tungstenite", "dep:sha1", "dep:base64", "dep:futures-sink"]
 
 # Required for intra-doc links to resolve correctly
 __private_docs = ["tower/full", "dep:tower-http"]
@@ -44,7 +44,9 @@ __private_docs = ["tower/full", "dep:tower-http"]
 async-trait = "0.1.67"
 axum-core = { path = "../axum-core", version = "0.4.3" }
 bytes = "1.0"
-futures-util = { version = "0.3", default-features = false, features = ["alloc"] }
+futures-core = { version = "0.3", default-features = false, features = ["alloc"] }
+futures-lite = { version = "2.0.0", default-features = false, features = ["alloc"] }
+futures-sink = { version = "0.3", default-features = false, features = ["alloc"], optional = true }
 http = "1.0.0"
 http-body = "1.0.0"
 http-body-util = "0.1.0"

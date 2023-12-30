@@ -1,6 +1,7 @@
 use crate::body::Body;
 use crate::extract::{DefaultBodyLimitKind, FromRequest, FromRequestParts, Request};
-use futures_util::future::BoxFuture;
+
+use super::BoxFuture;
 
 mod sealed {
     pub trait Sealed {}

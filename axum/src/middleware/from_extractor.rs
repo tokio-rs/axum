@@ -2,7 +2,7 @@ use crate::{
     extract::FromRequestParts,
     response::{IntoResponse, Response},
 };
-use futures_util::{future::BoxFuture, ready};
+use futures_lite::{future::Boxed, ready};
 use http::Request;
 use pin_project_lite::pin_project;
 use std::{
@@ -254,7 +254,7 @@ pin_project! {
         T: Service<Request<B>>,
     {
         Extracting {
-            future: BoxFuture<'static, (Request<B>, Result<E, E::Rejection>)>,
+            future: Boxed<(Request<B>, Result<E, E::Rejection>)>,
         },
         Call { #[pin] future: T::Future },
     }

@@ -1,6 +1,11 @@
 pub(crate) mod request;
 pub(crate) mod request_parts;
 
+use core::future::Future;
+use core::pin::Pin;
+
+type BoxFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
+
 #[cfg(test)]
 mod tests {
     use std::convert::Infallible;

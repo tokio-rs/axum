@@ -1,4 +1,4 @@
-use super::Handler;
+use super::{Handler, MapFuture};
 use crate::body::{Body, Bytes, HttpBody};
 #[cfg(feature = "tokio")]
 use crate::extract::connect_info::IntoMakeServiceWithConnectInfo;
@@ -165,13 +165,11 @@ where
     }
 
     fn call(&mut self, req: Request<B>) -> Self::Future {
-        use futures_util::future::FutureExt;
-
         let req = req.map(Body::new);
 
         let handler = self.handler.clone();
         let future = Handler::call(handler, req, self.state.clone());
-        let future = future.map(Ok as _);
+        let future = MapFuture::new(future, Ok as _);
 
         super::future::IntoServiceFuture::new(future)
     }
