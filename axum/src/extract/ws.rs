@@ -159,7 +159,9 @@ impl<F> WebSocketUpgrade<F> {
     /// If set to `0` each message will be eagerly written to the underlying stream.
     /// It is often more optimal to allow them to buffer a little, hence the default value.
     ///
-    /// Note: [`flush`](SinkExt::flush) will always fully write the buffer regardless.
+    /// Note: [`flush`] will always fully write the buffer regardless.
+    /// 
+    /// [`flush`]: https://docs.rs/futures-util/latest/futures_util/sink/trait.SinkExt.html#method.flush
     pub fn write_buffer_size(mut self, size: usize) -> Self {
         self.config.write_buffer_size = size;
         self
@@ -475,7 +477,9 @@ impl WebSocket {
         poll_fn(|cx| Pin::new(&mut self.inner).poll_ready(cx))
             .await
             .map_err(Error::new)?;
-        Pin::new(&mut self.inner).start_send(msg.into_tungstenite()).map_err(Error::new)?;
+        Pin::new(&mut self.inner)
+            .start_send(msg.into_tungstenite())
+            .map_err(Error::new)?;
 
         // Send the message.
         poll_fn(|cx| Pin::new(&mut self.inner).poll_flush(cx))
