@@ -379,8 +379,7 @@ fn check_into_response(handler: &Ident, ty: &Type) -> TokenStream {
         #[allow(warnings)]
         #[allow(unreachable_code)]
         #[doc(hidden)]
-        fn #call_check_fn()
-        {
+        fn #call_check_fn() {
             #call_check_fn_body
         }
     }
