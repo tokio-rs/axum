@@ -66,6 +66,7 @@ mod tests {
     use crate::test_helpers::*;
     use crate::Json;
     use crate::{routing::get, Router};
+    use axum_core::response::OverrideAllStatusCodes;
     use axum_core::response::{
         IntoResponse, IntoResponseFailed, IntoResponseParts, Response, ResponseParts,
     };
@@ -446,19 +447,68 @@ mod tests {
         );
     }
 
+    #[test]
+    fn force_overriding_status_code() {
+        assert_eq!(
+            OverrideAllStatusCodes(StatusCode::IM_A_TEAPOT)
+                .into_response()
+                .status(),
+            StatusCode::IM_A_TEAPOT
+        );
+
+        assert_eq!(
+            (OverrideAllStatusCodes(StatusCode::IM_A_TEAPOT),)
+                .into_response()
+                .status(),
+            StatusCode::IM_A_TEAPOT
+        );
+
+        assert_eq!(
+            (OverrideAllStatusCodes(StatusCode::IM_A_TEAPOT), ())
+                .into_response()
+                .status(),
+            StatusCode::IM_A_TEAPOT
+        );
+
+        assert_eq!(
+            (
+                OverrideAllStatusCodes(StatusCode::IM_A_TEAPOT),
+                IntoResponseFailed,
+                StatusCode::INTERNAL_SERVER_ERROR,
+            )
+                .into_response()
+                .status(),
+            StatusCode::IM_A_TEAPOT
+        );
+    }
+
     #[crate::test]
     async fn status_code_tuple_doesnt_override_error_json() {
-        let app = Router::new().route(
-            "/",
-            get(|| async {
-                let not_json_compatible = HashMap::from([(Vec::from([1, 2, 3]), 123)]);
-                (StatusCode::IM_A_TEAPOT, Json(not_json_compatible))
-            }),
-        );
+        let app = Router::new()
+            .route(
+                "/",
+                get(|| async {
+                    let not_json_compatible = HashMap::from([(Vec::from([1, 2, 3]), 123)]);
+                    (StatusCode::IM_A_TEAPOT, Json(not_json_compatible))
+                }),
+            )
+            .route(
+                "/two",
+                get(|| async {
+                    let not_json_compatible = HashMap::from([(Vec::from([1, 2, 3]), 123)]);
+                    (
+                        OverrideAllStatusCodes(StatusCode::IM_A_TEAPOT),
+                        Json(not_json_compatible),
+                    )
+                }),
+            );
 
         let client = TestClient::new(app);
 
         let res = client.get("/").send().await;
         assert_eq!(res.status(), StatusCode::INTERNAL_SERVER_ERROR);
+
+        let res = client.get("/two").send().await;
+        assert_eq!(res.status(), StatusCode::IM_A_TEAPOT);
     }
 }

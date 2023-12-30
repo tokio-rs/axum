@@ -1,4 +1,6 @@
-use super::{IntoResponseFailed, IntoResponseParts, Response, ResponseParts};
+use super::{
+    IntoResponseFailed, IntoResponseParts, OverrideAllStatusCodes, Response, ResponseParts,
+};
 use crate::{body::Body, BoxError};
 use bytes::{buf::Chain, Buf, Bytes, BytesMut};
 use http::{
@@ -445,6 +447,26 @@ macro_rules! impl_into_response {
                 } else {
                     res
                 }
+            }
+        }
+
+        #[allow(non_snake_case)]
+        impl<R, $($ty,)*> IntoResponse for (OverrideAllStatusCodes, $($ty),*, R)
+        where
+            $( $ty: IntoResponseParts, )*
+            R: IntoResponse,
+        {
+            fn into_response(self) -> Response {
+                let (status, $($ty),*, res) = self;
+
+                let res = res.into_response();
+                let parts = ResponseParts { res };
+                let parts = match ($($ty,)*).into_response_parts(parts) {
+                    Ok(parts) => parts,
+                    Err(err) => return err.into_response(),
+                };
+
+                (status, parts.res).into_response()
             }
         }
 

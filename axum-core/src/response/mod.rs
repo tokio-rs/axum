@@ -6,6 +6,8 @@
 
 use std::convert::Infallible;
 
+use http::StatusCode;
+
 use crate::body::Body;
 
 mod append_headers;
@@ -156,3 +158,29 @@ impl IntoResponseParts for IntoResponseFailed {
 /// ```
 #[allow(dead_code)]
 fn into_response_failed_doesnt_impl_into_response() {}
+
+/// Override all status codes regardless if [`IntoResponseFailed`] is used or not.
+///
+/// See the docs for [`IntoResponseFailed`] for more details.
+#[derive(Debug, Copy, Clone, Default)]
+pub struct OverrideAllStatusCodes(pub StatusCode);
+
+impl IntoResponse for OverrideAllStatusCodes {
+    fn into_response(self) -> Response {
+        let mut res = ().into_response();
+        *res.status_mut() = self.0;
+        res
+    }
+}
+
+impl<R> IntoResponse for (OverrideAllStatusCodes, R)
+where
+    R: IntoResponse,
+{
+    fn into_response(self) -> Response {
+        let (OverrideAllStatusCodes(status), res) = self;
+        let mut res = res.into_response();
+        *res.status_mut() = status;
+        res
+    }
+}
