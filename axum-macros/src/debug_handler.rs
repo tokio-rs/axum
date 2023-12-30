@@ -319,7 +319,7 @@ fn check_output_tuples(item_fn: &ItemFn) -> TokenStream {
                                 ty,
                                 format!(
                                     "`{tn}` must be the last element \
-                                                in a response tuple"
+                                    in a response tuple"
                                 ),
                             )
                             .to_compile_error()
