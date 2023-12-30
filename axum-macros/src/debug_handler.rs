@@ -280,8 +280,7 @@ fn check_inputs_impls_from_request(item_fn: &ItemFn, state_ty: Type) -> TokenStr
                 #[allow(warnings)]
                 #[allow(unreachable_code)]
                 #[doc(hidden)]
-                fn #call_check_fn()
-                {
+                fn #call_check_fn() {
                     #call_check_fn_body
                 }
             }
@@ -440,8 +439,7 @@ fn check_into_response_parts(ty: &Type, ident: &Ident, index: usize) -> TokenStr
         #[allow(warnings)]
         #[allow(unreachable_code)]
         #[doc(hidden)]
-        fn #call_check_fn()
-        {
+        fn #call_check_fn() {
             #call_check_fn_body
         }
     }
