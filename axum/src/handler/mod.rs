@@ -37,10 +37,10 @@
 //! in handlers. See those examples:
 //!
 //! * [`anyhow-error-response`][anyhow] for generic boxed errors
-//! * [`error-handling-and-dependency-injection`][ehdi] for application-specific detailed errors
+//! * [`error-handling`][error-handling] for application-specific detailed errors
 //!
 //! [anyhow]: https://github.com/tokio-rs/axum/blob/main/examples/anyhow-error-response/src/main.rs
-//! [ehdi]: https://github.com/tokio-rs/axum/blob/main/examples/error-handling-and-dependency-injection/src/main.rs
+//! [error-handling]: https://github.com/tokio-rs/axum/blob/main/examples/error-handling/src/main.rs
 //!
 #![doc = include_str!("../docs/debugging_handler_type_errors.md")]
 
