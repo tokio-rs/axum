@@ -1,7 +1,7 @@
 use crate::extract::Request;
 use crate::extract::{rejection::*, FromRequest, RawForm};
 use async_trait::async_trait;
-use axum_core::response::{IntoResponse, Response};
+use axum_core::response::{IntoResponse, IntoResponseFailed, Response};
 use axum_core::RequestExt;
 use http::header::CONTENT_TYPE;
 use http::StatusCode;
@@ -115,7 +115,12 @@ where
                 body,
             )
                 .into_response(),
-            Err(err) => (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response(),
+            Err(err) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                IntoResponseFailed,
+                err.to_string(),
+            )
+                .into_response(),
         }
     }
 }
