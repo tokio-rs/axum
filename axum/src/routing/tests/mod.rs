@@ -965,7 +965,7 @@ async fn logging_rejections() {
         rejection_type: String,
     }
 
-    let events = capture_tracing::<RejectionEvent, _, _>(|| async {
+    let events = capture_tracing::<RejectionEvent, _, _>("axum::rejection=trace", || async {
         let app = Router::new()
             .route("/extension", get(|_: Extension<Infallible>| async {}))
             .route("/string", post(|_: String| async {}));
