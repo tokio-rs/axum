@@ -10,6 +10,27 @@ use tokio::net::TcpListener;
 use tower::make::Shared;
 use tower_service::Service;
 
+pub(crate) fn spawn_service<S>(svc: S) -> SocketAddr
+where
+    S: Service<Request, Response = Response, Error = Infallible> + Clone + Send + 'static,
+    S::Future: Send,
+{
+    let std_listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    std_listener.set_nonblocking(true).unwrap();
+    let listener = TcpListener::from_std(std_listener).unwrap();
+
+    let addr = listener.local_addr().unwrap();
+    println!("Listening on {addr}");
+
+    tokio::spawn(async move {
+        serve(listener, Shared::new(svc))
+            .await
+            .expect("server error")
+    });
+
+    addr
+}
+
 pub(crate) struct TestClient {
     client: reqwest::Client,
     addr: SocketAddr,
@@ -21,18 +42,7 @@ impl TestClient {
         S: Service<Request, Response = Response, Error = Infallible> + Clone + Send + 'static,
         S::Future: Send,
     {
-        let std_listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
-        std_listener.set_nonblocking(true).unwrap();
-        let listener = TcpListener::from_std(std_listener).unwrap();
-
-        let addr = listener.local_addr().unwrap();
-        println!("Listening on {addr}");
-
-        tokio::spawn(async move {
-            serve(listener, Shared::new(svc))
-                .await
-                .expect("server error")
-        });
+        let addr = spawn_service(svc);
 
         let client = reqwest::Client::builder()
             .redirect(reqwest::redirect::Policy::none())

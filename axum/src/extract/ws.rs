@@ -830,9 +830,12 @@ pub mod close_code {
 
 #[cfg(test)]
 mod tests {
+    use std::future::ready;
+
     use super::*;
-    use crate::{body::Body, routing::get, Router};
+    use crate::{body::Body, routing::get, test_helpers::spawn_service, Router};
     use http::{Request, Version};
+    use tokio_tungstenite::tungstenite;
     use tower::ServiceExt;
 
     #[crate::test]
@@ -876,5 +879,48 @@ mod tests {
                 .on_upgrade(|_| async {})
         }
         let _: Router = Router::new().route("/", get(handler));
+    }
+
+    #[crate::test]
+    async fn integration_test() {
+        let app = Router::new().route(
+            "/echo",
+            get(|ws: WebSocketUpgrade| ready(ws.on_upgrade(handle_socket))),
+        );
+
+        async fn handle_socket(mut socket: WebSocket) {
+            while let Some(Ok(msg)) = socket.recv().await {
+                match msg {
+                    Message::Text(_) | Message::Binary(_) | Message::Close(_) => {
+                        if socket.send(msg).await.is_err() {
+                            break;
+                        }
+                    }
+                    Message::Ping(_) | Message::Pong(_) => {
+                        // tungstenite will respond to pings automatically
+                    }
+                }
+            }
+        }
+
+        let addr = spawn_service(app);
+        let (mut socket, _response) = tokio_tungstenite::connect_async(format!("ws://{addr}/echo"))
+            .await
+            .unwrap();
+
+        let input = tungstenite::Message::Text("foobar".to_owned());
+        socket.send(input.clone()).await.unwrap();
+        let output = socket.next().await.unwrap().unwrap();
+        assert_eq!(input, output);
+
+        socket
+            .send(tungstenite::Message::Ping("ping".to_owned().into_bytes()))
+            .await
+            .unwrap();
+        let output = socket.next().await.unwrap().unwrap();
+        assert_eq!(
+            output,
+            tungstenite::Message::Pong("ping".to_owned().into_bytes())
+        );
     }
 }
