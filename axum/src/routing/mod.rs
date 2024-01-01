@@ -430,9 +430,12 @@ impl Router {
 // for `axum::serve(listener, router)`
 #[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
 const _: () = {
-    use crate::serve::IncomingStream;
+    use crate::serve;
 
-    impl Service<IncomingStream<'_>> for Router<()> {
+    impl<L> Service<serve::IncomingStream<'_, L>> for Router<()>
+    where
+        L: serve::Listener,
+    {
         type Response = Self;
         type Error = Infallible;
         type Future = std::future::Ready<Result<Self::Response, Self::Error>>;
@@ -441,7 +444,7 @@ const _: () = {
             Poll::Ready(Ok(()))
         }
 
-        fn call(&mut self, _req: IncomingStream<'_>) -> Self::Future {
+        fn call(&mut self, _req: serve::IncomingStream<'_, L>) -> Self::Future {
             std::future::ready(Ok(self.clone()))
         }
     }
