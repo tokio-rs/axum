@@ -117,6 +117,7 @@ rustversion = "1.0.9"
 [dev-dependencies]
 anyhow = "1.0"
 axum-macros = { path = "../axum-macros", version = "0.4.1", features = ["__private"] }
+futures-util = "0.3"
 quickcheck = "1.0"
 quickcheck_macros = "1.0"
 reqwest = { version = "0.11.14", default-features = false, features = ["json", "stream", "multipart"] }
@@ -199,7 +200,6 @@ allowed = [
     # not 1.0
     "futures_core",
     "futures_sink",
-    "futures_util",
     "tower_layer",
     "tower_service",
 

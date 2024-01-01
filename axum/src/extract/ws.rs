@@ -160,7 +160,7 @@ impl<F> WebSocketUpgrade<F> {
     /// It is often more optimal to allow them to buffer a little, hence the default value.
     ///
     /// Note: [`flush`] will always fully write the buffer regardless.
-    /// 
+    ///
     /// [`flush`]: https://docs.rs/futures-util/latest/futures_util/sink/trait.SinkExt.html#method.flush
     pub fn write_buffer_size(mut self, size: usize) -> Self {
         self.config.write_buffer_size = size;
