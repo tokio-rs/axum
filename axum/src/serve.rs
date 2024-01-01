@@ -25,7 +25,7 @@ use tokio::{
 use tower::util::ServiceExt;
 use tower_service::Service;
 
-/// TODO
+/// Types that can listen for connections.
 pub trait Listener: Send + 'static {
     /// The listener's IO type.
     type Io: AsyncRead + AsyncWrite + Unpin + Send + 'static;
