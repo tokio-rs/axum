@@ -7,9 +7,7 @@ use std::{
     io,
     marker::PhantomData,
     net::SocketAddr,
-    pin::Pin,
     sync::Arc,
-    task::{Context, Poll},
     time::Duration,
 };
 
@@ -20,12 +18,11 @@ use hyper_util::{
     rt::{TokioExecutor, TokioIo},
     server::conn::auto::Builder,
 };
-use pin_project_lite::pin_project;
 use tokio::{
     net::{TcpListener, TcpStream},
     sync::watch,
 };
-use tower::util::{Oneshot, ServiceExt};
+use tower::util::ServiceExt;
 use tower_service::Service;
 
 /// Serve the service with the supplied listener.
@@ -283,11 +280,10 @@ where
                         remote_addr,
                     })
                     .await
-                    .unwrap_or_else(|err| match err {});
+                    .unwrap_or_else(|err| match err {})
+                    .map_request(|req: Request<Incoming>| req.map(Body::new));
 
-                let hyper_service = TowerToHyperService {
-                    service: tower_service,
-                };
+                let hyper_service = hyper_util::service::TowerToHyperService::new(tower_service);
 
                 let signal_tx = Arc::clone(&signal_tx);
 
@@ -394,49 +390,6 @@ mod private {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             f.debug_struct("ServeFuture").finish_non_exhaustive()
         }
-    }
-}
-
-#[derive(Debug, Copy, Clone)]
-struct TowerToHyperService<S> {
-    service: S,
-}
-
-impl<S> hyper::service::Service<Request<Incoming>> for TowerToHyperService<S>
-where
-    S: tower_service::Service<Request> + Clone,
-{
-    type Response = S::Response;
-    type Error = S::Error;
-    type Future = TowerToHyperServiceFuture<S, Request>;
-
-    fn call(&self, req: Request<Incoming>) -> Self::Future {
-        let req = req.map(Body::new);
-        TowerToHyperServiceFuture {
-            future: self.service.clone().oneshot(req),
-        }
-    }
-}
-
-pin_project! {
-    struct TowerToHyperServiceFuture<S, R>
-    where
-        S: tower_service::Service<R>,
-    {
-        #[pin]
-        future: Oneshot<S, R>,
-    }
-}
-
-impl<S, R> Future for TowerToHyperServiceFuture<S, R>
-where
-    S: tower_service::Service<R>,
-{
-    type Output = Result<S::Response, S::Error>;
-
-    #[inline]
-    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        self.project().future.poll(cx)
     }
 }
 
