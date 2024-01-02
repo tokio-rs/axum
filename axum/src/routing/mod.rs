@@ -364,7 +364,7 @@ where
             Err((req, state)) => (req, state),
         };
 
-        self.inner.catch_all_fallback.call_with_state(req, state)
+        self.inner.catch_all_fallback.clone().call_with_state(req, state)
     }
 
     /// Convert the router into a borrowed [`Service`] with a fixed request body type, to aid type
@@ -645,13 +645,13 @@ where
         }
     }
 
-    fn call_with_state(&self, req: Request, state: S) -> RouteFuture<E> {
+    fn call_with_state(&mut self, req: Request, state: S) -> RouteFuture<E> {
         match self {
             Fallback::Default(route) | Fallback::Service(route) => {
                 RouteFuture::from_future(route.oneshot_inner(req))
             }
             Fallback::BoxedHandler(handler) => {
-                let route = handler.clone().into_route(state);
+                let mut route = handler.clone().into_route(state);
                 RouteFuture::from_future(route.oneshot_inner(req))
             }
         }

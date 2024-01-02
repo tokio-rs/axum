@@ -1034,12 +1034,12 @@ where
                     match $svc {
                         MethodEndpoint::None => {}
                         MethodEndpoint::Route(route) => {
-                            return RouteFuture::from_future(route.oneshot_inner($req))
+                            return RouteFuture::from_future(route.clone().oneshot_inner($req))
                                 .strip_body($method == Method::HEAD);
                         }
                         MethodEndpoint::BoxedHandler(handler) => {
                             let route = handler.clone().into_route(state);
-                            return RouteFuture::from_future(route.oneshot_inner($req))
+                            return RouteFuture::from_future(route.clone().oneshot_inner($req))
                                 .strip_body($method == Method::HEAD);
                         }
                     }
@@ -1073,7 +1073,7 @@ where
         call!(req, method, DELETE, delete);
         call!(req, method, TRACE, trace);
 
-        let future = fallback.call_with_state(req, state);
+        let future = fallback.clone().call_with_state(req, state);
 
         match allow_header {
             AllowHeader::None => future.allow_header(Bytes::new()),
