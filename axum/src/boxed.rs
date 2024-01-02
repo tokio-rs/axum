@@ -1,4 +1,4 @@
-use std::{convert::Infallible, fmt};
+use std::{convert::Infallible, fmt, sync::Mutex};
 
 use crate::extract::Request;
 use tower::Service;
@@ -9,7 +9,7 @@ use crate::{
     Router,
 };
 
-pub(crate) struct BoxedIntoRoute<S, E>(Box<dyn ErasedIntoRoute<S, E>>);
+pub(crate) struct BoxedIntoRoute<S, E>(Mutex<Box<dyn ErasedIntoRoute<S, E>>>);
 
 impl<S> BoxedIntoRoute<S, Infallible>
 where
@@ -20,10 +20,10 @@ where
         H: Handler<T, S>,
         T: 'static,
     {
-        Self(Box::new(MakeErasedHandler {
+        Self(Mutex::new(Box::new(MakeErasedHandler {
             handler,
             into_route: |handler, state| Route::new(Handler::with_state(handler, state)),
-        }))
+        })))
     }
 }
 
@@ -35,20 +35,20 @@ impl<S, E> BoxedIntoRoute<S, E> {
         F: FnOnce(Route<E>) -> Route<E2> + Clone + Send + 'static,
         E2: 'static,
     {
-        BoxedIntoRoute(Box::new(Map {
-            inner: self.0,
+        BoxedIntoRoute(Mutex::new(Box::new(Map {
+            inner: self.0.into_inner().unwrap(),
             layer: Box::new(f),
-        }))
+        })))
     }
 
     pub(crate) fn into_route(self, state: S) -> Route<E> {
-        self.0.into_route(state)
+        self.0.into_inner().unwrap().into_route(state)
     }
 }
 
 impl<S, E> Clone for BoxedIntoRoute<S, E> {
     fn clone(&self) -> Self {
-        Self(self.0.clone_box())
+        Self(Mutex::new(self.0.lock().unwrap().clone_box()))
     }
 }
 
