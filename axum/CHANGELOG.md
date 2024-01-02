@@ -8,10 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 # Unreleased
 
 - **fixed:** Improve `debug_handler` on tuple response types ([#2201])
-- **fixed:** Fix performance regression present since axum 0.7.0
+- **fixed:** Fix performance regression present since axum 0.7.0 ([#2483])
 
 [#2201]: https://github.com/tokio-rs/axum/pull/2201
-[#2473]: https://github.com/tokio-rs/axum/pull/2473
+[#2483]: https://github.com/tokio-rs/axum/pull/2483
 
 # 0.7.3 (29. December, 2023)
 
