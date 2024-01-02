@@ -8,8 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 # Unreleased
 
 - **fixed:** Improve `debug_handler` on tuple response types ([#2201])
+- **added:** Add `must_use` attribute to `Serve` and `WithGracefulShutdown` ([#2484])
 
 [#2201]: https://github.com/tokio-rs/axum/pull/2201
+[#2484]: https://github.com/tokio-rs/axum/pull/2484
 
 # 0.7.3 (29. December, 2023)
 
