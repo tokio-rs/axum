@@ -1,6 +1,8 @@
 use pin_project_lite::pin_project;
 use std::{ops::Deref, sync::Arc};
 
+pub(crate) use self::mutex::*;
+
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub(crate) struct PercentDecodedStr(Arc<str>);
 
@@ -58,4 +60,61 @@ where
 fn test_try_downcast() {
     assert_eq!(try_downcast::<i32, _>(5_u32), Err(5_u32));
     assert_eq!(try_downcast::<i32, _>(5_i32), Ok(5_i32));
+}
+
+#[cfg(not(test))]
+mod mutex {
+    #[allow(clippy::disallowed_types)]
+    pub(crate) type AxumMutex<T> = std::sync::Mutex<T>;
+}
+
+#[cfg(test)]
+mod mutex {
+    #![allow(clippy::disallowed_types)]
+
+    use std::sync::{
+        atomic::{AtomicUsize, Ordering},
+        LockResult, Mutex, MutexGuard,
+    };
+
+    tokio::task_local! {
+        pub(crate) static NUM_LOCKED: AtomicUsize;
+    }
+
+    pub(crate) async fn mutex_num_locked<F, Fut>(f: F) -> (usize, Fut::Output)
+    where
+        F: FnOnce() -> Fut,
+        Fut: std::future::IntoFuture,
+    {
+        NUM_LOCKED
+            .scope(AtomicUsize::new(0), async move {
+                let output = f().await;
+                let num = NUM_LOCKED.with(|num| num.load(Ordering::SeqCst));
+                (num, output)
+            })
+            .await
+    }
+
+    pub(crate) struct AxumMutex<T>(Mutex<T>);
+
+    impl<T> AxumMutex<T> {
+        pub(crate) fn new(value: T) -> Self {
+            Self(Mutex::new(value))
+        }
+
+        pub(crate) fn get_mut(&mut self) -> LockResult<&mut T> {
+            self.0.get_mut()
+        }
+
+        pub(crate) fn into_inner(self) -> LockResult<T> {
+            self.0.into_inner()
+        }
+
+        pub(crate) fn lock(&self) -> LockResult<MutexGuard<'_, T>> {
+            _ = NUM_LOCKED.try_with(|num| {
+                num.fetch_add(1, Ordering::SeqCst);
+            });
+            self.0.lock()
+        }
+    }
 }

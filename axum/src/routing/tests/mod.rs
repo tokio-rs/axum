@@ -12,6 +12,7 @@ use crate::{
         tracing_helpers::{capture_tracing, TracingEvent},
         *,
     },
+    util::mutex_num_locked,
     BoxError, Extension, Json, Router, ServiceExt,
 };
 use axum_core::extract::Request;
@@ -951,7 +952,7 @@ async fn state_isnt_cloned_too_much() {
 
     client.get("/").await;
 
-    assert_eq!(COUNT.load(Ordering::SeqCst), 3);
+    assert_eq!(COUNT.load(Ordering::SeqCst), 4);
 }
 
 #[crate::test]
@@ -1065,4 +1066,36 @@ async fn impl_handler_for_into_response() {
     let res = client.post("/things").await;
     assert_eq!(res.status(), StatusCode::CREATED);
     assert_eq!(res.text().await, "thing created");
+}
+
+#[crate::test]
+async fn locks_mutex_very_little() {
+    let (num, app) = mutex_num_locked(|| async {
+        Router::new()
+            .route("/a", get(|| async {}))
+            .route("/b", get(|| async {}))
+            .route("/c", get(|| async {}))
+            .with_state::<()>(())
+            .into_service::<Body>()
+    })
+    .await;
+    // once for `Router::new` for setting the default fallback and 3 times, once per route
+    assert_eq!(num, 4);
+
+    for path in ["/a", "/b", "/c"] {
+        // calling the router should only lock the mutex once
+        let (num, _res) = mutex_num_locked(|| async {
+            // We cannot use `TestClient` because it uses `serve` which spawns a new task per
+            // connection and `mutex_num_locked` uses a task local to keep track of the number of
+            // locks. So spawning a new task would unset the task local set by `mutex_num_locked`
+            //
+            // So instead `call` the service directly without spawning new tasks.
+            app.clone()
+                .oneshot(Request::builder().uri(path).body(Body::empty()).unwrap())
+                .await
+                .unwrap()
+        })
+        .await;
+        assert_eq!(num, 1);
+    }
 }
