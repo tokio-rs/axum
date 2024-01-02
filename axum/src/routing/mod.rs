@@ -364,7 +364,10 @@ where
             Err((req, state)) => (req, state),
         };
 
-        self.inner.catch_all_fallback.clone().call_with_state(req, state)
+        self.inner
+            .catch_all_fallback
+            .clone()
+            .call_with_state(req, state)
     }
 
     /// Convert the router into a borrowed [`Service`] with a fixed request body type, to aid type
