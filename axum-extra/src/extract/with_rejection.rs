@@ -2,7 +2,7 @@ use axum::async_trait;
 use axum::extract::{FromRequest, FromRequestParts, Request};
 use axum::response::IntoResponse;
 use http::request::Parts;
-use std::fmt::Debug;
+use std::fmt::{Debug, Display};
 use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
 
@@ -134,6 +134,27 @@ where
     async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
         let extractor = E::from_request_parts(parts, state).await?;
         Ok(WithRejection(extractor, PhantomData))
+    }
+}
+
+#[cfg(feature = "typed-routing")]
+const _: () = {
+    use crate::routing::TypedPath;
+
+    impl<E, R> TypedPath for WithRejection<E, R>
+    where
+        E: TypedPath,
+    {
+        const PATH: &'static str = E::PATH;
+    }
+};
+
+impl<E, R> Display for WithRejection<E, R>
+where
+    E: Display,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
     }
 }
 
