@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning].
 
 # Unreleased
 
-- None.
+- **added:** Implement `TypedPath` for `WithRejection<TypedPath, _>`
 
 # 0.9.1 (29. December, 2023)
 
