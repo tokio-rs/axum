@@ -6,6 +6,9 @@ use std::fmt::{Debug, Display};
 use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
 
+#[cfg(feature = "typed-routing")]
+use crate::routing::TypedPath;
+
 /// Extractor for customizing extractor rejections
 ///
 /// `WithRejection` wraps another extractor and gives you the result. If the
@@ -138,16 +141,12 @@ where
 }
 
 #[cfg(feature = "typed-routing")]
-const _: () = {
-    use crate::routing::TypedPath;
-
-    impl<E, R> TypedPath for WithRejection<E, R>
-    where
-        E: TypedPath,
-    {
-        const PATH: &'static str = E::PATH;
-    }
-};
+impl<E, R> TypedPath for WithRejection<E, R>
+where
+    E: TypedPath,
+{
+    const PATH: &'static str = E::PATH;
+}
 
 impl<E, R> Display for WithRejection<E, R>
 where
