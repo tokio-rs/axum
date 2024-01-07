@@ -27,7 +27,7 @@ use std::fmt::Debug;
 ///             return vec![];
 ///         };
 ///
-///         vec![lang.to_string()]
+///         vec![lang.to_owned()]
 ///     }
 /// }
 /// ```

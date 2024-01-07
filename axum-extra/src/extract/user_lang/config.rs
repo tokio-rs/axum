@@ -93,7 +93,7 @@ impl UserLanguage {
     /// Returns a builder for [`Config`].
     pub fn config() -> ConfigBuilder {
         ConfigBuilder {
-            fallback_language: "en".to_string(),
+            fallback_language: "en".to_owned(),
             sources: vec![],
         }
     }
