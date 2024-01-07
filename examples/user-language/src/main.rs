@@ -43,6 +43,6 @@ async fn handler(lang: UserLanguage) -> Html<&'static str> {
         "de" => Html("<h1>Hallo, Welt!</h1>"),
         "es" => Html("<h1>Hola, Mundo!</h1>"),
         "fr" => Html("<h1>Bonjour, le monde!</h1>"),
-        "en" | _ => Html("<h1>Hello, World!</h1>"),
+        _ => Html("<h1>Hello, World!</h1>"),
     }
 }
