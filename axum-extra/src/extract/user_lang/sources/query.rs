@@ -1,7 +1,7 @@
-use axum::{async_trait, extract::Query, RequestPartsExt};
+use axum::{async_trait, RequestPartsExt};
 use std::collections::HashMap;
 
-use crate::extract::user_lang::UserLanguageSource;
+use crate::extract::{Query, user_lang::UserLanguageSource};
 
 /// A [`UserLanguageSource`] that reads the language from a field in the
 /// query string.
