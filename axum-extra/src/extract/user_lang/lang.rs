@@ -1,5 +1,5 @@
 use super::{
-    sources::{AcceptLanguageSource, PathSource, QuerySource},
+    sources::{AcceptLanguageSource, PathSource},
     Config, UserLanguageSource,
 };
 use axum::{async_trait, extract::FromRequestParts, Extension, RequestPartsExt};
@@ -8,6 +8,9 @@ use std::{
     convert::Infallible,
     sync::{Arc, OnceLock},
 };
+
+#[cfg(feature = "query")]
+use super::sources::QuerySource;
 
 /// The users preferred languages, read from the request.
 ///
@@ -52,7 +55,7 @@ impl UserLanguage {
     ///
     /// If you do not add a configuration for the [`UserLanguage`] extractor,
     /// these sources will be used by default. They are in order:
-    ///  * The query parameter `lang`
+    ///  * The query parameter `lang` (if feature `query` is enabled)
     ///  * The path segment `:lang`
     ///  * The `Accept-Language` header
     pub fn default_sources() -> &'static Vec<Arc<dyn UserLanguageSource>> {
@@ -60,6 +63,7 @@ impl UserLanguage {
 
         DEFAULT_SOURCES.get_or_init(|| {
             vec![
+                #[cfg(feature = "query")]
                 Arc::new(QuerySource::new("lang")),
                 Arc::new(PathSource::new("lang")),
                 Arc::new(AcceptLanguageSource),
@@ -111,7 +115,7 @@ where
         };
 
         let sources = sources.as_ref().unwrap_or(Self::default_sources());
-        let fallback_language = fallback_language.unwrap_or_else(|| "en".to_string());
+        let fallback_language = fallback_language.unwrap_or_else(|| "en".to_owned());
 
         let mut preferred_languages = Vec::<String>::new();
 
@@ -150,8 +154,8 @@ mod tests {
             .route("/", get(return_all_langs))
             .layer(Extension(
                 UserLanguage::config()
-                    .add_source(TestSource(vec!["s1.1".to_string(), "s1.2".to_string()]))
-                    .add_source(TestSource(vec!["s2.1".to_string(), "s2.2".to_string()]))
+                    .add_source(TestSource(vec!["s1.1".to_owned(), "s1.2".to_owned()]))
+                    .add_source(TestSource(vec!["s2.1".to_owned(), "s2.2".to_owned()]))
                     .build(),
             ));
 
