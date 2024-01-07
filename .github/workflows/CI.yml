@@ -14,7 +14,7 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - uses: taiki-e/install-action@protoc
     - uses: dtolnay/rust-toolchain@beta
       with:
@@ -28,7 +28,7 @@ jobs:
   check-docs:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - uses: dtolnay/rust-toolchain@stable
     - uses: Swatinem/rust-cache@v2
     - name: cargo doc
@@ -39,7 +39,7 @@ jobs:
   cargo-hack:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - uses: taiki-e/install-action@protoc
     - uses: dtolnay/rust-toolchain@stable
     - uses: Swatinem/rust-cache@v2
@@ -55,7 +55,7 @@ jobs:
       matrix:
         crate: [axum, axum-core, axum-extra, axum-macros]
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - uses: dtolnay/rust-toolchain@nightly
     - uses: Swatinem/rust-cache@v2
     - name: Install cargo-public-api-crates
@@ -71,7 +71,7 @@ jobs:
       matrix:
         rust: [stable, beta]
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - uses: taiki-e/install-action@protoc
     - uses: dtolnay/rust-toolchain@master
       with:
@@ -85,7 +85,7 @@ jobs:
     needs: check
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Get rust-toolchain version
       id: rust-toolchain
       run: echo "version=$(cat axum-macros/rust-toolchain)" >> $GITHUB_OUTPUT
@@ -103,7 +103,7 @@ jobs:
     needs: check
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - uses: dtolnay/rust-toolchain@master
       with:
         toolchain: ${{ env.MSRV }}
@@ -139,7 +139,7 @@ jobs:
     needs: check
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - uses: dtolnay/rust-toolchain@stable
     - uses: Swatinem/rust-cache@v2
     - name: Run doc tests
@@ -155,7 +155,7 @@ jobs:
           - advisories
           - bans licenses sources
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: EmbarkStudios/cargo-deny-action@v1
         with:
           command: check ${{ matrix.checks }}
@@ -165,7 +165,7 @@ jobs:
     needs: check
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - uses: dtolnay/rust-toolchain@stable
       with:
         target: armv5te-unknown-linux-musleabi
@@ -189,7 +189,7 @@ jobs:
     needs: check
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - uses: dtolnay/rust-toolchain@stable
       with:
         target: wasm32-unknown-unknown
@@ -204,7 +204,7 @@ jobs:
   dependencies-are-sorted:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - uses: dtolnay/rust-toolchain@beta
     - uses: Swatinem/rust-cache@v2
     - name: Install cargo-sort
@@ -224,7 +224,7 @@ jobs:
 
     steps:
       - name: Checkout Actions Repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Check the spelling of the files in our repo
         uses: crate-ci/typos@v1.16.2
