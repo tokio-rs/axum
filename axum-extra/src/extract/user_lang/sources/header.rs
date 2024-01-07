@@ -45,7 +45,7 @@ impl UserLanguageSource for AcceptLanguageSource {
         parse_quality_values(accept_language)
             .into_iter()
             .filter(|(lang, _)| *lang != "*")
-            .map(|(lang, _)| lang.to_string())
+            .map(|(lang, _)| lang.to_owned())
             .collect()
     }
 }
@@ -102,7 +102,7 @@ mod tests {
 
         assert_eq!(
             languages,
-            vec!["fr".to_string(), "en".to_string(), "de".to_string()]
+            vec!["fr".to_owned(), "en".to_owned(), "de".to_owned()]
         );
     }
 
@@ -119,7 +119,7 @@ mod tests {
 
         let languages = source.languages_from_parts(&mut parts).await;
 
-        assert_eq!(languages, vec!["fr".to_string(), "de".to_string()]);
+        assert_eq!(languages, vec!["fr".to_owned(), "de".to_owned()]);
     }
 
     #[test]

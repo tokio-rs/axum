@@ -57,7 +57,7 @@ impl UserLanguageSource for QuerySource {
             return vec![];
         };
 
-        vec![lang.to_string()]
+        vec![lang.to_owned()]
     }
 }
 
@@ -79,6 +79,6 @@ mod tests {
 
         let languages = source.languages_from_parts(&mut parts).await;
 
-        assert_eq!(languages, vec!["de".to_string()]);
+        assert_eq!(languages, vec!["de".to_owned()]);
     }
 }

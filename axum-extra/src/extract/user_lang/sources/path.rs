@@ -52,7 +52,7 @@ impl PathSource {
             return vec![];
         };
 
-        vec![lang.to_string()]
+        vec![lang.to_owned()]
     }
 }
 
@@ -81,12 +81,12 @@ mod tests {
         // Instead we test loading from the extracted path directly.
         let path = Path({
             let mut path_matches = HashMap::new();
-            path_matches.insert("lang".to_string(), "it".to_string());
+            path_matches.insert("lang".to_owned(), "it".to_owned());
             path_matches
         });
 
         let languages = source.languages_from_path(path);
 
-        assert_eq!(languages, vec!["it".to_string()]);
+        assert_eq!(languages, vec!["it".to_owned()]);
     }
 }
