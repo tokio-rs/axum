@@ -29,7 +29,7 @@ use std::{
 ///
 /// # Custom Sources
 ///
-/// You can create custom user langauge sources. See
+/// You can create custom user language sources. See
 /// [`UserLanguageSource`] for details.
 ///
 /// # Example
