@@ -207,3 +207,12 @@ composite_rejection! {
         MatchedPathMissing,
     }
 }
+
+define_rejection! {
+    #[status = INTERNAL_SERVER_ERROR]
+    #[body = "The matched route is not nested"]
+    /// Rejection type for [`NestedPath`](super::NestedPath).
+    ///
+    /// This rejection is used if the matched route wasn't nested.
+    pub struct NestedPathRejection;
+}

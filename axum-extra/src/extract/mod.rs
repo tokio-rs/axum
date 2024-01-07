@@ -10,6 +10,9 @@ mod form;
 #[cfg(feature = "cookie")]
 pub mod cookie;
 
+#[cfg(feature = "json-deserializer")]
+mod json_deserializer;
+
 #[cfg(feature = "query")]
 mod query;
 
@@ -18,7 +21,10 @@ pub mod multipart;
 
 pub mod user_lang;
 
-pub use self::{cached::Cached, optional_path::OptionalPath, with_rejection::WithRejection};
+pub use self::{
+    cached::Cached, optional_path::OptionalPath, user_lang::UserLanguage,
+    with_rejection::WithRejection,
+};
 
 #[cfg(feature = "cookie")]
 pub use self::cookie::CookieJar;
@@ -33,12 +39,16 @@ pub use self::cookie::SignedCookieJar;
 pub use self::form::{Form, FormRejection};
 
 #[cfg(feature = "query")]
-pub use self::query::{Query, QueryRejection};
+pub use self::query::{OptionalQuery, OptionalQueryRejection, Query, QueryRejection};
 
 #[cfg(feature = "multipart")]
 pub use self::multipart::Multipart;
 
-pub use self::user_lang::UserLanguage;
+#[cfg(feature = "json-deserializer")]
+pub use self::json_deserializer::{
+    JsonDataError, JsonDeserializer, JsonDeserializerRejection, JsonSyntaxError,
+    MissingJsonContentType,
+};
 
 #[cfg(feature = "json-lines")]
 #[doc(no_inline)]

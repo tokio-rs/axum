@@ -1,3 +1,4 @@
+#![feature(diagnostic_namespace)]
 use axum::{extract::FromRequestParts, response::Response};
 
 #[derive(FromRequestParts)]

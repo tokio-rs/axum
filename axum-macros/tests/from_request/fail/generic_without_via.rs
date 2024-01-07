@@ -1,3 +1,4 @@
+#![feature(diagnostic_namespace)]
 use axum::{routing::get, Router};
 use axum_macros::FromRequest;
 

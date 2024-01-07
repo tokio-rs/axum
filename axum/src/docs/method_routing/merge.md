@@ -19,7 +19,5 @@ let app = Router::new().route("/", merged);
 // Our app now accepts
 // - GET /
 // - POST /
-# async {
-# hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-# };
+# let _: Router = app;
 ```

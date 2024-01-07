@@ -92,7 +92,7 @@
 
 use self::rejection::*;
 use super::FromRequestParts;
-use crate::{body::Bytes, hyper1_tokio_io::TokioIo, response::Response, Error};
+use crate::{body::Bytes, response::Response, Error};
 use async_trait::async_trait;
 use axum_core::body::Body;
 use futures_util::{
@@ -104,6 +104,7 @@ use http::{
     request::Parts,
     Method, StatusCode,
 };
+use hyper_util::rt::TokioIo;
 use sha1::{Digest, Sha1};
 use std::{
     borrow::Cow,
@@ -132,7 +133,7 @@ pub struct WebSocketUpgrade<F = DefaultOnFailedUpgrade> {
     /// The chosen protocol sent in the `Sec-WebSocket-Protocol` header of the response.
     protocol: Option<HeaderValue>,
     sec_websocket_key: HeaderValue,
-    on_upgrade: hyper1::upgrade::OnUpgrade,
+    on_upgrade: hyper::upgrade::OnUpgrade,
     on_failed_upgrade: F,
     sec_websocket_protocol: Option<HeaderValue>,
 }
@@ -296,7 +297,7 @@ impl<F> WebSocketUpgrade<F> {
 
     /// Finalize upgrading the connection and call the provided callback with
     /// the stream.
-    #[must_use = "to setup the WebSocket connection, this response must be returned"]
+    #[must_use = "to set up the WebSocket connection, this response must be returned"]
     pub fn on_upgrade<C, Fut>(self, callback: C) -> Response
     where
         C: FnOnce(WebSocket) -> Fut + Send + 'static,
@@ -412,7 +413,7 @@ where
 
         let on_upgrade = parts
             .extensions
-            .remove::<hyper1::upgrade::OnUpgrade>()
+            .remove::<hyper::upgrade::OnUpgrade>()
             .ok_or(ConnectionNotUpgradable)?;
 
         let sec_websocket_protocol = parts.headers.get(header::SEC_WEBSOCKET_PROTOCOL).cloned();
@@ -455,7 +456,7 @@ fn header_contains(headers: &HeaderMap, key: HeaderName, value: &'static str) ->
 /// See [the module level documentation](self) for more details.
 #[derive(Debug)]
 pub struct WebSocket {
-    inner: WebSocketStream<TokioIo<hyper1::upgrade::Upgraded>>,
+    inner: WebSocketStream<TokioIo<hyper::upgrade::Upgraded>>,
     protocol: Option<HeaderValue>,
 }
 
@@ -829,9 +830,12 @@ pub mod close_code {
 
 #[cfg(test)]
 mod tests {
+    use std::future::ready;
+
     use super::*;
-    use crate::{body::Body, routing::get, Router};
+    use crate::{body::Body, routing::get, test_helpers::spawn_service, Router};
     use http::{Request, Version};
+    use tokio_tungstenite::tungstenite;
     use tower::ServiceExt;
 
     #[crate::test]
@@ -875,5 +879,48 @@ mod tests {
                 .on_upgrade(|_| async {})
         }
         let _: Router = Router::new().route("/", get(handler));
+    }
+
+    #[crate::test]
+    async fn integration_test() {
+        let app = Router::new().route(
+            "/echo",
+            get(|ws: WebSocketUpgrade| ready(ws.on_upgrade(handle_socket))),
+        );
+
+        async fn handle_socket(mut socket: WebSocket) {
+            while let Some(Ok(msg)) = socket.recv().await {
+                match msg {
+                    Message::Text(_) | Message::Binary(_) | Message::Close(_) => {
+                        if socket.send(msg).await.is_err() {
+                            break;
+                        }
+                    }
+                    Message::Ping(_) | Message::Pong(_) => {
+                        // tungstenite will respond to pings automatically
+                    }
+                }
+            }
+        }
+
+        let addr = spawn_service(app);
+        let (mut socket, _response) = tokio_tungstenite::connect_async(format!("ws://{addr}/echo"))
+            .await
+            .unwrap();
+
+        let input = tungstenite::Message::Text("foobar".to_owned());
+        socket.send(input.clone()).await.unwrap();
+        let output = socket.next().await.unwrap().unwrap();
+        assert_eq!(input, output);
+
+        socket
+            .send(tungstenite::Message::Ping("ping".to_owned().into_bytes()))
+            .await
+            .unwrap();
+        let output = socket.next().await.unwrap().unwrap();
+        assert_eq!(
+            output,
+            tungstenite::Message::Pong("ping".to_owned().into_bytes())
+        );
     }
 }

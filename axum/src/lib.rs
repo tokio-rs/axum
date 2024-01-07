@@ -1,4 +1,4 @@
-#![cfg_attr(nightly_error_messages, allow(internal_features), feature(rustc_attrs))]
+#![cfg_attr(nightly_error_messages, feature(diagnostic_namespace))]
 //! axum is a web application framework that focuses on ergonomics and modularity.
 //!
 //! # Table of contents
@@ -64,7 +64,7 @@
 //!
 //! # Routing
 //!
-//! [`Router`] is used to setup which paths goes to which services:
+//! [`Router`] is used to set up which paths goes to which services:
 //!
 //! ```rust
 //! use axum::{Router, routing::get};
@@ -308,16 +308,11 @@
 //! ```toml
 //! [dependencies]
 //! axum = "<latest-version>"
-//! hyper = { version = "<latest-version>", features = ["full"] }
 //! tokio = { version = "<latest-version>", features = ["full"] }
 //! tower = "<latest-version>"
 //! ```
 //!
-//! The `"full"` feature for hyper and tokio isn't strictly necessary but it's
-//! the easiest way to get started.
-//!
-//! Note that [`hyper::Server`] is re-exported by axum so if that's all you need
-//! then you don't have to explicitly depend on hyper.
+//! The `"full"` feature for tokio isn't necessary but it's the easiest way to get started.
 //!
 //! Tower isn't strictly necessary either but helpful for testing. See the
 //! testing example in the repo to learn more about testing axum apps.
@@ -345,7 +340,7 @@
 //! `original-uri` | Enables capturing of every request's original URI and the [`OriginalUri`] extractor | Yes
 //! `tokio` | Enables `tokio` as a dependency and `axum::serve`, `SSE` and `extract::connect_info` types. | Yes
 //! `tower-log` | Enables `tower`'s `log` feature | Yes
-//! `tracing` | Log rejections from built-in extractors | No
+//! `tracing` | Log rejections from built-in extractors | Yes
 //! `ws` | Enables WebSockets support via [`extract::ws`] | No
 //! `form` | Enables the `Form` extractor | Yes
 //! `query` | Enables the `Query` extractor | Yes
@@ -416,11 +411,9 @@
     missing_debug_implementations,
     missing_docs
 )]
-#![deny(unreachable_pub, private_in_public)]
+#![deny(unreachable_pub)]
 #![allow(elided_lifetimes_in_paths, clippy::type_complexity)]
-// can't be `forbid` since we've vendored code from hyper-util that contains `unsafe`
-// when hyper-util is on crates.io we can stop vendoring it and go back to `forbid`
-#![deny(unsafe_code)]
+#![forbid(unsafe_code)]
 #![cfg_attr(docsrs, feature(doc_auto_cfg, doc_cfg))]
 #![cfg_attr(test, allow(clippy::float_cmp))]
 #![cfg_attr(not(test), warn(clippy::print_stdout, clippy::dbg_macro))]
@@ -432,8 +425,6 @@ mod boxed;
 mod extension;
 #[cfg(feature = "form")]
 mod form;
-#[cfg(feature = "tokio")]
-mod hyper1_tokio_io;
 #[cfg(feature = "json")]
 mod json;
 mod service_ext;
@@ -446,7 +437,7 @@ pub mod handler;
 pub mod middleware;
 pub mod response;
 pub mod routing;
-#[cfg(feature = "tokio")]
+#[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
 pub mod serve;
 
 #[cfg(test)]
@@ -475,7 +466,7 @@ pub use axum_core::{BoxError, Error, RequestExt, RequestPartsExt};
 #[cfg(feature = "macros")]
 pub use axum_macros::debug_handler;
 
-#[cfg(feature = "tokio")]
+#[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
 #[doc(inline)]
 pub use self::serve::serve;
 

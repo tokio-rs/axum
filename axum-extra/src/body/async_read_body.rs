@@ -1,6 +1,5 @@
 use axum::{
     body::{Body, Bytes, HttpBody},
-    http::HeaderMap,
     response::{IntoResponse, Response},
     Error,
 };
@@ -33,7 +32,7 @@ pin_project! {
     ///     let file = File::open("Cargo.toml")
     ///         .await
     ///         .map_err(|err| {
-    ///             (StatusCode::NOT_FOUND, format!("File not found: {}", err))
+    ///             (StatusCode::NOT_FOUND, format!("File not found: {err}"))
     ///         })?;
     ///
     ///     let headers = [(CONTENT_TYPE, "text/x-toml")];
@@ -69,18 +68,22 @@ impl HttpBody for AsyncReadBody {
     type Data = Bytes;
     type Error = Error;
 
-    fn poll_data(
+    #[inline]
+    fn poll_frame(
         self: Pin<&mut Self>,
         cx: &mut Context<'_>,
-    ) -> Poll<Option<Result<Self::Data, Self::Error>>> {
-        self.project().body.poll_data(cx)
+    ) -> Poll<Option<Result<http_body::Frame<Self::Data>, Self::Error>>> {
+        self.project().body.poll_frame(cx)
     }
 
-    fn poll_trailers(
-        self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-    ) -> Poll<Result<Option<HeaderMap>, Self::Error>> {
-        self.project().body.poll_trailers(cx)
+    #[inline]
+    fn is_end_stream(&self) -> bool {
+        self.body.is_end_stream()
+    }
+
+    #[inline]
+    fn size_hint(&self) -> http_body::SizeHint {
+        self.body.size_hint()
     }
 }
 

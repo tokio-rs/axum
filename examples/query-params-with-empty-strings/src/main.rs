@@ -22,7 +22,7 @@ fn app() -> Router {
 }
 
 async fn handler(Query(params): Query<Params>) -> String {
-    format!("{:?}", params)
+    format!("{params:?}")
 }
 
 /// See the tests below for which combinations of `foo` and `bar` result in
@@ -58,6 +58,7 @@ where
 mod tests {
     use super::*;
     use axum::{body::Body, http::Request};
+    use http_body_util::BodyExt;
     use tower::ServiceExt;
 
     #[tokio::test]
@@ -107,14 +108,14 @@ mod tests {
         let body = app()
             .oneshot(
                 Request::builder()
-                    .uri(format!("/?{}", query))
+                    .uri(format!("/?{query}"))
                     .body(Body::empty())
                     .unwrap(),
             )
             .await
             .unwrap()
             .into_body();
-        let bytes = hyper::body::to_bytes(body).await.unwrap();
+        let bytes = body.collect().await.unwrap().to_bytes();
         String::from_utf8(bytes.to_vec()).unwrap()
     }
 }

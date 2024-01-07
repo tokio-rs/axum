@@ -101,9 +101,9 @@ async fn ws_handler(
 async fn handle_socket(mut socket: WebSocket, who: SocketAddr) {
     //send a ping (unsupported by some browsers) just to kick things off and get a response
     if socket.send(Message::Ping(vec![1, 2, 3])).await.is_ok() {
-        println!("Pinged {}...", who);
+        println!("Pinged {who}...");
     } else {
-        println!("Could not send ping {}!", who);
+        println!("Could not send ping {who}!");
         // no Error here since the only thing we can do is to close the connection.
         // If we can not send messages, there is no way to salvage the statemachine anyway.
         return;
@@ -168,7 +168,7 @@ async fn handle_socket(mut socket: WebSocket, who: SocketAddr) {
             })))
             .await
         {
-            println!("Could not send Close due to {}, probably it is ok?", e);
+            println!("Could not send Close due to {e}, probably it is ok?");
         }
         n_msg
     });
@@ -190,29 +190,29 @@ async fn handle_socket(mut socket: WebSocket, who: SocketAddr) {
     tokio::select! {
         rv_a = (&mut send_task) => {
             match rv_a {
-                Ok(a) => println!("{} messages sent to {}", a, who),
-                Err(a) => println!("Error sending messages {:?}", a)
+                Ok(a) => println!("{a} messages sent to {who}"),
+                Err(a) => println!("Error sending messages {a:?}")
             }
             recv_task.abort();
         },
         rv_b = (&mut recv_task) => {
             match rv_b {
-                Ok(b) => println!("Received {} messages", b),
-                Err(b) => println!("Error receiving messages {:?}", b)
+                Ok(b) => println!("Received {b} messages"),
+                Err(b) => println!("Error receiving messages {b:?}")
             }
             send_task.abort();
         }
     }
 
     // returning from the handler closes the websocket connection
-    println!("Websocket context {} destroyed", who);
+    println!("Websocket context {who} destroyed");
 }
 
 /// helper to print contents of messages to stdout. Has special treatment for Close.
 fn process_message(msg: Message, who: SocketAddr) -> ControlFlow<(), ()> {
     match msg {
         Message::Text(t) => {
-            println!(">>> {} sent str: {:?}", who, t);
+            println!(">>> {who} sent str: {t:?}");
         }
         Message::Binary(d) => {
             println!(">>> {} sent {} bytes: {:?}", who, d.len(), d);
@@ -224,19 +224,19 @@ fn process_message(msg: Message, who: SocketAddr) -> ControlFlow<(), ()> {
                     who, cf.code, cf.reason
                 );
             } else {
-                println!(">>> {} somehow sent close message without CloseFrame", who);
+                println!(">>> {who} somehow sent close message without CloseFrame");
             }
             return ControlFlow::Break(());
         }
 
         Message::Pong(v) => {
-            println!(">>> {} sent pong with {:?}", who, v);
+            println!(">>> {who} sent pong with {v:?}");
         }
         // You should never need to manually handle Message::Ping, as axum's websocket library
         // will do so for you automagically by replying with Pong and copying the v according to
         // spec. But if you need the contents of the pings you can see them here.
         Message::Ping(v) => {
-            println!(">>> {} sent ping with {:?}", who, v);
+            println!(">>> {who} sent ping with {v:?}");
         }
     }
     ControlFlow::Continue(())

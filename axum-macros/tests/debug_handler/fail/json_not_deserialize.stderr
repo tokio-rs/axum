@@ -5,14 +5,14 @@ error[E0277]: the trait bound `for<'de> Struct: serde::de::Deserialize<'de>` is 
   |                       ^^^^^^^^^^^^ the trait `for<'de> serde::de::Deserialize<'de>` is not implemented for `Struct`
   |
   = help: the following other types implement trait `serde::de::Deserialize<'de>`:
-            &'a [u8]
-            &'a serde_json::raw::RawValue
-            &'a std::path::Path
-            &'a str
-            ()
-            (T0, T1)
-            (T0, T1, T2)
-            (T0, T1, T2, T3)
+            bool
+            char
+            isize
+            i8
+            i16
+            i32
+            i64
+            i128
           and $N others
   = note: required for `Struct` to implement `serde::de::DeserializeOwned`
   = note: required for `Json<Struct>` to implement `FromRequest<()>`

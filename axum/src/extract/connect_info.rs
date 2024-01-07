@@ -4,8 +4,9 @@
 //!
 //! [`Router::into_make_service_with_connect_info`]: crate::routing::Router::into_make_service_with_connect_info
 
+use crate::extension::AddExtension;
+
 use super::{Extension, FromRequestParts};
-use crate::{middleware::AddExtension, serve::IncomingStream};
 use async_trait::async_trait;
 use http::request::Parts;
 use std::{
@@ -82,9 +83,20 @@ pub trait Connected<T>: Clone + Send + Sync + 'static {
     fn connect_info(target: T) -> Self;
 }
 
-impl Connected<IncomingStream<'_>> for SocketAddr {
-    fn connect_info(target: IncomingStream<'_>) -> Self {
-        target.remote_addr()
+#[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
+const _: () = {
+    use crate::serve::IncomingStream;
+
+    impl Connected<IncomingStream<'_>> for SocketAddr {
+        fn connect_info(target: IncomingStream<'_>) -> Self {
+            target.remote_addr()
+        }
+    }
+};
+
+impl Connected<SocketAddr> for SocketAddr {
+    fn connect_info(remote_addr: SocketAddr) -> Self {
+        remote_addr
     }
 }
 
@@ -212,7 +224,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{routing::get, test_helpers::TestClient, Router};
+    use crate::{routing::get, serve::IncomingStream, test_helpers::TestClient, Router};
     use std::net::SocketAddr;
     use tokio::net::TcpListener;
 
@@ -299,7 +311,7 @@ mod tests {
 
         let client = TestClient::new(app);
 
-        let res = client.get("/").send().await;
+        let res = client.get("/").await;
         let body = res.text().await;
         assert!(body.starts_with("0.0.0.0:1337"));
     }

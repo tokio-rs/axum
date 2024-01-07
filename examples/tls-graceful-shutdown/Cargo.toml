@@ -1,0 +1,13 @@
+[package]
+name = "example-tls-graceful-shutdown"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+axum = { path = "../../axum" }
+axum-server = { version = "0.6", features = ["tls-rustls"] }
+hyper = { version = "0.14", features = ["full"] }
+tokio = { version = "1", features = ["full"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }

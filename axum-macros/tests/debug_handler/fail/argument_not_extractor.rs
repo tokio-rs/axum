@@ -1,6 +1,7 @@
+#![feature(diagnostic_namespace)]
 use axum_macros::debug_handler;
 
 #[debug_handler]
-async fn handler(foo: bool) {}
+async fn handler(_foo: bool) {}
 
 fn main() {}

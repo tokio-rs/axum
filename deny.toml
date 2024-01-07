@@ -31,6 +31,8 @@ skip-tree = [
     { name = "regex-syntax" },
     # pulled in by tracing-subscriber
     { name = "regex-automata" },
+    # pulled in by hyper
+    { name = "socket2" },
 ]
 
 [sources]

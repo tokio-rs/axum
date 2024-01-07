@@ -105,7 +105,7 @@ where
     }
 }
 
-/// Rejection used for [`TypedHeader`](TypedHeader).
+/// Rejection used for [`TypedHeader`].
 #[cfg(feature = "typed-header")]
 #[derive(Debug)]
 pub struct TypedHeaderRejection {
@@ -190,7 +190,6 @@ mod tests {
             .header("user-agent", "foobar")
             .header("cookie", "a=1; b=2")
             .header("cookie", "c=3")
-            .send()
             .await;
         let body = res.text().await;
         assert_eq!(
@@ -198,11 +197,11 @@ mod tests {
             r#"User-Agent="foobar", Cookie=[("a", "1"), ("b", "2"), ("c", "3")]"#
         );
 
-        let res = client.get("/").header("user-agent", "foobar").send().await;
+        let res = client.get("/").header("user-agent", "foobar").await;
         let body = res.text().await;
         assert_eq!(body, r#"User-Agent="foobar", Cookie=[]"#);
 
-        let res = client.get("/").header("cookie", "a=1").send().await;
+        let res = client.get("/").header("cookie", "a=1").await;
         let body = res.text().await;
         assert_eq!(body, "Header of type `user-agent` was missing");
     }

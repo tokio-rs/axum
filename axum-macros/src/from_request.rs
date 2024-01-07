@@ -63,8 +63,7 @@ impl State {
     /// ```
     fn trait_generics(&self) -> impl Iterator<Item = Type> {
         match self {
-            State::Default(inner) => iter::once(inner.clone()),
-            State::Custom(inner) => iter::once(inner.clone()),
+            State::Default(inner) | State::Custom(inner) => iter::once(inner.clone()),
             State::CannotInfer => iter::once(parse_quote!(S)),
         }
     }
@@ -85,8 +84,7 @@ impl State {
 impl ToTokens for State {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         match self {
-            State::Custom(inner) => inner.to_tokens(tokens),
-            State::Default(inner) => inner.to_tokens(tokens),
+            State::Custom(inner) | State::Default(inner) => inner.to_tokens(tokens),
             State::CannotInfer => quote! { S }.to_tokens(tokens),
         }
     }

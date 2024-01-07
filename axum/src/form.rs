@@ -12,9 +12,18 @@ use serde::Serialize;
 ///
 /// # As extractor
 ///
-/// If used as an extractor `Form` will deserialize the query parameters for `GET` and `HEAD`
-/// requests and `application/x-www-form-urlencoded` encoded request bodies for other methods. It
-/// supports any type that implements [`serde::Deserialize`].
+/// If used as an extractor, `Form` will deserialize form data from the request,
+/// specifically:
+///
+/// - If the request has a method of `GET` or `HEAD`, the form data will be read
+///   from the query string (same as with [`Query`])
+/// - If the request has a different method, the form will be read from the body
+///   of the request. It must have a `content-type` of
+///   `application/x-www-form-urlencoded` for this to work. If you want to parse
+///   `multipart/form-data` request bodies, use [`Multipart`] instead.
+///
+/// This matches how HTML forms are sent by browsers by default.
+/// In both cases, the inner type `T` must implement [`serde::Deserialize`].
 ///
 /// ⚠️ Since parsing form data might require consuming the request body, the `Form` extractor must be
 /// *last* if there are multiple extractors in a handler. See ["the order of
@@ -37,10 +46,10 @@ use serde::Serialize;
 /// }
 /// ```
 ///
-/// Note that `Content-Type: multipart/form-data` requests are not supported. Use [`Multipart`]
-/// instead.
-///
 /// # As response
+///
+/// `Form` can also be used to encode any type that implements
+/// [`serde::Serialize`] as `application/x-www-form-urlencoded`
 ///
 /// ```rust
 /// use axum::Form;
@@ -56,6 +65,7 @@ use serde::Serialize;
 /// }
 /// ```
 ///
+/// [`Query`]: crate::extract::Query
 /// [`Multipart`]: crate::extract::Multipart
 #[cfg_attr(docsrs, doc(cfg(feature = "form")))]
 #[derive(Debug, Clone, Copy, Default)]
@@ -242,14 +252,13 @@ mod tests {
 
         let client = TestClient::new(app);
 
-        let res = client.get("/?a=false").send().await;
+        let res = client.get("/?a=false").await;
         assert_eq!(res.status(), StatusCode::BAD_REQUEST);
 
         let res = client
             .post("/")
             .header(CONTENT_TYPE, APPLICATION_WWW_FORM_URLENCODED.as_ref())
             .body("a=false")
-            .send()
             .await;
         assert_eq!(res.status(), StatusCode::UNPROCESSABLE_ENTITY);
     }

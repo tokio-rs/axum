@@ -162,7 +162,7 @@ mod tests {
         let app = Router::new().route("/", get(handler));
         let client = TestClient::new(app);
 
-        let res = client.get("/?n=hi").send().await;
+        let res = client.get("/?n=hi").await;
         assert_eq!(res.status(), StatusCode::BAD_REQUEST);
     }
 

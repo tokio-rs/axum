@@ -84,7 +84,7 @@ impl<H, T, S> HandlerService<H, T, S> {
     ///     ConnectInfo(addr): ConnectInfo<SocketAddr>,
     ///     State(state): State<AppState>,
     /// ) -> String {
-    ///     format!("Hello {}", addr)
+    ///     format!("Hello {addr}")
     /// }
     ///
     /// let app = handler.with_state(AppState {});
@@ -178,7 +178,7 @@ where
 }
 
 // for `axum::serve(listener, handler)`
-#[cfg(feature = "tokio")]
+#[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
 const _: () = {
     use crate::serve::IncomingStream;
 

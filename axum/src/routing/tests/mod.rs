@@ -12,28 +12,29 @@ use crate::{
         tracing_helpers::{capture_tracing, TracingEvent},
         *,
     },
-    BoxError, Extension, Json, Router,
+    BoxError, Extension, Json, Router, ServiceExt,
 };
 use axum_core::extract::Request;
 use futures_util::stream::StreamExt;
 use http::{
-    header::CONTENT_LENGTH,
-    header::{ALLOW, HOST},
+    header::{ALLOW, CONTENT_LENGTH, HOST},
     HeaderMap, Method, StatusCode, Uri,
 };
+use http_body_util::BodyExt;
 use serde::Deserialize;
 use serde_json::json;
 use std::{
     convert::Infallible,
-    future::{ready, Ready},
+    future::{ready, IntoFuture, Ready},
     sync::atomic::{AtomicBool, AtomicUsize, Ordering},
     task::{Context, Poll},
     time::Duration,
 };
-use tower::{
-    service_fn, timeout::TimeoutLayer, util::MapResponseLayer, ServiceBuilder, ServiceExt,
+use tower::{service_fn, util::MapResponseLayer, ServiceExt as TowerServiceExt};
+use tower_http::{
+    limit::RequestBodyLimitLayer, timeout::TimeoutLayer,
+    validate_request::ValidateRequestHeaderLayer,
 };
-use tower_http::{limit::RequestBodyLimitLayer, validate_request::ValidateRequestHeaderLayer};
 use tower_service::Service;
 
 mod fallback;
@@ -62,15 +63,15 @@ async fn hello_world() {
 
     let client = TestClient::new(app);
 
-    let res = client.get("/").send().await;
+    let res = client.get("/").await;
     let body = res.text().await;
     assert_eq!(body, "Hello, World!");
 
-    let res = client.post("/").send().await;
+    let res = client.post("/").await;
     let body = res.text().await;
     assert_eq!(body, "foo");
 
-    let res = client.post("/users").send().await;
+    let res = client.post("/users").await;
     let body = res.text().await;
     assert_eq!(body, "users#create");
 }
@@ -90,22 +91,22 @@ async fn routing() {
 
     let client = TestClient::new(app);
 
-    let res = client.get("/").send().await;
+    let res = client.get("/").await;
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
 
-    let res = client.get("/users").send().await;
+    let res = client.get("/users").await;
     assert_eq!(res.status(), StatusCode::OK);
     assert_eq!(res.text().await, "users#index");
 
-    let res = client.post("/users").send().await;
+    let res = client.post("/users").await;
     assert_eq!(res.status(), StatusCode::OK);
     assert_eq!(res.text().await, "users#create");
 
-    let res = client.get("/users/1").send().await;
+    let res = client.get("/users/1").await;
     assert_eq!(res.status(), StatusCode::OK);
     assert_eq!(res.text().await, "users#show");
 
-    let res = client.get("/users/1/action").send().await;
+    let res = client.get("/users/1/action").await;
     assert_eq!(res.status(), StatusCode::OK);
     assert_eq!(res.text().await, "users#action");
 }
@@ -118,15 +119,15 @@ async fn router_type_doesnt_change() {
             on(MethodFilter::GET, |_: Request| async { "hi from GET" })
                 .on(MethodFilter::POST, |_: Request| async { "hi from POST" }),
         )
-        .layer(tower_http::compression::CompressionLayer::new());
+        .layer(tower_http::trace::TraceLayer::new_for_http());
 
     let client = TestClient::new(app);
 
-    let res = client.get("/").send().await;
+    let res = client.get("/").await;
     assert_eq!(res.status(), StatusCode::OK);
     assert_eq!(res.text().await, "hi from GET");
 
-    let res = client.post("/").send().await;
+    let res = client.post("/").await;
     assert_eq!(res.status(), StatusCode::OK);
     assert_eq!(res.text().await, "hi from POST");
 }
@@ -160,45 +161,36 @@ async fn routing_between_services() {
 
     let client = TestClient::new(app);
 
-    let res = client.get("/one").send().await;
+    let res = client.get("/one").await;
     assert_eq!(res.status(), StatusCode::OK);
     assert_eq!(res.text().await, "one get");
 
-    let res = client.post("/one").send().await;
+    let res = client.post("/one").await;
     assert_eq!(res.status(), StatusCode::OK);
     assert_eq!(res.text().await, "one post");
 
-    let res = client.put("/one").send().await;
+    let res = client.put("/one").await;
     assert_eq!(res.status(), StatusCode::OK);
     assert_eq!(res.text().await, "one put");
 
-    let res = client.get("/two").send().await;
+    let res = client.get("/two").await;
     assert_eq!(res.status(), StatusCode::OK);
     assert_eq!(res.text().await, "handler");
 }
 
 #[crate::test]
 async fn middleware_on_single_route() {
-    use tower::ServiceBuilder;
-    use tower_http::{compression::CompressionLayer, trace::TraceLayer};
+    use tower_http::trace::TraceLayer;
 
     async fn handle(_: Request) -> &'static str {
         "Hello, World!"
     }
 
-    let app = Router::new().route(
-        "/",
-        get(handle.layer(
-            ServiceBuilder::new()
-                .layer(TraceLayer::new_for_http())
-                .layer(CompressionLayer::new())
-                .into_inner(),
-        )),
-    );
+    let app = Router::new().route("/", get(handle.layer(TraceLayer::new_for_http())));
 
     let client = TestClient::new(app);
 
-    let res = client.get("/").send().await;
+    let res = client.get("/").await;
     let body = res.text().await;
 
     assert_eq!(body, "Hello, World!");
@@ -223,18 +215,18 @@ async fn wrong_method_handler() {
 
     let client = TestClient::new(app);
 
-    let res = client.patch("/").send().await;
+    let res = client.patch("/").await;
     assert_eq!(res.status(), StatusCode::METHOD_NOT_ALLOWED);
     assert_eq!(res.headers()[ALLOW], "GET,HEAD,POST");
 
-    let res = client.patch("/foo").send().await;
+    let res = client.patch("/foo").await;
     assert_eq!(res.status(), StatusCode::OK);
 
-    let res = client.post("/foo").send().await;
+    let res = client.post("/foo").await;
     assert_eq!(res.status(), StatusCode::METHOD_NOT_ALLOWED);
     assert_eq!(res.headers()[ALLOW], "PATCH");
 
-    let res = client.get("/bar").send().await;
+    let res = client.get("/bar").await;
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
 }
 
@@ -263,18 +255,18 @@ async fn wrong_method_service() {
 
     let client = TestClient::new(app);
 
-    let res = client.patch("/").send().await;
+    let res = client.patch("/").await;
     assert_eq!(res.status(), StatusCode::METHOD_NOT_ALLOWED);
     assert_eq!(res.headers()[ALLOW], "GET,HEAD,POST");
 
-    let res = client.patch("/foo").send().await;
+    let res = client.patch("/foo").await;
     assert_eq!(res.status(), StatusCode::OK);
 
-    let res = client.post("/foo").send().await;
+    let res = client.post("/foo").await;
     assert_eq!(res.status(), StatusCode::METHOD_NOT_ALLOWED);
     assert_eq!(res.headers()[ALLOW], "PATCH");
 
-    let res = client.get("/bar").send().await;
+    let res = client.get("/bar").await;
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
 }
 
@@ -288,10 +280,10 @@ async fn multiple_methods_for_one_handler() {
 
     let client = TestClient::new(app);
 
-    let res = client.get("/").send().await;
+    let res = client.get("/").await;
     assert_eq!(res.status(), StatusCode::OK);
 
-    let res = client.post("/").send().await;
+    let res = client.post("/").await;
     assert_eq!(res.status(), StatusCode::OK);
 }
 
@@ -301,7 +293,7 @@ async fn wildcard_sees_whole_url() {
 
     let client = TestClient::new(app);
 
-    let res = client.get("/api/foo/bar").send().await;
+    let res = client.get("/api/foo/bar").await;
     assert_eq!(res.text().await, "/api/foo/bar");
 }
 
@@ -309,21 +301,15 @@ async fn wildcard_sees_whole_url() {
 async fn middleware_applies_to_routes_above() {
     let app = Router::new()
         .route("/one", get(std::future::pending::<()>))
-        .layer(
-            ServiceBuilder::new()
-                .layer(HandleErrorLayer::new(|_: BoxError| async move {
-                    StatusCode::REQUEST_TIMEOUT
-                }))
-                .layer(TimeoutLayer::new(Duration::new(0, 0))),
-        )
+        .layer(TimeoutLayer::new(Duration::ZERO))
         .route("/two", get(|| async {}));
 
     let client = TestClient::new(app);
 
-    let res = client.get("/one").send().await;
+    let res = client.get("/one").await;
     assert_eq!(res.status(), StatusCode::REQUEST_TIMEOUT);
 
-    let res = client.get("/two").send().await;
+    let res = client.get("/two").await;
     assert_eq!(res.status(), StatusCode::OK);
 }
 
@@ -333,10 +319,10 @@ async fn not_found_for_extra_trailing_slash() {
 
     let client = TestClient::new(app);
 
-    let res = client.get("/foo/").send().await;
+    let res = client.get("/foo/").await;
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
 
-    let res = client.get("/foo").send().await;
+    let res = client.get("/foo").await;
     assert_eq!(res.status(), StatusCode::OK);
 }
 
@@ -346,7 +332,7 @@ async fn not_found_for_missing_trailing_slash() {
 
     let client = TestClient::new(app);
 
-    let res = client.get("/foo").send().await;
+    let res = client.get("/foo").await;
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
 }
 
@@ -358,11 +344,11 @@ async fn with_and_without_trailing_slash() {
 
     let client = TestClient::new(app);
 
-    let res = client.get("/foo/").send().await;
+    let res = client.get("/foo/").await;
     assert_eq!(res.status(), StatusCode::OK);
     assert_eq!(res.text().await, "with tsr");
 
-    let res = client.get("/foo").send().await;
+    let res = client.get("/foo").await;
     assert_eq!(res.status(), StatusCode::OK);
     assert_eq!(res.text().await, "without tsr");
 }
@@ -377,13 +363,13 @@ async fn wildcard_doesnt_match_just_trailing_slash() {
 
     let client = TestClient::new(app);
 
-    let res = client.get("/x").send().await;
+    let res = client.get("/x").await;
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
 
-    let res = client.get("/x/").send().await;
+    let res = client.get("/x/").await;
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
 
-    let res = client.get("/x/foo/bar").send().await;
+    let res = client.get("/x/foo/bar").await;
     assert_eq!(res.status(), StatusCode::OK);
     assert_eq!(res.text().await, "foo/bar");
 }
@@ -398,7 +384,7 @@ async fn what_matches_wildcard() {
     let client = TestClient::new(app);
 
     let get = |path| {
-        let f = client.get(path).send();
+        let f = client.get(path);
         async move { f.await.text().await }
     };
 
@@ -427,10 +413,10 @@ async fn static_and_dynamic_paths() {
 
     let client = TestClient::new(app);
 
-    let res = client.get("/bar").send().await;
+    let res = client.get("/bar").await;
     assert_eq!(res.text().await, "dynamic: bar");
 
-    let res = client.get("/foo").send().await;
+    let res = client.get("/foo").await;
     assert_eq!(res.text().await, "static");
 }
 
@@ -474,10 +460,10 @@ async fn middleware_still_run_for_unmatched_requests() {
 
     assert_eq!(COUNT.load(Ordering::SeqCst), 0);
 
-    client.get("/").send().await;
+    client.get("/").await;
     assert_eq!(COUNT.load(Ordering::SeqCst), 1);
 
-    client.get("/not-found").send().await;
+    client.get("/not-found").await;
     assert_eq!(COUNT.load(Ordering::SeqCst), 2);
 }
 
@@ -501,20 +487,19 @@ async fn route_layer() {
     let res = client
         .get("/foo")
         .header("authorization", "Bearer password")
-        .send()
         .await;
     assert_eq!(res.status(), StatusCode::OK);
 
-    let res = client.get("/foo").send().await;
+    let res = client.get("/foo").await;
     assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
 
-    let res = client.get("/not-found").send().await;
+    let res = client.get("/not-found").await;
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
 
     // it would be nice if this would return `405 Method Not Allowed`
     // but that requires knowing more about which method route we're calling, which we
     // don't know currently since its just a generic `Service`
-    let res = client.post("/foo").send().await;
+    let res = client.post("/foo").await;
     assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
 }
 
@@ -526,11 +511,11 @@ async fn different_methods_added_in_different_routes() {
 
     let client = TestClient::new(app);
 
-    let res = client.get("/").send().await;
+    let res = client.get("/").await;
     let body = res.text().await;
     assert_eq!(body, "GET");
 
-    let res = client.post("/").send().await;
+    let res = client.post("/").await;
     let body = res.text().await;
     assert_eq!(body, "POST");
 }
@@ -568,11 +553,11 @@ async fn merging_routers_with_same_paths_but_different_methods() {
 
     let client = TestClient::new(one.merge(two));
 
-    let res = client.get("/").send().await;
+    let res = client.get("/").await;
     let body = res.text().await;
     assert_eq!(body, "GET");
 
-    let res = client.post("/").send().await;
+    let res = client.post("/").await;
     let body = res.text().await;
     assert_eq!(body, "POST");
 }
@@ -585,11 +570,11 @@ async fn head_content_length_through_hyper_server() {
 
     let client = TestClient::new(app);
 
-    let res = client.head("/").send().await;
+    let res = client.head("/").await;
     assert_eq!(res.headers()["content-length"], "3");
     assert!(res.text().await.is_empty());
 
-    let res = client.head("/json").send().await;
+    let res = client.head("/json").await;
     assert_eq!(res.headers()["content-length"], "9");
     assert!(res.text().await.is_empty());
 }
@@ -600,7 +585,7 @@ async fn head_content_length_through_hyper_server_that_hits_fallback() {
 
     let client = TestClient::new(app);
 
-    let res = client.head("/").send().await;
+    let res = client.head("/").await;
     assert_eq!(res.headers()["content-length"], "3");
 }
 
@@ -618,21 +603,13 @@ async fn head_with_middleware_applied() {
     let client = TestClient::new(app);
 
     // send GET request
-    let res = client
-        .get("/")
-        .header("accept-encoding", "gzip")
-        .send()
-        .await;
+    let res = client.get("/").header("accept-encoding", "gzip").await;
     assert_eq!(res.headers()["transfer-encoding"], "chunked");
     // cannot have `transfer-encoding: chunked` and `content-length`
     assert!(!res.headers().contains_key("content-length"));
 
     // send HEAD request
-    let res = client
-        .head("/")
-        .header("accept-encoding", "gzip")
-        .send()
-        .await;
+    let res = client.head("/").header("accept-encoding", "gzip").await;
     // no response body so no `transfer-encoding`
     assert!(!res.headers().contains_key("transfer-encoding"));
     // no content-length since we cannot know it since the response
@@ -666,7 +643,7 @@ async fn body_limited_by_default() {
             .post(uri)
             .header("content-type", "application/json")
             .body(body)
-            .send();
+            .into_future();
         let res = tokio::time::timeout(Duration::from_secs(3), res_future)
             .await
             .expect("never got response");
@@ -686,7 +663,7 @@ async fn disabling_the_default_limit() {
     // `DEFAULT_LIMIT` is 2mb so make a body larger than that
     let body = reqwest::Body::from("a".repeat(3_000_000));
 
-    let res = client.post("/").body(body).send().await;
+    let res = client.post("/").body(body).await;
 
     assert_eq!(res.status(), StatusCode::OK);
 }
@@ -706,10 +683,10 @@ async fn limited_body_with_content_length() {
 
     let client = TestClient::new(app);
 
-    let res = client.post("/").body("a".repeat(LIMIT)).send().await;
+    let res = client.post("/").body("a".repeat(LIMIT)).await;
     assert_eq!(res.status(), StatusCode::OK);
 
-    let res = client.post("/").body("a".repeat(LIMIT * 2)).send().await;
+    let res = client.post("/").body("a".repeat(LIMIT * 2)).await;
     assert_eq!(res.status(), StatusCode::PAYLOAD_TOO_LARGE);
 }
 
@@ -726,14 +703,12 @@ async fn changing_the_default_limit() {
     let res = client
         .post("/")
         .body(reqwest::Body::from("a".repeat(new_limit)))
-        .send()
         .await;
     assert_eq!(res.status(), StatusCode::OK);
 
     let res = client
         .post("/")
         .body(reqwest::Body::from("a".repeat(new_limit + 1)))
-        .send()
         .await;
     assert_eq!(res.status(), StatusCode::PAYLOAD_TOO_LARGE);
 }
@@ -759,42 +734,36 @@ async fn changing_the_default_limit_differently_on_different_routes() {
     let res = client
         .post("/limit1")
         .body(reqwest::Body::from("a".repeat(limit1)))
-        .send()
         .await;
     assert_eq!(res.status(), StatusCode::OK);
 
     let res = client
         .post("/limit1")
         .body(reqwest::Body::from("a".repeat(limit2)))
-        .send()
         .await;
     assert_eq!(res.status(), StatusCode::PAYLOAD_TOO_LARGE);
 
     let res = client
         .post("/limit2")
         .body(reqwest::Body::from("a".repeat(limit1)))
-        .send()
         .await;
     assert_eq!(res.status(), StatusCode::OK);
 
     let res = client
         .post("/limit2")
         .body(reqwest::Body::from("a".repeat(limit2)))
-        .send()
         .await;
     assert_eq!(res.status(), StatusCode::OK);
 
     let res = client
         .post("/limit2")
         .body(reqwest::Body::from("a".repeat(limit1 + limit2)))
-        .send()
         .await;
     assert_eq!(res.status(), StatusCode::PAYLOAD_TOO_LARGE);
 
     let res = client
         .post("/default")
         .body(reqwest::Body::from("a".repeat(limit1 + limit2)))
-        .send()
         .await;
     assert_eq!(res.status(), StatusCode::OK);
 
@@ -802,7 +771,6 @@ async fn changing_the_default_limit_differently_on_different_routes() {
         .post("/default")
         // `DEFAULT_LIMIT` is 2mb so make a body larger than that
         .body(reqwest::Body::from("a".repeat(3_000_000)))
-        .send()
         .await;
     assert_eq!(res.status(), StatusCode::PAYLOAD_TOO_LARGE);
 }
@@ -826,7 +794,6 @@ async fn limited_body_with_streaming_body() {
     let res = client
         .post("/")
         .body(reqwest::Body::wrap_stream(stream))
-        .send()
         .await;
     assert_eq!(res.status(), StatusCode::OK);
 
@@ -834,7 +801,6 @@ async fn limited_body_with_streaming_body() {
     let res = client
         .post("/")
         .body(reqwest::Body::wrap_stream(stream))
-        .send()
         .await;
     assert_eq!(res.status(), StatusCode::PAYLOAD_TOO_LARGE);
 }
@@ -871,7 +837,7 @@ async fn extract_state() {
     let app = Router::new().route("/", get(handler)).with_state(state);
     let client = TestClient::new(app);
 
-    let res = client.get("/").send().await;
+    let res = client.get("/").await;
     assert_eq!(res.status(), StatusCode::OK);
 }
 
@@ -885,7 +851,7 @@ async fn explicitly_set_state() {
         .with_state("...");
 
     let client = TestClient::new(app);
-    let res = client.get("/").send().await;
+    let res = client.get("/").await;
     assert_eq!(res.text().await, "foo");
 }
 
@@ -903,7 +869,7 @@ async fn layer_response_into_response() {
 
     let client = TestClient::new(app);
 
-    let res = client.get("/").send().await;
+    let res = client.get("/").await;
     assert_eq!(res.headers()["x-foo"], "bar");
     assert_eq!(res.status(), StatusCode::IM_A_TEAPOT);
 }
@@ -945,7 +911,7 @@ async fn state_isnt_cloned_too_much() {
 
     impl Clone for AppState {
         fn clone(&self) -> Self {
-            #[rustversion::since(1.65)]
+            #[rustversion::since(1.66)]
             #[track_caller]
             fn count() {
                 if SETUP_DONE.load(Ordering::SeqCst) {
@@ -956,12 +922,12 @@ async fn state_isnt_cloned_too_much() {
                         .filter(|line| line.contains("axum") || line.contains("./src"))
                         .collect::<Vec<_>>()
                         .join("\n");
-                    println!("AppState::Clone:\n===============\n{}\n", bt);
+                    println!("AppState::Clone:\n===============\n{bt}\n");
                     COUNT.fetch_add(1, Ordering::SeqCst);
                 }
             }
 
-            #[rustversion::not(since(1.65))]
+            #[rustversion::not(since(1.66))]
             fn count() {
                 if SETUP_DONE.load(Ordering::SeqCst) {
                     COUNT.fetch_add(1, Ordering::SeqCst);
@@ -983,7 +949,7 @@ async fn state_isnt_cloned_too_much() {
     // ignore clones made during setup
     SETUP_DONE.store(true, Ordering::SeqCst);
 
-    client.get("/").send().await;
+    client.get("/").await;
 
     assert_eq!(COUNT.load(Ordering::SeqCst), 5);
 }
@@ -1007,7 +973,7 @@ async fn logging_rejections() {
         let client = TestClient::new(app);
 
         assert_eq!(
-            client.get("/extension").send().await.status(),
+            client.get("/extension").await.status(),
             StatusCode::INTERNAL_SERVER_ERROR
         );
 
@@ -1015,7 +981,6 @@ async fn logging_rejections() {
             client
                 .post("/string")
                 .body(Vec::from([0, 159, 146, 150]))
-                .send()
                 .await
                 .status(),
             StatusCode::BAD_REQUEST,
@@ -1069,7 +1034,7 @@ async fn connect_going_to_custom_fallback() {
 
     let res = app.oneshot(req).await.unwrap();
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
-    let text = String::from_utf8(hyper::body::to_bytes(res).await.unwrap().to_vec()).unwrap();
+    let text = String::from_utf8(res.collect().await.unwrap().to_bytes().to_vec()).unwrap();
     assert_eq!(text, "custom fallback");
 }
 
@@ -1087,7 +1052,7 @@ async fn connect_going_to_default_fallback() {
 
     let res = app.oneshot(req).await.unwrap();
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
-    let body = hyper::body::to_bytes(res).await.unwrap();
+    let body = res.collect().await.unwrap().to_bytes();
     assert!(body.is_empty());
 }
 
@@ -1097,7 +1062,7 @@ async fn impl_handler_for_into_response() {
 
     let client = TestClient::new(app);
 
-    let res = client.post("/things").send().await;
+    let res = client.post("/things").await;
     assert_eq!(res.status(), StatusCode::CREATED);
     assert_eq!(res.text().await, "thing created");
 }

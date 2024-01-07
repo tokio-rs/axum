@@ -16,8 +16,9 @@
 //! `cookie-key-expansion` | Enables the `Key::derive_from` method | No
 //! `erased-json` | Enables the `ErasedJson` response | No
 //! `form` | Enables the `Form` extractor | No
+//! `json-deserializer` | Enables the `JsonDeserializer` extractor | No
 //! `json-lines` | Enables the `JsonLines` extractor and response | No
-//! `multipart` | Enables the `Multpart` extractor | No
+//! `multipart` | Enables the `Multipart` extractor | No
 //! `protobuf` | Enables the `Protobuf` extractor and response | No
 //! `query` | Enables the `Query` extractor | No
 //! `typed-routing` | Enables the `TypedPath` routing utilities | No
@@ -60,7 +61,7 @@
     missing_debug_implementations,
     missing_docs
 )]
-#![deny(unreachable_pub, private_in_public)]
+#![deny(unreachable_pub)]
 #![allow(elided_lifetimes_in_paths, clippy::type_complexity)]
 #![forbid(unsafe_code)]
 #![cfg_attr(docsrs, feature(doc_cfg, doc_auto_cfg))]

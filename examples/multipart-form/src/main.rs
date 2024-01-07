@@ -69,10 +69,7 @@ async fn accept_form(mut multipart: Multipart) {
         let data = field.bytes().await.unwrap();
 
         println!(
-            "Length of `{}` (`{}`: `{}`) is {} bytes",
-            name,
-            file_name,
-            content_type,
+            "Length of `{name}` (`{file_name}`: `{content_type}`) is {} bytes",
             data.len()
         );
     }

@@ -66,3 +66,27 @@ macro_rules! all_the_tuples {
         $name!([T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15], T16);
     };
 }
+
+#[cfg(feature = "tracing")]
+macro_rules! trace {
+    ($($tt:tt)*) => {
+        tracing::trace!($($tt)*)
+    }
+}
+
+#[cfg(feature = "tracing")]
+macro_rules! error {
+    ($($tt:tt)*) => {
+        tracing::error!($($tt)*)
+    };
+}
+
+#[cfg(not(feature = "tracing"))]
+macro_rules! trace {
+    ($($tt:tt)*) => {};
+}
+
+#[cfg(not(feature = "tracing"))]
+macro_rules! error {
+    ($($tt:tt)*) => {};
+}

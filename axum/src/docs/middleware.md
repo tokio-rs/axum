@@ -64,14 +64,11 @@ Some commonly used middleware are:
 
 - [`TraceLayer`](tower_http::trace) for high level tracing/logging.
 - [`CorsLayer`](tower_http::cors) for handling CORS.
-- [`CompressionLayer`](tower_http::compression) for automatic compression of
-  responses.
+- [`CompressionLayer`](tower_http::compression) for automatic compression of responses.
 - [`RequestIdLayer`](tower_http::request_id) and
   [`PropagateRequestIdLayer`](tower_http::request_id) set and propagate request
   ids.
-- [`TimeoutLayer`](tower::timeout::TimeoutLayer) for timeouts. Note this
-  requires using [`HandleErrorLayer`](crate::error_handling::HandleErrorLayer)
-  to convert timeouts to responses.
+- [`TimeoutLayer`](tower_http::timeout::TimeoutLayer) for timeouts.
 
 # Ordering
 
@@ -265,6 +262,21 @@ where
         })
     }
 }
+```
+
+Note that your error type being defined as `S::Error` means that your middleware typically _returns no errors_. As a principle always try to return a response and try not to bail out with a custom error type. For example, if a 3rd party library you are using inside your new middleware returns its own specialized error type, try to convert it to some reasonable response and return `Ok` with that response.
+
+If you choose to implement a custom error type such as `type Error = BoxError` (a boxed opaque error), or any other error type that is not `Infallible`, you must use a `HandleErrorLayer`, here is an example using a `ServiceBuilder`:
+
+```ignore
+ServiceBuilder::new()
+        .layer(HandleErrorLayer::new(|_: BoxError| async {
+            // because Axum uses infallible errors, you must handle your custom error type from your middleware here
+            StatusCode::BAD_REQUEST
+        }))
+        .layer(
+             // <your actual layer which DOES return an error>
+        );
 ```
 
 ## `tower::Service` and custom futures

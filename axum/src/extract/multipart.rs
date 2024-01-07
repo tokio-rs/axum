@@ -5,16 +5,18 @@
 use super::{FromRequest, Request};
 use crate::body::Bytes;
 use async_trait::async_trait;
-use axum_core::__composite_rejection as composite_rejection;
-use axum_core::__define_rejection as define_rejection;
-use axum_core::body::Body;
-use axum_core::response::{IntoResponse, Response};
-use axum_core::RequestExt;
+use axum_core::{
+    __composite_rejection as composite_rejection, __define_rejection as define_rejection,
+    response::{IntoResponse, Response},
+    RequestExt,
+};
 use futures_util::stream::Stream;
-use http::header::{HeaderMap, CONTENT_TYPE};
-use http::StatusCode;
-use std::error::Error;
+use http::{
+    header::{HeaderMap, CONTENT_TYPE},
+    StatusCode,
+};
 use std::{
+    error::Error,
     fmt,
     pin::Pin,
     task::{Context, Poll},
@@ -72,11 +74,8 @@ where
 
     async fn from_request(req: Request, _state: &S) -> Result<Self, Self::Rejection> {
         let boundary = parse_boundary(req.headers()).ok_or(InvalidBoundary)?;
-        let stream = match req.with_limited_body() {
-            Ok(limited) => Body::new(limited),
-            Err(unlimited) => unlimited.into_body(),
-        };
-        let multipart = multer::Multipart::new(stream, boundary);
+        let stream = req.with_limited_body().into_body();
+        let multipart = multer::Multipart::new(stream.into_data_stream(), boundary);
         Ok(Self { inner: multipart })
     }
 }
@@ -249,7 +248,7 @@ fn status_code_from_multer_error(err: &multer::Error) -> StatusCode {
             if err
                 .downcast_ref::<crate::Error>()
                 .and_then(|err| err.source())
-                .and_then(|err| err.downcast_ref::<http_body::LengthLimitError>())
+                .and_then(|err| err.downcast_ref::<http_body_util::LengthLimitError>())
                 .is_some()
             {
                 return StatusCode::PAYLOAD_TOO_LARGE;
@@ -324,6 +323,7 @@ mod tests {
 
             assert_eq!(field.file_name().unwrap(), FILE_NAME);
             assert_eq!(field.content_type().unwrap(), CONTENT_TYPE);
+            assert_eq!(field.headers()["foo"], "bar");
             assert_eq!(field.bytes().await.unwrap(), BYTES);
 
             assert!(multipart.next_field().await.unwrap().is_none());
@@ -338,10 +338,14 @@ mod tests {
             reqwest::multipart::Part::bytes(BYTES)
                 .file_name(FILE_NAME)
                 .mime_str(CONTENT_TYPE)
-                .unwrap(),
+                .unwrap()
+                .headers(reqwest::header::HeaderMap::from_iter([(
+                    reqwest::header::HeaderName::from_static("foo"),
+                    reqwest::header::HeaderValue::from_static("bar"),
+                )])),
         );
 
-        client.post("/").multipart(form).send().await;
+        client.post("/").multipart(form).await;
     }
 
     // No need for this to be a #[test], we just want to make sure it compiles
@@ -372,7 +376,7 @@ mod tests {
         let form =
             reqwest::multipart::Form::new().part("file", reqwest::multipart::Part::bytes(BYTES));
 
-        let res = client.post("/").multipart(form).send().await;
+        let res = client.post("/").multipart(form).await;
         assert_eq!(res.status(), StatusCode::PAYLOAD_TOO_LARGE);
     }
 }

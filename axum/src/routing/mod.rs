@@ -397,9 +397,6 @@ impl Router {
     /// Convert this router into a [`MakeService`], that is a [`Service`] whose
     /// response is another service.
     ///
-    /// This is useful when running your application with hyper's
-    /// [`Server`](hyper::server::Server):
-    ///
     /// ```
     /// use axum::{
     ///     routing::get,
@@ -431,7 +428,7 @@ impl Router {
 }
 
 // for `axum::serve(listener, router)`
-#[cfg(feature = "tokio")]
+#[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
 const _: () = {
     use crate::serve::IncomingStream;
 
@@ -516,6 +513,18 @@ where
 pub struct RouterIntoService<B, S = ()> {
     router: Router<S>,
     _marker: PhantomData<B>,
+}
+
+impl<B, S> Clone for RouterIntoService<B, S>
+where
+    Router<S>: Clone,
+{
+    fn clone(&self) -> Self {
+        Self {
+            router: self.router.clone(),
+            _marker: PhantomData,
+        }
+    }
 }
 
 impl<B> Service<Request<B>> for RouterIntoService<B, ()>
@@ -673,4 +682,5 @@ impl<S> fmt::Debug for Endpoint<S> {
 fn traits() {
     use crate::test_helpers::*;
     assert_send::<Router<()>>();
+    assert_sync::<Router<()>>();
 }

@@ -32,6 +32,7 @@ async fn main() {
         serve(using_serve_dir_with_handler_as_service(), 3004),
         serve(two_serve_dirs(), 3005),
         serve(calling_serve_dir_from_a_handler(), 3006),
+        serve(using_serve_file_from_a_route(), 3307),
     );
 }
 
@@ -99,6 +100,10 @@ fn calling_serve_dir_from_a_handler() -> Router {
             result
         }),
     )
+}
+
+fn using_serve_file_from_a_route() -> Router {
+    Router::new().route_service("/foo", ServeFile::new("assets/index.html"))
 }
 
 async fn serve(app: Router, port: u16) {

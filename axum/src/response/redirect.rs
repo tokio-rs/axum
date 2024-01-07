@@ -15,9 +15,7 @@ use http::{header::LOCATION, HeaderValue, StatusCode};
 /// let app = Router::new()
 ///     .route("/old", get(|| async { Redirect::permanent("/new") }))
 ///     .route("/new", get(|| async { "Hello!" }));
-/// # async {
-/// # hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-/// # };
+/// # let _: Router = app;
 /// ```
 #[must_use = "needs to be returned from a handler or otherwise turned into a Response to be useful"]
 #[derive(Debug, Clone)]

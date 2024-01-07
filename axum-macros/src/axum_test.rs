@@ -27,7 +27,7 @@ fn replace_nest_with_nest_service(mut item_fn: ItemFn) -> Option<ItemFn> {
     let mut visitor = NestToNestService::default();
     syn::visit_mut::visit_item_fn_mut(&mut visitor, &mut item_fn);
 
-    (visitor.count > 0).then(|| item_fn)
+    (visitor.count > 0).then_some(item_fn)
 }
 
 #[derive(Default)]

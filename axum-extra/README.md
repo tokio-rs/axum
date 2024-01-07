@@ -14,7 +14,7 @@ This crate uses `#![forbid(unsafe_code)]` to ensure everything is implemented in
 
 ## Minimum supported Rust version
 
-axum-extra's MSRV is 1.63.
+axum-extra's MSRV is 1.66.
 
 ## Getting Help
 

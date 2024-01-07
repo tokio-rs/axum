@@ -83,7 +83,7 @@ impl IntoResponse for FormRejection {
             Self::RawFormRejection(inner) => inner.into_response(),
             Self::FailedToDeserializeForm(inner) => (
                 StatusCode::BAD_REQUEST,
-                format!("Failed to deserialize form: {}", inner),
+                format!("Failed to deserialize form: {inner}"),
             )
                 .into_response(),
         }
@@ -135,7 +135,6 @@ mod tests {
             .post("/")
             .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
             .body("value=one&value=two")
-            .send()
             .await;
 
         assert_eq!(res.status(), StatusCode::OK);

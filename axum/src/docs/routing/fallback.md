@@ -16,7 +16,7 @@ let app = Router::new()
     .fallback(fallback);
 
 async fn fallback(uri: Uri) -> (StatusCode, String) {
-    (StatusCode::NOT_FOUND, format!("No route for {}", uri))
+    (StatusCode::NOT_FOUND, format!("No route for {uri}"))
 }
 # let _: Router = app;
 ```

@@ -14,11 +14,12 @@ use std::{
     fmt,
     future::Future,
     pin::Pin,
+    sync::Mutex,
     task::{Context, Poll},
 };
 use tower::{
-    util::{BoxCloneService, MapResponseLayer, Oneshot},
-    ServiceBuilder, ServiceExt,
+    util::{BoxCloneService, MapErrLayer, MapRequestLayer, MapResponseLayer, Oneshot},
+    ServiceExt,
 };
 use tower_layer::Layer;
 use tower_service::Service;
@@ -27,7 +28,7 @@ use tower_service::Service;
 ///
 /// You normally shouldn't need to care about this type. It's used in
 /// [`Router::layer`](super::Router::layer).
-pub struct Route<E = Infallible>(BoxCloneService<Request, Response, E>);
+pub struct Route<E = Infallible>(Mutex<BoxCloneService<Request, Response, E>>);
 
 impl<E> Route<E> {
     pub(crate) fn new<T>(svc: T) -> Self
@@ -36,16 +37,16 @@ impl<E> Route<E> {
         T::Response: IntoResponse + 'static,
         T::Future: Send + 'static,
     {
-        Self(BoxCloneService::new(
+        Self(Mutex::new(BoxCloneService::new(
             svc.map_response(IntoResponse::into_response),
-        ))
+        )))
     }
 
     pub(crate) fn oneshot_inner(
         &mut self,
         req: Request,
     ) -> Oneshot<BoxCloneService<Request, Response, E>, Request> {
-        self.0.clone().oneshot(req)
+        self.0.get_mut().unwrap().clone().oneshot(req)
     }
 
     pub(crate) fn layer<L, NewError>(self, layer: L) -> Route<NewError>
@@ -57,12 +58,12 @@ impl<E> Route<E> {
         <L::Service as Service<Request>>::Future: Send + 'static,
         NewError: 'static,
     {
-        let layer = ServiceBuilder::new()
-            .map_request(|req: Request<_>| req.map(Body::new))
-            .map_err(Into::into)
-            .layer(MapResponseLayer::new(IntoResponse::into_response))
-            .layer(layer)
-            .into_inner();
+        let layer = (
+            MapRequestLayer::new(|req: Request<_>| req.map(Body::new)),
+            MapErrLayer::new(Into::into),
+            MapResponseLayer::new(IntoResponse::into_response),
+            layer,
+        );
 
         Route::new(layer.layer(self))
     }
@@ -70,7 +71,7 @@ impl<E> Route<E> {
 
 impl<E> Clone for Route<E> {
     fn clone(&self) -> Self {
-        Self(self.0.clone())
+        Self(Mutex::new(self.0.lock().unwrap().clone()))
     }
 }
 
