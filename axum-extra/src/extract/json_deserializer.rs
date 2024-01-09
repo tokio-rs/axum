@@ -10,7 +10,7 @@ use std::marker::PhantomData;
 
 /// JSON Extractor for zero-copy deserialization.
 ///
-/// Deserialize request bodies into some type that implements [`serde::Deserialize<'de>`].
+/// Deserialize request bodies into some type that implements [`serde::Deserialize<'de>`](`serde::Deserialize`).
 /// Parsing JSON is delayed until [`deserialize`](JsonDeserializer::deserialize) is called.
 /// If the type implements [`serde::de::DeserializeOwned`], the [`Json`](axum::Json) extractor should
 /// be preferred.
