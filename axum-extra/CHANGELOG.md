@@ -9,8 +9,10 @@ and this project adheres to [Semantic Versioning].
 
 - **added:** Implement `TypedPath` for `WithRejection<TypedPath, _>`
 - **fixed:** Documentation link to `serde::Deserialize` in `JsonDeserializer` extractor ([#2498])
+- **added:** Add `is_missing` function for `TypedHeaderRejection` and `TypedHeaderRejectionReason` ([#2503])
 
 [#2498]: https://github.com/tokio-rs/axum/pull/2498
+[#2503]: https://github.com/tokio-rs/axum/pull/2503
 
 # 0.9.1 (29. December, 2023)
 
