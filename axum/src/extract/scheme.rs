@@ -9,9 +9,9 @@ use http::{
 };
 const X_FORWARDED_PROTO_HEADER_KEY: &str = "X-Forwarded-Proto";
 
-/// Extractor that resolves the hostname of the request.
+/// Extractor that resolves the scheme / protocol of the request.
 ///
-/// Hostname is resolved through the following, in order:
+/// The scheme is resolved through the following, in order:
 /// - `Forwarded` header
 /// - `X-Forwarded-Proto` header
 /// - request target / URI
@@ -38,7 +38,7 @@ where
         if let Some(scheme) = parts
             .headers
             .get(X_FORWARDED_PROTO_HEADER_KEY)
-            .and_then(|host| host.to_str().ok())
+            .and_then(|scheme| scheme.to_str().ok())
         {
             return Ok(Scheme(scheme.to_owned()));
         }
