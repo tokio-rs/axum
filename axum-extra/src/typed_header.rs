@@ -123,6 +123,14 @@ impl TypedHeaderRejection {
     pub fn reason(&self) -> &TypedHeaderRejectionReason {
         &self.reason
     }
+
+    /// Returns `true` if the typed header rejection reason is [`Missing`].
+    ///
+    /// [`Missing`]: TypedHeaderRejectionReason::Missing
+    #[must_use]
+    pub fn is_missing(&self) -> bool {
+        self.reason.is_missing()
+    }
 }
 
 /// Additional information regarding a [`TypedHeaderRejection`]
@@ -134,6 +142,16 @@ pub enum TypedHeaderRejectionReason {
     Missing,
     /// An error occurred when parsing the header from the HTTP request
     Error(headers::Error),
+}
+
+impl TypedHeaderRejectionReason {
+    /// Returns `true` if the typed header rejection reason is [`Missing`].
+    ///
+    /// [`Missing`]: TypedHeaderRejectionReason::Missing
+    #[must_use]
+    pub fn is_missing(&self) -> bool {
+        matches!(self, Self::Missing)
+    }
 }
 
 impl IntoResponse for TypedHeaderRejection {

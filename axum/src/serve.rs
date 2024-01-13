@@ -108,6 +108,7 @@ where
 
 /// Future returned by [`serve`].
 #[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
+#[must_use = "futures must be awaited or polled"]
 pub struct Serve<M, S> {
     tcp_listener: TcpListener,
     make_service: M,
@@ -234,6 +235,7 @@ where
 
 /// Serve future with graceful shutdown enabled.
 #[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
+#[must_use = "futures must be awaited or polled"]
 pub struct WithGracefulShutdown<M, S, F> {
     tcp_listener: TcpListener,
     make_service: M,
