@@ -1,6 +1,7 @@
-use std::{convert::Infallible, fmt, sync::Mutex};
+use std::{convert::Infallible, fmt};
 
 use crate::extract::Request;
+use crate::util::AxumMutex;
 use tower::Service;
 
 use crate::{
@@ -9,7 +10,7 @@ use crate::{
     Router,
 };
 
-pub(crate) struct BoxedIntoRoute<S, E>(Mutex<Box<dyn ErasedIntoRoute<S, E>>>);
+pub(crate) struct BoxedIntoRoute<S, E>(AxumMutex<Box<dyn ErasedIntoRoute<S, E>>>);
 
 impl<S> BoxedIntoRoute<S, Infallible>
 where
@@ -20,7 +21,7 @@ where
         H: Handler<T, S>,
         T: 'static,
     {
-        Self(Mutex::new(Box::new(MakeErasedHandler {
+        Self(AxumMutex::new(Box::new(MakeErasedHandler {
             handler,
             into_route: |handler, state| Route::new(Handler::with_state(handler, state)),
         })))
@@ -35,7 +36,7 @@ impl<S, E> BoxedIntoRoute<S, E> {
         F: FnOnce(Route<E>) -> Route<E2> + Clone + Send + 'static,
         E2: 'static,
     {
-        BoxedIntoRoute(Mutex::new(Box::new(Map {
+        BoxedIntoRoute(AxumMutex::new(Box::new(Map {
             inner: self.0.into_inner().unwrap(),
             layer: Box::new(f),
         })))
@@ -48,7 +49,7 @@ impl<S, E> BoxedIntoRoute<S, E> {
 
 impl<S, E> Clone for BoxedIntoRoute<S, E> {
     fn clone(&self) -> Self {
-        Self(Mutex::new(self.0.lock().unwrap().clone_box()))
+        Self(AxumMutex::new(self.0.lock().unwrap().clone_box()))
     }
 }
 
@@ -118,7 +119,7 @@ where
         (self.into_route)(self.router, state)
     }
 
-    fn call_with_state(mut self: Box<Self>, request: Request, state: S) -> RouteFuture<Infallible> {
+    fn call_with_state(self: Box<Self>, request: Request, state: S) -> RouteFuture<Infallible> {
         self.router.call_with_state(request, state)
     }
 }
