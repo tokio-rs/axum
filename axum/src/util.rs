@@ -66,7 +66,7 @@ fn test_try_downcast() {
 // times it's been locked on the current task. That way we can write a test to ensure we don't
 // accidentally introduce more locking.
 //
-// When not in test mode its a literal type alias for `std::sync::Mutex`.
+// When not in test mode, it is just a type alias for `std::sync::Mutex`.
 #[cfg(not(test))]
 mod mutex {
     #[allow(clippy::disallowed_types)]
