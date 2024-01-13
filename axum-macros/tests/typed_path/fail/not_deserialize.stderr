@@ -13,7 +13,27 @@ error[E0277]: the trait bound `for<'de> MyPath: serde::de::Deserialize<'de>` is 
             i32
             i64
             i128
-          and $N others
+          and 131 others
+  = note: required for `MyPath` to implement `serde::de::DeserializeOwned`
+  = note: required for `axum::extract::Path<MyPath>` to implement `FromRequestParts<S>`
+  = note: this error originates in the derive macro `TypedPath` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the trait bound `for<'de> MyPath: serde::de::Deserialize<'de>` is not satisfied
+ --> tests/typed_path/fail/not_deserialize.rs:3:10
+  |
+3 | #[derive(TypedPath)]
+  |          ^^^^^^^^^ the trait `for<'de> serde::de::Deserialize<'de>` is not implemented for `MyPath`
+  |
+  = help: the following other types implement trait `serde::de::Deserialize<'de>`:
+            bool
+            char
+            isize
+            i8
+            i16
+            i32
+            i64
+            i128
+          and 131 others
   = note: required for `MyPath` to implement `serde::de::DeserializeOwned`
   = note: required for `axum::extract::Path<MyPath>` to implement `FromRequestParts<S>`
   = note: this error originates in the derive macro `TypedPath` (in Nightly builds, run with -Z macro-backtrace for more info)

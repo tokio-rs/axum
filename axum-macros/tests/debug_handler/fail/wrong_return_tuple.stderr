@@ -19,6 +19,6 @@ error[E0277]: the trait bound `CustomIntoResponse: IntoResponseParts` is not sat
              [(K, V); N]
              ()
              (T1,)
-           and $N others
+           and 15 others
    = help: see issue #48214
    = help: add `#![feature(trivial_bounds)]` to the crate attributes to enable

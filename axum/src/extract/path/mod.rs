@@ -9,7 +9,11 @@ use crate::{
     util::PercentDecodedStr,
 };
 use async_trait::async_trait;
-use axum_core::response::{IntoResponse, Response};
+use axum_core::{
+    extract::OptionalFromRequestParts,
+    response::{IntoResponse, Response},
+    RequestPartsExt as _,
+};
 use http::{request::Parts, StatusCode};
 use serde::de::DeserializeOwned;
 use std::{fmt, sync::Arc};
@@ -175,6 +179,30 @@ where
                 PathRejection::FailedToDeserializePathParams(FailedToDeserializePathParams(err))
             })
             .map(Path)
+    }
+}
+
+#[async_trait]
+impl<T, S> OptionalFromRequestParts<S> for Path<T>
+where
+    T: DeserializeOwned + Send + 'static,
+    S: Send + Sync,
+{
+    type Rejection = PathRejection;
+
+    async fn from_request_parts(
+        parts: &mut Parts,
+        _state: &S,
+    ) -> Result<Option<Self>, Self::Rejection> {
+        match parts.extract::<Self>().await {
+            Ok(Self(params)) => Ok(Some(Self(params))),
+            Err(PathRejection::FailedToDeserializePathParams(e))
+                if matches!(e.kind(), ErrorKind::WrongNumberOfParameters { got: 0, .. }) =>
+            {
+                Ok(None)
+            }
+            Err(e) => Err(e),
+        }
     }
 }
 

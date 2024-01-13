@@ -15,7 +15,7 @@ error[E0277]: the trait bound `bool: FromRequestParts<()>` is not satisfied
             <Version as FromRequestParts<S>>
             <Extensions as FromRequestParts<S>>
             <ConnectInfo<T> as FromRequestParts<S>>
-          and $N others
+          and 28 others
   = note: required for `bool` to implement `FromRequest<(), axum_core::extract::private::ViaParts>`
 note: required by a bound in `__axum_macros_check_handler_0_from_request_check`
  --> tests/debug_handler/fail/argument_not_extractor.rs:5:24

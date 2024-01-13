@@ -12,7 +12,7 @@ use anyhow::{Context, Result};
 use async_session::{MemoryStore, Session, SessionStore};
 use axum::{
     async_trait,
-    extract::{FromRef, FromRequestParts, Query, State},
+    extract::{FromRef, FromRequestParts, OptionalFromRequestParts, Query, State},
     http::{header::SET_COOKIE, HeaderMap},
     response::{IntoResponse, Redirect, Response},
     routing::get,
@@ -25,7 +25,7 @@ use oauth2::{
     ClientSecret, CsrfToken, RedirectUrl, Scope, TokenResponse, TokenUrl,
 };
 use serde::{Deserialize, Serialize};
-use std::env;
+use std::{convert::Infallible, env};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 static COOKIE_NAME: &str = "SESSION";
@@ -282,6 +282,25 @@ where
         let user = session.get::<User>("user").ok_or(AuthRedirect)?;
 
         Ok(user)
+    }
+}
+
+#[async_trait]
+impl<S> OptionalFromRequestParts<S> for User
+where
+    MemoryStore: FromRef<S>,
+    S: Send + Sync,
+{
+    type Rejection = Infallible;
+
+    async fn from_request_parts(
+        parts: &mut Parts,
+        state: &S,
+    ) -> Result<Option<Self>, Self::Rejection> {
+        match FromRequestParts::from_request_parts(parts, state).await {
+            Ok(res) => Ok(Some(res)),
+            Err(AuthRedirect) => Ok(None),
+        }
     }
 }
 

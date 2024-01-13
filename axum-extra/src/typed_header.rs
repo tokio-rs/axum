@@ -2,7 +2,7 @@
 
 use axum::{
     async_trait,
-    extract::FromRequestParts,
+    extract::{FromRequestParts, OptionalFromRequestParts},
     response::{IntoResponse, IntoResponseParts, Response, ResponseParts},
 };
 use headers::{Header, HeaderMapExt};
@@ -77,6 +77,31 @@ where
                     TypedHeaderRejectionReason::Error(err)
                 },
             })
+    }
+}
+
+#[async_trait]
+impl<T, S> OptionalFromRequestParts<S> for TypedHeader<T>
+where
+    T: Header,
+    S: Send + Sync,
+{
+    type Rejection = TypedHeaderRejection;
+
+    async fn from_request_parts(
+        parts: &mut Parts,
+        _state: &S,
+    ) -> Result<Option<Self>, Self::Rejection> {
+        let mut values = parts.headers.get_all(T::name()).iter();
+        let is_missing = values.size_hint() == (0, Some(0));
+        match T::decode(&mut values) {
+            Ok(res) => Ok(Some(Self(res))),
+            Err(_) if is_missing => Ok(None),
+            Err(err) => Err(TypedHeaderRejection {
+                name: T::name(),
+                reason: TypedHeaderRejectionReason::Error(err),
+            }),
+        }
     }
 }
 

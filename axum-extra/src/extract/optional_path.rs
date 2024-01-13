@@ -1,6 +1,6 @@
 use axum::{
     async_trait,
-    extract::{path::ErrorKind, rejection::PathRejection, FromRequestParts, Path},
+    extract::{rejection::PathRejection, FromRequestParts, Path},
     RequestPartsExt,
 };
 use serde::de::DeserializeOwned;
@@ -32,9 +32,11 @@ use serde::de::DeserializeOwned;
 ///     .route("/blog/:page", get(render_blog));
 /// # let app: Router = app;
 /// ```
+#[deprecated = "Use Option<Path<_>> instead"]
 #[derive(Debug)]
 pub struct OptionalPath<T>(pub Option<T>);
 
+#[allow(deprecated)]
 #[async_trait]
 impl<T, S> FromRequestParts<S> for OptionalPath<T>
 where
@@ -47,19 +49,15 @@ where
         parts: &mut http::request::Parts,
         _: &S,
     ) -> Result<Self, Self::Rejection> {
-        match parts.extract::<Path<T>>().await {
-            Ok(Path(params)) => Ok(Self(Some(params))),
-            Err(PathRejection::FailedToDeserializePathParams(e))
-                if matches!(e.kind(), ErrorKind::WrongNumberOfParameters { got: 0, .. }) =>
-            {
-                Ok(Self(None))
-            }
-            Err(e) => Err(e),
-        }
+        parts
+            .extract::<Option<Path<T>>>()
+            .await
+            .map(|opt| Self(opt.map(|Path(x)| x)))
     }
 }
 
 #[cfg(test)]
+#[allow(deprecated)]
 mod tests {
     use std::num::NonZeroU32;
 
