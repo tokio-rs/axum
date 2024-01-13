@@ -7,8 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- **fixed:** Improve `debug_handler` on tuple response types ([#2201])
+- None.
+
+# 0.7.4 (13. January, 2024)
+
 - **fixed:** Fix performance regression present since axum 0.7.0 ([#2483])
+- **fixed:** Improve `debug_handler` on tuple response types ([#2201])
 - **added:** Add `must_use` attribute to `Serve` and `WithGracefulShutdown` ([#2484])
 - **added:** Re-export `axum_core::body::BodyDataStream` from axum
 

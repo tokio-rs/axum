@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning].
 
 # Unreleased
 
+- None.
+
+# 0.9.2 (13. January, 2024)
+
 - **added:** Implement `TypedPath` for `WithRejection<TypedPath, _>`
 - **fixed:** Documentation link to `serde::Deserialize` in `JsonDeserializer` extractor ([#2498])
 - **added:** Add `is_missing` function for `TypedHeaderRejection` and `TypedHeaderRejectionReason` ([#2503])
