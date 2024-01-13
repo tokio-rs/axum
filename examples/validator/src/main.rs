@@ -10,7 +10,6 @@
 //! -> <h1>Hello, LT!</h1>
 //! ```
 
-use async_trait::async_trait;
 use axum::{
     extract::{rejection::FormRejection, Form, FromRequest, Request},
     http::StatusCode,
@@ -56,7 +55,6 @@ async fn handler(ValidatedForm(input): ValidatedForm<NameInput>) -> Html<String>
 #[derive(Debug, Clone, Copy, Default)]
 pub struct ValidatedForm<T>(pub T);
 
-#[async_trait]
 impl<T, S> FromRequest<S> for ValidatedForm<T>
 where
     T: DeserializeOwned + Validate,

@@ -1,4 +1,3 @@
-use async_trait::async_trait;
 use axum_core::extract::{FromRequest, Request};
 use bytes::Bytes;
 use http::Method;
@@ -30,7 +29,6 @@ use super::{
 #[derive(Debug)]
 pub struct RawForm(pub Bytes);
 
-#[async_trait]
 impl<S> FromRequest<S> for RawForm
 where
     S: Send + Sync,

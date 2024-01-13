@@ -1,5 +1,4 @@
 use axum::{
-    async_trait,
     extract::{rejection::ExtensionRejection, FromRequestParts},
     http::{request::Parts, StatusCode},
     response::{IntoResponse, Response},
@@ -26,7 +25,6 @@ struct MyExtractor {
 
 struct OtherExtractor;
 
-#[async_trait]
 impl<S> FromRequestParts<S> for OtherExtractor
 where
     S: Send + Sync,

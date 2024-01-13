@@ -4,7 +4,6 @@ use std::{
 };
 
 use crate::extract::Request;
-use async_trait::async_trait;
 use axum_core::extract::FromRequestParts;
 use http::request::Parts;
 use tower_layer::{layer_fn, Layer};
@@ -47,7 +46,6 @@ impl NestedPath {
     }
 }
 
-#[async_trait]
 impl<S> FromRequestParts<S> for NestedPath
 where
     S: Send + Sync,

@@ -7,7 +7,6 @@
 //! ```
 
 use axum::{
-    async_trait,
     extract::{FromRequest, Request},
     http::{header::CONTENT_TYPE, StatusCode},
     response::{IntoResponse, Response},
@@ -48,7 +47,6 @@ async fn handler(JsonOrForm(payload): JsonOrForm<Payload>) {
 
 struct JsonOrForm<T>(T);
 
-#[async_trait]
 impl<S, T> FromRequest<S> for JsonOrForm<T>
 where
     S: Send + Sync,

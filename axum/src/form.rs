@@ -1,6 +1,5 @@
 use crate::extract::Request;
 use crate::extract::{rejection::*, FromRequest, RawForm};
-use async_trait::async_trait;
 use axum_core::response::{IntoResponse, Response};
 use axum_core::RequestExt;
 use http::header::CONTENT_TYPE;
@@ -72,7 +71,6 @@ use serde::Serialize;
 #[must_use]
 pub struct Form<T>(pub T);
 
-#[async_trait]
 impl<T, S> FromRequest<S> for Form<T>
 where
     T: DeserializeOwned,

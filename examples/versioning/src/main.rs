@@ -5,7 +5,6 @@
 //! ```
 
 use axum::{
-    async_trait,
     extract::{FromRequestParts, Path},
     http::{request::Parts, StatusCode},
     response::{IntoResponse, Response},
@@ -47,7 +46,6 @@ enum Version {
     V3,
 }
 
-#[async_trait]
 impl<S> FromRequestParts<S> for Version
 where
     S: Send + Sync,

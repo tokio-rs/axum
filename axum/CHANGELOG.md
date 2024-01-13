@@ -585,7 +585,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ```rust
   struct MyExtractor { /* ... */ }
 
-  #[async_trait]
   impl<B> FromRequest<B> for MyExtractor
   where
       B: Send,
@@ -604,13 +603,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   use axum::{
       extract::{FromRequest, FromRequestParts},
       http::{StatusCode, Request, request::Parts},
-      async_trait,
   };
 
   struct MyExtractor { /* ... */ }
 
   // implement `FromRequestParts` if you don't need to consume the request body
-  #[async_trait]
   impl<S> FromRequestParts<S> for MyExtractor
   where
       S: Send + Sync,
@@ -623,7 +620,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   }
 
   // implement `FromRequest` if you do need to consume the request body
-  #[async_trait]
   impl<S, B> FromRequest<S, B> for MyExtractor
   where
       S: Send + Sync,
@@ -1171,7 +1167,6 @@ Yanked, as it didn't compile in release mode.
   ```rust
   struct MyExtractor { /* ... */ }
 
-  #[async_trait]
   impl<B> FromRequest<B> for MyExtractor
   where
       B: Send,
@@ -1190,13 +1185,11 @@ Yanked, as it didn't compile in release mode.
   use axum::{
       extract::{FromRequest, FromRequestParts},
       http::{StatusCode, Request, request::Parts},
-      async_trait,
   };
 
   struct MyExtractor { /* ... */ }
 
   // implement `FromRequestParts` if you don't need to consume the request body
-  #[async_trait]
   impl<S> FromRequestParts<S> for MyExtractor
   where
       S: Send + Sync,
@@ -1209,7 +1202,6 @@ Yanked, as it didn't compile in release mode.
   }
 
   // implement `FromRequest` if you do need to consume the request body
-  #[async_trait]
   impl<S, B> FromRequest<S, B> for MyExtractor
   where
       S: Send + Sync,

@@ -6,13 +6,11 @@ mod tests {
     use std::convert::Infallible;
 
     use crate::extract::{FromRef, FromRequestParts};
-    use async_trait::async_trait;
     use http::request::Parts;
 
     #[derive(Debug, Default, Clone, Copy)]
     pub(crate) struct State<S>(pub(crate) S);
 
-    #[async_trait]
     impl<OuterState, InnerState> FromRequestParts<OuterState> for State<InnerState>
     where
         InnerState: FromRef<OuterState>,
@@ -32,7 +30,6 @@ mod tests {
     // some extractor that requires the state, such as `SignedCookieJar`
     pub(crate) struct RequiresState(pub(crate) String);
 
-    #[async_trait]
     impl<S> FromRequestParts<S> for RequiresState
     where
         S: Send + Sync,

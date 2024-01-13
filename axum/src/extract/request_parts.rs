@@ -1,5 +1,4 @@
 use super::{Extension, FromRequestParts};
-use async_trait::async_trait;
 use http::{request::Parts, Uri};
 use std::convert::Infallible;
 
@@ -70,7 +69,6 @@ use std::convert::Infallible;
 pub struct OriginalUri(pub Uri);
 
 #[cfg(feature = "original-uri")]
-#[async_trait]
 impl<S> FromRequestParts<S> for OriginalUri
 where
     S: Send + Sync,

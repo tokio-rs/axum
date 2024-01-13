@@ -1,6 +1,5 @@
 use crate::extract::Request;
 use crate::extract::{rejection::*, FromRequest};
-use async_trait::async_trait;
 use axum_core::response::{IntoResponse, Response};
 use bytes::{BufMut, Bytes, BytesMut};
 use http::{
@@ -92,7 +91,6 @@ use serde::{de::DeserializeOwned, Serialize};
 #[must_use]
 pub struct Json<T>(pub T);
 
-#[async_trait]
 impl<T, S> FromRequest<S> for Json<T>
 where
     T: DeserializeOwned,

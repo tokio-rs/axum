@@ -1,5 +1,4 @@
 use axum::{
-    async_trait,
     extract::{rejection::RawFormRejection, FromRequest, RawForm, Request},
     response::{IntoResponse, Response},
     Error, RequestExt,
@@ -44,7 +43,6 @@ pub struct Form<T>(pub T);
 
 axum_core::__impl_deref!(Form);
 
-#[async_trait]
 impl<T, S> FromRequest<S> for Form<T>
 where
     T: DeserializeOwned,

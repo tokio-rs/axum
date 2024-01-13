@@ -1,4 +1,3 @@
-use async_trait::async_trait;
 use axum_core::extract::{FromRef, FromRequestParts};
 use http::request::Parts;
 use std::{
@@ -219,13 +218,11 @@ use std::{
 /// ```rust
 /// use axum_core::extract::{FromRequestParts, FromRef};
 /// use http::request::Parts;
-/// use async_trait::async_trait;
 /// use std::convert::Infallible;
 ///
 /// // the extractor your library provides
 /// struct MyLibraryExtractor;
 ///
-/// #[async_trait]
 /// impl<S> FromRequestParts<S> for MyLibraryExtractor
 /// where
 ///     // keep `S` generic but require that it can produce a `MyLibraryState`
@@ -344,7 +341,6 @@ use std::{
 #[derive(Debug, Default, Clone, Copy)]
 pub struct State<S>(pub S);
 
-#[async_trait]
 impl<OuterState, InnerState> FromRequestParts<OuterState> for State<InnerState>
 where
     InnerState: FromRef<OuterState>,

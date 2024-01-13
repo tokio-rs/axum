@@ -1,5 +1,4 @@
 use axum::{
-    async_trait,
     extract::{path::ErrorKind, rejection::PathRejection, FromRequestParts, Path},
     RequestPartsExt,
 };
@@ -35,7 +34,6 @@ use serde::de::DeserializeOwned;
 #[derive(Debug)]
 pub struct OptionalPath<T>(pub Option<T>);
 
-#[async_trait]
 impl<T, S> FromRequestParts<S> for OptionalPath<T>
 where
     T: DeserializeOwned + Send + 'static,

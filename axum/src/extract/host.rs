@@ -2,7 +2,6 @@ use super::{
     rejection::{FailedToResolveHost, HostRejection},
     FromRequestParts,
 };
-use async_trait::async_trait;
 use http::{
     header::{HeaderMap, FORWARDED},
     request::Parts,
@@ -23,7 +22,6 @@ const X_FORWARDED_HOST_HEADER_KEY: &str = "X-Forwarded-Host";
 #[derive(Debug, Clone)]
 pub struct Host(pub String);
 
-#[async_trait]
 impl<S> FromRequestParts<S> for Host
 where
     S: Send + Sync,

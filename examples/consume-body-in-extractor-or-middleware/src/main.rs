@@ -5,7 +5,6 @@
 //! ```
 
 use axum::{
-    async_trait,
     body::{Body, Bytes},
     extract::{FromRequest, Request},
     http::StatusCode,
@@ -74,7 +73,6 @@ async fn handler(BufferRequestBody(body): BufferRequestBody) {
 struct BufferRequestBody(Bytes);
 
 // we must implement `FromRequest` (and not `FromRequestParts`) to consume the body
-#[async_trait]
 impl<S> FromRequest<S> for BufferRequestBody
 where
     S: Send + Sync,

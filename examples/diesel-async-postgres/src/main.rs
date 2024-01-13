@@ -13,7 +13,6 @@
 //! for a real world application using axum and diesel
 
 use axum::{
-    async_trait,
     extract::{FromRef, FromRequestParts, State},
     http::{request::Parts, StatusCode},
     response::Json,
@@ -102,7 +101,6 @@ struct DatabaseConnection(
     bb8::PooledConnection<'static, AsyncDieselConnectionManager<AsyncPgConnection>>,
 );
 
-#[async_trait]
 impl<S> FromRequestParts<S> for DatabaseConnection
 where
     S: Send + Sync,

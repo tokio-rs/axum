@@ -1,10 +1,8 @@
 use super::{FromRequest, FromRequestParts, Request};
 use crate::response::{IntoResponse, Response};
-use async_trait::async_trait;
 use http::request::Parts;
 use std::convert::Infallible;
 
-#[async_trait]
 impl<S> FromRequestParts<S> for ()
 where
     S: Send + Sync,
@@ -20,7 +18,6 @@ macro_rules! impl_from_request {
     (
         [$($ty:ident),*], $last:ident
     ) => {
-        #[async_trait]
         #[allow(non_snake_case, unused_mut, unused_variables)]
         impl<S, $($ty,)* $last> FromRequestParts<S> for ($($ty,)* $last,)
         where
@@ -46,7 +43,6 @@ macro_rules! impl_from_request {
 
         // This impl must not be generic over M, otherwise it would conflict with the blanket
         // implementation of `FromRequest<S, Mut>` for `T: FromRequestParts<S>`.
-        #[async_trait]
         #[allow(non_snake_case, unused_mut, unused_variables)]
         impl<S, $($ty,)* $last> FromRequest<S> for ($($ty,)* $last,)
         where

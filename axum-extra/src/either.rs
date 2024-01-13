@@ -7,7 +7,6 @@
 //! use axum::{
 //!     body::Bytes,
 //!     Router,
-//!     async_trait,
 //!     routing::get,
 //!     extract::FromRequestParts,
 //! };
@@ -15,7 +14,6 @@
 //! // extractors for checking permissions
 //! struct AdminPermissions {}
 //!
-//! #[async_trait]
 //! impl<S> FromRequestParts<S> for AdminPermissions
 //! where
 //!     S: Send + Sync,
@@ -29,7 +27,6 @@
 //!
 //! struct User {}
 //!
-//! #[async_trait]
 //! impl<S> FromRequestParts<S> for User
 //! where
 //!     S: Send + Sync,
@@ -96,7 +93,6 @@
 use std::task::{Context, Poll};
 
 use axum::{
-    async_trait,
     extract::FromRequestParts,
     response::{IntoResponse, Response},
 };
@@ -236,7 +232,6 @@ macro_rules! impl_traits_for_either {
         [$($ident:ident),* $(,)?],
         $last:ident $(,)?
     ) => {
-        #[async_trait]
         impl<S, $($ident),*, $last> FromRequestParts<S> for $either<$($ident),*, $last>
         where
             $($ident: FromRequestParts<S>),*,
@@ -247,12 +242,12 @@ macro_rules! impl_traits_for_either {
 
             async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
                 $(
-                    if let Ok(value) = FromRequestParts::from_request_parts(parts, state).await {
+                    if let Ok(value) = <$ident as FromRequestParts<S>>::from_request_parts(parts, state).await {
                         return Ok(Self::$ident(value));
                     }
                 )*
 
-                FromRequestParts::from_request_parts(parts, state).await.map(Self::$last)
+                <$last as FromRequestParts<S>>::from_request_parts(parts, state).await.map(Self::$last)
             }
         }
 

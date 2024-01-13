@@ -93,7 +93,6 @@
 use self::rejection::*;
 use super::FromRequestParts;
 use crate::{body::Bytes, response::Response, Error};
-use async_trait::async_trait;
 use axum_core::body::Body;
 use futures_util::{
     sink::{Sink, SinkExt},
@@ -381,7 +380,6 @@ impl OnFailedUpgrade for DefaultOnFailedUpgrade {
     fn call(self, _error: Error) {}
 }
 
-#[async_trait]
 impl<S> FromRequestParts<S> for WebSocketUpgrade<DefaultOnFailedUpgrade>
 where
     S: Send + Sync,
