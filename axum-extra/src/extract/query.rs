@@ -55,7 +55,7 @@ use std::fmt;
 /// While `Option<T>` will handle empty parameters (e.g. `param=`), beware when using this with a
 /// `Vec<T>`. If your list is optional, use `Vec<T>` in combination with `#[serde(default)]`
 /// instead of `Option<Vec<T>>`. `Option<Vec<T>>` will handle 0, 2, or more arguments, but not one
-/// argument. For details, see [the documentation of `serde_html_form`].
+/// argument.
 ///
 /// # Example
 ///
@@ -78,8 +78,6 @@ use std::fmt;
 /// let app = Router::new().route("/process_items", get(process_items));
 /// # let _: Router = app;
 /// ```
-///
-/// [the documentation of `serde_html_form`]: https://docs.rs/serde_html_form/0.2.3/serde_html_form/index.html
 #[cfg_attr(docsrs, doc(cfg(feature = "query")))]
 #[derive(Debug, Clone, Copy, Default)]
 pub struct Query<T>(pub T);
