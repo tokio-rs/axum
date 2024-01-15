@@ -42,6 +42,11 @@ use serde::de::DeserializeOwned;
 /// example.
 ///
 /// [example]: https://github.com/tokio-rs/axum/blob/main/examples/query-params-with-empty-strings/src/main.rs
+///
+/// For handling multiple values for the same query parameter, in a `?foo=1&foo=2&foo=3`
+/// fashion, use [`axum_extra::extract::Query`] instead.
+///
+/// [`axum_extra::extract::Query`]: https://docs.rs/axum-extra/latest/axum_extra/extract/struct.Query.html
 #[cfg_attr(docsrs, doc(cfg(feature = "query")))]
 #[derive(Debug, Clone, Copy, Default)]
 pub struct Query<T>(pub T);
