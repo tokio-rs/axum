@@ -16,7 +16,7 @@ axum is unique in that it doesn't have its own bespoke middleware system and
 instead integrates with [`tower`]. This means the ecosystem of [`tower`] and
 [`tower-http`] middleware all work with axum.
 
-While its not necessary to fully understand tower to write or use middleware
+While it's not necessary to fully understand tower to write or use middleware
 with axum, having at least a basic understanding of tower's concepts is
 recommended. See [tower's guides][tower-guides] for a general introduction.
 Reading the documentation for [`tower::ServiceBuilder`] is also recommended.
@@ -31,7 +31,7 @@ axum allows you to add middleware just about anywhere
 
 ## Applying multiple middleware
 
-Its recommended to use [`tower::ServiceBuilder`] to apply multiple middleware at
+It's recommended to use [`tower::ServiceBuilder`] to apply multiple middleware at
 once, instead of calling `layer` (or `route_layer`) repeatedly:
 
 ```rust
@@ -128,9 +128,9 @@ That is:
 
 It's a little more complicated in practice because any middleware is free to
 return early and not call the next layer, for example if a request cannot be
-authorized, but its a useful mental model to have.
+authorized, but it's a useful mental model to have.
 
-As previously mentioned its recommended to add multiple middleware using
+As previously mentioned it's recommended to add multiple middleware using
 `tower::ServiceBuilder`, however this impacts ordering:
 
 ```rust

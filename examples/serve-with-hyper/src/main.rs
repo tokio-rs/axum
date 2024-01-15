@@ -6,7 +6,7 @@
 //!
 //! This example shows how to run axum using hyper's low level API.
 //!
-//! The [hyper-util] crate exists to provide high level utilities but its still in early stages of
+//! The [hyper-util] crate exists to provide high level utilities but it's still in early stages of
 //! development.
 //!
 //! [hyper-util]: https://crates.io/crates/hyper-util

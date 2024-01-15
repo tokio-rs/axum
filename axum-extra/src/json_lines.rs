@@ -55,7 +55,7 @@ pin_project! {
     ///     JsonLines::new(stream_of_values()).into_response()
     /// }
     /// ```
-    // we use `AsExtractor` as the default because you're more likely to name this type if its used
+    // we use `AsExtractor` as the default because you're more likely to name this type if it's used
     // as an extractor
     #[must_use]
     pub struct JsonLines<S, T = AsExtractor> {

@@ -73,7 +73,7 @@ async fn main() {
             // `TokioIo` converts between them.
             let stream = TokioIo::new(tls_stream);
 
-            // Hyper has also its own `Service` trait and doesn't use tower. We can use
+            // Hyper also has its own `Service` trait and doesn't use tower. We can use
             // `hyper::service::service_fn` to create a hyper `Service` that calls our app through
             // `tower::Service::call`.
             let hyper_service = hyper::service::service_fn(move |request: Request<Incoming>| {

@@ -44,7 +44,7 @@ use std::{convert::Infallible, fmt};
 ///     }
 /// }
 ///
-/// // Its also recommended to implement `IntoResponse` so `SetHeader` can be used on its own as
+/// // It's also recommended to implement `IntoResponse` so `SetHeader` can be used on its own as
 /// // the response
 /// impl<'a> IntoResponse for SetHeader<'a> {
 ///     fn into_response(self) -> Response {
