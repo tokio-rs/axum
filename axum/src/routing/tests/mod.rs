@@ -499,7 +499,7 @@ async fn route_layer() {
 
     // it would be nice if this would return `405 Method Not Allowed`
     // but that requires knowing more about which method route we're calling, which we
-    // don't know currently since its just a generic `Service`
+    // don't know currently since it's just a generic `Service`
     let res = client.post("/foo").await;
     assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
 }
