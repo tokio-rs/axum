@@ -101,8 +101,8 @@ async fn track_metrics(req: Request, next: Next) -> impl IntoResponse {
 
     let response = next.run(req).await;
 
-    let latency = start.elapsed().as_secs_f64();
-    let status = response.status().as_u16().to_string();
+    metrics::counter!("http_requests_total", &labels).increment(1);
+    metrics::histogram!("http_requests_duration_seconds", &labels).record(latency);
 
     let labels = [
         ("method", method.to_string()),
