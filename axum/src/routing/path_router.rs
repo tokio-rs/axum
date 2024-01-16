@@ -180,16 +180,27 @@ where
                 .expect("no path for route id. This is a bug in axum. Please file an issue");
 
             let path = path_for_nested_route(prefix, inner_path);
-
+            let route_nested_root =
+                IS_FALLBACK && "/".eq(inner_path.as_ref()) && !path.ends_with('/');
+            let nested_root = match route_nested_root {
+                true => Some(format!("{path}/")),
+                false => None,
+            };
             let layer = (
                 StripPrefix::layer(prefix),
                 SetNestedPath::layer(path_to_nest_at),
             );
             match endpoint.layer(layer) {
                 Endpoint::MethodRouter(method_router) => {
+                    if let Some(nested_root) = nested_root {
+                        self.route(&nested_root, method_router.clone())?;
+                    }
                     self.route(&path, method_router)?;
                 }
                 Endpoint::Route(route) => {
+                    if let Some(nested_root) = nested_root {
+                        self.route_endpoint(&nested_root, Endpoint::Route(route.clone()))?;
+                    }
                     self.route_endpoint(&path, Endpoint::Route(route))?;
                 }
             }

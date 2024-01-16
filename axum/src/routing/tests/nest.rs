@@ -383,6 +383,19 @@ async fn nesting_with_root_inner_router() {
     assert_eq!(res.status(), StatusCode::OK);
 }
 
+#[tokio::test]
+async fn nesting_with_root_inner_fallback() {
+    let app = Router::new().nest("/router", Router::new().fallback(get(|| async {})));
+
+    let client = TestClient::new(app);
+
+    let res = client.get("/router").await;
+    assert_eq!(res.status(), StatusCode::OK);
+
+    let res = client.get("/router/").await;
+    assert_eq!(res.status(), StatusCode::OK);
+}
+
 macro_rules! nested_route_test {
     (
         $name:ident,

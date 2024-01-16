@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- None.
+- **fixed:** Fallback handlers on nested routers returning 404
 
 # 0.7.4 (13. January, 2024)
 
