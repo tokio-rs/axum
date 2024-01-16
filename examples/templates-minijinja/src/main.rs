@@ -7,18 +7,22 @@
 //! Exposes three pages all sharing the same layout with a minimal nav menu.
 
 use axum::http::StatusCode;
-use axum::{response::Html, routing::get, Router, Extension};
-use minijinja::{Environment, context};
+use axum::{response::Html, routing::get, Extension, Router};
+use minijinja::{context, Environment};
 use std::sync::Arc;
 
 #[tokio::main]
 async fn main() {
     // init template engine and add templates
     let mut env = Environment::new();
-    env.add_template("layout", include_str!("../templates/layout.jinja")).unwrap();
-    env.add_template("home", include_str!("../templates/home.jinja")).unwrap();
-    env.add_template("content", include_str!("../templates/content.jinja")).unwrap();
-    env.add_template("about", include_str!("../templates/about.jinja")).unwrap();
+    env.add_template("layout", include_str!("../templates/layout.jinja"))
+        .unwrap();
+    env.add_template("home", include_str!("../templates/home.jinja"))
+        .unwrap();
+    env.add_template("content", include_str!("../templates/content.jinja"))
+        .unwrap();
+    env.add_template("about", include_str!("../templates/about.jinja"))
+        .unwrap();
     let env = Arc::new(env);
 
     // define routes
@@ -36,35 +40,41 @@ async fn main() {
     axum::serve(listener, app).await.unwrap();
 }
 
-async fn handler_home(Extension(env): Extension<Arc<Environment<'_>>>) -> Result<Html<String>, StatusCode> {
+async fn handler_home(
+    Extension(env): Extension<Arc<Environment<'_>>>,
+) -> Result<Html<String>, StatusCode> {
     let template = env.get_template("home").unwrap();
 
-    let rendered = template.render(context!{
-        title => "Home",
-        welcome_text => "Hello World!",
-    }).unwrap();
+    let rendered = template
+        .render(context! {
+            title => "Home",
+            welcome_text => "Hello World!",
+        })
+        .unwrap();
 
     Ok(Html(rendered))
 }
 
-async fn handler_content(Extension(env): Extension<Arc<Environment<'_>>>) -> Result<Html<String>, StatusCode> {
+async fn handler_content(
+    Extension(env): Extension<Arc<Environment<'_>>>,
+) -> Result<Html<String>, StatusCode> {
     let template = env.get_template("content").unwrap();
 
-    let some_example_entries = vec![
-        "Data 1",
-        "Data 2",
-        "Data 3",
-    ];
+    let some_example_entries = vec!["Data 1", "Data 2", "Data 3"];
 
-    let rendered = template.render(context!{
-        title => "Content",
-        entries => some_example_entries,
-    }).unwrap();
+    let rendered = template
+        .render(context! {
+            title => "Content",
+            entries => some_example_entries,
+        })
+        .unwrap();
 
     Ok(Html(rendered))
 }
 
-async fn handler_about(Extension(env): Extension<Arc<Environment<'_>>>) -> Result<Html<String>, StatusCode> {
+async fn handler_about(
+    Extension(env): Extension<Arc<Environment<'_>>>,
+) -> Result<Html<String>, StatusCode> {
     let template = env.get_template("about").unwrap();
 
     let rendered = template.render(context!{
@@ -74,4 +84,3 @@ async fn handler_about(Extension(env): Extension<Arc<Environment<'_>>>) -> Resul
 
     Ok(Html(rendered))
 }
-
