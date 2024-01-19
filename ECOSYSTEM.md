@@ -46,6 +46,7 @@ If your project isn't listed here and you would like it to be, please feel free 
 - [axum-serde](https://github.com/gengteng/axum-serde): Provides multiple serde-based extractors / responses, also offers a macro to easily customize serde-based extractors / responses.
 - [loco.rs](https://github.com/loco-rs/loco): A full stack Web and API productivity framework similar to Rails, based on Axum.
 - [axum-test](https://crates.io/crates/axum-test): High level library for writing Cargo tests that run against Axum.
+- [axum-messages](https://github.com/maxcountryman/axum-messages): One-time notification messages for Axum.
 
 ## Project showcase
 
