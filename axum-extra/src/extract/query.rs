@@ -1,3 +1,4 @@
+use super::rejection::*;
 use axum::{
     async_trait,
     extract::FromRequestParts,
@@ -92,52 +93,13 @@ where
 
     async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
         let query = parts.uri.query().unwrap_or_default();
-        let value = serde_html_form::from_str(query)
-            .map_err(|err| QueryRejection::FailedToDeserializeQueryString(Error::new(err)))?;
+        let value =
+            serde_html_form::from_str(query).map_err(FailedToDeserializeQueryString::from_err)?;
         Ok(Query(value))
     }
 }
 
 axum_core::__impl_deref!(Query);
-
-/// Rejection used for [`Query`].
-///
-/// Contains one variant for each way the [`Query`] extractor can fail.
-#[derive(Debug)]
-#[non_exhaustive]
-#[cfg(feature = "query")]
-pub enum QueryRejection {
-    #[allow(missing_docs)]
-    FailedToDeserializeQueryString(Error),
-}
-
-impl IntoResponse for QueryRejection {
-    fn into_response(self) -> Response {
-        match self {
-            Self::FailedToDeserializeQueryString(inner) => (
-                StatusCode::BAD_REQUEST,
-                format!("Failed to deserialize query string: {inner}"),
-            )
-                .into_response(),
-        }
-    }
-}
-
-impl fmt::Display for QueryRejection {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::FailedToDeserializeQueryString(inner) => inner.fmt(f),
-        }
-    }
-}
-
-impl std::error::Error for QueryRejection {
-    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        match self {
-            Self::FailedToDeserializeQueryString(inner) => Some(inner),
-        }
-    }
-}
 
 /// Extractor that deserializes query strings into `None` if no query parameters are present.
 /// Otherwise behaviour is identical to [`Query`]
