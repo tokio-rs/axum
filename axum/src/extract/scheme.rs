@@ -102,10 +102,7 @@ mod tests {
         assert_eq!(value, "ftp");
 
         // multiple header values
-        let headers = header_map(&[
-            (FORWARDED, "proto=ftp"),
-            (FORWARDED, "proto=https"),
-        ]);
+        let headers = header_map(&[(FORWARDED, "proto=ftp"), (FORWARDED, "proto=https")]);
         let value = parse_forwarded(&headers).unwrap();
         assert_eq!(value, "ftp");
     }
