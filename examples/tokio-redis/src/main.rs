@@ -89,15 +89,9 @@ where
 }
 
 async fn using_connection_extractor(
-    State(pool): State<ConnectionPool>,
+    DatabaseConnection(mut conn): DatabaseConnection,
 ) -> Result<String, (StatusCode, String)> {
-    let result: String = pool
-        .get()
-        .await
-        .map_err(internal_error)?
-        .get("foo")
-        .await
-        .map_err(internal_error)?;
+    let result: String = conn.get("foo").await.map_err(internal_error)?;
 
     Ok(result)
 }
