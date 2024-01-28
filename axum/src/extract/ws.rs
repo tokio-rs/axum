@@ -845,6 +845,7 @@ mod tests {
 
     use super::*;
     use crate::{body::Body, routing::get, test_helpers::spawn_service, Router};
+    use futures_util::sink::SinkExt;
     use http::{Request, Version};
     use tokio_tungstenite::tungstenite;
     use tower::ServiceExt;
