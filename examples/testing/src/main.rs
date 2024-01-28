@@ -43,7 +43,7 @@ fn app() -> Router {
             }),
         )
         .route(
-            "/requires-connect-into",
+            "/requires-connect-info",
             get(|ConnectInfo(addr): ConnectInfo<SocketAddr>| async move { format!("Hi {addr}") }),
         )
         // We can still add middleware
@@ -179,7 +179,7 @@ mod tests {
         assert_eq!(response.status(), StatusCode::OK);
     }
 
-    // Here we're calling `/requires-connect-into` which requires `ConnectInfo`
+    // Here we're calling `/requires-connect-info` which requires `ConnectInfo`
     //
     // That is normally set with `Router::into_make_service_with_connect_info` but we can't easily
     // use that during tests. The solution is instead to set the `MockConnectInfo` layer during
@@ -191,7 +191,7 @@ mod tests {
             .into_service();
 
         let request = Request::builder()
-            .uri("/requires-connect-into")
+            .uri("/requires-connect-info")
             .body(Body::empty())
             .unwrap();
         let response = app.ready().await.unwrap().call(request).await.unwrap();
