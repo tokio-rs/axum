@@ -30,7 +30,7 @@ async fn main() {
         .unwrap();
 
     // pass env to handlers via state
-    let app_state = Arc::new(AppState { env: env });
+    let app_state = Arc::new(AppState { env });
 
     // define routes
     let app = Router::new()
