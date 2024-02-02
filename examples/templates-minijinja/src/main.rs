@@ -6,10 +6,15 @@
 //! Demo for the MiniJinja templating engine.
 //! Exposes three pages all sharing the same layout with a minimal nav menu.
 
+use axum::extract::State;
 use axum::http::StatusCode;
-use axum::{response::Html, routing::get, Extension, Router};
+use axum::{response::Html, routing::get, Router};
 use minijinja::{context, Environment};
 use std::sync::Arc;
+
+struct AppState<'a> {
+    env: Environment<'a>,
+}
 
 #[tokio::main]
 async fn main() {
@@ -23,14 +28,16 @@ async fn main() {
         .unwrap();
     env.add_template("about", include_str!("../templates/about.jinja"))
         .unwrap();
-    let env = Arc::new(env);
+
+    // pass env to handlers via state
+    let app_state = Arc::new(AppState { env: env });
 
     // define routes
     let app = Router::new()
         .route("/", get(handler_home))
         .route("/content", get(handler_content))
         .route("/about", get(handler_about))
-        .layer(Extension(env)); // add state as extension
+        .with_state(app_state);
 
     // run it
     let listener = tokio::net::TcpListener::bind("127.0.0.1:3000")
@@ -40,10 +47,8 @@ async fn main() {
     axum::serve(listener, app).await.unwrap();
 }
 
-async fn handler_home(
-    Extension(env): Extension<Arc<Environment<'_>>>,
-) -> Result<Html<String>, StatusCode> {
-    let template = env.get_template("home").unwrap();
+async fn handler_home(State(state): State<Arc<AppState<'_>>>) -> Result<Html<String>, StatusCode> {
+    let template = state.env.get_template("home").unwrap();
 
     let rendered = template
         .render(context! {
@@ -56,9 +61,9 @@ async fn handler_home(
 }
 
 async fn handler_content(
-    Extension(env): Extension<Arc<Environment<'_>>>,
+    State(state): State<Arc<AppState<'_>>>,
 ) -> Result<Html<String>, StatusCode> {
-    let template = env.get_template("content").unwrap();
+    let template = state.env.get_template("content").unwrap();
 
     let some_example_entries = vec!["Data 1", "Data 2", "Data 3"];
 
@@ -72,10 +77,8 @@ async fn handler_content(
     Ok(Html(rendered))
 }
 
-async fn handler_about(
-    Extension(env): Extension<Arc<Environment<'_>>>,
-) -> Result<Html<String>, StatusCode> {
-    let template = env.get_template("about").unwrap();
+async fn handler_about(State(state): State<Arc<AppState<'_>>>) -> Result<Html<String>, StatusCode> {
+    let template = state.env.get_template("about").unwrap();
 
     let rendered = template.render(context!{
         title => "About",
