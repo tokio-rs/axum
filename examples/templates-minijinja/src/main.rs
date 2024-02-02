@@ -12,8 +12,8 @@ use axum::{response::Html, routing::get, Router};
 use minijinja::{context, Environment};
 use std::sync::Arc;
 
-struct AppState<'a> {
-    env: Environment<'a>,
+struct AppState {
+    env: Environment<'static>,
 }
 
 #[tokio::main]
@@ -47,7 +47,7 @@ async fn main() {
     axum::serve(listener, app).await.unwrap();
 }
 
-async fn handler_home(State(state): State<Arc<AppState<'_>>>) -> Result<Html<String>, StatusCode> {
+async fn handler_home(State(state): State<Arc<AppState>>) -> Result<Html<String>, StatusCode> {
     let template = state.env.get_template("home").unwrap();
 
     let rendered = template
@@ -60,9 +60,7 @@ async fn handler_home(State(state): State<Arc<AppState<'_>>>) -> Result<Html<Str
     Ok(Html(rendered))
 }
 
-async fn handler_content(
-    State(state): State<Arc<AppState<'_>>>,
-) -> Result<Html<String>, StatusCode> {
+async fn handler_content(State(state): State<Arc<AppState>>) -> Result<Html<String>, StatusCode> {
     let template = state.env.get_template("content").unwrap();
 
     let some_example_entries = vec!["Data 1", "Data 2", "Data 3"];
@@ -77,7 +75,7 @@ async fn handler_content(
     Ok(Html(rendered))
 }
 
-async fn handler_about(State(state): State<Arc<AppState<'_>>>) -> Result<Html<String>, StatusCode> {
+async fn handler_about(State(state): State<Arc<AppState>>) -> Result<Html<String>, StatusCode> {
     let template = state.env.get_template("about").unwrap();
 
     let rendered = template.render(context!{
