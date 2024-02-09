@@ -379,7 +379,13 @@ pub struct InvalidBoundary;
 
 impl IntoResponse for InvalidBoundary {
     fn into_response(self) -> Response {
-        (self.status(), self.body_text()).into_response()
+        let body = self.body_text();
+        axum_core::__log_rejection!(
+            rejection_type = Self,
+            body_text = body,
+            status = self.status(),
+        );
+        (self.status(), body).into_response()
     }
 }
 

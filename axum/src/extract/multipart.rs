@@ -274,12 +274,13 @@ impl std::error::Error for MultipartError {
 
 impl IntoResponse for MultipartError {
     fn into_response(self) -> Response {
+        let body = self.body_text();
         axum_core::__log_rejection!(
             rejection_type = Self,
-            body_text = self.body_text(),
+            body_text = body,
             status = self.status(),
         );
-        (self.status(), self.body_text()).into_response()
+        (self.status(), body).into_response()
     }
 }
 
