@@ -32,10 +32,11 @@
 //! latest events. If you're using that layer, you can do the following to not
 //! compress SSE:
 //!
-//! ```ignore
-//! CompressionLayer::new()
-//!     .compress_when(DefaultPredicate::new()
-//!     .and(NotForContentType::new("text/event-stream"))
+//! ```
+//! # use tower_http::compression::{predicate::{NotForContentType, DefaultPredicate}, Predicate, CompressionLayer};
+//! let predicate = DefaultPredicate::new().and(NotForContentType::new("text/event-stream"));
+//!
+//! let layer = CompressionLayer::new().compress_when(predicate);
 //! ```
 
 use crate::{
