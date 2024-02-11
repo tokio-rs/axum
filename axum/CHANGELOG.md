@@ -7,7 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- None.
+- **fixed:** Fixed layers being cloned when calling `axum::serve` directly with
+  a `Router` or `MethodRouter` ([#2586])
+
+[#2586]: https://github.com/tokio-rs/axum/pull/2586
 
 # 0.7.4 (13. January, 2024)
 
