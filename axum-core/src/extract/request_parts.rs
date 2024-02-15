@@ -1,5 +1,5 @@
 use super::{rejection::*, FromRequest, FromRequestParts, Request};
-use crate::body::Body;
+use crate::{body::Body, RequestExt};
 use async_trait::async_trait;
 use bytes::{Buf as _, BufMut, Bytes, BytesMut};
 use http::{request::Parts, Extensions, HeaderMap, Method, Uri, Version};
@@ -83,7 +83,7 @@ where
     type Rejection = BytesRejection;
 
     async fn from_request(req: Request, _: &S) -> Result<Self, Self::Rejection> {
-        let body = pin!(req.into_body());
+        let body = pin!(req.into_limited_body());
         let mut bytes = BytesMut::new();
         body_to_bytes_mut(body, &mut bytes).await?;
         Ok(bytes)
@@ -117,7 +117,7 @@ where
     type Rejection = BytesRejection;
 
     async fn from_request(req: Request, _: &S) -> Result<Self, Self::Rejection> {
-        let mut body = pin!(req.into_body());
+        let mut body = pin!(req.into_limited_body());
 
         // If there's only 1 chunk, we can just return Buf::to_bytes()
         let first_chunk = if let Some(frame) = body
