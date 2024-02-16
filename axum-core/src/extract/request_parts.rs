@@ -5,10 +5,7 @@ use bytes::{Buf as _, BufMut, Bytes, BytesMut};
 use http::{request::Parts, Extensions, HeaderMap, Method, Uri, Version};
 use http_body::Body as _;
 use http_body_util::BodyExt;
-use std::{
-    convert::Infallible,
-    pin::{pin, Pin},
-};
+use std::convert::Infallible;
 
 #[async_trait]
 impl<S> FromRequest<S> for Request
@@ -83,17 +80,14 @@ where
     type Rejection = BytesRejection;
 
     async fn from_request(req: Request, _: &S) -> Result<Self, Self::Rejection> {
-        let body = pin!(req.into_limited_body());
+        let mut body = req.into_limited_body();
         let mut bytes = BytesMut::new();
-        body_to_bytes_mut(body, &mut bytes).await?;
+        body_to_bytes_mut(&mut body, &mut bytes).await?;
         Ok(bytes)
     }
 }
 
-async fn body_to_bytes_mut(
-    mut body: Pin<&mut Body>,
-    bytes: &mut BytesMut,
-) -> Result<(), BytesRejection> {
+async fn body_to_bytes_mut(body: &mut Body, bytes: &mut BytesMut) -> Result<(), BytesRejection> {
     while let Some(frame) = body
         .frame()
         .await
@@ -117,7 +111,7 @@ where
     type Rejection = BytesRejection;
 
     async fn from_request(req: Request, _: &S) -> Result<Self, Self::Rejection> {
-        let mut body = pin!(req.into_limited_body());
+        let mut body = req.into_limited_body();
 
         // If there's only 1 chunk, we can just return Buf::to_bytes()
         let first_chunk = if let Some(frame) = body
@@ -156,7 +150,7 @@ where
             return Ok(first_chunk);
         };
 
-        body_to_bytes_mut(body, &mut bytes).await?;
+        body_to_bytes_mut(&mut body, &mut bytes).await?;
         Ok(bytes.freeze())
     }
 }
