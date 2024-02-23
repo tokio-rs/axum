@@ -159,7 +159,7 @@ jobs:
       - uses: EmbarkStudios/cargo-deny-action@v1
         with:
           command: check ${{ matrix.checks }}
-          arguments: --all-features --manifest-path axum/Cargo.toml
+          manifest-path: axum/Cargo.toml
 
   armv5te-unknown-linux-musleabi:
     needs: check

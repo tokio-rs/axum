@@ -12,7 +12,6 @@ Types and traits for extracting data from requests.
 - [Defining custom extractors](#defining-custom-extractors)
 - [Accessing other extractors in `FromRequest` or `FromRequestParts` implementations](#accessing-other-extractors-in-fromrequest-or-fromrequestparts-implementations)
 - [Request body limits](#request-body-limits)
-- [Request body extractors](#request-body-extractors)
 - [Wrapping extractors](#wrapping-extractors)
 - [Logging rejections](#logging-rejections)
 

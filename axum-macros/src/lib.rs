@@ -233,6 +233,55 @@ use from_request::Trait::{FromRequest, FromRequestParts};
 /// }
 /// ```
 ///
+/// ## Concrete state
+///
+/// If the extraction can be done only for a concrete state, that type can be specified with
+/// `#[from_request(state(YourState))]`:
+///
+/// ```
+/// use axum::extract::{FromRequest, FromRequestParts};
+///
+/// #[derive(Clone)]
+/// struct CustomState;
+///
+/// struct MyInnerType;
+///
+/// #[axum::async_trait]
+/// impl FromRequestParts<CustomState> for MyInnerType {
+///     // ...
+///     # type Rejection = ();
+///
+///     # async fn from_request_parts(
+///         # _parts: &mut axum::http::request::Parts,
+///         # _state: &CustomState
+///     # ) -> Result<Self, Self::Rejection> {
+///     #    todo!()
+///     # }
+/// }
+///
+/// #[derive(FromRequest)]
+/// #[from_request(state(CustomState))]
+/// struct MyExtractor {
+///     custom: MyInnerType,
+///     body: String,
+/// }
+/// ```
+///
+/// This is not needed for a `State<T>` as the type is inferred in that case.
+///
+/// ```
+/// use axum::extract::{FromRequest, FromRequestParts, State};
+///
+/// #[derive(Clone)]
+/// struct CustomState;
+///
+/// #[derive(FromRequest)]
+/// struct MyExtractor {
+///     custom: State<CustomState>,
+///     body: String,
+/// }
+/// ```
+///
 /// # The whole type at once
 ///
 /// By using `#[from_request(via(...))]` on the container you can extract the whole type at once,

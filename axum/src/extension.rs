@@ -87,8 +87,7 @@ where
                     "Extension of type `{}` was not found. Perhaps you forgot to add it? See `axum::Extension`.",
                     std::any::type_name::<T>()
                 ))
-            })
-            .map(|x| x.clone())?;
+            }).cloned()?;
 
         Ok(Extension(value))
     }
