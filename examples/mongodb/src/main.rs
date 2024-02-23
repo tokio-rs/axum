@@ -7,11 +7,14 @@
 use axum::{
     extract::{Path, State},
     http::StatusCode,
-    response::IntoResponse,
     routing::{delete, get, post, put},
     Json, Router,
 };
-use mongodb::{bson::doc, Client, Collection};
+use mongodb::{
+    bson::doc,
+    results::{DeleteResult, InsertOneResult, UpdateResult},
+    Client, Collection,
+};
 use serde::{Deserialize, Serialize};
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
@@ -66,57 +69,63 @@ fn app(client: Client) -> Router {
 async fn create_member(
     State(db): State<Collection<Member>>,
     Json(input): Json<Member>,
-) -> impl IntoResponse {
-    let result = db.insert_one(input, None).await.unwrap();
-    println!("{:?}", result);
+) -> Result<Json<InsertOneResult>, (StatusCode, String)> {
+    let result = db.insert_one(input, None).await.map_err(internal_error)?;
 
-    (StatusCode::CREATED, Json(result))
+    Ok(Json(result))
 }
 
 // handler to read an existing member
 async fn read_member(
     State(db): State<Collection<Member>>,
     Path(id): Path<u32>,
-) -> impl IntoResponse {
-    let result = db.find_one(doc! { "_id": id }, None).await.unwrap();
-    println!("{:?}", result);
+) -> Result<Json<Option<Member>>, (StatusCode, String)> {
+    let result = db
+        .find_one(doc! { "_id": id }, None)
+        .await
+        .map_err(internal_error)?;
 
-    if result.is_none() {
-        return (StatusCode::NOT_FOUND, Json(result));
-    }
-
-    (StatusCode::OK, Json(result))
+    Ok(Json(result))
 }
 
 // handler to update an existing member
 async fn update_member(
     State(db): State<Collection<Member>>,
     Json(input): Json<Member>,
-) -> impl IntoResponse {
+) -> Result<Json<UpdateResult>, (StatusCode, String)> {
     let result = db
-        .replace_one(doc! { "_id": input._id }, input, None)
+        .replace_one(doc! { "_id": input.id }, input, None)
         .await
-        .unwrap();
-    println!("{:?}", result);
+        .map_err(internal_error)?;
 
-    (StatusCode::OK, Json(result))
+    Ok(Json(result))
 }
 
 // handler to delete an existing member
 async fn delete_member(
     State(db): State<Collection<Member>>,
     Path(id): Path<u32>,
-) -> impl IntoResponse {
-    let result = db.delete_one(doc! { "_id": id }, None).await.unwrap();
-    println!("{:?}", result);
+) -> Result<Json<DeleteResult>, (StatusCode, String)> {
+    let result = db
+        .delete_one(doc! { "_id": id }, None)
+        .await
+        .map_err(internal_error)?;
 
-    (StatusCode::OK, Json(result))
+    Ok(Json(result))
+}
+
+fn internal_error<E>(err: E) -> (StatusCode, String)
+where
+    E: std::error::Error,
+{
+    (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
 }
 
 // defining Member type
 #[derive(Debug, Deserialize, Serialize)]
 struct Member {
-    _id: u32,
+    #[serde(rename = "_id")]
+    id: u32,
     name: String,
     active: bool,
 }
