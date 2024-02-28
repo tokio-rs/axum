@@ -2,7 +2,7 @@
 
 This example shows how to:
 - automatically decompress request bodies when necessary
-- compress reponse bodies based on the `accept` header.
+- compress response bodies based on the `accept` header.
 
 ## Running
 
