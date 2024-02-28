@@ -7,9 +7,9 @@ publish = false
 [dependencies]
 axum = { path = "../../axum" }
 axum-extra = { path = "../../axum-extra", features = ["typed-header"] }
+serde_json = "1"
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 tower = "0.4"
 tower-http = { version = "0.5", features = ["compression-gzip", "decompression-gzip"] }
-tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
-serde_json = "1"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
