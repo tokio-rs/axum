@@ -43,10 +43,10 @@ mod tests {
         response::Response,
     };
     use brotli::enc::BrotliEncoderParams;
-    use flate2::{write::GzEncoder, Compression};
-    use http::StatusCode;
+    use flate2::{read::GzDecoder, write::GzEncoder, Compression};
+    use http::{header, StatusCode};
     use serde_json::{json, Value};
-    use std::io::Write;
+    use std::io::{Read, Write};
     use tower::ServiceExt;
 
     use super::*;
@@ -55,11 +55,11 @@ mod tests {
     async fn handle_uncompressed_request_bodies() {
         // Given
 
-        let body = serde_json::to_vec(&json()).unwrap();
+        let body = json();
 
         let compressed_request = http::Request::post("/")
-            .header(http::header::CONTENT_TYPE, "application/json")
-            .body(Body::from(body))
+            .header(header::CONTENT_TYPE, "application/json")
+            .body(json_body(&body))
             .unwrap();
 
         // When
@@ -79,8 +79,8 @@ mod tests {
         let body = compress_gzip(&json());
 
         let compressed_request = http::Request::post("/")
-            .header(http::header::CONTENT_TYPE, "application/json")
-            .header("Content-Encoding", "gzip")
+            .header(header::CONTENT_TYPE, "application/json")
+            .header(header::CONTENT_ENCODING, "gzip")
             .body(Body::from(body))
             .unwrap();
 
@@ -101,8 +101,8 @@ mod tests {
         let body = compress_br(&json());
 
         let compressed_request = http::Request::post("/")
-            .header(http::header::CONTENT_TYPE, "application/json")
-            .header("Content-Encoding", "br")
+            .header(header::CONTENT_TYPE, "application/json")
+            .header(header::CONTENT_ENCODING, "br")
             .body(Body::from(body))
             .unwrap();
 
@@ -123,8 +123,8 @@ mod tests {
         let body = compress_zstd(&json());
 
         let compressed_request = http::Request::post("/")
-            .header(http::header::CONTENT_TYPE, "application/json")
-            .header("Content-Encoding", "zstd")
+            .header(header::CONTENT_TYPE, "application/json")
+            .header(header::CONTENT_ENCODING, "zstd")
             .body(Body::from(body))
             .unwrap();
 
@@ -138,6 +138,100 @@ mod tests {
         assert_json_eq!(json_from_response(response).await, json());
     }
 
+    #[tokio::test]
+    async fn do_not_compress_response_bodies() {
+        // Given
+        let request = http::Request::post("/")
+            .header(header::CONTENT_TYPE, "application/json")
+            .body(json_body(&json()))
+            .unwrap();
+
+        // When
+
+        let response = app().oneshot(request).await.unwrap();
+
+        // Then
+
+        assert_eq!(response.status(), StatusCode::OK);
+        assert_json_eq!(json_from_response(response).await, json());
+    }
+
+    #[tokio::test]
+    async fn compress_response_bodies_with_gzip() {
+        // Given
+        let request = http::Request::post("/")
+            .header(header::CONTENT_TYPE, "application/json")
+            .header(header::ACCEPT_ENCODING, "gzip")
+            .body(json_body(&json()))
+            .unwrap();
+
+        // When
+
+        let response = app().oneshot(request).await.unwrap();
+
+        // Then
+
+        assert_eq!(response.status(), StatusCode::OK);
+        let response_body = byte_from_response(response).await;
+        let mut decoder = GzDecoder::new(response_body.as_ref());
+        let mut decompress_body = String::new();
+        decoder.read_to_string(&mut decompress_body).unwrap();
+        assert_json_eq!(
+            serde_json::from_str::<serde_json::Value>(&decompress_body).unwrap(),
+            json()
+        );
+    }
+
+    #[tokio::test]
+    async fn compress_response_bodies_with_br() {
+        // Given
+        let request = http::Request::post("/")
+            .header(header::CONTENT_TYPE, "application/json")
+            .header(header::ACCEPT_ENCODING, "br")
+            .body(json_body(&json()))
+            .unwrap();
+
+        // When
+
+        let response = app().oneshot(request).await.unwrap();
+
+        // Then
+
+        assert_eq!(response.status(), StatusCode::OK);
+        let response_body = byte_from_response(response).await;
+        let mut decompress_body = Vec::new();
+        brotli::BrotliDecompress(&mut response_body.as_ref(), &mut decompress_body).unwrap();
+        assert_json_eq!(
+            serde_json::from_slice::<serde_json::Value>(&decompress_body).unwrap(),
+            json()
+        );
+    }
+
+    #[tokio::test]
+    async fn compress_response_bodies_with_zstd() {
+        // Given
+        let request = http::Request::post("/")
+            .header(header::CONTENT_TYPE, "application/json")
+            .header(header::ACCEPT_ENCODING, "zstd")
+            .body(json_body(&json()))
+            .unwrap();
+
+        // When
+
+        let response = app().oneshot(request).await.unwrap();
+
+        // Then
+
+        assert_eq!(response.status(), StatusCode::OK);
+        let response_body = byte_from_response(response).await;
+        let decompress_body =
+            zstd::stream::decode_all(std::io::Cursor::new(response_body)).unwrap();
+        assert_json_eq!(
+            serde_json::from_slice::<serde_json::Value>(&decompress_body).unwrap(),
+            json()
+        );
+    }
+
     fn json() -> Value {
         json!({
           "name": "foo",
@@ -148,11 +242,19 @@ mod tests {
         })
     }
 
+    fn json_body(input: &Value) -> Body {
+        Body::from(serde_json::to_vec(&input).unwrap())
+    }
+
     async fn json_from_response(response: Response) -> Value {
-        let body = axum::body::to_bytes(response.into_body(), usize::MAX)
-            .await
-            .unwrap();
+        let body = byte_from_response(response).await;
         body_as_json(body)
+    }
+
+    async fn byte_from_response(response: Response) -> Bytes {
+        axum::body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .unwrap()
     }
 
     fn body_as_json(body: Bytes) -> Value {
