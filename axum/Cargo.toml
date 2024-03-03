@@ -64,7 +64,7 @@ tower-service = "0.3"
 axum-macros = { path = "../axum-macros", version = "0.4.1", optional = true }
 base64 = { version = "0.21.0", optional = true }
 hyper = { version = "1.1.0", optional = true }
-hyper-util = { version = "0.1.2", features = ["tokio", "server", "server-auto"], optional = true }
+hyper-util = { version = "0.1.2", features = ["tokio", "server", "server-auto", "service"], optional = true }
 multer = { version = "3.0.0", optional = true }
 serde_json = { version = "1.0", features = ["raw_value"], optional = true }
 serde_path_to_error = { version = "0.1.8", optional = true }

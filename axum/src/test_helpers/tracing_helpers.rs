@@ -14,7 +14,7 @@ pub(crate) struct TracingEvent<T> {
 }
 
 /// Run an async closure and capture the tracing output it produces.
-pub(crate) async fn capture_tracing<T, F, Fut>(f: F) -> Vec<TracingEvent<T>>
+pub(crate) async fn capture_tracing<T, F, Fut>(target: &str, f: F) -> Vec<TracingEvent<T>>
 where
     F: Fn() -> Fut,
     Fut: Future,
@@ -30,7 +30,7 @@ where
             .with_ansi(false)
             .json()
             .flatten_event(false)
-            .with_filter("axum=trace".parse::<Targets>().unwrap()),
+            .with_filter(target.parse::<Targets>().unwrap()),
     );
 
     let guard = tracing::subscriber::set_default(subscriber);
