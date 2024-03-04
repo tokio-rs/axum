@@ -74,7 +74,9 @@ fn parse_forwarded(headers: &HeaderMap) -> Option<&str> {
 mod tests {
     use super::*;
     use crate::{routing::get, test_helpers::TestClient, Router};
-    use http::header::HeaderName;
+    use http::{header::HeaderName, Request};
+
+    use axum_core::{body::Body, extract::FromRequest};
 
     fn test_client() -> TestClient {
         async fn scheme_as_body(Scheme(scheme): Scheme) -> String {
@@ -117,6 +119,19 @@ mod tests {
             .text()
             .await;
         assert_eq!(scheme, original_scheme);
+    }
+
+    #[crate::test]
+    async fn from_parts() {
+        let original_scheme = "http";
+        let req = Request::builder()
+            .uri(format!("{original_scheme}://localhost/"))
+            .body(Body::empty())
+            .unwrap();
+        assert_eq!(
+            Scheme::from_request(req, &()).await.unwrap().0,
+            original_scheme
+        );
     }
 
     #[crate::test]
