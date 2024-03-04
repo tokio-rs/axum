@@ -16,7 +16,7 @@ const X_FORWARDED_PROTO_HEADER_KEY: &str = "X-Forwarded-Proto";
 /// - `X-Forwarded-Proto` header
 /// - request target / URI
 ///
-/// Note that user agents can set the `X-Forwarded-Scheme` header to arbitrary values so make
+/// Note that user agents can set the `X-Forwarded-Proto` header to arbitrary values so make
 /// sure to validate them to avoid security issues.
 #[derive(Debug, Clone)]
 pub struct Scheme(pub String);
