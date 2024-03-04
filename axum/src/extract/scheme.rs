@@ -1,6 +1,6 @@
 use super::{
     rejection::{FailedToResolveScheme, SchemeRejection},
-    FromRequestParts,
+    FromRequestParts, OriginalUri,
 };
 use async_trait::async_trait;
 use http::{
@@ -28,7 +28,7 @@ where
 {
     type Rejection = SchemeRejection;
 
-    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
+    async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
         // Within Forwarded header
         if let Some(scheme) = parse_forwarded(&parts.headers) {
             return Ok(Scheme(scheme.to_owned()));
@@ -43,8 +43,9 @@ where
             return Ok(Scheme(scheme.to_owned()));
         }
 
-        // From parts
-        if let Some(scheme) = parts.uri.scheme_str() {
+        // From parts; Infallible conversion
+        let original = OriginalUri::from_request_parts(parts, state).await.unwrap();
+        if let Some(scheme) = original.scheme_str() {
             return Ok(Scheme(scheme.to_owned()));
         }
 
