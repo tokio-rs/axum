@@ -84,8 +84,8 @@ mod tests {
         TestClient::new(Router::new().route("/", get(scheme_as_body)))
     }
 
-    #[test]
-    fn forwarded_scheme_parsing() {
+    #[crate::test]
+    async fn forwarded_scheme_parsing() {
         // the basic case
         let headers = header_map(&[(FORWARDED, "host=192.0.2.60;proto=http;by=203.0.113.43")]);
         let value = parse_forwarded(&headers).unwrap();
