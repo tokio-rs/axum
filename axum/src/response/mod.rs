@@ -1,8 +1,5 @@
 #![doc = include_str!("../docs/response.md")]
 
-use axum_core::body::Body;
-use http::{header, HeaderValue};
-
 mod redirect;
 
 #[cfg(feature = "tokio")]
