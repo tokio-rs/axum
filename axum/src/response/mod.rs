@@ -1,8 +1,5 @@
 #![doc = include_str!("../docs/response.md")]
 
-use axum_core::body::Body;
-use http::{header, HeaderValue};
-
 mod redirect;
 
 #[cfg(feature = "tokio")]
@@ -40,15 +37,15 @@ pub struct Html<T>(pub T);
 
 impl<T> IntoResponse for Html<T>
 where
-    T: Into<Body>,
+    T: IntoResponse,
 {
     fn into_response(self) -> Response {
         (
             [(
-                header::CONTENT_TYPE,
-                HeaderValue::from_static(mime::TEXT_HTML_UTF_8.as_ref()),
+                http::header::CONTENT_TYPE,
+                http::HeaderValue::from_static(mime::TEXT_HTML_UTF_8.as_ref()),
             )],
-            self.0.into(),
+            self.0,
         )
             .into_response()
     }
