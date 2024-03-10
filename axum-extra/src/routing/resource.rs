@@ -98,7 +98,7 @@ where
         H: Handler<T, S>,
         T: 'static,
     {
-        let path = format!("/{0}/:{0}_id/edit", self.name);
+        let path = format!("/{0}/{{{0}_id}}/edit", self.name);
         self.route(&path, get(handler))
     }
 
@@ -130,7 +130,7 @@ where
     }
 
     fn show_update_destroy_path(&self) -> String {
-        format!("/{0}/:{0}_id", self.name)
+        format!("/{0}/{{{0}_id}}", self.name)
     }
 
     fn route(mut self, path: &str, method_router: MethodRouter<S>) -> Self {

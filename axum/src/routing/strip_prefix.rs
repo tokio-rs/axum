@@ -287,74 +287,89 @@ mod tests {
         expected = Some("/"),
     );
 
-    test!(param_0, uri = "/", prefix = "/:param", expected = Some("/"),);
+    test!(
+        param_0,
+        uri = "/",
+        prefix = "/{param}",
+        expected = Some("/"),
+    );
 
     test!(
         param_1,
         uri = "/a",
-        prefix = "/:param",
+        prefix = "/{param}",
         expected = Some("/"),
     );
 
     test!(
         param_2,
         uri = "/a/b",
-        prefix = "/:param",
+        prefix = "/{param}",
         expected = Some("/b"),
     );
 
     test!(
         param_3,
         uri = "/b/a",
-        prefix = "/:param",
+        prefix = "/{param}",
         expected = Some("/a"),
     );
 
     test!(
         param_4,
         uri = "/a/b",
-        prefix = "/a/:param",
+        prefix = "/a/{param}",
         expected = Some("/"),
     );
 
-    test!(param_5, uri = "/b/a", prefix = "/a/:param", expected = None,);
+    test!(
+        param_5,
+        uri = "/b/a",
+        prefix = "/a/{param}",
+        expected = None,
+    );
 
-    test!(param_6, uri = "/a/b", prefix = "/:param/a", expected = None,);
+    test!(
+        param_6,
+        uri = "/a/b",
+        prefix = "/{param}/a",
+        expected = None,
+    );
 
     test!(
         param_7,
         uri = "/b/a",
-        prefix = "/:param/a",
+        prefix = "/{param}/a",
         expected = Some("/"),
     );
 
     test!(
         param_8,
         uri = "/a/b/c",
-        prefix = "/a/:param/c",
+        prefix = "/a/{param}/c",
         expected = Some("/"),
     );
 
     test!(
         param_9,
         uri = "/c/b/a",
-        prefix = "/a/:param/c",
+        prefix = "/a/{param}/c",
         expected = None,
     );
 
     test!(
         param_10,
         uri = "/a/",
-        prefix = "/:param",
+        prefix = "/{param}",
         expected = Some("/"),
     );
 
-    test!(param_11, uri = "/a", prefix = "/:param/", expected = None,);
+    test!(param_11, uri = "/a", prefix = "/{param}/", expected = None,);
 
     test!(
         param_12,
         uri = "/a/",
-        prefix = "/:param/",
+        prefix = "/{param}/",
         expected = Some("/"),
     );
 

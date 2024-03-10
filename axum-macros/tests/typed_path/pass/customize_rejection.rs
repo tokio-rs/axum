@@ -6,7 +6,7 @@ use axum_extra::routing::{RouterExt, TypedPath};
 use serde::Deserialize;
 
 #[derive(TypedPath, Deserialize)]
-#[typed_path("/:foo", rejection(MyRejection))]
+#[typed_path("/{foo}", rejection(MyRejection))]
 struct MyPathNamed {
     foo: String,
 }
@@ -16,7 +16,7 @@ struct MyPathNamed {
 struct MyPathUnit;
 
 #[derive(TypedPath, Deserialize)]
-#[typed_path("/:foo", rejection(MyRejection))]
+#[typed_path("/{foo}", rejection(MyRejection))]
 struct MyPathUnnamed(String);
 
 struct MyRejection;

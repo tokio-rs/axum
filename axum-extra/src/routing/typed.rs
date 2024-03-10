@@ -21,7 +21,7 @@ use serde::Serialize;
 ///
 /// // A type safe route with `/users/:id` as its associated path.
 /// #[derive(TypedPath, Deserialize)]
-/// #[typed_path("/users/:id")]
+/// #[typed_path("/users/{id}")]
 /// struct UsersMember {
 ///     id: u32,
 /// }
@@ -75,7 +75,7 @@ use serde::Serialize;
 /// use axum_extra::routing::TypedPath;
 ///
 /// #[derive(TypedPath, Deserialize)]
-/// #[typed_path("/users/:id")]
+/// #[typed_path("/users/{id}")]
 /// struct UsersMember {
 ///     id: u32,
 /// }
@@ -100,7 +100,7 @@ use serde::Serialize;
 /// use axum_extra::routing::TypedPath;
 ///
 /// #[derive(TypedPath, Deserialize)]
-/// #[typed_path("/users/:id/teams/:team_id")]
+/// #[typed_path("/users/{id}/teams/{team_id}")]
 /// struct UsersMember {
 ///     id: u32,
 /// }
@@ -117,7 +117,7 @@ use serde::Serialize;
 /// struct UsersCollection;
 ///
 /// #[derive(TypedPath, Deserialize)]
-/// #[typed_path("/users/:id")]
+/// #[typed_path("/users/{id}")]
 /// struct UsersMember(u32);
 /// ```
 ///
@@ -130,7 +130,7 @@ use serde::Serialize;
 /// use axum_extra::routing::TypedPath;
 ///
 /// #[derive(TypedPath, Deserialize)]
-/// #[typed_path("/users/:id")]
+/// #[typed_path("/users/{id}")]
 /// struct UsersMember {
 ///     id: String,
 /// }
@@ -158,7 +158,7 @@ use serde::Serialize;
 /// };
 ///
 /// #[derive(TypedPath, Deserialize)]
-/// #[typed_path("/users/:id", rejection(UsersMemberRejection))]
+/// #[typed_path("/users/{id}", rejection(UsersMemberRejection))]
 /// struct UsersMember {
 ///     id: String,
 /// }
@@ -398,7 +398,7 @@ mod tests {
     use serde::Deserialize;
 
     #[derive(TypedPath, Deserialize)]
-    #[typed_path("/users/:id")]
+    #[typed_path("/users/{id}")]
     struct UsersShow {
         id: i32,
     }

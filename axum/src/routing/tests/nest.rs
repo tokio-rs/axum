@@ -11,7 +11,7 @@ async fn nesting_apps() {
             get(|| async { "users#index" }).post(|| async { "users#create" }),
         )
         .route(
-            "/users/:id",
+            "/users/{id}",
             get(
                 |params: extract::Path<HashMap<String, String>>| async move {
                     format!(
@@ -23,7 +23,7 @@ async fn nesting_apps() {
             ),
         )
         .route(
-            "/games/:id",
+            "/games/{id}",
             get(
                 |params: extract::Path<HashMap<String, String>>| async move {
                     format!(
@@ -37,7 +37,7 @@ async fn nesting_apps() {
 
     let app = Router::new()
         .route("/", get(|| async { "hi" }))
-        .nest("/:version/api", api_routes);
+        .nest("/{version}/api", api_routes);
 
     let client = TestClient::new(app);
 
@@ -264,7 +264,7 @@ async fn multiple_top_level_nests() {
 #[crate::test]
 #[should_panic(expected = "Invalid route: nested routes cannot contain wildcards (*)")]
 async fn nest_cannot_contain_wildcards() {
-    _ = Router::<()>::new().nest("/one/*rest", Router::new());
+    _ = Router::<()>::new().nest("/one/{*rest}", Router::new());
 }
 
 #[crate::test]
@@ -318,11 +318,11 @@ async fn outer_middleware_still_see_whole_url() {
 #[crate::test]
 async fn nest_at_capture() {
     let api_routes = Router::new().route(
-        "/:b",
+        "/{b}",
         get(|Path((a, b)): Path<(String, String)>| async move { format!("a={a} b={b}") }),
     );
 
-    let app = Router::new().nest("/:a", api_routes);
+    let app = Router::new().nest("/{a}", api_routes);
 
     let client = TestClient::new(app);
 
