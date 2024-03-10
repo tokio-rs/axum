@@ -362,11 +362,7 @@ where
             }
             // explicitly handle all variants in case matchit adds
             // new ones we need to handle differently
-            Err(
-                MatchError::NotFound
-                | MatchError::ExtraTrailingSlash
-                | MatchError::MissingTrailingSlash,
-            ) => Err((req, state)),
+            Err(MatchError::NotFound) => Err((req, state)),
         }
     }
 
