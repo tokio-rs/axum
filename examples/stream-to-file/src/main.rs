@@ -37,7 +37,7 @@ async fn main() {
 
     let app = Router::new()
         .route("/", get(show_form).post(accept_form))
-        .route("/file/:file_name", post(save_request_body));
+        .route("/file/{file_name}", post(save_request_body));
 
     let listener = tokio::net::TcpListener::bind("127.0.0.1:3000")
         .await

@@ -44,7 +44,7 @@ use std::{fmt, sync::Arc};
 ///     // ...
 /// }
 ///
-/// let app = Router::new().route("/users/:user_id/team/:team_id", get(users_teams_show));
+/// let app = Router::new().route("/users/{user_id}/team/{team_id}", get(users_teams_show));
 /// # let _: Router = app;
 /// ```
 ///
@@ -62,7 +62,7 @@ use std::{fmt, sync::Arc};
 ///     // ...
 /// }
 ///
-/// let app = Router::new().route("/users/:user_id", get(user_info));
+/// let app = Router::new().route("/users/{user_id}", get(user_info));
 /// # let _: Router = app;
 /// ```
 ///
@@ -99,7 +99,7 @@ use std::{fmt, sync::Arc};
 /// }
 ///
 /// let app = Router::new().route(
-///     "/users/:user_id/team/:team_id",
+///     "/users/{user_id}/team/{team_id}",
 ///     get(users_teams_show).post(users_teams_create),
 /// );
 /// # let _: Router = app;
@@ -128,7 +128,7 @@ use std::{fmt, sync::Arc};
 /// }
 ///
 /// let app = Router::new()
-///     .route("/users/:user_id/team/:team_id", get(params_map).post(params_vec));
+///     .route("/users/{user_id}/team/{team_id}", get(params_map).post(params_vec));
 /// # let _: Router = app;
 /// ```
 ///
@@ -440,7 +440,7 @@ impl std::error::Error for FailedToDeserializePathParams {}
 ///     }
 /// }
 ///
-/// let app = Router::new().route("/users/:user_id/team/:team_id", get(users_teams_show));
+/// let app = Router::new().route("/users/{user_id}/team/{team_id}", get(users_teams_show));
 /// # let _: Router = app;
 /// ```
 #[derive(Debug)]
@@ -551,7 +551,7 @@ mod tests {
     #[crate::test]
     async fn extracting_url_params() {
         let app = Router::new().route(
-            "/users/:id",
+            "/users/{id}",
             get(|Path(id): Path<i32>| async move {
                 assert_eq!(id, 42);
             })
@@ -571,7 +571,7 @@ mod tests {
 
     #[crate::test]
     async fn extracting_url_params_multiple_times() {
-        let app = Router::new().route("/users/:id", get(|_: Path<i32>, _: Path<String>| async {}));
+        let app = Router::new().route("/users/{id}", get(|_: Path<i32>, _: Path<String>| async {}));
 
         let client = TestClient::new(app);
 
@@ -582,7 +582,7 @@ mod tests {
     #[crate::test]
     async fn percent_decoding() {
         let app = Router::new().route(
-            "/:key",
+            "/{key}",
             get(|Path(param): Path<String>| async move { param }),
         );
 
@@ -597,11 +597,11 @@ mod tests {
     async fn supports_128_bit_numbers() {
         let app = Router::new()
             .route(
-                "/i/:key",
+                "/i/{key}",
                 get(|Path(param): Path<i128>| async move { param.to_string() }),
             )
             .route(
-                "/u/:key",
+                "/u/{key}",
                 get(|Path(param): Path<u128>| async move { param.to_string() }),
             );
 
@@ -618,11 +618,11 @@ mod tests {
     async fn wildcard() {
         let app = Router::new()
             .route(
-                "/foo/*rest",
+                "/foo/{*rest}",
                 get(|Path(param): Path<String>| async move { param }),
             )
             .route(
-                "/bar/*rest",
+                "/bar/{*rest}",
                 get(|Path(params): Path<HashMap<String, String>>| async move {
                     params.get("rest").unwrap().clone()
                 }),
@@ -639,7 +639,7 @@ mod tests {
 
     #[crate::test]
     async fn captures_dont_match_empty_path() {
-        let app = Router::new().route("/:key", get(|| async {}));
+        let app = Router::new().route("/{key}", get(|| async {}));
 
         let client = TestClient::new(app);
 
@@ -653,7 +653,7 @@ mod tests {
     #[crate::test]
     async fn captures_match_empty_inner_segments() {
         let app = Router::new().route(
-            "/:key/method",
+            "/{key}/method",
             get(|Path(param): Path<String>| async move { param.to_string() }),
         );
 
@@ -669,7 +669,7 @@ mod tests {
     #[crate::test]
     async fn captures_match_empty_inner_segments_near_end() {
         let app = Router::new().route(
-            "/method/:key/",
+            "/method/{key}/",
             get(|Path(param): Path<String>| async move { param.to_string() }),
         );
 
@@ -688,7 +688,7 @@ mod tests {
     #[crate::test]
     async fn captures_match_empty_trailing_segment() {
         let app = Router::new().route(
-            "/method/:key",
+            "/method/{key}",
             get(|Path(param): Path<String>| async move { param.to_string() }),
         );
 
@@ -720,7 +720,10 @@ mod tests {
             }
         }
 
-        let app = Router::new().route("/:key", get(|param: Path<Param>| async move { param.0 .0 }));
+        let app = Router::new().route(
+            "/{key}",
+            get(|param: Path<Param>| async move { param.0 .0 }),
+        );
 
         let client = TestClient::new(app);
 
@@ -734,7 +737,7 @@ mod tests {
 
     #[crate::test]
     async fn two_path_extractors() {
-        let app = Router::new().route("/:a/:b", get(|_: Path<String>, _: Path<String>| async {}));
+        let app = Router::new().route("/{a}/{b}", get(|_: Path<String>, _: Path<String>| async {}));
 
         let client = TestClient::new(app);
 
@@ -750,7 +753,7 @@ mod tests {
     #[crate::test]
     async fn deserialize_into_vec_of_tuples() {
         let app = Router::new().route(
-            "/:a/:b",
+            "/{a}/{b}",
             get(|Path(params): Path<Vec<(String, String)>>| async move {
                 assert_eq!(
                     params,
@@ -781,31 +784,31 @@ mod tests {
 
         let app = Router::new()
             .route(
-                "/single/:a",
+                "/single/{a}",
                 get(|Path(a): Path<Date>| async move { format!("single: {a}") }),
             )
             .route(
-                "/tuple/:a/:b/:c",
+                "/tuple/{a}/{b}/{c}",
                 get(|Path((a, b, c)): Path<(Date, Date, Date)>| async move {
                     format!("tuple: {a} {b} {c}")
                 }),
             )
             .route(
-                "/vec/:a/:b/:c",
+                "/vec/{a}/{b}/{c}",
                 get(|Path(vec): Path<Vec<Date>>| async move {
                     let [a, b, c]: [Date; 3] = vec.try_into().unwrap();
                     format!("vec: {a} {b} {c}")
                 }),
             )
             .route(
-                "/vec_pairs/:a/:b/:c",
+                "/vec_pairs/{a}/{b}/{c}",
                 get(|Path(vec): Path<Vec<(String, Date)>>| async move {
                     let [(_, a), (_, b), (_, c)]: [(String, Date); 3] = vec.try_into().unwrap();
                     format!("vec_pairs: {a} {b} {c}")
                 }),
             )
             .route(
-                "/map/:a/:b/:c",
+                "/map/{a}/{b}/{c}",
                 get(|Path(mut map): Path<HashMap<String, Date>>| async move {
                     let a = map.remove("a").unwrap();
                     let b = map.remove("b").unwrap();
@@ -814,7 +817,7 @@ mod tests {
                 }),
             )
             .route(
-                "/struct/:a/:b/:c",
+                "/struct/{a}/{b}/{c}",
                 get(|Path(params): Path<Params>| async move {
                     format!("struct: {} {} {}", params.a, params.b, params.c)
                 }),
@@ -851,8 +854,8 @@ mod tests {
         use serde_json::Value;
 
         let app = Router::new()
-            .route("/one/:a", get(|_: Path<(Value, Value)>| async {}))
-            .route("/two/:a/:b", get(|_: Path<Value>| async {}));
+            .route("/one/{a}", get(|_: Path<(Value, Value)>| async {}))
+            .route("/two/{a}/{b}", get(|_: Path<Value>| async {}));
 
         let client = TestClient::new(app);
 
@@ -872,7 +875,7 @@ mod tests {
     #[crate::test]
     async fn raw_path_params() {
         let app = Router::new().route(
-            "/:a/:b/:c",
+            "/{a}/{b}/{c}",
             get(|params: RawPathParams| async move {
                 params
                     .into_iter()
