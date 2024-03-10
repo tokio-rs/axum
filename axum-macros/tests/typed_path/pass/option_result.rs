@@ -3,7 +3,7 @@ use axum::{extract::rejection::PathRejection, http::StatusCode};
 use serde::Deserialize;
 
 #[derive(TypedPath, Deserialize)]
-#[typed_path("/users/:id")]
+#[typed_path("/users/{id}")]
 struct UsersShow {
     id: String,
 }

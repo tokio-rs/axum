@@ -83,9 +83,9 @@ async fn routing() {
             "/users",
             get(|_: Request| async { "users#index" }).post(|_: Request| async { "users#create" }),
         )
-        .route("/users/:id", get(|_: Request| async { "users#show" }))
+        .route("/users/{id}", get(|_: Request| async { "users#show" }))
         .route(
-            "/users/:id/action",
+            "/users/{id}/action",
             get(|_: Request| async { "users#action" }),
         );
 
@@ -289,7 +289,10 @@ async fn multiple_methods_for_one_handler() {
 
 #[crate::test]
 async fn wildcard_sees_whole_url() {
-    let app = Router::new().route("/api/*rest", get(|uri: Uri| async move { uri.to_string() }));
+    let app = Router::new().route(
+        "/api/{{*rest}}",
+        get(|uri: Uri| async move { uri.to_string() }),
+    );
 
     let client = TestClient::new(app);
 
@@ -357,7 +360,7 @@ async fn with_and_without_trailing_slash() {
 #[crate::test]
 async fn wildcard_doesnt_match_just_trailing_slash() {
     let app = Router::new().route(
-        "/x/*path",
+        "/x/{*path}",
         get(|Path(path): Path<String>| async move { path }),
     );
 
@@ -377,8 +380,8 @@ async fn wildcard_doesnt_match_just_trailing_slash() {
 #[crate::test]
 async fn what_matches_wildcard() {
     let app = Router::new()
-        .route("/*key", get(|| async { "root" }))
-        .route("/x/*key", get(|| async { "x" }))
+        .route("/{*key}", get(|| async { "root" }))
+        .route("/x/{*key}", get(|| async { "x" }))
         .fallback(|| async { "fallback" });
 
     let client = TestClient::new(app);
@@ -406,7 +409,7 @@ async fn what_matches_wildcard() {
 async fn static_and_dynamic_paths() {
     let app = Router::new()
         .route(
-            "/:key",
+            "/{key}",
             get(|Path(key): Path<String>| async move { format!("dynamic: {key}") }),
         )
         .route("/foo", get(|| async { "static" }));
