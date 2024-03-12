@@ -12,13 +12,13 @@ use tokio::net::{TcpListener, TcpStream};
 /// A trait that provides a generic API for accepting connections
 /// from any server type which listens on an address of some kind
 #[async_trait]
-pub trait Accept: Send {
+pub trait Accept: Send + Sync + 'static {
     /// When a connection is accepted from the Listener type, it must
     /// be transformed into the Target type so that [`hyper`] can Read
     /// from it and Write to it
     type Target: Read + Write + LocalAddr + Unpin + Send + Sync;
     /// The SocketAddr associated with the given Listener type
-    type Addr: Debug + Send;
+    type Addr: Debug + Send + Sync + Clone;
 
     /// Accept a new incoming connection from this Listener
     async fn accept(&self) -> std::io::Result<(Self::Target, Self::Addr)>;

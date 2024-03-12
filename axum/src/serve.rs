@@ -174,8 +174,7 @@ where
     for<'a> <M as Service<IncomingStream<'a, A::Target, A::Addr>>>::Future: Send,
     S: Service<Request, Response = Response, Error = Infallible> + Clone + Send + 'static,
     S::Future: Send,
-    A: crate::Accept + Sync + 'static,
-    <A as crate::Accept>::Addr: Clone + Send + Sync + 'static,
+    A: crate::Accept,
 {
     type Output = io::Result<()>;
     type IntoFuture = private::ServeFuture;
@@ -275,8 +274,7 @@ where
     S: Service<Request, Response = Response, Error = Infallible> + Clone + Send + 'static,
     S::Future: Send,
     F: Future<Output = ()> + Send + 'static,
-    A: crate::Accept + Sync + 'static,
-    <A as crate::Accept>::Addr: Clone + Send + Sync + 'static,
+    A: crate::Accept,
 {
     type Output = io::Result<()>;
     type IntoFuture = private::ServeFuture;
