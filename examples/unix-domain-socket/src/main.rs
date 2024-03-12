@@ -50,7 +50,14 @@ mod unix {
 
         let app = Router::new().route("/", get(handler));
 
-        tokio::spawn(async move { axum::serve(uds, app.into_make_service()).await.unwrap() });
+        tokio::spawn(async move {
+            axum::serve(
+                uds,
+                app.into_make_service_with_connect_info::<UdsConnectInfo>(),
+            )
+            .await
+            .unwrap()
+        });
 
         let stream = TokioIo::new(UnixStream::connect(path).await.unwrap());
         let (mut sender, conn) = hyper::client::conn::http1::handshake(stream).await.unwrap();
