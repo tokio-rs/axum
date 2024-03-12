@@ -4,8 +4,10 @@ use async_trait::async_trait;
 use hyper::rt::{Read, Write};
 #[cfg(feature = "tokio")]
 use hyper_util::rt::TokioIo;
+#[cfg(all(unix, feature = "tokio"))]
+use tokio::net::{unix::UCred, UnixListener, UnixStream};
 #[cfg(feature = "tokio")]
-use tokio::net::{unix::UCred, TcpListener, TcpStream, UnixListener, UnixStream};
+use tokio::net::{TcpListener, TcpStream};
 
 /// A trait that provides a generic API for accepting connections
 /// from any server type which listens on an address of some kind
@@ -44,7 +46,7 @@ impl Accept for TcpListener {
 
 #[derive(Clone, Debug)]
 #[allow(dead_code)]
-#[cfg(feature = "tokio")]
+#[cfg(all(unix, feature = "tokio"))]
 /// The associate SocketAddr type for the [`UnixStream`] type
 pub struct UdsConnectInfo {
     /// Contains the path to the unix socket
@@ -54,7 +56,7 @@ pub struct UdsConnectInfo {
 }
 
 #[async_trait]
-#[cfg(feature = "tokio")]
+#[cfg(all(unix, feature = "tokio"))]
 impl Accept for UnixListener {
     type Target = TokioIo<UnixStream>;
     type Addr = UdsConnectInfo;
@@ -82,7 +84,7 @@ impl LocalAddr for TokioIo<TcpStream> {
     }
 }
 
-#[cfg(feature = "tokio")]
+#[cfg(all(unix, feature = "tokio"))]
 impl LocalAddr for TokioIo<UnixStream> {
     type Addr = tokio::net::unix::SocketAddr;
 

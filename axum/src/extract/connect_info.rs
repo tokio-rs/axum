@@ -6,7 +6,7 @@
 
 use crate::extension::AddExtension;
 
-#[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
+#[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2"), unix))]
 use crate::UdsConnectInfo;
 
 use super::{Extension, FromRequestParts};
@@ -104,6 +104,7 @@ const _: () = {
         }
     }
 
+    #[cfg(unix)]
     impl<A, R> Connected<IncomingStream<'_, A, R>> for UdsConnectInfo
     where
         A: crate::LocalAddr,
@@ -125,7 +126,7 @@ impl Connected<SocketAddr> for SocketAddr {
     }
 }
 
-#[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
+#[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2"), unix))]
 impl Connected<UdsConnectInfo> for UdsConnectInfo {
     type Addr = UdsConnectInfo;
 
