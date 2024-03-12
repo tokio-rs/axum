@@ -222,7 +222,7 @@ where
 
         self.route_endpoint(&path, endpoint.clone())?;
 
-        // `/*rest` is not matched by `/` so we need to also register a router at the
+        // `/{*rest}` is not matched by `/` so we need to also register a router at the
         // prefix itself. Otherwise if you were to nest at `/foo` then `/foo` itself
         // wouldn't match, which it should
         self.route_endpoint(prefix, endpoint.clone())?;
