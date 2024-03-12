@@ -1,8 +1,8 @@
 error[E0277]: the trait bound `for<'de> Struct: serde::de::Deserialize<'de>` is not satisfied
- --> tests/debug_handler/fail/json_not_deserialize.rs:7:23
+ --> tests/debug_handler/fail/json_not_deserialize.rs:7:24
   |
-7 | async fn handler(foo: Json<Struct>) {}
-  |                       ^^^^^^^^^^^^ the trait `for<'de> serde::de::Deserialize<'de>` is not implemented for `Struct`
+7 | async fn handler(_foo: Json<Struct>) {}
+  |                        ^^^^^^^^^^^^ the trait `for<'de> serde::de::Deserialize<'de>` is not implemented for `Struct`, which is required by `Json<Struct>: FromRequest<()>`
   |
   = help: the following other types implement trait `serde::de::Deserialize<'de>`:
             bool
@@ -18,3 +18,27 @@ error[E0277]: the trait bound `for<'de> Struct: serde::de::Deserialize<'de>` is 
   = note: required for `Json<Struct>` to implement `FromRequest<()>`
   = help: see issue #48214
   = help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
+
+error[E0277]: the trait bound `for<'de> Struct: serde::de::Deserialize<'de>` is not satisfied
+ --> tests/debug_handler/fail/json_not_deserialize.rs:7:24
+  |
+7 | async fn handler(_foo: Json<Struct>) {}
+  |                        ^^^^^^^^^^^^ the trait `for<'de> serde::de::Deserialize<'de>` is not implemented for `Struct`, which is required by `Json<Struct>: FromRequest<()>`
+  |
+  = help: the following other types implement trait `serde::de::Deserialize<'de>`:
+            bool
+            char
+            isize
+            i8
+            i16
+            i32
+            i64
+            i128
+          and $N others
+  = note: required for `Struct` to implement `serde::de::DeserializeOwned`
+  = note: required for `Json<Struct>` to implement `FromRequest<()>`
+note: required by a bound in `__axum_macros_check_handler_0_from_request_check`
+ --> tests/debug_handler/fail/json_not_deserialize.rs:7:24
+  |
+7 | async fn handler(_foo: Json<Struct>) {}
+  |                        ^^^^^^^^^^^^ required by this bound in `__axum_macros_check_handler_0_from_request_check`

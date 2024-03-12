@@ -1,7 +1,7 @@
 error[E0277]: the trait bound `String: FromRequestParts<S>` is not satisfied
- --> tests/from_request/fail/parts_extracting_body.rs:6:11
+ --> tests/from_request/fail/parts_extracting_body.rs:5:11
   |
-6 |     body: String,
+5 |     body: String,
   |           ^^^^^^ the trait `FromRequestParts<S>` is not implemented for `String`
   |
   = note: Function argument is not a valid axum extractor.
