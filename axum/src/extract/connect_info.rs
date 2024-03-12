@@ -6,7 +6,7 @@
 
 use crate::extension::AddExtension;
 
-#[cfg(feature = "tokio")]
+#[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
 use crate::UdsConnectInfo;
 
 use super::{Extension, FromRequestParts};
