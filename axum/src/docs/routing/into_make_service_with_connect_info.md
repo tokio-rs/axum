@@ -35,6 +35,7 @@ use axum::{
     serve::IncomingStream,
     Router,
 };
+use std::net::SocketAddr;
 
 let app = Router::new().route("/", get(handler));
 
@@ -49,13 +50,9 @@ struct MyConnectInfo {
     // ...
 }
 
-impl<A: axum::LocalAddr, R> Connected<IncomingStream<'_, A, R>> for MyConnectInfo
-where
-    R: Clone + Send + Sync + 'static,
+impl<A: axum::LocalAddr> Connected<IncomingStream<'_, A, SocketAddr>> for MyConnectInfo
 {
-    type Addr = Self;
-
-    fn connect_info(_target: IncomingStream<'_, A, R>) -> Self::Addr {
+    fn connect_info(_target: IncomingStream<'_, A, SocketAddr>) -> Self {
         MyConnectInfo {
             // ...
         }
