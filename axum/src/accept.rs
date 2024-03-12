@@ -1,4 +1,4 @@
-use std::fmt::Debug;
+use std::{fmt::Debug, path::PathBuf};
 
 use async_trait::async_trait;
 use hyper::rt::{Read, Write};
@@ -46,10 +46,12 @@ impl Accept for TcpListener {
 #[cfg(feature = "tokio")]
 impl Accept for UnixListener {
     type Target = TokioIo<UnixStream>;
-    type Addr = tokio::net::unix::SocketAddr;
+    type Addr = Option<PathBuf>;
 
     async fn accept(&self) -> std::io::Result<(Self::Target, Self::Addr)> {
-        self.accept().await.map(|t| (TokioIo::new(t.0), t.1))
+        self.accept()
+            .await
+            .map(|t| (TokioIo::new(t.0), t.1.as_pathname().map(|p| p.into())))
     }
 }
 

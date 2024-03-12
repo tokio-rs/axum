@@ -531,7 +531,7 @@ mod tests {
         Router,
     };
     use std::net::SocketAddr;
-    use tokio::net::{TcpListener, TcpStream};
+    use tokio::net::TcpListener;
 
     #[allow(dead_code, unused_must_use)]
     async fn if_it_compiles_it_works() {
@@ -576,6 +576,50 @@ mod tests {
         );
         serve(
             TcpListener::bind(addr).await.unwrap(),
+            handler.into_make_service_with_connect_info::<SocketAddr>(),
+        );
+    }
+
+    #[allow(dead_code, unused_must_use)]
+    #[cfg(unix)]
+    async fn if_it_compiles_it_works_unix() {
+        use tokio::net::UnixListener;
+
+        let router: Router = Router::new();
+
+        let addr = "/tmp/unix";
+
+        // router
+        serve(UnixListener::bind(addr).unwrap(), router.clone());
+        serve(
+            UnixListener::bind(addr).unwrap(),
+            router.clone().into_make_service(),
+        );
+        serve(
+            UnixListener::bind(addr).unwrap(),
+            router.into_make_service_with_connect_info::<SocketAddr>(),
+        );
+
+        // method router
+        serve(UnixListener::bind(addr).unwrap(), get(handler));
+        serve(
+            UnixListener::bind(addr).unwrap(),
+            get(handler).into_make_service(),
+        );
+        serve(
+            UnixListener::bind(addr).unwrap(),
+            get(handler).into_make_service_with_connect_info::<SocketAddr>(),
+        );
+
+        // handler
+        serve(UnixListener::bind(addr).unwrap(), handler.into_service());
+        serve(UnixListener::bind(addr).unwrap(), handler.with_state(()));
+        serve(
+            UnixListener::bind(addr).unwrap(),
+            handler.into_make_service(),
+        );
+        serve(
+            UnixListener::bind(addr).unwrap(),
             handler.into_make_service_with_connect_info::<SocketAddr>(),
         );
     }
