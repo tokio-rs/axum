@@ -476,7 +476,7 @@ pub use self::serve::serve;
 pub use self::accept::Accept;
 #[cfg(any(feature = "http1", feature = "http2"))]
 pub use self::accept::LocalAddr;
-#[cfg(any(feature = "http1", feature = "http2"))]
+#[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
 pub use self::accept::UdsConnectInfo;
 pub use self::service_ext::ServiceExt;
 
