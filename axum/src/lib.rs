@@ -421,6 +421,7 @@
 #[macro_use]
 pub(crate) mod macros;
 
+#[cfg(any(feature = "http1", feature = "http2"))]
 mod accept;
 mod boxed;
 mod extension;
@@ -471,8 +472,11 @@ pub use axum_macros::debug_handler;
 #[doc(inline)]
 pub use self::serve::serve;
 
+#[cfg(any(feature = "http1", feature = "http2"))]
 pub use self::accept::Accept;
+#[cfg(any(feature = "http1", feature = "http2"))]
 pub use self::accept::LocalAddr;
+#[cfg(any(feature = "http1", feature = "http2"))]
 pub use self::accept::UdsConnectInfo;
 pub use self::service_ext::ServiceExt;
 
