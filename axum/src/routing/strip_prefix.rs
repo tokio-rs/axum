@@ -56,7 +56,7 @@ fn strip_prefix(uri: &Uri, prefix: &str) -> Option<Uri> {
     //          ^^^^ this much is matched and the length is 4. Thus if we chop off the first 4
     //          characters we get the remainder
     //
-    // prefix = /api/:version
+    // prefix = /api/{version}
     // path   = /api/v0/users
     //          ^^^^^^^ this much is matched and the length is 7.
     let mut matching_prefix_length = Some(0);
@@ -66,7 +66,7 @@ fn strip_prefix(uri: &Uri, prefix: &str) -> Option<Uri> {
 
         match item {
             Item::Both(path_segment, prefix_segment) => {
-                if prefix_segment.starts_with(':') || path_segment == prefix_segment {
+                if is_capture(prefix_segment) || path_segment == prefix_segment {
                     // the prefix segment is either a param, which matches anything, or
                     // it actually matches the path segment
                     *matching_prefix_length.as_mut().unwrap() += path_segment.len();
@@ -146,6 +146,14 @@ where
         (None, Some(b)) => Some(Item::Second(b)),
         (None, None) => None,
     })
+}
+
+fn is_capture(segment: &str) -> bool {
+    segment.starts_with('{')
+        && segment.ends_with('}')
+        && !segment.starts_with("{{")
+        && !segment.ends_with("}}")
+        && !segment.starts_with("{*")
 }
 
 #[derive(Debug)]
