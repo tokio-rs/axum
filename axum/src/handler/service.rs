@@ -182,10 +182,12 @@ where
 const _: () = {
     use crate::serve::IncomingStream;
 
-    impl<H, T, S> Service<IncomingStream<'_>> for HandlerService<H, T, S>
+    impl<H, T, S, A, R> Service<IncomingStream<'_, A, R>> for HandlerService<H, T, S>
     where
         H: Clone,
         S: Clone,
+        A: crate::LocalAddr,
+        R: Clone + Send + Sync + 'static,
     {
         type Response = Self;
         type Error = Infallible;
@@ -195,7 +197,7 @@ const _: () = {
             Poll::Ready(Ok(()))
         }
 
-        fn call(&mut self, _req: IncomingStream<'_>) -> Self::Future {
+        fn call(&mut self, _req: IncomingStream<'_, A, R>) -> Self::Future {
             std::future::ready(Ok(self.clone()))
         }
     }

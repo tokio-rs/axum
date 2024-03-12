@@ -79,23 +79,33 @@ where
 ///
 /// [`Router::into_make_service_with_connect_info`]: crate::routing::Router::into_make_service_with_connect_info
 pub trait Connected<T>: Clone + Send + Sync + 'static {
+    /// The SocketAddr type associated with T
+    type Addr: Clone + Send + Sync;
     /// Create type holding information about the connection.
-    fn connect_info(target: T) -> Self;
+    fn connect_info(target: T) -> Self::Addr;
 }
 
 #[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
 const _: () = {
     use crate::serve::IncomingStream;
 
-    impl Connected<IncomingStream<'_>> for SocketAddr {
-        fn connect_info(target: IncomingStream<'_>) -> Self {
+    impl<A, R> Connected<IncomingStream<'_, A, R>> for SocketAddr
+    where
+        A: crate::LocalAddr,
+        R: Clone + Send + Sync,
+    {
+        type Addr = R;
+
+        fn connect_info(target: IncomingStream<'_, A, R>) -> Self::Addr {
             target.remote_addr()
         }
     }
 };
 
 impl Connected<SocketAddr> for SocketAddr {
-    fn connect_info(remote_addr: SocketAddr) -> Self {
+    type Addr = SocketAddr;
+
+    fn connect_info(remote_addr: SocketAddr) -> Self::Addr {
         remote_addr
     }
 }
@@ -104,10 +114,11 @@ impl<S, C, T> Service<T> for IntoMakeServiceWithConnectInfo<S, C>
 where
     S: Clone,
     C: Connected<T>,
+    C::Addr: 'static,
 {
-    type Response = AddExtension<S, ConnectInfo<C>>;
+    type Response = AddExtension<S, ConnectInfo<C::Addr>>;
     type Error = Infallible;
-    type Future = ResponseFuture<S, C>;
+    type Future = ResponseFuture<S, C::Addr>;
 
     #[inline]
     fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
@@ -264,8 +275,13 @@ mod tests {
             value: &'static str,
         }
 
-        impl Connected<IncomingStream<'_>> for MyConnectInfo {
-            fn connect_info(_target: IncomingStream<'_>) -> Self {
+        impl<A: crate::LocalAddr, R> Connected<IncomingStream<'_, A, R>> for MyConnectInfo
+        where
+            R: Clone + Send + Sync + 'static,
+        {
+            type Addr = Self;
+
+            fn connect_info(_target: IncomingStream<'_, A, R>) -> Self::Addr {
                 Self {
                     value: "it worked!",
                 }

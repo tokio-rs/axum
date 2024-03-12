@@ -421,6 +421,7 @@
 #[macro_use]
 pub(crate) mod macros;
 
+mod accept;
 mod boxed;
 mod extension;
 #[cfg(feature = "form")]
@@ -470,6 +471,8 @@ pub use axum_macros::debug_handler;
 #[doc(inline)]
 pub use self::serve::serve;
 
+pub use self::accept::Accept;
+pub use self::accept::LocalAddr;
 pub use self::service_ext::ServiceExt;
 
 #[cfg(test)]

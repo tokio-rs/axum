@@ -482,7 +482,10 @@ impl Router {
 const _: () = {
     use crate::serve::IncomingStream;
 
-    impl Service<IncomingStream<'_>> for Router<()> {
+    impl<A: crate::LocalAddr, R> Service<IncomingStream<'_, A, R>> for Router<()>
+    where
+        R: Clone + Send + Sync + 'static,
+    {
         type Response = Self;
         type Error = Infallible;
         type Future = std::future::Ready<Result<Self::Response, Self::Error>>;
@@ -491,7 +494,7 @@ const _: () = {
             Poll::Ready(Ok(()))
         }
 
-        fn call(&mut self, _req: IncomingStream<'_>) -> Self::Future {
+        fn call(&mut self, _req: IncomingStream<'_, A, R>) -> Self::Future {
             std::future::ready(Ok(self.clone()))
         }
     }
