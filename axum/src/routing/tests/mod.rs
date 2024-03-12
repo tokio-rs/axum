@@ -291,7 +291,7 @@ async fn multiple_methods_for_one_handler() {
 #[crate::test]
 async fn wildcard_sees_whole_url() {
     let app = Router::new().route(
-        "/api/{{*rest}}",
+        "/api/{*rest}",
         get(|uri: Uri| async move { uri.to_string() }),
     );
 

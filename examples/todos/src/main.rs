@@ -4,8 +4,8 @@
 //!
 //! - `GET /todos`: return a JSON list of Todos.
 //! - `POST /todos`: create a new Todo.
-//! - `PATCH /todos/:id`: update a specific Todo.
-//! - `DELETE /todos/:id`: delete a specific Todo.
+//! - `PATCH /todos/{id}`: update a specific Todo.
+//! - `DELETE /todos/{id}`: delete a specific Todo.
 //!
 //! Run with
 //!
