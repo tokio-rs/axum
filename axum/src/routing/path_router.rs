@@ -209,9 +209,9 @@ where
         let prefix = path;
 
         let path = if path.ends_with('/') {
-            format!("{path}*{NEST_TAIL_PARAM}")
+            format!("{path}{{*{NEST_TAIL_PARAM}}}")
         } else {
-            format!("{path}/*{NEST_TAIL_PARAM}")
+            format!("{path}/{{*{NEST_TAIL_PARAM}}}")
         };
 
         let layer = (
