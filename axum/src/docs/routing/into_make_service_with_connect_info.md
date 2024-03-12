@@ -4,7 +4,7 @@ can extract it.
 
 This enables extracting things like the client's remote address.
 
-Extracting [`std::net::SocketAddr`] is supported out of the box:
+Extracting the listening network's `SocketAddr` type is supported out of the box:
 
 ```rust
 use axum::{
@@ -49,8 +49,13 @@ struct MyConnectInfo {
     // ...
 }
 
-impl Connected<IncomingStream<'_>> for MyConnectInfo {
-    fn connect_info(target: IncomingStream<'_>) -> Self {
+impl<A: axum::LocalAddr, R> Connected<IncomingStream<'_, A, R>> for MyConnectInfo
+where
+    R: Clone + Send + Sync + 'static,
+{
+    type Addr = Self;
+
+    fn connect_info(_target: IncomingStream<'_, A, R>) -> Self::Addr {
         MyConnectInfo {
             // ...
         }
