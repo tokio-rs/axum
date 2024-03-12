@@ -176,7 +176,6 @@ where
     S::Future: Send,
     A: crate::Accept + Sync + 'static,
     <A as crate::Accept>::Addr: Clone + Send + Sync + 'static,
-    <A as crate::Accept>::Target: Send + Sync + 'static,
 {
     type Output = io::Result<()>;
     type IntoFuture = private::ServeFuture;
@@ -278,7 +277,6 @@ where
     F: Future<Output = ()> + Send + 'static,
     A: crate::Accept + Sync + 'static,
     <A as crate::Accept>::Addr: Clone + Send + Sync + 'static,
-    <A as crate::Accept>::Target: Send + Sync + 'static,
 {
     type Output = io::Result<()>;
     type IntoFuture = private::ServeFuture;

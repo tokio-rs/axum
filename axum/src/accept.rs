@@ -14,7 +14,7 @@ pub trait Accept: Send {
     /// When a connection is accepted from the Listener type, it must
     /// be transformed into the Target type so that [`hyper`] can Read
     /// from it and Write to it
-    type Target: Read + Write + LocalAddr + Unpin + Send;
+    type Target: Read + Write + LocalAddr + Unpin + Send + Sync;
     /// The SocketAddr associated with the given Listener type
     type Addr: Debug + Send;
 
