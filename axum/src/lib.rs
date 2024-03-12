@@ -473,6 +473,7 @@ pub use self::serve::serve;
 
 pub use self::accept::Accept;
 pub use self::accept::LocalAddr;
+pub use self::accept::UdsConnectInfo;
 pub use self::service_ext::ServiceExt;
 
 #[cfg(test)]

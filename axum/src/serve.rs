@@ -530,12 +530,12 @@ mod tests {
         routing::get,
         Router,
     };
-    use std::net::SocketAddr;
     use tokio::net::TcpListener;
 
     #[allow(dead_code, unused_must_use)]
     async fn if_it_compiles_it_works() {
         let router: Router = Router::new();
+        use std::net::SocketAddr;
 
         let addr = "0.0.0.0:0";
 
@@ -583,6 +583,7 @@ mod tests {
     #[allow(dead_code, unused_must_use)]
     #[cfg(unix)]
     async fn if_it_compiles_it_works_unix() {
+        use crate::UdsConnectInfo;
         use tokio::net::UnixListener;
 
         let router: Router = Router::new();
@@ -597,7 +598,7 @@ mod tests {
         );
         serve(
             UnixListener::bind(addr).unwrap(),
-            router.into_make_service_with_connect_info::<SocketAddr>(),
+            router.into_make_service_with_connect_info::<UdsConnectInfo>(),
         );
 
         // method router
@@ -608,7 +609,7 @@ mod tests {
         );
         serve(
             UnixListener::bind(addr).unwrap(),
-            get(handler).into_make_service_with_connect_info::<SocketAddr>(),
+            get(handler).into_make_service_with_connect_info::<UdsConnectInfo>(),
         );
 
         // handler
@@ -620,7 +621,7 @@ mod tests {
         );
         serve(
             UnixListener::bind(addr).unwrap(),
-            handler.into_make_service_with_connect_info::<SocketAddr>(),
+            handler.into_make_service_with_connect_info::<UdsConnectInfo>(),
         );
     }
 

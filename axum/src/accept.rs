@@ -1,11 +1,11 @@
-use std::{fmt::Debug, path::PathBuf};
+use std::{fmt::Debug, sync::Arc};
 
 use async_trait::async_trait;
 use hyper::rt::{Read, Write};
 #[cfg(feature = "tokio")]
 use hyper_util::rt::TokioIo;
 #[cfg(feature = "tokio")]
-use tokio::net::{TcpListener, TcpStream, UnixListener, UnixStream};
+use tokio::net::{unix::UCred, TcpListener, TcpStream, UnixListener, UnixStream};
 
 /// A trait that provides a generic API for accepting connections
 /// from any server type which listens on an address of some kind
@@ -42,16 +42,34 @@ impl Accept for TcpListener {
     }
 }
 
+#[derive(Clone, Debug)]
+#[allow(dead_code)]
+#[cfg(feature = "tokio")]
+/// The associate SocketAddr type for the [`UnixStream`] type
+pub struct UdsConnectInfo {
+    /// Contains the path to the unix socket
+    pub peer_addr: Arc<tokio::net::unix::SocketAddr>,
+    /// Information like user started, pid, and gid
+    pub peer_cred: UCred,
+}
+
 #[async_trait]
 #[cfg(feature = "tokio")]
 impl Accept for UnixListener {
     type Target = TokioIo<UnixStream>;
-    type Addr = Option<PathBuf>;
+    type Addr = UdsConnectInfo;
 
     async fn accept(&self) -> std::io::Result<(Self::Target, Self::Addr)> {
-        self.accept()
-            .await
-            .map(|t| (TokioIo::new(t.0), t.1.as_pathname().map(|p| p.into())))
+        self.accept().await.and_then(|t| {
+            let peer_cred = t.0.peer_cred()?;
+            Ok((
+                TokioIo::new(t.0),
+                UdsConnectInfo {
+                    peer_addr: Arc::new(t.1),
+                    peer_cred,
+                },
+            ))
+        })
     }
 }
 

@@ -4,7 +4,7 @@
 //!
 //! [`Router::into_make_service_with_connect_info`]: crate::routing::Router::into_make_service_with_connect_info
 
-use crate::extension::AddExtension;
+use crate::{accept::UdsConnectInfo, extension::AddExtension};
 
 use super::{Extension, FromRequestParts};
 use async_trait::async_trait;
@@ -100,12 +100,33 @@ const _: () = {
             target.remote_addr()
         }
     }
+
+    impl<A, R> Connected<IncomingStream<'_, A, R>> for UdsConnectInfo
+    where
+        A: crate::LocalAddr,
+        R: Clone + Send + Sync,
+    {
+        type Addr = R;
+
+        fn connect_info(target: IncomingStream<'_, A, R>) -> Self::Addr {
+            target.remote_addr()
+        }
+    }
 };
 
 impl Connected<SocketAddr> for SocketAddr {
     type Addr = SocketAddr;
 
     fn connect_info(remote_addr: SocketAddr) -> Self::Addr {
+        remote_addr
+    }
+}
+
+#[cfg(feature = "tokio")]
+impl Connected<UdsConnectInfo> for UdsConnectInfo {
+    type Addr = UdsConnectInfo;
+
+    fn connect_info(remote_addr: UdsConnectInfo) -> Self::Addr {
         remote_addr
     }
 }
