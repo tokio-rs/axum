@@ -125,7 +125,7 @@ impl Connected<SocketAddr> for SocketAddr {
     }
 }
 
-#[cfg(feature = "tokio")]
+#[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
 impl Connected<UdsConnectInfo> for UdsConnectInfo {
     type Addr = UdsConnectInfo;
 
