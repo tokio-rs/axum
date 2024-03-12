@@ -19,9 +19,9 @@ fn main() {
 mod unix {
     use axum::{
         body::Body,
-        extract::connect_info::ConnectInfo,
+        extract::{connect_info::ConnectInfo, OriginalUri},
         http::{Method, Request, StatusCode},
-        routing::get,
+        routing::post,
         Router, UdsConnectInfo,
     };
     use http_body_util::BodyExt;
@@ -29,6 +29,8 @@ mod unix {
     use std::path::PathBuf;
     use tokio::net::{UnixListener, UnixStream};
     use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+
+    const BODY: &str = "Wow, Such body!";
 
     pub async fn server() {
         tracing_subscriber::registry()
@@ -48,7 +50,7 @@ mod unix {
 
         let uds = UnixListener::bind(path.clone()).unwrap();
 
-        let app = Router::new().route("/", get(handler));
+        let app = Router::new().route("/", post(handler));
 
         tokio::spawn(async move {
             axum::serve(
@@ -68,9 +70,9 @@ mod unix {
         });
 
         let request = Request::builder()
-            .method(Method::GET)
+            .method(Method::POST)
             .uri("http://uri-doesnt-matter.com")
-            .body(Body::empty())
+            .body(Body::new(BODY.to_string()))
             .unwrap();
 
         let response = sender.send_request(request).await.unwrap();
@@ -82,8 +84,14 @@ mod unix {
         assert_eq!(body, "Hello, World!");
     }
 
-    async fn handler(ConnectInfo(info): ConnectInfo<UdsConnectInfo>) -> &'static str {
+    async fn handler(
+        ConnectInfo(info): ConnectInfo<UdsConnectInfo>,
+        OriginalUri(uri): OriginalUri,
+        body: String,
+    ) -> &'static str {
         println!("new connection from `{:?}`", info);
+        println!("URI Requested: {:?}", uri);
+        assert_eq!(BODY, body);
 
         "Hello, World!"
     }
