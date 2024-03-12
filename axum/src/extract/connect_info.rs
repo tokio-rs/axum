@@ -4,7 +4,10 @@
 //!
 //! [`Router::into_make_service_with_connect_info`]: crate::routing::Router::into_make_service_with_connect_info
 
-use crate::{accept::UdsConnectInfo, extension::AddExtension};
+use crate::extension::AddExtension;
+
+#[cfg(feature = "tokio")]
+use crate::UdsConnectInfo;
 
 use super::{Extension, FromRequestParts};
 use async_trait::async_trait;
