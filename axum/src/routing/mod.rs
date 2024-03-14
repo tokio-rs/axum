@@ -492,7 +492,9 @@ const _: () = {
         }
 
         fn call(&mut self, _req: IncomingStream<'_>) -> Self::Future {
-            std::future::ready(Ok(self.clone()))
+            // call `Router::with_state` such that everything is turned into `Route` eagerly
+            // rather than doing that per request
+            std::future::ready(Ok(self.clone().with_state(())))
         }
     }
 };

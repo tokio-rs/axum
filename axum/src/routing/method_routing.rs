@@ -1239,7 +1239,7 @@ const _: () = {
         }
 
         fn call(&mut self, _req: IncomingStream<'_>) -> Self::Future {
-            std::future::ready(Ok(self.clone()))
+            std::future::ready(Ok(self.clone().with_state(())))
         }
     }
 };
