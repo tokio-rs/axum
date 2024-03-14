@@ -1,24 +1,24 @@
-error[E0277]: the trait bound `bool: FromRequestParts<()>` is not satisfied
- --> tests/debug_handler/fail/argument_not_extractor.rs:5:24
+error[E0277]: the trait bound `bool: FromRequest<(), axum_core::extract::private::ViaParts>` is not satisfied
+ --> tests/debug_handler/fail/argument_not_extractor.rs:4:24
   |
-5 | async fn handler(_foo: bool) {}
-  |                        ^^^^ the trait `FromRequestParts<()>` is not implemented for `bool`
+4 | async fn handler(_foo: bool) {}
+  |                        ^^^^ the trait `FromRequestParts<()>` is not implemented for `bool`, which is required by `bool: FromRequest<(), _>`
   |
   = note: Function argument is not a valid axum extractor.
           See `https://docs.rs/axum/0.7/axum/extract/index.html` for details
-  = help: the following other types implement trait `FromRequestParts<S>`:
-            <HeaderMap as FromRequestParts<S>>
-            <Extension<T> as FromRequestParts<S>>
-            <Method as FromRequestParts<S>>
-            <axum::http::request::Parts as FromRequestParts<S>>
-            <Uri as FromRequestParts<S>>
-            <Version as FromRequestParts<S>>
-            <Extensions as FromRequestParts<S>>
-            <ConnectInfo<T> as FromRequestParts<S>>
+  = help: the following other types implement trait `FromRequest<S, M>`:
+            axum::body::Bytes
+            Body
+            Form<T>
+            Json<T>
+            axum::http::Request<Body>
+            RawForm
+            String
+            Option<T>
           and $N others
   = note: required for `bool` to implement `FromRequest<(), axum_core::extract::private::ViaParts>`
 note: required by a bound in `__axum_macros_check_handler_0_from_request_check`
- --> tests/debug_handler/fail/argument_not_extractor.rs:5:24
+ --> tests/debug_handler/fail/argument_not_extractor.rs:4:24
   |
-5 | async fn handler(_foo: bool) {}
+4 | async fn handler(_foo: bool) {}
   |                        ^^^^ required by this bound in `__axum_macros_check_handler_0_from_request_check`

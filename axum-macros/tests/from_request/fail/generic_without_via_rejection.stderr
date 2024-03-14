@@ -1,13 +1,13 @@
 error: #[derive(FromRequest)] only supports generics when used with #[from_request(via)]
- --> tests/from_request/fail/generic_without_via_rejection.rs:7:18
+ --> tests/from_request/fail/generic_without_via_rejection.rs:6:18
   |
-7 | struct Extractor<T>(T);
+6 | struct Extractor<T>(T);
   |                  ^
 
 error[E0277]: the trait bound `fn(Extractor<()>) -> impl Future<Output = ()> {foo}: Handler<_, _>` is not satisfied
-  --> tests/from_request/fail/generic_without_via_rejection.rs:12:44
+  --> tests/from_request/fail/generic_without_via_rejection.rs:11:44
    |
-12 |     _ = Router::<()>::new().route("/", get(foo));
+11 |     _ = Router::<()>::new().route("/", get(foo));
    |                                        --- ^^^ the trait `Handler<_, _>` is not implemented for fn item `fn(Extractor<()>) -> impl Future<Output = ()> {foo}`
    |                                        |
    |                                        required by a bound introduced by this call

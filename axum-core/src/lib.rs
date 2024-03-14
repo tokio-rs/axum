@@ -1,4 +1,3 @@
-#![cfg_attr(nightly_error_messages, feature(diagnostic_namespace))]
 //! Core types and traits for [`axum`].
 //!
 //! Libraries authors that want to provide [`FromRequest`] or [`IntoResponse`] implementations
