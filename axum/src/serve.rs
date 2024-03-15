@@ -639,6 +639,20 @@ mod tests {
             TcpListener::bind(addr).await.unwrap(),
             handler.into_make_service_with_connect_info::<SocketAddr>(),
         );
+
+        // nodelay
+        serve(
+            TcpListener::bind(addr).await.unwrap(),
+            handler.into_service(),
+        )
+        .tcp_nodelay(true);
+
+        serve(
+            TcpListener::bind(addr).await.unwrap(),
+            handler.into_service(),
+        )
+        .with_graceful_shutdown(async { /*...*/ })
+        .tcp_nodelay(true);
     }
 
     async fn handler() {}
