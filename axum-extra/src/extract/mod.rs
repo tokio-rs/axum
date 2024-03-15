@@ -16,6 +16,9 @@ mod json_deserializer;
 #[cfg(feature = "query")]
 mod query;
 
+pub mod rejection;
+pub use rejection::QueryRejection;
+
 #[cfg(feature = "multipart")]
 pub mod multipart;
 
@@ -34,7 +37,7 @@ pub use self::cookie::SignedCookieJar;
 pub use self::form::{Form, FormRejection};
 
 #[cfg(feature = "query")]
-pub use self::query::{OptionalQuery, OptionalQueryRejection, Query, QueryRejection};
+pub use self::query::{OptionalQuery, OptionalQueryRejection, Query};
 
 #[cfg(feature = "multipart")]
 pub use self::multipart::Multipart;
