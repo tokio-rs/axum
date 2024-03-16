@@ -7,7 +7,8 @@ and this project adheres to [Semantic Versioning].
 
 # Unreleased
 
-- None.
+- **added:** New `tracing` feature which enables logging rejections from
+  built-in extractor with the `axum::rejection=trace` target ([#2596])
 
 # 0.9.2 (13. January, 2024)
 

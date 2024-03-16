@@ -21,6 +21,7 @@
 //! `multipart` | Enables the `Multipart` extractor | No
 //! `protobuf` | Enables the `Protobuf` extractor and response | No
 //! `query` | Enables the `Query` extractor | No
+//! `tracing` | Log rejections from built-in extractors | Yes
 //! `typed-routing` | Enables the `TypedPath` routing utilities | No
 //! `typed-header` | Enables the `TypedHeader` extractor and response  | No
 //!
