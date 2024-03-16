@@ -16,10 +16,9 @@ use std::{
 use axum_core::{body::Body, extract::Request, response::Response};
 use futures_util::{pin_mut, FutureExt};
 use hyper::body::Incoming;
-use hyper_util::{
-    rt::{TokioExecutor, TokioIo},
-    server::conn::auto::Builder,
-};
+use hyper_util::rt::{TokioExecutor, TokioIo};
+#[cfg(any(feature = "http1", feature = "http2"))]
+use hyper_util::server::conn::auto::Builder;
 use pin_project_lite::pin_project;
 use tokio::{
     net::{TcpListener, TcpStream},
