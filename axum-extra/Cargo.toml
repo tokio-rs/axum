@@ -12,7 +12,7 @@ repository = "https://github.com/tokio-rs/axum"
 version = "0.9.2"
 
 [features]
-default = []
+default = ["multipart"]
 
 async-read-body = ["dep:tokio-util", "tokio-util?/io", "dep:tokio"]
 cookie = ["dep:cookie"]
@@ -30,7 +30,7 @@ json-lines = [
     "tokio-stream?/io-util",
     "dep:tokio",
 ]
-multipart = ["dep:multer"]
+multipart = ["dep:multer", "dep:fastrand"]
 protobuf = ["dep:prost"]
 query = ["dep:serde_html_form"]
 typed-header = ["dep:headers"]
@@ -54,6 +54,7 @@ tower-service = "0.3"
 # optional dependencies
 axum-macros = { path = "../axum-macros", version = "0.4.1", optional = true }
 cookie = { package = "cookie", version = "0.18.0", features = ["percent-encode"], optional = true }
+fastrand = { version = "2.0.1", optional = true }
 form_urlencoded = { version = "1.1.0", optional = true }
 headers = { version = "0.4.0", optional = true }
 multer = { version = "3.0.0", optional = true }
@@ -87,6 +88,7 @@ allowed = [
     "axum_macros",
     "bytes",
     "cookie",
+    "fastrand",
     "futures_core",
     "futures_util",
     "headers",
