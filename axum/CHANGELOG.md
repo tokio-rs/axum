@@ -7,9 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+- **added:** `axum::serve::Serve::tcp_nodelay` and `axum::serve::WithGracefulShutdown::tcp_nodelay` ([#2653])
 - **fixed:** Fixed layers being cloned when calling `axum::serve` directly with
   a `Router` or `MethodRouter` ([#2586])
 
+[#2653]: https://github.com/tokio-rs/axum/pull/2653
 [#2586]: https://github.com/tokio-rs/axum/pull/2586
 
 # 0.7.4 (13. January, 2024)
