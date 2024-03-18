@@ -155,7 +155,7 @@ impl<M, S> Serve<M, S> {
 
     /// Instructs the server to set the value of the `TCP_NODELAY` option on every accepted connection.
     ///
-    /// See also [`TcpStream::set_nodelay`]
+    /// See also [`TcpStream::set_nodelay`].
     ///
     /// # Example
     /// ```
@@ -285,7 +285,7 @@ pub struct WithGracefulShutdown<M, S, F> {
 impl<M, S, F> WithGracefulShutdown<M, S, F> {
     /// Instructs the server to set the value of the `TCP_NODELAY` option on every accepted connection.
     ///
-    /// See also [`TcpStream::set_nodelay`]
+    /// See also [`TcpStream::set_nodelay`].
     ///
     /// # Example
     /// ```
