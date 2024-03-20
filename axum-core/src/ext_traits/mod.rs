@@ -1,5 +1,6 @@
 pub(crate) mod request;
 pub(crate) mod request_parts;
+pub(crate) mod result;
 
 #[cfg(test)]
 mod tests {

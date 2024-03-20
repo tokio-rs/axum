@@ -6,9 +6,9 @@
 
 use axum::{
     http::StatusCode,
-    response::{IntoResponse, Response},
+    response::IntoResultResponse,
     routing::get,
-    Router,
+    Router, ResultExt,
 };
 
 #[tokio::main]
@@ -22,36 +22,18 @@ async fn main() {
     axum::serve(listener, app).await.unwrap();
 }
 
-async fn handler() -> Result<(), AppError> {
-    try_thing()?;
+async fn handler() -> impl IntoResultResponse {
+    try_thing_anyhow()?; // by default this will return a StatusCode::INTERNAL_SERVER_ERROR (500) error
+    try_thing_anyhow().err_with_status(StatusCode::BAD_REQUEST)?; // Using the `ResultExt` trait to return a StatusCode::BAD_REQUEST (400) error
+
+    try_thing_stderror()?; // Standard errors also work
     Ok(())
 }
 
-fn try_thing() -> Result<(), anyhow::Error> {
-    anyhow::bail!("it failed!")
+fn try_thing_anyhow() -> Result<(), anyhow::Error> {
+    anyhow::bail!("it failed!");
 }
 
-// Make our own error that wraps `anyhow::Error`.
-struct AppError(anyhow::Error);
-
-// Tell axum how to convert `AppError` into a response.
-impl IntoResponse for AppError {
-    fn into_response(self) -> Response {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            format!("Something went wrong: {}", self.0),
-        )
-            .into_response()
-    }
-}
-
-// This enables using `?` on functions that return `Result<_, anyhow::Error>` to turn them into
-// `Result<_, AppError>`. That way you don't need to do that manually.
-impl<E> From<E> for AppError
-where
-    E: Into<anyhow::Error>,
-{
-    fn from(err: E) -> Self {
-        Self(err.into())
-    }
+fn try_thing_stderror() -> Result<(), impl std::error::Error> {
+    Err(std::fmt::Error::default())
 }

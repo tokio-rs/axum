@@ -9,11 +9,13 @@ use crate::body::Body;
 mod append_headers;
 mod into_response;
 mod into_response_parts;
+mod into_result_response;
 
 pub use self::{
     append_headers::AppendHeaders,
     into_response::IntoResponse,
     into_response_parts::{IntoResponseParts, ResponseParts, TryIntoHeaderError},
+    into_result_response::{IntoResultResponse, ResultResponse},
 };
 
 /// Type alias for [`http::Response`] whose body type defaults to [`Body`], the most common body

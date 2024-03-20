@@ -23,43 +23,8 @@ use std::{
 /// You generally shouldn't have to implement `IntoResponse` manually, as axum
 /// provides implementations for many common types.
 ///
-/// However it might be necessary if you have a custom error type that you want
-/// to return from handlers:
-///
-/// ```rust
-/// use axum::{
-///     Router,
-///     body::{self, Bytes},
-///     routing::get,
-///     http::StatusCode,
-///     response::{IntoResponse, Response},
-/// };
-///
-/// enum MyError {
-///     SomethingWentWrong,
-///     SomethingElseWentWrong,
-/// }
-///
-/// impl IntoResponse for MyError {
-///     fn into_response(self) -> Response {
-///         let body = match self {
-///             MyError::SomethingWentWrong => "something went wrong",
-///             MyError::SomethingElseWentWrong => "something else went wrong",
-///         };
-///
-///         // it's often easiest to implement `IntoResponse` by calling other implementations
-///         (StatusCode::INTERNAL_SERVER_ERROR, body).into_response()
-///     }
-/// }
-///
-/// // `Result<impl IntoResponse, MyError>` can now be returned from handlers
-/// let app = Router::new().route("/", get(handler));
-///
-/// async fn handler() -> Result<(), MyError> {
-///     Err(MyError::SomethingWentWrong)
-/// }
-/// # let _: Router = app;
-/// ```
+/// To handle errors and return them as a `Result` from a handler, you can
+/// use `IntoResultResponse` instead.
 ///
 /// Or if you have a custom body type you'll also need to implement
 /// `IntoResponse` for it:
