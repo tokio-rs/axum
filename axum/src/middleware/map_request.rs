@@ -2,7 +2,7 @@ use crate::body::{Body, Bytes, HttpBody};
 use crate::response::{IntoResponse, Response};
 use crate::BoxError;
 use axum_core::extract::{FromRequest, FromRequestParts};
-use futures_util::future::BoxFuture;
+use futures_lite::future::Boxed;
 use http::Request;
 use std::{
     any::type_name,
@@ -336,7 +336,7 @@ where
 
 /// Response future for [`MapRequest`].
 pub struct ResponseFuture {
-    inner: BoxFuture<'static, Response>,
+    inner: Boxed<Response>,
 }
 
 impl Future for ResponseFuture {

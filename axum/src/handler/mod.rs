@@ -51,7 +51,14 @@ use crate::{
     response::{IntoResponse, Response},
     routing::IntoMakeService,
 };
-use std::{convert::Infallible, fmt, future::Future, marker::PhantomData, pin::Pin};
+use std::{
+    convert::Infallible,
+    fmt,
+    future::Future,
+    marker::PhantomData,
+    pin::Pin,
+    task::{Context, Poll},
+};
 use tower::ServiceExt;
 use tower_layer::Layer;
 use tower_service::Service;
@@ -313,12 +320,10 @@ where
     type Future = future::LayeredFuture<L::Service>;
 
     fn call(self, req: Request, state: S) -> Self::Future {
-        use futures_util::future::{FutureExt, Map};
-
         let svc = self.handler.with_state(state);
         let svc = self.layer.layer(svc);
 
-        let future: Map<
+        let future: MapFuture<
             _,
             fn(
                 Result<
@@ -326,7 +331,7 @@ where
                     <L::Service as Service<Request>>::Error,
                 >,
             ) -> _,
-        > = svc.oneshot(req).map(|result| match result {
+        > = MapFuture::new(svc.oneshot(req), |result| match result {
             Ok(res) => res.into_response(),
             Err(err) => match err {},
         });
@@ -380,6 +385,36 @@ where
         self,
     ) -> IntoMakeServiceWithConnectInfo<HandlerService<Self, T, ()>, C> {
         self.into_service().into_make_service_with_connect_info()
+    }
+}
+
+pin_project_lite::pin_project! {
+    #[doc(hidden)]
+    pub struct MapFuture<Fut, F> {
+        #[pin]
+        future: Fut,
+        mapper: F
+    }
+}
+
+impl<T, Fut: Future, F: FnMut(Fut::Output) -> T> MapFuture<Fut, F> {
+    #[inline]
+    fn new(future: Fut, mapper: F) -> Self {
+        Self { future, mapper }
+    }
+}
+
+impl<T, Fut: Future, F: FnMut(Fut::Output) -> T> Future for MapFuture<Fut, F> {
+    type Output = T;
+
+    #[inline]
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<T> {
+        let mut this = self.project();
+        let poll = this.future.as_mut().poll(cx);
+        match poll {
+            Poll::Ready(input) => Poll::Ready((this.mapper)(input)),
+            Poll::Pending => Poll::Pending,
+        }
     }
 }
 

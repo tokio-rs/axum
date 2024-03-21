@@ -234,7 +234,7 @@ impl Future for InfallibleRouteFuture {
     type Output = Response;
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        match futures_util::ready!(self.project().future.poll(cx)) {
+        match futures_lite::ready!(self.project().future.poll(cx)) {
             Ok(response) => Poll::Ready(response),
             Err(err) => match err {},
         }

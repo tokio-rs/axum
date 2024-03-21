@@ -1,6 +1,7 @@
 use crate::extract::FromRequestParts;
-use futures_util::future::BoxFuture;
 use http::request::Parts;
+
+use super::BoxFuture;
 
 mod sealed {
     pub trait Sealed {}

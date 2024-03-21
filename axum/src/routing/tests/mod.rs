@@ -16,7 +16,7 @@ use crate::{
     BoxError, Extension, Json, Router, ServiceExt,
 };
 use axum_core::extract::Request;
-use futures_util::stream::StreamExt;
+use futures_lite::stream::StreamExt;
 use http::{
     header::{ALLOW, CONTENT_LENGTH, HOST},
     HeaderMap, Method, StatusCode, Uri,
@@ -637,7 +637,7 @@ async fn body_limited_by_default() {
     for uri in ["/bytes", "/string", "/json"] {
         println!("calling {uri}");
 
-        let stream = futures_util::stream::repeat("a".repeat(1000)).map(Ok::<_, hyper::Error>);
+        let stream = futures_lite::stream::repeat("a".repeat(1000)).map(Ok::<_, hyper::Error>);
         let body = reqwest::Body::wrap_stream(stream);
 
         let res_future = client
@@ -791,14 +791,14 @@ async fn limited_body_with_streaming_body() {
 
     let client = TestClient::new(app);
 
-    let stream = futures_util::stream::iter(vec![Ok::<_, hyper::Error>("a".repeat(LIMIT))]);
+    let stream = futures_lite::stream::iter(vec![Ok::<_, hyper::Error>("a".repeat(LIMIT))]);
     let res = client
         .post("/")
         .body(reqwest::Body::wrap_stream(stream))
         .await;
     assert_eq!(res.status(), StatusCode::OK);
 
-    let stream = futures_util::stream::iter(vec![Ok::<_, hyper::Error>("a".repeat(LIMIT * 2))]);
+    let stream = futures_lite::stream::iter(vec![Ok::<_, hyper::Error>("a".repeat(LIMIT * 2))]);
     let res = client
         .post("/")
         .body(reqwest::Body::wrap_stream(stream))

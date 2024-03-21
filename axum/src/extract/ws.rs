@@ -95,10 +95,11 @@ use super::FromRequestParts;
 use crate::{body::Bytes, response::Response, Error};
 use async_trait::async_trait;
 use axum_core::body::Body;
-use futures_util::{
-    sink::{Sink, SinkExt},
+use futures_lite::{
+    future::poll_fn,
     stream::{Stream, StreamExt},
 };
+use futures_sink::Sink;
 use http::{
     header::{self, HeaderMap, HeaderName, HeaderValue},
     request::Parts,
@@ -158,7 +159,9 @@ impl<F> WebSocketUpgrade<F> {
     /// If set to `0` each message will be eagerly written to the underlying stream.
     /// It is often more optimal to allow them to buffer a little, hence the default value.
     ///
-    /// Note: [`flush`](SinkExt::flush) will always fully write the buffer regardless.
+    /// Note: [`flush`] will always fully write the buffer regardless.
+    ///
+    /// [`flush`]: https://docs.rs/futures-util/latest/futures_util/sink/trait.SinkExt.html#method.flush
     pub fn write_buffer_size(mut self, size: usize) -> Self {
         self.config.write_buffer_size = size;
         self
@@ -470,8 +473,16 @@ impl WebSocket {
 
     /// Send a message.
     pub async fn send(&mut self, msg: Message) -> Result<(), Error> {
-        self.inner
-            .send(msg.into_tungstenite())
+        // Start sending the message.
+        poll_fn(|cx| Pin::new(&mut self.inner).poll_ready(cx))
+            .await
+            .map_err(Error::new)?;
+        Pin::new(&mut self.inner)
+            .start_send(msg.into_tungstenite())
+            .map_err(Error::new)?;
+
+        // Send the message.
+        poll_fn(|cx| Pin::new(&mut self.inner).poll_flush(cx))
             .await
             .map_err(Error::new)
     }
@@ -492,7 +503,7 @@ impl Stream for WebSocket {
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         loop {
-            match futures_util::ready!(self.inner.poll_next_unpin(cx)) {
+            match futures_lite::ready!(self.inner.poll_next(cx)) {
                 Some(Ok(msg)) => {
                     if let Some(msg) = Message::from_tungstenite(msg) {
                         return Poll::Ready(Some(Ok(msg)));
@@ -834,6 +845,7 @@ mod tests {
 
     use super::*;
     use crate::{body::Body, routing::get, test_helpers::spawn_service, Router};
+    use futures_util::sink::SinkExt;
     use http::{Request, Version};
     use tokio_tungstenite::tungstenite;
     use tower::ServiceExt;
