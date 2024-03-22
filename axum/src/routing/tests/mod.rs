@@ -1057,3 +1057,19 @@ async fn impl_handler_for_into_response() {
     assert_eq!(res.status(), StatusCode::CREATED);
     assert_eq!(res.text().await, "thing created");
 }
+
+#[crate::test]
+#[should_panic(
+    expected = "Path segments must not start with `:`. For capture groups, use `{capture}`. If you meant to literally match a segment starting with a colon, call `without_v07_checks` on the router."
+)]
+async fn colon_in_route() {
+    _ = Router::<()>::new().route("/:foo", get(|| async move {}));
+}
+
+#[crate::test]
+#[should_panic(
+    expected = "Path segments must not start with `*`. For wildcard capture, use `{*wildcard}`. If you meant to literally match a segment starting with an asterisk, call `without_v07_checks` on the router."
+)]
+async fn asterisk_in_route() {
+    _ = Router::<()>::new().route("/*foo", get(|| async move {}));
+}

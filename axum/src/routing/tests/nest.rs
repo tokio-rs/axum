@@ -417,3 +417,19 @@ nested_route_test!(nest_9, nest = "/a", route = "/a/", expected = "/a/a/");
 nested_route_test!(nest_11, nest = "/a/", route = "/", expected = "/a/");
 nested_route_test!(nest_12, nest = "/a/", route = "/a", expected = "/a/a");
 nested_route_test!(nest_13, nest = "/a/", route = "/a/", expected = "/a/a/");
+
+#[crate::test]
+#[should_panic(
+    expected = "Path segments must not start with `:`. For capture groups, use `{capture}`. If you meant to literally match a segment starting with a colon, call `without_v07_checks` on the router."
+)]
+async fn colon_in_route() {
+    _ = Router::<()>::new().nest("/:foo", Router::new());
+}
+
+#[crate::test]
+#[should_panic(
+    expected = "Path segments must not start with `*`. For wildcard capture, use `{*wildcard}`. If you meant to literally match a segment starting with an asterisk, call `without_v07_checks` on the router."
+)]
+async fn asterisk_in_route() {
+    _ = Router::<()>::new().nest("/*foo", Router::new());
+}
