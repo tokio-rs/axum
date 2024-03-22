@@ -111,8 +111,7 @@ where
     }
 
     fn set_node(&mut self, path: &str, id: RouteId) -> Result<(), String> {
-        let mut node =
-            Arc::try_unwrap(Arc::clone(&self.node)).unwrap_or_else(|node| (*node).clone());
+        let mut node = (*self.node).clone();
         if let Err(err) = node.insert(path, id) {
             return Err(format!("Invalid route {path:?}: {err}"));
         }
