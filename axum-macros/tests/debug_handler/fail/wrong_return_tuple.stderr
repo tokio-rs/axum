@@ -21,10 +21,7 @@ error[E0277]: the trait bound `CustomIntoResponse: IntoResponseParts` is not sat
              (T1,)
            and $N others
    = help: see issue #48214
-help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
-   |
-3  + #![feature(trivial_bounds)]
-   |
+   = help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
 
 error[E0277]: the trait bound `CustomIntoResponse: IntoResponseParts` is not satisfied
   --> tests/debug_handler/fail/wrong_return_tuple.rs:24:5
