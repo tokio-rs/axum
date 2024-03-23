@@ -17,10 +17,7 @@ error[E0277]: the trait bound `for<'de> Struct: serde::de::Deserialize<'de>` is 
   = note: required for `Struct` to implement `serde::de::DeserializeOwned`
   = note: required for `Json<Struct>` to implement `FromRequest<()>`
   = help: see issue #48214
-help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
-  |
-1 + #![feature(trivial_bounds)]
-  |
+  = help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
 
 error[E0277]: the trait bound `for<'de> Struct: serde::de::Deserialize<'de>` is not satisfied
  --> tests/debug_handler/fail/json_not_deserialize.rs:7:24
