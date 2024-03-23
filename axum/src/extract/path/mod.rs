@@ -545,7 +545,6 @@ impl IntoResponse for InvalidUtf8InPathParam {
 mod tests {
     use super::*;
     use crate::{routing::get, test_helpers::*, Router};
-    use http::StatusCode;
     use serde::Deserialize;
     use std::collections::HashMap;
 

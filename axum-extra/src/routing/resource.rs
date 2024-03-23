@@ -149,7 +149,7 @@ impl<S> From<Resource<S>> for Router<S> {
 mod tests {
     #[allow(unused_imports)]
     use super::*;
-    use axum::{body::Body, extract::Path, http::Method, Router};
+    use axum::{body::Body, extract::Path, http::Method};
     use http::Request;
     use http_body_util::BodyExt;
     use tower::ServiceExt;

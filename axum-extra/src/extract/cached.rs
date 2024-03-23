@@ -111,8 +111,7 @@ axum_core::__impl_deref!(Cached);
 #[cfg(test)]
 mod tests {
     use super::*;
-    use axum::{extract::FromRequestParts, http::Request, routing::get, Router};
-    use http::request::Parts;
+    use axum::{http::Request, routing::get, Router};
     use std::{
         convert::Infallible,
         sync::atomic::{AtomicU32, Ordering},

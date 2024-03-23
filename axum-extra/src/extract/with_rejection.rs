@@ -159,13 +159,11 @@ where
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use axum::body::Body;
     use axum::extract::FromRequestParts;
     use axum::http::Request;
     use axum::response::Response;
-    use http::request::Parts;
-
-    use super::*;
 
     #[tokio::test]
     async fn extractor_rejection_is_transformed() {
