@@ -1,5 +1,4 @@
 use super::*;
-use crate::extract::Extension;
 use std::collections::HashMap;
 use tower_http::services::ServeDir;
 

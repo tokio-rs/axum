@@ -4,7 +4,6 @@ use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
     routing::get,
-    body::Body,
     Extension, Router,
 };
 

@@ -74,9 +74,8 @@ mod mutex {
 }
 
 #[cfg(test)]
+#[allow(clippy::disallowed_types)]
 mod mutex {
-    #![allow(clippy::disallowed_types)]
-
     use std::sync::{
         atomic::{AtomicUsize, Ordering},
         LockResult, Mutex, MutexGuard,

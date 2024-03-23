@@ -311,7 +311,7 @@ mod tests {
     use axum_core::extract::DefaultBodyLimit;
 
     use super::*;
-    use crate::{response::IntoResponse, routing::post, test_helpers::*, Router};
+    use crate::{routing::post, test_helpers::*, Router};
 
     #[crate::test]
     async fn content_type_with_encoding() {

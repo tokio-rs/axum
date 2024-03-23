@@ -413,7 +413,7 @@ impl std::error::Error for InvalidBoundary {}
 mod tests {
     use super::*;
     use crate::test_helpers::*;
-    use axum::{extract::DefaultBodyLimit, response::IntoResponse, routing::post, Router};
+    use axum::{extract::DefaultBodyLimit, routing::post, Router};
 
     #[tokio::test]
     async fn content_type_with_encoding() {

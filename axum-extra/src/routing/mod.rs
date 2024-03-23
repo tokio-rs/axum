@@ -342,7 +342,7 @@ mod sealed {
 mod tests {
     use super::*;
     use crate::test_helpers::*;
-    use axum::{extract::Path, http::StatusCode, routing::get};
+    use axum::{extract::Path, routing::get};
 
     #[tokio::test]
     async fn test_tsr() {
