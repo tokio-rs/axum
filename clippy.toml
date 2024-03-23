@@ -1,0 +1,3 @@
+disallowed-types = [
+    { path = "tower::util::BoxCloneService", reason = "Use our internal BoxCloneService which is Sync" },
+]
