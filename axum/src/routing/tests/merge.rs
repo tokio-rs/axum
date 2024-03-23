@@ -1,5 +1,5 @@
 use super::*;
-use crate::{extract::OriginalUri, response::IntoResponse};
+use crate::extract::OriginalUri;
 use serde_json::{json, Value};
 use tower::limit::ConcurrencyLimitLayer;
 

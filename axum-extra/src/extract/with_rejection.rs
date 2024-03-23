@@ -161,7 +161,6 @@ where
 mod tests {
     use super::*;
     use axum::body::Body;
-    use axum::extract::FromRequestParts;
     use axum::http::Request;
     use axum::response::Response;
 
