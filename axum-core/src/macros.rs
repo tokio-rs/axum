@@ -303,8 +303,6 @@ mod composite_rejection_tests {
 
     #[allow(dead_code, unreachable_pub)]
     mod defs {
-        use crate::{__composite_rejection, __define_rejection};
-
         __define_rejection! {
             #[status = BAD_REQUEST]
             #[body = "error message 1"]
