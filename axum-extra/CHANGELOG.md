@@ -7,8 +7,14 @@ and this project adheres to [Semantic Versioning].
 
 # Unreleased
 
+- None.
+
+# 0.9.3 (24. March, 2024)
+
 - **added:** New `tracing` feature which enables logging rejections from
   built-in extractor with the `axum::rejection=trace` target ([#2596])
+
+[#2596]: https://github.com/tokio-rs/axum/pull/2596
 
 # 0.9.2 (13. January, 2024)
 

@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+- None.
+
+# 0.7.5 (24. March, 2024)
+
 - **fixed:** Fixed layers being cloned when calling `axum::serve` directly with
   a `Router` or `MethodRouter` ([#2586])
 - **fixed:** `h2` is no longer pulled as a dependency unless the `http2` feature
