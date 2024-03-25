@@ -111,12 +111,10 @@ where
     }
 
     fn set_node(&mut self, path: &str, id: RouteId) -> Result<(), String> {
-        let mut node = (*self.node).clone();
-        if let Err(err) = node.insert(path, id) {
-            return Err(format!("Invalid route {path:?}: {err}"));
-        }
-        self.node = Arc::new(node);
-        Ok(())
+        let node = Arc::make_mut(&mut self.node);
+
+        node.insert(path, id)
+            .map_err(|err| format!("Invalid route {path:?}: {err}"))
     }
 
     pub(super) fn merge(
