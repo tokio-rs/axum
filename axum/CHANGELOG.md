@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- None.
+- **change:** Avoid cloning `Arc` during deserialization of `Path`
 
 # 0.7.5 (24. March, 2024)
 
