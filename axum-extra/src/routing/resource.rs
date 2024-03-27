@@ -19,13 +19,13 @@ use axum::{
 ///     .create(|| async {})
 ///     // `GET /users/new`
 ///     .new(|| async {})
-///     // `GET /users/:users_id`
+///     // `GET /users/{users_id}`
 ///     .show(|Path(user_id): Path<u64>| async {})
-///     // `GET /users/:users_id/edit`
+///     // `GET /users/{users_id}/edit`
 ///     .edit(|Path(user_id): Path<u64>| async {})
-///     // `PUT or PATCH /users/:users_id`
+///     // `PUT or PATCH /users/{users_id}`
 ///     .update(|Path(user_id): Path<u64>| async {})
-///     // `DELETE /users/:users_id`
+///     // `DELETE /users/{users_id}`
 ///     .destroy(|Path(user_id): Path<u64>| async {});
 ///
 /// let app = Router::new().merge(users);
@@ -82,7 +82,9 @@ where
         self.route(&path, get(handler))
     }
 
-    /// Add a handler at `GET /{resource_name}/:{resource_name}_id`.
+    /// Add a handler at `GET /<resource_name>/{<resource_name>_id}`.
+    ///
+    /// For example when the resources are posts: `GET /post/{post_id}`.
     pub fn show<H, T>(self, handler: H) -> Self
     where
         H: Handler<T, S>,
@@ -92,17 +94,21 @@ where
         self.route(&path, get(handler))
     }
 
-    /// Add a handler at `GET /{resource_name}/:{resource_name}_id/edit`.
+    /// Add a handler at `GET /<resource_name>/{<resource_name>_id}/edit`.
+    ///
+    /// For example when the resources are posts: `GET /post/{post_id}/edit`.
     pub fn edit<H, T>(self, handler: H) -> Self
     where
         H: Handler<T, S>,
         T: 'static,
     {
-        let path = format!("/{0}/:{0}_id/edit", self.name);
+        let path = format!("/{0}/{{{0}_id}}/edit", self.name);
         self.route(&path, get(handler))
     }
 
-    /// Add a handler at `PUT or PATCH /resource_name/:{resource_name}_id`.
+    /// Add a handler at `PUT or PATCH /<resource_name>/{<resource_name>_id}`.
+    ///
+    /// For example when the resources are posts: `PUT /post/{post_id}`.
     pub fn update<H, T>(self, handler: H) -> Self
     where
         H: Handler<T, S>,
@@ -115,7 +121,9 @@ where
         )
     }
 
-    /// Add a handler at `DELETE /{resource_name}/:{resource_name}_id`.
+    /// Add a handler at `DELETE /<resource_name>/{<resource_name>_id}`.
+    ///
+    /// For example when the resources are posts: `DELETE /post/{post_id}`.
     pub fn destroy<H, T>(self, handler: H) -> Self
     where
         H: Handler<T, S>,
@@ -130,7 +138,7 @@ where
     }
 
     fn show_update_destroy_path(&self) -> String {
-        format!("/{0}/:{0}_id", self.name)
+        format!("/{0}/{{{0}_id}}", self.name)
     }
 
     fn route(mut self, path: &str, method_router: MethodRouter<S>) -> Self {

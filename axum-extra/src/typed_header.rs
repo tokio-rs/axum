@@ -30,7 +30,7 @@ use std::convert::Infallible;
 ///     // ...
 /// }
 ///
-/// let app = Router::new().route("/users/:user_id/team/:team_id", get(users_teams_show));
+/// let app = Router::new().route("/users/{user_id}/team/{team_id}", get(users_teams_show));
 /// # let _: Router = app;
 /// ```
 ///
