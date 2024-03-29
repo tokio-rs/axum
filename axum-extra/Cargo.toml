@@ -71,7 +71,7 @@ tracing = { version = "0.1.37", default-features = false, optional = true }
 [dev-dependencies]
 axum = { path = "../axum", version = "0.7.2" }
 hyper = "1.0.0"
-reqwest = { version = "0.11", default-features = false, features = ["json", "stream", "multipart"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "stream", "multipart"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0.71"
 tokio = { version = "1.14", features = ["full"] }
