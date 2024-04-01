@@ -64,6 +64,7 @@ pub(crate) trait ErasedIntoRoute<S, E>: Send {
 
     fn into_route(self: Box<Self>, state: S) -> Route<E>;
 
+    #[allow(dead_code)]
     fn call_with_state(self: Box<Self>, request: Request, state: S) -> RouteFuture<E>;
 }
 

@@ -17,5 +17,5 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 [dev-dependencies]
 eventsource-stream = "0.2"
-reqwest = { version = "0.11", features = ["stream"] }
+reqwest = { version = "0.12", features = ["stream"] }
 reqwest-eventsource = "0.5"

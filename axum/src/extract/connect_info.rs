@@ -225,7 +225,6 @@ where
 mod tests {
     use super::*;
     use crate::{routing::get, serve::IncomingStream, test_helpers::TestClient, Router};
-    use std::net::SocketAddr;
     use tokio::net::TcpListener;
 
     #[crate::test]

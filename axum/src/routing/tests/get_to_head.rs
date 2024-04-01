@@ -4,7 +4,6 @@ use tower::ServiceExt;
 
 mod for_handlers {
     use super::*;
-    use http::HeaderMap;
 
     #[crate::test]
     async fn get_handles_head() {
@@ -39,7 +38,6 @@ mod for_handlers {
 
 mod for_services {
     use super::*;
-    use crate::routing::get_service;
 
     #[crate::test]
     async fn get_handles_head() {

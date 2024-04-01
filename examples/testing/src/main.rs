@@ -60,7 +60,6 @@ mod tests {
     };
     use http_body_util::BodyExt; // for `collect`
     use serde_json::{json, Value};
-    use std::net::SocketAddr;
     use tokio::net::TcpListener;
     use tower::{Service, ServiceExt}; // for `call`, `oneshot`, and `ready`
 

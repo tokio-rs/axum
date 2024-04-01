@@ -1,8 +1,7 @@
 use super::*;
-use crate::{extract::OriginalUri, response::IntoResponse, Json};
+use crate::extract::OriginalUri;
 use serde_json::{json, Value};
 use tower::limit::ConcurrencyLimitLayer;
-use tower_http::timeout::TimeoutLayer;
 
 #[crate::test]
 async fn basic() {

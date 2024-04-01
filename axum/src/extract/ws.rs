@@ -833,7 +833,7 @@ mod tests {
     use std::future::ready;
 
     use super::*;
-    use crate::{body::Body, routing::get, test_helpers::spawn_service, Router};
+    use crate::{routing::get, test_helpers::spawn_service, Router};
     use http::{Request, Version};
     use tokio_tungstenite::tungstenite;
     use tower::ServiceExt;

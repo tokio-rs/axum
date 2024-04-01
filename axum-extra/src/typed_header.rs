@@ -186,7 +186,7 @@ impl std::error::Error for TypedHeaderRejection {
 mod tests {
     use super::*;
     use crate::test_helpers::*;
-    use axum::{response::IntoResponse, routing::get, Router};
+    use axum::{routing::get, Router};
 
     #[tokio::test]
     async fn typed_header() {

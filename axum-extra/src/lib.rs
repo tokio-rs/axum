@@ -21,6 +21,7 @@
 //! `multipart` | Enables the `Multipart` extractor | No
 //! `protobuf` | Enables the `Protobuf` extractor and response | No
 //! `query` | Enables the `Query` extractor | No
+//! `tracing` | Log rejections from built-in extractors | Yes
 //! `typed-routing` | Enables the `TypedPath` routing utilities | No
 //! `typed-header` | Enables the `TypedHeader` extractor and response  | No
 //!
@@ -96,11 +97,10 @@ pub use typed_header::TypedHeader;
 #[cfg(feature = "protobuf")]
 pub mod protobuf;
 
+/// _not_ public API
 #[cfg(feature = "typed-routing")]
 #[doc(hidden)]
 pub mod __private {
-    //! _not_ public API
-
     use percent_encoding::{AsciiSet, CONTROLS};
 
     pub use percent_encoding::utf8_percent_encode;
@@ -115,9 +115,8 @@ pub mod __private {
 use axum_macros::__private_axum_test as test;
 
 #[cfg(test)]
+#[allow(unused_imports)]
 pub(crate) mod test_helpers {
-    #![allow(unused_imports)]
-
     use axum::{extract::Request, response::Response, serve};
 
     mod test_client {

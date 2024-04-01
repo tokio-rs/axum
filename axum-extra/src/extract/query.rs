@@ -114,11 +114,16 @@ pub enum QueryRejection {
 impl IntoResponse for QueryRejection {
     fn into_response(self) -> Response {
         match self {
-            Self::FailedToDeserializeQueryString(inner) => (
-                StatusCode::BAD_REQUEST,
-                format!("Failed to deserialize query string: {inner}"),
-            )
-                .into_response(),
+            Self::FailedToDeserializeQueryString(inner) => {
+                let body = format!("Failed to deserialize query string: {inner}");
+                let status = StatusCode::BAD_REQUEST;
+                axum_core::__log_rejection!(
+                    rejection_type = Self,
+                    body_text = body,
+                    status = status,
+                );
+                (status, body).into_response()
+            }
         }
     }
 }
@@ -262,7 +267,7 @@ mod tests {
     use super::*;
     use crate::test_helpers::*;
     use axum::{routing::post, Router};
-    use http::{header::CONTENT_TYPE, StatusCode};
+    use http::header::CONTENT_TYPE;
     use serde::Deserialize;
 
     #[tokio::test]
