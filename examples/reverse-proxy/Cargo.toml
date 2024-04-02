@@ -5,6 +5,6 @@ edition = "2021"
 
 [dependencies]
 axum = { path = "../../axum" }
-hyper-tls = {version = "0.6.0", features = ["vendored"]}
+hyper-tls = { version = "0.6.0", features = ["vendored"] }
 hyper-util = { version = "0.1.1", features = ["client-legacy"] }
 tokio = { version = "1", features = ["full"] }

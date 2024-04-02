@@ -9,6 +9,7 @@
 //! cargo run -p example-reverse-proxy
 //! ```
 
+use axum::http::{header::HOST, StatusCode};
 use axum::{
     body::Body,
     extract::{Request, State},
@@ -16,7 +17,6 @@ use axum::{
     response::{IntoResponse, Response},
     routing, Router,
 };
-use axum::http::{header::HOST, StatusCode};
 use hyper_tls::HttpsConnector;
 use hyper_util::{client::legacy::connect::HttpConnector, rt::TokioExecutor};
 
@@ -51,7 +51,7 @@ async fn handler(State(client): State<Client>, mut req: Request) -> Result<Respo
 
     let mut uri = format!("http://127.0.0.1:3000{}", path_query);
     if path == "/https" {
-        uri = format!("https://example.com")
+        uri = String::from("https://example.com");
     }
 
     *req.uri_mut() = Uri::try_from(uri).unwrap();
