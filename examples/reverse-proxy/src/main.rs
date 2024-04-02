@@ -1,5 +1,7 @@
-//! Reverse proxy listening in "localhost:4000" will proxy all requests to "localhost:3000"
+//! Reverse proxy listening in "localhost:4000" will proxy all `GET` requests to "localhost:3000" except for path /https is example.com
 //! endpoint.
+//!
+//! On unix like OS: make sure `ca-certificates` is installed.
 //!
 //! Run with
 //!
@@ -12,13 +14,13 @@ use axum::{
     extract::{Request, State},
     http::uri::Uri,
     response::{IntoResponse, Response},
-    routing::get,
-    Router,
+    routing, Router,
 };
-use hyper::StatusCode;
+use axum::http::{header::HOST, StatusCode};
+use hyper_tls::HttpsConnector;
 use hyper_util::{client::legacy::connect::HttpConnector, rt::TokioExecutor};
 
-type Client = hyper_util::client::legacy::Client<HttpConnector, Body>;
+type Client = hyper_util::client::legacy::Client<HttpsConnector<HttpConnector>, Body>;
 
 #[tokio::main]
 async fn main() {
@@ -26,9 +28,11 @@ async fn main() {
 
     let client: Client =
         hyper_util::client::legacy::Client::<(), ()>::builder(TokioExecutor::new())
-            .build(HttpConnector::new());
+            .build(HttpsConnector::new());
 
-    let app = Router::new().route("/", get(handler)).with_state(client);
+    let app = Router::new()
+        .fallback(routing::get(handler))
+        .with_state(client);
 
     let listener = tokio::net::TcpListener::bind("127.0.0.1:4000")
         .await
@@ -45,9 +49,15 @@ async fn handler(State(client): State<Client>, mut req: Request) -> Result<Respo
         .map(|v| v.as_str())
         .unwrap_or(path);
 
-    let uri = format!("http://127.0.0.1:3000{}", path_query);
+    let mut uri = format!("http://127.0.0.1:3000{}", path_query);
+    if path == "/https" {
+        uri = format!("https://example.com")
+    }
 
     *req.uri_mut() = Uri::try_from(uri).unwrap();
+
+    //? Remove incorrect header host, hyper will add automatically for you.
+    req.headers_mut().remove(HOST).unwrap();
 
     Ok(client
         .request(req)
@@ -57,7 +67,7 @@ async fn handler(State(client): State<Client>, mut req: Request) -> Result<Respo
 }
 
 async fn server() {
-    let app = Router::new().route("/", get(|| async { "Hello, world!" }));
+    let app = Router::new().fallback(routing::get(|| async { "Hello, world!" }));
 
     let listener = tokio::net::TcpListener::bind("127.0.0.1:3000")
         .await
