@@ -440,7 +440,9 @@ pub mod routing;
 pub mod serve;
 
 #[cfg(any(test, feature = "testing"))]
-pub mod test_helpers;
+mod test_helpers;
+#[cfg(feature = "testing")]
+pub use test_helpers::test_client;
 
 #[doc(no_inline)]
 pub use async_trait::async_trait;

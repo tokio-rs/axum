@@ -2,8 +2,9 @@
 
 use crate::{extract::Request, response::Response, serve};
 
-mod test_client;
-pub use self::test_client::*;
+pub mod test_client;
+#[cfg(test)]
+pub(crate) use self::test_client::*;
 
 #[cfg(test)]
 pub(crate) mod tracing_helpers;
