@@ -22,10 +22,27 @@ use hyper_util::server::conn::auto::Builder;
 use pin_project_lite::pin_project;
 use tokio::{
     net::{TcpListener, TcpStream},
-    sync::watch,
+    sync::{watch, Notify},
 };
 use tower::util::{Oneshot, ServiceExt};
 use tower_service::Service;
+
+#[derive(Clone, Default)]
+struct DropNotify(Arc<Notify>);
+
+impl std::ops::Deref for DropNotify {
+    type Target = Notify;
+
+    fn deref(&self) -> &Self::Target {
+        self.0.as_ref()
+    }
+}
+
+impl Drop for DropNotify {
+    fn drop(&mut self) {
+        self.0.notify_waiters();
+    }
+}
 
 /// Serve the service with the supplied listener.
 ///
@@ -99,6 +116,7 @@ where
     S::Future: Send,
 {
     Serve {
+        drop_notify: Default::default(),
         tcp_listener,
         make_service,
         tcp_nodelay: None,
@@ -110,6 +128,7 @@ where
 #[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
 #[must_use = "futures must be awaited or polled"]
 pub struct Serve<M, S> {
+    drop_notify: DropNotify,
     tcp_listener: TcpListener,
     make_service: M,
     tcp_nodelay: Option<bool>,
@@ -144,6 +163,7 @@ impl<M, S> Serve<M, S> {
         F: Future<Output = ()> + Send + 'static,
     {
         WithGracefulShutdown {
+            drop_notify: self.drop_notify,
             tcp_listener: self.tcp_listener,
             make_service: self.make_service,
             signal,
@@ -185,6 +205,7 @@ where
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let Self {
+            drop_notify: _,
             tcp_listener,
             make_service,
             tcp_nodelay,
@@ -213,6 +234,7 @@ where
     fn into_future(self) -> Self::IntoFuture {
         private::ServeFuture(Box::pin(async move {
             let Self {
+                drop_notify,
                 tcp_listener,
                 mut make_service,
                 tcp_nodelay,
@@ -249,7 +271,7 @@ where
                     service: tower_service,
                 };
 
-                tokio::spawn(async move {
+                let fut = async move {
                     match Builder::new(TokioExecutor::new())
                         // upgrades needed for websockets
                         .serve_connection_with_upgrades(tcp_stream, hyper_service)
@@ -264,6 +286,15 @@ where
                             // appear.
                         }
                     }
+                };
+
+                let drop_notify = drop_notify.clone();
+
+                tokio::spawn(async move {
+                    tokio::select! {
+                        _ = fut.fuse() => {},
+                        _ = drop_notify.notified().fuse() => {}
+                    }
                 });
             }
         }))
@@ -274,6 +305,7 @@ where
 #[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
 #[must_use = "futures must be awaited or polled"]
 pub struct WithGracefulShutdown<M, S, F> {
+    drop_notify: DropNotify,
     tcp_listener: TcpListener,
     make_service: M,
     signal: F,
@@ -322,6 +354,7 @@ where
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let Self {
+            drop_notify: _,
             tcp_listener,
             make_service,
             signal,
@@ -352,6 +385,7 @@ where
 
     fn into_future(self) -> Self::IntoFuture {
         let Self {
+            drop_notify,
             tcp_listener,
             mut make_service,
             signal,
@@ -414,7 +448,7 @@ where
 
                 let close_rx = close_rx.clone();
 
-                tokio::spawn(async move {
+                let fut = async move {
                     let builder = Builder::new(TokioExecutor::new());
                     let conn = builder.serve_connection_with_upgrades(tcp_stream, hyper_service);
                     pin_mut!(conn);
@@ -440,6 +474,15 @@ where
                     trace!("connection {remote_addr} closed");
 
                     drop(close_rx);
+                };
+
+                let drop_notify = drop_notify.clone();
+
+                tokio::spawn(async move {
+                    tokio::select! {
+                        _ = fut.fuse() => {},
+                        _ = drop_notify.notified().fuse() => {}
+                    }
                 });
             }
 
