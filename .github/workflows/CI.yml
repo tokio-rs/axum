@@ -227,4 +227,4 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Check the spelling of the files in our repo
-        uses: crate-ci/typos@v1.16.2
+        uses: crate-ci/typos@v1.20.8
