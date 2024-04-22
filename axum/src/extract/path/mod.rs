@@ -303,6 +303,16 @@ pub enum ErrorKind {
         name: &'static str,
     },
 
+    /// Failed to deserialize the value with a custom deserialization error.
+    DeserializeError {
+        /// The key at which the invalid value was located.
+        key: String,
+        /// The value that failed to deserialize.
+        value: String,
+        /// The deserializaation failure message.
+        message: String,
+    },
+
     /// Catch-all variant for errors that don't fit any other variant.
     Message(String),
 }
@@ -345,6 +355,11 @@ impl fmt::Display for ErrorKind {
                 f,
                 "Cannot parse value at index {index} with value `{value:?}` to a `{expected_type}`"
             ),
+            ErrorKind::DeserializeError {
+                key,
+                value,
+                message,
+            } => write!(f, "Cannot parse `{key}` with value `{value:?}`: {message}"),
         }
     }
 }
@@ -369,6 +384,7 @@ impl FailedToDeserializePathParams {
     pub fn body_text(&self) -> String {
         match self.0.kind {
             ErrorKind::Message(_)
+            | ErrorKind::DeserializeError { .. }
             | ErrorKind::InvalidUtf8InPathParam { .. }
             | ErrorKind::ParseError { .. }
             | ErrorKind::ParseErrorAtIndex { .. }
@@ -383,6 +399,7 @@ impl FailedToDeserializePathParams {
     pub fn status(&self) -> StatusCode {
         match self.0.kind {
             ErrorKind::Message(_)
+            | ErrorKind::DeserializeError { .. }
             | ErrorKind::InvalidUtf8InPathParam { .. }
             | ErrorKind::ParseError { .. }
             | ErrorKind::ParseErrorAtIndex { .. }
@@ -916,5 +933,44 @@ mod tests {
         let res = client.get("/foo/bar/baz").await;
         let body = res.text().await;
         assert_eq!(body, "a=foo b=bar c=baz");
+    }
+
+    #[crate::test]
+    async fn deserialize_error_single_value() {
+        let app = Router::new().route(
+            "/resources/{res}",
+            get(|res: Path<uuid::Uuid>| async move {
+                let _res = res;
+            }),
+        );
+
+        let client = TestClient::new(app);
+        let res = client.get("/resources/123123-123-123123").await;
+        let body = res.text().await;
+        assert_eq!(
+            body,
+            r#"Invalid URL: Cannot parse `res` with value `"123123-123-123123"`: UUID parsing failed: invalid group count: expected 5, found 3"#
+        );
+    }
+
+    #[crate::test]
+    async fn deserialize_error_multi_value() {
+        let app = Router::new().route(
+            "/resources/{res}/sub/{sub}",
+            get(
+                |Path((res, sub)): Path<(uuid::Uuid, uuid::Uuid)>| async move {
+                    let _res = res;
+                    let _sub = sub;
+                },
+            ),
+        );
+
+        let client = TestClient::new(app);
+        let res = client.get("/resources/456456-123-456456/sub/123").await;
+        let body = res.text().await;
+        assert_eq!(
+            body,
+            r#"Invalid URL: Cannot parse `res` with value `"456456-123-456456"`: UUID parsing failed: invalid group count: expected 5, found 3"#
+        );
     }
 }
