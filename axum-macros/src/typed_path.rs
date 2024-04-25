@@ -1,10 +1,10 @@
 use std::collections::HashSet;
 
 use proc_macro2::{Span, TokenStream};
-use quote::{format_ident, quote, quote_spanned, ToTokens};
+use quote::{format_ident, quote, quote_spanned};
 use syn::{
-    parse::Parse, parse_quote, punctuated::Punctuated, GenericParam, Generics, ItemStruct, LitStr,
-    Token, WhereClause, WherePredicate,
+    parse::Parse, parse_quote, punctuated::Punctuated, Generics, ItemStruct, LitStr, Token,
+    WhereClause, WherePredicate,
 };
 
 use crate::attr_parsing::{combine_attribute, parse_parenthesized_attribute, second, Combine};
@@ -106,19 +106,19 @@ fn expand_named_fields(
 
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
+    // use field types here to avoid uneeded bounds on generics
+    // note: this might introduce trivial bounds like i32: Display
+    // even if that isn't required per se, but that isn't really a issue
     let field_types = fields
         .named
         .iter()
         .map(|field| &field.ty)
         .cloned()
         .collect::<HashSet<_>>();
-    let generic_types = extract_generic_types(&generics);
 
     let path_where_clause = add_where_bounds_for_types(
         where_clause,
-        // only generate where clause bounds for types that are both in the generics
-        // and used for struct fields directly
-        field_types.intersection(&generic_types),
+        &field_types,
         |ty| parse_quote! { #ty: ::std::fmt::Display },
     );
 
@@ -131,9 +131,7 @@ fn expand_named_fields(
 
     let display_where_clause = add_where_bounds_for_types(
         where_clause,
-        // only generate where clause bounds for types that are both in the generics
-        // and used for struct fields directly
-        field_types.intersection(&generic_types),
+        &field_types,
         |ty| parse_quote! { #ty: ::std::fmt::Display },
     );
 
@@ -160,22 +158,17 @@ fn expand_named_fields(
     let rejection_assoc_type = rejection_assoc_type(&rejection);
     let map_err_rejection = map_err_rejection(&rejection);
 
-    let mut parts_where_clause = add_where_bounds_for_types(
+    let parts_where_clause = add_where_bounds_for_types(
         where_clause,
-        // only generate where clause bounds for types that are both in the generics
-        // and used for struct fields directly
-        field_types.intersection(&generic_types),
+        &field_types,
         |ty| parse_quote! { for<'de> #ty: Send + Sync + ::serde::Deserialize<'de> },
-    )
-    .unwrap_or_else(empty_where_clause);
-
-    parts_where_clause.predicates.push(parse_quote!(
-        __Derived_S: Send + Sync
-    ));
+    );
 
     let mut parts_generics = generics.clone();
 
-    parts_generics.params.push(parse_quote! {__Derived_S});
+    parts_generics
+        .params
+        .push(parse_quote! {__Derived_S: Send + Sync});
     let (impl_generics, _, _) = parts_generics.split_for_impl();
 
     let from_request_impl = quote! {
@@ -250,19 +243,20 @@ fn expand_unnamed_fields(
 
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
+    // use field types here to avoid uneeded bounds on generics
+    // note: this might introduce trivial bounds like i32: Display
+    // even if that isn't required per se, but that isn't really a issue
+    // since they would be implied by the usage anyways
     let field_types = fields
         .unnamed
         .iter()
         .map(|field| &field.ty)
         .cloned()
         .collect::<HashSet<_>>();
-    let generic_types = extract_generic_types(&generics);
 
     let path_where_clause = add_where_bounds_for_types(
         where_clause,
-        // only generate where clause bounds for types that are both in the generics
-        // and used for struct fields directly
-        field_types.intersection(&generic_types),
+        &field_types,
         |ty| parse_quote! { #ty: ::std::fmt::Display },
     );
 
@@ -278,9 +272,7 @@ fn expand_unnamed_fields(
 
     let display_where_clause = add_where_bounds_for_types(
         where_clause,
-        // only generate where clause bounds for types that are both in the generics
-        // and used for struct fields directly
-        field_types.intersection(&generic_types),
+        &field_types,
         |ty| parse_quote! {#ty: ::std::fmt::Display},
     );
 
@@ -307,28 +299,23 @@ fn expand_unnamed_fields(
     let rejection_assoc_type = rejection_assoc_type(&rejection);
     let map_err_rejection = map_err_rejection(&rejection);
 
-    let mut parts_where_clause = add_where_bounds_for_types(
+    let parts_where_clause = add_where_bounds_for_types(
         where_clause,
-        // only generate where clause bounds for types that are both in the generics
-        // and used for struct fields directly
-        field_types.intersection(&generic_types),
+        &field_types,
         |ty| parse_quote! {for<'de> #ty: Send + Sync + ::serde::Deserialize<'de> },
-    )
-    .unwrap_or_else(empty_where_clause);
-
-    parts_where_clause.predicates.push(parse_quote!(
-        __Derived_S: Send + Sync
-    ));
+    );
 
     let mut parts_generics = generics.clone();
 
-    parts_generics.params.push(parse_quote! {__Derived_S});
+    parts_generics
+        .params
+        .push(parse_quote! {__Derived_S : Send + Sync});
     let (impl_generics, _, _) = parts_generics.split_for_impl();
 
     let from_request_impl = quote! {
         #[::axum::async_trait]
         #[automatically_derived]
-        impl #impl_generics ::axum::extract::FromRequestParts<__Derived_S> for #ident #ty_generics #where_clause {
+        impl #impl_generics ::axum::extract::FromRequestParts<__Derived_S> for #ident #ty_generics #parts_where_clause {
             type Rejection = #rejection_assoc_type;
 
             async fn from_request_parts(
@@ -409,21 +396,18 @@ fn expand_unit_fields(
         }
     };
 
-    let mut parts_where_clause = where_clause.cloned().unwrap_or_else(empty_where_clause);
-
-    parts_where_clause.predicates.push(parse_quote!(
-        __Derived_S: Send + Sync
-    ));
-
     let mut parts_generics = generics.clone();
 
-    parts_generics.params.push(parse_quote! {__Derived_S});
+    parts_generics
+        .params
+        .push(parse_quote! {__Derived_S: Send + Sync});
+
     let (impl_generics, _, _) = parts_generics.split_for_impl();
 
     let from_request_impl = quote! {
         #[::axum::async_trait]
         #[automatically_derived]
-        impl #impl_generics ::axum::extract::FromRequestParts<__Derived_S> for #ident #ty_generics #parts_where_clause {
+        impl #impl_generics ::axum::extract::FromRequestParts<__Derived_S> for #ident #ty_generics #where_clause {
             type Rejection = #rejection_assoc_type;
 
             async fn from_request_parts(
@@ -523,17 +507,6 @@ fn map_err_rejection(rejection: &Option<syn::Path>) -> TokenStream {
             }
         })
         .unwrap_or_default()
-}
-
-fn extract_generic_types(generics: &Generics) -> HashSet<syn::Type> {
-    generics
-        .params
-        .iter()
-        .filter_map(|g| match g {
-            GenericParam::Type(t) => syn::parse2(t.ident.to_token_stream()).ok(),
-            _ => None,
-        })
-        .collect()
 }
 
 fn empty_where_clause() -> WhereClause {
