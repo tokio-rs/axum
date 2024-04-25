@@ -341,25 +341,25 @@ impl fmt::Display for ErrorKind {
                 expected_type,
             } => write!(
                 f,
-                "Cannot parse `{key}` with value `{value:?}` to a `{expected_type}`"
+                "Cannot parse `{key}` with value `{value}` to a `{expected_type}`"
             ),
             ErrorKind::ParseError {
                 value,
                 expected_type,
-            } => write!(f, "Cannot parse `{value:?}` to a `{expected_type}`"),
+            } => write!(f, "Cannot parse `{value}` to a `{expected_type}`"),
             ErrorKind::ParseErrorAtIndex {
                 index,
                 value,
                 expected_type,
             } => write!(
                 f,
-                "Cannot parse value at index {index} with value `{value:?}` to a `{expected_type}`"
+                "Cannot parse value at index {index} with value `{value}` to a `{expected_type}`"
             ),
             ErrorKind::DeserializeError {
                 key,
                 value,
                 message,
-            } => write!(f, "Cannot parse `{key}` with value `{value:?}`: {message}"),
+            } => write!(f, "Cannot parse `{key}` with value `{value}`: {message}"),
         }
     }
 }
@@ -949,7 +949,7 @@ mod tests {
         let body = res.text().await;
         assert_eq!(
             body,
-            r#"Invalid URL: Cannot parse `res` with value `"123123-123-123123"`: UUID parsing failed: invalid group count: expected 5, found 3"#
+            r#"Invalid URL: Cannot parse `res` with value `123123-123-123123`: UUID parsing failed: invalid group count: expected 5, found 3"#
         );
     }
 
@@ -970,7 +970,7 @@ mod tests {
         let body = res.text().await;
         assert_eq!(
             body,
-            r#"Invalid URL: Cannot parse `res` with value `"456456-123-456456"`: UUID parsing failed: invalid group count: expected 5, found 3"#
+            r#"Invalid URL: Cannot parse `res` with value `456456-123-456456`: UUID parsing failed: invalid group count: expected 5, found 3"#
         );
     }
 }
