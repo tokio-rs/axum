@@ -106,9 +106,10 @@ fn expand_named_fields(
 
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
-    // use field types here to avoid uneeded bounds on generics
+    // use field types here to avoid unneeded bounds on generics
     // note: this might introduce trivial bounds like i32: Display
     // even if that isn't required per se, but that isn't really a issue
+    // since they would be implied by the usage anyways
     let field_types = fields
         .named
         .iter()
@@ -243,7 +244,7 @@ fn expand_unnamed_fields(
 
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
-    // use field types here to avoid uneeded bounds on generics
+    // use field types here to avoid unneeded bounds on generics
     // note: this might introduce trivial bounds like i32: Display
     // even if that isn't required per se, but that isn't really a issue
     // since they would be implied by the usage anyways
