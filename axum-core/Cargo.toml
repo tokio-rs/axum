@@ -26,6 +26,7 @@ http-body = "1.0.0"
 http-body-util = "0.1.0"
 mime = "0.3.16"
 pin-project-lite = "0.2.7"
+rustversion = "1.0.9"
 sync_wrapper = "1.0.0"
 tower-layer = "0.3"
 tower-service = "0.3"
@@ -33,9 +34,6 @@ tower-service = "0.3"
 # optional dependencies
 tower-http = { version = "0.5.0", optional = true, features = ["limit"] }
 tracing = { version = "0.1.37", default-features = false, optional = true }
-
-[build-dependencies]
-rustversion = "1.0.9"
 
 [dev-dependencies]
 axum = { path = "../axum", version = "0.7.2" }
