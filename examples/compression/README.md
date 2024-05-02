@@ -22,7 +22,7 @@ curl -v -g 'http://localhost:3000/' \
 
 (Notice the `Content-Encoding: gzip` in the request, and `content-encoding: gzip` in the response.)
 
-## Sending non compressed requests
+## Sending uncompressed requests
 
 ```
 curl -v -g 'http://localhost:3000/' \
