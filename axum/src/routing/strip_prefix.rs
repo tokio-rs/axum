@@ -1,5 +1,6 @@
 use http::{Request, Uri};
 use std::{
+    borrow::Cow,
     sync::Arc,
     task::{Context, Poll},
 };
@@ -60,13 +61,13 @@ fn strip_prefix(uri: &Uri, prefix: &str) -> Option<Uri> {
     // path   = /api/v0/users
     //          ^^^^^^^ this much is matched and the length is 7.
     let mut matching_prefix_length = Some(0);
-    for item in zip_longest(segments(path_and_query.path()), segments(prefix)) {
+    for item in zip_longest(segments(path_and_query.path()), unescaped_segments(prefix)) {
         // count the `/`
         *matching_prefix_length.as_mut().unwrap() += 1;
 
         match item {
             Item::Both(path_segment, prefix_segment) => {
-                if is_capture(prefix_segment) || path_segment == prefix_segment {
+                if is_capture(&prefix_segment) || path_segment == prefix_segment {
                     // the prefix segment is either a param, which matches anything, or
                     // it actually matches the path segment
                     *matching_prefix_length.as_mut().unwrap() += path_segment.len();
@@ -121,7 +122,7 @@ fn strip_prefix(uri: &Uri, prefix: &str) -> Option<Uri> {
     Some(Uri::from_parts(parts).unwrap())
 }
 
-fn segments(s: &str) -> impl Iterator<Item = &str> {
+fn segments(s: &str) -> impl Iterator<Item = Cow<'_, str>> {
     assert!(
         s.starts_with('/'),
         "path didn't start with '/'. axum should have caught this higher up."
@@ -131,6 +132,19 @@ fn segments(s: &str) -> impl Iterator<Item = &str> {
         // skip one because paths always start with `/` so `/a/b` would become ["", "a", "b"]
         // otherwise
         .skip(1)
+        .map(Cow::Borrowed)
+}
+
+/// This unescapes anything handled specially by `matchit`.
+/// Currently, that means only `{{` and `}}` to mean literal `{` and `}` respectively.
+fn unescaped_segments(s: &str) -> impl Iterator<Item = Cow<'_, str>> {
+    segments(s).map(|segment| {
+        if segment.contains("{{") || segment.contains("}}") {
+            Cow::Owned(segment.replace("{{", "{").replace("}}", "}"))
+        } else {
+            segment
+        }
+    })
 }
 
 fn zip_longest<I, I2>(a: I, b: I2) -> impl Iterator<Item = Item<I::Item>>
@@ -378,6 +392,48 @@ mod tests {
         uri = "/a/a",
         prefix = "/a/",
         expected = Some("/a"),
+    );
+
+    test!(
+        braces_1,
+        uri = "/{a}/a",
+        prefix = "/{{a}}/",
+        expected = Some("/a"),
+    );
+
+    test!(
+        braces_2,
+        uri = "/{a}/b",
+        prefix = "/{param}",
+        expected = Some("/b"),
+    );
+
+    test!(
+        braces_3,
+        uri = "/{a}/{b}",
+        prefix = "/{{a}}/{{b}}",
+        expected = Some("/"),
+    );
+
+    test!(
+        braces_4,
+        uri = "/{a}/{b}",
+        prefix = "/{{a}}/{b}",
+        expected = Some("/"),
+    );
+
+    test!(
+        braces_5,
+        uri = "/a/{b}",
+        prefix = "/a",
+        expected = Some("/{b}"),
+    );
+
+    test!(
+        braces_6,
+        uri = "/a/{b}",
+        prefix = "/{a}/{{b}}",
+        expected = Some("/"),
     );
 
     #[quickcheck]

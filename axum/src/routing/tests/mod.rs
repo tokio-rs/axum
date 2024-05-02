@@ -1118,3 +1118,117 @@ async fn colon_in_route() {
 async fn asterisk_in_route() {
     _ = Router::<()>::new().route("/*foo", get(|| async move {}));
 }
+
+#[crate::test]
+async fn colon_in_route_allowed() {
+    let app = Router::<()>::new()
+        .without_v07_checks()
+        .route("/:foo", get(|| async move {}));
+
+    let client = TestClient::new(app);
+
+    let res = client.get("/:foo").await;
+    assert_eq!(res.status(), StatusCode::OK);
+
+    let res = client.get("/foo").await;
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+}
+
+#[crate::test]
+async fn asterisk_in_route_allowed() {
+    let app = Router::<()>::new()
+        .without_v07_checks()
+        .route("/*foo", get(|| async move {}));
+
+    let client = TestClient::new(app);
+
+    let res = client.get("/*foo").await;
+    assert_eq!(res.status(), StatusCode::OK);
+
+    let res = client.get("/foo").await;
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+}
+
+#[crate::test]
+async fn percent_encoding() {
+    let app = Router::new().route("/api", get(|| async { "api" }));
+
+    let client = TestClient::new(app);
+
+    let res = client.get("/%61pi").await;
+    assert_eq!(res.status(), StatusCode::OK);
+    let body = res.text().await;
+    assert_eq!(body, "api");
+}
+
+#[crate::test]
+async fn percent_encoding_slash() {
+    let app = Router::new()
+        .route("/slash/%2flash", get(|| async { "lower" }))
+        .route("/slash/%2Flash", get(|| async { "upper" }))
+        .route("/slash//lash", get(|| async { "/" }))
+        .route("/api/user", get(|| async { "user" }))
+        .route(
+            "/{capture}",
+            get(|Path(capture): Path<String>| {
+                assert_eq!(capture, "api/user");
+                ready("capture")
+            }),
+        );
+
+    let client = TestClient::new(app);
+
+    // %2f encodes `/`
+    let res = client.get("/api%2fuser").await;
+    assert_eq!(res.status(), StatusCode::OK);
+    let body = res.text().await;
+    assert_eq!(body, "capture");
+
+    let res = client.get("/slash/%2flash").await;
+    assert_eq!(res.status(), StatusCode::OK);
+    let body = res.text().await;
+    assert_eq!(body, "lower");
+
+    let res = client.get("/slash/%2Flash").await;
+    assert_eq!(res.status(), StatusCode::OK);
+    let body = res.text().await;
+    assert_eq!(body, "upper");
+
+    // `%25` encodes `%`
+    // This must not be decoded twice
+    let res = client.get("/slash/%252flash").await;
+    assert_eq!(res.status(), StatusCode::OK);
+    let body = res.text().await;
+    assert_eq!(body, "lower");
+
+    let res = client.get("/slash/%252Flash").await;
+    assert_eq!(res.status(), StatusCode::OK);
+    let body = res.text().await;
+    assert_eq!(body, "upper");
+}
+
+#[crate::test]
+async fn percent_encoding_percent() {
+    let app = Router::new()
+        .route("/%61pi", get(|| async { "percent" }))
+        .route("/api", get(|| async { "api" }));
+
+    let client = TestClient::new(app);
+
+    let res = client.get("/api").await;
+    assert_eq!(res.status(), StatusCode::OK);
+    let body = res.text().await;
+    assert_eq!(body, "api");
+
+    let res = client.get("/%61pi").await;
+    assert_eq!(res.status(), StatusCode::OK);
+    let body = res.text().await;
+    assert_eq!(body, "api");
+
+    // `%25` encodes `%`
+    // This must not be decoded twice, otherwise it will become `/api`
+    let res = client.get("/%2561pi").await;
+    assert_eq!(res.status(), StatusCode::OK);
+    let body = res.text().await;
+    assert_eq!(body, "percent");
+}

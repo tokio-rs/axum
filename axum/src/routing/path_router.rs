@@ -363,9 +363,21 @@ where
             }
         }
 
-        let path = req.uri().path().to_owned();
+        // Double encode any percent-encoded `/`s so that they're not
+        // interpreted by matchit. Additionally, percent-encode `%`s so that we
+        // can differentiate between `%2f` we have encoded to `%252f` and
+        // `%252f` the user might have sent us.
+        let path = req
+            .uri()
+            .path()
+            .replace("%2f", "%252f")
+            .replace("%2F", "%252F");
+        let decode = percent_encoding::percent_decode_str(&path);
 
-        match self.node.at(&path) {
+        match self.node.at(&decode
+            .decode_utf8()
+            .unwrap_or(Cow::Owned(req.uri().path().to_owned())))
+        {
             Ok(match_) => {
                 let id = *match_.value;
 

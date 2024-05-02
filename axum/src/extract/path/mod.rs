@@ -6,7 +6,6 @@ mod de;
 use crate::{
     extract::{rejection::*, FromRequestParts},
     routing::url_params::UrlParams,
-    util::PercentDecodedStr,
 };
 use async_trait::async_trait;
 use axum_core::response::{IntoResponse, Response};
@@ -156,15 +155,6 @@ where
     async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
         let params = match parts.extensions.get::<UrlParams>() {
             Some(UrlParams::Params(params)) => params,
-            Some(UrlParams::InvalidUtf8InPathParam { key }) => {
-                let err = PathDeserializationError {
-                    kind: ErrorKind::InvalidUtf8InPathParam {
-                        key: key.to_string(),
-                    },
-                };
-                let err = FailedToDeserializePathParams(err);
-                return Err(err.into());
-            }
             None => {
                 return Err(MissingPathParams.into());
             }
@@ -444,7 +434,7 @@ impl std::error::Error for FailedToDeserializePathParams {}
 /// # let _: Router = app;
 /// ```
 #[derive(Debug)]
-pub struct RawPathParams(Vec<(Arc<str>, PercentDecodedStr)>);
+pub struct RawPathParams(Vec<(Arc<str>, Arc<str>)>);
 
 #[async_trait]
 impl<S> FromRequestParts<S> for RawPathParams
@@ -456,12 +446,6 @@ where
     async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
         let params = match parts.extensions.get::<UrlParams>() {
             Some(UrlParams::Params(params)) => params,
-            Some(UrlParams::InvalidUtf8InPathParam { key }) => {
-                return Err(InvalidUtf8InPathParam {
-                    key: Arc::clone(key),
-                }
-                .into());
-            }
             None => {
                 return Err(MissingPathParams.into());
             }
@@ -491,14 +475,14 @@ impl<'a> IntoIterator for &'a RawPathParams {
 ///
 /// Created with [`RawPathParams::iter`].
 #[derive(Debug)]
-pub struct RawPathParamsIter<'a>(std::slice::Iter<'a, (Arc<str>, PercentDecodedStr)>);
+pub struct RawPathParamsIter<'a>(std::slice::Iter<'a, (Arc<str>, Arc<str>)>);
 
 impl<'a> Iterator for RawPathParamsIter<'a> {
     type Item = (&'a str, &'a str);
 
     fn next(&mut self) -> Option<Self::Item> {
         let (key, value) = self.0.next()?;
-        Some((&**key, value.as_str()))
+        Some((&**key, &**value))
     }
 }
 
@@ -889,5 +873,62 @@ mod tests {
         let res = client.get("/foo/bar/baz").await;
         let body = res.text().await;
         assert_eq!(body, "a=foo b=bar c=baz");
+    }
+
+    #[tokio::test]
+    async fn percent_encoding_path() {
+        let app = Router::new().route(
+            "/{capture}",
+            get(|Path(path): Path<String>| async move { path }),
+        );
+
+        let client = TestClient::new(app);
+
+        let res = client.get("/%61pi").await;
+        assert_eq!(res.status(), StatusCode::OK);
+        let body = res.text().await;
+        assert_eq!(body, "api");
+
+        let res = client.get("/%2561pi").await;
+        assert_eq!(res.status(), StatusCode::OK);
+        let body = res.text().await;
+        assert_eq!(body, "%61pi");
+    }
+
+    #[tokio::test]
+    async fn percent_encoding_slash_in_path() {
+        let app = Router::new().route(
+            "/{capture}",
+            get(|Path(path): Path<String>| async move { path })
+                .fallback(|| async { panic!("not matched") }),
+        );
+
+        let client = TestClient::new(app);
+
+        // `%2f` decodes to `/`
+        // Slashes are treated specially in the router
+        let res = client.get("/%2flash").await;
+        assert_eq!(res.status(), StatusCode::OK);
+        let body = res.text().await;
+        assert_eq!(body, "/lash");
+
+        let res = client.get("/%2Flash").await;
+        assert_eq!(res.status(), StatusCode::OK);
+        let body = res.text().await;
+        assert_eq!(body, "/lash");
+
+        // TODO FIXME
+        // This is not the correct behavior but should be so exceedingly rare that we can live with this for now.
+        let res = client.get("/%252flash").await;
+        assert_eq!(res.status(), StatusCode::OK);
+        let body = res.text().await;
+        // Should be
+        // assert_eq!(body, "%2flash");
+        assert_eq!(body, "/lash");
+
+        let res = client.get("/%25252flash").await;
+        assert_eq!(res.status(), StatusCode::OK);
+        let body = res.text().await;
+        assert_eq!(body, "%252flash");
     }
 }

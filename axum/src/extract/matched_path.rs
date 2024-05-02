@@ -391,4 +391,25 @@ mod tests {
         let res = client.get("/foo").await;
         assert_eq!(res.status(), StatusCode::NOT_FOUND);
     }
+
+    #[crate::test]
+    async fn matching_braces() {
+        let app = Router::new().route(
+            // Double braces are interpreted by matchit as single literal brace
+            "/{{foo}}",
+            get(|path: MatchedPath| async move { path.as_str().to_owned() }),
+        );
+
+        let client = TestClient::new(app);
+
+        let res = client.get("/{foo}").await;
+        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.text().await, "/{{foo}}");
+
+        let res = client.get("/foo").await;
+        assert_eq!(res.status(), StatusCode::NOT_FOUND);
+
+        let res = client.get("/{{foo}}").await;
+        assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    }
 }
