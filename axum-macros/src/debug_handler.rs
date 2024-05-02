@@ -39,7 +39,7 @@ pub(crate) fn expand(attr: Attrs, item_fn: ItemFn, kind: FunctionKind) -> TokenS
                         Span::call_site(),
                         format!(
                             "can't infer state type, please add set it explicitly, as in \
-                            `#[debug_{kind}(state = MyStateType)]`"
+                            `#[axum_macros::debug_{kind}(state = MyStateType)]`"
                         ),
                     )
                     .into_compile_error(),
@@ -70,7 +70,7 @@ pub(crate) fn expand(attr: Attrs, item_fn: ItemFn, kind: FunctionKind) -> TokenS
     } else {
         syn::Error::new_spanned(
             &item_fn.sig.generics,
-            format!("`#[debug_{kind}]` doesn't support generic functions"),
+            format!("`#[axum_macros::debug_{kind}]` doesn't support generic functions"),
         )
         .into_compile_error()
     };
@@ -113,6 +113,7 @@ impl FunctionKind {
 }
 
 mod kw {
+    syn::custom_keyword!(body);
     syn::custom_keyword!(state);
 }
 
