@@ -7,7 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- **added:** Add `#[debug_middleware]` ([#1993])
+- **added:** Add `#[debug_middleware]` ([#1993], [#2725])
+
+[#1993]: https://github.com/tokio-rs/axum/pull/1993
+[#2725]: https://github.com/tokio-rs/axum/pull/2725
 
 # 0.4.1 (13. January, 2024)
 
@@ -23,7 +26,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 [#2204]: https://github.com/tokio-rs/axum/pull/2204
 [#1751]: https://github.com/tokio-rs/axum/pull/1751
-[#1993]: https://github.com/tokio-rs/axum/pull/1993
 
 # 0.3.8 (17. July, 2023)
 
