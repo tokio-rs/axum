@@ -11,7 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   a `Router` or `MethodRouter` ([#2586])
 - **fixed:** `h2` is no longer pulled as a dependency unless the `http2` feature
   is enabled ([#2605])
+- **added:** Add `#[debug_middleware]` ([#1993], [#2725])
 
+[#1993]: https://github.com/tokio-rs/axum/pull/1993
+[#2725]: https://github.com/tokio-rs/axum/pull/2725
 [#2586]: https://github.com/tokio-rs/axum/pull/2586
 [#2605]: https://github.com/tokio-rs/axum/pull/2605
 
