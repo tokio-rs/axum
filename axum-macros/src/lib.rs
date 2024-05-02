@@ -662,6 +662,10 @@ pub fn debug_handler(_attr: TokenStream, input: TokenStream) -> TokenStream {
 /// }
 /// ```
 ///
+/// # Performance
+///
+/// This macro has no effect when compiled with the release profile. (eg. `cargo build --release`)
+///
 /// [`axum`]: https://docs.rs/axum/latest
 /// [`axum::middleware::from_fn`]: https://docs.rs/axum/0.7/axum/middleware/fn.from_fn.html
 #[proc_macro_attribute]
