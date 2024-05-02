@@ -643,12 +643,14 @@ pub fn debug_handler(_attr: TokenStream, input: TokenStream) -> TokenStream {
 ///
 /// #[tokio::main]
 /// async fn main() {
+///     # async {
 ///     let app = Router::new()
 ///         .route("/", get(|| async {}))
 ///         .layer(middleware::from_fn(my_middleware));
 ///
 ///     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
 ///     axum::serve(listener, app).await.unwrap();
+///     # };
 /// }
 ///
 /// // if this wasn't a valid middleware function #[debug_middleware] would
@@ -668,6 +670,7 @@ pub fn debug_handler(_attr: TokenStream, input: TokenStream) -> TokenStream {
 ///
 /// [`axum`]: https://docs.rs/axum/latest
 /// [`axum::middleware::from_fn`]: https://docs.rs/axum/0.7/axum/middleware/fn.from_fn.html
+/// [`debug_middleware`]: macro@debug_middleware
 #[proc_macro_attribute]
 pub fn debug_middleware(_attr: TokenStream, input: TokenStream) -> TokenStream {
     #[cfg(not(debug_assertions))]
