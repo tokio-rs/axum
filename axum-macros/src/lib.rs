@@ -516,17 +516,15 @@ pub fn derive_from_request_parts(item: TokenStream) -> TokenStream {
 ///
 /// As the error message says, handler function needs to be async.
 ///
-/// ```
+/// ```no_run
 /// use axum::{routing::get, Router, debug_handler};
 ///
 /// #[tokio::main]
 /// async fn main() {
-///     # async {
 ///     let app = Router::new().route("/", get(handler));
 ///
 ///     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
 ///     axum::serve(listener, app).await.unwrap();
-///     # };
 /// }
 ///
 /// #[debug_handler]
@@ -631,7 +629,7 @@ pub fn debug_handler(_attr: TokenStream, input: TokenStream) -> TokenStream {
 ///
 /// # Example
 ///
-/// ```
+/// ```no_run
 /// use axum::{
 ///     routing::get,
 ///     extract::Request,
@@ -643,14 +641,12 @@ pub fn debug_handler(_attr: TokenStream, input: TokenStream) -> TokenStream {
 ///
 /// #[tokio::main]
 /// async fn main() {
-///     # async {
 ///     let app = Router::new()
 ///         .route("/", get(|| async {}))
 ///         .layer(middleware::from_fn(my_middleware));
 ///
 ///     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
 ///     axum::serve(listener, app).await.unwrap();
-///     # };
 /// }
 ///
 /// // if this wasn't a valid middleware function #[debug_middleware] would
