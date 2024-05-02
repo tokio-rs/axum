@@ -35,6 +35,8 @@ async fn root(Json(value): Json<Value>) -> Json<Value> {
     Json(value)
 }
 
+// ======================== TESTS ========================
+
 #[cfg(test)]
 mod tests {
     use assert_json_diff::assert_json_eq;
