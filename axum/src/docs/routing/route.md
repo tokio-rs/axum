@@ -65,7 +65,7 @@ use axum::{
     extract::Path,
 };
 
-let app = Router::new().route("/*key", get(handler));
+let app: Router = Router::new().route("/*key", get(handler));
 
 async fn handler(Path(path): Path<String>) -> String {
     path
