@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::{collections::HashSet, fmt};
 
 use crate::{
     attr_parsing::{parse_assignment_attribute, second},
@@ -39,8 +39,7 @@ pub(crate) fn expand(attr: Attrs, item_fn: ItemFn, kind: FunctionKind) -> TokenS
                         Span::call_site(),
                         format!(
                             "can't infer state type, please add set it explicitly, as in \
-                            `#[debug_{}(state = MyStateType)]`",
-                            kind.name()
+                            `#[debug_{kind}(state = MyStateType)]`"
                         ),
                     )
                     .into_compile_error(),
@@ -71,10 +70,7 @@ pub(crate) fn expand(attr: Attrs, item_fn: ItemFn, kind: FunctionKind) -> TokenS
     } else {
         syn::Error::new_spanned(
             &item_fn.sig.generics,
-            format!(
-                "`#[debug_{}]` doesn't support generic functions",
-                kind.name()
-            ),
+            format!("`#[debug_{kind}]` doesn't support generic functions"),
         )
         .into_compile_error()
     };
@@ -98,14 +94,16 @@ pub(crate) enum FunctionKind {
     Middleware,
 }
 
-impl FunctionKind {
-    fn name(&self) -> &'static str {
+impl fmt::Display for FunctionKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            FunctionKind::Handler => "handler",
-            FunctionKind::Middleware => "middleware",
+            FunctionKind::Handler => f.write_str("handler"),
+            FunctionKind::Middleware => f.write_str("middleware"),
         }
     }
+}
 
+impl FunctionKind {
     fn name_uppercase_plural(&self) -> &'static str {
         match self {
             FunctionKind::Handler => "Handlers",
