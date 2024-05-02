@@ -7,7 +7,7 @@ This example shows how to:
 ## Running
 
 ```
-cargo run
+cargo run -p example-compression
 ```
 
 ## Sending compressed requests
