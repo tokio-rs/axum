@@ -36,7 +36,7 @@ let app = Router::<()>::new()
 
 # Merging
 
-When two routers are merged, v0.7 checks are disabled if both of the two routers had them also disabled.
+When two routers are merged, v0.7 checks are disabled for route registrations on the resulting router if both of the two routers had them also disabled.
 
 # Nesting
 
