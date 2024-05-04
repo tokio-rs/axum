@@ -12,7 +12,7 @@ repository = "https://github.com/tokio-rs/axum"
 version = "0.9.3"
 
 [features]
-default = ["tracing", "multipart"]
+default = ["tracing"]
 
 async-read-body = ["dep:tokio-util", "tokio-util?/io", "dep:tokio"]
 cookie = ["dep:cookie"]

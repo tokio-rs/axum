@@ -259,7 +259,7 @@ fn gen_boundary_portion() -> u64 {
     // the current time is used as a seed because it doesn't really matter what the data is, it should
     // just be vaguely random
     let mut x = SystemTime::now()
-        .duration_since(SystemTime::from(UNIX_EPOCH))
+        .duration_since(UNIX_EPOCH)
         .unwrap()
         .as_millis() as u64;
     x = x ^ (x << 13);
