@@ -1,8 +1,8 @@
 //! Generate forms to use in responses. You're probably looking for [MultipartForm].
 
 use axum::response::{IntoResponse, Response};
-use fastrand;
 use http::{header, HeaderMap};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 /// The `Content-Transfer-Encoding` setting for a part.
 #[derive(Debug)]
@@ -243,13 +243,29 @@ impl Part {
 /// A boundary is defined as a user defined (arbitrary) value that does not occur in any of the data.
 /// Because the specification does not clearly define a methodology for generating boundaries, this implementation
 /// follow's Reqwest's, and generates a boundary in the format of `XXXXXXXX-XXXXXXXX-XXXXXXXX-XXXXXXXX` where `XXXXXXXX`
-/// is a hexadecimal representation of a randomly generated u64.
+/// is a hexadecimal representation of a pseudo randomly generated u64.
 fn generate_boundary() -> String {
-    let a = fastrand::u64(..);
-    let b = fastrand::u64(..);
-    let c = fastrand::u64(..);
-    let d = fastrand::u64(..);
+    let a = gen_boundary_portion();
+    let b = gen_boundary_portion();
+    let c = gen_boundary_portion();
+    let d = gen_boundary_portion();
     format!("{a:016x}-{b:016x}-{c:016x}-{d:016x}")
+}
+
+/// Generate a single portion of the boundary by performing an xor
+/// shift on the current time
+fn gen_boundary_portion() -> u64 {
+    // *very* rudimentary xor-shift used
+    // the current time is used as a seed because it doesn't really matter what the data is, it should
+    // just be vaguely random
+    let mut x = SystemTime::now()
+        .duration_since(SystemTime::from(UNIX_EPOCH))
+        .unwrap()
+        .as_millis() as u64;
+    x = x ^ (x << 13);
+    x = x ^ (x >> 17);
+    x = x ^ (x << 5);
+    x
 }
 
 #[cfg(test)]
