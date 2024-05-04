@@ -284,7 +284,7 @@ let app = Router::new().route("/users", post(create_user));
 # Customizing extractor responses
 
 If an extractor fails it will return a response with the error and your
-handler will not be called. To customize the error response you have a two
+handler will not be called. To customize the error response you have two 
 options:
 
 1. Use `Result<T, T::Rejection>` as your extractor like shown in ["Optional

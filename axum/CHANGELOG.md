@@ -7,11 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+- **change:** Avoid cloning `Arc` during deserialization of `Path`
+- **added:** `axum::serve::Serve::tcp_nodelay` and `axum::serve::WithGracefulShutdown::tcp_nodelay` ([#2653])
+
+[#2653]: https://github.com/tokio-rs/axum/pull/2653
+
+# 0.7.5 (24. March, 2024)
+
 - **fixed:** Fixed layers being cloned when calling `axum::serve` directly with
   a `Router` or `MethodRouter` ([#2586])
 - **fixed:** `h2` is no longer pulled as a dependency unless the `http2` feature
   is enabled ([#2605])
+- **added:** Add `#[debug_middleware]` ([#1993], [#2725])
 
+[#1993]: https://github.com/tokio-rs/axum/pull/1993
+[#2725]: https://github.com/tokio-rs/axum/pull/2725
 [#2586]: https://github.com/tokio-rs/axum/pull/2586
 [#2605]: https://github.com/tokio-rs/axum/pull/2605
 

@@ -81,11 +81,16 @@ impl IntoResponse for FormRejection {
     fn into_response(self) -> Response {
         match self {
             Self::RawFormRejection(inner) => inner.into_response(),
-            Self::FailedToDeserializeForm(inner) => (
-                StatusCode::BAD_REQUEST,
-                format!("Failed to deserialize form: {inner}"),
-            )
-                .into_response(),
+            Self::FailedToDeserializeForm(inner) => {
+                let body = format!("Failed to deserialize form: {inner}");
+                let status = StatusCode::BAD_REQUEST;
+                axum_core::__log_rejection!(
+                    rejection_type = Self,
+                    body_text = body,
+                    status = status,
+                );
+                (status, body).into_response()
+            }
         }
     }
 }
@@ -113,7 +118,7 @@ mod tests {
     use super::*;
     use crate::test_helpers::*;
     use axum::{routing::post, Router};
-    use http::{header::CONTENT_TYPE, StatusCode};
+    use http::header::CONTENT_TYPE;
     use serde::Deserialize;
 
     #[tokio::test]

@@ -1,6 +1,6 @@
 [package]
 name = "axum"
-version = "0.7.4"
+version = "0.7.5"
 categories = ["asynchronous", "network-programming", "web-programming::http-server"]
 description = "Web framework that focuses on ergonomics and modularity"
 edition = "2021"
@@ -54,8 +54,9 @@ memchr = "2.4.1"
 mime = "0.3.16"
 percent-encoding = "2.1"
 pin-project-lite = "0.2.7"
+rustversion = "1.0.9"
 serde = "1.0"
-sync_wrapper = "0.1.1"
+sync_wrapper = "1.0.0"
 tower = { version = "0.4.13", default-features = false, features = ["util"] }
 tower-layer = "0.3.2"
 tower-service = "0.3"
@@ -109,16 +110,12 @@ features = [
     "validate-request",
 ]
 
-[build-dependencies]
-rustversion = "1.0.9"
-
 [dev-dependencies]
 anyhow = "1.0"
 axum-macros = { path = "../axum-macros", version = "0.4.1", features = ["__private"] }
 quickcheck = "1.0"
 quickcheck_macros = "1.0"
-reqwest = { version = "0.11.14", default-features = false, features = ["json", "stream", "multipart"] }
-rustversion = "1.0.9"
+reqwest = { version = "0.12", default-features = false, features = ["json", "stream", "multipart"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 time = { version = "0.3", features = ["serde-human-readable"] }

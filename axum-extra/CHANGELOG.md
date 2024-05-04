@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning].
 
 - None.
 
+# 0.9.3 (24. March, 2024)
+
+- **added:** New `tracing` feature which enables logging rejections from
+  built-in extractor with the `axum::rejection=trace` target ([#2584])
+
+[#2584]: https://github.com/tokio-rs/axum/pull/2584
+
 # 0.9.2 (13. January, 2024)
 
 - **added:** Implement `TypedPath` for `WithRejection<TypedPath, _>`

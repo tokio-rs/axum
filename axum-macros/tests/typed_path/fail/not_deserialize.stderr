@@ -8,3 +8,14 @@ error[E0277]: the trait bound `MyPath: serde::de::DeserializeOwned` is not satis
   = note: required for `MyPath` to implement `serde::de::DeserializeOwned`
   = note: required for `axum::extract::Path<MyPath>` to implement `FromRequestParts<S>`
   = note: this error originates in the derive macro `TypedPath` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the trait bound `MyPath: serde::de::DeserializeOwned` is not satisfied
+ --> tests/typed_path/fail/not_deserialize.rs:3:10
+  |
+3 | #[derive(TypedPath)]
+  |          ^^^^^^^^^ the trait `for<'de> serde::de::Deserialize<'de>` is not implemented for `MyPath`, which is required by `axum::extract::Path<MyPath>: FromRequestParts<S>`
+  |
+  = help: the trait `FromRequestParts<S>` is implemented for `axum::extract::Path<T>`
+  = note: required for `MyPath` to implement `serde::de::DeserializeOwned`
+  = note: required for `axum::extract::Path<MyPath>` to implement `FromRequestParts<S>`
+  = note: this error originates in the attribute macro `::axum::async_trait` (in Nightly builds, run with -Z macro-backtrace for more info)

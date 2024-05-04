@@ -201,7 +201,6 @@ mod tests {
     use super::*;
     use crate::test_helpers::*;
     use axum::{routing::post, Router};
-    use http::StatusCode;
 
     #[tokio::test]
     async fn decode_body() {

@@ -9,10 +9,10 @@ license = "MIT"
 name = "axum-extra"
 readme = "README.md"
 repository = "https://github.com/tokio-rs/axum"
-version = "0.9.2"
+version = "0.9.3"
 
 [features]
-default = ["multipart"]
+default = ["tracing"]
 
 async-read-body = ["dep:tokio-util", "tokio-util?/io", "dep:tokio"]
 cookie = ["dep:cookie"]
@@ -33,6 +33,7 @@ json-lines = [
 multipart = ["dep:multer", "dep:fastrand"]
 protobuf = ["dep:prost"]
 query = ["dep:serde_html_form"]
+tracing = ["dep:tracing", "axum-core/tracing"]
 typed-header = ["dep:headers"]
 typed-routing = ["dep:axum-macros", "dep:percent-encoding", "dep:serde_html_form", "dep:form_urlencoded"]
 
@@ -66,11 +67,12 @@ serde_path_to_error = { version = "0.1.8", optional = true }
 tokio = { version = "1.19", optional = true }
 tokio-stream = { version = "0.1.9", optional = true }
 tokio-util = { version = "0.7", optional = true }
+tracing = { version = "0.1.37", default-features = false, optional = true }
 
 [dev-dependencies]
 axum = { path = "../axum", version = "0.7.2" }
 hyper = "1.0.0"
-reqwest = { version = "0.11", default-features = false, features = ["json", "stream", "multipart"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "stream", "multipart"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0.71"
 tokio = { version = "1.14", features = ["full"] }
