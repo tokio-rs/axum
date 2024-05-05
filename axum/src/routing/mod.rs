@@ -57,6 +57,16 @@ macro_rules! panic_on_err {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub(crate) struct RouteId(u32);
 
+// TODO Docs - in short sets where a root route (`/`) of a nested router will be available.
+// For example if a router is nested at `/foo`, the root route can be available at `/foo`, at `/foo/`, or at both locations.
+// We could also extend this with variants like `PermanentRedirectToEmpty` and `PermanentRedirectToSlash`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum NestedRootRouteBehavior {
+    OnlyEmpty,
+    OnlySlash,
+    EmptyAndSlash,
+}
+
 /// The router type for composing handlers and services.
 #[must_use]
 pub struct Router<S = ()> {
@@ -187,6 +197,11 @@ where
     #[doc = include_str!("../docs/routing/nest.md")]
     #[track_caller]
     pub fn nest(self, path: &str, router: Router<S>) -> Self {
+        self.nest_with_root(path, router, NestedRootRouteBehavior::EmptyAndSlash)
+    }
+
+
+    pub fn nest_with_root(self, path: &str, router: Router<S>, root_behavior: NestedRootRouteBehavior) -> Self {
         let RouterInner {
             path_router,
             fallback_router,
@@ -198,10 +213,12 @@ where
         } = router.into_inner();
 
         self.tap_inner_mut(|this| {
-            panic_on_err!(this.path_router.nest(path, path_router));
+            panic_on_err!(this.path_router.nest(path, path_router, root_behavior));
 
             if !default_fallback {
-                panic_on_err!(this.fallback_router.nest(path, fallback_router));
+                panic_on_err!(this
+                    .fallback_router
+                    .nest(path, fallback_router, root_behavior));
             }
         })
     }
