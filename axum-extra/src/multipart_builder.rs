@@ -1,20 +1,21 @@
-//! Generate forms to use in responses. You're probably looking for [MultipartForm].
+//! Generate forms to use in responses. You're probably looking for `MultipartForm``.
 
 use axum::response::{IntoResponse, Response};
-use http::{header, HeaderMap};
-use std::time::{SystemTime, UNIX_EPOCH};
+use fastrand;
+use http::{header, HeaderMap, StatusCode};
+use mime::Mime;
 
 /// The `Content-Transfer-Encoding` setting for a part.
 #[derive(Debug)]
 pub enum TransferEncoding {
     /// If not specified, encoding defaults to UTF-8
-    Default,
+    TextUTF8,
     /// If transferring raw binary data that is not guaranteed to be valid UTF-8.
     Binary,
 }
 
 /// Create multipart forms to be used in API responses.
-/// This struct implements [IntoResponse], and so it can be returned from a handler like normal.
+/// This struct implements [IntoResponse], and so it can be returned from a handler.
 #[derive(Debug)]
 pub struct MultipartForm {
     parts: Vec<Part>,
@@ -33,29 +34,11 @@ impl MultipartForm {
     /// ```rust
     /// use axum_extra::multipart_builder::{MultipartForm, Part};
     ///
-    /// let parts: Vec<Part> = vec![Part::text("foo", "abc"), Part::text("bar", "def")];
+    /// let parts: Vec<Part> = vec![Part::text("foo".to_string(), "abc"), Part::text("bar".to_string(), "def")];
     /// let form = MultipartForm::with_parts(parts);
     /// ```
     pub fn with_parts(parts: Vec<Part>) -> Self {
         MultipartForm { parts }
-    }
-
-    /// Add a new [Part] to the form
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// use axum_extra::multipart_builder::{MultipartForm, Part};
-    ///
-    /// let mut form = MultipartForm::new();
-    /// form
-    ///     .part(Part::text("foo", "abc"))
-    ///     .part(Part::text("other_field_name", "def"))
-    ///     .part(Part::file("file", "file.txt", vec![0x68, 0x68, 0x20, 0x6d, 0x6f, 0x6d]));
-    /// ```
-    pub fn part(&mut self, part: Part) -> &mut Self {
-        self.parts.push(part);
-        self
     }
 }
 
@@ -64,12 +47,20 @@ impl IntoResponse for MultipartForm {
         // see RFC2388 for details
         let boundary = generate_boundary();
         let mut headers = HeaderMap::new();
-        headers.insert(
-            header::CONTENT_TYPE,
-            format!("multipart/form-data; boundary={}", boundary)
-                .parse()
-                .unwrap(),
-        );
+        let mime_type: Mime = match format!("multipart/form-data; boundary={}", boundary).parse() {
+            Ok(m) => m,
+            // Realistically this should never happen unless the boundary generation code
+            // is modified, and that will be caught by unit tests
+            Err(_) => {
+                return (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Invalid multipart boundary generated",
+                )
+                    .into_response()
+            }
+        };
+        // The use of unwrap is safe here because mime types are inherently string representable
+        headers.insert(header::CONTENT_TYPE, mime_type.to_string().parse().unwrap());
         let mut serialized_form: Vec<u8> = Vec::new();
         for part in self.parts {
             // for each part, the boundary is preceded by two dashes
@@ -112,7 +103,7 @@ pub struct Part {
     /// If the part should be treated as a file, the filename that should be attached that part
     filename: Option<String>,
     /// The `Content-Type` header. While not strictly required, it is always set here
-    mime_type: String,
+    mime_type: Mime,
     /// The content/body of the part
     contents: Vec<u8>,
     /// The encoding that the contents should be encoded under
@@ -130,22 +121,22 @@ impl Part {
     ///
     /// // create a form with a single part that has a field with a name of "foo",
     /// // and a value of "abc"
-    /// let parts: Vec<Part> = vec![Part::text("foo", "abc")];
+    /// let parts: Vec<Part> = vec![Part::text("foo".to_string(), "abc")];
     /// let form = MultipartForm::with_parts(parts);
     /// ```
-    pub fn text(name: &str, contents: &str) -> Self {
+    pub fn text(name: String, contents: &str) -> Self {
         Self {
-            name: name.to_owned(),
+            name,
             filename: None,
-            mime_type: "text/plain".to_owned(),
+            mime_type: mime::TEXT_PLAIN_UTF_8,
             contents: contents.as_bytes().to_vec(),
-            encoding: TransferEncoding::Default,
+            encoding: TransferEncoding::TextUTF8,
         }
     }
 
     /// Create a new part containing a generic file, with a `Content-Type` of `application/octet-stream`
     /// using the provided file name, field name, and contents. If the MIME type of the file is known, consider
-    /// using [Part::raw_part]. The contents of this part do not need to be valid UTF 8.
+    /// using `Part::raw_part`. The contents of this part do not need to be valid UTF 8.
     ///
     /// # Examples
     ///
@@ -163,7 +154,7 @@ impl Part {
             filename: Some(file_name.to_owned()),
             // If the `MIME` type is not known or specified, then the MIME type should be set to `application/octet-stream`.
             // See RFC2388 section 3 for specifics.
-            mime_type: "application/octet-stream".to_owned(),
+            mime_type: mime::APPLICATION_OCTET_STREAM,
             contents,
             encoding: TransferEncoding::Binary,
         }
@@ -180,12 +171,12 @@ impl Part {
     /// // create a form with a single part that has a field with a name of "part_name",
     /// // with a MIME type of "application/json", and the supplied contents. This part will not have an associated filename, but will be sent as binary, and does not
     /// // need to be valid UTF-8.
-    /// let parts: Vec<Part> = vec![Part::raw_part("part_name", "application/json", vec![0x68, 0x68, 0x20, 0x6d, 0x6f, 0x6d], None, TransferEncoding::Binary)];
+    /// let parts: Vec<Part> = vec![Part::raw_part("part_name", "application/json".parse().unwrap(), vec![0x68, 0x68, 0x20, 0x6d, 0x6f, 0x6d], None, TransferEncoding::Binary)];
     /// let form = MultipartForm::with_parts(parts);
     /// ```
     pub fn raw_part(
         name: &str,
-        mime_type: &str,
+        mime_type: Mime,
         contents: Vec<u8>,
         filename: Option<&str>,
         encoding: TransferEncoding,
@@ -193,7 +184,7 @@ impl Part {
         Self {
             name: name.to_owned(),
             filename: filename.map(|f| f.to_owned()),
-            mime_type: mime_type.to_owned(),
+            mime_type,
             contents,
             encoding,
         }
@@ -225,7 +216,7 @@ impl Part {
         // if an encoding was set, add that
         // determine what encoding to label the body of the field with
         let encoding: Option<&str> = match self.encoding {
-            TransferEncoding::Default => None,
+            TransferEncoding::TextUTF8 => None,
             TransferEncoding::Binary => Some("binary"),
         };
         if let Some(encoding) = encoding {
@@ -245,58 +236,43 @@ impl Part {
 /// follow's Reqwest's, and generates a boundary in the format of `XXXXXXXX-XXXXXXXX-XXXXXXXX-XXXXXXXX` where `XXXXXXXX`
 /// is a hexadecimal representation of a pseudo randomly generated u64.
 fn generate_boundary() -> String {
-    let a = gen_boundary_portion();
-    let b = gen_boundary_portion();
-    let c = gen_boundary_portion();
-    let d = gen_boundary_portion();
+    let a = fastrand::u64(0..u64::MAX);
+    let b = fastrand::u64(0..u64::MAX);
+    let c = fastrand::u64(0..u64::MAX);
+    let d = fastrand::u64(0..u64::MAX);
     format!("{a:016x}-{b:016x}-{c:016x}-{d:016x}")
-}
-
-/// Generate a single portion of the boundary by performing an xor
-/// shift on the current time
-fn gen_boundary_portion() -> u64 {
-    // *very* rudimentary xor-shift used
-    // the current time is used as a seed because it doesn't really matter what the data is, it should
-    // just be vaguely random
-    let mut x = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap()
-        .as_millis() as u64;
-    x = x ^ (x << 13);
-    x = x ^ (x >> 17);
-    x = x ^ (x << 5);
-    x
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{MultipartForm, Part};
+    use super::{generate_boundary, MultipartForm, Part};
     use axum::{body::Body, http};
     use axum::{routing::get, Router};
     use http::{Request, Response};
     use http_body_util::BodyExt;
-    // for `collect`
-    use tower::ServiceExt; // for `call`, `oneshot`, and `ready`
+    use mime::Mime;
+    use tower::ServiceExt;
 
     #[tokio::test]
     async fn process_form() -> Result<(), Box<dyn std::error::Error>> {
         // create a boilerplate handle that returns a form
         async fn handle() -> MultipartForm {
-            let mut form = MultipartForm::new();
-            form.part(Part::text("part1", "basictext"))
-                .part(Part::file(
+            let parts: Vec<Part> = vec![
+                Part::text("part1".to_string(), "basictext"),
+                Part::file(
                     "part2",
                     "file.txt",
                     vec![0x68, 0x69, 0x20, 0x6d, 0x6f, 0x6d],
-                ))
-                .part(Part::raw_part(
+                ),
+                Part::raw_part(
                     "part3",
-                    "text/plain",
+                    mime::TEXT_PLAIN,
                     b"rawpart".to_vec(),
                     None,
-                    super::TransferEncoding::Default,
-                ));
-            form
+                    super::TransferEncoding::TextUTF8,
+                ),
+            ];
+            MultipartForm::with_parts(parts)
         }
 
         // make a request to that handle
@@ -313,7 +289,7 @@ mod tests {
             &format!(
                 "--{boundary}\r\n\
                 Content-Disposition: form-data; name=\"part1\"\r\n\
-                Content-Type: text/plain\r\n\
+                Content-Type: text/plain; charset=utf-8\r\n\
                 \r\n\
                 basictext\r\n\
                 --{boundary}\r\n\
@@ -333,5 +309,18 @@ mod tests {
         );
 
         Ok(())
+    }
+
+    #[test]
+    fn valid_boundary_generation() {
+        for _ in 0..256 {
+            let boundary = generate_boundary();
+            let mime_type: Result<Mime, _> =
+                format!("multipart/form-data; boundary={}", boundary).parse();
+            assert!(
+                mime_type.is_ok(),
+                "The generated boundary was unable to be parsed into a valid mime type."
+            );
+        }
     }
 }
