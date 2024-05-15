@@ -1,0 +1,28 @@
+[package]
+name = "tsm"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+axum = "0.7"
+axum-extra = { version = "0.9", features = ["typed-header"] }
+http = "1.1"
+tokio = { version = "1.37", features = ["full"]}
+
+azure_core = "0.20"
+azure_identity = "0.20"
+oauth2 = "4.4"
+httpclient_oauth2 = "0.3"
+url = "2.5"
+reqwest = { version = "0.12", features = ["json"] }
+
+tracing = "0.1"
+tracing-subscriber = "0.3"
+
+dotenvy = "0.15"
+anyhow = "1.0"
+futures = "0.3"
+structopt = "0.3"
+serde = { version = "1.0", features = ["derive"] }
+
+async-session = "3.0"
