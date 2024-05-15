@@ -4,25 +4,26 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+anyhow = "1.0"
+
+async-session = "3.0"
 axum = "0.7"
 axum-extra = { version = "0.9", features = ["typed-header"] }
-http = "1.1"
-tokio = { version = "1.37", features = ["full"]}
 
 azure_core = "0.20"
 azure_identity = "0.20"
-oauth2 = "4.4"
+
+dotenvy = "0.15"
+futures = "0.3"
+http = "1.1"
 httpclient_oauth2 = "0.3"
-url = "2.5"
+oauth2 = "4.4"
 reqwest = { version = "0.12", features = ["json"] }
+serde = { version = "1.0", features = ["derive"] }
+sqlx = { version = "0.7", features = [ "runtime-tokio", "postgres" ] }
+structopt = "0.3"
+tokio = { version = "1.37", features = ["full"] }
 
 tracing = "0.1"
 tracing-subscriber = "0.3"
-
-dotenvy = "0.15"
-anyhow = "1.0"
-futures = "0.3"
-structopt = "0.3"
-serde = { version = "1.0", features = ["derive"] }
-
-async-session = "3.0"
+url = "2.5"
