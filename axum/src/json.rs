@@ -87,7 +87,7 @@ use serde::{de::DeserializeOwned, Serialize};
 /// let app = Router::new().route("/users/:id", get(get_user));
 /// # let _: Router = app;
 /// ```
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
 #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
 #[must_use]
 pub struct Json<T>(pub T);
