@@ -159,7 +159,7 @@ impl IntoResponse for TypedHeaderRejection {
         let status = StatusCode::BAD_REQUEST;
         let body = self.to_string();
         axum_core::__log_rejection!(rejection_type = Self, body_text = body, status = status,);
-        (http::StatusCode::BAD_REQUEST, self.to_string()).into_response()
+        (status, body).into_response()
     }
 }
 
