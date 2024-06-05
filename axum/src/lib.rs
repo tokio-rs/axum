@@ -293,6 +293,68 @@
 //! The downside to this approach is that it's a little more verbose than using
 //! [`State`] or extensions.
 //!
+//! ## Using [tokio's `task_local` macro](https://docs.rs/tokio/1/tokio/macro.task_local.html):
+//!
+//! This allows to share state with IntoResponse implementations.
+//!
+//! ```rust,no_run
+//! use axum::{
+//!     extract::Request,
+//!     http::{header, StatusCode},
+//!     middleware::{self, Next},
+//!     response::{IntoResponse, Response},
+//!     routing::get,
+//!     Router,
+//! };
+//! use tokio::task_local;
+//!
+//! #[derive(Clone)]
+//! struct CurrentUser {
+//!     name: String,
+//! }
+//! task_local! {
+//!     pub static USER: CurrentUser;
+//! }
+//!
+//! async fn auth(req: Request, next: Next) -> Result<Response, StatusCode> {
+//!     let auth_header = req
+//!         .headers()
+//!         .get(header::AUTHORIZATION)
+//!         .and_then(|header| header.to_str().ok())
+//!         .ok_or(StatusCode::UNAUTHORIZED)?;
+//!     if let Some(current_user) = authorize_current_user(auth_header).await {
+//!         // State is setup here in the middleware
+//!         Ok(USER.scope(current_user, next.run(req)).await)
+//!     } else {
+//!         Err(StatusCode::UNAUTHORIZED)
+//!     }
+//! }
+//! async fn authorize_current_user(auth_token: &str) -> Option<CurrentUser> {
+//!     Some(CurrentUser {
+//!         name: auth_token.to_string(),
+//!     })
+//! }
+//!
+//! struct UserResponse;
+//!
+//! impl IntoResponse for UserResponse {
+//!     fn into_response(self) -> Response {
+//!         // State is accessed here in the IntoResponse implementation
+//!         let current_user = USER.with(|u| u.clone());
+//!         (StatusCode::OK, current_user.name).into_response()
+//!     }
+//! }
+//!
+//! async fn handler() -> UserResponse {
+//!     UserResponse
+//! }
+//!
+//! let app: Router = Router::new()
+//!     .route("/", get(handler))
+//!     .route_layer(middleware::from_fn(auth));
+//!
+//! ```
+//!
 //! # Building integrations for axum
 //!
 //! Libraries authors that want to provide [`FromRequest`], [`FromRequestParts`], or
