@@ -32,3 +32,9 @@ impl StdError for Error {
         Some(&*self.inner)
     }
 }
+
+impl From<std::convert::Infallible> for Error {
+    fn from(_: std::convert::Infallible) -> Self {
+        panic!()
+    }
+}

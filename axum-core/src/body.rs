@@ -36,7 +36,7 @@ where
 
 /// The body type used in axum requests and responses.
 #[derive(Debug)]
-pub struct Body(BoxBody);
+pub struct Body(Kind);
 
 impl Body {
     /// Create a new `Body` that wraps another [`http_body::Body`].
@@ -45,12 +45,12 @@ impl Body {
         B: http_body::Body<Data = Bytes> + Send + 'static,
         B::Error: Into<BoxError>,
     {
-        try_downcast(body).unwrap_or_else(|body| Self(boxed(body)))
+        try_downcast(body).unwrap_or_else(|body| Self(Kind::Box(boxed(body))))
     }
 
     /// Create an empty body.
     pub fn empty() -> Self {
-        Self::new(http_body_util::Empty::new())
+        Self(Kind::Empty(Default::default()))
     }
 
     /// Create a new `Body` from a [`Stream`].
@@ -90,26 +90,6 @@ impl From<()> for Body {
     }
 }
 
-macro_rules! body_from_impl {
-    ($ty:ty) => {
-        impl From<$ty> for Body {
-            fn from(buf: $ty) -> Self {
-                Self::new(http_body_util::Full::from(buf))
-            }
-        }
-    };
-}
-
-body_from_impl!(&'static [u8]);
-body_from_impl!(std::borrow::Cow<'static, [u8]>);
-body_from_impl!(Vec<u8>);
-
-body_from_impl!(&'static str);
-body_from_impl!(std::borrow::Cow<'static, str>);
-body_from_impl!(String);
-
-body_from_impl!(Bytes);
-
 impl http_body::Body for Body {
     type Data = Bytes;
     type Error = Error;
@@ -130,6 +110,68 @@ impl http_body::Body for Body {
     #[inline]
     fn is_end_stream(&self) -> bool {
         self.0.is_end_stream()
+    }
+}
+
+macro_rules! body_from_impl {
+    ($ty:ty) => {
+        impl From<$ty> for Body {
+            fn from(buf: $ty) -> Self {
+                Self(Kind::Bytes(http_body_util::Full::from(buf)))
+            }
+        }
+    };
+}
+
+body_from_impl!(&'static [u8]);
+body_from_impl!(std::borrow::Cow<'static, [u8]>);
+body_from_impl!(Vec<u8>);
+
+body_from_impl!(&'static str);
+body_from_impl!(std::borrow::Cow<'static, str>);
+body_from_impl!(String);
+
+body_from_impl!(Bytes);
+
+#[derive(Debug)]
+enum Kind {
+    Box(BoxBody),
+    Bytes(http_body_util::Full<Bytes>),
+    Empty(http_body_util::Empty<Bytes>),
+}
+
+impl http_body::Body for Kind {
+    type Data = Bytes;
+    type Error = Error;
+
+    #[inline]
+    fn poll_frame(
+        mut self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+    ) -> Poll<Option<Result<Frame<Self::Data>, Self::Error>>> {
+        match &mut *self {
+            Self::Box(inner) => Pin::new(inner).poll_frame(cx),
+            Self::Bytes(inner) => Pin::new(inner).poll_frame(cx).map_err(|err| err.into()),
+            Self::Empty(inner) => Pin::new(inner).poll_frame(cx).map_err(|err| err.into()),
+        }
+    }
+
+    #[inline]
+    fn size_hint(&self) -> http_body::SizeHint {
+        match self {
+            Self::Box(inner) => inner.size_hint(),
+            Self::Bytes(inner) => inner.size_hint(),
+            Self::Empty(inner) => inner.size_hint(),
+        }
+    }
+
+    #[inline]
+    fn is_end_stream(&self) -> bool {
+        match self {
+            Self::Box(inner) => inner.is_end_stream(),
+            Self::Bytes(inner) => inner.is_end_stream(),
+            Self::Empty(inner) => inner.is_end_stream(),
+        }
     }
 }
 
