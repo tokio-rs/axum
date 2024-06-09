@@ -68,7 +68,7 @@ jobs:
       run: |
         cargo rustdoc --all-features --manifest-path ${{ matrix.crate }}/Cargo.toml -- -Z unstable-options --output-format json
     - name: cargo public-api-crates check
-      run: cargo public-api-crates --manifest-path ${{ matrix.crate }}/Cargo.toml check --skip-build
+      run: cargo public-api-crates --manifest-path ${{ matrix.crate }}/Cargo.toml --skip-build check
 
   test-versions:
     needs: check
