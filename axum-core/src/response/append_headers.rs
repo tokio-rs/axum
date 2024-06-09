@@ -29,7 +29,7 @@ use std::fmt;
 ///     )
 /// }
 /// ```
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 #[must_use]
 pub struct AppendHeaders<I>(pub I);
 
