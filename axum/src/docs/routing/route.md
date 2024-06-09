@@ -5,8 +5,7 @@ can be either static, a capture, or a wildcard.
 
 `method_router` is the [`MethodRouter`] that should receive the request if the
 path matches `path`. `method_router` will commonly be a handler wrapped in a method
-router like [`get`](crate::routing::get). See [`handler`](crate::handler) for
-more details on handlers.
+router like [`get`]. See [`handler`](crate::handler) for more details on handlers.
 
 # Static paths
 
