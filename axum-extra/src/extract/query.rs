@@ -86,6 +86,7 @@ pub enum QueryRejection {
 
 #[cfg(feature = "query")]
 impl QueryRejection {
+    /// Get the status code used for this rejection.
     pub fn status(&self) -> http::StatusCode {
         match self {
             Self::FailedToDeserializeQueryString(_) => http::StatusCode::BAD_REQUEST,

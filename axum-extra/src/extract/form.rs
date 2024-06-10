@@ -78,6 +78,7 @@ pub enum FormRejection {
 }
 
 impl FormRejection {
+    /// Get the status code used for this rejection.
     pub fn status(&self) -> http::StatusCode {
         // Make sure to keep this in sync with `IntoResponse` impl.
         match self {
