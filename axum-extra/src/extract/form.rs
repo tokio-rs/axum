@@ -77,6 +77,16 @@ pub enum FormRejection {
     FailedToDeserializeForm(Error),
 }
 
+impl FormRejection {
+    pub fn status(&self) -> http::StatusCode {
+        // Make sure to keep this in sync with `IntoResponse` impl.
+        match self {
+            Self::RawFormRejection(inner) => inner.status(),
+            Self::FailedToDeserializeForm(_) => http::StatusCode::BAD_REQUEST,
+        }
+    }
+}
+
 impl IntoResponse for FormRejection {
     fn into_response(self) -> Response {
         match self {

@@ -84,11 +84,20 @@ pub enum QueryRejection {
     FailedToDeserializeQueryString(Error),
 }
 
+#[cfg(feature = "query")]
+impl QueryRejection {
+    pub fn status(&self) -> http::StatusCode {
+        match self {
+            Self::FailedToDeserializeQueryString(_) => http::StatusCode::BAD_REQUEST,
+        }
+    }
+}
+
 impl IntoResponse for QueryRejection {
     fn into_response(self) -> Response {
         match self {
             Self::FailedToDeserializeQueryString(inner) => (
-                StatusCode::BAD_REQUEST,
+                self.status(),
                 format!("Failed to deserialize query string: {}", inner),
             )
                 .into_response(),
