@@ -4,7 +4,9 @@ For a function to be used as a handler it must implement the [`Handler`] trait.
 axum provides blanket implementations for functions that:
 
 - Are `async fn`s.
-- Take no more than 16 arguments that all implement [`FromRequest`].
+- Take no more than 16 arguments that all implement `Send`.
+  - All except the last argument implement [`FromRequestParts`].
+  - The last argument implements [`FromRequest`].
 - Returns something that implements [`IntoResponse`].
 - If a closure is used it must implement `Clone + Send` and be
 `'static`.

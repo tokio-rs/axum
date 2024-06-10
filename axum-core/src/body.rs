@@ -2,17 +2,16 @@
 
 use crate::{BoxError, Error};
 use bytes::Bytes;
-use bytes::{Buf, BufMut};
 use futures_util::stream::Stream;
 use futures_util::TryStream;
-use http::HeaderMap;
-use http_body::Body as _;
+use http_body::{Body as _, Frame};
+use http_body_util::BodyExt;
 use pin_project_lite::pin_project;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 use sync_wrapper::SyncWrapper;
 
-type BoxBody = http_body::combinators::UnsyncBoxBody<Bytes, Error>;
+type BoxBody = http_body_util::combinators::UnsyncBoxBody<Bytes, Error>;
 
 fn boxed<B>(body: B) -> BoxBody
 where
@@ -35,58 +34,6 @@ where
     }
 }
 
-// copied from hyper under the following license:
-// Copyright (c) 2014-2021 Sean McArthur
-
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-
-// The above copyright notice and this permission notice shall be included in
-// all copies or substantial portions of the Software.
-
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-// THE SOFTWARE.
-pub(crate) async fn to_bytes<T>(body: T) -> Result<Bytes, T::Error>
-where
-    T: http_body::Body,
-{
-    futures_util::pin_mut!(body);
-
-    // If there's only 1 chunk, we can just return Buf::to_bytes()
-    let mut first = if let Some(buf) = body.data().await {
-        buf?
-    } else {
-        return Ok(Bytes::new());
-    };
-
-    let second = if let Some(buf) = body.data().await {
-        buf?
-    } else {
-        return Ok(first.copy_to_bytes(first.remaining()));
-    };
-
-    // With more than 1 buf, we gotta flatten into a Vec first.
-    let cap = first.remaining() + second.remaining() + body.size_hint().lower() as usize;
-    let mut vec = Vec::with_capacity(cap);
-    vec.put(first);
-    vec.put(second);
-
-    while let Some(buf) = body.data().await {
-        vec.put(buf?);
-    }
-
-    Ok(vec.into())
-}
-
 /// The body type used in axum requests and responses.
 #[derive(Debug)]
 pub struct Body(BoxBody);
@@ -103,12 +50,12 @@ impl Body {
 
     /// Create an empty body.
     pub fn empty() -> Self {
-        Self::new(http_body::Empty::new())
+        Self::new(http_body_util::Empty::new())
     }
 
     /// Create a new `Body` from a [`Stream`].
     ///
-    /// [`Stream`]: futures_util::stream::Stream
+    /// [`Stream`]: https://docs.rs/futures-core/latest/futures_core/stream/trait.Stream.html
     pub fn from_stream<S>(stream: S) -> Self
     where
         S: TryStream + Send + 'static,
@@ -119,6 +66,16 @@ impl Body {
             stream: SyncWrapper::new(stream),
         })
     }
+
+    /// Convert the body into a [`Stream`] of data frames.
+    ///
+    /// Non-data frames (such as trailers) will be discarded. Use [`http_body_util::BodyStream`] if
+    /// you need a [`Stream`] of all frame types.
+    ///
+    /// [`http_body_util::BodyStream`]: https://docs.rs/http-body-util/latest/http_body_util/struct.BodyStream.html
+    pub fn into_data_stream(self) -> BodyDataStream {
+        BodyDataStream { inner: self }
+    }
 }
 
 impl Default for Body {
@@ -127,11 +84,17 @@ impl Default for Body {
     }
 }
 
+impl From<()> for Body {
+    fn from(_: ()) -> Self {
+        Self::empty()
+    }
+}
+
 macro_rules! body_from_impl {
     ($ty:ty) => {
         impl From<$ty> for Body {
             fn from(buf: $ty) -> Self {
-                Self::new(http_body::Full::from(buf))
+                Self::new(http_body_util::Full::from(buf))
             }
         }
     };
@@ -152,19 +115,11 @@ impl http_body::Body for Body {
     type Error = Error;
 
     #[inline]
-    fn poll_data(
+    fn poll_frame(
         mut self: Pin<&mut Self>,
         cx: &mut Context<'_>,
-    ) -> std::task::Poll<Option<Result<Self::Data, Self::Error>>> {
-        Pin::new(&mut self.0).poll_data(cx)
-    }
-
-    #[inline]
-    fn poll_trailers(
-        mut self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-    ) -> std::task::Poll<Result<Option<HeaderMap>, Self::Error>> {
-        Pin::new(&mut self.0).poll_trailers(cx)
+    ) -> Poll<Option<Result<Frame<Self::Data>, Self::Error>>> {
+        Pin::new(&mut self.0).poll_frame(cx)
     }
 
     #[inline]
@@ -178,12 +133,51 @@ impl http_body::Body for Body {
     }
 }
 
-impl Stream for Body {
+/// A stream of data frames.
+///
+/// Created with [`Body::into_data_stream`].
+#[derive(Debug)]
+pub struct BodyDataStream {
+    inner: Body,
+}
+
+impl Stream for BodyDataStream {
     type Item = Result<Bytes, Error>;
 
     #[inline]
-    fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        self.poll_data(cx)
+    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        loop {
+            match futures_util::ready!(Pin::new(&mut self.inner).poll_frame(cx)?) {
+                Some(frame) => match frame.into_data() {
+                    Ok(data) => return Poll::Ready(Some(Ok(data))),
+                    Err(_frame) => {}
+                },
+                None => return Poll::Ready(None),
+            }
+        }
+    }
+}
+
+impl http_body::Body for BodyDataStream {
+    type Data = Bytes;
+    type Error = Error;
+
+    #[inline]
+    fn poll_frame(
+        mut self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+    ) -> Poll<Option<Result<Frame<Self::Data>, Self::Error>>> {
+        Pin::new(&mut self.inner).poll_frame(cx)
+    }
+
+    #[inline]
+    fn is_end_stream(&self) -> bool {
+        self.inner.is_end_stream()
+    }
+
+    #[inline]
+    fn size_hint(&self) -> http_body::SizeHint {
+        self.inner.size_hint()
     }
 }
 
@@ -203,24 +197,16 @@ where
     type Data = Bytes;
     type Error = Error;
 
-    fn poll_data(
+    fn poll_frame(
         self: Pin<&mut Self>,
         cx: &mut Context<'_>,
-    ) -> Poll<Option<Result<Self::Data, Self::Error>>> {
+    ) -> Poll<Option<Result<Frame<Self::Data>, Self::Error>>> {
         let stream = self.project().stream.get_pin_mut();
         match futures_util::ready!(stream.try_poll_next(cx)) {
-            Some(Ok(chunk)) => Poll::Ready(Some(Ok(chunk.into()))),
+            Some(Ok(chunk)) => Poll::Ready(Some(Ok(Frame::data(chunk.into())))),
             Some(Err(err)) => Poll::Ready(Some(Err(Error::new(err)))),
             None => Poll::Ready(None),
         }
-    }
-
-    #[inline]
-    fn poll_trailers(
-        self: Pin<&mut Self>,
-        _cx: &mut Context<'_>,
-    ) -> Poll<Result<Option<HeaderMap>, Self::Error>> {
-        Poll::Ready(Ok(None))
     }
 }
 

@@ -1,60 +1,57 @@
-//! Showcases how listening on multiple addrs is possible by
-//! implementing Accept for a custom struct.
+//! Showcases how listening on multiple addrs is possible.
 //!
 //! This may be useful in cases where the platform does not
 //! listen on both IPv4 and IPv6 when the IPv6 catch-all listener is used (`::`),
 //! [like older versions of Windows.](https://docs.microsoft.com/en-us/windows/win32/winsock/dual-stack-sockets)
 
-use axum::{routing::get, Router};
-use hyper::server::{accept::Accept, conn::AddrIncoming};
-use std::{
-    net::{Ipv4Addr, Ipv6Addr, SocketAddr},
-    pin::Pin,
-    task::{Context, Poll},
+use axum::{extract::Request, routing::get, Router};
+use hyper::body::Incoming;
+use hyper_util::{
+    rt::{TokioExecutor, TokioIo},
+    server,
 };
+use std::net::{Ipv4Addr, Ipv6Addr, SocketAddr};
+use tokio::net::TcpListener;
+use tower::Service;
 
 #[tokio::main]
 async fn main() {
-    let app = Router::new().route("/", get(|| async { "Hello, World!" }));
+    let app: Router = Router::new().route("/", get(|| async { "Hello, World!" }));
 
     let localhost_v4 = SocketAddr::new(Ipv4Addr::LOCALHOST.into(), 8080);
-    let incoming_v4 = AddrIncoming::bind(&localhost_v4).unwrap();
+    let listener_v4 = TcpListener::bind(&localhost_v4).await.unwrap();
 
     let localhost_v6 = SocketAddr::new(Ipv6Addr::LOCALHOST.into(), 8080);
-    let incoming_v6 = AddrIncoming::bind(&localhost_v6).unwrap();
+    let listener_v6 = TcpListener::bind(&localhost_v6).await.unwrap();
 
-    let combined = CombinedIncoming {
-        a: incoming_v4,
-        b: incoming_v6,
-    };
+    // See https://github.com/tokio-rs/axum/blob/main/examples/serve-with-hyper/src/main.rs for
+    // more details about this setup
+    loop {
+        // Accept connections from `listener_v4` and `listener_v6` at the same time
+        let (socket, _remote_addr) = tokio::select! {
+            result = listener_v4.accept() => {
+                result.unwrap()
+            }
+            result = listener_v6.accept() => {
+                result.unwrap()
+            }
+        };
 
-    hyper::Server::builder(combined)
-        .serve(app.into_make_service())
-        .await
-        .unwrap();
-}
+        let tower_service = app.clone();
 
-struct CombinedIncoming {
-    a: AddrIncoming,
-    b: AddrIncoming,
-}
+        tokio::spawn(async move {
+            let socket = TokioIo::new(socket);
 
-impl Accept for CombinedIncoming {
-    type Conn = <AddrIncoming as Accept>::Conn;
-    type Error = <AddrIncoming as Accept>::Error;
+            let hyper_service = hyper::service::service_fn(move |request: Request<Incoming>| {
+                tower_service.clone().call(request)
+            });
 
-    fn poll_accept(
-        mut self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-    ) -> Poll<Option<Result<Self::Conn, Self::Error>>> {
-        if let Poll::Ready(Some(value)) = Pin::new(&mut self.a).poll_accept(cx) {
-            return Poll::Ready(Some(value));
-        }
-
-        if let Poll::Ready(Some(value)) = Pin::new(&mut self.b).poll_accept(cx) {
-            return Poll::Ready(Some(value));
-        }
-
-        Poll::Pending
+            if let Err(err) = server::conn::auto::Builder::new(TokioExecutor::new())
+                .serve_connection_with_upgrades(socket, hyper_service)
+                .await
+            {
+                eprintln!("failed to serve connection: {err:#}");
+            }
+        });
     }
 }

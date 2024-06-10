@@ -1,3 +1,4 @@
+use crate::error_handling::HandleError;
 #[cfg(feature = "tokio")]
 use crate::extract::connect_info::IntoMakeServiceWithConnectInfo;
 use crate::routing::IntoMakeService;
@@ -30,6 +31,17 @@ pub trait ServiceExt<R>: Service<R> + Sized {
     /// [`ConnectInfo`]: crate::extract::connect_info::ConnectInfo
     #[cfg(feature = "tokio")]
     fn into_make_service_with_connect_info<C>(self) -> IntoMakeServiceWithConnectInfo<Self, C>;
+
+    /// Convert this service into a [`HandleError`], that will handle errors
+    /// by converting them into responses.
+    ///
+    ///  See ["error handling model"] for more details.
+    ///
+    /// [`HandleError`]: crate::error_handling::HandleError
+    /// ["error handling model"]: crate::error_handling#axums-error-handling-model
+    fn handle_error<F, T>(self, f: F) -> HandleError<Self, F, T> {
+        HandleError::new(self, f)
+    }
 }
 
 impl<S, R> ServiceExt<R> for S

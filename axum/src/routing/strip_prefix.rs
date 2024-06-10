@@ -14,13 +14,6 @@ pub(super) struct StripPrefix<S> {
 }
 
 impl<S> StripPrefix<S> {
-    pub(super) fn new(inner: S, prefix: &str) -> Self {
-        Self {
-            inner,
-            prefix: prefix.into(),
-        }
-    }
-
     pub(super) fn layer(prefix: &str) -> impl Layer<S, Service = Self> + Clone {
         let prefix = Arc::from(prefix);
         layer_fn(move |inner| Self {

@@ -234,11 +234,11 @@ impl<K> SignedCookieJar<K> {
     /// use axum::response::IntoResponse;
     ///
     /// async fn handle(jar: SignedCookieJar) -> SignedCookieJar {
-    ///     jar.remove(Cookie::named("foo"))
+    ///     jar.remove(Cookie::from("foo"))
     /// }
     /// ```
     #[must_use]
-    pub fn remove(mut self, cookie: Cookie<'static>) -> Self {
+    pub fn remove<C: Into<Cookie<'static>>>(mut self, cookie: C) -> Self {
         self.signed_jar_mut().remove(cookie);
         self
     }
@@ -259,7 +259,7 @@ impl<K> SignedCookieJar<K> {
     /// ```
     #[must_use]
     #[allow(clippy::should_implement_trait)]
-    pub fn add(mut self, cookie: Cookie<'static>) -> Self {
+    pub fn add<C: Into<Cookie<'static>>>(mut self, cookie: C) -> Self {
         self.signed_jar_mut().add(cookie);
         self
     }

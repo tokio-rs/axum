@@ -6,7 +6,8 @@ publish = false
 
 [dependencies]
 axum = { path = "../../axum" }
-hyper = "0.14"
+http-body-util = "0.1.0"
+hyper = "1.0.0"
 serde = { version = "1.0", features = ["derive"] }
 tokio = { version = "1.0", features = ["full"] }
 tower = { version = "0.4", features = ["util"] }

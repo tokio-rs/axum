@@ -267,7 +267,7 @@ If a Pull Request appears to be abandoned or stalled, it is polite to first
 check with the contributor to see if they intend to continue the work before
 checking if they would mind if you took it over (especially if it just has nits
 left). When doing so, it is courteous to give the original contributor credit
-for the work they started (either by preserving their name and email address in
+for the work they started, either by preserving their name and email address in
 the commit log, or by using an `Author: ` meta-data tag in the commit.
 
 [hiding-a-comment]: https://help.github.com/articles/managing-disruptive-comments/#hiding-a-comment

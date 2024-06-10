@@ -411,7 +411,7 @@ mod tests {
             .layer(map_request(add_header));
         let client = TestClient::new(app);
 
-        let res = client.get("/").send().await;
+        let res = client.get("/").await;
 
         assert_eq!(res.text().await, "foo");
     }
@@ -431,7 +431,7 @@ mod tests {
             .layer(map_request(add_header));
         let client = TestClient::new(app);
 
-        let res = client.get("/").send().await;
+        let res = client.get("/").await;
 
         assert_eq!(res.status(), StatusCode::INTERNAL_SERVER_ERROR);
         assert_eq!(res.text().await, "something went wrong");

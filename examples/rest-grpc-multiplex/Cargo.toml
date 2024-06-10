@@ -7,7 +7,7 @@ publish = false
 [dependencies]
 axum = { path = "../../axum" }
 futures = "0.3"
-hyper = { version = "0.14", features = ["full"] }
+hyper = { version = "1.0.0", features = ["full"] }
 prost = "0.11"
 tokio = { version = "1", features = ["full"] }
 tonic = { version = "0.9" }

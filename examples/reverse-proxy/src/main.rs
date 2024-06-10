@@ -15,15 +15,18 @@ use axum::{
     routing::get,
     Router,
 };
-use hyper::{client::HttpConnector, StatusCode};
+use hyper::StatusCode;
+use hyper_util::{client::legacy::connect::HttpConnector, rt::TokioExecutor};
 
-type Client = hyper::client::Client<HttpConnector, Body>;
+type Client = hyper_util::client::legacy::Client<HttpConnector, Body>;
 
 #[tokio::main]
 async fn main() {
     tokio::spawn(server());
 
-    let client: Client = hyper::Client::builder().build(HttpConnector::new());
+    let client: Client =
+        hyper_util::client::legacy::Client::<(), ()>::builder(TokioExecutor::new())
+            .build(HttpConnector::new());
 
     let app = Router::new().route("/", get(handler)).with_state(client);
 

@@ -210,14 +210,14 @@ impl<'de> Deserializer<'de> for PathDeserializer<'de> {
         }
 
         visitor.visit_enum(EnumDeserializer {
-            value: self.url_params[0].1.clone().into_inner(),
+            value: &self.url_params[0].1,
         })
     }
 }
 
 struct MapDeserializer<'de> {
     params: &'de [(Arc<str>, PercentDecodedStr)],
-    key: Option<KeyOrIdx>,
+    key: Option<KeyOrIdx<'de>>,
     value: Option<&'de PercentDecodedStr>,
 }
 
@@ -232,11 +232,8 @@ impl<'de> MapAccess<'de> for MapDeserializer<'de> {
             Some(((key, value), tail)) => {
                 self.value = Some(value);
                 self.params = tail;
-                self.key = Some(KeyOrIdx::Key(key.clone()));
-                seed.deserialize(KeyDeserializer {
-                    key: Arc::clone(key),
-                })
-                .map(Some)
+                self.key = Some(KeyOrIdx::Key(key));
+                seed.deserialize(KeyDeserializer { key }).map(Some)
             }
             None => Ok(None),
         }
@@ -256,8 +253,8 @@ impl<'de> MapAccess<'de> for MapDeserializer<'de> {
     }
 }
 
-struct KeyDeserializer {
-    key: Arc<str>,
+struct KeyDeserializer<'de> {
+    key: &'de str,
 }
 
 macro_rules! parse_key {
@@ -271,7 +268,7 @@ macro_rules! parse_key {
     };
 }
 
-impl<'de> Deserializer<'de> for KeyDeserializer {
+impl<'de> Deserializer<'de> for KeyDeserializer<'de> {
     type Error = PathDeserializationError;
 
     parse_key!(deserialize_identifier);
@@ -302,7 +299,7 @@ macro_rules! parse_value {
                 if let Some(key) = self.key.take() {
                     let kind = match key {
                         KeyOrIdx::Key(key) => ErrorKind::ParseErrorAtKey {
-                            key: key.to_string(),
+                            key: key.to_owned(),
                             value: self.value.as_str().to_owned(),
                             expected_type: $ty,
                         },
@@ -327,7 +324,7 @@ macro_rules! parse_value {
 
 #[derive(Debug)]
 struct ValueDeserializer<'de> {
-    key: Option<KeyOrIdx>,
+    key: Option<KeyOrIdx<'de>>,
     value: &'de PercentDecodedStr,
 }
 
@@ -416,7 +413,7 @@ impl<'de> Deserializer<'de> for ValueDeserializer<'de> {
         V: Visitor<'de>,
     {
         struct PairDeserializer<'de> {
-            key: Option<KeyOrIdx>,
+            key: Option<KeyOrIdx<'de>>,
             value: Option<&'de PercentDecodedStr>,
         }
 
@@ -507,9 +504,7 @@ impl<'de> Deserializer<'de> for ValueDeserializer<'de> {
     where
         V: Visitor<'de>,
     {
-        visitor.visit_enum(EnumDeserializer {
-            value: self.value.clone().into_inner(),
-        })
+        visitor.visit_enum(EnumDeserializer { value: self.value })
     }
 
     fn deserialize_ignored_any<V>(self, visitor: V) -> Result<V::Value, Self::Error>
@@ -520,11 +515,11 @@ impl<'de> Deserializer<'de> for ValueDeserializer<'de> {
     }
 }
 
-struct EnumDeserializer {
-    value: Arc<str>,
+struct EnumDeserializer<'de> {
+    value: &'de str,
 }
 
-impl<'de> EnumAccess<'de> for EnumDeserializer {
+impl<'de> EnumAccess<'de> for EnumDeserializer<'de> {
     type Error = PathDeserializationError;
     type Variant = UnitVariant;
 
@@ -598,10 +593,7 @@ impl<'de> SeqAccess<'de> for SeqDeserializer<'de> {
                 let idx = self.idx;
                 self.idx += 1;
                 Ok(Some(seed.deserialize(ValueDeserializer {
-                    key: Some(KeyOrIdx::Idx {
-                        idx,
-                        key: key.clone(),
-                    }),
+                    key: Some(KeyOrIdx::Idx { idx, key }),
                     value,
                 })?))
             }
@@ -611,9 +603,9 @@ impl<'de> SeqAccess<'de> for SeqDeserializer<'de> {
 }
 
 #[derive(Debug, Clone)]
-enum KeyOrIdx {
-    Key(Arc<str>),
-    Idx { idx: usize, key: Arc<str> },
+enum KeyOrIdx<'de> {
+    Key(&'de str),
+    Idx { idx: usize, key: &'de str },
 }
 
 #[cfg(test)]

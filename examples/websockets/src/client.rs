@@ -49,10 +49,10 @@ async fn main() {
 async fn spawn_client(who: usize) {
     let ws_stream = match connect_async(SERVER).await {
         Ok((stream, response)) => {
-            println!("Handshake for client {} has been completed", who);
+            println!("Handshake for client {who} has been completed");
             // This will be the HTTP response, same as with server this is the last moment we
             // can still access HTTP stuff.
-            println!("Server response was {:?}", response);
+            println!("Server response was {response:?}");
             stream
         }
         Err(e) => {
@@ -74,7 +74,7 @@ async fn spawn_client(who: usize) {
         for i in 1..30 {
             // In any websocket error, break loop.
             if sender
-                .send(Message::Text(format!("Message number {}...", i)))
+                .send(Message::Text(format!("Message number {i}...")))
                 .await
                 .is_err()
             {
@@ -86,7 +86,7 @@ async fn spawn_client(who: usize) {
         }
 
         // When we are done we may want our client to close connection cleanly.
-        println!("Sending close to {}...", who);
+        println!("Sending close to {who}...");
         if let Err(e) = sender
             .send(Message::Close(Some(CloseFrame {
                 code: CloseCode::Normal,
@@ -94,7 +94,7 @@ async fn spawn_client(who: usize) {
             })))
             .await
         {
-            println!("Could not send Close due to {:?}, probably it is ok?", e);
+            println!("Could not send Close due to {e:?}, probably it is ok?");
         };
     });
 
@@ -124,7 +124,7 @@ async fn spawn_client(who: usize) {
 fn process_message(msg: Message, who: usize) -> ControlFlow<(), ()> {
     match msg {
         Message::Text(t) => {
-            println!(">>> {} got str: {:?}", who, t);
+            println!(">>> {who} got str: {t:?}");
         }
         Message::Binary(d) => {
             println!(">>> {} got {} bytes: {:?}", who, d.len(), d);
@@ -136,19 +136,19 @@ fn process_message(msg: Message, who: usize) -> ControlFlow<(), ()> {
                     who, cf.code, cf.reason
                 );
             } else {
-                println!(">>> {} somehow got close message without CloseFrame", who);
+                println!(">>> {who} somehow got close message without CloseFrame");
             }
             return ControlFlow::Break(());
         }
 
         Message::Pong(v) => {
-            println!(">>> {} got pong with {:?}", who, v);
+            println!(">>> {who} got pong with {v:?}");
         }
         // Just as with axum server, the underlying tungstenite websocket library
         // will handle Ping for you automagically by replying with Pong and copying the
         // v according to spec. But if you need the contents of the pings you can see them here.
         Message::Ping(v) => {
-            println!(">>> {} got ping with {:?}", who, v);
+            println!(">>> {who} got ping with {v:?}");
         }
 
         Message::Frame(_) => {

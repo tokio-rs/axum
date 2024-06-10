@@ -342,7 +342,7 @@ mod sealed {
 mod tests {
     use super::*;
     use crate::test_helpers::*;
-    use axum::{extract::Path, http::StatusCode, routing::get};
+    use axum::{extract::Path, routing::get};
 
     #[tokio::test]
     async fn test_tsr() {
@@ -352,17 +352,17 @@ mod tests {
 
         let client = TestClient::new(app);
 
-        let res = client.get("/foo").send().await;
+        let res = client.get("/foo").await;
         assert_eq!(res.status(), StatusCode::OK);
 
-        let res = client.get("/foo/").send().await;
+        let res = client.get("/foo/").await;
         assert_eq!(res.status(), StatusCode::PERMANENT_REDIRECT);
         assert_eq!(res.headers()["location"], "/foo");
 
-        let res = client.get("/bar/").send().await;
+        let res = client.get("/bar/").await;
         assert_eq!(res.status(), StatusCode::OK);
 
-        let res = client.get("/bar").send().await;
+        let res = client.get("/bar").await;
         assert_eq!(res.status(), StatusCode::PERMANENT_REDIRECT);
         assert_eq!(res.headers()["location"], "/bar/");
     }
@@ -381,19 +381,19 @@ mod tests {
 
         let client = TestClient::new(app);
 
-        let res = client.get("/a/foo").send().await;
+        let res = client.get("/a/foo").await;
         assert_eq!(res.status(), StatusCode::OK);
         assert_eq!(res.text().await, "foo");
 
-        let res = client.get("/a/foo/").send().await;
+        let res = client.get("/a/foo/").await;
         assert_eq!(res.status(), StatusCode::PERMANENT_REDIRECT);
         assert_eq!(res.headers()["location"], "/a/foo");
 
-        let res = client.get("/b/foo/").send().await;
+        let res = client.get("/b/foo/").await;
         assert_eq!(res.status(), StatusCode::OK);
         assert_eq!(res.text().await, "foo");
 
-        let res = client.get("/b/foo").send().await;
+        let res = client.get("/b/foo").await;
         assert_eq!(res.status(), StatusCode::PERMANENT_REDIRECT);
         assert_eq!(res.headers()["location"], "/b/foo/");
     }
@@ -404,7 +404,7 @@ mod tests {
 
         let client = TestClient::new(app);
 
-        let res = client.get("/foo/?a=a").send().await;
+        let res = client.get("/foo/?a=a").await;
         assert_eq!(res.status(), StatusCode::PERMANENT_REDIRECT);
         assert_eq!(res.headers()["location"], "/foo?a=a");
     }

@@ -92,7 +92,10 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::net::{Ipv4Addr, SocketAddr};
+    use std::{
+        future::IntoFuture,
+        net::{Ipv4Addr, SocketAddr},
+    };
     use tokio_tungstenite::tungstenite;
 
     // We can integration test one handler by running the server in a background task and
@@ -103,7 +106,7 @@ mod tests {
             .await
             .unwrap();
         let addr = listener.local_addr().unwrap();
-        tokio::spawn(axum::serve(listener, app()));
+        tokio::spawn(axum::serve(listener, app()).into_future());
 
         let (mut socket, _response) =
             tokio_tungstenite::connect_async(format!("ws://{addr}/integration-testable"))

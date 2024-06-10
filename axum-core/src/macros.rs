@@ -1,4 +1,5 @@
 /// Private API.
+#[cfg(feature = "tracing")]
 #[doc(hidden)]
 #[macro_export]
 macro_rules! __log_rejection {
@@ -7,7 +8,6 @@ macro_rules! __log_rejection {
         body_text = $body_text:expr,
         status = $status:expr,
     ) => {
-        #[cfg(feature = "tracing")]
         {
             tracing::event!(
                 target: "axum::rejection",
@@ -19,6 +19,17 @@ macro_rules! __log_rejection {
             );
         }
     };
+}
+
+#[cfg(not(feature = "tracing"))]
+#[doc(hidden)]
+#[macro_export]
+macro_rules! __log_rejection {
+    (
+        rejection_type = $ty:ident,
+        body_text = $body_text:expr,
+        status = $status:expr,
+    ) => {};
 }
 
 /// Private API.
@@ -193,7 +204,7 @@ macro_rules! __composite_rejection {
             fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
                 match self {
                     $(
-                        Self::$variant(inner) => write!(f, "{}", inner),
+                        Self::$variant(inner) => write!(f, "{inner}"),
                     )+
                 }
             }
@@ -209,46 +220,6 @@ macro_rules! __composite_rejection {
             }
         }
     };
-}
-
-#[cfg(test)]
-mod composite_rejection_tests {
-    use self::defs::*;
-    use crate::Error;
-    use std::error::Error as _;
-
-    #[allow(dead_code, unreachable_pub)]
-    mod defs {
-        use crate::{__composite_rejection, __define_rejection};
-
-        __define_rejection! {
-            #[status = BAD_REQUEST]
-            #[body = "error message 1"]
-            pub struct Inner1;
-        }
-        __define_rejection! {
-            #[status = BAD_REQUEST]
-            #[body = "error message 2"]
-            pub struct Inner2(Error);
-        }
-        __composite_rejection! {
-            pub enum Outer { Inner1, Inner2 }
-        }
-    }
-
-    /// The implementation of `.source()` on `Outer` should defer straight to the implementation
-    /// on its inner type instead of returning the inner type itself, because the `Display`
-    /// implementation on `Outer` already forwards to the inner type and so it would result in two
-    /// errors in the chain `Display`ing the same thing.
-    #[test]
-    fn source_gives_inner_source() {
-        let rejection = Outer::Inner1(Inner1);
-        assert!(rejection.source().is_none());
-
-        let msg = "hello world";
-        let rejection = Outer::Inner2(Inner2(Error::new(msg)));
-        assert_eq!(rejection.source().unwrap().to_string(), msg);
-    }
 }
 
 #[rustfmt::skip]
@@ -333,4 +304,42 @@ macro_rules! __impl_deref {
             }
         }
     };
+}
+
+#[cfg(test)]
+mod composite_rejection_tests {
+    use self::defs::*;
+    use crate::Error;
+    use std::error::Error as _;
+
+    #[allow(dead_code, unreachable_pub)]
+    mod defs {
+        __define_rejection! {
+            #[status = BAD_REQUEST]
+            #[body = "error message 1"]
+            pub struct Inner1;
+        }
+        __define_rejection! {
+            #[status = BAD_REQUEST]
+            #[body = "error message 2"]
+            pub struct Inner2(Error);
+        }
+        __composite_rejection! {
+            pub enum Outer { Inner1, Inner2 }
+        }
+    }
+
+    /// The implementation of `.source()` on `Outer` should defer straight to the implementation
+    /// on its inner type instead of returning the inner type itself, because the `Display`
+    /// implementation on `Outer` already forwards to the inner type and so it would result in two
+    /// errors in the chain `Display`ing the same thing.
+    #[test]
+    fn source_gives_inner_source() {
+        let rejection = Outer::Inner1(Inner1);
+        assert!(rejection.source().is_none());
+
+        let msg = "hello world";
+        let rejection = Outer::Inner2(Inner2(Error::new(msg)));
+        assert_eq!(rejection.source().unwrap().to_string(), msg);
+    }
 }

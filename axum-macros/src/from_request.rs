@@ -63,8 +63,7 @@ impl State {
     /// ```
     fn trait_generics(&self) -> impl Iterator<Item = Type> {
         match self {
-            State::Default(inner) => iter::once(inner.clone()),
-            State::Custom(inner) => iter::once(inner.clone()),
+            State::Default(inner) | State::Custom(inner) => iter::once(inner.clone()),
             State::CannotInfer => iter::once(parse_quote!(S)),
         }
     }
@@ -85,8 +84,7 @@ impl State {
 impl ToTokens for State {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         match self {
-            State::Custom(inner) => inner.to_tokens(tokens),
-            State::Default(inner) => inner.to_tokens(tokens),
+            State::Custom(inner) | State::Default(inner) => inner.to_tokens(tokens),
             State::CannotInfer => quote! { S }.to_tokens(tokens),
         }
     }
@@ -1005,7 +1003,7 @@ fn infer_state_type_from_field_attributes(fields: &Fields) -> impl Iterator<Item
     match fields {
         Fields::Named(fields_named) => {
             Box::new(fields_named.named.iter().filter_map(|field| {
-                // TODO(david): its a little wasteful to parse the attributes again here
+                // TODO(david): it's a little wasteful to parse the attributes again here
                 // ideally we should parse things once and pass the data down
                 let FromRequestFieldAttrs { via } =
                     parse_attrs("from_request", &field.attrs).ok()?;
@@ -1015,7 +1013,7 @@ fn infer_state_type_from_field_attributes(fields: &Fields) -> impl Iterator<Item
         }
         Fields::Unnamed(fields_unnamed) => {
             Box::new(fields_unnamed.unnamed.iter().filter_map(|field| {
-                // TODO(david): its a little wasteful to parse the attributes again here
+                // TODO(david): it's a little wasteful to parse the attributes again here
                 // ideally we should parse things once and pass the data down
                 let FromRequestFieldAttrs { via } =
                     parse_attrs("from_request", &field.attrs).ok()?;

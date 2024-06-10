@@ -11,6 +11,7 @@ pub mod rejection;
 pub mod ws;
 
 mod host;
+pub(crate) mod nested_path;
 mod raw_form;
 mod raw_query;
 mod request_parts;
@@ -26,6 +27,7 @@ pub use axum_macros::{FromRef, FromRequest, FromRequestParts};
 #[allow(deprecated)]
 pub use self::{
     host::Host,
+    nested_path::NestedPath,
     path::{Path, RawPathParams},
     raw_form::RawForm,
     raw_query::RawQuery,
@@ -102,7 +104,7 @@ mod tests {
         let app = Router::new().route("/", get(|body: String| async { body }));
 
         let client = TestClient::new(app);
-        let res = client.get("/").body("foo").send().await;
+        let res = client.get("/").body("foo").await;
         let body = res.text().await;
 
         assert_eq!(body, "foo");

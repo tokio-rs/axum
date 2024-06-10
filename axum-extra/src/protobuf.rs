@@ -201,7 +201,6 @@ mod tests {
     use super::*;
     use crate::test_helpers::*;
     use axum::{routing::post, Router};
-    use http::StatusCode;
 
     #[tokio::test]
     async fn decode_body() {
@@ -221,7 +220,7 @@ mod tests {
         };
 
         let client = TestClient::new(app);
-        let res = client.post("/").body(input.encode_to_vec()).send().await;
+        let res = client.post("/").body(input.encode_to_vec()).await;
 
         let body = res.text().await;
 
@@ -249,7 +248,7 @@ mod tests {
         };
 
         let client = TestClient::new(app);
-        let res = client.post("/").body(input.encode_to_vec()).send().await;
+        let res = client.post("/").body(input.encode_to_vec()).await;
 
         assert_eq!(res.status(), StatusCode::UNPROCESSABLE_ENTITY);
     }
@@ -284,7 +283,7 @@ mod tests {
         };
 
         let client = TestClient::new(app);
-        let res = client.post("/").body(input.encode_to_vec()).send().await;
+        let res = client.post("/").body(input.encode_to_vec()).await;
 
         assert_eq!(
             res.headers()["content-type"],

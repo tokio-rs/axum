@@ -43,7 +43,7 @@ fn app() -> Router {
             }),
         )
         .route(
-            "/requires-connect-into",
+            "/requires-connect-info",
             get(|ConnectInfo(addr): ConnectInfo<SocketAddr>| async move { format!("Hi {addr}") }),
         )
         // We can still add middleware
@@ -58,11 +58,10 @@ mod tests {
         extract::connect_info::MockConnectInfo,
         http::{self, Request, StatusCode},
     };
+    use http_body_util::BodyExt; // for `collect`
     use serde_json::{json, Value};
-    use std::net::SocketAddr;
     use tokio::net::TcpListener;
-    use tower::Service; // for `call`
-    use tower::ServiceExt; // for `oneshot` and `ready`
+    use tower::{Service, ServiceExt}; // for `call`, `oneshot`, and `ready`
 
     #[tokio::test]
     async fn hello_world() {
@@ -77,7 +76,7 @@ mod tests {
 
         assert_eq!(response.status(), StatusCode::OK);
 
-        let body = hyper::body::to_bytes(response.into_body()).await.unwrap();
+        let body = response.into_body().collect().await.unwrap().to_bytes();
         assert_eq!(&body[..], b"Hello, World!");
     }
 
@@ -101,7 +100,7 @@ mod tests {
 
         assert_eq!(response.status(), StatusCode::OK);
 
-        let body = hyper::body::to_bytes(response.into_body()).await.unwrap();
+        let body = response.into_body().collect().await.unwrap().to_bytes();
         let body: Value = serde_json::from_slice(&body).unwrap();
         assert_eq!(body, json!({ "data": [1, 2, 3, 4] }));
     }
@@ -121,7 +120,7 @@ mod tests {
             .unwrap();
 
         assert_eq!(response.status(), StatusCode::NOT_FOUND);
-        let body = hyper::body::to_bytes(response.into_body()).await.unwrap();
+        let body = response.into_body().collect().await.unwrap().to_bytes();
         assert!(body.is_empty());
     }
 
@@ -135,19 +134,22 @@ mod tests {
             axum::serve(listener, app()).await.unwrap();
         });
 
-        let client = hyper::Client::new();
+        let client =
+            hyper_util::client::legacy::Client::builder(hyper_util::rt::TokioExecutor::new())
+                .build_http();
 
         let response = client
             .request(
                 Request::builder()
-                    .uri(format!("http://{}", addr))
-                    .body(hyper::Body::empty())
+                    .uri(format!("http://{addr}"))
+                    .header("Host", "localhost")
+                    .body(Body::empty())
                     .unwrap(),
             )
             .await
             .unwrap();
 
-        let body = hyper::body::to_bytes(response.into_body()).await.unwrap();
+        let body = response.into_body().collect().await.unwrap().to_bytes();
         assert_eq!(&body[..], b"Hello, World!");
     }
 
@@ -176,7 +178,7 @@ mod tests {
         assert_eq!(response.status(), StatusCode::OK);
     }
 
-    // Here we're calling `/requires-connect-into` which requires `ConnectInfo`
+    // Here we're calling `/requires-connect-info` which requires `ConnectInfo`
     //
     // That is normally set with `Router::into_make_service_with_connect_info` but we can't easily
     // use that during tests. The solution is instead to set the `MockConnectInfo` layer during
@@ -188,7 +190,7 @@ mod tests {
             .into_service();
 
         let request = Request::builder()
-            .uri("/requires-connect-into")
+            .uri("/requires-connect-info")
             .body(Body::empty())
             .unwrap();
         let response = app.ready().await.unwrap().call(request).await.unwrap();

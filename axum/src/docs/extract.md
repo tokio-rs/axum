@@ -12,7 +12,6 @@ Types and traits for extracting data from requests.
 - [Defining custom extractors](#defining-custom-extractors)
 - [Accessing other extractors in `FromRequest` or `FromRequestParts` implementations](#accessing-other-extractors-in-fromrequest-or-fromrequestparts-implementations)
 - [Request body limits](#request-body-limits)
-- [Request body extractors](#request-body-extractors)
 - [Wrapping extractors](#wrapping-extractors)
 - [Logging rejections](#logging-rejections)
 
@@ -20,8 +19,7 @@ Types and traits for extracting data from requests.
 
 A handler function is an async function that takes any number of
 "extractors" as arguments. An extractor is a type that implements
-[`FromRequest`](crate::extract::FromRequest)
-or [`FromRequestParts`](crate::extract::FromRequestParts).
+[`FromRequest`] or [`FromRequestParts`].
 
 For example, [`Json`] is an extractor that consumes the request body and
 deserializes it as JSON into some target type:
@@ -285,7 +283,7 @@ let app = Router::new().route("/users", post(create_user));
 # Customizing extractor responses
 
 If an extractor fails it will return a response with the error and your
-handler will not be called. To customize the error response you have a two
+handler will not be called. To customize the error response you have two 
 options:
 
 1. Use `Result<T, T::Rejection>` as your extractor like shown in ["Optional
@@ -569,7 +567,7 @@ let app = Router::new().route(
 
 # Accessing other extractors in `FromRequest` or `FromRequestParts` implementations
 
-When defining custom extractors you often need to access another extractors
+When defining custom extractors you often need to access another extractor
 in your implementation.
 
 ```rust
@@ -707,9 +705,9 @@ async fn handler(
 # Logging rejections
 
 All built-in extractors will log rejections for easier debugging. To see the
-logs, enable the `tracing` feature for axum and the `axum::rejection=trace`
-tracing target, for example with `RUST_LOG=info,axum::rejection=trace cargo
-run`.
+logs, enable the `tracing` feature for axum (enabled by default) and the
+`axum::rejection=trace` tracing target, for example with
+`RUST_LOG=info,axum::rejection=trace cargo run`.
 
 [`body::Body`]: crate::body::Body
 [`Bytes`]: crate::body::Bytes

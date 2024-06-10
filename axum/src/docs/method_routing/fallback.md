@@ -16,11 +16,9 @@ let handler = get(|| async {}).fallback(fallback);
 let app = Router::new().route("/", handler);
 
 async fn fallback(method: Method, uri: Uri) -> (StatusCode, String) {
-    (StatusCode::NOT_FOUND, format!("`{}` not allowed for {}", method, uri))
+    (StatusCode::NOT_FOUND, format!("`{method}` not allowed for {uri}"))
 }
-# async {
-# hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-# };
+# let _: Router = app;
 ```
 
 ## When used with `MethodRouter::merge`
@@ -44,10 +42,7 @@ let method_route = one.merge(two);
 
 async fn fallback_one() -> impl IntoResponse { /* ... */ }
 async fn fallback_two() -> impl IntoResponse { /* ... */ }
-# let app = axum::Router::new().route("/", method_route);
-# async {
-# hyper::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-# };
+# let app: axum::Router = axum::Router::new().route("/", method_route);
 ```
 
 ## Setting the `Allow` header

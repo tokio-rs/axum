@@ -43,10 +43,10 @@ that can ultimately be converted to `Response`. This allows using `?` operator
 in handlers. See those examples:
 
 * [`anyhow-error-response`][anyhow] for generic boxed errors
-* [`error-handling-and-dependency-injection`][ehdi] for application-specific detailed errors
+* [`error-handling`][error-handling] for application-specific detailed errors
 
 [anyhow]: https://github.com/tokio-rs/axum/blob/main/examples/anyhow-error-response/src/main.rs
-[ehdi]: https://github.com/tokio-rs/axum/blob/main/examples/error-handling-and-dependency-injection/src/main.rs
+[error-handling]: https://github.com/tokio-rs/axum/blob/main/examples/error-handling/src/main.rs
 
 This also applies to extractors. If an extractor doesn't match the request the
 request will be rejected and a response will be returned without calling your
@@ -92,7 +92,7 @@ let app = Router::new().route_service(
 async fn handle_anyhow_error(err: anyhow::Error) -> (StatusCode, String) {
     (
         StatusCode::INTERNAL_SERVER_ERROR,
-        format!("Something went wrong: {}", err),
+        format!("Something went wrong: {err}"),
     )
 }
 # let _: Router = app;
@@ -133,7 +133,7 @@ async fn handle_timeout_error(err: BoxError) -> (StatusCode, String) {
     } else {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
-            format!("Unhandled internal error: {}", err),
+            format!("Unhandled internal error: {err}"),
         )
     }
 }
@@ -174,7 +174,7 @@ async fn handle_timeout_error(
 ) -> (StatusCode, String) {
     (
         StatusCode::INTERNAL_SERVER_ERROR,
-        format!("`{} {}` failed with {}", method, uri, err),
+        format!("`{method} {uri}` failed with {err}"),
     )
 }
 # let _: Router = app;

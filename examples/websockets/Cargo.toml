@@ -9,11 +9,11 @@ axum = { path = "../../axum", features = ["ws"] }
 axum-extra = { path = "../../axum-extra", features = ["typed-header"] }
 futures = "0.3"
 futures-util = { version = "0.3", default-features = false, features = ["sink", "std"] }
-headers = "0.3"
+headers = "0.4"
 tokio = { version = "1.0", features = ["full"] }
-tokio-tungstenite = "0.20"
+tokio-tungstenite = "0.21"
 tower = { version = "0.4", features = ["util"] }
-tower-http = { version = "0.4.0", features = ["fs", "trace"] }
+tower-http = { version = "0.5.0", features = ["fs", "trace"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 

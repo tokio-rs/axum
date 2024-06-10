@@ -64,7 +64,7 @@ async fn main() {
     tracing_subscriber::registry()
         .with(
             tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "example_todos=debug,tower_http=debug".into()),
+                .unwrap_or_else(|_| "example_prometheus_metrics=debug,tower_http=debug".into()),
         )
         .with(tracing_subscriber::fmt::layer())
         .init();
@@ -110,8 +110,8 @@ async fn track_metrics(req: Request, next: Next) -> impl IntoResponse {
         ("status", status),
     ];
 
-    metrics::increment_counter!("http_requests_total", &labels);
-    metrics::histogram!("http_requests_duration_seconds", latency, &labels);
+    metrics::counter!("http_requests_total", &labels).increment(1);
+    metrics::histogram!("http_requests_duration_seconds", &labels).record(latency);
 
     response
 }

@@ -53,7 +53,7 @@ async fn save_request_body(
     Path(file_name): Path<String>,
     request: Request,
 ) -> Result<(), (StatusCode, String)> {
-    stream_to_file(&file_name, request.into_body()).await
+    stream_to_file(&file_name, request.into_body().into_data_stream()).await
 }
 
 // Handler that returns HTML for a multipart form.

@@ -1,4 +1,4 @@
-use crate::extract::Request;
+use crate::extract::{nested_path::SetNestedPath, Request};
 use axum_core::response::IntoResponse;
 use matchit::MatchError;
 use std::{borrow::Cow, collections::HashMap, convert::Infallible, fmt, sync::Arc};
@@ -111,13 +111,10 @@ where
     }
 
     fn set_node(&mut self, path: &str, id: RouteId) -> Result<(), String> {
-        let mut node =
-            Arc::try_unwrap(Arc::clone(&self.node)).unwrap_or_else(|node| (*node).clone());
-        if let Err(err) = node.insert(path, id) {
-            return Err(format!("Invalid route {path:?}: {err}"));
-        }
-        self.node = Arc::new(node);
-        Ok(())
+        let node = Arc::make_mut(&mut self.node);
+
+        node.insert(path, id)
+            .map_err(|err| format!("Invalid route {path:?}: {err}"))
     }
 
     pub(super) fn merge(
@@ -162,10 +159,10 @@ where
 
     pub(super) fn nest(
         &mut self,
-        path: &str,
+        path_to_nest_at: &str,
         router: PathRouter<S, IS_FALLBACK>,
     ) -> Result<(), Cow<'static, str>> {
-        let prefix = validate_nest_path(path);
+        let prefix = validate_nest_path(path_to_nest_at);
 
         let PathRouter {
             routes,
@@ -181,7 +178,11 @@ where
 
             let path = path_for_nested_route(prefix, inner_path);
 
-            match endpoint.layer(StripPrefix::layer(prefix)) {
+            let layer = (
+                StripPrefix::layer(prefix),
+                SetNestedPath::layer(path_to_nest_at),
+            );
+            match endpoint.layer(layer) {
                 Endpoint::MethodRouter(method_router) => {
                     self.route(&path, method_router)?;
                 }
@@ -194,13 +195,17 @@ where
         Ok(())
     }
 
-    pub(super) fn nest_service<T>(&mut self, path: &str, svc: T) -> Result<(), Cow<'static, str>>
+    pub(super) fn nest_service<T>(
+        &mut self,
+        path_to_nest_at: &str,
+        svc: T,
+    ) -> Result<(), Cow<'static, str>>
     where
         T: Service<Request, Error = Infallible> + Clone + Send + 'static,
         T::Response: IntoResponse,
         T::Future: Send + 'static,
     {
-        let path = validate_nest_path(path);
+        let path = validate_nest_path(path_to_nest_at);
         let prefix = path;
 
         let path = if path.ends_with('/') {
@@ -209,7 +214,11 @@ where
             format!("{path}/*{NEST_TAIL_PARAM}")
         };
 
-        let endpoint = Endpoint::Route(Route::new(StripPrefix::new(svc, prefix)));
+        let layer = (
+            StripPrefix::layer(prefix),
+            SetNestedPath::layer(path_to_nest_at),
+        );
+        let endpoint = Endpoint::Route(Route::new(layer.layer(svc)));
 
         self.route_endpoint(&path, endpoint.clone())?;
 
@@ -304,7 +313,7 @@ where
     }
 
     pub(super) fn call_with_state(
-        &mut self,
+        &self,
         mut req: Request,
         state: S,
     ) -> Result<RouteFuture<Infallible>, (Request, S)> {
@@ -337,7 +346,7 @@ where
 
                 let endpoint = self
                     .routes
-                    .get_mut(&id)
+                    .get(&id)
                     .expect("no route for id. This is a bug in axum. Please file an issue");
 
                 match endpoint {

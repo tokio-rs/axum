@@ -321,8 +321,10 @@ use std::{
 /// }
 ///
 /// async fn handler(State(state): State<AppState>) {
-///     let mut data = state.data.lock().expect("mutex was poisoned");
-///     *data = "updated foo".to_owned();
+///     {
+///         let mut data = state.data.lock().expect("mutex was poisoned");
+///         *data = "updated foo".to_owned();
+///     }
 ///
 ///     // ...
 /// }

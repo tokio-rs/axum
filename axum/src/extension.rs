@@ -87,8 +87,7 @@ where
                     "Extension of type `{}` was not found. Perhaps you forgot to add it? See `axum::Extension`.",
                     std::any::type_name::<T>()
                 ))
-            })
-            .map(|x| x.clone())?;
+            }).cloned()?;
 
         Ok(Extension(value))
     }
@@ -98,7 +97,7 @@ axum_core::__impl_deref!(Extension);
 
 impl<T> IntoResponseParts for Extension<T>
 where
-    T: Send + Sync + 'static,
+    T: Clone + Send + Sync + 'static,
 {
     type Error = Infallible;
 
@@ -110,7 +109,7 @@ where
 
 impl<T> IntoResponse for Extension<T>
 where
-    T: Send + Sync + 'static,
+    T: Clone + Send + Sync + 'static,
 {
     fn into_response(self) -> Response {
         let mut res = ().into_response();

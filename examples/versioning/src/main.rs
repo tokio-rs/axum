@@ -37,7 +37,7 @@ async fn main() {
 }
 
 async fn handler(version: Version) {
-    println!("received request with version {:?}", version);
+    println!("received request with version {version:?}");
 }
 
 #[derive(Debug)]

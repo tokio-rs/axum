@@ -4,7 +4,6 @@ use tower::ServiceExt;
 
 mod for_handlers {
     use super::*;
-    use http::HeaderMap;
 
     #[crate::test]
     async fn get_handles_head() {
@@ -32,14 +31,13 @@ mod for_handlers {
         assert_eq!(res.status(), StatusCode::OK);
         assert_eq!(res.headers()["x-some-header"], "foobar");
 
-        let body = hyper::body::to_bytes(res.into_body()).await.unwrap();
+        let body = BodyExt::collect(res.into_body()).await.unwrap().to_bytes();
         assert_eq!(body.len(), 0);
     }
 }
 
 mod for_services {
     use super::*;
-    use crate::routing::get_service;
 
     #[crate::test]
     async fn get_handles_head() {
@@ -67,7 +65,7 @@ mod for_services {
         assert_eq!(res.status(), StatusCode::OK);
         assert_eq!(res.headers()["x-some-header"], "foobar");
 
-        let body = hyper::body::to_bytes(res.into_body()).await.unwrap();
+        let body = BodyExt::collect(res.into_body()).await.unwrap().to_bytes();
         assert_eq!(body.len(), 0);
     }
 }

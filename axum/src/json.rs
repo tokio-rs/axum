@@ -12,12 +12,12 @@ use serde::{de::DeserializeOwned, Serialize};
 /// JSON Extractor / Response.
 ///
 /// When used as an extractor, it can deserialize request bodies into some type that
-/// implements [`serde::Deserialize`]. The request will be rejected (and a [`JsonRejection`] will
+/// implements [`serde::de::DeserializeOwned`]. The request will be rejected (and a [`JsonRejection`] will
 /// be returned) if:
 ///
 /// - The request doesn't have a `Content-Type: application/json` (or similar) header.
 /// - The body doesn't contain syntactically valid JSON.
-/// - The body contains syntactically valid JSON but it couldn't be deserialized into the target
+/// - The body contains syntactically valid JSON, but it couldn't be deserialized into the target
 /// type.
 /// - Buffering the request body fails.
 ///
@@ -103,31 +103,7 @@ where
     async fn from_request(req: Request, state: &S) -> Result<Self, Self::Rejection> {
         if json_content_type(req.headers()) {
             let bytes = Bytes::from_request(req, state).await?;
-            let deserializer = &mut serde_json::Deserializer::from_slice(&bytes);
-
-            let value = match serde_path_to_error::deserialize(deserializer) {
-                Ok(value) => value,
-                Err(err) => {
-                    let rejection = match err.inner().classify() {
-                        serde_json::error::Category::Data => JsonDataError::from_err(err).into(),
-                        serde_json::error::Category::Syntax | serde_json::error::Category::Eof => {
-                            JsonSyntaxError::from_err(err).into()
-                        }
-                        serde_json::error::Category::Io => {
-                            if cfg!(debug_assertions) {
-                                // we don't use `serde_json::from_reader` and instead always buffer
-                                // bodies first, so we shouldn't encounter any IO errors
-                                unreachable!()
-                            } else {
-                                JsonSyntaxError::from_err(err).into()
-                            }
-                        }
-                    };
-                    return Err(rejection);
-                }
-            };
-
-            Ok(Json(value))
+            Self::from_bytes(&bytes)
         } else {
             Err(MissingJsonContentType.into())
         }
@@ -164,6 +140,42 @@ axum_core::__impl_deref!(Json);
 impl<T> From<T> for Json<T> {
     fn from(inner: T) -> Self {
         Self(inner)
+    }
+}
+
+impl<T> Json<T>
+where
+    T: DeserializeOwned,
+{
+    /// Construct a `Json<T>` from a byte slice. Most users should prefer to use the `FromRequest` impl
+    /// but special cases may require first extracting a `Request` into `Bytes` then optionally
+    /// constructing a `Json<T>`.
+    pub fn from_bytes(bytes: &[u8]) -> Result<Self, JsonRejection> {
+        let deserializer = &mut serde_json::Deserializer::from_slice(bytes);
+
+        let value = match serde_path_to_error::deserialize(deserializer) {
+            Ok(value) => value,
+            Err(err) => {
+                let rejection = match err.inner().classify() {
+                    serde_json::error::Category::Data => JsonDataError::from_err(err).into(),
+                    serde_json::error::Category::Syntax | serde_json::error::Category::Eof => {
+                        JsonSyntaxError::from_err(err).into()
+                    }
+                    serde_json::error::Category::Io => {
+                        if cfg!(debug_assertions) {
+                            // we don't use `serde_json::from_reader` and instead always buffer
+                            // bodies first, so we shouldn't encounter any IO errors
+                            unreachable!()
+                        } else {
+                            JsonSyntaxError::from_err(err).into()
+                        }
+                    }
+                };
+                return Err(rejection);
+            }
+        };
+
+        Ok(Json(value))
     }
 }
 
@@ -214,7 +226,7 @@ mod tests {
         let app = Router::new().route("/", post(|input: Json<Input>| async { input.0.foo }));
 
         let client = TestClient::new(app);
-        let res = client.post("/").json(&json!({ "foo": "bar" })).send().await;
+        let res = client.post("/").json(&json!({ "foo": "bar" })).await;
         let body = res.text().await;
 
         assert_eq!(body, "bar");
@@ -230,7 +242,7 @@ mod tests {
         let app = Router::new().route("/", post(|input: Json<Input>| async { input.0.foo }));
 
         let client = TestClient::new(app);
-        let res = client.post("/").body(r#"{ "foo": "bar" }"#).send().await;
+        let res = client.post("/").body(r#"{ "foo": "bar" }"#).await;
 
         let status = res.status();
 
@@ -248,7 +260,6 @@ mod tests {
                 .post("/")
                 .header("content-type", content_type)
                 .body("{}")
-                .send()
                 .await;
 
             res.status() == StatusCode::OK
@@ -270,7 +281,6 @@ mod tests {
             .post("/")
             .body("{")
             .header("content-type", "application/json")
-            .send()
             .await;
 
         assert_eq!(res.status(), StatusCode::BAD_REQUEST);
@@ -301,7 +311,6 @@ mod tests {
             .post("/")
             .body("{\"a\": 1, \"b\": [{\"x\": 2}]}")
             .header("content-type", "application/json")
-            .send()
             .await;
 
         assert_eq!(res.status(), StatusCode::UNPROCESSABLE_ENTITY);

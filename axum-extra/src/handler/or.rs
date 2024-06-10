@@ -138,13 +138,13 @@ mod tests {
 
         let client = TestClient::new(app);
 
-        let res = client.get("/123").send().await;
+        let res = client.get("/123").await;
         assert_eq!(res.text().await, "123");
 
-        let res = client.get("/foo?a=bar").send().await;
+        let res = client.get("/foo?a=bar").await;
         assert_eq!(res.text().await, "bar");
 
-        let res = client.get("/foo").send().await;
+        let res = client.get("/foo").await;
         assert_eq!(res.text().await, "fallback");
     }
 }

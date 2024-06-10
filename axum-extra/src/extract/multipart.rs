@@ -99,11 +99,8 @@ where
 
     async fn from_request(req: Request<Body>, _state: &S) -> Result<Self, Self::Rejection> {
         let boundary = parse_boundary(req.headers()).ok_or(InvalidBoundary)?;
-        let stream = match req.with_limited_body() {
-            Ok(limited) => Body::new(limited),
-            Err(unlimited) => unlimited.into_body(),
-        };
-        let multipart = multer::Multipart::new(stream, boundary);
+        let stream = req.with_limited_body().into_body();
+        let multipart = multer::Multipart::new(stream.into_data_stream(), boundary);
         Ok(Self { inner: multipart })
     }
 }
@@ -283,7 +280,7 @@ fn status_code_from_multer_error(err: &multer::Error) -> StatusCode {
             if err
                 .downcast_ref::<axum::Error>()
                 .and_then(|err| err.source())
-                .and_then(|err| err.downcast_ref::<http_body::LengthLimitError>())
+                .and_then(|err| err.downcast_ref::<http_body_util::LengthLimitError>())
                 .is_some()
             {
                 return StatusCode::PAYLOAD_TOO_LARGE;
@@ -382,7 +379,13 @@ pub struct InvalidBoundary;
 
 impl IntoResponse for InvalidBoundary {
     fn into_response(self) -> Response {
-        (self.status(), self.body_text()).into_response()
+        let body = self.body_text();
+        axum_core::__log_rejection!(
+            rejection_type = Self,
+            body_text = body,
+            status = self.status(),
+        );
+        (self.status(), body).into_response()
     }
 }
 
@@ -410,7 +413,7 @@ impl std::error::Error for InvalidBoundary {}
 mod tests {
     use super::*;
     use crate::test_helpers::*;
-    use axum::{extract::DefaultBodyLimit, response::IntoResponse, routing::post, Router};
+    use axum::{extract::DefaultBodyLimit, routing::post, Router};
 
     #[tokio::test]
     async fn content_type_with_encoding() {
@@ -440,7 +443,7 @@ mod tests {
                 .unwrap(),
         );
 
-        client.post("/").multipart(form).send().await;
+        client.post("/").multipart(form).await;
     }
 
     // No need for this to be a #[test], we just want to make sure it compiles
@@ -469,7 +472,7 @@ mod tests {
         let form =
             reqwest::multipart::Form::new().part("file", reqwest::multipart::Part::bytes(BYTES));
 
-        let res = client.post("/").multipart(form).send().await;
+        let res = client.post("/").multipart(form).await;
         assert_eq!(res.status(), StatusCode::PAYLOAD_TOO_LARGE);
     }
 }
