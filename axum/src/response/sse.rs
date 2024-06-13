@@ -344,7 +344,7 @@ impl Event {
     fn field(&mut self, name: &str, value: impl AsRef<[u8]>) {
         let value = value.as_ref();
         assert_eq!(
-            memchr::memchr2(b'\r', b'\n', value),
+            memchr::memchr(b'\r', value),
             None,
             "SSE field value cannot contain newlines or carriage returns",
         );
@@ -501,8 +501,22 @@ impl<'a> Iterator for MemchrSplit<'a> {
     fn next(&mut self) -> Option<Self::Item> {
         let haystack = self.haystack?;
         if let Some(pos) = memchr::memchr(self.needle, haystack) {
-            let (front, back) = haystack.split_at(pos);
-            self.haystack = Some(&back[1..]);
+            // find the end of the run of needles
+            let mut end_pos = pos;
+            while end_pos + 1 < haystack.len() && haystack[end_pos + 1] == self.needle {
+                end_pos += 1;
+            }
+            // include the run of needles
+            let (front, _back) = haystack.split_at(end_pos + 1);
+            self.haystack = if end_pos + 1 < haystack.len() {
+                Some(&haystack[end_pos + 1..])
+            } else {
+                None
+            };
+            // if the run of needles is at the end of the haystack, skip it
+            if front.len() == 1 && end_pos == pos {
+                return Some(&haystack[..pos + 1]);
+            }
             Some(front)
         } else {
             self.haystack.take()
@@ -525,6 +539,44 @@ mod tests {
 
         let leading_space = Event::default().data(" foobar");
         assert_eq!(&*leading_space.finalize(), b"data:  foobar\n\n");
+    }
+
+    #[test]
+    fn whatwg_multiple_data_fields() {
+        let event = Event::default().data("YHOO\n+2\n10");
+        assert_eq!(
+            &*event.finalize(),
+            b"data: YHOO\n\ndata: +2\n\ndata: 10\n\n"
+        );
+    }
+
+    #[test]
+    fn single_newline_data() {
+        let event = Event::default().data("\n");
+        assert_eq!(&*event.finalize(), b"data: \n\n\n");
+    }
+
+    #[test]
+    fn multiline_data_keeps_newlines() {
+        let event = Event::default().data("foo\n\n\nbar");
+        assert_eq!(&*event.finalize(), b"data: foo\n\n\n\ndata: bar\n\n",);
+    }
+
+    #[test]
+    fn multiline_data_many_messages() {
+        let event = Event::default().data(
+            "this is a message\nand this is another\nand another\nand one with preserved\n\n\nnewlines",
+        );
+        assert_eq!(
+            &*event.finalize(),
+            b"data: this is a message\n\ndata: and this is another\n\ndata: and another\n\ndata: and one with preserved\n\n\n\ndata: newlines\n\n"
+        );
+    }
+
+    #[test]
+    fn only_newline_data() {
+        let event = Event::default().data("\n\n\n\n\n");
+        assert_eq!(&*event.finalize(), b"data: \n\n\n\n\n\n\n");
     }
 
     #[crate::test]
@@ -677,7 +729,7 @@ mod tests {
         );
         assert_eq!(
             memchr_split(2, &[2]).collect::<Vec<_>>(),
-            [&[], &[]] as [&[u8]; 2]
+            [&[2]] as [&[u8]; 1]
         );
         assert_eq!(
             memchr_split(2, &[1]).collect::<Vec<_>>(),
@@ -685,15 +737,15 @@ mod tests {
         );
         assert_eq!(
             memchr_split(2, &[1, 2]).collect::<Vec<_>>(),
-            [&[1], &[]] as [&[u8]; 2]
+            [&[1, 2]] as [&[u8]; 1]
         );
         assert_eq!(
             memchr_split(2, &[2, 1]).collect::<Vec<_>>(),
-            [&[], &[1]] as [&[u8]; 2]
+            [&[2], &[1]] as [&[u8]; 2]
         );
         assert_eq!(
             memchr_split(2, &[1, 2, 2, 1]).collect::<Vec<_>>(),
-            [&[1], &[], &[1]] as [&[u8]; 3]
+            [&[1, 2, 2], &[1]] as [&[u8]; 2]
         );
     }
 }
