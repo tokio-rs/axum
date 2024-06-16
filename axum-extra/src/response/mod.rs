@@ -3,12 +3,20 @@
 #[cfg(feature = "erased-json")]
 mod erased_json;
 
+#[cfg(feature = "attachment")]
+mod attachment;
+
+
 #[cfg(feature = "erased-json")]
 pub use erased_json::ErasedJson;
 
 #[cfg(feature = "json-lines")]
 #[doc(no_inline)]
 pub use crate::json_lines::JsonLines;
+
+
+#[cfg(feature = "attachment")]
+pub use attachment::Attachment;
 
 macro_rules! mime_response {
     (
