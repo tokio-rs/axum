@@ -30,23 +30,10 @@ use tracing::trace;
 ///  let _: Router = app;
 /// ```
 ///
-/// Hyper will set the `Content-Length` header if it knows the length. To manually set this header
-/// use the [`Attachment`] type in a tuple.
-///
 /// # Note
-/// If the content length is known and this header is manually set to a different length hyper
-/// panics.
 ///
-/// ```rust
-/// async fn with_content_length() -> impl IntoResponse {
-///     (
-///         [(header::CONTENT_LENGTH, 3)],
-///         Attachment::new([0, 0, 0])
-///             .filename("Cargo.toml")
-///             .content_type("text/x-toml"),
-///     )
-/// }
-/// ```
+/// When using this type in Axum with hyper, hyper will set the `Content-Length` if it is known.
+///
 #[derive(Debug)]
 pub struct Attachment<T> {
     inner: T,
