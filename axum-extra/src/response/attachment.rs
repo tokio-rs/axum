@@ -66,7 +66,7 @@ impl<T: IntoResponse> Attachment<T> {
 
     /// Sets the content-type of the [`Attachment`]
     pub fn content_type<H: TryInto<HeaderValue>>(mut self, value: H) -> Self {
-        if let Some(content_type) = value.try_into().ok() {
+        if let Ok(content_type) = value.try_into() {
             self.content_type = Some(content_type);
         } else {
             trace!("Attachment content-type contains invalid characters");
