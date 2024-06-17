@@ -2,10 +2,10 @@ use axum::response::IntoResponse;
 use http::{header, HeaderMap, HeaderValue};
 use tracing::trace;
 
-/// A file attachment response type
+/// A file attachment response.
 ///
-/// This type will set the `Content-Disposition` header for this response. In response a webbrowser
-/// will download the contents locally.
+/// This type will set the `Content-Disposition` header to `attachment`. In response a webbrowser
+/// will offer to download the file instead of displaying it directly.
 ///
 /// Use the `filename` and `content_type` methods to set the filename or content-type of the
 /// attachment. If these values are not set they will not be sent.
@@ -64,15 +64,16 @@ impl<T: IntoResponse> Attachment<T> {
         }
     }
 
-    /// Sets the filename of the [`Attachment`]
+    /// Sets the filename of the [`Attachment`].
     ///
     /// This updates the `Content-Disposition` header to add a filename.
     pub fn filename<H: TryInto<HeaderValue>>(mut self, value: H) -> Self {
-        if let Some(filename) = value.try_into().ok() {
-            self.filename = Some(filename);
+        self.filename = if let Ok(filename) = value.try_into() {
+            Some(filename)
         } else {
             trace!("Attachment filename contains invalid characters");
-        }
+            None
+        };
         self
     }
 
@@ -98,21 +99,18 @@ where
             headers.append(header::CONTENT_TYPE, content_type);
         }
 
-        if let Some(filename) = self.filename {
+        let content_disposition = if let Some(filename) = self.filename {
             let mut bytes = b"attachment; filename=\"".to_vec();
             bytes.extend_from_slice(filename.as_bytes());
             bytes.push(b'\"');
 
-            let content_disposition = HeaderValue::from_bytes(&bytes)
-                .expect("This was a HeaderValue so this can not fail");
-
-            headers.append(header::CONTENT_DISPOSITION, content_disposition);
+            HeaderValue::from_bytes(&bytes)
+                .expect("This was a HeaderValue so this can not fail")
         } else {
-            headers.append(
-                header::CONTENT_DISPOSITION,
-                HeaderValue::from_static("attachment"),
-            );
-        }
+            HeaderValue::from_static("attachment")
+        };
+
+        headers.append(header::CONTENT_DISPOSITION, content_disposition)
 
         (headers, self.inner).into_response()
     }
