@@ -5,7 +5,7 @@ use tracing::trace;
 /// A file attachment response type
 ///
 /// This type will set the `Content-Disposition` header for this response. In response a webbrowser
-/// will download the contents localy.
+/// will download the contents locally.
 ///
 /// Use the `filename` and `content_type` methods to set the filename or content-type of the
 /// attachment. If these values are not set they will not be sent.
@@ -34,7 +34,7 @@ use tracing::trace;
 /// use the [`Attachment`] type in a tuple.
 ///
 /// # Note
-/// If the content length is known and this header is manualy set to a different length hyper
+/// If the content length is known and this header is manually set to a different length hyper
 /// panics.
 ///
 /// ```rust
