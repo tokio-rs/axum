@@ -1,5 +1,6 @@
 use axum::response::IntoResponse;
 use http::{header, HeaderMap, HeaderValue};
+use tracing::trace;
 
 /// A file attachment response type
 ///
@@ -67,15 +68,21 @@ impl<T: IntoResponse> Attachment<T> {
     ///
     /// This updates the `Content-Disposition` header to add a filename.
     pub fn filename<H: TryInto<HeaderValue>>(mut self, value: H) -> Self {
-        // TODO: change
-        self.filename = value.try_into().ok();
+        if let Some(filename) = value.try_into().ok() {
+            self.filename = Some(filename);
+        } else {
+            trace!("Attachment filename contains invalid characters");
+        }
         self
     }
 
     /// Sets the content-type of the [`Attachment`]
     pub fn content_type<H: TryInto<HeaderValue>>(mut self, value: H) -> Self {
-        // TODO: change
-        self.content_type = value.try_into().ok();
+        if let Some(content_type) = value.try_into().ok() {
+            self.content_type = Some(content_type);
+        } else {
+            trace!("Attachment content-type contains invalid characters");
+        }
         self
     }
 }
