@@ -97,7 +97,7 @@ where
             HeaderValue::from_static("attachment")
         };
 
-        headers.append(header::CONTENT_DISPOSITION, content_disposition)
+        headers.append(header::CONTENT_DISPOSITION, content_disposition);
 
         (headers, self.inner).into_response()
     }
