@@ -103,6 +103,7 @@ where
     }
 }
 
+#[allow(dead_code)]
 pub(crate) struct MakeErasedRouter<S> {
     pub(crate) router: Router<S>,
     pub(crate) into_route: fn(Router<S>, S) -> Route,

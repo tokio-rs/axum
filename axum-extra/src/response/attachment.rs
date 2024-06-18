@@ -91,8 +91,7 @@ where
             bytes.extend_from_slice(filename.as_bytes());
             bytes.push(b'\"');
 
-            HeaderValue::from_bytes(&bytes)
-                .expect("This was a HeaderValue so this can not fail")
+            HeaderValue::from_bytes(&bytes).expect("This was a HeaderValue so this can not fail")
         } else {
             HeaderValue::from_static("attachment")
         };
