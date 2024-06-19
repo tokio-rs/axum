@@ -58,7 +58,7 @@ impl<T: IntoResponse> Attachment<T> {
         self.filename = if let Ok(filename) = value.try_into() {
             Some(filename)
         } else {
-            trace!("Attachment filename contains invalid characters");
+            error!("Attachment filename contains invalid characters");
             None
         };
         self
