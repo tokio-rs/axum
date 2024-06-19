@@ -15,6 +15,7 @@ version = "0.9.3"
 default = ["tracing"]
 
 async-read-body = ["dep:tokio-util", "tokio-util?/io", "dep:tokio"]
+attachment = ["dep:tracing"]
 cookie = ["dep:cookie"]
 cookie-private = ["cookie", "cookie?/private"]
 cookie-signed = ["cookie", "cookie?/signed"]

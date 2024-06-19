@@ -23,8 +23,7 @@ use std::marker::PhantomData;
 /// Additionally, a `JsonRejection` error will be returned, when calling `deserialize` if:
 ///
 /// - The body doesn't contain syntactically valid JSON.
-/// - The body contains syntactically valid JSON, but it couldn't be deserialized into the target
-/// type.
+/// - The body contains syntactically valid JSON, but it couldn't be deserialized into the target type.
 /// - Attempting to deserialize escaped JSON into a type that must be borrowed (e.g. `&'a str`).
 ///
 /// ⚠️ `serde` will implicitly try to borrow for `&str` and `&[u8]` types, but will error if the

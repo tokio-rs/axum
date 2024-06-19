@@ -17,8 +17,7 @@ use serde::{de::DeserializeOwned, Serialize};
 ///
 /// - The request doesn't have a `Content-Type: application/json` (or similar) header.
 /// - The body doesn't contain syntactically valid JSON.
-/// - The body contains syntactically valid JSON, but it couldn't be deserialized into the target
-/// type.
+/// - The body contains syntactically valid JSON, but it couldn't be deserialized into the target type.
 /// - Buffering the request body fails.
 ///
 /// ⚠️ Since parsing JSON requires consuming the request body, the `Json` extractor must be
