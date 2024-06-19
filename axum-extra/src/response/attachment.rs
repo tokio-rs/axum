@@ -32,7 +32,7 @@ use tracing::trace;
 ///
 /// # Note
 ///
-/// When using this type in Axum with hyper, hyper will set the `Content-Length` if it is known.
+/// If you use axum with hyper, hyper will set the `Content-Length` if it is known.
 ///
 #[derive(Debug)]
 pub struct Attachment<T> {
