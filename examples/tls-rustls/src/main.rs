@@ -8,7 +8,7 @@
 
 use axum::{
     handler::HandlerWithoutStateExt,
-    http::{StatusCode, Uri},
+    http::{uri::Authority, StatusCode, Uri},
     response::Redirect,
     routing::get,
     BoxError, Router,
@@ -72,7 +72,7 @@ async fn handler() -> &'static str {
 
 #[allow(dead_code)]
 async fn redirect_http_to_https(ports: Ports) {
-    fn make_https(host: String, uri: Uri, ports: Ports) -> Result<Uri, BoxError> {
+    fn make_https(host: &str, uri: Uri, https_port: u16) -> Result<Uri, BoxError> {
         let mut parts = uri.into_parts();
 
         parts.scheme = Some(axum::http::uri::Scheme::HTTPS);
@@ -81,14 +81,24 @@ async fn redirect_http_to_https(ports: Ports) {
             parts.path_and_query = Some("/".parse().unwrap());
         }
 
-        let https_host = host.replace(&ports.http.to_string(), &ports.https.to_string());
-        parts.authority = Some(https_host.parse()?);
+        let authority: Authority = host.parse()?;
+        let bare_host = match authority.port() {
+            Some(port_struct) => authority
+                .as_str()
+                .strip_suffix(port_struct.as_str())
+                .unwrap()
+                .strip_suffix(':')
+                .unwrap(), // if authority.port() is Some(port) then we can be sure authority ends with :{port}
+            None => authority.as_str(),
+        };
+
+        parts.authority = Some(format!("{bare_host}:{https_port}").parse()?);
 
         Ok(Uri::from_parts(parts)?)
     }
 
     let redirect = move |Host(host): Host, uri: Uri| async move {
-        match make_https(host, uri, ports) {
+        match make_https(&host, uri, ports.https) {
             Ok(uri) => Ok(Redirect::permanent(&uri.to_string())),
             Err(error) => {
                 tracing::warn!(%error, "failed to convert URI to HTTPS");
