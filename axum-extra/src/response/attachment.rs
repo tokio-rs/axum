@@ -1,6 +1,6 @@
 use axum::response::IntoResponse;
 use http::{header, HeaderMap, HeaderValue};
-use tracing::trace;
+use tracing::error;
 
 /// A file attachment response.
 ///
@@ -69,7 +69,7 @@ impl<T: IntoResponse> Attachment<T> {
         if let Ok(content_type) = value.try_into() {
             self.content_type = Some(content_type);
         } else {
-            trace!("Attachment content-type contains invalid characters");
+            error!("Attachment content-type contains invalid characters");
         }
         self
     }
