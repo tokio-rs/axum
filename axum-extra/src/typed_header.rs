@@ -6,7 +6,7 @@ use axum::{
     response::{IntoResponse, IntoResponseParts, Response, ResponseParts},
 };
 use headers::{Header, HeaderMapExt};
-use http::request::Parts;
+use http::{request::Parts, StatusCode};
 use std::convert::Infallible;
 
 /// Extractor and response that works with typed header values from [`headers`].
@@ -156,7 +156,10 @@ impl TypedHeaderRejectionReason {
 
 impl IntoResponse for TypedHeaderRejection {
     fn into_response(self) -> Response {
-        (http::StatusCode::BAD_REQUEST, self.to_string()).into_response()
+        let status = StatusCode::BAD_REQUEST;
+        let body = self.to_string();
+        axum_core::__log_rejection!(rejection_type = Self, body_text = body, status = status,);
+        (status, body).into_response()
     }
 }
 

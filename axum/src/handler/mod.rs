@@ -125,8 +125,8 @@ pub use self::service::HandlerService;
 ///     )));
 /// # let _: Router = app;
 /// ```
-#[cfg_attr(
-    nightly_error_messages,
+#[rustversion::attr(
+    since(1.78),
     diagnostic::on_unimplemented(
         note = "Consider using `#[axum::debug_handler]` to improve the error message"
     )

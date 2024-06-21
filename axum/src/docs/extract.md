@@ -19,8 +19,7 @@ Types and traits for extracting data from requests.
 
 A handler function is an async function that takes any number of
 "extractors" as arguments. An extractor is a type that implements
-[`FromRequest`](crate::extract::FromRequest)
-or [`FromRequestParts`](crate::extract::FromRequestParts).
+[`FromRequest`] or [`FromRequestParts`].
 
 For example, [`Json`] is an extractor that consumes the request body and
 deserializes it as JSON into some target type:
@@ -284,7 +283,7 @@ let app = Router::new().route("/users", post(create_user));
 # Customizing extractor responses
 
 If an extractor fails it will return a response with the error and your
-handler will not be called. To customize the error response you have a two
+handler will not be called. To customize the error response you have two 
 options:
 
 1. Use `Result<T, T::Rejection>` as your extractor like shown in ["Optional

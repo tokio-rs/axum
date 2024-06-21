@@ -43,7 +43,7 @@ async fn serve_plain() {
         // We don't need to call `poll_ready` because `Router` is always ready.
         let tower_service = app.clone();
 
-        // Spawn a task to handle the connection. That way we can multiple connections
+        // Spawn a task to handle the connection. That way we can handle multiple connections
         // concurrently.
         tokio::spawn(async move {
             // Hyper has its own `AsyncRead` and `AsyncWrite` traits and doesn't use tokio.

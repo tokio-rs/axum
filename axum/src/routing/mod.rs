@@ -185,6 +185,7 @@ where
     }
 
     #[doc = include_str!("../docs/routing/nest.md")]
+    #[doc(alias = "scope")] // Some web frameworks like actix-web use this term
     #[track_caller]
     pub fn nest(self, path: &str, router: Router<S>) -> Self {
         let RouterInner {

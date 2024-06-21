@@ -5,8 +5,7 @@ can be either static, a capture, or a wildcard.
 
 `method_router` is the [`MethodRouter`] that should receive the request if the
 path matches `path`. `method_router` will commonly be a handler wrapped in a method
-router like [`get`](crate::routing::get). See [`handler`](crate::handler) for
-more details on handlers.
+router like [`get`]. See [`handler`](crate::handler) for more details on handlers.
 
 # Static paths
 
@@ -56,7 +55,22 @@ Note that `/*key` doesn't match empty segments. Thus:
 - `/*key` doesn't match `/` but does match `/a`, `/a/`, etc.
 - `/x/*key` doesn't match `/x` or `/x/` but does match `/x/a`, `/x/a/`, etc.
 
-Wildcard captures can also be extracted using [`Path`](crate::extract::Path).
+Wildcard captures can also be extracted using [`Path`](crate::extract::Path):
+
+```rust
+use axum::{
+    Router,
+    routing::get,
+    extract::Path,
+};
+
+let app: Router = Router::new().route("/*key", get(handler));
+
+async fn handler(Path(path): Path<String>) -> String {
+    path
+}
+```
+
 Note that the leading slash is not included, i.e. for the route `/foo/*rest` and
 the path `/foo/bar/baz` the value of `rest` will be `bar/baz`.
 

@@ -43,8 +43,8 @@ mod private {
 ///
 /// [`axum::extract`]: https://docs.rs/axum/0.7/axum/extract/index.html
 #[async_trait]
-#[cfg_attr(
-    nightly_error_messages,
+#[rustversion::attr(
+    since(1.78),
     diagnostic::on_unimplemented(
         note = "Function argument is not a valid axum extractor. \nSee `https://docs.rs/axum/0.7/axum/extract/index.html` for details",
     )
@@ -70,8 +70,8 @@ pub trait FromRequestParts<S>: Sized {
 ///
 /// [`axum::extract`]: https://docs.rs/axum/0.7/axum/extract/index.html
 #[async_trait]
-#[cfg_attr(
-    nightly_error_messages,
+#[rustversion::attr(
+    since(1.78),
     diagnostic::on_unimplemented(
         note = "Function argument is not a valid axum extractor. \nSee `https://docs.rs/axum/0.7/axum/extract/index.html` for details",
     )
