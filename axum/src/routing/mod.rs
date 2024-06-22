@@ -307,6 +307,11 @@ where
         })
     }
 
+    /// True if the router currently has at least one route added.
+    pub fn has_routes(&self) -> bool {
+        self.inner.path_router.has_routes()
+    }
+
     #[track_caller]
     #[doc = include_str!("../docs/routing/fallback.md")]
     pub fn fallback<H, T>(self, handler: H) -> Self
