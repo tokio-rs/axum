@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **change:** Avoid cloning `Arc` during deserialization of `Path`
 - **added:** `axum::serve::Serve::tcp_nodelay` and `axum::serve::WithGracefulShutdown::tcp_nodelay` ([#2653])
-- **added:** `Router::has_routes` function added ([#2790])
+- **added:** `Router::has_routes` function ([#2790])
 
 [#2653]: https://github.com/tokio-rs/axum/pull/2653
 [#2790]: https://github.com/tokio-rs/axum/pull/2790
