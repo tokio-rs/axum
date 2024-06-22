@@ -290,7 +290,6 @@ where
         }
     }
 
-    #[track_caller]
     pub(super) fn has_routes(&self) -> bool {
         !self.routes.is_empty()
     }
