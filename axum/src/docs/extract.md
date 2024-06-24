@@ -280,7 +280,7 @@ let app = Router::new().route("/users", post(create_user));
 # let _: Router = app;
 ```
 
-An alternate option is to make use of the optional extractors in [axum-extra] that return `None`
+Another option is to make use of the optional extractors in [axum-extra] that return `None`
 if there are no query parameters in the request or return `Some(T)` if deserialization was successful.
 
 # Customizing extractor responses
