@@ -355,8 +355,8 @@ anyway.
 axum expects that all services used in your app won't care about
 backpressure and so it uses the latter strategy. However that means you
 should avoid routing to a service (or using a middleware) that _does_ care
-about backpressure. At the very least you should [load shed] so requests are
-dropped quickly and don't keep piling up.
+about backpressure. At the very least you should [load shed][tower::load_shed]
+so requests are dropped quickly and don't keep piling up.
 
 It also means that if `poll_ready` returns an error then that error will be
 returned in the response future from `call` and _not_ from `poll_ready`. In
