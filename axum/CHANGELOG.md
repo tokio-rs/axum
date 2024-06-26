@@ -576,7 +576,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ```rust
   use axum::{Json, http::HeaderMap};
 
-  // This wont compile on 0.6 because both `Json` and `String` need to consume
+  // This won't compile on 0.6 because both `Json` and `String` need to consume
   // the request body. You can use either `Json` or `String`, but not both.
   async fn handler_1(
       json: Json<serde_json::Value>,
@@ -1162,7 +1162,7 @@ Yanked, as it didn't compile in release mode.
   ```rust
   use axum::{Json, http::HeaderMap};
 
-  // This wont compile on 0.6 because both `Json` and `String` need to consume
+  // This won't compile on 0.6 because both `Json` and `String` need to consume
   // the request body. You can use either `Json` or `String`, but not both.
   async fn handler_1(
       json: Json<serde_json::Value>,

@@ -10,8 +10,8 @@
 //! // Handler that immediately returns an empty `200 OK` response.
 //! async fn unit_handler() {}
 //!
-//! // Handler that immediately returns an empty `200 OK` response with a plain
-//! // text body.
+//! // Handler that immediately returns a `200 OK` response with a plain text
+//! // body.
 //! async fn string_handler() -> String {
 //!     "Hello, World!".to_string()
 //! }
