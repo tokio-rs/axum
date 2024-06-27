@@ -399,7 +399,7 @@ use from_request::Trait::{FromRequest, FromRequestParts};
 ///
 /// # Known limitations
 ///
-/// Generics are only supported on tuple structs with exactly on field. Thus this doesn't work
+/// Generics are only supported on tuple structs with exactly one field. Thus this doesn't work
 ///
 /// ```compile_fail
 /// #[derive(axum_macros::FromRequest)]
