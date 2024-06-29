@@ -6,7 +6,7 @@
 
 use std::{convert::Infallible, time::Duration};
 
-use axum::http::{HeaderMap, StatusCode};
+use axum::http::StatusCode;
 use axum::{
     body::{Body, Bytes},
     extract::State,
@@ -60,15 +60,20 @@ async fn proxy_via_reqwest(State(client): State<Client>) -> Response {
         }
     };
 
-    let response_builder = Response::builder().status(reqwest_response.status().as_u16());
+    let mut response_builder = Response::builder().status(reqwest_response.status().as_u16());
 
-    // Here the mapping of headers is required due to reqwest and axum differ on the http crate versions
-    let mut headers = HeaderMap::with_capacity(reqwest_response.headers().len());
-    headers.extend(reqwest_response.headers().into_iter().map(|(name, value)| {
-        let name = HeaderName::from_bytes(name.as_ref()).unwrap();
-        let value = HeaderValue::from_bytes(value.as_ref()).unwrap();
-        (name, value)
-    }));
+    {
+        let headers = response_builder.headers_mut().unwrap();
+
+        reqwest_response
+            .headers()
+            .into_iter()
+            .for_each(|(name, value)| {
+                let name = HeaderName::from_bytes(name.as_ref()).unwrap();
+                let value = HeaderValue::from_bytes(value.as_ref()).unwrap();
+                headers.insert(name, value);
+            });
+    }
 
     response_builder
         .body(Body::from_stream(reqwest_response.bytes_stream()))
