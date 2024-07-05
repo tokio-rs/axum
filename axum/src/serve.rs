@@ -121,20 +121,23 @@ impl<M, S> Serve<M, S> {
     ///
     /// ```
     /// use axum::{Router, routing::get};
+    /// use std::{future::IntoFuture, sync::Arc};
+    /// use tokio::sync::Notify;
     ///
     /// # async {
     /// let router = Router::new().route("/", get(|| async { "Hello, World!" }));
     ///
     /// let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
-    /// axum::serve(listener, router)
-    ///     .with_graceful_shutdown(shutdown_signal())
-    ///     .await
-    ///     .unwrap();
+    /// let blocker = Arc::new(Notify::new());
+    /// let cancel = Arc::clone(&blocker);
+    /// tokio::spawn(
+    ///     axum::serve(listener, router)
+    ///         .with_graceful_shutdown(async move { blocker.notified().await })
+    ///         .into_future(),
+    /// );
+    /// // ...
+    /// cancel.notify_one();
     /// # };
-    ///
-    /// async fn shutdown_signal() {
-    ///     // ...
-    /// }
     /// ```
     pub fn with_graceful_shutdown<F>(self, signal: F) -> WithGracefulShutdown<M, S, F>
     where
