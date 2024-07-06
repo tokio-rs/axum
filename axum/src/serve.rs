@@ -287,21 +287,22 @@ impl<M, S, F> WithGracefulShutdown<M, S, F> {
     /// # Example
     /// ```
     /// use axum::{Router, routing::get};
+    /// use std::future::IntoFuture;
+    /// use tokio::sync::oneshot;
     ///
     /// # async {
     /// let router = Router::new().route("/", get(|| async { "Hello, World!" }));
     ///
     /// let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
-    /// axum::serve(listener, router)
-    ///     .with_graceful_shutdown(shutdown_signal())
-    ///     .tcp_nodelay(true)
-    ///     .await
-    ///     .unwrap();
+    /// let (tx, rx) = oneshot::channel();
+    /// tokio::spawn(
+    ///     axum::serve(listener, router)
+    ///         .with_graceful_shutdown(async move { rx.await.unwrap_or(()) })
+    ///         .into_future(),
+    /// );
+    /// // ...
+    /// tx.send(()).unwrap();
     /// # };
-    ///
-    /// async fn shutdown_signal() {
-    ///     // ...
-    /// }
     /// ```
     pub fn tcp_nodelay(self, nodelay: bool) -> Self {
         Self {
