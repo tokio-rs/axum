@@ -4,84 +4,90 @@
 //! cargo run -p example-rest-grpc-multiplex
 //! ```
 
-// TODO
-fn main() {
-    eprint!("this example has not yet been updated to hyper 1.0");
+use axum::{extract::Request, http::header::CONTENT_TYPE, routing::get, Router};
+use proto::{
+    greeter_server::{Greeter, GreeterServer},
+    HelloReply, HelloRequest,
+};
+use std::net::SocketAddr;
+use tonic::{Request as TonicRequest, Response as TonicResponse, Status};
+use tower::{steer::Steer, make::Shared};
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+
+mod proto {
+    tonic::include_proto!("helloworld");
+
+    pub(crate) const FILE_DESCRIPTOR_SET: &[u8] =
+        tonic::include_file_descriptor_set!("helloworld_descriptor");
 }
 
-// use self::multiplex_service::MultiplexService;
-// use axum::{routing::get, Router};
-// use proto::{
-//     greeter_server::{Greeter, GreeterServer},
-//     HelloReply, HelloRequest,
-// };
-// use std::net::SocketAddr;
-// use tonic::{Response as TonicResponse, Status};
-// use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+#[derive(Default)]
+struct GrpcServiceImpl {}
 
-// mod multiplex_service;
+#[tonic::async_trait]
+impl Greeter for GrpcServiceImpl {
+    async fn say_hello(
+        &self,
+        request: TonicRequest<HelloRequest>,
+    ) -> Result<TonicResponse<HelloReply>, Status> {
+        tracing::info!("Got a gRPC request from {:?}", request.remote_addr());
 
-// mod proto {
-//     tonic::include_proto!("helloworld");
+        let reply = HelloReply {
+            message: format!("Hello {}!", request.into_inner().name),
+        };
 
-//     pub(crate) const FILE_DESCRIPTOR_SET: &[u8] =
-//         tonic::include_file_descriptor_set!("helloworld_descriptor");
-// }
+        Ok(TonicResponse::new(reply))
+    }
+}
 
-// #[derive(Default)]
-// struct GrpcServiceImpl {}
+async fn web_root() -> &'static str {
+    tracing::info!("Got a REST request");
 
-// #[tonic::async_trait]
-// impl Greeter for GrpcServiceImpl {
-//     async fn say_hello(
-//         &self,
-//         request: tonic::Request<HelloRequest>,
-//     ) -> Result<TonicResponse<HelloReply>, Status> {
-//         tracing::info!("Got a request from {:?}", request.remote_addr());
+    "Hello, World!"
+}
 
-//         let reply = HelloReply {
-//             message: format!("Hello {}!", request.into_inner().name),
-//         };
+#[tokio::main]
+async fn main() {
+    // initialize tracing
+    tracing_subscriber::registry()
+        .with(
+            tracing_subscriber::EnvFilter::try_from_default_env()
+                .unwrap_or_else(|_| "example_rest_grpc_multiplex=debug".into()),
+        )
+        .with(tracing_subscriber::fmt::layer())
+        .init();
 
-//         Ok(TonicResponse::new(reply))
-//     }
-// }
+    // build the rest service
+    let rest = Router::new().route("/", get(web_root));
 
-// async fn web_root() -> &'static str {
-//     "Hello, World!"
-// }
+    // build the grpc service
+    let reflection_service = tonic_reflection::server::Builder::configure()
+        .register_encoded_file_descriptor_set(proto::FILE_DESCRIPTOR_SET)
+        .build()
+        .unwrap();
 
-// #[tokio::main]
-// async fn main() {
-//     // initialize tracing
-//     tracing_subscriber::registry()
-//         .with(
-//             tracing_subscriber::EnvFilter::try_from_default_env()
-//                 .unwrap_or_else(|_| "example_rest_grpc_multiplex=debug".into()),
-//         )
-//         .with(tracing_subscriber::fmt::layer())
-//         .init();
+    let grpc = tonic::transport::Server::builder()
+        .add_service(reflection_service)
+        .add_service(GreeterServer::new(GrpcServiceImpl::default()))
+        .into_router();
 
-//     // build the rest service
-//     let rest = Router::new().route("/", get(web_root));
+    // combine them into one service
+    let service = Steer::new(vec![rest, grpc], |req: &Request, _services: &[_]| {
+        if req
+            .headers()
+            .get(CONTENT_TYPE)
+            .map(|content_type| content_type.as_bytes())
+            .filter(|content_type| content_type.starts_with(b"application/grpc"))
+            .is_some()
+        {
+            1
+        } else {
+            0
+        }
+    });
 
-//     // build the grpc service
-//     let reflection_service = tonic_reflection::server::Builder::configure()
-//         .register_encoded_file_descriptor_set(proto::FILE_DESCRIPTOR_SET)
-//         .build()
-//         .unwrap();
-//     let grpc = tonic::transport::Server::builder()
-//         .add_service(reflection_service)
-//         .add_service(GreeterServer::new(GrpcServiceImpl::default()))
-//         .into_service();
-
-//     // combine them into one service
-//     let service = MultiplexService::new(rest, grpc);
-
-//     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
-//     tracing::debug!("listening on {}", addr);
-//     hyper::Server::bind(&addr)
-//         .serve(tower::make::Shared::new(service))
-//         .await
-//         .unwrap();
-// }
+    let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
+    let listener = tokio::net::TcpListener::bind(&addr).await.unwrap();
+    tracing::debug!("listening on {}", addr);
+    axum::serve(listener, Shared::new(service)).await.unwrap();
+}
