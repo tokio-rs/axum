@@ -4,6 +4,8 @@ error[E0277]: the trait bound `for<'de> Struct: serde::de::Deserialize<'de>` is 
 7 | async fn handler(_foo: Json<Struct>) {}
   |                        ^^^^^^^^^^^^ the trait `for<'de> serde::de::Deserialize<'de>` is not implemented for `Struct`, which is required by `Json<Struct>: FromRequest<()>`
   |
+  = note: for local types consider adding `#[derive(serde::Deserialize)]` to your `Struct` type
+  = note: for types from other crates check whether the crate offers a `serde` feature flag
   = help: the following other types implement trait `serde::de::Deserialize<'de>`:
             bool
             char
@@ -25,6 +27,8 @@ error[E0277]: the trait bound `for<'de> Struct: serde::de::Deserialize<'de>` is 
 7 | async fn handler(_foo: Json<Struct>) {}
   |                        ^^^^^^^^^^^^ the trait `for<'de> serde::de::Deserialize<'de>` is not implemented for `Struct`, which is required by `Json<Struct>: FromRequest<()>`
   |
+  = note: for local types consider adding `#[derive(serde::Deserialize)]` to your `Struct` type
+  = note: for types from other crates check whether the crate offers a `serde` feature flag
   = help: the following other types implement trait `serde::de::Deserialize<'de>`:
             bool
             char
