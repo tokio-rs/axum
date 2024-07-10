@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning].
 
 # Unreleased
 
-- None.
+- **breaking:** Update to prost 0.13. Used for the `Protobuf` extractor
 
 # 0.9.3 (24. March, 2024)
 
