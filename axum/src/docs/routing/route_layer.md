@@ -11,6 +11,10 @@ the request matches a route. This is useful for middleware that return early
 (such as authorization) which might otherwise convert a `404 Not Found` into a
 `401 Unauthorized`.
 
+This function will panic if no routes have been declared yet on the router,
+since the new layer will have no effect, and this is typically a bug.
+In generic code, you can test if that is the case first, by calling [`Router::has_routes`].
+
 # Example
 
 ```rust

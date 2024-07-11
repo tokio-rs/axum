@@ -290,6 +290,10 @@ where
         }
     }
 
+    pub(super) fn has_routes(&self) -> bool {
+        !self.routes.is_empty()
+    }
+
     pub(super) fn with_state<S2>(self, state: S) -> PathRouter<S2, IS_FALLBACK> {
         let routes = self
             .routes

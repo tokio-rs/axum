@@ -15,6 +15,7 @@ version = "0.9.3"
 default = ["tracing", "multipart"]
 
 async-read-body = ["dep:tokio-util", "tokio-util?/io", "dep:tokio"]
+attachment = ["dep:tracing"]
 cookie = ["dep:cookie"]
 cookie-private = ["cookie", "cookie?/private"]
 cookie-signed = ["cookie", "cookie?/signed"]
@@ -33,7 +34,7 @@ json-lines = [
 multipart = ["dep:multer", "dep:fastrand"]
 protobuf = ["dep:prost"]
 query = ["dep:serde_html_form"]
-tracing = ["dep:tracing", "axum-core/tracing"]
+tracing = ["dep:tracing", "axum-core/tracing", "axum/tracing"]
 typed-header = ["dep:headers"]
 typed-routing = ["dep:axum-macros", "dep:percent-encoding", "dep:serde_html_form", "dep:form_urlencoded"]
 

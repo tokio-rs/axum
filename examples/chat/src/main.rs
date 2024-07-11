@@ -130,8 +130,8 @@ async fn websocket(stream: WebSocket, state: Arc<AppState>) {
 
     // If any one of the tasks run to completion, we abort the other.
     tokio::select! {
-        _ = (&mut send_task) => recv_task.abort(),
-        _ = (&mut recv_task) => send_task.abort(),
+        _ = &mut send_task => recv_task.abort(),
+        _ = &mut recv_task => send_task.abort(),
     };
 
     // Send "user left" message (similar to "joined" above).
