@@ -1,4 +1,4 @@
-//! Generate forms to use in responses. You're probably looking for `MultipartForm``.
+//! Generate forms to use in responses. You're probably looking for `MultipartForm`.
 
 use axum::response::{IntoResponse, Response};
 use fastrand;
@@ -176,18 +176,19 @@ impl Part {
     /// ```
     pub fn raw_part(
         name: &str,
-        mime_type: Mime,
+        mime_type: &str,
         contents: Vec<u8>,
         filename: Option<&str>,
         encoding: TransferEncoding,
-    ) -> Self {
-        Self {
+    ) -> Result<Self, &'static str> {
+        let mime_type = mime_type.parse().map_err(|_| "Invalid MIME type")?;
+        Ok(Self {
             name: name.to_owned(),
             filename: filename.map(|f| f.to_owned()),
             mime_type,
             contents,
             encoding,
-        }
+        })
     }
 
     /// Serialize this part into a chunk that can be easily inserted into a larger form
@@ -258,7 +259,7 @@ mod tests {
         // create a boilerplate handle that returns a form
         async fn handle() -> MultipartForm {
             let parts: Vec<Part> = vec![
-                Part::text("part1".to_string(), "basictext"),
+                Part::text("part1".to_owned(), "basictext"),
                 Part::file(
                     "part2",
                     "file.txt",
@@ -266,11 +267,11 @@ mod tests {
                 ),
                 Part::raw_part(
                     "part3",
-                    mime::TEXT_PLAIN,
+                    "text/plain",
                     b"rawpart".to_vec(),
                     None,
                     super::TransferEncoding::TextUTF8,
-                ),
+                ).unwrap(),
             ];
             MultipartForm::with_parts(parts)
         }
