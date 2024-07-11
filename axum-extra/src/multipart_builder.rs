@@ -163,6 +163,8 @@ impl Part {
     /// Create a new part with more fine-grained control over the semantics of that part. The caller
     /// is assumed to have set a valid MIME type.
     ///
+    /// This function will return an error if the provided MIME type is not valid.
+    ///
     /// # Examples
     ///
     /// ```rust
@@ -271,7 +273,8 @@ mod tests {
                     b"rawpart".to_vec(),
                     None,
                     super::TransferEncoding::TextUTF8,
-                ).unwrap(),
+                )
+                .unwrap(),
             ];
             MultipartForm::with_parts(parts)
         }
