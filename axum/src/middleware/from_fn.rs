@@ -23,6 +23,8 @@ use tower_service::Service;
 /// 3. Take [`Next`](Next) as the final argument.
 /// 4. Return something that implements [`IntoResponse`].
 ///
+/// The last extractor (i.e. the second last argument) must be [`Request`] or some type implementing [`FromRequest`].
+///
 /// Note that this function doesn't support extracting [`State`]. For that, use [`from_fn_with_state`].
 ///
 /// # Example
@@ -71,9 +73,7 @@ use tower_service::Service;
 /// async fn auth(
 ///     // run the `HeaderMap` extractor
 ///     headers: HeaderMap,
-///     // you can also add more extractors here but the last
-///     // extractor must implement `FromRequest` which
-///     // `Request` does
+///     // a `FromRequest` implementation must be the last extractor
 ///     request: Request,
 ///     next: Next,
 /// ) -> Result<Response, StatusCode> {
