@@ -20,8 +20,8 @@ use tower_service::Service;
 ///
 /// 1. Be an `async fn`.
 /// 2. Take zero or more [`FromRequestParts`] extractors.
-/// 3. Take exactly one [`FromRequest`] extractor as the second final argument.
-/// 4. Take [`Next`](Next) as the final argument.
+/// 3. Take exactly one [`FromRequest`] extractor as the second to last argument.
+/// 4. Take [`Next`](Next) as the last argument.
 /// 5. Return something that implements [`IntoResponse`].
 ///
 /// Note that this function doesn't support extracting [`State`]. For that, use [`from_fn_with_state`].
