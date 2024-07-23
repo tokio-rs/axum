@@ -62,17 +62,12 @@ async fn proxy_via_reqwest(State(client): State<Client>) -> Response {
 
     let mut response_builder = Response::builder().status(reqwest_response.status().as_u16());
 
-    {
-        let headers = response_builder.headers_mut().unwrap();
+    let headers = response_builder.headers_mut().unwrap();
 
-        reqwest_response
-            .headers()
-            .into_iter()
-            .for_each(|(name, value)| {
-                let name = HeaderName::from_bytes(name.as_ref()).unwrap();
-                let value = HeaderValue::from_bytes(value.as_ref()).unwrap();
-                headers.insert(name, value);
-            });
+    for (name, value) in reqwest_response.headers() {
+        let name = HeaderName::from_bytes(name.as_ref()).unwrap();
+        let value = HeaderValue::from_bytes(value.as_ref()).unwrap();
+        headers.insert(name, value);
     }
 
     response_builder
