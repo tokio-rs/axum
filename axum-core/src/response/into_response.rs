@@ -111,6 +111,7 @@ use std::{
 /// ```
 pub trait IntoResponse {
     /// Create a response.
+    #[must_use]
     fn into_response(self) -> Response;
 }
 
