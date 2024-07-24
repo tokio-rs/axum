@@ -7,7 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- None.
+- **added:** Derive `Clone` and `Copy` for `AppendHeaders` ([#2776])
+- **added:** `must_use` attribute on `AppendHeaders` ([#2846])
+- **added:** `must_use` attribute on `ErrorResponse` ([#2846])
+- **added:** `must_use` attribute on `IntoResponse::into_response` ([#2846])
+- **added:** `must_use` attribute on `IntoResponseParts` trait methods ([#2846])
+
+[#2776]: https://github.com/tokio-rs/axum/pull/2776
+[#2846]: https://github.com/tokio-rs/axum/pull/2846
 
 # 0.4.3 (13. January, 2024)
 
