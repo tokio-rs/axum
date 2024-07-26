@@ -60,7 +60,7 @@ async fn proxy_via_reqwest(State(client): State<Client>) -> Response {
         }
     };
 
-    let response_builder = Response::builder().status(reqwest_response.status().as_u16());
+    let mut response_builder = Response::builder().status(reqwest_response.status().as_u16());
 
     // Here the mapping of headers is required due to reqwest and axum differ on the http crate versions
     let mut headers = HeaderMap::with_capacity(reqwest_response.headers().len());
@@ -69,6 +69,8 @@ async fn proxy_via_reqwest(State(client): State<Client>) -> Response {
         let value = HeaderValue::from_bytes(value.as_ref()).unwrap();
         (name, value)
     }));
+
+    *response_builder.headers_mut().unwrap() = headers;
 
     response_builder
         .body(Body::from_stream(reqwest_response.bytes_stream()))
