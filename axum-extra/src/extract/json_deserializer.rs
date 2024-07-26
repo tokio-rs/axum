@@ -209,6 +209,16 @@ fn json_content_type(headers: &HeaderMap) -> bool {
     is_json_content_type
 }
 
+#[macro_export]
+macro_rules! deserialize_or_bail {
+      ($payload:expr) => {
+        match $payload.deserialize() {
+            Ok(data) => data,
+            Err(e) => return e.into_response(),
+        }
+    };
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
