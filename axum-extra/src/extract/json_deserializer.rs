@@ -209,6 +209,7 @@ fn json_content_type(headers: &HeaderMap) -> bool {
     is_json_content_type
 }
 
+#[doc="Macro for the JsonDeserializer extractor to avoid boilerplate code in most situations where the handler returns a Response or its derivatives, and returns early in case of failure."]
 #[macro_export]
 macro_rules! deserialize_or_bail {
       ($payload:expr) => {
