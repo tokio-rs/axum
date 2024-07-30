@@ -208,61 +208,8 @@ where
     type IntoFuture = private::ServeFuture;
 
     fn into_future(self) -> Self::IntoFuture {
-        private::ServeFuture(Box::pin(async move {
-            let Self {
-                tcp_listener,
-                mut make_service,
-                tcp_nodelay,
-                _marker: _,
-            } = self;
-
-            loop {
-                let (tcp_stream, remote_addr) = match tcp_accept(&tcp_listener).await {
-                    Some(conn) => conn,
-                    None => continue,
-                };
-
-                if let Some(nodelay) = tcp_nodelay {
-                    if let Err(err) = tcp_stream.set_nodelay(nodelay) {
-                        trace!("failed to set TCP_NODELAY on incoming connection: {err:#}");
-                    }
-                }
-
-                let tcp_stream = TokioIo::new(tcp_stream);
-
-                poll_fn(|cx| make_service.poll_ready(cx))
-                    .await
-                    .unwrap_or_else(|err| match err {});
-
-                let tower_service = make_service
-                    .call(IncomingStream {
-                        tcp_stream: &tcp_stream,
-                        remote_addr,
-                    })
-                    .await
-                    .unwrap_or_else(|err| match err {})
-                    .map_request(|req: Request<Incoming>| req.map(Body::new));
-
-                let hyper_service = TowerToHyperService::new(tower_service);
-
-                tokio::spawn(async move {
-                    match Builder::new(TokioExecutor::new())
-                        // upgrades needed for websockets
-                        .serve_connection_with_upgrades(tcp_stream, hyper_service)
-                        .await
-                    {
-                        Ok(()) => {}
-                        Err(_err) => {
-                            // This error only appears when the client doesn't send a request and
-                            // terminate the connection.
-                            //
-                            // If client sends one request then terminate connection whenever, it doesn't
-                            // appear.
-                        }
-                    }
-                });
-            }
-        }))
+        self.with_graceful_shutdown(std::future::pending())
+            .into_future()
     }
 }
 
