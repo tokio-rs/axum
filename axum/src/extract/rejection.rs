@@ -75,6 +75,14 @@ define_rejection! {
 
 define_rejection! {
     #[status = BAD_REQUEST]
+    #[body = "No scheme found in request"]
+    /// Rejection type used if the [`Scheme`](super::Scheme) extractor is unable to
+    /// resolve a host.
+    pub struct FailedToResolveScheme;
+}
+
+define_rejection! {
+    #[status = BAD_REQUEST]
     #[body = "Failed to deserialize form"]
     /// Rejection type used if the [`Form`](super::Form) extractor is unable to
     /// deserialize the form into the target type.
@@ -185,6 +193,16 @@ composite_rejection! {
     /// can fail.
     pub enum HostRejection {
         FailedToResolveHost,
+    }
+}
+
+composite_rejection! {
+    /// Rejection used for [`Scheme`](super::Scheme).
+    ///
+    /// Contains one variant for each way the [`Scheme`](super::Scheme) extractor
+    /// can fail.
+    pub enum SchemeRejection {
+        FailedToResolveScheme,
     }
 }
 

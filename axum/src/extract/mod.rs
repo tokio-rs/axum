@@ -15,6 +15,7 @@ pub(crate) mod nested_path;
 mod raw_form;
 mod raw_query;
 mod request_parts;
+mod scheme;
 mod state;
 
 #[doc(inline)]
@@ -31,6 +32,7 @@ pub use self::{
     path::{Path, RawPathParams},
     raw_form::RawForm,
     raw_query::RawQuery,
+    scheme::Scheme,
     state::State,
 };
 
