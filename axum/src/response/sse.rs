@@ -24,6 +24,20 @@
 //! }
 //! # let _: Router = app;
 //! ```
+//!
+//! ## Compression
+//!
+//! By default, using the `tower-http` [compression layer](https://docs.rs/tower-http/latest/tower_http/compression/index.html)
+//! with SSE will break the functionality of SSE where you will miss all or only
+//! latest events. If you're using that layer, you can do the following to not
+//! compress SSE:
+//!
+//! ```
+//! # use tower_http::compression::{predicate::{NotForContentType, DefaultPredicate}, Predicate, CompressionLayer};
+//! let predicate = DefaultPredicate::new().and(NotForContentType::new("text/event-stream"));
+//!
+//! let layer = CompressionLayer::new().compress_when(predicate);
+//! ```
 
 use crate::{
     body::{Bytes, HttpBody},
