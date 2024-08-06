@@ -111,6 +111,15 @@ pub enum QueryRejection {
     FailedToDeserializeQueryString(Error),
 }
 
+impl QueryRejection {
+    /// Get the status code used for this rejection.
+    pub fn status(&self) -> http::StatusCode {
+        match self {
+            Self::FailedToDeserializeQueryString(_) => http::StatusCode::BAD_REQUEST,
+        }
+    }
+}
+
 impl IntoResponse for QueryRejection {
     fn into_response(self) -> Response {
         match self {
@@ -238,7 +247,7 @@ impl IntoResponse for OptionalQueryRejection {
     fn into_response(self) -> Response {
         match self {
             Self::FailedToDeserializeQueryString(inner) => (
-                StatusCode::BAD_REQUEST,
+                self.status(),
                 format!("Failed to deserialize query string: {inner}"),
             )
                 .into_response(),
