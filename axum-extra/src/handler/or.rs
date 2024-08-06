@@ -134,7 +134,7 @@ mod tests {
             "fallback"
         }
 
-        let app = Router::new().route("/:id", get(one.or(two).or(three)));
+        let app = Router::new().route("/{id}", get(one.or(two).or(three)));
 
         let client = TestClient::new(app);
 

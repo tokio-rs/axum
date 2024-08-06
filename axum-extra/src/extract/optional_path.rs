@@ -29,7 +29,7 @@ use serde::de::DeserializeOwned;
 ///
 /// let app = Router::new()
 ///     .route("/blog", get(render_blog))
-///     .route("/blog/:page", get(render_blog));
+///     .route("/blog/{page}", get(render_blog));
 /// # let app: Router = app;
 /// ```
 #[derive(Debug)]
@@ -77,7 +77,7 @@ mod tests {
 
         let app = Router::new()
             .route("/", get(handle))
-            .route("/:num", get(handle));
+            .route("/{num}", get(handle));
 
         let client = TestClient::new(app);
 

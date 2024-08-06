@@ -16,7 +16,7 @@ use axum::{
 // define some routes separately
 let user_routes = Router::new()
     .route("/users", get(users_list))
-    .route("/users/:id", get(users_show));
+    .route("/users/{id}", get(users_show));
 
 let team_routes = Router::new()
     .route("/teams", get(teams_list));
@@ -30,7 +30,7 @@ let app = Router::new()
 
 // Our app now accepts
 // - GET /users
-// - GET /users/:id
+// - GET /users/{id}
 // - GET /teams
 # let _: Router = app;
 ```

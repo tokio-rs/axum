@@ -95,7 +95,7 @@ pub trait HandlerCallWithExtractors<T, S>: Sized {
     /// }
     ///
     /// let app = Router::new().route(
-    ///     "/users/:id",
+    ///     "/users/{id}",
     ///     get(
     ///         // first try `admin`, if that rejects run `user`, finally falling back
     ///         // to `guest`

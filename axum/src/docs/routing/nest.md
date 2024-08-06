@@ -11,7 +11,7 @@ use axum::{
     Router,
 };
 
-let user_routes = Router::new().route("/:id", get(|| async {}));
+let user_routes = Router::new().route("/{id}", get(|| async {}));
 
 let team_routes = Router::new().route("/", post(|| async {}));
 
@@ -22,7 +22,7 @@ let api_routes = Router::new()
 let app = Router::new().nest("/api", api_routes);
 
 // Our app now accepts
-// - GET /api/users/:id
+// - GET /api/users/{id}
 // - POST /api/teams
 # let _: Router = app;
 ```
@@ -54,9 +54,9 @@ async fn users_get(Path(params): Path<HashMap<String, String>>) {
     let id = params.get("id");
 }
 
-let users_api = Router::new().route("/users/:id", get(users_get));
+let users_api = Router::new().route("/users/{id}", get(users_get));
 
-let app = Router::new().nest("/:version/api", users_api);
+let app = Router::new().nest("/{version}/api", users_api);
 # let _: Router = app;
 ```
 
@@ -75,7 +75,7 @@ let nested_router = Router::new()
     }));
 
 let app = Router::new()
-    .route("/foo/*rest", get(|uri: Uri| async {
+    .route("/foo/{*rest}", get(|uri: Uri| async {
         // `uri` will contain `/foo`
     }))
     .nest("/bar", nested_router);

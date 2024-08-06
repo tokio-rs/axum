@@ -262,4 +262,22 @@ mod tests {
         let res = client.get("/api/users").await;
         assert_eq!(res.status(), StatusCode::OK);
     }
+
+    #[crate::test]
+    async fn nesting_with_braces() {
+        let api = Router::new().route(
+            "/users",
+            get(|nested_path: NestedPath| {
+                assert_eq!(nested_path.as_str(), "/{{api}}");
+                async {}
+            }),
+        );
+
+        let app = Router::new().nest("/{{api}}", api);
+
+        let client = TestClient::new(app);
+
+        let res = client.get("/{api}/users").await;
+        assert_eq!(res.status(), StatusCode::OK);
+    }
 }

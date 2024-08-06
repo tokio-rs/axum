@@ -268,7 +268,7 @@
 //!         }),
 //!     )
 //!     .route(
-//!         "/users/:id",
+//!         "/users/{id}",
 //!         get({
 //!             let shared_state = Arc::clone(&shared_state);
 //!             move |path| get_user(path, shared_state)
