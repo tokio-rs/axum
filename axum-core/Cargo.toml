@@ -19,7 +19,7 @@ __private_docs = ["dep:tower-http"]
 
 [dependencies]
 async-trait = "0.1.67"
-bytes = "1.0"
+bytes = "1.2"
 futures-util = { version = "0.3", default-features = false, features = ["alloc"] }
 http = "1.0.0"
 http-body = "1.0.0"

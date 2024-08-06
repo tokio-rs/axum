@@ -106,9 +106,7 @@ where
                 }
             })?;
 
-        let string = std::str::from_utf8(&bytes)
-            .map_err(InvalidUtf8::from_err)?
-            .to_owned();
+        let string = String::from_utf8(bytes.into()).map_err(InvalidUtf8::from_err)?;
 
         Ok(string)
     }
