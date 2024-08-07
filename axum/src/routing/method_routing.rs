@@ -1024,61 +1024,57 @@ where
 
     pub(crate) fn call_with_state(&self, req: Request, state: S) -> RouteFuture<E> {
         macro_rules! call {
-            (
-                $req:expr,
-                $method:expr,
-                $method_variant:ident,
-                $svc:expr
-            ) => {
-                if $method == Method::$method_variant {
-                    match $svc {
-                        MethodEndpoint::None => {}
-                        MethodEndpoint::Route(route) => {
-                            return RouteFuture::from_future(route.clone().oneshot_inner($req))
-                                .strip_body($method == Method::HEAD);
-                        }
-                        MethodEndpoint::BoxedHandler(handler) => {
-                            let route = handler.clone().into_route(state);
-                            return RouteFuture::from_future(route.clone().oneshot_inner($req))
-                                .strip_body($method == Method::HEAD);
-                        }
-                    }
+            ($req:expr => ($(
+                $method_variant:ident: $svc:ident $(=> $strip_body:expr)?
+            ),*)) => {
+                // written with a pattern match like this to ensure we call all routes
+                let Self {
+                    $($svc,)*
+                    fallback,
+                    allow_header,
+                } = self;
+
+                match *$req.method() {
+                    $(
+                        Method::$method_variant => {
+                            match $svc {
+                                MethodEndpoint::None => {}
+                                MethodEndpoint::Route(route) => {
+                                    return RouteFuture::from_future(route.clone().oneshot_inner_owned($req))
+                                        $(.strip_body($strip_body))?;
+                                }
+                                MethodEndpoint::BoxedHandler(handler) => {
+                                    let route = handler.clone().into_route(state);
+                                    return RouteFuture::from_future(route.oneshot_inner_owned($req))
+                                        $(.strip_body($strip_body))?;
+                                }
+                            }
+                        },
+                    )*
+                    _ => {}
                 }
-            };
+
+                let future = fallback.clone().call_with_state(req, state);
+
+                match allow_header {
+                    AllowHeader::None => future.allow_header(Bytes::new()),
+                    AllowHeader::Skip => future,
+                    AllowHeader::Bytes(allow_header) => future.allow_header(allow_header.clone().freeze()),
+                }
+            }
         }
 
-        let method = req.method().clone();
-
-        // written with a pattern match like this to ensure we call all routes
-        let Self {
-            get,
-            head,
-            delete,
-            options,
-            patch,
-            post,
-            put,
-            trace,
-            fallback,
-            allow_header,
-        } = self;
-
-        call!(req, method, HEAD, head);
-        call!(req, method, HEAD, get);
-        call!(req, method, GET, get);
-        call!(req, method, POST, post);
-        call!(req, method, OPTIONS, options);
-        call!(req, method, PATCH, patch);
-        call!(req, method, PUT, put);
-        call!(req, method, DELETE, delete);
-        call!(req, method, TRACE, trace);
-
-        let future = fallback.clone().call_with_state(req, state);
-
-        match allow_header {
-            AllowHeader::None => future.allow_header(Bytes::new()),
-            AllowHeader::Skip => future,
-            AllowHeader::Bytes(allow_header) => future.allow_header(allow_header.clone().freeze()),
+        call! {
+            req => (
+                GET: get,
+                HEAD: head => true,
+                DELETE: delete,
+                OPTIONS: options,
+                PATCH: patch,
+                POST: post,
+                PUT: put,
+                TRACE: trace
+            )
         }
     }
 }

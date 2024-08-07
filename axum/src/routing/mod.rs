@@ -656,14 +656,14 @@ where
         }
     }
 
-    fn call_with_state(&mut self, req: Request, state: S) -> RouteFuture<E> {
+    fn call_with_state(self, req: Request, state: S) -> RouteFuture<E> {
         match self {
             Fallback::Default(route) | Fallback::Service(route) => {
-                RouteFuture::from_future(route.oneshot_inner(req))
+                RouteFuture::from_future(route.oneshot_inner_owned(req))
             }
             Fallback::BoxedHandler(handler) => {
-                let mut route = handler.clone().into_route(state);
-                RouteFuture::from_future(route.oneshot_inner(req))
+                let route = handler.into_route(state);
+                RouteFuture::from_future(route.oneshot_inner_owned(req))
             }
         }
     }
