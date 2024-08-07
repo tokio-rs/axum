@@ -2,7 +2,7 @@
 categories = ["asynchronous", "network-programming", "web-programming"]
 description = "Extra utilities for axum"
 edition = "2021"
-rust-version = "1.66"
+rust-version = "1.70"
 homepage = "https://github.com/tokio-rs/axum"
 keywords = ["http", "web", "framework"]
 license = "MIT"
@@ -60,7 +60,7 @@ form_urlencoded = { version = "1.1.0", optional = true }
 headers = { version = "0.4.0", optional = true }
 multer = { version = "3.0.0", optional = true }
 percent-encoding = { version = "2.1", optional = true }
-prost = { version = "0.12", optional = true }
+prost = { version = "0.13", optional = true }
 serde_html_form = { version = "0.2.0", optional = true }
 serde_json = { version = "1.0.71", optional = true }
 serde_path_to_error = { version = "0.1.8", optional = true }
