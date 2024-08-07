@@ -26,7 +26,7 @@ async fn main() {
         .init();
 
     // build our application with some routes
-    let app = Router::new().route("/:version/foo", get(handler));
+    let app = Router::new().route("/{version}/foo", get(handler));
 
     // run it
     let listener = tokio::net::TcpListener::bind("127.0.0.1:3000")

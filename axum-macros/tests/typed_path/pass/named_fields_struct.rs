@@ -2,7 +2,7 @@ use axum_extra::routing::TypedPath;
 use serde::Deserialize;
 
 #[derive(TypedPath, Deserialize)]
-#[typed_path("/users/:user_id/teams/:team_id")]
+#[typed_path("/users/{user_id}/teams/{team_id}")]
 struct MyPath {
     user_id: u32,
     team_id: u32,
@@ -11,7 +11,7 @@ struct MyPath {
 fn main() {
     _ = axum::Router::<()>::new().route("/", axum::routing::get(|_: MyPath| async {}));
 
-    assert_eq!(MyPath::PATH, "/users/:user_id/teams/:team_id");
+    assert_eq!(MyPath::PATH, "/users/{user_id}/teams/{team_id}");
     assert_eq!(
         format!(
             "{}",
