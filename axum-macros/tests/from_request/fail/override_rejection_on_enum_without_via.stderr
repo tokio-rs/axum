@@ -14,8 +14,8 @@ error[E0277]: the trait bound `fn(MyExtractor) -> impl Future<Output = ()> {hand
    |
    = note: Consider using `#[axum::debug_handler]` to improve the error message
    = help: the following other types implement trait `Handler<T, S>`:
-             <Layered<L, H, T, S> as Handler<T, S>>
-             <MethodRouter<S> as Handler<(), S>>
+             `Layered<L, H, T, S>` implements `Handler<T, S>`
+             `MethodRouter<S>` implements `Handler<(), S>`
 note: required by a bound in `axum::routing::get`
   --> $WORKSPACE/axum/src/routing/method_routing.rs
    |
@@ -36,8 +36,8 @@ error[E0277]: the trait bound `fn(Result<MyExtractor, MyRejection>) -> impl Futu
    |
    = note: Consider using `#[axum::debug_handler]` to improve the error message
    = help: the following other types implement trait `Handler<T, S>`:
-             <Layered<L, H, T, S> as Handler<T, S>>
-             <MethodRouter<S> as Handler<(), S>>
+             `Layered<L, H, T, S>` implements `Handler<T, S>`
+             `MethodRouter<S>` implements `Handler<(), S>`
 note: required by a bound in `MethodRouter::<S>::post`
   --> $WORKSPACE/axum/src/routing/method_routing.rs
    |
