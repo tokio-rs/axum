@@ -1,0 +1,22 @@
+[package]
+name = "example-compression"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+axum = { path = "../../axum" }
+axum-extra = { path = "../../axum-extra", features = ["typed-header"] }
+serde_json = "1"
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+tower = "0.4"
+tower-http = { version = "0.5", features = ["compression-full", "decompression-full"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+[dev-dependencies]
+assert-json-diff = "2.0"
+brotli = "3.4"
+flate2 = "1"
+http = "1"
+zstd = "0.13"
