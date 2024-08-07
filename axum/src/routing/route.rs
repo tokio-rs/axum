@@ -42,11 +42,25 @@ impl<E> Route<E> {
         )))
     }
 
+    /// Variant of [`Route::call`] that takes ownership of the route to avoid cloning.
+    pub(crate) fn call_owned(self, req: Request<Body>) -> RouteFuture<E> {
+        let req = req.map(Body::new);
+        RouteFuture::from_future(self.oneshot_inner_owned(req))
+    }
+
     pub(crate) fn oneshot_inner(
         &mut self,
         req: Request,
     ) -> Oneshot<BoxCloneService<Request, Response, E>, Request> {
         self.0.get_mut().unwrap().clone().oneshot(req)
+    }
+
+    /// Variant of [`Route::oneshot_inner`] that takes ownership of the route to avoid cloning.
+    pub(crate) fn oneshot_inner_owned(
+        self,
+        req: Request,
+    ) -> Oneshot<BoxCloneService<Request, Response, E>, Request> {
+        self.0.into_inner().unwrap().oneshot(req)
     }
 
     pub(crate) fn layer<L, NewError>(self, layer: L) -> Route<NewError>

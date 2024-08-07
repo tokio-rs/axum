@@ -1026,28 +1026,27 @@ where
         macro_rules! call {
             (
                 $req:expr,
-                $method:expr,
                 $method_variant:ident,
                 $svc:expr
             ) => {
-                if $method == Method::$method_variant {
+                if *req.method() == Method::$method_variant {
                     match $svc {
                         MethodEndpoint::None => {}
                         MethodEndpoint::Route(route) => {
-                            return RouteFuture::from_future(route.clone().oneshot_inner($req))
-                                .strip_body($method == Method::HEAD);
+                            return RouteFuture::from_future(
+                                route.clone().oneshot_inner_owned($req),
+                            )
+                            .strip_body(Method::$method_variant == Method::HEAD);
                         }
                         MethodEndpoint::BoxedHandler(handler) => {
                             let route = handler.clone().into_route(state);
-                            return RouteFuture::from_future(route.clone().oneshot_inner($req))
-                                .strip_body($method == Method::HEAD);
+                            return RouteFuture::from_future(route.oneshot_inner_owned($req))
+                                .strip_body(Method::$method_variant == Method::HEAD);
                         }
                     }
                 }
             };
         }
-
-        let method = req.method().clone();
 
         // written with a pattern match like this to ensure we call all routes
         let Self {
@@ -1063,15 +1062,15 @@ where
             allow_header,
         } = self;
 
-        call!(req, method, HEAD, head);
-        call!(req, method, HEAD, get);
-        call!(req, method, GET, get);
-        call!(req, method, POST, post);
-        call!(req, method, OPTIONS, options);
-        call!(req, method, PATCH, patch);
-        call!(req, method, PUT, put);
-        call!(req, method, DELETE, delete);
-        call!(req, method, TRACE, trace);
+        call!(req, HEAD, head);
+        call!(req, HEAD, get);
+        call!(req, GET, get);
+        call!(req, POST, post);
+        call!(req, OPTIONS, options);
+        call!(req, PATCH, patch);
+        call!(req, PUT, put);
+        call!(req, DELETE, delete);
+        call!(req, TRACE, trace);
 
         let future = fallback.clone().call_with_state(req, state);
 
