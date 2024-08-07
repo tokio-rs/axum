@@ -33,8 +33,8 @@ use tracing::error;
 /// # Note
 ///
 /// If you use axum with hyper, hyper will set the `Content-Length` if it is known.
-///
 #[derive(Debug)]
+#[must_use]
 pub struct Attachment<T> {
     inner: T,
     filename: Option<HeaderValue>,
