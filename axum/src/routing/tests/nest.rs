@@ -346,6 +346,90 @@ async fn nest_with_and_without_trailing() {
     assert_eq!(res.status(), StatusCode::OK);
 }
 
+#[crate::test]
+async fn nest_root_default_behavior() {
+    // Default behavior -- is the same as before
+    let app = Router::new().nest("/foo", Router::new().route("/", get(|| async {})));
+
+    let client = TestClient::new(app);
+
+    let res = client.get("/foo").await;
+    assert_eq!(res.status(), StatusCode::OK);
+
+    let res = client.get("/foo/").await;
+    assert_eq!(res.status(), StatusCode::OK);
+
+    let res = client.get("/").await;
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+}
+
+#[tokio::test]
+async fn nest_root_behavior() {
+    {
+        let app = Router::new().nest_with_root(
+            "/foo",
+            Router::new().route("/", get(|| async {})),
+            NestedRootRouteBehavior::OnlyEmpty,
+        );
+
+        let client = TestClient::new(app);
+
+        let res = client.get("/foo").await;
+        assert_eq!(res.status(), StatusCode::OK);
+
+        let res = client.get("/foo/").await;
+        assert_eq!(res.status(), StatusCode::NOT_FOUND);
+
+        let res = client.get("/").await;
+        assert_eq!(res.status(), StatusCode::NOT_FOUND);
+
+        let res = client.get("/foo//").await;
+        assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    }
+    {
+        let app = Router::new().nest_with_root(
+            "/foo",
+            Router::new().route("/", get(|| async {})),
+            NestedRootRouteBehavior::OnlySlash,
+        );
+
+        let client = TestClient::new(app);
+
+        let res = client.get("/foo").await;
+        assert_eq!(res.status(), StatusCode::NOT_FOUND);
+
+        let res = client.get("/foo/").await;
+        assert_eq!(res.status(), StatusCode::OK);
+
+        let res = client.get("/").await;
+        assert_eq!(res.status(), StatusCode::NOT_FOUND);
+
+        let res = client.get("/foo//").await;
+        assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    }
+    {
+        let app = Router::new().nest_with_root(
+            "/foo",
+            Router::new().route("/", get(|| async {})),
+            NestedRootRouteBehavior::EmptyAndSlash,
+        );
+
+        let client = TestClient::new(app);
+
+        let res = client.get("/foo").await;
+        assert_eq!(res.status(), StatusCode::OK);
+
+        let res = client.get("/foo/").await;
+        assert_eq!(res.status(), StatusCode::OK);
+
+        let res = client.get("/").await;
+        assert_eq!(res.status(), StatusCode::NOT_FOUND);
+
+        let res = client.get("/foo//").await;
+        assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    }
+}
+
 #[tokio::test]
 async fn nesting_with_root_inner_router() {
     let app = Router::new()
