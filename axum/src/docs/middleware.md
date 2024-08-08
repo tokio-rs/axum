@@ -534,6 +534,60 @@ let app = Router::new()
 automatically moved to response extensions. You need to manually do that for the
 extensions you need.
 
+State can also be passed from middleware to handlers using [tokio task_local]:
+
+```rust
+use axum::{
+    extract::{Extension, Request},
+    http::StatusCode,
+    middleware::{self, Next},
+    response::{IntoResponse, Response},
+    routing::get,
+    Router,
+};
+use tokio::task_local;
+
+#[derive(Clone)]
+struct CurrentUser {/* ... */}
+
+task_local! {
+    pub static USER: CurrentUser;
+}
+
+async fn auth(req: Request, next: Next) -> Result<Response, StatusCode> {
+    let auth_header = req
+        .headers()
+        .get(http::header::AUTHORIZATION)
+        .and_then(|header| header.to_str().ok());
+
+    let auth_header = if let Some(auth_header) = auth_header {
+        auth_header
+    } else {
+        return Err(StatusCode::UNAUTHORIZED);
+    };
+
+    if let Some(current_user) = authorize_current_user(auth_header).await {
+        Ok(USER.scope(current_user, next.run(req)).await)
+    } else {
+        Err(StatusCode::UNAUTHORIZED)
+    }
+}
+
+async fn authorize_current_user(auth_token: &str) -> Option<CurrentUser> {
+    unimplemented!()
+}
+
+async fn handler() {
+    let current_user = USER.with(|u| u.clone());
+    //...
+}
+
+let app = Router::new()
+    .route("/", get(handler))
+    .route_layer(middleware::from_fn(auth));
+let _: Router = app;
+```
+
 # Rewriting request URI in middleware
 
 Middleware added with [`Router::layer`] will run after routing. That means it
