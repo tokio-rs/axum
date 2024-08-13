@@ -295,7 +295,7 @@
 //!
 //! ## Using [tokio's `task_local` macro](https://docs.rs/tokio/1/tokio/macro.task_local.html):
 //!
-//! This allows to share state with IntoResponse implementations.
+//! This allows to share state with `IntoResponse` implementations.
 //!
 //! ```rust,no_run
 //! use axum::{
@@ -352,7 +352,6 @@
 //! let app: Router = Router::new()
 //!     .route("/", get(handler))
 //!     .route_layer(middleware::from_fn(auth));
-//!
 //! ```
 //!
 //! # Building integrations for axum
