@@ -4,18 +4,16 @@
 //! cargo run -p example-reqwest-response
 //! ```
 
-use std::{convert::Infallible, time::Duration};
-
-use axum::http::{HeaderMap, StatusCode};
 use axum::{
     body::{Body, Bytes},
     extract::State,
-    http::{HeaderName, HeaderValue},
+    http::StatusCode,
     response::{IntoResponse, Response},
     routing::get,
     Router,
 };
 use reqwest::Client;
+use std::{convert::Infallible, time::Duration};
 use tokio_stream::StreamExt;
 use tower_http::trace::TraceLayer;
 use tracing::Span;
@@ -34,7 +32,7 @@ async fn main() {
     let client = Client::new();
 
     let app = Router::new()
-        .route("/", get(proxy_via_reqwest))
+        .route("/", get(stream_reqwest_response))
         .route("/stream", get(stream_some_data))
         // Add some logging so we can see the streams going through
         .layer(TraceLayer::new_for_http().on_body_chunk(
@@ -51,7 +49,7 @@ async fn main() {
     axum::serve(listener, app).await.unwrap();
 }
 
-async fn proxy_via_reqwest(State(client): State<Client>) -> Response {
+async fn stream_reqwest_response(State(client): State<Client>) -> Response {
     let reqwest_response = match client.get("http://127.0.0.1:3000/stream").send().await {
         Ok(res) => res,
         Err(err) => {
@@ -60,16 +58,8 @@ async fn proxy_via_reqwest(State(client): State<Client>) -> Response {
         }
     };
 
-    let response_builder = Response::builder().status(reqwest_response.status().as_u16());
-
-    // Here the mapping of headers is required due to reqwest and axum differ on the http crate versions
-    let mut headers = HeaderMap::with_capacity(reqwest_response.headers().len());
-    headers.extend(reqwest_response.headers().into_iter().map(|(name, value)| {
-        let name = HeaderName::from_bytes(name.as_ref()).unwrap();
-        let value = HeaderValue::from_bytes(value.as_ref()).unwrap();
-        (name, value)
-    }));
-
+    let mut response_builder = Response::builder().status(reqwest_response.status());
+    *response_builder.headers_mut().unwrap() = reqwest_response.headers().clone();
     response_builder
         .body(Body::from_stream(reqwest_response.bytes_stream()))
         // This unwrap is fine because the body is empty here

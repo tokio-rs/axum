@@ -49,7 +49,7 @@ http-body-util = "0.1.0"
 mime = "0.3"
 pin-project-lite = "0.2"
 serde = "1.0"
-tower = { version = "0.4", default_features = false, features = ["util"] }
+tower = { version = "0.4", default-features = false, features = ["util"] }
 tower-layer = "0.3"
 tower-service = "0.3"
 

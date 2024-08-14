@@ -20,7 +20,7 @@ axum::serve(listener, routes).await.unwrap();
 
 # Returning routers with states from functions
 
-When returning `Router`s from functions it is generally recommend not set the
+When returning `Router`s from functions, it is generally recommended not to set the
 state directly:
 
 ```rust

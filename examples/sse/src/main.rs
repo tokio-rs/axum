@@ -96,7 +96,7 @@ mod tests {
         let listening_url = spawn_app("127.0.0.1").await;
 
         let mut event_stream = reqwest::Client::new()
-            .get(&format!("{}/sse", listening_url))
+            .get(format!("{}/sse", listening_url))
             .header("User-Agent", "integration_test")
             .send()
             .await
