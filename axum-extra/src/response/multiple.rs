@@ -6,7 +6,7 @@ use http::{header, HeaderMap, StatusCode};
 use mime::Mime;
 
 /// Create multipart forms to be used in API responses.
-/// 
+///
 /// This struct implements [`IntoResponse`], and so it can be returned from a handler.
 #[derive(Debug)]
 pub struct MultipartForm {
@@ -79,7 +79,6 @@ pub struct Part {
     // - (optionally) a `Content-Type` header, which if not set, defaults to `text/plain`.
     // If the field contains a file, then the file should be identified with that file's MIME type (eg: `image/gif`).
     // If the `MIME` type is not known or specified, then the MIME type should be set to `application/octet-stream`.
-
     /// The name of the part in question
     name: String,
     /// If the part should be treated as a file, the filename that should be attached that part
@@ -201,7 +200,7 @@ impl Part {
 impl FromIterator<Part> for MultipartForm {
     fn from_iter<T: IntoIterator<Item = Part>>(iter: T) -> Self {
         Self {
-            parts: iter.into_iter().collect()
+            parts: iter.into_iter().collect(),
         }
     }
 }
@@ -239,13 +238,7 @@ mod tests {
                     "file.txt",
                     vec![0x68, 0x69, 0x20, 0x6d, 0x6f, 0x6d],
                 ),
-                Part::raw_part(
-                    "part3",
-                    "text/plain",
-                    b"rawpart".to_vec(),
-                    None,
-                )
-                .unwrap(),
+                Part::raw_part("part3", "text/plain", b"rawpart".to_vec(), None).unwrap(),
             ];
             MultipartForm::from_iter(parts)
         }
