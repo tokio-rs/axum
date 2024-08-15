@@ -19,7 +19,7 @@ impl MultipartForm {
     /// # Examples
     ///
     /// ```rust
-    /// use axum_extra::multipart_builder::{MultipartForm, Part};
+    /// use axum_extra::response::multiple::{MultipartForm, Part};
     ///
     /// let parts: Vec<Part> = vec![Part::text("foo".to_string(), "abc"), Part::text("bar".to_string(), "def")];
     /// let form = MultipartForm::with_parts(parts);
@@ -114,17 +114,17 @@ impl Part {
 
     /// Create a new part containing a generic file, with a `Content-Type` of `application/octet-stream`
     /// using the provided file name, field name, and contents. If the MIME type of the file is known, consider
-    /// using `Part::raw_part`. The contents of this part do not need to be valid UTF 8.
+    /// using `Part::raw_part`. 
     ///
     /// # Examples
     ///
     /// ```rust
-    /// use axum_extra::multipart_builder::{MultipartForm, Part};
+    /// use axum_extra::response::multiple::{MultipartForm, Part};
     ///
     /// // create a form with a single part that has a field with a name of "foo",
     /// // with a file name of "foo.txt", and with the specified contents
     /// let parts: Vec<Part> = vec![Part::file("foo", "foo.txt", vec![0x68, 0x68, 0x20, 0x6d, 0x6f, 0x6d])];
-    /// let form = MultipartForm::with_parts(parts);
+    /// let form = MultipartForm::from_iter(parts);
     /// ```
     pub fn file(field_name: &str, file_name: &str, contents: Vec<u8>) -> Self {
         Self {
@@ -145,13 +145,12 @@ impl Part {
     /// # Examples
     ///
     /// ```rust
-    /// use axum_extra::multipart_builder::{MultipartForm, Part, TransferEncoding};
+    /// use axum_extra::response::multiple::{MultipartForm, Part};
     ///
     /// // create a form with a single part that has a field with a name of "part_name",
-    /// // with a MIME type of "application/json", and the supplied contents. This part will not have an associated filename, but will be sent as binary, and does not
-    /// // need to be valid UTF-8.
+    /// // with a MIME type of "application/json", and the supplied contents.
     /// let parts: Vec<Part> = vec![Part::raw_part("part_name", "application/json", vec![0x68, 0x68, 0x20, 0x6d, 0x6f, 0x6d], None).expect("MIME type must be valid")];
-    /// let form = MultipartForm::with_parts(parts);
+    /// let form = MultipartForm::from_iter(parts);
     /// ```
     pub fn raw_part(
         name: &str,
