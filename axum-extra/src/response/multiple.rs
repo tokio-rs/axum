@@ -114,7 +114,7 @@ impl Part {
 
     /// Create a new part containing a generic file, with a `Content-Type` of `application/octet-stream`
     /// using the provided file name, field name, and contents. If the MIME type of the file is known, consider
-    /// using `Part::raw_part`. 
+    /// using `Part::raw_part`.
     ///
     /// # Examples
     ///
