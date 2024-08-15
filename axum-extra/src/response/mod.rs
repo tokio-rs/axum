@@ -6,6 +6,9 @@ mod erased_json;
 #[cfg(feature = "attachment")]
 mod attachment;
 
+// #[cfg(feature = "multipart")]
+pub mod multiple;
+
 #[cfg(feature = "erased-json")]
 pub use erased_json::ErasedJson;
 

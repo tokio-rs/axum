@@ -82,9 +82,6 @@ pub mod routing;
 #[cfg(feature = "json-lines")]
 pub mod json_lines;
 
-#[cfg(feature = "multipart")]
-pub mod multipart_builder;
-
 #[cfg(feature = "typed-header")]
 pub mod typed_header;
 

@@ -1,32 +1,19 @@
-//! Generate forms to use in responses. You're probably looking for `MultipartForm`.
+//! Generate forms to use in responses.
 
 use axum::response::{IntoResponse, Response};
 use fastrand;
 use http::{header, HeaderMap, StatusCode};
 use mime::Mime;
 
-/// The `Content-Transfer-Encoding` setting for a part.
-#[derive(Debug)]
-pub enum TransferEncoding {
-    /// If not specified, encoding defaults to UTF-8
-    TextUTF8,
-    /// If transferring raw binary data that is not guaranteed to be valid UTF-8.
-    Binary,
-}
-
 /// Create multipart forms to be used in API responses.
-/// This struct implements [IntoResponse], and so it can be returned from a handler.
+/// 
+/// This struct implements [`IntoResponse`], and so it can be returned from a handler.
 #[derive(Debug)]
 pub struct MultipartForm {
     parts: Vec<Part>,
 }
 
 impl MultipartForm {
-    /// Construct a new empty multipart form with no parts.
-    pub fn new() -> Self {
-        MultipartForm { parts: Vec::new() }
-    }
-
     /// Initialize a new multipart form with the provided vector of parts.
     ///
     /// # Examples
@@ -37,6 +24,7 @@ impl MultipartForm {
     /// let parts: Vec<Part> = vec![Part::text("foo".to_string(), "abc"), Part::text("bar".to_string(), "def")];
     /// let form = MultipartForm::with_parts(parts);
     /// ```
+    #[deprecated]
     pub fn with_parts(parts: Vec<Part>) -> Self {
         MultipartForm { parts }
     }
@@ -44,7 +32,7 @@ impl MultipartForm {
 
 impl IntoResponse for MultipartForm {
     fn into_response(self) -> Response {
-        // see RFC2388 for details
+        // see RFC5758 for details
         let boundary = generate_boundary();
         let mut headers = HeaderMap::new();
         let mime_type: Mime = match format!("multipart/form-data; boundary={}", boundary).parse() {
@@ -72,32 +60,26 @@ impl IntoResponse for MultipartForm {
     }
 }
 
-impl Default for MultipartForm {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-// Every part is expected to contain:
-// - a [Content-Disposition](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Disposition
-// header, where `Content-Disposition` is set to `form-data`, with a parameter of `name` that is set to
-// the name of the field in the form. In the below example, the name of the field is `user`:
-// ```
-// Content-Disposition: form-data; name="user"
-// ```
-// If the field contains a file, then the `filename` parameter may be set to the name of the file.
-// Handling for non-ascii field names is not done here, support for non-ascii characters may be encoded using
-// methodology described in RFC 2047.
-// - (optionally) a `Content-Type` header, which if not set, defaults to `text/plain`.
-// If the field contains a file, then the file should be identified with that file's MIME type (eg: `image/gif`).
-// If the `MIME` type is not known or specified, then the MIME type should be set to `application/octet-stream`.
-// - If the part does not conform to the default encoding, then the `Content-Transfer-Encoding` header may be supplied.
 // Valid settings for that header are: "base64", "quoted-printable", "8bit", "7bit", and "binary".
 /// A single part of a multipart form as defined by
 /// <https://www.w3.org/TR/html401/interact/forms.html#h-17.13.4>
-/// and RFC2388.
+/// and RFC5758.
 #[derive(Debug)]
 pub struct Part {
+    // Every part is expected to contain:
+    // - a [Content-Disposition](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Disposition
+    // header, where `Content-Disposition` is set to `form-data`, with a parameter of `name` that is set to
+    // the name of the field in the form. In the below example, the name of the field is `user`:
+    // ```
+    // Content-Disposition: form-data; name="user"
+    // ```
+    // If the field contains a file, then the `filename` parameter may be set to the name of the file.
+    // Handling for non-ascii field names is not done here, support for non-ascii characters may be encoded using
+    // methodology described in RFC 2047.
+    // - (optionally) a `Content-Type` header, which if not set, defaults to `text/plain`.
+    // If the field contains a file, then the file should be identified with that file's MIME type (eg: `image/gif`).
+    // If the `MIME` type is not known or specified, then the MIME type should be set to `application/octet-stream`.
+
     /// The name of the part in question
     name: String,
     /// If the part should be treated as a file, the filename that should be attached that part
@@ -106,8 +88,6 @@ pub struct Part {
     mime_type: Mime,
     /// The content/body of the part
     contents: Vec<u8>,
-    /// The encoding that the contents should be encoded under
-    encoding: TransferEncoding,
 }
 
 impl Part {
@@ -117,12 +97,12 @@ impl Part {
     /// # Examples
     ///
     /// ```rust
-    /// use axum_extra::multipart_builder::{MultipartForm, Part};
+    /// use axum_extra::response::multiple::{MultipartForm, Part};
     ///
     /// // create a form with a single part that has a field with a name of "foo",
     /// // and a value of "abc"
     /// let parts: Vec<Part> = vec![Part::text("foo".to_string(), "abc")];
-    /// let form = MultipartForm::with_parts(parts);
+    /// let form = MultipartForm::from_iter(parts);
     /// ```
     pub fn text(name: String, contents: &str) -> Self {
         Self {
@@ -130,7 +110,6 @@ impl Part {
             filename: None,
             mime_type: mime::TEXT_PLAIN_UTF_8,
             contents: contents.as_bytes().to_vec(),
-            encoding: TransferEncoding::TextUTF8,
         }
     }
 
@@ -156,7 +135,6 @@ impl Part {
             // See RFC2388 section 3 for specifics.
             mime_type: mime::APPLICATION_OCTET_STREAM,
             contents,
-            encoding: TransferEncoding::Binary,
         }
     }
 
@@ -173,7 +151,7 @@ impl Part {
     /// // create a form with a single part that has a field with a name of "part_name",
     /// // with a MIME type of "application/json", and the supplied contents. This part will not have an associated filename, but will be sent as binary, and does not
     /// // need to be valid UTF-8.
-    /// let parts: Vec<Part> = vec![Part::raw_part("part_name", "application/json", vec![0x68, 0x68, 0x20, 0x6d, 0x6f, 0x6d], None, TransferEncoding::Binary).expect("MIME type must be valid")];
+    /// let parts: Vec<Part> = vec![Part::raw_part("part_name", "application/json", vec![0x68, 0x68, 0x20, 0x6d, 0x6f, 0x6d], None).expect("MIME type must be valid")];
     /// let form = MultipartForm::with_parts(parts);
     /// ```
     pub fn raw_part(
@@ -181,7 +159,6 @@ impl Part {
         mime_type: &str,
         contents: Vec<u8>,
         filename: Option<&str>,
-        encoding: TransferEncoding,
     ) -> Result<Self, &'static str> {
         let mime_type = mime_type.parse().map_err(|_| "Invalid MIME type")?;
         Ok(Self {
@@ -189,7 +166,6 @@ impl Part {
             filename: filename.map(|f| f.to_owned()),
             mime_type,
             contents,
-            encoding,
         })
     }
 
@@ -200,9 +176,6 @@ impl Part {
         // Content-Disposition: form-data; name="FIELD_NAME"; filename="FILENAME"\r\n
         // // the mime type (not strictly required by the spec, but always sent here)
         // Content-Type: mime/type\r\n
-        // // if the part does not conform to the rest of the request's encoding,
-        // // this is specified
-        // Content-Transfer-Encoding: "ENCODING"\r\n
         // // a blank line, then the contents of the file start
         // \r\n
         // CONTENTS\r\n
@@ -216,21 +189,20 @@ impl Part {
         serialized_part += "\r\n";
         // specify the MIME type
         serialized_part += &format!("Content-Type: {}\r\n", self.mime_type);
-        // if an encoding was set, add that
-        // determine what encoding to label the body of the field with
-        let encoding: Option<&str> = match self.encoding {
-            TransferEncoding::TextUTF8 => None,
-            TransferEncoding::Binary => Some("binary"),
-        };
-        if let Some(encoding) = encoding {
-            serialized_part += &format!("Content-Transfer-Encoding: {}\r\n", encoding);
-        }
         serialized_part += "\r\n";
         let mut part_bytes = serialized_part.as_bytes().to_vec();
         part_bytes.extend_from_slice(&self.contents);
         part_bytes.extend_from_slice(b"\r\n");
 
         part_bytes
+    }
+}
+
+impl FromIterator<Part> for MultipartForm {
+    fn from_iter<T: IntoIterator<Item = Part>>(iter: T) -> Self {
+        Self {
+            parts: iter.into_iter().collect()
+        }
     }
 }
 
@@ -272,11 +244,10 @@ mod tests {
                     "text/plain",
                     b"rawpart".to_vec(),
                     None,
-                    super::TransferEncoding::TextUTF8,
                 )
                 .unwrap(),
             ];
-            MultipartForm::with_parts(parts)
+            MultipartForm::from_iter(parts)
         }
 
         // make a request to that handle
@@ -299,7 +270,6 @@ mod tests {
                 --{boundary}\r\n\
                 Content-Disposition: form-data; name=\"part2\"; filename=\"file.txt\"\r\n\
                 Content-Type: application/octet-stream\r\n\
-                Content-Transfer-Encoding: binary\r\n\
                 \r\n\
                 hi mom\r\n\
                 --{boundary}\r\n\
