@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- None.
+- **added:** Implement `Copy` for `DefaultBodyLimit`
+- **added**: `DefaultBodyLimit::max` and `DefaultBodyLimit::disable` are now
+  allowed in const context
 
 # 0.4.3 (13. January, 2024)
 
