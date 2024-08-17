@@ -48,7 +48,7 @@ If your project isn't listed here and you would like it to be, please feel free 
 - [loco.rs](https://github.com/loco-rs/loco): A full stack Web and API productivity framework similar to Rails, based on Axum.
 - [axum-test](https://crates.io/crates/axum-test): High level library for writing Cargo tests that run against Axum.
 - [axum-messages](https://github.com/maxcountryman/axum-messages): One-time notification messages for Axum.
-- [spring-rs](https://github.com/spring-rs/spring-rs): spring-rs is a microservice framework written in rust inspired by java's spring-boot
+- [spring-rs](https://github.com/spring-rs/spring-rs): spring-rs is a microservice framework written in rust inspired by java's spring-boot, based on axum
 
 ## Project showcase
 
