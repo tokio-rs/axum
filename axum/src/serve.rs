@@ -173,6 +173,11 @@ impl<M, S> Serve<M, S> {
             ..self
         }
     }
+
+    /// Returns the local address this server is bound to.
+    pub fn local_addr(&self) -> io::Result<std::net::SocketAddr> {
+        self.tcp_listener.local_addr()
+    }
 }
 
 #[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
@@ -306,6 +311,11 @@ impl<M, S, F> WithGracefulShutdown<M, S, F> {
             tcp_nodelay: Some(nodelay),
             ..self
         }
+    }
+
+    /// Returns the local address this server is bound to.
+    pub fn local_addr(&self) -> io::Result<std::net::SocketAddr> {
+        self.tcp_listener.local_addr()
     }
 }
 
