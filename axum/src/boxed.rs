@@ -2,7 +2,7 @@ use std::{convert::Infallible, fmt};
 
 use crate::extract::Request;
 use crate::util::AxumMutex;
-use tower::Service;
+use tower_service::Service;
 
 use crate::{
     handler::Handler,
