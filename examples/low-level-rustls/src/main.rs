@@ -16,10 +16,7 @@ use std::{
     sync::Arc,
 };
 use tokio::net::TcpListener;
-use tokio_rustls::{
-    rustls::{Certificate, PrivateKey, ServerConfig},
-    TlsAcceptor,
-};
+use tokio_rustls::{rustls::ServerConfig, TlsAcceptor};
 use tower_service::Service;
 use tracing::{error, info, warn};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
@@ -98,17 +95,12 @@ fn rustls_server_config(key: impl AsRef<Path>, cert: impl AsRef<Path>) -> Arc<Se
     let mut key_reader = BufReader::new(File::open(key).unwrap());
     let mut cert_reader = BufReader::new(File::open(cert).unwrap());
 
-    let key = PrivateKey(pkcs8_private_keys(&mut key_reader).unwrap().remove(0));
-    let certs = certs(&mut cert_reader)
-        .unwrap()
-        .into_iter()
-        .map(Certificate)
-        .collect();
+    let key = pkcs8_private_keys(&mut key_reader).next().unwrap().unwrap();
+    let certs = certs(&mut cert_reader).collect::<Result<_, _>>().unwrap();
 
     let mut config = ServerConfig::builder()
-        .with_safe_defaults()
         .with_no_client_auth()
-        .with_single_cert(certs, key)
+        .with_single_cert(certs, key.into())
         .expect("bad certificate/key");
 
     config.alpn_protocols = vec![b"h2".to_vec(), b"http/1.1".to_vec()];
