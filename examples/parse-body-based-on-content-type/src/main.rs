@@ -22,7 +22,7 @@ async fn main() {
     tracing_subscriber::registry()
         .with(
             tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| {
-                "example_parse_body_based_on_content_type=debug,tower_http=debug".into()
+                concat!(env!("CARGO_CRATE_NAME"), "=debug,tower_http=debug").into()
             }),
         )
         .with(tracing_subscriber::fmt::layer())

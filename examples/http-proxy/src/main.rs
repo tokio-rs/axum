@@ -36,8 +36,9 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 async fn main() {
     tracing_subscriber::registry()
         .with(
-            tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "example_http_proxy=trace,tower_http=debug".into()),
+            tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| {
+                concat!(env!("CARGO_CRATE_NAME"), "=trace,tower_http=debug").into()
+            }),
         )
         .with(tracing_subscriber::fmt::layer())
         .init();
