@@ -11,10 +11,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **added:** `axum::serve::Serve::tcp_nodelay` and `axum::serve::WithGracefulShutdown::tcp_nodelay` ([#2653])
 - **added:** `Router::has_routes` function ([#2790])
 - **change:** Update tokio-tungstenite to 0.23 ([#2841])
+- **added:** `Serve::local_addr` and `WithGracefulShutdown::local_addr` functions ([#2881])
 
 [#2653]: https://github.com/tokio-rs/axum/pull/2653
 [#2790]: https://github.com/tokio-rs/axum/pull/2790
 [#2841]: https://github.com/tokio-rs/axum/pull/2841
+[#2881]: https://github.com/tokio-rs/axum/pull/2881
 
 # 0.7.5 (24. March, 2024)
 
