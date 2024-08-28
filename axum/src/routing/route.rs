@@ -7,7 +7,7 @@ use axum_core::{extract::Request, response::IntoResponse};
 use bytes::Bytes;
 use http::{
     header::{self, CONTENT_LENGTH},
-    HeaderMap, HeaderValue,
+    HeaderMap, HeaderValue, Method,
 };
 use pin_project_lite::pin_project;
 use std::{
@@ -42,11 +42,9 @@ impl<E> Route<E> {
         )))
     }
 
-    pub(crate) fn oneshot_inner(
-        &mut self,
-        req: Request,
-    ) -> Oneshot<BoxCloneService<Request, Response, E>, Request> {
-        self.0.get_mut().unwrap().clone().oneshot(req)
+    pub(crate) fn oneshot_inner(&mut self, req: Request) -> RouteFuture<E> {
+        let method = req.method().clone();
+        RouteFuture::from_future(method, self.0.get_mut().unwrap().clone().oneshot(req))
     }
 
     pub(crate) fn layer<L, NewError>(self, layer: L) -> Route<NewError>
@@ -98,8 +96,7 @@ where
 
     #[inline]
     fn call(&mut self, req: Request<B>) -> Self::Future {
-        let req = req.map(Body::new);
-        RouteFuture::from_future(self.oneshot_inner(req))
+        self.oneshot_inner(req.map(Body::new))
     }
 }
 
@@ -108,7 +105,7 @@ pin_project! {
     pub struct RouteFuture<E> {
         #[pin]
         kind: RouteFutureKind<E>,
-        strip_body: bool,
+        method: Method,
         allow_header: Option<Bytes>,
     }
 }
@@ -131,18 +128,14 @@ pin_project! {
 
 impl<E> RouteFuture<E> {
     pub(crate) fn from_future(
+        method: Method,
         future: Oneshot<BoxCloneService<Request, Response, E>, Request>,
     ) -> Self {
         Self {
             kind: RouteFutureKind::Future { future },
-            strip_body: false,
+            method,
             allow_header: None,
         }
-    }
-
-    pub(crate) fn strip_body(mut self, strip_body: bool) -> Self {
-        self.strip_body = strip_body;
-        self
     }
 
     pub(crate) fn allow_header(mut self, allow_header: Bytes) -> Self {
@@ -171,10 +164,24 @@ impl<E> Future for RouteFuture<E> {
 
         set_allow_header(res.headers_mut(), this.allow_header);
 
-        // make sure to set content-length before removing the body
-        set_content_length(res.size_hint(), res.headers_mut());
+        if *this.method == Method::CONNECT && res.status().is_success() {
+            // From https://httpwg.org/specs/rfc9110.html#CONNECT:
+            // > A server MUST NOT send any Transfer-Encoding or
+            // > Content-Length header fields in a 2xx (Successful)
+            // > response to CONNECT.
+            if res.headers().contains_key(&CONTENT_LENGTH)
+                || res.headers().contains_key(&header::TRANSFER_ENCODING)
+                || res.size_hint().lower() != 0
+            {
+                error!("response to CONNECT with nonempty body");
+                res = res.map(|_| Body::empty());
+            }
+        } else {
+            // make sure to set content-length before removing the body
+            set_content_length(res.size_hint(), res.headers_mut());
+        }
 
-        let res = if *this.strip_body {
+        let res = if *this.method == Method::HEAD {
             res.map(|_| Body::empty())
         } else {
             res

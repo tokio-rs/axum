@@ -113,6 +113,7 @@ features = [
 [dev-dependencies]
 anyhow = "1.0"
 axum-macros = { path = "../axum-macros", version = "0.4.1", features = ["__private"] }
+hyper = { version = "1.1.0", features = ["client"] }
 quickcheck = "1.0"
 quickcheck_macros = "1.0"
 reqwest = { version = "0.12", default-features = false, features = ["json", "stream", "multipart"] }

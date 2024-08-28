@@ -19,7 +19,7 @@
 use axum::{
     extract::ws::{Message, WebSocket, WebSocketUpgrade},
     response::IntoResponse,
-    routing::get,
+    routing::any,
     Router,
 };
 use axum_extra::TypedHeader;
@@ -57,7 +57,7 @@ async fn main() {
     // build our application with some routes
     let app = Router::new()
         .fallback_service(ServeDir::new(assets_dir).append_index_html_on_directories(true))
-        .route("/ws", get(ws_handler))
+        .route("/ws", any(ws_handler))
         // logging so we can see whats going on
         .layer(
             TraceLayer::new_for_http()
@@ -77,7 +77,7 @@ async fn main() {
     .unwrap();
 }
 
-/// The handler for the HTTP request (this gets called when the HTTP GET lands at the start
+/// The handler for the HTTP request (this gets called when the HTTP request lands at the start
 /// of websocket negotiation). After this completes, the actual switching from HTTP to
 /// websocket protocol will occur.
 /// This is the last point where we can extract TCP/IP metadata such as IP address of the client
