@@ -427,6 +427,9 @@ where
                 return Err(MethodNotConnect.into());
             }
 
+            // if this feature flag is disabled, we won’t be receiving an HTTP/2 request to begin
+            // with.
+            #[cfg(feature = "http2")]
             if parts
                 .extensions
                 .get::<hyper::ext::Protocol>()
