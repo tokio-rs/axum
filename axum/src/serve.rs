@@ -81,6 +81,12 @@ use tower_service::Service;
 /// See also [`HandlerWithoutStateExt::into_make_service_with_connect_info`] and
 /// [`HandlerService::into_make_service_with_connect_info`].
 ///
+/// # Return Value
+///
+/// Although this future resolves to `io::Result<()>`, it will never actually complete or return an
+/// error. Errors on the TCP socket will be handled by sleeping for a short while (currently, one
+/// second).
+///
 /// [`Router`]: crate::Router
 /// [`Router::into_make_service_with_connect_info`]: crate::Router::into_make_service_with_connect_info
 /// [`MethodRouter`]: crate::routing::MethodRouter
@@ -136,6 +142,11 @@ impl<M, S> Serve<M, S> {
     ///     // ...
     /// }
     /// ```
+    ///
+    /// # Return Value
+    ///
+    /// Similarly to [`serve`], although this future resolves to `io::Result<()>`, it will never
+    /// error. It returns `Ok(())` only after the `signal` future completes.
     pub fn with_graceful_shutdown<F>(self, signal: F) -> WithGracefulShutdown<M, S, F>
     where
         F: Future<Output = ()> + Send + 'static,
@@ -213,61 +224,72 @@ where
     type IntoFuture = private::ServeFuture;
 
     fn into_future(self) -> Self::IntoFuture {
-        private::ServeFuture(Box::pin(async move {
-            let Self {
-                tcp_listener,
-                mut make_service,
-                tcp_nodelay,
-                _marker: _,
-            } = self;
+        private::ServeFuture(Box::pin(async { self.run().await }))
+    }
+}
 
-            loop {
-                let (tcp_stream, remote_addr) = match tcp_accept(&tcp_listener).await {
-                    Some(conn) => conn,
-                    None => continue,
-                };
+#[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
+impl<M, S> Serve<M, S>
+where
+    M: for<'a> Service<IncomingStream<'a>, Error = Infallible, Response = S> + Send + 'static,
+    for<'a> <M as Service<IncomingStream<'a>>>::Future: Send,
+    S: Service<Request, Response = Response, Error = Infallible> + Clone + Send + 'static,
+    S::Future: Send,
+{
+    async fn run(self) -> ! {
+        let Self {
+            tcp_listener,
+            mut make_service,
+            tcp_nodelay,
+            _marker: _,
+        } = self;
 
-                if let Some(nodelay) = tcp_nodelay {
-                    if let Err(err) = tcp_stream.set_nodelay(nodelay) {
-                        trace!("failed to set TCP_NODELAY on incoming connection: {err:#}");
+        loop {
+            let (tcp_stream, remote_addr) = match tcp_accept(&tcp_listener).await {
+                Some(conn) => conn,
+                None => continue,
+            };
+
+            if let Some(nodelay) = tcp_nodelay {
+                if let Err(err) = tcp_stream.set_nodelay(nodelay) {
+                    trace!("failed to set TCP_NODELAY on incoming connection: {err:#}");
+                }
+            }
+
+            let tcp_stream = TokioIo::new(tcp_stream);
+
+            poll_fn(|cx| make_service.poll_ready(cx))
+                .await
+                .unwrap_or_else(|err| match err {});
+
+            let tower_service = make_service
+                .call(IncomingStream {
+                    tcp_stream: &tcp_stream,
+                    remote_addr,
+                })
+                .await
+                .unwrap_or_else(|err| match err {})
+                .map_request(|req: Request<Incoming>| req.map(Body::new));
+
+            let hyper_service = TowerToHyperService::new(tower_service);
+
+            tokio::spawn(async move {
+                match Builder::new(TokioExecutor::new())
+                    // upgrades needed for websockets
+                    .serve_connection_with_upgrades(tcp_stream, hyper_service)
+                    .await
+                {
+                    Ok(()) => {}
+                    Err(_err) => {
+                        // This error only appears when the client doesn't send a request and
+                        // terminate the connection.
+                        //
+                        // If client sends one request then terminate connection whenever, it doesn't
+                        // appear.
                     }
                 }
-
-                let tcp_stream = TokioIo::new(tcp_stream);
-
-                poll_fn(|cx| make_service.poll_ready(cx))
-                    .await
-                    .unwrap_or_else(|err| match err {});
-
-                let tower_service = make_service
-                    .call(IncomingStream {
-                        tcp_stream: &tcp_stream,
-                        remote_addr,
-                    })
-                    .await
-                    .unwrap_or_else(|err| match err {})
-                    .map_request(|req: Request<Incoming>| req.map(Body::new));
-
-                let hyper_service = TowerToHyperService::new(tower_service);
-
-                tokio::spawn(async move {
-                    match Builder::new(TokioExecutor::new())
-                        // upgrades needed for websockets
-                        .serve_connection_with_upgrades(tcp_stream, hyper_service)
-                        .await
-                    {
-                        Ok(()) => {}
-                        Err(_err) => {
-                            // This error only appears when the client doesn't send a request and
-                            // terminate the connection.
-                            //
-                            // If client sends one request then terminate connection whenever, it doesn't
-                            // appear.
-                        }
-                    }
-                });
-            }
-        }))
+            });
+        }
     }
 }
 
@@ -357,6 +379,23 @@ where
     type IntoFuture = private::ServeFuture;
 
     fn into_future(self) -> Self::IntoFuture {
+        private::ServeFuture(Box::pin(async {
+            self.run().await;
+            Ok(())
+        }))
+    }
+}
+
+#[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
+impl<M, S, F> WithGracefulShutdown<M, S, F>
+where
+    M: for<'a> Service<IncomingStream<'a>, Error = Infallible, Response = S> + Send + 'static,
+    for<'a> <M as Service<IncomingStream<'a>>>::Future: Send,
+    S: Service<Request, Response = Response, Error = Infallible> + Clone + Send + 'static,
+    S::Future: Send,
+    F: Future<Output = ()> + Send + 'static,
+{
+    async fn run(self) {
         let Self {
             tcp_listener,
             mut make_service,
@@ -375,90 +414,86 @@ where
 
         let (close_tx, close_rx) = watch::channel(());
 
-        private::ServeFuture(Box::pin(async move {
-            loop {
-                let (tcp_stream, remote_addr) = tokio::select! {
-                    conn = tcp_accept(&tcp_listener) => {
-                        match conn {
-                            Some(conn) => conn,
-                            None => continue,
-                        }
+        loop {
+            let (tcp_stream, remote_addr) = tokio::select! {
+                conn = tcp_accept(&tcp_listener) => {
+                    match conn {
+                        Some(conn) => conn,
+                        None => continue,
                     }
-                    _ = signal_tx.closed() => {
-                        trace!("signal received, not accepting new connections");
-                        break;
-                    }
-                };
+                }
+                _ = signal_tx.closed() => {
+                    trace!("signal received, not accepting new connections");
+                    break;
+                }
+            };
 
-                if let Some(nodelay) = tcp_nodelay {
-                    if let Err(err) = tcp_stream.set_nodelay(nodelay) {
-                        trace!("failed to set TCP_NODELAY on incoming connection: {err:#}");
+            if let Some(nodelay) = tcp_nodelay {
+                if let Err(err) = tcp_stream.set_nodelay(nodelay) {
+                    trace!("failed to set TCP_NODELAY on incoming connection: {err:#}");
+                }
+            }
+
+            let tcp_stream = TokioIo::new(tcp_stream);
+
+            trace!("connection {remote_addr} accepted");
+
+            poll_fn(|cx| make_service.poll_ready(cx))
+                .await
+                .unwrap_or_else(|err| match err {});
+
+            let tower_service = make_service
+                .call(IncomingStream {
+                    tcp_stream: &tcp_stream,
+                    remote_addr,
+                })
+                .await
+                .unwrap_or_else(|err| match err {})
+                .map_request(|req: Request<Incoming>| req.map(Body::new));
+
+            let hyper_service = TowerToHyperService::new(tower_service);
+
+            let signal_tx = Arc::clone(&signal_tx);
+
+            let close_rx = close_rx.clone();
+
+            tokio::spawn(async move {
+                let builder = Builder::new(TokioExecutor::new());
+                let conn = builder.serve_connection_with_upgrades(tcp_stream, hyper_service);
+                pin_mut!(conn);
+
+                let signal_closed = signal_tx.closed().fuse();
+                pin_mut!(signal_closed);
+
+                loop {
+                    tokio::select! {
+                        result = conn.as_mut() => {
+                            if let Err(_err) = result {
+                                trace!("failed to serve connection: {_err:#}");
+                            }
+                            break;
+                        }
+                        _ = &mut signal_closed => {
+                            trace!("signal received in task, starting graceful shutdown");
+                            conn.as_mut().graceful_shutdown();
+                        }
                     }
                 }
 
-                let tcp_stream = TokioIo::new(tcp_stream);
+                trace!("connection {remote_addr} closed");
 
-                trace!("connection {remote_addr} accepted");
+                drop(close_rx);
+            });
+        }
 
-                poll_fn(|cx| make_service.poll_ready(cx))
-                    .await
-                    .unwrap_or_else(|err| match err {});
+        drop(close_rx);
+        drop(tcp_listener);
 
-                let tower_service = make_service
-                    .call(IncomingStream {
-                        tcp_stream: &tcp_stream,
-                        remote_addr,
-                    })
-                    .await
-                    .unwrap_or_else(|err| match err {})
-                    .map_request(|req: Request<Incoming>| req.map(Body::new));
-
-                let hyper_service = TowerToHyperService::new(tower_service);
-
-                let signal_tx = Arc::clone(&signal_tx);
-
-                let close_rx = close_rx.clone();
-
-                tokio::spawn(async move {
-                    let builder = Builder::new(TokioExecutor::new());
-                    let conn = builder.serve_connection_with_upgrades(tcp_stream, hyper_service);
-                    pin_mut!(conn);
-
-                    let signal_closed = signal_tx.closed().fuse();
-                    pin_mut!(signal_closed);
-
-                    loop {
-                        tokio::select! {
-                            result = conn.as_mut() => {
-                                if let Err(_err) = result {
-                                    trace!("failed to serve connection: {_err:#}");
-                                }
-                                break;
-                            }
-                            _ = &mut signal_closed => {
-                                trace!("signal received in task, starting graceful shutdown");
-                                conn.as_mut().graceful_shutdown();
-                            }
-                        }
-                    }
-
-                    trace!("connection {remote_addr} closed");
-
-                    drop(close_rx);
-                });
-            }
-
-            drop(close_rx);
-            drop(tcp_listener);
-
-            trace!(
-                "waiting for {} task(s) to finish",
-                close_tx.receiver_count()
-            );
-            close_tx.closed().await;
-
-            Ok(())
-        }))
+        trace!(
+            "waiting for {} task(s) to finish",
+            close_tx.receiver_count()
+        );
+        close_tx.closed().await;
     }
 }
 
