@@ -7,7 +7,7 @@ use axum_core::{extract::Request, response::IntoResponse};
 use bytes::Bytes;
 use http::{
     header::{self, CONTENT_LENGTH},
-    HeaderMap, HeaderValue,
+    HeaderMap, HeaderValue, Method,
 };
 use pin_project_lite::pin_project;
 use std::{
@@ -15,10 +15,10 @@ use std::{
     fmt,
     future::Future,
     pin::Pin,
-    task::{Context, Poll},
+    task::{ready, Context, Poll},
 };
 use tower::{
-    util::{MapErrLayer, MapRequestLayer, MapResponseLayer, Oneshot},
+    util::{MapErrLayer, MapResponseLayer, Oneshot},
     ServiceExt,
 };
 use tower_layer::Layer;
@@ -42,11 +42,9 @@ impl<E> Route<E> {
         ))
     }
 
-    pub(crate) fn oneshot_inner(
-        &mut self,
-        req: Request,
-    ) -> Oneshot<BoxCloneService<Request, Response, E>, Request> {
-        self.0.clone().oneshot(req)
+    pub(crate) fn oneshot_inner(&mut self, req: Request) -> RouteFuture<E> {
+        let method = req.method().clone();
+        RouteFuture::new(method, self.0.clone().oneshot(req))
     }
 
     pub(crate) fn layer<L, NewError>(self, layer: L) -> Route<NewError>
@@ -59,7 +57,6 @@ impl<E> Route<E> {
         NewError: 'static,
     {
         let layer = (
-            MapRequestLayer::new(|req: Request<_>| req.map(Body::new)),
             MapErrLayer::new(Into::into),
             MapResponseLayer::new(IntoResponse::into_response),
             layer,
@@ -98,8 +95,7 @@ where
 
     #[inline]
     fn call(&mut self, req: Request<B>) -> Self::Future {
-        let req = req.map(Body::new);
-        RouteFuture::from_future(self.oneshot_inner(req))
+        self.oneshot_inner(req.map(Body::new)).not_top_level()
     }
 }
 
@@ -107,46 +103,30 @@ pin_project! {
     /// Response future for [`Route`].
     pub struct RouteFuture<E> {
         #[pin]
-        kind: RouteFutureKind<E>,
+        inner: Oneshot<BoxCloneService<Request, Response, E>, Request>,
         strip_body: bool,
         allow_header: Option<Bytes>,
-    }
-}
-
-pin_project! {
-    #[project = RouteFutureKindProj]
-    enum RouteFutureKind<E> {
-        Future {
-            #[pin]
-            future: Oneshot<
-                BoxCloneService<Request, Response, E>,
-                Request,
-            >,
-        },
-        Response {
-            response: Option<Response>,
-        }
+        top_level: bool,
     }
 }
 
 impl<E> RouteFuture<E> {
-    pub(crate) fn from_future(
-        future: Oneshot<BoxCloneService<Request, Response, E>, Request>,
-    ) -> Self {
+    fn new(method: Method, inner: Oneshot<BoxCloneService<Request, Response, E>, Request>) -> Self {
         Self {
-            kind: RouteFutureKind::Future { future },
-            strip_body: false,
+            inner,
+            strip_body: method == Method::HEAD,
             allow_header: None,
+            top_level: true,
         }
-    }
-
-    pub(crate) fn strip_body(mut self, strip_body: bool) -> Self {
-        self.strip_body = strip_body;
-        self
     }
 
     pub(crate) fn allow_header(mut self, allow_header: Bytes) -> Self {
         self.allow_header = Some(allow_header);
+        self
+    }
+
+    pub(crate) fn not_top_level(mut self) -> Self {
+        self.top_level = false;
         self
     }
 }
@@ -157,28 +137,18 @@ impl<E> Future for RouteFuture<E> {
     #[inline]
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let this = self.project();
+        let mut res = ready!(this.inner.poll(cx))?;
 
-        let mut res = match this.kind.project() {
-            RouteFutureKindProj::Future { future } => match future.poll(cx) {
-                Poll::Ready(Ok(res)) => res,
-                Poll::Ready(Err(err)) => return Poll::Ready(Err(err)),
-                Poll::Pending => return Poll::Pending,
-            },
-            RouteFutureKindProj::Response { response } => {
-                response.take().expect("future polled after completion")
+        if *this.top_level {
+            set_allow_header(res.headers_mut(), this.allow_header);
+
+            // make sure to set content-length before removing the body
+            set_content_length(res.size_hint(), res.headers_mut());
+
+            if *this.strip_body {
+                *res.body_mut() = Body::empty();
             }
-        };
-
-        set_allow_header(res.headers_mut(), this.allow_header);
-
-        // make sure to set content-length before removing the body
-        set_content_length(res.size_hint(), res.headers_mut());
-
-        let res = if *this.strip_body {
-            res.map(|_| Body::empty())
-        } else {
-            res
-        };
+        }
 
         Poll::Ready(Ok(res))
     }

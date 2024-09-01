@@ -1035,13 +1035,11 @@ where
                     match $svc {
                         MethodEndpoint::None => {}
                         MethodEndpoint::Route(route) => {
-                            return RouteFuture::from_future(route.clone().oneshot_inner($req))
-                                .strip_body($method == Method::HEAD);
+                            return route.clone().oneshot_inner($req);
                         }
                         MethodEndpoint::BoxedHandler(handler) => {
-                            let route = handler.clone().into_route(state);
-                            return RouteFuture::from_future(route.clone().oneshot_inner($req))
-                                .strip_body($method == Method::HEAD);
+                            let mut route = handler.clone().into_route(state);
+                            return route.oneshot_inner($req);
                         }
                     }
                 }
