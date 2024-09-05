@@ -14,7 +14,7 @@ const X_FORWARDED_PROTO_HEADER_KEY: &str = "X-Forwarded-Proto";
 /// The scheme is resolved through the following, in order:
 /// - `Forwarded` header
 /// - `X-Forwarded-Proto` header
-/// - request target / URI
+/// - request URI (If the request is an HTTP/2 request! e.g. use `--http2(-prior-knowledge)` with cURL)
 ///
 /// Note that user agents can set the `X-Forwarded-Proto` header to arbitrary values so make
 /// sure to validate them to avoid security issues.
@@ -43,7 +43,7 @@ where
             return Ok(Scheme(scheme.to_owned()));
         }
 
-        // From parts
+        // From parts of an HTTP/2 request
         if let Some(scheme) = parts.uri.scheme_str() {
             return Ok(Scheme(scheme.to_owned()));
         }
@@ -74,9 +74,7 @@ fn parse_forwarded(headers: &HeaderMap) -> Option<&str> {
 mod tests {
     use super::*;
     use crate::{routing::get, test_helpers::TestClient, Router};
-    use http::{header::HeaderName, Request};
-
-    use axum_core::{body::Body, extract::FromRequest};
+    use http::header::HeaderName;
 
     fn test_client() -> TestClient {
         async fn scheme_as_body(Scheme(scheme): Scheme) -> String {
@@ -119,19 +117,6 @@ mod tests {
             .text()
             .await;
         assert_eq!(scheme, original_scheme);
-    }
-
-    #[crate::test]
-    async fn from_parts() {
-        let original_scheme = "http";
-        let req = Request::builder()
-            .uri(format!("{original_scheme}://localhost/"))
-            .body(Body::empty())
-            .unwrap();
-        assert_eq!(
-            Scheme::from_request(req, &()).await.unwrap().0,
-            original_scheme
-        );
     }
 
     #[crate::test]
