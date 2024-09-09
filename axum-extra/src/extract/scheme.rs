@@ -26,10 +26,14 @@ pub struct Scheme(pub String);
 
 /// Rejection type used if the [`Scheme`] extractor is unable to
 /// resolve a scheme.
-#[derive(Debug, Default)]
-pub struct SchemeMissing;
+#[derive(Debug)]
+#[non_exhaustive]
+pub enum SchemeRejection {
+    #[allow(missing_docs)]
+    MissingScheme,
+}
 
-impl IntoResponse for SchemeMissing {
+impl IntoResponse for SchemeRejection {
     fn into_response(self) -> Response {
         (http::StatusCode::BAD_REQUEST, "No scheme found in request").into_response()
     }
@@ -40,7 +44,7 @@ impl<S> FromRequestParts<S> for Scheme
 where
     S: Send + Sync,
 {
-    type Rejection = SchemeMissing;
+    type Rejection = SchemeRejection;
 
     async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
         // Within Forwarded header
@@ -62,7 +66,7 @@ where
             return Ok(Scheme(scheme.to_owned()));
         }
 
-        Err(SchemeMissing)
+        Err(SchemeRejection::MissingScheme)
     }
 }
 
