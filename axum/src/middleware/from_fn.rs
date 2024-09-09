@@ -341,6 +341,8 @@ impl Next {
     pub async fn run(mut self, req: Request) -> Response {
         match self.inner.call(req).await {
             Ok(res) => res,
+
+            #[allow(unreachable_patterns)]
             Err(err) => match err {},
         }
     }
