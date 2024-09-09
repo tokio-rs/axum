@@ -58,4 +58,4 @@ pub mod scheme;
 
 #[cfg(feature = "scheme")]
 #[doc(no_inline)]
-pub use self::scheme::{SchemeMissing, Scheme};
+pub use self::scheme::{Scheme, SchemeMissing};
