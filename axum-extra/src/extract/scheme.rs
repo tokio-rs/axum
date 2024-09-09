@@ -1,32 +1,45 @@
-use super::{
-    rejection::{FailedToResolveScheme, SchemeRejection},
-    FromRequestParts,
+//! Extractor that parses the scheme of a request.
+//! See [`Scheme`] for more details.
+
+use axum::{
+    extract::FromRequestParts,
+    response::{IntoResponse, Response},
 };
-use async_trait::async_trait;
 use http::{
     header::{HeaderMap, FORWARDED},
     request::Parts,
 };
 const X_FORWARDED_PROTO_HEADER_KEY: &str = "X-Forwarded-Proto";
 
-/// Extractor that resolves the scheme / protocol of the request.
+/// Extractor that resolves the scheme / protocol of a request.
 ///
 /// The scheme is resolved through the following, in order:
 /// - `Forwarded` header
 /// - `X-Forwarded-Proto` header
-/// - request URI (If the request is an HTTP/2 request! e.g. use `--http2(-prior-knowledge)` with cURL)
+/// - Request URI (If the request is an HTTP/2 request! e.g. use `--http2(-prior-knowledge)` with cURL)
 ///
 /// Note that user agents can set the `X-Forwarded-Proto` header to arbitrary values so make
 /// sure to validate them to avoid security issues.
 #[derive(Debug, Clone)]
 pub struct Scheme(pub String);
 
-#[async_trait]
+/// Rejection type used if the [`Scheme`] extractor is unable to
+/// resolve a scheme.
+#[derive(Debug)]
+pub struct SchemeMissing;
+
+impl IntoResponse for SchemeMissing {
+    fn into_response(self) -> Response {
+        (http::StatusCode::BAD_REQUEST, "No scheme found in request").into_response()
+    }
+}
+
+#[axum::async_trait]
 impl<S> FromRequestParts<S> for Scheme
 where
     S: Send + Sync,
 {
-    type Rejection = SchemeRejection;
+    type Rejection = SchemeMissing;
 
     async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
         // Within Forwarded header
@@ -48,9 +61,7 @@ where
             return Ok(Scheme(scheme.to_owned()));
         }
 
-        Err(SchemeRejection::FailedToResolveScheme(
-            FailedToResolveScheme,
-        ))
+        Err(SchemeMissing)
     }
 }
 
@@ -73,7 +84,8 @@ fn parse_forwarded(headers: &HeaderMap) -> Option<&str> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{routing::get, test_helpers::TestClient, Router};
+    use crate::test_helpers::TestClient;
+    use axum::{routing::get, Router};
     use http::header::HeaderName;
 
     fn test_client() -> TestClient {
