@@ -783,7 +783,7 @@ pub mod close_code {
     pub const PROTOCOL: u16 = 1002;
 
     /// Indicates that an endpoint is terminating the connection because it has received a type of
-    /// data that it cannot accept.  
+    /// data that it cannot accept.
     ///
     /// For example, an endpoint MAY send this if it understands only text data, but receives a binary message.
     pub const UNSUPPORTED: u16 = 1003;
