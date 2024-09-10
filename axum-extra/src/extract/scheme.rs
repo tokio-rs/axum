@@ -18,7 +18,6 @@ const X_FORWARDED_PROTO_HEADER_KEY: &str = "X-Forwarded-Proto";
 /// - `X-Forwarded-Proto` header
 /// - Request URI (If the request is an HTTP/2 request! e.g. use `--http2(-prior-knowledge)` with cURL)
 ///
-/// If you are intending to match on the URI, make sure to enable axum's `http2` feature.
 /// Note that user agents can set the `X-Forwarded-Proto` header to arbitrary values so make
 /// sure to validate them to avoid security issues.
 #[derive(Debug)]
