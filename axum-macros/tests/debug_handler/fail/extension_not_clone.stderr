@@ -5,14 +5,14 @@ error[E0277]: the trait bound `NonCloneType: Clone` is not satisfied
   |                                      ^^^^^^^^^^^^^^^^^^^^^^^ the trait `Clone` is not implemented for `NonCloneType`, which is required by `Extension<NonCloneType>: FromRequest<(), _>`
   |
   = help: the following other types implement trait `FromRequest<S, M>`:
-            axum::body::Bytes
-            Body
-            Form<T>
-            Json<T>
-            axum::http::Request<Body>
-            RawForm
-            String
-            Option<T>
+            (T1, T2)
+            (T1, T2, T3)
+            (T1, T2, T3, T4)
+            (T1, T2, T3, T4, T5)
+            (T1, T2, T3, T4, T5, T6)
+            (T1, T2, T3, T4, T5, T6, T7)
+            (T1, T2, T3, T4, T5, T6, T7, T8)
+            (T1, T2, T3, T4, T5, T6, T7, T8, T9)
           and $N others
   = note: required for `Extension<NonCloneType>` to implement `FromRequestParts<()>`
   = note: required for `Extension<NonCloneType>` to implement `FromRequest<(), axum_core::extract::private::ViaParts>`
