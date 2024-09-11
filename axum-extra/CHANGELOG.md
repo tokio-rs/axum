@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning].
 
 # Unreleased
 
-- None.
+- **added:** The `response::Attachment` type ([#2789])
+
+[#2789]: https://github.com/tokio-rs/axum/pull/2789
 
 # 0.9.3 (24. March, 2024)
 
