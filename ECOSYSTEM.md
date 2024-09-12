@@ -49,6 +49,7 @@ If your project isn't listed here and you would like it to be, please feel free 
 - [axum-test](https://crates.io/crates/axum-test): High level library for writing Cargo tests that run against Axum.
 - [axum-messages](https://github.com/maxcountryman/axum-messages): One-time notification messages for Axum.
 - [spring-rs](https://github.com/spring-rs/spring-rs): spring-rs is a microservice framework written in rust inspired by java's spring-boot, based on axum
+- [zino](https://github.com/zino-rs/zino): Zino is a next-generation framework for composable applications which provides full integrations with axum.
 
 ## Project showcase
 
