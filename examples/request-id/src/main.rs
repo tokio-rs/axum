@@ -87,5 +87,6 @@ async fn main() {
 }
 
 async fn handler() -> Html<&'static str> {
+    info!("Hello world!");
     Html("<h1>Hello, World!</h1>")
 }
