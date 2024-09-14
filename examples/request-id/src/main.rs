@@ -5,6 +5,7 @@
 //! ```
 
 use axum::{
+    extract::MatchedPath,
     http::{HeaderName, Request},
     response::Html,
     routing::get,
@@ -15,7 +16,7 @@ use tower_http::{
     request_id::{MakeRequestUuid, PropagateRequestIdLayer, SetRequestIdLayer},
     trace::TraceLayer,
 };
-use tracing::info_span;
+use tracing::{info, info_span};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 const REQUEST_ID_HEADER: &str = "x-request-id";
@@ -46,17 +47,26 @@ async fn main() {
         ))
         .layer(
             TraceLayer::new_for_http().make_span_with(|request: &Request<_>| {
-                // log the request id
+                // Log the matched route's path (with placeholders not filled in).
+                // Use request.uri() or OriginalUri if you want the real path.
+                let matched_path = request
+                    .extensions()
+                    .get::<MatchedPath>()
+                    .map(MatchedPath::as_str);
+
+                // Log the request id as generated.
                 let request_id = request.headers().get(REQUEST_ID_HEADER);
 
                 match request_id {
                     Some(request_id) => info_span!(
                         "http_request",
+                        matched_path,
                         method = ?request.method(),
                         request_id = ?request_id,
                     ),
                     None => info_span!(
                         "http_request",
+                        matched_path,
                         method = ?request.method(),
                     ),
                 }
