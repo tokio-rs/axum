@@ -235,18 +235,24 @@ where
 
                 let tcp_stream = TokioIo::new(tcp_stream);
 
-                poll_fn(|cx| make_service.poll_ready(cx))
-                    .await
-                    .unwrap_or_else(|err| match err {});
+                if let Err(err) = poll_fn(|cx| make_service.poll_ready(cx)).await {
+                    error!("Service not ready: {err:#}");
+                    continue;
+                }
 
-                let tower_service = make_service
+                let tower_service = match make_service
                     .call(IncomingStream {
                         tcp_stream: &tcp_stream,
                         remote_addr,
                     })
                     .await
-                    .unwrap_or_else(|err| match err {})
-                    .map_request(|req: Request<Incoming>| req.map(Body::new));
+                {
+                    Ok(service) => service.map_request(|req: Request<Incoming>| req.map(Body::new)),
+                    Err(err) => {
+                        error!("Failed to create service: {err:#}");
+                        continue;
+                    }
+                };
 
                 let hyper_service = TowerToHyperService::new(tower_service);
 
@@ -263,6 +269,7 @@ where
                             //
                             // If client sends one request then terminate connection whenever, it doesn't
                             // appear.
+                            trace!("Connection error: {err:#}");
                         }
                     }
                 });
