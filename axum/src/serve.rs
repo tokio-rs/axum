@@ -263,7 +263,7 @@ where
                         .await
                     {
                         Ok(()) => {}
-                        Err(_err) => {
+                        Err(err) => {
                             // This error only appears when the client doesn't send a request and
                             // terminate the connection.
                             //
