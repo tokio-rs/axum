@@ -2,7 +2,7 @@
 //!
 //! See [`axum::response`] for more details.
 //!
-//! [`axum::response`]: https://docs.rs/axum/latest/axum/response/index.html
+//! [`axum::response`]: https://docs.rs/axum/0.7/axum/response/index.html
 
 use crate::body::Body;
 
@@ -117,6 +117,7 @@ where
 ///
 /// See [`Result`] for more details.
 #[derive(Debug)]
+#[must_use]
 pub struct ErrorResponse(Response);
 
 impl<T> From<T> for ErrorResponse

@@ -16,7 +16,7 @@ axum is unique in that it doesn't have its own bespoke middleware system and
 instead integrates with [`tower`]. This means the ecosystem of [`tower`] and
 [`tower-http`] middleware all work with axum.
 
-While its not necessary to fully understand tower to write or use middleware
+While it's not necessary to fully understand tower to write or use middleware
 with axum, having at least a basic understanding of tower's concepts is
 recommended. See [tower's guides][tower-guides] for a general introduction.
 Reading the documentation for [`tower::ServiceBuilder`] is also recommended.
@@ -31,7 +31,7 @@ axum allows you to add middleware just about anywhere
 
 ## Applying multiple middleware
 
-Its recommended to use [`tower::ServiceBuilder`] to apply multiple middleware at
+It's recommended to use [`tower::ServiceBuilder`] to apply multiple middleware at
 once, instead of calling `layer` (or `route_layer`) repeatedly:
 
 ```rust
@@ -128,9 +128,9 @@ That is:
 
 It's a little more complicated in practice because any middleware is free to
 return early and not call the next layer, for example if a request cannot be
-authorized, but its a useful mental model to have.
+authorized, but it's a useful mental model to have.
 
-As previously mentioned its recommended to add multiple middleware using
+As previously mentioned it's recommended to add multiple middleware using
 `tower::ServiceBuilder`, however this impacts ordering:
 
 ```rust
@@ -264,6 +264,21 @@ where
 }
 ```
 
+Note that your error type being defined as `S::Error` means that your middleware typically _returns no errors_. As a principle always try to return a response and try not to bail out with a custom error type. For example, if a 3rd party library you are using inside your new middleware returns its own specialized error type, try to convert it to some reasonable response and return `Ok` with that response.
+
+If you choose to implement a custom error type such as `type Error = BoxError` (a boxed opaque error), or any other error type that is not `Infallible`, you must use a `HandleErrorLayer`, here is an example using a `ServiceBuilder`:
+
+```ignore
+ServiceBuilder::new()
+        .layer(HandleErrorLayer::new(|_: BoxError| async {
+            // because Axum uses infallible errors, you must handle your custom error type from your middleware here
+            StatusCode::BAD_REQUEST
+        }))
+        .layer(
+             // <your actual layer which DOES return an error>
+        );
+```
+
 ## `tower::Service` and custom futures
 
 If you're comfortable implementing your own futures (or want to learn it) and
@@ -337,11 +352,11 @@ readiness inside the response future returned by `Service::call`. This works
 well when your services don't care about backpressure and are always ready
 anyway.
 
-axum expects that all services used in your app wont care about
+axum expects that all services used in your app won't care about
 backpressure and so it uses the latter strategy. However that means you
 should avoid routing to a service (or using a middleware) that _does_ care
-about backpressure. At the very least you should [load shed] so requests are
-dropped quickly and don't keep piling up.
+about backpressure. At the very least you should [load shed][tower::load_shed]
+so requests are dropped quickly and don't keep piling up.
 
 It also means that if `poll_ready` returns an error then that error will be
 returned in the response future from `call` and _not_ from `poll_ready`. In
@@ -373,8 +388,7 @@ let app = ServiceBuilder::new()
 ```
 
 However when applying middleware around your whole application in this way
-you have to take care that errors are still being handled with
-appropriately.
+you have to take care that errors are still being handled appropriately.
 
 Also note that handlers created from async functions don't care about
 backpressure and are always ready. So if you're not using any Tower

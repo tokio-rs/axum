@@ -55,7 +55,7 @@ pin_project! {
     ///     JsonLines::new(stream_of_values()).into_response()
     /// }
     /// ```
-    // we use `AsExtractor` as the default because you're more likely to name this type if its used
+    // we use `AsExtractor` as the default because you're more likely to name this type if it's used
     // as an extractor
     #[must_use]
     pub struct JsonLines<S, T = AsExtractor> {
@@ -184,7 +184,7 @@ mod tests {
     use futures_util::StreamExt;
     use http::StatusCode;
     use serde::Deserialize;
-    use std::{convert::Infallible, error::Error};
+    use std::error::Error;
 
     #[derive(Serialize, Deserialize, PartialEq, Eq, Debug)]
     struct User {
@@ -224,7 +224,6 @@ mod tests {
                 ]
                 .join("\n"),
             )
-            .send()
             .await;
         assert_eq!(res.status(), StatusCode::OK);
     }
@@ -245,7 +244,7 @@ mod tests {
 
         let client = TestClient::new(app);
 
-        let res = client.get("/").send().await;
+        let res = client.get("/").await;
 
         let values = res
             .text()

@@ -12,7 +12,7 @@ use axum::{
 use futures_util::stream::Stream;
 use http::{
     header::{HeaderMap, CONTENT_TYPE},
-    HeaderName, HeaderValue, Request, StatusCode,
+    Request, StatusCode,
 };
 use std::{
     error::Error,
@@ -115,22 +115,7 @@ impl Multipart {
             .map_err(MultipartError::from_multer)?;
 
         if let Some(field) = field {
-            // multer still uses http 0.2 which means we cannot directly expose
-            // `multer::Field::headers`. Instead we have to eagerly convert the headers into http
-            // 1.0
-            //
-            // When the next major version of multer is published we can remove this.
-            let mut headers = HeaderMap::with_capacity(field.headers().len());
-            headers.extend(field.headers().into_iter().map(|(name, value)| {
-                let name = HeaderName::from_bytes(name.as_ref()).unwrap();
-                let value = HeaderValue::from_bytes(value.as_ref()).unwrap();
-                (name, value)
-            }));
-
-            Ok(Some(Field {
-                inner: field,
-                headers,
-            }))
+            Ok(Some(Field { inner: field }))
         } else {
             Ok(None)
         }
@@ -149,7 +134,6 @@ impl Multipart {
 #[derive(Debug)]
 pub struct Field {
     inner: multer::Field<'static>,
-    headers: HeaderMap,
 }
 
 impl Stream for Field {
@@ -184,7 +168,7 @@ impl Field {
 
     /// Get a map of headers as [`HeaderMap`].
     pub fn headers(&self) -> &HeaderMap {
-        &self.headers
+        self.inner.headers()
     }
 
     /// Get the full data of the field as [`Bytes`].
@@ -395,7 +379,13 @@ pub struct InvalidBoundary;
 
 impl IntoResponse for InvalidBoundary {
     fn into_response(self) -> Response {
-        (self.status(), self.body_text()).into_response()
+        let body = self.body_text();
+        axum_core::__log_rejection!(
+            rejection_type = Self,
+            body_text = body,
+            status = self.status(),
+        );
+        (self.status(), body).into_response()
     }
 }
 
@@ -423,7 +413,7 @@ impl std::error::Error for InvalidBoundary {}
 mod tests {
     use super::*;
     use crate::test_helpers::*;
-    use axum::{extract::DefaultBodyLimit, response::IntoResponse, routing::post, Router};
+    use axum::{extract::DefaultBodyLimit, routing::post, Router};
 
     #[tokio::test]
     async fn content_type_with_encoding() {
@@ -453,7 +443,7 @@ mod tests {
                 .unwrap(),
         );
 
-        client.post("/").multipart(form).send().await;
+        client.post("/").multipart(form).await;
     }
 
     // No need for this to be a #[test], we just want to make sure it compiles
@@ -482,7 +472,7 @@ mod tests {
         let form =
             reqwest::multipart::Form::new().part("file", reqwest::multipart::Part::bytes(BYTES));
 
-        let res = client.post("/").multipart(form).send().await;
+        let res = client.post("/").multipart(form).await;
         assert_eq!(res.status(), StatusCode::PAYLOAD_TOO_LARGE);
     }
 }

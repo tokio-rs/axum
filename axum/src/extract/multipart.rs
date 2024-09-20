@@ -13,7 +13,7 @@ use axum_core::{
 use futures_util::stream::Stream;
 use http::{
     header::{HeaderMap, CONTENT_TYPE},
-    HeaderName, HeaderValue, StatusCode,
+    StatusCode,
 };
 use std::{
     error::Error,
@@ -90,21 +90,8 @@ impl Multipart {
             .map_err(MultipartError::from_multer)?;
 
         if let Some(field) = field {
-            // multer still uses http 0.2 which means we cannot directly expose
-            // `multer::Field::headers`. Instead we have to eagerly convert the headers into http
-            // 1.0
-            //
-            // When the next major version of multer is published we can remove this.
-            let mut headers = HeaderMap::with_capacity(field.headers().len());
-            headers.extend(field.headers().into_iter().map(|(name, value)| {
-                let name = HeaderName::from_bytes(name.as_ref()).unwrap();
-                let value = HeaderValue::from_bytes(value.as_ref()).unwrap();
-                (name, value)
-            }));
-
             Ok(Some(Field {
                 inner: field,
-                headers,
                 _multipart: self,
             }))
         } else {
@@ -117,7 +104,6 @@ impl Multipart {
 #[derive(Debug)]
 pub struct Field<'a> {
     inner: multer::Field<'static>,
-    headers: HeaderMap,
     // multer requires there to only be one live `multer::Field` at any point. This enforces that
     // statically, which multer does not do, it returns an error instead.
     _multipart: &'a mut Multipart,
@@ -155,7 +141,7 @@ impl<'a> Field<'a> {
 
     /// Get a map of headers as [`HeaderMap`].
     pub fn headers(&self) -> &HeaderMap {
-        &self.headers
+        self.inner.headers()
     }
 
     /// Get the full data of the field as [`Bytes`].
@@ -288,12 +274,13 @@ impl std::error::Error for MultipartError {
 
 impl IntoResponse for MultipartError {
     fn into_response(self) -> Response {
+        let body = self.body_text();
         axum_core::__log_rejection!(
             rejection_type = Self,
-            body_text = self.body_text(),
+            body_text = body,
             status = self.status(),
         );
-        (self.status(), self.body_text()).into_response()
+        (self.status(), body).into_response()
     }
 }
 
@@ -324,7 +311,7 @@ mod tests {
     use axum_core::extract::DefaultBodyLimit;
 
     use super::*;
-    use crate::{response::IntoResponse, routing::post, test_helpers::*, Router};
+    use crate::{routing::post, test_helpers::*, Router};
 
     #[crate::test]
     async fn content_type_with_encoding() {
@@ -359,7 +346,7 @@ mod tests {
                 )])),
         );
 
-        client.post("/").multipart(form).send().await;
+        client.post("/").multipart(form).await;
     }
 
     // No need for this to be a #[test], we just want to make sure it compiles
@@ -390,7 +377,7 @@ mod tests {
         let form =
             reqwest::multipart::Form::new().part("file", reqwest::multipart::Part::bytes(BYTES));
 
-        let res = client.post("/").multipart(form).send().await;
+        let res = client.post("/").multipart(form).await;
         assert_eq!(res.status(), StatusCode::PAYLOAD_TOO_LARGE);
     }
 }

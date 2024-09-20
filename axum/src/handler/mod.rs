@@ -10,8 +10,8 @@
 //! // Handler that immediately returns an empty `200 OK` response.
 //! async fn unit_handler() {}
 //!
-//! // Handler that immediately returns an empty `200 OK` response with a plain
-//! // text body.
+//! // Handler that immediately returns a `200 OK` response with a plain text
+//! // body.
 //! async fn string_handler() -> String {
 //!     "Hello, World!".to_string()
 //! }
@@ -37,10 +37,10 @@
 //! in handlers. See those examples:
 //!
 //! * [`anyhow-error-response`][anyhow] for generic boxed errors
-//! * [`error-handling-and-dependency-injection`][ehdi] for application-specific detailed errors
+//! * [`error-handling`][error-handling] for application-specific detailed errors
 //!
 //! [anyhow]: https://github.com/tokio-rs/axum/blob/main/examples/anyhow-error-response/src/main.rs
-//! [ehdi]: https://github.com/tokio-rs/axum/blob/main/examples/error-handling-and-dependency-injection/src/main.rs
+//! [error-handling]: https://github.com/tokio-rs/axum/blob/main/examples/error-handling/src/main.rs
 //!
 #![doc = include_str!("../docs/debugging_handler_type_errors.md")]
 
@@ -125,8 +125,8 @@ pub use self::service::HandlerService;
 ///     )));
 /// # let _: Router = app;
 /// ```
-#[cfg_attr(
-    nightly_error_messages,
+#[rustversion::attr(
+    since(1.78),
     diagnostic::on_unimplemented(
         note = "Consider using `#[axum::debug_handler]` to improve the error message"
     )
@@ -328,6 +328,8 @@ where
             ) -> _,
         > = svc.oneshot(req).map(|result| match result {
             Ok(res) => res.into_response(),
+
+            #[allow(unreachable_patterns)]
             Err(err) => match err {},
         });
 
@@ -403,7 +405,7 @@ mod tests {
 
         let client = TestClient::new(handle.into_service());
 
-        let res = client.post("/").body("hi there!").send().await;
+        let res = client.post("/").body("hi there!").await;
         assert_eq!(res.status(), StatusCode::OK);
         assert_eq!(res.text().await, "you said: hi there!");
     }
@@ -424,7 +426,7 @@ mod tests {
             .with_state("foo");
 
         let client = TestClient::new(svc);
-        let res = client.get("/").send().await;
+        let res = client.get("/").await;
         assert_eq!(res.text().await, "foo");
     }
 }

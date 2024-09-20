@@ -2,9 +2,12 @@ use axum::async_trait;
 use axum::extract::{FromRequest, FromRequestParts, Request};
 use axum::response::IntoResponse;
 use http::request::Parts;
-use std::fmt::Debug;
+use std::fmt::{Debug, Display};
 use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
+
+#[cfg(feature = "typed-routing")]
+use crate::routing::TypedPath;
 
 /// Extractor for customizing extractor rejections
 ///
@@ -137,15 +140,29 @@ where
     }
 }
 
+#[cfg(feature = "typed-routing")]
+impl<E, R> TypedPath for WithRejection<E, R>
+where
+    E: TypedPath,
+{
+    const PATH: &'static str = E::PATH;
+}
+
+impl<E, R> Display for WithRejection<E, R>
+where
+    E: Display,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
 #[cfg(test)]
 mod tests {
+    use super::*;
     use axum::body::Body;
-    use axum::extract::FromRequestParts;
     use axum::http::Request;
     use axum::response::Response;
-    use http::request::Parts;
-
-    use super::*;
 
     #[tokio::test]
     async fn extractor_rejection_is_transformed() {

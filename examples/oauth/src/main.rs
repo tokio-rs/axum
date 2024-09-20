@@ -35,7 +35,7 @@ async fn main() {
     tracing_subscriber::registry()
         .with(
             tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "example_oauth=debug".into()),
+                .unwrap_or_else(|_| format!("{}=debug", env!("CARGO_CRATE_NAME")).into()),
         )
         .with(tracing_subscriber::fmt::layer())
         .init();
@@ -143,6 +143,11 @@ async fn index(user: Option<User>) -> impl IntoResponse {
 }
 
 async fn discord_auth(State(client): State<BasicClient>) -> impl IntoResponse {
+    // TODO: this example currently doesn't validate the CSRF token during login attempts. That
+    // makes it vulnerable to cross-site request forgery. If you copy code from this example make
+    // sure to add a check for the CSRF token.
+    //
+    // Issue for adding check to this example https://github.com/tokio-rs/axum/issues/2511
     let (auth_url, _csrf_token) = client
         .authorize_url(CsrfToken::new_random)
         .add_scope(Scope::new("identify".to_string()))

@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use axum_core::extract::{FromRequest, Request};
-use bytes::{Bytes, BytesMut};
+use bytes::Bytes;
 use http::Method;
 
 use super::{
@@ -39,13 +39,11 @@ where
 
     async fn from_request(req: Request, state: &S) -> Result<Self, Self::Rejection> {
         if req.method() == Method::GET {
-            let mut bytes = BytesMut::new();
-
             if let Some(query) = req.uri().query() {
-                bytes.extend(query.as_bytes());
+                return Ok(Self(Bytes::copy_from_slice(query.as_bytes())));
             }
 
-            Ok(Self(bytes.freeze()))
+            Ok(Self(Bytes::new()))
         } else {
             if !has_content_type(req.headers(), &mime::APPLICATION_WWW_FORM_URLENCODED) {
                 return Err(InvalidFormContentType.into());

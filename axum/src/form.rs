@@ -252,14 +252,13 @@ mod tests {
 
         let client = TestClient::new(app);
 
-        let res = client.get("/?a=false").send().await;
+        let res = client.get("/?a=false").await;
         assert_eq!(res.status(), StatusCode::BAD_REQUEST);
 
         let res = client
             .post("/")
             .header(CONTENT_TYPE, APPLICATION_WWW_FORM_URLENCODED.as_ref())
             .body("a=false")
-            .send()
             .await;
         assert_eq!(res.status(), StatusCode::UNPROCESSABLE_ENTITY);
     }

@@ -7,7 +7,33 @@ and this project adheres to [Semantic Versioning].
 
 # Unreleased
 
-- None.
+- **added:** The `response::Attachment` type ([#2789])
+
+[#2789]: https://github.com/tokio-rs/axum/pull/2789
+
+# 0.9.3 (24. March, 2024)
+
+- **added:** New `tracing` feature which enables logging rejections from
+  built-in extractor with the `axum::rejection=trace` target ([#2584])
+
+[#2584]: https://github.com/tokio-rs/axum/pull/2584
+
+# 0.9.2 (13. January, 2024)
+
+- **added:** Implement `TypedPath` for `WithRejection<TypedPath, _>`
+- **fixed:** Documentation link to `serde::Deserialize` in `JsonDeserializer` extractor ([#2498])
+- **added:** Add `is_missing` function for `TypedHeaderRejection` and `TypedHeaderRejectionReason` ([#2503])
+
+[#2498]: https://github.com/tokio-rs/axum/pull/2498
+[#2503]: https://github.com/tokio-rs/axum/pull/2503
+
+# 0.9.1 (29. December, 2023)
+
+- **change:** Update version of multer used internally for multipart ([#2433])
+- **added:** `JsonDeserializer` extractor ([#2431])
+
+[#2433]: https://github.com/tokio-rs/axum/pull/2433
+[#2431]: https://github.com/tokio-rs/axum/pull/2431
 
 # 0.9.0 (27. November, 2023)
 

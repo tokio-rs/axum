@@ -6,11 +6,13 @@ publish = false
 
 [dependencies]
 axum = { path = "../../axum" }
-futures-util = { version = "0.3", default-features = false, features = ["alloc"] }
+futures-util = { version = "0.3", default-features = false }
 hyper = { version = "1.0.0", features = ["full"] }
-rustls-pemfile = "0.3"
+hyper-util = { version = "0.1" }
+rustls-pemfile = "1.0.4"
 tokio = { version = "1", features = ["full"] }
-tokio-rustls = "0.23"
+tokio-rustls = "0.24.1"
 tower = { version = "0.4", features = ["make"] }
+tower-service = "0.3.2"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }

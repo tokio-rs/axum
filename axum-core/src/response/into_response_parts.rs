@@ -44,7 +44,7 @@ use std::{convert::Infallible, fmt};
 ///     }
 /// }
 ///
-/// // Its also recommended to implement `IntoResponse` so `SetHeader` can be used on its own as
+/// // It's also recommended to implement `IntoResponse` so `SetHeader` can be used on its own as
 /// // the response
 /// impl<'a> IntoResponse for SetHeader<'a> {
 ///     fn into_response(self) -> Response {
@@ -105,21 +105,25 @@ pub struct ResponseParts {
 
 impl ResponseParts {
     /// Gets a reference to the response headers.
+    #[must_use]
     pub fn headers(&self) -> &HeaderMap {
         self.res.headers()
     }
 
     /// Gets a mutable reference to the response headers.
+    #[must_use]
     pub fn headers_mut(&mut self) -> &mut HeaderMap {
         self.res.headers_mut()
     }
 
     /// Gets a reference to the response extensions.
+    #[must_use]
     pub fn extensions(&self) -> &Extensions {
         self.res.extensions()
     }
 
     /// Gets a mutable reference to the response extensions.
+    #[must_use]
     pub fn extensions_mut(&mut self) -> &mut Extensions {
         self.res.extensions_mut()
     }
@@ -255,6 +259,14 @@ impl IntoResponseParts for Extensions {
 
     fn into_response_parts(self, mut res: ResponseParts) -> Result<ResponseParts, Self::Error> {
         res.extensions_mut().extend(self);
+        Ok(res)
+    }
+}
+
+impl IntoResponseParts for () {
+    type Error = Infallible;
+
+    fn into_response_parts(self, res: ResponseParts) -> Result<ResponseParts, Self::Error> {
         Ok(res)
     }
 }

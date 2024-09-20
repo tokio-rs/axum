@@ -12,13 +12,12 @@ use serde::{de::DeserializeOwned, Serialize};
 /// JSON Extractor / Response.
 ///
 /// When used as an extractor, it can deserialize request bodies into some type that
-/// implements [`serde::Deserialize`]. The request will be rejected (and a [`JsonRejection`] will
+/// implements [`serde::de::DeserializeOwned`]. The request will be rejected (and a [`JsonRejection`] will
 /// be returned) if:
 ///
 /// - The request doesn't have a `Content-Type: application/json` (or similar) header.
 /// - The body doesn't contain syntactically valid JSON.
-/// - The body contains syntactically valid JSON but it couldn't be deserialized into the target
-/// type.
+/// - The body contains syntactically valid JSON, but it couldn't be deserialized into the target type.
 /// - Buffering the request body fails.
 ///
 /// ⚠️ Since parsing JSON requires consuming the request body, the `Json` extractor must be
@@ -226,7 +225,7 @@ mod tests {
         let app = Router::new().route("/", post(|input: Json<Input>| async { input.0.foo }));
 
         let client = TestClient::new(app);
-        let res = client.post("/").json(&json!({ "foo": "bar" })).send().await;
+        let res = client.post("/").json(&json!({ "foo": "bar" })).await;
         let body = res.text().await;
 
         assert_eq!(body, "bar");
@@ -242,7 +241,7 @@ mod tests {
         let app = Router::new().route("/", post(|input: Json<Input>| async { input.0.foo }));
 
         let client = TestClient::new(app);
-        let res = client.post("/").body(r#"{ "foo": "bar" }"#).send().await;
+        let res = client.post("/").body(r#"{ "foo": "bar" }"#).await;
 
         let status = res.status();
 
@@ -260,7 +259,6 @@ mod tests {
                 .post("/")
                 .header("content-type", content_type)
                 .body("{}")
-                .send()
                 .await;
 
             res.status() == StatusCode::OK
@@ -282,7 +280,6 @@ mod tests {
             .post("/")
             .body("{")
             .header("content-type", "application/json")
-            .send()
             .await;
 
         assert_eq!(res.status(), StatusCode::BAD_REQUEST);
@@ -313,7 +310,6 @@ mod tests {
             .post("/")
             .body("{\"a\": 1, \"b\": [{\"x\": 2}]}")
             .header("content-type", "application/json")
-            .send()
             .await;
 
         assert_eq!(res.status(), StatusCode::UNPROCESSABLE_ENTITY);

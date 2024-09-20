@@ -6,7 +6,8 @@ publish = false
 
 [dependencies]
 axum = { path = "../../axum" }
-hyper = { version = "1.0.0", features = ["full"] }
+hyper = { version = "1", features = ["full"] }
+hyper-util = "0.1.1"
 tokio = { version = "1.0", features = ["full"] }
 tower = { version = "0.4", features = ["make"] }
 tracing = "0.1"

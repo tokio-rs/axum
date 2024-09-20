@@ -109,7 +109,7 @@ mod tests {
 
         let client = TestClient::new(Router::new().route("/", get(handler)).layer(Extension(Ext)));
 
-        let res = client.get("/").header("x-foo", "123").send().await;
+        let res = client.get("/").header("x-foo", "123").await;
         assert_eq!(res.status(), StatusCode::OK);
     }
 }

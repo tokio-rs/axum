@@ -6,7 +6,7 @@ use axum::{
     response::{IntoResponse, IntoResponseParts, Response, ResponseParts},
 };
 use headers::{Header, HeaderMapExt};
-use http::request::Parts;
+use http::{request::Parts, StatusCode};
 use std::convert::Infallible;
 
 /// Extractor and response that works with typed header values from [`headers`].
@@ -123,6 +123,14 @@ impl TypedHeaderRejection {
     pub fn reason(&self) -> &TypedHeaderRejectionReason {
         &self.reason
     }
+
+    /// Returns `true` if the typed header rejection reason is [`Missing`].
+    ///
+    /// [`Missing`]: TypedHeaderRejectionReason::Missing
+    #[must_use]
+    pub fn is_missing(&self) -> bool {
+        self.reason.is_missing()
+    }
 }
 
 /// Additional information regarding a [`TypedHeaderRejection`]
@@ -136,9 +144,22 @@ pub enum TypedHeaderRejectionReason {
     Error(headers::Error),
 }
 
+impl TypedHeaderRejectionReason {
+    /// Returns `true` if the typed header rejection reason is [`Missing`].
+    ///
+    /// [`Missing`]: TypedHeaderRejectionReason::Missing
+    #[must_use]
+    pub fn is_missing(&self) -> bool {
+        matches!(self, Self::Missing)
+    }
+}
+
 impl IntoResponse for TypedHeaderRejection {
     fn into_response(self) -> Response {
-        (http::StatusCode::BAD_REQUEST, self.to_string()).into_response()
+        let status = StatusCode::BAD_REQUEST;
+        let body = self.to_string();
+        axum_core::__log_rejection!(rejection_type = Self, body_text = body, status = status,);
+        (status, body).into_response()
     }
 }
 
@@ -168,7 +189,7 @@ impl std::error::Error for TypedHeaderRejection {
 mod tests {
     use super::*;
     use crate::test_helpers::*;
-    use axum::{response::IntoResponse, routing::get, Router};
+    use axum::{routing::get, Router};
 
     #[tokio::test]
     async fn typed_header() {
@@ -190,7 +211,6 @@ mod tests {
             .header("user-agent", "foobar")
             .header("cookie", "a=1; b=2")
             .header("cookie", "c=3")
-            .send()
             .await;
         let body = res.text().await;
         assert_eq!(
@@ -198,11 +218,11 @@ mod tests {
             r#"User-Agent="foobar", Cookie=[("a", "1"), ("b", "2"), ("c", "3")]"#
         );
 
-        let res = client.get("/").header("user-agent", "foobar").send().await;
+        let res = client.get("/").header("user-agent", "foobar").await;
         let body = res.text().await;
         assert_eq!(body, r#"User-Agent="foobar", Cookie=[]"#);
 
-        let res = client.get("/").header("cookie", "a=1").send().await;
+        let res = client.get("/").header("cookie", "a=1").await;
         let body = res.text().await;
         assert_eq!(body, "Header of type `user-agent` was missing");
     }

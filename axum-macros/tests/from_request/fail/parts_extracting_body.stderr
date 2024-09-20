@@ -1,18 +1,18 @@
 error[E0277]: the trait bound `String: FromRequestParts<S>` is not satisfied
- --> tests/from_request/fail/parts_extracting_body.rs:6:11
+ --> tests/from_request/fail/parts_extracting_body.rs:5:11
   |
-6 |     body: String,
+5 |     body: String,
   |           ^^^^^^ the trait `FromRequestParts<S>` is not implemented for `String`
   |
   = note: Function argument is not a valid axum extractor.
-          See `https://docs.rs/axum/latest/axum/extract/index.html` for details
+          See `https://docs.rs/axum/0.7/axum/extract/index.html` for details
   = help: the following other types implement trait `FromRequestParts<S>`:
-            <Extractor as FromRequestParts<S>>
-            <HeaderMap as FromRequestParts<S>>
-            <Extension<T> as FromRequestParts<S>>
-            <Method as FromRequestParts<S>>
-            <axum::http::request::Parts as FromRequestParts<S>>
-            <Uri as FromRequestParts<S>>
-            <Version as FromRequestParts<S>>
-            <ConnectInfo<T> as FromRequestParts<S>>
+            `()` implements `FromRequestParts<S>`
+            `(T1, T2)` implements `FromRequestParts<S>`
+            `(T1, T2, T3)` implements `FromRequestParts<S>`
+            `(T1, T2, T3, T4)` implements `FromRequestParts<S>`
+            `(T1, T2, T3, T4, T5)` implements `FromRequestParts<S>`
+            `(T1, T2, T3, T4, T5, T6)` implements `FromRequestParts<S>`
+            `(T1, T2, T3, T4, T5, T6, T7)` implements `FromRequestParts<S>`
+            `(T1, T2, T3, T4, T5, T6, T7, T8)` implements `FromRequestParts<S>`
           and $N others

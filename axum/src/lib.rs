@@ -1,4 +1,3 @@
-#![cfg_attr(nightly_error_messages, feature(diagnostic_namespace))]
 //! axum is a web application framework that focuses on ergonomics and modularity.
 //!
 //! # Table of contents
@@ -294,6 +293,67 @@
 //! The downside to this approach is that it's a little more verbose than using
 //! [`State`] or extensions.
 //!
+//! ## Using [tokio's `task_local` macro](https://docs.rs/tokio/1/tokio/macro.task_local.html):
+//!
+//! This allows to share state with `IntoResponse` implementations.
+//!
+//! ```rust,no_run
+//! use axum::{
+//!     extract::Request,
+//!     http::{header, StatusCode},
+//!     middleware::{self, Next},
+//!     response::{IntoResponse, Response},
+//!     routing::get,
+//!     Router,
+//! };
+//! use tokio::task_local;
+//!
+//! #[derive(Clone)]
+//! struct CurrentUser {
+//!     name: String,
+//! }
+//! task_local! {
+//!     pub static USER: CurrentUser;
+//! }
+//!
+//! async fn auth(req: Request, next: Next) -> Result<Response, StatusCode> {
+//!     let auth_header = req
+//!         .headers()
+//!         .get(header::AUTHORIZATION)
+//!         .and_then(|header| header.to_str().ok())
+//!         .ok_or(StatusCode::UNAUTHORIZED)?;
+//!     if let Some(current_user) = authorize_current_user(auth_header).await {
+//!         // State is setup here in the middleware
+//!         Ok(USER.scope(current_user, next.run(req)).await)
+//!     } else {
+//!         Err(StatusCode::UNAUTHORIZED)
+//!     }
+//! }
+//! async fn authorize_current_user(auth_token: &str) -> Option<CurrentUser> {
+//!     Some(CurrentUser {
+//!         name: auth_token.to_string(),
+//!     })
+//! }
+//!
+//! struct UserResponse;
+//!
+//! impl IntoResponse for UserResponse {
+//!     fn into_response(self) -> Response {
+//!         // State is accessed here in the IntoResponse implementation
+//!         let current_user = USER.with(|u| u.clone());
+//!         (StatusCode::OK, current_user.name).into_response()
+//!     }
+//! }
+//!
+//! async fn handler() -> UserResponse {
+//!     UserResponse
+//! }
+//!
+//! let app: Router = Router::new()
+//!     .route("/", get(handler))
+//!     .route_layer(middleware::from_fn(auth));
+//! ```
+//!
 //! # Building integrations for axum
 //!
 //! Libraries authors that want to provide [`FromRequest`], [`FromRequestParts`], or
@@ -340,7 +400,7 @@
 //! `original-uri` | Enables capturing of every request's original URI and the [`OriginalUri`] extractor | Yes
 //! `tokio` | Enables `tokio` as a dependency and `axum::serve`, `SSE` and `extract::connect_info` types. | Yes
 //! `tower-log` | Enables `tower`'s `log` feature | Yes
-//! `tracing` | Log rejections from built-in extractors | No
+//! `tracing` | Log rejections from built-in extractors | Yes
 //! `ws` | Enables WebSockets support via [`extract::ws`] | No
 //! `form` | Enables the `Form` extractor | Yes
 //! `query` | Enables the `Query` extractor | Yes
@@ -389,7 +449,6 @@
     clippy::needless_borrow,
     clippy::match_wildcard_for_single_variants,
     clippy::if_let_mutex,
-    clippy::mismatched_target_os,
     clippy::await_holding_lock,
     clippy::match_on_vec_items,
     clippy::imprecise_flops,
@@ -464,7 +523,7 @@ pub use self::form::Form;
 pub use axum_core::{BoxError, Error, RequestExt, RequestPartsExt};
 
 #[cfg(feature = "macros")]
-pub use axum_macros::debug_handler;
+pub use axum_macros::{debug_handler, debug_middleware};
 
 #[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
 #[doc(inline)]

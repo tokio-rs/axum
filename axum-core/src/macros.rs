@@ -1,4 +1,5 @@
 /// Private API.
+#[cfg(feature = "tracing")]
 #[doc(hidden)]
 #[macro_export]
 macro_rules! __log_rejection {
@@ -7,7 +8,6 @@ macro_rules! __log_rejection {
         body_text = $body_text:expr,
         status = $status:expr,
     ) => {
-        #[cfg(feature = "tracing")]
         {
             tracing::event!(
                 target: "axum::rejection",
@@ -19,6 +19,17 @@ macro_rules! __log_rejection {
             );
         }
     };
+}
+
+#[cfg(not(feature = "tracing"))]
+#[doc(hidden)]
+#[macro_export]
+macro_rules! __log_rejection {
+    (
+        rejection_type = $ty:ident,
+        body_text = $body_text:expr,
+        status = $status:expr,
+    ) => {};
 }
 
 /// Private API.
@@ -303,8 +314,6 @@ mod composite_rejection_tests {
 
     #[allow(dead_code, unreachable_pub)]
     mod defs {
-        use crate::{__composite_rejection, __define_rejection};
-
         __define_rejection! {
             #[status = BAD_REQUEST]
             #[body = "error message 1"]

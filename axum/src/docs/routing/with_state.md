@@ -20,7 +20,7 @@ axum::serve(listener, routes).await.unwrap();
 
 # Returning routers with states from functions
 
-When returning `Router`s from functions it is generally recommend not set the
+When returning `Router`s from functions, it is generally recommended not to set the
 state directly:
 
 ```rust
@@ -171,7 +171,7 @@ work:
 # #[derive(Clone)]
 # struct AppState {}
 # 
-// This wont work because we're returning a `Router<AppState>`
+// This won't work because we're returning a `Router<AppState>`
 // i.e. we're saying we're still missing an `AppState`
 fn routes(state: AppState) -> Router<AppState> {
     Router::new()

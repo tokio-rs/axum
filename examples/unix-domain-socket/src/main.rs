@@ -3,6 +3,7 @@
 //! ```not_rust
 //! cargo run -p example-unix-domain-socket
 //! ```
+#![allow(unreachable_patterns)]
 
 #[cfg(unix)]
 #[tokio::main]
