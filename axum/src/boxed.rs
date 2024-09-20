@@ -1,6 +1,7 @@
 use std::{convert::Infallible, fmt};
 
 use crate::extract::Request;
+use crate::util::AxumMutex;
 use tower::Service;
 
 use crate::{
@@ -9,7 +10,7 @@ use crate::{
     Router,
 };
 
-pub(crate) struct BoxedIntoRoute<S, E>(Box<dyn ErasedIntoRoute<S, E>>);
+pub(crate) struct BoxedIntoRoute<S, E>(AxumMutex<Box<dyn ErasedIntoRoute<S, E>>>);
 
 impl<S> BoxedIntoRoute<S, Infallible>
 where
@@ -20,10 +21,10 @@ where
         H: Handler<T, S>,
         T: 'static,
     {
-        Self(Box::new(MakeErasedHandler {
+        Self(AxumMutex::new(Box::new(MakeErasedHandler {
             handler,
             into_route: |handler, state| Route::new(Handler::with_state(handler, state)),
-        }))
+        })))
     }
 }
 
@@ -35,20 +36,20 @@ impl<S, E> BoxedIntoRoute<S, E> {
         F: FnOnce(Route<E>) -> Route<E2> + Clone + Send + 'static,
         E2: 'static,
     {
-        BoxedIntoRoute(Box::new(Map {
-            inner: self.0,
+        BoxedIntoRoute(AxumMutex::new(Box::new(Map {
+            inner: self.0.into_inner().unwrap(),
             layer: Box::new(f),
-        }))
+        })))
     }
 
     pub(crate) fn into_route(self, state: S) -> Route<E> {
-        self.0.into_route(state)
+        self.0.into_inner().unwrap().into_route(state)
     }
 }
 
 impl<S, E> Clone for BoxedIntoRoute<S, E> {
     fn clone(&self) -> Self {
-        Self(self.0.clone_box())
+        Self(AxumMutex::new(self.0.lock().unwrap().clone_box()))
     }
 }
 
@@ -63,6 +64,7 @@ pub(crate) trait ErasedIntoRoute<S, E>: Send {
 
     fn into_route(self: Box<Self>, state: S) -> Route<E>;
 
+    #[allow(dead_code)]
     fn call_with_state(self: Box<Self>, request: Request, state: S) -> RouteFuture<E>;
 }
 
@@ -101,6 +103,7 @@ where
     }
 }
 
+#[allow(dead_code)]
 pub(crate) struct MakeErasedRouter<S> {
     pub(crate) router: Router<S>,
     pub(crate) into_route: fn(Router<S>, S) -> Route,
@@ -118,7 +121,7 @@ where
         (self.into_route)(self.router, state)
     }
 
-    fn call_with_state(mut self: Box<Self>, request: Request, state: S) -> RouteFuture<Infallible> {
+    fn call_with_state(self: Box<Self>, request: Request, state: S) -> RouteFuture<Infallible> {
         self.router.call_with_state(request, state)
     }
 }

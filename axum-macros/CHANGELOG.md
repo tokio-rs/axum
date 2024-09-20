@@ -5,9 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-# Unreleased
+# 0.4.2
 
-- None.
+- **added:** Add `#[debug_middleware]` ([#1993], [#2725])
+
+[#1993]: https://github.com/tokio-rs/axum/pull/1993
+[#2725]: https://github.com/tokio-rs/axum/pull/2725
+
+# 0.4.1 (13. January, 2024)
+
+- **fixed:** Improve `debug_handler` on tuple response types ([#2201])
+
+[#2201]: https://github.com/tokio-rs/axum/pull/2201
 
 # 0.4.0 (27. November, 2023)
 

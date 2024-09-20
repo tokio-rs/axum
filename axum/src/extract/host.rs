@@ -94,7 +94,6 @@ mod tests {
         let host = test_client()
             .get("/")
             .header(http::header::HOST, original_host)
-            .send()
             .await
             .text()
             .await;
@@ -107,7 +106,6 @@ mod tests {
         let host = test_client()
             .get("/")
             .header(X_FORWARDED_HOST_HEADER_KEY, original_host)
-            .send()
             .await
             .text()
             .await;
@@ -122,7 +120,6 @@ mod tests {
             .get("/")
             .header(X_FORWARDED_HOST_HEADER_KEY, x_forwarded_host_header)
             .header(http::header::HOST, host_header)
-            .send()
             .await
             .text()
             .await;
@@ -131,7 +128,7 @@ mod tests {
 
     #[crate::test]
     async fn uri_host() {
-        let host = test_client().get("/").send().await.text().await;
+        let host = test_client().get("/").await.text().await;
         assert!(host.contains("127.0.0.1"));
     }
 

@@ -40,10 +40,10 @@ impl<I> WithPosition<I>
 where
     I: Iterator,
 {
-    pub(crate) fn new(iter: I) -> WithPosition<I> {
+    pub(crate) fn new(iter: impl IntoIterator<IntoIter = I>) -> WithPosition<I> {
         WithPosition {
             handled_first: false,
-            peekable: iter.fuse().peekable(),
+            peekable: iter.into_iter().fuse().peekable(),
         }
     }
 }

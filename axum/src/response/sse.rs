@@ -548,7 +548,7 @@ mod tests {
         );
 
         let client = TestClient::new(app);
-        let mut stream = client.get("/").send().await;
+        let mut stream = client.get("/").await;
 
         assert_eq!(stream.headers()["content-type"], "text/event-stream");
         assert_eq!(stream.headers()["cache-control"], "no-cache");
@@ -559,13 +559,13 @@ mod tests {
 
         let event_fields = parse_event(&stream.chunk_text().await.unwrap());
         assert_eq!(event_fields.get("data").unwrap(), "{\"foo\":\"bar\"}");
-        assert!(event_fields.get("comment").is_none());
+        assert!(!event_fields.contains_key("comment"));
 
         let event_fields = parse_event(&stream.chunk_text().await.unwrap());
         assert_eq!(event_fields.get("event").unwrap(), "three");
         assert_eq!(event_fields.get("retry").unwrap(), "30000");
         assert_eq!(event_fields.get("id").unwrap(), "unique-id");
-        assert!(event_fields.get("comment").is_none());
+        assert!(!event_fields.contains_key("comment"));
 
         assert!(stream.chunk_text().await.is_none());
     }
@@ -590,7 +590,7 @@ mod tests {
         );
 
         let client = TestClient::new(app);
-        let mut stream = client.get("/").send().await;
+        let mut stream = client.get("/").await;
 
         for _ in 0..5 {
             // first message should be an event
@@ -627,7 +627,7 @@ mod tests {
         );
 
         let client = TestClient::new(app);
-        let mut stream = client.get("/").send().await;
+        let mut stream = client.get("/").await;
 
         // first message should be an event
         let event_fields = parse_event(&stream.chunk_text().await.unwrap());

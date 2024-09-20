@@ -781,8 +781,9 @@ pub mod close_code {
     pub const PROTOCOL: u16 = 1002;
 
     /// Indicates that an endpoint is terminating the connection because it has received a type of
-    /// data it cannot accept (e.g., an endpoint that understands only text data MAY send this if
-    /// it receives a binary message).
+    /// data that it cannot accept.
+    ///
+    /// For example, an endpoint MAY send this if it understands only text data, but receives a binary message.
     pub const UNSUPPORTED: u16 = 1003;
 
     /// Indicates that no status code was included in a closing frame.
@@ -792,12 +793,15 @@ pub mod close_code {
     pub const ABNORMAL: u16 = 1006;
 
     /// Indicates that an endpoint is terminating the connection because it has received data
-    /// within a message that was not consistent with the type of the message (e.g., non-UTF-8
-    /// RFC3629 data within a text message).
+    /// within a message that was not consistent with the type of the message.
+    ///
+    /// For example, an endpoint received non-UTF-8 RFC3629 data within a text message.
     pub const INVALID: u16 = 1007;
 
     /// Indicates that an endpoint is terminating the connection because it has received a message
-    /// that violates its policy. This is a generic status code that can be returned when there is
+    /// that violates its policy.
+    ///
+    /// This is a generic status code that can be returned when there is
     /// no other more suitable status code (e.g., `UNSUPPORTED` or `SIZE`) or if there is a need to
     /// hide specific details about the policy.
     pub const POLICY: u16 = 1008;
@@ -806,10 +810,13 @@ pub mod close_code {
     /// that is too big for it to process.
     pub const SIZE: u16 = 1009;
 
-    /// Indicates that an endpoint (client) is terminating the connection because it has expected
-    /// the server to negotiate one or more extension, but the server didn't return them in the
-    /// response message of the WebSocket handshake. The list of extensions that are needed should
-    /// be given as the reason for closing. Note that this status code is not used by the server,
+    /// Indicates that an endpoint (client) is terminating the connection because the server
+    /// did not respond to extension negotiation correctly.
+    ///
+    /// Specifically, the client has expected the server to negotiate one or more extension(s),
+    /// but the server didn't return them in the response message of the WebSocket handshake.
+    /// The list of extensions that are needed should be given as the reason for closing.
+    /// Note that this status code is not used by the server,
     /// because it can fail the WebSocket handshake instead.
     pub const EXTENSION: u16 = 1010;
 
@@ -828,9 +835,12 @@ pub mod close_code {
 
 #[cfg(test)]
 mod tests {
+    use std::future::ready;
+
     use super::*;
-    use crate::{body::Body, routing::get, Router};
+    use crate::{routing::get, test_helpers::spawn_service, Router};
     use http::{Request, Version};
+    use tokio_tungstenite::tungstenite;
     use tower::ServiceExt;
 
     #[crate::test]
@@ -874,5 +884,48 @@ mod tests {
                 .on_upgrade(|_| async {})
         }
         let _: Router = Router::new().route("/", get(handler));
+    }
+
+    #[crate::test]
+    async fn integration_test() {
+        let app = Router::new().route(
+            "/echo",
+            get(|ws: WebSocketUpgrade| ready(ws.on_upgrade(handle_socket))),
+        );
+
+        async fn handle_socket(mut socket: WebSocket) {
+            while let Some(Ok(msg)) = socket.recv().await {
+                match msg {
+                    Message::Text(_) | Message::Binary(_) | Message::Close(_) => {
+                        if socket.send(msg).await.is_err() {
+                            break;
+                        }
+                    }
+                    Message::Ping(_) | Message::Pong(_) => {
+                        // tungstenite will respond to pings automatically
+                    }
+                }
+            }
+        }
+
+        let addr = spawn_service(app);
+        let (mut socket, _response) = tokio_tungstenite::connect_async(format!("ws://{addr}/echo"))
+            .await
+            .unwrap();
+
+        let input = tungstenite::Message::Text("foobar".to_owned());
+        socket.send(input.clone()).await.unwrap();
+        let output = socket.next().await.unwrap().unwrap();
+        assert_eq!(input, output);
+
+        socket
+            .send(tungstenite::Message::Ping("ping".to_owned().into_bytes()))
+            .await
+            .unwrap();
+        let output = socket.next().await.unwrap().unwrap();
+        assert_eq!(
+            output,
+            tungstenite::Message::Pong("ping".to_owned().into_bytes())
+        );
     }
 }

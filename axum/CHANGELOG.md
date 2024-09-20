@@ -5,9 +5,43 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-# Unreleased
+# 0.7.6
 
-- None.
+- **change:** Avoid cloning `Arc` during deserialization of `Path`
+- **added:** `axum::serve::Serve::tcp_nodelay` and `axum::serve::WithGracefulShutdown::tcp_nodelay` ([#2653])
+- **added:** `Router::has_routes` function ([#2790])
+- **change:** Update tokio-tungstenite to 0.23 ([#2841])
+- **added:** `Serve::local_addr` and `WithGracefulShutdown::local_addr` functions ([#2881])
+
+[#2653]: https://github.com/tokio-rs/axum/pull/2653
+[#2790]: https://github.com/tokio-rs/axum/pull/2790
+[#2841]: https://github.com/tokio-rs/axum/pull/2841
+[#2881]: https://github.com/tokio-rs/axum/pull/2881
+
+# 0.7.5 (24. March, 2024)
+
+- **fixed:** Fixed layers being cloned when calling `axum::serve` directly with
+  a `Router` or `MethodRouter` ([#2586])
+- **fixed:** `h2` is no longer pulled as a dependency unless the `http2` feature
+  is enabled ([#2605])
+- **added:** Add `#[debug_middleware]` ([#1993], [#2725])
+
+[#1993]: https://github.com/tokio-rs/axum/pull/1993
+[#2725]: https://github.com/tokio-rs/axum/pull/2725
+[#2586]: https://github.com/tokio-rs/axum/pull/2586
+[#2605]: https://github.com/tokio-rs/axum/pull/2605
+
+# 0.7.4 (13. January, 2024)
+
+- **fixed:** Fix performance regression present since axum 0.7.0 ([#2483])
+- **fixed:** Improve `debug_handler` on tuple response types ([#2201])
+- **added:** Add `must_use` attribute to `Serve` and `WithGracefulShutdown` ([#2484])
+- **added:** Re-export `axum_core::body::BodyDataStream` from axum
+
+[#2201]: https://github.com/tokio-rs/axum/pull/2201
+[#2483]: https://github.com/tokio-rs/axum/pull/2483
+[#2201]: https://github.com/tokio-rs/axum/pull/2201
+[#2484]: https://github.com/tokio-rs/axum/pull/2484
 
 # 0.7.3 (29. December, 2023)
 
@@ -546,7 +580,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ```rust
   use axum::{Json, http::HeaderMap};
 
-  // This wont compile on 0.6 because both `Json` and `String` need to consume
+  // This won't compile on 0.6 because both `Json` and `String` need to consume
   // the request body. You can use either `Json` or `String`, but not both.
   async fn handler_1(
       json: Json<serde_json::Value>,
@@ -1128,7 +1162,7 @@ Yanked, as it didn't compile in release mode.
   ```rust
   use axum::{Json, http::HeaderMap};
 
-  // This wont compile on 0.6 because both `Json` and `String` need to consume
+  // This won't compile on 0.6 because both `Json` and `String` need to consume
   // the request body. You can use either `Json` or `String`, but not both.
   async fn handler_1(
       json: Json<serde_json::Value>,

@@ -9,7 +9,7 @@ use std::marker::PhantomData;
 
 /// JSON Extractor for zero-copy deserialization.
 ///
-/// Deserialize request bodies into some type that implements [`serde::Deserialize<'de>`].
+/// Deserialize request bodies into some type that implements [`serde::Deserialize<'de>`][serde::Deserialize].
 /// Parsing JSON is delayed until [`deserialize`](JsonDeserializer::deserialize) is called.
 /// If the type implements [`serde::de::DeserializeOwned`], the [`Json`](axum::Json) extractor should
 /// be preferred.
@@ -22,8 +22,7 @@ use std::marker::PhantomData;
 /// Additionally, a `JsonRejection` error will be returned, when calling `deserialize` if:
 ///
 /// - The body doesn't contain syntactically valid JSON.
-/// - The body contains syntactically valid JSON, but it couldn't be deserialized into the target
-/// type.
+/// - The body contains syntactically valid JSON, but it couldn't be deserialized into the target type.
 /// - Attempting to deserialize escaped JSON into a type that must be borrowed (e.g. `&'a str`).
 ///
 /// ⚠️ `serde` will implicitly try to borrow for `&str` and `&[u8]` types, but will error if the
@@ -243,7 +242,7 @@ mod tests {
         let app = Router::new().route("/", post(handler));
 
         let client = TestClient::new(app);
-        let res = client.post("/").json(&json!({ "foo": "bar" })).send().await;
+        let res = client.post("/").json(&json!({ "foo": "bar" })).await;
         let body = res.text().await;
 
         assert_eq!(body, "bar");
@@ -275,11 +274,7 @@ mod tests {
         let client = TestClient::new(app);
 
         // The escaped characters prevent serde_json from borrowing.
-        let res = client
-            .post("/")
-            .json(&json!({ "foo": "\"bar\"" }))
-            .send()
-            .await;
+        let res = client.post("/").json(&json!({ "foo": "\"bar\"" })).await;
 
         let body = res.text().await;
 
@@ -306,19 +301,11 @@ mod tests {
 
         let client = TestClient::new(app);
 
-        let res = client
-            .post("/")
-            .json(&json!({ "foo": "good" }))
-            .send()
-            .await;
+        let res = client.post("/").json(&json!({ "foo": "good" })).await;
         let body = res.text().await;
         assert_eq!(body, "good");
 
-        let res = client
-            .post("/")
-            .json(&json!({ "foo": "\"bad\"" }))
-            .send()
-            .await;
+        let res = client.post("/").json(&json!({ "foo": "\"bad\"" })).await;
         assert_eq!(res.status(), StatusCode::UNPROCESSABLE_ENTITY);
         let body_text = res.text().await;
         assert_eq!(
@@ -342,7 +329,7 @@ mod tests {
         let app = Router::new().route("/", post(handler));
 
         let client = TestClient::new(app);
-        let res = client.post("/").body(r#"{ "foo": "bar" }"#).send().await;
+        let res = client.post("/").body(r#"{ "foo": "bar" }"#).await;
 
         let status = res.status();
 
@@ -364,7 +351,6 @@ mod tests {
                 .post("/")
                 .header("content-type", content_type)
                 .body("{}")
-                .send()
                 .await;
 
             res.status() == StatusCode::OK
@@ -393,7 +379,6 @@ mod tests {
             .post("/")
             .body("{")
             .header("content-type", "application/json")
-            .send()
             .await;
 
         assert_eq!(res.status(), StatusCode::BAD_REQUEST);
@@ -431,7 +416,6 @@ mod tests {
             .post("/")
             .body("{\"a\": 1, \"b\": [{\"x\": 2}]}")
             .header("content-type", "application/json")
-            .send()
             .await;
 
         assert_eq!(res.status(), StatusCode::UNPROCESSABLE_ENTITY);

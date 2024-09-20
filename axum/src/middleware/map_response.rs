@@ -278,6 +278,8 @@ macro_rules! impl_service {
                         Ok(res) => {
                             f($($ty,)* res).await.into_response()
                         }
+
+                        #[allow(unreachable_patterns)]
                         Err(err) => match err {}
                     }
                 });
@@ -357,7 +359,7 @@ mod tests {
         let app = Router::new().layer(map_response(add_header));
         let client = TestClient::new(app);
 
-        let res = client.get("/").send().await;
+        let res = client.get("/").await;
 
         assert_eq!(res.headers()["x-foo"], "foo");
     }

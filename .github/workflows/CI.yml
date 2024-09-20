@@ -2,7 +2,7 @@ name: CI
 
 env:
   CARGO_TERM_COLOR: always
-  MSRV: '1.66'
+  MSRV: '1.70'
 
 on:
   push:
@@ -14,7 +14,7 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - uses: taiki-e/install-action@protoc
     - uses: dtolnay/rust-toolchain@beta
       with:
@@ -28,7 +28,7 @@ jobs:
   check-docs:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - uses: dtolnay/rust-toolchain@stable
     - uses: Swatinem/rust-cache@v2
     - name: cargo doc
@@ -39,7 +39,7 @@ jobs:
   cargo-hack:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - uses: taiki-e/install-action@protoc
     - uses: dtolnay/rust-toolchain@stable
     - uses: Swatinem/rust-cache@v2
@@ -55,14 +55,20 @@ jobs:
       matrix:
         crate: [axum, axum-core, axum-extra, axum-macros]
     steps:
-    - uses: actions/checkout@v3
-    - uses: dtolnay/rust-toolchain@nightly
+    - uses: actions/checkout@v4
+    # Pinned version due to failing `cargo-public-api-crates`.
+    - uses: dtolnay/rust-toolchain@master
+      with:
+        toolchain: nightly-2024-06-06
     - uses: Swatinem/rust-cache@v2
     - name: Install cargo-public-api-crates
       run: |
         cargo install --git https://github.com/davidpdrsn/cargo-public-api-crates
+    - name: Build rustdoc
+      run: |
+        cargo rustdoc --all-features --manifest-path ${{ matrix.crate }}/Cargo.toml -- -Z unstable-options --output-format json
     - name: cargo public-api-crates check
-      run: cargo public-api-crates --manifest-path ${{ matrix.crate }}/Cargo.toml check
+      run: cargo public-api-crates --manifest-path ${{ matrix.crate }}/Cargo.toml --skip-build check
 
   test-versions:
     needs: check
@@ -71,7 +77,7 @@ jobs:
       matrix:
         rust: [stable, beta]
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - uses: taiki-e/install-action@protoc
     - uses: dtolnay/rust-toolchain@master
       with:
@@ -85,7 +91,7 @@ jobs:
     needs: check
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Get rust-toolchain version
       id: rust-toolchain
       run: echo "version=$(cat axum-macros/rust-toolchain)" >> $GITHUB_OUTPUT
@@ -103,7 +109,7 @@ jobs:
     needs: check
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - uses: dtolnay/rust-toolchain@master
       with:
         toolchain: ${{ env.MSRV }}
@@ -139,7 +145,7 @@ jobs:
     needs: check
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - uses: dtolnay/rust-toolchain@stable
     - uses: Swatinem/rust-cache@v2
     - name: Run doc tests
@@ -155,17 +161,17 @@ jobs:
           - advisories
           - bans licenses sources
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: EmbarkStudios/cargo-deny-action@v1
         with:
           command: check ${{ matrix.checks }}
-          arguments: --all-features --manifest-path axum/Cargo.toml
+          manifest-path: axum/Cargo.toml
 
   armv5te-unknown-linux-musleabi:
     needs: check
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - uses: dtolnay/rust-toolchain@stable
       with:
         target: armv5te-unknown-linux-musleabi
@@ -189,7 +195,7 @@ jobs:
     needs: check
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - uses: dtolnay/rust-toolchain@stable
       with:
         target: wasm32-unknown-unknown
@@ -204,7 +210,7 @@ jobs:
   dependencies-are-sorted:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - uses: dtolnay/rust-toolchain@beta
     - uses: Swatinem/rust-cache@v2
     - name: Install cargo-sort
@@ -224,7 +230,7 @@ jobs:
 
     steps:
       - name: Checkout Actions Repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Check the spelling of the files in our repo
-        uses: crate-ci/typos@v1.16.2
+        uses: crate-ci/typos@v1.20.8

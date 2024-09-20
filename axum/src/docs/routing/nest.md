@@ -181,7 +181,7 @@ router.
 # Panics
 
 - If the route overlaps with another route. See [`Router::route`]
-for more details.
+  for more details.
 - If the route contains a wildcard (`*`).
 - If `path` is empty.
 

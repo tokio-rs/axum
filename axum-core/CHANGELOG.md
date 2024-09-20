@@ -5,9 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-# Unreleased
+# 0.4.4
 
-- None.
+- **added:** Derive `Clone` and `Copy` for `AppendHeaders` ([#2776])
+- **added:** `must_use` attribute on `AppendHeaders` ([#2846])
+- **added:** `must_use` attribute on `ErrorResponse` ([#2846])
+- **added:** `must_use` attribute on `IntoResponse::into_response` ([#2846])
+- **added:** `must_use` attribute on `IntoResponseParts` trait methods ([#2846])
+- **added:** Implement `Copy` for `DefaultBodyLimit` ([#2875])
+- **added**: `DefaultBodyLimit::max` and `DefaultBodyLimit::disable` are now
+  allowed in const context ([#2875])
+
+[#2776]: https://github.com/tokio-rs/axum/pull/2776
+[#2846]: https://github.com/tokio-rs/axum/pull/2846
+[#2875]: https://github.com/tokio-rs/axum/pull/2875
+
+# 0.4.3 (13. January, 2024)
+
+- **added:** Implement `IntoResponseParts` for `()` ([#2471])
+
+[#2471]: https://github.com/tokio-rs/axum/pull/2471
 
 # 0.4.2 (29. December, 2023)
 

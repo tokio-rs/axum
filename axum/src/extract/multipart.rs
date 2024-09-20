@@ -272,12 +272,13 @@ impl std::error::Error for MultipartError {
 
 impl IntoResponse for MultipartError {
     fn into_response(self) -> Response {
+        let body = self.body_text();
         axum_core::__log_rejection!(
             rejection_type = Self,
-            body_text = self.body_text(),
+            body_text = body,
             status = self.status(),
         );
-        (self.status(), self.body_text()).into_response()
+        (self.status(), body).into_response()
     }
 }
 
@@ -308,7 +309,7 @@ mod tests {
     use axum_core::extract::DefaultBodyLimit;
 
     use super::*;
-    use crate::{response::IntoResponse, routing::post, test_helpers::*, Router};
+    use crate::{routing::post, test_helpers::*, Router};
 
     #[crate::test]
     async fn content_type_with_encoding() {
@@ -343,7 +344,7 @@ mod tests {
                 )])),
         );
 
-        client.post("/").multipart(form).send().await;
+        client.post("/").multipart(form).await;
     }
 
     // No need for this to be a #[test], we just want to make sure it compiles
@@ -374,7 +375,7 @@ mod tests {
         let form =
             reqwest::multipart::Form::new().part("file", reqwest::multipart::Part::bytes(BYTES));
 
-        let res = client.post("/").multipart(form).send().await;
+        let res = client.post("/").multipart(form).await;
         assert_eq!(res.status(), StatusCode::PAYLOAD_TOO_LARGE);
     }
 }

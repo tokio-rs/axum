@@ -21,7 +21,7 @@ async fn main() {
     tracing_subscriber::registry()
         .with(
             tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "example_consume_body_in_extractor_or_middleware=debug".into()),
+                .unwrap_or_else(|_| format!("{}=debug", env!("CARGO_CRATE_NAME")).into()),
         )
         .with(tracing_subscriber::fmt::layer())
         .init();
@@ -49,7 +49,7 @@ async fn print_request_body(request: Request, next: Next) -> Result<impl IntoRes
 async fn buffer_request_body(request: Request) -> Result<Request, Response> {
     let (parts, body) = request.into_parts();
 
-    // this wont work if the body is an long running stream
+    // this won't work if the body is an long running stream
     let bytes = body
         .collect()
         .await

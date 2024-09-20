@@ -28,6 +28,7 @@ mod tests {
     }
 
     // some extractor that requires the state, such as `SignedCookieJar`
+    #[allow(dead_code)]
     pub(crate) struct RequiresState(pub(crate) String);
 
     impl<S> FromRequestParts<S> for RequiresState

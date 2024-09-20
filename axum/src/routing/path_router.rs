@@ -111,13 +111,10 @@ where
     }
 
     fn set_node(&mut self, path: &str, id: RouteId) -> Result<(), String> {
-        let mut node =
-            Arc::try_unwrap(Arc::clone(&self.node)).unwrap_or_else(|node| (*node).clone());
-        if let Err(err) = node.insert(path, id) {
-            return Err(format!("Invalid route {path:?}: {err}"));
-        }
-        self.node = Arc::new(node);
-        Ok(())
+        let node = Arc::make_mut(&mut self.node);
+
+        node.insert(path, id)
+            .map_err(|err| format!("Invalid route {path:?}: {err}"))
     }
 
     pub(super) fn merge(
@@ -293,6 +290,10 @@ where
         }
     }
 
+    pub(super) fn has_routes(&self) -> bool {
+        !self.routes.is_empty()
+    }
+
     pub(super) fn with_state<S2>(self, state: S) -> PathRouter<S2, IS_FALLBACK> {
         let routes = self
             .routes
@@ -316,7 +317,7 @@ where
     }
 
     pub(super) fn call_with_state(
-        &mut self,
+        &self,
         mut req: Request,
         state: S,
     ) -> Result<RouteFuture<Infallible>, (Request, S)> {
@@ -349,7 +350,7 @@ where
 
                 let endpoint = self
                     .routes
-                    .get_mut(&id)
+                    .get(&id)
                     .expect("no route for id. This is a bug in axum. Please file an issue");
 
                 match endpoint {

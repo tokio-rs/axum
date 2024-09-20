@@ -29,7 +29,7 @@ async fn main() {
     tracing_subscriber::registry()
         .with(
             tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "example_low_level_rustls=debug".into()),
+                .unwrap_or_else(|_| format!("{}=debug", env!("CARGO_CRATE_NAME")).into()),
         )
         .with(tracing_subscriber::fmt::layer())
         .init();
@@ -68,7 +68,7 @@ async fn main() {
             // `TokioIo` converts between them.
             let stream = TokioIo::new(stream);
 
-            // Hyper has also its own `Service` trait and doesn't use tower. We can use
+            // Hyper also has its own `Service` trait and doesn't use tower. We can use
             // `hyper::service::service_fn` to create a hyper `Service` that calls our app through
             // `tower::Service::call`.
             let hyper_service = hyper::service::service_fn(move |request: Request<Incoming>| {

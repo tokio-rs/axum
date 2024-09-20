@@ -377,7 +377,13 @@ pub struct InvalidBoundary;
 
 impl IntoResponse for InvalidBoundary {
     fn into_response(self) -> Response {
-        (self.status(), self.body_text()).into_response()
+        let body = self.body_text();
+        axum_core::__log_rejection!(
+            rejection_type = Self,
+            body_text = body,
+            status = self.status(),
+        );
+        (self.status(), body).into_response()
     }
 }
 
@@ -405,7 +411,7 @@ impl std::error::Error for InvalidBoundary {}
 mod tests {
     use super::*;
     use crate::test_helpers::*;
-    use axum::{extract::DefaultBodyLimit, response::IntoResponse, routing::post, Router};
+    use axum::{extract::DefaultBodyLimit, routing::post, Router};
 
     #[tokio::test]
     async fn content_type_with_encoding() {
@@ -435,7 +441,7 @@ mod tests {
                 .unwrap(),
         );
 
-        client.post("/").multipart(form).send().await;
+        client.post("/").multipart(form).await;
     }
 
     // No need for this to be a #[test], we just want to make sure it compiles
@@ -464,7 +470,7 @@ mod tests {
         let form =
             reqwest::multipart::Form::new().part("file", reqwest::multipart::Part::bytes(BYTES));
 
-        let res = client.post("/").multipart(form).send().await;
+        let res = client.post("/").multipart(form).await;
         assert_eq!(res.status(), StatusCode::PAYLOAD_TOO_LARGE);
     }
 }

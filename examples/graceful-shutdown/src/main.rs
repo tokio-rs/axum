@@ -4,9 +4,6 @@
 //! cargo run -p example-graceful-shutdown
 //! kill or ctrl-c
 //! ```
-//!
-//! Supporting graceful shutdown requires a bit of boilerplate. In the future hyper-util will
-//! provide convenience helpers but for now we have to use hyper directly.
 
 use std::time::Duration;
 
@@ -24,7 +21,11 @@ async fn main() {
     tracing_subscriber::registry()
         .with(
             tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| {
-                "example_graceful_shutdown=debug,tower_http=debug,axum=trace".into()
+                format!(
+                    "{}=debug,tower_http=debug,axum=trace",
+                    env!("CARGO_CRATE_NAME")
+                )
+                .into()
             }),
         )
         .with(tracing_subscriber::fmt::layer().without_time())

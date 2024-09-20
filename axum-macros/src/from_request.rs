@@ -181,7 +181,7 @@ pub(crate) fn expand(item: syn::Item, tr: Trait) -> syn::Result<TokenStream> {
                 variants,
             } = item;
 
-            let generics_error = format!("`#[derive({tr})] on enums don't support generics");
+            let generics_error = format!("`#[derive({tr})]` on enums don't support generics");
 
             if !generics.params.is_empty() {
                 return Err(syn::Error::new_spanned(generics, generics_error));
@@ -1022,7 +1022,7 @@ fn infer_state_type_from_field_attributes(fields: &Fields) -> impl Iterator<Item
     match fields {
         Fields::Named(fields_named) => {
             Box::new(fields_named.named.iter().filter_map(|field| {
-                // TODO(david): its a little wasteful to parse the attributes again here
+                // TODO(david): it's a little wasteful to parse the attributes again here
                 // ideally we should parse things once and pass the data down
                 let FromRequestFieldAttrs { via } =
                     parse_attrs("from_request", &field.attrs).ok()?;
@@ -1032,7 +1032,7 @@ fn infer_state_type_from_field_attributes(fields: &Fields) -> impl Iterator<Item
         }
         Fields::Unnamed(fields_unnamed) => {
             Box::new(fields_unnamed.unnamed.iter().filter_map(|field| {
-                // TODO(david): its a little wasteful to parse the attributes again here
+                // TODO(david): it's a little wasteful to parse the attributes again here
                 // ideally we should parse things once and pass the data down
                 let FromRequestFieldAttrs { via } =
                     parse_attrs("from_request", &field.attrs).ok()?;

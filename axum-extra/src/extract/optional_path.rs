@@ -79,19 +79,19 @@ mod tests {
 
         let client = TestClient::new(app);
 
-        let res = client.get("/").send().await;
+        let res = client.get("/").await;
         assert_eq!(res.text().await, "Success: 0");
 
-        let res = client.get("/1").send().await;
+        let res = client.get("/1").await;
         assert_eq!(res.text().await, "Success: 1");
 
-        let res = client.get("/0").send().await;
+        let res = client.get("/0").await;
         assert_eq!(
             res.text().await,
             "Invalid URL: invalid value: integer `0`, expected a nonzero u32"
         );
 
-        let res = client.get("/NaN").send().await;
+        let res = client.get("/NaN").await;
         assert_eq!(
             res.text().await,
             "Invalid URL: Cannot parse `\"NaN\"` to a `u32`"

@@ -38,7 +38,7 @@ where
         Self {
             rest: self.rest.clone(),
             grpc: self.grpc.clone(),
-            // the cloned services probably wont be ready
+            // the cloned services probably won't be ready
             rest_ready: false,
             grpc_ready: false,
         }

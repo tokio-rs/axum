@@ -10,4 +10,5 @@ pub(crate) mod tracing_helpers;
 pub(crate) fn assert_send<T: Send>() {}
 pub(crate) fn assert_sync<T: Sync>() {}
 
+#[allow(dead_code)]
 pub(crate) struct NotSendSync(*const ());

@@ -50,6 +50,33 @@ use std::fmt;
 /// example.
 ///
 /// [example]: https://github.com/tokio-rs/axum/blob/main/examples/query-params-with-empty-strings/src/main.rs
+///
+/// While `Option<T>` will handle empty parameters (e.g. `param=`), beware when using this with a
+/// `Vec<T>`. If your list is optional, use `Vec<T>` in combination with `#[serde(default)]`
+/// instead of `Option<Vec<T>>`. `Option<Vec<T>>` will handle 0, 2, or more arguments, but not one
+/// argument.
+///
+/// # Example
+///
+/// ```rust,no_run
+/// use axum::{routing::get, Router};
+/// use axum_extra::extract::Query;
+/// use serde::Deserialize;
+///
+/// #[derive(Deserialize)]
+/// struct Params {
+///     #[serde(default)]
+///     items: Vec<usize>,
+/// }
+///
+/// // This will parse 0 occurrences of `items` as an empty `Vec`.
+/// async fn process_items(Query(params): Query<Params>) {
+///     // ...
+/// }
+///
+/// let app = Router::new().route("/process_items", get(process_items));
+/// # let _: Router = app;
+/// ```
 #[cfg_attr(docsrs, doc(cfg(feature = "query")))]
 #[derive(Debug, Clone, Copy, Default)]
 pub struct Query<T>(pub T);
@@ -85,11 +112,16 @@ pub enum QueryRejection {
 impl IntoResponse for QueryRejection {
     fn into_response(self) -> Response {
         match self {
-            Self::FailedToDeserializeQueryString(inner) => (
-                StatusCode::BAD_REQUEST,
-                format!("Failed to deserialize query string: {inner}"),
-            )
-                .into_response(),
+            Self::FailedToDeserializeQueryString(inner) => {
+                let body = format!("Failed to deserialize query string: {inner}");
+                let status = StatusCode::BAD_REQUEST;
+                axum_core::__log_rejection!(
+                    rejection_type = Self,
+                    body_text = body,
+                    status = status,
+                );
+                (status, body).into_response()
+            }
         }
     }
 }
@@ -232,7 +264,7 @@ mod tests {
     use super::*;
     use crate::test_helpers::*;
     use axum::{routing::post, Router};
-    use http::{header::CONTENT_TYPE, StatusCode};
+    use http::header::CONTENT_TYPE;
     use serde::Deserialize;
 
     #[tokio::test]
@@ -254,7 +286,6 @@ mod tests {
             .post("/?value=one&value=two")
             .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
             .body("")
-            .send()
             .await;
 
         assert_eq!(res.status(), StatusCode::OK);
@@ -283,7 +314,6 @@ mod tests {
             .post("/?value=one&value=two")
             .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
             .body("")
-            .send()
             .await;
 
         assert_eq!(res.status(), StatusCode::OK);
@@ -309,7 +339,7 @@ mod tests {
 
         let client = TestClient::new(app);
 
-        let res = client.post("/").body("").send().await;
+        let res = client.post("/").body("").await;
 
         assert_eq!(res.status(), StatusCode::OK);
         assert_eq!(res.text().await, "None");
@@ -338,7 +368,6 @@ mod tests {
             .post("/?other=something")
             .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
             .body("")
-            .send()
             .await;
 
         assert_eq!(res.status(), StatusCode::BAD_REQUEST);

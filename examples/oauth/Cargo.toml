@@ -12,7 +12,7 @@ axum-extra = { path = "../../axum-extra", features = ["typed-header"] }
 http = "1.0.0"
 oauth2 = "4.1"
 # Use Rustls because it makes it easier to cross-compile on CI
-reqwest = { version = "0.11", default-features = false, features = ["rustls-tls", "json"] }
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json"] }
 serde = { version = "1.0", features = ["derive"] }
 tokio = { version = "1.0", features = ["full"] }
 tracing = "0.1"
