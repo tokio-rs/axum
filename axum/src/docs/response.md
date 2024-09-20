@@ -1,11 +1,5 @@
 Types and traits for generating responses.
 
-# Table of contents
-
-- [Building responses](#building-responses)
-- [Returning different response types](#returning-different-response-types)
-- [Regarding `impl IntoResponse`](#regarding-impl-intoresponse)
-
 # Building responses
 
 Anything that implements [`IntoResponse`] can be returned from a handler. axum
