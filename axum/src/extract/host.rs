@@ -19,7 +19,7 @@ const X_FORWARDED_HOST_HEADER_KEY: &str = "X-Forwarded-Host";
 /// - `Host` header
 /// - Authority of the request URI
 ///
-/// See https://www.rfc-editor.org/rfc/rfc9110.html#name-host-and-authority for the definition of
+/// See <https://www.rfc-editor.org/rfc/rfc9110.html#name-host-and-authority> for the definition of
 /// host.
 ///
 /// Note that user agents can set `X-Forwarded-Host` and `Host` headers to arbitrary values so make
