@@ -328,6 +328,8 @@ where
             ) -> _,
         > = svc.oneshot(req).map(|result| match result {
             Ok(res) => res.into_response(),
+
+            #[allow(unreachable_patterns)]
             Err(err) => match err {},
         });
 

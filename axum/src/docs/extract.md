@@ -280,6 +280,11 @@ let app = Router::new().route("/users", post(create_user));
 # let _: Router = app;
 ```
 
+Another option is to make use of the optional extractors in [axum-extra] that
+either returns `None` if there are no query parameters in the request URI,
+or returns `Some(T)` if deserialization was successful.
+If the deserialization was not successful, the request is rejected.
+
 # Customizing extractor responses
 
 If an extractor fails it will return a response with the error and your
@@ -709,6 +714,7 @@ logs, enable the `tracing` feature for axum (enabled by default) and the
 `axum::rejection=trace` tracing target, for example with
 `RUST_LOG=info,axum::rejection=trace cargo run`.
 
+[axum-extra]: https://docs.rs/axum-extra/latest/axum_extra/extract/index.html
 [`body::Body`]: crate::body::Body
 [`Bytes`]: crate::body::Bytes
 [customize-extractor-error]: https://github.com/tokio-rs/axum/blob/main/examples/customize-extractor-error/src/main.rs

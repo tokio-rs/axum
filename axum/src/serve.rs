@@ -173,6 +173,11 @@ impl<M, S> Serve<M, S> {
             ..self
         }
     }
+
+    /// Returns the local address this server is bound to.
+    pub fn local_addr(&self) -> io::Result<SocketAddr> {
+        self.tcp_listener.local_addr()
+    }
 }
 
 #[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
@@ -306,6 +311,11 @@ impl<M, S, F> WithGracefulShutdown<M, S, F> {
             tcp_nodelay: Some(nodelay),
             ..self
         }
+    }
+
+    /// Returns the local address this server is bound to.
+    pub fn local_addr(&self) -> io::Result<SocketAddr> {
+        self.tcp_listener.local_addr()
     }
 }
 
@@ -544,6 +554,10 @@ mod tests {
         routing::get,
         Router,
     };
+    use std::{
+        future::pending,
+        net::{IpAddr, Ipv4Addr},
+    };
 
     #[allow(dead_code, unused_must_use)]
     async fn if_it_compiles_it_works() {
@@ -607,4 +621,29 @@ mod tests {
     }
 
     async fn handler() {}
+
+    #[crate::test]
+    async fn test_serve_local_addr() {
+        let router: Router = Router::new();
+        let addr = "0.0.0.0:0";
+
+        let server = serve(TcpListener::bind(addr).await.unwrap(), router.clone());
+        let address = server.local_addr().unwrap();
+
+        assert_eq!(address.ip(), IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)));
+        assert_ne!(address.port(), 0);
+    }
+
+    #[crate::test]
+    async fn test_with_graceful_shutdown_local_addr() {
+        let router: Router = Router::new();
+        let addr = "0.0.0.0:0";
+
+        let server = serve(TcpListener::bind(addr).await.unwrap(), router.clone())
+            .with_graceful_shutdown(pending());
+        let address = server.local_addr().unwrap();
+
+        assert_eq!(address.ip(), IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)));
+        assert_ne!(address.port(), 0);
+    }
 }

@@ -180,7 +180,7 @@ pub(crate) fn expand(item: syn::Item, tr: Trait) -> syn::Result<TokenStream> {
                 variants,
             } = item;
 
-            let generics_error = format!("`#[derive({tr})] on enums don't support generics");
+            let generics_error = format!("`#[derive({tr})]` on enums don't support generics");
 
             if !generics.params.is_empty() {
                 return Err(syn::Error::new_spanned(generics, generics_error));
