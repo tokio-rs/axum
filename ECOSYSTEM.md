@@ -105,6 +105,7 @@ If your project isn't listed here and you would like it to be, please feel free 
 - [Introduction to axum]: YouTube playlist
 - [Rust Axum Full Course]: YouTube video
 - [Deploying Axum projects with Shuttle]
+- [API Development with Rust](https://rust-api.dev/docs/front-matter/preface/): REST APIs based on Axum
 
 [axum-tutorial]: https://github.com/programatik29/axum-tutorial
 [axum-tutorial-website]: https://programatik29.github.io/axum-tutorial/
