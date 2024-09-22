@@ -246,7 +246,6 @@ use from_request::Trait::{FromRequest, FromRequestParts};
 ///
 /// struct MyInnerType;
 ///
-/// #[axum::async_trait]
 /// impl FromRequestParts<CustomState> for MyInnerType {
 ///     // ...
 ///     # type Rejection = ();
