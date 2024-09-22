@@ -1,6 +1,6 @@
 use axum::{
     async_trait,
-    extract::{Extension, FromRequestParts},
+    extract::{Extension, FromRequestParts, Request},
 };
 use http::request::Parts;
 
@@ -82,6 +82,53 @@ use http::request::Parts;
 /// [request extensions]: http::Extensions
 #[derive(Debug, Clone, Default)]
 pub struct Cached<T>(pub T);
+
+impl<T> Cached<T> {
+    fn from_http_extensions(extensions: &http::Extensions) -> Option<Cached<T>>
+    where
+        T: Clone + Send + Sync + 'static,
+    {
+        extensions
+            .get::<CachedEntry<T>>()
+            .cloned()
+            .map(|CachedEntry(value)| Self(value))
+    }
+}
+
+/// The [`GetCachedFromRef`] trait provides a way to retrieve a [`Cached`] value from a reference.
+///
+/// This trait is designed to be used when you want to access previously cached value.
+pub trait GetCachedFromRef<T> {
+    /// Get cached value from a reference.
+    fn get_cached(&self) -> Option<Cached<T>>;
+}
+
+impl<T> GetCachedFromRef<T> for http::Extensions
+where
+    T: Clone + Send + Sync + 'static,
+{
+    fn get_cached(&self) -> Option<Cached<T>> {
+        Cached::from_http_extensions(self)
+    }
+}
+
+impl<T> GetCachedFromRef<T> for Parts
+where
+    T: Clone + Send + Sync + 'static,
+{
+    fn get_cached(&self) -> Option<Cached<T>> {
+        Cached::from_http_extensions(&self.extensions)
+    }
+}
+
+impl<T> GetCachedFromRef<T> for Request
+where
+    T: Clone + Send + Sync + 'static,
+{
+    fn get_cached(&self) -> Option<Cached<T>> {
+        Cached::from_http_extensions(self.extensions())
+    }
+}
 
 #[derive(Clone)]
 struct CachedEntry<T>(T);

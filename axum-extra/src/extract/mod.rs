@@ -19,7 +19,11 @@ mod query;
 #[cfg(feature = "multipart")]
 pub mod multipart;
 
-pub use self::{cached::Cached, optional_path::OptionalPath, with_rejection::WithRejection};
+pub use self::{
+    cached::{Cached, GetCachedFromRef},
+    optional_path::OptionalPath,
+    with_rejection::WithRejection,
+};
 
 #[cfg(feature = "cookie")]
 pub use self::cookie::CookieJar;
