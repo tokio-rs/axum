@@ -12,7 +12,6 @@ futures-util = { version = "0.3", default-features = false, features = ["sink", 
 headers = "0.4"
 tokio = { version = "1.0", features = ["full"] }
 tokio-tungstenite = "0.23"
-tower = { version = "0.4", features = ["util"] }
 tower-http = { version = "0.5.0", features = ["fs", "trace"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
