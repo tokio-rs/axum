@@ -748,6 +748,33 @@ mod tests {
     }
 
     #[crate::test]
+    async fn tuple_param_matches_exactly() {
+        #[allow(dead_code)]
+        #[derive(Deserialize)]
+        struct Tuple(String, String);
+
+        let app = Router::new()
+            .route("/foo/:a/:b/:c", get(|_: Path<(String, String)>| async {}))
+            .route("/bar/:a/:b/:c", get(|_: Path<Tuple>| async {}));
+
+        let client = TestClient::new(app);
+
+        let res = client.get("/foo/a/b/c").await;
+        assert_eq!(res.status(), StatusCode::INTERNAL_SERVER_ERROR);
+        assert_eq!(
+            res.text().await,
+            "Wrong number of path arguments for `Path`. Expected 2 but got 3",
+        );
+
+        let res = client.get("/bar/a/b/c").await;
+        assert_eq!(res.status(), StatusCode::INTERNAL_SERVER_ERROR);
+        assert_eq!(
+            res.text().await,
+            "Wrong number of path arguments for `Path`. Expected 2 but got 3",
+        );
+    }
+
+    #[crate::test]
     async fn deserialize_into_vec_of_tuples() {
         let app = Router::new().route(
             "/:a/:b",

@@ -140,7 +140,7 @@ impl<'de> Deserializer<'de> for PathDeserializer<'de> {
     where
         V: Visitor<'de>,
     {
-        if self.url_params.len() < len {
+        if self.url_params.len() != len {
             return Err(PathDeserializationError::wrong_number_of_parameters()
                 .got(self.url_params.len())
                 .expected(len));
@@ -160,7 +160,7 @@ impl<'de> Deserializer<'de> for PathDeserializer<'de> {
     where
         V: Visitor<'de>,
     {
-        if self.url_params.len() < len {
+        if self.url_params.len() != len {
             return Err(PathDeserializationError::wrong_number_of_parameters()
                 .got(self.url_params.len())
                 .expected(len));
