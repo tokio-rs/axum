@@ -1,5 +1,5 @@
 [package]
-name = "listen-multiple-addrs"
+name = "example-listen-multiple-addrs"
 version = "0.1.0"
 edition = "2021"
 publish = false
