@@ -15,7 +15,7 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 [dev-dependencies]
 assert-json-diff = "2.0"
-brotli = "3.4"
+brotli = "6.0"
 flate2 = "1"
 http = "1"
 zstd = "0.13"
