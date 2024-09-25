@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use axum::{
     http::{header, HeaderValue, StatusCode},
-    response::{IntoResponse, Response},
+    response::{IntoResponse, IntoResponseFailed, Response},
 };
 use bytes::{BufMut, Bytes, BytesMut};
 use serde::Serialize;
@@ -68,7 +68,12 @@ impl IntoResponse for ErasedJson {
                 bytes,
             )
                 .into_response(),
-            Err(err) => (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response(),
+            Err(err) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                IntoResponseFailed,
+                err.to_string(),
+            )
+                .into_response(),
         }
     }
 }
