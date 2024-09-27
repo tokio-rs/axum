@@ -3,7 +3,7 @@ Add a fallback [`Handler`] for the case where a route exists, but the method of 
 Sets the Fallback on the underlying [`MethodRouter`] to be called when it
 matches no method.
 
-```rust
+```rust,no_run
 use axum::{response::IntoResponse, routing::get, Router};
 
 async fn hello_world() -> impl IntoResponse {
