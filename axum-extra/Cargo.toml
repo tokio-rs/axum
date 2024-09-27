@@ -39,8 +39,8 @@ typed-header = ["dep:headers"]
 typed-routing = ["dep:axum-macros", "dep:percent-encoding", "dep:serde_html_form", "dep:form_urlencoded"]
 
 [dependencies]
-axum = { path = "../axum", version = "0.7.6", default-features = false }
-axum-core = { path = "../axum-core", version = "0.4.4" }
+axum = { path = "../axum", version = "0.7.7", default-features = false }
+axum-core = { path = "../axum-core", version = "0.4.5" }
 bytes = "1.1.0"
 futures-util = { version = "0.3", default-features = false, features = ["alloc"] }
 http = "1.0.0"
