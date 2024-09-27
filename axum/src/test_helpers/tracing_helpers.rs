@@ -47,7 +47,7 @@ impl<T, F> CaptureTracing<T, F> {
 
 impl<T, F, Fut> IntoFuture for CaptureTracing<T, F>
 where
-    F: Fn() -> Fut + Send + 'static,
+    F: Fn() -> Fut + Send + Sync + 'static,
     Fut: Future + Send,
     T: DeserializeOwned,
 {
