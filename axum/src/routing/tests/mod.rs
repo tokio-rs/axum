@@ -987,6 +987,7 @@ async fn logging_rejections() {
             StatusCode::BAD_REQUEST,
         );
     })
+    .with_filter("axum::rejection=trace")
     .await;
 
     assert_eq!(
