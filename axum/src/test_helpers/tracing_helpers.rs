@@ -8,6 +8,7 @@ use std::{
 };
 
 use serde::{de::DeserializeOwned, Deserialize};
+use tracing::instrument::WithSubscriber;
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::{filter::Targets, fmt::MakeWriter};
 
@@ -56,7 +57,7 @@ where
 
             let guard = tracing::subscriber::set_default(subscriber);
 
-            f().await;
+            f().with_current_subscriber().await;
 
             drop(guard);
 
