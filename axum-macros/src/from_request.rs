@@ -843,7 +843,7 @@ fn impl_struct_by_extracting_all_at_once(
                         req: ::axum::http::Request<::axum::body::Body>,
                         state: &#state,
                     ) -> ::std::result::Result<Self, Self::Rejection> {
-                        <#via_path<#via_type_generics> as ::axum::extract::FromRequest<#trait_generics>>::from_request(req, state)
+                        <#via_path<#via_type_generics> as ::axum::extract::FromRequest<#trait_generics, _>>::from_request(req, state)
                             .await
                             .map(|#via_path(value)| #value_to_self)
                             .map_err(#map_err)
