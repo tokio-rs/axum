@@ -78,7 +78,7 @@ async fn main() {
                 .await;
 
             if let Err(err) = ret {
-                warn!("error serving connection from {}: {}", addr, err);
+                warn!("error serving connection from {addr}: {err}");
             }
         });
     }

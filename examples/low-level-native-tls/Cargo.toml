@@ -11,7 +11,7 @@ hyper = { version = "1.0.0", features = ["full"] }
 hyper-util = { version = "0.1" }
 tokio = { version = "1", features = ["full"] }
 tokio-native-tls = "0.3.1"
-tower = { version = "0.4", features = ["make"] }
+tower = { version = "0.5.1", features = ["make"] }
 tower-service = "0.3.2"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
