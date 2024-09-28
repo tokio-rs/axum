@@ -6,7 +6,6 @@ use crate::{
 use proc_macro2::{Span, TokenStream};
 use quote::{quote, quote_spanned, ToTokens};
 use std::{collections::HashSet, fmt, iter};
-use syn::token::Comma;
 use syn::{
     parse_quote, punctuated::Punctuated, spanned::Spanned, Fields, Ident, Path, Token, Type,
 };
@@ -340,16 +339,12 @@ fn impl_struct_by_extracting_each_field(
     state: &State,
     tr: Trait,
 ) -> syn::Result<TokenStream> {
-    let trait_generics = state
-        .trait_generics()
-        .collect::<Punctuated<Type, Token![,]>>();
-
     let trait_fn_body = match state {
         State::CannotInfer => quote! {
             ::std::unimplemented!()
         },
         _ => {
-            let extract_fields = extract_fields(&fields, &rejection, tr, &trait_generics)?;
+            let extract_fields = extract_fields(&fields, &rejection, tr)?;
             quote! {
                 ::std::result::Result::Ok(Self {
                     #(#extract_fields)*
@@ -368,6 +363,10 @@ fn impl_struct_by_extracting_each_field(
 
     let impl_generics = state
         .impl_generics()
+        .collect::<Punctuated<Type, Token![,]>>();
+
+    let trait_generics = state
+        .trait_generics()
         .collect::<Punctuated<Type, Token![,]>>();
 
     let state_bounds = state.bounds();
@@ -420,7 +419,6 @@ fn extract_fields(
     fields: &syn::Fields,
     rejection: &Option<syn::Path>,
     tr: Trait,
-    trait_generics: &Punctuated<Type, Comma>,
 ) -> syn::Result<Vec<TokenStream>> {
     fn member(field: &syn::Field, index: usize) -> TokenStream {
         match &field.ident {
@@ -491,7 +489,7 @@ fn extract_fields(
                             #member: {
                                 let (mut parts, body) = req.into_parts();
                                 let value =
-                                    <#field_ty as ::axum::extract::FromRequestParts<#trait_generics>>::from_request_parts(
+                                    <#field_ty as ::axum::extract::FromRequestParts<_>>::from_request_parts(
                                         &mut parts,
                                         state,
                                     )
@@ -506,7 +504,7 @@ fn extract_fields(
                     Trait::FromRequestParts => {
                         quote_spanned! {ty_span=>
                             #member: {
-                                <#field_ty as ::axum::extract::FromRequestParts<#trait_generics>>::from_request_parts(
+                                <#field_ty as ::axum::extract::FromRequestParts<_>>::from_request_parts(
                                     parts,
                                     state,
                                 )
@@ -526,7 +524,7 @@ fn extract_fields(
                             #member: {
                                 let (mut parts, body) = req.into_parts();
                                 let value =
-                                    <#field_ty as ::axum::extract::FromRequestParts<#trait_generics>>::from_request_parts(
+                                    <#field_ty as ::axum::extract::FromRequestParts<_>>::from_request_parts(
                                         &mut parts,
                                         state,
                                     )
@@ -540,7 +538,7 @@ fn extract_fields(
                     Trait::FromRequestParts => {
                         quote_spanned! {ty_span=>
                             #member: {
-                                <#field_ty as ::axum::extract::FromRequestParts<#trait_generics>>::from_request_parts(
+                                <#field_ty as ::axum::extract::FromRequestParts<_>>::from_request_parts(
                                     parts,
                                     state,
                                 )
@@ -565,7 +563,7 @@ fn extract_fields(
                             #member: {
                                 let (mut parts, body) = req.into_parts();
                                 let value =
-                                    <#field_ty as ::axum::extract::FromRequestParts<#trait_generics>>::from_request_parts(
+                                    <#field_ty as ::axum::extract::FromRequestParts<_>>::from_request_parts(
                                         &mut parts,
                                         state,
                                     )
@@ -580,7 +578,7 @@ fn extract_fields(
                     Trait::FromRequestParts => {
                         quote_spanned! {ty_span=>
                             #member: {
-                                <#field_ty as ::axum::extract::FromRequestParts<#trait_generics>>::from_request_parts(
+                                <#field_ty as ::axum::extract::FromRequestParts<_>>::from_request_parts(
                                     parts,
                                     state,
                                 )
@@ -608,7 +606,7 @@ fn extract_fields(
             let field_ty = into_outer(&via, ty_span, peel_option(&field.ty).unwrap());
             quote_spanned! {ty_span=>
                 #member: {
-                    <#field_ty as ::axum::extract::FromRequest<#trait_generics, _>>::from_request(req, state)
+                    <#field_ty as ::axum::extract::FromRequest<_, _>>::from_request(req, state)
                         .await
                         .ok()
                         .map(#into_inner)
@@ -618,7 +616,7 @@ fn extract_fields(
             let field_ty = into_outer(&via, ty_span, peel_result_ok(&field.ty).unwrap());
             quote_spanned! {ty_span=>
                 #member: {
-                    <#field_ty as ::axum::extract::FromRequest<#trait_generics, _>>::from_request(req, state)
+                    <#field_ty as ::axum::extract::FromRequest<_, _>>::from_request(req, state)
                         .await
                         .map(#into_inner)
                 },
@@ -633,7 +631,7 @@ fn extract_fields(
 
             quote_spanned! {ty_span=>
                 #member: {
-                    <#field_ty as ::axum::extract::FromRequest<#trait_generics, _>>::from_request(req, state)
+                    <#field_ty as ::axum::extract::FromRequest<_, _>>::from_request(req, state)
                         .await
                         .map(#into_inner)
                         .map_err(#map_err)?
