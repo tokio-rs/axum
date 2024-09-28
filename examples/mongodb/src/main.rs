@@ -30,7 +30,7 @@ async fn main() {
     // pinging the database
     client
         .database("axum-mongo")
-        .run_command(doc! { "ping": 1 }, None)
+        .run_command(doc! { "ping": 1 })
         .await
         .unwrap();
     println!("Pinged your database. Successfully connected to MongoDB!");
@@ -38,8 +38,9 @@ async fn main() {
     // logging middleware
     tracing_subscriber::registry()
         .with(
-            tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "example_mongo=debug,tower_http=debug".into()),
+            tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| {
+                format!("{}=debug,tower_http=debug", env!("CARGO_CRATE_NAME")).into()
+            }),
         )
         .with(tracing_subscriber::fmt::layer())
         .init();
@@ -70,7 +71,7 @@ async fn create_member(
     State(db): State<Collection<Member>>,
     Json(input): Json<Member>,
 ) -> Result<Json<InsertOneResult>, (StatusCode, String)> {
-    let result = db.insert_one(input, None).await.map_err(internal_error)?;
+    let result = db.insert_one(input).await.map_err(internal_error)?;
 
     Ok(Json(result))
 }
@@ -81,7 +82,7 @@ async fn read_member(
     Path(id): Path<u32>,
 ) -> Result<Json<Option<Member>>, (StatusCode, String)> {
     let result = db
-        .find_one(doc! { "_id": id }, None)
+        .find_one(doc! { "_id": id })
         .await
         .map_err(internal_error)?;
 
@@ -94,7 +95,7 @@ async fn update_member(
     Json(input): Json<Member>,
 ) -> Result<Json<UpdateResult>, (StatusCode, String)> {
     let result = db
-        .replace_one(doc! { "_id": input.id }, input, None)
+        .replace_one(doc! { "_id": input.id }, input)
         .await
         .map_err(internal_error)?;
 
@@ -107,7 +108,7 @@ async fn delete_member(
     Path(id): Path<u32>,
 ) -> Result<Json<DeleteResult>, (StatusCode, String)> {
     let result = db
-        .delete_one(doc! { "_id": id }, None)
+        .delete_one(doc! { "_id": id })
         .await
         .map_err(internal_error)?;
 
