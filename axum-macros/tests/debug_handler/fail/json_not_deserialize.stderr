@@ -4,20 +4,25 @@ error[E0277]: the trait bound `for<'de> Struct: serde::de::Deserialize<'de>` is 
 7 | async fn handler(_foo: Json<Struct>) {}
   |                        ^^^^^^^^^^^^ the trait `for<'de> serde::de::Deserialize<'de>` is not implemented for `Struct`, which is required by `Json<Struct>: FromRequest<()>`
   |
+  = note: for local types consider adding `#[derive(serde::Deserialize)]` to your `Struct` type
+  = note: for types from other crates check whether the crate offers a `serde` feature flag
   = help: the following other types implement trait `serde::de::Deserialize<'de>`:
-            bool
-            char
-            isize
-            i8
-            i16
-            i32
-            i64
-            i128
+            &'a [u8]
+            &'a serde_json::raw::RawValue
+            &'a std::path::Path
+            &'a str
+            ()
+            (T,)
+            (T0, T1)
+            (T0, T1, T2)
           and $N others
   = note: required for `Struct` to implement `serde::de::DeserializeOwned`
   = note: required for `Json<Struct>` to implement `FromRequest<()>`
   = help: see issue #48214
-  = help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
+help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
+  |
+1 + #![feature(trivial_bounds)]
+  |
 
 error[E0277]: the trait bound `for<'de> Struct: serde::de::Deserialize<'de>` is not satisfied
  --> tests/debug_handler/fail/json_not_deserialize.rs:7:24
@@ -25,15 +30,17 @@ error[E0277]: the trait bound `for<'de> Struct: serde::de::Deserialize<'de>` is 
 7 | async fn handler(_foo: Json<Struct>) {}
   |                        ^^^^^^^^^^^^ the trait `for<'de> serde::de::Deserialize<'de>` is not implemented for `Struct`, which is required by `Json<Struct>: FromRequest<()>`
   |
+  = note: for local types consider adding `#[derive(serde::Deserialize)]` to your `Struct` type
+  = note: for types from other crates check whether the crate offers a `serde` feature flag
   = help: the following other types implement trait `serde::de::Deserialize<'de>`:
-            bool
-            char
-            isize
-            i8
-            i16
-            i32
-            i64
-            i128
+            &'a [u8]
+            &'a serde_json::raw::RawValue
+            &'a std::path::Path
+            &'a str
+            ()
+            (T,)
+            (T0, T1)
+            (T0, T1, T2)
           and $N others
   = note: required for `Struct` to implement `serde::de::DeserializeOwned`
   = note: required for `Json<Struct>` to implement `FromRequest<()>`

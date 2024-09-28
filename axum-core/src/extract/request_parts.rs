@@ -1,7 +1,7 @@
 use super::{rejection::*, FromRequest, FromRequestParts, Request};
 use crate::{body::Body, RequestExt};
 use async_trait::async_trait;
-use bytes::Bytes;
+use bytes::{BufMut, Bytes, BytesMut};
 use http::{request::Parts, Extensions, HeaderMap, Method, Uri, Version};
 use http_body_util::BodyExt;
 use std::convert::Infallible;
@@ -72,6 +72,37 @@ where
 }
 
 #[async_trait]
+impl<S> FromRequest<S> for BytesMut
+where
+    S: Send + Sync,
+{
+    type Rejection = BytesRejection;
+
+    async fn from_request(req: Request, _: &S) -> Result<Self, Self::Rejection> {
+        let mut body = req.into_limited_body();
+        let mut bytes = BytesMut::new();
+        body_to_bytes_mut(&mut body, &mut bytes).await?;
+        Ok(bytes)
+    }
+}
+
+async fn body_to_bytes_mut(body: &mut Body, bytes: &mut BytesMut) -> Result<(), BytesRejection> {
+    while let Some(frame) = body
+        .frame()
+        .await
+        .transpose()
+        .map_err(FailedToBufferBody::from_err)?
+    {
+        let Ok(data) = frame.into_data() else {
+            return Ok(());
+        };
+        bytes.put(data);
+    }
+
+    Ok(())
+}
+
+#[async_trait]
 impl<S> FromRequest<S> for Bytes
 where
     S: Send + Sync,
@@ -106,9 +137,7 @@ where
                 }
             })?;
 
-        let string = std::str::from_utf8(&bytes)
-            .map_err(InvalidUtf8::from_err)?
-            .to_owned();
+        let string = String::from_utf8(bytes.into()).map_err(InvalidUtf8::from_err)?;
 
         Ok(string)
     }

@@ -10,8 +10,8 @@
 //! // Handler that immediately returns an empty `200 OK` response.
 //! async fn unit_handler() {}
 //!
-//! // Handler that immediately returns an empty `200 OK` response with a plain
-//! // text body.
+//! // Handler that immediately returns a `200 OK` response with a plain text
+//! // body.
 //! async fn string_handler() -> String {
 //!     "Hello, World!".to_string()
 //! }
@@ -328,6 +328,8 @@ where
             ) -> _,
         > = svc.oneshot(req).map(|result| match result {
             Ok(res) => res.into_response(),
+
+            #[allow(unreachable_patterns)]
             Err(err) => match err {},
         });
 

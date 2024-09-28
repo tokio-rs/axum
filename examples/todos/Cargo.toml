@@ -8,8 +8,8 @@ publish = false
 axum = { path = "../../axum" }
 serde = { version = "1.0", features = ["derive"] }
 tokio = { version = "1.0", features = ["full"] }
-tower = { version = "0.4", features = ["util", "timeout"] }
-tower-http = { version = "0.5.0", features = ["add-extension", "trace"] }
+tower = { version = "0.5.1", features = ["util", "timeout"] }
+tower-http = { version = "0.6.1", features = ["add-extension", "trace"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 uuid = { version = "1.0", features = ["serde", "v4"] }

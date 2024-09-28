@@ -24,8 +24,9 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 async fn main() {
     tracing_subscriber::registry()
         .with(
-            tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "example_sse=debug,tower_http=debug".into()),
+            tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| {
+                format!("{}=debug,tower_http=debug", env!("CARGO_CRATE_NAME")).into()
+            }),
         )
         .with(tracing_subscriber::fmt::layer())
         .init();
@@ -96,7 +97,7 @@ mod tests {
         let listening_url = spawn_app("127.0.0.1").await;
 
         let mut event_stream = reqwest::Client::new()
-            .get(&format!("{}/sse", listening_url))
+            .get(format!("{}/sse", listening_url))
             .header("User-Agent", "integration_test")
             .send()
             .await

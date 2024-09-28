@@ -5,9 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-# Unreleased
+# 0.4.5
 
-- None.
+- **fixed:** Compile errors from the internal `__log_rejection` macro under
+  certain Cargo feature combinations between axum crates ([#2933])
+
+[#2933]: https://github.com/tokio-rs/axum/pull/2933
+
+# 0.4.4
+
+- **added:** Derive `Clone` and `Copy` for `AppendHeaders` ([#2776])
+- **added:** `must_use` attribute on `AppendHeaders` ([#2846])
+- **added:** `must_use` attribute on `ErrorResponse` ([#2846])
+- **added:** `must_use` attribute on `IntoResponse::into_response` ([#2846])
+- **added:** `must_use` attribute on `IntoResponseParts` trait methods ([#2846])
+- **added:** Implement `Copy` for `DefaultBodyLimit` ([#2875])
+- **added**: `DefaultBodyLimit::max` and `DefaultBodyLimit::disable` are now
+  allowed in const context ([#2875])
+
+[#2776]: https://github.com/tokio-rs/axum/pull/2776
+[#2846]: https://github.com/tokio-rs/axum/pull/2846
+[#2875]: https://github.com/tokio-rs/axum/pull/2875
 
 # 0.4.3 (13. January, 2024)
 

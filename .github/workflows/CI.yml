@@ -2,7 +2,7 @@ name: CI
 
 env:
   CARGO_TERM_COLOR: always
-  MSRV: '1.66'
+  MSRV: '1.70'
 
 on:
   push:
@@ -56,13 +56,19 @@ jobs:
         crate: [axum, axum-core, axum-extra, axum-macros]
     steps:
     - uses: actions/checkout@v4
-    - uses: dtolnay/rust-toolchain@nightly
+    # Pinned version due to failing `cargo-public-api-crates`.
+    - uses: dtolnay/rust-toolchain@master
+      with:
+        toolchain: nightly-2024-06-06
     - uses: Swatinem/rust-cache@v2
     - name: Install cargo-public-api-crates
       run: |
         cargo install --git https://github.com/davidpdrsn/cargo-public-api-crates
+    - name: Build rustdoc
+      run: |
+        cargo rustdoc --all-features --manifest-path ${{ matrix.crate }}/Cargo.toml -- -Z unstable-options --output-format json
     - name: cargo public-api-crates check
-      run: cargo public-api-crates --manifest-path ${{ matrix.crate }}/Cargo.toml check
+      run: cargo public-api-crates --manifest-path ${{ matrix.crate }}/Cargo.toml --skip-build check
 
   test-versions:
     needs: check

@@ -82,6 +82,11 @@ let app = Router::new()
 # let _: Router = app;
 ```
 
+Additionally, while the wildcard route `/foo/*rest` will not match the
+paths `/foo` or `/foo/`, a nested router at `/foo` will match the path `/foo`
+(but not `/foo/`), and a nested router at `/foo/` will match the path `/foo/`
+(but not `/foo`).
+
 # Fallbacks
 
 If a nested router doesn't have its own fallback then it will inherit the
@@ -181,7 +186,7 @@ router.
 # Panics
 
 - If the route overlaps with another route. See [`Router::route`]
-for more details.
+  for more details.
 - If the route contains a wildcard (`*`).
 - If `path` is empty.
 

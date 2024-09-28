@@ -7,10 +7,9 @@ version = "0.1.0"
 [dependencies]
 async-trait = "0.1.67"
 axum = { path = "../../axum" }
-http-body = "1.0.0"
 serde = { version = "1.0", features = ["derive"] }
 thiserror = "1.0.29"
 tokio = { version = "1.0", features = ["full"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-validator = { version = "0.14.0", features = ["derive"] }
+validator = { version = "0.18.1", features = ["derive"] }

@@ -15,7 +15,6 @@
     clippy::needless_borrow,
     clippy::match_wildcard_for_single_variants,
     clippy::if_let_mutex,
-    clippy::mismatched_target_os,
     clippy::await_holding_lock,
     clippy::match_on_vec_items,
     clippy::imprecise_flops,
@@ -399,7 +398,7 @@ use from_request::Trait::{FromRequest, FromRequestParts};
 ///
 /// # Known limitations
 ///
-/// Generics are only supported on tuple structs with exactly on field. Thus this doesn't work
+/// Generics are only supported on tuple structs with exactly one field. Thus this doesn't work
 ///
 /// ```compile_fail
 /// #[derive(axum_macros::FromRequest)]

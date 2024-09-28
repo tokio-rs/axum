@@ -14,3 +14,6 @@ axum-extra = { path = "../../axum-extra", default-features = false }
 futures-executor = "0.3.21"
 http = "1.0.0"
 tower-service = "0.3.1"
+
+[package.metadata.cargo-machete]
+ignored = ["axum-extra"]
