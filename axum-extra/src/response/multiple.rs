@@ -91,6 +91,7 @@ pub struct Part {
 
 impl Part {
     /// Create a new part with `Content-Type` of `text/plain` with the supplied name and contents.
+    ///
     /// This form will not have a defined file name.
     ///
     /// # Examples
@@ -113,8 +114,9 @@ impl Part {
     }
 
     /// Create a new part containing a generic file, with a `Content-Type` of `application/octet-stream`
-    /// using the provided file name, field name, and contents. If the MIME type of the file is known, consider
-    /// using `Part::raw_part`.
+    /// using the provided file name, field name, and contents.
+    ///
+    /// If the MIME type of the file is known, consider using `Part::raw_part`.
     ///
     /// # Examples
     ///
@@ -137,8 +139,9 @@ impl Part {
         }
     }
 
-    /// Create a new part with more fine-grained control over the semantics of that part. The caller
-    /// is assumed to have set a valid MIME type.
+    /// Create a new part with more fine-grained control over the semantics of that part.
+    ///
+    /// The caller is assumed to have set a valid MIME type.
     ///
     /// This function will return an error if the provided MIME type is not valid.
     ///
@@ -205,6 +208,7 @@ impl FromIterator<Part> for MultipartForm {
 }
 
 /// A boundary is defined as a user defined (arbitrary) value that does not occur in any of the data.
+///
 /// Because the specification does not clearly define a methodology for generating boundaries, this implementation
 /// follow's Reqwest's, and generates a boundary in the format of `XXXXXXXX-XXXXXXXX-XXXXXXXX-XXXXXXXX` where `XXXXXXXX`
 /// is a hexadecimal representation of a pseudo randomly generated u64.
