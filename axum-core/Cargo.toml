@@ -2,7 +2,7 @@
 categories = ["asynchronous", "network-programming", "web-programming"]
 description = "Core types and traits for axum"
 edition = "2021"
-rust-version = "1.57"
+rust-version = { workspace = true }
 homepage = "https://github.com/tokio-rs/axum"
 keywords = ["http", "web", "framework"]
 license = "MIT"

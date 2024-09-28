@@ -4,7 +4,7 @@ version = "0.7.7"
 categories = ["asynchronous", "network-programming", "web-programming::http-server"]
 description = "Web framework that focuses on ergonomics and modularity"
 edition = "2021"
-rust-version = "1.66"
+rust-version = { workspace = true }
 homepage = "https://github.com/tokio-rs/axum"
 keywords = ["http", "web", "framework"]
 license = "MIT"

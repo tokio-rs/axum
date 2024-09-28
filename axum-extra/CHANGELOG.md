@@ -8,9 +8,7 @@ and this project adheres to [Semantic Versioning].
 # Unreleased
 
 - **breaking:** Update to prost 0.13. Used for the `Protobuf` extractor ([#2829])
-- **change:** Update minimum rust version to 1.70 ([#2829])
-
-[#2829]: https://github.com/tokio-rs/axum/pull/2829
+- **change:** Update minimum rust version to 1.75
 
 # 0.9.4
 
