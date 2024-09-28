@@ -1,3 +1,4 @@
+use crate::box_clone_service::BoxCloneService;
 use crate::response::{IntoResponse, Response};
 use axum_core::extract::{FromRequest, FromRequestParts, Request};
 use futures_util::future::BoxFuture;
@@ -10,7 +11,7 @@ use std::{
     pin::Pin,
     task::{Context, Poll},
 };
-use tower::{util::BoxCloneService, ServiceBuilder};
+use tower::ServiceBuilder;
 use tower_layer::Layer;
 use tower_service::Service;
 
@@ -260,6 +261,7 @@ macro_rules! impl_service {
             I: Service<Request, Error = Infallible>
                 + Clone
                 + Send
+                + Sync
                 + 'static,
             I::Response: IntoResponse,
             I::Future: Send + 'static,
@@ -298,7 +300,7 @@ macro_rules! impl_service {
                     };
 
                     let inner = ServiceBuilder::new()
-                        .boxed_clone()
+                        .layer_fn(BoxCloneService::new)
                         .map_response(IntoResponse::into_response)
                         .service(ready_inner);
                     let next = Next { inner };

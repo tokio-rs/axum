@@ -165,7 +165,7 @@ pub struct IntoHandler<H, T, S> {
 
 impl<H, T, S> Handler<T, S> for IntoHandler<H, T, S>
 where
-    H: HandlerCallWithExtractors<T, S> + Clone + Send + 'static,
+    H: HandlerCallWithExtractors<T, S> + Clone + Send + Sync + 'static,
     T: FromRequest<S> + Send + 'static,
     T::Rejection: Send,
     S: Send + Sync + 'static,
