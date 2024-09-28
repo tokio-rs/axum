@@ -10,8 +10,8 @@
 //! // Handler that immediately returns an empty `200 OK` response.
 //! async fn unit_handler() {}
 //!
-//! // Handler that immediately returns an empty `200 OK` response with a plain
-//! // text body.
+//! // Handler that immediately returns a `200 OK` response with a plain text
+//! // body.
 //! async fn string_handler() -> String {
 //!     "Hello, World!".to_string()
 //! }
@@ -125,8 +125,8 @@ pub use self::service::HandlerService;
 ///     )));
 /// # let _: Router = app;
 /// ```
-#[cfg_attr(
-    nightly_error_messages,
+#[rustversion::attr(
+    since(1.78),
     diagnostic::on_unimplemented(
         note = "Consider using `#[axum::debug_handler]` to improve the error message"
     )
@@ -328,6 +328,8 @@ where
             ) -> _,
         > = svc.oneshot(req).map(|result| match result {
             Ok(res) => res.into_response(),
+
+            #[allow(unreachable_patterns)]
             Err(err) => match err {},
         });
 

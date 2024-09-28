@@ -9,7 +9,7 @@ license = "MIT"
 name = "axum-macros"
 readme = "README.md"
 repository = "https://github.com/tokio-rs/axum"
-version = "0.4.1" # remember to also bump the version that axum and axum-extra depends on
+version = "0.4.2" # remember to also bump the version that axum and axum-extra depends on
 
 [features]
 default = []
@@ -19,7 +19,6 @@ __private = ["syn/visit-mut"]
 proc-macro = true
 
 [dependencies]
-heck = "0.4"
 proc-macro2 = "1.0"
 quote = "1.0"
 syn = { version = "2.0", features = [

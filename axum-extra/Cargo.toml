@@ -2,19 +2,20 @@
 categories = ["asynchronous", "network-programming", "web-programming"]
 description = "Extra utilities for axum"
 edition = "2021"
-rust-version = "1.66"
+rust-version = "1.70"
 homepage = "https://github.com/tokio-rs/axum"
 keywords = ["http", "web", "framework"]
 license = "MIT"
 name = "axum-extra"
 readme = "README.md"
 repository = "https://github.com/tokio-rs/axum"
-version = "0.9.2"
+version = "0.9.4"
 
 [features]
-default = []
+default = ["tracing"]
 
 async-read-body = ["dep:tokio-util", "tokio-util?/io", "dep:tokio"]
+attachment = ["dep:tracing"]
 cookie = ["dep:cookie"]
 cookie-private = ["cookie", "cookie?/private"]
 cookie-signed = ["cookie", "cookie?/signed"]
@@ -33,12 +34,13 @@ json-lines = [
 multipart = ["dep:multer"]
 protobuf = ["dep:prost"]
 query = ["dep:serde_html_form"]
+tracing = ["axum-core/tracing", "axum/tracing"]
 typed-header = ["dep:headers"]
 typed-routing = ["dep:axum-macros", "dep:percent-encoding", "dep:serde_html_form", "dep:form_urlencoded"]
 
 [dependencies]
-axum = { path = "../axum", version = "0.7.2", default-features = false }
-axum-core = { path = "../axum-core", version = "0.4.3" }
+axum = { path = "../axum", version = "0.7.7", default-features = false }
+axum-core = { path = "../axum-core", version = "0.4.5" }
 bytes = "1.1.0"
 futures-util = { version = "0.3", default-features = false, features = ["alloc"] }
 http = "1.0.0"
@@ -47,34 +49,35 @@ http-body-util = "0.1.0"
 mime = "0.3"
 pin-project-lite = "0.2"
 serde = "1.0"
-tower = { version = "0.4", default_features = false, features = ["util"] }
+tower = { version = "0.5.1", default-features = false, features = ["util"] }
 tower-layer = "0.3"
 tower-service = "0.3"
 
 # optional dependencies
-axum-macros = { path = "../axum-macros", version = "0.4.1", optional = true }
+axum-macros = { path = "../axum-macros", version = "0.4.2", optional = true }
 cookie = { package = "cookie", version = "0.18.0", features = ["percent-encode"], optional = true }
 form_urlencoded = { version = "1.1.0", optional = true }
 headers = { version = "0.4.0", optional = true }
 multer = { version = "3.0.0", optional = true }
 percent-encoding = { version = "2.1", optional = true }
-prost = { version = "0.12", optional = true }
+prost = { version = "0.13", optional = true }
 serde_html_form = { version = "0.2.0", optional = true }
 serde_json = { version = "1.0.71", optional = true }
 serde_path_to_error = { version = "0.1.8", optional = true }
 tokio = { version = "1.19", optional = true }
 tokio-stream = { version = "0.1.9", optional = true }
 tokio-util = { version = "0.7", optional = true }
+tracing = { version = "0.1.37", default-features = false, optional = true }
 
 [dev-dependencies]
 axum = { path = "../axum", version = "0.7.2" }
 hyper = "1.0.0"
-reqwest = { version = "0.11", default-features = false, features = ["json", "stream", "multipart"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "stream", "multipart"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0.71"
 tokio = { version = "1.14", features = ["full"] }
-tower = { version = "0.4", features = ["util"] }
-tower-http = { version = "0.5.0", features = ["map-response-body", "timeout"] }
+tower = { version = "0.5.1", features = ["util"] }
+tower-http = { version = "0.6.0", features = ["map-response-body", "timeout"] }
 
 [package.metadata.docs.rs]
 all-features = true

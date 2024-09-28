@@ -184,7 +184,7 @@ mod tests {
     use futures_util::StreamExt;
     use http::StatusCode;
     use serde::Deserialize;
-    use std::{convert::Infallible, error::Error};
+    use std::error::Error;
 
     #[derive(Serialize, Deserialize, PartialEq, Eq, Debug)]
     struct User {

@@ -1,15 +1,3 @@
-# Table of contents
-
-- [Intro](#intro)
-- [Applying middleware](#applying-middleware)
-- [Commonly used middleware](#commonly-used-middleware)
-- [Ordering](#ordering)
-- [Writing middleware](#writing-middleware)
-- [Routing to services/middleware and backpressure](#routing-to-servicesmiddleware-and-backpressure)
-- [Accessing state in middleware](#accessing-state-in-middleware)
-- [Passing state from middleware to handlers](#passing-state-from-middleware-to-handlers)
-- [Rewriting request URI in middleware](#rewriting-request-uri-in-middleware)
-
 # Intro
 
 axum is unique in that it doesn't have its own bespoke middleware system and
@@ -352,11 +340,11 @@ readiness inside the response future returned by `Service::call`. This works
 well when your services don't care about backpressure and are always ready
 anyway.
 
-axum expects that all services used in your app wont care about
+axum expects that all services used in your app won't care about
 backpressure and so it uses the latter strategy. However that means you
 should avoid routing to a service (or using a middleware) that _does_ care
-about backpressure. At the very least you should [load shed] so requests are
-dropped quickly and don't keep piling up.
+about backpressure. At the very least you should [load shed][tower::load_shed]
+so requests are dropped quickly and don't keep piling up.
 
 It also means that if `poll_ready` returns an error then that error will be
 returned in the response future from `call` and _not_ from `poll_ready`. In
@@ -388,8 +376,7 @@ let app = ServiceBuilder::new()
 ```
 
 However when applying middleware around your whole application in this way
-you have to take care that errors are still being handled with
-appropriately.
+you have to take care that errors are still being handled appropriately.
 
 Also note that handlers created from async functions don't care about
 backpressure and are always ready. So if you're not using any Tower

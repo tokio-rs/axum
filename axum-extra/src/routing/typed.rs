@@ -85,12 +85,12 @@ use serde::Serialize;
 ///
 /// - A `TypedPath` implementation.
 /// - A [`FromRequest`] implementation compatible with [`RouterExt::typed_get`],
-/// [`RouterExt::typed_post`], etc. This implementation uses [`Path`] and thus your struct must
-/// also implement [`serde::Deserialize`], unless it's a unit struct.
+///   [`RouterExt::typed_post`], etc. This implementation uses [`Path`] and thus your struct must
+///   also implement [`serde::Deserialize`], unless it's a unit struct.
 /// - A [`Display`] implementation that interpolates the captures. This can be used to, among other
-/// things, create links to known paths and have them verified statically. Note that the
-/// [`Display`] implementation for each field must return something that's compatible with its
-/// [`Deserialize`] implementation.
+///   things, create links to known paths and have them verified statically. Note that the
+///   [`Display`] implementation for each field must return something that's compatible with its
+///   [`Deserialize`] implementation.
 ///
 /// Additionally the macro will verify the captures in the path matches the fields of the struct.
 /// For example this fails to compile since the struct doesn't have a `team_id` field:

@@ -1,26 +1,10 @@
 Types and traits for extracting data from requests.
 
-# Table of contents
-
-- [Intro](#intro)
-- [Common extractors](#common-extractors)
-- [Applying multiple extractors](#applying-multiple-extractors)
-- [The order of extractors](#the-order-of-extractors)
-- [Optional extractors](#optional-extractors)
-- [Customizing extractor responses](#customizing-extractor-responses)
-- [Accessing inner errors](#accessing-inner-errors)
-- [Defining custom extractors](#defining-custom-extractors)
-- [Accessing other extractors in `FromRequest` or `FromRequestParts` implementations](#accessing-other-extractors-in-fromrequest-or-fromrequestparts-implementations)
-- [Request body limits](#request-body-limits)
-- [Wrapping extractors](#wrapping-extractors)
-- [Logging rejections](#logging-rejections)
-
 # Intro
 
 A handler function is an async function that takes any number of
 "extractors" as arguments. An extractor is a type that implements
-[`FromRequest`](crate::extract::FromRequest)
-or [`FromRequestParts`](crate::extract::FromRequestParts).
+[`FromRequest`] or [`FromRequestParts`].
 
 For example, [`Json`] is an extractor that consumes the request body and
 deserializes it as JSON into some target type:
@@ -281,10 +265,15 @@ let app = Router::new().route("/users", post(create_user));
 # let _: Router = app;
 ```
 
+Another option is to make use of the optional extractors in [axum-extra] that
+either returns `None` if there are no query parameters in the request URI,
+or returns `Some(T)` if deserialization was successful.
+If the deserialization was not successful, the request is rejected.
+
 # Customizing extractor responses
 
 If an extractor fails it will return a response with the error and your
-handler will not be called. To customize the error response you have a two
+handler will not be called. To customize the error response you have two 
 options:
 
 1. Use `Result<T, T::Rejection>` as your extractor like shown in ["Optional
@@ -710,6 +699,7 @@ logs, enable the `tracing` feature for axum (enabled by default) and the
 `axum::rejection=trace` tracing target, for example with
 `RUST_LOG=info,axum::rejection=trace cargo run`.
 
+[axum-extra]: https://docs.rs/axum-extra/latest/axum_extra/extract/index.html
 [`body::Body`]: crate::body::Body
 [`Bytes`]: crate::body::Bytes
 [customize-extractor-error]: https://github.com/tokio-rs/axum/blob/main/examples/customize-extractor-error/src/main.rs

@@ -278,6 +278,8 @@ macro_rules! impl_service {
                         Ok(res) => {
                             f($($ty,)* res).await.into_response()
                         }
+
+                        #[allow(unreachable_patterns)]
                         Err(err) => match err {}
                     }
                 });

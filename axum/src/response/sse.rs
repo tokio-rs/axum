@@ -559,13 +559,13 @@ mod tests {
 
         let event_fields = parse_event(&stream.chunk_text().await.unwrap());
         assert_eq!(event_fields.get("data").unwrap(), "{\"foo\":\"bar\"}");
-        assert!(event_fields.get("comment").is_none());
+        assert!(!event_fields.contains_key("comment"));
 
         let event_fields = parse_event(&stream.chunk_text().await.unwrap());
         assert_eq!(event_fields.get("event").unwrap(), "three");
         assert_eq!(event_fields.get("retry").unwrap(), "30000");
         assert_eq!(event_fields.get("id").unwrap(), "unique-id");
-        assert!(event_fields.get("comment").is_none());
+        assert!(!event_fields.contains_key("comment"));
 
         assert!(stream.chunk_text().await.is_none());
     }

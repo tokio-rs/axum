@@ -64,6 +64,7 @@ pub(crate) trait ErasedIntoRoute<S, E>: Send + Sync {
 
     fn into_route(self: Box<Self>, state: S) -> Route<E>;
 
+    #[allow(dead_code)]
     fn call_with_state(self: Box<Self>, request: Request, state: S) -> RouteFuture<E>;
 }
 
@@ -102,6 +103,7 @@ where
     }
 }
 
+#[allow(dead_code)]
 pub(crate) struct MakeErasedRouter<S> {
     pub(crate) router: Router<S>,
     pub(crate) into_route: fn(Router<S>, S) -> Route,

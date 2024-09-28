@@ -7,25 +7,21 @@ use std::{
     io,
     marker::PhantomData,
     net::SocketAddr,
-    pin::Pin,
     sync::Arc,
-    task::{Context, Poll},
     time::Duration,
 };
 
 use axum_core::{body::Body, extract::Request, response::Response};
 use futures_util::{pin_mut, FutureExt};
 use hyper::body::Incoming;
-use hyper_util::{
-    rt::{TokioExecutor, TokioIo},
-    server::conn::auto::Builder,
-};
-use pin_project_lite::pin_project;
+use hyper_util::rt::{TokioExecutor, TokioIo};
+#[cfg(any(feature = "http1", feature = "http2"))]
+use hyper_util::{server::conn::auto::Builder, service::TowerToHyperService};
 use tokio::{
     net::{TcpListener, TcpStream},
     sync::watch,
 };
-use tower::util::{Oneshot, ServiceExt};
+use tower::ServiceExt as _;
 use tower_service::Service;
 
 /// Serve the service with the supplied listener.
@@ -102,6 +98,7 @@ where
     Serve {
         tcp_listener,
         make_service,
+        tcp_nodelay: None,
         _marker: PhantomData,
     }
 }
@@ -112,6 +109,7 @@ where
 pub struct Serve<M, S> {
     tcp_listener: TcpListener,
     make_service: M,
+    tcp_nodelay: Option<bool>,
     _marker: PhantomData<S>,
 }
 
@@ -146,8 +144,39 @@ impl<M, S> Serve<M, S> {
             tcp_listener: self.tcp_listener,
             make_service: self.make_service,
             signal,
+            tcp_nodelay: self.tcp_nodelay,
             _marker: PhantomData,
         }
+    }
+
+    /// Instructs the server to set the value of the `TCP_NODELAY` option on every accepted connection.
+    ///
+    /// See also [`TcpStream::set_nodelay`].
+    ///
+    /// # Example
+    /// ```
+    /// use axum::{Router, routing::get};
+    ///
+    /// # async {
+    /// let router = Router::new().route("/", get(|| async { "Hello, World!" }));
+    ///
+    /// let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
+    /// axum::serve(listener, router)
+    ///     .tcp_nodelay(true)
+    ///     .await
+    ///     .unwrap();
+    /// # };
+    /// ```
+    pub fn tcp_nodelay(self, nodelay: bool) -> Self {
+        Self {
+            tcp_nodelay: Some(nodelay),
+            ..self
+        }
+    }
+
+    /// Returns the local address this server is bound to.
+    pub fn local_addr(&self) -> io::Result<SocketAddr> {
+        self.tcp_listener.local_addr()
     }
 }
 
@@ -160,12 +189,14 @@ where
         let Self {
             tcp_listener,
             make_service,
+            tcp_nodelay,
             _marker: _,
         } = self;
 
         f.debug_struct("Serve")
             .field("tcp_listener", tcp_listener)
             .field("make_service", make_service)
+            .field("tcp_nodelay", tcp_nodelay)
             .finish()
     }
 }
@@ -182,54 +213,8 @@ where
     type IntoFuture = private::ServeFuture;
 
     fn into_future(self) -> Self::IntoFuture {
-        private::ServeFuture(Box::pin(async move {
-            let Self {
-                tcp_listener,
-                mut make_service,
-                _marker: _,
-            } = self;
-
-            loop {
-                let (tcp_stream, remote_addr) = match tcp_accept(&tcp_listener).await {
-                    Some(conn) => conn,
-                    None => continue,
-                };
-                let tcp_stream = TokioIo::new(tcp_stream);
-
-                poll_fn(|cx| make_service.poll_ready(cx))
-                    .await
-                    .unwrap_or_else(|err| match err {});
-
-                let tower_service = make_service
-                    .call(IncomingStream {
-                        tcp_stream: &tcp_stream,
-                        remote_addr,
-                    })
-                    .await
-                    .unwrap_or_else(|err| match err {});
-
-                let hyper_service = TowerToHyperService {
-                    service: tower_service,
-                };
-
-                tokio::spawn(async move {
-                    match Builder::new(TokioExecutor::new())
-                        // upgrades needed for websockets
-                        .serve_connection_with_upgrades(tcp_stream, hyper_service)
-                        .await
-                    {
-                        Ok(()) => {}
-                        Err(_err) => {
-                            // This error only appears when the client doesn't send a request and
-                            // terminate the connection.
-                            //
-                            // If client sends one request then terminate connection whenever, it doesn't
-                            // appear.
-                        }
-                    }
-                });
-            }
-        }))
+        self.with_graceful_shutdown(std::future::pending())
+            .into_future()
     }
 }
 
@@ -240,7 +225,45 @@ pub struct WithGracefulShutdown<M, S, F> {
     tcp_listener: TcpListener,
     make_service: M,
     signal: F,
+    tcp_nodelay: Option<bool>,
     _marker: PhantomData<S>,
+}
+
+impl<M, S, F> WithGracefulShutdown<M, S, F> {
+    /// Instructs the server to set the value of the `TCP_NODELAY` option on every accepted connection.
+    ///
+    /// See also [`TcpStream::set_nodelay`].
+    ///
+    /// # Example
+    /// ```
+    /// use axum::{Router, routing::get};
+    ///
+    /// # async {
+    /// let router = Router::new().route("/", get(|| async { "Hello, World!" }));
+    ///
+    /// let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
+    /// axum::serve(listener, router)
+    ///     .with_graceful_shutdown(shutdown_signal())
+    ///     .tcp_nodelay(true)
+    ///     .await
+    ///     .unwrap();
+    /// # };
+    ///
+    /// async fn shutdown_signal() {
+    ///     // ...
+    /// }
+    /// ```
+    pub fn tcp_nodelay(self, nodelay: bool) -> Self {
+        Self {
+            tcp_nodelay: Some(nodelay),
+            ..self
+        }
+    }
+
+    /// Returns the local address this server is bound to.
+    pub fn local_addr(&self) -> io::Result<SocketAddr> {
+        self.tcp_listener.local_addr()
+    }
 }
 
 #[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
@@ -255,6 +278,7 @@ where
             tcp_listener,
             make_service,
             signal,
+            tcp_nodelay,
             _marker: _,
         } = self;
 
@@ -262,6 +286,7 @@ where
             .field("tcp_listener", tcp_listener)
             .field("make_service", make_service)
             .field("signal", signal)
+            .field("tcp_nodelay", tcp_nodelay)
             .finish()
     }
 }
@@ -283,6 +308,7 @@ where
             tcp_listener,
             mut make_service,
             signal,
+            tcp_nodelay,
             _marker: _,
         } = self;
 
@@ -310,6 +336,13 @@ where
                         break;
                     }
                 };
+
+                if let Some(nodelay) = tcp_nodelay {
+                    if let Err(err) = tcp_stream.set_nodelay(nodelay) {
+                        trace!("failed to set TCP_NODELAY on incoming connection: {err:#}");
+                    }
+                }
+
                 let tcp_stream = TokioIo::new(tcp_stream);
 
                 trace!("connection {remote_addr} accepted");
@@ -324,11 +357,10 @@ where
                         remote_addr,
                     })
                     .await
-                    .unwrap_or_else(|err| match err {});
+                    .unwrap_or_else(|err| match err {})
+                    .map_request(|req: Request<Incoming>| req.map(Body::new));
 
-                let hyper_service = TowerToHyperService {
-                    service: tower_service,
-                };
+                let hyper_service = TowerToHyperService::new(tower_service);
 
                 let signal_tx = Arc::clone(&signal_tx);
 
@@ -438,49 +470,6 @@ mod private {
     }
 }
 
-#[derive(Debug, Copy, Clone)]
-struct TowerToHyperService<S> {
-    service: S,
-}
-
-impl<S> hyper::service::Service<Request<Incoming>> for TowerToHyperService<S>
-where
-    S: tower_service::Service<Request> + Clone,
-{
-    type Response = S::Response;
-    type Error = S::Error;
-    type Future = TowerToHyperServiceFuture<S, Request>;
-
-    fn call(&self, req: Request<Incoming>) -> Self::Future {
-        let req = req.map(Body::new);
-        TowerToHyperServiceFuture {
-            future: self.service.clone().oneshot(req),
-        }
-    }
-}
-
-pin_project! {
-    struct TowerToHyperServiceFuture<S, R>
-    where
-        S: tower_service::Service<R>,
-    {
-        #[pin]
-        future: Oneshot<S, R>,
-    }
-}
-
-impl<S, R> Future for TowerToHyperServiceFuture<S, R>
-where
-    S: tower_service::Service<R>,
-{
-    type Output = Result<S::Response, S::Error>;
-
-    #[inline]
-    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        self.project().future.poll(cx)
-    }
-}
-
 /// An incoming stream.
 ///
 /// Used with [`serve`] and [`IntoMakeServiceWithConnectInfo`].
@@ -511,6 +500,10 @@ mod tests {
         handler::{Handler, HandlerWithoutStateExt},
         routing::get,
         Router,
+    };
+    use std::{
+        future::pending,
+        net::{IpAddr, Ipv4Addr},
     };
 
     #[allow(dead_code, unused_must_use)]
@@ -558,7 +551,46 @@ mod tests {
             TcpListener::bind(addr).await.unwrap(),
             handler.into_make_service_with_connect_info::<SocketAddr>(),
         );
+
+        // nodelay
+        serve(
+            TcpListener::bind(addr).await.unwrap(),
+            handler.into_service(),
+        )
+        .tcp_nodelay(true);
+
+        serve(
+            TcpListener::bind(addr).await.unwrap(),
+            handler.into_service(),
+        )
+        .with_graceful_shutdown(async { /*...*/ })
+        .tcp_nodelay(true);
     }
 
     async fn handler() {}
+
+    #[crate::test]
+    async fn test_serve_local_addr() {
+        let router: Router = Router::new();
+        let addr = "0.0.0.0:0";
+
+        let server = serve(TcpListener::bind(addr).await.unwrap(), router.clone());
+        let address = server.local_addr().unwrap();
+
+        assert_eq!(address.ip(), IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)));
+        assert_ne!(address.port(), 0);
+    }
+
+    #[crate::test]
+    async fn test_with_graceful_shutdown_local_addr() {
+        let router: Router = Router::new();
+        let addr = "0.0.0.0:0";
+
+        let server = serve(TcpListener::bind(addr).await.unwrap(), router.clone())
+            .with_graceful_shutdown(pending());
+        let address = server.local_addr().unwrap();
+
+        assert_eq!(address.ip(), IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)));
+        assert_ne!(address.port(), 0);
+    }
 }

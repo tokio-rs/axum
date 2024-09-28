@@ -185,6 +185,7 @@ where
     }
 
     #[doc = include_str!("../docs/routing/nest.md")]
+    #[doc(alias = "scope")] // Some web frameworks like actix-web use this term
     #[track_caller]
     pub fn nest(self, path: &str, router: Router<S>) -> Self {
         let RouterInner {
@@ -304,6 +305,11 @@ where
             default_fallback: this.default_fallback,
             catch_all_fallback: this.catch_all_fallback,
         })
+    }
+
+    /// True if the router currently has at least one route added.
+    pub fn has_routes(&self) -> bool {
+        self.inner.path_router.has_routes()
     }
 
     #[track_caller]
