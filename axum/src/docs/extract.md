@@ -1,20 +1,5 @@
 Types and traits for extracting data from requests.
 
-# Table of contents
-
-- [Intro](#intro)
-- [Common extractors](#common-extractors)
-- [Applying multiple extractors](#applying-multiple-extractors)
-- [The order of extractors](#the-order-of-extractors)
-- [Optional extractors](#optional-extractors)
-- [Customizing extractor responses](#customizing-extractor-responses)
-- [Accessing inner errors](#accessing-inner-errors)
-- [Defining custom extractors](#defining-custom-extractors)
-- [Accessing other extractors in `FromRequest` or `FromRequestParts` implementations](#accessing-other-extractors-in-fromrequest-or-fromrequestparts-implementations)
-- [Request body limits](#request-body-limits)
-- [Wrapping extractors](#wrapping-extractors)
-- [Logging rejections](#logging-rejections)
-
 # Intro
 
 A handler function is an async function that takes any number of

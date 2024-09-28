@@ -1,22 +1,5 @@
 //! axum is a web application framework that focuses on ergonomics and modularity.
 //!
-//! # Table of contents
-//!
-//! - [High-level features](#high-level-features)
-//! - [Compatibility](#compatibility)
-//! - [Example](#example)
-//! - [Routing](#routing)
-//! - [Handlers](#handlers)
-//! - [Extractors](#extractors)
-//! - [Responses](#responses)
-//! - [Error handling](#error-handling)
-//! - [Middleware](#middleware)
-//! - [Sharing state with handlers](#sharing-state-with-handlers)
-//! - [Building integrations for axum](#building-integrations-for-axum)
-//! - [Required dependencies](#required-dependencies)
-//! - [Examples](#examples)
-//! - [Feature flags](#feature-flags)
-//!
 //! # High-level features
 //!
 //! - Route requests to handlers with a macro-free API.

@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+# Unreleased
+
+- **breaking:** The tuple and tuple_struct `Path` extractor deserializers now check that the number of parameters matches the tuple length exactly ([#2931])
+
+[#2931]: https://github.com/tokio-rs/axum/pull/2931
+
+# 0.7.7
+
+- **change**: Remove manual tables of content from the documentation, since
+  rustdoc now generates tables of content in the sidebar ([#2921])
+
+[#2921]: https://github.com/tokio-rs/axum/pull/2921
+
 # 0.7.6
 
 - **change:** Avoid cloning `Arc` during deserialization of `Path`

@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+# 0.4.5
+
+- **fixed:** Compile errors from the internal `__log_rejection` macro under
+  certain Cargo feature combinations between axum crates ([#2933])
+
+[#2933]: https://github.com/tokio-rs/axum/pull/2933
+
 # 0.4.4
 
 - **added:** Derive `Clone` and `Copy` for `AppendHeaders` ([#2776])

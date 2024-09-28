@@ -9,12 +9,12 @@ macro_rules! __log_rejection {
         status = $status:expr,
     ) => {
         {
-            tracing::event!(
+            $crate::__private::tracing::event!(
                 target: "axum::rejection",
-                tracing::Level::TRACE,
+                $crate::__private::tracing::Level::TRACE,
                 status = $status.as_u16(),
                 body = $body_text,
-                rejection_type = std::any::type_name::<$ty>(),
+                rejection_type = ::std::any::type_name::<$ty>(),
                 "rejecting request",
             );
         }

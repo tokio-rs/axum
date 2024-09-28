@@ -9,7 +9,7 @@ license = "MIT"
 name = "axum-core"
 readme = "README.md"
 repository = "https://github.com/tokio-rs/axum"
-version = "0.4.4" # remember to also bump the version that axum and axum-extra depend on
+version = "0.4.5" # remember to also bump the version that axum and axum-extra depend on
 
 [features]
 tracing = ["dep:tracing"]
@@ -53,6 +53,9 @@ allowed = [
     "http",
     "http_body",
 ]
+
+[package.metadata.cargo-machete]
+ignored = ["tower-http"] # See __private_docs feature
 
 [package.metadata.docs.rs]
 all-features = true
