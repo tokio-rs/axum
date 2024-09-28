@@ -952,7 +952,7 @@ fn impl_enum_by_extracting_all_at_once(
                         req: ::axum::http::Request<::axum::body::Body>,
                         state: &#state,
                     ) -> ::std::result::Result<Self, Self::Rejection> {
-                        <#path::<#ident> as ::axum::extract::FromRequest<#trait_generics>>::from_request(req, state)
+                        <#path::<#ident> as ::axum::extract::FromRequest<#trait_generics, _>>::from_request(req, state)
                             .await
                             .map(|#path(inner)| inner)
                             .map_err(#map_err)
