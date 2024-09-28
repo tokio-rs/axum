@@ -84,9 +84,9 @@ async fn routing() {
             "/users",
             get(|_: Request| async { "users#index" }).post(|_: Request| async { "users#create" }),
         )
-        .route("/users/:id", get(|_: Request| async { "users#show" }))
+        .route("/users/{id}", get(|_: Request| async { "users#show" }))
         .route(
-            "/users/:id/action",
+            "/users/{id}/action",
             get(|_: Request| async { "users#action" }),
         );
 
@@ -290,7 +290,10 @@ async fn multiple_methods_for_one_handler() {
 
 #[crate::test]
 async fn wildcard_sees_whole_url() {
-    let app = Router::new().route("/api/*rest", get(|uri: Uri| async move { uri.to_string() }));
+    let app = Router::new().route(
+        "/api/{*rest}",
+        get(|uri: Uri| async move { uri.to_string() }),
+    );
 
     let client = TestClient::new(app);
 
@@ -358,7 +361,7 @@ async fn with_and_without_trailing_slash() {
 #[crate::test]
 async fn wildcard_doesnt_match_just_trailing_slash() {
     let app = Router::new().route(
-        "/x/*path",
+        "/x/{*path}",
         get(|Path(path): Path<String>| async move { path }),
     );
 
@@ -378,8 +381,8 @@ async fn wildcard_doesnt_match_just_trailing_slash() {
 #[crate::test]
 async fn what_matches_wildcard() {
     let app = Router::new()
-        .route("/*key", get(|| async { "root" }))
-        .route("/x/*key", get(|| async { "x" }))
+        .route("/{*key}", get(|| async { "root" }))
+        .route("/x/{*key}", get(|| async { "x" }))
         .fallback(|| async { "fallback" });
 
     let client = TestClient::new(app);
@@ -407,7 +410,7 @@ async fn what_matches_wildcard() {
 async fn static_and_dynamic_paths() {
     let app = Router::new()
         .route(
-            "/:key",
+            "/{key}",
             get(|Path(key): Path<String>| async move { format!("dynamic: {key}") }),
         )
         .route("/foo", get(|| async { "static" }));
@@ -1099,4 +1102,134 @@ async fn locks_mutex_very_little() {
         .await;
         assert_eq!(num, 1);
     }
+}
+
+#[crate::test]
+#[should_panic(
+    expected = "Path segments must not start with `:`. For capture groups, use `{capture}`. If you meant to literally match a segment starting with a colon, call `without_v07_checks` on the router."
+)]
+async fn colon_in_route() {
+    _ = Router::<()>::new().route("/:foo", get(|| async move {}));
+}
+
+#[crate::test]
+#[should_panic(
+    expected = "Path segments must not start with `*`. For wildcard capture, use `{*wildcard}`. If you meant to literally match a segment starting with an asterisk, call `without_v07_checks` on the router."
+)]
+async fn asterisk_in_route() {
+    _ = Router::<()>::new().route("/*foo", get(|| async move {}));
+}
+
+#[crate::test]
+async fn colon_in_route_allowed() {
+    let app = Router::<()>::new()
+        .without_v07_checks()
+        .route("/:foo", get(|| async move {}));
+
+    let client = TestClient::new(app);
+
+    let res = client.get("/:foo").await;
+    assert_eq!(res.status(), StatusCode::OK);
+
+    let res = client.get("/foo").await;
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+}
+
+#[crate::test]
+async fn asterisk_in_route_allowed() {
+    let app = Router::<()>::new()
+        .without_v07_checks()
+        .route("/*foo", get(|| async move {}));
+
+    let client = TestClient::new(app);
+
+    let res = client.get("/*foo").await;
+    assert_eq!(res.status(), StatusCode::OK);
+
+    let res = client.get("/foo").await;
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+}
+
+#[crate::test]
+async fn percent_encoding() {
+    let app = Router::new().route("/api", get(|| async { "api" }));
+
+    let client = TestClient::new(app);
+
+    let res = client.get("/%61pi").await;
+    assert_eq!(res.status(), StatusCode::OK);
+    let body = res.text().await;
+    assert_eq!(body, "api");
+}
+
+#[crate::test]
+async fn percent_encoding_slash() {
+    let app = Router::new()
+        .route("/slash/%2flash", get(|| async { "lower" }))
+        .route("/slash/%2Flash", get(|| async { "upper" }))
+        .route("/slash//lash", get(|| async { "/" }))
+        .route("/api/user", get(|| async { "user" }))
+        .route(
+            "/{capture}",
+            get(|Path(capture): Path<String>| {
+                assert_eq!(capture, "api/user");
+                ready("capture")
+            }),
+        );
+
+    let client = TestClient::new(app);
+
+    // %2f encodes `/`
+    let res = client.get("/api%2fuser").await;
+    assert_eq!(res.status(), StatusCode::OK);
+    let body = res.text().await;
+    assert_eq!(body, "capture");
+
+    let res = client.get("/slash/%2flash").await;
+    assert_eq!(res.status(), StatusCode::OK);
+    let body = res.text().await;
+    assert_eq!(body, "lower");
+
+    let res = client.get("/slash/%2Flash").await;
+    assert_eq!(res.status(), StatusCode::OK);
+    let body = res.text().await;
+    assert_eq!(body, "upper");
+
+    // `%25` encodes `%`
+    // This must not be decoded twice
+    let res = client.get("/slash/%252flash").await;
+    assert_eq!(res.status(), StatusCode::OK);
+    let body = res.text().await;
+    assert_eq!(body, "lower");
+
+    let res = client.get("/slash/%252Flash").await;
+    assert_eq!(res.status(), StatusCode::OK);
+    let body = res.text().await;
+    assert_eq!(body, "upper");
+}
+
+#[crate::test]
+async fn percent_encoding_percent() {
+    let app = Router::new()
+        .route("/%61pi", get(|| async { "percent" }))
+        .route("/api", get(|| async { "api" }));
+
+    let client = TestClient::new(app);
+
+    let res = client.get("/api").await;
+    assert_eq!(res.status(), StatusCode::OK);
+    let body = res.text().await;
+    assert_eq!(body, "api");
+
+    let res = client.get("/%61pi").await;
+    assert_eq!(res.status(), StatusCode::OK);
+    let body = res.text().await;
+    assert_eq!(body, "api");
+
+    // `%25` encodes `%`
+    // This must not be decoded twice, otherwise it will become `/api`
+    let res = client.get("/%2561pi").await;
+    assert_eq!(res.status(), StatusCode::OK);
+    let body = res.text().await;
+    assert_eq!(body, "percent");
 }

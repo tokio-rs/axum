@@ -47,7 +47,7 @@ use std::convert::Infallible;
 /// use tower_http::trace::TraceLayer;
 ///
 /// let api_routes = Router::new()
-///     .route("/users/:id", get(|| async { /* ... */ }))
+///     .route("/users/{id}", get(|| async { /* ... */ }))
 ///     .layer(
 ///         TraceLayer::new_for_http().make_span_with(|req: &Request<_>| {
 ///             let path = if let Some(path) = req.extensions().get::<OriginalUri>() {

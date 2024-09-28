@@ -1,5 +1,4 @@
 use super::{ErrorKind, PathDeserializationError};
-use crate::util::PercentDecodedStr;
 use serde::{
     de::{self, DeserializeSeed, EnumAccess, Error, MapAccess, SeqAccess, VariantAccess, Visitor},
     forward_to_deserialize_any, Deserializer,
@@ -33,7 +32,7 @@ macro_rules! parse_single_value {
 
             let value = self.url_params[0].1.parse().map_err(|_| {
                 PathDeserializationError::new(ErrorKind::ParseError {
-                    value: self.url_params[0].1.as_str().to_owned(),
+                    value: self.url_params[0].1.as_ref().to_owned(),
                     expected_type: $ty,
                 })
             })?;
@@ -43,12 +42,12 @@ macro_rules! parse_single_value {
 }
 
 pub(crate) struct PathDeserializer<'de> {
-    url_params: &'de [(Arc<str>, PercentDecodedStr)],
+    url_params: &'de [(Arc<str>, Arc<str>)],
 }
 
 impl<'de> PathDeserializer<'de> {
     #[inline]
-    pub(crate) fn new(url_params: &'de [(Arc<str>, PercentDecodedStr)]) -> Self {
+    pub(crate) fn new(url_params: &'de [(Arc<str>, Arc<str>)]) -> Self {
         PathDeserializer { url_params }
     }
 }
@@ -216,9 +215,9 @@ impl<'de> Deserializer<'de> for PathDeserializer<'de> {
 }
 
 struct MapDeserializer<'de> {
-    params: &'de [(Arc<str>, PercentDecodedStr)],
+    params: &'de [(Arc<str>, Arc<str>)],
     key: Option<KeyOrIdx<'de>>,
-    value: Option<&'de PercentDecodedStr>,
+    value: Option<&'de Arc<str>>,
 }
 
 impl<'de> MapAccess<'de> for MapDeserializer<'de> {
@@ -300,19 +299,19 @@ macro_rules! parse_value {
                     let kind = match key {
                         KeyOrIdx::Key(key) => ErrorKind::ParseErrorAtKey {
                             key: key.to_owned(),
-                            value: self.value.as_str().to_owned(),
+                            value: self.value.as_ref().to_owned(),
                             expected_type: $ty,
                         },
                         KeyOrIdx::Idx { idx: index, key: _ } => ErrorKind::ParseErrorAtIndex {
                             index,
-                            value: self.value.as_str().to_owned(),
+                            value: self.value.as_ref().to_owned(),
                             expected_type: $ty,
                         },
                     };
                     PathDeserializationError::new(kind)
                 } else {
                     PathDeserializationError::new(ErrorKind::ParseError {
-                        value: self.value.as_str().to_owned(),
+                        value: self.value.as_ref().to_owned(),
                         expected_type: $ty,
                     })
                 }
@@ -325,7 +324,7 @@ macro_rules! parse_value {
 #[derive(Debug)]
 struct ValueDeserializer<'de> {
     key: Option<KeyOrIdx<'de>>,
-    value: &'de PercentDecodedStr,
+    value: &'de Arc<str>,
 }
 
 impl<'de> Deserializer<'de> for ValueDeserializer<'de> {
@@ -414,7 +413,7 @@ impl<'de> Deserializer<'de> for ValueDeserializer<'de> {
     {
         struct PairDeserializer<'de> {
             key: Option<KeyOrIdx<'de>>,
-            value: Option<&'de PercentDecodedStr>,
+            value: Option<&'de Arc<str>>,
         }
 
         impl<'de> SeqAccess<'de> for PairDeserializer<'de> {
@@ -576,7 +575,7 @@ impl<'de> VariantAccess<'de> for UnitVariant {
 }
 
 struct SeqDeserializer<'de> {
-    params: &'de [(Arc<str>, PercentDecodedStr)],
+    params: &'de [(Arc<str>, Arc<str>)],
     idx: usize,
 }
 
@@ -629,7 +628,7 @@ mod tests {
         a: i32,
     }
 
-    fn create_url_params<I, K, V>(values: I) -> Vec<(Arc<str>, PercentDecodedStr)>
+    fn create_url_params<I, K, V>(values: I) -> Vec<(Arc<str>, Arc<str>)>
     where
         I: IntoIterator<Item = (K, V)>,
         K: AsRef<str>,
@@ -637,7 +636,7 @@ mod tests {
     {
         values
             .into_iter()
-            .map(|(k, v)| (Arc::from(k.as_ref()), PercentDecodedStr::new(v).unwrap()))
+            .map(|(k, v)| (Arc::from(k.as_ref()), Arc::from(v.as_ref())))
             .collect()
     }
 
@@ -669,9 +668,10 @@ mod tests {
         check_single_value!(f32, "123", 123.0);
         check_single_value!(f64, "123", 123.0);
         check_single_value!(String, "abc", "abc");
-        check_single_value!(String, "one%20two", "one two");
+        check_single_value!(String, "one%20two", "one%20two");
+        check_single_value!(String, "one two", "one two");
         check_single_value!(&str, "abc", "abc");
-        check_single_value!(&str, "one%20two", "one two");
+        check_single_value!(&str, "one two", "one two");
         check_single_value!(char, "a", 'a');
 
         let url_params = create_url_params(vec![("a", "B")]);

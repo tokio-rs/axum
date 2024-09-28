@@ -386,8 +386,12 @@ fn parse_path(path: &LitStr) -> syn::Result<Vec<Segment>> {
         .split('/')
         .map(|segment| {
             if let Some(capture) = segment
-                .strip_prefix(':')
-                .or_else(|| segment.strip_prefix('*'))
+                .strip_prefix('{')
+                .and_then(|segment| segment.strip_suffix('}'))
+                .and_then(|segment| {
+                    (!segment.starts_with('{') && !segment.ends_with('}')).then_some(segment)
+                })
+                .map(|capture| capture.strip_prefix('*').unwrap_or(capture))
             {
                 Ok(Segment::Capture(capture.to_owned(), path.span()))
             } else {

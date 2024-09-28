@@ -77,7 +77,7 @@ async fn extension(Extension(state): Extension<State>) {}
 struct State { /* ... */ }
 
 let app = Router::new()
-    .route("/path/:user_id", post(path))
+    .route("/path/{user_id}", post(path))
     .route("/query", post(query))
     .route("/string", post(string))
     .route("/bytes", post(bytes))
@@ -100,7 +100,7 @@ use axum::{
 use uuid::Uuid;
 use serde::Deserialize;
 
-let app = Router::new().route("/users/:id/things", get(get_user_things));
+let app = Router::new().route("/users/{id}/things", get(get_user_things));
 
 #[derive(Deserialize)]
 struct Pagination {

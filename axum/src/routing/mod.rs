@@ -99,9 +99,9 @@ impl<S> fmt::Debug for Router<S> {
 }
 
 pub(crate) const NEST_TAIL_PARAM: &str = "__private__axum_nest_tail_param";
-pub(crate) const NEST_TAIL_PARAM_CAPTURE: &str = "/*__private__axum_nest_tail_param";
+pub(crate) const NEST_TAIL_PARAM_CAPTURE: &str = "/{*__private__axum_nest_tail_param}";
 pub(crate) const FALLBACK_PARAM: &str = "__private__axum_fallback";
-pub(crate) const FALLBACK_PARAM_PATH: &str = "/*__private__axum_fallback";
+pub(crate) const FALLBACK_PARAM_PATH: &str = "/{*__private__axum_fallback}";
 
 impl<S> Router<S>
 where
@@ -152,6 +152,13 @@ where
                 catch_all_fallback: arc.catch_all_fallback.clone(),
             },
         }
+    }
+
+    #[doc = include_str!("../docs/routing/without_v07_checks.md")]
+    pub fn without_v07_checks(self) -> Self {
+        self.tap_inner_mut(|this| {
+            this.path_router.without_v07_checks();
+        })
     }
 
     #[doc = include_str!("../docs/routing/route.md")]
