@@ -633,7 +633,7 @@ fn extract_fields(
 
             quote_spanned! {ty_span=>
                 #member: {
-                    <#field_ty as ::axum::extract::FromRequest<#trait_generics>>::from_request(req, state)
+                    <#field_ty as ::axum::extract::FromRequest<#trait_generics, _>>::from_request(req, state)
                         .await
                         .map(#into_inner)
                         .map_err(#map_err)?
