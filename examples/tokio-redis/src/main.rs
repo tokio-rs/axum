@@ -5,7 +5,6 @@
 //! ```
 
 use axum::{
-    async_trait,
     extract::{FromRef, FromRequestParts, State},
     http::{request::Parts, StatusCode},
     routing::get,
@@ -71,7 +70,6 @@ async fn using_connection_pool_extractor(
 // which setup is appropriate depends on your application
 struct DatabaseConnection(PooledConnection<'static, RedisConnectionManager>);
 
-#[async_trait]
 impl<S> FromRequestParts<S> for DatabaseConnection
 where
     ConnectionPool: FromRef<S>,

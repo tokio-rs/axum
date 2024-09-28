@@ -133,7 +133,6 @@ fn expand_named_fields(
     let map_err_rejection = map_err_rejection(&rejection);
 
     let from_request_impl = quote! {
-        #[::axum::async_trait]
         #[automatically_derived]
         impl<S> ::axum::extract::FromRequestParts<S> for #ident
         where
@@ -238,7 +237,6 @@ fn expand_unnamed_fields(
     let map_err_rejection = map_err_rejection(&rejection);
 
     let from_request_impl = quote! {
-        #[::axum::async_trait]
         #[automatically_derived]
         impl<S> ::axum::extract::FromRequestParts<S> for #ident
         where
@@ -322,7 +320,6 @@ fn expand_unit_fields(
     };
 
     let from_request_impl = quote! {
-        #[::axum::async_trait]
         #[automatically_derived]
         impl<S> ::axum::extract::FromRequestParts<S> for #ident
         where
