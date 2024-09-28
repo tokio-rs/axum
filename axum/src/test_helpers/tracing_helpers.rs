@@ -1,10 +1,9 @@
-use crate::util::AxumMutex;
 use std::{
     future::{Future, IntoFuture},
     io,
     marker::PhantomData,
     pin::Pin,
-    sync::Arc,
+    sync::{Arc, Mutex},
 };
 
 use serde::{de::DeserializeOwned, Deserialize};
@@ -87,12 +86,12 @@ where
 }
 
 struct TestMakeWriter {
-    write: Arc<AxumMutex<Option<Vec<u8>>>>,
+    write: Arc<Mutex<Option<Vec<u8>>>>,
 }
 
 impl TestMakeWriter {
     fn new() -> (Self, Handle) {
-        let write = Arc::new(AxumMutex::new(Some(Vec::<u8>::new())));
+        let write = Arc::new(Mutex::new(Some(Vec::<u8>::new())));
 
         (
             Self {
@@ -134,7 +133,7 @@ impl<'a> io::Write for Writer<'a> {
 }
 
 struct Handle {
-    write: Arc<AxumMutex<Option<Vec<u8>>>>,
+    write: Arc<Mutex<Option<Vec<u8>>>>,
 }
 
 impl Handle {
