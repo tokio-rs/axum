@@ -618,7 +618,7 @@ fn extract_fields(
             let field_ty = into_outer(&via, ty_span, peel_result_ok(&field.ty).unwrap());
             quote_spanned! {ty_span=>
                 #member: {
-                    <#field_ty as ::axum::extract::FromRequest<#trait_generics>>::from_request(req, state)
+                    <#field_ty as ::axum::extract::FromRequest<#trait_generics, _>>::from_request(req, state)
                         .await
                         .map(#into_inner)
                 },
