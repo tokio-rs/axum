@@ -5,3 +5,6 @@ default-members = ["axum", "axum-*"]
 # Example has been deleted, but README.md remains
 exclude = ["examples/async-graphql"]
 resolver = "2"
+
+[workspace.package]
+rust-version = "1.75"
