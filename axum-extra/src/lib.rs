@@ -21,6 +21,7 @@
 //! `multipart` | Enables the `Multipart` extractor | No
 //! `protobuf` | Enables the `Protobuf` extractor and response | No
 //! `query` | Enables the `Query` extractor | No
+//! `tracing` | Log rejections from built-in extractors | Yes
 //! `typed-routing` | Enables the `TypedPath` routing utilities | No
 //! `typed-header` | Enables the `TypedHeader` extractor and response  | No
 //!
@@ -39,7 +40,6 @@
     clippy::needless_borrow,
     clippy::match_wildcard_for_single_variants,
     clippy::if_let_mutex,
-    clippy::mismatched_target_os,
     clippy::await_holding_lock,
     clippy::match_on_vec_items,
     clippy::imprecise_flops,
@@ -96,11 +96,10 @@ pub use typed_header::TypedHeader;
 #[cfg(feature = "protobuf")]
 pub mod protobuf;
 
+/// _not_ public API
 #[cfg(feature = "typed-routing")]
 #[doc(hidden)]
 pub mod __private {
-    //! _not_ public API
-
     use percent_encoding::{AsciiSet, CONTROLS};
 
     pub use percent_encoding::utf8_percent_encode;
@@ -115,9 +114,8 @@ pub mod __private {
 use axum_macros::__private_axum_test as test;
 
 #[cfg(test)]
+#[allow(unused_imports)]
 pub(crate) mod test_helpers {
-    #![allow(unused_imports)]
-
     use axum::{extract::Request, response::Response, serve};
 
     mod test_client {

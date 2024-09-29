@@ -5,7 +5,6 @@
 //! ```
 
 use axum::{
-    async_trait,
     extract::{FromRef, FromRequestParts, State},
     http::{request::Parts, StatusCode},
     routing::get,
@@ -23,7 +22,7 @@ async fn main() {
     tracing_subscriber::registry()
         .with(
             tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "example_tokio_redis=debug".into()),
+                .unwrap_or_else(|_| format!("{}=debug", env!("CARGO_CRATE_NAME")).into()),
         )
         .with(tracing_subscriber::fmt::layer())
         .init();
@@ -71,7 +70,6 @@ async fn using_connection_pool_extractor(
 // which setup is appropriate depends on your application
 struct DatabaseConnection(PooledConnection<'static, RedisConnectionManager>);
 
-#[async_trait]
 impl<S> FromRequestParts<S> for DatabaseConnection
 where
     ConnectionPool: FromRef<S>,

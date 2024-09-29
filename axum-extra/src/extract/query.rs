@@ -1,5 +1,4 @@
 use axum::{
-    async_trait,
     extract::FromRequestParts,
     response::{IntoResponse, Response},
     Error,
@@ -82,7 +81,6 @@ use std::fmt;
 #[derive(Debug, Clone, Copy, Default)]
 pub struct Query<T>(pub T);
 
-#[async_trait]
 impl<T, S> FromRequestParts<S> for Query<T>
 where
     T: DeserializeOwned,
@@ -114,11 +112,16 @@ pub enum QueryRejection {
 impl IntoResponse for QueryRejection {
     fn into_response(self) -> Response {
         match self {
-            Self::FailedToDeserializeQueryString(inner) => (
-                StatusCode::BAD_REQUEST,
-                format!("Failed to deserialize query string: {inner}"),
-            )
-                .into_response(),
+            Self::FailedToDeserializeQueryString(inner) => {
+                let body = format!("Failed to deserialize query string: {inner}");
+                let status = StatusCode::BAD_REQUEST;
+                axum_core::__log_rejection!(
+                    rejection_type = Self,
+                    body_text = body,
+                    status = status,
+                );
+                (status, body).into_response()
+            }
         }
     }
 }
@@ -182,7 +185,6 @@ impl std::error::Error for QueryRejection {
 #[derive(Debug, Clone, Copy, Default)]
 pub struct OptionalQuery<T>(pub Option<T>);
 
-#[async_trait]
 impl<T, S> FromRequestParts<S> for OptionalQuery<T>
 where
     T: DeserializeOwned,
@@ -262,7 +264,7 @@ mod tests {
     use super::*;
     use crate::test_helpers::*;
     use axum::{routing::post, Router};
-    use http::{header::CONTENT_TYPE, StatusCode};
+    use http::header::CONTENT_TYPE;
     use serde::Deserialize;
 
     #[tokio::test]

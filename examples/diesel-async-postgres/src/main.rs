@@ -13,7 +13,6 @@
 //! for a real world application using axum and diesel
 
 use axum::{
-    async_trait,
     extract::{FromRef, FromRequestParts, State},
     http::{request::Parts, StatusCode},
     response::Json,
@@ -57,7 +56,7 @@ async fn main() {
     tracing_subscriber::registry()
         .with(
             tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "example_diesel_async_postgres=debug".into()),
+                .unwrap_or_else(|_| format!("{}=debug", env!("CARGO_CRATE_NAME")).into()),
         )
         .with(tracing_subscriber::fmt::layer())
         .init();
@@ -102,7 +101,6 @@ struct DatabaseConnection(
     bb8::PooledConnection<'static, AsyncDieselConnectionManager<AsyncPgConnection>>,
 );
 
-#[async_trait]
 impl<S> FromRequestParts<S> for DatabaseConnection
 where
     S: Send + Sync,

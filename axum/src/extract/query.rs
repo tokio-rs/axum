@@ -1,5 +1,4 @@
 use super::{rejection::*, FromRequestParts};
-use async_trait::async_trait;
 use http::{request::Parts, Uri};
 use serde::de::DeserializeOwned;
 
@@ -51,7 +50,6 @@ use serde::de::DeserializeOwned;
 #[derive(Debug, Clone, Copy, Default)]
 pub struct Query<T>(pub T);
 
-#[async_trait]
 impl<T, S> FromRequestParts<S> for Query<T>
 where
     T: DeserializeOwned,

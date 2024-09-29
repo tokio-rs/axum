@@ -8,7 +8,6 @@ use crate::{
     routing::url_params::UrlParams,
     util::PercentDecodedStr,
 };
-use async_trait::async_trait;
 use axum_core::response::{IntoResponse, Response};
 use http::{request::Parts, StatusCode};
 use serde::de::DeserializeOwned;
@@ -145,7 +144,6 @@ pub struct Path<T>(pub T);
 
 axum_core::__impl_deref!(Path);
 
-#[async_trait]
 impl<T, S> FromRequestParts<S> for Path<T>
 where
     T: DeserializeOwned + Send,
@@ -398,12 +396,13 @@ impl FailedToDeserializePathParams {
 
 impl IntoResponse for FailedToDeserializePathParams {
     fn into_response(self) -> Response {
+        let body = self.body_text();
         axum_core::__log_rejection!(
             rejection_type = Self,
-            body_text = self.body_text(),
+            body_text = body,
             status = self.status(),
         );
-        (self.status(), self.body_text()).into_response()
+        (self.status(), body).into_response()
     }
 }
 
@@ -445,7 +444,6 @@ impl std::error::Error for FailedToDeserializePathParams {}
 #[derive(Debug)]
 pub struct RawPathParams(Vec<(Arc<str>, PercentDecodedStr)>);
 
-#[async_trait]
 impl<S> FromRequestParts<S> for RawPathParams
 where
     S: Send + Sync,
@@ -530,7 +528,13 @@ impl std::error::Error for InvalidUtf8InPathParam {}
 
 impl IntoResponse for InvalidUtf8InPathParam {
     fn into_response(self) -> Response {
-        (self.status(), self.body_text()).into_response()
+        let body = self.body_text();
+        axum_core::__log_rejection!(
+            rejection_type = Self,
+            body_text = body,
+            status = self.status(),
+        );
+        (self.status(), body).into_response()
     }
 }
 
@@ -538,7 +542,6 @@ impl IntoResponse for InvalidUtf8InPathParam {
 mod tests {
     use super::*;
     use crate::{routing::get, test_helpers::*, Router};
-    use http::StatusCode;
     use serde::Deserialize;
     use std::collections::HashMap;
 
@@ -738,6 +741,33 @@ mod tests {
             res.text().await,
             "Wrong number of path arguments for `Path`. Expected 1 but got 2. \
             Note that multiple parameters must be extracted with a tuple `Path<(_, _)>` or a struct `Path<YourParams>`",
+        );
+    }
+
+    #[crate::test]
+    async fn tuple_param_matches_exactly() {
+        #[allow(dead_code)]
+        #[derive(Deserialize)]
+        struct Tuple(String, String);
+
+        let app = Router::new()
+            .route("/foo/:a/:b/:c", get(|_: Path<(String, String)>| async {}))
+            .route("/bar/:a/:b/:c", get(|_: Path<Tuple>| async {}));
+
+        let client = TestClient::new(app);
+
+        let res = client.get("/foo/a/b/c").await;
+        assert_eq!(res.status(), StatusCode::INTERNAL_SERVER_ERROR);
+        assert_eq!(
+            res.text().await,
+            "Wrong number of path arguments for `Path`. Expected 2 but got 3",
+        );
+
+        let res = client.get("/bar/a/b/c").await;
+        assert_eq!(res.status(), StatusCode::INTERNAL_SERVER_ERROR);
+        assert_eq!(
+            res.text().await,
+            "Wrong number of path arguments for `Path`. Expected 2 but got 3",
         );
     }
 

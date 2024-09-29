@@ -15,7 +15,6 @@
     clippy::needless_borrow,
     clippy::match_wildcard_for_single_variants,
     clippy::if_let_mutex,
-    clippy::mismatched_target_os,
     clippy::await_holding_lock,
     clippy::match_on_vec_items,
     clippy::imprecise_flops,
@@ -44,6 +43,7 @@
 #![cfg_attr(test, allow(clippy::float_cmp))]
 #![cfg_attr(not(test), warn(clippy::print_stdout, clippy::dbg_macro))]
 
+use debug_handler::FunctionKind;
 use proc_macro::TokenStream;
 use quote::{quote, ToTokens};
 use syn::{parse::Parse, Type};
@@ -246,7 +246,6 @@ use from_request::Trait::{FromRequest, FromRequestParts};
 ///
 /// struct MyInnerType;
 ///
-/// #[axum::async_trait]
 /// impl FromRequestParts<CustomState> for MyInnerType {
 ///     // ...
 ///     # type Rejection = ();
@@ -398,7 +397,7 @@ use from_request::Trait::{FromRequest, FromRequestParts};
 ///
 /// # Known limitations
 ///
-/// Generics are only supported on tuple structs with exactly on field. Thus this doesn't work
+/// Generics are only supported on tuple structs with exactly one field. Thus this doesn't work
 ///
 /// ```compile_fail
 /// #[derive(axum_macros::FromRequest)]
@@ -464,7 +463,7 @@ pub fn derive_from_request_parts(item: TokenStream) -> TokenStream {
     expand_with(item, |item| from_request::expand(item, FromRequestParts))
 }
 
-/// Generates better error messages when applied handler functions.
+/// Generates better error messages when applied to handler functions.
 ///
 /// While using [`axum`], you can get long error messages for simple mistakes. For example:
 ///
@@ -515,17 +514,15 @@ pub fn derive_from_request_parts(item: TokenStream) -> TokenStream {
 ///
 /// As the error message says, handler function needs to be async.
 ///
-/// ```
+/// ```no_run
 /// use axum::{routing::get, Router, debug_handler};
 ///
 /// #[tokio::main]
 /// async fn main() {
-///     # async {
 ///     let app = Router::new().route("/", get(handler));
 ///
 ///     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
 ///     axum::serve(listener, app).await.unwrap();
-///     # };
 /// }
 ///
 /// #[debug_handler]
@@ -618,7 +615,65 @@ pub fn debug_handler(_attr: TokenStream, input: TokenStream) -> TokenStream {
     return input;
 
     #[cfg(debug_assertions)]
-    return expand_attr_with(_attr, input, debug_handler::expand);
+    return expand_attr_with(_attr, input, |attrs, item_fn| {
+        debug_handler::expand(attrs, item_fn, FunctionKind::Handler)
+    });
+}
+
+/// Generates better error messages when applied to middleware functions.
+///
+/// This works similarly to [`#[debug_handler]`](macro@debug_handler) except for middleware using
+/// [`axum::middleware::from_fn`].
+///
+/// # Example
+///
+/// ```no_run
+/// use axum::{
+///     routing::get,
+///     extract::Request,
+///     response::Response,
+///     Router,
+///     middleware::{self, Next},
+///     debug_middleware,
+/// };
+///
+/// #[tokio::main]
+/// async fn main() {
+///     let app = Router::new()
+///         .route("/", get(|| async {}))
+///         .layer(middleware::from_fn(my_middleware));
+///
+///     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
+///     axum::serve(listener, app).await.unwrap();
+/// }
+///
+/// // if this wasn't a valid middleware function #[debug_middleware] would
+/// // improve compile error
+/// #[debug_middleware]
+/// async fn my_middleware(
+///     request: Request,
+///     next: Next,
+/// ) -> Response {
+///     next.run(request).await
+/// }
+/// ```
+///
+/// # Performance
+///
+/// This macro has no effect when compiled with the release profile. (eg. `cargo build --release`)
+///
+/// [`axum`]: https://docs.rs/axum/latest
+/// [`axum::middleware::from_fn`]: https://docs.rs/axum/0.7/axum/middleware/fn.from_fn.html
+/// [`debug_middleware`]: macro@debug_middleware
+#[proc_macro_attribute]
+pub fn debug_middleware(_attr: TokenStream, input: TokenStream) -> TokenStream {
+    #[cfg(not(debug_assertions))]
+    return input;
+
+    #[cfg(debug_assertions)]
+    return expand_attr_with(_attr, input, |attrs, item_fn| {
+        debug_handler::expand(attrs, item_fn, FunctionKind::Middleware)
+    });
 }
 
 /// Private API: Do no use this!

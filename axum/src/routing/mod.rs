@@ -165,7 +165,7 @@ where
     #[doc = include_str!("../docs/routing/route_service.md")]
     pub fn route_service<T>(self, path: &str, service: T) -> Self
     where
-        T: Service<Request, Error = Infallible> + Clone + Send + 'static,
+        T: Service<Request, Error = Infallible> + Clone + Send + Sync + 'static,
         T::Response: IntoResponse,
         T::Future: Send + 'static,
     {
@@ -185,6 +185,7 @@ where
     }
 
     #[doc = include_str!("../docs/routing/nest.md")]
+    #[doc(alias = "scope")] // Some web frameworks like actix-web use this term
     #[track_caller]
     pub fn nest(self, path: &str, router: Router<S>) -> Self {
         let RouterInner {
@@ -210,7 +211,7 @@ where
     #[track_caller]
     pub fn nest_service<T>(self, path: &str, service: T) -> Self
     where
-        T: Service<Request, Error = Infallible> + Clone + Send + 'static,
+        T: Service<Request, Error = Infallible> + Clone + Send + Sync + 'static,
         T::Response: IntoResponse,
         T::Future: Send + 'static,
     {
@@ -274,8 +275,8 @@ where
     #[doc = include_str!("../docs/routing/layer.md")]
     pub fn layer<L>(self, layer: L) -> Router<S>
     where
-        L: Layer<Route> + Clone + Send + 'static,
-        L::Service: Service<Request> + Clone + Send + 'static,
+        L: Layer<Route> + Clone + Send + Sync + 'static,
+        L::Service: Service<Request> + Clone + Send + Sync + 'static,
         <L::Service as Service<Request>>::Response: IntoResponse + 'static,
         <L::Service as Service<Request>>::Error: Into<Infallible> + 'static,
         <L::Service as Service<Request>>::Future: Send + 'static,
@@ -292,8 +293,8 @@ where
     #[track_caller]
     pub fn route_layer<L>(self, layer: L) -> Self
     where
-        L: Layer<Route> + Clone + Send + 'static,
-        L::Service: Service<Request> + Clone + Send + 'static,
+        L: Layer<Route> + Clone + Send + Sync + 'static,
+        L::Service: Service<Request> + Clone + Send + Sync + 'static,
         <L::Service as Service<Request>>::Response: IntoResponse + 'static,
         <L::Service as Service<Request>>::Error: Into<Infallible> + 'static,
         <L::Service as Service<Request>>::Future: Send + 'static,
@@ -304,6 +305,11 @@ where
             default_fallback: this.default_fallback,
             catch_all_fallback: this.catch_all_fallback,
         })
+    }
+
+    /// True if the router currently has at least one route added.
+    pub fn has_routes(&self) -> bool {
+        self.inner.path_router.has_routes()
     }
 
     #[track_caller]
@@ -325,7 +331,7 @@ where
     /// See [`Router::fallback`] for more details.
     pub fn fallback_service<T>(self, service: T) -> Self
     where
-        T: Service<Request, Error = Infallible> + Clone + Send + 'static,
+        T: Service<Request, Error = Infallible> + Clone + Send + Sync + 'static,
         T::Response: IntoResponse,
         T::Future: Send + 'static,
     {
@@ -492,7 +498,9 @@ const _: () = {
         }
 
         fn call(&mut self, _req: IncomingStream<'_>) -> Self::Future {
-            std::future::ready(Ok(self.clone()))
+            // call `Router::with_state` such that everything is turned into `Route` eagerly
+            // rather than doing that per request
+            std::future::ready(Ok(self.clone().with_state(())))
         }
     }
 };
@@ -630,7 +638,7 @@ where
     where
         S: 'static,
         E: 'static,
-        F: FnOnce(Route<E>) -> Route<E2> + Clone + Send + 'static,
+        F: FnOnce(Route<E>) -> Route<E2> + Clone + Send + Sync + 'static,
         E2: 'static,
     {
         match self {
@@ -693,8 +701,8 @@ where
 {
     fn layer<L>(self, layer: L) -> Endpoint<S>
     where
-        L: Layer<Route> + Clone + Send + 'static,
-        L::Service: Service<Request> + Clone + Send + 'static,
+        L: Layer<Route> + Clone + Send + Sync + 'static,
+        L::Service: Service<Request> + Clone + Send + Sync + 'static,
         <L::Service as Service<Request>>::Response: IntoResponse + 'static,
         <L::Service as Service<Request>>::Error: Into<Infallible> + 'static,
         <L::Service as Service<Request>>::Future: Send + 'static,

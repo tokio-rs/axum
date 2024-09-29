@@ -3,7 +3,6 @@
 //! See [`Multipart`] for more details.
 
 use axum::{
-    async_trait,
     body::{Body, Bytes},
     extract::FromRequest,
     response::{IntoResponse, Response},
@@ -90,7 +89,6 @@ pub struct Multipart {
     inner: multer::Multipart<'static>,
 }
 
-#[async_trait]
 impl<S> FromRequest<S> for Multipart
 where
     S: Send + Sync,
@@ -379,7 +377,13 @@ pub struct InvalidBoundary;
 
 impl IntoResponse for InvalidBoundary {
     fn into_response(self) -> Response {
-        (self.status(), self.body_text()).into_response()
+        let body = self.body_text();
+        axum_core::__log_rejection!(
+            rejection_type = Self,
+            body_text = body,
+            status = self.status(),
+        );
+        (self.status(), body).into_response()
     }
 }
 
@@ -407,7 +411,7 @@ impl std::error::Error for InvalidBoundary {}
 mod tests {
     use super::*;
     use crate::test_helpers::*;
-    use axum::{extract::DefaultBodyLimit, response::IntoResponse, routing::post, Router};
+    use axum::{extract::DefaultBodyLimit, routing::post, Router};
 
     #[tokio::test]
     async fn content_type_with_encoding() {

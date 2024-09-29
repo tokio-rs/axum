@@ -20,10 +20,6 @@ impl PercentDecodedStr {
     pub(crate) fn as_str(&self) -> &str {
         &self.0
     }
-
-    pub(crate) fn into_inner(self) -> Arc<str> {
-        self.0
-    }
 }
 
 impl Deref for PercentDecodedStr {
@@ -74,9 +70,8 @@ mod mutex {
 }
 
 #[cfg(test)]
+#[allow(clippy::disallowed_types)]
 mod mutex {
-    #![allow(clippy::disallowed_types)]
-
     use std::sync::{
         atomic::{AtomicUsize, Ordering},
         LockResult, Mutex, MutexGuard,

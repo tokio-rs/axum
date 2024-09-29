@@ -1,6 +1,5 @@
 use crate::extract::Request;
 use crate::extract::{rejection::*, FromRequest};
-use async_trait::async_trait;
 use axum_core::response::{IntoResponse, Response};
 use bytes::{BufMut, Bytes, BytesMut};
 use http::{
@@ -17,8 +16,7 @@ use serde::{de::DeserializeOwned, Serialize};
 ///
 /// - The request doesn't have a `Content-Type: application/json` (or similar) header.
 /// - The body doesn't contain syntactically valid JSON.
-/// - The body contains syntactically valid JSON, but it couldn't be deserialized into the target
-/// type.
+/// - The body contains syntactically valid JSON, but it couldn't be deserialized into the target type.
 /// - Buffering the request body fails.
 ///
 /// ⚠️ Since parsing JSON requires consuming the request body, the `Json` extractor must be
@@ -92,7 +90,6 @@ use serde::{de::DeserializeOwned, Serialize};
 #[must_use]
 pub struct Json<T>(pub T);
 
-#[async_trait]
 impl<T, S> FromRequest<S> for Json<T>
 where
     T: DeserializeOwned,

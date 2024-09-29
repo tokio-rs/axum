@@ -5,7 +5,6 @@
 //! ```
 
 use axum::{
-    async_trait,
     extract::{FromRequestParts, Path},
     http::{request::Parts, StatusCode},
     response::{IntoResponse, Response},
@@ -20,7 +19,7 @@ async fn main() {
     tracing_subscriber::registry()
         .with(
             tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "example_versioning=debug".into()),
+                .unwrap_or_else(|_| format!("{}=debug", env!("CARGO_CRATE_NAME")).into()),
         )
         .with(tracing_subscriber::fmt::layer())
         .init();
@@ -47,7 +46,6 @@ enum Version {
     V3,
 }
 
-#[async_trait]
 impl<S> FromRequestParts<S> for Version
 where
     S: Send + Sync,

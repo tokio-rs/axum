@@ -1,7 +1,6 @@
 //! Protocol Buffer extractor and response.
 
 use axum::{
-    async_trait,
     extract::{rejection::BytesRejection, FromRequest, Request},
     response::{IntoResponse, Response},
 };
@@ -90,7 +89,6 @@ use prost::Message;
 #[must_use]
 pub struct Protobuf<T>(pub T);
 
-#[async_trait]
 impl<T, S> FromRequest<S> for Protobuf<T>
 where
     T: Message + Default,
@@ -201,7 +199,6 @@ mod tests {
     use super::*;
     use crate::test_helpers::*;
     use axum::{routing::post, Router};
-    use http::StatusCode;
 
     #[tokio::test]
     async fn decode_body() {

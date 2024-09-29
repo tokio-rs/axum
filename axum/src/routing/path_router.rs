@@ -85,7 +85,7 @@ where
         service: T,
     ) -> Result<(), Cow<'static, str>>
     where
-        T: Service<Request, Error = Infallible> + Clone + Send + 'static,
+        T: Service<Request, Error = Infallible> + Clone + Send + Sync + 'static,
         T::Response: IntoResponse,
         T::Future: Send + 'static,
     {
@@ -111,13 +111,10 @@ where
     }
 
     fn set_node(&mut self, path: &str, id: RouteId) -> Result<(), String> {
-        let mut node =
-            Arc::try_unwrap(Arc::clone(&self.node)).unwrap_or_else(|node| (*node).clone());
-        if let Err(err) = node.insert(path, id) {
-            return Err(format!("Invalid route {path:?}: {err}"));
-        }
-        self.node = Arc::new(node);
-        Ok(())
+        let node = Arc::make_mut(&mut self.node);
+
+        node.insert(path, id)
+            .map_err(|err| format!("Invalid route {path:?}: {err}"))
     }
 
     pub(super) fn merge(
@@ -204,7 +201,7 @@ where
         svc: T,
     ) -> Result<(), Cow<'static, str>>
     where
-        T: Service<Request, Error = Infallible> + Clone + Send + 'static,
+        T: Service<Request, Error = Infallible> + Clone + Send + Sync + 'static,
         T::Response: IntoResponse,
         T::Future: Send + 'static,
     {
@@ -239,8 +236,8 @@ where
 
     pub(super) fn layer<L>(self, layer: L) -> PathRouter<S, IS_FALLBACK>
     where
-        L: Layer<Route> + Clone + Send + 'static,
-        L::Service: Service<Request> + Clone + Send + 'static,
+        L: Layer<Route> + Clone + Send + Sync + 'static,
+        L::Service: Service<Request> + Clone + Send + Sync + 'static,
         <L::Service as Service<Request>>::Response: IntoResponse + 'static,
         <L::Service as Service<Request>>::Error: Into<Infallible> + 'static,
         <L::Service as Service<Request>>::Future: Send + 'static,
@@ -264,8 +261,8 @@ where
     #[track_caller]
     pub(super) fn route_layer<L>(self, layer: L) -> Self
     where
-        L: Layer<Route> + Clone + Send + 'static,
-        L::Service: Service<Request> + Clone + Send + 'static,
+        L: Layer<Route> + Clone + Send + Sync + 'static,
+        L::Service: Service<Request> + Clone + Send + Sync + 'static,
         <L::Service as Service<Request>>::Response: IntoResponse + 'static,
         <L::Service as Service<Request>>::Error: Into<Infallible> + 'static,
         <L::Service as Service<Request>>::Future: Send + 'static,
@@ -291,6 +288,10 @@ where
             node: self.node,
             prev_route_id: self.prev_route_id,
         }
+    }
+
+    pub(super) fn has_routes(&self) -> bool {
+        !self.routes.is_empty()
     }
 
     pub(super) fn with_state<S2>(self, state: S) -> PathRouter<S2, IS_FALLBACK> {

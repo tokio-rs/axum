@@ -165,7 +165,7 @@ pub trait RouterExt<S>: sealed::Sealed {
     /// This works like [`RouterExt::route_with_tsr`] but accepts any [`Service`].
     fn route_service_with_tsr<T>(self, path: &str, service: T) -> Self
     where
-        T: Service<Request, Error = Infallible> + Clone + Send + 'static,
+        T: Service<Request, Error = Infallible> + Clone + Send + Sync + 'static,
         T::Response: IntoResponse,
         T::Future: Send + 'static,
         Self: Sized;
@@ -268,7 +268,7 @@ where
     #[track_caller]
     fn route_service_with_tsr<T>(mut self, path: &str, service: T) -> Self
     where
-        T: Service<Request, Error = Infallible> + Clone + Send + 'static,
+        T: Service<Request, Error = Infallible> + Clone + Send + Sync + 'static,
         T::Response: IntoResponse,
         T::Future: Send + 'static,
         Self: Sized,
@@ -342,7 +342,7 @@ mod sealed {
 mod tests {
     use super::*;
     use crate::test_helpers::*;
-    use axum::{extract::Path, http::StatusCode, routing::get};
+    use axum::{extract::Path, routing::get};
 
     #[tokio::test]
     async fn test_tsr() {

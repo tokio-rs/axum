@@ -1,7 +1,6 @@
 //! Newline delimited JSON extractor and response.
 
 use axum::{
-    async_trait,
     body::Body,
     extract::{FromRequest, Request},
     response::{IntoResponse, Response},
@@ -99,7 +98,6 @@ impl<S> JsonLines<S, AsResponse> {
     }
 }
 
-#[async_trait]
 impl<S, T> FromRequest<S> for JsonLines<T, AsExtractor>
 where
     T: DeserializeOwned,
@@ -184,7 +182,7 @@ mod tests {
     use futures_util::StreamExt;
     use http::StatusCode;
     use serde::Deserialize;
-    use std::{convert::Infallible, error::Error};
+    use std::error::Error;
 
     #[derive(Serialize, Deserialize, PartialEq, Eq, Debug)]
     struct User {

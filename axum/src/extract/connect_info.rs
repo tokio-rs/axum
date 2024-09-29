@@ -7,7 +7,6 @@
 use crate::extension::AddExtension;
 
 use super::{Extension, FromRequestParts};
-use async_trait::async_trait;
 use http::request::Parts;
 use std::{
     convert::Infallible,
@@ -139,7 +138,6 @@ opaque_future! {
 #[derive(Clone, Copy, Debug)]
 pub struct ConnectInfo<T>(pub T);
 
-#[async_trait]
 impl<S, T> FromRequestParts<S> for ConnectInfo<T>
 where
     S: Send + Sync,
@@ -225,7 +223,6 @@ where
 mod tests {
     use super::*;
     use crate::{routing::get, serve::IncomingStream, test_helpers::TestClient, Router};
-    use std::net::SocketAddr;
     use tokio::net::TcpListener;
 
     #[crate::test]
