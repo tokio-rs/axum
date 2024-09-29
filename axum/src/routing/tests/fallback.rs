@@ -349,3 +349,15 @@ async fn mna_fallback_with_existing_fallback() {
         "method not allowed fallback"
     );
 }
+
+#[crate::test]
+async fn mna_fallback_with_state() {
+    let app = Router::new()
+        .route("/", get(|| async { "index" }))
+        .method_not_allowed_fallback(|State(state): State<&'static str>| async move { state })
+        .with_state("state");
+
+    let client = TestClient::new(app);
+    let res = client.post("/").await;
+    assert_eq!(res.text().await, "state");
+}
