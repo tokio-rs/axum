@@ -328,3 +328,18 @@ async fn merge_router_with_fallback_into_empty() {
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
     assert_eq!(res.text().await, "outer");
 }
+
+#[crate::test]
+async fn mna_fallback_with_existing_fallback() {
+    let app = Router::new()
+        .route("/", get(|| async { "test" }).fallback(|| async { "index fallback" }))
+        .route("/path", get(|| async { "path" }))
+        .method_not_allowed_fallback(|| async { "method not allowed fallback" });
+
+    let client = TestClient::new(app);
+    let index_fallback = client.post("/").await;
+    let method_not_allowed_fallback = client.post("/path").await;
+
+    assert_eq!(index_fallback.text().await, "index fallback");
+    assert_eq!(method_not_allowed_fallback.text().await, "method not allowed fallback");
+}
