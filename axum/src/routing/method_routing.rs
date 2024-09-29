@@ -610,8 +610,8 @@ where
         S: Send + Sync + 'static
     {
         match self.fallback {
-            Fallback::Default(_) => self,
-            _ => self.fallback(handler),
+            Fallback::Default(_) => self.fallback(handler),
+            _ => self,
         }
     }
 }
