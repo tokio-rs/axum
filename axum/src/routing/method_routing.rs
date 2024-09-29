@@ -601,6 +601,19 @@ where
         self.fallback = Fallback::BoxedHandler(BoxedIntoRoute::from_handler(handler));
         self
     }
+
+    /// Add a fallback [`Handler`] if no custom one has been provided.
+    pub(crate) fn default_fallback<H, T>(mut self, handler: H) -> Self
+    where
+        H: Handler<T, S>,
+        T: 'static,
+        S: Send + Sync + 'static
+    {
+        match self.fallback {
+            Fallback::Default(_) => self,
+            _ => self.fallback(handler),
+        }
+    }
 }
 
 impl MethodRouter<(), Infallible> {
