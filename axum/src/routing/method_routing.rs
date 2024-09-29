@@ -603,7 +603,7 @@ where
     }
 
     /// Add a fallback [`Handler`] if no custom one has been provided.
-    pub(crate) fn default_fallback<H, T>(mut self, handler: H) -> Self
+    pub(crate) fn default_fallback<H, T>(self, handler: H) -> Self
     where
         H: Handler<T, S>,
         T: 'static,
