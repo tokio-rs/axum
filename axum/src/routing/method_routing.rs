@@ -607,7 +607,7 @@ where
     where
         H: Handler<T, S>,
         T: 'static,
-        S: Send + Sync + 'static
+        S: Send + Sync + 'static,
     {
         match self.fallback {
             Fallback::Default(_) => self.fallback(handler),
