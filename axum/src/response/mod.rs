@@ -42,8 +42,8 @@ where
     fn into_response(self) -> Response {
         (
             [(
-                http::header::CONTENT_TYPE,
-                http::HeaderValue::from_static(mime::TEXT_HTML_UTF_8.as_ref()),
+                header::CONTENT_TYPE,
+                HeaderValue::from_static(mime::TEXT_HTML_UTF_8.as_ref()),
             )],
             self.0,
         )
