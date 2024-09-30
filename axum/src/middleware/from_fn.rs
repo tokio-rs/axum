@@ -114,7 +114,7 @@ pub fn from_fn<F, T>(f: F) -> FromFnLayer<F, (), T> {
 
 /// Create a middleware from an async function with the given state.
 ///
-/// For the requirements for the function supplied see [`from_fn`](from_fn).
+/// For the requirements for the function supplied see [`from_fn`].
 ///
 /// See [`State`](crate::extract::State) for more details about accessing state.
 ///
