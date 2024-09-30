@@ -911,30 +911,17 @@ async fn state_isnt_cloned_too_much() {
 
     impl Clone for AppState {
         fn clone(&self) -> Self {
-            #[rustversion::since(1.66)]
-            #[track_caller]
-            fn count() {
-                if SETUP_DONE.load(Ordering::SeqCst) {
-                    let bt = std::backtrace::Backtrace::force_capture();
-                    let bt = bt
-                        .to_string()
-                        .lines()
-                        .filter(|line| line.contains("axum") || line.contains("./src"))
-                        .collect::<Vec<_>>()
-                        .join("\n");
-                    println!("AppState::Clone:\n===============\n{bt}\n");
-                    COUNT.fetch_add(1, Ordering::SeqCst);
-                }
+            if SETUP_DONE.load(Ordering::SeqCst) {
+                let bt = std::backtrace::Backtrace::force_capture();
+                let bt = bt
+                    .to_string()
+                    .lines()
+                    .filter(|line| line.contains("axum") || line.contains("./src"))
+                    .collect::<Vec<_>>()
+                    .join("\n");
+                println!("AppState::Clone:\n===============\n{bt}\n");
+                COUNT.fetch_add(1, Ordering::SeqCst);
             }
-
-            #[rustversion::not(since(1.66))]
-            fn count() {
-                if SETUP_DONE.load(Ordering::SeqCst) {
-                    COUNT.fetch_add(1, Ordering::SeqCst);
-                }
-            }
-
-            count();
 
             Self
         }
