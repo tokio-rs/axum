@@ -7,7 +7,7 @@ use tower_service::Service;
 
 use super::{
     future::RouteFuture, not_found::NotFound, strip_prefix::StripPrefix, url_params, Endpoint,
-    MethodRouter, Route, RouteId, FALLBACK_PARAM_PATH, NEST_TAIL_PARAM,
+    MethodRouter, NestedRootRouteBehavior, Route, RouteId, FALLBACK_PARAM_PATH, NEST_TAIL_PARAM,
 };
 
 pub(super) struct PathRouter<S, const IS_FALLBACK: bool> {
@@ -161,6 +161,7 @@ where
         &mut self,
         path_to_nest_at: &str,
         router: PathRouter<S, IS_FALLBACK>,
+        root_behavior: NestedRootRouteBehavior,
     ) -> Result<(), Cow<'static, str>> {
         let prefix = validate_nest_path(path_to_nest_at);
 
@@ -176,18 +177,18 @@ where
                 .get(&id)
                 .expect("no path for route id. This is a bug in axum. Please file an issue");
 
-            let path = path_for_nested_route(prefix, inner_path);
-
-            let layer = (
-                StripPrefix::layer(prefix),
-                SetNestedPath::layer(path_to_nest_at),
-            );
-            match endpoint.layer(layer) {
-                Endpoint::MethodRouter(method_router) => {
-                    self.route(&path, method_router)?;
-                }
-                Endpoint::Route(route) => {
-                    self.route_endpoint(&path, Endpoint::Route(route))?;
+            for path in paths_for_nested_route(prefix, inner_path, root_behavior) {
+                let layer = (
+                    StripPrefix::layer(prefix),
+                    SetNestedPath::layer(path_to_nest_at),
+                );
+                match endpoint.clone().layer(layer) {
+                    Endpoint::MethodRouter(method_router) => {
+                        self.route(&path, method_router)?;
+                    }
+                    Endpoint::Route(route) => {
+                        self.route_endpoint(&path, Endpoint::Route(route))?;
+                    }
                 }
             }
         }
@@ -208,11 +209,7 @@ where
         let path = validate_nest_path(path_to_nest_at);
         let prefix = path;
 
-        let path = if path.ends_with('/') {
-            format!("{path}*{NEST_TAIL_PARAM}")
-        } else {
-            format!("{path}/*{NEST_TAIL_PARAM}")
-        };
+        let path = format!("{path}/*{NEST_TAIL_PARAM}");
 
         let layer = (
             StripPrefix::layer(prefix),
@@ -474,18 +471,38 @@ fn validate_nest_path(path: &str) -> &str {
         panic!("Invalid route: nested routes cannot contain wildcards (*)");
     }
 
+    if path.ends_with('/') {
+        panic!("Invalid route: nested routes cannot end with `/`");
+    }
+
     path
 }
 
-pub(crate) fn path_for_nested_route<'a>(prefix: &'a str, path: &'a str) -> Cow<'a, str> {
+/// This returns all paths that should be registered for a given prefix and
+/// path. This usually returns exactly one path, but may return two for root
+/// path with [`RootRouteBehavior::EmptyAndSlash`].
+pub(crate) fn paths_for_nested_route<'a>(
+    prefix: &'a str,
+    path: &'a str,
+    root_behavior: NestedRootRouteBehavior,
+) -> impl Iterator<Item = Cow<'a, str>> {
     debug_assert!(prefix.starts_with('/'));
+    debug_assert!(!prefix.ends_with('/'));
     debug_assert!(path.starts_with('/'));
 
-    if prefix.ends_with('/') {
-        format!("{prefix}{}", path.trim_start_matches('/')).into()
-    } else if path == "/" {
-        prefix.into()
+    if path == "/" {
+        match root_behavior {
+            NestedRootRouteBehavior::OnlyEmpty => Some(prefix.into()).into_iter().chain(None),
+            NestedRootRouteBehavior::OnlySlash => {
+                Some(format!("{prefix}/").into()).into_iter().chain(None)
+            }
+            NestedRootRouteBehavior::EmptyAndSlash => Some(prefix.into())
+                .into_iter()
+                .chain(Some(format!("{prefix}/").into())),
+        }
     } else {
-        format!("{prefix}{path}").into()
+        Some(format!("{prefix}{path}").into())
+            .into_iter()
+            .chain(None)
     }
 }
