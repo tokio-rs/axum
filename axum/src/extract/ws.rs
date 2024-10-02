@@ -123,9 +123,8 @@ use tokio_tungstenite::{
 /// Extractor for establishing WebSocket connections.
 ///
 /// For HTTP/1.1 requests, this extractor requires the request method to be `GET`;
-/// in later versions, `CONNECT` is used instead. Thus it should either be used
-/// with [`any`](crate::routing::any), or placed behind
-/// [`on`](crate::routing::on)`(`[`MethodFilter`]`::GET.or(`[`MethodFilter`]`::POST), ...)`.
+/// in later versions, `CONNECT` is used instead.
+/// To support both, it should be used with [`any`](crate::routing::any).
 ///
 /// See the [module docs](self) for an example.
 ///
@@ -217,12 +216,12 @@ impl<F> WebSocketUpgrade<F> {
     /// ```
     /// use axum::{
     ///     extract::ws::{WebSocketUpgrade, WebSocket},
-    ///     routing::get,
+    ///     routing::any,
     ///     response::{IntoResponse, Response},
     ///     Router,
     /// };
     ///
-    /// let app = Router::new().route("/ws", get(handler));
+    /// let app = Router::new().route("/ws", any(handler));
     ///
     /// async fn handler(ws: WebSocketUpgrade) -> Response {
     ///     ws.protocols(["graphql-ws", "graphql-transport-ws"])
@@ -883,11 +882,7 @@ mod tests {
     use std::future::ready;
 
     use super::*;
-    use crate::{
-        routing::{any, get},
-        test_helpers::spawn_service,
-        Router,
-    };
+    use crate::{routing::any, test_helpers::spawn_service, Router};
     use http::{Request, Version};
     use http_body_util::BodyExt as _;
     use hyper_util::rt::TokioExecutor;
@@ -898,7 +893,7 @@ mod tests {
 
     #[crate::test]
     async fn rejects_http_1_0_requests() {
-        let svc = get(|ws: Result<WebSocketUpgrade, WebSocketUpgradeRejection>| {
+        let svc = any(|ws: Result<WebSocketUpgrade, WebSocketUpgradeRejection>| {
             let rejection = ws.unwrap_err();
             assert!(matches!(
                 rejection,
@@ -927,7 +922,7 @@ mod tests {
         async fn handler(ws: WebSocketUpgrade) -> Response {
             ws.on_upgrade(|_| async {})
         }
-        let _: Router = Router::new().route("/", get(handler));
+        let _: Router = Router::new().route("/", any(handler));
     }
 
     #[allow(dead_code)]
@@ -936,7 +931,7 @@ mod tests {
             ws.on_failed_upgrade(|_error: Error| println!("oops!"))
                 .on_upgrade(|_| async {})
         }
-        let _: Router = Router::new().route("/", get(handler));
+        let _: Router = Router::new().route("/", any(handler));
     }
 
     #[crate::test]
