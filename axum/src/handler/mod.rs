@@ -131,7 +131,7 @@ pub use self::service::HandlerService;
         note = "Consider using `#[axum::debug_handler]` to improve the error message"
     )
 )]
-pub trait Handler<T, S>: Clone + Send + Sized + 'static {
+pub trait Handler<T, S>: Clone + Send + Sync + Sized + 'static {
     /// The type of future calling this handler returns.
     type Future: Future<Output = Response> + Send + 'static;
 
@@ -192,7 +192,7 @@ pub trait Handler<T, S>: Clone + Send + Sized + 'static {
 
 impl<F, Fut, Res, S> Handler<((),), S> for F
 where
-    F: FnOnce() -> Fut + Clone + Send + 'static,
+    F: FnOnce() -> Fut + Clone + Send + Sync + 'static,
     Fut: Future<Output = Res> + Send,
     Res: IntoResponse,
 {
@@ -210,7 +210,7 @@ macro_rules! impl_handler {
         #[allow(non_snake_case, unused_mut)]
         impl<F, Fut, S, Res, M, $($ty,)* $last> Handler<(M, $($ty,)* $last,), S> for F
         where
-            F: FnOnce($($ty,)* $last,) -> Fut + Clone + Send + 'static,
+            F: FnOnce($($ty,)* $last,) -> Fut + Clone + Send + Sync + 'static,
             Fut: Future<Output = Res> + Send,
             S: Send + Sync + 'static,
             Res: IntoResponse,
@@ -257,7 +257,7 @@ mod private {
 
 impl<T, S> Handler<private::IntoResponseHandler, S> for T
 where
-    T: IntoResponse + Clone + Send + 'static,
+    T: IntoResponse + Clone + Send + Sync + 'static,
 {
     type Future = std::future::Ready<Response>;
 
@@ -302,7 +302,7 @@ where
 
 impl<H, S, T, L> Handler<T, S> for Layered<L, H, T, S>
 where
-    L: Layer<HandlerService<H, T, S>> + Clone + Send + 'static,
+    L: Layer<HandlerService<H, T, S>> + Clone + Send + Sync + 'static,
     H: Handler<T, S>,
     L::Service: Service<Request, Error = Infallible> + Clone + Send + 'static,
     <L::Service as Service<Request>>::Response: IntoResponse,
@@ -328,6 +328,8 @@ where
             ) -> _,
         > = svc.oneshot(req).map(|result| match result {
             Ok(res) => res.into_response(),
+
+            #[allow(unreachable_patterns)]
             Err(err) => match err {},
         });
 

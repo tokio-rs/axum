@@ -1,15 +1,3 @@
-# Table of contents
-
-- [Intro](#intro)
-- [Applying middleware](#applying-middleware)
-- [Commonly used middleware](#commonly-used-middleware)
-- [Ordering](#ordering)
-- [Writing middleware](#writing-middleware)
-- [Routing to services/middleware and backpressure](#routing-to-servicesmiddleware-and-backpressure)
-- [Accessing state in middleware](#accessing-state-in-middleware)
-- [Passing state from middleware to handlers](#passing-state-from-middleware-to-handlers)
-- [Rewriting request URI in middleware](#rewriting-request-uri-in-middleware)
-
 # Intro
 
 axum is unique in that it doesn't have its own bespoke middleware system and

@@ -1,12 +1,8 @@
-use axum::{
-    async_trait,
-    extract::{Request, FromRequest},
-};
+use axum::extract::{FromRequest, Request};
 use axum_macros::debug_handler;
 
 struct A;
 
-#[async_trait]
 impl<S> FromRequest<S> for A
 where
     S: Send + Sync,
@@ -18,7 +14,6 @@ where
     }
 }
 
-#[async_trait]
 impl<S> FromRequest<S> for Box<A>
 where
     S: Send + Sync,

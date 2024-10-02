@@ -2,14 +2,14 @@
 categories = ["asynchronous", "network-programming", "web-programming"]
 description = "Macros for axum"
 edition = "2021"
-rust-version = "1.66"
+rust-version = { workspace = true }
 homepage = "https://github.com/tokio-rs/axum"
 keywords = ["axum"]
 license = "MIT"
 name = "axum-macros"
 readme = "README.md"
 repository = "https://github.com/tokio-rs/axum"
-version = "0.4.1" # remember to also bump the version that axum and axum-extra depends on
+version = "0.4.2" # remember to also bump the version that axum and axum-extra depends on
 
 [features]
 default = []

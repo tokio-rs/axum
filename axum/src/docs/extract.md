@@ -1,20 +1,5 @@
 Types and traits for extracting data from requests.
 
-# Table of contents
-
-- [Intro](#intro)
-- [Common extractors](#common-extractors)
-- [Applying multiple extractors](#applying-multiple-extractors)
-- [The order of extractors](#the-order-of-extractors)
-- [Optional extractors](#optional-extractors)
-- [Customizing extractor responses](#customizing-extractor-responses)
-- [Accessing inner errors](#accessing-inner-errors)
-- [Defining custom extractors](#defining-custom-extractors)
-- [Accessing other extractors in `FromRequest` or `FromRequestParts` implementations](#accessing-other-extractors-in-fromrequest-or-fromrequestparts-implementations)
-- [Request body limits](#request-body-limits)
-- [Wrapping extractors](#wrapping-extractors)
-- [Logging rejections](#logging-rejections)
-
 # Intro
 
 A handler function is an async function that takes any number of
@@ -424,7 +409,6 @@ request body:
 
 ```rust,no_run
 use axum::{
-    async_trait,
     extract::FromRequestParts,
     routing::get,
     Router,
@@ -437,7 +421,6 @@ use axum::{
 
 struct ExtractUserAgent(HeaderValue);
 
-#[async_trait]
 impl<S> FromRequestParts<S> for ExtractUserAgent
 where
     S: Send + Sync,
@@ -467,7 +450,6 @@ If your extractor needs to consume the request body you must implement [`FromReq
 
 ```rust,no_run
 use axum::{
-    async_trait,
     extract::{Request, FromRequest},
     response::{Response, IntoResponse},
     body::{Bytes, Body},
@@ -481,7 +463,6 @@ use axum::{
 
 struct ValidatedBody(Bytes);
 
-#[async_trait]
 impl<S> FromRequest<S> for ValidatedBody
 where
     Bytes: FromRequest<S>,
@@ -521,7 +502,6 @@ use axum::{
     extract::{FromRequest, Request, FromRequestParts},
     http::request::Parts,
     body::Body,
-    async_trait,
 };
 use std::convert::Infallible;
 
@@ -529,7 +509,6 @@ use std::convert::Infallible;
 struct MyExtractor;
 
 // `MyExtractor` implements both `FromRequest`
-#[async_trait]
 impl<S> FromRequest<S> for MyExtractor
 where
     S: Send + Sync,
@@ -543,7 +522,6 @@ where
 }
 
 // and `FromRequestParts`
-#[async_trait]
 impl<S> FromRequestParts<S> for MyExtractor
 where
     S: Send + Sync,
@@ -577,7 +555,6 @@ in your implementation.
 
 ```rust
 use axum::{
-    async_trait,
     extract::{Extension, FromRequestParts},
     http::{StatusCode, HeaderMap, request::Parts},
     response::{IntoResponse, Response},
@@ -594,7 +571,6 @@ struct AuthenticatedUser {
     // ...
 }
 
-#[async_trait]
 impl<S> FromRequestParts<S> for AuthenticatedUser
 where
     S: Send + Sync,
@@ -648,7 +624,6 @@ use axum::{
     routing::get,
     extract::{Request, FromRequest, FromRequestParts},
     http::{HeaderMap, request::Parts},
-    async_trait,
 };
 use std::time::{Instant, Duration};
 
@@ -659,7 +634,6 @@ struct Timing<E> {
 }
 
 // we must implement both `FromRequestParts`
-#[async_trait]
 impl<S, T> FromRequestParts<S> for Timing<T>
 where
     S: Send + Sync,
@@ -679,7 +653,6 @@ where
 }
 
 // and `FromRequest`
-#[async_trait]
 impl<S, T> FromRequest<S> for Timing<T>
 where
     S: Send + Sync,

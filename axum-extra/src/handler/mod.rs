@@ -47,7 +47,6 @@ pub trait HandlerCallWithExtractors<T, S>: Sized {
     /// use axum_extra::handler::HandlerCallWithExtractors;
     /// use axum::{
     ///     Router,
-    ///     async_trait,
     ///     routing::get,
     ///     extract::FromRequestParts,
     /// };
@@ -68,7 +67,6 @@ pub trait HandlerCallWithExtractors<T, S>: Sized {
     /// // extractors for checking permissions
     /// struct AdminPermissions {}
     ///
-    /// #[async_trait]
     /// impl<S> FromRequestParts<S> for AdminPermissions
     /// where
     ///     S: Send + Sync,
@@ -82,7 +80,6 @@ pub trait HandlerCallWithExtractors<T, S>: Sized {
     ///
     /// struct User {}
     ///
-    /// #[async_trait]
     /// impl<S> FromRequestParts<S> for User
     /// where
     ///     S: Send + Sync,
@@ -168,7 +165,7 @@ pub struct IntoHandler<H, T, S> {
 
 impl<H, T, S> Handler<T, S> for IntoHandler<H, T, S>
 where
-    H: HandlerCallWithExtractors<T, S> + Clone + Send + 'static,
+    H: HandlerCallWithExtractors<T, S> + Clone + Send + Sync + 'static,
     T: FromRequest<S> + Send + 'static,
     T::Rejection: Send,
     S: Send + Sync + 'static,
