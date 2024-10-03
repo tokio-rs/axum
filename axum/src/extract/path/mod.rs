@@ -754,8 +754,11 @@ mod tests {
         struct Tuple(String, String);
 
         let app = Router::new()
-            .route("/foo/:a/:b/:c", get(|_: Path<(String, String)>| async {}))
-            .route("/bar/:a/:b/:c", get(|_: Path<Tuple>| async {}));
+            .route(
+                "/foo/{a}/{b}/{c}",
+                get(|_: Path<(String, String)>| async {}),
+            )
+            .route("/bar/{a}/{b}/{c}", get(|_: Path<Tuple>| async {}));
 
         let client = TestClient::new(app);
 
