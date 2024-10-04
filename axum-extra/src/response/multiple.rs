@@ -200,7 +200,7 @@ impl Part {
 
 impl FromIterator<Part> for MultipartForm {
     fn from_iter<T: IntoIterator<Item = Part>>(iter: T) -> Self {
-         Self{
+        Self {
             parts: iter.into_iter().collect(),
         }
     }
