@@ -10,12 +10,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **breaking:** Require `Sync` for all handlers and services added to `Router`
   and `MethodRouter` ([#2473])
 - **breaking:** The tuple and tuple_struct `Path` extractor deserializers now check that the number of parameters matches the tuple length exactly ([#2931])
-- **breaking:** Move `Host` extractor to `axum-extra`
+- **breaking:** Move `Host` extractor to `axum-extra` ([#2956])
 - **change:** Update minimum rust version to 1.75 ([#2943])
 
 [#2473]: https://github.com/tokio-rs/axum/pull/2473
 [#2931]: https://github.com/tokio-rs/axum/pull/2931
 [#2943]: https://github.com/tokio-rs/axum/pull/2943
+[#2956]: https://github.com/tokio-rs/axum/pull/2956
 
 # 0.7.7
 
