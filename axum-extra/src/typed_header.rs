@@ -1,7 +1,6 @@
 //! Extractor and response for typed headers.
 
 use axum::{
-    async_trait,
     extract::FromRequestParts,
     response::{IntoResponse, IntoResponseParts, Response, ResponseParts},
 };
@@ -30,7 +29,7 @@ use std::convert::Infallible;
 ///     // ...
 /// }
 ///
-/// let app = Router::new().route("/users/:user_id/team/:team_id", get(users_teams_show));
+/// let app = Router::new().route("/users/{user_id}/team/{team_id}", get(users_teams_show));
 /// # let _: Router = app;
 /// ```
 ///
@@ -55,7 +54,6 @@ use std::convert::Infallible;
 #[must_use]
 pub struct TypedHeader<T>(pub T);
 
-#[async_trait]
 impl<T, S> FromRequestParts<S> for TypedHeader<T>
 where
     T: Header,

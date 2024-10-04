@@ -173,6 +173,11 @@ impl<M, S> Serve<M, S> {
             ..self
         }
     }
+
+    /// Returns the local address this server is bound to.
+    pub fn local_addr(&self) -> io::Result<SocketAddr> {
+        self.tcp_listener.local_addr()
+    }
 }
 
 #[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
@@ -208,61 +213,8 @@ where
     type IntoFuture = private::ServeFuture;
 
     fn into_future(self) -> Self::IntoFuture {
-        private::ServeFuture(Box::pin(async move {
-            let Self {
-                tcp_listener,
-                mut make_service,
-                tcp_nodelay,
-                _marker: _,
-            } = self;
-
-            loop {
-                let (tcp_stream, remote_addr) = match tcp_accept(&tcp_listener).await {
-                    Some(conn) => conn,
-                    None => continue,
-                };
-
-                if let Some(nodelay) = tcp_nodelay {
-                    if let Err(err) = tcp_stream.set_nodelay(nodelay) {
-                        trace!("failed to set TCP_NODELAY on incoming connection: {err:#}");
-                    }
-                }
-
-                let tcp_stream = TokioIo::new(tcp_stream);
-
-                poll_fn(|cx| make_service.poll_ready(cx))
-                    .await
-                    .unwrap_or_else(|err| match err {});
-
-                let tower_service = make_service
-                    .call(IncomingStream {
-                        tcp_stream: &tcp_stream,
-                        remote_addr,
-                    })
-                    .await
-                    .unwrap_or_else(|err| match err {})
-                    .map_request(|req: Request<Incoming>| req.map(Body::new));
-
-                let hyper_service = TowerToHyperService::new(tower_service);
-
-                tokio::spawn(async move {
-                    match Builder::new(TokioExecutor::new())
-                        // upgrades needed for websockets
-                        .serve_connection_with_upgrades(tcp_stream, hyper_service)
-                        .await
-                    {
-                        Ok(()) => {}
-                        Err(_err) => {
-                            // This error only appears when the client doesn't send a request and
-                            // terminate the connection.
-                            //
-                            // If client sends one request then terminate connection whenever, it doesn't
-                            // appear.
-                        }
-                    }
-                });
-            }
-        }))
+        self.with_graceful_shutdown(std::future::pending())
+            .into_future()
     }
 }
 
@@ -306,6 +258,11 @@ impl<M, S, F> WithGracefulShutdown<M, S, F> {
             tcp_nodelay: Some(nodelay),
             ..self
         }
+    }
+
+    /// Returns the local address this server is bound to.
+    pub fn local_addr(&self) -> io::Result<SocketAddr> {
+        self.tcp_listener.local_addr()
     }
 }
 
@@ -544,6 +501,10 @@ mod tests {
         routing::get,
         Router,
     };
+    use std::{
+        future::pending,
+        net::{IpAddr, Ipv4Addr},
+    };
 
     #[allow(dead_code, unused_must_use)]
     async fn if_it_compiles_it_works() {
@@ -607,4 +568,29 @@ mod tests {
     }
 
     async fn handler() {}
+
+    #[crate::test]
+    async fn test_serve_local_addr() {
+        let router: Router = Router::new();
+        let addr = "0.0.0.0:0";
+
+        let server = serve(TcpListener::bind(addr).await.unwrap(), router.clone());
+        let address = server.local_addr().unwrap();
+
+        assert_eq!(address.ip(), IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)));
+        assert_ne!(address.port(), 0);
+    }
+
+    #[crate::test]
+    async fn test_with_graceful_shutdown_local_addr() {
+        let router: Router = Router::new();
+        let addr = "0.0.0.0:0";
+
+        let server = serve(TcpListener::bind(addr).await.unwrap(), router.clone())
+            .with_graceful_shutdown(pending());
+        let address = server.local_addr().unwrap();
+
+        assert_eq!(address.ip(), IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)));
+        assert_ne!(address.port(), 0);
+    }
 }

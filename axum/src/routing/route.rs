@@ -1,7 +1,7 @@
 use crate::{
     body::{Body, HttpBody},
+    box_clone_service::BoxCloneService,
     response::Response,
-    util::AxumMutex,
 };
 use axum_core::{extract::Request, response::IntoResponse};
 use bytes::Bytes;
@@ -18,7 +18,7 @@ use std::{
     task::{Context, Poll},
 };
 use tower::{
-    util::{BoxCloneService, MapErrLayer, MapRequestLayer, MapResponseLayer, Oneshot},
+    util::{MapErrLayer, MapRequestLayer, MapResponseLayer, Oneshot},
     ServiceExt,
 };
 use tower_layer::Layer;
@@ -28,31 +28,31 @@ use tower_service::Service;
 ///
 /// You normally shouldn't need to care about this type. It's used in
 /// [`Router::layer`](super::Router::layer).
-pub struct Route<E = Infallible>(AxumMutex<BoxCloneService<Request, Response, E>>);
+pub struct Route<E = Infallible>(BoxCloneService<Request, Response, E>);
 
 impl<E> Route<E> {
     pub(crate) fn new<T>(svc: T) -> Self
     where
-        T: Service<Request, Error = E> + Clone + Send + 'static,
+        T: Service<Request, Error = E> + Clone + Send + Sync + 'static,
         T::Response: IntoResponse + 'static,
         T::Future: Send + 'static,
     {
-        Self(AxumMutex::new(BoxCloneService::new(
+        Self(BoxCloneService::new(
             svc.map_response(IntoResponse::into_response),
-        )))
+        ))
     }
 
     pub(crate) fn oneshot_inner(
         &mut self,
         req: Request,
     ) -> Oneshot<BoxCloneService<Request, Response, E>, Request> {
-        self.0.get_mut().unwrap().clone().oneshot(req)
+        self.0.clone().oneshot(req)
     }
 
     pub(crate) fn layer<L, NewError>(self, layer: L) -> Route<NewError>
     where
         L: Layer<Route<E>> + Clone + Send + 'static,
-        L::Service: Service<Request> + Clone + Send + 'static,
+        L::Service: Service<Request> + Clone + Send + Sync + 'static,
         <L::Service as Service<Request>>::Response: IntoResponse + 'static,
         <L::Service as Service<Request>>::Error: Into<NewError> + 'static,
         <L::Service as Service<Request>>::Future: Send + 'static,
@@ -72,7 +72,7 @@ impl<E> Route<E> {
 impl<E> Clone for Route<E> {
     #[track_caller]
     fn clone(&self) -> Self {
-        Self(AxumMutex::new(self.0.lock().unwrap().clone()))
+        Self(self.0.clone())
     }
 }
 
@@ -236,6 +236,8 @@ impl Future for InfallibleRouteFuture {
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         match futures_util::ready!(self.project().future.poll(cx)) {
             Ok(response) => Poll::Ready(response),
+
+            #[allow(unreachable_patterns)]
             Err(err) => match err {},
         }
     }

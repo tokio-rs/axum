@@ -165,7 +165,7 @@ pub trait RouterExt<S>: sealed::Sealed {
     /// This works like [`RouterExt::route_with_tsr`] but accepts any [`Service`].
     fn route_service_with_tsr<T>(self, path: &str, service: T) -> Self
     where
-        T: Service<Request, Error = Infallible> + Clone + Send + 'static,
+        T: Service<Request, Error = Infallible> + Clone + Send + Sync + 'static,
         T::Response: IntoResponse,
         T::Future: Send + 'static,
         Self: Sized;
@@ -268,7 +268,7 @@ where
     #[track_caller]
     fn route_service_with_tsr<T>(mut self, path: &str, service: T) -> Self
     where
-        T: Service<Request, Error = Infallible> + Clone + Send + 'static,
+        T: Service<Request, Error = Infallible> + Clone + Send + Sync + 'static,
         T::Response: IntoResponse,
         T::Future: Send + 'static,
         Self: Sized,
@@ -371,11 +371,11 @@ mod tests {
     async fn tsr_with_params() {
         let app = Router::new()
             .route_with_tsr(
-                "/a/:a",
+                "/a/{a}",
                 get(|Path(param): Path<String>| async move { param }),
             )
             .route_with_tsr(
-                "/b/:b/",
+                "/b/{b}/",
                 get(|Path(param): Path<String>| async move { param }),
             );
 

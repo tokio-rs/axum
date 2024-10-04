@@ -7,7 +7,6 @@
 //! ```
 
 use axum::{
-    async_trait,
     extract::FromRequestParts,
     http::{request::Parts, StatusCode},
     response::{IntoResponse, Response},
@@ -61,7 +60,7 @@ async fn main() {
     tracing_subscriber::registry()
         .with(
             tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "example_jwt=debug".into()),
+                .unwrap_or_else(|_| format!("{}=debug", env!("CARGO_CRATE_NAME")).into()),
         )
         .with(tracing_subscriber::fmt::layer())
         .init();
@@ -122,7 +121,6 @@ impl AuthBody {
     }
 }
 
-#[async_trait]
 impl<S> FromRequestParts<S> for Claims
 where
     S: Send + Sync,

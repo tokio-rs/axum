@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+- **change:** Update minimum rust version to 1.75 ([#2943])
+
+[#2943]: https://github.com/tokio-rs/axum/pull/2943
+
+# 0.4.2
+
 - **added:** Add `#[debug_middleware]` ([#1993], [#2725])
 
 [#1993]: https://github.com/tokio-rs/axum/pull/1993

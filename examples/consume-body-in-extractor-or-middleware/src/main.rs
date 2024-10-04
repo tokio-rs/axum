@@ -5,7 +5,6 @@
 //! ```
 
 use axum::{
-    async_trait,
     body::{Body, Bytes},
     extract::{FromRequest, Request},
     http::StatusCode,
@@ -22,7 +21,7 @@ async fn main() {
     tracing_subscriber::registry()
         .with(
             tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "example_consume_body_in_extractor_or_middleware=debug".into()),
+                .unwrap_or_else(|_| format!("{}=debug", env!("CARGO_CRATE_NAME")).into()),
         )
         .with(tracing_subscriber::fmt::layer())
         .init();
@@ -74,7 +73,6 @@ async fn handler(BufferRequestBody(body): BufferRequestBody) {
 struct BufferRequestBody(Bytes);
 
 // we must implement `FromRequest` (and not `FromRequestParts`) to consume the body
-#[async_trait]
 impl<S> FromRequest<S> for BufferRequestBody
 where
     S: Send + Sync,

@@ -1,4 +1,3 @@
-use axum::async_trait;
 use axum::extract::{FromRequest, Request};
 use axum_core::__composite_rejection as composite_rejection;
 use axum_core::__define_rejection as define_rejection;
@@ -84,7 +83,6 @@ pub struct JsonDeserializer<T> {
     _marker: PhantomData<T>,
 }
 
-#[async_trait]
 impl<T, S> FromRequest<S> for JsonDeserializer<T>
 where
     T: Deserialize<'static>,

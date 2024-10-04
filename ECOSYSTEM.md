@@ -28,7 +28,6 @@ If your project isn't listed here and you would like it to be, please feel free 
 - [aide](https://docs.rs/aide): Code-first Open API documentation generator with [axum integration](https://docs.rs/aide/latest/aide/axum/index.html).
 - [axum-typed-routing](https://docs.rs/axum-typed-routing/latest/axum_typed_routing/): Statically typed routing macros with OpenAPI generation using aide.
 - [axum-jsonschema](https://docs.rs/axum-jsonschema/): A `Json<T>` extractor that does JSON schema validation of requests.
-- [tower-sessions](https://docs.rs/tower-sessions): Cookie-based sessions.
 - [axum-login](https://docs.rs/axum-login): Session-based user authentication for axum.
 - [axum-csrf-sync-pattern](https://crates.io/crates/axum-csrf-sync-pattern): A middleware implementing CSRF STP for AJAX backends and API endpoints.
 - [axum-otel-metrics](https://github.com/ttys3/axum-otel-metrics/): A axum OpenTelemetry Metrics middleware with prometheus exporter supported.
@@ -48,6 +47,8 @@ If your project isn't listed here and you would like it to be, please feel free 
 - [loco.rs](https://github.com/loco-rs/loco): A full stack Web and API productivity framework similar to Rails, based on Axum.
 - [axum-test](https://crates.io/crates/axum-test): High level library for writing Cargo tests that run against Axum.
 - [axum-messages](https://github.com/maxcountryman/axum-messages): One-time notification messages for Axum.
+- [spring-rs](https://github.com/spring-rs/spring-rs): spring-rs is a microservice framework written in rust inspired by java's spring-boot, based on axum
+- [zino](https://github.com/zino-rs/zino): Zino is a next-generation framework for composable applications which provides full integrations with axum.
 
 ## Project showcase
 
@@ -103,6 +104,7 @@ If your project isn't listed here and you would like it to be, please feel free 
 - [Introduction to axum]: YouTube playlist
 - [Rust Axum Full Course]: YouTube video
 - [Deploying Axum projects with Shuttle]
+- [API Development with Rust](https://rust-api.dev/docs/front-matter/preface/): REST APIs based on Axum
 
 [axum-tutorial]: https://github.com/programatik29/axum-tutorial
 [axum-tutorial-website]: https://programatik29.github.io/axum-tutorial/

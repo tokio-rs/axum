@@ -105,21 +105,25 @@ pub struct ResponseParts {
 
 impl ResponseParts {
     /// Gets a reference to the response headers.
+    #[must_use]
     pub fn headers(&self) -> &HeaderMap {
         self.res.headers()
     }
 
     /// Gets a mutable reference to the response headers.
+    #[must_use]
     pub fn headers_mut(&mut self) -> &mut HeaderMap {
         self.res.headers_mut()
     }
 
     /// Gets a reference to the response extensions.
+    #[must_use]
     pub fn extensions(&self) -> &Extensions {
         self.res.extensions()
     }
 
     /// Gets a mutable reference to the response extensions.
+    #[must_use]
     pub fn extensions_mut(&mut self) -> &mut Extensions {
         self.res.extensions_mut()
     }

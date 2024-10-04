@@ -67,14 +67,6 @@ macro_rules! mime_response {
 }
 
 mime_response! {
-    /// A HTML response.
-    ///
-    /// Will automatically get `Content-Type: text/html; charset=utf-8`.
-    Html,
-    TEXT_HTML_UTF_8,
-}
-
-mime_response! {
     /// A JavaScript response.
     ///
     /// Will automatically get `Content-Type: application/javascript; charset=utf-8`.

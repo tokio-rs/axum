@@ -99,9 +99,9 @@ impl<S> fmt::Debug for Router<S> {
 }
 
 pub(crate) const NEST_TAIL_PARAM: &str = "__private__axum_nest_tail_param";
-pub(crate) const NEST_TAIL_PARAM_CAPTURE: &str = "/*__private__axum_nest_tail_param";
+pub(crate) const NEST_TAIL_PARAM_CAPTURE: &str = "/{*__private__axum_nest_tail_param}";
 pub(crate) const FALLBACK_PARAM: &str = "__private__axum_fallback";
-pub(crate) const FALLBACK_PARAM_PATH: &str = "/*__private__axum_fallback";
+pub(crate) const FALLBACK_PARAM_PATH: &str = "/{*__private__axum_fallback}";
 
 impl<S> Router<S>
 where
@@ -154,6 +154,13 @@ where
         }
     }
 
+    #[doc = include_str!("../docs/routing/without_v07_checks.md")]
+    pub fn without_v07_checks(self) -> Self {
+        self.tap_inner_mut(|this| {
+            this.path_router.without_v07_checks();
+        })
+    }
+
     #[doc = include_str!("../docs/routing/route.md")]
     #[track_caller]
     pub fn route(self, path: &str, method_router: MethodRouter<S>) -> Self {
@@ -165,7 +172,7 @@ where
     #[doc = include_str!("../docs/routing/route_service.md")]
     pub fn route_service<T>(self, path: &str, service: T) -> Self
     where
-        T: Service<Request, Error = Infallible> + Clone + Send + 'static,
+        T: Service<Request, Error = Infallible> + Clone + Send + Sync + 'static,
         T::Response: IntoResponse,
         T::Future: Send + 'static,
     {
@@ -211,7 +218,7 @@ where
     #[track_caller]
     pub fn nest_service<T>(self, path: &str, service: T) -> Self
     where
-        T: Service<Request, Error = Infallible> + Clone + Send + 'static,
+        T: Service<Request, Error = Infallible> + Clone + Send + Sync + 'static,
         T::Response: IntoResponse,
         T::Future: Send + 'static,
     {
@@ -275,8 +282,8 @@ where
     #[doc = include_str!("../docs/routing/layer.md")]
     pub fn layer<L>(self, layer: L) -> Router<S>
     where
-        L: Layer<Route> + Clone + Send + 'static,
-        L::Service: Service<Request> + Clone + Send + 'static,
+        L: Layer<Route> + Clone + Send + Sync + 'static,
+        L::Service: Service<Request> + Clone + Send + Sync + 'static,
         <L::Service as Service<Request>>::Response: IntoResponse + 'static,
         <L::Service as Service<Request>>::Error: Into<Infallible> + 'static,
         <L::Service as Service<Request>>::Future: Send + 'static,
@@ -293,8 +300,8 @@ where
     #[track_caller]
     pub fn route_layer<L>(self, layer: L) -> Self
     where
-        L: Layer<Route> + Clone + Send + 'static,
-        L::Service: Service<Request> + Clone + Send + 'static,
+        L: Layer<Route> + Clone + Send + Sync + 'static,
+        L::Service: Service<Request> + Clone + Send + Sync + 'static,
         <L::Service as Service<Request>>::Response: IntoResponse + 'static,
         <L::Service as Service<Request>>::Error: Into<Infallible> + 'static,
         <L::Service as Service<Request>>::Future: Send + 'static,
@@ -331,7 +338,7 @@ where
     /// See [`Router::fallback`] for more details.
     pub fn fallback_service<T>(self, service: T) -> Self
     where
-        T: Service<Request, Error = Infallible> + Clone + Send + 'static,
+        T: Service<Request, Error = Infallible> + Clone + Send + Sync + 'static,
         T::Response: IntoResponse,
         T::Future: Send + 'static,
     {
@@ -638,7 +645,7 @@ where
     where
         S: 'static,
         E: 'static,
-        F: FnOnce(Route<E>) -> Route<E2> + Clone + Send + 'static,
+        F: FnOnce(Route<E>) -> Route<E2> + Clone + Send + Sync + 'static,
         E2: 'static,
     {
         match self {
@@ -701,8 +708,8 @@ where
 {
     fn layer<L>(self, layer: L) -> Endpoint<S>
     where
-        L: Layer<Route> + Clone + Send + 'static,
-        L::Service: Service<Request> + Clone + Send + 'static,
+        L: Layer<Route> + Clone + Send + Sync + 'static,
+        L::Service: Service<Request> + Clone + Send + Sync + 'static,
         <L::Service as Service<Request>>::Response: IntoResponse + 'static,
         <L::Service as Service<Request>>::Error: Into<Infallible> + 'static,
         <L::Service as Service<Request>>::Future: Send + 'static,

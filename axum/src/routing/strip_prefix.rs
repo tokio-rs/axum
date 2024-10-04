@@ -56,7 +56,7 @@ fn strip_prefix(uri: &Uri, prefix: &str) -> Option<Uri> {
     //          ^^^^ this much is matched and the length is 4. Thus if we chop off the first 4
     //          characters we get the remainder
     //
-    // prefix = /api/:version
+    // prefix = /api/{version}
     // path   = /api/v0/users
     //          ^^^^^^^ this much is matched and the length is 7.
     let mut matching_prefix_length = Some(0);
@@ -66,7 +66,7 @@ fn strip_prefix(uri: &Uri, prefix: &str) -> Option<Uri> {
 
         match item {
             Item::Both(path_segment, prefix_segment) => {
-                if prefix_segment.starts_with(':') || path_segment == prefix_segment {
+                if is_capture(prefix_segment) || path_segment == prefix_segment {
                     // the prefix segment is either a param, which matches anything, or
                     // it actually matches the path segment
                     *matching_prefix_length.as_mut().unwrap() += path_segment.len();
@@ -146,6 +146,14 @@ where
         (None, Some(b)) => Some(Item::Second(b)),
         (None, None) => None,
     })
+}
+
+fn is_capture(segment: &str) -> bool {
+    segment.starts_with('{')
+        && segment.ends_with('}')
+        && !segment.starts_with("{{")
+        && !segment.ends_with("}}")
+        && !segment.starts_with("{*")
 }
 
 #[derive(Debug)]
@@ -279,74 +287,89 @@ mod tests {
         expected = Some("/"),
     );
 
-    test!(param_0, uri = "/", prefix = "/:param", expected = Some("/"),);
+    test!(
+        param_0,
+        uri = "/",
+        prefix = "/{param}",
+        expected = Some("/"),
+    );
 
     test!(
         param_1,
         uri = "/a",
-        prefix = "/:param",
+        prefix = "/{param}",
         expected = Some("/"),
     );
 
     test!(
         param_2,
         uri = "/a/b",
-        prefix = "/:param",
+        prefix = "/{param}",
         expected = Some("/b"),
     );
 
     test!(
         param_3,
         uri = "/b/a",
-        prefix = "/:param",
+        prefix = "/{param}",
         expected = Some("/a"),
     );
 
     test!(
         param_4,
         uri = "/a/b",
-        prefix = "/a/:param",
+        prefix = "/a/{param}",
         expected = Some("/"),
     );
 
-    test!(param_5, uri = "/b/a", prefix = "/a/:param", expected = None,);
+    test!(
+        param_5,
+        uri = "/b/a",
+        prefix = "/a/{param}",
+        expected = None,
+    );
 
-    test!(param_6, uri = "/a/b", prefix = "/:param/a", expected = None,);
+    test!(
+        param_6,
+        uri = "/a/b",
+        prefix = "/{param}/a",
+        expected = None,
+    );
 
     test!(
         param_7,
         uri = "/b/a",
-        prefix = "/:param/a",
+        prefix = "/{param}/a",
         expected = Some("/"),
     );
 
     test!(
         param_8,
         uri = "/a/b/c",
-        prefix = "/a/:param/c",
+        prefix = "/a/{param}/c",
         expected = Some("/"),
     );
 
     test!(
         param_9,
         uri = "/c/b/a",
-        prefix = "/a/:param/c",
+        prefix = "/a/{param}/c",
         expected = None,
     );
 
     test!(
         param_10,
         uri = "/a/",
-        prefix = "/:param",
+        prefix = "/{param}",
         expected = Some("/"),
     );
 
-    test!(param_11, uri = "/a", prefix = "/:param/", expected = None,);
+    test!(param_11, uri = "/a", prefix = "/{param}/", expected = None,);
 
     test!(
         param_12,
         uri = "/a/",
-        prefix = "/:param/",
+        prefix = "/{param}/",
         expected = Some("/"),
     );
 
