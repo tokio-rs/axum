@@ -35,6 +35,7 @@ use axum::{
     serve::IncomingStream,
     Router,
 };
+use tokio::net::TcpListener;
 
 let app = Router::new().route("/", get(handler));
 
@@ -49,8 +50,8 @@ struct MyConnectInfo {
     // ...
 }
 
-impl Connected<IncomingStream<'_>> for MyConnectInfo {
-    fn connect_info(target: IncomingStream<'_>) -> Self {
+impl Connected<IncomingStream<'_, TcpListener>> for MyConnectInfo {
+    fn connect_info(target: IncomingStream<'_, TcpListener>) -> Self {
         MyConnectInfo {
             // ...
         }
