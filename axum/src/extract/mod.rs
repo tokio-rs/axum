@@ -23,7 +23,6 @@ pub use axum_core::extract::{DefaultBodyLimit, FromRef, FromRequest, FromRequest
 pub use axum_macros::{FromRef, FromRequest, FromRequestParts};
 
 #[doc(inline)]
-#[allow(deprecated)]
 pub use self::{
     nested_path::NestedPath,
     path::{Path, RawPathParams},
