@@ -12,9 +12,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **breaking:** Require `Sync` for all handlers and services added to `Router`
   and `MethodRouter` ([#2473])
 - **breaking:** The tuple and tuple_struct `Path` extractor deserializers now check that the number of parameters matches the tuple length exactly ([#2931])
+- **breaking:** Upgrade matchit to 0.8, changing the path parameter syntax from `/:single` and `/*many`
+  to `/{single}` and `/{*many}`; the old syntax produces a panic to avoid silent change in behavior ([#2645])
 - **change:** Update minimum rust version to 1.75 ([#2943])
 
 [#2473]: https://github.com/tokio-rs/axum/pull/2473
+[#2645]: https://github.com/tokio-rs/axum/pull/2645
 [#2931]: https://github.com/tokio-rs/axum/pull/2931
 [#2943]: https://github.com/tokio-rs/axum/pull/2943
 
