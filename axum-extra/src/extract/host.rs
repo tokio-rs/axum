@@ -1,7 +1,5 @@
-use super::{
-    rejection::{FailedToResolveHost, HostRejection},
-    FromRequestParts,
-};
+use super::rejection::{FailedToResolveHost, HostRejection};
+use axum::extract::FromRequestParts;
 use http::{
     header::{HeaderMap, FORWARDED},
     request::Parts,
@@ -77,7 +75,8 @@ fn parse_forwarded(headers: &HeaderMap) -> Option<&str> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{routing::get, test_helpers::TestClient, Router};
+    use crate::test_helpers::TestClient;
+    use axum::{routing::get, Router};
     use http::header::HeaderName;
 
     fn test_client() -> TestClient {

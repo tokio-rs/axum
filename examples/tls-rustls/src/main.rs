@@ -7,13 +7,13 @@
 #![allow(unused_imports)]
 
 use axum::{
-    extract::Host,
     handler::HandlerWithoutStateExt,
     http::{StatusCode, Uri},
     response::Redirect,
     routing::get,
     BoxError, Router,
 };
+use axum_extra::extract::Host;
 use axum_server::tls_rustls::RustlsConfig;
 use std::{net::SocketAddr, path::PathBuf};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};

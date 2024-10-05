@@ -10,7 +10,6 @@ pub mod rejection;
 #[cfg(feature = "ws")]
 pub mod ws;
 
-mod host;
 pub(crate) mod nested_path;
 mod raw_form;
 mod raw_query;
@@ -24,9 +23,7 @@ pub use axum_core::extract::{DefaultBodyLimit, FromRef, FromRequest, FromRequest
 pub use axum_macros::{FromRef, FromRequest, FromRequestParts};
 
 #[doc(inline)]
-#[allow(deprecated)]
 pub use self::{
-    host::Host,
     nested_path::NestedPath,
     path::{Path, RawPathParams},
     raw_form::RawForm,
