@@ -29,8 +29,8 @@ syn = { version = "2.0", features = [
 ] }
 
 [dev-dependencies]
-axum = { path = "../axum", version = "0.8.0-alpha.1", features = ["macros"] }
-axum-extra = { path = "../axum-extra", version = "0.10.0-alpha.1", features = ["typed-routing", "cookie-private", "typed-header"] }
+axum = { path = "../axum", features = ["macros"] }
+axum-extra = { path = "../axum-extra", features = ["typed-routing", "cookie-private", "typed-header"] }
 rustversion = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
