@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning].
 
 # Unreleased
 
-- **added:** Add `json!` for easy construction of JSON responses ([#2962]).
+- **added:** Add `json!` for easy construction of JSON responses ([#2962])
 
 [#2962]: https://github.com/tokio-rs/axum/pull/2962
 

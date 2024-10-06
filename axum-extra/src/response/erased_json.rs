@@ -13,7 +13,7 @@ use serde::Serialize;
 /// types as JSON from different branches inside a handler.
 ///
 /// Like [`axum::Json`],
-/// if the [`Serialize`] implementation decides to fail
+/// if the [`Serialize`] implementation fails
 /// or if a map with non-string keys is used,
 /// a 500 response will be issued
 /// whose body is the error message in UTF-8.
@@ -87,7 +87,7 @@ impl IntoResponse for ErasedJson {
 /// A `Content-Type: application/json` header is automatically added.
 /// Any variable or expression implementing [`Serialize`]
 /// can be interpolated as a value in the literal.
-/// If the [`Serialize`] implementation decides to fail,
+/// If the [`Serialize`] implementation fails,
 /// or if a map with non-string keys is used,
 /// a 500 response will be issued
 /// whose body is the error message in UTF-8.
