@@ -104,4 +104,8 @@ allowed = [
     "tokio",
     "tower_layer",
     "tower_service",
+    # typed-json does not appear in the public API, but does appear in `#[doc(hidden)]` re-exports
+    # accessed by macros that are not a part of the public API.
+    # See also: https://github.com/davidpdrsn/cargo-public-api-crates/issues/6
+    "typed-json",
 ]
