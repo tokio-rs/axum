@@ -11,7 +11,7 @@ pub struct MethodFilter(u16);
 impl MethodFilter {
     /// Match `CONNECT` requests.
     ///
-    /// This is useful for implementing HTTP/2’s [extended CONNECT method],
+    /// This is useful for implementing HTTP/2's [extended CONNECT method],
     /// in which the `:protocol` pseudoheader is read
     /// (using [`hyper::ext::Protocol`])
     /// and the connection upgraded to a bidirectional byte stream
@@ -20,7 +20,7 @@ impl MethodFilter {
     /// As seen in the [HTTP Upgrade Token Registry],
     /// common uses include WebSockets and proxying UDP or IP –
     /// though note that when using [`WebSocketUpgrade`]
-    /// it’s more useful to use [`any`](crate::routing::any)
+    /// it's more useful to use [`any`](crate::routing::any)
     /// as HTTP/1.1 WebSockets need to support `GET`.
     ///
     /// [extended CONNECT]: https://www.rfc-editor.org/rfc/rfc8441.html#section-4

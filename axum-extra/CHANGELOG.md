@@ -5,6 +5,10 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog],
 and this project adheres to [Semantic Versioning].
 
+# Unreleased
+
+- **added:** Add `RouterExt::typed_connect` ([#2961]).
+
 # 0.10.0
 
 # alpha.1
