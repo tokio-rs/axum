@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog],
 and this project adheres to [Semantic Versioning].
 
+# Unreleased
+
+- **added:** Add `json!` for easy construction of JSON responses ([#2962])
+
+[#2962]: https://github.com/tokio-rs/axum/pull/2962
+
 # 0.10.0
 
 # alpha.1
