@@ -11,7 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   They can be enabled by changing `get(ws_endpoint)` handlers to `any(ws_endpoint)`
 - **added:** Add `MethodFilter::CONNECT`, `routing::connect[_service]`
   and `MethodRouter::connect[_service]` ([#2961])
+- **fixed:** Avoid setting `content-length` before middleware ([#2897]).
+  This allows middleware to add bodies to requests without needing to manually set `content-length`
 
+[#2897]: https://github.com/tokio-rs/axum/pull/2897
 [#2984]: https://github.com/tokio-rs/axum/pull/2984
 [#2961]: https://github.com/tokio-rs/axum/pull/2961
 
