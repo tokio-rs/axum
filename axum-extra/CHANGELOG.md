@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning].
 
 - **added:** Add `json!` for easy construction of JSON responses ([#2962]).
 
+[#2962]: https://github.com/tokio-rs/axum/pull/2962
+
 # 0.10.0
 
 # alpha.1

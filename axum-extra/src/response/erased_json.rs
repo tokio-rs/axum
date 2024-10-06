@@ -93,8 +93,11 @@ impl IntoResponse for ErasedJson {
 /// whose body is the error message in UTF-8.
 ///
 /// Internally,
-/// this function uses the [`typed_json::json!`] macro
-/// so that no allocations are performed during serialization.
+/// this function uses the [`typed_json::json!`] macro,
+/// allowing it to perform far fewer allocations
+/// than a dynamic macro like [`serde_json::json!`] would –
+/// it’s equivalent to if you had just written
+/// `derive(Serialize)` on a struct.
 ///
 /// # Examples
 ///
@@ -136,6 +139,7 @@ macro_rules! json {
 }
 
 /// Not public API. Re-exported as `crate::response::__private_erased_json`.
+#[doc(hidden)]
 pub mod private {
     pub use typed_json;
 }
