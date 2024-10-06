@@ -9,6 +9,24 @@ use std::{
 pub struct MethodFilter(u16);
 
 impl MethodFilter {
+    /// Match `CONNECT` requests.
+    ///
+    /// This is useful for implementing HTTP/2's [extended CONNECT method],
+    /// in which the `:protocol` pseudoheader is read
+    /// (using [`hyper::ext::Protocol`])
+    /// and the connection upgraded to a bidirectional byte stream
+    /// (using [`hyper::upgrade::on`]).
+    ///
+    /// As seen in the [HTTP Upgrade Token Registry],
+    /// common uses include WebSockets and proxying UDP or IP –
+    /// though note that when using [`WebSocketUpgrade`]
+    /// it's more useful to use [`any`](crate::routing::any)
+    /// as HTTP/1.1 WebSockets need to support `GET`.
+    ///
+    /// [extended CONNECT]: https://www.rfc-editor.org/rfc/rfc8441.html#section-4
+    /// [HTTP Upgrade Token Registry]: https://www.iana.org/assignments/http-upgrade-tokens/http-upgrade-tokens.xhtml
+    /// [`WebSocketUpgrade`]: crate::extract::WebSocketUpgrade
+    pub const CONNECT: Self = Self::from_bits(0b0_0000_0001);
     /// Match `DELETE` requests.
     pub const DELETE: Self = Self::from_bits(0b0_0000_0010);
     /// Match `GET` requests.
@@ -71,6 +89,7 @@ impl TryFrom<Method> for MethodFilter {
 
     fn try_from(m: Method) -> Result<Self, NoMatchingMethodFilter> {
         match m {
+            Method::CONNECT => Ok(MethodFilter::CONNECT),
             Method::DELETE => Ok(MethodFilter::DELETE),
             Method::GET => Ok(MethodFilter::GET),
             Method::HEAD => Ok(MethodFilter::HEAD),
@@ -90,6 +109,11 @@ mod tests {
 
     #[test]
     fn from_http_method() {
+        assert_eq!(
+            MethodFilter::try_from(Method::CONNECT).unwrap(),
+            MethodFilter::CONNECT
+        );
+
         assert_eq!(
             MethodFilter::try_from(Method::DELETE).unwrap(),
             MethodFilter::DELETE
@@ -130,9 +154,11 @@ mod tests {
             MethodFilter::TRACE
         );
 
-        assert!(MethodFilter::try_from(http::Method::CONNECT)
-            .unwrap_err()
-            .to_string()
-            .contains("CONNECT"));
+        assert!(
+            MethodFilter::try_from(http::Method::from_bytes(b"CUSTOM").unwrap())
+                .unwrap_err()
+                .to_string()
+                .contains("CUSTOM")
+        );
     }
 }

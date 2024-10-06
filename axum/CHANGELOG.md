@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+# Unreleased
+
+- **added:** Add `MethodFilter::CONNECT`, `routing::connect[_service]`
+  and `MethodRouter::connect[_service]` ([#2961])
+
+[#2961]: https://github.com/tokio-rs/axum/pull/2961
+
 # 0.7.7
 
 - **change**: Remove manual tables of content from the documentation, since
