@@ -670,12 +670,10 @@ where
 
     fn call_with_state(&mut self, req: Request, state: S) -> RouteFuture<E> {
         match self {
-            Fallback::Default(route) | Fallback::Service(route) => {
-                RouteFuture::from_future(route.oneshot_inner(req))
-            }
+            Fallback::Default(route) | Fallback::Service(route) => route.oneshot_inner(req),
             Fallback::BoxedHandler(handler) => {
                 let mut route = handler.clone().into_route(state);
-                RouteFuture::from_future(route.oneshot_inner(req))
+                route.oneshot_inner(req)
             }
         }
     }

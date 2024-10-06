@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **breaking:** Upgrade matchit to 0.8, changing the path parameter syntax from `/:single` and `/*many`
   to `/{single}` and `/{*many}`; the old syntax produces a panic to avoid silent change in behavior ([#2645])
 - **change:** Update minimum rust version to 1.75 ([#2943])
+- **added:** Add support WebSockets over HTTP/2.
+  They can be enabled by changing `get(ws_endpoint)` handlers to `any(ws_endpoint)`.
 
 [#2473]: https://github.com/tokio-rs/axum/pull/2473
 [#2645]: https://github.com/tokio-rs/axum/pull/2645
