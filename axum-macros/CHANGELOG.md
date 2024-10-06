@@ -5,8 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-# Unreleased
+# 0.5.0
 
+## alpha.1
+
+- **breaking:** Update code generation for axum-core 0.5.0-alpha.1
 - **change:** Update minimum rust version to 1.75 ([#2943])
 
 [#2943]: https://github.com/tokio-rs/axum/pull/2943

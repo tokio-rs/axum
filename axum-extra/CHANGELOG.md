@@ -5,7 +5,9 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog],
 and this project adheres to [Semantic Versioning].
 
-# Unreleased
+# 0.10.0
+
+# alpha.1
 
 - **breaking:** Update to prost 0.13. Used for the `Protobuf` extractor ([#2829])
 - **change:** Update minimum rust version to 1.75 ([#2943])

@@ -5,10 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-# Unreleased
+# 0.5.0
 
+## alpha.1
+
+- **breaking:** Replace `#[async_trait]` with [return-position `impl Trait` in traits][RPITIT] ([#2308])
 - **change:** Update minimum rust version to 1.75 ([#2943])
 
+[RPITIT]: https://blog.rust-lang.org/2023/12/21/async-fn-rpit-in-traits.html
+[#2308]: https://github.com/tokio-rs/axum/pull/2308
 [#2943]: https://github.com/tokio-rs/axum/pull/2943
 
 # 0.4.5
