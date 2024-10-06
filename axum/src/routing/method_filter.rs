@@ -20,7 +20,7 @@ impl MethodFilter {
     /// As seen in the [HTTP Upgrade Token Registry],
     /// common uses include WebSockets and proxying UDP or IP –
     /// though note that when using [`WebSocketUpgrade`]
-    /// it’s more useful to use [`any`]
+    /// it’s more useful to use [`any`](crate::routing::any)
     /// as HTTP/1.1 WebSockets need to support `GET`.
     ///
     /// [extended CONNECT]: https://www.rfc-editor.org/rfc/rfc8441.html#section-4
