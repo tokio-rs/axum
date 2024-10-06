@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+# Unreleased
+
+- **added:** Add support for WebSockets over HTTP/2 ([#2894]).
+  They can be enabled by changing `get(ws_endpoint)` handlers to `any(ws_endpoint)`
+- **added:** Add `MethodFilter::CONNECT`, `routing::connect[_service]`
+  and `MethodRouter::connect[_service]` ([#2961])
+
+[#2984]: https://github.com/tokio-rs/axum/pull/2984
+[#2961]: https://github.com/tokio-rs/axum/pull/2961
+
 # 0.8.0
 
 ## alpha.1
@@ -15,8 +25,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **breaking:** Upgrade matchit to 0.8, changing the path parameter syntax from `/:single` and `/*many`
   to `/{single}` and `/{*many}`; the old syntax produces a panic to avoid silent change in behavior ([#2645])
 - **change:** Update minimum rust version to 1.75 ([#2943])
-- **added:** Add support WebSockets over HTTP/2.
-  They can be enabled by changing `get(ws_endpoint)` handlers to `any(ws_endpoint)`.
 
 [#2473]: https://github.com/tokio-rs/axum/pull/2473
 [#2645]: https://github.com/tokio-rs/axum/pull/2645

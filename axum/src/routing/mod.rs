@@ -40,9 +40,9 @@ mod tests;
 pub use self::{into_make_service::IntoMakeService, method_filter::MethodFilter, route::Route};
 
 pub use self::method_routing::{
-    any, any_service, delete, delete_service, get, get_service, head, head_service, on, on_service,
-    options, options_service, patch, patch_service, post, post_service, put, put_service, trace,
-    trace_service, MethodRouter,
+    any, any_service, connect, connect_service, delete, delete_service, get, get_service, head,
+    head_service, on, on_service, options, options_service, patch, patch_service, post,
+    post_service, put, put_service, trace, trace_service, MethodRouter,
 };
 
 macro_rules! panic_on_err {
