@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning].
 
 # Unreleased
 
-- **added:** Add `RouterExt::typed_connect` ([#2961]).
+- **added:** Add `RouterExt::typed_connect` ([#2961])
 
 [#2961]: https://github.com/tokio-rs/axum/pull/2961
 

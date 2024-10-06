@@ -8,9 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 # Unreleased
 
 - **added:** Add support for WebSockets over HTTP/2 ([#2894]).
-  They can be enabled by changing `get(ws_endpoint)` handlers to `any(ws_endpoint)`.
+  They can be enabled by changing `get(ws_endpoint)` handlers to `any(ws_endpoint)`
 - **added:** Add `MethodFilter::CONNECT`, `routing::connect[_service]`
-  and `MethodRouter::connect[_service]` ([#2961]).
+  and `MethodRouter::connect[_service]` ([#2961])
 
 [#2984]: https://github.com/tokio-rs/axum/pull/2984
 [#2961]: https://github.com/tokio-rs/axum/pull/2961
