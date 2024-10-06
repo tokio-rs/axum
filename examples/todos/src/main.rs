@@ -4,8 +4,8 @@
 //!
 //! - `GET /todos`: return a JSON list of Todos.
 //! - `POST /todos`: create a new Todo.
-//! - `PATCH /todos/:id`: update a specific Todo.
-//! - `DELETE /todos/:id`: delete a specific Todo.
+//! - `PATCH /todos/{id}`: update a specific Todo.
+//! - `DELETE /todos/{id}`: delete a specific Todo.
 //!
 //! Run with
 //!
@@ -48,7 +48,7 @@ async fn main() {
     // Compose the routes
     let app = Router::new()
         .route("/todos", get(todos_index).post(todos_create))
-        .route("/todos/:id", patch(todos_update).delete(todos_delete))
+        .route("/todos/{id}", patch(todos_update).delete(todos_delete))
         // Add middleware to all routes
         .layer(
             ServiceBuilder::new()

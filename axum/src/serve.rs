@@ -367,7 +367,11 @@ where
                 let close_rx = close_rx.clone();
 
                 tokio::spawn(async move {
-                    let builder = Builder::new(TokioExecutor::new());
+                    #[allow(unused_mut)]
+                    let mut builder = Builder::new(TokioExecutor::new());
+                    // CONNECT protocol needed for HTTP/2 websockets
+                    #[cfg(feature = "http2")]
+                    builder.http2().enable_connect_protocol();
                     let conn = builder.serve_connection_with_upgrades(tcp_stream, hyper_service);
                     pin_mut!(conn);
 

@@ -24,7 +24,6 @@ impl MultipartForm {
     /// let parts: Vec<Part> = vec![Part::text("foo".to_string(), "abc"), Part::text("bar".to_string(), "def")];
     /// let form = MultipartForm::with_parts(parts);
     /// ```
-    #[deprecated]
     pub fn with_parts(parts: Vec<Part>) -> Self {
         MultipartForm { parts }
     }

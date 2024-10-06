@@ -81,7 +81,7 @@ use prost::Message;
 ///     # unimplemented!()
 /// }
 ///
-/// let app = Router::new().route("/users/:id", get(get_user));
+/// let app = Router::new().route("/users/{id}", get(get_user));
 /// # let _: Router = app;
 /// ```
 #[derive(Debug, Clone, Copy, Default)]

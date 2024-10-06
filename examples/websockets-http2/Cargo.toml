@@ -1,0 +1,13 @@
+[package]
+name = "example-websockets-http2"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+axum = { path = "../../axum", features = ["ws", "http2"] }
+axum-server = { version = "0.6", features = ["tls-rustls"] }
+tokio = { version = "1", features = ["full"] }
+tower-http = { version = "0.5.0", features = ["fs"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }

@@ -371,11 +371,11 @@ mod tests {
     async fn tsr_with_params() {
         let app = Router::new()
             .route_with_tsr(
-                "/a/:a",
+                "/a/{a}",
                 get(|Path(param): Path<String>| async move { param }),
             )
             .route_with_tsr(
-                "/b/:b/",
+                "/b/{b}/",
                 get(|Path(param): Path<String>| async move { param }),
             );
 

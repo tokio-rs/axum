@@ -104,7 +104,7 @@ pin_project! {
     pub struct RouteFuture<E> {
         #[pin]
         inner: Oneshot<BoxCloneService<Request, Response, E>, Request>,
-        strip_body: bool,
+        method: Method,
         allow_header: Option<Bytes>,
         top_level: bool,
     }
@@ -114,7 +114,7 @@ impl<E> RouteFuture<E> {
     fn new(method: Method, inner: Oneshot<BoxCloneService<Request, Response, E>, Request>) -> Self {
         Self {
             inner,
-            strip_body: method == Method::HEAD,
+            method,
             allow_header: None,
             top_level: true,
         }
@@ -139,13 +139,25 @@ impl<E> Future for RouteFuture<E> {
         let this = self.project();
         let mut res = ready!(this.inner.poll(cx))?;
 
-        if *this.top_level {
+        if *this.method == Method::CONNECT && res.status().is_success() {
+            // From https://httpwg.org/specs/rfc9110.html#CONNECT:
+            // > A server MUST NOT send any Transfer-Encoding or
+            // > Content-Length header fields in a 2xx (Successful)
+            // > response to CONNECT.
+            if res.headers().contains_key(&CONTENT_LENGTH)
+                || res.headers().contains_key(&header::TRANSFER_ENCODING)
+                || res.size_hint().lower() != 0
+            {
+                error!("response to CONNECT with nonempty body");
+                res = res.map(|_| Body::empty());
+            }
+        } else if *this.top_level {
             set_allow_header(res.headers_mut(), this.allow_header);
 
             // make sure to set content-length before removing the body
             set_content_length(res.size_hint(), res.headers_mut());
 
-            if *this.strip_body {
+            if *this.method == Method::HEAD {
                 *res.body_mut() = Body::empty();
             }
         }
