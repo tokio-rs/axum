@@ -96,7 +96,7 @@ impl IntoResponse for ErasedJson {
 /// this function uses the [`typed_json::json!`] macro,
 /// allowing it to perform far fewer allocations
 /// than a dynamic macro like [`serde_json::json!`] would –
-/// it’s equivalent to if you had just written
+/// it's equivalent to if you had just written
 /// `derive(Serialize)` on a struct.
 ///
 /// # Examples
