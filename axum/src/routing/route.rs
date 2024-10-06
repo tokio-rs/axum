@@ -15,10 +15,10 @@ use std::{
     fmt,
     future::Future,
     pin::Pin,
-    task::{Context, Poll},
+    task::{ready, Context, Poll},
 };
 use tower::{
-    util::{MapErrLayer, MapRequestLayer, MapResponseLayer, Oneshot},
+    util::{MapErrLayer, MapResponseLayer, Oneshot},
     ServiceExt,
 };
 use tower_layer::Layer;
@@ -44,7 +44,7 @@ impl<E> Route<E> {
 
     pub(crate) fn oneshot_inner(&mut self, req: Request) -> RouteFuture<E> {
         let method = req.method().clone();
-        RouteFuture::from_future(method, self.0.clone().oneshot(req))
+        RouteFuture::new(method, self.0.clone().oneshot(req))
     }
 
     pub(crate) fn layer<L, NewError>(self, layer: L) -> Route<NewError>
@@ -57,7 +57,6 @@ impl<E> Route<E> {
         NewError: 'static,
     {
         let layer = (
-            MapRequestLayer::new(|req: Request<_>| req.map(Body::new)),
             MapErrLayer::new(Into::into),
             MapResponseLayer::new(IntoResponse::into_response),
             layer,
@@ -96,7 +95,7 @@ where
 
     #[inline]
     fn call(&mut self, req: Request<B>) -> Self::Future {
-        self.oneshot_inner(req.map(Body::new))
+        self.oneshot_inner(req.map(Body::new)).not_top_level()
     }
 }
 
@@ -104,42 +103,30 @@ pin_project! {
     /// Response future for [`Route`].
     pub struct RouteFuture<E> {
         #[pin]
-        kind: RouteFutureKind<E>,
+        inner: Oneshot<BoxCloneService<Request, Response, E>, Request>,
         method: Method,
         allow_header: Option<Bytes>,
-    }
-}
-
-pin_project! {
-    #[project = RouteFutureKindProj]
-    enum RouteFutureKind<E> {
-        Future {
-            #[pin]
-            future: Oneshot<
-                BoxCloneService<Request, Response, E>,
-                Request,
-            >,
-        },
-        Response {
-            response: Option<Response>,
-        }
+        top_level: bool,
     }
 }
 
 impl<E> RouteFuture<E> {
-    pub(crate) fn from_future(
-        method: Method,
-        future: Oneshot<BoxCloneService<Request, Response, E>, Request>,
-    ) -> Self {
+    fn new(method: Method, inner: Oneshot<BoxCloneService<Request, Response, E>, Request>) -> Self {
         Self {
-            kind: RouteFutureKind::Future { future },
+            inner,
             method,
             allow_header: None,
+            top_level: true,
         }
     }
 
     pub(crate) fn allow_header(mut self, allow_header: Bytes) -> Self {
         self.allow_header = Some(allow_header);
+        self
+    }
+
+    pub(crate) fn not_top_level(mut self) -> Self {
+        self.top_level = false;
         self
     }
 }
@@ -150,19 +137,7 @@ impl<E> Future for RouteFuture<E> {
     #[inline]
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let this = self.project();
-
-        let mut res = match this.kind.project() {
-            RouteFutureKindProj::Future { future } => match future.poll(cx) {
-                Poll::Ready(Ok(res)) => res,
-                Poll::Ready(Err(err)) => return Poll::Ready(Err(err)),
-                Poll::Pending => return Poll::Pending,
-            },
-            RouteFutureKindProj::Response { response } => {
-                response.take().expect("future polled after completion")
-            }
-        };
-
-        set_allow_header(res.headers_mut(), this.allow_header);
+        let mut res = ready!(this.inner.poll(cx))?;
 
         if *this.method == Method::CONNECT && res.status().is_success() {
             // From https://httpwg.org/specs/rfc9110.html#CONNECT:
@@ -176,16 +151,16 @@ impl<E> Future for RouteFuture<E> {
                 error!("response to CONNECT with nonempty body");
                 res = res.map(|_| Body::empty());
             }
-        } else {
+        } else if *this.top_level {
+            set_allow_header(res.headers_mut(), this.allow_header);
+
             // make sure to set content-length before removing the body
             set_content_length(res.size_hint(), res.headers_mut());
-        }
 
-        let res = if *this.method == Method::HEAD {
-            res.map(|_| Body::empty())
-        } else {
-            res
-        };
+            if *this.method == Method::HEAD {
+                *res.body_mut() = Body::empty();
+            }
+        }
 
         Poll::Ready(Ok(res))
     }
