@@ -12,6 +12,11 @@ pub mod multiple;
 #[cfg(feature = "erased-json")]
 pub use erased_json::ErasedJson;
 
+/// _not_ public API
+#[cfg(feature = "erased-json")]
+#[doc(hidden)]
+pub use erased_json::private as __private_erased_json;
+
 #[cfg(feature = "json-lines")]
 #[doc(no_inline)]
 pub use crate::json_lines::JsonLines;
