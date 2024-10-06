@@ -12,6 +12,15 @@ use serde::Serialize;
 /// This allows returning a borrowing type from a handler, or returning different response
 /// types as JSON from different branches inside a handler.
 ///
+/// Like [`axum::Json`],
+/// if the [`Serialize`] implementation decides to fail
+/// or if a map with non-string keys is used,
+/// a 500 response will be issued
+/// whose body is the error message in UTF-8.
+///
+/// This can be constructed using [`new`](ErasedJson::new)
+/// or the [`json!`](crate::json) macro.
+///
 /// # Example
 ///
 /// ```rust
@@ -71,4 +80,62 @@ impl IntoResponse for ErasedJson {
             Err(err) => (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response(),
         }
     }
+}
+
+/// Construct an [`ErasedJson`] response from a JSON literal.
+///
+/// A `Content-Type: application/json` header is automatically added.
+/// Any variable or expression implementing [`Serialize`]
+/// can be interpolated as a value in the literal.
+/// If the [`Serialize`] implementation decides to fail,
+/// or if a map with non-string keys is used,
+/// a 500 response will be issued
+/// whose body is the error message in UTF-8.
+///
+/// Internally,
+/// this function uses the [`typed_json::json!`] macro
+/// so that no allocations are performed during serialization.
+///
+/// # Examples
+///
+/// ```
+/// use axum::{
+///     Router,
+///     extract::Path,
+///     response::Response,
+///     routing::get,
+/// };
+/// use axum_extra::response::ErasedJson;
+///
+/// async fn get_user(Path(user_id) : Path<u64>) -> ErasedJson {
+///     let user_name = find_user_name(user_id).await;
+///     axum_extra::json!({ "name": user_name })
+/// }
+///
+/// async fn find_user_name(user_id: u64) -> String {
+///     // ...
+///     # unimplemented!()
+/// }
+///
+/// let app = Router::new().route("/users/{id}", get(get_user));
+/// # let _: Router = app;
+/// ```
+///
+/// Trailing commas are allowed in both arrays and objects.
+///
+/// ```
+/// let response = axum_extra::json!(["trailing",]);
+/// ```
+#[macro_export]
+macro_rules! json {
+    ($($t:tt)*) => {
+        $crate::response::ErasedJson::new(
+            $crate::response::__private_erased_json::typed_json::json!($($t)*)
+        )
+    }
+}
+
+/// Not public API. Re-exported as `crate::response::__private_erased_json`.
+pub mod private {
+    pub use typed_json;
 }
