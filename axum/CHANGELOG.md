@@ -12,6 +12,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **added:** Add `MethodFilter::CONNECT`, `routing::connect[_service]`
   and `MethodRouter::connect[_service]` ([#2961]).
 
+[#2984]: https://github.com/tokio-rs/axum/pull/2984
+[#2961]: https://github.com/tokio-rs/axum/pull/2961
+
 # 0.8.0
 
 ## alpha.1
