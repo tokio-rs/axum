@@ -60,6 +60,19 @@ macro_rules! top_level_service_fn {
     };
 
     (
+        $name:ident, CONNECT
+    ) => {
+        top_level_service_fn!(
+            /// Route `CONNECT` requests to the given service.
+            ///
+            /// See [`MethodFilter::CONNECT`] for when you'd want to use this,
+            /// and [`get_service`] for an example.
+            $name,
+            CONNECT
+        );
+    };
+
+    (
         $name:ident, $method:ident
     ) => {
         top_level_service_fn!(
@@ -115,6 +128,19 @@ macro_rules! top_level_handler_fn {
             /// afterwards.
             $name,
             GET
+        );
+    };
+
+    (
+        $name:ident, CONNECT
+    ) => {
+        top_level_handler_fn!(
+            /// Route `CONNECT` requests to the given handler.
+            ///
+            /// See [`MethodFilter::CONNECT`] for when you'd want to use this,
+            /// and [`get`] for an example.
+            $name,
+            CONNECT
         );
     };
 
@@ -188,6 +214,19 @@ macro_rules! chained_service_fn {
     };
 
     (
+        $name:ident, CONNECT
+    ) => {
+        chained_service_fn!(
+            /// Chain an additional service that will only accept `CONNECT` requests.
+            ///
+            /// See [`MethodFilter::CONNECT`] for when you'd want to use this,
+            /// and [`MethodRouter::get_service`] for an example.
+            $name,
+            CONNECT
+        );
+    };
+
+    (
         $name:ident, $method:ident
     ) => {
         chained_service_fn!(
@@ -251,6 +290,19 @@ macro_rules! chained_handler_fn {
     };
 
     (
+        $name:ident, CONNECT
+    ) => {
+        chained_handler_fn!(
+            /// Chain an additional handler that will only accept `CONNECT` requests.
+            ///
+            /// See [`MethodFilter::CONNECT`] for when you'd want to use this,
+            /// and [`MethodRouter::get`] for an example.
+            $name,
+            CONNECT
+        );
+    };
+
+    (
         $name:ident, $method:ident
     ) => {
         chained_handler_fn!(
@@ -279,6 +331,7 @@ macro_rules! chained_handler_fn {
     };
 }
 
+top_level_service_fn!(connect_service, CONNECT);
 top_level_service_fn!(delete_service, DELETE);
 top_level_service_fn!(get_service, GET);
 top_level_service_fn!(head_service, HEAD);
@@ -382,6 +435,7 @@ where
         .skip_allow_header()
 }
 
+top_level_handler_fn!(connect, CONNECT);
 top_level_handler_fn!(delete, DELETE);
 top_level_handler_fn!(get, GET);
 top_level_handler_fn!(head, HEAD);
@@ -498,6 +552,7 @@ pub struct MethodRouter<S = (), E = Infallible> {
     post: MethodEndpoint<S, E>,
     put: MethodEndpoint<S, E>,
     trace: MethodEndpoint<S, E>,
+    connect: MethodEndpoint<S, E>,
     fallback: Fallback<S, E>,
     allow_header: AllowHeader,
 }
@@ -539,6 +594,7 @@ impl<S, E> fmt::Debug for MethodRouter<S, E> {
             .field("post", &self.post)
             .field("put", &self.put)
             .field("trace", &self.trace)
+            .field("connect", &self.connect)
             .field("fallback", &self.fallback)
             .field("allow_header", &self.allow_header)
             .finish()
@@ -583,6 +639,7 @@ where
         )
     }
 
+    chained_handler_fn!(connect, CONNECT);
     chained_handler_fn!(delete, DELETE);
     chained_handler_fn!(get, GET);
     chained_handler_fn!(head, HEAD);
@@ -690,6 +747,7 @@ where
             post: MethodEndpoint::None,
             put: MethodEndpoint::None,
             trace: MethodEndpoint::None,
+            connect: MethodEndpoint::None,
             allow_header: AllowHeader::None,
             fallback: Fallback::Default(fallback),
         }
@@ -706,6 +764,7 @@ where
             post: self.post.with_state(&state),
             put: self.put.with_state(&state),
             trace: self.trace.with_state(&state),
+            connect: self.connect.with_state(&state),
             allow_header: self.allow_header,
             fallback: self.fallback.with_state(state),
         }
@@ -854,9 +913,20 @@ where
             &["DELETE"],
         );
 
+        set_endpoint(
+            "CONNECT",
+            &mut self.options,
+            &endpoint,
+            filter,
+            MethodFilter::CONNECT,
+            &mut self.allow_header,
+            &["CONNECT"],
+        );
+
         self
     }
 
+    chained_service_fn!(connect_service, CONNECT);
     chained_service_fn!(delete_service, DELETE);
     chained_service_fn!(get_service, GET);
     chained_service_fn!(head_service, HEAD);
@@ -900,6 +970,7 @@ where
             post: self.post.map(layer_fn.clone()),
             put: self.put.map(layer_fn.clone()),
             trace: self.trace.map(layer_fn.clone()),
+            connect: self.connect.map(layer_fn.clone()),
             fallback: self.fallback.map(layer_fn),
             allow_header: self.allow_header,
         }
@@ -924,6 +995,7 @@ where
             && self.post.is_none()
             && self.put.is_none()
             && self.trace.is_none()
+            && self.connect.is_none()
         {
             panic!(
                 "Adding a route_layer before any routes is a no-op. \
@@ -944,7 +1016,8 @@ where
         self.patch = self.patch.map(layer_fn.clone());
         self.post = self.post.map(layer_fn.clone());
         self.put = self.put.map(layer_fn.clone());
-        self.trace = self.trace.map(layer_fn);
+        self.trace = self.trace.map(layer_fn.clone());
+        self.connect = self.connect.map(layer_fn);
 
         self
     }
@@ -985,6 +1058,7 @@ where
         self.post = merge_inner(path, "POST", self.post, other.post);
         self.put = merge_inner(path, "PUT", self.put, other.put);
         self.trace = merge_inner(path, "TRACE", self.trace, other.trace);
+        self.connect = merge_inner(path, "CONNECT", self.connect, other.connect);
 
         self.fallback = self
             .fallback
@@ -1058,6 +1132,7 @@ where
             post,
             put,
             trace,
+            connect,
             fallback,
             allow_header,
         } = self;
@@ -1071,6 +1146,7 @@ where
         call!(req, method, PUT, put);
         call!(req, method, DELETE, delete);
         call!(req, method, TRACE, trace);
+        call!(req, method, CONNECT, connect);
 
         let future = fallback.clone().call_with_state(req, state);
 
@@ -1113,6 +1189,7 @@ impl<S, E> Clone for MethodRouter<S, E> {
             post: self.post.clone(),
             put: self.put.clone(),
             trace: self.trace.clone(),
+            connect: self.connect.clone(),
             fallback: self.fallback.clone(),
             allow_header: self.allow_header.clone(),
         }
