@@ -49,6 +49,14 @@ impl<E> Route<E> {
         self.0.get_mut().unwrap().clone().oneshot(req)
     }
 
+    /// Variant of [`Route::oneshot_inner`] that takes ownership of the route to avoid cloning.
+    pub(crate) fn oneshot_inner_owned(
+        self,
+        req: Request,
+    ) -> Oneshot<BoxCloneService<Request, Response, E>, Request> {
+        self.0.into_inner().unwrap().oneshot(req)
+    }
+
     pub(crate) fn layer<L, NewError>(self, layer: L) -> Route<NewError>
     where
         L: Layer<Route<E>> + Clone + Send + 'static,
