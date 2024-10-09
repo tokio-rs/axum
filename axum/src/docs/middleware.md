@@ -190,7 +190,7 @@ You should use these when
 
 ## `tower::Service` and `Pin<Box<dyn Future>>`
 
-For maximum control (and a more low level API) you can write you own middleware
+For maximum control (and a more low level API) you can write your own middleware
 by implementing [`tower::Service`]:
 
 Use [`tower::Service`] with `Pin<Box<dyn Future>>` to write your middleware when:
