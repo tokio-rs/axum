@@ -47,6 +47,12 @@ impl<E> Route<E> {
         RouteFuture::new(method, self.0.clone().oneshot(req))
     }
 
+    /// Variant of [`Route::oneshot_inner`] that takes ownership of the route to avoid cloning.
+    pub(crate) fn oneshot_inner_owned(self, req: Request) -> RouteFuture<E> {
+        let method = req.method().clone();
+        RouteFuture::new(method, self.0.oneshot(req))
+    }
+
     pub(crate) fn layer<L, NewError>(self, layer: L) -> Route<NewError>
     where
         L: Layer<Route<E>> + Clone + Send + 'static,
