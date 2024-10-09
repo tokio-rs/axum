@@ -328,3 +328,21 @@ async fn merge_router_with_fallback_into_empty() {
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
     assert_eq!(res.text().await, "outer");
 }
+
+#[crate::test]
+async fn state_isnt_cloned_too_much_with_fallback() {
+    let state = CountingCloneableState::new();
+
+    let app = Router::new()
+        .fallback(|_: State<CountingCloneableState>| async {})
+        .with_state(state.clone());
+
+    let client = TestClient::new(app);
+
+    // ignore clones made during setup
+    state.setup_done();
+
+    client.get("/does-not-exist").await;
+
+    assert_eq!(state.count(), 4);
+}
