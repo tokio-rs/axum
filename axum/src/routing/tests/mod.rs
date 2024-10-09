@@ -16,6 +16,7 @@ use crate::{
     BoxError, Extension, Json, Router, ServiceExt,
 };
 use axum_core::extract::Request;
+use counting_cloneable_state::CountingCloneableState;
 use futures_util::stream::StreamExt;
 use http::{
     header::{ALLOW, CONTENT_LENGTH, HOST},
@@ -27,7 +28,7 @@ use serde_json::json;
 use std::{
     convert::Infallible,
     future::{ready, IntoFuture, Ready},
-    sync::atomic::{AtomicBool, AtomicUsize, Ordering},
+    sync::atomic::{AtomicUsize, Ordering},
     task::{Context, Poll},
     time::Duration,
 };
@@ -905,54 +906,20 @@ fn test_path_for_nested_route() {
 
 #[crate::test]
 async fn state_isnt_cloned_too_much() {
-    static SETUP_DONE: AtomicBool = AtomicBool::new(false);
-    static COUNT: AtomicUsize = AtomicUsize::new(0);
-
-    struct AppState;
-
-    impl Clone for AppState {
-        fn clone(&self) -> Self {
-            #[rustversion::since(1.66)]
-            #[track_caller]
-            fn count() {
-                if SETUP_DONE.load(Ordering::SeqCst) {
-                    let bt = std::backtrace::Backtrace::force_capture();
-                    let bt = bt
-                        .to_string()
-                        .lines()
-                        .filter(|line| line.contains("axum") || line.contains("./src"))
-                        .collect::<Vec<_>>()
-                        .join("\n");
-                    println!("AppState::Clone:\n===============\n{bt}\n");
-                    COUNT.fetch_add(1, Ordering::SeqCst);
-                }
-            }
-
-            #[rustversion::not(since(1.66))]
-            fn count() {
-                if SETUP_DONE.load(Ordering::SeqCst) {
-                    COUNT.fetch_add(1, Ordering::SeqCst);
-                }
-            }
-
-            count();
-
-            Self
-        }
-    }
+    let state = CountingCloneableState::new();
 
     let app = Router::new()
-        .route("/", get(|_: State<AppState>| async {}))
-        .with_state(AppState);
+        .route("/", get(|_: State<CountingCloneableState>| async {}))
+        .with_state(state.clone());
 
     let client = TestClient::new(app);
 
     // ignore clones made during setup
-    SETUP_DONE.store(true, Ordering::SeqCst);
+    state.setup_done();
 
     client.get("/").await;
 
-    assert_eq!(COUNT.load(Ordering::SeqCst), 3);
+    assert_eq!(state.count(), 3);
 }
 
 #[crate::test]
