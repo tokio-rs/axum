@@ -367,9 +367,11 @@ where
             }
         }
 
-        let path = req.uri().path().to_owned();
+        // split apart to get multiple mutable references to parts,
+        // this avoids the need to clone the URI/path.
+        let (mut parts, body) = req.into_parts();
 
-        match self.node.at(&path) {
+        match self.node.at(parts.uri.path()) {
             Ok(match_) => {
                 let id = *match_.value;
 
@@ -378,27 +380,28 @@ where
                     crate::extract::matched_path::set_matched_path_for_request(
                         id,
                         &self.node.route_id_to_path,
-                        req.extensions_mut(),
+                        &mut parts.extensions,
                     );
                 }
 
-                url_params::insert_url_params(req.extensions_mut(), match_.params);
+                url_params::insert_url_params(&mut parts.extensions, match_.params);
 
                 let endpoint = self
                     .routes
                     .get(&id)
                     .expect("no route for id. This is a bug in axum. Please file an issue");
 
+                let req = Request::from_parts(parts, body);
                 match endpoint {
                     Endpoint::MethodRouter(method_router) => {
                         Ok(method_router.call_with_state(req, state))
                     }
-                    Endpoint::Route(route) => Ok(route.clone().call(req)),
+                    Endpoint::Route(route) => Ok(route.clone().call_owned(req)),
                 }
             }
             // explicitly handle all variants in case matchit adds
             // new ones we need to handle differently
-            Err(MatchError::NotFound) => Err((req, state)),
+            Err(MatchError::NotFound) => Err((Request::from_parts(parts, body), state)),
         }
     }
 
