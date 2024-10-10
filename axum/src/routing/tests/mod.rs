@@ -3,6 +3,7 @@ use crate::{
     error_handling::HandleErrorLayer,
     extract::{self, DefaultBodyLimit, FromRef, Path, State},
     handler::{Handler, HandlerWithoutStateExt},
+    middleware::{self, Next},
     response::{IntoResponse, Response},
     routing::{
         delete, get, get_service, on, on_service, patch, patch_service,
@@ -920,6 +921,26 @@ async fn state_isnt_cloned_too_much() {
     client.get("/").await;
 
     assert_eq!(state.count(), 3);
+}
+
+#[crate::test]
+async fn state_isnt_cloned_too_much_in_layer() {
+    async fn layer(State(_): State<CountingCloneableState>, req: Request, next: Next) -> Response {
+        next.run(req).await
+    }
+
+    let state = CountingCloneableState::new();
+
+    let app = Router::new().layer(middleware::from_fn_with_state(state.clone(), layer));
+
+    let client = TestClient::new(app);
+
+    // ignore clones made during setup
+    state.setup_done();
+
+    client.get("/").await;
+
+    assert_eq!(state.count(), 4);
 }
 
 #[crate::test]
