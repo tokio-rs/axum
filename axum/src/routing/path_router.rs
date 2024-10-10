@@ -394,7 +394,7 @@ where
                     Endpoint::MethodRouter(method_router) => {
                         Ok(method_router.call_with_state(req, state))
                     }
-                    Endpoint::Route(route) => Ok(route.clone().call(req)),
+                    Endpoint::Route(route) => Ok(route.clone().call_owned(req)),
                 }
             }
             // explicitly handle all variants in case matchit adds
