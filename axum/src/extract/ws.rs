@@ -507,11 +507,6 @@ impl WebSocket {
             .map_err(Error::new)
     }
 
-    /// Gracefully close this WebSocket.
-    pub async fn close(mut self) -> Result<(), Error> {
-        self.inner.close(None).await.map_err(Error::new)
-    }
-
     /// Return the selected WebSocket subprotocol, if one has been chosen.
     pub fn protocol(&self) -> Option<&HeaderValue> {
         self.protocol.as_ref()
@@ -615,6 +610,24 @@ pub enum Message {
     /// [unidirectional heartbeat](https://tools.ietf.org/html/rfc6455#section-5.5.3).
     Pong(Vec<u8>),
     /// A close message with the optional close frame.
+    ///
+    /// You may "uncleanly" close a WebSocket connection at any time
+    /// by simply dropping the [`WebSocket`].
+    /// However, you may also use the graceful closing protocol, in which
+    /// 1. peer A sends a close frame, and does not send any further messages;
+    /// 2. peer B responds with a close frame, and does not send any further messages;
+    /// 3. peer A processes the remaining messages sent by peer B, before finally
+    /// 4. both peers close the connection.
+    ///
+    /// After sending a close frame,
+    /// you may still read messages,
+    /// but any attempts to send a message will error.
+    /// After receiving a close frame,
+    /// the server will automatically respond with a close frame if necessary
+    /// (you do not have to deal with this yourself).
+    /// Since no further messages will be received,
+    /// so you may either do nothing
+    /// or explicitly drop the connection.
     Close(Option<CloseFrame<'static>>),
 }
 
