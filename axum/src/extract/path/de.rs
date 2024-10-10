@@ -94,7 +94,21 @@ impl<'de> Deserializer<'de> for PathDeserializer<'de> {
                 .got(self.url_params.len())
                 .expected(1));
         }
-        visitor.visit_borrowed_str(&self.url_params[0].1)
+        let key = &self.url_params[0].0;
+        let value = &self.url_params[0].1;
+        visitor
+            .visit_borrowed_str(value)
+            .map_err(|e: PathDeserializationError| {
+                if let ErrorKind::Message(message) = &e.kind {
+                    PathDeserializationError::new(ErrorKind::DeserializeError {
+                        key: key.to_string(),
+                        value: value.as_str().to_owned(),
+                        message: message.to_owned(),
+                    })
+                } else {
+                    e
+                }
+            })
     }
 
     fn deserialize_unit<V>(self, visitor: V) -> Result<V::Value, Self::Error>
@@ -362,7 +376,19 @@ impl<'de> Deserializer<'de> for ValueDeserializer<'de> {
     where
         V: Visitor<'de>,
     {
-        visitor.visit_borrowed_str(self.value)
+        visitor
+            .visit_borrowed_str(self.value)
+            .map_err(|e: PathDeserializationError| {
+                if let (ErrorKind::Message(message), Some(key)) = (&e.kind, self.key.as_ref()) {
+                    PathDeserializationError::new(ErrorKind::DeserializeError {
+                        key: key.key().to_owned(),
+                        value: self.value.as_str().to_owned(),
+                        message: message.to_owned(),
+                    })
+                } else {
+                    e
+                }
+            })
     }
 
     fn deserialize_bytes<V>(self, visitor: V) -> Result<V::Value, Self::Error>
@@ -606,6 +632,15 @@ impl<'de> SeqAccess<'de> for SeqDeserializer<'de> {
 enum KeyOrIdx<'de> {
     Key(&'de str),
     Idx { idx: usize, key: &'de str },
+}
+
+impl<'de> KeyOrIdx<'de> {
+    fn key(&self) -> &'de str {
+        match &self {
+            Self::Key(key) => key,
+            Self::Idx { key, .. } => key,
+        }
+    }
 }
 
 #[cfg(test)]
@@ -923,6 +958,19 @@ mod tests {
             Vec<Vec<String>>,
             ErrorKind::UnsupportedType {
                 name: "alloc::vec::Vec<alloc::string::String>",
+            }
+        );
+    }
+
+    #[test]
+    fn test_deserialize_key_value() {
+        test_parse_error!(
+            vec![("id", "123123-123-123123")],
+            uuid::Uuid,
+            ErrorKind::DeserializeError {
+                key: "id".to_owned(),
+                value: "123123-123-123123".to_owned(),
+                message: "UUID parsing failed: invalid group count: expected 5, found 3".to_owned(),
             }
         );
     }
