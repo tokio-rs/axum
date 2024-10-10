@@ -940,7 +940,7 @@ async fn state_isnt_cloned_too_much_in_layer() {
 
     client.get("/").await;
 
-    assert_eq!(state.count(), 4);
+    assert_eq!(state.count(), 3);
 }
 
 #[crate::test]

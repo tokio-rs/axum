@@ -42,6 +42,12 @@ impl<E> Route<E> {
         )))
     }
 
+    /// Variant of [`Route::call`] that takes ownership of the route to avoid cloning.
+    pub(crate) fn call_owned(self, req: Request<Body>) -> RouteFuture<E> {
+        let req = req.map(Body::new);
+        RouteFuture::from_future(self.oneshot_inner_owned(req))
+    }
+
     pub(crate) fn oneshot_inner(
         &mut self,
         req: Request,
