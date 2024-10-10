@@ -33,6 +33,7 @@ json-lines = [
 ]
 multipart = ["dep:multer", "dep:fastrand"]
 protobuf = ["dep:prost"]
+scheme = []
 query = ["dep:serde_html_form"]
 tracing = ["axum-core/tracing", "axum/tracing"]
 typed-header = ["dep:headers"]
