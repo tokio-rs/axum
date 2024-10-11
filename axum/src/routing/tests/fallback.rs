@@ -361,3 +361,15 @@ async fn mna_fallback_with_state() {
     let res = client.post("/").await;
     assert_eq!(res.text().await, "state");
 }
+
+#[crate::test]
+async fn mna_fallback_with_unused_state() {
+    let app = Router::new()
+        .route("/", get(|| async { "index" }))
+        .with_state(())
+        .method_not_allowed_fallback(|| async move { "bla" });
+
+    let client = TestClient::new(app);
+    let res = client.post("/").await;
+    assert_eq!(res.text().await, "bla");
+}
