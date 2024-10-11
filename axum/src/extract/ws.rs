@@ -621,12 +621,12 @@ pub enum Message {
     ///
     /// After sending a close frame,
     /// you may still read messages,
-    /// but any attempts to send a message will error.
+    /// but any attempts to send another message will error.
     /// After receiving a close frame,
-    /// the server will automatically respond with a close frame if necessary
+    /// axum will automatically respond with a close frame if necessary
     /// (you do not have to deal with this yourself).
     /// Since no further messages will be received,
-    /// so you may either do nothing
+    /// you may either do nothing
     /// or explicitly drop the connection.
     Close(Option<CloseFrame<'static>>),
 }
