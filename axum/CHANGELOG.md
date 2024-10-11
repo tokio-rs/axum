@@ -9,8 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **added:** Add `MethodFilter::CONNECT`, `routing::connect[_service]`
   and `MethodRouter::connect[_service]` ([#2961])
+- **added:** Add `NoContent` as a self-described shortcut for `StatusCode::NO_CONTENT` ([#2978])
 
 [#2961]: https://github.com/tokio-rs/axum/pull/2961
+[#2978]: https://github.com/tokio-rs/axum/pull/2978
 
 # 0.7.7
 
