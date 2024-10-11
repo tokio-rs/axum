@@ -210,7 +210,7 @@ where
     S::Future: Send,
 {
     type Output = io::Result<()>;
-    type IntoFuture = private::ServeFuture;
+    type IntoFuture = futures_util::future::BoxFuture<'static, io::Result<()>>;
 
     fn into_future(self) -> Self::IntoFuture {
         self.with_graceful_shutdown(std::future::pending())
@@ -301,7 +301,7 @@ where
     F: Future<Output = ()> + Send + 'static,
 {
     type Output = io::Result<()>;
-    type IntoFuture = private::ServeFuture;
+    type IntoFuture = futures_util::future::BoxFuture<'static, io::Result<()>>;
 
     fn into_future(self) -> Self::IntoFuture {
         let Self {
@@ -312,7 +312,7 @@ where
             _marker: _,
         } = self;
 
-        private::ServeFuture(Box::pin(async move {
+        Box::pin(async move {
             let (signal_tx, signal_rx) = watch::channel(());
             let signal_tx = Arc::new(signal_tx);
             tokio::spawn(async move {
@@ -409,7 +409,7 @@ where
             close_tx.closed().await;
 
             Ok(())
-        }))
+        })
     }
 }
 
@@ -444,32 +444,6 @@ async fn tcp_accept(listener: &TcpListener) -> Option<(TcpStream, SocketAddr)> {
             error!("accept error: {e}");
             tokio::time::sleep(Duration::from_secs(1)).await;
             None
-        }
-    }
-}
-
-mod private {
-    use std::{
-        future::Future,
-        io,
-        pin::Pin,
-        task::{Context, Poll},
-    };
-
-    pub struct ServeFuture(pub(super) futures_util::future::BoxFuture<'static, io::Result<()>>);
-
-    impl Future for ServeFuture {
-        type Output = io::Result<()>;
-
-        #[inline]
-        fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-            self.0.as_mut().poll(cx)
-        }
-    }
-
-    impl std::fmt::Debug for ServeFuture {
-        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            f.debug_struct("ServeFuture").finish_non_exhaustive()
         }
     }
 }
