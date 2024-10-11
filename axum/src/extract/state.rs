@@ -21,9 +21,6 @@ use std::{
 /// //
 /// // here you can put configuration, database connection pools, or whatever
 /// // state you need
-/// //
-/// // see "Why states need to implement `Clone`" for more details on why we need
-/// // `#[derive(Clone)]` here.
 /// #[derive(Clone)]
 /// struct AppState {}
 ///
@@ -246,27 +243,6 @@ use std::{
 ///     // ...
 /// }
 /// ```
-///
-/// # Why states need to implement `Clone`
-///
-/// Your top level state type must implement `Clone` to be extractable with `State`:
-///
-/// ```
-/// use axum::extract::State;
-///
-/// // to extract to `State<AppState>` we must implement `Clone` for `AppState`
-/// #[derive(Clone)]
-/// struct AppState {}
-///
-/// async fn handler(State(state): State<AppState>) {
-///     // ...
-/// }
-/// ```
-///
-/// This works because of [`impl<S> FromRef<S> for S where S: Clone`][`FromRef`].
-///
-/// In general however we recommend you implement `Clone` for all your state types to avoid
-/// potential type errors.
 ///
 /// # Shared mutable state
 ///
