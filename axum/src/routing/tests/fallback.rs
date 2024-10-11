@@ -372,7 +372,9 @@ async fn mna_fallback_with_unused_state() {
     let client = TestClient::new(app);
     let res = client.post("/").await;
     assert_eq!(res.text().await, "bla");
+}
 
+#[crate::test]
 async fn state_isnt_cloned_too_much_with_fallback() {
     let state = CountingCloneableState::new();
 

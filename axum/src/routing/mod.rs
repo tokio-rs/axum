@@ -360,7 +360,7 @@ where
         H: Handler<T, S>,
         T: 'static,
     {
-        self.tap_inner_mut(|this| {
+        tap_inner!(self, mut this => {
             this.path_router
                 .method_not_allowed_fallback(handler.clone())
         })
