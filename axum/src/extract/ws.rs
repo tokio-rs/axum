@@ -621,9 +621,9 @@ pub enum Message {
     ///
     /// After sending a close frame,
     /// you may still read messages,
-    /// but any attempts to send another message will error.
+    /// but attempts to send another message will error.
     /// After receiving a close frame,
-    /// axum will automatically respond with a close frame if necessary
+    /// Axum will automatically respond with a close frame if necessary
     /// (you do not have to deal with this yourself).
     /// Since no further messages will be received,
     /// you may either do nothing
