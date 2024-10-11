@@ -5,7 +5,6 @@
 //! ```
 
 use axum::{
-    async_trait,
     extract::{FromRequestParts, Path},
     http::{request::Parts, StatusCode},
     response::{IntoResponse, Response},
@@ -26,7 +25,7 @@ async fn main() {
         .init();
 
     // build our application with some routes
-    let app = Router::new().route("/:version/foo", get(handler));
+    let app = Router::new().route("/{version}/foo", get(handler));
 
     // run it
     let listener = tokio::net::TcpListener::bind("127.0.0.1:3000")
@@ -47,7 +46,6 @@ enum Version {
     V3,
 }
 
-#[async_trait]
 impl<S> FromRequestParts<S> for Version
 where
     S: Send + Sync,

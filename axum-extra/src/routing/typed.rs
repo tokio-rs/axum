@@ -19,15 +19,15 @@ use serde::Serialize;
 ///     RouterExt, // for `Router::typed_*`
 /// };
 ///
-/// // A type safe route with `/users/:id` as its associated path.
+/// // A type safe route with `/users/{id}` as its associated path.
 /// #[derive(TypedPath, Deserialize)]
-/// #[typed_path("/users/:id")]
+/// #[typed_path("/users/{id}")]
 /// struct UsersMember {
 ///     id: u32,
 /// }
 ///
 /// // A regular handler function that takes `UsersMember` as the first argument
-/// // and thus creates a typed connection between this handler and the `/users/:id` path.
+/// // and thus creates a typed connection between this handler and the `/users/{id}` path.
 /// //
 /// // The `TypedPath` must be the first argument to the function.
 /// async fn users_show(
@@ -39,7 +39,7 @@ use serde::Serialize;
 /// let app = Router::new()
 ///     // Add our typed route to the router.
 ///     //
-///     // The path will be inferred to `/users/:id` since `users_show`'s
+///     // The path will be inferred to `/users/{id}` since `users_show`'s
 ///     // first argument is `UsersMember` which implements `TypedPath`
 ///     .typed_get(users_show)
 ///     .typed_post(users_create)
@@ -75,7 +75,7 @@ use serde::Serialize;
 /// use axum_extra::routing::TypedPath;
 ///
 /// #[derive(TypedPath, Deserialize)]
-/// #[typed_path("/users/:id")]
+/// #[typed_path("/users/{id}")]
 /// struct UsersMember {
 ///     id: u32,
 /// }
@@ -100,7 +100,7 @@ use serde::Serialize;
 /// use axum_extra::routing::TypedPath;
 ///
 /// #[derive(TypedPath, Deserialize)]
-/// #[typed_path("/users/:id/teams/:team_id")]
+/// #[typed_path("/users/{id}/teams/{team_id}")]
 /// struct UsersMember {
 ///     id: u32,
 /// }
@@ -117,7 +117,7 @@ use serde::Serialize;
 /// struct UsersCollection;
 ///
 /// #[derive(TypedPath, Deserialize)]
-/// #[typed_path("/users/:id")]
+/// #[typed_path("/users/{id}")]
 /// struct UsersMember(u32);
 /// ```
 ///
@@ -130,7 +130,7 @@ use serde::Serialize;
 /// use axum_extra::routing::TypedPath;
 ///
 /// #[derive(TypedPath, Deserialize)]
-/// #[typed_path("/users/:id")]
+/// #[typed_path("/users/{id}")]
 /// struct UsersMember {
 ///     id: String,
 /// }
@@ -158,7 +158,7 @@ use serde::Serialize;
 /// };
 ///
 /// #[derive(TypedPath, Deserialize)]
-/// #[typed_path("/users/:id", rejection(UsersMemberRejection))]
+/// #[typed_path("/users/{id}", rejection(UsersMemberRejection))]
 /// struct UsersMember {
 ///     id: String,
 /// }
@@ -215,7 +215,7 @@ use serde::Serialize;
 /// [`Deserialize`]: serde::Deserialize
 /// [`PathRejection`]: axum::extract::rejection::PathRejection
 pub trait TypedPath: std::fmt::Display {
-    /// The path with optional captures such as `/users/:id`.
+    /// The path with optional captures such as `/users/{id}`.
     const PATH: &'static str;
 
     /// Convert the path into a `Uri`.
@@ -398,7 +398,7 @@ mod tests {
     use serde::Deserialize;
 
     #[derive(TypedPath, Deserialize)]
-    #[typed_path("/users/:id")]
+    #[typed_path("/users/{id}")]
     struct UsersShow {
         id: i32,
     }

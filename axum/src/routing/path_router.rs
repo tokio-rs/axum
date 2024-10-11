@@ -17,6 +17,7 @@ pub(super) struct PathRouter<S, const IS_FALLBACK: bool> {
     routes: HashMap<RouteId, Endpoint<S>>,
     node: Arc<Node>,
     prev_route_id: RouteId,
+    v7_checks: bool,
 }
 
 impl<S> PathRouter<S, true>
@@ -35,26 +36,56 @@ where
     }
 }
 
+fn validate_path(v7_checks: bool, path: &str) -> Result<(), &'static str> {
+    if path.is_empty() {
+        return Err("Paths must start with a `/`. Use \"/\" for root routes");
+    } else if !path.starts_with('/') {
+        return Err("Paths must start with a `/`");
+    }
+
+    if v7_checks {
+        validate_v07_paths(path)?;
+    }
+
+    Ok(())
+}
+
+fn validate_v07_paths(path: &str) -> Result<(), &'static str> {
+    path.split('/')
+        .find_map(|segment| {
+            if segment.starts_with(':') {
+                Some(Err(
+                    "Path segments must not start with `:`. For capture groups, use \
+                `{capture}`. If you meant to literally match a segment starting with \
+                a colon, call `without_v07_checks` on the router.",
+                ))
+            } else if segment.starts_with('*') {
+                Some(Err(
+                    "Path segments must not start with `*`. For wildcard capture, use \
+                `{*wildcard}`. If you meant to literally match a segment starting with \
+                an asterisk, call `without_v07_checks` on the router.",
+                ))
+            } else {
+                None
+            }
+        })
+        .unwrap_or(Ok(()))
+}
+
 impl<S, const IS_FALLBACK: bool> PathRouter<S, IS_FALLBACK>
 where
     S: Clone + Send + Sync + 'static,
 {
+    pub(super) fn without_v07_checks(&mut self) {
+        self.v7_checks = false;
+    }
+
     pub(super) fn route(
         &mut self,
         path: &str,
         method_router: MethodRouter<S>,
     ) -> Result<(), Cow<'static, str>> {
-        fn validate_path(path: &str) -> Result<(), &'static str> {
-            if path.is_empty() {
-                return Err("Paths must start with a `/`. Use \"/\" for root routes");
-            } else if !path.starts_with('/') {
-                return Err("Paths must start with a `/`");
-            }
-
-            Ok(())
-        }
-
-        validate_path(path)?;
+        validate_path(self.v7_checks, path)?;
 
         let endpoint = if let Some((route_id, Endpoint::MethodRouter(prev_method_router))) = self
             .node
@@ -100,7 +131,7 @@ where
         service: T,
     ) -> Result<(), Cow<'static, str>>
     where
-        T: Service<Request, Error = Infallible> + Clone + Send + 'static,
+        T: Service<Request, Error = Infallible> + Clone + Send + Sync + 'static,
         T::Response: IntoResponse,
         T::Future: Send + 'static,
     {
@@ -112,11 +143,7 @@ where
         path: &str,
         endpoint: Endpoint<S>,
     ) -> Result<(), Cow<'static, str>> {
-        if path.is_empty() {
-            return Err("Paths must start with a `/`. Use \"/\" for root routes".into());
-        } else if !path.starts_with('/') {
-            return Err("Paths must start with a `/`".into());
-        }
+        validate_path(self.v7_checks, path)?;
 
         let id = self.next_route_id();
         self.set_node(path, id)?;
@@ -140,7 +167,11 @@ where
             routes,
             node,
             prev_route_id: _,
+            v7_checks,
         } = other;
+
+        // If either of the two did not allow paths starting with `:` or `*`, do not allow them for the merged router either.
+        self.v7_checks |= v7_checks;
 
         for (id, route) in routes {
             let path = node
@@ -177,12 +208,14 @@ where
         path_to_nest_at: &str,
         router: PathRouter<S, IS_FALLBACK>,
     ) -> Result<(), Cow<'static, str>> {
-        let prefix = validate_nest_path(path_to_nest_at);
+        let prefix = validate_nest_path(self.v7_checks, path_to_nest_at);
 
         let PathRouter {
             routes,
             node,
             prev_route_id: _,
+            // Ignore the configuration of the nested router
+            v7_checks: _,
         } = router;
 
         for (id, endpoint) in routes {
@@ -216,17 +249,17 @@ where
         svc: T,
     ) -> Result<(), Cow<'static, str>>
     where
-        T: Service<Request, Error = Infallible> + Clone + Send + 'static,
+        T: Service<Request, Error = Infallible> + Clone + Send + Sync + 'static,
         T::Response: IntoResponse,
         T::Future: Send + 'static,
     {
-        let path = validate_nest_path(path_to_nest_at);
+        let path = validate_nest_path(self.v7_checks, path_to_nest_at);
         let prefix = path;
 
         let path = if path.ends_with('/') {
-            format!("{path}*{NEST_TAIL_PARAM}")
+            format!("{path}{{*{NEST_TAIL_PARAM}}}")
         } else {
-            format!("{path}/*{NEST_TAIL_PARAM}")
+            format!("{path}/{{*{NEST_TAIL_PARAM}}}")
         };
 
         let layer = (
@@ -237,7 +270,7 @@ where
 
         self.route_endpoint(&path, endpoint.clone())?;
 
-        // `/*rest` is not matched by `/` so we need to also register a router at the
+        // `/{*rest}` is not matched by `/` so we need to also register a router at the
         // prefix itself. Otherwise if you were to nest at `/foo` then `/foo` itself
         // wouldn't match, which it should
         self.route_endpoint(prefix, endpoint.clone())?;
@@ -251,8 +284,8 @@ where
 
     pub(super) fn layer<L>(self, layer: L) -> PathRouter<S, IS_FALLBACK>
     where
-        L: Layer<Route> + Clone + Send + 'static,
-        L::Service: Service<Request> + Clone + Send + 'static,
+        L: Layer<Route> + Clone + Send + Sync + 'static,
+        L::Service: Service<Request> + Clone + Send + Sync + 'static,
         <L::Service as Service<Request>>::Response: IntoResponse + 'static,
         <L::Service as Service<Request>>::Error: Into<Infallible> + 'static,
         <L::Service as Service<Request>>::Future: Send + 'static,
@@ -270,14 +303,15 @@ where
             routes,
             node: self.node,
             prev_route_id: self.prev_route_id,
+            v7_checks: self.v7_checks,
         }
     }
 
     #[track_caller]
     pub(super) fn route_layer<L>(self, layer: L) -> Self
     where
-        L: Layer<Route> + Clone + Send + 'static,
-        L::Service: Service<Request> + Clone + Send + 'static,
+        L: Layer<Route> + Clone + Send + Sync + 'static,
+        L::Service: Service<Request> + Clone + Send + Sync + 'static,
         <L::Service as Service<Request>>::Response: IntoResponse + 'static,
         <L::Service as Service<Request>>::Error: Into<Infallible> + 'static,
         <L::Service as Service<Request>>::Future: Send + 'static,
@@ -302,6 +336,7 @@ where
             routes,
             node: self.node,
             prev_route_id: self.prev_route_id,
+            v7_checks: self.v7_checks,
         }
     }
 
@@ -328,6 +363,7 @@ where
             routes,
             node: self.node,
             prev_route_id: self.prev_route_id,
+            v7_checks: self.v7_checks,
         }
     }
 
@@ -346,9 +382,9 @@ where
             }
         }
 
-        let path = req.uri().path().to_owned();
+        let (mut parts, body) = req.into_parts();
 
-        match self.node.at(&path) {
+        match self.node.at(parts.uri.path()) {
             Ok(match_) => {
                 let id = *match_.value;
 
@@ -357,31 +393,28 @@ where
                     crate::extract::matched_path::set_matched_path_for_request(
                         id,
                         &self.node.route_id_to_path,
-                        req.extensions_mut(),
+                        &mut parts.extensions,
                     );
                 }
 
-                url_params::insert_url_params(req.extensions_mut(), match_.params);
+                url_params::insert_url_params(&mut parts.extensions, match_.params);
 
                 let endpoint = self
                     .routes
                     .get(&id)
                     .expect("no route for id. This is a bug in axum. Please file an issue");
 
+                let req = Request::from_parts(parts, body);
                 match endpoint {
                     Endpoint::MethodRouter(method_router) => {
                         Ok(method_router.call_with_state(req, state))
                     }
-                    Endpoint::Route(route) => Ok(route.clone().call(req)),
+                    Endpoint::Route(route) => Ok(route.clone().call_owned(req)),
                 }
             }
             // explicitly handle all variants in case matchit adds
             // new ones we need to handle differently
-            Err(
-                MatchError::NotFound
-                | MatchError::ExtraTrailingSlash
-                | MatchError::MissingTrailingSlash,
-            ) => Err((req, state)),
+            Err(MatchError::NotFound) => Err((Request::from_parts(parts, body), state)),
         }
     }
 
@@ -414,6 +447,7 @@ impl<S, const IS_FALLBACK: bool> Default for PathRouter<S, IS_FALLBACK> {
             routes: Default::default(),
             node: Default::default(),
             prev_route_id: RouteId(0),
+            v7_checks: true,
         }
     }
 }
@@ -433,6 +467,7 @@ impl<S, const IS_FALLBACK: bool> Clone for PathRouter<S, IS_FALLBACK> {
             routes: self.routes.clone(),
             node: self.node.clone(),
             prev_route_id: self.prev_route_id,
+            v7_checks: self.v7_checks,
         }
     }
 }
@@ -479,14 +514,20 @@ impl fmt::Debug for Node {
 }
 
 #[track_caller]
-fn validate_nest_path(path: &str) -> &str {
+fn validate_nest_path(v7_checks: bool, path: &str) -> &str {
     if path.is_empty() {
         // nesting at `""` and `"/"` should mean the same thing
         return "/";
     }
 
-    if path.contains('*') {
+    if path.split('/').any(|segment| {
+        segment.starts_with("{*") && segment.ends_with('}') && !segment.ends_with("}}")
+    }) {
         panic!("Invalid route: nested routes cannot contain wildcards (*)");
+    }
+
+    if v7_checks {
+        validate_v07_paths(path).unwrap();
     }
 
     path

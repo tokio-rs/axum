@@ -372,4 +372,20 @@ async fn mna_fallback_with_unused_state() {
     let client = TestClient::new(app);
     let res = client.post("/").await;
     assert_eq!(res.text().await, "bla");
+
+async fn state_isnt_cloned_too_much_with_fallback() {
+    let state = CountingCloneableState::new();
+
+    let app = Router::new()
+        .fallback(|_: State<CountingCloneableState>| async {})
+        .with_state(state.clone());
+
+    let client = TestClient::new(app);
+
+    // ignore clones made during setup
+    state.setup_done();
+
+    client.get("/does-not-exist").await;
+
+    assert_eq!(state.count(), 3);
 }

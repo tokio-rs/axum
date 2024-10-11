@@ -1,5 +1,4 @@
 use axum::{
-    async_trait,
     extract::{path::ErrorKind, rejection::PathRejection, FromRequestParts, Path},
     RequestPartsExt,
 };
@@ -29,13 +28,12 @@ use serde::de::DeserializeOwned;
 ///
 /// let app = Router::new()
 ///     .route("/blog", get(render_blog))
-///     .route("/blog/:page", get(render_blog));
+///     .route("/blog/{page}", get(render_blog));
 /// # let app: Router = app;
 /// ```
 #[derive(Debug)]
 pub struct OptionalPath<T>(pub Option<T>);
 
-#[async_trait]
 impl<T, S> FromRequestParts<S> for OptionalPath<T>
 where
     T: DeserializeOwned + Send + 'static,
@@ -77,7 +75,7 @@ mod tests {
 
         let app = Router::new()
             .route("/", get(handle))
-            .route("/:num", get(handle));
+            .route("/{num}", get(handle));
 
         let client = TestClient::new(app);
 

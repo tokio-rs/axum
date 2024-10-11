@@ -1,12 +1,10 @@
 use super::{rejection::*, FromRequest, FromRequestParts, Request};
 use crate::{body::Body, RequestExt};
-use async_trait::async_trait;
 use bytes::{BufMut, Bytes, BytesMut};
 use http::{request::Parts, Extensions, HeaderMap, Method, Uri, Version};
 use http_body_util::BodyExt;
 use std::convert::Infallible;
 
-#[async_trait]
 impl<S> FromRequest<S> for Request
 where
     S: Send + Sync,
@@ -18,7 +16,6 @@ where
     }
 }
 
-#[async_trait]
 impl<S> FromRequestParts<S> for Method
 where
     S: Send + Sync,
@@ -30,7 +27,6 @@ where
     }
 }
 
-#[async_trait]
 impl<S> FromRequestParts<S> for Uri
 where
     S: Send + Sync,
@@ -42,7 +38,6 @@ where
     }
 }
 
-#[async_trait]
 impl<S> FromRequestParts<S> for Version
 where
     S: Send + Sync,
@@ -59,7 +54,6 @@ where
 /// Prefer using [`TypedHeader`] to extract only the headers you need.
 ///
 /// [`TypedHeader`]: https://docs.rs/axum/0.7/axum/extract/struct.TypedHeader.html
-#[async_trait]
 impl<S> FromRequestParts<S> for HeaderMap
 where
     S: Send + Sync,
@@ -71,7 +65,6 @@ where
     }
 }
 
-#[async_trait]
 impl<S> FromRequest<S> for BytesMut
 where
     S: Send + Sync,
@@ -102,7 +95,6 @@ async fn body_to_bytes_mut(body: &mut Body, bytes: &mut BytesMut) -> Result<(), 
     Ok(())
 }
 
-#[async_trait]
 impl<S> FromRequest<S> for Bytes
 where
     S: Send + Sync,
@@ -121,7 +113,6 @@ where
     }
 }
 
-#[async_trait]
 impl<S> FromRequest<S> for String
 where
     S: Send + Sync,
@@ -143,7 +134,6 @@ where
     }
 }
 
-#[async_trait]
 impl<S> FromRequestParts<S> for Parts
 where
     S: Send + Sync,
@@ -155,7 +145,6 @@ where
     }
 }
 
-#[async_trait]
 impl<S> FromRequestParts<S> for Extensions
 where
     S: Send + Sync,
@@ -167,7 +156,6 @@ where
     }
 }
 
-#[async_trait]
 impl<S> FromRequest<S> for Body
 where
     S: Send + Sync,

@@ -6,8 +6,16 @@ mod erased_json;
 #[cfg(feature = "attachment")]
 mod attachment;
 
+#[cfg(feature = "multipart")]
+pub mod multiple;
+
 #[cfg(feature = "erased-json")]
 pub use erased_json::ErasedJson;
+
+/// _not_ public API
+#[cfg(feature = "erased-json")]
+#[doc(hidden)]
+pub use erased_json::private as __private_erased_json;
 
 #[cfg(feature = "json-lines")]
 #[doc(no_inline)]
@@ -61,14 +69,6 @@ macro_rules! mime_response {
             }
         }
     };
-}
-
-mime_response! {
-    /// A HTML response.
-    ///
-    /// Will automatically get `Content-Type: text/html; charset=utf-8`.
-    Html,
-    TEXT_HTML_UTF_8,
 }
 
 mime_response! {

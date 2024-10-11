@@ -5,7 +5,6 @@
 //! ```
 
 use axum::{
-    async_trait,
     extract::{path::ErrorKind, rejection::PathRejection, FromRequestParts},
     http::{request::Parts, StatusCode},
     response::IntoResponse,
@@ -26,7 +25,7 @@ async fn main() {
         .init();
 
     // build our application with a route
-    let app = Router::new().route("/users/:user_id/teams/:team_id", get(handler));
+    let app = Router::new().route("/users/{user_id}/teams/{team_id}", get(handler));
 
     // run it
     let listener = tokio::net::TcpListener::bind("127.0.0.1:3000")
@@ -49,7 +48,6 @@ struct Params {
 // We define our own `Path` extractor that customizes the error from `axum::extract::Path`
 struct Path<T>(T);
 
-#[async_trait]
 impl<S, T> FromRequestParts<S> for Path<T>
 where
     // these trait bounds are copied from `impl FromRequest for axum::extract::path::Path`

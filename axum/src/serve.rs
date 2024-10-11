@@ -213,61 +213,8 @@ where
     type IntoFuture = private::ServeFuture;
 
     fn into_future(self) -> Self::IntoFuture {
-        private::ServeFuture(Box::pin(async move {
-            let Self {
-                tcp_listener,
-                mut make_service,
-                tcp_nodelay,
-                _marker: _,
-            } = self;
-
-            loop {
-                let (tcp_stream, remote_addr) = match tcp_accept(&tcp_listener).await {
-                    Some(conn) => conn,
-                    None => continue,
-                };
-
-                if let Some(nodelay) = tcp_nodelay {
-                    if let Err(err) = tcp_stream.set_nodelay(nodelay) {
-                        trace!("failed to set TCP_NODELAY on incoming connection: {err:#}");
-                    }
-                }
-
-                let tcp_stream = TokioIo::new(tcp_stream);
-
-                poll_fn(|cx| make_service.poll_ready(cx))
-                    .await
-                    .unwrap_or_else(|err| match err {});
-
-                let tower_service = make_service
-                    .call(IncomingStream {
-                        tcp_stream: &tcp_stream,
-                        remote_addr,
-                    })
-                    .await
-                    .unwrap_or_else(|err| match err {})
-                    .map_request(|req: Request<Incoming>| req.map(Body::new));
-
-                let hyper_service = TowerToHyperService::new(tower_service);
-
-                tokio::spawn(async move {
-                    match Builder::new(TokioExecutor::new())
-                        // upgrades needed for websockets
-                        .serve_connection_with_upgrades(tcp_stream, hyper_service)
-                        .await
-                    {
-                        Ok(()) => {}
-                        Err(_err) => {
-                            // This error only appears when the client doesn't send a request and
-                            // terminate the connection.
-                            //
-                            // If client sends one request then terminate connection whenever, it doesn't
-                            // appear.
-                        }
-                    }
-                });
-            }
-        }))
+        self.with_graceful_shutdown(std::future::pending())
+            .into_future()
     }
 }
 
@@ -365,17 +312,17 @@ where
             _marker: _,
         } = self;
 
-        let (signal_tx, signal_rx) = watch::channel(());
-        let signal_tx = Arc::new(signal_tx);
-        tokio::spawn(async move {
-            signal.await;
-            trace!("received graceful shutdown signal. Telling tasks to shutdown");
-            drop(signal_rx);
-        });
-
-        let (close_tx, close_rx) = watch::channel(());
-
         private::ServeFuture(Box::pin(async move {
+            let (signal_tx, signal_rx) = watch::channel(());
+            let signal_tx = Arc::new(signal_tx);
+            tokio::spawn(async move {
+                signal.await;
+                trace!("received graceful shutdown signal. Telling tasks to shutdown");
+                drop(signal_rx);
+            });
+
+            let (close_tx, close_rx) = watch::channel(());
+
             loop {
                 let (tcp_stream, remote_addr) = tokio::select! {
                     conn = tcp_accept(&tcp_listener) => {
@@ -420,7 +367,11 @@ where
                 let close_rx = close_rx.clone();
 
                 tokio::spawn(async move {
-                    let builder = Builder::new(TokioExecutor::new());
+                    #[allow(unused_mut)]
+                    let mut builder = Builder::new(TokioExecutor::new());
+                    // CONNECT protocol needed for HTTP/2 websockets
+                    #[cfg(feature = "http2")]
+                    builder.http2().enable_connect_protocol();
                     let conn = builder.serve_connection_with_upgrades(tcp_stream, hyper_service);
                     pin_mut!(conn);
 
@@ -645,5 +596,21 @@ mod tests {
 
         assert_eq!(address.ip(), IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)));
         assert_ne!(address.port(), 0);
+    }
+
+    #[test]
+    fn into_future_outside_tokio() {
+        let router: Router = Router::new();
+        let addr = "0.0.0.0:0";
+
+        let rt = tokio::runtime::Builder::new_multi_thread()
+            .enable_all()
+            .build()
+            .unwrap();
+
+        let listener = rt.block_on(tokio::net::TcpListener::bind(addr)).unwrap();
+
+        // Call Serve::into_future outside of a tokio context. This used to panic.
+        _ = serve(listener, router).into_future();
     }
 }

@@ -7,9 +7,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- **breaking:** The tuple and tuple_struct `Path` extractor deserializers now check that the number of parameters matches the tuple length exactly ([#2931])
+- **added:** Add `NoContent` as a self-described shortcut for `StatusCode::NO_CONTENT` ([#2978])
+- **added:** Add support for WebSockets over HTTP/2 ([#2894]).
+  They can be enabled by changing `get(ws_endpoint)` handlers to `any(ws_endpoint)`
+- **added:** Add `MethodFilter::CONNECT`, `routing::connect[_service]`
+  and `MethodRouter::connect[_service]` ([#2961])
+- **fixed:** Avoid setting `content-length` before middleware ([#2897]).
+  This allows middleware to add bodies to requests without needing to manually set `content-length`
+- **breaking:** Remove `WebSocket::close` ([#2974]).
+  Users should explicitly send close messages themselves.
 
+[#2897]: https://github.com/tokio-rs/axum/pull/2897
+[#2984]: https://github.com/tokio-rs/axum/pull/2984
+[#2961]: https://github.com/tokio-rs/axum/pull/2961
+[#2974]: https://github.com/tokio-rs/axum/pull/2974
+[#2978]: https://github.com/tokio-rs/axum/pull/2978
+
+# 0.8.0
+
+## alpha.1
+
+- **breaking:** Require `Sync` for all handlers and services added to `Router`
+  and `MethodRouter` ([#2473])
+- **breaking:** The tuple and tuple_struct `Path` extractor deserializers now check that the number of parameters matches the tuple length exactly ([#2931])
+- **breaking:** Upgrade matchit to 0.8, changing the path parameter syntax from `/:single` and `/*many`
+  to `/{single}` and `/{*many}`; the old syntax produces a panic to avoid silent change in behavior ([#2645])
+- **change:** Update minimum rust version to 1.75 ([#2943])
+
+[#2473]: https://github.com/tokio-rs/axum/pull/2473
+[#2645]: https://github.com/tokio-rs/axum/pull/2645
 [#2931]: https://github.com/tokio-rs/axum/pull/2931
+[#2943]: https://github.com/tokio-rs/axum/pull/2943
+
+# 0.7.7
+
+- **change**: Remove manual tables of content from the documentation, since
+  rustdoc now generates tables of content in the sidebar ([#2921])
+
+[#2921]: https://github.com/tokio-rs/axum/pull/2921
 
 # 0.7.6
 
@@ -46,7 +81,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 [#2201]: https://github.com/tokio-rs/axum/pull/2201
 [#2483]: https://github.com/tokio-rs/axum/pull/2483
-[#2201]: https://github.com/tokio-rs/axum/pull/2201
 [#2484]: https://github.com/tokio-rs/axum/pull/2484
 
 # 0.7.3 (29. December, 2023)
@@ -617,7 +651,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ```rust
   struct MyExtractor { /* ... */ }
 
-  #[async_trait]
   impl<B> FromRequest<B> for MyExtractor
   where
       B: Send,
@@ -636,13 +669,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   use axum::{
       extract::{FromRequest, FromRequestParts},
       http::{StatusCode, Request, request::Parts},
-      async_trait,
   };
 
   struct MyExtractor { /* ... */ }
 
   // implement `FromRequestParts` if you don't need to consume the request body
-  #[async_trait]
   impl<S> FromRequestParts<S> for MyExtractor
   where
       S: Send + Sync,
@@ -655,7 +686,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   }
 
   // implement `FromRequest` if you do need to consume the request body
-  #[async_trait]
   impl<S, B> FromRequest<S, B> for MyExtractor
   where
       S: Send + Sync,
@@ -1203,7 +1233,6 @@ Yanked, as it didn't compile in release mode.
   ```rust
   struct MyExtractor { /* ... */ }
 
-  #[async_trait]
   impl<B> FromRequest<B> for MyExtractor
   where
       B: Send,
@@ -1222,13 +1251,11 @@ Yanked, as it didn't compile in release mode.
   use axum::{
       extract::{FromRequest, FromRequestParts},
       http::{StatusCode, Request, request::Parts},
-      async_trait,
   };
 
   struct MyExtractor { /* ... */ }
 
   // implement `FromRequestParts` if you don't need to consume the request body
-  #[async_trait]
   impl<S> FromRequestParts<S> for MyExtractor
   where
       S: Send + Sync,
@@ -1241,7 +1268,6 @@ Yanked, as it didn't compile in release mode.
   }
 
   // implement `FromRequest` if you do need to consume the request body
-  #[async_trait]
   impl<S, B> FromRequest<S, B> for MyExtractor
   where
       S: Send + Sync,

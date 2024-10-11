@@ -14,7 +14,6 @@
 //! ```
 
 use axum::{
-    async_trait,
     extract::{FromRef, FromRequestParts, State},
     http::{request::Parts, StatusCode},
     routing::get,
@@ -75,7 +74,6 @@ async fn using_connection_pool_extractor(
 // which setup is appropriate depends on your application
 struct DatabaseConnection(sqlx::pool::PoolConnection<sqlx::Postgres>);
 
-#[async_trait]
 impl<S> FromRequestParts<S> for DatabaseConnection
 where
     PgPool: FromRef<S>,
