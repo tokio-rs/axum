@@ -623,7 +623,7 @@ pub enum Message {
     /// you may still read messages,
     /// but attempts to send another message will error.
     /// After receiving a close frame,
-    /// Axum will automatically respond with a close frame if necessary
+    /// axum will automatically respond with a close frame if necessary
     /// (you do not have to deal with this yourself).
     /// Since no further messages will be received,
     /// you may either do nothing
