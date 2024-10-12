@@ -1,7 +1,7 @@
 Add a fallback [`Handler`] for the case where a route exists, but the method of the request is not supported.
 
-Sets the Fallback on the underlying [`MethodRouter`] to be called when it
-matches no method.
+Sets a fallback on all previously registered [`MethodRouter`]s,
+to be called when no matching method handler is set.
 
 ```rust,no_run
 use axum::{response::IntoResponse, routing::get, Router};
