@@ -31,7 +31,7 @@ async fn main() {
 }
 ```
 
-The Fallback only applies if there is a MethodRouter registered for the given Route, 
+The fallback only applies if there is a `MethodRouter` registered for a given path, 
 but the method used in the Request is not specified. In the example, a GET on 
 `http://localhost:3000` causes the `hello_world` handler to react, while issuing a 
 POST triggers `handle_405`. Calling an entirely different route, like `http://localhost:3000/hello` 
