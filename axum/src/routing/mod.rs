@@ -354,6 +354,18 @@ where
         .fallback_endpoint(Endpoint::Route(route))
     }
 
+    #[doc = include_str!("../docs/routing/method_not_allowed_fallback.md")]
+    pub fn method_not_allowed_fallback<H, T>(self, handler: H) -> Self
+    where
+        H: Handler<T, S>,
+        T: 'static,
+    {
+        tap_inner!(self, mut this => {
+            this.path_router
+                .method_not_allowed_fallback(handler.clone())
+        })
+    }
+
     fn fallback_endpoint(self, endpoint: Endpoint<S>) -> Self {
         tap_inner!(self, mut this => {
             this.fallback_router.set_fallback(endpoint);
