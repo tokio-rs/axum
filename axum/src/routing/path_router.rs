@@ -1,4 +1,7 @@
-use crate::extract::{nested_path::SetNestedPath, Request};
+use crate::{
+    extract::{nested_path::SetNestedPath, Request},
+    handler::Handler,
+};
 use axum_core::response::IntoResponse;
 use matchit::MatchError;
 use std::{borrow::Cow, collections::HashMap, convert::Infallible, fmt, sync::Arc};
@@ -77,6 +80,18 @@ where
         self.routes.insert(id, endpoint);
 
         Ok(())
+    }
+
+    pub(super) fn method_not_allowed_fallback<H, T>(&mut self, handler: H)
+    where
+        H: Handler<T, S>,
+        T: 'static,
+    {
+        for (_, endpoint) in self.routes.iter_mut() {
+            if let Endpoint::MethodRouter(rt) = endpoint {
+                *rt = rt.clone().default_fallback(handler.clone());
+            }
+        }
     }
 
     pub(super) fn route_service<T>(
