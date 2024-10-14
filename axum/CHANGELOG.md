@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+- **added:** Add `method_not_allowed_fallback` to set a fallback when a path matches but there is no handler for the given HTTP method ([#2903])
 - **added:** Add `NoContent` as a self-described shortcut for `StatusCode::NO_CONTENT` ([#2978])
 - **added:** Add support for WebSockets over HTTP/2 ([#2894]).
   They can be enabled by changing `get(ws_endpoint)` handlers to `any(ws_endpoint)`
@@ -18,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Users should explicitly send close messages themselves.
 
 [#2897]: https://github.com/tokio-rs/axum/pull/2897
+[#2903]: https://github.com/tokio-rs/axum/pull/2903
 [#2984]: https://github.com/tokio-rs/axum/pull/2984
 [#2961]: https://github.com/tokio-rs/axum/pull/2961
 [#2974]: https://github.com/tokio-rs/axum/pull/2974
