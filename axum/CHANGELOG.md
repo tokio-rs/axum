@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+- **breaking:** Move `Host` extractor to `axum-extra` ([#2956])
 - **added:** Add `method_not_allowed_fallback` to set a fallback when a path matches but there is no handler for the given HTTP method ([#2903])
 - **added:** Add `NoContent` as a self-described shortcut for `StatusCode::NO_CONTENT` ([#2978])
 - **added:** Add support for WebSockets over HTTP/2.
@@ -21,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#2897]: https://github.com/tokio-rs/axum/pull/2897
 [#2903]: https://github.com/tokio-rs/axum/pull/2903
 [#2894]: https://github.com/tokio-rs/axum/pull/2894
+[#2956]: https://github.com/tokio-rs/axum/pull/2956
 [#2961]: https://github.com/tokio-rs/axum/pull/2961
 [#2974]: https://github.com/tokio-rs/axum/pull/2974
 [#2978]: https://github.com/tokio-rs/axum/pull/2978
