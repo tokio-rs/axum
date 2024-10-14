@@ -84,6 +84,7 @@ If your project isn't listed here and you would like it to be, please feel free 
 - [cobrust](https://github.com/scotow/cobrust): Multiplayer web based snake game.
 - [meta-cross](https://github.com/scotow/meta-cross): Tweaked version of Tic-Tac-Toe.
 - [httq](https://github.com/scotow/httq) HTTP to MQTT trivial proxy.
+- [Pods-Blitz](https://pods-blitz.org) Self-hosted podcast publisher. Uses the crates axum-login, password-auth, sqlx and handlebars (for HTML templates). 
 - [ReductStore](https://github.com/reductstore/reductstore): A time series database for storing and managing large amounts of blob data
 - [randoku](https://github.com/stchris/randoku): A tiny web service which generates random numbers and shuffles lists randomly
 - [sero](https://github.com/clowzed/sero): Host static sites with custom subdomains as surge.sh does. But with full control and cool new features. (axum, sea-orm, postgresql)
