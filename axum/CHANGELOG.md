@@ -9,14 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **added:** Add `method_not_allowed_fallback` to set a fallback when a path matches but there is no handler for the given HTTP method ([#2903])
 - **added:** Add `NoContent` as a self-described shortcut for `StatusCode::NO_CONTENT` ([#2978])
-- **added:** Add support for WebSockets over HTTP/2 ([#2894]).
-  They can be enabled by changing `get(ws_endpoint)` handlers to `any(ws_endpoint)`
+- **added:** Add support for WebSockets over HTTP/2.
+  They can be enabled by changing `get(ws_endpoint)` handlers to `any(ws_endpoint)` ([#2894])
 - **added:** Add `MethodFilter::CONNECT`, `routing::connect[_service]`
   and `MethodRouter::connect[_service]` ([#2961])
-- **fixed:** Avoid setting `content-length` before middleware ([#2897]).
-  This allows middleware to add bodies to requests without needing to manually set `content-length`
-- **breaking:** Remove `WebSocket::close` ([#2974]).
-  Users should explicitly send close messages themselves.
+- **fixed:** Avoid setting `content-length` before middleware.
+  This allows middleware to add bodies to requests without needing to manually set `content-length` ([#2897])
+- **breaking:** Remove `WebSocket::close`.
+  Users should explicitly send close messages themselves. ([#2974])
 
 [#2897]: https://github.com/tokio-rs/axum/pull/2897
 [#2903]: https://github.com/tokio-rs/axum/pull/2903
