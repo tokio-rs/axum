@@ -7,16 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+- **breaking:** Move `Host` extractor to `axum-extra` ([#2956])
+- **added:** Add `method_not_allowed_fallback` to set a fallback when a path matches but there is no handler for the given HTTP method ([#2903])
+- **added:** Add `NoContent` as a self-described shortcut for `StatusCode::NO_CONTENT` ([#2978])
+- **added:** Add support for WebSockets over HTTP/2.
+  They can be enabled by changing `get(ws_endpoint)` handlers to `any(ws_endpoint)` ([#2894])
+- **added:** Add `MethodFilter::CONNECT`, `routing::connect[_service]`
+  and `MethodRouter::connect[_service]` ([#2961])
+- **fixed:** Avoid setting `content-length` before middleware.
+  This allows middleware to add bodies to requests without needing to manually set `content-length` ([#2897])
+- **breaking:** Remove `WebSocket::close`.
+  Users should explicitly send close messages themselves. ([#2974])
+
+[#2897]: https://github.com/tokio-rs/axum/pull/2897
+[#2903]: https://github.com/tokio-rs/axum/pull/2903
+[#2894]: https://github.com/tokio-rs/axum/pull/2894
+[#2956]: https://github.com/tokio-rs/axum/pull/2956
+[#2961]: https://github.com/tokio-rs/axum/pull/2961
+[#2974]: https://github.com/tokio-rs/axum/pull/2974
+[#2978]: https://github.com/tokio-rs/axum/pull/2978
+
+# 0.8.0
+
+## alpha.1
+
 - **breaking:** Require `Sync` for all handlers and services added to `Router`
   and `MethodRouter` ([#2473])
 - **breaking:** The tuple and tuple_struct `Path` extractor deserializers now check that the number of parameters matches the tuple length exactly ([#2931])
-- **breaking:** Move `Host` extractor to `axum-extra` ([#2956])
+- **breaking:** Upgrade matchit to 0.8, changing the path parameter syntax from `/:single` and `/*many`
+  to `/{single}` and `/{*many}`; the old syntax produces a panic to avoid silent change in behavior ([#2645])
 - **change:** Update minimum rust version to 1.75 ([#2943])
 
 [#2473]: https://github.com/tokio-rs/axum/pull/2473
+[#2645]: https://github.com/tokio-rs/axum/pull/2645
 [#2931]: https://github.com/tokio-rs/axum/pull/2931
 [#2943]: https://github.com/tokio-rs/axum/pull/2943
-[#2956]: https://github.com/tokio-rs/axum/pull/2956
 
 # 0.7.7
 

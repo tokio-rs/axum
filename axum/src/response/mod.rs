@@ -1,6 +1,6 @@
 #![doc = include_str!("../docs/response.md")]
 
-use http::{header, HeaderValue};
+use http::{header, HeaderValue, StatusCode};
 
 mod redirect;
 
@@ -56,6 +56,31 @@ where
 impl<T> From<T> for Html<T> {
     fn from(inner: T) -> Self {
         Self(inner)
+    }
+}
+
+/// An empty response with 204 No Content status.
+///
+/// Due to historical and implementation reasons, the `IntoResponse` implementation of `()`
+/// (unit type) returns an empty response with 200 [`StatusCode::OK`] status.
+/// If you specifically want a 204 [`StatusCode::NO_CONTENT`] status, you can use either `StatusCode` type
+/// directly, or this shortcut struct for self-documentation.
+///
+/// ```
+/// use axum::{extract::Path, response::NoContent};
+///
+/// async fn delete_user(Path(user): Path<String>) -> Result<NoContent, String> {
+///     // ...access database...
+/// # drop(user);
+///     Ok(NoContent)
+/// }
+/// ```
+#[derive(Debug, Clone, Copy)]
+pub struct NoContent;
+
+impl IntoResponse for NoContent {
+    fn into_response(self) -> Response {
+        StatusCode::NO_CONTENT.into_response()
     }
 }
 
@@ -222,5 +247,13 @@ mod tests {
             .route("/", get(header_array_impl_into_response))
             .route("/", get(header_array_extension_body))
             .route("/", get(header_array_extension_mixed_body));
+    }
+
+    #[test]
+    fn no_content() {
+        assert_eq!(
+            super::NoContent.into_response().status(),
+            StatusCode::NO_CONTENT,
+        )
     }
 }

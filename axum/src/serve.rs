@@ -312,17 +312,17 @@ where
             _marker: _,
         } = self;
 
-        let (signal_tx, signal_rx) = watch::channel(());
-        let signal_tx = Arc::new(signal_tx);
-        tokio::spawn(async move {
-            signal.await;
-            trace!("received graceful shutdown signal. Telling tasks to shutdown");
-            drop(signal_rx);
-        });
-
-        let (close_tx, close_rx) = watch::channel(());
-
         private::ServeFuture(Box::pin(async move {
+            let (signal_tx, signal_rx) = watch::channel(());
+            let signal_tx = Arc::new(signal_tx);
+            tokio::spawn(async move {
+                signal.await;
+                trace!("received graceful shutdown signal. Telling tasks to shutdown");
+                drop(signal_rx);
+            });
+
+            let (close_tx, close_rx) = watch::channel(());
+
             loop {
                 let (tcp_stream, remote_addr) = tokio::select! {
                     conn = tcp_accept(&tcp_listener) => {
@@ -367,7 +367,11 @@ where
                 let close_rx = close_rx.clone();
 
                 tokio::spawn(async move {
-                    let builder = Builder::new(TokioExecutor::new());
+                    #[allow(unused_mut)]
+                    let mut builder = Builder::new(TokioExecutor::new());
+                    // CONNECT protocol needed for HTTP/2 websockets
+                    #[cfg(feature = "http2")]
+                    builder.http2().enable_connect_protocol();
                     let conn = builder.serve_connection_with_upgrades(tcp_stream, hyper_service);
                     pin_mut!(conn);
 
@@ -592,5 +596,21 @@ mod tests {
 
         assert_eq!(address.ip(), IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)));
         assert_ne!(address.port(), 0);
+    }
+
+    #[test]
+    fn into_future_outside_tokio() {
+        let router: Router = Router::new();
+        let addr = "0.0.0.0:0";
+
+        let rt = tokio::runtime::Builder::new_multi_thread()
+            .enable_all()
+            .build()
+            .unwrap();
+
+        let listener = rt.block_on(tokio::net::TcpListener::bind(addr)).unwrap();
+
+        // Call Serve::into_future outside of a tokio context. This used to panic.
+        _ = serve(listener, router).into_future();
     }
 }

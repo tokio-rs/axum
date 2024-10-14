@@ -3,6 +3,7 @@ use crate::{
     error_handling::HandleErrorLayer,
     extract::{self, DefaultBodyLimit, FromRef, Path, State},
     handler::{Handler, HandlerWithoutStateExt},
+    middleware::{self, Next},
     response::{IntoResponse, Response},
     routing::{
         delete, get, get_service, on, on_service, patch, patch_service,
@@ -15,6 +16,7 @@ use crate::{
     BoxError, Extension, Json, Router, ServiceExt,
 };
 use axum_core::extract::Request;
+use counting_cloneable_state::CountingCloneableState;
 use futures_util::stream::StreamExt;
 use http::{
     header::{ALLOW, CONTENT_LENGTH, HOST},
@@ -26,7 +28,7 @@ use serde_json::json;
 use std::{
     convert::Infallible,
     future::{ready, IntoFuture, Ready},
-    sync::atomic::{AtomicBool, AtomicUsize, Ordering},
+    sync::atomic::{AtomicUsize, Ordering},
     task::{Context, Poll},
     time::Duration,
 };
@@ -907,41 +909,40 @@ fn test_path_for_nested_route() {
 
 #[crate::test]
 async fn state_isnt_cloned_too_much() {
-    static SETUP_DONE: AtomicBool = AtomicBool::new(false);
-    static COUNT: AtomicUsize = AtomicUsize::new(0);
-
-    struct AppState;
-
-    impl Clone for AppState {
-        fn clone(&self) -> Self {
-            if SETUP_DONE.load(Ordering::SeqCst) {
-                let bt = std::backtrace::Backtrace::force_capture();
-                let bt = bt
-                    .to_string()
-                    .lines()
-                    .filter(|line| line.contains("axum") || line.contains("./src"))
-                    .collect::<Vec<_>>()
-                    .join("\n");
-                println!("AppState::Clone:\n===============\n{bt}\n");
-                COUNT.fetch_add(1, Ordering::SeqCst);
-            }
-
-            Self
-        }
-    }
+    let state = CountingCloneableState::new();
 
     let app = Router::new()
-        .route("/", get(|_: State<AppState>| async {}))
-        .with_state(AppState);
+        .route("/", get(|_: State<CountingCloneableState>| async {}))
+        .with_state(state.clone());
 
     let client = TestClient::new(app);
 
     // ignore clones made during setup
-    SETUP_DONE.store(true, Ordering::SeqCst);
+    state.setup_done();
 
     client.get("/").await;
 
-    assert_eq!(COUNT.load(Ordering::SeqCst), 4);
+    assert_eq!(state.count(), 3);
+}
+
+#[crate::test]
+async fn state_isnt_cloned_too_much_in_layer() {
+    async fn layer(State(_): State<CountingCloneableState>, req: Request, next: Next) -> Response {
+        next.run(req).await
+    }
+
+    let state = CountingCloneableState::new();
+
+    let app = Router::new().layer(middleware::from_fn_with_state(state.clone(), layer));
+
+    let client = TestClient::new(app);
+
+    // ignore clones made during setup
+    state.setup_done();
+
+    client.get("/").await;
+
+    assert_eq!(state.count(), 3);
 }
 
 #[crate::test]
@@ -1072,4 +1073,23 @@ async fn colon_in_route() {
 )]
 async fn asterisk_in_route() {
     _ = Router::<()>::new().route("/*foo", get(|| async move {}));
+}
+
+#[crate::test]
+async fn middleware_adding_body() {
+    let app = Router::new()
+        .route("/", get(()))
+        .layer(MapResponseLayer::new(|mut res: Response| -> Response {
+            // If there is a content-length header, its value will be zero and Axum will avoid
+            // overwriting it. But this means our content-length doesn’t match the length of the
+            // body, which leads to panics in Hyper. Thus we have to ensure that Axum doesn’t add
+            // on content-length headers until after middleware has been run.
+            assert!(!res.headers().contains_key("content-length"));
+            *res.body_mut() = "…".into();
+            res
+        }));
+
+    let client = TestClient::new(app);
+    let res = client.get("/").await;
+    assert_eq!(res.text().await, "…");
 }

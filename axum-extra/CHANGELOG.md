@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning].
 
 # Unreleased
 
+- **added:** Add `RouterExt::typed_connect` ([#2961])
+- **added:** Add `json!` for easy construction of JSON responses ([#2962])
+
+[#2961]: https://github.com/tokio-rs/axum/pull/2961
+[#2962]: https://github.com/tokio-rs/axum/pull/2962
+
+# 0.10.0
+
+# alpha.1
+
 - **breaking:** Update to prost 0.13. Used for the `Protobuf` extractor ([#2829])
 - **change:** Update minimum rust version to 1.75 ([#2943])
 

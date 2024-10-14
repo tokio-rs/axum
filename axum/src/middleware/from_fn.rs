@@ -170,7 +170,7 @@ pub fn from_fn_with_state<F, S, T>(state: S, f: F) -> FromFnLayer<F, S, T> {
 ///
 /// [`tower::Layer`] is used to apply middleware to [`Router`](crate::Router)'s.
 ///
-/// Created with [`from_fn`]. See that function for more details.
+/// Created with [`from_fn`] or [`from_fn_with_state`]. See those functions for more details.
 #[must_use]
 pub struct FromFnLayer<F, S, T> {
     f: F,
@@ -224,7 +224,7 @@ where
 
 /// A middleware created from an async function.
 ///
-/// Created with [`from_fn`]. See that function for more details.
+/// Created with [`from_fn`] or [`from_fn_with_state`]. See those functions for more details.
 pub struct FromFn<F, S, I, T> {
     f: F,
     inner: I,
