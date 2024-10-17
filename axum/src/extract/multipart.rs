@@ -109,7 +109,7 @@ pub struct Field<'a> {
     _multipart: &'a mut Multipart,
 }
 
-impl<'a> Stream for Field<'a> {
+impl Stream for Field<'_> {
     type Item = Result<Bytes, MultipartError>;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {

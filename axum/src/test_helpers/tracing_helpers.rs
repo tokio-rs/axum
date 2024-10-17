@@ -73,7 +73,7 @@ impl<'a> MakeWriter<'a> for TestMakeWriter {
 
 struct Writer<'a>(&'a TestMakeWriter);
 
-impl<'a> io::Write for Writer<'a> {
+impl io::Write for Writer<'_> {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         match &mut *self.0.write.lock().unwrap() {
             Some(vec) => {

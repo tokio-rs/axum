@@ -309,7 +309,7 @@ struct SignedCookieJarIter<'a, K> {
     iter: cookie::Iter<'a>,
 }
 
-impl<'a, K> Iterator for SignedCookieJarIter<'a, K> {
+impl<K> Iterator for SignedCookieJarIter<'_, K> {
     type Item = Cookie<'static>;
 
     fn next(&mut self) -> Option<Self::Item> {
