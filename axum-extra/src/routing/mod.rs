@@ -1,7 +1,7 @@
 //! Additional types for defining routes.
 
 use axum::{
-    extract::Request,
+    extract::{OriginalUri, Request},
     response::{IntoResponse, Redirect, Response},
     routing::{any, MethodRouter},
     Router,
@@ -313,7 +313,7 @@ fn add_tsr_redirect_route<S>(router: Router<S>, path: &str) -> Router<S>
 where
     S: Clone + Send + Sync + 'static,
 {
-    async fn redirect_handler(uri: Uri) -> Response {
+    async fn redirect_handler(OriginalUri(uri): OriginalUri) -> Response {
         let new_uri = map_path(uri, |path| {
             path.strip_suffix('/')
                 .map(Cow::Borrowed)
@@ -430,6 +430,22 @@ mod tests {
         let res = client.get("/foo/?a=a").await;
         assert_eq!(res.status(), StatusCode::PERMANENT_REDIRECT);
         assert_eq!(res.headers()["location"], "/foo?a=a");
+    }
+
+    #[tokio::test]
+    async fn tsr_works_in_nested_router() {
+        let app = Router::new().nest(
+            "/neko",
+            Router::new().route_with_tsr("/nyan/", get(|| async {})),
+        );
+
+        let client = TestClient::new(app);
+        let res = client.get("/neko/nyan/").await;
+        assert_eq!(res.status(), StatusCode::OK);
+
+        let res = client.get("/neko/nyan").await;
+        assert_eq!(res.status(), StatusCode::PERMANENT_REDIRECT);
+        assert_eq!(res.headers()["location"], "/neko/nyan/");
     }
 
     #[test]
