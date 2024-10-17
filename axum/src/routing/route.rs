@@ -250,8 +250,6 @@ impl Future for InfallibleRouteFuture {
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         match futures_util::ready!(self.project().future.poll(cx)) {
             Ok(response) => Poll::Ready(response),
-
-            #[allow(unreachable_patterns)]
             Err(err) => match err {},
         }
     }
