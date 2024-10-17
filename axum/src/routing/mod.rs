@@ -558,7 +558,7 @@ pub struct RouterAsService<'a, B, S = ()> {
     _marker: PhantomData<B>,
 }
 
-impl<'a, B> Service<Request<B>> for RouterAsService<'a, B, ()>
+impl<B> Service<Request<B>> for RouterAsService<'_, B, ()>
 where
     B: HttpBody<Data = bytes::Bytes> + Send + 'static,
     B::Error: Into<axum_core::BoxError>,
@@ -578,7 +578,7 @@ where
     }
 }
 
-impl<'a, B, S> fmt::Debug for RouterAsService<'a, B, S>
+impl<B, S> fmt::Debug for RouterAsService<'_, B, S>
 where
     S: fmt::Debug,
 {
