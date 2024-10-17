@@ -11,8 +11,6 @@
 //!
 //! [hyper-util]: https://crates.io/crates/hyper-util
 
-#![allow(unreachable_patterns)]
-
 use std::convert::Infallible;
 use std::net::SocketAddr;
 
