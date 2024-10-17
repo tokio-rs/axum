@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+- **fixed:** Skip SSE incompatible chars of `serde_json::RawValue` in `Event::json_data` ([#2992])
 - **added:** Add `method_not_allowed_fallback` to set a fallback when a path matches but there is no handler for the given HTTP method ([#2903])
 - **added:** Add `MethodFilter::CONNECT`, `routing::connect[_service]`
   and `MethodRouter::connect[_service]` ([#2961])
@@ -15,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#2903]: https://github.com/tokio-rs/axum/pull/2903
 [#2961]: https://github.com/tokio-rs/axum/pull/2961
 [#2978]: https://github.com/tokio-rs/axum/pull/2978
+[#2992]: https://github.com/tokio-rs/axum/pull/2992
 
 # 0.7.7
 
