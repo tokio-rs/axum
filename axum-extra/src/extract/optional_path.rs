@@ -94,7 +94,7 @@ mod tests {
         let res = client.get("/NaN").await;
         assert_eq!(
             res.text().await,
-            "Invalid URL: Cannot parse `\"NaN\"` to a `u32`"
+            "Invalid URL: Cannot parse `NaN` to a `u32`"
         );
     }
 }
