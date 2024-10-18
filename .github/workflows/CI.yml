@@ -22,6 +22,7 @@ jobs:
     - uses: Swatinem/rust-cache@v2
       with:
         save-if: ${{ github.ref == 'refs/heads/main' }}
+        prefix-key: "v0-rust-ubuntu-24.04"
     - name: Check
       run: cargo clippy --workspace --all-targets --all-features -- -D warnings
     - name: rustfmt
@@ -35,6 +36,7 @@ jobs:
     - uses: Swatinem/rust-cache@v2
       with:
         save-if: ${{ github.ref == 'refs/heads/main' }}
+        prefix-key: "v0-rust-ubuntu-24.04"
     - name: cargo doc
       env:
         RUSTDOCFLAGS: "-D rustdoc::all -A rustdoc::private-doc-tests"
@@ -49,6 +51,7 @@ jobs:
     - uses: Swatinem/rust-cache@v2
       with:
         save-if: ${{ github.ref == 'refs/heads/main' }}
+        prefix-key: "v0-rust-ubuntu-24.04"
     - name: Install cargo-hack
       run: |
         curl -LsSf https://github.com/taiki-e/cargo-hack/releases/latest/download/cargo-hack-x86_64-unknown-linux-gnu.tar.gz | tar xzf - -C ~/.cargo/bin
@@ -69,6 +72,7 @@ jobs:
     - uses: Swatinem/rust-cache@v2
       with:
         save-if: ${{ github.ref == 'refs/heads/main' }}
+        prefix-key: "v0-rust-ubuntu-24.04"
     - name: Install cargo-public-api-crates
       run: |
         cargo install --git https://github.com/davidpdrsn/cargo-public-api-crates
@@ -93,6 +97,7 @@ jobs:
     - uses: Swatinem/rust-cache@v2
       with:
         save-if: ${{ github.ref == 'refs/heads/main' }}
+        prefix-key: "v0-rust-ubuntu-24.04"
     - name: Run tests
       run: cargo test --workspace --all-features --all-targets
 
@@ -111,6 +116,7 @@ jobs:
     - uses: Swatinem/rust-cache@v2
       with:
         save-if: ${{ github.ref == 'refs/heads/main' }}
+        prefix-key: "v0-rust-ubuntu-24.04"
     - name: Run nightly tests
       working-directory: axum-macros
       run: cargo test
@@ -130,6 +136,7 @@ jobs:
     - uses: Swatinem/rust-cache@v2
       with:
         save-if: ${{ github.ref == 'refs/heads/main' }}
+        prefix-key: "v0-rust-ubuntu-24.04"
     - name: Select minimal version
       run: cargo +nightly update -Z minimal-versions
     - name: Fix up Cargo.lock
@@ -164,6 +171,7 @@ jobs:
     - uses: Swatinem/rust-cache@v2
       with:
         save-if: ${{ github.ref == 'refs/heads/main' }}
+        prefix-key: "v0-rust-ubuntu-24.04"
     - name: Run doc tests
       run: cargo test --all-features --doc
 
@@ -194,6 +202,7 @@ jobs:
     - uses: Swatinem/rust-cache@v2
       with:
         save-if: ${{ github.ref == 'refs/heads/main' }}
+        prefix-key: "v0-rust-ubuntu-24.04"
     - name: Check
       env:
         # Clang has native cross-compilation support
@@ -220,6 +229,7 @@ jobs:
     - uses: Swatinem/rust-cache@v2
       with:
         save-if: ${{ github.ref == 'refs/heads/main' }}
+        prefix-key: "v0-rust-ubuntu-24.04"
     - name: Check
       run: >
         cargo
@@ -235,6 +245,7 @@ jobs:
     - uses: Swatinem/rust-cache@v2
       with:
         save-if: ${{ github.ref == 'refs/heads/main' }}
+        prefix-key: "v0-rust-ubuntu-24.04"
     - name: Install cargo-sort
       run: |
         cargo install cargo-sort
