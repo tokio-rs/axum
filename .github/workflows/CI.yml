@@ -96,7 +96,7 @@ jobs:
     - name: Run tests
       run: cargo test --workspace --all-features --all-targets
 
-  # some examples doesn't support our MSRV so we only test axum itself on our MSRV
+  # some examples don't support our MSRV so we only test axum itself on our MSRV
   test-nightly:
     needs: check
     runs-on: ubuntu-latest
@@ -115,7 +115,7 @@ jobs:
       working-directory: axum-macros
       run: cargo test
 
-  # some examples doesn't support our MSRV (such as async-graphql)
+  # some examples don't support our MSRV (such as async-graphql)
   # so we only test axum itself on our MSRV
   test-msrv:
     needs: check
