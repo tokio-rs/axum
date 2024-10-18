@@ -12,7 +12,7 @@ on:
 
 jobs:
   check:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
     - uses: actions/checkout@v4
     - uses: taiki-e/install-action@protoc
@@ -28,7 +28,7 @@ jobs:
       run: cargo fmt --all --check
 
   check-docs:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
     - uses: actions/checkout@v4
     - uses: dtolnay/rust-toolchain@stable
@@ -41,7 +41,7 @@ jobs:
       run: cargo doc --all-features --no-deps
 
   cargo-hack:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
     - uses: actions/checkout@v4
     - uses: taiki-e/install-action@protoc
@@ -56,7 +56,7 @@ jobs:
       run: cargo hack check --each-feature --no-dev-deps --all
 
   cargo-public-api-crates:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     strategy:
       matrix:
         crate: [axum, axum-core, axum-extra, axum-macros]
@@ -80,7 +80,7 @@ jobs:
 
   test-versions:
     needs: check
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     strategy:
       matrix:
         rust: [stable, beta]
@@ -99,7 +99,7 @@ jobs:
   # some examples don't support our MSRV so we only test axum itself on our MSRV
   test-nightly:
     needs: check
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
     - uses: actions/checkout@v4
     - name: Get rust-toolchain version
@@ -119,7 +119,7 @@ jobs:
   # so we only test axum itself on our MSRV
   test-msrv:
     needs: check
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
     - uses: actions/checkout@v4
     - uses: dtolnay/rust-toolchain@master
@@ -157,7 +157,7 @@ jobs:
 
   test-docs:
     needs: check
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
     - uses: actions/checkout@v4
     - uses: dtolnay/rust-toolchain@stable
@@ -169,7 +169,7 @@ jobs:
 
   deny-check:
     name: cargo-deny check
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     continue-on-error: ${{ matrix.checks == 'advisories' }}
     strategy:
       matrix:
@@ -185,7 +185,7 @@ jobs:
 
   armv5te-unknown-linux-musleabi:
     needs: check
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
     - uses: actions/checkout@v4
     - uses: dtolnay/rust-toolchain@stable
@@ -211,7 +211,7 @@ jobs:
 
   wasm32-unknown-unknown:
     needs: check
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
     - uses: actions/checkout@v4
     - uses: dtolnay/rust-toolchain@stable
@@ -228,7 +228,7 @@ jobs:
         --target wasm32-unknown-unknown
 
   dependencies-are-sorted:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
     - uses: actions/checkout@v4
     - uses: dtolnay/rust-toolchain@beta
@@ -247,7 +247,7 @@ jobs:
 
   typos:
     name: Spell Check with Typos
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     if: github.event_name == 'push' || !github.event.pull_request.draft
 
     steps:
