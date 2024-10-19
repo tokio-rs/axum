@@ -139,7 +139,7 @@ mod tests {
         assert_eq!(value, "192.0.2.60");
 
         // is case insensitive
-        let headers = header_map(&[(FORWARDED, "HOST=192.0.2.60;proto=http;by=203.0.113.43")]);
+        let headers = header_map(&[(FORWARDED, "host=192.0.2.60;proto=http;by=203.0.113.43")]);
         let value = parse_forwarded(&headers).unwrap();
         assert_eq!(value, "192.0.2.60");
 
