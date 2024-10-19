@@ -56,3 +56,10 @@ pub use crate::json_lines::JsonLines;
 #[cfg(feature = "typed-header")]
 #[doc(no_inline)]
 pub use crate::typed_header::TypedHeader;
+
+#[cfg(feature = "scheme")]
+pub mod scheme;
+
+#[cfg(feature = "scheme")]
+#[doc(no_inline)]
+pub use self::scheme::{SchemeMissing, Scheme};
