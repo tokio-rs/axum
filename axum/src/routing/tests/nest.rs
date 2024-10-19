@@ -228,7 +228,7 @@ async fn nested_multiple_routes() {
 }
 
 #[test]
-#[should_panic = "Invalid route \"/\": insertion failed due to conflict with previously registered route: /"]
+#[should_panic = r#"Invalid route "/": Insertion failed due to conflict with previously registered route: /"#]
 fn nested_service_at_root_with_other_routes() {
     let _: Router = Router::new()
         .nest_service("/", Router::new().route("/users", get(|| async {})))
