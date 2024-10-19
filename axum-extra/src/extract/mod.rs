@@ -21,6 +21,9 @@ mod query;
 #[cfg(feature = "multipart")]
 pub mod multipart;
 
+#[cfg(feature = "scheme")]
+mod scheme;
+
 pub use self::{
     cached::Cached, host::Host, optional_path::OptionalPath, with_rejection::WithRejection,
 };
@@ -43,6 +46,10 @@ pub use self::query::{OptionalQuery, OptionalQueryRejection, Query, QueryRejecti
 #[cfg(feature = "multipart")]
 pub use self::multipart::Multipart;
 
+#[cfg(feature = "scheme")]
+#[doc(no_inline)]
+pub use self::scheme::{Scheme, SchemeMissing};
+
 #[cfg(feature = "json-deserializer")]
 pub use self::json_deserializer::{
     JsonDataError, JsonDeserializer, JsonDeserializerRejection, JsonSyntaxError,
@@ -56,10 +63,3 @@ pub use crate::json_lines::JsonLines;
 #[cfg(feature = "typed-header")]
 #[doc(no_inline)]
 pub use crate::typed_header::TypedHeader;
-
-#[cfg(feature = "scheme")]
-pub mod scheme;
-
-#[cfg(feature = "scheme")]
-#[doc(no_inline)]
-pub use self::scheme::{Scheme, SchemeMissing};
