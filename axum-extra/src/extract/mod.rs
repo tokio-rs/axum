@@ -21,6 +21,9 @@ mod query;
 #[cfg(feature = "multipart")]
 pub mod multipart;
 
+#[cfg(feature = "scheme")]
+mod scheme;
+
 pub use self::{
     cached::Cached, host::Host, optional_path::OptionalPath, with_rejection::WithRejection,
 };
@@ -42,6 +45,10 @@ pub use self::query::{OptionalQuery, OptionalQueryRejection, Query, QueryRejecti
 
 #[cfg(feature = "multipart")]
 pub use self::multipart::Multipart;
+
+#[cfg(feature = "scheme")]
+#[doc(no_inline)]
+pub use self::scheme::{Scheme, SchemeMissing};
 
 #[cfg(feature = "json-deserializer")]
 pub use self::json_deserializer::{
