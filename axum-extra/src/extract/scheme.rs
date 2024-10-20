@@ -1,10 +1,9 @@
 //! Extractor that parses the scheme of a request.
 //! See [`Scheme`] for more details.
 
-use axum::{
-    extract::FromRequestParts,
-    response::{IntoResponse, Response},
-};
+use axum::
+    response::{IntoResponse, Response}
+;
 use http::{
     header::{HeaderMap, FORWARDED},
     request::Parts,
@@ -34,7 +33,7 @@ impl IntoResponse for SchemeMissing {
     }
 }
 
-impl<S> FromRequestParts<S> for Scheme
+impl<S> super::spoof::FromSpoofableRequestParts<S> for Scheme
 where
     S: Send + Sync,
 {
@@ -83,12 +82,12 @@ fn parse_forwarded(headers: &HeaderMap) -> Option<&str> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test_helpers::TestClient;
+    use crate::{extract::Spoofable, test_helpers::TestClient};
     use axum::{routing::get, Router};
     use http::header::HeaderName;
 
     fn test_client() -> TestClient {
-        async fn scheme_as_body(Scheme(scheme): Scheme) -> String {
+        async fn scheme_as_body(Spoofable(Scheme(scheme)): Spoofable<Scheme>) -> String {
             scheme
         }
 

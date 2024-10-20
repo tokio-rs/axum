@@ -6,6 +6,38 @@ mod optional_path;
 pub mod rejection;
 mod with_rejection;
 
+/// Private mod, public trait trick
+mod spoof {
+    pub trait FromSpoofableRequestParts<S>: Sized {
+        type Rejection: axum::response::IntoResponse;
+
+        fn from_request_parts(
+            parts: &mut axum::http::request::Parts,
+            state: &S,
+        ) -> impl std::future::Future<Output = Result<Self, Self::Rejection>> + Send;
+    }
+}
+
+/// Wrap spoofable extractor
+#[derive(Debug)]
+pub struct Spoofable<E>(pub E);
+
+/// Allow `Spoofable` to be used with spoofable extractors in handlers
+impl<S, E> FromRequestParts<S> for Spoofable<E>
+where
+    E: spoof::FromSpoofableRequestParts<S>,
+    S: Sync
+{
+    type Rejection = E::Rejection;
+
+    async fn from_request_parts(
+        parts: &mut axum::http::request::Parts,
+        state: &S,
+    ) -> Result<Self, Self::Rejection> {
+        E::from_request_parts(parts, state).await.map(Spoofable)
+    }
+}
+
 #[cfg(feature = "form")]
 mod form;
 
@@ -23,6 +55,8 @@ pub mod multipart;
 
 #[cfg(feature = "scheme")]
 mod scheme;
+
+use axum::extract::FromRequestParts;
 
 pub use self::{
     cached::Cached, host::Host, optional_path::OptionalPath, with_rejection::WithRejection,
