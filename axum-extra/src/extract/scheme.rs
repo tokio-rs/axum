@@ -1,9 +1,7 @@
 //! Extractor that parses the scheme of a request.
 //! See [`Scheme`] for more details.
 
-use axum::
-    response::{IntoResponse, Response}
-;
+use axum::response::{IntoResponse, Response};
 use http::{
     header::{HeaderMap, FORWARDED},
     request::Parts,

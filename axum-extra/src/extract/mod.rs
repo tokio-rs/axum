@@ -26,7 +26,7 @@ pub struct Spoofable<E>(pub E);
 impl<S, E> FromRequestParts<S> for Spoofable<E>
 where
     E: spoof::FromSpoofableRequestParts<S>,
-    S: Sync
+    S: Sync,
 {
     type Rejection = E::Rejection;
 
