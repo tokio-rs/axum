@@ -63,3 +63,16 @@ pub use crate::json_lines::JsonLines;
 #[cfg(feature = "typed-header")]
 #[doc(no_inline)]
 pub use crate::typed_header::TypedHeader;
+
+#[derive(Debug, Clone)]
+pub struct SpoofableValue(String);
+
+impl SpoofableValue {
+    pub fn new(value: String) -> Self {
+        Self(value)
+    }
+
+    pub fn spoofable_value(self) -> String {
+        self.0
+    }
+}
