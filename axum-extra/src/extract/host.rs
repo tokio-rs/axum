@@ -1,4 +1,7 @@
-use super::rejection::{FailedToResolveHost, HostRejection};
+use super::{
+    rejection::{FailedToResolveHost, HostRejection},
+    SpoofableValue,
+};
 use axum::extract::FromRequestParts;
 use http::{
     header::{HeaderMap, FORWARDED},
@@ -18,7 +21,7 @@ const X_FORWARDED_HOST_HEADER_KEY: &str = "X-Forwarded-Host";
 /// Note that user agents can set `X-Forwarded-Host` and `Host` headers to arbitrary values so make
 /// sure to validate them to avoid security issues.
 #[derive(Debug, Clone)]
-pub struct Host(pub String);
+pub struct Host(pub SpoofableValue);
 
 impl<S> FromRequestParts<S> for Host
 where
@@ -28,7 +31,7 @@ where
 
     async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
         if let Some(host) = parse_forwarded(&parts.headers) {
-            return Ok(Host(host.to_owned()));
+            return Ok(Host(SpoofableValue::new(host.to_owned())));
         }
 
         if let Some(host) = parts
@@ -36,7 +39,7 @@ where
             .get(X_FORWARDED_HOST_HEADER_KEY)
             .and_then(|host| host.to_str().ok())
         {
-            return Ok(Host(host.to_owned()));
+            return Ok(Host(SpoofableValue::new(host.to_owned())));
         }
 
         if let Some(host) = parts
@@ -44,11 +47,11 @@ where
             .get(http::header::HOST)
             .and_then(|host| host.to_str().ok())
         {
-            return Ok(Host(host.to_owned()));
+            return Ok(Host(SpoofableValue::new(host.to_owned())));
         }
 
         if let Some(host) = parts.uri.host() {
-            return Ok(Host(host.to_owned()));
+            return Ok(Host(SpoofableValue::new(host.to_owned())));
         }
 
         Err(HostRejection::FailedToResolveHost(FailedToResolveHost))
@@ -81,7 +84,7 @@ mod tests {
 
     fn test_client() -> TestClient {
         async fn host_as_body(Host(host): Host) -> String {
-            host
+            host.spoofable_value()
         }
 
         TestClient::new(Router::new().route("/", get(host_as_body)))
