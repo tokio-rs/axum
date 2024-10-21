@@ -289,7 +289,7 @@ struct PrivateCookieJarIter<'a, K> {
     iter: cookie::Iter<'a>,
 }
 
-impl<'a, K> Iterator for PrivateCookieJarIter<'a, K> {
+impl<K> Iterator for PrivateCookieJarIter<'_, K> {
     type Item = Cookie<'static>;
 
     fn next(&mut self) -> Option<Self::Item> {
