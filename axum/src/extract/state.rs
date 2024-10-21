@@ -9,8 +9,12 @@ use std::{
 ///
 /// See ["Accessing state in middleware"][state-from-middleware] for how to
 /// access state in middleware.
+/// 
+/// State is global and used in every request a router with state receives.
+/// For accessing data derived from requests, such as authorization data, see [`Extension`].
 ///
 /// [state-from-middleware]: crate::middleware#accessing-state-in-middleware
+/// [`Extension`]: crate::Extension
 ///
 /// # With `Router`
 ///
