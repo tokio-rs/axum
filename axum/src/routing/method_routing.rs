@@ -1110,7 +1110,7 @@ where
         self
     }
 
-    pub(crate) fn call_with_state(&self, req: Request, state: S) -> RouteFuture<E> {
+    pub fn call_with_state(&self, req: Request, state: S) -> RouteFuture<E> {
         macro_rules! call {
             (
                 $req:expr,

@@ -78,6 +78,7 @@ pub mod handler;
 pub mod middleware;
 pub mod response;
 pub mod routing;
+mod test_method_routing;
 
 #[cfg(feature = "json-lines")]
 pub mod json_lines;
