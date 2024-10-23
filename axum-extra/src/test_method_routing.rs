@@ -2,6 +2,7 @@ use std::{
     collections::HashMap,
     convert::Infallible,
     marker::PhantomData,
+    sync::Arc,
     task::{Context, Poll},
 };
 
@@ -20,7 +21,7 @@ trait CommandFromBody {
 }
 
 struct ExampleService<C> {
-    routes: HashMap<String, MethodRouter>,
+    routes: Arc<HashMap<String, MethodRouter>>,
     _phantom_c: PhantomData<fn() -> C>,
 }
 
@@ -37,6 +38,7 @@ where
     }
 
     fn call(&mut self, req: Request) -> Self::Future {
+        let routes = self.routes.clone();
         async move {
             let (parts, body) = req.into_parts();
 
@@ -44,7 +46,7 @@ where
                 return Ok(StatusCode::INTERNAL_SERVER_ERROR.into_response());
             };
 
-            match C::command_from_body(&bytes).and_then(|cmd| self.routes.get(cmd)) {
+            match C::command_from_body(&bytes).and_then(|cmd| routes.get(cmd)) {
                 Some(router) => {
                     let req = Request::from_parts(parts, Body::from(bytes));
 
