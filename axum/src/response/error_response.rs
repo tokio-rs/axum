@@ -7,9 +7,9 @@ use std::io::Write;
 /// Convenience response to create an error response from a non-IntoResponse error
 ///
 /// This provides a method to quickly respond with an error that does not implement
-/// the IntoResponse trait itself. When run in debug configuration, the error chain is
-/// included in the response. In release builds, only a generic message will be shown, as errors
-/// could contain sensitive data not meant to be shown to users.
+/// the IntoResponse trait itself. This type should only be used for debugging purposes or internal
+/// facing applications, as it includes the full error chain with descriptions,
+/// thus leaking information that could possibly be sensitive.
 ///
 /// ```rust,no_run
 /// use axum::response::{InternalServerError, IntoResponse, NoContent};
@@ -29,21 +29,31 @@ pub struct InternalServerError<T>(pub T);
 
 impl<T: Error> IntoResponse for InternalServerError<T> {
     fn into_response(self) -> Response {
-        if cfg!(debug_assertions) {
-            let mut body = Vec::new();
-            write!(body, "{}", self.0);
-            let mut e: &dyn Error = &self.0;
-            while let Some(new_e) = e.source() {
-                e = new_e;
-                write!(body, ": {e}").unwrap();
-            }
-            (StatusCode::INTERNAL_SERVER_ERROR, body).into_response()
-        } else {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "An error occurred while processing your request",
-            )
-                .into_response()
+        let mut body = Vec::new();
+        write!(body, "{}", self.0);
+        let mut e: &dyn Error = &self.0;
+        while let Some(new_e) = e.source() {
+            e = new_e;
+            write!(body, ": {e}").unwrap();
         }
+        (StatusCode::INTERNAL_SERVER_ERROR, body).into_response()
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::{Error, ErrorKind};
+
+    #[test]
+    fn internal_server_error() {
+        let response = InternalServerError(Error::new(ErrorKind::Other, "Test")).into_response();
+        assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
+    }
+
+    #[test]
+    fn with_error_chain() {
+        todo!();
+    }
+
 }
