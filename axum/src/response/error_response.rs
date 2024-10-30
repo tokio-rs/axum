@@ -49,5 +49,4 @@ mod tests {
         let response = InternalServerError(Error::new(ErrorKind::Other, "Test")).into_response();
         assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
     }
-
 }
