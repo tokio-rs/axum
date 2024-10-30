@@ -1,7 +1,6 @@
 use axum_core::response::{IntoResponse, Response};
 use http::StatusCode;
 use std::error::Error;
-use std::fmt::Display;
 use std::io::Write;
 
 /// Convenience response to create an error response from a non-IntoResponse error
@@ -11,7 +10,7 @@ use std::io::Write;
 /// facing applications, as it includes the full error chain with descriptions,
 /// thus leaking information that could possibly be sensitive.
 ///
-/// ```rust,no_run
+/// ```rust
 /// use axum::response::{InternalServerError, IntoResponse, NoContent};
 /// # use std::io::{Error, ErrorKind};
 /// # fn try_thing() -> Result<(), Error> {
@@ -30,7 +29,7 @@ pub struct InternalServerError<T>(pub T);
 impl<T: Error> IntoResponse for InternalServerError<T> {
     fn into_response(self) -> Response {
         let mut body = Vec::new();
-        write!(body, "{}", self.0);
+        write!(body, "{}", self.0).unwrap();
         let mut e: &dyn Error = &self.0;
         while let Some(new_e) = e.source() {
             e = new_e;
@@ -49,11 +48,6 @@ mod tests {
     fn internal_server_error() {
         let response = InternalServerError(Error::new(ErrorKind::Other, "Test")).into_response();
         assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
-    }
-
-    #[test]
-    fn with_error_chain() {
-        todo!();
     }
 
 }
