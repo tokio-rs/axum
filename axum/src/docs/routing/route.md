@@ -80,7 +80,7 @@ To accept multiple methods for the same route you can add all handlers at the
 same time:
 
 ```rust
-use axum::{Router, routing::{get, delete}, extract::Path};
+use axum::{Router, routing::{get, post, delete}, extract::Path};
 
 let app = Router::new().route(
     "/",
@@ -115,7 +115,7 @@ let app = Router::new()
 # More examples
 
 ```rust
-use axum::{Router, routing::{get, delete}, extract::Path};
+use axum::{Router, routing::{get, post, delete}, extract::Path};
 
 let app = Router::new()
     .route("/", get(root))
