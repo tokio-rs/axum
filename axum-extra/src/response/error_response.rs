@@ -30,7 +30,7 @@ pub struct InternalServerError<T>(pub T);
 
 impl<T: Error> IntoResponse for InternalServerError<T> {
     fn into_response(self) -> Response {
-        let mut body = Vec::new();
+        let mut body: Vec<String> = Vec::new();
         write!(body, "{}", self.0).unwrap();
         let mut e: &dyn Error = &self.0;
         while let Some(new_e) = e.source() {
