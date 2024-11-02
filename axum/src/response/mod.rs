@@ -4,7 +4,6 @@ use http::{header, HeaderValue, StatusCode};
 
 mod redirect;
 
-mod error_response;
 #[cfg(feature = "tokio")]
 pub mod sse;
 
@@ -30,9 +29,6 @@ pub use self::redirect::Redirect;
 #[doc(inline)]
 #[cfg(feature = "tokio")]
 pub use sse::Sse;
-
-#[doc(inline)]
-pub use error_response::InternalServerError;
 
 /// An HTML response.
 ///

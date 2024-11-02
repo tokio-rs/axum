@@ -11,7 +11,8 @@ use std::io::Write;
 /// thus leaking information that could possibly be sensitive.
 ///
 /// ```rust
-/// use axum::response::{InternalServerError, IntoResponse, NoContent};
+/// use axum_extra::response::InternalServerError;
+/// use axum_core::response::IntoResponse;
 /// # use std::io::{Error, ErrorKind};
 /// # fn try_thing() -> Result<(), Error> {
 /// #   Err(Error::new(ErrorKind::Other, "error"))
