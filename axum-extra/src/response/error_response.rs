@@ -2,6 +2,7 @@ use axum_core::response::{IntoResponse, Response};
 use http::StatusCode;
 use std::error::Error;
 use std::io::Write;
+use tracing::error;
 
 /// Convenience response to create an error response from a non-IntoResponse error
 ///
@@ -36,7 +37,12 @@ impl<T: Error> IntoResponse for InternalServerError<T> {
             e = new_e;
             write!(body, ": {e}").unwrap();
         }
-        (StatusCode::INTERNAL_SERVER_ERROR, body).into_response()
+        error!("Internal server error: {}", body);
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "An error occurred while processing your request.",
+        )
+            .into_response()
     }
 }
 

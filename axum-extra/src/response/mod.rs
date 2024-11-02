@@ -9,8 +9,10 @@ mod attachment;
 #[cfg(feature = "multipart")]
 pub mod multiple;
 
+#[cfg(feature = "error_response")]
 mod error_response;
 
+#[cfg(feature = "error_response")]
 pub use error_response::InternalServerError;
 
 #[cfg(feature = "erased-json")]
