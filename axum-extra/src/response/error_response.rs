@@ -1,7 +1,6 @@
 use axum_core::response::{IntoResponse, Response};
 use http::StatusCode;
 use std::error::Error;
-use std::io::Write;
 use tracing::error;
 
 /// Convenience response to create an error response from a non-IntoResponse error
@@ -30,14 +29,8 @@ pub struct InternalServerError<T>(pub T);
 
 impl<T: Error> IntoResponse for InternalServerError<T> {
     fn into_response(self) -> Response {
-        let mut error: Vec<String> = Vec::new();
-        error.push(format!("{}", self.0));
         let mut e: &dyn Error = &self.0;
-        while let Some(new_e) = e.source() {
-            e = new_e;
-            error.push(format!(": {e}"))
-        }
-        error!("Internal server error: {}", error);
+        error!(error = e);
         (
             StatusCode::INTERNAL_SERVER_ERROR,
             "An error occurred while processing your request.",
