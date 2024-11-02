@@ -30,14 +30,14 @@ pub struct InternalServerError<T>(pub T);
 
 impl<T: Error> IntoResponse for InternalServerError<T> {
     fn into_response(self) -> Response {
-        let mut body: Vec<String> = Vec::new();
-        write!(body, "{}", self.0).unwrap();
+        let mut error: Vec<String> = Vec::new();
+        error.push(format!("{}", self.0));
         let mut e: &dyn Error = &self.0;
         while let Some(new_e) = e.source() {
             e = new_e;
-            write!(body, ": {e}").unwrap();
+            error.push(format!(": {e}"))
         }
-        error!("Internal server error: {}", body);
+        error!("Internal server error: {}", error);
         (
             StatusCode::INTERNAL_SERVER_ERROR,
             "An error occurred while processing your request.",
