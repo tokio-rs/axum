@@ -16,6 +16,7 @@ default = ["tracing", "multipart"]
 
 async-read-body = ["dep:tokio-util", "tokio-util?/io", "dep:tokio"]
 attachment = ["dep:tracing"]
+error_response = ["dep:tracing"]
 cookie = ["dep:cookie"]
 cookie-private = ["cookie", "cookie?/private"]
 cookie-signed = ["cookie", "cookie?/signed"]
