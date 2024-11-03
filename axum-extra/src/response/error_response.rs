@@ -29,8 +29,7 @@ pub struct InternalServerError<T>(pub T);
 
 impl<T: Error + 'static> IntoResponse for InternalServerError<T> {
     fn into_response(self) -> Response {
-        let err = &self.0;
-        error!(error = err as &dyn Error);
+        error!(error = &self.0 as &dyn Error);
         (
             StatusCode::INTERNAL_SERVER_ERROR,
             "An error occurred while processing your request.",
