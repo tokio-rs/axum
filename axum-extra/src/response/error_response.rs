@@ -27,10 +27,10 @@ use tracing::error;
 #[derive(Debug)]
 pub struct InternalServerError<T>(pub T);
 
-impl<T: Error> IntoResponse for InternalServerError<T> {
+impl<T: Error + 'static> IntoResponse for InternalServerError<T> {
     fn into_response(self) -> Response {
         let err = &self.0;
-        error!(%err);
+        error!(error = err as &dyn Error);
         (
             StatusCode::INTERNAL_SERVER_ERROR,
             "An error occurred while processing your request.",
