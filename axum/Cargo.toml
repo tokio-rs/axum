@@ -199,6 +199,7 @@ allowed = [
     "futures_core",
     "futures_sink",
     "futures_util",
+    "pin_project_lite",
     "tower_layer",
     "tower_service",
 

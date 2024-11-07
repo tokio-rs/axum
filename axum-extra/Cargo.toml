@@ -98,6 +98,7 @@ allowed = [
     "headers_core",
     "http",
     "http_body",
+    "pin_project_lite",
     "prost",
     "serde",
     "tokio",
