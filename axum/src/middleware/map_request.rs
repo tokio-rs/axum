@@ -380,6 +380,7 @@ impl<B> IntoMapRequestResult<B> for Request<B> {
     }
 }
 
+#[cfg(feature = "tokio")]
 #[cfg(test)]
 mod tests {
     use super::*;

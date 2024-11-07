@@ -76,6 +76,7 @@ fn parse_forwarded(headers: &HeaderMap) -> Option<&str> {
     })
 }
 
+#[cfg(feature = "tokio")]
 #[cfg(test)]
 mod tests {
     use super::*;

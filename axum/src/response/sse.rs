@@ -502,6 +502,7 @@ impl<'a> Iterator for MemchrSplit<'a> {
     }
 }
 
+#[cfg(feature = "json")]
 #[cfg(test)]
 mod tests {
     use super::*;

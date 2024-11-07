@@ -168,6 +168,7 @@ fn append_nested_matched_path(matched_path: &Arc<str>, extensions: &http::Extens
     }
 }
 
+#[cfg(feature = "tokio")]
 #[cfg(test)]
 mod tests {
     use super::*;

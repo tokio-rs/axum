@@ -12,8 +12,13 @@ use crate::{
         tracing_helpers::{capture_tracing, TracingEvent},
         *,
     },
-    BoxError, Extension, Json, Router,
+    BoxError, Extension, Router,
 };
+#[cfg(feature = "json")]
+use crate::{
+    Json,
+};
+
 use futures_util::stream::StreamExt;
 use http::{
     header::CONTENT_LENGTH,
@@ -42,6 +47,7 @@ mod handle_error;
 mod merge;
 mod nest;
 
+#[cfg(feature = "tokio")]
 #[crate::test]
 async fn hello_world() {
     async fn root(_: Request<Body>) -> &'static str {
@@ -75,6 +81,7 @@ async fn hello_world() {
     assert_eq!(body, "users#create");
 }
 
+#[cfg(feature = "tokio")]
 #[crate::test]
 async fn routing() {
     let app = Router::new()
@@ -111,6 +118,7 @@ async fn routing() {
     assert_eq!(res.text().await, "users#action");
 }
 
+#[cfg(feature = "tokio")]
 #[crate::test]
 async fn router_type_doesnt_change() {
     let app: Router = Router::new()
@@ -136,6 +144,7 @@ async fn router_type_doesnt_change() {
     assert_eq!(res.text().await, "hi from POST");
 }
 
+#[cfg(feature = "tokio")]
 #[crate::test]
 async fn routing_between_services() {
     use std::convert::Infallible;
@@ -182,6 +191,7 @@ async fn routing_between_services() {
     assert_eq!(res.text().await, "handler");
 }
 
+#[cfg(feature = "tokio")]
 #[crate::test]
 async fn middleware_on_single_route() {
     use tower::ServiceBuilder;
@@ -209,6 +219,7 @@ async fn middleware_on_single_route() {
     assert_eq!(body, "Hello, World!");
 }
 
+#[cfg(feature = "tokio")]
 #[crate::test]
 async fn service_in_bottom() {
     async fn handler(_req: Request<Body>) -> Result<Response<Body>, Infallible> {
@@ -220,6 +231,7 @@ async fn service_in_bottom() {
     TestClient::new(app);
 }
 
+#[cfg(feature = "tokio")]
 #[crate::test]
 async fn wrong_method_handler() {
     let app = Router::new()
@@ -243,6 +255,7 @@ async fn wrong_method_handler() {
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
 }
 
+#[cfg(feature = "tokio")]
 #[crate::test]
 async fn wrong_method_service() {
     #[derive(Clone)]
@@ -283,6 +296,7 @@ async fn wrong_method_service() {
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
 }
 
+#[cfg(feature = "tokio")]
 #[crate::test]
 async fn multiple_methods_for_one_handler() {
     async fn root(_: Request<Body>) -> &'static str {
@@ -300,6 +314,7 @@ async fn multiple_methods_for_one_handler() {
     assert_eq!(res.status(), StatusCode::OK);
 }
 
+#[cfg(feature = "tokio")]
 #[crate::test]
 async fn wildcard_sees_whole_url() {
     let app = Router::new().route("/api/*rest", get(|uri: Uri| async move { uri.to_string() }));
@@ -310,6 +325,7 @@ async fn wildcard_sees_whole_url() {
     assert_eq!(res.text().await, "/api/foo/bar");
 }
 
+#[cfg(feature = "tokio")]
 #[crate::test]
 async fn middleware_applies_to_routes_above() {
     let app = Router::new()
@@ -332,6 +348,7 @@ async fn middleware_applies_to_routes_above() {
     assert_eq!(res.status(), StatusCode::OK);
 }
 
+#[cfg(feature = "tokio")]
 #[crate::test]
 async fn not_found_for_extra_trailing_slash() {
     let app = Router::new().route("/foo", get(|| async {}));
@@ -345,6 +362,7 @@ async fn not_found_for_extra_trailing_slash() {
     assert_eq!(res.status(), StatusCode::OK);
 }
 
+#[cfg(feature = "tokio")]
 #[crate::test]
 async fn not_found_for_missing_trailing_slash() {
     let app = Router::new().route("/foo/", get(|| async {}));
@@ -355,6 +373,7 @@ async fn not_found_for_missing_trailing_slash() {
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
 }
 
+#[cfg(feature = "tokio")]
 #[crate::test]
 async fn with_and_without_trailing_slash() {
     let app = Router::new()
@@ -373,6 +392,7 @@ async fn with_and_without_trailing_slash() {
 }
 
 // for https://github.com/tokio-rs/axum/issues/420
+#[cfg(feature = "tokio")]
 #[crate::test]
 async fn wildcard_doesnt_match_just_trailing_slash() {
     let app = Router::new().route(
@@ -393,6 +413,7 @@ async fn wildcard_doesnt_match_just_trailing_slash() {
     assert_eq!(res.text().await, "foo/bar");
 }
 
+#[cfg(feature = "tokio")]
 #[crate::test]
 async fn what_matches_wildcard() {
     let app = Router::new()
@@ -421,6 +442,7 @@ async fn what_matches_wildcard() {
     assert_eq!(get("/x/a/b/").await, "x");
 }
 
+#[cfg(feature = "tokio")]
 #[crate::test]
 async fn static_and_dynamic_paths() {
     let app = Router::new()
@@ -439,6 +461,7 @@ async fn static_and_dynamic_paths() {
     assert_eq!(res.text().await, "static");
 }
 
+#[cfg(feature = "tokio")]
 #[crate::test]
 #[should_panic(expected = "Paths must start with a `/`. Use \"/\" for root routes")]
 async fn empty_route() {
@@ -446,6 +469,7 @@ async fn empty_route() {
     TestClient::new(app);
 }
 
+#[cfg(feature = "tokio")]
 #[crate::test]
 async fn middleware_still_run_for_unmatched_requests() {
     #[derive(Clone)]
@@ -491,10 +515,12 @@ async fn middleware_still_run_for_unmatched_requests() {
     Invalid route: `Router::route_service` cannot be used with `Router`s. \
     Use `Router::nest` instead\
 ")]
+#[cfg(feature = "tokio")]
 async fn routing_to_router_panics() {
     TestClient::new(Router::new().route_service("/", Router::new()));
 }
 
+#[cfg(feature = "tokio")]
 #[crate::test]
 async fn route_layer() {
     let app = Router::new()
@@ -523,6 +549,7 @@ async fn route_layer() {
     assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
 }
 
+#[cfg(feature = "tokio")]
 #[crate::test]
 async fn different_methods_added_in_different_routes() {
     let app = Router::new()
@@ -540,6 +567,7 @@ async fn different_methods_added_in_different_routes() {
     assert_eq!(body, "POST");
 }
 
+#[cfg(feature = "tokio")]
 #[crate::test]
 #[should_panic(expected = "Cannot merge two `Router`s that both have a fallback")]
 async fn merging_routers_with_fallbacks_panics() {
@@ -566,6 +594,7 @@ fn merging_with_overlapping_method_routes() {
     _ = app.clone().merge(app);
 }
 
+#[cfg(feature = "tokio")]
 #[crate::test]
 async fn merging_routers_with_same_paths_but_different_methods() {
     let one = Router::new().route("/", get(|| async { "GET" }));
@@ -582,6 +611,8 @@ async fn merging_routers_with_same_paths_but_different_methods() {
     assert_eq!(body, "POST");
 }
 
+#[cfg(feature = "json")]
+#[cfg(feature = "tokio")]
 #[crate::test]
 async fn head_content_length_through_hyper_server() {
     let app = Router::new()
@@ -599,6 +630,7 @@ async fn head_content_length_through_hyper_server() {
     assert!(res.text().await.is_empty());
 }
 
+#[cfg(feature = "tokio")]
 #[crate::test]
 async fn head_content_length_through_hyper_server_that_hits_fallback() {
     let app = Router::new().fallback(|| async { "foo" });
@@ -609,6 +641,7 @@ async fn head_content_length_through_hyper_server_that_hits_fallback() {
     assert_eq!(res.headers()["content-length"], "3");
 }
 
+#[cfg(feature = "tokio")]
 #[crate::test]
 async fn head_with_middleware_applied() {
     use tower_http::compression::{predicate::SizeAbove, CompressionLayer};
@@ -645,6 +678,7 @@ async fn head_with_middleware_applied() {
     assert!(!res.headers().contains_key("content-length"));
 }
 
+#[cfg(feature = "tokio")]
 #[crate::test]
 #[should_panic(expected = "Paths must start with a `/`")]
 async fn routes_must_start_with_slash() {
@@ -652,6 +686,8 @@ async fn routes_must_start_with_slash() {
     TestClient::new(app);
 }
 
+#[cfg(feature = "json")]
+#[cfg(feature = "tokio")]
 #[crate::test]
 async fn body_limited_by_default() {
     let app = Router::new()
@@ -680,6 +716,7 @@ async fn body_limited_by_default() {
     }
 }
 
+#[cfg(feature = "tokio")]
 #[crate::test]
 async fn disabling_the_default_limit() {
     let app = Router::new()
@@ -696,6 +733,7 @@ async fn disabling_the_default_limit() {
     assert_eq!(res.status(), StatusCode::OK);
 }
 
+#[cfg(feature = "tokio")]
 #[crate::test]
 async fn limited_body_with_content_length() {
     const LIMIT: usize = 3;
@@ -718,6 +756,7 @@ async fn limited_body_with_content_length() {
     assert_eq!(res.status(), StatusCode::PAYLOAD_TOO_LARGE);
 }
 
+#[cfg(feature = "tokio")]
 #[crate::test]
 async fn changing_the_default_limit() {
     let new_limit = 2;
@@ -812,6 +851,7 @@ async fn changing_the_default_limit_differently_on_different_routes() {
     assert_eq!(res.status(), StatusCode::PAYLOAD_TOO_LARGE);
 }
 
+#[cfg(feature = "tokio")]
 #[crate::test]
 async fn limited_body_with_streaming_body() {
     const LIMIT: usize = 3;
@@ -844,6 +884,7 @@ async fn limited_body_with_streaming_body() {
     assert_eq!(res.status(), StatusCode::PAYLOAD_TOO_LARGE);
 }
 
+#[cfg(feature = "tokio")]
 #[crate::test]
 async fn extract_state() {
     #[derive(Clone)]
@@ -880,6 +921,7 @@ async fn extract_state() {
     assert_eq!(res.status(), StatusCode::OK);
 }
 
+#[cfg(feature = "tokio")]
 #[crate::test]
 async fn explicitly_set_state() {
     let app = Router::new()
@@ -894,6 +936,7 @@ async fn explicitly_set_state() {
     assert_eq!(res.text().await, "foo");
 }
 
+#[cfg(feature = "tokio")]
 #[crate::test]
 async fn layer_response_into_response() {
     fn map_response<B>(_res: Response<B>) -> Result<Response<B>, impl IntoResponse> {
@@ -941,6 +984,7 @@ fn test_path_for_nested_route() {
     assert_eq!(path_for_nested_route("/a/", "/b/"), "/a/b/");
 }
 
+#[cfg(feature = "tokio")]
 #[crate::test]
 async fn state_isnt_cloned_too_much() {
     static SETUP_DONE: AtomicBool = AtomicBool::new(false);
@@ -993,6 +1037,7 @@ async fn state_isnt_cloned_too_much() {
     assert_eq!(COUNT.load(Ordering::SeqCst), 4);
 }
 
+#[cfg(feature = "tokio")]
 #[crate::test]
 async fn logging_rejections() {
     #[derive(Deserialize, Eq, PartialEq, Debug)]
@@ -1096,6 +1141,7 @@ async fn connect_going_to_default_fallback() {
     assert!(body.is_empty());
 }
 
+#[cfg(feature = "tokio")]
 #[crate::test]
 async fn impl_handler_for_into_response() {
     let app = Router::new().route("/things", post((StatusCode::CREATED, "thing created")));

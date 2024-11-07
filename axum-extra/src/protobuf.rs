@@ -212,6 +212,7 @@ mod tests {
     use axum::{routing::post, Router};
     use http::StatusCode;
 
+    #[cfg(feature = "tokio")]
     #[tokio::test]
     async fn decode_body() {
         #[derive(prost::Message)]
@@ -237,6 +238,7 @@ mod tests {
         assert_eq!(body, "bar");
     }
 
+    #[cfg(feature = "tokio")]
     #[tokio::test]
     async fn prost_decode_error() {
         #[derive(prost::Message)]
@@ -263,6 +265,7 @@ mod tests {
         assert_eq!(res.status(), StatusCode::UNPROCESSABLE_ENTITY);
     }
 
+    #[cfg(feature = "tokio")]
     #[tokio::test]
     async fn encode_body() {
         #[derive(prost::Message)]

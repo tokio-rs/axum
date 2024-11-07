@@ -219,6 +219,7 @@ mod tests {
         id: i32,
     }
 
+    #[cfg(feature = "tokio")]
     #[tokio::test]
     async fn extractor() {
         let app = Router::new().route(
@@ -257,6 +258,7 @@ mod tests {
         assert_eq!(res.status(), StatusCode::OK);
     }
 
+    #[cfg(feature = "tokio")]
     #[tokio::test]
     async fn response() {
         let app = Router::new().route(

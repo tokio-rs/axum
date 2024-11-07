@@ -418,6 +418,7 @@ mod tests {
         body::Body, extract::DefaultBodyLimit, response::IntoResponse, routing::post, Router,
     };
 
+    #[cfg(feature = "tokio")]
     #[tokio::test]
     async fn content_type_with_encoding() {
         const BYTES: &[u8] = "<!doctype html><title>🦀</title>".as_bytes();
@@ -455,6 +456,7 @@ mod tests {
         let _app: Router<(), http_body::Limited<Body>> = Router::new().route("/", post(handler));
     }
 
+    #[cfg(feature = "tokio")]
     #[tokio::test]
     async fn body_too_large() {
         const BYTES: &[u8] = "<!doctype html><title>🦀</title>".as_bytes();

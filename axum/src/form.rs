@@ -116,6 +116,7 @@ where
 
 axum_core::__impl_deref!(Form);
 
+#[cfg(feature = "tokio")]
 #[cfg(test)]
 mod tests {
     use super::*;

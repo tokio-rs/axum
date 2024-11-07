@@ -305,6 +305,7 @@ define_rejection! {
     pub struct InvalidBoundary;
 }
 
+#[cfg(feature = "tokio")]
 #[cfg(test)]
 mod tests {
     use axum_core::extract::DefaultBodyLimit;

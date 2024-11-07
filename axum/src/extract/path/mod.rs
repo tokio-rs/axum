@@ -539,6 +539,7 @@ impl IntoResponse for InvalidUtf8InPathParam {
     }
 }
 
+#[cfg(feature = "tokio")]
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -60,6 +60,7 @@ where
 }
 
 #[cfg(test)]
+#[cfg(feature = "tokio")]
 mod tests {
     use std::num::NonZeroU32;
 

@@ -4,16 +4,22 @@ use http::{
     header::{HeaderName, HeaderValue},
     Request, StatusCode,
 };
+#[cfg(feature = "tokio")]
 use hyper::{Body, Server};
+#[cfg(feature = "tokio")]
 use std::net::{SocketAddr, TcpListener};
+#[cfg(feature = "tokio")]
 use tower::make::Shared;
+#[cfg(feature = "tokio")]
 use tower_service::Service;
 
+#[cfg(feature = "tokio")]
 pub(crate) struct TestClient {
     client: reqwest::Client,
     addr: SocketAddr,
 }
 
+#[cfg(feature = "tokio")]
 impl TestClient {
     pub(crate) fn new<S, ResBody>(svc: S) -> Self
     where

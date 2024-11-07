@@ -226,6 +226,7 @@ where
 
 axum_core::__impl_deref!(RawBody);
 
+#[cfg(feature = "tokio")]
 #[cfg(test)]
 mod tests {
     use crate::{extract::Extension, routing::get, test_helpers::*, Router};

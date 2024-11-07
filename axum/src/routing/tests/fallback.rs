@@ -3,6 +3,7 @@ use tower::ServiceExt;
 use super::*;
 use crate::middleware::{map_request, map_response};
 
+#[cfg(feature = "tokio")]
 #[crate::test]
 async fn basic() {
     let app = Router::new()
@@ -18,6 +19,7 @@ async fn basic() {
     assert_eq!(res.text().await, "fallback");
 }
 
+#[cfg(feature = "tokio")]
 #[crate::test]
 async fn nest() {
     let app = Router::new()
@@ -33,6 +35,7 @@ async fn nest() {
     assert_eq!(res.text().await, "fallback");
 }
 
+#[cfg(feature = "tokio")]
 #[crate::test]
 async fn or() {
     let one = Router::new().route("/one", get(|| async {}));
@@ -50,6 +53,7 @@ async fn or() {
     assert_eq!(res.text().await, "fallback");
 }
 
+#[cfg(feature = "tokio")]
 #[crate::test]
 async fn fallback_accessing_state() {
     let app = Router::new()
@@ -71,6 +75,7 @@ async fn outer_fallback() -> impl IntoResponse {
     (StatusCode::NOT_FOUND, "outer")
 }
 
+#[cfg(feature = "tokio")]
 #[crate::test]
 async fn nested_router_inherits_fallback() {
     let inner = Router::new();
@@ -83,6 +88,7 @@ async fn nested_router_inherits_fallback() {
     assert_eq!(res.text().await, "outer");
 }
 
+#[cfg(feature = "tokio")]
 #[crate::test]
 async fn doesnt_inherit_fallback_if_overridden() {
     let inner = Router::new().fallback(inner_fallback);
@@ -99,6 +105,7 @@ async fn doesnt_inherit_fallback_if_overridden() {
     assert_eq!(res.text().await, "outer");
 }
 
+#[cfg(feature = "tokio")]
 #[crate::test]
 async fn deeply_nested_inherit_from_top() {
     let app = Router::new()
@@ -112,6 +119,7 @@ async fn deeply_nested_inherit_from_top() {
     assert_eq!(res.text().await, "outer");
 }
 
+#[cfg(feature = "tokio")]
 #[crate::test]
 async fn deeply_nested_inherit_from_middle() {
     let app = Router::new().nest(
@@ -128,6 +136,7 @@ async fn deeply_nested_inherit_from_middle() {
     assert_eq!(res.text().await, "outer");
 }
 
+#[cfg(feature = "tokio")]
 #[crate::test]
 async fn with_middleware_on_inner_fallback() {
     async fn never_called<B>(_: Request<B>) -> Request<B> {
@@ -144,6 +153,7 @@ async fn with_middleware_on_inner_fallback() {
     assert_eq!(res.text().await, "outer");
 }
 
+#[cfg(feature = "tokio")]
 #[crate::test]
 async fn also_inherits_default_layered_fallback() {
     async fn set_header<B>(mut res: Response<B>) -> Response<B> {
@@ -166,6 +176,7 @@ async fn also_inherits_default_layered_fallback() {
     assert_eq!(res.text().await, "outer");
 }
 
+#[cfg(feature = "tokio")]
 #[crate::test]
 async fn fallback_inherited_into_nested_router_service() {
     let inner = Router::new()
@@ -186,6 +197,7 @@ async fn fallback_inherited_into_nested_router_service() {
     assert_eq!(res.text().await, "outer");
 }
 
+#[cfg(feature = "tokio")]
 #[crate::test]
 async fn fallback_inherited_into_nested_opaque_service() {
     let inner = Router::new()
@@ -208,6 +220,7 @@ async fn fallback_inherited_into_nested_opaque_service() {
     assert_eq!(res.text().await, "outer");
 }
 
+#[cfg(feature = "tokio")]
 #[crate::test]
 async fn nest_fallback_on_inner() {
     let app = Router::new()
@@ -227,6 +240,7 @@ async fn nest_fallback_on_inner() {
 }
 
 // https://github.com/tokio-rs/axum/issues/1931
+#[cfg(feature = "tokio")]
 #[crate::test]
 async fn doesnt_panic_if_used_with_nested_router() {
     async fn handler() {}
@@ -242,6 +256,7 @@ async fn doesnt_panic_if_used_with_nested_router() {
     assert_eq!(res.status(), StatusCode::OK);
 }
 
+#[cfg(feature = "tokio")]
 #[crate::test]
 async fn issue_2072() {
     let nested_routes = Router::new().fallback(inner_fallback);
@@ -261,6 +276,7 @@ async fn issue_2072() {
     assert_eq!(res.text().await, "");
 }
 
+#[cfg(feature = "tokio")]
 #[crate::test]
 async fn issue_2072_outer_fallback_before_merge() {
     let nested_routes = Router::new().fallback(inner_fallback);
@@ -281,6 +297,7 @@ async fn issue_2072_outer_fallback_before_merge() {
     assert_eq!(res.text().await, "outer");
 }
 
+#[cfg(feature = "tokio")]
 #[crate::test]
 async fn issue_2072_outer_fallback_after_merge() {
     let nested_routes = Router::new().fallback(inner_fallback);
@@ -301,6 +318,7 @@ async fn issue_2072_outer_fallback_after_merge() {
     assert_eq!(res.text().await, "outer");
 }
 
+#[cfg(feature = "tokio")]
 #[crate::test]
 async fn merge_router_with_fallback_into_nested_router_with_fallback() {
     let nested_routes = Router::new().fallback(inner_fallback);
@@ -320,6 +338,7 @@ async fn merge_router_with_fallback_into_nested_router_with_fallback() {
     assert_eq!(res.text().await, "outer");
 }
 
+#[cfg(feature = "tokio")]
 #[crate::test]
 async fn merging_nested_router_with_fallback_into_router_with_fallback() {
     let nested_routes = Router::new().fallback(inner_fallback);
@@ -339,6 +358,7 @@ async fn merging_nested_router_with_fallback_into_router_with_fallback() {
     assert_eq!(res.text().await, "outer");
 }
 
+#[cfg(feature = "tokio")]
 #[crate::test]
 async fn merge_empty_into_router_with_fallback() {
     let app = Router::new().fallback(outer_fallback).merge(Router::new());
@@ -350,6 +370,7 @@ async fn merge_empty_into_router_with_fallback() {
     assert_eq!(res.text().await, "outer");
 }
 
+#[cfg(feature = "tokio")]
 #[crate::test]
 async fn merge_router_with_fallback_into_empty() {
     let app = Router::new().merge(Router::new().fallback(outer_fallback));

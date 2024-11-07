@@ -94,6 +94,7 @@ where
 
 axum_core::__impl_deref!(Query);
 
+#[cfg(feature = "tokio")]
 #[cfg(test)]
 mod tests {
     use crate::{routing::get, test_helpers::TestClient, Router};

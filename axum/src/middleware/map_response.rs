@@ -341,6 +341,7 @@ impl fmt::Debug for ResponseFuture {
     }
 }
 
+#[cfg(feature = "tokio")]
 #[cfg(test)]
 mod tests {
     #[allow(unused_imports)]

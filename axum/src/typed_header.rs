@@ -162,6 +162,7 @@ impl std::error::Error for TypedHeaderRejection {
     }
 }
 
+#[cfg(feature = "tokio")]
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -340,6 +340,7 @@ mod sealed {
     impl<S, B> Sealed for axum::Router<S, B> {}
 }
 
+#[cfg(feature = "tokio")]
 #[cfg(test)]
 mod tests {
     use super::*;

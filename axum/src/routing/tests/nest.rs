@@ -3,6 +3,7 @@ use crate::{body::boxed, extract::Extension};
 use std::collections::HashMap;
 use tower_http::services::ServeDir;
 
+#[cfg(feature = "tokio")]
 #[crate::test]
 async fn nesting_apps() {
     let api_routes = Router::new()
@@ -58,6 +59,7 @@ async fn nesting_apps() {
     assert_eq!(res.text().await, "v0: games#show (123)");
 }
 
+#[cfg(feature = "tokio")]
 #[crate::test]
 async fn wrong_method_nest() {
     let nested_app = Router::new().route("/", get(|| async {}));
@@ -76,6 +78,7 @@ async fn wrong_method_nest() {
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
 }
 
+#[cfg(feature = "tokio")]
 #[crate::test]
 async fn nesting_router_at_root() {
     let nested = Router::new().route("/foo", get(|uri: Uri| async move { uri.to_string() }));
@@ -94,6 +97,7 @@ async fn nesting_router_at_root() {
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
 }
 
+#[cfg(feature = "tokio")]
 #[crate::test]
 async fn nesting_router_at_empty_path() {
     let nested = Router::new().route("/foo", get(|uri: Uri| async move { uri.to_string() }));
@@ -112,6 +116,7 @@ async fn nesting_router_at_empty_path() {
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
 }
 
+#[cfg(feature = "tokio")]
 #[crate::test]
 async fn nesting_handler_at_root() {
     let app = Router::new().nest_service("/", get(|uri: Uri| async move { uri.to_string() }));
@@ -131,6 +136,7 @@ async fn nesting_handler_at_root() {
     assert_eq!(res.text().await, "/foo/bar");
 }
 
+#[cfg(feature = "tokio")]
 #[crate::test]
 async fn nested_url_extractor() {
     let app = Router::new().nest(
@@ -157,6 +163,8 @@ async fn nested_url_extractor() {
     assert_eq!(res.text().await, "/qux");
 }
 
+#[cfg(feature = "tokio")]
+#[cfg(feature = "json")]
 #[crate::test]
 async fn nested_url_original_extractor() {
     let app = Router::new().nest(
@@ -177,6 +185,7 @@ async fn nested_url_original_extractor() {
     assert_eq!(res.text().await, "/foo/bar/baz");
 }
 
+#[cfg(feature = "tokio")]
 #[crate::test]
 async fn nested_service_sees_stripped_uri() {
     let app = Router::new().nest(
@@ -200,6 +209,7 @@ async fn nested_service_sees_stripped_uri() {
     assert_eq!(res.text().await, "/baz");
 }
 
+#[cfg(feature = "tokio")]
 #[crate::test]
 async fn nest_static_file_server() {
     let app = Router::new().nest_service("/static", ServeDir::new("."));
@@ -210,6 +220,7 @@ async fn nest_static_file_server() {
     assert_eq!(res.status(), StatusCode::OK);
 }
 
+#[cfg(feature = "tokio")]
 #[crate::test]
 async fn nested_multiple_routes() {
     let app = Router::new()
@@ -243,6 +254,7 @@ fn nested_at_root_with_other_routes() {
         .route("/", get(|| async {}));
 }
 
+#[cfg(feature = "tokio")]
 #[crate::test]
 async fn multiple_top_level_nests() {
     let app = Router::new()
@@ -267,6 +279,7 @@ async fn nest_cannot_contain_wildcards() {
     _ = Router::<(), Body>::new().nest("/one/*rest", Router::new());
 }
 
+#[cfg(feature = "tokio")]
 #[crate::test]
 async fn outer_middleware_still_see_whole_url() {
     #[derive(Clone)]
@@ -318,6 +331,7 @@ async fn outer_middleware_still_see_whole_url() {
     assert_eq!(client.get("/one/two").send().await.text().await, "/one/two");
 }
 
+#[cfg(feature = "tokio")]
 #[crate::test]
 async fn nest_at_capture() {
     let api_routes = Router::new().route(
@@ -334,6 +348,7 @@ async fn nest_at_capture() {
     assert_eq!(res.text().await, "a=foo b=bar");
 }
 
+#[cfg(feature = "tokio")]
 #[crate::test]
 async fn nest_with_and_without_trailing() {
     let app = Router::new().nest_service("/foo", get(|| async {}));
@@ -350,6 +365,7 @@ async fn nest_with_and_without_trailing() {
     assert_eq!(res.status(), StatusCode::OK);
 }
 
+#[cfg(feature = "tokio")]
 #[tokio::test]
 async fn nesting_with_root_inner_router() {
     let app = Router::new()
@@ -396,6 +412,7 @@ macro_rules! nested_route_test {
         // the route we expect to be able to call
         expected = $expected_path:literal $(,)?
     ) => {
+        #[cfg(feature = "tokio")]
         #[crate::test]
         async fn $name() {
             let inner = Router::new().route($route_path, get(|| async {}));

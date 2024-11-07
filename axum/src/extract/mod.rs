@@ -98,6 +98,7 @@ pub(super) fn has_content_type(headers: &HeaderMap, expected_content_type: &mime
     content_type.starts_with(expected_content_type.as_ref())
 }
 
+#[cfg(feature = "tokio")]
 #[cfg(test)]
 mod tests {
     use crate::{routing::get, test_helpers::*, Router};

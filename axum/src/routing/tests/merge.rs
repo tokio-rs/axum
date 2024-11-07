@@ -1,8 +1,11 @@
 use super::*;
-use crate::{error_handling::HandleErrorLayer, extract::OriginalUri, response::IntoResponse, Json};
+use crate::{error_handling::HandleErrorLayer, response::IntoResponse};
+#[cfg(feature = "json")]
+use crate::{extract::OriginalUri, Json};
 use serde_json::{json, Value};
 use tower::{limit::ConcurrencyLimitLayer, timeout::TimeoutLayer};
 
+#[cfg(feature = "tokio")]
 #[crate::test]
 async fn basic() {
     let one = Router::new()
@@ -26,6 +29,7 @@ async fn basic() {
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
 }
 
+#[cfg(feature = "tokio")]
 #[crate::test]
 async fn multiple_ors_balanced_differently() {
     let one = Router::new().route("/one", get(|| async { "one" }));
@@ -71,6 +75,7 @@ async fn multiple_ors_balanced_differently() {
     }
 }
 
+#[cfg(feature = "tokio")]
 #[crate::test]
 async fn nested_or() {
     let bar = Router::new().route("/bar", get(|| async { "bar" }));
@@ -87,6 +92,7 @@ async fn nested_or() {
     assert_eq!(client.get("/foo/baz").send().await.text().await, "baz");
 }
 
+#[cfg(feature = "tokio")]
 #[crate::test]
 async fn or_with_route_following() {
     let one = Router::new().route("/one", get(|| async { "one" }));
@@ -105,6 +111,7 @@ async fn or_with_route_following() {
     assert_eq!(res.status(), StatusCode::OK);
 }
 
+#[cfg(feature = "tokio")]
 #[crate::test]
 async fn layer() {
     let one = Router::new().route("/foo", get(|| async {}));
@@ -122,6 +129,7 @@ async fn layer() {
     assert_eq!(res.status(), StatusCode::OK);
 }
 
+#[cfg(feature = "tokio")]
 #[crate::test]
 async fn layer_and_handle_error() {
     let one = Router::new().route("/foo", get(|| async {}));
@@ -142,6 +150,7 @@ async fn layer_and_handle_error() {
     assert_eq!(res.status(), StatusCode::REQUEST_TIMEOUT);
 }
 
+#[cfg(feature = "tokio")]
 #[crate::test]
 async fn nesting() {
     let one = Router::new().route("/foo", get(|| async {}));
@@ -154,6 +163,7 @@ async fn nesting() {
     assert_eq!(res.status(), StatusCode::OK);
 }
 
+#[cfg(feature = "tokio")]
 #[crate::test]
 async fn boxed() {
     let one = Router::new().route("/foo", get(|| async {}));
@@ -166,6 +176,7 @@ async fn boxed() {
     assert_eq!(res.status(), StatusCode::OK);
 }
 
+#[cfg(feature = "tokio")]
 #[crate::test]
 async fn many_ors() {
     let app = Router::new()
@@ -188,6 +199,7 @@ async fn many_ors() {
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
 }
 
+#[cfg(feature = "tokio")]
 #[crate::test]
 async fn services() {
     use crate::routing::get_service;
@@ -215,6 +227,7 @@ async fn services() {
     assert_eq!(res.status(), StatusCode::OK);
 }
 
+#[cfg(feature = "json")]
 async fn all_the_uris(
     uri: Uri,
     OriginalUri(original_uri): OriginalUri,
@@ -227,6 +240,8 @@ async fn all_the_uris(
     }))
 }
 
+#[cfg(feature = "tokio")]
+#[cfg(feature = "json")]
 #[crate::test]
 async fn nesting_and_seeing_the_right_uri() {
     let one = Router::new().nest("/foo/", Router::new().route("/bar", get(all_the_uris)));
@@ -257,6 +272,8 @@ async fn nesting_and_seeing_the_right_uri() {
     );
 }
 
+#[cfg(feature = "tokio")]
+#[cfg(feature = "json")]
 #[crate::test]
 async fn nesting_and_seeing_the_right_uri_at_more_levels_of_nesting() {
     let one = Router::new().nest(
@@ -290,6 +307,8 @@ async fn nesting_and_seeing_the_right_uri_at_more_levels_of_nesting() {
     );
 }
 
+#[cfg(feature = "tokio")]
+#[cfg(feature = "json")]
 #[crate::test]
 async fn nesting_and_seeing_the_right_uri_ors_with_nesting() {
     let one = Router::new().nest(
@@ -335,6 +354,8 @@ async fn nesting_and_seeing_the_right_uri_ors_with_nesting() {
     );
 }
 
+#[cfg(feature = "tokio")]
+#[cfg(feature = "json")]
 #[crate::test]
 async fn nesting_and_seeing_the_right_uri_ors_with_multi_segment_uris() {
     let one = Router::new().nest(
@@ -368,6 +389,7 @@ async fn nesting_and_seeing_the_right_uri_ors_with_multi_segment_uris() {
     );
 }
 
+#[cfg(feature = "tokio")]
 #[crate::test]
 async fn middleware_that_return_early() {
     let private = Router::new()

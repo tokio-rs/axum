@@ -228,6 +228,7 @@ fn set_cookies(jar: cookie::CookieJar, headers: &mut HeaderMap) {
     // jar so it cannot be called multiple times.
 }
 
+#[cfg(any(feature = "cookie-signed", feature = "cookie-private"))]
 #[cfg(test)]
 mod tests {
     use super::*;
