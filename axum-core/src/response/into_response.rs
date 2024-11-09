@@ -356,7 +356,7 @@ impl IntoResponse for &'static [u8] {
 
 impl<const N: usize> IntoResponse for &'static [u8; N] {
     fn into_response(self) -> Response {
-        self.as_slice().into_response()
+        (&self[..]).into_response()
     }
 }
 

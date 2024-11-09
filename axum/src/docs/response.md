@@ -165,7 +165,7 @@ In general you can return tuples like:
 This means you cannot accidentally override the status or body as [`IntoResponseParts`] only allows
 setting headers and extensions.
 
-Use [`Response`](crate::response::Response) for more low level control:
+Use [`Response`] for more low level control:
 
 ```rust,no_run
 use axum::{
