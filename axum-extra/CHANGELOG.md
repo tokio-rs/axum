@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog],
 and this project adheres to [Semantic Versioning].
 
-# Unreleased
+# 0.9.5
 
 - **added:** Add `RouterExt::typed_connect` ([#2961])
 - **added:** Add `json!` for easy construction of JSON responses ([#2962])
