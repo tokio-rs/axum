@@ -344,5 +344,5 @@ async fn state_isnt_cloned_too_much_with_fallback() {
 
     client.get("/does-not-exist").await;
 
-    assert_eq!(state.count(), 4);
+    assert_eq!(state.count(), 3);
 }
