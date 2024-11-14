@@ -9,6 +9,8 @@ use http::{
     header::{HeaderMap, FORWARDED},
     request::Parts,
 };
+
+use super::SpoofableValue;
 const X_FORWARDED_PROTO_HEADER_KEY: &str = "X-Forwarded-Proto";
 
 /// Extractor that resolves the scheme / protocol of a request.
@@ -21,7 +23,7 @@ const X_FORWARDED_PROTO_HEADER_KEY: &str = "X-Forwarded-Proto";
 /// Note that user agents can set the `X-Forwarded-Proto` header to arbitrary values so make
 /// sure to validate them to avoid security issues.
 #[derive(Debug, Clone)]
-pub struct Scheme(pub String);
+pub struct Scheme(pub SpoofableValue);
 
 /// Rejection type used if the [`Scheme`] extractor is unable to
 /// resolve a scheme.
@@ -43,7 +45,7 @@ where
     async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
         // Within Forwarded header
         if let Some(scheme) = parse_forwarded(&parts.headers) {
-            return Ok(Scheme(scheme.to_owned()));
+            return Ok(Scheme(SpoofableValue::new(scheme.to_owned())));
         }
 
         // X-Forwarded-Proto
@@ -52,12 +54,12 @@ where
             .get(X_FORWARDED_PROTO_HEADER_KEY)
             .and_then(|scheme| scheme.to_str().ok())
         {
-            return Ok(Scheme(scheme.to_owned()));
+            return Ok(Scheme(SpoofableValue::new(scheme.to_owned())));
         }
 
         // From parts of an HTTP/2 request
         if let Some(scheme) = parts.uri.scheme_str() {
-            return Ok(Scheme(scheme.to_owned()));
+            return Ok(Scheme(SpoofableValue::new(scheme.to_owned())));
         }
 
         Err(SchemeMissing)
@@ -89,7 +91,7 @@ mod tests {
 
     fn test_client() -> TestClient {
         async fn scheme_as_body(Scheme(scheme): Scheme) -> String {
-            scheme
+            scheme.spoofable_value()
         }
 
         TestClient::new(Router::new().route("/", get(scheme_as_body)))
