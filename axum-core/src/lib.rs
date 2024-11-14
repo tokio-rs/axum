@@ -50,6 +50,11 @@
 
 #[macro_use]
 pub(crate) mod macros;
+#[doc(hidden)] // macro helpers
+pub mod __private {
+    #[cfg(feature = "tracing")]
+    pub use tracing;
+}
 
 mod error;
 mod ext_traits;

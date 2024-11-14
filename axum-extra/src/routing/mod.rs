@@ -1,7 +1,7 @@
 //! Additional types for defining routes.
 
 use axum::{
-    extract::Request,
+    extract::{OriginalUri, Request},
     response::{IntoResponse, Redirect, Response},
     routing::{any, MethodRouter},
     Router,
@@ -131,6 +131,19 @@ pub trait RouterExt<S>: sealed::Sealed {
         T: SecondElementIs<P> + 'static,
         P: TypedPath;
 
+    /// Add a typed `CONNECT` route to the router.
+    ///
+    /// The path will be inferred from the first argument to the handler function which must
+    /// implement [`TypedPath`].
+    ///
+    /// See [`TypedPath`] for more details and examples.
+    #[cfg(feature = "typed-routing")]
+    fn typed_connect<H, T, P>(self, handler: H) -> Self
+    where
+        H: axum::handler::Handler<T, S>,
+        T: SecondElementIs<P> + 'static,
+        P: TypedPath;
+
     /// Add another route to the router with an additional "trailing slash redirect" route.
     ///
     /// If you add a route _without_ a trailing slash, such as `/foo`, this method will also add a
@@ -165,7 +178,7 @@ pub trait RouterExt<S>: sealed::Sealed {
     /// This works like [`RouterExt::route_with_tsr`] but accepts any [`Service`].
     fn route_service_with_tsr<T>(self, path: &str, service: T) -> Self
     where
-        T: Service<Request, Error = Infallible> + Clone + Send + 'static,
+        T: Service<Request, Error = Infallible> + Clone + Send + Sync + 'static,
         T::Response: IntoResponse,
         T::Future: Send + 'static,
         Self: Sized;
@@ -255,6 +268,16 @@ where
         self.route(P::PATH, axum::routing::trace(handler))
     }
 
+    #[cfg(feature = "typed-routing")]
+    fn typed_connect<H, T, P>(self, handler: H) -> Self
+    where
+        H: axum::handler::Handler<T, S>,
+        T: SecondElementIs<P> + 'static,
+        P: TypedPath,
+    {
+        self.route(P::PATH, axum::routing::connect(handler))
+    }
+
     #[track_caller]
     fn route_with_tsr(mut self, path: &str, method_router: MethodRouter<S>) -> Self
     where
@@ -268,7 +291,7 @@ where
     #[track_caller]
     fn route_service_with_tsr<T>(mut self, path: &str, service: T) -> Self
     where
-        T: Service<Request, Error = Infallible> + Clone + Send + 'static,
+        T: Service<Request, Error = Infallible> + Clone + Send + Sync + 'static,
         T::Response: IntoResponse,
         T::Future: Send + 'static,
         Self: Sized,
@@ -290,7 +313,7 @@ fn add_tsr_redirect_route<S>(router: Router<S>, path: &str) -> Router<S>
 where
     S: Clone + Send + Sync + 'static,
 {
-    async fn redirect_handler(uri: Uri) -> Response {
+    async fn redirect_handler(OriginalUri(uri): OriginalUri) -> Response {
         let new_uri = map_path(uri, |path| {
             path.strip_suffix('/')
                 .map(Cow::Borrowed)
@@ -371,11 +394,11 @@ mod tests {
     async fn tsr_with_params() {
         let app = Router::new()
             .route_with_tsr(
-                "/a/:a",
+                "/a/{a}",
                 get(|Path(param): Path<String>| async move { param }),
             )
             .route_with_tsr(
-                "/b/:b/",
+                "/b/{b}/",
                 get(|Path(param): Path<String>| async move { param }),
             );
 
@@ -407,6 +430,22 @@ mod tests {
         let res = client.get("/foo/?a=a").await;
         assert_eq!(res.status(), StatusCode::PERMANENT_REDIRECT);
         assert_eq!(res.headers()["location"], "/foo?a=a");
+    }
+
+    #[tokio::test]
+    async fn tsr_works_in_nested_router() {
+        let app = Router::new().nest(
+            "/neko",
+            Router::new().route_with_tsr("/nyan/", get(|| async {})),
+        );
+
+        let client = TestClient::new(app);
+        let res = client.get("/neko/nyan/").await;
+        assert_eq!(res.status(), StatusCode::OK);
+
+        let res = client.get("/neko/nyan").await;
+        assert_eq!(res.status(), StatusCode::PERMANENT_REDIRECT);
+        assert_eq!(res.headers()["location"], "/neko/nyan/");
     }
 
     #[test]

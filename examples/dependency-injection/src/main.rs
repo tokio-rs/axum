@@ -52,14 +52,14 @@ async fn main() {
     // Using trait objects is recommended unless you really need generics.
 
     let using_dyn = Router::new()
-        .route("/users/:id", get(get_user_dyn))
+        .route("/users/{id}", get(get_user_dyn))
         .route("/users", post(create_user_dyn))
         .with_state(AppStateDyn {
             user_repo: Arc::new(user_repo.clone()),
         });
 
     let using_generic = Router::new()
-        .route("/users/:id", get(get_user_generic::<InMemoryUserRepo>))
+        .route("/users/{id}", get(get_user_generic::<InMemoryUserRepo>))
         .route("/users", post(create_user_generic::<InMemoryUserRepo>))
         .with_state(AppStateGeneric { user_repo });
 

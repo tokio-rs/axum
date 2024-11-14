@@ -5,9 +5,9 @@
 //! [`axum::extract`]: https://docs.rs/axum/0.7/axum/extract/index.html
 
 use crate::{body::Body, response::IntoResponse};
-use async_trait::async_trait;
 use http::request::Parts;
 use std::convert::Infallible;
+use std::future::Future;
 
 pub mod rejection;
 
@@ -42,7 +42,6 @@ mod private {
 /// See [`axum::extract`] for more general docs about extractors.
 ///
 /// [`axum::extract`]: https://docs.rs/axum/0.7/axum/extract/index.html
-#[async_trait]
 #[rustversion::attr(
     since(1.78),
     diagnostic::on_unimplemented(
@@ -55,7 +54,10 @@ pub trait FromRequestParts<S>: Sized {
     type Rejection: IntoResponse;
 
     /// Perform the extraction.
-    async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection>;
+    fn from_request_parts(
+        parts: &mut Parts,
+        state: &S,
+    ) -> impl Future<Output = Result<Self, Self::Rejection>> + Send;
 }
 
 /// Types that can be created from requests.
@@ -69,7 +71,6 @@ pub trait FromRequestParts<S>: Sized {
 /// See [`axum::extract`] for more general docs about extractors.
 ///
 /// [`axum::extract`]: https://docs.rs/axum/0.7/axum/extract/index.html
-#[async_trait]
 #[rustversion::attr(
     since(1.78),
     diagnostic::on_unimplemented(
@@ -82,10 +83,12 @@ pub trait FromRequest<S, M = private::ViaRequest>: Sized {
     type Rejection: IntoResponse;
 
     /// Perform the extraction.
-    async fn from_request(req: Request, state: &S) -> Result<Self, Self::Rejection>;
+    fn from_request(
+        req: Request,
+        state: &S,
+    ) -> impl Future<Output = Result<Self, Self::Rejection>> + Send;
 }
 
-#[async_trait]
 impl<S, T> FromRequest<S, private::ViaParts> for T
 where
     S: Send + Sync,
@@ -99,7 +102,6 @@ where
     }
 }
 
-#[async_trait]
 impl<S, T> FromRequestParts<S> for Option<T>
 where
     T: FromRequestParts<S>,
@@ -115,7 +117,6 @@ where
     }
 }
 
-#[async_trait]
 impl<S, T> FromRequest<S> for Option<T>
 where
     T: FromRequest<S>,
@@ -128,7 +129,6 @@ where
     }
 }
 
-#[async_trait]
 impl<S, T> FromRequestParts<S> for Result<T, T::Rejection>
 where
     T: FromRequestParts<S>,
@@ -141,7 +141,6 @@ where
     }
 }
 
-#[async_trait]
 impl<S, T> FromRequest<S> for Result<T, T::Rejection>
 where
     T: FromRequest<S>,

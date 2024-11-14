@@ -1,6 +1,5 @@
 use crate::extract::Request;
 use crate::extract::{rejection::*, FromRequest};
-use async_trait::async_trait;
 use axum_core::response::{IntoResponse, Response};
 use bytes::{BufMut, Bytes, BytesMut};
 use http::{
@@ -55,6 +54,11 @@ use serde::{de::DeserializeOwned, Serialize};
 /// When used as a response, it can serialize any type that implements [`serde::Serialize`] to
 /// `JSON`, and will automatically set `Content-Type: application/json` header.
 ///
+/// If the [`Serialize`] implementation decides to fail
+/// or if a map with non-string keys is used,
+/// a 500 response will be issued
+/// whose body is the error message in UTF-8.
+///
 /// # Response example
 ///
 /// ```
@@ -83,7 +87,7 @@ use serde::{de::DeserializeOwned, Serialize};
 ///     # unimplemented!()
 /// }
 ///
-/// let app = Router::new().route("/users/:id", get(get_user));
+/// let app = Router::new().route("/users/{id}", get(get_user));
 /// # let _: Router = app;
 /// ```
 #[derive(Debug, Clone, Copy, Default)]
@@ -91,7 +95,6 @@ use serde::{de::DeserializeOwned, Serialize};
 #[must_use]
 pub struct Json<T>(pub T);
 
-#[async_trait]
 impl<T, S> FromRequest<S> for Json<T>
 where
     T: DeserializeOwned,

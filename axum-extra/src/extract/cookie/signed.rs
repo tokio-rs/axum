@@ -1,6 +1,5 @@
 use super::{cookies_from_request, set_cookies};
 use axum::{
-    async_trait,
     extract::{FromRef, FromRequestParts},
     response::{IntoResponse, IntoResponseParts, Response, ResponseParts},
 };
@@ -139,7 +138,6 @@ impl<K> fmt::Debug for SignedCookieJar<K> {
     }
 }
 
-#[async_trait]
 impl<S, K> FromRequestParts<S> for SignedCookieJar<K>
 where
     S: Send + Sync,
@@ -309,7 +307,7 @@ struct SignedCookieJarIter<'a, K> {
     iter: cookie::Iter<'a>,
 }
 
-impl<'a, K> Iterator for SignedCookieJarIter<'a, K> {
+impl<K> Iterator for SignedCookieJarIter<'_, K> {
     type Item = Cookie<'static>;
 
     fn next(&mut self) -> Option<Self::Item> {

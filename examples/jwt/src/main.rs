@@ -7,7 +7,6 @@
 //! ```
 
 use axum::{
-    async_trait,
     extract::FromRequestParts,
     http::{request::Parts, StatusCode},
     response::{IntoResponse, Response},
@@ -19,10 +18,10 @@ use axum_extra::{
     TypedHeader,
 };
 use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
-use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::fmt::Display;
+use std::sync::LazyLock;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 // Quick instructions
@@ -51,7 +50,7 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 //     -H 'Authorization: Bearer blahblahblah' \
 //     http://localhost:3000/protected
 
-static KEYS: Lazy<Keys> = Lazy::new(|| {
+static KEYS: LazyLock<Keys> = LazyLock::new(|| {
     let secret = std::env::var("JWT_SECRET").expect("JWT_SECRET must be set");
     Keys::new(secret.as_bytes())
 });
@@ -122,7 +121,6 @@ impl AuthBody {
     }
 }
 
-#[async_trait]
 impl<S> FromRequestParts<S> for Claims
 where
     S: Send + Sync,

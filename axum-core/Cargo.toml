@@ -2,14 +2,14 @@
 categories = ["asynchronous", "network-programming", "web-programming"]
 description = "Core types and traits for axum"
 edition = "2021"
-rust-version = "1.57"
+rust-version = { workspace = true }
 homepage = "https://github.com/tokio-rs/axum"
 keywords = ["http", "web", "framework"]
 license = "MIT"
 name = "axum-core"
 readme = "README.md"
 repository = "https://github.com/tokio-rs/axum"
-version = "0.4.3" # remember to also bump the version that axum and axum-extra depend on
+version = "0.5.0-alpha.1" # remember to bump the version that axum and axum-extra depend on
 
 [features]
 tracing = ["dep:tracing"]
@@ -18,8 +18,7 @@ tracing = ["dep:tracing"]
 __private_docs = ["dep:tower-http"]
 
 [dependencies]
-async-trait = "0.1.67"
-bytes = "1.0"
+bytes = "1.2"
 futures-util = { version = "0.3", default-features = false, features = ["alloc"] }
 http = "1.0.0"
 http-body = "1.0.0"
@@ -36,7 +35,7 @@ tower-http = { version = "0.6.0", optional = true, features = ["limit"] }
 tracing = { version = "0.1.37", default-features = false, optional = true }
 
 [dev-dependencies]
-axum = { path = "../axum", version = "0.7.2" }
+axum = { path = "../axum" }
 axum-extra = { path = "../axum-extra", features = ["typed-header"] }
 futures-util = { version = "0.3", default-features = false, features = ["alloc"] }
 hyper = "1.0.0"
@@ -54,6 +53,9 @@ allowed = [
     "http",
     "http_body",
 ]
+
+[package.metadata.cargo-machete]
+ignored = ["tower-http"] # See __private_docs feature
 
 [package.metadata.docs.rs]
 all-features = true

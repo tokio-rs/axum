@@ -4,7 +4,6 @@
 
 use super::{FromRequest, Request};
 use crate::body::Bytes;
-use async_trait::async_trait;
 use axum_core::{
     __composite_rejection as composite_rejection, __define_rejection as define_rejection,
     response::{IntoResponse, Response},
@@ -65,7 +64,6 @@ pub struct Multipart {
     inner: multer::Multipart<'static>,
 }
 
-#[async_trait]
 impl<S> FromRequest<S> for Multipart
 where
     S: Send + Sync,
@@ -109,7 +107,7 @@ pub struct Field<'a> {
     _multipart: &'a mut Multipart,
 }
 
-impl<'a> Stream for Field<'a> {
+impl Stream for Field<'_> {
     type Item = Result<Bytes, MultipartError>;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {

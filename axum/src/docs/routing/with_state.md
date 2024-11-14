@@ -1,4 +1,5 @@
-Provide the state for the router.
+Provide the state for the router. State passed to this method is global and will be used
+for all requests this router receives. That means it is not suitable for holding state derived from a request, such as authorization data extracted in a middleware. Use [`Extension`] instead for such data.
 
 ```rust
 use axum::{Router, routing::get, extract::State};
@@ -93,13 +94,6 @@ let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
 axum::serve(listener, routes).await.unwrap();
 # };
 ```
-
-# State is global within the router
-
-The state passed to this method will be used for all requests this router
-receives. That means it is not suitable for holding state derived from a
-request, such as authorization data extracted in a middleware. Use [`Extension`]
-instead for such data.
 
 # What `S` in `Router<S>` means
 

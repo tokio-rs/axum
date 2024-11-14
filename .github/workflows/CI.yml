@@ -2,7 +2,7 @@ name: CI
 
 env:
   CARGO_TERM_COLOR: always
-  MSRV: '1.66'
+  MSRV: '1.75'
 
 on:
   push:
@@ -12,7 +12,7 @@ on:
 
 jobs:
   check:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
     - uses: actions/checkout@v4
     - uses: taiki-e/install-action@protoc
@@ -20,29 +20,38 @@ jobs:
       with:
         components: clippy, rustfmt
     - uses: Swatinem/rust-cache@v2
+      with:
+        save-if: ${{ github.ref == 'refs/heads/main' }}
+        prefix-key: "v0-rust-ubuntu-24.04"
     - name: Check
       run: cargo clippy --workspace --all-targets --all-features -- -D warnings
     - name: rustfmt
       run: cargo fmt --all --check
 
   check-docs:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
     - uses: actions/checkout@v4
     - uses: dtolnay/rust-toolchain@stable
     - uses: Swatinem/rust-cache@v2
+      with:
+        save-if: ${{ github.ref == 'refs/heads/main' }}
+        prefix-key: "v0-rust-ubuntu-24.04"
     - name: cargo doc
       env:
         RUSTDOCFLAGS: "-D rustdoc::all -A rustdoc::private-doc-tests"
       run: cargo doc --all-features --no-deps
 
   cargo-hack:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
     - uses: actions/checkout@v4
     - uses: taiki-e/install-action@protoc
     - uses: dtolnay/rust-toolchain@stable
     - uses: Swatinem/rust-cache@v2
+      with:
+        save-if: ${{ github.ref == 'refs/heads/main' }}
+        prefix-key: "v0-rust-ubuntu-24.04"
     - name: Install cargo-hack
       run: |
         curl -LsSf https://github.com/taiki-e/cargo-hack/releases/latest/download/cargo-hack-x86_64-unknown-linux-gnu.tar.gz | tar xzf - -C ~/.cargo/bin
@@ -50,7 +59,7 @@ jobs:
       run: cargo hack check --each-feature --no-dev-deps --all
 
   cargo-public-api-crates:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     strategy:
       matrix:
         crate: [axum, axum-core, axum-extra, axum-macros]
@@ -61,6 +70,9 @@ jobs:
       with:
         toolchain: nightly-2024-06-06
     - uses: Swatinem/rust-cache@v2
+      with:
+        save-if: ${{ github.ref == 'refs/heads/main' }}
+        prefix-key: "v0-rust-ubuntu-24.04"
     - name: Install cargo-public-api-crates
       run: |
         cargo install --git https://github.com/davidpdrsn/cargo-public-api-crates
@@ -72,7 +84,7 @@ jobs:
 
   test-versions:
     needs: check
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     strategy:
       matrix:
         rust: [stable, beta]
@@ -83,13 +95,16 @@ jobs:
       with:
         toolchain: ${{ matrix.rust }}
     - uses: Swatinem/rust-cache@v2
+      with:
+        save-if: ${{ github.ref == 'refs/heads/main' }}
+        prefix-key: "v0-rust-ubuntu-24.04"
     - name: Run tests
       run: cargo test --workspace --all-features --all-targets
 
-  # some examples doesn't support our MSRV so we only test axum itself on our MSRV
+  # some examples don't support our MSRV so we only test axum itself on our MSRV
   test-nightly:
     needs: check
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
     - uses: actions/checkout@v4
     - name: Get rust-toolchain version
@@ -99,15 +114,18 @@ jobs:
       with:
         toolchain: ${{ steps.rust-toolchain.outputs.version }}
     - uses: Swatinem/rust-cache@v2
+      with:
+        save-if: ${{ github.ref == 'refs/heads/main' }}
+        prefix-key: "v0-rust-ubuntu-24.04"
     - name: Run nightly tests
       working-directory: axum-macros
       run: cargo test
 
-  # some examples doesn't support our MSRV (such as async-graphql)
+  # some examples don't support our MSRV (such as async-graphql)
   # so we only test axum itself on our MSRV
   test-msrv:
     needs: check
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
     - uses: actions/checkout@v4
     - uses: dtolnay/rust-toolchain@master
@@ -116,6 +134,9 @@ jobs:
     - name: "install Rust nightly"
       uses: dtolnay/rust-toolchain@nightly
     - uses: Swatinem/rust-cache@v2
+      with:
+        save-if: ${{ github.ref == 'refs/heads/main' }}
+        prefix-key: "v0-rust-ubuntu-24.04"
     - name: Select minimal version
       run: cargo +nightly update -Z minimal-versions
     - name: Fix up Cargo.lock
@@ -143,17 +164,20 @@ jobs:
 
   test-docs:
     needs: check
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
     - uses: actions/checkout@v4
     - uses: dtolnay/rust-toolchain@stable
     - uses: Swatinem/rust-cache@v2
+      with:
+        save-if: ${{ github.ref == 'refs/heads/main' }}
+        prefix-key: "v0-rust-ubuntu-24.04"
     - name: Run doc tests
       run: cargo test --all-features --doc
 
   deny-check:
     name: cargo-deny check
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     continue-on-error: ${{ matrix.checks == 'advisories' }}
     strategy:
       matrix:
@@ -169,13 +193,16 @@ jobs:
 
   armv5te-unknown-linux-musleabi:
     needs: check
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
     - uses: actions/checkout@v4
     - uses: dtolnay/rust-toolchain@stable
       with:
         target: armv5te-unknown-linux-musleabi
     - uses: Swatinem/rust-cache@v2
+      with:
+        save-if: ${{ github.ref == 'refs/heads/main' }}
+        prefix-key: "v0-rust-ubuntu-24.04"
     - name: Check
       env:
         # Clang has native cross-compilation support
@@ -193,13 +220,16 @@ jobs:
 
   wasm32-unknown-unknown:
     needs: check
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
     - uses: actions/checkout@v4
     - uses: dtolnay/rust-toolchain@stable
       with:
         target: wasm32-unknown-unknown
     - uses: Swatinem/rust-cache@v2
+      with:
+        save-if: ${{ github.ref == 'refs/heads/main' }}
+        prefix-key: "v0-rust-ubuntu-24.04"
     - name: Check
       run: >
         cargo
@@ -208,11 +238,14 @@ jobs:
         --target wasm32-unknown-unknown
 
   dependencies-are-sorted:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
     - uses: actions/checkout@v4
     - uses: dtolnay/rust-toolchain@beta
     - uses: Swatinem/rust-cache@v2
+      with:
+        save-if: ${{ github.ref == 'refs/heads/main' }}
+        prefix-key: "v0-rust-ubuntu-24.04"
     - name: Install cargo-sort
       run: |
         cargo install cargo-sort
@@ -225,7 +258,7 @@ jobs:
 
   typos:
     name: Spell Check with Typos
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     if: github.event_name == 'push' || !github.event.pull_request.draft
 
     steps:

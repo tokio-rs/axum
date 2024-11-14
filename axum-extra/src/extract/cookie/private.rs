@@ -1,6 +1,5 @@
 use super::{cookies_from_request, set_cookies, Cookie, Key};
 use axum::{
-    async_trait,
     extract::{FromRef, FromRequestParts},
     response::{IntoResponse, IntoResponseParts, Response, ResponseParts},
 };
@@ -122,7 +121,6 @@ impl<K> fmt::Debug for PrivateCookieJar<K> {
     }
 }
 
-#[async_trait]
 impl<S, K> FromRequestParts<S> for PrivateCookieJar<K>
 where
     S: Send + Sync,
@@ -291,7 +289,7 @@ struct PrivateCookieJarIter<'a, K> {
     iter: cookie::Iter<'a>,
 }
 
-impl<'a, K> Iterator for PrivateCookieJarIter<'a, K> {
+impl<K> Iterator for PrivateCookieJarIter<'_, K> {
     type Item = Cookie<'static>;
 
     fn next(&mut self) -> Option<Self::Item> {

@@ -1,5 +1,4 @@
 use axum::{
-    async_trait,
     extract::FromRequestParts,
     response::{IntoResponse, Response},
     Error,
@@ -82,7 +81,6 @@ use std::fmt;
 #[derive(Debug, Clone, Copy, Default)]
 pub struct Query<T>(pub T);
 
-#[async_trait]
 impl<T, S> FromRequestParts<S> for Query<T>
 where
     T: DeserializeOwned,
@@ -187,7 +185,6 @@ impl std::error::Error for QueryRejection {
 #[derive(Debug, Clone, Copy, Default)]
 pub struct OptionalQuery<T>(pub Option<T>);
 
-#[async_trait]
 impl<T, S> FromRequestParts<S> for OptionalQuery<T>
 where
     T: DeserializeOwned,

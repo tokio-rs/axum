@@ -1,4 +1,3 @@
-use axum::async_trait;
 use axum::extract::{FromRequest, FromRequestParts, Request};
 use axum::response::IntoResponse;
 use http::request::Parts;
@@ -110,7 +109,6 @@ impl<E, R> DerefMut for WithRejection<E, R> {
     }
 }
 
-#[async_trait]
 impl<E, R, S> FromRequest<S> for WithRejection<E, R>
 where
     S: Send + Sync,
@@ -125,7 +123,6 @@ where
     }
 }
 
-#[async_trait]
 impl<E, R, S> FromRequestParts<S> for WithRejection<E, R>
 where
     S: Send + Sync,
@@ -169,7 +166,6 @@ mod tests {
         struct TestExtractor;
         struct TestRejection;
 
-        #[async_trait]
         impl<S> FromRequestParts<S> for TestExtractor
         where
             S: Send + Sync,

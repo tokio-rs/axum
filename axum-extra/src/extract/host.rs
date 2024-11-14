@@ -1,8 +1,5 @@
-use super::{
-    rejection::{FailedToResolveHost, HostRejection},
-    FromRequestParts,
-};
-use async_trait::async_trait;
+use super::rejection::{FailedToResolveHost, HostRejection};
+use axum::extract::FromRequestParts;
 use http::{
     header::{HeaderMap, FORWARDED},
     request::Parts,
@@ -27,7 +24,6 @@ const X_FORWARDED_HOST_HEADER_KEY: &str = "X-Forwarded-Host";
 #[derive(Debug, Clone)]
 pub struct Host(pub String);
 
-#[async_trait]
 impl<S> FromRequestParts<S> for Host
 where
     S: Send + Sync,
@@ -90,7 +86,8 @@ fn parse_authority(auth: &Authority) -> &str {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{routing::get, test_helpers::TestClient, Router};
+    use crate::test_helpers::TestClient;
+    use axum::{routing::get, Router};
     use http::{header::HeaderName, Request};
 
     fn test_client() -> TestClient {

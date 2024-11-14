@@ -1,7 +1,6 @@
 //! Protocol Buffer extractor and response.
 
 use axum::{
-    async_trait,
     extract::{rejection::BytesRejection, FromRequest, Request},
     response::{IntoResponse, Response},
 };
@@ -82,7 +81,7 @@ use prost::Message;
 ///     # unimplemented!()
 /// }
 ///
-/// let app = Router::new().route("/users/:id", get(get_user));
+/// let app = Router::new().route("/users/{id}", get(get_user));
 /// # let _: Router = app;
 /// ```
 #[derive(Debug, Clone, Copy, Default)]
@@ -90,7 +89,6 @@ use prost::Message;
 #[must_use]
 pub struct Protobuf<T>(pub T);
 
-#[async_trait]
 impl<T, S> FromRequest<S> for Protobuf<T>
 where
     T: Message + Default,
