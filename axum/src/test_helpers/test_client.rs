@@ -83,6 +83,11 @@ impl TestClient {
             builder: self.client.patch(format!("http://{}{}", self.addr, url)),
         }
     }
+
+    #[allow(dead_code)]
+    pub(crate) fn server_port(&self) -> u16 {
+        self.addr.port()
+    }
 }
 
 pub(crate) struct RequestBuilder {
