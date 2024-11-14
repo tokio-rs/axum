@@ -37,8 +37,13 @@ tower-log = ["tower/log"]
 tracing = ["dep:tracing", "axum-core/tracing"]
 ws = ["dep:hyper", "tokio", "dep:tokio-tungstenite", "dep:sha1", "dep:base64"]
 
-# Required for intra-doc links to resolve correctly
-__private_docs = ["tower/full", "dep:tower-http"]
+__private_docs = [
+    # We re-export some docs from axum-core via #[doc(inline)],
+    # but they need the same sort of treatment as below to be complete
+    "axum-core/__private_docs",
+    # Enables upstream things linked to in docs
+    "tower/full", "dep:tower-http",
+]
 
 [dependencies]
 axum-core = { path = "../axum-core", version = "0.5.0-alpha.1" }
@@ -128,7 +133,6 @@ uuid = { version = "1.0", features = ["serde", "v4"] }
 
 [package.metadata.docs.rs]
 all-features = true
-rustdoc-args = ["--cfg", "docsrs"]
 
 [dev-dependencies.tower]
 package = "tower"
