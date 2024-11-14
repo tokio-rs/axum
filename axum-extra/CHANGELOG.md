@@ -25,6 +25,14 @@ and this project adheres to [Semantic Versioning].
 [#2829]: https://github.com/tokio-rs/axum/pull/2829
 [#2943]: https://github.com/tokio-rs/axum/pull/2943
 
+# 0.9.5
+
+- **added:** Add `RouterExt::typed_connect` ([#2961])
+- **added:** Add `json!` for easy construction of JSON responses ([#2962])
+
+[#2961]: https://github.com/tokio-rs/axum/pull/2961
+[#2962]: https://github.com/tokio-rs/axum/pull/2962
+
 # 0.9.4
 
 - **added:** The `response::Attachment` type ([#2789])
