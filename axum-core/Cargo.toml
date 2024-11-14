@@ -59,4 +59,3 @@ ignored = ["tower-http"] # See __private_docs feature
 
 [package.metadata.docs.rs]
 all-features = true
-rustdoc-args = ["--cfg", "docsrs"]

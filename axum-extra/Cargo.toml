@@ -85,7 +85,6 @@ tower-http = { version = "0.6.0", features = ["map-response-body", "timeout"] }
 
 [package.metadata.docs.rs]
 all-features = true
-rustdoc-args = ["--cfg", "docsrs"]
 
 [package.metadata.cargo-public-api-crates]
 allowed = [
