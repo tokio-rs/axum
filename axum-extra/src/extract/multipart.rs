@@ -75,7 +75,7 @@ use std::{
 /// to keep `Field`s around from previous loop iterations. That will minimize the risk of runtime
 /// errors.
 ///
-/// # Differences between this and  `axum::extract::Multipart`
+/// # Differences between this and `axum::extract::Multipart`
 ///
 /// `axum::extract::Multipart` uses lifetimes to enforce field exclusivity at compile time, however
 /// that leads to significant usability issues such as `Field` not being `'static`.

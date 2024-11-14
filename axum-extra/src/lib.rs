@@ -23,7 +23,7 @@
 //! `query` | Enables the `Query` extractor | No
 //! `tracing` | Log rejections from built-in extractors | Yes
 //! `typed-routing` | Enables the `TypedPath` routing utilities | No
-//! `typed-header` | Enables the `TypedHeader` extractor and response  | No
+//! `typed-header` | Enables the `TypedHeader` extractor and response | No
 //!
 //! [`axum`]: https://crates.io/crates/axum
 
