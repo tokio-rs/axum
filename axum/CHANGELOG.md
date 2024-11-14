@@ -7,7 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
-- **fixed:** Include port number when parsing authority ([#2242])
 - **fixed:** Skip SSE incompatible chars of `serde_json::RawValue` in `Event::json_data` ([#2992])
 - **breaking:** Move `Host` extractor to `axum-extra` ([#2956])
 - **added:** Add `method_not_allowed_fallback` to set a fallback when a path matches but there is no handler for the given HTTP method ([#2903])
@@ -65,7 +64,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **change:** Update tokio-tungstenite to 0.23 ([#2841])
 - **added:** `Serve::local_addr` and `WithGracefulShutdown::local_addr` functions ([#2881])
 
-[#2242]: https://github.com/tokio-rs/axum/pull/2242
 [#2653]: https://github.com/tokio-rs/axum/pull/2653
 [#2790]: https://github.com/tokio-rs/axum/pull/2790
 [#2841]: https://github.com/tokio-rs/axum/pull/2841
