@@ -28,6 +28,7 @@ use std::env;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 static COOKIE_NAME: &str = "SESSION";
+static CSRF_TOKEN: &str = "csrf_token";
 
 #[tokio::main]
 async fn main() {
@@ -153,7 +154,7 @@ async fn discord_auth(
     // Create session to store csrf_token
     let mut session = Session::new();
     session
-        .insert("csrf_token", &csrf_token)
+        .insert(CSRF_TOKEN, &csrf_token)
         .context("failed in inserting CSRF token into session")?;
 
     // Store the session in MemoryStore and retrieve the session cookie
@@ -164,7 +165,7 @@ async fn discord_auth(
         .context("unexpected error retrieving CSRF cookie value")?;
 
     // Attach the session cookie to the response header
-    let cookie = format!("{COOKIE_NAME}={cookie}; SameSite=Lax; Path=/");
+    let cookie = format!("{COOKIE_NAME}={cookie}; SameSite=Lax; HttpOnly; Secure; Path=/");
     let mut headers = HeaderMap::new();
     headers.insert(
         SET_COOKIE,
@@ -235,7 +236,7 @@ async fn csrf_token_validation_workflow(
 
     // Extract the CSRF token from the session
     let stored_csrf_token = session
-        .get::<CsrfToken>("csrf_token")
+        .get::<CsrfToken>(CSRF_TOKEN)
         .context("CSRF token not found in session")?
         .to_owned();
 
@@ -295,7 +296,7 @@ async fn login_authorized(
         .context("unexpected error retrieving cookie value")?;
 
     // Build the cookie
-    let cookie = format!("{COOKIE_NAME}={cookie}; SameSite=Lax; Path=/");
+    let cookie = format!("{COOKIE_NAME}={cookie}; SameSite=Lax; HttpOnly; Secure; Path=/");
 
     // Set cookie
     let mut headers = HeaderMap::new();
