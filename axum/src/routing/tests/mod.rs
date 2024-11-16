@@ -1088,7 +1088,6 @@ async fn locks_mutex_very_little() {
     }
 }
 
-
 #[crate::test]
 async fn middleware_adding_body() {
     let app = Router::new()
