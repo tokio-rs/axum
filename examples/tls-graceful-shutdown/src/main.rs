@@ -5,13 +5,13 @@
 //! ```
 
 use axum::{
-    extract::Host,
     handler::HandlerWithoutStateExt,
     http::{StatusCode, Uri},
     response::Redirect,
     routing::get,
     BoxError, Router,
 };
+use axum_extra::extract::Host;
 use axum_server::tls_rustls::RustlsConfig;
 use std::{future::Future, net::SocketAddr, path::PathBuf, time::Duration};
 use tokio::signal;
@@ -28,7 +28,7 @@ async fn main() {
     tracing_subscriber::registry()
         .with(
             tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "example_tls_graceful_shutdown=debug".into()),
+                .unwrap_or_else(|_| format!("{}=debug", env!("CARGO_CRATE_NAME")).into()),
         )
         .with(tracing_subscriber::fmt::layer())
         .init();

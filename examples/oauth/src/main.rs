@@ -11,7 +11,6 @@
 use anyhow::{anyhow, Context, Result};
 use async_session::{MemoryStore, Session, SessionStore};
 use axum::{
-    async_trait,
     extract::{FromRef, FromRequestParts, Query, State},
     http::{header::SET_COOKIE, HeaderMap},
     response::{IntoResponse, Redirect, Response},
@@ -35,7 +34,7 @@ async fn main() {
     tracing_subscriber::registry()
         .with(
             tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "example_oauth=debug".into()),
+                .unwrap_or_else(|_| format!("{}=debug", env!("CARGO_CRATE_NAME")).into()),
         )
         .with(tracing_subscriber::fmt::layer())
         .init();
@@ -316,7 +315,6 @@ impl IntoResponse for AuthRedirect {
     }
 }
 
-#[async_trait]
 impl<S> FromRequestParts<S> for User
 where
     MemoryStore: FromRef<S>,

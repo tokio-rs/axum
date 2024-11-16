@@ -4,7 +4,7 @@
 
 [![Build status](https://github.com/tokio-rs/axum/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/tokio-rs/axum/actions/workflows/CI.yml)
 [![Crates.io](https://img.shields.io/crates/v/axum)](https://crates.io/crates/axum)
-[![Documentation](https://docs.rs/axum/badge.svg)](https://docs.rs/axum)
+[![Documentation](https://docs.rs/axum/badge.svg)][docs]
 
 More information about this crate can be found in the [crate documentation][docs].
 
@@ -22,6 +22,13 @@ In particular the last point is what sets `axum` apart from other frameworks.
 [`tower::Service`]. This means `axum` gets timeouts, tracing, compression,
 authorization, and more, for free. It also enables you to share middleware with
 applications written using [`hyper`] or [`tonic`].
+
+## ⚠ Breaking changes ⚠
+
+We are currently working towards axum 0.8 so the `main` branch contains breaking
+changes. See the [`0.7.x`] branch for what's released to crates.io.
+
+[`0.7.x`]: https://github.com/tokio-rs/axum/tree/v0.7.x
 
 ## Usage example
 
@@ -104,7 +111,7 @@ This crate uses `#![forbid(unsafe_code)]` to ensure everything is implemented in
 
 ## Minimum supported Rust version
 
-axum's MSRV is 1.66.
+axum's MSRV is 1.75.
 
 ## Examples
 

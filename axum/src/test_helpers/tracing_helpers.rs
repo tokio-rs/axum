@@ -1,7 +1,13 @@
-use crate::util::AxumMutex;
-use std::{future::Future, io, sync::Arc};
+use std::{
+    future::{Future, IntoFuture},
+    io,
+    marker::PhantomData,
+    pin::Pin,
+    sync::{Arc, Mutex},
+};
 
 use serde::{de::DeserializeOwned, Deserialize};
+use tracing::instrument::WithSubscriber;
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::{filter::Targets, fmt::MakeWriter};
 
@@ -14,45 +20,78 @@ pub(crate) struct TracingEvent<T> {
 }
 
 /// Run an async closure and capture the tracing output it produces.
-pub(crate) async fn capture_tracing<T, F, Fut>(f: F) -> Vec<TracingEvent<T>>
+pub(crate) fn capture_tracing<T, F>(f: F) -> CaptureTracing<T, F>
 where
-    F: Fn() -> Fut,
-    Fut: Future,
     T: DeserializeOwned,
 {
-    let (make_writer, handle) = TestMakeWriter::new();
+    CaptureTracing {
+        f,
+        filter: None,
+        _phantom: PhantomData,
+    }
+}
 
-    let subscriber = tracing_subscriber::registry().with(
-        tracing_subscriber::fmt::layer()
-            .with_writer(make_writer)
-            .with_target(true)
-            .without_time()
-            .with_ansi(false)
-            .json()
-            .flatten_event(false)
-            .with_filter("axum=trace".parse::<Targets>().unwrap()),
-    );
+pub(crate) struct CaptureTracing<T, F> {
+    f: F,
+    filter: Option<Targets>,
+    _phantom: PhantomData<fn() -> T>,
+}
 
-    let guard = tracing::subscriber::set_default(subscriber);
+impl<T, F> CaptureTracing<T, F> {
+    pub(crate) fn with_filter(mut self, filter_string: &str) -> Self {
+        self.filter = Some(filter_string.parse().unwrap());
+        self
+    }
+}
 
-    f().await;
+impl<T, F, Fut> IntoFuture for CaptureTracing<T, F>
+where
+    F: Fn() -> Fut + Send + Sync + 'static,
+    Fut: Future + Send,
+    T: DeserializeOwned,
+{
+    type Output = Vec<TracingEvent<T>>;
+    type IntoFuture = Pin<Box<dyn Future<Output = Self::Output> + Send>>;
 
-    drop(guard);
+    fn into_future(self) -> Self::IntoFuture {
+        let Self { f, filter, .. } = self;
+        Box::pin(async move {
+            let (make_writer, handle) = TestMakeWriter::new();
 
-    handle
-        .take()
-        .lines()
-        .map(|line| serde_json::from_str(line).unwrap())
-        .collect()
+            let filter = filter.unwrap_or_else(|| "axum=trace".parse().unwrap());
+            let subscriber = tracing_subscriber::registry().with(
+                tracing_subscriber::fmt::layer()
+                    .with_writer(make_writer)
+                    .with_target(true)
+                    .without_time()
+                    .with_ansi(false)
+                    .json()
+                    .flatten_event(false)
+                    .with_filter(filter),
+            );
+
+            let guard = tracing::subscriber::set_default(subscriber);
+
+            f().with_current_subscriber().await;
+
+            drop(guard);
+
+            handle
+                .take()
+                .lines()
+                .map(|line| serde_json::from_str(line).unwrap())
+                .collect()
+        })
+    }
 }
 
 struct TestMakeWriter {
-    write: Arc<AxumMutex<Option<Vec<u8>>>>,
+    write: Arc<Mutex<Option<Vec<u8>>>>,
 }
 
 impl TestMakeWriter {
     fn new() -> (Self, Handle) {
-        let write = Arc::new(AxumMutex::new(Some(Vec::<u8>::new())));
+        let write = Arc::new(Mutex::new(Some(Vec::<u8>::new())));
 
         (
             Self {
@@ -73,7 +112,7 @@ impl<'a> MakeWriter<'a> for TestMakeWriter {
 
 struct Writer<'a>(&'a TestMakeWriter);
 
-impl<'a> io::Write for Writer<'a> {
+impl io::Write for Writer<'_> {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         match &mut *self.0.write.lock().unwrap() {
             Some(vec) => {
@@ -94,7 +133,7 @@ impl<'a> io::Write for Writer<'a> {
 }
 
 struct Handle {
-    write: Arc<AxumMutex<Option<Vec<u8>>>>,
+    write: Arc<Mutex<Option<Vec<u8>>>>,
 }
 
 impl Handle {

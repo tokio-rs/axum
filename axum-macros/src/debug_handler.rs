@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::{collections::HashSet, fmt};
 
 use crate::{
     attr_parsing::{parse_assignment_attribute, second},
@@ -8,13 +8,13 @@ use proc_macro2::{Ident, Span, TokenStream};
 use quote::{format_ident, quote, quote_spanned};
 use syn::{parse::Parse, spanned::Spanned, FnArg, ItemFn, ReturnType, Token, Type};
 
-pub(crate) fn expand(attr: Attrs, item_fn: ItemFn) -> TokenStream {
+pub(crate) fn expand(attr: Attrs, item_fn: ItemFn, kind: FunctionKind) -> TokenStream {
     let Attrs { state_ty } = attr;
 
     let mut state_ty = state_ty.map(second);
 
-    let check_extractor_count = check_extractor_count(&item_fn);
-    let check_path_extractor = check_path_extractor(&item_fn);
+    let check_extractor_count = check_extractor_count(&item_fn, kind);
+    let check_path_extractor = check_path_extractor(&item_fn, kind);
     let check_output_tuples = check_output_tuples(&item_fn);
     let check_output_impls_into_response = if check_output_tuples.is_empty() {
         check_output_impls_into_response(&item_fn)
@@ -37,8 +37,10 @@ pub(crate) fn expand(attr: Attrs, item_fn: ItemFn) -> TokenStream {
                 err = Some(
                     syn::Error::new(
                         Span::call_site(),
-                        "can't infer state type, please add set it explicitly, as in \
-                         `#[debug_handler(state = MyStateType)]`",
+                        format!(
+                            "can't infer state type, please add set it explicitly, as in \
+                            `#[axum_macros::debug_{kind}(state = MyStateType)]`"
+                        ),
                     )
                     .into_compile_error(),
                 );
@@ -48,16 +50,16 @@ pub(crate) fn expand(attr: Attrs, item_fn: ItemFn) -> TokenStream {
         err.unwrap_or_else(|| {
             let state_ty = state_ty.unwrap_or_else(|| syn::parse_quote!(()));
 
-            let check_future_send = check_future_send(&item_fn);
+            let check_future_send = check_future_send(&item_fn, kind);
 
-            if let Some(check_input_order) = check_input_order(&item_fn) {
+            if let Some(check_input_order) = check_input_order(&item_fn, kind) {
                 quote! {
                     #check_input_order
                     #check_future_send
                 }
             } else {
                 let check_inputs_impls_from_request =
-                    check_inputs_impls_from_request(&item_fn, state_ty);
+                    check_inputs_impls_from_request(&item_fn, state_ty, kind);
 
                 quote! {
                     #check_inputs_impls_from_request
@@ -68,10 +70,13 @@ pub(crate) fn expand(attr: Attrs, item_fn: ItemFn) -> TokenStream {
     } else {
         syn::Error::new_spanned(
             &item_fn.sig.generics,
-            "`#[axum_macros::debug_handler]` doesn't support generic functions",
+            format!("`#[axum_macros::debug_{kind}]` doesn't support generic functions"),
         )
         .into_compile_error()
     };
+
+    let middleware_takes_next_as_last_arg =
+        matches!(kind, FunctionKind::Middleware).then(|| next_is_last_input(&item_fn));
 
     quote! {
         #item_fn
@@ -79,6 +84,31 @@ pub(crate) fn expand(attr: Attrs, item_fn: ItemFn) -> TokenStream {
         #check_path_extractor
         #check_output_impls_into_response
         #check_inputs_and_future_send
+        #middleware_takes_next_as_last_arg
+    }
+}
+
+#[derive(Clone, Copy)]
+pub(crate) enum FunctionKind {
+    Handler,
+    Middleware,
+}
+
+impl fmt::Display for FunctionKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            FunctionKind::Handler => f.write_str("handler"),
+            FunctionKind::Middleware => f.write_str("middleware"),
+        }
+    }
+}
+
+impl FunctionKind {
+    fn name_uppercase_plural(&self) -> &'static str {
+        match self {
+            FunctionKind::Handler => "Handlers",
+            FunctionKind::Middleware => "Middleware",
+        }
     }
 }
 
@@ -110,25 +140,36 @@ impl Parse for Attrs {
     }
 }
 
-fn check_extractor_count(item_fn: &ItemFn) -> Option<TokenStream> {
+fn check_extractor_count(item_fn: &ItemFn, kind: FunctionKind) -> Option<TokenStream> {
     let max_extractors = 16;
-    if item_fn.sig.inputs.len() <= max_extractors {
+    let inputs = item_fn
+        .sig
+        .inputs
+        .iter()
+        .filter(|arg| skip_next_arg(arg, kind))
+        .count();
+    if inputs <= max_extractors {
         None
     } else {
         let error_message = format!(
-            "Handlers cannot take more than {max_extractors} arguments. \
+            "{} cannot take more than {max_extractors} arguments. \
             Use `(a, b): (ExtractorA, ExtractorA)` to further nest extractors",
+            kind.name_uppercase_plural(),
         );
         let error = syn::Error::new_spanned(&item_fn.sig.inputs, error_message).to_compile_error();
         Some(error)
     }
 }
 
-fn extractor_idents(item_fn: &ItemFn) -> impl Iterator<Item = (usize, &syn::FnArg, &syn::Ident)> {
+fn extractor_idents(
+    item_fn: &ItemFn,
+    kind: FunctionKind,
+) -> impl Iterator<Item = (usize, &syn::FnArg, &syn::Ident)> {
     item_fn
         .sig
         .inputs
         .iter()
+        .filter(move |arg| skip_next_arg(arg, kind))
         .enumerate()
         .filter_map(|(idx, fn_arg)| match fn_arg {
             FnArg::Receiver(_) => None,
@@ -146,8 +187,8 @@ fn extractor_idents(item_fn: &ItemFn) -> impl Iterator<Item = (usize, &syn::FnAr
         })
 }
 
-fn check_path_extractor(item_fn: &ItemFn) -> TokenStream {
-    let path_extractors = extractor_idents(item_fn)
+fn check_path_extractor(item_fn: &ItemFn, kind: FunctionKind) -> TokenStream {
+    let path_extractors = extractor_idents(item_fn, kind)
         .filter(|(_, _, ident)| *ident == "Path")
         .collect::<Vec<_>>();
 
@@ -179,113 +220,122 @@ fn is_self_pat_type(typed: &syn::PatType) -> bool {
     ident == "self"
 }
 
-fn check_inputs_impls_from_request(item_fn: &ItemFn, state_ty: Type) -> TokenStream {
+fn check_inputs_impls_from_request(
+    item_fn: &ItemFn,
+    state_ty: Type,
+    kind: FunctionKind,
+) -> TokenStream {
     let takes_self = item_fn.sig.inputs.first().map_or(false, |arg| match arg {
         FnArg::Receiver(_) => true,
         FnArg::Typed(typed) => is_self_pat_type(typed),
     });
 
-    WithPosition::new(&item_fn.sig.inputs)
-        .enumerate()
-        .map(|(idx, arg)| {
-            let must_impl_from_request_parts = match &arg {
-                Position::First(_) | Position::Middle(_) => true,
-                Position::Last(_) | Position::Only(_) => false,
-            };
+    WithPosition::new(
+        item_fn
+            .sig
+            .inputs
+            .iter()
+            .filter(|arg| skip_next_arg(arg, kind)),
+    )
+    .enumerate()
+    .map(|(idx, arg)| {
+        let must_impl_from_request_parts = match &arg {
+            Position::First(_) | Position::Middle(_) => true,
+            Position::Last(_) | Position::Only(_) => false,
+        };
 
-            let arg = arg.into_inner();
+        let arg = arg.into_inner();
 
-            let (span, ty) = match arg {
-                FnArg::Receiver(receiver) => {
-                    if receiver.reference.is_some() {
-                        return syn::Error::new_spanned(
-                            receiver,
-                            "Handlers must only take owned values",
-                        )
-                        .into_compile_error();
-                    }
+        let (span, ty) = match arg {
+            FnArg::Receiver(receiver) => {
+                if receiver.reference.is_some() {
+                    return syn::Error::new_spanned(
+                        receiver,
+                        "Handlers must only take owned values",
+                    )
+                    .into_compile_error();
+                }
 
-                    let span = receiver.span();
+                let span = receiver.span();
+                (span, syn::parse_quote!(Self))
+            }
+            FnArg::Typed(typed) => {
+                let ty = &typed.ty;
+                let span = ty.span();
+
+                if is_self_pat_type(typed) {
                     (span, syn::parse_quote!(Self))
-                }
-                FnArg::Typed(typed) => {
-                    let ty = &typed.ty;
-                    let span = ty.span();
-
-                    if is_self_pat_type(typed) {
-                        (span, syn::parse_quote!(Self))
-                    } else {
-                        (span, ty.clone())
-                    }
-                }
-            };
-
-            let consumes_request = request_consuming_type_name(&ty).is_some();
-
-            let check_fn = format_ident!(
-                "__axum_macros_check_{}_{}_from_request_check",
-                item_fn.sig.ident,
-                idx,
-                span = span,
-            );
-
-            let call_check_fn = format_ident!(
-                "__axum_macros_check_{}_{}_from_request_call_check",
-                item_fn.sig.ident,
-                idx,
-                span = span,
-            );
-
-            let call_check_fn_body = if takes_self {
-                quote_spanned! {span=>
-                    Self::#check_fn();
-                }
-            } else {
-                quote_spanned! {span=>
-                    #check_fn();
-                }
-            };
-
-            let check_fn_generics = if must_impl_from_request_parts || consumes_request {
-                quote! {}
-            } else {
-                quote! { <M> }
-            };
-
-            let from_request_bound = if must_impl_from_request_parts {
-                quote_spanned! {span=>
-                    #ty: ::axum::extract::FromRequestParts<#state_ty> + Send
-                }
-            } else if consumes_request {
-                quote_spanned! {span=>
-                    #ty: ::axum::extract::FromRequest<#state_ty> + Send
-                }
-            } else {
-                quote_spanned! {span=>
-                    #ty: ::axum::extract::FromRequest<#state_ty, M> + Send
-                }
-            };
-
-            quote_spanned! {span=>
-                #[allow(warnings)]
-                #[allow(unreachable_code)]
-                #[doc(hidden)]
-                fn #check_fn #check_fn_generics()
-                where
-                    #from_request_bound,
-                {}
-
-                // we have to call the function to actually trigger a compile error
-                // since the function is generic, just defining it is not enough
-                #[allow(warnings)]
-                #[allow(unreachable_code)]
-                #[doc(hidden)]
-                fn #call_check_fn() {
-                    #call_check_fn_body
+                } else {
+                    (span, ty.clone())
                 }
             }
-        })
-        .collect::<TokenStream>()
+        };
+
+        let consumes_request = request_consuming_type_name(&ty).is_some();
+
+        let check_fn = format_ident!(
+            "__axum_macros_check_{}_{}_from_request_check",
+            item_fn.sig.ident,
+            idx,
+            span = span,
+        );
+
+        let call_check_fn = format_ident!(
+            "__axum_macros_check_{}_{}_from_request_call_check",
+            item_fn.sig.ident,
+            idx,
+            span = span,
+        );
+
+        let call_check_fn_body = if takes_self {
+            quote_spanned! {span=>
+                Self::#check_fn();
+            }
+        } else {
+            quote_spanned! {span=>
+                #check_fn();
+            }
+        };
+
+        let check_fn_generics = if must_impl_from_request_parts || consumes_request {
+            quote! {}
+        } else {
+            quote! { <M> }
+        };
+
+        let from_request_bound = if must_impl_from_request_parts {
+            quote_spanned! {span=>
+                #ty: ::axum::extract::FromRequestParts<#state_ty> + Send
+            }
+        } else if consumes_request {
+            quote_spanned! {span=>
+                #ty: ::axum::extract::FromRequest<#state_ty> + Send
+            }
+        } else {
+            quote_spanned! {span=>
+                #ty: ::axum::extract::FromRequest<#state_ty, M> + Send
+            }
+        };
+
+        quote_spanned! {span=>
+            #[allow(warnings)]
+            #[doc(hidden)]
+            fn #check_fn #check_fn_generics()
+            where
+                #from_request_bound,
+            {}
+
+            // we have to call the function to actually trigger a compile error
+            // since the function is generic, just defining it is not enough
+            #[allow(warnings)]
+            #[doc(hidden)]
+            fn #call_check_fn()
+            {
+                #call_check_fn_body
+            }
+        }
+    })
+    .collect::<TokenStream>()
 }
 
 fn check_output_tuples(item_fn: &ItemFn) -> TokenStream {
@@ -445,11 +495,19 @@ fn check_into_response_parts(ty: &Type, ident: &Ident, index: usize) -> TokenStr
     }
 }
 
-fn check_input_order(item_fn: &ItemFn) -> Option<TokenStream> {
+fn check_input_order(item_fn: &ItemFn, kind: FunctionKind) -> Option<TokenStream> {
+    let number_of_inputs = item_fn
+        .sig
+        .inputs
+        .iter()
+        .filter(|arg| skip_next_arg(arg, kind))
+        .count();
+
     let types_that_consume_the_request = item_fn
         .sig
         .inputs
         .iter()
+        .filter(|arg| skip_next_arg(arg, kind))
         .enumerate()
         .filter_map(|(idx, arg)| {
             let ty = match arg {
@@ -469,7 +527,7 @@ fn check_input_order(item_fn: &ItemFn) -> Option<TokenStream> {
     // exactly one type that consumes the request
     if types_that_consume_the_request.len() == 1 {
         // and that is not the last
-        if types_that_consume_the_request[0].0 != item_fn.sig.inputs.len() - 1 {
+        if types_that_consume_the_request[0].0 != number_of_inputs - 1 {
             let (_idx, type_name, span) = &types_that_consume_the_request[0];
             let error = format!(
                 "`{type_name}` consumes the request body and thus must be \
@@ -653,13 +711,13 @@ fn check_output_impls_into_response(item_fn: &ItemFn) -> TokenStream {
     }
 }
 
-fn check_future_send(item_fn: &ItemFn) -> TokenStream {
+fn check_future_send(item_fn: &ItemFn, kind: FunctionKind) -> TokenStream {
     if item_fn.sig.asyncness.is_none() {
         match &item_fn.sig.output {
             syn::ReturnType::Default => {
                 return syn::Error::new_spanned(
                     item_fn.sig.fn_token,
-                    "Handlers must be `async fn`s",
+                    format!("{} must be `async fn`s", kind.name_uppercase_plural()),
                 )
                 .into_compile_error();
             }
@@ -763,7 +821,69 @@ fn state_types_from_args(item_fn: &ItemFn) -> HashSet<Type> {
     crate::infer_state_types(types).collect()
 }
 
+fn next_is_last_input(item_fn: &ItemFn) -> TokenStream {
+    let next_args = item_fn
+        .sig
+        .inputs
+        .iter()
+        .enumerate()
+        .filter(|(_, arg)| !skip_next_arg(arg, FunctionKind::Middleware))
+        .collect::<Vec<_>>();
+
+    if next_args.is_empty() {
+        return quote! {
+            compile_error!(
+                "Middleware functions must take `axum::middleware::Next` as the last argument",
+            );
+        };
+    }
+
+    if next_args.len() == 1 {
+        let (idx, arg) = &next_args[0];
+        if *idx != item_fn.sig.inputs.len() - 1 {
+            return quote_spanned! {arg.span()=>
+                compile_error!("`axum::middleware::Next` must the last argument");
+            };
+        }
+    }
+
+    if next_args.len() >= 2 {
+        return quote! {
+            compile_error!(
+                "Middleware functions can only take one argument of type `axum::middleware::Next`",
+            );
+        };
+    }
+
+    quote! {}
+}
+
+fn skip_next_arg(arg: &FnArg, kind: FunctionKind) -> bool {
+    match kind {
+        FunctionKind::Handler => true,
+        FunctionKind::Middleware => match arg {
+            FnArg::Receiver(_) => true,
+            FnArg::Typed(pat_type) => {
+                if let Type::Path(type_path) = &*pat_type.ty {
+                    type_path
+                        .path
+                        .segments
+                        .last()
+                        .map_or(true, |path_segment| path_segment.ident != "Next")
+                } else {
+                    true
+                }
+            }
+        },
+    }
+}
+
 #[test]
-fn ui() {
+fn ui_debug_handler() {
     crate::run_ui_tests("debug_handler");
+}
+
+#[test]
+fn ui_debug_middleware() {
+    crate::run_ui_tests("debug_middleware");
 }

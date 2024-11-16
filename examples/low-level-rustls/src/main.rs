@@ -8,16 +8,14 @@ use axum::{extract::Request, routing::get, Router};
 use futures_util::pin_mut;
 use hyper::body::Incoming;
 use hyper_util::rt::{TokioExecutor, TokioIo};
-use rustls_pemfile::{certs, pkcs8_private_keys};
 use std::{
-    fs::File,
-    io::BufReader,
     path::{Path, PathBuf},
     sync::Arc,
 };
 use tokio::net::TcpListener;
 use tokio_rustls::{
-    rustls::{Certificate, PrivateKey, ServerConfig},
+    rustls::pki_types::{pem::PemObject, CertificateDer, PrivateKeyDer},
+    rustls::ServerConfig,
     TlsAcceptor,
 };
 use tower_service::Service;
@@ -29,7 +27,7 @@ async fn main() {
     tracing_subscriber::registry()
         .with(
             tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "example_low_level_rustls=debug".into()),
+                .unwrap_or_else(|_| format!("{}=debug", env!("CARGO_CRATE_NAME")).into()),
         )
         .with(tracing_subscriber::fmt::layer())
         .init();
@@ -95,18 +93,14 @@ async fn handler() -> &'static str {
 }
 
 fn rustls_server_config(key: impl AsRef<Path>, cert: impl AsRef<Path>) -> Arc<ServerConfig> {
-    let mut key_reader = BufReader::new(File::open(key).unwrap());
-    let mut cert_reader = BufReader::new(File::open(cert).unwrap());
+    let key = PrivateKeyDer::from_pem_file(key).unwrap();
 
-    let key = PrivateKey(pkcs8_private_keys(&mut key_reader).unwrap().remove(0));
-    let certs = certs(&mut cert_reader)
+    let certs = CertificateDer::pem_file_iter(cert)
         .unwrap()
-        .into_iter()
-        .map(Certificate)
+        .map(|cert| cert.unwrap())
         .collect();
 
     let mut config = ServerConfig::builder()
-        .with_safe_defaults()
         .with_no_client_auth()
         .with_single_cert(certs, key)
         .expect("bad certificate/key");

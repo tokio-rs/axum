@@ -25,7 +25,7 @@ async fn main() {
     tracing_subscriber::registry()
         .with(
             tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "example_dependency_injection=debug".into()),
+                .unwrap_or_else(|_| format!("{}=debug", env!("CARGO_CRATE_NAME")).into()),
         )
         .with(tracing_subscriber::fmt::layer())
         .init();
@@ -52,14 +52,14 @@ async fn main() {
     // Using trait objects is recommended unless you really need generics.
 
     let using_dyn = Router::new()
-        .route("/users/:id", get(get_user_dyn))
+        .route("/users/{id}", get(get_user_dyn))
         .route("/users", post(create_user_dyn))
         .with_state(AppStateDyn {
             user_repo: Arc::new(user_repo.clone()),
         });
 
     let using_generic = Router::new()
-        .route("/users/:id", get(get_user_generic::<InMemoryUserRepo>))
+        .route("/users/{id}", get(get_user_generic::<InMemoryUserRepo>))
         .route("/users", post(create_user_generic::<InMemoryUserRepo>))
         .with_state(AppStateGeneric { user_repo });
 

@@ -1,3 +1,4 @@
+use crate::box_clone_service::BoxCloneService;
 use crate::response::{IntoResponse, Response};
 use axum_core::extract::{FromRequest, FromRequestParts, Request};
 use futures_util::future::BoxFuture;
@@ -10,7 +11,7 @@ use std::{
     pin::Pin,
     task::{Context, Poll},
 };
-use tower::{util::BoxCloneService, ServiceBuilder};
+use tower::ServiceBuilder;
 use tower_layer::Layer;
 use tower_service::Service;
 
@@ -19,9 +20,10 @@ use tower_service::Service;
 /// `from_fn` requires the function given to
 ///
 /// 1. Be an `async fn`.
-/// 2. Take one or more [extractors] as the first arguments.
-/// 3. Take [`Next`](Next) as the final argument.
-/// 4. Return something that implements [`IntoResponse`].
+/// 2. Take zero or more [`FromRequestParts`] extractors.
+/// 3. Take exactly one [`FromRequest`] extractor as the second to last argument.
+/// 4. Take [`Next`](Next) as the last argument.
+/// 5. Return something that implements [`IntoResponse`].
 ///
 /// Note that this function doesn't support extracting [`State`]. For that, use [`from_fn_with_state`].
 ///
@@ -112,6 +114,8 @@ pub fn from_fn<F, T>(f: F) -> FromFnLayer<F, (), T> {
 
 /// Create a middleware from an async function with the given state.
 ///
+/// For the requirements for the function supplied see [`from_fn`].
+///
 /// See [`State`](crate::extract::State) for more details about accessing state.
 ///
 /// # Example
@@ -166,7 +170,7 @@ pub fn from_fn_with_state<F, S, T>(state: S, f: F) -> FromFnLayer<F, S, T> {
 ///
 /// [`tower::Layer`] is used to apply middleware to [`Router`](crate::Router)'s.
 ///
-/// Created with [`from_fn`]. See that function for more details.
+/// Created with [`from_fn`] or [`from_fn_with_state`]. See those functions for more details.
 #[must_use]
 pub struct FromFnLayer<F, S, T> {
     f: F,
@@ -220,7 +224,7 @@ where
 
 /// A middleware created from an async function.
 ///
-/// Created with [`from_fn`]. See that function for more details.
+/// Created with [`from_fn`] or [`from_fn_with_state`]. See those functions for more details.
 pub struct FromFn<F, S, I, T> {
     f: F,
     inner: I,
@@ -259,6 +263,7 @@ macro_rules! impl_service {
             I: Service<Request, Error = Infallible>
                 + Clone
                 + Send
+                + Sync
                 + 'static,
             I::Response: IntoResponse,
             I::Future: Send + 'static,
@@ -297,7 +302,7 @@ macro_rules! impl_service {
                     };
 
                     let inner = ServiceBuilder::new()
-                        .boxed_clone()
+                        .layer_fn(BoxCloneService::new)
                         .map_response(IntoResponse::into_response)
                         .service(ready_inner);
                     let next = Next { inner };

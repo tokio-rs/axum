@@ -5,8 +5,7 @@ can be either static, a capture, or a wildcard.
 
 `method_router` is the [`MethodRouter`] that should receive the request if the
 path matches `path`. `method_router` will commonly be a handler wrapped in a method
-router like [`get`](crate::routing::get). See [`handler`](crate::handler) for
-more details on handlers.
+router like [`get`]. See [`handler`](crate::handler) for more details on handlers.
 
 # Static paths
 
@@ -21,15 +20,15 @@ be called.
 
 # Captures
 
-Paths can contain segments like `/:key` which matches any single segment and
+Paths can contain segments like `/{key}` which matches any single segment and
 will store the value captured at `key`. The value captured can be zero-length
 except for in the invalid path `//`.
 
 Examples:
 
-- `/:key`
-- `/users/:id`
-- `/users/:id/tweets`
+- `/{key}`
+- `/users/{id}`
+- `/users/{id}/tweets`
 
 Captures can be extracted using [`Path`](crate::extract::Path). See its
 documentation for more details.
@@ -42,22 +41,37 @@ path rather than the actual path.
 
 # Wildcards
 
-Paths can end in `/*key` which matches all segments and will store the segments
+Paths can end in `/{*key}` which matches all segments and will store the segments
 captured at `key`.
 
 Examples:
 
-- `/*key`
-- `/assets/*path`
-- `/:id/:repo/*tree`
+- `/{*key}`
+- `/assets/{*path}`
+- `/{id}/{repo}/{*tree}`
 
-Note that `/*key` doesn't match empty segments. Thus:
+Note that `/{*key}` doesn't match empty segments. Thus:
 
-- `/*key` doesn't match `/` but does match `/a`, `/a/`, etc.
-- `/x/*key` doesn't match `/x` or `/x/` but does match `/x/a`, `/x/a/`, etc.
+- `/{*key}` doesn't match `/` but does match `/a`, `/a/`, etc.
+- `/x/{*key}` doesn't match `/x` or `/x/` but does match `/x/a`, `/x/a/`, etc.
 
-Wildcard captures can also be extracted using [`Path`](crate::extract::Path).
-Note that the leading slash is not included, i.e. for the route `/foo/*rest` and
+Wildcard captures can also be extracted using [`Path`](crate::extract::Path):
+
+```rust
+use axum::{
+    Router,
+    routing::get,
+    extract::Path,
+};
+
+let app: Router = Router::new().route("/{*key}", get(handler));
+
+async fn handler(Path(path): Path<String>) -> String {
+    path
+}
+```
+
+Note that the leading slash is not included, i.e. for the route `/foo/{*rest}` and
 the path `/foo/bar/baz` the value of `rest` will be `bar/baz`.
 
 # Accepting multiple methods
@@ -106,9 +120,9 @@ use axum::{Router, routing::{get, delete}, extract::Path};
 let app = Router::new()
     .route("/", get(root))
     .route("/users", get(list_users).post(create_user))
-    .route("/users/:id", get(show_user))
-    .route("/api/:version/users/:id/action", delete(do_users_action))
-    .route("/assets/*path", get(serve_asset));
+    .route("/users/{id}", get(show_user))
+    .route("/api/{version}/users/{id}/action", delete(do_users_action))
+    .route("/assets/{*path}", get(serve_asset));
 
 async fn root() {}
 
@@ -137,7 +151,7 @@ let app = Router::new()
 # let _: Router = app;
 ```
 
-The static route `/foo` and the dynamic route `/:key` are not considered to
+The static route `/foo` and the dynamic route `/{key}` are not considered to
 overlap and `/foo` will take precedence.
 
 Also panics if `path` is empty.

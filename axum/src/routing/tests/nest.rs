@@ -1,5 +1,4 @@
 use super::*;
-use crate::extract::Extension;
 use std::collections::HashMap;
 use tower_http::services::ServeDir;
 
@@ -11,7 +10,7 @@ async fn nesting_apps() {
             get(|| async { "users#index" }).post(|| async { "users#create" }),
         )
         .route(
-            "/users/:id",
+            "/users/{id}",
             get(
                 |params: extract::Path<HashMap<String, String>>| async move {
                     format!(
@@ -23,7 +22,7 @@ async fn nesting_apps() {
             ),
         )
         .route(
-            "/games/:id",
+            "/games/{id}",
             get(
                 |params: extract::Path<HashMap<String, String>>| async move {
                     format!(
@@ -37,7 +36,7 @@ async fn nesting_apps() {
 
     let app = Router::new()
         .route("/", get(|| async { "hi" }))
-        .nest("/:version/api", api_routes);
+        .nest("/{version}/api", api_routes);
 
     let client = TestClient::new(app);
 
@@ -229,7 +228,7 @@ async fn nested_multiple_routes() {
 }
 
 #[test]
-#[should_panic = "Invalid route \"/\": insertion failed due to conflict with previously registered route: /*__private__axum_nest_tail_param"]
+#[should_panic = r#"Invalid route "/": Insertion failed due to conflict with previously registered route: /"#]
 fn nested_service_at_root_with_other_routes() {
     let _: Router = Router::new()
         .nest_service("/", Router::new().route("/users", get(|| async {})))
@@ -264,7 +263,7 @@ async fn multiple_top_level_nests() {
 #[crate::test]
 #[should_panic(expected = "Invalid route: nested routes cannot contain wildcards (*)")]
 async fn nest_cannot_contain_wildcards() {
-    _ = Router::<()>::new().nest("/one/*rest", Router::new());
+    _ = Router::<()>::new().nest("/one/{*rest}", Router::new());
 }
 
 #[crate::test]
@@ -318,11 +317,11 @@ async fn outer_middleware_still_see_whole_url() {
 #[crate::test]
 async fn nest_at_capture() {
     let api_routes = Router::new().route(
-        "/:b",
+        "/{b}",
         get(|Path((a, b)): Path<(String, String)>| async move { format!("a={a} b={b}") }),
     );
 
-    let app = Router::new().nest("/:a", api_routes);
+    let app = Router::new().nest("/{a}", api_routes);
 
     let client = TestClient::new(app);
 
@@ -418,3 +417,19 @@ nested_route_test!(nest_9, nest = "/a", route = "/a/", expected = "/a/a/");
 nested_route_test!(nest_11, nest = "/a/", route = "/", expected = "/a/");
 nested_route_test!(nest_12, nest = "/a/", route = "/a", expected = "/a/a");
 nested_route_test!(nest_13, nest = "/a/", route = "/a/", expected = "/a/a/");
+
+#[crate::test]
+#[should_panic(
+    expected = "Path segments must not start with `:`. For capture groups, use `{capture}`. If you meant to literally match a segment starting with a colon, call `without_v07_checks` on the router."
+)]
+async fn colon_in_route() {
+    _ = Router::<()>::new().nest("/:foo", Router::new());
+}
+
+#[crate::test]
+#[should_panic(
+    expected = "Path segments must not start with `*`. For wildcard capture, use `{*wildcard}`. If you meant to literally match a segment starting with an asterisk, call `without_v07_checks` on the router."
+)]
+async fn asterisk_in_route() {
+    _ = Router::<()>::new().nest("/*foo", Router::new());
+}

@@ -1,12 +1,5 @@
 Error handling model and utilities
 
-# Table of contents
-
-- [axum's error handling model](#axums-error-handling-model)
-- [Routing to fallible services](#routing-to-fallible-services)
-- [Applying fallible middleware](#applying-fallible-middleware)
-- [Running extractors for error handling](#running-extractors-for-error-handling)
-
 # axum's error handling model
 
 axum is based on [`tower::Service`] which bundles errors through its associated

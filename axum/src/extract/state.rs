@@ -1,4 +1,3 @@
-use async_trait::async_trait;
 use axum_core::extract::{FromRef, FromRequestParts};
 use http::request::Parts;
 use std::{
@@ -11,7 +10,11 @@ use std::{
 /// See ["Accessing state in middleware"][state-from-middleware] for how to
 /// access state in middleware.
 ///
+/// State is global and used in every request a router with state receives.
+/// For accessing data derived from requests, such as authorization data, see [`Extension`].
+///
 /// [state-from-middleware]: crate::middleware#accessing-state-in-middleware
+/// [`Extension`]: crate::Extension
 ///
 /// # With `Router`
 ///
@@ -22,9 +25,6 @@ use std::{
 /// //
 /// // here you can put configuration, database connection pools, or whatever
 /// // state you need
-/// //
-/// // see "When states need to implement `Clone`" for more details on why we need
-/// // `#[derive(Clone)]` here.
 /// #[derive(Clone)]
 /// struct AppState {}
 ///
@@ -219,13 +219,11 @@ use std::{
 /// ```rust
 /// use axum_core::extract::{FromRequestParts, FromRef};
 /// use http::request::Parts;
-/// use async_trait::async_trait;
 /// use std::convert::Infallible;
 ///
 /// // the extractor your library provides
 /// struct MyLibraryExtractor;
 ///
-/// #[async_trait]
 /// impl<S> FromRequestParts<S> for MyLibraryExtractor
 /// where
 ///     // keep `S` generic but require that it can produce a `MyLibraryState`
@@ -249,53 +247,6 @@ use std::{
 ///     // ...
 /// }
 /// ```
-///
-/// # When states need to implement `Clone`
-///
-/// Your top level state type must implement `Clone` to be extractable with `State`:
-///
-/// ```
-/// use axum::extract::State;
-///
-/// // no substates, so to extract to `State<AppState>` we must implement `Clone` for `AppState`
-/// #[derive(Clone)]
-/// struct AppState {}
-///
-/// async fn handler(State(state): State<AppState>) {
-///     // ...
-/// }
-/// ```
-///
-/// This works because of [`impl<S> FromRef<S> for S where S: Clone`][`FromRef`].
-///
-/// This is also true if you're extracting substates, unless you _never_ extract the top level
-/// state itself:
-///
-/// ```
-/// use axum::extract::{State, FromRef};
-///
-/// // we never extract `State<AppState>`, just `State<InnerState>`. So `AppState` doesn't need to
-/// // implement `Clone`
-/// struct AppState {
-///     inner: InnerState,
-/// }
-///
-/// #[derive(Clone)]
-/// struct InnerState {}
-///
-/// impl FromRef<AppState> for InnerState {
-///     fn from_ref(app_state: &AppState) -> InnerState {
-///         app_state.inner.clone()
-///     }
-/// }
-///
-/// async fn api_users(State(inner): State<InnerState>) {
-///     // ...
-/// }
-/// ```
-///
-/// In general however we recommend you implement `Clone` for all your state types to avoid
-/// potential type errors.
 ///
 /// # Shared mutable state
 ///
@@ -344,7 +295,6 @@ use std::{
 #[derive(Debug, Default, Clone, Copy)]
 pub struct State<S>(pub S);
 
-#[async_trait]
 impl<OuterState, InnerState> FromRequestParts<OuterState> for State<InnerState>
 where
     InnerState: FromRef<OuterState>,

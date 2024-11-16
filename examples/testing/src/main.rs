@@ -18,8 +18,9 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 async fn main() {
     tracing_subscriber::registry()
         .with(
-            tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "example_testing=debug,tower_http=debug".into()),
+            tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| {
+                format!("{}=debug,tower_http=debug", env!("CARGO_CRATE_NAME")).into()
+            }),
         )
         .with(tracing_subscriber::fmt::layer())
         .init();
@@ -43,7 +44,7 @@ fn app() -> Router {
             }),
         )
         .route(
-            "/requires-connect-into",
+            "/requires-connect-info",
             get(|ConnectInfo(addr): ConnectInfo<SocketAddr>| async move { format!("Hi {addr}") }),
         )
         // We can still add middleware
@@ -60,7 +61,6 @@ mod tests {
     };
     use http_body_util::BodyExt; // for `collect`
     use serde_json::{json, Value};
-    use std::net::SocketAddr;
     use tokio::net::TcpListener;
     use tower::{Service, ServiceExt}; // for `call`, `oneshot`, and `ready`
 
@@ -179,7 +179,7 @@ mod tests {
         assert_eq!(response.status(), StatusCode::OK);
     }
 
-    // Here we're calling `/requires-connect-into` which requires `ConnectInfo`
+    // Here we're calling `/requires-connect-info` which requires `ConnectInfo`
     //
     // That is normally set with `Router::into_make_service_with_connect_info` but we can't easily
     // use that during tests. The solution is instead to set the `MockConnectInfo` layer during
@@ -191,7 +191,7 @@ mod tests {
             .into_service();
 
         let request = Request::builder()
-            .uri("/requires-connect-into")
+            .uri("/requires-connect-info")
             .body(Body::empty())
             .unwrap();
         let response = app.ready().await.unwrap().call(request).await.unwrap();

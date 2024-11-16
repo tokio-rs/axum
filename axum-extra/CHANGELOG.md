@@ -7,7 +7,50 @@ and this project adheres to [Semantic Versioning].
 
 # Unreleased
 
-- None.
+- **fixed:** `Host` extractor includes port number when parsing authority ([#2242])
+- **added:** Add `RouterExt::typed_connect` ([#2961])
+- **added:** Add `json!` for easy construction of JSON responses ([#2962])
+
+[#2242]: https://github.com/tokio-rs/axum/pull/2242
+[#2961]: https://github.com/tokio-rs/axum/pull/2961
+[#2962]: https://github.com/tokio-rs/axum/pull/2962
+
+# 0.10.0
+
+# alpha.1
+
+- **breaking:** Update to prost 0.13. Used for the `Protobuf` extractor ([#2829])
+- **change:** Update minimum rust version to 1.75 ([#2943])
+
+[#2829]: https://github.com/tokio-rs/axum/pull/2829
+[#2943]: https://github.com/tokio-rs/axum/pull/2943
+
+# 0.9.6
+
+- **docs:** Add links to features table ([#3030])
+
+[#3030]: https://github.com/tokio-rs/axum/pull/3030
+
+# 0.9.5
+
+- **added:** Add `RouterExt::typed_connect` ([#2961])
+- **added:** Add `json!` for easy construction of JSON responses ([#2962])
+
+[#2961]: https://github.com/tokio-rs/axum/pull/2961
+[#2962]: https://github.com/tokio-rs/axum/pull/2962
+
+# 0.9.4
+
+- **added:** The `response::Attachment` type ([#2789])
+
+[#2789]: https://github.com/tokio-rs/axum/pull/2789
+
+# 0.9.3 (24. March, 2024)
+
+- **added:** New `tracing` feature which enables logging rejections from
+  built-in extractor with the `axum::rejection=trace` target ([#2584])
+
+[#2584]: https://github.com/tokio-rs/axum/pull/2584
 
 # 0.9.2 (13. January, 2024)
 

@@ -1,4 +1,3 @@
-#![feature(diagnostic_namespace)]
 use axum::{
     extract::rejection::ExtensionRejection,
     response::{IntoResponse, Response},

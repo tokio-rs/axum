@@ -3,12 +3,26 @@
 #[cfg(feature = "erased-json")]
 mod erased_json;
 
+#[cfg(feature = "attachment")]
+mod attachment;
+
+#[cfg(feature = "multipart")]
+pub mod multiple;
+
 #[cfg(feature = "erased-json")]
 pub use erased_json::ErasedJson;
+
+/// _not_ public API
+#[cfg(feature = "erased-json")]
+#[doc(hidden)]
+pub use erased_json::private as __private_erased_json;
 
 #[cfg(feature = "json-lines")]
 #[doc(no_inline)]
 pub use crate::json_lines::JsonLines;
+
+#[cfg(feature = "attachment")]
+pub use attachment::Attachment;
 
 macro_rules! mime_response {
     (
@@ -55,14 +69,6 @@ macro_rules! mime_response {
             }
         }
     };
-}
-
-mime_response! {
-    /// A HTML response.
-    ///
-    /// Will automatically get `Content-Type: text/html; charset=utf-8`.
-    Html,
-    TEXT_HTML_UTF_8,
 }
 
 mime_response! {

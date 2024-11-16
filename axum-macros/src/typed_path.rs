@@ -133,7 +133,6 @@ fn expand_named_fields(
     let map_err_rejection = map_err_rejection(&rejection);
 
     let from_request_impl = quote! {
-        #[::axum::async_trait]
         #[automatically_derived]
         impl<S> ::axum::extract::FromRequestParts<S> for #ident
         where
@@ -238,7 +237,6 @@ fn expand_unnamed_fields(
     let map_err_rejection = map_err_rejection(&rejection);
 
     let from_request_impl = quote! {
-        #[::axum::async_trait]
         #[automatically_derived]
         impl<S> ::axum::extract::FromRequestParts<S> for #ident
         where
@@ -322,7 +320,6 @@ fn expand_unit_fields(
     };
 
     let from_request_impl = quote! {
-        #[::axum::async_trait]
         #[automatically_derived]
         impl<S> ::axum::extract::FromRequestParts<S> for #ident
         where
@@ -386,8 +383,12 @@ fn parse_path(path: &LitStr) -> syn::Result<Vec<Segment>> {
         .split('/')
         .map(|segment| {
             if let Some(capture) = segment
-                .strip_prefix(':')
-                .or_else(|| segment.strip_prefix('*'))
+                .strip_prefix('{')
+                .and_then(|segment| segment.strip_suffix('}'))
+                .and_then(|segment| {
+                    (!segment.starts_with('{') && !segment.ends_with('}')).then_some(segment)
+                })
+                .map(|capture| capture.strip_prefix('*').unwrap_or(capture))
             {
                 Ok(Segment::Capture(capture.to_owned(), path.span()))
             } else {
