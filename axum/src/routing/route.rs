@@ -18,7 +18,7 @@ use std::{
     task::{Context, Poll},
 };
 use tower::{
-    util::{BoxCloneService, MapErrLayer, MapRequestLayer, MapResponseLayer, Oneshot},
+    util::{BoxCloneService, MapErrLayer, MapResponseLayer, Oneshot},
     ServiceExt,
 };
 use tower_layer::Layer;
@@ -73,7 +73,6 @@ impl<E> Route<E> {
         NewError: 'static,
     {
         let layer = (
-            MapRequestLayer::new(|req: Request<_>| req.map(Body::new)),
             MapErrLayer::new(Into::into),
             MapResponseLayer::new(IntoResponse::into_response),
             layer,
@@ -113,7 +112,7 @@ where
     #[inline]
     fn call(&mut self, req: Request<B>) -> Self::Future {
         let req = req.map(Body::new);
-        RouteFuture::from_future(self.oneshot_inner(req))
+        RouteFuture::from_future(self.oneshot_inner(req)).not_top_level()
     }
 }
 
@@ -124,6 +123,7 @@ pin_project! {
         kind: RouteFutureKind<E>,
         strip_body: bool,
         allow_header: Option<Bytes>,
+        top_level: bool,
     }
 }
 
@@ -151,6 +151,7 @@ impl<E> RouteFuture<E> {
             kind: RouteFutureKind::Future { future },
             strip_body: false,
             allow_header: None,
+            top_level: true,
         }
     }
 
@@ -161,6 +162,11 @@ impl<E> RouteFuture<E> {
 
     pub(crate) fn allow_header(mut self, allow_header: Bytes) -> Self {
         self.allow_header = Some(allow_header);
+        self
+    }
+
+    pub(crate) fn not_top_level(mut self) -> Self {
+        self.top_level = false;
         self
     }
 }
@@ -183,16 +189,16 @@ impl<E> Future for RouteFuture<E> {
             }
         };
 
-        set_allow_header(res.headers_mut(), this.allow_header);
+        if *this.top_level {
+            set_allow_header(res.headers_mut(), this.allow_header);
 
-        // make sure to set content-length before removing the body
-        set_content_length(res.size_hint(), res.headers_mut());
+            // make sure to set content-length before removing the body
+            set_content_length(res.size_hint(), res.headers_mut());
 
-        let res = if *this.strip_body {
-            res.map(|_| Body::empty())
-        } else {
-            res
-        };
+            if *this.strip_body {
+                *res.body_mut() = Body::empty();
+            }
+        }
 
         Poll::Ready(Ok(res))
     }
