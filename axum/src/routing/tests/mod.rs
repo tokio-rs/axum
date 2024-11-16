@@ -1091,5 +1091,11 @@ async fn middleware_adding_body() {
 
     let client = TestClient::new(app);
     let res = client.get("/").await;
+
+    let headers = res.headers();
+    let header = headers.get("content-length");
+    assert!(header.is_some());
+    assert_eq!(header.unwrap().to_str().unwrap(), "3");
+
     assert_eq!(res.text().await, "…");
 }
