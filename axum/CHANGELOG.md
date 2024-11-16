@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+# 0.7.9
+
+- **fixed:** Avoid setting content-length before middleware ([#3031])
+
+[#3031]:https://github.com/tokio-rs/axum/pull/3031
+
 # 0.7.8
 
 - **fixed:** Skip SSE incompatible chars of `serde_json::RawValue` in `Event::json_data` ([#2992])

@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog],
 and this project adheres to [Semantic Versioning].
 
+# 0.9.6
+
+- **docs:** Add links to features table ([#3030])
+
+[#3030]: https://github.com/tokio-rs/axum/pull/3030
+
 # 0.9.5
 
 - **added:** Add `RouterExt::typed_connect` ([#2961])
