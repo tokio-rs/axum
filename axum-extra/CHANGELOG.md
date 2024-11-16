@@ -25,6 +25,12 @@ and this project adheres to [Semantic Versioning].
 [#2829]: https://github.com/tokio-rs/axum/pull/2829
 [#2943]: https://github.com/tokio-rs/axum/pull/2943
 
+# 0.9.6
+
+- **docs:** Add links to features table ([#3030])
+
+[#3030]: https://github.com/tokio-rs/axum/pull/3030
+
 # 0.9.5
 
 - **added:** Add `RouterExt::typed_connect` ([#2961])
