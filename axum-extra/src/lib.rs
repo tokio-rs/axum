@@ -9,21 +9,21 @@
 //!
 //! Name | Description | Default?
 //! ---|---|---
-//! `async-read-body` | Enables the `AsyncReadBody` body | No
-//! `cookie` | Enables the `CookieJar` extractor | No
-//! `cookie-private` | Enables the `PrivateCookieJar` extractor | No
-//! `cookie-signed` | Enables the `SignedCookieJar` extractor | No
-//! `cookie-key-expansion` | Enables the `Key::derive_from` method | No
-//! `erased-json` | Enables the `ErasedJson` response | No
-//! `form` | Enables the `Form` extractor | No
-//! `json-deserializer` | Enables the `JsonDeserializer` extractor | No
-//! `json-lines` | Enables the `JsonLines` extractor and response | No
-//! `multipart` | Enables the `Multipart` extractor | No
-//! `protobuf` | Enables the `Protobuf` extractor and response | No
-//! `query` | Enables the `Query` extractor | No
+//! `async-read-body` | Enables the [`AsyncReadBody`](crate::body::AsyncReadBody) body | No
+//! `cookie` | Enables the [`CookieJar`](crate::extract::CookieJar) extractor | No
+//! `cookie-private` | Enables the [`PrivateCookieJar`](crate::extract::PrivateCookieJar) extractor | No
+//! `cookie-signed` | Enables the [`SignedCookieJar`](crate::extract::SignedCookieJar) extractor | No
+//! `cookie-key-expansion` | Enables the [`Key::derive_from`](crate::extract::cookie::Key::derive_from) method | No
+//! `erased-json` | Enables the [`ErasedJson`](crate::response::ErasedJson) response | No
+//! `form` | Enables the [`Form`](crate::extract::Form) extractor | No
+//! `json-deserializer` | Enables the [`JsonDeserializer`](crate::extract::JsonDeserializer) extractor | No
+//! `json-lines` | Enables the [`JsonLines`](crate::extract::JsonLines) extractor and response | No
+//! `multipart` | Enables the [`Multipart`](crate::extract::Multipart) extractor | No
+//! `protobuf` | Enables the [`Protobuf`](crate::protobuf::Protobuf) extractor and response | No
+//! `query` | Enables the [`Query`](crate::extract::Query) extractor | No
 //! `tracing` | Log rejections from built-in extractors | Yes
-//! `typed-routing` | Enables the `TypedPath` routing utilities | No
-//! `typed-header` | Enables the `TypedHeader` extractor and response | No
+//! `typed-routing` | Enables the [`TypedPath`](crate::routing::TypedPath) routing utilities | No
+//! `typed-header` | Enables the [`TypedHeader`] extractor and response | No
 //!
 //! [`axum`]: https://crates.io/crates/axum
 
