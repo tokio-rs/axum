@@ -3,10 +3,10 @@ use http::StatusCode;
 use std::error::Error;
 use tracing::error;
 
-/// Convenience response to create an error response from a non-IntoResponse error
+/// Convenience response to create an error response from a non-[`IntoResponse`] error
 ///
 /// This provides a method to quickly respond with an error that does not implement
-/// the IntoResponse trait itself. This type should only be used for debugging purposes or internal
+/// the `IntoResponse` trait itself. This type should only be used for debugging purposes or internal
 /// facing applications, as it includes the full error chain with descriptions,
 /// thus leaking information that could possibly be sensitive.
 ///
