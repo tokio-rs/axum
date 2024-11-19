@@ -973,4 +973,25 @@ mod tests {
             r#"Invalid URL: Cannot parse `res` with value `456456-123-456456`: UUID parsing failed: invalid group count: expected 5, found 3"#
         );
     }
+
+    #[crate::test]
+    async fn regression_3038() {
+        #[derive(Deserialize)]
+        #[allow(dead_code)]
+        struct MoreChars {
+            first_two: [char; 2],
+            second_two: [char; 2],
+            crate_name: String,
+        }
+
+        let app = Router::new().route(
+            "/{first_two}/{second_two}/{crate_name}",
+            get(|Path(_): Path<MoreChars>| async move {}),
+        );
+
+        let client = TestClient::new(app);
+        let res = client.get("/te/st/_thing").await;
+        let body = res.text().await;
+        assert_eq!(body, r#"Invalid URL: array types are not supported"#);
+    }
 }

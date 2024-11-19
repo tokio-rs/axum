@@ -454,9 +454,11 @@ impl<'de> Deserializer<'de> for ValueDeserializer<'de> {
                     Some(KeyOrIdx::Idx { idx: _, key }) => {
                         return seed.deserialize(KeyDeserializer { key }).map(Some);
                     }
-                    // `KeyOrIdx::Key` is only used when deserializing maps so `deserialize_seq`
-                    // wouldn't be called for that
-                    Some(KeyOrIdx::Key(_)) => unreachable!(),
+                    Some(KeyOrIdx::Key(_)) => {
+                        return Err(PathDeserializationError::custom(
+                            "array types are not supported",
+                        ));
+                    }
                     None => {}
                 };
 
