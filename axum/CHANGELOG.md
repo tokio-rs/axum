@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 # Unreleased
 
 - **fixed:** Skip SSE incompatible chars of `serde_json::RawValue` in `Event::json_data` ([#2992])
+- **fixed:** Don't panic when array type is used for path segment ([#3039])
 - **breaking:** Move `Host` extractor to `axum-extra` ([#2956])
 - **added:** Add `method_not_allowed_fallback` to set a fallback when a path matches but there is no handler for the given HTTP method ([#2903])
 - **added:** Add `NoContent` as a self-described shortcut for `StatusCode::NO_CONTENT` ([#2978])
@@ -32,6 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#2978]: https://github.com/tokio-rs/axum/pull/2978
 [#2992]: https://github.com/tokio-rs/axum/pull/2992
 [#2720]: https://github.com/tokio-rs/axum/pull/2720
+[#3039]: https://github.com/tokio-rs/axum/pull/3039
 
 # 0.8.0
 
