@@ -4,7 +4,7 @@ use crate::{
     response::Response,
 };
 use axum_core::{extract::Request, response::IntoResponse};
-use bytes::Bytes;
+// use bytes::Bytes;
 use http::{
     header::{self, CONTENT_LENGTH},
     HeaderMap, HeaderValue, Method,
@@ -117,7 +117,7 @@ pin_project! {
         #[pin]
         inner: Oneshot<BoxCloneService<Request, Response, E>, Request>,
         method: Method,
-        allow_header: Option<Bytes>,
+        // allow_header: Option<Bytes>,
         top_level: bool,
     }
 }
@@ -127,15 +127,15 @@ impl<E> RouteFuture<E> {
         Self {
             inner,
             method,
-            allow_header: None,
+            // allow_header: None,
             top_level: true,
         }
     }
 
-    pub(crate) fn allow_header(mut self, allow_header: Bytes) -> Self {
-        self.allow_header = Some(allow_header);
-        self
-    }
+    // pub(crate) fn allow_header(mut self, allow_header: Bytes) -> Self {
+    //     self.allow_header = Some(allow_header);
+    //     self
+    // }
 
     pub(crate) fn not_top_level(mut self) -> Self {
         self.top_level = false;
@@ -164,7 +164,7 @@ impl<E> Future for RouteFuture<E> {
                 res = res.map(|_| Body::empty());
             }
         } else if *this.top_level {
-            set_allow_header(res.headers_mut(), this.allow_header);
+            // set_allow_header(res.headers_mut(), this.allow_header);
 
             // make sure to set content-length before removing the body
             set_content_length(res.size_hint(), res.headers_mut());
@@ -178,17 +178,17 @@ impl<E> Future for RouteFuture<E> {
     }
 }
 
-fn set_allow_header(headers: &mut HeaderMap, allow_header: &mut Option<Bytes>) {
-    match allow_header.take() {
-        Some(allow_header) if !headers.contains_key(header::ALLOW) => {
-            headers.insert(
-                header::ALLOW,
-                HeaderValue::from_maybe_shared(allow_header).expect("invalid `Allow` header"),
-            );
-        }
-        _ => {}
-    }
-}
+// fn set_allow_header(headers: &mut HeaderMap, allow_header: &mut Option<Bytes>) {
+//     match allow_header.take() {
+//         Some(allow_header) if !headers.contains_key(header::ALLOW) => {
+//             headers.insert(
+//                 header::ALLOW,
+//                 HeaderValue::from_maybe_shared(allow_header).expect("invalid `Allow` header"),
+//             );
+//         }
+//         _ => {}
+//     }
+// }
 
 fn set_content_length(size_hint: http_body::SizeHint, headers: &mut HeaderMap) {
     if headers.contains_key(CONTENT_LENGTH) {

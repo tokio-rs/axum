@@ -1,5 +1,5 @@
 [workspace]
-members = ["axum", "axum-*", "examples/*"]
+members = ["axum", "axum-*"]
 # Only check / build main crates by default (check all with `--workspace`)
 default-members = ["axum", "axum-*"]
 # Example has been deleted, but README.md remains

@@ -13,7 +13,6 @@ use crate::{
     routing::{future::RouteFuture, Fallback, MethodFilter, Route},
 };
 use axum_core::{extract::Request, response::IntoResponse, BoxError};
-use bytes::BytesMut;
 use std::{
     convert::Infallible,
     fmt,
@@ -432,7 +431,6 @@ where
 {
     MethodRouter::new()
         .fallback_service(svc)
-        .skip_allow_header()
 }
 
 top_level_handler_fn!(connect, CONNECT);
@@ -510,7 +508,7 @@ where
     T: 'static,
     S: Clone + Send + Sync + 'static,
 {
-    MethodRouter::new().fallback(handler).skip_allow_header()
+    MethodRouter::new().fallback(handler)
 }
 
 /// A [`Service`] that accepts requests based on a [`MethodFilter`] and
@@ -554,34 +552,8 @@ pub struct MethodRouter<S = (), E = Infallible> {
     trace: MethodEndpoint<S, E>,
     connect: MethodEndpoint<S, E>,
     fallback: Fallback<S, E>,
-    allow_header: AllowHeader,
 }
 
-#[derive(Clone, Debug)]
-enum AllowHeader {
-    /// No `Allow` header value has been built-up yet. This is the default state
-    None,
-    /// Don't set an `Allow` header. This is used when `any` or `any_service` are called.
-    Skip,
-    /// The current value of the `Allow` header.
-    Bytes(BytesMut),
-}
-
-impl AllowHeader {
-    fn merge(self, other: Self) -> Self {
-        match (self, other) {
-            (AllowHeader::Skip, _) | (_, AllowHeader::Skip) => AllowHeader::Skip,
-            (AllowHeader::None, AllowHeader::None) => AllowHeader::None,
-            (AllowHeader::None, AllowHeader::Bytes(pick)) => AllowHeader::Bytes(pick),
-            (AllowHeader::Bytes(pick), AllowHeader::None) => AllowHeader::Bytes(pick),
-            (AllowHeader::Bytes(mut a), AllowHeader::Bytes(b)) => {
-                a.extend_from_slice(b",");
-                a.extend_from_slice(&b);
-                AllowHeader::Bytes(a)
-            }
-        }
-    }
-}
 
 impl<S, E> fmt::Debug for MethodRouter<S, E> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -596,7 +568,6 @@ impl<S, E> fmt::Debug for MethodRouter<S, E> {
             .field("trace", &self.trace)
             .field("connect", &self.connect)
             .field("fallback", &self.fallback)
-            .field("allow_header", &self.allow_header)
             .finish()
     }
 }
@@ -744,11 +715,11 @@ impl<S, E> MethodRouter<S, E>
 where
     S: Clone,
 {
-    /// Create a default `MethodRouter` that will respond with `405 Method Not Allowed` to all
+    /// Create a default `NOT_FOUND` that will respond with `404 NOT_FOUND` to all
     /// requests.
     pub fn new() -> Self {
         let fallback = Route::new(service_fn(|_: Request| async {
-            Ok(StatusCode::METHOD_NOT_ALLOWED.into_response())
+            Ok(StatusCode::NOT_FOUND.into_response())
         }));
 
         Self {
@@ -761,7 +732,6 @@ where
             put: MethodEndpoint::None,
             trace: MethodEndpoint::None,
             connect: MethodEndpoint::None,
-            allow_header: AllowHeader::None,
             fallback: Fallback::Default(fallback),
         }
     }
@@ -778,7 +748,6 @@ where
             put: self.put.with_state(&state),
             trace: self.trace.with_state(&state),
             connect: self.connect.with_state(&state),
-            allow_header: self.allow_header,
             fallback: self.fallback.with_state(state),
         }
     }
@@ -826,8 +795,7 @@ where
             endpoint: &MethodEndpoint<S, E>,
             endpoint_filter: MethodFilter,
             filter: MethodFilter,
-            allow_header: &mut AllowHeader,
-            methods: &[&'static str],
+            // methods: &[&'static str],
         ) where
             MethodEndpoint<S, E>: Clone,
             S: Clone,
@@ -840,9 +808,6 @@ where
                     )
                 }
                 *out = endpoint.clone();
-                for method in methods {
-                    append_allow_header(allow_header, method);
-                }
             }
         }
 
@@ -852,8 +817,6 @@ where
             &endpoint,
             filter,
             MethodFilter::GET,
-            &mut self.allow_header,
-            &["GET", "HEAD"],
         );
 
         set_endpoint(
@@ -862,8 +825,6 @@ where
             &endpoint,
             filter,
             MethodFilter::HEAD,
-            &mut self.allow_header,
-            &["HEAD"],
         );
 
         set_endpoint(
@@ -872,8 +833,6 @@ where
             &endpoint,
             filter,
             MethodFilter::TRACE,
-            &mut self.allow_header,
-            &["TRACE"],
         );
 
         set_endpoint(
@@ -882,8 +841,6 @@ where
             &endpoint,
             filter,
             MethodFilter::PUT,
-            &mut self.allow_header,
-            &["PUT"],
         );
 
         set_endpoint(
@@ -892,8 +849,6 @@ where
             &endpoint,
             filter,
             MethodFilter::POST,
-            &mut self.allow_header,
-            &["POST"],
         );
 
         set_endpoint(
@@ -902,8 +857,6 @@ where
             &endpoint,
             filter,
             MethodFilter::PATCH,
-            &mut self.allow_header,
-            &["PATCH"],
         );
 
         set_endpoint(
@@ -912,8 +865,6 @@ where
             &endpoint,
             filter,
             MethodFilter::OPTIONS,
-            &mut self.allow_header,
-            &["OPTIONS"],
         );
 
         set_endpoint(
@@ -922,8 +873,6 @@ where
             &endpoint,
             filter,
             MethodFilter::DELETE,
-            &mut self.allow_header,
-            &["DELETE"],
         );
 
         set_endpoint(
@@ -932,8 +881,6 @@ where
             &endpoint,
             filter,
             MethodFilter::CONNECT,
-            &mut self.allow_header,
-            &["CONNECT"],
         );
 
         self
@@ -985,7 +932,6 @@ where
             trace: self.trace.map(layer_fn.clone()),
             connect: self.connect.map(layer_fn.clone()),
             fallback: self.fallback.map(layer_fn),
-            allow_header: self.allow_header,
         }
     }
 
@@ -1078,7 +1024,6 @@ where
             .merge(other.fallback)
             .expect("Cannot merge two `MethodRouter`s that both have a fallback");
 
-        self.allow_header = self.allow_header.merge(other.allow_header);
 
         self
     }
@@ -1105,10 +1050,6 @@ where
         self.layer(HandleErrorLayer::new(f))
     }
 
-    fn skip_allow_header(mut self) -> Self {
-        self.allow_header = AllowHeader::Skip;
-        self
-    }
 
     pub(crate) fn call_with_state(&self, req: Request, state: S) -> RouteFuture<E> {
         macro_rules! call {
@@ -1144,7 +1085,6 @@ where
             trace,
             connect,
             fallback,
-            allow_header,
         } = self;
 
         call!(req, HEAD, head);
@@ -1158,35 +1098,10 @@ where
         call!(req, TRACE, trace);
         call!(req, CONNECT, connect);
 
-        let future = fallback.clone().call_with_state(req, state);
-
-        match allow_header {
-            AllowHeader::None => future.allow_header(Bytes::new()),
-            AllowHeader::Skip => future,
-            AllowHeader::Bytes(allow_header) => future.allow_header(allow_header.clone().freeze()),
-        }
+        fallback.clone().call_with_state(req, state)
     }
 }
 
-fn append_allow_header(allow_header: &mut AllowHeader, method: &'static str) {
-    match allow_header {
-        AllowHeader::None => {
-            *allow_header = AllowHeader::Bytes(BytesMut::from(method));
-        }
-        AllowHeader::Skip => {}
-        AllowHeader::Bytes(allow_header) => {
-            if let Ok(s) = std::str::from_utf8(allow_header) {
-                if !s.contains(method) {
-                    allow_header.extend_from_slice(b",");
-                    allow_header.extend_from_slice(method.as_bytes());
-                }
-            } else {
-                #[cfg(debug_assertions)]
-                panic!("`allow_header` contained invalid uft-8. This should never happen")
-            }
-        }
-    }
-}
 
 impl<S, E> Clone for MethodRouter<S, E> {
     fn clone(&self) -> Self {
@@ -1201,7 +1116,6 @@ impl<S, E> Clone for MethodRouter<S, E> {
             trace: self.trace.clone(),
             connect: self.connect.clone(),
             fallback: self.fallback.clone(),
-            allow_header: self.allow_header.clone(),
         }
     }
 }
@@ -1330,311 +1244,3 @@ const _: () = {
     }
 };
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::{extract::State, handler::HandlerWithoutStateExt};
-    use http::{header::ALLOW, HeaderMap};
-    use http_body_util::BodyExt;
-    use std::time::Duration;
-    use tower::ServiceExt;
-    use tower_http::{
-        services::fs::ServeDir, timeout::TimeoutLayer, validate_request::ValidateRequestHeaderLayer,
-    };
-
-    #[crate::test]
-    async fn method_not_allowed_by_default() {
-        let mut svc = MethodRouter::new();
-        let (status, _, body) = call(Method::GET, &mut svc).await;
-        assert_eq!(status, StatusCode::METHOD_NOT_ALLOWED);
-        assert!(body.is_empty());
-    }
-
-    #[crate::test]
-    async fn get_service_fn() {
-        async fn handle(_req: Request) -> Result<Response<Body>, Infallible> {
-            Ok(Response::new(Body::from("ok")))
-        }
-
-        let mut svc = get_service(service_fn(handle));
-
-        let (status, _, body) = call(Method::GET, &mut svc).await;
-        assert_eq!(status, StatusCode::OK);
-        assert_eq!(body, "ok");
-    }
-
-    #[crate::test]
-    async fn get_handler() {
-        let mut svc = MethodRouter::new().get(ok);
-        let (status, _, body) = call(Method::GET, &mut svc).await;
-        assert_eq!(status, StatusCode::OK);
-        assert_eq!(body, "ok");
-    }
-
-    #[crate::test]
-    async fn get_accepts_head() {
-        let mut svc = MethodRouter::new().get(ok);
-        let (status, _, body) = call(Method::HEAD, &mut svc).await;
-        assert_eq!(status, StatusCode::OK);
-        assert!(body.is_empty());
-    }
-
-    #[crate::test]
-    async fn head_takes_precedence_over_get() {
-        let mut svc = MethodRouter::new().head(created).get(ok);
-        let (status, _, body) = call(Method::HEAD, &mut svc).await;
-        assert_eq!(status, StatusCode::CREATED);
-        assert!(body.is_empty());
-    }
-
-    #[crate::test]
-    async fn merge() {
-        let mut svc = get(ok).merge(post(ok));
-
-        let (status, _, _) = call(Method::GET, &mut svc).await;
-        assert_eq!(status, StatusCode::OK);
-
-        let (status, _, _) = call(Method::POST, &mut svc).await;
-        assert_eq!(status, StatusCode::OK);
-    }
-
-    #[crate::test]
-    async fn layer() {
-        let mut svc = MethodRouter::new()
-            .get(|| async { std::future::pending::<()>().await })
-            .layer(ValidateRequestHeaderLayer::bearer("password"));
-
-        // method with route
-        let (status, _, _) = call(Method::GET, &mut svc).await;
-        assert_eq!(status, StatusCode::UNAUTHORIZED);
-
-        // method without route
-        let (status, _, _) = call(Method::DELETE, &mut svc).await;
-        assert_eq!(status, StatusCode::UNAUTHORIZED);
-    }
-
-    #[crate::test]
-    async fn route_layer() {
-        let mut svc = MethodRouter::new()
-            .get(|| async { std::future::pending::<()>().await })
-            .route_layer(ValidateRequestHeaderLayer::bearer("password"));
-
-        // method with route
-        let (status, _, _) = call(Method::GET, &mut svc).await;
-        assert_eq!(status, StatusCode::UNAUTHORIZED);
-
-        // method without route
-        let (status, _, _) = call(Method::DELETE, &mut svc).await;
-        assert_eq!(status, StatusCode::METHOD_NOT_ALLOWED);
-    }
-
-    #[allow(dead_code)]
-    async fn building_complex_router() {
-        let app = crate::Router::new().route(
-            "/",
-            // use the all the things 💣️
-            get(ok)
-                .post(ok)
-                .route_layer(ValidateRequestHeaderLayer::bearer("password"))
-                .merge(delete_service(ServeDir::new(".")))
-                .fallback(|| async { StatusCode::NOT_FOUND })
-                .put(ok)
-                .layer(TimeoutLayer::new(Duration::from_secs(10))),
-        );
-
-        let listener = tokio::net::TcpListener::bind("0.0.0.0:0").await.unwrap();
-        crate::serve(listener, app).await.unwrap();
-    }
-
-    #[crate::test]
-    async fn sets_allow_header() {
-        let mut svc = MethodRouter::new().put(ok).patch(ok);
-        let (status, headers, _) = call(Method::GET, &mut svc).await;
-        assert_eq!(status, StatusCode::METHOD_NOT_ALLOWED);
-        assert_eq!(headers[ALLOW], "PUT,PATCH");
-    }
-
-    #[crate::test]
-    async fn sets_allow_header_get_head() {
-        let mut svc = MethodRouter::new().get(ok).head(ok);
-        let (status, headers, _) = call(Method::PUT, &mut svc).await;
-        assert_eq!(status, StatusCode::METHOD_NOT_ALLOWED);
-        assert_eq!(headers[ALLOW], "GET,HEAD");
-    }
-
-    #[crate::test]
-    async fn empty_allow_header_by_default() {
-        let mut svc = MethodRouter::new();
-        let (status, headers, _) = call(Method::PATCH, &mut svc).await;
-        assert_eq!(status, StatusCode::METHOD_NOT_ALLOWED);
-        assert_eq!(headers[ALLOW], "");
-    }
-
-    #[crate::test]
-    async fn allow_header_when_merging() {
-        let a = put(ok).patch(ok);
-        let b = get(ok).head(ok);
-        let mut svc = a.merge(b);
-
-        let (status, headers, _) = call(Method::DELETE, &mut svc).await;
-        assert_eq!(status, StatusCode::METHOD_NOT_ALLOWED);
-        assert_eq!(headers[ALLOW], "PUT,PATCH,GET,HEAD");
-    }
-
-    #[crate::test]
-    async fn allow_header_any() {
-        let mut svc = any(ok);
-
-        let (status, headers, _) = call(Method::GET, &mut svc).await;
-        assert_eq!(status, StatusCode::OK);
-        assert!(!headers.contains_key(ALLOW));
-    }
-
-    #[crate::test]
-    async fn allow_header_with_fallback() {
-        let mut svc = MethodRouter::new()
-            .get(ok)
-            .fallback(|| async { (StatusCode::METHOD_NOT_ALLOWED, "Method not allowed") });
-
-        let (status, headers, _) = call(Method::DELETE, &mut svc).await;
-        assert_eq!(status, StatusCode::METHOD_NOT_ALLOWED);
-        assert_eq!(headers[ALLOW], "GET,HEAD");
-    }
-
-    #[crate::test]
-    async fn allow_header_with_fallback_that_sets_allow() {
-        async fn fallback(method: Method) -> Response {
-            if method == Method::POST {
-                "OK".into_response()
-            } else {
-                (
-                    StatusCode::METHOD_NOT_ALLOWED,
-                    [(ALLOW, "GET,POST")],
-                    "Method not allowed",
-                )
-                    .into_response()
-            }
-        }
-
-        let mut svc = MethodRouter::new().get(ok).fallback(fallback);
-
-        let (status, _, _) = call(Method::GET, &mut svc).await;
-        assert_eq!(status, StatusCode::OK);
-
-        let (status, _, _) = call(Method::POST, &mut svc).await;
-        assert_eq!(status, StatusCode::OK);
-
-        let (status, headers, _) = call(Method::DELETE, &mut svc).await;
-        assert_eq!(status, StatusCode::METHOD_NOT_ALLOWED);
-        assert_eq!(headers[ALLOW], "GET,POST");
-    }
-
-    #[crate::test]
-    async fn allow_header_noop_middleware() {
-        let mut svc = MethodRouter::new()
-            .get(ok)
-            .layer(tower::layer::util::Identity::new());
-
-        let (status, headers, _) = call(Method::DELETE, &mut svc).await;
-        assert_eq!(status, StatusCode::METHOD_NOT_ALLOWED);
-        assert_eq!(headers[ALLOW], "GET,HEAD");
-    }
-
-    #[crate::test]
-    #[should_panic(
-        expected = "Overlapping method route. Cannot add two method routes that both handle `GET`"
-    )]
-    async fn handler_overlaps() {
-        let _: MethodRouter<()> = get(ok).get(ok);
-    }
-
-    #[crate::test]
-    #[should_panic(
-        expected = "Overlapping method route. Cannot add two method routes that both handle `POST`"
-    )]
-    async fn service_overlaps() {
-        let _: MethodRouter<()> = post_service(ok.into_service()).post_service(ok.into_service());
-    }
-
-    #[crate::test]
-    async fn get_head_does_not_overlap() {
-        let _: MethodRouter<()> = get(ok).head(ok);
-    }
-
-    #[crate::test]
-    async fn head_get_does_not_overlap() {
-        let _: MethodRouter<()> = head(ok).get(ok);
-    }
-
-    #[crate::test]
-    async fn accessing_state() {
-        let mut svc = MethodRouter::new()
-            .get(|State(state): State<&'static str>| async move { state })
-            .with_state("state");
-
-        let (status, _, text) = call(Method::GET, &mut svc).await;
-
-        assert_eq!(status, StatusCode::OK);
-        assert_eq!(text, "state");
-    }
-
-    #[crate::test]
-    async fn fallback_accessing_state() {
-        let mut svc = MethodRouter::new()
-            .fallback(|State(state): State<&'static str>| async move { state })
-            .with_state("state");
-
-        let (status, _, text) = call(Method::GET, &mut svc).await;
-
-        assert_eq!(status, StatusCode::OK);
-        assert_eq!(text, "state");
-    }
-
-    #[crate::test]
-    async fn merge_accessing_state() {
-        let one = get(|State(state): State<&'static str>| async move { state });
-        let two = post(|State(state): State<&'static str>| async move { state });
-
-        let mut svc = one.merge(two).with_state("state");
-
-        let (status, _, text) = call(Method::GET, &mut svc).await;
-        assert_eq!(status, StatusCode::OK);
-        assert_eq!(text, "state");
-
-        let (status, _, _) = call(Method::POST, &mut svc).await;
-        assert_eq!(status, StatusCode::OK);
-        assert_eq!(text, "state");
-    }
-
-    async fn call<S>(method: Method, svc: &mut S) -> (StatusCode, HeaderMap, String)
-    where
-        S: Service<Request, Error = Infallible>,
-        S::Response: IntoResponse,
-    {
-        let request = Request::builder()
-            .uri("/")
-            .method(method)
-            .body(Body::empty())
-            .unwrap();
-        let response = svc
-            .ready()
-            .await
-            .unwrap()
-            .call(request)
-            .await
-            .unwrap()
-            .into_response();
-        let (parts, body) = response.into_parts();
-        let body =
-            String::from_utf8(BodyExt::collect(body).await.unwrap().to_bytes().to_vec()).unwrap();
-        (parts.status, parts.headers, body)
-    }
-
-    async fn ok() -> (StatusCode, &'static str) {
-        (StatusCode::OK, "ok")
-    }
-
-    async fn created() -> (StatusCode, &'static str) {
-        (StatusCode::CREATED, "created")
-    }
-}
