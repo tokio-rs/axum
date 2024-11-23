@@ -10,6 +10,7 @@
 //! Name | Description | Default?
 //! ---|---|---
 //! `async-read-body` | Enables the [`AsyncReadBody`](crate::body::AsyncReadBody) body | No
+//! `attachment` | Enables the [`Attachment`](crate::response::Attachment) response | No
 //! `cookie` | Enables the [`CookieJar`](crate::extract::CookieJar) extractor | No
 //! `cookie-private` | Enables the [`PrivateCookieJar`](crate::extract::PrivateCookieJar) extractor | No
 //! `cookie-signed` | Enables the [`SignedCookieJar`](crate::extract::SignedCookieJar) extractor | No
