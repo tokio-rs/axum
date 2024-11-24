@@ -15,6 +15,7 @@ version = "0.10.0-alpha.1"
 default = ["tracing", "multipart"]
 
 async-read-body = ["dep:tokio-util", "tokio-util?/io", "dep:tokio"]
+fileStream = ["dep:tokio-util", "tokio-util?/io", "dep:tokio"]
 attachment = ["dep:tracing"]
 error_response = ["dep:tracing", "tracing/std"]
 cookie = ["dep:cookie"]

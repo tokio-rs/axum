@@ -4,20 +4,24 @@
 //! cargo run -p example-stream-to-file
 //! ```
 
+use async_stream::try_stream;
 use axum::{
     body::Bytes,
     extract::{Multipart, Path, Request},
     http::StatusCode,
-    response::{Html, Redirect},
+    response::{Html, IntoResponse, Redirect, Response},
     routing::{get, post},
     BoxError, Router,
 };
+use axum_extra::response::file_stream::FileStream;
 use futures::{Stream, TryStreamExt};
 use std::io;
-use tokio::{fs::File, io::BufWriter};
-use tokio_util::io::StreamReader;
+use tokio::{
+    fs::File,
+    io::{AsyncReadExt, AsyncSeekExt, BufWriter},
+};
+use tokio_util::io::{ReaderStream, StreamReader};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
-
 const UPLOADS_DIRECTORY: &str = "uploads";
 
 #[tokio::main]
@@ -36,8 +40,11 @@ async fn main() {
         .expect("failed to create `uploads` directory");
 
     let app = Router::new()
-        .route("/", get(show_form).post(accept_form))
-        .route("/file/{file_name}", post(save_request_body));
+        .route("/upload", get(show_form).post(accept_form))
+        .route("/", get(show_form2).post(accept_form))
+        .route("/file/{file_name}", post(save_request_body))
+        .route("/file_download", get(file_download_handler))
+        .route("/simpler_file_download", get(simpler_file_donwload_handler));
 
     let listener = tokio::net::TcpListener::bind("127.0.0.1:3000")
         .await
@@ -82,6 +89,139 @@ async fn show_form() -> Html<&'static str> {
         </html>
         "#,
     )
+}
+
+// Handler that returns HTML for a multipart form.
+async fn show_form2() -> Html<&'static str> {
+    Html(
+        r#"
+        <!doctype html>
+        <html>
+            <head>
+                <title>Upload and Download!</title>
+            </head>
+            <body>
+                <h1>Upload and Download Files</h1>
+
+                <!-- Form for uploading files -->
+                <form action="/" method="post" enctype="multipart/form-data">
+                    <div>
+                        <label>
+                            Upload file:
+                            <input type="file" name="file" multiple>
+                        </label>
+                    </div>
+
+                    <div>
+                        <input type="submit" value="Upload files">
+                    </div>
+                </form>
+
+                <hr>
+                <!-- Buttons for downloading files -->
+                <form action="/file_download" method="get">
+                    <div>
+                        <input type="submit" value="Download file">
+                    </div>
+                </form>
+            </body>
+        </html>
+        "#,
+    )
+}
+
+/// A simpler file download handler that uses the `FileStream` response.
+/// Returns the entire file as a stream.
+async fn simpler_file_donwload_handler() -> Response {
+    let Ok(file) = File::open("./CHANGELOG.md").await else {
+        return (StatusCode::INTERNAL_SERVER_ERROR, "Failed to open file").into_response();
+    };
+
+    let Ok(file_metatdata) = file.metadata().await else {
+        return (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Failed to get file metatdata",
+        )
+            .into_response();
+    };
+
+    // Constructing a Stream with ReaderStream
+    let stream = ReaderStream::new(file);
+
+    // Use FileStream to return and set some information.
+    // Will set application/octet-stream in the header.
+    let file_stream_resp = FileStream::new(stream)
+        .file_name("test.txt")
+        .content_size(file_metatdata.len());
+    
+    //It is also possible to set only the stream FileStream will be automatically set on the http header.    
+    //let file_stream_resp = FileStream::new(stream);
+    
+    file_stream_resp.into_response()
+}
+
+/// If you want to control the returned files in more detail you can implement a Stream
+/// For example, use the try_stream! macro to construct a file stream and set which parts are needed.
+async fn file_download_handler() -> Response {
+    let file_stream = match try_stream("./CHANGELOG.md", 5, 25, 10).await {
+        Ok(file_stream) => file_stream,
+        Err(e) => {
+            println!("{e}");
+            return (StatusCode::INTERNAL_SERVER_ERROR, "Failed try stream!").into_response();
+        },
+    };
+    
+    // Use FileStream to return and set some information.
+    // Will set application/octet-stream in the header.
+    let file_stream_resp = FileStream::new(Box::pin(file_stream))
+        .file_name("test.txt").content_size(20_u64);
+
+    file_stream_resp.into_response()
+}
+
+/// More complex manipulation of files and conversion to a stream
+async fn try_stream(
+    file_path: &str,
+    start: u64,
+    mut end: u64,
+    buffer_size: usize,
+) -> Result<impl Stream<Item = Result<Vec<u8>, std::io::Error>>, String> {
+   
+    let mut file = File::open(file_path)
+        .await
+        .map_err(|e| format!("open file:{file_path} err:{e}"))?;
+
+    file.seek(std::io::SeekFrom::Start(start))
+        .await
+        .map_err(|e| format!("file:{file_path} seek err:{e}"))?;
+
+    if end == 0 {
+        let metadata = file
+            .metadata()
+            .await
+            .map_err(|e| format!("file:{file_path} get metadata err:{e}"))?;
+        end = metadata.len() as u64;
+    }
+
+    let mut buffer = vec![0; buffer_size];
+
+    let stream = try_stream! {
+        let mut total_read = 0;
+
+            while total_read < end {
+                let bytes_to_read = std::cmp::min(buffer_size as u64, end - total_read);
+                let n = file.read(&mut buffer[..bytes_to_read as usize]).await.map_err(|e| {
+                    std::io::Error::new(std::io::ErrorKind::Other, e)
+                })?;
+                if n == 0 {
+                    break; // EOF
+                }
+                total_read += n as u64;
+                yield buffer[..n].to_vec();
+
+        }
+    };
+    Ok(stream)
 }
 
 // Handler that accepts a multipart form upload and streams each field to a file.

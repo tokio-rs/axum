@@ -12,6 +12,10 @@ pub mod multiple;
 #[cfg(feature = "error_response")]
 mod error_response;
 
+#[cfg(feature = "fileStream")]
+/// Module for handling file streams.
+pub mod file_stream;
+
 #[cfg(feature = "error_response")]
 pub use error_response::InternalServerError;
 
