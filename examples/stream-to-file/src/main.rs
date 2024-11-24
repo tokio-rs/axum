@@ -4,11 +4,7 @@
 //! cargo run -p example-stream-to-file
 //! ```
 
-use std::io;
-use tokio::{
-    fs::File,
-    io::{AsyncReadExt, AsyncSeekExt, BufWriter},
-};
+use async_stream::try_stream;
 use axum::{
     body::Bytes,
     extract::{Multipart, Path, Request},
@@ -19,7 +15,11 @@ use axum::{
 };
 use axum_extra::response::file_stream::FileStream;
 use futures::{Stream, TryStreamExt};
-use async_stream::try_stream;
+use std::io;
+use tokio::{
+    fs::File,
+    io::{AsyncReadExt, AsyncSeekExt, BufWriter},
+};
 use tokio_util::io::{ReaderStream, StreamReader};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 const UPLOADS_DIRECTORY: &str = "uploads";
@@ -153,10 +153,10 @@ async fn simpler_file_download_handler() -> Response {
     let file_stream_resp = FileStream::new(stream)
         .file_name("test.txt")
         .content_size(file_metadata.len());
-    
-    //It is also possible to set only the stream FileStream will be automatically set on the http header.    
+
+    //It is also possible to set only the stream FileStream will be automatically set on the http header.
     //let file_stream_resp = FileStream::new(stream);
-    
+
     file_stream_resp.into_response()
 }
 
@@ -168,13 +168,14 @@ async fn file_download_handler() -> Response {
         Err(e) => {
             println!("{e}");
             return (StatusCode::INTERNAL_SERVER_ERROR, "Failed try stream!").into_response();
-        },
+        }
     };
-    
+
     // Use FileStream to return and set some information.
     // Will set application/octet-stream in the header.
     let file_stream_resp = FileStream::new(Box::pin(file_stream))
-        .file_name("test.txt").content_size(20_u64);
+        .file_name("test.txt")
+        .content_size(20_u64);
 
     file_stream_resp.into_response()
 }
@@ -186,7 +187,6 @@ async fn try_stream(
     mut end: u64,
     buffer_size: usize,
 ) -> Result<impl Stream<Item = Result<Vec<u8>, std::io::Error>>, String> {
-   
     let mut file = File::open(file_path)
         .await
         .map_err(|e| format!("open file:{file_path} err:{e}"))?;

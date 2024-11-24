@@ -111,8 +111,8 @@ mod tests {
     use axum::{extract::Request, routing::get, Router};
     use body::Body;
     use http_body_util::BodyExt;
-    use tokio::io::AsyncSeekExt;
     use std::io::{Cursor, SeekFrom};
+    use tokio::io::AsyncSeekExt;
     use tokio_util::io::ReaderStream;
     use tower::ServiceExt;
 
@@ -172,7 +172,7 @@ mod tests {
 
                 // get file size
                 let file_size = file.metadata().await.unwrap().len();
-                
+
                 // seek to the middle of the file
                 let mid_position = file_size / 2;
                 file.seek(SeekFrom::Start(mid_position)).await.unwrap();
@@ -188,7 +188,12 @@ mod tests {
 
         // Simulating a GET request
         let response = app
-            .oneshot(Request::builder().uri("/half_file").body(Body::empty()).unwrap())
+            .oneshot(
+                Request::builder()
+                    .uri("/half_file")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
             .await
             .unwrap();
 
@@ -204,7 +209,20 @@ mod tests {
             response.headers().get("content-disposition").unwrap(),
             "attachment; filename=\"CHANGELOG.md\""
         );
-        assert_eq!(response.headers().get("content-length").unwrap(), "8098");
+
+        let file = tokio::fs::File::open("CHANGELOG.md").await.unwrap();
+        // get file size
+        let content_length = file.metadata().await.unwrap().len() / 2;
+
+        assert_eq!(
+            response
+                .headers()
+                .get("content-length")
+                .unwrap()
+                .to_str()
+                .unwrap(),
+            content_length.to_string()
+        );
         Ok(())
     }
 }
