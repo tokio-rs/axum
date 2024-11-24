@@ -4,7 +4,11 @@
 //! cargo run -p example-stream-to-file
 //! ```
 
-use async_stream::try_stream;
+use std::io;
+use tokio::{
+    fs::File,
+    io::{AsyncReadExt, AsyncSeekExt, BufWriter},
+};
 use axum::{
     body::Bytes,
     extract::{Multipart, Path, Request},
@@ -15,11 +19,7 @@ use axum::{
 };
 use axum_extra::response::file_stream::FileStream;
 use futures::{Stream, TryStreamExt};
-use std::io;
-use tokio::{
-    fs::File,
-    io::{AsyncReadExt, AsyncSeekExt, BufWriter},
-};
+use async_stream::try_stream;
 use tokio_util::io::{ReaderStream, StreamReader};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 const UPLOADS_DIRECTORY: &str = "uploads";

@@ -128,11 +128,10 @@ mod tests {
 
                 // response file stream
                 let stream = ReaderStream::new(reader);
-                let resp = FileStream::new(stream)
+                FileStream::new(stream)
                     .file_name("test")
                     .content_size(size)
-                    .into_response();
-                resp
+                    .into_response()
             }),
         );
 
@@ -180,11 +179,10 @@ mod tests {
 
                 // response file stream
                 let stream = ReaderStream::new(file);
-                let resp = FileStream::new(stream)
+                FileStream::new(stream)
                     .file_name("CHANGELOG.md")
                     .content_size(mid_position)
-                    .into_response();
-                resp
+                    .into_response()
             }),
         );
 
