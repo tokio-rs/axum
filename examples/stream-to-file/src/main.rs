@@ -44,7 +44,7 @@ async fn main() {
         .route("/", get(show_form2).post(accept_form))
         .route("/file/{file_name}", post(save_request_body))
         .route("/file_download", get(file_download_handler))
-        .route("/simpler_file_download", get(simpler_file_donwload_handler));
+        .route("/simpler_file_download", get(simpler_file_download_handler));
 
     let listener = tokio::net::TcpListener::bind("127.0.0.1:3000")
         .await
@@ -132,15 +132,15 @@ async fn show_form2() -> Html<&'static str> {
 
 /// A simpler file download handler that uses the `FileStream` response.
 /// Returns the entire file as a stream.
-async fn simpler_file_donwload_handler() -> Response {
+async fn simpler_file_download_handler() -> Response {
     let Ok(file) = File::open("./CHANGELOG.md").await else {
         return (StatusCode::INTERNAL_SERVER_ERROR, "Failed to open file").into_response();
     };
 
-    let Ok(file_metatdata) = file.metadata().await else {
+    let Ok(file_metadata) = file.metadata().await else {
         return (
             StatusCode::INTERNAL_SERVER_ERROR,
-            "Failed to get file metatdata",
+            "Failed to get file metadata",
         )
             .into_response();
     };
@@ -152,7 +152,7 @@ async fn simpler_file_donwload_handler() -> Response {
     // Will set application/octet-stream in the header.
     let file_stream_resp = FileStream::new(stream)
         .file_name("test.txt")
-        .content_size(file_metatdata.len());
+        .content_size(file_metadata.len());
     
     //It is also possible to set only the stream FileStream will be automatically set on the http header.    
     //let file_stream_resp = FileStream::new(stream);
@@ -200,7 +200,7 @@ async fn try_stream(
             .metadata()
             .await
             .map_err(|e| format!("file:{file_path} get metadata err:{e}"))?;
-        end = metadata.len() as u64;
+        end = metadata.len();
     }
 
     let mut buffer = vec![0; buffer_size];
