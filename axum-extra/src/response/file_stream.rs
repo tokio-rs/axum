@@ -1,3 +1,5 @@
+use std::{io, path::PathBuf};
+
 use axum::{
     body,
     response::{IntoResponse, Response},
@@ -6,6 +8,11 @@ use axum::{
 use bytes::Bytes;
 use futures_util::TryStream;
 use http::{header, StatusCode};
+use tokio::fs::File;
+use tokio_util::io::ReaderStream;
+
+/// Alias for `tokio_util::io::ReaderStream<File>`.
+pub type AsyncReaderStream = ReaderStream<File>;
 
 /// Encapsulate the file stream.
 /// The encapsulated file stream construct requires passing in a stream
@@ -20,7 +27,7 @@ use http::{header, StatusCode};
 /// };
 /// use axum_extra::response::file_stream::FileStream;
 /// use tokio::fs::File;
-/// use tokio_util::io::ReaderStream ;
+/// use tokio_util::io::ReaderStream;
 /// async fn file_stream() -> Result<Response, (StatusCode, String)> {
 ///     let stream=ReaderStream::new(File::open("test.txt").await.map_err(|e| (StatusCode::NOT_FOUND, format!("File not found: {e}")))?);
 ///     let file_stream_resp = FileStream::new(stream)
@@ -59,6 +66,54 @@ where
             file_name: None,
             content_size: None,
         }
+    }
+
+    /// Create a file stream from a file path.
+    /// # Examples
+    /// ```
+    /// use axum::{
+    ///     http::StatusCode,
+    ///     response::{Response, IntoResponse},
+    ///     Router,
+    ///     routing::get
+    /// };
+    /// use axum_extra::response::file_stream::FileStream;
+    /// use std::path::PathBuf;
+    /// use tokio_util::io::ReaderStream;
+    /// use tokio::fs::File;
+    /// async fn file_stream() -> Result<Response, (StatusCode, String)> {
+    ///     Ok(FileStream::<ReaderStream<File>>::from_path(PathBuf::from("test.txt"))
+    ///     .await
+    ///     .map_err(|e| (StatusCode::NOT_FOUND, format!("File not found: {e}")))?
+    ///     .into_response())
+    /// }
+    /// let app = Router::new().route("/FileStreamDownload", get(file_stream));
+    /// # let _: Router = app;
+    /// ```
+    pub async fn from_path(path: PathBuf) -> io::Result<FileStream<AsyncReaderStream>> {
+        // open file
+        let file = File::open(&path).await?;
+        let mut content_size = None;
+        let mut file_name = None;
+
+        // get file metadata length
+        if let Ok(metadata) = file.metadata().await {
+            content_size = Some(metadata.len());
+        }
+
+        // get file name
+        if let Some(file_name_os) = path.file_name() {
+            if let Some(file_name_str) = file_name_os.to_str() {
+                file_name = Some(file_name_str.to_owned());
+            }
+        }
+
+        // return FileStream
+        Ok(FileStream {
+            stream: ReaderStream::new(file),
+            file_name,
+            content_size,
+        })
     }
 
     /// Set the file name of the file.
@@ -111,8 +166,7 @@ mod tests {
     use axum::{extract::Request, routing::get, Router};
     use body::Body;
     use http_body_util::BodyExt;
-    use std::io::{Cursor, SeekFrom};
-    use tokio::io::AsyncSeekExt;
+    use std::io::Cursor;
     use tokio_util::io::ReaderStream;
     use tower::ServiceExt;
 
@@ -164,24 +218,13 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn response_half_file() -> Result<(), Box<dyn std::error::Error>> {
+    async fn response_from_path() -> Result<(), Box<dyn std::error::Error>> {
         let app = Router::new().route(
-            "/half_file",
+            "/from_path",
             get(move || async move {
-                let mut file = tokio::fs::File::open("CHANGELOG.md").await.unwrap();
-
-                // get file size
-                let file_size = file.metadata().await.unwrap().len();
-
-                // seek to the middle of the file
-                let mid_position = file_size / 2;
-                file.seek(SeekFrom::Start(mid_position)).await.unwrap();
-
-                // response file stream
-                let stream = ReaderStream::new(file);
-                FileStream::new(stream)
-                    .file_name("CHANGELOG.md")
-                    .content_size(mid_position)
+                FileStream::<AsyncReaderStream>::from_path("CHANGELOG.md".into())
+                    .await
+                    .unwrap()
                     .into_response()
             }),
         );
@@ -190,7 +233,7 @@ mod tests {
         let response = app
             .oneshot(
                 Request::builder()
-                    .uri("/half_file")
+                    .uri("/from_path")
                     .body(Body::empty())
                     .unwrap(),
             )
@@ -212,7 +255,7 @@ mod tests {
 
         let file = tokio::fs::File::open("CHANGELOG.md").await.unwrap();
         // get file size
-        let content_length = file.metadata().await.unwrap().len() / 2;
+        let content_length = file.metadata().await.unwrap().len();
 
         assert_eq!(
             response

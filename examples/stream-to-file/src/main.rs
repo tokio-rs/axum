@@ -13,14 +13,14 @@ use axum::{
     routing::{get, post},
     BoxError, Router,
 };
-use axum_extra::response::file_stream::FileStream;
+use axum_extra::response::file_stream::{AsyncReaderStream, FileStream};
 use futures::{Stream, TryStreamExt};
 use std::io;
 use tokio::{
     fs::File,
     io::{AsyncReadExt, AsyncSeekExt, BufWriter},
 };
-use tokio_util::io::{ReaderStream, StreamReader};
+use tokio_util::io::StreamReader;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 const UPLOADS_DIRECTORY: &str = "uploads";
 
@@ -133,31 +133,12 @@ async fn show_form2() -> Html<&'static str> {
 /// A simpler file download handler that uses the `FileStream` response.
 /// Returns the entire file as a stream.
 async fn simpler_file_download_handler() -> Response {
-    let Ok(file) = File::open("./CHANGELOG.md").await else {
-        return (StatusCode::INTERNAL_SERVER_ERROR, "Failed to open file").into_response();
-    };
-
-    let Ok(file_metadata) = file.metadata().await else {
-        return (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "Failed to get file metadata",
-        )
-            .into_response();
-    };
-
-    // Constructing a Stream with ReaderStream
-    let stream = ReaderStream::new(file);
-
-    // Use FileStream to return and set some information.
-    // Will set application/octet-stream in the header.
-    let file_stream_resp = FileStream::new(stream)
-        .file_name("test.txt")
-        .content_size(file_metadata.len());
-
-    //It is also possible to set only the stream FileStream will be automatically set on the http header.
-    //let file_stream_resp = FileStream::new(stream);
-
-    file_stream_resp.into_response()
+    //If you want to simply return a file as a stream
+    // you can use the from_path method directly, passing in the path of the file to construct a stream with a header and length.
+    FileStream::<AsyncReaderStream>::from_path("./CHANGELOG.md".into())
+        .await
+        .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "Failed to open file").into_response())
+        .into_response()
 }
 
 /// If you want to control the returned files in more detail you can implement a Stream
