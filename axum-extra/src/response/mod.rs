@@ -12,7 +12,7 @@ pub mod multiple;
 #[cfg(feature = "error_response")]
 mod error_response;
 
-#[cfg(feature = "fileStream")]
+#[cfg(feature = "file-stream")]
 /// Module for handling file streams.
 pub mod file_stream;
 

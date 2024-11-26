@@ -1,5 +1,3 @@
-use std::{io, path::PathBuf};
-
 use axum::{
     body,
     response::{IntoResponse, Response},
@@ -8,6 +6,7 @@ use axum::{
 use bytes::Bytes;
 use futures_util::TryStream;
 use http::{header, StatusCode};
+use std::{io, path::PathBuf};
 use tokio::fs::File;
 use tokio_util::io::ReaderStream;
 
@@ -79,13 +78,13 @@ where
     /// };
     /// use axum_extra::response::file_stream::FileStream;
     /// use std::path::PathBuf;
-    /// use tokio_util::io::ReaderStream;
     /// use tokio::fs::File;
-    /// async fn file_stream() -> Result<Response, (StatusCode, String)> {
-    ///     Ok(FileStream::<ReaderStream<File>>::from_path(PathBuf::from("test.txt"))
+    /// use tokio_util::io::ReaderStream;
+    /// async fn file_stream() -> Response {
+    ///     FileStream::<ReaderStream<File>>::from_path(PathBuf::from("test.txt"))
     ///     .await
-    ///     .map_err(|e| (StatusCode::NOT_FOUND, format!("File not found: {e}")))?
-    ///     .into_response())
+    ///     .map_err(|e| (StatusCode::NOT_FOUND, format!("File not found: {e}")))
+    ///     .into_response()
     /// }
     /// let app = Router::new().route("/FileStreamDownload", get(file_stream));
     /// # let _: Router = app;
@@ -253,7 +252,7 @@ mod tests {
             "attachment; filename=\"CHANGELOG.md\""
         );
 
-        let file = tokio::fs::File::open("CHANGELOG.md").await.unwrap();
+        let file = File::open("CHANGELOG.md").await.unwrap();
         // get file size
         let content_length = file.metadata().await.unwrap().len();
 

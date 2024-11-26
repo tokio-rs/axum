@@ -15,15 +15,15 @@ use axum::{
 };
 use axum_extra::response::file_stream::{AsyncReaderStream, FileStream};
 use futures::{Stream, TryStreamExt};
-use std::io;
+use std::{io, path::PathBuf};
 use tokio::{
     fs::File,
-    io::{AsyncReadExt, AsyncSeekExt, BufWriter},
+    io::{AsyncReadExt, AsyncSeekExt, AsyncWriteExt, BufWriter},
 };
 use tokio_util::io::StreamReader;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 const UPLOADS_DIRECTORY: &str = "uploads";
-
+const DOWNLOAD_DIRECTORY: &str = "downloads";
 #[tokio::main]
 async fn main() {
     tracing_subscriber::registry()
@@ -39,6 +39,15 @@ async fn main() {
         .await
         .expect("failed to create `uploads` directory");
 
+    tokio::fs::create_dir(DOWNLOAD_DIRECTORY)
+        .await
+        .expect("failed to create `downloads` directory");
+
+    //create a file to download
+    create_test_file(std::path::Path::new(DOWNLOAD_DIRECTORY).join("test.txt"))
+        .await
+        .expect("failed to create test file");
+
     let app = Router::new()
         .route("/upload", get(show_form).post(accept_form))
         .route("/", get(show_form2).post(accept_form))
@@ -51,6 +60,19 @@ async fn main() {
         .unwrap();
     tracing::debug!("listening on {}", listener.local_addr().unwrap());
     axum::serve(listener, app).await.unwrap();
+}
+
+async fn create_test_file(path: PathBuf) -> io::Result<()> {
+    let mut file = File::create(path).await?;
+    for i in 1..=30 {
+        let line = format!(
+            "Hello, this is the simulated file content! This is line {}\n",
+            i
+        );
+        file.write_all(line.as_bytes()).await?;
+    }
+    file.flush().await?;
+    Ok(())
 }
 
 // Handler that streams the request body to a file.
@@ -135,16 +157,19 @@ async fn show_form2() -> Html<&'static str> {
 async fn simpler_file_download_handler() -> Response {
     //If you want to simply return a file as a stream
     // you can use the from_path method directly, passing in the path of the file to construct a stream with a header and length.
-    FileStream::<AsyncReaderStream>::from_path("./CHANGELOG.md".into())
-        .await
-        .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "Failed to open file").into_response())
-        .into_response()
+    FileStream::<AsyncReaderStream>::from_path(
+        std::path::Path::new(DOWNLOAD_DIRECTORY).join("test.txt"),
+    )
+    .await
+    .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "Failed to open file").into_response())
+    .into_response()
 }
 
 /// If you want to control the returned files in more detail you can implement a Stream
 /// For example, use the try_stream! macro to construct a file stream and set which parts are needed.
 async fn file_download_handler() -> Response {
-    let file_stream = match try_stream("./CHANGELOG.md", 5, 25, 10).await {
+    let file_path = format!("{DOWNLOAD_DIRECTORY}/test.txt");
+    let file_stream = match try_stream(&file_path, 5, 25, 10).await {
         Ok(file_stream) => file_stream,
         Err(e) => {
             println!("{e}");
