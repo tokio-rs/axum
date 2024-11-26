@@ -515,10 +515,8 @@ impl fmt::Debug for Node {
 
 #[track_caller]
 fn validate_nest_path(v7_checks: bool, path: &str) -> &str {
-    if path.is_empty() {
-        // nesting at `""` and `"/"` should mean the same thing
-        return "/";
-    }
+    assert!(path.starts_with('/'));
+    assert!(path.len() > 1);
 
     if path.split('/').any(|segment| {
         segment.starts_with("{*") && segment.ends_with('}') && !segment.ends_with("}}")

@@ -200,13 +200,13 @@ async fn doesnt_panic_if_used_with_nested_router() {
     async fn handler() {}
 
     let routes_static =
-        Router::new().nest_service("/", crate::routing::get_service(handler.into_service()));
+        Router::new().nest_service("/foo", crate::routing::get_service(handler.into_service()));
 
     let routes_all = Router::new().fallback_service(routes_static);
 
     let client = TestClient::new(routes_all);
 
-    let res = client.get("/foobar").await;
+    let res = client.get("/foo/bar").await;
     assert_eq!(res.status(), StatusCode::OK);
 }
 
