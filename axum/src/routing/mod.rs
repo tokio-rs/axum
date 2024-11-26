@@ -200,6 +200,10 @@ where
     #[doc(alias = "scope")] // Some web frameworks like actix-web use this term
     #[track_caller]
     pub fn nest(self, path: &str, router: Router<S>) -> Self {
+        if path.is_empty() || path == "/" {
+            panic!("Nesting at the root is no longer supported. Use merge instead.");
+        }
+
         let RouterInner {
             path_router,
             fallback_router,
@@ -227,6 +231,10 @@ where
         T::Response: IntoResponse,
         T::Future: Send + 'static,
     {
+        if path.is_empty() || path == "/" {
+            panic!("Nesting at the root is no longer supported. Use fallback_service instead.");
+        }
+
         tap_inner!(self, mut this => {
             panic_on_err!(this.path_router.nest_service(path, service));
         })

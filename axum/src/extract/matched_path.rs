@@ -324,14 +324,14 @@ mod tests {
             "/{*path}",
             any(|req: Request| {
                 Router::new()
-                    .nest("/", Router::new().route("/foo", get(|| async {})))
+                    .nest("/foo", Router::new().route("/bar", get(|| async {})))
                     .oneshot(req)
             }),
         );
 
         let client = TestClient::new(app);
 
-        let res = client.get("/foo").await;
+        let res = client.get("/foo/bar").await;
         assert_eq!(res.status(), StatusCode::OK);
     }
 
