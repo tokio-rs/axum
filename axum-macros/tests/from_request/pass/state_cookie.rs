@@ -1,6 +1,6 @@
-use axum_macros::FromRequest;
 use axum::extract::FromRef;
-use axum_extra::extract::cookie::{PrivateCookieJar, Key};
+use axum_extra::extract::cookie::{Key, PrivateCookieJar};
+use axum_macros::FromRequest;
 
 #[derive(FromRequest)]
 #[from_request(state(AppState))]

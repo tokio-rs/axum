@@ -6,7 +6,7 @@ enum Extractor {
     Foo {
         #[from_request(via(axum::Extension))]
         foo: (),
-    }
+    },
 }
 
 fn main() {}

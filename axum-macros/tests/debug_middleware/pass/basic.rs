@@ -1,9 +1,4 @@
-use axum::{
-    extract::Request,
-    response::Response,
-    middleware::Next,
-    debug_middleware,
-};
+use axum::{debug_middleware, extract::Request, middleware::Next, response::Response};
 
 #[debug_middleware]
 async fn my_middleware(request: Request, next: Next) -> Response {
