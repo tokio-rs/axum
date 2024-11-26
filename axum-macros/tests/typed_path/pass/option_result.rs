@@ -1,5 +1,5 @@
-use axum_extra::routing::{TypedPath, RouterExt};
 use axum::{extract::rejection::PathRejection, http::StatusCode};
+use axum_extra::routing::{RouterExt, TypedPath};
 use serde::Deserialize;
 
 #[derive(TypedPath, Deserialize)]

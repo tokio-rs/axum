@@ -4,16 +4,13 @@
 async fn named_type() -> (
     axum::http::StatusCode,
     axum::Json<&'static str>,
-    axum::response::AppendHeaders<[( axum::http::HeaderName,&'static str); 1]>,
+    axum::response::AppendHeaders<[(axum::http::HeaderName, &'static str); 1]>,
 ) {
     panic!()
 }
 
-
-struct CustomIntoResponse{
-
-}
-impl axum::response::IntoResponse for CustomIntoResponse{
+struct CustomIntoResponse {}
+impl axum::response::IntoResponse for CustomIntoResponse {
     fn into_response(self) -> axum::response::Response {
         todo!()
     }
@@ -22,7 +19,7 @@ impl axum::response::IntoResponse for CustomIntoResponse{
 async fn custom_type() -> (
     axum::http::StatusCode,
     CustomIntoResponse,
-    axum::response::AppendHeaders<[( axum::http::HeaderName,&'static str); 1]>,
+    axum::response::AppendHeaders<[(axum::http::HeaderName, &'static str); 1]>,
 ) {
     panic!()
 }

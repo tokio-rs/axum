@@ -3,10 +3,7 @@ use axum_macros::FromRequest;
 use serde::Deserialize;
 
 #[derive(FromRequest)]
-struct Extractor(
-    Query<Payload>,
-    axum::extract::Json<Payload>,
-);
+struct Extractor(Query<Payload>, axum::extract::Json<Payload>);
 
 #[derive(Deserialize)]
 struct Payload {}

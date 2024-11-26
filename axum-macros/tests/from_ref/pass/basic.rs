@@ -1,4 +1,8 @@
-use axum::{Router, routing::get, extract::{State, FromRef}};
+use axum::{
+    extract::{FromRef, State},
+    routing::get,
+    Router,
+};
 
 // This will implement `FromRef` for each field in the struct.
 #[derive(Clone, FromRef)]
@@ -14,7 +18,5 @@ fn main() {
         auth_token: Default::default(),
     };
 
-    let _: axum::Router = Router::new()
-        .route("/", get(handler))
-        .with_state(state);
+    let _: axum::Router = Router::new().route("/", get(handler)).with_state(state);
 }

@@ -19,10 +19,7 @@ async fn handler(_: MyQuery<Payload>) {}
 async fn handler_result(_: Result<MyQuery<Payload>, MyQueryRejection>) {}
 
 #[derive(FromRequestParts)]
-#[from_request(
-    via(axum::extract::Query),
-    rejection(MyQueryRejection),
-)]
+#[from_request(via(axum::extract::Query), rejection(MyQueryRejection))]
 struct MyQuery<T>(T);
 
 struct MyQueryRejection {}

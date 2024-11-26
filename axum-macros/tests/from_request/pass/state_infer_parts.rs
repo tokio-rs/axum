@@ -1,5 +1,5 @@
-use axum_macros::FromRequestParts;
 use axum::extract::State;
+use axum_macros::FromRequestParts;
 
 #[derive(FromRequestParts)]
 struct Extractor {

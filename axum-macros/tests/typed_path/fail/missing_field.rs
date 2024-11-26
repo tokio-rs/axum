@@ -5,5 +5,4 @@ use serde::Deserialize;
 #[typed_path("/users/{id}")]
 struct MyPath {}
 
-fn main() {
-}
+fn main() {}
