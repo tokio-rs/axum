@@ -48,11 +48,11 @@ use std::{convert::Infallible, fmt, marker::PhantomData};
 /// // our application state
 /// #[derive(Clone)]
 /// struct AppState {
-///     // that holds the key used to sign cookies
+///     // that holds the key used to encrypt cookies
 ///     key: Key,
 /// }
 ///
-/// // this impl tells `SignedCookieJar` how to access the key from our state
+/// // this impl tells `PrivateCookieJar` how to access the key from our state
 /// impl FromRef<AppState> for Key {
 ///     fn from_ref(state: &AppState) -> Self {
 ///         state.key.clone()
