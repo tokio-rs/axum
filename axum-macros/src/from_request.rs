@@ -290,11 +290,7 @@ fn parse_single_generic_type_on_struct(
                     let field = fields_unnamed.unnamed.first().unwrap();
 
                     if let syn::Type::Path(type_path) = &field.ty {
-                        if type_path
-                            .path
-                            .get_ident()
-                            .map_or(true, |field_type_ident| field_type_ident != ty_ident)
-                        {
+                        if type_path.path.get_ident() != Some(ty_ident) {
                             return Err(syn::Error::new_spanned(
                                 type_path,
                                 format_args!(
