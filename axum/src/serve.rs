@@ -206,7 +206,6 @@ where
             listener: self.listener,
             make_service: self.make_service,
             signal,
-            tcp_nodelay: self.tcp_nodelay,
             _marker: PhantomData,
         }
     }
@@ -214,34 +213,6 @@ where
     /// Returns the local address this server is bound to.
     pub fn local_addr(&self) -> io::Result<L::Addr> {
         self.listener.local_addr()
-    }
-}
-
-#[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
-impl<M, S> Serve<TcpListener, M, S> {
-    /// Instructs the server to set the value of the `TCP_NODELAY` option on every accepted connection.
-    ///
-    /// See also [`TcpStream::set_nodelay`].
-    ///
-    /// # Example
-    /// ```
-    /// use axum::{Router, routing::get};
-    ///
-    /// # async {
-    /// let router = Router::new().route("/", get(|| async { "Hello, World!" }));
-    ///
-    /// let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
-    /// axum::serve(listener, router)
-    ///     .tcp_nodelay(true)
-    ///     .await
-    ///     .unwrap();
-    /// # };
-    /// ```
-    pub fn tcp_nodelay(self, nodelay: bool) -> Self {
-        Self {
-            tcp_nodelay: Some(nodelay),
-            ..self
-        }
     }
 }
 
@@ -297,7 +268,6 @@ pub struct WithGracefulShutdown<L, M, S, F> {
     listener: L,
     make_service: M,
     signal: F,
-    tcp_nodelay: Option<bool>,
     _marker: PhantomData<S>,
 }
 
@@ -309,39 +279,6 @@ where
     /// Returns the local address this server is bound to.
     pub fn local_addr(&self) -> io::Result<L::Addr> {
         self.listener.local_addr()
-    }
-}
-
-#[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
-impl<M, S, F> WithGracefulShutdown<TcpListener, M, S, F> {
-    /// Instructs the server to set the value of the `TCP_NODELAY` option on every accepted connection.
-    ///
-    /// See also [`TcpStream::set_nodelay`].
-    ///
-    /// # Example
-    /// ```
-    /// use axum::{Router, routing::get};
-    ///
-    /// # async {
-    /// let router = Router::new().route("/", get(|| async { "Hello, World!" }));
-    ///
-    /// let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
-    /// axum::serve(listener, router)
-    ///     .with_graceful_shutdown(shutdown_signal())
-    ///     .tcp_nodelay(true)
-    ///     .await
-    ///     .unwrap();
-    /// # };
-    ///
-    /// async fn shutdown_signal() {
-    ///     // ...
-    /// }
-    /// ```
-    pub fn tcp_nodelay(self, nodelay: bool) -> Self {
-        Self {
-            tcp_nodelay: Some(nodelay),
-            ..self
-        }
     }
 }
 
@@ -358,20 +295,14 @@ where
             listener,
             make_service,
             signal,
-            tcp_nodelay,
             _marker: _,
         } = self;
 
-        let mut s = f.debug_struct("WithGracefulShutdown");
-        s.field("listener", listener)
+        f.debug_struct("WithGracefulShutdown")
+            .field("listener", listener)
             .field("make_service", make_service)
-            .field("signal", signal);
-
-        if TypeId::of::<L>() == TypeId::of::<TcpListener>() {
-            s.field("tcp_nodelay", tcp_nodelay);
-        }
-
-        s.finish()
+            .field("signal", signal)
+            .finish()
     }
 }
 
@@ -394,7 +325,6 @@ where
             mut listener,
             mut make_service,
             signal,
-            tcp_nodelay,
             _marker: _,
         } = self;
 
@@ -417,14 +347,6 @@ where
                         break;
                     }
                 };
-
-                if let Some(nodelay) = tcp_nodelay {
-                    let tcp_stream: &tokio::net::TcpStream = <dyn std::any::Any>::downcast_ref(&io)
-                        .expect("internal error: tcp_nodelay used with the wrong type of listener");
-                    if let Err(err) = tcp_stream.set_nodelay(nodelay) {
-                        trace!("failed to set TCP_NODELAY on incoming connection: {err:#}");
-                    }
-                }
 
                 let io = TokioIo::new(io);
 
@@ -684,20 +606,6 @@ mod tests {
             UnixListener::bind("").unwrap(),
             handler.into_make_service_with_connect_info::<UdsConnectInfo>(),
         );
-
-        // nodelay
-        serve(
-            TcpListener::bind(addr).await.unwrap(),
-            handler.into_service(),
-        )
-        .tcp_nodelay(true);
-
-        serve(
-            TcpListener::bind(addr).await.unwrap(),
-            handler.into_service(),
-        )
-        .with_graceful_shutdown(async { /*...*/ })
-        .tcp_nodelay(true);
     }
 
     async fn handler() {}
