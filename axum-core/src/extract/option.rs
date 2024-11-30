@@ -6,7 +6,8 @@ use crate::response::IntoResponse;
 
 use super::{private, FromRequest, FromRequestParts, Request};
 
-/// TODO: DOCS
+/// Customize the behavior of `Option<Self>` as a [`FromRequestParts`]
+/// extractor.
 pub trait OptionalFromRequestParts<S>: Sized {
     /// If the extractor fails, it will use this "rejection" type.
     ///
@@ -20,7 +21,7 @@ pub trait OptionalFromRequestParts<S>: Sized {
     ) -> impl Future<Output = Result<Option<Self>, Self::Rejection>> + Send;
 }
 
-/// TODO: DOCS
+/// Customize the behavior of `Option<Self>` as a [`FromRequest`] extractor.
 pub trait OptionalFromRequest<S, M = private::ViaRequest>: Sized {
     /// If the extractor fails, it will use this "rejection" type.
     ///

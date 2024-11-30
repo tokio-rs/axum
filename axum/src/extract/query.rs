@@ -6,7 +6,20 @@ use serde::de::DeserializeOwned;
 ///
 /// `T` is expected to implement [`serde::Deserialize`].
 ///
-/// # Example
+/// # `Option<Query<T>>` behavior
+///
+/// If `Query<T>` itself is used as an extractor and there is no query string in
+/// the request URL, `T`'s `Deserialize` implementation is called on an empty
+/// string instead.
+///
+/// You can avoid this by using `Option<Query<T>>`, which gives you `None` in
+/// the case that there is no query string in the request URL.
+///
+/// Note that an empty query string is not the same as no query string, that is
+/// `https://example.org/` and `https://example.org/?` are not treated the same
+/// in this case.
+///
+/// # Examples
 ///
 /// ```rust,no_run
 /// use axum::{

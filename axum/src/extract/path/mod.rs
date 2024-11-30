@@ -24,6 +24,12 @@ use std::{fmt, sync::Arc};
 /// parameters must be valid UTF-8, otherwise `Path` will fail and return a `400
 /// Bad Request` response.
 ///
+/// # `Option<Path<T>>` behavior
+///
+/// You can use `Option<Path<T>>` as an extractor to allow the same handler to
+/// be used in a route with parameters that deserialize to `T`, and another
+/// route with no parameters at all.
+///
 /// # Example
 ///
 /// These examples assume the `serde` feature of the [`uuid`] crate is enabled.

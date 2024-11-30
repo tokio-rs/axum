@@ -200,29 +200,11 @@ async fn handler(
 axum enforces this by requiring the last extractor implements [`FromRequest`]
 and all others implement [`FromRequestParts`].
 
-# Optional extractors
+# Handling extractor rejections
 
-TODO: Docs, more realistic example
-
-```rust,no_run
-use axum::{routing::post, Router};
-use axum_extra::{headers::UserAgent, TypedHeader};
-use serde_json::Value;
-
-async fn foo(user_agent: Option<TypedHeader<UserAgent>>) {
-    if let Some(TypedHeader(user_agent)) = user_agent {
-        // The client sent a user agent
-    } else {
-        // No user agent header
-    }
-}
-
-let app = Router::new().route("/foo", post(foo));
-# let _: Router = app;
-```
-
-Wrapping extractors in `Result` makes them optional and gives you the reason
-the extraction failed:
+If you want to handle the case of an extractor failing within a specific
+handler, you can wrap it in `Result`, with the error being the rejection type
+of the extractor:
 
 ```rust,no_run
 use axum::{
@@ -261,10 +243,33 @@ let app = Router::new().route("/users", post(create_user));
 # let _: Router = app;
 ```
 
-Another option is to make use of the optional extractors in [axum-extra] that
-either returns `None` if there are no query parameters in the request URI,
-or returns `Some(T)` if deserialization was successful.
-If the deserialization was not successful, the request is rejected.
+# Optional extractors
+
+Some extractors implement [`OptionalFromRequestParts`] in addition to
+[`FromRequestParts`], or [`OptionalFromRequest`] in addition to [`FromRequest`].
+
+These extractors can be used inside of `Option`. It depends on the particular
+`OptionalFromRequestParts` or `OptionalFromRequest` implementation what this
+does: For example for `TypedHeader` from axum-extra, you get `None` if the
+header you're trying to extract is not part of the request, but if the header
+is present and fails to parse, the request is rejected.
+
+```rust,no_run
+use axum::{routing::post, Router};
+use axum_extra::{headers::UserAgent, TypedHeader};
+use serde_json::Value;
+
+async fn foo(user_agent: Option<TypedHeader<UserAgent>>) {
+    if let Some(TypedHeader(user_agent)) = user_agent {
+        // The client sent a user agent
+    } else {
+        // No user agent header
+    }
+}
+
+let app = Router::new().route("/foo", post(foo));
+# let _: Router = app;
+```
 
 # Customizing extractor responses
 
