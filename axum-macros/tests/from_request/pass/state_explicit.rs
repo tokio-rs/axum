@@ -1,9 +1,9 @@
-use axum_macros::FromRequest;
 use axum::{
     extract::{FromRef, State},
-    Router,
     routing::get,
+    Router,
 };
+use axum_macros::FromRequest;
 
 fn main() {
     let _: axum::Router = Router::new()

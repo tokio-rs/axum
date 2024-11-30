@@ -1,5 +1,4 @@
 use super::{rejection::*, FromRequestParts};
-use async_trait::async_trait;
 use http::{request::Parts, Uri};
 use serde::de::DeserializeOwned;
 
@@ -42,11 +41,15 @@ use serde::de::DeserializeOwned;
 /// example.
 ///
 /// [example]: https://github.com/tokio-rs/axum/blob/main/examples/query-params-with-empty-strings/src/main.rs
+///
+/// For handling multiple values for the same query parameter, in a `?foo=1&foo=2&foo=3`
+/// fashion, use [`axum_extra::extract::Query`] instead.
+///
+/// [`axum_extra::extract::Query`]: https://docs.rs/axum-extra/latest/axum_extra/extract/struct.Query.html
 #[cfg_attr(docsrs, doc(cfg(feature = "query")))]
 #[derive(Debug, Clone, Copy, Default)]
 pub struct Query<T>(pub T);
 
-#[async_trait]
 impl<T, S> FromRequestParts<S> for Query<T>
 where
     T: DeserializeOwned,
@@ -162,7 +165,7 @@ mod tests {
         let app = Router::new().route("/", get(handler));
         let client = TestClient::new(app);
 
-        let res = client.get("/?n=hi").send().await;
+        let res = client.get("/?n=hi").await;
         assert_eq!(res.status(), StatusCode::BAD_REQUEST);
     }
 

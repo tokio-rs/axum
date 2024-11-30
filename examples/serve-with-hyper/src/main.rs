@@ -6,7 +6,7 @@
 //!
 //! This example shows how to run axum using hyper's low level API.
 //!
-//! The [hyper-util] crate exists to provide high level utilities but its still in early stages of
+//! The [hyper-util] crate exists to provide high level utilities but it's still in early stages of
 //! development.
 //!
 //! [hyper-util]: https://crates.io/crates/hyper-util
@@ -43,7 +43,7 @@ async fn serve_plain() {
         // We don't need to call `poll_ready` because `Router` is always ready.
         let tower_service = app.clone();
 
-        // Spawn a task to handle the connection. That way we can multiple connections
+        // Spawn a task to handle the connection. That way we can handle multiple connections
         // concurrently.
         tokio::spawn(async move {
             // Hyper has its own `AsyncRead` and `AsyncWrite` traits and doesn't use tokio.

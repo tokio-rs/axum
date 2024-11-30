@@ -1,5 +1,4 @@
 use axum::{
-    async_trait,
     extract::{rejection::RawFormRejection, FromRequest, RawForm, Request},
     response::{IntoResponse, Response},
     Error, RequestExt,
@@ -44,7 +43,6 @@ pub struct Form<T>(pub T);
 
 axum_core::__impl_deref!(Form);
 
-#[async_trait]
 impl<T, S> FromRequest<S> for Form<T>
 where
     T: DeserializeOwned,
@@ -81,11 +79,16 @@ impl IntoResponse for FormRejection {
     fn into_response(self) -> Response {
         match self {
             Self::RawFormRejection(inner) => inner.into_response(),
-            Self::FailedToDeserializeForm(inner) => (
-                StatusCode::BAD_REQUEST,
-                format!("Failed to deserialize form: {inner}"),
-            )
-                .into_response(),
+            Self::FailedToDeserializeForm(inner) => {
+                let body = format!("Failed to deserialize form: {inner}");
+                let status = StatusCode::BAD_REQUEST;
+                axum_core::__log_rejection!(
+                    rejection_type = Self,
+                    body_text = body,
+                    status = status,
+                );
+                (status, body).into_response()
+            }
         }
     }
 }
@@ -113,7 +116,7 @@ mod tests {
     use super::*;
     use crate::test_helpers::*;
     use axum::{routing::post, Router};
-    use http::{header::CONTENT_TYPE, StatusCode};
+    use http::header::CONTENT_TYPE;
     use serde::Deserialize;
 
     #[tokio::test]
@@ -135,7 +138,6 @@ mod tests {
             .post("/")
             .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
             .body("value=one&value=two")
-            .send()
             .await;
 
         assert_eq!(res.status(), StatusCode::OK);

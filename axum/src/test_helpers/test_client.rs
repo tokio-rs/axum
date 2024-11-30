@@ -1,13 +1,35 @@
 use super::{serve, Request, Response};
 use bytes::Bytes;
+use futures_util::future::BoxFuture;
 use http::{
     header::{HeaderName, HeaderValue},
     StatusCode,
 };
-use std::{convert::Infallible, net::SocketAddr, str::FromStr};
+use std::{convert::Infallible, future::IntoFuture, net::SocketAddr};
 use tokio::net::TcpListener;
 use tower::make::Shared;
 use tower_service::Service;
+
+pub(crate) fn spawn_service<S>(svc: S) -> SocketAddr
+where
+    S: Service<Request, Response = Response, Error = Infallible> + Clone + Send + 'static,
+    S::Future: Send,
+{
+    let std_listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    std_listener.set_nonblocking(true).unwrap();
+    let listener = TcpListener::from_std(std_listener).unwrap();
+
+    let addr = listener.local_addr().unwrap();
+    println!("Listening on {addr}");
+
+    tokio::spawn(async move {
+        serve(listener, Shared::new(svc))
+            .await
+            .expect("server error")
+    });
+
+    addr
+}
 
 pub(crate) struct TestClient {
     client: reqwest::Client,
@@ -20,18 +42,7 @@ impl TestClient {
         S: Service<Request, Response = Response, Error = Infallible> + Clone + Send + 'static,
         S::Future: Send,
     {
-        let std_listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
-        std_listener.set_nonblocking(true).unwrap();
-        let listener = TcpListener::from_std(std_listener).unwrap();
-
-        let addr = listener.local_addr().unwrap();
-        println!("Listening on {addr}");
-
-        tokio::spawn(async move {
-            serve(listener, Shared::new(svc))
-                .await
-                .expect("server error")
-        });
+        let addr = spawn_service(svc);
 
         let client = reqwest::Client::builder()
             .redirect(reqwest::redirect::Policy::none())
@@ -72,6 +83,11 @@ impl TestClient {
             builder: self.client.patch(format!("http://{}{}", self.addr, url)),
         }
     }
+
+    #[allow(dead_code)]
+    pub(crate) fn server_port(&self) -> u16 {
+        self.addr.port()
+    }
 }
 
 pub(crate) struct RequestBuilder {
@@ -79,12 +95,6 @@ pub(crate) struct RequestBuilder {
 }
 
 impl RequestBuilder {
-    pub(crate) async fn send(self) -> TestResponse {
-        TestResponse {
-            response: self.builder.send().await.unwrap(),
-        }
-    }
-
     pub(crate) fn body(mut self, body: impl Into<reqwest::Body>) -> Self {
         self.builder = self.builder.body(body);
         self
@@ -105,15 +115,7 @@ impl RequestBuilder {
         HeaderValue: TryFrom<V>,
         <HeaderValue as TryFrom<V>>::Error: Into<http::Error>,
     {
-        // reqwest still uses http 0.2
-        let key: HeaderName = key.try_into().map_err(Into::into).unwrap();
-        let key = reqwest::header::HeaderName::from_bytes(key.as_ref()).unwrap();
-
-        let value: HeaderValue = value.try_into().map_err(Into::into).unwrap();
-        let value = reqwest::header::HeaderValue::from_bytes(value.as_bytes()).unwrap();
-
         self.builder = self.builder.header(key, value);
-
         self
     }
 
@@ -121,6 +123,19 @@ impl RequestBuilder {
     pub(crate) fn multipart(mut self, form: reqwest::multipart::Form) -> Self {
         self.builder = self.builder.multipart(form);
         self
+    }
+}
+
+impl IntoFuture for RequestBuilder {
+    type Output = TestResponse;
+    type IntoFuture = BoxFuture<'static, Self::Output>;
+
+    fn into_future(self) -> Self::IntoFuture {
+        Box::pin(async {
+            TestResponse {
+                response: self.builder.send().await.unwrap(),
+            }
+        })
     }
 }
 
@@ -152,14 +167,7 @@ impl TestResponse {
     }
 
     pub(crate) fn headers(&self) -> http::HeaderMap {
-        // reqwest still uses http 0.2 so have to convert into http 1.0
-        let mut headers = http::HeaderMap::new();
-        for (key, value) in self.response.headers() {
-            let key = http::HeaderName::from_str(key.as_str()).unwrap();
-            let value = http::HeaderValue::from_bytes(value.as_bytes()).unwrap();
-            headers.insert(key, value);
-        }
-        headers
+        self.response.headers().clone()
     }
 
     pub(crate) async fn chunk(&mut self) -> Option<Bytes> {

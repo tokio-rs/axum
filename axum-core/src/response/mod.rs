@@ -121,6 +121,7 @@ where
 ///
 /// See [`Result`] for more details.
 #[derive(Debug)]
+#[must_use]
 pub struct ErrorResponse(Response);
 
 impl<T> From<T> for ErrorResponse

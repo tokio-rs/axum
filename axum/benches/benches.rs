@@ -198,7 +198,7 @@ impl BenchmarkBuilder {
 
         eprintln!("Running {:?} benchmark", self.name);
 
-        // indent output from `rewrk` so its easier to read when running multiple benchmarks
+        // indent output from `rewrk` so it's easier to read when running multiple benchmarks
         let mut child = cmd.spawn().unwrap();
         let stdout = child.stdout.take().unwrap();
         let stdout = std::io::BufReader::new(stdout);

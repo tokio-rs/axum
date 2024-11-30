@@ -9,9 +9,9 @@ async fn basic() {
 
     let client = TestClient::new(app);
 
-    assert_eq!(client.get("/foo").send().await.status(), StatusCode::OK);
+    assert_eq!(client.get("/foo").await.status(), StatusCode::OK);
 
-    let res = client.get("/does-not-exist").send().await;
+    let res = client.get("/does-not-exist").await;
     assert_eq!(res.status(), StatusCode::OK);
     assert_eq!(res.text().await, "fallback");
 }
@@ -24,9 +24,21 @@ async fn nest() {
 
     let client = TestClient::new(app);
 
-    assert_eq!(client.get("/foo/bar").send().await.status(), StatusCode::OK);
+    assert_eq!(client.get("/foo/bar").await.status(), StatusCode::OK);
 
-    let res = client.get("/does-not-exist").send().await;
+    let res = client.get("/does-not-exist").await;
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.text().await, "fallback");
+}
+
+#[crate::test]
+async fn two() {
+    let app = Router::new()
+        .route("/first", get(|| async {}))
+        .route("/second", get(|| async {}))
+        .fallback(get(|| async { "fallback" }));
+    let client = TestClient::new(app);
+    let res = client.get("/does-not-exist").await;
     assert_eq!(res.status(), StatusCode::OK);
     assert_eq!(res.text().await, "fallback");
 }
@@ -40,10 +52,10 @@ async fn or() {
 
     let client = TestClient::new(app);
 
-    assert_eq!(client.get("/one").send().await.status(), StatusCode::OK);
-    assert_eq!(client.get("/two").send().await.status(), StatusCode::OK);
+    assert_eq!(client.get("/one").await.status(), StatusCode::OK);
+    assert_eq!(client.get("/two").await.status(), StatusCode::OK);
 
-    let res = client.get("/does-not-exist").send().await;
+    let res = client.get("/does-not-exist").await;
     assert_eq!(res.status(), StatusCode::OK);
     assert_eq!(res.text().await, "fallback");
 }
@@ -56,7 +68,7 @@ async fn fallback_accessing_state() {
 
     let client = TestClient::new(app);
 
-    let res = client.get("/does-not-exist").send().await;
+    let res = client.get("/does-not-exist").await;
     assert_eq!(res.status(), StatusCode::OK);
     assert_eq!(res.text().await, "state");
 }
@@ -76,7 +88,7 @@ async fn nested_router_inherits_fallback() {
 
     let client = TestClient::new(app);
 
-    let res = client.get("/foo/bar").send().await;
+    let res = client.get("/foo/bar").await;
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
     assert_eq!(res.text().await, "outer");
 }
@@ -88,11 +100,11 @@ async fn doesnt_inherit_fallback_if_overridden() {
 
     let client = TestClient::new(app);
 
-    let res = client.get("/foo/bar").send().await;
+    let res = client.get("/foo/bar").await;
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
     assert_eq!(res.text().await, "inner");
 
-    let res = client.get("/").send().await;
+    let res = client.get("/").await;
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
     assert_eq!(res.text().await, "outer");
 }
@@ -105,7 +117,7 @@ async fn deeply_nested_inherit_from_top() {
 
     let client = TestClient::new(app);
 
-    let res = client.get("/foo/bar/baz").send().await;
+    let res = client.get("/foo/bar/baz").await;
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
     assert_eq!(res.text().await, "outer");
 }
@@ -121,7 +133,7 @@ async fn deeply_nested_inherit_from_middle() {
 
     let client = TestClient::new(app);
 
-    let res = client.get("/foo/bar/baz").send().await;
+    let res = client.get("/foo/bar/baz").await;
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
     assert_eq!(res.text().await, "outer");
 }
@@ -137,7 +149,7 @@ async fn with_middleware_on_inner_fallback() {
 
     let client = TestClient::new(app);
 
-    let res = client.get("/foo/bar").send().await;
+    let res = client.get("/foo/bar").await;
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
     assert_eq!(res.text().await, "outer");
 }
@@ -158,7 +170,7 @@ async fn also_inherits_default_layered_fallback() {
 
     let client = TestClient::new(app);
 
-    let res = client.get("/foo/bar").send().await;
+    let res = client.get("/foo/bar").await;
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
     assert_eq!(res.headers()["x-from-fallback"], "1");
     assert_eq!(res.text().await, "outer");
@@ -177,7 +189,7 @@ async fn nest_fallback_on_inner() {
 
     let client = TestClient::new(app);
 
-    let res = client.get("/foo/not-found").send().await;
+    let res = client.get("/foo/not-found").await;
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
     assert_eq!(res.text().await, "inner fallback");
 }
@@ -188,13 +200,13 @@ async fn doesnt_panic_if_used_with_nested_router() {
     async fn handler() {}
 
     let routes_static =
-        Router::new().nest_service("/", crate::routing::get_service(handler.into_service()));
+        Router::new().nest_service("/foo", crate::routing::get_service(handler.into_service()));
 
     let routes_all = Router::new().fallback_service(routes_static);
 
     let client = TestClient::new(routes_all);
 
-    let res = client.get("/foobar").send().await;
+    let res = client.get("/foo/bar").await;
     assert_eq!(res.status(), StatusCode::OK);
 }
 
@@ -208,11 +220,11 @@ async fn issue_2072() {
 
     let client = TestClient::new(app);
 
-    let res = client.get("/nested/does-not-exist").send().await;
+    let res = client.get("/nested/does-not-exist").await;
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
     assert_eq!(res.text().await, "inner");
 
-    let res = client.get("/does-not-exist").send().await;
+    let res = client.get("/does-not-exist").await;
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
     assert_eq!(res.text().await, "");
 }
@@ -228,11 +240,11 @@ async fn issue_2072_outer_fallback_before_merge() {
 
     let client = TestClient::new(app);
 
-    let res = client.get("/nested/does-not-exist").send().await;
+    let res = client.get("/nested/does-not-exist").await;
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
     assert_eq!(res.text().await, "inner");
 
-    let res = client.get("/does-not-exist").send().await;
+    let res = client.get("/does-not-exist").await;
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
     assert_eq!(res.text().await, "outer");
 }
@@ -248,11 +260,11 @@ async fn issue_2072_outer_fallback_after_merge() {
 
     let client = TestClient::new(app);
 
-    let res = client.get("/nested/does-not-exist").send().await;
+    let res = client.get("/nested/does-not-exist").await;
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
     assert_eq!(res.text().await, "inner");
 
-    let res = client.get("/does-not-exist").send().await;
+    let res = client.get("/does-not-exist").await;
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
     assert_eq!(res.text().await, "outer");
 }
@@ -267,11 +279,11 @@ async fn merge_router_with_fallback_into_nested_router_with_fallback() {
 
     let client = TestClient::new(app);
 
-    let res = client.get("/nested/does-not-exist").send().await;
+    let res = client.get("/nested/does-not-exist").await;
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
     assert_eq!(res.text().await, "inner");
 
-    let res = client.get("/does-not-exist").send().await;
+    let res = client.get("/does-not-exist").await;
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
     assert_eq!(res.text().await, "outer");
 }
@@ -286,11 +298,11 @@ async fn merging_nested_router_with_fallback_into_router_with_fallback() {
 
     let client = TestClient::new(app);
 
-    let res = client.get("/nested/does-not-exist").send().await;
+    let res = client.get("/nested/does-not-exist").await;
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
     assert_eq!(res.text().await, "inner");
 
-    let res = client.get("/does-not-exist").send().await;
+    let res = client.get("/does-not-exist").await;
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
     assert_eq!(res.text().await, "outer");
 }
@@ -301,7 +313,7 @@ async fn merge_empty_into_router_with_fallback() {
 
     let client = TestClient::new(app);
 
-    let res = client.get("/does-not-exist").send().await;
+    let res = client.get("/does-not-exist").await;
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
     assert_eq!(res.text().await, "outer");
 }
@@ -312,7 +324,70 @@ async fn merge_router_with_fallback_into_empty() {
 
     let client = TestClient::new(app);
 
-    let res = client.get("/does-not-exist").send().await;
+    let res = client.get("/does-not-exist").await;
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
     assert_eq!(res.text().await, "outer");
+}
+
+#[crate::test]
+async fn mna_fallback_with_existing_fallback() {
+    let app = Router::new()
+        .route(
+            "/",
+            get(|| async { "test" }).fallback(|| async { "index fallback" }),
+        )
+        .route("/path", get(|| async { "path" }))
+        .method_not_allowed_fallback(|| async { "method not allowed fallback" });
+
+    let client = TestClient::new(app);
+    let index_fallback = client.post("/").await;
+    let method_not_allowed_fallback = client.post("/path").await;
+
+    assert_eq!(index_fallback.text().await, "index fallback");
+    assert_eq!(
+        method_not_allowed_fallback.text().await,
+        "method not allowed fallback"
+    );
+}
+
+#[crate::test]
+async fn mna_fallback_with_state() {
+    let app = Router::new()
+        .route("/", get(|| async { "index" }))
+        .method_not_allowed_fallback(|State(state): State<&'static str>| async move { state })
+        .with_state("state");
+
+    let client = TestClient::new(app);
+    let res = client.post("/").await;
+    assert_eq!(res.text().await, "state");
+}
+
+#[crate::test]
+async fn mna_fallback_with_unused_state() {
+    let app = Router::new()
+        .route("/", get(|| async { "index" }))
+        .with_state(())
+        .method_not_allowed_fallback(|| async move { "bla" });
+
+    let client = TestClient::new(app);
+    let res = client.post("/").await;
+    assert_eq!(res.text().await, "bla");
+}
+
+#[crate::test]
+async fn state_isnt_cloned_too_much_with_fallback() {
+    let state = CountingCloneableState::new();
+
+    let app = Router::new()
+        .fallback(|_: State<CountingCloneableState>| async {})
+        .with_state(state.clone());
+
+    let client = TestClient::new(app);
+
+    // ignore clones made during setup
+    state.setup_done();
+
+    client.get("/does-not-exist").await;
+
+    assert_eq!(state.count(), 3);
 }

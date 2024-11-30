@@ -3,7 +3,6 @@
 //! See [`Multipart`] for more details.
 
 use axum::{
-    async_trait,
     body::{Body, Bytes},
     extract::FromRequest,
     response::{IntoResponse, Response},
@@ -75,7 +74,7 @@ use std::{
 /// to keep `Field`s around from previous loop iterations. That will minimize the risk of runtime
 /// errors.
 ///
-/// # Differences between this and  `axum::extract::Multipart`
+/// # Differences between this and `axum::extract::Multipart`
 ///
 /// `axum::extract::Multipart` uses lifetimes to enforce field exclusivity at compile time, however
 /// that leads to significant usability issues such as `Field` not being `'static`.
@@ -90,7 +89,6 @@ pub struct Multipart {
     inner: multer::Multipart<'static>,
 }
 
-#[async_trait]
 impl<S> FromRequest<S> for Multipart
 where
     S: Send + Sync,
@@ -379,7 +377,13 @@ pub struct InvalidBoundary;
 
 impl IntoResponse for InvalidBoundary {
     fn into_response(self) -> Response {
-        (self.status(), self.body_text()).into_response()
+        let body = self.body_text();
+        axum_core::__log_rejection!(
+            rejection_type = Self,
+            body_text = body,
+            status = self.status(),
+        );
+        (self.status(), body).into_response()
     }
 }
 
@@ -407,7 +411,7 @@ impl std::error::Error for InvalidBoundary {}
 mod tests {
     use super::*;
     use crate::test_helpers::*;
-    use axum::{extract::DefaultBodyLimit, response::IntoResponse, routing::post, Router};
+    use axum::{extract::DefaultBodyLimit, routing::post, Router};
 
     #[tokio::test]
     async fn content_type_with_encoding() {
@@ -437,7 +441,7 @@ mod tests {
                 .unwrap(),
         );
 
-        client.post("/").multipart(form).send().await;
+        client.post("/").multipart(form).await;
     }
 
     // No need for this to be a #[test], we just want to make sure it compiles
@@ -466,7 +470,7 @@ mod tests {
         let form =
             reqwest::multipart::Form::new().part("file", reqwest::multipart::Part::bytes(BYTES));
 
-        let res = client.post("/").multipart(form).send().await;
+        let res = client.post("/").multipart(form).await;
         assert_eq!(res.status(), StatusCode::PAYLOAD_TOO_LARGE);
     }
 }

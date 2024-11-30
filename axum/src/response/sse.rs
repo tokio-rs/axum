@@ -208,12 +208,29 @@ impl Event {
     where
         T: serde::Serialize,
     {
+        struct IgnoreNewLines<'a>(bytes::buf::Writer<&'a mut BytesMut>);
+        impl std::io::Write for IgnoreNewLines<'_> {
+            fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+                let mut last_split = 0;
+                for delimiter in memchr::memchr2_iter(b'\n', b'\r', buf) {
+                    self.0.write_all(&buf[last_split..delimiter])?;
+                    last_split = delimiter + 1;
+                }
+                self.0.write_all(&buf[last_split..])?;
+                Ok(buf.len())
+            }
+
+            fn flush(&mut self) -> std::io::Result<()> {
+                self.0.flush()
+            }
+        }
         if self.flags.contains(EventFlags::HAS_DATA) {
             panic!("Called `EventBuilder::json_data` multiple times");
         }
 
         self.buffer.extend_from_slice(b"data: ");
-        serde_json::to_writer((&mut self.buffer).writer(), &data).map_err(axum_core::Error::new)?;
+        serde_json::to_writer(IgnoreNewLines((&mut self.buffer).writer()), &data)
+            .map_err(axum_core::Error::new)?;
         self.buffer.put_u8(b'\n');
 
         self.flags.insert(EventFlags::HAS_DATA);
@@ -515,6 +532,7 @@ mod tests {
     use super::*;
     use crate::{routing::get, test_helpers::*, Router};
     use futures_util::stream;
+    use serde_json::value::RawValue;
     use std::{collections::HashMap, convert::Infallible};
     use tokio_stream::StreamExt as _;
 
@@ -525,6 +543,18 @@ mod tests {
 
         let leading_space = Event::default().data(" foobar");
         assert_eq!(&*leading_space.finalize(), b"data:  foobar\n\n");
+    }
+
+    #[test]
+    fn valid_json_raw_value_chars_stripped() {
+        let json_string = "{\r\"foo\":  \n\r\r   \"bar\\n\"\n}";
+        let json_raw_value_event = Event::default()
+            .json_data(serde_json::from_str::<&RawValue>(json_string).unwrap())
+            .unwrap();
+        assert_eq!(
+            &*json_raw_value_event.finalize(),
+            format!("data: {}\n\n", json_string.replace(['\n', '\r'], "")).as_bytes()
+        );
     }
 
     #[crate::test]
@@ -548,7 +578,7 @@ mod tests {
         );
 
         let client = TestClient::new(app);
-        let mut stream = client.get("/").send().await;
+        let mut stream = client.get("/").await;
 
         assert_eq!(stream.headers()["content-type"], "text/event-stream");
         assert_eq!(stream.headers()["cache-control"], "no-cache");
@@ -559,13 +589,13 @@ mod tests {
 
         let event_fields = parse_event(&stream.chunk_text().await.unwrap());
         assert_eq!(event_fields.get("data").unwrap(), "{\"foo\":\"bar\"}");
-        assert!(event_fields.get("comment").is_none());
+        assert!(!event_fields.contains_key("comment"));
 
         let event_fields = parse_event(&stream.chunk_text().await.unwrap());
         assert_eq!(event_fields.get("event").unwrap(), "three");
         assert_eq!(event_fields.get("retry").unwrap(), "30000");
         assert_eq!(event_fields.get("id").unwrap(), "unique-id");
-        assert!(event_fields.get("comment").is_none());
+        assert!(!event_fields.contains_key("comment"));
 
         assert!(stream.chunk_text().await.is_none());
     }
@@ -590,7 +620,7 @@ mod tests {
         );
 
         let client = TestClient::new(app);
-        let mut stream = client.get("/").send().await;
+        let mut stream = client.get("/").await;
 
         for _ in 0..5 {
             // first message should be an event
@@ -627,7 +657,7 @@ mod tests {
         );
 
         let client = TestClient::new(app);
-        let mut stream = client.get("/").send().await;
+        let mut stream = client.get("/").await;
 
         // first message should be an event
         let event_fields = parse_event(&stream.chunk_text().await.unwrap());

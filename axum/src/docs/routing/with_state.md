@@ -1,4 +1,5 @@
-Provide the state for the router.
+Provide the state for the router. State passed to this method is global and will be used
+for all requests this router receives. That means it is not suitable for holding state derived from a request, such as authorization data extracted in a middleware. Use [`Extension`] instead for such data.
 
 ```rust
 use axum::{Router, routing::get, extract::State};
@@ -20,7 +21,7 @@ axum::serve(listener, routes).await.unwrap();
 
 # Returning routers with states from functions
 
-When returning `Router`s from functions it is generally recommend not set the
+When returning `Router`s from functions, it is generally recommended not to set the
 state directly:
 
 ```rust
@@ -94,13 +95,6 @@ axum::serve(listener, routes).await.unwrap();
 # };
 ```
 
-# State is global within the router
-
-The state passed to this method will be used for all requests this router
-receives. That means it is not suitable for holding state derived from a
-request, such as authorization data extracted in a middleware. Use [`Extension`]
-instead for such data.
-
 # What `S` in `Router<S>` means
 
 `Router<S>` means a router that is _missing_ a state of type `S` to be able to
@@ -171,7 +165,7 @@ work:
 # #[derive(Clone)]
 # struct AppState {}
 # 
-// This wont work because we're returning a `Router<AppState>`
+// This won't work because we're returning a `Router<AppState>`
 // i.e. we're saying we're still missing an `AppState`
 fn routes(state: AppState) -> Router<AppState> {
     Router::new()

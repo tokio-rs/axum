@@ -1,6 +1,5 @@
 use super::{cookies_from_request, set_cookies, Cookie, Key};
 use axum::{
-    async_trait,
     extract::{FromRef, FromRequestParts},
     response::{IntoResponse, IntoResponseParts, Response, ResponseParts},
 };
@@ -49,11 +48,11 @@ use std::{convert::Infallible, fmt, marker::PhantomData};
 /// // our application state
 /// #[derive(Clone)]
 /// struct AppState {
-///     // that holds the key used to sign cookies
+///     // that holds the key used to encrypt cookies
 ///     key: Key,
 /// }
 ///
-/// // this impl tells `SignedCookieJar` how to access the key from our state
+/// // this impl tells `PrivateCookieJar` how to access the key from our state
 /// impl FromRef<AppState> for Key {
 ///     fn from_ref(state: &AppState) -> Self {
 ///         state.key.clone()
@@ -122,7 +121,6 @@ impl<K> fmt::Debug for PrivateCookieJar<K> {
     }
 }
 
-#[async_trait]
 impl<S, K> FromRequestParts<S> for PrivateCookieJar<K>
 where
     S: Send + Sync,
@@ -291,7 +289,7 @@ struct PrivateCookieJarIter<'a, K> {
     iter: cookie::Iter<'a>,
 }
 
-impl<'a, K> Iterator for PrivateCookieJarIter<'a, K> {
+impl<K> Iterator for PrivateCookieJarIter<'_, K> {
     type Item = Cookie<'static>;
 
     fn next(&mut self) -> Option<Self::Item> {

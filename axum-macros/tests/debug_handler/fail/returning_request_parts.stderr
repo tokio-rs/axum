@@ -1,0 +1,8 @@
+error[E0308]: mismatched types
+ --> tests/debug_handler/fail/returning_request_parts.rs:3:5
+  |
+3 |     axum::http::request::Parts, // this should be response parts, not request parts
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |     |
+  |     expected `axum::http::response::Parts`, found `axum::http::request::Parts`
+  |     expected `axum::http::response::Parts` because of return type

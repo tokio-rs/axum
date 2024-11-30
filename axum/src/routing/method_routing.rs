@@ -60,6 +60,19 @@ macro_rules! top_level_service_fn {
     };
 
     (
+        $name:ident, CONNECT
+    ) => {
+        top_level_service_fn!(
+            /// Route `CONNECT` requests to the given service.
+            ///
+            /// See [`MethodFilter::CONNECT`] for when you'd want to use this,
+            /// and [`get_service`] for an example.
+            $name,
+            CONNECT
+        );
+    };
+
+    (
         $name:ident, $method:ident
     ) => {
         top_level_service_fn!(
@@ -78,7 +91,7 @@ macro_rules! top_level_service_fn {
         $(#[$m])+
         pub fn $name<T, S>(svc: T) -> MethodRouter<S, T::Error>
         where
-            T: Service<Request> + Clone + Send + 'static,
+            T: Service<Request> + Clone + Send + Sync + 'static,
             T::Response: IntoResponse + 'static,
             T::Future: Send + 'static,
             S: Clone,
@@ -115,6 +128,19 @@ macro_rules! top_level_handler_fn {
             /// afterwards.
             $name,
             GET
+        );
+    };
+
+    (
+        $name:ident, CONNECT
+    ) => {
+        top_level_handler_fn!(
+            /// Route `CONNECT` requests to the given handler.
+            ///
+            /// See [`MethodFilter::CONNECT`] for when you'd want to use this,
+            /// and [`get`] for an example.
+            $name,
+            CONNECT
         );
     };
 
@@ -188,6 +214,19 @@ macro_rules! chained_service_fn {
     };
 
     (
+        $name:ident, CONNECT
+    ) => {
+        chained_service_fn!(
+            /// Chain an additional service that will only accept `CONNECT` requests.
+            ///
+            /// See [`MethodFilter::CONNECT`] for when you'd want to use this,
+            /// and [`MethodRouter::get_service`] for an example.
+            $name,
+            CONNECT
+        );
+    };
+
+    (
         $name:ident, $method:ident
     ) => {
         chained_service_fn!(
@@ -210,6 +249,7 @@ macro_rules! chained_service_fn {
             T: Service<Request, Error = E>
                 + Clone
                 + Send
+                + Sync
                 + 'static,
             T::Response: IntoResponse + 'static,
             T::Future: Send + 'static,
@@ -250,6 +290,19 @@ macro_rules! chained_handler_fn {
     };
 
     (
+        $name:ident, CONNECT
+    ) => {
+        chained_handler_fn!(
+            /// Chain an additional handler that will only accept `CONNECT` requests.
+            ///
+            /// See [`MethodFilter::CONNECT`] for when you'd want to use this,
+            /// and [`MethodRouter::get`] for an example.
+            $name,
+            CONNECT
+        );
+    };
+
+    (
         $name:ident, $method:ident
     ) => {
         chained_handler_fn!(
@@ -278,6 +331,7 @@ macro_rules! chained_handler_fn {
     };
 }
 
+top_level_service_fn!(connect_service, CONNECT);
 top_level_service_fn!(delete_service, DELETE);
 top_level_service_fn!(get_service, GET);
 top_level_service_fn!(head_service, HEAD);
@@ -312,7 +366,7 @@ top_level_service_fn!(trace_service, TRACE);
 /// ```
 pub fn on_service<T, S>(filter: MethodFilter, svc: T) -> MethodRouter<S, T::Error>
 where
-    T: Service<Request> + Clone + Send + 'static,
+    T: Service<Request> + Clone + Send + Sync + 'static,
     T::Response: IntoResponse + 'static,
     T::Future: Send + 'static,
     S: Clone,
@@ -371,7 +425,7 @@ where
 /// ```
 pub fn any_service<T, S>(svc: T) -> MethodRouter<S, T::Error>
 where
-    T: Service<Request> + Clone + Send + 'static,
+    T: Service<Request> + Clone + Send + Sync + 'static,
     T::Response: IntoResponse + 'static,
     T::Future: Send + 'static,
     S: Clone,
@@ -381,6 +435,7 @@ where
         .skip_allow_header()
 }
 
+top_level_handler_fn!(connect, CONNECT);
 top_level_handler_fn!(delete, DELETE);
 top_level_handler_fn!(get, GET);
 top_level_handler_fn!(head, HEAD);
@@ -497,6 +552,7 @@ pub struct MethodRouter<S = (), E = Infallible> {
     post: MethodEndpoint<S, E>,
     put: MethodEndpoint<S, E>,
     trace: MethodEndpoint<S, E>,
+    connect: MethodEndpoint<S, E>,
     fallback: Fallback<S, E>,
     allow_header: AllowHeader,
 }
@@ -538,6 +594,7 @@ impl<S, E> fmt::Debug for MethodRouter<S, E> {
             .field("post", &self.post)
             .field("put", &self.put)
             .field("trace", &self.trace)
+            .field("connect", &self.connect)
             .field("fallback", &self.fallback)
             .field("allow_header", &self.allow_header)
             .finish()
@@ -582,6 +639,7 @@ where
         )
     }
 
+    chained_handler_fn!(connect, CONNECT);
     chained_handler_fn!(delete, DELETE);
     chained_handler_fn!(get, GET);
     chained_handler_fn!(head, HEAD);
@@ -600,6 +658,19 @@ where
     {
         self.fallback = Fallback::BoxedHandler(BoxedIntoRoute::from_handler(handler));
         self
+    }
+
+    /// Add a fallback [`Handler`] if no custom one has been provided.
+    pub(crate) fn default_fallback<H, T>(self, handler: H) -> Self
+    where
+        H: Handler<T, S>,
+        T: 'static,
+        S: Send + Sync + 'static,
+    {
+        match self.fallback {
+            Fallback::Default(_) => self.fallback(handler),
+            _ => self,
+        }
     }
 }
 
@@ -689,6 +760,7 @@ where
             post: MethodEndpoint::None,
             put: MethodEndpoint::None,
             trace: MethodEndpoint::None,
+            connect: MethodEndpoint::None,
             allow_header: AllowHeader::None,
             fallback: Fallback::Default(fallback),
         }
@@ -705,6 +777,7 @@ where
             post: self.post.with_state(&state),
             put: self.put.with_state(&state),
             trace: self.trace.with_state(&state),
+            connect: self.connect.with_state(&state),
             allow_header: self.allow_header,
             fallback: self.fallback.with_state(state),
         }
@@ -736,7 +809,7 @@ where
     #[track_caller]
     pub fn on_service<T>(self, filter: MethodFilter, svc: T) -> Self
     where
-        T: Service<Request, Error = E> + Clone + Send + 'static,
+        T: Service<Request, Error = E> + Clone + Send + Sync + 'static,
         T::Response: IntoResponse + 'static,
         T::Future: Send + 'static,
     {
@@ -853,9 +926,20 @@ where
             &["DELETE"],
         );
 
+        set_endpoint(
+            "CONNECT",
+            &mut self.options,
+            &endpoint,
+            filter,
+            MethodFilter::CONNECT,
+            &mut self.allow_header,
+            &["CONNECT"],
+        );
+
         self
     }
 
+    chained_service_fn!(connect_service, CONNECT);
     chained_service_fn!(delete_service, DELETE);
     chained_service_fn!(get_service, GET);
     chained_service_fn!(head_service, HEAD);
@@ -868,7 +952,7 @@ where
     #[doc = include_str!("../docs/method_routing/fallback.md")]
     pub fn fallback_service<T>(mut self, svc: T) -> Self
     where
-        T: Service<Request, Error = E> + Clone + Send + 'static,
+        T: Service<Request, Error = E> + Clone + Send + Sync + 'static,
         T::Response: IntoResponse + 'static,
         T::Future: Send + 'static,
     {
@@ -879,8 +963,8 @@ where
     #[doc = include_str!("../docs/method_routing/layer.md")]
     pub fn layer<L, NewError>(self, layer: L) -> MethodRouter<S, NewError>
     where
-        L: Layer<Route<E>> + Clone + Send + 'static,
-        L::Service: Service<Request> + Clone + Send + 'static,
+        L: Layer<Route<E>> + Clone + Send + Sync + 'static,
+        L::Service: Service<Request> + Clone + Send + Sync + 'static,
         <L::Service as Service<Request>>::Response: IntoResponse + 'static,
         <L::Service as Service<Request>>::Error: Into<NewError> + 'static,
         <L::Service as Service<Request>>::Future: Send + 'static,
@@ -899,6 +983,7 @@ where
             post: self.post.map(layer_fn.clone()),
             put: self.put.map(layer_fn.clone()),
             trace: self.trace.map(layer_fn.clone()),
+            connect: self.connect.map(layer_fn.clone()),
             fallback: self.fallback.map(layer_fn),
             allow_header: self.allow_header,
         }
@@ -908,8 +993,8 @@ where
     #[track_caller]
     pub fn route_layer<L>(mut self, layer: L) -> MethodRouter<S, E>
     where
-        L: Layer<Route<E>> + Clone + Send + 'static,
-        L::Service: Service<Request, Error = E> + Clone + Send + 'static,
+        L: Layer<Route<E>> + Clone + Send + Sync + 'static,
+        L::Service: Service<Request, Error = E> + Clone + Send + Sync + 'static,
         <L::Service as Service<Request>>::Response: IntoResponse + 'static,
         <L::Service as Service<Request>>::Future: Send + 'static,
         E: 'static,
@@ -923,6 +1008,7 @@ where
             && self.post.is_none()
             && self.put.is_none()
             && self.trace.is_none()
+            && self.connect.is_none()
         {
             panic!(
                 "Adding a route_layer before any routes is a no-op. \
@@ -943,7 +1029,8 @@ where
         self.patch = self.patch.map(layer_fn.clone());
         self.post = self.post.map(layer_fn.clone());
         self.put = self.put.map(layer_fn.clone());
-        self.trace = self.trace.map(layer_fn);
+        self.trace = self.trace.map(layer_fn.clone());
+        self.connect = self.connect.map(layer_fn);
 
         self
     }
@@ -984,6 +1071,7 @@ where
         self.post = merge_inner(path, "POST", self.post, other.post);
         self.put = merge_inner(path, "PUT", self.put, other.put);
         self.trace = merge_inner(path, "TRACE", self.trace, other.trace);
+        self.connect = merge_inner(path, "CONNECT", self.connect, other.connect);
 
         self.fallback = self
             .fallback
@@ -1022,32 +1110,27 @@ where
         self
     }
 
-    pub(crate) fn call_with_state(&mut self, req: Request, state: S) -> RouteFuture<E> {
+    pub(crate) fn call_with_state(&self, req: Request, state: S) -> RouteFuture<E> {
         macro_rules! call {
             (
                 $req:expr,
-                $method:expr,
                 $method_variant:ident,
                 $svc:expr
             ) => {
-                if $method == Method::$method_variant {
+                if *req.method() == Method::$method_variant {
                     match $svc {
                         MethodEndpoint::None => {}
                         MethodEndpoint::Route(route) => {
-                            return RouteFuture::from_future(route.oneshot_inner($req))
-                                .strip_body($method == Method::HEAD);
+                            return route.clone().oneshot_inner_owned($req);
                         }
                         MethodEndpoint::BoxedHandler(handler) => {
-                            let mut route = handler.clone().into_route(state);
-                            return RouteFuture::from_future(route.oneshot_inner($req))
-                                .strip_body($method == Method::HEAD);
+                            let route = handler.clone().into_route(state);
+                            return route.oneshot_inner_owned($req);
                         }
                     }
                 }
             };
         }
-
-        let method = req.method().clone();
 
         // written with a pattern match like this to ensure we call all routes
         let Self {
@@ -1059,21 +1142,23 @@ where
             post,
             put,
             trace,
+            connect,
             fallback,
             allow_header,
         } = self;
 
-        call!(req, method, HEAD, head);
-        call!(req, method, HEAD, get);
-        call!(req, method, GET, get);
-        call!(req, method, POST, post);
-        call!(req, method, OPTIONS, options);
-        call!(req, method, PATCH, patch);
-        call!(req, method, PUT, put);
-        call!(req, method, DELETE, delete);
-        call!(req, method, TRACE, trace);
+        call!(req, HEAD, head);
+        call!(req, HEAD, get);
+        call!(req, GET, get);
+        call!(req, POST, post);
+        call!(req, OPTIONS, options);
+        call!(req, PATCH, patch);
+        call!(req, PUT, put);
+        call!(req, DELETE, delete);
+        call!(req, TRACE, trace);
+        call!(req, CONNECT, connect);
 
-        let future = fallback.call_with_state(req, state);
+        let future = fallback.clone().call_with_state(req, state);
 
         match allow_header {
             AllowHeader::None => future.allow_header(Bytes::new()),
@@ -1114,6 +1199,7 @@ impl<S, E> Clone for MethodRouter<S, E> {
             post: self.post.clone(),
             put: self.put.clone(),
             trace: self.trace.clone(),
+            connect: self.connect.clone(),
             fallback: self.fallback.clone(),
             allow_header: self.allow_header.clone(),
         }
@@ -1151,7 +1237,7 @@ where
     where
         S: 'static,
         E: 'static,
-        F: FnOnce(Route<E>) -> Route<E2> + Clone + Send + 'static,
+        F: FnOnce(Route<E>) -> Route<E2> + Clone + Send + Sync + 'static,
         E2: 'static,
     {
         match self {
@@ -1219,7 +1305,7 @@ where
 {
     type Future = InfallibleRouteFuture;
 
-    fn call(mut self, req: Request, state: S) -> Self::Future {
+    fn call(self, req: Request, state: S) -> Self::Future {
         InfallibleRouteFuture::new(self.call_with_state(req, state))
     }
 }
@@ -1239,7 +1325,7 @@ const _: () = {
         }
 
         fn call(&mut self, _req: IncomingStream<'_>) -> Self::Future {
-            std::future::ready(Ok(self.clone()))
+            std::future::ready(Ok(self.clone().with_state(())))
         }
     }
 };
@@ -1247,12 +1333,11 @@ const _: () = {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{body::Body, extract::State, handler::HandlerWithoutStateExt};
-    use axum_core::response::IntoResponse;
+    use crate::{extract::State, handler::HandlerWithoutStateExt};
     use http::{header::ALLOW, HeaderMap};
     use http_body_util::BodyExt;
     use std::time::Duration;
-    use tower::{Service, ServiceExt};
+    use tower::ServiceExt;
     use tower_http::{
         services::fs::ServeDir, timeout::TimeoutLayer, validate_request::ValidateRequestHeaderLayer,
     };

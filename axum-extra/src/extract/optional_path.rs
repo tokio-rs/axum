@@ -1,5 +1,4 @@
 use axum::{
-    async_trait,
     extract::{path::ErrorKind, rejection::PathRejection, FromRequestParts, Path},
     RequestPartsExt,
 };
@@ -29,13 +28,12 @@ use serde::de::DeserializeOwned;
 ///
 /// let app = Router::new()
 ///     .route("/blog", get(render_blog))
-///     .route("/blog/:page", get(render_blog));
+///     .route("/blog/{page}", get(render_blog));
 /// # let app: Router = app;
 /// ```
 #[derive(Debug)]
 pub struct OptionalPath<T>(pub Option<T>);
 
-#[async_trait]
 impl<T, S> FromRequestParts<S> for OptionalPath<T>
 where
     T: DeserializeOwned + Send + 'static,
@@ -77,26 +75,26 @@ mod tests {
 
         let app = Router::new()
             .route("/", get(handle))
-            .route("/:num", get(handle));
+            .route("/{num}", get(handle));
 
         let client = TestClient::new(app);
 
-        let res = client.get("/").send().await;
+        let res = client.get("/").await;
         assert_eq!(res.text().await, "Success: 0");
 
-        let res = client.get("/1").send().await;
+        let res = client.get("/1").await;
         assert_eq!(res.text().await, "Success: 1");
 
-        let res = client.get("/0").send().await;
+        let res = client.get("/0").await;
         assert_eq!(
             res.text().await,
             "Invalid URL: invalid value: integer `0`, expected a nonzero u32"
         );
 
-        let res = client.get("/NaN").send().await;
+        let res = client.get("/NaN").await;
         assert_eq!(
             res.text().await,
-            "Invalid URL: Cannot parse `\"NaN\"` to a `u32`"
+            "Invalid URL: Cannot parse `NaN` to a `u32`"
         );
     }
 }

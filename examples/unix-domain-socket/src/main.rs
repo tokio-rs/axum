@@ -3,7 +3,6 @@
 //! ```not_rust
 //! cargo run -p example-unix-domain-socket
 //! ```
-
 #[cfg(unix)]
 #[tokio::main]
 async fn main() {

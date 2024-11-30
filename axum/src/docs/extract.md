@@ -1,27 +1,10 @@
 Types and traits for extracting data from requests.
 
-# Table of contents
-
-- [Intro](#intro)
-- [Common extractors](#common-extractors)
-- [Applying multiple extractors](#applying-multiple-extractors)
-- [The order of extractors](#the-order-of-extractors)
-- [Optional extractors](#optional-extractors)
-- [Customizing extractor responses](#customizing-extractor-responses)
-- [Accessing inner errors](#accessing-inner-errors)
-- [Defining custom extractors](#defining-custom-extractors)
-- [Accessing other extractors in `FromRequest` or `FromRequestParts` implementations](#accessing-other-extractors-in-fromrequest-or-fromrequestparts-implementations)
-- [Request body limits](#request-body-limits)
-- [Request body extractors](#request-body-extractors)
-- [Wrapping extractors](#wrapping-extractors)
-- [Logging rejections](#logging-rejections)
-
 # Intro
 
 A handler function is an async function that takes any number of
 "extractors" as arguments. An extractor is a type that implements
-[`FromRequest`](crate::extract::FromRequest)
-or [`FromRequestParts`](crate::extract::FromRequestParts).
+[`FromRequest`] or [`FromRequestParts`].
 
 For example, [`Json`] is an extractor that consumes the request body and
 deserializes it as JSON into some target type:
@@ -94,7 +77,7 @@ async fn extension(Extension(state): Extension<State>) {}
 struct State { /* ... */ }
 
 let app = Router::new()
-    .route("/path/:user_id", post(path))
+    .route("/path/{user_id}", post(path))
     .route("/query", post(query))
     .route("/string", post(string))
     .route("/bytes", post(bytes))
@@ -117,7 +100,7 @@ use axum::{
 use uuid::Uuid;
 use serde::Deserialize;
 
-let app = Router::new().route("/users/:id/things", get(get_user_things));
+let app = Router::new().route("/users/{id}/things", get(get_user_things));
 
 #[derive(Deserialize)]
 struct Pagination {
@@ -282,10 +265,15 @@ let app = Router::new().route("/users", post(create_user));
 # let _: Router = app;
 ```
 
+Another option is to make use of the optional extractors in [axum-extra] that
+either returns `None` if there are no query parameters in the request URI,
+or returns `Some(T)` if deserialization was successful.
+If the deserialization was not successful, the request is rejected.
+
 # Customizing extractor responses
 
 If an extractor fails it will return a response with the error and your
-handler will not be called. To customize the error response you have a two
+handler will not be called. To customize the error response you have two 
 options:
 
 1. Use `Result<T, T::Rejection>` as your extractor like shown in ["Optional
@@ -421,7 +409,6 @@ request body:
 
 ```rust,no_run
 use axum::{
-    async_trait,
     extract::FromRequestParts,
     routing::get,
     Router,
@@ -434,7 +421,6 @@ use axum::{
 
 struct ExtractUserAgent(HeaderValue);
 
-#[async_trait]
 impl<S> FromRequestParts<S> for ExtractUserAgent
 where
     S: Send + Sync,
@@ -464,7 +450,6 @@ If your extractor needs to consume the request body you must implement [`FromReq
 
 ```rust,no_run
 use axum::{
-    async_trait,
     extract::{Request, FromRequest},
     response::{Response, IntoResponse},
     body::{Bytes, Body},
@@ -478,7 +463,6 @@ use axum::{
 
 struct ValidatedBody(Bytes);
 
-#[async_trait]
 impl<S> FromRequest<S> for ValidatedBody
 where
     Bytes: FromRequest<S>,
@@ -518,7 +502,6 @@ use axum::{
     extract::{FromRequest, Request, FromRequestParts},
     http::request::Parts,
     body::Body,
-    async_trait,
 };
 use std::convert::Infallible;
 
@@ -526,7 +509,6 @@ use std::convert::Infallible;
 struct MyExtractor;
 
 // `MyExtractor` implements both `FromRequest`
-#[async_trait]
 impl<S> FromRequest<S> for MyExtractor
 where
     S: Send + Sync,
@@ -540,7 +522,6 @@ where
 }
 
 // and `FromRequestParts`
-#[async_trait]
 impl<S> FromRequestParts<S> for MyExtractor
 where
     S: Send + Sync,
@@ -574,7 +555,6 @@ in your implementation.
 
 ```rust
 use axum::{
-    async_trait,
     extract::{Extension, FromRequestParts},
     http::{StatusCode, HeaderMap, request::Parts},
     response::{IntoResponse, Response},
@@ -591,7 +571,6 @@ struct AuthenticatedUser {
     // ...
 }
 
-#[async_trait]
 impl<S> FromRequestParts<S> for AuthenticatedUser
 where
     S: Send + Sync,
@@ -645,7 +624,6 @@ use axum::{
     routing::get,
     extract::{Request, FromRequest, FromRequestParts},
     http::{HeaderMap, request::Parts},
-    async_trait,
 };
 use std::time::{Instant, Duration};
 
@@ -656,7 +634,6 @@ struct Timing<E> {
 }
 
 // we must implement both `FromRequestParts`
-#[async_trait]
 impl<S, T> FromRequestParts<S> for Timing<T>
 where
     S: Send + Sync,
@@ -676,7 +653,6 @@ where
 }
 
 // and `FromRequest`
-#[async_trait]
 impl<S, T> FromRequest<S> for Timing<T>
 where
     S: Send + Sync,
@@ -711,6 +687,7 @@ logs, enable the `tracing` feature for axum (enabled by default) and the
 `axum::rejection=trace` tracing target, for example with
 `RUST_LOG=info,axum::rejection=trace cargo run`.
 
+[axum-extra]: https://docs.rs/axum-extra/latest/axum_extra/extract/index.html
 [`body::Body`]: crate::body::Body
 [`Bytes`]: crate::body::Bytes
 [customize-extractor-error]: https://github.com/tokio-rs/axum/blob/main/examples/customize-extractor-error/src/main.rs

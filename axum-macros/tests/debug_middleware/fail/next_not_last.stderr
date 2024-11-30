@@ -1,0 +1,5 @@
+error: `axum::middleware::Next` must the last argument
+ --> tests/debug_middleware/fail/next_not_last.rs:4:24
+  |
+4 | async fn my_middleware(next: Next, request: Request) -> Response {
+  |                        ^^^^^^^^^^

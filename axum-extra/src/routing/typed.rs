@@ -19,15 +19,15 @@ use serde::Serialize;
 ///     RouterExt, // for `Router::typed_*`
 /// };
 ///
-/// // A type safe route with `/users/:id` as its associated path.
+/// // A type safe route with `/users/{id}` as its associated path.
 /// #[derive(TypedPath, Deserialize)]
-/// #[typed_path("/users/:id")]
+/// #[typed_path("/users/{id}")]
 /// struct UsersMember {
 ///     id: u32,
 /// }
 ///
 /// // A regular handler function that takes `UsersMember` as the first argument
-/// // and thus creates a typed connection between this handler and the `/users/:id` path.
+/// // and thus creates a typed connection between this handler and the `/users/{id}` path.
 /// //
 /// // The `TypedPath` must be the first argument to the function.
 /// async fn users_show(
@@ -39,7 +39,7 @@ use serde::Serialize;
 /// let app = Router::new()
 ///     // Add our typed route to the router.
 ///     //
-///     // The path will be inferred to `/users/:id` since `users_show`'s
+///     // The path will be inferred to `/users/{id}` since `users_show`'s
 ///     // first argument is `UsersMember` which implements `TypedPath`
 ///     .typed_get(users_show)
 ///     .typed_post(users_create)
@@ -75,7 +75,7 @@ use serde::Serialize;
 /// use axum_extra::routing::TypedPath;
 ///
 /// #[derive(TypedPath, Deserialize)]
-/// #[typed_path("/users/:id")]
+/// #[typed_path("/users/{id}")]
 /// struct UsersMember {
 ///     id: u32,
 /// }
@@ -85,12 +85,12 @@ use serde::Serialize;
 ///
 /// - A `TypedPath` implementation.
 /// - A [`FromRequest`] implementation compatible with [`RouterExt::typed_get`],
-/// [`RouterExt::typed_post`], etc. This implementation uses [`Path`] and thus your struct must
-/// also implement [`serde::Deserialize`], unless it's a unit struct.
+///   [`RouterExt::typed_post`], etc. This implementation uses [`Path`] and thus your struct must
+///   also implement [`serde::Deserialize`], unless it's a unit struct.
 /// - A [`Display`] implementation that interpolates the captures. This can be used to, among other
-/// things, create links to known paths and have them verified statically. Note that the
-/// [`Display`] implementation for each field must return something that's compatible with its
-/// [`Deserialize`] implementation.
+///   things, create links to known paths and have them verified statically. Note that the
+///   [`Display`] implementation for each field must return something that's compatible with its
+///   [`Deserialize`] implementation.
 ///
 /// Additionally the macro will verify the captures in the path matches the fields of the struct.
 /// For example this fails to compile since the struct doesn't have a `team_id` field:
@@ -100,7 +100,7 @@ use serde::Serialize;
 /// use axum_extra::routing::TypedPath;
 ///
 /// #[derive(TypedPath, Deserialize)]
-/// #[typed_path("/users/:id/teams/:team_id")]
+/// #[typed_path("/users/{id}/teams/{team_id}")]
 /// struct UsersMember {
 ///     id: u32,
 /// }
@@ -117,7 +117,7 @@ use serde::Serialize;
 /// struct UsersCollection;
 ///
 /// #[derive(TypedPath, Deserialize)]
-/// #[typed_path("/users/:id")]
+/// #[typed_path("/users/{id}")]
 /// struct UsersMember(u32);
 /// ```
 ///
@@ -130,7 +130,7 @@ use serde::Serialize;
 /// use axum_extra::routing::TypedPath;
 ///
 /// #[derive(TypedPath, Deserialize)]
-/// #[typed_path("/users/:id")]
+/// #[typed_path("/users/{id}")]
 /// struct UsersMember {
 ///     id: String,
 /// }
@@ -158,7 +158,7 @@ use serde::Serialize;
 /// };
 ///
 /// #[derive(TypedPath, Deserialize)]
-/// #[typed_path("/users/:id", rejection(UsersMemberRejection))]
+/// #[typed_path("/users/{id}", rejection(UsersMemberRejection))]
 /// struct UsersMember {
 ///     id: String,
 /// }
@@ -215,7 +215,7 @@ use serde::Serialize;
 /// [`Deserialize`]: serde::Deserialize
 /// [`PathRejection`]: axum::extract::rejection::PathRejection
 pub trait TypedPath: std::fmt::Display {
-    /// The path with optional captures such as `/users/:id`.
+    /// The path with optional captures such as `/users/{id}`.
     const PATH: &'static str;
 
     /// Convert the path into a `Uri`.
@@ -321,7 +321,7 @@ where
 /// Utility trait used with [`RouterExt`] to ensure the second element of a tuple type is a
 /// given type.
 ///
-/// If you see it in type errors its most likely because the second argument to your handler doesn't
+/// If you see it in type errors it's most likely because the second argument to your handler doesn't
 /// implement [`TypedPath`].
 ///
 /// You normally shouldn't have to use this trait directly.
@@ -386,11 +386,19 @@ impl_second_element_is!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::routing::TypedPath;
+    use crate::{
+        extract::WithRejection,
+        routing::{RouterExt, TypedPath},
+    };
+    use axum::{
+        extract::rejection::PathRejection,
+        response::{IntoResponse, Response},
+        Router,
+    };
     use serde::Deserialize;
 
     #[derive(TypedPath, Deserialize)]
-    #[typed_path("/users/:id")]
+    #[typed_path("/users/{id}")]
     struct UsersShow {
         id: i32,
     }
@@ -433,5 +441,26 @@ mod tests {
         let uri = path.to_uri();
 
         assert_eq!(uri, "/users/1?&foo=foo&bar=123&baz=true&qux=1337");
+    }
+
+    #[allow(dead_code)] // just needs to compile
+    fn supports_with_rejection() {
+        async fn handler(_: WithRejection<UsersShow, MyRejection>) {}
+
+        struct MyRejection {}
+
+        impl IntoResponse for MyRejection {
+            fn into_response(self) -> Response {
+                unimplemented!()
+            }
+        }
+
+        impl From<PathRejection> for MyRejection {
+            fn from(_: PathRejection) -> Self {
+                unimplemented!()
+            }
+        }
+
+        let _: Router = Router::new().typed_get(handler);
     }
 }

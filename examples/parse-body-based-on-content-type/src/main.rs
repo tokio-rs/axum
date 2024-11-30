@@ -7,7 +7,6 @@
 //! ```
 
 use axum::{
-    async_trait,
     extract::{FromRequest, Request},
     http::{header::CONTENT_TYPE, StatusCode},
     response::{IntoResponse, Response},
@@ -22,7 +21,7 @@ async fn main() {
     tracing_subscriber::registry()
         .with(
             tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| {
-                "example_parse_body_based_on_content_type=debug,tower_http=debug".into()
+                format!("{}=debug,tower_http=debug", env!("CARGO_CRATE_NAME")).into()
             }),
         )
         .with(tracing_subscriber::fmt::layer())
@@ -48,7 +47,6 @@ async fn handler(JsonOrForm(payload): JsonOrForm<Payload>) {
 
 struct JsonOrForm<T>(T);
 
-#[async_trait]
 impl<S, T> FromRequest<S> for JsonOrForm<T>
 where
     S: Send + Sync,

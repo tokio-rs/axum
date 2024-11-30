@@ -1,9 +1,9 @@
-use axum_macros::FromRequestParts;
 use axum::{
-    extract::{FromRef, State, Query},
-    Router,
+    extract::{FromRef, Query, State},
     routing::get,
+    Router,
 };
+use axum_macros::FromRequestParts;
 use std::collections::HashMap;
 
 fn main() {

@@ -1,15 +1,15 @@
-use axum_extra::routing::TypedPath;
 use axum::http::Uri;
+use axum_extra::routing::TypedPath;
 use serde::Deserialize;
 
 #[derive(TypedPath, Deserialize)]
-#[typed_path("/:id")]
+#[typed_path("/{id}")]
 struct Named {
     id: u32,
 }
 
 #[derive(TypedPath, Deserialize)]
-#[typed_path("/:id")]
+#[typed_path("/{id}")]
 struct Unnamed(u32);
 
 #[derive(TypedPath, Deserialize)]

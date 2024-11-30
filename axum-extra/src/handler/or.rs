@@ -54,8 +54,8 @@ where
 
 impl<S, L, R, Lt, Rt, M> Handler<(M, Lt, Rt), S> for Or<L, R, Lt, Rt, S>
 where
-    L: HandlerCallWithExtractors<Lt, S> + Clone + Send + 'static,
-    R: HandlerCallWithExtractors<Rt, S> + Clone + Send + 'static,
+    L: HandlerCallWithExtractors<Lt, S> + Clone + Send + Sync + 'static,
+    R: HandlerCallWithExtractors<Rt, S> + Clone + Send + Sync + 'static,
     Lt: FromRequestParts<S> + Send + 'static,
     Rt: FromRequest<S, M> + Send + 'static,
     Lt::Rejection: Send,
@@ -134,17 +134,17 @@ mod tests {
             "fallback"
         }
 
-        let app = Router::new().route("/:id", get(one.or(two).or(three)));
+        let app = Router::new().route("/{id}", get(one.or(two).or(three)));
 
         let client = TestClient::new(app);
 
-        let res = client.get("/123").send().await;
+        let res = client.get("/123").await;
         assert_eq!(res.text().await, "123");
 
-        let res = client.get("/foo?a=bar").send().await;
+        let res = client.get("/foo?a=bar").await;
         assert_eq!(res.text().await, "bar");
 
-        let res = client.get("/foo").send().await;
+        let res = client.get("/foo").await;
         assert_eq!(res.text().await, "fallback");
     }
 }

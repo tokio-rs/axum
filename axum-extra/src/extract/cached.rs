@@ -1,7 +1,4 @@
-use axum::{
-    async_trait,
-    extract::{Extension, FromRequestParts},
-};
+use axum::extract::{Extension, FromRequestParts};
 use http::request::Parts;
 
 /// Cache results of other extractors.
@@ -19,7 +16,6 @@ use http::request::Parts;
 /// ```rust
 /// use axum_extra::extract::Cached;
 /// use axum::{
-///     async_trait,
 ///     extract::FromRequestParts,
 ///     response::{IntoResponse, Response},
 ///     http::{StatusCode, request::Parts},
@@ -28,7 +24,6 @@ use http::request::Parts;
 /// #[derive(Clone)]
 /// struct Session { /* ... */ }
 ///
-/// #[async_trait]
 /// impl<S> FromRequestParts<S> for Session
 /// where
 ///     S: Send + Sync,
@@ -43,7 +38,6 @@ use http::request::Parts;
 ///
 /// struct CurrentUser { /* ... */ }
 ///
-/// #[async_trait]
 /// impl<S> FromRequestParts<S> for CurrentUser
 /// where
 ///     S: Send + Sync,
@@ -86,7 +80,6 @@ pub struct Cached<T>(pub T);
 #[derive(Clone)]
 struct CachedEntry<T>(T);
 
-#[async_trait]
 impl<S, T> FromRequestParts<S> for Cached<T>
 where
     S: Send + Sync,
@@ -111,8 +104,7 @@ axum_core::__impl_deref!(Cached);
 #[cfg(test)]
 mod tests {
     use super::*;
-    use axum::{extract::FromRequestParts, http::Request, routing::get, Router};
-    use http::request::Parts;
+    use axum::{http::Request, routing::get, Router};
     use std::{
         convert::Infallible,
         sync::atomic::{AtomicU32, Ordering},
@@ -126,7 +118,6 @@ mod tests {
         #[derive(Clone, Debug, PartialEq, Eq)]
         struct Extractor(Instant);
 
-        #[async_trait]
         impl<S> FromRequestParts<S> for Extractor
         where
             S: Send + Sync,

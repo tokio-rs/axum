@@ -1,0 +1,49 @@
+error: `Json<_>` must be the last element in a response tuple
+ --> tests/debug_handler/fail/wrong_return_tuple.rs:6:5
+  |
+6 |     axum::Json<&'static str>,
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0277]: the trait bound `CustomIntoResponse: IntoResponseParts` is not satisfied
+  --> tests/debug_handler/fail/wrong_return_tuple.rs:21:5
+   |
+21 |     CustomIntoResponse,
+   |     ^^^^^^^^^^^^^^^^^^ the trait `IntoResponseParts` is not implemented for `CustomIntoResponse`
+   |
+   = help: the following other types implement trait `IntoResponseParts`:
+             ()
+             (T1, T2)
+             (T1, T2, T3)
+             (T1, T2, T3, T4)
+             (T1, T2, T3, T4, T5)
+             (T1, T2, T3, T4, T5, T6)
+             (T1, T2, T3, T4, T5, T6, T7)
+             (T1, T2, T3, T4, T5, T6, T7, T8)
+           and $N others
+   = help: see issue #48214
+help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
+   |
+3  + #![feature(trivial_bounds)]
+   |
+
+error[E0277]: the trait bound `CustomIntoResponse: IntoResponseParts` is not satisfied
+  --> tests/debug_handler/fail/wrong_return_tuple.rs:21:5
+   |
+21 |     CustomIntoResponse,
+   |     ^^^^^^^^^^^^^^^^^^ the trait `IntoResponseParts` is not implemented for `CustomIntoResponse`
+   |
+   = help: the following other types implement trait `IntoResponseParts`:
+             ()
+             (T1, T2)
+             (T1, T2, T3)
+             (T1, T2, T3, T4)
+             (T1, T2, T3, T4, T5)
+             (T1, T2, T3, T4, T5, T6)
+             (T1, T2, T3, T4, T5, T6, T7)
+             (T1, T2, T3, T4, T5, T6, T7, T8)
+           and $N others
+note: required by a bound in `__axum_macros_check_custom_type_into_response_parts_1_check`
+  --> tests/debug_handler/fail/wrong_return_tuple.rs:21:5
+   |
+21 |     CustomIntoResponse,
+   |     ^^^^^^^^^^^^^^^^^^ required by this bound in `__axum_macros_check_custom_type_into_response_parts_1_check`

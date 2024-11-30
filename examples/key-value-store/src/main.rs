@@ -33,8 +33,9 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 async fn main() {
     tracing_subscriber::registry()
         .with(
-            tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "example_key_value_store=debug,tower_http=debug".into()),
+            tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| {
+                format!("{}=debug,tower_http=debug", env!("CARGO_CRATE_NAME")).into()
+            }),
         )
         .with(tracing_subscriber::fmt::layer())
         .init();
@@ -44,7 +45,7 @@ async fn main() {
     // Build our application by composing routes
     let app = Router::new()
         .route(
-            "/:key",
+            "/{key}",
             // Add compression to `kv_get`
             get(kv_get.layer(CompressionLayer::new()))
                 // But don't compress `kv_set`
@@ -124,7 +125,7 @@ fn admin_routes() -> Router<SharedState> {
 
     Router::new()
         .route("/keys", delete(delete_all_keys))
-        .route("/key/:key", delete(remove_key))
+        .route("/key/{key}", delete(remove_key))
         // Require bearer auth for all admin routes
         .layer(ValidateRequestHeaderLayer::bearer("secret-token"))
 }

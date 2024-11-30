@@ -1,6 +1,5 @@
 use super::{rejection::*, FromRequestParts};
 use crate::routing::{RouteId, NEST_TAIL_PARAM_CAPTURE};
-use async_trait::async_trait;
 use http::request::Parts;
 use std::{collections::HashMap, sync::Arc};
 
@@ -14,10 +13,10 @@ use std::{collections::HashMap, sync::Arc};
 /// };
 ///
 /// let app = Router::new().route(
-///     "/users/:id",
+///     "/users/{id}",
 ///     get(|path: MatchedPath| async move {
 ///         let path = path.as_str();
-///         // `path` will be "/users/:id"
+///         // `path` will be "/users/{id}"
 ///     })
 /// );
 /// # let _: Router = app;
@@ -39,7 +38,7 @@ use std::{collections::HashMap, sync::Arc};
 /// use tower_http::trace::TraceLayer;
 ///
 /// let app = Router::new()
-///     .route("/users/:id", get(|| async { /* ... */ }))
+///     .route("/users/{id}", get(|| async { /* ... */ }))
 ///     .layer(
 ///         TraceLayer::new_for_http().make_span_with(|req: &Request<_>| {
 ///             let path = if let Some(path) = req.extensions().get::<MatchedPath>() {
@@ -63,7 +62,6 @@ impl MatchedPath {
     }
 }
 
-#[async_trait]
 impl<S> FromRequestParts<S> for MatchedPath
 where
     S: Send + Sync,
@@ -143,40 +141,40 @@ mod tests {
     #[crate::test]
     async fn extracting_on_handler() {
         let app = Router::new().route(
-            "/:a",
+            "/{a}",
             get(|path: MatchedPath| async move { path.as_str().to_owned() }),
         );
 
         let client = TestClient::new(app);
 
-        let res = client.get("/foo").send().await;
-        assert_eq!(res.text().await, "/:a");
+        let res = client.get("/foo").await;
+        assert_eq!(res.text().await, "/{a}");
     }
 
     #[crate::test]
     async fn extracting_on_handler_in_nested_router() {
         let app = Router::new().nest(
-            "/:a",
+            "/{a}",
             Router::new().route(
-                "/:b",
+                "/{b}",
                 get(|path: MatchedPath| async move { path.as_str().to_owned() }),
             ),
         );
 
         let client = TestClient::new(app);
 
-        let res = client.get("/foo/bar").send().await;
-        assert_eq!(res.text().await, "/:a/:b");
+        let res = client.get("/foo/bar").await;
+        assert_eq!(res.text().await, "/{a}/{b}");
     }
 
     #[crate::test]
     async fn extracting_on_handler_in_deeply_nested_router() {
         let app = Router::new().nest(
-            "/:a",
+            "/{a}",
             Router::new().nest(
-                "/:b",
+                "/{b}",
                 Router::new().route(
-                    "/:c",
+                    "/{c}",
                     get(|path: MatchedPath| async move { path.as_str().to_owned() }),
                 ),
             ),
@@ -184,8 +182,8 @@ mod tests {
 
         let client = TestClient::new(app);
 
-        let res = client.get("/foo/bar/baz").send().await;
-        assert_eq!(res.text().await, "/:a/:b/:c");
+        let res = client.get("/foo/bar/baz").await;
+        assert_eq!(res.text().await, "/{a}/{b}/{c}");
     }
 
     #[crate::test]
@@ -199,12 +197,12 @@ mod tests {
         }
 
         let app = Router::new()
-            .nest_service("/:a", Router::new().route("/:b", get(|| async move {})))
+            .nest_service("/{a}", Router::new().route("/{b}", get(|| async move {})))
             .layer(map_request(extract_matched_path));
 
         let client = TestClient::new(app);
 
-        let res = client.get("/foo/bar").send().await;
+        let res = client.get("/foo/bar").await;
         assert_eq!(res.status(), StatusCode::OK);
     }
 
@@ -214,17 +212,17 @@ mod tests {
             matched_path: Option<MatchedPath>,
             req: Request<B>,
         ) -> Request<B> {
-            assert_eq!(matched_path.unwrap().as_str(), "/:a/:b");
+            assert_eq!(matched_path.unwrap().as_str(), "/{a}/{b}");
             req
         }
 
         let app = Router::new()
-            .nest("/:a", Router::new().route("/:b", get(|| async move {})))
+            .nest("/{a}", Router::new().route("/{b}", get(|| async move {})))
             .layer(map_request(extract_matched_path));
 
         let client = TestClient::new(app);
 
-        let res = client.get("/foo/bar").send().await;
+        let res = client.get("/foo/bar").await;
         assert_eq!(res.status(), StatusCode::OK);
     }
 
@@ -236,12 +234,12 @@ mod tests {
         }
 
         let app = Router::new()
-            .nest_service("/:a", Router::new().route("/:b", get(|| async move {})))
+            .nest_service("/{a}", Router::new().route("/{b}", get(|| async move {})))
             .layer(map_request(assert_no_matched_path));
 
         let client = TestClient::new(app);
 
-        let res = client.get("/foo/bar").send().await;
+        let res = client.get("/foo/bar").await;
         assert_eq!(res.status(), StatusCode::OK);
     }
 
@@ -253,32 +251,32 @@ mod tests {
         }
 
         let app = Router::new()
-            .nest("/:a", Router::new().route("/:b", get(|| async move {})))
+            .nest("/{a}", Router::new().route("/{b}", get(|| async move {})))
             .layer(map_request(assert_matched_path));
 
         let client = TestClient::new(app);
 
-        let res = client.get("/foo/bar").send().await;
+        let res = client.get("/foo/bar").await;
         assert_eq!(res.status(), StatusCode::OK);
     }
 
     #[crate::test]
     async fn can_extract_nested_matched_path_in_middleware_on_nested_router() {
         async fn extract_matched_path<B>(matched_path: MatchedPath, req: Request<B>) -> Request<B> {
-            assert_eq!(matched_path.as_str(), "/:a/:b");
+            assert_eq!(matched_path.as_str(), "/{a}/{b}");
             req
         }
 
         let app = Router::new().nest(
-            "/:a",
+            "/{a}",
             Router::new()
-                .route("/:b", get(|| async move {}))
+                .route("/{b}", get(|| async move {}))
                 .layer(map_request(extract_matched_path)),
         );
 
         let client = TestClient::new(app);
 
-        let res = client.get("/foo/bar").send().await;
+        let res = client.get("/foo/bar").await;
         assert_eq!(res.status(), StatusCode::OK);
     }
 
@@ -286,20 +284,20 @@ mod tests {
     async fn can_extract_nested_matched_path_in_middleware_on_nested_router_via_extension() {
         async fn extract_matched_path<B>(req: Request<B>) -> Request<B> {
             let matched_path = req.extensions().get::<MatchedPath>().unwrap();
-            assert_eq!(matched_path.as_str(), "/:a/:b");
+            assert_eq!(matched_path.as_str(), "/{a}/{b}");
             req
         }
 
         let app = Router::new().nest(
-            "/:a",
+            "/{a}",
             Router::new()
-                .route("/:b", get(|| async move {}))
+                .route("/{b}", get(|| async move {}))
                 .layer(map_request(extract_matched_path)),
         );
 
         let client = TestClient::new(app);
 
-        let res = client.get("/foo/bar").send().await;
+        let res = client.get("/foo/bar").await;
         assert_eq!(res.status(), StatusCode::OK);
     }
 
@@ -309,11 +307,11 @@ mod tests {
             assert!(path.is_none());
         }
 
-        let app = Router::new().nest_service("/:a", handler.into_service());
+        let app = Router::new().nest_service("/{a}", handler.into_service());
 
         let client = TestClient::new(app);
 
-        let res = client.get("/foo/bar").send().await;
+        let res = client.get("/foo/bar").await;
         assert_eq!(res.status(), StatusCode::OK);
     }
 
@@ -323,17 +321,17 @@ mod tests {
         use tower::ServiceExt;
 
         let app = Router::new().route(
-            "/*path",
+            "/{*path}",
             any(|req: Request| {
                 Router::new()
-                    .nest("/", Router::new().route("/foo", get(|| async {})))
+                    .nest("/foo", Router::new().route("/bar", get(|| async {})))
                     .oneshot(req)
             }),
         );
 
         let client = TestClient::new(app);
 
-        let res = client.get("/foo").send().await;
+        let res = client.get("/foo/bar").await;
         assert_eq!(res.status(), StatusCode::OK);
     }
 
@@ -348,7 +346,47 @@ mod tests {
 
         let client = TestClient::new(app);
 
-        let res = client.get("/foo/bar").send().await;
+        let res = client.get("/foo/bar").await;
         assert_eq!(res.status(), StatusCode::OK);
+    }
+
+    #[crate::test]
+    async fn matching_colon() {
+        let app = Router::new().without_v07_checks().route(
+            "/:foo",
+            get(|path: MatchedPath| async move { path.as_str().to_owned() }),
+        );
+
+        let client = TestClient::new(app);
+
+        let res = client.get("/:foo").await;
+        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.text().await, "/:foo");
+
+        let res = client.get("/:bar").await;
+        assert_eq!(res.status(), StatusCode::NOT_FOUND);
+
+        let res = client.get("/foo").await;
+        assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    }
+
+    #[crate::test]
+    async fn matching_asterisk() {
+        let app = Router::new().without_v07_checks().route(
+            "/*foo",
+            get(|path: MatchedPath| async move { path.as_str().to_owned() }),
+        );
+
+        let client = TestClient::new(app);
+
+        let res = client.get("/*foo").await;
+        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.text().await, "/*foo");
+
+        let res = client.get("/*bar").await;
+        assert_eq!(res.status(), StatusCode::NOT_FOUND);
+
+        let res = client.get("/foo").await;
+        assert_eq!(res.status(), StatusCode::NOT_FOUND);
     }
 }

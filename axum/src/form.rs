@@ -1,6 +1,5 @@
 use crate::extract::Request;
 use crate::extract::{rejection::*, FromRequest, RawForm};
-use async_trait::async_trait;
 use axum_core::response::{IntoResponse, IntoResponseFailed, Response};
 use axum_core::RequestExt;
 use http::header::CONTENT_TYPE;
@@ -72,7 +71,6 @@ use serde::Serialize;
 #[must_use]
 pub struct Form<T>(pub T);
 
-#[async_trait]
 impl<T, S> FromRequest<S> for Form<T>
 where
     T: DeserializeOwned,
@@ -257,14 +255,13 @@ mod tests {
 
         let client = TestClient::new(app);
 
-        let res = client.get("/?a=false").send().await;
+        let res = client.get("/?a=false").await;
         assert_eq!(res.status(), StatusCode::BAD_REQUEST);
 
         let res = client
             .post("/")
             .header(CONTENT_TYPE, APPLICATION_WWW_FORM_URLENCODED.as_ref())
             .body("a=false")
-            .send()
             .await;
         assert_eq!(res.status(), StatusCode::UNPROCESSABLE_ENTITY);
     }

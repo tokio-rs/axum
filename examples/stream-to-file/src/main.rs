@@ -25,7 +25,7 @@ async fn main() {
     tracing_subscriber::registry()
         .with(
             tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "example_stream_to_file=debug".into()),
+                .unwrap_or_else(|_| format!("{}=debug", env!("CARGO_CRATE_NAME")).into()),
         )
         .with(tracing_subscriber::fmt::layer())
         .init();
@@ -37,7 +37,7 @@ async fn main() {
 
     let app = Router::new()
         .route("/", get(show_form).post(accept_form))
-        .route("/file/:file_name", post(save_request_body));
+        .route("/file/{file_name}", post(save_request_body));
 
     let listener = tokio::net::TcpListener::bind("127.0.0.1:3000")
         .await

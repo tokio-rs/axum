@@ -1,5 +1,4 @@
 use super::{Extension, FromRequestParts};
-use async_trait::async_trait;
 use http::{request::Parts, Uri};
 use std::convert::Infallible;
 
@@ -47,7 +46,7 @@ use std::convert::Infallible;
 /// use tower_http::trace::TraceLayer;
 ///
 /// let api_routes = Router::new()
-///     .route("/users/:id", get(|| async { /* ... */ }))
+///     .route("/users/{id}", get(|| async { /* ... */ }))
 ///     .layer(
 ///         TraceLayer::new_for_http().make_span_with(|req: &Request<_>| {
 ///             let path = if let Some(path) = req.extensions().get::<OriginalUri>() {
@@ -70,7 +69,6 @@ use std::convert::Infallible;
 pub struct OriginalUri(pub Uri);
 
 #[cfg(feature = "original-uri")]
-#[async_trait]
 impl<S> FromRequestParts<S> for OriginalUri
 where
     S: Send + Sync,
@@ -109,7 +107,7 @@ mod tests {
 
         let client = TestClient::new(Router::new().route("/", get(handler)).layer(Extension(Ext)));
 
-        let res = client.get("/").header("x-foo", "123").send().await;
+        let res = client.get("/").header("x-foo", "123").await;
         assert_eq!(res.status(), StatusCode::OK);
     }
 }

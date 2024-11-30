@@ -7,7 +7,7 @@ pub use http_body::Body as HttpBody;
 pub use bytes::Bytes;
 
 #[doc(inline)]
-pub use axum_core::body::Body;
+pub use axum_core::body::{Body, BodyDataStream};
 
 use http_body_util::{BodyExt, Limited};
 

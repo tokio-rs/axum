@@ -1,5 +1,5 @@
 use axum::{
-    extract::{State, FromRef},
+    extract::{FromRef, State},
     routing::get,
     Router,
 };

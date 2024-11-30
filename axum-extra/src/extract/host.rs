@@ -1,29 +1,29 @@
-use super::{
-    rejection::{FailedToResolveHost, HostRejection},
-    FromRequestParts,
-};
-use async_trait::async_trait;
+use super::rejection::{FailedToResolveHost, HostRejection};
+use axum::extract::FromRequestParts;
 use http::{
     header::{HeaderMap, FORWARDED},
     request::Parts,
+    uri::Authority,
 };
 
 const X_FORWARDED_HOST_HEADER_KEY: &str = "X-Forwarded-Host";
 
-/// Extractor that resolves the hostname of the request.
+/// Extractor that resolves the host of the request.
 ///
-/// Hostname is resolved through the following, in order:
+/// Host is resolved through the following, in order:
 /// - `Forwarded` header
 /// - `X-Forwarded-Host` header
 /// - `Host` header
-/// - request target / URI
+/// - Authority of the request URI
+///
+/// See <https://www.rfc-editor.org/rfc/rfc9110.html#name-host-and-authority> for the definition of
+/// host.
 ///
 /// Note that user agents can set `X-Forwarded-Host` and `Host` headers to arbitrary values so make
 /// sure to validate them to avoid security issues.
 #[derive(Debug, Clone)]
 pub struct Host(pub String);
 
-#[async_trait]
 impl<S> FromRequestParts<S> for Host
 where
     S: Send + Sync,
@@ -51,8 +51,8 @@ where
             return Ok(Host(host.to_owned()));
         }
 
-        if let Some(host) = parts.uri.host() {
-            return Ok(Host(host.to_owned()));
+        if let Some(authority) = parts.uri.authority() {
+            return Ok(Host(parse_authority(authority).to_owned()));
         }
 
         Err(HostRejection::FailedToResolveHost(FailedToResolveHost))
@@ -76,11 +76,19 @@ fn parse_forwarded(headers: &HeaderMap) -> Option<&str> {
     })
 }
 
+fn parse_authority(auth: &Authority) -> &str {
+    auth.as_str()
+        .rsplit('@')
+        .next()
+        .expect("split always has at least 1 item")
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{routing::get, test_helpers::TestClient, Router};
-    use http::header::HeaderName;
+    use crate::test_helpers::TestClient;
+    use axum::{routing::get, Router};
+    use http::{header::HeaderName, Request};
 
     fn test_client() -> TestClient {
         async fn host_as_body(Host(host): Host) -> String {
@@ -96,7 +104,6 @@ mod tests {
         let host = test_client()
             .get("/")
             .header(http::header::HOST, original_host)
-            .send()
             .await
             .text()
             .await;
@@ -109,7 +116,6 @@ mod tests {
         let host = test_client()
             .get("/")
             .header(X_FORWARDED_HOST_HEADER_KEY, original_host)
-            .send()
             .await
             .text()
             .await;
@@ -124,7 +130,6 @@ mod tests {
             .get("/")
             .header(X_FORWARDED_HOST_HEADER_KEY, x_forwarded_host_header)
             .header(http::header::HOST, host_header)
-            .send()
             .await
             .text()
             .await;
@@ -133,8 +138,26 @@ mod tests {
 
     #[crate::test]
     async fn uri_host() {
-        let host = test_client().get("/").send().await.text().await;
-        assert!(host.contains("127.0.0.1"));
+        let client = test_client();
+        let port = client.server_port();
+        let host = client.get("/").await.text().await;
+        assert_eq!(host, format!("127.0.0.1:{port}"));
+    }
+
+    #[crate::test]
+    async fn ip4_uri_host() {
+        let mut parts = Request::new(()).into_parts().0;
+        parts.uri = "https://127.0.0.1:1234/image.jpg".parse().unwrap();
+        let host = Host::from_request_parts(&mut parts, &()).await.unwrap();
+        assert_eq!(host.0, "127.0.0.1:1234");
+    }
+
+    #[crate::test]
+    async fn ip6_uri_host() {
+        let mut parts = Request::new(()).into_parts().0;
+        parts.uri = "http://cool:user@[::1]:456/file.txt".parse().unwrap();
+        let host = Host::from_request_parts(&mut parts, &()).await.unwrap();
+        assert_eq!(host.0, "[::1]:456");
     }
 
     #[test]

@@ -1,4 +1,3 @@
-#![cfg_attr(nightly_error_messages, feature(diagnostic_namespace))]
 //! Core types and traits for [`axum`].
 //!
 //! Libraries authors that want to provide [`FromRequest`] or [`IntoResponse`] implementations
@@ -22,7 +21,6 @@
     clippy::needless_borrow,
     clippy::match_wildcard_for_single_variants,
     clippy::if_let_mutex,
-    clippy::mismatched_target_os,
     clippy::await_holding_lock,
     clippy::match_on_vec_items,
     clippy::imprecise_flops,
@@ -52,6 +50,11 @@
 
 #[macro_use]
 pub(crate) mod macros;
+#[doc(hidden)] // macro helpers
+pub mod __private {
+    #[cfg(feature = "tracing")]
+    pub use tracing;
+}
 
 mod error;
 mod ext_traits;

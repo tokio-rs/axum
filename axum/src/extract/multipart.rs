@@ -4,7 +4,6 @@
 
 use super::{FromRequest, Request};
 use crate::body::Bytes;
-use async_trait::async_trait;
 use axum_core::{
     __composite_rejection as composite_rejection, __define_rejection as define_rejection,
     response::{IntoResponse, Response},
@@ -65,7 +64,6 @@ pub struct Multipart {
     inner: multer::Multipart<'static>,
 }
 
-#[async_trait]
 impl<S> FromRequest<S> for Multipart
 where
     S: Send + Sync,
@@ -109,7 +107,7 @@ pub struct Field<'a> {
     _multipart: &'a mut Multipart,
 }
 
-impl<'a> Stream for Field<'a> {
+impl Stream for Field<'_> {
     type Item = Result<Bytes, MultipartError>;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
@@ -119,7 +117,7 @@ impl<'a> Stream for Field<'a> {
     }
 }
 
-impl<'a> Field<'a> {
+impl Field<'_> {
     /// The field name found in the
     /// [`Content-Disposition`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Disposition)
     /// header.
@@ -274,12 +272,13 @@ impl std::error::Error for MultipartError {
 
 impl IntoResponse for MultipartError {
     fn into_response(self) -> Response {
+        let body = self.body_text();
         axum_core::__log_rejection!(
             rejection_type = Self,
-            body_text = self.body_text(),
+            body_text = body,
             status = self.status(),
         );
-        (self.status(), self.body_text()).into_response()
+        (self.status(), body).into_response()
     }
 }
 
@@ -310,7 +309,7 @@ mod tests {
     use axum_core::extract::DefaultBodyLimit;
 
     use super::*;
-    use crate::{response::IntoResponse, routing::post, test_helpers::*, Router};
+    use crate::{routing::post, test_helpers::*, Router};
 
     #[crate::test]
     async fn content_type_with_encoding() {
@@ -345,7 +344,7 @@ mod tests {
                 )])),
         );
 
-        client.post("/").multipart(form).send().await;
+        client.post("/").multipart(form).await;
     }
 
     // No need for this to be a #[test], we just want to make sure it compiles
@@ -376,7 +375,7 @@ mod tests {
         let form =
             reqwest::multipart::Form::new().part("file", reqwest::multipart::Part::bytes(BYTES));
 
-        let res = client.post("/").multipart(form).send().await;
+        let res = client.post("/").multipart(form).await;
         assert_eq!(res.status(), StatusCode::PAYLOAD_TOO_LARGE);
     }
 }
