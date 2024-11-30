@@ -122,7 +122,7 @@ pub(crate) struct Attrs {
 }
 
 impl Parse for Attrs {
-    fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
+    fn parse(input: syn::parse::ParseStream<'_>) -> syn::Result<Self> {
         let mut state_ty = None;
 
         while !input.is_empty() {

@@ -18,7 +18,7 @@ pub(super) struct FromRequestContainerAttrs {
 }
 
 impl Parse for FromRequestContainerAttrs {
-    fn parse(input: ParseStream) -> syn::Result<Self> {
+    fn parse(input: ParseStream<'_>) -> syn::Result<Self> {
         let mut via = None;
         let mut rejection = None;
         let mut state = None;
@@ -66,7 +66,7 @@ pub(super) struct FromRequestFieldAttrs {
 }
 
 impl Parse for FromRequestFieldAttrs {
-    fn parse(input: ParseStream) -> syn::Result<Self> {
+    fn parse(input: ParseStream<'_>) -> syn::Result<Self> {
         let mut via = None;
 
         while !input.is_empty() {

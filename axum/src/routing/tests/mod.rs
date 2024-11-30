@@ -981,7 +981,7 @@ async fn logging_rejections() {
     .await;
 
     assert_eq!(
-        dbg!(events),
+        events,
         Vec::from([
             TracingEvent {
                 fields: RejectionEvent {
