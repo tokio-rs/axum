@@ -526,10 +526,10 @@ mod tests {
 
         let client = TestClient::new(app);
 
-        let res = client.get("/").send().await;
+        let res = client.get("/").await;
         assert_eq!(res.status(), StatusCode::INTERNAL_SERVER_ERROR);
 
-        let res = client.get("/two").send().await;
+        let res = client.get("/two").await;
         assert_eq!(res.status(), StatusCode::IM_A_TEAPOT);
     }
     #[test]
