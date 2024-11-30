@@ -16,7 +16,7 @@ pub(crate) fn expand(_attr: Attrs, mut item_fn: ItemFn) -> TokenStream {
 pub(crate) struct Attrs;
 
 impl Parse for Attrs {
-    fn parse(_input: syn::parse::ParseStream) -> syn::Result<Self> {
+    fn parse(_input: syn::parse::ParseStream<'_>) -> syn::Result<Self> {
         Ok(Self)
     }
 }

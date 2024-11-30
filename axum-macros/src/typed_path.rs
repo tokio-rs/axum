@@ -55,7 +55,7 @@ struct Attrs {
 }
 
 impl Parse for Attrs {
-    fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
+    fn parse(input: syn::parse::ParseStream<'_>) -> syn::Result<Self> {
         let mut path = None;
         let mut rejection = None;
 

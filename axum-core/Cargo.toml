@@ -42,6 +42,9 @@ hyper = "1.0.0"
 tokio = { version = "1.25.0", features = ["macros"] }
 tower-http = { version = "0.6.0", features = ["limit"] }
 
+[lints]
+workspace = true
+
 [package.metadata.cargo-public-api-crates]
 allowed = [
     # not 1.0
