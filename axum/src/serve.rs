@@ -22,7 +22,7 @@ use tower_service::Service;
 
 mod listener;
 
-pub use self::listener::Listener;
+pub use self::listener::{Listener, ListenerExt, TapIo};
 
 /// Serve the service with the supplied listener.
 ///

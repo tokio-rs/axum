@@ -1,4 +1,4 @@
-use std::{future::Future, time::Duration};
+use std::{fmt, future::Future, time::Duration};
 
 use tokio::{
     io::{self, AsyncRead, AsyncWrite},
@@ -59,6 +59,81 @@ impl Listener for tokio::net::UnixListener {
     #[inline]
     fn local_addr(&self) -> io::Result<Self::Addr> {
         Self::local_addr(self)
+    }
+}
+
+/// Extensions to [`Listener`].
+pub trait ListenerExt: Listener + Sized {
+    /// Run a mutable closure on every accepted `Io`.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use axum::{Router, routing::get, serve::ListenerExt};
+    /// use tracing::trace;
+    ///
+    /// # async {
+    /// let router = Router::new().route("/", get(|| async { "Hello, World!" }));
+    ///
+    /// let listener = tokio::net::TcpListener::bind("0.0.0.0:3000")
+    ///     .await
+    ///     .unwrap()
+    ///     .tap_io(|tcp_stream| {
+    ///         if let Err(err) = tcp_stream.set_nodelay(true) {
+    ///             trace!("failed to set TCP_NODELAY on incoming connection: {err:#}");
+    ///         }
+    ///     });
+    /// axum::serve(listener, router).await.unwrap();
+    /// # };
+    /// ```
+    fn tap_io<F>(self, tap_fn: F) -> TapIo<Self, F>
+    where
+        F: FnMut(&mut Self::Io) + Send + 'static,
+    {
+        TapIo {
+            listener: self,
+            tap_fn,
+        }
+    }
+}
+
+impl<L: Listener> ListenerExt for L {}
+
+/// Return type of [`ListenerExt::tap_io`].
+///
+/// See that method for details.
+pub struct TapIo<L: Listener, F> {
+    listener: L,
+    tap_fn: F,
+}
+
+impl<L, F> fmt::Debug for TapIo<L, F>
+where
+    L: Listener + fmt::Debug,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("TapIo")
+            .field("listener", &self.listener)
+            .finish_non_exhaustive()
+    }
+}
+
+impl<L, F> Listener for TapIo<L, F>
+where
+    L: Listener,
+    F: FnMut(&mut L::Io) + Send + 'static,
+{
+    type Io = L::Io;
+    type Addr = L::Addr;
+
+    async fn accept(&mut self) -> (Self::Io, Self::Addr) {
+        let (mut io, addr) = self.listener.accept().await;
+        (self.tap_fn)(&mut io);
+        (io, addr)
+    }
+
+    fn local_addr(&self) -> io::Result<Self::Addr> {
+        self.listener.local_addr()
     }
 }
 
