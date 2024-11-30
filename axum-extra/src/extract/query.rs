@@ -1,5 +1,5 @@
 use axum::{
-    extract::FromRequestParts,
+    extract::{FromRequestParts, OptionalFromRequestParts},
     response::{IntoResponse, Response},
     Error,
 };
@@ -17,6 +17,19 @@ use std::fmt;
 /// are sent by multiple `<input>` attributes of the same name (e.g. checkboxes) and `<select>`s
 /// with the `multiple` attribute. Those values can be collected into a `Vec` or other sequential
 /// container.
+///
+/// # `Option<Query<T>>` behavior
+///
+/// If `Query<T>` itself is used as an extractor and there is no query string in
+/// the request URL, `T`'s `Deserialize` implementation is called on an empty
+/// string instead.
+///
+/// You can avoid this by using `Option<Query<T>>`, which gives you `None` in
+/// the case that there is no query string in the request URL.
+///
+/// Note that an empty query string is not the same as no query string, that is
+/// `https://example.org/` and `https://example.org/?` are not treated the same
+/// in this case.
 ///
 /// # Example
 ///
@@ -93,6 +106,27 @@ where
         let value = serde_html_form::from_str(query)
             .map_err(|err| QueryRejection::FailedToDeserializeQueryString(Error::new(err)))?;
         Ok(Query(value))
+    }
+}
+
+impl<T, S> OptionalFromRequestParts<S> for Query<T>
+where
+    T: DeserializeOwned,
+    S: Send + Sync,
+{
+    type Rejection = QueryRejection;
+
+    async fn from_request_parts(
+        parts: &mut Parts,
+        _state: &S,
+    ) -> Result<Option<Self>, Self::Rejection> {
+        if let Some(query) = parts.uri.query() {
+            let value = serde_html_form::from_str(query)
+                .map_err(|err| QueryRejection::FailedToDeserializeQueryString(Error::new(err)))?;
+            Ok(Some(Self(value)))
+        } else {
+            Ok(None)
+        }
     }
 }
 
@@ -182,9 +216,11 @@ impl std::error::Error for QueryRejection {
 ///
 /// [example]: https://github.com/tokio-rs/axum/blob/main/examples/query-params-with-empty-strings/src/main.rs
 #[cfg_attr(docsrs, doc(cfg(feature = "query")))]
+#[deprecated = "Use Option<Query<_>> instead"]
 #[derive(Debug, Clone, Copy, Default)]
 pub struct OptionalQuery<T>(pub Option<T>);
 
+#[allow(deprecated)]
 impl<T, S> FromRequestParts<S> for OptionalQuery<T>
 where
     T: DeserializeOwned,
@@ -204,6 +240,7 @@ where
     }
 }
 
+#[allow(deprecated)]
 impl<T> std::ops::Deref for OptionalQuery<T> {
     type Target = Option<T>;
 
@@ -213,6 +250,7 @@ impl<T> std::ops::Deref for OptionalQuery<T> {
     }
 }
 
+#[allow(deprecated)]
 impl<T> std::ops::DerefMut for OptionalQuery<T> {
     #[inline]
     fn deref_mut(&mut self) -> &mut Self::Target {
@@ -260,6 +298,7 @@ impl std::error::Error for OptionalQueryRejection {
 }
 
 #[cfg(test)]
+#[allow(deprecated)]
 mod tests {
     use super::*;
     use crate::test_helpers::*;

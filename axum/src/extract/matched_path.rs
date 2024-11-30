@@ -1,7 +1,8 @@
 use super::{rejection::*, FromRequestParts};
 use crate::routing::{RouteId, NEST_TAIL_PARAM_CAPTURE};
+use axum_core::extract::OptionalFromRequestParts;
 use http::request::Parts;
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::HashMap, convert::Infallible, sync::Arc};
 
 /// Access the path in the router that matches the request.
 ///
@@ -76,6 +77,20 @@ where
             .clone();
 
         Ok(matched_path)
+    }
+}
+
+impl<S> OptionalFromRequestParts<S> for MatchedPath
+where
+    S: Send + Sync,
+{
+    type Rejection = Infallible;
+
+    async fn from_request_parts(
+        parts: &mut Parts,
+        _state: &S,
+    ) -> Result<Option<Self>, Self::Rejection> {
+        Ok(parts.extensions.get::<Self>().cloned())
     }
 }
 
