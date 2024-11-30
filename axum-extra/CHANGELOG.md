@@ -7,11 +7,15 @@ and this project adheres to [Semantic Versioning].
 
 # Unreleased
 
+- **breaking:** `Option<Query<T>>` no longer swallows all error conditions, instead rejecting the
+  request in many cases; see its documentation for details ([#2475])
+- **changed:** Deprecated `OptionalPath<T>` and `OptionalQuery<T>` ([#2475])
 - **fixed:** `Host` extractor includes port number when parsing authority ([#2242])
 - **added:** Add `RouterExt::typed_connect` ([#2961])
 - **added:** Add `json!` for easy construction of JSON responses ([#2962])
 
 [#2242]: https://github.com/tokio-rs/axum/pull/2242
+[#2475]: https://github.com/tokio-rs/axum/pull/2475
 [#2961]: https://github.com/tokio-rs/axum/pull/2961
 [#2962]: https://github.com/tokio-rs/axum/pull/2962
 
