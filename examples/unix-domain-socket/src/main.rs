@@ -21,17 +21,13 @@ mod unix {
         extract::connect_info::{self, ConnectInfo},
         http::{Method, Request, StatusCode},
         routing::get,
+        serve::IncomingStream,
         Router,
     };
     use http_body_util::BodyExt;
-    use hyper::body::Incoming;
-    use hyper_util::{
-        rt::{TokioExecutor, TokioIo},
-        server,
-    };
-    use std::{convert::Infallible, path::PathBuf, sync::Arc};
+    use hyper_util::rt::TokioIo;
+    use std::{path::PathBuf, sync::Arc};
     use tokio::net::{unix::UCred, UnixListener, UnixStream};
-    use tower::Service;
     use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
     pub async fn server() {
@@ -52,33 +48,11 @@ mod unix {
 
         let uds = UnixListener::bind(path.clone()).unwrap();
         tokio::spawn(async move {
-            let app = Router::new().route("/", get(handler));
+            let app = Router::new()
+                .route("/", get(handler))
+                .into_make_service_with_connect_info::<UdsConnectInfo>();
 
-            let mut make_service = app.into_make_service_with_connect_info::<UdsConnectInfo>();
-
-            // See https://github.com/tokio-rs/axum/blob/main/examples/serve-with-hyper/src/main.rs for
-            // more details about this setup
-            loop {
-                let (socket, _remote_addr) = uds.accept().await.unwrap();
-
-                let tower_service = unwrap_infallible(make_service.call(&socket).await);
-
-                tokio::spawn(async move {
-                    let socket = TokioIo::new(socket);
-
-                    let hyper_service =
-                        hyper::service::service_fn(move |request: Request<Incoming>| {
-                            tower_service.clone().call(request)
-                        });
-
-                    if let Err(err) = server::conn::auto::Builder::new(TokioExecutor::new())
-                        .serve_connection_with_upgrades(socket, hyper_service)
-                        .await
-                    {
-                        eprintln!("failed to serve connection: {err:#}");
-                    }
-                });
-            }
+            axum::serve(uds, app).await.unwrap();
         });
 
         let stream = TokioIo::new(UnixStream::connect(path).await.unwrap());
@@ -117,22 +91,14 @@ mod unix {
         peer_cred: UCred,
     }
 
-    impl connect_info::Connected<&UnixStream> for UdsConnectInfo {
-        fn connect_info(target: &UnixStream) -> Self {
-            let peer_addr = target.peer_addr().unwrap();
-            let peer_cred = target.peer_cred().unwrap();
-
+    impl connect_info::Connected<IncomingStream<'_, UnixListener>> for UdsConnectInfo {
+        fn connect_info(stream: IncomingStream<'_, UnixListener>) -> Self {
+            let peer_addr = stream.io().peer_addr().unwrap();
+            let peer_cred = stream.io().peer_cred().unwrap();
             Self {
                 peer_addr: Arc::new(peer_addr),
                 peer_cred,
             }
-        }
-    }
-
-    fn unwrap_infallible<T>(result: Result<T, Infallible>) -> T {
-        match result {
-            Ok(value) => value,
-            Err(err) => match err {},
         }
     }
 }
