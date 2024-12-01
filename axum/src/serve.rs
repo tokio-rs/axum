@@ -434,6 +434,7 @@ mod tests {
         extract::connect_info::Connected,
         handler::{Handler, HandlerWithoutStateExt},
         routing::get,
+        serve::ListenerExt,
         Router,
     };
 
@@ -452,12 +453,27 @@ mod tests {
 
         let addr = "0.0.0.0:0";
 
+        let tcp_nodelay_listener = || async {
+            TcpListener::bind(addr).await.unwrap().tap_io(|tcp_stream| {
+                if let Err(err) = tcp_stream.set_nodelay(true) {
+                    eprintln!("failed to set TCP_NODELAY on incoming connection: {err:#}");
+                }
+            })
+        };
+
         // router
         serve(TcpListener::bind(addr).await.unwrap(), router.clone());
+        serve(tcp_nodelay_listener().await, router.clone())
+            .await
+            .unwrap();
         serve(UnixListener::bind("").unwrap(), router.clone());
 
         serve(
             TcpListener::bind(addr).await.unwrap(),
+            router.clone().into_make_service(),
+        );
+        serve(
+            tcp_nodelay_listener().await,
             router.clone().into_make_service(),
         );
         serve(
@@ -472,16 +488,27 @@ mod tests {
                 .into_make_service_with_connect_info::<std::net::SocketAddr>(),
         );
         serve(
+            tcp_nodelay_listener().await,
+            router
+                .clone()
+                .into_make_service_with_connect_info::<std::net::SocketAddr>(),
+        );
+        serve(
             UnixListener::bind("").unwrap(),
             router.into_make_service_with_connect_info::<UdsConnectInfo>(),
         );
 
         // method router
         serve(TcpListener::bind(addr).await.unwrap(), get(handler));
+        serve(tcp_nodelay_listener().await, get(handler));
         serve(UnixListener::bind("").unwrap(), get(handler));
 
         serve(
             TcpListener::bind(addr).await.unwrap(),
+            get(handler).into_make_service(),
+        );
+        serve(
+            tcp_nodelay_listener().await,
             get(handler).into_make_service(),
         );
         serve(
@@ -494,6 +521,10 @@ mod tests {
             get(handler).into_make_service_with_connect_info::<std::net::SocketAddr>(),
         );
         serve(
+            tcp_nodelay_listener().await,
+            get(handler).into_make_service_with_connect_info::<std::net::SocketAddr>(),
+        );
+        serve(
             UnixListener::bind("").unwrap(),
             get(handler).into_make_service_with_connect_info::<UdsConnectInfo>(),
         );
@@ -503,22 +534,29 @@ mod tests {
             TcpListener::bind(addr).await.unwrap(),
             handler.into_service(),
         );
+        serve(tcp_nodelay_listener().await, handler.into_service());
         serve(UnixListener::bind("").unwrap(), handler.into_service());
 
         serve(
             TcpListener::bind(addr).await.unwrap(),
             handler.with_state(()),
         );
+        serve(tcp_nodelay_listener().await, handler.with_state(()));
         serve(UnixListener::bind("").unwrap(), handler.with_state(()));
 
         serve(
             TcpListener::bind(addr).await.unwrap(),
             handler.into_make_service(),
         );
+        serve(tcp_nodelay_listener().await, handler.into_make_service());
         serve(UnixListener::bind("").unwrap(), handler.into_make_service());
 
         serve(
             TcpListener::bind(addr).await.unwrap(),
+            handler.into_make_service_with_connect_info::<std::net::SocketAddr>(),
+        );
+        serve(
+            tcp_nodelay_listener().await,
             handler.into_make_service_with_connect_info::<std::net::SocketAddr>(),
         );
         serve(
