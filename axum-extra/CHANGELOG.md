@@ -10,10 +10,13 @@ and this project adheres to [Semantic Versioning].
 - **fixed:** `Host` extractor includes port number when parsing authority ([#2242])
 - **added:** Add `RouterExt::typed_connect` ([#2961])
 - **added:** Add `json!` for easy construction of JSON responses ([#2962])
+- **added:** Add `InternalServerError` response for logging an internal error
+  and returning HTTP 500 in a convenient way. ([#3010])
 
 [#2242]: https://github.com/tokio-rs/axum/pull/2242
 [#2961]: https://github.com/tokio-rs/axum/pull/2961
 [#2962]: https://github.com/tokio-rs/axum/pull/2962
+[#3010]: https://github.com/tokio-rs/axum/pull/3010
 
 # 0.10.0
 

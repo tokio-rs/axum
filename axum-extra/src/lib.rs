@@ -16,6 +16,7 @@
 //! `cookie-signed` | Enables the [`SignedCookieJar`](crate::extract::SignedCookieJar) extractor | No
 //! `cookie-key-expansion` | Enables the [`Key::derive_from`](crate::extract::cookie::Key::derive_from) method | No
 //! `erased-json` | Enables the [`ErasedJson`](crate::response::ErasedJson) response | No
+//! `error-response` | Enables the [`InternalServerError`](crate::response::InternalServerError) response | No
 //! `form` | Enables the [`Form`](crate::extract::Form) extractor | No
 //! `json-deserializer` | Enables the [`JsonDeserializer`](crate::extract::JsonDeserializer) extractor | No
 //! `json-lines` | Enables the [`JsonLines`](crate::extract::JsonLines) extractor and response | No
