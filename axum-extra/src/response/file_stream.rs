@@ -170,7 +170,46 @@ mod tests {
     use tower::ServiceExt;
 
     #[tokio::test]
-    async fn response_file_stream() -> Result<(), Box<dyn std::error::Error>> {
+    async fn response() -> Result<(), Box<dyn std::error::Error>> {
+        let app = Router::new().route(
+            "/file",
+            get(|| async {
+                // Simulating a file stream
+                let file_content = b"Hello, this is the simulated file content!".to_vec();
+                let reader = Cursor::new(file_content);
+
+                // Response file stream
+                // Content size and file name are not attached by default
+                let stream = ReaderStream::new(reader);
+                FileStream::new(stream).into_response()
+            }),
+        );
+
+        // Simulating a GET request
+        let response = app
+            .oneshot(Request::builder().uri("/file").body(Body::empty())?)
+            .await?;
+
+        // Validate Response Status Code
+        assert_eq!(response.status(), StatusCode::OK);
+
+        // Validate Response Headers
+        assert_eq!(
+            response.headers().get("content-type").unwrap(),
+            "application/octet-stream"
+        );
+
+        // Validate Response Body
+        let body: &[u8] = &response.into_body().collect().await?.to_bytes();
+        assert_eq!(
+            std::str::from_utf8(body)?,
+            "Hello, this is the simulated file content!"
+        );
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn response_not_set_filename() -> Result<(), Box<dyn std::error::Error>> {
         let app = Router::new().route(
             "/file",
             get(|| async {
@@ -179,7 +218,89 @@ mod tests {
                 let size = file_content.len() as u64;
                 let reader = Cursor::new(file_content);
 
-                // response file stream
+                // Response file stream
+                let stream = ReaderStream::new(reader);
+                FileStream::new(stream).content_size(size).into_response()
+            }),
+        );
+
+        // Simulating a GET request
+        let response = app
+            .oneshot(Request::builder().uri("/file").body(Body::empty())?)
+            .await?;
+
+        // Validate Response Status Code
+        assert_eq!(response.status(), StatusCode::OK);
+
+        // Validate Response Headers
+        assert_eq!(
+            response.headers().get("content-type").unwrap(),
+            "application/octet-stream"
+        );
+        assert_eq!(response.headers().get("content-length").unwrap(), "42");
+
+        // Validate Response Body
+        let body: &[u8] = &response.into_body().collect().await?.to_bytes();
+        assert_eq!(
+            std::str::from_utf8(body)?,
+            "Hello, this is the simulated file content!"
+        );
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn response_not_set_content_size() -> Result<(), Box<dyn std::error::Error>> {
+        let app = Router::new().route(
+            "/file",
+            get(|| async {
+                // Simulating a file stream
+                let file_content = b"Hello, this is the simulated file content!".to_vec();
+                let reader = Cursor::new(file_content);
+
+                // Response file stream
+                let stream = ReaderStream::new(reader);
+                FileStream::new(stream).file_name("test").into_response()
+            }),
+        );
+
+        // Simulating a GET request
+        let response = app
+            .oneshot(Request::builder().uri("/file").body(Body::empty())?)
+            .await?;
+
+        // Validate Response Status Code
+        assert_eq!(response.status(), StatusCode::OK);
+
+        // Validate Response Headers
+        assert_eq!(
+            response.headers().get("content-type").unwrap(),
+            "application/octet-stream"
+        );
+        assert_eq!(
+            response.headers().get("content-disposition").unwrap(),
+            "attachment; filename=\"test\""
+        );
+
+        // Validate Response Body
+        let body: &[u8] = &response.into_body().collect().await?.to_bytes();
+        assert_eq!(
+            std::str::from_utf8(body)?,
+            "Hello, this is the simulated file content!"
+        );
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn response_with_content_size_and_filename() -> Result<(), Box<dyn std::error::Error>> {
+        let app = Router::new().route(
+            "/file",
+            get(|| async {
+                // Simulating a file stream
+                let file_content = b"Hello, this is the simulated file content!".to_vec();
+                let size = file_content.len() as u64;
+                let reader = Cursor::new(file_content);
+
+                // Response file stream
                 let stream = ReaderStream::new(reader);
                 FileStream::new(stream)
                     .file_name("test")
