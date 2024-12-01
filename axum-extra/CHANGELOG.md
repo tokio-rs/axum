@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning].
 - **fixed:** `Host` extractor includes port number when parsing authority ([#2242])
 - **added:** Add `RouterExt::typed_connect` ([#2961])
 - **added:** Add `json!` for easy construction of JSON responses ([#2962])
+- **added:** Add `FileStream` for easy construction of file stream responses ([#3047])
 
 [#2242]: https://github.com/tokio-rs/axum/pull/2242
 [#2961]: https://github.com/tokio-rs/axum/pull/2961
