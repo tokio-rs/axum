@@ -92,6 +92,17 @@ const _: () = {
             *stream.remote_addr()
         }
     }
+
+    impl<'a, L, F> Connected<serve::IncomingStream<'a, serve::TapIo<L, F>>> for L::Addr
+    where
+        L: serve::Listener,
+        L::Addr: Clone + Sync + 'static,
+        F: FnMut(&mut L::Io) + Send + 'static,
+    {
+        fn connect_info(stream: serve::IncomingStream<'a, serve::TapIo<L, F>>) -> Self {
+            stream.remote_addr().clone()
+        }
+    }
 };
 
 impl Connected<SocketAddr> for SocketAddr {

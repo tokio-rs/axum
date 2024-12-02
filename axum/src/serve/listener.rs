@@ -102,7 +102,7 @@ impl<L: Listener> ListenerExt for L {}
 /// Return type of [`ListenerExt::tap_io`].
 ///
 /// See that method for details.
-pub struct TapIo<L: Listener, F> {
+pub struct TapIo<L, F> {
     listener: L,
     tap_fn: F,
 }
