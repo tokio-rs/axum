@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning].
 [#2242]: https://github.com/tokio-rs/axum/pull/2242
 [#2961]: https://github.com/tokio-rs/axum/pull/2961
 [#2962]: https://github.com/tokio-rs/axum/pull/2962
+[#3047]: https://github.com/tokio-rs/axum/pull/3047
 
 # 0.10.0
 
