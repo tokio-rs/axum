@@ -16,6 +16,12 @@ mod error_response;
 /// Module for handling file streams.
 pub mod file_stream;
 
+#[cfg(feature = "file-stream")]
+pub use file_stream::FileStream;
+
+#[cfg(feature = "file-stream")]
+pub use file_stream::AsyncReaderStream;
+
 #[cfg(feature = "error_response")]
 pub use error_response::InternalServerError;
 

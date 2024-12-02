@@ -142,11 +142,11 @@ where
                 header::CONTENT_DISPOSITION,
                 format!("attachment; filename=\"{}\"", file_name),
             );
-        };
+        }
 
         if let Some(content_size) = self.content_size {
             resp = resp.header(header::CONTENT_LENGTH, content_size);
-        };
+        }
 
         resp.body(body::Body::from_stream(self.stream))
             .unwrap_or_else(|e| {

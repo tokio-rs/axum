@@ -26,6 +26,7 @@
 //! `typed-routing` | Enables the [`TypedPath`](crate::routing::TypedPath) routing utilities | No
 //! `typed-header` | Enables the [`TypedHeader`] extractor and response | No
 //! `fileStream` | Enables the [`fileStream`](crate::response::file_stream) response | No
+//!
 //! [`axum`]: <https://crates.io/crates/axum>
 
 #![warn(
