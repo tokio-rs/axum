@@ -1,5 +1,5 @@
 use axum::{
-    extract::{FromRequestParts, Extension},
+    extract::{Extension, FromRequestParts},
     response::Response,
 };
 

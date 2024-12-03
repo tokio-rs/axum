@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **added:** Extend `FailedToDeserializePathParams::kind` enum with (`ErrorKind::DeserializeError`)
   This new variant captures both `key`, `value`, and `message` from named path parameters parse errors,
   instead of only deserialization error message in `ErrorKind::Message`. ([#2720])
+- **breaking:** Make `serve` generic over the listener and IO types ([#2941])
 
 [#2897]: https://github.com/tokio-rs/axum/pull/2897
 [#2903]: https://github.com/tokio-rs/axum/pull/2903
@@ -34,6 +35,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#2992]: https://github.com/tokio-rs/axum/pull/2992
 [#2720]: https://github.com/tokio-rs/axum/pull/2720
 [#3039]: https://github.com/tokio-rs/axum/pull/3039
+[#2941]: https://github.com/tokio-rs/axum/pull/2941
 
 # 0.8.0
 

@@ -1,5 +1,5 @@
-use axum_macros::debug_handler;
 use axum::http::Uri;
+use axum_macros::debug_handler;
 
 #[debug_handler]
 async fn handler(
@@ -20,6 +20,7 @@ async fn handler(
     _e15: Uri,
     _e16: Uri,
     _e17: Uri,
-) {}
+) {
+}
 
 fn main() {}

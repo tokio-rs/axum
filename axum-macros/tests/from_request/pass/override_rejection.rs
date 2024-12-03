@@ -1,5 +1,4 @@
 use axum::{
-    body::Body,
     extract::{rejection::ExtensionRejection, FromRequest, Request},
     http::StatusCode,
     response::{IntoResponse, Response},

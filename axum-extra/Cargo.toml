@@ -12,12 +12,12 @@ repository = "https://github.com/tokio-rs/axum"
 version = "0.10.0-alpha.1"
 
 [features]
-default = ["tracing", "multipart"]
+default = ["tracing"]
 
 async-read-body = ["dep:tokio-util", "tokio-util?/io", "dep:tokio"]
 file-stream = ["dep:tokio-util", "tokio-util?/io", "dep:tokio", "tokio?/fs", "tokio?/io-util", "dep:async-stream"]
 attachment = ["dep:tracing"]
-error_response = ["dep:tracing", "tracing/std"]
+error-response = ["dep:tracing", "tracing/std"]
 cookie = ["dep:cookie"]
 cookie-private = ["cookie", "cookie?/private"]
 cookie-signed = ["cookie", "cookie?/signed"]
@@ -86,6 +86,9 @@ serde_json = "1.0.71"
 tokio = { version = "1.14", features = ["full"] }
 tower = { version = "0.5.1", features = ["util"] }
 tower-http = { version = "0.6.0", features = ["map-response-body", "timeout"] }
+
+[lints]
+workspace = true
 
 [package.metadata.docs.rs]
 all-features = true

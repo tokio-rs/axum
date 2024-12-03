@@ -19,10 +19,7 @@ async fn handler(_: MyJson<Payload>) {}
 async fn handler_result(_: Result<MyJson<Payload>, MyJsonRejection>) {}
 
 #[derive(FromRequest)]
-#[from_request(
-    via(axum::Json),
-    rejection(MyJsonRejection),
-)]
+#[from_request(via(axum::Json), rejection(MyJsonRejection))]
 struct MyJson<T>(T);
 
 struct MyJsonRejection {}

@@ -122,7 +122,7 @@ pub(crate) struct Attrs {
 }
 
 impl Parse for Attrs {
-    fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
+    fn parse(input: syn::parse::ParseStream<'_>) -> syn::Result<Self> {
         let mut state_ty = None;
 
         while !input.is_empty() {
@@ -225,7 +225,7 @@ fn check_inputs_impls_from_request(
     state_ty: Type,
     kind: FunctionKind,
 ) -> TokenStream {
-    let takes_self = item_fn.sig.inputs.first().map_or(false, |arg| match arg {
+    let takes_self = item_fn.sig.inputs.first().is_some_and(|arg| match arg {
         FnArg::Receiver(_) => true,
         FnArg::Typed(typed) => is_self_pat_type(typed),
     });
@@ -604,10 +604,7 @@ fn request_consuming_type_name(ty: &Type) -> Option<&'static str> {
 }
 
 fn well_known_last_response_type(ty: &Type) -> Option<&'static str> {
-    let typename = match extract_clean_typename(ty) {
-        Some(tn) => tn,
-        None => return None,
-    };
+    let typename = extract_clean_typename(ty)?;
 
     let type_name = match &*typename {
         "Json" => "Json<_>",

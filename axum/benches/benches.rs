@@ -1,3 +1,5 @@
+#![allow(missing_docs)]
+
 use axum::{
     extract::State,
     routing::{get, post},

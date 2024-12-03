@@ -5,7 +5,7 @@ use syn::{
 };
 
 pub(crate) fn parse_parenthesized_attribute<K, T>(
-    input: ParseStream,
+    input: ParseStream<'_>,
     out: &mut Option<(K, T)>,
 ) -> syn::Result<()>
 where
@@ -30,7 +30,7 @@ where
 }
 
 pub(crate) fn parse_assignment_attribute<K, T>(
-    input: ParseStream,
+    input: ParseStream<'_>,
     out: &mut Option<(K, T)>,
 ) -> syn::Result<()>
 where

@@ -1,4 +1,3 @@
-use std::convert::Infallible;
 use axum::{
     extract::State,
     response::{IntoResponse, Response},
@@ -6,6 +5,7 @@ use axum::{
     Router,
 };
 use axum_macros::FromRequest;
+use std::convert::Infallible;
 
 fn main() {
     let _: axum::Router = Router::new()

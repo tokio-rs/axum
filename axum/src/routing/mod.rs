@@ -200,6 +200,10 @@ where
     #[doc(alias = "scope")] // Some web frameworks like actix-web use this term
     #[track_caller]
     pub fn nest(self, path: &str, router: Router<S>) -> Self {
+        if path.is_empty() || path == "/" {
+            panic!("Nesting at the root is no longer supported. Use merge instead.");
+        }
+
         let RouterInner {
             path_router,
             fallback_router,
@@ -227,6 +231,10 @@ where
         T::Response: IntoResponse,
         T::Future: Send + 'static,
     {
+        if path.is_empty() || path == "/" {
+            panic!("Nesting at the root is no longer supported. Use fallback_service instead.");
+        }
+
         tap_inner!(self, mut this => {
             panic_on_err!(this.path_router.nest_service(path, service));
         })
@@ -510,9 +518,12 @@ impl Router {
 // for `axum::serve(listener, router)`
 #[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
 const _: () = {
-    use crate::serve::IncomingStream;
+    use crate::serve;
 
-    impl Service<IncomingStream<'_>> for Router<()> {
+    impl<L> Service<serve::IncomingStream<'_, L>> for Router<()>
+    where
+        L: serve::Listener,
+    {
         type Response = Self;
         type Error = Infallible;
         type Future = std::future::Ready<Result<Self::Response, Self::Error>>;
@@ -521,7 +532,7 @@ const _: () = {
             Poll::Ready(Ok(()))
         }
 
-        fn call(&mut self, _req: IncomingStream<'_>) -> Self::Future {
+        fn call(&mut self, _req: serve::IncomingStream<'_, L>) -> Self::Future {
             // call `Router::with_state` such that everything is turned into `Route` eagerly
             // rather than doing that per request
             std::future::ready(Ok(self.clone().with_state(())))

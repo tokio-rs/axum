@@ -9,7 +9,7 @@ mod attachment;
 #[cfg(feature = "multipart")]
 pub mod multiple;
 
-#[cfg(feature = "error_response")]
+#[cfg(feature = "error-response")]
 mod error_response;
 
 #[cfg(feature = "file-stream")]
@@ -22,7 +22,7 @@ pub use file_stream::FileStream;
 #[cfg(feature = "file-stream")]
 pub use file_stream::AsyncReaderStream;
 
-#[cfg(feature = "error_response")]
+#[cfg(feature = "error-response")]
 pub use error_response::InternalServerError;
 
 #[cfg(feature = "erased-json")]

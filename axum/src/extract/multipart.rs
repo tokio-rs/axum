@@ -117,7 +117,7 @@ impl Stream for Field<'_> {
     }
 }
 
-impl<'a> Field<'a> {
+impl Field<'_> {
     /// The field name found in the
     /// [`Content-Disposition`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Disposition)
     /// header.

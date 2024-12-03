@@ -1,5 +1,5 @@
-use axum_extra::routing::TypedPath;
 use axum::http::Uri;
+use axum_extra::routing::TypedPath;
 use serde::Deserialize;
 
 #[derive(TypedPath, Deserialize)]

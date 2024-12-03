@@ -1,12 +1,12 @@
 error: Cannot return tuples with more than 17 elements
-  --> tests/debug_handler/fail/output_tuple_too_many.rs:5:3
+  --> tests/debug_handler/fail/output_tuple_too_many.rs:4:20
    |
-5  |   ) -> (
-   |  ___^
-6  | |     axum::http::StatusCode,
+4  |   async fn handler() -> (
+   |  ____________________^
+5  | |     axum::http::StatusCode,
+6  | |     AppendHeaders<[(axum::http::HeaderName, &'static str); 1]>,
 7  | |     AppendHeaders<[(axum::http::HeaderName, &'static str); 1]>,
-8  | |     AppendHeaders<[(axum::http::HeaderName, &'static str); 1]>,
 ...  |
-24 | |     axum::http::StatusCode,
-25 | | ) {
+23 | |     axum::http::StatusCode,
+24 | | ) {
    | |_^

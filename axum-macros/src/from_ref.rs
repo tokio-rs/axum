@@ -73,7 +73,7 @@ pub(super) struct FieldAttrs {
 }
 
 impl Parse for FieldAttrs {
-    fn parse(input: ParseStream) -> syn::Result<Self> {
+    fn parse(input: ParseStream<'_>) -> syn::Result<Self> {
         let mut skip = None;
 
         while !input.is_empty() {

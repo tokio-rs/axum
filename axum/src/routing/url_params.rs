@@ -9,7 +9,7 @@ pub(crate) enum UrlParams {
     InvalidUtf8InPathParam { key: Arc<str> },
 }
 
-pub(super) fn insert_url_params(extensions: &mut Extensions, params: Params) {
+pub(super) fn insert_url_params(extensions: &mut Extensions, params: Params<'_, '_>) {
     let current_params = extensions.get_mut();
 
     if let Some(UrlParams::InvalidUtf8InPathParam { .. }) = current_params {

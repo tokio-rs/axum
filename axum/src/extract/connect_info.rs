@@ -79,16 +79,28 @@ where
 /// [`Router::into_make_service_with_connect_info`]: crate::routing::Router::into_make_service_with_connect_info
 pub trait Connected<T>: Clone + Send + Sync + 'static {
     /// Create type holding information about the connection.
-    fn connect_info(target: T) -> Self;
+    fn connect_info(stream: T) -> Self;
 }
 
 #[cfg(all(feature = "tokio", any(feature = "http1", feature = "http2")))]
 const _: () = {
-    use crate::serve::IncomingStream;
+    use crate::serve;
+    use tokio::net::TcpListener;
 
-    impl Connected<IncomingStream<'_>> for SocketAddr {
-        fn connect_info(target: IncomingStream<'_>) -> Self {
-            target.remote_addr()
+    impl Connected<serve::IncomingStream<'_, TcpListener>> for SocketAddr {
+        fn connect_info(stream: serve::IncomingStream<'_, TcpListener>) -> Self {
+            *stream.remote_addr()
+        }
+    }
+
+    impl<'a, L, F> Connected<serve::IncomingStream<'a, serve::TapIo<L, F>>> for L::Addr
+    where
+        L: serve::Listener,
+        L::Addr: Clone + Sync + 'static,
+        F: FnMut(&mut L::Io) + Send + 'static,
+    {
+        fn connect_info(stream: serve::IncomingStream<'a, serve::TapIo<L, F>>) -> Self {
+            stream.remote_addr().clone()
         }
     }
 };
@@ -261,8 +273,8 @@ mod tests {
             value: &'static str,
         }
 
-        impl Connected<IncomingStream<'_>> for MyConnectInfo {
-            fn connect_info(_target: IncomingStream<'_>) -> Self {
+        impl Connected<IncomingStream<'_, TcpListener>> for MyConnectInfo {
+            fn connect_info(_target: IncomingStream<'_, TcpListener>) -> Self {
                 Self {
                     value: "it worked!",
                 }

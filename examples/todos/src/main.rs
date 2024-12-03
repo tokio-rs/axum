@@ -82,13 +82,8 @@ pub struct Pagination {
     pub limit: Option<usize>,
 }
 
-async fn todos_index(
-    pagination: Option<Query<Pagination>>,
-    State(db): State<Db>,
-) -> impl IntoResponse {
+async fn todos_index(pagination: Query<Pagination>, State(db): State<Db>) -> impl IntoResponse {
     let todos = db.read().unwrap();
-
-    let Query(pagination) = pagination.unwrap_or_default();
 
     let todos = todos
         .values()

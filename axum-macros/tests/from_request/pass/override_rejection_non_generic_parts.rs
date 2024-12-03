@@ -5,8 +5,8 @@ use axum::{
     Router,
 };
 use axum_macros::FromRequestParts;
-use std::collections::HashMap;
 use serde::Deserialize;
+use std::collections::HashMap;
 
 fn main() {
     let _: Router = Router::new().route("/", get(handler).post(handler_result));
@@ -17,10 +17,7 @@ async fn handler(_: MyQuery) {}
 async fn handler_result(_: Result<MyQuery, MyQueryRejection>) {}
 
 #[derive(FromRequestParts, Deserialize)]
-#[from_request(
-    via(axum::extract::Query),
-    rejection(MyQueryRejection),
-)]
+#[from_request(via(axum::extract::Query), rejection(MyQueryRejection))]
 #[serde(transparent)]
 struct MyQuery(HashMap<String, String>);
 

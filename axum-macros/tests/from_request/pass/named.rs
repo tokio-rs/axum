@@ -1,11 +1,8 @@
-use axum::{
-    extract::FromRequest,
-    response::Response,
-};
+use axum::{extract::FromRequest, response::Response};
 use axum_extra::{
-    TypedHeader,
-    typed_header::TypedHeaderRejection,
     headers::{self, UserAgent},
+    typed_header::TypedHeaderRejection,
+    TypedHeader,
 };
 
 #[derive(FromRequest)]

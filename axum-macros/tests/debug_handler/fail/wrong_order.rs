@@ -1,5 +1,5 @@
+use axum::{http::Uri, Json};
 use axum_macros::debug_handler;
-use axum::{Json, http::Uri};
 
 #[debug_handler]
 async fn one(_: Json<()>, _: Uri) {}

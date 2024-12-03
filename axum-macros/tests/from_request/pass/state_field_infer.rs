@@ -1,8 +1,4 @@
-use axum::{
-    extract::State,
-    routing::get,
-    Router,
-};
+use axum::{extract::State, routing::get, Router};
 use axum_macros::FromRequest;
 
 fn main() {

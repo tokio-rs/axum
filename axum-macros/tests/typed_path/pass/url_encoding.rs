@@ -22,11 +22,5 @@ fn main() {
         "/a%20b"
     );
 
-    assert_eq!(
-        format!(
-            "{}",
-            Unnamed("a b".to_string()),
-        ),
-        "/a%20b"
-    );
+    assert_eq!(format!("{}", Unnamed("a b".to_string()),), "/a%20b");
 }

@@ -192,42 +192,6 @@ mod tests {
     }
 
     #[crate::test]
-    async fn nested_at_root() {
-        let api = Router::new().route(
-            "/users",
-            get(|nested_path: NestedPath| {
-                assert_eq!(nested_path.as_str(), "/");
-                async {}
-            }),
-        );
-
-        let app = Router::new().nest("/", api);
-
-        let client = TestClient::new(app);
-
-        let res = client.get("/users").await;
-        assert_eq!(res.status(), StatusCode::OK);
-    }
-
-    #[crate::test]
-    async fn deeply_nested_from_root() {
-        let api = Router::new().route(
-            "/users",
-            get(|nested_path: NestedPath| {
-                assert_eq!(nested_path.as_str(), "/api");
-                async {}
-            }),
-        );
-
-        let app = Router::new().nest("/", Router::new().nest("/api", api));
-
-        let client = TestClient::new(app);
-
-        let res = client.get("/api/users").await;
-        assert_eq!(res.status(), StatusCode::OK);
-    }
-
-    #[crate::test]
     async fn in_fallbacks() {
         let api = Router::new().fallback(get(|nested_path: NestedPath| {
             assert_eq!(nested_path.as_str(), "/api");
