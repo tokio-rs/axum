@@ -995,7 +995,7 @@ mod tests {
         if status != 200 {
             let body = response.into_body().collect().await.unwrap().to_bytes();
             let body = std::str::from_utf8(&body).unwrap();
-            panic!("response status was {}: {body}", status);
+            panic!("response status was {status}: {body}");
         }
         let upgraded = hyper::upgrade::on(response).await.unwrap();
         let upgraded = TokioIo::new(upgraded);

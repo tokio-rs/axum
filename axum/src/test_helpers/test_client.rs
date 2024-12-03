@@ -54,33 +54,33 @@ impl TestClient {
 
     pub(crate) fn get(&self, url: &str) -> RequestBuilder {
         RequestBuilder {
-            builder: self.client.get(format!("http://{}{}", self.addr, url)),
+            builder: self.client.get(format!("http://{}{url}", self.addr)),
         }
     }
 
     pub(crate) fn head(&self, url: &str) -> RequestBuilder {
         RequestBuilder {
-            builder: self.client.head(format!("http://{}{}", self.addr, url)),
+            builder: self.client.head(format!("http://{}{url}", self.addr)),
         }
     }
 
     pub(crate) fn post(&self, url: &str) -> RequestBuilder {
         RequestBuilder {
-            builder: self.client.post(format!("http://{}{}", self.addr, url)),
+            builder: self.client.post(format!("http://{}{url}", self.addr)),
         }
     }
 
     #[allow(dead_code)]
     pub(crate) fn put(&self, url: &str) -> RequestBuilder {
         RequestBuilder {
-            builder: self.client.put(format!("http://{}{}", self.addr, url)),
+            builder: self.client.put(format!("http://{}{url}", self.addr)),
         }
     }
 
     #[allow(dead_code)]
     pub(crate) fn patch(&self, url: &str) -> RequestBuilder {
         RequestBuilder {
-            builder: self.client.patch(format!("http://{}{}", self.addr, url)),
+            builder: self.client.patch(format!("http://{}{url}", self.addr)),
         }
     }
 

@@ -34,7 +34,7 @@ impl IntoResponse for MultipartForm {
         // see RFC5758 for details
         let boundary = generate_boundary();
         let mut headers = HeaderMap::new();
-        let mime_type: Mime = match format!("multipart/form-data; boundary={}", boundary).parse() {
+        let mime_type: Mime = match format!("multipart/form-data; boundary={boundary}").parse() {
             Ok(m) => m,
             // Realistically this should never happen unless the boundary generation code
             // is modified, and that will be caught by unit tests
@@ -51,10 +51,10 @@ impl IntoResponse for MultipartForm {
         let mut serialized_form: Vec<u8> = Vec::new();
         for part in self.parts {
             // for each part, the boundary is preceded by two dashes
-            serialized_form.extend_from_slice(format!("--{}\r\n", boundary).as_bytes());
+            serialized_form.extend_from_slice(format!("--{boundary}\r\n").as_bytes());
             serialized_form.extend_from_slice(&part.serialize());
         }
-        serialized_form.extend_from_slice(format!("--{}--", boundary).as_bytes());
+        serialized_form.extend_from_slice(format!("--{boundary}--").as_bytes());
         (headers, serialized_form).into_response()
     }
 }
@@ -184,7 +184,7 @@ impl Part {
         let mut serialized_part = format!("Content-Disposition: form-data; name=\"{}\"", self.name);
         // specify a filename if one was set
         if let Some(filename) = &self.filename {
-            serialized_part += &format!("; filename=\"{}\"", filename);
+            serialized_part += &format!("; filename=\"{filename}\"");
         }
         serialized_part += "\r\n";
         // specify the MIME type
@@ -256,7 +256,7 @@ mod tests {
         let body: &[u8] = &response.into_body().collect().await?.to_bytes();
         assert_eq!(
             std::str::from_utf8(body)?,
-            &format!(
+            format!(
                 "--{boundary}\r\n\
                 Content-Disposition: form-data; name=\"part1\"\r\n\
                 Content-Type: text/plain; charset=utf-8\r\n\
@@ -273,7 +273,6 @@ mod tests {
                 \r\n\
                 rawpart\r\n\
                 --{boundary}--",
-                boundary = boundary
             )
         );
 
@@ -285,7 +284,7 @@ mod tests {
         for _ in 0..256 {
             let boundary = generate_boundary();
             let mime_type: Result<Mime, _> =
-                format!("multipart/form-data; boundary={}", boundary).parse();
+                format!("multipart/form-data; boundary={boundary}").parse();
             assert!(
                 mime_type.is_ok(),
                 "The generated boundary was unable to be parsed into a valid mime type."

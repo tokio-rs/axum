@@ -168,7 +168,7 @@ impl std::fmt::Display for TypedHeaderRejection {
                 write!(f, "Header of type `{}` was missing", self.name)
             }
             TypedHeaderRejectionReason::Error(err) => {
-                write!(f, "{} ({})", err, self.name)
+                write!(f, "{err} ({})", self.name)
             }
         }
     }
