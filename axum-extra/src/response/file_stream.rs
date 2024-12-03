@@ -17,7 +17,9 @@ use tokio_util::io::ReaderStream;
 pub type AsyncReaderStream = ReaderStream<File>;
 
 /// Encapsulate the file stream.
-/// The encapsulated file stream construct requires passing in a stream
+///
+/// The encapsulated file stream construct requires passing in a stream.
+///
 /// # Examples
 ///
 /// ```
@@ -42,12 +44,7 @@ pub type AsyncReaderStream = ReaderStream<File>;
 /// # let _: Router = app;
 /// ```
 #[derive(Debug)]
-pub struct FileStream<S>
-where
-    S: TryStream + Send + 'static,
-    S::Ok: Into<Bytes>,
-    S::Error: Into<BoxError>,
-{
+pub struct FileStream<S> {
     /// stream.
     pub stream: S,
     /// The file name of the file.
@@ -72,10 +69,10 @@ where
     }
 
     /// Create a file stream from a file path.
-    /// # Examples
-    /// ```
-    /// use std::path::Path;
     ///
+    /// # Examples
+    ///
+    /// ```
     /// use axum::{
     ///     http::StatusCode,
     ///     response::{Response, IntoResponse},
@@ -83,22 +80,21 @@ where
     ///     routing::get
     /// };
     /// use axum_extra::response::file_stream::FileStream;
-    /// use std::path::PathBuf;
     /// use tokio::fs::File;
     /// use tokio_util::io::ReaderStream;
     ///
     /// async fn file_stream() -> Response {
-    ///     FileStream::<ReaderStream<File>>::from_path(&PathBuf::from("test.txt"))
-    ///     .await
-    ///     .map_err(|e| (StatusCode::NOT_FOUND, format!("File not found: {e}")))
-    ///     .into_response()
+    ///     FileStream::<ReaderStream<File>>::from_path("test.txt")
+    ///         .await
+    ///         .map_err(|e| (StatusCode::NOT_FOUND, format!("File not found: {e}")))
+    ///         .into_response()
     /// }
     /// let app = Router::new().route("/FileStreamDownload", get(file_stream));
     /// # let _: Router = app;
     /// ```
-    pub async fn from_path(path: &Path) -> io::Result<FileStream<AsyncReaderStream>> {
+    pub async fn from_path(path: impl AsRef<Path>) -> io::Result<FileStream<AsyncReaderStream>> {
         // open file
-        let file = File::open(&path).await?;
+        let file = File::open(path).await?;
         let mut content_size = None;
         let mut file_name = None;
 
@@ -123,19 +119,21 @@ where
     }
 
     /// Set the file name of the file.
-    pub fn file_name<T: Into<String>>(mut self, file_name: T) -> Self {
+    pub fn file_name(mut self, file_name: impl Into<String>) -> Self {
         self.file_name = Some(file_name.into());
         self
     }
 
     /// Set the size of the file.
-    pub fn content_size<T: Into<u64>>(mut self, len: T) -> Self {
-        self.content_size = Some(len.into());
+    pub fn content_size(mut self, len: u64) -> Self {
+        self.content_size = Some(len);
         self
     }
 
-    /// return a range response
+    /// Return a range response.
+    ///
     /// range: (start, end, total_size)
+    ///
     /// # Examples
     ///
     /// ```
@@ -180,13 +178,17 @@ where
             })
     }
 
-    /// Attempts to return RANGE requests directly from the file path
+    /// Attempts to return RANGE requests directly from the file path.
+    ///
     /// # Arguments
+    ///
     /// * `file_path` - The path of the file to be streamed
     /// * `start` - The start position of the range, if start > file size or start > end return Range Not Satisfiable
     /// * `end` - The end position of the range if end == 0 end = file size - 1
     /// * `buffer_size` - The buffer size of the range
+    ///
     /// # Examples
+    ///
     /// ```
     /// use axum::{
     ///     http::StatusCode,
@@ -206,7 +208,7 @@ where
     ///     let range_end = 1024;
     ///     let buffer_size = 1024;
     ///
-    ///     FileStream::<AsyncReaderStream>::try_range_response(Path::new("CHANGELOG.md"),range_start,range_end,buffer_size).await
+    ///     FileStream::<AsyncReaderStream>::try_range_response("CHANGELOG.md", range_start, range_end, buffer_size).await
     ///     .map_err(|e| (StatusCode::NOT_FOUND, format!("File not found: {e}")))
     ///     .into_response()
     ///     
@@ -215,7 +217,7 @@ where
     /// # let _: Router = app;
     /// ```
     pub async fn try_range_response(
-        file_path: &Path,
+        file_path: impl AsRef<Path>,
         start: u64,
         mut end: u64,
         buffer_size: usize,
@@ -249,7 +251,7 @@ where
 
         resp = resp.header(
             header::CONTENT_RANGE,
-            format!("bytes {}-{}/{}", start, end, total_size),
+            format!("bytes {start}-{end}/{total_size}"),
         );
 
         Ok(resp
@@ -257,7 +259,7 @@ where
             .unwrap_or_else(|e| {
                 (
                     StatusCode::INTERNAL_SERVER_ERROR,
-                    format!("build FileStream responsec error: {}", e),
+                    format!("build FileStream responsec error: {e}"),
                 )
                     .into_response()
             }))
@@ -278,19 +280,19 @@ async fn try_stream(
     let stream = async_stream::try_stream! {
         let mut total_read = 0;
 
-            while total_read < end {
-                let bytes_to_read = std::cmp::min(buffer_size as u64, end - total_read);
-                let n = file.read(&mut buffer[..bytes_to_read as usize]).await.map_err(|e| {
-                    std::io::Error::new(std::io::ErrorKind::Other, e)
-                })?;
-                if n == 0 {
-                    break; // EOF
-                }
-                total_read += n as u64;
-                yield buffer[..n].to_vec();
-
+        while total_read < end {
+            let bytes_to_read = std::cmp::min(buffer_size as u64, end - total_read);
+            let n = file.read(&mut buffer[..bytes_to_read as usize]).await.map_err(|e| {
+                std::io::Error::new(std::io::ErrorKind::Other, e)
+            })?;
+            if n == 0 {
+                break; // EOF
+            }
+            total_read += n as u64;
+            yield buffer[..n].to_vec();
         }
     };
+
     Ok(stream)
 }
 
@@ -318,7 +320,7 @@ where
             .unwrap_or_else(|e| {
                 (
                     StatusCode::INTERNAL_SERVER_ERROR,
-                    format!("build FileStream responsec error: {}", e),
+                    format!("build FileStream responsec error: {e}"),
                 )
                     .into_response()
             })
