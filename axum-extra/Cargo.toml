@@ -12,7 +12,7 @@ repository = "https://github.com/tokio-rs/axum"
 version = "0.10.0-alpha.1"
 
 [features]
-default = ["tracing", "multipart", "file-stream"]
+default = ["tracing", "multipart"]
 
 async-read-body = ["dep:tokio-util", "tokio-util?/io", "dep:tokio"]
 file-stream = ["dep:tokio-util", "tokio-util?/io", "dep:tokio", "tokio?/fs", "tokio?/io-util", "dep:async-stream"]
