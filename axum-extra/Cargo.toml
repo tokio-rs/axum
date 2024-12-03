@@ -12,10 +12,10 @@ repository = "https://github.com/tokio-rs/axum"
 version = "0.10.0-alpha.1"
 
 [features]
-default = ["tracing", "multipart"]
+default = ["tracing", "multipart", "file-stream"]
 
 async-read-body = ["dep:tokio-util", "tokio-util?/io", "dep:tokio"]
-file-stream = ["dep:tokio-util", "tokio-util?/io", "dep:tokio", "tokio?/fs"]
+file-stream = ["dep:tokio-util", "tokio-util?/io", "dep:tokio", "tokio?/fs", "tokio?/io-util", "dep:async-stream"]
 attachment = ["dep:tracing"]
 error_response = ["dep:tracing", "tracing/std"]
 cookie = ["dep:cookie"]
@@ -57,6 +57,7 @@ tower-layer = "0.3"
 tower-service = "0.3"
 
 # optional dependencies
+async-stream = { version = "0.3", optional = true }
 axum-macros = { path = "../axum-macros", version = "0.5.0-alpha.1", optional = true }
 cookie = { package = "cookie", version = "0.18.0", features = ["percent-encode"], optional = true }
 fastrand = { version = "2.1.0", optional = true }
@@ -75,6 +76,7 @@ tracing = { version = "0.1.37", default-features = false, optional = true }
 typed-json = { version = "0.1.1", optional = true }
 
 [dev-dependencies]
+async-stream = "0.3"
 axum = { path = "../axum", features = ["macros"] }
 axum-macros = { path = "../axum-macros", features = ["__private"] }
 hyper = "1.0.0"

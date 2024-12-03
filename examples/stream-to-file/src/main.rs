@@ -8,7 +8,7 @@ use async_stream::try_stream;
 use axum::{
     body::Bytes,
     extract::{Multipart, Path, Request},
-    http::StatusCode,
+    http::{header, HeaderMap, StatusCode},
     response::{Html, IntoResponse, Redirect, Response},
     routing::{get, post},
     BoxError, Router,
@@ -53,7 +53,9 @@ async fn main() {
         .route("/", get(show_form2).post(accept_form))
         .route("/file/{file_name}", post(save_request_body))
         .route("/file_download", get(file_download_handler))
-        .route("/simpler_file_download", get(simpler_file_download_handler));
+        .route("/simpler_file_download", get(simpler_file_download_handler))
+        .route("/range_file", get(file_range_handler))
+        .route("/range_file_stream", get(try_file_range_handler));
 
     let listener = tokio::net::TcpListener::bind("127.0.0.1:3000")
         .await
@@ -146,6 +148,15 @@ async fn show_form2() -> Html<&'static str> {
                         <input type="submit" value="Download file">
                     </div>
                 </form>
+
+                 <!-- Button for partial file download (Range: 0-100) -->
+                <form action="/range_file_stream" method="get">
+                    <div>
+                        <input type="hidden" name="range" value="0-100">
+                        <input type="submit" value="Download range (0-100)">
+                    </div>
+                </form>
+
             </body>
         </html>
         "#,
@@ -158,7 +169,7 @@ async fn simpler_file_download_handler() -> Response {
     //If you want to simply return a file as a stream
     // you can use the from_path method directly, passing in the path of the file to construct a stream with a header and length.
     FileStream::<AsyncReaderStream>::from_path(
-        std::path::Path::new(DOWNLOAD_DIRECTORY).join("test.txt"),
+        &std::path::Path::new(DOWNLOAD_DIRECTORY).join("test.txt"),
     )
     .await
     .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "Failed to open file").into_response())
@@ -228,6 +239,124 @@ async fn try_stream(
         }
     };
     Ok(stream)
+}
+
+async fn try_stream2(
+    mut file: File,
+    start: u64,
+    mut end: u64,
+    buffer_size: usize,
+) -> Result<impl Stream<Item = Result<Vec<u8>, std::io::Error>>, String> {
+    file.seek(std::io::SeekFrom::Start(start))
+        .await
+        .map_err(|e| format!("file seek err:{e}"))?;
+
+    if end == 0 {
+        let metadata = file
+            .metadata()
+            .await
+            .map_err(|e| format!("file  get metadata err:{e}"))?;
+        end = metadata.len();
+    }
+
+    let mut buffer = vec![0; buffer_size];
+
+    let stream = try_stream! {
+        let mut total_read = 0;
+
+            while total_read < end {
+                let bytes_to_read = std::cmp::min(buffer_size as u64, end - total_read);
+                let n = file.read(&mut buffer[..bytes_to_read as usize]).await.map_err(|e| {
+                    std::io::Error::new(std::io::ErrorKind::Other, e)
+                })?;
+                if n == 0 {
+                    break; // EOF
+                }
+                total_read += n as u64;
+                yield buffer[..n].to_vec();
+
+        }
+    };
+    Ok(stream)
+}
+
+/// A file download handler that accepts a range header and returns a partial file as a stream.
+/// You can return directly from the path
+/// But you can't download this stream directly from your browser, you need to use a tool like curl or Postman.
+async fn try_file_range_handler(headers: HeaderMap) -> Response {
+    let range_header = headers
+        .get(header::RANGE)
+        .and_then(|value| value.to_str().ok());
+
+    let (start, end) = if let Some(range) = range_header {
+        if let Some(range) = parse_range_header(range) {
+            range
+        } else {
+            return (StatusCode::RANGE_NOT_SATISFIABLE, "Invalid Range").into_response();
+        }
+    } else {
+        (0, 0) // default range end = 0, if end = 0 end == file size - 1
+    };
+
+    let file_path = format!("{DOWNLOAD_DIRECTORY}/test.txt");
+    FileStream::<AsyncReaderStream>::try_range_response(
+        std::path::Path::new(&file_path),
+        start,
+        end,
+        1024,
+    )
+    .await
+    .unwrap()
+}
+
+/// If you want to control the stream yourself
+async fn file_range_handler(headers: HeaderMap) -> Response {
+    // Parse the range header to get the start and end values.
+    let range_header = headers
+        .get(header::RANGE)
+        .and_then(|value| value.to_str().ok());
+
+    // If the range header is invalid, return a 416 Range Not Satisfiable response.
+    let (start, end) = if let Some(range) = range_header {
+        if let Some(range) = parse_range_header(range) {
+            range
+        } else {
+            return (StatusCode::RANGE_NOT_SATISFIABLE, "Invalid Range").into_response();
+        }
+    } else {
+        (0, 0) // default range end = 0, if end = 0 end == file size - 1
+    };
+
+    let file_path = format!("{DOWNLOAD_DIRECTORY}/test.txt");
+
+    let file = File::open(file_path).await.unwrap();
+
+    let file_size = file.metadata().await.unwrap().len();
+
+    let file_stream = match try_stream2(file, start, end, 256).await {
+        Ok(file_stream) => file_stream,
+        Err(e) => {
+            println!("{e}");
+            return (StatusCode::INTERNAL_SERVER_ERROR, "Failed try stream!").into_response();
+        }
+    };
+
+    FileStream::new(Box::pin(file_stream)).into_range_response(start, end, file_size)
+}
+
+/// Parse the range header and return the start and end values.
+fn parse_range_header(range: &str) -> Option<(u64, u64)> {
+    let range = range.strip_prefix("bytes=")?;
+    let mut parts = range.split('-');
+    let start = parts.next()?.parse::<u64>().ok()?;
+    let end = parts
+        .next()
+        .and_then(|s| s.parse::<u64>().ok())
+        .unwrap_or(0);
+    if start > end {
+        return None;
+    }
+    Some((start, end))
 }
 
 // Handler that accepts a multipart form upload and streams each field to a file.
