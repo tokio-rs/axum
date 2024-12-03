@@ -299,9 +299,8 @@ where
             .serialize(serde_html_form::ser::Serializer::new(&mut urlencoder))
             .unwrap_or_else(|err| {
                 panic!(
-                    "failed to URL encode value of type `{}`: {}",
+                    "failed to URL encode value of type `{}`: {err}",
                     type_name::<T>(),
-                    err
                 )
             });
         f.write_str(&out)?;
