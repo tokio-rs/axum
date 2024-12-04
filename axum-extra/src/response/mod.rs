@@ -19,9 +19,6 @@ pub mod file_stream;
 #[cfg(feature = "file-stream")]
 pub use file_stream::FileStream;
 
-#[cfg(feature = "file-stream")]
-pub use file_stream::AsyncReaderStream;
-
 #[cfg(feature = "error-response")]
 pub use error_response::InternalServerError;
 

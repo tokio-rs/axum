@@ -4,7 +4,7 @@ use axum::{
     BoxError,
 };
 use bytes::Bytes;
-use futures_util::{Stream, TryStream};
+use futures_util::TryStream;
 use http::{header, StatusCode};
 use std::{io, path::Path};
 use tokio::{
@@ -12,9 +12,6 @@ use tokio::{
     io::{AsyncReadExt, AsyncSeekExt},
 };
 use tokio_util::io::ReaderStream;
-
-/// Alias for `tokio_util::io::ReaderStream<File>`.
-pub type AsyncReaderStream = ReaderStream<File>;
 
 /// Encapsulate the file stream.
 ///
@@ -92,9 +89,9 @@ where
     /// let app = Router::new().route("/FileStreamDownload", get(file_stream));
     /// # let _: Router = app;
     /// ```
-    pub async fn from_path(path: impl AsRef<Path>) -> io::Result<FileStream<AsyncReaderStream>> {
+    pub async fn from_path(path: impl AsRef<Path>) -> io::Result<FileStream<ReaderStream<File>>> {
         // open file
-        let file = File::open(path).await?;
+        let file = File::open(&path).await?;
         let mut content_size = None;
         let mut file_name = None;
 
@@ -104,7 +101,7 @@ where
         }
 
         // get file name
-        if let Some(file_name_os) = path.file_name() {
+        if let Some(file_name_os) = path.as_ref().file_name() {
             if let Some(file_name_str) = file_name_os.to_str() {
                 file_name = Some(file_name_str.to_owned());
             }
@@ -185,7 +182,6 @@ where
     /// * `file_path` - The path of the file to be streamed
     /// * `start` - The start position of the range, if start > file size or start > end return Range Not Satisfiable
     /// * `end` - The end position of the range if end == 0 end = file size - 1
-    /// * `buffer_size` - The buffer size of the range
     ///
     /// # Examples
     ///
@@ -201,14 +197,12 @@ where
     /// use tokio::fs::File;
     /// use tokio_util::io::ReaderStream;
     /// use tokio::io::AsyncSeekExt;
-    /// use axum_extra::response::AsyncReaderStream;
     ///
     /// async fn range_stream() -> Response {
     ///     let range_start = 0;
     ///     let range_end = 1024;
-    ///     let buffer_size = 1024;
     ///
-    ///     FileStream::<AsyncReaderStream>::try_range_response("CHANGELOG.md", range_start, range_end, buffer_size).await
+    ///     FileStream::<ReaderStream<File>>::try_range_response("CHANGELOG.md", range_start, range_end).await
     ///     .map_err(|e| (StatusCode::NOT_FOUND, format!("File not found: {e}")))
     ///     .into_response()
     ///     
@@ -220,10 +214,9 @@ where
         file_path: impl AsRef<Path>,
         start: u64,
         mut end: u64,
-        buffer_size: usize,
     ) -> io::Result<Response> {
         // open file
-        let file = File::open(file_path).await?;
+        let mut file = File::open(file_path).await?;
 
         // get file metadata
         let metadata = file.metadata().await?;
@@ -244,58 +237,17 @@ where
             return Ok((StatusCode::RANGE_NOT_SATISFIABLE, "Range Not Satisfiable").into_response());
         }
 
-        // get file stream
-        let stream = try_stream(file, start, end, buffer_size).await?;
-        let mut resp = Response::builder().header(header::CONTENT_TYPE, "application/octet-stream");
-        resp = resp.status(StatusCode::PARTIAL_CONTENT);
+        // get file stream and seek to start to return range response
+        file.seek(std::io::SeekFrom::Start(start)).await?;
 
-        resp = resp.header(
-            header::CONTENT_RANGE,
-            format!("bytes {start}-{end}/{total_size}"),
-        );
+        // lenght = end - start + 1 exmple: 0-10 = 11 bytes
+        let stream = ReaderStream::new(file.take(end - start + 1));
 
-        Ok(resp
-            .body(body::Body::from_stream(stream))
-            .unwrap_or_else(|e| {
-                (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    format!("build FileStream responsec error: {e}"),
-                )
-                    .into_response()
-            }))
+        Ok(FileStream::new(stream).into_range_response(start, end, total_size))
     }
 }
 
-/// More complex manipulation of files and conversion to a stream
-async fn try_stream(
-    mut file: File,
-    start: u64,
-    end: u64,
-    buffer_size: usize,
-) -> Result<impl Stream<Item = Result<Vec<u8>, io::Error>>, io::Error> {
-    file.seek(std::io::SeekFrom::Start(start)).await?;
-
-    let mut buffer = vec![0; buffer_size];
-
-    let stream = async_stream::try_stream! {
-        let mut total_read = 0;
-
-        while total_read < end {
-            let bytes_to_read = std::cmp::min(buffer_size as u64, end - total_read);
-            let n = file.read(&mut buffer[..bytes_to_read as usize]).await.map_err(|e| {
-                std::io::Error::new(std::io::ErrorKind::Other, e)
-            })?;
-            if n == 0 {
-                break; // EOF
-            }
-            total_read += n as u64;
-            yield buffer[..n].to_vec();
-        }
-    };
-
-    Ok(stream)
-}
-
+/// default  response is application/octet-stream and attachment mode;
 impl<S> IntoResponse for FileStream<S>
 where
     S: TryStream + Send + 'static,
@@ -511,7 +463,7 @@ mod tests {
         let app = Router::new().route(
             "/from_path",
             get(move || async move {
-                FileStream::<AsyncReaderStream>::from_path(Path::new("CHANGELOG.md"))
+                FileStream::<ReaderStream<File>>::from_path(Path::new("CHANGELOG.md"))
                     .await
                     .unwrap()
                     .into_response()
@@ -614,14 +566,9 @@ mod tests {
             (0, 0) // default range end = 0, if end = 0 end == file size - 1
         };
 
-        FileStream::<AsyncReaderStream>::try_range_response(
-            Path::new("CHANGELOG.md"),
-            start,
-            end,
-            1024,
-        )
-        .await
-        .unwrap()
+        FileStream::<ReaderStream<File>>::try_range_response(Path::new("CHANGELOG.md"), start, end)
+            .await
+            .unwrap()
     }
 
     fn parse_range_header(range: &str) -> Option<(u64, u64)> {

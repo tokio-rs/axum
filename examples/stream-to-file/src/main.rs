@@ -13,14 +13,14 @@ use axum::{
     routing::{get, post},
     BoxError, Router,
 };
-use axum_extra::response::file_stream::{AsyncReaderStream, FileStream};
+use axum_extra::response::file_stream::FileStream;
 use futures::{Stream, TryStreamExt};
 use std::{io, path::PathBuf};
 use tokio::{
     fs::File,
     io::{AsyncReadExt, AsyncSeekExt, AsyncWriteExt, BufWriter},
 };
-use tokio_util::io::StreamReader;
+use tokio_util::io::{ReaderStream, StreamReader};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 const UPLOADS_DIRECTORY: &str = "uploads";
 const DOWNLOAD_DIRECTORY: &str = "downloads";
@@ -168,7 +168,7 @@ async fn show_form2() -> Html<&'static str> {
 async fn simpler_file_download_handler() -> Response {
     //If you want to simply return a file as a stream
     // you can use the from_path method directly, passing in the path of the file to construct a stream with a header and length.
-    FileStream::<AsyncReaderStream>::from_path(
+    FileStream::<ReaderStream<File>>::from_path(
         &std::path::Path::new(DOWNLOAD_DIRECTORY).join("test.txt"),
     )
     .await
@@ -299,11 +299,10 @@ async fn try_file_range_handler(headers: HeaderMap) -> Response {
     };
 
     let file_path = format!("{DOWNLOAD_DIRECTORY}/test.txt");
-    FileStream::<AsyncReaderStream>::try_range_response(
+    FileStream::<ReaderStream<File>>::try_range_response(
         std::path::Path::new(&file_path),
         start,
         end,
-        1024,
     )
     .await
     .unwrap()

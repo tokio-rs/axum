@@ -15,7 +15,7 @@ version = "0.10.0-alpha.1"
 default = ["tracing"]
 
 async-read-body = ["dep:tokio-util", "tokio-util?/io", "dep:tokio"]
-file-stream = ["dep:tokio-util", "tokio-util?/io", "dep:tokio", "tokio?/fs", "tokio?/io-util", "dep:async-stream"]
+file-stream = ["dep:tokio-util", "tokio-util?/io", "dep:tokio", "tokio?/fs", "tokio?/io-util"]
 attachment = ["dep:tracing"]
 error-response = ["dep:tracing", "tracing/std"]
 cookie = ["dep:cookie"]
@@ -76,7 +76,6 @@ tracing = { version = "0.1.37", default-features = false, optional = true }
 typed-json = { version = "0.1.1", optional = true }
 
 [dev-dependencies]
-async-stream = "0.3"
 axum = { path = "../axum", features = ["macros"] }
 axum-macros = { path = "../axum-macros", features = ["__private"] }
 hyper = "1.0.0"
