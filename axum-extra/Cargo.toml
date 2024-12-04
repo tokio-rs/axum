@@ -109,6 +109,7 @@ allowed = [
     "prost",
     "serde",
     "tokio",
+    "tokio_util",
     "tower_layer",
     "tower_service",
 ]

@@ -162,14 +162,14 @@ where
 
         resp = resp.header(
             header::CONTENT_RANGE,
-            format!("bytes {}-{}/{}", start, end, total_size),
+            format!("bytes {start}-{end}/{total_size}"),
         );
 
         resp.body(body::Body::from_stream(self.stream))
             .unwrap_or_else(|e| {
                 (
                     StatusCode::INTERNAL_SERVER_ERROR,
-                    format!("build FileStream responsec error: {}", e),
+                    format!("build FileStream responsec error: {e}"),
                 )
                     .into_response()
             })
@@ -240,7 +240,6 @@ where
         // get file stream and seek to start to return range response
         file.seek(std::io::SeekFrom::Start(start)).await?;
 
-        // lenght = end - start + 1 exmple: 0-10 = 11 bytes
         let stream = ReaderStream::new(file.take(end - start + 1));
 
         Ok(FileStream::new(stream).into_range_response(start, end, total_size))
@@ -260,7 +259,7 @@ where
         if let Some(file_name) = self.file_name {
             resp = resp.header(
                 header::CONTENT_DISPOSITION,
-                format!("attachment; filename=\"{}\"", file_name),
+                format!("attachment; filename=\"{file_name}\""),
             );
         }
 
