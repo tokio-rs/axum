@@ -545,7 +545,7 @@ mod tests {
                 .unwrap()
                 .to_str()
                 .unwrap(),
-            format!("bytes 20-1000/{}", content_length)
+            format!("bytes 20-1000/{content_length}")
         );
         Ok(())
     }
