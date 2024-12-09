@@ -949,7 +949,7 @@ mod tests {
         let body = res.text().await;
         assert_eq!(
             body,
-            r"Invalid URL: Cannot parse `res` with value `123123-123-123123`: UUID parsing failed: invalid group count: expected 5, found 3"
+            "Invalid URL: Cannot parse `res` with value `123123-123-123123`: UUID parsing failed: invalid group count: expected 5, found 3"
         );
     }
 
@@ -970,7 +970,7 @@ mod tests {
         let body = res.text().await;
         assert_eq!(
             body,
-            r"Invalid URL: Cannot parse `res` with value `456456-123-456456`: UUID parsing failed: invalid group count: expected 5, found 3"
+            "Invalid URL: Cannot parse `res` with value `456456-123-456456`: UUID parsing failed: invalid group count: expected 5, found 3"
         );
     }
 
@@ -992,6 +992,6 @@ mod tests {
         let client = TestClient::new(app);
         let res = client.get("/te/st/_thing").await;
         let body = res.text().await;
-        assert_eq!(body, r"Invalid URL: array types are not supported");
+        assert_eq!(body, "Invalid URL: array types are not supported");
     }
 }
