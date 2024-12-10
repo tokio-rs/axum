@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **breaking:** Remove `WebSocket::close`.
   Users should explicitly send close messages themselves. ([#2974])
 - **breaking:** Make `serve` generic over the listener and IO types ([#2941])
+- **breaking:** Remove `Serve::tcp_nodelay` and `WithGracefulShutdown::tcp_nodelay`.
+  See `serve::ListenerExt` for an API that let you set arbitrary TCP stream properties. ([#2941])
 - **breaking:** `Option<Path<T>>` and `Option<Query<T>>` no longer swallow all error conditions,
   instead rejecting the request in many cases; see their documentation for details ([#2475])
 - **fixed:** Skip SSE incompatible chars of `serde_json::RawValue` in `Event::json_data` ([#2992])
