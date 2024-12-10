@@ -20,11 +20,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   This allows middleware to add bodies to requests without needing to manually set `content-length` ([#2897])
 - **breaking:** Remove `WebSocket::close`.
   Users should explicitly send close messages themselves. ([#2974])
+- **breaking:** `Option<Path<T>>` and `Option<Query<T>>` no longer swallow all error conditions,
+  instead rejecting the request in many cases; see their documentation for details ([#2475])
 - **added:** Extend `FailedToDeserializePathParams::kind` enum with (`ErrorKind::DeserializeError`)
   This new variant captures both `key`, `value`, and `message` from named path parameters parse errors,
   instead of only deserialization error message in `ErrorKind::Message`. ([#2720])
 - **breaking:** Make `serve` generic over the listener and IO types ([#2941])
 
+[#2475]: https://github.com/tokio-rs/axum/pull/2475
 [#2897]: https://github.com/tokio-rs/axum/pull/2897
 [#2903]: https://github.com/tokio-rs/axum/pull/2903
 [#2894]: https://github.com/tokio-rs/axum/pull/2894

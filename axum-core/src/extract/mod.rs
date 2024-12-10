@@ -13,11 +13,16 @@ pub mod rejection;
 
 mod default_body_limit;
 mod from_ref;
+mod option;
 mod request_parts;
 mod tuple;
 
 pub(crate) use self::default_body_limit::DefaultBodyLimitKind;
-pub use self::{default_body_limit::DefaultBodyLimit, from_ref::FromRef};
+pub use self::{
+    default_body_limit::DefaultBodyLimit,
+    from_ref::FromRef,
+    option::{OptionalFromRequest, OptionalFromRequestParts},
+};
 
 /// Type alias for [`http::Request`] whose body type defaults to [`Body`], the most common body
 /// type used with axum.
@@ -99,33 +104,6 @@ where
     async fn from_request(req: Request, state: &S) -> Result<Self, Self::Rejection> {
         let (mut parts, _) = req.into_parts();
         Self::from_request_parts(&mut parts, state).await
-    }
-}
-
-impl<S, T> FromRequestParts<S> for Option<T>
-where
-    T: FromRequestParts<S>,
-    S: Send + Sync,
-{
-    type Rejection = Infallible;
-
-    async fn from_request_parts(
-        parts: &mut Parts,
-        state: &S,
-    ) -> Result<Option<T>, Self::Rejection> {
-        Ok(T::from_request_parts(parts, state).await.ok())
-    }
-}
-
-impl<S, T> FromRequest<S> for Option<T>
-where
-    T: FromRequest<S>,
-    S: Send + Sync,
-{
-    type Rejection = Infallible;
-
-    async fn from_request(req: Request, state: &S) -> Result<Option<T>, Self::Rejection> {
-        Ok(T::from_request(req, state).await.ok())
     }
 }
 
