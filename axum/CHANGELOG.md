@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+# 0.8.0
+
+## rc.1
+
 - **breaking:** Move `Host` extractor to `axum-extra` ([#2956])
 - **breaking:** Remove `WebSocket::close`.
   Users should explicitly send close messages themselves. ([#2974])
@@ -41,8 +45,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#2720]: https://github.com/tokio-rs/axum/pull/2720
 [#3039]: https://github.com/tokio-rs/axum/pull/3039
 [#2941]: https://github.com/tokio-rs/axum/pull/2941
-
-# 0.8.0
 
 ## alpha.1
 
