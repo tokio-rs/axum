@@ -50,6 +50,7 @@ If your project isn't listed here and you would like it to be, please feel free 
 - [spring-rs](https://github.com/spring-rs/spring-rs): spring-rs is a microservice framework written in rust inspired by java's spring-boot, based on axum
 - [zino](https://github.com/zino-rs/zino): Zino is a next-generation framework for composable applications which provides full integrations with axum.
 - [axum-rails-cookie](https://github.com/endoze/axum-rails-cookie): Extract rails session cookies in axum based apps.
+- [axum-ws-broadcaster](https://github.com/Necoo33/axum-ws-broadcaster): A broadcasting liblary for both [axum-typed-websockets](https://crates.io/crates/axum-typed-websockets) and `axum::extract::ws`.
 
 ## Project showcase
 
