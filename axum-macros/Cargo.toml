@@ -9,7 +9,7 @@ license = "MIT"
 name = "axum-macros"
 readme = "README.md"
 repository = "https://github.com/tokio-rs/axum"
-version = "0.5.0-alpha.1" # remember to also bump the version that axum and axum-extra depends on
+version = "0.5.0-rc.1" # remember to also bump the version that axum and axum-extra depends on
 
 [features]
 default = []
