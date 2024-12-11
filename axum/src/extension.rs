@@ -132,7 +132,7 @@ where
 
 /// Middleware for adding some shareable value to [request extensions].
 ///
-/// See [Sharing state with handlers](index.html#sharing-state-with-handlers)
+/// See [Passing state from middleware to handlers](index.html#passing-state-from-middleware-to-handlers)
 /// for more details.
 ///
 /// [request extensions]: https://docs.rs/http/latest/http/struct.Extensions.html
