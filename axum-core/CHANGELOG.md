@@ -7,13 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+# 0.5.0
+
+## rc.1
+
 - **breaking:**: `Option<T>` as an extractor now requires `T` to implement the
   new trait `OptionalFromRequest` (if used as the last extractor) or
   `OptionalFromRequestParts` (other extractors) ([#2475])
 
 [#2475]: https://github.com/tokio-rs/axum/pull/2475
-
-# 0.5.0
 
 ## alpha.1
 

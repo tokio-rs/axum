@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning].
 
 # Unreleased
 
+# 0.10.0
+
+## rc.1
+
 - **breaking:** `Option<Query<T>>` no longer swallows all error conditions, instead rejecting the
   request in many cases; see its documentation for details ([#2475])
 - **changed:** Deprecated `OptionalPath<T>` and `OptionalQuery<T>` ([#2475])
@@ -26,9 +30,7 @@ and this project adheres to [Semantic Versioning].
 [#3010]: https://github.com/tokio-rs/axum/pull/3010
 [#3047]: https://github.com/tokio-rs/axum/pull/3047
 
-# 0.10.0
-
-# alpha.1
+## alpha.1
 
 - **breaking:** Update to prost 0.13. Used for the `Protobuf` extractor ([#2829])
 - **change:** Update minimum rust version to 1.75 ([#2943])

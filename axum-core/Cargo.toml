@@ -9,7 +9,7 @@ license = "MIT"
 name = "axum-core"
 readme = "README.md"
 repository = "https://github.com/tokio-rs/axum"
-version = "0.5.0-alpha.1" # remember to bump the version that axum and axum-extra depend on
+version = "0.5.0-rc.1" # remember to bump the version that axum and axum-extra depend on
 
 [features]
 tracing = ["dep:tracing"]
