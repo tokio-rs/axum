@@ -1,7 +1,6 @@
 //! Serve services.
 
 use std::{
-    any::TypeId,
     convert::Infallible,
     fmt::Debug,
     future::{poll_fn, Future, IntoFuture},
@@ -16,7 +15,7 @@ use hyper::body::Incoming;
 use hyper_util::rt::{TokioExecutor, TokioIo};
 #[cfg(any(feature = "http1", feature = "http2"))]
 use hyper_util::{server::conn::auto::Builder, service::TowerToHyperService};
-use tokio::{net::TcpListener, sync::watch};
+use tokio::sync::watch;
 use tower::ServiceExt as _;
 use tower_service::Service;
 
@@ -99,7 +98,6 @@ where
     Serve {
         listener,
         make_service,
-        tcp_nodelay: None,
         _marker: PhantomData,
     }
 }
@@ -110,7 +108,6 @@ where
 pub struct Serve<L, M, S> {
     listener: L,
     make_service: M,
-    tcp_nodelay: Option<bool>,
     _marker: PhantomData<S>,
 }
 
@@ -168,17 +165,12 @@ where
         let Self {
             listener,
             make_service,
-            tcp_nodelay,
             _marker: _,
         } = self;
 
         let mut s = f.debug_struct("Serve");
         s.field("listener", listener)
             .field("make_service", make_service);
-
-        if TypeId::of::<L>() == TypeId::of::<TcpListener>() {
-            s.field("tcp_nodelay", tcp_nodelay);
-        }
 
         s.finish()
     }
