@@ -48,7 +48,7 @@ async fn integration_testable_handle_socket(mut socket: WebSocket) {
     while let Some(Ok(msg)) = socket.recv().await {
         if let Message::Text(msg) = msg {
             if socket
-                .send(Message::Text(format!("You said: {msg}")))
+                .send(Message::Text(format!("You said: {msg}").into()))
                 .await
                 .is_err()
             {
@@ -79,7 +79,7 @@ where
     while let Some(Ok(msg)) = read.next().await {
         if let Message::Text(msg) = msg {
             if write
-                .send(Message::Text(format!("You said: {msg}")))
+                .send(Message::Text(format!("You said: {msg}").into()))
                 .await
                 .is_err()
             {
@@ -123,7 +123,7 @@ mod tests {
             other => panic!("expected a text message but got {other:?}"),
         };
 
-        assert_eq!(msg, "You said: foo");
+        assert_eq!(msg.as_str(), "You said: foo");
     }
 
     // We can unit test the other handler by creating channels to read and write from.
@@ -136,16 +136,13 @@ mod tests {
 
         tokio::spawn(unit_testable_handle_socket(socket_write, socket_read));
 
-        test_tx
-            .send(Ok(Message::Text("foo".to_owned())))
-            .await
-            .unwrap();
+        test_tx.send(Ok(Message::Text("foo".into()))).await.unwrap();
 
         let msg = match test_rx.next().await.unwrap() {
             Message::Text(msg) => msg,
             other => panic!("expected a text message but got {other:?}"),
         };
 
-        assert_eq!(msg, "You said: foo");
+        assert_eq!(msg.as_str(), "You said: foo");
     }
 }

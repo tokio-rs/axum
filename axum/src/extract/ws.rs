@@ -114,7 +114,11 @@ use std::{
 use tokio_tungstenite::{
     tungstenite::{
         self as ts,
-        protocol::{self, WebSocketConfig},
+        protocol::{
+            self,
+            frame::{Payload, Utf8Payload},
+            WebSocketConfig,
+        },
     },
     WebSocketStream,
 };
@@ -591,16 +595,16 @@ pub struct CloseFrame<'t> {
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub enum Message {
     /// A text WebSocket message
-    Text(String),
+    Text(Utf8Payload),
     /// A binary WebSocket message
-    Binary(Vec<u8>),
+    Binary(Payload),
     /// A ping message with the specified payload
     ///
     /// The payload here must have a length less than 125 bytes.
     ///
     /// Ping messages will be automatically responded to by the server, so you do not have to worry
     /// about dealing with them yourself.
-    Ping(Vec<u8>),
+    Ping(Payload),
     /// A pong message with the specified payload
     ///
     /// The payload here must have a length less than 125 bytes.
@@ -608,7 +612,7 @@ pub enum Message {
     /// Pong messages will be automatically sent to the client if a ping message is received, so
     /// you do not have to worry about constructing them yourself unless you want to implement a
     /// [unidirectional heartbeat](https://tools.ietf.org/html/rfc6455#section-5.5.3).
-    Pong(Vec<u8>),
+    Pong(Payload),
     /// A close message with the optional close frame.
     ///
     /// You may "uncleanly" close a WebSocket connection at any time
@@ -666,8 +670,8 @@ impl Message {
     /// Consume the WebSocket and return it as binary data.
     pub fn into_data(self) -> Vec<u8> {
         match self {
-            Self::Text(string) => string.into_bytes(),
-            Self::Binary(data) | Self::Ping(data) | Self::Pong(data) => data,
+            Self::Text(string) => string.to_string().into_bytes(),
+            Self::Binary(data) | Self::Ping(data) | Self::Pong(data) => data.as_slice().to_vec(),
             Self::Close(None) => Vec::new(),
             Self::Close(Some(frame)) => frame.reason.into_owned().into_bytes(),
         }
@@ -676,10 +680,12 @@ impl Message {
     /// Attempt to consume the WebSocket message and convert it to a String.
     pub fn into_text(self) -> Result<String, Error> {
         match self {
-            Self::Text(string) => Ok(string),
-            Self::Binary(data) | Self::Ping(data) | Self::Pong(data) => Ok(String::from_utf8(data)
-                .map_err(|err| err.utf8_error())
-                .map_err(Error::new)?),
+            Self::Text(string) => Ok(string.to_string()),
+            Self::Binary(data) | Self::Ping(data) | Self::Pong(data) => {
+                Ok(String::from_utf8(data.as_slice().to_vec())
+                    .map_err(|err| err.utf8_error())
+                    .map_err(Error::new)?)
+            }
             Self::Close(None) => Ok(String::new()),
             Self::Close(Some(frame)) => Ok(frame.reason.into_owned()),
         }
@@ -689,9 +695,9 @@ impl Message {
     /// this will try to convert binary data to utf8.
     pub fn to_text(&self) -> Result<&str, Error> {
         match *self {
-            Self::Text(ref string) => Ok(string),
+            Self::Text(ref string) => Ok(string.as_str()),
             Self::Binary(ref data) | Self::Ping(ref data) | Self::Pong(ref data) => {
-                Ok(std::str::from_utf8(data).map_err(Error::new)?)
+                Ok(std::str::from_utf8(data.as_slice()).map_err(Error::new)?)
             }
             Self::Close(None) => Ok(""),
             Self::Close(Some(ref frame)) => Ok(&frame.reason),
@@ -701,7 +707,7 @@ impl Message {
 
 impl From<String> for Message {
     fn from(string: String) -> Self {
-        Message::Text(string)
+        Message::Text(string.into())
     }
 }
 
@@ -719,7 +725,7 @@ impl<'b> From<&'b [u8]> for Message {
 
 impl From<Vec<u8>> for Message {
     fn from(data: Vec<u8>) -> Self {
-        Message::Binary(data)
+        Message::Binary(data.into())
     }
 }
 
@@ -1026,19 +1032,16 @@ mod tests {
     }
 
     async fn test_echo_app<S: AsyncRead + AsyncWrite + Unpin>(mut socket: WebSocketStream<S>) {
-        let input = tungstenite::Message::Text("foobar".to_owned());
+        let input = tungstenite::Message::Text("foobar".into());
         socket.send(input.clone()).await.unwrap();
         let output = socket.next().await.unwrap().unwrap();
         assert_eq!(input, output);
 
         socket
-            .send(tungstenite::Message::Ping("ping".to_owned().into_bytes()))
+            .send(tungstenite::Message::Ping("ping".as_bytes().into()))
             .await
             .unwrap();
         let output = socket.next().await.unwrap().unwrap();
-        assert_eq!(
-            output,
-            tungstenite::Message::Pong("ping".to_owned().into_bytes())
-        );
+        assert_eq!(output, tungstenite::Message::Pong("ping".as_bytes().into()));
     }
 }

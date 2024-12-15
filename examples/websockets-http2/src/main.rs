@@ -75,7 +75,7 @@ async fn ws_handler(
                 res = ws.recv() => {
                     match res {
                         Some(Ok(ws::Message::Text(s))) => {
-                            let _ = sender.send(s);
+                            let _ = sender.send(s.to_string());
                         }
                         Some(Ok(_)) => {}
                         Some(Err(e)) => tracing::debug!("client disconnected abruptly: {e}"),
@@ -85,7 +85,7 @@ async fn ws_handler(
                 // Tokio guarantees that `broadcast::Receiver::recv` is cancel-safe.
                 res = receiver.recv() => {
                     match res {
-                        Ok(msg) => if let Err(e) = ws.send(ws::Message::Text(msg)).await {
+                        Ok(msg) => if let Err(e) = ws.send(ws::Message::Text(msg.into())).await {
                             tracing::debug!("client disconnected abruptly: {e}");
                         }
                         Err(_) => continue,
