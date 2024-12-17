@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## rc.1
 
+*Note: there are further relevant changes in [axum-core's changelog][core-changelog]*
+
 - **breaking:** Move `Host` extractor to `axum-extra` ([#2956])
 - **breaking:** Remove `WebSocket::close`.
   Users should explicitly send close messages themselves. ([#2974])
@@ -33,6 +35,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   This new variant captures both `key`, `value`, and `message` from named path parameters parse errors,
   instead of only deserialization error message in `ErrorKind::Message`. ([#2720])
 
+[core-changelog]: ../axum-core/CHANGELOG.md
 [#2475]: https://github.com/tokio-rs/axum/pull/2475
 [#2897]: https://github.com/tokio-rs/axum/pull/2897
 [#2903]: https://github.com/tokio-rs/axum/pull/2903
