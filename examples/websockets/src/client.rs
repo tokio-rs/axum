@@ -12,10 +12,9 @@
 
 use futures_util::stream::FuturesUnordered;
 use futures_util::{SinkExt, StreamExt};
-use std::borrow::Cow;
 use std::ops::ControlFlow;
 use std::time::Instant;
-use tokio_tungstenite::tungstenite::protocol::frame::Payload;
+use tokio_tungstenite::tungstenite::Utf8Bytes;
 
 // we will use tungstenite for websocket client impl (same library as what axum is using)
 use tokio_tungstenite::{
@@ -66,8 +65,8 @@ async fn spawn_client(who: usize) {
 
     //we can ping the server for start
     sender
-        .send(Message::Ping(Payload::Shared(
-            "Hello, Server!".as_bytes().into(),
+        .send(Message::Ping(axum::body::Bytes::from_static(
+            b"Hello, Server!",
         )))
         .await
         .expect("Can not send!");
@@ -93,7 +92,7 @@ async fn spawn_client(who: usize) {
         if let Err(e) = sender
             .send(Message::Close(Some(CloseFrame {
                 code: CloseCode::Normal,
-                reason: Cow::from("Goodbye"),
+                reason: Utf8Bytes::from_static("Goodbye"),
             })))
             .await
         {

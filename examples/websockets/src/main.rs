@@ -17,14 +17,14 @@
 //! ```
 
 use axum::{
-    extract::ws::{Message, WebSocket, WebSocketUpgrade},
+    body::Bytes,
+    extract::ws::{Message, Utf8Bytes, WebSocket, WebSocketUpgrade},
     response::IntoResponse,
     routing::any,
     Router,
 };
 use axum_extra::TypedHeader;
 
-use std::borrow::Cow;
 use std::ops::ControlFlow;
 use std::{net::SocketAddr, path::PathBuf};
 use tower_http::{
@@ -102,7 +102,7 @@ async fn ws_handler(
 async fn handle_socket(mut socket: WebSocket, who: SocketAddr) {
     // send a ping (unsupported by some browsers) just to kick things off and get a response
     if socket
-        .send(Message::Ping(vec![1, 2, 3].into()))
+        .send(Message::Ping(Bytes::from_static(&[1, 2, 3])))
         .await
         .is_ok()
     {
@@ -169,7 +169,7 @@ async fn handle_socket(mut socket: WebSocket, who: SocketAddr) {
         if let Err(e) = sender
             .send(Message::Close(Some(CloseFrame {
                 code: axum::extract::ws::close_code::NORMAL,
-                reason: Cow::from("Goodbye"),
+                reason: Utf8Bytes::from_static("Goodbye"),
             })))
             .await
         {
