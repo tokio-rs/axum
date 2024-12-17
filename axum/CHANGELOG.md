@@ -7,26 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+# 0.8.0
+
+## rc.1
+
+*Note: there are further relevant changes in [axum-core's changelog][core-changelog]*
+
+- **breaking:** Move `Host` extractor to `axum-extra` ([#2956])
+- **breaking:** Remove `WebSocket::close`.
+  Users should explicitly send close messages themselves. ([#2974])
+- **breaking:** Make `serve` generic over the listener and IO types ([#2941])
+- **breaking:** Remove `Serve::tcp_nodelay` and `WithGracefulShutdown::tcp_nodelay`.
+  See `serve::ListenerExt` for an API that let you set arbitrary TCP stream properties. ([#2941])
+- **breaking:** `Option<Path<T>>` and `Option<Query<T>>` no longer swallow all error conditions,
+  instead rejecting the request in many cases; see their documentation for details ([#2475])
 - **fixed:** Skip SSE incompatible chars of `serde_json::RawValue` in `Event::json_data` ([#2992])
 - **fixed:** Don't panic when array type is used for path segment ([#3039])
-- **breaking:** Move `Host` extractor to `axum-extra` ([#2956])
+- **fixed:** Avoid setting `content-length` before middleware.
+  This allows middleware to add bodies to requests without needing to manually set `content-length` ([#2897])
 - **added:** Add `method_not_allowed_fallback` to set a fallback when a path matches but there is no handler for the given HTTP method ([#2903])
 - **added:** Add `NoContent` as a self-described shortcut for `StatusCode::NO_CONTENT` ([#2978])
 - **added:** Add support for WebSockets over HTTP/2.
   They can be enabled by changing `get(ws_endpoint)` handlers to `any(ws_endpoint)` ([#2894])
 - **added:** Add `MethodFilter::CONNECT`, `routing::connect[_service]`
   and `MethodRouter::connect[_service]` ([#2961])
-- **fixed:** Avoid setting `content-length` before middleware.
-  This allows middleware to add bodies to requests without needing to manually set `content-length` ([#2897])
-- **breaking:** Remove `WebSocket::close`.
-  Users should explicitly send close messages themselves. ([#2974])
-- **breaking:** `Option<Path<T>>` and `Option<Query<T>>` no longer swallow all error conditions,
-  instead rejecting the request in many cases; see their documentation for details ([#2475])
 - **added:** Extend `FailedToDeserializePathParams::kind` enum with (`ErrorKind::DeserializeError`)
   This new variant captures both `key`, `value`, and `message` from named path parameters parse errors,
   instead of only deserialization error message in `ErrorKind::Message`. ([#2720])
-- **breaking:** Make `serve` generic over the listener and IO types ([#2941])
 
+[core-changelog]: ../axum-core/CHANGELOG.md
 [#2475]: https://github.com/tokio-rs/axum/pull/2475
 [#2897]: https://github.com/tokio-rs/axum/pull/2897
 [#2903]: https://github.com/tokio-rs/axum/pull/2903
@@ -39,8 +48,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#2720]: https://github.com/tokio-rs/axum/pull/2720
 [#3039]: https://github.com/tokio-rs/axum/pull/3039
 [#2941]: https://github.com/tokio-rs/axum/pull/2941
-
-# 0.8.0
 
 ## alpha.1
 
