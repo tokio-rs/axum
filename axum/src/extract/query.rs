@@ -201,6 +201,10 @@ mod tests {
 
         let res = client.get("/?n=hi").await;
         assert_eq!(res.status(), StatusCode::BAD_REQUEST);
+        assert_eq!(
+            res.text().await,
+            "Failed to deserialize query string: invalid digit found in string"
+        );
     }
 
     #[test]
