@@ -8,7 +8,7 @@
 
 use axum::{
     extract::{
-        ws::{Message, WebSocket, WebSocketUpgrade},
+        ws::{Message, Utf8Bytes, WebSocket, WebSocketUpgrade},
         State,
     },
     response::{Html, IntoResponse},
@@ -87,7 +87,7 @@ async fn websocket(stream: WebSocket, state: Arc<AppState>) {
             } else {
                 // Only send our client that username is taken.
                 let _ = sender
-                    .send(Message::Text("Username already taken.".into()))
+                    .send(Message::Text(Utf8Bytes::from_static("Username already taken.")))
                     .await;
 
                 return;
