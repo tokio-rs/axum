@@ -8,7 +8,7 @@
 
 use axum::{
     extract::{
-        ws::{Message, WebSocket, WebSocketUpgrade},
+        ws::{Message, Utf8Bytes, WebSocket, WebSocketUpgrade},
         State,
     },
     response::{Html, IntoResponse},
@@ -79,7 +79,7 @@ async fn websocket(stream: WebSocket, state: Arc<AppState>) {
     while let Some(Ok(message)) = receiver.next().await {
         if let Message::Text(name) = message {
             // If username that is sent by client is not taken, fill username string.
-            check_username(&state, &mut username, &name);
+            check_username(&state, &mut username, name.as_str());
 
             // If not empty we want to quit the loop else we want to quit function.
             if !username.is_empty() {
@@ -87,7 +87,9 @@ async fn websocket(stream: WebSocket, state: Arc<AppState>) {
             } else {
                 // Only send our client that username is taken.
                 let _ = sender
-                    .send(Message::Text(String::from("Username already taken.")))
+                    .send(Message::Text(Utf8Bytes::from_static(
+                        "Username already taken.",
+                    )))
                     .await;
 
                 return;
@@ -109,7 +111,7 @@ async fn websocket(stream: WebSocket, state: Arc<AppState>) {
     let mut send_task = tokio::spawn(async move {
         while let Ok(msg) = rx.recv().await {
             // In any websocket error, break loop.
-            if sender.send(Message::Text(msg)).await.is_err() {
+            if sender.send(Message::text(msg)).await.is_err() {
                 break;
             }
         }
