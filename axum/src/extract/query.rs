@@ -87,7 +87,9 @@ where
         _state: &S,
     ) -> Result<Option<Self>, Self::Rejection> {
         if let Some(query) = parts.uri.query() {
-            let value = serde_urlencoded::from_str(query)
+            let deserializer =
+                serde_urlencoded::Deserializer::new(form_urlencoded::parse(query.as_bytes()));
+            let value = serde_path_to_error::deserialize(deserializer)
                 .map_err(FailedToDeserializeQueryString::from_err)?;
             Ok(Some(Self(value)))
         } else {
@@ -121,8 +123,10 @@ where
     /// ```
     pub fn try_from_uri(value: &Uri) -> Result<Self, QueryRejection> {
         let query = value.query().unwrap_or_default();
-        let params =
-            serde_urlencoded::from_str(query).map_err(FailedToDeserializeQueryString::from_err)?;
+        let deserializer =
+            serde_urlencoded::Deserializer::new(form_urlencoded::parse(query.as_bytes()));
+        let params = serde_path_to_error::deserialize(deserializer)
+            .map_err(FailedToDeserializeQueryString::from_err)?;
         Ok(Query(params))
     }
 }
@@ -201,6 +205,10 @@ mod tests {
 
         let res = client.get("/?n=hi").await;
         assert_eq!(res.status(), StatusCode::BAD_REQUEST);
+        assert_eq!(
+            res.text().await,
+            "Failed to deserialize query string: n: invalid digit found in string"
+        );
     }
 
     #[test]
