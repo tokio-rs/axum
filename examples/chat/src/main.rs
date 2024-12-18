@@ -111,7 +111,7 @@ async fn websocket(stream: WebSocket, state: Arc<AppState>) {
     let mut send_task = tokio::spawn(async move {
         while let Ok(msg) = rx.recv().await {
             // In any websocket error, break loop.
-            if sender.send(Message::Text(msg.into())).await.is_err() {
+            if sender.send(Message::text(msg)).await.is_err() {
                 break;
             }
         }

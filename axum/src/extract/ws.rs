@@ -553,10 +553,10 @@ impl Sink<Message> for WebSocket {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
 /// UTF-8 wrapper for [Bytes].
 ///
 /// An [Utf8Bytes] is always guaranteed to contain valid UTF-8.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Utf8Bytes(ts::Utf8Bytes);
 
 impl Utf8Bytes {
@@ -569,7 +569,6 @@ impl Utf8Bytes {
     /// Returns as a string slice.
     #[inline]
     pub fn as_str(&self) -> &str {
-        // SAFETY: is valid uft8
         self.0.as_str()
     }
 
@@ -611,7 +610,6 @@ impl TryFrom<Bytes> for Utf8Bytes {
 
     #[inline]
     fn try_from(bytes: Bytes) -> Result<Self, Self::Error> {
-        std::str::from_utf8(&bytes)?;
         Ok(Self(bytes.try_into()?))
     }
 }
@@ -797,7 +795,7 @@ impl Message {
             Self::Binary(data) | Self::Ping(data) | Self::Pong(data) => {
                 Ok(Utf8Bytes::try_from(data).map_err(Error::new)?)
             }
-            Self::Close(None) => Ok(Bytes::new().try_into().map_err(Error::new)?),
+            Self::Close(None) => Ok(Utf8Bytes::default()),
             Self::Close(Some(frame)) => Ok(frame.reason),
         }
     }
@@ -813,6 +811,22 @@ impl Message {
             Self::Close(None) => Ok(""),
             Self::Close(Some(ref frame)) => Ok(&frame.reason),
         }
+    }
+
+    /// Create a new text WebSocket message from a stringable.
+    pub fn text<S>(string: S) -> Message
+    where
+        S: Into<Utf8Bytes>,
+    {
+        Message::Text(string.into())
+    }
+
+    /// Create a new binary WebSocket message by converting to `Bytes`.
+    pub fn binary<B>(bin: B) -> Message
+    where
+        B: Into<Bytes>,
+    {
+        Message::Binary(bin.into())
     }
 }
 
