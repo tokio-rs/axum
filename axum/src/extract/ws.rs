@@ -783,24 +783,22 @@ impl Message {
     /// Consume the WebSocket and return it as binary data.
     pub fn into_data(self) -> Bytes {
         match self {
-            Self::Text(string) => string.into(),
+            Self::Text(string) => Bytes::from(string),
             Self::Binary(data) | Self::Ping(data) | Self::Pong(data) => data,
             Self::Close(None) => Bytes::new(),
-            Self::Close(Some(frame)) => frame.reason.into(),
+            Self::Close(Some(frame)) => Bytes::from(frame.reason),
         }
     }
 
-    /// Attempt to consume the WebSocket message and convert it to a String.
-    pub fn into_text(self) -> Result<String, Error> {
+    /// Attempt to consume the WebSocket message and convert it to a Utf8Bytes.
+    pub fn into_text(self) -> Result<Utf8Bytes, Error> {
         match self {
-            Self::Text(string) => Ok(string.to_string()),
+            Self::Text(string) => Ok(string),
             Self::Binary(data) | Self::Ping(data) | Self::Pong(data) => {
-                Ok(String::from_utf8(data.to_vec())
-                    .map_err(|err| err.utf8_error())
-                    .map_err(Error::new)?)
+                Ok(Utf8Bytes::try_from(data).map_err(Error::new)?)
             }
-            Self::Close(None) => Ok(String::new()),
-            Self::Close(Some(frame)) => Ok(frame.reason.to_string()),
+            Self::Close(None) => Ok(Bytes::new().try_into().map_err(Error::new)?),
+            Self::Close(Some(frame)) => Ok(frame.reason),
         }
     }
 
@@ -1151,9 +1149,7 @@ mod tests {
         assert_eq!(input, output);
 
         socket
-            .send(tungstenite::Message::Ping(
-                Bytes::from_static(b"ping"),
-            ))
+            .send(tungstenite::Message::Ping(Bytes::from_static(b"ping")))
             .await
             .unwrap();
         let output = socket.next().await.unwrap().unwrap();
