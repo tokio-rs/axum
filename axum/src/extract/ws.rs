@@ -1145,21 +1145,21 @@ mod tests {
     }
 
     async fn test_echo_app<S: AsyncRead + AsyncWrite + Unpin>(mut socket: WebSocketStream<S>) {
-        let input = tungstenite::Message::Text("foobar".into());
+        let input = tungstenite::Message::Text(tungstenite::Utf8Bytes::from_static("foobar"));
         socket.send(input.clone()).await.unwrap();
         let output = socket.next().await.unwrap().unwrap();
         assert_eq!(input, output);
 
         socket
             .send(tungstenite::Message::Ping(
-                Bytes::from_static(b"ping").into(),
+                Bytes::from_static(b"ping"),
             ))
             .await
             .unwrap();
         let output = socket.next().await.unwrap().unwrap();
         assert_eq!(
             output,
-            tungstenite::Message::Pong(Bytes::from_static(b"ping").into())
+            tungstenite::Message::Pong(Bytes::from_static(b"ping"))
         );
     }
 }
