@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning].
 
 # Unreleased
 
+- **breaking:** Remove `OptionalFromRequestParts` impl for `Query` ([#3088])
+
+[#3088]: https://github.com/tokio-rs/axum/pull/3088
+
 # 0.10.0
 
 ## rc.1
