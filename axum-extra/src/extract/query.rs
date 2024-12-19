@@ -1,5 +1,5 @@
 use axum::{
-    extract::{FromRequestParts, OptionalFromRequestParts},
+    extract::FromRequestParts,
     response::{IntoResponse, Response},
     Error,
 };
@@ -17,19 +17,6 @@ use std::fmt;
 /// are sent by multiple `<input>` attributes of the same name (e.g. checkboxes) and `<select>`s
 /// with the `multiple` attribute. Those values can be collected into a `Vec` or other sequential
 /// container.
-///
-/// # `Option<Query<T>>` behavior
-///
-/// If `Query<T>` itself is used as an extractor and there is no query string in
-/// the request URL, `T`'s `Deserialize` implementation is called on an empty
-/// string instead.
-///
-/// You can avoid this by using `Option<Query<T>>`, which gives you `None` in
-/// the case that there is no query string in the request URL.
-///
-/// Note that an empty query string is not the same as no query string, that is
-/// `https://example.org/` and `https://example.org/?` are not treated the same
-/// in this case.
 ///
 /// # Example
 ///
@@ -108,29 +95,6 @@ where
         let value = serde_path_to_error::deserialize(deserializer)
             .map_err(|err| QueryRejection::FailedToDeserializeQueryString(Error::new(err)))?;
         Ok(Query(value))
-    }
-}
-
-impl<T, S> OptionalFromRequestParts<S> for Query<T>
-where
-    T: DeserializeOwned,
-    S: Send + Sync,
-{
-    type Rejection = QueryRejection;
-
-    async fn from_request_parts(
-        parts: &mut Parts,
-        _state: &S,
-    ) -> Result<Option<Self>, Self::Rejection> {
-        if let Some(query) = parts.uri.query() {
-            let deserializer =
-                serde_html_form::Deserializer::new(form_urlencoded::parse(query.as_bytes()));
-            let value = serde_path_to_error::deserialize(deserializer)
-                .map_err(|err| QueryRejection::FailedToDeserializeQueryString(Error::new(err)))?;
-            Ok(Some(Self(value)))
-        } else {
-            Ok(None)
-        }
     }
 }
 

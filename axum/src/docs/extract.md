@@ -108,18 +108,10 @@ struct Pagination {
     per_page: usize,
 }
 
-impl Default for Pagination {
-    fn default() -> Self {
-        Self { page: 1, per_page: 30 }
-    }
-}
-
 async fn get_user_things(
     Path(user_id): Path<Uuid>,
-    pagination: Option<Query<Pagination>>,
+    Query(pagination): Query<Pagination>,
 ) {
-    let Query(pagination) = pagination.unwrap_or_default();
-
     // ...
 }
 # let _: Router = app;

@@ -7,9 +7,11 @@ and this project adheres to [Semantic Versioning].
 
 # Unreleased
 
+- **breaking:** Remove `OptionalFromRequestParts` impl for `Query` ([#3088])
 - **changed:** Query/Form: Use `serde_path_to_error` to report fields that failed to parse ([#3081])
 
 [#3081]: https://github.com/tokio-rs/axum/pull/3081
+[#3088]: https://github.com/tokio-rs/axum/pull/3088
 
 # 0.10.0
 
