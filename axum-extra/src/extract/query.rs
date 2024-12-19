@@ -181,8 +181,8 @@ impl std::error::Error for QueryRejection {
 }
 
 /// Extractor that deserializes query strings into `None` if no query parameters are present.
-/// Otherwise behaviour is identical to [`Query`]
 ///
+/// Otherwise behaviour is identical to [`Query`].
 /// `T` is expected to implement [`serde::Deserialize`].
 ///
 /// # Example
@@ -220,11 +220,9 @@ impl std::error::Error for QueryRejection {
 ///
 /// [example]: https://github.com/tokio-rs/axum/blob/main/examples/query-params-with-empty-strings/src/main.rs
 #[cfg_attr(docsrs, doc(cfg(feature = "query")))]
-#[deprecated = "Use Option<Query<_>> instead"]
 #[derive(Debug, Clone, Copy, Default)]
 pub struct OptionalQuery<T>(pub Option<T>);
 
-#[allow(deprecated)]
 impl<T, S> FromRequestParts<S> for OptionalQuery<T>
 where
     T: DeserializeOwned,
@@ -246,7 +244,6 @@ where
     }
 }
 
-#[allow(deprecated)]
 impl<T> std::ops::Deref for OptionalQuery<T> {
     type Target = Option<T>;
 
@@ -256,7 +253,6 @@ impl<T> std::ops::Deref for OptionalQuery<T> {
     }
 }
 
-#[allow(deprecated)]
 impl<T> std::ops::DerefMut for OptionalQuery<T> {
     #[inline]
     fn deref_mut(&mut self) -> &mut Self::Target {
@@ -304,7 +300,6 @@ impl std::error::Error for OptionalQueryRejection {
 }
 
 #[cfg(test)]
-#[allow(deprecated)]
 mod tests {
     use super::*;
     use crate::test_helpers::*;
