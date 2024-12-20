@@ -103,7 +103,9 @@ where
 
     async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
         let query = parts.uri.query().unwrap_or_default();
-        let value = serde_html_form::from_str(query)
+        let deserializer =
+            serde_html_form::Deserializer::new(form_urlencoded::parse(query.as_bytes()));
+        let value = serde_path_to_error::deserialize(deserializer)
             .map_err(|err| QueryRejection::FailedToDeserializeQueryString(Error::new(err)))?;
         Ok(Query(value))
     }
@@ -121,7 +123,9 @@ where
         _state: &S,
     ) -> Result<Option<Self>, Self::Rejection> {
         if let Some(query) = parts.uri.query() {
-            let value = serde_html_form::from_str(query)
+            let deserializer =
+                serde_html_form::Deserializer::new(form_urlencoded::parse(query.as_bytes()));
+            let value = serde_path_to_error::deserialize(deserializer)
                 .map_err(|err| QueryRejection::FailedToDeserializeQueryString(Error::new(err)))?;
             Ok(Some(Self(value)))
         } else {
@@ -230,7 +234,9 @@ where
 
     async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
         if let Some(query) = parts.uri.query() {
-            let value = serde_html_form::from_str(query).map_err(|err| {
+            let deserializer =
+                serde_html_form::Deserializer::new(form_urlencoded::parse(query.as_bytes()));
+            let value = serde_path_to_error::deserialize(deserializer).map_err(|err| {
                 OptionalQueryRejection::FailedToDeserializeQueryString(Error::new(err))
             })?;
             Ok(OptionalQuery(Some(value)))
@@ -349,7 +355,7 @@ mod tests {
         assert_eq!(res.status(), StatusCode::BAD_REQUEST);
         assert_eq!(
             res.text().await,
-            "Failed to deserialize query string: invalid digit found in string"
+            "Failed to deserialize query string: n: invalid digit found in string"
         );
     }
 
