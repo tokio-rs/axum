@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+- **changed:** Query/Form: Use `serde_path_to_error` to report fields that failed to parse ([#3081])
+
+[#3081]: https://github.com/tokio-rs/axum/pull/3081
+
 # 0.8.0
 
 ## rc.1
