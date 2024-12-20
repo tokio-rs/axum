@@ -302,7 +302,8 @@ impl std::error::Error for OptionalQueryRejection {
 mod tests {
     use super::*;
     use crate::test_helpers::*;
-    use axum::{routing::post, Router};
+    use axum::routing::{get, post};
+    use axum::Router;
     use http::header::CONTENT_TYPE;
     use serde::Deserialize;
 
@@ -329,6 +330,27 @@ mod tests {
 
         assert_eq!(res.status(), StatusCode::OK);
         assert_eq!(res.text().await, "one,two");
+    }
+
+    #[tokio::test]
+    async fn correct_rejection_status_code() {
+        #[derive(Deserialize)]
+        #[allow(dead_code)]
+        struct Params {
+            n: i32,
+        }
+
+        async fn handler(_: Query<Params>) {}
+
+        let app = Router::new().route("/", get(handler));
+        let client = TestClient::new(app);
+
+        let res = client.get("/?n=hi").await;
+        assert_eq!(res.status(), StatusCode::BAD_REQUEST);
+        assert_eq!(
+            res.text().await,
+            "Failed to deserialize query string: invalid digit found in string"
+        );
     }
 
     #[tokio::test]
