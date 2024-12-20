@@ -2,7 +2,7 @@
 
 use axum::{
     extract::{rejection::BytesRejection, FromRequest, Request},
-    response::{IntoResponse, Response},
+    response::{IntoResponse, IntoResponseFailed, Response},
 };
 use bytes::{Bytes, BytesMut};
 use http::StatusCode;
@@ -122,7 +122,12 @@ where
         let mut buf = BytesMut::with_capacity(128);
         match &self.0.encode(&mut buf) {
             Ok(()) => buf.into_response(),
-            Err(err) => (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response(),
+            Err(err) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                IntoResponseFailed,
+                err.to_string(),
+            )
+                .into_response(),
         }
     }
 }
