@@ -10,8 +10,10 @@ and this project adheres to [Semantic Versioning].
 - **breaking:** `axum::extract::ws::Message` now uses `Bytes` in place of `Vec<u8>`,
   and a new `Utf8Bytes` type in place of `String`, for its variants ([#3078])
 - **changed:** Upgraded `tokio-tungstenite` to 0.26 ([#3078])
+- **changed:** Query/Form: Use `serde_path_to_error` to report fields that failed to parse ([#3081])
 
 [#3078]: https://github.com/tokio-rs/axum/pull/3078
+[#3081]: https://github.com/tokio-rs/axum/pull/3081
 
 # 0.10.0
 

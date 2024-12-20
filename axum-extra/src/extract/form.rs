@@ -56,7 +56,9 @@ where
             .await
             .map_err(FormRejection::RawFormRejection)?;
 
-        serde_html_form::from_bytes::<T>(&bytes)
+        let deserializer = serde_html_form::Deserializer::new(form_urlencoded::parse(&bytes));
+
+        serde_path_to_error::deserialize::<_, T>(deserializer)
             .map(Self)
             .map_err(|err| FormRejection::FailedToDeserializeForm(Error::new(err)))
     }
@@ -115,8 +117,10 @@ impl std::error::Error for FormRejection {
 mod tests {
     use super::*;
     use crate::test_helpers::*;
-    use axum::{routing::post, Router};
+    use axum::routing::{on, post, MethodFilter};
+    use axum::Router;
     use http::header::CONTENT_TYPE;
+    use mime::APPLICATION_WWW_FORM_URLENCODED;
     use serde::Deserialize;
 
     #[tokio::test]
@@ -142,5 +146,42 @@ mod tests {
 
         assert_eq!(res.status(), StatusCode::OK);
         assert_eq!(res.text().await, "one,two");
+    }
+
+    #[tokio::test]
+    async fn deserialize_error_status_codes() {
+        #[allow(dead_code)]
+        #[derive(Deserialize)]
+        struct Payload {
+            a: i32,
+        }
+
+        let app = Router::new().route(
+            "/",
+            on(
+                MethodFilter::GET.or(MethodFilter::POST),
+                |_: Form<Payload>| async {},
+            ),
+        );
+
+        let client = TestClient::new(app);
+
+        let res = client.get("/?a=false").await;
+        assert_eq!(res.status(), StatusCode::BAD_REQUEST);
+        assert_eq!(
+            res.text().await,
+            "Failed to deserialize form: a: invalid digit found in string"
+        );
+
+        let res = client
+            .post("/")
+            .header(CONTENT_TYPE, APPLICATION_WWW_FORM_URLENCODED.as_ref())
+            .body("a=false")
+            .await;
+        assert_eq!(res.status(), StatusCode::BAD_REQUEST);
+        assert_eq!(
+            res.text().await,
+            "Failed to deserialize form: a: invalid digit found in string"
+        );
     }
 }

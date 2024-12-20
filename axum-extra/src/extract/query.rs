@@ -103,7 +103,9 @@ where
 
     async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
         let query = parts.uri.query().unwrap_or_default();
-        let value = serde_html_form::from_str(query)
+        let deserializer =
+            serde_html_form::Deserializer::new(form_urlencoded::parse(query.as_bytes()));
+        let value = serde_path_to_error::deserialize(deserializer)
             .map_err(|err| QueryRejection::FailedToDeserializeQueryString(Error::new(err)))?;
         Ok(Query(value))
     }
@@ -121,7 +123,9 @@ where
         _state: &S,
     ) -> Result<Option<Self>, Self::Rejection> {
         if let Some(query) = parts.uri.query() {
-            let value = serde_html_form::from_str(query)
+            let deserializer =
+                serde_html_form::Deserializer::new(form_urlencoded::parse(query.as_bytes()));
+            let value = serde_path_to_error::deserialize(deserializer)
                 .map_err(|err| QueryRejection::FailedToDeserializeQueryString(Error::new(err)))?;
             Ok(Some(Self(value)))
         } else {
@@ -230,7 +234,9 @@ where
 
     async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
         if let Some(query) = parts.uri.query() {
-            let value = serde_html_form::from_str(query).map_err(|err| {
+            let deserializer =
+                serde_html_form::Deserializer::new(form_urlencoded::parse(query.as_bytes()));
+            let value = serde_path_to_error::deserialize(deserializer).map_err(|err| {
                 OptionalQueryRejection::FailedToDeserializeQueryString(Error::new(err))
             })?;
             Ok(OptionalQuery(Some(value)))
@@ -302,7 +308,8 @@ impl std::error::Error for OptionalQueryRejection {
 mod tests {
     use super::*;
     use crate::test_helpers::*;
-    use axum::{routing::post, Router};
+    use axum::routing::{get, post};
+    use axum::Router;
     use http::header::CONTENT_TYPE;
     use serde::Deserialize;
 
@@ -329,6 +336,27 @@ mod tests {
 
         assert_eq!(res.status(), StatusCode::OK);
         assert_eq!(res.text().await, "one,two");
+    }
+
+    #[tokio::test]
+    async fn correct_rejection_status_code() {
+        #[derive(Deserialize)]
+        #[allow(dead_code)]
+        struct Params {
+            n: i32,
+        }
+
+        async fn handler(_: Query<Params>) {}
+
+        let app = Router::new().route("/", get(handler));
+        let client = TestClient::new(app);
+
+        let res = client.get("/?n=hi").await;
+        assert_eq!(res.status(), StatusCode::BAD_REQUEST);
+        assert_eq!(
+            res.text().await,
+            "Failed to deserialize query string: n: invalid digit found in string"
+        );
     }
 
     #[tokio::test]

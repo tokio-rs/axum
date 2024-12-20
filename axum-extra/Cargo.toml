@@ -23,7 +23,7 @@ cookie-private = ["cookie", "cookie?/private"]
 cookie-signed = ["cookie", "cookie?/signed"]
 cookie-key-expansion = ["cookie", "cookie?/key-expansion"]
 erased-json = ["dep:serde_json", "dep:typed-json"]
-form = ["dep:serde_html_form"]
+form = ["dep:form_urlencoded", "dep:serde_html_form", "dep:serde_path_to_error"]
 json-deserializer = ["dep:serde_json", "dep:serde_path_to_error"]
 json-lines = [
     "dep:serde_json",
@@ -36,7 +36,7 @@ json-lines = [
 multipart = ["dep:multer", "dep:fastrand"]
 protobuf = ["dep:prost"]
 scheme = []
-query = ["dep:serde_html_form"]
+query = ["dep:form_urlencoded", "dep:serde_html_form", "dep:serde_path_to_error"]
 tracing = ["axum-core/tracing", "axum/tracing"]
 typed-header = ["dep:headers"]
 typed-routing = ["dep:axum-macros", "dep:percent-encoding", "dep:serde_html_form", "dep:form_urlencoded"]

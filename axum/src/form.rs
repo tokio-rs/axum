@@ -84,14 +84,17 @@ where
 
         match req.extract().await {
             Ok(RawForm(bytes)) => {
-                let value =
-                    serde_urlencoded::from_bytes(&bytes).map_err(|err| -> FormRejection {
+                let deserializer =
+                    serde_urlencoded::Deserializer::new(form_urlencoded::parse(&bytes));
+                let value = serde_path_to_error::deserialize(deserializer).map_err(
+                    |err| -> FormRejection {
                         if is_get_or_head {
                             FailedToDeserializeForm::from_err(err).into()
                         } else {
                             FailedToDeserializeFormBody::from_err(err).into()
                         }
-                    })?;
+                    },
+                )?;
                 Ok(Form(value))
             }
             Err(RawFormRejection::BytesRejection(r)) => Err(FormRejection::BytesRejection(r)),
@@ -252,6 +255,10 @@ mod tests {
 
         let res = client.get("/?a=false").await;
         assert_eq!(res.status(), StatusCode::BAD_REQUEST);
+        assert_eq!(
+            res.text().await,
+            "Failed to deserialize form: a: invalid digit found in string"
+        );
 
         let res = client
             .post("/")
@@ -259,5 +266,9 @@ mod tests {
             .body("a=false")
             .await;
         assert_eq!(res.status(), StatusCode::UNPROCESSABLE_ENTITY);
+        assert_eq!(
+            res.text().await,
+            "Failed to deserialize form body: a: invalid digit found in string"
+        );
     }
 }
