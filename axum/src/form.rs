@@ -252,6 +252,10 @@ mod tests {
 
         let res = client.get("/?a=false").await;
         assert_eq!(res.status(), StatusCode::BAD_REQUEST);
+        assert_eq!(
+            res.text().await,
+            "Failed to deserialize form: invalid digit found in string"
+        );
 
         let res = client
             .post("/")
@@ -259,5 +263,9 @@ mod tests {
             .body("a=false")
             .await;
         assert_eq!(res.status(), StatusCode::UNPROCESSABLE_ENTITY);
+        assert_eq!(
+            res.text().await,
+            "Failed to deserialize form body: invalid digit found in string"
+        );
     }
 }
