@@ -425,6 +425,8 @@ mod tests {
     #[cfg(unix)]
     use super::IncomingStream;
     use super::{serve, Listener};
+    #[cfg(unix)]
+    use crate::extract::connect_info::Connected;
     use crate::{
         body::to_bytes,
         handler::{Handler, HandlerWithoutStateExt},
@@ -432,8 +434,6 @@ mod tests {
         serve::ListenerExt,
         Router,
     };
-    #[cfg(unix)]
-    use extract::connect_info::Connected;
 
     #[allow(dead_code, unused_must_use)]
     async fn if_it_compiles_it_works() {
