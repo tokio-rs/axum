@@ -56,7 +56,9 @@ where
             .await
             .map_err(FormRejection::RawFormRejection)?;
 
-        serde_html_form::from_bytes::<T>(&bytes)
+        let deserializer = serde_html_form::Deserializer::new(form_urlencoded::parse(&bytes));
+
+        serde_path_to_error::deserialize::<_, T>(deserializer)
             .map(Self)
             .map_err(|err| FormRejection::FailedToDeserializeForm(Error::new(err)))
     }
@@ -168,7 +170,7 @@ mod tests {
         assert_eq!(res.status(), StatusCode::BAD_REQUEST);
         assert_eq!(
             res.text().await,
-            "Failed to deserialize form: invalid digit found in string"
+            "Failed to deserialize form: a: invalid digit found in string"
         );
 
         let res = client
@@ -179,7 +181,7 @@ mod tests {
         assert_eq!(res.status(), StatusCode::BAD_REQUEST);
         assert_eq!(
             res.text().await,
-            "Failed to deserialize form: invalid digit found in string"
+            "Failed to deserialize form: a: invalid digit found in string"
         );
     }
 }

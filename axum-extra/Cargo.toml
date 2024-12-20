@@ -23,7 +23,7 @@ cookie-private = ["cookie", "cookie?/private"]
 cookie-signed = ["cookie", "cookie?/signed"]
 cookie-key-expansion = ["cookie", "cookie?/key-expansion"]
 erased-json = ["dep:serde_json", "dep:typed-json"]
-form = ["dep:serde_html_form"]
+form = ["dep:form_urlencoded", "dep:serde_html_form", "dep:serde_path_to_error"]
 json-deserializer = ["dep:serde_json", "dep:serde_path_to_error"]
 json-lines = [
     "dep:serde_json",
