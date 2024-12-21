@@ -1,23 +1,10 @@
-use super::{rejection::*, FromRequestParts, OptionalFromRequestParts};
+use super::{rejection::*, FromRequestParts};
 use http::{request::Parts, Uri};
 use serde::de::DeserializeOwned;
 
 /// Extractor that deserializes query strings into some type.
 ///
 /// `T` is expected to implement [`serde::Deserialize`].
-///
-/// # `Option<Query<T>>` behavior
-///
-/// If `Query<T>` itself is used as an extractor and there is no query string in
-/// the request URL, `T`'s `Deserialize` implementation is called on an empty
-/// string instead.
-///
-/// You can avoid this by using `Option<Query<T>>`, which gives you `None` in
-/// the case that there is no query string in the request URL.
-///
-/// Note that an empty query string is not the same as no query string, that is
-/// `https://example.org/` and `https://example.org/?` are not treated the same
-/// in this case.
 ///
 /// # Examples
 ///
@@ -72,29 +59,6 @@ where
 
     async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
         Self::try_from_uri(&parts.uri)
-    }
-}
-
-impl<T, S> OptionalFromRequestParts<S> for Query<T>
-where
-    T: DeserializeOwned,
-    S: Send + Sync,
-{
-    type Rejection = QueryRejection;
-
-    async fn from_request_parts(
-        parts: &mut Parts,
-        _state: &S,
-    ) -> Result<Option<Self>, Self::Rejection> {
-        if let Some(query) = parts.uri.query() {
-            let deserializer =
-                serde_urlencoded::Deserializer::new(form_urlencoded::parse(query.as_bytes()));
-            let value = serde_path_to_error::deserialize(deserializer)
-                .map_err(FailedToDeserializeQueryString::from_err)?;
-            Ok(Some(Self(value)))
-        } else {
-            Ok(None)
-        }
     }
 }
 
