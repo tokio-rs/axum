@@ -1,10 +1,8 @@
 use super::{serve, Request, Response};
 use bytes::Bytes;
 use futures_util::future::BoxFuture;
-use http::{
-    header::{HeaderName, HeaderValue},
-    StatusCode,
-};
+use http::header::{HeaderName, HeaderValue};
+use std::ops::Deref;
 use std::{convert::Infallible, future::IntoFuture, net::SocketAddr};
 use tokio::net::TcpListener;
 use tower::make::Shared;
@@ -144,6 +142,14 @@ pub(crate) struct TestResponse {
     response: reqwest::Response,
 }
 
+impl Deref for TestResponse {
+    type Target = reqwest::Response;
+
+    fn deref(&self) -> &Self::Target {
+        &self.response
+    }
+}
+
 impl TestResponse {
     #[allow(dead_code)]
     pub(crate) async fn bytes(self) -> Bytes {
@@ -160,14 +166,6 @@ impl TestResponse {
         T: serde::de::DeserializeOwned,
     {
         self.response.json().await.unwrap()
-    }
-
-    pub(crate) fn status(&self) -> StatusCode {
-        StatusCode::from_u16(self.response.status().as_u16()).unwrap()
-    }
-
-    pub(crate) fn headers(&self) -> http::HeaderMap {
-        self.response.headers().clone()
     }
 
     pub(crate) async fn chunk(&mut self) -> Option<Bytes> {
