@@ -168,10 +168,6 @@ impl TestResponse {
         self.response.json().await.unwrap()
     }
 
-    pub(crate) fn headers(&self) -> http::HeaderMap {
-        self.response.headers().clone()
-    }
-
     pub(crate) async fn chunk(&mut self) -> Option<Bytes> {
         self.response.chunk().await.unwrap()
     }
