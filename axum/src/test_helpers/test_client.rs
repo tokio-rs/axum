@@ -5,6 +5,7 @@ use http::{
     header::{HeaderName, HeaderValue},
     StatusCode,
 };
+use std::ops::Deref;
 use std::{convert::Infallible, future::IntoFuture, net::SocketAddr};
 use tokio::net::TcpListener;
 use tower::make::Shared;
@@ -142,6 +143,14 @@ impl IntoFuture for RequestBuilder {
 #[derive(Debug)]
 pub(crate) struct TestResponse {
     response: reqwest::Response,
+}
+
+impl Deref for TestResponse {
+    type Target = reqwest::Response;
+
+    fn deref(&self) -> &Self::Target {
+        &self.response
+    }
 }
 
 impl TestResponse {
