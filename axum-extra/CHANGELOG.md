@@ -29,6 +29,7 @@ and this project adheres to [Semantic Versioning].
 - **added:** Add `InternalServerError` response for logging an internal error
   and returning HTTP 500 in a convenient way. ([#3010])
 - **added:** Add `FileStream` for easy construction of file stream responses ([#3047])
+- **added:** Add `Scheme` extractor ([#2507])
 
 [#2242]: https://github.com/tokio-rs/axum/pull/2242
 [#2475]: https://github.com/tokio-rs/axum/pull/2475
@@ -37,6 +38,7 @@ and this project adheres to [Semantic Versioning].
 [#2962]: https://github.com/tokio-rs/axum/pull/2962
 [#3010]: https://github.com/tokio-rs/axum/pull/3010
 [#3047]: https://github.com/tokio-rs/axum/pull/3047
+[#2507]: https://github.com/tokio-rs/axum/pull/2507
 
 ## alpha.1
 
