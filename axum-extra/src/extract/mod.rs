@@ -41,7 +41,6 @@ pub use self::cookie::SignedCookieJar;
 pub use self::form::{Form, FormRejection};
 
 #[cfg(feature = "query")]
-#[allow(deprecated)]
 pub use self::query::OptionalQuery;
 #[cfg(feature = "query")]
 pub use self::query::{OptionalQueryRejection, Query, QueryRejection};
