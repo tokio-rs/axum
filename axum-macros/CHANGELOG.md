@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # 0.5.0
 
+*No changes since alpha.1*
+
+## full changelog
+
+- **breaking:** Update code generation for axum-core 0.5.0
+- **change:** Update minimum rust version to 1.75 ([#2943])
+
 ## alpha.1
 
 - **breaking:** Update code generation for axum-core 0.5.0-alpha.1

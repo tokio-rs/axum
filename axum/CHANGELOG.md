@@ -7,17 +7,60 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Unreleased
 
+# 0.8.0
+
+## since rc.1
+
+<details>
+
 - **breaking:** `axum::extract::ws::Message` now uses `Bytes` in place of `Vec<u8>`,
   and a new `Utf8Bytes` type in place of `String`, for its variants ([#3078])
 - **breaking:** Remove `OptionalFromRequestParts` impl for `Query` ([#3088])
 - **changed:** Upgraded `tokio-tungstenite` to 0.26 ([#3078])
 - **changed:** Query/Form: Use `serde_path_to_error` to report fields that failed to parse ([#3081])
 
-[#3078]: https://github.com/tokio-rs/axum/pull/3078
-[#3081]: https://github.com/tokio-rs/axum/pull/3081
 [#3088]: https://github.com/tokio-rs/axum/pull/3088
 
-# 0.8.0
+</details>
+
+## full changelog
+
+*Note: there are further relevant changes in [axum-core's changelog][core-changelog]*
+
+- **breaking:** Upgrade matchit to 0.8, changing the path parameter syntax from `/:single` and `/*many`
+  to `/{single}` and `/{*many}`; the old syntax produces a panic to avoid silent change in behavior ([#2645])
+- **breaking:** Require `Sync` for all handlers and services added to `Router`
+  and `MethodRouter` ([#2473])
+- **breaking:** The tuple and tuple_struct `Path` extractor deserializers now check that the number of parameters matches the tuple length exactly ([#2931])
+- **breaking:** Move `Host` extractor to `axum-extra` ([#2956])
+- **breaking:** Remove `WebSocket::close`.
+  Users should explicitly send close messages themselves. ([#2974])
+- **breaking:** Make `serve` generic over the listener and IO types ([#2941])
+- **breaking:** Remove `Serve::tcp_nodelay` and `WithGracefulShutdown::tcp_nodelay`.
+  See `serve::ListenerExt` for an API that let you set arbitrary TCP stream properties. ([#2941])
+- **breaking:** `Option<Path<T>>` no longer swallows all error conditions,
+  instead rejecting the request in many cases; see its documentation for details ([#2475])
+- **breaking:** `axum::extract::ws::Message` now uses `Bytes` in place of `Vec<u8>`,
+  and a new `Utf8Bytes` type in place of `String`, for its variants ([#3078])
+- **fixed:** Skip SSE incompatible chars of `serde_json::RawValue` in `Event::json_data` ([#2992])
+- **fixed:** Don't panic when array type is used for path segment ([#3039])
+- **fixed:** Avoid setting `content-length` before middleware.
+  This allows middleware to add bodies to requests without needing to manually set `content-length` ([#2897])
+- **change:** Update minimum rust version to 1.75 ([#2943])
+- **changed:** Upgraded `tokio-tungstenite` to 0.26 ([#3078])
+- **changed:** Query/Form: Use `serde_path_to_error` to report fields that failed to parse ([#3081])
+- **added:** Add `method_not_allowed_fallback` to set a fallback when a path matches but there is no handler for the given HTTP method ([#2903])
+- **added:** Add `NoContent` as a self-described shortcut for `StatusCode::NO_CONTENT` ([#2978])
+- **added:** Add support for WebSockets over HTTP/2.
+  They can be enabled by changing `get(ws_endpoint)` handlers to `any(ws_endpoint)` ([#2894])
+- **added:** Add `MethodFilter::CONNECT`, `routing::connect[_service]`
+  and `MethodRouter::connect[_service]` ([#2961])
+- **added:** Extend `FailedToDeserializePathParams::kind` enum with (`ErrorKind::DeserializeError`)
+  This new variant captures both `key`, `value`, and `message` from named path parameters parse errors,
+  instead of only deserialization error message in `ErrorKind::Message`. ([#2720])
+
+[#3078]: https://github.com/tokio-rs/axum/pull/3078
+[#3081]: https://github.com/tokio-rs/axum/pull/3081
 
 ## rc.1
 
@@ -888,9 +931,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Router::new().route(...).with_state(state);
   ```
 
-- **breaking:**: `Router::inherit_state` has been removed. Use
+- **breaking:** `Router::inherit_state` has been removed. Use
   `Router::with_state` instead ([#1532])
-- **breaking:**: `Router::nest` and `Router::merge` now only supports nesting
+- **breaking:** `Router::nest` and `Router::merge` now only supports nesting
   routers that use the same state type as the router they're being merged into.
   Use `FromRef` for substates ([#1532])
 
