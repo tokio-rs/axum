@@ -26,7 +26,7 @@
 //! `tracing` | Log rejections from built-in extractors | Yes
 //! `typed-routing` | Enables the [`TypedPath`](crate::routing::TypedPath) routing utilities | No
 //! `typed-header` | Enables the [`TypedHeader`] extractor and response | No
-//! `FileStream` | Enables the [`FileStream`](crate::response::FileStream) response | No
+//! `file-stream` | Enables the [`FileStream`](crate::response::FileStream) response | No
 //!
 //! [`axum`]: https://crates.io/crates/axum
 
