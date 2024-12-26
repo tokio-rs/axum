@@ -1,4 +1,3 @@
-use crate::box_clone_service::BoxCloneService;
 use crate::response::{IntoResponse, Response};
 use axum_core::extract::{FromRequest, FromRequestParts, Request};
 use futures_util::future::BoxFuture;
@@ -11,6 +10,7 @@ use std::{
     pin::Pin,
     task::{Context, Poll},
 };
+use tower::util::BoxCloneSyncService;
 use tower::ServiceBuilder;
 use tower_layer::Layer;
 use tower_service::Service;
@@ -302,7 +302,7 @@ macro_rules! impl_service {
                     };
 
                     let inner = ServiceBuilder::new()
-                        .layer_fn(BoxCloneService::new)
+                        .layer_fn(BoxCloneSyncService::new)
                         .map_response(IntoResponse::into_response)
                         .service(ready_inner);
                     let next = Next { inner };
@@ -337,7 +337,7 @@ where
 /// The remainder of a middleware stack, including the handler.
 #[derive(Debug, Clone)]
 pub struct Next {
-    inner: BoxCloneService<Request, Response, Infallible>,
+    inner: BoxCloneSyncService<Request, Response, Infallible>,
 }
 
 impl Next {
