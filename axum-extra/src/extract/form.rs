@@ -77,13 +77,24 @@ pub enum FormRejection {
     FailedToDeserializeForm(Error),
 }
 
+impl FormRejection {
+    /// Get the status code used for this rejection.
+    pub fn status(&self) -> StatusCode {
+        // Make sure to keep this in sync with `IntoResponse` impl.
+        match self {
+            Self::RawFormRejection(inner) => inner.status(),
+            Self::FailedToDeserializeForm(_) => StatusCode::BAD_REQUEST,
+        }
+    }
+}
+
 impl IntoResponse for FormRejection {
     fn into_response(self) -> Response {
+        let status = self.status();
         match self {
             Self::RawFormRejection(inner) => inner.into_response(),
             Self::FailedToDeserializeForm(inner) => {
                 let body = format!("Failed to deserialize form: {inner}");
-                let status = StatusCode::BAD_REQUEST;
                 axum_core::__log_rejection!(
                     rejection_type = Self,
                     body_text = body,

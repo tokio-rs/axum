@@ -111,12 +111,21 @@ pub enum QueryRejection {
     FailedToDeserializeQueryString(Error),
 }
 
+impl QueryRejection {
+    /// Get the status code used for this rejection.
+    pub fn status(&self) -> StatusCode {
+        match self {
+            Self::FailedToDeserializeQueryString(_) => StatusCode::BAD_REQUEST,
+        }
+    }
+}
+
 impl IntoResponse for QueryRejection {
     fn into_response(self) -> Response {
+        let status = self.status();
         match self {
             Self::FailedToDeserializeQueryString(inner) => {
                 let body = format!("Failed to deserialize query string: {inner}");
-                let status = StatusCode::BAD_REQUEST;
                 axum_core::__log_rejection!(
                     rejection_type = Self,
                     body_text = body,
