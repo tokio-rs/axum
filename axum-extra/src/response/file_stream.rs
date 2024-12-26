@@ -31,11 +31,11 @@ use tokio_util::io::ReaderStream;
 /// use tokio_util::io::ReaderStream;
 ///
 /// async fn file_stream() -> Result<Response, (StatusCode, String)> {
-///     let stream = ReaderStream::new(
-///         File::open("test.txt")
-///             .await
-///             .map_err(|e| (StatusCode::NOT_FOUND, format!("File not found: {e}")))?,
-///     );
+///     let file = File::open("test.txt")
+///         .await
+///         .map_err(|e| (StatusCode::NOT_FOUND, format!("File not found: {e}")))?;
+///
+///     let stream = ReaderStream::new(file);
 ///     let file_stream_resp = FileStream::new(stream).file_name("test.txt");
 ///
 ///     Ok(file_stream_resp.into_response())
