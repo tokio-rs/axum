@@ -42,7 +42,7 @@ use tokio_util::io::ReaderStream;
 /// }
 ///
 /// let app = Router::new().route("/file-stream", get(file_stream));
-/// let _: Router = app;
+/// # let _: Router = app;
 /// ```
 #[derive(Debug)]
 pub struct FileStream<S> {
@@ -91,7 +91,7 @@ where
     /// }
     ///
     /// let app = Router::new().route("/file-stream", get(file_stream));
-    /// let _: Router = app;
+    /// # let _: Router = app;
     /// ```
     pub async fn from_path(path: impl AsRef<Path>) -> io::Result<FileStream<ReaderStream<File>>> {
         let file = File::open(&path).await?;
@@ -166,7 +166,7 @@ where
     /// }
     ///
     /// let app = Router::new().route("/file-stream", get(range_response));
-    /// let _: Router = app;
+    /// # let _: Router = app;
     /// ```
     pub fn into_range_response(self, start: u64, end: u64, total_size: u64) -> Response {
         let mut resp = Response::builder().header(header::CONTENT_TYPE, "application/octet-stream");
@@ -224,7 +224,7 @@ where
     /// }
     ///
     /// let app = Router::new().route("/file-stream", get(range_stream));
-    /// let _: Router = app;
+    /// # let _: Router = app;
     /// ```
     pub async fn try_range_response(
         file_path: impl AsRef<Path>,
