@@ -49,12 +49,14 @@ macro_rules! __define_rejection {
 
         impl $crate::response::IntoResponse for $name {
             fn into_response(self) -> $crate::response::Response {
+                let status = self.status();
+
                 $crate::__log_rejection!(
                     rejection_type = $name,
                     body_text = $body,
-                    status = http::StatusCode::$status,
+                    status = status,
                 );
-                (self.status(), $body).into_response()
+                (status, $body).into_response()
             }
         }
 
@@ -106,12 +108,15 @@ macro_rules! __define_rejection {
 
         impl $crate::response::IntoResponse for $name {
             fn into_response(self) -> $crate::response::Response {
+                let status = self.status();
+                let body_text = self.body_text();
+
                 $crate::__log_rejection!(
                     rejection_type = $name,
-                    body_text = self.body_text(),
-                    status = http::StatusCode::$status,
+                    body_text = body_text,
+                    status = status,
                 );
-                (self.status(), self.body_text()).into_response()
+                (status, body_text).into_response()
             }
         }
 
