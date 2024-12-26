@@ -22,22 +22,26 @@ use tokio_util::io::ReaderStream;
 /// ```
 /// use axum::{
 ///     http::StatusCode,
-///     response::{Response, IntoResponse},
+///     response::{IntoResponse, Response},
+///     routing::get,
 ///     Router,
-///     routing::get
 /// };
 /// use axum_extra::response::file_stream::FileStream;
 /// use tokio::fs::File;
 /// use tokio_util::io::ReaderStream;
 ///
 /// async fn file_stream() -> Result<Response, (StatusCode, String)> {
-///     let stream=ReaderStream::new(File::open("test.txt").await.map_err(|e| (StatusCode::NOT_FOUND, format!("File not found: {e}")))?);
-///     let file_stream_resp = FileStream::new(stream)
-///         .file_name("test.txt");
-//
+///     let file = File::open("test.txt")
+///         .await
+///         .map_err(|e| (StatusCode::NOT_FOUND, format!("File not found: {e}")))?;
+///
+///     let stream = ReaderStream::new(file);
+///     let file_stream_resp = FileStream::new(stream).file_name("test.txt");
+///
 ///     Ok(file_stream_resp.into_response())
 /// }
-/// let app = Router::new().route("/FileStreamDownload", get(file_stream));
+///
+/// let app = Router::new().route("/file-stream", get(file_stream));
 /// # let _: Router = app;
 /// ```
 #[derive(Debug)]
@@ -56,7 +60,7 @@ where
     S::Ok: Into<Bytes>,
     S::Error: Into<BoxError>,
 {
-    /// Create a file stream.
+    /// Create a new [`FileStream`]
     pub fn new(stream: S) -> Self {
         Self {
             stream,
@@ -65,14 +69,14 @@ where
         }
     }
 
-    /// Create a file stream from a file path.
+    /// Create a [`FileStream`] from a file path.
     ///
     /// # Examples
     ///
     /// ```
     /// use axum::{
     ///     http::StatusCode,
-    ///     response::{Response, IntoResponse},
+    ///     response::IntoResponse,
     ///     Router,
     ///     routing::get
     /// };
@@ -80,34 +84,30 @@ where
     /// use tokio::fs::File;
     /// use tokio_util::io::ReaderStream;
     ///
-    /// async fn file_stream() -> Response {
+    /// async fn file_stream() -> impl IntoResponse {
     ///     FileStream::<ReaderStream<File>>::from_path("test.txt")
     ///         .await
     ///         .map_err(|e| (StatusCode::NOT_FOUND, format!("File not found: {e}")))
-    ///         .into_response()
     /// }
-    /// let app = Router::new().route("/FileStreamDownload", get(file_stream));
+    ///
+    /// let app = Router::new().route("/file-stream", get(file_stream));
     /// # let _: Router = app;
     /// ```
     pub async fn from_path(path: impl AsRef<Path>) -> io::Result<FileStream<ReaderStream<File>>> {
-        // open file
         let file = File::open(&path).await?;
         let mut content_size = None;
         let mut file_name = None;
 
-        // get file metadata length
         if let Ok(metadata) = file.metadata().await {
             content_size = Some(metadata.len());
         }
 
-        // get file name
         if let Some(file_name_os) = path.as_ref().file_name() {
             if let Some(file_name_str) = file_name_os.to_str() {
                 file_name = Some(file_name_str.to_owned());
             }
         }
 
-        // return FileStream
         Ok(FileStream {
             stream: ReaderStream::new(file),
             file_name,
@@ -115,7 +115,9 @@ where
         })
     }
 
-    /// Set the file name of the file.
+    /// Set the file name of the [`FileStream`].
+    ///
+    /// This adds the attachment `Content-Disposition` header with the given `file_name`.
     pub fn file_name(mut self, file_name: impl Into<String>) -> Self {
         self.file_name = Some(file_name.into());
         self
@@ -136,24 +138,34 @@ where
     /// ```
     /// use axum::{
     ///     http::StatusCode,
-    ///     response::{Response, IntoResponse},
+    ///     response::IntoResponse,
+    ///     routing::get,
     ///     Router,
-    ///     routing::get
     /// };
     /// use axum_extra::response::file_stream::FileStream;
     /// use tokio::fs::File;
-    /// use tokio_util::io::ReaderStream;
     /// use tokio::io::AsyncSeekExt;
+    /// use tokio_util::io::ReaderStream;
     ///
-    /// async fn range_response() -> Result<Response, (StatusCode, String)> {
-    ///     let mut file=File::open("test.txt").await.map_err(|e| (StatusCode::NOT_FOUND, format!("File not found: {e}")))?;
-    ///     let mut file_size=file.metadata().await.map_err(|e| (StatusCode::NOT_FOUND, format!("Get file size: {e}")))?.len();
-    ///     file.seek(std::io::SeekFrom::Start(10)).await.map_err(|e| (StatusCode::NOT_FOUND, format!("File seek error: {e}")))?;
-    ///     let stream=ReaderStream::new(file);
-    ///  
-    ///     Ok(FileStream::new(stream).into_range_response(10, file_size-1, file_size))
+    /// async fn range_response() -> Result<impl IntoResponse, (StatusCode, String)> {
+    ///     let mut file = File::open("test.txt")
+    ///         .await
+    ///         .map_err(|e| (StatusCode::NOT_FOUND, format!("File not found: {e}")))?;
+    ///     let mut file_size = file
+    ///         .metadata()
+    ///         .await
+    ///         .map_err(|e| (StatusCode::NOT_FOUND, format!("Get file size: {e}")))?
+    ///         .len();
+    ///
+    ///     file.seek(std::io::SeekFrom::Start(10))
+    ///         .await
+    ///         .map_err(|e| (StatusCode::NOT_FOUND, format!("File seek error: {e}")))?;
+    ///     let stream = ReaderStream::new(file);
+    ///
+    ///     Ok(FileStream::new(stream).into_range_response(10, file_size - 1, file_size))
     /// }
-    /// let app = Router::new().route("/FileStreamRange", get(range_response));
+    ///
+    /// let app = Router::new().route("/file-stream", get(range_response));
     /// # let _: Router = app;
     /// ```
     pub fn into_range_response(self, start: u64, end: u64, total_size: u64) -> Response {
@@ -169,7 +181,7 @@ where
             .unwrap_or_else(|e| {
                 (
                     StatusCode::INTERNAL_SERVER_ERROR,
-                    format!("build FileStream responsec error: {e}"),
+                    format!("build FileStream response error: {e}"),
                 )
                     .into_response()
             })
@@ -180,15 +192,20 @@ where
     /// # Arguments
     ///
     /// * `file_path` - The path of the file to be streamed
-    /// * `start` - The start position of the range, if start > file size or start > end return Range Not Satisfiable
-    /// * `end` - The end position of the range if end == 0 end = file size - 1
+    /// * `start` - The start position of the range
+    /// * `end` - The end position of the range
+    ///
+    /// # Note
+    ///
+    /// * If `end` is 0, then it is used as `file_size - 1`
+    /// * If `start` > `file_size` or `start` > `end`, then `Range Not Satisfiable` is returned
     ///
     /// # Examples
     ///
     /// ```
     /// use axum::{
     ///     http::StatusCode,
-    ///     response::{Response, IntoResponse},
+    ///     response::IntoResponse,
     ///     Router,
     ///     routing::get
     /// };
@@ -198,16 +215,15 @@ where
     /// use tokio_util::io::ReaderStream;
     /// use tokio::io::AsyncSeekExt;
     ///
-    /// async fn range_stream() -> Response {
+    /// async fn range_stream() -> impl IntoResponse {
     ///     let range_start = 0;
     ///     let range_end = 1024;
     ///
     ///     FileStream::<ReaderStream<File>>::try_range_response("CHANGELOG.md", range_start, range_end).await
-    ///     .map_err(|e| (StatusCode::NOT_FOUND, format!("File not found: {e}")))
-    ///     .into_response()
-    ///     
+    ///         .map_err(|e| (StatusCode::NOT_FOUND, format!("File not found: {e}")))
     /// }
-    /// let app = Router::new().route("/FileStreamRange", get(range_stream));
+    ///
+    /// let app = Router::new().route("/file-stream", get(range_stream));
     /// # let _: Router = app;
     /// ```
     pub async fn try_range_response(
@@ -215,10 +231,8 @@ where
         start: u64,
         mut end: u64,
     ) -> io::Result<Response> {
-        // open file
         let mut file = File::open(file_path).await?;
 
-        // get file metadata
         let metadata = file.metadata().await?;
         let total_size = metadata.len();
 
@@ -226,7 +240,6 @@ where
             end = total_size - 1;
         }
 
-        // range check
         if start > total_size {
             return Ok((StatusCode::RANGE_NOT_SATISFIABLE, "Range Not Satisfiable").into_response());
         }
@@ -237,7 +250,6 @@ where
             return Ok((StatusCode::RANGE_NOT_SATISFIABLE, "Range Not Satisfiable").into_response());
         }
 
-        // get file stream and seek to start to return range response
         file.seek(std::io::SeekFrom::Start(start)).await?;
 
         let stream = ReaderStream::new(file.take(end - start + 1));
@@ -246,7 +258,6 @@ where
     }
 }
 
-/// default  response is application/octet-stream and attachment mode;
 impl<S> IntoResponse for FileStream<S>
 where
     S: TryStream + Send + 'static,
