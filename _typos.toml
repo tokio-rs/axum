@@ -1,6 +1,0 @@
-[files]
-extend-exclude = ["Cargo.toml"]
-
-[default.extend-identifiers]
-DefaultOnFailedUpdgrade = "DefaultOnFailedUpdgrade"
-OnFailedUpdgrade = "OnFailedUpdgrade"
