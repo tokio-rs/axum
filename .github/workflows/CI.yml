@@ -15,7 +15,6 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
     - uses: actions/checkout@v4
-    - uses: taiki-e/install-action@protoc
     - uses: dtolnay/rust-toolchain@beta
       with:
         components: clippy, rustfmt
@@ -46,7 +45,6 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
     - uses: actions/checkout@v4
-    - uses: taiki-e/install-action@protoc
     - uses: dtolnay/rust-toolchain@stable
     - uses: Swatinem/rust-cache@v2
       with:
@@ -84,7 +82,6 @@ jobs:
         rust: [stable, beta]
     steps:
     - uses: actions/checkout@v4
-    - uses: taiki-e/install-action@protoc
     - uses: dtolnay/rust-toolchain@master
       with:
         toolchain: ${{ matrix.rust }}
